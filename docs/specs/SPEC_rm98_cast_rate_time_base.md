@@ -46,7 +46,7 @@ combat-window. `docs/history_notes.md:12534` (s178 Findings):
 > 0.25 casts/sec; measured median is 0.098 casts/sec (40% of theoretical).
 
 A combat-window denominator was **never in the option set**. It appears
-nowhere in the generator, in commit `34e1d6c2`, or in any s178-era doc. Its
+nowhere in the generator, in commit `4421b8ef`, or in any s178-era doc. Its
 first appearance anywhere in the repo is 2026-07 in
 `docs/specs/RM39_design_C_baseline_delta.md:416-421`, as an audit finding.
 
@@ -90,7 +90,7 @@ RM-39 further prescribes replacing the denominator (`SPEC:174-176`,
 `:198-202`, `:318-320`): "If the denominator is wrong, the fix is a better
 denominator, not a correction factor layered on top." And RM-39's verdict
 rests on disqualifiers 1.1 and 1.3 (call-signature and call-counting), neither
-of which is whole-game dependent - per commit `e382d9c4`, "it rests on code
+of which is whole-game dependent - per commit `cdaf500d`, "it rests on code
 structure and call-counting".
 
 The false claim entered by summarisation: three artifacts

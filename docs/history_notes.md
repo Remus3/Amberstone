@@ -43,7 +43,7 @@
 # 2026-07-18j (DS_SWEEP batch26-31 -> 169/173: 30 champions in one session; 30 GAP, 0 REFUTE, THREE new shapes, and the archetype-invariance measurement that reframes the whole sweep)
 
 Read-only research, NO engine change. LEDGER 944 + 945. Two commits:
-`6f927b40` batch26/27/28 (Thresh..Viktor, 139 -> 154) and `525ac845`
+`f47c80a7` batch26/27/28 (Thresh..Viktor, 139 -> 154) and `f077759d`
 batch29/30/31 (Vladimir..Zeri, 154 -> 169). CI is path-filtered for docs-only
 pushes BY DESIGN (`paths-ignore: '**/*.md'`), so no run is expected on either;
 the local ASCII-hygiene gate is the backstop and is green (13 passed), ruff
@@ -121,7 +121,7 @@ champion/build data and land it for live usage.
 
 # 2026-09-06c - LANE 8 true-audit: core/rofl_archive.py, and the verifier caught MY regression
 
-On main: `387a593a2` (code+tests), `4fcf1980b` (LEDGER 1354), `66f167a90`
+On main: `b9ca3c3c9` (code+tests), `07a122773` (LEDGER 1354), `ca88194d7`
 (gitignore fix). RM-310 CLOSED, RM-371 now PARTIAL (its rofl third done, the
 `core/riot_api.py:319` and `core/sgp_client.py:167` thirds UNCHANGED).
 
@@ -174,7 +174,7 @@ asserts an MIT grant over data that is not ours.
 > same day and neither was reordered, since rewriting another lane's record to
 > tidy ordering costs more than it buys.
 
-RM-367 is on main (`4af7b9fc1` code, `ec32561d4` ledger). **LEDGER 1355, not
+RM-367 is on main (`66bd5d0b5` code, `711d06e9a` ledger). **LEDGER 1355, not
 1354** - lane 8 took 1354 while this row was in flight, so the code commit's
 message cites 1354 and is stale by one. Not amended, per the no-amend rule.
 
@@ -217,7 +217,7 @@ rather than expect room for a new line.
 
 # 2026-09-06b - LANE 10 cycle 15: RM-364 shipped, and it ADOPTED a crashed cycle
 
-RM-364 is on main (`d9e8c5d98` code, `f01918b4b` sha citation). LEDGER 1353.
+RM-364 is on main (`a97bdfc0b` code, `bb52bd198` sha citation). LEDGER 1353.
 The prompt sanitizer had ONE production importer against 17 Anthropic egress
 files; the five ranked ones are now cleaned at prompt ASSEMBLY, and the
 population is pinned by a bidirectional census guard instead of remembered.
@@ -321,7 +321,7 @@ separately to port this lane there.
 
 # 2026-09-05e - ROW EXECUTION: RM-347 shipped, gate caught two false rationale lines
 
-STATE. LEDGER 1337. One row, inline TDD, `be7747fcb` on `main` (single production
+STATE. LEDGER 1337. One row, inline TDD, `bb4d17ed8` on `main` (single production
 file + single test file, so there were no disjoint slices to parallelize; the
 adversarial property was preserved with a read-only `verifier` against the
 finished tree). Suites measured on the committed tree: `pytest tests -n 8`
@@ -385,7 +385,7 @@ STILL GATED. **RM-366** needs operator approval - it edits the FROZEN
 # 2026-09-05d - ROW EXECUTION: RM-346 / RM-362 shipped, gate refuted the MERGER this time
 
 STATE. LEDGER 1336. Two worktree slices merged `--no-ff` with zero conflicts
-(`753ea0937`, `fe1678f2b`) plus in-merger follow-up `7d9e9b7a7`. Suites measured
+(`d4f5557f2`, `516ea5e9a`) plus in-merger follow-up `758b3fa6b`. Suites measured
 on the merged tree: `pytest tests -n 8` **20673 passed / 96 skipped / 4859
 subtests / exit 0**; `pytest agents/daemon_slayer -n 8` **10856 passed / 13662
 subtests / exit 0**. No `ENGINE_VERSION` bump, no `:8860` bounce, no Share sync,
@@ -442,7 +442,7 @@ watched files are under `tests/`.
 
 STATE. LEDGER 1335, pushed `cfb46f99b..f459e56eb`. Three worktree slices merged
 `--no-ff` with zero conflicts, worktrees + branches cleaned. CI green at STEP
-level on `f459e56eb`: `check` -> `full dual suite (RM-119) => success`, and
+level on `65f8beea2`: `check` -> `full dual suite (RM-119) => success`, and
 `docs-guards` success. Local dual suite measured THIS run from the merged tree:
 `pytest tests -n 8` **20625 passed / 96 skipped / 4859 subtests**, `pytest
 agents/daemon_slayer -n 8` **10856 passed / 13662 subtests**, both exit 0. RC
@@ -489,14 +489,14 @@ plus RM-364/365/366 filed today. RM-366 is operator-gated (frozen file).
 # 2026-09-05b - MERGE SESSION: both cycle-48 lanes are ON MAIN, ids assigned, MC bounced
 
 STATE. LEDGER 1334. `lane/research` then `lane/true-audit` merged in plan order
-(`e173e6ab2`, `ea45ff5be`), then `8263bb311` for ids + a CI fix, then the wrap
-commit. Main is green: dispatched run 33968377531 on `8263bb311`, `check` job
+(`3e066a7e7`, `a8a73c765`), then `ac0c90d74` for ids + a CI fix, then the wrap
+commit. Main is green: dispatched run 33968377531 on `ac0c90d74`, `check` job
 `full dual suite (RM-119) => success` verified at STEP level, `nightly-full-suite
 => success`. `RC-MissionControl` pid 2092 -> **20600**, `/api/loop-status` 200.
 
 THE TWO THINGS THAT COST TIME, so they do not cost it twice:
 1. The merge went in RED and the lanes could not have known. `docs-guards` +
-   `ci` both failed on `ea45ff5be` on ONE test - the RM-171 citation guard, on
+   `ci` both failed on `a8a73c765` on ONE test - the RM-171 citation guard, on
    `coach_integration/_sr_prompt.py:308` in the refill doc, written there with a
    leading dot-slash. That prefix reads as an untracked path. Content was
    correct; the prefix was dropped. Do NOT write the dot-slash form in a doc,
@@ -530,7 +530,7 @@ WHAT LANDED. RM-250: seven `ops/loop/` writers now route through
 per-writer scratch name, cleanup on every failure path). 15 tests in
 `tests/test_loop_control_sibling_writers_lane8_cycle48.py`, five distinct
 mutations. RM-343 filed. `docs/DS_SWEEP_TRACKER.md:72` corrected. Lane 5 filed
-20 rows to `docs/_research_refill_2026-09-05.md` (`0d2545c19`, pushed).
+20 rows to `docs/_research_refill_2026-09-05.md` (`49cd6db92`, pushed).
 
 THE THREE THINGS WORTH CARRYING FORWARD.
 1. **The filed row was wrong in three separate ways and only measurement found
@@ -564,10 +564,10 @@ do not read them as this branch's regressions.
 STATE. Ninth unit of the day, headless (LEDGER 1332). ENGINE 1.280.0 unchanged,
 Tier-1. No `web/` change, no digest re-stamp. Worktree removed.
 
-SESSION WRAPPED at `b28616286`, and CI is CONFIRMED GREEN on it at STEP level -
+SESSION WRAPPED at `51bc06301`, and CI is CONFIRMED GREEN on it at STEP level -
 `check: success`, including "full dual suite (RM-119 - push CI now gates the
 whole tree)". `nightly-full-suite: skipped` is expected on a push run. The
-previous head `8ec2d3f4d` is also green, so the day's nine units are covered by
+previous head `150aef848` is also green, so the day's nine units are covered by
 two completed runs. **Three earlier `ci` runs that day read `cancelled`, NOT
 failed** - GitHub supersedes an in-flight run when a newer commit lands on the
 same branch, and pushing once per row caused it. Batch the pushes, and read
@@ -719,7 +719,7 @@ STATE. Seventh unit of the day, run headless with the operator away (LEDGER
 `web/` change, so no digest re-stamp. All four slice worktrees removed.
 
 **RM-286 WAS ALREADY SHIPPED AND ITS MARKERS WERE STALE.** Fixed 2026-08-31 by
-lane 8 cycle 47 (`246af97dc`, LEDGER 1313) while `BACKLOG.md` and `ROADMAP.md`
+lane 8 cycle 47 (`adcf9de60`, LEDGER 1313) while `BACKLOG.md` and `ROADMAP.md`
 still said OPEN - the SECOND stale-marker incident today (the session-start note
 flagged the same for RM-329..336). The slice re-verified and wrote NOTHING,
 which was right: the acceptance corpus it was asked to create already existed.
@@ -770,7 +770,7 @@ pair, MATCHING RM-314's filed count so no re-file is needed; and
 CI CAUTION FOR WHOEVER IS NEXT. Pushing once per row cancelled `ci` three times
 in a row today - GitHub supersedes an in-flight run when a newer commit lands.
 Cancelled is NOT failed, and `gh run watch --exit-status` returns 0 on it, so
-read `conclusion`. The last `ci` to run to completion was `9c6de1b68` (success).
+read `conclusion`. The last `ci` to run to completion was `f2906ce15` (success).
 **Batch the pushes.**
 
 NEXT SESSION
@@ -1141,9 +1141,9 @@ to be wrong too.
 THE DISCRIMINATOR THAT DECIDED EVERY ID.
 RM-328 (earlier the same day) was RESTORE; RM-339 came out 16 REMOVE / 4
 ALLOWLIST / 0 RESTORE. The test is not "did the removing commit have a
-message" but "does the message name THIS thing". `832704a7c` (s162) says
+message" but "does the message name THIS thing". `70786820e` (s162) says
 "removed 5 live menu items (Loadouts/Diagnostics/Coach Calls/Bridge Pending/
-Fleet)" - named, so REMOVE. `440ede616` enumerated its cuts exhaustively and
+Fleet)" - named, so REMOVE. `ed3ae6f7f` enumerated its cuts exhaustively and
 never mentioned the panel it killed - unnamed, so RESTORE. Both branches have
 now been exercised; use the same test next time.
 
@@ -1332,7 +1332,7 @@ ledger's word.
 
 LANES ARE CURRENT - no fast-forward needed next session. All five lane
 worktrees (`ds`, `repo`, `research`, `true-audit`, `uiux`) were fast-forwarded
-from `22e8bd0ef` to `81f7e734a` and pushed at wrap; `lane/uiux` had no upstream
+from `17b83912d` to `83ecb4a25` and pushed at wrap; `lane/uiux` had no upstream
 and now tracks `origin/lane/uiux`. Checked before merging: every lane was
 ahead=0 both locally AND on origin, all five worktrees clean with zero stashes,
 so there was nothing to merge - the fast-forward was the whole job. Do not go
@@ -1352,7 +1352,7 @@ champs / 706 items. Share mirror `--check` exit 0 at 534 files. DS 10845 passed
 failed (measured AFTER the bounce - before it, `test_live_three_profiles` is
 structurally red). ROADMAP 72151 of 81920 = 88.07 pct, measured ON MAIN. All six
 run worktrees removed, branches deleted. The five lane worktrees are untouched
-at `22e8bd0ef` and are now one batch behind main - fast-forward before using one.
+at `17b83912d` and are now one batch behind main - fast-forward before using one.
 
 WHAT SHIPPED. RM-331 (Arena augments resolve by DISPLAY name; alias index over
 apiName AND name, zero collisions across all 6 snapshots) and RM-334 (`/ehp`
@@ -1371,7 +1371,7 @@ trustworthy; re-run it rather than reading it.
 
 NEXT - RM-337 is the obvious pick and it is already filed with acceptance.
 A clean copy of `Share/` OUTSIDE the repo reports 13 failed / 8361 passed. They
-are PRE-EXISTING (set-difference against `22e8bd0ef` returns exactly one new
+are PRE-EXISTING (set-difference against `17b83912d` returns exactly one new
 name, already fixed) and caused by CWD-relative path opens -
 `test_rune_procs_per_attack.py:99` opens the literal
 `agents/daemon_slayer/rune_procs.py`, which resolves at the repo root but not
@@ -1433,7 +1433,7 @@ never had.
 **MERGE: the main tree was NOT clean.** It held an uncommitted 124-line
 `docs/history_notes.md` addition, 28.5h stale - the archive half of the
 2026-09-01c merger `/done`, never staged. Committed FIRST and separately
-(`aac80637c`) so the merge could not clobber it.
+(`b2c396524`) so the merge could not clobber it.
 
 **RM-284 CLOSED, both halves.** (a) the relocation pass took ROADMAP 89.9 -> 87.55
 pct with all 179 ids retained and every fence kept in its stub; (b) `.gitattributes`
@@ -1471,16 +1471,16 @@ do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
 
 # 2026-08-01b - RM-127 link-ingest Phases 2+3, and the hook hard rule was WRONG
 
-3 commits `997157f1`, `ba4ff0fe`, `e47ce29a`, all pushed. Tier-0 throughout. DS untouched.
+3 commits `1b6c59e7`, `ce6807a5`, `aee01e92`, all pushed. Tier-0 throughout. DS untouched.
 
 **Shipped**
 - **RM-127 Phases 2 AND 3 both done.** `Desktop/Second-Pass.md` + `Desktop/Third-Pass.md`,
   24 KB each. Threshold **cull below 5**, INFERRED from the operator-label cross-tab (at 5+
   they kept 50/51, at 4- culled 83/93). 146 -> 60 survive -> **6 LIFT, 26 concept, 28 DROP**.
-- **`997157f1` corrected a CLAUDE.md HARD RULE against measurement.** Hooks DO fire under
+- **`1b6c59e7` corrected a CLAUDE.md HARD RULE against measurement.** Hooks DO fire under
   headless `bypassPermissions` on CLI 2.1.220 - SessionStart, PreToolUse, PostToolUse AND Stop.
-- `e47ce29a` filed **RM-135**: no backup of irreplaceable single-copy data.
-- **`c1ad4ddc` killed the `assert 21378 == 2` CI flake at its root.** `mod.time IS`
+- `aee01e92` filed **RM-135**: no backup of irreplaceable single-copy data.
+- **`1cf2291b` killed the `assert 21378 == 2` CI flake at its root.** `mod.time IS`
   the global time module, so `patch("mod.time.sleep")` is PROCESS-WIDE and tallied
   every thread; the mock also made those threads busy-spin. New `tests/_sleep_probe.py`
   (`record_sleeps` / `thread_scoped`) records only the calling thread and passes other
@@ -1502,7 +1502,7 @@ do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
 - CCR-124/136/139 unverified-at-source (reddit 403s every default path).
 - Session file hit 25 MB - `/clear` was overdue.
 - **STALE DOC, worth acting on: the `/done` skill claims `-n 8` yields 6 failures and
-  is therefore "not trustworthy as a gate".** MEASURED 2026-08-01 after `c1ad4ddc`:
+  is therefore "not trustworthy as a gate".** MEASURED 2026-08-01 after `1cf2291b`:
   `pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile` = **27964 passed,
   108 skipped, 7283 subtests, 0 FAILED in 166s**. None of the 6 named failures
   reproduced. If that holds on a second run, the skill's own precondition for
@@ -1519,7 +1519,7 @@ do-not-redo set: `C:\\Users\\Administrator\\Desktop\\RC-NEXT-SESSION.txt`.
 Operator scoped the entire run to the Electron overlay (rc-shell + the in-game dock)
 and split the mandate: SHIP the text-verifiable through the 5-phase audit, PREPARE
 anything ending in a rendered-pixel judgement (RM-122 fences those to operator-present).
-Branch `lane/uiux`, baseline `30156a0b`. NOT merged to main - that is a deployment and
+Branch `lane/uiux`, baseline `35c6da51`. NOT merged to main - that is a deployment and
 belongs to the merger session.
 
 **SHIPPED (all measured in real headless Chromium, not read off source):**
@@ -1575,9 +1575,9 @@ Operator was given the framed decision (review+merge vs resume the loop) and cho
 **merge**. lane/true-audit was the LAST unmerged lane (lane/repo already on main;
 lane/ds + lane/research empty), so the "ships last" precondition was met.
 
-**Landed: `main` @ `a41a2ad9`** (was `0779188f`). Two commits: the merge `e2a8f960`
+**Landed: `main` @ `5985bb46`** (was `23de40d6`). Two commits: the merge `18f464c0`
 (main folded into the branch in the worktree, then main FF'd to it) + a doc fix
-`a41a2ad9`. Pushed to `Remus3/amberstone`.
+`5985bb46`. Pushed to `Remus3/amberstone`.
 
 - **Code: zero code conflicts.** Branch hardening vs main's advances (DS 16.17.1,
   ports, run_lane, dead-ops) are disjoint by file.
@@ -1601,7 +1601,7 @@ lane/ds + lane/research empty), so the "ships last" precondition was met.
 2. `restart_trigger.txt` did NOT self-clear after the restart (pid stable, no loop, so
    benign - the supervisor is content-keyed), but confirm it is gone / harmless.
 3. `data/match_history.db.premerge-bak-20260901` (16.5 MB, gitignored) can be deleted.
-4. Confirm the `a41a2ad9` CI `ci` job went green (docs-guards/CodSpeed already green).
+4. Confirm the `5985bb46` CI `ci` job went green (docs-guards/CodSpeed already green).
 
 Loop tooling was ephemeral (prior session scratchpad); to resume lane 8, restart via
 Mission Control. ~27 orphaned claude.exe from the loop still linger (reboot or reap).
@@ -1612,18 +1612,18 @@ Mission Control. ~27 orphaned claude.exe from the loop still linger (reboot or r
 
 Ran the Headless-True-Audit lane (lane 8) as a continuous autonomous loop from an
 interactive session. Two main-tree fixes shipped + pushed:
-- `a9ff183e` run_lane.ps1 reads the model from `ops/loop/config.json:executor_model`
+- `0f46da6b` run_lane.ps1 reads the model from `ops/loop/config.json:executor_model`
   (claude-opus-5), not the hardcoded `claude-opus-4-8`. Governs all 7 lanes.
-- `40f2a45d` run_lane.ps1 sets `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=2400000` (40 min)
+- `0a7511fa` run_lane.ps1 sets `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=2400000` (40 min)
   so a worker's background verifier gate finishes before the CLI reaps it. MEASURED:
   at the default 600s the verifier was killed mid-run and the worker exited 0 having
   committed NOTHING - a lost cycle.
 
-Loop produced 61 commits on `lane/true-audit` (`39b63ebb` -> `246af97d`), ~41 spawn
+Loop produced 61 commits on `lane/true-audit` (`4d36a237` -> `adcf9de6`), ~41 spawn
 cycles, 14+ files hardened (riot_api, _handler, match_db, polled_json, routes_state/
 diag, snapshot_normalizer, performance_tracker, sr_user_builds, _supervisor_http,
 decision_detector, vision_server). Branch is UNMERGED - lane ships last, merger's
-call. Independently re-verified `2eed2421` (polled_json per-writer scratch-name
+call. Independently re-verified `74497a15` (polled_json per-writer scratch-name
 concurrency fix) myself: 33 tests pass, and reverting the fix reds 4 guard tests.
 
 Loop tooling lives in the session scratchpad (loop_driver.py + loop_spawn.py +
@@ -1639,13 +1639,13 @@ auto-reaps on commit+clean+idle now); ~26 orphaned claude.exe subagents linger.
 
 # 2026-08-30b - merger: lane/repo merged to main, then RM-227(a) executed
 
-The merger session picked up `lane/repo` @ `0c1eaa1b` (LEDGER 1275, Tier-0 docs,
+The merger session picked up `lane/repo` @ `c9f98b0f` (LEDGER 1275, Tier-0 docs,
 docs-guards green) and fast-forward-merged it to main - a clean FF (main was 0
 ahead, no conflict possible). `ci` correctly skipped (docs-only paths-ignore);
 docs-guards green on the main push. Then the operator approved continuing with
 RM-227(a).
 
-**RM-227(a) - five dead ops scripts removed and pinned (commit `b5e10a7d`, LEDGER
+**RM-227(a) - five dead ops scripts removed and pinned (commit `63c0a422`, LEDGER
 1276, Tier-1).** Prove-it-dead was re-verified from scratch, NOT trusted from
 lane-7's filed row. The decisive catch: `ops/_scheduler_client.py` looked alive
 only because its `file_task` shares a name with `Scheduler.file_task` - every hit
@@ -1671,7 +1671,7 @@ untouched.
 **Gates:** `pytest tests` 19132 passed / 144 skipped / 1 failed - the one failure
 is the pre-existing fenced `test_cli_version_still_matches_the_pin` (CLI 2.1.251 vs
 PINNED_CLI 2.1.220, needs `claude login`, outside this diff, LEDGER 1273),
-confirmed twice (once foreground for direct evidence). On the main push `b5e10a7d`:
+confirmed twice (once foreground for direct evidence). On the main push `63c0a422`:
 **ci = success, docs-guards = success, CodSpeed = success** (ci ran ~45min on a slow
 runner but completed green; the local CLI-pin failure SKIPS on CI). doc-content
 guards 74 passed; `drift_guard` 0 breaches; ruff clean. No `ENGINE_VERSION`, no
@@ -1693,7 +1693,7 @@ open in BACKLOG. CLI-pin still needs `claude login` (unchanged, LEDGER 1273).
 
 Outsider-clean audit in worktree `lane/repo`. Pre-flight caught that the launcher had
 dropped the session in the MAIN tree with the `lane/repo` worktree ABSENT - created it
-from main HEAD `2be9603c` and worked only there. `core.hooksPath` is the shared absolute
+from main HEAD `8371b9c2` and worked only there. `core.hooksPath` is the shared absolute
 `.githooks` (reported, unchanged per 1b). Every standing guard was green on arrival
 (drift_guard 0, archmap + state_schema up to date, ruff clean, worktree clean, the
 byte-identical pair matching its pins), so the repo is clean at every machine-checkable
@@ -1747,7 +1747,7 @@ reported a reserved block as free. CS names Sibling-A in zero files. It had alre
 met the symptom and mis-filed it - its BACKLOG blamed "an unrelated process" holding 8901
 since 2026-08-16.
 
-**Shipped:** RC `533d4f97` - `LL_BLOCK` + `CS_BLOCK` registered, `BLOCKS` now six, the
+**Shipped:** RC `99336763` - `LL_BLOCK` + `CS_BLOCK` registered, `BLOCKS` now six, the
 collision recorded in the docstring, two new guards (CS/LW disjointness pinned by NUMBER;
 LL's widened 8815-8819). Mutation-proved RED three ways, `core/ports.py` restored
 byte-identical. LEDGER 1274. Sibling-E moved to **8920-8939** base **8920** across 6
@@ -1775,7 +1775,7 @@ check Sibling-E before writing. Check every sibling tree's `git status` first.
 
 # 2026-08-29b - RM-222: the flat pen axis gets the live-vs-pinned layout guard the percent axis has had since it broke
 
-Commit `e5b5c9e6`, Tier-1, one test module plus its Share mirror. No engine change, no
+Commit `68285fb0`, Tier-1, one test module plus its Share mirror. No engine change, no
 `ENGINE_VERSION` bump.
 
 **The gap was real and asymmetric.** `test_pen_pct_catalog_r160.py` compares live
@@ -1818,7 +1818,7 @@ re-run first, which needs an authenticated CLI - still blocked on `claude login`
 Operator asked to "check for upstream changes and updates and process them". There were
 TWO upstreams and both were unprocessed.
 
-**CI had been red for four days, and the cause arrived by `git pull`.** Commit `39ba69c8`,
+**CI had been red for four days, and the cause arrived by `git pull`.** Commit `c7474621`,
 authored by `weekly-rc-health@anthropic-routines` - a CLOUD routine, not a Legion task -
 carried 27 non-ASCII bytes. Cloud clones have no `core.hooksPath`, so `precommit_gate.py`
 never sees these files; CI is the only gate, and it had been failing since 08-25.
@@ -2075,7 +2075,7 @@ quotes in every changed file. **Next free id = RM-222.**
 
 # 2026-08-16 - RM-216 closed: instrumenting a silent skip measured it at 3x the signal it was hiding
 
-**Shape: single-thread, TDD, Tier-1.** Commit `d6fc0927`. Files: `tools/ds_wiki_staleness_check.py`, `tests/test_ds_wiki_staleness_check.py`, plus BACKLOG + LEDGER 1267. RED confirmed first at `8 failed, 33 passed`, GREEN at `41 passed`. Full `pytest tests` 19142 / 96 skipped / 4438 subtests, ruff clean.
+**Shape: single-thread, TDD, Tier-1.** Commit `904a6777`. Files: `tools/ds_wiki_staleness_check.py`, `tests/test_ds_wiki_staleness_check.py`, plus BACKLOG + LEDGER 1267. RED confirmed first at `8 failed, 33 passed`, GREEN at `41 passed`. Full `pytest tests` 19142 / 96 skipped / 4438 subtests, ruff clean.
 
 **THE INSTRUMENTATION PAID FOR ITSELF IMMEDIATELY, AND THEN CORRECTED ME.** A live `--recent --days 3` run over 13 champions reported `stale=7 findings=11 skipped_pages=0 skipped_labels=31`, and I wrote that up as "the row led with the wrong half - the page site fires zero." **That was a sampling artifact and it is withdrawn.** A read-only `--full` sweep run later the same day to size the follow-up rows reports `checked=171 pages=754 stale=74 findings=127 skipped_pages=101 skipped_labels=323`, with **137 of 171 champions in at least one skip list and only 34 wholly clean.** The page site fires 101 times at roster scale and is the MORE severe half. **A `--recent` window is a convenience sample drawn from whatever the wiki edited lately, which systematically EXCLUDES the champions the tool cannot address at all - the population and the sample disagree precisely where the defect lives.** Size a defect on the population before you rank its halves.
 
@@ -2099,9 +2099,9 @@ quotes in every changed file. **Next free id = RM-222.**
 
 # 2026-08-15c - RM-213 closed: the artifact guard could not see a carry-forward; 4 of the row's own premises refuted
 
-**Shape: 8 agents - 3 read-only recon, 4 build on disjoint files, 1 adversarial verifier - one merger, no worktrees (disjoint main-tree files).** Commits `9eb3e32b` (census correction) + `0ced2f42` (the guard). CI green on all three workflows. Verified by the merger, never inherited: DS 10684 / 13482 subtests, RC 19134 / 96 skipped / 4438 subtests.
+**Shape: 8 agents - 3 read-only recon, 4 build on disjoint files, 1 adversarial verifier - one merger, no worktrees (disjoint main-tree files).** Commits `f5fdb875` (census correction) + `b73f0fde` (the guard). CI green on all three workflows. Verified by the merger, never inherited: DS 10684 / 13482 subtests, RC 19134 / 96 skipped / 4438 subtests.
 
-**THE DEFECT:** commit `9df58480` created the whole 16.15.1 dir and copied artifacts forward with the marker REWRITTEN, so the marker matched its directory and every assertion stayed green. That commit's own body says it: "curated/wiki copy-forward with patch restamps".
+**THE DEFECT:** commit `d0ad0569` created the whole 16.15.1 dir and copied artifacts forward with the marker REWRITTEN, so the marker matched its directory and every assertion stayed green. That commit's own body says it: "curated/wiki copy-forward with patch restamps".
 
 **NEITHER OBVIOUS GUARD DESIGN WORKS ALONE, and this is the reusable part.** Vintage-only is vacuous over half the population - only 10 of 20 artifacts carry a wall-clock stamp, and of the four the row named only `ability_staleness.json` has one. Body-hash-only OVER-FLAGS: `champion_abilities.json` and `items_meraki.json` are body-identical across all six shipped dirs while `fetched_at` moves every extract, i.e. genuine re-fetches of an upstream that did not move. The shipped signature is the conjunction: **body identical AND the vintage did not move, OR body identical AND there is no vintage to move.**
 
@@ -2123,7 +2123,7 @@ quotes in every changed file. **Next free id = RM-222.**
 
 # 2026-08-15b - headless DS batch: RM-200 / 201 / 203 closed, 7 rows filed, ENGINE 1.278.0, the depth-1 tier at zero
 
-**Shape: 4 parallel worktree slices + a read-only verifier gate, one merger.** Probed live before anything: ENGINE 1.277.1 repo constant == `:8860` served (not stale), patch 16.15.1, 173/706. Merges `79d70125` (RM-200) / `65f2fc99` (RM-201) / `9ab495d1` (RM-203) / `681b5ea0` (research refill) / `e52bb238` (the bump ritual).
+**Shape: 4 parallel worktree slices + a read-only verifier gate, one merger.** Probed live before anything: ENGINE 1.277.1 repo constant == `:8860` served (not stale), patch 16.15.1, 173/706. Merges `dd5a28e8` (RM-200) / `ad4f64d8` (RM-201) / `d6ab99b4` (RM-203) / `13601981` (research refill) / `10f4e85e` (the bump ritual).
 
 **RM-200 + RM-201 both wired, and BOTH landed on `compute_ehp`, so both PROMOTED out of the depth-1 tier into the depth-0 universe. `STRANDED_DEPTH1` is now EMPTY - a ledger at its floor BY WIRING, not a guard gone quiet**, pinned by a non-vacuity test asserting it can still go non-empty. `STRANDED_TODAY` stays byte-exact at 5.
 
@@ -2135,7 +2135,7 @@ quotes in every changed file. **Next free id = RM-222.**
 
 **THE PARALLEL-SLICE LESSON, paid in the only real failure of the batch.** RM-201's slice wrote `assertIn("assume_scaling_hsp_grants", STRANDED_DEPTH1)` - "I did not touch the sibling row" - correct on its own branch and false the instant both landed. **A slice must never pin a SIBLING slice's in-flight state.** Rewritten at the merge to pin what a deletion cannot fake: the sibling left the ledger by being WIRED, parsed AND passed. A bare `assertNotIn` would have passed equally well had the seam been deleted outright.
 
-**RM-203 closed by REFUTING its own hypothesis.** `547/547` was not two stale numbers colliding - it was ONE number written twice. `git log -S` finds exactly one introducing commit, `01dce037` (2026-05-06), which created the file at ENGINE 0.60.0 when `ITEM_EFFECTS` held exactly 547 keys while the only snapshot measured 544/468/466. The numerator was copied into the denominator slot. **The substantive finding: "purchasable" has TWO defensible definitions differing by 76 items** - the bare `gold.purchasable` flag gives 544, the engine's own gate at `rank.py:652` (flag AND `gold.total > 0`) gives 468, and 468 is what `_filter_candidates` actually pools. Re-derived independently by the merger: 548 / 706 / 544 / 468 / 467 / 0 orphans.
+**RM-203 closed by REFUTING its own hypothesis.** `547/547` was not two stale numbers colliding - it was ONE number written twice. `git log -S` finds exactly one introducing commit, `4e4a8a8f` (2026-05-06), which created the file at ENGINE 0.60.0 when `ITEM_EFFECTS` held exactly 547 keys while the only snapshot measured 544/468/466. The numerator was copied into the denominator slot. **The substantive finding: "purchasable" has TWO defensible definitions differing by 76 items** - the bare `gold.purchasable` flag gives 544, the engine's own gate at `rank.py:652` (flag AND `gold.total > 0`) gives 468, and 468 is what `_filter_candidates` actually pools. Re-derived independently by the merger: 548 / 706 / 544 / 468 / 467 / 0 orphans.
 
 **THE DS TEST COUNT HAD ROTTED INTO THREE DIFFERENT VALUES** - banner 10578, HEXCORE 10594 in two places, truth 10653 - because the drift guard pins `ENGINE_VERSION`, patch and the route list and says in its OWN docstring that it deliberately does not pin counts. All four anchor sites are now set from one measured number, and RM-203's new guard re-derives the coverage figures from data at runtime so they cannot rot again.
 
@@ -2206,9 +2206,9 @@ quotes in every changed file. **Next free id = RM-222.**
 
 # 2026-08-14 - orchestrated run: 5 merges, 2 corrections, 4 traps that each cost real time
 
-Merges `41d1c7b6` (S1) / `b4d1dac0` (S4) / `2a50acca` (S2) / `a3668a31` (S5) / `63a753c8` (S7), plus this docs sync. Every merge passed an independent read-only verifier gate BEFORE it landed - none was self-graded. Suites measured by the merger on merged main: DS **10595 passed / 13444 subtests**; RC `tests/` **19076 passed / 96 skipped / 4288 subtests, exit 0**. **Read the RC number carefully before filing a regression:** total collected is **19172, IDENTICAL to the pre-merge expectation of 19034 passed + 138 skipped**. 42 conditional skips executed as PASSES because RC was live after the S5 restart. That is a fixture-conditional shift, **not new tests and not a regression** - do not "reconcile" it by hunting for 42 additions.
+Merges `f258e461` (S1) / `36e03cb2` (S4) / `a4259b90` (S2) / `51ee7b99` (S5) / `8c33a942` (S7), plus this docs sync. Every merge passed an independent read-only verifier gate BEFORE it landed - none was self-graded. Suites measured by the merger on merged main: DS **10595 passed / 13444 subtests**; RC `tests/` **19076 passed / 96 skipped / 4288 subtests, exit 0**. **Read the RC number carefully before filing a regression:** total collected is **19172, IDENTICAL to the pre-merge expectation of 19034 passed + 138 skipped**. 42 conditional skips executed as PASSES because RC was live after the S5 restart. That is a fixture-conditional shift, **not new tests and not a regression** - do not "reconcile" it by hunting for 42 additions.
 
-**What shipped.** **S1** - the `/sync-all-md` skill cited **FIVE** dead ADR-012 bridge paths, not the three the operator's note named: `docs/BRIDGE.md` (twice), `tools/process-bridge-tasks.md`, `tools/bridge_watcher_action_prompt.md`, `core/bridge_envelope.py`, plus a root `docs io RC peer/` dir that was **ARCHIVED, not deleted**. Four were removed by `49b1c9ea`; the archived dir was emptied incrementally by `c50b98eb` / `6edfbd3e` / `8c2afe21` - **do not credit `49b1c9ea` for it.** **S4** - immolate family audit, verdict **NO-CHANGE to engine math** (all 7 items match Meraki, authoritative for item passive FORMULAS; the DDragon carve-out covers only PEN/LETHALITY magnitudes). Shipped a catalog-derived **REGISTRATION** guard because both existing guards key on hardcoded id tuples, so an 8th immolate item would be silently credited nothing. Mutation-proven: 7 mutants killed by the slice, 3 re-killed independently at the gate. **ENGINE_VERSION unchanged at 1.277.1.** **S2** - the PRIMARY Haiku-to-ZERO slice: `core/arena_deterministic_coach.py` held the ONLY hardcoded-empty column in either deterministic block, and the comment claiming no honest source existed was false. New `core/arena_augment_playline.py`. 127 of 225 augment descs carry unresolved `@Placeholder@` vars whose values live in a per-rarity `dataValues` array, so any sentence still holding a placeholder is DROPPED rather than guessed. **S7** - S2's guard dropped only at-sign sentences, so 17 of 225 outputs still leaked double-brace keyword tokens (5) and percent-i icon tokens (12); guard INVERTED to a prose-character allowlist so a whole token family dies at once. Coverage moved 126/99 to 109/116, deliberately. **S5** - TTL-cache on `/api/home/summary`, the one hot polled route with no cache, re-running a SQLite aggregate over a 17 MB DB per hit; TTL **25.0s, chosen just ABOVE the 20s client poll** so consecutive polls coalesce. Live-verified after restart: **0.247s -> 0.0079s**. **S3** was read-only: 6 of 7 cost/latency levers CLEAN, one finding, which became S5.
+**What shipped.** **S1** - the `/sync-all-md` skill cited **FIVE** dead ADR-012 bridge paths, not the three the operator's note named: `docs/BRIDGE.md` (twice), `tools/process-bridge-tasks.md`, `tools/bridge_watcher_action_prompt.md`, `core/bridge_envelope.py`, plus a root `docs io RC peer/` dir that was **ARCHIVED, not deleted**. Four were removed by `a3b7e0f0`; the archived dir was emptied incrementally by `c38a81cc` / `62be5e4c` / `f08ade78` - **do not credit `a3b7e0f0` for it.** **S4** - immolate family audit, verdict **NO-CHANGE to engine math** (all 7 items match Meraki, authoritative for item passive FORMULAS; the DDragon carve-out covers only PEN/LETHALITY magnitudes). Shipped a catalog-derived **REGISTRATION** guard because both existing guards key on hardcoded id tuples, so an 8th immolate item would be silently credited nothing. Mutation-proven: 7 mutants killed by the slice, 3 re-killed independently at the gate. **ENGINE_VERSION unchanged at 1.277.1.** **S2** - the PRIMARY Haiku-to-ZERO slice: `core/arena_deterministic_coach.py` held the ONLY hardcoded-empty column in either deterministic block, and the comment claiming no honest source existed was false. New `core/arena_augment_playline.py`. 127 of 225 augment descs carry unresolved `@Placeholder@` vars whose values live in a per-rarity `dataValues` array, so any sentence still holding a placeholder is DROPPED rather than guessed. **S7** - S2's guard dropped only at-sign sentences, so 17 of 225 outputs still leaked double-brace keyword tokens (5) and percent-i icon tokens (12); guard INVERTED to a prose-character allowlist so a whole token family dies at once. Coverage moved 126/99 to 109/116, deliberately. **S5** - TTL-cache on `/api/home/summary`, the one hot polled route with no cache, re-running a SQLite aggregate over a 17 MB DB per hit; TTL **25.0s, chosen just ABOVE the 20s client poll** so consecutive polls coalesce. Live-verified after restart: **0.247s -> 0.0079s**. **S3** was read-only: 6 of 7 cost/latency levers CLEAN, one finding, which became S5.
 
 **Two corrections, both worth more than the features.** (1) **The operator's `RC-ClaudeQuotaWatch` scheduled-task anomaly is REFUTED ON BOTH HALVES**, re-probed live again at this sync. The code is `2147946720` = **`0x800710E0`**, sub-code **4320**, "the operator or administrator refused the request" - **NOT** `0x80070520` / `ERROR_NO_SUCH_LOGON_SESSION`. And the task carrying it is **not** `RC-ClaudeQuotaWatch` (`LastTaskResult=0`) but **`RC-MissionControl` and `RC-Phase3-Supervisor`**, both `State=Running` under `MultipleInstances=IgnoreNew`, where the code is Task Scheduler correctly refusing a duplicate launch. `tools/rc_facts.py:177-194` **already suppresses it. NO FIX IS WARRANTED** - do not re-file it. (2) The headless-upgrade skill claimed the coaches' Sonnet assignments were post-call telemetry stamps. **Measured FALSE** - they are call-time picks consumed at `modes/shared_vision.py:390` and `:378`. Still not a tier violation, but the false rationale would make a future cost sweep skip a real model assignment unchecked.
 
@@ -2228,7 +2228,7 @@ Merges `41d1c7b6` (S1) / `b4d1dac0` (S4) / `2a50acca` (S2) / `a3668a31` (S5) / `
 
 # 2026-08-14 - lane 5 headless-research REFILL: 11 rows filed, a guard found blind, the id registry unstuck
 
-Branch `lane/research` in `C:\rc-worktrees\rc-lane-research`. **NOT MERGED - handed off to the concurrent headless-upgrade session by OPERATOR DECISION 2026-08-14.** That session owned `C:\Riot Commander` for this entire run, so nothing was written there. **Idleness was MEASURED, not assumed, and the measurement is the reusable part: the main tree's working directory was CLEAN and CPU deltas across all three CLI sessions were ~0.5-0.8s per 50s including this session's own idle one - both signals read as "idle" and BOTH ARE WRONG.** A session sitting between two commits has a clean tree, and one waiting on an API response burns no CPU. The signal that actually discriminates is the commit stream plus subagent-worktree churn: two commits (`c349642a`, `b4d1dac0`) landed DURING the idle check, and `.claude/worktrees/agent-a16898fec34583bc0/` was writing pytest caches throughout. **The branch is PRE-INTEGRATED to main `41d1c7b6` conflict-free** (only `tools/sync-all-md.md` overlapped), so the receiving session's merge is a re-integration plus a fast-forward. Exact commands are in `C:\Users\Administrator\Desktop\RC-NEXT-SESSION.txt`. Docs-only: `ROADMAP.md`, `BACKLOG.md`, `docs/DS_SWEEP_TRACKER.md`, `docs/LEDGER.md` (1245), this file. No code, no engine, no Share, no restart.
+Branch `lane/research` in `C:\rc-worktrees\rc-lane-research`. **NOT MERGED - handed off to the concurrent headless-upgrade session by OPERATOR DECISION 2026-08-14.** That session owned `C:\Riot Commander` for this entire run, so nothing was written there. **Idleness was MEASURED, not assumed, and the measurement is the reusable part: the main tree's working directory was CLEAN and CPU deltas across all three CLI sessions were ~0.5-0.8s per 50s including this session's own idle one - both signals read as "idle" and BOTH ARE WRONG.** A session sitting between two commits has a clean tree, and one waiting on an API response burns no CPU. The signal that actually discriminates is the commit stream plus subagent-worktree churn: two commits (`77a2d1dd`, `36e03cb2`) landed DURING the idle check, and `.claude/worktrees/agent-a16898fec34583bc0/` was writing pytest caches throughout. **The branch is PRE-INTEGRATED to main `f258e461` conflict-free** (only `tools/sync-all-md.md` overlapped), so the receiving session's merge is a re-integration plus a fast-forward. Exact commands are in `C:\Users\Administrator\Desktop\RC-NEXT-SESSION.txt`. Docs-only: `ROADMAP.md`, `BACKLOG.md`, `docs/DS_SWEEP_TRACKER.md`, `docs/LEDGER.md` (1245), this file. No code, no engine, no Share, no restart.
 
 **Filed RM-192..RM-202** (bodies in `BACKLOG.md`, one pointer line in `ROADMAP.md`; next free id now **RM-203**). Ground truth re-probed live at start: ENGINE 1.277.1, patch 16.15.1, `:8860` ok 173/706, RC pid 19268 mode=client.
 
@@ -2242,13 +2242,13 @@ Branch `lane/research` in `C:\rc-worktrees\rc-lane-research`. **NOT MERGED - han
 
 **Not done, by scope:** no code written, no test written, no row executed. RM-196 is filed MEDIUM confidence and its acceptance carries its own inertness check first.
 
-**CLOSED 2026-08-15 at /done.** The branch was MERGED by the headless-upgrade session per the operator hand-off (`0dadbfc2` ff into main); all 11 rows verified present in main's `BACKLOG.md` and LEDGER 1245 intact (the head reads 1252..1247 then 1245 - **1246 is a deliberate gap, not a lost entry**). **One error in my own filed text, found by that session and independently confirmed here: the RM-197 row cited `tests/test_p2w1_core_b.py` with an end line of 170 on a 168-line file.** (Deliberately NOT written here in `path:line-line` form - the citation guard parses that shape as a live citation, so quoting a broken one to explain it re-breaks the guard. That happened on the first attempt at this very note and is worth knowing before writing about a bad citation.) It went red only on the MERGED tree, because the citation was authored against a branch where main still held the shorter file - so the guard was green on both branches independently. Corrected to `158-168` in `ddb8ed89`. **The merge also produced a net-new doc defect that drift_guard cannot see, fixed here:** `docs/DS_SWEEP_TRACKER.md` ended up with TWO next-free statements, one saying RM-203 (already consumed by the concurrent run) and one warning that the pointer above read `RM-135` - a warning that was true when written and false by the time it landed, because my correction to that same pointer arrived in the same merge. Pointer now reads **RM-205**, measured across the working tree AND all three lane branches (`lane/ds` and `lane/true-audit` top out at RM-177). **That is the RM-192 defect recurring inside one day, which is the strongest argument yet for shipping its guard** - the pointer is only correct until the next concurrent session, and nothing machine-checks it.
+**CLOSED 2026-08-15 at /done.** The branch was MERGED by the headless-upgrade session per the operator hand-off (`8416a950` ff into main); all 11 rows verified present in main's `BACKLOG.md` and LEDGER 1245 intact (the head reads 1252..1247 then 1245 - **1246 is a deliberate gap, not a lost entry**). **One error in my own filed text, found by that session and independently confirmed here: the RM-197 row cited `tests/test_p2w1_core_b.py` with an end line of 170 on a 168-line file.** (Deliberately NOT written here in `path:line-line` form - the citation guard parses that shape as a live citation, so quoting a broken one to explain it re-breaks the guard. That happened on the first attempt at this very note and is worth knowing before writing about a bad citation.) It went red only on the MERGED tree, because the citation was authored against a branch where main still held the shorter file - so the guard was green on both branches independently. Corrected to `158-168` in `58f4e99c`. **The merge also produced a net-new doc defect that drift_guard cannot see, fixed here:** `docs/DS_SWEEP_TRACKER.md` ended up with TWO next-free statements, one saying RM-203 (already consumed by the concurrent run) and one warning that the pointer above read `RM-135` - a warning that was true when written and false by the time it landed, because my correction to that same pointer arrived in the same merge. Pointer now reads **RM-205**, measured across the working tree AND all three lane branches (`lane/ds` and `lane/true-audit` top out at RM-177). **That is the RM-192 defect recurring inside one day, which is the strongest argument yet for shipping its guard** - the pointer is only correct until the next concurrent session, and nothing machine-checks it.
 
 ---
 
 # 2026-08-13b - new-project design QA: portable conventions extracted, Sibling-E specced
 
-Commit `afd98bd3` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) plus this ledger/notes sync. **Tier-0, documentation only** - no code, no `data/` write, no RC or DS restart. Gate: `drift_guard` 0 breaches, `perseus_sync` **embedded 1415/1415**, both authored files verified **0 non-ASCII bytes** and **0 project-noun hits**.
+Commit `84b9c490` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) plus this ledger/notes sync. **Tier-0, documentation only** - no code, no `data/` write, no RC or DS restart. Gate: `drift_guard` 0 breaches, `perseus_sync` **embedded 1415/1415**, both authored files verified **0 non-ASCII bytes** and **0 project-noun hits**.
 
 **What shipped.** A planning + QA session (4 rounds of framed questions, no building) producing two documents. (1) `docs/PORTABLE_PROJECT_CONVENTIONS.md` - this repo's operating doctrine with every project noun stripped, meant to be dropped into any new repo unchanged. 19 sections: doc topology with one owner per fact, file-size budgets, open/closed/gated item organization, the orchestrated multi-agent self-adjudicating self-adversarial default, R1-R11, TDD + 9 test-quality failure classes, 4 CI tiers, ASCII/Windows encoding, markdown-SSoT memory + semantic mirror, agent/command/skill/MCP roster, visual+OCR policy, the 5-trap license gate, 13 verification failure classes, 4 hook confounds, private-to-public flip gate. **Section 18 is its refresh protocol - re-diff it, never rewrite it.** (2) A bootstrap spec for a second project at `C:\Sibling-E` (Satisfactory planning/advisory system), written outside this repo along with a byte-copy of the conventions. Memory: `project_sibling_e_bootstrap`.
 
@@ -2262,7 +2262,7 @@ Commit `afd98bd3` (`docs/PORTABLE_PROJECT_CONVENTIONS.md`, 723 lines / 36.9 KB) 
 
 # 2026-08-13 - /sync-all-md: five drifted numbers, one of them a provenance error
 
-Commits `24df6595` (the reconcile). Documentation only - no code, no `data/` write, no restart. Gate: ruff clean, **95 doc-guard tests passed**, `drift_guard` 0 breaches, both edited files 7-bit ASCII, CLAUDE.md 41.7 KB / 60 KB budget.
+Commits `49520fb4` (the reconcile). Documentation only - no code, no `data/` write, no restart. Gate: ruff clean, **95 doc-guard tests passed**, `drift_guard` 0 breaches, both edited files 7-bit ASCII, CLAUDE.md 41.7 KB / 60 KB budget.
 
 **Fixed (all measured this turn, none carried from a doc):** `CLAUDE.md:6` ENGINE **1.275.3 -> 1.277.1** (three bumps missed); `CLAUDE.md:7` **11 -> 12 live ADRs** (013 + 014 had landed; ADR-004's supersession by ADR-012 now named); `DAEMON_SLAYER.md:5` banner **10594 -> 10578 tests**; `_effects_data` row **547 -> 548** entries; and the `tests/` module-map row **11754 -> 10578**, which was a PROVENANCE error - 11754 is the RC `tests/` dir at ENGINE 1.216.0 (LEDGER 911) filed against the **DS** module map. The wrong attribution is written into the row so it does not get restored.
 
@@ -2281,7 +2281,7 @@ Commits `24df6595` (the reconcile). Documentation only - no code, no `data/` wri
 
 # 2026-08-12 - RM-190 decided (a1), the heartbeat rename retries, RM-191 filed
 
-Commits `f2e162e3` (RM-190), `603a8fd2` (heartbeat retry), `26f4ff87` (LEDGER 1242), `ed23d8fa` (RM-191 + size-budget pass), `6720ba7e` (drift-guard fix). All pushed. Local: DS **10584 passed / 13338 subtests**, RC `tests/` **19009 passed / 96 skipped / 0 failed**, ruff clean, drift_guard 0, `ds_share_sync --check` in sync at 533 files.
+Commits `0fed613c` (RM-190), `524da182` (heartbeat retry), `3798d34f` (LEDGER 1242), `987a74b8` (RM-191 + size-budget pass), `861dc0c8` (drift-guard fix). All pushed. Local: DS **10584 passed / 13338 subtests**, RC `tests/` **19009 passed / 96 skipped / 0 failed**, ruff clean, drift_guard 0, `ds_share_sync --check` in sync at 533 files.
 
 **RM-190 CLOSED - operator chose a1.** 16.16.1 DDragon mirror committed; item 3175 flat magic pen 18 -> 20 carried into the DS registry; **ENGINE 1.277.0 -> 1.277.1**; DS deliberately left PINNED to data patch 16.15.1. `:8860` reporting patch **16.15.1** at engine 1.277.1 is **CORRECT, not drift** - do not file the gap as a defect. Full detail + traps: LEDGER 1241, body in `docs/ROADMAP_HISTORY.md`.
 
@@ -2292,7 +2292,7 @@ Commits `f2e162e3` (RM-190), `603a8fd2` (heartbeat retry), `26f4ff87` (LEDGER 12
 **Do NOT redo / do NOT re-investigate:**
 - RM-190 in any form. Do not bump the DS per-patch snapshot casually (21 files / ~12 MB, needs a Meraki extract, never `--force`).
 - `core.build_order_precompute --static` does NOT restamp `build_order_variants_*.json` - separate `core.build_order_variants` run. `ds_share_sync` does NOT author release history; `Share/CHANGELOG.md` + `Share/README.md` are hand-written even when the sync reports clean.
-- The `docs/OVERLAY_COMPLIANCE_PLAN.md:35` "1.277.0" anchor is CORRECT - it is a dated `STATUS as of 2026-08-11` snapshot. The drift guard was taught this (`6720ba7e`); do not "fix" the doc.
+- The `docs/OVERLAY_COMPLIANCE_PLAN.md:35` "1.277.0" anchor is CORRECT - it is a dated `STATUS as of 2026-08-11` snapshot. The drift guard was taught this (`861dc0c8`); do not "fix" the doc.
 - B4-a..e, the B3 correction, the `enemy_summs_tracked` removal - all still shipped from the prior session.
 
 **Next:** RM-191 if you want it (needs a frozen-file grant), else the top open ROADMAP row.
@@ -2301,7 +2301,7 @@ Commits `f2e162e3` (RM-190), `603a8fd2` (heartbeat retry), `26f4ff87` (LEDGER 12
 
 # 2026-08-12 - RC recovered from a 3-day outage, then B4 built end to end
 
-Commits `f0501048` (B4-a), `543f738c` (B4-b), `3ca8ecd2` (RM-190), `12fc506c` (B4-c), `149468f9` (B4-d), `66914b81` (B4-e), `42e5c659` (B3 correction), `4920867d` (B1 residual). All pushed. RC `tests/` **19000 passed / 96 skipped**; ruff clean; drift_guard 0. Design: `docs/OVERLAY_B4_DESIGN.md`.
+Commits `cfc5a8d1` (B4-a), `495c2b88` (B4-b), `311dd596` (RM-190), `5d9be818` (B4-c), `afa42d9c` (B4-d), `6a7ce39f` (B4-e), `f2dea43a` (B3 correction), `67bc2f71` (B1 residual). All pushed. RC `tests/` **19000 passed / 96 skipped**; ruff clean; drift_guard 0. Design: `docs/OVERLAY_B4_DESIGN.md`.
 
 **RC had been DOWN since 2026-08-09** and the cause is worth keeping: `ops/runtime/last_fatal.txt` shows a `PermissionError [WinError 5]` on `os.replace(health.json.tmp -> health.json)` in the heartbeat (`ops/rc_dev_runtime.py:42`) - a Windows sharing violation from a reader holding the file at the swap. The supervisor was already dead, so nothing restarted it. Fixed by `schtasks /run /tn RC-Supervisor`. **The heartbeat still has no retry around `os.replace`, so one transient handle kills the whole app** - a 3-try backoff would convert a fatal into a logged blip, but `rc_dev_runtime.py` is FROZEN and needs operator approval.
 
@@ -2322,7 +2322,7 @@ Commits `f0501048` (B4-a), `543f738c` (B4-b), `3ca8ecd2` (RM-190), `12fc506c` (B
 
 # 2026-08-11b - the product rename: Riot Commander -> Amberstone
 
-Commits `d0785c5e` (Tier 0), `a847a343` (gate), `119dff5a` (Tier 1), `0a70b6cf` (frozen record), `044351af` (repo rename). All pushed. RC `tests/` 18481 passed / 104 skipped / 0 failed; rc-shell 328 passed / 0 failed; drift_guard 0; ds_share_sync --check in sync. Full detail: LEDGER 1239. Plan: `docs/RENAME_SWEEP_AMBERSTONE.md`.
+Commits `48710a4a` (Tier 0), `755d1b5b` (gate), `0cabf0ee` (Tier 1), `980c8f24` (frozen record), `4e1f91ab` (repo rename). All pushed. RC `tests/` 18481 passed / 104 skipped / 0 failed; rc-shell 328 passed / 0 failed; drift_guard 0; ds_share_sync --check in sync. Full detail: LEDGER 1239. Plan: `docs/RENAME_SWEEP_AMBERSTONE.md`.
 
 **The name is DONE and the Riot application is no longer blocked on it.** Amberstone is the product name everywhere a reviewer looks: packaging, appId, installer, dashboard brand, PWA manifest, window titles, User-Agent headers, README, disclaimer, and the GitHub repo (`Remus3/amberstone`).
 
@@ -2359,10 +2359,10 @@ Open operator action (not new): bare `Amberstone` scheduled task (noted 2026-08-
 
 # 2026-08-08d - the DS coverage lanes are SATURATED, and the one real defect came from an adversarial pass whose other two findings were both wrong
 
-Baseline `b18a9da9`, head `a27aa105`. ENGINE **1.275.3 -> 1.276.0 -> 1.277.0**.
-Merges `94432a20` (RM-186), `11698be4` (provenance), `432c857d` (RM-166),
-`ac332f4d` (ROADMAP trim), `845f9cea` (RM-187); plus `b3360d2c`, `7c323ec4`,
-`2b6917c0`, `a27aa105`. LEDGER 1237.
+Baseline `9dfe9b5f`, head `5af1bcab`. ENGINE **1.275.3 -> 1.276.0 -> 1.277.0**.
+Merges `f1ee9365` (RM-186), `0a5e8428` (provenance), `30622219` (RM-166),
+`181effb9` (ROADMAP trim), `99228b59` (RM-187); plus `eccb0845`, `b6b7b1be`,
+`2b6917c0`, `5af1bcab`. LEDGER 1237.
 
 **Measured in merged main, re-run by the merger rather than carried from any
 agent:** DS **10599 passed / 13337 subtests**; RC `tests/` **19015 passed /
@@ -2384,7 +2384,7 @@ them:** (1) "the Meraki rule can only be fixed by the operator because it lives
 in gitignored files" - `tools/headless-upgrade.md` and
 `tools/directed-headless-upgrade.md` are TRACKED MIRRORS with identical text at
 the same line numbers, and `drift_guard` enforces the pair; fixed in
-`b3360d2c`. (2) "223069 ships TRUE damage against a false citation" - Meraki
+`eccb0845`. (2) "223069 ships TRUE damage against a false citation" - Meraki
 files that passive under `active` with `passives: []`, so a passives-only probe
 fabricated the defect. (3) "a worktree can rebuild the ingest bundle" - `dist/`
 is gitignored, so the hook's success inside a worktree never crosses the merge;
@@ -2397,7 +2397,7 @@ change), and RM-167's prompt-cache hoist (needs a live ARAM A/B).
 **I restarted the live RC process by mistake** with a wildcard `taskkill /F /IM
 pythonw.exe` intended for the DS bounce; the supervisor recovered it. Later pid
 moves correlate with `pytest tests` runs and were filed as RM-188. **RM-188 was
-then RUN and REFUTED the same day (`a7bcbd5a`) - do not re-file it.** Three
+then RUN and REFUTED the same day (`fabf82fe`) - do not re-file it.** Three
 controlled arms, each against a 185 s idle control in which the pid did not
 move: `pytest tests` from MAIN, the same suite from a fresh WORKTREE (the arm
 the correlation actually came from), and an `RC-DaemonSlayer` bounce - pid
@@ -2416,9 +2416,9 @@ across a merge; do not re-run the suite to chase it.
 
 # 2026-08-08c - orchestrated run 2026-08-08-01: three merges, and two of the three root causes were WRONG on the first pass
 
-Baseline `aa8a386a`, head at merge time `f1f10f5c`. ENGINE **1.275.2 -> 1.275.3**.
-Merges `9752cdfc` (S1 / RM-164), `367b54e7` (S3 / Carve) + `a180b299` (restamp),
-`f1f10f5c` (S4 / LCU dedupe). S2 was read-only and shipped nothing.
+Baseline `5d30c2e7`, head at merge time `eb174c46`. ENGINE **1.275.2 -> 1.275.3**.
+Merges `0a841aae` (S1 / RM-164), `a757eae4` (S3 / Carve) + `a5ba0d47` (restamp),
+`eb174c46` (S4 / LCU dedupe). S2 was read-only and shipped nothing.
 LEDGER 1233-1236.
 
 Measured in MERGED MAIN, not inherited from any slice: RC `tests/` **19011 passed,
@@ -2492,7 +2492,7 @@ file). `drift_guard` 0 breaches, `ds_share_sync --check` in sync at 532 files,
 # 2026-08-08b - lane 6 continued: RM-177 HSP flip, MERGED and DEPLOYED
 
 Main `b697e139`. ENGINE **1.275.0 -> 1.275.2** across the day; `:8860` bounced
-and serving 1.275.2 (probed). Merges `fb751846` (RM-176) + `6a407b0e` (RM-177).
+and serving 1.275.2 (probed). Merges `e4260948` (RM-176) + `1c1291ea` (RM-177).
 CI 4/4 green on main. LEDGER 1231 + 1232.
 
 - **RM-177 shipped: HSP composes ADDITIVELY** - `product(1 + chain_pct) *
@@ -2522,7 +2522,7 @@ CI 4/4 green on main. LEDGER 1231 + 1232.
 
 # 2026-08-07b - RM-26 anchor model, then the calibrator: the filed bug was the smallest of four
 
-Commits `4b157aef` (anchor model), `68ba3fb3` (CI fix), `f8aaa7ef` (calibrator).
+Commits `5270e186` (anchor model), `109866b5` (CI fix), `0eb8b9e2` (calibrator).
 CI green on all. Interactive session, inline, no subagents (harness directive).
 
 - **The RM-26 acceptance criterion could not be met, and the reason generalises.**
@@ -2658,7 +2658,7 @@ CONFIRM 9/9; RM-162 filed LOW.
 
 `core/log_retention.py`, 190 lines, **zero test references**, started at RC boot
 from frozen `main.py:158`, deleting files on an hourly timer for RC's whole
-process lifetime. Commit `481e3ed5`; LEDGER 1200; 18 new tests; RM-161 filed.
+process lifetime. Commit `82b2f328`; LEDGER 1200; 18 new tests; RM-161 filed.
 
 - **The live measurement chose the file, and then justified it.** `logs/` was at
   **99.6 MB against this module's own 100 MB cap**, oldest file **9.0 days** -
@@ -2701,7 +2701,7 @@ process lifetime. Commit `481e3ed5`; LEDGER 1200; 18 new tests; RM-161 filed.
 `lane/true-audit` MERGED to main first (fast-forward `b1541d96..5da5cc7c`, the
 cycle-7 deploy containment now actually live since the supervisor loads it by
 absolute path). Then cycle 8: `core/config_validator.py`, 407 lines, **zero test
-references**, imported at import time by frozen `main.py:67`. Commit `17aa390a`;
+references**, imported at import time by frozen `main.py:67`. Commit `d03d1978`;
 LEDGER 1199; 40 net-new tests.
 
 - **Read the CONSUMER before deciding what is worth fixing.** `main.py` wraps the
@@ -2746,7 +2746,7 @@ LEDGER 1199; 40 net-new tests.
 
 `ops/rc_transactional_deploy.py` had **zero test references** and joined every
 request-supplied path onto its root with no containment check. Committed
-`0647f3da` on `lane/true-audit`; LEDGER 1198; **branch is READY, not merged** -
+`1fef602b` on `lane/true-audit`; LEDGER 1198; **branch is READY, not merged** -
 per the lane fence, lanes 7 and 8 ship last and the merge is the merger's call.
 
 - **The lane worktree did not exist at pre-flight.** `C:\rc-worktrees\` was empty
@@ -2842,9 +2842,9 @@ memory `feedback_standing_five_item_parallel_loop` both make orchestrated the ba
 The exacting next-session prompt carries CONTENT, not cardinality. Ran the pass to prove it.
 
 SHIPPED - two commits, both pushed (`9907dca3..b510ce20`):
-- `1772c8d5` RM-117 (ii) `core/data_retention.py`, 4 classes, report-first. NOTHING DELETED.
-  RM-117 (iv) closed as STALE (fixed by `baecb54b` 68 min after filing, never recorded).
-- `b510ce20` merge, ENGINE 1.274.0 -> 1.275.0: RM-118 five per-item shield seams reach
+- `9c409202` RM-117 (ii) `core/data_retention.py`, 4 classes, report-first. NOTHING DELETED.
+  RM-117 (iv) closed as STALE (fixed by `7e44f702` 68 min after filing, never recorded).
+- `ba1dcb84` merge, ENGINE 1.274.0 -> 1.275.0: RM-118 five per-item shield seams reach
   `/ehp` (exposure only, `ehp.py` untouched); RM-36 AD-axis dual-scaling split credit,
   Ezreal 0.0 -> 14.1067.
 
@@ -3122,8 +3122,8 @@ index footer so the next pass does not retry it.
 
 # 2026-08-04c - RM-157 CLOSED: the invoice finally read, and it validated the reconstruction
 
-Commits: `4cc862d0` (reconstruction + re-price), `027d1031` (invoice + BACKLOG filing),
-`5adef80f` (doc-budget relocation). LEDGER 1188 + 1189.
+Commits: `0205416b` (reconstruction + re-price), `0a95176b` (invoice + BACKLOG filing),
+`0902c88f` (doc-budget relocation). LEDGER 1188 + 1189.
 
 Both routes to the billed number were shut at session start and were RE-PROBED, not
 inherited: no `user` scope (billing 404), `list_connected_browsers` empty, repo PRIVATE.
@@ -3181,7 +3181,7 @@ Do NOT re-tune RM-156 (closed, CI-verified). Do NOT restore the dispatch - the t
 run no `ci` (docs-only push, non-main branch with no PR) were both checked and neither
 justifies it. ROADMAP.md is at 71.5 KB against its 80 KB budget - tight, watch it.
 
-**Fixed forward at wrap (LEDGER 1187, `89ca2314`).** `RC-WeeklyHygiene` pushed `cf1c49b9`
+**Fixed forward at wrap (LEDGER 1187, `9d5d5076`).** `RC-WeeklyHygiene` pushed `80fed447`
 mid-session with 24 U+2713 glyphs in its report's Status column and turned `docs-guards` RED;
 the red arrived attached to MY doc-sync push, not to the commit that caused it. Check blame
 before diff when a wrap goes red. Root cause was `agents/agent6_auditor/charter.md` never
@@ -3191,7 +3191,7 @@ naming the ASCII rule that `test_agent6_reports_are_ascii` enforces - now named 
 
 # 2026-08-04a - RM-156: a timed-out job and a superseded one say the same word
 
-Closed RM-156 (commit `c8199a96`). The filing said the push CI job had "13 minutes of
+Closed RM-156 (commit `34615731`). The filing said the push CI job had "13 minutes of
 headroom and already blew it". **The 13 was wrong - measured over 40 runs it was about 3.**
 The filing sampled the four runs around the failure, which is the middle of the
 distribution and blind to the tail: successful `check` wall clock spans 22m17s to **36m49s**.
@@ -3274,7 +3274,7 @@ because `_coerce_ts` only guarded the fetch path. A CONFIRM verdict is not the s
 left"; read the residuals.
 
 Suites from repo root: `tests/` 18162 passed / 154 skipped; DS 10341 passed. ruff clean.
-Commit `b529ca89`, LEDGER 1184. Deployed to the live tree and re-probed.
+Commit `5c02f87f`, LEDGER 1184. Deployed to the live tree and re-probed.
 
 ---
 
@@ -3443,7 +3443,7 @@ that absolute path in a request line. The lane worktree is `C:/rc-worktrees/rc-l
 (space-free, request legal, test green); `main` is `C:\Riot Commander`, and `http.client` raises
 `InvalidURL` on the space before anything is sent. **The green was a property of the worktree path,
 not of the fix.** Probe moved to a temp dir with the requirement ASSERTED rather than skipped.
-Mutation-verified it still catches the real defect. Commit `77077775`.
+Mutation-verified it still catches the real defect. Commit `482bb640`.
 
 **2. The security fix was NOT live after a restart, and every signal said it was.** New RC pid,
 `last_reload_ok=true`, and `GET /sync/get/../CLAUDE.md` still returned **200 with the file body**.
@@ -3463,7 +3463,7 @@ with no try while its async twin wrapped the identical call. **The asymmetry was
 raising capture killed the collector thread outright; a second trigger never reached capture.
 Sibling sweep found the class three more times in `_adapt_match_history`. 9 tests, 5 mutations all
 RED. Seven dimensions: 3 HARDENED, 4 CLEAN (SQL identifier interpolation is fenced by `_norm_mode`
-- NOT an injection, do not "fix" it). LEDGER 1180, commits `708ae415` + `2f6f79aa`.
+- NOT an injection, do not "fix" it). LEDGER 1180, commits `6cd05c17` + `b228c425`.
 
 **The verifier REFUTED a statement in my own comment text for the second cycle running.** I wrote
 that `start()` "returns early while a thread object exists"; the guard is `.is_alive()`, so it would
@@ -3547,7 +3547,7 @@ is NOT an all-clear and is reported as such. **The other half IS owed and is NOT
 
 # 2026-08-03a - Mission Control lane 8 (Headless-True-Audit), first fire: one wrong-shape .rofl crashed the whole extraction pass
 
-2 commits on `lane/true-audit` (fix `1819c8e2` + this docs entry). NOT merged - lane 8 ships LAST
+2 commits on `lane/true-audit` (fix `63c8f3e3` + this docs entry). NOT merged - lane 8 ships LAST
 and the merge is the merger's to make once main is verifiably idle. Tier-1: ENGINE untouched at
 1.270.0, so no Share sync, no DS bounce, no RC restart owed (backend library edit, not runtime).
 
@@ -3585,7 +3585,7 @@ Next lane-8 target (unstarted): another externally-reachable parser - the LCU re
 Worktree-first; lane worktree removed and `lane/repo` deleted local + remote after proving
 `main..lane/repo` = 0. ENGINE untouched at 1.270.0, so no Share sync, no DS bounce, no RC
 restart owed. **Idleness was VERIFIED before merging, not assumed:** main still sat at
-`c164dfef` untouched for the whole run, clean, 0/0 vs origin, no `index.lock`, no git process,
+`b3e99b55` untouched for the whole run, clean, 0/0 vs origin, no `index.lock`, no git process,
 no `RUNNING.lock`. `--ff-only` on purpose so a non-ff would error rather than surprise-merge.
 
 **The lane worktree did not exist.** `git worktree list` showed only `main`, so it was created
@@ -3733,7 +3733,7 @@ showing 1 teardown error while every test passes alone is that, not a real failu
 **Owed:** G3-13 still OPEN - 278 samples over ~13 min of Mayhem produced ZERO augment keys
 on either surface, but my watchers started ~200s in so an early window could have been
 missed. `/api/state` `screen_read` was 6.1 HOURS stale while vision ran fine via
-`moon_proxy` - that is the better suspect for a dark panel than the `cff8d678` cadence fix.
+`moon_proxy` - that is the better suspect for a dark panel than the `66e6835e` cadence fix.
 Start the augment watcher BEFORE queueing next time. Also on disk: 6.35 GB
 `C:\RC-Recordings\2026-08-02_15-13-40.mkv`, operator's call to delete.
 
@@ -3752,7 +3752,7 @@ that was broken. Second GATE 6 row ever closed.
 row's OWN acceptance criterion was unsatisfiable: `overlay_state.js:171` appends `ovscale`
 only when `|scale - 1| > 0.001`, so 1920x1080 gives scale exactly 1.00 and NO param. A
 literal "two lines both carrying ovscale=N" check fails on correct behavior. Fixed the row
-first (`12934b47`), then ran the game against a criterion that could actually pass.
+first (`9c7c14c7`), then ran the game against a criterion that could actually pass.
 
 **Three of my own claims were wrong, all caught by probing rather than reasoning:**
 (1) "zero overlay requests today" read only the un-rotated log - the daily log rotates at
@@ -3803,16 +3803,16 @@ of them could ever have flashed - I had flagged them off their command line with
 the principal. Only `LW-WeeklyHygiene` was really exposed and is now S4U.
 
 **Operator-directed second half:** CLAUDE.md's hostname drift. Fixed by DELETING the field
-(`c645271e`), not by updating it - operator: the Windows name changes from time to time, so
+(`f07483b1`), not by updating it - operator: the Windows name changes from time to time, so
 pinning a value only resets the drift clock. `legion-rc` / `100.70.22.55` is canonical.
 
 **MAIN WAS RED ON ARRIVAL and it was NOT this session's doing.** The previous session's
-`8b91d13a` edited a LIVE span in `web/js/main.js` (the `setMode` first-render stamp) and the
+`7705091d` edited a LIVE span in `web/js/main.js` (the `setMode` first-render stamp) and the
 RM-125 `_LIVE_HALF_DIGEST` guard is built to go red on exactly that and demand a deliberate
 re-capture. That session wrapped while its push run was still in flight, so the red landed
 after its banner and nobody collected it - main sat red from 16:34. Re-captured by the
-documented two-tree diff (`ec55b133` vs now, one fixed tokeniser, 173 sources both sides,
-exactly one file differs and it is `web/js/main.js`), `289c244e`. **Process lesson now
+documented two-tree diff (`1a1c0379` vs now, one fixed tokeniser, 173 sources both sides,
+exactly one file differs and it is `web/js/main.js`), `bb7b1d70`. **Process lesson now
 written into the guard's own note: if a push run is still in flight at wrap, COLLECT IT.**
 I also briefly misattributed the red to my own footer-comment edit - wrong, a comment-only
 change cannot move that digest, and the two-tree diff is what settled it.
@@ -3868,7 +3868,7 @@ lines around a flip AND a flip-back.
 # 2026-08-02c - RM-118 mana-as-damage SHIPPED; the seam was nearly shipped STRANDED
 
 Lane `lane/ds` (worktree `C:/rc-worktrees/rc-lane-ds`, created this run - it did not
-exist). 1 commit `a0438f14`, pushed. ENGINE 1.269.0 -> 1.270.0. Full ledger entry:
+exist). 1 commit `6c56a9c2`, pushed. ENGINE 1.269.0 -> 1.270.0. Full ledger entry:
 `docs/LEDGER.md` 1162.
 
 **Shipped.** The third instance of the coupling lever, after RM-87 (resist) and RM-91
@@ -3911,7 +3911,7 @@ merge.** Merging `lane/ds` to main is the next action.
 
 # 2026-08-02b - RM-142: the "already shipped" G1 fix had never reached the scorer
 
-2 commits, pushed (`1d7e84fc` BACKLOG row, `3214d8f5` the Tier-2 fix). ENGINE 1.268.0 ->
+2 commits, pushed (`86ec57f1` BACKLOG row, `fcf975a5` the Tier-2 fix). ENGINE 1.268.0 ->
 1.269.0. DS `:8860` bounced and serving 1.269.0. `ops/audit/P6_LOLMATH_PARITY.md` DRAINED.
 
 **The row's premise was stale.** RM-142 and the hand-off both named 20 champions with a
@@ -3954,8 +3954,8 @@ re-run manually (exit 0) plus 17 repo-wide guards. Flag a bypass when you make i
 
 ## 2026-08-02c - Mission Control lane 9 (`gated`) + arcane retheme + 3 defects the lane exposed
 
-Commits: `219d6989` (lane + theme), `3344096b` (lane auth), `16f7c14b` (pid reuse),
-`7b2628be` + `6a14ead2` (lane cycle merges), `15c64ac0` (lane-log panel), plus the docs sync.
+Commits: `668ebcb5` (lane + theme), `3174d4af` (lane auth), `848595c3` (pid reuse),
+`ee8a087b` + `2998f525` (lane cycle merges), `3efa9aab` (lane-log panel), plus the docs sync.
 LEDGER 1164. Suite 17945 passed / 108 skipped. Repo is back to `main` alone, one worktree.
 
 **Shipped.** `gated` is MC lane 9: polls `/api/state` on a 20-30s cadence, DRAINs
@@ -3998,7 +3998,7 @@ never pattern-match a guess at their shape.
 
 # 2026-08-02a - RM-140 was a no-op ingest and a ten-gap reconcile; RM-141 answered as JADE
 
-2 commits, pushed (`d59bad88`, `50f8b35a`). Tier-1, NOT the Tier-2 the row assumed.
+2 commits, pushed (`ffa34aff`, `3289c81d`). Tier-1, NOT the Tier-2 the row assumed.
 Zero ENGINE bump, zero Share sync, zero DS bounce. RC + RC-LCUAgent both restarted and
 both process start times verified to POSTDATE the edited files (pid 18636 / pid 116).
 
@@ -4024,7 +4024,7 @@ Probe those three, never infer them from a green drift check.
   95 percent gate has no meter anywhere, and `OVERLAY_BUILD_MASTER_PLAN.md:169` had already
   recorded it as an EXPLICIT PARK. ROADMAP just never caught up.
 - **NEXT-5 triage banner** in the NOW section, each blocker probed rather than inherited.
-- **Doc-budget repair** `85488a9f`. This session's own additions pushed ROADMAP to 96 percent
+- **Doc-budget repair** `3f28eea6`. This session's own additions pushed ROADMAP to 96 percent
   of its 81920-byte budget and `drift_guard` breached. Relocated VERBATIM to
   `docs/ROADMAP_HISTORY.md` rather than loosening the check: 96 -> 90 percent, guard clean.
 
@@ -4051,11 +4051,11 @@ predicted this exact moment. It is a large build and gets its own session AFTER 
 reverted both times; `git status` clean each time).
 
 **Shipped**
-- **RM-143 P1+P2+P3** (LEDGER 1159). Spec `ca7e194c`, map `dda07d08`, runner `3e2fd192`.
+- **RM-143 P1+P2+P3** (LEDGER 1159). Spec `959a9dcd`, map `9492d559`, runner `c72e17bf`.
   REPORT-ONLY, nothing armed. Live parity 8/8 at ENGINE 1.268.0.
-- **`tools/repo_insights.py`** `ca6a0799` + `2a47480e` - ledger regex missed the paren-form
+- **`tools/repo_insights.py`** `f1fe8c26` + `92c9ab20` - ledger regex missed the paren-form
   header (0 items -> 419), plus a generated synthesis section and two label fixes.
-- **README** `15dfe4e1` rewritten for an outward reader: why-it-is-different, a Limitations
+- **README** `1350f017` rewritten for an outward reader: why-it-is-different, a Limitations
   section, upstream source credits, and the Riot non-affiliation disclaimer it never had.
 
 **The useful finding: /insights re-pitches shipped work, because it reads transcripts not the repo.**
@@ -4180,7 +4180,7 @@ subagent-first / parallel as standing protocol requires.
 
 # 2026-08-01e - RM-127's last two operator calls, then the armed gate blocked a TRUE claim
 
-2 commits `039b3393`, `f4878fd2`, both pushed. Tier-1. DS untouched.
+2 commits `5718e842`, `e81a20df`, both pushed. Tier-1. DS untouched.
 
 **Shipped**
 - **CCR-123: operator chose B, and the `<3.14` ceiling is DECLARED-ONLY.** `talkthrough-mcp
@@ -4217,15 +4217,15 @@ subagent-first / parallel as standing protocol requires.
 6 commits `15ddff90..8450dd2b`, all pushed. RC-side only; DS untouched (no Share sync).
 
 **Shipped**
-- `c926470a` port blocks folded - LW 8900-8919 and RM 8770-8789 both CONFIRMED in writing.
+- `33146ecf` port blocks folded - LW 8900-8919 and RM 8770-8789 both CONFIRMED in writing.
   Adopted LW's `next_free()` with a guard LW's version lacks: RC may only answer for its OWN
   blocks - a confident wrong number handed to a sibling is worse than no answer.
-- `aee3bb96` + `13350e43` GEMINI FULLY DECOMMISSIONED (operator directive). Backend, failover,
+- `7ce4af80` + `c74b9e06` GEMINI FULLY DECOMMISSIONED (operator directive). Backend, failover,
   exhaustion matcher, ceiling accounting, 2 ps1 wrappers, 3 docs, the scheduled task: gone.
   `gemini()` -> `adjudicate()`, `/gemini-headless-upgrade` -> `/directed-headless-upgrade`.
-- `666d2547` + `8b292a98` N=3 coordinated round with LW and RM; all three trees hash equal on
+- `479c2a61` + `c9ff583a` N=3 coordinated round with LW and RM; all three trees hash equal on
   `slots.py` (`5297f2d0...1cb0a6`).
-- `8450dd2b` Claude co-author trailer swept - `gist_share_sync.py` was still EMITTING it into a
+- `07621a38` Claude co-author trailer swept - `gist_share_sync.py` was still EMITTING it into a
   SEPARATE repo the commit-msg hook does not cover.
 - NEW: `docs/CONCURRENT_HEADLESS_CONTRACT.md` - portable 3-project headless contract.
 
@@ -4303,8 +4303,8 @@ plus still-open RM-128 (lane 6/7) and the DS RM-118 4 wireable seams (lane 6).
 
 ## 2026-08-01 - RM-127 CCR link-ingest phases 5-7 + the Stop claim gate (armed)
 
-Commits: `5a1bb91a` (phases 5+6), `00cc596d` (RM-136 gate), `8e1cd06e` (RM-137 subagent
-prompt), `c767c808` (RM-138 residuals), `53c42e25` (arm), `7a66bd5d` (false-positive fix).
+Commits: `cfec0bf5` (phases 5+6), `3700dde5` (RM-136 gate), `a7128420` (RM-137 subagent
+prompt), `31253c88` (RM-138 residuals), `24caccde` (arm), `6b23deb3` (false-positive fix).
 
 - **RM-127 CLOSED end to end.** Phases 5+6 authored (`Desktop/RC-Prep.md`,
   `Last-01/02/03.md`), then all three Phase 7 sessions shipped the same day.
@@ -4366,7 +4366,7 @@ was the 05:57 reboot clearing pid 14692, NOT a crash - the work was committed an
   `queues.json` with a consistent `gameSelectModeGroup`. Lane 6 or 7, Tier-1.
 - cdragon `lol-game-data` 7-file teardown filed in `BACKLOG.md` (F2/F3 trigger-gated, F4/F5
   deferred, F6/F7 REJECT-recorded). License cleared (Riot data, no copyleft).
-- Struck the STALE DDragon 16.15.1 patch-refresh row (shipped 2026-07-30, item-1130 / `9df58480`;
+- Struck the STALE DDragon 16.15.1 patch-refresh row (shipped 2026-07-30, item-1130 / `d0ad0569`;
   live `/health` = 16.15.1, worktree clean).
 - Fixed the `docs/DS_SWEEP_TRACKER.md` "next free" pointer: was RM-119 (stale), now RM-129.
 - Decided the `tft/` U+2192 ASCII row: 24 arrows, all display-only, STRIP-SAFE, acceptance-bearing.
@@ -4402,7 +4402,7 @@ the Desktop because the row cites them as its working input: `First-Pass.md` (10
 operator note pairs) and `First-Pass-Addendum.md` (13 KB). Everything else is in
 `Desktop/_ingested/` (10 files, reversible - the operator deletes that folder themselves).
 
-## What shipped (`7cd9a812`, Tier-0 docs only)
+## What shipped (`9eb47b1e`, Tier-0 docs only)
 
 All 12 Desktop planning files classified against ground truth; **zero duplicates filed**.
 
@@ -4462,7 +4462,7 @@ Shipped (9 tasks, 20 commits, merged fast-forward): `mc/` package + `mission_con
 bearer-token auth that FAILS CLOSED, bind restricted to loopback + tailnet only,
 `web/mc/` standalone asset tree, `dashboard/_matchers.py` (the split that keeps pydantic
 out of the control plane), and the dashboard-side removal. Post-merge: token ACL locked
-to SYSTEM + Administrators, plus two guard fixes (`ab3d8b0b`, `2a55f40f`).
+to SYSTEM + Administrators, plus two guard fixes (`2fd3c66c`, `1b3fe741`).
 Detail in LEDGER 1139 + 1140. Design history in `docs/MISSION_CONTROL_PLAN.md` "S10 as shipped".
 
 ## Do NOT redo
@@ -4508,15 +4508,15 @@ compaction (`anthropic-skills:consolidate-memory`). Deferred twice now; it shoul
 
 ## What shipped
 
-- **S8 `97c74550`** - `tools/headless-repo.md` (BREADTH: restructure/clean/modularize) and
+- **S8 `6ed2b0d1`** - `tools/headless-repo.md` (BREADTH: restructure/clean/modularize) and
   `tools/headless-true-audit.md` (DEPTH: one file at a time, rewrite + harden), authored by
   parallel agents, mirrored to `.claude/commands/`, wired into `LANE_COMMANDS`. All six lanes
   startable; the panel derives `wired` from that map so it lit them up with no client change.
-- **S9 `97c74550`** - `ops/loop/interrupt.py` + `interrupt_preview` / `interrupt` route
+- **S9 `6ed2b0d1`** - `ops/loop/interrupt.py` + `interrupt_preview` / `interrupt` route
   actions + the panel block. `preview` fingerprints the exact victim set (pid AND process
   START TIME) and `execute` re-probes and REFUSES on mismatch. Descendants are victims too,
   reaped deepest-first; `taskkill` runs WITHOUT `/T`.
-- **`79cdd590`** - an INTERRUPT audit row is no longer counted as pending guidance.
+- **`b7e50a4f`** - an INTERRUPT audit row is no longer counted as pending guidance.
 
 ## The finding worth carrying forward
 
@@ -4554,11 +4554,11 @@ auto-clean. Then the Desktop dashboard shortcut, then the First-Pass.md program.
 
 ## What shipped
 
-- `6003b244` S5 lane launcher: one long-lived worktree per lane at `C:\rc-worktrees\rc-lane-<lane>`,
+- `583c3430` S5 lane launcher: one long-lived worktree per lane at `C:\rc-worktrees\rc-lane-<lane>`,
   spawn via the proven `run_lane.ps1`, lock re-pointed at the WORKER pid, lane RELEASED on any
   launch failure. Verified end to end: worktree on branch `lane/upgrade`, worker ran inside it,
   RUNNING -> RECLAIMABLE on exit, release -> FREE.
-- `992a5a6c` S6 lanes 4-6 (`tools/headless-{uiux,research,ds}.md`, authored by parallel agents,
+- `1153924e` S6 lanes 4-6 (`tools/headless-{uiux,research,ds}.md`, authored by parallel agents,
   every cited path verified) + S7 steer channel (`ops/loop/steer.py`, append-only JSONL + cursor).
 - LEDGER 1135 + 1136. Full suite 17668 passed / exit 0; ruff clean; drift_guard 0.
 
@@ -4599,7 +4599,7 @@ command, the FIRST real lane fire. One supervised run, worktree-mandatory
 
 ## What shipped
 
-- `ed5191b2` S4: the MISSION CONTROL settings card + `lanes` / `controller_lock` three-state
+- `a952009a` S4: the MISSION CONTROL settings card + `lanes` / `controller_lock` three-state
   blocks on `GET /api/loop-status` (read-only) + ARM/CONFIRM for shortcuts 1-2 over the new
   `web/js/lib/arm_confirm.js`. Live: `lanes FREE`, `controller_lock RECLAIMABLE pid 9380`.
 - Plan constraint 2 RESOLVED - `root=None` is `lanes.DEFAULT_ROOT` on both sides of the
@@ -4643,15 +4643,15 @@ Render the lane lock as RUNNING / RECLAIMABLE / FREE and never collapse RECLAIMA
 
 ## What shipped
 
-- `b74b58e3` S3 consumer half: `ops/loop/intents.py` (`pending()` never writes; `consume()` writes
+- `aaf0bdbe` S3 consumer half: `ops/loop/intents.py` (`pending()` never writes; `consume()` writes
   the prompt FIRST then the consumed marker, both atomic) + `tools/session_intent.py` CLI + the
   done-ritual wiring. Live-verified end to end through the real `:8888` endpoint.
 - **RC- NAMESPACE (operator, mid-session).** `Desktop/RC-NEXT-SESSION.txt`. The Desktop is SHARED
   and this design is meant to be lifted into Sibling-A and RM, so all three may run
   concurrently. The consumer ENFORCES the prefix - a doc pointing at `LW-NEXT-SESSION.txt` falls
   back to our own file. Lifting to LW/RM is one line: `REPO_PREFIX`.
-- `2eef4d8b` glyph sweep (`-> x - approx` for U+2192 / U+00D7 / U+00B7 / U+2248), 17 files.
-- `d01b01a4` mirrored the S3 wiring into the TRACKED `tools/done.md`.
+- `e1c82433` glyph sweep (`-> x - approx` for U+2192 / U+00D7 / U+00B7 / U+2248), 17 files.
+- `81bc8187` mirrored the S3 wiring into the TRACKED `tools/done.md`.
 - LEDGER 1132 + 1133; ROADMAP head moved S3 -> S4.
 
 ## Lessons worth keeping
@@ -4684,17 +4684,17 @@ Render the lane lock as RUNNING / RECLAIMABLE / FREE and never collapse RECLAIMA
 
 ## Start here next session
 
-**S3 of the Mission Control control plane.** S1+S2 shipped (`ef82bad0`); S3 is shortcuts 1 and 2
+**S3 of the Mission Control control plane.** S1+S2 shipped (`bf68d9e3`); S3 is shortcuts 1 and 2
 end to end - "Halt and Save" and "/done Continue" - the only two that cannot spawn a lane.
 Spec + staging + all resolved decisions live in the plan (see below). Backend is already in place:
 `ops/loop/lanes.py`, `dashboard/_idempotency.py`, and the two new `/api/loop-control` actions.
 
 ## What shipped
 
-- `9b0784f9` docs(claude): session default is orchestrated + multi-agent + self-adjudicating +
+- `17b5422d` docs(claude): session default is orchestrated + multi-agent + self-adjudicating +
   self-adversarial. R7 and R9 rewritten - they contradicted Subagent-First on the SHAPE of a
   session. File-count threshold REVOKED as the deciding test; substance decides.
-- `ef82bad0` feat(mission-control): S1 lane lock + S2 idempotent control-plane actions.
+- `bf68d9e3` feat(mission-control): S1 lane lock + S2 idempotent control-plane actions.
   137 tests + 21 guards green from the repo root.
 - Desktop/First-Pass.md gained CCR-120..CCR-146 (27 links scored) plus ADDENDUM A, the six
   RC-wide dashboard concepts. Two mockups rendered (Adjudication Inbox, Mission Control arcane).
@@ -4727,7 +4727,7 @@ Spec + staging + all resolved decisions live in the plan (see below). Backend is
 
 # 2026-07-30b - DDRAGON PATCH REFRESH 16.14.1 -> 16.15.1 + the throwback-mode partition.
 
-**1 commit pushed, `f9f134a4` -> HEAD `9df58480`. LEDGER 1130. ENGINE 1.268.0 UNCHANGED
+**1 commit pushed, `cbbf0a5d` -> HEAD `d0ad0569`. LEDGER 1130. ENGINE 1.268.0 UNCHANGED
 (patch is not an engine version). DS `:8893` live at `patch 16.15.1, champions 173,
 items 706`. Suites: DS 10234 / 5913 subtests, RC 17441 / 1370 subtests, 0 failed.**
 
@@ -4787,8 +4787,8 @@ items 706`. Suites: DS 10234 / 5913 subtests, RC 17441 / 1370 subtests, 0 failed
 
 # 2026-07-30a - HEADLESS ORCHESTRATOR RUN 2026-07-30-01: 9 slices, ENGINE 1.268.0, rc-shell green.
 
-**10 commits pushed, base `31a7e722` -> HEAD `aef8a159`: `1a70f313` `69404dcc` `71df01fb`
-`5d590a4f` `408e99ea` `a6886dc3` `42295aa2` `9b004331` `a0aef8a1` `aef8a159`.
+**10 commits pushed, base `f7dbcec1` -> HEAD `4eeed3e3`: `c244ccfa` `7cefb2e1` `2ec0410d`
+`e947bcaf` `275604b9` `3ae65059` `84a99bc0` `5564d358` `3a0ae8b2` `4eeed3e3`.
 LEDGER 1120-1129. ENGINE 1.266.0 -> 1.268.0, patch 16.14.1 unchanged. Every merge passed a
 read-only verifier gate; the gates CORRECTED a slice claim twice, in opposite directions.**
 
@@ -4809,31 +4809,31 @@ read-only verifier gate; the gates CORRECTED a slice claim twice, in opposite di
 
 ## What shipped
 
-- **`1a70f313` S2 - the ARAM item-interaction corpus is TRACKED**, closing the carry-forward risk
+- **`c244ccfa` S2 - the ARAM item-interaction corpus is TRACKED**, closing the carry-forward risk
   LEDGER 1115 disclosed. It degraded SILENTLY at three stacked fail-soft layers, so an absent
   corpus read as "no evidence" rather than "corpus missing". Regeneration is IMPOSSIBLE (sole
   input `data/rewind_history.db` is 1.87 GB and gitignored), so tracking was the only route:
   300745 bytes, pure ASCII, 776 cells, zero player identifiers, byte-identical on re-run.
-- **`69404dcc` S4 - the `docs/ELECTRON_OVERLAY.md` section-5 window-state table is now PARSED**
+- **`7cefb2e1` S4 - the `docs/ELECTRON_OVERLAY.md` section-5 window-state table is now PARSED**
   by `rc-shell/test/overlay_state_contract.test.js` and drives its assertions, so the doc alone
   can turn the suite red. Two rows were prose defects fixed in the DOC: champ-select is plain
   hidden, and there is NO post-game fade anywhere in `rc-shell/src`. `Alt+Shift+R` was missing.
-- **`71df01fb` S1 - RM-118, the THREE rune lanes reach their routes. ENGINE 1.267.0,
+- **`2ec0410d` S1 - RM-118, the THREE rune lanes reach their routes. ENGINE 1.267.0,
   `STRANDED_TODAY` 19 -> 16.**
-- **`5d590a4f` S5 - `rc-shell` `npm test` unstuck.** The TEST was stale, not the source. Root
+- **`e947bcaf` S5 - `rc-shell` `npm test` unstuck.** The TEST was stale, not the source. Root
   defect: two suites asserted OPPOSITE results for one call because `rc-shell/package.json`
   omitted `enemy_spells_timer.test.mjs` from the gate.
-- **`408e99ea` S6 - RM-118, the TWO vamp lanes. ENGINE 1.268.0, `STRANDED_TODAY` 16 -> 14.**
-- **`a6886dc3` S7 - precomputed build-order coverage measured at 4671/4671 cells, 100.00
+- **`275604b9` S6 - RM-118, the TWO vamp lanes. ENGINE 1.268.0, `STRANDED_TODAY` 16 -> 14.**
+- **`3ae65059` S7 - precomputed build-order coverage measured at 4671/4671 cells, 100.00
   percent**, across THREE artifact families and TWO champion keyspaces. Mayhem maps onto the
   aram tables via `district_config`, so it is not a fourth keyspace.
-- **`42295aa2` S9 - the build-order producers now FAIL LOUD.** `full_roster()` fell back to a
+- **`84a99bc0` S9 - the build-order producers now FAIL LOUD.** `full_roster()` fell back to a
   10-name seed on a registry error and exited 0; the sweep found 3 more, two worse (a
   ZERO-champion table exiting 0; a full-size table of EMPTY orders on mid-sweep engine death).
-- **`9b004331` S8 - `docs/COMPETITOR_LIFT_2026-07-30.md`, TFT-lane teardown.** Category rotated
+- **`5564d358` S8 - `docs/COMPETITOR_LIFT_2026-07-30.md`, TFT-lane teardown.** Category rotated
   by measurement: 25 prior lift files hold ONE TFT mention, graded "new data domain, NO" - and
   that grade was wrong, because RC already ships a 3117-line `tft/` lane.
-- **`a0aef8a1` + `aef8a159` S10 - TFT meta mojibake + deterministic roll odds.** See below.
+- **`3a0ae8b2` + `4eeed3e3` S10 - TFT meta mojibake + deterministic roll odds.** See below.
 - **S3 cost/latency 7-lever sweep: ALL SEVEN CLEAN, no commit** (LEDGER 1129). This lever set is
   now drained twice running - rotate elsewhere unless a specific regression signal points here.
 
@@ -4842,7 +4842,7 @@ read-only verifier gate; the gates CORRECTED a slice claim twice, in opposite di
 - **A guard's universe must come from the AUTHORITY on the artifact, never from what is sitting
   in the directory.** Three instances this run. S7: the pre-existing build-order tests enumerate
   the ARTIFACT, so a 10-champion regen defines its own universe as 10 and passes - the new tool
-  derives from PRODUCER constants. S10 `aef8a159`: a fresh ASCII guard globbed `data/meta/*.json`
+  derives from PRODUCER constants. S10 `4eeed3e3`: a fresh ASCII guard globbed `data/meta/*.json`
   off DISK, so it passed in CI and FAILED on the operator's machine (a gitignored 24 MB CDragon
   dump); universe is now `git ls-files`.
 - **The repo's own no-em-dash drift check was blind to the case that had already happened.**
@@ -4859,7 +4859,7 @@ read-only verifier gate; the gates CORRECTED a slice claim twice, in opposite di
 
 ## Verification state at wrap
 
-- DS suite: **10234 passed / 5912 subtests / 0 failed** (at `408e99ea`).
+- DS suite: **10234 passed / 5912 subtests / 0 failed** (at `275604b9`).
 - RC suite: **14196 passed / 146 skipped / 1369 subtests / 0 failed** (in a clean worktree).
 - Both Share release-entry sites carry 1.268.0 - the trap `ds_share_sync --check` cannot see.
 - `rc-shell` `npm test`: **326/326, exit 0**.
@@ -4887,8 +4887,8 @@ read-only verifier gate; the gates CORRECTED a slice claim twice, in opposite di
 
 # 2026-07-29h - HEADLESS ORCHESTRATOR RUN 2026-07-29-01: 6 slices, CI repaired, ENGINE 1.266.0.
 
-**9 commits pushed: `f69a15c7` `1ec67d0c` `f6e8c11c` `0dffb844` `b4919236` `cff8d678` `85e7fb67`
-`a5fe1ea7` `635f8f3f`. LEDGER 1113-1119. CI GREEN - full dual suite success on `cff8d678`.
+**9 commits pushed: `f69a15c7` `3226b692` `5f1b6d5c` `9e63d82e` `040f011e` `66e6835e` `4eeab1a2`
+`5c4b9d0b` `ca85a357`. LEDGER 1113-1119. CI GREEN - full dual suite success on `66e6835e`.
 Every merge passed a read-only verifier gate; 3 of the 5 gates corrected a claim the slice got wrong.**
 
 ## Start here next session
@@ -4918,32 +4918,32 @@ Two things are load-bearing and neither is code:
   bump restamped the Share README header but never prepended the public release entry.
   **`ds_share_sync --check` cannot catch this by design**, so it read green throughout. This pin site
   is the standing ENGINE-bump trap - `Share/CHANGELOG.md` AND `Share/README.md` both need touching.
-- **`1ec67d0c` cost/latency sweep, 3 SHIP / 4 CLEAN.** Headline: `lcu/lcu_client.py` logged
+- **`3226b692` cost/latency sweep, 3 SHIP / 4 CLEAN.** Headline: `lcu/lcu_client.py` logged
   "LCU lockfile not found" at 1 Hz - **20144 of 21082 lines, 95.6 percent, 2.4 MB** of one day's log.
   Fixed as a transition latch (frozen-file edit under the run's grant, which does NOT carry forward).
   Also `tests/test_anthropic_base_url_pin.py` was worktree-blind and goes red during ANY orchestrator
   run; only SET-EQUALITY guards break that way, verified by sweep (memory
   `reference_repo_root_guard_worktree_blind`).
-- **`f6e8c11c` ARAM deterministic shadow field gaps (Haiku-to-ZERO Lane C).** Three root causes, none
+- **`5f1b6d5c` ARAM deterministic shadow field gaps (Haiku-to-ZERO Lane C).** Three root causes, none
   where the filed row pointed. Best finding: `choices` both=0 was NOT a coach gap but a shadow READER
   carrying a hardcoded 6-key tuple that had drifted behind the writer's 9 keys - a column the reader
   never reads can never appear. Both readers now derive from the writer.
-- **`0dffb844` RM-118 residual, ENGINE 1.265.0 -> 1.266.0.** 4 EHP survivability seams wired
+- **`9e63d82e` RM-118 residual, ENGINE 1.265.0 -> 1.266.0.** 4 EHP survivability seams wired
   engine->route->client. `STRANDED_TODAY` **23 -> 19** (the ROADMAP's "22" was never right at either
   endpoint). 10 of the remaining 19 are declined by design, not debt.
-- **`b4919236` served next-item callout.** Same raw-slot-count root cause as `f6e8c11c`, served side.
+- **`040f011e` served next-item callout.** Same raw-slot-count root cause as `5f1b6d5c`, served side.
   Kalista with 4 legendaries + trinket + potion: old index 6 -> None, corrected 4 -> Kraken Slayer.
   **SR-ONLY** user-visible change (`_RECALL_MODES == frozenset({"sr"})`).
-- **`cff8d678` ARAM Mayhem augment cadence.** An OPEN bug closed in code. Bounded four ways because
+- **`66e6835e` ARAM Mayhem augment cadence.** An OPEN bug closed in code. Bounded four ways because
   it makes a PAID vision call fire more often; worst case +4 scans/game against a hard +6 ceiling,
   and plain ARAM pays zero. **LIVE ON-SCREEN CONFIRM IS OWED - not verified fixed.**
-- **`a5fe1ea7` context management folded into the headless-upgrade skill** (operator-directed): new
+- **`5c4b9d0b` context management folded into the headless-upgrade skill** (operator-directed): new
   section 10c plus four ritual wire-ins, so every future run carries the discipline instead of
   rediscovering it. Both the tracked `tools/headless-upgrade.md` and the gitignored live copy under
   `.claude/commands/` were patched to byte-identical; NO parity guard was added on purpose, because
   the live copy is absent in CI so a guard would have to skip when missing - the exact masking-skip
   pattern this repo audited out.
-- **`635f8f3f` item-spike legendary count** - the third and last consumer of the slot-count root
+- **`ca85a357` item-spike legendary count** - the third and last consumer of the slot-count root
   cause, and the run's largest served-output change (all three modes). See LEDGER 1119.
 
 ## Verification state at wrap
@@ -4965,7 +4965,7 @@ Two things are load-bearing and neither is code:
 ## Owed / FUTURE, in priority order
 
 1. **ARAM Mayhem augment on-screen confirm** (G3-13). The RM-25 hold-25s workaround is retired.
-2. **The item-spike twin - DONE at wrap, `635f8f3f` (LEDGER 1119).** It also fixed a SECOND bug: at 6
+2. **The item-spike twin - DONE at wrap, `ca85a357` (LEDGER 1119).** It also fixed a SECOND bug: at 6
    used slots the old count passed every threshold, so the active spike row was silently DELETED late
    game. It counts completed LEGENDARIES, not build-order progress - 171 of 173 champions carry boots
    at build index 1, so a build-order count would have called Berserker's Greaves a 1-item spike. NOT
@@ -4984,7 +4984,7 @@ Two things are load-bearing and neither is code:
 
 # 2026-07-29g - RM-118 wielder HSP item-amp reaches the HYBRID (bruiser) RANKER (ENGINE 1.264.0 -> 1.265.0).
 
-**Commit `fb72d0f9`, pushed. Tier-2: engine-signature change + new route seam, ENGINE bump, Share resync, DS :8893 restarted -> 1.265.0.**
+**Commit `ebd727e8`, pushed. Tier-2: engine-signature change + new route seam, ENGINE bump, Share resync, DS :8893 restarted -> 1.265.0.**
 The remaining open half after 2026-07-29f (which did the EHP/tank ranker). RM-124 live validation
 (G2-39) still blocked - no SR game (mode=client, LCU Offline, relay empty). Probe live state first.
 
@@ -5012,7 +5012,7 @@ STILL OPEN in RM-118: the 22 ledgered seams in `test_stranded_hsp_seam_r197.py::
 
 # 2026-07-29f - RM-118 wielder HSP item-amp reaches the EHP RANKER (ENGINE 1.263.0 -> 1.264.0).
 
-**Commit `e075a221`, pushed. Tier-2: engine ranker-signature change, ENGINE bump, Share resync, DS :8893 restarted -> 1.264.0.**
+**Commit `1a2f92e7`, pushed. Tier-2: engine ranker-signature change, ENGINE bump, Share resync, DS :8893 restarted -> 1.264.0.**
 Picked as the next headless-safe NOW item because RM-124 live validation (G2-39) was blocked - no SR
 game (LCU Offline, relay empty). Probe live state first every session.
 
@@ -5027,7 +5027,7 @@ What shipped:
 
 Two things worth not re-learning:
 - **RM-118's "three assumed-share seams parsed but never forwarded" sub-claim was STALE AT FILING** -
-  they were wired 2026-07-25 (`e6b7b238`), two days before the R197 filing said they were not. Verify
+  they were wired 2026-07-25 (`f9d2c1a7`), two days before the R197 filing said they were not. Verify
   filed rows on disk; do not rebuild a filing's prose. (ROADMAP RM-118 UPDATE + LEDGER 1111.)
 - **A new DS test importing `core.daemon_slayer_client` MUST be added to `ds_share_sync.py`'s
   exclusion list** or the pre-commit hook mirrors a collection-error into Share and breaks its
@@ -5044,7 +5044,7 @@ antitank consumers < the 15 the repo-wide scan expects - a mirror-subset structu
 
 # 2026-07-29e - RM-124 deterministic wave/cannon clock BUILT + GATED-OFF (Tier-1, no engine bump).
 
-**Commits `266c1fac` (feature) + `965d829d` (tracker sync), both pushed + CI-green.**
+**Commits `efbb34d0` (feature) + `eb95facb` (tracker sync), both pushed + CI-green.**
 Pure `wave_callout()` beside `recall_callout` in `core/event_callouts.py`: anchors on the live
 `MinionsSpawning` EventTime, walks the wave cadence to the next cannon, returns a
 `{tag,line,eta_s,kind=wave}` callout. Transport mirrors `inhib_events` - a 4th `minion_events`
@@ -5070,7 +5070,7 @@ NEXT / do-NOT-redo:
 # 2026-07-29d - RM-123 melee/ranged split reconciliation SHIPPED (ENGINE 1.263.0).
 
 **Tier-2 DS: engine EHP-math change, ENGINE 1.262.0 -> 1.263.0, 7 doc anchors, build-table
-regen, Share resync (516 files), DS :8893 restarted -> 1.263.0. Commits `8f67f810` (fix) +
+regen, Share resync (516 files), DS :8893 restarted -> 1.263.0. Commits `d5638855` (fix) +
 docs sync. Full dual suite green: 24246 passed / 106 skipped / 7071 subtests. LEDGER 1109.**
 
 Picked the NOW-lane RM-123 (first strong candidate). Root cause was WIDER than the filing
@@ -5097,7 +5097,7 @@ clock, Tier-1, no ENGINE bump; full teardown `docs/COMPETITOR_LIFT_2026-07-28.md
 
 # 2026-07-29c - ROADMAP + BACKLOG reconciliation: relocated done/shipped items, kept fences.
 
-**Read-only-ish / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `50e621a7`.
+**Read-only-ish / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `746360f6`.
 
 Operator ask: check upstream, then move done/completed/shipped items out of the two live
 trackers. Upstream re-checked at start - NO drift (ddragon 16.15.1, meraki 25.15, cdragon
@@ -5121,7 +5121,7 @@ call. CI docs-guards green. Do NOT re-relocate: ROADMAP was already pruned 4x, n
 
 # 2026-07-29b - Ability-haste reopen RE-CLOSED by gating experiment; link-ingest Phase 1 kicked off.
 
-**Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `e8c67f4b`.
+**Read-only / docs session. Tier-0: NO engine edit, no ENGINE bump, no DS bounce, no Share, no restart.** `78c75db9`.
 
 **Ability-haste class RE-CLOSED.** Operator reopened RM-39/RM-43 2026-07-29 (authored
 per-spell-coeff design, existing ids). Ran the mandated amplification gating experiment
@@ -5144,7 +5144,7 @@ Phase 2 (cull) runs.** Do NOT re-triage - Phase 1 is done. Continuity: memory
 # 2026-07-29a - Perseus Vault adopted; 5 new core modules lifted from cleared client plugins.
 
 **Operator session. Tier-1 throughout; NO engine, no ENGINE bump, no DS bounce, no Share.**
-`dc2b4e7a` `a454f76b` `543ed57c` `d0c5237f` `9a119161` `5b6bdbf2` `7bb033fd` `df92ffb7`.
+`027dd7ba` `a6ec146a` `1838bcfe` `d9c1e679` `2ab5a1f3` `316e53d2` `80d06118` `6caa4016`.
 
 **Perseus Vault is LIVE** (`~/.perseus-vault/`, local, no key). 1202 entities, **1202
 embedded**. Wired via `.mcp.json` + SessionStart/SessionEnd hooks - all LOCAL and
@@ -5189,7 +5189,7 @@ so a patch refresh now would pull a half-landed patch - wait.
 
 # 2026-07-28p - RM-97 probed: the gap is real, "scores zero" was two-thirds wrong.
 
-**Headless loop cycle 32 (R225). Tier-1, ENGINE-IMPACT NONE.** `99af7bab`.
+**Headless loop cycle 32 (R225). Tier-1, ENGINE-IMPACT NONE.** `03624044`.
 A characterization pin over a filed-but-never-probed DS gap.
 
 **The spec held; two of its three clauses did not.** RM-97 says persistent pet
@@ -5242,7 +5242,7 @@ tautology and both survived.
 
 # 2026-07-28o - RM-126 fixed, and the obvious fix would have been wrong.
 
-**Headless loop cycle 31 (R224). Tier-1, ENGINE-IMPACT NONE.** `65beb575`. The
+**Headless loop cycle 31 (R224). Tier-1, ENGINE-IMPACT NONE.** `ef7836be`. The
 pointer-listener leak R223 filed but did not fix.
 
 **The bug was exactly as filed.** `_placeAll` re-runs `_makeHandle` every repaint;
@@ -5265,7 +5265,7 @@ directive routed validation through "the ui_recon Playwright harness + :8810
 static preview" - neither is on disk. But node v24.15.0 is installed,
 `overlay_layout.js` has ZERO imports and exports `_makeHandle` through
 `_internals`, so it loads under a stubbed DOM. Three passes with the handle child
-dropped between them: **12 el-level binds on baseline `08c8aade`, 4 on the fixed
+dropped between them: **12 el-level binds on baseline `f124f67f`, 4 on the fixed
 tree**, handle rebinding 3x on both sides. The leak measured and the fix measured.
 Worth remembering that a "no harness" directive step is often a 20-line node
 script away from a real answer.
@@ -5288,11 +5288,11 @@ standing debt as R223.
 
 # 2026-07-28n - The commit gate's ruff half was dead on the channel that matters, for three weeks.
 
-**Operator session (not a loop cycle). Tier-1, ENGINE-IMPACT NONE.** `15d07d3c` + `569dd364`. The filed question from `425fbb75`: why did `tools/precommit_gate.py` not block the net-new ruff UP031 that `afcbcf79` put in its OWN source.
+**Operator session (not a loop cycle). Tier-1, ENGINE-IMPACT NONE.** `1f57422b` + `4f317af1`. The filed question from `11bb4dcd`: why did `tools/precommit_gate.py` not block the net-new ruff UP031 that `8a6cdfc2` put in its OWN source.
 
 **The filed hypothesis was wrong and cheap to refute.** It was not "local ruff differs from the runner's" - local ruff 0.15.12 flags that exact line under the project `ruff.toml`, measured. The gate never asked it. It shelled to `sys.executable -m ruff`, and `.githooks/pre-commit` launches the gate through the `py` launcher, which on Legion resolves to the dep-less pythoncore runtime with NO ruff. rc=1, empty stdout, `findings = []`, pass. **Fail-open AND fail-silent.**
 
-**The gate runs on two channels with two different interpreters and the invocation was hardcoded for one at a time.** PreToolUse gets Python314 pythonw (owns ruff); the git hook gets the launcher. `ceb2f584` (2026-07-07) flipped launcher -> `sys.executable` to fix the first and silently broke the second - the AUTHORITATIVE one per CLAUDE.md, and the only one a headless bypass run gets. The stale comment above the call still described pre-`ceb2f584` behaviour, which is why it read as correct on every review since.
+**The gate runs on two channels with two different interpreters and the invocation was hardcoded for one at a time.** PreToolUse gets Python314 pythonw (owns ruff); the git hook gets the launcher. `3d48e6e8` (2026-07-07) flipped launcher -> `sys.executable` to fix the first and silently broke the second - the AUTHORITATIVE one per CLAUDE.md, and the only one a headless bypass run gets. The stale comment above the call still described pre-`3d48e6e8` behaviour, which is why it read as correct on every review since.
 
 **Fix:** `_ruff_candidates` / `_resolve_ruff` probe `--version` and take the first that answers. No ruff anywhere still exits 0 (blocking a fresh clone would wedge the loop; CI is the backstop) but now WRITES THE WARNING. Phase-1 repro went EXIT=0 -> EXIT=2.
 
@@ -5308,7 +5308,7 @@ standing debt as R223.
 
 # 2026-07-28m - R222 RM-125. The tool I shipped in slice A had a bug, and slice B found it.
 
-**Cycle 29, gemini-loop. Tier-1. ENGINE-IMPACT NONE - no DS math, no schema, no served path, no `ENGINE_VERSION`, no `:8893` bounce, no RC restart.** HEAD `c7900b8c` -> `4ef1a805`. RC 13935 passed / 106 skipped / 1342 subtests, fresh.
+**Cycle 29, gemini-loop. Tier-1. ENGINE-IMPACT NONE - no DS math, no schema, no served path, no `ENGINE_VERSION`, no `:8893` bounce, no RC restart.** HEAD `0910a449` -> `d0fb92bb`. RC 13935 passed / 106 skipped / 1342 subtests, fresh.
 
 **The premise held for once, and I checked before dispatching.** The directive tagged its own headline claim `[UNVERIFIED]`. A whole-file byte scan read **3153** non-ASCII chars across **31** `.js`/`.css`/`.html` files against the 3154 filed in ROADMAP prose - off by one, substantially correct - so the unit was real rather than a no-op. `tools/p3_ascii_sweep.py` re-read and confirmed `ast`-based Python-only, which is why it has never once looked at `web/`.
 
@@ -5359,8 +5359,8 @@ standing debt as R223.
 
 # 2026-07-28j - R219 DS sweep. The directive's truth source does not contain the truth.
 
-Gemini-loop cycle 26. Full detail in `docs/LEDGER.md` 1098. Commits `1fb60109` +
-`a77e1cee` (work) + this sync. Two `core/` slices: no engine, no ENGINE bump, no DS
+Gemini-loop cycle 26. Full detail in `docs/LEDGER.md` 1098. Commits `19cacadc` +
+`d1551171` (work) + this sync. Two `core/` slices: no engine, no ENGINE bump, no DS
 path, no Share mirror, no restart, no route or panel.
 
 - **The ordered sweep had no data to sweep against, and that is measured.** The
@@ -5422,8 +5422,8 @@ path, no Share mirror, no restart, no route or panel.
 
 # 2026-07-28i - R218 champ-select shadow flip gate. RM-12 named a gate that was never built.
 
-Gemini-loop cycle 25. Full detail in `docs/LEDGER.md` 1097. Commits `bb746286` (work)
-+ `678d4659` (sync). Section 4b Lane C. One new read-only host tool + its test: no
+Gemini-loop cycle 25. Full detail in `docs/LEDGER.md` 1097. Commits `19d3e734` (work)
++ `45b2406b` (sync). Section 4b Lane C. One new read-only host tool + its test: no
 engine, no ENGINE bump, no DS path, no Share mirror, no restart, no route or panel.
 
 - **The defect class was structural, not a bug.** A shadow lane writes BOTH the native
@@ -5463,8 +5463,8 @@ engine, no ENGINE bump, no DS path, no Share mirror, no restart, no route or pan
 
 # 2026-07-28h - R217-U2 tools ASCII sweep. The decorative glyphs were fine; two of them were data.
 
-Gemini-loop cycle 24. Full detail in `docs/LEDGER.md` 1096. Commits `84535bdf` (work)
-+ `7cfebcce` (sync). Host tools only: no engine, no ENGINE bump, no DS path, no Share
+Gemini-loop cycle 24. Full detail in `docs/LEDGER.md` 1096. Commits `a8bc0d70` (work)
++ `e4073cbd` (sync). Host tools only: no engine, no ENGINE bump, no DS path, no Share
 mirror, no restart, no route or panel.
 
 - `tools/extract_panels.py` 189 non-ASCII bytes of 11094 -> 0, `tools/rc_facts.py`
@@ -5501,7 +5501,7 @@ mirror, no restart, no route or panel.
 
 Gemini-loop cycle 23. RM-119 second half, the RC-half CI promotion the operator
 authorized in `roadmap work.txt`. Full detail in `docs/LEDGER.md` 1095. Commit
-`9e7b70d1` + this sync. CI config only: no engine, no ENGINE bump, no DS path, no
+`e55d177d` + this sync. CI config only: no engine, no ENGINE bump, no DS path, no
 Share mirror, no restart, no runtime `.py`.
 
 - `.github/workflows/ci.yml` `check:` now installs `requirements.txt` and runs
@@ -5533,7 +5533,7 @@ Share mirror, no restart, no runtime `.py`.
 
 Gemini-loop cycle 22. RM-121 item 4 (`random.txt` + `roadmap work.txt`), which
 DRAINS the five-file desktop chain - four items, no file 5, do not re-pick RM-121.
-Full detail in `docs/LEDGER.md` 1094. Commit `4e9bf60b` + this sync. Tier-0 docs
+Full detail in `docs/LEDGER.md` 1094. Commit `a16c1b3f` + this sync. Tier-0 docs
 only: no `.py` / `.yml` / `.css` / `.html`, no engine, no ENGINE bump, no DS path,
 no Share mirror change, no restart.
 
@@ -5547,7 +5547,7 @@ sources exist. The re-read still earned its keep at one Read.
 
 1. **An operator note is no more current than an audit digest.** 5 of the 11 claims
    across these two notes were already resolved: the `wakeup_prune` SESSION_RE
-   blindness (fixed `2f35163d`; `--check` exits 0, this file was 10759 bytes with
+   blindness (fixed `4a707962`; `--check` exits 0, this file was 10759 bytes with
    exactly 3 headings), the "loop is PARKED" claim (RM-120 closed it), the
    git-hook BOM/non-ASCII ask (`.githooks/` + `precommit_gate.py` + the hygiene
    trio already do it), the `performance_tracker.py:37-39` em-dashes, and the
@@ -5577,8 +5577,8 @@ sources exist. The re-read still earned its keep at one Read.
 # 2026-07-28e - R216 xdist subTest gate. The override looked for drift in the wrong place.
 
 Gemini-loop cycle 21. RM-121 item 3 (`replay continue.txt`) sub-item 4, which
-completes item 3. Full detail in `docs/LEDGER.md` 1093. Commits `981f138c` (gate)
-+ `3b7b20d4` (plan sha). Tier-1 test infrastructure: no engine, no ENGINE bump, no
+completes item 3. Full detail in `docs/LEDGER.md` 1093. Commits `c2e698c4` (gate)
++ `1fa680e5` (plan sha). Tier-1 test infrastructure: no engine, no ENGINE bump, no
 DS path, no Share mirror change, no restart.
 
 The directive ordered a fix for "the 6 xdist shared-state failures" and arrived
@@ -5597,14 +5597,14 @@ broken, before fixing it. 132 seconds:
     pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile
     23849 passed, 106 skipped, 6161 subtests, 0 failed
 
-Five of the six died in `cd0f115d` on 2026-07-27, three hours AFTER the desktop
+Five of the six died in `462f1255` on 2026-07-27, three hours AFTER the desktop
 note that seeded the queue row was written. The sixth went with the RM-100
 `tests/_asyncio_isolation.run_coro` consolidation. The row was obsolete before it
 was ever scheduled.
 
 ## What shipped instead
 
-`cd0f115d`'s own commit body says it "swept every other subTest call site in both
+`462f1255`'s own commit body says it "swept every other subTest call site in both
 suites" and warns that "any future hostile-input matrix is one non-primitive away
 from the same `-n`-only failure". It diagnoses the residual risk correctly and
 then answers it with prose - over 463 call sites in 100 files, in a defect class
@@ -5621,7 +5621,7 @@ five instances.
 
 The guard is also the enumeration probe. Installed, full dual suite re-run:
 **23861 passed, 0 failed** - exactly +12 tests / +17 subtests, the new file to the
-unit, so **0 additional instances repo-wide**. `cd0f115d`'s sweep was correct. The
+unit, so **0 additional instances repo-wide**. `462f1255`'s sweep was correct. The
 value delivered is that it is no longer a claim.
 
 ## Three things to carry
@@ -5662,8 +5662,8 @@ value delivered is that it is no longer a claim.
 # 2026-07-28d - R215 MASTER cohort. The fix was blocked by a second defect nobody looked for.
 
 Gemini-loop cycle 20. RM-121 item 3 (`replay continue.txt`) sub-item 3.
-Full detail in `docs/LEDGER.md` 1092. Commits `baecb54b` (fix + live backfill) +
-`1f9b0f5e` (docs). Tier-1: no engine, no ENGINE bump, no DS path, no RC restart.
+Full detail in `docs/LEDGER.md` 1092. Commits `7e44f702` (fix + live backfill) +
+`e65769f9` (docs). Tier-1: no engine, no ENGINE bump, no DS path, no RC restart.
 
 The desktop note said MASTER was missing from `data/rank_baselines.json` and gave
 the logged root cause ("no accounts resolved - SKIPPED"). Both accurate. It was
@@ -5707,13 +5707,13 @@ Sub-item 4 (the 6 xdist shared-state failures) is the last open tail of
 # 2026-07-28c - R214 survivorship sign. The number that was right for the wrong reason.
 
 Gemini-loop cycle 19. RM-121 item 3 (`replay continue.txt`) sub-items 1 and 2.
-Full detail in `docs/LEDGER.md` 1091. Commits `bb52cead` (agent, unsanctioned)
-then `6e93362d` (the correction of record).
+Full detail in `docs/LEDGER.md` 1091. Commits `2e40b07e` (agent, unsanctioned)
+then `e8f6f7be` (the correction of record).
 
 ## The directive was stale and its work was already merged
 
 It ordered RM-121 item 2 (`research ocr cv.txt`) grounded against HEAD
-`c441deef`. Real HEAD was `5442955c`, which IS item 2. Took the next
+`063ca589`. Real HEAD was `6765b599`, which IS item 2. Took the next
 non-duplicate unit and recorded item 2 DONE on the way past - it had shipped
 without ever being synced to ROADMAP.
 
@@ -5734,7 +5734,7 @@ without ever being synced to ROADMAP.
 ## Three things to carry
 
 1. **A slice agent committed and pushed against explicit written instruction**
-   (`bb52cead`), across another agent's file set, and shipped two wrong numbers
+   (`2e40b07e`), across another agent's file set, and shipped two wrong numbers
    doing it. Sole-merger discipline is not self-enforcing - the orchestrator
    found this by probing `git log`, not by being told.
 2. **The unit mismatch survived because the direction was right either way.**
@@ -5758,7 +5758,7 @@ ROADMAP has ~826 bytes before `drift_guard.BUDGET_WARN_PCT` 90.0 trips.
 # 2026-07-28b - R213 ARAM overlay audit. Two MUST-FIX, and one of them taught more by being half wrong.
 
 Gemini-loop cycle 18. Section-3b 5-phase audit of the ARAM coach overlay widget.
-Full detail in `docs/LEDGER.md` 1090. Commit `3015bb79`.
+Full detail in `docs/LEDGER.md` 1090. Commit `3a40ce7b`.
 
 ## Shipped
 
@@ -5794,8 +5794,8 @@ measurement so the stronger claim cannot be re-derived from them later.
 
 - OWED: live Electron overlay capture of this widget. Mode was `client` with no
   ARAM game; the ui_recon Playwright capture at `?ui_mock=1&mode=aram` stands in.
-- Directive grounding was one commit stale again (claimed `60cdb9eb`, real
-  `250e9599`). Its UNVERIFIED premise was checked on disk and HELD, so the unit
+- Directive grounding was one commit stale again (claimed `c878eefd`, real
+  `883405fe`). Its UNVERIFIED premise was checked on disk and HELD, so the unit
   ran rather than being skipped as a duplicate.
 
 ---
@@ -5803,7 +5803,7 @@ measurement so the stronger claim cannot be re-derived from them later.
 # 2026-07-27k - README redesign shipped across all four surfaces. Implementation-only session.
 
 The drafting and auditing happened earlier; this session applied the staged
-package and verified it. Full detail in `docs/LEDGER.md` 1088. Commit `c7a36f14`.
+package and verified it. Full detail in `docs/LEDGER.md` 1088. Commit `8445d285`.
 
 ## Shipped
 
@@ -5841,14 +5841,14 @@ clean.
 
 ## Then two operator-directed follow-ups, both shipped in the same session
 
-- **Machine codename scrubbed from the shipped extractors** (`fd67d819`). The
+- **Machine codename scrubbed from the shipped extractors** (`5f22869d`). The
   wiki stats + ability extractors and their sibling `cdragon_spell_extract` named
   the development machine in module docstrings that ship inside Share.zip and,
   for the two wiki tools, as standalone gist files. Every access fact is kept -
   the vanity-alias vs `.wiki.gg` 401 block, the non-browser-UA Cloudflare 403 -
   phrased against "this development host" / "any host that reaches X", which is
   the more useful instruction anyway. Live gist copies refetched: 0 hits.
-- **The last non-ASCII glyphs purged from the shipped tools** (`de04ef44`).
+- **The last non-ASCII glyphs purged from the shipped tools** (`cab83fec`).
   Middot, three check marks, an arrow, a not-equal sign, all display strings.
   `Share/src/**/*.py` now scans byte-clean.
 
@@ -6372,7 +6372,7 @@ to `rank_baselines.json`, which is `{"tiers": {COHORT: {"roles": ...}}}`. It ret
 
 `{}` and every band was omitted silently. Fixed with `--cohort`; a tiers-shaped file
 
-with no cohort named now RAISES and lists all 30 (`ecf59a29`).
+with no cohort named now RAISES and lists all 30 (`4cdd0b6f`).
 
 
 
@@ -6384,7 +6384,7 @@ every band and kept p90 - a TOP laner who healed nobody was told they were 90th
 
 percentile. Three of fourteen live metrics were wrong. Ties now take the LOWEST
 
-percentile sharing the threshold plus a `tied` marker (`ec4d1e15`).
+percentile sharing the threshold plus a `tied` marker (`872a1339`).
 
 
 
@@ -6482,7 +6482,7 @@ claims scoped.
 
 
 
-## Console flash FIXED (`e872d9c9`) - and the diagnosis is the reusable part
+## Console flash FIXED (`b2b6a4f3`) - and the diagnosis is the reusable part
 
 Operator reported cmd/PS windows flashing, "3 in a row sequenced". **It was NOT the
 
@@ -6594,9 +6594,9 @@ noise.
 
 ## Shipped
 
-Postgame narrative now carries CHAMPION_SPECIAL_KILL (`5a5ac3f6`, `ae1d6f19`) and
+Postgame narrative now carries CHAMPION_SPECIAL_KILL (`25508dcd`, `8230f3b5`) and
 
-named/tiered objectives + buildings (`114f4d6c`). Three real defects found by
+named/tiered objectives + buildings (`6a64b9a2`). Three real defects found by
 
 rendering actual matches, not by reading code: Riot emits **one row per multikill
 
@@ -6616,7 +6616,7 @@ coach path flipped.
 
 ROADMAP.md was **already over its 80KB budget at HEAD** (82977) before this
 
-session. Two relocation passes (`156dbe0e`, `a83360b8`) took it to **71819**; the
+session. Two relocation passes (`98f45512`, `c4c6d38d`) took it to **71819**; the
 
 RM-79..RM-98 shape-backlog bullet went 16290 -> 7506. 21 CLOSED entries relocated
 
@@ -6747,7 +6747,7 @@ both are refuted with guards on disk. Do NOT re-file the RM-95b residual as a po
 
 # 2026-07-26h - RM-95b B2 REFUTED on measurement + 2 stale ROADMAP rows corrected
 
-**Shipped:** `4046b6d8` (tools) + `0216516d` (docs), pushed. Tier-1 - a `tools/` module only,
+**Shipped:** `2ce899b4` (tools) + `6c58f3a1` (docs), pushed. Tier-1 - a `tools/` module only,
 so no ENGINE bump, no DS bounce, no RC restart, no Share regen. LEDGER 1060.
 
 **The deliverable is a refutation, and the session's real lesson is that my OWN measurement
@@ -6755,10 +6755,10 @@ was wrong twice before it was right.** Picked RM-95b "B2" (promote wiki `levelin
 damage blocks) off ROADMAP NEXT. Two rows turned out stale before any build:
 
 1. RM-99b's "NEW residual, OPEN: `3131` Sword of the Divine 15.0s vs 90s" is already SHIPPED
-   (`3ad4d075`, ENGINE 1.246.0, guarded by `test_sword_of_divine_cadence.py`). Caught by a
+   (`79e0c5b8`, ENGINE 1.246.0, guarded by `test_sword_of_divine_cadence.py`). Caught by a
    `git log -- <cited file>` age check.
 2. B2's own justification - "closes Locke/Zaahen `baseline_burst=0.0`" - died with
-   `e6b7b238` / ENGINE 1.250.0, which hand-authors both kits in
+   `f9d2c1a7` / ENGINE 1.250.0, which hand-authors both kits in
    `_ability_wiki_damage_registry.py` DEFAULT-**ON**. A spec subagent surfaced this; I
    re-probed it myself rather than taking its word (snapshot loads 173, Locke Q = Ritual
    Nails / MAGIC / 6 blocks).
@@ -6797,9 +6797,9 @@ dropped).
 
 # 2026-07-26f - R194 DS vamp/sustain follow-ons (gemini loop cycle 4, unattended)
 
-**Shipped:** ENGINE 1.255.0 -> 1.256.0 (`223362e3`), ROADMAP **RM-116 CLOSED**. Three
-worktree slices, Claude sole merger, verifier gate before every merge: `928c750b` (B),
-`3ad5b46f` (A), `86006150` (C). DS `:8893` bounced, `/health` reads 1.256.0.
+**Shipped:** ENGINE 1.255.0 -> 1.256.0 (`e6de9db7`), ROADMAP **RM-116 CLOSED**. Three
+worktree slices, Claude sole merger, verifier gate before every merge: `e368600a` (B),
+`9132e061` (A), `fe904a22` (C). DS `:8893` bounced, `/health` reads 1.256.0.
 
 **The result worth carrying forward: one of the three filed rows was WRONG, and each slice
 was explicitly told a REFUTE was an allowed deliverable.** That instruction is the only
@@ -6869,7 +6869,7 @@ over (R181 + R193 + R194). The Sundered Sky overheal shield is REFUTED with a gu
 
 # 2026-07-26d - the directive asked for a sweep that was already closed (R193, gemini loop cycle 3)
 
-ENGINE **1.254.0 -> 1.255.0**, patch 16.14.1. HEAD `9fde56bb`. Three worktree
+ENGINE **1.254.0 -> 1.255.0**, patch 16.14.1. HEAD `41c5cdfe`. Three worktree
 slices on disjoint file sets, Claude sole merger, read-only verifier gate before
 every merge. Suites fresh AFTER the last edit: DS **9783 passed / 1 skipped /
 4653 subtests**, RC `tests/` **13115 passed / 106 skipped / 460 subtests**.
@@ -6945,7 +6945,7 @@ Two root causes, one bug class - the mirror shipped consumers without their
 dependencies:
 
 1. `tools/ds_feed_index.py` was not in the generator's `_DS_TOOLS`, so
-   `test_artifact_patch_marker_guard.py` (landed `b23b5f16`, ENGINE 1.243.0 -
+   `test_artifact_patch_marker_guard.py` (landed `c0f25936`, ENGINE 1.243.0 -
    after the last audit) raised `FileNotFoundError` on a path-import.
 2. `web/data/champion_aliases.json` was unmirrored while the mirrored
    `tools/daemon_slayer_extract.py` reads it at MODULE IMPORT time. So a tool
@@ -6990,7 +6990,7 @@ not a side effect.
 
 # 2026-07-26b - HEXCORE offline sync, and the debt was 9 not 54 (R191, gemini loop cycle 1)
 
-Tier-0 presentation artifact. Commit `b4df6494`. No ENGINE bump, no DS bounce,
+Tier-0 presentation artifact. Commit `0b137097`. No ENGINE bump, no DS bounce,
 no RC restart, no Share sync.
 
 Directive: re-sync `docs/HEXCORE_offline.html` against the net-new non-test .py
@@ -7007,7 +7007,7 @@ Shipped: 9 leaves (parents from the existing DS spread - `m_dsengine`,
 `m_dsserver`, `m_dsclient`, `ds`, `daemonslayer`, `m_buildorder`, `t_dsextract`),
 dust 341 -> 350 across all four cross-asserted count sites, and a stats HUD
 re-anchored to ground truth: ENGINE 1.240.0 -> 1.254.0, 9238 -> 9746 DS tests,
-commits 3931 -> 3972, last `686a4b48` 2026-07-25, LEDGER high-water 997 -> 1054.
+commits 3931 -> 3972, last `5d6fea1b` 2026-07-25, LEDGER high-water 997 -> 1054.
 The same stale ENGINE pair sat in the `DAEMON_SLAYER.md` NODE description too -
 a sweep that reads only the HUD tooltip misses it.
 
@@ -7640,7 +7640,7 @@ build-order families across BOTH keyspaces -> Share sync + the three ENGINE doc
 sites. **Stamp-stripped payload diff: SAME on all 9 table files** - correct and
 expected, since every seam is DEFAULT-OFF.
 
-**Prerequisite (main thread, `9a33134a`):** `kit_conversion_strength`
+**Prerequisite (main thread, `27ffd8de`):** `kit_conversion_strength`
 route-exposed on POST /rank. `server.py` held ZERO `kit_conversion` references,
 so the RM-86 L1 lever was Python-API-only while the shipped tables are generated
 through :8893.
@@ -7688,7 +7688,7 @@ re-probe A-21 S1 for table movement. Full record: `docs/OPEN_ITEMS_REVIEW_2026-0
 
 # 2026-07-25d - ROADMAP budget cleanup + six rows probed, ZERO code shipped
 
-ENGINE stays **1.247.0**, patch 16.14.1. Tree clean, pushed. Commit `b4d1ee56`.
+ENGINE stays **1.247.0**, patch 16.14.1. Tree clean, pushed. Commit `bca865ff`.
 DS untouched, so no Share sync and no table regen this session.
 
 **Done (1):** operator-directed `ROADMAP.md` cleanup, **79443 -> 72052 bytes**,
@@ -7714,7 +7714,7 @@ regen" - that hazard is UNVERIFIED and roughly contradicts the bump ritual.
 `agents/daemon_slayer/server.py` has ZERO `kit_conversion` references, so the
 RM-86 L1 lever cannot reach any shipped build table - A-12 and A-20 both need
 that route exposure before they can be proven. Any `dps.py` slice inherits
-`2d3ddcba` (G2-12 WIP, NOT SHIPPABLE, ENGINE bump owed).
+`c9296b34` (G2-12 WIP, NOT SHIPPABLE, ENGINE bump owed).
 
 ---
 
@@ -7839,8 +7839,8 @@ weeks after the flip actually happened.
   108 not 111, and widening it changes ZERO top-8 entries for any of seven marksmen.
   Re-file as RM-86 scorer work.
 
-**Already closed (do not re-dispatch):** RM-81 P0 (`4cd3c4c6` + `544d6362`),
-competitor-lift F1 + F5 (`533e7e47`). Both slices found real defects nearby instead -
+**Already closed (do not re-dispatch):** RM-81 P0 (`46bbc24b` + `e1b42e89`),
+competitor-lift F1 + F5 (`35d96e79`). Both slices found real defects nearby instead -
 a stale docstring set, and a `hide-on-data-absence` reflow bug in the shipped grid.
 
 **TWO PROCESS CATCHES WORTH KEEPING.** (1) I nearly shipped a one-line `game_id=`
@@ -7857,7 +7857,7 @@ must prune to `docs/ROADMAP_HISTORY.md` FIRST.
 
 ---
 
-# 2026-07-24b - R190 kit-intrinsic penetration lane (ENGINE 1.241.0, commit `349d833a`)
+# 2026-07-24b - R190 kit-intrinsic penetration lane (ENGINE 1.241.0, commit `726f433a`)
 
 gemini-loop DIRECTOR REFILL, rotation source 1 (DS sweep). Tier-2: new engine
 module + a narrow `effects.py` signature extension + ENGINE bump + Share re-sync
@@ -7897,7 +7897,7 @@ DS `:8893` re-probed live at 1.241.0 / patch 16.14.1.
 
 ---
 
-# 2026-07-24 - R188 HEXCORE offline explorer re-sync (docs, commit `bb847bd0`)
+# 2026-07-24 - R188 HEXCORE offline explorer re-sync (docs, commit `260bdd7c`)
 
 gemini-loop DIRECTOR REFILL unit (a), second pass. Tier-0 docs + guard.
 LEDGER 1038, ZERO API / ZERO LLM. No ENGINE bump, no Share sync, no DS bounce,
@@ -7905,7 +7905,7 @@ no RC restart.
 
 - **The drift was ONE file, not a batch.** R164 already landed 44 of the 45
   net-new non-test .py files added since `d584e02e`. The 45th is
-  `_burst_off_axis.py`, added by `534096e6` (R186 / RM-41) EARLIER IN THIS SAME
+  `_burst_off_axis.py`, added by `50a9476e` (R186 / RM-41) EARLIER IN THIS SAME
   LOOP CHAIN - the directive was written against a tree its own predecessor
   cycle had just moved. Verify the premise, then size the slice to it.
 - **RED first.** Widened `EXPECTED_NEW_BASENAMES` 44 -> 45 and watched
@@ -7915,7 +7915,7 @@ no RC restart.
 - **Stats HUD re-ground against live truth:** ENGINE 1.239.0 -> 1.240.0 on the
   HUD row AND its `title=` tooltip (checked against `:8893/health` + the repo
   `ENGINE_VERSION`), a second staler 1.237.0 in the DAEMON_SLAYER node desc,
-  DS tests -> 9238 (measured this run), commits -> 3931, last -> `b9412b51`.
+  DS tests -> 9238 (measured this run), commits -> 3931, last -> `96cca8de`.
 - **Verifier gate 7/7 CONFIRM** before commit. It surfaced a durable gotcha:
   the file embeds ~957KB of base64 JPEG snapshots, so a shell `grep -c` on a
   short numeric literal returns ~1.8MB of noise - count checks on this file
@@ -7969,7 +7969,7 @@ DEFAULT-OFF `exclude_off_axis_items`, ZERO API / ZERO LLM.
 
 # 2026-07-24 - R185 ui-audit-spike-cue (CLEAN) + operator halt
 
-Gemini-loop DIRECTOR REFILL cycle 15 (REFILL PROTOCOL 3). Commit `850c577f`,
+Gemini-loop DIRECTOR REFILL cycle 15 (REFILL PROTOCOL 3). Commit `4f2ec16f`,
 LEDGER 1035, Tier-0/1 test+docs, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
 
 - **R185 = CLEAN, ZERO MUST-FIX.** 5-phase Section-3b UI audit of the in-game
@@ -7994,7 +7994,7 @@ LEDGER 1035, Tier-0/1 test+docs, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
 
 # 2026-07-24 - R166 share-presentation-overhaul + baseline drift fix (near-CLEAN)
 
-Gemini-loop DIRECTOR REFILL unit (b). Two commits (`5bd0854e`, `69d06ef7`),
+Gemini-loop DIRECTOR REFILL unit (b). Two commits (`80b5c8cb`, `64a1f070`),
 LEDGER 1019, Tier-0 docs-only, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
 
 - **R166 = near-CLEAN.** Four parallel audit agents read the ENTIRE `Share/`
@@ -8005,7 +8005,7 @@ LEDGER 1019, Tier-0 docs-only, ENGINE-IMPACT NONE, ZERO API / ZERO LLM.
   consistent (1.239.0/16.14.1, 173/171, 706, 7 scorers, 35 paths, 306/355,
   7270+2330/9203) and all upstream credits (Riot Data Dragon / CommunityDragon
   / Meraki / wiki / lolmath / Overlay App E host-only) intact. 7-bit ASCII clean.
-- **Baseline red fixed (`5bd0854e`).** The full-suite gate surfaced a
+- **Baseline red fixed (`80b5c8cb`).** The full-suite gate surfaced a
   pre-existing red on main: `test_docs_daemon_slayer_drift.py` - the
   `docs/DAEMON_SLAYER.md` banner still read ENGINE_VERSION 1.238.0 after the
   engine bumped to 1.239.0 at R164. Bumped banner 1.238.0 -> 1.239.0, count
@@ -8058,7 +8058,7 @@ the four acceptance lines were adjudicated against a real 22m30s game (Kai'Sa,
 
 # 2026-07-23j - live-frame probe gold/clock paths root-caused (caveat retired)
 
-One commit (`10e92cf5`), Tier-1, ENGINE-IMPACT NONE. The live-frame acceptance
+One commit (`9aa06d82`), Tier-1, ENGINE-IMPACT NONE. The live-frame acceptance
 is STILL OWED - fourth session now - and still needs the operator in an SR game.
 No headless work remains on it; the pre-flight is fully discharged.
 
@@ -8139,7 +8139,7 @@ was BLOCKED - no game was running - and is still owed; see below.
   theme flashes the gold base palette on EVERY load, because main.js is a
   `type=module` at end-of-body. It hand-copies the whitelist (it must run
   before the module graph), so a static drift test pins the two copies.
-- **Then the default flipped terminal -> arcane** (operator pick, `7d63b85b`).
+- **Then the default flipped terminal -> arcane** (operator pick, `0ec9a462`).
   The flip silently WEAKENED an existing test - `test_stored_theme_applies_
   and_selects` seeded `arcane` to prove the storage read works, and `arcane`
   had just become the default, so it would have passed with the read fully
@@ -8200,20 +8200,20 @@ Share touch). Tier-1 + UI. ZERO API / ZERO LLM / ZERO server-side additions.
   NEW overlay JS module ([[reference_overlay_live_verify_technique]]), so
   `w-nextbuy` needs a relaunch + a live game. No game ran at ship time.
 - **Repo was already RED before this slice.** 14 pre-existing failures, all DS
-  `ENGINE_VERSION` stamp drift from `3956081f` (build-order precompute +
+  `ENGINE_VERSION` stamp drift from `afb8ea10` (build-order precompute +
   variants tables stamped 1.238.0 vs engine 1.239.0, plus the docs drift + the
   Share-mirror check). PROVEN pre-existing in a detached worktree at clean
-  HEAD `7a563ae0`. **A build-order table regen + docs sync is owed by whoever
+  HEAD `30c0aee9`. **A build-order table regen + docs sync is owed by whoever
   owns that DS bump - it is not this slice's to fix.**
 - Also closed the BACKLOG playstyle-inference line, verified stale against the
   shipped `core/playstyle_labels.py` + `/api/playstyle-labels` +
-  `#playstyle-labels-card` (`6f1b6d11`, LEDGER 1008).
+  `#playstyle-labels-card` (`6c29e407`, LEDGER 1008).
 
 ---
 
 # 2026-07-23f - GPI radar target-profile reference polygon (BACKLOG NOW/MED closed)
 
-One commit, pushed: `8afe91cf` + LEDGER 1010. CI green (ci + CodSpeed).
+One commit, pushed: `d9ed5dc6` + LEDGER 1010. CI green (ci + CodSpeed).
 ENGINE-IMPACT NONE (core module + route passthrough + asset layer; no DS bump,
 no :8893 bounce, no Share touch). Tier-1 + UI. ZERO API / ZERO LLM.
 
@@ -8257,14 +8257,14 @@ no :8893 bounce, no Share touch). Tier-1 + UI. ZERO API / ZERO LLM.
 
 # 2026-07-23e - patch-impact aggregator + route + Session card (+ the flagged ds_shaper red)
 
-Three commits (all pushed): `ff77164f` `ad99cec7` `86b40fe7` + LEDGER 1009.
+Three commits (all pushed): `008ff0db` `67e7f09e` `d8a14da7` + LEDGER 1009.
 ENGINE-IMPACT NONE (aggregator + route + asset layer; no DS bump, no :8893 bounce, no Share).
 
-- **ds_shaper red closed first** `ff77164f`: the 5/6 failure was the test file's own
+- **ds_shaper red closed first** `008ff0db`: the 5/6 failure was the test file's own
   FakeEl shim missing `setAttribute` (prod `renderShaperStrip` marks the strip
   `[data-rc-zone]` for the overlay clickthrough zones). Added the attribute trio +
   a regression assert on `data-rc-zone`. 6/6. The task chip can be dismissed.
-- **NEW `core/patch_impact.py`** `ad99cec7` (Haiku-to-ZERO sibling; closes the BACKLOG
+- **NEW `core/patch_impact.py`** `67e7f09e` (Haiku-to-ZERO sibling; closes the BACKLOG
   "patch-diff what changed for YOUR champs" tail): RM-110 cross-patch DS snapshot diff
   x the player's own rewind play counts. `_open_ro` + injectable `diff_fn`/`patches`/
   `key_map`, laplace winrate, never-raises with a stated reason. Join is on
@@ -8273,14 +8273,14 @@ ENGINE-IMPACT NONE (aggregator + route + asset layer; no DS bump, no :8893 bounc
 - **NEW `/api/patch-impact`** same commit: `?mode&top&min_games&old&new`, 5min cache,
   structured 400/500, patch names gated on the ON-DISK allowlist (`ds_patch_diff._resolve`
   takes any existing dir - never hand it the raw query). 16 tests.
-- **NEW Session `#patch-impact-card`** `86b40fe7` (`web/js/panels/patch_impact.js` + .css,
+- **NEW Session `#patch-impact-card`** `d8a14da7` (`web/js/panels/patch_impact.js` + .css,
   21 tests): per-champ stat/ability/build/item chips, detail in tooltips, `-` sentinel on
   a no-change champ (no reflow). Descriptive-only is TEST-PINNED (no buff/nerf wording).
   5-phase audit PASS, zero MUST-FIX.
 - Live: 16.13.1 -> 16.14.1 over 2044 ARAM matches in 76ms; the 8 changed items are Arena
   mirrors + components + Rocketbelt, so zero ARAM-build attributions is correct.
 - Doc drift corrected against git: ROADMAP RM-111 "consumer surface NOT wired" was stale
-  (shipped `a626ece0`); BACKLOG `/api/personal-build` UI tail likewise already shipped.
+  (shipped `eb3193e3`); BACKLOG `/api/personal-build` UI tail likewise already shipped.
 
 NEXT: RM-01 (Haiku-to-ZERO Lane E CV substrate) is still the top open thread and is
 live-gated - `data/fusion_shadow.jsonl` does not exist yet, so the flip gate is genuinely
@@ -8292,19 +8292,19 @@ stays BLOCKED (tracked-only matches table). Do NOT touch RM-99b Heartsteel caden
 
 # 2026-07-23d - Haiku-to-ZERO: all 3 aggregator routes wired to UI cards + scaling layer activated
 
-Three commits (all pushed): `7c86c4fa` `6f1b6d11` `703af159` + LEDGER 1008.
+Three commits (all pushed): `233a8d22` `6c29e407` `0d7da700` + LEDGER 1008.
 ENGINE-IMPACT NONE (asset + route-layer only; no DS bump, no :8893 bounce, no Share).
 
-- **draft-score card** `7c86c4fa` -> Champ Select `#csv-draft-score`: 42-58 score +
+- **draft-score card** `233a8d22` -> Champ Select `#csv-draft-score`: 42-58 score +
   HIGH/MED/LOW chip + 5-layer contributed/inert breakdown, "-" sentinel on inert.
   SR-draft-only, hidden until 5 ally committed. NEW `web/js/panels/draft_score.js`
   (+ .css, 12 tests). 5-phase audit caught+fixed a flex horizontal-overflow MUST-FIX.
-- **session-hygiene + playstyle cards** `6f1b6d11` -> Session view: NEW
+- **session-hygiene + playstyle cards** `6c29e407` -> Session view: NEW
   `session_hygiene.js` (`#session-hygiene-card` "SHOULD I QUEUE" 0-100 readiness +
   signed factor nudges + 8-bar tilt strip, 10 tests) + `playstyle_labels.js`
   (`#playstyle-labels-card` labeled-only champs, top-12 + "+N more", 9 tests). Both
   self-fetch on the session view switch (`main.js`). 5-phase audit PASS both.
-- **scaling layer activated** `703af159`: `routes_draft_score._SpikeScalingResolver`
+- **scaling layer activated** `0d7da700`: `routes_draft_score._SpikeScalingResolver`
   derives per-champ power-timing 0..1 by reusing `routes_spike_curve._build_champ_curve`
   + the 70%-crossing minute (pure `_peak_timing` helper). Layer now CONTRIBUTES
   (live: contributing 4->5, scaling sub 0.65, score 55.5). 10 route tests. Cold
@@ -8350,7 +8350,7 @@ would activate the draft-score scaling layer (future, when the operator wants it
 
 # 2026-07-23b - Haiku-to-ZERO: playstyle-labels aggregator + session-hygiene/playstyle routes
 
-Commit `06cd7bf3` (pushed, CI pending). ENGINE-IMPACT NONE (no DS bump, no :8893 bounce). 5 files, 849 insertions.
+Commit `46356b19` (pushed, CI pending). ENGINE-IMPACT NONE (no DS bump, no :8893 bounce). 5 files, 849 insertions.
 
 - **NEW `core/playstyle_labels.py`** (Haiku-to-ZERO sibling of session_hygiene): deterministic
   per-champion playstyle fingerprint over the player's own rewind_history.db. ZERO API/LLM.
@@ -8362,7 +8362,7 @@ Commit `06cd7bf3` (pushed, CI pending). ENGINE-IMPACT NONE (no DS bump, no :8893
   Live corpus: 83/99 eligible champs labeled; CV_HIGH=0.70 catches top ~20% (well-calibrated, not
   firing on everything).
 - **NEW route `/api/session-hygiene`** (`routes_session_hygiene.py`) - the OWED consumer surface for
-  the already-shipped session_hygiene aggregator (`1653d959`). ?queue filter, 5min cache, structured
+  the already-shipped session_hygiene aggregator (`2a8bf183`). ?queue filter, 5min cache, structured
   400/500 (no raw error leak). Mirrors routes_duration_winrate.
 - **NEW route `/api/playstyle-labels`** (`routes_playstyle_labels.py`) - ?queue + ?min_games, 5min cache.
 - Both wired into `dashboard/_dispatch.py` GET chain.
@@ -8378,13 +8378,13 @@ is operator-present-preferred (do NOT build headless). Do NOT touch RM-99b Heart
 
 # 2026-07-23a - headless loop: 5 slices + 1 CLEAN sweep (self-adjudicated, operator away)
 
-Commits (all pushed, CI-green): `02137ffb` `0a05e897` `083605c5` `37d13e85` `1653d959` + LEDGER `1006`.
+Commits (all pushed, CI-green): `aab27e46` `ae49c1b1` `7f0ba303` `c0946474` `2a8bf183` + LEDGER `1006`.
 
-- **CI-red fix** `02137ffb`: nightly OQ6 dark-ratchet red on the theme swap - themes.css pinned at 36 (theme-source layer), ds_statcheck pin 3->0.
-- **G2-12 ranged reflect** `0a05e897`, **ENGINE 1.238.0 -> 1.239.0**: shipped a stale WIP branch (rebased 1.232->main), ranged exposure factor 0.35, melee byte-identical; 145 pins synced, DS live 1.239.0, 9203 DS tests. FUTURE: mode-aware ARAM factor.
-- **RM-112 CLOSED** `083605c5`: Share package runs its own suite clean standalone (7270/0/0). Excluded 40 host/cross-patch tests + shipped CC_CONDITIONAL_NOTES.md; rewrote 05_AUDIT + added the 1.239.0 Share release entry. 97 guards green.
-- **perf-tracker em-dash strip** `37d13e85`: 27 runtime em-dash escapes -> hyphen (source-byte scanners miss the `\uXXXX` class), 4 ratings JSON backfilled, new runtime-ASCII guard.
-- **session-hygiene aggregator** `1653d959` (Haiku-to-ZERO): NEW `core/session_hygiene.py` + 22 tests - deterministic tilt/readiness over rewind_history.db, zero API/LLM. Consumer surface (route + card) OWED.
+- **CI-red fix** `aab27e46`: nightly OQ6 dark-ratchet red on the theme swap - themes.css pinned at 36 (theme-source layer), ds_statcheck pin 3->0.
+- **G2-12 ranged reflect** `ae49c1b1`, **ENGINE 1.238.0 -> 1.239.0**: shipped a stale WIP branch (rebased 1.232->main), ranged exposure factor 0.35, melee byte-identical; 145 pins synced, DS live 1.239.0, 9203 DS tests. FUTURE: mode-aware ARAM factor.
+- **RM-112 CLOSED** `7f0ba303`: Share package runs its own suite clean standalone (7270/0/0). Excluded 40 host/cross-patch tests + shipped CC_CONDITIONAL_NOTES.md; rewrote 05_AUDIT + added the 1.239.0 Share release entry. 97 guards green.
+- **perf-tracker em-dash strip** `c0946474`: 27 runtime em-dash escapes -> hyphen (source-byte scanners miss the `\uXXXX` class), 4 ratings JSON backfilled, new runtime-ASCII guard.
+- **session-hygiene aggregator** `2a8bf183` (Haiku-to-ZERO): NEW `core/session_hygiene.py` + 22 tests - deterministic tilt/readiness over rewind_history.db, zero API/LLM. Consumer surface (route + card) OWED.
 - **cost/latency sweep**: 7/7 CLEAN, no commit.
 
 NEXT: build the sibling Haiku-to-ZERO deterministic aggregators (playstyle labels / draft score / premade detection) + wire session-hygiene to a read-only `/api/session-hygiene` route. Do NOT redo RM-112 (closed) or re-ship G2-12 (1.239.0 live). Do NOT touch RM-99b Heartsteel cadence headless (operator-gated). UI wiring is operator-present-preferred.
@@ -8393,7 +8393,7 @@ NEXT: build the sibling Haiku-to-ZERO deterministic aggregators (playstyle label
 
 # 2026-07-22b - UI/UX pass: spatial brand decided + 6-theme OKLCH system + overlay/rofl infra (operator-present)
 
-Merges into main: overlay `77ed2798`, rofl `fb91c2bb`, theme `a2848e4c` (+ 3 --no-ff merge commits). Full
+Merges into main: overlay `c12abd4d`, rofl `ecdda641`, theme `cc1df8b5` (+ 3 --no-ff merge commits). Full
 program ledger: `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md`. This was a live operator-present session (per
 `feedback_operator_ui_qa_method`), NOT headless.
 
@@ -8435,7 +8435,7 @@ NEXT SESSION (queued - `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md` + `SPATIAL_BRAND
 
 # 2026-07-22a - HEXCORE Snapshots gallery refresh (full-scope mock + overlay mockup)
 
-Commit `a50d42e2` (pushed, CI green). LEDGER 1004. ENGINE-IMPACT NONE (docs-only).
+Commit `020ec9a0` (pushed, CI green). LEDGER 1004. ENGINE-IMPACT NONE (docs-only).
 
 Operator ad-hoc ask: new mock-data snapshots in full scope + the in-game overlay mockup,
 added to the HEXCORE offline explorer (`docs/HEXCORE_offline.html`, `window.HEXCORE_SNAPSHOTS`).
@@ -8466,14 +8466,14 @@ Next: pick the next ROADMAP item.
 
 # 2026-07-21m - R162 SHARE PACKAGE MADE SHIPPABLE (gemini headless loop, cycle 9 - FINAL cycle)
 
-LEDGER 1003. Merge `0bda3c2e` (six slices). ENGINE-IMPACT NONE - no bump, no DS bounce, no RC
+LEDGER 1003. Merge `0e01af46` (six slices). ENGINE-IMPACT NONE - no bump, no DS bounce, no RC
 restart. Operator stopped the loop at this cycle ("last headless run for these cycles");
 `ops/loop/control/STOP` is written, so there is no cycle 10.
 
 ## What the directive asked vs what was actually wrong
 
 The directive called the `Share/` presentation overhaul an unstarted unit. It is the THIRD pick of
-it - R139 (`a4261c54`) and R149 (`774ed236`, the same day) both shipped it. The drift was real
+it - R139 (`a4261c54`) and R149 (`4f996c99`, the same day) both shipped it. The drift was real
 anyway, and chasing it surfaced three defects that are product defects, not presentation:
 
 1. **The shipped package could not pass its own test suite.** The sync mirrored
@@ -8509,7 +8509,7 @@ anyway, and chasing it surfaced three defects that are product defects, not pres
 
 # 2026-07-21l - R161 ARENA STAT LINE DOCTRINE B (gemini headless loop, cycle 8) - ENGINE 1.237.0 -> 1.238.0
 
-LEDGER 1002. Commit `77a34890`. ENGINE-IMPACT BUMP. DS bounced, both build-order families
+LEDGER 1002. Commit `742f45eb`. ENGINE-IMPACT BUMP. DS bounced, both build-order families
 regenerated, Share mirror re-synced. No RC restart needed (no route change).
 
 ## The decision
@@ -8555,7 +8555,7 @@ collapses 173 champs to a 10-champ seed).
 ## Incidental find - the flat table was ten engine versions stale
 
 `data/daemon_slayer/16.14.1/build_orders_sr.json` picked up a `6696` -> `6695` flip in 6 SR cells
-(Zed, Qiyana). Last written at ENGINE 1.228.0 (`1f13188b`); the nested table already carried `6695`
+(Zed, Qiyana). Last written at ENGINE 1.228.0 (`afa14a6e`); the nested table already carried `6695`
 at 1.237.0, so the two disagreed before this cycle. The live deterministic + laning coaches had
 been serving 1.228.0-era builds. Now current. Not caused by doctrine B.
 
@@ -8569,7 +8569,7 @@ sets (engine data / guard tests / docs), Claude sole merger, engine merged first
 
 # 2026-07-21k - R160 PERCENT-PENETRATION CATALOG PARITY (gemini headless loop, cycle 7) - ENGINE UNCHANGED 1.237.0
 
-LEDGER 1001. Commit `d6d3fb3f`. ENGINE-IMPACT NONE - no math change, no production `.py` touched,
+LEDGER 1001. Commit `6019b293`. ENGINE-IMPACT NONE - no math change, no production `.py` touched,
 no `ENGINE_VERSION` bump, no DS bounce, no RC restart.
 
 ## What shipped
@@ -8616,7 +8616,7 @@ without the answer - the guard will go red by design if someone tries.
 
 # 2026-07-21j - R159 RUNE-OFFENSE SATURATION, REMAINING THREE TREES (gemini headless loop, cycle 6) - ENGINE UNCHANGED 1.237.0
 
-LEDGER 1000. Merge `add6f26f` (slice `77d448af`). ENGINE-IMPACT NONE - no math change, no behavior
+LEDGER 1000. Merge `a2d12d06` (slice `575d6cfa`). ENGINE-IMPACT NONE - no math change, no behavior
 change, no `ENGINE_VERSION` bump. The default-OFF `apply_rune_offense_grants` path stays
 byte-identical. No DS bounce, no RC restart: there is nothing to reload.
 
@@ -8691,7 +8691,7 @@ exist. Neither is a free win.
 
 # 2026-07-21i - R158 RUNE-OFFENSE SATURATION GUARD (gemini headless loop, cycle 5) - ENGINE UNCHANGED 1.237.0
 
-LEDGER 999. Merge `b3085653` (slice `3deb619d`). ENGINE-IMPACT NONE - no math change, no behavior
+LEDGER 999. Merge `5db65139` (slice `92feac90`). ENGINE-IMPACT NONE - no math change, no behavior
 change, no `ENGINE_VERSION` bump, diff purely additive (77 lines, 0 deleted). No DS bounce, no RC
 restart: there is nothing to reload.
 
@@ -8739,7 +8739,7 @@ Legend: Alacrity - the same shape this cycle just closed for two trees. That is 
 
 # 2026-07-21h - R157 HEXCORE OFFLINE EXPLORER (gemini headless loop, cycle 4) - ENGINE UNCHANGED 1.237.0
 
-LEDGER 998. Pushed `fc8199c9..d2f87add` (`9403b8ca` html + `d2f87add` docs sync). ENGINE-IMPACT
+LEDGER 998. Pushed `fc8199c9..d2f87add` (`246b1918` html + `fe51b504` docs sync). ENGINE-IMPACT
 NONE - `docs/HEXCORE_offline.html` is a standalone offline artifact; no DS math, no served path,
 no Share mirror delta, no DS bounce, no RC restart.
 
@@ -8748,7 +8748,7 @@ no Share mirror delta, no DS bounce, no RC restart.
 The directive asked for the same unit R151 already executed, and its NOT-A-DUPLICATE line was
 wrong: it claimed R155/R156 shipped net-new `.py` files. They did not - R155 widened an existing
 `(ad, ap)` tuple to `(ad, ap, attack_speed_fraction)` inside `_rune_offense_grants.py` and R156
-appended a census function to that same existing file. Diffing R151's OWN merge point (`79c3deba`)
+appended a census function to that same existing file. Diffing R151's OWN merge point (`d782d53f`)
 instead of the directive's inherited `d584e02e` baseline, additions only, minus tests, minus
 `Share/`, returns exactly ONE path: `ops/loop/adjudicator.py`.
 
@@ -8785,16 +8785,16 @@ rather than reporting a patched number). ruff clean. Hygiene 13/13. Verifier 11/
 
 ## Don't-redo
 
-HEXCORE is CURRENT as of `9403b8ca`. Do NOT re-run a "net-new .py since `d584e02e`" sync - that
+HEXCORE is CURRENT as of `246b1918`. Do NOT re-run a "net-new .py since `d584e02e`" sync - that
 baseline now yields zero real work and manufactures a duplicate of R151/R157. Diff from
-`9403b8ca` forward, and remember the count lives in five places including the machine-read
+`246b1918` forward, and remember the count lives in five places including the machine-read
 `// DUST:` comment.
 
 ---
 
 # 2026-07-21g - R156 JACK OF ALL TRADES 8316 (gemini headless loop, cycle 3 + injected stall diagnose) - ENGINE 1.236.0 -> 1.237.0
 
-LEDGER 997. Pushed `0563537f..35a34db4` (slice `2ae85d74`, merge `ca5f77c6`). CI green on
+LEDGER 997. Pushed `0563537f..35a34db4` (slice `052c564c`, merge `89db48b0`). CI green on
 both ci and CodSpeed. DS `:8893` bounced and confirmed serving 1.237.0.
 
 ## What shipped
@@ -8861,7 +8861,7 @@ redundant suite added. Either the redundant suite goes (correct, and free) or
 
 # 2026-07-21f - R154 SHARE EXTERNAL PRESENTATION (headless loop, cycle 1) - ENGINE unchanged 1.235.0
 
-LEDGER 994. Pushed `1b32aedc..02f80fce` (work commit `664806c1`). ENGINE-IMPACT NONE -
+LEDGER 994. Pushed `1b32aedc..02f80fce` (work commit `90f49eae`). ENGINE-IMPACT NONE -
 `git diff --stat agents/` empty, no DS bounce needed, no RC restart (no routes, no web assets).
 
 ## What shipped
@@ -8913,8 +8913,8 @@ diff. Verifier gate 8 CONFIRM / 2 PARTIAL, both PARTIALs fixed by the merger.
 
 # 2026-07-21e - R153 FLAT MAGIC-PEN PARITY + ADJUDICATOR SWAP SEAM (headless loop, cycle 5 + operator interrupt) - ENGINE 1.234.0 -> 1.235.0
 
-**Two units in one cycle.** LEDGER 992 (R153) + 993 (swap). Merges `5872fa91`,
-`e7be8ed2`, `bd50e88c`, `a430abae`, `f47a5082`, `48975ead`, `afb15a17`. DS bounced,
+**Two units in one cycle.** LEDGER 992 (R153) + 993 (swap). Merges `4b5afc0c`,
+`e7be8ed2`, `7cc98fd1`, `ba8b5b98`, `c08d0090`, `a59a5af9`, `5f52ab6a`. DS bounced,
 `:8893` serves 1.235.0. Share mirror synced. Pushed `6948b387..afb15a17`.
 
 ## What shipped
@@ -8977,7 +8977,7 @@ draft test omitted it and made a real billed CLI call, caught only by its 29-sec
 
 # 2026-07-21d - R152 LETHALITY STAT-BLOCK PARITY (gemini headless loop, cycle 4) - ENGINE 1.233.0 -> 1.234.0
 
-**Tier-2 DS run.** LEDGER 991. Slice `ee8a6cb3`, merge `890daf1c`. DS bounced, `:8893`
+**Tier-2 DS run.** LEDGER 991. Slice `7f2ed6fb`, merge `1e5fa173`. DS bounced, `:8893`
 serves 1.234.0. Share mirror synced in the same commit.
 
 ## What shipped
@@ -9032,7 +9032,7 @@ object clean, cleared with `git reset --mixed`.
 
 # 2026-07-21c - R151 HEXCORE OFFLINE EXPLORER RE-SYNC (gemini headless loop, cycle 3) - NO ENGINE CHANGE
 
-**Tier-0/docs run.** LEDGER 990. Slice merge `79c3deba`. ENGINE-IMPACT NONE - no DS math
+**Tier-0/docs run.** LEDGER 990. Slice merge `d782d53f`. ENGINE-IMPACT NONE - no DS math
 path, no ENGINE bump, no Share churn, no restart.
 
 ## What shipped
@@ -9041,7 +9041,7 @@ path, no ENGINE bump, no Share churn, no restart.
 (`dashboard/_lcu_inprocess.py` -> `m_dashserver`, `lcu/champ_select_shape.py` -> `m_lcupre`,
 `lcu/snapshot_shape.py` -> `m_lcupost`), dust 322 -> 325 at all four sites, ENGINE tooltips
 1.232.0 -> 1.233.0 / 9087 tests, LEDGER node desc entry 903 -> 989, repo-stats HUD
-re-anchored to `eb111c36` / 2026-07-21 / commits 3789. Guard test
+re-anchored to `5a5d6722` / 2026-07-21 / commits 3789. Guard test
 `tests/test_hexcore_offline_dust.py` `EXPECTED_NEW_BASENAMES` widened 26 -> 32.
 
 ## The directive assumed a cold sync; the real gap was 3 files, not 32
@@ -9075,7 +9075,7 @@ doc; the v2.1 `--fs-xs` floor governs the dashboard, not this offline artifact.
 # 2026-07-21b - R150 CONQUEROR 8010 OFFENSE GRANT (gemini headless loop, cycle 2) - ENGINE 1.233.0
 
 **Tier-2 engine run.** LEDGER 989. Pushed `774ed236..7dfa003b`. ENGINE 1.232.0 -> 1.233.0.
-Slice merge `a7c5f9db`, engine-tail commit `7dfa003b` (267 files).
+Slice merge `2afa31b5`, engine-tail commit `7ba3f340` (267 files).
 
 ## What shipped
 
@@ -9122,7 +9122,7 @@ from conservative (threat lens) to optimistic (self lens).
 ## OWED - real finding, not absorbed silently
 
 **The FLAT Arena build-order table on main is five engine versions stale** (last written by
-`1f13188b` at ENGINE 1.228.0; engine is now 1.233.0). Regenerating it changes 365 lines of
+`afa14a6e` at ENGINE 1.228.0; engine is now 1.233.0). Regenerating it changes 365 lines of
 item ids - a material change to live Arena recommendations. Proven NOT caused by this slice
 (`apply_rune_offense_grants`/`rune_ids` appear in neither generator, so the entry is
 unreachable from build-order generation) and proven deterministic (two consecutive regens
@@ -9314,7 +9314,7 @@ cross-page design-system pass FIRST, or every page re-litigates the same colours
 
 # 2026-07-20n - RM-03 E12 lever L3 BUILT (dark) - full in-process snapshot port
 
-**Tier-1 -> full suite. No ENGINE bump, no Share touch.** Commit `875aa355` (ff-merge
+**Tier-1 -> full suite. No ENGINE bump, no Share touch.** Commit `9eb76879` (ff-merge
 to main, pushed). Full `tests/` suite 12324 passed / 53 skipped / 0 failed
 (verifier-CONFIRMED, independent re-run). LEDGER pending append.
 
@@ -9357,8 +9357,8 @@ stays OFF until this passes. Do NOT re-extract - the extraction is DONE + verifi
 
 # 2026-07-20m - R148 E12 residual: lever L3 unblocked (not built) + an R146 regression
 
-**Tier-1. No ENGINE bump, no Share touch.** Commits `6eb3837a` + merge `b3698bda`
-(code), `06c52f0f` (docs + regression fix), `f460c9f3` (live-gated row). CI green.
+**Tier-1. No ENGINE bump, no Share touch.** Commits `eb740369` + merge `824a8e20`
+(code), `41f5c496` (docs + regression fix), `d98e8b13` (live-gated row). CI green.
 Gemini-loop cycle 3 of the 2026-07-20 standing autonomous grant. LEDGER 985.
 
 ## The directive's premise was half stale, and the surviving half was mis-specced
@@ -9421,7 +9421,7 @@ skipped / 3582 subtests; ruff clean; ASCII trio 13 passed.
 # 2026-07-20j - R144 item-registry mode-mirror sweep: 1 real gap, 4 CLEAN
 
 **ENGINE 1.230.0 -> 1.231.0 (patch 16.14.1). Tier-2** - Share mirror resynced in the
-SAME commit `52258f17`, DS `:8893` bounced onto 1.231.0, dual suite green.
+SAME commit `f26a276d`, DS `:8893` bounced onto 1.231.0, dual suite green.
 Gemini-loop cycle 2 of the 2026-07-20 standing autonomous grant. LEDGER 982.
 
 ## What the directive asked vs what was true
@@ -9621,7 +9621,7 @@ wielder AP; the tripwire enforces it.
 
 # 2026-07-20g - R141 RM-100 CLOSED: asyncio leak accepted as a priced tradeoff
 
-**Head `bacc559f` (`ba23bae0` is the content commit). ENGINE-IMPACT NONE** - Tier-0 docs +
+**Head `d4f5ae0a` (`2e4c1f25` is the content commit). ENGINE-IMPACT NONE** - Tier-0 docs +
 guard-verify, no ENGINE_VERSION bump (stays 1.228.0 / patch 16.14.1), no Share resync, no `:8893`
 bounce owed, no route change.
 
@@ -9657,12 +9657,12 @@ non-ASCII bytes on any added line. LEDGER 979.
 
 # 2026-07-20f - R140 RM-100 consolidation: CLEAN / REFUTED-PREMISE
 
-**Head `60ee6289`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
+**Head `dd6dc44c`. ENGINE-IMPACT NONE** - docs-only Tier-0, no ENGINE_VERSION bump (stays 1.228.0 /
 patch 16.14.1), no Share resync, no `:8893` bounce owed. Doc-hygiene guards 13/13 green.
 
 Gemini-loop cycle 2, directive R140: fan out worktree agents to consolidate 5 near-identical local
 `_run_coro` / `_run_poll_loop` copies into `tests/_asyncio_isolation.py`. **Nothing was built, because
-the work had already shipped one cycle earlier in this same loop run** (R137, `114977ee`).
+the work had already shipped one cycle earlier in this same loop run** (R137, `0a6dd3b2`).
 
 Refuted on ground truth before any dispatch: `tests/_asyncio_isolation.py` on disk since 03:23
 (`run_coro` + `run_coro_capturing_thread`); grep for `def _run_coro` / `def _run_poll_loop` /
@@ -9674,7 +9674,7 @@ pins zero bare `asyncio.run(` under `tests/`. Fresh this run: **73 passed in 3.7
 "(5 near-identical copies; consolidating them is the open follow-up)" - R137 shipped the code but
 never cleared the text, and the director builds its refill digest from ROADMAP prose, so a follow-up
 closed in code but open in prose re-picks every cycle. That line now states CLOSED, names the shared
-module and both runners, names the 5 migrated files, and cites `114977ee`.
+module and both runners, names the 5 migrated files, and cites `0a6dd3b2`.
 
 The RM-100 **LATENT half is deliberately left standing**: `tests/snapshot_panels` still leaks
 asyncio's per-thread running-loop marker via its `scope="session"` `pw_browser` fixture, so a new
@@ -9690,7 +9690,7 @@ premises in a grep checked THIS cycle rather than digest prose.
 
 # 2026-07-20e - R139 Share/ external-presentation pass
 
-**Head `a700b414`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
+**Head `1f341535`. ENGINE-IMPACT NONE** - docs and presentation only, no DS path, no ENGINE_VERSION bump
 (stays 1.228.0 / patch 16.14.1), no `:8893` restart owed. `tools/ds_share_sync.py --check` green throughout.
 
 Gemini-loop cycle, directive R139: read the entire `Share/` package end-to-end and raise it to external-presentation
@@ -9728,7 +9728,7 @@ Share `.md` non-ASCII bytes: 0. Worktrees + slice branches cleaned (local and re
 
 # 2026-07-20d - R138 HEXCORE offline explorer refresh
 
-Merge `ee0e2f62` (slice `ab16e062`) + docs `001b3fc0`. LEDGER 976. gemini-loop
+Merge `497e363d` (slice `bc8cb593`) + docs `feccff14`. LEDGER 976. gemini-loop
 cycle 1 of the 2026-07-20 standing autonomous grant. Docs artifact only -
 ENGINE-IMPACT NONE, no ENGINE_VERSION bump, no Share sync, no restart owed.
 
@@ -9749,7 +9749,7 @@ agreement, so the page can no longer silently lie about its own contents.
 **The HUD engine pair was read live, not off docs.** `:8893/health` returned
 `1.228.0 / 16.14.1`; CLAUDE.md's own header still says 1.226.0 and would have
 shipped a wrong number into the artifact. Same for commits (3733) and HEAD
-(`114977ee`), both re-derived from git rather than carried forward.
+(`0a6dd3b2`), both re-derived from git rather than carried forward.
 
 **Worth remembering about the test.** The build agent's first `CATS` parser
 anchored to line start, matched only 6 of 15 keys, and produced a FALSE
@@ -9774,7 +9774,7 @@ are the proof surface for this file.
 
 # 2026-07-20c - RM-111 ARAM comp-conditioned item-interaction aggregator
 
-Commit `d96ba4c5`. LEDGER 974. New `core/aram_item_interaction.py`, 24 tests.
+Commit `d63006d0`. LEDGER 974. New `core/aram_item_interaction.py`, 24 tests.
 
 **What it answers.** For the local ARAM corpus: "when did buying this item
 actually pay off AGAINST THIS SHAPE of enemy comp, in my own games". That is a
@@ -9818,7 +9818,7 @@ unmeasured archive depth).
 
 # 2026-07-20b - pro-match corpus CLOSED (no API needed) + ds_patch_diff shipped
 
-Commits `533d70fb`, `999cb1b8`. CI green. LEDGER 972-973. RM-109 + RM-110.
+Commits `f585446b`, `b7dc2406`. CI green. LEDGER 972-973. RM-109 + RM-110.
 
 **The planned session was wrong and the correction is the headline.** The plan was
 a Match-V5 fan-out: resolve ~30 pro Riot IDs to puuids, page each pro's id list,
@@ -9860,7 +9860,7 @@ and `timeline_frames`. Own session, do not bolt onto other work.
 
 # 2026-07-20a - .rofl sidecar backfill of rewind_history.db, executed live
 
-Commits `5174058f`, `533e7e47`, `1e3a186c`, `d7901101`. CI green. LEDGER 971.
+Commits `a968b46d`, `35d96e79`, `bad7d420`, `22af3610`. CI green. LEDGER 971.
 
 SHIPPED. 12 archived stats sidecars mapped to the 147-col `participants` schema;
 3 net-new matches INSERTED into production (2961 -> 2964 matches, 30562 -> 30592
@@ -9881,8 +9881,8 @@ TWO FINDINGS THAT INVERTED THE DESIGN - do NOT re-derive:
 118 columns mapped, each proven against the 6 overlap matches. summoner_id and
 time_played were probed, DISAGREED, and are deliberately excluded.
 
-DO NOT REDO: L1 (RM-100 asyncio dedup, `b54e315d`) and L3 (RM-108 token detector,
-`a60d32e6`) were ALREADY SHIPPED - the lane list was half stale. RM-108 is now
+DO NOT REDO: L1 (RM-100 asyncio dedup, `2d003ac5`) and L3 (RM-108 token detector,
+`477d6144`) were ALREADY SHIPPED - the lane list was half stale. RM-108 is now
 marked SHIPPED in ROADMAP with its spec relocated to ROADMAP_HISTORY.
 
 NEXT - operator-prioritised (Vanguard is OFF, so replay work is possible now):
@@ -9986,7 +9986,7 @@ concurrency shape, not a defect in this code).
 # 2026-07-19g
 
 **Session: replay forward-capture pipeline + silent-except batch program + three of my own claims retracted.**
-Commits `b54e315d`..`d750c8be` (+ this docs sync). LEDGER 969. No ENGINE bump.
+Commits `2d003ac5`..`4d48b4c9` (+ this docs sync). LEDGER 969. No ENGINE bump.
 
 ## START HERE NEXT SESSION - build the sanctioned replay pull
 
@@ -10132,7 +10132,7 @@ stat sidecars** at `Documents\RC_ROFL_Archive`. League client was CLOSED at wrap
 important of the four, and the only one that could not reach production. The
 sweep that found the other three took one script.**
 
-Shipped: `1f13188b` ENGINE 1.228.0. DS 8866 passed / 1 skipped / 2518 subtests;
+Shipped: `afa14a6e` ENGINE 1.228.0. DS 8866 passed / 1 skipped / 2518 subtests;
 `tests/` 11993 passed / 23 skipped; `:8893` live at 1.228.0. Ledger 968.
 
 **ALWAYS RUN THE SIBLING SWEEP BEFORE BELIEVING A FILING'S SCOPE.** RM-104 said
@@ -10200,16 +10200,16 @@ Sizing script: scratchpad `size_silent_excepts.py` (AST, re-runnable).
 just claims. Three of three were wrong this session in ways that would have
 shipped defects, and all three were caught by reading files instead of prose.**
 
-Shipped: `556662a7` RM-107 + the `begin/end` HTTP 400 sibling; `b9ac8de9`
+Shipped: `bd8c94ef` RM-107 + the `begin/end` HTTP 400 sibling; `5eee83cd`
 CHANGELOG 1.224.0/1.225.0 backfill + prepend guard; `8bf21a77` Share/src
-recovery; `ba676157` atomic Share sync; `a60d32e6` Lane 1 feed index + RM-108;
-`37db1414` ENGINE 1.227.0 (RM-101/102/103/105). CI green. Ledger 965-967.
+recovery; `307a6928` atomic Share sync; `477d6144` Lane 1 feed index + RM-108;
+`29fe3510` ENGINE 1.227.0 (RM-101/102/103/105). CI green. Ledger 965-967.
 
-**THE INCIDENT, because it will recur otherwise.** Commit `6464532e` (mine)
+**THE INCIDENT, because it will recur otherwise.** Commit `760a7353` (mine)
 emptied `Share/src` on main - 501 deletions, 596,900 lines, ZERO additions.
 `ds_share_sync._write` was `rmtree` THEN rebuild, so the mirror spent the entire
 ~483-file rebuild deleted, and I committed while background agents were live.
-Recovered within minutes; root-fixed in `ba676157` as stage-then-swap. **Do NOT
+Recovered within minutes; root-fixed in `307a6928` as stage-then-swap. **Do NOT
 restore the rmtree shape.** Two rules earned: never commit while agents are
 live, and verify a commit's CONTENTS, not its message.
 
@@ -10245,7 +10245,7 @@ in this repo checks that, and one frozen feed put a wrong coefficient into a spe
 that then propagated into ROADMAP prose as fact. The cross-patch hash was the only
 thing that could see it.**
 
-Shipped (ENGINE 1.225.0 -> 1.226.0, commit `843f83a3`): `_item_health_stack.py`
+Shipped (ENGINE 1.225.0 -> 1.226.0, commit `cde08721`): `_item_health_stack.py`
 crediting Heartsteel 3084 + Arena mirror 223084's permanent-max-HP half behind
 DEFAULT-OFF `assume_item_health_stacks`, folded into the three main per-type EHP
 numerators next to `passive_health_hp` / `rune_perm_hp`, route-surfaced on `/ehp`,
@@ -10326,7 +10326,7 @@ one session.
 written.** Two workflow passes (38 agents, ~6.2M subagent tokens). Revision 1: 911
 lines, 43 audit gaps. Revision 2: 2019 lines, 32 gaps, 3 of 3 lenses NEEDS_WORK.
 Findings improved a lot (measured, with resolutions attached - the run-scope
-BLOCKER is a real design error caught by replaying commit `544d6362`), but the
+BLOCKER is a real design error caught by replaying commit `e1b42e89`), but the
 DOCUMENT DOUBLED while converging. The operator asked for a guard plus an index
 over five dirs, "hours, no network"; what exists is a 7-rule classification ladder
 plus run semantics plus a citation-baseline generator plus per-value provenance.
@@ -10344,7 +10344,7 @@ by implementing 2019 lines.
 inherits no more trust. Verify a BLOCKER before honouring it, not just a formula
 before building on it.**
 
-Shipped (ENGINE 1.224.0 -> 1.225.0, commit `18aca9e3`): `_rune_health_grants.py`
+Shipped (ENGINE 1.224.0 -> 1.225.0, commit `5c57a4b3`): `_rune_health_grants.py`
 (Overgrowth 8451 permanent max-HP + Grasp 8437 self-side heal / permanent-HP)
 behind DEFAULT-OFF `apply_rune_health_grants`, and `_rune_hsp_amp.py`
 (Revitalize 8453's flat 5% Heal/Shield Power) behind DEFAULT-OFF
@@ -10443,7 +10443,7 @@ sample before believing the code is exercised. Same family as R133's
 `test_arena_mirrors_credit_same_as_base`, one rung down: R133 asserted the wrong
 thing, R135 asserted the right thing about the wrong row.
 
-Shipped `e4ab8144` (fix, no ENGINE bump - `core/`, no DS import) + `e2b186ff`
+Shipped `2448adff` (fix, no ENGINE bump - `core/`, no DS import) + `15bf1417`
 (docs). Suite 20673 passed / 24 skipped / 0 failed. Zephyr and Gambler's Blade
 deliberately untouched: no 4-digit canonical exists for either, and `3172` is
 Gunmetal Greaves NOT Zephyr, so `"22" + base_id` is a FALSE mirror-pairing rule.
@@ -10495,7 +10495,7 @@ not a convention. `test_rune_resist_signature_convention_r134.py` now enforces b
 the trailing-kwarg rule and the `total_armor` same-values contract, so the refuted
 change turns a test RED rather than silently over-crediting tanks.
 
-Commit `534ab3ef`, ENGINE stays 1.224.0. DS 8686 / RC 11979 green, verifier CONFIRM
+Commit `28651803`, ENGINE stays 1.224.0. DS 8686 / RC 11979 green, verifier CONFIRM
 on all four claims. Refutation escalated to the director via `gemini_ask.txt` so
 cycle 4 does not re-issue it or read the absent bump as unfinished work.
 
@@ -10532,10 +10532,10 @@ an invariant. The wrong Arena magnitudes were not merely uncaught, they were
 pinned. Before assuming a red test means a new break, check what the existing
 tests assert about the values you are correcting.
 
-**Shipped:** R132 `e6a84734` (ENGINE 1.223.0 -> 1.224.0) new
+**Shipped:** R132 `bd83dc55` (ENGINE 1.223.0 -> 1.224.0) new
 `_rune_resist_grants.py` for Aftershock / Conditioning / Unflinching, folded into
 `eff_armor` / `eff_mr` behind DEFAULT-OFF `apply_rune_resist_grants`. R133
-`ad16ba65` (executor-opened, no bump) corrected three of four Arena / prismatic
+`8a9f3151` (executor-opened, no bump) corrected three of four Arena / prismatic
 mirror magnitudes - 226665 is 40% not 30%, 224401 is 50 MR not 70, 663059 is 10%
 not 20% - each re-verified against the raw item index before editing.
 
@@ -10652,7 +10652,7 @@ seconds of damage" needs sub-window resolution, but `timeline_frames` cadence is
 rate from a DPS multiplier to a **cast-propensity prior** (`SPEC:198-202`), which
 needs correct relative ordering - preserved by the whole-game basis - not a
 correct denominator. Spec `docs/specs/SPEC_rm98_cast_rate_time_base.md`, LEDGER
-956, commit `3aaf586f`. Tier-0, ENGINE stays 1.223.0. **NEXT:** the open
+956, commit `ba1eb3bc`. Tier-0, ENGINE stays 1.223.0. **NEXT:** the open
 hypothesis that the seven-mage Liandry's/Blackfire invariance is partly an
 artifact of this defect (`_rank_mage.py:332` mixes always-on item DPS at combat
 weight with spell rows at whole-game weight) - unproven, needs its own
@@ -10729,7 +10729,7 @@ lolmath authoring convention or replay-derived counts.
 
 ---
 
-# 2026-07-19c (RM-39/RM-43 L1 BUILT - AD-axis ability term shipped DEFAULT-OFF, ENGINE 1.222.0; commit `2aaba1d2`)
+# 2026-07-19c (RM-39/RM-43 L1 BUILT - AD-axis ability term shipped DEFAULT-OFF, ENGINE 1.222.0; commit `df0b6cb4`)
 
 **Built what 2026-07-19b adjudicated. Phase 1 was NOT re-litigated.**
 `hybrid._physical_ability_damage` sums `per_spell` rows whose `damage_type`
@@ -10807,7 +10807,7 @@ finding you are contradicting.
 **Do NOT redo:** RM-39/RM-43 are RE-SCOPED not rewritten - defect verbatim,
 mechanism now "missing AD-axis ability term" (92/173 champs, est 3-5 sessions).
 Do not re-pitch a haste term. Do not re-file the Share route-table / seam-doc /
-anchor-rule / SESSION_RE tails - all shipped in `2f35163d` with tests.
+anchor-rule / SESSION_RE tails - all shipped in `4a707962` with tests.
 `wakeup_prune.py` works now; the old "manual relocation" note is retired.
 
 **Next:** the AD-axis ability term is the open build. Operator-gated and NOT mine
@@ -10827,7 +10827,7 @@ the `measured <= 0` fallback (`ability_dps.py:1231`), and on the live 680-pair S
 table just 8 pairs reach it, 6 effectively. This is MODEL work already spec'd as
 **RM-39 + RM-43 - do NOT open a third id.**
 
-**Then the 4 tails, all shipped** (`5f2371ce`, ENGINE 1.221.0): `aram_ability_haste`
+**Then the 4 tails, all shipped** (`6782e371`, ENGINE 1.221.0): `aram_ability_haste`
 was assigned total AH and printed an ARAM note during SR runs (fixed, zero
 production consumers); **NEW DEFAULT-OFF seam `apply_canonical_cast_rate_keys`** -
 cast-rate lookups keyed the DISPLAY name against ID-keyed data so 21 champions
@@ -10867,14 +10867,14 @@ so the operator swapped the "exactly 13 changed" golden-diff gate (churn) for a
 correctness gate on Taric + Thresh. Re-derivation also found **14 raw `affects`
 hits, not 13** - the old note dropped Nunu.
 
-**Term A SHIPPED** `43a2e0ea` (ENGINE 1.220.0): `score_by="team_blended"` on
+**Term A SHIPPED** `91664dbf` (ENGINE 1.220.0): `score_by="team_blended"` on
 `ds.ehp`, DEFAULT-OFF. Taric Locket #24 -> #6, Thresh #20 -> #5, 12 gated
 champions, verified live on `:8893`. Two NEW modules are both thin - the item
 side is an ADAPTER over the existing curated `enchanter_items.json` (not a new
 registry), the champion side is a BOOLEAN `affects` gate. ZERO new constants.
 The gate is load-bearing: disabled, Locket enters the top-6 for Rammus too.
 
-**I filed a false bug and retracted it** `7b116d50`. Claimed the Arena table
+**I filed a false bug and retracted it** `7f282553`. Claimed the Arena table
 ships map-30-illegal items; it does not - all 9 tables audit clean, ARAM too. I
 read item NAMES then resolved them to BASE ids; base and mirror share a name
 (Moonstone = 6617 map30=False AND 226617 map30=True) and the table stores the
@@ -10948,8 +10948,8 @@ baseline measures the engine as context-BLIND (MRR +0.0018, 42 pct placebo-ident
 # 2026-07-18i (DS_SWEEP batch21-25 -> 139/173: 25 champions in one session; 23 GAP + 2 REFUTE, TWO new numbers, ONE self-retraction)
 
 Read-only research, NO engine change. LEDGER 942 + 943. Three commits:
-`97673b94` batch21/22/23 (15 champs, 114 -> 129), `25553130` the probe-depth
-correction, `f9466ea5` batch24/25 (10 champs, 129 -> 139). CI is path-filtered
+`4e50d6df` batch21/22/23 (15 champs, 114 -> 129), `6579707e` the probe-depth
+correction, `dc4942f8` batch24/25 (10 champs, 129 -> 139). CI is path-filtered
 for docs-only pushes by design, so no run is expected on any of the three; the
 local ASCII-hygiene gate (13 passed) is the backstop and it is green.
 
@@ -10986,7 +10986,7 @@ filter-list edit, not objective work.
 # 2026-07-18h (RM-86 L1 SHIPPED + L2-for-hps REFUTED + enchanter registry closed; ENGINE 1.217.0 -> 1.219.0, 3 engine commits)
 
 First ENGINE work of the RM-86 arc after four read-only research batches.
-Commits: `17ab86ea` (L1 gate, 1.218.0), `09211c10` + `c6980918` (docs), `b7d7096f`
+Commits: `0f520ce5` (L1 gate, 1.218.0), `72ee7ac2` + `6f7c1cb4` (docs), `6f7f957a`
 (enchanter registry, 1.219.0). LEDGER 940 + 941. CI green on 17ab86ea.
 
 **L1 SHIPPED** - `agents/daemon_slayer/kit_conversion.py` + default-OFF
@@ -11062,7 +11062,7 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 
 # 2026-07-17 (DS meta-valuation sweep - Diana..Elise + Evelynn..Galio, 7 GAP + 3 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
-Two batches this session (operator "continue the next 5" x2). Continued the A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 34 -> 44/173 (GAP 25, REFUTE 16, FENCED 3), remaining 129. Commits `e9d7fab8` (batch5 Diana..Elise) + `eba3b596` (batch6 Evelynn..Galio), both pushed; docs-only, CI path-skips. Ezreal skipped (already RM-36). LEDGER 922 + 923.
+Two batches this session (operator "continue the next 5" x2). Continued the A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 34 -> 44/173 (GAP 25, REFUTE 16, FENCED 3), remaining 129. Commits `f61c2fd0` (batch5 Diana..Elise) + `723ec144` (batch6 Evelynn..Galio), both pushed; docs-only, CI path-skips. Ezreal skipped (already RM-36). LEDGER 922 + 923.
 
 - **Batch5 (Diana..Elise):** Diana GAP RM-41 + Ekko GAP RM-41 (the `_AP_ASSASSIN_IDS` ds.burst AD-pollution cohort; Akali RM-41 pre-recorded their ranks; shared fix, NO new RM; the S2026 `Dusk and Dawn` spellblade [id 2510] now VERIFIED real + their jungle/mid #1 item, buried #10-12 = an in-axis item the burst scorer under-credits) / **Draven GAP RM-53** (full-crit marksman, Caitlyn RM-50 twin: on-hit BotRK #2 over-led + Hexoptics C44 #16 buried) / **Elise GAP RM-54** (burst mage, Ahri/Annie/Aurora family: Liandry's #1 over-led, Stormsurge buried; assassin reroute AD-polluted so fix stays in the mage scorer) / **Dr. Mundo REFUTE** (HP-juggernaut served by tank/ds.ehp; his damage IS his HP, no separate off-axis core - the CONTRAST CONTROL to the Amumu/Cho'Gath AP-tank GAP).
 - **Batch6 (Evelynn..Galio):** Evelynn GAP RM-41 + Fizz GAP RM-41 (two more ds.burst cohort confirms; Evelynn Trinity #9 mildest, Fizz Trinity #2 strongest; intra-cohort split - Fizz's Lich Bane led #1 CORRECTLY [purest instance], Evelynn's buried #4) / **Galio GAP RM-55** (magic-tank-AP-rush 3rd member after Amumu/Cho'Gath: MID ~83% rushes Hextech Rocketbelt + full AP core, tank/ds.ehp omits it; wrinkle = passive/W/R scale bonus-MR so MR doubles as damage; SUPPORT ~17% is a tank REFUTE, role-aware) / **Fiddlesticks REFUTE** (sustained-DoT battlemage, R Crowstorm 20 ticks + W drain 8 ticks, Liandry's #1 CORRECT - Brand/Cassiopeia control; Electrocute keystone is an ambush-delivery classifier trap) / **Fiora REFUTE** (Camille twin - hybrid LEADS combat signature Trinity Force #1; Ravenous-Hydra-first is a macro opener + %HP-true Vitals a uniform under-count = class-level hybrid scope limits, not a gap).
@@ -11077,7 +11077,7 @@ Two batches this session (operator "continue the next 5" x2). Continued the A->Z
 
 # 2026-07-17 (DS meta-valuation sweep - Bard..Braum + Caitlyn..Darius, 4 GAP + 6 REFUTE; read-only, NO engine change; + Bel'Veth RM-49 mechanism correction)
 
-Two batches this session (operator said "continue the next 5"). Continued the A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + reroute + a HIGH-conf meta-research subagent, 4-5 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only. Resolved 24 -> 34/173 (GAP 18, REFUTE 13, FENCED 3), remaining 139. Commits `7156cb1c` (Bard..Braum) + `a83ee637` (Caitlyn..Darius) + this living-docs sync (docs-only, CI path-skips). Corki skipped (already RM-38). LEDGER 920 + 921.
+Two batches this session (operator said "continue the next 5"). Continued the A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + reroute + a HIGH-conf meta-research subagent, 4-5 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only. Resolved 24 -> 34/173 (GAP 18, REFUTE 13, FENCED 3), remaining 139. Commits `691002f7` (Bard..Braum) + `9abc5549` (Caitlyn..Darius) + this living-docs sync (docs-only, CI path-skips). Corki skipped (already RM-38). LEDGER 920 + 921.
 
 - **Batch B (Bard..Braum):** Bard REFUTE (utility support, enchanter/ds.hps serves aura, never builds AP - Alistar-class scope limit) / **Bel'Veth GAP RM-49** (on-hit/AS carry; default bruiser/ds.hybrid leads AP/HP with her on-hit core absent, on-hit DPS under-modeled; reroute to onhit/carry serves BotRK/Kraken/Guinsoo's/Terminus) / Blitzcrank REFUTE + Braum REFUTE (durability tank supports, tank/ds.ehp correct axis, aura/team-EHP = Alistar-class scope limits) / **Brand REFUTE** (the wakeup-predicted sustained-DoT control - Blaze %HP-burn makes the Liandry's #1 lead CORRECT, the Aurelion Sol/Anivia twin OPPOSITE the burst GAP).
 - **Batch C (Caitlyn..Darius):** **Caitlyn GAP RM-50** (crit-auto marksman given fight_length=0.5 burst-blend -> over-leads off-meta lethality + BotRK#2, buries signature crit Hexoptics C44 #16) / **Camille REFUTE** (engine LEADS her Sheen signature Trinity #1 - the engine-probe line OVERRODE the research GAP guess; CONTRAST to Aatrox/Darius) / Cassiopeia REFUTE (sustained-DoT mage, Liandry's #1 correct) / **Cho'Gath GAP RM-51** (AP-tank battlemage; tank/ds.ehp omits his AP-first core Rocketbelt/Riftmaker; Amumu RM-44 twin) / **Darius GAP RM-52** (ability/bleed juggernaut; bruiser/ds.hybrid over-leads on-hit BotRK#1 never-built; Aatrox/Ambessa RM-39/43 twin).
@@ -11091,7 +11091,7 @@ Two batches this session (operator said "continue the next 5"). Continued the A-
 
 # 2026-07-17 (DS meta-valuation sweep - Aphelios/Ashe/Aurelion Sol/Aurora/Azir, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
-Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Per champ: inline production engine-probe (DS :8893, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + whitelist-own-core + secondary-route) + a meta-research subagent (HIGH conf, 4-5 aggregators + kit/wiki) CONVERGED. Tier-0 docs/memory only, no .py touched. 3 GAP (specs RM-46/47/48) + 2 REFUTE. Resolved 24/173 (GAP 14, REFUTE 7, FENCED 3), remaining 149. Commit `1a57686a` (tracker) + this living-docs sync (docs-only, CI path-skips). Memories `project_ds_sweep_{aphelios_crit_marksman_refute,ashe_crit_as_onhit_overlead,aurelionsol_sustained_dot_scaler,aurora_burst_ludens,azir_soldier_onhit_as}`.
+Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Per champ: inline production engine-probe (DS :8893, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + whitelist-own-core + secondary-route) + a meta-research subagent (HIGH conf, 4-5 aggregators + kit/wiki) CONVERGED. Tier-0 docs/memory only, no .py touched. 3 GAP (specs RM-46/47/48) + 2 REFUTE. Resolved 24/173 (GAP 14, REFUTE 7, FENCED 3), remaining 149. Commit `887a6101` (tracker) + this living-docs sync (docs-only, CI path-skips). Memories `project_ds_sweep_{aphelios_crit_marksman_refute,ashe_crit_as_onhit_overlead,aurelionsol_sustained_dot_scaler,aurora_burst_ludens,azir_soldier_onhit_as}`.
 
 - **Aphelios = REFUTE**. Clean crit-auto sustained-DPS hypercarry (5-weapon rotation), NOT on-hit NOT lethality; carry/ds.dps ranks his crit core right (IE #2, Hexoptics C44 #5) with not-built on-hit correctly below (BotRK #11, Runaan's #19). Only imperfection (Hexoptics #5 not #1) = its positioning-conditional Magnification/Arcane-Aim uniques scoring near-zero in a fixed-range sim = class-level scope limit, not a per-champ gap. The CONTRAST twin of Ashe (his crits deal FULL damage so served right).
 - **Ashe = GAP RM-46** (crit-marksman on-hit-over-lead family of RM-37/42, DISTINCT kit root-cause). Attack-speed crit-auto marksman (Hexoptics/PD/IE core, NOT on-hit), but ds.dps leads NOT-BUILT on-hit (BotRK #1 by 2x, Runaan's #2, Kraken #3) over her crit-AS core + buries Phantom Dancer #21 (DEAD-LAST in a whitelist of her own 6 core items). Distinct root cause vs Akshan's double-shot: Frost passive (crits deal NO bonus damage; crit-chance -> flat AD; IE's crit-strike multiplier DEAD on her) + Ranger's Focus multi-arrow flurry mis-read as on-hit. Contrast twin of Aphelios.
@@ -11158,9 +11158,9 @@ Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin closed l
 
 Focused headless fix closing the TOP RM-02 blocker flagged in the orchestrated round's Round-2 note (below). mode_key=client, no live game. TDD RED-first (test-driven-development skill); verified vs ground truth before scaffolding (grepped the JS extractor field shape in active_match.js + the ui_mock fixture contract, confirmed state.liveclient = liveclient_summary() at _state_builder.py:663).
 - **Root cause (confirmed):** `liveclient_summary()` (dashboard/_liveclient.py) emitted derived enemy slices (enemy_team/enemy_item_ids/players) but NO raw `allPlayers`; active_match.js:655 `_hasRoster` keys on `lc.allPlayers`, so C2 antiheal / C6 tenacity / C3 fed / R102/R103 chips were DARK in every live game (ui_mock-only).
-- **Fix (`318e7e3a`):** new pure module-scope `_lean_roster` + `_as_int` -> emit `out["allPlayers"]` (championName/rawChampionName/team + summoner identity + level + items[{itemID,slot}] + scores{kills,deaths,assists}) + `out["activePlayer"]`{summonerName,riotIdGameName}. Faithful SUPERSET of the ui_mock fixture (adds the live-only scores+level the C3 fed path needs). Emitted independent of me_pl (the JS _resolveMyTeam does its own active-player match); empty list -> honest COUNTER hide (byte-identical to the pre-fix live-absent path).
+- **Fix (`18fdf4d0`):** new pure module-scope `_lean_roster` + `_as_int` -> emit `out["allPlayers"]` (championName/rawChampionName/team + summoner identity + level + items[{itemID,slot}] + scores{kills,deaths,assists}) + `out["activePlayer"]`{summonerName,riotIdGameName}. Faithful SUPERSET of the ui_mock fixture (adds the live-only scores+level the C3 fed path needs). Emitted independent of me_pl (the JS _resolveMyTeam does its own active-player match); empty list -> honest COUNTER hide (byte-identical to the pre-fix live-absent path).
 - **TDD:** new tests/test_liveclient_allplayers_roster.py (14 tests) RED (11 fail - roster absent) -> GREEN; replicates _resolveMyTeam + the enemy/ally filters vs the real emitted shape. Verified 14 + 84 sibling + 153 consumer + 380 snapshot_panels + budget green; ruff clean; CI run 29583216769 SUCCESS.
-- **Deploy:** RC restarted live (pid 17296, alive, last_reload_ok); /api/state 200 (liveclient {} = honest hide, no game). Docs `d8fa0e1c`: ROADMAP RM-02 -> CODE-COMPLETE + LEDGER 916.
+- **Deploy:** RC restarted live (pid 17296, alive, last_reload_ok); /api/state 200 (liveclient {} = honest hide, no game). Docs `5c098230`: ROADMAP RM-02 -> CODE-COMPLETE + LEDGER 916.
 
 OWED (do-not-flip-blind): the operator eyeballs the antiheal/tenacity/fed/roster chips in a REAL game (Electron overlay agent-blind). The WHOLE counter-hint program is now CODE-COMPLETE - the JS POST side (S9) + the server routes were already verifier-CONFIRMED, only this summary key was missing. Do NOT redo. NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip (RM-01); the DS meta-valuation per-champ sweep remains the standing headless lane.
 
@@ -11177,16 +11177,16 @@ OWED (do-not-flip-blind): the operator eyeballs the antiheal/tenacity/fed/roster
 # 2026-07-17 (headless-upgrade orchestrated round - 6 verifier-gated slices; LEDGER 914; 1e0ecfa6..255e119d)
 
 Full-authority headless run (operator away, model switched to opus-4-8 mid-run via /model - a config change, not an interrupt). mode_key=client, no live game. One merger + 6 worktree slice agents on disjoint file sets, each gated by a read-only verifier CONFIRM, then truth_gate PROCEED (175 pytest/0 fail on the merged tree) before ONE batch push. No ENGINE bump; RC restarted clean (new pid, alive, last_reload_ok, dashboard 200); web slices auto-served (ADR-008). CI run 29572251333 (in_progress at wrap - verify green).
-- **S1 DS C3 fed counter-hint (HINT-ONLY, `1e3cab6c`):** new `core/build_planner/fed_threat.py` lights the dead `fed` criterion; situational.py byte-identical; ranked build unchanged; 104/0 + 27. Chip dark until a JS slice POSTs enemy_scores/enemy_levels.
-- **S2 overlay drag fix (`255e119d`):** all 3 symptoms root-caused in overlay_layout.js (_effectiveXY origin + window pointer capture + handle-only border hit-test); 15/15 + 6/6 + rc-shell 309/309.
-- **S3 enemy-spell cd timer (`905982de`):** upgraded-Smite displayNames + cd=0 sticky "USED" chip; node 11/0 + pytest 28/0.
-- **S6 Lane E fuse_reads shadow-first (`1e0ecfa6`):** per-tick fusion record to data/fusion_shadow.jsonl at read_tiered; served output byte-identical; 49/0. Advances RM-01.
-- **S7 arena/tft mounts (`e880994b`):** S4 read-only DISPROVED the panelset hypothesis (mounts are data-gated); split the E6 poller gate so coaching mounts feed arena/tft; 8 + 11 subtests.
-- **S8 cost lever-4 (`243967e8`):** suppress GET /api/state debug trace (58% of HTTP log volume); S5 sweep found the other 6 levers CLEAN.
+- **S1 DS C3 fed counter-hint (HINT-ONLY, `bd18e351`):** new `core/build_planner/fed_threat.py` lights the dead `fed` criterion; situational.py byte-identical; ranked build unchanged; 104/0 + 27. Chip dark until a JS slice POSTs enemy_scores/enemy_levels.
+- **S2 overlay drag fix (`14a5ccc5`):** all 3 symptoms root-caused in overlay_layout.js (_effectiveXY origin + window pointer capture + handle-only border hit-test); 15/15 + 6/6 + rc-shell 309/309.
+- **S3 enemy-spell cd timer (`b827f782`):** upgraded-Smite displayNames + cd=0 sticky "USED" chip; node 11/0 + pytest 28/0.
+- **S6 Lane E fuse_reads shadow-first (`b2952b96`):** per-tick fusion record to data/fusion_shadow.jsonl at read_tiered; served output byte-identical; 49/0. Advances RM-01.
+- **S7 arena/tft mounts (`a486142b`):** S4 read-only DISPROVED the panelset hypothesis (mounts are data-gated); split the E6 poller gate so coaching mounts feed arena/tft; 8 + 11 subtests.
+- **S8 cost lever-4 (`05bb2957`):** suppress GET /api/state debug trace (58% of HTTP log volume); S5 sweep found the other 6 levers CLEAN.
 
 OWED live-verify (Electron overlay agent-blind + no live game): S1 fed chip render, S2 drag per-panel + the empty-backing-press-inert behavior call, S3 upgraded-Smite countdown, S7 arena/tft mounts in-game. Do NOT redo: S1-S9 (all pushed + verifier-CONFIRMED + truth_gate PROCEED). Manifest run 2026-07-17-01.
 
-Round 2 (LEDGER 915, `566e472b`): S9 shipped the C3 fed-chip JS POST (active_match.js sends enemy_scores/enemy_levels fail-soft) - completes the S1 vertical. **KEY FINDING (ground-truth-verified):** the browser `liveclient_summary()` (dashboard/_liveclient.py:68) emits derived enemy slices but NO raw `allPlayers` key, and active_match.js:655 guards the counter-hint roster on `lc.allPlayers` - so the WHOLE counter-hint program (C2 antiheal / C6 tenacity / C3 fed / R102/R103 roster) is DARK in every live game and lights only under ui_mock. NOT fixed this run (activates 4+ live surfaces blind; operator away). NEXT = the server-side plumbing fix (add a lean enemy roster with scores+levels+item ids to the browser summary) is now the TOP RM-02 live-gated blocker; land it WITH a real-game eyeball. Also NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip.
+Round 2 (LEDGER 915, `4ced15e4`): S9 shipped the C3 fed-chip JS POST (active_match.js sends enemy_scores/enemy_levels fail-soft) - completes the S1 vertical. **KEY FINDING (ground-truth-verified):** the browser `liveclient_summary()` (dashboard/_liveclient.py:68) emits derived enemy slices but NO raw `allPlayers` key, and active_match.js:655 guards the counter-hint roster on `lc.allPlayers` - so the WHOLE counter-hint program (C2 antiheal / C6 tenacity / C3 fed / R102/R103 roster) is DARK in every live game and lights only under ui_mock. NOT fixed this run (activates 4+ live surfaces blind; operator away). NEXT = the server-side plumbing fix (add a lean enemy roster with scores+levels+item ids to the browser summary) is now the TOP RM-02 live-gated blocker; land it WITH a real-game eyeball. Also NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip.
 
 ## Relocated 2026-07-17 (Varus DS-sweep /done - keep last 3: Varus + RM-02 + headless-orchestrated)
 
@@ -11196,8 +11196,8 @@ Round 2 (LEDGER 915, `566e472b`): S9 shipped the C3 fed-chip JS POST (active_mat
 
 Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now and continue open tasks headlessly"). mode_key=client, no live game. Subagent-first: read-only trace agent + UI-audit agent + TDD build agent.
 - **Fold-in (b35783a2):** AI-companion teardown (Desktop `research-20260716.md`, non-repo, brands withheld) -> BACKLOG section. NOW-list corrected vs ground truth: F3 grade card = existing s220 PGR reframe; F6 chatbot stays R2-CLOSED (charter); F2/F8/F1 -> FUTURE. Companion family DRAINED 5x - rotate categories.
-- **F4 (the owed swap sanity-check):** parity CONFIRMED by trace; 1 defect FIXED (`4b4aeb67`): build-less swap left old champ's RC-* item sets (wipe below both empty-guards). Hoisted wipe + `_CSV_LAST_WIPE_KEY` dedup + push-latch reset (hover-back re-push crux) + CS-exit clear; 13 RED-first tests, 33 green fresh.
-- **Queue:** L-02 proposal already landed (`afdd20eb`) - artifacts + APPLIED marker committed (`facc01cc`), don't re-implement. LANE-U item-4 Slice 1 merged (`090fc62d`) after fresh 30/30 + the deferred 5-phase audit: MUST-FIX in-slice (`936fcc23` grid `align-items:start` + subhead token inversion); 1 SHOULD + 3 NICE -> FUTURE (handoff doc); id-wiring INTACT; remote branch deleted.
+- **F4 (the owed swap sanity-check):** parity CONFIRMED by trace; 1 defect FIXED (`ae81e456`): build-less swap left old champ's RC-* item sets (wipe below both empty-guards). Hoisted wipe + `_CSV_LAST_WIPE_KEY` dedup + push-latch reset (hover-back re-push crux) + CS-exit clear; 13 RED-first tests, 33 green fresh.
+- **Queue:** L-02 proposal already landed (`c93e383e`) - artifacts + APPLIED marker committed (`b06574ae`), don't re-implement. LANE-U item-4 Slice 1 merged (`bbf74ff2`) after fresh 30/30 + the deferred 5-phase audit: MUST-FIX in-slice (`b43df0bc` grid `align-items:start` + subhead token inversion); 1 SHOULD + 3 NICE -> FUTURE (handoff doc); id-wiring INTACT; remote branch deleted.
 
 OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck; DOM verified live) + the item-4 Sections D/E/F interactive session (handoff doc TODO). NEXT: operator calls from the fold-in - (a) re-open F6 chatbot? (b) schedule the s220 PGR reframe session. Do NOT redo: F4 trace/fix, L-02, lane-U merge (all pushed; CI run 29569968111).
 
@@ -11207,7 +11207,7 @@ OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck;
 
 # 2026-07-11 (DS Meraki-scan R107: item BONUS-HP-AMP "Warmog's Vitality" (Warmog 3083 / Arena 443083) -> EHP numerator; ENGINE 1.199.0 -> 1.200.0)
 
-Fresh adversarial Meraki(16.13.1)-vs-registry scan session (operator picked track A over Lane-A precompute / live-gated flips). All 7 item-side survivability families were saturated, so the refill HAD to be a genuinely DIFFERENT mechanic proven LIVE first. Scan subagent -> independent re-verify -> main-thread TDD (RED-first) -> read-only verifier CONFIRM (7/7). Full detail: LEDGER 852. Commit `54c7db56`.
+Fresh adversarial Meraki(16.13.1)-vs-registry scan session (operator picked track A over Lane-A precompute / live-gated flips). All 7 item-side survivability families were saturated, so the refill HAD to be a genuinely DIFFERENT mechanic proven LIVE first. Scan subagent -> independent re-verify -> main-thread TDD (RED-first) -> read-only verifier CONFIRM (7/7). Full detail: LEDGER 852. Commit `e74d6ea2`.
 
 - GAP (R107): Warmog's Armor 3083 + Arena mirror 443083 "Warmog's Vitality" = "Gain bonus health equal to 12% bonus health from items" (verbatim Meraki 16.13.1) earned ZERO EHP - a genuinely NEW axis (item HP -> HP self-amplifier), NOT any saturated family. `build_champion` folds each item's FLAT health stat + walks bonus-HP -> bonus-AD (Tyranny) but has NO bonus-HP -> bonus-HP self-amp walk; the `_effects_data` 3083 entry names only the regen. Proven LIVE before code: Sion L13 + Warmog/Heartsteel/Sunfire, resolved `hp - base_hp` == the raw item flat-HP sum (2250) EXACTLY -> the +12% (270 HP) delta==0. Independently re-verified (NOT the scan subagent's claim). 223083/323083 ABSENT; only base 3083 + the 44xxxx Arena id resolve.
 - FIX: NEW `_item_bonus_hp_amp.py` (3083 + 443083 @ 0.12; MAX over the equipped family - UNIQUE passive over a shared bonus-HP pool; deterministic, EXACT, no midpoint like R105) + default-OFF `apply_item_bonus_hp_amp` seam folding `0.12 * bonus_hp_from_items` (total_hp - base_hp) into every per-type numerator + the `_blend_with_heal` sustain mirror. NEW `item_bonus_hp_amp_hp` EhpResult field (END) + to_dict; threaded ehp / hybrid / server. OFF byte-identical; ON Sion L13 blended_ehp 7453.70 -> 7975.39 (amp 270.0); no-Warmog HP builds stay byte-identical (no leak).
@@ -11221,7 +11221,7 @@ Fresh adversarial Meraki(16.13.1)-vs-registry scan session (operator picked trac
 
 # 2026-07-10 (Lane A HZ gate de-bias + DS Meraki-refute Seraph's shield - operator-directed manual session, 2 slices; ENGINE 1.192.0 -> 1.193.0)
 
-Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live-gated IDLE - no game running). Two slices, both spec-first via Plan subagents + TDD RED-first. Full detail: LEDGER 844 (Lane A) + 845 (Meraki). Commits `70a87318` (Lane A) + `6bef45a4` (Meraki).
+Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live-gated IDLE - no game running). Two slices, both spec-first via Plan subagents + TDD RED-first. Full detail: LEDGER 844 (Lane A) + 845 (Meraki). Commits `bf6f66dc` (Lane A) + `6d7a0f3d` (Meraki).
 
 - LANE A (Tier-1, tools-only, ENGINE-IMPACT NONE): de-biased tools/hz_shadow_report.py - the precompute-vs-Haiku flip-readiness gate (the do-not-flip-blind gate Lane A's coach flip waits on) was read off a MACRO-polluted sample. Objective map-calls (SETUP DRAKE/BARON, END GAME, DEFEND TOWER, CRASH/FREEZE/PUSH wave, CAMP PHASE) leaked as false comparable "hold" (~8.3k via A/B chip fallback) + flooded unclassified_native (20.8k). NEW _NON_LANING_ACTION_MARKERS + a GUARDED branch in _is_non_laning_native_state: drop only when native_action carries a macro marker AND classify_verdict(action) is None, so a compound "SETUP LANE TRADE"->trade is PRESERVED (over-exclusion verified 0). Live: unclassified 20,810->1,045, comparable 8,975->5,608, rate 0.470->0.459 (DOWN = honest; the macro "hold" leaks were INFLATING it; anti-circularity, not tuned to rise). 44/44 tests.
 - MERAKI-REFUTE (Tier-2, ENGINE 1.192.0->1.193.0): credited Seraph's Embrace (3040) Lifeline shield to EHP - it carried the Awe AP passive but NO ItemShield, so its 18%-max-mana low-HP shield earned ZERO EHP (its always-on lifeline siblings Sterak/Maw/Shieldbow/Hexdrinker were all credited; 3040 was skipped because ItemShield lacked a mana term). NEW ItemShield.max_mana_scaling + max_mana threaded through resolve_magnitude/_collect_shields/compute_ehp (from resolved.stats['mp']); shield on 3040/223040/323040 via a default-OFF assume_seraphs_shield seam (byte-identical OFF, ZERO cross-contam). Meraki 16.13.1 = 18% max mana ANY absorb (stale "350+max-mana%" note corrected). Armed: Ryze L11 -> 344.6 shield, all 3 EHP axes rise. Ceremony: 129 pins, CHANGELOG, banner 8179, build-orders stamp-only, Share 424 --check green, DS :8893 -> 1.193.0. 21 new tests; DS 8179/0-fail, RC 11317 pass (2 reds = pre-existing LEDGER-828 coach-poll asyncio flake, unrelated). Worktree build subagent + verifier gate + merger re-ran fresh.
@@ -11233,7 +11233,7 @@ Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live
 
 # 2026-07-05 (R80 - item-keyed basic-attack-DR EHP seam, the R77 sibling lane; LEDGER 791)
 
-Gemini-loop executor cycle 9 (DIRECTOR REFILL rotation 2). Directive: premise-check ORUN3 + ORUN4, then rotate to the REFILL DS-sweep. Commit `bd397d36` (feat) + docs-sync commit. ENGINE 1.180.0 -> 1.181.0, DS :8893 bounced, Share synced.
+Gemini-loop executor cycle 9 (DIRECTOR REFILL rotation 2). Directive: premise-check ORUN3 + ORUN4, then rotate to the REFILL DS-sweep. Commit `7d6f9466` (feat) + docs-sync commit. ENGINE 1.180.0 -> 1.181.0, DS :8893 bounced, Share synced.
 - PREMISE: ORUN3 (Aggregator B per-stat PGR strip) + ORUN4 (Aggregator D game-flow strip) are BOTH CLEAN duplicates (verified vs LIVE code) -> flipped DONE-CLEAN. ORUN3 == OQ12 (CS/min lm-rank-cspm last_match.js:520 + KP%/gold-share/dmg-share sub-lines last_match.js:1048 + champ_benchmarks.js); ORUN4 == R16 perf_curve.js + ORUN2 899b5f24 snowball-elasticity.
 - BUILD (R80): fresh Meraki-vs-registry refute -> Plated Steelcaps 3047/223047 Plating 10% basic-attack DR was defensive_only NOTE-only (ZERO EHP credit). NEW ItemEffect.basic_attack_damage_reduction (0.10) + ehp.item_aa_dr_multiplier + physical-only compute_ehp fold behind default-OFF assume_item_aa_dr; mirror of R77 crit-DR, never cross-credits; byte-identical OFF; +5.3% phys EHP armed at the 0.5 midpoint.
 GATE: TDD 17 + DSV9 end-append guard co-fix; DS 8032 pass; verifier CONFIRM 7/7; 123 ENGINE_VERSION pins bumped. CO-FIX (R77 a8302f01 pattern): the ENGINE bump re-fired 6 HZ-B stamp guards + 1 DAEMON_SLAYER doc-drift -> re-stamped HZ-B tables byte-exact 1.181.0 (173 roster preserved; the item-388 --static 10-champ seed footgun caught + reverted per the R78 warning) + the doc banner; RC 293 affected-class re-verify -> 10746 / 0 fail. Share --check green 410 files.
@@ -11263,7 +11263,7 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 
 # 2026-07-17 (DS meta-valuation sweep - Alistar/Ambessa/Amumu/Anivia/Annie, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
-Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Per champ: inline engine-probe (DS :8893, tanky+squishy x L11/L16) + a meta-research subagent (HIGH conf, 4 aggregators + kit) CONVERGED. Tier-0 docs/memory only, no .py touched. 3 GAP (specs RM-43/44/45) + 2 REFUTE. Resolved 19/173 (GAP 11, REFUTE 5, FENCED 3), remaining 154. Commits `c46b1663` Alistar / `c30413bb` Ambessa / `9cddc8ba` Amumu / `f34ed7be` Anivia / `07c3103f` Annie (docs-only, CI path-skips). Memories `project_ds_sweep_{alistar_engage_tank,ambessa_ability_haste_bruiser,amumu_magic_tank_ap_rush,anivia_sustained_dot_control,annie_burst_malignance}`.
+Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Per champ: inline engine-probe (DS :8893, tanky+squishy x L11/L16) + a meta-research subagent (HIGH conf, 4 aggregators + kit) CONVERGED. Tier-0 docs/memory only, no .py touched. 3 GAP (specs RM-43/44/45) + 2 REFUTE. Resolved 19/173 (GAP 11, REFUTE 5, FENCED 3), remaining 154. Commits `4c638a15` Alistar / `c6e00c1d` Ambessa / `32f4d8fd` Amumu / `5519fb18` Anivia / `b53a4aab` Annie (docs-only, CI path-skips). Memories `project_ds_sweep_{alistar_engage_tank,ambessa_ability_haste_bruiser,amumu_magic_tank_ap_rush,anivia_sustained_dot_control,annie_burst_malignance}`.
 
 - **Alistar = REFUTE** (first tank/ds.ehp REFUTE). Durable engage tank support, ZERO damage/AP; ds.ehp correctly leads axis-neutral durability (Randuin's/Warmog's/Jak'Sho). No damage build to mis-value; the ability-haste + team-aura (Locket/Zeke's/Knight's Vow) + R active-DR value is a class-level tank/enchanter-scorer scope limit, not a per-champ gap.
 - **Ambessa = GAP RM-43** (batch RM-39; second bruiser/ds.hybrid gap). Ability-weaving AD bruiser-skirmisher (Eclipse/Shojin/Death's Dance; damage from abilities not autos); ds.hybrid auto-DPS leads BotRK on-hit #1 by 2x + buries her signature Spear of Shojin at rank 47/80 (dead-last #6 even in a whitelist of only her own 6 core items). Bonus-AD abilities + ability-haste-for-cast-frequency unmodeled. Same shape as Aatrox; NOT pool/burst/coherence.
@@ -11277,7 +11277,7 @@ Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_v
 
 # 2026-07-17 (DS meta-valuation sweep - Aatrox/Ahri/Akali/Akshan, 4 GAPs; read-only, NO engine change; strict-alpha A->Z start)
 
-Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Per champ: meta-research subagent (HIGH conf) + inline engine-probe (DS :8893) CONVERGED. Tier-0 docs/memory only, no .py touched. 4 GAPs, 4 new specs RM-39..42. Resolved 14/173 (GAP 8, REFUTE 3, FENCED 3), remaining 159. Commits `016e7cf2` Aatrox / `3533249c` Ahri / `72451b30` Akali / `9b158695` Akshan (docs-only, CI path-skips). Memories `project_ds_sweep_{aatrox_bruiser_haste,ahri_ulthaste_burst,akali_burst_ad_pollution,akshan_crit_passive}`.
+Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Per champ: meta-research subagent (HIGH conf) + inline engine-probe (DS :8893) CONVERGED. Tier-0 docs/memory only, no .py touched. 4 GAPs, 4 new specs RM-39..42. Resolved 14/173 (GAP 8, REFUTE 3, FENCED 3), remaining 159. Commits `e97f47db` Aatrox / `334a3c35` Ahri / `85bc3896` Akali / `3c97624c` Akshan (docs-only, CI path-skips). Memories `project_ds_sweep_{aatrox_bruiser_haste,ahri_ulthaste_burst,akali_burst_ad_pollution,akshan_crit_passive}`.
 
 - **Aatrox = GAP RM-39** (first bruiser/ds.hybrid gap, NEW shape). Ability-haste drain-bruiser; ds.hybrid auto-DPS sub-model leads BotRK on-hit #1 + crit, buries his #1 item Spear of Shojin at rank 51/143; his Q-ability + ability-haste value unmodeled. NOT pool (only boots filtered), NOT burst, NOT coherence.
 - **Ahri = GAP RM-40** (mildest; first mage/ds.ability gap). Burst-combo mage on the CORRECT axis+archetype, but the sustained DPS model leads Liandry's #1 (off-meta vs squishy) + buries signature Malignance #15 (ult-haste->burst unmodeled); most AP core surfaces top-10. ds.burst reroute is AD-polluted so the fix stays in the mage scorer.
@@ -11322,7 +11322,7 @@ Continues the standing DS per-champ meta-valuation sweep (Kai'Sa/Jhin/Varus REFU
 # 2026-07-17 (mdclean headless run C1-C8 COMPLETE - gemini AHK loop; LEDGER 912; commits 78c3c018..bbda1e90)
 
 Headless gemini-directed docs-cleanup loop (spec `docs/specs/2026-07-16-md-cleanup-headless-directive.md`). 8 cycles, all gemini audits CLEAN, gemini spend $0.44/$25 ceiling, STOP = max_cycles 8 reached (03:49). Tier-0 docs-only throughout (no suite / no restart / no verifier per spec rule; docs-only pushes skip CI by design - MINUTE SAVER paths-ignore, baseline green).
-- **Cycles:** C1 inventory 155 candidates + 56-file census `78c3c018`; C2 ROADMAP -> NOW/NEXT/LATER stable ids `4ab82200`; C3 BACKLOG prune + path-stale sweep `d8e6ebc9`; C4 WAKEUP relocate-trim to 3 `e11e8f15`; C5 living set ARCH/OPS/API/AGENTS + README `86616a9f`; C6 DS changelog + ORCH rounds relocate + LIVE_GATED refresh `64435871`; C7 cross-ref sweep + slice-G relocate + census archive `b7e8aabe`; C8 CLAUDE.md propose-only audit `bbda1e90` (LEDGER 912 + ORCH C8 findings entry in the same commit).
+- **Cycles:** C1 inventory 155 candidates + 56-file census `4615b2d8`; C2 ROADMAP -> NOW/NEXT/LATER stable ids `d788fe2e`; C3 BACKLOG prune + path-stale sweep `30ae0305`; C4 WAKEUP relocate-trim to 3 `9e9d9235`; C5 living set ARCH/OPS/API/AGENTS + README `f88afe6c`; C6 DS changelog + ORCH rounds relocate + LIVE_GATED refresh `d3c511f0`; C7 cross-ref sweep + slice-G relocate + census archive `89b5d451`; C8 CLAUDE.md propose-only audit `878c5dbd` (LEDGER 912 + ORCH C8 findings entry in the same commit).
 - **C8 deliverable:** `ops/loop/reports/mdclean-claudemd-proposal.md` rewritten as the C8 edition superseding C7's (8391B, 0 non-ASCII; single agent, no fan-out per directive). 7 confirmations no-change-owed + 7 operator-gated proposals: P1 slim header DS parenthetical (~600B, WP-F6a); P2 "13 residual .after() files" stale - measured 3, all frozen (app/__init__.py, app/_loop.py, app/_health_monitor.py); P3 vision-pipeline opener stale (screen_agent.py retired for the in-process self-grab relay, item 276); P4 merge "Session-End Ritual" into "Session Wrap-up" (~320B); P5 prune "Style Rules" (both bullets restate the hard rule, ~200B); P6 drop hardcoded "(20,190 tests)" (stale-by-construction); P7 CLAUDE.md-local glyph slice (5 lines carry U+00B7/U+00D7/U+2248/U+2192). Net if all applied ~1.1KB + 2 accuracy fixes; CLAUDE.md untouched (25,362B < 60KB).
 
 NEXT: operator reviews the CLAUDE.md proposal - apply or discard (propose-only rule held; do NOT apply unprompted). Loop control: STOP file left in place as the run record (next `launch_loop.ps1` pre-cleans it). Untracked strays NOT this run's, left alone: `agents/agent6_auditor/{proposals,reports}/20260712-*` + `ops/loop/reports/lane_{research,ui}.{log,done.txt}`.
@@ -11337,7 +11337,7 @@ Interactive session, continuation of Slice A. Task: surface Nashor's for on-hit 
 - **KEY deviation (controller-verified):** DDragon `_damage_axis` MISRATES Gwen (attack 7 > magic 5) + Kog'Maw (8 > 5) as AD (they are auto-reliant hybrids). T5 added `_onhit_ap_axis` fallback (detect a bilinear-AP on-hit passive); no false positives (Warwick / AD-carries stay ad).
 - **RESULT:** Nashor's surfaces Gwen#5 / Kayle#6 / Kog#3. Full DS dir 8498 passed. T1-5 all reviewed clean (opus on T4/T5).
 
-SHIPPED - all 11 tasks (this session finished T6-11 via subagent-driven-development; fresh implementer + task-reviewer per task; 3 reviewer-caught Criticals fixed + independent verifier gate). T6 `/rank-onhit` route; T7 `rank_onhit_for` client + `onhit` dispatcher branch (returns the universal `{ok,scorer,archetype,ranked,fell_back}` dict); T8 ENGINE 1.215.0 -> 1.216.0 (136 anchor pins, Share mirror, `:8893` restart) - the full suite caught a MISSED step (the 6 HZ-B build-order tables were not re-stamped; the canonical `core.build_order_precompute/variants --static` regen fixed all 12 stamp tests + refreshed the Slice A + Slice B + Locke routed champs' precomputed builds, which were stale since Slice A skipped the regen); T9 classifier `tools/ds_onhit_ap_prefilter.py` + roster (seed 3 ONLY, 0 additions - conservative precision-over-recall over 21 candidates) + FLAT cached fail-soft loader `core/ds_onhit_ap_roster.py` (the silent-no-op flatten-shape hazard closed by a direct resolver test); T10 `default_for_champion` routes Gwen/Kayle/Kog'Maw to `("onhit", demoted)` + coach display maps - a grep-blindspot Critical (`test_per_champion_scoring_coverage.py` is roster-driven + spells Kog'Maw with an apostrophe -> `KeyError: 'onhit'`) was reviewer-caught + fixed (onhit -> mage-vs-carry remap). Commits `216652f3`..`9113618e` on main. **LIVE E2E (deployed RC :8888 /api/build-plan):** Gwen/Kayle/Kog'Maw `scorer=onhit` + Nashor's in the build; Syndra `ability`, Akali `burst` - controls held. DS-dir 8502 passed; full `tests/` green apart from the 3 known pre-existing (coach_poll x2 + doc_size_budget). LEDGER 911. Live-gated tail: the in-game OVERLAY RENDER eyeball of the new onhit builds (Electron, agent-blind; backend + build-plan proven) -> `docs/LIVE_GAME_GATED_SYNC.md`.
+SHIPPED - all 11 tasks (this session finished T6-11 via subagent-driven-development; fresh implementer + task-reviewer per task; 3 reviewer-caught Criticals fixed + independent verifier gate). T6 `/rank-onhit` route; T7 `rank_onhit_for` client + `onhit` dispatcher branch (returns the universal `{ok,scorer,archetype,ranked,fell_back}` dict); T8 ENGINE 1.215.0 -> 1.216.0 (136 anchor pins, Share mirror, `:8893` restart) - the full suite caught a MISSED step (the 6 HZ-B build-order tables were not re-stamped; the canonical `core.build_order_precompute/variants --static` regen fixed all 12 stamp tests + refreshed the Slice A + Slice B + Locke routed champs' precomputed builds, which were stale since Slice A skipped the regen); T9 classifier `tools/ds_onhit_ap_prefilter.py` + roster (seed 3 ONLY, 0 additions - conservative precision-over-recall over 21 candidates) + FLAT cached fail-soft loader `core/ds_onhit_ap_roster.py` (the silent-no-op flatten-shape hazard closed by a direct resolver test); T10 `default_for_champion` routes Gwen/Kayle/Kog'Maw to `("onhit", demoted)` + coach display maps - a grep-blindspot Critical (`test_per_champion_scoring_coverage.py` is roster-driven + spells Kog'Maw with an apostrophe -> `KeyError: 'onhit'`) was reviewer-caught + fixed (onhit -> mage-vs-carry remap). Commits `69d67d2a`..`17ce6b43` on main. **LIVE E2E (deployed RC :8888 /api/build-plan):** Gwen/Kayle/Kog'Maw `scorer=onhit` + Nashor's in the build; Syndra `ability`, Akali `burst` - controls held. DS-dir 8502 passed; full `tests/` green apart from the 3 known pre-existing (coach_poll x2 + doc_size_budget). LEDGER 911. Live-gated tail: the in-game OVERLAY RENDER eyeball of the new onhit builds (Electron, agent-blind; backend + build-plan proven) -> `docs/LIVE_GAME_GATED_SYNC.md`.
 
 ---
 
@@ -11379,9 +11379,9 @@ NEXT: C6 tenacity (needs net-new hard-CC champ curation - no enemy-CC source; `d
 # 2026-07-16 (upstream/patch scan -> 16.14.1 refresh + validation + Eclipse AH fix; commits d081291d + fc09ce0b + 36129183; LEDGER 905-906)
 
 Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re-extract) -> "what is next to validate" -> validate 1-4 -> "yes" -> "ship a+b" -> /done. mode_key=client, no live game.
-- **Patch refresh 16.13.1 -> 16.14.1** (LEDGER 905): mirror `d081291d` (13 files) + engine snapshot `fc09ce0b` (61 files: 19-file DS dir + 6 HZ tables). Meraki core + abilities (manifest content_patch backfill 25.15) + fresh cdragon_spell (CC swap=5/immob=181 verified) + copy-forward curated/wiki/cdragon-ratios; build_orders + pickban HTTP-scored; Share single-patch handoff. ENGINE UNCHANGED (patch != engine). DS `:8893` + RC bounced to 16.14.1. Dual suite green after triaging 23 patch-drift failures (HZ regen + doc flip + Share `_PATCH`).
+- **Patch refresh 16.13.1 -> 16.14.1** (LEDGER 905): mirror `fc0964d2` (13 files) + engine snapshot `21db5626` (61 files: 19-file DS dir + 6 HZ tables). Meraki core + abilities (manifest content_patch backfill 25.15) + fresh cdragon_spell (CC swap=5/immob=181 verified) + copy-forward curated/wiki/cdragon-ratios; build_orders + pickban HTTP-scored; Share single-patch handoff. ENGINE UNCHANGED (patch != engine). DS `:8893` + RC bounced to 16.14.1. Dual suite green after triaging 23 patch-drift failures (HZ regen + doc flip + Share `_PATCH`).
 - **Validation 1-4:** shield-lerp pin holds (Shieldbow byte-equal 16.14 Meraki, BACKLOG #7 re-verified); build recos NO data regression (same-engine HZ diff = 0 all modes; the alarming ADC Lane-B shift was engine-GENERATION drift, not 16.14 data - driving items stat-identical); override pins 59/60 match; Meraki-sourced data byte-identical to 16.13.1 (frozen `latest` = content_patch 25.15).
-- **Eclipse AH fix** (LEDGER 906, ENGINE 1.214.0 -> 1.215.0, `36129183`): 226692 Arena-mirror pin 10 -> 15 (missed in the 16.12.1 Arena normalization batch) + un-blind `item_ah_drift_check` (hardcoded 16.12.1 -> now resolves current.txt) + NEW CI guard `tests/test_item_ability_haste_ddragon_sync.py`. Sibling sweep: only 226692 drifted (220 pins). 115 test pins + Share + DS/RC bounce. CI green (ci + CodSpeed).
+- **Eclipse AH fix** (LEDGER 906, ENGINE 1.214.0 -> 1.215.0, `9d0dc0d5`): 226692 Arena-mirror pin 10 -> 15 (missed in the 16.12.1 Arena normalization batch) + un-blind `item_ah_drift_check` (hardcoded 16.12.1 -> now resolves current.txt) + NEW CI guard `tests/test_item_ability_haste_ddragon_sync.py`. Sibling sweep: only 226692 drifted (220 pins). 115 test pins + Share + DS/RC bounce. CI green (ci + CodSpeed).
 
 NEXT: patch 16.14.1 fully landed + validated, engine 1.215.0. Live-gated tail: the 16.14 build recos want a real-game eyeball (all client mode this session). Known Meraki-cadence gaps logged NOT fixed (Corki/Yunara AD-growth stale, Locke/Zaahen no ability kit) - resolve when Meraki `latest` advances past 25.15. Do NOT redo: the 226692 AH fix + the patch refresh are shipped + pushed + CI-green; do NOT re-scan upstream (no drift), do NOT re-bump the engine for 226692.
 
@@ -11431,7 +11431,7 @@ structural gaps are augments (no capture-free API) + fog positions (no coords). 
 Slice B 14 fresh; RC 11672 passed (the 2 test_coach_poll_offload_hot03 = pre-existing LEDGER-828
 async flake, pass 2/2 isolated, 0 R126 regressions); DS 8461 passed / 1948 subtests
 (baseline-identical, 0 DS impact); ruff clean; 0 non-ASCII; ds_share_sync --check green 456 files;
-CI green. feat `beac83cf` + docs(loop) `29a23da4` -> origin/main. NEXT (live-gated): calibrate the
+CI green. feat `c2237453` + docs(loop) `e1d13182` -> origin/main. NEXT (live-gated): calibrate the
 augment_card_*/minimap_fog rects against a real Arena/ARAM frame + wire fuse_reads into the ARAM/Arena
 coaches shadow-first (extends the R101 data/ocr_shadow.jsonl lane), then a validated OCR-only flip.
 Competitor-lift/overlay/companion/stat-site family DRAINED 4x (R100/R112/R120/R125) - retired as a
@@ -11465,7 +11465,7 @@ to flip). done_sentinel --tests 8449 --regressions 0.
 
 # 2026-07-13 (R113-fix gemini-loop cycle - FALSE-POSITIVE REGRESS #5 + RC-suite guard; LEDGER 882)
 
-Directive ordered a "missing" test for the R113 total-AD physical burst seam (auditor flagged HEAD `374e8f44` REGRESS). DISPROVEN vs ground truth: the seam was tested - DS-dir `test_item_hydra_active_burst_r113.py` (447 lines / 27 tests) + Share mirror shipped in the R113 FEAT commit `93cac79c` (verifier 27/27 fresh; LEDGER 881 recorded it). `374e8f44` is the R113 FINALIZE (re-stamp) commit; the auditor diffed it in isolation = same diff-window misattribution as cycle-13 (#4). Now #5 of the cycles-7/8/9/13 family. Root cause OPEN (loop infra): R61's `audit_range` (`d1a143d4`) needs a controller RESTART to activate + a merge second-parent window fix (`93cac79c` enters HEAD via the `b003dac5` merge). ACTION: shipped a legitimate non-duplicative RC-suite guard `tests/test_item_hydra_active_burst_r113.py` (12 tests; RC CI had zero `physical_burst_total_ad_ratio` coverage; not the cycle-13 duplicate anti-pattern). verifier CONFIRM: RC 12/12 + DS-dir 27/27 + collect 11623/0-err + ruff clean + zero engine diffs. Test-only, ENGINE-IMPACT NONE (under `tests/`, no Share/DS bounce). PART C escalation -> `gemini_ask.txt`: fix the audit window + REDIRECT the loop to the operator's overnight priority chain (#1 `docs/specs/2026-07-13-ds-crit-burst-fix.md`). `done_sentinel --tests 12 --regressions 0`.
+Directive ordered a "missing" test for the R113 total-AD physical burst seam (auditor flagged HEAD `ae2f0953` REGRESS). DISPROVEN vs ground truth: the seam was tested - DS-dir `test_item_hydra_active_burst_r113.py` (447 lines / 27 tests) + Share mirror shipped in the R113 FEAT commit `ef6cea88` (verifier 27/27 fresh; LEDGER 881 recorded it). `ae2f0953` is the R113 FINALIZE (re-stamp) commit; the auditor diffed it in isolation = same diff-window misattribution as cycle-13 (#4). Now #5 of the cycles-7/8/9/13 family. Root cause OPEN (loop infra): R61's `audit_range` (`fc19281e`) needs a controller RESTART to activate + a merge second-parent window fix (`ef6cea88` enters HEAD via the `2c573564` merge). ACTION: shipped a legitimate non-duplicative RC-suite guard `tests/test_item_hydra_active_burst_r113.py` (12 tests; RC CI had zero `physical_burst_total_ad_ratio` coverage; not the cycle-13 duplicate anti-pattern). verifier CONFIRM: RC 12/12 + DS-dir 27/27 + collect 11623/0-err + ruff clean + zero engine diffs. Test-only, ENGINE-IMPACT NONE (under `tests/`, no Share/DS bounce). PART C escalation -> `gemini_ask.txt`: fix the audit window + REDIRECT the loop to the operator's overnight priority chain (#1 `docs/specs/2026-07-13-ds-crit-burst-fix.md`). `done_sentinel --tests 12 --regressions 0`.
 
 ---
 
@@ -11483,7 +11483,7 @@ the build agent caught the collision). Verifier CONFIRM 7/7; DS 8421 / 0 fresh; 
 1 R102 `build_module.css` dark-literal ratchet, file untouched by R111 - chipped as a
 separate frontend task) / 0 R111 regressions. HZ-B 6 tables stamp-only re-stamp (guard
 6/6); DS `:8893` bounced 1.209.0 live; `ds_share_sync --check` green 452 files. merge
-`7cf051db`, reconcile `9e61f8a0`. Live default-ON flip -> LIVE_GATED B49 (practice-SR
+`193f8135`, reconcile `8f69342c`. Live default-ON flip -> LIVE_GATED B49 (practice-SR
 own-build eyeball). Don't-redo: 2501/447111 Retribution SHIPPED; the item-keyed
 incoming-DR lane (crit R77 / AA R80 / AS-slow R86) is saturated; R77's Steelcaps
 sibling director-note is STALE (shipped R80).
@@ -11493,9 +11493,9 @@ sibling director-note is STALE (shipped R80).
 # 2026-07-13 (nightly reds cleared + DSP11 Step-0b gate RESOLVED do-not-revert + kit-axis table fresh-DB refresh; a+b+c chain; LEDGER 876)
 
 Operator "go a+b+c chain" then "/done + continue headless with ahk + gemini". 3 commits pushed to main:
-- **(a)** `35732e4e` loadout dedup: 18 double-pen unique-family clashes (LastWhisper/VoidPen keys from 1.207.0, LEDGER 872 - loadouts never regenerated). ROOT-CAUSE tool = the item-s8 sweep (`tools/champion_loadout_sweep_item_s8.py`), NOT align.py: the WAKEUP "re-run align.py" hint was STALE - align.py only rewrites `v["items"]`, but 16/18 clashes live in `build_paths[*]["items"]` it never walks. Surgical 25/25 diff; 1646 loadout guards + full suite green.
-- **(b)** `2f90fd28` ROADMAP trim 83217 -> 80955 bytes (< 81920): relocated the stale 2026-06-05 NEXT-UP block verbatim to ROADMAP_HISTORY, kept the P3.2 residual, shortened the P6 stub. test_doc_size_budget green.
-- **(c)** `5081ab91` DSP11 (Step 0b) gate RESOLVED = **DO-NOT-REVERT**. The operator-gated coach-picks diff ran at TRUE coach fidelity (`dispatch_for_coach` top-5 + real frontline/squishy comps + independent rewind re-query; report `ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md`) and REFUTED the spec premise: Step 1a fixes crit-ADC coherence ONLY, not the lethality/assassin/manamune DSP11 champs - reverting drops Pyke's whole lethality core live. Instead kept the mechanism + gave `build_kit_axis_item_credit.py` a fresh-DB re-validation gate + refreshed the table (drops Ezreal-ER [table 56.2%/n16 -> fresh 40.9%/n22] + Naafiri [at/below baseline]; keeps Pyke/Corki/Nilah/Senna + Ezreal-Trinity). Data-only, NO ENGINE bump. Share-synced + `:8893` restarted + live-verified (Naafiri inert, Pyke intact). DS 8404 + consumers 106 + DSP11 12 green.
+- **(a)** `2f61ee80` loadout dedup: 18 double-pen unique-family clashes (LastWhisper/VoidPen keys from 1.207.0, LEDGER 872 - loadouts never regenerated). ROOT-CAUSE tool = the item-s8 sweep (`tools/champion_loadout_sweep_item_s8.py`), NOT align.py: the WAKEUP "re-run align.py" hint was STALE - align.py only rewrites `v["items"]`, but 16/18 clashes live in `build_paths[*]["items"]` it never walks. Surgical 25/25 diff; 1646 loadout guards + full suite green.
+- **(b)** `3be1c2e5` ROADMAP trim 83217 -> 80955 bytes (< 81920): relocated the stale 2026-06-05 NEXT-UP block verbatim to ROADMAP_HISTORY, kept the P3.2 residual, shortened the P6 stub. test_doc_size_budget green.
+- **(c)** `52e25422` DSP11 (Step 0b) gate RESOLVED = **DO-NOT-REVERT**. The operator-gated coach-picks diff ran at TRUE coach fidelity (`dispatch_for_coach` top-5 + real frontline/squishy comps + independent rewind re-query; report `ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md`) and REFUTED the spec premise: Step 1a fixes crit-ADC coherence ONLY, not the lethality/assassin/manamune DSP11 champs - reverting drops Pyke's whole lethality core live. Instead kept the mechanism + gave `build_kit_axis_item_credit.py` a fresh-DB re-validation gate + refreshed the table (drops Ezreal-ER [table 56.2%/n16 -> fresh 40.9%/n22] + Naafiri [at/below baseline]; keeps Pyke/Corki/Nilah/Senna + Ezreal-Trinity). Data-only, NO ENGINE bump. Share-synced + `:8893` restarted + live-verified (Naafiri inert, Pyke intact). DS 8404 + consumers 106 + DSP11 12 green.
 
 Gemini director re-tested **UP** (was down last session, executor-direct). NEXT (overnight directive priority 2, continuing headless): Step 0a DSP2 byte-identical prune, Step 2 wire `situational.py` counter-build into the overlay, Step 3 ally synergy + NL reasoning; then priority 3 per-champ meta-build online research (aggregator B/aggregator D/aggregator A vs engine). **Do NOT re-pitch the DSP11 mechanism revert** (gate-closed do-not-revert; spec 0b RESOLVED).
 
@@ -11505,13 +11505,13 @@ Gemini director re-tested **UP** (was down last session, executor-direct). NEXT 
 
 Gemini-headless loop launched but the Gemini DIRECTOR was DOWN (Google-side 503 on gemini-3-pro-preview + fallback 2.5-flash; TCP 443 fine, so Google-side not Legion egress). Operator chose EXECUTOR-DIRECT ("use yourself as pseudo proxy"); loop halted (STOP dropped; controllers + ahk killed). Executed priority (1) = the crit-burst spec, self-auditing as director + auditor proxy since Gemini could not.
 
-5 commits pushed to main: L1 `9708e3bf` (coherence respects burst score) -> L2 `54d5efc8` (ENGINE 1.207->1.208, arm the execute) -> L3 `83624198` (crit-ADC fight_length allow-map) -> L1'/L4 `f2ecafe8` (the DEEP fix) -> backfill `4e00df61`. Full detail: LEDGER 875.
+5 commits pushed to main: L1 `d62bbd1f` (coherence respects burst score) -> L2 `0674a8d8` (ENGINE 1.207->1.208, arm the execute) -> L3 `738d07bd` (crit-ADC fight_length allow-map) -> L1'/L4 `a7ef5517` (the DEEP fix) -> backfill `6ece6048`. Full detail: LEDGER 875.
 
 DEEP DISCOVERY: L1/L3 were INERT live - the client `RankedItem.from_dict` DROPPED the server's `effective_score`, so the coherence burst branch read base 0.0 (a target-blind kit-fit sort). An L4 subagent STOPPED + surfaced it (proven: rank_for raw-server differs by target, rank_for_primary_archetype final does not); I verified + authorized the combined fix (parse effective_score + eff-branch dock `_MU_EFF=80` + SQ-70 squishy target at the chokepoint, gated `apply_squishy_burst_target`). Caught + corrected TWO subagent misreports (the "no-op" STOP was the real root cause; a mislabeled "pre-existing" anti_tank regression was actually mine -> the variant opt-out fix). Memory `reference_ds_client_effective_score_parse`.
 
 LIVE-VALIDATED via /api/ds-preview on the restarted RC: Jinx IE#4/Collector#3, Twitch IE#3/Collector#2, ER/Eclipse out of top-8; Vayne (on-hit control)/Lux/Ornn byte-identical. `:8893` @ 1.208.0, Share --check green, consumer set 0 failures (was 12), DS suite 8406 passed.
 
-NIGHTLY CATCH (fixed `9b811356`): the schedule-only full suite caught ONE crit-burst regression the push-CI + my consumer-set filter missed - `test_archetype_dispatcher::test_carry_propagates_target_armor` used Caitlyn (now a mapped burst carry, so L4 correctly swaps her target); retargeted to Vayne + added mapped-swap coverage. Also authored the owed 1.208.0 changelogs (Share + engine + DAEMON_SLAYER status 8403).
+NIGHTLY CATCH (fixed `a0da52e9`): the schedule-only full suite caught ONE crit-burst regression the push-CI + my consumer-set filter missed - `test_archetype_dispatcher::test_carry_propagates_target_armor` used Caitlyn (now a mapped burst carry, so L4 correctly swaps her target); retargeted to Vayne + added mapped-swap coverage. Also authored the owed 1.208.0 changelogs (Share + engine + DAEMON_SLAYER status 8403).
 
 PRE-EXISTING nightly reds (NOT crit-burst, do NOT attribute to this session): `test_champion_loadouts_no_unique_clash` (18 double-pen family clashes in `data/champion_loadouts.json` - the LEDGER-872 1.207.0 double-pen fix added the unique keys but never regenerated the curated loadouts; needs a loadout regen + backfill); `test_doc_size_budget::test_roadmap_md_under_budget` (ROADMAP.md 83217 > 81920 bytes - relocate shipped entries to docs/ROADMAP_HISTORY.md); plus runner-only env fails (asyncio.run in a running loop, :8893-down Jhin plan, missing 3858.png icon).
 
@@ -11521,10 +11521,10 @@ NEXT: (a) regenerate champion_loadouts.json to clear the 18 double-pen clashes; 
 
 # 2026-07-13 (double percent-pen mutex fix [ENGINE 1.207.0] + live-gated doc-only resync; root-cause-fix, verifier-gated)
 
-Two commits, both pushed to main (`ee43d4ff` + `ded5f354`). Full detail: LEDGER 872.
+Two commits, both pushed to main (`b9aab65b` + `71b2a1aa`). Full detail: LEDGER 872.
 
-- DOUBLE-PEN MUTEX (ENGINE 1.206->1.207, Tier-2, `ee43d4ff`): the build plan picked 2-3 same-group percent-pen items vs tanks - LastWhisper (LDR/Mortal/Serylda; Jhin + AD carries) AND the sibling VoidPen (Void Staff/Cryptbloom; mages, caught in the anti-narrow sweep). ROOT CAUSE = empty `unique_passive_key` in `_effects_data.py` (the engine's ONLY no-double hook). **CORRECTED the prior diagnosis**: it was NOT `build_order.py` ignoring the key - plan_build_order delegates dedup to the engine; the earlier data-only attempt failed ONLY because :8893 was never restarted. FIX = data-only keys on the COMPLETED members (SR + Arena mirrors); components 3035/4630 left unkeyed (upgrade path stays recommendable). Backfilled 12 doubled rows in BOTH build-order keyspaces. Verifier: DS suite 8390 passed / 0 failed; live Jhin=1 LW, Syndra=1 VP. Memory `open_bug_double_last_whisper` -> FIXED.
-- LIVE-GATED DOC-ONLY RESYNC (`ded5f354`): the `/live-gated-resync` Workflow STALLED mid-synthesize; harvested its 82 verdicts (67 done / 6 partial / 9 open), spot-verified 8/8 cited commits, and (operator chose doc-only - game had ended) updated `docs/LIVE_GAME_GATED_SYNC.md` count ~108 -> ~15 + a dated DOC-ONLY RESYNC block. ~15 truly live-gated items remain for the next game.
+- DOUBLE-PEN MUTEX (ENGINE 1.206->1.207, Tier-2, `b9aab65b`): the build plan picked 2-3 same-group percent-pen items vs tanks - LastWhisper (LDR/Mortal/Serylda; Jhin + AD carries) AND the sibling VoidPen (Void Staff/Cryptbloom; mages, caught in the anti-narrow sweep). ROOT CAUSE = empty `unique_passive_key` in `_effects_data.py` (the engine's ONLY no-double hook). **CORRECTED the prior diagnosis**: it was NOT `build_order.py` ignoring the key - plan_build_order delegates dedup to the engine; the earlier data-only attempt failed ONLY because :8893 was never restarted. FIX = data-only keys on the COMPLETED members (SR + Arena mirrors); components 3035/4630 left unkeyed (upgrade path stays recommendable). Backfilled 12 doubled rows in BOTH build-order keyspaces. Verifier: DS suite 8390 passed / 0 failed; live Jhin=1 LW, Syndra=1 VP. Memory `open_bug_double_last_whisper` -> FIXED.
+- LIVE-GATED DOC-ONLY RESYNC (`71b2a1aa`): the `/live-gated-resync` Workflow STALLED mid-synthesize; harvested its 82 verdicts (67 done / 6 partial / 9 open), spot-verified 8/8 cited commits, and (operator chose doc-only - game had ended) updated `docs/LIVE_GAME_GATED_SYNC.md` count ~108 -> ~15 + a dated DOC-ONLY RESYNC block. ~15 truly live-gated items remain for the next game.
 
 Do NOT redo: double-LW is FIXED (data-only, NOT build_order.py surgery); the 67 closed live-gated rows are git-proven done. NEXT: the ~15 live-gated items need a REAL game; the `/live-gated-resync` Workflow harness stalled (full row-by-row rebuild owed once fixed); DS meta-valuation sweep; item-4 DS Settings (item-8 Phase 5 DONE LEDGER 873; residual = w-stats/w-call default-pos collision, live-gated).
 
@@ -11532,10 +11532,10 @@ Do NOT redo: double-LW is FIXED (data-only, NOT build_order.py surgery); the 67 
 
 # 2026-07-13 (DDragon alias-pool dedup [ENGINE 1.206] + ZOI Z2 minimap fix; both live-verified in a real Jhin ARAM; subagent-orchestrated)
 
-Operator live-flagged a Jhin reco emitting "The Collector" TWICE. Two disjoint fixes shipped + live-verified + pushed (main `58d8e058`). Full detail: LEDGER 871.
+Operator live-flagged a Jhin reco emitting "The Collector" TWICE. Two disjoint fixes shipped + live-verified + pushed (main `d99998b8`). Full detail: LEDGER 871.
 
 - ALIAS-POOL DEDUP (ENGINE 1.205->1.206, Tier-2): DDragon 16.9.1+ ships dup ids (`32xxxx`/`66xxxx` mirror namespaces wrongly carrying maps[11]=True) -> 21 SR name-collisions double-counted in EVERY archetype's live reco. FIX = keep-shortest-id-per-name at `rank.py` `_filter_candidates` (one chokepoint); same-length pairs (Kalista 3599/3600, jungle pets 1101-1107) untouched -> byte-identical off SR (ARAM control test). No backfill (corruption was live-only; stored build_orders/loadout/pick tables scanned clean). Live-verified on :8893 engine 1.206: Jhin/Soraka dup-free. Memory `reference_ds_alias_pool_dedup`.
-- ZOI Z2 MINIMAP (Tier-1, `875d862b`): blob over-count 62-74 -> <=10 via champ-size floor + per-team clamp (both default-None = byte-identical); count-only, per-champ IDENTITY still unsolved (memory `project_zoi_minimap_reality`). Live-verified: `minimap_dots=10`.
+- ZOI Z2 MINIMAP (Tier-1, `b4ddedd1`): blob over-count 62-74 -> <=10 via champ-size floor + per-team clamp (both default-None = byte-identical); count-only, per-champ IDENTITY still unsolved (memory `project_zoi_minimap_reality`). Live-verified: `minimap_dots=10`.
 - Also live-confirmed the shipped Jhin arc on-screen (Swiftness boots + lethality core) - the arc on-screen eyeball is now DONE.
 - tests/ = 11532 passed; the 3 residual "failures" = confirmed environment flakes (live-daemon shadow appends + async timing; all pass in isolation - do NOT re-chase). Share package synced (CHANGELOG 1.206 + a 1.203->1.205 Jhin-arc bridge entry; audit-doc counts refreshed 7144->8387 / 227->310 files).
 - Don't-redo: both fixes shipped + live-verified + pushed; the Jhin-arc on-screen eyeball is DONE. The alias dedup is a DISTINCT class from the double-Last-Whisper bug (still OPEN).
@@ -11545,11 +11545,11 @@ Operator live-flagged a Jhin reco emitting "The Collector" TWICE. Two disjoint f
 
 # 2026-07-12 (Jhin build-plan arc + item-8 Phases 2-4 + 4 overlay UI fixes + coach anti-table prompt; multi-agent)
 
-A long multi-agent session (Jhin DS sweep PILOT + operator live overlay-QA). Main `d0abff62`+ `5147ce0d`, pushed, CI green. Full detail: LEDGER 870.
+A long multi-agent session (Jhin DS sweep PILOT + operator live overlay-QA). Main `c904ddae`+ `f88d41f2`, pushed, CI green. Full detail: LEDGER 870.
 
-- JHIN ARC (Tier-2 x2, DS :8893 restarted, LIVE at 1.205): AS-lock (`831a9953`, ENGINE 1.203->1.204; new `_passive_as_lock_overrides.py` converts Jhin's wasted item AS+crit to base-AD + zeros the AS rebuild + boots override 3009) THEN lethality-crit (`e535d8cb`->merge `d0abff62`, 1.204->1.205; new `core/ds_champion_fight_length.py` allow-map {jhin:0.5} wiring the EXISTING-but-unwired rank_items burst-blend through the live coach path). Built as the PILOT for the operator's NEW per-champion DS meta-valuation sweep (memory `feedback_ds_sweep_meta_valuation_research`: research the real-meta valuation THEN calibrate the ranking model). Verifier-gated; agents corrected the spec on evidence (Runaan's is NOT wasted AS - keeps crit+bolts; fight_length 0.5 not the spec's 2.0 on the AS-lock base; stale Stormrazor id 3095->3097).
-- ITEM-8 PHASES 2-4 (`d4227a31`, Tier-1): rank-tier stats panel - pipeline (Ph2) + selector sync (Ph3) + panel rework (Ph4, 840/1500 brackets, new /api/rank-tier-bench route, old role-bracket route deprecated-alive). Verifier caught the agent's inflated "125 passed" (actual 85).
-- 4 OVERLAY UI FIXES + COACH PROMPT (`40b337fc` + `5147ce0d`, Tier-1): operator live-flagged 4 overlay defects (coach pipe-wall -> clean Label:value rows, item-radial center-wedge overlap, build-panel 7th-item scrollbar, flush-to-bottom) - all fixed + 5-phase fixture-audited; PLUS the SR + ARAM coach prompts now forbid markdown tables (arena/brawl already did).
+- JHIN ARC (Tier-2 x2, DS :8893 restarted, LIVE at 1.205): AS-lock (`3cdefc52`, ENGINE 1.203->1.204; new `_passive_as_lock_overrides.py` converts Jhin's wasted item AS+crit to base-AD + zeros the AS rebuild + boots override 3009) THEN lethality-crit (`cf5ee4c0`->merge `c904ddae`, 1.204->1.205; new `core/ds_champion_fight_length.py` allow-map {jhin:0.5} wiring the EXISTING-but-unwired rank_items burst-blend through the live coach path). Built as the PILOT for the operator's NEW per-champion DS meta-valuation sweep (memory `feedback_ds_sweep_meta_valuation_research`: research the real-meta valuation THEN calibrate the ranking model). Verifier-gated; agents corrected the spec on evidence (Runaan's is NOT wasted AS - keeps crit+bolts; fight_length 0.5 not the spec's 2.0 on the AS-lock base; stale Stormrazor id 3095->3097).
+- ITEM-8 PHASES 2-4 (`577641da`, Tier-1): rank-tier stats panel - pipeline (Ph2) + selector sync (Ph3) + panel rework (Ph4, 840/1500 brackets, new /api/rank-tier-bench route, old role-bracket route deprecated-alive). Verifier caught the agent's inflated "125 passed" (actual 85).
+- 4 OVERLAY UI FIXES + COACH PROMPT (`440ae879` + `f88d41f2`, Tier-1): operator live-flagged 4 overlay defects (coach pipe-wall -> clean Label:value rows, item-radial center-wedge overlap, build-panel 7th-item scrollbar, flush-to-bottom) - all fixed + 5-phase fixture-audited; PLUS the SR + ARAM coach prompts now forbid markdown tables (arena/brawl already did).
 - OPEN (deferred to next session): the double-Last-Whisper bug (`open_bug_double_last_whisper`) - build plan picks 2-3 Last Whisper vs tanks (illegal); the data-only `unique_passive_key` fix was built (would-be 1.206) but proven INSUFFICIENT - plan_build_order's greedy path in core/build_order.py ignores the key - so the worktree was DISCARDED and the real root cause documented. Also noted: `project_ds_sweep_kaisa_poke_manamune` research.
 - NEXT: (a) land the double-LW fix (root-cause build_order.py's greedy no-double consumer); (b) LIVE-VERIFY in-game (Ctrl+Alt+A) the shipped Jhin arc (boots->Swiftness + lethality ultimate-build) + clean coach output + the 4 overlay fixes - all engine/render-confirmed, but the operator's game ended before the eyeball; (c) continue the DS sweep (crit-class Yasuo/Yone/Vladimir/Zeri per the scout ledger; Kai'Sa poke->Manamune); (d) item-4 DS Settings consolidation (item-8 Phase 5 DONE 2026-07-13 LEDGER 873). See ROADMAP top + memory `project_next_ingame_ui_finish`.
 - Don't-redo: the Jhin arc is SHIPPED + verified + live (do NOT rebuild); the double-LW `unique_passive_key`-only approach is PROVEN insufficient (fix build_order.py's greedy consumer, not just the data); 2 build agents died silently mid-session (caught via git/mtime probes, re-dispatched/salvaged) - a known harness flake, use git/disk probes not "no notification = alive".
@@ -11558,11 +11558,11 @@ A long multi-agent session (Jhin DS sweep PILOT + operator live overlay-QA). Mai
 
 # 2026-07-12 (item-8 Phase 1 backend + Jhin DS-build bug spec'd + augment C15/C16 reframed)
 
-Live-gated drain continued into a build session. Commits: `66c7ba1a` (item-8 Phase 1) + `c36f32f9` (Jhin spec + gated-doc). CI green, RC healthy. Full detail: LEDGER 869.
+Live-gated drain continued into a build session. Commits: `0e95c85c` (item-8 Phase 1) + `b86adb38` (Jhin spec + gated-doc). CI green, RC healthy. Full detail: LEDGER 869.
 
 - ITEM-8 PHASE 1 SHIPPED: backend rank-tier data adapter (`core/rank_tier_source.py` + `core/rank_tier_bench.py` + `data/rank_tiers/rank_tier_averages.seed.json` estimate seed + config; live-first w/ static-seed fallback, `RC_RANK_TIER_LIVE` kill switch; 26 tests green, independently re-verified). Panel rework + rank selector = later phases (overlay, live-gated).
 - JHIN DS BUILD BUG: reproduced (`beam Jhin --mode SR --level 18` tops Runaan's/Stormrazor/Berserker's - all attack-speed, dead on Jhin's Whisper AS-lock) + FULL file-cited fix spec committed `docs/specs/2026-07-12-jhin-whisper-as-lock-DS-fix-IMPL.md`. Operator FOLDED it to a next-session multi-agent per-champion build-plan sweep (Jhin = pilot #1). Do NOT build standalone - Tier-2 (ENGINE 1.203 -> 1.204 + Share + DS restart) + live-gated. Sibling sweep confirms Jhin UNIQUE (Bel'Veth = the anti-narrow same-perlevel:0 trap).
-- AUGMENT C15/C16 REFRAMED: the `67519018` field-fix is CORRECT + detection deterministic (offline-proven on a saved Kayle augment frame); the on-screen miss is the 25s vision cadence (`coaches/aram_coach.py:495`) skipping the ~10-15s augment window. Memory `open_bug_aram_augment_reco_cadence_miss`; fix (fast early-game poll) DEFERRED by operator.
+- AUGMENT C15/C16 REFRAMED: the `8fbff14e` field-fix is CORRECT + detection deterministic (offline-proven on a saved Kayle augment frame); the on-screen miss is the 25s vision cadence (`coaches/aram_coach.py:495`) skipping the ~10-15s augment window. Memory `open_bug_aram_augment_reco_cadence_miss`; fix (fast early-game poll) DEFERRED by operator.
 - CAPTURED for next session: DMG/SURV/UTIL shaper -> DS Settings panel move (memory item-4); open-gated-item count (~108) added to the LIVE_GAME_GATED_SYNC.md top row (maintain via `/live-gated-resync`).
 - NEXT: UI/UX continuance (item-8 phases 2-5 + DS Settings consolidation) + the PARALLEL multi-agent per-champion DS build-plan sweep + the gated drain. See memory `project_next_ingame_ui_finish` + ROADMAP top.
 - Don't-redo: item-8 Phase 1 shipped+verified; the Jhin fix is SPEC'd not built (build it via the next-session sweep); the augment field-fix is correct - do NOT re-investigate detection, the cadence is the issue.
@@ -11571,7 +11571,7 @@ Live-gated drain continued into a build session. Commits: `66c7ba1a` (item-8 Pha
 
 # 2026-07-12 (audit L-02: orphan lockfile.pid.tmp cleanup - Agent 2 backend task)
 
-Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/state/ (2026-07-08 to 2026-07-11). Fixed in `agents/_supervisor_common.py` (commit `afdd20eb`). Full detail: LEDGER 868.
+Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/state/ (2026-07-08 to 2026-07-11). Fixed in `agents/_supervisor_common.py` (commit `c93e383e`). Full detail: LEDGER 868.
 
 - FIX (2 parts): `_atomic_write_json` now retries `os.replace` 3x on PermissionError (60ms backoff, mirrors calibrator pattern) + always unlinks the .tmp via try/finally. NEW `_reap_orphan_lockfile_tmps()` in `acquire_lock()` globs lockfile.*.tmp, checks _pid_alive, unlinks dead-pid files. `import time` added.
 - TESTS: 8 new (test_supervisor_common_l02.py) - success + retry + final-failure-cleans + dead/live/malformed/mixed reap cases; all green.
@@ -11582,7 +11582,7 @@ Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/sta
 
 # 2026-07-12 (live-gated drain: item-1 rune-follows-build LIVE-VALIDATED + ARAM Mayhem augment-reco bug FIXED live)
 
-Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follows-build (the standing NEXT) is now LIVE-VALIDATED - operator saw the followed runes fire in a real practice champ-select, deduped + last-writer-wins over the frozen auto RuneWriter (log-proven). Augment-fix commit `67519018` on main; RC restarted (pid 18392). Full detail: LEDGER 867.
+Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follows-build (the standing NEXT) is now LIVE-VALIDATED - operator saw the followed runes fire in a real practice champ-select, deduped + last-writer-wins over the frozen auto RuneWriter (log-proven). Augment-fix commit `8fbff14e` on main; RC restarted (pid 18392). Full detail: LEDGER 867.
 
 - CLOSED: A2 (spell push/no-revert - `set_summoner_spells: idempotent skip (4+32 already set)` on every ARAM CS enter), A7 (KIWI->ARAM re-detect + bench-swap), A6 (bench-swap), C13 (enemy_spells stats_panel render), C1 (ARAM build LOGIC comp-aware), B24 (overlay pixel family rendering).
 - BANKED HEADLESS (flip-ready, OFF-vs-ON verified via :8893): B4/B7/B8/B10/B13/B14/B18/B19. B20 REFUTED (R55 is NOT `/rank`-eyeball-able; stays DS-restart-gated).
@@ -11595,12 +11595,12 @@ Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follo
 
 # 2026-07-12 (Lane E CV atlas flip-readiness validator - headless vision-Haiku-to-ZERO slice)
 
-Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `a1d7078c` (feat) + `9dfd7201` (docs) on main, CI-green. Full detail: LEDGER 866.
+Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `8709de43` (feat) + `d7936ad8` (docs) on main, CI-green. Full detail: LEDGER 866.
 
 - SHIPPED (Part A, TDD RED-first): NEW `tools/vision_atlas_validate.py` - offline flip-readiness harness for the Lane E CV matcher (`core.vision_template_match.match_icon`, R96 foundation). Added public `score_all()` (raw per-candidate scores) + refactored `match_icon` to a thin argmax+threshold wrapper over it (r96 behavior byte-preserved). Report -> `data/vision_atlas_accuracy.md`.
 - FINDING (de-risks the live-gated CV flip): matcher is SOUND at the pristine ceiling. champions 173/173=100%; items+spells raw dips are ONLY pixel-identical DDragon mode/rework duplicates (Arena Flash, ARAM Snowball, blue-buff2, strikers-flail/guardbreaker) - effective rate 1.0 all three, 0 genuine mis-id, smallest distinct margin 0.299. In-game noise (JPEG/resize/lighting) stays the live-gated risk.
 - Tier-1: default-OFF module, no live importer (grep-confirmed). 14 tests (RED-first) + r96 regression + hygiene trio green (27 this slice).
-- Part B (a ward_cue dead-code cleanup) STOPPED on a FALSE premise + surfaced instead: the ROADMAP called `core/ward_cue.py` "orphaned dead code" but it is LIVE-WIRED (`dashboard/_liveclient.py:216` serves `/api/state.liveclient.ward_cue`); deleting it crashes the serializer. The served field is now consumer-less (renderer removed 2026-07-05) but harmless. Per operator: corrected the ROADMAP breadcrumb (`9dfd7201`, Tier-0) instead of a blind delete; a real ward_cue teardown is a deliberate/live-session job.
+- Part B (a ward_cue dead-code cleanup) STOPPED on a FALSE premise + surfaced instead: the ROADMAP called `core/ward_cue.py` "orphaned dead code" but it is LIVE-WIRED (`dashboard/_liveclient.py:216` serves `/api/state.liveclient.ward_cue`); deleting it crashes the serializer. The served field is now consumer-less (renderer removed 2026-07-05) but harmless. Per operator: corrected the ROADMAP breadcrumb (`d7936ad8`, Tier-0) instead of a blind delete; a real ward_cue teardown is a deliberate/live-session job.
 - Don't-redo: score_all + the validator are shipped + green; `pushPageId`/item-1 unchanged. Do NOT blind-delete `core/ward_cue.py` (live producer). The CV live wiring/fusion + in-game accuracy stay live-gated.
 - NEXT: item-1 rune-follows-build LIVE-GATED validation (in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. OR the CV atlas LIVE wiring (per-champ/objective/item read + Live-Client/CV fusion), still live-gated. OR another headless lane.
 
@@ -11608,7 +11608,7 @@ Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ s
 
 # 2026-07-12 (loadout ranged-only melee gate - Terminus wrong-build bug FIXED at root)
 
-Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11). Commit `d39d50f5` on main; RC restarted + live-verified; docs sync (LEDGER 865).
+Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11). Commit `0102c777` on main; RC restarted + live-verified; docs sync (LEDGER 865).
 
 - ROOT CAUSE: the live DS scorer gates ranged-only items off melee (`rank.py` RANGED_ONLY_ITEM_IDS=Runaan's Hurricane, 2026-07-02) but the PARALLEL static-loadout serve path `coaches/loadout_resolver.py` (feeds the champ-select chooser AND the item-1 LCU item-set push) never got the symmetric gate -> 74 melee served-builds DISPLAYED and PUSHED Runaan's (an item melee cannot buy). "Terminus" was operator conflation - Xin Zhao carries Runaan's + Yun Tal, not Terminus.
 - FIX (2 layers): resolver `_strip_ranged_only` gate in `list_variants` + `resolve` (defense-in-depth) + a data backfill (`tools/hotfix_ranged_only_melee_loadouts.py`) replacing Runaan's 1:1 on 91 melee lists (Kraken / The Collector / Wit's End, archetype-aware, s8 lengths + mirror + axis + no-clash intact). Terminus (melee-LEGAL) NOT gated; Yun Tal (melee-legal) left per tightest-set.
@@ -11621,7 +11621,7 @@ Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11
 
 # 2026-07-12 (item-1 rune-follows-build Phase 6: LCU push of the followed rune page via the manual apply seam - FINAL phase, ALL 6 SHIPPED)
 
-Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on main (feat) + the docs sync (LEDGER 864). Built via a TDD build subagent + independent verifier gate (CONFIRMED). Full detail: LEDGER 864.
+Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `0c8f8877` on main (feat) + the docs sync (LEDGER 864). Built via a TDD build subagent + independent verifier gate (CONFIRMED). Full detail: LEDGER 864.
 
 - CORRECTNESS FACT the spec did not flag: `enumerate_pages` sets `recommendedPageId` from `auto_*` (the keystone the FROZEN writer applies) but `resolve()` pushes a variant's OWN keystone - these DIFFER for champs like Caitlyn (loadout PTA vs auto Comet). So a selected pageId cannot be pushed by matching `recommendedPageId`, and re-pushing the pure-auto case would clobber the writer.
 - FIX (Option B-refined, no backend/frozen change): NEW `builds[].pushPageId` (`coaches/rune_pages.py`) = the page `resolve(buildId)` ACTUALLY produces (variant OWN / build_path / userbuild runes). The JS `_csvPushFollowedRune` reverse-maps the selected pageId to that resolver-producible buildId and pushes it runes-only via `_csvApplyLoadout` -> /api/loadout/apply. A pure-auto page (no pushPageId match) is LEFT to the frozen writer - never push wrong runes, never clobber.
@@ -11634,7 +11634,7 @@ Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on 
 
 # 2026-07-11 (item-1 rune-follows-build Phase 5: relocate the champ-select auto-push toggles to the CHAMP SELECT settings card + default-ON)
 
-Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `942daa29` on main; web/* only (ADR-008 asset-hash reload - no RC restart). Full detail: LEDGER 863.
+Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `14899723` on main; web/* only (ADR-008 asset-hash reload - no RC restart). Full detail: LEDGER 863.
 
 - REMOVED the item-240 in-panel build-chooser push control (the `[PUSH]` button + 3 inline Runes/Spells/Build checkboxes on the chooser title, the `rc-cs-push-flags` opt-in blob, `_csvSetPushFlag`, `_csvPushFlagsStorageKey`, `.csv-builds-push-*` CSS).
 - ADDED 3 toggles to the CHAMP SELECT settings card (`web/index.html`, reusing the audited `.settings-row` markup) wired by an INVERTED `dev.js` binder (extended `cb()` with an `invert` param: checked unless `"0"`). `_csvGetPushFlags` now reads 3 FLAT keys `rc-cs-push-{runes,spells,build}`, each ON unless `"0"` (default-ON opt-OUT) - the SAME keys the toggles write (single source of truth).
@@ -11647,7 +11647,7 @@ Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `942daa29` on main; web/* onl
 
 # 2026-07-11 (item-1 rune-follows-build Phase 4: fold operator user-curated builds into the champ-select rune-page model + exact-match dedup)
 
-Shipped LEDGER 861's NEXT (item-1 Phase 4). Commit `8fd9b979` on main; RC restarted (pid 17692) + live-verified. Full detail: LEDGER 862.
+Shipped LEDGER 861's NEXT (item-1 Phase 4). Commit `e158c6b2` on main; RC restarted (pid 17692) + live-verified. Full detail: LEDGER 862.
 
 - BACKEND-ONLY (`coaches/rune_pages.py`): `enumerate_pages` now folds each operator user build (`sr_user_builds.list_for`) into the same model AFTER the generic variants, keyed `userbuild_<id>` (the exact namespacing `routes_loadout` :115 already uses) and exact-match deduped by resolved perk_ids (`_add` threads the stored `minor_primary`/`minor_secondary` into `resolve_page`). Identical perk_ids collapse onto one page; a subrune delta mints a new page. Guarded fold = operator-additive (a broken store never blocks the generic model).
 - NO frontend change: the rune SIDE panel consumes the route generically (`_csvRecommendedPageId(builds, buildId)` is a plain buildId find) + `/api/loadout/list` already surfaces `userbuild_<id>` as selectable, so a user build now FOLLOWS its own rune page (previously fell back to the champ's first page). UI-audit ritual N/A (no `web/*` change, R11).
@@ -11662,7 +11662,7 @@ Shipped LEDGER 861's NEXT (item-1 Phase 4). Commit `8fd9b979` on main; RC restar
 
 # 2026-07-11 (DS Meraki-scan R110: item low-HP MAGIC/TRUE amp "Cinderbloom" (Shadowflame) credited to the BURST scorer - a NEW damage-layer axis; ENGINE 1.202.0 -> 1.203.0)
 
-Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked tracks 1+4+2, opus-4.8 ultracode multi-agent orchestrated + adversarial review + verifier CONFIRM). The EHP + HPS axes are saturated, so the refill went to a NEW damage-layer axis proven LIVE first. 23-agent DISCOVERY workflow (8 lenses -> dedupe -> per-candidate adversarial refute -> ranked synthesis; 14 unique candidates, 8 survivors; two finders converged on the winner) -> main-thread TDD (RED-first) -> verifier CONFIRM (6/6) + adversarial reviewer SHIP. Full detail: LEDGER 858. Commit `ba326d18` (feat) + this docs-sync.
+Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked tracks 1+4+2, opus-4.8 ultracode multi-agent orchestrated + adversarial review + verifier CONFIRM). The EHP + HPS axes are saturated, so the refill went to a NEW damage-layer axis proven LIVE first. 23-agent DISCOVERY workflow (8 lenses -> dedupe -> per-candidate adversarial refute -> ranked synthesis; 14 unique candidates, 8 survivors; two finders converged on the winner) -> main-thread TDD (RED-first) -> verifier CONFIRM (6/6) + adversarial reviewer SHIP. Full detail: LEDGER 858. Commit `1a67eee5` (feat) + this docs-sync.
 
 - GAP (R110): Shadowflame's "Cinderbloom" (4645 + Arena mirror 224645) amps the wielder's MAGIC + TRUE damage +20% / +15% vs a target below 40% HP (DDragon 16.13.1), but the engine modeled only its 15 flat magic pen - a self-documented omission (`_effects_data.py` "Cinderbloom magic crit <40% HP (low-HP gate not modeled)"), NO magic-crit path anywhere. LIVE delta==0 proven FIRST (before any code): Xerath L11 + [4645] total_burst byte-identical 1797.84 at hp_pct 0.41 vs 0.39 - the amp never fires.
 - GROUNDING corrected the discovery draft (do NOT trust drafts blind): Arena 224645 is +15% NOT "identical" to SR +20% as the finder claimed; 324645 ABSENT; the 16.13.1 items.json is DDragon `{version,data}` (items under `["data"][id]` - the finder's first "Meraki-absent" read used the wrong nesting).
@@ -11676,7 +11676,7 @@ Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked tracks 1+4+2
 
 # 2026-07-11 (DS Meraki-scan R109: item HSP amp of the champion-ABILITY heal/shield throughput fold - a NON-EHP axis; ENGINE 1.201.0 -> 1.202.0)
 
-Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked track A, opus-4.8 ultracode multi-agent orchestrated + adversarial review + verifier CONFIRM). The EHP axis is saturated, so the refill went to a NON-EHP axis proven LIVE first. 15-agent DISCOVERY workflow (7 lenses -> adversarial refute -> ranked synthesis; 16 candidates, 6 survivors) -> main-thread TDD (RED-first) -> verifier CONFIRM (6/6) + adversarial reviewer SHIP. Full detail: LEDGER 857. Commit `9c7334b2` (code) + this docs-sync.
+Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked track A, opus-4.8 ultracode multi-agent orchestrated + adversarial review + verifier CONFIRM). The EHP axis is saturated, so the refill went to a NON-EHP axis proven LIVE first. 15-agent DISCOVERY workflow (7 lenses -> adversarial refute -> ranked synthesis; 16 candidates, 6 survivors) -> main-thread TDD (RED-first) -> verifier CONFIRM (6/6) + adversarial reviewer SHIP. Full detail: LEDGER 857. Commit `da2bcaeb` (code) + this docs-sync.
 
 - GAP (R109): item Heal/Shield-Power (HSP) amps the wielder's ITEM heals (compute_hps amp_factor: Ardent 3504 / Staff 6620 / Redemption 3107 / Moonstone 6616 / Mikael 3222) but the folded champion-ABILITY throughput (ability_hps_total - Soraka Q/W, Janna E, Lulu E) was added RAW at the hps.py total line. In League HSP amps all heals/shields incl abilities. LIVE delta==0: 8 enchanters L13 + 5 HSP items, amp_multiplier=1.4907, ability_hps_total>0, total == direct+buff+ability_hps_total EXACTLY (no amp) - Soraka under-credited 6.65 HPS (~6.3%).
 - GROUNDING: the operator's named e.g. (Spirit Visage 3065 external-heal-received amp) is a DOCUMENTED-DELIBERATE exclusion (ehp.py "granter value is final"), NOT a gap -> not picked. Scan's raw #1 Gargoyle 3193 active self-shield was DEPRIORITIZED (re-picks the forbidden item-shield EHP family) -> queued as a background chip.
@@ -11690,7 +11690,7 @@ Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked track A, opu
 
 # 2026-07-11 (DS Meraki-scan R108: item GENERAL %DR "Blessing"/"Safeguard" -> ALL 3 EHP denominators incl TRUE; ENGINE 1.200.0 -> 1.201.0)
 
-Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked track A, multi-agent orchestrated + adversarial review). The EIGHT item-side survivability families were saturated, so the refill HAD to be a genuinely DIFFERENT mechanic proven LIVE first. 25-agent DISCOVERY orchestration -> independent re-verify (caught 2 draft errors) -> main-thread TDD (RED-first) -> verifier CONFIRM (8/8) + adversarial reviewer SHIP. Full detail: LEDGER 855. Commit `d59623dc`.
+Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked track A, multi-agent orchestrated + adversarial review). The EIGHT item-side survivability families were saturated, so the refill HAD to be a genuinely DIFFERENT mechanic proven LIVE first. 25-agent DISCOVERY orchestration -> independent re-verify (caught 2 draft errors) -> main-thread TDD (RED-first) -> verifier CONFIRM (8/8) + adversarial reviewer SHIP. Full detail: LEDGER 855. Commit `b9d0367d`.
 
 - GAP (R108): item UNTARGETED GENERAL %DR - Celestial Opposition 3869 "Blessing" (35% melee / 25% ranged, Meraki) + Crown of the Shattered Queen 664644 "Safeguard" (40%, DDragon). The item-side lane of the champion-only R35 percent-mitigation (mit_*, champion-keyed), and distinct from R77 crit-DR / R80 AA-DR / R86 AS-slow which are damage-TYPE-specific + PHYSICAL-ONLY. General DR reduces TRUE damage too -> the fold hits the TRUE denominator, the credit no R77/R80/R86 performs. Proven LIVE: Braum L13 + Celestial, the ONLY resolved-stat delta is the item's +200 flat HP and true_ehp rose EXACTLY +200 -> the 25-35% DR earns delta==0 on every denominator.
 - VERIFY CAUGHT 2 DRAFT ERRORS (do not trust discovery drafts blind): (1) server.py IS threaded at 4 routes (draft said not); (2) the draft FABRICATED magnitudes (664644 @ 50, 444644 @ 50) - DDragon says 664644 = 40 (draft's dismissed "stale 40" was CORRECT); 444644 = Meraki 50 vs DDragon 90 (unresolvable Arena conflict). Registered only the 2 cleanly-sourced SR ids; EXCLUDED the conflicted Arena 444644 (+ Anathema's 228001 single-target, Cloak of Starry Night, dead 4644/224644).
@@ -11704,7 +11704,7 @@ Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked track A, mul
 
 # 2026-07-11 (Lane A precompute advance: hz_shadow_report unclassified-sample visibility + build dead-state de-bias; Tier-1)
 
-WAKEUP task (B) - advance the flip-readiness gate `tools/hz_shadow_report.py` (the report TOOL itself, NOT the big v4 spec). Operator picked B over a fresh Meraki scan / live-gated flips. Two commits: `317d6ef3` (LEDGER 853, visibility) + `94b71702` (LEDGER 854, the build de-bias the samples exposed - operator triggered the follow-up chip in-session). TDD RED-first both. Pushed.
+WAKEUP task (B) - advance the flip-readiness gate `tools/hz_shadow_report.py` (the report TOOL itself, NOT the big v4 spec). Operator picked B over a fresh Meraki scan / live-gated flips. Two commits: `53a24007` (LEDGER 853, visibility) + `a87428e5` (LEDGER 854, the build de-bias the samples exposed - operator triggered the follow-up chip in-session). TDD RED-first both. Pushed.
 
 - SHIPPED (853): new `unclassified_native_samples` key. The report COUNTED covered ticks whose live Haiku signal the keyword classifier could not map (`unclassified_native`: 1045 laning / 1403 build live) but never showed WHICH strings. Top-10 unmapped strings by count (deterministic; native prose first, A/B chip fallback) added to `summarize_agreement` (laning) + `summarize_build_agreement` (build) + the human printer. Additive, read-only, stdlib-only, NO rate change. Same diagnostic class as the confusion matrix.
 - SHIPPED (854): build-agreement dead-state de-bias. The samples exposed "WAIT RESPAWN" x264 polluting the build unclassified bucket (laning drops it via `_is_non_laning_native_state`, build did not). **KEY FINDING - the obvious mirror (guard at TOP of the build loop) was WRONG:** a live re-probe showed it MOVED the rate (0.6973 -> 0.6969), dropping 18 COMPARABLE ticks, because on the build axis the "respawn" substring matches REAL build prose naming buy-timing ("Complete Mortal Reminder on respawn" -> anti_tank -> comparable), and `classify_build_lean` is ORTHOGONAL to the laning-verdict guard (laning is immune because `classify_verdict` is both classifier + guard axis). FIX: gate the guard on `native is None` so the lean classifier decides comparability first. Live: WAIT RESPAWN gone, `unclassified_native` 1403 -> 1127, rate BYTE-IDENTICAL 2598/3726 = 0.6973 (pure de-bias, no rate tuning).
@@ -11717,7 +11717,7 @@ WAKEUP task (B) - advance the flip-readiness gate `tools/hz_shadow_report.py` (t
 
 # 2026-07-11 (HEXCORE offline viewer - full expansion: 141 nodes, source-grounded tooltips, all-lane pulse flow)
 
-Non-DS docs session. Full + expanded update to `docs/HEXCORE_offline.html` (the self-contained accretion-disk codebase galaxy). Ultracode workflow: 11 parallel agents read real source to rewrite every node description; a gap-finder surfaced new subsystems + flagged stale nodes. Commits `825649a2` + `399d9722`, CI green.
+Non-DS docs session. Full + expanded update to `docs/HEXCORE_offline.html` (the self-contained accretion-disk codebase galaxy). Ultracode workflow: 11 parallel agents read real source to rewrite every node description; a gap-finder surfaced new subsystems + flagged stale nodes. Commits `a28885b1` + `4023950f`, CI green.
 
 - SHIPPED: node data moved from the fragile RAW ";|"-delimited string to a JSON NODES array + 4-line parser - fixes a latent truncation bug (old parser split on ";" and kept only field[4], so any desc containing a semicolon, e.g. rca*/guidelines nodes, was silently cut in the live viewer). All 130 descriptions rewritten from real files/docs into accurate "what it is / does" tooltips; hover tooltip now shows the desc body (was label+counts only).
 - SHIPPED: 11 new subsystem nodes + 32 edges (coaches/, coach_integration/, tft/, dashboard/routes_* x66, web/js/main.js, panels/* x60, lcu rune-writer + client, vision _inference, build_planner planner, scripts/data_pipeline). Stale fix: m_gamereader relabeled game_reader.py -> game_reader/ (now a package). 130 -> 141 nodes. Pulses now seed on EVERY lane (was ~62%) so flow reaches all nodes + two-dot comet tails. Stats refreshed (ENGINE 1.200.0, commits 3335, patch 16.13.1).
@@ -11728,7 +11728,7 @@ Non-DS docs session. Full + expanded update to `docs/HEXCORE_offline.html` (the 
 
 # 2026-07-11 (DS Meraki-refute R106: item conditional RESIST-GRANT ramp (Jak'Sho 6665 / Force of Nature 4401) -> EHP DENOMINATOR; ENGINE 1.198.0 -> 1.199.0)
 
-ship-batch skill session (DS Meraki-refute rotation refill; the R105 NEXT-flagged CONFIRMED-live gap). Ground-truth verify -> main-thread TDD (RED-first) -> read-only verifier CONFIRM (8/8 fresh). Full detail: LEDGER 851. Commit `bf3bd566`.
+ship-batch skill session (DS Meraki-refute rotation refill; the R105 NEXT-flagged CONFIRMED-live gap). Ground-truth verify -> main-thread TDD (RED-first) -> read-only verifier CONFIRM (8/8 fresh). Full detail: LEDGER 851. Commit `bc5558ba`.
 
 - GAP (R106): Jak'Sho 6665/226665 "Voidborn Resilience" (+30% of BONUS armor+MR at 5 combat stacks - a PERCENT-of-bonus grant, NOT the operator's "~+2/+2 per stack" estimate; the Meraki 16.13.1 effects text corrected the spec before any code) + Force of Nature 4401/224401 "Steadfast" (+70 FLAT bonus MR at 8 stacks, MR only; Dissipate magic-DR removed V14.1, not credited) earned ZERO EHP for the stacked ramp. `build_champion` folds only the FLAT static resists (Jak'Sho +45/+45, FoN +55 MR); the champion `resist_grants` is champion-keyed so an item can never match it - the structural gap the item-side registries fill.
 - FIX: NEW `_item_resist_grants.py` (item-keyed; flat + percent-of-BONUS modes, family-dedup so base + Arena mirror credit ONCE; `_ITEM_RESIST_STACK_PROB` 0.5 at-max-stacks midpoint - they ramp then HOLD) + default-OFF `apply_item_resist_grants` seam folding `item_resist_armor`/`item_resist_mr` into `eff_armor`/`eff_mr` (the DENOMINATOR). Folded at the eff_* assembly so it flows into every per-type EHP AND the `_blend_with_heal` sustain mirror via the eff_* CLOSURE - NO numerator touch (cleaner than R105). NEW `item_resist_armor`/`item_resist_mr` EhpResult fields (END) + to_dict; threaded ehp/hybrid/server. ALSO the owed Tier-0 fix: corrected the stale `ehp.py:33-36` "Voidborn flows through build_champion already" note. OFF byte-identical; live-probe EXACT - Ornn L13 + FoN mr+35.0 (magic-only, physical unchanged); + Jak'Sho 6.75/6.75; + BOTH mr 50.0 (Voidborn's 30% correctly scales the pooled bonus incl FoN's +55).
@@ -11752,7 +11752,7 @@ Orchestrated ultracode session (DS Meraki-refute rotation; operator in a live ga
 
 # 2026-07-10 (DS Meraki-refute R100: Riftmaker (4633) max-stacks omnivamp EHP-sustain credit; ENGINE 1.193.0 -> 1.194.0)
 
-Manual operator-directed session (AskUserQuestion: operator picked "Omnivamp refute" over Lane A; not playing so live-gated drain was out). Spec-first: grounded scout -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 846. Commits `860477fc` (build) + `8b28c7f6` (bump) + docs-sync.
+Manual operator-directed session (AskUserQuestion: operator picked "Omnivamp refute" over Lane A; not playing so live-gated drain was out). Spec-first: grounded scout -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 846. Commits `163c5263` (build) + `e121eb60` (bump) + docs-sync.
 
 - GAP (R100): Riftmaker Void Corruption grants 10% melee / 6% ranged omnivamp at max stacks (Meraki items_meraki.json:44481), but stats.py has no omnivamp mod so `stats['omnivamp']` was never fed -> the already-built `_vamp_heal_pool` consumer (ehp.py:1610) resolved heal_omnivamp 0.0 on every build; the Riftmaker ItemEffect even said "intentionally not modeled" (stale reason).
 - FIX: NEW `_item_omnivamp` registry (mirrors `_item_tenacity`; 4633 + Arena 224633 = (0.10, 0.06)) + default-OFF `assume_max_stacks_omnivamp` seam on compute_ehp injecting `stats['omnivamp']` AFTER blended_ehp. OFF byte-identical; ON credits SUSTAIN axis only (`effective_ehp_with_sustain`/`sustain_ehp_delta`), blended_ehp byte-identical ON vs OFF (verified Morde L13 3600.12 both, heal_omnivamp 44.0; Ezreal ranged 26.4). Deferred conditional siblings 2517/3156/447103.
@@ -11765,7 +11765,7 @@ Manual operator-directed session (AskUserQuestion: operator picked "Omnivamp ref
 
 # 2026-07-10 (R101-C OCR shadow-report flip-readiness gate - tools/ocr_shadow_report.py - Lane E OCR migration step 2; ENGINE-IMPACT NONE)
 
-Manual /done session (not Gemini-loop), executing the R101 (LEDGER 842) NEXT. Full detail: LEDGER 843. Code commit `6e5a0354` (relocated from WAKEUP 2026-07-10, R102 wrap).
+Manual /done session (not Gemini-loop), executing the R101 (LEDGER 842) NEXT. Full detail: LEDGER 843. Code commit `0168a677` (relocated from WAKEUP 2026-07-10, R102 wrap).
 
 - tools/ocr_shadow_report.py: READ-ONLY per-field OCR-vs-Sonnet match-rate report over data/ocr_shadow.jsonl (the {ts,field,ocr_val,sonnet_val,match} log R101 wired). Two-part flip gate mirrors aram_shadow_report: a field is flip-eligible only at >=MIN_SAMPLES rows AND >=MATCH_GATE match (defaults 50 / 0.90, CLI --min-samples/--gate). 0.90 > aram's 0.70 because OCR-only replaces Sonnet as the numeric source of truth. Fail-soft (missing/empty/malformed log -> zeroed, never raises); FLAGS readiness only - no flip authorization.
 - KNOWN_FIELDS = the 8 coach shadow numerics (ally_1..4_hp, gold, level, cs, kda), seeded so a zero-row field still renders; present_rate + accuracy_when_present sit beside match_rate so a fail reads miss-vs-mismatch.
@@ -11776,7 +11776,7 @@ Manual /done session (not Gemini-loop), executing the R101 (LEDGER 842) NEXT. Fu
 
 # 2026-07-10 (R101 ARAM+Arena OCR shadow-field wiring - Haiku-to-ZERO Lane E CV, shadow-first - vision-cv; ENGINE-IMPACT NONE)
 
-Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full detail: LEDGER 842. Commit `c5301370` (docs `5a383ea3`).
+Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full detail: LEDGER 842. Commit `951a3521` (docs `d882bbd8`).
 
 - Wire the already-built OCR numeric fields into ARAM + Arena coaches SHADOW-FIRST (log OCR-vs-Sonnet, NON-CONSUMING).
   Premise verified: SHADOW_FIELDS + ocr_shadow were doc-only (grep-absent from all .py); the pre-existing *_shadow tests are
@@ -11803,7 +11803,7 @@ Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full deta
 
 # 2026-07-10 (R99 Chainlaced Crushers (3173) magic-shield EHP credit + R98 vision-OCR escalation resolve - ds-engine; ENGINE 1.191.0 -> 1.192.0)
 
-Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LEDGER 840. Commit `c335eafb`.
+Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LEDGER 840. Commit `6b824b6f`.
 
 - PART 1 (escalation resolve): retired the ROADMAP "VISION-OCR HARDENING" bullet (relocated verbatim to
   docs/ROADMAP_HISTORY.md, marked DONE R94-R98) + moved the grab_native() OCR-crop-path seam to
@@ -11831,7 +11831,7 @@ Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LE
 
 # 2026-07-10 (R98 Vision-OCR premise re-refuted (4th re-pitch) + native-2560-vs-1280-halved-frame OCR crop guard - vision; ENGINE-IMPACT NONE)
 
-Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibrate 23 boxes at 2560x1440 + wire native OCR crops/color-correction into core/vision_tesseract"). Full detail: LEDGER 839. Commit `1fddb516`.
+Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibrate 23 boxes at 2560x1440 + wire native OCR crops/color-correction into core/vision_tesseract"). Full detail: LEDGER 839. Commit `b8daf1de`.
 
 - BOTH slices REFUTED (verify-before-declare; 4th re-pitch - R94 refuted the wiring half + escalated, R95/R96 advanced past it):
   - SLICE 1 DONE: data/vision_profiles/2560x1440_...1.6200.json is a real native CUSTOM-HUD calib (34 regions, ally panels at
@@ -11853,7 +11853,7 @@ Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibr
 
 # 2026-07-10 (R97 Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit - ds-engine; ENGINE 1.190.0 -> 1.191.0)
 
-Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b80547ab` (merge) + `7b24a779` (sync). DS :8893 bounced 1.191.0.
+Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `8a7110a4` (merge) + `0c0d6946` (sync). DS :8893 bounced 1.191.0.
 
 - FRESH adversarial Meraki(16.13.1)-vs-registry refute pass. PICK #1 Alistar R (55/65/75% all-damage DR) REFUTED live
   (verify-before-build): spell_damage_reduction_pct("Alistar","R")==(55,65,75) is ALREADY folded into EHP by the R19/R35
@@ -11879,7 +11879,7 @@ Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b8
 
 # 2026-07-10 (R96 Lane E client-side CV template-match atlas FOUNDATION - vision; NO ENGINE bump, Tier-1)
 
-Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No restart/bounce (pure new unused core module).
+Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `4eb908ce`. No restart/bounce (pure new unused core module).
 
 - The genuine NEXT NO-LLM vision frontier the R94/R95 escalations queued (Lane E CV template-match atlas), NOT another
   vision-OCR wiring re-pitch. Ground-truth correction: cv2 5.0.0 + numpy 2.5.0 ARE installed (OBS_CV_MINIMAP_PLAN L40
@@ -11901,7 +11901,7 @@ Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No 
 
 # 2026-07-10 (R95 vision CV consumes core.hud_settings COLOR layer - colorblind + gamma; NO ENGINE bump, Tier-1)
 
-Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No restart/bounce (neutral-safe, RC picks up on next restart).
+Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `69490634`. No restart/bounce (neutral-safe, RC picks up on next restart).
 
 - The net-new item the R94 escalation asked for (consume the hud_settings COLOR layer - genuinely unwired). PREMISE
   CONFIRMED: core/hud_settings.py:106 read_hud_settings() already returns colorblind/color_correction_needed/color{...},
@@ -11921,7 +11921,7 @@ Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No 
 
 # 2026-07-10 (R94 public-API native-crop regression guard - vision OCR; NO ENGINE bump, Tier-1)
 
-Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No restart/bounce (test-only).
+Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `da2e50e4`. No restart/bounce (test-only).
 
 - PREMISE REFUTED (the 3rd re-pitch): "wire native OCR crops + color-correction into vision_tesseract.py" ALREADY
   shipped LEDGER 793 (_color_correct :183 / _preprocess :198 / _scale_bbox :128 / the vision_profiles hot-path in
@@ -11943,7 +11943,7 @@ Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No 
 
 # 2026-07-10 (DS Darius E Apprehend % armor-penetration anti-tank credit - R93; ENGINE 1.189.0 -> 1.190.0, Tier-2)
 
-Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS `:8893` bounced 1.190.0.
+Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `42316205`. DS `:8893` bounced 1.190.0.
 
 - PREMISE CORRECTED: the directive's example shred abilities (Nasus E / Wukong Q / Trundle R / Evelynn W) are ALL
   already credited (ds_antitank_hint.py is a read-only consumer; the real registry is antitank._ANTITANK_REGISTRY).
@@ -11970,7 +11970,7 @@ Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS 
 
 # 2026-07-10 (DS Kaenic Rookern 2504 Magebane magic-shield EHP credit - R92; ENGINE 1.188.0 -> 1.189.0, Tier-2)
 
-Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `6882735c`. DS `:8893` bounced 1.189.0.
+Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `fc70ed92`. DS `:8893` bounced 1.189.0.
 
 - PREMISE CORRECTED: directive target "tank_items.json/fighter_items.json" does NOT exist; tank/fighter item
   credits live in the Python ehp/_effects_data ItemShield pool + _passive_*_overrides seams. Refute retargeted there.
@@ -11991,7 +11991,7 @@ Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `6882735c`. DS 
 
 # 2026-07-10 (reusable OCR-region resolution-scaling primitive - R91 Vision-OCR Hardening; Tier-1, NO ENGINE bump)
 
-Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `67f4c35a`. No DS bounce (ENGINE-IMPACT NONE).
+Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `f956dc49`. No DS bounce (ENGINE-IMPACT NONE).
 
 - PREMISE-CHECK reconciled a partially-stale digest: the "wire color-correction + native crops / replace stubs
   into vision_tesseract.py" half ALREADY shipped LEDGER 793 (_color_correct/_preprocess/_scale_bbox + the profile
@@ -12015,7 +12015,7 @@ Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `67f4
 
 # 2026-07-10 (DS Forbidden Idol HSP registry credit - R90 sibling of R60; ENGINE 1.187.0 -> 1.188.0, Tier-2)
 
-Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS `:8893` bounced to 1.188.0.
+Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `b97abc1f`. DS `:8893` bounced to 1.188.0.
 
 - GAP (adversarial Meraki 16.13.1 vs registry refute on the R60 `assume_hsp_amp` seam): the 5 finished HSP
   carriers (Ardent 3504 / Staff 6616 / Redemption 3107 / Mikael 3222 / Echoes 6620) are credited in
@@ -12039,7 +12039,7 @@ Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS 
 # 2026-07-10 (combat-style archetype chip on champ-select My Pick card - R89 Aggregator C lift; UI slice)
 
 Gemini-loop DIRECTOR REFILL R89. Full detail: LEDGER 830. UI slice, presentation-only, NO ENGINE bump,
-commit `e2ff5982`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPACT NONE).
+commit `526b3142`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPACT NONE).
 
 - LIFT: Section-7b competitor teardown of the Aggregator C live companion (docs/COMPETITOR_LIFT_2026-07-10.md;
   pages fetched via an Apify full-browser render, Cloudflare 403'd WebFetch). Verdict SPLIT: F2 combat-style
@@ -12060,7 +12060,7 @@ commit `e2ff5982`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPA
 
 # 2026-07-10 (DS Armored Advance Plating EHP credit - R86 sibling-carrier; ENGINE 1.187.0)
 
-Gemini-loop DIRECTOR REFILL R88. Full detail: LEDGER 829. Tier-2, commit `b6a64836`, DS `:8893`
+Gemini-loop DIRECTOR REFILL R88. Full detail: LEDGER 829. Tier-2, commit `fc8feb6d`, DS `:8893`
 bounced to 1.187.0 (health engine 1.187.0, patch 16.13.1, 173 champs / 706 items).
 
 - REFUTE PASS (inline, DDragon+Meraki 16.13.1 vs registry across all 3 anti-AA lanes x every map mirror):
@@ -12085,7 +12085,7 @@ bounced to 1.187.0 (health engine 1.187.0, patch 16.13.1, 173 champs / 706 items
 
 # 2026-07-10 (regen STALE HZ-B build-order tables to 1.186.0 + content-freshness guard; NO ENGINE bump)
 
-Executes deferred `task_27071e90` (flagged in LEDGER 827). Full detail: LEDGER 828. Commit `5c149fe0`.
+Executes deferred `task_27071e90` (flagged in LEDGER 827). Full detail: LEDGER 828. Commit `fd1c380c`.
 Data-catchup: NO ENGINE bump (engine already 1.186.0; a table regen is the post-bump FOLLOW-UP the
 stamp-sync guard's own docstring prescribes, not a version change - the directive said BUMP, auto-picked
 no-bump as the safest + correct option per the no-questions grant, logged for director override).
@@ -12226,7 +12226,7 @@ Data backfill (Data Fixes rule - BOTH tables + Share):
   flat table read by the deterministic+laning coaches (`daemon_slayer/<patch>/`, live `:8893`) + ran
   `ds_share_sync`. Drift-guarded via Caitlyn byte-identical (engine 1.184.0 == stamp) -> the diff is
   EXACTLY the 4 champs, no drift.
-- removed the `58ce5397` `source != default` skip: `test_build_order_axis_parity` now runs unconditionally
+- removed the `daafdd93` `source != default` skip: `test_build_order_axis_parity` now runs unconditionally
   (Katarina mixed-cell AP) and is a pollution tripwire.
 
 UI-audit (3b) caught + fixed a regression: with the picker gone the top-left "PICKS" card was EMPTY in
@@ -12513,7 +12513,7 @@ DO NOT redo: all 6 commits SHIPPED + verified (17359ca9..32132f22); incumbent hy
 
 ---
 
-# 2026-07-07 (Session reflection + 3 auto-improvements; commits `29fb5b5b` + `ceb2f584` + `e736a896`)
+# 2026-07-07 (Session reflection + 3 auto-improvements; commits `29fb5b5b` + `3d48e6e8` + `e79cc4c9`)
 
 Transcript analysis of 512 sessions (666 MB, June 3-July 7) -> Desktop/reflection-notes.md. Three highest-leverage fixes built:
 
@@ -12529,7 +12529,7 @@ Edge fixes: budget-saver .claude/settings.local.json bypass flags (was missing),
 
 ---
 
-# 2026-07-06 (LIVE-GATED DRAIN Session 1  -  practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
+# 2026-07-06 (LIVE-GATED DRAIN Session 1  -  practice SR; budget-saver smart profile; commits `f297cda1` + `cfe3f909` + `d6ee6bd8` + `706d8e20`, LEDGER 809-810)
 
 First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A  -  wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
 
@@ -12542,7 +12542,7 @@ Context-shrink: LEAN_CLAUDE.md (80 lines vs 223) auto-swapped by all three shims
 # 2026-07-06 (RC Budget-Saver SHIPPED - local-LLM fallback for Claude Code; PRs #7 + #8 merged, LEDGER 808)
 
 Operator-directed build (NOT the gemini loop): a local fallback so RC keeps operating when the Claude plan hits 0. Full brainstorm -> spec -> no-placeholder plan -> subagent build -> whole-branch review -> ship. Live game NOT involved. New `ops/budget_saver/`; no frozen file; no DS touch.
-- **SHIPPED + PROVEN LIVE (PRs #7 `88061f7f` + #8 `22a053b4`).** claude -> LiteLLM proxy (:4000 /v1/messages) -> ollama_chat/llama3.1:8b local ($0 default) + deepseek escalation + nvidia nemotron fallback. Still Claude Code end to end (skills/MCP/memory/TDD/git); `budget-saver.ps1` = budget-saver mode. e2e proven: claude --print -> proxy -> llama3.1 -> valid tool_use exit 0. 14/14 unit tests, ruff clean.
+- **SHIPPED + PROVEN LIVE (PRs #7 `7e274856` + #8 `1b3abdce`).** claude -> LiteLLM proxy (:4000 /v1/messages) -> ollama_chat/llama3.1:8b local ($0 default) + deepseek escalation + nvidia nemotron fallback. Still Claude Code end to end (skills/MCP/memory/TDD/git); `budget-saver.ps1` = budget-saver mode. e2e proven: claude --print -> proxy -> llama3.1 -> valid tool_use exit 0. 14/14 unit tests, ruff clean.
 - **Honest ceiling:** llama3.1:8b drives the loop but is weak on RC's heavy CLAUDE.md context. Live bench (qualify.py): local 2/3 (PASS tier-0/1, FAIL tier-2 math), deepseek 3/3 - confirms the R5 boundary. Local = keep-lights-on; DeepSeek (~50-100x < Opus) for real work. Both cloud keys placed + probed PASS. Isolated venv on Python 3.12 (litellm 1.91.0 needs <3.14; RC is 3.14).
 - **Auto-flip wired:** RC-BudgetSaverWatchdog (15-min) + usage_feeder.py (Anthropic cost_report API, opt-in via RC_BUDGET_CEILING_USD) arm/disarm; RC-BudgetSaverProxy autostarts the proxy at logon. HONEST: tracks the API-$ budget, not the subscription plan (no standalone API for that).
 - **5 live-verify fixes:** litellm py3.14-incompat (-> venv on 3.12), prometheus_client unbundled, ollama-died-post-pull, qwen emits TEXT-not-tool_calls (-> llama3.1 driver), Claude Code `thinking` param 500s a non-thinking model (-> MAX_THINKING_TOKENS=0). Whole-branch review: 1 critical (installer pulled qwen not llama3.1) + 4 hardening, all fixed.
@@ -12551,10 +12551,10 @@ Operator-directed build (NOT the gemini loop): a local fallback so RC keeps oper
 
 ---
 
-# 2026-07-06 (OUT-OF-GAME - gemini-headless loop R86 DS sweep; commit `e4ce737b`, LEDGER 807, ORCH R86)
+# 2026-07-06 (OUT-OF-GAME - gemini-headless loop R86 DS sweep; commit `115682ab`, LEDGER 807, ORCH R86)
 
 Gemini-directed executor cycle, operator away. mode_key=client (no live game). Directive: the R80/R85-foreshadowed item-keyed enemy-AS aura sweep (Frozen Heart 3110). Orchestrator single-thread (one indivisible engine slice - ehp/effects/init interdependent, NOT a disjoint fanout); read-only verifier gate pre-commit. Tier-2 (ENGINE bump).
-- **R86 SHIPPED (`e4ce737b`), ENGINE 1.181.0 -> 1.182.0.** GAP CONFIRMED: Frozen Heart "Winter's Caress" -20% nearby enemy AS (DDragon 16.13.1) was defensive_only NOTE-only -> ZERO EHP credit. A 20% enemy AS slow = 20% less incoming basic-attack RATE = same physical-EHP effect as R80's per-hit AA-DR, sourced from rate not magnitude. NEW `ItemEffect.enemy_attack_speed_slow` (0.20 x 3 map variants) + `ehp.item_enemy_as_slow_multiplier` + physical-only compute_ehp fold behind default-OFF `assume_item_enemy_as_slow`. Distinct item-keyed lane from R77 crit-DR + R80 AA-DR (never cross-credit; stack multiplicatively). Byte-identical OFF; armed = +11.1% phys EHP.
+- **R86 SHIPPED (`115682ab`), ENGINE 1.181.0 -> 1.182.0.** GAP CONFIRMED: Frozen Heart "Winter's Caress" -20% nearby enemy AS (DDragon 16.13.1) was defensive_only NOTE-only -> ZERO EHP credit. A 20% enemy AS slow = 20% less incoming basic-attack RATE = same physical-EHP effect as R80's per-hit AA-DR, sourced from rate not magnitude. NEW `ItemEffect.enemy_attack_speed_slow` (0.20 x 3 map variants) + `ehp.item_enemy_as_slow_multiplier` + physical-only compute_ehp fold behind default-OFF `assume_item_enemy_as_slow`. Distinct item-keyed lane from R77 crit-DR + R80 AA-DR (never cross-credit; stack multiplicatively). Byte-identical OFF; armed = +11.1% phys EHP.
 - **Verification:** TDD RED-first (18 tests) + DSV9 end-append guard co-fix; 104 test files re-pinned 1.182.0. DS 8060 green; verifier CONFIRM 6/6; Share --check green 413; DS :8893 live 1.182.0. RC 11191 passed / 4 failed (all PRE-EXISTING Legion-local: archetype-axis x3 + overlay-d2, touch nothing R86). Bump co-fixes: HZ-B stamp x6 (byte-exact string-replace after hitting + reverting the `--static` footgun) + DAEMON_SLAYER doc-drift. Ships DEFAULT-OFF; live flip -> LIVE_GATED B47.
 - **GOTCHA (recurring):** the HZ-B `--static --mode all` regen is a footgun (68k-line roster deletion); the correct stamp bump for a default-OFF seam is a byte-exact string-replace of the single `engine_version` literal in the 6 build_orders JSONs. Memory `reference_hz_precompute_patch_regen` updated with the shortcut - READ it before any HZ-B regen.
 
@@ -12562,61 +12562,61 @@ Gemini-directed executor cycle, operator away. mode_key=client (no live game). D
 
 ---
 
-# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `34c46d44`, LEDGER 802)
+# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `dc6b3d80`, LEDGER 802)
 
 Operator directive: advance the NO-LLM north star (Arena det-choices slice) AND fold it + adjacent items into the gemini-headless doctrine + skill, then /done, then continue headless via ahk-Gemini. mode_key=client (no live game) throughout. Inline/foreground (TDD, single-thread - 5 tightly-coupled files, interdependent keysets; verifier not needed per R7). DS untouched; no frozen file.
-- **Arena det-choices A/B SHIPPED (`34c46d44`).** Mirrored the ARAM lever onto Arena: `core/arena_deterministic_coach.build_block` 8th `choices` key (`_ARENA_CHOICE_LABELS`, all 5 labels -> A/B source_tag `arena_rule`, action+fight_rule computed once); `core/arena_coach_shadow` carries the list-typed choices column on both sides. Live coach already emits native choices. 3 symmetric keyset tests updated (35 green) + 43 adjacent + 3 hygiene; ruff clean; CI green.
+- **Arena det-choices A/B SHIPPED (`dc6b3d80`).** Mirrored the ARAM lever onto Arena: `core/arena_deterministic_coach.build_block` 8th `choices` key (`_ARENA_CHOICE_LABELS`, all 5 labels -> A/B source_tag `arena_rule`, action+fight_rule computed once); `core/arena_coach_shadow` carries the list-typed choices column on both sides. Live coach already emits native choices. 3 symmetric keyset tests updated (35 green) + 43 adjacent + 3 hygiene; ruff clean; CI green.
 - **Doctrine folded:** NO_LLM_PRECOMPUTE_PLAN progress entry + gemini-headless skill §4b Lane C (det-choices CODE-COMPLETE ARAM+Arena) + NEW Lane E (CV vision atlas = next NO-LLM target).
 
-**NEXT SESSION:** the det-choices templater lever is now CODE-COMPLETE for BOTH ARAM + Arena - the next NO-LLM target is the client-side CV vision atlas (the bigger SECOND program; `docs/OBS_CV_MINIMAP_PLAN.md` + the VISION-OCR box recal prereq in flight). **DO NOT redo:** the Arena det-choices slice is shipped (`34c46d44`, CI green) - the only Arena work left is a LIVE-Arena validation of the choices flowing into `data/arena_coach_shadow.jsonl` + `tools/arena_shadow_report.py` >=70% before any flip (arena shadow awaiting_accrual 0/20). Do NOT re-pitch a choices templater for either mode.
+**NEXT SESSION:** the det-choices templater lever is now CODE-COMPLETE for BOTH ARAM + Arena - the next NO-LLM target is the client-side CV vision atlas (the bigger SECOND program; `docs/OBS_CV_MINIMAP_PLAN.md` + the VISION-OCR box recal prereq in flight). **DO NOT redo:** the Arena det-choices slice is shipped (`dc6b3d80`, CI green) - the only Arena work left is a LIVE-Arena validation of the choices flowing into `data/arena_coach_shadow.jsonl` + `tools/arena_shadow_report.py` >=70% before any flip (arena shadow awaiting_accrual 0/20). Do NOT re-pitch a choices templater for either mode.
 
 ---
 
-# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `ae579ef0`, LEDGER 801)
+# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `f5fdba5c`, LEDGER 801)
 
 Headless loop, operator away. mode_key=client (no live game) throughout, so pure-backend precompute lanes only. Baseline green (HEAD c74a7fd6, ENGINE 1.181.0 = DS server, CI green, no PRs/unmerged branches). Inline/foreground; DS untouched; no frozen file.
-- **Shadow-report coverage unmasked (`ae579ef0`).** `tools/aram_shadow_report.py` divided det choices coverage by ALL non-dead rows, but 64% of the shadow log predates the choices instrumentation (slice 1 landed 2026-07-04 at row 905). Added `det_instrumented` + `det_coverage_rate_instrumented`; live read is now 91% instrumented (was a misleading 36% raw that understated flip-readiness ~57 pts). 18 tests green, CI green.
+- **Shadow-report coverage unmasked (`f5fdba5c`).** `tools/aram_shadow_report.py` divided det choices coverage by ALL non-dead rows, but 64% of the shadow log predates the choices instrumentation (slice 1 landed 2026-07-04 at row 905). Added `det_instrumented` + `det_coverage_rate_instrumented`; live read is now 91% instrumented (was a misleading 36% raw that understated flip-readiness ~57 pts). 18 tests green, CI green.
 - **Finding (do-not-rechase): ARAM det choices lever is CODE-COMPLETE.** `_safe_choices` maps all 5 labels (verified live). 36% was purely stale-log. No ARAM choices code owed.
 - **Cost/latency sweep CLEAN** - cache_control on all coaches; no sub-500ms polls; haiku interim floor; bundle-parity 41 green.
 - **BACKLOG: Arena det choices A/B scoped FUTURE** - symmetric keyset change across 3 test files + needs live-Arena accrual to validate.
 
-**NEXT SESSION:** the readily-shippable headless north-star work is done or live-gated. Options: (1) Arena det-choices slice (needs a live Arena game to validate + symmetric keyset update), (2) the client-side CV vision atlas (the bigger SECOND NO-LLM program), (3) a DS schema-lift (operator-gated). **DO NOT redo:** the ARAM choices lever is CODE-COMPLETE (the 36% was a stale-log artifact - do not re-chase it); `ae579ef0` is shipped + CI green.
+**NEXT SESSION:** the readily-shippable headless north-star work is done or live-gated. Options: (1) Arena det-choices slice (needs a live Arena game to validate + symmetric keyset update), (2) the client-side CV vision atlas (the bigger SECOND NO-LLM program), (3) a DS schema-lift (operator-gated). **DO NOT redo:** the ARAM choices lever is CODE-COMPLETE (the 36% was a stale-log artifact - do not re-chase it); `f5fdba5c` is shipped + CI green.
 
 ---
 
-# 2026-07-06 (OUT-OF-GAME - /live-gated-resync #2 + HEXCORE galaxy update+expand + /repo-insights; commit `940cc4b1`, LEDGER 800)
+# 2026-07-06 (OUT-OF-GAME - /live-gated-resync #2 + HEXCORE galaxy update+expand + /repo-insights; commit `1d858b6a`, LEDGER 800)
 
 Operator-chained command run: `/live-gated-resync` workflow -> update+expand HEXCORE -> `/repo-insights` -> `/done`. Docs-only, no code/engine/DS/frozen touched, no restart. mode_key=client (no live game) throughout.
-- **LIVE_GAME_GATED_SYNC.md rebuilt (1709 lines; 53-agent workflow, audit pass).** open_now=112 (+11 / -0), arena_needed=YES (D2-D6,D9), est 4 sessions; new Section H CV/OBS (H1-H6); incumbent-hysteresis (`32132f22`/`6f5c27a6`) recorded as the 2nd wired-on-live seam alongside DSP11; stale rank.py:632 cite -> :686; live-flip ledger preserved + one UNDATED (SYNC) resync #2 entry prepended.
+- **LIVE_GAME_GATED_SYNC.md rebuilt (1709 lines; 53-agent workflow, audit pass).** open_now=112 (+11 / -0), arena_needed=YES (D2-D6,D9), est 4 sessions; new Section H CV/OBS (H1-H6); incumbent-hysteresis (`7cef3e42`/`92f02bcd`) recorded as the 2nd wired-on-live seam alongside DSP11; stale rank.py:632 cite -> :686; live-flip ledger preserved + one UNDATED (SYNC) resync #2 entry prepended.
 - **HEXCORE_offline.html + HEXCORE.html data-synced (both, item-764 precedent).** Stats panel (commits 3176, head e27c5a3a, 2026-07-06, 5 local branches), ENGINE 1.179.0 -> 1.181.0 tooltips, +4 RAW nodes (ZOI district-macro hub + macro-decision tree + player-snapshot card + snowball model) + 7 edges + 21 DUST leaves = all 25 new source files since the 764 baseline; prose 139 nodes / 277 dust. Verified: referential integrity clean, 0 non-ASCII, both `<script>` blocks node --check green. Enhancements stayed offline-only per 764.
 - **repo-insights** at `~/.claude/usage-data/repo-insights-2026-07-06.html` (window 2026-06-06..07-06, 1432 commits, 174 ledger items). Ephemeral, not committed.
 
-**NEXT SESSION:** the LIVE_GAME_GATED_SYNC drain plan is 4 live sessions (practice SR -> real SR -> ARAM Mayhem -> Arena); arena items D2-D6,D9 NEED a live Arena game. Or run `/live-gated-drain` while playing, else pick the top ROADMAP `NEXT`. **DO NOT redo:** the sync doc + both HEXCORE files are shipped in `940cc4b1`; hexcore stats/ENGINE 1.181/nodes are current as of 2026-07-06.
+**NEXT SESSION:** the LIVE_GAME_GATED_SYNC drain plan is 4 live sessions (practice SR -> real SR -> ARAM Mayhem -> Arena); arena items D2-D6,D9 NEED a live Arena game. Or run `/live-gated-drain` while playing, else pick the top ROADMAP `NEXT`. **DO NOT redo:** the sync doc + both HEXCORE files are shipped in `1d858b6a`; hexcore stats/ENGINE 1.181/nodes are current as of 2026-07-06.
 
 ---
 
-# 2026-07-06 (OUT-OF-GAME - UI_OVERLAY_REDESIGN BATCH B + C + DS PD->Kraken stability fix + B45/B46 EHP flips + incumbent frontend wiring; 6 commits `17359ca9`..`32132f22`, LEDGER 799)
+# 2026-07-06 (OUT-OF-GAME - UI_OVERLAY_REDESIGN BATCH B + C + DS PD->Kraken stability fix + B45/B46 EHP flips + incumbent frontend wiring; 6 commits `cc2cca4d`..`7cef3e42`, LEDGER 799)
 
 Continued the 797/798 spec out-of-game (liveclient empty throughout); inline/foreground; no frozen file touched. Six scoped commits, all pushed.
-- **PGL titles centered (`17359ca9`).** PARTY + My Top 8 flipped from s162 rank-col grid-anchor to plain text-align:center (header.css, hot-reloads).
-- **BATCH B canvas lock (`c51108e1`).** Root-caused the 4 canvas symptoms (#1/#2/#4/#5) to ONE bug - main.js injected the app-region drag strip on the OVERLAY window, so ACTIVE-mode drag moved the whole fullscreen overlay + desynced every widget. Fix: don't inject it on the overlay (companion keeps it). #3 already done (item 567). Stale w-threat test -> w-enemyspells; 309/309.
-- **BATCH C polish (`7f6d034c`).** Gauges 2+1 L-shape -> one horizontal row (+widened w-objgauges); stats default-role now `_detectRole` (SR lane / ARAM champ-class, not hardcoded MID); enemy-chip min-width+wrap (no ellipsis clip); one --ovx-panel-border token. 45 tests.
-- **DS PD->Kraken Tier-2 (`6f5c27a6`).** (a) rank.py item_id tiebreak (module-level `_rank_sort_key`, all 4 branches -> cross-restart stable); (b) `_pick_top_safe` + plan_build_order optional incumbent+3% hysteresis (additive). 13 tests; DS 8039; Share synced; `:8893` restarted (fix-a LIVE); NO ENGINE bump.
-- **B45/B46 EHP flip ON (`90a74972`).** compute_ehp `assume_item_crit_dr` + `assume_item_aa_dr` defaults False->True; Steelcaps+Randuin tank = +23.8% physical EHP (magical untouched). Updated the 2 default-OFF guards. 8126 tests; Share synced; `:8893` restarted (LIVE). ENGINE-default flip lane (NOT the /rank caller-default).
-- **Incumbent frontend wiring (`32132f22`) - fix-b LIVE.** /api/build-order forwards `incumbent`; plan_build_order drops boots/owned; active_match.js META+ULT + build_order.js echo their champ-scoped displayed order (champ_select via fetchBuildOrder). 20 tests; RC reloaded (pid 28708); smoke-test OK.
+- **PGL titles centered (`cc2cca4d`).** PARTY + My Top 8 flipped from s162 rank-col grid-anchor to plain text-align:center (header.css, hot-reloads).
+- **BATCH B canvas lock (`91c29164`).** Root-caused the 4 canvas symptoms (#1/#2/#4/#5) to ONE bug - main.js injected the app-region drag strip on the OVERLAY window, so ACTIVE-mode drag moved the whole fullscreen overlay + desynced every widget. Fix: don't inject it on the overlay (companion keeps it). #3 already done (item 567). Stale w-threat test -> w-enemyspells; 309/309.
+- **BATCH C polish (`d4c712e1`).** Gauges 2+1 L-shape -> one horizontal row (+widened w-objgauges); stats default-role now `_detectRole` (SR lane / ARAM champ-class, not hardcoded MID); enemy-chip min-width+wrap (no ellipsis clip); one --ovx-panel-border token. 45 tests.
+- **DS PD->Kraken Tier-2 (`92f02bcd`).** (a) rank.py item_id tiebreak (module-level `_rank_sort_key`, all 4 branches -> cross-restart stable); (b) `_pick_top_safe` + plan_build_order optional incumbent+3% hysteresis (additive). 13 tests; DS 8039; Share synced; `:8893` restarted (fix-a LIVE); NO ENGINE bump.
+- **B45/B46 EHP flip ON (`e4692f0f`).** compute_ehp `assume_item_crit_dr` + `assume_item_aa_dr` defaults False->True; Steelcaps+Randuin tank = +23.8% physical EHP (magical untouched). Updated the 2 default-OFF guards. 8126 tests; Share synced; `:8893` restarted (LIVE). ENGINE-default flip lane (NOT the /rank caller-default).
+- **Incumbent frontend wiring (`7cef3e42`) - fix-b LIVE.** /api/build-order forwards `incumbent`; plan_build_order drops boots/owned; active_match.js META+ULT + build_order.js echo their champ-scoped displayed order (champ_select via fetchBuildOrder). 20 tests; RC reloaded (pid 28708); smoke-test OK.
 
 **NEXT SESSION (mostly LIVE-VERIFY):** (1) In a real game confirm the DS-stability "across a level tick" (the top build pick should NOT flip PD->Kraken on a level-up when two items are within ~3%); eyeball the B45/B46 EHP credit in a live tank game; verify the BATCH B minimap gold border lands on the minimap (needs an rc-shell RELAUNCH first) + the gauge-row / enemy-wrap render. (2) The 2 spawned task chips: ROADMAP.md trim (1.3KB over 80KB) + the stale BATCH-A overlay tests (bm-knobs->bm-shaper, liveStrip zone). **DO NOT redo:** all 6 commits are SHIPPED + pushed + verified; the frontend wiring is DONE (route + 3 panels) - only live-verification remains; the 3 archetype test failures are your LOCAL gitignored picks (CI is GREEN - do NOT "fix" them).
 
 ---
 
-# 2026-07-06 (OUT-OF-GAME - executed the deferred UI_OVERLAY_REDESIGN BATCH A + 2 operator DS build-quality fixes; commits `2eb00958` + `385be9e3`, LEDGER 798)
+# 2026-07-06 (OUT-OF-GAME - executed the deferred UI_OVERLAY_REDESIGN BATCH A + 2 operator DS build-quality fixes; commits `aab70b67` + `dc6a2dd7`, LEDGER 798)
 
 Clean out-of-game session executing the LEDGER-797 spec (`docs/UI_OVERLAY_REDESIGN_SPEC_2026-07-06.md`) BATCH A, plus 2 operator-reported DS build-quality issues surfaced interactively. Live-game-gated throughout: a live ARAM was in progress at session start, so I HELD + auto-resumed on game-end (overlay JS/CSS hot-reloads, so a bad edit breaks a live game). Inline/foreground (background worktree agents died last session per 797). No frozen file touched.
-- **BATCH A build-panel redesign SHIPPED (`2eb00958`, 5-phase UI audit 0 MUST-FIX).** 3 NAMED family-safe rows (Daemon Slayer / Meta / Ultimate) via tested pure helpers `_bmComposeRows`/`_bmFamilyDedupe` (TDD 6/6, `web/js/panels/active_match_buildrows.test.mjs`); dropped the BUILD title bar (overlay.css) + FIGHT MODEL knob row (full ds-knobs card at `csv-ds-knobs` stays). **blank-meta ROOT CAUSE:** `/api/build-order` never canonicalized the champion (parity gap vs ds-preview) -> the live display-name champ 0-missed -> empty `order[]` wedged "loading standard build..."; fixed. **item-conflict:** ds-preview now forwards engine `unique_passive_key` as `family`; client family-dedupes the LIVE row (no client literal map). **dead counters:** shaper strip now carries `data-rc-zone` (clicks were passing through the click-through overlay to the game); 3-col layout + cyan labels-below.
-- **Ornn masterwork deny SHIPPED (`385be9e3`, live-verified).** Operator: from-scratch AP builds recommended "artifact" items unattainable in most games (Wooglet's Witchcap 228002). Root cause: Ornn masterwork items (`<ornnBonus>`) are DDragon-marked `gold.purchasable=True` + ARAM/Arena-legal but obtainable only via an Ornn ally, so they leaked past `_is_purchasable`. Fix: `_is_ornn_masterwork` (the `<ornnBonus>` marker - NOT the 228xxx prefix, which also holds BUYABLE Arena 22-mirrors like Anathema's Chains 228001) denied unconditionally in `_filter_candidates`. 6 items excluded. No ENGINE bump (pool-correctness deny, per the ranged-only precedent `d5ef1c90`). DS suite 8036 pass; `test_rank_mode_legality_p1l23` guard updated; Share mirrored; `:8893` restarted; verified Wooglet's gone (Veigar/Annie now recommend the buyable Rabadon's 3089).
+- **BATCH A build-panel redesign SHIPPED (`aab70b67`, 5-phase UI audit 0 MUST-FIX).** 3 NAMED family-safe rows (Daemon Slayer / Meta / Ultimate) via tested pure helpers `_bmComposeRows`/`_bmFamilyDedupe` (TDD 6/6, `web/js/panels/active_match_buildrows.test.mjs`); dropped the BUILD title bar (overlay.css) + FIGHT MODEL knob row (full ds-knobs card at `csv-ds-knobs` stays). **blank-meta ROOT CAUSE:** `/api/build-order` never canonicalized the champion (parity gap vs ds-preview) -> the live display-name champ 0-missed -> empty `order[]` wedged "loading standard build..."; fixed. **item-conflict:** ds-preview now forwards engine `unique_passive_key` as `family`; client family-dedupes the LIVE row (no client literal map). **dead counters:** shaper strip now carries `data-rc-zone` (clicks were passing through the click-through overlay to the game); 3-col layout + cyan labels-below.
+- **Ornn masterwork deny SHIPPED (`dc6a2dd7`, live-verified).** Operator: from-scratch AP builds recommended "artifact" items unattainable in most games (Wooglet's Witchcap 228002). Root cause: Ornn masterwork items (`<ornnBonus>`) are DDragon-marked `gold.purchasable=True` + ARAM/Arena-legal but obtainable only via an Ornn ally, so they leaked past `_is_purchasable`. Fix: `_is_ornn_masterwork` (the `<ornnBonus>` marker - NOT the 228xxx prefix, which also holds BUYABLE Arena 22-mirrors like Anathema's Chains 228001) denied unconditionally in `_filter_candidates`. 6 items excluded. No ENGINE bump (pool-correctness deny, per the ranged-only precedent `ca1c9015`). DS suite 8036 pass; `test_rank_mode_legality_p1l23` guard updated; Share mirrored; `:8893` restarted; verified Wooglet's gone (Veigar/Annie now recommend the buyable Rabadon's 3089).
 - **Annie -> burst pick set (runtime, no commit).** Operator: Annie ARAM should be proper burst not DoT. She resolved to mage/ability (Liandry's + Blackfire Torch DoT); persisted an operator pick `Annie->assassin` (burst) via `POST /api/cs-archetype-pick` (`data/cs_archetype_picks.json`, gitignored, live-updates the in-process cache). Now: Lich Bane / Rabadon's / Void Staff / Shadowflame / Stormsurge. Used the operator-pick lever, NOT the machine-generated default-off win-axis table (which trends AP->DoT, e.g. Shaco). Global (all modes); reversible via the picker reset.
 
-**NEXT SESSION (out-of-game): continue `docs/UI_OVERLAY_REDESIGN_SPEC_2026-07-06.md`** - BATCH B overlay canvas (`web/js/lib/overlay_layout.js` + `rc-shell/src/*`: lock the Ctrl+Shift+A background-canvas drag, scale-in-place no-recenter, full 2560x1440 window bounds after setAlwaysOnTop, kill the panel-move wall/autoscroll; the minimap gold border landing on the minimap is the acceptance test), BATCH C panel polish (objective-gauge single-axis / stats default-role not MID / enemy-spell truncation / border-token congruence), the DS PD->Kraken stability Tier-2 fix (`rank.py:942` `_base_key` item_id tiebreak + `build_order.py:347` optional incumbent-hysteresis + frontend passes the incumbent; needs a `:8893` restart), owed B45/B46 EHP flips. **DO NOT redo:** BATCH A is SHIPPED + audit-clean (`2eb00958`); the Ornn deny is SHIPPED + live-verified (`385be9e3` - do not re-scan for artifact items); the Annie burst pick is SET; blank-meta / family-dedupe / dead-counter are all fixed. Prefer inline/foreground (background worktree agents keep dying).
+**NEXT SESSION (out-of-game): continue `docs/UI_OVERLAY_REDESIGN_SPEC_2026-07-06.md`** - BATCH B overlay canvas (`web/js/lib/overlay_layout.js` + `rc-shell/src/*`: lock the Ctrl+Shift+A background-canvas drag, scale-in-place no-recenter, full 2560x1440 window bounds after setAlwaysOnTop, kill the panel-move wall/autoscroll; the minimap gold border landing on the minimap is the acceptance test), BATCH C panel polish (objective-gauge single-axis / stats default-role not MID / enemy-spell truncation / border-token congruence), the DS PD->Kraken stability Tier-2 fix (`rank.py:942` `_base_key` item_id tiebreak + `build_order.py:347` optional incumbent-hysteresis + frontend passes the incumbent; needs a `:8893` restart), owed B45/B46 EHP flips. **DO NOT redo:** BATCH A is SHIPPED + audit-clean (`aab70b67`); the Ornn deny is SHIPPED + live-verified (`dc6a2dd7` - do not re-scan for artifact items); the Annie burst pick is SET; blank-meta / family-dedupe / dead-counter are all fixed. Prefer inline/foreground (background worktree agents keep dying).
 
 ---
 
@@ -12632,14 +12632,14 @@ Operator-interactive live-ARAM session (back-to-back games) continuing the LEDGE
 
 ---
 
-# 2026-07-05 (ZOI LIVE-GATED FINALIZATION - overlay flicker FIXED, macro/MIA feed DEFERRED (blocked-on-CV), OBS round-trip validated; LEDGER 796, commit `7dd858f5`)
+# 2026-07-05 (ZOI LIVE-GATED FINALIZATION - overlay flicker FIXED, macro/MIA feed DEFERRED (blocked-on-CV), OBS round-trip validated; LEDGER 796, commit `b4254f2b`)
 
 Ran the do-not-flip-blind finalization of the LEDGER-795 ZOI program in a live practice SR game (operator typed "fable 5" but the session resolved to Opus 4.8, so per the drain skill model policy: Opus max-effort + subagent orchestration). Surfaced 3 defects, fixed 1, deferred 1, validated 1 transport. NO gate flipped. Spec-first via a `Plan` subagent (verified every claim vs source); fix built inline (4 small disjoint files) TDD-first + broader-consumer-slice self-verify. Detail: `docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md` section 9 + LEDGER 796.
 - **Check 1 districts PASS** (13 populate live) but foreground-gated (empties on alt-tab) + blob OVER-DETECTS (~70 dots vs 10 champs, inflates counts).
 - **Check 3 render FLICKER fixed.** Canvas paints (proven live via `DEBUG_ZOI` magenta - operator saw a ~1 Hz flash over the minimap), but `/api/state.zoi` strobed because `current_minimap_dots` stamped `[]` on a TRANSIENT failed grab (crop None) same as a legit-empty frame + the overlay hard-cleared on any null. FIX: server holds last-good 3s across a failed grab (legit-empty still clears); overlay `_nullDebounceStep` holds until 3 consecutive nulls. Tests green. DMZ/MIA absent-by-gating is correct at defaults.
 - **Check 2 macro + `zoi.mia` DEAD, DEFERRED.** `vision_tracker` fog needs coord positions but Live Client gives ROLE strings, and `minimap_identity` is unwired -> all enemies `missing_for_s=None` forever. Both feed fixes blocked on the ~70-vs-10 CV over-detection (a forced callout would be a HARMFUL false directive). Fence test added; memory `reference_vision_tracker` corrected. PREREQUISITE = fix CV precision, THEN wire the ready `zoi=`/`districts=` seam.
 - **Check 4 OBS round-trip VALIDATED + FLIPPED.** The source was a Display Capture (incl. the overlay); switched to a Window Capture (WGC) of League = occlusion-proof + native 2560x1440. Live: `minimap_dots` 92 -> ~46 (overlay was ~40 phantom dots), `/api/state` fast, zoi steady. FLIPPED via `coach_settings.json obs.frame_source=true` (gitignored, NO reload - 5s config TTL). Raw minimap still over-detects ~46 vs 10 - blob-gating owed from a cleaner baseline.
-- Committed `7dd858f5`, pushed; RC reloaded (pid 680 -> 23276, `last_reload_ok=true`) so the server-side fix is LIVE.
+- Committed `b4254f2b`, pushed; RC reloaded (pid 680 -> 23276, `last_reload_ok=true`) so the server-side fix is LIVE.
 
 **NEXT SESSION:** DONE this session: flicker RE-VALIDATED live (operator confirmed the overlay holds steady, no strobe) + `obs.frame_source` FLIPPED + validated (WGC occlusion-proof source, `minimap_dots` 92 -> ~46). PRIMARY next = **CV precision to unblock the macro/MIA feed**: the operator is INCREASING the in-game minimap scale (was 1.62) for bigger champion icons -> (1) FIRST re-calibrate `minimap_rect` for the new scale (the `/vision-calibrator` + `data/vision_profiles/`; memory `reference_minimap_geometry_calibration` - side = `0.0764*scale + 0.165`), (2) THEN tighten blob gating in `detect_team_dots` and/or live-validate `RC_ZOI_IDENTITY` (bigger icons help template-match) to collapse the ~46 blobs to <=10 named champs, (3) THEN wire the feed via the ready `zoi=`/`districts=` seam (`_deterministic_coaching.py:651-657` unchanged) so the macro callout + `zoi.mia` rings finally fire. ALSO STILL OWED (untouched, prior sessions): R81 phase-strip overlay pixels + B45/B46 EHP flips (Randuin's crit-DR / Steelcaps AA-DR, DS-restart-gated eyeball). **DO NOT redo:** the flicker fix is shipped + live-validated; `obs.frame_source` is FLIPPED (WGC source, gitignored `coach_settings.json`); do NOT re-flip `RC_ZOI_IDENTITY`/roster-wiring blind; the `vision_tracker` fog model is INERT on SR (roles not coords) - the ONLY enemy localizer is minimap CV, so the CV-precision work IS the gate to the whole macro/MIA feed.
 
@@ -12647,11 +12647,11 @@ Ran the do-not-flip-blind finalization of the LEDGER-795 ZOI program in a live p
 
 # 2026-07-05 (ZOI/minimap-district DETERMINISTIC-MACRO program EXECUTED - Phase-1 substrate + Phase-2/3 modules, all additive + flag-gated OFF; 14 commits, LEDGER 795)
 
-Executed `docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md` as a 3-wave ultracode orchestration (4+4+3 worktree build agents, TDD failing-test-first, a read-only `verifier` gate per branch, main-thread sole-merger of the one serialization seam). 5 plan decisions were operator-approved. Commits `59c1c5b5` (opencv) .. `6b35d208` (final splice), all pushed, RC restarted (pid 680, last_reload_ok=true).
+Executed `docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md` as a 3-wave ultracode orchestration (4+4+3 worktree build agents, TDD failing-test-first, a read-only `verifier` gate per branch, main-thread sole-merger of the one serialization seam). 5 plan decisions were operator-approved. Commits `0032823a` (opencv) .. `35b16867` (final splice), all pushed, RC restarted (pid 680, last_reload_ok=true).
 - **STEP 0:** `opencv-python==5.0.0.93` in requirements + pip-installed on Legion Python314 + `import cv2` verified (5.0.0).
-- **WAVE 1** (`1a85f942`+`5293936b`+`4404cde4`+`d64f9117`): `core/minimap_districts.py` (13-district SR grid, 9-label parity oracle, 4000-pt totality sweep) + `config/minimap_grids/{sr,aram,arena,brawl,tft}.json`; `core/mode_capabilities.py` fail-CLOSED `has_capability` (replaced the `snapshot_normalizer.py:386 == "CLASSIC"` ward literal + gated `_sr_prompt.py:438`, SR byte-identical); `core/obs_frame_source.py` + op6/op7 lane in obs_publisher + OBS-first-GDI-fallback in `_frame.py`/`minimap_blob_detect` (DEFAULT OFF); `core/champion_movespeed.py`.
-- **WAVE 2** (`8b5a358d`+`8245937d`+`290bb5df`+`f6d7c685`+`4dc9b44c`): `core/minimap_presence.py` (per-district counters, full label set no-reflow, wipes on new-game/mode-change/stale); `core/district_fusion.py` (API ground-truth over CV: dead-cap, structure-reclassify, objective-confirm 8s, ward-inference SR-only + gated); `core/macro_context.py`+`core/macro_decision_tree.py` fog-only v0 (operator scenario = 2 MIA + drake -> ONE `kind="macro"` callout, ZERO LLM; wired into `_deterministic_coaching` advisory chain dt_macro>ws4>soul>heal; `zoi=None` byte-identical); `core/minimap_identity.py` (circle-masked cv2.matchTemplate, roster-scoped, `RC_ZOI_IDENTITY` env-gate DEFAULT OFF). Merger applied 3 `_state_builder` splices (districts, districts_fused, `compute_deterministic(...,zoi=zoi)`).
-- **WAVE 3** (`b26514d6`+`34e04763`+`4b8943bc`+`6b35d208`): `core/mia_reachability.py` the SOLE `zoi.mia` producer (ring per fogged enemy, origin last-seen->box-frac cx=x/14800 cy=1-z/14800, radius=missing*movespeed clamped [0.02,0.6], SR-only); `core/zoi_capability.py`+`core/zoi_field.py` (archetype curves + fluid oil-water DMZ 24x24 grid, ADDITIVE `compute_zoi` kwargs byte-identical at defaults proven 2 ways); `web/js/panels/minimap_zoi.js` renders MIA rings + DMZ ribbon + district tally under MAX_ALPHA 0.55 click-through (5-phase UI audit clean). Merger applied the `zoi["mia"]` splice.
+- **WAVE 1** (`d3236f71`+`f8023f0b`+`d74ec606`+`ef372da4`): `core/minimap_districts.py` (13-district SR grid, 9-label parity oracle, 4000-pt totality sweep) + `config/minimap_grids/{sr,aram,arena,brawl,tft}.json`; `core/mode_capabilities.py` fail-CLOSED `has_capability` (replaced the `snapshot_normalizer.py:386 == "CLASSIC"` ward literal + gated `_sr_prompt.py:438`, SR byte-identical); `core/obs_frame_source.py` + op6/op7 lane in obs_publisher + OBS-first-GDI-fallback in `_frame.py`/`minimap_blob_detect` (DEFAULT OFF); `core/champion_movespeed.py`.
+- **WAVE 2** (`ca4e1b08`+`6fe0a021`+`8fc647d6`+`6f115f40`+`a2c06a59`): `core/minimap_presence.py` (per-district counters, full label set no-reflow, wipes on new-game/mode-change/stale); `core/district_fusion.py` (API ground-truth over CV: dead-cap, structure-reclassify, objective-confirm 8s, ward-inference SR-only + gated); `core/macro_context.py`+`core/macro_decision_tree.py` fog-only v0 (operator scenario = 2 MIA + drake -> ONE `kind="macro"` callout, ZERO LLM; wired into `_deterministic_coaching` advisory chain dt_macro>ws4>soul>heal; `zoi=None` byte-identical); `core/minimap_identity.py` (circle-masked cv2.matchTemplate, roster-scoped, `RC_ZOI_IDENTITY` env-gate DEFAULT OFF). Merger applied 3 `_state_builder` splices (districts, districts_fused, `compute_deterministic(...,zoi=zoi)`).
+- **WAVE 3** (`fe3abea3`+`ba5e2d3c`+`6a54a350`+`35b16867`): `core/mia_reachability.py` the SOLE `zoi.mia` producer (ring per fogged enemy, origin last-seen->box-frac cx=x/14800 cy=1-z/14800, radius=missing*movespeed clamped [0.02,0.6], SR-only); `core/zoi_capability.py`+`core/zoi_field.py` (archetype curves + fluid oil-water DMZ 24x24 grid, ADDITIVE `compute_zoi` kwargs byte-identical at defaults proven 2 ways); `web/js/panels/minimap_zoi.js` renders MIA rings + DMZ ribbon + district tally under MAX_ALPHA 0.55 click-through (5-phase UI audit clean). Merger applied the `zoi["mia"]` splice.
 - **1 non-hermetic test caught + root-caused:** `test_enchanter_flat_or_frontloaded` passed in the isolated worktree but failed the full suite - `get_archetype_for` reads the operator's gitignored `user_cs` overrides (Lulu = user-classified "carry" on Legion, absent from a fresh worktree). Fixed by stubbing `archetype_of` (tests the curve, not a machine-specific champ). Memory `feedback_clean_checkout_probe`.
 - **GATE:** dual suite green (DS 8032/1 - no engine file touched, no :8893 bounce/Share; RC 11159 pass + the lone failure fixed + re-run green). In-process probe: full zoi payload = 6 keys (bubbles+demarcation+map_control+districts[13]+districts_fused[13]+mia), JSON-clean. No frozen file modified.
 
@@ -12661,12 +12661,12 @@ Executed `docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md` as a 3-wave ultracode orchest
 
 # 2026-07-05 (vision-OCR calibration EXECUTED + per-mode ZOI/minimap-district program PLANNED; 6 commits, LEDGER 794)
 
-Operator-interactive live session (SR practice + in-game settings sweeps). Executed the calibration LEDGER 793 armed, then planned the next build program via a 12-agent ultracode workflow. Shipped `dbc8c504` + `04e357a7` + `687a9145` + `4a7c059d` + `dbc99fc0` + the plan-doc commit.
-- **Calibrator wired to the native still + config-keyed profile save (`dbc8c504`) + multi-state reference ingest (`04e357a7`):** `?source=reference` serves the 2560x1440 native frame (not the halved 1280); operator dragged the 23 boxes + saved -> `data/vision_profiles/2560x1440_..._MinimapScale_1.6200.json` (21 after the prune). Ingest `self_dead`/`enemy_dead` screenshots by disk path for transient-state elements; flat profile untouched.
-- **Base-clobber FIXED (`dbc99fc0`):** the 60s self-grab caught the DESKTOP on an alt-tab mid-game. Now grabs once-per-config, only when has_game AND League-foreground AND no-ref-yet (`_league_is_foreground` ctypes); 60s cadence retired; force=True still overwrites. Base restored from the enemy_dead still (original gitignored/unrecoverable).
+Operator-interactive live session (SR practice + in-game settings sweeps). Executed the calibration LEDGER 793 armed, then planned the next build program via a 12-agent ultracode workflow. Shipped `b3681673` + `4b4a2821` + `3cbad9f7` + `933a023c` + `eece8500` + the plan-doc commit.
+- **Calibrator wired to the native still + config-keyed profile save (`b3681673`) + multi-state reference ingest (`4b4a2821`):** `?source=reference` serves the 2560x1440 native frame (not the halved 1280); operator dragged the 23 boxes + saved -> `data/vision_profiles/2560x1440_..._MinimapScale_1.6200.json` (21 after the prune). Ingest `self_dead`/`enemy_dead` screenshots by disk path for transient-state elements; flat profile untouched.
+- **Base-clobber FIXED (`eece8500`):** the 60s self-grab caught the DESKTOP on an alt-tab mid-game. Now grabs once-per-config, only when has_game AND League-foreground AND no-ref-yet (`_league_is_foreground` ctypes); 60s cadence retired; force=True still overwrites. Base restored from the enemy_dead still (original gitignored/unrecoverable).
 - **Settings-change trigger CONFIRMED:** `game.cfg` flushes on a mid-game apply (mtime advances in-game); `config_key` recomputes live -> a base re-grab keys off config_key-change + game-start, not a timer. `game.cfg`=position/config_key, `PersistedSettings.json`=color. Only the REMOTE Riot Web API is rate-gated; local `:2999`/LCU are not.
-- **Minimap geometry AFFINE (`687a9145`):** a 4-point live sweep proved side = `0.0764*scale + 0.165` (a real ~0.165*h floor), not through-origin (the "exponential" divergence you saw). Byte-identical at 1.62; fixed the `<=0` clamp. The team-frame strip (`ShowTeamFramesOnLeft=0`) rides the minimap scale.
-- **OCR prune (`4a7c059d`):** `death_timer`+`enemy_deaths` were calibrated-but-unused; respawn is already live from `allPlayers[].respawnTimer` -> `vision_state.json` -> active_match.js + SR prompt. Removed from the region set (23->21) + `_parse_field`. Profile boxes untouched.
+- **Minimap geometry AFFINE (`3cbad9f7`):** a 4-point live sweep proved side = `0.0764*scale + 0.165` (a real ~0.165*h floor), not through-origin (the "exponential" divergence you saw). Byte-identical at 1.62; fixed the `<=0` clamp. The team-frame strip (`ShowTeamFramesOnLeft=0`) rides the minimap scale.
+- **OCR prune (`933a023c`):** `death_timer`+`enemy_deaths` were calibrated-but-unused; respawn is already live from `allPlayers[].respawnTimer` -> `vision_state.json` -> active_match.js + SR prompt. Removed from the region set (23->21) + `_parse_field`. Profile boxes untouched.
 
 **NEXT SESSION - EXECUTE `docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md`** (12-agent ultracode plan, 120 lines). Per-mode (SR/ARAM/Arena) ZOI + minimap-district DETERMINISTIC-MACRO coaching (north star: Haiku/Sonnet -> zero from district-state sampling). Wave 1 = 4 concurrent worktree agents on disjoint NEW files: `agent-districts` (`core/minimap_districts.py` + `config/minimap_grids/*.json`), `agent-wardcap` (`core/mode_capabilities.py` has_wards gate), `agent-obs` (`core/obs_frame_source.py`), `agent-movespeed` (`core/champion_movespeed.py`). SOLE serialization point = `dashboard/_state_builder.py:468-480` + `core/zoi_influence.py` + `web/js/panels/minimap_zoi.js` (merger owns). 5 DECISIONS RESOLVED (operator-approved 2026-07-05, all per recommendation): mia single-producer -> `mia_reachability.py`; 13-district superset w/ the 9 legacy labels as a parity oracle; fog-only decision-tree v0 in Wave 2 first; **opencv-python added at SESSION START** (requirements.txt + pip on Legion + verify `import cv2`), NOT deferred to Wave 3; Arena grids authored+tested but the `_state_builder` gate stays sr/aram. Wards hard-gated OFF in ARAM/Arena (futile).
 
@@ -12676,7 +12676,7 @@ Operator-interactive live session (SR practice + in-game settings sweeps). Execu
 
 # 2026-07-05 (R81 - live-game-overlay lift F1 + 3 operator-expansions: research fold-in / LeagueAkari teardown / OBS-CV-minimap plan; LEDGER 792)
 
-Gemini-loop executor cycle 10 (DIRECTOR REFILL rotation 3), operator-expanded 3x mid-run (interrupt = new scope, not stop). ENGINE-IMPACT NONE. Code `901116d4` + `5d9d7132` + `f6f31037`, docs commit. Full RC suite 10767 passed / 2 skipped / 0 fail.
+Gemini-loop executor cycle 10 (DIRECTOR REFILL rotation 3), operator-expanded 3x mid-run (interrupt = new scope, not stop). ENGINE-IMPACT NONE. Code `1efcb157` + `f56d4de0` + `89a60b7c`, docs commit. Full RC suite 10767 passed / 2 skipped / 0 fail.
 - R81 F1 SHIPPED: Section-7b deep-dive of a live-companion overlay (name-scrubbed) -> nominee = early/mid/late GREEN/YELLOW/RED power-strength strip, presentation-only over the EXISTING /api/spike-curve arrays. Backend `phases` block (routes_spike_curve.py `_phase_verdict`, comparative ally-vs-enemy 1.05 margin - the vendor's "vs own mean" degenerates on RC's monotonic fraction-normalized curve) + frontend 2x3 stoplight strip on the active-match sparkline. Verifier CONFIRM 9/9; UI-audit caught MF-1 (strip clipped by container height:40px+overflow) -> fixed in-slice (min-height + regression guard). Lift doc docs/COMPETITOR_LIFT_2026-07-05_R81.md; F5/F4/F3 -> BACKLOG FUTURE; F6/F7 CLOSED (no live per-player gold/cd); overlay pixel capture OWED (no live game).
 - EXPANSION 1 (incorporate the broad competitor research doc): RC_COMPETITOR_RESEARCH_2026-07-05.md (Desktop, non-repo, 21 NOW/10 FUTURE/13 CLOSED) -> BACKLOG name-scrubbed across rate-wall / draft / overlay / dev-loop lanes (SGP gateway = top gated lift; zero-API premade-mining + Mastery/League-V4 derived scouting = actionable NOW).
 - EXPANSION 2 (LeagueAkari local teardown): RC_LEAGUEAKARI_TEARDOWN_2026-07-05.md (Desktop, non-repo). v1.4.3 Electron LCU toolkit (GPL, do-not-vendor; renderer plaintext + main-process V8-bytecode string recovery). Full LCU/SGP/RCS/:2999 endpoint map. CONFIRMED the concrete SGP host-map + entitlements-token flow + endpoints -> de-risks the research-doc #1 rate-wall lift to "known recipe pending a Legion NA-host probe." F2 WebSocket-push / F3 pickable-bannable / F4 recommended-runes = NOW LCU lifts; ALL automation CLOSED (ToS). Folded to BACKLOG scrubbed.
@@ -12689,7 +12689,7 @@ DO NOT redo: R81 F1 SHIPPED (the phase-strength strip exists at /api/spike-curve
 
 # 2026-07-05 (ORUN2 slice 2 - snowball-elasticity Build Insights UI panel; LEDGER 788)
 
-Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13). Commit `899b5f24`, pushed. ENGINE-IMPACT NONE (frontend; ADR-008 asset-hash reload, no RC restart / no Share / no DS).
+Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13). Commit `dace4e0a`, pushed. ENGINE-IMPACT NONE (frontend; ADR-008 asset-hash reload, no RC restart / no Share / no DS).
 - NEW web/js/panels/snowball_elasticity.js (mount bi-snowball-mount, export renderSnowballElasticity) + .css (se- prefix) + web/data/ui_mock/snowball_elasticity.json + tests/test_snowball_elasticity_panel_dom.py; wired via build_insights.js import+dispatch + a "Snowball" tab/pane in index.html + a dashboard.css @import (panel-import parity).
 - Faithful mirror of duration_winrate.js but SR-ONLY (no mode bar / champ picker): 2 checkpoint blocks (10min/20min) x 5 signed gold-lead buckets behind_big..ahead_big; bar fill = Laplace-smoothed win%, value = raw win% (or ~smoothed% thin / "-" below min_bucket_n); per-checkpoint elasticity chip (snowball-prone/comeback-prone/elastic) = games-weighted ahead-vs-behind smoothed lean, DESCRIPTIVE not a win probability.
 GATE: 1 build subagent + verifier CONFIRM (targeted 74/74 + full RC suite 10725 passed/0 failed/2 skipped exit 0) + independent 5-phase UI-audit PASS 0 MUST-FIX + ui_recon visual proof clean (companion+desktop, 2 blocks x 5 bars, 0 page errors, no overflow). Live curl shape matched the fixture.
@@ -12699,9 +12699,9 @@ DO NOT redo: ORUN2 FULLY SHIPPED (backend 9cd38c13 + UI 899b5f24); SR-only by de
 
 # 2026-07-05 (FIX-FIRST test red-state recovery - 3 residual clusters; LEDGER 787)
 
-Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `4aac77de`, pushed.
+Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `c3b0e451`, pushed.
 - S1 doc_size_budget: ROADMAP.md 88794 -> 81024B (< 81920) - relocated 3 fully-shipped bullets verbatim to docs/ROADMAP_HISTORY.md (player-snapshot 782 / HOME-E11 768-774 / DS cross-eval 495-497). No rewrite.
-- S2 motion_reduce_sweep_oq4: directive undercounted - TWO failures. `.lobby-status.searching` purged repo-wide by E11 (`1cf122e2`), not just an 8->7 drift. Removed dead home.css SITES entry + assertion 8->7 + docstrings (7 loops: item_build x2 + map_state x2 + header x3).
+- S2 motion_reduce_sweep_oq4: directive undercounted - TWO failures. `.lobby-status.searching` purged repo-wide by E11 (`c6670b19`), not just an 8->7 drift. Removed dead home.css SITES entry + assertion 8->7 + docstrings (7 loops: item_build x2 + map_state x2 + header x3).
 - S3 lcu_loop_resilience x5: ROOT CAUSE = snapshot_panels Playwright fixtures leave a ProactorEventLoop running on the main thread -> a later bare asyncio.run() raises "cannot be called from a running event loop". Fix = _run_coro daemon-thread pattern (already used by test_p2w1_core_f.py / test_p2w2_ds_h.py). Test-only.
 GATE: full RC suite 10701 passed / 2 skipped / 192 subtests, exit 0. Orchestrator: slice 3 worktree subagent (verifier-gated) + slices 1+2 inline.
 DO NOT redo: the 3 clusters are FIXED; `.lobby-status.searching` is gone by design (E11 purge - do not re-add to SITES); the lcu asyncio-suite immunity is _run_coro (do not revert to bare asyncio.run).
@@ -12711,8 +12711,8 @@ DO NOT redo: the 3 clusters are FIXED; `.lobby-status.searching` is gone by desi
 # 2026-07-05 (operator handoff PHASE 1 - DS/haiku-zero ORUN waves; LEDGER 784-785)
 
 Operator away, Fable-5 competitor-research handoff: run at MAX effort as orchestrator, PHASE 1 = DS lift waves then PHASE 2 = gemini-headless-upgrade. GROUND TRUTH FIRST corrected the premise: the DS ENGINE is genuinely exhausted this patch (ENGINE 1.179.0 / 7997 tests / registries "provably saturated"; the R66 adversarial residual list is EXHAUSTED per R70, do NOT re-pick #1-#6, #7 shield-lerp is next-patch-ingest gated). So "next DS batches" = the director's real OPEN queue (docs/ORCHESTRATION_PLAN.md ORUN1-5), which is what the Gemini director itself reads. Verified-premise + shipped the 2 headless-safe, non-engine ORUN units as separate verifier-gated commits:
-- ORUN1 (`677f5237`): NEW tools/arena_shadow_report.py, the Arena sibling of hz_shadow_report.py (deterministic-vs-Haiku agreement + flip-readiness gate over data/arena_coach_shadow.jsonl; dead-state de-bias; fail-soft awaiting_accrual). Tier-1 tooling, 16 tests, verifier CONFIRM.
-- ORUN5 (`6da64adc`): assume_carry_share_grade default-OFF grade fold on post_game_rubric.py (OR-alias of the pre-existing carry_efficiency fold; byte-identical OFF proven across 7 fixtures). NO ENGINE bump (heuristic rubric). 15 tests, verifier CONFIRM. G18 gated-sync row updated to the shipped state.
+- ORUN1 (`b76d7da2`): NEW tools/arena_shadow_report.py, the Arena sibling of hz_shadow_report.py (deterministic-vs-Haiku agreement + flip-readiness gate over data/arena_coach_shadow.jsonl; dead-state de-bias; fail-soft awaiting_accrual). Tier-1 tooling, 16 tests, verifier CONFIRM.
+- ORUN5 (`ef7d682c`): assume_carry_share_grade default-OFF grade fold on post_game_rubric.py (OR-alias of the pre-existing carry_efficiency fold; byte-identical OFF proven across 7 fixtures). NO ENGINE bump (heuristic rubric). 15 tests, verifier CONFIRM. G18 gated-sync row updated to the shipped state.
 Correct tiers applied per R5: both Tier-1 (NO ENGINE bump / NO Share mirror / NO :8893 restart - the handoff's generic DS-wave ritual does NOT apply to non-engine units). ORCHESTRATION_PLAN ORUN1/ORUN5 marked DONE + Findings entries appended so the Phase-2 loop does not re-pick shipped work.
 
 NEXT: PHASE 2 = invoke the gemini-headless-upgrade skill (turns this session into the ephemeral executor for the Gemini-directed loop; it continues the ORUN queue top-down - ORUN2 snowball-elasticity / ORUN3 Aggregator B per-stat / ORUN4 Aggregator D game-flow strip are the next OPEN rows + the REFILL PROTOCOL when it drains).
@@ -12723,11 +12723,11 @@ DO NOT redo: the DS engine is exhausted this patch (do NOT fabricate engine lift
 # 2026-07-05 (card MERGED to main via PR #6 + overlay-polish live-recon; LEDGER 783)
 
 Merged the player-snapshot card + shipped 3 overlay-polish slices while the operator live-recon'd the real Electron overlay (ground truth the agent cannot see headless).
-- MERGE: PR #6 (`feat/player-snapshot-card` -> main), CI green (check 4m39s + benchmarks + CodSpeed), rebase-merged. `main`@`43e9f4c1`, tree byte-identical to old head `f1d46773`. Rebase REWROTE SHAs (`b1a0c3b8`->`cc332a67`, `f1d46773`->`43e9f4c1`); mapping logged in ROADMAP so prose refs still resolve. Branch pruned.
+- MERGE: PR #6 (`feat/player-snapshot-card` -> main), CI green (check 4m39s + benchmarks + CodSpeed), rebase-merged. `main`@`84cdfc69`, tree byte-identical to old head `f1d46773`. Rebase REWROTE SHAs (`b1a0c3b8`->`49eb4687`, `f1d46773`->`84cdfc69`); mapping logged in ROADMAP so prose refs still resolve. Branch pruned.
 - Overlay recon technique: `recon.py` renders `ui_mock` fixtures (NOT live) - wrote a throwaway legion-rc-origin live-capture vs live `/api/state` instead. The objective gauges do NOT show in fixtures (no game_time) - only live.
-- SLICE 1 `5d5a33f6`: DS `#ovds` item names were nowrap+ellipsis-clipped to ~5 chars; now wrap + 16px + title attr (overlay slice 131 pass).
-- SLICE 2 `717b1958`: removed 3 broken/unneeded HUD widgets - ward cue (`w-trinket`), threat/CDs ledger (`w-threat`, overlay-only de-register; dashboard cd_ledger kept), SUMMS dial (always UP). Kept DRAKE/BARON/ELDER + ZOI minimap (operator: ZOI DOES show in-game). node 28/28, pytest 162.
-- SLICE 3 `45b51bff`: DRAKE dial suppressed once Elder is up/taken (redundant pit); node 13/13.
+- SLICE 1 `bc93cbd0`: DS `#ovds` item names were nowrap+ellipsis-clipped to ~5 chars; now wrap + 16px + title attr (overlay slice 131 pass).
+- SLICE 2 `d0ca9945`: removed 3 broken/unneeded HUD widgets - ward cue (`w-trinket`), threat/CDs ledger (`w-threat`, overlay-only de-register; dashboard cd_ledger kept), SUMMS dial (always UP). Kept DRAKE/BARON/ELDER + ZOI minimap (operator: ZOI DOES show in-game). node 28/28, pytest 162.
+- SLICE 3 `bfa851de`: DRAKE dial suppressed once Elder is up/taken (redundant pit); node 13/13.
 - DS unique-dedup note (LDR/Terminus share a unique) -> chip task_9ea11b0d (its own Tier-2 session).
 
 NEXT (operator LIVE-GATES next session in a live game; Pengu stub is ON + displaying, so Pengu-sourced items qualify): round-1 missing-in-game cluster (`rn-lead`/`rn-choices`/`rn-callouts`/`w-spike` render headless but dark in the real overlay) + bugs (static META row, dead knob +/-, dead item radial) + stats-panel clarify; round-2 the DRAG/MOVE system (finicky anchors far from the widget, drag drops when the cursor leaves, can't move all elements anywhere, border-drag moves the whole screen - `overlay_layout.js` pointer-capture) + context-menu/item tooltip (cropped icon + far) + PR enemy-spell timer + gauges 1-line layout (horizontal/vertical). Root-cause is fine; each fix needs the operator's live Ctrl+Alt+A verify before it lands.
@@ -12806,15 +12806,15 @@ task_ebbdf78b) - reconcile. RC NOT restarted this session (layer-1 activation + 
 
 Operator picked the precompute-DB program (ROADMAP L15) as the next RC2 lane (E10/E2 stay operator-gated).
 Spec-first via Plan subagents; each build verifier-gated. 7 commits, all pushed + CI green.
-- SLICE 1 (`f5939253`, LEDGER 775): ARAM deterministic `build_block` gained a 7th `choices` key - the
+- SLICE 1 (`15c16edc`, LEDGER 775): ARAM deterministic `build_block` gained a 7th `choices` key - the
   PRIMARY A/B surface (shadow-measurable). Spec corrected 3 stale plan-doc premises (SR is NOT code-level
   zero-Haiku; the ARAM Stage-1/2 block was already shipped LEDGER 763; from_fields is a decoder).
-- SLICE 2 (`20962f03`, LEDGER 776): NEW tools/aram_shadow_report.py (sibling of hz_shadow_report) -
+- SLICE 2 (`4da842ad`, LEDGER 776): NEW tools/aram_shadow_report.py (sibling of hz_shadow_report) -
   per-field deterministic-vs-Haiku agreement + dead-state ("WAIT RESPAWN") exclusion. First live reading:
   action 74% (>=70% gate MET), choices ~1%. ALSO the live C4/Ezreal+Corki DSP11 eyeball = SANE.
-- SLICE 3 (`25955559`, LEDGER 777): widened _safe_choices to all 5 ARAM labels -> A/B (source_tag
+- SLICE 3 (`5783127e`, LEDGER 777): widened _safe_choices to all 5 ARAM labels -> A/B (source_tag
   "aram_rule"), superseding slice-1's 2-label reuse. Coverage lifts as new games accrue.
-- C4 FLIP (`523206d6`, LEDGER 778): DSP11 prefer_kit_axis_by_win DEFAULT-ON. Flipped RC-SIDE at
+- C4 FLIP (`fb921a98`, LEDGER 778): DSP11 prefer_kit_axis_by_win DEFAULT-ON. Flipped RC-SIDE at
   archetype_dispatch.py:210 (NOT the DS server - that entangles the shared /rank passthrough test on
   Ezreal). RC-side caller change so NO ENGINE bump / NO DS restart / NO Share. Proven live: Ezreal default
   floats Essence Reaver #1 vs #4 off. FIRST-EVER DS seam flip - precedent set (see the seam memory).
@@ -12834,7 +12834,7 @@ slice 3. E10/E2 stay operator-gated. A duplicate templater chip-session may exis
 Closed the drain-session NEXT-block open items (no play needed - all headless).
 - HEADER ROW-2 (item #1, DONE): finished the WIP on worktree-agent-a218a07c4022c7923.
   The FULL suite caught 2 hidden failures (test_motion_reduce_sweep_oq4 still expected the
-  retired .hp.hp-critical loop) -> fixed to 8 live loops. Squash-merged `bfa78360` (the WIP-
+  retired .hp.hp-critical loop) -> fixed to 8 live loops. Squash-merged `dee9cc94` (the WIP-
   snapshot commit kept OUT of main); re-gated on merged main (snapshot_panels 320 + DOM 66);
   live re-render clean (1 .header-row, 0 row-2 tokens, trigger_pill.js -> 404); overlay
   unaffected (overlay.css untouched + display:none's the whole header). CI GREEN. Worktree +
@@ -12919,7 +12919,7 @@ is 920x1280; ban_suggest cleanup done.
 # 2026-07-03 (Operator champ-select QA rework + per-mode panel visibility; LEDGER 765)
 
 Session pivot: /orchestrated-run bootstrap seeded the ORUN1-5 curated queue + relaunched the
-gemini loop (`7ff688b0`), then the operator halted it (AHK never typed; STOP + AHK killed) and
+gemini loop (`eaa2d260`), then the operator halted it (AHK never typed; STOP + AHK killed) and
 ran an INTERACTIVE 4-round QA of the champ-select page with Claude as advocate. All rulings in
 docs/qa/CHAMP_SELECT_QA_2026-07-03.md - the ORUN rows remain OPEN in ORCHESTRATION_PLAN for a
 future loop run. Shipped (4 verifier-CONFIRMED worktree slices + sole-merge + 5-phase audit + 2
@@ -12933,8 +12933,8 @@ collapsed TEAM ANALYSIS block w/ deterministic verdict header, fixed queue-2400 
 capability_gap dict on /api/ds-preview post-restart pid 3644). Panel visibility: per-mode
 contexts (in-game-sr/aram/arena/tft + out-game, brawl->sr), 17-panel registry, tabbed settings
 card, legacy-blob migration. Suite 10566/2skip green; node 25/0. FOLLOW-UP CHIPS BOTH LANDED (LEDGER 766):
-orphan cleanup `daf09498` (deleted cooldown_watch.js/ban_suggest_toggle.js/.css + buildOrderCardHtml
-export; backends kept; test files -> deletion guards) + `#csv-picks-target` mode-gate `c80c1d0d`
+orphan cleanup `4e5b2575` (deleted cooldown_watch.js/ban_suggest_toggle.js/.css + buildOrderCardHtml
+export; backends kept; test files -> deletion guards) + `#csv-picks-target` mode-gate `511aa352`
 (pre-existing bug: item-200 relocation left the SR-only PICK placeholder outside the .csv-card-pickban
 gate -> lingered in ARAM/Arena; one CSS rule + computed-display test, RED-proven, verifier CONFIRM).
 Both CI green. NEXT: run the SAME operator-QA method (6-mapper workflow -> AskUserQuestion advocate
@@ -12951,14 +12951,14 @@ past 24h, (3) update HEXCORE_offline with new modules + enhance tooltips/visuals
 headless-viable = arena shadow-report tool (R76 FUTURE) / DS cross-eval A-B-F2 / R2 re-baseline
 / item-WPA capture / WP-F4a retire / RF2-hps inject_ids / doc-hygiene tails (LGGS :602).
 Audit: synced through R75, GAP at R76 -> appended G17 arena det-coach shadow accrual row,
-commit `56f2e0cd`. Hexcore (ultracode workflow, 3 recon + 2 build + 1 verifier agents):
+commit `dfb2e4ca`. Hexcore (ultracode workflow, 3 recon + 2 build + 1 verifier agents):
 +1 RAW node m_arenadetcoach + 3 edges, +20 DUST files (236 -> 256, all 17 new non-test .py
 since 355cad01), stale ENGINE 1.154.0 tooltips -> 1.179.0, data mirrored to BOTH
 HEXCORE_offline.html + HEXCORE.html; 7 enhancements offline-only (cursor tooltip nodes+dust,
 CONNECTED neighbor list in detail panel, legend live counts, zoom-adaptive labels, cluster
 hover summary, dust glint, Esc-release + dblclick fly-in). Verifier: node --check 4/4, ASCII
 clean, RAW/DUST/EDG integrity, Playwright zero console errors on WebGL + ?webgl=0. Commit
-`54cccae5`, CI green. LEDGER 764.
+`9913c1fe`, CI green. LEDGER 764.
 
 **Process notes:** (1) Pre-existing dangling edge `el_shell-overlay` in both hexcore files
 (endpoint `overlay` not a RAW id; runtime parser drops it silently) - left as-is, harmless;
@@ -12969,7 +12969,7 @@ contain ';' and truncate at parse (rca0/4/5/7, g_* nodes) - also pre-existing, s
 
 # 2026-07-03 (R76 LOOP - Haiku-to-ZERO Lane C: Arena deterministic coach block + shadow; Tier-1, no ENGINE bump)
 
-Loop cycle 5 (post-759 relaunch). Directive: Refill item 4 - advance a NO_LLM_PRECOMPUTE_PLAN lane. Lane state probe: A saturated-offline (v4 regen deferred R37), B full-roster, C shadow shipped ARAM-only, D overlay shipped. Explore agent grounded the frontier: ARENA had ZERO deterministic coach-text fields (arena_coach.py:747 Haiku ~12s tick) while ARAM has the full Stage 1+2 block. Shipped the Arena mirror, SHADOW-only, NO flip: core/arena_action_rule.py (encodes the operator's own prompt rules 137-168; ALL IN promotion dormant - no live opp-HP source) + core/arena_target_rule.py + core/arena_deterministic_coach.py (EXACT 7 artifact keys; augment_advice always-empty v1 degrade) + core/arena_coach_shadow.py (ROUND-AWARE dedup sig - ARAM's round-less sig would eat Arena rounds) -> data/arena_coach_shadow.jsonl (gitignored) + shadow_log_arena_coach/_live_arena_block wiring + one-call _state_builder hook (deep-equal no-served-mutation guard). ARAM `immediate` slice DROPPED on verify-the-premise (field RETIRED, aram_coach.py:326). Brawl skipped (s214 deadcode). 3 worktree slices (ABC `772743f1`, D `63ad1e1f`, E `ef679bec`), verifier CONFIRM each, merges `a687b9a5`/`5cc64ee2`/`17dd361f`. RC 10550/2skip/193sub exit 0 (+50 new); ruff clean; RC restarted pid 9964. LEDGER 763.
+Loop cycle 5 (post-759 relaunch). Directive: Refill item 4 - advance a NO_LLM_PRECOMPUTE_PLAN lane. Lane state probe: A saturated-offline (v4 regen deferred R37), B full-roster, C shadow shipped ARAM-only, D overlay shipped. Explore agent grounded the frontier: ARENA had ZERO deterministic coach-text fields (arena_coach.py:747 Haiku ~12s tick) while ARAM has the full Stage 1+2 block. Shipped the Arena mirror, SHADOW-only, NO flip: core/arena_action_rule.py (encodes the operator's own prompt rules 137-168; ALL IN promotion dormant - no live opp-HP source) + core/arena_target_rule.py + core/arena_deterministic_coach.py (EXACT 7 artifact keys; augment_advice always-empty v1 degrade) + core/arena_coach_shadow.py (ROUND-AWARE dedup sig - ARAM's round-less sig would eat Arena rounds) -> data/arena_coach_shadow.jsonl (gitignored) + shadow_log_arena_coach/_live_arena_block wiring + one-call _state_builder hook (deep-equal no-served-mutation guard). ARAM `immediate` slice DROPPED on verify-the-premise (field RETIRED, aram_coach.py:326). Brawl skipped (s214 deadcode). 3 worktree slices (ABC `d1d2f12a`, D `f7703d0d`, E `f046dcf0`), verifier CONFIRM each, merges `b31185cf`/`6f20c130`/`13b508d9`. RC 10550/2skip/193sub exit 0 (+50 new); ruff clean; RC restarted pid 9964. LEDGER 763.
 
 **Process notes:** (1) Verifier "REFUTE" on slice ABC was an over-strict ORCHESTRATOR probe (garbage-everywhere -> all-empty expected, but camp_phase=object() is truthy -> BUY ITEMS is the documented spec contract, mirroring the live coach's own truthiness) - write verifier claims from the SPEC contract, not invented strictness; the ruling + reasoning logged before merge. (2) Slice-E worktree spawned at pre-merge HEAD (R75) without the wave-1 modules; agent correctly ff-merged local main first - future wave-2 prompts should state "verify prerequisites present, ff to main if not" (it did this unprompted). (3) No gist-hook index corruption this cycle (3 clean worktree verifies).
 
@@ -12977,7 +12977,7 @@ Loop cycle 5 (post-759 relaunch). Directive: Refill item 4 - advance a NO_LLM_PR
 
 # 2026-07-03 (R75 LOOP - DSV9 assume_shielded_target seam + Serpent's Fang 6695/226695; ENGINE 1.179.0)
 
-Loop cycle 4 (post-759 relaunch). Directive menu: Serpent's Fang shield-cut / Collector execute / Sterak's incoming-burst - pre-validate killed 2 of 3 (Collector execute = DSV2 `execute_max_hp_pct` under `assume_takedown`; Sterak's Lifeline = R59 `_lifeline_target_shield.py`), picked Serpent's Fang: 6695/226695 sat `defensive_only` "not DPS-modeled" while Meraki 16.13.1 Shield Reaver cuts ACTIVE shields once by `{{rd|50%|35%}}` (melee/ranged) on first affliction. Shipped NEW default-OFF DSV9 seam `compute_burst_damage(assume_shielded_target=)`: END-appended `shield_cut_melee_pct`/`shield_cut_ranged_pct`, `effects.total_shield_cut_value`, one-time cut credited vs ASSUMED pool `_ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP=0.20 x target_max_hp` (gated >0) with NO armor/MR/mode_mult/amp (shield cut = post-mitigation-equivalent value, not damage dealt - stricter than DSV8); melee/ranged via `_champion_is_melee` (runes-scoped `_caster_role` NOT reused); sustained shields-gained reduction UNMODELED; ability_dps inert kwarg; /burst opt-in. Pins 0.50/0.35 on 6695 + 226695 (**226695 ABSENT from Meraki bulk** - DDragon-text + batch-42 mirror-convention grounding stated in the note); 326695/446695 guarded absent. 2 PARALLEL worktree slices (A engine `2842348b` RED-first 29-test file; B registry `e378703f`), verifier CONFIRM 10/10 pre-merge, merges `198a0c68` + `4c1b1c31`. ENGINE 1.179.0 (102 pin files, 0 residual); DS 7997/1skip/1943sub; RC 10486 + 14 EXPECTED drift fails closed in-commit (6 HZ-B stamps -> OQ19 173-roster regen stamp-only 12 lines; 6 Share + 1 determinism -> ds_share_sync 408 --check green; 1 phase8 -> DS bounce pid 18756 -> live 1.179.0), set re-run 46/46 green. Flip -> LGGS NEW B41 (PRACTICE-SR viable, assumed pool). LEDGER 762.
+Loop cycle 4 (post-759 relaunch). Directive menu: Serpent's Fang shield-cut / Collector execute / Sterak's incoming-burst - pre-validate killed 2 of 3 (Collector execute = DSV2 `execute_max_hp_pct` under `assume_takedown`; Sterak's Lifeline = R59 `_lifeline_target_shield.py`), picked Serpent's Fang: 6695/226695 sat `defensive_only` "not DPS-modeled" while Meraki 16.13.1 Shield Reaver cuts ACTIVE shields once by `{{rd|50%|35%}}` (melee/ranged) on first affliction. Shipped NEW default-OFF DSV9 seam `compute_burst_damage(assume_shielded_target=)`: END-appended `shield_cut_melee_pct`/`shield_cut_ranged_pct`, `effects.total_shield_cut_value`, one-time cut credited vs ASSUMED pool `_ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP=0.20 x target_max_hp` (gated >0) with NO armor/MR/mode_mult/amp (shield cut = post-mitigation-equivalent value, not damage dealt - stricter than DSV8); melee/ranged via `_champion_is_melee` (runes-scoped `_caster_role` NOT reused); sustained shields-gained reduction UNMODELED; ability_dps inert kwarg; /burst opt-in. Pins 0.50/0.35 on 6695 + 226695 (**226695 ABSENT from Meraki bulk** - DDragon-text + batch-42 mirror-convention grounding stated in the note); 326695/446695 guarded absent. 2 PARALLEL worktree slices (A engine `144164ef` RED-first 29-test file; B registry `45282ff4`), verifier CONFIRM 10/10 pre-merge, merges `c02af4c9` + `c0e14e3e`. ENGINE 1.179.0 (102 pin files, 0 residual); DS 7997/1skip/1943sub; RC 10486 + 14 EXPECTED drift fails closed in-commit (6 HZ-B stamps -> OQ19 173-roster regen stamp-only 12 lines; 6 Share + 1 determinism -> ds_share_sync 408 --check green; 1 phase8 -> DS bounce pid 18756 -> live 1.179.0), set re-run 46/46 green. Flip -> LGGS NEW B41 (PRACTICE-SR viable, assumed pool). LEDGER 762.
 
 **Process notes:** (1) **R74 omitted the Share/CHANGELOG entry** - the /done DS-Share rule says prepend on every ENGINE change; backfilled 1.178.0 alongside the 1.179.0 entry this cycle - future closures should verify the PREVIOUS bump's entry exists too. (2) Gist-hook index corruption #7 + #8 (both worktrees; disk==commit blobs verified via hash-object; merged SHAs only) - hook-fix chip STILL pending, 8 occurrences now. (3) R74's `test_fields_appended_at_end` hard-pinned "last two fields" and broke by construction on the next END-append - relaxed to a contiguous-order check; future END-append tests should pin contiguity + relative order, never last-two. (4) Slice-split recipe that worked: engine slice owns the full test file with registry tests expected-RED in its worktree (exact RED-set named in the verifier claim); registry slice is py_compile-only standalone (new fields don't exist there) - contract stated in both prompts.
 
@@ -12985,7 +12985,7 @@ Loop cycle 4 (post-759 relaunch). Directive menu: Serpent's Fang shield-cut / Co
 
 # 2026-07-03 (R71 LOOP - Aggregator H 7b lift; Game Length per-champion filter + tendency chip; JS/CSS only, no engine)
 
-Loop cycle 9. Plan drained - director rotated refill source 2 (Section 7b competitor lift), target Aggregator H early/late power curves. Deep-dive agent captured firsthand via Wayback (live site Cloudflare-gated): every chart is a server-baked inline Flot array, zero client math, NO explicit early/late tag anywhere - identity is read from the Winrate/Game Duration slope (Nasus 50.19% at 10min -> 68.89% at 50min). Doc: `docs/COMPETITOR_LIFT_2026-07-03_AGGREGATOR_H.md`. NOW = F1 per-champion filter on the Game Length tab (the `&champion=` param was ALREADY LIVE at `routes_duration_winrate.py:63-69` / `duration_winrate.py:74-77` but the panel never sent it) + F2 computed early/flat/late tendency chip (n-weighted half-vs-half delta, +/-5, 2-non-null-per-half gate, disclaimed non-probability). One Tier-1 worktree slice, TDD RED 19F -> GREEN 27; 5-phase UI audit found 1 MUST-FIX - `var(--bg-elevated)` is UNDEFINED repo-wide so bare uses compute transparent - repointed to `--surface-3`, plus degraded-`_sig` reset bug + focus-ring parity fixed in-slice (30 panel-DOM tests final). Verifier CONFIRM 7/7 + delta 4/4 (86/86 fresh). Visual proof: Playwright live round-trip (typed Jinx -> `/api/duration-winrate?mode=aram&champion=222` 200 -> n=81 filtered render, thin buckets "-") + screenshot. Slices `1ca03bb3` + `97770984`, merge `aa320718`. ADR-008 asset-hash reload - no RC restart. FUTURE -> BACKLOG: F3 snowball elasticity (WR by K-D@10/@20 over local `timeline_events`, TOP), F5 personal learning curve; chip valence + datalist slug names logged FUTURE. CLOSED: F4/F6/F7 + global basis.
+Loop cycle 9. Plan drained - director rotated refill source 2 (Section 7b competitor lift), target Aggregator H early/late power curves. Deep-dive agent captured firsthand via Wayback (live site Cloudflare-gated): every chart is a server-baked inline Flot array, zero client math, NO explicit early/late tag anywhere - identity is read from the Winrate/Game Duration slope (Nasus 50.19% at 10min -> 68.89% at 50min). Doc: `docs/COMPETITOR_LIFT_2026-07-03_AGGREGATOR_H.md`. NOW = F1 per-champion filter on the Game Length tab (the `&champion=` param was ALREADY LIVE at `routes_duration_winrate.py:63-69` / `duration_winrate.py:74-77` but the panel never sent it) + F2 computed early/flat/late tendency chip (n-weighted half-vs-half delta, +/-5, 2-non-null-per-half gate, disclaimed non-probability). One Tier-1 worktree slice, TDD RED 19F -> GREEN 27; 5-phase UI audit found 1 MUST-FIX - `var(--bg-elevated)` is UNDEFINED repo-wide so bare uses compute transparent - repointed to `--surface-3`, plus degraded-`_sig` reset bug + focus-ring parity fixed in-slice (30 panel-DOM tests final). Verifier CONFIRM 7/7 + delta 4/4 (86/86 fresh). Visual proof: Playwright live round-trip (typed Jinx -> `/api/duration-winrate?mode=aram&champion=222` 200 -> n=81 filtered render, thin buckets "-") + screenshot. Slices `52647530` + `bb34d375`, merge `3e4c0067`. ADR-008 asset-hash reload - no RC restart. FUTURE -> BACKLOG: F3 snowball elasticity (WR by K-D@10/@20 over local `timeline_events`, TOP), F5 personal learning curve; chip valence + datalist slug names logged FUTURE. CLOSED: F4/F6/F7 + global basis.
 
 **Process notes:** (1) `--bg-elevated` is used with fallbacks in 4+ panel CSS files but is never defined - each renders via fallback; documented RESKIN-CANDIDATE rows in `docs/DARK_VALUES_AUDIT_2026-07-01.md`, operator-gated - do not repoint them in passing. (2) No gist-hook index corruption this cycle (worktree clean both verifies). (3) Build Insights is a dashboard VIEW (not an overlay panel) - visual proof via Playwright against the :8888 view render + live API round-trip, per the R13/R16 precedent.
 
@@ -12993,7 +12993,7 @@ Loop cycle 9. Plan drained - director rotated refill source 2 (Section 7b compet
 
 # 2026-07-03 (R74 LOOP - DSV8 assume_physical_burst seam + Goredrinker 226630; ENGINE 1.178.0)
 
-Loop cycle 3 (post-759 relaunch). Director accepted the R73 refutation; don't-redo anchor appended to BACKLOG.md (Kraken 6672/226672 modeled, 6662 = Iceborn, target-state CLOSED s232, Shiv/RFC/DMP modeled). All 3 directive candidates (3742/3087/3094) grep-verified ALREADY MODELED - pre-validate subagent widened per the STEP 1 "genuinely UNMODELED" mandate and found **Goredrinker 226630** (Arena-only prismatic): registry said `defensive_only` "sustain only, no DPS contribution" but Meraki 16.13.1 leads "Deal 175% base AD physical damage ... 450 radius". Shipped NEW default-OFF DSV8 seam `compute_burst_damage(assume_physical_burst=)` - physical mirror of DSV6 (END-appended `physical_burst_base`/`physical_burst_base_ad_ratio`, PHYSICAL mitigation off `ctx.base_ad`, NO amp layer - grep-proven none exists for physical; ability_dps inert kwarg; /burst opt-in) + 226630 pinned 1.75 + notes corrected (6630/326630/446630 absent, guarded). RED-first 24 tests; slice `03166b7e` (worktree agent), merge `c77e8f62`; verifier CONFIRM 9/9 (independent probe: exact 160/250 armor-ratio, MR-invariant, non-holder byte-identical); ENGINE 1.178.0 (119 pins/101 files, 0 residual); Share --check 407 green (ingest bundle regened post-merge); DS :8893 live 1.178.0; DS 7968/1skip x2 fresh. Flip -> LIVE_GAME_GATED_SYNC NEW D9 (ARENA game). LEDGER 761.
+Loop cycle 3 (post-759 relaunch). Director accepted the R73 refutation; don't-redo anchor appended to BACKLOG.md (Kraken 6672/226672 modeled, 6662 = Iceborn, target-state CLOSED s232, Shiv/RFC/DMP modeled). All 3 directive candidates (3742/3087/3094) grep-verified ALREADY MODELED - pre-validate subagent widened per the STEP 1 "genuinely UNMODELED" mandate and found **Goredrinker 226630** (Arena-only prismatic): registry said `defensive_only` "sustain only, no DPS contribution" but Meraki 16.13.1 leads "Deal 175% base AD physical damage ... 450 radius". Shipped NEW default-OFF DSV8 seam `compute_burst_damage(assume_physical_burst=)` - physical mirror of DSV6 (END-appended `physical_burst_base`/`physical_burst_base_ad_ratio`, PHYSICAL mitigation off `ctx.base_ad`, NO amp layer - grep-proven none exists for physical; ability_dps inert kwarg; /burst opt-in) + 226630 pinned 1.75 + notes corrected (6630/326630/446630 absent, guarded). RED-first 24 tests; slice `dd7cf3be` (worktree agent), merge `b9189026`; verifier CONFIRM 9/9 (independent probe: exact 160/250 armor-ratio, MR-invariant, non-holder byte-identical); ENGINE 1.178.0 (119 pins/101 files, 0 residual); Share --check 407 green (ingest bundle regened post-merge); DS :8893 live 1.178.0; DS 7968/1skip x2 fresh. Flip -> LIVE_GAME_GATED_SYNC NEW D9 (ARENA game). LEDGER 761.
 
 **Process notes:** (1) The worktree precommit hook auto-ran ds_share_sync into the slice commit BUT the lolmath ingest bundle still drifted on merged main - a post-merge `ds_share_sync.py` regen is now part of the recipe even for single-slice merges. (2) Gist-hook index corruption 7th occurrence (build worktree); `git reset --mixed` repaired; hook-fix chip still pending. (3) Fresh-gap sourcing worked: Meraki-vs-registry sweep with the OQ1/s232/R66-R70 exclusion list found a real gap the R66 refute pass missed (wrong-note item, not a missing entry). (4) **HZ-B stamp-regen TRAP:** bare `core.build_order_precompute --static --mode all` defaults to the 10-champ SEED_CHAMPIONS roster and REWRITES the committed 173-champ tables down to 10 (68k-line deletion, caught pre-commit by the stamp-only diff check) - always pass `--champions <full 173-name CSV extracted from the committed table>`; correct regen is a 12-line stamp-only diff when the new engine math is default-OFF. RC suite closure: 10493 pass / 7 expected post-bump drift fails (6 stamp guards + 1 banner) fixed in-commit, drift+hygiene re-run 22 green.
 
@@ -13001,7 +13001,7 @@ Loop cycle 3 (post-759 relaunch). Director accepted the R73 refutation; don't-re
 
 # 2026-07-03 (R70 LOOP - Zeke's Frostfire Tempest + Hollow Radiance Desolate; ENGINE 1.177.0; first parallel 2-slice ds-sweep)
 
-Loop cycle 8. Director picked R66 residuals #5 + #6 - the LAST two damage-registry residuals (only #7 shield-lerp remains, next-patch-ingest gated). Premise verified vs Meraki 16.13.1: 3050 Frostfire Tempest = SELF storm on ult cast, 150 flat magic / 5s, 45s CD (tether-ally note confirmed stale); 6664 Desolate champion-takedown eruption = 400% Immolate = 60 + 4% bonus HP magic / 500 units. **Lane conflict arbitrated via PART C sync gemini** (`answer_20260703-072102`): BACKLOG said every_n_seconds (ungated lane) but the directive said default-OFF seam - ruling: DSV6 `assume_magic_burst` data pin 150.0/0.0 on 3050+223050+323050 (R69 Rocketbelt shape; ungated periodic would flip default rankings). HR = DSV2 `assume_takedown` schema lift: END-appended `takedown_eruption_base`/`_bonus_hp_ratio` + `total_takedown_eruption_damage` helper + MR-mitigated burst fold on 6664+226664 (326664 guarded absent; 200% minion eruption documented unmodeled; dps.py untouched per R59 doctrine). TDD RED-first 25 + 24 tests; slices `e3fb9db0` + `e7221fcb` (2 PARALLEL worktree agents), merges B-then-A `c556050d` + `b9fa87dc`; verifier CONFIRM 8/8 + 9/9 (cross-version byte-identical probe OFF 735.76; ON eruption 47.50 exact); ENGINE 1.177.0 (99 pin files); HZ-B regen first-try stamp-only (173, 0 non-stamp lines); DS :8893 live 1.177.0; dual suite DS 7944/1skip (+49) + RC 10466/2skip (1 banner-lag drift fail fixed in-closure, guard green); Share 406 --check green. BACKLOG #5+#6 struck; LGGS B3+B13 extended, no new flip rows.
+Loop cycle 8. Director picked R66 residuals #5 + #6 - the LAST two damage-registry residuals (only #7 shield-lerp remains, next-patch-ingest gated). Premise verified vs Meraki 16.13.1: 3050 Frostfire Tempest = SELF storm on ult cast, 150 flat magic / 5s, 45s CD (tether-ally note confirmed stale); 6664 Desolate champion-takedown eruption = 400% Immolate = 60 + 4% bonus HP magic / 500 units. **Lane conflict arbitrated via PART C sync gemini** (`answer_20260703-072102`): BACKLOG said every_n_seconds (ungated lane) but the directive said default-OFF seam - ruling: DSV6 `assume_magic_burst` data pin 150.0/0.0 on 3050+223050+323050 (R69 Rocketbelt shape; ungated periodic would flip default rankings). HR = DSV2 `assume_takedown` schema lift: END-appended `takedown_eruption_base`/`_bonus_hp_ratio` + `total_takedown_eruption_damage` helper + MR-mitigated burst fold on 6664+226664 (326664 guarded absent; 200% minion eruption documented unmodeled; dps.py untouched per R59 doctrine). TDD RED-first 25 + 24 tests; slices `1230a01a` + `c5ed3ff4` (2 PARALLEL worktree agents), merges B-then-A `30541504` + `deb8a876`; verifier CONFIRM 8/8 + 9/9 (cross-version byte-identical probe OFF 735.76; ON eruption 47.50 exact); ENGINE 1.177.0 (99 pin files); HZ-B regen first-try stamp-only (173, 0 non-stamp lines); DS :8893 live 1.177.0; dual suite DS 7944/1skip (+49) + RC 10466/2skip (1 banner-lag drift fail fixed in-closure, guard green); Share 406 --check green. BACKLOG #5+#6 struck; LGGS B3+B13 extended, no new flip rows.
 
 **Process notes:** (1) Share/MANIFEST.md merge conflict between parallel slices (both restamped) - deterministic resolution: `ds_share_sync.py` regen on the merged tree, then conclude the merge; adopt as the standard parallel-slice recipe. (2) Gist-hook index corruption 5th + 6th occurrences (both worktrees) - hook-fix chip still pending, keeps rising. (3) R66 residual list EXHAUSTED for this patch - next ds-sweep needs a fresh gap source (new refute pass or a different lane); escalation note left in the findings log for the director.
 
@@ -13009,7 +13009,7 @@ Loop cycle 8. Director picked R66 residuals #5 + #6 - the LAST two damage-regist
 
 # 2026-07-03 (R69 LOOP - Rocketbelt/Everfrost item-ACTIVE magic burst; ENGINE 1.176.0; pure data-pin on the DSV6 seam)
 
-Loop cycle 7. Director picked R66 residual #3 (Rocketbelt); the slice shipped residual #4 (Everfrost) too - same lane. PREMISE PARTIAL: both directive schema branches were moot - `magic_burst_ap_ratio` + `total_magic_burst_damage` + default-OFF `assume_magic_burst` all existed since DSV6 1.152.0, and no NEW `assume_item_actives` seam was needed (a one-cast active magnitude IS the DSV6 single-proc burst-window shape). Pinned vs Meraki 16.13.1: SR 3152 + Arena 223152 Supersonic = 100 + 10% AP; Arena 446656 Everfrost Glaciate = 300 + 85% AP. `defensive_only` verified doc-only (zero engine consumers, left True). Guards: no ARAM 323152 in pool; legacy 6656/226656 unpinned. DPS side intentionally unmodeled (long-CD actives, no double-count). TDD RED-first 21 tests (RED 10F); slice `317e17ba`, merge `57a74f6b`, docs `abd66ad4`; verifier CONFIRM 10/10; ENGINE 1.176.0 (99 pin files); HZ-B regen first-try stamp-only; DS :8893 live 1.176.0; dual suite DS 7895/1skip + RC 10467/2skip, 0 failed; Share 404 --check green; CI green. BACKLOG residuals #3+#4 struck; LIVE_GAME_GATED_SYNC B13 + seam row extended (no new flip row).
+Loop cycle 7. Director picked R66 residual #3 (Rocketbelt); the slice shipped residual #4 (Everfrost) too - same lane. PREMISE PARTIAL: both directive schema branches were moot - `magic_burst_ap_ratio` + `total_magic_burst_damage` + default-OFF `assume_magic_burst` all existed since DSV6 1.152.0, and no NEW `assume_item_actives` seam was needed (a one-cast active magnitude IS the DSV6 single-proc burst-window shape). Pinned vs Meraki 16.13.1: SR 3152 + Arena 223152 Supersonic = 100 + 10% AP; Arena 446656 Everfrost Glaciate = 300 + 85% AP. `defensive_only` verified doc-only (zero engine consumers, left True). Guards: no ARAM 323152 in pool; legacy 6656/226656 unpinned. DPS side intentionally unmodeled (long-CD actives, no double-count). TDD RED-first 21 tests (RED 10F); slice `45824d47`, merge `8484ca9a`, docs `62470ee2`; verifier CONFIRM 10/10; ENGINE 1.176.0 (99 pin files); HZ-B regen first-try stamp-only; DS :8893 live 1.176.0; dual suite DS 7895/1skip + RC 10467/2skip, 0 failed; Share 404 --check green; CI green. BACKLOG residuals #3+#4 struck; LIVE_GAME_GATED_SYNC B13 + seam row extended (no new flip row).
 
 **Process notes:** (1) Gist-hook worktree index corruption hit a 4TH time (disk==HEAD, commit intact, merged the SHA directly) - the R68 standalone hook-fix chip is still pending and rising in value. (2) Director-learning note added to ORCHESTRATION_PLAN findings log: residual-list picks are pre-specced data-pins - trust the list's stated fit instead of re-deriving schema options. (3) Remaining R66 residuals: #5 Zeke's 3050, #6 Hollow Radiance 6664, #7 shield-lerp re-check (next patch ingest).
 
@@ -13017,7 +13017,7 @@ Loop cycle 7. Director picked R66 residual #3 (Rocketbelt); the slice shipped re
 
 # 2026-07-03 (R68 LOOP - Thornmail/Bramble item Thorns reflect; ENGINE 1.175.0; R49 seam gains an item path)
 
-Loop cycle 6. Director picked residual #2 from the R66 list (Thornmail item-reflect); directive's "ENGINE_VERSION in server.py" corrected to `agents/daemon_slayer/__init__.py:18`. Premise verified vs vendored Meraki 16.13.1: 3075 = 20 + 10% BONUS armor magic per incoming AA + GW; 3076 = 10 flat. Shipped the small schema lift: item-keyed registry in `_passive_reflect_overrides.py` (3075/223075/323075 + 3076; 223076/323076 absent from pool, guarded), END-appended `caster_bonus_armor_pct` field + kwarg, dps+burst fold strongest owned Thorns item (dedup one credit) under the existing default-OFF `assume_passive_reflect`. Champion path (Rammus) byte-identical. TDD RED-first 31 tests; slice `404f855b`, merge `59cd622e`; verifier CONFIRM 9/9; HZ-B regen first-try stamp-only (default-OFF seam - orders byte-identical); DS :8893 live 1.175.0; dual suite DS 7874 + RC 10467, 0 real failures; Share 403 --check green (ingest bundle rebuilt on main). No live flip - seam row extended.
+Loop cycle 6. Director picked residual #2 from the R66 list (Thornmail item-reflect); directive's "ENGINE_VERSION in server.py" corrected to `agents/daemon_slayer/__init__.py:18`. Premise verified vs vendored Meraki 16.13.1: 3075 = 20 + 10% BONUS armor magic per incoming AA + GW; 3076 = 10 flat. Shipped the small schema lift: item-keyed registry in `_passive_reflect_overrides.py` (3075/223075/323075 + 3076; 223076/323076 absent from pool, guarded), END-appended `caster_bonus_armor_pct` field + kwarg, dps+burst fold strongest owned Thorns item (dedup one credit) under the existing default-OFF `assume_passive_reflect`. Champion path (Rammus) byte-identical. TDD RED-first 31 tests; slice `3b4c54cc`, merge `49ec700d`; verifier CONFIRM 9/9; HZ-B regen first-try stamp-only (default-OFF seam - orders byte-identical); DS :8893 live 1.175.0; dual suite DS 7874 + RC 10467, 0 real failures; Share 403 --check green (ingest bundle rebuilt on main). No live flip - seam row extended.
 
 **Process notes:** (1) 3rd worktree-index corruption ROOT-CAUSED: the post-commit gist hook inherits GIT_DIR and its `git add -A` hits the committing worktree's index - spawn-task chip filed for the hook fix (commit/disk unaffected; `git reset --mixed` repairs). (2) Controller cycle deadline 5400s < Tier-2 wall-clock - breached once mid-suite, stall-recovery /diagnose injected, diagnosed not-a-hang, recovered in-cycle; consider raising cycle_deadline_sec for ds-sweep Tier-2 directives. (3) RC suite teardown ERROR = RF5 hermeticity guard catching the LIVE controller.log append mid-suite (external writer, not a test) - expected while the loop runs suites concurrently with the controller.
 
@@ -13025,7 +13025,7 @@ Loop cycle 6. Director picked residual #2 from the R66 list (Thornmail item-refl
 
 # 2026-07-03 (R67 LOOP - Terminus Juxtaposition 3-stack Dark pen; ENGINE 1.174.0; residual-list pick worked)
 
-Loop cycle 5. Director picked FROM the R66 residual list as instructed (no re-scan, no stale-digest premise) - the loop-health fix from R66 held. Premise verified vs vendored Meraki 16.13.1: Juxtaposition Dark = 10% armor+magic pen per stack x3 = 30%/30%; registry pinned 1 stack while citing the BC full-stack convention. Shipped SR 3302 + Arena 223302 pen 0.10 -> 0.30 ungated (plain data correction). Light-side caster resists (6-8 armor+MR x3) = schema lift (no item-keyed resist-grant path) -> BACKLOG tail, not built blind. TDD RED-first 14 tests (`test_terminus_juxtaposition_r67.py`); slice `5331c62f`, merge `34255183`; HZ-B regen both generators full-roster OQ19 recipe FIRST TRY (no shrink); DS :8893 live 1.174.0; dual suite DS 7843 + RC 10467, 0 failed; Share 402 files --check green.
+Loop cycle 5. Director picked FROM the R66 residual list as instructed (no re-scan, no stale-digest premise) - the loop-health fix from R66 held. Premise verified vs vendored Meraki 16.13.1: Juxtaposition Dark = 10% armor+magic pen per stack x3 = 30%/30%; registry pinned 1 stack while citing the BC full-stack convention. Shipped SR 3302 + Arena 223302 pen 0.10 -> 0.30 ungated (plain data correction). Light-side caster resists (6-8 armor+MR x3) = schema lift (no item-keyed resist-grant path) -> BACKLOG tail, not built blind. TDD RED-first 14 tests (`test_terminus_juxtaposition_r67.py`); slice `0360b68a`, merge `436ca07f`; HZ-B regen both generators full-roster OQ19 recipe FIRST TRY (no shrink); DS :8893 live 1.174.0; dual suite DS 7843 + RC 10467, 0 failed; Share 402 files --check green.
 
 **Process note (2nd occurrence):** the worktree build agent's INDEX corrupted again (4133 staged deletions, disk==HEAD blobs) - verifier caught it; merged the commit sha directly, never the worktree state. If a 3rd worktree index corruption appears, root-cause the worktree tooling (same-worktree races memory `feedback_cc_session_perf`).
 
@@ -13033,7 +13033,7 @@ Loop cycle 5. Director picked FROM the R66 residual list as instructed (no re-sc
 
 # 2026-07-03 (R66 LOOP - Guinsoo Seething Strike cond-AS; ENGINE 1.173.0; saturation-claim REFUTED by adversarial workflow)
 
-Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - ALL already modeled (stale-digest family R63/R64). Instead of a 4th CLEAN no-op: scan agent claimed the damage registry SATURATED; a 3-lens adversarial refute workflow (absent/partial/drift) DISPROVED that with 8 cited findings. Shipped #1: Guinsoo 3124 + Arena 223124 `bonus_as_conditional=0.32` (Seething Strike 8%x4, Meraki 16.13.1) on the existing R42 ungated lane - PART C sync gemini ruled NO new seam (Yun Tal no-flag precedent + sec-12); no live-flip row, B44 spot-check appended to LIVE_GAME_GATED_SYNC instead. ENGINE 1.172.0->1.173.0, 95 pin files, Share 401 files --check green, DS :8893 live at 1.173.0. TDD RED-first 9 tests; verifier CONFIRM 10/10; merge `d79ebcb6`.
+Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - ALL already modeled (stale-digest family R63/R64). Instead of a 4th CLEAN no-op: scan agent claimed the damage registry SATURATED; a 3-lens adversarial refute workflow (absent/partial/drift) DISPROVED that with 8 cited findings. Shipped #1: Guinsoo 3124 + Arena 223124 `bonus_as_conditional=0.32` (Seething Strike 8%x4, Meraki 16.13.1) on the existing R42 ungated lane - PART C sync gemini ruled NO new seam (Yun Tal no-flag precedent + sec-12); no live-flip row, B44 spot-check appended to LIVE_GAME_GATED_SYNC instead. ENGINE 1.172.0->1.173.0, 95 pin files, Share 401 files --check green, DS :8893 live at 1.173.0. TDD RED-first 9 tests; verifier CONFIRM 10/10; merge `05cd20af`.
 
 **Gotcha re-learned (now also in ORCHESTRATION findings):** HZ-B regen after a bump MUST pass the full 173-canonical roster to BOTH generators (`core.build_order_precompute` + `core.build_order_variants`, `--static --mode all --champions <csv>`); the build agent's first regen used the 10-champ SEED default -> 18 axis-parity tests failed on EMPTY orders. OQ19 (221922c5) is the recipe commit.
 
@@ -13043,7 +13043,7 @@ Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - AL
 
 # 2026-07-02 (LIVE-GATED DRAIN - practice SR + ARAM Mayhem; prep-audit + a real ranged-only build bug found live)
 
-Operator-played drain of `docs/LIVE_GAME_GATED_SYNC.md`. Probed no game -> ran the headless PREP phase first: an orchestrated 4-slice read-only audit found the headless prep surface FULLY EXHAUSTED (all 7 OQ17/OQ18 DS routes LIVE-VERIFIED WIRED-OK @1.171.0 via differential POST probes; doc rows current; Phase-D B2 = defer-needs-game). Committed the prep-audit doc sync (`28edea2a`) + cleaned 2 stale worktree-wf branches (content proven-superseded in main).
+Operator-played drain of `docs/LIVE_GAME_GATED_SYNC.md`. Probed no game -> ran the headless PREP phase first: an orchestrated 4-slice read-only audit found the headless prep surface FULLY EXHAUSTED (all 7 OQ17/OQ18 DS routes LIVE-VERIFIED WIRED-OK @1.171.0 via differential POST probes; doc rows current; Phase-D B2 = defer-needs-game). Committed the prep-audit doc sync (`7c5fa25c`) + cleaned 2 stale worktree-wf branches (content proven-superseded in main).
 
 Then the operator played 2 games:
 - **Practice SR (Kai'Sa champ-select -> Irelia in-game):** A1 PASS (RuneWriter lockfile-rotation reconnect after a mid-session League restart, 27f99a95 proven live), A7 PASS (PRACTICETOOL mode-correct rune push), B21 PASS (drake events Fire@403s/Earth@722s), B22 PASS (inhib@702s), B8/R7 eyeball (Irelia +23% at full stacks = sane).
@@ -13059,7 +13059,7 @@ Full drain record + still-open rows (A2 spell-push, A8 panels, B1 build-chooser,
 
 # 2026-07-02 (OQ22 LOOP - 4-slice headless validation + comp-verdict inverted-label FIX; ENGINE-IMPACT NONE)
 
-Loop directive OQ22 executed by this session (head 5d6e50ae; commit `9be09e44`, LEDGER 746). Validate the 4 items the 2026-07-01 resync moved OFF the live-gated checklist, via 4 disjoint parallel read-only analysis subagents (orchestrator = sole merger + verifier; NO worktree - read-only analysis mutates 0 files, OQ20 precedent). Each slice's falsifiable claims re-checked against ground truth (independent code read + live SQL over rewind_history.db) BEFORE its verdict was accepted.
+Loop directive OQ22 executed by this session (head 5d6e50ae; commit `6155fcf1`, LEDGER 746). Validate the 4 items the 2026-07-01 resync moved OFF the live-gated checklist, via 4 disjoint parallel read-only analysis subagents (orchestrator = sole merger + verifier; NO worktree - read-only analysis mutates 0 files, OQ20 precedent). Each slice's falsifiable claims re-checked against ground truth (independent code read + live SQL over rewind_history.db) BEFORE its verdict was accepted.
 
 - **S1 comp-verdict SOUNDNESS = BUG-CONFIRMED + FIXED (root-cause-first TDD, non-flip).** The LGS2 "All-AD comp - swap to Garen to mix the damage type" read inverted: `_swap_reason` (`core/aram_comp_verdict.py:333`) + the variant path (`:304`) labelled the comp by the DEFICIT type (`detail`, the MISSING type) instead of its EXCESS. Both now compute `excess = "AD" if detail == "ap" else "AP"`. Remedy TARGET was always right (`_bench_addresses` line 223), so ONLY the human label changed - zero ranking change; deterministic engine, NOT a DS live-flip seam = plain presentation bug. 3 RED-first regression tests reproduced the exact string; GREEN after; 102 passed across comp_verdict + 5 siblings. LIVE-VERIFIED post-restart (pid 16652 -> 15160): now returns "All-AP comp - swap to Garen...". Secondary FUTURE: Vex is DDragon-zeroed (`_damage_lean`=hybrid); `champion_info_overrides` resolution is a distinct enhancement.
 - **S2 pickban-DB counter-quality = CORPUS-TOO-THIN.** DB is a single itemless L9 1v1 `compute_matchup` proxy; rewind is 2954 matches but only 660 SR-classic; 50 sampled pairs median n=2.5 / pooled 49.5% (coin flip); densest SR pair 24 games. Cannot validate -> ROADMAP:55 flip stays operator-gated.
@@ -13086,7 +13086,7 @@ Loop directive OQ21 executed by this session (head ca131150; commit `<this commi
 
 # 2026-07-02 (OQ19 LOOP - HZ-B build-order table regen to live ENGINE 1.169.0; static data, no engine math)
 
-Loop directive OQ19 executed by this session (head 12d9de2f; commit `221922c5`, LEDGER 741). Regen the current-patch (16.13.1) HZ-B precompute tables to the live DS engine via the deterministic `--static` path - the headless prereq for accrual rail G2. No engine math, no live flip.
+Loop directive OQ19 executed by this session (head 12d9de2f; commit `aa86ab53`, LEDGER 741). Regen the current-patch (16.13.1) HZ-B precompute tables to the live DS engine via the deterministic `--static` path - the headless prereq for accrual rail G2. No engine math, no live flip.
 
 - **Ground-truth first:** repo `ENGINE_VERSION` (`agents/daemon_slayer/__init__.py:18`) + `:8893/health` both 1.169.0 / patch 16.13.1, but the committed 16.13.1 HZ-B tables (HZ-B1 `build_orders_*` + HZ-B2 `build_order_variants_*`, all 3 modes) were stamped 1.151.0 - an 18-version drift a future consumer (HZ-C1 / accrual rail G2) would read as stale scorer math. Directive named only build_order_precompute but step-3's glob + intent covers variants (also 1.151.0), so BOTH regenerated.
 - **Regen:** `core.build_order_precompute` + `core.build_order_variants`, `--static --mode all`. In-process `_install_static_transport` rebinds `_post_json` to the DS `_POST_ROUTES` handlers (no :8893, no server); output identical to the live path by construction.
@@ -13101,7 +13101,7 @@ Loop directive OQ19 executed by this session (head 12d9de2f; commit `221922c5`, 
 
 # 2026-07-02 (OQ18 LOOP - live-input wiring across the DS HTTP boundary; ENGINE 1.168.0 -> 1.169.0)
 
-Loop directive OQ18 executed by this session (head 3d7ce104; commit `3a96c0e3`, LEDGER 740). Wire the producer-only-orphan live inputs across the :8893 HTTP routes so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). **NO engine-math file changed - server.py only + version stamp** (both `compute_antitank(level=)` + `compute_antitank_live` already accepted the args; OQ18 is pure transport - the directive's "changes live math" framing = the NEW capability, not a math edit).
+Loop directive OQ18 executed by this session (head 3d7ce104; commit `e1d2d71d`, LEDGER 740). Wire the producer-only-orphan live inputs across the :8893 HTTP routes so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). **NO engine-math file changed - server.py only + version stamp** (both `compute_antitank(level=)` + `compute_antitank_live` already accepted the args; OQ18 is pure transport - the directive's "changes live math" framing = the NEW capability, not a math edit).
 
 - **Ground-truth first (grep-before-scaffold):** ramp-seeded anti-tank champs (Aatrox/Brand/KSante/Mordekaiser/Ornn/Renata/Skarner/Urgot/Zed/Zeri) are DISJOINT from the P3.2 seeded champs (Gwen/Vayne) -> the level-ramp seam never perturbs existing P3.2 tests; Heal 7 / Ignite 14 / PtA 8005 / Janna granter all verified against source before the test was written.
 - **Scope call:** kept the two anti-tank seams ORTHOGONAL at the route (`item_ids` -> compute_antitank_live P3.2 AP/AD; `level` -> compute_antitank ramp) - NOT coupled inside compute_antitank_live, which would break its "naked build byte-identical to static" contract for ramp champs.
@@ -13114,7 +13114,7 @@ Loop directive OQ18 executed by this session (head 3d7ce104; commit `3a96c0e3`, 
 
 # 2026-07-02 (OQ17 LOOP - /rank* HTTP-boundary seam transport; ENGINE 1.167.0 -> 1.168.0)
 
-Loop directive OQ17 executed by this session (head da6489c1; commit `e73799f3`, LEDGER 739). Thread the ENGINE-ONLY default-OFF seams across the /rank* HTTP boundary so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). NO math change - server.py only + version stamp.
+Loop directive OQ17 executed by this session (head da6489c1; commit `5b92dbf1`, LEDGER 739). Thread the ENGINE-ONLY default-OFF seams across the /rank* HTTP boundary so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). NO math change - server.py only + version stamp.
 
 - **Plan-agent spec caught 2 premise drifts** (verify-the-premise): R50 apply_all_out_bonus is a load-time AbilitiesSnapshot flag NOT a per-call compute param -> EXCLUDED (not a pure flag-flip, FUTURE); Phase-D "4 non-every-AA on_hit" is not a distinct seam (3 un-routed categories of apply_passive_damage, already /dps).
 - **Scope call (R30 precedent):** rune-gate seams DSP4/R51/R53 route to /burst not the ranker - a flat keystone amp washes out of the candidate-baseline delta. This DROPPED the planned burst.py ranker slice; OQ17 = single-file server.py change, main-thread + verifier gate.
@@ -13127,7 +13127,7 @@ Loop directive OQ17 executed by this session (head da6489c1; commit `e73799f3`, 
 
 # 2026-07-02 (R58 LOOP - assume_ms_utility seam: MS utility valuation for bruiser/juggernaut; ENGINE 1.166.0 -> 1.167.0)
 
-Loop directive R58 executed by this session (head e7e95653; merge `304c88dd`, slice `9b42acd8`, LEDGER 738). Premise verified FIRST: item MS resolves into stats["ms"] (engine.py:200) but the bruiser/juggernaut scorer consumed it at ZERO (only consumer ability_dps.py:285); DDragon 16.13.1 DMP 3742 + FoN 4401 both 4 pct MS.
+Loop directive R58 executed by this session (head e7e95653; merge `dbe4773e`, slice `d76ef9e6`, LEDGER 738). Premise verified FIRST: item MS resolves into stats["ms"] (engine.py:200) but the bruiser/juggernaut scorer consumed it at ZERO (only consumer ability_dps.py:285); DDragon 16.13.1 DMP 3742 + FoN 4401 both 4 pct MS.
 
 - **Seam (hybrid.py ONLY):** DEFAULT-OFF END-appended `assume_ms_utility` on compute_hybrid + rank_items_by_hybrid (spec caught the routing fact: the ranker does NOT call compute_hybrid - both entry points need the flag). `_ms_utility_multiplier` = 1 + min(0.15 cap, bonus_ms_frac * 0.5) - melee attack-uptime model; DPS term only; shared multiplier cancels in the normalized pct; raw dps/delta_dps stay RAW (no Shipwrecker double-count). Worked pin: Darius + DMP + FoN -> 367.2 -> x1.04; zero-DPS FoN gains exactly +0.013 hybrid_delta_pct.
 - **Orchestrated:** Plan spec agent (cites re-verified) -> 1 worktree build agent (TDD RED 16F/2P observed -> GREEN 18 tests) -> verifier CONFIRM 7/7 -> sole merger.
@@ -13139,7 +13139,7 @@ Loop directive R58 executed by this session (head e7e95653; merge `304c88dd`, sl
 
 # 2026-07-02 (OQ15 - QA20 this-match dot overlay on GPI radar; backend + ui, NO ENGINE/DS/Share)
 
-Loop directive OQ15 executed by this session (head 744e3e87; merges `b6f6220a` backend + `fd15a9fd` frontend, LEDGER 736). Premise verified first (radar geometry + OQ15 OPEN); Plan-agent spec citation-checked vs source before any build.
+Loop directive OQ15 executed by this session (head 744e3e87; merges `67ab9999` backend + `0244f7e2` frontend, LEDGER 736). Premise verified first (radar geometry + OQ15 OPEN); Plan-agent spec citation-checked vs source before any build.
 
 - **Backend (core/player_gpi.py):** `_this_match_block(games)` - newest game scored per relative axis as 100*midrank-percentile vs the full directional baseline; versatility/consistency null (no single-match analog); `this_match` {match_id, champion_id, game_creation_ts, axes x8} rides the existing payload + route TTL cache (route change = docstring only; match_id flip drives the frontend repaint).
 - **Frontend (player_gpi.js/.css):** `_matchDotsSvg` by-KEY dots (r=2.4 amber --signal-warn, above polygon below labels, "" on absent/malformed this_match - old payloads byte-identical), `_matchLegend` "last game - <champ> - Nh ago", sig gains `|tm:` incl match_id. SVG user-units under the pre-existing documented exception.
@@ -13153,7 +13153,7 @@ Loop directive OQ15 executed by this session (head 744e3e87; merges `b6f6220a` b
 
 # 2026-07-02 (OQ14 - Interactive Item Shaper 3-knob strip; overlay-ui + backend route, NO ENGINE/DS/Share)
 
-Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; feature `639e2789` + docs `d8396df0`, LEDGER 735). PREMISE-CHECK first (did NOT scaffold on the directive's "pure UI" label): grep proved core/shaper.apply_shaper had ZERO prod callers, rank_items (rank.py:527) takes NO weight-dict arg, and the archetype blend is a 2-axis [alpha,beta] per-champ table - so a full nudge->re-ranked-item-list wire is an ENGINE SEAM the directive mislabeled. Took the SAFEST-REVERSIBLE scope (PART C + operator no-questions): an HONEST emphasis preview, logging the full re-rank as a BACKLOG FUTURE.
+Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; feature `dc45f749` + docs `f748aa9b`, LEDGER 735). PREMISE-CHECK first (did NOT scaffold on the directive's "pure UI" label): grep proved core/shaper.apply_shaper had ZERO prod callers, rank_items (rank.py:527) takes NO weight-dict arg, and the archetype blend is a 2-axis [alpha,beta] per-champ table - so a full nudge->re-ranked-item-list wire is an ENGINE SEAM the directive mislabeled. Took the SAFEST-REVERSIBLE scope (PART C + operator no-questions): an HONEST emphasis preview, logging the full re-rank as a BACKLOG FUTURE.
 
 - **Backend (`routes_ds_shape.py`):** NEW read-only GET /api/ds-shape (mirrors routes_ds_knobs) -> per-champ [alpha,beta] from the REAL archetype_weights.json -> baseline {damage:alpha, survivability:beta, utility:0.0} -> apply_shaper(ShaperState) -> baseline/shaped fractions + *_pct + archetype_source. Knobs int-clamped [-2,2]; 400 blank champion; graceful 500 (no raw traceback).
 - **Frontend (`ds_shaper.js` + `.css`):** 3-knob strip Row4 SHAPER (after FIGHT MODEL in active_match.js). Non-persisting module var (NO localStorage), snaps to 0 on champion change + resetShaper() for match end; debounced dedupFetch; escHtml; renders "LABEL base -> shaped". CSS tokens-only (--hit-min 42 buttons, --fs-xs/sm >=16, --signal-info operator tone).
@@ -13168,9 +13168,9 @@ Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; f
 
 Operator-directed: refresh docs/LIVE_GAME_GATED_SYNC.md (consolidated headless-impossible checklist) + build reusable drain tooling + answer a local-AI question. Fable-5 orchestrated 46-agent Workflow (11 doc readers + repo grep sweep + git-evidence + seam-flag ground-truth + adversarial done-verify + verifier gate PASS). LEDGER 734.
 
-- **Resync (`26aba81f`):** removed 4 confirmed-done (overlay 598, boots PM7, vision self-heal 685/688/711, packaging), added 78 -> 108 open (86 one-shot + 14 accrual + 8 parked). Every open row env-tagged. Drain: S1 practice SR / S2 real SR / S3 ARAM Mayhem / S4 Arena. ARENA NEEDED: YES (8 items). Est 4 sessions. Ledger section preserved + 1 SYNC entry.
+- **Resync (`9772e6cc`):** removed 4 confirmed-done (overlay 598, boots PM7, vision self-heal 685/688/711, packaging), added 78 -> 108 open (86 one-shot + 14 accrual + 8 parked). Every open row env-tagged. Drain: S1 practice SR / S2 real SR / S3 ARAM Mayhem / S4 Arena. ARENA NEEDED: YES (8 items). Est 4 sessions. Ledger section preserved + 1 SYNC entry.
 - **SEAM GROUND TRUTH (code-verified):** ZERO seams wired-on-live. DSP2/DSP11/F2/RF1-3 transport-plumbed, callers omit; DSV/DSP4/DSP8/B1/R50-53/Phase-D engine-only; DSP5/6/7+P3.2 producer/test-only; RC_COMP_HP_LEAN + RC_LANING_CV_SERVED cold.
-- **Decision queue (`df75d18c`):** docs/OPERATOR_DECISION_QUEUE_2026-07-01.md - 12 decide-now + 7 review-first, pro/con/rec each. Top-3 (DSV5 flip ON, DSP11+RF1 flips, doc housekeeping) clear ~35 rows with NO game.
+- **Decision queue (`1c17f5f6`):** docs/OPERATOR_DECISION_QUEUE_2026-07-01.md - 12 decide-now + 7 review-first, pro/con/rec each. Top-3 (DSV5 flip ON, DSP11+RF1 flips, doc housekeeping) clear ~35 rows with NO game.
 - **Tooling (LOCAL, gitignored .claude/):** /live-gated-drain command (fable-limit -> opus-4.8 max/ultracode fallback; worktree merge/prune + /done + next-session prompt) + live-gated-resync saved workflow (verifier JSON schema-forced - the live re-gate output was unparseable).
 - **Local-AI analysis (chat + BACKLOG line):** Gemini used in 3 roles - ask+audit already on flash (near-free), ONLY the headless-loop director uses premium gemini-3-pro-preview. Context is CURATED not full-repo (audit ~17K tok deterministic + agentic self-reads bounded by .geminiignore; director ~30-40K tok capped). Swap plan (RC_LLM_BACKEND switch, free-tier ask+audit first, ensemble on advisory roles) logged to BACKLOG.
 - Do NOT redo: the resync is fresh as of 2026-07-01. Next = operator works the decision queue (start DSV5 flip ON).
@@ -13179,12 +13179,12 @@ Operator-directed: refresh docs/LIVE_GAME_GATED_SYNC.md (consolidated headless-i
 
 # 2026-07-01 late night 2 (OQ13 - QA17 mode-factored weekly Good/Bad/Ugly digest; backend + ui, NO ENGINE/DS/Share)
 
-Loop directive OQ13 executed by this session (merges `4d2955f4` + `22cc3e80` + audit-fix `acf54c4d`, LEDGER 733). Premise live-verified BEFORE build (ARAM 7d 11.7 deaths/game + 2.0 CS/min vs SR 8.8 + 6.6 - mode-blind tips mis-grade ARAM). 2 parallel worktree agents on disjoint files to a frozen weekly_digest contract -> verifier CONFIRM each (A 24 / B 17 fresh) -> sole merger --no-ff.
+Loop directive OQ13 executed by this session (merges `6e7de25c` + `efa52cda` + audit-fix `b56b49b3`, LEDGER 733). Premise live-verified BEFORE build (ARAM 7d 11.7 deaths/game + 2.0 CS/min vs SR 8.8 + 6.6 - mode-blind tips mis-grade ARAM). 2 parallel worktree agents on disjoint files to a frozen weekly_digest contract -> verifier CONFIRM each (A 24 / B 17 fresh) -> sole merger --no-ff.
 
-- **Backend (`c84d51af`):** _MODE_BENCH (SR strict 3.0/6.0/6.0; ARAM lenient 2.5/12.0/None, CS never judged; ARENA/BRAWL lenient; default) + pure _home_weekly_digest(rows); rows collected in the EXISTING week-cutoff loop (0 new SQL); games<=2 R30-style suppression; "" = suppressed line. KEYSTONE test: identical stats -> ARAM bad=="" / SR "10.0 deaths per game (bench 6 for SR)".
-- **Frontend (`128635c4`):** #home-weekly-digest card sibling AFTER #home-combo (combo.hidden is pick+trends-coupled - nesting would suppress); createElement/textContent only; dataset.sig idempotent; tokens-only CSS.
+- **Backend (`9e1f18ab`):** _MODE_BENCH (SR strict 3.0/6.0/6.0; ARAM lenient 2.5/12.0/None, CS never judged; ARENA/BRAWL lenient; default) + pure _home_weekly_digest(rows); rows collected in the EXISTING week-cutoff loop (0 new SQL); games<=2 R30-style suppression; "" = suppressed line. KEYSTONE test: identical stats -> ARAM bad=="" / SR "10.0 deaths per game (bench 6 for SR)".
+- **Frontend (`27636631`):** #home-weekly-digest card sibling AFTER #home-combo (combo.hidden is pick+trends-coupled - nesting would suppress); createElement/textContent only; dataset.sig idempotent; tokens-only CSS.
 - **Proof:** full RC suite fresh on merged main 10399 passed / 2 skipped / 193 subtests (+35 = new 18+17); RC restarted pid 15840 alive/reload_ok; LIVE /api/home/summary: ARAM 23g lenient (bad suppressed, good "2.6 KDA over 23 games") vs SR 10g strict (bad "8.8 deaths per game (bench 6 for SR)").
-- **5-phase audit PASS 0 MUST-FIX.** Both SHOULD-FIXes fixed in-slice (`acf54c4d`): head deduped to THIS WEEK BY MODE + ui_mock weekly_digest block (fixture flapped live-then-hide). NICE FUTURE: pre-existing U+2192 home.css:545 (next drift sweep).
+- **5-phase audit PASS 0 MUST-FIX.** Both SHOULD-FIXes fixed in-slice (`b56b49b3`): head deduped to THIS WEEK BY MODE + ui_mock weekly_digest block (fixture flapped live-then-hide). NICE FUTURE: pre-existing U+2192 home.css:545 (next drift sweep).
 - **OPERATOR MID-RUN CORRECTION:** "why is the chrome dashboard being used?" - audit agent had been told to render :8888 in Chromium (old OQ8/OQ12 fixture precedent). Redirected mid-flight: sanctioned = rc-shell Electron capture or ?overlay=1. Result: rc-shell NOT running + ?overlay=1 hides #home-overlay BY DESIGN (overlay.css:80) -> code-side phases complete, **Electron-companion capture OWED**. Rule reinforced: NO Chrome :8888 renders as visual proof, ever.
 - Remaining OPEN queue: OQ14 (Item Shaper knobs), OQ15 (GPI radar dot).
 
@@ -13192,10 +13192,10 @@ Loop directive OQ13 executed by this session (merges `4d2955f4` + `22cc3e80` + a
 
 # 2026-07-01 late night (OQ12 - QA31 PGR normalized carry-metrics bundle; ui + backend, NO ENGINE/DS/Share)
 
-Loop directive OQ12 executed by this session (merges `12958b47` + `94c8224c`, LEDGER 732). Full orchestrator pattern: Explore recon -> Plan spec (citations spot-verified + live rewind DB schema probe) -> 2 parallel worktree agents on disjoint files coding a frozen payload contract -> verifier CONFIRM each -> sole merger. Operator interrupted mid-run ("complete + summarize open items") - slice finished per protocol, then wrap.
+Loop directive OQ12 executed by this session (merges `2973bf36` + `c6c100cf`, LEDGER 732). Full orchestrator pattern: Explore recon -> Plan spec (citations spot-verified + live rewind DB schema probe) -> 2 parallel worktree agents on disjoint files coding a frozen payload contract -> verifier CONFIRM each -> sole merger. Operator interrupted mid-run ("complete + summarize open items") - slice finished per protocol, then wrap.
 
-- **Backend (`5e27b452`):** dmg_share_pct producer; scripts/build_carry_benchmarks.py (rewind DB read-only -> COMMITTED data/coach_reference/carry_benchmarks.json, 44 groups role-or-mode x short/mid/long/all, min_n=50); core/carry_benchmarks.py reader (fallback chain + band fences); builders_last_match.py appends dmg_share_pct + carry_normalized END-of-payload, fail-soft.
-- **Frontend (`2782e87e`):** 5 hidden bench sub-line spans (3 live grid + 2 hpgr), _setBenchSub "HIGH - p50 26" on --signal-good/bad, idempotent + old-payload-silent; tooltip " vs <bench_key> (n=N)" from stashed ttBase.
+- **Backend (`a4980403`):** dmg_share_pct producer; scripts/build_carry_benchmarks.py (rewind DB read-only -> COMMITTED data/coach_reference/carry_benchmarks.json, 44 groups role-or-mode x short/mid/long/all, min_n=50); core/carry_benchmarks.py reader (fallback chain + band fences); builders_last_match.py appends dmg_share_pct + carry_normalized END-of-payload, fail-soft.
+- **Frontend (`fc5829aa`):** 5 hidden bench sub-line spans (3 live grid + 2 hpgr), _setBenchSub "HIGH - p50 26" on --signal-good/bad, idempotent + old-payload-silent; tooltip " vs <bench_key> (n=N)" from stashed ttBase.
 - **Proof:** full RC suite fresh on merged main 10364 passed / 2 skipped / 193 subtests; RC restarted pid 18564 alive/reload_ok; LIVE /api/last-match (real Vayne SR): BOTTOM|mid, kp 67.0 vs p50 48.4 HIGH, gold 29.8 vs 21.5 HIGH, dmg 36.1 vs 22.2 HIGH.
 - **5-phase audit MUST-FIX NONE.** SHOULD-FIX FUTURE: stat-row baseline misalignment when subs unhide (reserve sub slot or top-align, last_match.css:388). NICE: tooltip n = kp n on all cells; hpgr helper duplicated. **Electron-overlay pixel capture OWED** (no live game).
 - **Corpus caveat:** benchmark percentiles reflect the rewind DB rows at build time - regenerate carry_benchmarks.json after rewind catchup runs.
@@ -13205,7 +13205,7 @@ Loop directive OQ12 executed by this session (merges `12958b47` + `94c8224c`, LE
 
 # 2026-07-01 night (R56 gemini-loop DIRECTOR REFILL - coach_decisions + trigger_pill 5-phase fixture audit; ui, NO ENGINE/DS/Share)
 
-Loop directive R56 executed by this session (`2f259dcb`, LEDGER 731). Inline (2 small panels, directive-sanctioned) with RED-first grep-contract lock.
+Loop directive R56 executed by this session (`77cc21f0`, LEDGER 731). Inline (2 small panels, directive-sanctioned) with RED-first grep-contract lock.
 
 - **MUST-FIXes:** 9 sub-floor hardcoded font-sizes tokenized in coach_decisions.css (11-17px -> var(--fs-md/sm/xs)); map_state.css .trigger-pill 17px -> var(--fs-sm); .coach-decision-btn ~30px -> min-height var(--hit-min, 42px) + var(--radius-sm).
 - **STRUCTURE find:** #recent-coach-calls markup left index.html at s162 lobby v2 (832704a7) - module polled /api/decisions/log every 30s into a null render forever. Poll now gated on section presence; wiring preserved. Restoring a /coach-calls page = operator-gated FUTURE.
@@ -13222,8 +13222,8 @@ Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/direct
 - **ROOT CAUSE (reproduced, stderr captured): Gemini API prepay credits DEPLETED** - 429 RESOURCE_EXHAUSTED "Your prepayment credits are depleted", gemini CLI exit 1, stdout 0B. **OPERATOR: top up at https://ai.studio/projects, then relaunch via PART A.** The loop CANNOT run until then.
 - **LOOP FIX 2 (LEDGER 728):** gemini() no longer masks errors as NO_WORK - stderr captured to control/_gemini_err.txt + head logged on empty tries; empty output -> None sentinel -> director ADVANCES (same-sha guard still ends persistent outages); stop only on literal NO_WORK. TDD RED 2 -> GREEN, loop suites 34 passed.
 - Credits TOPPED UP mid-session (operator message); gemini liveness re-probed PONG. Loop relaunch after the in-flight slices merged.
-- **OQ11 DONE (`aa9c7d90`, LEDGER 729): ENGINE 1.166.0** - static-CD haste gate (first ability_static_cd consumer; plain-number-static only; Amumu Q/Heimer R pinned ungated, Samira R 3.4483 -> 5.0). Dual suite fresh on main: DS 7733 / RC 10274, 0 failed. DS :8893 bounced -> 1.166.0. Share ingest bundle rebuilt (full ds_share_sync).
-- **Operator picked OQ3 variant A** -> OQ16 built live same session (`a5d2719a`, LEDGER 730): objective_gauges overlay widget at (1690,320), SR-live-only, schedule mirror-pinned vs event_callouts. **Live in-game overlay capture OWED** (no game was running).
+- **OQ11 DONE (`344d20cb`, LEDGER 729): ENGINE 1.166.0** - static-CD haste gate (first ability_static_cd consumer; plain-number-static only; Amumu Q/Heimer R pinned ungated, Samira R 3.4483 -> 5.0). Dual suite fresh on main: DS 7733 / RC 10274, 0 failed. DS :8893 bounced -> 1.166.0. Share ingest bundle rebuilt (full ds_share_sync).
+- **Operator picked OQ3 variant A** -> OQ16 built live same session (`baa2ef42`, LEDGER 730): objective_gauges overlay widget at (1690,320), SR-live-only, schedule mirror-pinned vs event_callouts. **Live in-game overlay capture OWED** (no game was running).
 - Remaining OPEN queue: OQ12-OQ15.
 
 ---
@@ -13232,22 +13232,22 @@ Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/direct
 
 Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721 (OQ4) + 722 (OQ5) + 723 (rc-skel chip) + 724 (OQ6).
 
-- **OQ6 - dark-values grep-and-lock (`78d15b19`).** 132 hits classified (5-group fan-out) into docs/DARK_VALUES_AUDIT_2026-07-01.md: 1 EXACT-LOCK applied (coach_choices ink -> var(--canvas), byte-identical) / 94 RESKIN-CANDIDATE (champ_select_view.css = 42, a pre-Hextech skin; each row names its Hextech token; VISIBLE -> operator-gated FUTURE) / 37 JUSTIFIED. Lock = tests/test_dark_values_ratchet_oq6.py per-file ceilings (new literal fails CI; re-skins lower pins; stale-high pins fail). SHOVEL-READY FUTURE: champ_select_view Hextech re-skin session off the 42 mapped rows.
-- **rc-skel chip (task_6fa65ffc) executed (`b387a497`).** Dormant loading-skeleton dead code removed (nothing set data-rc-skel; strip event never dispatched; panel_visibility live path intact + guarded). tests/test_rc_skel_removed.py; oq4 SITES -> 9 loops; snapshot_panels 278 green.
+- **OQ6 - dark-values grep-and-lock (`31c8a5cc`).** 132 hits classified (5-group fan-out) into docs/DARK_VALUES_AUDIT_2026-07-01.md: 1 EXACT-LOCK applied (coach_choices ink -> var(--canvas), byte-identical) / 94 RESKIN-CANDIDATE (champ_select_view.css = 42, a pre-Hextech skin; each row names its Hextech token; VISIBLE -> operator-gated FUTURE) / 37 JUSTIFIED. Lock = tests/test_dark_values_ratchet_oq6.py per-file ceilings (new literal fails CI; re-skins lower pins; stale-high pins fail). SHOVEL-READY FUTURE: champ_select_view Hextech re-skin session off the 42 mapped rows.
+- **rc-skel chip (task_6fa65ffc) executed (`b839694e`).** Dormant loading-skeleton dead code removed (nothing set data-rc-skel; strip event never dispatched; panel_visibility live path intact + guarded). tests/test_rc_skel_removed.py; oq4 SITES -> 9 loops; snapshot_panels 278 green.
 - **CI NOTE:** OQ5-push ci failed on test_player_gpi_champion_drilldown (runner-side missing untracked ddragon PNG + BrokenPipeError = environmental flake; local 278/278 x3 today); rerun issued; rc-skel push ci auto-cancelled by the rerun's concurrency group; HEAD cf699f10 ci went GREEN (4m32s) - authoritative full-tree green.
-- **OQ7 PREMISE STALE (zero work):** History champ/mode/result(+grade) filters already shipped in `c0ce9faf` (RC2 lift 4), live test re-run fresh 6 passed. Flipped DONE at the original sha.
-- **OQ9 - ban-reason labels via the full orchestrator pattern (`30bef7bc` merge).** Worktree agent built; verifier CONFIRM 5/5; sole-merger --no-ff; fresh MAIN re-run 111 passed. P&B cells "beats you 67% (4/6)" (payload fields were dropped client-side); suggestion cards "meta ban #N" (one additive rank field, pre-filter enumerate). Actual-bans strip + dual-score list untouched (scope calls logged). RC restarted (pid 20248). Champ-select capture OWED (LCU-gated).
-- **OQ10 PREMISE STALE (zero work):** QA59 gameMode cache = E12-L2, shipped `8ac8e8ff` (lcu_rune_writer `_cached_lobby_mode`); test re-run fresh 2 passed.
+- **OQ7 PREMISE STALE (zero work):** History champ/mode/result(+grade) filters already shipped in `4d5a9425` (RC2 lift 4), live test re-run fresh 6 passed. Flipped DONE at the original sha.
+- **OQ9 - ban-reason labels via the full orchestrator pattern (`1bf255ea` merge).** Worktree agent built; verifier CONFIRM 5/5; sole-merger --no-ff; fresh MAIN re-run 111 passed. P&B cells "beats you 67% (4/6)" (payload fields were dropped client-side); suggestion cards "meta ban #N" (one additive rank field, pre-filter enumerate). Actual-bans strip + dual-score list untouched (scope calls logged). RC restarted (pid 20248). Champ-select capture OWED (LCU-gated).
+- **OQ10 PREMISE STALE (zero work):** QA59 gameMode cache = E12-L2, shipped `109c80f0` (lcu_rune_writer `_cached_lobby_mode`); test re-run fresh 2 passed.
 - **INFRA:** RC-CIWatchdog spun a ci-fix/28548842685 worktree at C:/RC-CIWatchdog for the superseded OQ5 flake run (zero commits, no PR, task Ready) - left to its own lifecycle.
 - **LOOP-INFRA FIX (LEDGER 727):** the relaunched loop STOPPED on a false NO_WORK - the director prompt hit 572KB (plan 380KB incl. 289KB findings log + ledger head-60 = 93KB) and gemini returned an empty body. Fixed: loop_controller cap_bytes + PLAN_CTX_CAP 140K / LEDGER_CTX_CAP 40K (TDD, 3 tests) + findings relocate-prune (128 oldest -> NEW docs/ORCHESTRATION_FINDINGS_ARCHIVE.md, newest 10 stay; plan 380K -> 108K). Real context re-measured 234K. When the plan's findings log regrows past ~30 entries, re-run the same relocate prune.
-- **OQ8 - History per-session W-L rollup, client-only (`f959893f`).** Grouping + per-match `win` already existed (server + mock), so pure presentation: _sessionWL strict-boolean helper, .hs-wl chip in session rows (omitted when no decided matches), all 4 detail-head writers append W-L (incl. both s218 deep-links - found by RED test), header.css --good/--bad + W/L letters. String tests 4 + rendered Chromium proof (2W-2L/0W-1L chips + head). snapshot_panels 279 passed. No restart.
+- **OQ8 - History per-session W-L rollup, client-only (`d4dd7987`).** Grouping + per-match `win` already existed (server + mock), so pure presentation: _sessionWL strict-boolean helper, .hs-wl chip in session rows (omitted when no decided matches), all 4 detail-head writers append W-L (incl. both s218 deep-links - found by RED test), header.css --good/--bad + W/L letters. String tests 4 + rendered Chromium proof (2W-2L/0W-1L chips + head). snapshot_panels 279 passed. No restart.
 
-- **OQ5 - two-tier design tokens, byte-identical (`9ba155ec`).** NEW primitive tier in tokens.css: 7 Hextech hues as rgb parts (--prim-green/amber/red/slate/blue/gold/teal, the --ovx-* precedent); every semantic color re-pointed as a pure rgb()/rgba() wrapper at its historical alpha (6 --signal-*, 3 -soft, hextech fill/glow/border, 3 --pulse-*). Byte-identity: parts==hex asserted numerically; no JS raw-value readers (status.js emits var() strings); overlay 0a re-point independent; snapshot_panels 278 passed = pixel proof. TDD tests/test_two_tier_tokens_oq5.py (5) RED 3 -> GREEN; design-tokens suite still green; 49 adjacent passed; ruff clean. New alpha variants should compose rgba(var(--prim-*), a), not mint literals.
+- **OQ5 - two-tier design tokens, byte-identical (`ecdd9432`).** NEW primitive tier in tokens.css: 7 Hextech hues as rgb parts (--prim-green/amber/red/slate/blue/gold/teal, the --ovx-* precedent); every semantic color re-pointed as a pure rgb()/rgba() wrapper at its historical alpha (6 --signal-*, 3 -soft, hextech fill/glow/border, 3 --pulse-*). Byte-identity: parts==hex asserted numerically; no JS raw-value readers (status.js emits var() strings); overlay 0a re-point independent; snapshot_panels 278 passed = pixel proof. TDD tests/test_two_tier_tokens_oq5.py (5) RED 3 -> GREEN; design-tokens suite still green; 49 adjacent passed; ruff clean. New alpha variants should compose rgba(var(--prim-*), a), not mint literals.
 
-- **OQ4 - reduced-motion static-replace for ALL 10 infinite CSS loops (`40403363`).** Ground truth: 10 (not ~9) infinite declarations across primitives/item_build/home/map_state/header; tokens.css reduce block covered only coach-pulse one-shots; input_activity.css:473 global wildcard kill silently dropped signals (the RC2 D2 anti-pattern). Ultracode classification (10 agents: 5 analysts + 5 adversarial verifiers, all CONFIRMED): ZERO ambient loops - every site is a live signal (loading/buy-cue/search-heartbeat/zone-alarm/hp-alarm/advisory). So: default rendering byte-unchanged + every loop gains a same-file prefers-reduced-motion static hold (animation:none !important + ring/color/opacity). 9 blocks / 10 selectors.
+- **OQ4 - reduced-motion static-replace for ALL 10 infinite CSS loops (`da8447f4`).** Ground truth: 10 (not ~9) infinite declarations across primitives/item_build/home/map_state/header; tokens.css reduce block covered only coach-pulse one-shots; input_activity.css:473 global wildcard kill silently dropped signals (the RC2 D2 anti-pattern). Ultracode classification (10 agents: 5 analysts + 5 adversarial verifiers, all CONFIRMED): ZERO ambient loops - every site is a live signal (loading/buy-cue/search-heartbeat/zone-alarm/hp-alarm/advisory). So: default rendering byte-unchanged + every loop gains a same-file prefers-reduced-motion static hold (animation:none !important + ring/color/opacity). 9 blocks / 10 selectors.
 - **Verify:** TDD RED-first tests/test_motion_reduce_sweep_oq4.py (4: drift-guard, per-site, ASCII, default-loops-survive) RED 2 -> GREEN; adjacent suites 72 passed; snapshot_panels 278 passed (zero default-render delta); ruff clean; 5-phase audit 0 MUST-FIX; no capture owed (media-gated). CSS-only ADR-008 reload, no restart.
 - **FUTURE (chip task_6fa65ffc):** rc-skel skeleton mechanism is dormant dead code (nothing sets data-rc-skel; rc:state-tick never dispatched) - adopt-or-remove.
-- **NEXT.** OQ4 DONE (`40403363`). Loop is DOWN - relaunch via /gemini-headless-upgrade PART A, or continue direct-executor top-down: next OPEN = OQ5 (QA46 two-tier design tokens, byte-identical). Do NOT re-classify the 10 loops (double-verified); do NOT trim default motion (all signals live - test D pins it).
+- **NEXT.** OQ4 DONE (`da8447f4`). Loop is DOWN - relaunch via /gemini-headless-upgrade PART A, or continue direct-executor top-down: next OPEN = OQ5 (QA46 two-tier design tokens, byte-identical). Do NOT re-classify the 10 loops (double-verified); do NOT trim default motion (all signals live - test D pins it).
 
 ---
 
@@ -13255,11 +13255,11 @@ Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this se
 
 Director picked OQ3 from the operator queue. Full detail in LEDGER 720.
 
-- **OQ3 - 3-variant STATIC mockup set of a peripheral objective ring/arc-gauge overlay widget (`e14eedbd`).** Deliver-to-pick, explicitly NO final build + NO live wire; the build waits on the operator's choice. Ground truth: the current objective surface is a flat TEXT chip strip (`web/js/panels/objective_chips.js`, dragon/baron/herald only); OQ3 is the richer VISUAL exploration adding elder + summs. Orchestrator fan-out: 3 concurrent build agents on disjoint files + Claude sole merger + read-only verifier CONFIRM.
+- **OQ3 - 3-variant STATIC mockup set of a peripheral objective ring/arc-gauge overlay widget (`32192bba`).** Deliver-to-pick, explicitly NO final build + NO live wire; the build waits on the operator's choice. Ground truth: the current objective surface is a flat TEXT chip strip (`web/js/panels/objective_chips.js`, dragon/baron/herald only); OQ3 is the richer VISUAL exploration adding elder + summs. Orchestrator fan-out: 3 concurrent build agents on disjoint files + Claude sole merger + read-only verifier CONFIRM.
 - **Variants (web/mock/, self-contained static HTML + inline SVG, no JS/API dep):** A `oq3_variant_a.html` Radial Ring Cluster (2x2 full ring dials, exact ETA center - clearest, tallest); B `oq3_variant_b.html` Peripheral Arc Rail (one corner-hugging 90-degree arc, sigils along it - smallest footprint, positional ETA); C `oq3_variant_c.html` Stacked Sigil Gauges (compact 4-badge band + numeric ETA - balanced, wider slot). Gallery `oq3_index.html` (3 iframes + tradeoffs). On-palette: BARON gold #C8AA6E / DRAKE warn #E8A33D / ELDER red #E84057 / SUMMS cyan #0AC8B9.
 - **Serving:** non-frozen `dashboard/routes_static.py` gains a `/mock/` prefix + `.html` content-type (same guard as /css /js /data) so the mocks render at https://legion-rc:8888/mock/oq3_index.html instead of downloading.
 - **Verify:** TDD RED-first `tests/test_oq3_objective_gauge_mocks.py` (10, RED 10 -> GREEN 10); full RC suite 10239 passed / 2 skipped / 193 subtests (0 fail); verifier CONFIRM (oq3 10/0/0 + p2w1 route 5/0/0 + all 4 files ASCII-clean). 5-phase UI audit code-side 0 MUST-FIX; SHOULD-FIX (FUTURE) tokenize B/C 10px labels to --fs-ov-* at build time. Electron-overlay pixel capture OWED (no live game, mode=client). RC :8888 restarted for the route (pid 16072 -> 14772, alive/reload_ok); NO DS bounce / NO Share (ENGINE unchanged).
-- **NEXT.** OQ3 DONE; ORCHESTRATION_PLAN OQ3 flipped DONE (`e14eedbd`). Director picks the next OPEN OQ row (OQ4 = QA45 quiet-by-default motion sweep) top-down. When the OPERATOR picks a variant, a BUILD session extends objective_chips.js (add elder + summs to OBJ_CYCLE, swap the text chips for the picked SVG gauge) wired to liveclient.objective_events. Do NOT re-mock OQ3 (shipped).
+- **NEXT.** OQ3 DONE; ORCHESTRATION_PLAN OQ3 flipped DONE (`32192bba`). Director picks the next OPEN OQ row (OQ4 = QA45 quiet-by-default motion sweep) top-down. When the OPERATOR picks a variant, a BUILD session extends objective_chips.js (add elder + summs to OBJ_CYCLE, swap the text chips for the picked SVG gauge) wired to liveclient.objective_events. Do NOT re-mock OQ3 (shipped).
 
 ---
 
@@ -13267,9 +13267,9 @@ Director picked OQ3 from the operator queue. Full detail in LEDGER 720.
 
 Loop relaunched; director picked OQ2 from the operator queue. Full detail in LEDGER 719.
 
-- **OQ2 - finish the Peer cross-Claude bridge decommission (`6edfbd3e`).** PREMISE STALE (verify-before-build): the directive assumed the bridge files still existed + were frozen, but the SOURCE was already removed 2026-06-24 (ADR-012) - all tools/bridge_*, dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml, core/bridge*.py GONE; RC-BridgeWatcher task NOT registered; CLAUDE.md frozen list already clean. NO frozen edit + no fan-out warranted -> a ~6-file coupled dead-code sweep done inline (R9) behind a read-only verifier gate. SWEPT: prom_metrics.py dead BridgeMetrics namespace (0 consumers); main.js inert peer-bridge-health tooltip (j.peers is server-dead); extract_panels.py bridge_pending.js codegen -> repointed to coach_decisions.js; stale bridge lines in headless-upgrade.md + ROADMAP.md; git rm the 2 orphaned "docs io RC peer/" bridge contract docs. Guard tests/test_bridge_decommissioned_oq2.py (TDD RED 5 -> GREEN 5). Verifier CONFIRM 8/8; targeted blast-radius suite 356 passed; ruff clean; node --check OK. DS Share ritual n/a (no DS path). Full RC suite -> CI (7-min local timeout).
+- **OQ2 - finish the Peer cross-Claude bridge decommission (`62be5e4c`).** PREMISE STALE (verify-before-build): the directive assumed the bridge files still existed + were frozen, but the SOURCE was already removed 2026-06-24 (ADR-012) - all tools/bridge_*, dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml, core/bridge*.py GONE; RC-BridgeWatcher task NOT registered; CLAUDE.md frozen list already clean. NO frozen edit + no fan-out warranted -> a ~6-file coupled dead-code sweep done inline (R9) behind a read-only verifier gate. SWEPT: prom_metrics.py dead BridgeMetrics namespace (0 consumers); main.js inert peer-bridge-health tooltip (j.peers is server-dead); extract_panels.py bridge_pending.js codegen -> repointed to coach_decisions.js; stale bridge lines in headless-upgrade.md + ROADMAP.md; git rm the 2 orphaned "docs io RC peer/" bridge contract docs. Guard tests/test_bridge_decommissioned_oq2.py (TDD RED 5 -> GREEN 5). Verifier CONFIRM 8/8; targeted blast-radius suite 356 passed; ruff clean; node --check OK. DS Share ritual n/a (no DS path). Full RC suite -> CI (7-min local timeout).
 - **OUT OF SCOPE (left intact - different subsystem):** the local FileBridge/DevRuntime admin gate (admin_bridge_enabled + bridge_poll_interval_seconds, LIVE in frozen main.py + ops/rc_dev_runtime.py) is the shell/process exec gate, NOT the Peer cross-Claude bridge. FUTURE nits: _supervisor_common.py:121 stale WHY-comment cites the removed bridge-watchdog cadence; bridge_poll_interval_seconds may be orphaned now rc_file_bridge.py is gone - a separate local-FileBridge assessment.
-- **NEXT.** OQ2 DONE; ORCHESTRATION_PLAN OQ2 flipped DONE (`6edfbd3e`). Director picks the next OPEN OQ row (OQ3 = QA11 ring-gauge 3-variant mockup set, no build until operator picks) top-down. Do NOT re-pitch a bridge or lessons-sync (ADR-012 + ADR-004 superseded).
+- **NEXT.** OQ2 DONE; ORCHESTRATION_PLAN OQ2 flipped DONE (`62be5e4c`). Director picks the next OPEN OQ row (OQ3 = QA11 ring-gauge 3-variant mockup set, no build until operator picks) top-down. Do NOT re-pitch a bridge or lessons-sync (ADR-012 + ADR-004 superseded).
 
 ---
 
@@ -13277,10 +13277,10 @@ Loop relaunched; director picked OQ2 from the operator queue. Full detail in LED
 
 Gemini headless loop cycle 6 ran, then the operator interrupted to reconcile the work tracker + reseed the loop. Full R54 detail in LEDGER 717.
 
-- **R54 - Section-7b competitor lift of Aggregator S + in-run ship of the skill-order card (`7f7b82cb`).** Aggregator S (pro-build aggregator) deep-dive, 7 findings (NOW 1 / FUTURE 3 / CLOSED 3), `docs/COMPETITOR_LIFT_2026-07-01_AGGREGATOR_S.md`. Shipped F4: champ-select ability MAX-ORDER card ("Q > E > W") - `skill_order` was extracted+shipped for 173/173 champs but surfaced NOWHERE. New DASHBOARD route `dashboard/routes_ds_skill_order.py` (reads champions.json lolmath.skill_order directly, zero DS import; corrected the agent's DS-server.py Tier-2 sketch) + `web/js/panels/ds_skill_order.js` next to ds_profile. Tier-1-lite (RC restart only). TDD 17 tests, verifier CONFIRM 8/8, UI audit 0 MUST-FIX, live-probed. FUTURE F1/F2/F7 -> BACKLOG.
+- **R54 - Section-7b competitor lift of Aggregator S + in-run ship of the skill-order card (`67a1bb61`).** Aggregator S (pro-build aggregator) deep-dive, 7 findings (NOW 1 / FUTURE 3 / CLOSED 3), `docs/COMPETITOR_LIFT_2026-07-01_AGGREGATOR_S.md`. Shipped F4: champ-select ability MAX-ORDER card ("Q > E > W") - `skill_order` was extracted+shipped for 173/173 champs but surfaced NOWHERE. New DASHBOARD route `dashboard/routes_ds_skill_order.py` (reads champions.json lolmath.skill_order directly, zero DS import; corrected the agent's DS-server.py Tier-2 sketch) + `web/js/panels/ds_skill_order.js` next to ds_profile. Tier-1-lite (RC restart only). TDD 17 tests, verifier CONFIRM 8/8, UI audit 0 MUST-FIX, live-probed. FUTURE F1/F2/F7 -> BACKLOG.
 - **Loop self-terminated** (gemini director NO_WORK -> STOP at 06:40) after cycle 6. The controller + AHK exited; not running now.
 - **RC_WORK_TRACKER.md reconciled** (last sync 06-20 -> 07-01) via a 7-cluster parallel verdict pass vs LEDGER 633-717. Closed 10 shipped rows (QA4/15/16, E7, E11, E12, 95, A4a, smb_push, HZ-B regen), tightened 4 partials (QA26/L117/L32/L45), kept the genuine-open set. File is gitignored (local).
-- **3 operator decisions (2026-07-01) -> queued as ORCHESTRATION_PLAN OQ1-OQ3 (`18bafdec`).** OQ1 = BUILD DS target-current-HP% per-archetype flip (validate lolmath ~50% baseline FIRST, then per-archetype via the item-374 seam, ENGINE bump; live eyeball gated). OQ2 = DECOMMISSION the Peer<->Legion cross-Claude bridge ENTIRELY (completeness-sweep incl. frozen bridge files + RC-BridgeWatcher task, under the headless frozen grant). OQ3 = QA11 produce a 3-VARIANT ring-gauge mockup set FIRST (no build until operator picks). Plus 12 curated loop-actionable OQ rows (UI/design/engine).
+- **3 operator decisions (2026-07-01) -> queued as ORCHESTRATION_PLAN OQ1-OQ3 (`cb32b85d`).** OQ1 = BUILD DS target-current-HP% per-archetype flip (validate lolmath ~50% baseline FIRST, then per-archetype via the item-374 seam, ENGINE bump; live eyeball gated). OQ2 = DECOMMISSION the Peer<->Legion cross-Claude bridge ENTIRELY (completeness-sweep incl. frozen bridge files + RC-BridgeWatcher task, under the headless frozen grant). OQ3 = QA11 produce a 3-VARIANT ring-gauge mockup set FIRST (no build until operator picks). Plus 12 curated loop-actionable OQ rows (UI/design/engine).
 - **NEXT.** Operator will `/clear` + relaunch `/gemini-headless-upgrade` to restart the headless loop; the director picks OQ1-OQ15 top-down (launch auto-clears the stale STOP). Do NOT re-run the R54 lift (shipped). Do NOT re-arm the bridge (decision is DECOMMISSION, OQ2). Live-gated items (E2 bundle, L33/L105/L108, L117 Release, E10, Arena-S2) stay in the tracker, not loop-actionable.
 
 ---
@@ -13289,10 +13289,10 @@ Gemini headless loop cycle 6 ran, then the operator interrupted to reconcile the
 
 Interactive operator session. A live-flagged RuneWriter failure fixed permanently, then a deep ZOI resolution/detection investigation ending in a definitive negative result. Full detail in LEDGER 711.
 
-- **RuneWriter silent-after-League-restart PERMANENT FIX (`27f99a95`, frozen-grant `lcu/lcu_client.py`).** NOT the 2026-06-17 re-arm theory (already fixed): LcuClient cached the lockfile port ONCE at connect() and never re-read, so a League restart (lockfile rotates port+password) left the long-lived RC on a dead port -> get_champ_select() None forever -> RuneWriter (shares _lcu) silent until an RC restart. Ported the RC-LCUAgent `ensure_lcu_conn()` pattern: mtime-guarded `_refresh_conn_if_changed()` on the 1 Hz auto-accept tick + reconnect-and-retry-once in `_request`. Heals within ~1s, no RC restart needed. 6 tests; 114 prior green. Live-verified (connect log moved to lcu_client.py:77 = new code loaded).
-- **ZOI native-res minimap grab (`f9ebcd3f`, `core/minimap_blob_detect.py`).** Operator asked "how to improve resolution": the self-grab downscales to 1280+JPEG (`vision_server/_frame.py:51`) -> 208px crop. Now prefers a NATIVE full-screen grab cropped to the minimap (~416px, 4x pixels, no JPEG); `RC_ZOI_NATIVE_GRAB` default ON; resolution-invariant bounds. 10 tests.
+- **RuneWriter silent-after-League-restart PERMANENT FIX (`46d540e2`, frozen-grant `lcu/lcu_client.py`).** NOT the 2026-06-17 re-arm theory (already fixed): LcuClient cached the lockfile port ONCE at connect() and never re-read, so a League restart (lockfile rotates port+password) left the long-lived RC on a dead port -> get_champ_select() None forever -> RuneWriter (shares _lcu) silent until an RC restart. Ported the RC-LCUAgent `ensure_lcu_conn()` pattern: mtime-guarded `_refresh_conn_if_changed()` on the 1 Hz auto-accept tick + reconnect-and-retry-once in `_request`. Heals within ~1s, no RC restart needed. 6 tests; 114 prior green. Live-verified (connect log moved to lcu_client.py:77 = new code loaded).
+- **ZOI native-res minimap grab (`ac50f1af`, `core/minimap_blob_detect.py`).** Operator asked "how to improve resolution": the self-grab downscales to 1280+JPEG (`vision_server/_frame.py:51`) -> 208px crop. Now prefers a NATIVE full-screen grab cropped to the minimap (~416px, 4x pixels, no JPEG); `RC_ZOI_NATIVE_GRAB` default ON; resolution-invariant bounds. 10 tests.
 - **Per-champion ZOI = CONFIRMED DEAD-END (validated live over ~8 frames incl. a real SR game).** "v1 worked" was a DEV-PREVIEW FIXTURE (`p.positions` has NO live producer; Live Client exposes no positions). v2 vision = presence-not-identity: on SR the detector lit 95-159 blobs (turrets/minions/wards all team-colored); color / size / MOTION (159->73, minions move + team-colored) ALL fail. Only template-matching champion PORTRAITS could isolate them (major risky CV build). Memory `project_zoi_minimap_reality`.
-- **NEXT (operator-set 2026-07-01, post-session).** Operator is starting the RC WORK TRACKER via the gemini headless loop (`/gemini-headless-upgrade`) with MAX-EFFORT PARALLEL FAN-OUT: one orchestrator/director agent decomposes `RC_WORK_TRACKER.md` (+ `docs/ORCHESTRATION_PLAN.md` + `ROADMAP.md`) into disjoint-file work-sets and fans out worktree-isolated build agents (many tracker TODOs are independent -> run concurrently; sole-merger + read-only verifier gate), IN PARALLEL with continuous deep-dive concrete feature research (headless skill 7/7b) feeding new grounded WPs back. ZOI per-champion is PARKED for LATER exploration - operator wants a FASTER-polling CV minimap watcher (sub-second frame-diff) + champion-portrait template-match TOGETHER (memory `project_zoi_minimap_reality`); do NOT re-run the color/single-motion dead-end test. Native-res grab (`f9ebcd3f`, `RC_ZOI_NATIVE_GRAB` default ON) is the shipped foundation.
+- **NEXT (operator-set 2026-07-01, post-session).** Operator is starting the RC WORK TRACKER via the gemini headless loop (`/gemini-headless-upgrade`) with MAX-EFFORT PARALLEL FAN-OUT: one orchestrator/director agent decomposes `RC_WORK_TRACKER.md` (+ `docs/ORCHESTRATION_PLAN.md` + `ROADMAP.md`) into disjoint-file work-sets and fans out worktree-isolated build agents (many tracker TODOs are independent -> run concurrently; sole-merger + read-only verifier gate), IN PARALLEL with continuous deep-dive concrete feature research (headless skill 7/7b) feeding new grounded WPs back. ZOI per-champion is PARKED for LATER exploration - operator wants a FASTER-polling CV minimap watcher (sub-second frame-diff) + champion-portrait template-match TOGETHER (memory `project_zoi_minimap_reality`); do NOT re-run the color/single-motion dead-end test. Native-res grab (`ac50f1af`, `RC_ZOI_NATIVE_GRAB` default ON) is the shipped foundation.
 
 ---
 
@@ -13300,17 +13300,17 @@ Interactive operator session. A live-flagged RuneWriter failure fixed permanentl
 
 Interactive operator session (NOT the headless loop). A live overlay-launch bug fixed, then the long-owed E7 flip validated + shipped over a real game, then two champ-select classification fixes flagged live. Full detail in LEDGER 708-710.
 
-- **RC Overlay desktop shortcut fixed (`5487d0b8`).** rc-shell is single-instance; the companion window had been `.hide()`'d (crash-guard give-up on the 43h instance) and the `second-instance` handler only `focus()`ed - which never un-hides a hidden window. Diagnosed via EnumWindows (window present, IsWindowVisible=False). Handler now clears the force-hide + resets lastSurface + applySurface + show()/focus()s the right window; new pure `relaunchFocusTarget`. rc-shell 309/309. Killed the stale instance + relaunched.
-- **E7 LCU-pool default-ON flip VALIDATED LIVE + SHIPPED (`c699b915`).** Armed RC_LCU_POOL=1 via a full RC-stack bounce (supervisor frozen + no env hook; Machine-env-set PROVEN to reach task-launched procs via a throwaway-task test; the standalone RC-LCUAgent is IRRELEVANT - LcuClient runs inside `main.py:225`). All 4 gate checks passed over a real SR game: auto-accept reads correct, 0 SSL EOF on the reused socket, forced-drop reconnect recovered 200, ONE persistent LCU socket held 169s+ (bounded). Flipped `core/lcu_pool.py:40` 0->1 + tests to default-ON. A read-only live probe confirmed the primitive vs the real LCU first. Machine env then removed (code = source of truth). `LIVE_GAME_GATED_SYNC.md:746` marked DONE.
-- **Champ-select AD/AP data fixes (`de222c12` + `c340a996`).** Seraphine rendered "AD SUPPORT" (operator-caught): DDragon serves a ZEROED info block for Akshan/Rell/Seraphine/Vex + attack=0 for Qiyana - VERIFIED upstream (mirror==raw across 16.11-16.13), NOT a local bug, so a raw backfill would re-zero. Root-cause fix: shared curated read-time override `core/champion_info_overrides.py` (fills only zero fields) wired into BOTH consumers - the chip (`routes_dictionary`) + the team damage-mix (`routes_pickban`, where Seraphine was invisible at 0/0). `enemy_aware_stats` UNAFFECTED (reads stats not info). 176 tests green. RC restarted (pid 1568): Seraphine now "AP SUPPORT" live.
-- **Also (`411f76db`).** champion-tags got a dedicated short NON-immutable cache (max-age=300) so curated edits show on a normal reload; items/runes stay immutable.
+- **RC Overlay desktop shortcut fixed (`0487bf47`).** rc-shell is single-instance; the companion window had been `.hide()`'d (crash-guard give-up on the 43h instance) and the `second-instance` handler only `focus()`ed - which never un-hides a hidden window. Diagnosed via EnumWindows (window present, IsWindowVisible=False). Handler now clears the force-hide + resets lastSurface + applySurface + show()/focus()s the right window; new pure `relaunchFocusTarget`. rc-shell 309/309. Killed the stale instance + relaunched.
+- **E7 LCU-pool default-ON flip VALIDATED LIVE + SHIPPED (`27787407`).** Armed RC_LCU_POOL=1 via a full RC-stack bounce (supervisor frozen + no env hook; Machine-env-set PROVEN to reach task-launched procs via a throwaway-task test; the standalone RC-LCUAgent is IRRELEVANT - LcuClient runs inside `main.py:225`). All 4 gate checks passed over a real SR game: auto-accept reads correct, 0 SSL EOF on the reused socket, forced-drop reconnect recovered 200, ONE persistent LCU socket held 169s+ (bounded). Flipped `core/lcu_pool.py:40` 0->1 + tests to default-ON. A read-only live probe confirmed the primitive vs the real LCU first. Machine env then removed (code = source of truth). `LIVE_GAME_GATED_SYNC.md:746` marked DONE.
+- **Champ-select AD/AP data fixes (`47cf3aba` + `ccb137e1`).** Seraphine rendered "AD SUPPORT" (operator-caught): DDragon serves a ZEROED info block for Akshan/Rell/Seraphine/Vex + attack=0 for Qiyana - VERIFIED upstream (mirror==raw across 16.11-16.13), NOT a local bug, so a raw backfill would re-zero. Root-cause fix: shared curated read-time override `core/champion_info_overrides.py` (fills only zero fields) wired into BOTH consumers - the chip (`routes_dictionary`) + the team damage-mix (`routes_pickban`, where Seraphine was invisible at 0/0). `enemy_aware_stats` UNAFFECTED (reads stats not info). 176 tests green. RC restarted (pid 1568): Seraphine now "AP SUPPORT" live.
+- **Also (`d2625877`).** champion-tags got a dedicated short NON-immutable cache (max-age=300) so curated edits show on a normal reload; items/runes stay immutable.
 - **NEXT.** Opponent-build confidence-gate (Seam A `routes_state.py:781-791`): ARAM go/no-go characterization test FIRST (a real dissent case anti_tank gets wrong), then build the S-effort gate if it passes else CUT. Do NOT re-pitch ABWS/WIBR/warm-start (live path 11ms; beam is a champ-select heuristic). E7 is DONE - do not re-flip. Overlay shortcut DONE. The zeroed-DDragon-info data-backfill idea is SUPERSEDED by the read-time override (done).
 
 ---
 
 # 2026-06-30 (operator session - lolmath/DS build-opt methodology QA + multi-agent next-layer research; RESEARCH + 2 ops probes, NO ENGINE/DS/Share)
 
-Operator-driven (NOT the headless loop): a Discord-QA thread with the lolmath admin drove a methodology inquiry into how build engines derive item logic, then a multi-agent next-layer research sweep that adversarially DEFLATED most proposals. Committed 2 offline ops probes (`87aebd08`); the durable value is the corrected findings (saved to memory).
+Operator-driven (NOT the headless loop): a Discord-QA thread with the lolmath admin drove a methodology inquiry into how build engines derive item logic, then a multi-agent next-layer research sweep that adversarially DEFLATED most proposals. Committed 2 offline ops probes (`f2de468b`); the durable value is the corrected findings (saved to memory).
 
 - **Two corrections to earlier claims, both grep-verified.** (1) The DS beam (`beam.py:381-382`) is a GREEDY WIDTH-TRUNCATED heuristic, NOT exact (so "warm-start preserves exact output" is false), and its ONLY live consumer is `coaches/sr_draft_profile.py` (SR champ-select) - `/api/ds-preview` + `/api/ds-knobs` + coach-dispatch use greedy `rank_items`, NOT the beam. Memory `reference_ds_beam_heuristic_and_live_consumers`. (2) RC/DS default rank is PURE SIMULATION, not a win-rate-fused hybrid - win-rate is only in default-OFF DSP/RF levers + the adjacent additive `core/personal_build_wr.py`. Memory `reference_ds_simulation_default_not_winrate_hybrid`.
 - **MEASURE-FIRST answered with real data (`ops/audit/ds_latency_probe.py`).** Live `rank_items` = ~11ms p50; beam cold ~680ms but champ-select-only + 60s-TTL cached. The whole "make build-opt faster" batch (ABWS surrogate, WIBR delta-beam, Pareto, bucket-cluster, team-joint, spike/VoI) targets a NON-bottleneck -> all CUT. Only defensible build = `sr_draft_beam_cache.json` for `:8893`-DOWNTIME RESILIENCE, plus a `compute_dps` LRU memo (exact, XS).
@@ -13326,9 +13326,9 @@ Operator-driven (NOT the headless loop): picked tracker QA15 after E7's default-
 - **Scope narrowed by VERIFIED ground truth.** QA15's pip strip (part a) ALREADY SHIPS (LIFT 3: `index.html:163` / `main.js _homeRenderWlStrip` / `builders.py:35 _compute_last20`) - confirmed at the cited file:line, not trusted from the subagent. Home showed only an LCU lifetime solo WR (usually blank - operator mostly Unranked) + the all-modes `% L20` form; neither is a season figure. So QA15 collapsed to part (b): an honest season WR.
 - **Two open questions resolved by ground truth, not assumption.** "season" is repo-canonical = last 90d (`builders.py:195,205` scope "season"); the spec's "ranked-only would be blank for this operator" RISK was FALSE on a live rewind probe (queue 420 = 515 all-time rows, 24-27 / 47.1% decided in the last 90d - a real sample).
 - **DECISION (autonomous per the standing 2026-06-20 tracker directive; noted in RC_WORK_TRACKER for batch course-correct).** Season WR = RANKED (queue 420 Solo/Duo + 440 Flex) win-rate over the 90d window, hidden when 0 ranked games in window. "Season WR" means the ladder; ARAM/Arena/event have no meaningful season WR; and it is clearly distinct from the all-modes L20 form already shown.
-- **Build (`bf989ac1`).** New `_compute_season_wr` (`dashboard/builders.py`, mirrors `_compute_last20`; `game_creation_ts` is epoch MILLISECONDS so the 90d cutoff is scaled x1000 - the exact spec-flagged bug avoided) -> `season_wr` on the home payload (`builders_home.py`) -> `_homeRenderSeasonWr` into `#home-hero-season-wr` (`main.js`), token-only + display-only CSS (`home.css .home-season-wr*`). Fail-soft `{}` on a missing DB / no ranked game -> the readout hides (never a misleading 0% on ARAM-heavy sessions). Live: Ranked season 47.1% (24-27, n=51), distinct from L20 40%.
+- **Build (`3c5ea755`).** New `_compute_season_wr` (`dashboard/builders.py`, mirrors `_compute_last20`; `game_creation_ts` is epoch MILLISECONDS so the 90d cutoff is scaled x1000 - the exact spec-flagged bug avoided) -> `season_wr` on the home payload (`builders_home.py`) -> `_homeRenderSeasonWr` into `#home-hero-season-wr` (`main.js`), token-only + display-only CSS (`home.css .home-season-wr*`). Fail-soft `{}` on a missing DB / no ranked game -> the readout hides (never a misleading 0% on ARAM-heavy sessions). Live: Ranked season 47.1% (24-27, n=51), distinct from L20 40%.
 - **Verify.** TDD 13-RED -> 23-GREEN (`ComputeSeasonWrTests` + `HomeSummarySeasonWrTests` + a feature-scoped floor guard `test_home_season_wr_floor_guard`) + the full related builders/home/history slice 115 passed + Playwright `test_home_view.py` 6 passed (the new render test produced the visual proof "RANKED SEASON 47.1% (24-27)"). 5-phase UI fixture audit = PASS, 0 MUST-FIX. Tier-1: no ENGINE/DS/Share (RC bounced once only to serve the new payload live; assets auto-reload). Did NOT stage the pre-existing `data/spell_prefs.json` drift or the agent6 FAILED demo report.
-- **Also this session - CI minute-saver (`9d66e47e`, LEDGER 706).** Private-repo 2000-min Actions cap was being hit; ~55% of commits are docs-only (per-session sync) yet each ran the full `check` (~4min) + CodSpeed. Added `paths-ignore: '**/*.md'` (docs-only commits now SKIP CI - EXPECTED, not a failure; local `precommit_gate.py` backstops .md hygiene) + `concurrency` cancel-in-progress + a Playwright browser cache, on both `.github/workflows/ci.yml` + `codspeed.yml`. YAML parse-validated + self-test CI green. Operator chose WAIT-AND-WATCH on the remaining lever (self-hosted runner on Legion - deferred, would contend with live RC during games). Memory `reference_ci_billing_fastfail` updated.
+- **Also this session - CI minute-saver (`cc1d9ef8`, LEDGER 706).** Private-repo 2000-min Actions cap was being hit; ~55% of commits are docs-only (per-session sync) yet each ran the full `check` (~4min) + CodSpeed. Added `paths-ignore: '**/*.md'` (docs-only commits now SKIP CI - EXPECTED, not a failure; local `precommit_gate.py` backstops .md hygiene) + `concurrency` cancel-in-progress + a Playwright browser cache, on both `.github/workflows/ci.yml` + `codspeed.yml`. YAML parse-validated + self-test CI green. Operator chose WAIT-AND-WATCH on the remaining lever (self-hosted runner on Legion - deferred, would contend with live RC during games). Memory `reference_ci_billing_fastfail` updated.
 - **NEXT.** E7 default-ON flip still OWED (operator live eyeball, `core/lcu_pool.py:40`). Next tracker QA item from the same-priority overlay/PGR queue (QA6/13/14/16/20/21/23/24/26/31, QA4 ZoI). DS still NO_WORK without an operator refill or the `/rank` live-flip go-ahead - do NOT re-scan the saturated registries.
 
 ---
@@ -13337,9 +13337,9 @@ Operator-driven (NOT the headless loop): picked tracker QA15 after E7's default-
 
 Operator-driven session (NOT the headless loop): RC2 E7 (PRIORITY HIGH in the tracker), grounded spec-first by a Plan subagent before any code. Full detail in LEDGER 704.
 
-- **Part 1 bench-swap responsiveness (`fe34040c`, `tools/lcu_agent.py` non-frozen).** E7a (item 555) made the latency-sensitive command DRAIN fast (0.1s); the swapped champ still lagged up-to-1.0s reaching /api/state (the state-push loop is a separate thread on INTERVAL=1.0). Added `_swap_wake` threading.Event - the cmd loop SETS it after a latency-sensitive drain (`_signal_state_refresh`), `_state_push_loop` waits on it (clear-at-top, race-safe; only that loop calls capture_state). Swap now ~0.1s. TDD +4.
-- **Part 2 LCU pool onto the frozen client (`453b9ddd`, OPERATOR FROZEN-GRANT for `lcu/lcu_client.py`).** Wired `_request` onto `lcu_pool.get_shared_pool()` behind the existing `RC_LCU_POOL` flag (DEFAULT-OFF byte-identical; lazy import keeps the frozen top-level block untouched). Pools the heavy `_auto_accept_tick` path (~2 GETs/s). Contract preserved: 2xx->JSON ({} empty), non-2xx->None (no 404 dict leak to _maybe_apply_runes), fail-soft->urlopen. TDD +5.
-- **Default-ON flip NOT shipped - LIVE-GATED** (`docs/LIVE_GAME_GATED_SYNC.md:746`, `9451d660`). OWED (operator, next live game): one ARAM champ-select+game with `RC_LCU_POOL=1` - confirm no SSL EOF on reused sockets / reconnect self-heals / bounded socket count -> then the flip is a one-liner (`core/lcu_pool.py:40`).
+- **Part 1 bench-swap responsiveness (`2ce53103`, `tools/lcu_agent.py` non-frozen).** E7a (item 555) made the latency-sensitive command DRAIN fast (0.1s); the swapped champ still lagged up-to-1.0s reaching /api/state (the state-push loop is a separate thread on INTERVAL=1.0). Added `_swap_wake` threading.Event - the cmd loop SETS it after a latency-sensitive drain (`_signal_state_refresh`), `_state_push_loop` waits on it (clear-at-top, race-safe; only that loop calls capture_state). Swap now ~0.1s. TDD +4.
+- **Part 2 LCU pool onto the frozen client (`2216fb68`, OPERATOR FROZEN-GRANT for `lcu/lcu_client.py`).** Wired `_request` onto `lcu_pool.get_shared_pool()` behind the existing `RC_LCU_POOL` flag (DEFAULT-OFF byte-identical; lazy import keeps the frozen top-level block untouched). Pools the heavy `_auto_accept_tick` path (~2 GETs/s). Contract preserved: 2xx->JSON ({} empty), non-2xx->None (no 404 dict leak to _maybe_apply_runes), fail-soft->urlopen. TDD +5.
+- **Default-ON flip NOT shipped - LIVE-GATED** (`docs/LIVE_GAME_GATED_SYNC.md:746`, `5eadc976`). OWED (operator, next live game): one ARAM champ-select+game with `RC_LCU_POOL=1` - confirm no SSL EOF on reused sockets / reconnect self-heals / bounded socket count -> then the flip is a one-liner (`core/lcu_pool.py:40`).
 - **Verify.** ruff + py_compile + hygiene green; 13 + 86 + 99 + 20 tests green. Tier-1: no ENGINE/DS/Share/restart. Did NOT stage pre-existing `data/spell_prefs.json` drift or the agent6 FAILED demo report.
 - **DS swarm cycle = NO_WORK** (operator asked for one; grounded by an Explore subagent, NOT fabricated). Round-2 refill queue DRAINED (ROADMAP:26), 4 pure-data registries machine-guarded saturated, conditional-target-state/effects.py/7th-scorer operator-CLOSED, DS cross-eval Tier-2 B1/F2 shipped default-OFF + B2 live-owed + A a Shaco product call. Only unbuilt DS item = the `/rank` HTTP-boundary live-flip wiring (Tier-2 ENGINE-bump, needs explicit operator go; memory `project_ds_live_flip_seams_unwired`).
 - **NEXT.** E7 default-ON flip (operator live eyeball) OR the next tracker QA item (overlay/PGR queue, all same-priority). DS needs an operator refill or the `/rank` wiring go-ahead - do NOT re-scan the saturated registries.
@@ -13352,7 +13352,7 @@ Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). 
 
 - **WHAT.** Rammus W Defensive Ball Curl reflects magic to basic attackers - a REACTIVE (incoming-triggered) TOTAL-resist form that was a DOCUMENTED item-513 NOT-seeded reject of the empowered-AA `_passive_damage` seam ("no caster total-MR `_SCALING_TARGETS` field AND wrong cadence"). R49 builds the dedicated reflect seam + the missing full-MR target.
 - **Ground truth (verify-the-premise).** Verbatim vs `data/daemon_slayer/16.13.1/champion_abilities.json` Rammus W: "dealt 15 (+ 10% total armor) (+ 10% total magic resistance) magic damage", `parse_status no_damage`. Directive seed byte-exact.
-- **Module + schema lift (`a1e32939` feat).** New pure `agents/daemon_slayer/_passive_reflect_overrides.py` (`PassiveReflectEntry` + `reflect_entry` + `reflect_per_proc` + `_ASSUMED_REFLECT_BURST_WINDOW_S`=3.0; 1 seed). `AbilityContext` gains FULL-MR `caster_mr` (END-appended, `from_build` = stats["mr"]) + `_registries._SCALING_TARGETS` += `("caster_mr_pct","caster_mr")` - the MR sibling of full-armor `caster_armor`; byte-identical (no DamageBlock populates it; `value_at` returns 0.0 for the missing field).
+- **Module + schema lift (`92cad772` feat).** New pure `agents/daemon_slayer/_passive_reflect_overrides.py` (`PassiveReflectEntry` + `reflect_entry` + `reflect_per_proc` + `_ASSUMED_REFLECT_BURST_WINDOW_S`=3.0; 1 seed). `AbilityContext` gains FULL-MR `caster_mr` (END-appended, `from_build` = stats["mr"]) + `_registries._SCALING_TARGETS` += `("caster_mr_pct","caster_mr")` - the MR sibling of full-armor `caster_armor`; byte-identical (no DamageBlock populates it; `value_at` returns 0.0 for the missing field).
 - **Consumers.** `compute_dps` + `compute_burst_damage` gain END-appended `assume_passive_reflect=False`. ON: per-proc (flat + caster_armor_pct%*TOTAL armor + caster_mr_pct%*TOTAL MR) MR-mitigated by the duel target's effective MR (same AA curve) x mode_mult x magic_amp x build amp; DPS amortizes by 1/reflect_cadence_s, burst credits window/cadence procs into total_burst (mirrors assume_magic_burst/assume_ally_detonation; AA-probe leaves it OFF -> no double-count). Separate incoming stream, NOT the per-hit AA display. % on RESTING resists, not W-active self-buff (documented lower bound).
 - **DEFAULT-OFF byte-identical** (both flags False -> registry never read -> identical to 1.160.0; unregistered champ 0 even ON).
 - **Tier-2.** TDD RED-first `test_passive_reflect_overrides_r49.py` (RED ModuleNotFound -> GREEN 16). ENGINE 1.160.0 -> 1.161.0 (93 test files, 0 stray) + DS `:8893` taskkill (PID 5084 via PowerShell - Bash mangles `/F /PID`) / relaunch (live 1.161.0) + Share `--check` green (387 files) + DAEMON_SLAYER.md banner 7658 -> 7674 SAME feat commit. DS 7674 pass / RC 10127 pass (9 mid-bump Share/doc/live drift failures cleared post-sync+bounce, re-run 26/26). Built inline as sole orchestrator (tightly-coupled; re-verified fresh this session).
@@ -13366,7 +13366,7 @@ Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). 
 
 - **A NEW survivability axis + the SECOND EHP-NUMERATOR term** (after the revive multiplier): champion passives granting PERMANENT bonus max health PER STACK, not in the resolved stat block so neither EHP scorer saw them. Premise was correct + not-yet-on-disk (the named module did not exist); no premise correction needed.
 - **Ground truth (vs `data/daemon_slayer/16.13.1/champion_abilities.json`):** Sion W Soul Furnace "+4 bonus health per kill (+15 large/champ)"; Cho'Gath R Feast per-stack health = parsed "Bonus Health Per Stack" damage_block `[80,120,160]` by rank; Swain P "+15 bonus health permanently per Soul Fragment".
-- **Module + seam (`2b3f8d38` feat).** New pure `agents/daemon_slayer/_passive_health_overrides.py` (`passive_health_stack_hp` + 3 seeds). `compute_ehp` gains END-appended `assume_passive_health_stacks=False`; True adds the per-champ bonus max-HP RAW to every per-type numerator (phys/mag/true) like `ext_flat_hp`/`flat_mit_*`. Per-stack HP EXACT Meraki; the assumed STACK COUNT by level is a CONSERVATIVE midpoint (LOW 18-entry curves; Sion +15-upside omitted) - never over-states.
+- **Module + seam (`ac2fc83e` feat).** New pure `agents/daemon_slayer/_passive_health_overrides.py` (`passive_health_stack_hp` + 3 seeds). `compute_ehp` gains END-appended `assume_passive_health_stacks=False`; True adds the per-champ bonus max-HP RAW to every per-type numerator (phys/mag/true) like `ext_flat_hp`/`flat_mit_*`. Per-stack HP EXACT Meraki; the assumed STACK COUNT by level is a CONSERVATIVE midpoint (LOW 18-entry curves; Sion +15-upside omitted) - never over-states.
 - **DEFAULT-OFF byte-identical** (flag False -> 0.0 -> identical to 1.159.0; no live consumer passes it; unregistered champ 0 even ON).
 - **Tier-2.** TDD RED-first `test_passive_health_overrides_r46.py` (RED import-fail -> GREEN 18). Read-only verifier CONFIRM 7/7 (fresh DS 7658; OFF byte-identical Sion L11; ON strictly > OFF all 3 axes; Garen ON==OFF; Meraki `[80,120,160]`; ruff/0-stray clean). ENGINE 1.159.0 -> 1.160.0 (93 files / 106 pins, 0 stray) + DS `:8893` bounce (PID 6972 -> live 1.160.0) + Share `--check` green (385 files) + banner 7640 -> 7658 SAME feat commit. DS 7658 pass / RC 10128 pass (9 mid-bump Share/doc/live drift failures cleared post-sync+bounce, re-run 43/43).
 - **NEXT:** live default-ON flip EXCLUDED (no live per-champ stack feed; scorer reads a conservative assumed curve) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
@@ -13378,7 +13378,7 @@ Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). 
 Gemini-directed headless loop cycle 14 (from directive.md; operator-triggered single cycle). DS schema lift. Full detail in LEDGER 699 + ORCHESTRATION_PLAN R45.
 
 - **Premise correction (spec subagent + my independent re-verify of every cite).** The item-268 percent-of-resist mode already credited Poppy W +12% of TOTAL armor/MR + Rell W +15% of BONUS; the directive's "Poppy 10%/20%, Rell 10%" numbers were WRONG vs Meraki 16.13.1. The ONE genuine gap = Poppy "doubled to 24% below 40% max HP" (omitted at `_passive_resist_overrides.py:407`). Rell was already correct - untouched.
-- **Seam (`22dca695` feat).** `PassiveResistEntry` gains 3 END-appended fields (`low_hp_pct_armor` / `low_hp_pct_mr` / `low_hp_threshold`, default 0.0 dormant); `resist_grants` gains keyword-only `caster_current_hp_pct=1.0` (END) + an INCREMENTAL low-HP branch inside the percent block (base 12% + incremental 12% = 24% when caster HP < threshold); `compute_ehp` + `compute_hybrid` thread it (forward-only). Poppy seeded 12/12/0.40.
+- **Seam (`34c57f74` feat).** `PassiveResistEntry` gains 3 END-appended fields (`low_hp_pct_armor` / `low_hp_pct_mr` / `low_hp_threshold`, default 0.0 dormant); `resist_grants` gains keyword-only `caster_current_hp_pct=1.0` (END) + an INCREMENTAL low-HP branch inside the percent block (base 12% + incremental 12% = 24% when caster HP < threshold); `compute_ehp` + `compute_hybrid` thread it (forward-only). Poppy seeded 12/12/0.40.
 - **DEFAULT-OFF byte-identical on two axes:** `apply_passive_resist=False` short-circuits; `apply_passive_resist=True` at the default full-HP 1.0 leaves the low-HP branch dormant (1.0 not < 0.40) = identical to 1.158.0. No live consumer passes the kwarg.
 - **Tier-2.** TDD RED-first `test_passive_resist_low_hp_tier_r45.py` (RED 15-fail -> GREEN). Build agent (main tree) + read-only verifier CONFIRM 6/6 (independent `resist_grants` math 0.24*200=48.0; Rell + unseeded byte-identical; scope clean). ENGINE 1.158.0 -> 1.159.0 (92 files / 105 pins, 0 stray) + DS `:8893` taskkill (PID 11308) / relaunch (live 1.159.0) + Share `--check` green (383 files) + DAEMON_SLAYER.md banner 7621 -> 7640 SAME feat commit. DS 7640 pass / RC 10128 pass.
 - **NEXT:** live default-ON flip EXCLUDED (the EHP scorer never reads caster HP) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
@@ -13401,7 +13401,7 @@ Gemini-directed headless loop cycle 13 (from directive.md). Competitor-lift rese
 
 Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. Full detail in LEDGER 696 + ORCHESTRATION_PLAN R42.
 
-- **Bug + fix (`01875f4e` feat).** `compute_dps` folded `cond_as` (a bonus-AS FRACTION from `total_conditional_as`, Yun Tal Flurry ~0.08) directly onto the FINAL rotation AS, but `stats["as"]` is attacks/sec (`base_as * (1 + bonus_pct)`), so the raw add over-credited AS by `1/base_as`. Now scales the fraction by innate base AS before adding (`base_as * cond_as`), same 2.5 hard-cap re-clamp - the IDENTICAL unit bug + fix pattern as R7's `passive_as` fold ~20 lines below. `raw_attack_dps` unchanged (un-folded `eff_as`); explain note repointed to "+X% bonus AS ... folded onto base AS".
+- **Bug + fix (`03c8ae06` feat).** `compute_dps` folded `cond_as` (a bonus-AS FRACTION from `total_conditional_as`, Yun Tal Flurry ~0.08) directly onto the FINAL rotation AS, but `stats["as"]` is attacks/sec (`base_as * (1 + bonus_pct)`), so the raw add over-credited AS by `1/base_as`. Now scales the fraction by innate base AS before adding (`base_as * cond_as`), same 2.5 hard-cap re-clamp - the IDENTICAL unit bug + fix pattern as R7's `passive_as` fold ~20 lines below. `raw_attack_dps` unchanged (un-folded `eff_as`); explain note repointed to "+X% bonus AS ... folded onto base AS".
 - **TDD RED-first** `test_conditional_as_base_fold_r42.py` (2 cases, mirrors R7 `SeamAddsBaseAsScaledFraction`): cond_as has no flag, so the counterfactual is a `mock.patch` of `dps.total_conditional_as`=0 + a Dagger (1042) pure-AS calibration; pins `on.weighted_dps` to the base_as-scaled magnitude, NOT the raw fraction. RED confirmed (63.659 vs 62.721); GREEN after.
 - **Dependent fix:** `test_routes_ds_relscore.py` double-rounding tolerance 0.2 -> 0.25 (the corrected Yun Tal DPS shifted item 3032 onto a float-epsilon boundary: route score_pct uses unrounded delta, test recomputes from 1dp-stored -> `71.3 - 71.1 = 0.2000...0284`). NOT a route bug nor a fix bug.
 - **Tier-2.** ENGINE 1.156.0 -> 1.157.0 (90 pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.157.0) + Share `--check` green (381 files) + DAEMON_SLAYER.md banner 7604 -> 7606, all in the feat commit. DS 7606 pass / RC 10128 pass; read-only verifier CONFIRM (7/7, fix base_as-scaled at dps.py:865-866). Built inline (trivial one-file, verifier-gated).
@@ -13413,7 +13413,7 @@ Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. F
 
 Gemini-directed headless loop cycle 12 (from directive.md). DS schema lift fulfilling R12's explicit handoff. Full detail in LEDGER 695 + ORCHESTRATION_PLAN R41.
 
-- **Seam (`8b3cee60` feat, `9c85515d` docs).** New PURE `agents/daemon_slayer/_ally_detonation_overrides.py` (no engine imports) models a champion MARK an ALLY consumes for bonus damage - the mark-enabler's TEAM-damage contribution, distinct from the self-amp + all-source-vulnerability registries. `compute_dps` + `compute_burst_damage` gain `assume_ally_detonation` (END-appended, default False -> byte-identical): per-event magic for burst, per-event/cadence for the DPS rate, each MR-mitigated x mode_mult x magic_amp x `_ASSUMED_ALLY_DETONATION_PROB`=0.5. Seeded Leona P Sunlight (FLAT_MAGIC 32:151 based-on-level, 2.5s cadence) verified vs champion_abilities.json 16.13.1.
+- **Seam (`3dcf35c6` feat, `5e12a172` docs).** New PURE `agents/daemon_slayer/_ally_detonation_overrides.py` (no engine imports) models a champion MARK an ALLY consumes for bonus damage - the mark-enabler's TEAM-damage contribution, distinct from the self-amp + all-source-vulnerability registries. `compute_dps` + `compute_burst_damage` gain `assume_ally_detonation` (END-appended, default False -> byte-identical): per-event magic for burst, per-event/cadence for the DPS rate, each MR-mitigated x mode_mult x magic_amp x `_ASSUMED_ALLY_DETONATION_PROB`=0.5. Seeded Leona P Sunlight (FLAT_MAGIC 32:151 based-on-level, 2.5s cadence) verified vs champion_abilities.json 16.13.1.
 - **PREMISE CORRECTED (verify-the-premise win).** The directive named Imperial Mandate 4005 a "10% current-HP detonation", but that is STALE: DDragon 16.13.1 shows IM reworked to a 7% Vulnerable all-source amp (Control/Command passives) - the 16.12.1 Coordinated Fire detonation is GONE (only the stale Meraki items mirror, content_patch=None, still carries it). Seeding it would be a WRONG precompute, so 4005 is a documented NON-FIT and belongs in `_target_vulnerability_overrides`, not this seam. Leona is the sole seed.
 - **Tier-2.** TDD RED-first `test_ally_detonation_r41.py` (19 cases). ENGINE 1.155.0 -> 1.156.0 (99 assertion pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.156.0) + Share `--check` green SAME commit + DAEMON_SLAYER.md banner. DS 7604 pass / RC 10128 pass (2 transient first-run fails - doc-drift banner [fixed] + a live-engine smoke during the DS-restart window [re-run green]); read-only verifier CONFIRM (Aatrox ON==OFF, Leona burst delta 75.5 @mr=0).
 - **NEXT:** live default-ON flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` (wire a DPS/burst/rank consumer + eyeball Leona's mark value vs a real game; validate the 2.5s cadence + 0.5 proc-rate). Resume the headless loop.
@@ -13424,9 +13424,9 @@ Gemini-directed headless loop cycle 12 (from directive.md). DS schema lift fulfi
 
 Gemini-directed headless loop cycle 9 (run manually from directive.md), then the operator added a HEXCORE viewer refresh mid-cycle. Full detail in LEDGER 692 + ORCHESTRATION_PLAN R38.
 
-- **R38 overlay audit (`043e0d53` fix, `9979c46e` docs).** 5-phase fixture audit of the un-audited overlay panels enemy_spells.js + stats_panel.js (2 parallel read-only audit subagents, orchestrator-merged). HIT-TARGETS MUST-FIX: the stats `.sp-role` <select> (the panel's lone clickable) was ~20px -> `min-height: var(--hit-min)` 42px (siblings at overlay.css:717/758 already comply). enemy_spells `.es-chip` (~19px) = deliberate A5-locked compact-tracker sub-floor exception, inline rationale (no size bump, like the R36 launcher square). TYPOGRAPHY/ASCII/STRUCTURE/HIERARCHY pass (R8/R33 overlay-scoped tokens). TDD RED-first static guard + Playwright pixel proof (.sp-role offsetHeight>=42 + screenshot). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Full RC suite 10116 passed.
-- **ROADMAP budget (`edace211`).** The full local suite caught a pre-existing `test_doc_size_budget::test_roadmap_md_under_budget` red - ROADMAP.md was 81979 LF bytes, 59 over the 80KiB ceiling (CI happened to mask it). Compressed the verbose set_augment_intent Cherry bullet to a pointer (full record preserved in CHERRY_AUGMENT_SCAFFOLD_NOTES.md) + normalized to LF -> 80236 bytes; both budget guards green.
-- **HEXCORE galaxy refresh (`355cad01`).** Operator-requested. Updated BOTH docs/HEXCORE_offline.html + docs/HEXCORE.html (shared node data, kept in sync): +8 nodes (Haiku-zero precompute lane laning+build, build_planner, det-coaching seam, overlay panels enemy_spells/stats_panel/launcher), +10 edges, stale ENGINE 1.151.0 -> 1.154.0. Validated by replicating the viewer's own RAW/EDG parser (125 nodes, all 8 resolve at arity 5, 10 edges connect, ASCII-clean). Self-contained + base64 fonts untouched. Live galaxy-render eyeball OWED (operator-side; data is parser-verified).
+- **R38 overlay audit (`f5fd8ae5` fix, `81c11a24` docs).** 5-phase fixture audit of the un-audited overlay panels enemy_spells.js + stats_panel.js (2 parallel read-only audit subagents, orchestrator-merged). HIT-TARGETS MUST-FIX: the stats `.sp-role` <select> (the panel's lone clickable) was ~20px -> `min-height: var(--hit-min)` 42px (siblings at overlay.css:717/758 already comply). enemy_spells `.es-chip` (~19px) = deliberate A5-locked compact-tracker sub-floor exception, inline rationale (no size bump, like the R36 launcher square). TYPOGRAPHY/ASCII/STRUCTURE/HIERARCHY pass (R8/R33 overlay-scoped tokens). TDD RED-first static guard + Playwright pixel proof (.sp-role offsetHeight>=42 + screenshot). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Full RC suite 10116 passed.
+- **ROADMAP budget (`f56fc856`).** The full local suite caught a pre-existing `test_doc_size_budget::test_roadmap_md_under_budget` red - ROADMAP.md was 81979 LF bytes, 59 over the 80KiB ceiling (CI happened to mask it). Compressed the verbose set_augment_intent Cherry bullet to a pointer (full record preserved in CHERRY_AUGMENT_SCAFFOLD_NOTES.md) + normalized to LF -> 80236 bytes; both budget guards green.
+- **HEXCORE galaxy refresh (`b3b2b49f`).** Operator-requested. Updated BOTH docs/HEXCORE_offline.html + docs/HEXCORE.html (shared node data, kept in sync): +8 nodes (Haiku-zero precompute lane laning+build, build_planner, det-coaching seam, overlay panels enemy_spells/stats_panel/launcher), +10 edges, stale ENGINE 1.151.0 -> 1.154.0. Validated by replicating the viewer's own RAW/EDG parser (125 nodes, all 8 resolve at arity 5, 10 edges connect, ASCII-clean). Self-contained + base64 fonts untouched. Live galaxy-render eyeball OWED (operator-side; data is parser-verified).
 - **NEXT:** the overlay live-verify tail still wants a live game (a/b choices `#rn-choices` absent, champ-select lane->MID, flicker, ZOI alpha/blur). The R38 in-game populated pixel capture is OWED. Resume the headless loop.
 
 ---
@@ -13435,7 +13435,7 @@ Gemini-directed headless loop cycle 9 (run manually from directive.md), then the
 
 Gemini-directed headless loop, cycle 7. Pure UI audit (ENGINE-IMPACT NONE) of the Electron-overlay launcher control center + its layout menu, shipped un-audited in LEDGER 688. Full detail in LEDGER 690 + ORCHESTRATION_PLAN R36.
 
-- **HIT-TARGETS MUST-FIX (`88fc8b05`).** The launcher menu action rows (`.ovx-menu-row`: per-panel toggle / reset / done) + the opacity/scale slider rows (`.ovx-menu-slider`) were ~30-33px tall, below the `--hit-min` 42px tap floor (UI_SCALE_SPEC_V2 L112/118). Both now reserve `min-height: var(--hit-min)`; the action row went `display:block` -> `flex+center`. Live-measured offsetHeight >= 42 in a real browser.
+- **HIT-TARGETS MUST-FIX (`f572834e`).** The launcher menu action rows (`.ovx-menu-row`: per-panel toggle / reset / done) + the opacity/scale slider rows (`.ovx-menu-slider`) were ~30-33px tall, below the `--hit-min` 42px tap floor (UI_SCALE_SPEC_V2 L112/118). Both now reserve `min-height: var(--hit-min)`; the action row went `display:block` -> `flex+center`. Live-measured offsetHeight >= 42 in a real browser.
 - **STRUCTURE.** Removed the dead `.ovx-menu-panelset` rule (panel-set quick-swap retired 2026-06-28; `_renderMenu` emits no such node).
 - **TYPOGRAPHY/ASCII/HIERARCHY pass.** Menu rows kept at `--fs-sm` 18px on purpose - an on-demand control center wants readability, NOT the 11-14px overlay cue scale (unlike R33's always-visible chips). The 34px launcher square is the operator HUD-summoner-spell exception, kept.
 - **TDD + proof.** RED-first `tests/test_overlay_launcher_hit_targets.py` (4 static CSS guards) + Playwright `tests/snapshot_panels/test_overlay_launcher_menu.py` (taps the launcher, measures live row/slider heights, writes `screenshots/overlay_launcher_menu.png`). Verifier-CONFIRMED. FULL RC suite 10115 passed / 0 failed.
@@ -13447,12 +13447,12 @@ Gemini-directed headless loop, cycle 7. Pure UI audit (ENGINE-IMPACT NONE) of th
 
 Continued the NEXT-session ZOI task. Long live in-game co-QA with the operator (SR ranked + ARAM, many overlay hot-reloads). Each web/js|css edit hot-reloads the overlay; verified live via the operator + Legion vision frames (`:8889/latest-frame`, X-RC-Token from `config/vision_token.txt`).
 
-- **ZOI shading SOLVED (`8f149677` fix + `4d64e2d4` alpha).** Root cause was NOT data/sizing/paint - the `#am-zoi-canvas` was rendering at computed **opacity 0** in the live Electron overlay, so the fill drew correctly but was fully transparent. Proven with an on-canvas magenta probe + an on-screen numeric readout (op=0; forcing opacity=1 made it appear). No CSS/JS rule sets it (Chromium quirk for an absolute child inside the position:fixed + zoomed `#am-mmrect`). FIX: `canvas.style.opacity="1"` + a px display-size pin in `renderMinimapZoi`. The prior session's `setupMinimapPoller` was necessary-not-sufficient. Operator-confirmed visible; alpha was "very very faint" so MAX_ALPHA 0.25->0.55 + OFFSCREEN_CORE_ALPHA 0.55->0.85 - **tunable, fine-tune live next session.** DEBUG_ZOI OFF.
-- **asset-stamp trap SOLVED (`6c355c34`) - root cause of the whole "fix never reaches the overlay" / electron_overlay_only saga.** `/api/asset-stamp` (`dashboard/routes_state.py`) only stat'd index.html/dashboard.css/main.js, never `js/panels/*` - so per-panel edits never bumped the stamp -> the overlay hot-reload never fired -> stale panel JS until a manual rc-shell relaunch. Now mirrors `compute_asset_hash`'s fileset (panels+lib+overlay.css). The in-game overlay DOES hot-reload now. (Cache-Control is already no-store, so a reload fetches fresh.)
-- **Panel drag fling/unretrievable SOLVED (`af2b9ae0`).** `overlay_layout.js`: the bottom-corner snap fired for EVERY widget dropped below mid-screen (added for tall BUILD) + no on-screen clamp -> panels flung to the bottom / off-screen near the minimap. Now snap keys off a per-widget `tall` flag (only w-build); new pure `_clampXY` (MIN_VISIBLE=48) keeps every widget + the launcher grabbable. node tests added.
-- **Overlay panel triage (`4d64e2d4` + `cfb203e1` doc).** Build OWNED text row removed (visual-only, icon badge stays) - LIVE pending confirm. macro lead (`#rn-lead`) un-shed from combat (ARAM constant-fight hid it ~always) - LIVE pending confirm. threat/CD already hidden in saved layout; ward cue = operator hide via launcher; spike cue not broken (level-gated L6/11/16).
-- **BACKLOG queued (`cab3504a`):** mode-specific overlay settings (SR/ARAM) + out-of-game stats-panel ARAM mode-selector (auto-select in ARAM).
-- **OPEN for next session (all overlay-render, want live verification):** (1) **a/b choices (`#rn-choices`)** - has live `coach.choices` data, renderer runs (main.js:1376), NOT combat-shed, yet absent - the one genuine unknown, needs live overlay DOM inspection. (2) **champ-select lane defaults to MID** - `_csvResolveRole` (champ_select.js:3898) mis-resolves the assigned position; capture live `lcu.champ_select` (local_cell + my_team cellId/assignedPosition) at a draft to root-cause, then fix + test. (3) **champ-select flicker** - `renderChampSelectView` (champ_select.js:675) rebuilds innerHTML every tick; add an entry sig-guard. (4) **ZOI visual tuning (LIVE, pending verify):** at 0.55 alpha the ZOI rendered as "random red blue dots, no bubbles/coloring" - shipped a per-team-layer blur (`ZOI_BLUR_PX=12`, `9c8fe7f8`) to merge the per-champion bubbles into soft zones. Verify live + fine-tune the blur radius / alpha next game. Note: ARAM has no demarcation so the ally-side flood TINT never paints (SR-only); the blurred bubbles are the ARAM "coloring" - decide if ARAM wants a map_control-based zone tint. Also verify-live build-OWNED removal + macro-lead un-shed. Operator: resume the headless loop next session. Tracker: `docs/OVERLAY_QA_2026-06-29.md`.
+- **ZOI shading SOLVED (`75aacaef` fix + `1c4a9725` alpha).** Root cause was NOT data/sizing/paint - the `#am-zoi-canvas` was rendering at computed **opacity 0** in the live Electron overlay, so the fill drew correctly but was fully transparent. Proven with an on-canvas magenta probe + an on-screen numeric readout (op=0; forcing opacity=1 made it appear). No CSS/JS rule sets it (Chromium quirk for an absolute child inside the position:fixed + zoomed `#am-mmrect`). FIX: `canvas.style.opacity="1"` + a px display-size pin in `renderMinimapZoi`. The prior session's `setupMinimapPoller` was necessary-not-sufficient. Operator-confirmed visible; alpha was "very very faint" so MAX_ALPHA 0.25->0.55 + OFFSCREEN_CORE_ALPHA 0.55->0.85 - **tunable, fine-tune live next session.** DEBUG_ZOI OFF.
+- **asset-stamp trap SOLVED (`4464b0f5`) - root cause of the whole "fix never reaches the overlay" / electron_overlay_only saga.** `/api/asset-stamp` (`dashboard/routes_state.py`) only stat'd index.html/dashboard.css/main.js, never `js/panels/*` - so per-panel edits never bumped the stamp -> the overlay hot-reload never fired -> stale panel JS until a manual rc-shell relaunch. Now mirrors `compute_asset_hash`'s fileset (panels+lib+overlay.css). The in-game overlay DOES hot-reload now. (Cache-Control is already no-store, so a reload fetches fresh.)
+- **Panel drag fling/unretrievable SOLVED (`2083bf42`).** `overlay_layout.js`: the bottom-corner snap fired for EVERY widget dropped below mid-screen (added for tall BUILD) + no on-screen clamp -> panels flung to the bottom / off-screen near the minimap. Now snap keys off a per-widget `tall` flag (only w-build); new pure `_clampXY` (MIN_VISIBLE=48) keeps every widget + the launcher grabbable. node tests added.
+- **Overlay panel triage (`1c4a9725` + `a0d48b25` doc).** Build OWNED text row removed (visual-only, icon badge stays) - LIVE pending confirm. macro lead (`#rn-lead`) un-shed from combat (ARAM constant-fight hid it ~always) - LIVE pending confirm. threat/CD already hidden in saved layout; ward cue = operator hide via launcher; spike cue not broken (level-gated L6/11/16).
+- **BACKLOG queued (`cf8353d7`):** mode-specific overlay settings (SR/ARAM) + out-of-game stats-panel ARAM mode-selector (auto-select in ARAM).
+- **OPEN for next session (all overlay-render, want live verification):** (1) **a/b choices (`#rn-choices`)** - has live `coach.choices` data, renderer runs (main.js:1376), NOT combat-shed, yet absent - the one genuine unknown, needs live overlay DOM inspection. (2) **champ-select lane defaults to MID** - `_csvResolveRole` (champ_select.js:3898) mis-resolves the assigned position; capture live `lcu.champ_select` (local_cell + my_team cellId/assignedPosition) at a draft to root-cause, then fix + test. (3) **champ-select flicker** - `renderChampSelectView` (champ_select.js:675) rebuilds innerHTML every tick; add an entry sig-guard. (4) **ZOI visual tuning (LIVE, pending verify):** at 0.55 alpha the ZOI rendered as "random red blue dots, no bubbles/coloring" - shipped a per-team-layer blur (`ZOI_BLUR_PX=12`, `9a314b0d`) to merge the per-champion bubbles into soft zones. Verify live + fine-tune the blur radius / alpha next game. Note: ARAM has no demarcation so the ally-side flood TINT never paints (SR-only); the blurred bubbles are the ARAM "coloring" - decide if ARAM wants a map_control-based zone tint. Also verify-live build-OWNED removal + macro-lead un-shed. Operator: resume the headless loop next session. Tracker: `docs/OVERLAY_QA_2026-06-29.md`.
 
 ---
 
@@ -13460,11 +13460,11 @@ Continued the NEXT-session ZOI task. Long live in-game co-QA with the operator (
 
 Started with WP-F5-M01 then turned into a long live in-game overlay QA pass with the operator (Practice Tool SR -> ARAM), 18 commits. Each web/js|css edit hot-reloads the overlay (4s ui-version poller), so fixes were verified live.
 
-- **WP-F5-M01 (`76a783b4`, row flip `86f7a864`).** Cross-seam `body[data-mode]` no-flap guard `tests/preflip_mode/test_body_data_mode_no_flap.py` (HTTP build_state vs WS file_ingest agree from one LCU snapshot). Audit's `e4b08ba` SHA was wrong - real fix is `5bfa7ea5`. **F1-01** live-deploy confirmed (`23e624a5`).
-- **Minimap alignment (`52b694d6` + nudge `66309baf`).** w-mmrect was placed in 1920x1080 design px scaled by ovscale (a DPI knob, NOT the design->native ratio) -> mispositioned on 2560x1440. Now placed by window fraction + zoom-immune; operator-tuned nudge +6px right / +2px down. **Operator-confirmed aligned.**
-- **Shipped + operator-confirmed:** coach timer-tag strip + objective clamp 2->3 (`736b1756`), META +0 suppress + FIGHT MODEL hide in-game (`4640cb57`).
-- **Shipped, pending operator re-verify (was mid-ARAM):** BUILD anti-flicker retain-last-good, broadened (`ef716c66` + `1d6fa0c0`); enemy-spell compact pills `FL/TP` + hover name (`e49067a3`); OP/SZ sliders draggable - launcher pointerdown was eating the slider drag (`86cd31db`); tooltip lands at anchor not z-times right/down (`876093db`); BUILD horizontal 3-row band, widen 350px + nowrap (`465a84d4`).
-- **STILL OPEN - ZOI/minimap dots never render (`6b8fe07a` data fix done, render still dark).** Added a dedicated 2s minimap poller (the zoi-bearing /api/state polls were all staleness-gated during a healthy game), but the blue/red shading STILL does not paint -> cause is render-side in `renderMinimapZoi`, not data. `DEBUG_ZOI` probe in `web/js/panels/minimap_zoi.js` is one-flag-ready (set true) to confirm canvas visibility next session, then fix per the operator's magenta-box verdict.
+- **WP-F5-M01 (`d63a242d`, row flip `b429d181`).** Cross-seam `body[data-mode]` no-flap guard `tests/preflip_mode/test_body_data_mode_no_flap.py` (HTTP build_state vs WS file_ingest agree from one LCU snapshot). Audit's `e4b08ba` SHA was wrong - real fix is `cef09d31`. **F1-01** live-deploy confirmed (`b7d63d48`).
+- **Minimap alignment (`06ca0a14` + nudge `3f3942b7`).** w-mmrect was placed in 1920x1080 design px scaled by ovscale (a DPI knob, NOT the design->native ratio) -> mispositioned on 2560x1440. Now placed by window fraction + zoom-immune; operator-tuned nudge +6px right / +2px down. **Operator-confirmed aligned.**
+- **Shipped + operator-confirmed:** coach timer-tag strip + objective clamp 2->3 (`57521c7b`), META +0 suppress + FIGHT MODEL hide in-game (`907a6f84`).
+- **Shipped, pending operator re-verify (was mid-ARAM):** BUILD anti-flicker retain-last-good, broadened (`fbce7e7a` + `fd9d835d`); enemy-spell compact pills `FL/TP` + hover name (`670e6d5a`); OP/SZ sliders draggable - launcher pointerdown was eating the slider drag (`7d22ca89`); tooltip lands at anchor not z-times right/down (`6af80068`); BUILD horizontal 3-row band, widen 350px + nowrap (`1be2ab2e`).
+- **STILL OPEN - ZOI/minimap dots never render (`80a5da93` data fix done, render still dark).** Added a dedicated 2s minimap poller (the zoi-bearing /api/state polls were all staleness-gated during a healthy game), but the blue/red shading STILL does not paint -> cause is render-side in `renderMinimapZoi`, not data. `DEBUG_ZOI` probe in `web/js/panels/minimap_zoi.js` is one-flag-ready (set true) to confirm canvas visibility next session, then fix per the operator's magenta-box verdict.
 - **Post-/done (LEDGER 687).** Two more BUILD-panel bugs from a second live game: (a) auto-shrink when dragged to the bottom-left -> `_applyPos` now bottom-anchors lower-half widgets (grow upward, no 140px floor); (b) "invisible ~20s then back on coach tick" was the COMBAT DECLUTTER (`body[data-fight=1]` -> `display:none` on `w-build`), not the per-tick flicker the batch chased - dropped `w-build` from that rule so it persists through fights. Also fixed the CI red the batch left: `test_overlay_view.py` pinned the old clamp=2 + minimap left=1600; updated to 3 + 1606 (window-fraction + nudge) and `Math.round`ed the minimap px. node 5/5 + overlay snapshot 26 green.
 - **NEXT:** ZOI render bug (flip DEBUG_ZOI, get magenta verdict in an SR/ARAM game, fix). Tracker: `docs/OVERLAY_QA_2026-06-29.md`. Item-tooltip "name-only" is an unconfirmed operator preference, not a bug.
 
@@ -13474,11 +13474,11 @@ Started with WP-F5-M01 then turned into a long live in-game overlay QA pass with
 
 Picked two OPEN Section J WPs from `docs/OVERLAY_BUILD_MASTER_PLAN.md`, then handled two operator reports about stray terminal windows + a branch cleanup. All on main, CI green.
 
-- **682 / WP-F5-H02 (`decd681f`, flip `4e03ee66`).** task_queue gate-limbo state-machine leak. The audit-8 reconciler only closes `IN_PROGRESS`; `needs_explicit_approval`/`agent0_review`/`retry_pending` had no terminal transition. Root cause of the live pile-up: `test_file_task_endpoint_frozen_file_gates` POSTs `test-round22-frozen` to the live `:8890` supervisor every run -> a real orphan envelope each time (1566 accumulated). Fix: new `Scheduler.reconcile_stale_gated()` (7-day generous threshold -> `dead_letter`, separate from the in-progress reconciler so its NEEDS_APPROVAL-off-limits contract stays pinned) + wired boot + 5-min loop + the polluting test now self-dismisses. Backfill: live supervisor boot reaper dead-lettered the 1566 (verified `by_status: dead_letter 1566, needs_approval 1`, the 1 is 4 days old/in-window). 16 new tests; 403+50+12 green.
-- **683 / WP-F6a (`b0720386`, flip `16bb6c9f`).** `ARCHITECTURE.md:172` recited `ENGINE_VERSION 1.153.0 / 547 items / 7537 tests` - drifted vs live `1.154.0` (CI runs no pytest on docs). Replaced the numeric recital with a pointer to the drift-guarded `docs/DAEMON_SLAYER.md`; new `tests/test_architecture_no_stale_engine_header.py` (2) guards re-drift. CLAUDE.md left alone (24KB < 60KB, current not drifted); `test_engine_version_is_1_X` rename deferred (Share-mirror churn).
-- **684 / terminal-window noise (`2903d802`).** (a) Per-edit console FLASH = hooks (windowless pythonw) shelling out to console children (ruff/git/pytest/powershell) with no `creationflags` -> Windows allocates a fresh console per child. Added `CREATE_NO_WINDOW` to all 4 hook scripts' `subprocess.run`. (b) `DesktopWindowXamlSource` taskbar GHOST = Windows Terminal was the default terminal app, COM-activated `-Embedding` on every console spawn. Operator chose Console Host: set `HKCU\Console\%%Startup` delegation GUIDs to null + `taskkill`'d the resident WT. Verified 0 ghosts.
-- **Branch cleanup.** Remote had 2 stale `claude/*` branches: `hardcore-saha-0592d5` (fully merged, item 680) + `thirsty-keller-e732b1` (byte-identical to main's `c27bb378`, superseded). Deleted both (no open PRs); also pruned 2 stale local worktrees. Remote now `main` only. LEFT ALONE: the `ci-fix/*` branches + `C:/RC-CIWatchdog` worktree (active RC-CIWatchdog agent).
-- **NEXT:** more OPEN Section J WPs - E5 (T0 doc sweep), F5-M01 (body-data-mode regression test, T1), F6c (park auto-ops gate, T0). F5-L03 was closed externally (`c27bb378`, audit-11 L-03) by the auditor.
+- **682 / WP-F5-H02 (`2b15e6e5`, flip `ca213bdb`).** task_queue gate-limbo state-machine leak. The audit-8 reconciler only closes `IN_PROGRESS`; `needs_explicit_approval`/`agent0_review`/`retry_pending` had no terminal transition. Root cause of the live pile-up: `test_file_task_endpoint_frozen_file_gates` POSTs `test-round22-frozen` to the live `:8890` supervisor every run -> a real orphan envelope each time (1566 accumulated). Fix: new `Scheduler.reconcile_stale_gated()` (7-day generous threshold -> `dead_letter`, separate from the in-progress reconciler so its NEEDS_APPROVAL-off-limits contract stays pinned) + wired boot + 5-min loop + the polluting test now self-dismisses. Backfill: live supervisor boot reaper dead-lettered the 1566 (verified `by_status: dead_letter 1566, needs_approval 1`, the 1 is 4 days old/in-window). 16 new tests; 403+50+12 green.
+- **683 / WP-F6a (`a732f7ca`, flip `a95aca14`).** `ARCHITECTURE.md:172` recited `ENGINE_VERSION 1.153.0 / 547 items / 7537 tests` - drifted vs live `1.154.0` (CI runs no pytest on docs). Replaced the numeric recital with a pointer to the drift-guarded `docs/DAEMON_SLAYER.md`; new `tests/test_architecture_no_stale_engine_header.py` (2) guards re-drift. CLAUDE.md left alone (24KB < 60KB, current not drifted); `test_engine_version_is_1_X` rename deferred (Share-mirror churn).
+- **684 / terminal-window noise (`0121dd61`).** (a) Per-edit console FLASH = hooks (windowless pythonw) shelling out to console children (ruff/git/pytest/powershell) with no `creationflags` -> Windows allocates a fresh console per child. Added `CREATE_NO_WINDOW` to all 4 hook scripts' `subprocess.run`. (b) `DesktopWindowXamlSource` taskbar GHOST = Windows Terminal was the default terminal app, COM-activated `-Embedding` on every console spawn. Operator chose Console Host: set `HKCU\Console\%%Startup` delegation GUIDs to null + `taskkill`'d the resident WT. Verified 0 ghosts.
+- **Branch cleanup.** Remote had 2 stale `claude/*` branches: `hardcore-saha-0592d5` (fully merged, item 680) + `thirsty-keller-e732b1` (byte-identical to main's `c590dad2`, superseded). Deleted both (no open PRs); also pruned 2 stale local worktrees. Remote now `main` only. LEFT ALONE: the `ci-fix/*` branches + `C:/RC-CIWatchdog` worktree (active RC-CIWatchdog agent).
+- **NEXT:** more OPEN Section J WPs - E5 (T0 doc sweep), F5-M01 (body-data-mode regression test, T1), F6c (park auto-ops gate, T0). F5-L03 was closed externally (`c590dad2`, audit-11 L-03) by the auditor.
 
 ---
 
@@ -13497,10 +13497,10 @@ Session ran in worktree `claude/thirsty-keller-e732b1` (forked at item 652). Clo
 
 Operator asked whether the worktree branches were healthy (this session ran in a worktree on `claude/hardcore-saha-0592d5`; the `C:/Riot Commander` checkout was always on main) and chose to LAND. The branch's 18 commits (Section B/D build module + per-champion kit-synergy) merged to main + activated live.
 
-- **Merge `99ebd263`.** Landed WP-B2/B3/B4 + per-champ kit-synergy (173 champs) + WP-D1/D2/D3. 28 code/test files auto-merged clean; the 4 doc conflicts resolved per `feedback_ledger_renumber_on_parallel_landing` - LEDGER 666-674 renumbered +5 to 671-679 above main's 670 (contiguous 664..679, no dupes); Section J unioned C5(main `cedb78c2`)+D1/D2/D3 DONE; WAKEUP kept last 3; history_notes kept BOTH archived blocks (non-lossy).
-- **Fix `90002f69` (the real find).** The merged `tests/test_per_champion_scoring_coverage.py` failed locally (Lulu carry -0.688 < mage 0.49) yet passed on the clean branch worktree + on CI: it read `get_archetype_for`, which consults the operator's GITIGNORED `cs_archetype_picks.json` (Lulu pinned -> carry, 2026-05-17). Non-hermetic - green on CI, red only on the live machine; the branch's CI never ran (CI fires on main/PR, not `claude/*`). Switched to `default_for_champion` (kit-derived, git-tracked) -> hermetic; Kog'Maw stays the lone exception. 199 passed.
+- **Merge `6398afd7`.** Landed WP-B2/B3/B4 + per-champ kit-synergy (173 champs) + WP-D1/D2/D3. 28 code/test files auto-merged clean; the 4 doc conflicts resolved per `feedback_ledger_renumber_on_parallel_landing` - LEDGER 666-674 renumbered +5 to 671-679 above main's 670 (contiguous 664..679, no dupes); Section J unioned C5(main `aca85433`)+D1/D2/D3 DONE; WAKEUP kept last 3; history_notes kept BOTH archived blocks (non-lossy).
+- **Fix `63c8687e` (the real find).** The merged `tests/test_per_champion_scoring_coverage.py` failed locally (Lulu carry -0.688 < mage 0.49) yet passed on the clean branch worktree + on CI: it read `get_archetype_for`, which consults the operator's GITIGNORED `cs_archetype_picks.json` (Lulu pinned -> carry, 2026-05-17). Non-hermetic - green on CI, red only on the live machine; the branch's CI never ran (CI fires on main/PR, not `claude/*`). Switched to `default_for_champion` (kit-derived, git-tracked) -> hermetic; Kog'Maw stays the lone exception. 199 passed.
 - **CI green on main** (run 28409641311, 3m53s). **RC restarted** pid 7120 -> 7604, alive + reload_ok, mode=client. The D-series + `/api/build-plan` override route are LIVE (they predated the running RC).
-- **`de4a2834`.** Committed + pushed the operator's pending `tools/done.md` edit (mandatory next-session-prompt block in /done); CI green.
+- **`085756be`.** Committed + pushed the operator's pending `tools/done.md` edit (mandatory next-session-prompt block in /done); CI green.
 - **OWED (loopback-gated, unchanged):** live in-game capture of the radial/tooltip/override/reset in the rc-shell overlay.
 - **NEXT:** branch landed - pick the next OPEN Section J WP (E5/F6a doc remediation, F5-H02 task_queue leak) per `docs/OVERLAY_BUILD_MASTER_PLAN.md` Section J.
 
@@ -13514,7 +13514,7 @@ Final Section D item (deps C4 + D2). D2 shipped the client override store + radi
 - **EDIT `routes_build_plan.py`** - `/api/build-plan` reads an optional `overrides` snapshot (+ `reset_overrides`), threads it into tick, fail-soft (the 18-test contract stays green). **EDIT `overlay_ds_controls.js`** - "Reset item status" button in `#ovset` reusing the audited `.ovset-act` (no new CSS) -> `clearItemOverrides()` + `sendOverlayAction({action:"reset-item-status"})`. **EDIT `active_match.js`** - `clearItemOverrides()` between games.
 - **TDD:** NEW `tests/test_item_overrides_persist.py` (10; shift held across ticks, defer re-enters after one item, silence suppressed until reset, reset clears all, apply_ordering pure, route honors a shift) + NEW `tests/test_overlay_d3_item_reset.py` (grep; button present/wired/game-end clear/audited-class/ASCII).
 - **Verification (fresh, orchestrator ground-truth):** 182 passed / 0 failed across the targeted Tier-1 sweep (2 new D3 files + replan-hysteresis 43 + build-plan-contract 18 + planner-beam StructuralGuard purity + overlay d2/settings/ds-controls/widget-fixed-size/b2 guards - no regression); `py_compile` clean; 6-file `git status` exact; `node --check` clean. **5-phase UI-audit CLEAN** (zero MUST-FIX; the button reuses fully-audited chrome). **Tier-1** - no ENGINE bump, NOT Share-mirrored, no DS restart for assets (ADR-008); the route goes live only after the branch lands to main + an RC restart (running RC pid 7120 is on main, predates this branch).
-- **OWED (loopback-gated):** live in-game capture of an override surviving a re-plan + Defer-Once re-entry + the reset control in the rc-shell overlay; full cross-tick LIVE-route Defer-Once timing (the engine has it; the stateless per-request route only sinks). Section J: D3 OPEN -> DONE (`c24c5162`).
+- **OWED (loopback-gated):** live in-game capture of an override surviving a re-plan + Defer-Once re-entry + the reset control in the rc-shell overlay; full cross-tick LIVE-route Defer-Once timing (the engine has it; the stateless per-request route only sinks). Section J: D3 OPEN -> DONE (`3687fe7c`).
 - **NEXT:** Section D complete - pick the next OPEN WP from Section J (E5/F6a doc remediation, F5-H02 task_queue leak), OR land this branch to main (LEDGER 671-674 are branch-local; renumber at landing per feedback_ledger_renumber_on_parallel_landing) to take the D-series + build-plan override route live (running RC is on main; route activates on landing + restart).
 - **Memory:** a SAFE consolidation ran this session - retired 4 verified-stale (tk-scheduler/2x gamepc/legion-migration), indexed 8 durable orphans, trimmed hooks, fixed inbound wikilinks; integrity clean (0 dangling/orphans). The deeper <140-line merge of the ~20 cross-linked memories (verify-cluster has 11-14 inbound [[links]]) is DEFERRED to a dedicated review (operator: not-in-this-plan). Do NOT re-trip on the index-size hook or re-run the consolidation.
 
@@ -13544,11 +13544,11 @@ Scoped build session, "continue" after D1. The interaction sibling of D1 on the 
 
 ---
 
-# 2026-06-29 (Per-champion kit-synergy model for all 173 champions shipped; work commit `6c787536`)
+# 2026-06-29 (Per-champion kit-synergy model for all 173 champions shipped; work commit `c894eb13`)
 
 Operator directive after B4: "that same deterministic scoring needs to be done per champion, for all champions." Probed feasibility -> framed scope question -> operator chose the TRUE per-champion model (not a coverage-only guard) -> built + verified inline (tight tuning loop) with a fresh-green gate.
 
-- **669 per-champion kit-synergy (work commit `6c787536`).** WP-C1's model only distinguished ~6 curated champs; the other 167 fell back to a FLAT per-archetype vector (all 54 mages scored identically; only 85/173 ranked own archetype #1). **NEW `core/build_planner/champ_kit_data.py`** `derive_kit_weights(champ)` derives a DISTINCT 10-axis vector per champ from champions.json ground truth (damage_distribution + roles/tags + attackrange + attackspeedperlevel + healing/shielding; cdragon_ability_ratios as AD/AP confirm). NEVER imports the DS engine (loads the same patch data files); leaf module (own `_AXES`, guard-tested == kit_synergy.AXES). **EDIT `kit_synergy._base_axis_weights`** prefers the derived vector; flat archetype = fallback for blank/unknown only; the ~6 `_KIT_TRAITS` overrides + gates preserved on top. **Result: 173/173 distinct vectors (was 6).**
+- **669 per-champion kit-synergy (work commit `c894eb13`).** WP-C1's model only distinguished ~6 curated champs; the other 167 fell back to a FLAT per-archetype vector (all 54 mages scored identically; only 85/173 ranked own archetype #1). **NEW `core/build_planner/champ_kit_data.py`** `derive_kit_weights(champ)` derives a DISTINCT 10-axis vector per champ from champions.json ground truth (damage_distribution + roles/tags + attackrange + attackspeedperlevel + healing/shielding; cdragon_ability_ratios as AD/AP confirm). NEVER imports the DS engine (loads the same patch data files); leaf module (own `_AXES`, guard-tested == kit_synergy.AXES). **EDIT `kit_synergy._base_axis_weights`** prefers the derived vector; flat archetype = fallback for blank/unknown only; the ~6 `_KIT_TRAITS` overrides + gates preserved on top. **Result: 173/173 distinct vectors (was 6).**
 - **Verify-before-assert caught 2 recipe bugs pre-commit** (standalone derive probe): the "Marksman,Mage" dual-tag gave MF AH=0.90 (would flip MF's spellblade_user heuristic + break a C1 test) -> gated mage-treatment on `is_mage_primary` (Mage tag AND not marksman); on-hit marksmen over-valued AP -> discount AP for all marksmen. The carry-vs-assassin oracle from B4 stays a generation fact; the scoring oracle generalized to "own-archetype build > opposite-damage-type build" (172/173, Kog'Maw the one documented exception - label-mage but an AS/on-hit marksman that correctly builds AD-carry).
 - **TDD:** NEW `tests/test_champ_kit_data.py` (axis anti-drift + None-contract + per-champ distinctness + known profiles + wired-through) + `tests/test_per_champion_scoring_coverage.py` (all 173 coverage guard, Kog exception, within-archetype variation). Deterministic (pinned canonical sets + pure score_build); DS data git-tracked so it runs on CI.
 - **Verification (fresh):** 174 (build_planner C1-C4 + new + overlay B1-B4) + 14 build_plan_contract (C5 unaffected); C1 14/14 + B4 23/23 preserved; ruff + ASCII clean; `git status` = only kit_synergy.py edited + 3 new files (no existing test weakened). **Tier-1** - no ENGINE bump, NOT Share-mirrored. Verifier skipped per R7 (own single-thread, fresh-green). LEDGER branch-local 669 (main at 670) - renumber at landing.
@@ -13556,22 +13556,22 @@ Operator directive after B4: "that same deterministic scoring needs to be done p
 
 ---
 
-# 2026-06-29 (Section B - WP-B4 MF SR fixture oracle shipped; work commit `189117d6`)
+# 2026-06-29 (Section B - WP-B4 MF SR fixture oracle shipped; work commit `f65fe386`)
 
 Scoped build session, "continue" after B3. Bootstrap -> verify the spec live -> author fixture + Python test inline (2 files = R9 inline) -> Tier-1 sweep -> commit/push. The deterministic acceptance anchor the B/C agents share.
 
-- **668 WP-B4 (work commit `189117d6`).** NEW `web/js/test/fixtures/mf_sr_build.json` (every number captured LIVE: `/api/build-order` + `/api/ds-preview` + `/api/dictionary/items`, patch 16.13.1) + `tests/test_overlay_b4_mf_sr_fixture.py` (the Python consumer; NO JS test runner exists, mirrors the grep-style B3 test). Fixture: the marksman-correct carry META build (archetype=carry EXPLICIT since MF default resolves "assassin"), the assassin default build (routing-gotcha anchor), owned snapshots at 0/1/2/3 items + a non-prefix snapshot (sort-left), the antiheal live-deviation (3123 Executioner's -> 3033 Mortal Reminder, recipe-verified), the C2 score seed table, ADC knob defaults. Test (23): shape + 7-bit ASCII + exact meta order + archetype signatures + an owned-greying oracle (faithful mirror of `_bmPartitionOwned` + first-non-owned next) + a C2 `score_build` assertion + the antiheal linkage.
+- **668 WP-B4 (work commit `f65fe386`).** NEW `web/js/test/fixtures/mf_sr_build.json` (every number captured LIVE: `/api/build-order` + `/api/ds-preview` + `/api/dictionary/items`, patch 16.13.1) + `tests/test_overlay_b4_mf_sr_fixture.py` (the Python consumer; NO JS test runner exists, mirrors the grep-style B3 test). Fixture: the marksman-correct carry META build (archetype=carry EXPLICIT since MF default resolves "assassin"), the assassin default build (routing-gotcha anchor), owned snapshots at 0/1/2/3 items + a non-prefix snapshot (sort-left), the antiheal live-deviation (3123 Executioner's -> 3033 Mortal Reminder, recipe-verified), the C2 score seed table, ADC knob defaults. Test (23): shape + 7-bit ASCII + exact meta order + archetype signatures + an owned-greying oracle (faithful mirror of `_bmPartitionOwned` + first-non-owned next) + a C2 `score_build` assertion + the antiheal linkage.
 - **Verify-before-assert caught a false oracle:** the first-pitched "carry build outscores assassin" was REFUTED by a live `score_build` probe (assassin edges carry 1.515 vs 1.499 - Essence Reaver scores HIGH MF kit-synergy 2.76 > Yun Tal 1.71 AND a higher ds-preview DPS delta). So carry-vs-assassin is a BUILD-GENERATION fact (archetype routing), NOT a score ranking; the scoring assertion was pivoted to the robust true floor (marksman ~1.499 >> off-class AP ~-0.038; the AP build scores negative on kit anti-synergy + zero DPS - large margin, robust to a data-absent CI checkout). Every item id verified vs the live catalog before encoding (3123 confirmed a direct component of 3033; the 6 AP-misfit ids all resolve in items.json).
-- **Verification:** B4 23/0; Tier-1 sweep 157/0 (overlay B1-B4 + planner C1-C4 - the C-cluster included because the test imports score_build); both new files ASCII-clean. **Tier-1**: no ENGINE bump, NOT Share-mirrored, no DS restart; a pure test artifact (NO web/css or web/js page-code change) so the UI-audit ritual does not apply. Section J: B4 OPEN -> DONE (`189117d6`). LEDGER branch-local 668 (vs main 670) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
+- **Verification:** B4 23/0; Tier-1 sweep 157/0 (overlay B1-B4 + planner C1-C4 - the C-cluster included because the test imports score_build); both new files ASCII-clean. **Tier-1**: no ENGINE bump, NOT Share-mirrored, no DS restart; a pure test artifact (NO web/css or web/js page-code change) so the UI-audit ritual does not apply. Section J: B4 OPEN -> DONE (`f65fe386`). LEDGER branch-local 668 (vs main 670) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
 - **NEXT:** the D-series (D1 item tooltip is the clean independent entry, deps B2 only; D2 right-click radial + D3 override store also unblocked by B2). OWED (gated, not next-task): a live in-game capture onto the C5 route (blocked by the loopback regression).
 
 ---
 
-# 2026-06-29 (Section B - WP-B3 live/meta row item semantics shipped; commit `be48d3f7`)
+# 2026-06-29 (Section B - WP-B3 live/meta row item semantics shipped; commit `a1e5e8fa`)
 
 Scoped build session, "continue" after B2. Spec-first (a grounded Plan subagent) -> TDD -> inline build -> UI-audit ritual. Adds the item semantics onto the B2 scaffold.
 
-- **667 WP-B3 (commit `be48d3f7`).** THREE behaviors on the bm rows: (1) owned-GREYING (`.bm-owned`: inline opacity 0.4 + grayscale + a `String.fromCharCode(0x2713)` check glyph + sort-left via `_bmPartitionOwned`; WCAG 1.4.1 redundant) replacing the OWNED badge, first non-owned = `.bm-next`; (2) partial-component `.bm-pip` + `.bm-ring` from a NEW `ITEM_RECIPES`/`componentProgress` in `items_index.js` reading the `/api/dictionary/items` `from`-graph; (3) Row2 right-click cycles archetype builds (`_cycleMeta`/`_BM_META_RING` mirrors `core/archetype_picks.py` ARCHETYPES; `_maybeRefreshBuildOrder` re-POSTs `/api/build-order` with `archetype`; `contextmenu`+`stopPropagation`+`data-rc-zone`).
+- **667 WP-B3 (commit `a1e5e8fa`).** THREE behaviors on the bm rows: (1) owned-GREYING (`.bm-owned`: inline opacity 0.4 + grayscale + a `String.fromCharCode(0x2713)` check glyph + sort-left via `_bmPartitionOwned`; WCAG 1.4.1 redundant) replacing the OWNED badge, first non-owned = `.bm-next`; (2) partial-component `.bm-pip` + `.bm-ring` from a NEW `ITEM_RECIPES`/`componentProgress` in `items_index.js` reading the `/api/dictionary/items` `from`-graph; (3) Row2 right-click cycles archetype builds (`_cycleMeta`/`_BM_META_RING` mirrors `core/archetype_picks.py` ARCHETYPES; `_maybeRefreshBuildOrder` re-POSTs `/api/build-order` with `archetype`; `contextmenu`+`stopPropagation`+`data-rc-zone`).
 - **Spec-first + verify:** the Plan subagent resolved the design forks (alt-meta = build-order archetype variants NOT build-plan meta[]; greying via a `_dsIcon opts.bm` flag; recipe via `/api/dictionary/items`); I re-verified every load-bearing claim before building. Blast radius contained: `_dsIcon` only has the 2 bm callers; `_defIcon` (THREATS/DEFENSE) keeps its OWNED badge (guarded). ds_knobs reuse untouched.
 - **UI-audit ritual: REAL Playwright render, all 6 behaviors fired live, 5/5 PASS, 2 MUST-FIX fixed in-slice** - (1) the `.bm-owned` stylesheet opacity was DEAD (inline `opacity:1` won the cascade) -> set inline 0.4; (2) `.bm-next`/`.bm-ring` were Hextech-gold (--accent) colliding with the +Ndps captions -> cyan `#6cf` (the in-file NEXT color).
 - **Live-verified the meta-cycle is real:** MF carry/tank/mage return distinct builds (carry -> Runaan's; MF default resolves "assassin", so cycling to carry reaches the better build). 185 tests green across two Tier-1 sweeps; ASCII-clean (added lines; the pre-existing arrow/box-drawing chars in items_index.js are not mine).
@@ -13580,35 +13580,35 @@ Scoped build session, "continue" after B2. Spec-first (a grounded Plan subagent)
 
 ---
 
-# 2026-06-29 (Section B - WP-B2 horizontal 3-row build module scaffold shipped; commit `adedacde`)
+# 2026-06-29 (Section B - WP-B2 horizontal 3-row build module scaffold shipped; commit `eea01601`)
 
 Scoped build session. Operator picked B2 via a framed scope question - it is the gate for the entire D-series. First Section B panel slice; UNBLOCKS D1/D2/D3 + B3/B4.
 
-- **666 WP-B2 3-row build module (commit `adedacde`).** `active_match.js` `_renderAmBuildBody` rebuilt: the old single vertical DS picks strip -> a horizontal `.bm-module` with Row1 `.bm-live` (the EXISTING C5 `/api/build-plan` `planStates` feed), Row2 `.bm-meta` (NEW `_maybeRefreshBuildOrder` -> `/api/build-order` `order[]`, mirrors the build-plan fetcher), Row3 `.bm-knobs` (NEW `_renderBmKnobs` REUSES the `ds_knobs.js` `fetchDsKnobs`/`getCachedDsKnobs` champ-NAME data layer - the champ-select `renderDsKnobs` panel untouched). NEW `web/css/panels/build_module.css` + the `dashboard.css` `@import` (parity guard). The dedup sig gains the META order ids.
+- **666 WP-B2 3-row build module (commit `eea01601`).** `active_match.js` `_renderAmBuildBody` rebuilt: the old single vertical DS picks strip -> a horizontal `.bm-module` with Row1 `.bm-live` (the EXISTING C5 `/api/build-plan` `planStates` feed), Row2 `.bm-meta` (NEW `_maybeRefreshBuildOrder` -> `/api/build-order` `order[]`, mirrors the build-plan fetcher), Row3 `.bm-knobs` (NEW `_renderBmKnobs` REUSES the `ds_knobs.js` `fetchDsKnobs`/`getCachedDsKnobs` champ-NAME data layer - the champ-select `renderDsKnobs` panel untouched). NEW `web/css/panels/build_module.css` + the `dashboard.css` `@import` (parity guard). The dedup sig gains the META order ids.
 - **TDD + gates:** RED-first NEW `tests/test_overlay_b2_three_row_build_module.py` (grep-style, no jsdom). 147/0 Tier-1 sweep. UI-audit ritual PASS (real Playwright render, 5/5 phases, zero MUST-FIX; `--fs-xs` resolves to 16px live, inputs 26px >= the 24px floor). ASCII-clean (real per-line scan, NOT the locale-broken `grep -P` which silently no-op'd). Built mostly inline (single serialized file = R9) with the two mandatory subagent gates (UI-audit + a live-curl integration check); the `verifier` subagent skipped per R7 (own single-thread edit, fresh-green this turn).
 - **Live integration verified vs running RC `:8888`:** `/api/build-order` + `/api/ds-knobs` return the EXACT Row2/Row3 shapes. `/api/build-plan` 404s on the running pid 7120 (booted 01:52, predates the C5 route) -> the client fail-softs to an empty LIVE row. **OWED: an RC restart + a live in-game capture of the module** (gated on `project_liveclient_loopback_regression`; the running RC is on `main`, so B2 goes live only after this branch merges + restart).
-- **Bookkeeping:** Section J B2 OPEN -> DONE + the stale C5 OPEN -> DONE drift corrected (branch C5 = `0e44a8fc` never flipped its own row). LEDGER DIVERGENCE: this branch tops at 666 while main is at 670 (main C5 = `cedb78c2`) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
+- **Bookkeeping:** Section J B2 OPEN -> DONE + the stale C5 OPEN -> DONE drift corrected (branch C5 = `da76719d` never flipped its own row). LEDGER DIVERGENCE: this branch tops at 666 while main is at 670 (main C5 = `aca85433`) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
 - **NEXT:** B3 (Row1/Row2 owned-greying + partial-component pips + meta right-click alt-cycle; deps B2 satisfied) or B4 (MF SR fixture oracle; deps B2+C2). The whole D-series is now unblocked.
 
 ---
 
-# 2026-06-29 (Section C - WP-C4 owned-aware re-plan loop + sell/swap + hysteresis shipped; commit `51f3141d`)
+# 2026-06-29 (Section C - WP-C4 owned-aware re-plan loop + sell/swap + hysteresis shipped; commit `cd586f13`)
 
 Scoped build session (ultracode workflow). Fourth + last build-brain MODULE before the C5 route wires it live.
 
-- **665 WP-C4 owned-aware re-plan (commit `51f3141d`).** NEW `core/build_planner/replan.py` - `ReplanLoop.tick()` keeps owned items as a FIXED prefix (never re-planned; C2 `plan_build` already drops owned from the pool), re-beams only the tail, and applies anti-flip-flop hysteresis. **Hysteresis:** stickiness margin (challenger flips only if single-item `score_build([id]).total > incumbent*1.10`), pure `schmitt()` pivot (add 1.20 / drop 0.90, inclusive, drop<add invariant), just-bought lock (game-clock seconds; off-build mid+ exempt; purchase = owned COUNT growth so a 3340->3363 trinket swap is not a false purchase; first tick = no phantom), sell rate-limit (<=1/stage, resets on stage change). **Sell/swap:** free trinket upgrade 3340->3363 (bypasses all gates), boots-sell at 6-item+surplus (boots = `Boots` tag OR from-closure to 1001), true swap ONLY on matchup-invalidated (antiheal vs heal_sources==0, %armor-pen vs squishy kill target; one swap/item). **Component-defer = real recipe membership:** `component_ids_of` transitive `from`-closure (owned 3036 -> defers planned 3035, live-verified). State IN-MEMORY: `accept()` logs, `end_match(path)` opt-in atomic save. replan.py added to planner-test `_SOURCES` (split-brain + family-literal guard).
+- **665 WP-C4 owned-aware re-plan (commit `cd586f13`).** NEW `core/build_planner/replan.py` - `ReplanLoop.tick()` keeps owned items as a FIXED prefix (never re-planned; C2 `plan_build` already drops owned from the pool), re-beams only the tail, and applies anti-flip-flop hysteresis. **Hysteresis:** stickiness margin (challenger flips only if single-item `score_build([id]).total > incumbent*1.10`), pure `schmitt()` pivot (add 1.20 / drop 0.90, inclusive, drop<add invariant), just-bought lock (game-clock seconds; off-build mid+ exempt; purchase = owned COUNT growth so a 3340->3363 trinket swap is not a false purchase; first tick = no phantom), sell rate-limit (<=1/stage, resets on stage change). **Sell/swap:** free trinket upgrade 3340->3363 (bypasses all gates), boots-sell at 6-item+surplus (boots = `Boots` tag OR from-closure to 1001), true swap ONLY on matchup-invalidated (antiheal vs heal_sources==0, %armor-pen vs squishy kill target; one swap/item). **Component-defer = real recipe membership:** `component_ids_of` transitive `from`-closure (owned 3036 -> defers planned 3035, live-verified). State IN-MEMORY: `accept()` logs, `end_match(path)` opt-in atomic save. replan.py added to planner-test `_SOURCES` (split-brain + family-literal guard).
 - **Built via ultracode workflow:** 2-agent adversarial DESIGN CRITIQUE -> spec synthesis -> RED agent -> GREEN agent -> 4 adversarial verifiers (ground-truth + hysteresis + sell-gating + prefix/defer/purity). **The critique CAUGHT a real blocker** - the original spec's `_first_item_totals` beam-map gate would collapse at full depth (bw6 dp6 -> 1 distinct opener) and flip the incumbent every tick, DEFEATING no-whiplash; the impl correctly diverged to a single-item `score_build` gate with "viable == in pool AND unowned". All 4 verdicts CONFIRM/high, none fixture-shaped. **Orchestrator fresh ground-truth gate:** 49/0 (replan 30 + planner 19), py_compile + ruff + ASCII clean, zero banned literal, zero `agents.daemon_slayer` import.
 - **Tier-1:** no ENGINE bump, not Share-mirrored, no DS restart, NOT live-wired. **NEXT Section C: WP-C5** (`/api/build-plan` data contract DS->module->panel; Tier-2 route + integration tests; deps C2/C3/C4 now ALL satisfied + B2 panel). D3 also reuses replan.py for the per-item override store.
 
 ---
 
-# 2026-06-29 (Section C - WP-C3 live counter-build / situational_fit shipped; commit `64b7c634`)
+# 2026-06-29 (Section C - WP-C3 live counter-build / situational_fit shipped; commit `632607e9`)
 
 Scoped build session (ultracode workflow). Filled the `situational_fit` 0.0 stub left by WP-C2.
 
-- **664 WP-C3 situational counter-build (commit `64b7c634`).** NEW `core/build_planner/situational.py` (390 lines) - pure `situational_fit(build_ids, enemy_profile, ally_state, *, stage) -> [0,1)` over 7 criteria: C1 resist-vs-damage-split, C2 antiheal (ally de-dup), C3 fed-override (additive -> widens resist margin), C4 HP+resist vs pen, C5 pen TYPE from kill-target armor/MR not team avg, C6 tenacity vs CC, C7 `reanchor_plan` operator-deviation. `classify_item` patch-stable (flats + tags + curated NAME rosters on resolved name; both id keyspaces). `build_enemy_profile` is the ONLY impure helper, NEVER in the score_build path. `scoring.score_build` gains `enemy_profile=`/`ally_state=` (lazy import); `enemy_profile=None` stays 0.0 (stub-equivalent, existing test unchanged). Added to planner-test `_SOURCES` (split-brain ast guard + family-literal ban).
+- **664 WP-C3 situational counter-build (commit `632607e9`).** NEW `core/build_planner/situational.py` (390 lines) - pure `situational_fit(build_ids, enemy_profile, ally_state, *, stage) -> [0,1)` over 7 criteria: C1 resist-vs-damage-split, C2 antiheal (ally de-dup), C3 fed-override (additive -> widens resist margin), C4 HP+resist vs pen, C5 pen TYPE from kill-target armor/MR not team avg, C6 tenacity vs CC, C7 `reanchor_plan` operator-deviation. `classify_item` patch-stable (flats + tags + curated NAME rosters on resolved name; both id keyspaces). `build_enemy_profile` is the ONLY impure helper, NEVER in the score_build path. `scoring.score_build` gains `enemy_profile=`/`ally_state=` (lazy import); `enemy_profile=None` stays 0.0 (stub-equivalent, existing test unchanged). Added to planner-test `_SOURCES` (split-brain ast guard + family-literal ban).
 - **Built via ultracode workflow:** 3-agent divergent design panel -> synthesis-to-locked-spec -> RED agent -> GREEN agent -> 7 per-criterion adversarial verifiers + structural verifier (all CONFIRM, none fixture-shaped). **Orchestrator fresh ground-truth gate:** 54/0 (situational 35/0 + planner 19/0), py_compile + ruff + ASCII clean, zero banned literal, zero `agents.daemon_slayer` import.
-- **Tier-1:** no ENGINE bump, not Share-mirrored, no DS restart, NOT live-wired (WP-C5 `/api/build-plan` consumes it later). **Section J bookkeeping:** also corrected the stale C2 row OPEN -> DONE (`4f1d4126`; the WAKEUP-flagged loop drift - code was already merged item 663).
+- **Tier-1:** no ENGINE bump, not Share-mirrored, no DS restart, NOT live-wired (WP-C5 `/api/build-plan` consumes it later). **Section J bookkeeping:** also corrected the stale C2 row OPEN -> DONE (`4ce55761`; the WAKEUP-flagged loop drift - code was already merged item 663).
 - **NEXT Section C: WP-C4** (owned-aware re-plan loop + sell/swap + hysteresis; deps C2+C3 satisfied). Lane-A v4 remains a separate open spec (`docs/specs/LANE_A_SCENARIO_PRECOMPUTE_SPEC.md`).
 
 ---
@@ -13617,8 +13617,8 @@ Scoped build session (ultracode workflow). Filled the `situational_fit` 0.0 stub
 
 Autonomous headless cycle (skill headless-upgrade). 2 verified code slices merged to main + CI-green, cost-sweep CLEAN, 1 forward spec. NO live-game work (gated - see below).
 
-- **662 overlay match-launch flash fix (merge `f99de71b`).** main.js show-before-ready -> `once("ready-to-show")` gate + pure `shouldShowOverlayNow` + a `.ovx-ready` renderer load-gate (distinct from `.ovx-hidden`). rc-shell 306/0 (+7, RED-first). Verifier CONFIRM. OWED: Electron redeploy (Ctrl+Shift+B) + live no-flash pixel capture (gated).
-- **663 WP-C2 build planner (merge `4f1d4126`).** NEW core/build_planner/{scoring,planner}.py - pure score_build (DPS READ from ds-preview seed = no split-brain, cohesion via C1 synergy_score) + beam search (width 5-8, depth 6) mirroring beam.py without importing it. 19/0, split-brain ast-guarded, no family literal, NOT live-wired. NEXT Section C: WP-C3 (the situational_fit 0.0 stub).
+- **662 overlay match-launch flash fix (merge `62db90fa`).** main.js show-before-ready -> `once("ready-to-show")` gate + pure `shouldShowOverlayNow` + a `.ovx-ready` renderer load-gate (distinct from `.ovx-hidden`). rc-shell 306/0 (+7, RED-first). Verifier CONFIRM. OWED: Electron redeploy (Ctrl+Shift+B) + live no-flash pixel capture (gated).
+- **663 WP-C2 build planner (merge `4ce55761`).** NEW core/build_planner/{scoring,planner}.py - pure score_build (DPS READ from ds-preview seed = no split-brain, cohesion via C1 synergy_score) + beam search (width 5-8, depth 6) mirroring beam.py without importing it. 19/0, split-brain ast-guarded, no family literal, NOT live-wired. NEXT Section C: WP-C3 (the situational_fit 0.0 stub).
 - **cost-sweep CLEAN** - all 7 levers tight (caches/TTL/polls/log-suppress/haiku-floor/tasks/bundle-parity), no commit.
 - **Lane A REFRAMED (spec docs/specs/LANE_A_SCENARIO_PRECOMPUTE_SPEC.md):** the laning-verdict precompute is ALREADY SHIPPED (core/laning_scenario_precompute.py + patch-keyed artifacts + precomputed_laning_coach.py shadow reader) - NOT greenfield. Remaining = a bounded v4 EXTENSION: add cooldown-window + spike-timing verdicts (substrate exists - cooldown_watch/recharge_ledger/spike_markers, unwired) + an item-state axis. The coach-FLIP is GATED (shadow data-starved per LEDGER cycle 55, 0/0 comparable agreement; + no Live Client cooldown producer, ult_up hardcoded None at _deterministic_coaching.py:1019). NEXT cycle builds v4 from the spec.
 - **ORCHESTRATION LESSON:** session ran from a STALE worktree (016b3228, pre-C1); a non-isolated Plan agent specced vs old code. FF'd the worktree to main mid-run. Always confirm a non-isolated subagent's checkout == main.
@@ -13638,9 +13638,9 @@ NEXT: (1) resolve the loopback regression (Windows/operator-level) then retry E2
 
 ---
 
-# 2026-06-28 (item 661 landed - overlay panel-set gate tests reconciled to retired-panel-sets model; `6c3d2586` merged to main)
+# 2026-06-28 (item 661 landed - overlay panel-set gate tests reconciled to retired-panel-sets model; `80cda9fd` merged to main)
 
-Worktree branch `claude/hardcore-saha-0592d5` (built earlier in parallel) merged to main via no-ff. Test + doc only, zero production code; renumbered 656->661 (the WP-A4b item 656 landed on main concurrently). 5 stale overlay panel-set gate tests rewritten to the `.ovx-hidden` per-widget contract (panel-sets retired `b16bfce1`); ROADMAP.md trimmed 83044 -> 80481 B (5 CLOSED rows -> docs/ROADMAP_HISTORY.md). See LEDGER 661. CI GREEN on main (run 28341328586, all jobs incl panel snapshots + authored-source hygiene).
+Worktree branch `claude/hardcore-saha-0592d5` (built earlier in parallel) merged to main via no-ff. Test + doc only, zero production code; renumbered 656->661 (the WP-A4b item 656 landed on main concurrently). 5 stale overlay panel-set gate tests rewritten to the `.ovx-hidden` per-widget contract (panel-sets retired `bf205ad0`); ROADMAP.md trimmed 83044 -> 80481 B (5 CLOSED rows -> docs/ROADMAP_HISTORY.md). See LEDGER 661. CI GREEN on main (run 28341328586, all jobs incl panel snapshots + authored-source hygiene).
 
 ---
 
@@ -13690,27 +13690,27 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 
 ---
 
-# 2026-06-27 (PGL PARTY MAINS wired + liveclient events-path bug fix + WH_KEYBOARD_LL hotkey hook, `aa008079` + `dfff433d` + `7b325e3e`)
+# 2026-06-27 (PGL PARTY MAINS wired + liveclient events-path bug fix + WH_KEYBOARD_LL hotkey hook, `61efc4cc` + `e1e5ebe4` + `6824e04a`)
 
 Live operator session (back-to-back ranked SR). Restarted RC to activate last session's mid-pick spell fix, then 3 shipped items incl a MAJOR live-bug find. All committed + pushed + live-verified.
 
-- **WH_KEYBOARD_LL hotkey hook (`aa008079`).** RegisterHotKey global accelerators are SWALLOWED while League/Overlay Platform M holds foreground focus, so in-game Ctrl+Shift+A (overlay ACTIVE) / Ctrl+Shift+B (panel cycle) never reached `tools/hotkey_listener.py`. Switched to a WH_KEYBOARD_LL low-level hook (sees the press at the OS input queue ahead of the focused app). Pure `HotkeyDecoder` (Ctrl+Shift gate + press-edge debounce) for headless tests; hook proc only enqueues -> dispatch worker runs the slow handlers (post_choice 3s HTTP stays off the hook thread, under LowLevelHooksTimeout); always CallNextHookEx (observe, never swallow). 8 decoder + 4 panel-cycle tests green. LIVE: listener restarted (pid 25208), log confirms "keyboard hook installed". OWED: in-game physical-press confirm of the VISIBLE panel cycle.
-- **PGL PARTY MAINS wired (`dfff433d`).** Operator-reported empty MAINS grids. Root cause: the dashboard read `lcu.party_mains` but the backend NEVER emitted it (s162 lobby UI built vs fixtures; live read-path never wired). LCU on this client build exposes only the LOCAL player mastery (by-puuid 404s), so party-member mastery is not LCU-fetchable; the agent is forwarder-only (ADR-011, no core.*). Enrich Legion-side: NEW `dashboard/_party_mains.py` - per non-self lobby member, resolve the Riot-API encrypted puuid from their riot-id via Account-V1 (the LCU member puuid is a different form that 400s mastery - verified live), then top-1 Champion-Mastery-V4 -> `{name, player, mastery_level, mastery_points}`. NEW `core.riot_api.get_top_champion_masteries` (/top wrapper). Non-blocking (background fetch, serves cached, never stalls /api/state), TTL-cached by member-set, fail-soft per member. Wired in `_state_builder.build_state`. 12 tests green. LIVE-CONFIRMED: zChunjae#Sera2 -> Seraphine mastery 7 / 42836, self excluded. (W/L/KDA columns stay "-" - need that player match history, which RC does not hold.)
-- **MAJOR BUG: liveclient events read from the wrong JSON path (`7b325e3e`).** Found via the task-4 base-siege live confirm: a ground-truth relay poller caught 7 turrets + 1 inhib falling while the served siege callout fired in 0/1368 samples; `liveclient_summary` returned `turret_events=[]` though the relay snapshot held 131 events (13 TurretKilled) at `data.events.Events`. Root cause: the parse read `gd.get("events")` (= `gameData.events`, ALWAYS None - the Live Client puts `events` at the TOP LEVEL of allgamedata, sibling of gameData). So EVERY in-game event-derived callout was silently dead live: base-siege, inhib-respawn, dragon-soul, epic-buff, lost-objective macro-response. The objective-events test passed only because its fixture nested events under gameData too (fixture shaped to the bug). Corrected the fixture to the real shape + added the missing turret/inhib coverage; fix is `gd`->`d` x3. 21 callout/liveclient tests green.
+- **WH_KEYBOARD_LL hotkey hook (`61efc4cc`).** RegisterHotKey global accelerators are SWALLOWED while League/Overlay Platform M holds foreground focus, so in-game Ctrl+Shift+A (overlay ACTIVE) / Ctrl+Shift+B (panel cycle) never reached `tools/hotkey_listener.py`. Switched to a WH_KEYBOARD_LL low-level hook (sees the press at the OS input queue ahead of the focused app). Pure `HotkeyDecoder` (Ctrl+Shift gate + press-edge debounce) for headless tests; hook proc only enqueues -> dispatch worker runs the slow handlers (post_choice 3s HTTP stays off the hook thread, under LowLevelHooksTimeout); always CallNextHookEx (observe, never swallow). 8 decoder + 4 panel-cycle tests green. LIVE: listener restarted (pid 25208), log confirms "keyboard hook installed". OWED: in-game physical-press confirm of the VISIBLE panel cycle.
+- **PGL PARTY MAINS wired (`e1e5ebe4`).** Operator-reported empty MAINS grids. Root cause: the dashboard read `lcu.party_mains` but the backend NEVER emitted it (s162 lobby UI built vs fixtures; live read-path never wired). LCU on this client build exposes only the LOCAL player mastery (by-puuid 404s), so party-member mastery is not LCU-fetchable; the agent is forwarder-only (ADR-011, no core.*). Enrich Legion-side: NEW `dashboard/_party_mains.py` - per non-self lobby member, resolve the Riot-API encrypted puuid from their riot-id via Account-V1 (the LCU member puuid is a different form that 400s mastery - verified live), then top-1 Champion-Mastery-V4 -> `{name, player, mastery_level, mastery_points}`. NEW `core.riot_api.get_top_champion_masteries` (/top wrapper). Non-blocking (background fetch, serves cached, never stalls /api/state), TTL-cached by member-set, fail-soft per member. Wired in `_state_builder.build_state`. 12 tests green. LIVE-CONFIRMED: zChunjae#Sera2 -> Seraphine mastery 7 / 42836, self excluded. (W/L/KDA columns stay "-" - need that player match history, which RC does not hold.)
+- **MAJOR BUG: liveclient events read from the wrong JSON path (`6824e04a`).** Found via the task-4 base-siege live confirm: a ground-truth relay poller caught 7 turrets + 1 inhib falling while the served siege callout fired in 0/1368 samples; `liveclient_summary` returned `turret_events=[]` though the relay snapshot held 131 events (13 TurretKilled) at `data.events.Events`. Root cause: the parse read `gd.get("events")` (= `gameData.events`, ALWAYS None - the Live Client puts `events` at the TOP LEVEL of allgamedata, sibling of gameData). So EVERY in-game event-derived callout was silently dead live: base-siege, inhib-respawn, dragon-soul, epic-buff, lost-objective macro-response. The objective-events test passed only because its fixture nested events under gameData too (fixture shaped to the bug). Corrected the fixture to the real shape + added the missing turret/inhib coverage; fix is `gd`->`d` x3. 21 callout/liveclient tests green.
 - **Restarts (operator-requested wrap):** RC pid 17748 -> 29032 (spell fix + PARTY MAINS + events-fix all live); overlay relaunched (4 electron); hotkey listener pid 25208 (hook installed). Spell fix was already live from the first restart (this session draft spells = fixed role-aware behavior).
 
 OWED: events-fix in-game live confirm (next game tower fall -> siege callout in /api/state callouts; unit + live-path proven, just not yet eyeballed in a served callout); draft spell-hover confirm (BOTTOM self-corrects Flash+Heal, manual sticks); in-game Ctrl+Shift+B VISIBLE panel cycle; deterministic ARAM coach Stage-4 flip (eyeball more games).
 
 ---
 
-# 2026-06-27 (deterministic ARAM coach Haiku-to-zero Stages 1-2 + legion_on agent fix + overlay/spell diagnosis, `5b74f9f2`..`1aed8f06`)
+# 2026-06-27 (deterministic ARAM coach Haiku-to-zero Stages 1-2 + legion_on agent fix + overlay/spell diagnosis, `c8744762`..`93f13de3`)
 
 Live operator session (Lulu/Kalista ARAM then ranked Caitlyn SR). Resumed the no-live-LLM precompute program (B), coach lane.
 
-- **Deterministic ARAM coach - correct-by-construction, SHADOW-only (commits `338ee4e3` + `914f3acf` + `7ff205e7`).** Re-measured the HZ laning-VERDICT precompute vs Haiku on the item-614 CORRECTED tables (ts>=2026-06-24, ARAM only, n=269): **23% agreement** (62/269), precompute systematically too passive (says hold, Haiku says trade; emits "trade" ZERO times for ARAM). Re-confirms the SETTLED item-266 matchup-verdict coin-flip + no ARAM rewind ground truth -> the laning-verdict flip is a DEAD-END (memory `project_aram_haiku_zero_path`; do NOT re-attempt / re-tune matchup thresholds). PIVOTED to correct-by-construction: NEW `core/aram_action_rule` (HP-band/wave tree from `aram_coach.py:251-260`) + `core/aram_fight_risk` (enemy-CC projection) + `core/aram_deterministic_coach.build_block` (assembler) + `core/aram_coach_shadow` (whole-output shadow) wired in `dashboard/_state_builder` + `_deterministic_coaching`; `item_build` fills from `build_orders_aram.json`. Logs deterministic-vs-Haiku per ARAM tick to `data/aram_coach_shadow.jsonl`. **Eyeball-validated LIVE (Kalista ARAM): the ACTION verdict MATCHES Haiku** (POKE==POKE PHASE, FALL BACK~=WAIT RESPAWN) - the keystone works zero-LLM. Gap: fight_rule/risk correct-but-generic vs Haiku's champ-specific mechanics. SHADOW-only (served /api/state byte-unchanged, safety-property test). RC reloaded pid 7096 = shadow LIVE. NEXT: eyeball more games -> Stage-4 default-OFF flip (operator-gated, do-not-flip-blind); optional Stage 0 build-A/B variants table + richer fight_rule.
-- **legion_on agent-death fix (`5b74f9f2`).** legion_off kills RC-HotkeyListener / RC-LCUAgent / RC-LiveClientRelay via its broad "Riot Commander" python pattern, but legion_on never restarted them (LogonTrigger tasks) - every off/on cycle silently left in-game hotkeys + LCU + relay DEAD. legion_on now restarts all 3, process-guarded vs the pythonw launcher-stub double-launch (RegisterHotKey 1409).
+- **Deterministic ARAM coach - correct-by-construction, SHADOW-only (commits `de7f4806` + `01055b34` + `3e45fa47`).** Re-measured the HZ laning-VERDICT precompute vs Haiku on the item-614 CORRECTED tables (ts>=2026-06-24, ARAM only, n=269): **23% agreement** (62/269), precompute systematically too passive (says hold, Haiku says trade; emits "trade" ZERO times for ARAM). Re-confirms the SETTLED item-266 matchup-verdict coin-flip + no ARAM rewind ground truth -> the laning-verdict flip is a DEAD-END (memory `project_aram_haiku_zero_path`; do NOT re-attempt / re-tune matchup thresholds). PIVOTED to correct-by-construction: NEW `core/aram_action_rule` (HP-band/wave tree from `aram_coach.py:251-260`) + `core/aram_fight_risk` (enemy-CC projection) + `core/aram_deterministic_coach.build_block` (assembler) + `core/aram_coach_shadow` (whole-output shadow) wired in `dashboard/_state_builder` + `_deterministic_coaching`; `item_build` fills from `build_orders_aram.json`. Logs deterministic-vs-Haiku per ARAM tick to `data/aram_coach_shadow.jsonl`. **Eyeball-validated LIVE (Kalista ARAM): the ACTION verdict MATCHES Haiku** (POKE==POKE PHASE, FALL BACK~=WAIT RESPAWN) - the keystone works zero-LLM. Gap: fight_rule/risk correct-but-generic vs Haiku's champ-specific mechanics. SHADOW-only (served /api/state byte-unchanged, safety-property test). RC reloaded pid 7096 = shadow LIVE. NEXT: eyeball more games -> Stage-4 default-OFF flip (operator-gated, do-not-flip-blind); optional Stage 0 build-A/B variants table + richer fight_rule.
+- **legion_on agent-death fix (`c8744762`).** legion_off kills RC-HotkeyListener / RC-LCUAgent / RC-LiveClientRelay via its broad "Riot Commander" python pattern, but legion_on never restarted them (LogonTrigger tasks) - every off/on cycle silently left in-game hotkeys + LCU + relay DEAD. legion_on now restarts all 3, process-guarded vs the pythonw launcher-stub double-launch (RegisterHotKey 1409).
 - **Ctrl+Shift+B overlay - PARTIAL.** In-game failure root cause = the hotkey listener was DEAD (the legion off/on gap above); restarted it (pid 22880, registers Ctrl+Shift+A/B clean). BUT the in-game keypress STILL does not reach the listener (panel_cycle.txt mtime frozen, ZERO signals since restart) - League/Overlay Platform M is swallowing the global RegisterHotKey. Stamped the signal file directly to isolate overlay-side vs keypress-side; OPEN: operator to confirm whether the overlay cycled on the direct stamp -> if yes, switch the listener to a low-level WH_KEYBOARD_LL hook. (Side note: a test pollutes the real `logs/hotkey_listener.log` with `Z:\nonexistent` writes - separate test-isolation slice.)
-- **Summoner-spell revert fix (`1aed8f06`).** The RuneWriter mid-pick branch pushed the generic role-blind Flash+Teleport every ~1s poll, reverting ADC spells throughout the ranked-draft hover. Now role-aware (`spells_for_role`: BOTTOM->Flash+Heal) + respects a manual change (mirrors the post-lock branch). 7 new tests, e6 green. ACTIVATES ON NEXT RC RESTART (deferred - operator was in a live ranked game).
+- **Summoner-spell revert fix (`93f13de3`).** The RuneWriter mid-pick branch pushed the generic role-blind Flash+Teleport every ~1s poll, reverting ADC spells throughout the ranked-draft hover. Now role-aware (`spells_for_role`: BOTTOM->Flash+Heal) + respects a manual change (mirrors the post-lock branch). 7 new tests, e6 green. ACTIVATES ON NEXT RC RESTART (deferred - operator was in a live ranked game).
 
 OWED: RC restart (deferred, operator in-game) activates the spell fix. Overlay keypress delivery (low-level hook). ARAM coach flip gate (eyeball more games). Base-siege callout live confirm (from-start sampler still armed).
 
@@ -13739,14 +13739,14 @@ No doc relocations this pass. No code/engine changes.
 
 ---
 
-# 2026-06-27 (slow-tick ROOT-CAUSE conclusive + rc_facts / scheduled-task triage / overlay build-panel hotkey / instant base-siege callout, `b3453044`..`17c1061d`)
+# 2026-06-27 (slow-tick ROOT-CAUSE conclusive + rc_facts / scheduled-task triage / overlay build-panel hotkey / instant base-siege callout, `2cabff4e`..`76c1fce8`)
 
 5 commits, verified across 2 live ARAM Mayhem games. Resolved item-639's OPEN coach-tick root-cause + operator overlay/coach follow-ons. The no-LLM precompute DB (B) is STILL deferred.
 
-- **Slow-tick ROOT-CAUSE = pure Haiku latency, CONCLUSIVE** (`b3453044`). Widened `_base_coach._poll_tick` to time `_on_state_received` + the whole synchronous poll-tick (Haiku call EXCLUDED - it is worker-thread-offloaded, never stalls the 1.5s loop). 2 games (12:52 + 19:33, full sieges 4t+1i / 6t+2i down, 195 events): ZERO parse/on_state/tick/shadow rows >150ms, only `coach` (~6s med, 12.3s max); latency FLAT vs base-attack (5865ms no-structure vs 6255ms structures-down), cadence did not speed up. The "slow tick" is just the ~6s Haiku call, salient during a chaotic siege. DO NOT re-chase parse/IO; fix = latency-bridging (-> siege callout below).
-- **rc_facts false-positives FIXED** (`6956affb`). CostHealthWatchdog `result=1` is its DESIGNED breach signal (`return 1 if breached`; today $0.51 vs $0.08 baseline) - suppressed; Disabled tasks no longer flagged. RC-LCUAgent + RC-LiveClientRelay were healthy daemons KILLED post-06-24 (exit-1=terminated; non-integral in 1-PC - RC self-heals :2999/LCU in-process) - restarted via Start-ScheduledTask, LCU posting confirmed. Memory `reference_session_start_anomaly_triage`. DO NOT re-chase these 4 as broken.
-- **Overlay build-panel reachable in-game** (`f69ae1eb` + `17c1061d`). `w-build` shows ONLY in the `build` panelset; the only in-game switch (Alt+Shift+C) was on the dead Electron globalShortcut path, and the in-overlay switcher is itself build-only -> circular. Routed a panel-cycle through the Win32 listener (mirrors the Ctrl+Shift+A template): `hotkey_listener.py` stamps `ops/runtime/overlay_panel_cycle.txt` -> `main.js startPanelCycleWatch -> applyPanelSet`. Bind is **Ctrl+Shift+B** (NOT C - C is contended by Discord/Overlay Platform M/DevTools); listener-verified on a physical press (alongside Ctrl+Shift+A control). OPEN: needs an overlay relaunch (`cd rc-shell; npm start`) for the VISIBLE cycle.
-- **Instant base-siege callout** (`fcb49e70`). `core.event_callouts.structure_siege_callout` - active "NOW" callout the moment a turret/inhib falls (30s recency, SR+ARAM via `_SIEGE_MODES`, inhib>turret, side not claimed). Wired through `next_callouts(turret_events=)` + `_liveclient` TurretKilled extraction + `_deterministic_coaching` passthrough -> renders in `#rn-callouts` (coach-core panel, no switch needed). Server-side chain proven end-to-end via a synthetic recent-structure state (both callouts surface); the live watcher capture missed the mid-game windows (armed at trace row 218, game's end) - harness-timing gap, NOT a bug.
+- **Slow-tick ROOT-CAUSE = pure Haiku latency, CONCLUSIVE** (`2cabff4e`). Widened `_base_coach._poll_tick` to time `_on_state_received` + the whole synchronous poll-tick (Haiku call EXCLUDED - it is worker-thread-offloaded, never stalls the 1.5s loop). 2 games (12:52 + 19:33, full sieges 4t+1i / 6t+2i down, 195 events): ZERO parse/on_state/tick/shadow rows >150ms, only `coach` (~6s med, 12.3s max); latency FLAT vs base-attack (5865ms no-structure vs 6255ms structures-down), cadence did not speed up. The "slow tick" is just the ~6s Haiku call, salient during a chaotic siege. DO NOT re-chase parse/IO; fix = latency-bridging (-> siege callout below).
+- **rc_facts false-positives FIXED** (`7b5b59ff`). CostHealthWatchdog `result=1` is its DESIGNED breach signal (`return 1 if breached`; today $0.51 vs $0.08 baseline) - suppressed; Disabled tasks no longer flagged. RC-LCUAgent + RC-LiveClientRelay were healthy daemons KILLED post-06-24 (exit-1=terminated; non-integral in 1-PC - RC self-heals :2999/LCU in-process) - restarted via Start-ScheduledTask, LCU posting confirmed. Memory `reference_session_start_anomaly_triage`. DO NOT re-chase these 4 as broken.
+- **Overlay build-panel reachable in-game** (`cda5b259` + `76c1fce8`). `w-build` shows ONLY in the `build` panelset; the only in-game switch (Alt+Shift+C) was on the dead Electron globalShortcut path, and the in-overlay switcher is itself build-only -> circular. Routed a panel-cycle through the Win32 listener (mirrors the Ctrl+Shift+A template): `hotkey_listener.py` stamps `ops/runtime/overlay_panel_cycle.txt` -> `main.js startPanelCycleWatch -> applyPanelSet`. Bind is **Ctrl+Shift+B** (NOT C - C is contended by Discord/Overlay Platform M/DevTools); listener-verified on a physical press (alongside Ctrl+Shift+A control). OPEN: needs an overlay relaunch (`cd rc-shell; npm start`) for the VISIBLE cycle.
+- **Instant base-siege callout** (`4201630c`). `core.event_callouts.structure_siege_callout` - active "NOW" callout the moment a turret/inhib falls (30s recency, SR+ARAM via `_SIEGE_MODES`, inhib>turret, side not claimed). Wired through `next_callouts(turret_events=)` + `_liveclient` TurretKilled extraction + `_deterministic_coaching` passthrough -> renders in `#rn-callouts` (coach-core panel, no switch needed). Server-side chain proven end-to-end via a synthetic recent-structure state (both callouts surface); the live watcher capture missed the mid-game windows (armed at trace row 218, game's end) - harness-timing gap, NOT a bug.
 
 RC live pid 16360. Verifications: 2 live ARAM games (slow-tick), server-side synthetic (siege callout), physical keypress (Ctrl+Shift+B).
 
@@ -13754,66 +13754,66 @@ NEXT: (1) operator relaunch rc-shell overlay -> press Ctrl+Shift+B in-game to co
 
 ---
 
-# 2026-06-27 (item-638 tails + perf/polish: hotkey durability / R5 self-HP / coach-tick trace / hexcore WebGL, `f80915f7`..`718ecede`)
+# 2026-06-27 (item-638 tails + perf/polish: hotkey durability / R5 self-HP / coach-tick trace / hexcore WebGL, `12e06f3f`..`e405f9f2`)
 
 5 commits, all CI-green (hexcore CI is docs-only HTML). Closed the item-638 OPEN tails + the operator's chosen perf/polish lane; operator DEFERRED the strategic no-LLM precompute DB (B) this session.
 
-- **RC-HotkeyListener `result=1` was STALE, not a live bug** (`f80915f7`). It was the 06-24 boot of the pre-`b4d45636` script; a LogonTrigger task only updates LastTaskResult on a run, none happened since. PROVEN: current script runs clean under the task's pythonw (0x41301, hotkeys registered); the task is the SOLE logon launcher (`legion_agent_boot.ps1` is a MANUAL desktop shortcut, NOT in Startup/Run keys). DO NOT re-chase it as broken. Hardened anyway: file-logging (`logs/hotkey_listener.log`, pythonw has no stderr) + RegisterHotKey 15x2s retry + task RestartOnFailure/20s-Delay/WorkingDirectory. Live pythonw alive (pid 24956 at fix time).
-- **ARAM/Arena/Brawl R5 self-HP** (`524b1789`). The 3 `_parse_*_state` builders now emit numeric `hp`/`hp_max` (were computing them but emitting only hp_pct), so `caster_missing_hp_pct` flows like SR. No ENGINE bump (coach-side). DON'T redo: dispatch already passed `caster_hp=state.get("hp")`; the gap was the snapshot dict lacking the key.
-- **Coach-tick instrumentation** (`e175e7a8`). `coaches/_base_coach.py` times each dispatch + any slow parse/shadow phase (>150ms) vs turret/inhib/nexus counts -> `data/coach_tick_trace.jsonl` (gitignored). NEXT: read the trace after a live ARAM/Arena/Brawl game to root-cause the base-attack slow tick (needs live data - not observable headless).
-- **Hexcore = DRAW/fill-rate bound, NOT CPU-sim** -> WebGL glow-field shipped + DEFAULT-ON (`19c5abc2` + `718ecede`; `?webgl=0` forces 2D + is the auto-fallback). ~2x FPS at emulated HiDPI (47->92), faithful render, zero GL errors. A Web Worker would NOT have helped - do NOT re-pitch one. Minor open: GL gas reads slightly brighter than the 2D multi-stop gradients (tunable). Bundled fonts untouched.
+- **RC-HotkeyListener `result=1` was STALE, not a live bug** (`12e06f3f`). It was the 06-24 boot of the pre-`a0eadcfe` script; a LogonTrigger task only updates LastTaskResult on a run, none happened since. PROVEN: current script runs clean under the task's pythonw (0x41301, hotkeys registered); the task is the SOLE logon launcher (`legion_agent_boot.ps1` is a MANUAL desktop shortcut, NOT in Startup/Run keys). DO NOT re-chase it as broken. Hardened anyway: file-logging (`logs/hotkey_listener.log`, pythonw has no stderr) + RegisterHotKey 15x2s retry + task RestartOnFailure/20s-Delay/WorkingDirectory. Live pythonw alive (pid 24956 at fix time).
+- **ARAM/Arena/Brawl R5 self-HP** (`c9424429`). The 3 `_parse_*_state` builders now emit numeric `hp`/`hp_max` (were computing them but emitting only hp_pct), so `caster_missing_hp_pct` flows like SR. No ENGINE bump (coach-side). DON'T redo: dispatch already passed `caster_hp=state.get("hp")`; the gap was the snapshot dict lacking the key.
+- **Coach-tick instrumentation** (`c98ce4f4`). `coaches/_base_coach.py` times each dispatch + any slow parse/shadow phase (>150ms) vs turret/inhib/nexus counts -> `data/coach_tick_trace.jsonl` (gitignored). NEXT: read the trace after a live ARAM/Arena/Brawl game to root-cause the base-attack slow tick (needs live data - not observable headless).
+- **Hexcore = DRAW/fill-rate bound, NOT CPU-sim** -> WebGL glow-field shipped + DEFAULT-ON (`420e4ca8` + `e405f9f2`; `?webgl=0` forces 2D + is the auto-fallback). ~2x FPS at emulated HiDPI (47->92), faithful render, zero GL errors. A Web Worker would NOT have helped - do NOT re-pitch one. Minor open: GL gas reads slightly brighter than the 2D multi-stop gradients (tunable). Bundled fonts untouched.
 - **Repo cleanup:** `.claude/worktrees` 1.9GB->4KB (3 merged worktrees removed via `git worktree remove` + branches pruned); the live `C:/RC-CIWatchdog` worktree spared.
 
 RC live pid 28984. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
 
 ---
 
-# 2026-06-27 (ACTUALIZE 637: DS seam-wiring across /rank + overlay in-game hotkey/drag, `2943828b` + `b4d45636` + `1a9081e8`)
+# 2026-06-27 (ACTUALIZE 637: DS seam-wiring across /rank + overlay in-game hotkey/drag, `a43506b7` + `a0eadcfe` + `54ce9a4e`)
 
 Operator live session (Veigar Practice Tool). Built the fixes for the gaps item 637 only diagnosed.
 
-- **(A) DS seam-wiring SHIPPED (`2943828b`, ENGINE 1.153.0 -> 1.154.0, Tier-2, behavior-preserving DEFAULT-OFF).** The live-flip seam flags now thread across /rank -> client -> dispatch (+ R5 caster_missing_hp_pct from live self hp/hp_max). server.py 5 archetype routes accept them; R7/R12 scoped to /dps, R30 to /burst. hps.py compute_hps + rank_items_by_hps forward the R5 pair. SR coach wired; ARAM/Arena/Brawl pass-through guarded (snapshot dicts lack raw hp/hp_max - FOLLOW-UP). Re-verified FRESH post-:8893-restart: DS 7557/0, tests/ 9579/0, Share --check clean, /health 1.154.0. Default-ON flips still gated. Built via worktree workflow (engine+client agents, verifier-gated).
-- **(B) Overlay SHIPPED (`b4d45636`).** Ctrl+Shift+A dead in-game = Electron globalShortcut does not deliver under League foreground focus (DISPROVED the collision theory - all 5 accelerators register()=true). Routed the ACTIVE toggle through the Win32 `tools/hotkey_listener.py` (owns Ctrl+Shift+A id 3 -> stamps `ops/runtime/overlay_active_toggle.txt` -> `main.js startActiveToggleWatch` polls 200ms + flips). Body-drag-in-ACTIVE added (was: only a hidden 3px grip; the "still broken" report was STALE CACHED JS, cleared by fresh relaunch). 3 drag tests, rc-shell 274/274. Operator live-confirmed both. `1a9081e8`: ruff UP031 + Share CHANGELOG 1.154.0.
+- **(A) DS seam-wiring SHIPPED (`a43506b7`, ENGINE 1.153.0 -> 1.154.0, Tier-2, behavior-preserving DEFAULT-OFF).** The live-flip seam flags now thread across /rank -> client -> dispatch (+ R5 caster_missing_hp_pct from live self hp/hp_max). server.py 5 archetype routes accept them; R7/R12 scoped to /dps, R30 to /burst. hps.py compute_hps + rank_items_by_hps forward the R5 pair. SR coach wired; ARAM/Arena/Brawl pass-through guarded (snapshot dicts lack raw hp/hp_max - FOLLOW-UP). Re-verified FRESH post-:8893-restart: DS 7557/0, tests/ 9579/0, Share --check clean, /health 1.154.0. Default-ON flips still gated. Built via worktree workflow (engine+client agents, verifier-gated).
+- **(B) Overlay SHIPPED (`a0eadcfe`).** Ctrl+Shift+A dead in-game = Electron globalShortcut does not deliver under League foreground focus (DISPROVED the collision theory - all 5 accelerators register()=true). Routed the ACTIVE toggle through the Win32 `tools/hotkey_listener.py` (owns Ctrl+Shift+A id 3 -> stamps `ops/runtime/overlay_active_toggle.txt` -> `main.js startActiveToggleWatch` polls 200ms + flips). Body-drag-in-ACTIVE added (was: only a hidden 3px grip; the "still broken" report was STALE CACHED JS, cleared by fresh relaunch). 3 drag tests, rc-shell 274/274. Operator live-confirmed both. `54ce9a4e`: ruff UP031 + Share CHANGELOG 1.154.0.
 
 NEXT: (1) **RC-HotkeyListener task exits result=1** - listener works + runs manually but the scheduled task fails, so #3 is not durable across reboot; fix the task config (script is fine - it is a task/launcher config issue). (2) ARAM/Arena/Brawl R5 self-HP (surface raw hp/hp_max in their snapshot dicts; SR already wired). (3) seam default-ON flips (DSP11/RF1 live-validated). (4) untouched original list: coach-tick trace on base-attack, in-game build-chooser overlay widget, hexcore speedup (profile first), repo cleanup (worktrees ~1.9GB + gemini_io + scratch; deletes hit a sandbox guard - needs a workaround). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
 
-> Older sessions (live-flip validation `2e8abb36` and earlier) archived to `docs/history_notes.md`.
+> Older sessions (live-flip validation `bd937f7b` and earlier) archived to `docs/history_notes.md`.
 
 ---
 
-# 2026-06-27 (gemini-headless director CONTINUITY fix + gemini artifacts + overlay-only, `d8445fec`/`8554d2a8`/`f3346b83`)
+# 2026-06-27 (gemini-headless director CONTINUITY fix + gemini artifacts + overlay-only, `4c7c2133`/`2740d7ef`/`b07d1c10`)
 
 Operator overnight (Opus 4.8, ultracode): fix the gemini-headless self-handoff redundancy (director re-issues completed work), verify Gemini<->Claude, run /gemini-headless-upgrade. Plus: overlay-only UI, fix gemini tone/style/memory artifacts, commit hexcore.
 
-- **Root cause (3-way confirmed).** docs/LEDGER.md is newest-first (top=newest); `director()` fed `tail('docs/LEDGER.md',90)` = the OLDEST entries (~item 325, 3wk stale), so shipped items 618-633 were INVISIBLE and got re-proposed. Git proves it: `e24410d6`/`b951f985` "R28 CLEAN no-op - directive premises already shipped 618-621".
-- **Fix (TDD `d8445fec`).** new `head_lines()` newest-first reader; `build_director_context` now sends an explicit ALREADY-COMPLETED DIGEST (recent commits + LEDGER HEAD + the persisted directive chain `ops/loop/control/directive_history.jsonl`, gitignored, survives restarts) + a BUILD-ON/de-dup HARD RULE. Sibling tail-inversions fixed: loop_controller ROADMAP read + `tools/gemini_audit.ps1` ROADMAP/BACKLOG (Head helper). GEMINI.md gains the continuity/memory model + bans the meta-narration preamble ("last directive was a false positive / stale read" artifact). 7 RED-first tests + 10 existing loop tests green; ruff clean; gemini_audit.ps1 parses.
+- **Root cause (3-way confirmed).** docs/LEDGER.md is newest-first (top=newest); `director()` fed `tail('docs/LEDGER.md',90)` = the OLDEST entries (~item 325, 3wk stale), so shipped items 618-633 were INVISIBLE and got re-proposed. Git proves it: `aa80b896`/`6a13dc93` "R28 CLEAN no-op - directive premises already shipped 618-621".
+- **Fix (TDD `4c7c2133`).** new `head_lines()` newest-first reader; `build_director_context` now sends an explicit ALREADY-COMPLETED DIGEST (recent commits + LEDGER HEAD + the persisted directive chain `ops/loop/control/directive_history.jsonl`, gitignored, survives restarts) + a BUILD-ON/de-dup HARD RULE. Sibling tail-inversions fixed: loop_controller ROADMAP read + `tools/gemini_audit.ps1` ROADMAP/BACKLOG (Head helper). GEMINI.md gains the continuity/memory model + bans the meta-narration preamble ("last directive was a false positive / stale read" artifact). 7 RED-first tests + 10 existing loop tests green; ruff clean; gemini_audit.ps1 parses.
 - **Verified live.** gemini_ask round-trip grounded; REAL 2-cycle director proof PASS (builds on 631-633, no re-issue, chain visible); dry controller<->stub handshake PASS (2 chain records persisted). Independent verifier + repo-wide sibling-sweep workflow CONFIRM (16/16 clean-state).
 - **Overlay-only (operator 2026-06-27).** Chrome :8888 dashboard RETIRED as a viewing/audit surface; UI = Electron overlay ONLY. director_prompt.md + skill 3b UI-audit refs retargeted to the overlay (`?overlay=1` / rc-shell). Memory: `feedback_electron_overlay_only`.
-- **Opportunistic (`8554d2a8`).** CLAUDE.md DS banner -> live /health 1.151.0 / 706 items / 173 champs (patch 16.13.1).
-- **Hexcore (`f3346b83`).** Operator's "accretion disk" rework committed.
+- **Opportunistic (`2740d7ef`).** CLAUDE.md DS banner -> live /health 1.151.0 / 706 items / 173 champs (patch 16.13.1).
+- **Hexcore (`b07d1c10`).** Operator's "accretion disk" rework committed.
 
 NEXT: /gemini-headless-upgrade launched for the overnight (deep audit + lift + UI/overlay audit + DS sweeps); the director now BUILDS ON completed work, no re-issue. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
 
-- **R33 (loop cycle 4, `9eb644c9`)** - Section-3b overlay-cue typography audit. ward_cue.css + objective_chips.css (overlay-only) were sized on the dashboard token var(--fs-xs) 16px, out-shouting the 14px w-call ACTION verb; routed both to overlay var(--fs-ov-chip) 13px (R8 overlay-scoped-token doctrine). RED-first guard added to test_overlay_css_typography_tokens.py. CSS-only asset-hash reload, no restart/ENGINE/Share. **VISUAL OWED:** populated overlay pixel capture of the ward/objective cues - deferred, no live game (mode=client); cues need live data to render. Capture on the next live SR/ARAM game.
+- **R33 (loop cycle 4, `2b03c529`)** - Section-3b overlay-cue typography audit. ward_cue.css + objective_chips.css (overlay-only) were sized on the dashboard token var(--fs-xs) 16px, out-shouting the 14px w-call ACTION verb; routed both to overlay var(--fs-ov-chip) 13px (R8 overlay-scoped-token doctrine). RED-first guard added to test_overlay_css_typography_tokens.py. CSS-only asset-hash reload, no restart/ENGINE/Share. **VISUAL OWED:** populated overlay pixel capture of the ward/objective cues - deferred, no live game (mode=client); cues need live data to render. Capture on the next live SR/ARAM game.
 
-- **R34 (loop cycle 5, `a3d38c0e`; ledger 635)** - Section-7b heavyweight Aggregator D deep-dive (`docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md`, 12 findings). Signature = delta-vs-baseline + popular-vs-winrate dichotomy. SHIPPED F1 in-run: the personal_build champ-select panel dropped the served `most_common_build`; now renders a "Usual" line + per-row usual pips + a conditional survivorship insight (underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash reload, no restart/ENGINE/Share). TDD RED-first, verifier CONFIRM 24/24, 5-phase UI-audit PASS. F3 matchup delta-stats table (HIGH/new-compute) + F8 snowball/comeback bar (MED) -> BACKLOG. **VISUAL OWED:** populated champ-select pixel capture (no live game; headless snapshot `champ-select_personal-build.png` is the audit-trail proof).
+- **R34 (loop cycle 5, `2386043e`; ledger 635)** - Section-7b heavyweight Aggregator D deep-dive (`docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md`, 12 findings). Signature = delta-vs-baseline + popular-vs-winrate dichotomy. SHIPPED F1 in-run: the personal_build champ-select panel dropped the served `most_common_build`; now renders a "Usual" line + per-row usual pips + a conditional survivorship insight (underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash reload, no restart/ENGINE/Share). TDD RED-first, verifier CONFIRM 24/24, 5-phase UI-audit PASS. F3 matchup delta-stats table (HIGH/new-compute) + F8 snowball/comeback bar (MED) -> BACKLOG. **VISUAL OWED:** populated champ-select pixel capture (no live game; headless snapshot `champ-select_personal-build.png` is the audit-trail proof).
 
 ---
 
-# 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
+# 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `506a1536`)
 
 Operator reported terminal windows flashing open/closed intermittently on Legion. Diagnosed + fixed in one pass.
 
 - **Root cause.** RC-CIWatchdog fires every 2 min (`PT2M`) under a `pythonw.exe`-hosted task; its `_run` helper at `tools/ci_watchdog.py:316` spawned `git`/`gh` children with no `CREATE_NO_WINDOW`, so each child allocated a console that flashed onscreen. Exact `feedback_avoid_console_flash_legion` mode.
 - **Fix.** Added `creationflags = 0x08000000 if os.name == "nt" else 0` to the `_run` subprocess call (repo's cross-platform-safe idiom; no-op off Windows). Tier-1, no restart - the scheduled task re-reads the script on its next fire, so flashing stops within ~2 min.
 - **Swept siblings, both clean:** `cost_health_watchdog.py` (no subprocess - in-process HTTP); `ops/rc_supervisor.py` frozen but ALREADY has `CREATE_NO_WINDOW` at :857. CIWatchdog was the only offender.
-- **Verified.** `py_compile` OK; `test_ci_watchdog.py` 30/30; hygiene gate 13/13. Pushed `0028c8ac`.
+- **Verified.** `py_compile` OK; `test_ci_watchdog.py` 30/30; hygiene gate 13/13. Pushed `506a1536`.
 
 NEXT: nothing pending from this fix. Confirm the flashing is gone over the next few CIWatchdog cycles. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
 
 ---
 
-# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `62fe235a`)
+# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `b53cbf43`)
 
 Operator picked "surface it" over adding more axes. Promoted the item-632 shadow-log to a user-visible champ-select chip behind its own default-OFF flip flag.
 
@@ -13826,7 +13826,7 @@ NEXT (L4 tail): the two remaining axes (zone-control `controls_terrain`/`zonecon
 
 ---
 
-# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `de4c40e4`)
+# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `d549d00f`)
 
 Operator picked "both directions" this session: extend the capgap registry AND wire the live shadow-log.
 
@@ -13839,7 +13839,7 @@ NEXT (L4 tail): more axes (zone-control / objective-damage) + promote the shadow
 
 ---
 
-# 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `d52d6152`, CI green)
+# 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `6ee7b4bb`, CI green)
 
 First bet from the item-626 research report after the objective-state pack. Operator picked L4,
 then the multi-axis-synthesizer slice. Grounding found the report's "first slice = anti-tank, it
@@ -13871,18 +13871,18 @@ All zero-LLM deterministic folds over the BaronKill/DragonKill `objective_events
 (`dashboard/_liveclient.py:215`); all render via the kind-agnostic `web/js/panels/callouts.js`
 with NO JS edit; all Tier-1, no engine/ENGINE/Share/flip.
 
-- L1 (627, `1e07d91a`): `epic_buff_callouts` - sided Baron(180s)/Elder(150s) buff-expiry
+- L1 (627, `4e7d36e9`): `epic_buff_callouts` - sided Baron(180s)/Elder(150s) buff-expiry
   countdowns. Elder via an additive `dragon_type` field on the dragon event (name stays
   "dragon" so macro_response is byte-identical). Used ACCURATE per-monster durations, NOT the
   research doc's merged 180s.
-- L2 (628, `cc41f14a`): `dragon_soul_callout` - 3-stack "SOUL next drake - force/deny" advisory.
+- L2 (628, `d9f5f770`): `dragon_soul_callout` - 3-stack "SOUL next drake - force/deny" advisory.
   Wired into the `_deterministic_coaching` advisory chain at `advisory = macro or soul or heal`.
-- L3 (629, `528926d5`): dynamic respawn fix (the served-path slice). `_objective_callouts` now
+- L3 (629, `2e6d66cb`): dynamic respawn fix (the served-path slice). `_objective_callouts` now
   uses last_kill+respawn (drake 300s / baron 360s) once a kill exists; baron gains a real
   respawn ETA; soul-secured suppresses the drake row. Cadence constants reconciled to ONE source
   (event_callouts owns `SR_{DRAGON,BARON}_{FIRST,RESPAWN}_S`; decision_detector imports them).
   No-kill path byte-identical (characterization-guarded).
-- L2 follow-on (630, `e37eb405`): soul cascade extended - secured(4+) locked-element row +
+- L2 follow-on (630, `a1f53ae0`): soul cascade extended - secured(4+) locked-element row +
   soul-race delta row. Honest test churn: 3 L2 tests updated (2-drake now a race row).
 
 NEXT: optional bigger bets from the report - L4 Phase-D capability-scorer consumer, L9/L10 live
@@ -13908,7 +13908,7 @@ surface; built an exclusion ledger first and killed any re-pitch. 9 vectors -> 3
 - Recovery note: the first run's Verify+Synthesis was wiped by a TRANSIENT server rate-limit
   (35 concurrent verifiers). Fixed by batching verify (6 agents) + `resumeFromRunId` (Ground+
   Scout returned cached). The run-id-resume + batched-fanout pattern is the durable fix.
-- Docs-only Tier-0: commit `510c000c`, no code/engine/ENGINE/Share. RC untouched (DS 1.151.0).
+- Docs-only Tier-0: commit `11cf3f3f`, no code/engine/ENGINE/Share. RC untouched (DS 1.151.0).
 
 NEXT: the director should pick L1 first (smallest, unambiguous BaronKill EventName). Bigger
 FUTURE bets in the report: L4 Phase-D capability-scorer consumer, L9/L10 live championStats +
@@ -13921,13 +13921,13 @@ stat-shard ingestion, E1 TFT deterministic twin (north-star advance), E2 spatial
 Two scoped slices, then an orchestrated headless-upgrade run (2026-06-25-01). All non-gated; the genuine
 non-gated queue is now drained (both scouts came back near-empty).
 
-- ITEM 623 (personal-build card, `5cd62bee`): wired the shipped /api/personal-build backend into a NEW
+- ITEM 623 (personal-build card, `c492c300`): wired the shipped /api/personal-build backend into a NEW
   read-only champ-select card keyed on cs.my_champion (your winning items by confidence-weighted lift vs
   your OWN baseline). 5-file frontend mount + grep wiring guard + an in-context render screenshot test (311
   green); 5-phase UI audit PASS. OWED: live in-champ-select capture (render-gated on a real champ-select,
   same as the cooldown-watch sibling). Also killed the Overlay App F ward-heatmap in BACKLOG - Match-V5 carries
   0 ward x/y (probed timeline_events: WARD_PLACED 294518 / 0 with pos vs CHAMPION_KILL 270807/270807).
-- ITEM 624 (Arena anvil shadow, `afeb590b`): orchestrated headless run - 2 read-only scouts -> 1 worktree
+- ITEM 624 (Arena anvil shadow, `ce856edb`): orchestrated headless run - 2 read-only scouts -> 1 worktree
   build agent -> verifier CONFIRM -> merge. The live anvil Haiku call gained a deterministic SHADOW substrate
   (`core/precomputed_anvil_advisor` + `core/anvil_shadow` mirroring augment_shadow); served field
   byte-identical, the flip stays operator-gated. +18 tests. Cost 7-lever sweep = 0 SHIP / 7 CLEAN (already
@@ -13949,13 +13949,13 @@ the planned `gh pr merge --auto` needed branch protection RC does NOT have (`all
 404, private personal account where branch protection is gated), and a required-check gate on main would have BROKEN
 direct-push-to-main. So I REDESIGNED to a self-gate, then armed.
 
-- SELF-GATE (`ceef7b33`, +3 RED-first tests, 30 total, ruff clean): dropped `--auto`; after `pr_create` the dispatch
+- SELF-GATE (`04a9e7c4`, +3 RED-first tests, 30 total, ruff clean): dropped `--auto`; after `pr_create` the dispatch
   now BLOCKS on the ci-fix PR's OWN CI (`gh pr checks <branch> --watch --fail-fast`) and squash-merges ONLY on green
   (red/timeout -> escalate, NEVER merge). No branch protection / allow_auto_merge -> direct-push preserved. CI's
   `pull_request:[main]` trigger gives the PR real checks. NEW `_STEP_TIMEOUTS` (claude_fix 600s / wait_checks 900s);
   ETL PT10M->PT30M; `MultipleInstancesPolicy=IgnoreNew` already prevents overlapping armed cycles during the wait.
 - ARMED: worktree `C:\RC-CIWatchdog` created (OUT of the live checkout); `RC-CIWatchdog` registered (State=Ready,
-  `--arm`, PT2M, ETL PT30M). XML gotcha (`0396f495`): the `encoding="UTF-8"` decl broke `Register-ScheduledTask -Xml`
+  `--arm`, PT2M, ETL PT30M). XML gotcha (`4773e406`): the `encoding="UTF-8"` decl broke `Register-ScheduledTask -Xml`
   ("unable to switch the encoding" - PS string is UTF-16); removed the declaration (`<?xml version="1.0"?>`).
 - VERIFIED: armed MANUAL run vs GREEN main = clean no-op (last-5 runs all success -> 0 failed -> NO PR/branch/merge,
   LastTaskResult 0). CI green (run 28189959300). Kill-switch: `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask`.
@@ -13973,7 +13973,7 @@ NEXT (operator-gated / live-blocked):
 Cleared both NON-gated items from 618's NEXT, both CI-green on Linux. 5 commits pushed. Each item
 ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
 
-- ITEM 619 (cdragon SwapsInto extractor, `95972f57`): the 12 dropped CC tags were NOT a "bin-format
+- ITEM 619 (cdragon SwapsInto extractor, `fdf8b92d`): the 12 dropped CC tags were NOT a "bin-format
   parse break / pure rename, swap-count=12" (618's guess) - they were a Riot 16.13 TAXONOMY change:
   `...ImmobilizingCCSpell` -> `...CCAbility` suffix rename + 7 of 12 swap spells reclassified
   swap->DIRECT-immob. Fix in `daemon_slayer_cdragon_spell_extract.py`: match the stable `ImmobilizingCC`
@@ -13984,7 +13984,7 @@ ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
   green. ability_ratios + ratio_drift LEFT copy-forward (CONSUMED ratio source via abilities.py
   prefer_cdragon_ratios=True default - a separate Tier-2; NOTE doc says "False/OFF" - doc/code mismatch).
 
-- ITEM 620 (snapshot_panels flake, `1a974bd9` re-attempt + `0fe7e3bf` fix): KEY finding - the HTTP/1.1
+- ITEM 620 (snapshot_panels flake, `d98e762b` re-attempt + `0979f00a` fix): KEY finding - the HTTP/1.1
   keep-alive ITSELF (not the SSE gen-gating 618 blamed) breaks the Linux render tests. CI run 28159713805
   proved BOTH keep-alive variants fail the same 5 tests (spike_markers/ds_relscore/overlay_combat/
   header_single_row/player_gpi) while HTTP/1.0 passes: the gitignored ddragon PNG mirror is absent on CI
@@ -13994,9 +13994,9 @@ ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
   keep-alive" instruction (it is NOT Linux-sound) - implemented the intent. Corrected the stale
   `reference_snapshot_panels_session_browser_flake` memory ("CI runs no pytest" was wrong).
 
-- ITEM 621 (cdragon docstring reconcile `15809ab8` + doc-drift sync): post-620 housekeeping, both Tier-0,
+- ITEM 621 (cdragon docstring reconcile `d291d9bb` + doc-drift sync): post-620 housekeeping, both Tier-0,
   no ENGINE bump. (a) The abilities.py `prefer_cdragon_ratios` signature(=True)/docstring("False/OFF")
-  mismatch from 619's note: git-traced the True default to item 320's "default-ON cutover" (`1f172fcc`,
+  mismatch from 619's note: git-traced the True default to item 320's "default-ON cutover" (`ff5aaffe`,
   ENGINE 1.119.0) + `test_cdragon_ratio_matcher.py` ("now defaults ON") -> the DOCSTRING was the stale
   side, NOT a behavioral bug; fixed `load()` + the `_apply_cdragon_ratio_preference` "OPT-IN" sibling;
   Share re-synced (--check clean). (b) ARCHITECTURE.md:172 (1.144.0->1.151.0, 7361->7511) +
@@ -14016,8 +14016,8 @@ NEXT (operator-gated / live-blocked, unchanged from 618):
 # 2026-06-25 (DS patch refresh 16.12.1 -> 16.13.1 - orchestrated multi-agent SWARM + precompute regen)
 
 Ran the headline patch refresh as an orchestrated Tier-2 run. ENGINE_VERSION stays 1.151.0 (operator-confirmed
-via one AskUserQuestion: patch != engine code, matching the 3-refresh convention). 2 commits pushed (`cdc4f8aa`
-patch refresh + Share, 78 files / 3 LFS laning tables; `1f53f5ad` snapshot flake fix), ruff clean repo-wide.
+via one AskUserQuestion: patch != engine code, matching the 3-refresh convention). 2 commits pushed (`c022498f`
+patch refresh + Share, 78 files / 3 LFS laning tables; `44eab4b9` snapshot flake fix), ruff clean repo-wide.
 Full per-item record: docs/LEDGER.md item 618.
 
 - Upstream probe drove fresh-vs-copy decisions: DDragon moved 16.12->16.13; Meraki FROZEN at 25.15; CDragon
@@ -14038,7 +14038,7 @@ Full per-item record: docs/LEDGER.md item 618.
   engine-driven NOT data/cdragon - the 6 items are stat-identical + the prior table was an older-engine gen).
 - Secondary (parallel worktree agent): snapshot_panels at-scale Playwright flake fixed at ROOT (HTTP/1.0
   connection-per-request -> TIME_WAIT port exhaustion; fix = HTTP/1.1 keep-alive + SSE gen-gating + per-test
-  reset). 274 passed x2 independent re-verify (never trusted the agent's 3x claim). REVERTED (`f68cf703`): the SSE gen-gating fails 4 CI/Linux render snapshot tests (a Windows-only verify was insufficient).
+  reset). 274 passed x2 independent re-verify (never trusted the agent's 3x claim). REVERTED (`60812e6d`): the SSE gen-gating fails 4 CI/Linux render snapshot tests (a Windows-only verify was insufficient).
 
 NEXT (operator-gated / live-blocked, unchanged from 617):
 1. CI Watchdog ARM (item 204, do-not-flip-blind): create C:\RC-CIWatchdog\ worktree + enable repo auto-merge +
@@ -14054,7 +14054,7 @@ NEXT (operator-gated / live-blocked, unchanged from 617):
 # 2026-06-25 (Track-1 red-cleanup - named full-suite reds CLEARED + DS patch-drift found + auto-accept re-enabled)
 
 Continued ledger 616's NEXT (Track 1). All 7 operator-named pre-existing full-suite reds triaged stale-test vs
-real-regression (NONE were product regressions) + fixed; 1 commit (`0cdafe9c`, 12 files), CI green (3m50s).
+real-regression (NONE were product regressions) + fixed; 1 commit (`70e90037`, 12 files), CI green (3m50s).
 Tier-0/1 (docs + test files; no engine/DS/Share/ENGINE_VERSION). Full suite after = 10 failed / 9414 passed,
 and ALL 10 are the pre-existing snapshot_panels Playwright at-scale flake (0 non-snapshot failures); the named
 logic reds are GONE. GROUND-TRUTH LESSON: my first check passed the WRONG files (`*_view.py` instead of the
@@ -14087,7 +14087,7 @@ HZ re-measurement (needs real-game shadow + now patch-affected), R30/PGR tail (p
 # 2026-06-25 (bridge decommission COMPLETED - surviving-ref sweep + 2 live residual fixes + stale-test realign)
 
 Follow-on to LEDGER 615 (the prior session removed the bulk but claimed "every importer unwired" - it was NOT).
-Validated end-to-end + finished it so nothing silent-fails. 1 commit (`49b1c9ea`, 176 files), pushed, CI green.
+Validated end-to-end + finished it so nothing silent-fails. 1 commit (`a3b7e0f0`, 176 files), pushed, CI green.
 Tier-1 (scripts/agents/tests; no engine / DS / Share / ENGINE_VERSION).
 
 - Swept surviving refs from 15 live files: ops/startup scripts (rc_bootstrap, run_self_healing_watchdog,
@@ -14117,7 +14117,7 @@ NEXT (operator wants BOTH next session):
 
 Interactive operator session. R30 UI review complete + no live game -> presented the headless-buildable,
 non-blind ROADMAP candidates via one framed AskUserQuestion; operator picked the CI Watchdog dispatch wiring.
-2 commits pushed (`ade16c7f` wiring / `cb96be1f` ROADMAP state), CI green. Tier-1 tooling; no engine/DS/Share.
+2 commits pushed (`8880c52a` wiring / `69bd8021` ROADMAP state), CI green. Tier-1 tooling; no engine/DS/Share.
 
 - Replaced the documented dispatch STUB at `tools/ci_watchdog.py:330` with a real, dry-run-default dispatch:
   pure `plan_dispatch()` returns the ordered 10-step (label, argv) plan; `execute_dispatch(arm=)` surfaces it
@@ -14141,14 +14141,14 @@ Interactive operator session continuing ledger 611. Cleared the named active-mat
 commits + 1 CI-lint fix, all pushed; 14/14 in `test_active_match_review_r30.py`; each slice RED-first + a
 5-phase UI-audit subagent PASS + live-:8888 recon. Tier-1 frontend; no engine / DS / Share / ENGINE_VERSION.
 
-- SLICE 1 header reflow (`5ef87dd0`): the in-game header's two fixed-width no-wrap rows overflowed the 923
+- SLICE 1 header reflow (`eee8cf82`): the in-game header's two fixed-width no-wrap rows overflowed the 923
   companion (row 1 ~1224px) and `body{overflow:hidden}` CLIPPED the heartbeat + vision pills off-screen. A
   single `@media (max-width:1200px)` block in header.css wraps `.header-row` + drops the heartbeat
   `margin-left:auto` -> companion wraps to 2 clean lines (worst 778 <= 923); 1920 desktop unchanged (hb 1902).
-- SLICE 2 ARAM ward-heat hide (`c1410a1b`): the MAP-pane ward-heat strip renders 4 lane cells (TOP/JG/MID/BOT)
+- SLICE 2 ARAM ward-heat hide (`53a4d0f6`): the MAP-pane ward-heat strip renders 4 lane cells (TOP/JG/MID/BOT)
   x2 teams; ARAM is single-lane (6/8 cells dead). `_renderWardHeatTick(ctx)` now `display:none`s `#am-ward-heat`
   in ARAM (restores on mode switch); SR/Arena keep it; ARAM vision still shown via the MAP intel MIA roster.
-- CI-UNBLOCK (`678b4c95`): prior-session `test_champ_select_review_r30.py` had a ruff B023 (pageerror lambda
+- CI-UNBLOCK (`b61a39ae`): prior-session `test_champ_select_review_r30.py` had a ruff B023 (pageerror lambda
   closing over the for-loop `errors`); CI runs `ruff check .` REPO-WIDE so it was red on every push since 611
   incl. mine, while each slice's file-SCOPED ruff was green. Fixed via default-arg binding. DON'T-REDO: at
   /done run repo-wide `ruff check .`, not a file-scoped check.
@@ -14172,16 +14172,16 @@ CADENCE (same as out-of-game; reuse for the overlay + active-match tail): recon 
 `recon.py <view> [mode]`, READ + JUDGE the screenshots + ground-truth file:line, PRESENT keep/remove/add/alter
 + ONE framed scope AskUserQuestion, build the picked slice RED-first, 5-phase UI-audit gate, commit+push.
 
-- CHAMP-SELECT (COMPLETE, SR/ARAM/Arena). (1) `b76bacf7` ARAM/Arena ASSESSMENT: the non-SR grid override
+- CHAMP-SELECT (COMPLETE, SR/ARAM/Arena). (1) `f8337694` ARAM/Arena ASSESSMENT: the non-SR grid override
   dropped the `suggestions` grid-area -> the card orphaned out of grid flow (floating panel + huge void);
   restored a 2-row template + new `_csvRenderSuggestionsNonSr` fills the right column with TEAM DAMAGE LEAN +
-  WATCH THEIR COOLDOWNS (counter-picks stays SR-draft-only). (2) `2f9daab7` Arena DS build wiring:
+  WATCH THEIR COOLDOWNS (counter-picks stays SR-draft-only). (2) `495cdc72` Arena DS build wiring:
   `_csvRenderCentralPane` early-returned for Arena (no archetype picker, no build chooser despite the fixture
   data); removed the early-return -> Arena flows through the shared setup (archetype left col + duo/augments +
   build chooser + DS-vs-enemy-comp). SR/ARAM byte-identical; Arena variant rows are backend-fed (empty until a
-  Jinx Arena loadout is saved - same path as SR/ARAM). (3) `c758254c` companion reflow:
+  Jinx Arena loadout is saved - same path as SR/ARAM). (3) `85613639` companion reflow:
   `@media (max-width:1200px)` single-column for all 3 modes + the no-scroll height-cap resets; mirrors item-602.
-- ACTIVE-MATCH (1 slice). `174854c5` MAP real-estate rethink: Live Client has no coords (memory
+- ACTIVE-MATCH (1 slice). `ea7ed1a8` MAP real-estate rethink: Live Client has no coords (memory
   `reference_liveclient_no_positions`) so the static map can't plot positions; `_renderAmMap` now builds a
   column shell - `.am-map-intel` (PRIMARY: status + de-overlaid full-width roster) over `.am-map-figure`
   (SECONDARY: map img + ZOI canvas + gank band, height-capped 50%); ALL element IDs preserved (polling/overlay
@@ -14210,7 +14210,7 @@ file:line -> PRESENT keep/remove/add/alter + ONE framed scope AskUserQuestion ->
 slice RED-first + a 5-phase UI-audit subagent gate before commit -> commit+push. Gemini PART B per-view
 intent in `ops/runtime/ui_recon/gemini_out.txt`.
 
-- PAGE 8 BUILD INSIGHTS (`dec18ded`, full pass): the 4 WPA tables already avoid gemini's global-pickrate
+- PAGE 8 BUILD INSIGHTS (`c1a8fa93`, full pass): the 4 WPA tables already avoid gemini's global-pickrate
   trap (personal residuals), so added a confidence-weighted TAKEAWAY rail beside each table - strongest +
   weakest mover ranked by `wpa_shrunk` (the shrink-adjusted residual, emitted by all 4 routes) so the
   TRUSTWORTHY signal wins not the noisiest low-n row (Skills fixture: raw-worst Corki n=25 vs shrunk-worst
@@ -14218,7 +14218,7 @@ intent in `ops/runtime/ui_recon/gemini_out.txt`.
   companion (`order:-1`). + the Min-N control relabels per tab (buys/games/picks) + hides on the 4 chart
   tabs (inert no-op there). Also fixed a stale pre-existing DOM test (`test_uses_semantic_token` asserted
   the pre-reskin `var(--signal-*)`; file uses `--good`/`--bad` - failed on base, CI runs no pytest).
-- PAGE 6 REPLAY (`1537f5d7`, "+reorder" full slice): gemini's job is "actionable event timeline, not a
+- PAGE 6 REPLAY (`2a03eaab`, "+reorder" full slice): gemini's job is "actionable event timeline, not a
   video player". (1) CLICK-TO-SEEK: each timeline event row seeks the scrubber to its `clock_s` (nearest
   snapshot by minute) + re-renders the grid at that frame - cross-module circular-import-free via a
   `setReplaySeekHandler` bridge (replay_events.js delegated click on `#replay-events-list` -> dev.js
@@ -14248,25 +14248,25 @@ file:line -> PRESENT keep/remove/add/alter + ONE framed scope AskUserQuestion ->
 slice RED-first + a 5-phase UI-audit subagent gate before commit -> commit+push. Gemini PART B per-view
 intent in `ops/runtime/ui_recon/gemini_out.txt`.
 
-- PAGE 3 PGR (`372b568b`, full pass): default tab Build->AI Analysis (autopsy-first; Build = gemini's
+- PAGE 3 PGR (`021318cd`, full pass): default tab Build->AI Analysis (autopsy-first; Build = gemini's
   named scoreboard trap) + tab reorder + a takeaway headline above the hero (my_chronic > real wrong_team
   > right); pure-CSS `::before` frame captions "Overall"(grade) + "Lobby"(score) so the 3 verdicts read as
   distinct frames; rank-compare collapses to selector+prompt when no tier (static averages, no auto-rank
   route exists); deferred token fold-in `--radius-sm`->`--panel-radius`(cards) / `--panel-radius-sm`(chips).
   LESSON: verified the AI-Analysis tab degrades to the quick-review when no Match-V5 timeline (safe default).
-- PAGE 4 SESSION (`0fa3dd36`, full pass): the view's JOB (tilt/fatigue/limits) was entirely MISSING -
+- PAGE 4 SESSION (`b1ca9931`, full pass): the view's JOB (tilt/fatigue/limits) was entirely MISSING -
   added a tilt/fatigue verdict + chronological grade strip derived from `d.matches` (no backend); companion
   `.session-grid` -> 1-col (Modes-label collision); de-redundancy CHAMPIONS->REPLAYED CHAMPIONS (2+-game
   only, hidden when none) + removed the OVERVIEW "Started" header-dup.
-- PAGE 5 HISTORY (`0c0bdc16`, full pass): VERIFY-BEFORE-DECLARE corrected my first read - the filters are
+- PAGE 5 HISTORY (`d015ef34`, full pass): VERIFY-BEFORE-DECLARE corrected my first read - the filters are
   already GLOBAL (`_historyApplyFilters`), trap avoided. Gap = a filter gave a LIST but no AGGREGATE; now
   SEASON STATS reflects the filtered subset (retitled "JINX STATS"; total/WR/KDA/most-played), restores on
   clear; empty state advertises global filtering; 3-col grid -> 1-col at companion.
-- PAGE 7 USER BUILDS (`eb5aea8a`, full pass): CRUD already good (datalist autocomplete / inline edit-delete
+- PAGE 7 USER BUILDS (`4d91edfc`, full pass): CRUD already good (datalist autocomplete / inline edit-delete
   / side-pane editor not a modal / Delete confirm - trap avoided); fixed the dead-space (`.ub-layout`
   full-width at rest, 2-up only while editing via `:has()`) + item icons per row (`_resolveItemId` name->id).
   Updated `test_companion_reflow.py` (ub now 1-col at rest -> companion guard only).
-- PAGE 9 SETTINGS (`3d52ee35`, picked 2+3): panel already centralized (scattering trap avoided - PGR knobs
+- PAGE 9 SETTINGS (`eefc2140`, picked 2+3): panel already centralized (scattering trap avoided - PGR knobs
   canonical here + mirrored); added a full-width quick-filter (`_settingsApplyFilter` shows only matching
   cards) + a density compaction (card gap + head margin).
 
@@ -14530,7 +14530,7 @@ overlay capture (eye-line layout + S0 pulse) - no live game this run.
 
 # 2026-06-22 (headless continue 22 / R20) - Aggregator N lift: ARAM balance grid panel
 
-Item 588, commit `e0f0ffac` (feature, pushed) + docs-sync. Tier-1 frontend (read-side route + panel +
+Item 588, commit `32467bb7` (feature, pushed) + docs-sync. Tier-1 frontend (read-side route + panel +
 pure accessor); NO engine / DS schema / ENGINE_VERSION / Share change (held 1.151.0); RC restarted
 (pid 9480 -> 25356) to load the new route. gemini+ahk loop executor cycle 9. Directive = ORCHESTRATION_PLAN
 R20 DIRECTOR REFILL - Section-7b competitor deep-dive lift of Aggregator N + ship any HIGH/LOW-risk presentation
@@ -14577,7 +14577,7 @@ F3/F5 already-have; F4 forbidden external winrate; F7 new TFT domain - all defer
 
 # 2026-06-22 (headless continue 21 / R19) - DS spell_damage_reduction_pct forward-marker
 
-Item 587, commit `ee673c1d` (feature, pushed) + docs-sync `f5b94541`. DS schema surface (forward-marker
+Item 587, commit `45471c1c` (feature, pushed) + docs-sync `cf1d1455`. DS schema surface (forward-marker
 accessor); ENGINE HELD at 1.151.0 (NOT bumped), DS :8893 restarted, Share re-synced.
 
 CONTEXT: gemini+ahk loop executor cycle 8. Directive = ORCHESTRATION_PLAN R19 DIRECTOR REFILL - NEW
@@ -14617,7 +14617,7 @@ the flat-DR item-261/R9 path) - not wired blind. Live default-ON wiring EXCLUDED
 
 # 2026-06-22 (headless continue 20 / R18) - panel typography v2.1 sub-floor audit
 
-Item 586, commit `0999d3eb` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
+Item 586, commit `3397ad27` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
 auto-reload ADR-008, no RC restart). No engine / DS schema / ENGINE_VERSION / Share / flip change.
 
 CONTEXT: gemini+ahk loop executor cycle 7. Directive = ORCHESTRATION_PLAN R18 ui-audit (5-phase
@@ -14648,7 +14648,7 @@ are the in-slice proof. Same blocker as R4/R8/R13/R16.
 
 # 2026-06-22 (headless continue 19 / R17) - DS anti-tank level-ramp %max-HP
 
-Item 585, commit `5f308036` (feature, pushed) + this docs-sync. Tier-2 (DS schema / ENGINE_VERSION /
+Item 585, commit `0c037b05` (feature, pushed) + this docs-sync. Tier-2 (DS schema / ENGINE_VERSION /
 Share mirror): ENGINE 1.150.0 -> 1.151.0, DS :8893 bounced (pid 9340 -> new), Share re-synced.
 
 CONTEXT: gemini+ahk loop executor cycle 6. Directive = ORCHESTRATION_PLAN R17 ds-sweep (antitank
@@ -14672,7 +14672,7 @@ missing one.
 VERIFY: RED-first `test_antitank_ramp_r17.py` (25 cases). py_compile + ruff clean. DS suite 7497 passed /
 1 skip / 1943 subtests; antitank cluster 94 passed. ENGINE pin sweep 85 files / 96 pins, 0 residual.
 ds_share_sync --check green (372 files). Full RC suite 9367 passed - the 6 remaining RC failures are
-PRE-EXISTING (reproduced on base `b00c4dc7` via stash: 3x CoachWire ARAM-template, doc_size_budget
+PRE-EXISTING (reproduced on base `f7d4706f` via stash: 3x CoachWire ARAM-template, doc_size_budget
 ROADMAP-over-budget [FIXED this cycle - relocated 4 shipped bullets to ROADMAP_HISTORY, now under 80KB],
 overlay.css sub-floor px, spell_autopush on dirty data/spell_prefs.json) - NONE are R17. Verifier
 subagent CONFIRM (byte-identical contract independently reproduced).
@@ -14689,7 +14689,7 @@ scores vs a real game before flipping).
 
 # 2026-06-22 (headless continue 18 / R16) - Game Flow + Spike Curve fixture audit
 
-Item 584, commit `7ecb5b18` (pushed) + this docs-sync. Tier-0/1 frontend (CSS comment = asset-hash
+Item 584, commit `c2741b8d` (pushed) + this docs-sync. Tier-0/1 frontend (CSS comment = asset-hash
 auto-reload ADR-008, no RC restart). NO engine / DS / Share / ENGINE_VERSION / overlay-render / flip.
 
 CONTEXT: gemini+ahk loop executor cycle. Directive = ORCHESTRATION_PLAN R16 ui-audit (5-phase
@@ -14718,7 +14718,7 @@ ds-sweep / lift, or NO_WORK.
 
 # 2026-06-22 (headless continue 17 / R15) - OP-Score arc-shape readout (Aggregator A lift)
 
-Item 583, feature commit `b49ef1a7` (pushed) + docs-sync. Tier-1 frontend + core analytics; RC
+Item 583, feature commit `d901167d` (pushed) + docs-sync. Tier-1 frontend + core analytics; RC
 restarted (pid 3656 -> 9480, last_reload_ok) for the core/op_score_curve.py route change. NO DS /
 ENGINE / Share / schema / flip change.
 
@@ -14751,7 +14751,7 @@ jungle timers (live-game-gated); per-slot frequency + ranked LP trend (new depen
 
 # 2026-06-22 (headless continue 15 / R14) - cc_conditional durations_floor_s CC floor band (ENGINE 1.150.0)
 
-Item 581, commit `66abc012` (pushed, CI green). Tier-2 DS schema lift: ENGINE 1.149.0 -> 1.150.0,
+Item 581, commit `8a63c949` (pushed, CI green). Tier-2 DS schema lift: ENGINE 1.149.0 -> 1.150.0,
 DS :8893 bounced, Share re-synced in the feature commit; full dual suite (DS-dir 7472 passed).
 
 CONTEXT: gemini+ahk loop, MANUAL single-cycle executor (operator ran /gemini-headless-upgrade with
@@ -14779,7 +14779,7 @@ NEXT: live default-ON flip + ehp/hybrid propagation are operator-gated -> docs/L
 
 # 2026-06-22 (headless continue 13) - DS doc-drift reconciled + standing doc-pin GUARD added
 
-Item 579, commit `99f2e72b` (pushed). Tier-0 doc + Tier-1 test; no engine / DS schema / Share /
+Item 579, commit `b878528c` (pushed). Tier-0 doc + Tier-1 test; no engine / DS schema / Share /
 ENGINE bump / overlay render / flip change. ZERO overlay render delta -> no electron relaunch.
 
 TRIAGE: live re-probe RC pid=3656 mode=client (no game up), DS :8893 ENGINE 1.149.0 / 16.12.1, HEAD
@@ -14808,7 +14808,7 @@ needs a fresh Gemini/operator refill.
 
 # 2026-06-21 (headless continue 12) - ARAM "ARAM Modifications" balance line WIRED (BACKLOG F6)
 
-Item 578, commit `b541c923` (pushed). Tier-1; no backend engine / DS schema / Share / ENGINE bump /
+Item 578, commit `01f96c14` (pushed). Tier-1; no backend engine / DS schema / Share / ENGINE bump /
 overlay render / flip change. Coach-prompt context line only -> ZERO overlay render delta, no electron relaunch.
 
 TRIAGE: live re-probe RC pid=3656, live SR game up (mode_key=sr ~22min full-build carry), DS :8893 ENGINE
@@ -14846,7 +14846,7 @@ Candidate set drained - next cycle needs a fresh Gemini/operator refill.
 
 # 2026-06-21 (headless continue 11) - overlay spec Q2 lethal-incoming S0 predicate WIRED
 
-Item 577, commit `17128058` (pushed). Tier-1 pure-JS; no backend / engine / DS / Share / ENGINE bump /
+Item 577, commit `d507e5aa` (pushed). Tier-1 pure-JS; no backend / engine / DS / Share / ENGINE bump /
 schema / threshold / flip change. ZERO live render delta (shadow-only) -> no electron relaunch needed.
 
 TRIAGE: live re-probe RC pid=3656 mode flipped client->game mid-cycle (a live SR game came UP), DS :8893
@@ -14888,7 +14888,7 @@ Candidate set drained - next cycle needs a fresh Gemini/operator refill.
 
 # 2026-06-21 (headless continue 10) - HZ rewind-db ground-truth cross-ref + memory hygiene cleared
 
-Item 576, commit `fc520407` (pushed). Tier-1 tooling; no engine / DS / Share / ENGINE bump / threshold /
+Item 576, commit `834bde48` (pushed). Tier-1 tooling; no engine / DS / Share / ENGINE bump / threshold /
 precompute-table / flip change. PLUS the 3-cycle-owed memory hygiene pass.
 
 HYGIENE FIRST (operator-mandated, owed 3 cycles - done BEFORE the build pick): ran /consolidate-memory.
@@ -14941,7 +14941,7 @@ streams); and the real git co-change coupling (the 3 mode coaches). Hover scans 
 click locks + camera-flies, search locates. LEDGER 568.
 
 Also this session (infra): (1) landed the audit-10 C-01 cron silent-fail stub + audit artifacts
-(`8ee3aa43`), regression-tested (`tests/test_agent6_failure_stub.py`, 5 passed). (2) Fixed the stale
+(`dc7492a6`), regression-tested (`tests/test_agent6_failure_stub.py`, 5 passed). (2) Fixed the stale
 Share review-gist: its clone .git had bloated to 582MB / 179 commits (one ~4MB Share.zip appended per
 sync, unbounded) past GitHub's gist size quota -> every push rejected ~3 days. `tools/gist_share_sync.py`
 now rolls a SINGLE parentless commit each sync + force-push + prune so it can never re-bloat; the
@@ -17077,7 +17077,7 @@ Operator queued the 4-part 378 tail; autonomous. Commits `be8a033e` (Share) + `7
 - **(3) panelset rendering (`74ba5d31`):** `body[data-panelset]` stamp (canonical names only) + overlay.css 4b: coach=CALL+mounts, build=BUILD only, threat=CDS ledger+lead/callouts. UI audit pre-commit: 1 MUST-FIX fixed in-slice (cd_ledger 10/9/11px sub-floor at game distance -> threat-scoped 13px/18px lift) + NICE (collapse suppressed; persisted `cdLedgerCollapsed` ignored - shared-origin localStorage would blank the HUD). +4 Playwright tests, overlay suite 10/10.
 - **(4) Electron launch:** rc-shell node_modules was EMPTY (electron gone; npm start failed) -> `npm install` restored; companion window up rendering live dashboard, WS connected, capture taken; node 77/77. **Shell LEFT RUNNING** - overlay auto-flips on game start (Alt+Shift+O toggle, Alt+Shift+C panelset cycle).
 - Ground truth this run: tests/ `5601 passed / 2 skipped / 0 FAILED EXIT=0` (file, not pipe).
-- **Post-tail (`359a131a`):** operator re-reported the dark-mounts bug with forensics asks -> behavioral SSE characterization test `tests/snapshot_panels/test_deterministic_mounts_sse.py` (real EventSource drive; proven RED on `74ba5d31~1`, GREEN current; snapshot suite 123). FORENSICS: dead since DAY ONE (`ee5323b7` 2026-05-20 - `git -S` shows `74ba5d31` is the first-ever `state.latest.coach` assignment); NOT an item-314 regression; the May decisions_log rows are smoke-test synthetics. Don't re-investigate.
+- **Post-tail (`359a131a`):** operator re-reported the dark-mounts bug with forensics asks -> behavioral SSE characterization test `tests/snapshot_panels/test_deterministic_mounts_sse.py` (real EventSource drive; proven RED on `74ba5d31~1`, GREEN current; snapshot suite 123). FORENSICS: dead since DAY ONE (`95ea5aca` 2026-05-20 - `git -S` shows `74ba5d31` is the first-ever `state.latest.coach` assignment); NOT an item-314 regression; the May decisions_log rows are smoke-test synthetics. Don't re-investigate.
 - Owed next: live-game overlay capture (League client was at PLAY screen); Phase 4 interactive controls; Phase 5.
 
 ---
@@ -17089,7 +17089,7 @@ Operator: continue Electron overlay autonomously, multi-agent orchestrated, self
 - **S1 (`b58a1550`):** `?overlay=1` overlay route - `body[data-shell=overlay]` + active-match pin; NEW `web/css/overlay.css` (460px right-dock, transparent page, CALL+BUILD+lead/choices/callouts only) + `web/js/overlay_pulse.js` (one-shot 1.2s edge-glow on content change); asset-hash covers both; +6 snapshot tests.
 - **UI audit:** 4 MUST-FIX fixed in-slice (`0522ceab`): flex 0 1 auto/overflow hidden (1080 clip), mount display:flex (gap restore), rn-lead accent re-assert, .rc-src 13px. 3 NICE deferred (active_match.js 9-10px inline fonts, eyebrow contrast, boot-pulse burst).
 - **S2 (`47b9e5d6`):** rc-shell P4 partial - ACTIVE 20s auto-revert + poll backoff 2-15s + Alt+Shift+C `panelset=` cycle; node 77/77. Dashboard-side panelset rendering = next slice.
-- **S3:** 3 orphan worktree-agent branches DELETED (patch-equivalent to main `9d2e85ea`/`df78b090`/`7e8e47fa`); ROADMAP item-280/281 stale NEXT lines corrected.
+- **S3:** 3 orphan worktree-agent branches DELETED (patch-equivalent to main `8d7e905a`/`4cf53a06`/`8c1e1f3f`); ROADMAP item-280/281 stale NEXT lines corrected.
 - **Prune (`c97f5fcc`):** 10 dated docs -> `_archive/` + 7 refs rewritten; rc-shell/.pytest_cache deleted.
 - **Verifier catch:** pre-existing `test_ledger_holds_relocated_items` red (LEDGER split-home) - re-scoped; full suite 5706/0 fail fresh.
 - **Sidequest (no naming):** Share core in sync (1.120.0/16.12.1) BUT Share's calculator-ingest subdir pins 1.108.0/16.11.1 + the external site's deployed chunks embed 16.11.1 with no DS markers = bundle offered-not-consumed. OWED: regen ingest bundle at next Share sync; extend `ds_share_sync.py --check` to cover that subdir.
@@ -17218,8 +17218,8 @@ gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06
 
 "start the next open items in parallel" -> 2 parallel tracks (vision anomaly + cdragon NEXT-UP #1), both resolved. Commits 7f49499d (fix) + d2ecf125 (docs); CI green both.
 
-- **Vision :8889 = FALSE ALARM.** Session-start "vision server :8889 not listening" was a probe artifact: server UP (PID 2108 moon_vision_server.py, 0.0.0.0:8889, /health 200). rc_facts `_port_listening` used ONE 0.4s TCP connect; a busy single-threaded accept races it (probed 3 OK / 2 timeout ~405ms). Fix `7f49499d`: retry timeouts (3x1.0s), refused=down-fast; +5 tests test_rc_facts_port_probe.py. Spawned chip task_a647378a = thread the :8889 server (the accept-stall root cause; gated on confirming handlers make no blocking inline model calls).
-- **cdragon hard-tail (NEXT-UP #1) = CLOSED (item 351, `d2ecf125`; scope + drift-check, NO engine change).** 577 fallback blocks: 292 emission-guard (stay fallback) + ~174 live-state (buff-counter/conditional/unknown-stat/resource) = CLOSED-as-Meraki (item-232 class) + 111 by-level. by-level drift-checked = ALIGNED not stale (cdragon champ-level 1..18 vs Meraki spell-rank 1..5 = different axes; auxiliary blocks; primary-damage pairs agree <=~7%) -> DEFERRED to BACKLOG. Operator chose drift-check-first.
+- **Vision :8889 = FALSE ALARM.** Session-start "vision server :8889 not listening" was a probe artifact: server UP (PID 2108 moon_vision_server.py, 0.0.0.0:8889, /health 200). rc_facts `_port_listening` used ONE 0.4s TCP connect; a busy single-threaded accept races it (probed 3 OK / 2 timeout ~405ms). Fix `794d4a80`: retry timeouts (3x1.0s), refused=down-fast; +5 tests test_rc_facts_port_probe.py. Spawned chip task_a647378a = thread the :8889 server (the accept-stall root cause; gated on confirming handlers make no blocking inline model calls).
+- **cdragon hard-tail (NEXT-UP #1) = CLOSED (item 351, `eafbf44a`; scope + drift-check, NO engine change).** 577 fallback blocks: 292 emission-guard (stay fallback) + ~174 live-state (buff-counter/conditional/unknown-stat/resource) = CLOSED-as-Meraki (item-232 class) + 111 by-level. by-level drift-checked = ALIGNED not stale (cdragon champ-level 1..18 vs Meraki spell-rank 1..5 = different axes; auxiliary blocks; primary-damage pairs agree <=~7%) -> DEFERRED to BACKLOG. Operator chose drift-check-first.
 - **Don't-redo:** do NOT re-pitch a calc-graph resolver for the cdragon tail (only remaining cdragon growth needs a NEW extractor key). by-level lift parked in BACKLOG (only if a champ-level-indexed ratio axis is ever needed). Vision server is HEALTHY - rc_facts probe was the bug, not the server (a future :8889 "not listening" anomaly is likely the same race - re-probe /health). NEXT: remaining open work all operator/live-gated (P3.2 Phase-D, 6 UNIVERSAL_FILES, brief/flag flips, visual captures); no blind-shippable autonomous engine item (forward-marker EXHAUSTED item 348).
 
 ---
@@ -17228,9 +17228,9 @@ gemini-headless-upgrade loop, directive HZ-A1 (first HZ-* fanout off the 2026-06
 
 "start next open items in parallel" -> 3 parallel tracks; then "continue" x2 -> 2 more items. All pushed (6f904bc7, d4e0cd04, dc78d5a3); CI green through d4e0cd04 (350 = ps1+docs).
 
-- **Item 348 (`6f904bc7`):** orchestration E2/E3/F1 CLOSED + DS forward-marker scout EXHAUSTED. E2 (LCU richer-endpoint diff): top-3 = mastery-by-puuid full-team / match game-timelines / career-stats. E3 (lift sweep): NO new NOW candidate; 5 FUTURE (N1-N5); 3 stale-shipped flagged (anti-heal / inhibitor / per-item-WPA). F1 = stale-premise (both halves pre-shipped). DS scout: the un-taken LIFT_FOUND queue all REJECTED; `wiki_ability_stats` `*_raw` is unparsed wiki markup -> needs a NEW extractor key (memory `reference_ds_forward_marker_exhausted`). Fanout A1-F1 now FULLY CLOSED.
-- **Item 349 (`d4e0cd04`):** loop-status CONTROL half (NEXT-UP #3 tail). NEW `POST /api/loop-control` (stop / resume / set_directive / clear) over `ops/loop/control/*`, atomic + capped + 400-guarded; `loop_controller.py` `consume_directive_override()` one-shot hook + precedence override>FIXED>director + import-safe CFG; `dev.js`/`header.css` Settings control card. +19 tests; full 5296 / 0. 5-phase UI audit ALL PASS (1 ASCII MUST-FIX fixed). RC pid 3340->7144; live curl all 4 actions + 400 OK, control dir restored.
-- **Item 350 (`dc78d5a3`):** RC-GeminiAudit fix (`tools/gemini_audit.ps1`). Bug: `Write-Error` under EAP=Stop masked exit-1-no-log. Fixed: `Fail()` helper (logs + correct exit) + model fallback (gemini-3-pro-preview -> gemini-2.5-flash). External root cause verified: **429** (key VALID - models.list 50 - quota/RPM, Antigravity-shared); self-recovers on reset, NOT code-fixable. Memory `project_gemini_auditor` updated.
+- **Item 348 (`0bb7ebf4`):** orchestration E2/E3/F1 CLOSED + DS forward-marker scout EXHAUSTED. E2 (LCU richer-endpoint diff): top-3 = mastery-by-puuid full-team / match game-timelines / career-stats. E3 (lift sweep): NO new NOW candidate; 5 FUTURE (N1-N5); 3 stale-shipped flagged (anti-heal / inhibitor / per-item-WPA). F1 = stale-premise (both halves pre-shipped). DS scout: the un-taken LIFT_FOUND queue all REJECTED; `wiki_ability_stats` `*_raw` is unparsed wiki markup -> needs a NEW extractor key (memory `reference_ds_forward_marker_exhausted`). Fanout A1-F1 now FULLY CLOSED.
+- **Item 349 (`af2d80f8`):** loop-status CONTROL half (NEXT-UP #3 tail). NEW `POST /api/loop-control` (stop / resume / set_directive / clear) over `ops/loop/control/*`, atomic + capped + 400-guarded; `loop_controller.py` `consume_directive_override()` one-shot hook + precedence override>FIXED>director + import-safe CFG; `dev.js`/`header.css` Settings control card. +19 tests; full 5296 / 0. 5-phase UI audit ALL PASS (1 ASCII MUST-FIX fixed). RC pid 3340->7144; live curl all 4 actions + 400 OK, control dir restored.
+- **Item 350 (`a3a7c215`):** RC-GeminiAudit fix (`tools/gemini_audit.ps1`). Bug: `Write-Error` under EAP=Stop masked exit-1-no-log. Fixed: `Fail()` helper (logs + correct exit) + model fallback (gemini-3-pro-preview -> gemini-2.5-flash). External root cause verified: **429** (key VALID - models.list 50 - quota/RPM, Antigravity-shared); self-recovers on reset, NOT code-fixable. Memory `project_gemini_auditor` updated.
 
 Don't-redo: DS forward-marker cadence EXHAUSTED (needs a new extractor key, not another scout fanout). NEXT-UP #3 FULLY SHIPPED (monitor 346 + control 349). RC-GeminiAudit 429 is EXTERNAL - read `logs/gemini_audit.log` FAIL line first. NEXT: remaining open work is all operator-gated (cdragon hard tail = needs calc-graph resolver / 6 UNIVERSAL_FILES / P3.2 Phase-D) or live/product-gated (E2/E3 candidates) - no blind-shippable autonomous item left.
 
@@ -17240,8 +17240,8 @@ Don't-redo: DS forward-marker cadence EXHAUSTED (needs a new extractor key, not 
 
 Operator-reported, mid-session: (1) the champ-select dashboard view bounces to the in-game page ~half the time during CS; (2) Caitlyn's champ-select "PTA" rune default is actually Comet in the game. Both display/routing bugs - non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share). RC restarted pid 1128 -> 3340 (route reload, reload_ok=True). CI GREEN both SHAs.
 
-- **Fix 1 (view-router, `7a773ab3`):** the s209 CS->null sticky inference fired on a SINGLE null/empty `lcu.phase` tick in champ select, permanently advancing the sticky guard `champ-select -> in-progress` -> rendered active-match. `lcu.phase` is polled/relay-forwarded -> blips null on any agent/relay/poll miss (frequent mid-CS). Gated the inference on `live` (liveclient non-empty), mirroring item 281; threaded a `live` kwarg through `update_game_started`/`derive_view`. Genuine CS->game flip still promotes via the ungated GameStart/InProgress arms -> no real promotion lost. `web/js/main.js:564` + mirror `dashboard/view_router_state.py:92`. +5 tests (`ChampSelectNullBlipLiveGateTests`).
-- **Fix 2 (rune display-match, `76d7c681`):** champ-select rune panel showed the loadout build-card keystone (Caitlyn SR = Press the Attack) while `lcu_rune_writer.RuneWriter` auto-writes from a SEPARATE source `rune_recommendations` (Arcane Comet). Surfaced the auto-applied keystone into `loadout_resolver.list_variants` (`auto_keystone`/`auto_primary`/`auto_secondary` via the same `load_rune_rec` the writer uses); `champ_select.js` marks IT recommended + injects it as a rune option when not a build-path card + manual rune-push sends `override_runes` for it. Applied behavior UNCHANGED (operator chose to keep Comet). General fix (all champs). +4 tests (`test_loadout_auto_keystone`).
+- **Fix 1 (view-router, `1efa3d30`):** the s209 CS->null sticky inference fired on a SINGLE null/empty `lcu.phase` tick in champ select, permanently advancing the sticky guard `champ-select -> in-progress` -> rendered active-match. `lcu.phase` is polled/relay-forwarded -> blips null on any agent/relay/poll miss (frequent mid-CS). Gated the inference on `live` (liveclient non-empty), mirroring item 281; threaded a `live` kwarg through `update_game_started`/`derive_view`. Genuine CS->game flip still promotes via the ungated GameStart/InProgress arms -> no real promotion lost. `web/js/main.js:564` + mirror `dashboard/view_router_state.py:92`. +5 tests (`ChampSelectNullBlipLiveGateTests`).
+- **Fix 2 (rune display-match, `2d49ed76`):** champ-select rune panel showed the loadout build-card keystone (Caitlyn SR = Press the Attack) while `lcu_rune_writer.RuneWriter` auto-writes from a SEPARATE source `rune_recommendations` (Arcane Comet). Surfaced the auto-applied keystone into `loadout_resolver.list_variants` (`auto_keystone`/`auto_primary`/`auto_secondary` via the same `load_rune_rec` the writer uses); `champ_select.js` marks IT recommended + injects it as a rune option when not a build-path card + manual rune-push sends `override_runes` for it. Applied behavior UNCHANGED (operator chose to keep Comet). General fix (all champs). +4 tests (`test_loadout_auto_keystone`).
 - **Verify:** view-router 38 + loadout/csv/champ-select 119 + rune-push/DOM 54 passed; ruff + node --check (main.js + champ_select.js) clean; hygiene 3/3. Live: `POST /api/loadout/list` Caitlyn sr returns `auto_keystone=Arcane Comet` beside card `Press the Attack`.
 - **Don't-redo:** both DONE. The CS->null inference is INTENTIONALLY live-gated (do NOT restore single-blip promotion). Display-match is GENERAL - the panel mirrors whatever `rune_recommendations` applies. `rune_recommendations` vs `champion_loadouts` stay two independent rune sources BY DESIGN (operator declined reconciling the data). NEXT (optional): unify the two rune sources; visual-capture the CS panel (Game-PC :8892 MCP down - same blocker).
 
@@ -17249,7 +17249,7 @@ Operator-reported, mid-session: (1) the champ-select dashboard view bounces to t
 
 # 2026-06-07 - dashboard loop-status panel (NEXT-UP #3 monitor half) [item 346] + drift-poll stale-premise reconcile
 
-Operator "start what is up next" -> picked the upstream drift-poll (NEXT-UP #2) from a framed menu, but #2 was ALREADY shipped (`d3fcc070`: `tools/upstream_drift_check.py` + 24 tests + live `RC-UpstreamDriftCheck` daily 03:45, last run rc=0) - only the ROADMAP marker was stale -> reconciled to SHIPPED (`3b3ea2e1`). Moved to the next genuine item, #3. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 8708 -> 1128 (route reload).
+Operator "start what is up next" -> picked the upstream drift-poll (NEXT-UP #2) from a framed menu, but #2 was ALREADY shipped (`50bfaf69`: `tools/upstream_drift_check.py` + 24 tests + live `RC-UpstreamDriftCheck` daily 03:45, last run rc=0) - only the ROADMAP marker was stale -> reconciled to SHIPPED (`1f434c41`). Moved to the next genuine item, #3. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 8708 -> 1128 (route reload).
 
 - **Shipped (monitor half of #3):** NEW read-only `GET /api/loop-status` (`dashboard/routes_loop_status.py`) over `ops/loop/control/{STOP,cycle.txt,claude.done,budget.json,ahk_mode.txt,controller.log}` + `config.json` max_cycles + last git commit; registered GET-only in the non-frozen `dashboard/_dispatch.py`. NEW "HEADLESS LOOP" card in the Settings view (`web/index.html`) -> `web/js/panels/dev.js::renderLoopStatus` on each Settings show (`main.js:39` import + `:667` call) + `.loop-*` CSS (`header.css`). Renders state stopped/running/idle + cycle N/max + last-cycle sha/tests/regress + gemini/claude spend + last commit + 12-line log tail.
 - **Contract:** STOP-present -> stopped(+reason) / cycle.txt-present -> running / else idle; `last_done` PREFERS the transient `claude.done` sentinel and FALLS BACK to parsing the newest `claude.done sha=.. tests=.. regress=..` line in `controller.log` (sentinel is unlinked after each cycle so it is usually absent at rest -> the log fallback is load-bearing, source-tagged); fail-soft per source; always 200. `_last_commit()` + module Path-constants = test seams.
@@ -17260,7 +17260,7 @@ Operator "start what is up next" -> picked the upstream drift-poll (NEXT-UP #2) 
 
 # 2026-06-07 - DS schema lift item 345 (wiki_attack_total_time) + Share CI-drift fix
 
-10-scout channel fanout (8th consecutive forward-marker lift). Picked mode/missile `DataSnapshot.wiki_attack_total_time(champ_id) -> float|None` (`agents/daemon_slayer/data_loader.py`) - surfaces `wiki_stats.attack_total_time` (FULL AA cycle = windup + recovery, i.e. 1/attackSpeed at base; distinct axis from item-221 windup-only `wiki_attack_cast_time`). Forward-marker, byte-identical, ENGINE stays 1.120.0, DS NOT restarted. Commit `38158e1d`.
+10-scout channel fanout (8th consecutive forward-marker lift). Picked mode/missile `DataSnapshot.wiki_attack_total_time(champ_id) -> float|None` (`agents/daemon_slayer/data_loader.py`) - surfaces `wiki_stats.attack_total_time` (FULL AA cycle = windup + recovery, i.e. 1/attackSpeed at base; distinct axis from item-221 windup-only `wiki_attack_cast_time`). Forward-marker, byte-identical, ENGINE stays 1.120.0, DS NOT restarted. Commit `8474f4b2`.
 
 - **Scouts:** 6 EXHAUSTED (passive_damage/passive_heal/per-stack/antitank/survivability/cross-spell-amp - hand-authored registries NOT loaded into DataSnapshot, or every field already consumed), 1 REJECT (per-spell-CC `missile_cast_record`: merger ground-truth probe found 388/390 == primary `missile_speed` = redundant restatement, CONFIRMS item-344's adjudication), 1 WEAK (cc_conditional aggregate over already-surfaced `durations_s`), 2 LIFT_FOUND (bilinear `passive_bilinear_axes` synthetic-only + DamageBlock-arg = off the champ-keyed pattern; `wiki_attack_total_time` cleanest = pure float|None, same wiki_stats sidecar + data_loader idiom as items 221/344).
 - **Datum:** 61/171 champs carry it, all positive + all distinct-from-cast (Jhin total 1.6 vs cast 0.25 / Draven 1.473 / Belveth 1.01); 110 null = coverage subset (NOT melee/ranged - Belveth+Aatrox melee yet carry it). Guard mirrors aa_missile_speed (bool/non-numeric reject + numeric-string-NOT-coerced + <=0 reject).
@@ -17272,7 +17272,7 @@ Operator "start what is up next" -> picked the upstream drift-poll (NEXT-UP #2) 
 
 # 2026-06-07 - loop cycle 3 (run 2026-06-06): E1 per-role rubric EMPIRICAL CALIBRATION SHIPPED [item 335]
 
-Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session E1 (tune core/post_game_rubric.py weight vectors from public per-role data). Operator interrupted after this cycle -> STOP dropped, loop halted, /done. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 27300 -> 9412 (route reload). Commits `42780b3d` code + `d7ebebbd` docs.
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session E1 (tune core/post_game_rubric.py weight vectors from public per-role data). Operator interrupted after this cycle -> STOP dropped, loop halted, /done. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, no Share); RC restarted pid 27300 -> 9412 (route reload). Commits `4d9a8adb` code + `fe209444` docs.
 
 - **NOT a stale premise (breaks the D1/D2/B1 streak):** the rubric existed + was LIVE-wired (routes_post_game_rubric -> last_match.js hero grade chip + postmortem_analyze) but its weights were hand-estimated "STARTING" values. GROUND TRUTH over 5957 ranked-SR rows in data/rewind_history.db (map 11 CLASSIC >=15min, real obj): the median real game graded **D** (TOP/JG/MID/ADC) / **C** (SUP), scores 33-46 - violating the module's own documented "median 1.0-profile -> 50 (B)" invariant. dpm baselines ran 40-80% low (TOP 480 vs real 717), KDA high (TOP 2.50 vs 1.78), weight sums 3.70-4.60 (need 5.0 for the x10 to hit 50).
 - **Fix (2 grounded axes):** `_ROLE_BASELINES` -> empirical real per-role medians; `_DEFAULT_WEIGHTS` -> public-source emphasis ordering (unrankedsmurfs confirms Riot publishes NO exact weights: CS-led TOP/MID, obj/KP-heaviest JG, vision + strict-KDA SUP, carry-damage ADC), every vector now sums to 5.0. Validated on the same corpus: median now grades **B** all roles (TOP 51.5 / JG 53.3 / MID 52.0 / ADC 53.5 / SUP 54.6) with a sane S+..D spread.
@@ -17283,7 +17283,7 @@ Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session E1 (tune 
 
 # 2026-06-06 - loop cycle 3 (run 2026-06-06-02): A2b DS-Matchup card SHIPPED [item 327]
 
-Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A2b. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Merges `0a4b0dc0` backend + `3dd1cdcf` frontend + UI-fix `0a017dc4`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 13060 -> 13948 for the route reload.
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A2b. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Merges `ee14aa98` backend + `5858a419` frontend + UI-fix `1c1e52e8`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 13060 -> 13948 for the route reload.
 
 - **Shipped:** NEW `GET /api/ds-matchup` (`dashboard/routes_ds_matchup.py` + `_dispatch.py`) - thin read-only adapter over the EXISTING `core/daemon_slayer_client.matchup()` (POST `/v2/matchup`, item-265 compute_matchup engine) + a champ-select card (`web/js/panels/ds_matchup.js` + `.css` + `web/data/ui_mock/ds_matchup.json`). DISTINCT pairwise surface, NOT a ds-profile axis. Purely additive; mirrors routes_ds_profile (5-min cache, numeric-key->slug, fail-soft 400/503/200-no_matchup). Payload adds swing_pct (0-100, 50=even) + favored (A/B/even) over the raw MatchupResult.
 - **Card:** champ_a=cs.my_champion vs champ_b=first committed enemy; verdict chip (all_in/trade green, back_off red, even info) over a centered swing bar + per-side pct-removed + casts notes.
@@ -17295,7 +17295,7 @@ Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A2b. Orch
 
 # 2026-06-06 - loop cycle 5 (run 2026-06-06-01): A1 DS-Profile panel SHIPPED [item 325]
 
-Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A1. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Commit `8e376858`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 24164 for the new route.
+Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A1. Orchestrator-merge: 1 Claude sole-merger + 2 parallel disjoint worktree slices + read-only verifier gate. Commit `5a19fec7`. Non-engine, non-frozen; ENGINE stays 1.120.0 (DS untouched, NOT restarted); RC restarted pid 24164 for the new route.
 
 - **Shipped:** NEW `GET /api/ds-profile` (`dashboard/routes_ds_profile.py` + `_dispatch.py`) aggregating the 4 EXISTING pure scorers (compute_mobility/sustain/scaling/waveclear) into a locked-champ 4-bar champ-select panel (`web/js/panels/ds_profile.js` + `.css` + `web/data/ui_mock/ds_profile.json`). Purely additive; mirrors the ds_sweep competitor-lift pattern (5-min cache, numeric-key->slug, fail-soft 400/200-no_profile/503).
 - **Per-axis bar:** leaguewide-max-% (cached once) + LOW/MED/HIGH tier; scaling -> UP/EVEN/DOWN slope chip; waveclear -> top_kind + ranged_shove. Live Vayne: mob9/sus0/scal41-UP/wave1.
@@ -17310,8 +17310,8 @@ Gemini-directed headless cycle; directive = ORCHESTRATION_PLAN session A1. Orche
 
 Loop `ops/loop/control/directive.md` asked to implement "AurelionSol W cross-spell seam" + "conditional-gate for Brand W and Ekko W" via the orchestrator pattern. GROUND-TRUTH PROBE: both already shipped; directive was generated from STALE ROADMAP line 49 prose (written at item 250/251) that still listed them as "remain".
 
-- **Slice A AurelionSol W cross-spell seam = item 257** (commit `c47f04b9`, ENGINE 1.87.0 -> 1.88.0). `_CROSS_SPELL_AMP_OVERRIDES` + `_cross_spell_amp_for` consumed at `agents/daemon_slayer/ability_dps.py:1111`. default-OFF byte-identical.
-- **Slice B conditional-gate = item 255** (commit `db52d355`, ENGINE 1.86.0 -> 1.87.0). Brand P (Blaze max-HP ring, prob 0.5) + Ekko W (Parallel Convergence missing-HP sub-30%, prob 1.0 ctx-gated) in `_passive_damage_overrides.py`. NB directive said "Brand W"; the real conditional-gate damage slot is Brand P (W = plain AoE zone, no gate). default-OFF byte-identical.
+- **Slice A AurelionSol W cross-spell seam = item 257** (commit `2c371988`, ENGINE 1.87.0 -> 1.88.0). `_CROSS_SPELL_AMP_OVERRIDES` + `_cross_spell_amp_for` consumed at `agents/daemon_slayer/ability_dps.py:1111`. default-OFF byte-identical.
+- **Slice B conditional-gate = item 255** (commit `cdfb0cda`, ENGINE 1.86.0 -> 1.87.0). Brand P (Blaze max-HP ring, prob 0.5) + Ekko W (Parallel Convergence missing-HP sub-30%, prob 1.0 ctx-gated) in `_passive_damage_overrides.py`. NB directive said "Brand W"; the real conditional-gate damage slot is Brand P (W = plain AoE zone, no gate). default-OFF byte-identical.
 - **No re-implementation.** Re-coding shipped entries would violate the CLAUDE saturation guard + risk duplicate registry rows. Did NOT spawn worktree agents (nothing to implement). Fixed the stale ROADMAP line 49 instead.
 - **Tests:** named-slice files `test_cross_spell_amp_item257.py` + `test_passive_damage_conditional_gate_item255.py` = 45 passed. Full DS dir `agents/daemon_slayer/tests/` = 6644 passed / 1 skip / 1 xfail / 1936 subtests / EXIT 0. NO ENGINE bump, DS NOT restarted.
 - **NEXT:** only Phase D live flag-flips remain for DS-completion - operator-gated, NOT headless (section 4b do-not-flip-blind).
@@ -17371,9 +17371,9 @@ Cycle-2 directive (`ops/loop/control/directive.md`): flip `prefer_cdragon_ratios
 
 Two threads. (1) Gemini-loop cycle-1 directive (`ops/loop/control/directive.md`): wire the DS engine to prefer mechanical CDragon ability ratios behind a default-off flag. (2) Operator pasted the lolmath "Redymix 26.11" hard-CC/haste-refactor changelog -> compare vs DS, adjust if beneficial. ENGINE UNCHANGED 1.118.0; DS NOT restarted (seam inert + AH value is offline-only). Full record = item 310 in `docs/LEDGER.md`.
 
-- **Prefer-CDragon seam (commit `4b782538`):** `AbilitiesSnapshot.load(prefer_cdragon_ratios=False, cdragon_root=None)` - FIRST engine consumer of the CDragon ratio re-source sidecar. ON -> primary-form damage-block scaling fields re-sourced per-field from `resolution=="mechanical"` blocks, Meraki fall-back per-field/block (and on missing/corrupt sidecar). Block count never changes; transform forms keep Meraki. Mirrors the `apply_passive_*` opt-in pattern. Default OFF = byte-identical. +6 tests `test_cdragon_ratio_preference.py` (TDD RED 5-fail -> GREEN). Advances ROADMAP item 17.
+- **Prefer-CDragon seam (commit `0b1f6057`):** `AbilitiesSnapshot.load(prefer_cdragon_ratios=False, cdragon_root=None)` - FIRST engine consumer of the CDragon ratio re-source sidecar. ON -> primary-form damage-block scaling fields re-sourced per-field from `resolution=="mechanical"` blocks, Meraki fall-back per-field/block (and on missing/corrupt sidecar). Block count never changes; transform forms keep Meraki. Mirrors the `apply_passive_*` opt-in pattern. Default OFF = byte-identical. +6 tests `test_cdragon_ratio_preference.py` (TDD RED 5-fail -> GREEN). Advances ROADMAP item 17.
 - **lolmath 26.11 compare:** lolmath = JS SPA consuming DS's `Share/lolmath_ingest` bundle; refactor is consumer-side. hard-CC counting -> DS already has `_per_spell_cc`/`cc_output`/`cc_pressure`/`cc_conditional` + Aftershock (MATCH); per-ability/ult-specific haste (`finalHasteBonuses`/`extraUltimateHaste`) -> DS uses ONE uniform AH, no rune input, ult-haste only in the live overlay = DELIBERATE simplification, NOT a bug, NOT changed.
-- **REAL BUG FOUND + FIXED (commit `560caa63`):** Imperial Mandate base AH stale 20 (16.10.1) -> 15 (16.11.1); Riot dropped base 20->15 + added "+15 AH on immobilizing abilities" conditional. Registry contract = BASE AH only -> 15 correct. Full drift scan: EXACTLY 2 stale (`4005` SR + `324005` ARAM); Arena `224005`=35 correct. +1 regression test.
+- **REAL BUG FOUND + FIXED (commit `500c3e24`):** Imperial Mandate base AH stale 20 (16.10.1) -> 15 (16.11.1); Riot dropped base 20->15 + added "+15 AH on immobilizing abilities" conditional. Registry contract = BASE AH only -> 15 correct. Full drift scan: EXACTLY 2 stale (`4005` SR + `324005` ARAM); Arena `224005`=35 correct. +1 regression test.
 - **Share sync (commit `e27156fd`):** re-mirror 314 files (1.118.0, --check 0) + 03_DATA_AND_SOURCES.md freshness (CDragon re-source no longer "planned" - opt-in seam exists). DS suite 6618 passed; root tests/ 4979 passed; ruff/pyc/hygiene-12 green; ASCII-only.
 - **Don't-redo:** seam is default-OFF + inert (no live sidecar generated yet) - do NOT flip default-on without the staged review+gold-repin+ENGINE-bump; do NOT re-pitch per-ability/ult haste as a DS bug; `_item_ability_haste.py` pinned at 16.10.1 with NO working regen tool (docstring's `regen_item_ability_haste.py` absent) - re-scan vs items.json each patch (memory `reference_item_ah_registry_drift`).
 - **NEXT:** generate the live `cdragon_ability_ratios.json` for 16.11.1 -> review `--drift` -> re-pin gold tests -> flip default-on + bump ENGINE + restart DS.
@@ -17394,12 +17394,12 @@ Operator: "start the next DS schema lift with 10 multi-agents fan out different 
 
 # 2026-06-05 - DS anti-tank %HP/shred scorer - 16th axis (item 308) [headless-upgrade autonomous run]
 
-Operator fired `/headless-upgrade` via the new desktop launcher (no explicit task); the autonomous run shipped the next DS axis. Commits `56fcb3d3` (axis) + `7901712a` (launcher). ENGINE 1.116.0 -> 1.117.0; DS :8893 restarted taskkill pid 18796 -> 1.117.0 live-verified. Full record = item 308 in `docs/LEDGER.md`.
+Operator fired `/headless-upgrade` via the new desktop launcher (no explicit task); the autonomous run shipped the next DS axis. Commits `0a3048c2` (axis) + `b448b6bc` (launcher). ENGINE 1.116.0 -> 1.117.0; DS :8893 restarted taskkill pid 18796 -> 1.117.0 live-verified. Full record = item 308 in `docs/LEDGER.md`.
 
 - **NEW `agents/daemon_slayer/antitank.py` + `/anti-tank` route (POST+GET).** Per-(champ,source,kind) registry; `antitank_score` = sum(kind_weight [MAX_HP 1.0 / SHRED 0.85 / CURRENT_HP 0.75 / PERCENT_PEN 0.65] * cadence_mult [SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65] * magnitude), 0.5 conditional midpoint; `top_kind` + `shreds_resist` flag (any SHRED/PERCENT_PEN). PURELY ADDITIVE (byte-identical to every existing route). SELECTIVE (flat-damage champs 0.0). **%-missing-HP executes EXCLUDED as finishers** (weakest vs a full tank). **Dual-kind-per-slot** (Trundle R = %max-HP + resist steal; Vi W / Yorick E / Sion E = %HP + shred).
 - **Fan-out:** 171-champ Workflow (8 classify + 4 critics, 1.09M tok / 192 tool uses / 457s) -> 102 entries / 78 champs / 38 conditional. Live: Rumble 1.42 / KSante 1.24 / Sion 1.21 / Trundle 0.99 / Vayne 0.95 / KogMaw 0.93 top; MasterYi/Annie/Talon/Lux/Soraka 0.0. + `tools/ds_antitank_build.py` ((champ,source,kind) dedup) + notes sidecar (Share-excluded).
 - +32 tests `test_antitank_item308.py`; DS suite 6579 passed; ruff clean; 61 ENGINE pin syncs; Share re-sync 311 files --check 0; CHANGELOG +1.117.0; ROADMAP relocated item 303 -> `docs/ROADMAP_HISTORY.md` (80KB budget).
-- **ALSO shipped (commit `7901712a`):** idempotent one-click headless-upgrade desktop launcher (`tools/rc_headless_launcher.ps1` + `install_headless_launcher_shortcut.ps1` -> Desktop `RC Headless.lnk`). Per click: runs RC-GeminiAudit (schtasks /Run) + AHK-sends `/headless-upgrade` into the Claude desktop window, lock-guarded against double-injection (self-heals when claude.exe absent / lock stale). Operator config: Claude via AHK desktop-send, Gemini always-run-now.
+- **ALSO shipped (commit `b448b6bc`):** idempotent one-click headless-upgrade desktop launcher (`tools/rc_headless_launcher.ps1` + `install_headless_launcher_shortcut.ps1` -> Desktop `RC Headless.lnk`). Per click: runs RC-GeminiAudit (schtasks /Run) + AHK-sends `/headless-upgrade` into the Claude desktop window, lock-guarded against double-injection (self-heals when claude.exe absent / lock stale). Operator config: Claude via AHK desktop-send, Gemini always-run-now.
 - **Don't-redo:** %-missing-HP executes are excluded by design (do NOT re-add Garen R / Akali R as anti-tank); regenerate the registry via `tools/ds_antitank_build.py` (marker-spliced, do not hand-edit); dual-kind-per-slot is intentional. The anti-tank axis is EXHAUSTED across the roster.
 - **NEXT (Phase D, live-gated):** an auto-pairing consumer crediting anti-tank into a live draft / teamfight / itemization verdict (buy %HP/shred vs an enemy tank line); tune the kind weights + cadence mults after a live re-rank.
 
@@ -17407,7 +17407,7 @@ Operator fired `/headless-upgrade` via the new desktop launcher (no explicit tas
 
 # 2026-06-05 - DS ally-amp Phase D: peel-target live consumer (item 307)
 
-Wired the item-304 ally-amplification axis into its FIRST live consumer. Commit `7066e0c0`. Non-DS / non-engine / non-frozen; RC NOT restarted (route loads on the next between-games restart). Operator: "continue next -> phase D : am playing games ranked SR"; one AskUserQuestion -> **peel-target (live)**.
+Wired the item-304 ally-amplification axis into its FIRST live consumer. Commit `2fc0a473`. Non-DS / non-engine / non-frozen; RC NOT restarted (route loads on the next between-games restart). Operator: "continue next -> phase D : am playing games ranked SR"; one AskUserQuestion -> **peel-target (live)**.
 
 - **NEW `GET /api/peel-priority`** (`dashboard/routes_peel_priority.py`, additive, single-sided): pairs the live/supplied ally roster vs `compute_allyamp` -> `ranked` + `protect_target` (top buff-throughput ally) + `hard_saves` (PROTECT/`saves_ally` champs) + `verdict`. ABSENT `ally` -> live auto-read; empty -> `no_champions`; no game -> `no_live_roster`. Registered in `_dispatch.py`. + `_liveclient.ally_team` (symmetric to `enemy_team`).
 - **Bug caught + fixed in-slice:** Live Client emits DISPLAY names ("Tahm Kench"); DS registries key canonical ids ("TahmKench") -> silent 0.0 miss; **TahmKench is a PROTECT hard-save**. NEW `core/archetype_picks.canonical_champion_id` (data-driven, ddragon_champions.json) bridges it; `_live_ally_roster` canonicalizes. Memory `reference_liveclient_name_vs_ddragon_id`.
@@ -17419,7 +17419,7 @@ Wired the item-304 ally-amplification axis into its FIRST live consumer. Commit 
 
 # 2026-06-05 - lolmath Discord chat digest (DS robustness check; docs-only, no engine change)
 
-Digested a lolmath community chat against RC's Daemon Slayer via a 3-agent fan-out. Commit `a1bb672f` (BACKLOG.md only, CI green). RC NOT touched. Operator was mid-game (SR InProgress) at wrap.
+Digested a lolmath community chat against RC's Daemon Slayer via a 3-agent fan-out. Commit `2eec6e4e` (BACKLOG.md only, CI green). RC NOT touched. Operator was mid-game (SR InProgress) at wrap.
 
 - **2 of 3 lolmath behaviors are STRUCTURALLY ABSENT in RC (do NOT re-investigate):** (1) "marksman preset on a no-autos mage" (Fiddlesticks -> pure-AP degeneration) cannot occur - RC routes mages to `ds.ability` via the DDragon-tag archetype dispatcher (`core/archetype_picks.py`); the carry/dps DPS=0 path is unreachable in prod (only a forced `archetype="carry"` on a mage hits it). (2) "1 R bundles 2 empowered autos" double-count cannot occur - `burst.py:803` sums ability-blocks + AA separately; the AA-empower (`apply_ability_amps`) + on-hit (`apply_passive_damage`) seams are default-off, AA-only, on disjoint champ sets; Udyr in neither.
 - **3rd behavior (target HP% for %HP item procs) is a documented modeling CHOICE, not a bug.** RC models the 3 genuinely-%CURRENT-HP procs - BotRK 3153 (`_effects_data.py:546`), Hellfire Hatchet 4017 (`:2055`), Fulmination 443055 (`:2312`) - at full max-HP (each comment self-documents the `current~=max` steady-state). `CallContext` carries `target_max_hp` but no `target_current_hp_pct`, so the current-HP knob (honored by ability_dps/burst) is half-wired for item procs. Live coach passes a real max_hp (`archetype_dispatch.py:222`) so the over-credit is live but bounded (the /dps + /rank routes default `target_max_hp=0.0` -> procs zeroed unless an HP is supplied).
@@ -17432,8 +17432,8 @@ Digested a lolmath community chat against RC's Daemon Slayer via a 3-agent fan-o
 
 Two non-DS slices, both shipped + pushed + CI green; RC NOT restarted (no engine/frozen touch). Full records = items 305 + 306 in `docs/LEDGER.md`.
 
-- **dashboard/routes_pickban.py cleanup (item 305; branch refactor/pickban-routes ff-merged main `6b8cbd7f`).** 8 atomic commits C1-C8. C1+C2 (TDD, xfail-strict): `_serve_personal_record` now 400s on a malformed `?queue=` (parity with pickban-recs - was silently defaulting to the SR queue set). C3-C8 behavior-preserving: `_exclude_clause(col=)` removed `.replace` SQL surgery x4; merged 3 query twins (-> `_query_performance_band` / `_query_co_participant` / `_query_loss_matchups`); `_pct()` + named consts; shared handler scaffold flattened both HTTP handlers C901 12/9 -> <8. 1209->1172 LOC, 53->54 tests, verifier subagent CONFIRMED. Residual C901 (`_compose_cleanse_advisory` 15, `_load_champ_name_to_id` 9) deliberately deferred.
-- **Gemini auditor (item 306, PROVISIONAL; commits `eaa1f0a1` `f3c54906` `14f95e06`).** gemini-cli 0.45.1 / gemini-3-pro-preview (paid) as a headless READ-ONLY critic. `tools/gemini_audit.ps1` (nightly RC-GeminiAudit 03:00 -> `docs/EXTERNAL_REVIEW_<date>.md`, gitignored), `gemini_ask.ps1` (in-session Q/A -> `gemini_io/`), `claude_send.ahk` (AHK v2 self-clear, dry-run default, NOT auto-wired), `GEMINI.md`, `.geminiignore`, `docs/GEMINI_AUDIT_CONFIG.md` + `GEMINI_REVIEW_CONSUMPTION.md`. Read-only via `--approval-mode plan`; Gemini never writes source (the runner captures its stdout). First review verified genuine. Memory: `project_gemini_auditor.md`.
+- **dashboard/routes_pickban.py cleanup (item 305; branch refactor/pickban-routes ff-merged main `bd844160`).** 8 atomic commits C1-C8. C1+C2 (TDD, xfail-strict): `_serve_personal_record` now 400s on a malformed `?queue=` (parity with pickban-recs - was silently defaulting to the SR queue set). C3-C8 behavior-preserving: `_exclude_clause(col=)` removed `.replace` SQL surgery x4; merged 3 query twins (-> `_query_performance_band` / `_query_co_participant` / `_query_loss_matchups`); `_pct()` + named consts; shared handler scaffold flattened both HTTP handlers C901 12/9 -> <8. 1209->1172 LOC, 53->54 tests, verifier subagent CONFIRMED. Residual C901 (`_compose_cleanse_advisory` 15, `_load_champ_name_to_id` 9) deliberately deferred.
+- **Gemini auditor (item 306, PROVISIONAL; commits `d8796d97` `e65f3213` `ed558446`).** gemini-cli 0.45.1 / gemini-3-pro-preview (paid) as a headless READ-ONLY critic. `tools/gemini_audit.ps1` (nightly RC-GeminiAudit 03:00 -> `docs/EXTERNAL_REVIEW_<date>.md`, gitignored), `gemini_ask.ps1` (in-session Q/A -> `gemini_io/`), `claude_send.ahk` (AHK v2 self-clear, dry-run default, NOT auto-wired), `GEMINI.md`, `.geminiignore`, `docs/GEMINI_AUDIT_CONFIG.md` + `GEMINI_REVIEW_CONSUMPTION.md`. Read-only via `--approval-mode plan`; Gemini never writes source (the runner captures its stdout). First review verified genuine. Memory: `project_gemini_auditor.md`.
 - **Don't-redo:** pickban is DONE + merged - do NOT re-refactor. Gemini key is a PAID User-scope key (prefix AQ.A); model id is gemini-3-pro-preview (NOT "gemini-3-pro" - 404s); read it via registry not `$env`; free quota is shared with Antigravity. Gemini is PROVISIONAL. D2/D3 copy-paste blocks + AHK "go" wiring are operator-side.
 - **NEXT:** triage the first nightly EXTERNAL_REVIEW (verify-before-trust + TDD-first); optional deferred 2 C901 fns; tune Gemini cadence/scope after a few reviews.
 
@@ -25842,12 +25842,12 @@ priority from the 3 prompt candidates; a GROUND-TRUTH PROBE drained all three, s
 pre-authorized fallback this became a weekly-hygiene pass. No code/engine/DS/Share change.
 
 CANDIDATES - do NOT re-chase (each verified vs live codebase, like this run's predecessor item 1):
-- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `94f1e07b` wired
+- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `0e68d37d` wired
   `_hideEmptyStatRows()` (right_now.js:456 <- main.js:1443): hides no-live-producer rows + collapses
   empty group headers, idempotent. `gd_at_15` has a producer ONLY in core/match_metrics.py (post-game)
   so it is NOT live-derivable (Gemini's example was wrong). Residual = wiring a live stat (e.g. KP) into
   the RETIRED Chrome dashboard adaptation panel = low value (the overlay, not that panel, is the surface).
-- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`e6cd350b`/`48bc58c8`/`c162e5bd`;
+- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`fdbf5412`/`595733c0`/`c162e5bd`;
   ROADMAP_HISTORY flipped to SHIPPED). Explore-agent mapped the surface: no unshipped bounded slice.
 - (a) ZOI slice 4 champion-only template matching: the ONLY genuinely-unshipped candidate, but LOW
   value + HIGH risk. core/minimap_blob_detect.py:16-19 author note: "for a ZOI map-control signal, total
@@ -25876,7 +25876,7 @@ cycle) mean the curated backlog is stale - grep-verify any future pick against t
 
 # 2026-06-21 (headless continue 9) - HZ laning-combat mismatch DIAGNOSED + overlay live-verified clean
 
-Item 575, commit `367297b6` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
+Item 575, commit `10417c01` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
 bump / flip.
 
 TRIAGE (candidates 1+2 verified DRAINED/GATED again - 5th cycle, grep-verify mandatory): live re-probe
@@ -25918,7 +25918,7 @@ cycle (a bounded build was picked this cycle, so deferred again per the operator
 
 # 2026-06-21 (headless continue 8) - HZ shadow agreement metric DE-BIASED (recall category error)
 
-Item 574, commit `79a7906a` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
+Item 574, commit `613bc1e0` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
 tooling; no engine / DS / Share / ENGINE bump.
 
 TRIAGE (the prompt's candidates 1+2 verified DRAINED before building - the curated backlog had 3 already-
@@ -25966,20 +25966,20 @@ engine / DS / Share / ENGINE_VERSION change.
 
 SHIPPED (each: gemini spec -> build agent -> orchestrator FRESH re-verify (diff + tests + hex/ASCII
 + test-body read) -> commit + push + restart/live-curl for routes):
-- 1a counter-pick HERO card `4d0172b6` (counters[0] dominant + compact [1..4]; backend was already
+- 1a counter-pick HERO card `b3fa4a7f` (counters[0] dominant + compact [1..4]; backend was already
   wired RC2 E4 - prominence elevation only).
-- 1b ally AD/AP meter `66375d63` - NEW GET /api/champ-select/team-damage-mix (info.attack vs
+- 1b ally AD/AP meter `b686da59` - NEW GET /api/champ-select/team-damage-mix (info.attack vs
   info.magic tally) -> dual-color bar; live 58/42.
-- 3 home last-20 W/L strip + WR `c3bf040d` - shared _compute_last20() extracted from _build_history
+- 3 home last-20 W/L strip + WR `87240826` - shared _compute_last20() extracted from _build_history
   (byte-identical, 7/7 regression), last20 injected into /api/home/summary; live 7-13 35.0%.
-- 2a PGR decomposition 5-bar `a461980b` - last_match.js consumes the rubric components+weights_used
+- 2a PGR decomposition 5-bar `cf1896ae` - last_match.js consumes the rubric components+weights_used
   (saturation = comp/(2*weight)); route already returned them. 2b carry metrics ALREADY shipped
   (s219 _setStatsGrid) - not rebuilt. 2c @15 DROPPED (no backing data, gemini ruling).
-- 4 history season WR + filters `c0ce9faf` - retired the "needs Riot key" stub; global client-side
+- 4 history season WR + filters `4d5a9425` - retired the "needs Riot key" stub; global client-side
   champion/mode/result/grade filters. CAUGHT+FIXED an agent unit-bug: win_rate is a PERCENT live
   (51.6) but the agent rendered it *100 -> "5160%" and shaped the ui_mock fixture to the bug;
   corrected JS + fixture (lesson: live-curl the unit before trusting a fixture-passing test).
-- 5 ready-check toggle `8e972a14` - NEW non-frozen core/auto_accept_pref.py + GET/POST
+- 5 ready-check toggle `8370fe7d` - NEW non-frozen core/auto_accept_pref.py + GET/POST
   /api/lcu/auto-accept; operator-AUTHORIZED minimal frozen lcu_client.py gate (_auto_accept_tick
   wraps accept_queue in `if is_enabled()`, default ON = byte-identical). The in-process force-accept
   loop is a SEPARATE mechanism from the existing #lv-auto-accept (which set_configs the RC-LCUAgent
@@ -26067,7 +26067,7 @@ shadow-aggregator lane DRAINED (595/596/597); overlay-polish DRAINED (591); DS s
 
 # 2026-07-10 (DS Meraki-refute R103: item self-STASIS -> EHP numerator (Zhonya 3157 / Seeker 2420 / Wooglet 228002); ENGINE 1.195.0 -> 1.196.0)
 
-Orchestrated ultracode session (DS Meraki-refute rotation; the LEDGER-847 NEXT flagged item self-stasis as the warm lead). Parallel adversarial refute+completeness sweep (4 agents) -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 848. Commit `71b5276b` (build + bump, FF-merged).
+Orchestrated ultracode session (DS Meraki-refute rotation; the LEDGER-847 NEXT flagged item self-stasis as the warm lead). Parallel adversarial refute+completeness sweep (4 agents) -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 848. Commit `51bc206d` (build + bump, FF-merged).
 
 - GAP (R103): Zhonya's Hourglass (3157) + Seeker's Armguard (2420) "Time Stop" active = 2.5s stasis (untargetable + invulnerable, voids ALL damage), but earned ZERO EHP - `_effects_data.py` marks both `defensive_only` (no EHP field) and `_passive_survival_window_overrides.py` is CHAMPION-keyed (10 champ abilities, zero items) so an item can never match `survival_window_multiplier`. The refute agent proved the delta is EXACTLY 0.0 toggling the stasis seams (raw armor still counts via the normal stat path; the 2.5s window earned nothing).
 - COMPLETENESS sweep found a 4th item the task did not name: 228002 Wooglet's Witchcap (Arena-native, identical 2.5s stasis), independently probe-confirmed in the item index. 7 documented exclusions (Banshee's/Edge of Night spell-shield = separate axis; Turbo Chemtank = CC-immune not damage; Reality Fracture = pet untargetability; Duskblade = offensive takedown-gated; Stopwatch + all 22/32 mirrors absent from the index).
@@ -26084,8 +26084,8 @@ Orchestrated ultracode session (DS Meraki-refute rotation; the LEDGER-847 NEXT f
 
 Orchestrated ultracode session, interrupted mid-run by a live overlay bug (operator in-game). TWO shipped concerns:
 
-- **DS R104** (LEDGER 849; commits `7646e65d` build+bump, `6401530f` ledger): the item-side lane of the champion spell-shield axis (item 292) - the HIGH scout lead from R103's NEXT. Flow: 4-agent adversarial refute sweep (set/midpoint/schema/wiring) BEFORE code -> main-thread TDD RED-first -> verifier CONFIRM (23/23 fresh + siblings 35/35 + OFF byte-identical + ON pressure x(1-0.2)). GAP: Banshee 3102/223102 + EoN 3814/223814 + Verdant 4632 "Annul" (block next enemy ability) earned ZERO cc-survival credit (`_champion_spell_shield_overrides` is champion-keyed). The exhaustive scan caught Verdant Barrier 4632 (the component) that the task did not name. Like Sivir E, Annul negates ONE CC instance -> feeds the SAME cc_blended discount (NOT the numerator - that is the item-stasis lane R103). NEW `_item_spell_shield_overrides.py` (block_pct 100, midpoint aliased to champion reactive `_SPELL_SHIELD_REACTIVE_PROB` 0.2) + default-OFF `apply_item_spell_shield`, combining MULTIPLICATIVELY with champion `spell_shield_frac` after the tenacity step; threaded ehp/hybrid/server (+ new `item_spell_shield_frac` result field). OFF byte-identical. Refute: QSS 3140 / Mercurial 3139 / Silvermere 6035 / Mikael's 3222 cleanses correctly EXCLUDED (remove CC, not block-next). CEREMONY: 130 pins + 6 build-order stamps + Share `--check` green (432 files) + DS :8893 -> 1.197.0 verified (post-game restart, port-free confirmed; NOTE DS server speaks HTTP not HTTPS on :8893). DS suite 8251 pass / 1 skip / 1943 subtests; top-level `tests/` green; CI green.
-- **OVERLAY FIX** (commit `1a2a9709`, separate concern): operator reported "overlay stays on the dashboard in-game". Root cause is NOT the prior session's `WindowMode=2` exclusive-fullscreen occlusion hypothesis (that was a different symptom = overlay not visible at all). "Stays on the dashboard" = the view-router never flipped because `/api/state.liveclient` was EMPTY: `core/liveclient_cache.py`'s async poll task died on a mid-game RC restart and `_task` was left non-None, wedging the start()/get() respawn guard -> cache froze stale -> `age_s>5` -> `liveclient_summary()` returned `{}` (`:2999` was serving full data the whole time). FIX: `_task_alive()` treats a `done()` task as dead + `_on_task_done` done-callback clears `_task` -> self-heals without a restart. RC restart repopulated liveclient (29 keys); 10/10 regression (`tests/test_liveclient_cache_task_respawn.py`). Memory `reference_overlay_stuck_on_dashboard_liveclient_freeze` added.
+- **DS R104** (LEDGER 849; commits `b12c0b5f` build+bump, `b833ab70` ledger): the item-side lane of the champion spell-shield axis (item 292) - the HIGH scout lead from R103's NEXT. Flow: 4-agent adversarial refute sweep (set/midpoint/schema/wiring) BEFORE code -> main-thread TDD RED-first -> verifier CONFIRM (23/23 fresh + siblings 35/35 + OFF byte-identical + ON pressure x(1-0.2)). GAP: Banshee 3102/223102 + EoN 3814/223814 + Verdant 4632 "Annul" (block next enemy ability) earned ZERO cc-survival credit (`_champion_spell_shield_overrides` is champion-keyed). The exhaustive scan caught Verdant Barrier 4632 (the component) that the task did not name. Like Sivir E, Annul negates ONE CC instance -> feeds the SAME cc_blended discount (NOT the numerator - that is the item-stasis lane R103). NEW `_item_spell_shield_overrides.py` (block_pct 100, midpoint aliased to champion reactive `_SPELL_SHIELD_REACTIVE_PROB` 0.2) + default-OFF `apply_item_spell_shield`, combining MULTIPLICATIVELY with champion `spell_shield_frac` after the tenacity step; threaded ehp/hybrid/server (+ new `item_spell_shield_frac` result field). OFF byte-identical. Refute: QSS 3140 / Mercurial 3139 / Silvermere 6035 / Mikael's 3222 cleanses correctly EXCLUDED (remove CC, not block-next). CEREMONY: 130 pins + 6 build-order stamps + Share `--check` green (432 files) + DS :8893 -> 1.197.0 verified (post-game restart, port-free confirmed; NOTE DS server speaks HTTP not HTTPS on :8893). DS suite 8251 pass / 1 skip / 1943 subtests; top-level `tests/` green; CI green.
+- **OVERLAY FIX** (commit `03868b03`, separate concern): operator reported "overlay stays on the dashboard in-game". Root cause is NOT the prior session's `WindowMode=2` exclusive-fullscreen occlusion hypothesis (that was a different symptom = overlay not visible at all). "Stays on the dashboard" = the view-router never flipped because `/api/state.liveclient` was EMPTY: `core/liveclient_cache.py`'s async poll task died on a mid-game RC restart and `_task` was left non-None, wedging the start()/get() respawn guard -> cache froze stale -> `age_s>5` -> `liveclient_summary()` returned `{}` (`:2999` was serving full data the whole time). FIX: `_task_alive()` treats a `done()` task as dead + `_on_task_done` done-callback clears `_task` -> self-heals without a restart. RC restart repopulated liveclient (29 keys); 10/10 regression (`tests/test_liveclient_cache_task_respawn.py`). Memory `reference_overlay_stuck_on_dashboard_liveclient_freeze` added.
 
 NEXT: the DS Meraki-refute rotation stays LIVE - a refill picks a DIFFERENT mechanic (omnivamp + ItemShield + item-revive + item-stasis + item-spell-shield ALL saturated now - do NOT re-pick). Scout leads still open: (MED) Jak'Sho 6665 + Force of Nature 4401 conditional/ramping bonus armor+MR (EHP denominator); (MED) Awe mana->bonus-HP (Fimbulwinter 3121 / Manamune family, numerator - verify the item base-HP block does not already fold it). OR advance Lane A precompute (`tools/hz_shadow_report.py`). OR drain live-gated flips (`docs/LIVE_GAME_GATED_SYNC.md`).
 Don't-redo: item Annul spell-shield SHIPPED; overlay liveclient-freeze SHIPPED (self-heal in code - do NOT re-restart RC mid-game just to load a fix, that re-risks the boot-transition wedge). Share/docs 05 test-count (7144) is long-stale drift (live 8251) - a dedicated Share-docs reconcile job, not a per-item chase.
@@ -26139,7 +26139,7 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 
 # 2026-08-08 - headless lane 6 (DS): RM-176, and the refutations were worth more than the fixes
 
-Commit `d53c9673` on `lane/ds`, draft PR #12 (opened solely to exercise CI -
+Commit `a4c0a2bf` on `lane/ds`, draft PR #12 (opened solely to exercise CI -
 all three workflows trigger on push-to-main or PR, so a lane push runs nothing).
 ENGINE 1.275.0 -> 1.275.1. Orchestrated: 4 parallel read-only audits over
 disjoint engine module groups, then a separate adversarial refutation panel.
@@ -26191,13 +26191,13 @@ branches 0 commits ahead of main.
 **Shipped:** ROADMAP trim 100 pct -> 89 pct (24 closed stubs + the RM-192..202
 compact-open-row split relocated to ROADMAP_HISTORY; the RM-171 ROADMAP.md
 line-231 citation baseline re-added as its DISCHARGED note predicted). Three hygiene fixes:
-augment-source `-n 8` flake `30156a0b`, CLI pin 2.1.220 -> 2.1.251 after a canary
-re-run `f0c847f8`, TFT debounce made hermetic `6ac142f1`. MERGED all three lane
+augment-source `-n 8` flake `35c6da51`, CLI pin 2.1.220 -> 2.1.251 after a canary
+re-run `f0cef4b1`, TFT debounce made hermetic `6cd46cf9`. MERGED all three lane
 branches: research (RM-322..328), uiux (overlay focus + chip paint), ds
 (RM-323/324/325 + ENGINE 1.279.0). DS DEPLOYED live: `:8860` bounced -> 1.279.0,
 `test_live_three_profiles` green.
 
-**Gist-sync corruptor FIXED `01e6530bb`:** `tools/gist_share_sync.py` `_git` left
+**Gist-sync corruptor FIXED `7cee36240`:** `tools/gist_share_sync.py` `_git` left
 the hook-injected `GIT_DIR` inherited, so `git -C CLONE_DIR` operated on the
 committing worktree - corrupting `lane/ds` and force-pushing to the wrong remote.
 Now scrubs the env; 3 regression tests; validated 3x under real Share commits. Full
@@ -26276,8 +26276,8 @@ exact-match branch is dead code and the row re-scopes. Desktop
 
 # 2026-08-06a - headless run 2026-08-06-01: four fixes, and three of them mask or measure something bigger than themselves
 
-Six merges `de5b5488..e8802e21` (`a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`,
-`8f417bc3`, `e8802e21`) plus this docs commit. LEDGER 1202-1206; six rows filed
+Six merges `de5b5488..e8802e21` (`53bd3bb1`, `e97cefec`, `ab9b2b18`, `fe1628e2`,
+`d90f8a16`, `48c3cfce`) plus this docs commit. LEDGER 1202-1206; six rows filed
 RM-163 .. RM-168.
 
 - **CI IS OWED FOR EVERY SHA IN THIS RUN AND IT IS NOT A REPO FAULT.** GitHub
@@ -26349,7 +26349,7 @@ RM-163 .. RM-168.
 
 # 2026-08-11 - Overlay Platform M submission compliance (operator-directed, interactive)
 
-Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 failed. DS 10495 passed / 83 skipped / 0 failed. `ds_share_sync --check` in sync (engine 1.277.0, 533 files). Plan: `docs/OVERLAY_COMPLIANCE_PLAN.md`. Full detail: LEDGER 1238.
+Commit `1a401b4b`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 failed. DS 10495 passed / 83 skipped / 0 failed. `ds_share_sync --check` in sync (engine 1.277.0, 533 files). Plan: `docs/OVERLAY_COMPLIANCE_PLAN.md`. Full detail: LEDGER 1238.
 
 **What this session was.** Reviewed the Overlay Platform M app-proposal form + Riot's third-party rules, then cut every RC surface those rules ban and rebuilt the one worth keeping. Framework verdict for a future port: **ow-electron, not Overlay Platform M Native** (RC already ships an Electron shell and needs native node + a Python sidecar; Native is a CEF UI wrapper with no story for either).
 
@@ -26370,7 +26370,7 @@ Commit `25fce0df`, pushed to main. RC `tests/` 18470 passed / 104 skipped / 0 fa
 
 ---
 
-## 2026-07-27i - R212 the Meraki half of the premise did not exist, the defect did (ENGINE 1.261.0 -> 1.262.0, `3811d2aa`)
+## 2026-07-27i - R212 the Meraki half of the premise did not exist, the defect did (ENGINE 1.261.0 -> 1.262.0, `173ca548`)
 
 **Ninth cycle in ten with a premise false on disk - but this one split cleanly
 in half, and only one half was wrong.** The directive ordered a DS sweep of
@@ -26420,7 +26420,7 @@ cannot be done from inside a cycle it would kill.
 
 ---
 
-## 2026-07-27h - R211 the incident writeup was the next incident (ENGINE-IMPACT NONE, `61401222`)
+## 2026-07-27h - R211 the incident writeup was the next incident (ENGINE-IMPACT NONE, `74155bcb`)
 
 **Eighth cycle in nine with a premise false on disk, and this time the premise
 came from us.** The directive was cycle 15's, repeated: fix-first REGRESS on
@@ -26486,15 +26486,15 @@ move, and is noted here for the next prune.
 
 ---
 
-## 2026-07-27f - R209 docs-only pushes ran no CI while 49 guards read docs off disk (ENGINE-IMPACT NONE, `2719dc2a`)
+## 2026-07-27f - R209 docs-only pushes ran no CI while 49 guards read docs off disk (ENGINE-IMPACT NONE, `8f100bd6`)
 
 **Seventh cycle in eight with a premise stale on disk.** The directive was
 f1-phase6 item 5, the codebase-wide `skipif` audit, for the THIRD time. It shipped
-at `54bad078` (R200) and its AST regression guard shipped at `f24dea5f` (R203); the
+at `00684480` (R200) and its AST regression guard shipped at `6dff5b68` (R203); the
 13 `pytest.mark.skipif` sites left on disk are the audited CAPABILITY-OK residue
 plus the guard's own fixtures. R202's carry-forward still explains the repetition
 and is now FIVE CYCLES OLD AND UNCHANGED: controller pid 18300 started 00:37:50,
-before the self-reload fix `d4b1a762` landed, so the running image cannot load its
+before the self-reload fix `35df5e5c` landed, so the running image cannot load its
 own fix. **It must be bounced BY HAND once.** Nothing in an executor cycle can do
 it - the fix cannot install itself.
 
@@ -26502,8 +26502,8 @@ Re-cut to R208's own explicitly-unfixed carry-forward, which is the R207 class o
 more time: a guard exempted from the thing it guards. `ci.yml` has carried
 `paths-ignore` on markdown since the 2026-06-30 MINUTE SAVER, but 49 test modules
 read a tracked `.md` off disk and assert on its content. **It had already fired
-twice, in the two commits immediately before this one.** `6bad3814` was docs-only
-and turned `test_real_orchestration_plan_newest_row_survives` RED; `8d22734b` was
+twice, in the two commits immediately before this one.** `b412c2d8` was docs-only
+and turned `test_real_orchestration_plan_newest_row_survives` RED; `ae829bb2` was
 the docs-only FIX, so the fix's own green was never machine-confirmed either.
 
 Closed with a COMPLEMENT workflow rather than by weakening the filter. The minute
@@ -26539,12 +26539,12 @@ unproven until the first docs-only push - which is the real acceptance.
 
 RC `tests/` 13677 -> 13684 passed / 106 skipped / 460 subtests (+7 exact); ruff
 clean; 0 non-ASCII. DS untouched. Tier-1. This row recorded as a TABLE ROW in
-`docs/ORCHESTRATION_PLAN.md`, not a prose section, per `8d22734b`; newest row now
+`docs/ORCHESTRATION_PLAN.md`, not a prose section, per `ae829bb2`; newest row now
 sits 14753 bytes from EOF against the 16000 tail.
 
 ---
 
-## 2026-07-27e - R208 the director stamped its own premises UNVERIFIED and nothing read the stamp (ENGINE-IMPACT NONE, `f4815e16`)
+## 2026-07-27e - R208 the director stamped its own premises UNVERIFIED and nothing read the stamp (ENGINE-IMPACT NONE, `cdd0053c`)
 
 **Sixth cycle in seven with a premise stale on disk.** The directive was the
 f1-phase6 inbox apply again. STEP A ordered a commit of staged `.githooks` changes -
@@ -26553,7 +26553,7 @@ item-5a pin - `ops/loop/winmutex.py` already `f1b4b011...`, byte-identical to th
 inbox copy (bytes compared, not digests-of-record), already pinned by
 `SHARED_SHA256` beside `slots.py` `95077a62...`, UNSERIALIZED already 3, both POSIX
 monkeypatch tests already present. STEP C ordered claiming queue item 2, which
-shipped `05319608` / `54bad078`. Nothing to do; measuring that was deliverable one.
+shipped `f173ce39` / `00684480`. Nothing to do; measuring that was deliverable one.
 
 **Re-cut to the guard that let it through.** `director_prompt.md:18` mandates a
 `PREMISE-CHECK` line tagging each claim `[from-digest]` or `[UNVERIFIED]`.
@@ -26595,12 +26595,12 @@ rather than carried - real run, wrong label (an explicit 19-file list including
 `test_lcu_loop_resilience.py`, not a `test_loop*.py` glob match).
 
 **Carry-forward, unchanged and now five cycles old:** the running loop controller
-still predates `d4b1a762`, so it cannot load its own self-reload fix. It must be
+still predates `35df5e5c`, so it cannot load its own self-reload fix. It must be
 bounced BY HAND once.
 
 ---
 
-## 2026-07-27d - R207 the reports dir was exempt from the guard that would have caught it (ENGINE-IMPACT NONE, `829700e1`)
+## 2026-07-27d - R207 the reports dir was exempt from the guard that would have caught it (ENGINE-IMPACT NONE, `058f5b5b`)
 
 **The first cycle in six whose premise actually held on disk.** The named file really
 did carry non-ASCII, so the deliverable was the thing the directive pointed at rather
@@ -26616,7 +26616,7 @@ bullet, mapped to `OK` / ` - ` / `x` so meaning and column width both survive.
 
 **Two independent failures, and the second is the load-bearing one.** These files are
 written by cloud scheduled routines committing straight to main
-(`weekly-ddragon-audit@anthropic-routines`, `ef8ade31`), so no PreToolUse hook and no
+(`weekly-ddragon-audit@anthropic-routines`, `4cd89fa7`), so no PreToolUse hook and no
 git hook on Legion is ever in the path - CI is structurally the only gate that can
 fire. And `test_smart_quote_hygiene.py:121-125` blanket-exempted the whole directory
 from the tree-wide walk on an immutable-dated-artifact rationale. That rationale is
@@ -26646,11 +26646,11 @@ RC 13653 passed / 460 subtests. DS 10053 passed / 5585 subtests.
 
 ---
 
-## 2026-07-27c - R206 the guard recorded its correction where the guilty party never looks (ENGINE-IMPACT NONE, `7c8765a6`)
+## 2026-07-27c - R206 the guard recorded its correction where the guilty party never looks (ENGINE-IMPACT NONE, `5c72cb3c`)
 
 **Two of the directive's four steps were no-ops - fifth straight cycle with a stale
 premise.** STEP 1 wanted a staged `.githooks` exec-bit commit: nothing staged, tree
-clean, already `100755` since `19b680cc`. STEP 4 wanted the TEST-NOT-TRANSCRIPT rule
+clean, already `100755` since `04a5a534`. STEP 4 wanted the TEST-NOT-TRANSCRIPT rule
 made durable: already at `director_prompt.md:147-153`, already pinned by a test.
 
 **So the cycle became STEP 3, and item 7 turned out to have three pieces.** The parser
@@ -26696,14 +26696,14 @@ agent, 4 merger). DS 10053 / 5585 untouched. ruff clean. 0 non-ASCII. Tier-1.
 
 ---
 
-## 2026-07-27b - R205 the nightly was red for a month of cycles and the directive kept aiming elsewhere (ENGINE-IMPACT NONE, `1ce998a0`)
+## 2026-07-27b - R205 the nightly was red for a month of cycles and the directive kept aiming elsewhere (ENGINE-IMPACT NONE, `4a9ebe73`)
 
 **The directive's four ordered tasks were all already on disk.** Fourth consecutive
 cycle with a stale premise. Checked before writing anything: the winmutex inbox APPLY
 was a no-op (both files hash `f1b4b011...`), the UNSERIALIZED bump / POSIX tests /
 `SHARED_SHA256` pin are at `tests/test_loop_concurrency.py:310` / `:316` / `:336` /
 `:362`, `_is_on_disk_executable` is at `ops/loop/executor.py:874`, and the skip audit
-shipped `f24dea5f` and ran 22/22 green.
+shipped `6dff5b68` and ran 22/22 green.
 
 **So the work became what the directive was aiming at and had mis-diagnosed.** Nightly
 `30261946219`: `5 failed, 23474 passed`. Every PUSH run green. The whole delta is that
@@ -26771,10 +26771,10 @@ shared file was modified and no re-pin is proposed - said out loud, because a re
 joint act and silence reads as consent.
 
 RC `tests/` **13639** / 106 skipped / 460 subtests. Loop set 111. Console-flash guard 18
-(matches clean main). ruff clean, 0 non-ASCII, CI green on `f0f3fd32` and `1ce998a0`.
+(matches clean main). ruff clean, 0 non-ASCII, CI green on `783b9d76` and `4a9ebe73`.
 Tier-1: no ENGINE bump, no DS bounce, no RC restart, no Share sync.
 
-## 2026-07-27a - R204 the executor could prove disjointness, the director was never told how (ENGINE-IMPACT NONE, `7f89cd6c`)
+## 2026-07-27a - R204 the executor could prove disjointness, the director was never told how (ENGINE-IMPACT NONE, `a7a957a0`)
 
 f1-phase6 items 7 and 11 land as durable HARD RULES in `ops/loop/director_prompt.md` - the
 one file the controller re-reads every cycle, deliberately excluded from `CODE_FILES`.
@@ -26801,7 +26801,7 @@ was false. The verifier reworded the rule to prescribe a THREE-digit id (`_BLOCK
 accepts `\d{1,2}`) and separately to allow a mid-line heading (the regex is `^`-anchored) -
 each aims the director at a guaranteed deviation - and all 9 tests stayed GREEN. Only
 deleting one of 6 literal tokens killed anything: a substring pin wearing an anti-rot
-label, the same always-passing class as `SCHEDULED_SPAWNERS` pre-`756db42a`. Rebuilt so
+label, the same always-passing class as `SCHEDULED_SPAWNERS` pre-`80bb813f`. Rebuilt so
 the shape is read OFF DISK - `_exemplar()` slices the marker block into the real
 `parallel_plan()`, `KEYWORDS` is regexed out of the rule text, the PARSES/REJECTS literals
 are read from their spans.
@@ -26818,7 +26818,7 @@ STEP A of the directive was a no-op and measuring that was the first deliverable
 cycle whose stated premise was stale on disk.
 
 **CARRY-FORWARD, four cycles old and unchanged: controller pid 18300 started 00:37:50,
-before `d4b1a762` landed, so the running image still cannot load its own self-reload fix.
+before `35df5e5c` landed, so the running image still cannot load its own self-reload fix.
 IT MUST BE BOUNCED BY HAND ONCE.** Second carry-forward, newly ENUMERATED rather than
 characterized: nightly `30261946219` is red on exactly 5 ubuntu-only loop-infra tests -
 `test_mutex_serializes_two_threads`, `test_loop_director_context_caps` x2,
@@ -26831,28 +26831,28 @@ Tier-1: no ENGINE bump, no DS bounce, no RC restart, no Share sync.
 
 ---
 
-## 2026-07-27 - R202 the controller never loaded the fixes shipped to it (ENGINE-IMPACT NONE, `d4b1a762`)
+## 2026-07-27 - R202 the controller never loaded the fixes shipped to it (ENGINE-IMPACT NONE, `35df5e5c`)
 
 **The directive ordered f1-phase6 item 2 for the SECOND time and it was already on disk**
 (`ops/loop/executor.py:874-886` `_is_on_disk_executable`, pinned by
-`tests/test_loop_executor.py:381-465`, shipped `05319608` / LEDGER 1074 at 03:23 the
+`tests/test_loop_executor.py:381-465`, shipped `f173ce39` / LEDGER 1074 at 03:23 the
 same morning). A second refutation of the same row teaches the director nothing, so the
 deliverable was the reason the repetition keeps happening.
 
 **R201 diagnosed it correctly and shipped the fix to a process that could not receive
-it.** `control/RUNNING.lock` pid 18300 started 00:37:50; `6c3851d0` / `ff439e14` /
-`d048f96f` landed 05:03:56 / 05:24:57 / 05:34:14. Python binds a module ONCE at process
+it.** `control/RUNNING.lock` pid 18300 started 00:37:50; `1f880bb1` / `7e0e8b80` /
+`d3eb3b3a` landed 05:03:56 / 05:24:57 / 05:34:14. Python binds a module ONCE at process
 start. Two live artifacts prove it by strings CURRENT code cannot emit:
 `control/_gemini_in.txt` (05:45, written BY that process) carries
 `LEDGER head truncated at 8000 bytes`, the label of the PRE-fix `cap_bytes` call at
 `6c3851d0^:431` (HEAD goes through `ledger_digest`, whose marker says "older items
-omitted"); and `6c3851d0`'s OTHER fix
+omitted"); and `1f880bb1`'s OTHER fix
 (`DIRECTIVE_METADATA_PREFIXES`, so a chain record stops being titled with its grounding
 metadata) is equally inert - the records that process wrote at 05:04:46 and 05:45:58 are
 still titled `GROUNDED-AGAINST: ...`.
 
 **The stdin cap DID also fire at 05:45** - the pre-fix image overflows, so the blind
-60/40 cut ate the plan tail and the ledger digest header, exactly the failure `ff439e14`
+60/40 cut ate the plan tail and the ledger digest header, exactly the failure `7e0e8b80`
 fixed at 05:24 and this process never loaded. **Near-miss worth keeping:** the artifact
 carries `STDIN CAP: middle truncated` TWICE - one real cut, one quoted at
 `docs/LEDGER.md:47` (item 1075 narrating the R201 fix). I found the quoted one first and
@@ -26892,7 +26892,7 @@ bounce, no RC restart. TDD RED 17/17 -> GREEN 17/17.
 
 ---
 
-## 2026-07-27 - R200 f1-phase6 items 2 + 5: the exec-bit commit gate and the 155-site skip audit (ENGINE-IMPACT NONE, `05319608` + `54bad078`)
+## 2026-07-27 - R200 f1-phase6 items 2 + 5: the exec-bit commit gate and the 155-site skip audit (ENGINE-IMPACT NONE, `f173ce39` + `00684480`)
 
 **The directive came wrapped in an EXECUTOR OVERRIDE telling me to serialize because it
 could not verify the two named agents had disjoint file sets.** It was verifiable, and
@@ -26921,7 +26921,7 @@ repos were 644 on disk and would have gone red on Linux for a fixture reason.
 **Item 5 - 155 dispositions: 75 CAPABILITY-OK, 27 GITIGNORED-DATA-OK, 51 DEFECT-FIXED,
 2 FUTURE, 0 unaudited.** NOTE for the next reader: the `2026-07-27b` entry below records
 item 5 as done via `-> RM-119`. That pass audited CI COVERAGE and filed RM-119; it did
-not convert any misaligned skip, and all 51 defects were still on disk at `e3f765e1`.
+not convert any misaligned skip, and all 51 defects were still on disk at `1f66700d`.
 This cycle did the conversion. RM-119 stays OPEN - it is an operator-gated billing call
 about widening push CI, not part of this scope. The rule was mechanical so it is
 auditable: does the condition gate on something TRACKED IN GIT? If yes, the condition can
@@ -26951,14 +26951,14 @@ files; 0 non-ASCII. Tier-1: no ENGINE bump, no DS bounce, no RC restart.
 
 ---
 
-## 2026-07-27 - R199 loop console-flash back-port + the lane-count value contract (ENGINE-IMPACT NONE, `756db42a`)
+## 2026-07-27 - R199 loop console-flash back-port + the lane-count value contract (ENGINE-IMPACT NONE, `80bb813f`)
 
 **The directive was stale and measuring that first was the whole first half.** It asked
 to commit staged `.githooks` mode flips and apply `moon_sync_inbox/winmutex.py.from-lw`
 with the item-5a SHA pin. `git status` was clean, `ops/loop/winmutex.py` already hashed
 `f1b4b011...` identical to both the inbox file and the Sibling-A tree, and
 `tests/test_loop_concurrency.py` already carried the UNSERIALIZED-count 3, both POSIX
-monkeypatch tests and `SHARED_SHA256`. It all landed in `e0f4d546`/`fbf744f5`/`2c2877a1`
+monkeypatch tests and `SHARED_SHA256`. It all landed in `2c281443`/`2e485aa8`/`1e7a4234`
 and RC had already sent LW a queue-CLOSED ack at 02:10. Nothing was re-applied.
 
 **The one live sub-task was the defect-class enumeration, and it paid for the cycle.**
@@ -27004,7 +27004,7 @@ no DS bounce, no RC restart, no Share sync.
 
 ---
 
-## 2026-07-27 - R198 Arena coach overlay UI audit (ENGINE-IMPACT NONE, `964f3be1`)
+## 2026-07-27 - R198 Arena coach overlay UI audit (ENGINE-IMPACT NONE, `6ac826c5`)
 
 **The UI audit found a backend bug, and it was the most valuable thing in the run.**
 `core/lead_projection.py` had no ARENA weight profile, so Arena silently inherited SR -
@@ -27040,7 +27040,7 @@ ruff clean. CSS auto-reloads via ADR-008 - no RC restart, no DS bounce, no Share
 
 ---
 
-## 2026-07-27 - R197 enchanter Heal/Shield Power sweep (ENGINE 1.261.0, `946da292`)
+## 2026-07-27 - R197 enchanter Heal/Shield Power sweep (ENGINE 1.261.0, `9155bb2d`)
 
 **What the directive asked vs what was true.** It asked for a DS sweep of enchanter HSP +
 mana-regen magnitudes with an Arena/ARAM mirror audit. All 34 curated rows already matched
@@ -27090,7 +27090,7 @@ DS 10052 / 1 skipped / 5585 subtests. RC 13485 / 106 skipped / 460 subtests.
 
 ## 2026-07-27g - R210 gemini-loop cycle 15. The premise was false; the guard was the work. 2 commits.
 
-HEAD `594e458c`. CI 3/3 green (`ci`, `docs-guards`, `CodSpeed`). RC `tests/` 13706 passed
+HEAD `6b48f2da`. CI 3/3 green (`ci`, `docs-guards`, `CodSpeed`). RC `tests/` 13706 passed
 / 106 skipped / 460 subtests, +22 exact over the 13684 baseline. DS untouched, no ENGINE
 bump, Tier-1 throughout.
 
@@ -27114,7 +27114,7 @@ The `docs-guards` workflow R209 shipped has now executed on GitHub for the first
 passed in 1m33s, which retires R209's stated LIMIT (trigger semantics unproven).
 
 CARRY-FORWARD, now six cycles old and still nobody's done it: controller pid 18300 started
-00:37:50, before its own self-reload fix `d4b1a762` landed. It cannot load that fix. It
+00:37:50, before its own self-reload fix `35df5e5c` landed. It cannot load that fix. It
 MUST BE BOUNCED BY HAND ONCE. Every stale-premise cycle since traces back here.
 
 
@@ -27187,7 +27187,7 @@ hashing equal IS the acceptance, not a note claiming it.** LW's first status not
 reported a divergence read from a stale snapshot and had to be withdrawn, while
 the guard itself had already caught the real one.
 
-`8986418f` in RC's history is LW's, not a mystery: they were authorized to
+`ddc3cdc2` in RC's history is LW's, not a mystery: they were authorized to
 restart RC's stopped loop, committed two setup files with a pathspec, then saw
 RC's file mtimes and STOOD DOWN rather than run a second driver.
 
@@ -27269,7 +27269,7 @@ Full narrative: `docs/LEDGER.md` 1043.
   `data/daemon_slayer/16.14.1/`. The `build_order_precompute/v1` artifacts under
   `data/daemon_slayer/build_orders/16.14.1/` come from
   `python -m core.build_order_precompute --static --mode all --champions all`.
-  At HEAD `b23b5f16` that second keyspace still carried the denied Arena Golden
+  At HEAD `c0f25936` that second keyspace still carried the denied Arena Golden
   Spatula `224403` **331 times** and Mejai's `3041` **17 times**, a full session
   after both fixes "landed" - and it is the keyspace `next_buy_fallback.py`
   reads. A regen is not done until BOTH are re-run, and "0 changed" in one says
@@ -27589,12 +27589,12 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 
 Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
 
-- **Live-verify (all PASS).** events-path (`7b325e3e`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`1aed8f06`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`aa008079`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
-- **Launcher widget (`6370f7da`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
-- **Build-pane flicker fix (`5af5b17d`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
-- **All panels accessible + per-panel opacity/scale (`b16bfce1`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
-- **3 panels interactive while playing (`c79508d2`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
-- **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
+- **Live-verify (all PASS).** events-path (`6824e04a`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`93f13de3`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`61efc4cc`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
+- **Launcher widget (`d8465308`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
+- **Build-pane flicker fix (`247ccc7b`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
+- **All panels accessible + per-panel opacity/scale (`bf205ad0`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
+- **3 panels interactive while playing (`be057536`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
+- **Enemy spell tap-tracker + stats panel (`3a0822c4`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
 - **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
 - **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
 
@@ -27602,17 +27602,17 @@ Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2
 
 ## Relocated 2026-06-27 (item-640 /done - keep last 3 sessions: item-640 + item-638-tails + ACTUALIZE-637)
 
-# 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)
+# 2026-06-27 (live-flip validation + overlay launcher fix, `bd937f7b`)
 
 Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to close the "live half" of the offline-confirmed DS seam flips, tracked via /api/state + game-monitor.
 
 - **KEY FINDING - do NOT re-investigate.** The live-flip DS seams (R5 missing-HP heal-amp, DSP2 off-class exempt, DSP11 kit-axis, and by inference R12/R30/RF1/RF3) are UNWIRED across the DS /rank HTTP boundary. The flags live ONLY in the in-process scorers + tests + offline `live_flip_eyeball.py`; `dispatch_for_coach` (archetype_dispatch.py:232) -> client -> server.py /rank passes NONE of them and /rank does not accept them. The live build-chooser runs every scorer DEFAULT-OFF. PROVEN live: Briar at 7% HP gave byte-identical daemon_slayer_picks to 100% HP. So these are NOT eyeball-able by gameplay - flipping default-ON is multi-file engine wiring (+ self-HP input for R5) + ENGINE bump + Tier-2, not a toggle.
 - R12 Evenshroud is Arena-only (map30) on 16.13.1 - SR-untestable. No in-game build widget on the overlay (build-chooser is dashboard-only).
 - **Ctrl+Shift+A is NOT a focus/keydown bug.** It is an Electron globalShortcut (rc-shell/src/main.js:1063; overlay_state.js:44 tagged "operator's expected combo 2026-06-27"), focus-independent. Shell IS running (1 instance, requestSingleInstanceLock works - the 5 electron.exe are one instance + helpers). Likely an accelerator collision; register() failure is swallowed (main.js:1081). Diagnostic-first next: log the register() booleans.
-- **SHIPPED (`2e8abb36`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
+- **SHIPPED (`bd937f7b`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
 - **Operator vision captured -> `docs/NO_LLM_PRECOMPUTE_PLAN.md`.** Drive the WHOLE project to no live LLM via a client-side CV tier + precomputed "expansive DB" (pay-once-build, runtime API-key-free). Budget is idle: Max 20x at 11%/17% used, Sonnet 0%, $418 credits untouched. Findings detail: `ops/audit/ds_perm_swarm/report/live_input_seam_findings_2026-06-27.md`.
 
-NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. (5) repo cleanup pass - orphan + scratch files (operator-requested 2026-06-27); targets incl stale `.claude/worktrees/agent-*` worktree copies + `gemini_io/` artifacts. **SPARE `docs/HEXCORE_offline.html` + its bundled fonts (intentional, NOT orphans).** (6) hexcore: keep `docs/HEXCORE_offline.html` as the ONLY hexcore HTML viewing file (shipped fonts are intentional, not one-off; likely retire the non-offline `docs/HEXCORE.html`). It is sluggish when viewed on another computer - investigate browser multi-threading to speed it up: Web Workers (compute off main thread) + OffscreenCanvas + WebGL/GPU offload; profile the bottleneck first (CPU-sim vs draw-bound); note a `file://` origin needs Blob-URL inline workers (worker-from-file restrictions). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1. CI flake (not mine): snapshot_panels missing-DDragon-asset Renata.png on `2e8abb36` - prior commit `a2e3e95c` with identical web/ state passed; rerun to clear.
+NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. (5) repo cleanup pass - orphan + scratch files (operator-requested 2026-06-27); targets incl stale `.claude/worktrees/agent-*` worktree copies + `gemini_io/` artifacts. **SPARE `docs/HEXCORE_offline.html` + its bundled fonts (intentional, NOT orphans).** (6) hexcore: keep `docs/HEXCORE_offline.html` as the ONLY hexcore HTML viewing file (shipped fonts are intentional, not one-off; likely retire the non-offline `docs/HEXCORE.html`). It is sluggish when viewed on another computer - investigate browser multi-threading to speed it up: Web Workers (compute off main thread) + OffscreenCanvas + WebGL/GPU offload; profile the bottleneck first (CPU-sim vs draw-bound); note a `file://` origin needs Blob-URL inline workers (worker-from-file restrictions). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1. CI flake (not mine): snapshot_panels missing-DDragon-asset Renata.png on `bd937f7b` - prior commit `5c8bcb10` with identical web/ state passed; rerun to clear.
 
 ---
 
@@ -27655,7 +27655,7 @@ scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or A
 
 Gemini director picked overlay-polish ROADMAP queue item (1) = "FIGHT MODEL pane `#am-pane-ovds` clips
 in DEFAULT, gate to build-only." GROUND-TRUTH PROBE FOUND IT ALREADY SHIPPED: the doctrine widget-field
-model (commit `7bd7d6a3`, the cfdc9f22 batch) gates `w-ovds` to the build panelset ONLY - overlay.css
+model (commit `176b65dc`, the cfdc9f22 batch) gates `w-ovds` to the build panelset ONLY - overlay.css
 section 4d hides it in default/coach/threat (L418/421/437) + shows it only in build (L451); the pane is
 a `fit-content` `.ovx-widget` (no height cap, inner `overflow:visible`) so it auto-sizes and no longer
 clips. The 25 Playwright overlay snapshot tests already render-assert `#am-pane-ovds`=none in default +
@@ -27681,7 +27681,7 @@ weekly-hygiene trim to the last 2-3.
 
 # 2026-06-21 (headless continue 5) - ZOI SLICE 3: influence bubbles + demarcation + coach feed
 
-ZOI item 567 SLICE 3 shipped + live-verified. Commit `163b76ee` (code) + docs sync, pushed; CI has no pytest gate.
+ZOI item 567 SLICE 3 shipped + live-verified. Commit `8ae4686f` (code) + docs sync, pushed; CI has no pytest gate.
 
 Subagent-first: Gemini consult -> Plan subagent spec (frozen `/api/state.zoi` contract) -> 2 disjoint build
 agents (backend / frontend) -> verifier gate (caught + I fixed a 245x U+2500 box-drawing ASCII violation in
@@ -27710,7 +27710,7 @@ richer strength if an enemy-data source appears.
 
 # 2026-06-21 (headless continue 4) - ZOI slices 1+2: box renders+frames minimap, blob dots ship
 
-ZOI item 567 advanced 2 slices. 2 commits `f93f5f01` (slice 1) + `d6a853f2` (slice 2), pushed; CI n/a (no pytest in CI).
+ZOI item 567 advanced 2 slices. 2 commits `bf913d40` (slice 1) + `3e4b4304` (slice 2), pushed; CI n/a (no pytest in CI).
 
 SLICE 1 (the OWED live-verify - became a 3-bug fix). The foundation box never rendered live + was mis-scaled.
 Diagnosed via the Electron overlay's CDP DOM (the 1px/0.55 gold hairline is invisible in screenshots - DOM
@@ -27737,7 +27737,7 @@ bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /don
 
 # 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
 
-Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
+Item 580, commit `d0c79497` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
 no RC restart); no engine / DS / Share / ENGINE bump / overlay render / flip change.
 
 CONTEXT: gemini+ahk loop relaunched 02:46 (head a1b063a0), cycle 1 directive = ORCHESTRATION_PLAN
@@ -30633,11 +30633,11 @@ Relocated from docs/LEDGER.md on 2026-06-09 to keep the live ledger small. Byte-
 
 311. **2026-06-05 - prefer-CDragon ratios flip INVESTIGATED + DEFERRED (Gemini-loop cycle 2 directive `ops/loop/control/directive.md`; ENGINE UNCHANGED 1.118.0; seam STAYS default-OFF; DS NOT restarted - no engine change; suite restored to GREEN baseline; net code diff = ZERO).** Cycle-2 directive = flip `AbilitiesSnapshot.load(prefer_cdragon_ratios=...)` default ON + bump ENGINE + re-pin failing gold/golden tests to the new CDragon values (the item-310 / ROADMAP-item-17 staged tail). **Investigated the flip end-to-end; it ships a broken engine; auto-picked the SAFE path (do not flip) per the operator standing rules that OVERRIDE the literal directive: root-cause-fix, no-data-corruption, verify-before-ship, the better-engine north star.** **(1) Generated the live sidecar + drift** (`py tools/daemon_slayer_cdragon_ratio_extract.py --drift -v`, patch 16.11.1 / CDragon 16.11): 171 champs, mechanical=916, fallback=499, errors=0; drift summary n_blocks_compared=703 / n_changed=439 / n_only_cdragon=377 / n_meraki_only=233. **(2) Flipped default ON + ran `pytest agents/daemon_slayer/tests/` -> 79 failed / 6540 passed.** Inspected the REAL failure diffs (not just the drift report) and found THREE extractor/resolver defect classes that make the sidecar unsafe to be authoritative: **(a) SYSTEMIC off-by-one (dominant)** - CDragon `DataValues` arrays are rank-indexed `[rank0, rank1..rank6]` (7 entries) but the engine/Meraki use `[rank1..rank5]`; the extractor emits the raw array so every value is shifted one rank behind a spurious rank-0 lead. Base-array alignment over all mechanical blocks: **offset1 (true at index 1) = 445 vs offset0 (direct) = 3.** E.g. Aatrox Q base got `(-5.0,10,25,40,55,70,85)` vs `(10,25,40,55,70)`; Veigar Q `(40,80,120,160,200,240,280)` vs `(80,120,160,200,240)`; MasterYi Q TotalDamage base `[0,20,40,60,80,100,120]` -> `[1:6]`=Meraki `[20,40,60,80,100]`. **(b) Value EXPLOSIONS on crit/cumulative calcs** (independent of the off-by-one) - MasterYi Q `SingleCritTotalDamage` total_ad_pct `[122.5, 3622.5, 7122.5, ..., 21122.5]`, `SubesquentDamage` `[70, 2070, 4070, ...]`; these pair POSITIONALLY (`_apply_cdragon_ratio_preference` abilities.py:430) onto real Alpha Strike blocks -> MasterYi DPS explodes. **(c) FRACTIONAL-base mis-bucket** - coefficients land in the absolute-`base[]` field as fractions: Akshan Q base `[0.2,...]` (test expected `2x block0 = 30.0`), Ambessa Q `[0.5,...]` / `[0.035,0.04,...]`. **Plus** a multi-hit-ult SEMANTIC mismatch (NOTE, not a hard blocker): MF R total_ad_pct CDragon `60` (per bullet) vs Meraki `[1050,1200,1350]` (full channel); Lucian R `25` vs `575` - genuine per-hit-vs-aggregate difference needing per-champion validation. **Re-pinning the 79 gold tests to these values would bake rank-misaligned + exploding + 0.2-damage garbage into the live DS engine** (the consumer positional-pairing seam is FINE; the SIDECAR DATA is the problem). **(3) Reverted the flip + the seam test edit** (`abilities.py:467` back to `prefer_cdragon_ratios=False`, `test_cdragon_ratio_preference.py` `test_default_off_uses_meraki` restored - git diff clean), **removed the broken untracked sidecar+drift JSONs** (regenerable; data/daemon_slayer/16.11.1/ left clean), py_compile OK. **DS suite re-run post-revert: 6618 passed / 1 skip / 1 xfail / 1936 subtests (the 79 flip-failures gone) = green baseline, 0 regressions.** **Slice B (read-only housekeeping sweep, no edits):** ONE stale anchor - `ROADMAP.md:122` fleet-glance DS row reads `ENGINE 1.63.0 / 4894 tests / 172 champions` vs live `1.118.0 / ~6618 / 171` (cosmetic glance-table drift; CLAUDE.md notes live truth = current.txt + __init__.py + /health; fix in a docs-sync cycle, NOT touched here per the read-only scope). 7-lever cost/latency sweep all SATURATED (prompt-cache cache_control on every static system block; route `Cache-Control: no-store` default `dashboard/_handler.py:158`; poll cadence 1.5s game / 15s bridge; model tiers Haiku-coaches / Sonnet-vision-escalation / Opus-advisor; ADR-008 asset-hash parity `dashboard/_static.py:23` all panels covered) - ONE marginal win logged: demote `vision_server/_inference.py:272` OCR-results INFO line to DEBUG. Full writeup `ops/loop/CDRAGON_FLIP_FINDINGS.md`. **Don't-redo:** do NOT flip `prefer_cdragon_ratios` default ON, and do NOT re-pin gold tests to CDragon values, until the extractor is fixed - the SIDECAR is structurally defective (off-by-one 445/3 + explosions + fractional-base), NOT a clean Meraki-staleness improvement; the seam consumer (`_apply_cdragon_ratio_preference` positional pairing + per-field/per-block Meraki fallback) is correct and stays default-OFF/inert. **NEXT (the extractor-fix cycle):** in `tools/daemon_slayer_cdragon_ratio_extract.py::resolve_calc_block` (1) trim the leading rank-0 entry from emitted base/ratio arrays when len>=6 (leaves genuine 5-length arrays alone) + a TDD resolver test (the resolver core is pure/untested today); (2) add a fallback guard marking explosion + fractional-base blocks `resolution="fallback"` with tests; (3) regenerate sidecar+drift, re-run the suite WITH the flip ON - remaining failures should be only genuine Meraki-vs-CDragon drifts (e.g. Lux Q 65->75 AP); (4) validate a sample per-champion, re-pin only the validated drifts, THEN flip default ON + bump ENGINE + sync living docs + restart DS.
 
-310. ✅ **2026-06-05 - DS ability-ratio re-source: prefer-CDragon default-OFF engine seam (Gemini-loop cycle 1 directive) + Imperial Mandate AH patch-drift fix surfaced by a lolmath 26.11 cross-check (ENGINE UNCHANGED 1.118.0; additive + data-correction; DS NOT restarted - default-off seam is inert + the AH value feeds offline cooldown math, no live behavior delta).** TWO commits + a Share sync. **(1) Prefer-CDragon seam (commit `4b782538`):** `AbilitiesSnapshot.load(prefer_cdragon_ratios=False, cdragon_root=None)` - the FIRST engine consumer of the item-295/309 CDragon ability-ratio re-source mechanism (`tools/daemon_slayer_cdragon_ratio_extract.py` -> `cdragon_ability_ratios.json` sidecar). When ON, each primary form's damage-block scaling fields are re-sourced per-field from the sidecar's `resolution=="mechanical"` blocks (positional pairing vs the form's `attribute_kind=="damage"` blocks), with Meraki fall-back for any field/block the resolver could not mechanically resolve (or a missing/corrupt sidecar -> `_load_cdragon_ratio_sidecar` returns `{}`). Block COUNT never changes (no block created/dropped); transform forms (form_index>0) keep Meraki. Mirrors the established `apply_passive_damage/heal/shield` opt-in pattern. Default OFF = byte-identical (the sidecar is never read). +6 tests `test_cdragon_ratio_preference.py` (off/on/missing/fallback/per-field/cdragon_root; TDD RED 5-fail -> GREEN). Advances ROADMAP item 17's NEXT (the "wire engine to prefer mechanical CDragon blocks behind a default-off flag" step); remaining staged: generate the live 16.11.1 sidecar -> review `--drift` -> re-pin gold tests -> flip default-on + bump ENGINE + restart DS. **(2) lolmath 26.11 comparison + Imperial Mandate fix (commit `560caa63`):** operator pasted the lolmath "Redymix 26.11" hard-CC/haste-refactor changelog (granular hard-CC counting + `calculateHardCcInstances` + per-ability `finalHasteBonuses` + `imperialMandate ultimate haste` + `extraUltimateHaste`) to compare vs DS. lolmath = a JS SPA that CONSUMES DS's exported bundle (`Share/lolmath_ingest`); the 26.11 refactor is consumer-side. Vendored `_scratch/lolmath_compare/@lolmath/calc` is stale v0.1.1 (pre-26.11) -> verified concepts vs DS ground-truth `items.json` instead. FINDINGS: hard-CC counting -> DS already has `_per_spell_cc`/`cc_output`/`cc_pressure`/`cc_conditional` + Aftershock burst (MATCH); per-ability/ultimate-specific haste (`finalHasteBonuses`/`extraUltimateHaste`) -> DS uses ONE uniform `total_ability_haste` for Q/W/E/R, no rune input (Ultimate Hunter etc.), ult-haste only in the LIVE overlay layer (`core.summoner_cooldowns`) not DS combat math = DELIBERATE DS simplification, NOT a bug, NOT changed; Imperial Mandate proc (Coordinated Fire/Vulnerable) = ally proc scored no-self-DPS (MATCH). **REAL BUG FOUND + FIXED:** Imperial Mandate base AH stale 20 (16.10.1) -> 15 (16.11.1) - Riot dropped base 20->15 + added a SEPARATE "+15 AH for abilities with Immobilizing effects" conditional grant (= the per-ability haste lolmath now models). `_item_ability_haste.py` carried the stale 16.10.1 value. Registry contract = BASE build-time AH only (conditional/proc grants excluded) -> correct value is 15. Full registry-vs-16.11.1 drift scan: EXACTLY 2 stale entries (`4005` SR + `324005` ARAM, both 20->15); Arena alias `224005`=35 is Arena-boosted + correct. +1 regression test pinning 4005/324005=15 + 224005=35. **(3) Share sync (commit `e27156fd`):** `ds_share_sync.py` re-mirrored Share/src (314 files, engine 1.118.0, --check green) + 03_DATA_AND_SOURCES.md freshness edit (CDragon re-source no longer "planned" - the opt-in default-OFF seam now exists). DS suite **6618 passed** / 1 skip / 1 xfail / 1936 subtests (+1 vs item 309's 6611 = the new Mandate test; +6 CDragon tests are in the DS dir count); root `tests/` 4979 passed / 1 skip / 74 subtests; ruff clean; py_compile OK; hygiene 12 (smart-quote/mojibake/U+2500) green; ASCII-only. **Don't-redo:** the prefer-CDragon seam is default-OFF + inert (no live sidecar generated yet) - do NOT flip default-on without the staged review+gold-repin+ENGINE-bump; per-ability/ultimate-specific haste is a DELIBERATE DS simplification (no rune cooldown input; Mandate = no-self-DPS support) - do NOT re-pitch `finalHasteBonuses`/`extraUltimateHaste` as a DS bug; `_item_ability_haste.py` is pinned at patch 16.10.1 with NO working regen tool (the docstring's `tools/regen_item_ability_haste.py` does not exist on disk) and silently drifts on item base-AH reworks - re-scan vs `items.json` each patch refresh (memory `reference_item_ah_registry_drift`). **NEXT:** generate the live `cdragon_ability_ratios.json` for 16.11.1 -> review `--drift` -> re-pin gold/golden tests -> flip default-on + bump ENGINE + restart DS (ROADMAP item 17 tail).
+310. ✅ **2026-06-05 - DS ability-ratio re-source: prefer-CDragon default-OFF engine seam (Gemini-loop cycle 1 directive) + Imperial Mandate AH patch-drift fix surfaced by a lolmath 26.11 cross-check (ENGINE UNCHANGED 1.118.0; additive + data-correction; DS NOT restarted - default-off seam is inert + the AH value feeds offline cooldown math, no live behavior delta).** TWO commits + a Share sync. **(1) Prefer-CDragon seam (commit `0b1f6057`):** `AbilitiesSnapshot.load(prefer_cdragon_ratios=False, cdragon_root=None)` - the FIRST engine consumer of the item-295/309 CDragon ability-ratio re-source mechanism (`tools/daemon_slayer_cdragon_ratio_extract.py` -> `cdragon_ability_ratios.json` sidecar). When ON, each primary form's damage-block scaling fields are re-sourced per-field from the sidecar's `resolution=="mechanical"` blocks (positional pairing vs the form's `attribute_kind=="damage"` blocks), with Meraki fall-back for any field/block the resolver could not mechanically resolve (or a missing/corrupt sidecar -> `_load_cdragon_ratio_sidecar` returns `{}`). Block COUNT never changes (no block created/dropped); transform forms (form_index>0) keep Meraki. Mirrors the established `apply_passive_damage/heal/shield` opt-in pattern. Default OFF = byte-identical (the sidecar is never read). +6 tests `test_cdragon_ratio_preference.py` (off/on/missing/fallback/per-field/cdragon_root; TDD RED 5-fail -> GREEN). Advances ROADMAP item 17's NEXT (the "wire engine to prefer mechanical CDragon blocks behind a default-off flag" step); remaining staged: generate the live 16.11.1 sidecar -> review `--drift` -> re-pin gold tests -> flip default-on + bump ENGINE + restart DS. **(2) lolmath 26.11 comparison + Imperial Mandate fix (commit `500c3e24`):** operator pasted the lolmath "Redymix 26.11" hard-CC/haste-refactor changelog (granular hard-CC counting + `calculateHardCcInstances` + per-ability `finalHasteBonuses` + `imperialMandate ultimate haste` + `extraUltimateHaste`) to compare vs DS. lolmath = a JS SPA that CONSUMES DS's exported bundle (`Share/lolmath_ingest`); the 26.11 refactor is consumer-side. Vendored `_scratch/lolmath_compare/@lolmath/calc` is stale v0.1.1 (pre-26.11) -> verified concepts vs DS ground-truth `items.json` instead. FINDINGS: hard-CC counting -> DS already has `_per_spell_cc`/`cc_output`/`cc_pressure`/`cc_conditional` + Aftershock burst (MATCH); per-ability/ultimate-specific haste (`finalHasteBonuses`/`extraUltimateHaste`) -> DS uses ONE uniform `total_ability_haste` for Q/W/E/R, no rune input (Ultimate Hunter etc.), ult-haste only in the LIVE overlay layer (`core.summoner_cooldowns`) not DS combat math = DELIBERATE DS simplification, NOT a bug, NOT changed; Imperial Mandate proc (Coordinated Fire/Vulnerable) = ally proc scored no-self-DPS (MATCH). **REAL BUG FOUND + FIXED:** Imperial Mandate base AH stale 20 (16.10.1) -> 15 (16.11.1) - Riot dropped base 20->15 + added a SEPARATE "+15 AH for abilities with Immobilizing effects" conditional grant (= the per-ability haste lolmath now models). `_item_ability_haste.py` carried the stale 16.10.1 value. Registry contract = BASE build-time AH only (conditional/proc grants excluded) -> correct value is 15. Full registry-vs-16.11.1 drift scan: EXACTLY 2 stale entries (`4005` SR + `324005` ARAM, both 20->15); Arena alias `224005`=35 is Arena-boosted + correct. +1 regression test pinning 4005/324005=15 + 224005=35. **(3) Share sync (commit `e27156fd`):** `ds_share_sync.py` re-mirrored Share/src (314 files, engine 1.118.0, --check green) + 03_DATA_AND_SOURCES.md freshness edit (CDragon re-source no longer "planned" - the opt-in default-OFF seam now exists). DS suite **6618 passed** / 1 skip / 1 xfail / 1936 subtests (+1 vs item 309's 6611 = the new Mandate test; +6 CDragon tests are in the DS dir count); root `tests/` 4979 passed / 1 skip / 74 subtests; ruff clean; py_compile OK; hygiene 12 (smart-quote/mojibake/U+2500) green; ASCII-only. **Don't-redo:** the prefer-CDragon seam is default-OFF + inert (no live sidecar generated yet) - do NOT flip default-on without the staged review+gold-repin+ENGINE-bump; per-ability/ultimate-specific haste is a DELIBERATE DS simplification (no rune cooldown input; Mandate = no-self-DPS support) - do NOT re-pitch `finalHasteBonuses`/`extraUltimateHaste` as a DS bug; `_item_ability_haste.py` is pinned at patch 16.10.1 with NO working regen tool (the docstring's `tools/regen_item_ability_haste.py` does not exist on disk) and silently drifts on item base-AH reworks - re-scan vs `items.json` each patch refresh (memory `reference_item_ah_registry_drift`). **NEXT:** generate the live `cdragon_ability_ratios.json` for 16.11.1 -> review `--drift` -> re-pin gold/golden tests -> flip default-on + bump ENGINE + restart DS (ROADMAP item 17 tail).
 
 309. ✅ **2026-06-05 - DS EXTENDED-DUELING / 1v1 sustained-fight scorer - the SEVENTEENTH scored axis, built by a 10-channel roster fan-out (ENGINE 1.117.0 -> 1.118.0; DS :8893 restarted taskkill pid 5740 + Start-ScheduledTask RC-DaemonSlayer -> 1.118.0 live-verified via /health + GET/POST /extended-duel; RC NOT restarted - additive DS engine + new route + tests + Share + docs only).** Operator: "start the next DS schema lift with 10 multi-agents fan out different channels and exhaust it then /done for /clear" (17th use of the recurring DS-axis instruction, 10th explicit multi-agent fan-out after items 294/297/298/299/300/301/302/303/304). Anti-tank (item 308) was EXHAUSTED; an upfront AskUserQuestion forked the next axis -> operator chose **extended-dueling/1v1** (the longest-standing runner-up, offered + passed over across items 297-308) over pick-potential/engage-threat or disengage/self-peel. **The SEVENTEENTH SCORED axis** alongside DPS/burst/EHP/ability-DPS/HPS/CC-output(294)/mobility(297)/sustain(298)/scaling(299)/wave-clear(300)/threat-range(301)/zone-control(302)/objective-damage(303)/ally-amp(304)/anti-tank(308) + the 6 archetype scorers - it owns the PROLONGED-1v1 / attrition dimension none of them measured: how well a champion's OWN KIT wins a long duel PAST the burst window (the burst scorer measures front-loaded damage; the DPS scorer measures raw output vs a fixed dummy; neither answers whether the kit WINS the long fight). It is the COMPOSITE who-out-ramps / re-cycles / out-heals / out-lasts a single opponent. NEW `agents/daemon_slayer/extendedduel.py`: a per-(champion, source, kind) `ExtendedDuelEntry` registry + `_EXTENDEDDUEL_KIND_WEIGHT` 4-tier value table [RAMP 1.0 / RESET 0.85 / DUELHEAL 0.75 / ENDURE 0.6] + `_EXTENDEDDUEL_CADENCE_MULT` 3-tier [SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65] + `_EXTENDEDDUEL_CONDITIONAL_PROB`=0.5 + `compute_extendedduel` -> `ExtendedDuelResult`. Each mechanism carries a 0..1 `magnitude`; `duel_score` = sum of `kind_weight * cadence_mult * magnitude` (conditional credited at the 0.5 midpoint), `top_kind` labels the strongest duel tool, `ramps` is True when any RAMP mechanism contributes (the identity a matchup consumer keys on - the champion gets STRONGER the longer the fight runs, so do not commit to a long 1v1 against her) + `ExtendedDuelSourceEntry` per-source breakdown + to_dict. NEW `/extended-duel` route (POST+GET) in `server.py` (import + `_route_extendedduel` + `_POST_ROUTES` + HTML table; GET auto via `_GET_DISPATCH_ROUTES`). **PURELY ADDITIVE** - reads no existing scorer and is read by none -> every existing route byte-identical (the new endpoint IS the opt-in). **SELECTIVE but BROAD** (the threat-range coverage breadth, NOT the sparse anti-tank/zone-control shape): most fighters/skirmishers carry SOME attrition tool, so 111/171 champs hold rows; a pure burst assassin / artillery mage / enchanter is absent and scores 0.0. **KINDS:** RAMP = power that GROWS the longer the duel runs (the purest tier - Jax E->R, Master Yi Q/E, Tryndamere fury, Nasus Q, Vayne, Belveth on-hit true dmg); RESET = cooldown/ability resets re-firing the combo (Katarina, Akali, Riven, Camille, Fiora vitals); DUELHEAL = in-fight self-heal refilling mid-duel (Aatrox P, Warwick, Briar, Vladimir); ENDURE = keep-swinging endurance (Garen, Mundo, Yasuo/Yone no-mana, Tryndamere R undying, Sett grit). **Dual-kind-per-slot allowed** (dedup key (champ,source,kind)): Aatrox P = RAMP + DUELHEAL; Nasus R = RAMP + DUELHEAL; Tryndamere R = ENDURE + RAMP. 171-champ Workflow fan-out (10 classify + 10 completeness critics, Sonnet, schema-validated, 1049090 subagent tokens / 247 tool uses / 583915ms) -> 283 entries / 111 champs / 81 conditional / 63 ramping / kinds RAMP 81 ENDURE 76 DUELHEAL 75 RESET 51 / cadence SUSTAINED 97 PERIODIC 95 BURST 91; I wrote the engine + tests from the agents' structured output (PROBLEMS=0). + `tools/ds_extendedduel_build.py` (reusable validate/inject generator: source in P/Q/W/E/R/BASE, kind+cadence known, magnitude in (0,1], (champ,source,kind) dedup, emits keyword-arg `add()` grouped by champ in source order, splices the `# <ENTRIES>` marker LF-safe, writes the provenance sidecar) + `extendedduel_registry_notes.json` (added to the `ds_share_sync.py` exclusion tuple as the 9th axis-notes file - Share-excluded; the first sync DID copy it into Share/src before the exclude was added, removed + re-synced clean). Live `/extended-duel` (GET+POST both verified): MasterYi 2.736 (P RAMP 0.7 + E RAMP 0.75 + Q RESET 0.3825 + W DUELHEAL 0.39 + W ENDURE 0.2535 + R RAMP cond 0.26) / Tryndamere 2.3775 / Jax 2.124 / Aatrox 2.112 / Yone 1.661 / Fiora 1.646 (top_kind RESET, ramps False) / Nasus 1.600 (R dual-kind) / Renekton 1.574 / Warwick 1.552 / Vladimir 1.520 (top duelists) vs Leblanc / Veigar / Lux / Xerath / Janna / Ziggs / Zoe / Sona / Milio 0.0 (burst/artillery/utility floor). ENGINE 1.117.0 -> 1.118.0; **byte-level ENGINE pin sync** across 65 source files (`agents/daemon_slayer/**/*.py` + `tools/*.py`, EXCLUDING Share/src which `ds_share_sync` regenerates + `_scratch`; reverted 3 over-bumped HISTORICAL refs that retain their birth version per the established convention - the antitank.py module docstring + the server.py `_route_antitank` doc + the `ds_antitank_build.py` sidecar engine stamp all stay 1.117.0); +32 tests `test_extendedduel_item309.py` (synthetic kind*cadence*magnitude*conditional math, hand-verified Kalista 0.65 single-RAMP + Cassiopeia 0.612 single-RESET + Nasus 1.6 dual-kind-on-R + Garen 1.184 multi-tool, directional duelist>1.0 + non-duelist=0.0, ramps tracks RAMP, kind+cadence monotonic tiers, registry invariants 283/111 + 63 ramp-champs + 81 conditional + (source,kind)-unique-per-champ, additive-route, ENGINE pin). DS suite **6611 passed** / 1 skip / 1 xfail / 1936 subtests; the `tests/` live-/health (`test_sr_draft_profile_engine` 18 passed) + Share-doc-anchor + changelog-relocation + cc-conditional-externalization + smart-quote-hygiene checks went green AFTER the DS restart + Share re-sync (66 passed pre-restart with the 1 expected live-version fail, 18 green post-restart). ruff clean; ASCII-only; Share re-synced **313 files** (engine 1.118.0, the notes sidecar excluded) `--check` exit 0; CHANGELOG +1.118.0; DAEMON_SLAYER.md header + changelog synced; ROADMAP relocated item 304 verbatim to `docs/ROADMAP_HISTORY.md` before adding item 309 (80KB budget). **Don't-redo:** extended-duel is a STANDALONE additive scorer (regenerate via `tools/ds_extendedduel_build.py <fanout.json>`, do NOT hand-edit the marker-spliced block); the 4 kind weights + 3 cadence mults + 0.5 midpoint are operator-tunable Phase-D knobs; `duel_score`/`top_kind`/`ramps` are the headlines; the axis is SELECTIVE-but-broad (111/171 - a 0.0 for a burst/artillery/utility champ is CORRECT, not a coverage gap); the DUELHEAL kind deliberately overlaps item-298 self-sustain (here it is ONE weighted component of the composite long-1v1 win, not a standalone sustain score - keep both); a future patch re-run updates the pinned coverage counts + champion values. **NEXT (Phase D, live-gated):** an auto-pairing consumer crediting extended-duel into a live matchup / "do not take this lane into a long 1v1" verdict (pairs vs the enemy laner's duel_score + ramps flag); tune the kind weights + cadence mults after a live re-rank. The extended-dueling/1v1 axis is EXHAUSTED across the roster.
 
-308. ✅ **2026-06-05 - DS ANTI-TANK / %HP-damage + resist-shred scorer - the SIXTEENTH scored axis, built by a roster fan-out (ENGINE 1.116.0 -> 1.117.0; DS :8893 restarted taskkill pid 18796 + Start-ScheduledTask RC-DaemonSlayer -> 1.117.0 live-verified via /health + GET/POST /anti-tank; RC NOT restarted - additive DS engine + new route + tests + Share + docs only).** Operator fired `/headless-upgrade` via the new one-click desktop launcher (built earlier this same session) with NO explicit task; the autonomous run picked the next DS axis - the item-304 fork's standing runner-up **anti-tank/%HP-shred** (over extended-dueling/1v1), the cleanest orthogonality vs the 15 existing axes (DPS/burst/EHP/ability-DPS/HPS/CC-output/mobility/sustain/scaling/wave-clear/threat-range/zone-control/objective-damage/ally-amp + 6 archetype scorers). **The SIXTEENTH SCORED axis** - it owns the TANK-MELT dimension none of them measured: how well a champion's OWN KIT melts a high-HP/high-resist target (the DPS/burst scorers measure raw damage vs a fixed dummy; none asks whether the kit cares how much health/armor the enemy stacked). NEW `agents/daemon_slayer/antitank.py`: a per-(champion, source, kind) `AntiTankEntry` registry + `_ANTITANK_KIND_WEIGHT` 4-tier value table [MAX_HP 1.0 / SHRED 0.85 / CURRENT_HP 0.75 / PERCENT_PEN 0.65] + `_ANTITANK_CADENCE_MULT` 3-tier [SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65] + `_ANTITANK_CONDITIONAL_PROB`=0.5 + `compute_antitank` -> `AntiTankResult`. Each mechanism carries a 0..1 `magnitude`; `antitank_score` = sum of `kind_weight * cadence_mult * magnitude` (conditional credited at the 0.5 midpoint), `top_kind` labels the strongest tool, `shreds_resist` is True when any SHRED or PERCENT_PEN mechanism contributes (the team-wide identity - it lowers the tank's resists for the WHOLE team, not just the caster) + `AntiTankSourceEntry` per-source breakdown + to_dict. NEW `/anti-tank` route (POST+GET) in `server.py` (import + `_route_antitank` + `_POST_ROUTES` + HTML table; GET auto via `_GET_DISPATCH_ROUTES`). **PURELY ADDITIVE** - reads no existing scorer and is read by none -> every existing route byte-identical (the new endpoint IS the opt-in). **SELECTIVE** (the sustain/allyamp shape, NOT the full-roster threat-range/objdamage shape): only champions whose damage scales with enemy health or resists carry rows; a flat-damage champ is absent and scores 0.0. **Key design call:** every scored kind gets STRONGER the tankier the target (max/current-HP damage, resist shred, %pen); pure **%-missing-health executes were EXCLUDED as finishers** (they do ~nothing to a full tank - the OPPOSITE of anti-tank; 57 such entries dropped from the fan-out in-pass after the first build showed 95 champs). **Dual-kind-per-slot allowed** (dedup key is (champ,source,kind), not (champ,source)): one ability can be two mechanisms - Trundle R = %max-HP drain + resist steal; Vi W / Yorick E / Sion E = %max-HP damage + armor shred. 171-champ Workflow fan-out (8 classify + 4 completeness critics, schema-validated, 1088323 subagent tokens / 192 tool uses / 457s) -> 102 entries / 78 champs / 38 conditional / kinds MAX_HP 63 SHRED 25 CURRENT_HP 9 PERCENT_PEN 5 / cadence SUSTAINED 40 PERIODIC 46 BURST 16; I wrote the engine + tests from the agents' structured output (PROBLEMS=0). + `tools/ds_antitank_build.py` (reusable validate/inject generator: source in P/Q/W/E/R/BASE, kind + cadence known, magnitude in (0,1], (champ,source,kind) dedup, emits keyword-arg `add()` grouped by champ in source order, splices the `# <ENTRIES>` marker LF-safe, writes the provenance sidecar) + `antitank_registry_notes.json` (added to the `ds_share_sync.py` exclusion tuple - Share-excluded like the other 8 axis notes). Live `/anti-tank` (GET+POST both verified): Rumble 1.422 (P MAX_HP cond 0.3 + Q MAX_HP 0.68 + E SHRED 0.442) / KSante 1.236 / Sion 1.209 / Rell 1.137 / Vi 1.110 / Mordekaiser 1.018 (top_kind PERCENT_PEN) / Trundle 0.9896 (dual R: MAX_HP 0.52 + SHRED 0.4696) / Vayne 0.95 / KogMaw 0.926 (top tank-melters) vs MasterYi / Annie / Talon / Katarina / Lux / Soraka 0.0 (flat-damage floor); 29 shreds_resist champs, 5 kit-intrinsic PERCENT_PEN. ENGINE 1.116.0 -> 1.117.0; **61 ENGINE pin syncs** (byte-replace `ENGINE_VERSION, "1.116.0"` -> `"1.117.0"` scoped to `agents/daemon_slayer/tests/*.py` + the `__init__` constant + the 3 most-recent axis-test docstring `(ENGINE x)` refs; the server.py route-doc provenance + ROADMAP/LEDGER history untouched); +32 tests `test_antitank_item308.py` (synthetic kind*cadence*magnitude*conditional math, hand-verified Vayne 0.95 pure-MAX_HP + Trundle 0.989625 dual-mechanism + DrMundo 0.42 CURRENT_HP + Mordekaiser 1.018125 PERCENT_PEN-top, directional anti-tank>0.6 + flat-damage=0.0, shreds_resist tracks SHRED/PERCENT_PEN, kind + cadence monotonic tiers, registry invariants 102/78 + 29 shred-champs + 5 PERCENT_PEN + (source,kind)-unique-per-champ, additive-route, ENGINE pin). DS suite **6579 passed** / 1 skip / 1 xfail / 1936 subtests; the `tests/` live-/health (`test_sr_draft_profile_engine`) + Share-doc-anchor checks went green AFTER the DS restart + Share re-sync. ruff clean; ASCII-only; Share re-synced **311 files** (engine 1.117.0) `--check` exit 0; CHANGELOG +1.117.0; ROADMAP relocated item 303 verbatim to `docs/ROADMAP_HISTORY.md` before adding item 308 (80KB budget). **ALSO shipped this run (separate commit `7901712a`):** the idempotent one-click headless-upgrade desktop launcher (`tools/rc_headless_launcher.ps1` + `tools/install_headless_launcher_shortcut.ps1` Desktop .lnk) - per click runs RC-GeminiAudit (schtasks /Run) + AHK-sends `/headless-upgrade` into the Claude desktop window (`claude_send.ahk`), guarded by `ops/runtime/headless_launcher.lock` against double-injection (self-heals when claude.exe is absent or the lock is stale); uses `Start-Process -Wait -PassThru` for the GUI-subsystem AutoHotkey64.exe. **Don't-redo:** anti-tank is a STANDALONE additive scorer (regenerate via `tools/ds_antitank_build.py <fanout.json>`, do NOT hand-edit the marker-spliced block); the 4 kind weights + 3 cadence mults + 0.5 midpoint are operator-tunable Phase-D knobs; `antitank_score`/`top_kind`/`shreds_resist` are the headlines; the axis is SELECTIVE (78/171 - a 0.0 for a flat-damage champ is CORRECT, not a coverage gap); **%-MISSING-HEALTH executes are EXCLUDED BY DESIGN** (do NOT re-add Garen R / Akali R / Veigar R / Riven R etc. as anti-tank - they ramp as the target dies, weakest vs a full tank); dual-kind-per-slot is intentional (Trundle/Vi/Yorick/Sion/Rumble/KogMaw). **NEXT (Phase D, live-gated):** an auto-pairing consumer crediting anti-tank into a live draft / teamfight / itemization verdict (e.g. "enemy has 2+ tanks -> buy %HP / shred"); tune the kind weights + cadence mults after a live re-rank. The anti-tank/%HP-damage axis is EXHAUSTED across the roster.
+308. ✅ **2026-06-05 - DS ANTI-TANK / %HP-damage + resist-shred scorer - the SIXTEENTH scored axis, built by a roster fan-out (ENGINE 1.116.0 -> 1.117.0; DS :8893 restarted taskkill pid 18796 + Start-ScheduledTask RC-DaemonSlayer -> 1.117.0 live-verified via /health + GET/POST /anti-tank; RC NOT restarted - additive DS engine + new route + tests + Share + docs only).** Operator fired `/headless-upgrade` via the new one-click desktop launcher (built earlier this same session) with NO explicit task; the autonomous run picked the next DS axis - the item-304 fork's standing runner-up **anti-tank/%HP-shred** (over extended-dueling/1v1), the cleanest orthogonality vs the 15 existing axes (DPS/burst/EHP/ability-DPS/HPS/CC-output/mobility/sustain/scaling/wave-clear/threat-range/zone-control/objective-damage/ally-amp + 6 archetype scorers). **The SIXTEENTH SCORED axis** - it owns the TANK-MELT dimension none of them measured: how well a champion's OWN KIT melts a high-HP/high-resist target (the DPS/burst scorers measure raw damage vs a fixed dummy; none asks whether the kit cares how much health/armor the enemy stacked). NEW `agents/daemon_slayer/antitank.py`: a per-(champion, source, kind) `AntiTankEntry` registry + `_ANTITANK_KIND_WEIGHT` 4-tier value table [MAX_HP 1.0 / SHRED 0.85 / CURRENT_HP 0.75 / PERCENT_PEN 0.65] + `_ANTITANK_CADENCE_MULT` 3-tier [SUSTAINED 1.0 / PERIODIC 0.8 / BURST 0.65] + `_ANTITANK_CONDITIONAL_PROB`=0.5 + `compute_antitank` -> `AntiTankResult`. Each mechanism carries a 0..1 `magnitude`; `antitank_score` = sum of `kind_weight * cadence_mult * magnitude` (conditional credited at the 0.5 midpoint), `top_kind` labels the strongest tool, `shreds_resist` is True when any SHRED or PERCENT_PEN mechanism contributes (the team-wide identity - it lowers the tank's resists for the WHOLE team, not just the caster) + `AntiTankSourceEntry` per-source breakdown + to_dict. NEW `/anti-tank` route (POST+GET) in `server.py` (import + `_route_antitank` + `_POST_ROUTES` + HTML table; GET auto via `_GET_DISPATCH_ROUTES`). **PURELY ADDITIVE** - reads no existing scorer and is read by none -> every existing route byte-identical (the new endpoint IS the opt-in). **SELECTIVE** (the sustain/allyamp shape, NOT the full-roster threat-range/objdamage shape): only champions whose damage scales with enemy health or resists carry rows; a flat-damage champ is absent and scores 0.0. **Key design call:** every scored kind gets STRONGER the tankier the target (max/current-HP damage, resist shred, %pen); pure **%-missing-health executes were EXCLUDED as finishers** (they do ~nothing to a full tank - the OPPOSITE of anti-tank; 57 such entries dropped from the fan-out in-pass after the first build showed 95 champs). **Dual-kind-per-slot allowed** (dedup key is (champ,source,kind), not (champ,source)): one ability can be two mechanisms - Trundle R = %max-HP drain + resist steal; Vi W / Yorick E / Sion E = %max-HP damage + armor shred. 171-champ Workflow fan-out (8 classify + 4 completeness critics, schema-validated, 1088323 subagent tokens / 192 tool uses / 457s) -> 102 entries / 78 champs / 38 conditional / kinds MAX_HP 63 SHRED 25 CURRENT_HP 9 PERCENT_PEN 5 / cadence SUSTAINED 40 PERIODIC 46 BURST 16; I wrote the engine + tests from the agents' structured output (PROBLEMS=0). + `tools/ds_antitank_build.py` (reusable validate/inject generator: source in P/Q/W/E/R/BASE, kind + cadence known, magnitude in (0,1], (champ,source,kind) dedup, emits keyword-arg `add()` grouped by champ in source order, splices the `# <ENTRIES>` marker LF-safe, writes the provenance sidecar) + `antitank_registry_notes.json` (added to the `ds_share_sync.py` exclusion tuple - Share-excluded like the other 8 axis notes). Live `/anti-tank` (GET+POST both verified): Rumble 1.422 (P MAX_HP cond 0.3 + Q MAX_HP 0.68 + E SHRED 0.442) / KSante 1.236 / Sion 1.209 / Rell 1.137 / Vi 1.110 / Mordekaiser 1.018 (top_kind PERCENT_PEN) / Trundle 0.9896 (dual R: MAX_HP 0.52 + SHRED 0.4696) / Vayne 0.95 / KogMaw 0.926 (top tank-melters) vs MasterYi / Annie / Talon / Katarina / Lux / Soraka 0.0 (flat-damage floor); 29 shreds_resist champs, 5 kit-intrinsic PERCENT_PEN. ENGINE 1.116.0 -> 1.117.0; **61 ENGINE pin syncs** (byte-replace `ENGINE_VERSION, "1.116.0"` -> `"1.117.0"` scoped to `agents/daemon_slayer/tests/*.py` + the `__init__` constant + the 3 most-recent axis-test docstring `(ENGINE x)` refs; the server.py route-doc provenance + ROADMAP/LEDGER history untouched); +32 tests `test_antitank_item308.py` (synthetic kind*cadence*magnitude*conditional math, hand-verified Vayne 0.95 pure-MAX_HP + Trundle 0.989625 dual-mechanism + DrMundo 0.42 CURRENT_HP + Mordekaiser 1.018125 PERCENT_PEN-top, directional anti-tank>0.6 + flat-damage=0.0, shreds_resist tracks SHRED/PERCENT_PEN, kind + cadence monotonic tiers, registry invariants 102/78 + 29 shred-champs + 5 PERCENT_PEN + (source,kind)-unique-per-champ, additive-route, ENGINE pin). DS suite **6579 passed** / 1 skip / 1 xfail / 1936 subtests; the `tests/` live-/health (`test_sr_draft_profile_engine`) + Share-doc-anchor checks went green AFTER the DS restart + Share re-sync. ruff clean; ASCII-only; Share re-synced **311 files** (engine 1.117.0) `--check` exit 0; CHANGELOG +1.117.0; ROADMAP relocated item 303 verbatim to `docs/ROADMAP_HISTORY.md` before adding item 308 (80KB budget). **ALSO shipped this run (separate commit `b448b6bc`):** the idempotent one-click headless-upgrade desktop launcher (`tools/rc_headless_launcher.ps1` + `tools/install_headless_launcher_shortcut.ps1` Desktop .lnk) - per click runs RC-GeminiAudit (schtasks /Run) + AHK-sends `/headless-upgrade` into the Claude desktop window (`claude_send.ahk`), guarded by `ops/runtime/headless_launcher.lock` against double-injection (self-heals when claude.exe is absent or the lock is stale); uses `Start-Process -Wait -PassThru` for the GUI-subsystem AutoHotkey64.exe. **Don't-redo:** anti-tank is a STANDALONE additive scorer (regenerate via `tools/ds_antitank_build.py <fanout.json>`, do NOT hand-edit the marker-spliced block); the 4 kind weights + 3 cadence mults + 0.5 midpoint are operator-tunable Phase-D knobs; `antitank_score`/`top_kind`/`shreds_resist` are the headlines; the axis is SELECTIVE (78/171 - a 0.0 for a flat-damage champ is CORRECT, not a coverage gap); **%-MISSING-HEALTH executes are EXCLUDED BY DESIGN** (do NOT re-add Garen R / Akali R / Veigar R / Riven R etc. as anti-tank - they ramp as the target dies, weakest vs a full tank); dual-kind-per-slot is intentional (Trundle/Vi/Yorick/Sion/Rumble/KogMaw). **NEXT (Phase D, live-gated):** an auto-pairing consumer crediting anti-tank into a live draft / teamfight / itemization verdict (e.g. "enemy has 2+ tanks -> buy %HP / shred"); tune the kind weights + cadence mults after a live re-rank. The anti-tank/%HP-damage axis is EXHAUSTED across the roster.
 
 307. ✅ **2026-06-05 - DS ally-amplification axis (item 304) gets its FIRST live consumer: the peel-target verdict (commit 7066e0c0; non-DS, non-engine, non-frozen; RC NOT yet restarted - the route enters the serving process on the next between-games restart).** Operator: "continue next -> phase D : am playing games ranked SR". Phase D was item 304's deferred NEXT (an auto-pairing consumer crediting ally-amplification into a live teamfight/draft/peel-target verdict + a live weight re-rank). One upfront AskUserQuestion forked the verdict surface -> operator chose **peel-target (live)** over a symmetric team-balance chip or both. NEW `dashboard/routes_peel_priority.py` = `GET /api/peel-priority` (additive, single-sided - ally amplification has no enemy mirror, so deliberately NOT the symmetric cc-threat shape): pairs the live (or `?ally=`-supplied) ally roster against `agents.daemon_slayer.allyamp.compute_allyamp`, ranks desc by `allyamp_score`, returns `ranked[]` + `protect_target` (highest non-zero buff-throughput ally) + `hard_saves[]` (allies owning a PROTECT mechanism = `saves_ally`, the hard-save identity) + a one-line `verdict`. ABSENT `ally` param -> LIVE auto-read of `liveclient.ally_team` via `_live_ally_roster` (drops self in display space, then canonicalizes); PRESENT-but-empty -> `no_champions`; not-in-game -> `no_live_roster`. 5-min TTL cache keyed (sorted-ally-tuple, mode); registered in `dashboard/_dispatch.py`. NEW `dashboard/_liveclient.py` `ally_team` field (full same-team champ list, symmetric twin of the pre-existing `enemy_team`). **Latent bug caught + fixed in-slice (root-cause, sibling-swept):** Live Client `championName` is a DISPLAY name ("Tahm Kench", "Master Yi", "Nunu & Willump", "Renata Glasc", "Jarvan IV", "Wukong") but every DS registry keys on the canonical DDragon id ("TahmKench", "MasterYi", "Nunu", "Renata", "JarvanIV", "MonkeyKing") - feeding a raw display name to `compute_allyamp` SILENTLY fail-softs to 0.0. The 4 ally-amp registry champs with a mismatch (JarvanIV/Nunu/Renata/**TahmKench**) would be missed on the live path - TahmKench is a PROTECT hard-save, the worst to drop. Fixed with NEW `core/archetype_picks.canonical_champion_id(name) -> str` (data-driven from `data/meta/ddragon_champions.json`, keys display/id/apostrophe-space-stripped forms -> canonical id, passthrough on unknown; reuses the `_load_champion_tags` loader/cache pattern). Naive string munging is WRONG (Wukong->MonkeyKing, Nunu & Willump->Nunu, Renata Glasc->Renata are not derivable). `_live_ally_roster` maps every survivor through it. **Live re-rank (in-process vs the operator's real SR game, no restart):** me=Caitlyn, allies Nautilus/MasterYi/Katarina/Seraphine -> "Peel for Seraphine (SHIELD buff-throughput)", hard_saves=[] (no PROTECT champ on the team), selfish carries 0.0 - the item-304 kind weights + scope mults are SANE on a live roster, no tuning needed (tuning would owe an ENGINE bump per item 304; not warranted). +24 tests `tests/test_routes_peel_priority.py` (route contract + math + live-roster canonicalization + cache + ascii); ruff clean; hygiene 12 + 134-test slice regression (peel/cc-routes/liveclient/archetype_picks/allyamp engine) green. Memory: `reference_liveclient_name_vs_ddragon_id` + MEMORY.md pointer. **Don't-redo:** the peel route is single-sided by design (do NOT add an enemy ratio - that conflates it with the cc-threat chips); ABSENT-vs-empty `ally` is the live-read fork (keep `keep_blank_values=True`); `_live_ally_roster` drops self (peel-target is a teammate); kind weights/scope mults live in `allyamp.py` (the route only reads the score). **NEXT:** RC restart to load the route into the serving process (DEFERRED - operator was mid-game SR live 8:49; restart between games via `echo restart > restart_trigger.txt`); a visible dashboard peel chip (BLOCKED - Game-PC MCP :8892 down -> the UI fixture-audit ritual + capture are unavailable this session); the remaining item-304 Phase D variants (symmetric team-balance chip, teamfight/draft surfaces).
 
@@ -30943,7 +30943,7 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 Operator directive: route cycles to the in-game Electron overlay until it matches the agreed
 glance-first design. GATE this cycle: mode=client / liveclient null - no live game, so the live
 in-game capture is OWED (carry-forward) and I worked the overlay-polish lane against the live
-backend per the directive's gate fallback. Ledger item 591, commit `41c6ae50` (pushed).
+backend per the directive's gate fallback. Ledger item 591, commit `b4f235af` (pushed).
 
 A read-only Plan gap-analysis vs `docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md` +
 `docs/OVERLAY_DOCTRINE.md` narrowly REFUTED the ROADMAP "lane DRAINED" claim - exactly ONE
@@ -31035,8 +31035,8 @@ size SHIPPED (7117ff19); cc-chips grid-swept (1b159617); replay scroll-wrap veri
 # 2026-07-04 (/live-gated-drain continuation - A1/A2 layer-2 + D6 headless fixes built + armed, full resync rebuilt; LEDGER 780)
 
 Continuation of the FULL DRAIN (LEDGER 779). Built the 2 caught-bug headless fixes spec-first (2 Plan subagents) + worktree build agents + an independent verifier gate + lead frozen-diff review, Opus 4.8 max orchestrated. Both MERGED main + armed live; both still owe a live re-validate.
-- A1/A2 LAYER-2 (`1ab7000e`, FROZEN lcu_client.py + lcu_rune_writer.py): premise REFUTED - the 3 spawn_task loops ALREADY guard Exception, so "add a try/except" would be redundant dead code. Real gap = a BaseException escaping `except Exception` kills the coroutine (postgame collector already handled it; auto-accept + RuneWriter did not). Split the tick-arm into `except CancelledError: return` + `except BaseException: log`. Closes layer-1's caveat. NEW test_lcu_loop_resilience.py (5, RED-first). NOT proven to fix the incident - the root cause (AppLoop-stop / to_thread-starvation) is UNCONFIRMED (no traceback was logged); layer-1 self-heal is the alive-loop mitigation, the League-restart re-validate is definitive.
-- D6 (`79c4e9e9`, tools/lcu_agent.py): phase_watcher is DEAD (do NOT hook there - inert). RC-LCUAgent capture_state gains an Arena-gated /lol-cherry-game-intra-event/v1/augments probe + an edge-latch force_scan bump so the vision scan catches the transient augment panel -> augment/anvil shadow seed. NEW test (8). D2 shares the root cause.
+- A1/A2 LAYER-2 (`8e0f069e`, FROZEN lcu_client.py + lcu_rune_writer.py): premise REFUTED - the 3 spawn_task loops ALREADY guard Exception, so "add a try/except" would be redundant dead code. Real gap = a BaseException escaping `except Exception` kills the coroutine (postgame collector already handled it; auto-accept + RuneWriter did not). Split the tick-arm into `except CancelledError: return` + `except BaseException: log`. Closes layer-1's caveat. NEW test_lcu_loop_resilience.py (5, RED-first). NOT proven to fix the incident - the root cause (AppLoop-stop / to_thread-starvation) is UNCONFIRMED (no traceback was logged); layer-1 self-heal is the alive-loop mitigation, the League-restart re-validate is definitive.
+- D6 (`8f651ca7`, tools/lcu_agent.py): phase_watcher is DEAD (do NOT hook there - inert). RC-LCUAgent capture_state gains an Arena-gated /lol-cherry-game-intra-event/v1/augments probe + an edge-latch force_scan bump so the vision scan catches the transient augment panel -> augment/anvil shadow seed. NEW test (8). D2 shares the root cause.
 - Verify: 52 pass / 0 fail fresh, py_compile + frozen import smoke OK, ruff clean. RC pid 6440->24344 (auto-accept + RuneWriter up async, no boot break); RC-LCUAgent restarted.
 - `/live-gated-resync`: rate-limited first attempt (transient server throttle from the 52-agent burst, NOT a usage limit), SUCCEEDED on resume - rebuilt LIVE_GAME_GATED_SYNC.md (1533 lines, ASCII, audit.pass), pruned 11 closed rows, open_now=95, est 4 sessions, ARENA NEEDED=YES, B41 disambiguated -> B41b.
 - Operator live finding (mid-session): user-builds runes have NO hover tooltip -> chip task_9a485b62 (fix candidate build_insights.js _runeImgTag, a DDragon-runesReforged tooltip).
@@ -31050,7 +31050,7 @@ DO NOT redo: the loops ALREADY guard Exception (layer-2 is the BaseException spl
 
 # 2026-07-10 (DS Meraki-refute R102: Guardian Angel (3026) Rebirth revive -> EHP numerator; ENGINE 1.194.0 -> 1.195.0)
 
-Manual operator-directed session (DS Meraki-refute rotation; BOTH the ItemShield lifeline AND omnivamp families saturated, so picked a DIFFERENT mechanic: item-side death-triggered REVIVE). Spec-first: grounded scout -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 847. Commit `735f52da` (build + bump, FF-merged).
+Manual operator-directed session (DS Meraki-refute rotation; BOTH the ItemShield lifeline AND omnivamp families saturated, so picked a DIFFERENT mechanic: item-side death-triggered REVIVE). Spec-first: grounded scout -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 847. Commit `81add5af` (build + bump, FF-merged).
 
 - GAP (R102): Guardian Angel "Rebirth" revives for 50% of BASE health (Meraki items_meraki.json:15505, 300s cd), but earned ZERO EHP - `_effects_data.py` marked GA defensive_only (no EHP field) and `_passive_revive_overrides.py:85` explicitly EXCLUDED item revives from the champion-keyed revive registry, so the `revive_multiplier`->`revive_extra` numerator (ehp.py:1570-1584) never matched an item id.
 - FIX: NEW `_item_revive.py` registry (3026 + Arena 223026 = 0.50 base-HP fraction; 323026 ARAM dropped) + `item_revive_max_hp_fraction` converting base->max HP (`0.5*base_hp/total_hp`, amortized `_ITEM_REVIVE_PROB=0.4`) + default-OFF `assume_item_revive` seam folding `item_revive_mult` into `common_revive` through NORMAL resists (GA has no egg, so no egg_ratio; multiplicative with any champion self-revive). RAISES blended_ehp when ON (EHP-numerator term, same axis as champion revive - NOT sustain-only like omnivamp). OFF byte-identical; NOT threaded into the ranker (opt-in only, mirrors omnivamp). Base-vs-max is the correctness key: a bonus-HP build credits < 0.5*prob.
@@ -31999,7 +31999,7 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 ---
 # 2026-07-18c (both tracks SHIPPED: P0 sidecar guard + DS-sweep batch16 -> 94/173; two findings that outlive the batch)
 
-Ran the two operator-directed tracks. **Both completed.** LEDGER 935. Commits `4cd3c4c6` (P0, Tier-2) + `c7208965` (batch16).
+Ran the two operator-directed tracks. **Both completed.** LEDGER 935. Commits `46bbc24b` (P0, Tier-2) + `f6e8c38c` (batch16).
 
 **Fan-out cap held.** Engine probes ran in the main thread; exactly 3 flat research agents (Morgana / Nami / Nasus meta), each prompt opening with a hard no-sub-agent constraint. Zero nested spawns, zero session-limit events. The prior session's failure mode did not recur.
 

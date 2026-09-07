@@ -74,9 +74,9 @@ already recorded in this repo:
   is the concurrency question this spec exists to answer.
 - **One `claude.exe` owns MANY top-level windows**, so `ahk_pid` targeting can
   land on the wrong project. RC fixed this with EnumWindows -> `target_hwnd.txt`
-  (`fe03742a`, ported from Sibling-A `a703ac1`) - a mitigation, not a cure.
+  (`1a310c04`, ported from Sibling-A `a703ac1`) - a mitigation, not a cure.
 - **Keystroke timing is load-bearing.** After a `/clear` the bridge must sleep
-  `CLEAR_PAUSE` 5000ms or the TUI reset swallows input (`53bd91c5`).
+  `CLEAR_PAUSE` 5000ms or the TUI reset swallows input (`b8990105`).
 - **The operator cannot use their own machine** while a run is typing.
 - **No exit code.** Success is inferred from a transcript, not returned.
 
@@ -202,7 +202,7 @@ proc = subprocess.run(
 `creationflags` is **not optional**: the controller runs under a scheduled task,
 and an unguarded console child flashes a window on the operator's desktop -
 which would reintroduce, through the back door, exactly the desktop intrusion
-this spec removes (`e872d9c9`, and the four sites fixed in `ops/rc_supervisor.py`
+this spec removes (`b2b6a4f3`, and the four sites fixed in `ops/rc_supervisor.py`
 on 2026-07-26).
 
 ## 6. Migration, in order
@@ -252,7 +252,7 @@ answer changes the migration order.
 2. **Test.** Nested `claude -p --permission-mode bypassPermissions --model sonnet`
    with `cwd` = repo root, instructed to run `git commit`.
    Result: **the commit LANDED, em-dash and all.** (Reset immediately; the tree
-   returned to `f5ec4089` and nothing was pushed.)
+   returned to `95412016` and nothing was pushed.)
 
 ### The discriminator, because the output is misleading
 
@@ -307,7 +307,7 @@ correct pattern and is **not currently using it**:
 Share sync. **Three tracked guards are therefore not running on any commit**, and
 that is a pre-existing defect independent of this spec.
 
-**FIXED 2026-07-26 (`4e19196f`).** All three steps landed together, in this
+**FIXED 2026-07-26 (`a35d3f84`).** All three steps landed together, in this
 order, because flipping the pointer at a failing hook would have blocked every
 commit in the repo:
 
@@ -349,7 +349,7 @@ verification pass - do not fold it into an unrelated commit.
 
 Insert before step 3 of section 6:
 
-  ~~**Step 2b (P0).** Land the git-level gate.~~ **DONE 2026-07-26 (`4e19196f`) -
+  ~~**Step 2b (P0).** Land the git-level gate.~~ **DONE 2026-07-26 (`a35d3f84`) -
   the SDK channel is no longer blocked on it.** Sibling-A needs the same
   fix before its SDK channel ships; the gate is only channel-independent in a
   repo whose core.hooksPath points at tracked hooks.

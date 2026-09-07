@@ -57,7 +57,7 @@ client-side chokepoint.
 DATA corroboration (probed the committed live table):
 - `data/daemon_slayer/current.txt` = `16.14.1`.
 - `data/daemon_slayer/16.14.1/build_orders_sr.json` `generated_at` = `2026-07-16T14:09:07Z`,
-  `version` = `16.14.1`, committed `fc09ce0b` (2026-07-16 patch refresh 16.13.1 -> 16.14.1).
+  `version` = `16.14.1`, committed `21db5626` (2026-07-16 patch refresh 16.13.1 -> 16.14.1).
   This regen ran AFTER Step-1a/1b (2026-07-13).
 - Every Step-1b flipped crit-ADC cell in that committed table carries ZERO ER (3508) / Eclipse
   (6692) across all three comp-classes: Miss Fortune / Jhin / Kai'Sa / Varus / Twitch / Jinx /

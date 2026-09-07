@@ -87,7 +87,7 @@ Regenerate evidence: `"C:\Users\Administrator\AppData\Local\Programs\Python\Pyth
 ## POST-317 RE-INVESTIGATION (2026-06-06): flip STILL unsafe - positional-pairing block-mismatch
 
 Cycle re-fired the same directive (flip default ON + bump ENGINE 1.119.0 + re-pin). Item 317
-(HEAD `7d7dfa54`) fixed extractor defects 1+2 (off-by-one trim + explosion guard); the drift
+(HEAD `fab49c51`) fixed extractor defects 1+2 (off-by-one trim + explosion guard); the drift
 audit confirms both are gone. Re-ran the empirical gate (NOT a blind re-pin):
 
 - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/ds_cdragon_drift_audit.py`: n_changed=433, explosion=0, off_by_one_residue=0,

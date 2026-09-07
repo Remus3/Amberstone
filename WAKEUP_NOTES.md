@@ -2,7 +2,7 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-30, merger + RM-227(a) pass (relocated `2026-08-29b` RM-222 flat-pen layout guard; newest 3 = merger + RM-227(a) `2026-08-30b` + lane-7 headless-repo `2026-08-30` + port-block collision `2026-08-29c`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-30, merger + RM-227(a) pass (relocated `2026-08-29b` RM-222 flat-pen layout guard; newest 3 = merger + RM-227(a) `2026-08-30b` + lane-7 headless-repo `2026-08-30` + port-block collision `2026-08-29c`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
 ---
 
@@ -14,7 +14,7 @@ Headless, operator away. Four commits pushed, `839604a02..3865c7e34`.
 **READ `docs/PUBLIC_FLIP_GO_NO_GO.md` "State at wrap" FIRST.** An earlier
 revision of that file claimed the flip had happened and was committed AND
 pushed while the repo was private. It was written ahead of the act. Retracted
-in `3865c7e34`, with the retraction written into the file rather than
+in `b800c3638`, with the retraction written into the file rather than
 overwriting it. The rule it now carries: probe the thing, THEN write the verdict.
 
 **THE DISTINCTION EVERYTHING ELSE HANGS ON:** the scrub claims are true of the
@@ -72,16 +72,16 @@ interleaved into a half-finished rewrite.
 
 # 2026-09-07 - pre-flip transition: licence closed, Share/ gone, verdict NO-GO
 
-Ten commits `2ff47493b`..`ca32cb8c9` pushed to main. LEDGER 1358 has the full
+Ten commits `cc72e186a`..`9f1441807` pushed to main. LEDGER 1358 has the full
 account; this is the hand-off.
 
 **Deliverable: `docs/PUBLIC_FLIP_GO_NO_GO.md`. The verdict is NO-GO.** Three of
 five blockers closed. The one that decides it is the name scrub.
 
-**CLOSED.** Licence reconciled to one story (`2ff47493b`) - Apache-2.0 kept
+**CLOSED.** Licence reconciled to one story (`cc72e186a`) - Apache-2.0 kept
 byte-pure with the scope block appended AFTER it so licence detection still
 works, new `NOTICE` for the data sources, README's "all rights reserved" gone.
-`Share/` removed entirely (`d76004025`), 633497 deletions, which also deleted
+`Share/` removed entirely (`d44c2111b`), 633497 deletions, which also deleted
 one of the three contradictory licence statements.
 
 **Suites verified FRESH on main, not inherited:** `tests` 20975 passed / 0
@@ -122,7 +122,7 @@ snapshots are purged.
 
 ## 2026-09-06 - CI unblocked, CodSpeed dropped, and a five-repo review protocol
 
-Nine commits, all pushed. Main was RED since `dcd965f2d` for a missing CI vision
+Nine commits, all pushed. Main was RED since `f8323887e` for a missing CI vision
 token - fixed with a CI-only dummy plus a guard that it stays fake. First clean
 full run since: 31724 passed, 262 skipped.
 
@@ -164,7 +164,7 @@ a redacted re-drop is next-session work.
 
 > Filed as `e`: lane 10 already holds `d` (RM-367) and lane 8 holds `c`, both same day.
 
-On main: `7ebdde80b` (slug), `dcd965f2d` (three queued items). LEDGER 1356.
+On main: `ee8537228` (slug), `f8323887e` (three queued items). LEDGER 1356.
 Full RC suite 21023 passed / 96 skipped / 0 failed; ruff + hygiene + drift_guard clean.
 DS untouched, so no Share sync.
 

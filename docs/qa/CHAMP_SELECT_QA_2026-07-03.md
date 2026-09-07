@@ -66,7 +66,7 @@ Core-set misbehavior check: operator reports NONE in the kept core set.
   dispatched: slice A (champ_select rework), slice B (per-mode visibility),
   slice C (Builds/DS receiving side), slice D (backend: capgap default ON,
   vocab fix, mood strip). Next pages queue after champ select ships.
-- 2026-07-03 SHIPPED (LEDGER 765, merges through `11f3584b`): all rulings
+- 2026-07-03 SHIPPED (LEDGER 765, merges through `bc705c79`): all rulings
   implemented - 4 verifier-CONFIRMED worktree slices, 5-phase audit (2
   MUST-FIX fixed in-slice: .csv-ta-body[hidden] collapse pin + focus-visible
   rings), 3 cross-slice test alignments, suite 10566/2skip green, RC

@@ -72,7 +72,7 @@ Residual source-of-truth:
 - The two residuals verbatim - `BACKLOG.md:11` (Viego) and `BACKLOG.md:12`
   (hybrid XOR), under "Daemon Slayer scorer calibration".
 - Both deferred to BACKLOG FUTURE by the R129 Fimbulwinter cycle - `docs/LEDGER.md`
-  entry 903 (ENGINE 1.213.0 -> 1.214.0, commit `1c6e1fc1`): "2 genuine-but-bigger
+  entry 903 (ENGINE 1.213.0 -> 1.214.0, commit `86ffb9b9`): "2 genuine-but-bigger
   candidates -> BACKLOG FUTURE (Viego R ... 120% total-AD ...; bruiser/hybrid
   scorer XOR drops ability-DPS for AD-axis champs ...)".
 - Current engine: `ENGINE_VERSION = "1.216.0"` - `agents/daemon_slayer/__init__.py:18`
@@ -545,7 +545,7 @@ land.
 --------------------------------------------------------------------------------
 
 - The R129 Fimbulwinter "Everlasting" shield EHP credit is SHIPPED (ENGINE
-  1.214.0, commit `1c6e1fc1`, LEDGER 903). ONLY these two residuals remain. Do
+  1.214.0, commit `86ffb9b9`, LEDGER 903). ONLY these two residuals remain. Do
   NOT re-credit the Fimbulwinter shield or re-open the R129 shield work.
 - Do NOT re-credit Navori / Kraken "Bring It Down" - already modeled default-ON
   (`BACKLOG.md:32` Kraken don't-redo anchor: PeriodicProc every_n_attacks=3,

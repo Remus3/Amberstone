@@ -42,7 +42,7 @@ operator - explicitly OUT of scope here.
 Ordered by leverage. Each cites a verified integration point and a test hook.
 
 ### N1. ENGINE-IMPACT directive schema line (bans the R19 bump/no-bump contradiction)
-> **SHIPPED 2026-06-27 (`b2370347`, operator-delegated continuation).**
+> **SHIPPED 2026-06-27 (`83a19108`, operator-delegated continuation).**
 - **WHAT:** Add a mandatory `ENGINE-IMPACT: NONE|BUMP` line to the directive skeleton the
   director emits, with a one-clause justification, encoding the settled forward-marker
   convention (memory `feedback_ds_forward_marker_no_bump`). Forbid emitting both a bump
@@ -58,7 +58,7 @@ Ordered by leverage. Each cites a verified integration point and a test hook.
 - **RISK:** LOW - pure prompt text in one `.md`; no controller change.
 
 ### N2. MANDATORY GROUNDING PREFIX + newest-item-supersedes rule (kills R28 root cause)
-> **SHIPPED 2026-06-27 (`b2370347`, operator-delegated continuation).**
+> **SHIPPED 2026-06-27 (`83a19108`, operator-delegated continuation).**
 - **WHAT:** Force the director to open every directive with a 3-line GROUNDED block:
   `GROUNDED-AGAINST: HEAD=<sha> LEDGER-TOP=<newest item id> CHAIN-LAST=<last cycle id>`,
   `NOT-A-DUPLICATE-OF: <nearest digest item + the one file/accessor/test that makes this
@@ -77,7 +77,7 @@ Ordered by leverage. Each cites a verified integration point and a test hook.
 - **RISK:** LOW - prompt text; the optional controller-string tweak is one line.
 
 ### N3. Director timeout vs NO_WORK disambiguation (stops false run termination)
-> **SHIPPED 2026-06-27 (`b2370347`, operator-delegated continuation; tests/test_loop_gemini_timeout.py).** N12 (caveman_default.py) shipped earlier this session in the wenyan commit.
+> **SHIPPED 2026-06-27 (`83a19108`, operator-delegated continuation; tests/test_loop_gemini_timeout.py).** N12 (caveman_default.py) shipped earlier this session in the wenyan commit.
 - **WHAT:** `gemini()` returns `""` both on a genuine empty answer AND on all-3-retries
   exhausted after the 300s timeout (`loop_controller.py:196-219`, worst case ~924s of dead
   loop). `main()` then reads that `""` as `NO_WORK` and calls

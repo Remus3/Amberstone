@@ -97,7 +97,7 @@ table below (E1-E12 map 1:1 to the answers).
 | E8 | Design system: reduced-motion-done-right + status glyphs + threshold statusFor() | DONE | 19f8116f |
 | E9 | Rank/tier/LP header + player scouting (both NOW) | DONE | core/lcu_ranked.py + routes_scouting.py; Riot key = API-Key-Riot.txt via core/riot_api.py |
 | E10 | ASCII retro sweep (all files, frozen) + git-history rewrite + force-push | OPEN | |
-| E11 | Hextech reskin across surfaces (P3/P4 visual cutover) | DONE (all 9 out-of-game surfaces; overlay via separate lane) | home 768 / champ-select 765-766 / lobby `1cf122e2` (772) / PGR `1771f532` (773) via the operator UI-QA method; history/session/user-builds/build-insights/settings verified complete via the E11 batched sweep (LEDGER 774); overlay HUD Hextech via the separate overlay-polish lane (R72, LEDGER 760) |
+| E11 | Hextech reskin across surfaces (P3/P4 visual cutover) | DONE (all 9 out-of-game surfaces; overlay via separate lane) | home 768 / champ-select 765-766 / lobby `c6670b19` (772) / PGR `83418d2b` (773) via the operator UI-QA method; history/session/user-builds/build-insights/settings verified complete via the E11 batched sweep (LEDGER 774); overlay HUD Hextech via the separate overlay-polish lane (R72, LEDGER 760) |
 | E12 | Responsiveness levers L1/L2/L4 (SSE/build TTL halve, etc.) | DONE | L1/L4 shipped 6.3; L2 `48fcee51` RuneWriter lobby-mode memoization (per-session _cached_lobby_mode, port-safe fewer LCU GETs, +4 tests). Residual QA62 / lever L3: prerequisite shipped R148 (`lcu/champ_select_shape.py`) - the L3 rewire itself stays OPEN, see the R148 finding for why the research note understated it |
 
 TOTAL_stages = 62 (50 base + 12 E-batch).

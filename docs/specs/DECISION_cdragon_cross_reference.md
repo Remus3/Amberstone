@@ -66,7 +66,7 @@ SHA-256 (first 8) of the committed sidecars per patch directory:
 
 The ratio sidecar and its drift report are **byte-identical across four patch
 directories**. They were carried forward verbatim by the patch-refresh commits
-(`9f23a16e`, `cdc4f8aa`, `fc09ce0b`) and have not been re-extracted since
+(`0b870f71`, `c022498f`, `21db5626`) and have not been re-extracted since
 16.11.1. The sibling `cdragon_spell_stats.json` IS re-extracted per patch, so the
 patch-refresh ritual regenerates one CDragon artifact and not the other.
 
