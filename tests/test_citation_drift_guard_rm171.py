@@ -94,6 +94,35 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # (doc, raw citation, reason family, why)
 _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
+    # --- CodSpeed removal, 2026-09-06 ---------------------------------------
+    # .github/workflows/codspeed.yml and the benchmarks/ tree were deleted after
+    # the value was measured: the benchmarks watched two modules that took 3 and
+    # 1 commits in 90 days while agents/daemon_slayer/ took 310 and had no perf
+    # coverage at all. See docs/OPERATIONS.md "Why CodSpeed was dropped".
+    #
+    # Both citations below sit in prose that is DESCRIBING the workflow's role
+    # in a past CI census - RM-322's retained historical body and RM-294b's
+    # correction history. Re-pointing them would make those rows assert a CI
+    # shape that never existed. The third broken citation from this deletion
+    # (benchmarks/conftest.py:23, in RM-273) is deliberately NOT baselined: that
+    # row's claim was "the only in-tree reference is X", which the deletion made
+    # materially false rather than merely unresolvable, so the row was corrected
+    # instead.
+    (
+        "BACKLOG.md",
+        ".github/workflows/codspeed.yml:51",
+        "DELETED",
+        "The CodSpeed workflow was removed 2026-09-06. The prose cites it as "
+        "proof that `benchmarks` was run by a CI job, which was true until that "
+        "day and is the correction the row exists to record.",
+    ),
+    (
+        "BACKLOG.md",
+        "codspeed.yml:51",
+        "DELETED",
+        "Same removal, bare-filename form of the citation above - the guard "
+        "keys on raw citation text, so the two spellings are separate entries.",
+    ),
     # --- Riot compliance removals, 2026-08-11 -------------------------------
     # All five cite files deleted to satisfy Riot's third-party rules (enemy
     # summoner-spell cooldown tracking, ultimate timers, power-spike
