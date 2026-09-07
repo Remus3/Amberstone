@@ -270,6 +270,7 @@ def main() -> int:
             except (OSError, ValueError):
                 seen = set()
             unread = sorted(names - seen)
+            withdrawn = _inbox_withdrawn(names, seen)
             if unread:
                 anomalies.append(
                     f"moon_sync_inbox: {len(unread)} unread note(s) from sibling repos")
@@ -279,6 +280,16 @@ def main() -> int:
                     out.append(f"- {n}")
                 if len(unread) > 10:
                     out.append(f"- ... and {len(unread) - 10} more")
+            if withdrawn:
+                anomalies.append(
+                    f"moon_sync_inbox: {len(withdrawn)} entry(s) WITHDRAWN by a sibling")
+                out.append("")
+                out.append(f"## Cross-repo inbox - {len(withdrawn)} WITHDRAWN since last ack")
+                for n in withdrawn[:10]:
+                    out.append(f"- {n}")
+                if len(withdrawn) > 10:
+                    out.append(f"- ... and {len(withdrawn) - 10} more")
+            if unread or withdrawn:
                 out.append("Read them, then record them as seen:")
                 out.append("  python tools/rc_facts.py --mark-inbox-seen")
     except OSError:
@@ -290,6 +301,33 @@ def main() -> int:
         sys.stdout.write(head)
     sys.stdout.write("\n".join(out) + "\n")
     return 0
+
+
+def _entry_name(key: str) -> str:
+    """The stable identity inside a watcher key, without its digest.
+
+    Keys are `<name> [<digest>]` for notes and `<name>/ [<n> files, ...]` for
+    drops. Stripping the bracketed part is what lets an EDIT (same name, new
+    digest) be told apart from a WITHDRAWAL (name gone entirely). Without the
+    distinction an edited note would report as both unread and withdrawn.
+    """
+    return key.rsplit(" [", 1)[0]
+
+
+def _inbox_withdrawn(names: set[str], seen: set[str]) -> list[str]:
+    """Entries acknowledged earlier whose NAME is no longer in the inbox.
+
+    Added 2026-09-07 on Sibling-D's finding, which they raised as a sixth
+    property after RC deleted 50 files from four sibling inboxes in a PII
+    pullback. Set subtraction the other way (`names - seen`) cannot see a
+    deletion at all: a withdrawn note simply stops appearing, so the watcher
+    goes quiet at exactly the moment a sibling retracted something.
+
+    LL's sentence is the one worth keeping: on this channel a correction and a
+    retraction are the two messages you least want silent.
+    """
+    live = {_entry_name(k) for k in names}
+    return sorted({_entry_name(k) for k in seen} - live)
 
 
 def _file_digest(p: Path) -> str:
@@ -437,13 +475,21 @@ def report_inbox_only() -> int:
         except (OSError, ValueError):
             seen = set()
         unread = sorted(names - seen)
-        if not unread:
+        withdrawn = _inbox_withdrawn(names, seen)
+        if not unread and not withdrawn:
             return 0
-        print(f"## Cross-repo inbox - {len(unread)} UNREAD (checked this message)")
-        for n in unread[:10]:
-            print(f"- {n}")
-        if len(unread) > 10:
-            print(f"- ... and {len(unread) - 10} more")
+        if unread:
+            print(f"## Cross-repo inbox - {len(unread)} UNREAD (checked this message)")
+            for n in unread[:10]:
+                print(f"- {n}")
+            if len(unread) > 10:
+                print(f"- ... and {len(unread) - 10} more")
+        if withdrawn:
+            print(f"## Cross-repo inbox - {len(withdrawn)} WITHDRAWN since last ack")
+            for n in withdrawn[:10]:
+                print(f"- {n}")
+            if len(withdrawn) > 10:
+                print(f"- ... and {len(withdrawn) - 10} more")
         print("Read them, then: python tools/rc_facts.py --mark-inbox-seen")
     except OSError:
         pass  # a hook must never fail the turn
