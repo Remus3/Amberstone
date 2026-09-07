@@ -242,8 +242,8 @@ hardening move - add a `noqa`, narrow an except, tighten a type - is exactly the
 edit on your own authority. `app/__init__.py` carries a second hard rule: `SCRIPT_DIR` MUST be `Path(__file__).parent.parent`.
 
 **6b. `ops/loop/slots.py` and `ops/loop/winmutex.py` are BYTE-IDENTICAL-BY-CONTRACT with `C:\Sibling-A`. NEVER edit either.** They are pinned by
-`SHARED_SHA256` in `tests/test_loop_concurrency.py:425-443`, which hashes the on-disk file and asserts the digest; the contract is stated at that file's line 8
-and again at `:409`. **Re-pinning is a JOINT act - both trees hashing equal IS the acceptance, never a note claiming it.** Never regenerate the digests from
+`SHARED_SHA256` in `tests/test_loop_concurrency.py:432-457`, which hashes the on-disk file and asserts the digest; the contract is stated at that file's line 8
+and again at `:416`. **Re-pinning is a JOINT act - both trees hashing equal IS the acceptance, never a note claiming it.** Never regenerate the digests from
 local disk to make a test pass; that converts a real divergence into a green lie in both repos at once. A genuine defect in either file is a FINDING plus a
 proposed patch filed for the joint change, not an edit.
 
