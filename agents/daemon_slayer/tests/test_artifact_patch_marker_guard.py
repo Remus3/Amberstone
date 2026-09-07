@@ -80,6 +80,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -248,7 +249,31 @@ def test_guard_enforcement_is_default_off(tmp_path):
 
 
 def _current_dir_artifacts() -> list[str]:
-    return sorted(p.name for p in (_DATA_ROOT / _live_patch()).glob("*.json"))
+    """The artifacts this repo SHIPS for the live patch, not what is on disk.
+
+    Enumerating the disk makes this guard machine-dependent in both directions.
+    A gitignored local cache - the vendor augment snapshot is one, untracked
+    2026-09-07 - is present here and absent in CI, so a disk scan fails ONLY on
+    the machine that fetched it while CI stays green. The same guard, read the
+    other way round, is how a stale index row passed locally and failed in CI.
+    Tracked content is the thing every checkout agrees on, so that is the
+    population.
+
+    Falls back to the disk scan if git cannot answer, because an empty list
+    would make every assertion below vacuously true.
+    """
+    live = _live_patch()
+    d = _DATA_ROOT / live
+    on_disk = sorted(p.name for p in d.glob("*.json"))
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(_DATA_ROOT.parent.parent), "ls-files",
+             f"data/daemon_slayer/{live}"],
+            capture_output=True, text=True, check=True, timeout=60).stdout
+    except (OSError, subprocess.SubprocessError):
+        return on_disk
+    tracked = {line.rsplit("/", 1)[-1] for line in out.splitlines() if line.strip()}
+    return [n for n in on_disk if n in tracked] if tracked else on_disk
 
 
 def test_current_patch_dir_is_populated():

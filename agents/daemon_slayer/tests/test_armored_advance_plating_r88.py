@@ -4,7 +4,7 @@ Armored Advance (item 3174) is the tier-3 upgrade boot of Plated Steelcaps and
 carries the IDENTICAL DDragon 16.13.1 "Plating" passive that R80 modeled on
 Plated Steelcaps (3047): "Reduces incoming damage from Attacks by 10%". Its
 registry entry was a bare ``defensive_only`` NOTE with ZERO EHP credit for the
-plating, though the item's +armor already counted - a sibling_carrier gap.
+plating, though the item's +armor already counted - a sibling-carrier gap.
 
 R88 sets the EXISTING ``basic_attack_damage_reduction`` field (added by R80,
 defaults 0.0) to 0.10 so the plating earns EHP credit through the SAME

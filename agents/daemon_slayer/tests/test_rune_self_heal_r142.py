@@ -100,7 +100,7 @@ class ConventionPinTests(unittest.TestCase):
 
 
 class AllowlistTests(unittest.TestCase):
-    """Exactly one id is seeded; every sibling-lane rune routes away."""
+    """Exactly one id is seeded; every sibling_lane rune routes away."""
 
     def test_full_offensive_rune_page_returns_zero(self):
         # Precision keystone page: Press the Attack, Presence of Mind,

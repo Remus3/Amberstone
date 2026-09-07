@@ -2986,9 +2986,9 @@ Idol now gets its +8% self-heal/shield EHP credit. Live default-ON flip is
 live-game gated. Source data: Meraki 16.13.1 + Riot Data Dragon (Forbidden
 Idol +8% Heal and Shield Power).
 
-1.187.0 (2026-07-10 - Armored Advance Plating EHP credit, R86 sibling_carrier).
+1.187.0 (2026-07-10 - Armored Advance Plating EHP credit, R86 sibling-carrier).
 A fresh adversarial DDragon/Meraki(16.13.1)-vs-registry refute pass for the R86
-sibling_carrier seam found Armored Advance (item 3174, the tier-3 upgrade boot of
+sibling-carrier seam found Armored Advance (item 3174, the tier-3 upgrade boot of
 Plated Steelcaps) carrying the IDENTICAL "Plating - Reduces incoming damage from
 Attacks by 10%" passive that R80 already modeled on Steelcaps 3047/223047, but its
 registry entry was a bare defensive_only NOTE-only so its Plating got ZERO EHP
