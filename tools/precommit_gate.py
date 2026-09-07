@@ -228,11 +228,11 @@ def _ruff_candidates() -> list[list[str]]:
         the same dep-less runtime tests/test_bare_py_ban.py exists to keep out
         of tracked invocations.
 
-    The original code used the launcher; ceb2f584 switched it to sys.executable
+    The original code used the launcher; 3d48e6e8 switched it to sys.executable
     to fix the PreToolUse channel and thereby broke the git-hook one - which is
     the AUTHORITATIVE channel (CLAUDE.md), and the one a headless run gets.
     Measured 2026-07-28: the ruff half had been dead there for three weeks, and
-    passed a net-new UP031 in this file's own source straight to CI (afcbcf79).
+    passed a net-new UP031 in this file's own source straight to CI (8a6cdfc2).
 
     Resolving at call time is the fix: no channel has to be guessed. The
     launcher is deliberately NOT a candidate - it is the dep-less runtime that
@@ -398,7 +398,7 @@ def main() -> int:
     if pyfiles and ruff is None:
         # Fail OPEN, but never fail SILENT. Blocking every commit on a machine
         # without ruff would wedge the headless loop and a fresh clone; passing
-        # without a word is what let afcbcf79 reach CI. CI's `ruff check .` is
+        # without a word is what let 8a6cdfc2 reach CI. CI's `ruff check .` is
         # the backstop, so say the half did not run and let the commit through.
         sys.stderr.write(
             "precommit_gate WARNING: no working ruff found - the net-new ruff "

@@ -107,7 +107,7 @@ def _pid_alive(pid: int) -> bool:
             # it has a desktop and a console child WOULD flash onscreen.
             # pythonw suppresses its OWN console, never a child's, and
             # capture_output/check_output does not suppress it either
-            # (e872d9c9, same class). Platform-guarded: passing creationflags
+            # (b2b6a4f3, same class). Platform-guarded: passing creationflags
             # on POSIX raises, and CI runs these tests on ubuntu.
             out = subprocess.check_output(
                 ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV"],

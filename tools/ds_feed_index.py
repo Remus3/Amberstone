@@ -74,7 +74,7 @@ KNOWN_STAMP_LAG = {
 # augment stats sourced at 16.10 and carried forward; event-mode feed with no
 # newer upstream."
 # enchanter_items.json was dropped 2026-07-26: the 16.14.1 copy declares
-# _meta.patch 16.14.1 (restamped at ENGINE 1.230.0, commit da5cb2ae), so it is
+# _meta.patch 16.14.1 (restamped at ENGINE 1.230.0, commit f7c49de5), so it is
 # no longer lagging and the guard test correctly rejected the stale entry. The
 # 16.10.1 through 16.13.1 copies still declare 16.9.1; that is historical-dir
 # lag, which this list does not track.

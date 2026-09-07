@@ -1040,7 +1040,7 @@ def rank_bruiser_for(
     # False = explicitly disable. A plain bool could not express the OFF.
     apply_build_tenacity: Optional[bool] = None,
     # RM-118 (2026-07-29): the wielder HSP ITEM-amp seam (R60). Sibling of the
-    # rank_tank_for wire (e075a221). Appended LAST; a plain EHP-family bool,
+    # rank_tank_for wire (1a2f92e7). Appended LAST; a plain EHP-family bool,
     # emitted via _emit_ehp_family_seams only when True -> byte-identical off.
     assume_hsp_amp: bool = False,
     # RM-118 residual (2026-07-30): all three stranded rune lanes on the BRUISER

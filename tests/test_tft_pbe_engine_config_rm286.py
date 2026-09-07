@@ -11,7 +11,7 @@ TFT poll loop. The twin engine `tft/tft_coach_engine.py` already ships the
 guard as `_apply_config` (tft/tft_coach_engine.py:625); the PBE engine does
 not, so the two siblings disagree about the same file.
 
-MEASURED RED AT HEAD (8c70d800): 45 failed, 3 passed. Red in two independent
+MEASURED RED AT HEAD (506f81e8): 45 failed, 3 passed. Red in two independent
 ways, which is deliberate:
 
   * Every test that calls `_apply_config` fails with AttributeError, because

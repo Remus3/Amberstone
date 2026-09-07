@@ -12,7 +12,7 @@ across the whole call, so while one request hangs every later `submit` logs
 "TFT PBE coach busy - skipping" and the overlay goes stale for up to ten
 minutes.
 
-RED AT HEAD: this module was RED at HEAD (commit 8c70d800, before any fix).
+RED AT HEAD: this module was RED at HEAD (commit 506f81e8, before any fix).
 THE EXACT REASON IT WAS RED: `messages.create` was reached and its kwargs were
 recorded, but the recorded kwargs contained no `timeout` key at all - the
 assertion failed on `assertIn("timeout", seen)` with the recorded key set

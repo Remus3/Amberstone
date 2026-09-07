@@ -141,6 +141,6 @@ def test_the_sha_pattern_is_case_sensitive_to_lowercase_git_output():
 
 def test_ledger_citation_shape_is_actually_matched_by_the_pattern():
     """Pin the real-world shape this tool exists to fix."""
-    sample = "landed (`54bad078` + `05319608`)"
+    sample = "landed (`00684480` + `f173ce39`)"
     found = re.findall(BACKTICKED_SHA_RE, sample)
-    assert found == ["54bad078", "05319608"]
+    assert found == ["00684480", "f173ce39"]

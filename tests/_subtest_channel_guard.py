@@ -1,6 +1,6 @@
 """Make the xdist-only ``subTest`` serialization defect fail everywhere.
 
-MEASURED 2026-07-26 and fixed in ``cd0f115d``: pytest 9's
+MEASURED 2026-07-26 and fixed in ``462f1255``: pytest 9's
 ``_pytest/unittest.py:436`` addSubTest stuffs the RAW ``subTest`` kwargs
 into ``SubtestContext(msg=..., kwargs=dict(test.params))`` and emits a
 report for EVERY subtest, passing ones included. Under xdist that report
@@ -10,7 +10,7 @@ serializes only builtin primitives - so a bare ``object()`` raises
 fails the PARENT test. Serially there is no channel, so the identical
 matrix passes.
 
-``cd0f115d`` fixed the five known instances and swept the rest BY EYE,
+``462f1255`` fixed the five known instances and swept the rest BY EYE,
 recording the result as prose in its commit body. That sweep is a claim
 about a moment, not a gate: this repo has 461 ``self.subTest(`` call
 sites and the next hostile-input matrix is one non-primitive kwarg away

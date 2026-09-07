@@ -57,7 +57,7 @@ PINS = {
     "web/css/panels/ward_heat.css": 1,
     "web/css/tokens.css": 1,
     # LEDGER (2026-07-23 headless): themes.css is the 6-theme OKLCH swap
-    # SOURCE layer (commit a2848e4c) - the 36 dark literals ARE the per-theme
+    # SOURCE layer (commit cc1df8b5) - the 36 dark literals ARE the per-theme
     # canvas/surface/accent ramps (the palette must live somewhere, same as
     # tokens.css:40). JUSTIFIED audit-doc section added; the ratchet still
     # blocks any 37th stray literal.

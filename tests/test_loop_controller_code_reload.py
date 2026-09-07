@@ -5,15 +5,15 @@ MEASURED 2026-07-27: three consecutive loop cycles shipped a fix to the director
 prompt assembler and NONE of them took effect.
 
   controller pid 18300 started 00:37:50 (ops/loop/control/RUNNING.lock ts
-  1785130670.62). The fixes landed at 05:03:56 (6c3851d0), 05:24:57 (ff439e14)
-  and 05:34:14 (d048f96f). A long-lived python process imports its source ONCE,
+  1785130670.62). The fixes landed at 05:03:56 (1f880bb1), 05:24:57 (7e0e8b80)
+  and 05:34:14 (d3eb3b3a). A long-lived python process imports its source ONCE,
   so the running image predated every one of them, and the live director stdin
   written at 05:45 (ops/loop/control/_gemini_in.txt) still carried the PRE-fix
   ledger section - the raw cap_bytes fallback and the old header wording - while
   the same call measured in-process off disk carried the fixed shape.
 
 The consequence is the loop's dominant failure: the director re-emitted an
-already-shipped unit (f1-phase6 item 2, closed at 05319608 / LEDGER 1074) for
+already-shipped unit (f1-phase6 item 2, closed at f173ce39 / LEDGER 1074) for
 the second time, because the de-dup evidence the fix restores was assembled by
 code that no longer existed on disk. Every cycle spent fixing the prompt was
 spent on a process that would ignore the fix.
