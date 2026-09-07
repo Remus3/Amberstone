@@ -5,7 +5,7 @@ three remaining champ-select DS cards - DS profile (csv-sugg-ds-profile),
 DS knobs (csv-ds-knobs), DS stat-check (csv-ds-statcheck) - onto the
 Builds/DS surface: the Active Match BUILD pane (#view-active-match
 .am-pane-build), joining the CS3 relocated family (combo / sweep / matchup /
-relscore, commit 90592c3b). This mirrors the CS3 pattern exactly: same mount
+relscore, commit 074c68d0). This mirrors the CS3 pattern exactly: same mount
 ids kept, render fns unchanged, each card fed the SAME synthetic
 champ-select-shaped state (_amDsSyntheticCs) built from the LIVE champion
 the operator is playing.

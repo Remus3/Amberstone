@@ -32,7 +32,7 @@ TOOLS = ROOT / "tools"
 # The scratch-cleanup commit that removed the quarantine directory from the
 # tree (2026-07-07). The archive was TRACKED until then - see
 # test_quarantined_present_in_archive for why that correction matters.
-ARCHIVE_REMOVED_AT = "8c2afe21"
+ARCHIVE_REMOVED_AT = "f08ade78"
 
 # The 7 one-shot scripts quarantined this stage (already-applied hotfixes,
 # migrations, and loadout one-shots; refs only in dated docs + docstrings).
@@ -86,7 +86,7 @@ def test_quarantined_present_in_archive():
     `if not ARCHIVE_DIR.is_dir(): pytest.skip(...)` on the premise that
     `_archive/` is gitignored machine-local state. That premise was wrong in
     the way that matters: `_archive/2026-06-20-rc2-p73/` WAS tracked, and it
-    was removed at 8c2afe21 on 2026-07-07 - so the directory is not absent
+    was removed at f08ade78 on 2026-07-07 - so the directory is not absent
     pending a local copy, it is gone from every checkout, and this assertion
     had stopped running everywhere rather than only on CI.
 

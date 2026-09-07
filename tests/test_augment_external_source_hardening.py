@@ -234,7 +234,7 @@ class NonFiniteTest(unittest.TestCase):
     backfilling. It is fixed because the upstream host is not RC's to
     control and the twin module already treats this as a live risk.
 
-    That count read "24" when this file was first committed (54d485c7) and
+    That count read "24" when this file was first committed (1f4908d4) and
     the cycle-33 verifier refuted it: the measuring glob unioned
     "*augment*.json" with "cherry_augments.json", and the second pattern is
     a SUBSET of the first, so every cherry file was counted twice. The

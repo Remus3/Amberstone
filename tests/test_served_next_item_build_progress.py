@@ -1,6 +1,6 @@
 """SERVED-path twin of the raw-slot-count build-order index defect.
 
-Commit f6e8c11c fixed this on the SHADOW path only (the ARAM deterministic
+Commit 5f1b6d5c fixed this on the SHADOW path only (the ARAM deterministic
 assembler's ``reset_item``) and deliberately left the served path alone.
 
 The defect: ``dashboard/_liveclient.py`` builds ``owned_items`` /
@@ -13,7 +13,7 @@ next-item value was wrong or absent essentially always.
 
 The served consumer is the recall callout ("Back now - afford X"), which
 ``core.event_callouts.next_callouts`` emits for SR only (_RECALL_MODES), so
-the SERVED fixtures here are SR. The measured shape is the same one f6e8c11c
+the SERVED fixtures here are SR. The measured shape is the same one 5f1b6d5c
 recorded on ARAM: Kalista's balanced order is
 ['3153', '3006', '3085', '3302', '6672', '3036'] in BOTH tables, so a player
 holding 4 legendaries plus a trinket plus a Health Potion indexes at 6

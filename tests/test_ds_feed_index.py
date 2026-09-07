@@ -104,7 +104,7 @@ def test_index_covers_every_semver_dir_and_feed():
 def test_frozen_body_hashes_recompute():
     """Frozen dirs ONLY - deliberate.
 
-    A hash lock on the live dir would red on ordinary work: commit 544d6362
+    A hash lock on the live dir would red on ordinary work: commit e1b42e89
     moves 5 canonical bodies in the live dir alone. That trains the rubber
     stamp, so the lock covers only dirs that must never move again.
     """

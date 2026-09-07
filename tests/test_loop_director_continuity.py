@@ -6,7 +6,7 @@ items go at the TOP). The old director() fed the model `tail('docs/LEDGER.md',90
 - i.e. the LAST 90 lines = the OLDEST entries (items ~325 from 2026-06-06) - so
 the genuinely-recent completed items (618-633) were INVISIBLE to the director and
 it re-proposed already-shipped work (git history: R28 "CLEAN no-op - directive
-premises already shipped 618/619/620", commits e24410d6 / b951f985).
+premises already shipped 618/619/620", commits aa80b896 / 6a13dc93).
 
 The fix gives the director an explicit ALREADY-COMPLETED DIGEST built from:
   - recent commits (newest first),
@@ -119,9 +119,9 @@ def test_directive_title_extracts_theme_scope(lc):
 # zero information, so it could not refute a duplicate.
 
 _LIVE_SHAPED_BODY = (
-    "GROUNDED-AGAINST: HEAD=05319608 LEDGER-TOP=1074 CHAIN-LAST=cycle 4\n"
+    "GROUNDED-AGAINST: HEAD=f173ce39 LEDGER-TOP=1074 CHAIN-LAST=cycle 4\n"
     "NOT-A-DUPLICATE-OF: LEDGER 1074 | distinct because this is items 1, 9 and 5a\n"
-    "PREMISE-CHECK: [from-digest] items 2 and 5 shipped in 05319608\n"
+    "PREMISE-CHECK: [from-digest] items 2 and 5 shipped in f173ce39\n"
     "\n"
     "ENGINE-IMPACT: NONE\n"
     "ops sync and tests only, no ds path.\n"
@@ -180,7 +180,7 @@ def test_chain_digest_names_work_not_grounding(lc, tmp_path):
     body = _LIVE_SHAPED_BODY.replace(
         "f1-phase6 inbox apply", "QQCHAINUNITMARKER inbox apply")
     lc.record_directive_outcome(
-        9, body, "1111aaaa", "756db42a",
+        9, body, "1111aaaa", "80bb813f",
         {"tests_pass": 13516, "regressions": False}, "VERDICT: CLEAN", ctl=tmp_path)
     ctx = lc.build_director_context({}, "", root=tmp_path, ctl=tmp_path)
     assert "QQCHAINUNITMARKER" in ctx, (

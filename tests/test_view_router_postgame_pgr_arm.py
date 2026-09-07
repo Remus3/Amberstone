@@ -28,7 +28,7 @@ derivation falls through to "home".
 
 FIX. The null-phase live-game promotion now arms the sticky too, in the JS
 and in this Python mirror. ``is_postgame_pgr_edge`` is the mirror of the
-auto-PGR arm itself - the original fix (commit a7714376) deliberately left
+auto-PGR arm itself - the original fix (commit a2fdf448) deliberately left
 the mirror unchanged because "navigation is a side-effect, not a derived
 view", which is exactly why the regression shipped untested.
 

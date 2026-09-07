@@ -10,7 +10,7 @@ assigned state.latest.coach / .callouts / .lead_projection, so #rn-choices,
 always truthy, so the ``|| p`` fallback never fired either.
 
 Forensics (git -S, 2026-06-10): the call form renderCoachChoices(state.latest
-|| p) and the state.coach read are byte-original from ee5323b7 (2026-05-20,
+|| p) and the state.coach read are byte-original from 95ea5aca (2026-05-20,
 the A/B chip ship) and 74ba5d31 is the FIRST commit ever assigning
 state.latest.coach - the live feed was dead from day one, NOT an item-314
 regression (that unified the backend choices decode only). The May-2026

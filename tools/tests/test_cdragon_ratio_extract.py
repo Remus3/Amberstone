@@ -23,7 +23,7 @@ import daemon_slayer_cdragon_ratio_extract as R  # noqa: E402
 
 # --------------------------------------------------------------------------- engine-independence guard
 # RM-170 (2026-08-06). This guard used to read `assert "from agents" not in src`.
-# Commit 9df58480 (2026-07-30, "patch refresh 16.15.1 + partition the new
+# Commit d0ad0569 (2026-07-30, "patch refresh 16.15.1 + partition the new
 # throwback-mode registry") deliberately added ONE engine import to both cdragon
 # extractors and did not update the guard, so it went red and STAYED red - which
 # nobody saw, because `pytest tests` does not collect tools/tests.

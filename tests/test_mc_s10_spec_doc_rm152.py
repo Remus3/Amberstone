@@ -14,7 +14,7 @@ rest of the runtime stack). This assertion, by contrast, only reads a tracked
 a DELIBERATELY minimal install (pytest / pytest-asyncio / pytest-timeout /
 pyyaml / pydantic - no runtime stack). Co-housing the two concerns therefore
 dragged 17 HTTP round-trip tests into a job that cannot import the registry:
-on ``04c58336`` the POST dispatch raised ``ModuleNotFoundError: No module
+on ``e30eda36`` the POST dispatch raised ``ModuleNotFoundError: No module
 named 'portalocker'`` through ``dashboard/_dispatch.py`` ``_gather_post()``,
 no response was recorded, and
 ``TestLegitimateDashboardClientsSurvive::test_a_normal_post_is_unaffected``

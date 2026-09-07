@@ -9,8 +9,8 @@ half of that sentence until it was deleted on 2026-09-06 - see
 docs/OPERATIONS.md "Why CodSpeed was dropped". Its removal does not weaken this
 tool's reason to exist: one workflow declining `.md` is enough. But dozens of test modules
 read tracked `.md` files off disk and assert on their CONTENT, so a `.md`-only
-commit can turn a `.py` guard RED with nothing watching. `6bad3814` did exactly
-that to `tests/test_loop_director_context_caps.py`, and `8d22734b` - the fix -
+commit can turn a `.py` guard RED with nothing watching. `b412c2d8` did exactly
+that to `tests/test_loop_director_context_caps.py`, and `ae829bb2` - the fix -
 also ran no CI, so the fix's own green was never machine-confirmed.
 
 `.github/workflows/docs-guards.yml` fires on the COMPLEMENT of that filter and

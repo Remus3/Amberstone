@@ -3567,7 +3567,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # Profane Hydra 6698 records: lethality has no DDragon stats key and
         # stats.ITEM_STAT_KEY_MAP has no lethality entry, so ITEM_EFFECTS is
         # the sole credit path and an unregistered id reads a silent 0.0 (the
-        # R143 / da5cb2ae defect class).
+        # R143 / f7c49de5 defect class).
         lethality=25.0,
         # Hydra family unique - shares the cleave lockout with 6698 / 3748 /
         # 6673 so a live inventory cannot double-credit two hydras.

@@ -26,7 +26,7 @@ would have refuted it had been truncated away:
     single modern item is 5-10KB on ONE line (item 1074 alone is 10,749
     bytes), so an 8,000-byte cap over head_lines(60) delivered exactly ONE
     partial item id. Item 1073 - the row recording this exact closure and
-    commit 756db42a - was cut. The LINE budget, not the byte budget, was
+    commit 80bb813f - was cut. The LINE budget, not the byte budget, was
     the wrong knob.
 
 So the plan is now head + TAIL with the cut stamped between them, and the

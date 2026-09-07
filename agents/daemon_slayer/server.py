@@ -1533,7 +1533,7 @@ def _route_rank_bruiser(body: dict) -> dict:
     # no arithmetic and is byte-identical to omitting the key.
     kit_conversion_strength = _opt_float(body, "kit_conversion_strength", 0.0)
     # RM-118 (2026-07-29): the wielder HSP ITEM-amp seam (R60) reaches the
-    # bruiser ranker. Sibling of the /rank-tank wire (e075a221). DEFAULT-OFF.
+    # bruiser ranker. Sibling of the /rank-tank wire (1a2f92e7). DEFAULT-OFF.
     assume_hsp_amp = _opt_bool(body, "assume_hsp_amp", False)
     # RM-118 residual (2026-07-30): all three stranded rune lanes on the BRUISER
     # ranker. ``rank_items_by_hybrid`` names every one (hybrid.py:1037-1042) and

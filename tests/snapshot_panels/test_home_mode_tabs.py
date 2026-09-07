@@ -8,7 +8,7 @@ sits between the hero and the quick-action tiles; main.js
 _homeApplyModeTab syncs .active/aria-selected, persists the choice in
 localStorage ("rc-home-mode-tab"), stamps the #home-overlay[data-mode-tab]
 dataset hook, and refetches /api/home/summary?mode=<tab> (backend contract
-82c0bb3a: bad/absent mode = unfiltered; payload echoes mode_filter).
+d46ed74f: bad/absent mode = unfiltered; payload echoes mode_filter).
 
 Drives the ui_mock home fixture through the mock-server + Playwright
 harness (conftest.py), mirroring test_home_view.py. Under ui_mock the

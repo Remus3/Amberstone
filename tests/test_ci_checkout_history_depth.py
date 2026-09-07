@@ -29,7 +29,7 @@ clone and no local run is, so a shallow-clone skip fires on 100 percent of CI
 runs and 0 percent of local ones - the guard would report green in the one
 place it is the only thing watching. `tests/test_u2500_candidate_sweep.py` and
 `tests/test_rc2_p73_quarantine.py` are in their current form precisely because
-ccbafd5e made them skip and 3beeb8cf found they had been asserting nothing for
+f2f6a0e3 made them skip and cc5525d8 found they had been asserting nothing for
 months.
 
 Deliberately NOT asserted here: that every checkout in the repo is deep.

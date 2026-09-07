@@ -2,7 +2,7 @@
 
 Companion to the 5-phase fixture audit of the Champ-Select SR surface
 (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY). Prior cycle C1
-(b4bfa05a) audited the ARAM + Arena champ-select surfaces and OMITTED SR;
+(6cbd6e15) audited the ARAM + Arena champ-select surfaces and OMITTED SR;
 this guard locks the SR default surface - the branch where
 champ_select.js `_csvDetectMode` returns "sr".
 

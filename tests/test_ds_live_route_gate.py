@@ -7,7 +7,7 @@ B2 was filed as "19 DS live-route sites": tests that skip because the Daemon
 Slayer HTTP engine on :8860 is not answering, so the assertion never runs and
 the suite reports green while the route may be broken. Re-derived 2026-08-06
 (the filed count for both sibling classes was wrong by a large factor, in
-opposite directions, so no count in this family is inherited): the true census at ae0c2897, BEFORE this module existed, was
+opposite directions, so no count in this family is inherited): the true census at 09d9c7a1, BEFORE this module existed, was
 **20 skip control points across 18 modules**, not 19 - see ``_B2_CENSUS``
 below, which is machine-checked, not a note.
 
@@ -342,7 +342,7 @@ def scan_ds_route_gates() -> dict[str, int]:
 
 
 #: The re-derived census AS IT STANDS AFTER this slice. The pre-slice count
-#: was 20 control points over 18 modules, measured 2026-08-06 at ae0c2897;
+#: was 20 control points over 18 modules, measured 2026-08-06 at 09d9c7a1;
 #: every one was hand-read and classified, all 20 came out class A (legitimate
 #: capability gate), and zero came out class C - all 34 live paths
 #: (31 `_POST_ROUTES` + /health + /snapshot + /modifier-summary) were probed

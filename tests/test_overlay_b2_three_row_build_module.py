@@ -33,7 +33,7 @@ DASHBOARD_CSS = REPO / "web" / "css" / "dashboard.css"
 class ThreeRowModule(unittest.TestCase):
     """_renderAmBuildBody builds the named-row module container.
 
-    BATCH A (2eb00958, 2026-07-06) dropped the FIGHT MODEL knob row from the
+    BATCH A (aab70b67, 2026-07-06) dropped the FIGHT MODEL knob row from the
     build module per the operator EXAMPLE (the full knobs card still lives at
     csv-ds-knobs), so the module is now the "Daemon Slayer" + "Meta Build"
     named rows. The former test_knobs_row assertion on bm-knobs was retired

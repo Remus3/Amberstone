@@ -1047,15 +1047,15 @@ def test_sdk_channel_records_the_deviation_too(tmp_path: Path):
 # apply: chmod the githooks, apply moon_sync_inbox/winmutex.py.from-lw, pin the
 # item-5a SHA, ack Sibling-A) which had landed across four commits that
 # were all ancestors of HEAD. The directive self-reported
-# `GROUNDED-AGAINST: HEAD=05319608 LEDGER-TOP=1074 CHAIN-LAST=cycle 4` while the
-# real HEAD was a7b9ac3d.
+# `GROUNDED-AGAINST: HEAD=f173ce39 LEDGER-TOP=1074 CHAIN-LAST=cycle 4` while the
+# real HEAD was 9d836162.
 #
 # The three grounding fields director_prompt.md:14-18 mandates are 100 percent
 # self-reported: a grep for GROUNDED-AGAINST / NOT-A-DUPLICATE-OF / PREMISE-CHECK
 # across the .py tree returned ZERO hits, so nothing ever read the claim back and
 # the stale directive was handed to the executor verbatim.
 
-_HEAD = ("a7b9ac3d" * 5)[:40]
+_HEAD = ("9d836162" * 5)[:40]
 
 
 class _Git:
@@ -1094,8 +1094,8 @@ class _Git:
 
 
 # The measured incident, in the shape the director actually emitted it.
-_R200 = """GROUNDED-AGAINST: HEAD=05319608 LEDGER-TOP=1074 CHAIN-LAST=cycle 4
-NOT-A-DUPLICATE-OF: the inbox apply in 19b680cc | distinct because ops/loop/winmutex.py
+_R200 = """GROUNDED-AGAINST: HEAD=f173ce39 LEDGER-TOP=1074 CHAIN-LAST=cycle 4
+NOT-A-DUPLICATE-OF: the inbox apply in 04a5a534 | distinct because ops/loop/winmutex.py
 is not yet applied
 PREMISE-CHECK: winmutex.py still carries the old bytes [UNVERIFIED]
 
@@ -1115,11 +1115,11 @@ Add the grounding guard. LW shipped the same shape at deadbeefcafe on its side.
 
 def test_a_stale_grounded_head_is_a_finding():
     """The claim is checkable and it was wrong - that is the whole defect."""
-    found = executor.grounding_findings(_R200, **_Git(landed=["05319608"]).kwargs())
+    found = executor.grounding_findings(_R200, **_Git(landed=["f173ce39"]).kwargs())
     stale = [f for f in found if f.kind == "stale-head"]
-    assert stale, "HEAD=05319608 against a real HEAD of a7b9ac3d is not grounded"
-    assert stale[0].token == "05319608"
-    assert "a7b9ac3d" in stale[0].detail, "the real HEAD has to be named, not just the claim"
+    assert stale, "HEAD=f173ce39 against a real HEAD of 9d836162 is not grounded"
+    assert stale[0].token == "f173ce39"
+    assert "9d836162" in stale[0].detail, "the real HEAD has to be named, not just the claim"
 
 
 def test_a_matching_grounded_head_is_not_a_finding():
@@ -1127,9 +1127,9 @@ def test_a_matching_grounded_head_is_not_a_finding():
 
 
 def test_a_sha_already_merged_into_head_is_a_finding():
-    found = executor.grounding_findings(_R200, **_Git(landed=["05319608", "19b680cc"]).kwargs())
+    found = executor.grounding_findings(_R200, **_Git(landed=["f173ce39", "04a5a534"]).kwargs())
     landed = [f for f in found if f.kind == "already-landed"]
-    assert [f.token for f in landed] == ["19b680cc"]
+    assert [f.token for f in landed] == ["04a5a534"]
     assert "already" in landed[0].detail.lower()
 
 
@@ -1137,9 +1137,9 @@ def test_a_not_a_duplicate_of_sha_is_scanned_too():
     """That line is exactly where the director cites the work it claims to be
     distinct from, so it is the line most likely to name an already-landed
     commit - excluding it would blind the guard to the measured incident."""
-    body = "NOT-A-DUPLICATE-OF: e0f4d546 | distinct because nothing\n"
-    found = executor.grounding_findings(body, **_Git(landed=["e0f4d546"]).kwargs())
-    assert [f.token for f in found] == ["e0f4d546"]
+    body = "NOT-A-DUPLICATE-OF: 2c281443 | distinct because nothing\n"
+    found = executor.grounding_findings(body, **_Git(landed=["2c281443"]).kwargs())
+    assert [f.token for f in found] == ["2c281443"]
 
 
 def test_an_unresolvable_hex_token_is_not_a_finding():
@@ -1170,8 +1170,8 @@ def test_bare_decimal_and_word_tokens_are_never_probed():
 def test_the_claimed_head_is_not_double_reported_as_already_landed():
     """One fault, one finding. The stale HEAD is a grounding assertion, not
     proposed work, and it is already named by the stale-head finding."""
-    found = executor.grounding_findings(_R200, **_Git(landed=["05319608"]).kwargs())
-    assert [f.token for f in found].count("05319608") == 1
+    found = executor.grounding_findings(_R200, **_Git(landed=["f173ce39"]).kwargs())
+    assert [f.token for f in found].count("f173ce39") == 1
 
 
 def test_an_unverifiable_head_is_recorded_not_silently_passed():
@@ -1189,11 +1189,11 @@ def test_a_directive_with_no_grounding_prefix_and_no_shas_is_not_judged():
 
 
 def test_the_override_names_the_stale_head_and_the_landed_shas():
-    found = executor.grounding_findings(_R200, **_Git(landed=["05319608", "19b680cc"]).kwargs())
+    found = executor.grounding_findings(_R200, **_Git(landed=["f173ce39", "04a5a534"]).kwargs())
     out = executor.reground_directive(_R200, found)
     assert out.startswith(executor.GROUNDING_HEADER)
     assert executor.GROUNDING_MARKER in out
-    assert "05319608" in out and "19b680cc" in out
+    assert "f173ce39" in out and "04a5a534" in out
     assert _HEAD[:8] in out, "the session cannot re-ground without the real HEAD"
     assert _R200.strip() in out, "the original directive text must survive verbatim"
 
@@ -1223,7 +1223,7 @@ def test_enforce_leaves_a_correctly_grounded_directive_byte_identical(
 
 def test_enforce_rewrites_directive_md_and_records_the_finding(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    g = _Git(landed=["05319608", "19b680cc"])
+    g = _Git(landed=["f173ce39", "04a5a534"])
     monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
     monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
     monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
@@ -1241,7 +1241,7 @@ def test_the_grounding_override_is_advisory_and_does_not_abort_the_cycle(
     """Same posture as the disjointness precedent: the header is advice on top of
     a directive that still runs. Deleting it or stopping the cycle would turn a
     heuristic string match into a run-killer."""
-    g = _Git(landed=["05319608"])
+    g = _Git(landed=["f173ce39"])
     monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
     monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
     monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
@@ -1259,7 +1259,7 @@ def test_ahk_channel_rewrites_directive_md_on_a_stale_grounding(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     """Wiring: the director path types only the opener, so the correction has to
     land in control/directive.md or the session never sees it."""
-    g = _Git(landed=["05319608", "19b680cc"])
+    g = _Git(landed=["f173ce39", "04a5a534"])
     monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
     monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
     monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
@@ -1275,7 +1275,7 @@ def test_sdk_channel_checks_the_grounding_too(
         monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     """It matters MORE here: a `-p` run is unattended, so nobody is reading the
     directive and noticing it re-issues landed work."""
-    g = _Git(landed=["05319608", "19b680cc"])
+    g = _Git(landed=["f173ce39", "04a5a534"])
     monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
     monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
     monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
@@ -1507,7 +1507,7 @@ def test_controller_log_tells_a_premise_finding_from_a_stale_head_one(
     controller.log history carries it - so the DETAIL after it is what has to
     disambiguate. A log line that only says STALE-GROUNDING over a HEAD the same
     function just measured as current is a lie to the only human reader."""
-    g = _Git(landed=["05319608"])
+    g = _Git(landed=["f173ce39"])
     monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
     monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
     monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
@@ -1559,7 +1559,7 @@ def test_a_stale_head_still_wins_the_header_when_both_kinds_fire():
     """_R200 carries both. The head being wrong is the stronger claim and the one
     the session must act on first, so the header must not soften to the premise
     wording."""
-    found = executor.grounding_findings(_R200, **_Git(landed=["05319608"]).kwargs())
+    found = executor.grounding_findings(_R200, **_Git(landed=["f173ce39"]).kwargs())
     kinds = {f.kind for f in found}
     assert kinds == {"stale-head", "unverified-premise"}
     assert executor.reground_directive(_R200, found).startswith(executor.GROUNDING_HEADER)
@@ -1682,7 +1682,7 @@ def test_the_grounding_guard_stamps_the_deviation_too(
     """Second instance of the same defect class: this guard's correction was just
     as invisible to the director, and it is the guard whose measured incident WAS
     the director re-issuing landed work."""
-    g = _Git(landed=["05319608", "19b680cc"])
+    g = _Git(landed=["f173ce39", "04a5a534"])
     monkeypatch.setattr(executor, "_git_head", lambda root: g.head)
     monkeypatch.setattr(executor, "_git_resolve", lambda root, tok: g.resolve(tok))
     monkeypatch.setattr(executor, "_git_is_ancestor", lambda root, a, b: g.is_ancestor(a, b))
@@ -1782,7 +1782,7 @@ def test_a_clean_sdk_failure_leaves_raw_empty_exactly_as_before(tmp_path: Path):
 # one a real version tag (actions/checkout@v6, actions/setup-python@v6,
 # actions/cache@v4, CodSpeedHQ/action@v4); zero match the corrupted
 # `@agents\...\test_x.py` shape the digest described; and `gh run list` shows
-# docs-guards run 30289333992 SUCCESS at HEAD 3e6f69b9. The claim came out of a
+# docs-guards run 30289333992 SUCCESS at HEAD 98f29111. The claim came out of a
 # model-authored audit digest, reached the executor with zero friction because of
 # the tag, and burned the whole cycle.
 #
@@ -1965,9 +1965,9 @@ def test_a_stale_head_still_wins_the_header_over_a_digest_premise():
     """Same precedence rule the unverified premise already follows: the head
     being wrong is the claim the session must resolve first."""
     p = _Paths(".github/workflows/docs-guards.yml")
-    body = _CYCLE15.replace(_HEAD[:8], "05319608")
+    body = _CYCLE15.replace(_HEAD[:8], "f173ce39")
     found = executor.grounding_findings(body, resolve_path=p.resolve,
-                                        **_Git(landed=["05319608"]).kwargs())
+                                        **_Git(landed=["f173ce39"]).kwargs())
     assert {f.kind for f in found} == {"stale-head", "digest-premise"}
     assert executor.reground_directive(body, found).startswith(executor.GROUNDING_HEADER)
 

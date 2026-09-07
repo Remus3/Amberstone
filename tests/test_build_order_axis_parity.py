@@ -88,7 +88,7 @@ def test_mixed_build_axis_matches_kit(champ, table, axes):
     # data/cs_archetype_picks.json cleared, so every champion now resolves to
     # its kit-axis default and this guard runs unconditionally. It doubles as a
     # pollution tripwire - a re-introduced user_cs pick that flips a champ off
-    # its kit axis (e.g. Katarina->bruiser) would fail here. (The 58ce5397
+    # its kit axis (e.g. Katarina->bruiser) would fail here. (The daafdd93
     # source != "default" skip is gone.)
     champ_id = ap.canonical_champion_id(champ)
     order = (bop.lookup(table, champ_id, "mixed") or {}).get("order") or []

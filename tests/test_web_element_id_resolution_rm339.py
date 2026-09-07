@@ -122,14 +122,14 @@ ALLOWLIST: dict[str, str] = {
     ),
     "lm-tl-pending": (
         "Optional write target BY DESIGN. Superseded by #lm-chart-pending in "
-        "ddb813f6e (s220 S4, 4 tabs to 3). web/index.html:2047-2049 states in "
+        "afbb4822d (s220 S4, 4 tabs to 3). web/index.html:2047-2049 states in "
         "place that _setTimeline still references lm-tl-pending by id and the "
         "lookup just no-ops when absent, so the guard at "
         "web/js/panels/last_match.js:1360 is intentional. Delete this entry if "
         "that guard goes away or the element is mounted."
     ),
     "set-force-scan-btn": (
-        "Deliberate visual-only removal per 409f0915a, which states the "
+        "Deliberate visual-only removal per ee2db2ffb, which states the "
         "/api/command force_vision route and its dev.js binder stay for a "
         "possible future re-surfacing. PINNED IN BOTH DIRECTIONS by "
         "tests/test_settings_force_scan_dom.py:42-43 (asserts the id is ABSENT "
@@ -139,7 +139,7 @@ ALLOWLIST: dict[str, str] = {
     ),
     "set-force-scan-status": (
         "Same decision and the same both-directions pin as set-force-scan-btn: "
-        "409f0915a preserved the binder deliberately, and "
+        "ee2db2ffb preserved the binder deliberately, and "
         "tests/test_settings_force_scan_dom.py:42-43,56 fails on either a "
         "restore or a removal. The guarded write is web/js/panels/dev.js:132. "
         "Delete both entries together if that decision is reversed."
@@ -438,7 +438,7 @@ def test_guard_stays_silent_on_an_id_that_resolves(tmp_path):
 def test_guard_corpus_is_populated():
     """A scan that silently walked zero files would report a clean tree.
 
-    Census measured 2026-09-04 at 9c6de1b68: 120 JS modules, 10 HTML
+    Census measured 2026-09-04 at f2906ce15: 120 JS modules, 10 HTML
     documents, 348 literal getElementById sites, 256 distinct ids referenced,
     654 ids in markup, 60 created or emitted by JS.
     """

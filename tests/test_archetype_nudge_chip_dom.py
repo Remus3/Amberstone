@@ -15,7 +15,7 @@ The s184 BACKEND is untouched and stays covered elsewhere
 test_state_builder_archetype_nudge): /api/state.archetype_nudge is
 still stamped and POST /api/archetype-nudge/dismiss still exists.
 
-These guards follow the daf09498 orphan-cleanup precedent: a removed
+These guards follow the 4e5b2575 orphan-cleanup precedent: a removed
 surface converts its wiring pins into absence pins so a partial revert
 (e.g. a merge resurrecting the CSS block or the dead import) trips CI.
 """

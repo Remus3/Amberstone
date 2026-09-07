@@ -114,7 +114,7 @@ class RowTwoPillViewGateTests(unittest.TestCase):
     in-game-only row-2 pills (ds / augments / trigger / archetype-nudge)
     no longer exist, so the s150-era view-gate CSS block went with them.
     Absence guards so a merge cannot resurrect the orphaned selectors
-    (daf09498 removed-surface precedent). The onState/onHealth deferral
+    (4e5b2575 removed-surface precedent). The onState/onHealth deferral
     above is UNCHANGED - the mode pill + panel titles still need it."""
 
     @classmethod

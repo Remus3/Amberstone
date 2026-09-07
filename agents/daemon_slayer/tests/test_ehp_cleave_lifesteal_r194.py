@@ -37,7 +37,7 @@ Coverage classes:
 * ``SuffixSweepTests`` - the credited id set is derived by ID SUFFIX (never by
   name) and resolves to exactly the two ids the 16.14.1 index ships.
 * ``DefaultOffByteIdenticalTests`` - flag absent (with and without
-  ``targets_in_rotation``) reproduces the measured HEAD ee49999f baselines.
+  ``targets_in_rotation``) reproduces the measured HEAD a8bb2428 baselines.
 * ``ArmedCleaveCreditTests`` - armed, the heal pool grows by exactly
   ``lifesteal * (cleave_over_window + crescent)`` and rides the EXISTING
   lifesteal lane (heal_total, which blended_ehp has carried since ENGINE
@@ -85,7 +85,7 @@ _ITEMS_PATH = _REPO_ROOT / "data" / "daemon_slayer" / _PATCH / "items.json"
 
 _LIFESTEAL_CLAUSE = "{{as|{{sti|life steal}}}} at 100% effectiveness"
 
-# Measured on HEAD ee49999f with the seam NOT yet implemented (the OFF path must
+# Measured on HEAD a8bb2428 with the seam NOT yet implemented (the OFF path must
 # reproduce these to the last bit): Aatrox L13 [3074, 3072] SR - lifesteal 0.27,
 # base_ad 114.75, total ad 259.75, as 0.8463.
 _AATROX_ITEMS = ["3074", "3072"]

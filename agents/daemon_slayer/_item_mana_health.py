@@ -72,7 +72,7 @@ DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class)
 R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
 ``core.daemon_slayer_resolver.name_to_id`` - the resolver hands the engine
 mirror ids, and a registry keyed on bare ids alone falls through to a silent
-0.0 (the R143 / da5cb2ae defect class). This registry came back COMPLETE: the
+0.0 (the R143 / f7c49de5 defect class). This registry came back COMPLETE: the
 index carries exactly six ids across the two names (``3119`` / ``223119`` /
 ``323119`` and ``3121`` / ``223121`` / ``323121``), and all six were already
 registered. Pinned by ``tests/test_r144_mirror_slice_c.py``. Note the resolver

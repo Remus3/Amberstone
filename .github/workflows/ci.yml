@@ -16,7 +16,7 @@ on:
     #
     # CORRECTED 2026-07-27: that backstop only ever covered GLYPHS. ~48 test
     # modules read tracked .md off disk and assert on their CONTENT, and
-    # 6bad3814 turned tests/test_loop_director_context_caps.py RED with a
+    # b412c2d8 turned tests/test_loop_director_context_caps.py RED with a
     # docs-only push that ran no CI at all. The complement now lives in
     # .github/workflows/docs-guards.yml, which fires on exactly what this
     # filter declines. Do not remove one without the other - the pairing is
@@ -41,7 +41,7 @@ concurrency:
 
 # CI-ONLY THROWAWAY, and deliberately not a repo secret (2026-09-06).
 #
-# `dcd965f2d` untracked config/vision_token.txt, which had been a live 32-hex
+# `f8323887e` untracked config/vision_token.txt, which had been a live 32-hex
 # X-RC-Token committed since the repo was created. Right call. But nothing
 # replaced it here, and core/vision_token._resolve RAISES rather than
 # defaulting - on purpose, so a misconfigured deploy fails loud instead of
@@ -61,7 +61,7 @@ concurrency:
 # outage. tests/test_ci_vision_token_env.py pins both halves: that this exists,
 # and that it is NOT 32 hex characters - because the tempting "fix" for a
 # future red here is to paste the real token back into a tracked file, which is
-# exactly the state dcd965f2d removed, wearing the costume of a bug fix.
+# exactly the state f8323887e removed, wearing the costume of a bug fix.
 env:
   RC_VISION_TOKEN: ci-dummy-not-a-real-token-loopback-only
 
@@ -246,7 +246,7 @@ jobs:
           # local runs - the guard would report green precisely where it is
           # the only thing watching. tests/test_u2500_candidate_sweep.py and
           # tests/test_rc2_p73_quarantine.py exist in their current form
-          # BECAUSE ccbafd5e made them skip and 3beeb8cf found they had been
+          # BECAUSE f2f6a0e3 made them skip and cc5525d8 found they had been
           # asserting nothing for months. Re-introducing that shape to dodge a
           # 41MB fetch would undo the fix and hide the next real regression.
           #
@@ -378,8 +378,8 @@ jobs:
         run: |
           # MEASURED 2026-07-27: the paths-ignore above means a docs-only push
           # runs NO workflow, yet ~48 test modules read tracked .md off disk and
-          # assert on their content. 6bad3814 broke
-          # tests/test_loop_director_context_caps.py that way, and 8d22734b -
+          # assert on their content. b412c2d8 broke
+          # tests/test_loop_director_context_caps.py that way, and ae829bb2 -
           # the docs-only FIX - also ran no CI, so it was never confirmed green.
           #
           # docs-guards.yml is the complement. This step runs HERE - on the
@@ -532,7 +532,7 @@ jobs:
           # request_queue_size of 5, so concurrent load got connections REFUSED
           # and `core/daemon_slayer_client.py` mapped the transport error to
           # None, which callers read as an engine verdict. Fixed at source in
-          # c009efea. Any future "the DS tests are flaky under -n" claim should
+          # 95cded3b. Any future "the DS tests are flaky under -n" claim should
           # be re-measured before it is believed.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
             -n auto --dist loadfile

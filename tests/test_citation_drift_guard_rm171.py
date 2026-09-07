@@ -289,7 +289,7 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "dashboard.js:5055",
         "DELETED",
         "The Settled fence records that web/js/dashboard.js was quarantined "
-        "(dab3ca74 -> docs/_archive/2026-05-18-dead-dashboard-js/) and that the "
+        "(90c54ef5 -> docs/_archive/2026-05-18-dead-dashboard-js/) and that the "
         "_replayQueueLabel 920 bug died with it. The whole point of the line is "
         "that the file no longer exists.",
     ),
@@ -364,8 +364,8 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "tests/test_pengu_plugin_skeleton.py:22",
         "DELETED",
         "The module was RETIRED by the RM-119 class-B4 pass on 2026-08-06 "
-        "(merge 940a774e), together with the pengu stub it guarded - the stub "
-        "itself was archived at 8c2afe21 on 2026-07-07 and the six tests had "
+        "(merge d19355a4), together with the pengu stub it guarded - the stub "
+        "itself was archived at f08ade78 on 2026-07-07 and the six tests had "
         "been skipping silently ever since. The audit is a DATED point-in-time "
         "record and its finding was CORRECT when written, so the citation is "
         "not rewritten; a re-point would falsify the audit. Caught by this "
@@ -376,7 +376,7 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "gemini_audit.ps1:32",
         "DELETED",
         "tools/gemini_audit.ps1 (NOT ops/ - verified in the commit's own "
-        "diffstat) was removed by the Gemini decommission aee3bb96, alongside "
+        "diffstat) was removed by the Gemini decommission 7ce4af80, alongside "
         "gemini_ask.ps1, gemini_audit_prompt.md and GEMINI.md. MERGER-OWNED "
         "FILE - reported, not edited, by RM-171.",
     ),

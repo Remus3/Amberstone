@@ -13,10 +13,10 @@ triggers NO workflow at all. But dozens of test modules read tracked
 `.md` files off disk and assert on their CONTENT, so a `.md`-only commit can
 turn a `.py` guard RED with nothing watching. It happened twice in a row:
 
-* `6bad3814` (docs-only) pushed the newest ``| R<n> |`` row of
+* `b412c2d8` (docs-only) pushed the newest ``| R<n> |`` row of
   `docs/ORCHESTRATION_PLAN.md` past the 16000-byte director-context tail and
   turned `tests/test_loop_director_context_caps.py` RED. CI did not run.
-* `8d22734b`, the docs-only FIX for that, also ran no CI - so the fix's own
+* `ae829bb2`, the docs-only FIX for that, also ran no CI - so the fix's own
   green was never machine-confirmed.
 
 This is the R207 class: a guard exempted from the very thing it guards.
@@ -208,8 +208,8 @@ def test_some_workflow_fires_on_a_markdown_push():
         "these workflows skip a docs-only push: "
         f"{sorted(ignoring)} - and NOTHING fires on '**/*.md'. Test modules "
         "read tracked .md off disk and assert on their content, so a docs-only "
-        "commit can turn a .py guard RED with no CI run at all (6bad3814, "
-        "8d22734b). Add a workflow whose push trigger accepts '**/*.md'."
+        "commit can turn a .py guard RED with no CI run at all (b412c2d8, "
+        "ae829bb2). Add a workflow whose push trigger accepts '**/*.md'."
     )
 
 
@@ -263,13 +263,13 @@ def test_selector_covers_every_module_that_names_a_tracked_md():
 
 def test_known_scar_module_is_selected():
     """`tests/test_loop_director_context_caps.py` is the module that actually
-    broke under 6bad3814. Named explicitly so a future refactor of the
+    broke under b412c2d8. Named explicitly so a future refactor of the
     selector cannot quietly drop the one case that proved the defect."""
     assert (_REPO / _SCAR_MODULE).exists(), f"{_SCAR_MODULE} vanished"
     selected = _selector_live_output()
     assert _SCAR_MODULE in selected, (
         f"{_SCAR_MODULE} reads docs/ORCHESTRATION_PLAN.md off disk and went "
-        "RED under the docs-only push 6bad3814, but the selector does not "
+        "RED under the docs-only push b412c2d8, but the selector does not "
         f"pick it. Selected {len(selected)} module(s)."
     )
 

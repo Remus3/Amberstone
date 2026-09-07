@@ -887,11 +887,11 @@ def stall_recovery_directive(cycle):
 # ---- the running image vs the source on disk --------------------------------
 # MEASURED 2026-07-27: three consecutive cycles shipped a fix to the director
 # prompt assembler and NONE took effect. Controller pid 18300 started 00:37:50;
-# 6c3851d0 / ff439e14 / d048f96f landed 05:03 / 05:24 / 05:34. Python imports a
+# 1f880bb1 / 7e0e8b80 / d3eb3b3a landed 05:03 / 05:24 / 05:34. Python imports a
 # module ONCE, so the running image predated all three, and the live stdin at
 # 05:45 (the control-dir prompt file) still carried the pre-fix ledger section while
 # the identical call measured off disk carried the fixed one. The director then
-# re-emitted a unit closed at 05319608 for the second time - so the loop spent
+# re-emitted a unit closed at f173ce39 for the second time - so the loop spent
 # three cycles repairing the de-dup evidence of a process that would never load
 # the repair. That is this repo's "present but does nothing" class, one layer
 # above where R201 looked: not a guard reading the wrong side, but a FIX THAT IS

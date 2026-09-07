@@ -1,6 +1,6 @@
 """
 tests/snapshot_panels/test_settings_theme_picker.py
-Settings THEME PICKER coverage (DS2 theme selector, shipped 09cc0482).
+Settings THEME PICKER coverage (DS2 theme selector, shipped 3e39facf).
 
 Contract under test:
 
