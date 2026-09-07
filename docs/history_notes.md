@@ -119,6 +119,54 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-06d - LANE 10 cycle 16: RM-367 shipped, and the DECISION was the work
+
+> Filed as `d` because lane 8's true-audit hand-off took the `c` suffix in the
+> same rebase. It sits BELOW that block despite landing after it; both are the
+> same day and neither was reordered, since rewriting another lane's record to
+> tidy ordering costs more than it buys.
+
+RM-367 is on main (`4af7b9fc1` code, `ec32561d4` ledger). **LEDGER 1355, not
+1354** - lane 8 took 1354 while this row was in flight, so the code commit's
+message cites 1354 and is stale by one. Not amended, per the no-amend rule.
+
+An empty gameflow body is now a FALSY NO-PHASE, emitted as Python `None`.
+
+DO NOT REDO / read before touching this area:
+- **The obvious fix is the bug.** `"Unknown"` - the value the very next branch
+  in `snapshot_shape` already uses - is TRUTHY, and both `web/js/main.js` arms
+  that recover a lost sticky test `!phase` (`:711` s209, `:728` item-281, off
+  `const phase = lcu && lcu.phase` at `:629`). "Unifying the two conventions"
+  would silently disarm them. Measured in the transition table, not reasoned.
+- **Omitting the key is not available either** - `shape_snapshot` reads
+  `state["phase"]` by BRACKET at SIX sites, the nearest two lines below.
+- The predicate is IMPORTED from `lcu/lcu_pregame._phase_or_none` (RM-347's),
+  not re-implemented. Do not add a private copy in `snapshot_shape`.
+- Sibling sweep found NO other defect: `phase_watcher` already validates type
+  plus an allowlist, `lcu_postgame_collector` returns `""` as its DECLARED
+  sentinel under a caller that guards on falsiness, and `lcu_agent` holds no
+  phase read at all. Do not "fix" any of the three.
+
+**RESIDUE: RM-382 OPEN** - `"Unknown"` (`snapshot_shape.py:440`) and
+`"Offline"` (`tools/lcu_agent.py:330`) are TWO truthy non-phase sentinels that
+each disarm those same two arms. Mechanism and consequence both measured;
+`lcu_agent` never reaches `shape_snapshot`, so fixing the shaper alone leaves
+half of it live.
+
+**NEXT ROW: RM-343** (row 18, the last in the lane's table). Read its fence
+first - do NOT close it by re-materializing 1884 paths in a feature branch.
+One datum already banked by cycle 15: `.gitattributes` pins `eol=lf` and
+overrides `core.autocrlf=true` in the SHARED `.git/config`. Note this cycle's
+full suite ran GREEN in this worktree (`tests/test_text_line_endings.py`
+included), so the inherited red is NOT currently reproducing here - measure
+before inheriting the row's premise.
+
+**ROADMAP is at 89.76 pct of budget, 197 bytes below the 90 pct warn.** The
+next cycle should plan to relocate a closed body to `docs/ROADMAP_HISTORY.md`
+rather than expect room for a new line.
+
+---
+
 # 2026-09-06b - LANE 10 cycle 15: RM-364 shipped, and it ADOPTED a crashed cycle
 
 RM-364 is on main (`d9e8c5d98` code, `f01918b4b` sha citation). LEDGER 1353.
