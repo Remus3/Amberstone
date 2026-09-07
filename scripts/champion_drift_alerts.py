@@ -11,9 +11,9 @@ job). Read-only; emits one line per drift to stdout and optionally writes
 to data/coach_reference/drift_alerts.json.
 
 Run:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/champion_drift_alerts.py
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/champion_drift_alerts.py --json
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/champion_drift_alerts.py --champ Vayne --days 14
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/champion_drift_alerts.py
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/champion_drift_alerts.py --json
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/champion_drift_alerts.py --champ Vayne --days 14
 """
 from __future__ import annotations
 

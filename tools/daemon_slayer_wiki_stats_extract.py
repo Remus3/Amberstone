@@ -55,13 +55,13 @@ sidecar JSON, never the network. Absent sidecar -> current behavior (the flat
 windup fallback). It is INERT until a consumer (combo.py AA-windup wire) opts in.
 
 Run from any host that reaches the alias + CDragon:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py            # current.txt patch
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --limit 5  # smoke a subset
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --dry-run  # no write
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --source wiki     # wiki only (legacy)
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --source cdragon  # cdragon only
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --source both     # default
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py            # current.txt patch
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --patch 16.11.1
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --limit 5  # smoke a subset
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --dry-run  # no write
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --source wiki     # wiki only (legacy)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --source cdragon  # cdragon only
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_stats_extract.py --source both     # default
 Then inspect ``_with_cast_time`` / ``_errors`` before trusting it: a run that
 edge-blocks BOTH sources records 0 cast times (the fail-soft path), so a sidecar
 with ``_with_cast_time == 0`` means the host could not reach either - do NOT

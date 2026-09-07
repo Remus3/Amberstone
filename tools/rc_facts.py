@@ -16,7 +16,7 @@ Probes (all should complete within ~3s total):
 Cheap and idempotent. Caller (the hook) gets stdout; non-zero exit just
 means "couldn't probe" and is non-blocking.
 
-Run manually any time:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/rc_facts.py
+Run manually any time:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/rc_facts.py
 """
 from __future__ import annotations
 

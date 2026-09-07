@@ -66,7 +66,7 @@ Champion keys are the DDragon id form the engine accepts (e.g. ``Kaisa``,
 
 Usage
 -----
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_pickban_targets_generate.py [--limit N] [--check]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_pickban_targets_generate.py [--limit N] [--check]
         [--top-k 8] [--out <dir>]
 
 * ``--limit N`` caps the roster to the first N champs (fast dev iteration).
@@ -385,7 +385,7 @@ def main() -> int:
             return 1
         if new_text != cur_text:
             print(f"DRIFT: {out_path} differs from a fresh generation. "
-                  f"Re-run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_pickban_targets_generate.py`.",
+                  f"Re-run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_pickban_targets_generate.py`.",
                   file=sys.stderr)
             return 1
         print(f"OK: {out_path.name} in sync ({len(payload['targets'])} champs).",

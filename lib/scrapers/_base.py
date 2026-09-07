@@ -17,13 +17,13 @@ SCRAPED_ROOT = _PROJECT_ROOT / "data" / "meta_build" / "scraped"
 
 # RM-354. A bot wall is served as HTTP 200, so `status >= 400` is not an
 # acceptance test for the BODY. These are the interstitials the two shipped
-# targets actually sit behind (Cloudflare on aggregator D, a JS challenge on
-# aggregator B) plus the other three walls in common use. Each entry is a phrase
+# targets actually sit behind (Cloudflare on site D, a JS challenge on
+# site B) plus the other three walls in common use. Each entry is a phrase
 # specific to a challenge page, never a bare vendor name: "cloudflare" alone
 # would fire on any page that links a Cloudflare-hosted asset.
 #
 # Measured 2026-09-06 against the six real pages cached on Legion
-# (data/meta_build/scraped/{aggregator D,ugg}/*.html, 2.9M characters): zero
+# (data/meta_build/scraped/{site_b,site_d}/*.html, 2.9M characters): zero
 # markers matched, scanning each document WHOLE. That measurement is what
 # licenses the whole-document scan below - a head-only prefix would miss a
 # marker pushed down by a long preamble, and the false-positive risk the

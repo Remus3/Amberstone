@@ -64,9 +64,9 @@ FROZEN files (per CLAUDE.md hard-rule list) are NEVER rewritten by
 in the report and skipped. Operator must hand-edit if needed.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py            # dry-run (default): report only
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply    # rewrite in place (atomic)
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply \
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py            # dry-run (default): report only
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply    # rewrite in place (atomic)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply \
       --allow-frozen ops/rc_dev_runtime.py,core/moon_proxy.py
                                              # override frozen-skip for the
                                              # listed comma-separated paths

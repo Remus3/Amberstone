@@ -11,8 +11,8 @@ build orders computed under stale scorer math.
 This guard fails whenever the committed current-patch tables drift from the
 engine. The fix is a deterministic, engine-less regen (no :8860 required):
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_variants   --static --mode all --champions all
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m core.build_order_variants   --static --mode all --champions all
 
 so the two generators re-stamp + recompute against the current engine.
 """
@@ -33,12 +33,12 @@ def test_build_order_precompute_stamp_tracks_engine(mode: str) -> None:
     payload = bop.load_build_order_precompute(mode=mode, patch=patch)
     assert payload, (
         f"HZ-B1 build_orders_{mode}.json missing/empty for patch {patch}; "
-        f"regen: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all"
+        f"regen: $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all"
     )
     assert payload.get("engine_version") == ENGINE_VERSION, (
         f"HZ-B1 build_orders_{mode}.json stamped "
         f"{payload.get('engine_version')!r}, engine is {ENGINE_VERSION!r}; "
-        f"regen: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all"
+        f"regen: $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m core.build_order_precompute --static --mode all --champions all"
     )
 
 
@@ -48,12 +48,12 @@ def test_build_order_variants_stamp_tracks_engine(mode: str) -> None:
     payload = bov.load_build_order_variants(mode=mode, patch=patch)
     assert payload, (
         f"HZ-B2 build_order_variants_{mode}.json missing/empty for patch "
-        f"{patch}; regen: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_variants --static --mode all --champions all"
+        f"{patch}; regen: $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m core.build_order_variants --static --mode all --champions all"
     )
     assert payload.get("engine_version") == ENGINE_VERSION, (
         f"HZ-B2 build_order_variants_{mode}.json stamped "
         f"{payload.get('engine_version')!r}, engine is {ENGINE_VERSION!r}; "
-        f"regen: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m core.build_order_variants --static --mode all --champions all"
+        f"regen: $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m core.build_order_variants --static --mode all --champions all"
     )
 
 

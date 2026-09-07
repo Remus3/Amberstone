@@ -100,7 +100,7 @@ named time window) rather than showing a bare number. Pro tier adds champ-
 pool comparison: "which champions in your pool most reward fighting-heavy
 play" - a data-driven roster recommendation
 ([overlay app E/lol](https://overlay-app-e.invalid/lol),
-[third-party review site Z9 overlay app E review](https://third-party-review-site.invalid/overlay-app-e-review)).
+[third-party review site Z9 overlay app E review](https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review)).
 
 ### 2.5 AGGREGATOR G.GG
 Leads with AI-SCORE (per-game 0-100) and TIER PREDICTION (an ML-estimated
@@ -290,7 +290,7 @@ Riot-API-derived or RC-computed; no scraping of competitor UIs).
 - Aggregator C: https://aggregator-c.invalid/blog/how-to-use-the-aggregator-c-summoner-profile-feature/ ;
   https://aggregator-c.invalid/aggregator-a-vs-aggregator-c/
 - Overlay App E: https://overlay-app-e.invalid/lol ;
-  https://third-party-review-site.invalid/overlay-app-e-review
+  https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review
 - AGGREGATOR G.GG: https://m.aggregator-g.invalid/
 - Aggregator H: https://aggregator-h.invalid/ ;
   https://agatasmurf.com/league-of-graphs/

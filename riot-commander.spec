@@ -18,11 +18,11 @@ Build
 First time (PyInstaller is not in requirements.txt - the bundle is
 opt-in, no point pinning the lib for users who never package):
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install pyinstaller>=6.0
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install pyinstaller>=6.0
 
 Then from project root:
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m PyInstaller riot-commander.spec --noconfirm
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m PyInstaller riot-commander.spec --noconfirm
 
 Output: dist/riot-commander/riot-commander.exe (+ accompanying
 dependency files). Distribute the whole `dist/riot-commander/` folder.

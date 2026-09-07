@@ -40,8 +40,8 @@ _ASSERTED_CLEAN frozenset; this file pins each path individually +
 locks the pre/post counts for forensic value.
 
 If this test fails on a re-introduction, run:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path> --dry-run
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path> --dry-run
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>
 """
 from __future__ import annotations
 
@@ -246,7 +246,7 @@ def test_all_item_187_swept_files_are_u2500_free() -> None:
         ]
         msg = (
             "U+2500 drift detected in item-187-swept candidate files. "
-            "Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>` to "
+            "Run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>` to "
             "repair. Violations:\n" + "\n".join(lines)
         )
         pytest.fail(msg)

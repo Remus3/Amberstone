@@ -143,6 +143,13 @@ data/champion_loadouts.json.bak-*
 
 # Scraped meta build pages (re-fetchable, large)
 data/meta_build/scraped/
+# The 2026-05-02 build-data refresh: 109 VERBATIM scraped third-party pages,
+# 51 MB. Untracked and purged from history 2026-09-07 ahead of the public flip -
+# it was never ours to redistribute, and riot-commander.spec gathers
+# data/meta_build recursively, so it shipped inside the packaged binary too.
+# Nothing live reads it; the merged outputs in data/meta_build/*_champion_builds
+# .json are what the coaches use. Regenerate locally if you ever need it again.
+data/meta_build/refresh_2026-05-02/
 data/rewind_cache/
 
 # DDragon mirror runtime artifacts (re-fetchable). The 5 top-level bundle
@@ -371,3 +378,29 @@ ops/loop/reports/lane_*.log
 ops/loop/reports/queue_loop.jsonl
 ops/loop/reports/queue_loop.log
 ops/loop/reports/queue_loop.log.err
+
+# Live third-party fetch targets (hosts, endpoints and the headers they check).
+# Per-install, governed by each host's own terms, and not ours to publish. The
+# tracked template is config/external_sources.example.json.
+config/external_sources.json
+
+# The operator's own Riot identity (game name + the accounts replays are pulled
+# for). Personal, per-install, and wrong by default for anyone else.
+# config/operator_identity.example.json ships.
+config/operator_identity.json
+
+# Per-host sibling checkout list for the cross-repo inbox poller. Names private
+# projects and differs per machine; ops/moon_sync_repos.example.json ships.
+ops/moon_sync_repos.json
+
+# Pre-public flip 2026-09-07: rosters of OTHER PEOPLE'S accounts. Both are
+# regenerable (tools/ladder_role_scout.py) and neither is ours to redistribute,
+# so the live files are untracked and only .example.json shapes ship.
+data/replay_roster.json
+data/ladder_role_mains.json
+
+# Pre-public flip 2026-09-07: third-party augment snapshots. The reader
+# (core/augment_external_source.py) fetches these live and degrades to an empty
+# table when they are absent, so an untracked cache costs nothing but stops the
+# repo redistributing a vendor's dataset.
+data/daemon_slayer/*/mayhem_augment_stats.json

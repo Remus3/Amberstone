@@ -327,8 +327,8 @@
     "live_client",
     "lcu",
     "ddragon",
-    "aggregator D",
-    "ugg"
+    "site_b",
+    "site_d"
   ],
   "scraper_discipline": {
     "user_agent": "Amberstone/3.0",

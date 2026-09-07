@@ -35,7 +35,7 @@ mirroring tools/hotfix_sibling_pollution_item269.py. Idempotent + atomic.
 Touches items + label only; runes + summoners + keys are preserved.
 
 Usage:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/hotfix_thin_aram_adc_item275.py [--dry-run]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/hotfix_thin_aram_adc_item275.py [--dry-run]
 """
 from __future__ import annotations
 

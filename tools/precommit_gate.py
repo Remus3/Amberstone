@@ -131,6 +131,17 @@ _ASCII_EXEMPT_SUFFIXES = (".jsonl", ".log", ".pyc", ".png", ".jpg", ".ico", ".zi
 # authored-content rule to content nobody here authored - a gate that blocks
 # correct work is one people learn to bypass.
 _ASCII_EXEMPT_PREFIXES = ("data/",)
+# The two APPEND-ONLY RECORDS. Same class as docs/_archive/ above - they only
+# live one directory up - and the exemption is written down here rather than
+# worked around per commit, which is what this gate's own failure text asks for.
+# Measured 2026-09-07: 3255 pre-existing non-ASCII characters between them,
+# almost all status markers and arrows accumulated over months of appends. They
+# never tripped the gate before because nobody EDITS those lines; the pre-public
+# name scrub touched hundreds at once and the gate then blocked a commit whose
+# every flagged glyph predated it. Stripping them instead would be a large
+# cosmetic rewrite of a record for no reader's benefit. New authored prose
+# anywhere else still gets the catch-all.
+_ASCII_EXEMPT_FILES = ("docs/history_notes.md", "docs/LEDGER.md")
 
 
 def _ascii_exempt(path: str) -> bool:
@@ -138,6 +149,8 @@ def _ascii_exempt(path: str) -> bool:
     if any(part in p for part in _ASCII_EXEMPT_PARTS):
         return True
     if p.endswith(_ASCII_EXEMPT_SUFFIXES):
+        return True
+    if p in _ASCII_EXEMPT_FILES:
         return True
     return p.startswith(_ASCII_EXEMPT_PREFIXES)
 
@@ -190,9 +203,15 @@ def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
     return out
 
 
+# Still an ABSOLUTE pin to the Python314 install (bare `py` resolves to the
+# dep-less pymanager runtime - tests/test_bare_py_ban.py), but the account-
+# specific prefix is read from the environment. A path naming one account's
+# home is a gate that silently does not run under another, and a gate that does
+# not run reports nothing.
 _CANONICAL_PY = (
-    "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe"
-)
+    pathlib.Path(os.environ.get("LOCALAPPDATA") or (pathlib.Path.home() / "AppData" / "Local"))
+    / "Programs" / "Python" / "Python314" / "python.exe"
+).as_posix()
 
 
 def _ruff_candidates() -> list[list[str]]:

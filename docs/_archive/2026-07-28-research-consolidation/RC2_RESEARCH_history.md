@@ -213,7 +213,7 @@ Below: each pattern gets the 6-point LIFT checklist
 
 - WHAT: Group matches into play-sessions or days with a header showing
   games + W-L + net result for the block, so a long list chunks into scannable
-  runs. This is aggregator A/Overlay-App-E-style "today/recent" chunking.
+  runs. This is aggregator A/Overlay App E-style "today/recent" chunking.
 - HOW: A gap-based sessionizer (2h idle gap is standard) with a header line per
   group: date, game count, W-L, avg KDA, champ mix.
 - RC HAVE IT? YES - this is RC's strongest existing asset and BEATS the reference
@@ -300,7 +300,7 @@ P5 / P3 as polish each behind the web/* UI-audit ritual.
 - Aggregator A detailed match-history-by-round (help center):
   https://aggregator-a.invalid/help/articles/48465997176089-How-to-view-detailed-match-history-by-round
 - Overlay App E overlay review (pre-game recent performance, post-game popup):
-  https://third-party-review-site.invalid/overlay-app-e-review
+  https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review
 - Aggregator B / Aggregator C match-history + champion pool + filters:
   https://aggregator-c.invalid/ugg/
 - Aggregator B FAQ (6-month summoner stats, mode separation): https://aggregator-b.invalid/faq

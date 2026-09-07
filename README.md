@@ -8,8 +8,9 @@ It watches the game you are actually in, does the item and damage math locally,
 and turns that into short, situation-specific advice on a dashboard and an
 in-game overlay.
 
-Personal project, private repo, not packaged for general use. It is readable as
-a reference, not installable as a product - see [Limitations](#limitations).
+Personal project, published as source, not packaged for general use. It is
+readable as a reference, not installable as a product - see
+[Limitations](#limitations).
 
 ## Contents
 

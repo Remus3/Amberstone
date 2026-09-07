@@ -382,7 +382,19 @@ _WEB = _REPO_ROOT / "web"
 # tests/test_mc_lane_roster_contract.py, so this digest is not the thing
 # stopping the panel from drifting - it is the thing that makes the drift
 # deliberate.
-_LIVE_HALF_DIGEST = "9510af8151fc06d1e45e7c8846133c11e55f97f7880e171862fd898946c17e2f"
+# RE-CAPTURED at the pre-public name scrub (2026-09-07), superseding the LANE 10
+# capture. Ordinary case: LIVE web edits, no tokeniser change. `_web_sources()`
+# still returns 171 - nothing was added or removed - and a live-half diff of
+# every one of those 171 against the pre-scrub tree names exactly TWO:
+# web/js/main.js and web/js/panels/champ_select.js. Both changed for the same
+# reason and it is the whole change: hardcoded personal Riot IDs in mock data
+# ("<handle>#Trist", "<handle> Sock#NA1") became neutral placeholders, because
+# the repo was going public with the operator's own game handle baked into
+# rendered strings. Every other web/ file in this commit's diff changed only
+# inside comments, which is the SWEPT half and does not reach this digest -
+# confirmed by running that per-file live-half comparison, not inferred from
+# the file list.
+_LIVE_HALF_DIGEST = "6886c75f942c613c639c038bc4e50436ee7b25140ed028d2c0de1384852bda9e"
 
 
 def _web_sources() -> list[Path]:

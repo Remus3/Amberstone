@@ -89,7 +89,6 @@ _BASELINE: dict[str, tuple[str, ...]] = {
     "ops/audit/p3c24_b1b_sweep.py": (
         "U+00B7", "U+00D7", "U+00F7", "U+03B1", "U+03B2", "U+2022", "U+2192",
         "U+2212", "U+2248", "U+2260", "U+2264", "U+2265", "U+2713"),
-    "ops/local_paths.example.json": ("U+2194",),
     "ops/phase3_install.ps1": ("U+00A7", "U+FEFF"),
     "ops/phase3_install_periodic_audit.ps1": ("U+FEFF",),
     "scripts/audit_ddragon_items.py": ("U+2192", "U+26A0"),

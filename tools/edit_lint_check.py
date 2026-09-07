@@ -1,7 +1,7 @@
 """PostToolUse hook: ruff check + em-dash / smart-quote grep on Edit|Write targets.
 
 Reads $CLAUDE_FILE_PATHS (space-separated) and runs:
-  1. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m ruff check --fix <python files>  (auto-fix when possible)
+  1. $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m ruff check --fix <python files>  (auto-fix when possible)
   2. byte scan for U+2014 / U+2013 / U+201C / U+201D / U+2018 / U+2019
 
 Hook output is shown to the model. Stay terse. Exit 0 always (advisory, non-blocking)

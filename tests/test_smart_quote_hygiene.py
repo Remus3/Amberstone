@@ -6,8 +6,8 @@ any authored text - keep authored content 7-bit ASCII. This test is the
 companion drift guard for tools/strip_smart_quotes.py (same exclusion list).
 
 If this test fails on a freshly added file, run:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py            # dry-run report
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply    # rewrite in place
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py            # dry-run report
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply    # rewrite in place
 
 Codepoints checked (mirrors strip_smart_quotes.py):
     U+201C  LEFT DOUBLE QUOTATION MARK
@@ -241,7 +241,7 @@ def test_no_smart_quotes_in_authored_source() -> None:
         ]
         msg = (
             "Smart-quote / em-dash / en-dash / NBSP / ellipsis drift detected. "
-            "Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py` to inspect, then `--apply` "
+            "Run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py` to inspect, then `--apply` "
             "to rewrite. Violations:\n" + "\n".join(lines)
         )
         pytest.fail(msg)

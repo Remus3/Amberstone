@@ -50,7 +50,7 @@ for round-trip identification (loadout resolver ignores unknown keys).
 
 Usage
 -----
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/champion_loadout_autogen.py [--mode sr|aram|arena|all]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_autogen.py [--mode sr|aram|arena|all]
         [--champion <name>] [--dry-run] [--reset-auto] [--level 11]
 
 * ``--mode all`` (default) generates for SR + ARAM + Arena.
@@ -475,7 +475,7 @@ def main() -> int:
 
     if not dsc.is_engine_up(timeout=1.0):
         print("DS engine at 127.0.0.1:8860 is not responding. Start it via "
-              "`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py` and re-run.", file=sys.stderr)
+              "`$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py` and re-run.", file=sys.stderr)
         return 2
 
     target_modes: tuple[str, ...] = MODES if args.mode == "all" else (args.mode,)

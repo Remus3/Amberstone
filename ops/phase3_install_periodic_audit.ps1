@@ -7,7 +7,7 @@
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot = 'C:\Riot Commander'
-$PythonExe   = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
+$PythonExe   = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $TaskName    = 'RC-Phase3-PeriodicAudit'
 
 $action = New-ScheduledTaskAction `

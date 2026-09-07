@@ -616,7 +616,7 @@ names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into inn
   `python <script>` (the word) is NOT caught - regex keys on `py(\.exe)?\s+` and `python` has `thon`
   after. Widening to `python` would false-positive the many intentional `python tools/dev_cli.py` doc
   lines (LAUNCH_STRATEGY.md) - a policy change outside slice authority. run_deploy_test.bat bare-python
-  FIXED in-slice; launch_new_system.bat:35,39 bare pythonw (legacy chain, sibling-consistent) DEFER.
+  FIXED in-slice; launch_new_system.bat:35,39 bare pythonw (legacy chain, sibling_consistent) DEFER.
 - ops/launch_new_system.bat:44 latent bug: run_self_healing_watchdog.ps1 --ConfigPath (double-dash)
   binds as positional under -File -> Test-Path fails -> exit 1. Legacy chain only (live boots via
   rc_bootstrap.py). Should be -ConfigPath. P3-prune bucket.

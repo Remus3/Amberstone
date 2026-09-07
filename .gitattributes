@@ -3,12 +3,14 @@
 #
 # Without these flags Linguist counts every tracked .html / .css / .js byte
 # regardless of provenance, which buries the actual ~4 MB of Python under
-# (a) 51 MB of scraped aggregator A/aggregator K/aggregator J HTML in
-#     data/meta_build/refresh_*/_phase*_html/  (build-data refresh artifacts)
-# (b) the python-embed/ vendored Python 3.14 distribution
-# (c) the _archive/ quarantine of removed code
+# (a) the python-embed/ vendored Python 3.14 distribution
+# (b) the _archive/ quarantine of removed code
 # Reference: https://github.com/github-linguist/linguist/blob/master/docs/overrides.md
-# (a) Build-refresh scraped HTML - generated artifact, not authored
+# The rule that used to head this list covered a tree of verbatim scraped
+# third-party HTML under data/meta_build/refresh_*/_phase*_html/. That tree was
+# removed from the working copy AND from history on 2026-09-07 ahead of the
+# public flip, because it was never ours to redistribute. The glob is kept
+# because the extractors can still produce local, untracked HTML there.
 data/meta_build/**/*.html         linguist-generated=true
 data/meta_build/**/_*_html/**     linguist-vendored=true
 # (b) Vendored Python distro - not our code

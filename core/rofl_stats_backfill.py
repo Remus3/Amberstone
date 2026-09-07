@@ -381,7 +381,7 @@ def backfill_tracked_summary(
     db_path,
     sidecar_paths,
     *,
-    operator_accounts=DEFAULT_ACCOUNTS,
+    operator_accounts=None,
     dry_run: bool = False,
     champion_ids: dict | None = None,
 ) -> dict:
@@ -420,6 +420,11 @@ def backfill_tracked_summary(
     import sqlite3
     from pathlib import Path
 
+    # Resolved at CALL time, not bound as a default: the account list comes
+    # from per-install config, and a default argument would freeze whatever it
+    # read at import.
+    if operator_accounts is None:
+        operator_accounts = DEFAULT_ACCOUNTS
     db_path = Path(db_path)
     sidecar_paths = [Path(p) for p in sidecar_paths]
 
@@ -491,7 +496,7 @@ def backfill_participants(
     dry_run: bool = False,
     queue_overrides: dict | None = None,
     champion_ids: dict | None = None,
-    operator_accounts=DEFAULT_ACCOUNTS,
+    operator_accounts=None,
 ) -> dict:
     """Insert participant rows for matches the DB does not already have.
 
@@ -518,6 +523,10 @@ def backfill_participants(
     import sqlite3
     from pathlib import Path
 
+    # See the twin note in backfill_tracked_summary: per-install config must be
+    # read when the call happens, never frozen into a default argument.
+    if operator_accounts is None:
+        operator_accounts = DEFAULT_ACCOUNTS
     db_path = Path(db_path)
     sidecar_paths = [Path(p) for p in sidecar_paths]
     queue_overrides = queue_overrides or {}
