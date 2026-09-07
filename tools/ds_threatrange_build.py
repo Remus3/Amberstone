@@ -9,8 +9,7 @@ classified entry against ``_THREATRANGE_BAND_WEIGHT`` / ``_THREATRANGE_KIND_MULT
     (grouped by champion, P/Q/W/E/R/BASE order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/threatrange_registry_notes.json`` (champion, source,
-    band, kind, magnitude, conditional, source_quote) - excluded from Share like
-    CHANGELOG.md / waveclear_registry_notes.json.
+    band, kind, magnitude, conditional, source_quote).
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_threatrange_build.py <workflow_output.json>

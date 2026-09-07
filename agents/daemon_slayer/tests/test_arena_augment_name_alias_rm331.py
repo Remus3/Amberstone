@@ -233,10 +233,11 @@ class ArenaAugmentAliasIndexIntegrityTests(unittest.TestCase):
                 msg=f"{patch}: display name(s) {sorted(cross)} normalize "
                     "onto a DIFFERENT augment's apiName",
             )
-        # Guard against a vacuous zero-iteration census. Deliberately
-        # NOT "> 1": the repo tree ships 6 snapshots (16.10.1 through
-        # 16.15.1) but the public Share/src mirror ships only the
-        # CURRENT patch, and this lane is mirrored into it verbatim.
+        # Guard against a vacuous zero-iteration census. Deliberately NOT
+        # "> 1": this is a floor on the census running at all, not a pin on
+        # how many snapshots the tree happens to ship (6 today, 16.10.1
+        # through 16.15.1), so pruning back to the current patch alone
+        # still exercises the lane rather than breaking it.
         self.assertGreaterEqual(
             checked, 1, "census iterated no snapshots at all"
         )

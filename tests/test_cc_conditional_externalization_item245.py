@@ -5,10 +5,11 @@ replaced by JSON loaders reading cc_conditional_registry.json (co-located).
 The hand-authored builder source + REJECT rationale were relocated VERBATIM to
 CC_CONDITIONAL_NOTES.md. This guard pins the new structure so a regression
 (deleted data file, builders re-inlined, drift between the data file and the
-loaders, NOTES.md mirrored into Share) fails CI.
+loaders) fails CI.
 
-Lives in tests/ (RC suite), NOT agents/daemon_slayer/tests/, because it imports
-tools.ds_cc_conditional_to_json + tools.ds_share_sync, which are not in Share/src.
+Lives in tests/ (RC suite), NOT agents/daemon_slayer/tests/, because it drives
+tools/ds_cc_conditional_to_json.py, which sits outside the engine package that
+the DS suite is meant to exercise standalone.
 Mirrors tests/test_ds_changelog_relocation_item241.py (the A1 repo guard).
 """
 import json
@@ -99,28 +100,6 @@ class StructureRelocationTests(unittest.TestCase):
         notes = _NOTES.read_text(encoding="utf-8")
         self.assertIn('setdefault("Brand", {})["R"] = ConditionalCcEntry', notes)
         self.assertIn("_build_per_spell_cc_conditional_forms", notes)
-
-
-class ShareMirrorTests(unittest.TestCase):
-    def test_notes_and_json_both_mirrored(self) -> None:
-        # RM-112 (2026-07-23) reversed the earlier decision: CC_CONDITIONAL_NOTES.md
-        # now SHIPS in the mirror. Six cc_conditional wave tests assert it exists and
-        # is ASCII-clean as a maintained engine-provenance artifact, so the package
-        # cannot pass its own suite without it, and it carries 0 scrub-target phrases
-        # so it mirrors verbatim like any other engine doc. This test previously
-        # asserted the notes were EXCLUDED (the pre-RM-112 packaging) and drifted red
-        # in the nightly once RM-112 landed.
-        from tools import ds_share_sync
-        expected = ds_share_sync._build_expected()
-        self.assertIn(
-            "agents/daemon_slayer/cc_conditional_registry.json", expected,
-            "registry JSON must be mirrored to Share (loader reads it)",
-        )
-        self.assertIn(
-            "agents/daemon_slayer/CC_CONDITIONAL_NOTES.md", expected,
-            "CC_CONDITIONAL_NOTES.md must be mirrored (RM-112: the cc_conditional "
-            "wave tests assert it ships in the package)",
-        )
 
 
 class AsciiHygieneTests(unittest.TestCase):

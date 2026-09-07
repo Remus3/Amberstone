@@ -126,7 +126,7 @@ Classify every change (CLAUDE.md R5) and pay only that tier's tax:
 
 - **Tier-0** doc-only, including ticking a row in `docs/LIVE_GAME_GATED_SYNC.md`: no suite. This is most of what this lane commits.
 - **Tier-1** one module: `py_compile` plus that module's tests.
-- **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`, and **every default-flip validated live**: full dual suite (the DS dir plus `tests/`) plus a DS `:8860` restart plus the Share mirror staged in the SAME commit (`feedback_ds_bump_run_tests_dir`, `feedback_ds_commit_share_test_mirror`). Run the DS suite FROM THE REPO ROOT - from the DS dir, 13 CWD failures mimic registry regressions (`reference_ds_suite_run_from_repo_root`).
+- **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`, and **every default-flip validated live**: full dual suite (the DS dir plus `tests/`) plus a DS `:8860` restart in the SAME commit (`feedback_ds_bump_run_tests_dir`). Run the DS suite FROM THE REPO ROOT - from the DS dir, 13 CWD failures mimic registry regressions (`reference_ds_suite_run_from_repo_root`).
 
 A live-validated flip is the one shape here that routinely IS Tier-2. Do not let "it was only a default" talk you out of the dual suite.
 

@@ -1,9 +1,6 @@
 # Gemini CLI read-scope exclusions - PROVISIONAL (see docs/GEMINI_AUDIT_CONFIG.md)
 # Gemini is read-only; this trims ingestion + hard-blocks secrets.
 
-# Byte-mirror of agents/daemon_slayer (the "Share collisions") - never feed twice
-Share/
-
 # Dated artifacts / archives
 _archive/
 docs/_archive/

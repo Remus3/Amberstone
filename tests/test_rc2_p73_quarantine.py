@@ -2,7 +2,7 @@
 
 Guard for the 8 provably-orphan one-shot tools quarantined to
 _archive/2026-06-20-rc2-p73/ during P7.3. Each was verified (cycle probe)
-to have ZERO live import / test / Share-mirror / allowlist reference - only
+to have ZERO live import / test / allowlist reference - only
 dated-doc + docstring-lineage mentions. This locks the quarantine: the files
 must stay OUT of tools/ and IN the archive, the reusable siblings must remain,
 and nothing in live source may import the quarantined module names.

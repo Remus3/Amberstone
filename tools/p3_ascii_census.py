@@ -9,7 +9,7 @@ source tree, and flags the two real encoding-hazard classes:
 
 Upstream-data / generated / immutable trees are excluded (patch-refresh
 regenerates them; sweeping is churn that the next extract undoes):
-  data/, Share/src/data/, docs/_archive/, agent6 reports+proposals, *_phase3_html,
+  data/, docs/_archive/, agent6 reports+proposals, *_phase3_html,
   *.log, generated csv.
 
 This is the durable slicer for the remaining P3 encoding cycles - it mirrors the
@@ -26,7 +26,7 @@ import sys
 
 ROOT = r"C:\Riot Commander"
 AUTH_EXT = {'.py', '.js', '.css', '.md', '.ps1', '.txt', '.xml', '.bat', '.cmd'}
-EXCL_PREFIX = ('docs/_archive/', 'data/', 'share/src/data/',
+EXCL_PREFIX = ('docs/_archive/', 'data/',
                'agents/agent6_auditor/reports/', 'agents/agent6_auditor/proposals/')
 
 
@@ -49,8 +49,6 @@ def tracked():
 
 def bucket_of(rel):
     fl = rel.lower()
-    if fl.startswith('share/src/'):
-        return 'ZZ_share_mirror(generated)'
     if fl.startswith('agents/daemon_slayer/') and '/tests/' not in fl:
         return 'ZZ_ds_engine(load-bearing-arrows)'
     if fl.startswith('agents/daemon_slayer/tests/') or fl.startswith('tests/'):

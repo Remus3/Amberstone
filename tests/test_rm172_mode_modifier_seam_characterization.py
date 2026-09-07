@@ -42,8 +42,8 @@ table WAS resolved and applied one line earlier. The two notes contradict each
 other in the same list. That is pinned by
 ``test_engine_note_contradicts_itself_when_addends_applied`` so the wording
 cannot be "fixed" without someone reading this file first. Changing that string
-is an engine-output change and would need an ENGINE_VERSION bump plus the Share
-mirror, which is why RM-172 does NOT change it.
+is an engine-output change and would need an ENGINE_VERSION bump, which is why
+RM-172 does NOT change it.
 
 COST OF THE CURRENT STATE (measured, see the module docstring assertions below).
 No production caller anywhere in the repo sets the flag True - the only non-test
@@ -447,7 +447,7 @@ class TestSeamThreeGates(unittest.TestCase):
         """
         needle = f"{FLAG}=True"
         offenders: list[str] = []
-        skip_parts = ("tests", "test_", "docs", "_archive", "Share")
+        skip_parts = ("tests", "test_", "docs", "_archive")
         for py in REPO_ROOT.rglob("*.py"):
             rel = py.relative_to(REPO_ROOT).as_posix()
             if any(p in rel for p in skip_parts):
@@ -593,7 +593,7 @@ class TestCurrentBehaviourPinned(unittest.TestCase):
         """engine.py:458 says the table is not plugged in on a call that just
         plugged it in. Pinned so the wording is fixed deliberately, not by
         accident - it is engine OUTPUT, so changing it needs an ENGINE_VERSION
-        bump and the Share mirror on the same commit.
+        bump on the same commit.
         """
         snap = _snapshot()
         movers = _arena_axis_champions(snap)

@@ -16,7 +16,7 @@ rate at every build depth in every role.
 
 WHY NOT ``data/cs_archetype_picks.json``: that file is GITIGNORED runtime
 operator state (``.gitignore:77``). An override written there would not reach
-CI, the Share mirror, or any other machine, and it would re-create exactly the
+CI or any other machine, and it would re-create exactly the
 committed-precompute pollution vector whose UI was removed in LEDGER 824. This
 roster is git-tracked and kit-derived, mirroring the Slice A (``_AP_ASSASSIN_IDS``)
 and Slice B (``core/ds_onhit_ap_roster.py``) precedents.

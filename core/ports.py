@@ -161,7 +161,6 @@ DS_ENGINE = 8860
 """Daemon Slayer combat-math engine, HTTP (not HTTPS).
 
 Defined at `agents/daemon_slayer/server.py:98` and `core/daemon_slayer_client.py:32`.
-Mirrored into `Share/src`, which is why renumbering is Tier-2.
 """
 
 DS_MATCH_DB_MCP = 8861
