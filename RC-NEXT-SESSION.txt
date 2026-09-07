@@ -117,3 +117,14 @@ Cross-repo: 4 unread notes at wrap (LW x2, CS, LL) - all on the watcher
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES
   + git log, then read moon_sync_inbox/ INCLUDING subdirectories.
+
+CI STATUS AT WRAP - UNVERIFIED, read this before assuming green:
+  The last ci run (34092179089, hook fix f4293a88b) concluded CANCELLED,
+  superseded by two later docs-only pushes that ci.yml path-ignores. So
+  .githooks/post-commit (the fourth LFS hook) is verified LOCALLY - the CI
+  condition was reproduced by recreating .git/hooks/post-commit and the
+  orphan check came back clean, 47 drift_guard tests pass - but has NO CI
+  confirmation. The first code push next session will produce one; check it.
+  docs-guards IS green (34092251616).
+  Note gh run watch --exit-status returned 0 on that cancelled run. Read
+  .conclusion, never the exit code (reference_gh_run_watch_zero_on_cancelled).
