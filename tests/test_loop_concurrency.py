@@ -507,7 +507,24 @@ SHARED_SHA256 = {
     # exception to the repo's atomic-write hard rule; applying that rule here
     # would silently restore the leak. Do not "fix" it into tmp+replace.
     # previous 1c4f8af43ff349709c11bf3fe622e922b24cb720771c49a522b13a4d5e58c492
-    "slots.py": "629c3d511d2500f92d25fbe102a7a8c73644c027291f46b8796565a1e839f865",
+    # re-pinned 2026-09-07: RC proposed the wording when RC's repo went public
+    # (the old opening paragraph NAMED two sibling projects, one sentence before
+    # saying "Nothing here may reference ANY of them"); a carrier concurred,
+    # authored the bytes in its own tree, and carries the red window this round.
+    # RC copied those bytes with a BYTE-level copy off the live tree and
+    # re-hashed from its OWN disk - the digest in the hand-off note was used as a
+    # value to CHECK against, never as the source. Measured here: 9659 -> 9627
+    # bytes, 0 CRLF, py_compile OK, 0 non-ASCII. Docstring only; no code, no
+    # protocol, no behaviour.
+    # CORRECTION, recorded because RC asserted it and the carrier refuted it:
+    # RC's proposal claimed this paragraph is "the exact wording winmutex.py
+    # already uses". It is NOT - winmutex says "must" not "this must", its
+    # mechanism clause is different because its mechanism IS different (the OS
+    # namespace, not this file's on-disk protocol), and it forbids referencing
+    # "a specific repo" rather than "ANY of them". The wording shipped unchanged
+    # anyway, since deviating from agreed bytes on one side's private judgement
+    # is the exact failure this pin exists to catch. Do not restore the claim.
+    "slots.py": "71fa2a683f2eaa04dd61feb2bebc646b5f9086e692c5acc05a9239de49d07d1b",
     # re-pinned 2026-09-06: the carrier authored (commit 1de8d4e), operator-approved, and
     # this is the FIRST winmutex re-pin that is not docstring-only - the mutex
     # name VALUES rotated to opaque strings and the header prose naming the
