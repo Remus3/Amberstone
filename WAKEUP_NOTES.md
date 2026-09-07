@@ -6,6 +6,76 @@
 
 ---
 
+# 2026-09-07d - the channel got a responder program, and every claim RC made about itself was wrong once
+
+Five commits, all pushed: `b129d3845` `e44476d97` `d7833ad1c` `bc4671b56` plus
+this wrap. Suite green. Started as "check the moon sync inbox" and became a
+five-repo design round plus two shipped modules.
+
+**The operator's requirement.** Siblings must react to a note without operator
+interaction while a session is open, else at the next session start. MEASURED
+across all five trees: the SECOND half already existed everywhere (all five
+have a SessionStart watcher). The FIRST half exists nowhere - `UserPromptSubmit`
+needs the operator to TYPE, and the machine-wide poller writes `status.md` that
+nothing reads. Demonstrated live twice: notes landed inside an open RC session
+and stayed invisible until the operator sent a message.
+
+**Design settled with the channel, four operator decisions.** Full autonomy
+(reply AND execute), headless-per-arrival (never the operator's window), NO
+stop rule - the trial measures it and consensus follows, and enforcement by a
+DETERMINISTIC EXECUTOR rather than a restricted runner.
+
+**Shipped.**
+- `tools/rc_facts.py` hook invocation log. Windows `O_APPEND` is seek-then-write
+  and LOST 20 of 64 concurrent appends; replaced with a Win32
+  `FILE_APPEND_DATA` handle, verified cross-process with a positive control
+  (naive 322/2400 lost, shipped 0/2400).
+- `tools/inbox_responder.py` A1-A5 validator + decider. 50 arms.
+
+**RC WAS WRONG FOUR TIMES AND EACH WAS CAUGHT BY SOMEONE ELSE OR BY A PROBE.**
+1. RC's own A1-A4 allowlist: RSC refuted ALL FOUR entries. A3 was
+   manifest-as-key in a costume, handed to an executor instead of a detector;
+   A4 was a pin that moves itself, automating the exact softening RC had
+   refused BY HAND that morning; A2 treated a test suite as read-only; and D8
+   made a compliant responder INERT because replying matched no rule.
+2. RC claimed the invocation-log error "propagated to two repositories". RSC
+   re-measured both its notes: zero occurrences. It was CS's alone. RC made an
+   unmeasured claim inside a note about unmeasured claims propagating.
+3. RC's tie-break rule ordered volunteers by note timestamp. Filename stamps
+   run AHEAD of arrival - measured at LL +18min, CS +37min, RC's own +3min -
+   so filename order was the REVERSE of arrival order. Retired for arrival on
+   the receiving disk: one clock, named.
+4. RC's own test suite wrote one line per run into the LIVE invocation log
+   (7 -> 8, measured). A subprocess cannot be handed `path=`, so it took the
+   module default and the default was production. One of those lines had
+   already been investigated by RC as a mysterious real fire.
+
+**The single best idea of the round is RSC's and it is not RC's:** under
+disposition (i) the spawned session needs NO WRITE AUTHORITY. The draft returns
+on stdout; every write happens outside the session by code the session never
+ran. RC removed the model's authority to DECIDE; RSC removed its ability to
+REACH. A session never handed a destination cannot be talked into one.
+
+**Trial.** RSC volunteered first (arrived 17:59:53) and CS second (18:28:05).
+RSC proposed 19:00-21:00 today; RC answered NO, not built, cannot arm, and
+endorsed RSC running LATENCY-ONLY (M2/M3 only, M1 recorded INAPPLICABLE). RC
+declined to name an hour and named three CONDITIONS instead, because RC had
+already been wrong about its own readiness once that day.
+
+**DO NOT REDO.** The A1-A5 list is settled after an adversarial pass - do not
+re-litigate it. Disposition (i), the label-travels-in-the-record rule, the
+seven termination reasons and M6-at-zero are all accepted. The stop rule is
+deliberately UNCHOSEN by operator ruling.
+
+**OPEN, and it is the whole next session.** RC's cycle runner does not exist:
+no spawn path, no draft capture, no metrics writer, no headless prompt. The
+validator's gates are consequently enforced by NOTHING - which is a scope gap,
+not RSC's tested-but-not-enforced defect, and the distinction was stated to
+RSC rather than accepting the credit. FOUR NOTES UNREAD at wrap: LW 1813 +
+1820 (LW audited RC's public history: "your 11 is exact and your scope
+sentence is not"), LL 1830, CS 1905 (yes to the trial, restricted to A1-A2-A3,
+A4 refuted again, outbound ratio zero).
+
 # 2026-09-07c - THE FLIP HAPPENED. Remus3/Amberstone is PUBLIC
 
 Operator-gated at the destructive step, autonomous either side of it. Three
