@@ -1,5 +1,5 @@
 ---
-description: Self-directed autonomous headless-upgrade loop, merged with the full 13-section orchestrator framework. Claude (read-only, --permission-mode plan) is DIRECTOR + AUDITOR; a Python controller (ops/loop/loop_controller.py) is the brain; an AutoHotkey v2 bridge types into THIS Claude window. Invoking this turns the CURRENT session into the ephemeral executor - AHK /clears it and feeds one director-authored directive per cycle. Continuity lives on disk (git history + docs/LEDGER.md + the directive chain). Each executor cycle natively runs the orchestrator-merge pattern (1 Claude merger + up to 100 parallel worktree agents on disjoint file sets + read-only verifier gate before merge), the section 3b UI-audit ritual, the section 4/4b cost + Haiku-to-ZERO program, the section 5/6 frozen-file grant + ASCII hygiene, section 7/7b multi-agent + deep-dive competitor research (6-point depth checklist), section 8-13 DS audit loop / interrupt / cadence / anti-patterns / done / banner, the DS Share package commit ritual, and the two-way escalation channel. Model + cycle cap in ops/loop/config.json. Proven end-to-end 2026-06-05.
+description: Self-directed autonomous headless-upgrade loop, merged with the full 13-section orchestrator framework. Claude (read-only, --permission-mode plan) is DIRECTOR + AUDITOR; a Python controller (ops/loop/loop_controller.py) is the brain; an AutoHotkey v2 bridge types into THIS Claude window. Invoking this turns the CURRENT session into the ephemeral executor - AHK /clears it and feeds one director-authored directive per cycle. Continuity lives on disk (git history + docs/LEDGER.md + the directive chain). Each executor cycle natively runs the orchestrator-merge pattern (1 Claude merger + up to 100 parallel worktree agents on disjoint file sets + read-only verifier gate before merge), the section 3b UI-audit ritual, the section 4/4b cost + Haiku-to-ZERO program, the section 5/6 frozen-file grant + ASCII hygiene, section 7/7b multi-agent + deep-dive competitor research (6-point depth checklist), section 8-13 DS audit loop / interrupt / cadence / anti-patterns / done / banner, and the two-way escalation channel. Model + cycle cap in ops/loop/config.json. Proven end-to-end 2026-06-05.
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
@@ -97,7 +97,7 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
    auto-reload (ADR-008), no RC restart - say so.
 4. Commit + push - HARD PRE-COMMIT GATES (no push until ALL pass): (a) frontend slice -> 3b
    UI-audit RUN + every MUST-FIX resolved in-slice; (b) drift-guard set green THIS run
-   (bundle-parity + ASCII/u2500 + Share ingest-sync + touched guards); (c) multi-slice round ->
+   (bundle-parity + ASCII/u2500 + touched guards); (c) multi-slice round ->
    truth_gate exit 0. Then: NO `git add -A`; stage only authored files; unstage `_scratch/` + stray
    `.playwright-mcp/*.png`; heredoc message; use the harness-supplied Co-Authored-By trailer (do
    NOT hardcode a model version).
@@ -244,20 +244,12 @@ not built blind. MED/LOW always defer.
 - Worktree cleanup at run END (remove merged + prune + branch -D). 10h+ -> transition to a full RC
   refactor audit (frozen edits still allowed; tests required). Caveman ULTRA token discipline.
 
-### 11. The /done ritual at run end (DS Share commit is CRITICAL)
+### 11. The /done ritual at run end
 Run `/done` (existing skill - local check gate, auto-commit + push, CI verify, bg-task stop, bridge
-liveness, WAKEUP update + prune, living-doc sync, lessons drain, banner). CRITICAL: if this run touched
-DS or its components (any path under `agents/daemon_slayer/`, `tools/daemon_slayer_*`, `tools/ds_*`,
-`data/daemon_slayer/`) - ESPECIALLY after any ENGINE_VERSION bump or math change - the DS Share package
-MUST be re-synced and committed + PUSHED upstream in the SAME commit as the engine change, never a
-trailing afterthought:
-- `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/ds_share_sync.py"` (regenerates `Share/src`, restamps `Share/MANIFEST.md`,
-  auto-rewrites version/patch anchors in the authored docs).
-- `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/ds_share_sync.py" --check` must report "Share/src + doc anchors in sync"
-  (the exact CI guard; a DS change that forgets the mirror or a doc anchor fails CI).
-- ENGINE_VERSION changed -> prepend a dated `Share/CHANGELOG.md` entry; update the authored-doc semantic
-  half (`Share/docs/01..05`) the auto-rewrite cannot do. Stage `Share/` with the rest; credit the upstream
-  sources (Riot Data Dragon / CommunityDragon / Meraki) in the commit body. Confirm CI green for the SHA.
+liveness, WAKEUP update + prune, living-doc sync, lessons drain, banner). If this run touched DS or its
+components (any path under `agents/daemon_slayer/`, `tools/daemon_slayer_*`, `tools/ds_*`,
+`data/daemon_slayer/`) - ESPECIALLY after any ENGINE_VERSION bump or math change - credit the upstream
+sources (Riot Data Dragon / CommunityDragon / Meraki) in the commit body, and confirm CI green for the SHA.
 
 ### 12. Anti-patterns (do NOT repeat)
 No `git add -A` without unstaging `_scratch/`; no skipping `ruff check` (F541 kills CI); no `--amend`;
@@ -272,7 +264,7 @@ slice marked done without section 3b visual capture + UI-audit (or an explicit O
 HEADLESS UPGRADE WRAP
   HEAD: <short-sha> (<N> commits this run)
   ENGINE: <old> -> <new>
-  DS: <N> tests / <N> subtests        DS Share: synced (--check green) | n/a
+  DS: <N> tests / <N> subtests
   RC: <N> tests
   CI: <N>/<N> green (<N> red)
   cost/latency: <N levers swept, M shipped | all CLEAN>

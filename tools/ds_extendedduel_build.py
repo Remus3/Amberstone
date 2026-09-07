@@ -9,8 +9,7 @@ known; cadence known; source in P/Q/W/E/R/BASE; magnitude in (0, 1]), then:
     (grouped by champion, P/Q/W/E/R/BASE order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/extendedduel_registry_notes.json`` (champion, source,
-    kind, cadence, magnitude, conditional, source_quote) - excluded from Share like
-    CHANGELOG.md / antitank_registry_notes.json.
+    kind, cadence, magnitude, conditional, source_quote).
 
 The extended-duel axis is SELECTIVE (only champions with a real attrition
 mechanism appear), so unlike the threat-range / objective-damage builds this tool

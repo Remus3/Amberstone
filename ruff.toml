@@ -51,11 +51,9 @@ exclude = [
 "ops/*.py" = ["B"]          # ops scripts are procedural, bugbear too strict
 "scripts/*.py" = ["B", "I"] # one-off scripts, ignore import order
 "*/__init__.py" = ["F401"]  # __init__.py re-exports are expected
-# DS engine + its curated tools + the generated Share mirror are a fail-soft
-# external compute package (mirrored verbatim to the Share/ handoff); the BLE001
-# ratchet is scoped to app code, not the engine package.
+# DS engine + its curated tools are a fail-soft external compute package; the
+# BLE001 ratchet is scoped to app code, not the engine package.
 "agents/daemon_slayer/**" = ["BLE001"]
-"Share/**" = ["BLE001"]
 "tools/daemon_slayer_*.py" = ["BLE001"]
 "tools/ds_*.py" = ["BLE001"]
 "tools/start_daemon_slayer.py" = ["BLE001"]

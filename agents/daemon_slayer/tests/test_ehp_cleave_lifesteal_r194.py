@@ -71,8 +71,8 @@ from agents.daemon_slayer.ehp import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-# Resolve the LIVE patch. A hardcoded dir goes stale on every refresh, and the
-# Share mirror ships only the current snapshot, so the pin breaks the
+# Resolve the LIVE patch. A hardcoded dir goes stale on every refresh, and only
+# the current snapshot is guaranteed on disk, so the pin breaks the
 # self-contained guard. The Meraki clause text this seam reads is content-stable
 # across a DDragon minor (both patches carry Meraki content 25.15).
 _PATCH = (

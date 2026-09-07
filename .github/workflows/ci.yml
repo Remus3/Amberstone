@@ -325,14 +325,6 @@ jobs:
       - name: ruff lint
         run: ruff check .
 
-      - name: DS Share package in sync
-        run: |
-          # The Share/ external-review package mirrors the live DS engine.
-          # --check re-derives the deterministic Share/src mirror and exits 1
-          # if it drifts from the live engine - so any DS change that forgot
-          # to re-sync (python tools/ds_share_sync.py) fails here. Pure stdlib.
-          python tools/ds_share_sync.py --check
-
       - name: DS feed provenance index in sync - a stale row hides a copy-forward
         run: |
           # tools/ds_feed_index.json stores, per shipped patch dir per feed, a
@@ -353,16 +345,16 @@ jobs:
           # on '**/*.md', and the inputs that move this index are
           # data/daemon_slayer/**/*.json and tools/ds_feed_index.py, so a step
           # there would never fire on a commit that can cause the drift.
-          # Pure stdlib and read-only, same shape as the Share sync above.
+          # Pure stdlib and read-only.
           python tools/ds_feed_index.py --check
 
       - name: authored-source hygiene
         run: |
           # ASCII-hygiene drift guards: no smart quotes / em-en dashes / NBSP /
           # ellipsis / mojibake / U+2500 box-drawing in authored source. The
-          # Share/src DS data mirror is excluded as external data (same as the
-          # data/daemon_slayer/ source it mirrors). Catches authored-text drift
-          # at PR time so it is never dismissed as "pre-existing / not in CI".
+          # data/daemon_slayer/ feed data is excluded as external data. Catches
+          # authored-text drift at PR time so it is never dismissed as
+          # "pre-existing / not in CI".
           pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py \
             tests/test_u2500_hygiene.py \
             -q --tb=line --timeout=60

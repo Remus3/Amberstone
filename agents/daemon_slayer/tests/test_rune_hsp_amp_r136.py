@@ -54,13 +54,6 @@ _MIKAEL = "3222"      # heal_shield_amp_pct 0.12
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# True only inside the Share handoff mirror, which does not vendor
-# data/meta_build. See _require_rune_files for why this keys on the SENTINEL rather
-# than on the snapshot glob coming back empty.
-_IS_SHARE_MIRROR = any(
-    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
-)
-
 
 class SumRuneHspPctTests(unittest.TestCase):
     """The additive rune-HSP sum helper."""
@@ -160,24 +153,16 @@ class RuneTreeSweepTests(unittest.TestCase):
         ))
 
     def _require_rune_files(self) -> list[Path]:
-        """The rune snapshots or an explanation of why they cannot exist.
+        """The rune snapshots, or a loud failure when they are missing.
 
         data/meta_build/ddragon/*/runesReforged.json is TRACKED in the main
-        repo (four patch bundles as of 16.14.1), so an empty glob there means a
+        repo (four patch bundles as of 16.14.1), so an empty glob means a
         committed snapshot was deleted and the sweep below would pass over
-        nothing. The Share handoff deliberately does not vendor meta_build, so
-        the sweep is genuinely unrunnable there. Discriminate on the mirror
-        PATH, never on the glob being empty - keying on emptiness would let a
-        deleted snapshot silently skip in the main tree.
+        nothing. That is asserted, never skipped: a skip keyed on the glob
+        coming back empty would let a deleted snapshot pass silently, which is
+        the exact failure this guard exists to catch.
         """
         files = self._rune_files()
-        if not files and _IS_SHARE_MIRROR:
-            self.skipTest("Share/src does not vendor data/meta_build by design")
-        # The message names the dir as a plain literal, never as a path join -
-        # test_ds_share_mirror_self_contained scans mirrored test modules for
-        # root-anchored joins and only forgives ones consumed by a tolerant
-        # method (.glob/.exists/...). A join built just to format an error is a
-        # HARD reference to a dir the Share package does not ship.
         self.assertTrue(
             files,
             "no tracked runesReforged.json snapshots under data/meta_build/ddragon",

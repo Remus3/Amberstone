@@ -94,7 +94,7 @@ from .survivability_credit import survivability_item_ids
 # champion with a missing or malformed distribution block.
 #
 # The constants are LOCAL LITERALS, not an import. This function is deliberately
-# self-contained (no ``core`` import) so the Share mirror stays standalone -
+# self-contained (no ``core`` import) so the engine package stays standalone -
 # ``_burst_off_axis.py`` mirrors the same two numbers for the same reason.
 # ``tests/test_kit_axis_ap_scaling_guard.py`` pins the two files' literals equal
 # by reading both off disk.

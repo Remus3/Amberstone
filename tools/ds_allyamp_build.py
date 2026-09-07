@@ -9,8 +9,7 @@ classified entry against ``_ALLYAMP_KIND_WEIGHT`` / ``_ALLYAMP_SCOPE_MULT``
     (grouped by champion, P/Q/W/E/R/BASE order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/allyamp_registry_notes.json`` (champion, source, kind,
-    scope, magnitude, conditional, source_quote) - excluded from Share like
-    CHANGELOG.md / objdamage_registry_notes.json.
+    scope, magnitude, conditional, source_quote).
 
 The ally-amplification axis is SPARSE (only champions who grant value to allies
 appear), so unlike the threat-range / objective-damage builds this tool does not

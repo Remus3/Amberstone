@@ -53,7 +53,7 @@ _CTOR_FILE = re.compile(r"anthropic\.Anthropic\s*\(")
 # net-new site hiding in the list would be dismissed with it. Same rationale as
 # `.git` and `node_modules`: a copy of our own source is not a new call site.
 _SKIP_DIRS = {
-    "tests", "docs", "Share", "_archive", ".git", "node_modules", ".claude",
+    "tests", "docs", "_archive", ".git", "node_modules", ".claude",
 }
 
 

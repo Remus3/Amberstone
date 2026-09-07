@@ -155,9 +155,9 @@ a rival mechanism - this repo already has a dense one, all verified present at a
 - **The hook gate itself** - `tests/test_git_hook_gate_e2e.py` makes real commits into a temp repo, because a hook's PRESENCE has never been proof it fires. All five
   tracked hooks were once committed mode 100644, which git silently refuses to execute, so the whole gate was absent on every Linux clone while CI stayed green.
 
-`.githooks/pre-commit` runs five steps in a **deliberate order** stated in its own comments: (1) `precommit_gate.py` banned-glyph + net-new-ruff on staged lines, (2)
-`scripts/precommit_pycompile.py`, (3) `gen_archmap.py --check`, (4) `gen_state_schema.py --check`, (5) `ds_share_sync.py --precommit` then `git add Share/`. The glyph
-gate runs FIRST so a bad commit fails fast and before the Share sync mutates the index. Do not reorder it, and do not reintroduce a hook-writing installer
+`.githooks/pre-commit` runs four steps in a **deliberate order** stated in its own comments: (1) `precommit_gate.py` banned-glyph + net-new-ruff on staged lines, (2)
+`scripts/precommit_pycompile.py`, (3) `gen_archmap.py --check`, (4) `gen_state_schema.py --check`. The glyph gate runs FIRST so a bad commit fails fast, and no step
+may stage files - a hook that mutates the index after the gate has run ships content the gate never saw. Do not reorder it, and do not reintroduce a hook-writing installer
 (`scripts/install_hooks.py:3-22` explains the divergence that cost three silently-disabled guards).
 
 ### 6. Dead code - PROVE it dead
@@ -180,8 +180,8 @@ Miss Fortune's SR build order" when `3600` is Kalista's Black Spear and SR carri
 
 `CLAUDE.md` "Execution Efficiency & Tooling Rules" R5-R7 governs, and this lane pays the tax honestly rather than prophylactically. **Tier-0** cosmetic (doc, comment,
 string, non-runtime constant): Edit plus `py_compile` if `.py`; no suite, no restart. **Tier-1** local logic, one module: `py_compile` plus that module's tests only.
-**Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (`agents/daemon_slayer/tests` then `tests/`) plus a DS `:8860` restart plus the
-Share mirror sync in the SAME commit. R6: run the suite ONCE and trust the exit code, re-running only if you edited since or the pipe demonstrably glitched. R8: never
+**Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (`agents/daemon_slayer/tests` then `tests/`) plus a DS `:8860` restart in the
+SAME commit. R6: run the suite ONCE and trust the exit code, re-running only if you edited since or the pipe demonstrably glitched. R8: never
 re-Read a file you just Edited to confirm - Edit fails loudly.
 
 **One lane-7 override, and it is the important one: a file MOVE or a folder RESTRUCTURE is NEVER Tier-0, however cosmetic it looks.** A move changes import paths,

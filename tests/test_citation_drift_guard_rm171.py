@@ -68,11 +68,10 @@ budgets exactly the GUARDED group. HISTORY (`docs/_archive/**`,
 ORCHESTRATION history files) is append-only by policy and never budgeted: a
 stale citation there is CORRECT, and editing one is a history rewrite
 (`feedback_no_history_rewrite`). UNGUARDED (`ops/**`, `agents/**`,
-`tools/*.md`, `Share/docs/**`) is neither - 21 broken citations live there and
-are reported on every run rather than being allowed to read as history. (It
-read 22 until 2026-08-06, when the `ops/loop/director_prompt.md` ->
-`Share/README.md` citation was repointed. This count is prose, nothing asserts
-it - re-measure with `python tools/citation_audit.py` rather than quoting it.)
+`tools/*.md`) is neither - the broken citations that live there are reported on
+every run rather than being allowed to read as history. (The exact number is
+prose and nothing asserts it, so it is deliberately not recited here -
+re-measure with `python tools/citation_audit.py` rather than quoting one.)
 
 `WAKEUP_NOTES.md`, `docs/handoff/` and `docs/qa/` were moved INTO the budget
 on 2026-08-06. The first two cost nothing (0 broken). `docs/qa/` cost three
@@ -94,6 +93,128 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # (doc, raw citation, reason family, why)
 _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
+    # --- DS external-review package removal, 2026-09-07 ---------------------
+    # The generated `Share/` mirror (548 tracked files), `tools/ds_share_sync.py`
+    # and `tools/gist_share_sync.py` were deleted before the public flip
+    # (operator ruling, scope B). Live engine code never depended on the mirror.
+    #
+    # Every citation below sits in a point-in-time SPEC, PLAN or SHIPPED-row
+    # body that was describing the package as it stood when the doc was written.
+    # Re-pointing them is not possible - there is no surviving file to point AT -
+    # and rewriting the surrounding prose would make each doc assert something it
+    # never asserted. HISTORICAL rather than DELETED because the prose is
+    # describing the package's CONTENT, not its removal.
+    #
+    # Deliberately NOT baselined, and corrected in the same commit instead:
+    # `BACKLOG.md -> pytest.ini:6` and `docs/_research_refill_2026-09-05.md ->
+    # pytest.ini:8`. Those rows claimed pytest.ini carried a comment about the
+    # mirror exclusion, which the deletion made materially FALSE rather than
+    # merely unresolvable - the same distinction the CodSpeed block below drew
+    # for benchmarks/conftest.py:23.
+    (
+        "BACKLOG.md",
+        "tests/test_ds_share_doc_route_counts.py:39",
+        "HISTORICAL",
+        "RM-208's retained shipped body cites the mirror-side route-count twin "
+        "as the ast-parsing pattern to copy. That test was deleted with the "
+        "package it guarded; the row records what was true when RM-208 shipped.",
+    ),
+    (
+        "BACKLOG.md",
+        "tools/ds_share_sync.py:1149-1157",
+        "HISTORICAL",
+        "RM-335's retained shipped body quotes the sync tool's own docstring "
+        "contract (absent file is a SKIP, present-but-stale is drift) as the "
+        "reason not to 'fix' the behaviour. The tool is gone.",
+    ),
+    (
+        "BACKLOG.md",
+        "tools/ds_share_sync.py:1162",
+        "HISTORICAL",
+        "Same RM-335 row - the exact line whose printed path did not resolve "
+        "from the repo root, which is the defect the row exists to record.",
+    ),
+    (
+        "BACKLOG.md",
+        "tools/ds_share_sync.py:957",
+        "HISTORICAL",
+        "RM-284's retained closed body names the write_text call that emitted "
+        "CRLF into the tracked MANIFEST.md, as one of two collateral fixes the "
+        "eol=lf rule forced. The record of that fix outlives the file.",
+    ),
+    (
+        "docs/LIVE_GAME_GATED_SYNC.md",
+        "Share/docs/05_AUDIT_AND_REFACTOR.md:20-21",
+        "HISTORICAL",
+        "A gated row citing the shipped package's own audit doc as the source "
+        "of a claim. Point-in-time; the doc shipped inside the mirror.",
+    ),
+    (
+        "docs/ORCHESTRATION_PLAN.md",
+        "Share/README.md:19-32",
+        "HISTORICAL",
+        "A plan row describing the package README's stated scope at the time "
+        "the session was written.",
+    ),
+    (
+        "docs/ORCHESTRATION_PLAN.md",
+        "tools/ds_share_sync.py:60",
+        "HISTORICAL",
+        "Same plan, citing the sync tool's mirrored-module list.",
+    ),
+    (
+        "docs/specs/DECISION_cdragon_cross_reference.md",
+        "Share/src/agents/daemon_slayer/abilities.py:622",
+        "HISTORICAL",
+        "A decision spec citing the MIRROR copy of abilities.py rather than the "
+        "source. Both the mirror and that line number are gone; the live file "
+        "is agents/daemon_slayer/abilities.py, but re-pointing would silently "
+        "change which artifact the decision was taken against.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_AUDIT_rev2.md",
+        "Share/docs/03_DATA_AND_SOURCES.md:249-252",
+        "HISTORICAL",
+        "A provenance audit quoting the shipped package's data-sources doc.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_AUDIT_rev2.md",
+        "Share/docs/03_DATA_AND_SOURCES.md:30",
+        "HISTORICAL",
+        "Same audit, second citation into the same deleted doc.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_AUDIT_rev2.md",
+        "ds_share_sync.py:62",
+        "HISTORICAL",
+        "Same audit, bare-filename form of the sync-tool citation - the guard "
+        "keys on raw citation text, so each spelling is its own entry.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_guard_and_index.md",
+        "Share/docs/03_DATA_AND_SOURCES.md:30",
+        "HISTORICAL",
+        "The guard-and-index spec quoting the same deleted data-sources doc.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_guard_and_index.md",
+        "ds_share_sync.py:62",
+        "HISTORICAL",
+        "Same spec, bare-filename form of the sync-tool citation.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_guard_and_index.md",
+        "tools/ds_share_sync.py:256-260",
+        "HISTORICAL",
+        "Same spec, citing the sync tool's data-selection rules as the reason a "
+        "provenance index had to live outside the mirror.",
+    ),
+    (
+        "docs/specs/SPEC_data_provenance_guard_and_index.md",
+        "tools/ds_share_sync.py:62",
+        "HISTORICAL",
+        "Same spec, full-path form of the same citation.",
+    ),
     # --- CodSpeed removal, 2026-09-06 ---------------------------------------
     # .github/workflows/codspeed.yml and the benchmarks/ tree were deleted after
     # the value was measured: the benchmarks watched two modules that took 3 and
@@ -553,7 +674,6 @@ class CitationAuditMechanics(unittest.TestCase):
             "ops/audit/P2_FINDINGS.md",
             "ops/loop/director_prompt.md",
             "agents/daemon_slayer/CHANGELOG.md",
-            "Share/docs/01_OVERVIEW.md",
         ):
             with self.subTest(doc=doc):
                 self.assertEqual(ca.scope_of(doc), ca.UNGUARDED)

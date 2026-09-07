@@ -50,12 +50,6 @@ from agents.daemon_slayer._rune_offense_grants import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-
-# True only inside the Share handoff mirror, which does not vendor
-# data/meta_build. See _require_feed_path.
-_IS_SHARE_MIRROR = any(
-    (p / "SHARE_MIRROR").is_file() for p in Path(__file__).resolve().parents
-)
 _CURRENT_TXT = _REPO_ROOT / "data" / "daemon_slayer" / "current.txt"
 
 # ALL FIVE trees, swept to saturation as of R159. Precision 8000, Inspiration
@@ -72,7 +66,7 @@ def _feed_path() -> Path | None:
     ``test_r144_mirror_slice_e._patch`` uses); if that file or the patch
     directory is missing, fall back to the newest vendored snapshot the way
     ``test_rune_hsp_amp_r136._rune_files`` globs for one. Returns None when no
-    snapshot exists at all, so the caller can skip rather than fail.
+    snapshot exists at all, so the caller decides how to react.
     """
     if _CURRENT_TXT.exists():
         patch = _CURRENT_TXT.read_text(encoding="utf-8").strip()
@@ -91,20 +85,13 @@ def _require_feed_path() -> Path:
     """The newest rune snapshot, or a hard failure explaining its absence.
 
     data/meta_build/ddragon/*/runesReforged.json is TRACKED in the main repo,
-    so _feed_path() returning None there means a committed snapshot was deleted
-    and every sweep below would silently cover nothing. The Share handoff
-    deliberately does not vendor meta_build, so the sweep is unrunnable there.
-    Discriminate on the mirror SENTINEL, never on the lookup returning None.
+    so _feed_path() returning None means a committed snapshot was deleted and
+    every sweep below would silently cover nothing. That raises rather than
+    skips: a skip keyed on the lookup returning None would let a deleted
+    snapshot pass silently, which is the exact failure this guard catches.
     """
     path = _feed_path()
     if path is None:
-        if _IS_SHARE_MIRROR:
-            raise unittest.SkipTest(
-                "Share/src does not vendor data/meta_build by design"
-            )
-        # Plain literal, never a path join: test_ds_share_mirror_self_contained
-        # treats a root-anchored join that is not consumed by a tolerant method
-        # (.glob/.exists/...) as a HARD dependency on a dir Share does not ship.
         raise AssertionError(
             "no tracked runesReforged.json snapshot under data/meta_build/ddragon"
         )

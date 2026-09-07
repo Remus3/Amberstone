@@ -38,10 +38,10 @@ inside ``agents/daemon_slayer/`` bypasses this guard. That invocation is
 already ruled out for an unrelated reason (it produces 13 CWD failures -
 memory ``reference_ds_suite_run_from_repo_root``) and CI runs from the
 root, so the gap is fenced rather than open. It is NOT closed with a
-second conftest under ``agents/daemon_slayer/tests/``, because that path
-is mirrored into ``Share/src/`` and ``Share/`` runs its suite standalone
-(RM-112) where ``tests._subtest_channel_guard`` does not exist - the
-mirror would import a module that is not there.
+second conftest under ``agents/daemon_slayer/tests/``, because that tree
+is stdlib-only and self-contained by design so the engine suite can run
+standalone: a conftest there importing ``tests._subtest_channel_guard``
+would couple it to the RC ``tests/`` tree it deliberately does not need.
 """
 from __future__ import annotations
 

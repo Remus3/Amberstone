@@ -60,8 +60,8 @@ so the assertions below pin the rows that actually move:
 
 LIVE: these hit the running DS server on :8860 through the real client, which
 is the whole point - an in-process engine call would prove nothing about gate 3.
-Skipped when the engine is down. Host-dependent (imports ``core.*``), so it is
-registered in ``tools/ds_share_sync._HOST_DEPENDENT_TESTS``.
+Skipped when the engine is down. Host-dependent: it imports ``core.*``, so it
+does not stand alone against the DS package by itself.
 """
 from __future__ import annotations
 
@@ -115,8 +115,8 @@ class Rm115TailSeamsReachTheClientTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         # RM-119 B2 (2026-08-06): routed through the shared gate. See the
         # sibling note in test_ehp_family_seams_reach_the_client_rm115.py -
-        # both modules are in tools/ds_share_sync._HOST_DEPENDENT_TESTS and
-        # are excluded from Share/src, so this import costs the mirror nothing.
+        # both modules are host-dependent already, so reaching for a tests/
+        # helper costs them nothing.
         from tests.test_ds_live_route_gate import require_live_engine
         require_live_engine("the RM-115 tail seam reachability class",
                             up=dsc.is_engine_up(timeout=2.0))

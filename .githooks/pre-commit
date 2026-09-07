@@ -16,11 +16,13 @@
 # ARCHITECTURE.md module map, and the state_schema.js typedefs), and both
 # generated artifacts had drifted by the time anyone noticed. The cause was
 # `scripts/install_hooks.py`, which used to WRITE `.git/hooks/pre-commit` with
-# only the Share sync, clobbering everything else. It now sets core.hooksPath
-# instead. Do not reintroduce a hook-writing installer.
+# only the (since-removed) DS review-package mirror sync, clobbering everything
+# else. It now sets core.hooksPath instead. Do not reintroduce a hook-writing
+# installer.
 #
-# ORDER IS DELIBERATE: the glyph/ruff gate runs FIRST so a bad commit fails fast,
-# and before the Share sync mutates the index.
+# ORDER IS DELIBERATE: the glyph/ruff gate runs FIRST so a bad commit fails fast.
+# No step here may stage files - a hook that mutates the index after the gate
+# has run ships content the gate never saw.
 
 set -e
 
@@ -60,10 +62,3 @@ echo "git commit" | "$PY" "$ROOT/tools/precommit_gate.py" || exit 1
     echo "Run: python tools/gen_state_schema.py"
     exit 1
 }
-
-# 5. DS Share package mirror. Runs LAST because it stages files, and staging
-# after the gate is intentional - Share/src is generated data, not authored
-# source, so it is deliberately outside the hygiene checks above.
-echo "Running Share/ mirror sync (precommit-gated)..."
-"$PY" "$ROOT/tools/ds_share_sync.py" --precommit
-git add Share/

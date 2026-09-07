@@ -56,8 +56,8 @@ equality guard
 (``test_route_seams_reach_the_client_per_route.py``) already keys its ledger by
 (route, seam) over every route, so forgetting the client wire turns THAT guard
 red on its own - a stronger check than anything duplicated here, and it keeps
-this file free of a ``core.*`` import that would make it host-dependent and force
-a ``tools/ds_share_sync._HOST_DEPENDENT_TESTS`` registration.
+this file free of a ``core.*`` import that would make it host-dependent, i.e.
+unable to run against the engine package without the host application present.
 
 Offline only - no server start, no sockets. AST + inspect + direct handler calls.
 """

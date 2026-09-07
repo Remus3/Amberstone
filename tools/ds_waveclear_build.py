@@ -10,8 +10,7 @@ then:
     order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/waveclear_registry_notes.json`` (champion, source,
-    kind, range_band, magnitude, conditional, source_quote) - excluded from Share
-    like CHANGELOG.md / scaling_registry_notes.json.
+    kind, range_band, magnitude, conditional, source_quote).
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_waveclear_build.py <workflow_output.json>

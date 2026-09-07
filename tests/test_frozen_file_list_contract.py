@@ -47,16 +47,15 @@ HEADERLESS_FROZEN_PY = frozenset({
     "ops/rc_supervisor.py",
 })
 
-# Directories the `# arch:` header scan skips. Share/ is the Daemon Slayer
-# distribution mirror and duplicates real modules verbatim, so scanning it would
-# manufacture phantom frozen entries for mirror paths that are not - and must
-# not be - on the authority list. The rest is VCS / vendor / build / archive
-# noise. Keep this list minimal and justified: an over-broad exclusion is how
-# live code gets misdiagnosed as absent.
+# Directories the `# arch:` header scan skips. The worktree entries duplicate
+# real modules verbatim, so scanning one would manufacture phantom frozen
+# entries for copy paths that are not - and must not be - on the authority
+# list. The rest is VCS / vendor / build / archive noise. Keep this list
+# minimal and justified: an over-broad exclusion is how live code gets
+# misdiagnosed as absent.
 HEADER_SCAN_SKIP_DIRS = frozenset({
     ".git",
     "_archive",
-    "Share",
     ".venv",
     "venv",
     "node_modules",

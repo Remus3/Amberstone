@@ -29,10 +29,11 @@ measured:
      ACCIDENT: ``if path == "/health":`` ends in a Python statement colon,
      which is what satisfied the ``":`` anchor. Rewriting that ``if`` chain
      into an ``in (...)`` membership test would have silently dropped all
-     three. Both halves are now read structurally with ``ast`` - the same
-     shape the Share-side twin ``tests/test_ds_share_doc_route_counts.py``
-     already uses - so neither the digit/slash blindness nor the colon
-     accident can recur.
+     three. Both halves are now read structurally with ``ast``: the
+     ``_POST_ROUTES`` dict literal is walked for its keys and the ``do_GET``
+     body for its path-shaped string constants, so a route is found as syntax
+     rather than matched as text - and neither the digit/slash blindness nor
+     the colon accident can recur.
   2. Only ``server - doc`` was computed, so the doc could name a route the
      server does not register and nothing failed. Both directions are
      asserted now.
@@ -72,9 +73,8 @@ def _server_ast() -> ast.Module:
 def _post_routes(tree: ast.Module) -> list[str]:
     """Ordered ``_POST_ROUTES`` keys, read structurally from the source.
 
-    Parsed rather than imported: importing server.py drags in the whole engine
-    (and, in the Share tree, a second ``agents.daemon_slayer`` package under
-    the same module name). A dict-literal walk needs neither.
+    Parsed rather than imported: importing server.py drags in the whole
+    engine. A dict-literal walk does not.
     """
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):

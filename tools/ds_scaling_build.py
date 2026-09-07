@@ -9,8 +9,7 @@ P/Q/W/E/R/BASE; online_stage in EARLY/MID/LATE; magnitude in (0, 1]), then:
     order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/scaling_registry_notes.json`` (champion, source, kind,
-    online_stage, magnitude, conditional, source_quote) - excluded from Share
-    like CHANGELOG.md / sustain_registry_notes.json / mobility_registry_notes.json.
+    online_stage, magnitude, conditional, source_quote).
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
   C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_scaling_build.py <workflow_output.json>

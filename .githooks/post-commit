@@ -1,9 +1,0 @@
-#!/bin/sh
-# PORTED to .githooks 2026-07-26 - see post-checkout. Mirrors Share/ to the
-# review gist when a commit touches it. Non-blocking and backgrounded on
-# purpose: it must never delay or fail a commit.
-# RC: mirror Share/ to the secret review gist whenever a commit touches it.
-# Non-blocking (backgrounded) + logged. Calls tools/gist_share_sync.py.
-if git diff-tree --no-commit-id --name-only -r HEAD | grep -q "^Share/"; then
-  "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe" "C:/Riot Commander/tools/gist_share_sync.py" >> "C:/Riot Commander/logs/gist_share_sync.log" 2>&1 &
-fi

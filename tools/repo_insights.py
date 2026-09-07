@@ -97,7 +97,7 @@ def gather_git(days: int, author: str | None) -> dict:
 
     churn_total = _numstat_churn(since)
     churn_ex_data = _numstat_churn(
-        since, [":(exclude)data", ":(exclude)web/data", ":(exclude)Share"]
+        since, [":(exclude)data", ":(exclude)web/data"]
     )
 
     active_days = len(set(dates))
@@ -239,7 +239,6 @@ _AREA = {
     "ops": "Ops + loop harness",
     "data": "Patch data",
     "tools": "Tooling",
-    "Share": "DS Share package",
     "lcu": "LCU client",
     "coaches": "Coaches",
     "vision_server": "Vision pipeline",
