@@ -6,8 +6,8 @@ damage axis from ``lolmath.damage_distribution``, and they MUST agree - a
 champion the archetype resolver calls AP-axis while the bruiser scorer scores
 on auto-attacks is the exact defect the kit-axis fix removed.
 
-They cannot share code. The daemon_slayer package is self-contained by design -
-no module in it imports ``core`` - so ``hybrid.py`` keeps LOCAL literals (the
+They cannot share code. The daemon_slayer package has no MODULE-SCOPE
+dependency on ``core`` by design - so ``hybrid.py`` keeps LOCAL literals (the
 same reason ``_burst_off_axis.py`` does). This file is the seam that stops the
 two copies drifting, and it lives in ``tests/`` rather than
 ``agents/daemon_slayer/tests/`` because it holds BOTH sides at once: it imports
