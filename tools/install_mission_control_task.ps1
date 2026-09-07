@@ -40,7 +40,7 @@
 # computable NextRunTime, independent of logon state. MultipleInstances=
 # IgnoreNew is what makes the once-a-minute firing a no-op while the
 # process is alive; RestartCount/RestartInterval are unchanged.
-$python  = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
+$python  = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $script  = 'C:\Riot Commander\mission_control.py'
 $workdir = 'C:\Riot Commander'
 

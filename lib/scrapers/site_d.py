@@ -1,20 +1,25 @@
-"""aggregator D scraper primitive.
+"""Site D build-page scraper primitive.
 
 This layer only fetches + caches raw HTML. Parsing into build objects is the
 coach-side job (Agent 4) and will plug into the cached HTML from
 ``data/meta_build/scraped/site_d/``.
 
-URL shape (2026): https://aggregator-d.invalid/lol/<champ>/build/?lane=<lane>&mode=<mode>
+URL shape (2026): <base>/lol/<champ>/build/?lane=<lane>
 Mode mapping: aram, arena, default (SR), bravebrawl, etc.
+
+The host itself is operator configuration (``site_d_base_url`` in
+``config/external_sources.json``), resolved on every access rather than
+frozen at import, so an install can point this somewhere else - or nowhere -
+without editing the module.
 """
 from __future__ import annotations
 
+from core import external_sources
 from lib.scrapers._base import ScraperBase
 
 
 class SiteDScraper(ScraperBase):
-    site = "aggregator D"
-    base_url = "https://aggregator-d.invalid"
+    site = "site_d"
 
     MODE_PATH = {
         "sr": "lol/{champ}/build/",
@@ -22,6 +27,10 @@ class SiteDScraper(ScraperBase):
         "arena": "lol/{champ}/arena/build/",
         "brawl": "lol/{champ}/bravebrawl/build/",
     }
+
+    @property
+    def base_url(self) -> str:
+        return external_sources.value("site_d_base_url")
 
     def fetch_champion(self, champ: str, mode: str = "sr", lane: str | None = None) -> str:
         """Fetch champion build page HTML for the requested mode.

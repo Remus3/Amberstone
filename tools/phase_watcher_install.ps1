@@ -112,7 +112,7 @@ try {
 # 4. Register scheduled task at-logon
 
 Write-Step "Registering scheduled task $TaskName"
-$Python = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+$Python = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 if (-not (Test-Path $Python)) {
     # Fallback to py launcher.
     $Python = (Get-Command pythonw -ErrorAction SilentlyContinue).Source

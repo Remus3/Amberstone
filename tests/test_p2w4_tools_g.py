@@ -20,8 +20,13 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _HEADLESS_RUN = _REPO_ROOT / "tools" / "headless_run.ps1"
 
+# The pin is still ABSOLUTE (bare ``py`` is the whole defect), but the
+# account-specific prefix is now expanded by PowerShell from $env:LOCALAPPDATA
+# rather than baked in - see tests/test_no_hardcoded_home_path.py. The property
+# being asserted is unchanged: the launcher must name the Python314 install by
+# an absolute path, not a launcher shim.
 _CANONICAL_PY = (
-    r"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+    r"$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
 )
 
 # Bare ``py`` (optionally ``py.exe``) followed by a runnable argument, in any

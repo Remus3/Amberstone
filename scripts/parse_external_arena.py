@@ -1,4 +1,4 @@
-"""Parse aggregator J Arena page tool-result files into compact summaries."""
+"""Parse external Arena stats-page tool-result files into compact summaries."""
 from __future__ import annotations
 import json
 import re

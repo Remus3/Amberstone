@@ -1,0 +1,8 @@
+{
+  "_doc": "Per-host list of sibling repo checkouts that share the cross-repo inbox channel. Copy to ops/moon_sync_repos.json (gitignored) and fill in the real paths. This repo is always polled and does not need listing. An absent file means the poller only watches this repo, which is the correct behaviour for a fresh clone.",
+  "_env_override": "RC_MOON_SYNC_REPOS, os.pathsep-separated, wins over this file.",
+  "repos": [
+    "C:\\Some Sibling Repo",
+    "C:\\Another Sibling Repo"
+  ]
+}

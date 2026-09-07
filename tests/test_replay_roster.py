@@ -15,11 +15,24 @@ from core import replay_roster as rr
 
 # ---------------------------------------------------------------- roster load
 
-def test_the_shipped_roster_parses_and_carries_the_seeded_top_laner():
+def test_the_shipped_roster_parses_and_carries_a_top_laner():
+    # The live roster is gitignored (it names other people's accounts), so a
+    # fresh clone reads the tracked example. Either way the loader must yield
+    # a parseable non-empty roster with a TOP entry - that is what is being
+    # tested here, not any one account.
     entries = rr.load_roster()
     assert entries, "the shipped roster must not be empty"
     tops = [e for e in entries if e.role == "TOP"]
-    assert any(e.name == "SamplePlayer2" and e.tag == "BIG" for e in tops)
+    assert tops, "the shipped roster must seed at least one TOP account"
+    assert all(e.name and e.tag for e in tops)
+
+
+def test_the_tracked_example_roster_is_always_loadable():
+    # Guards the fresh-clone path explicitly: the example must stay valid even
+    # on a machine that HAS a live roster, where the fallback never fires.
+    entries = rr.load_roster(rr.EXAMPLE_ROSTER)
+    assert entries
+    assert {e.role for e in entries} <= set(rr.ROLES)
 
 
 def test_every_shipped_roster_role_is_a_known_role():

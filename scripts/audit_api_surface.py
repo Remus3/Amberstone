@@ -24,9 +24,9 @@ like data/, docs/, _archive/, WAKEUP_NOTES.md). Runtime-resolved paths
 heuristic) are surfaced; deeper dynamic paths require a manual follow-up.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\audit_api_surface.py
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\audit_api_surface.py --csv data/api_surface.csv
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\audit_api_surface.py --surface lcu  # one surface only
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\audit_api_surface.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\audit_api_surface.py --csv data/api_surface.csv
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\audit_api_surface.py --surface lcu  # one surface only
 """
 
 from __future__ import annotations

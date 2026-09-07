@@ -48,11 +48,11 @@ foreach ($s in ($AGENT_SCRIPTS + $SUPPORT_SCRIPTS)) {
 
 # 2. Interpreters. pythoncore-3.14-64 is the bettercam-capable interpreter the
 #    screen agent requires; fall back to the standard Python314 install.
-$pyCore = 'C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64'
+$pyCore = "$env:LOCALAPPDATA\Python\pythoncore-3.14-64"
 $pyW = Join-Path $pyCore 'pythonw.exe'
 $pyC = Join-Path $pyCore 'python.exe'
-if (-not (Test-Path $pyW)) { $pyW = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe' }
-if (-not (Test-Path $pyC)) { $pyC = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe' }
+if (-not (Test-Path $pyW)) { $pyW = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe" }
+if (-not (Test-Path $pyC)) { $pyC = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe" }
 
 function Test-AgentRunning {
     param([string]$scriptName)

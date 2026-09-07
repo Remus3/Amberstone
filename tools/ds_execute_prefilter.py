@@ -18,7 +18,7 @@ the discrete execute pair). Filters keys already conditional.
 High-precision shortlist; HAND-VERIFY each against real mechanics +
 Meraki before any registry entry (the s229-s231 lesson).
 
-Usage:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_execute_prefilter.py
+Usage:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_execute_prefilter.py
 """
 import json
 

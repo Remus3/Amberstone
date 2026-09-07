@@ -37,6 +37,7 @@ from pathlib import Path
 from unittest import mock
 
 from core import lcu_pool
+from tests import _repo_walk
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -147,13 +148,15 @@ def _scope_files():
     up the flag is in scope the day it is written. The guard file is excluded
     because it necessarily carries both the flag name and the claim phrases as
     test data.
+
+    Enumeration moved to `tests/_repo_walk` 2026-09-07 - the hand-rolled skip
+    set here missed `.claude` worktrees, `python-embed` and `moon_sync_inbox`,
+    none of which are RC source. Scope was re-derived across the change and is
+    byte-identical (7 files before, the same 7 after).
     """
     here = Path(__file__).resolve()
     found = []
-    for path in REPO_ROOT.rglob("*.py"):
-        parts = path.parts
-        if any(p in (".git", "_archive", "node_modules") for p in parts):
-            continue
+    for path in _repo_walk.repo_files(REPO_ROOT):
         if path.resolve() == here:
             continue
         try:

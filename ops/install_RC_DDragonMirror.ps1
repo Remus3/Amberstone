@@ -14,7 +14,7 @@
 $ErrorActionPreference = "Stop"
 
 $TaskName  = "RC-DDragonMirrorRefresh"
-$Python    = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+$Python    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $Script    = "C:\Riot Commander\tools\ddragon_mirror_refresh.py"
 $Arguments = "`"$Script`" --check-changed"
 

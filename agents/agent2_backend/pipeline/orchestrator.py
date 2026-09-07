@@ -11,8 +11,8 @@ Data flow per run:
         |
         v
     For each (champion, mode):
-        SiteDScraper.fetch_champion(champ, mode) ---+
-        UggScraper.fetch_champion(champ, mode)       ----+---> merge
+        SiteDScraper.fetch_champion(champ, mode)     ----+
+        SiteBScraper.fetch_champion(champ, mode)     ----+---> merge
                                                          |
         Agent 4 curated JSON (if present)         -------+
         |
@@ -55,7 +55,7 @@ from typing import Iterable
 
 from lib.ddragon import DDragon, fetch_all as ddragon_fetch_all
 from lib.http import Blocked, CircuitOpen, HttpError
-from lib.scrapers import SiteDScraper, UggScraper
+from lib.scrapers import SiteBScraper, SiteDScraper
 
 logger = logging.getLogger("agent2.pipeline")
 
@@ -86,8 +86,8 @@ def _atomic_write_json(path: Path, data: object) -> None:
 
 class PipelineOrchestrator:
     def __init__(self) -> None:
-        self._aggregator D = SiteDScraper()
-        self._ugg = UggScraper()
+        self._site_d = SiteDScraper()
+        self._site_b = SiteBScraper()
         self._ddragon: DDragon | None = None
 
     # ---- DDragon -----------------------------------------------------
@@ -122,8 +122,8 @@ class PipelineOrchestrator:
               "mode": "aram",
               "fetched_at": "2026-04-22T...",
               "sources": {
-                  "aggregator D": {"status": "ok" | "...", "bytes": int, "cache": str},
-                  "ugg":        {...},
+                  "site_d":  {"status": "ok" | "...", "bytes": int, "cache": str},
+                  "site_b":  {...},
                   "curated":    {"present": bool, "path": "..." | None},
               }
             }
@@ -137,31 +137,31 @@ class PipelineOrchestrator:
             "sources": {},
         }
 
-        # --- aggregator D ---
+        # --- site D ---
         try:
-            html = self._aggregator D.fetch_champion(champ, mode=scraper_mode)
-            out["sources"]["aggregator D"] = {
+            html = self._site_d.fetch_champion(champ, mode=scraper_mode)
+            out["sources"]["site_d"] = {
                 "status": "ok",
                 "bytes": len(html),
-                "cache": str(self._aggregator D.cache_path(
+                "cache": str(self._site_d.cache_path(
                     _cache_key(champ, scraper_mode), ext="html")),
             }
         except (HttpError, Blocked, CircuitOpen, PermissionError, RuntimeError) as e:
-            out["sources"]["aggregator D"] = {"status": "error", "error": str(e)[:200]}
-            logger.warning("aggregator D %s/%s: %s", champ, mode, e)
+            out["sources"]["site_d"] = {"status": "error", "error": str(e)[:200]}
+            logger.warning("site_d %s/%s: %s", champ, mode, e)
 
-        # --- aggregator B ---
+        # --- site B ---
         try:
-            html = self._ugg.fetch_champion(champ, mode=scraper_mode)
-            out["sources"]["ugg"] = {
+            html = self._site_b.fetch_champion(champ, mode=scraper_mode)
+            out["sources"]["site_b"] = {
                 "status": "ok",
                 "bytes": len(html),
-                "cache": str(self._ugg.cache_path(
+                "cache": str(self._site_b.cache_path(
                     _cache_key(champ, scraper_mode), ext="html")),
             }
         except (HttpError, Blocked, CircuitOpen, PermissionError, RuntimeError) as e:
-            out["sources"]["ugg"] = {"status": "error", "error": str(e)[:200]}
-            logger.warning("ugg %s/%s: %s", champ, mode, e)
+            out["sources"]["site_b"] = {"status": "error", "error": str(e)[:200]}
+            logger.warning("site_b %s/%s: %s", champ, mode, e)
 
         # --- curated fallback (Agent 4 writes here) ---
         curated_path = CURATED_DIR / mode / f"{champ.lower()}.json"

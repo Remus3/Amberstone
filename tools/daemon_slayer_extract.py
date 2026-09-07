@@ -16,9 +16,9 @@ Plus ``data/daemon_slayer/current.txt`` (plain-text patch string the engine
 points at).
 
 Usage:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py            # idempotent - skips if patch is already extracted
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --force    # re-extract regardless of patch state
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --chunk-url URL  # override chunk autodiscovery
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py            # idempotent - skips if patch is already extracted
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --force    # re-extract regardless of patch state
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_extract.py --chunk-url URL  # override chunk autodiscovery
 
 Design rationale (see project_daemon_slayer_engine.md):
   - DDragon is the canonical source for champion/item/stat data.

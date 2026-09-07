@@ -12,7 +12,7 @@ Decision rule: if p95 for every path is under an interactive budget (~100ms),
 the "build-opt latency hurts" premise is false and no warm-start work is
 warranted. Pure local, no :8893, no network.
 
-Run: C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe ops/audit/ds_latency_probe.py
+Run: $env:LOCALAPPDATA/Programs/Python/Python314/python.exe ops/audit/ds_latency_probe.py
 """
 from __future__ import annotations
 

@@ -14,8 +14,8 @@ mismatches without re-running the comparison.
 STDLIB-ONLY: argparse / json / pathlib / sys. ASCII-clean.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/compare_101qq_vs_ddragon.py --json C:/path/to/captured.json
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/compare_101qq_vs_ddragon.py --json ... --out data/external/101qq_id_map.json
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/compare_101qq_vs_ddragon.py --json C:/path/to/captured.json
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/compare_101qq_vs_ddragon.py --json ... --out data/external/101qq_id_map.json
 """
 from __future__ import annotations
 

@@ -57,7 +57,7 @@ Tools exposed:
       Recent TFT placement summary (avg place, top4 count/pct, wins).
 
 Run locally:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_matchdb_mcp_server.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_matchdb_mcp_server.py
   (or via the boot launcher tools/start_ds_matchdb_mcp.py)
 
 Schedule at logon for persistence:

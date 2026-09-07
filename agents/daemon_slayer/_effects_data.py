@@ -5917,7 +5917,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3174",
         name="Armored Advance",
         defensive_only=True,
-        # R88 (sibling-carrier of R80 3047): Armored Advance is the tier-3
+        # R88 (sibling_carrier of R80 3047): Armored Advance is the tier-3
         # upgrade boot of Plated Steelcaps and carries the IDENTICAL DDragon
         # 16.13.1 "Plating" passive - reduces incoming basic-attack damage by
         # 10%. That plating now earns EHP credit via the physical-denominator

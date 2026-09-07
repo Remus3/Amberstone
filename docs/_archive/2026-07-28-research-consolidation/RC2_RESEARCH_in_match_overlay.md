@@ -99,7 +99,7 @@ Aggregator A Desktop. Findings condensed; per-claim source URLs inline.
 - Overlay App E: strongest documented timer suite - "Know exactly when Jungle Camps,
   Inhibitors, and Dragon respawn times are in real time"; camp timers AUTO-START
   when a camp is cleared and render as a MINIMAP overlay (drawn on/near the minimap).
-  https://third-party-review-site.invalid/overlay-app-e-review ,
+  https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review ,
   https://overlay-app-e.invalid/overlays/lol?select=minimapTimer
 - Aggregator A: jungle monster + Scuttle respawn timers drawn ON the minimap, but
   "Herald/Baron excluded"; inhibitor respawn timers for both sides; ARAM health-relic
@@ -130,7 +130,7 @@ Aggregator A Desktop. Findings condensed; per-claim source URLs inline.
 - Overlay App E: tracks enemy summoner spells AND enemy ultimates (event-triggered, e.g.
   "When you see Zed activate Death Mark, Overlay App E starts a timer"); also shows TEAMMATE
   ult timers on ally portraits.
-  https://third-party-review-site.invalid/overlay-app-e-review
+  https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review
 - Overlay App F: enemy ULTIMATE tracker only, MANUAL click-to-start, does not account
   for Ability Haste (approximate); no flash/summoner tracking documented.
   https://www.dexerto.com/league-of-legends/popular-league-of-legends-add-on-criticized-for-adding-cheat-feature-players-think-should-be-banned-3142237/
@@ -150,7 +150,7 @@ Aggregator A Desktop. Findings condensed; per-claim source URLs inline.
 
 - Overlay App E: imports builds/runes/summoners; suggests item builds by champion/role/meta;
   live damage calc on shop hover ("how much damage your abilities deal post-purchase").
-  https://third-party-review-site.invalid/overlay-app-e-review
+  https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review
 - Aggregator C: "Gold to Next Item Tracker" live overlay tool + pre-match build paths.
   https://overlay-platform-m.invalid/app/aggregator-c
 - Aggregator A: static popularity-derived item builds + skill order in overlay (no
@@ -163,7 +163,7 @@ Aggregator A Desktop. Findings condensed; per-claim source URLs inline.
   spike advice via the Tab+W Game Overview. https://overlay-platform-m.invalid/app/aggregator-c ,
   https://aggregator-c.invalid/lol-overlay/
 - Overlay App E: shop-hover damage preview is the closest analog (item-impact, not a timeline
-  spike alert). https://third-party-review-site.invalid/overlay-app-e-review
+  spike alert). https://review-site-z9.invalid/blog/game-analytics/overlay-app-e-gg-overlay-review
 - Aggregator A: no LoL power-spike feature (its "Spike Tracker" is Valorant-only).
   https://aggregator-a.invalid/desktop/en/overlays/lol
 - RC already computes a richer spike model than any of them (level + item markers
