@@ -1,13 +1,26 @@
-# Pre-release name-scrub - EXECUTED 2026-09-07
+# Pre-release name-scrub - HALF EXECUTED 2026-09-07
+
+**STATUS AT WRAP: the FILE-CONTENT half is executed and pushed. The HISTORY half
+is NOT.** The rewrite ran clean in a mirror and was verified, then found one
+surviving case variant, so the rules were corrected and it must be re-run. The
+repo is still PRIVATE. Read `docs/PUBLIC_FLIP_GO_NO_GO.md` "State at wrap"
+before acting on anything below that reads as finished.
 
 Kept generic on purpose (categories, not an enumerated name list) so this plan
 does not itself become the leak it exists to remove.
 
 ## Status
 
-**EXECUTED 2026-09-07, ahead of the public flip.** Both halves ran: current file
-content, and the full commit history (blob content AND commit messages) in one
-`git filter-repo` pass alongside the path purge.
+**HALF EXECUTED 2026-09-07.** The file-content half ran and is pushed. The
+history half - blob content and commit messages in one `git filter-repo` pass
+alongside the path purge - ran successfully in an isolated mirror and was
+verified there, but is NOT applied to `origin`, because verification found a
+surviving case variant and the rules were corrected afterwards.
+
+**This paragraph previously read "EXECUTED ... Both halves ran", which was
+false when written.** It described the intended end state rather than the
+measured one. Same defect as the status line it corrects below, one revision
+later - which is why the rule is to write status from a probe, not from a plan.
 
 **The pre-execution status line here was wrong on both halves and is corrected
 below, because the error is the reusable part.** It claimed the competitor
