@@ -5,7 +5,7 @@ external cancel.
 Root cause (2026-07-04, pid 6440): after a mid-session League client restart,
 RC's asyncio spawn_task auto-accept (lcu/lcu_client._auto_accept_loop_async)
 and RuneWriter (lcu/lcu_rune_writer._run_async) coroutines silently stopped
-ticking. See reference_runewriter_dies_after_game1. Layer-1 (commit 90b350c8)
+ticking. See reference_runewriter_dies_after_game1. Layer-1 (commit 8d2b4e2b)
 made RuneWriter._poll self-heal the shared LcuClient every poll, but carried a
 caveat: "if the poll LOOP ITSELF died, _poll never runs and this is inert."
 

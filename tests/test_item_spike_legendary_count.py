@@ -1,7 +1,7 @@
 """Item-power-spike callouts must count COMPLETED LEGENDARIES, not slots.
 
-Third and last consumer of the raw-inventory-slot-count defect. f6e8c11c fixed
-the ARAM shadow assembler, b4919236 fixed the served build-order index, and both
+Third and last consumer of the raw-inventory-slot-count defect. 5f1b6d5c fixed
+the ARAM shadow assembler, 040f011e fixed the served build-order index, and both
 deliberately left this one alone: ``next_callouts`` still received
 ``len(gs["items"])``, and ``dashboard/_liveclient.py`` builds that list from
 EVERY inventory slot displayName / itemID (line 187 + 191), trinket and Health
@@ -12,7 +12,7 @@ number of completed items owned and emits an ACTIVE row at 1 / 2 / 3
 ("2-item spike - force fights now", eta_s 0.0). So a player holding nothing but
 a trinket and a Health Potion was told they had hit a 2-item power spike.
 
-The semantics chosen here are NOT the build-progress count b4919236 used for the
+The semantics chosen here are NOT the build-progress count 040f011e used for the
 recall index, and that difference is pinned by test:
 
   * A power spike is a fact about the player's combat stats, so a legendary

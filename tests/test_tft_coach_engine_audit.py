@@ -8,7 +8,7 @@ consumers poll (criterion 3), it parses a model response it does not author
 (criterion 1), and it had NO dedicated test module before this one
 (criterion 4).
 
-20 of the 21 tests here were RED at b47f5019 before the fix in the same
+20 of the 21 tests here were RED at 8bb010ba before the fix in the same
 commit, and all 20 were mutation-tested (break the guarded production line,
 confirm RED, restore).
 

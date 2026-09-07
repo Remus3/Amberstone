@@ -301,7 +301,7 @@ class LcuClient(_PGMixin):
             except BaseException:  # noqa: BLE001
                 # A tick raising ANYTHING other than an external cancel must
                 # never kill the 1 Hz self-heal loop (layer-2, closes the
-                # 90b350c8 caveat). exc_info gives a traceback if it ever fires
+                # 8d2b4e2b caveat). exc_info gives a traceback if it ever fires
                 # - the 2026-07-04 silent-death left no logged trace. Next
                 # iteration re-runs _refresh_conn_if_changed(). Fail-soft.
                 _log.debug("auto-accept tick raised; loop continues", exc_info=True)

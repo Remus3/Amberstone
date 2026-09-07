@@ -9,11 +9,11 @@
 # assert on their CONTENT, so a .md-only commit can turn a .py guard RED with
 # nothing watching. It happened twice in a row:
 #
-#   6bad3814  docs-only. Pushed the newest `| R<n> |` row of
+#   b412c2d8  docs-only. Pushed the newest `| R<n> |` row of
 #             docs/ORCHESTRATION_PLAN.md past the 16000-byte director-context
 #             tail and turned tests/test_loop_director_context_caps.py RED.
 #             No CI run.
-#   8d22734b  the docs-only FIX for that. Also no CI run, so the fix's own
+#   ae829bb2  the docs-only FIX for that. Also no CI run, so the fix's own
 #             green was never machine-confirmed.
 #
 # This workflow fires on exactly what ci.yml declines and runs ONLY the

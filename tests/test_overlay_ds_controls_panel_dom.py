@@ -171,7 +171,7 @@ class CssTests(unittest.TestCase):
 
     def test_overlay_reveal_rule(self):
         # Widget-field doctrine (docs/OVERLAY_DOCTRINE.md section 4 + overlay.css
-        # section 4d; panel sets RETIRED 2026-06-28, commit b16bfce1): the FIGHT
+        # section 4d; panel sets RETIRED 2026-06-28, commit bf205ad0): the FIGHT
         # MODEL pane (w-ovds) is shown UNCONDITIONALLY when not per-widget-hidden
         # (display:block !important) over the base #view-active-match
         # #am-pane-ovds {display:none}. No panel set gates it - .ovx-hidden /

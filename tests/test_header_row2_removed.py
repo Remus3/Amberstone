@@ -7,7 +7,7 @@ was dead vertical chrome on the companion surface - the in-game surface
 is the ?overlay=1 HUD, which display:none's the WHOLE header anyway
 (web/css/overlay.css body[data-shell="overlay"] header).
 
-Guards (daf09498 removed-surface precedent):
+Guards (4e5b2575 removed-surface precedent):
   - index.html header carries exactly one .header-row and no
     .header-row-2 marker or row-2 element ids.
   - The retired FE pollers are gone (trigger_pill.js 2Hz

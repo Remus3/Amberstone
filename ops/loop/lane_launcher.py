@@ -235,7 +235,7 @@ def renormalize_eol(wt: Path) -> list[str]:
     `.gitattributes` in force at that moment, and `core.autocrlf=true` on this
     fleet (from the SYSTEM gitconfig, not `.git/config`, so a per-worktree
     override is not available) writes CRLF for every tracked text path not
-    pinned `eol=lf`. When `8119b3334` widened the pin to `.json`, `.js` and 13
+    pinned `eol=lf`. When `fa0e7ea74` widened the pin to `.json`, `.js` and 13
     more, every worktree materialized before it kept those files as CRLF - and
     git never re-materializes them, because the BLOB never changed. `git status`
     stays clean, so the condition is invisible to every git-based check.

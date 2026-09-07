@@ -19,7 +19,7 @@ is purchasable + ARAM-legal in the raw data - so a future data change that fixes
 it upstream fails HERE loudly rather than silently voiding the guard), and (2)
 ``_filter_candidates`` excludes EVERY Ornn masterwork item in EVERY mode.
 
-No ENGINE_VERSION bump (mirrors the 2026-07-02 ranged-only deny d5ef1c90: a
+No ENGINE_VERSION bump (mirrors the 2026-07-02 ranged-only deny ca1c9015: a
 pool-correctness deny of a never-buyable item, bump deferred).
 """
 

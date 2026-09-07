@@ -15,7 +15,7 @@ Locks the R56 MUST-FIXes so they cannot regress:
     carries min-height: var(--hit-min).
   STRUCTURE - the Recent Coach Calls poll is gated on its DOM section
     existing: the #recent-coach-calls markup was dropped with the s162
-    lobby v2 (832704a7), so an unguarded setInterval fetched
+    lobby v2 (70786820), so an unguarded setInterval fetched
     /api/decisions/log every 30s into a null render forever.
   ASCII - no em/en dashes or smart quotes in the audited files.
 """
@@ -68,7 +68,7 @@ class TestR56Typography(unittest.TestCase):
     def test_trigger_pill_surface_stays_retired(self):
         # Retired with header row 2 (2026-07-04): the module file is gone
         # and map_state.css carries no .trigger-pill rules. Absence guard
-        # per the daf09498 removed-surface precedent.
+        # per the 4e5b2575 removed-surface precedent.
         self.assertFalse(TP_JS.exists(),
                          "trigger_pill.js was retired with header row 2")
         blocks = _trigger_pill_blocks(MS_CSS.read_text(encoding="utf-8"))

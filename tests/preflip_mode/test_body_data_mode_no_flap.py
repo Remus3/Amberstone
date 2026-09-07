@@ -1,6 +1,6 @@
 """Cross-seam no-flap guard for body[data-mode] during lobby preflip.
 
-Bug (2026-05-17, fixed in 5bfa7ea5): in an ARAM/Arena lobby or champ
+Bug (2026-05-17, fixed in cef09d31): in an ARAM/Arena lobby or champ
 select the dashboard had two disagreeing mode authorities writing
 ``body[data-mode]`` on independent cadences:
 
