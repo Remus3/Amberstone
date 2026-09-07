@@ -277,11 +277,14 @@ def test_queue_intent_records_the_fixed_next_session_path(ctldir):
     _post({"action": "queue_intent", "intent": "done_continue",
            "idempotency_key": KEY_A})
     doc = json.loads((ctldir / "INTENT_DONE_CONTINUE.json").read_text(encoding="utf-8"))
-    # Single well-known path, OVERWRITE-on-write, no timestamp suffix, and
-    # RC- namespaced: the Desktop is shared with the sibling repos, which run
-    # this same design concurrently (operator 2026-07-30).
-    assert doc["next_session_path"] == "Desktop/RC-NEXT-SESSION.txt"
-    assert mod.NEXT_SESSION_PATH == "Desktop/RC-NEXT-SESSION.txt"
+    # Single well-known path, OVERWRITE-on-write, no timestamp suffix. Relative
+    # to the REPO ROOT since 2026-09-06 - it used to be "Desktop/..." and the
+    # Desktop now holds only a shortcut, so the hand-off is tracked in git and
+    # a stale one is visible in a diff. Still RC- namespaced: the shortcuts are
+    # a shared surface, and the prefix is what stops a doctored intent doc from
+    # naming an arbitrary write target.
+    assert doc["next_session_path"] == "RC-NEXT-SESSION.txt"
+    assert mod.NEXT_SESSION_PATH == "RC-NEXT-SESSION.txt"
 
 
 def test_queue_intent_replay_returns_stored_result_and_no_second_side_effect(ctldir, monkeypatch):
