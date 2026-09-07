@@ -1,53 +1,89 @@
 NEXT SESSION
 ------------
-Task: Finish the pre-public-flip transition for Remus3/Amberstone. Four audit
-  blockers gate it and none are resolved: (1) secrets in pushed history -
-  config/vision_token.txt was tracked from the initial commit until dcd965f2d,
-  and five lane branch tips plus the backup-pre-scrub tag still carry the blob;
-  (2) 51 MB of verbatim scraped aggregator J HTML under data/meta_build/, in
-  history since 2026-05-03; (3) Overlay App E augment data that Share/LICENSE.md:84-86
-  already excludes on purpose but the main repo still ships; (4) a THREE-WAY
-  licence contradiction - the new Apache-2.0 LICENSE vs Share/LICENSE.md's
-  no-redistribution clause vs README.md:227 "all rights reserved".
-  Operator has ruled: Share/ is REMOVED before the flip (scope B), and the
-  review gist is retired - its README already carries the public notice and the
-  repo link, done 2026-09-07.
+Task: Execute the third-party name scrub, then apply the path purge as ONE
+  history rewrite. It is blocker 5 of 5 and the sole reason the public flip
+  is currently NO-GO (docs/PUBLIC_FLIP_GO_NO_GO.md, written 2026-09-07).
+
 Context:
-  - Share/ removal is 548 tracked files / 20.5 MB and touches 46 test modules
-    (31 under tests/, 15 under agents/daemon_slayer/tests/), plus
-    tools/ds_share_sync.py, .githooks/pre-commit:68, .githooks/post-commit,
-    tools/gist_share_sync.py, tests/test_gist_share_sync.py, and the ci.yml
-    step "DS Share package in sync". LIVE ENGINE CODE DOES NOT DEPEND ON IT -
-    the only non-test reference is a docstring at
-    agents/daemon_slayer/data_loader.py:52. docs/HEXCORE_offline.html needs NO
-    change; its three "gist" hits are substrings of "registry".
-  - docs/PRE_RELEASE_NAME_SCRUB.md is the standing prerequisite and it
-    UNDERSTATES itself on both halves: its "already scrubbed from content" claim
-    is false (one survives at tools/headless-upgrade.md:142, reintroduced after
-    the scrub) and "5 historical commit messages" is actually 9. The name is
-    also in the BLOB CONTENT of 19 commits, which a message-only rewrite misses.
-  - CLAUDE.md:310 is FALSE: it says the 101.qq raw payload is gitignored;
-    git check-ignore disagrees and the capture is tracked.
-Acceptance: Share/ gone with all 46 test modules green, the licence statements
-  reconciled to one, the scrub plan's own status lines corrected to measured
-  values, and a written go/no-go on the flip - NOT the flip itself.
+  - docs/PRE_RELEASE_NAME_SCRUB.md UNDERSTATES ITSELF ON BOTH HALVES. It
+    claims the competitor name is already scrubbed from tracked content.
+    MEASURED 2026-09-07: 129 files, 34757 occurrences. Correct that doc's
+    own status lines to measured values as part of the work.
+  - Three findings make it more than a count: the name is in a tracked
+    FILENAME (scripts/parse_external_arena.py); it appears 262 times as
+    `_sources` provenance URLs in data/meta_build/arena_champion_builds.json
+    which is LIVE-READ by coaches/_arena_item_advisor.py:27,77,
+    core/precomputed_anvil_advisor.py:27 and
+    dashboard/_deterministic_coaching.py:1470; and it is in
+    data/meta/tft_set16_meta.json in the INITIAL COMMIT's tree, so all 5132
+    commits carry it and a message-only rewrite misses every one.
+  - Commit MESSAGES carrying it: 9, not the 5 the plan claims.
+  - Other in-scope names still in the tree (file counts): aggregator C 73,
+    aggregator A 71, aggregator B 65, overlay platform M 62, aggregator D 58, overlay app F 41,
+    overlay app E 35, aggregator G 33, aggregator H 20, draft tool L 19, plus five
+    sibling-project references. Scope-OUT stays: DDragon, CommunityDragon,
+    Meraki, the LoL wiki, Riot API / Match-V5, lolmath, 101.qq.
+  - THE PATH PURGE IS ALREADY PROVEN. Isolated mirror clone at
+    C:/rc-purge-staging/rc.git, dropping config/vision_token.txt,
+    data/meta_build/refresh_2026-05-02/, Share/, and the six
+    data/daemon_slayer/*/mayhem_augment_stats.json. Verified: all four at 0
+    commits, live data intact. Re-run it against CURRENT main rather than
+    reusing that clone - main has moved 12 commits since.
+  - tools/rewrite_sha_citations.py is BUILT AND TESTED (14 tests). Against a
+    real commit-map it gave 1856 remapped / 25 dropped / 0 ambiguous. The
+    repo cites 7096 SHAs across tracked markdown. Use --require-backticks.
+  - Backup bundle, verified complete:
+    C:/ClaudeBackup_20260906/rc-pre-purge-20260907-012420.bundle
+    Make a FRESH one before rewriting; that one predates 12 commits.
+
+Acceptance:
+  - `git grep -il <each in-scope name>` over tracked content -> empty, and
+    `git log --all --format=%B | grep -i <name>` -> empty.
+  - The live-read provenance rows are handled WITHOUT breaking the four
+    modules that read that file - decide replace-vs-strip deliberately.
+  - Path purge applied to the live repo, force-pushed (operator
+    pre-authorised in the scrub plan; re-confirm at execution), lane
+    branches re-cut, the 25 dropped citations accepted in writing.
+  - a stray cross-project scaffold branch DELETED - its branch NAME is
+    itself a cross-project leak.
+  - Both suites green from the repo root, measured fresh.
+  - docs/PUBLIC_FLIP_GO_NO_GO.md updated with the new verdict.
+
 Do NOT redo:
-  - CodSpeed is deleted deliberately. docs/OPERATIONS.md "Why CodSpeed was
-    dropped" has the measurement. Do not re-add it as a minute-saver reversal.
-  - winmutex.py 0b112a4f and slots.py 629c3d51 are pinned and agree across RC,
-    LW and RSC. The hold() leak is FIXED; its neutralising write is IN PLACE and
-    deliberately not tmp+os.replace - applying the atomic-write hard rule there
-    restores the leak.
-  - CI is green (31724 passed). The vision-token red was a missing CI value, not
-    a defect.
-  - Caveman ultra is operator-settled, not a live dissent.
-  - The verbatim drop was PULLED from all four sibling inboxes - 19 of 48 files
-    carried the operator account name. A redacted re-drop needs paths
-    parameterised and a sweep BEFORE it leaves.
-Open cross-repo: the reserved-slot round (one guaranteed lane per repo, width 7)
-  is blocked on agreeing repo keys rc/lw/rsc/cs/ll and on CS+LL saying whether
-  they want a slot - neither carries the governor yet. Charter v1-v4 is in
-  docs/CROSS_REPO_CONVERGENCE_CHARTER.md. Unread: three CS notes and one RSC
-  note landed at wrap.
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-  git log, then read moon_sync_inbox/ INCLUDING subdirectories.
+  - Share/ removal is DONE and merged (d76004025). tools/ds_share_sync.py,
+    tools/gist_share_sync.py and the post-commit gist hook no longer exist.
+  - Licence is CLOSED (2ff47493b). Apache-2.0 is kept BYTE-PURE with the
+    scope block AFTER the terms deliberately - a leading preamble can defeat
+    GitHub licence detection. NOTICE carries the data sources. Do not
+    "tidy" either into the other.
+  - Inbox watcher (4 defects) and the shared cross-repo poller are shipped
+    and running as RC-MoonSyncPoller. The ladder (5min/30min/4h/12h at idle
+    0/20m/4h/24h) was retuned on operator instruction - do not re-tune it.
+  - Do NOT purge data/meta_build/ wholesale. Only refresh_2026-05-02/ is
+    scraped; the rest is live and read by 11 modules including
+    lcu/lcu_client.py, core/rune_wpa.py and all three coaches.
+  - Do NOT run filter-repo directly on the live repo while worktrees are
+    checked out - it rewrites every ref and orphans all of them.
+  - CodSpeed is deleted deliberately. winmutex 0b112a4f / slots 629c3d51
+    are pinned across carriers.
+
+Open operator decisions (both named in the go/no-go, neither is mine):
+  1. Publish the author email carried in all 5132 commit author fields?
+  2. Does the Arena augment recommender ship with degraded priors once the
+     Overlay App E snapshots are purged, or does it get a replacement source?
+     Reader is core/augment_external_source.py:199, reached by f-string.
+
+Residue worth one cheap fix: 10 of 15 root-walking guards in tests/ have no
+  worktree exclusion (bare ROOT.rglob). Only 2 fired this session, when the
+  merged agent worktree was still on disk inside the repo; the other 8 are
+  latent and will fire whenever a worktree agent exists, which is the
+  default session shape. A shared exclusion helper closes all 10.
+
+Cross-repo: 4 unread notes at wrap (LW x2, CS, LL) - all on the watcher
+  round. CS found a paragraph DEFENDING the name key whose central claim was
+  inverted; RC found and corrected its own stale rationale in 91660760a.
+  Reserved-slot round is unblocked: CS took key `cs`, RSC confirmed `rsc`,
+  LL adopted charter v4.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES
+  + git log, then read moon_sync_inbox/ INCLUDING subdirectories.
