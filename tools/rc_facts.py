@@ -292,35 +292,56 @@ def main() -> int:
     return 0
 
 
-def _payload_key(p: Path) -> str:
-    """Identify a subdirectory payload by its MANIFEST, not by a file count.
+def _file_digest(p: Path) -> str:
+    """sha256 of one file's bytes, or the exception class if unreadable.
 
-    Operator suggestion 2026-09-06, and it closes a hole in the same day's fix.
-    Keying a payload on `(N files)` means a sender who REPLACES a file leaves the
-    count unchanged, so the payload reads as already-seen and the change is
-    never reported. That is the identical defect as the mtime watermark this
-    watcher already rejected: a key that can stay equal while the thing it names
-    has moved.
-
-    A manifest fixes it and is CHEAPER than the alternative. One file read per
-    payload instead of an rglob and a hash over every file, and it changes
-    whenever any listed file does. Sibling-E already ships `MANIFEST.sha256`
-    with its payloads; RC did not, and RC is fixing that on its side too.
-
-    Falls back to a file count when no manifest is present, and SAYS SO in the
-    entry - an unverifiable key that looks like a verified one is worse than an
-    honest weak one.
+    An unreadable file must MOVE the digest rather than vanish from it. If a
+    read error contributed nothing, a payload that became unreadable would key
+    identical to the one already acknowledged.
     """
-    for name in ("MANIFEST.sha256", "MANIFEST.txt", "manifest.json"):
-        m = p / name
-        if m.is_file():
-            try:
-                digest = hashlib.sha256(m.read_bytes()).hexdigest()[:12]
-            except OSError:
-                continue
-            return f"[{name} {digest}]"
-    n = sum(1 for _ in p.rglob("*") if _.is_file())
-    return f"({n} files, NO MANIFEST - count only)"
+    try:
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+    except OSError as exc:
+        return f"UNREADABLE:{type(exc).__name__}"
+
+
+def _payload_key(p: Path) -> str:
+    """Identify a subdirectory payload by a digest over its CONTENTS.
+
+    Rewritten 2026-09-07 after an empirical probe showed both earlier keys
+    were content-blind, each in its own way:
+
+      * The original `(N files)` count let a sender REPLACE a file without
+        moving the key, so the payload read as already-seen.
+      * The MANIFEST key that replaced it only re-read the manifest FILE. A
+        payload edited without regenerating its manifest keyed identical -
+        measured, not theorised. Trusting a sender's manifest means trusting
+        that they remembered to rebuild it, which is exactly the assumption a
+        watcher exists to remove.
+
+    So the digest is computed over what is actually on disk. Per Sibling-D's
+    OPS-34 design, re-implemented from their prose rather than vendored: one
+    line per contained file holding the drop-relative POSIX path, a NUL, then
+    that file's sha256; sorted; joined with newlines; hashed once.
+
+    The path is INSIDE each line deliberately. A digest over contents alone
+    calls two files that swapped contents unchanged, and a rearranged drop is
+    a changed drop.
+
+    A manifest, when present, is reported for human context but is NOT the key.
+    """
+    files = sorted((f for f in p.rglob("*") if f.is_file()), key=lambda f: f.as_posix())
+    lines = [
+        f"{f.relative_to(p).as_posix()}\0{_file_digest(f)}".encode("utf-8", "surrogateescape")
+        for f in files
+    ]
+    digest = hashlib.sha256(b"\n".join(lines)).hexdigest()[:12]
+    manifest = next(
+        (n for n in ("MANIFEST.sha256", "MANIFEST.txt", "manifest.json") if (p / n).is_file()),
+        None,
+    )
+    tail = f", {manifest} present" if manifest else ""
+    return f"[{len(files)} files, content {digest}{tail}]"
 
 
 def _inbox_entries(inbox: Path) -> set[str]:
@@ -343,6 +364,13 @@ def _inbox_entries(inbox: Path) -> set[str]:
     that GROWS is not silently equal to the one already acknowledged.
 
     `_`-prefixed names stay excluded: those are drafts staged in the inbox.
+
+    NOTES ARE KEYED ON (name, content digest), not on name alone. Measured
+    2026-09-07: a name-only key meant a sibling who CORRECTED a note in place
+    - which LW has done at least twice, under a "CORRECTION" heading - moved
+    nothing the watcher could see, so the correction was never reported. The
+    pair makes both edit paths visible: a rename surfaces it, an edit surfaces
+    it. Sibling-D credited RC with this design before RC actually had it.
     """
     if not inbox.is_dir():
         return set()
@@ -353,7 +381,7 @@ def _inbox_entries(inbox: Path) -> set[str]:
         if p.is_dir():
             out.add(f"{p.name}/ {_payload_key(p)}")
         elif p.is_file():
-            out.add(p.name)
+            out.add(f"{p.name} [{_file_digest(p)[:12]}]")
     return out
 
 
@@ -376,7 +404,55 @@ def mark_inbox_seen() -> int:
     return 0
 
 
+def report_inbox_only() -> int:
+    """Inbox scan alone, cheap enough to run on EVERY operator message.
+
+    Exists because `SessionStart` fires once and never again. A note that lands
+    while a session is live was invisible until the next start, which is the
+    common case here: the siblings write into this inbox continuously, and one
+    of them measured a drop growing by two files eleven minutes apart inside a
+    single session. A watcher that only looks at startup cannot see that, no
+    matter how good its key is.
+
+    Wired to `UserPromptSubmit`, so it also re-fires on the first message after
+    a `/clear` - a `/clear` starts a fresh context but the operator's first
+    message is usually a pasted hand-off prompt, and the inbox must be checked
+    against THAT moment rather than against whenever the process happened to
+    start.
+
+    SILENT when nothing is unread. A hook that prints on every prompt trains
+    the reader to skip it, and this one has to stay worth reading. It also
+    never advances the seen watermark: acknowledgement stays a separate,
+    deliberate act, which is what keeps a subagent's start from marking the
+    operator's queue read (a defect a sibling repo measured in its own tree).
+    """
+    try:
+        inbox = _ROOT / "moon_sync_inbox"
+        if not inbox.is_dir():
+            return 0
+        seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
+        names = _inbox_entries(inbox)
+        try:
+            seen = set(json.loads(seen_path.read_text(encoding="utf-8")).get("seen", []))
+        except (OSError, ValueError):
+            seen = set()
+        unread = sorted(names - seen)
+        if not unread:
+            return 0
+        print(f"## Cross-repo inbox - {len(unread)} UNREAD (checked this message)")
+        for n in unread[:10]:
+            print(f"- {n}")
+        if len(unread) > 10:
+            print(f"- ... and {len(unread) - 10} more")
+        print("Read them, then: python tools/rc_facts.py --mark-inbox-seen")
+    except OSError:
+        pass  # a hook must never fail the turn
+    return 0
+
+
 if __name__ == "__main__":
     if "--mark-inbox-seen" in sys.argv:
         sys.exit(mark_inbox_seen())
+    if "--inbox-only" in sys.argv:
+        sys.exit(report_inbox_only())
     sys.exit(main())
