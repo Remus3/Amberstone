@@ -75,10 +75,9 @@ def _patch() -> str:
 
 def _catalog() -> dict:
     path = _ROOT / "data" / "meta_build" / "ddragon" / _patch() / "item.json"
-    # TRACKED in git for every patch current.txt can point at, and this module
-    # is NOT part of the Share mirror, so absence means the committed catalog
-    # was deleted or current.txt moved ahead of its DDragon pull - a failure,
-    # not an absent capability.
+    # TRACKED in git for every patch current.txt can point at, so absence means
+    # the committed catalog was deleted or current.txt moved ahead of its
+    # DDragon pull - a failure, not an absent capability.
     assert path.exists(), (
         f"current.txt points at patch {_patch()!r} but the tracked DDragon "
         f"catalog {path} is not committed"

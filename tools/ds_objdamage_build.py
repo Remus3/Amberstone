@@ -9,8 +9,7 @@ classified entry against ``_OBJDAMAGE_KIND_WEIGHT`` / ``_OBJDAMAGE_SCOPE_MULT``
     (grouped by champion, P/Q/W/E/R/BASE order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/objdamage_registry_notes.json`` (champion, source,
-    kind, scope, magnitude, conditional, source_quote) - excluded from Share
-    like CHANGELOG.md / zonecontrol_registry_notes.json.
+    kind, scope, magnitude, conditional, source_quote).
 
 The objective-damage axis scores the full roster (every champion carries at
 least one row), the threat-range / wave-clear shape.

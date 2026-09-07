@@ -34,7 +34,7 @@ def _synthetic_facts() -> dict:
             "churn_total": [2602433, 697329],
             "churn_source": [558359, 72324],
             "types": [["docs", 482], ["feat", 403], ["fix", 131]],
-            "dirs": [["agents", 6397], ["Share", 4707], ["docs", 825]],
+            "dirs": [["agents", 6397], ["tools", 4707], ["docs", 825]],
             "authors": [["Moonbeam", 1468]],
             "files_touched": 2996,
         },

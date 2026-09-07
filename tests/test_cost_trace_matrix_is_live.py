@@ -25,8 +25,9 @@ re-implementation of the same stated rule got 773/708 over all tracked `.md`
 and 234/184 excluding archive and history - neither near 114/62. The rule as
 prose is too under-specified to reproduce, and the answer swings about 3x on
 corpus choice alone. The 114/62 corpus was: tracked `.md`, excluding
-`docs/_archive/**`, the five append-only history files, `Share/**`, any path
-containing CHANGELOG, and any cited path under `tests/`.
+`docs/_archive/**`, the five append-only history files, the generated
+review-mirror tree that existed at the time, any path containing CHANGELOG,
+and any cited path under `tests/`.
 
 What DOES reproduce, and is the actual reason for the refusal, is the
 qualitative result: every sampled hit was CORRECT prose - a shadow-report tool,

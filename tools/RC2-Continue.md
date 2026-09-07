@@ -35,7 +35,7 @@ For the selected stage, run the per-stage ritual from `docs/RC2_PLAN.md`:
   ENGINE_VERSION / item-effect); Tier-0/1 run the scoped check once.
 - UI stages: 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII /
   HIERARCHY) + Claude_Preview vs `/api/state` BEFORE commit.
-- DS seams DEFAULT-OFF + ENGINE bump + DS :8860 restart + Share sync in the same
+- DS seams DEFAULT-OFF + ENGINE bump + DS :8860 restart in the same
   commit; live flip -> `docs/LIVE_GAME_GATED_SYNC.md`.
 - commit + push + CI green -> `/done` (append `docs/LEDGER.md` as `RC2-<stage>`,
   sync `docs/RC2_PLAN.md` + ROADMAP).

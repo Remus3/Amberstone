@@ -106,12 +106,10 @@ _SCORING_FUNCTION_NAMES = (
     "compute_antitank_live",
 )
 
-# Directories excluded from the structural repo scan. Share/ is the generated
-# mirror (a copy of the same source - scanning it would make this module go red
-# on mirror drift, an unrelated fault), _archive/ is quarantined history, and
-# data/ holds no code.
+# Directories excluded from the structural repo scan. _archive/ is quarantined
+# history, and data/ holds no code.
 _SCAN_SKIP_DIRS = frozenset(
-    {"Share", "_archive", ".git", "node_modules", ".venv", "venv", "logs", "data"}
+    {"_archive", ".git", "node_modules", ".venv", "venv", "logs", "data"}
 )
 
 _DOT_AXIS_READ = re.compile(r"(?<![\w])\.axis\b")

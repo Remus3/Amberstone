@@ -121,7 +121,7 @@ Measure with `inspect.signature` and real calls; never inherit a docstring.
   `app/_game_lifecycle.py`, `agents/agent7_context/warm_session.py`, `performance_tracker.py`, `tft/tft_coach_engine.py`. Trace every path the value can take
   and assert in a test that a raised exception, a `repr()` and a log record all fail to contain it. Several of those are FROZEN - 6a governs before you edit.
 - **The `except Exception` census.** `ruff.toml` selects `BLE` as an explicit ratchet ("no NEW bare `except Exception`") with per-file ignores for the DS
-  engine, `Share/**`, the DS tools and several frozen `app/` modules. Measured: **848 `except Exception` sites across `dashboard/` and `core/` alone.** The
+  engine, the DS tools and several frozen `app/` modules. Measured: **848 `except Exception` sites across `dashboard/` and `core/` alone.** The
   ratchet stops growth, it does not fix the existing ones, and each is where a real bug becomes a silent degradation. When one sits in your file, narrow it to
   the exception actually expected, let the rest raise, and add the test proving the unexpected one now surfaces.
 
@@ -197,8 +197,8 @@ the suite. A test written after the fix proves the fix ran, not that the bug exi
 5. **Harden.** Every weakness is closed in the SAME slice or filed as an explicit FUTURE row with an id. A deferred finding that is not written down did not
    happen.
 6. **Tier the verification** (R5-R7). Tier-0 cosmetic (doc, comment, string, non-runtime constant): Edit plus `py_compile`. Tier-1 local logic in one module:
-   `py_compile` plus that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite plus the DS `:8860` restart plus the
-   Share mirror. **A lane-8 rewrite of a `core/` or `dashboard/` module is usually Tier-1 with a Tier-2 tail if it changes a shape any other module reads.** Say
+   `py_compile` plus that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite plus the DS `:8860` restart.
+   **A lane-8 rewrite of a `core/` or `dashboard/` module is usually Tier-1 with a Tier-2 tail if it changes a shape any other module reads.** Say
    which tier you paid.
 7. **Verifier gate.** An independent read-only `verifier` subagent (`.claude/agents/verifier.md`, no Edit or Write) re-runs the suite fresh, confirms every
    cited file exists on disk, and returns CONFIRM or REFUTE. Merge only on CONFIRM. The agent that produced the change NEVER grades it, and **agreement between

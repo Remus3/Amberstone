@@ -35,7 +35,7 @@ For the selected WP, run its row from `docs/OVERLAY_BUILD_MASTER_PLAN.md` end to
   Give substantive agents (C2 beam search, B2/B3 module, D2 radial) high-effort budgets.
 - **Tiered verification (R5-R7):** Tier-0 cosmetic = edit + py_compile if .py. Tier-1 = py_compile
   + that module's own tests. Tier-2 (A4a, C5) = full dual suite (DS dir + `tests/`) + DS :8860
-  restart + Share mirror sync in the SAME commit.
+  restart in the SAME commit.
 - **UI WPs** (A1, A4b, A5, A6, B2, B3, B4, D1, D2, D3): run the Section G.9 5-phase UI-audit
   ritual (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) + Claude_Preview vs `/api/state`
   BEFORE commit; resolve every MUST-FIX in the same slice. Honor the Section G UX doctrine

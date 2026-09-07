@@ -18,7 +18,7 @@ every one of which actually happened here:
   * An ENGINE bump left a stale version in ``docs/HEXCORE_offline.html`` - a
     FOURTH anchor site no checklist named - and it surfaced only 25 minutes into
     a full CI run (2026-07-26, ENGINE 1.259.0).
-  * ``Share/README.md`` said "the fifteen most recent" above a list of twenty.
+  * A release-history doc said "the fifteen most recent" above a list of twenty.
 
 Each of those is seconds to DETECT and a session to REPAIR. That asymmetry is
 the entire argument for this file.
@@ -71,10 +71,10 @@ MEMORY_INDEX = "MEMORY.md"
 # meant to outlive their session, so the index does not track them.
 MEMORY_UNINDEXED_OK = ("project_ds_sweep_", "_")
 
-DOC_GLOBS = ("*.md", "docs/*.md", "docs/**/*.md", "docs/**/*.html", "Share/*.md")
+DOC_GLOBS = ("*.md", "docs/*.md", "docs/**/*.md", "docs/**/*.html")
 # Files that legitimately name OLD versions forever.
 HISTORICAL = re.compile(r"CHANGELOG|HISTORY|LEDGER|WAKEUP|_archive|ROADMAP_HISTORY", re.I)
-EXCLUDE_PATH = ("_archive", "node_modules", ".git", "Share/src")
+EXCLUDE_PATH = ("_archive", "node_modules", ".git")
 # ---------------------------------------------------------------------------
 
 
@@ -249,7 +249,7 @@ def check_version_anchors(
     LINE-LEVEL CONTEXT, added 2026-07-26. Excluding historical FILES was not
     enough: history and live claims routinely share a doc. The 1.259.0 sweep
     reported three sites and ALL THREE were correct history - a release list
-    reading ``- 1.259.0 -> 1.260.0 - ...`` in ``Share/README.md``, the same
+    reading ``- 1.259.0 -> 1.260.0 - ...``, the same
     transition inside an ``ORCHESTRATION_PLAN.md`` narrative row, and a ROADMAP
     fence recording that RM-91 CLOSED at ENGINE 1.258.0 + 1.259.0. A guard that
     cries wolf on every bump gets waved through on the bump where it is right,
@@ -425,9 +425,8 @@ def check_orphaned_git_hooks(root: pathlib.Path) -> list[Finding]:
     hook that lives ONLY in the untracked one. Measured 2026-07-26: the flip
     orphaned `post-checkout`, `pre-push` (both Git LFS, and this repo has
     LFS-tracked files, so LFS checkout and LFS UPLOAD both break) and
-    `post-commit` (the Share review-gist mirror). Nothing reports it - git simply
-    stops consulting them, pushes still look clean, and LFS content quietly never
-    reaches the remote.
+    `post-commit`. Nothing reports it - git simply stops consulting them, pushes
+    still look clean, and LFS content quietly never reaches the remote.
 
     Reported as a breach rather than a note because the failure is silent in
     exactly the direction that loses data.

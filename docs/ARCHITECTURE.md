@@ -213,9 +213,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 ### Tools / ops
 | File | Role |
 |---|---|
-| `Share/src/tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
-| `Share/src/tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
-| `Share/src/tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
 | `tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
 | `tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
 | `tools/build_order_coverage.py` | Lane B precomputed build-order COVERAGE measurement |
@@ -227,7 +224,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tools/det_coach_shadow_report.py` | B1 deterministic-coaching flip-readiness report over the det shadow log |
 | `tools/gated_live_probe.py` | one-shot live-game evidence probe for the gated-drain lane |
 | `tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
-| `tools/gist_share_sync.py` | secret-gist mirror of the Share/ review package |
 | `tools/hz_mismatch_diagnose.py` | HZ mismatch root-cause diagnosis over the laning-combat shadow log |
 | `tools/hz_shadow_arena_contamination.py` | RM-158 data half - SR-derived ARENA precompute detector + provenance flagger over the HZ-C1 shadow corpus |
 | `tools/hz_shadow_report.py` | HZ-C validation report over the precompute shadow logs |

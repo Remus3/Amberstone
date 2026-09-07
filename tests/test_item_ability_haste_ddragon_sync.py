@@ -19,7 +19,8 @@ These two guards make the drift class fail LOUDLY at CI time going forward:
      hardcoded 16.12.1 and false-reported IN SYNC).
 
 Repo-level (not agents/daemon_slayer/tests/) on purpose: it imports the
-ops/audit drift-check tool, which is NOT part of the Share/src engine bundle.
+ops/audit drift-check tool, which sits outside the engine package and which
+the engine suite must stay able to run without.
 ASCII only (CLAUDE.md hard rule).
 """
 from __future__ import annotations

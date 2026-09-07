@@ -31,8 +31,8 @@ SCHEMA_VERSION = 1
 # Repo-relative paths (this module lives in core/, so the repo root is one up).
 _CORE_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _CORE_DIR.parent
-# Top-level of data/daemon_slayer/ keeps the committed JSON OUT of the Share/src
-# mirror (exactly like R121's vision_atlas_manifest.json).
+# The committed JSON lives at the top level of data/daemon_slayer/ (exactly
+# like R121's vision_atlas_manifest.json).
 DEFAULT_ATLAS_PATH = _REPO_ROOT / "data" / "daemon_slayer" / "vision_region_atlas.json"
 _REGIONS_SRC = _REPO_ROOT / "data" / "vision_regions.json"
 

@@ -25,7 +25,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 # Source-file lookups below are anchored on this file's own location, not the
-# process CWD, so the shipped Share/ package runs them from any directory.
+# process CWD, so they run from any directory.
 _DS_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 )

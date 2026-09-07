@@ -15,7 +15,7 @@ top-4 + demotes BORK off #1, in-process sweep at the live tanky target, levels
 13 + 16) is recorded in the module docstring of core.ds_champion_fight_length.
 This file pins the allow-map contract + the client-side live-path engagement -
 the half that needs core imports, so it lives in tests/ next to
-test_jhin_fight_length_wiring.py, keeping the DS engine's Share mirror core-free.
+test_jhin_fight_length_wiring.py, keeping the DS engine package core-free.
 
 ASCII only - use " - " for a clause break (repo hard rule).
 """

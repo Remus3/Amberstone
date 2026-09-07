@@ -50,9 +50,8 @@ a body-hash-only staleness check cry wolf forever, which is why RM-213's
 Two artifacts declare a NON-matching marker on purpose and must not be reported
 red: the authored event-mode augment feeds, whose body has not moved since
 16.10.1. The exception list is IMPORTED from ``tools/ds_feed_index.py`` rather
-than restated - one source of truth for "known stamp lag", and it keeps their
-filenames out of the engine package, which ``tests/test_ds_share_data_snapshot_scope``
-scans for as evidence of a real read.
+than restated - one source of truth for "known stamp lag", so the filenames
+appear once and this module cannot drift from the registry it describes.
 
 These tests pin:
 
@@ -73,8 +72,8 @@ exactly the field a copy-forward rewrites. Those tests pin
 ``artifact_refresh_verdict`` / ``check_artifact_refresh`` on synthetic
 documents only - the cross-dir assertion over shipped data lives in
 ``tests/test_ds_feed_index.py``, which is where the previous-patch baseline is
-actually available (the Share mirror ships one patch dir, so the engine package
-can never read a baseline off disk).
+actually available (the engine package alone carries a single patch dir, so it
+can never read a previous-patch baseline off disk).
 """
 from __future__ import annotations
 
@@ -363,7 +362,7 @@ def test_generator_stamps_the_historically_unmarked_artifacts():
 #
 # Everything below is deliberately fixture-only. The cross-dir assertion over
 # shipped data needs the PREVIOUS patch dir, which the engine package cannot
-# see (the Share mirror ships one dir), so it lives in tests/test_ds_feed_index.
+# see (it carries a single dir), so it lives in tests/test_ds_feed_index.
 # These pin the mechanism, not the corpus.
 
 # The three timestamp shapes actually present under data/daemon_slayer/, each
