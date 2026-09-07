@@ -60,7 +60,12 @@ content; `git log --all --format=%B | grep -i` returns empty for every one; and
 a blob sweep over `git rev-list --all --objects` returns empty. The tracked
 FILENAME and the live-read provenance rows were both handled - the rows by
 deleting the provenance blocks (measured: ZERO code readers) and lifting the one
-real datum they carried, `external_tier`, to champion level as `external_tier`.
+real datum they carried - a vendor-named tier grade - up to champion level under
+the neutral key `external_tier`. (This sentence deliberately does NOT spell the
+old key: an earlier draft did, and the scrub pipeline rewrote it into "lifting
+`external_tier` to `external_tier`". A document that describes a scrub is INSIDE
+the scrub's blast radius, and quoting the removed string as evidence is the one
+way to make it nonsense.)
 The measured scale, corrected from the plan's claim of "already scrubbed":
 **129 files, 34757 occurrences of one name, and 15 commit messages, not 5.**
 
@@ -92,6 +97,36 @@ written position against in the Share package's own licence. A replacement
 source was not sought, because acquiring one means scraping, which is the rights
 problem this whole pass exists to close.
 
+## The sixth blocker, found on the day and not in any plan: `refs/pull/*/head`
+
+**A force-push does not remove a pull request's head ref, and on a public repo
+those refs are permanently fetchable by anyone.** This was not in the hand-off,
+not in the five conditions, and it would have silently defeated four of them.
+
+MEASURED before the flip, by fetching `+refs/pull/*/head:*` from the repo:
+**13 PR refs**, and the tree at `refs/pull/13/head` alone still carried **120
+scraped-HTML files**, the **six vendor augment snapshots**, `data/replay_roster
+.json`, and `config/vision_token.txt` with its old value. Every in-scope name
+was in those trees too. Purging `main` would have moved the data out of the
+default branch and left it one `git fetch` away.
+
+**Operator decision: delete the repository and recreate it under the same name**,
+push only the rewritten history, then flip. It is the only option that actually
+delivers the purge - GitHub does not let an owner delete a pull request, and
+`refs/pull/*` is not garbage-collected. The cost was 13 closed pull requests and
+one closed issue, all internal lane merges authored by the repo owner. The URL,
+the README badges and the electron-updater `publish.repo` feed all keep working
+because the name is unchanged.
+
+Before deleting: repo metadata (description, homepage, 19 topics, feature flags)
+was captured to be restored verbatim, five verified bundles were taken, and the
+PR refs themselves were bundled to a local archive so a diff can still be
+recovered if one is ever wanted. Nothing about that archive is published.
+
+**The reusable lesson: a history rewrite is not the whole surface.** Ask what
+else the forge keeps - pull request refs, forks, release assets, Actions
+artifacts, caches, wikis, and pages branches all outlive a force-push.
+
 ## Citations
 
 A rewrite renames every commit, and this repo cites SHAs across tracked
@@ -109,7 +144,18 @@ new instances of a condition the repo already lived with.
 
 Recorded so a later audit does not read them as misses:
 
-- `ops/loop/slots.py` names two sibling projects in its docstring (above).
+- **OPERATOR RULING 2026-09-07: cross-project references are FINE in this
+  regard.** They are not treated as a leak class, so nothing below that is a
+  cross-project reference is a defect, and none of it blocked the flip. The
+  scrub still ran over sibling names, because extracting them to per-host
+  config is a PORTABILITY fix on its own merits - a hardcoded sibling checkout
+  path is wrong on every machine but this one - but that was the reason, not
+  disclosure.
+- `ops/loop/slots.py` names two sibling projects in its docstring (above). Left
+  as-is under that ruling AND because the bytes are a cross-repo contract. A
+  wording proposal sits in the sibling inboxes as an OFFER: if those repos reach
+  a consensus, RC vendors the result; if they leave it, that is a complete
+  answer. Operator: "if the others can come to a consensus then that is fine."
 - The two- and three-letter sibling initialisms survive. They are opaque to an
   outsider, several collide with real domain terms, and `core/ports.py` uses
   them as registry KEYS that sibling repos read.

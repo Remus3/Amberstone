@@ -193,6 +193,57 @@ def test_steady_state_reports_nothing(inbox: Path):
     assert seen - seen == set()
 
 
+def test_a_withdrawal_STOPS_being_reported_once_acknowledged(tmp_path, monkeypatch):
+    """The half every test above misses, and a sibling paid for the miss.
+
+    A carrier repo shipped the same feature, guarded it with four arms, and
+    still landed a withdrawal that could NEVER be cleared: their ack pruned the
+    seen record while the withdrawal set was derived from `reported | seen`, so
+    a withdrawn name re-derived itself forever. Every one of their arms passed,
+    because all four asserted that a withdrawal REPORTS and none asserted that
+    it STOPS reporting. That is a permanent line about an event the operator has
+    already handled, in the one section with no artifact left on disk to check
+    it against - which trains the reader to skip the section.
+
+    RC's construction differs and is not vulnerable: `mark_inbox_seen` REPLACES
+    the record with the current inbox rather than merging into it, and there is
+    no second `reported` set, so `seen - live` empties itself. Probed live
+    before writing this. But RC's guards had the identical BLIND SPOT, so the
+    property is pinned here rather than left as a fact about today's code.
+
+    This is deliberately end-to-end through the real ack entry point, not the
+    pure function: the defect lives in the RELATIONSHIP between the ack and the
+    derivation, and no test of either half alone can see it.
+    """
+    from tools import rc_facts
+
+    root = tmp_path / "repo"
+    (root / "moon_sync_inbox").mkdir(parents=True)
+    (root / "ops" / "runtime").mkdir(parents=True)
+    monkeypatch.setattr(rc_facts, "_ROOT", root)
+
+    note = root / "moon_sync_inbox" / "a.md"
+    note.write_text("one", encoding="utf-8")
+    rc_facts.mark_inbox_seen()
+
+    def withdrawn_now() -> list[str]:
+        import json
+        seen = set(json.loads(
+            (root / "ops" / "runtime" / "sync_inbox_seen.json")
+            .read_text(encoding="utf-8"))["seen"])
+        return rc_facts._inbox_withdrawn(
+            rc_facts._inbox_entries(root / "moon_sync_inbox"), seen)
+
+    note.unlink()
+    assert withdrawn_now() == ["a.md"], "a retraction must be reported at all"
+
+    rc_facts.mark_inbox_seen()
+    assert withdrawn_now() == [], (
+        "a withdrawal is still reported after the operator acknowledged it - "
+        "the ack is not pruning it out of the derivation, so this line can "
+        "never be cleared and the section becomes noise")
+
+
 @pytest.mark.parametrize(
     "key,expected",
     [
