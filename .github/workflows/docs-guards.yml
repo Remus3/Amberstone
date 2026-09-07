@@ -1,8 +1,11 @@
 # The complement of ci.yml's MINUTE SAVER.
 #
-# MEASURED 2026-07-27. ci.yml AND codspeed.yml both carry
+# MEASURED 2026-07-27, re-derived 2026-09-06. ci.yml carries
 # `paths-ignore: ['**/*.md']` (2026-06-30), so a docs-only commit triggers no
-# workflow at all. But ~48 test modules read tracked .md files off disk and
+# workflow at all. codspeed.yml carried the same filter and was the second half
+# of that sentence until it was deleted on 2026-09-06 (docs/OPERATIONS.md "Why
+# CodSpeed was dropped"); one decliner is still one too many to leave unwatched,
+# so this workflow's reason to exist is unchanged. But ~48 test modules read tracked .md files off disk and
 # assert on their CONTENT, so a .md-only commit can turn a .py guard RED with
 # nothing watching. It happened twice in a row:
 #

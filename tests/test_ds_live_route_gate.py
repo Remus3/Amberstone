@@ -188,8 +188,13 @@ def _probe_route(path: str, timeout: float = 30.0) -> int:
 # --------------------------------------------------------------------------- #
 # The B2 census, machine-derived from the PRODUCING side
 # --------------------------------------------------------------------------- #
+# Kept in step with the copy in tests/test_skip_condition_hygiene.py by hand -
+# this one is a SECOND producing side, and unlike that copy it does not assert
+# the directories exist, so it goes stale SILENTLY. "benchmarks" was dropped
+# here on 2026-09-06 with the tree itself; that guard failed loudly and this
+# census stayed green while naming a dead path.
 _TEST_TREES = ("tests", "agents/daemon_slayer/tests",
-               "agents/agent3_testing/suite", "tools/tests", "benchmarks")
+               "agents/agent3_testing/suite", "tools/tests")
 
 _DECOR_SKIPS = {"pytest.mark.skipif", "mark.skipif", "skipif",
                 "unittest.skipIf", "skipIf",

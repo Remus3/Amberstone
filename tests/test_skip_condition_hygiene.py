@@ -69,8 +69,15 @@ _IS_SHARE_MIRROR = "share" in (p.name.lower() for p in _HERE.parents)
 # in the repo would notice. The audit this module descends from
 # (docs/SKIPIF_AUDIT_2026-07-27.md) already had agent3 in scope; the guard did
 # not, which is exactly the producing-side gap constraint 1 warns about.
+#
+# NARROWED 2026-09-06: "benchmarks" removed because the tree was deleted with
+# .github/workflows/codspeed.yml - see docs/OPERATIONS.md "Why CodSpeed was
+# dropped". This guard is the reason that deletion could not be silent: it
+# failed twice on the missing directory rather than shrinking quietly, which is
+# the producing-side property it exists for. Removing a tree means editing this
+# tuple, in the same commit, on purpose.
 _TEST_TREES = ("tests", "agents/daemon_slayer/tests",
-               "agents/agent3_testing/suite", "tools/tests", "benchmarks")
+               "agents/agent3_testing/suite", "tools/tests")
 
 _GIT = shutil.which("git")
 

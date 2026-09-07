@@ -234,9 +234,11 @@ def test_the_recall_combo_that_does_not_move_is_the_mana_starved_one(monkeypatch
 def _table_bytes_or_skip(patch: str) -> Path:
     """The disk half runs only where the git-LFS objects are fetched.
 
-    NO CI WORKFLOW FETCHES LFS - ci.yml, codspeed.yml and docs-guards.yml all
-    use actions/checkout@v6 with no `lfs:` key - so this half is PERMANENTLY
-    skipped in CI and is a developer-machine tripwire only. Under the repo's
+    NO CI WORKFLOW FETCHES LFS - re-derived 2026-09-06, ci.yml, docs-guards.yml
+    and patch-day-ddragon-sync.yml carry zero `lfs:` keys between them (the
+    first two on actions/checkout@v6, the third on @v4; codspeed.yml was
+    deleted) - so this half is PERMANENTLY skipped in CI and is a
+    developer-machine tripwire only. Under the repo's
     default -q a skip renders as a bare `s`, which is not loud enough for a
     permanent condition, so the reason is also raised as a warning: the
     warnings summary shows under -q, the skip reason does not."""
