@@ -199,3 +199,21 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+-----------------------------------------------------------------------
+
+SCOPE OF THIS LICENSE
+
+The Apache License 2.0 above applies to the SOURCE CODE and the authored
+documentation of this repository: the Python, JavaScript, CSS, HTML,
+shell and PowerShell files written for this project, and the Markdown
+that describes them.
+
+It does NOT apply to the data files under `data/`. Those are derived
+from, or supplied by, third parties and remain governed by those
+parties' own terms. Nothing in this repository grants any right to
+redistribute third-party data, and no such right is claimed or implied.
+See the NOTICE file for the source-by-source detail.
+
+Where a data file and this License appear to conflict, this scope
+statement controls: the data is not relicensed here.
