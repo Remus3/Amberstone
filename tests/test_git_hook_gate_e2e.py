@@ -27,18 +27,21 @@ harness cannot pass by doing nothing.
 WHY A TEMPORARY REPO
 --------------------
 The commit under test must be real, and this repo is not a place to make throwaway
-commits. `git worktree` is also out: a known post-commit gist hook bug corrupts a
-linked worktree's index here (memory `reference_gist_hook_worktree_index_corruption`).
-So the fixture is a standalone `git init` in a temp dir, with the REAL hook bodies
-and the REAL scripts they invoke copied in.
+commits. `git worktree` was also ruled out: a post-commit gist-mirror hook used to
+corrupt a linked worktree's index here (memory
+`reference_gist_hook_worktree_index_corruption`). That hook was deleted on
+2026-09-07 with the external review package it mirrored, so the specific bug is
+gone - but the first reason stands on its own, so the fixture stays a standalone
+`git init` in a temp dir, with the REAL hook bodies and the REAL scripts they
+invoke copied in.
 
 WHY pre-commit IS REDUCED AND commit-msg IS NOT
 -----------------------------------------------
 `.githooks/commit-msg` only invokes repo-independent scripts, so it is copied
-byte for byte. `.githooks/pre-commit` has five numbered steps, and steps 3-5
-(gen_archmap --check, gen_state_schema --check, the DS Share mirror) re-derive
-generated artifacts from the whole RC tree and cannot run against a two-file temp
-repo. Steps 1 and 2 - the glyph/ruff gate and py_compile - are the gate itself and
+byte for byte. `.githooks/pre-commit` has four numbered steps, and steps 3-4
+(gen_archmap --check, gen_state_schema --check) re-derive generated artifacts
+from the whole RC tree and cannot run against a two-file temp repo. Steps 1 and
+2 - the glyph/ruff gate and py_compile - are the gate itself and
 are carried over verbatim, parsed out of the real file rather than retyped, with
 assertions that the parse actually found them. If someone deletes the gate from
 the real hook, the parse fails loudly instead of testing a hand-written copy.
@@ -68,11 +71,10 @@ _HAVE_GIT = shutil.which("git") is not None
 
 # Steps of .githooks/pre-commit that run against the whole RC tree and so cannot
 # be exercised in a two-file fixture. Everything else is carried over.
-_WHOLE_TREE_STEPS = (3, 4, 5)
+_WHOLE_TREE_STEPS = (3, 4)
 
-# Hooks the fixture deliberately does NOT install: post-commit shells out to the
-# gist mirror with hard-coded Legion paths, post-checkout hard-fails when git-lfs
-# is absent, and pre-push is irrelevant to a commit-time gate.
+# Hooks the fixture deliberately does NOT install: post-checkout hard-fails when
+# git-lfs is absent, and pre-push is irrelevant to a commit-time gate.
 _FIXTURE_HOOKS = ("pre-commit", "commit-msg")
 
 # Scripts the two installed hooks invoke via "$ROOT/...". Copied to the same
@@ -93,9 +95,9 @@ def _reduce_pre_commit(text: str) -> str:
     that has been removed upstream cannot be silently reintroduced here.
     """
     marks = list(_STEP_MARKER.finditer(text))
-    if len(marks) < 5:
+    if len(marks) < 4:
         raise AssertionError(
-            f"expected 5 numbered steps in {HOOKS / 'pre-commit'}, parsed {len(marks)} "
+            f"expected 4 numbered steps in {HOOKS / 'pre-commit'}, parsed {len(marks)} "
             "- the hook has been restructured and this fixture must be re-read"
         )
     out = [text[: marks[0].start()]]

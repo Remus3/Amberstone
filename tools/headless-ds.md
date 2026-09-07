@@ -1,5 +1,5 @@
 ---
-description: Mission Control lane 6 (Headless-DS). Detached headless worker prompt for Daemon Slayer engine expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that need no operator present. Runs in the lane/ds worktree with full authority and no mid-run gating. Carries the live-ground-truth probe, the repo-root suite rule, the four ENGINE doc anchor sites, the Share sync contract, the DS :8860 bounce, the measured probe traps, and the CLOSED set that must never be re-opened.
+description: Mission Control lane 6 (Headless-DS). Detached headless worker prompt for Daemon Slayer engine expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that need no operator present. Runs in the lane/ds worktree with full authority and no mid-run gating. Carries the live-ground-truth probe, the repo-root suite rule, the three ENGINE doc anchor sites, the DS :8860 bounce, the measured probe traps, and the CLOSED set that must never be re-opened.
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
@@ -151,14 +151,14 @@ data-fragile cross-item comparison asserts; assert on computed quantities. Wrap 
 test, grep to confirm every method, field and data shape it uses exists and cite file:line. Subagent-generated tests MUST pass `ruff` before the agent reports
 done - they have broken CI before.
 
-### 7. The ENGINE bump ritual - fixed order, four doc anchor sites
+### 7. The ENGINE bump ritual - fixed order, three doc anchor sites
 
 **The dual suite goes LAST.** Running it first cost 25 minutes to report 23 failures, 21 knowable in advance - stamp mismatches waiting on a ritual step not yet
 run, zero real regressions. It RECURRED on the next bump, then again silently on a third (a regen fired against a stale server reported `0/173 champions
 changed`; after the bounce the same regen changed 82 of 173).
 
 1. Bump the quoted literal in `agents/daemon_slayer/__init__.py` (`ENGINE_VERSION = "<read the current value>"`). Minor for a feature batch, patch for a correctness fix.
-2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene - **IN MAIN.** **DO NOT do this from a lane worktree (measured 2026-09-01, LEDGER 1317).** The scheduled task launches the MAIN checkout, so a bounce either changes nothing or, if you repoint it, serves UNMERGED lane code on the port RC and every other live lane reads - inverting your own failure onto four other lanes. From a lane worktree, regenerate IN-PROCESS instead: `core/build_order_precompute.py` and `core/build_order_variants.py` both take `--static`, which installs `_install_static_transport()` and computes through the DS server's own POST handlers with no HTTP and no running server, documented as identical to the live path by construction. That is strictly MORE correct here than regenerating against a foreign-version server. **The bounce is then OWED AT MERGE, in main, together with a re-run of `tools/ds_share_sync.py`** - `dist/` is gitignored so the rebuilt ingest bundle never survives a merge, and `LiveIngestFreshTests` only runs in main (`feedback_ds_worktree_merge_regen_dist_bundle`).
+2. **Bounce DS :8860** (section 8) and confirm `/health` serves the NEW version. This is a CORRECTNESS step, not stamp hygiene - **IN MAIN.** **DO NOT do this from a lane worktree (measured 2026-09-01, LEDGER 1317).** The scheduled task launches the MAIN checkout, so a bounce either changes nothing or, if you repoint it, serves UNMERGED lane code on the port RC and every other live lane reads - inverting your own failure onto four other lanes. From a lane worktree, regenerate IN-PROCESS instead: `core/build_order_precompute.py` and `core/build_order_variants.py` both take `--static`, which installs `_install_static_transport()` and computes through the DS server's own POST handlers with no HTTP and no running server, documented as identical to the live path by construction. That is strictly MORE correct here than regenerating against a foreign-version server. **The bounce is then OWED AT MERGE, in main.**
 3. Regenerate the precompute tables. Verified live: `data/daemon_slayer/build_orders/16.15.1/` holds 6 files - `build_orders_{sr,aram,arena}.json` +
    `build_order_variants_{sr,aram,arena}.json`. `core/build_order_precompute.py` and `core/build_order_variants.py` both need an explicit `--champions all`
    ("all" is the ONLY full-roster path; the default is a seed sample and silently shrinks a shipped 173-champion table).
@@ -167,27 +167,16 @@ changed`; after the bounce the same regen changed 82 of 173).
    changed" is never a reason to skip this.
 4. Sweep every pinned `ENGINE_VERSION == "<old>"` assertion in `agents/daemon_slayer/tests/` in one pass - the pin IS the guard, so a stale pin failing proves
    the bump was deliberate.
-5. **The four hand-authored doc anchor sites** (all verified present on disk):
+5. **The three hand-authored doc anchor sites** (all verified present on disk):
    - `agents/daemon_slayer/CHANGELOG.md` - PREPEND a new entry, never extend a prior version's line.
    - `docs/DAEMON_SLAYER.md:5` - the status banner (`ENGINE_VERSION x.y.z - N tests - patch`). Guarded by `tests/test_docs_daemon_slayer_drift.py`.
-   - `Share/CHANGELOG.md` (a new `## <prev> -> <new> (YYYY-MM-DD)` heading at the TOP of "Recent releases" plus a plain-English body) and the `Share/README.md`
-     release-history list. Guarded by `tests/test_ds_share_changelog_freshness.py`. Write these in the package's NEUTRAL external voice - no RM-nn ids, no
-     file:line, no repo-process narrative.
    - `docs/HEXCORE_offline.html` - carries the ENGINE version AND the DS test count in THREE places (the HUD `engine:` row text, its `title=` tooltip, the
      `daemonslayer` NODES `desc`). Guarded by three named tests in `tests/test_hexcore_offline_dust.py`: `test_hud_engine_anchor_matches_repo`,
      `test_engine_tooltip_anchors_match_repo`, `test_daemonslayer_node_desc_engine_anchor_matches_repo`. It is HTML, so an `--include=*.md` grep misses it, and
      it lives in `tests/` not the DS suite, so a DS-only run never catches the drift. The count is the PASSED count and must match `docs/DAEMON_SLAYER.md` - set
      both from the same measured number.
-6. `python tools/ds_share_sync.py` - **AFTER** the changelog entries; sync-before-changelog makes the determinism test fail.
-7. ONE dual suite run from the repo root. Run the four guard modules ALONE first (fast, and in the full run they surface only at the very end): `pytest
-   tests/test_docs_daemon_slayer_drift.py tests/test_ds_share_changelog_freshness.py tests/test_ds_share_sync_determinism.py tests/test_hexcore_offline_dust.py`
-
-**What `tools/ds_share_sync.py` owns vs what you own.** It AUTO-REWRITES the deterministic `Share/src` mirror, `Share/MANIFEST.md`'s sync stamp, the mechanical
-version/patch anchors in `Share/README.md` + `Share/docs/0{1..5}_*.md`, the `Share/lolmath_ingest` anchors, and the ingest `dist/` bundle; `--check` verifies
-all of it and exits 1 on drift (CI runs it). It DELIBERATELY does NOT rewrite changelog history or the README "Changelog (recent)" list, and does not touch
-semantic prose (shipped-vs-staged, test counts) - which is how `Share/README.md` once sat 72 engine minors stale at 1.149.0 while `--check` read GREEN. After
-the sync, grep the newest version out of `Share/CHANGELOG.md` and the README list and confirm both name what you shipped. **The Share sync ships in the SAME
-commit as the engine change**, never as a trailing afterthought.
+6. ONE dual suite run from the repo root. Run the two guard modules ALONE first (fast, and in the full run they surface only at the very end): `pytest
+   tests/test_docs_daemon_slayer_drift.py tests/test_hexcore_offline_dust.py`
 
 ### 8. DS server restart - :8860 is NOT supervisor-watched
 
@@ -208,22 +197,20 @@ tool (Git Bash rewrites the switches as paths: `Invalid argument/option - 'C:/Pr
 
 1. Full DUAL suite from the REPO ROOT: `agents/daemon_slayer/tests` then `tests/`. Report the exact pass/fail counts YOU observed this run, never a prior or
    subagent-reported count.
-2. `python tools/ds_share_sync.py` then `python tools/ds_share_sync.py --check` (must exit 0), plus the hand-check of both changelog surfaces per section 7.
-3. `python -m py_compile` every changed `.py`, then `python -m ruff check .` (F541 is the most common CI-killer). Bounce DS and confirm `/health` serves the new
+2. `python -m py_compile` every changed `.py`, then `python -m ruff check .` (F541 is the most common CI-killer). Bounce DS and confirm `/health` serves the new
    version.
-4. Commit + push. Do NOT `git add -A` - stage only files you authored. Special chars go through `git commit -F <tmpfile>` (ASCII-only) or a single-quoted
+3. Commit + push. Do NOT `git add -A` - stage only files you authored. Special chars go through `git commit -F <tmpfile>` (ASCII-only) or a single-quoted
    here-string; `tools/precommit_gate.py` is the backstop and the git hooks are AUTHORITATIVE. Never amend. Confirm `gh run list --limit 4` green and fix red
    before declaring done.
-5. **Ledger entry goes in `docs/LEDGER.md`** (append-only, newest-first). **NEVER `CLAUDE.md`** - it is CI size-budgeted under 60KB and reserved for rule /
+4. **Ledger entry goes in `docs/LEDGER.md`** (append-only, newest-first). **NEVER `CLAUDE.md`** - it is CI size-budgeted under 60KB and reserved for rule /
    frozen-list / Settled changes.
-6. Sync living docs (`docs/DAEMON_SLAYER.md`, `ROADMAP.md`, `BACKLOG.md`, `WAKEUP_NOTES.md`), run `/done`, then `python tools/perseus_sync.py`. Leave `git stash
+5. Sync living docs (`docs/DAEMON_SLAYER.md`, `ROADMAP.md`, `BACKLOG.md`, `WAKEUP_NOTES.md`), run `/done`, then `python tools/perseus_sync.py`. Leave `git stash
    list` empty and the lane worktree clean.
 
 ### 10. Anti-patterns
 
 - Do NOT run the DS suite from `agents/daemon_slayer/` (section 3), and do NOT run the dual suite before the ritual steps it checks (section 7).
-- Do NOT trust `ds_share_sync --check` as proof the Share package is current, and do NOT trust a subagent's test counts, green-CI claim, or file existence
-  without an independent probe - agents have cited non-existent test files.
+- Do NOT trust a subagent's test counts, green-CI claim, or file existence without an independent probe - agents have cited non-existent test files.
 - Do NOT `Stop-Process`, do NOT `schtasks /End` + `/Run` back to back, and do NOT `--force` a Meraki re-extract.
 - Do NOT probe `/rank` for a non-carry champion, at zero targets, at `item_ids=[]`, at `top=40`, or with `mode="CLASSIC"`.
 - Do NOT let the agent that wrote a default-flip be the agent that grades it.

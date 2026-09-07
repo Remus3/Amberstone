@@ -57,8 +57,8 @@ _WINDOW_FIELD_TOKENS = ("window", "duration", "uptime", "active_for", "seconds_a
 def _meraki_snapshots() -> list[tuple[str, dict]]:
     """Every ``items_meraki.json`` on disk, newest-first by directory name.
 
-    Globbed rather than pinned: the Share mirror ships ONLY the current patch
-    snapshot, so a hardcoded patch list would make this guard unrunnable there.
+    Globbed rather than pinned: only the current patch snapshot is guaranteed
+    on disk, so a hardcoded patch list would make this guard unrunnable.
     """
     out: list[tuple[str, dict]] = []
     for path in sorted(_DS_DATA.glob("*/items_meraki.json"), reverse=True):

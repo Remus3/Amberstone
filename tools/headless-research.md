@@ -49,7 +49,7 @@ A row is WELL-FORMED only with all seven:
 3. **GROUND TRUTH** - cited `file:line` for every load-bearing assertion, each actually opened this run, tagged PROBED / SOURCE-READ / AS-FILED (`feedback_inventory_verification_tiers`). Measured 2026-07-25: of six dispatched targets three were already shipped, and **all three were tagged SOURCE-READ or AS-FILED - every PROBED row held.** Prefer PROBED.
 4. **ACCEPTANCE** - a specific check the executing lane runs and watches pass or fail: a command, a route plus its expected field, a test name. "Looks better" is not acceptance.
 5. **DO-NOT-REDO** - the named closed set for that topic with reasons (section 5), so the executing agent cannot re-research a dead end.
-6. **TIER + BLAST RADIUS** - Tier-0 cosmetic / Tier-1 one module / Tier-2 schema, engine, scorer, item-effect or `ENGINE_VERSION` (CLAUDE.md R5). Name the files, and say explicitly whether it bumps `ENGINE_VERSION` or touches the Share mirror - that is what decides whether the executing lane pays the full dual-suite tax.
+6. **TIER + BLAST RADIUS** - Tier-0 cosmetic / Tier-1 one module / Tier-2 schema, engine, scorer, item-effect or `ENGINE_VERSION` (CLAUDE.md R5). Name the files, and say explicitly whether it bumps `ENGINE_VERSION` - that is what decides whether the executing lane pays the full dual-suite tax.
 7. **LANE + BLOCKERS** - which of 4 / 6 / 7 / 8 it is for, and whether it is live-gated (needs the operator in a game), operator-gated (a product or charter call), or carries a new external dependency. A row that is really an operator decision must SAY so instead of looking shippable.
 
 **Kill mis-filed rows before filing them.** Misfiling is a named failure class here (`feedback_misfiled_row_two_classes`) with two recognizable shapes:

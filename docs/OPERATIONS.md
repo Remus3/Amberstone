@@ -37,7 +37,7 @@ go red on any commit that adds a test, which is the same reason
 the date, and if it matters to your decision, re-measure. What IS stable is the
 SHAPE: five trees, and the five summing exactly to the repo-root total.
 
-The repo has **four** test trees. `tests/test_skip_condition_hygiene.py:79`
+The repo has **four** test trees. `tests/test_skip_condition_hygiene.py:73`
 is the single place that enumerates them (`_TEST_TREES`), and it is the
 producing side - if you add a fifth tree, add it there:
 

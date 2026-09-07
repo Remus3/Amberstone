@@ -66,7 +66,6 @@ _SKIP_DIRS: tuple[str, ...] = (
     "__pycache__",
     "logs",
     "docs/_archive",
-    "Share",  # Daemon Slayer mirror - separate process
     "data",  # JSON data, not code
     "web",  # JS/CSS hot-reloaded separately by Electron
     "node_modules",

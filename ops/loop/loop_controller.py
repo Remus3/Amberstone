@@ -465,10 +465,10 @@ def ledger_digest(text, per_item, limit, label):
     return "\n".join(out) if out else cap_bytes(text, limit, label)
 
 # Auditor payload split. 2026-07-19 false-positive REGRESS #6: the whole budget
-# went to the diff BODY, which git emits in path byte order - a commit touching
-# the generated mirror (Share/, 'S' 0x53) and its true source (agents/, 'a'
-# 0x61) spent every byte on mirror padding, so the auditor never saw the true
-# source and called a complete, CI-green commit a regression. A complete file
+# went to the diff BODY, which git emits in PATH BYTE ORDER - a commit whose
+# early-sorting paths are bulky spent every byte before the auditor ever
+# reached the files that actually mattered, so it never saw the true source and
+# called a complete, CI-green commit a regression. A complete file
 # manifest is worth far more per byte than deeper diff context, so the body
 # yields 15K to guarantee the manifest always fits under ADJ_STDIN_CAP.
 AUDIT_DIFF_CAP = 40_000

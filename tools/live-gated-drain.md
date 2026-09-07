@@ -67,9 +67,9 @@ headless-executable prep (consumer wiring, flip PRs, harness runs):
   (`:8889/latest-liveclient`), and `:8889/latest-frame` for pixel checks. Tick a
   row ONLY with recorded evidence (value seen, timestamp, screenshot path).
 - **Seam flips validated live:** a default-ON flip = flag-default change ->
-  Tier-2: full dual suite (DS dir + tests/) + DS `:8860` restart + Share mirror
-  staged in the SAME commit (memories `feedback_ds_bump_run_tests_dir`,
-  `feedback_ds_commit_share_test_mirror`). RC-side env flips route via Machine
+  Tier-2: full dual suite (DS dir + tests/) + DS `:8860` restart
+  staged in the SAME commit (memory `feedback_ds_bump_run_tests_dir`).
+  RC-side env flips route via Machine
   env + RC-Supervisor task restart (memory `reference_scheduled_task_env_injection`).
   NEVER flip blind (charter 4b) - flip only rows the doc marks LIVE-VALIDATED /
   FLIP-READY or that this session's eyeball just validated.
@@ -89,7 +89,7 @@ headless-executable prep (consumer wiring, flip PRs, harness runs):
 
 Run the saved workflow: `Workflow({name: "live-gated-resync", args: {today: "<YYYY-MM-DD>"}})`.
 It fans out readers over WAKEUP/ORCHESTRATION_PLAN/LEDGER/ROADMAP/BACKLOG/README/
-OVERLAY_BUILD_MASTER_PLAN/ARCHITECTURE/OPERATIONS/RC_WORK_TRACKER/Share audit doc
+OVERLAY_BUILD_MASTER_PLAN/ARCHITECTURE/OPERATIONS/RC_WORK_TRACKER
 plus a repo-wide grep sweep and a seam-flag ground-truth audit, adversarially
 verifies done-claims, then rewrites `docs/LIVE_GAME_GATED_SYNC.md` (removes
 closed rows, adds new gated rows, rebuilds the drain plan + session estimate +

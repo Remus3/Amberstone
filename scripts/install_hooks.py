@@ -2,14 +2,14 @@
 
 WHY THIS SCRIPT NO LONGER WRITES A HOOK FILE
 --------------------------------------------
-It used to write `.git/hooks/pre-commit` containing ONLY the Share mirror sync,
-overwriting whatever was already there. `.git/hooks/` is not version controlled,
-so that clobbered the tracked hooks in `.githooks/` and nothing pointed the two
-at each other.
+It used to write `.git/hooks/pre-commit` containing ONLY the since-removed DS
+review-package mirror sync, overwriting whatever was already there.
+`.git/hooks/` is not version controlled, so that clobbered the tracked hooks in
+`.githooks/` and nothing pointed the two at each other.
 
 Measured consequence, found 2026-07-26: the tracked and active pre-commit hooks
 had FULLY DIVERGED. `core.hooksPath` resolved to `.git\\hooks`, whose hook ran
-only the Share sync, so THREE tracked guards had silently stopped running -
+only that one sync, so THREE tracked guards had silently stopped running -
 `precommit_pycompile.py`, `gen_archmap.py --check`, and
 `gen_state_schema.py --check`. Both generated artifacts had drifted by the time
 it surfaced (25 lines of ARCHITECTURE.md, 10 of state_schema.js). The

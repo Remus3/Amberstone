@@ -11,11 +11,10 @@ The rule, restated mechanically:
     A test may skip only when an ENVIRONMENT CAPABILITY is absent - an OS
     feature, an external binary, an optional third-party import, a network
     endpoint, an opt-in env var, a sibling-repo tree, gitignored machine-local
-    state, the Share mirror path (which deliberately omits data/meta and
-    data/meta_build), or a tracked path behind a git-LFS filter. A
-    tracked-in-git artifact is present in EVERY checkout, so a skip gated on
-    one can only fire when the thing under test is broken - exactly the moment
-    the test must FAIL.
+    state, the SHAPE of the checkout the module is running in, or a tracked
+    path behind a git-LFS filter. A tracked-in-git artifact is present in
+    EVERY checkout, so a skip gated on one can only fire when the thing under
+    test is broken - exactly the moment the test must FAIL.
 
 The ONE carve-out is git-LFS, and it is a capability question rather than an
 exception to the rule. `git clone` fetches an LFS-filtered blob as a ~130-byte
@@ -57,11 +56,6 @@ import pytest
 _HERE = Path(__file__).resolve()
 _REPO_ROOT = _HERE.parent.parent
 
-# The Share handoff mirrors agents/daemon_slayer/tests verbatim but ships no
-# tests/ tree, so this module cannot run there; keying on the mirror PATH rather
-# than on file absence follows test_changelog_tracks_engine_version.py:39.
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in _HERE.parents)
-
 # Every tree in this repo that pytest collects test modules from. Widened
 # 2026-08-06 (RM-119 B5 re-census): the original pair left
 # agents/agent3_testing/suite, tools/tests and benchmarks OUTSIDE the guard, so
@@ -81,9 +75,6 @@ _TEST_TREES = ("tests", "agents/daemon_slayer/tests",
 
 _GIT = shutil.which("git")
 
-if _IS_SHARE_MIRROR:
-    pytest.skip("Share/src does not vendor the tests/ tree by design",
-                allow_module_level=True)
 if _GIT is None:
     pytest.skip("git not on PATH - trackedness is unresolvable without it",
                 allow_module_level=True)
@@ -218,8 +209,9 @@ def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
     This is the ground truth for RM-119 class B4 - a skip whose premise ROTTED.
     "Was there and is gone" is the definition of a rotted premise, which is why
     this and not the filesystem is the right oracle: machine-local state
-    (`data/rewind_history.db`, `data/fusion_shadow.jsonl`, the gitignored Share
-    bundle) was never in history by construction, so it cannot be flagged here.
+    (`data/rewind_history.db`, `data/fusion_shadow.jsonl`, and gitignored build
+    output generally) was never in history by construction, so it cannot be
+    flagged here.
 
     `--diff-filter=DR` is load-bearing, and D alone is the trap that hid the
     headline instance. The `pengu/` stub was RENAMED into
@@ -432,13 +424,13 @@ def _prune_prefix_chains(sig: _Signals) -> None:
 
     `_Ctx.consumed` already enforces "only the outermost path expression is a
     real reference", but it works on node identity and so cannot dedupe across
-    a resolution boundary: a helper in another module contributes its own
-    `Share/lolmath_ingest` while the call site contributes
-    `Share/lolmath_ingest/dist/daemon_slayer_bundle.json`. The tracked prefix
-    is the same reference seen half-resolved, and letting it stand turns a
-    gitignored build artifact into a tracked-artifact defect. Surfaced when
-    teaching the resolver `parents[N]` made those inner slices resolvable for
-    the first time.
+    a resolution boundary: a helper in another module contributes a TRACKED
+    directory prefix while the call site contributes a longer, gitignored path
+    underneath it (a generated bundle under a `dist/` subdirectory is the
+    shape). The tracked prefix is the same reference seen half-resolved, and
+    letting it stand turns a gitignored build artifact into a tracked-artifact
+    defect. Surfaced when teaching the resolver `parents[N]` made those inner
+    slices resolvable for the first time.
     """
     longer = sig.tracked | sig.lfs | sig.untracked | sig.vanished
     sig.tracked = {c for c in sig.tracked
@@ -911,9 +903,9 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
         if dotted.split(".")[-1] == "environ" or dotted.startswith("environ"):
             sig.env = True
         # `.parents` / `.parts` asks about the SHAPE of the checkout (am I in a
-        # worktree, is this the Share mirror) and that is a real capability
-        # question. `.parents[3]` does not: it is a path expression with an
-        # index, and crediting it as tree-shape is what made an
+        # worktree, am I under a vendored copy of this tree) and that is a real
+        # capability question. `.parents[3]` does not: it is a path expression
+        # with an index, and crediting it as tree-shape is what made an
         # otherwise-identical B5 invisible when written in the idiomatic form.
         # Only the non-indexed use keeps the signal.
         if (node.attr in ("parents", "parts")
@@ -1419,9 +1411,9 @@ def _discovered_test_trees() -> set[str]:
     # RC's skip-hygiene rules over another project's code. The guard was right
     # to flag them - a directory holding test_*.py really was outside the scan -
     # and the correct answer is that the inbox is not part of the repo's own
-    # tree set, not that the tuple should grow. Same grounds as Share: a mirror
-    # of somebody else's code.
-    skip_parts = {".git", ".claude", "__pycache__", "node_modules", "Share",
+    # tree set, not that the tuple should grow. Same grounds as any vendored
+    # copy: it is somebody else's code sitting inside this checkout.
+    skip_parts = {".git", ".claude", "__pycache__", "node_modules",
                   "python-embed", "_archive", "docs", ".venv", "venv", "build",
                   "dist", "moon_sync_inbox"}
     holders: set[str] = set()
@@ -1955,11 +1947,15 @@ def test_thing():
         pytest.skip("LFS tables not fetched on this checkout")
     assert p.stat().st_size
 ''',
-    "share_mirror_path": '''
+    # Tree-shape: a module asking WHERE IN THE CHECKOUT it is running from.
+    # That is a capability question (the answer changes what the surrounding
+    # tree contains), and it must stay one - this is the positive control for
+    # the non-indexed `.parents` branch in `_collect`.
+    "checkout_tree_shape_path": '''
 import unittest
 from pathlib import Path
-_IS_SHARE_MIRROR = "share" in (p.name.lower() for p in Path(__file__).resolve().parents)
-@unittest.skipIf(_IS_SHARE_MIRROR, "Share/src does not vendor data/meta")
+_IN_WORKTREE = "worktrees" in (p.name.lower() for p in Path(__file__).resolve().parents)
+@unittest.skipIf(_IN_WORKTREE, "a scratch worktree does not carry data/meta")
 class T(unittest.TestCase):
     def test_thing(self):
         self.assertTrue(True)
@@ -2091,9 +2087,13 @@ def test_known_real_sites_classify_as_documented():
     assert verdicts("tests/test_loop_concurrency.py") == {CAPABILITY}
     assert verdicts("tests/test_hotkey_lowlevel_decoder.py") == {CAPABILITY}
     assert verdicts("tests/test_pro_match_index.py") == {CAPABILITY}
-    assert verdicts(
-        "agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py"
-    ) == {CAPABILITY}
+    # A sixth anchor sat here on
+    # agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py, whose
+    # only skip gated on a mirror-tree sentinel. That mirror is gone and the
+    # skip with it, so the module now has ZERO skip sites and the anchor had no
+    # premise left. The tree-shape branch it exercised keeps its positive
+    # control in `_CAPABILITY_CONTROLS["checkout_tree_shape_path"]`, so removing
+    # the real-site anchor does not leave that classifier rule unasserted.
 
     # The git-LFS anchor, added 2026-08-06. Both sites in this module gate on
     # an LFS-filtered ARAM laning table, which no workflow fetches, so both are

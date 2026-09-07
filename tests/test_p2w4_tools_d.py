@@ -1,7 +1,15 @@
 # arch: P2 cycle-14 slice-D regression tests for DS tooling | section=tests | frozen=no
 """Regression tests for DEEP_AUDIT_CHARTER P2 cycle 14 slice D (DS TOOLING:
-Share sync, the match-DB MCP server, generators, prefilters, build scorers,
-launchers).
+the review-mirror sync tools, the match-DB MCP server, generators, prefilters,
+build scorers, launchers).
+
+That slice list is the historical record of what cycle 14 slice D audited, not
+a claim about the current tree: the review-mirror sync tools have since been
+deleted from the repo (2026-09-07). This module's second FIX-NOW item covered
+one of them - the gist mirror's unbounded ``subprocess.run`` in ``_git`` - and
+its three tests were removed with the tool, because a test whose subject no
+longer exists proves nothing. The finding itself is preserved below as the
+record of what was fixed and why, so the lesson survives the deletion.
 
 NO network, NO live engine: every test feeds the pure helpers inline values.
 
@@ -17,14 +25,15 @@ FIX-NOW covered here
    MCP server must too. The fix: a safe-dumps helper that never emits a
    non-finite token (sanitizes to ``null``).
 
-2. gist_share_sync: the gist mirror runs ``git fetch / push / commit`` via
-   ``subprocess.run`` from a post-commit hook. With NO ``timeout`` a network
-   hang (auth prompt, dead remote) blocks the hook - and thus the commit -
-   indefinitely. ``_git`` must pass a bounded ``timeout``.
+2. gist_share_sync (TOOL DELETED 2026-09-07, tests removed with it): the gist
+   mirror ran ``git fetch / push / commit`` via ``subprocess.run`` from a
+   post-commit hook. With NO ``timeout`` a network hang (auth prompt, dead
+   remote) blocked the hook - and thus the commit - indefinitely. ``_git`` was
+   made to pass a bounded ``timeout``. Kept here as the durable lesson: any
+   ``subprocess.run`` reached from a git hook needs a bounded timeout.
 """
 from __future__ import annotations
 
-import inspect
 import json
 import math
 import sys
@@ -35,7 +44,6 @@ if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
 import ds_matchdb_mcp_server as M  # noqa: E402
-import gist_share_sync as G  # noqa: E402
 
 
 # --------------------------------------------------------------------------- MCP safe JSON
@@ -111,43 +119,10 @@ def _reject_constant(token: str):
     raise AssertionError(f"non-finite JSON token leaked: {token!r}")
 
 
-# --------------------------------------------------------------------------- gist subprocess timeout
-class TestGistGitCallsAreBounded:
-    """``_git`` shells out to git (fetch/push/commit) from a post-commit hook;
-    a missing timeout lets a network hang block the commit forever."""
-
-    def test_git_passes_a_timeout(self, monkeypatch):
-        captured: dict = {}
-
-        def _fake_run(args, **kwargs):
-            captured["args"] = args
-            captured["kwargs"] = kwargs
-
-            class _CP:
-                returncode = 0
-                stdout = ""
-                stderr = ""
-            return _CP()
-
-        monkeypatch.setattr(G.subprocess, "run", _fake_run)
-        G._git("status", "--porcelain")
-        assert "timeout" in captured["kwargs"], \
-            "_git must pass a bounded timeout to subprocess.run"
-        assert isinstance(captured["kwargs"]["timeout"], (int, float))
-        assert captured["kwargs"]["timeout"] > 0
-
-    def test_git_module_defines_a_positive_timeout_constant(self):
-        # The timeout is a named module constant (not a magic literal), so it
-        # is tunable + greppable.
-        assert hasattr(G, "GIT_TIMEOUT_S")
-        assert isinstance(G.GIT_TIMEOUT_S, (int, float))
-        assert G.GIT_TIMEOUT_S > 0
-
-    def test_git_signature_unchanged(self):
-        # Defensive: the public call shape (*args) is preserved.
-        sig = inspect.signature(G._git)
-        params = list(sig.parameters.values())
-        assert params[0].kind == inspect.Parameter.VAR_POSITIONAL
+# The gist-mirror subprocess-timeout class that lived here was removed on
+# 2026-09-07 with tools/gist_share_sync.py itself. Its three tests drove
+# ``G._git`` directly, so they cannot be repointed at anything - see FIX-NOW
+# item 2 in the module docstring for the finding they encoded.
 
 
 def test_safe_dumps_finite_only_uses_fast_path():

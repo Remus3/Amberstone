@@ -126,16 +126,11 @@ def _staged_added(root: str) -> dict[str, dict]:
 # to bypass.
 _ASCII_EXEMPT_PARTS = ("logs/", "docs/_archive/", "__pycache__/", ".git/")
 _ASCII_EXEMPT_SUFFIXES = (".jsonl", ".log", ".pyc", ".png", ".jpg", ".ico", ".zip")
-# "Share/src/data/daemon_slayer/" added 2026-09-06. It is a byte-identical
-# deterministic MIRROR of data/daemon_slayer/, which the "data/" prefix already
-# exempts, and tests/test_smart_quote_hygiene.py:102-108 excludes the mirror for
-# exactly that reason. The gate did not, so one CLAUDE.md hard rule had two
-# readings again - the defect _glyph_hits' docstring below was written to close,
-# reappearing in the EXEMPTIONS rather than in the glyph set. The mirror
-# genuinely carries em-dashes and bullets from DDragon upstream, so a DS batch
-# re-syncing Share/ would have had its commit blocked by an authored-content
-# rule applied to content nobody here authored.
-_ASCII_EXEMPT_PREFIXES = ("data/", "Share/src/data/daemon_slayer/")
+# "data/" carries the DDragon / Meraki snapshots verbatim. They genuinely hold
+# em-dashes and bullets from upstream, so gating them would apply an
+# authored-content rule to content nobody here authored - a gate that blocks
+# correct work is one people learn to bypass.
+_ASCII_EXEMPT_PREFIXES = ("data/",)
 
 
 def _ascii_exempt(path: str) -> bool:

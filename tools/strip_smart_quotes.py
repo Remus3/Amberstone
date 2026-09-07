@@ -53,8 +53,6 @@ the standing don't-rewrite-history rule):
     .bin
   - data/daemon_slayer/**/*.json (Riot DDragon snapshots - external
     data, not authored content)
-  - Share/src/data/daemon_slayer/**/*.json (verbatim mirror of the above
-    via ds_share_sync.py - same external data)
   - data/meta_build/**/* (dated refresh artifacts; vendored HTML
     snapshots with third-party prose)
   - data/meta/ddragon_champions.json (DDragon mirror, external data)
@@ -175,10 +173,6 @@ _LOG_RE = re.compile(r"\.log(\.\d+)?$", re.IGNORECASE)
 
 def _is_external_data(rel_posix: str) -> bool:
     if rel_posix.startswith("data/daemon_slayer/") and rel_posix.endswith(".json"):
-        return True
-    # Byte-identical mirror of data/daemon_slayer/ (Riot snapshots) produced by
-    # tools/ds_share_sync.py - external data, same exclusion as the source.
-    if rel_posix.startswith("Share/src/data/daemon_slayer/") and rel_posix.endswith(".json"):
         return True
     if rel_posix.startswith("data/meta_build/"):
         return True

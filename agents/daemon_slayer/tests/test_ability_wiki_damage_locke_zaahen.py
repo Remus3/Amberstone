@@ -30,8 +30,8 @@ The probe params are the ones the live ``:8860`` defect was measured with:
 ``items=["3142","6691","3814"], level=13, target_armor=140, target_mr=90,
 target_hp=2800``.
 
-No ``core.*`` import at module level (deliberate - keeps this file out of
-``tools/ds_share_sync._HOST_DEPENDENT_TESTS``).
+No ``core.*`` import at module level (deliberate - keeps this file runnable
+against the engine package alone, with no host application present).
 """
 from __future__ import annotations
 

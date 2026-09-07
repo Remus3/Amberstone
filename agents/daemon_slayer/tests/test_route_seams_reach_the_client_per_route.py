@@ -54,8 +54,8 @@ with no client wire turns this RED, and wiring one turns it RED until the entry
 is deleted. The ledger can only shrink. The intended end state is empty.
 
 OFFLINE ONLY: pure AST over two source files. No snapshot, no engine, no
-network. Host-dependent (it imports ``core.*``), so it is registered in
-``tools/ds_share_sync._HOST_DEPENDENT_TESTS`` alongside its sibling.
+network. Host-dependent: it imports ``core.*``, so it needs the host
+application on the path and cannot run against the engine package alone.
 """
 from __future__ import annotations
 

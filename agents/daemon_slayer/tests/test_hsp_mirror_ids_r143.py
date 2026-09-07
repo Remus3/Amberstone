@@ -141,7 +141,7 @@ class RegistryMetadataTests(unittest.TestCase):
 
         root = Path(__file__).resolve().parents[3]
         # Resolve the LIVE patch: a hardcoded dir goes stale on every refresh,
-        # and the Share mirror only ships the current snapshot, so the pin then
+        # and only the current snapshot is guaranteed on disk, so the pin then
         # breaks the self-contained guard rather than this assertion.
         patch = (root / "data" / "daemon_slayer" / "current.txt").read_text(
             encoding="utf-8"

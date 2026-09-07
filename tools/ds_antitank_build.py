@@ -9,8 +9,7 @@ cadence known; source in P/Q/W/E/R/BASE; magnitude in (0, 1]), then:
     (grouped by champion, P/Q/W/E/R/BASE order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/antitank_registry_notes.json`` (champion, source, kind,
-    cadence, magnitude, conditional, source_quote) - excluded from Share like
-    CHANGELOG.md / allyamp_registry_notes.json.
+    cadence, magnitude, conditional, source_quote).
 
 The anti-tank axis is SPARSE (only champions whose damage scales with enemy health
 or resists appear), so unlike the threat-range / objective-damage builds this tool

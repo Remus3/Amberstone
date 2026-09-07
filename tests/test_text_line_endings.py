@@ -36,8 +36,8 @@ HONEST SCOPE, so nobody reads more into a green run than it earns: on Linux CI
 every checkout is LF anyway, so this test is nearly VACUOUS there. It has teeth
 on a Windows checkout, which is the only place the defect occurs. It also
 catches a tool that writes a tracked, pinned file with ``write_text`` - text
-mode emits CRLF on Windows, which is why ``ds_share_sync`` writes
-``MANIFEST.md`` as bytes.
+mode emits CRLF on Windows, so a generator whose output is byte-compared must
+write bytes rather than text.
 
 DELIBERATELY NOT PINNED, and therefore not asserted: ``.bat`` / ``.cmd``
 (Windows shell scripts - the tracked ``.bat`` are already LF and the ``.cmd``
