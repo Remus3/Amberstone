@@ -26,7 +26,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tools.rc_facts import _file_digest, _inbox_entries, _payload_key  # noqa: E402
+from tools.rc_facts import (  # noqa: E402
+    _entry_name,
+    _file_digest,
+    _inbox_entries,
+    _inbox_withdrawn,
+    _payload_key,
+)
 
 
 @pytest.fixture()
@@ -136,3 +142,65 @@ def test_unreadable_file_moves_the_digest_rather_than_vanishing(tmp_path: Path):
 
 def test_missing_inbox_is_not_an_error(tmp_path: Path):
     assert _inbox_entries(tmp_path / "does_not_exist") == set()
+
+
+# -- Withdrawals (Sibling-D's sixth property, 2026-09-07) ---------------
+#
+# `names - seen` cannot see a deletion: a retracted note simply stops
+# appearing, so the watcher goes quiet exactly when a sibling retracts
+# something. RC has already performed a withdrawal on this channel - 50 files
+# pulled from four inboxes - so this is a measured gap, not a hypothetical.
+
+
+def test_retracted_note_is_reported_as_withdrawn(inbox: Path):
+    (inbox / "a.md").write_text("one", encoding="utf-8")
+    (inbox / "b.md").write_text("two", encoding="utf-8")
+    seen = _inbox_entries(inbox)
+    (inbox / "b.md").unlink()
+    assert _inbox_withdrawn(_inbox_entries(inbox), seen) == ["b.md"]
+
+
+def test_an_edit_is_unread_and_NOT_a_withdrawal(inbox: Path):
+    """The whole reason the digest is stripped before comparing.
+
+    An edited note changes its key. Comparing raw keys would report the old
+    key as withdrawn and the new one as unread - the same note, twice, in two
+    contradictory sections.
+    """
+    note = inbox / "a.md"
+    note.write_text("one", encoding="utf-8")
+    seen = _inbox_entries(inbox)
+    note.write_text("EDITED", encoding="utf-8")
+    now = _inbox_entries(inbox)
+    assert _inbox_withdrawn(now, seen) == []
+    assert len(now - seen) == 1
+
+
+def test_whole_drop_removed_is_reported(inbox: Path):
+    drop = inbox / "from-XX-verbatim"
+    drop.mkdir()
+    (drop / "f.py").write_text("x", encoding="utf-8")
+    seen = _inbox_entries(inbox)
+    (drop / "f.py").unlink()
+    drop.rmdir()
+    assert _inbox_withdrawn(_inbox_entries(inbox), seen) == ["from-XX-verbatim/"]
+
+
+def test_steady_state_reports_nothing(inbox: Path):
+    (inbox / "a.md").write_text("one", encoding="utf-8")
+    seen = _inbox_entries(inbox)
+    assert _inbox_withdrawn(seen, seen) == []
+    assert seen - seen == set()
+
+
+@pytest.mark.parametrize(
+    "key,expected",
+    [
+        ("a.md [7692c3ad3540]", "a.md"),
+        ("from-XX-verbatim/ [3 files, content abc123abc123]", "from-XX-verbatim/"),
+        ("from-YY/ [2 files, content ff00ff00ff00, MANIFEST.sha256 present]", "from-YY/"),
+        ("no-digest.md", "no-digest.md"),
+    ],
+)
+def test_entry_name_strips_only_the_digest(key: str, expected: str):
+    assert _entry_name(key) == expected
