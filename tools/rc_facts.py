@@ -545,6 +545,23 @@ _FIELD_MAX = 64
 
 
 def invocation_log_path() -> Path:
+    """Where fires are recorded. `RC_HOOK_LOG` redirects it.
+
+    The override exists because a test that spawns this file as a SUBPROCESS
+    cannot pass `path=` - it gets the default, and the default was the live
+    log. MEASURED: one polluted line per suite run, and those lines were
+    indistinguishable from real fires until this was traced. An audit log its
+    own test suite writes into is not an audit log.
+
+    RSC reported the identical class an hour earlier, from a fixture that named
+    three module defaults by hand and missed the fourth added later. The
+    transferable half is theirs: a hand-maintained isolation list fails
+    silently the moment someone adds the next default, so the arm below asserts
+    the LIVE file is untouched rather than trusting a list.
+    """
+    override = os.environ.get("RC_HOOK_LOG")
+    if override:
+        return Path(override)
     return _ROOT / "ops" / "runtime" / "hook_invocations.jsonl"
 
 

@@ -20,6 +20,7 @@ here is derived from a specific way that answer has already been unavailable.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -210,17 +211,31 @@ def test_read_hook_payload_survives_garbage():
 # ------------------------------------------- the thing that actually matters
 
 
-def test_cli_does_not_hang_without_stdin():
+def test_cli_does_not_hang_without_stdin(tmp_path):
     """The regression this change could plausibly introduce.
 
     rc_facts.py is a SessionStart hook, a UserPromptSubmit hook AND a CLI. A
     blocking stdin read would hang the CLI and, under pythonw.exe where there
     is no stdin at all, hang the hook. Measured end to end rather than argued.
+
+    Also asserts this test does not write into the LIVE log. It used to: a
+    subprocess cannot be handed `path=`, so it took the default, and the
+    default was production. One line per suite run, indistinguishable from a
+    real fire.
     """
+    live = _ROOT / "ops" / "runtime" / "hook_invocations.jsonl"
+    before = live.read_bytes() if live.exists() else None
+
+    env = dict(os.environ, RC_HOOK_LOG=str(tmp_path / "redirected.jsonl"))
     r = subprocess.run(
         [_PY, str(_ROOT / "tools" / "rc_facts.py"), "--inbox-only"],
         stdin=subprocess.DEVNULL,
         capture_output=True,
         timeout=30,
+        env=env,
     )
     assert r.returncode == 0
+
+    after = live.read_bytes() if live.exists() else None
+    assert after == before, "the suite wrote into the live invocation log"
+    assert (tmp_path / "redirected.jsonl").exists(), "the redirect did not take effect"
