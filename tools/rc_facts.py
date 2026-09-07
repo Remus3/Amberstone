@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import socket
 import ssl
 import subprocess
@@ -512,9 +513,198 @@ def report_inbox_only() -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Hook invocation log
+#
+# WHY THIS EXISTS, and it is not RC's insight. CS measured on 2026-09-07 that
+# its watcher "does not read the hook payload, does not read the `source`
+# field, and writes no record of having been invoked", and downgraded its own
+# /clear-survival status from UNVERIFIED to UNMEASURABLE AS BUILT. RSC measured
+# the same. RC then measured the same about RC and refused a credit CS had
+# extended to it: RC had a poller-side PROCESS log (moon_sync_poller.py, a
+# different artifact) and no hook invocation record at all.
+#
+# The generalisation is CS's and it is the load-bearing part: all five repos on
+# that channel had been reading hook CONFIGURATION as hook BEHAVIOUR. A
+# watcher whose only output is a report to a human cannot be audited by anyone,
+# its author included, because firing leaves nothing behind. This makes
+# /clear survival a thing the operator MEASURES - clear once, read the file -
+# rather than a property argued from a settings file.
+#
+# KNOWN LIMIT, stated rather than discovered later: the append is atomic (see
+# _append_atomic) but the rotation is a read-then-replace, so an append racing
+# a rotation can lose a line at the OLDEST end. The question this log answers -
+# did it fire since the last /clear - is asked of the NEWEST lines, so the loss
+# falls on the boundary that does not carry the answer. ops/loop/winmutex.py
+# would close it; a per-prompt hook is the wrong place to take a dependency on
+# a cross-repo pinned module, and a mutex wait is a hang risk this must not have.
+
+_LOG_KEEP = 1000
+_LOG_TRIM_BYTES = 32768
+_FIELD_MAX = 64
+
+
+def invocation_log_path() -> Path:
+    return _ROOT / "ops" / "runtime" / "hook_invocations.jsonl"
+
+
+def _hook_source(payload: dict | None) -> str:
+    """The payload's `source` field, bounded, defaulting EXPLICITLY.
+
+    Returns the string "unknown" rather than omitting the key, because an
+    absent field and an unrecorded one read identically to anyone parsing the
+    log later - which is the exact defect the log exists to remove.
+    """
+    if not isinstance(payload, dict):
+        return "unknown"
+    raw = payload.get("source")
+    if not isinstance(raw, str) or not raw:
+        return "unknown"
+    return raw[:_FIELD_MAX]
+
+
+def _read_hook_payload(stream=None) -> dict:
+    """Hook payload JSON from stdin, or {} for anything else.
+
+    Reading stdin is a hang risk the previous design did not carry, so every
+    way it can go wrong returns {}: no stdin under pythonw.exe, a terminal
+    (isatty, where a read would block forever), empty input, non-JSON, or JSON
+    that is not an object.
+    """
+    try:
+        if stream is None:
+            stream = sys.stdin
+            if stream is None or stream.isatty():
+                return {}
+        raw = stream.read()
+        if not raw:
+            return {}
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except Exception:  # noqa: BLE001 - stdin can fail in ways not worth enumerating
+        return {}
+
+
+def _append_atomic(p: Path, data: bytes) -> None:
+    """Append `data` as one indivisible write, safe across PROCESSES.
+
+    MEASURED, not assumed: the obvious implementation - os.open with O_APPEND
+    then os.write - lost 20 of 64 concurrent appends on this box. Windows' CRT
+    implements O_APPEND as seek-to-end THEN write, which is two operations and
+    races. POSIX O_APPEND is atomic; Windows' is not, and the difference is
+    invisible until you count the lines.
+
+    A thread lock would not have helped either way: every hook fire is its own
+    pythonw.exe process, so the contention is cross-process by construction.
+
+    Win32 documents the fix - a handle opened with FILE_APPEND_DATA and NOT
+    FILE_WRITE_DATA always appends atomically - so that is the handle used
+    here. Non-Windows keeps the POSIX path, where O_APPEND already holds.
+    """
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+            wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+        ]
+        k32.WriteFile.argtypes = [
+            wintypes.HANDLE, wintypes.LPCVOID, wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID,
+        ]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        _FILE_APPEND_DATA = 0x0004  # deliberately WITHOUT FILE_WRITE_DATA
+        _SHARE_ALL = 0x0001 | 0x0002 | 0x0004
+        _OPEN_ALWAYS = 4
+        _ATTR_NORMAL = 0x80
+        _INVALID = wintypes.HANDLE(-1).value
+
+        h = k32.CreateFileW(
+            str(p), _FILE_APPEND_DATA, _SHARE_ALL, None, _OPEN_ALWAYS, _ATTR_NORMAL, None
+        )
+        if not h or h == _INVALID:
+            raise OSError(ctypes.get_last_error(), f"CreateFileW failed for {p}")
+        try:
+            written = wintypes.DWORD(0)
+            if not k32.WriteFile(h, data, len(data), ctypes.byref(written), None):
+                raise OSError(ctypes.get_last_error(), f"WriteFile failed for {p}")
+        finally:
+            k32.CloseHandle(h)
+        return
+
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+
+
+def _trim_invocation_log(p: Path) -> None:
+    """Bound the file, dropping the OLDEST lines.
+
+    Size is checked before the line count so the common case is one stat().
+    Dropping the oldest is the point: a rotation keeping the oldest would
+    answer "did it fire in April" instead of "did it fire since the /clear".
+    """
+    try:
+        if p.stat().st_size < _LOG_TRIM_BYTES:
+            return
+        lines = [
+            ln for ln in p.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()
+        ]
+        if len(lines) <= _LOG_KEEP:
+            return
+        tmp = p.with_suffix(".jsonl.tmp")
+        tmp.write_text("\n".join(lines[-_LOG_KEEP:]) + "\n", encoding="utf-8", newline="\n")
+        tmp.replace(p)
+    except Exception:  # noqa: BLE001 - rotation is best-effort; never break a fire
+        pass
+
+
+def record_invocation(event: str, payload: dict | None = None, path: Path | None = None) -> None:
+    """Append exactly one line recording that this hook fired.
+
+    Deliberately records NO prompt text and NO paths. The hook payload carries
+    the operator's literal prompt and cwd, and this channel pulled a 48-file
+    drop for operator PII on 2026-09-06; a log persisting either would be a new
+    disclosure surface on every keystroke.
+
+    Never raises. A logger that failed would convert a working hook into a
+    broken one, which is strictly worse than having no log at all.
+    """
+    try:
+        p = Path(path) if path is not None else invocation_log_path()
+        has_payload = isinstance(payload, dict) and bool(payload)
+        declared = payload.get("hook_event_name") if isinstance(payload, dict) else None
+        sid = payload.get("session_id") if isinstance(payload, dict) else None
+        rec = {
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "event": str(declared or event)[:_FIELD_MAX],
+            "source": _hook_source(payload),
+            # Distinguishes a real hook fire from an operator running this file
+            # by hand. Both reach this function; only one answers the question.
+            "payload": has_payload,
+            "session": str(sid)[:_FIELD_MAX] if isinstance(sid, str) else None,
+            "pid": os.getpid(),
+        }
+        _append_atomic(p, (json.dumps(rec, separators=(",", ":")) + "\n").encode("utf-8"))
+        _trim_invocation_log(p)
+    except Exception:  # noqa: BLE001 - narrowing risks missing one and breaking a hook
+        pass  # a hook must never fail the turn
+
+
 if __name__ == "__main__":
     if "--mark-inbox-seen" in sys.argv:
         sys.exit(mark_inbox_seen())
+    # Wired here rather than inside the probe functions so there is exactly one
+    # place mapping an entrypoint to a hook event. --mark-inbox-seen records
+    # nothing on purpose: it is a deliberate operator act, not a hook firing.
     if "--inbox-only" in sys.argv:
+        record_invocation("UserPromptSubmit", _read_hook_payload())
         sys.exit(report_inbox_only())
+    record_invocation("SessionStart", _read_hook_payload())
     sys.exit(main())
