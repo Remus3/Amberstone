@@ -32,7 +32,7 @@ What remains before a real GO is in "State at wrap" at the end of this file.
 | 1 | Secrets in pushed history | **OPEN on the remote** - untracked at HEAD, purge proven in a mirror, NOT applied to origin |
 | 2 | Scraped third-party HTML | **OPEN on the remote** - untracked at HEAD (120 files), still in pushed history |
 | 3 | Vendor augment dataset | **OPEN on the remote** - untracked at HEAD, reader degrades, NOTICE records it |
-| 4 | Licence contradiction | **CLOSED** (`2ff47493b`) |
+| 4 | Licence contradiction | **CLOSED** (`cc72e186a`) |
 | 5 | Third-party name scrub | **HALF CLOSED** - tracked content done and pushed; history NOT rewritten |
 | 6 | `refs/pull/*/head` (found today) | **OPEN** - 13 PR refs still hold everything above |
 
@@ -200,8 +200,8 @@ the flip; it recorded what was true.
 
 ## 1. Secrets in pushed history
 
-`config/vision_token.txt` was tracked from the initial commit `92feb15a8`
-(2026-04-26) until `dcd965f2d` (2026-09-06). **5111 commits carried it**, and
+`config/vision_token.txt` was tracked from the initial commit `405d3eed3`
+(2026-04-26) until `f8323887e` (2026-09-06). **5111 commits carried it**, and
 the blob was reachable from `origin/main`.
 
 **The token was ROTATED.** The historical blob and the current value differ, so
@@ -225,7 +225,7 @@ was never tracked.
 
 `data/meta_build/refresh_2026-05-02/_phase3_html/` held **109 verbatim scraped
 pages** from a third-party build-stats site: 51,079,688 bytes, entering history
-2026-05-03 at `d50a37e17`. Confirmed verbatim, not derived - the files open with
+2026-05-03 at `3dad1a2c4`. Confirmed verbatim, not derived - the files open with
 that site's own preload set and mascot asset.
 
 **Nothing live read them.** The only referent outside `data/` was a one-shot
@@ -255,7 +255,7 @@ each, 443,892 total. All six carried the same blob hash and the same
 
 **The repo already documented in writing that this is not redistributable.** The
 Share package's own LICENSE (lines 79-87, deleted with the package in
-`d76004025`; read it at `d76004025^`) excluded it on exactly those grounds, and
+`d44c2111b`; read it at `d76004025^`) excluded it on exactly those grounds, and
 the share sync tool enforced the exclusion. Shipping it in a public main repo
 would have contradicted a position this project had already taken.
 
@@ -265,10 +265,10 @@ Three incompatible statements existed at once: an Apache-2.0 `LICENSE` added
 2026-09-06, a README line reading "All rights reserved. Personal use only.",
 and the Share package's no-redistribution clause.
 
-Resolved 2026-09-07 per operator ruling in `2ff47493b`: Apache-2.0 scoped to
+Resolved 2026-09-07 per operator ruling in `cc72e186a`: Apache-2.0 scoped to
 code and authored docs, an explicit data carve-out appended AFTER the licence
 text, a new `NOTICE` recording each upstream source, and the README line
-replaced with a pointer. The Share package ceased to exist with `d76004025`,
+replaced with a pointer. The Share package ceased to exist with `d44c2111b`,
 which removed the third statement rather than reconciling it.
 
 The Apache text is kept byte-pure with the scope block AFTER it, deliberately: a

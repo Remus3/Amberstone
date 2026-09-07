@@ -154,7 +154,7 @@ follow-up slices; do NOT touch mage/tank/enchanter (clean).
 ## Status (2026-07-13)
 
 - STEP 2 SHIPPED (partial) = the dormant situational counter-build is WIRED to
-  the live overlay (2026-07-13, R102, main `c52d8f2c`/`926f69a5`/`dc4e4555`). NEW
+  the live overlay (2026-07-13, R102, main `6059882e`/`4ae67f25`/`4707b47e`). NEW
   pure `counter_build_hints()` (situational.py) surfaces the C1-C7 criteria an
   EnemyProfile warrants as structured hints; `/api/build-plan` gained a fail-soft
   `counter_hints[]` payload key (always present); `active_match.js` now SENDS

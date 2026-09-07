@@ -55,7 +55,7 @@ companion `_supervisor_common.py` constant. Agent 1 owns the apply.
 ## CLOSURE (appended 2026-06-28, post-item-651)
 
 SUPERSEDED - M-04 was applied 11 minutes after this re-escalation was
-filed. Item 651 (work commit `e599e610`, ledger e37d7e7e) appended
+filed. Item 651 (work commit `68e08265`, ledger e37d7e7e) appended
 d021..d025 to the runtime `agents/state/resolved_decisions.json` and
 advanced `locked_at` -> 2026-06-28; count 20 -> 25. See
 `APPLIED-20260628.md` for the full disposition.

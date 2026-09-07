@@ -8,7 +8,7 @@ Tool: `tools/hz_shadow_report.py` (read-only) over `data/hz_choice_shadow.jsonl`
 
 ## Why this pass exists
 
-Item 614 (commit `7383e712`, 2026-06-24 19:45 -05:00) was a structural model-error
+Item 614 (commit `8ce870e4`, 2026-06-24 19:45 -05:00) was a structural model-error
 fix in `core/laning_scenario_precompute.py`: the enemy now fires the cell's
 cd-state rotation (`sequence_b = combo_sequence(cd_state)`) instead of always
 `_FULL_COMBO`, so a `no_ult` window drops R for BOTH laners. The item-575
@@ -27,7 +27,7 @@ cleanly by timestamp against the fix-commit boundary:
 
 Classification reuses the live tool's own `record_agreement` / `classify_verdict`
 (no reimplementation), so the verdict mapping is byte-identical to the flip-gate
-report. A second regen (the 16.13.1 patch refresh, commit `cdc4f8aa`,
+report. A second regen (the 16.13.1 patch refresh, commit `c022498f`,
 2026-06-25 03:06 -05:00) also rebuilt the tables; the symmetric-cd-state CODE fix
 persists into those tables too, so every post-boundary record carries the
 corrected combo logic.

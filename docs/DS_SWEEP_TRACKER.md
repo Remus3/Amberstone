@@ -72,7 +72,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   Next free id = **RM-384** (2026-09-06). The id one below it was minted by
   LEDGER 1357, LANE 10 queue cycle 17, for the inherited red that cycle's own
   pre-push suite surfaced: `config/vision_token.txt` is gitignored, so
-  `dcd965f2d` making its absence fatal reddens every worktree and every CI
+  `f8323887e` making its absence fatal reddens every worktree and every CI
   runner while the main tree stays green. Allocation was checked with the
   pointer-vs-allocated predicate before minting: all four of its occurrences
   were next-free pointer prose, in this file, `docs/LEDGER.md`, `ROADMAP.md`

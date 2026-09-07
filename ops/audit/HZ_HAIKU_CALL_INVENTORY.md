@@ -92,7 +92,7 @@ flip: enough games have accrued for a clear signal (693 comparable-covered ticks
   above. Note also, since several docs cite this bullet as the source of a
   numeric flip threshold: **the bullet above sets no threshold and never did.**
   It says only "confirm agreement climbs before any flip". The percentage those
-  docs attribute here originates in commit `b700fdc8` (2026-06-19), which wrote
+  docs attribute here originates in commit `dea94516` (2026-06-19), which wrote
   it into what is now
   `docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md:249` on
   the SAME LINE as the citation back to this bullet - so number and citation were
