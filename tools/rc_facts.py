@@ -20,6 +20,7 @@ Run manually any time:  C:/Users/Administrator/AppData/Local/Programs/Python/Pyt
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import socket
 import ssl
@@ -291,6 +292,37 @@ def main() -> int:
     return 0
 
 
+def _payload_key(p: Path) -> str:
+    """Identify a subdirectory payload by its MANIFEST, not by a file count.
+
+    Operator suggestion 2026-09-06, and it closes a hole in the same day's fix.
+    Keying a payload on `(N files)` means a sender who REPLACES a file leaves the
+    count unchanged, so the payload reads as already-seen and the change is
+    never reported. That is the identical defect as the mtime watermark this
+    watcher already rejected: a key that can stay equal while the thing it names
+    has moved.
+
+    A manifest fixes it and is CHEAPER than the alternative. One file read per
+    payload instead of an rglob and a hash over every file, and it changes
+    whenever any listed file does. Sibling-E already ships `MANIFEST.sha256`
+    with its payloads; RC did not, and RC is fixing that on its side too.
+
+    Falls back to a file count when no manifest is present, and SAYS SO in the
+    entry - an unverifiable key that looks like a verified one is worse than an
+    honest weak one.
+    """
+    for name in ("MANIFEST.sha256", "MANIFEST.txt", "manifest.json"):
+        m = p / name
+        if m.is_file():
+            try:
+                digest = hashlib.sha256(m.read_bytes()).hexdigest()[:12]
+            except OSError:
+                continue
+            return f"[{name} {digest}]"
+    n = sum(1 for _ in p.rglob("*") if _.is_file())
+    return f"({n} files, NO MANIFEST - count only)"
+
+
 def _inbox_entries(inbox: Path) -> set[str]:
     """Every unit of inbound mail, INCLUDING subdirectory payloads.
 
@@ -319,8 +351,7 @@ def _inbox_entries(inbox: Path) -> set[str]:
         if p.name.startswith("_"):
             continue
         if p.is_dir():
-            n = sum(1 for _ in p.rglob("*") if _.is_file())
-            out.add(f"{p.name}/ ({n} files)")
+            out.add(f"{p.name}/ {_payload_key(p)}")
         elif p.is_file():
             out.add(p.name)
     return out
