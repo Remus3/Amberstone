@@ -37,45 +37,54 @@ go red on any commit that adds a test, which is the same reason
 the date, and if it matters to your decision, re-measure. What IS stable is the
 SHAPE: five trees, and the five summing exactly to the repo-root total.
 
-The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:72`
+The repo has **four** test trees. `tests/test_skip_condition_hygiene.py:79`
 is the single place that enumerates them (`_TEST_TREES`), and it is the
-producing side - if you add a sixth tree, add it there:
+producing side - if you add a fifth tree, add it there:
 
 | Tree | Tests collected | In `pytest tests`? | In the "dual suite"? | Run by any CI job? |
 |---|---|---|---|---|
-| `tests` | 20645 | yes | yes | yes |
+| `tests` | 21122 | yes | yes | yes |
 | `agents/daemon_slayer/tests` | 10856 | no | yes | yes |
 | `agents/agent3_testing/suite` | 359 | no | no | **no** |
 | `tools/tests` | 348 | no | no | **no** |
-| `benchmarks` | 7 | no | no | yes (CodSpeed) |
-| **repo-root `pytest .`** | **32215** | | | |
+| **repo-root `pytest .`** | **32685** | | | |
 
-Measured 2026-09-04 with `pytest <tree> --collect-only -q` from the repo root on
-Python314; the five trees sum exactly to the repo-root total (20645 + 10856 +
-359 + 348 + 7 = 32215), so there is no sixth tree hiding.
+Measured 2026-09-06 with `pytest <tree> --collect-only -q` from the repo root on
+Python314; the four trees sum exactly to the repo-root total (21122 + 10856 +
+359 + 348 = 32685), so there is no fifth tree hiding. **Re-measure before
+quoting any of these - nothing guards them.** The previous figures here were
+taken on 2026-09-04 and `tests` had already drifted 20645 -> 21122 in two days.
 
-- **`pytest tests`** covers 20645 of 32215 (64 percent). This is the NARROW bar.
+- **`pytest tests`** covers 21122 of 32685 (65 percent). This is the NARROW bar.
 - **The "dual suite"** (`tests` + the DS tree) that CLAUDE.md's Tier-2 rule and
-  the DS batch ritual refer to covers 31501 of 32215 (98 percent).
+  the DS batch ritual refer to covers 31978 of 32685 (98 percent).
 - **`pytest .` from the repo root** is the only command that means "everything".
 
-**"Not in the local suites" and "unrun in CI" are DIFFERENT SETS - do not
-conflate them.** Three trees (359 + 348 + 7 = **714** tests) are outside both
-local suites. But only TWO trees (`agents/agent3_testing/suite` + `tools/tests`,
-359 + 348 = **707** tests) are run by NO CI job at all; `benchmarks` does run, on
-CodSpeed. And CI is not two commands either - there are **nine** pytest
-invocation sites across three workflows: `ci.yml:139`, `:340`, `:356`, `:388`,
-`:412`, `:504` (the last two are `RC_REQUIRE_*=1 pytest` env-prefixed forms that
-a naive grep for a line starting with `pytest` will miss), `docs-guards.yml:148`,
-`:154`, and `codspeed.yml:51`.
+**"Not in the local suites" and "unrun in CI" USED to be different sets. Since
+2026-09-06 they are the same set**, and the distinction is recorded here only so
+that an older doc quoting it is recognisable as stale. The `benchmarks` tree was
+the sole member of the difference: outside both local suites, but run in CI by
+CodSpeed. It was deleted along with `.github/workflows/codspeed.yml` - see
+"Why CodSpeed was dropped" below. So today two trees
+(`agents/agent3_testing/suite` + `tools/tests`, 359 + 348 = **707** tests) are
+outside both local suites AND run by no CI job.
+
+CI is still not two commands: there are **eight** pytest invocation sites across
+the two workflows that run pytest (a third, `patch-day-ddragon-sync.yml`, runs
+none): `ci.yml:165`, `:366`, `:382`, `:414`, `:438`, `:530` (`:414` and `:438`
+are `RC_REQUIRE_*=1 pytest` env-prefixed forms that a naive grep for a line
+starting with `pytest` will miss), plus `docs-guards.yml:148` and `:154`. These
+line numbers move whenever a workflow is edited - re-derive them, do not inherit
+them.
 
 Until RM-170 the repo's habitual green bar was quietly one of the narrow two,
 and the trees outside it had gone red without anyone seeing it:
 `tools/tests` carried two guard tests that had been failing since 2026-07-30
 (commit `9df58480` added a DS-engine import to both CDragon extractors and did
 not update their engine-independence guards), and `benchmarks` reported 7 red
-"ERROR at setup" lines because the CI-only `pytest-codspeed` plugin is not
-installed locally. Both are fixed; the point is that neither was VISIBLE.
+"ERROR at setup" lines because the CI-only `pytest-codspeed` plugin was not
+installed locally. Both were fixed; the point is that neither was VISIBLE.
+(`benchmarks` no longer exists - it was deleted 2026-09-06 with CodSpeed.)
 
 **Rules of thumb**
 - Claiming "suite green" in a ledger entry, a commit message or a hand-off:
@@ -87,9 +96,32 @@ installed locally. Both are fixed; the point is that neither was VISIBLE.
 - Tier-0/Tier-1 edits keep using the narrow, fast per-module runs - see
   CLAUDE.md "Execution Efficiency & Tooling Rules". This section defines what
   the words mean, it does not raise the per-edit verification tax.
-- `benchmarks` never MEASURES anything locally. It runs on CodSpeed in CI via
-  `.github/workflows/codspeed.yml` (`pytest benchmarks/ --codspeed`); locally
-  the 7 cases skip with a reason. A local green there is not a perf signal.
+### Why CodSpeed was dropped (2026-09-06)
+
+`.github/workflows/codspeed.yml` and the `benchmarks/` tree are DELETED. Do not
+re-add either without a reason that answers the measurement below; the operator
+decided this after it was quantified, so it is a settled call, not an oversight.
+
+CodSpeed was added 2026-06-30 (PR #5) and ran 7 benchmarks over `item_advisor.py`
+and `composition_advisor.py` on every non-.md push, about 60 seconds a run and
+100+ runs in the trailing 30 days. Every run was green. It never appears in
+`docs/LEDGER.md` as having caught anything - all 12 mentions there are workflow
+and minute-saver configuration.
+
+The reason it could not catch anything: **it was pointed at code that does not
+change.** Measured over the trailing 90 days, `composition_advisor.py` took 1
+commit (last 2026-06-14) and `item_advisor.py` took 3 (last 2026-06-19). Over
+the same window `agents/daemon_slayer/` took **310**. The engine that actually
+churns had no perf coverage at all, and still does not - the `test_*_benchmarks`
+modules under `tests/` are DOMAIN benchmarks (reference build quality against
+`rewind_history.db`), not timing. A perf gate on static code is green by
+construction, which is why nobody read the dashboard.
+
+If perf coverage is ever wanted, the target is the DS engine, and the cost to
+weigh is maintaining benchmarks for something that changes 310 times a quarter.
+The two modules CodSpeed watched are live-reachable (`app/_game_lifecycle.py`,
+`app/__init__.py`, `coaches/aram_coach.py`, `dashboard/_liveclient.py`) - they
+were the wrong TARGET, not dead code.
 
 ### `RC_REQUIRE_DS_ENGINE=1` - green does not mean the DS routes were tested
 

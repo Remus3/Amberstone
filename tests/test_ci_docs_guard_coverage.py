@@ -6,8 +6,10 @@ MEASURED 2026-07-27. `.github/workflows/ci.yml` carries, on BOTH `push` and
     paths-ignore:
       - '**/*.md'
 
-and `.github/workflows/codspeed.yml` carries the same. A docs-only commit
-therefore triggers NO workflow at all. But dozens of test modules read tracked
+and until 2026-09-06 `.github/workflows/codspeed.yml` carried the same; that
+workflow has since been deleted (docs/OPERATIONS.md "Why CodSpeed was dropped"),
+which changes the count and not the contract. A docs-only commit therefore
+triggers NO workflow at all. But dozens of test modules read tracked
 `.md` files off disk and assert on their CONTENT, so a `.md`-only commit can
 turn a `.py` guard RED with nothing watching. It happened twice in a row:
 
