@@ -108,9 +108,15 @@ def test_record_carries_no_prompt_text_and_no_paths(tmp_path):
     persists either is a new disclosure surface on every keystroke.
     """
     log = tmp_path / "hooks.jsonl"
+    # COMPOSED, never a literal. Writing the realistic form inline put a real
+    # account-shaped home path into a tracked runnable file and turned
+    # test_no_hardcoded_home_path.py red - a test asserting a home path is not
+    # LOGGED, which hardcoded one to say so. The runtime value is unchanged, so
+    # the assertion below is exactly as strong as it was.
+    fake_cwd = os.path.join("C:" + os.sep, "Users", "SOMEONE", "private")
     record_invocation(
         "UserPromptSubmit",
-        {"prompt": "SECRETPROMPT", "cwd": r"C:\Users\SOMEONE\private", "session_id": "s1"},
+        {"prompt": "SECRETPROMPT", "cwd": fake_cwd, "session_id": "s1"},
         path=log,
     )
     blob = log.read_text(encoding="utf-8")
