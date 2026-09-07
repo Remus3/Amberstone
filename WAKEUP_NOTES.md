@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-09-06 - CI unblocked, CodSpeed dropped, and a five-repo review protocol
+
+Nine commits, all pushed. Main was RED since `dcd965f2d` for a missing CI vision
+token - fixed with a CI-only dummy plus a guard that it stays fake. First clean
+full run since: 31724 passed, 262 skipped.
+
+**Shipped.** Un-blinded the cross-repo governor guards (LW renamed its root to
+`C:\Sibling-A`; RC's `LW_ROOT` still pointed at the old path, so three
+guards had been SKIPPING silently - measured 25/3, now 28/0). Dropped CodSpeed
+and the five dependents it had. Ported RSC's CI-side glyph sweep as a ratchet.
+Fixed the next-session hand-off: it now writes to a TRACKED `RC-NEXT-SESSION.txt`
+in the repo root with a Desktop shortcut, gated before the write. Widened the
+`stop_claim_gate` to credit CI-log counts. Built a SessionStart inbox watcher.
+
+**The pattern the whole session was about:** a check that is ABSENT reads
+identically to a check that PASSED. It appeared eight separate ways - a guard
+skipping on a renamed path, a gate skipping its checks, `hold()` logging a
+release that never happened, a declared hook with a missing script, a present
+script with no declaration, a watcher blind to subdirectories, a payload keyed
+on a file count that cannot see a replacement, and two of my own tests passing
+vacuously.
+
+**Cross-repo.** Charter v1-v4 with all five repos, broadcast + reviewed. Two LW
+dissents and one RSC dissent, all accepted - twice RC generalised from its own
+workflow and was corrected by the repo whose constraints it had not modelled.
+RC is deadlock adjudicator, scoped narrowly, must disclose when it is a party.
+
+**DO NOT REDO.** CodSpeed is deleted deliberately (docs/OPERATIONS.md "Why
+CodSpeed was dropped"). The winmutex rotation and the `hold()` leak fix are
+pinned at `0b112a4f` / `629c3d51` across all three carriers. Caveman is
+operator-settled, not a live dissent.
+
+**Open.** Slot round (reserved floor per repo) blocked on the `repo=` key
+agreement plus CS/LL saying in-or-out. Pre-public flip has four audit blockers.
+`Share/` removal is scope B - 548 files, 46 test modules. RC's verbatim drop
+carried operator PII in 19 of 48 files and was PULLED from all four inboxes;
+a redacted re-drop is next-session work.
+
 # 2026-09-06e - operator session: repo re-case, 7th port block, slots.py re-pin, token rotation
 
 > Filed as `e`: lane 10 already holds `d` (RM-367) and lane 8 holds `c`, both same day.
