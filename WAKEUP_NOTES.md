@@ -60,7 +60,8 @@ Verification was the weak part, not the rewrite. Six instrument failures: a
 scanner that deadlocked twice, a synthetic probe that over-reported, `grep -c`
 silently overriding `-o`, a rule table validated by reasoning, a regex disabled
 by shell escaping (backslash-b became a 0x08 byte), and a repair applied without
-removing its cause. The `Sibling-C` rule corrupted `ops/loop/config.json` and
+removing its cause. A two-word sibling-name rule whose second word is ordinary
+English matched inside unrelated phrases, corrupting `ops/loop/config.json` and
 `docs/history_notes.md` mid-word before it was caught. All repaired; the lesson
 is that a rules table must be measured against the corpus, never reasoned about.
 

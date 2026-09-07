@@ -60,10 +60,15 @@ DO NOT REDO - shipped and pushed this session:
 
 TRAPS THIS SESSION PAID FOR, all measured:
   - A rules table must be MEASURED against the corpus, never reasoned about. The
-    hand-written casing list missed SIBLING-B; 101 distinct casings exist.
-  - `Sibling-C` as a bare literal matched inside "empowered moon" and "gitignored
-    moon" and corrupted ops/loop/config.json. Only that family needs anchoring -
-    aggregator J, a sibling game project and a peer maintainer were MEASURED clean and must NOT be anchored.
+    hand-written casing list missed an ALL-CAPS two-word casing of one sibling
+    name; 101 distinct casings exist.
+  - ONE sibling name is two words whose second word is ordinary English, and as
+    a bare literal it matched INSIDE unrelated phrases ending in that same word,
+    corrupting ops/loop/config.json. Only that family needs anchoring - the
+    single-token names were MEASURED clean and must NOT be anchored. (The names
+    are deliberately not spelled here: this file is INSIDE the scrub's blast
+    radius, and a trap note that names its own trigger gets rewritten into
+    nonsense on the next converge run.)
   - NEVER write a regex through a Bash heredoc. Backslash-b became a 0x08
     BACKSPACE byte, so the rule matched a literal backspace and was silently
     INERT rather than anchored, and it looked correct in every listing.
