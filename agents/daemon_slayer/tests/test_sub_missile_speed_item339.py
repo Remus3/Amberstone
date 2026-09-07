@@ -1,4 +1,4 @@
-"""secondary / sibling-missile speed accessor - schema lift item 339 (2026-06-07).
+"""secondary / sibling_missile speed accessor - schema lift item 339 (2026-06-07).
 
 A NEW forward-marker accessor ``DataSnapshot.spell_sub_missile_speed`` exposing
 the CDragon ``missile_sub_record`` datum as a first-class comparable MAGNITUDE -
