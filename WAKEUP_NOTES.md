@@ -6,6 +6,56 @@
 
 ---
 
+# 2026-09-07 - pre-flip transition: licence closed, Share/ gone, verdict NO-GO
+
+Ten commits `2ff47493b`..`ca32cb8c9` pushed to main. LEDGER 1358 has the full
+account; this is the hand-off.
+
+**Deliverable: `docs/PUBLIC_FLIP_GO_NO_GO.md`. The verdict is NO-GO.** Three of
+five blockers closed. The one that decides it is the name scrub.
+
+**CLOSED.** Licence reconciled to one story (`2ff47493b`) - Apache-2.0 kept
+byte-pure with the scope block appended AFTER it so licence detection still
+works, new `NOTICE` for the data sources, README's "all rights reserved" gone.
+`Share/` removed entirely (`d76004025`), 633497 deletions, which also deleted
+one of the three contradictory licence statements.
+
+**Suites verified FRESH on main, not inherited:** `tests` 20975 passed / 0
+failed; DS 10856 passed / 0 failed.
+
+**DO NOT REDO.**
+- Share/ removal is DONE and merged. `tools/ds_share_sync.py`,
+  `tools/gist_share_sync.py` and the post-commit gist hook no longer exist.
+- The path purge is PROVEN in `C:/rc-purge-staging/` and deliberately NOT
+  applied - 7 worktrees are checked out against the live repo and filter-repo
+  rewrites every ref. Backup bundle:
+  `C:/ClaudeBackup_20260906/rc-pre-purge-20260907-012420.bundle`.
+- `tools/rewrite_sha_citations.py` exists and works against a real commit-map
+  (1856 remapped / 25 dropped / 0 ambiguous). Do not rebuild it.
+- Inbox watcher and the shared poller are both shipped and running. The
+  poller ladder was already retuned on operator instruction; do not re-tune it.
+
+**NEXT, and it is a session of its own: the name scrub.**
+`docs/PRE_RELEASE_NAME_SCRUB.md` understates itself badly - measured 129 files
+/ 34757 occurrences, a tracked FILENAME (`scripts/parse_external_arena.py`), 262
+live-read provenance rows in `data/meta_build/arena_champion_builds.json`, and
+the name sits in the INITIAL COMMIT's tree so all 5132 commits carry it. Its
+"5 commit messages" is 9. **Recommendation: do the name scrub and the path
+purge as ONE rewrite** - one force-push, one citation remap, one branch re-cut,
+instead of paying that twice.
+
+**RESIDUE:** 10 of 15 root-walking guards in `tests/` have no worktree
+exclusion. Only 2 fired this session (because only 2 matched content in the
+leftover agent worktree); the other 8 are latent and will fire whenever a
+worktree agent exists, which is the default session shape. Also delete
+a stray cross-project scaffold branch before any flip - its branch NAME
+is a cross-project leak.
+
+**Two operator decisions still open**, both named in the go/no-go: whether to
+publish the author email carried in all 5132 commit author fields, and whether
+the Arena augment recommender ships with degraded priors once the Overlay App E
+snapshots are purged.
+
 ## 2026-09-06 - CI unblocked, CodSpeed dropped, and a five-repo review protocol
 
 Nine commits, all pushed. Main was RED since `dcd965f2d` for a missing CI vision
@@ -43,6 +93,8 @@ agreement plus CS/LL saying in-or-out. Pre-public flip has four audit blockers.
 `Share/` removal is scope B - 548 files, 46 test modules. RC's verbatim drop
 carried operator PII in 19 of 48 files and was PULLED from all four inboxes;
 a redacted re-drop is next-session work.
+
+---
 
 # 2026-09-06e - operator session: repo re-case, 7th port block, slots.py re-pin, token rotation
 
@@ -119,51 +171,3 @@ fallback seed - neither is dead, both need re-expression, not deletion.
 lane 10 pushes to main continuously. It needs a quiet window.**
 MIT should land in the SAME pass as the data purge, not before - otherwise it
 asserts an MIT grant over data that is not ours.
-
----
-
-# 2026-09-06d - LANE 10 cycle 16: RM-367 shipped, and the DECISION was the work
-
-> Filed as `d` because lane 8's true-audit hand-off took the `c` suffix in the
-> same rebase. It sits BELOW that block despite landing after it; both are the
-> same day and neither was reordered, since rewriting another lane's record to
-> tidy ordering costs more than it buys.
-
-RM-367 is on main (`4af7b9fc1` code, `ec32561d4` ledger). **LEDGER 1355, not
-1354** - lane 8 took 1354 while this row was in flight, so the code commit's
-message cites 1354 and is stale by one. Not amended, per the no-amend rule.
-
-An empty gameflow body is now a FALSY NO-PHASE, emitted as Python `None`.
-
-DO NOT REDO / read before touching this area:
-- **The obvious fix is the bug.** `"Unknown"` - the value the very next branch
-  in `snapshot_shape` already uses - is TRUTHY, and both `web/js/main.js` arms
-  that recover a lost sticky test `!phase` (`:711` s209, `:728` item-281, off
-  `const phase = lcu && lcu.phase` at `:629`). "Unifying the two conventions"
-  would silently disarm them. Measured in the transition table, not reasoned.
-- **Omitting the key is not available either** - `shape_snapshot` reads
-  `state["phase"]` by BRACKET at SIX sites, the nearest two lines below.
-- The predicate is IMPORTED from `lcu/lcu_pregame._phase_or_none` (RM-347's),
-  not re-implemented. Do not add a private copy in `snapshot_shape`.
-- Sibling sweep found NO other defect: `phase_watcher` already validates type
-  plus an allowlist, `lcu_postgame_collector` returns `""` as its DECLARED
-  sentinel under a caller that guards on falsiness, and `lcu_agent` holds no
-  phase read at all. Do not "fix" any of the three.
-
-**RESIDUE: RM-382 OPEN** - `"Unknown"` (`snapshot_shape.py:440`) and
-`"Offline"` (`tools/lcu_agent.py:330`) are TWO truthy non-phase sentinels that
-each disarm those same two arms. Mechanism and consequence both measured;
-`lcu_agent` never reaches `shape_snapshot`, so fixing the shaper alone leaves
-half of it live.
-
-**NEXT ROW: RM-343** (row 18, the last in the lane's table). Read its fence
-first - do NOT close it by re-materializing 1884 paths in a feature branch.
-One datum already banked by cycle 15: `.gitattributes` pins `eol=lf` and
-overrides `core.autocrlf=true` in the SHARED `.git/config`. Note this cycle's
-full suite ran GREEN in this worktree (`tests/test_text_line_endings.py`
-included), so the inherited red is NOT currently reproducing here - measure
-before inheriting the row's premise.
-
-**ROADMAP is at 89.76 pct of budget, 197 bytes below the 90 pct warn.** The
-next cycle should plan to relocate a closed body to `docs/ROADMAP_HISTORY.md`
-rather than expect room for a new line.
