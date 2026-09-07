@@ -366,6 +366,21 @@ jobs:
           pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py \
             tests/test_u2500_hygiene.py \
             -q --tb=line --timeout=60
+          # PORTED FROM SIBLING-B 2026-09-06, credited. The three guards
+          # above define their OWN narrower banned set, while
+          # tools/precommit_gate.py._glyph_hits is a catch-all over every
+          # codepoint > 127 - one CLAUDE.md hard rule with two readings, and the
+          # looser one was the one CI ran. This sweeps tracked source through the
+          # GATE engine itself, so the hook and CI cannot drift apart.
+          #
+          # It is a RATCHET, not a flat ban: 50 tracked files carry non-ASCII
+          # today and not all are mistakes (web/ ships arrows and status glyphs
+          # in rendered UI text). Net-new fails; a cleaned file must leave the
+          # baseline in the same commit. It also carries RSC's vacuity guard -
+          # a sweep that selects nothing passes while looking identical to a
+          # clean tree.
+          pytest tests/test_ascii_source_sweep.py \
+            -q --tb=short --timeout=120
 
       - name: docs-guard complement is wired
         run: |
