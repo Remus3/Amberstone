@@ -246,20 +246,36 @@ def main() -> int:
     # Design from Sibling-A 2026-09-06, adopted with one change. A note
     # written into moon_sync_inbox/ by a sibling repo used to be discovered
     # only when a human mentioned it - LW confirmed it has no watcher at all,
-    # so a note could sit until someone happened to look. SessionStart is the
-    # right delivery point: it costs one directory listing, needs no daemon,
-    # cannot flash a console, and survives /clear by construction, because a
-    # /clear IS a session start.
+    # so a note could sit until someone happened to look. SessionStart is ONE
+    # delivery point: it costs one directory listing, needs no daemon, cannot
+    # flash a console, and survives /clear by construction, because a /clear IS
+    # a session start.
     #
-    # THE CHANGE: LW proposed an mtime WATERMARK. RC uses a set of seen
-    # FILENAMES instead. A watermark advances on write, so if this hook runs
-    # and the session is cleared or killed before anyone reads the output, the
-    # watermark has moved past a note nobody saw - and it is unrecoverable,
-    # because "unread" was never a property of the file. A filename set has no
-    # such window: a note stays unread until its NAME is recorded, and
-    # re-listing a name is idempotent. It also survives clock skew and a copy
-    # that preserves timestamps, both of which silently defeat an mtime
-    # comparison.
+    # IT IS NOT SUFFICIENT ON ITS OWN, and an earlier version of this comment
+    # called it "the right delivery point" full stop, which reads as an answer
+    # to the next reader's question and is why the gap survived. SessionStart
+    # fires ONCE. A note landing while a session is live is invisible until the
+    # next start, which is the common case on this channel. That half is
+    # covered by `report_inbox_only()` on UserPromptSubmit; see its docstring.
+    #
+    # THE CHANGE FROM LW'S DESIGN: they proposed an mtime WATERMARK. A
+    # watermark advances on write, so if this hook runs and the session is
+    # cleared or killed before anyone reads the output, the watermark has moved
+    # past a note nobody saw - and it is unrecoverable, because "unread" was
+    # never a property of the file. A seen SET has no such window: an entry
+    # stays unread until its key is recorded, and re-listing a key is
+    # idempotent. It also survives clock skew and a copy that preserves
+    # timestamps, both of which silently defeat an mtime comparison. That
+    # argument is unchanged and still load-bearing.
+    #
+    # The KEY is no longer the bare filename this comment used to describe. It
+    # is (name, content digest) for notes and (name, contents digest) for
+    # subdirectory drops, because a name-only key cannot see an edit in place
+    # or a retraction. Sibling-E found a paragraph in their own watcher
+    # DEFENDING the name key on the grounds that a content hash would hide an
+    # edit - exactly inverted, since an edit changes the content and therefore
+    # the hash. Their rule is worth carrying: a wrong rationale outlives a
+    # wrong line of code, because it answers the question before it is asked.
     try:
         inbox = _ROOT / "moon_sync_inbox"
         seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
