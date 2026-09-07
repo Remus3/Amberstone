@@ -318,10 +318,15 @@ better than one sufficient reason plus one false one.)
 
 ### Two gaps in the guarding, stated because they are load-bearing omissions
 
-**Gap 1: the disk pin is PERMANENTLY SKIPPED in CI.** All three workflows
-(`.github/workflows/ci.yml` lines 55 and 173, `codspeed.yml` line 34,
-`docs-guards.yml` line 61) use `actions/checkout@v6` with **zero `lfs:`
-occurrences**, so the tables are unfetched pointers there. The four disk
+**Gap 1: the disk pin is PERMANENTLY SKIPPED in CI.** Every workflow checks out
+with **zero `lfs:` occurrences**, so the tables are unfetched pointers there.
+Re-derived 2026-09-06 (`codspeed.yml` was deleted and `patch-day-ddragon-sync.yml`
+added, so the original citation named a workflow that no longer exists and
+missed one that does): `.github/workflows/ci.yml` lines 90 and 219 and
+`docs-guards.yml` line 75 use `actions/checkout@v6`, and
+`patch-day-ddragon-sync.yml` line 19 uses `actions/checkout@v4`. The finding is
+unchanged - the version spread is noted only so the next re-derivation does not
+read "all v6" and stop looking. The four disk
 assertions therefore run **only on a developer machine that has done a
 `git lfs pull`**. That is not a hypothetical skip - it is the normal, permanent
 CI state. The closed-form and axis-census assertions are pure code and do run

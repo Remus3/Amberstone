@@ -213,7 +213,7 @@ registry-count or ASCII-hygiene failure, and never "fix" a data file on the stre
    v24.15.0 (`tests/test_web_js_esm_parse.py:4-29`): a duplicate `const st` in `web/js/panels/dev.js` killed the entire Mission Control panel while `node --check` exited
    0 and 35 source-contract tests passed. **The gate is `tests/test_web_js_esm_parse.py`** - one node process, a real dynamic `import()` over every module. Its second
    test PINS the blindness, so if a future Node closes the hole the test goes red and you correct the docstring rather than dropping the sweep.
-4. **A docs-only push runs NO `ci.yml`.** `.github/workflows/ci.yml:24-29` carries `paths-ignore: ['**/*.md']` on BOTH `push` and `pull_request`; `codspeed.yml:10-14`
+4. **A docs-only push runs NO `ci.yml`.** `.github/workflows/ci.yml:24-29` carries `paths-ignore: ['**/*.md']` on BOTH `push` and `pull_request`; `codspeed.yml` carried the same until it was DELETED 2026-09-06 (docs/OPERATIONS.md "Why CodSpeed was dropped")
    the same. Roughly 48 test modules read tracked `.md` off disk and assert on their CONTENT, so a `.md`-only commit can turn a `.py` guard RED with nothing watching -
    it happened twice consecutively, and the docs-only FIX also ran no CI so its own green was never machine-confirmed. **Prose reformatting is this lane's most common
    change, so this is its likeliest blind spot.** The complement is `.github/workflows/docs-guards.yml`, which fires on exactly what `ci.yml` declines and derives its

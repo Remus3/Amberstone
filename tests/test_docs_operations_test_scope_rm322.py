@@ -78,13 +78,23 @@ class OperationsTestScopeTable(unittest.TestCase):
     def test_extractors_are_not_vacuous(self):
         """A parser that silently finds nothing would make every test below pass."""
         doc, producer = _doc_trees(), _producer_trees()
+        # 4, not 5: `benchmarks` was deleted with .github/workflows/codspeed.yml
+        # on 2026-09-06 (docs/OPERATIONS.md "Why CodSpeed was dropped"). This
+        # floor is a vacuity check, not a census - it exists so a parser that
+        # silently matches nothing cannot make every assertion below pass. Lower
+        # it only alongside a real tree removal, and never to whatever the
+        # parser happens to return.
         self.assertGreaterEqual(
-            len(doc), 5,
+            len(doc), 4,
             f"parsed {len(doc)} tree rows out of the OPERATIONS table; the "
             f"table format changed and this guard is reading nothing",
         )
+        # 4, for the same reason as the doc floor above - `benchmarks` was
+        # deleted 2026-09-06. The two floors must move together: they are the
+        # vacuity check on OPPOSITE sides of the same comparison, so lowering
+        # only one leaves the other able to read nothing and still pass.
         self.assertGreaterEqual(
-            len(producer), 5,
+            len(producer), 4,
             f"parsed {len(producer)} entries out of _TEST_TREES; the tuple "
             f"format changed and this guard is reading nothing",
         )

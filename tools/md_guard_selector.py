@@ -2,9 +2,12 @@
 
 Why this exists
 ---------------
-MEASURED 2026-07-27. `.github/workflows/ci.yml` and `.github/workflows/
-codspeed.yml` both carry `paths-ignore: ['**/*.md']` (the 2026-06-30 MINUTE
-SAVER), so a docs-only commit triggers NO workflow. But dozens of test modules
+MEASURED 2026-07-27, re-derived 2026-09-06. `.github/workflows/ci.yml` carries
+`paths-ignore: ['**/*.md']` (the 2026-06-30 MINUTE SAVER), so a docs-only commit
+triggers NO workflow. `codspeed.yml` carried the same filter and was the second
+half of that sentence until it was deleted on 2026-09-06 - see
+docs/OPERATIONS.md "Why CodSpeed was dropped". Its removal does not weaken this
+tool's reason to exist: one workflow declining `.md` is enough. But dozens of test modules
 read tracked `.md` files off disk and assert on their CONTENT, so a `.md`-only
 commit can turn a `.py` guard RED with nothing watching. `6bad3814` did exactly
 that to `tests/test_loop_director_context_caps.py`, and `8d22734b` - the fix -
