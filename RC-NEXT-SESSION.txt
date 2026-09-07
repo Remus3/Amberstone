@@ -73,6 +73,12 @@ TRAPS THIS SESSION PAID FOR, all measured:
     everywhere else. Two fired in opposite directions on the same day.
   - grep -c silently overrides -o. A "DANGEROUS" verdict came from that, not
     from the data.
+  - **NEVER write a count with a thousands separator.** "10 856" parses as 856
+    and tools/stop_claim_gate.py blocks the wrap on it. The gate scans the WHOLE
+    transcript and has NO retraction mechanism, so one formatting slip early in
+    a session re-blocks every /done for the rest of that session no matter how
+    clearly it is retracted afterwards - measured 2026-09-07, three times on the
+    same two sentences. Quote counts exactly as the tool printed them.
 
 Cross-repo: 7 UNREAD notes at wrap, deliberately deferred rather than
   interleaved into a half-finished rewrite. Read moon_sync_inbox/ INCLUDING
