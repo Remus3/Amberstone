@@ -563,6 +563,32 @@ def _hook_source(payload: dict | None) -> str:
     return raw[:_FIELD_MAX]
 
 
+def _read_hook_payload_with_reason(stream=None) -> tuple[dict, str]:
+    """Payload plus WHY it is empty when it is.
+
+    Added within an hour of shipping the log, because the log's first real
+    fires recorded payload=false and there was no way to tell which of "no
+    stdin under pythonw", "a tty", "an empty pipe" or "unparseable bytes"
+    caused it. Guessing between those four would have been the identical error
+    this log exists to stop - reading configuration as behaviour. The next real
+    fire answers it instead.
+    """
+    try:
+        if stream is None:
+            stream = sys.stdin
+            if stream is None:
+                return {}, "none"
+            if stream.isatty():
+                return {}, "tty"
+        raw = stream.read()
+        if not raw:
+            return {}, "empty"
+        data = json.loads(raw)
+        return (data, "json") if isinstance(data, dict) else ({}, "notdict")
+    except Exception:  # noqa: BLE001 - stdin can fail in ways not worth enumerating
+        return {}, "error"
+
+
 def _read_hook_payload(stream=None) -> dict:
     """Hook payload JSON from stdin, or {} for anything else.
 
@@ -665,7 +691,12 @@ def _trim_invocation_log(p: Path) -> None:
         pass
 
 
-def record_invocation(event: str, payload: dict | None = None, path: Path | None = None) -> None:
+def record_invocation(
+    event: str,
+    payload: dict | None = None,
+    path: Path | None = None,
+    stdin_state: str = "n/a",
+) -> None:
     """Append exactly one line recording that this hook fired.
 
     Deliberately records NO prompt text and NO paths. The hook payload carries
@@ -688,6 +719,10 @@ def record_invocation(event: str, payload: dict | None = None, path: Path | None
             # Distinguishes a real hook fire from an operator running this file
             # by hand. Both reach this function; only one answers the question.
             "payload": has_payload,
+            # Which of none / tty / empty / json / notdict / error produced the
+            # payload above. Turns "payload=false" from a dead end into a
+            # diagnosis on the next real fire.
+            "stdin": str(stdin_state)[:_FIELD_MAX],
             "session": str(sid)[:_FIELD_MAX] if isinstance(sid, str) else None,
             "pid": os.getpid(),
         }
@@ -703,8 +738,9 @@ if __name__ == "__main__":
     # Wired here rather than inside the probe functions so there is exactly one
     # place mapping an entrypoint to a hook event. --mark-inbox-seen records
     # nothing on purpose: it is a deliberate operator act, not a hook firing.
+    _payload, _why = _read_hook_payload_with_reason()
     if "--inbox-only" in sys.argv:
-        record_invocation("UserPromptSubmit", _read_hook_payload())
+        record_invocation("UserPromptSubmit", _payload, stdin_state=_why)
         sys.exit(report_inbox_only())
-    record_invocation("SessionStart", _read_hook_payload())
+    record_invocation("SessionStart", _payload, stdin_state=_why)
     sys.exit(main())

@@ -47,6 +47,7 @@ RSC's refutation was actually about.
 """
 from __future__ import annotations
 
+import json
 import string
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -101,6 +102,107 @@ _WRITING_FLAGS: tuple[str, ...] = ("--output", "-o=", "--output-file")
 
 def _is_hex(s: str) -> bool:
     return all(ch in _HEX for ch in s)
+
+
+# ---------------------------------------------------------------------------
+# The decider. What fires, and what must never fire.
+#
+# THE SEPARATION THAT MATTERS. This module keeps its OWN record of what it has
+# answered, in its OWN file, and never touches `sync_inbox_seen.json`. LL
+# measured the opposite design this week: a session hook that marked mail seen,
+# firing for every subagent start, so the first subagent consumed the
+# operator's queue and the operator's own session then honestly reported
+# "nothing new". An automated responder is that defect with a bigger engine -
+# it would answer a note and, as a side effect, tell the operator there was
+# nothing to read. Reporting, acknowledging and ANSWERING are three acts.
+
+_STOP_FLAG = "INBOX_RESPONDER_STOP"
+_STATE_NAME = "inbox_responder_answered.json"
+_NOTE_SUFFIX = ".md"
+
+
+def responder_state_path(root: Path) -> Path:
+    """Deliberately NOT sync_inbox_seen.json. See the note above."""
+    return Path(root) / "ops" / "runtime" / _STATE_NAME
+
+
+def is_stopped(root: Path) -> bool:
+    """Operator kill switch. Presence of the file is the whole protocol."""
+    return (Path(root) / "ops" / "runtime" / _STOP_FLAG).exists()
+
+
+def _sender_code(name: str) -> str | None:
+    """Extract RSC from `2026-09-07-1800-from-RSC-topic.md`."""
+    marker = "-from-"
+    i = name.find(marker)
+    if i < 0:
+        return None
+    rest = name[i + len(marker):]
+    code, _, _ = rest.partition("-")
+    return code or None
+
+
+def _answered(root: Path) -> set[str] | None:
+    """Notes already answered, or None if the record is unreadable.
+
+    None means FAIL CLOSED at every call site. Failing open would answer the
+    entire back catalogue in one burst the first time a crash truncates this
+    file, and the back catalogue here is 97 notes.
+    """
+    p = responder_state_path(root)
+    if not p.exists():
+        return set()
+    try:
+        return set(json.loads(p.read_text(encoding="utf-8")).get("answered", []))
+    except (OSError, ValueError):
+        return None
+
+
+def record_responded(root: Path, name: str) -> None:
+    """Add one note to THIS module's record. Touches nothing else."""
+    p = responder_state_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    known = _answered(root) or set()
+    known.add(name)
+    tmp = p.with_suffix(".json.tmp")
+    tmp.write_text(
+        json.dumps({"answered": sorted(known)}, indent=2), encoding="utf-8", newline="\n"
+    )
+    tmp.replace(p)
+
+
+def pending_notes(inbox: Path, root: Path, *, participants: tuple[str, ...]) -> list[str]:
+    """Notes this responder should answer, oldest ARRIVAL first.
+
+    Ordered by mtime on the receiving disk, not by the sender's filename. RC
+    retired its own filename tie-break after measuring the skew: LL's note was
+    stamped 1815 and landed at 17:57:01 while RSC's stamped 1800 landed at
+    17:59:53, so filename order was the exact reverse of arrival order. One
+    clock beats five.
+    """
+    if is_stopped(root):
+        return []
+    answered = _answered(root)
+    if answered is None:
+        return []  # unreadable record: fail closed
+    out = []
+    try:
+        entries = list(Path(inbox).iterdir())
+    except OSError:
+        return []
+    for p in entries:
+        if not p.is_file() or p.suffix != _NOTE_SUFFIX or p.name in answered:
+            continue
+        code = _sender_code(p.name)
+        # "RC" is excluded even when present in `participants`: a responder that
+        # answers its own note is a loop needing no second participant.
+        if code is None or code == "RC" or code not in participants:
+            continue
+        try:
+            out.append((p.stat().st_mtime, p.name))
+        except OSError:
+            continue
+    return [n for _, n in sorted(out)]
 
 
 @dataclass
