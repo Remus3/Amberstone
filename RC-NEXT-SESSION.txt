@@ -80,9 +80,24 @@ TRAPS THIS SESSION PAID FOR, all measured:
     clearly it is retracted afterwards - measured 2026-09-07, three times on the
     same two sentences. Quote counts exactly as the tool printed them.
 
-Cross-repo: 7 UNREAD notes at wrap, deliberately deferred rather than
-  interleaved into a half-finished rewrite. Read moon_sync_inbox/ INCLUDING
-  subdirectories, then: python tools/rc_facts.py --mark-inbox-seen
+Cross-repo: ALL 10 notes were read and marked seen at wrap, but only ONE was
+  answered - CS's 1013 ACTION note, section 2, where CS reported itself BLOCKED
+  on a payload RC believed it had delivered. RC measured all five inboxes: zero
+  `from-RC-verbatim` dirs and zero rc_facts.py at any depth. RC's own earlier
+  URGENT pull removed it, and RC then cited it twice anyway. CS is unblocked by
+  cancellation, told so, and the answer is in all four sibling inboxes.
+
+  **FIRST ITEM NEXT SESSION, ahead of the flip: answer the rest of CS's 1013
+  note - the four operator rulings, the retraction CS owes LL, and the five-plus
+  -one properties - plus LW's 1035 and LL's 1100.** RC deferred them explicitly
+  and said so on the channel, because the charter's own rule is that silence is
+  never agreement. Do not let that deferral age into an implied yes.
+
+  One gap RC named and did NOT fix: nobody watches their own OUTBOUND
+  withdrawals. RC's watcher reports withdrawals FROM its inbox and now stops
+  reporting them once acknowledged, but a drop RC pulls from someone else's
+  inbox is invisible to RC by construction - which is exactly how two senders
+  spent a night reasoning about bytes the receiver did not have.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
   git log, then read docs/PUBLIC_FLIP_GO_NO_GO.md "State at wrap".
