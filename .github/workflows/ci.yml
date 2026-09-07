@@ -39,6 +39,32 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
+# CI-ONLY THROWAWAY, and deliberately not a repo secret (2026-09-06).
+#
+# `dcd965f2d` untracked config/vision_token.txt, which had been a live 32-hex
+# X-RC-Token committed since the repo was created. Right call. But nothing
+# replaced it here, and core/vision_token._resolve RAISES rather than
+# defaulting - on purpose, so a misconfigured deploy fails loud instead of
+# authenticating every request with a known constant. The runner then had
+# neither the env var nor the file, so main went red on the next push with 120
+# failed / 53 errors, every one of them the same RuntimeError at COLLECTION.
+#
+# A real secret buys nothing here. This token authenticates 127.0.0.1:8889, a
+# LOOPBACK relay that exists only on Legion; no runner ever starts that
+# listener. The tests import the resolver, read a value and assert on plumbing,
+# so the value's only job on a runner is to be non-empty - _resolve does no
+# format validation at all. Putting a real credential into GitHub to satisfy an
+# assertion about non-emptiness would add a second place to leak from and fix
+# nothing.
+#
+# Workflow level, not per-job, so a third job added later cannot inherit the
+# outage. tests/test_ci_vision_token_env.py pins both halves: that this exists,
+# and that it is NOT 32 hex characters - because the tempting "fix" for a
+# future red here is to paste the real token back into a tracked file, which is
+# exactly the state dcd965f2d removed, wearing the costume of a bug fix.
+env:
+  RC_VISION_TOKEN: ci-dummy-not-a-real-token-loopback-only
+
 jobs:
   nightly-full-suite:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
