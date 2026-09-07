@@ -1,86 +1,53 @@
-RC NEXT SESSION - written 2026-09-06 21:55 by the interactive session
-
-NOTE: the previous copy of this file was from 2026-09-02 (lane 5) and was
-overwritten while fixing the defect that had left it stale for three days. See
-"SHIPPED" below.
-
-STATE AT WRAP
-  HEAD 365e6f9ab on main, pushed. THREE commits landed this session:
-    e752e4edc  un-blind the cross-repo governor guards after LW's root rename
-    750832852  CI vision-token dummy + guard
-    5eb88291c  drop CodSpeed and the five dependents it had
-    365e6f9ab  repair the three citations that deletion broke
-  UNCOMMITTED and waiting on CI: LICENSE (Apache-2.0), README port row +
-  tests/test_readme_port_map.py, the ported ASCII sweep
-  (tools/precommit_gate.py --scan-files, tests/test_ascii_source_sweep.py,
-  ci.yml step), and this next-session fix (ops/loop/intents.py write_prompt,
-  tools/session_intent.py --write-prompt, tools/done.md + its .claude mirror,
-  tests/test_next_session_desktop_write.py). Commit them once ci clears.
-
-  CI: docs-guards GREEN on 365e6f9ab. ci was still in_progress at wrap - CHECK
-  IT FIRST. Five consecutive ci runs were cancelled by concurrency supersede
-  tonight, so if it is red or cancelled, re-run rather than assuming.
-
-THE ONE THING TO DO FIRST
-  Task: decide and act on the slots.py hold() leak - it is a THREE-REPO joint
-  change and both other repos are waiting on RC.
-  Context: RSC found it, RC confirmed all three legs independently.
-    - ops/loop/slots.py hold() finally: slot.unlink() loses an
-      ERROR_SHARING_VIOLATION race to a waiter's Path.read_text() in _read();
-      except OSError: pass swallows it; log("released") sits OUTSIDE the try so
-      the log asserts a release that did not happen.
-    - WORSE (RSC addendum): a leaked lock whose holder is still ALIVE cannot be
-      reaped - both fast arms of is_stale answer "not stale". RC's
-      loop_controller.py:952 is long-lived under one pid, so RC is the most
-      exposed participant.
-    - Live impact measured tonight: 2 of 3 lanes held by RC ghosts, capacity was
-      1. Reclaimed via slots.reap(). Bucket free at wrap.
-  Proposed fix, already sent to LW and RSC, NOT applied: (1) move the released
-  log into the successful branch, (2) retry the unlink with bounded backoff,
-  (3) neutralize what cannot be deleted so the stale arm fires now instead of in
-  4.5 hours - (3) needs a measurement nobody has done, whether the rewrite is
-  even permitted while the reader's handle is open.
-  Acceptance: all three repos hash slots.py equal, all three re-pin
-  SHARED_SHA256 in the same round, and a test proves a leaked lock is reclaimed
-  rather than logged as released.
-  DO NOT change slots.py unilaterally - byte-identical by contract across RC,
-  Sibling-A and Sibling-B.
-
-ALSO OPEN
-  - Pre-public audit came back DO NOT PUBLISH AS-IS. Four blockers: secrets in
-    history (config/vision_token.txt live-tracked from the initial commit until
-    dcd965f2d today, plus a dead legacy token literal in
-    tests/test_p2w1_core_a.py:30, plus 5 tags on origin whose trees carry the
-    blob); 51MB of verbatim scraped aggregator J HTML in data/meta_build/ and in
-    history; Overlay App E augment data that Share/LICENSE.md:84-86 already excludes
-    on purpose; and a three-way license contradiction (new Apache-2.0 LICENSE vs
-    Share/LICENSE.md no-redistribution vs README.md:227 "all rights reserved").
-    Operator chose "audit first, then decide" - the audit is done, the decision
-    is not made. Do NOT flip visibility.
-  - CLAUDE.md:310 is FALSE: it says the 101.qq raw payload is gitignored.
-    git check-ignore disagrees; the capture is tracked. Fix the line or untrack
-    the file.
-  - Riot policy: the 2026-08-11 removals are genuinely gone, but an intact
-    fog-of-war inference stack remains live (MIA jungler tracking into the LLM
-    prompt, reachability rings, ward inference, minimap CV identity DEFAULT ON
-    while its own docstring at core/minimap_blob_detect.py:487 says DEFAULT
-    OFF). Needs a deliberate operator decision, not a cleanup.
-  - GitHub metadata was updated this session (19 topics, description, homepage,
-    wiki on) to match Sibling-A and Sibling-D. Repo is still PRIVATE.
-  - CodSpeed is fully removed and the operator deleted the codspeed.io project.
-    Do NOT re-add it; docs/OPERATIONS.md "Why CodSpeed was dropped" has the
-    measurement. The GitHub App may still have repo access - operator-side.
-
-SHIPPED THIS SESSION - DO NOT RE-INVESTIGATE
-  - The stale Desktop hand-off. Root cause was structural: tools/done.md
-    section 10 only PRINTED the prompt, and the only writer of
-    Desktop/RC-NEXT-SESSION.txt was section 10b's --consume, gated on a pending
-    intent. Fixed by separating writing from consuming; this file is the proof.
-  - LW's root is C:\Sibling-A WITH A SPACE; the GitHub repo keeps the
-    hyphen. Both spellings are deliberate. RC's guards were blind for three
-    hours because LW_ROOT still said C:\Sibling-A.
-  - CI had been red since dcd965f2d for a missing vision token, not a test
-    defect. Fixed with a CI-only dummy plus a guard that it stays fake.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES.md
-+ git log, then check ci on 365e6f9ab before anything else.
+NEXT SESSION
+------------
+Task: Finish the pre-public-flip transition for Remus3/Amberstone. Four audit
+  blockers gate it and none are resolved: (1) secrets in pushed history -
+  config/vision_token.txt was tracked from the initial commit until dcd965f2d,
+  and five lane branch tips plus the backup-pre-scrub tag still carry the blob;
+  (2) 51 MB of verbatim scraped aggregator J HTML under data/meta_build/, in
+  history since 2026-05-03; (3) Overlay App E augment data that Share/LICENSE.md:84-86
+  already excludes on purpose but the main repo still ships; (4) a THREE-WAY
+  licence contradiction - the new Apache-2.0 LICENSE vs Share/LICENSE.md's
+  no-redistribution clause vs README.md:227 "all rights reserved".
+  Operator has ruled: Share/ is REMOVED before the flip (scope B), and the
+  review gist is retired - its README already carries the public notice and the
+  repo link, done 2026-09-07.
+Context:
+  - Share/ removal is 548 tracked files / 20.5 MB and touches 46 test modules
+    (31 under tests/, 15 under agents/daemon_slayer/tests/), plus
+    tools/ds_share_sync.py, .githooks/pre-commit:68, .githooks/post-commit,
+    tools/gist_share_sync.py, tests/test_gist_share_sync.py, and the ci.yml
+    step "DS Share package in sync". LIVE ENGINE CODE DOES NOT DEPEND ON IT -
+    the only non-test reference is a docstring at
+    agents/daemon_slayer/data_loader.py:52. docs/HEXCORE_offline.html needs NO
+    change; its three "gist" hits are substrings of "registry".
+  - docs/PRE_RELEASE_NAME_SCRUB.md is the standing prerequisite and it
+    UNDERSTATES itself on both halves: its "already scrubbed from content" claim
+    is false (one survives at tools/headless-upgrade.md:142, reintroduced after
+    the scrub) and "5 historical commit messages" is actually 9. The name is
+    also in the BLOB CONTENT of 19 commits, which a message-only rewrite misses.
+  - CLAUDE.md:310 is FALSE: it says the 101.qq raw payload is gitignored;
+    git check-ignore disagrees and the capture is tracked.
+Acceptance: Share/ gone with all 46 test modules green, the licence statements
+  reconciled to one, the scrub plan's own status lines corrected to measured
+  values, and a written go/no-go on the flip - NOT the flip itself.
+Do NOT redo:
+  - CodSpeed is deleted deliberately. docs/OPERATIONS.md "Why CodSpeed was
+    dropped" has the measurement. Do not re-add it as a minute-saver reversal.
+  - winmutex.py 0b112a4f and slots.py 629c3d51 are pinned and agree across RC,
+    LW and RSC. The hold() leak is FIXED; its neutralising write is IN PLACE and
+    deliberately not tmp+os.replace - applying the atomic-write hard rule there
+    restores the leak.
+  - CI is green (31724 passed). The vision-token red was a missing CI value, not
+    a defect.
+  - Caveman ultra is operator-settled, not a live dissent.
+  - The verbatim drop was PULLED from all four sibling inboxes - 19 of 48 files
+    carried the operator account name. A redacted re-drop needs paths
+    parameterised and a sweep BEFORE it leaves.
+Open cross-repo: the reserved-slot round (one guaranteed lane per repo, width 7)
+  is blocked on agreeing repo keys rc/lw/rsc/cs/ll and on CS+LL saying whether
+  they want a slot - neither carries the governor yet. Charter v1-v4 is in
+  docs/CROSS_REPO_CONVERGENCE_CHARTER.md. Unread: three CS notes and one RSC
+  note landed at wrap.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+  git log, then read moon_sync_inbox/ INCLUDING subdirectories.
