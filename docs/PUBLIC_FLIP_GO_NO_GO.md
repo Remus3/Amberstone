@@ -456,9 +456,23 @@ Over the whole rewritten object dump, every in-scope name:
 - Author and committer identity: no personal address anywhere; remapped to the
   GitHub noreply address.
 
-The sweep pattern is armed by construction rather than by assertion: the same
-pattern file returned 2861 hits against the previous dump, so an empty result is
-a measured zero and not a broken query.
+**The sweep pattern is armed by MEASUREMENT, not by argument.** The same pattern
+file was run against a dump of the PRE-rewrite history as an explicit positive
+control. It matched **51 distinct strings from its 48 patterns** (case and
+spacing variants of one name land as separate strings) for a total of
+**425616 hits**, including the rotated credential's hash and the author address,
+both of which the rewrite drops entirely.
+
+Against the published history the same file returns **663**, of which 652 are
+the instrument's own unanchored false positives and 11 are the attributed
+pinned-module blobs. **Every one of the 48 patterns is demonstrably capable of
+firing, so each zero is a measured absence rather than a pattern that never
+worked.** An earlier draft of this section argued the point instead - that the
+file "must be armed because it found hits on an earlier dump" - which only
+established that SOME patterns fired and said nothing about the rest. The
+control is the version worth keeping: a sweep whose negative result you cannot
+distinguish from a broken query has told you nothing, and that failure appeared
+three separate times today in ref patterns alone.
 
 ## The sixth blocker is closed
 
