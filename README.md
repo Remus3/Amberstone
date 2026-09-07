@@ -225,4 +225,8 @@ opinions of Riot Games or anyone officially involved in producing or managing
 Riot Games properties. League of Legends and Riot Games are trademarks or
 registered trademarks of Riot Games, Inc.
 
-All rights reserved. Personal use only.
+Source code and authored documentation are licensed under the Apache
+License 2.0 - see [`LICENSE`](./LICENSE). That licence does NOT extend to
+the third-party-sourced data files under `data/`, which stay governed by
+their own upstream terms; [`NOTICE`](./NOTICE) records them source by
+source. Nothing here grants a right to redistribute that data.
