@@ -6,6 +6,66 @@
 
 ---
 
+# 2026-09-07c - THE FLIP HAPPENED. Remus3/Amberstone is PUBLIC
+
+Operator-gated at the destructive step, autonomous either side of it. Three
+commits on the rewritten `main`: `e4083dba6`, `50e4de321`, `39b56742f`.
+
+**PROBED, not assumed:** `gh repo view` -> `PUBLIC` / `isPrivate:false`, and an
+unauthenticated `curl` to the repository page returns 200. The verdict in
+`docs/PUBLIC_FLIP_GO_NO_GO.md` was written AFTER that probe. Read its "Outcome"
+section; everything above it is the pre-flip record, left standing on purpose.
+
+## The acceptance sweep failed first, and that is the value of the session
+
+Two separate defects, one in the instrument and one in the rewrite.
+
+- **The verifier's own pattern had the bug the scrub rule was already fixed
+  for.** Unanchored, so it matched the tail of longer words and read
+  "gitignored moon_sync_inbox" as a hit. 653 hits, **652 manufactured by the
+  instrument**. An instrument and the thing it measures can disagree about a
+  rule, and the instrument is not automatically the trustworthy side.
+- **A content scrub can be COMPLETE and still publish the names.** The rename
+  table was keyed on each file's path at HEAD; the filter callback receives the
+  path of whichever COMMIT it is filtering, so every pre-move path went
+  unrenamed. **2195 vendor-name hits, none in a blob** - all in tree objects,
+  where filenames live. The prior pass's "all purged paths zero" was true and
+  useless: eleven named patterns, no vendor name among them.
+
+Widening that sweep to the whole path list found 27 scraped vendor images and
+two scraped JSON files no plan had listed. Dropped, not renamed.
+
+## Traps worth carrying
+
+- **A mirror clone DOES fetch `refs/pull/*/head`** - all 13, and 531 commits
+  lived on no other ref. Reasoning said otherwise.
+- **A ref-pattern check can fail GREEN.** `for-each-ref 'refs/pull/*'` matched
+  nothing while 13 existed, then "confirmed" zero with the same broken pattern.
+  `for-each-ref` and `ls-remote` do not share a pattern language and neither
+  errors on a pattern that matches nothing. Always run the control.
+- **Deleting a repo deletes its LFS store.** Seven tip files are pointers; only
+  the local 662 MB of objects saved it.
+- **A document describing a scrub is INSIDE the scrub's blast radius.**
+  `converge.py` found 4 non-fixed-point files, all written at the last wrap.
+
+## Open, and deliberately not credited
+
+The NTFS-junction hole in `rc_facts.py` (a one-file drop reports 6 files), RC's
+gitignored hook wiring (a fresh clone runs no watcher), and outbound-withdrawal
+watching. All three reported to the siblings, none fixed.
+
+## Cross-repo
+
+Two notes delivered byte-identical to all four siblings: the deferred answers to
+CS 1013 / LW 1035 / LL 1100, then the correction that RC is public and **their
+names ARE in the published history** - 11 hits in 8 historical blob versions of
+the two byte-pinned shared modules, stated exactly rather than reassured away.
+RC also retracted two of its own claims: the 0700 "Amberstone is PUBLIC" note
+was false when written, and "winmutex.py measured clean" was true of the current
+version and false of its history.
+
+---
+
 # 2026-09-07b - flip attempt: scrub landed, rewrite proven, repo STILL PRIVATE
 
 Headless, operator away. Four commits pushed, `839604a02..3865c7e34`.
@@ -157,33 +217,3 @@ agreement plus CS/LL saying in-or-out. Pre-public flip has four audit blockers.
 `Share/` removal is scope B - 548 files, 46 test modules. RC's verbatim drop
 carried operator PII in 19 of 48 files and was PULLED from all four inboxes;
 a redacted re-drop is next-session work.
-
----
-
-# 2026-09-06e - operator session: repo re-case, 7th port block, slots.py re-pin, token rotation
-
-> Filed as `e`: lane 10 already holds `d` (RM-367) and lane 8 holds `c`, both same day.
-
-On main: `ee8537228` (slug), `f8323887e` (three queued items). LEDGER 1356.
-Full RC suite 21023 passed / 96 skipped / 0 failed; ruff + hygiene + drift_guard clean.
-DS untouched, so no Share sync.
-
-Four items, and EVERY one had a second half its filing did not name:
-- GitHub repo is now `Remus3/Amberstone`. `gh repo rename` rewrote `origin` in the
-  shared config, so all 6 lane worktrees followed - no per-worktree action needed.
-- Sibling-B owns 8790-8809 (7th block). The real finding: RSC had scaffolded onto
-  **8870, inside DS's 8860-8879**, and it could never have surfaced from a scan - DS
-  binds 8860/8861 only. Pinned by number now. RM's 8770-8789 is HELD, not freed.
-- `ops/loop/slots.py`: **LW authored the bytes, RC followed.** Found by the digest
-  guard going red, not by the note. Copied byte-level (never `write_text` - CRLF),
-  re-pinned to `1c4f8af4...`. RSC vendors last.
-- Vision token rotated + untracked. **The documented procedure was WRONG**: a
-  supervisor restart does NOT re-credential `:8889` (detached child, one-shot
-  self-heal at dashboard startup), so the OLD token still returned 200 after a
-  by-the-book rotation. Fixed + docstring corrected. Also killed the MCP fallback
-  coupling with `tools/mcp_token.txt` (gitignored).
-
-Do NOT redo: all four are shipped. `restart_trigger.txt` alone will NOT rotate `:8889`.
-
-NEXT is RM-383, **not RM-382** - lane 10 minted 382 the same day. Details in the
-next-session prompt; note `tools/rm_id_registry.py` cannot confirm a named id.
