@@ -1412,9 +1412,18 @@ def _discovered_test_trees() -> set[str]:
     its own. Vendored / mirrored / archived trees are excluded on the same
     grounds pytest.ini excludes them from collection.
     """
+    # "moon_sync_inbox" added 2026-09-07. Sibling repos deliver verbatim source
+    # payloads into that gitignored directory, and those payloads carry THEIR
+    # test modules. Those are INBOUND MAIL, not RC's test surface: RC does not
+    # run them, does not own them, and adding them to _TEST_TREES would assert
+    # RC's skip-hygiene rules over another project's code. The guard was right
+    # to flag them - a directory holding test_*.py really was outside the scan -
+    # and the correct answer is that the inbox is not part of the repo's own
+    # tree set, not that the tuple should grow. Same grounds as Share: a mirror
+    # of somebody else's code.
     skip_parts = {".git", ".claude", "__pycache__", "node_modules", "Share",
                   "python-embed", "_archive", "docs", ".venv", "venv", "build",
-                  "dist"}
+                  "dist", "moon_sync_inbox"}
     holders: set[str] = set()
     for path in _REPO_ROOT.rglob("test_*.py"):
         rel = path.resolve().relative_to(_REPO_ROOT).as_posix()
