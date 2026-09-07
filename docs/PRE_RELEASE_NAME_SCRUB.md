@@ -54,6 +54,17 @@ dependencies)
   the client plugin loader RC built a panel for, the local recall store, and
   the ordinary language and CI toolchain.
 
+## Operator ruling on cross-project references (2026-09-07)
+
+**Cross-project references are FINE in this regard.** They were scrubbed anyway,
+but the reason is PORTABILITY, not disclosure: a hardcoded sibling checkout path
+is wrong on every machine but the one that wrote it, and extracting the list to
+per-host config is worth doing on its own merits. Nothing that is merely a
+cross-project reference should be filed as a leak, and the one shared file that
+still names two siblings is left alone under the same ruling - a wording change
+there is an OFFER to the carrier repos, not a fix RC needs. Operator: "if the
+others can come to a consensus then that is fine."
+
 ## Deliberate NON-scrubs, each a decision rather than an oversight
 
 - **The two- and three-letter sibling initialisms** (`LW`, `RM`, `RSC`, `LL`,
