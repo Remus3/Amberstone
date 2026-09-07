@@ -88,7 +88,8 @@ each, 443,892 total. All six carry the same blob hash and the same
 `source_generated_at`.
 
 **The repo already documented in writing that this is not redistributable.**
-`Share/LICENSE.md:79-87` excluded it from that package on exactly those grounds,
+the Share package's own LICENSE (lines 79-87, deleted with the package in
+`d76004025`; read it at `d76004025^`) excluded it on exactly those grounds,
 and `tools/ds_share_sync.py` enforced the exclusion. Shipping it in a public
 main repo contradicts a position this project had already taken.
 
