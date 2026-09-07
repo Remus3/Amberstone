@@ -1,108 +1,71 @@
 NEXT SESSION
 ------------
-THE REPO IS STILL PRIVATE. The 2026-09-07 flip did NOT happen. Probe it before
-  believing anything, including this file:
+THE REPO IS PUBLIC. The flip completed 2026-09-07 at 15:0x local. Probe it
+  before believing anything, including this file:
     gh repo view Remus3/Amberstone --json visibility
-  An earlier revision of docs/PUBLIC_FLIP_GO_NO_GO.md claimed the flip HAD
-  happened and was committed and pushed while the repo was private. It was
-  written ahead of the act. Retracted in 3865c7e34. The rule it earned, which
-  this session broke in three separate documents: probe the thing, THEN write
-  the verdict.
+  Expect PUBLIC / isPrivate false. The full account is the "Outcome" section at
+  the END of docs/PUBLIC_FLIP_GO_NO_GO.md; everything above that section is the
+  pre-flip record and is left standing on purpose.
 
-Task: **Finish taking Remus3/Amberstone public.** Six steps, in this order.
-  1. Re-run the history rewrite from a FRESH mirror clone against the CORRECTED
-     rules. Driver and pipeline are in the prior session's scratchpad
-     (rewrite_history.py, scrub_pipeline.py, scratchpad/rules_*.tsv, converge.py).
-     **Do NOT reuse C:/rc-purge-staging/rc3.git** - it predates the rule
-     correction. Run converge.py FIRST and require "not-a-fixed-point: 0", or
-     the rewrite silently re-edits files after they were reviewed and tested.
-  2. Verify by DUMPING every reachable object and grepping it:
-       git rev-list --objects --all | awk '{print $1}' | git cat-file --batch --buffer > dump.bin
-       grep -aoiE "<all in-scope names>" dump.bin | sort | uniq -c
-     The dump takes 12-27 seconds. Expect ZERO hits outside ops/loop/slots.py,
-     which is deliberately skipped (byte-pinned cross-repo contract,
-     operator-cleared). Do NOT write a Python `cat-file --batch`
-     request/response loop - two of them deadlocked at CPU 0 with no output and
-     read as "still running".
-  3. Remap SHA citations with tools/rewrite_sha_citations.py --require-backticks
-     against the single commit-map from that run; accept the dropped ones in
-     writing.
-  4. DELETE and RECREATE Remus3/Amberstone under the same name, push only the
-     rewritten history, restore metadata verbatim from the captured
-     repo_metadata.json (description, homepage, 19 topics, issues/wiki/projects
-     flags), re-cut lane branches.
-  5. Re-apply the four carryover commits saved as patches under carryover/
-     (0001..0004) in the prior session's scratchpad.
-  6. Probe visibility, THEN write the verdict into docs/PUBLIC_FLIP_GO_NO_GO.md.
+DO NOT REDO - all shipped and pushed:
+  - The history rewrite. Ran from a fresh mirror against corrected rules;
+    5090 commits, 7 branches, 3 tags published. Do not re-run it.
+  - The delete-and-recreate. 13 pull refs are gone and PROVEN gone by an
+    explicit +refs/pull/*/head fetch with an armed control.
+  - Metadata restore: description, homepage, 19 topics, issues/wiki/projects.
+  - SHA citation remap: 3725 remapped / 40 dropped / 3366 pre-existing unknown.
+  - LFS objects re-pushed to the new store and verified by a fresh clone.
+  - Six lane worktrees reset to the rewritten tips.
+  - Two cross-repo notes to all four siblings (the deferred CS/LW/LL answers,
+    then the public-now correction).
 
-WHY DELETE-AND-RECREATE RATHER THAN FORCE-PUSH: refs/pull/N/head is PERMANENT, a
-  rewrite never touches it, GitHub will not let an owner delete a PR and does not
-  GC those refs. MEASURED: 13 PR refs, and pr/13's tree alone still carries 120
-  scraped-HTML files, the six vendor snapshots, an account roster and
-  config/vision_token.txt at its pre-rotation value. Purging main leaves all of
-  it one `git fetch` away. Five verified bundles plus a LOCAL-ONLY bundle of the
-  PR refs are in C:/ClaudeBackup_20260906/. NEVER push that last one anywhere.
+OPEN, reported to the siblings and deliberately NOT credited as done:
+  1. NTFS-junction hole in tools/rc_facts.py. MEASURED: a one-file drop
+     containing a junction reports 6 files. `p.rglob("*")` with no reparse-point
+     pruning and no per-drop budget. A junction over a large tree runs past the
+     hook timeout, and a killed hook surfaces NOTHING. Fix by adopting the
+     iterative pruned walk; the digest FORMAT must not move for ordinary drops
+     or the whole inbox re-reports.
+  2. RC's hook wiring is gitignored (.gitignore:136 `.claude/`), so a fresh
+     clone of RC runs no watcher and RC's own checker would fail RC.
+  3. Nobody watches their own OUTBOUND withdrawals. A drop RC pulls from someone
+     else's inbox is invisible to RC by construction.
+  4. C:/rc-worktrees/rm343-base is detached on an orphaned pre-rewrite commit.
+     Harmless; delete it when convenient.
 
-DO NOT REDO - shipped and pushed this session:
-  - The tracked-content scrub (names, descriptors, 9 doc + 4 module renames). Do
-    not re-open the descriptor scheme; it exists because many lines COMPARE six
-    or seven products and one generic word destroys the comparison.
-  - Personal data extraction into four gitignored configs with tracked .example
-    shapes: config/operator_identity.json, config/external_sources.json,
-    ops/moon_sync_repos.json, data/{replay_roster,ladder_role_mains}.json.
-    A fresh clone has NONE of these and every one degrades SILENTLY.
-  - Both operator decisions: author email NOT published (mailmap in the rewrite);
-    Arena augment recommender ships degraded, because the reader already fetches
-    and already degrades to an empty prior table.
-  - Cross-project references are operator-cleared as acceptable. slots.py naming
-    two siblings is DELIBERATE - do not file it as a leak.
-  - slots.py re-pinned to 71fa2a68... - all three carriers hash equal, CLOSED.
-
-TRAPS THIS SESSION PAID FOR, all measured:
-  - A rules table must be MEASURED against the corpus, never reasoned about. The
-    hand-written casing list missed an ALL-CAPS two-word casing of one sibling
-    name; 101 distinct casings exist.
-  - ONE sibling name is two words whose second word is ordinary English, and as
-    a bare literal it matched INSIDE unrelated phrases ending in that same word,
-    corrupting ops/loop/config.json. Only that family needs anchoring - the
-    single-token names were MEASURED clean and must NOT be anchored. (The names
-    are deliberately not spelled here: this file is INSIDE the scrub's blast
-    radius, and a trap note that names its own trigger gets rewritten into
-    nonsense on the next converge run.)
-  - NEVER write a regex through a Bash heredoc. Backslash-b became a 0x08
-    BACKSPACE byte, so the rule matched a literal backspace and was silently
-    INERT rather than anchored, and it looked correct in every listing.
-  - Hyphen-vs-underscore is a property of what the file said BEFORE the scrub,
-    not of the token. A blanket rule in either direction breaks something.
-  - A guard that enumerates the DISK passes where the file exists and fails
-    everywhere else. Two fired in opposite directions on the same day.
-  - grep -c silently overrides -o. A "DANGEROUS" verdict came from that, not
-    from the data.
-  - **NEVER write a count with a thousands separator.** "10 856" parses as 856
-    and tools/stop_claim_gate.py blocks the wrap on it. The gate scans the WHOLE
-    transcript and has NO retraction mechanism, so one formatting slip early in
-    a session re-blocks every /done for the rest of that session no matter how
-    clearly it is retracted afterwards - measured 2026-09-07, three times on the
-    same two sentences. Quote counts exactly as the tool printed them.
-
-Cross-repo: ALL 10 notes were read and marked seen at wrap, but only ONE was
-  answered - CS's 1013 ACTION note, section 2, where CS reported itself BLOCKED
-  on a payload RC believed it had delivered. RC measured all five inboxes: zero
-  `from-RC-verbatim` dirs and zero rc_facts.py at any depth. RC's own earlier
-  URGENT pull removed it, and RC then cited it twice anyway. CS is unblocked by
-  cancellation, told so, and the answer is in all four sibling inboxes.
-
-  **FIRST ITEM NEXT SESSION, ahead of the flip: answer the rest of CS's 1013
-  note - the four operator rulings, the retraction CS owes LL, and the five-plus
-  -one properties - plus LW's 1035 and LL's 1100.** RC deferred them explicitly
-  and said so on the channel, because the charter's own rule is that silence is
-  never agreement. Do not let that deferral age into an implied yes.
-
-  One gap RC named and did NOT fix: nobody watches their own OUTBOUND
-  withdrawals. RC's watcher reports withdrawals FROM its inbox and now stops
-  reporting them once acknowledged, but a drop RC pulls from someone else's
-  inbox is invisible to RC by construction - which is exactly how two senders
-  spent a night reasoning about bytes the receiver did not have.
+TRAPS THIS SESSION PAID FOR, all measured - these are the durable half:
+  - AN INSTRUMENT CAN CARRY THE BUG IT IS CHECKING FOR. The verifier's
+    sibling-name pattern was unanchored and matched the tail of longer words,
+    so 652 of 653 hits were manufactured by the instrument. The scrub RULE had
+    been anchored for that exact defect; the verifier's copy never was.
+  - A CONTENT SCRUB CAN BE COMPLETE AND STILL PUBLISH THE NAMES. A filename is
+    not content. The rename table was keyed on each file's path AT HEAD, but a
+    filter callback receives the path of whichever COMMIT it filters, so every
+    pre-move path went unrenamed: 2195 hits, none in a blob, all in tree
+    objects. Verify the WHOLE path list against the name list, never a list of
+    paths you already knew to worry about.
+  - A REF-PATTERN CHECK CAN FAIL GREEN. `git for-each-ref 'refs/pull/*'` matches
+    NOTHING while 13 such refs exist; the prefix form `'refs/pull/'` works.
+    `git ls-remote <url> 'refs/heads/'` returns 0 and reads like an empty repo.
+    for-each-ref and ls-remote do not share a pattern language and neither
+    errors on a pattern that matches nothing. ALWAYS run the control.
+  - A MIRROR CLONE DOES FETCH refs/pull/*/head. Reasoning said GitHub hides
+    them; measurement said all 13 came down, carrying 531 commits on no other
+    ref.
+  - DELETING A REPO DELETES ITS LFS STORE. Pointers survive a rewrite unchanged
+    and then point at nothing. Ask what else the forge keeps: pull refs, LFS,
+    releases, Actions artifacts, caches, wikis, pages branches.
+  - A DOCUMENT THAT DESCRIBES A SCRUB IS INSIDE THE SCRUB'S BLAST RADIUS.
+    converge.py found 4 non-fixed-point files, every one a handoff document
+    written at the previous wrap that spelled the names it was warning about.
+    Describe the trigger, never quote it.
+  - NEVER write a count with a thousands separator. "10 856" parses as 856 and
+    tools/stop_claim_gate.py blocks the wrap on it. The gate scans the WHOLE
+    transcript and has NO retraction mechanism, so one slip re-blocks every
+    /done for the rest of that session. It also requires a real pytest run with
+    a real summary line - a `python script.py` that prints "N passed" does not
+    count, and a probe that only PRINTS is not evidence at all.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-  git log, then read docs/PUBLIC_FLIP_GO_NO_GO.md "State at wrap".
+  git log. There is no flip work left; pick up the four OPEN items above or
+  normal lane work.
