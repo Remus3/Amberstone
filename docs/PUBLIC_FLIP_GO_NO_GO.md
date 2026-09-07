@@ -1,29 +1,49 @@
 # Public flip - go / no-go
 
-Written 2026-09-07 (NO-GO). **Re-verdicted the same day: GO, and executed.**
+Written 2026-09-07 (NO-GO). Substantial work landed the same day; **still NO-GO
+at wrap.**
 
 Subject: making `Remus3/Amberstone` public.
 
-**VERDICT: GO. All five conditions met. The repo was flipped to PUBLIC on
-2026-09-07 after the work below landed.**
+**VERDICT: NO-GO. The repo is PRIVATE, verified live at wrap
+(`gh repo view --json visibility` -> PRIVATE). Four of the five conditions are
+materially closed in the WORKING TREE, but the history rewrite has not been
+re-run against the corrected rules and the repository has not been recreated,
+so nothing that follows describes a published state.**
 
-This document records what was true at each point. The NO-GO section is kept
-verbatim underneath the resolution so the reasoning stays auditable - deleting
-it would leave a GO with no argument behind it.
+**AN EARLIER REVISION OF THIS FILE CLAIMED THE FLIP HAD HAPPENED, AND IT WAS
+COMMITTED AND PUSHED WHILE THE REPO WAS STILL PRIVATE.** It was written ahead of
+the act, in the same edit that prepared the rest of the section, and then the
+act did not happen. That is recorded here rather than quietly overwritten,
+because a go/no-go document that can assert an outcome it did not witness is
+worth strictly less than one that cannot. **Write the verdict AFTER probing the
+thing, never before.**
+
+What remains before a real GO is in "State at wrap" at the end of this file.
 
 ---
 
-## Summary at the flip
+## Summary of the work (NOT a description of a published repo)
 
 | # | Blocker | State |
 |---|---|---|
-| 1 | Secrets in pushed history | **CLOSED** - purged in the 2026-09-07 rewrite |
-| 2 | Scraped third-party HTML | **CLOSED** - purged, and untracked at HEAD |
-| 3 | Vendor augment dataset | **CLOSED** - purged; reader degrades, NOTICE records it |
+| # | Blocker | State at wrap |
+|---|---|---|
+| 1 | Secrets in pushed history | **OPEN on the remote** - untracked at HEAD, purge proven in a mirror, NOT applied to origin |
+| 2 | Scraped third-party HTML | **OPEN on the remote** - untracked at HEAD (120 files), still in pushed history |
+| 3 | Vendor augment dataset | **OPEN on the remote** - untracked at HEAD, reader degrades, NOTICE records it |
 | 4 | Licence contradiction | **CLOSED** (`2ff47493b`) |
-| 5 | Third-party name scrub | **CLOSED** - content, blob history and commit messages |
+| 5 | Third-party name scrub | **HALF CLOSED** - tracked content done and pushed; history NOT rewritten |
+| 6 | `refs/pull/*/head` (found today) | **OPEN** - 13 PR refs still hold everything above |
 
-Blockers 1, 2, 3 and 5 were closed by ONE `git filter-repo` pass, which is what
+**The distinction that matters: every "purged" claim below is true of the
+WORKING TREE and false of the REMOTE.** The rewrite ran successfully once, was
+verified, found to have one surviving case variant, and must be re-run against
+the corrected rules. Until that lands and the repository is recreated, `origin`
+still carries the credential, the scraped pages, the vendor dataset and every
+name - in `main`'s history and in the pull refs.
+
+Blockers 1, 2, 3 and 5 are designed to be closed by ONE `git filter-repo` pass, which is what
 the earlier draft recommended: one force-push, one citation remap, one lane
 re-cut.
 
@@ -281,3 +301,53 @@ data file. That judgement was revised on the day: it CAN be one pass, provided
 the working tree is converged to the same pipeline FIRST so the rewrite does not
 silently re-edit reviewed files, and provided the byte-pinned shared modules are
 excluded by content marker. Both were done.
+
+---
+
+# State at wrap, 2026-09-07 - what is actually left
+
+**The repo is PRIVATE and every remote-side blocker is still open.** What landed
+is the working-tree half plus a proven, verified, re-runnable rewrite.
+
+## Done and pushed
+
+- Tracked content scrubbed of every in-scope name; personal data moved to four
+  gitignored configs with tracked `.example` shapes; the redistributable data
+  untracked; nine documents and four modules renamed.
+- The scrub pipeline, the converger, and the rewrite driver, all re-runnable.
+- Suites green: `pytest agents/daemon_slayer -n 8` **10856 passed**;
+  `pytest tests -n 8` **21019 passed / 96 skipped** with the two failures since
+  fixed (a CRLF the index generator emitted, and a documented live-engine
+  contention flake that passes standalone).
+
+## Proven but NOT applied to origin
+
+- The rewrite ran clean in a mirror: 8083 blobs and 256 commit messages
+  rewritten, 836 paths dropped, 14 renamed, 9 byte-pinned blobs correctly
+  skipped, 5153 -> 5078 commits, author identity remapped, all purged paths at
+  zero. Verified by dumping every reachable object and grepping it.
+- It found ONE surviving case variant (`SIBLING-B`), which exposed that the
+  rule table had been written by enumerating casings rather than measuring them.
+  101 distinct variants were then measured across 7GB of history and the rules
+  corrected. **The rewrite must be re-run against those corrected rules.**
+
+## The step that has to come before any flip
+
+`refs/pull/N/head` is permanent and a rewrite never touches it. 13 PR refs on
+this repo still carry the scraped pages, the vendor dataset, an account roster
+and the pre-rotation credential. Operator ruling: **delete the repository and
+recreate it under the same name**, push only the rewritten history, restore the
+captured metadata, then flip. Metadata, five verified bundles and a local-only
+bundle of the PR refs are already captured for that.
+
+## Order of operations for the next session
+
+1. Re-run the rewrite from a fresh mirror against the corrected rules.
+2. Dump every reachable object and grep for all 101 variants; expect zero
+   outside the deliberately-skipped byte-pinned module.
+3. Remap SHA citations from the single commit-map.
+4. Delete and recreate the repository; push; restore description, homepage,
+   19 topics and feature flags; re-cut lane branches.
+5. Re-apply the three carryover commits saved as patches.
+6. Probe visibility, THEN write the verdict.
+
