@@ -1,0 +1,24 @@
+#!/bin/sh
+# Git LFS. PORTED 2026-09-07 - the FOURTH LFS hook, and the one that was hidden
+# rather than missing.
+#
+# git-lfs installs four hooks: post-checkout, post-commit, post-merge and
+# pre-push. post-merge was ported 2026-07-27 as "the one LFS hook nobody had
+# ported". That was true of the .githooks DIRECTORY but not of the LFS SET: a
+# `.githooks/post-commit` did exist, so the orphan check was satisfied by the
+# NAME - but its body was the Share/ review-gist mirror and it never called
+# `git lfs post-commit` at all. So this LFS hook has been inert on every clone
+# of this repo too, and the gist hook was masking it by occupying the filename.
+#
+# It surfaced the moment Share/ was removed (2026-09-07) and the gist hook went
+# with it: the runner still had .git/hooks/post-commit from
+# `actions/checkout` running `git lfs install`, the tracked counterpart was now
+# gone, and drift_guard's orphan check went red on CI while a local clone that
+# never ran `git lfs install` stayed clean.
+#
+# That is the same shape post-merge recorded and is worth restating, because
+# this is the second time it has bitten here: the machine that created the
+# state is the one that cannot see the defect. The local pass is the
+# misleading one.
+command -v git-lfs >/dev/null 2>&1 || { printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'post-commit' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks')."; exit 2; }
+git lfs post-commit "$@"
