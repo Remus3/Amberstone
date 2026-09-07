@@ -48,6 +48,21 @@ two scraped JSON files no plan had listed. Dropped, not renamed.
 - **A document describing a scrub is INSIDE the scrub's blast radius.**
   `converge.py` found 4 non-fixed-point files, all written at the last wrap.
 
+## CI went red after the flip, on a third instance of the same shape
+
+The citation remap was run over `*.md` only, but several tests use a hardcoded
+commit as a LIVE GIT ANCHOR (`git cat-file -e <sha>^:path`). A rewrite renames
+every commit, so those anchors died and CI came back **8 failed, 31693 passed**.
+Remapped in code too - 207 substitutions, 89 files, 0 dropped - and the verifying
+run is green: `check` success, **31701 passed / 262 skipped**, DS **10053
+passed**, job RAN (the sibling `nightly-full-suite` is skipped by design).
+
+**One file was REVERTED, not fixed.** `tests/test_loop_status_route.py` writes a
+synthetic 18-char sentinel `sha` and asserts on its 8-char truncation, which
+collided with a real commit prefix and got rewritten - desynchronising fixture
+from assertion. Remap a SHA only where it REFERENCES history, never where it is
+opaque test data.
+
 ## Open, and deliberately not credited
 
 The NTFS-junction hole in `rc_facts.py` (a one-file drop reports 6 files), RC's

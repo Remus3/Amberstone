@@ -1,31 +1,22 @@
 NEXT SESSION
 ------------
-THE REPO IS PUBLIC. The flip completed 2026-09-07 at 15:0x local. Probe it
-  before believing anything, including this file:
+THE REPO IS PUBLIC and CI is GREEN on the rewritten history. Probe before
+  believing anything, including this file:
     gh repo view Remus3/Amberstone --json visibility
-  Expect PUBLIC / isPrivate false. The full account is the "Outcome" section at
-  the END of docs/PUBLIC_FLIP_GO_NO_GO.md; everything above that section is the
+  Expect PUBLIC / isPrivate false. Full account: the "Outcome" section at the
+  END of docs/PUBLIC_FLIP_GO_NO_GO.md. Everything above that section is the
   pre-flip record and is left standing on purpose.
 
-DO NOT REDO - all shipped and pushed:
-  - The history rewrite. Ran from a fresh mirror against corrected rules;
-    5090 commits, 7 branches, 3 tags published. Do not re-run it.
-  - The delete-and-recreate. 13 pull refs are gone and PROVEN gone by an
-    explicit +refs/pull/*/head fetch with an armed control.
-  - Metadata restore: description, homepage, 19 topics, issues/wiki/projects.
-  - SHA citation remap: 3725 remapped / 40 dropped / 3366 pre-existing unknown.
-  - LFS objects re-pushed to the new store and verified by a fresh clone.
-  - Six lane worktrees reset to the rewritten tips.
-  - Two cross-repo notes to all four siblings (the deferred CS/LW/LL answers,
-    then the public-now correction).
+Task: no flip work remains. Pick up one of the four OPEN items below, or the
+  next ROADMAP item.
 
 OPEN, reported to the siblings and deliberately NOT credited as done:
   1. NTFS-junction hole in tools/rc_facts.py. MEASURED: a one-file drop
      containing a junction reports 6 files. `p.rglob("*")` with no reparse-point
      pruning and no per-drop budget. A junction over a large tree runs past the
-     hook timeout, and a killed hook surfaces NOTHING. Fix by adopting the
-     iterative pruned walk; the digest FORMAT must not move for ordinary drops
-     or the whole inbox re-reports.
+     hook timeout, and a killed hook surfaces NOTHING. Adopt the iterative
+     pruned walk; the digest FORMAT must not move for ordinary drops or the
+     whole inbox re-reports on the next run.
   2. RC's hook wiring is gitignored (.gitignore:136 `.claude/`), so a fresh
      clone of RC runs no watcher and RC's own checker would fail RC.
   3. Nobody watches their own OUTBOUND withdrawals. A drop RC pulls from someone
@@ -33,39 +24,51 @@ OPEN, reported to the siblings and deliberately NOT credited as done:
   4. C:/rc-worktrees/rm343-base is detached on an orphaned pre-rewrite commit.
      Harmless; delete it when convenient.
 
-TRAPS THIS SESSION PAID FOR, all measured - these are the durable half:
+Acceptance for any of the above: a failing test first, then the fix, then the
+  sibling sweep, then an independent verifier pass. Items 1-3 were reported to
+  four sibling repos, so a fix is worth a follow-up note on the channel.
+
+DO NOT REDO - all shipped, pushed and CI-verified:
+  - The history rewrite, the delete-and-recreate, the metadata restore, the LFS
+    re-push, the SHA citation remap in BOTH docs and code, the lane-worktree
+    reset, and both cross-repo notes.
+  - The four carryover patches. They are already ancestors of main; re-applying
+    would duplicate four commits (checked with merge-base, not assumed).
+
+TRAPS THIS SESSION PAID FOR, all measured - the durable half:
   - AN INSTRUMENT CAN CARRY THE BUG IT IS CHECKING FOR. The verifier's
-    sibling-name pattern was unanchored and matched the tail of longer words,
-    so 652 of 653 hits were manufactured by the instrument. The scrub RULE had
-    been anchored for that exact defect; the verifier's copy never was.
-  - A CONTENT SCRUB CAN BE COMPLETE AND STILL PUBLISH THE NAMES. A filename is
-    not content. The rename table was keyed on each file's path AT HEAD, but a
-    filter callback receives the path of whichever COMMIT it filters, so every
-    pre-move path went unrenamed: 2195 hits, none in a blob, all in tree
-    objects. Verify the WHOLE path list against the name list, never a list of
-    paths you already knew to worry about.
-  - A REF-PATTERN CHECK CAN FAIL GREEN. `git for-each-ref 'refs/pull/*'` matches
-    NOTHING while 13 such refs exist; the prefix form `'refs/pull/'` works.
-    `git ls-remote <url> 'refs/heads/'` returns 0 and reads like an empty repo.
-    for-each-ref and ls-remote do not share a pattern language and neither
-    errors on a pattern that matches nothing. ALWAYS run the control.
-  - A MIRROR CLONE DOES FETCH refs/pull/*/head. Reasoning said GitHub hides
-    them; measurement said all 13 came down, carrying 531 commits on no other
-    ref.
+    sibling-name pattern was unanchored and matched the tail of longer words, so
+    652 of 653 hits were manufactured by the instrument. The scrub RULE had been
+    anchored for that exact defect; the verifier's copy never was.
+  - A CONTENT SCRUB IS NOT A FILENAME SCRUB. The rename table was keyed on each
+    file's path AT HEAD, but a filter callback receives the path of whichever
+    COMMIT it filters, so every pre-move path went unrenamed: 2195 hits, none in
+    a blob, all in tree objects. Verify the WHOLE path list against the name
+    list, never a list of paths you already suspected.
+  - A SWEEP'S ZERO NEEDS AN ARMED PATTERN. Run it against a corpus that MUST
+    match (here: 51 strings / 425616 hits pre-rewrite) before trusting a zero.
+    "It found hits earlier" only proves SOME patterns fire.
+  - A REF-PATTERN CHECK FAILS GREEN. `git for-each-ref 'refs/pull/*'` matches
+    NOTHING while 13 such refs exist; the prefix form works there, ls-remote
+    wants the glob. Neither errors on a pattern that matches nothing.
+  - A MIRROR CLONE DOES FETCH refs/pull/*/head - measured against a reasoned
+    expectation that GitHub hides them. 531 commits lived on no other ref.
   - DELETING A REPO DELETES ITS LFS STORE. Pointers survive a rewrite unchanged
-    and then point at nothing. Ask what else the forge keeps: pull refs, LFS,
-    releases, Actions artifacts, caches, wikis, pages branches.
+    and then point at nothing.
+  - REMAP SHAs IN CODE TOO, but only where a SHA REFERENCES history. Tests use
+    commit SHAs as live git anchors; a synthetic fixture that merely looks like
+    a commit prefix must be left alone or fixture and assertion desynchronize.
+  - A REMAP DESYNCS GITIGNORED MIRRORS. tools/*.md was remapped, its
+    .claude/commands/ twin was not, and drift_guard caught it. Re-mirror with a
+    BYTE-level copy, never write_text.
   - A DOCUMENT THAT DESCRIBES A SCRUB IS INSIDE THE SCRUB'S BLAST RADIUS.
-    converge.py found 4 non-fixed-point files, every one a handoff document
-    written at the previous wrap that spelled the names it was warning about.
     Describe the trigger, never quote it.
-  - NEVER write a count with a thousands separator. "10 856" parses as 856 and
-    tools/stop_claim_gate.py blocks the wrap on it. The gate scans the WHOLE
-    transcript and has NO retraction mechanism, so one slip re-blocks every
-    /done for the rest of that session. It also requires a real pytest run with
-    a real summary line - a `python script.py` that prints "N passed" does not
-    count, and a probe that only PRINTS is not evidence at all.
+  - A TOOL THAT SUMMARISES PER INVOCATION CANNOT BE READ AS IF IT RAN ONCE.
+    xargs split the remap into five python calls, each printing its own TOTAL.
+  - NEVER write a count with a thousands separator - tools/stop_claim_gate.py
+    blocks the wrap on it, scans the WHOLE transcript, and has NO retraction
+    mechanism. It also requires a real pytest summary line: a script printing
+    "N passed" does not count, and a probe that only PRINTS is not evidence.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-  git log. There is no flip work left; pick up the four OPEN items above or
-  normal lane work.
+  git log.
