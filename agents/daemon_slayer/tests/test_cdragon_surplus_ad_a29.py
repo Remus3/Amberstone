@@ -111,10 +111,9 @@ def _current_patch() -> str | None:
 def _require_live_sidecar() -> None:
     """Fail (never skip) when the current-patch sidecar is absent.
 
-    Both halves are TRACKED and vendored into the main repo AND Share/src, so
-    absence means a committed artifact was deleted or the patch pointer moved
-    ahead of its extract. See the matching helper in
-    test_cdragon_ratio_matcher.py.
+    Both halves are TRACKED and committed, so absence means a committed
+    artifact was deleted or the patch pointer moved ahead of its extract.
+    See the matching helper in test_cdragon_ratio_matcher.py.
     """
     patch = _current_patch()
     assert patch, f"tracked patch pointer {_DEFAULT_DATA_ROOT / 'current.txt'} is missing or empty"

@@ -10,8 +10,7 @@ P/Q/W/E/R/BASE; magnitude in (0, 1]), then:
     (grouped by champion, P/Q/W/E/R/BASE order), LF line endings;
   * writes the provenance sidecar
     ``agents/daemon_slayer/zonecontrol_registry_notes.json`` (champion, source,
-    kind, persistence, magnitude, conditional, source_quote) - excluded from
-    Share like CHANGELOG.md / threatrange_registry_notes.json.
+    kind, persistence, magnitude, conditional, source_quote).
 
 The zone-control axis is SPARSE (only champions with real area-denial appear),
 so unlike the threat-range build this tool does not expect full-roster coverage.

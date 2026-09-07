@@ -44,7 +44,6 @@ DS_LEDGER = (ROOT / "agents" / "daemon_slayer" / "tests"
              / "test_stranded_hsp_seam_r197.py")
 DS_PATCH_FILE = ROOT / "data" / "daemon_slayer" / "current.txt"
 DS_INIT = ROOT / "agents" / "daemon_slayer" / "__init__.py"
-SHARE_INIT = ROOT / "Share" / "src" / "agents" / "daemon_slayer" / "__init__.py"
 GATED_DOC = ROOT / "docs" / "LIVE_GAME_GATED_SYNC.md"
 
 
@@ -184,15 +183,6 @@ def compute_drift_strip() -> dict:
         "key": "engine", "label": "ENGINE", "value": engine or "-",
         "state": "ok" if engine else "unknown",
         "reason": "" if engine else "ENGINE_VERSION not found",
-    })
-
-    share_engine = _engine_version(SHARE_INIT)
-    share_state = _agreement_state([engine, share_engine])
-    pills.append({
-        "key": "share_engine", "label": "Share mirror", "value": share_engine or "-",
-        "state": share_state,
-        "reason": ("" if share_state == "ok"
-                   else f"Share reports {share_engine or '-'} against {engine or '-'}"),
     })
 
     # Patch-keyed data directories: the newest one should be the live patch.

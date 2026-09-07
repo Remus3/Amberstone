@@ -186,23 +186,22 @@ def test_the_sweep_selects_something():
     )
 
 
-def test_the_share_data_mirror_is_exempt_from_the_gate():
+def test_the_ds_data_tree_is_exempt_from_the_gate():
     """The gate and the hygiene tests must agree on what is EXTERNAL data.
 
-    `tests/test_smart_quote_hygiene.py:102-108` excludes
-    `Share/src/data/daemon_slayer/**/*.json` as a byte-identical deterministic
-    mirror of DDragon-derived data RC did not author. The gate exempted the
-    `data/` source but not its mirror, so the two disagreed - and the mirror
-    genuinely carries em-dashes and bullets from upstream, which means a DS
-    batch that re-syncs Share/ would have had its commit blocked by a gate
-    enforcing an authored-content rule against content nobody authored.
+    `tests/test_smart_quote_hygiene.py` (`_is_external_data`) excludes
+    `data/daemon_slayer/**/*.json` as DDragon-derived data RC did not author.
+    The gate must exempt the same tree, or one CLAUDE.md hard rule gets two
+    readings: that data genuinely carries em-dashes and bullets from upstream,
+    so a DS batch re-extracting a patch would have its commit blocked by a gate
+    enforcing an authored-content rule against content nobody here authored.
     """
     gate = _gate()
     assert gate._ascii_exempt(
-        "Share/src/data/daemon_slayer/16.15.1/items.json"), (
-        "the Share DS data mirror is not exempt in the gate but is excluded by "
+        "data/daemon_slayer/16.15.1/items.json"), (
+        "the DS data tree is not exempt in the gate but is excluded by "
         "tests/test_smart_quote_hygiene.py - one rule, two readings, which is "
-        "the exact defect tools/precommit_gate.py:152 documents."
+        "the exact defect tools/precommit_gate.py `_glyph_hits` documents."
     )
 
 

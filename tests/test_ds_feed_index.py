@@ -273,8 +273,7 @@ def _filename_write_sites(feed: str) -> list[str]:
     inside a help= string and neither is returned here. Nor is a dict KEY, which
     is what keeps tools/ds_feed_index.py - the registry under audit, where every
     exempted filename appears verbatim - from matching all seven of its own
-    rows. tools/ds_share_sync.py:421 lists a feed name as a plain list element
-    and is likewise excluded.
+    rows. A plain list element naming a feed is likewise excluded.
 
     KNOWN LIMIT, stated rather than hidden: a generator that assembles its
     output name dynamically (an f-string, a loop over a name list) is invisible

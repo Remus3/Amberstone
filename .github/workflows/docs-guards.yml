@@ -18,8 +18,8 @@
 #
 # This workflow fires on exactly what ci.yml declines and runs ONLY the
 # md-reading guards. The minute saver survives intact: a prose edit that no
-# guard reads still skips the full suite, py_compile sweep, ruff, playwright,
-# the DS Share sync and mypy.
+# guard reads still skips the full suite, py_compile sweep, ruff, playwright
+# and mypy.
 #
 # The module list is NOT written here. A hand-maintained universe in YAML is
 # green over every module added after it was written (the SCHEDULED_SPAWNERS
