@@ -358,9 +358,12 @@ def scan_ds_route_gates() -> dict[str, int]:
 #: "stdlib-only, cannot import a tests/ helper". That is true of ELEVEN of
 #: them and was false of these two.
 #:
-#: The remaining ELEVEN deliberately do not adopt it: that tree is stdlib-only
-#: by design so the engine suite runs standalone, and importing a `tests/`
-#: helper would break that. They are covered CLASS-WIDE instead, by
+#: The remaining ELEVEN deliberately do not adopt it: THOSE ELEVEN are
+#: stdlib-only (checked individually - zero non-stdlib top-level imports
+#: each), and importing a `tests/` helper would break that. Note the scope:
+#: the ELEVEN are stdlib-only, the TREE is not - 32 of its 438 modules import
+#: `core.*` at module scope, so "that tree is stdlib-only" would be false.
+#: They are covered CLASS-WIDE instead, by
 #: `LiveRouteSurfaceTests` below - one control point for one class-wide
 #: capability, which is the right shape anyway.
 _B2_CENSUS: dict[str, int] = {
