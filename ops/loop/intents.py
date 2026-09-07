@@ -7,8 +7,9 @@ r"""Session intents - the CONSUMER half of Mission Control shortcuts 1 and 2.
 S2 (shipped, `dashboard/routes_loop_control.py`) is the PRODUCER: an operator
 fire writes one of those files atomically with `consumed: false`, and halt_save
 additionally raises the existing `control/STOP`. Nothing read them back. This
-module is what reads them, and it is the only thing that writes the bootstrap
-prompt to `Desktop/RC-NEXT-SESSION.txt`.
+module is what reads them, and it writes the bootstrap prompt to
+`RC-NEXT-SESSION.txt` in the REPO ROOT (moved off the Desktop 2026-09-06 so it
+is tracked; the Desktop keeps a shortcut to it).
 
 QUEUED INTENTS NEVER KILL. Nothing here signals, terminates or interrupts a
 process. `pending()` answers a question and `consume()` writes two files. The
@@ -16,15 +17,16 @@ running session decides WHEN to call them, which is what "at its next safe
 boundary" means in the plan - the boundary is the done ritual, not a poll that
 can land in the middle of a merge.
 
-PROMPT FIRST, MARKER SECOND. `consume()` writes the Desktop prompt before it
+PROMPT FIRST, MARKER SECOND. `consume()` writes the prompt before it
 marks the intent consumed. A crash between the two leaves `consumed: false`, so
 the retry rewrites the same bytes and the operator loses nothing. Marking first
 would strand the intent as done with no prompt on disk and no way to ask for it
 again.
 
-OVERWRITE, NOT ACCUMULATE. `Desktop/RC-NEXT-SESSION.txt` is a single well-known
-path with no timestamp suffix (operator decision 2026-07-30). Prior contents
-are recoverable from the session transcript.
+OVERWRITE, NOT ACCUMULATE. `RC-NEXT-SESSION.txt` is a single well-known path
+with no timestamp suffix (operator decision 2026-07-30). Prior contents are now
+recoverable from git history, which is the point of the 2026-09-06 move - the
+Desktop copy had no diff and no versions, and went three days stale unnoticed.
 
 READS DO NOT WRITE - same doctrine as `lanes.py`. `pending()` never mutates, so
 a status poll can call it as often as it likes without racing a consumer.
@@ -90,23 +92,22 @@ INTENT_FILES = {
 # continuing. Order is the priority.
 PRIORITY = ("halt_save", "done_continue")
 
-# REPO NAMESPACE (operator 2026-07-30). The Desktop is SHARED between repos, so
-# every artifact this design puts there is prefixed with the repo that owns it:
-# RC-NEXT-SESSION.txt here, LW-NEXT-SESSION.txt in Sibling-A,
-# RM-NEXT-SESSION.txt in RM. Three sessions may run concurrently and must never
-# read, overwrite or clear each other's hand-off - the same rule that makes
-# touching a sibling repo's file system a deliberate cross-repo act rather than
-# a side effect. The intent files themselves already live under this repo's own
-# ops/loop/control/, so they cannot collide; the Desktop is the one shared
-# surface, which is exactly why the prefix is enforced and not merely defaulted.
+# REPO NAMESPACE (operator 2026-07-30). Originally this existed because the
+# Desktop was a SHARED surface and five projects wrote hand-offs onto it. Since
+# 2026-09-06 the file lives in each repo's OWN root, so cross-repo collision is
+# no longer possible by construction and the prefix is not load-bearing for that
+# any more. It is KEPT for two reasons that still hold: the Desktop SHORTCUTS
+# are still a shared surface and need distinguishable names, and the prefix is
+# what stops a doctored or stale intent doc from naming an arbitrary write
+# target in the repo root. Do not drop it to save eight characters.
 #
 # Each repo ships its own copy of this module and edits ONE line. Deriving the
 # prefix from the directory name was rejected: a worktree, a rename or a clone
 # to a different path would silently re-point the write.
 REPO_PREFIX = "RC"
 
-# Relative to the user profile. Mirrors routes_loop_control.NEXT_SESSION_PATH.
-DEFAULT_NEXT_SESSION_PATH = f"Desktop/{REPO_PREFIX}-NEXT-SESSION.txt"
+# Relative to the REPO ROOT. Mirrors routes_loop_control.NEXT_SESSION_PATH.
+DEFAULT_NEXT_SESSION_PATH = f"{REPO_PREFIX}-NEXT-SESSION.txt"
 
 DEFAULT_ROOT = Path(__file__).resolve().parent / "control"
 
@@ -114,7 +115,18 @@ DEFAULT_ROOT = Path(__file__).resolve().parent / "control"
 # the real entry point without ever touching the live control dir or the real
 # Desktop. Absent => the live paths.
 ENV_ROOT = "RC_INTENT_CONTROL_DIR"
-ENV_HOME = "RC_INTENT_HOME"
+# Renamed from RC_INTENT_HOME 2026-09-06 with the target itself: it no longer
+# resolves under the user profile, so calling it "home" would have left a name
+# asserting something untrue.
+ENV_BASE = "RC_INTENT_BASE"
+
+# The hand-off now lands in the REPO ROOT, not on the Desktop (operator
+# 2026-09-06). A Desktop file is untracked, unversioned and unreviewable - it
+# had gone three days stale with nothing able to notice, and no diff to show
+# what the last session actually handed over. In the repo it is versioned like
+# every other artifact, and the Desktop keeps a SHORTCUT to it so the operator
+# reaches it exactly as before.
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def control_dir(root=None) -> Path:
@@ -125,11 +137,12 @@ def control_dir(root=None) -> Path:
     return Path(env) if env else DEFAULT_ROOT
 
 
-def _home(home=None) -> Path:
-    if home is not None:
-        return Path(home)
-    env = os.environ.get(ENV_HOME)
-    return Path(env) if env else Path.home()
+def _base(base=None) -> Path:
+    """Where the hand-off is rooted: explicit arg > env override > repo root."""
+    if base is not None:
+        return Path(base)
+    env = os.environ.get(ENV_BASE)
+    return Path(env) if env else REPO_ROOT
 
 
 def _awrite(path: Path, text: str) -> None:
@@ -190,7 +203,7 @@ def pending(root=None) -> dict | None:
     return None
 
 
-def resolve_next_session_path(doc, home=None) -> Path:
+def resolve_next_session_path(doc, base=None) -> Path:
     """Where the bootstrap prompt goes, from the intent doc, safely.
 
     The intent file is written by a local route on a single-operator surface,
@@ -212,7 +225,7 @@ def resolve_next_session_path(doc, home=None) -> Path:
     if not parts or rooted or ".." in parts or Path(candidate).is_absolute() \
             or not owned:
         parts = DEFAULT_NEXT_SESSION_PATH.split("/")
-    return _home(home).joinpath(*parts)
+    return _base(base).joinpath(*parts)
 
 
 def _nothing_to_consume(base: Path) -> dict:
@@ -231,7 +244,45 @@ def _nothing_to_consume(base: Path) -> dict:
     return {"ok": False, "reason": "no_pending_intent"}
 
 
-def consume(doc=None, *, prompt, root=None, home=None) -> dict:
+def write_prompt(*, prompt, base=None) -> dict:
+    """Write the Desktop hand-off. No intent required, none consumed.
+
+    ADDED 2026-09-06, because the two things below were conflated and the
+    coupling silently broke the ordinary case:
+
+      * WRITING the hand-off is unconditional - every session ends by handing
+        the next one a running start (tools/done.md section 10, "ALWAYS").
+      * CONSUMING a queued intent happens only when the operator fired the
+        dashboard button (section 10b).
+
+    `consume()` did both, so it was the only writer, and it correctly refuses
+    with `no_pending_intent` when nothing is queued - which is the NORMAL state
+    at the end of a session. Net effect: the prompt was printed into chat and
+    the Desktop file went stale for three days while every sibling project's
+    was current. The stale copy's own header named a headless lane, which is
+    the only route that had a pending intent.
+
+    Deliberately reuses `resolve_next_session_path` and `_awrite` rather than
+    joining a path here. The Desktop is shared between five projects and the
+    namespacing rule lives in that resolver; a second caller re-implementing it
+    is how one rule becomes two readings.
+
+    Raises ValueError on an empty prompt, for the same reason `consume()` does:
+    an empty hand-off file is indistinguishable from a successful one and
+    silently loses the session.
+    """
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("write_prompt() requires a non-empty prompt")
+    # No doc: resolve_next_session_path falls back to DEFAULT_NEXT_SESSION_PATH,
+    # which is already REPO_PREFIX-namespaced. Passing None is the point - there
+    # is no intent doc to honour and none should be invented.
+    target = resolve_next_session_path(None, base=base)
+    _awrite(target, prompt)
+    return {"ok": True, "wrote": str(target),
+            "bytes": len(prompt.encode("utf-8"))}
+
+
+def consume(doc=None, *, prompt, root=None, base=None) -> dict:
     """Write the bootstrap prompt, then mark the intent consumed.
 
     Returns {"ok": True, "intent", "key", "wrote", "bytes"} on a real consume,
@@ -246,15 +297,21 @@ def consume(doc=None, *, prompt, root=None, home=None) -> dict:
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("consume() requires a non-empty prompt")
 
-    base = control_dir(root)
+    # NAMED ctl, NOT base. The `base` PARAMETER is where the hand-off is rooted;
+    # this is the control dir the intent files live in. They were both called
+    # `base` for about ten minutes on 2026-09-06 and the local silently shadowed
+    # the parameter, so every consume wrote the hand-off into ops/loop/control/
+    # instead of the repo root - caught by the existing tests, which is why they
+    # assert the resolved PATH and not merely that a write happened.
+    ctl = control_dir(root)
     if doc is None:
-        doc = pending(root=base)
+        doc = pending(root=ctl)
         if doc is None:
-            return _nothing_to_consume(base)
+            return _nothing_to_consume(ctl)
     intent = doc.get("intent")
     if intent not in INTENT_FILES:
         return {"ok": False, "reason": "no_pending_intent"}
-    path = Path(doc.get("_path") or (base / INTENT_FILES[intent]))
+    path = Path(doc.get("_path") or (ctl / INTENT_FILES[intent]))
 
     # Re-read rather than trusting the caller's snapshot: the peek may be old.
     on_disk = _read_doc(path)
@@ -262,7 +319,7 @@ def consume(doc=None, *, prompt, root=None, home=None) -> dict:
         return {"ok": False, "reason": "already_consumed", "intent": intent,
                 "path": str(path)}
 
-    target = resolve_next_session_path(on_disk, home=home)
+    target = resolve_next_session_path(on_disk, base=base)
     _awrite(target, prompt)
 
     marker = dict(on_disk)

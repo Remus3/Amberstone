@@ -7,7 +7,8 @@ r"""CLI for the S3 session-intent seam - what the done ritual actually calls.
 
 `--peek` is the safe-boundary check: it prints {"pending": <doc>|null} and
 always exits 0, so it can sit at the top of a ritual without a failure mode of
-its own. `--consume` writes Desktop/NEXT-SESSION.txt and marks the intent
+its own. `--write-prompt` writes Desktop/RC-NEXT-SESSION.txt unconditionally and
+is what every /done calls; `--consume` writes the same file and marks the intent
 consumed, printing the result dict; it exits 1 when there was nothing to
 consume or the intent was already consumed, so a script can branch on it.
 
@@ -38,6 +39,8 @@ def main(argv=None) -> int:
                       help="print the pending intent (or null) and exit 0")
     mode.add_argument("--consume", action="store_true",
                       help="write the bootstrap prompt and mark it consumed")
+    mode.add_argument("--write-prompt", action="store_true",
+                      help="write the bootstrap prompt only; no intent needed")
     ap.add_argument("--prompt-file",
                     help="path to the bootstrap prompt, or - for stdin")
     ap.add_argument("--control-dir", default=None,
@@ -59,7 +62,13 @@ def main(argv=None) -> int:
                           "error": str(exc)}))
         return 2
     try:
-        result = intents.consume(prompt=prompt, root=args.control_dir)
+        if args.write_prompt:
+            # Unconditional: every /done hands the next session a running start.
+            # Does NOT consume an intent - a queued one stays pending for the
+            # --consume call in section 10b.
+            result = intents.write_prompt(prompt=prompt)
+        else:
+            result = intents.consume(prompt=prompt, root=args.control_dir)
     except ValueError as exc:
         print(json.dumps({"ok": False, "reason": "empty_prompt",
                           "error": str(exc)}))

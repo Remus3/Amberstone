@@ -124,7 +124,7 @@ _LAUNCHER_MODULE = "ops.loop.lane_launcher"
 # ENFORCES the prefix rather than trusting this string - see
 # ops.loop.intents.resolve_next_session_path. Pinned equal by
 # tests/test_session_intents.py::test_default_next_session_path_matches_the_route.
-NEXT_SESSION_PATH = "Desktop/RC-NEXT-SESSION.txt"
+NEXT_SESSION_PATH = "RC-NEXT-SESSION.txt"
 
 _INTENT_FILES = {
     "halt_save": "INTENT_HALT_SAVE.json",
