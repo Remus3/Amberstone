@@ -96,6 +96,17 @@ CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole sui
 
 # Evidence patterns.
 EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
+# A CI-log fetch. ADDED 2026-09-06: this gate indexed only LOCAL pytest
+# invocations, so a suite count read out of a CI log was never in
+# observed_counts and every ACCURATE report of one scored as count_mismatch.
+# Measured that session - a true "31706 passed" from `gh run view <id> --log`
+# was flagged twice while the local runs topped out at 1869.
+#
+# That is worth fixing rather than tolerating: a gate that cries wolf on
+# correctly-sourced figures trains the reader to wave it through, which is
+# exactly when it stops catching the real thing. The same session it caught a
+# genuine one - a "25 passed" computed as 28 minus 3 rather than observed.
+EV_CI_LOG = re.compile(r"\bgh\s+run\s+view\b[^\n]*--log(?:-failed)?\b", re.I)
 # Node's built-in runner is the SECOND suite in this repo (rc-shell). Until
 # 2026-08-11 the gate could not see it at all: it parsed only pytest's
 # "N passed", so an accurate "rc-shell 328 passed" scored as count_mismatch -
@@ -234,7 +245,7 @@ def collect_evidence(rows):
     of a suite run - reading it as one is what poisoned every claim in the first
     armed session.
     """
-    ev = {"texts": [], "bash": [], "edited": [], "runs": []}
+    ev = {"texts": [], "bash": [], "edited": [], "runs": [], "ci_runs": []}
     pending = None
     deferred = None
     for row in rows:
@@ -255,6 +266,14 @@ def collect_evidence(rows):
                     if EV_PYTEST.search(stripped) or EV_NODE_TEST.search(stripped):
                         pending = {"cmd": command, "output": ""}
                         ev["runs"].append(pending)
+                    elif EV_CI_LOG.search(stripped):
+                        # Kept in a SEPARATE list, deliberately. Folding these
+                        # into ev["runs"] would make ran_pytest true for a
+                        # session that fetched a log and ran nothing, which would
+                        # silently convert tests_pass_without_run into a pass -
+                        # widening the gate's blind spot instead of its evidence.
+                        pending = {"cmd": command, "output": ""}
+                        ev["ci_runs"].append(pending)
                 if name in EDIT_TOOLS:
                     target = data.get("file_path") or data.get("path") or ""
                     if target:
@@ -317,6 +336,18 @@ def audit(ev):
     observed_counts = {m.replace(",", "") for r in runs
                        for pat in (EV_PASSED, EV_NODE_PASS)
                        for m in pat.findall(r["output"])}
+    # CI-log counts are credited ONLY from a genuine terminal-summary line, never
+    # from a bare "N passed" anywhere in the log. A CI log echoes the workflow
+    # FILE, and workflow comments in this repo carry stale historical counts
+    # ("# 19m42s / 23607 passed / ..."). Crediting those would let a fetch
+    # launder every number printed anywhere in a workflow - a widening of
+    # BELIEF, which is the failure this module's EV_SUMMARY_LINE note already
+    # warns about. Same doctrine, applied to a second source.
+    observed_counts |= {m.replace(",", "")
+                        for r in ev.get("ci_runs", [])
+                        for line in r["output"].splitlines()
+                        if EV_SUMMARY_LINE.search(line)
+                        for m in EV_PASSED.findall(line)}
     # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     did_commit = any(EV_COMMIT.search(c) for c in bash)
