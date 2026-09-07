@@ -244,6 +244,56 @@ def _nothing_to_consume(base: Path) -> dict:
     return {"ok": False, "reason": "no_pending_intent"}
 
 
+class HandoffRefused(ValueError):
+    """The hand-off would have committed content the repo's own gate rejects."""
+
+
+def _refuse_if_gated(prompt: str) -> None:
+    """Run the repo's own gate over the hand-off BEFORE it is written.
+
+    ADDED 2026-09-06 on a finding from Sibling-E, credited. CS measured that it
+    could not adopt the tracked hand-off at all: its own pre-commit PII gate
+    refuses its hand-off file, and CS declined to add an exemption because the
+    hand-off is "the single highest-variance input any of our repos has" -
+    written fresh every session, never reviewed before it is written, and
+    quoting freely from whatever that session happened to touch. Answering each
+    false positive with another exemption is a gate disarmed one word at a time.
+
+    CS's asymmetry is the part that matters and it applies here: a Desktop file
+    that is wrong costs one edit, a TRACKED one costs a history rewrite. RC
+    pushes to a remote, so for RC the window between "hand-off written" and
+    "hand-off published" is one command.
+
+    So RC keeps the tracked destination and closes the window at the other end -
+    the gate runs BEFORE the write, not after the commit. A hand-off that would
+    be refused at commit time is refused at write time, when it is still just a
+    string in memory and the session can fix it.
+
+    Deliberately the SAME engine as the commit hook and the CI sweep. A third
+    reading of one rule is the defect this repo spent 2026-09-06 removing in two
+    other places.
+    """
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "rc_precommit_gate_for_handoff",
+            Path(__file__).resolve().parents[2] / "tools" / "precommit_gate.py")
+        gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gate)
+    except (OSError, ImportError, AttributeError):
+        # The gate is defence in depth here, not the only gate - the commit hook
+        # still runs. A missing tools/ (a worktree, a partial checkout) must not
+        # block a hand-off, which is the thing that carries the session forward.
+        return
+    hits = gate._glyph_hits(prompt, "RC-NEXT-SESSION.txt")
+    if hits:
+        raise HandoffRefused(
+            "the hand-off contains content this repo's own gate rejects: "
+            f"{', '.join(hits)}. It is about to be TRACKED and pushed, so fix "
+            "the prompt rather than exempting the file - a Desktop file that is "
+            "wrong costs one edit, a committed one costs a history rewrite."
+        )
+
+
 def write_prompt(*, prompt, base=None) -> dict:
     """Write the Desktop hand-off. No intent required, none consumed.
 
@@ -273,6 +323,7 @@ def write_prompt(*, prompt, base=None) -> dict:
     """
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("write_prompt() requires a non-empty prompt")
+    _refuse_if_gated(prompt)
     # No doc: resolve_next_session_path falls back to DEFAULT_NEXT_SESSION_PATH,
     # which is already REPO_PREFIX-namespaced. Passing None is the point - there
     # is no intent doc to honour and none should be invented.
