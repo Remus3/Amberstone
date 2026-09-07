@@ -326,7 +326,8 @@ is the working-tree half plus a proven, verified, re-runnable rewrite.
   rewritten, 836 paths dropped, 14 renamed, 9 byte-pinned blobs correctly
   skipped, 5153 -> 5078 commits, author identity remapped, all purged paths at
   zero. Verified by dumping every reachable object and grepping it.
-- It found ONE surviving case variant (`SIBLING-B`), which exposed that the
+- It found ONE surviving case variant (an ALL-CAPS two-word casing of one
+  sibling name, deliberately not spelled here), which exposed that the
   rule table had been written by enumerating casings rather than measuring them.
   101 distinct variants were then measured across 7GB of history and the rules
   corrected. **The rewrite must be re-run against those corrected rules.**
