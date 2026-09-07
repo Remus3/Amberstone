@@ -308,6 +308,16 @@ Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + g
 
 This is mandatory. Never end /done without it - even when the only next task is "pick the next ROADMAP item".
 
+**Then WRITE it to `RC-NEXT-SESSION.txt` in the REPO ROOT, every time.** Printing it into chat is not the hand-off - the chat is gone after `/clear`. The file is TRACKED (moved off the Desktop 2026-09-06), so each session's hand-off is versioned and diffable, and `Desktop\RC-NEXT-SESSION.lnk` is a shortcut to it for quick access. **Commit it with the session's other work.** Write the exact block you just printed to a temp file and run:
+
+```
+python tools/session_intent.py --write-prompt --prompt-file <tmp>
+```
+
+Report the byte count above the banner. This needs no queued intent and consumes nothing; a pending intent stays pending for section 10b.
+
+**Why this line exists (2026-09-06):** it used to be absent, and the ONLY writer of the Desktop file was section 10b's `--consume`, which is gated on a pending intent. So an ordinary /done printed the prompt and wrote nothing, and `RC-NEXT-SESSION.txt` sat three days stale while every sibling project's was current the same day. The stale copy's own header named a headless lane - the only route that ever had an intent queued. Writing and consuming are now separate: writing is unconditional, consuming is not.
+
 #### 10b. Consume a queued intent (only when section 0 found one pending)
 
 Write the exact prompt block you just printed to a temp file, then hand it over. This is the only writer of `Desktop/RC-NEXT-SESSION.txt` (RC- namespaced: LW and RM own their own prefixes on the shared Desktop):

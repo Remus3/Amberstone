@@ -126,7 +126,16 @@ def _staged_added(root: str) -> dict[str, dict]:
 # to bypass.
 _ASCII_EXEMPT_PARTS = ("logs/", "docs/_archive/", "__pycache__/", ".git/")
 _ASCII_EXEMPT_SUFFIXES = (".jsonl", ".log", ".pyc", ".png", ".jpg", ".ico", ".zip")
-_ASCII_EXEMPT_PREFIXES = ("data/",)
+# "Share/src/data/daemon_slayer/" added 2026-09-06. It is a byte-identical
+# deterministic MIRROR of data/daemon_slayer/, which the "data/" prefix already
+# exempts, and tests/test_smart_quote_hygiene.py:102-108 excludes the mirror for
+# exactly that reason. The gate did not, so one CLAUDE.md hard rule had two
+# readings again - the defect _glyph_hits' docstring below was written to close,
+# reappearing in the EXEMPTIONS rather than in the glyph set. The mirror
+# genuinely carries em-dashes and bullets from DDragon upstream, so a DS batch
+# re-syncing Share/ would have had its commit blocked by an authored-content
+# rule applied to content nobody here authored.
+_ASCII_EXEMPT_PREFIXES = ("data/", "Share/src/data/daemon_slayer/")
 
 
 def _ascii_exempt(path: str) -> bool:
@@ -280,11 +289,59 @@ def _check_message_file(path: str) -> int:
     return 2
 
 
+def _check_scan_files(paths: list[str]) -> int:
+    """--scan-files mode: whole FILES, not just added lines.
+
+    Ported from Sibling-B 2026-09-06, credited. The commit-time arms of this
+    gate only ever see a diff, so they cannot answer "is the tracked tree clean
+    today" - and the hook that runs them is wired through core.hooksPath, which
+    is LOCAL config and is not cloned. A fresh clone, a CI sandbox or an agent in
+    a new worktree therefore enforced nothing at all.
+
+    This mode exists so CI can sweep the tree through the SAME engine the hook
+    uses. That is the whole point: RC already had CI-side glyph coverage via
+    tests/test_smart_quote_hygiene.py, but that guard defines its own narrower
+    banned set while _glyph_hits is a catch-all over every codepoint > 127. One
+    rule, two readings, and the looser one was the one CI ran.
+
+    Reports file:line so a hit is actionable, and returns 1 on any hit.
+    """
+    failures = 0
+    for raw in paths:
+        rel = raw.replace("\\", "/")
+        if _ascii_exempt(rel):
+            continue
+        try:
+            text = pathlib.Path(raw).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            print(f"{rel}: unreadable ({exc.__class__.__name__})", file=sys.stderr)
+            failures += 1
+            continue
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            hits = _glyph_hits(line, rel)
+            if hits:
+                failures += 1
+                print(f"{rel}:{lineno}: {', '.join(hits)}", file=sys.stderr)
+    if failures:
+        print(
+            f"\n{failures} banned-glyph hit(s). CLAUDE.md requires 7-bit ASCII in "
+            f"authored content: ' - ' for a clause break, '->' for an arrow, a "
+            f"word for a status glyph. If a path is genuinely external data, "
+            f"exempt it in _ASCII_EXEMPT_* so the gate and the guards keep ONE "
+            f"reading of the rule.",
+            file=sys.stderr,
+        )
+    return 1 if failures else 0
+
+
 def main() -> int:
     # commit-msg mode. Explicit flag rather than sniffing argv, so the hook's
     # intent is readable in the hook body itself.
     if len(sys.argv) >= 3 and sys.argv[1] == "--message-file":
         return _check_message_file(sys.argv[2])
+    # whole-file scan mode, for CI. Same engine, different input shape.
+    if len(sys.argv) >= 2 and sys.argv[1] == "--scan-files":
+        return _check_scan_files(sys.argv[2:])
 
     raw = sys.stdin.read() if not sys.stdin.isatty() else ""
     # PowerShell 5.1 pipes prepend a UTF-8 BOM; json.loads rejects it and the

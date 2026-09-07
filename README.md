@@ -99,6 +99,7 @@ vision server on the side: screen capture -> OCR -> AI vision only on a miss
 | :8891 | Agents WS relay |
 | :8895 | Mission Control (its own process, so a dashboard restart cannot take the control plane with it) |
 | :8860 | Daemon Slayer build engine |
+| :8861 | Daemon Slayer match-history MCP server |
 | :2999 | Riot Live Client API (the game client's own feed) |
 
 ---

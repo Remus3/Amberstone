@@ -54,9 +54,14 @@ def ctl(tmp_path):
 
 @pytest.fixture
 def home(tmp_path):
-    """A fake USERPROFILE so the Desktop write never touches the real one."""
+    """A fake repo root so the hand-off write never touches the real one.
+
+    Named `home` for history: until 2026-09-06 the target was under the user
+    profile. It is now the REPO ROOT, and the artifact is tracked - see
+    ops/loop/intents.REPO_ROOT.
+    """
     h = tmp_path / "home"
-    (h / "Desktop").mkdir(parents=True)
+    h.mkdir(parents=True)
     return h
 
 
@@ -119,7 +124,7 @@ def test_halt_save_outranks_done_continue(routed, ctl):
 
 def test_consumed_intents_are_invisible(routed, ctl, home):
     _queue(routed, "done_continue", KEY_A)
-    assert intents.consume(prompt=PROMPT, root=ctl, home=home)["ok"] is True
+    assert intents.consume(prompt=PROMPT, root=ctl, base=home)["ok"] is True
     assert intents.pending(root=ctl) is None
 
 
@@ -135,8 +140,8 @@ def test_unparseable_intent_file_is_skipped_not_raised(ctl):
 
 def test_consume_writes_the_bootstrap_prompt_to_desktop(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
-    result = intents.consume(prompt=PROMPT, root=ctl, home=home)
-    target = home / "Desktop" / "RC-NEXT-SESSION.txt"
+    result = intents.consume(prompt=PROMPT, root=ctl, base=home)
+    target = home / "RC-NEXT-SESSION.txt"
     assert result["ok"] is True
     assert result["intent"] == "halt_save"
     assert Path(result["wrote"]) == target
@@ -144,10 +149,10 @@ def test_consume_writes_the_bootstrap_prompt_to_desktop(routed, ctl, home):
 
 
 def test_consume_overwrites_rather_than_accumulating(routed, ctl, home):
-    target = home / "Desktop" / "RC-NEXT-SESSION.txt"
+    target = home / "RC-NEXT-SESSION.txt"
     target.write_text("PRIOR SESSION PROMPT\n", encoding="utf-8")
     _queue(routed, "halt_save", KEY_A)
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
     assert target.read_text(encoding="utf-8") == PROMPT
     siblings = sorted(p.name for p in target.parent.iterdir())
     assert siblings == ["RC-NEXT-SESSION.txt"]
@@ -155,7 +160,7 @@ def test_consume_overwrites_rather_than_accumulating(routed, ctl, home):
 
 def test_consume_marks_the_intent_file_consumed(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
     doc = json.loads((ctl / intents.INTENT_FILES["halt_save"]).read_text(
         encoding="utf-8"))
     assert doc["consumed"] is True
@@ -166,8 +171,8 @@ def test_consume_marks_the_intent_file_consumed(routed, ctl, home):
 
 def test_consume_leaves_no_tmp_files(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
-    for d in (ctl, home / "Desktop"):
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
+    for d in (ctl, home):
         assert [p.name for p in d.glob("*.tmp")] == []
 
 
@@ -175,21 +180,21 @@ def test_consume_does_not_clear_stop(routed, ctl, home):
     """halt_save raises STOP; consuming the intent must not lower it."""
     _queue(routed, "halt_save", KEY_A)
     assert (ctl / "STOP").exists()
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
     assert (ctl / "STOP").exists()
 
 
 def test_consume_without_a_pending_intent_is_a_refusal(ctl, home):
-    result = intents.consume(prompt=PROMPT, root=ctl, home=home)
+    result = intents.consume(prompt=PROMPT, root=ctl, base=home)
     assert result == {"ok": False, "reason": "no_pending_intent"}
-    assert not (home / "Desktop" / "RC-NEXT-SESSION.txt").exists()
+    assert not (home / "RC-NEXT-SESSION.txt").exists()
 
 
 def test_consume_rejects_an_empty_prompt(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
     with pytest.raises(ValueError):
-        intents.consume(prompt="   ", root=ctl, home=home)
-    assert not (home / "Desktop" / "RC-NEXT-SESSION.txt").exists()
+        intents.consume(prompt="   ", root=ctl, base=home)
+    assert not (home / "RC-NEXT-SESSION.txt").exists()
     assert intents.pending(root=ctl) is not None
 
 
@@ -199,11 +204,11 @@ def test_consume_rejects_an_empty_prompt(routed, ctl, home):
 
 def test_second_consume_writes_nothing(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
-    target = home / "Desktop" / "RC-NEXT-SESSION.txt"
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
+    target = home / "RC-NEXT-SESSION.txt"
     before = (target.read_bytes(), target.stat().st_mtime_ns)
 
-    again = intents.consume(prompt="A DIFFERENT PROMPT\n", root=ctl, home=home)
+    again = intents.consume(prompt="A DIFFERENT PROMPT\n", root=ctl, base=home)
 
     assert again["ok"] is False
     assert again["reason"] == "already_consumed"
@@ -214,7 +219,7 @@ def test_replayed_route_key_does_not_resurrect_a_consumed_intent(routed, ctl,
                                                                  home):
     """The producer replay path must not overwrite a consumed marker."""
     _queue(routed, "halt_save", KEY_A)
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
     path = ctl / intents.INTENT_FILES["halt_save"]
     before = (path.read_bytes(), path.stat().st_mtime_ns)
 
@@ -231,7 +236,7 @@ def test_a_fresh_key_queues_a_new_intent_after_one_was_consumed(routed, ctl,
                                                                 home):
     """A new operator ARM mints a new key and must work again."""
     _queue(routed, "halt_save", KEY_A)
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
     _queue(routed, "halt_save", KEY_B)
     doc = intents.pending(root=ctl)
     assert doc is not None and doc["key"] == KEY_B
@@ -259,20 +264,21 @@ def test_a_fresh_key_queues_a_new_intent_after_one_was_consumed(routed, ctl,
 ])
 def test_hostile_next_session_path_falls_back_to_the_default(home, hostile):
     resolved = intents.resolve_next_session_path({"next_session_path": hostile},
-                                                 home=home)
-    assert resolved == home / "Desktop" / "RC-NEXT-SESSION.txt"
+                                                 base=home)
+    assert resolved == home / "RC-NEXT-SESSION.txt"
 
 
 def test_relative_next_session_path_is_honoured(home):
     resolved = intents.resolve_next_session_path(
-        {"next_session_path": "Desktop/RC-OTHER.txt"}, home=home)
-    assert resolved == home / "Desktop" / "RC-OTHER.txt"
+        {"next_session_path": "RC-OTHER.txt"}, base=home)
+    assert resolved == home / "RC-OTHER.txt"
 
 
 def test_the_repo_prefix_namespaces_every_desktop_artifact():
     """Three repos, one Desktop, no collisions."""
     assert intents.REPO_PREFIX == "RC"
-    assert intents.DEFAULT_NEXT_SESSION_PATH.startswith("Desktop/RC-")
+    # Repo-root relative since 2026-09-06 - no "Desktop/" segment any more.
+    assert intents.DEFAULT_NEXT_SESSION_PATH.startswith("RC-")
 
 
 def test_consume_writes_only_inside_this_repos_namespace(routed, ctl, home):
@@ -283,21 +289,29 @@ def test_consume_writes_only_inside_this_repos_namespace(routed, ctl, home):
     doc["next_session_path"] = "Desktop/LW-NEXT-SESSION.txt"
     path.write_text(json.dumps(doc), encoding="utf-8")
 
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
 
-    assert (home / "Desktop" / "RC-NEXT-SESSION.txt").read_text(
+    assert (home / "RC-NEXT-SESSION.txt").read_text(
         encoding="utf-8") == PROMPT
     assert not (home / "Desktop" / "LW-NEXT-SESSION.txt").exists()
 
 
 def test_a_sibling_repos_handoff_is_left_untouched(routed, ctl, home):
-    """LW's file sits next to ours and survives an RC consume byte for byte."""
-    sibling = home / "Desktop" / "LW-NEXT-SESSION.txt"
+    """A sibling's file survives an RC consume byte for byte.
+
+    Since the 2026-09-06 move each repo writes into its OWN root, so this is no
+    longer the collision it was built for - the Desktop shared surface is gone.
+    Kept, and pointed at a sibling-named file in the same directory, because the
+    property under test is the namespace guard in resolve_next_session_path, not
+    the directory layout: a doctored intent doc still must not be able to name
+    someone else's file.
+    """
+    sibling = home / "LW-NEXT-SESSION.txt"
     sibling.write_bytes(b"SIBLING-A SESSION PROMPT\n")
     before = (sibling.read_bytes(), sibling.stat().st_mtime_ns)
     _queue(routed, "halt_save", KEY_A)
 
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
 
     assert (sibling.read_bytes(), sibling.stat().st_mtime_ns) == before
 
@@ -314,13 +328,13 @@ def test_a_stale_peeked_doc_cannot_clobber_a_fresh_handoff(routed, ctl, home):
     """
     _queue(routed, "halt_save", KEY_A)
     peeked = intents.pending(root=ctl)
-    assert intents.consume(prompt="FIRST\n", root=ctl, home=home)["ok"] is True
-    target = home / "Desktop" / "RC-NEXT-SESSION.txt"
+    assert intents.consume(prompt="FIRST\n", root=ctl, base=home)["ok"] is True
+    target = home / "RC-NEXT-SESSION.txt"
     before = (target.read_bytes(), target.stat().st_mtime_ns)
     marker_before = (ctl / intents.INTENT_FILES["halt_save"]).read_bytes()
 
     result = intents.consume(peeked, prompt="SECOND - CLOBBER\n", root=ctl,
-                             home=home)
+                             base=home)
 
     assert result["ok"] is False
     assert result["reason"] == "already_consumed"
@@ -328,13 +342,17 @@ def test_a_stale_peeked_doc_cannot_clobber_a_fresh_handoff(routed, ctl, home):
     assert (ctl / intents.INTENT_FILES["halt_save"]).read_bytes() == marker_before
 
 
-def test_consume_creates_a_missing_desktop_dir(routed, ctl, tmp_path):
-    bare = tmp_path / "bare_home"
-    bare.mkdir()
+def test_consume_creates_a_missing_target_dir(routed, ctl, tmp_path):
+    """Renamed from ..._missing_desktop_dir 2026-09-06 with the target itself.
+
+    The write still must not require its parent to exist - a fresh clone or a
+    worktree can be missing intermediate directories.
+    """
+    bare = tmp_path / "bare_root" / "nested"
     _queue(routed, "done_continue", KEY_A)
-    result = intents.consume(prompt=PROMPT, root=ctl, home=bare)
+    result = intents.consume(prompt=PROMPT, root=ctl, base=bare)
     assert result["ok"] is True
-    assert (bare / "Desktop" / "RC-NEXT-SESSION.txt").read_text(
+    assert (bare / "RC-NEXT-SESSION.txt").read_text(
         encoding="utf-8") == PROMPT
 
 
@@ -342,10 +360,10 @@ def test_consume_creates_a_missing_desktop_dir(routed, ctl, tmp_path):
 # The CLI the done ritual calls
 # --------------------------------------------------------------------------
 
-def _cli(*args, env_home, ctl):
+def _cli(*args, env_base, ctl):
     env = dict(os.environ)
     env["RC_INTENT_CONTROL_DIR"] = str(ctl)
-    env["RC_INTENT_HOME"] = str(env_home)
+    env["RC_INTENT_BASE"] = str(env_base)
     env["PYTHONIOENCODING"] = "utf-8"
     proc = subprocess.run(
         [sys.executable, str(REPO_ROOT / "tools" / "session_intent.py"), *args],
@@ -354,23 +372,23 @@ def _cli(*args, env_home, ctl):
 
 
 def test_cli_peek_reports_no_intent(ctl, home):
-    proc = _cli("--peek", env_home=home, ctl=ctl)
+    proc = _cli("--peek", env_base=home, ctl=ctl)
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["pending"] is None
 
 
 def test_cli_peek_then_consume_end_to_end(routed, ctl, home, tmp_path):
     _queue(routed, "halt_save", KEY_A)
-    peek = _cli("--peek", env_home=home, ctl=ctl)
+    peek = _cli("--peek", env_base=home, ctl=ctl)
     assert json.loads(peek.stdout)["pending"]["intent"] == "halt_save"
 
     prompt_file = tmp_path / "prompt.txt"
     prompt_file.write_text(PROMPT, encoding="utf-8")
     done = _cli("--consume", "--prompt-file", str(prompt_file),
-                env_home=home, ctl=ctl)
+                env_base=home, ctl=ctl)
     assert done.returncode == 0, done.stderr
     assert json.loads(done.stdout)["ok"] is True
-    assert (home / "Desktop" / "RC-NEXT-SESSION.txt").read_text(
+    assert (home / "RC-NEXT-SESSION.txt").read_text(
         encoding="utf-8") == PROMPT
 
 
@@ -378,7 +396,7 @@ def test_cli_consume_without_intent_exits_nonzero(ctl, home, tmp_path):
     prompt_file = tmp_path / "prompt.txt"
     prompt_file.write_text(PROMPT, encoding="utf-8")
     proc = _cli("--consume", "--prompt-file", str(prompt_file),
-                env_home=home, ctl=ctl)
+                env_base=home, ctl=ctl)
     assert proc.returncode != 0
     assert json.loads(proc.stdout)["reason"] == "no_pending_intent"
 
@@ -393,8 +411,8 @@ def test_prompt_written_verbatim_including_trailing_newline(routed, ctl, home):
     """The bootstrap prompt is a machine hand-off; do not reflow or strip it."""
     body = "line one\n\n    indented\nlast line no newline"
     _queue(routed, "done_continue", KEY_A)
-    intents.consume(prompt=body, root=ctl, home=home)
-    assert (home / "Desktop" / "RC-NEXT-SESSION.txt").read_text(
+    intents.consume(prompt=body, root=ctl, base=home)
+    assert (home / "RC-NEXT-SESSION.txt").read_text(
         encoding="utf-8") == body
 
 
@@ -409,8 +427,8 @@ def test_desktop_file_is_byte_exact_and_the_count_is_truthful(routed, ctl,
     """
     body = "alpha\nbeta\ngamma\n"
     _queue(routed, "halt_save", KEY_A)
-    result = intents.consume(prompt=body, root=ctl, home=home)
-    target = home / "Desktop" / "RC-NEXT-SESSION.txt"
+    result = intents.consume(prompt=body, root=ctl, base=home)
+    target = home / "RC-NEXT-SESSION.txt"
     assert target.read_bytes() == body.encode("utf-8")
     assert result["bytes"] == target.stat().st_size
 
@@ -418,5 +436,5 @@ def test_desktop_file_is_byte_exact_and_the_count_is_truthful(routed, ctl,
 def test_consume_is_fast_enough_to_sit_in_a_done_ritual(routed, ctl, home):
     _queue(routed, "halt_save", KEY_A)
     t0 = time.perf_counter()
-    intents.consume(prompt=PROMPT, root=ctl, home=home)
+    intents.consume(prompt=PROMPT, root=ctl, base=home)
     assert time.perf_counter() - t0 < 2.0
