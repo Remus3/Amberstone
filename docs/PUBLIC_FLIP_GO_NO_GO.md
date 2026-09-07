@@ -390,9 +390,14 @@ grepping it. It did not come back clean, and diagnosing why found two separate
 problems - one in the instrument, one in the rewrite.
 
 **1. The verifier's own pattern had the bug the scrub rule had already fixed.**
-The sibling-name pattern was unanchored, so it matched the tail of longer words:
-`gitigno` + `red moon` + `_sync_inbox`, and `form-empowe` + `red moon` + `stone`.
-653 hits, of which **652 were false positives from the instrument**. The scrub
+The sibling-name pattern was unanchored, so it matched the tail of longer words.
+Two unrelated phrases did it, one in a runtime config and one in the archive:
+in each, an ordinary English word ENDS with the rule's first token and is
+immediately followed by its second. Both are described rather than quoted, for
+the reason this document already gives twice - a file explaining a scrub is
+inside the scrub, and quoting the trigger is how the explanation becomes
+nonsense on the next converge run. 653 hits, of which **652 were false positives
+from the instrument**. The scrub
 RULE had been anchored after this exact defect corrupted two files; the
 verifier's copy of the same pattern had not. An instrument and the thing it
 measures can disagree about a rule, and the instrument is not automatically the
@@ -411,21 +416,23 @@ useless - it checked eleven named path patterns, and no vendor name was among
 them. Widening the sweep from those eleven to the entire path list also found
 three things no plan had ever listed:
 
-- `legacy/ops_backups_20260418/.../bunnymuffins_imgs/` - 27 scraped `.webp`
-  images plus two JSON files carrying a vendor's TFT comp names and unit
-  placements. The same class as the 120 scraped HTML pages blocker 2 drops.
+- A vendor-named image directory under `legacy/ops_backups_20260418/` - 27
+  scraped `.webp` images plus two JSON files carrying a vendor's TFT comp names
+  and unit placements. The same class as the 120 scraped HTML pages blocker 2
+  drops.
   **Dropped, not renamed:** renaming keeps the scraped data and hides only whose
   it is.
-- `scripts/mobalytics_{out,err}.txt` - a scraper's stdout and stderr, both zero
-  bytes, so the FILENAME was the entire leak.
-- `tools/process-bridge-tasks-atx.md` - the peer project's name, sitting in the
-  gap between the substring-rename rule and the exact-path drop rule.
+- A vendor-named stdout/stderr pair under `scripts/`, left by a scraper. Both
+  are zero bytes, so the FILENAME was the entire leak.
+- A peer-project-named document under `tools/`, sitting in the gap between the
+  substring-rename rule and the exact-path drop rule.
 
 The fix derives basename renames FROM the existing table rather than
 duplicating it, because a hand-maintained second table is the same defect one
 layer down. Pinned by `test_rewrite2.py`: 18 passed, including two mutation arms
 and negative controls asserting that a drop rule wide enough to take
-`scripts/mobalytics_out.txt` does NOT take `scripts/fetch_mobalytics.py`.
+the scraper's dropped output file does NOT take the project's own fetcher
+module sitting beside it in the same directory.
 
 The corrected run's deltas were exactly what the fix predicted: paths_dropped
 836 -> 867 (+31 = 27 images + 2 JSON + 2 text) and paths_renamed 14 -> 22
