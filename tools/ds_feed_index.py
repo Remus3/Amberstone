@@ -33,6 +33,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -63,10 +64,15 @@ KNOWN_STAMP_LAG = {
     "cherry_augments.json":
         "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged "
         "since 16.10.1; authored feed, body has not moved",
-    "mayhem_augment_stats.json":
-        "declares rc_patch 16.10.1 - Mayhem augment stats sourced at 16.10 and "
-        "carried forward; event-mode feed with no newer upstream",
 }
+# mayhem_augment_stats.json was dropped 2026-09-07: the six snapshots were
+# untracked and purged from history ahead of the public flip (a vendor's dataset
+# this repo has no right to redistribute - the Share package's own licence had
+# already said so). The file is now a LOCAL cache that core/augment_external_
+# source.py fetches and degrades without, so it is not a shipped feed and cannot
+# carry an index row. Its old entry read: "declares rc_patch 16.10.1 - Mayhem
+# augment stats sourced at 16.10 and carried forward; event-mode feed with no
+# newer upstream."
 # enchanter_items.json was dropped 2026-07-26: the 16.14.1 copy declares
 # _meta.patch 16.14.1 (restamped at ENGINE 1.230.0, commit da5cb2ae), so it is
 # no longer lagging and the guard test correctly rejected the stale entry. The
@@ -115,11 +121,8 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # which is the same root cause that already puts it in KNOWN_STAMP_LAG.
     "cherry_augments.json": ("upstream-static", "none"),
 
-    # Event-mode feed sourced at 16.10 with no newer upstream. Both of its
-    # vintage keys - fetched_at AND source_generated_at - are frozen at
-    # 2026-05-18 across the two dirs, so the static body is the correct result.
-    # Also in KNOWN_STAMP_LAG for the same reason.
-    "mayhem_augment_stats.json": ("upstream-static", "none"),
+    # mayhem_augment_stats.json was dropped here too on 2026-09-07, for the
+    # reason recorded above KNOWN_STAMP_LAG: it is no longer a shipped feed.
 
     # AUTHORED curation, verified this session: there is NO generator for it
     # anywhere. A grep of tools/ for the filename returns only this module's
@@ -214,14 +217,42 @@ def extract_stamp(obj) -> tuple[str | None, str | None]:
     return name, ok[name]
 
 
+def _tracked_feeds() -> set[str]:
+    """Repo-relative posix paths of the feed files git actually tracks.
+
+    The index is a provenance baseline for what this repository SHIPS, so it
+    must enumerate tracked files rather than whatever happens to be on this
+    disk. An untracked feed is a local cache - it exists on the machine that
+    fetched it and nowhere else - and indexing one makes `--check` pass locally
+    and fail in CI, where the file was never checked out. That is exactly what
+    happened when the vendor augment snapshots were untracked ahead of the
+    public flip.
+
+    Returns an empty set if git cannot answer, and the caller then falls back to
+    the on-disk enumeration: degrading to the old behaviour is better than
+    emitting an EMPTY index, which would read as "no drift" forever.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "data/daemon_slayer"],
+            capture_output=True, text=True, check=True, timeout=60,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    return {line.strip() for line in out.splitlines() if line.strip()}
+
+
 def build_index() -> dict:
     sys.path.insert(0, str(ROOT / "tests"))
     from test_ds_fixture_policy import RETIRED_FIXTURES  # type: ignore
 
+    tracked = _tracked_feeds()
     dirs: dict[str, dict] = {}
     for patch in semver_dirs(_DATA, frozenset(RETIRED_FIXTURES)):
         feeds: dict[str, dict] = {}
         for path in sorted((_DATA / patch).glob("*.json")):
+            if tracked and path.relative_to(ROOT).as_posix() not in tracked:
+                continue
             obj = json.loads(path.read_text(encoding="utf-8"))
             field, declared = extract_stamp(obj)
             feeds[path.name] = {
