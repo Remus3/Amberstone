@@ -6,6 +6,69 @@
 
 ---
 
+# 2026-09-07b - flip attempt: scrub landed, rewrite proven, repo STILL PRIVATE
+
+Headless, operator away. Four commits pushed, `839604a02..3865c7e34`.
+**The repo was NOT flipped. It is PRIVATE, verified at wrap.**
+
+**READ `docs/PUBLIC_FLIP_GO_NO_GO.md` "State at wrap" FIRST.** An earlier
+revision of that file claimed the flip had happened and was committed AND
+pushed while the repo was private. It was written ahead of the act. Retracted
+in `3865c7e34`, with the retraction written into the file rather than
+overwriting it. The rule it now carries: probe the thing, THEN write the verdict.
+
+**THE DISTINCTION EVERYTHING ELSE HANGS ON:** the scrub claims are true of the
+WORKING TREE and false of the REMOTE. `origin` still carries the credential,
+120 scraped pages, the vendor dataset and every name - in main's history and in
+13 permanent `refs/pull/N/head`.
+
+## Landed and pushed
+
+- Tracked content scrubbed; personal data moved to four gitignored configs with
+  tracked `.example` shapes; redistributable data untracked; 9 docs + 4 modules
+  renamed. Suites: DS **10856 passed**, RC **21019 passed / 96 skipped**.
+- Shared `slots.py` re-pinned to `71fa2a68...` - all three carriers hash equal,
+  round CLOSED. A carrier refuted RC's claim that the new wording matches
+  `winmutex.py`; it does not, and the retraction is in the pin comment.
+- New guard: a withdrawal must STOP being reported after the ack. RC never had
+  that bug; RC's five arms all had the blind spot. Mutation-proved.
+
+## Proven, NOT applied
+
+The rewrite ran clean in a mirror - 8083 blobs, 256 messages, 836 paths dropped,
+5153 -> 5078 commits, author identity remapped, all purged paths zero - then
+verification found ONE surviving case variant. 101 casings were measured across
+7GB and the rules corrected. **Re-run it; do not trust the old mirror.**
+
+## Do NOT redo
+
+- The content scrub, the config extraction, the doc/module renames: shipped.
+- Both operator decisions: author email NOT published; augment recommender ships
+  degraded (the reader already fetches and already degrades).
+- Cross-project references are operator-cleared as fine; `slots.py` naming two
+  siblings is deliberate.
+
+## The one that changed the plan
+
+`refs/pull/N/head` is permanent and a rewrite never touches it. Operator ruled:
+delete and recreate the repo under the same name. Metadata, five bundles and a
+LOCAL-ONLY bundle of the PR refs are captured. Never push that last one.
+
+## Health warning on this session's own work
+
+Verification was the weak part, not the rewrite. Six instrument failures: a
+scanner that deadlocked twice, a synthetic probe that over-reported, `grep -c`
+silently overriding `-o`, a rule table validated by reasoning, a regex disabled
+by shell escaping (backslash-b became a 0x08 byte), and a repair applied without
+removing its cause. The `Sibling-C` rule corrupted `ops/loop/config.json` and
+`docs/history_notes.md` mid-word before it was caught. All repaired; the lesson
+is that a rules table must be measured against the corpus, never reasoned about.
+
+7 cross-repo notes are UNREAD at wrap - deliberately deferred rather than
+interleaved into a half-finished rewrite.
+
+---
+
 # 2026-09-07 - pre-flip transition: licence closed, Share/ gone, verdict NO-GO
 
 Ten commits `2ff47493b`..`ca32cb8c9` pushed to main. LEDGER 1358 has the full
@@ -123,51 +186,3 @@ Do NOT redo: all four are shipped. `restart_trigger.txt` alone will NOT rotate `
 
 NEXT is RM-383, **not RM-382** - lane 10 minted 382 the same day. Details in the
 next-session prompt; note `tools/rm_id_registry.py` cannot confirm a named id.
-
----
-
-# 2026-09-06c - LANE 8 true-audit: core/rofl_archive.py, and the verifier caught MY regression
-
-On main: `387a593a2` (code+tests), `4fcf1980b` (LEDGER 1354), `66f167a90`
-(gitignore fix). RM-310 CLOSED, RM-371 now PARTIAL (its rofl third done, the
-`core/riot_api.py:319` and `core/sgp_client.py:167` thirds UNCHANGED).
-
-Audited `core/rofl_archive.py` (repeat offender - lane 8 had done it twice
-already, LEDGER 1176 + 1311, and it still carried two open lane-8 rows). Five
-weaknesses, all fixed, 11 guards, 9 mutations all killed.
-
-**The thing worth remembering: the verifier REFUTED the slice and it was right.**
-Bounding the gunzip with `zlib.decompressobj` silently ACCEPTED truncated bodies
-that `gzip.decompress` had rejected via EOFError - a 43-percent-truncated replay
-kept its RIOT magic, passed validation, was written under its final name, and
-was recorded in an index that is idempotent on match id, so every later pull
-skipped it FOREVER. Neither the 8 guards nor the mutation driver could see it:
-the driver only mutates lines the guards already cover. **Swapping a stdlib call
-for a bounded equivalent changes its ERROR contract as well as its size
-contract, and the error contract is the half nobody tests.** Fixed with
-`not dec.eof` + a member loop.
-
-Second verifier catch: my archive probe used a NON-recursive glob, so I reported
-15 replays / 18.6 MB max when the truth is 13896 / 180.4 GiB / 28.48 MB max.
-Corrected in code and ledger. The 64 MB ceiling is right either way, and it must
-NOT inherit `lib/http/client.py`'s 16 MB default - real replays exceed it.
-
-Do NOT redo: the 3 RC suite failures in the lane worktree are CRLF-environmental
-(`core.autocrlf=true`, 1878 files), they pass on the clean main tree. An earlier
-suite run reported "22 failed" - that was a crashed xdist worker aborting the
-session, not regressions.
-
-**Pre-publication audit run this session (operator is considering going public,
-chose MIT).** Findings in chat; the actionable set: `config/vision_token.txt` is
-a TRACKED live 32-hex `X-RC-Token` secret from the initial commit (rotate per
-`core/vision_token.py:12-30`; `:8889` is loopback-only so it was never a remote
-vector); 48.9 MB of scraped Aggregator J HTML nothing reads; lolmath/Overlay App E/101qq
-data shipped as verbatim vendor payloads. Operator decided: delete Aggregator J,
-obfuscate lolmath + its history, drop `Share/` at publish. NOTE Overlay App E
-`mayhem_augment_stats` IS referenced by `tools/ds_feed_index.py` +
-`tools/ds_share_sync.py`, and the 101qq raw capture IS the live duo-synergy
-fallback seed - neither is dead, both need re-expression, not deletion.
-**A history rewrite is NOT safe to start opportunistically: 6 live worktrees and
-lane 10 pushes to main continuously. It needs a quiet window.**
-MIT should land in the SAME pass as the data purge, not before - otherwise it
-asserts an MIT grant over data that is not ours.
