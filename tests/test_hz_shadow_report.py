@@ -646,7 +646,7 @@ def test_summarize_agreement_economy_zeroed_when_empty():
 # strings - so ~1k laning + ~1.4k build comparable ticks are dropped invisibly
 # and nobody can prioritise the missing keywords. These surface the top offenders
 # by count (deterministic: count desc, then text asc) so the next classifier pass
-# has a target. Same diagnostic class as the confusion matrix (item e8117ec6).
+# has a target. Same diagnostic class as the confusion matrix (item cdca9bd7).
 
 
 def test_summarize_agreement_surfaces_unclassified_samples():

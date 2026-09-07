@@ -691,7 +691,7 @@ class RuneWriter:
                 return
             except BaseException as exc:  # noqa: BLE001
                 # Layer-2: a BaseException escape (not just Exception) must not
-                # kill the poll loop - the 90b350c8 caveat ("if the RuneWriter
+                # kill the poll loop - the 8d2b4e2b caveat ("if the RuneWriter
                 # poll loop itself died, _poll never runs"). _poll's own
                 # self-heal then re-runs next iteration.
                 _log.debug("RuneWriter poll error: %s", exc)

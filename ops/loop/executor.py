@@ -429,8 +429,8 @@ def enforce_agent_disjointness(cycle, body, *, log=None, awrite=None, ctl=None,
 # about ITSELF. Nothing read them back: a grep for those three tokens across the
 # .py tree returned zero hits. So the director emitted the same already-landed
 # unit of work twice (the f1-phase6 inbox apply, landed across four commits that
-# were every one an ancestor of HEAD) while self-reporting HEAD=05319608 against
-# a real HEAD of a7b9ac3d, and the executor typed it verbatim both times.
+# were every one an ancestor of HEAD) while self-reporting HEAD=f173ce39 against
+# a real HEAD of 9d836162, and the executor typed it verbatim both times.
 #
 # Two of the three claims are CHECKABLE against the repo, so the executor checks
 # them: the HEAD it says it grounded against, and any commit it names that is
@@ -542,7 +542,7 @@ _MAX_PREMISE_FINDINGS = 8
 # and it was false. `grep -rn "uses:" .github/workflows/` returns 10 refs, every
 # one a real version tag; zero match the corrupted `@agents\...\test_x.py` shape
 # the digest described; `gh run list` shows docs-guards run 30289333992 SUCCESS
-# at HEAD 3e6f69b9. The tag bought that claim a free pass through the guard and
+# at HEAD 98f29111. The tag bought that claim a free pass through the guard and
 # it burned the cycle.
 #
 # What changed is NOT the R208 abstention, which stands: the executor still has

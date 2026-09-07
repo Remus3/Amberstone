@@ -36,14 +36,14 @@ _WEB = _REPO_ROOT / "web"
 # folded to LF.
 #
 # RE-CAPTURED at the `${}` regex/comment tokeniser fix, superseding the
-# c7900b8c capture. It HAD to move: the digest is computed with the tokeniser's
+# 0910a449 capture. It HAD to move: the digest is computed with the tokeniser's
 # own classifier, and that fix corrected the comment/live partition (114 spans
 # across 3 panels stopped being mis-read as LIVE). So the old value could not
 # survive, and re-stamping it proves nothing on its own - the digest cannot
 # police a change to the thing that computes it.
 #
 # What was measured instead, at the moment of the re-stamp: run the CORRECTED
-# tokeniser over both the 525354ee tree and the swept tree and diff the live
+# tokeniser over both the 35c6730f tree and the swept tree and diff the live
 # halves. They are byte-identical for all 168 web/ sources - one fixed
 # classifier, two trees, so the comparison is not circular. The same diff under
 # the OLD tokeniser flags web/js/panels/last_match.js, which is exactly the bug
@@ -60,7 +60,7 @@ _WEB = _REPO_ROOT / "web"
 # RE-CAPTURED at R224 (RM-126, the overlay drag-listener leak fix), superseding
 # the R223 capture. Ordinary case again: a LIVE web edit, no tokeniser change,
 # so the classifier is fixed and the two-tree diff is a straight answer. Run
-# over 08c8aade and the post-fix tree with the SAME tokeniser, exactly one of
+# over f124f67f and the post-fix tree with the SAME tokeniser, exactly one of
 # 165 web/ sources differs in its live half - web/js/lib/overlay_layout.js -
 # which is the slice's whole file set and nothing else.
 # RE-CAPTURED at the 16.14.1 -> 16.15.1 DDragon patch refresh, superseding the
@@ -98,7 +98,7 @@ _WEB = _REPO_ROOT / "web"
 # capture. Not quite the ordinary case: a file MOVE plus LIVE web edits, still
 # no tokeniser change, so the classifier is fixed and the two-tree diff is
 # still a straight answer, just over a set of paths that is not the same set on
-# both sides. Run over 97c74550 (the S9 capture commit) and HEAD with the SAME
+# both sides. Run over 6ed2b0d1 (the S9 capture commit) and HEAD with the SAME
 # tokeniser: 169 web/ sources rather than 166 - web/js/lib/arm_confirm.js is
 # gone from that path and four are new (web/mc/arm_confirm.js,
 # web/mc/index.html, web/mc/mc.css, web/mc/mc.js) - and of the sources present
@@ -111,7 +111,7 @@ _WEB = _REPO_ROOT / "web"
 # web_dashboard), superseding the prior S10 capture. Ordinary case: LIVE web
 # edits, no tokeniser change, no file added or removed (169 web/ sources on
 # both sides), so the classifier is fixed and the two-tree diff is a straight
-# answer. Run over c0432e11 (the prior capture commit) and HEAD with the SAME
+# answer. Run over de7f366d (the prior capture commit) and HEAD with the SAME
 # tokeniser: exactly 4 of 169 web/ sources differ in their live half -
 # web/index.html (the MISSION CONTROL settings-card removed), web/css/panels/
 # header.css (the loop-status-body through loop-irq-victim block removed),
@@ -197,7 +197,7 @@ _WEB = _REPO_ROOT / "web"
 #                     equals the seed, so a FIRST render stamps title, mode
 #                     pill and body[data-mode] instead of only a later flip.
 #                     The `_modeStamped` latch keeps the repeat call a no-op.
-# THIS GUARD WENT RED ON THAT COMMIT (8b91d13a) AND THE RE-CAPTURE WAS MISSED,
+# THIS GUARD WENT RED ON THAT COMMIT (7705091d) AND THE RE-CAPTURE WAS MISSED,
 # so main sat red from 16:34 until this stamp - the guard worked exactly as
 # designed and the session that tripped it wrapped before its CI landed. If a
 # push run is still in flight at wrap, collect it; a red that arrives after the
@@ -278,7 +278,7 @@ _WEB = _REPO_ROOT / "web"
 # dictate player action from live game state; see docs/OVERLAY_B4_DESIGN.md.
 # Verified the same way as the captures above: the superseded digest
 # 7e5e0d2c reproduces byte for byte in a clean HEAD worktree (measured
-# 2026-08-12 at f0501048), so nothing else moved the value. Note the three
+# 2026-08-12 at cfc5a8d1), so nothing else moved the value. Note the three
 # modified web/data/*_index.json files in the tree at capture time are the
 # uncommitted DDragon 16.16.1 bump and CANNOT affect this digest: _web_sources
 # filters on lang_for_path, whose _LANGS map is .js / .css / .html only.
@@ -296,7 +296,7 @@ _WEB = _REPO_ROOT / "web"
 # shell; see docs/OVERLAY_B4_DESIGN.md section 5.
 # Verified the same way as the captures above: the superseded digest 63f408b5
 # reproduces byte for byte in a clean HEAD worktree (measured 2026-08-12 at
-# 149468f9), so nothing else moved the value. The three modified
+# afa42d9c), so nothing else moved the value. The three modified
 # web/data/*_index.json in the tree remain the uncommitted DDragon 16.16.1
 # bump (ROADMAP RM-190) and cannot affect this digest - _web_sources filters on
 # _LANGS, which is .js / .css / .html only.
@@ -334,14 +334,14 @@ _WEB = _REPO_ROOT / "web"
 # that docs/OVERLAY_DOCTRINE.md rule 4 reserves for the Emergency winner.
 # Verified the same way as the captures above: the superseded digest 87d64958
 # reproduces byte for byte in a clean HEAD worktree (measured 2026-09-01 at
-# 30156a0b via a throwaway detached worktree), so nothing else moved the value.
+# 35c6da51 via a throwaway detached worktree), so nothing else moved the value.
 # Note web/js/lib/overlay_layout.drag.test.mjs also changed in this slice and
 # correctly does NOT appear above: _LANGS is .js / .css / .html, so .mjs is
 # outside _web_sources. Confirmed by per-file live-half diff, not assumed.
 # RE-CAPTURED at the RM-208/209/220/326/327/328/338 six-slice batch,
 # superseding the 06da4a45 capture. Ordinary case: LIVE web edits, no
 # tokeniser change, so the classifier is fixed and the two-tree diff is a
-# straight answer. Run over a55ece97e and the merged tree with the SAME
+# straight answer. Run over 8599f1adf and the merged tree with the SAME
 # tokeniser: 171 web/ sources in BOTH trees (nothing added or removed), and
 # exactly 11 differ in their live half - web/js/main.js (RM-326/327 render
 # gates), web/index.html (RM-328 team-context mount), web/css/tokens.css plus
@@ -355,7 +355,7 @@ _WEB = _REPO_ROOT / "web"
 # never-live trend pill), superseding the six-slice-batch capture earlier the
 # same day. Ordinary case: LIVE web edits, no tokeniser change, so the
 # classifier is fixed and the two-tree diff is a straight answer. Run over
-# 9c6de1b68 and the post-RM-339 tree with the SAME tokeniser: 171 web/ sources
+# f2906ce15 and the post-RM-339 tree with the SAME tokeniser: 171 web/ sources
 # in BOTH trees, and exactly 6 differ in their live half - header.css,
 # map_state.css, primitives.css (dead rule blocks), main.js (loadouts view +
 # trend pill), dev.js (diagnostics view + live-metrics poll) and last_match.js
@@ -366,7 +366,7 @@ _WEB = _REPO_ROOT / "web"
 # RE-CAPTURED at RM-340 (the mountless `dev` view dropped from the router
 # registry), superseding the RM-339 capture the same day. Ordinary case: LIVE
 # web edits, no tokeniser change, so the classifier is fixed and the two-tree
-# diff is a straight answer. Run over 24bb113af and the post-RM-340 tree with
+# diff is a straight answer. Run over adaeae55e and the post-RM-340 tree with
 # the SAME tokeniser: 171 web/ sources in BOTH trees, and exactly 2 differ in
 # their live half - web/js/lib/state.js (the VIEW_IDS entry and its VIEW_LABELS
 # orphan) and web/js/main.js (the unreachable `else if (v === "dev")` branch).

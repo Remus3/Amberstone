@@ -56,7 +56,7 @@ class TabStripTests(unittest.TestCase):
 
     def test_ai_analysis_tab_starts_active(self):
         """AI Analysis is the default landing tab as of the R30 autopsy-first
-        reframe (ledger 604, `372b568b`): the view opens on the WPA/win-prob
+        reframe (ledger 604, `021318cd`): the view opens on the WPA/win-prob
         autopsy, not the Build roster scoreboard (gemini's named trap). Build
         receded to 3rd. (s220 S4 made Build default; R30 moved it.)"""
         html = _read(INDEX_HTML)

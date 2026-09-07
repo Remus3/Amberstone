@@ -11,7 +11,7 @@ carrying modelled damage formulas in ``_effects_data.py``, so they ranked HIGH a
 drew a deny; the other three ranked low and were never noticed.
 
 The deny's ORIGINAL rationale ("ARAM-only support-quest upgrades, maps[12]=True /
-maps[11]=True upstream bug", commit 8c5be61a, ENGINE 1.184.0) was factually WRONG
+maps[11]=True upstream bug", commit f297cda1, ENGINE 1.184.0) was factually WRONG
 and is pinned as wrong below: DDragon carries ``maps["11"]=True`` AND
 ``maps["12"]=False`` for every one of the eight line items - i.e. the data
 correctly says SR-legal and ARAM-illegal. The World Atlas support quest is a

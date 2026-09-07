@@ -1,4 +1,4 @@
-"""Regression guard for the 2026-07-27 skip audit (commit 39aa89ee).
+"""Regression guard for the 2026-07-27 skip audit (commit 69c3f848).
 
 That audit converted 51 always-passing skip guards into real failures but
 shipped no machine check, so nothing stopped instance #52. This module is that
@@ -215,7 +215,7 @@ def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
 
     `--diff-filter=DR` is load-bearing, and D alone is the trap that hid the
     headline instance. The `pengu/` stub was RENAMED into
-    `docs/_archive/2026-07-07-pengu-stub/` at 8c2afe21, and git records a
+    `docs/_archive/2026-07-07-pengu-stub/` at f08ade78, and git records a
     rename as R with the old path in field 2 - so a D-only scan reports it as
     never deleted and the guard sees nothing. Measured 2026-08-06: D alone
     yields 439 vanished paths and misses pengu entirely; DR yields 857 and
@@ -293,7 +293,7 @@ _BODY_SKIPS = {"pytest.skip", "skip"}
 # coverage loss this guard would otherwise have taken silently. B2 moved six
 # DS-engine liveness skips out of five modules and behind that one shared
 # helper (tests/test_ds_live_route_gate.py). MEASURED before and after at
-# ae0c2897: this scanner saw 7 sites across those five modules and then saw 1.
+# 09d9c7a1: this scanner saw 7 sites across those five modules and then saw 1.
 # Four modules dropped to ZERO visible sites and
 # tests/test_build_orders_family_a_guard.py lost its `network` evidence
 # entirely. Nothing was wrong with any of them - they simply stopped LOOKING
@@ -1383,7 +1383,7 @@ def _excused(finding: _Finding) -> bool:
 #     against all 11 B4 control points it is 9/11.
 #
 # The census this rule was measured against: 11 B4 control points carrying 16
-# live skip events, across 130 skip sites in the five trees at 8b5a57a6. An
+# live skip events, across 130 skip sites in the five trees at 8338ad79. An
 # earlier headline of "11 sites / 13 events" did not decompose - it counted the
 # CONVERTED subset as if it were the whole class, and it predated this rule
 # finding `_archive/2026-06-20-rc2-p73`.
@@ -1760,7 +1760,7 @@ def test_thing():
 ''',
     # --- RM-119 B4 proper: the gate names something git tracked once and no
     # longer does. `pengu/` is the real instance - renamed into
-    # docs/_archive/2026-07-07-pengu-stub/ at 8c2afe21 - and it is written here
+    # docs/_archive/2026-07-07-pengu-stub/ at f08ade78 - and it is written here
     # in the module-level form the original defect used.
     "skip_gated_on_a_path_git_used_to_track": '''
 import pytest

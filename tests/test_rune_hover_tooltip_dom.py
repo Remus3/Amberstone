@@ -17,7 +17,7 @@ The pure helper behaviour (_stripHtml / _runeTitle: tag-strip, entity-decode,
 whitespace-collapse, null-safe, name-only fallback) is pinned behaviourally by
 web/js/panels/build_insights_rune_tooltip.test.mjs (node --test). These are
 source pins so a partial revert (dropping the title wiring or the helper) trips
-CI in the Python suite too. Mirrors the daf09498 / test_archetype_nudge_chip_dom
+CI in the Python suite too. Mirrors the 4e5b2575 / test_archetype_nudge_chip_dom
 source-guard precedent.
 """
 from __future__ import annotations

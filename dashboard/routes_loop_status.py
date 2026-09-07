@@ -101,7 +101,7 @@ LANE_LOG_TAIL_LINES = 12
 # rather than the second.
 _LANE_LOG_RE = re.compile(r"^lane_(?P<rest>.+)_(?P<run>[^_]+)\.log$")
 
-# "... cycle 10: claude.done sha=38158e1d tests=7024 regress=False"
+# "... cycle 10: claude.done sha=8474f4b2 tests=7024 regress=False"
 _DONE_LOG_RE = re.compile(
     r"cycle\s+(\d+):\s+claude\.done\s+sha=(\w+)\s+tests=(\S+)\s+regress=(\w+)"
 )

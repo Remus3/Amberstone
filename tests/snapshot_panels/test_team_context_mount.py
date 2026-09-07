@@ -10,7 +10,7 @@ renderTeamContext's second line:
     const block = document.getElementById("cs-team-context-block");
     if (!block) return;
 
-because commit 440ede616 (2026-05-14, s208, "retire legacy #cs-overlay
+because commit ed3ae6f7f (2026-05-14, s208, "retire legacy #cs-overlay
 champ-select page") deleted web/index.html's 124-line #cs-overlay block and
 the team-context markup lived INSIDE it. That was collateral damage, not a
 supersession: the same commit REWROTE web/css/panels/team_context.css:2-3
@@ -20,7 +20,7 @@ re-home that was never executed. The backend never stopped producing the
 payload (tools/lcu_agent.py _maybe_refresh_team_context POSTs on every
 champ-select entry; dashboard/_state_builder.py splices coach.team_context),
 and the operator repaired that transport 41 days AFTER the mount died
-(49b1c9ead, 2026-06-24).
+(a3b7e0f03, 2026-06-24).
 
 This drives the REAL EventSource ingest path - the conftest mock server
 streams the fixture dict as one SSE event, exactly like the production
@@ -31,7 +31,7 @@ Deliberately asserts PAINTED CONTENT, not merely slot count. renderTeamContext
 has a no-payload branch that also pads #tc-allies to 5 placeholder slots, so a
 count-only test would stay green even if the payload never reached the DOM.
 
-RED at a55ece97e (no mount -> the guard early-returns -> zero .tc-slot nodes).
+RED at 8599f1adf (no mount -> the guard early-returns -> zero .tc-slot nodes).
 """
 import json
 
@@ -152,7 +152,7 @@ def test_team_context_mount_sits_after_the_csv_grid(mock_server, pw_browser):
     """Topology guard: the block is a full-width sibling directly below the
     team rows, inside .view-section-body and immediately after .csv-grid.
 
-    This is the placement the stylesheet was re-homed to in 440ede616 (a flat
+    This is the placement the stylesheet was re-homed to in ed3ae6f7f (a flat
     `margin-top: 10px` block with no .cs-overlay ancestor). Pinning it stops a
     future edit from re-orphaning the mount into another view, which is the
     exact failure this row exists to close.

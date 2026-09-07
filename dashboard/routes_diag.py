@@ -303,7 +303,7 @@ def _serve_decisions_heartbeat(h) -> None:
 
     NO CURRENT UI CONSUMER. This docstring used to say "the dashboard
     #trigger-pill polls this at ~2 Hz"; that pill was deleted with the
-    header second row in `bfa78360`, and `web/css/panels/map_state.css:119`
+    header second row in `dee9cc94`, and `web/css/panels/map_state.css:119`
     records the removal while noting the backend was deliberately kept.
     Corrected 2026-08-30 (lane 8 cycle 12) after the stale line was used as
     evidence that an operator would see a heartbeat change. Grep before

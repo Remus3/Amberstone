@@ -4,14 +4,14 @@ THE DEFECT
 ----------
 ``assume_hsp_amp`` shipped in ENGINE 1.171.0 (R60) on the SCALAR lanes
 (``compute_ehp`` / ``compute_sustain``). On 2026-07-29 the EHP-ranker half was
-wired (commit e075a221): ``rank_items_by_ehp`` -> ``POST /rank-tank`` ->
+wired (commit 1a2f92e7): ``rank_items_by_ehp`` -> ``POST /rank-tank`` ->
 ``core/daemon_slayer_client.rank_tank_for``. The HYBRID (bruiser) ranker -
 ``rank_items_by_hybrid`` -> ``POST /rank-bruiser`` -> ``rank_bruiser_for`` - is
 the SEPARATE module that decides a bruiser item CHOICE, and it never accepted
 the kwarg. So the wielder Heal-and-Shield-Power item amp (Redemption 3107,
 Mikael's Blessing 3222, additive per ``_hsp_amp.sum_wielder_hsp_pct``) could not
 move a single bruiser build decision. That is the remaining OPEN half RM-118
-recorded after e075a221.
+recorded after 1a2f92e7.
 
 Same defect class + same three-gate remedy as the EHP-ranker half and R194
 slice A: engine ranker -> route -> client, each asserted separately so a

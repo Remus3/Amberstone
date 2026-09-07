@@ -30,7 +30,7 @@ credited the conversion. This module pins that as a live invariant.
 
 DEFAULT-OFF: ``compute_dps(apply_crit_conversion=False)`` (the default) is
 byte-identical for EVERY champion including Ashe - pinned below against goldens
-captured from the pre-seam engine at HEAD 2d3ddcba.
+captured from the pre-seam engine at HEAD c9296b34.
 
 OFFLINE ONLY: no live :8860, no network.
 """
@@ -69,7 +69,7 @@ GATE_TARGET = dict(
 )
 GATE_LEVEL = 16
 
-# Goldens captured in-process from the pre-seam engine (HEAD 2d3ddcba) at the
+# Goldens captured in-process from the pre-seam engine (HEAD c9296b34) at the
 # gate params. These pin the DEFAULT-OFF byte-identity contract - they must not
 # move when the seam is omitted.
 GOLDEN_WEIGHTED_DPS = {

@@ -1,6 +1,6 @@
-"""The gate that replaces `cd0f115d`'s by-eye sweep of 461 subTest sites.
+"""The gate that replaces `462f1255`'s by-eye sweep of 461 subTest sites.
 
-`cd0f115d` fixed the five `subTest`-serialization instances and recorded
+`462f1255` fixed the five `subTest`-serialization instances and recorded
 "swept every other subTest call site" in its commit body. Prose is not a
 gate. These tests pin the guard installed by the repo-root `conftest.py`,
 which turns an xdist-only failure into an every-run failure at the call

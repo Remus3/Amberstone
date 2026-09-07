@@ -185,7 +185,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
     # live (beam.py:280-360, exposed via cli.py --no-boots-unique + the
     # server.py :8860 body param), but a BEHAVIORAL test of it is no longer
     # constructible. It only ever passed because the pool held stat-dense T3
-    # quest-reward boots (3170-3175) that beam WANTED two of; commit 19a76d8b
+    # quest-reward boots (3170-3175) that beam WANTED two of; commit 8aa7c64f
     # added those to _SR_EXCLUDED_ITEM_IDS, and no buyable-boot pool reproduces
     # a multi-boot build - T2 boots are too low-DPS for beam to stack, so it
     # returns an empty build (verified). The default (boots_unique=True) path is

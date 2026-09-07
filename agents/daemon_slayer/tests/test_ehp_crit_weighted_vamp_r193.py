@@ -10,7 +10,7 @@ the whole crit factor (measured x1.7875 for a 5-item L16 Jinx).
 The seam under test is ``compute_ehp(..., assume_crit_weighted_vamp=True)``.
 DEFAULT-OFF is the acceptance bar: with the flag absent every existing EHP
 number must be BYTE-IDENTICAL, which is what the two baseline classes pin with
-hard-coded floats measured on HEAD 464fd7dd BEFORE the seam was written.
+hard-coded floats measured on HEAD e2f6e599 BEFORE the seam was written.
 
 Coverage classes:
 
@@ -34,7 +34,7 @@ from agents.daemon_slayer.ehp import (
     compute_ehp,
 )
 
-# Measured on HEAD 464fd7dd with the flag NOT yet implemented (the OFF path
+# Measured on HEAD e2f6e599 with the flag NOT yet implemented (the OFF path
 # must reproduce these to the last bit):
 #   Jinx L16 [3072, 3031, 3094, 3006, 6676] - lifesteal 0.15, ad 311.04375,
 #   as 1.09375, crit 0.75, crit_damage_bonus_total 1.05 (0.75 default + 0.30

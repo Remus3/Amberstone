@@ -1,7 +1,7 @@
 """Guard (RM-203): the DS item-coverage prose is re-derived from data, never recited.
 
 ``docs/DAEMON_SLAYER.md`` carried ``547/547 DDragon purchasable items`` from the
-day the file was created (`01dce037`, 2026-05-06) until RM-203. It was never a
+day the file was created (`4e4a8a8f`, 2026-05-06) until RM-203. It was never a
 ratio: 547 was ``len(ITEM_EFFECTS)`` at that commit, written twice, and the
 DDragon purchasable population measured 544 / 468 / 466 (three defensible
 definitions) on that same snapshot - so no denominator ever reproduced it. The

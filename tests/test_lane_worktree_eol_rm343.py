@@ -13,7 +13,7 @@ The real mechanism is STALENESS, and it lives on the reuse path here:
     the SYSTEM gitconfig, ``C:/Program Files/Git/etc/gitconfig``, not from
     ``.git/config``) writes CRLF for every tracked text path not pinned
     ``eol=lf``.
-  * ``8119b3334`` (2026-09-03, RM-284 follow-on) widened the pin from ``.py`` and
+  * ``fa0e7ea74`` (2026-09-03, RM-284 follow-on) widened the pin from ``.py`` and
     ``.md`` to ``.json``, ``.js``, ``.css`` and 13 more. Worktrees materialized
     BEFORE that commit already had those files on disk as CRLF.
   * Updating the branch afterwards does not fix them. Git only rewrites a

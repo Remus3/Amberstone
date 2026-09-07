@@ -15,7 +15,7 @@ Contract areas, each one TestCase below:
   1. PANEL_SETS source of truth in overlay_state.js (frozen member list).
   2. overlay.css gates widget visibility PER-WIDGET (.ovx-hidden), NOT by
      panel set - the coach/build/threat CSS gates were retired 2026-06-28
-     (commit b16bfce1, OVERLAY_DOCTRINE.md sec 4); body[data-panelset]
+     (commit bf205ad0, OVERLAY_DOCTRINE.md sec 4); body[data-panelset]
      stamping is now inert. Pin the replacement contract so a re-added gate
      (which would silently hide an always-reachable panel) goes red.
   3. main.js stamps data-shell/data-panelset from the URL and pins the
@@ -77,7 +77,7 @@ class ShellPanelSetsSourceTests(unittest.TestCase):
 
 
 class OverlayCssVisibilityGateTests(unittest.TestCase):
-    """Panel-set CSS gating was RETIRED 2026-06-28 (commit b16bfce1; overlay.css
+    """Panel-set CSS gating was RETIRED 2026-06-28 (commit bf205ad0; overlay.css
     section 4d + OVERLAY_DOCTRINE.md section 4): the coach/build/threat quick-swap
     no longer narrows the field. Every widget shows by default and the operator
     hides one from the launcher menu, so the item-378 "every panel set needs a CSS

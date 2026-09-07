@@ -4,7 +4,7 @@ Companion to ``agents/daemon_slayer/tests/test_item_hydra_active_burst_r113.py``
 (the DS-dir suite). This is the RC top-level ``tests/`` guard so the CI
 ``pytest tests/`` run also covers the R113 total-AD physical burst seam -
 ``effects.total_physical_burst_damage`` + the ``burst.compute_burst_damage``
-wiring - not only the DS-dir suite. The R113 feat commit (93cac79c) shipped the
+wiring - not only the DS-dir suite. The R113 feat commit (ef6cea88) shipped the
 seam and the DS-dir test but no RC-suite guard, so a diff-window audit of the
 finalize commit saw the effects.py / burst.py total-AD logic with no test
 beside it in the RC suite. This closes that gap.

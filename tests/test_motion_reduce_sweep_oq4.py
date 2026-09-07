@@ -44,7 +44,7 @@ REDUCE_AT = "@media (prefers-reduced-motion: reduce)"
 # dormant rc-skel mechanism was removed 2026-07-01 - see
 # tests/test_rc_skel_removed.py. The header row-2 removal 2026-07-04 then
 # retired the .hp.hp-critical HP-bar alarm with its element, and the
-# 2026-07-05 E11 lobby restructure (dead-code purge, commit 1cf122e2)
+# 2026-07-05 E11 lobby restructure (dead-code purge, commit c6670b19)
 # retired the .lobby-status.searching queue heartbeat with its element -
 # leaving 7 live-signal loops.)
 SITES = {

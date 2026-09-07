@@ -1,7 +1,7 @@
 """BUILD SLICE W2 - make the two champion-selective conversion seams
 REACHABLE from the client dispatcher.
 
-Measured defect (this session, on HEAD c01e8f80):
+Measured defect (this session, on HEAD 3ab8c741):
 
   * ``apply_crit_conversion`` (Ashe Frost Shot, registry
     ``agents/daemon_slayer/_crit_conversion_overrides.py``) is PARSED by the

@@ -194,7 +194,7 @@ class _NormalizerMixin:
     # ------------------------------------------------------------------
     # It built a paste-into-Claude text block from the state dict. Its ONLY
     # caller was `_copy_state_to_clipboard`, a tkinter clipboard button
-    # deleted on 2026-05-01 by a00414b9 ("strip tkinter overlay shim from RC
+    # deleted on 2026-05-01 by eefad53e ("strip tkinter overlay shim from RC
     # main"). RC has been tkinter-free since; a repo-wide grep over EVERY
     # file type found exactly one occurrence of the name - its own def. It
     # was also latently broken, subscripting state["items"] / ["game_time"]

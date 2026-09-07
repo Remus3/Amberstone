@@ -1,7 +1,7 @@
 """
 tests/snapshot_panels/test_aram_balance_view.py
 ARAM balance-adjustment grid panel - populated capture + ui_mock wiring
-regression (clears the R20 VISUAL OWED, ledger item 590/R20 `e0f0ffac`).
+regression (clears the R20 VISUAL OWED, ledger item 590/R20 `32467bb7`).
 
 The #aram-balance-panel lives in the active-match view's BUILD pane and is
 ARAM-mode-gated. It shipped wired into the LIVE-state render branch only

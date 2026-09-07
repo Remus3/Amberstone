@@ -3,7 +3,7 @@
 MEASURED RESULT: CLEAN. No production file changed. This file is the machine
 guard that makes that closure durable instead of a one-time claim.
 
-THE DEFECT CLASS BEING AUDITED (R143, commit da5cb2ae). Registries keyed on BARE
+THE DEFECT CLASS BEING AUDITED (R143, commit f7c49de5). Registries keyed on BARE
 4-digit item ids miss the MIRROR ids that ``core.daemon_slayer_resolver.name_to_id``
 actually hands the engine - 32xxxx under mode="sr", 22xxxx under mode="arena",
 plus 44xxxx / 66xxxx families - and fall through to a SILENT 0.0 with no raise and

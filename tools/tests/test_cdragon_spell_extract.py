@@ -20,7 +20,7 @@ if str(_TOOLS) not in sys.path:
 import daemon_slayer_cdragon_spell_extract as C  # noqa: E402
 
 # --------------------------------------------------------------------------- engine-independence guard
-# RM-170 (2026-08-06). Was `assert "from agents" not in src`. Commit 9df58480
+# RM-170 (2026-08-06). Was `assert "from agents" not in src`. Commit d0ad0569
 # (2026-07-30) deliberately added ONE engine import to both cdragon extractors
 # without updating the guard, leaving it red and unseen because `pytest tests`
 # does not collect tools/tests. The contract is narrowed, not dropped - see the

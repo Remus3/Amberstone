@@ -1,14 +1,14 @@
 """Regression guard: the gate's ruff half must not die on a ruff-less interpreter.
 
-MEASURED 2026-07-28. afcbcf79 introduced a net-new ruff UP031 in the gate's OWN
-source, the gate passed it, and CI went red (fixed in 425fbb75). Diagnosis:
+MEASURED 2026-07-28. 8a6cdfc2 introduced a net-new ruff UP031 in the gate's OWN
+source, the gate passed it, and CI went red (fixed in 11bb4dcd). Diagnosis:
 
   .githooks/pre-commit launches the gate through the `py` launcher, which on
   Legion resolves to a bare pythoncore build with NO ruff. The gate then shelled
   out to `sys.executable -m ruff`, i.e. that same ruff-less interpreter, got
   rc=1 with an empty stdout, parsed [] findings, and passed.
 
-  It failed OPEN and it failed SILENTLY. ceb2f584 (2026-07-07) had switched the
+  It failed OPEN and it failed SILENTLY. 3d48e6e8 (2026-07-07) had switched the
   invocation from the `py` launcher to sys.executable to fix the OTHER channel
   (Claude PreToolUse, whose interpreter is the Python314 that owns ruff), which
   means each hardcoded choice was correct for exactly one of the two channels
@@ -49,7 +49,7 @@ _RUFF_IMPORTABLE = importlib.util.find_spec("ruff") is not None
 _RUFF_ON_PATH = shutil.which("ruff") is not None
 _GOOD = [sys.executable, "-m", "ruff"] if _RUFF_IMPORTABLE else ["ruff"]
 
-# UP031: percent-format. The exact rule afcbcf79 shipped and the gate missed.
+# UP031: percent-format. The exact rule 8a6cdfc2 shipped and the gate missed.
 _UP031_SOURCE = 'a = 1\nmsg = "U+%04X" % (a,)\n'
 
 requires_ruff = pytest.mark.skipif(

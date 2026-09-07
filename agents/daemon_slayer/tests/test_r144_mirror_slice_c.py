@@ -5,7 +5,7 @@ bare 4-digit catalog id: ``22xxxx`` under mode="arena", and ``32xxxx`` /
 ``44xxxx`` / ``66xxxx`` families exist in the index for other item lines. A
 registry keyed only on bare ids misses those lookups and falls through to a
 SILENT 0.0 - no raise, no log, no fallback (the R135 zero-stat fallthrough
-class, swept for the enchanter HSP registry in R143 / da5cb2ae).
+class, swept for the enchanter HSP registry in R143 / f7c49de5).
 
 This file is the standing guard for the three lanes in slice C:
 

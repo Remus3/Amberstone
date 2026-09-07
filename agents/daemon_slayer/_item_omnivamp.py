@@ -52,7 +52,7 @@ DROPPED / DEFERRED:
 R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
 ``core.daemon_slayer_resolver.name_to_id``, which hands the engine mirror ids
 (``224633`` under mode="arena") where a bare-id-only registry would fall
-through to a silent 0.0 - the R143 / da5cb2ae defect class. COMPLETE: the
+through to a silent 0.0 - the R143 / f7c49de5 defect class. COMPLETE: the
 16.14.1 index carries exactly two ids named "Riftmaker" (``4633`` and
 ``224633``) and both were already registered. The DROPPED ids below were
 re-confirmed genuinely ABSENT from the index, so their absence is correct

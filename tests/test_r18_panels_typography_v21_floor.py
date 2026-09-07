@@ -151,7 +151,7 @@ def test_augment_reco_no_blanket_sub_floor() -> None:
 
 def test_archetype_nudge_chip_block_stays_removed() -> None:
     """(2026-07-04) The archetype-nudge-chip surface was retired with header
-    row 2; its map_state.css block was deleted. Absence guard (daf09498
+    row 2; its map_state.css block was deleted. Absence guard (4e5b2575
     removed-surface precedent) so a merge cannot resurrect the orphaned
     rules - a resurrected chip needs a new render surface + a fresh audit."""
     text = _strip_comments(MAP_STATE_CSS.read_text(encoding="utf-8"))

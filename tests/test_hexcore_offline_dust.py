@@ -252,7 +252,7 @@ def _repo_patch() -> str:
 
 
 # R195: the engine/patch anchors in this file drifted silently across six
-# hand refills (R146, R151, R157, R164, R188, b4df6494) because nothing tied
+# hand refills (R146, R151, R157, R164, R188, 0b137097) because nothing tied
 # them to the repo. These guards make a stale anchor a red test, not a
 # cosmetic doc bug someone notices three ENGINE bumps later.
 def test_hud_engine_anchor_matches_repo(html: str) -> None:
