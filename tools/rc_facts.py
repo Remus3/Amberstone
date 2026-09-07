@@ -29,6 +29,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+_ROOT = Path(__file__).resolve().parent.parent
+
 # SessionStart hook runs under windowless pythonw.exe; a powershell.exe child
 # would otherwise get a fresh console allocated - an on-screen + taskbar flash.
 # CREATE_NO_WINDOW suppresses it (Windows-only; 0 elsewhere).
@@ -238,6 +240,51 @@ def main() -> int:
     else:
         out.append("- Liveclient relay: empty (no game in progress)")
 
+    # -- Unread cross-repo inbox notes -----------------------------------
+    #
+    # Design from Sibling-A 2026-09-06, adopted with one change. A note
+    # written into moon_sync_inbox/ by a sibling repo used to be discovered
+    # only when a human mentioned it - LW confirmed it has no watcher at all,
+    # so a note could sit until someone happened to look. SessionStart is the
+    # right delivery point: it costs one directory listing, needs no daemon,
+    # cannot flash a console, and survives /clear by construction, because a
+    # /clear IS a session start.
+    #
+    # THE CHANGE: LW proposed an mtime WATERMARK. RC uses a set of seen
+    # FILENAMES instead. A watermark advances on write, so if this hook runs
+    # and the session is cleared or killed before anyone reads the output, the
+    # watermark has moved past a note nobody saw - and it is unrecoverable,
+    # because "unread" was never a property of the file. A filename set has no
+    # such window: a note stays unread until its NAME is recorded, and
+    # re-listing a name is idempotent. It also survives clock skew and a copy
+    # that preserves timestamps, both of which silently defeat an mtime
+    # comparison.
+    try:
+        inbox = _ROOT / "moon_sync_inbox"
+        seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
+        if inbox.is_dir():
+            names = {p.name for p in inbox.iterdir()
+                     if p.is_file() and p.suffix.lower() == ".md"
+                     and not p.name.startswith("_")}
+            try:
+                seen = set(json.loads(seen_path.read_text(encoding="utf-8")).get("seen", []))
+            except (OSError, ValueError):
+                seen = set()
+            unread = sorted(names - seen)
+            if unread:
+                anomalies.append(
+                    f"moon_sync_inbox: {len(unread)} unread note(s) from sibling repos")
+                out.append("")
+                out.append(f"## Cross-repo inbox - {len(unread)} UNREAD")
+                for n in unread[:10]:
+                    out.append(f"- {n}")
+                if len(unread) > 10:
+                    out.append(f"- ... and {len(unread) - 10} more")
+                out.append("Read them, then record them as seen:")
+                out.append("  python tools/rc_facts.py --mark-inbox-seen")
+    except OSError:
+        pass  # a hook must never fail the session start
+
     # -- Anomaly summary first if any ------------------------------------
     if anomalies:
         head = "## ! Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
@@ -246,5 +293,28 @@ def main() -> int:
     return 0
 
 
+def mark_inbox_seen() -> int:
+    """Record every current inbox note as seen. Idempotent.
+
+    Separate from the hook on purpose: the hook REPORTS, the operator (or the
+    session, once it has actually read them) ACKNOWLEDGES. Advancing the
+    watermark inside the hook is the failure this design avoids - see the note
+    in main().
+    """
+    inbox = _ROOT / "moon_sync_inbox"
+    seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
+    names = sorted(p.name for p in inbox.iterdir()
+                   if p.is_file() and p.suffix.lower() == ".md"
+                   and not p.name.startswith("_")) if inbox.is_dir() else []
+    seen_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = seen_path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps({"seen": names}, indent=2), encoding="utf-8")
+    tmp.replace(seen_path)
+    print(f"recorded {len(names)} inbox note(s) as seen -> {seen_path}")
+    return 0
+
+
 if __name__ == "__main__":
+    if "--mark-inbox-seen" in sys.argv:
+        sys.exit(mark_inbox_seen())
     sys.exit(main())
