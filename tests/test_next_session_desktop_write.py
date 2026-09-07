@@ -141,3 +141,39 @@ def test_the_stale_docstring_names_the_prefixed_file():
     src = (_REPO / "tools" / "session_intent.py").read_text(encoding="utf-8")
     assert not re.search(r"(?<![A-Z-])Desktop/NEXT-SESSION\.txt", src), (
         "tools/session_intent.py still names an unprefixed Desktop/NEXT-SESSION.txt")
+
+
+def test_the_write_gate_cannot_silently_become_a_no_op():
+    """Assert the gate is ACTIVE on this path, not merely that it exits clean.
+
+    Caution from Sibling-E 2026-09-06, credited. CS measured the same
+    `precommit_gate` invocation reporting `5 skipped` on ubuntu and `4 skipped`
+    on Windows - both GREEN - because its PII checks skip themselves when the
+    thing they inspect is not discoverable on that machine. Their conclusion is
+    the general one: **a gate that skips its checks reports PASS**, and that is
+    indistinguishable from a clean run.
+
+    `_glyph_hits` has exactly that shape: it returns `[]` immediately when
+    `_ascii_exempt(path)` matches, before inspecting a single character. So if
+    `.txt` were ever added to `_ASCII_EXEMPT_SUFFIXES`, or the hand-off moved
+    under an exempt prefix, `write_prompt`'s pre-write gate would keep returning
+    "clean" while checking nothing - and the tracked, pushed hand-off would be
+    ungated with no signal anywhere.
+
+    This asserts the negative directly rather than inferring it from a pass.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "gate_exemption_probe", _REPO / "tools" / "precommit_gate.py")
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+
+    assert not gate._ascii_exempt("RC-NEXT-SESSION.txt"), (
+        "the hand-off path is EXEMPT from the glyph gate, so write_prompt's "
+        "pre-write check inspects nothing and reports clean. Remove the "
+        "exemption, or the tracked hand-off is ungated.")
+
+    # And prove it actually fires on that exact path, not just that it is
+    # un-exempt - the exemption is one of two ways this could go quiet.
+    hits = gate._glyph_hits("an em" + chr(0x2014) + "dash", "RC-NEXT-SESSION.txt")
+    assert hits, "the glyph engine returned no hits for a banned glyph"

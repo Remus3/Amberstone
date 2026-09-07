@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 r"""Named-mutex wrapper for the two genuinely exclusive machine-wide resources.
 
-SHARED FILE - must stay BYTE-IDENTICAL between the Legion Wallpaper and Riot
-Commander repos. The two loops coordinate through the OS namespace these names
-live in, so a divergence is a silent concurrency bug. Nothing here may reference
-either repo.
+SHARED FILE - must stay BYTE-IDENTICAL across every sibling repo that vendors
+it. The loops coordinate through the OS namespace these names live in, so a
+divergence is a silent concurrency bug. Nothing here may reference a specific
+repo, and the NAMES ARE DELIBERATELY OPAQUE: this file is published, so a
+descriptive name is both an invitation to squat it and a statement about what
+runs on the box. Rotating one is a joint re-pin round with every loop stopped -
+ADR-012.
 
 WHAT NEEDS SERIALIZING, and why slots are not enough. Slots bound how many
 executor calls run at once; these bound access to resources where even two is
 one too many:
 
-  GEMINI_MUTEX - one metered Gemini account. Two concurrent director calls burn
-    quota in parallel and can trip RESOURCE_EXHAUSTED, which the adjudicator's
-    failover logic would then misread as genuine credit exhaustion and stickily
-    swap the backend for the REST OF THE RUN. Serializing is cheap: director
-    calls are seconds.
+  GEMINI_MUTEX - a single-tenant external service, held around each call. Not
+    every sibling acquires it; the ones that do hold it briefly.
 
-  GPU_MUTEX - one GPU. Acquired by the TOOL that touches CUDA rather than by the
-    loop, so a manual run is protected too.
+  GPU_MUTEX - one local accelerator. Acquired by the TOOL that touches it rather
+    than by the loop, so a manual run is protected too.
 
 ABANDONED MUTEX. If a holder dies without releasing, Windows hands the next
 waiter WAIT_ABANDONED. That is treated as ACQUIRED, with a warning: the previous
@@ -34,8 +34,8 @@ from __future__ import annotations
 import sys
 from contextlib import contextmanager
 
-GEMINI_MUTEX = "Global\\LWRC_GEMINI"
-GPU_MUTEX = "Global\\LW_GPU"
+GEMINI_MUTEX = "Global\\MX-7C41A9E2"
+GPU_MUTEX = "Global\\MX-2E58D3B6"
 
 _WAIT_OBJECT_0 = 0x00000000
 _WAIT_ABANDONED = 0x00000080
