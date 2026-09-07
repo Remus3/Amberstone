@@ -119,6 +119,36 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-06e - operator session: repo re-case, 7th port block, slots.py re-pin, token rotation
+
+> Filed as `e`: lane 10 already holds `d` (RM-367) and lane 8 holds `c`, both same day.
+
+On main: `ee8537228` (slug), `f8323887e` (three queued items). LEDGER 1356.
+Full RC suite 21023 passed / 96 skipped / 0 failed; ruff + hygiene + drift_guard clean.
+DS untouched, so no Share sync.
+
+Four items, and EVERY one had a second half its filing did not name:
+- GitHub repo is now `Remus3/Amberstone`. `gh repo rename` rewrote `origin` in the
+  shared config, so all 6 lane worktrees followed - no per-worktree action needed.
+- Sibling-B owns 8790-8809 (7th block). The real finding: RSC had scaffolded onto
+  **8870, inside DS's 8860-8879**, and it could never have surfaced from a scan - DS
+  binds 8860/8861 only. Pinned by number now. RM's 8770-8789 is HELD, not freed.
+- `ops/loop/slots.py`: **LW authored the bytes, RC followed.** Found by the digest
+  guard going red, not by the note. Copied byte-level (never `write_text` - CRLF),
+  re-pinned to `1c4f8af4...`. RSC vendors last.
+- Vision token rotated + untracked. **The documented procedure was WRONG**: a
+  supervisor restart does NOT re-credential `:8889` (detached child, one-shot
+  self-heal at dashboard startup), so the OLD token still returned 200 after a
+  by-the-book rotation. Fixed + docstring corrected. Also killed the MCP fallback
+  coupling with `tools/mcp_token.txt` (gitignored).
+
+Do NOT redo: all four are shipped. `restart_trigger.txt` alone will NOT rotate `:8889`.
+
+NEXT is RM-383, **not RM-382** - lane 10 minted 382 the same day. Details in the
+next-session prompt; note `tools/rm_id_registry.py` cannot confirm a named id.
+
+---
+
 # 2026-09-06c - LANE 8 true-audit: core/rofl_archive.py, and the verifier caught MY regression
 
 On main: `b9ca3c3c9` (code+tests), `07a122773` (LEDGER 1354), `ca88194d7`
