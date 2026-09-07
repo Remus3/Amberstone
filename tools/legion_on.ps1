@@ -51,7 +51,7 @@ $dsListening = Get-NetTCPConnection -LocalPort 8860 -State Listen -ErrorAction S
 if ($dsListening) {
   Write-Host "[on] DS server :8860 already listening (pid $($dsListening[0].OwningProcess))"
 } else {
-  $py = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
+  $py = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
   $ds = 'C:\Riot Commander\tools\start_daemon_slayer.py'
   if ((Test-Path $py) -and (Test-Path $ds)) {
     Start-Process -FilePath $py -ArgumentList "`"$ds`"" -WorkingDirectory 'C:\Riot Commander' -WindowStyle Hidden

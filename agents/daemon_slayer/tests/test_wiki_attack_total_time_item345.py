@@ -47,7 +47,7 @@ Guard mirrors ``aa_missile_speed`` (item 344) exactly: reject bool / non-numeric
 and do NOT coerce a numeric STRING (returns None), PLUS a ``<= 0`` guard so a
 non-positive sentinel returns None rather than a nonsensical zero-length attack
 cycle. The ``<= 0`` clause is defensive (the live 16.11.1 data carries no
-non-positive value) and keeps the guard sibling-consistent with the prior AA
+non-positive value) and keeps the guard sibling_consistent with the prior AA
 accessor.
 
 Coverage classes:

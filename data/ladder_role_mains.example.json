@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "EXAMPLE shape only. The live file is gitignored: it is a compiled list of",
+    "other people's ladder accounts and is not ours to redistribute.",
+    "Regenerate with tools/ladder_role_scout.py, which needs a Riot API key."
+  ],
+  "generated_at_unix": 0,
+  "tiers": "challenger",
+  "min_share": 0.6,
+  "sampled_per_account": 8,
+  "roles": {
+    "TOP": [
+      {"riot_id": "ExampleTop#NA1", "lp": 0, "role_games": 0, "sampled_games": 0, "share": 1.0}
+    ],
+    "JUNGLE": [
+      {"riot_id": "ExampleJungle#NA1", "lp": 0, "role_games": 0, "sampled_games": 0, "share": 1.0}
+    ],
+    "MIDDLE": [
+      {"riot_id": "ExampleMid#NA1", "lp": 0, "role_games": 0, "sampled_games": 0, "share": 1.0}
+    ],
+    "BOTTOM": [
+      {"riot_id": "ExampleBot#NA1", "lp": 0, "role_games": 0, "sampled_games": 0, "share": 1.0}
+    ],
+    "UTILITY": [
+      {"riot_id": "ExampleSupport#NA1", "lp": 0, "role_games": 0, "sampled_games": 0, "share": 1.0}
+    ]
+  }
+}

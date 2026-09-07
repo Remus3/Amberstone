@@ -5,7 +5,7 @@
 
 ## Context
 
-The cross-Claude bridge (Legion ↔ Peer; Game-PC retired from the pipeline 2026-06-20, ADR-011) needs stable addressing across reboots and potential network changes. Options:
+The cross-Claude bridge (Legion <-> Peer; Game-PC retired from the pipeline 2026-06-20, ADR-011) needs stable addressing across reboots and potential network changes. Options:
 
 1. **LAN IPs** (`192.168.8.x`) - static on the home network, but break outside LAN and require manual update if the router changes.
 2. **Tailscale IPs** (`100.x.x.x`) - stable across reboots and networks, but numeric and hard to remember.

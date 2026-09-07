@@ -83,6 +83,7 @@ if str(REPO_ROOT) not in sys.path:
 import agents.daemon_slayer as ds_pkg  # noqa: E402
 from agents.daemon_slayer.data_loader import DataSnapshot  # noqa: E402
 from agents.daemon_slayer.engine import build_champion  # noqa: E402
+from tests import _repo_walk  # noqa: E402
 
 FLAG = "apply_mode_modifiers"
 
@@ -444,11 +445,18 @@ class TestSeamThreeGates(unittest.TestCase):
         caller ever sets it, the generated ARENA build-order / laning tables
         must be regenerated in the same change or the tables and the live
         engine will disagree.
+
+        Infrastructure exclusion comes from `tests/_repo_walk` (2026-09-07); the
+        substring `skip_parts` below stays exactly as written because it is this
+        guard's OWN scope choice - tests and docs may name the True form. The
+        bare rglob it replaced also swept `python-embed` (1842 untracked .py),
+        `moon_sync_inbox` and `.claude` worktrees. Offender set re-derived across
+        the change: empty before, empty after.
         """
         needle = f"{FLAG}=True"
         offenders: list[str] = []
         skip_parts = ("tests", "test_", "docs", "_archive")
-        for py in REPO_ROOT.rglob("*.py"):
+        for py in _repo_walk.repo_files(REPO_ROOT):
             rel = py.relative_to(REPO_ROOT).as_posix()
             if any(p in rel for p in skip_parts):
                 continue

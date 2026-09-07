@@ -19,9 +19,9 @@ default - any remaining mojibake in a frozen file is operator-gated
 to fix via --allow-frozen.
 
 If this test fails on a freshly added file, run:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/repair_mojibake.py            # dry-run report (both variants)
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/repair_mojibake.py --apply    # rewrite in place
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply # follow-through to ASCII ' - '
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/repair_mojibake.py            # dry-run report (both variants)
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/repair_mojibake.py --apply    # rewrite in place
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply # follow-through to ASCII ' - '
 
 EXCLUSIONS (parallel to the repair tool):
     - .git/, __pycache__/, _archive/, node_modules/
@@ -163,8 +163,8 @@ def test_no_mojibake_signature_in_authored_source() -> None:
         ]
         msg = (
             "Mojibake byte signature drift detected. "
-            "Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/repair_mojibake.py` to inspect, then `--apply` "
-            "followed by `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply` to "
+            "Run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/repair_mojibake.py` to inspect, then `--apply` "
+            "followed by `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply` to "
             "normalize. Violations:\n" + "\n".join(lines)
         )
         pytest.fail(msg)

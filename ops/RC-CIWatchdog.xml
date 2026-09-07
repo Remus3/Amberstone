@@ -34,7 +34,7 @@
   </Triggers>
   <Actions Context="Author">
     <Exec>
-      <Command>"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"</Command>
+      <Command>"%LOCALAPPDATA%\Programs\Python\Python314\pythonw.exe"</Command>
       <Arguments>"C:\Riot Commander\tools\ci_watchdog.py" --arm</Arguments>
       <WorkingDirectory>C:\Riot Commander</WorkingDirectory>
     </Exec>

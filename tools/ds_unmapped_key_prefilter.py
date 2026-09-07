@@ -15,8 +15,8 @@ that shortlist is what parallel agents then judge against the documented
 pattern/skip rules.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_unmapped_key_prefilter.py            # full shortlist
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_unmapped_key_prefilter.py --margin 1.25
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_unmapped_key_prefilter.py            # full shortlist
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_unmapped_key_prefilter.py --margin 1.25
 """
 from __future__ import annotations
 

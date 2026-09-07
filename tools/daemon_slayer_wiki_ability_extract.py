@@ -61,10 +61,10 @@ The DS engine reads the committed sidecar JSON, never the network. Absent sideca
 only, no ENGINE bump, no DS restart).
 
 Run from any host that reaches the alias:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py            # current.txt patch
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --patch 16.11.1
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --limit 3  # first 3 champs (~1 batch)
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --dry-run  # no write
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py            # current.txt patch
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --patch 16.11.1
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --limit 3  # first 3 champs (~1 batch)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/daemon_slayer_wiki_ability_extract.py --dry-run  # no write
 Then inspect ``_ability_count`` / ``_with_static`` / ``_errors`` before trusting
 it: a run that edge-blocks the host records 0 abilities (fail-soft), so an
 ``_ability_count == 0`` means the host could not reach the wiki - do NOT commit.

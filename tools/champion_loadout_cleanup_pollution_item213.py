@@ -47,7 +47,7 @@ clash-free) - we do NOT call the live DS engine.
 
 Usage::
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/champion_loadout_cleanup_pollution_item213.py [--dry-run]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_cleanup_pollution_item213.py [--dry-run]
         [--no-backup]
 
 Atomic write (tmp.write_text + tmp.replace; ensure_ascii=True). Idempotent.

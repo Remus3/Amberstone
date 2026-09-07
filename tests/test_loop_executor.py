@@ -14,6 +14,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -765,10 +766,30 @@ def test_final_step_rejects_an_unknown_channel_like_build_does():
 
 def test_ahk_final_step_matches_rc_interpreter_path_not_lws():
     """RC's executor.py is a shape-port, not a byte-copy. Copying LW's string here
-    would break RC's ahk rollback path, which only a live dry cycle catches."""
-    assert r"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" \
-        in executor.AHK_FINAL_STEP
+    would break RC's ahk rollback path, which only a live dry cycle catches.
+
+    The interpreter is RESOLVED at import rather than hardcoded, so the property
+    MOVED rather than being dropped: the step must still name an ABSOLUTE
+    python.exe (a bare launcher is the defect tests/test_bare_py_ban.py guards),
+    and it must be the interpreter THIS machine resolves - not a literal carried
+    over from a sibling repo.
+    """
+    resolved = executor.canonical_interpreter()
+    assert Path(resolved).is_absolute(), resolved
+    assert Path(resolved).name in ("python.exe", "python"), resolved
+    assert f'"{resolved}"' in executor.AHK_FINAL_STEP
     assert "Sibling-A" not in executor.AHK_FINAL_STEP
+
+
+def test_ahk_final_step_hardcodes_no_account_specific_home_path():
+    """OPS-38: a step naming one account's home silently does not run under
+    another, and a step that does not run reports nothing. The SOURCE must
+    carry no home-shaped literal even though the rendered value is absolute.
+    """
+    src = (ROOT / "ops" / "loop" / "executor.py").read_text(encoding="utf-8")
+    assert not re.search(r"[A-Za-z]:[\\/]Users[\\/](?![%$<~])[A-Za-z0-9._~-]+", src), (
+        "ops/loop/executor.py re-hardcoded a user home directory"
+    )
 
 
 def test_sdk_prompt_uses_final_step_instruction_so_it_cannot_drift():

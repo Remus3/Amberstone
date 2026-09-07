@@ -4,7 +4,7 @@ Dumps the per-form damage blocks for a (champion, key) so the discrete-pair
 requirement for a conditional block_index conversion can be verified against
 the live Meraki snapshot - NOT against ROADMAP/_meta recollection.
 
-Usage:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_cond_inspect.py <Champion> [KEY ...]
+Usage:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_cond_inspect.py <Champion> [KEY ...]
 """
 import json
 import sys

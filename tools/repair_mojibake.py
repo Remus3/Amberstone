@@ -28,7 +28,7 @@ final ASCII normalization per CLAUDE.md.
 After this pass, the file's mojibake regions are restored to single
 em-dash glyphs - which are themselves banned by the CLAUDE.md hard
 rule, so the operator should immediately follow up with
-`C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply` to normalize the new
+`$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply` to normalize the new
 em-dashes to ASCII " - " (space-hyphen-space).
 
 This script keeps itself 7-bit ASCII (signatures constructed via \\xNN
@@ -53,9 +53,9 @@ FROZEN files (per CLAUDE.md hard-rule list) are NEVER rewritten by
 separately in the report and skipped. Operator must hand-edit if needed.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/repair_mojibake.py            # dry-run (default): report only
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/repair_mojibake.py --apply    # rewrite in place (atomic)
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/repair_mojibake.py --apply \
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/repair_mojibake.py            # dry-run (default): report only
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/repair_mojibake.py --apply    # rewrite in place (atomic)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/repair_mojibake.py --apply \
       --allow-frozen ops/rc_supervisor.py
                                           # override frozen-skip for the
                                           # listed comma-separated paths
@@ -282,7 +282,7 @@ def main() -> int:
     print()
     print("NEXT STEP: after --apply, the resulting U+2014 em-dashes are themselves")
     print("banned by CLAUDE.md. Follow up with:")
-    print("  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply")
+    print("  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_smart_quotes.py --apply")
     print("to normalize the new em-dashes to ASCII ' - ' (space-hyphen-space).")
     return 0
 

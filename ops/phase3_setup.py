@@ -5,7 +5,7 @@ Creates:
   - agents/ tree (see S4)
   - lib/ tree
   - web/ tree
-  - data/db/, data/meta_build/scraped/{aggregator D,ugg}, data/meta_build/curated/, data/coach_cache/
+  - data/db/, data/meta_build/scraped/{site_b,site_d}, data/meta_build/curated/, data/coach_cache/
   - logs/agents/, logs/scrapers/, logs/ws/
   - agents/state/task_queue.jsonl (empty)
   - agents/state/lockfile (empty)
@@ -48,8 +48,8 @@ FOLDERS = [
     # data subtrees (existing data/ stays untouched)
     "data/db",
     "data/meta_build/ddragon",
+    "data/meta_build/scraped/site_b",
     "data/meta_build/scraped/site_d",
-    "data/meta_build/scraped/ugg",
     "data/meta_build/curated",
     "data/coach_cache",
     # logs
@@ -115,7 +115,7 @@ RESOLVED_DECISIONS = {
         "minimap": "matches_right_now",
     },
     "transport": "websocket_end_to_end",
-    "sources": ["live_client", "lcu", "ddragon", "aggregator D", "ugg"],
+    "sources": ["live_client", "lcu", "ddragon", "site_b", "site_d"],
     "scraper_discipline": {
         "user_agent": "Amberstone/3.0",
         "rate_limit": "<=1 req/sec per hostname",
@@ -246,7 +246,7 @@ def main() -> int:
             log.write_text("", encoding="utf-8")
             created.append(f"logs/agents/agent{i}.log")
 
-    for name in ("site_d.log", "ugg.log"):
+    for name in ("site_b.log", "site_d.log"):
         p = ROOT / "logs" / "scrapers" / name
         if not p.exists():
             p.write_text("", encoding="utf-8")

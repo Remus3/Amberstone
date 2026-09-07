@@ -4,7 +4,7 @@ echo.
 echo === Phase 3 Hot-Reload Test: Direct Deploy ===
 echo.
 echo Running transactional deploy for tft_coach_engine.py...
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops\rc_transactional_deploy.py ^
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops\rc_transactional_deploy.py ^
   --request "ops\runtime\deploy_requests\deploy-hot-reload-test-001.json" ^
   --result  "ops\runtime\deploy_results\deploy-hot-reload-test-001.json"
 

@@ -26,8 +26,8 @@ in the future, the operator must grant explicit permission and add
 them to the _ASSERTED_CLEAN frozenset below.
 
 If this test fails on a re-introduction, run:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py --dry-run
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py --dry-run
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen ops/rc_supervisor.py
 """
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ def test_no_u2500_in_rc_supervisor() -> None:
     assert n == 0, (
         f"ops/rc_supervisor.py contains {n} U+2500 BOX DRAWINGS LIGHT "
         f"HORIZONTAL chars. Item 176 swept this file clean (58 -> 0). "
-        f"Regression detected. Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py "
+        f"Regression detected. Run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py "
         f"--allow-frozen ops/rc_supervisor.py` to repair."
     )
 
@@ -85,7 +85,7 @@ def test_no_u2500_in_rc_self_monitor() -> None:
     assert n == 0, (
         f"ops/rc_self_monitor.py contains {n} U+2500 BOX DRAWINGS LIGHT "
         f"HORIZONTAL chars. Item 176 swept this file clean (484 -> 0). "
-        f"Regression detected. Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py "
+        f"Regression detected. Run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py "
         f"--allow-frozen ops/rc_self_monitor.py` to repair."
     )
 
@@ -114,7 +114,7 @@ def test_all_asserted_clean_files_are_u2500_free() -> None:
         lines = [f"  {rel}: U+2500 x{n}" for rel, n in violations]
         msg = (
             "U+2500 drift detected in operator-asserted-clean files. "
-            "Run `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>` to "
+            "Run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_u2500.py --allow-frozen <path>` to "
             "repair. Violations:\n" + "\n".join(lines)
         )
         pytest.fail(msg)

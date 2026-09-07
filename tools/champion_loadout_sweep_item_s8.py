@@ -38,7 +38,7 @@ item-213 cleanup itself now refills to TARGET_LEN instead of 4.
 
 Usage::
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/champion_loadout_sweep_item_s8.py [--dry-run] [--no-backup]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_sweep_item_s8.py [--dry-run] [--no-backup]
 
 Atomic write (tmp + replace) with a timestamped .bak. Idempotent.
 """

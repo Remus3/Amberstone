@@ -14,7 +14,7 @@ the file mtime changes. API for the Post Game Review payload builder:
        (or an unusable bench) -> None.
 
 Regenerate the JSON by running:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/build_carry_benchmarks.py
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/build_carry_benchmarks.py
 """
 from __future__ import annotations
 

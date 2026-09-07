@@ -7,7 +7,7 @@
 #   - errors out instead of grabbing the first titled Claude window.
 param([switch]$Deferred)
 $ErrorActionPreference = "Stop"
-$py = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+$py = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
 $root = "C:\Riot Commander"
 $ctl = "$root\ops\loop\control"
 $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"

@@ -1,6 +1,6 @@
 """ENGINE 1.188.0 (R90, 2026-07-10) - Forbidden Idol (3114) HSP registry credit.
 
-R90 is a sibling-carrier refinement of R60's wielder Heal/Shield Power (HSP) amp
+R90 is a sibling_carrier refinement of R60's wielder Heal/Shield Power (HSP) amp
 seam. R60 credited the five FINISHED HSP carriers (Redemption / Mikael / Ardent /
 Moonstone / Staff of Flowing Water) in the curated ``enchanter_items.json``
 registry - the source ``sum_wielder_hsp_pct()`` reads. A fresh adversarial

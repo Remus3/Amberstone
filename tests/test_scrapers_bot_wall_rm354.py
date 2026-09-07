@@ -1,7 +1,7 @@
 """RM-354 - a 200-response bot wall must not destroy the good cached page.
 
 `lib/scrapers/_base.py` `ScraperBase.fetch` had exactly one acceptance gate,
-`resp.status >= 400`. Cloudflare's "Just a moment..." interstitial, aggregator B's JS
+`resp.status >= 400`. Cloudflare's "Just a moment..." interstitial, site B's JS
 challenge and every other bot wall are served as HTTP **200**, so the
 interstitial passed that gate, was committed over the previously good HTML by
 `_atomic_write_text`, and `_last_fetch.json` recorded `status="ok"` for any
@@ -9,7 +9,7 @@ health probe to read. `cache_path` is only ever a write target in that module -
 there is no read-back fallback - so the good page was gone with no recovery.
 
 The whole package was untested: `ScraperBase`, `lib.scrapers._base`,
-`lib/scrapers/site_d.py` and `lib/scrapers/ugg.py` had ZERO references
+`lib/scrapers/site_d.py` and `lib/scrapers/site_b.py` had ZERO references
 under `tests/` when this file was written. That is why nothing caught it.
 
 TARGET BEHAVIOUR these tests are written against:
@@ -24,7 +24,7 @@ TARGET BEHAVIOUR these tests are written against:
      change.
   C  A genuine page still writes the cache and still stamps "ok". The markers
      were measured against the six real cached pages on Legion
-     (`data/meta_build/scraped/{aggregator D,ugg}/*.html`, 2.9M characters
+     (`data/meta_build/scraped/{site_b,site_d}/*.html`, 2.9M characters
      total): zero matched, whole-document, so the scan is whole-document
      rather than a head prefix.
   D  Both shipped subclasses inherit the guard - it lives in the base.
@@ -37,7 +37,7 @@ import unittest
 from pathlib import Path
 
 from lib.http.client import Response
-from lib.scrapers import SiteDScraper, UggScraper
+from lib.scrapers import SiteBScraper, SiteDScraper
 from lib.scrapers import _base as scrapers_base
 from lib.scrapers._base import ScraperBase
 
@@ -271,8 +271,8 @@ class TestHttpErrorPathIsUnchanged(_ScraperTestCase):
 class TestBothShippedSubclassesInheritTheGuard(_ScraperTestCase):
     """D - the guard is in the base, so neither subclass can miss it."""
 
-    def test_aggregator D_and_ugg_both_reject_a_bot_wall(self):
-        for cls in (SiteDScraper, UggScraper):
+    def test_site_d_and_site_b_both_reject_a_bot_wall(self):
+        for cls in (SiteDScraper, SiteBScraper):
             with self.subTest(scraper=cls.__name__):
                 scraper = self._scraper(_BOT_WALL, cls=cls)
                 path = self._seed_cache(scraper, "annie_sr")

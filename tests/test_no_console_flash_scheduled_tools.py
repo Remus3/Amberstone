@@ -74,7 +74,7 @@ SCHEDULED_SPAWNERS = (
     # 2026-08-01: THE measured flash. Ran under pythonw from the INTERACTIVE
     # RC-ClaudeQuotaWatch task every PT2H and spawned a .cmd shim with no
     # flag, so a CUI child got a fresh console. It lived OUTSIDE the repo at
-    # C:/Users/Administrator/ and was therefore unguardable; moved into tools/
+    # an account-specific home directory and was therefore unguardable; moved into tools/
     # in the same session precisely so this list can see it, and the scheduled
     # task was repointed at the new path.
     "tools/claude_quota_watch.py",

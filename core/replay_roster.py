@@ -18,7 +18,7 @@ TWO MEASURED CONSTRAINTS SHAPE THIS AND CANNOT BE ENGINEERED AROUND
 1. `/replays` takes a PUUID, never a match id. There is NO fetch-by-match-id
    route, so a specific game is obtainable only while it sits in that account's
    5-wide window. Coverage therefore comes from CADENCE, not from a backfill.
-   Measured on SamplePlayer2#NA1: 5 listed, all 5 alive (HTTP 206), 3 of them
+   Measured on one tracked third-party account: 5 listed, all 5 alive (HTTP 206), 3 of them
    queue 420. An arbitrary third-party account works - this is not limited to
    the operator's own accounts.
 2. The window rotates as games are played, so a scheduled re-pull converts it
@@ -46,7 +46,18 @@ ROLES = ("TOP", "JUNGLE", "MID", "BOT", "SUPPORT")
 # purposes, and an unrecognised queue must fail CLOSED - see plan_pull.
 RANKED_QUEUES = (420, 440)
 
-DEFAULT_ROSTER = Path(__file__).parent.parent / "data" / "replay_roster.json"
+_DATA_DIR = Path(__file__).parent.parent / "data"
+# The live roster lists OTHER PEOPLE'S accounts, so it is gitignored and a
+# fresh clone does not have one. Fall back to the tracked example shape rather
+# than raising: the loader stays exercisable everywhere, and an operator who
+# wants a real corpus copies the example across.
+DEFAULT_ROSTER = _DATA_DIR / "replay_roster.json"
+EXAMPLE_ROSTER = _DATA_DIR / "replay_roster.example.json"
+
+
+def default_roster_path() -> Path:
+    """The roster the loader reads when no explicit path is given."""
+    return DEFAULT_ROSTER if DEFAULT_ROSTER.exists() else EXAMPLE_ROSTER
 
 _MATCH_ID_RE = re.compile(r"(NA1|EUW1|EUN1|KR|BR1|LA1|LA2|OC1|TR1|RU|JP1|PH2"
                           r"|SG2|TH2|TW2|VN2)[-_](\d+)", re.IGNORECASE)
@@ -157,7 +168,7 @@ def load_roster(path=None) -> list:
     silently skipping: a typo that drops a tracked player would show up only
     as a corpus that quietly never grows.
     """
-    src = Path(path) if path else DEFAULT_ROSTER
+    src = Path(path) if path else default_roster_path()
     blob = json.loads(src.read_text(encoding="utf-8"))
     out = []
     for row in blob.get("players") or []:

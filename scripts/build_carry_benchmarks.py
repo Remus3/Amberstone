@@ -29,7 +29,7 @@ reader `core.carry_benchmarks` polls it at runtime). The JSON is COMMITTED
 weighting; every row here is Match-V5 source truth.
 
 Regenerate:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/build_carry_benchmarks.py
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/build_carry_benchmarks.py
 """
 from __future__ import annotations
 

@@ -7,8 +7,8 @@ vision server (127.0.0.1:8889) caches the latest frame and coaches read it
 via /latest-frame, passing to /vision, /ocr, /coach.
 
 Run (one time):
-    1. Install deps:    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install Pillow bettercam numpy comtypes
-    2. Run:             C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0
+    1. Install deps:    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install Pillow bettercam numpy comtypes
+    2. Run:             $env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0
 
 Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
 single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
@@ -33,16 +33,16 @@ monitor (e.g. the RC dashboard on monitor 1) without clobbering the game
 frame. Fetch the secondary stream via `/latest-frame?source=<channel>`.
 
     # League (primary): monitor 0, primary slot (coaches read this)
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe screen_agent.py --monitor 0 --channel legion-league
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe screen_agent.py --monitor 0 --channel legion-league
 
     # UI debug (secondary): monitor 1, NOT primary, addressable by channel
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe screen_agent.py --monitor 1 --channel legion-ui --no-primary
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe screen_agent.py --monitor 1 --channel legion-ui --no-primary
 
 Scheduled tasks (run as user, ONLOGON):
     schtasks /Create /TN "RC-ScreenAgent-League" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0 --channel legion-league"
+        /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0 --channel legion-league"
     schtasks /Create /TN "RC-ScreenAgent-UI" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 1 --channel legion-ui --no-primary"
+        /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 1 --channel legion-ui --no-primary"
 """
 import argparse
 import base64

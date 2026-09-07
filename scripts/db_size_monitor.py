@@ -12,8 +12,8 @@ Thresholds (override via --max-rewind / --max-logs / --max-spend):
   data/spend/         50    MB    (~ 5 years at current rate)
 
 Run:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/db_size_monitor.py            # human-readable
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/db_size_monitor.py --json     # machine-readable
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/db_size_monitor.py            # human-readable
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/db_size_monitor.py --json     # machine-readable
 """
 from __future__ import annotations
 

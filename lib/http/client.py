@@ -83,7 +83,7 @@ ALLOWED_SCHEMES = ("http", "https")
 
 # SSL context: prefer certifi's bundled Mozilla CA list when available -
 # Python 3.14's embedded python-embed distribution ships without a CA
-# store, which fails on some sites (aggregator B, cloudflare-fronted domains).
+# store, which fails on some sites (site B, cloudflare-fronted domains).
 # Falls back to the default system store if certifi isn't installed.
 #
 # certifi is declared in requirements.txt as of lane 8 cycle 27. Before that

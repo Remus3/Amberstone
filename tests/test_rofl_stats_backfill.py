@@ -726,7 +726,8 @@ def test_sidecars_are_decoded_as_utf8_under_a_non_utf8_codepage(tmp_path):
     assert done.stdout.strip() == name
 
 
-def test_cli_reports_and_exits_nonzero_when_a_sidecar_is_unusable(tmp_path, capsys):
+def test_cli_reports_and_exits_nonzero_when_a_sidecar_is_unusable(
+        tmp_path, capsys, monkeypatch):
     """The CLI must SAY a sidecar was dropped, not silently skip it.
 
     Trading a loud crash for a silent skip would be a worse bug than the one
@@ -734,7 +735,13 @@ def test_cli_reports_and_exits_nonzero_when_a_sidecar_is_unusable(tmp_path, caps
     nothing happened" trap. So the skip is reported and the exit is 2, while
     the good sidecar in the same run still lands.
     """
+    from core import rofl_stats_backfill
     from tools import rofl_tracked_backfill
+
+    # The CLI resolves `operator_accounts` from the per-install identity config
+    # at CALL time, so pin the fixture account - otherwise this asserts against
+    # whatever accounts the machine running the suite is configured for.
+    monkeypatch.setattr(rofl_stats_backfill, "DEFAULT_ACCOUNTS", [OPERATOR])
 
     db = _hermetic_db(tmp_path)
     players = _lobby_with_operator()

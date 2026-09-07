@@ -160,5 +160,5 @@ def test_css_ascii_clean_in_touched_lines() -> None:
     assert non_ascii < 100, (
         f"champ_select_view.css non-ASCII byte count = {non_ascii}; "
         f"item 202 edits should not increase the count. Run "
-        f"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_em_dashes.py + tools/strip_smart_quotes.py to repair."
+        f"$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_em_dashes.py + tools/strip_smart_quotes.py to repair."
     )

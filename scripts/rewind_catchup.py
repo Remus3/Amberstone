@@ -21,11 +21,11 @@ Idempotent + resumable:
     (20/s + 100/2min) with 429 cooldown.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py                # full catch-up
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --limit 50     # ceiling on detail fetches
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --puuid X      # override operator PUUID
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --dry-run      # list IDs only, no writes
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --no-timeline  # skip timeline (faster)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py                # full catch-up
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --limit 50     # ceiling on detail fetches
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --puuid X      # override operator PUUID
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --dry-run      # list IDs only, no writes
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --no-timeline  # skip timeline (faster)
 """
 
 from __future__ import annotations

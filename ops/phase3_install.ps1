@@ -14,7 +14,7 @@
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot  = 'C:\Riot Commander'
-$PythonExe    = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
+$PythonExe    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $LanSubnet    = '192.168.8.0/24'
 $TaskName     = 'RC-Phase3-Supervisor'
 

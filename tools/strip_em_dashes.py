@@ -35,8 +35,8 @@ don't-rewrite-history rule + CLAUDE.md carve-out):
   - this script itself (it documents the char in its own docstring)
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_em_dashes.py            # dry-run (default): report only
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/strip_em_dashes.py --apply    # rewrite in place (atomic)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_em_dashes.py            # dry-run (default): report only
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/strip_em_dashes.py --apply    # rewrite in place (atomic)
 """
 from __future__ import annotations
 

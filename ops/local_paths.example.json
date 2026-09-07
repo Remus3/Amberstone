@@ -1,5 +1,5 @@
 {
-  "_doc": "Per-host secrets for the RC↔Peer cross-Claude bridge. Copy this file to ops/local_paths.json (gitignored) and fill in the real values. Empty values disable the bridge - RC's /api/bridge/inbox returns 503 and outbound bridge.send() returns (False, 'bridge_not_configured').",
+  "_doc": "Per-host secrets for the decommissioned RC<->Peer cross-Claude bridge (ADR-012). Copy this file to ops/local_paths.json (gitignored) and fill in the real values. Empty values disable the bridge - RC's /api/bridge/inbox returns 503 and outbound bridge.send() returns (False, 'bridge_not_configured').",
 
   "bridge_shared_secret": "",
   "_secret_note": "A long random string, identical on both RC and Peer. Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\". Treat as a credential - never commit, never log, never paste into chat.",

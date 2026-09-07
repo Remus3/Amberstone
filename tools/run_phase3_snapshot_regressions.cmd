@@ -4,5 +4,5 @@ REM Phase 3 Step 2 snapshot regression harness.
 REM Usage: tools\run_phase3_snapshot_regressions.cmd
 setlocal
 cd /d "%~dp0\.."
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\run_phase3_snapshot_regressions.py %*
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\run_phase3_snapshot_regressions.py %*
 exit /b %ERRORLEVEL%

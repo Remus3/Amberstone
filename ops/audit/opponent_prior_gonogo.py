@@ -15,7 +15,7 @@ the gate adds value. A flat distribution => CUT the gate.
 
 Read-only; safe to run during a live game. This is a necessary-condition feasibility check, NOT
 the production gate. Run:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe ops/audit/opponent_prior_gonogo.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe ops/audit/opponent_prior_gonogo.py
 """
 from __future__ import annotations
 

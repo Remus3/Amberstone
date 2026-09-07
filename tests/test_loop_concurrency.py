@@ -1,14 +1,14 @@
 """F1 P3 concurrency governor: slots, named mutexes, single-controller lock.
 
-Ported from the Sibling-A suite (LW head 8a7d61a, 2026-07-26). These are
-the tests that have to be right BEFORE any live concurrent LW+RC run, because
+Ported from the Sibling-A suite (carrier head 8a7d61a, 2026-07-26). These are
+the tests that have to be right BEFORE any live concurrent carrier plus RC run, because
 the failure they guard against is not a crash - it is two loops quietly
 double-booking a shared resource and blaming the result on something else.
 
 ops/loop/slots.py and ops/loop/winmutex.py are BYTE-IDENTICAL across both repos
 by contract, so nothing here may assume RC paths; every test injects its own
-root. test_shared_modules_are_byte_identical_to_lw is the mirror-side drift
-guard the LW handoff asked for.
+root. test_shared_modules_are_byte_identical_to_the_carrier is the mirror-side drift
+guard the carrier handoff asked for.
 """
 from __future__ import annotations
 
@@ -25,14 +25,38 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-# The LW local root carries a REAL SPACE as of 2026-09-06 (LW commit 81de837);
-# the GitHub repo stays the Sibling-A repo with a hyphen because a repo
-# name cannot hold a space, so the two spellings differ on purpose. Do not
-# "correct" either. This constant is a FILESYSTEM PATH, so it takes the space -
-# and it is load-bearing: every cross-repo guard below skips when it misses, so
-# a wrong value here surfaces as 3 SKIPs (2 in the byte-identity parametrize, 1
-# in the lane-count test) that read as green. Measured: 25 passed, 3 skipped.
-LW_ROOT = Path(r"C:\Sibling-A")
+
+
+def _sibling_roots() -> list[Path]:
+    """Where the byte-identical carrier repos live ON THIS MACHINE.
+
+    Read from the same per-host config the cross-repo inbox poller uses
+    (`ops/moon_sync_repos.json`, gitignored, `RC_MOON_SYNC_REPOS` overrides),
+    because those paths name private sibling projects and differ per install.
+
+    LOAD-BEARING, and the failure mode is quiet: every cross-repo guard below
+    SKIPS when the sibling tree is missing, so a wrong or empty value here
+    surfaces as SKIPs that read as green rather than as a red test. If you are
+    relying on the byte-identity guard, assert it actually ran.
+    """
+    raw = os.environ.get("RC_MOON_SYNC_REPOS", "")
+    if raw:
+        return [Path(p.strip()) for p in raw.split(os.pathsep) if p.strip()]
+    try:
+        blob = json.loads(
+            (ROOT / "ops" / "moon_sync_repos.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
+
+
+def _carrier_copy(relative: Path):
+    """The first sibling checkout that actually carries `relative`, or None."""
+    for root in _sibling_roots():
+        cand = root / relative
+        if cand.is_file():
+            return cand
+    return None
 
 
 def _load(name: str):
@@ -51,16 +75,16 @@ winmutex = _load("winmutex")
 # ---- mirror-side drift guard ------------------------------------------------
 
 @pytest.mark.parametrize("name", ["slots.py", "winmutex.py"])
-def test_shared_modules_are_byte_identical_to_lw(name: str):
+def test_shared_modules_are_byte_identical_to_the_carrier(name: str):
     """A divergence here is not a merge conflict anyone notices - it is a silent
     concurrency bug where both loops believe they hold the only slot."""
-    lw = LW_ROOT / "ops" / "loop" / name
-    if not lw.is_file():
-        pytest.skip("Sibling-A tree not present on this machine")
+    other = _carrier_copy(Path("ops") / "loop" / name)
+    if other is None:
+        pytest.skip("no sibling carrier checkout configured on this machine")
     rc = ROOT / "ops" / "loop" / name
     assert hashlib.sha256(rc.read_bytes()).hexdigest() == \
-        hashlib.sha256(lw.read_bytes()).hexdigest(), \
-        f"{name} has drifted from the Sibling-A copy - they are shared by contract"
+        hashlib.sha256(other.read_bytes()).hexdigest(), \
+        f"{name} has drifted from the sibling carrier copy - shared by contract"
 
 
 # ---- the core invariant: never more than max_slots holders -----------------
@@ -292,7 +316,7 @@ def test_mutex_serializes_two_threads():
 def test_mutex_names_are_the_shared_contract():
     """All three repos must use the SAME names or they serialize against nothing.
 
-    ROTATED 2026-09-06 in LW commit `1de8d4e`, operator-approved, and copied here
+    ROTATED 2026-09-06 in carrier commit `1de8d4e`, operator-approved, and copied here
     in the same round. The names are now opaque:
 
         Global\\LWRC_GEMINI  ->  Global\\MX-7C41A9E2
@@ -307,7 +331,7 @@ def test_mutex_names_are_the_shared_contract():
 
     RC verified the precondition on its own box before copying: no live
     loop_controller (the RUNNING.lock pid was dead), and an empty
-    C:\\ProgramData\\lw-loop\\slots.
+    C:\\ProgramData\\shared-loop\\slots.
     """
     assert winmutex.GEMINI_MUTEX == "Global\\MX-7C41A9E2"
     assert winmutex.GPU_MUTEX == "Global\\MX-2E58D3B6"
@@ -433,7 +457,7 @@ def test_posix_no_op_lets_a_second_caller_in_while_the_first_holds(monkeypatch):
 #
 # slots.py and winmutex.py are BYTE-IDENTICAL between this repo and
 # Sibling-A by contract. The mirror test at the top of this file compares
-# against the LW tree directly, which is the stronger check - but it SKIPS when
+# against the carrier tree directly, which is the stronger check - but it SKIPS when
 # the sibling tree is absent, so on a CI runner (one repo checked out, no
 # sibling) parity is enforced by NOBODY. These pins close that hole: each repo's
 # CI can prove parity alone, against a value both sides agreed to.
@@ -442,16 +466,16 @@ def test_posix_no_op_lets_a_second_caller_in_while_the_first_holds(monkeypatch):
 # happens to be locally - that turns the guard into a rubber stamp and would
 # launder a unilateral drift into "agreed". Change the shared file on one side,
 # hand the other side the exact bytes, re-hash BOTH trees, confirm they match,
-# and only then write the new digest here and in LW's copy in the same round.
+# and only then write the new digest here and in the carrier's copy in the same round.
 #
-# This block is itself byte-identical with the LW copy in
+# This block is itself byte-identical with the carrier copy in
 # C:\Sibling-A\tests\test_loop_concurrency.py, modulo the repo name in
 # the prose above. Keep it that way.
 SHARED_SHA256 = {
     # re-pinned 2026-08-01: the module docstring named TWO repos and there are
     # now three (Sibling-C joined the bucket and vendored this file byte-identical
     # the same day). Docstring only - no code, no protocol, no behaviour.
-    # RC authored the bytes, LW applied them first and carried the red window,
+    # RC authored the bytes, the carrier applied them first and carried the red window,
     # RC and RM followed; all three re-hashed from their OWN disk rather than
     # trusting the digest in the hand-off note.
     # previous 95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9
@@ -461,36 +485,36 @@ SHARED_SHA256 = {
     # the vacated slot, so line 5 of the docstring names it instead. Docstring
     # only - no code, no protocol, no behaviour, and the bucket stays at 3
     # because it models ANTHROPIC ACCOUNT concurrency and the participant count
-    # did not change. THIS TIME LW AUTHORED THE BYTES and carried the red
-    # window; RC copied the file verbatim off LW's live tree with a byte-level
+    # did not change. THIS TIME THE CARRIER AUTHORED THE BYTES and carried the red
+    # window; RC copied the file verbatim off the carrier's live tree with a byte-level
     # copy (not a text write - `write_text` would CRLF-mangle it on Windows and
     # the pin is on bytes) and re-hashed from its OWN disk, which is how this
     # value was obtained rather than by trusting RM's hand-off note. Resin
     # Compute vendors LAST: it has no pin to break until it has one.
     # previous 5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6
     #
-    # re-pinned 2026-09-06 (LW commit 374c79e): the hold() release-path leak.
+    # re-pinned 2026-09-06 (carrier commit 374c79e): the hold() release-path leak.
     # BEHAVIOURAL, not docstring - a new release() with bounded unlink retry and
     # payload neutralisation, and hold()'s finally rewritten so the release line
-    # can no longer be logged for a release that did not happen. RSC found the
-    # leak, RC confirmed all three legs and reclaimed two ghost lanes, LW
+    # can no longer be logged for a release that did not happen. The third carrier found the
+    # leak, RC confirmed all three legs and reclaimed two ghost lanes, the carrier
     # measured the open question and authored the bytes.
     #
     # ONE SUBTLETY WORTH KEEPING: the neutralising write is IN PLACE, and that
-    # is deliberate. Measured by LW on Windows - with a reader's handle open,
+    # is deliberate. Measured by the carrier on Windows - with a reader's handle open,
     # unlink FAILS (WinError 32) and tmp-then-os.replace ALSO FAILS (WinError 5),
     # but an in-place rewrite SUCCEEDS. So this one write is a documented
     # exception to the repo's atomic-write hard rule; applying that rule here
     # would silently restore the leak. Do not "fix" it into tmp+replace.
     # previous 1c4f8af43ff349709c11bf3fe622e922b24cb720771c49a522b13a4d5e58c492
     "slots.py": "629c3d511d2500f92d25fbe102a7a8c73644c027291f46b8796565a1e839f865",
-    # re-pinned 2026-09-06: LW authored (commit 1de8d4e), operator-approved, and
+    # re-pinned 2026-09-06: the carrier authored (commit 1de8d4e), operator-approved, and
     # this is the FIRST winmutex re-pin that is not docstring-only - the mutex
     # name VALUES rotated to opaque strings and the header prose naming the
     # vendor, the metered account and the failover behaviour was scrubbed. RC
-    # copied LW's bytes with a byte-level copy off the live tree and re-hashed
-    # from its OWN disk; the digest in LW's hand-off note was used as a value to
-    # CHECK against, never as the source. Verified byte-identical to LW on disk,
+    # copied the carrier's bytes with a byte-level copy off the live tree and re-hashed
+    # from its OWN disk; the digest in the carrier's hand-off note was used as a value to
+    # CHECK against, never as the source. Verified byte-identical to the carrier on disk,
     # 6190 bytes, zero CR bytes, pure ASCII.
     # previous f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4
     # before that c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
@@ -502,7 +526,7 @@ SHARED_SHA256 = {
 def test_shared_module_matches_the_pinned_cross_repo_digest(name: str):
     """Parity provable from ONE checkout, so CI is not blind to cross-repo drift.
 
-    This is the check that would have caught item 9 landing on the LW side
+    This is the check that would have caught item 9 landing on the carrier side
     alone: the sibling-tree comparison above goes green-by-skip on any runner
     without both trees, which is every runner.
     """
@@ -518,7 +542,7 @@ def test_shared_module_matches_the_pinned_cross_repo_digest(name: str):
 # A byte-digest pin structurally cannot cover this one. max_concurrent_lanes is
 # the TOTAL number of concurrent executor calls allowed on this box across BOTH
 # repos, enforced by slots.py against the single shared root
-# C:\ProgramData\lw-loop\slots. Each repo reads its OWN config, so if the two
+# C:\ProgramData\shared-loop\slots. Each repo reads its OWN config, so if the two
 # values disagree the governor silently permits max(rc, lw) holders - RC's
 # config.json calls that "theater" in its own note. Nothing asserted it.
 
@@ -537,7 +561,7 @@ def _lane_counts(root: Path) -> dict[str, int]:
 
 def test_rc_configs_agree_on_the_lane_count():
     """One RC config disagreeing with another is the same bug as disagreeing
-    with LW: whichever config the running mode loaded sets the ceiling."""
+    with the carrier: whichever config the running mode loaded sets the ceiling."""
     counts = _lane_counts(ROOT)
     assert counts, "no RC ops/loop/config*.json declares max_concurrent_lanes"
     assert len(set(counts.values())) == 1, (
@@ -545,15 +569,18 @@ def test_rc_configs_agree_on_the_lane_count():
         f"is a shared ceiling, so every mode's config must carry the same one.")
 
 
-def test_rc_and_lw_agree_on_the_lane_count():
+def test_rc_and_the_carrier_agree_on_the_lane_count():
     """Cross-repo half. Skips off-box, so the RC-internal test above is the one
     CI actually runs - keep both."""
-    lw = _lane_counts(LW_ROOT)
-    if not lw:
-        pytest.skip("Sibling-A tree not present on this machine")
-    rc = _lane_counts(ROOT)
-    assert set(rc.values()) == set(lw.values()), (
-        f"RC {rc} and Sibling-A {lw} disagree on max_concurrent_lanes. "
-        f"Both loops enforce it against the same slot root, so the effective "
-        f"ceiling becomes the LARGER of the two and the governor is theater. "
-        f"Change it on both sides in the same round.")
+    for root in _sibling_roots():
+        other = _lane_counts(root)
+        if not other:
+            continue
+        rc = _lane_counts(ROOT)
+        assert set(rc.values()) == set(other.values()), (
+            f"RC {rc} and the sibling carrier at {root} disagree on "
+            f"max_concurrent_lanes. Both loops enforce it against the same slot "
+            f"root, so the effective ceiling becomes the LARGER of the two and "
+            f"the governor is theater. Change it on both sides in one round.")
+        return
+    pytest.skip("no sibling carrier checkout configured on this machine")

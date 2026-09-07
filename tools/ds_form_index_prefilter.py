@@ -11,7 +11,7 @@ later form is the canonical operator-commit form (cougar, cannon,
 spider, empowered-recast ...) the engine is wrongly defaulting away from.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_form_index_prefilter.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_form_index_prefilter.py
 """
 from __future__ import annotations
 

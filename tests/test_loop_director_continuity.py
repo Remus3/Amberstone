@@ -105,7 +105,7 @@ def test_directive_title_extracts_theme_scope(lc):
             "docs/COMPETITOR_LIFT.md\n\nINSTRUCTIONS:\n1. ...")
     title = lc.directive_title(body)
     assert "lift" in title.lower()
-    assert "aggregator S" in title.lower()
+    assert "aggregator s" in title.lower()
 
 
 # --- the chain is only a de-dup input if its titles NAME WORK ---------------

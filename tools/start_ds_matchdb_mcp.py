@@ -8,7 +8,7 @@ core.* imports + match_history.db lookup resolve relative to the project
 root.
 
 Used by the ``RC-DS-MatchDB-MCP`` scheduled task. Manual invocation works
-too - ``C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/start_ds_matchdb_mcp.py``. Mirrors
+too - ``$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/start_ds_matchdb_mcp.py``. Mirrors
 tools/start_daemon_slayer.py (same logging + port-preflight contract).
 """
 from __future__ import annotations

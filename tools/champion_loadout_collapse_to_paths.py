@@ -56,7 +56,7 @@ sr-collapsed or Arena's per-variant entries (multi-mode isolation).
 
 Usage::
 
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/champion_loadout_collapse_to_paths.py [--dry-run]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/champion_loadout_collapse_to_paths.py [--dry-run]
         [--champion <name>] [--no-backup]
         [--mode <sr|aram|arena|all>]
 

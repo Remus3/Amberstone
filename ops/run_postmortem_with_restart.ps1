@@ -11,7 +11,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$Python  = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+$Python  = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $Script  = "C:\Riot Commander\scripts\postmortem_analyze.py"
 $Trigger = "C:\Riot Commander\restart_trigger.txt"
 $LogDir  = "C:\Riot Commander\logs"

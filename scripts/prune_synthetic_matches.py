@@ -16,8 +16,8 @@ DS calibration JSONL: an entry is synthetic when its `champion` field is
 empty/None or one of the known dev-only labels.
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\prune_synthetic_matches.py --dry-run
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\\prune_synthetic_matches.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\prune_synthetic_matches.py --dry-run
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\prune_synthetic_matches.py
 """
 
 from __future__ import annotations

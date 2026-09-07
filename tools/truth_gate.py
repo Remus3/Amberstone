@@ -11,17 +11,18 @@ Reconciliation report written atomically to ops/runtime/truth_gate_report.json.
 
 Claims JSON shape:
   {"run_id": "...",
-   "suite_cmd": "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pytest -q",            # optional; default full root suite
+   "suite_cmd": "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pytest -q",            # optional; default full root suite
    "check_ci": true,                           # optional; default true
    "slices": [{"id": "S1", "claim": "...",
                "files": [{"path": "rel/or/abs.py", "must_contain": ["snippet"]}],
                "claimed_passed": 1397, "claimed_failed": 0}]}   # counts optional
 
 Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/truth_gate.py --claims claims.json [--skip-suite] [--report PATH]
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/truth_gate.py --claims claims.json [--skip-suite] [--report PATH]
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -34,8 +35,12 @@ DEFAULT_REPORT = ROOT / "ops" / "runtime" / "truth_gate_report.json"
 # python-manager pythoncore-3.14-64 install), which zeroes the suite and turns
 # every gate into a blanket REFUSE. Pin the canonical project interpreter;
 # fall back to whichever interpreter is running this script.
-_CANONICAL_PY = Path(r"C:\Users\Administrator\AppData\Local\Programs\Python"
-                     r"\Python314\python.exe")
+# The prefix is resolved from the environment so the pin survives a fresh clone
+# under a different Windows account - a hardcoded home path is a gate that
+# silently does not run, and a gate that does not run reports nothing.
+_CANONICAL_PY = (Path(os.environ.get("LOCALAPPDATA")
+                      or (Path.home() / "AppData" / "Local"))
+                 / "Programs" / "Python" / "Python314" / "python.exe")
 SUITE_PY = str(_CANONICAL_PY if _CANONICAL_PY.exists() else Path(sys.executable))
 DEFAULT_SUITE_CMD = f'"{SUITE_PY}" -m pytest -q'
 

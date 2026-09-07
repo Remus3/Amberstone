@@ -853,6 +853,20 @@ def stall_action(breach_n):
     (no CFG / IO). main() wires this to the actual recover/stop side effects."""
     return "recover" if breach_n <= 1 else "stop"
 
+def _canonical_interpreter():
+    """Absolute path to the project interpreter, RESOLVED, never baked in.
+
+    The pin stays ABSOLUTE - a bare ``py`` resolves to the dep-less pymanager
+    runtime and zeroes the suite (tests/test_bare_py_ban.py) - but the account
+    prefix is read from the environment. A directive naming one account's home
+    is a directive that silently does not run under another, and a recovery step
+    that does not run reports nothing.
+    """
+    local = os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")
+    candidate = Path(local) / "Programs" / "Python" / "Python314" / "python.exe"
+    return str(candidate if candidate.exists() else Path(sys.executable))
+
+
 def stall_recovery_directive(cycle):
     """WP-I3: the one-shot recovery typed into the EXISTING (stalled) executor on the
     FIRST cycle-deadline breach, before any hard STOP. NO /clear - the wedged session's
@@ -860,7 +874,7 @@ def stall_recovery_directive(cycle):
     running the done_sentinel final step, so the controller gets its claude.done either
     way (recovered or blocked). Line 1 is the CYCLE header the AHK bridge skips. Pure +
     unit-testable; the main() wiring extends the deadline once around it."""
-    py = r"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+    py = _canonical_interpreter()
     return (
         f"CYCLE={cycle}\n"
         "/diagnose the loop stall: run git status, read the newest pytest result file, read "

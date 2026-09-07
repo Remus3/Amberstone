@@ -41,7 +41,7 @@ Sample-size policy:
 
 Run::
 
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts\build_spell_cast_rates.py
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\build_spell_cast_rates.py
 """
 from __future__ import annotations
 

@@ -9,7 +9,7 @@ Each scraper:
 Agent 6 owns reweighting and circuit-trip rules. This module only surfaces
 signals (Blocked, CircuitOpen, parse errors) - it does not decide policy.
 """
+from lib.scrapers.site_b import SiteBScraper
 from lib.scrapers.site_d import SiteDScraper
-from lib.scrapers.ugg import UggScraper
 
-__all__ = ["SiteDScraper", "UggScraper"]
+__all__ = ["SiteBScraper", "SiteDScraper"]

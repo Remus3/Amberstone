@@ -77,7 +77,7 @@ competitor "features" are SUPERSEDED by RC and are called out as no-lift below.
    separate slice.
 
 ================================================================================
-## TARGET 2 - OVERLAY APP E (in-client overlay)
+## TARGET 2 - OVERLAY APP E.GG (in-client overlay)
 ================================================================================
 
 ### Finding 2.1 - Enemy/teammate ultimate + ability cooldown timers (overlay)

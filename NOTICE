@@ -46,6 +46,12 @@ Source by source:
 * 101.qq.com - duo-synergy win-rate rows read from an unauthenticated public
   endpoint. Governed by that operator's terms.
 
+* An external augment-statistics endpoint - ARAM Mayhem augment priors read at
+  runtime by `core/augment_external_source.py`. Deliberately NOT cached in this
+  repository: the snapshots are gitignored, the reader fetches on demand and
+  degrades to an empty prior table when it cannot. Governed by that vendor's
+  terms.
+
 Riot Games trademarks
 ---------------------
 Amberstone is not endorsed by Riot Games and does not reflect the views or

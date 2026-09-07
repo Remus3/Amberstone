@@ -5,7 +5,7 @@ suspicion class so a human (or the next loop cycle) can review only the
 suspects before flipping prefer_cdragon_ratios default-on.
 
 Usage:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_cdragon_drift_audit.py [--drift PATH] [--json]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_cdragon_drift_audit.py [--drift PATH] [--json]
 
     --drift PATH  path to cdragon_ratio_drift.json
                   default: data/daemon_slayer/<current-patch>/cdragon_ratio_drift.json

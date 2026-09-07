@@ -11,14 +11,26 @@ Run by scheduled task RC-ClaudeQuotaWatch (see docs/OPERATIONS.md).
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
-ACCT_A = "<operator-email>"      # primary (Max)
-ACCT_B = "<operator-email-failover>"     # failover
+# Account identities are OPERATOR data, not repo data: they differ per install
+# and one of them is a personal address, so they are read from the environment
+# rather than baked in. Unset -> the watcher no-ops instead of toasting about
+# somebody else's account.
+ACCT_A = os.environ.get("RC_CLAUDE_ACCT_A", "")   # primary (Max)
+ACCT_B = os.environ.get("RC_CLAUDE_ACCT_B", "")   # failover
 THRESHOLD = 0.90                        # weekly fraction that triggers handoff
-TC = r"C:\Users\Administrator\AppData\Roaming\npm\teamclaude.cmd"
+# Resolve the teamclaude shim under THIS account's home, never a hardcoded one:
+# a command naming another account's home silently does not run, and a watcher
+# that does not run reports nothing.
+TC = os.environ.get("RC_TEAMCLAUDE_CMD") or str(
+    Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+    / "npm"
+    / "teamclaude.cmd"
+)
 STATE = Path.home() / ".config" / "claude_quota_watch_state.json"
 
 # MEASURED 2026-08-01: this script is the console flash on Legion.
@@ -71,6 +83,10 @@ def _load_state() -> dict:
 
 
 def main() -> None:
+    # Without a configured primary there is nothing to watch, and an empty
+    # ACCT_A would make the `startswith` below match the FIRST account listed.
+    if not ACCT_A:
+        return
     try:
         out = subprocess.run([TC, "status", "--json"], capture_output=True,
                              text=True, timeout=30,

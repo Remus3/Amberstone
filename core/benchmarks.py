@@ -21,7 +21,7 @@ inferred rows count less. The weighted_n field in each metric shows the
 effective sample size.
 
 Regenerate the JSON by running:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe scripts/build_champion_benchmarks.py
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/build_champion_benchmarks.py
 """
 from __future__ import annotations
 import json

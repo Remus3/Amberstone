@@ -132,10 +132,8 @@ _AGENT_ALLOWED = {
     "hotkey_listener.py",
     "legion_agent_boot.ps1",
     "rc_rootCA.pem",
-    "PEER_ROADMAP_SUGGESTIONS.md",
     "diagnose.md",
     "caveman.md",
-    "done-peer.md",
     "phase_watcher.py",
     "phase_watcher_install.ps1",
 }

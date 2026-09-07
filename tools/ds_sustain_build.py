@@ -13,7 +13,7 @@ or ``flat_hp``), then:
     magnitudes, duration, conditional, source_quote).
 
 Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
-  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/ds_sustain_build.py <workflow_output.json>
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_sustain_build.py <workflow_output.json>
 """
 
 from __future__ import annotations

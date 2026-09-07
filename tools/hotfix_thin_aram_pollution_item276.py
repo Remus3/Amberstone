@@ -25,7 +25,7 @@ Idempotent + atomic (tmp.write_text + os.replace). Touches items + label only;
 runes + summoners + keys preserved. Mirrors tools/hotfix_thin_aram_adc_item275.py.
 
 Usage:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/hotfix_thin_aram_pollution_item276.py [--dry-run]
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/hotfix_thin_aram_pollution_item276.py [--dry-run]
 """
 from __future__ import annotations
 
