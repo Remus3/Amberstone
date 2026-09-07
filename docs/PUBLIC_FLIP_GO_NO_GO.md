@@ -1,15 +1,29 @@
 # Public flip - go / no-go
 
-Written 2026-09-07 (NO-GO). Substantial work landed the same day; **still NO-GO
-at wrap.**
+Written 2026-09-07 (NO-GO), superseded the same day. Subject: making
+`Remus3/Amberstone` public.
 
-Subject: making `Remus3/Amberstone` public.
+**VERDICT: DONE. The repository is PUBLIC.** Probed after the act, which is the
+only order this document accepts:
 
-**VERDICT: NO-GO. The repo is PRIVATE, verified live at wrap
-(`gh repo view --json visibility` -> PRIVATE). Four of the five conditions are
-materially closed in the WORKING TREE, but the history rewrite has not been
-re-run against the corrected rules and the repository has not been recreated,
-so nothing that follows describes a published state.**
+    gh repo view Remus3/Amberstone --json visibility,isPrivate
+    {"visibility":"PUBLIC","isPrivate":false}
+
+    curl -s -o /dev/null -w "%{http_code}" https://github.com/Remus3/Amberstone
+    200        (no credentials sent)
+
+The full account of what was published, what was measured, and the two defects
+the acceptance sweep caught before the flip is in "Outcome" at the end of this
+file. **Everything between here and there was written while the answer was still
+NO-GO and is left standing as the record of that state** - including the
+blocker table, which describes the remote as it was before the repository was
+deleted and recreated, not as it is now.
+
+The earlier NO-GO verdict read: "The repo is PRIVATE, verified live at wrap.
+Four of the five conditions are materially closed in the WORKING TREE, but the
+history rewrite has not been re-run against the corrected rules and the
+repository has not been recreated, so nothing that follows describes a published
+state." That was true when written.
 
 **AN EARLIER REVISION OF THIS FILE CLAIMED THE FLIP HAD HAPPENED, AND IT WAS
 COMMITTED AND PUSHED WHILE THE REPO WAS STILL PRIVATE.** It was written ahead of
@@ -19,7 +33,8 @@ because a go/no-go document that can assert an outcome it did not witness is
 worth strictly less than one that cannot. **Write the verdict AFTER probing the
 thing, never before.**
 
-What remains before a real GO is in "State at wrap" at the end of this file.
+"State at wrap" below was the pre-flip plan and is kept as written. What
+actually happened is in "Outcome", which is now the last section.
 
 ---
 
@@ -352,3 +367,131 @@ bundle of the PR refs are already captured for that.
 5. Re-apply the three carryover commits saved as patches.
 6. Probe visibility, THEN write the verdict.
 
+
+---
+
+# Outcome, 2026-09-07 - the flip happened, and the sweep caught two real defects first
+
+Written AFTER the probe. `visibility: PUBLIC`, `isPrivate: false`, and an
+unauthenticated `curl` to the repository page returns 200.
+
+## What was published
+
+`5090` commits on seven branches and three tags, rewritten from a FRESH mirror
+against the corrected rules. Rewrite stats:
+
+    blobs 46751   blobs_changed 8051   pinned_skipped 10
+    messages_changed 255   paths_dropped 867   paths_renamed 22
+
+## The acceptance sweep failed first, and that was the point
+
+The first corrected run was verified by dumping every reachable object and
+grepping it. It did not come back clean, and diagnosing why found two separate
+problems - one in the instrument, one in the rewrite.
+
+**1. The verifier's own pattern had the bug the scrub rule had already fixed.**
+The sibling-name pattern was unanchored, so it matched the tail of longer words:
+`gitigno` + `red moon` + `_sync_inbox`, and `form-empowe` + `red moon` + `stone`.
+653 hits, of which **652 were false positives from the instrument**. The scrub
+RULE had been anchored after this exact defect corrupted two files; the
+verifier's copy of the same pattern had not. An instrument and the thing it
+measures can disagree about a rule, and the instrument is not automatically the
+trustworthy one.
+
+**2. The rewrite had a filename defect that no content scan could see.**
+The rename table was keyed on each file's path AS IT EXISTS AT HEAD - for the
+competitor write-ups, their ARCHIVED path. `filename_callback` receives the path
+of whichever commit it is filtering, so every pre-archive path went unrenamed
+and the vendor name stayed in the tree objects for the whole span the file lived
+at its old location. Measured in the rewritten history: **2195 vendor-name hits,
+not one of them in a blob.**
+
+The previous pass had reported "all purged paths zero" and that was true and
+useless - it checked eleven named path patterns, and no vendor name was among
+them. Widening the sweep from those eleven to the entire path list also found
+three things no plan had ever listed:
+
+- `legacy/ops_backups_20260418/.../bunnymuffins_imgs/` - 27 scraped `.webp`
+  images plus two JSON files carrying a vendor's TFT comp names and unit
+  placements. The same class as the 120 scraped HTML pages blocker 2 drops.
+  **Dropped, not renamed:** renaming keeps the scraped data and hides only whose
+  it is.
+- `scripts/mobalytics_{out,err}.txt` - a scraper's stdout and stderr, both zero
+  bytes, so the FILENAME was the entire leak.
+- `tools/process-bridge-tasks-atx.md` - the peer project's name, sitting in the
+  gap between the substring-rename rule and the exact-path drop rule.
+
+The fix derives basename renames FROM the existing table rather than
+duplicating it, because a hand-maintained second table is the same defect one
+layer down. Pinned by `test_rewrite2.py`: 18 passed, including two mutation arms
+and negative controls asserting that a drop rule wide enough to take
+`scripts/mobalytics_out.txt` does NOT take `scripts/fetch_mobalytics.py`.
+
+The corrected run's deltas were exactly what the fix predicted: paths_dropped
+836 -> 867 (+31 = 27 images + 2 JSON + 2 text) and paths_renamed 14 -> 22
+(+8 = 6 pre-archive documents + 1 research path + 1 peer filename).
+
+## Final sweep, fully accounted
+
+Over the whole rewritten object dump, every in-scope name:
+
+- **Every competitor and vendor name: ZERO.**
+- **Sibling names: 11 hits, all accounted for** - 7 in historical versions of
+  `ops/loop/slots.py`, 4 in historical versions of `ops/loop/winmutex.py`,
+  across 8 blob versions of the two byte-pinned cross-repo modules the rewrite
+  skips deliberately by content marker. Operator ruling 2026-09-07 is that
+  cross-project references are fine, so these are a known, deliberate residual
+  and not a miss. Note that `winmutex.py` was previously reported "measured
+  clean of every sibling name" - that was true of its CURRENT version and false
+  of its history.
+- All eleven purge path patterns: zero. The credential, the scraped pages, the
+  vendor snapshots and both account rosters are absent from a fresh clone.
+- Author and committer identity: no personal address anywhere; remapped to the
+  GitHub noreply address.
+
+The sweep pattern is armed by construction rather than by assertion: the same
+pattern file returned 2861 hits against the previous dump, so an empty result is
+a measured zero and not a broken query.
+
+## The sixth blocker is closed
+
+`git ls-remote <url> 'refs/pull/*'` returns zero on the new repository - but that
+query is worthless on its own, because `git ls-remote <url> 'refs/heads/'`
+(with a trailing slash) also returns zero, and a broken pattern is
+indistinguishable from a true absence. Armed and re-run: `refs/heads/*` returns
+7, the full advertisement returns 13 refs, and an explicit
+`+refs/pull/*/head:refs/remotes/pullcheck/*` fetch - the only method that
+surfaces GitHub's hidden PR refs, and the method that measured 13 of them on the
+old repository - brings back **zero**.
+
+## Two things that nearly shipped broken
+
+- **A mirror clone DOES fetch `refs/pull/*/head`.** Reasoning said GitHub hides
+  them from ref advertisement; measurement said all 13 came down with
+  `git clone --mirror`. They were deleted from the mirror before the rewrite,
+  and 531 commits existed only on those refs.
+- **LFS would have been left dangling.** Seven `laning_scenarios` files at
+  `main`'s tip are LFS pointers, and deleting the repository deleted its LFS
+  store with it. The pointer OIDs are unchanged by the rewrite, so the 662 MB of
+  objects in the local `.git/lfs` still matched; they were pushed to the new
+  store and verified by a fresh `git clone`, which materialises real 66 MB JSON
+  rather than 133-byte pointers. A history rewrite is not the whole surface, and
+  neither is the git object store.
+
+## Citations
+
+3725 remapped, **40 dropped**, 3366 unknown, 0 ambiguous. The 40 point at
+commits the rewrite emptied and are accepted in writing as the cost. The 3366
+were ALREADY unresolvable - worktree-agent slice SHAs that never survived a
+cherry-pick, a class `docs/LEDGER.md`'s preamble documents and puts at roughly
+half of all pre-July citations. This pass did not create them and does not
+change the standing guidance: verify by merge hash, file, or test, never by a
+slice SHA.
+
+## What was destroyed, deliberately
+
+13 pull requests and 1 closed issue, all internal lane merges authored by the
+repository owner. They were the REASON for the delete. Recoverable material was
+bundled first: five bundles plus a local-only bundle of the PR refs plus a
+bundle of the exact rewritten history that was published, all in
+`C:/ClaudeBackup_20260906/`. **The PR-refs bundle is never pushed anywhere.**
