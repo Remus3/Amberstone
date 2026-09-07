@@ -69,7 +69,15 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-383** (2026-09-06). RM-382 was minted by
+  Next free id = **RM-384** (2026-09-06). The id one below it was minted by
+  LEDGER 1357, LANE 10 queue cycle 17, for the inherited red that cycle's own
+  pre-push suite surfaced: `config/vision_token.txt` is gitignored, so
+  `dcd965f2d` making its absence fatal reddens every worktree and every CI
+  runner while the main tree stays green. Allocation was checked with the
+  pointer-vs-allocated predicate before minting: all four of its occurrences
+  were next-free pointer prose, in this file, `docs/LEDGER.md`, `ROADMAP.md`
+  and `WAKEUP_NOTES.md`, none heading a row or carrying a status marker.
+  The id before THAT was minted by
   LEDGER 1355, LANE 10 queue cycle 16, for the RM-367 sibling sweep: two
   TRUTHY non-phase sentinels (`"Unknown"` at `lcu/snapshot_shape.py:440`,
   `"Offline"` at `tools/lcu_agent.py:330`) reach `/api/state.lcu.phase` and
