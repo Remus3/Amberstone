@@ -290,9 +290,27 @@ def test_mutex_serializes_two_threads():
 
 
 def test_mutex_names_are_the_shared_contract():
-    """Both repos must use the SAME names or they serialize against nothing."""
-    assert winmutex.GEMINI_MUTEX == "Global\\LWRC_GEMINI"
-    assert winmutex.GPU_MUTEX == "Global\\LW_GPU"
+    """All three repos must use the SAME names or they serialize against nothing.
+
+    ROTATED 2026-09-06 in LW commit `1de8d4e`, operator-approved, and copied here
+    in the same round. The names are now opaque:
+
+        Global\\LWRC_GEMINI  ->  Global\\MX-7C41A9E2
+        Global\\LW_GPU       ->  Global\\MX-2E58D3B6
+
+    This is the FIRST re-pin of winmutex.py that is not docstring-only - the
+    values move, so a tree on the old names serializes against nothing while
+    looking healthy. That is why the rotation was executed with every loop
+    stopped: between the first tree landing the new names and the last, two
+    loops can hold DIFFERENT names and both believe they are exclusive. Not a
+    broken build - the mutual exclusion silently absent.
+
+    RC verified the precondition on its own box before copying: no live
+    loop_controller (the RUNNING.lock pid was dead), and an empty
+    C:\\ProgramData\\lw-loop\\slots.
+    """
+    assert winmutex.GEMINI_MUTEX == "Global\\MX-7C41A9E2"
+    assert winmutex.GPU_MUTEX == "Global\\MX-2E58D3B6"
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="windows mutex semantics")
@@ -451,9 +469,17 @@ SHARED_SHA256 = {
     # Compute vendors LAST: it has no pin to break until it has one.
     # previous 5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6
     "slots.py": "1c4f8af43ff349709c11bf3fe622e922b24cb720771c49a522b13a4d5e58c492",
-    # re-pinned 2026-07-26 for f1-phase6 item 9 (POSIX branch now emits
-    # UNSERIALIZED); previous c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
-    "winmutex.py": "f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4",
+    # re-pinned 2026-09-06: LW authored (commit 1de8d4e), operator-approved, and
+    # this is the FIRST winmutex re-pin that is not docstring-only - the mutex
+    # name VALUES rotated to opaque strings and the header prose naming the
+    # vendor, the metered account and the failover behaviour was scrubbed. RC
+    # copied LW's bytes with a byte-level copy off the live tree and re-hashed
+    # from its OWN disk; the digest in LW's hand-off note was used as a value to
+    # CHECK against, never as the source. Verified byte-identical to LW on disk,
+    # 6190 bytes, zero CR bytes, pure ASCII.
+    # previous f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4
+    # before that c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
+    "winmutex.py": "0b112a4f6bfa88cf5f537f8869225c1821ebfe97428b1e899979797ddd71a61e",
 }
 
 
