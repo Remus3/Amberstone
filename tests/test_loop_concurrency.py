@@ -468,7 +468,22 @@ SHARED_SHA256 = {
     # value was obtained rather than by trusting RM's hand-off note. Resin
     # Compute vendors LAST: it has no pin to break until it has one.
     # previous 5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6
-    "slots.py": "1c4f8af43ff349709c11bf3fe622e922b24cb720771c49a522b13a4d5e58c492",
+    #
+    # re-pinned 2026-09-06 (LW commit 374c79e): the hold() release-path leak.
+    # BEHAVIOURAL, not docstring - a new release() with bounded unlink retry and
+    # payload neutralisation, and hold()'s finally rewritten so the release line
+    # can no longer be logged for a release that did not happen. RSC found the
+    # leak, RC confirmed all three legs and reclaimed two ghost lanes, LW
+    # measured the open question and authored the bytes.
+    #
+    # ONE SUBTLETY WORTH KEEPING: the neutralising write is IN PLACE, and that
+    # is deliberate. Measured by LW on Windows - with a reader's handle open,
+    # unlink FAILS (WinError 32) and tmp-then-os.replace ALSO FAILS (WinError 5),
+    # but an in-place rewrite SUCCEEDS. So this one write is a documented
+    # exception to the repo's atomic-write hard rule; applying that rule here
+    # would silently restore the leak. Do not "fix" it into tmp+replace.
+    # previous 1c4f8af43ff349709c11bf3fe622e922b24cb720771c49a522b13a4d5e58c492
+    "slots.py": "629c3d511d2500f92d25fbe102a7a8c73644c027291f46b8796565a1e839f865",
     # re-pinned 2026-09-06: LW authored (commit 1de8d4e), operator-approved, and
     # this is the FIRST winmutex re-pin that is not docstring-only - the mutex
     # name VALUES rotated to opaque strings and the header prose naming the
