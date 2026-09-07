@@ -1,10 +1,10 @@
 # RM-125 - adjudication of the LIVE-span glyph residue in `web/`
 
 **Status:** RM-125 comment half DONE. Live half DEFERRED to RM-122 (operator-present).
-**Measured:** 2026-07-28, at commit `525354ee`.
+**Measured:** 2026-07-28, at commit `35c6730f`.
 
 RM-125 is the ASCII-hygiene sweep of `web/`. The tree carried 3153 non-ASCII
-characters across 31 `.js` / `.css` / `.html` files. Slice A (`525354ee`,
+characters across 31 `.js` / `.css` / `.html` files. Slice A (`35c6730f`,
 `tools/web_ascii_sweep.py`) swept the **comment** half - the subset that renders
 no pixels - and left the rest alone by design.
 
@@ -76,7 +76,7 @@ Both subtractions were measured, not estimated:
   comment at `web/js/panels/last_match.js:1569`. Measured by re-running
   `comment_spans()` with a corrected `_scan_template_subst` and diffing against
   the shipped one. **This half is now CLOSED:** the desync was root-caused and
-  fixed in the same cycle (`38c232d5`), and those 59 are swept, which is why the
+  fixed in the same cycle (`c0c6e97e`), and those 59 are swept, which is why the
   tool-reported residue now reads **261**, not 320. The rendered census below is
   unchanged by that fix - the 59 were never part of the rendered set.
 - The 26 sit in comments inside `web/legacy_index.html`'s inline blocks - 20 in
@@ -213,8 +213,8 @@ Only `last_match.js` has non-ASCII inside its runaway region, which is why the
 visible cost is 59 characters and not more.
 
 **Direction of the bug is safe, and this was verified rather than assumed.**
-Every glyph that Slice A actually rewrote (both commits `f99df54a` and
-`525354ee`, 56 changed files) was re-checked against a corrected tokeniser:
+Every glyph that Slice A actually rewrote (both commits `b43423f0` and
+`35c6730f`, 56 changed files) was re-checked against a corrected tokeniser:
 
 ```
 mis-swept glyphs (stripped from a LIVE span): 0
@@ -502,7 +502,7 @@ operator-present, rendered-pixel judgement:
   fixture audit, not a script.
 
 Stripping any of this headless is forbidden. RM-125 stays **OPEN** solely for
-this residue; its comment half is closed at `525354ee`.
+this residue; its comment half is closed at `35c6730f`.
 
 ---
 

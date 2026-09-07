@@ -132,7 +132,7 @@ in the spec and it determines the whole shape of Phase 2.
 **INSTANCE 2 - CDragon ratio sidecar copied forward three patches. ALREADY FIXED.**
 `cdragon_ability_ratios.json` reads `bb1fd9e2` with payload `patch = "16.11.1"` in the
 16.11.1, 16.12.1 AND 16.13.1 dirs, then `9c67b58a` / `"16.14.1"` at 16.14.1. The fix shipped
-in two commits (`4cd3c4c6` guard, `544d6362` re-extract + strict ON) and is live:
+in two commits (`46bbc24b` guard, `e1b42e89` re-extract + strict ON) and is live:
 `agents/daemon_slayer/abilities.py:448` (`_load_cdragon_ratio_sidecar`) compares the
 payload's `patch` against the requested patch, WARNs, and returns `{}` under strict;
 `abilities.py:679` ships `strict_cdragon_patch: bool = True`.
@@ -970,7 +970,7 @@ be able to express a retired dir before the first prune, not after: a dir listed
 **Scope decision that makes this survivable: lock the FROZEN dirs, not the live dir.**
 
 Measured with the canonical instrument, replaying every commit touching
-`data/daemon_slayer/16.14.1/` since the dir was created: baseline `fc09ce0b` (2026-07-16, 19
+`data/daemon_slayer/16.14.1/` since the dir was created: baseline `21db5626` (2026-07-16, 19
 new feeds) plus five post-baseline commits, of which **4 would red a live-dir lock**:
 
 ```
@@ -982,9 +982,9 @@ b7d7096f  touched 1   canonical-MOVED 1   enchanter_items.json
 ```
 
 **Two revision-1 auditors reported this as "5 of 5" and were both wrong, for the same
-reason: they counted files TOUCHED while the lock hashes canonical BODIES.** `843f83a3`
+reason: they counted files TOUCHED while the lock hashes canonical BODIES.** `cde08721`
 reports "3 files changed, 3 insertions(+), 3 deletions(-)" and moves zero canonical bodies -
-`build_orders_sr` is `9c0a2d99` before and after. `43a2e0ea` touched three build_orders files
+`build_orders_sr` is `9c0a2d99` before and after. `91664dbf` touched three build_orders files
 and moved one. Revision 1's "4 of 5" and its named file list were correct, and the
 disagreement is itself a demonstration of this spec's central thesis: a file-touch count and a
 canonical-body count give different answers, and only one of them is the question.
@@ -1505,8 +1505,8 @@ defined.** Definitions, now stated:
   16.13.1**.
 
 **That id set MOVES, which is why this rung is not CI-blocking.** Measured per-commit over the
-live dir: `fc09ce0b`=112, `2dddff04`=112, `544d6362`=105 (8 added, 15 removed in a single
-commit), `b7d7096f`=105, `43a2e0ea`=105, `843f83a3`=105. A pinned id list would have been
+live dir: `21db5626`=112, `dddbbdfa`=112, `e1b42e89`=105 (8 added, 15 removed in a single
+commit), `6f7f957a`=105, `91664dbf`=105, `cde08721`=105. A pinned id list would have been
 wrong within 3 days. A CI-blocking gate keyed to it would flip a value's severity - and
 therefore CI status - on an unrelated engine bump, which is exactly the "reds on ordinary
 work" failure mode Phase 1's scope decision exists to avoid.
@@ -1567,7 +1567,7 @@ clearance. (Note the numeric coincidence: the ~111-item rank pool figure and 16.
    kill the false positive on `champions.json@16.14.1`, which revision 1's ladder did NOT
    (3.5).
 4. **Formatting churn** - canonicalized JSON, so the `wiki_stats.json` 10,048-byte indent flip
-   is invisible. The same canonicalization is what makes `843f83a3` correctly read as inert
+   is invisible. The same canonicalization is what makes `cde08721` correctly read as inert
    (4.1).
 5. **Machine churn** - no byte or whole-file-digest column, so the Legion/CI CRLF divergence
    cannot manufacture 67 phantom findings (1.1).
@@ -1598,7 +1598,7 @@ the scope (3.0) it iterates.
 | 4b | `test_every_non_exempt_pair_has_a_registry_rationale` | LOCK | Delete one `(feed, class)` rationale. Asserts a non-empty string **>= 40 chars** (blocks "n/a" and "see above") for each of the 11 pairs. This is the real human gate and it fires when a NEW class appears for a feed at a future refresh. |
 | 5 | `test_walk_excludes_non_feed_semver_dirs` | LOCK | Assert the walked dir-name set equals the frozen set, that `laning_scenarios` and `build_orders` are absent by name, and that **no registry or lock key contains a path separator** (3.1). |
 | 6 | **`test_live_dir_has_no_patch_stamp_mismatch`** | LIVE | **INSTANCE 2.** Assert no live-dir row classifies `PATCH_STAMP_MISMATCH`. **GREEN today** - verified over all 20 live feeds. RED-first: restore `data/daemon_slayer/16.13.1/cdragon_ability_ratios.json` (payload `"16.11.1"`, body `bb1fd9e2`) into the live dir and confirm failure. This is the generalized form of `abilities.py:448`. **Assert the CLASS, not a raw `declared_patch == patch_dir` comparison.** The raw form - which is what revision 1 specified - reds day-one on `cherry_augments` and `mayhem_augment_stats` (both carry `rc_patch = "16.10.1"` in the 16.14.1 dir) whose only remediation is a live network re-fetch that Phase 1 explicitly excludes. That is a permanently-red guard, which 5.4 rejects. The ladder already ranks those two as `SKIPPED_FETCH`, and test 8 surfaces them as a counted standing question. |
-| 7 | **`test_authored_body_change_bumps_stamp`** | LOCK, adjacent FROZEN pairs only | **INSTANCE 3.** For `origin == authored`, body moved vs the previous dir implies the stamp moved. **Fails on today's tree at the 16.12.1 -> 16.13.1 boundary**: `enchanter_items.json` body `3b82292c` -> `c6f74cae` (item count 9 -> 10) with `_meta.patch` frozen at `16.9.1`. Remediation: bump `_meta.patch` to `"16.13.1"` in `data/daemon_slayer/16.13.1/enchanter_items.json`. That is HONEST (the file was genuinely curated in the 16.13.1 era by commit `52fa7edb`, 2026-07-10), SHARE-NEUTRAL (`ds_share_sync.py:62` pins `_PATCH = "16.14.1"` and `:256-260` rglobs only that dir; `Share/src/data/daemon_slayer/` holds only `16.14.1` and `current.txt`), LOCK-NEUTRAL (`_meta.patch` is a stripped stamp, so `body_md5` is unchanged), and FIXTURE-POLICY-NEUTRAL (3.7). **Revision 1 scoped this to the 16.13.1/16.14.1 pair, whose remediation edits a mirrored file and reds the per-push "DS Share package in sync" step the spec promises stays green.** |
+| 7 | **`test_authored_body_change_bumps_stamp`** | LOCK, adjacent FROZEN pairs only | **INSTANCE 3.** For `origin == authored`, body moved vs the previous dir implies the stamp moved. **Fails on today's tree at the 16.12.1 -> 16.13.1 boundary**: `enchanter_items.json` body `3b82292c` -> `c6f74cae` (item count 9 -> 10) with `_meta.patch` frozen at `16.9.1`. Remediation: bump `_meta.patch` to `"16.13.1"` in `data/daemon_slayer/16.13.1/enchanter_items.json`. That is HONEST (the file was genuinely curated in the 16.13.1 era by commit `b97abc1f`, 2026-07-10), SHARE-NEUTRAL (`ds_share_sync.py:62` pins `_PATCH = "16.14.1"` and `:256-260` rglobs only that dir; `Share/src/data/daemon_slayer/` holds only `16.14.1` and `current.txt`), LOCK-NEUTRAL (`_meta.patch` is a stripped stamp, so `body_md5` is unchanged), and FIXTURE-POLICY-NEUTRAL (3.7). **Revision 1 scoped this to the 16.13.1/16.14.1 pair, whose remediation edits a mirrored file and reds the per-push "DS Share package in sync" step the spec promises stays green.** |
 | 8 | **`test_skipped_fetch_set_is_exactly_the_two_never_refetched_feeds`** | LOCK + LIVE | **The two unnamed instances (1.4).** Assert `fetch_evidence == 'identical'` implies `class == 'SKIPPED_FETCH'`, and that the `SKIPPED_FETCH` FEED set is exactly `{cherry_augments.json, mayhem_augment_stats.json}`. **Hardcodes no timestamp literal** - the two files do not share one (1.4), and revision 1's quoted literal is wrong for mayhem. Stays silent on `items_meraki.json` (five distinct `fetched_at`). Fully mechanical, 100% actionable rate on today's data, and it reds if a third feed ever joins. |
 | 9 | `test_lock_covers_every_frozen_dir_on_disk` | LOCK | **META-GUARD, mandatory.** Assert the lock's dir set equals the on-disk frozen semver set minus `RETIRED_FIXTURES`, and that the row count is non-zero. Without this, a future "why hash four dirs" narrowing leaves tests 1-8 iterating an empty set and CI stays green with the cross-patch capability gone. LEDGER item 957: RC-GeminiAudit "exited 0 having written no review AND no log line" for 28 nights while every probe read the task as Ready. |
 | 10 | `test_tool_default_tracks_current_txt` | LIVE | **META-GUARD.** Copy of the assertion in `tests/test_item_ability_haste_ddragon_sync.py`, which exists because `ops/audit/item_ah_drift_check.py` hardcoded `16.12.1` and false-reported IN SYNC, hiding the Eclipse 226692 drift for a full patch. |
@@ -1977,8 +1977,8 @@ to "the implementer should decide".
   (`ability_staleness.json` and `manifest.json` at four dirs). The matrix in 1.1 is the
   corrected one.
 - **GAP 42 adjudicated by re-measurement.** Two auditors reported the live-dir churn as
-  "5 of 5"; both counted files TOUCHED. Measured with the canonical instrument, `843f83a3`
-  moves ZERO bodies and `43a2e0ea` moves one, not three. Revision 1's "4 of 5" and its named
+  "5 of 5"; both counted files TOUCHED. Measured with the canonical instrument, `cde08721`
+  moves ZERO bodies and `91664dbf` moves one, not three. Revision 1's "4 of 5" and its named
   file list were correct.
 - `cherry_augments` and `mayhem_augment_stats` do NOT share a `fetched_at` literal, and only
   cherry is CommunityDragon-sourced. Both errors are fixed and test 8 now hardcodes no

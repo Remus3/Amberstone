@@ -29,7 +29,7 @@ an `RM-NN` id there; this file is the QA'd inventory they are drawn from.
 
 **Headline: 44 pct of everything these docs left open has shipped since they
 were written.** G1 alone is two thirds shipped, and all 8 of its files landed
-in a single commit (`f5e6d9e8`) and were never touched again - the staleness is
+in a single commit (`03dfb1ba`) and were never touched again - the staleness is
 uniform, not per-file, which is why archiving them wholesale is safe.
 
 ---
@@ -62,7 +62,7 @@ They are listed first on purpose.
 5. **The lobby duo-synergy "re-stage" premise is false.** The champ-select duo
    grid was deleted by item 213 and `/api/duo-synergy` has zero frontend
    consumers.
-6. **`docs io RC peer/` no longer exists on disk** (Peer decommission `6edfbd3e`),
+6. **`docs io RC peer/` no longer exists on disk** (Peer decommission `62be5e4c`),
    which answers the folder-reorg doc's central open question outright. Only
    dead `.gitignore` globs remain.
 7. **Three of the eight G3 files carry stale engine metadata** (1.216.0 /
@@ -71,7 +71,7 @@ They are listed first on purpose.
 8. **The `DS_ABILITY_SHAPING_NOTES` prescribed `len(cooldown)` fix is REFUTED**,
    and ~70 pct of that file has shipped (RM-95a alias fix 2026-07-25, RM-95b
    adjudicated - do NOT build the B2 promoter - the six RM-81 champions at
-   ENGINE 1.248.0, and the SHAPE_SUSPECT fix `62e4a410`).
+   ENGINE 1.248.0, and the SHAPE_SUSPECT fix `4f7177c9`).
 
 ---
 

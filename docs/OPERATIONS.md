@@ -80,7 +80,7 @@ them.
 Until RM-170 the repo's habitual green bar was quietly one of the narrow two,
 and the trees outside it had gone red without anyone seeing it:
 `tools/tests` carried two guard tests that had been failing since 2026-07-30
-(commit `9df58480` added a DS-engine import to both CDragon extractors and did
+(commit `d0ad0569` added a DS-engine import to both CDragon extractors and did
 not update their engine-independence guards), and `benchmarks` reported 7 red
 "ERROR at setup" lines because the CI-only `pytest-codspeed` plugin was not
 installed locally. Both were fixed; the point is that neither was VISIBLE.

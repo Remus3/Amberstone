@@ -1,6 +1,6 @@
 # RC2 research consolidation - group G1 (8 files)
 
-QA'd 2026-07-28 against HEAD. All 8 source files landed in ONE commit `f5e6d9e8`
+QA'd 2026-07-28 against HEAD. All 8 source files landed in ONE commit `03dfb1ba`
 ("docs(rc2): Phase 1 research complete") and have NEVER been touched since
 (`git log -2 --` per file = 1 commit each), so every open item in them is
 >5 weeks stale and pre-dates the entire RC2 E-batch, the Hextech overlay
@@ -102,7 +102,7 @@ DUPLICATE-OF. Effort S/M/L given only for STILL OPEN.
 |---|---|---|---|
 | L1 Drop `RuneWriter.POLL_INTERVAL` 2.0s -> 1.0s | SHIPPED | P6.2; QA_CONSOLIDATED item 58 "POLL_INTERVAL <=1.0s" | - |
 | L2 Cache the lobby `gameMode` for the champ-select duration | SHIPPED | `lcu/lcu_rune_writer.py:553` `self._cached_lobby_mode`, hit at `:891-892`, populated `:897-898`, reset `:694`. QA_CONSOLIDATED called this OPEN (item 59) - stale; `ROADMAP.md` RM-03 confirms "QA59/L2 already shipped as `_cached_lobby_mode`" | - |
-| L3 Single champ-select reader on 1-PC / source `build_state` in-process | LIVE-GATED | BUILT DARK 2026-07-20 (`875aa355`): `lcu/snapshot_shape.py` + `dashboard/_lcu_inprocess.py`, gated `RC_LCU_INPROCESS=1` at `dashboard/_state_builder.py:79-87`, tests `tests/rc2_l3/test_lcu_inprocess_l3.py`. Only the G1-00 live confirm is owed (`ROADMAP.md` RM-03 -> `docs/LIVE_GAME_GATED_SYNC.md` G1-00 CHECK 2) | - |
+| L3 Single champ-select reader on 1-PC / source `build_state` in-process | LIVE-GATED | BUILT DARK 2026-07-20 (`9eb76879`): `lcu/snapshot_shape.py` + `dashboard/_lcu_inprocess.py`, gated `RC_LCU_INPROCESS=1` at `dashboard/_state_builder.py:79-87`, tests `tests/rc2_l3/test_lcu_inprocess_l3.py`. Only the G1-00 live confirm is owed (`ROADMAP.md` RM-03 -> `docs/LIVE_GAME_GATED_SYNC.md` G1-00 CHECK 2) | - |
 | L4 SSE tick + `build_state` TTL 1.0s -> 0.5s together | SHIPPED | P6.3; QA_CONSOLIDATED item 60 cites `e9b1a5d0` `_STATE_CADENCE_S` | - |
 | L5 Leave the fallback LCU poller at 2.0s | REFUTED as work | explicitly a no-op flag ("no change needed"); carry as a fence line, not a row | - |
 | L6 Pooled keep-alive LCU connection | SHIPPED and DEFAULT-ON | `core/lcu_pool.py:19-43` - `RC_LCU_POOL` defaults `"1"` since the E7 flip 2026-06-30, validated over a live game; `RC_LCU_POOL=0` restores the byte-identical legacy path. QA_CONSOLIDATED item 61 (GATED-LIVE, "OFF") is stale | - |

@@ -551,7 +551,7 @@ hits") AND the B4 artefact (an imperative) in the same string. The same feed
 also carries objective imperatives - `:107` "Drake spawns 5:00 - set up vision",
 `:109` "Plates fall 14:00 - shove for gold".
 
-**Status now: closed for the live surface, by B4-b (`543f738c`), not by B3.**
+**Status now: closed for the live surface, by B4-b (`495c2b88`), not by B3.**
 `dashboard/_state_builder.suppress_live_envelope` blanks `callouts` and
 `lead_projection` while a game is live, and `web/js/panels/callouts.js`
 self-gates as defence in depth. The generators are untouched and remain

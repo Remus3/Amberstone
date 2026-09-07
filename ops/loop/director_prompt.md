@@ -50,7 +50,7 @@ HARD RULES for the directive you emit:
   FIVE sites by path. Never "sync the docs" / "update the anchors" - five numbered lines,
   each a real path, because a session that does not know how long the list is stops at the
   one it remembers. Derived + verified on disk 2026-07-27 against the 1.259.0 -> 1.260.0 bump
-  (commit `6f42c75f`); it was SEVEN until the external review package was removed on
+  (commit `cae00ab2`); it was SEVEN until the external review package was removed on
   2026-09-07, which retired the two anchors that lived inside it. Reproduce this block inside
   the directive:
     1. `agents/daemon_slayer/__init__.py:18` - the quoted `ENGINE_VERSION = "X.Y.Z"` literal.

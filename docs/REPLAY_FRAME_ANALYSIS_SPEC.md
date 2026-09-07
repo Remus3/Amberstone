@@ -185,7 +185,7 @@ file. Every reference is numeric.
 ## 6. Recommended sequencing
 
 1. **Now, cheap, already half-built:** scale the roster corpus
-   (`tools/replay_roster_pull.py`, shipped `f0f93920`) from 2 tracked accounts to
+   (`tools/replay_roster_pull.py`, shipped `aa5a143c`) from 2 tracked accounts to
    ladder-scale forward-harvest on a schedule. Layer-1 stats + 30 s chunk
    cadence + the tail JSON are free and permanent. Clear B13 first.
 2. **Then, before any Layer-2 commitment:** a bounded spike on ONE chunk stream

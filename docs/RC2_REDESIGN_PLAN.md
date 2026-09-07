@@ -74,13 +74,13 @@ commit + push. Verified-NOT-built: 1b (no team aggregator), 5 route. Verified RE
 
 ### FEATURE-LIFT TAIL COMPLETE 2026-06-22 (ledger item 590, 6 commits pushed)
 All buildable lifts shipped + live-proven; cross-lift regression 236/236 snapshot+backend green.
-- 1a counter-pick hero `4d0172b6` - 1b ally AD/AP meter `66375d63` (new /api/champ-select/team-damage-mix)
-- 3 home last-20 W/L strip + WR `c3bf040d` (last20 injected into /api/home/summary)
-- 2a PGR decomposition 5-bar `a461980b` (consumes components+weights_used; 2b carry metrics were
+- 1a counter-pick hero `b3fa4a7f` - 1b ally AD/AP meter `b686da59` (new /api/champ-select/team-damage-mix)
+- 3 home last-20 W/L strip + WR `87240826` (last20 injected into /api/home/summary)
+- 2a PGR decomposition 5-bar `cf1896ae` (consumes components+weights_used; 2b carry metrics were
   ALREADY shipped s219; 2c @15 DROPPED - no backing data)
-- 4 history season WR + filters `c0ce9faf` (retired the "needs Riot key" stub; caught+fixed a
+- 4 history season WR + filters `4d5a9425` (retired the "needs Riot key" stub; caught+fixed a
   win_rate percent-vs-fraction unit bug)
-- 5 ready-check toggle `8e972a14` - new core/auto_accept_pref.py + GET/POST /api/lcu/auto-accept +
+- 5 ready-check toggle `8370fe7d` - new core/auto_accept_pref.py + GET/POST /api/lcu/auto-accept +
   operator-AUTHORIZED minimal frozen lcu_client.py gate; UNIFIED into the existing lobby Auto-Accept
   toggle (one control, both mechanisms) rather than a 2nd switch.
 OWED (still): live in-game overlay capture (eye-line layout + S0 pulse) - no live game this run.

@@ -87,7 +87,7 @@ most likely cause of the four-cycle run of stale directive premises.
 **Two of the directive's four steps were no-ops and measuring that was the first
 deliverable.** Fifth consecutive cycle with a stale premise. STEP 1 wanted a staged
 `.githooks` exec-bit commit: `git diff --cached` empty, tree clean, `.githooks/*`
-already `100755` in the index since `19b680cc`. STEP 4 wanted the TEST-NOT-TRANSCRIPT
+already `100755` in the index since `04a5a534`. STEP 4 wanted the TEST-NOT-TRANSCRIPT
 rule made durable: it is at `ops/loop/director_prompt.md:147-153` and already pinned by
 `test_prompt_carries_the_test_not_transcript_rule`.
 
@@ -96,7 +96,7 @@ rule made durable: it is at `ops/loop/director_prompt.md:147-153` and already pi
 | Piece | State on arrival |
 |---|---|
 | executor-side parser + serialize override | shipped long before tonight |
-| director-side normative contract (what shape the parser reads) | shipped R204 `7f89cd6c` |
+| director-side normative contract (what shape the parser reads) | shipped R204 `a7a957a0` |
 | **the REPORTING half** | **shipped here** |
 
 Both guards correct a bad directive, log to `control/controller.log`, and prepend
@@ -139,11 +139,11 @@ No other module in the repo asks a model to self-report machinery's own action.
 
 ### CARRY-FORWARD - six cycles old, unchanged
 
-The running controller predates its own self-reload fix (`d4b1a762`). It **must be
+The running controller predates its own self-reload fix (`35df5e5c`). It **must be
 bounced by hand once**; no executor cycle can supply it, and it remains the measured
 cause of the stale-premise run above.
 
-## R207 - the exemption covered the future, not just the past (2026-07-27, `829700e1`)
+## R207 - the exemption covered the future, not just the past (2026-07-27, `058f5b5b`)
 
 `tests/test_smart_quote_hygiene.py` carried a blanket exemption for
 `agents/agent6_auditor/reports/`, justified as "immutable dated artifacts - em-dash
@@ -195,13 +195,13 @@ one premise, not two.
 
 The cheapest possible check closed it: **run the thing the row says is broken, before
 fixing it.** `pytest tests/ agents/daemon_slayer/tests/ -n 8 --dist loadfile` -
-23849 passed, 0 failed, 132s. Five of the six failures died in `cd0f115d` three hours
+23849 passed, 0 failed, 132s. Five of the six failures died in `462f1255` three hours
 AFTER the desktop note that seeded the row was written; the sixth went with the RM-100
 asyncio consolidation. The row was obsolete before it was ever scheduled.
 
 ### The unit that was actually available
 
-`cd0f115d`'s own commit body:
+`462f1255`'s own commit body:
 
 > Swept every other subTest call site in both suites: the remaining ones pass only
 > primitives and need no change, but any future hostile-input matrix is one
@@ -221,8 +221,8 @@ execnet's OWN `dumps` at call time. Repo-root because `tests/conftest.py` cannot
 
 The guard IS the probe. Installed, full dual suite re-run: **23861 passed, 0 failed** -
 exactly +12 tests / +17 subtests over baseline, which is the new file to the unit, so
-**0 additional instances repo-wide**. Disposition: 5 FIXED (`cd0f115d`), 458 CLEAN and
-now machine-proven instead of eye-proven, 0 OUT-OF-SCOPE. `cd0f115d`'s sweep was
+**0 additional instances repo-wide**. Disposition: 5 FIXED (`462f1255`), 458 CLEAN and
+now machine-proven instead of eye-proven, 0 OUT-OF-SCOPE. `462f1255`'s sweep was
 CORRECT; the value delivered is that it is no longer a claim.
 
 ### Two things the build turned up that the directive did not ask for
@@ -295,7 +295,7 @@ claims were dead on arrival.** The `wakeup_prune` claim is the sharpest example 
 note says 12 sessions are invisible, `--check` wrongly reports compliant, and the
 file has bloated to 61KB. Measured: `--check` exits 0, `WAKEUP_NOTES.md` is 10759
 bytes, and it holds exactly three session headings, which is the keep-3 prune having
-visibly run. `2f35163d` fixed SESSION_RE by giving it a `\d{4}-\d{2}-\d{2}`
+visibly run. `4a707962` fixed SESSION_RE by giving it a `\d{4}-\d{2}-\d{2}`
 alternative. Same shape for the `GRADE_LABEL` em-dashes (already spaced hyphens) and
 the `data/ratings/*.json` backfill queued behind them - 0 of 4 files carry a dash to
 backfill, so that unit was never work at all. **A note is a snapshot of a moment, and
@@ -739,7 +739,7 @@ DIFFERENT reasons, and the distinction is the useful part:
   executor - so the test is not isolated from a live controller process touching the same
   module state. Expect this test to fail on Legion any time the loop is running and to be
   green in CI and on a quiet box. Do not "fix" it by chasing the assertion; the test file
-  is byte-identical to baseline `1bbc377c` and this run touched zero files under
+  is byte-identical to baseline `3e731064` and this run touched zero files under
   `ops/loop/`.
 
 **A tool-pipe warning, because it cost real time here.** An early serial re-run reported

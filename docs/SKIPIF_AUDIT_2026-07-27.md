@@ -29,14 +29,14 @@ is broken. That is a DEFECT.
 | FUTURE | 2 |
 | **TOTAL** | **155** |
 
-Population: 153 raw regex hits at HEAD `e3f765e1`, minus 10
+Population: 153 raw regex hits at HEAD `1f66700d`, minus 10
 false positives (docstring prose, a `BurstSkipTests` class name, and the
 `assertRaises(unittest.SkipTest)` meta-assertions in `test_build_order_precompute.py`
 and `test_drift_guard.py` - those are guards ABOUT skips, not skip sites),
 giving 143 real constructs, plus 12 `pytest.importorskip`
 sites = **155** dispositions.
 
-Line numbers are PRE-FIX positions at HEAD `e3f765e1`. DEFECT-FIXED rows no
+Line numbers are PRE-FIX positions at HEAD `1f66700d`. DEFECT-FIXED rows no
 longer exist at those lines.
 
 ## Measured baseline (the TDD 'demonstrate' step)
@@ -294,7 +294,7 @@ an AST scanner over every module under `tests/**` and
 when the condition gates on a git-TRACKED artifact.
 
 Two predecessor lessons shaped it, both from
-`tests/test_no_console_flash_scheduled_tools.py` before `756db42a`:
+`tests/test_no_console_flash_scheduled_tools.py` before `80bb813f`:
 
 - The universe is GLOBBED (`rglob`, 1236 modules), never a hand-written list.
   A hand list is how that guard went green over the exact class it existed to
