@@ -1,130 +1,82 @@
 NEXT SESSION
 ------------
-Task: **TAKE Remus3/Amberstone PUBLIC.** Operator directive 2026-09-07: the
-  next session is the one that flips it. Execute the third-party name scrub,
-  apply the path purge as ONE history rewrite, clear whatever else surfaces,
-  then FLIP. The name scrub is blocker 5 of 5 and the sole reason the flip is
-  currently NO-GO (docs/PUBLIC_FLIP_GO_NO_GO.md, written 2026-09-07).
-  Update that document's verdict as the last step before flipping, and do not
-  flip while any of its five "Conditions for a GO" is unmet.
+THE REPO IS STILL PRIVATE. The 2026-09-07 flip did NOT happen. Probe it before
+  believing anything, including this file:
+    gh repo view Remus3/Amberstone --json visibility
+  An earlier revision of docs/PUBLIC_FLIP_GO_NO_GO.md claimed the flip HAD
+  happened and was committed and pushed while the repo was private. It was
+  written ahead of the act. Retracted in 3865c7e34. The rule it earned, which
+  this session broke in three separate documents: probe the thing, THEN write
+  the verdict.
 
-ALSO IN SCOPE - parameterise the hardcoded account name (Sibling-D OPS-38,
-  their commit 2e567145a, read it in C:/Sibling-D). Their operator ruled
-  the same way and the reasoning transfers directly:
-  - The account name is the Windows BUILT-IN one, so this is NOT an
-    identifying leak and should not be reported as one.
-  - The real cost is worse: **a hook command naming an interpreter under one
-    account is a hook that does not run under another, and a hook that does
-    not run reports NOTHING.** Silent non-execution is the failure mode this
-    repo fears most.
-  - RC exposure MEASURED 2026-09-07: 423 occurrences of `Users\Administrator`
-    across tracked content in 20+ files, and - importantly - the two
-    UserPromptSubmit hook commands added this session in .claude/settings.json
-    both name an absolute interpreter path. tools/rc_facts.py:19 is tracked
-    and carries one in its docstring.
-  - LL's guard shape is the part to copy, and it was arrived at by refutation:
-    match the SHAPE of any home directory under ANY account name, not this
-    machine's account name - a guard that only knows this account passes
-    cleanly the day someone commits a path under a different one.
-  - LL deliberately did NOT rewrite five historical lines (append-only ledger,
-    plus records whose quoted path IS the evidence); they pinned them by COUNT
-    instead so a NEW occurrence reddens while the record stays intact. Do the
-    same here rather than editing docs/LEDGER.md.
-  - tools/moon_sync_poller.py already resolves its state dir from
-    %LOCALAPPDATA% at runtime and has a test asserting no home path is baked
-    in - use it as the pattern, not as evidence the repo is clean.
+Task: **Finish taking Remus3/Amberstone public.** Six steps, in this order.
+  1. Re-run the history rewrite from a FRESH mirror clone against the CORRECTED
+     rules. Driver and pipeline are in the prior session's scratchpad
+     (rewrite_history.py, scrub_pipeline.py, scratchpad/rules_*.tsv, converge.py).
+     **Do NOT reuse C:/rc-purge-staging/rc3.git** - it predates the rule
+     correction. Run converge.py FIRST and require "not-a-fixed-point: 0", or
+     the rewrite silently re-edits files after they were reviewed and tested.
+  2. Verify by DUMPING every reachable object and grepping it:
+       git rev-list --objects --all | awk '{print $1}' | git cat-file --batch --buffer > dump.bin
+       grep -aoiE "<all in-scope names>" dump.bin | sort | uniq -c
+     The dump takes 12-27 seconds. Expect ZERO hits outside ops/loop/slots.py,
+     which is deliberately skipped (byte-pinned cross-repo contract,
+     operator-cleared). Do NOT write a Python `cat-file --batch`
+     request/response loop - two of them deadlocked at CPU 0 with no output and
+     read as "still running".
+  3. Remap SHA citations with tools/rewrite_sha_citations.py --require-backticks
+     against the single commit-map from that run; accept the dropped ones in
+     writing.
+  4. DELETE and RECREATE Remus3/Amberstone under the same name, push only the
+     rewritten history, restore metadata verbatim from the captured
+     repo_metadata.json (description, homepage, 19 topics, issues/wiki/projects
+     flags), re-cut lane branches.
+  5. Re-apply the four carryover commits saved as patches under carryover/
+     (0001..0004) in the prior session's scratchpad.
+  6. Probe visibility, THEN write the verdict into docs/PUBLIC_FLIP_GO_NO_GO.md.
 
-Context:
-  - docs/PRE_RELEASE_NAME_SCRUB.md UNDERSTATES ITSELF ON BOTH HALVES. It
-    claims the competitor name is already scrubbed from tracked content.
-    MEASURED 2026-09-07: 129 files, 34757 occurrences. Correct that doc's
-    own status lines to measured values as part of the work.
-  - Three findings make it more than a count: the name is in a tracked
-    FILENAME (scripts/parse_external_arena.py); it appears 262 times as
-    `_sources` provenance URLs in data/meta_build/arena_champion_builds.json
-    which is LIVE-READ by coaches/_arena_item_advisor.py:27,77,
-    core/precomputed_anvil_advisor.py:27 and
-    dashboard/_deterministic_coaching.py:1470; and it is in
-    data/meta/tft_set16_meta.json in the INITIAL COMMIT's tree, so all 5132
-    commits carry it and a message-only rewrite misses every one.
-  - Commit MESSAGES carrying it: 9, not the 5 the plan claims.
-  - Other in-scope names still in the tree (file counts): aggregator C 73,
-    aggregator A 71, aggregator B 65, overlay platform M 62, aggregator D 58, overlay app F 41,
-    overlay app E 35, aggregator G 33, aggregator H 20, draft tool L 19, plus five
-    sibling-project references. Scope-OUT stays: DDragon, CommunityDragon,
-    Meraki, the LoL wiki, Riot API / Match-V5, lolmath, 101.qq.
-  - THE PATH PURGE IS ALREADY PROVEN. Isolated mirror clone at
-    C:/rc-purge-staging/rc.git, dropping config/vision_token.txt,
-    data/meta_build/refresh_2026-05-02/, Share/, and the six
-    data/daemon_slayer/*/mayhem_augment_stats.json. Verified: all four at 0
-    commits, live data intact. Re-run it against CURRENT main rather than
-    reusing that clone - main has moved 12 commits since.
-  - tools/rewrite_sha_citations.py is BUILT AND TESTED (14 tests). Against a
-    real commit-map it gave 1856 remapped / 25 dropped / 0 ambiguous. The
-    repo cites 7096 SHAs across tracked markdown. Use --require-backticks.
-  - Backup bundle, verified complete:
-    C:/ClaudeBackup_20260906/rc-pre-purge-20260907-012420.bundle
-    Make a FRESH one before rewriting; that one predates 12 commits.
+WHY DELETE-AND-RECREATE RATHER THAN FORCE-PUSH: refs/pull/N/head is PERMANENT, a
+  rewrite never touches it, GitHub will not let an owner delete a PR and does not
+  GC those refs. MEASURED: 13 PR refs, and pr/13's tree alone still carries 120
+  scraped-HTML files, the six vendor snapshots, an account roster and
+  config/vision_token.txt at its pre-rotation value. Purging main leaves all of
+  it one `git fetch` away. Five verified bundles plus a LOCAL-ONLY bundle of the
+  PR refs are in C:/ClaudeBackup_20260906/. NEVER push that last one anywhere.
 
-Acceptance:
-  - `git grep -il <each in-scope name>` over tracked content -> empty, and
-    `git log --all --format=%B | grep -i <name>` -> empty.
-  - The live-read provenance rows are handled WITHOUT breaking the four
-    modules that read that file - decide replace-vs-strip deliberately.
-  - Path purge applied to the live repo, force-pushed (operator
-    pre-authorised in the scrub plan; re-confirm at execution), lane
-    branches re-cut, the 25 dropped citations accepted in writing.
-  - a stray cross-project scaffold branch DELETED - its branch NAME is
-    itself a cross-project leak.
-  - Both suites green from the repo root, measured fresh.
-  - docs/PUBLIC_FLIP_GO_NO_GO.md updated with the new verdict.
+DO NOT REDO - shipped and pushed this session:
+  - The tracked-content scrub (names, descriptors, 9 doc + 4 module renames). Do
+    not re-open the descriptor scheme; it exists because many lines COMPARE six
+    or seven products and one generic word destroys the comparison.
+  - Personal data extraction into four gitignored configs with tracked .example
+    shapes: config/operator_identity.json, config/external_sources.json,
+    ops/moon_sync_repos.json, data/{replay_roster,ladder_role_mains}.json.
+    A fresh clone has NONE of these and every one degrades SILENTLY.
+  - Both operator decisions: author email NOT published (mailmap in the rewrite);
+    Arena augment recommender ships degraded, because the reader already fetches
+    and already degrades to an empty prior table.
+  - Cross-project references are operator-cleared as acceptable. slots.py naming
+    two siblings is DELIBERATE - do not file it as a leak.
+  - slots.py re-pinned to 71fa2a68... - all three carriers hash equal, CLOSED.
 
-Do NOT redo:
-  - Share/ removal is DONE and merged (d76004025). tools/ds_share_sync.py,
-    tools/gist_share_sync.py and the post-commit gist hook no longer exist.
-  - Licence is CLOSED (2ff47493b). Apache-2.0 is kept BYTE-PURE with the
-    scope block AFTER the terms deliberately - a leading preamble can defeat
-    GitHub licence detection. NOTICE carries the data sources. Do not
-    "tidy" either into the other.
-  - Inbox watcher (4 defects) and the shared cross-repo poller are shipped
-    and running as RC-MoonSyncPoller. The ladder (5min/30min/4h/12h at idle
-    0/20m/4h/24h) was retuned on operator instruction - do not re-tune it.
-  - Do NOT purge data/meta_build/ wholesale. Only refresh_2026-05-02/ is
-    scraped; the rest is live and read by 11 modules including
-    lcu/lcu_client.py, core/rune_wpa.py and all three coaches.
-  - Do NOT run filter-repo directly on the live repo while worktrees are
-    checked out - it rewrites every ref and orphans all of them.
-  - CodSpeed is deleted deliberately. winmutex 0b112a4f / slots 629c3d51
-    are pinned across carriers.
+TRAPS THIS SESSION PAID FOR, all measured:
+  - A rules table must be MEASURED against the corpus, never reasoned about. The
+    hand-written casing list missed SIBLING-B; 101 distinct casings exist.
+  - `Sibling-C` as a bare literal matched inside "empowered moon" and "gitignored
+    moon" and corrupted ops/loop/config.json. Only that family needs anchoring -
+    aggregator J, a sibling game project and a peer maintainer were MEASURED clean and must NOT be anchored.
+  - NEVER write a regex through a Bash heredoc. Backslash-b became a 0x08
+    BACKSPACE byte, so the rule matched a literal backspace and was silently
+    INERT rather than anchored, and it looked correct in every listing.
+  - Hyphen-vs-underscore is a property of what the file said BEFORE the scrub,
+    not of the token. A blanket rule in either direction breaks something.
+  - A guard that enumerates the DISK passes where the file exists and fails
+    everywhere else. Two fired in opposite directions on the same day.
+  - grep -c silently overrides -o. A "DANGEROUS" verdict came from that, not
+    from the data.
 
-Open operator decisions (both named in the go/no-go, neither is mine):
-  1. Publish the author email carried in all 5132 commit author fields?
-  2. Does the Arena augment recommender ship with degraded priors once the
-     Overlay App E snapshots are purged, or does it get a replacement source?
-     Reader is core/augment_external_source.py:199, reached by f-string.
+Cross-repo: 7 UNREAD notes at wrap, deliberately deferred rather than
+  interleaved into a half-finished rewrite. Read moon_sync_inbox/ INCLUDING
+  subdirectories, then: python tools/rc_facts.py --mark-inbox-seen
 
-Residue worth one cheap fix: 10 of 15 root-walking guards in tests/ have no
-  worktree exclusion (bare ROOT.rglob). Only 2 fired this session, when the
-  merged agent worktree was still on disk inside the repo; the other 8 are
-  latent and will fire whenever a worktree agent exists, which is the
-  default session shape. A shared exclusion helper closes all 10.
-
-Cross-repo: 4 unread notes at wrap (LW x2, CS, LL) - all on the watcher
-  round. CS found a paragraph DEFENDING the name key whose central claim was
-  inverted; RC found and corrected its own stale rationale in 91660760a.
-  Reserved-slot round is unblocked: CS took key `cs`, RSC confirmed `rsc`,
-  LL adopted charter v4.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES
-  + git log, then read moon_sync_inbox/ INCLUDING subdirectories.
-
-CI STATUS AT WRAP - UNVERIFIED, read this before assuming green:
-  The last ci run (34092179089, hook fix f4293a88b) concluded CANCELLED,
-  superseded by two later docs-only pushes that ci.yml path-ignores. So
-  .githooks/post-commit (the fourth LFS hook) is verified LOCALLY - the CI
-  condition was reproduced by recreating .git/hooks/post-commit and the
-  orphan check came back clean, 47 drift_guard tests pass - but has NO CI
-  confirmation. The first code push next session will produce one; check it.
-  docs-guards IS green (34092251616).
-  Note gh run watch --exit-status returned 0 on that cancelled run. Read
-  .conclusion, never the exit code (reference_gh_run_watch_zero_on_cancelled).
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+  git log, then read docs/PUBLIC_FLIP_GO_NO_GO.md "State at wrap".
