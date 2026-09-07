@@ -118,18 +118,20 @@ construction. Never compute the frozen set from headers.
 
 ### 4. The cross-repo byte-identical pair - never edit either
 
-`ops/loop/slots.py` and `ops/loop/winmutex.py` are **BYTE-IDENTICAL-BY-CONTRACT** with the copies in `C:\Sibling-A`. Verified on disk:
+`ops/loop/slots.py` and `ops/loop/winmutex.py` are **BYTE-IDENTICAL-BY-CONTRACT** with the copies in `C:\Sibling-A` (a REAL SPACE since 2026-09-06; the GitHub repo keeps the hyphen as `the Sibling-A repo`, so the two spellings differ on purpose). Verified on disk:
 
-- `tests/test_loop_concurrency.py:425-431` pins `SHARED_SHA256` - `slots.py` at `95077a62...5054f9` (unchanged since the 2026-07-26 sync), `winmutex.py` at
-  `f1b4b011...e8b4f4`. `:434-446` asserts it, and the failure message is the instruction: "If this change is intended, re-sync BOTH trees and re-pin on BOTH sides in
-  the same round - do not just update this constant."
-- `:46-56` is the sibling-tree byte comparison, and it `pytest.skip`s when the Sibling-A tree is absent - which is every CI runner. **That is why the pinned digest
-  exists**: without it CI is blind to cross-repo drift and goes green-by-skip. A skipped test is a green tick.
-- `:419-424` records that the pin block is itself byte-identical with the LW copy, modulo the repo name in its prose.
+- `tests/test_loop_concurrency.py:432-457` pins `SHARED_SHA256` - `slots.py` at `1c4f8af4...58c492` (re-pinned 2026-09-06 when Sibling-B replaced the archived Red
+  Moon on line 5 of the docstring; LW authored those bytes), `winmutex.py` at `f1b4b011...e8b4f4` (unchanged since 2026-07-26). `:460-472` asserts it, and the failure
+  message is the instruction: "If this change is intended, re-sync BOTH trees and re-pin on BOTH sides in the same round - do not just update this constant."
+- `:53-63` is the sibling-tree byte comparison, and it `pytest.skip`s when the Sibling-A tree is absent - which is every CI runner. **That is why the pinned digest
+  exists**: without it CI is blind to cross-repo drift and goes green-by-skip. A skipped test is a green tick. **It skipped on Legion too** from LW's 2026-09-06 root
+  rename until the constant was corrected the same day - the guard was pointing at a directory that no longer existed and said nothing. Line numbers in this section go
+  stale on any edit to that file; anchor on the SYMBOL name and re-derive them before citing.
+- `:429-431` records that the pin block is itself byte-identical with the LW copy, modulo the repo name in its prose.
 
 **Re-pinning is a JOINT act. Never regenerate the digests from local disk.** Both trees hashing equal IS the acceptance - not a note claiming it, not a commit message
 asserting it, not a subagent reporting it. A refactor touching these two files is out of scope for a solo headless lane however clean it looks: a divergence here is not
-a merge conflict anyone notices, it is a silent concurrency bug in which both loops believe they hold the only slot (`tests/test_loop_concurrency.py:48-49`).
+a merge conflict anyone notices, it is a silent concurrency bug in which both loops believe they hold the only slot (`tests/test_loop_concurrency.py:55-56`).
 
 ### 5. "Outsider-clean", and the hygiene surface that already exists
 
