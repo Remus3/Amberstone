@@ -263,9 +263,7 @@ def main() -> int:
         inbox = _ROOT / "moon_sync_inbox"
         seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
         if inbox.is_dir():
-            names = {p.name for p in inbox.iterdir()
-                     if p.is_file() and p.suffix.lower() == ".md"
-                     and not p.name.startswith("_")}
+            names = _inbox_entries(inbox)
             try:
                 seen = set(json.loads(seen_path.read_text(encoding="utf-8")).get("seen", []))
             except (OSError, ValueError):
@@ -293,6 +291,41 @@ def main() -> int:
     return 0
 
 
+def _inbox_entries(inbox: Path) -> set[str]:
+    """Every unit of inbound mail, INCLUDING subdirectory payloads.
+
+    WIDENED 2026-09-06 (operator directive: review the inbox AND its
+    subdirectories). The original scan was top-level `*.md` only, and it missed
+    two whole classes:
+
+      * SUBDIRECTORY payloads. Siblings send verbatim source under
+        `from-<CODE>-verbatim/`, which is a convention RC itself introduced -
+        and RC's own watcher could not see it. Sibling-E sent 70 files that way
+        and RC never reported one of them. RC asked four repos to reciprocate in
+        a shape its own watcher was blind to.
+      * Top-level files that are not `.md`.
+
+    A directory payload is ONE entry, not N. Listing 70 files as 70 unread notes
+    buries the five real notes beside them, and the unit a reader acts on is the
+    payload, not each file in it. The entry carries the file count so a payload
+    that GROWS is not silently equal to the one already acknowledged.
+
+    `_`-prefixed names stay excluded: those are drafts staged in the inbox.
+    """
+    if not inbox.is_dir():
+        return set()
+    out: set[str] = set()
+    for p in sorted(inbox.iterdir()):
+        if p.name.startswith("_"):
+            continue
+        if p.is_dir():
+            n = sum(1 for _ in p.rglob("*") if _.is_file())
+            out.add(f"{p.name}/ ({n} files)")
+        elif p.is_file():
+            out.add(p.name)
+    return out
+
+
 def mark_inbox_seen() -> int:
     """Record every current inbox note as seen. Idempotent.
 
@@ -303,9 +336,7 @@ def mark_inbox_seen() -> int:
     """
     inbox = _ROOT / "moon_sync_inbox"
     seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
-    names = sorted(p.name for p in inbox.iterdir()
-                   if p.is_file() and p.suffix.lower() == ".md"
-                   and not p.name.startswith("_")) if inbox.is_dir() else []
+    names = sorted(_inbox_entries(inbox)) if inbox.is_dir() else []
     seen_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = seen_path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps({"seen": names}, indent=2), encoding="utf-8")
