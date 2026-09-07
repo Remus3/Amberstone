@@ -57,7 +57,8 @@ move anything, and neither owes RC a renumber.
 **COLLISION FOUND AND CLEARED 2026-08-29, and it is the rule below proving
 itself.** Sibling-E allocated itself 8900-8911 with a dashboard on 8901 - a
 band wholly inside Sibling-A's block, whose 8900 and 8901 are LW's
-RUNDASH and MONITOR (`C:/Sibling-A/tools/lw_ports.py`). It was found by
+RUNDASH and MONITOR (`C:/Sibling-A/tools/lw_ports.py` - the local root
+gained a real space on 2026-09-06; the GitHub repo keeps the hyphen). It was found by
 reading SOURCE: CS's `BOOTSTRAP.md` recorded "8900-8911 all free and unbound on
 this machine" and its `config/ports.json` said "verified free at allocation
 time", which is exactly the listener-scan method this next paragraph refutes -

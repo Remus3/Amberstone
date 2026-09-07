@@ -25,6 +25,13 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
+# The LW local root carries a REAL SPACE as of 2026-09-06 (LW commit 81de837);
+# the GitHub repo stays the Sibling-A repo with a hyphen because a repo
+# name cannot hold a space, so the two spellings differ on purpose. Do not
+# "correct" either. This constant is a FILESYSTEM PATH, so it takes the space -
+# and it is load-bearing: every cross-repo guard below skips when it misses, so
+# a wrong value here surfaces as 3 SKIPs (2 in the byte-identity parametrize, 1
+# in the lane-count test) that read as green. Measured: 25 passed, 3 skipped.
 LW_ROOT = Path(r"C:\Sibling-A")
 
 
@@ -420,8 +427,8 @@ def test_posix_no_op_lets_a_second_caller_in_while_the_first_holds(monkeypatch):
 # and only then write the new digest here and in LW's copy in the same round.
 #
 # This block is itself byte-identical with the LW copy in
-# C:\Sibling-A\tests\test_loop_concurrency.py, modulo the repo name in the
-# prose above. Keep it that way.
+# C:\Sibling-A\tests\test_loop_concurrency.py, modulo the repo name in
+# the prose above. Keep it that way.
 SHARED_SHA256 = {
     # re-pinned 2026-08-01: the module docstring named TWO repos and there are
     # now three (Sibling-C joined the bucket and vendored this file byte-identical

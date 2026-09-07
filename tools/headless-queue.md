@@ -271,7 +271,7 @@ An operator message mid-cycle is an interrupt: finish the in-flight row, never a
 - Do NOT open `AskUserQuestion`. The operator is away; a blocked lane is a dead lane. Pick the reasonable default, log it, proceed.
 - Do NOT skip the recall gate, and do NOT treat a recall-closed row as a wasted cycle - it is a completed one.
 - Do NOT edit a frozen file (`CLAUDE.md:41-46`) without an adjudicating agent that did not author the change, plus explicit operator approval, tests and CI green. RM-358 and RM-366 are the live cases.
-- Do NOT edit `ops/loop/slots.py` or `ops/loop/winmutex.py`, and NEVER regenerate `SHARED_SHA256` (`tests/test_loop_concurrency.py:425`) from local disk to make a test pass. They are BYTE-IDENTICAL-BY-CONTRACT with `C:\Sibling-A`; re-pinning is a JOINT act and both trees hashing equal IS the acceptance.
+- Do NOT edit `ops/loop/slots.py` or `ops/loop/winmutex.py`, and NEVER regenerate `SHARED_SHA256` (`tests/test_loop_concurrency.py:432`) from local disk to make a test pass. They are BYTE-IDENTICAL-BY-CONTRACT with `C:\Sibling-A`; re-pinning is a JOINT act and both trees hashing equal IS the acceptance.
 - Do NOT close a row by substitution - answering the compute half of a question that asks whether something renders or sends.
 - Do NOT trust a subagent's test counts, green-CI claim or file-existence claim without an independent probe.
 - Do NOT ship a fix without mutation-testing its regression test, and do NOT ship a hardening fix without repairing the already-bad state.
