@@ -35,8 +35,8 @@ Read `git log --oneline` rather than trusting any list below.
 1. **CI IS BLIND FOR THE LAST RUN'S COMMITS, AND IT IS NOT A REPO FAULT.**
    GitHub Actions was in a MAJOR OUTAGE from 2026-08-06 15:22:49 UTC (impact
    critical, webhook delivery delays), so six pushed commits created ZERO
-   workflow runs: `a8515a98`, `71f172aa`, `eba815e5`, `c5f1e4c8`, `8f417bc3`,
-   `e8802e21`. `gh run list` just shows the previous day and reads exactly like
+   workflow runs: `53bd3bb1`, `e97cefec`, `ab9b2b18`, `fe1628e2`, `d90f8a16`,
+   `48c3cfce`. `gh run list` just shows the previous day and reads exactly like
    a broken trigger. **ALREADY RULED OUT, do not re-probe:** Actions enabled
    (`actions/permissions` -> `enabled true`, allowed all), all 3 workflows
    `state=active`, `ci.yml` `paths-ignore` is `**/*.md` ONLY while every push
@@ -54,14 +54,14 @@ Read `git log --oneline` rather than trusting any list below.
    `^Co-Authored-By: Claude` per operator policy 2026-06-03. Deletion, not
    rejection, which is why it reads as an authoring omission. Last run this cost
    real work: 3 slice prompts told agents to add it, TWO verifier passes
-   returned REFUTE on it as a real finding, and two merge bodies (`a8515a98`,
-   `71f172aa`) contain sentences asserting they carry a trailer the hook then
+   returned REFUTE on it as a real finding, and two merge bodies (`53bd3bb1`,
+   `e97cefec`) contain sentences asserting they carry a trailer the hook then
    removed - those sentences are WRONG and are left in history rather than
    rewritten. Audit with an ANCHORED predicate: `grep -ci 'Co-Authored-By'`
    returns 1 for two commits that do NOT carry it, matching prose ABOUT the
    trailer. Read the message TAIL. Now also a CLAUDE.md hard rule.
 3. **THE ARENA LANING TABLE IS ROOT-CAUSED AND FIXED, BUT THE DATA IS STILL
-   CORRUPT.** RM-158 closed its code half at `a8515a98`:
+   CORRUPT.** RM-158 closed its code half at `53bd3bb1`:
    `core/lead_projection.py` registered gold-income rates for SR and ARAM only,
    so `gold_income_per_min("ARENA")` fell through to a default byte-identical to
    the SR rate (450.0). At schema v3 (itemless) that was ARENA's LAST
@@ -98,14 +98,14 @@ Read `git log --oneline` rather than trusting any list below.
 
 ## CONTEXT
 
-HEAD `9caf47ae`. **ENGINE_VERSION 1.275.3**
+HEAD `b12f3291`. **ENGINE_VERSION 1.275.3**
 (`agents/daemon_slayer/__init__.py:18`) - BUMPED THREE TIMES on 2026-08-08,
 patch 16.15.1, DS `:8860` bounced and serving 1.275.3 (probed, not assumed).
-The lane-6 DS run landed `fb751846` (RM-176: the `_recharge_to` charge-remainder
+The lane-6 DS run landed `e4260948` (RM-176: the `_recharge_to` charge-remainder
 discard plus the extra-shot effect-crit basis, both opt-in paths) and
-`6a407b0e` (RM-177: heal-and-shield-power composes ADDITIVELY - the one
+`1c1291ea` (RM-177: heal-and-shield-power composes ADDITIVELY - the one
 DELIBERATE default-output move, `/api/spike-curve` amp 1.3552 -> 1.3200).
-The third bump is `367b54e7` (Obsidian Cleaver Carve four patches stale,
+The third bump is `a757eae4` (Obsidian Cleaver Carve four patches stale,
 0.35 -> 0.30). Detail: LEDGER 1231-1232 and 1233-1236.
 
 ## ACCEPTANCE
@@ -197,7 +197,7 @@ The third bump is `367b54e7` (Obsidian Cleaver Carve four patches stale,
    DATA is still corrupt (item 3 in READ THIS FIRST), so a native arena gate
    number is still not obtainable.
 6. **RM-166** - `web/js/panels/last_match.js:385` holds a SECOND copy of the
-   `(5, 50)` baseline clamp bounds. Pre-existing (`3af26533`, 2026-05-16), a
+   `(5, 50)` baseline clamp bounds. Pre-existing (`ecb5c630`, 2026-05-16), a
    different language so no Python extraction could single-source it, and the
    server clamp is authoritative - but a real future-divergence site.
 7. Two sub-degrades in `dashboard/builders_last_match.py` return `found=True`

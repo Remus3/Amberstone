@@ -27,7 +27,7 @@ next interactive session, per the audit-before-ship ritual.
   safely buildable headless; the in-game overlay portions (D/E/F below) are
   visual/interactive and are deferred to the audit session.
 
-## SHIPPED this run - item 4 Slice 1 (commit `409f0915`)
+## SHIPPED this run - item 4 Slice 1 (commit `ee2db2ff`)
 
 Out-of-game Settings menu (`web/index.html` `#settings-body`), Sections A/B/C
 of `docs/specs/2026-07-11-overlay-item4-client-settings-reorg-design.md`:

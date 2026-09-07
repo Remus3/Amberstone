@@ -6,7 +6,7 @@ this session's pending work at the bottom.
 
 ## Progress log
 
-- **2026-07-04 - slice 1 SHIPPED (`f5939253`, LEDGER 775):** ARAM deterministic
+- **2026-07-04 - slice 1 SHIPPED (`15c16edc`, LEDGER 775):** ARAM deterministic
   coach `choices` A/B made shadow-measurable. build_block gained a 7th `choices`
   key (reusing core/coach_choices.synthesize_simple_choices, shape-identical to
   the served chip UI) + the shadow comparator now captures it on both columns.
@@ -16,7 +16,7 @@ this session's pending work at the bottom.
   item_extra/objective gaps, then Arena's remaining Haiku (LEDGER 763 built its
   deterministic block) + the CV vision atlas.
 
-- **2026-07-04 - slice 2 SHIPPED (`20962f03`, LEDGER 776):** tools/aram_shadow_report.py -
+- **2026-07-04 - slice 2 SHIPPED (`4da842ad`, LEDGER 776):** tools/aram_shadow_report.py -
   the ARAM flip-readiness report (READ-ONLY sibling of tools/hz_shadow_report.py). First live
   reading over the 948-row shadow log: action agreement 74% (>=70% gate nominally MET) but
   choices coverage ~1% - the deterministic ACTION verdict already tracks Haiku, the choices

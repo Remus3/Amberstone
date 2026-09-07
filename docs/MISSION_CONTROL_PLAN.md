@@ -228,9 +228,9 @@ Source: Cloud Four, "Truth, Lies and Progress Bars"; AI UX Design Guide,
 | S2 | `/api/loop-control` extended with idempotency keys + `fire_lane` / `queue_intent` actions; refuse-not-queue semantics; tests | low | unit tests, no UI yet |
 | S3 | Shortcuts 1 + 2 end to end - the two that cannot spawn a lane | medium | SHIPPED 2026-07-30 - live-confirmed STOP + Desktop prompt file |
 | S4 | Dashboard panel wired to real `/api/loop-status`, read-only first | low | SHIPPED 2026-07-31 - see "S4 as shipped" |
-| S5 | Shortcut 3 - existing headless command, first real lane fire | medium | SHIPPED 2026-07-31 `6003b244` |
-| S6 | Commands 4, 5, 6 authored + wired | medium | SHIPPED 2026-07-31 `992a5a6c` |
-| S7 | Steer channel - NOTE and STEER tiers only | medium | SHIPPED 2026-07-31 `992a5a6c` |
+| S5 | Shortcut 3 - existing headless command, first real lane fire | medium | SHIPPED 2026-07-31 `583c3430` |
+| S6 | Commands 4, 5, 6 authored + wired | medium | SHIPPED 2026-07-31 `1153924e` |
+| S7 | Steer channel - NOTE and STEER tiers only | medium | SHIPPED 2026-07-31 `1153924e` |
 | S8 | Commands 7, 8 - highest blast radius, worktree-first, frozen-file adjudicator | HIGH | SHIPPED 2026-07-31 - see "S8-S9 as shipped" |
 | S9 | INTERRUPT tier | HIGH | SHIPPED 2026-07-31 - see "S8-S9 as shipped" |
 | S10 | DECOUPLE - Mission Control off the RC dashboard, own process + port, reachable by IP | HIGH | OPEN - operator-requested 2026-07-31, see "S10" |

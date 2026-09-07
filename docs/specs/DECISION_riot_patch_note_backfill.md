@@ -188,7 +188,7 @@ wiki, right now  : b1 = 50, b2 = 82
 The wiki already holds the post-patch absolute values, for the exact champion the patch-note
 path cannot anchor. The patch note gives a delta with no baseline; the wiki gives the answer.
 
-This is not theoretical for RC. `tools/ds_wiki_staleness_check.py` (shipped `2dddff04`) already
+This is not theoretical for RC. `tools/ds_wiki_staleness_check.py` (shipped `dddbbdfa`) already
 fetched **754 wiki pages across 171 champions in one run** and produced
 `data/daemon_slayer/16.14.1/ability_staleness.json` containing 75 stale champions with correct
 live values, e.g. `Ahri Q base:Damage Per Pass meraki [40,140] vs wiki [35,135]`. The wiki side
@@ -278,7 +278,7 @@ matters.
 | Machine-readable contract | None, free-text labels | Yes, `{{#vardefine}}` params |
 | Mapping table needed | 558 labels, 82% singletons, grows forever | Existing param names |
 | Error mode | Silent compounding across 23 replays | Per-page, self-correcting on refetch |
-| Already working in RC | No | **Yes - 754 pages / 171 champs, shipped `2dddff04`** |
+| Already working in RC | No | **Yes - 754 pages / 171 champs, shipped `dddbbdfa`** |
 | Build cost | ~8-10 sessions | ~3 sessions |
 
 The clinching point is that Meraki's `champions.json` is *itself generated from the LoL wiki* by
