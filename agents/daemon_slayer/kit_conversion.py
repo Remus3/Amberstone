@@ -54,7 +54,7 @@ Stridebreaker's real justification is Halting Slash's engage slow, for which no
 objective contains a term) and Pantheon's Heartsteel leaving #3 (pure HP, which
 is ON-AXIS for the bruiser objective, so its exposure is zero on every channel).
 
-Self-contained: no ``core`` import, so the Share mirror stays standalone
+Self-contained: no ``core`` import, so the engine package stays standalone
 (the ``hybrid.py:69`` rule).
 """
 

@@ -52,8 +52,8 @@ COMPANION GATES - EACH ONE READS AS A FALSE NEGATIVE IF MISSED
 
 LIVE: these hit the running DS server on :8860 through the real client, which
 is the whole point - an in-process engine call would prove nothing about gate 3.
-Skipped when the engine is down. Host-dependent (imports ``core.*``), so it is
-registered in ``tools/ds_share_sync._HOST_DEPENDENT_TESTS``.
+Skipped when the engine is down. Host-dependent: it imports ``core.*``, so it
+does not stand alone against the DS package by itself.
 """
 from __future__ import annotations
 
@@ -86,11 +86,10 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         # RM-119 B2 (2026-08-06): routed through the shared gate, so
         # RC_REQUIRE_DS_ENGINE=1 turns a down engine into a failure here
-        # instead of a green skip. This module is already registered in
-        # tools/ds_share_sync._HOST_DEPENDENT_TESTS and is NOT copied into
-        # Share/src (it imports core.daemon_slayer_client at module level), so
-        # importing a tests/ helper costs the shipped package nothing. The
-        # eleven stdlib-only DS-tree gates cannot do this and stay class-wide.
+        # instead of a green skip. This module is host-dependent already - it
+        # imports core.daemon_slayer_client at module level - so reaching for
+        # a tests/ helper costs it nothing. The eleven stdlib-only DS-tree
+        # gates cannot do this and stay class-wide.
         from tests.test_ds_live_route_gate import require_live_engine
         require_live_engine("the RM-115 EHP family seam reachability class",
                             up=dsc.is_engine_up(timeout=2.0))

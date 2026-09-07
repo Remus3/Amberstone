@@ -29,17 +29,6 @@ _HERE = Path(__file__).resolve()
 _PKG = _HERE.parent.parent
 _CHANGELOG = _PKG / "CHANGELOG.md"
 
-# This file is auto-mirrored into Share/src by the precommit Share sync, but the
-# Share package deliberately does NOT vendor the engine changelog - it ships its
-# own Share/CHANGELOG.md release notes instead. So in the mirror the file is
-# legitimately absent and the whole class is skipped. The discriminator is the
-# mirror SENTINEL, not the file's absence: keying on absence would let a genuinely
-# deleted CHANGELOG.md silently skip in the main tree, which is the exact failure
-# this guard exists to catch.
-_IS_SHARE_MIRROR = any(
-    (p / "SHARE_MIRROR").is_file() for p in _HERE.parents
-)
-
 # An entry STARTS A PARAGRAPH with an engine semver followed by " (".
 #
 # Both halves of this pattern are load-bearing and were arrived at by measurement,
@@ -64,8 +53,6 @@ def _engine_version() -> str:
     return m.group(1)
 
 
-@unittest.skipIf(_IS_SHARE_MIRROR,
-                 "Share/src does not vendor the engine CHANGELOG.md by design")
 class ChangelogTracksEngineVersionTests(unittest.TestCase):
 
     def test_changelog_exists_and_has_entries(self):

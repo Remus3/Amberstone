@@ -56,9 +56,6 @@ class TestShouldWatch:
     def test_logs_skipped(self):
         assert not _should_watch("logs/2026-01-01.log")
 
-    def test_share_dir_skipped(self):
-        assert not _should_watch("Share/src/agents/module.py")
-
     def test_data_dir_skipped(self):
         assert not _should_watch("data/something.py")
 
@@ -117,7 +114,7 @@ class TestSkipDirsAreSegmentAnchored:
 
     def test_nested_skip_dir_skipped_at_any_depth(self):
         assert not _should_watch("core/build_planner/__pycache__/mod.py")
-        assert not _should_watch("agents/daemon_slayer/Share/src/mod.py")
+        assert not _should_watch("agents/daemon_slayer/data/mod.py")
         assert not _should_watch("tools/logs/rotated/old.py")
 
     def test_partial_segment_is_not_a_skip_dir(self):

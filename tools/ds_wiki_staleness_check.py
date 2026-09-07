@@ -87,9 +87,9 @@ _TOL = 1e-2
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _ST_RE = re.compile(r"\{\{\s*st\s*\|", re.IGNORECASE)
 # Deliberately LOCAL rather than the imported `_AP_WRAPPER_RE`, which pins bare
-# `[0-9.]+` endpoints. The extractor that owns that regex is mirrored into
-# Share and feeds the engine, so widening it there would be a Tier-2 change to
-# a data producer; this reader only needs the looser capture for itself.
+# `[0-9.]+` endpoints. The extractor that owns that regex feeds the engine, so
+# widening it there would be a Tier-2 change to a data producer; this reader
+# only needs the looser capture for itself.
 _AP_OPEN_RE = re.compile(r"\{\{\s*ap\s*\|", re.IGNORECASE)
 _TO_SPLIT_RE = re.compile(r"\s+to\s+", re.IGNORECASE)
 # `round=2` / `fd=1` - a RENDERING hint, not a rank (RM-220).

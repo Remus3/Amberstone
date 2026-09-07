@@ -48,8 +48,8 @@ def _norm_augment_key(s: Any) -> str:
     ``name.lower().replace(" ", "")`` shape at
     ``coaches/arena_coach.py:264-272``) rather than inventing a third
     convention. It is re-implemented instead of imported because the
-    ``agents/daemon_slayer`` package is mirrored standalone into
-    ``Share/`` and must not depend on ``core``.
+    ``agents/daemon_slayer`` package is deliberately standalone and must
+    not depend on ``core``.
     """
     return "".join(ch for ch in str(s or "").lower() if ch.isalnum())
 

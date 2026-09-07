@@ -186,7 +186,7 @@ class TestEvictionIsOptIn:
         policy has an enforcement arm, and NOTHING in RC calls it.
         """
         hits = []
-        skip = {"tests", ".git", "docs", "_archive", "Share", "node_modules"}
+        skip = {"tests", ".git", "docs", "_archive", "node_modules"}
         for p in _REPO_ROOT.rglob("*.py"):
             if any(part in skip for part in p.parts):
                 continue

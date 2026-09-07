@@ -335,8 +335,8 @@ class VersionAnchorTests(unittest.TestCase):
     def test_a_release_transition_line_is_history_not_a_stale_anchor(self) -> None:
         """The check excluded historical FILES by name but not historical LINES.
 
-        MEASURED 2026-07-26: `Share/README.md` carries a release-history list
-        whose entries read `- 1.259.0 -> 1.260.0 - <prose>`. That names the old
+        MEASURED 2026-07-26 on a README carrying a release-history list whose
+        entries read `- 1.259.0 -> 1.260.0 - <prose>`. That names the old
         version, so the whole-file scan flagged it - but the line is CORRECT
         history, and the honest fix is a smaller check, not a looser one. A
         `N.N.N -> N.N.N` transition on the line is the marker: it presents the
@@ -370,8 +370,8 @@ class VersionAnchorTests(unittest.TestCase):
         (root / "docs" / "PLAN.md").write_text(
             "# Plan\n\n"
             "## 1b. STATUS as of 2026-08-11\n\n"
-            "Landed this session, all verified green (`ds_share_sync --check`\n"
-            "in sync at engine 1.277.0, 533 files).\n",
+            "Landed this session, all verified green (`gen_archmap --check`\n"
+            "in sync at engine 1.277.0).\n",
             encoding="utf-8",
         )
         self.assertEqual(drift_guard.check_version_anchors(root, "1.277.0"), [])

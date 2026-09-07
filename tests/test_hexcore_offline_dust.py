@@ -26,8 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 HEXCORE = REPO_ROOT / "docs" / "HEXCORE_offline.html"
 
 # The 54 net-new non-test .py files added since d584e02e. Everything under
-# Share/ is excluded (byte mirrors of the repo-root modules) and so is
-# everything under tests/, which is what "non-test" means here.
+# tests/ is excluded, which is what "non-test" means here.
 EXPECTED_NEW_BASENAMES = (
     "_ability_base_overrides.py",
     "_ability_wiki_damage_registry.py",
