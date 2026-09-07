@@ -1,0 +1,55 @@
+Amberstone
+Copyright 2026 Moonbeam
+
+This product includes software developed for the Amberstone project,
+licensed under the Apache License 2.0 (see LICENSE).
+
+===============================================================================
+THIRD-PARTY DATA - NOT COVERED BY THE APACHE LICENSE
+===============================================================================
+
+The Apache License 2.0 covers this project's source code and authored
+documentation. It does NOT cover the data files under `data/`. Those are
+derived from, or supplied by, the third parties listed below and remain
+governed by each party's own terms. No right to redistribute any of it is
+granted, claimed, or implied by this repository.
+
+If you fork or redistribute this repository, the data files are YOUR
+responsibility to clear with the upstream source. The safe default is to
+exclude `data/` and regenerate it from the upstream sources yourself using
+the extractors in `tools/`.
+
+Source by source:
+
+* Riot Data Dragon (DDragon) - champion, item, rune and spell definitions.
+  Supplied by Riot Games. Governed by Riot's terms of service and developer
+  policies.
+
+* CommunityDragon (CDragon) - supplementary game asset and definition data.
+  Community-maintained mirror of Riot game files. Governed by the upstream
+  project's terms and, underneath them, Riot's.
+
+* Meraki Analytics - item passive formulas and champion stat lines.
+  Governed by Meraki Analytics' own terms.
+
+* The Riot-aliased League of Legends wiki (MediaWiki) - ability and formula
+  reference read by the Daemon Slayer sidecar extractor. Governed by that
+  wiki's content licence and by Riot's terms for the underlying game data.
+
+* Riot API / Match-V5 - match, timeline and summoner records retrieved with
+  a personal API key. Governed by Riot's API terms. These records concern
+  identifiable player accounts and are retained locally, not redistributed.
+
+* lolmath - the data chunk from which ARAM balance modifiers are extracted.
+  Governed by the upstream project's terms.
+
+* 101.qq.com - duo-synergy win-rate rows read from an unauthenticated public
+  endpoint. Governed by that operator's terms.
+
+Riot Games trademarks
+---------------------
+Amberstone is not endorsed by Riot Games and does not reflect the views or
+opinions of Riot Games or anyone officially involved in producing or managing
+Riot Games properties. League of Legends and Riot Games are trademarks or
+registered trademarks of Riot Games, Inc. Those marks are used here only to
+identify the game this project reads, and no affiliation is claimed.
