@@ -330,9 +330,13 @@ def test_recorded_spec_figures_still_hold(consts: dict) -> None:
     on purpose, the arms above stay green and only this one goes red, which is
     the signal to update the spec prose rather than to relax the bound.
     """
-    assert _worst_case_cycle_s(consts) == 380
-    assert _two_process_export_cycle_s(consts) == 440
-    assert _refuted_per_call_kill_cycle_s(consts) == 1160
+    # Updated 2026-09-08 with SPAWN_TIMEOUT_S 120 -> 240, which the first dry
+    # cycle MEASURED as too short (it terminated spawn-failed / timeout). This
+    # arm went red exactly as its docstring says it should, and the spec prose
+    # in section 11 was updated in the same commit.
+    assert _worst_case_cycle_s(consts) == 500
+    assert _two_process_export_cycle_s(consts) == 560
+    assert _refuted_per_call_kill_cycle_s(consts) == 1280
     assert _refuted_kill_term_count(consts) == 14
     assert consts["TASK_ETL_S"] == 600
 
