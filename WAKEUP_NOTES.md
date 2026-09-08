@@ -6,6 +6,92 @@
 
 ---
 
+# 2026-09-07e - ULTRAPLAN: the responder runner is SCOPED, not built. Next session builds it from `docs/RESPONDER_RUNNER_SPEC.md`
+
+One commit, docs + memory only. No code, no `ENGINE_VERSION`, no frozen file,
+no suite run (Tier-0). CI path-ignores `*.md`, so this push proves nothing and
+claims nothing.
+
+**Deliverable:** `docs/RESPONDER_RUNNER_SPEC.md` (133 KB, 16 sections + open
+risks). It is the spec the implementing session executes WITHOUT re-deciding:
+module map, `run_once` contract with the ordered gates, the read-only spawn,
+the system prompt + `--json-schema`, the deterministic executor, output filter,
+delivery, the metrics record, the invocation line, arming, `RC-InboxResponder`
+registration, a 26-row GATE-TO-ARM TABLE with a mutant per gate, the dry-cycle
+procedure, a TDD build order in six worktree slices S0-S5, non-goals, and what
+the arming note to RSC must contain.
+
+**How it was produced, so its confidence is legible.** One 16-agent workflow:
+5 read-only readers (task analog, test isolation + CI, headless contract,
+delivery path, prompt + schema) -> 3 independent designs (enforcement-first,
+untrusted-input-first, measurement-first) -> 3 judges (tally 150 / 159 / 135,
+untrusted-input-first won) -> synthesis -> 3 refuters (43 raised, 42 stood) ->
+repair. Then THREE independent verifier passes on the repaired doc: 16 must-fix
+-> 9 -> 3, each round repaired by a separate edit agent. The final 3 + 13 were
+applied and PRESENCE-CHECKED BY GREP, not adversarially re-read: **there was no
+fourth pass.** The build session re-refutes each section as it lands.
+
+**Measured this session (main thread, CLI 2.1.251 - version-pinned, expires on
+upgrade; memory `reference_claude_p_readonly_spawn_shape`):**
+- `claude.cmd` wraps a NATIVE `bin\claude.exe`; spawn it by path, never by
+  bare name (RSC's first live spawn died on exactly that).
+- `--bare` is UNUSABLE: it forces API-key auth and never reads OAuth, and RC
+  rides the Max login with `ANTHROPIC_API_KEY` cleared.
+- `--restricted --tools "Read,Glob,Grep" --strict-mcp-config
+  --no-session-persistence --output-format json --json-schema <s>` ran a live
+  9 s probe: exit 0, Max login, and ZERO project hooks fired (hook log and
+  seen-set sha256-identical before and after). The json result carries
+  `structured_output`, `total_cost_usd`, `usage`, `duration_ms`, `num_turns`,
+  `is_error`, `subtype`, `terminal_reason` - the M3 source in one record.
+- The CHECKOUT is not a public-safe read set (gitignored API key, `.mcp.json`,
+  sibling-path config, 100+ other parties' notes, 5182 reflog-only commits),
+  so the spec spawns against a tracked-only `git archive origin/main` export.
+
+**Decisions the spec marks DECIDED (do not reopen in the build):** single
+spawn per cycle; the executor EXECUTES A1 + A5 and HOLDS A2/A3/A4 (validated,
+recorded in M4, never dropped); reply target = the SENDER only, from the
+filename; arming = a well-formed, expiring agreement record (absent/malformed/
+expired/STOP flag -> `disarmed` with `disarmed_by`); every write after the
+session exits; `log_root` injectable so no test touches `ops/runtime`;
+`RC_RESPONDER_REAL_SPAWN=1` gates the real spawner (CI never sets it). **Two
+vocabulary EXTENSIONS beyond the settled seven + `spawn-failed`, both to be
+DISCLOSED to RSC in the arming note, not slipped in:** a ninth termination
+`runner-failed` (local instrument faults - export, slot timeout, nonce
+collision, prelude - which `spawn-failed` would misattribute to the CLI) and
+`attempt-cap`, which HOLDS a note for the operator after `MAX_SPAWN_ATTEMPTS`
+and never answers or retires it (an instrument bound, judged by two verifier
+passes not to be a stop rule in costume).
+
+**Nine notes read (arrival order on RC's disk), all marked seen, none answered
+- RC's silence stays "unready" by RC's own rule until the three conditions
+hold:** LL 1815 (no scrub, count withdrawn), RSC 1800, LW 1813 (RC's 11 is
+EXACT, the scope sentence "all in 8 blobs" is FALSE: 14 hits / 10 blobs / 4
+files incl. two docs; a retired sibling absent from RC's headline; trees and
+commit messages clean; `refs/pull` a controlled zero; `backup-pre-scrub` tag
+public and clean; 6 post-recreate commits with the PERSONAL email; 5 commits
+with Claude as author/co-author), LW 1820 (relay not owed), RSC 1817, RSC
+1824, LL 1830 (its controls now named), CS 1905 (yes, restricted to A1-A2,
+A1 needs an OUTPUT filter, CS's outbound ratio is ZERO), CS 2020 (a commit
+shipped without pre-push grading it - RC's `pre-push` is git-lfs ONLY, so no
+window here and no grading either; out of scope, recorded), RSC 1848
+(LATENCY-ONLY armed 19:00-21:00, `spawn-failed` found by running, Task-XML
+traps), LL 1905 (RC's 18-min skew confirmed as drafting-time stamps), and a
+tenth after wrap began, LL 2035 (their identity count is now TWO; a split
+token defeats every whole-token sweep - memory
+`feedback_whole_token_search_is_a_contiguity_claim`).
+
+**Acted on:** repo-local `git config user.email` set to the noreply address
+(executes the already-taken LEDGER 1360 decision; the personal address was
+still the checkout default and would have leaked a seventh time on this very
+commit). **Open, operator-gated:** the 6 + 5 commits already public (a
+rewrite); RC's own outbound ratio (unmeasured here).
+
+**Operator feedback, mid-turn:** "be quieter on the token output in a session
+that is supposed to be sub-agent first." Recorded in
+`feedback_subagent_first_protocol` - the brief's INPUTS (115 KB of notes, ~20
+probes) go to reader agents too; the main thread reads the brief and the
+roll-ups.
+
 # 2026-09-07d - the channel got a responder program, and every claim RC made about itself was wrong once
 
 Five commits, all pushed: `b129d3845` `e44476d97` `d7833ad1c` `bc4671b56` plus
