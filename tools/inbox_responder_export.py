@@ -110,13 +110,23 @@ def ensure_export(repo_root, state_root, *, ref: str = "origin/main", runner, ti
         with tarfile.open(fileobj=io.BytesIO(res.stdout), mode="r:") as tar:
             tar.extractall(tmp_dir, filter="data")
         os.rename(tmp_dir, final)
-    except FileExistsError:
+    except OSError as exc:
         # A sibling cycle finished the same sha first. Its rename was atomic,
         # so `final` is complete; drop our copy and use theirs.
+        #
+        # The errno is NOT portable and this is measured, not assumed: renaming
+        # onto an existing non-empty directory raises FileExistsError on
+        # Windows but ENOTEMPTY / ENOTDIR / EEXIST on POSIX depending on the
+        # libc, so catching FileExistsError alone passed on Legion and failed
+        # in Linux CI with `exc:OSError`. Decide on the STATE of `final`, which
+        # is the thing actually being asserted, and re-raise anything else.
+        if not final.is_dir():
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            raise ExportFailed(f"exc:{type(exc).__name__}") from exc
         shutil.rmtree(tmp_dir, ignore_errors=True)
         _prune(export_root, final)
         return final
-    except (OSError, tarfile.TarError, ValueError, EOFError) as exc:
+    except (tarfile.TarError, ValueError, EOFError) as exc:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise ExportFailed(f"exc:{type(exc).__name__}")
 
