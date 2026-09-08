@@ -2916,3 +2916,160 @@ def test_the_flag_branch_never_runs_the_schema_probe():
     assert '"--dry-cycle" in args' in guard
     # The flag-file branch is the one that does NOT set --dry-cycle in argv.
     assert 'dry, scratch = _consume_dry_flag(ROOT)' in src
+
+
+# ---------------------------------------------------------------------------
+# The section 13 dry-cycle report
+#
+# Every arm here drives `main(["--dry-cycle", ...])` with injected stubs and a
+# tmp `log_root`. NOTHING here creates a process: the spawner is a stub, the one
+# process seam the report uses is injected, and a `subprocess.Popen` tripwire
+# inside the procs module proves both. The pinned CLI version is spelled from a
+# literal rather than imported, for the reason the argv arm spells its tail out:
+# an expectation imported from the module it checks cannot fail when that module
+# changes.
+# ---------------------------------------------------------------------------
+
+
+DRY_SHA12 = "0f1e2d3c4b5a"
+DRY_PINNED_CLI = "2.1.251"
+
+
+def _proc(exit_code, stdout=b"") -> ProcResult:
+    return ProcResult(exit_code=exit_code, stdout=stdout, stderr=b"", timed_out=False,
+                      survived_kill=False, kill_skipped=False, wall_ms=3, exc=None)
+
+
+class DryProcs:
+    """The report's process seam: `--version`, `rev-parse` and `check-ignore`."""
+
+    def __init__(self, version=DRY_PINNED_CLI, sha=DRY_SHA12, ignored=()):
+        self.version = version
+        self.sha = sha
+        self.ignored = list(ignored)
+        self.calls: list = []
+
+    def __call__(self, argv, *, cwd, stdin_bytes, timeout_s):
+        argv = list(argv)
+        self.calls.append({"argv": argv, "cwd": cwd, "stdin_bytes": stdin_bytes,
+                           "timeout_s": timeout_s})
+        if "--version" in argv:
+            return _proc(0, f"{self.version} (Claude Code)\n".encode("ascii"))
+        if "rev-parse" in argv:
+            return _proc(0, (self.sha + "aabbccddeeff").encode("ascii"))
+        if "check-ignore" in argv:
+            return _proc(0 if self.ignored else 1, "\n".join(self.ignored).encode("ascii"))
+        return _proc(1, b"")
+
+
+def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, stdout=None):
+    """One `--dry-cycle` invocation against a fake ROOT and four fake siblings."""
+    fake_root = tmp_path / f"dryroot-{label}"
+    (fake_root / "ops" / "runtime").mkdir(parents=True)
+    (fake_root / "moon_sync_inbox").mkdir()
+    bases = {}
+    for code in ("RSC", "SBB", "SBC", "SBD"):
+        base = tmp_path / f"real-{label}-{code}"
+        (base / "moon_sync_inbox").mkdir(parents=True)
+        bases[code] = str(base)
+    (fake_root / "ops" / "moon_sync_repos.json").write_text(
+        json.dumps({"participants": bases}), encoding="ascii")
+    monkeypatch.setattr(runner, "ROOT", fake_root)
+
+    scratch = tmp_path / f"scratch-{label}"
+    export_dir = scratch / "rc" / "ops" / "runtime" / "responder_export" / DRY_SHA12
+    export_dir.mkdir(parents=True)
+    (export_dir / "README.md").write_text("public\n", encoding="ascii")
+
+    created: list = []
+    monkeypatch.setattr(procs.subprocess, "Popen",
+                        lambda *a, **kw: created.append(a) or (_ for _ in ()).throw(
+                            AssertionError("a process was created")))
+    live = tmp_path / f"live-{label}"
+    _TMP_LOGS.append(runner.invocations_path(live))
+    spawner = StubSpawner(stdout if stdout is not None
+                          else result_bytes(proposal(reply_action())))
+    code = runner.main(["--dry-cycle", "--scratch", str(scratch)], spawner=spawner,
+                       export=ExportStub(export_dir), singleton=_open_singleton,
+                       log_root=live, parent_env=world.parent_env,
+                       proc_runner=proc_runner if proc_runner is not None else DryProcs())
+    assert created == [], "the dry cycle created a real process"
+    return code, scratch, live, fake_root
+
+
+DRY_CHECK_NAMES = (
+    "cli-version", "argv", "api-key-absent", "spawn-cwd-and-export-clean",
+    "termination-delivered", "delivered-file-shape", "sibling-inbox-entries",
+    "hook-log-unchanged", "live-state-unchanged", "sibling-inboxes-unchanged",
+    "one-start-one-end", "one-row",
+)
+
+
+def test_the_dry_cycle_report_prints_the_section_13_facts_and_every_check_passes(
+        world, tmp_path, monkeypatch, capsys):
+    code, scratch, live, fake_root = _drive_dry_cycle(world, tmp_path, monkeypatch, label="ok")
+    out = capsys.readouterr().out
+    assert out.isascii(), "the printout must be seven-bit ASCII"
+    assert code == 0
+    for name in DRY_CHECK_NAMES:
+        assert f"PASS {name}:" in out, f"{name} did not print a PASS line"
+    assert [x for x in out.splitlines() if x.startswith("FAIL ")] == []
+    assert f"SUMMARY: PASS {len(DRY_CHECK_NAMES)} FAIL 0" in out
+    # The printed facts of section 13, each by its label.
+    for label in ("cli_version:", "claude_exe:", "exe_source:", "export_dir:", "export_sha12:",
+                  "argv[0]:", "spawn_exit:", "subtype:", "terminal_reason:", "num_turns:",
+                  "cost_notional:", "termination:", "delivered_path:",
+                  "m2_arrival_to_reply_s:", "m2_note_st_mtime:", "m2_reply_st_mtime:",
+                  "action[0]:", "filter_gates:"):
+        assert label in out, f"the report did not print {label}"
+    assert "executor_cmd" in out or "config" in out
+    # Nothing live moved: the whole cycle wrote under the scratch and the tmp log.
+    assert not (fake_root / "ops" / "runtime" / runner.METRICS_NAME).exists()
+    assert {p.name for p in (live / "ops" / "runtime").iterdir()} == {
+        runner.INVOCATIONS_NAME, runner.METRICS_NAME}
+    assert list((scratch / "Sibling RSC" / "moon_sync_inbox").iterdir())
+
+
+def test_a_cli_version_other_than_the_pin_is_a_fail_line_and_a_non_zero_exit(
+        world, tmp_path, monkeypatch, capsys):
+    code, _scratch, _live, _root = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label="ver", proc_runner=DryProcs(version="2.1.999"))
+    out = capsys.readouterr().out
+    assert code != 0, "a FAIL line must not be reported as a good cycle by exit code"
+    assert "FAIL cli-version:" in out
+    assert "2.1.999" in out and DRY_PINNED_CLI in out
+    assert "re-measure" in out, "the FAIL line must name the re-measurement duty"
+    assert f"SUMMARY: PASS {len(DRY_CHECK_NAMES) - 1} FAIL 1" in out
+
+
+def test_an_ignored_path_in_the_export_fails_the_export_clean_check(
+        world, tmp_path, monkeypatch, capsys):
+    code, _scratch, _live, _root = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label="dirty",
+        proc_runner=DryProcs(ignored=["API-Key-Claude.txt"]))
+    out = capsys.readouterr().out
+    assert code != 0
+    assert "FAIL spawn-cwd-and-export-clean:" in out
+    assert "API-Key-Claude.txt" in out
+
+
+def test_the_flag_file_path_prints_nothing_at_all(world, tmp_path, monkeypatch, capsys):
+    """The task fires that path. A silent, single-spawn tick is the contract."""
+    fake_root = tmp_path / "silentroot"
+    (fake_root / "ops" / "runtime").mkdir(parents=True)
+    (fake_root / "moon_sync_inbox").mkdir()
+    monkeypatch.setattr(runner, "ROOT", fake_root)
+    scratch = tmp_path / "silent-scratch"
+    scratch.mkdir()
+    (fake_root / "ops" / "runtime" / runner.DRY_FLAG_NAME).write_text(str(scratch),
+                                                                     encoding="ascii")
+    monkeypatch.setattr(procs.subprocess, "Popen",
+                        lambda *a, **kw: (_ for _ in ()).throw(
+                            AssertionError("a process was created")))
+    live = tmp_path / "live-silent"
+    _TMP_LOGS.append(runner.invocations_path(live))
+    code = runner.main(["--cycle"], spawner=StubSpawner(result_bytes(proposal(reply_action()))),
+                       export=ExportStub(world.export_dir), singleton=_open_singleton,
+                       log_root=live, parent_env=world.parent_env)
+    assert code == 0
+    assert capsys.readouterr().out == ""

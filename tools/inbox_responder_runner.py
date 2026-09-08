@@ -52,6 +52,7 @@ from tools.inbox_responder import (
     is_stopped,
     pending_notes,
     record_responded,
+    responder_state_path,
     validate_proposal,
 )
 from tools.inbox_responder_exec import (
@@ -68,7 +69,12 @@ from tools.inbox_responder_exec import (
 )
 from tools.inbox_responder_export import ExportFailed, ensure_export
 from tools.inbox_responder_procs import KillBudget, popen_capture
-from tools.inbox_responder_prompt import NonceCollision, build_envelope
+from tools.inbox_responder_prompt import (
+    PROPOSAL_SCHEMA,
+    SYSTEM_PROMPT,
+    NonceCollision,
+    build_envelope,
+)
 from tools.inbox_responder_spawn import (
     RealSpawnDisabled,
     Spawner,
@@ -78,7 +84,7 @@ from tools.inbox_responder_spawn import (
     spawn_ok,
 )
 from tools.inbox_responder_spawn import real_spawner
-from tools.rc_facts import _append_atomic
+from tools.rc_facts import _append_atomic, _inbox_entries
 
 # ---------------------------------------------------------------------------
 # Constants. Each assigned exactly ONCE at module level: the summed-timeout arm
@@ -112,6 +118,16 @@ TASK_ETL_S = 600
 POLL_INTERVAL_S = 300
 
 MAX_SPAWN_ATTEMPTS = 3
+
+# Section 13 dry-cycle report only. Deliberately NOT part of the summed-timeout
+# census above: the report runs on the INTERACTIVE `--dry-cycle` path, after the
+# cycle has already terminated, and never inside the scheduled task, so it can
+# add nothing to the worst-case cycle the task ExecutionTimeLimit bounds.
+PINNED_CLI_VERSION = "2.1.251"
+DRY_REPORT_PROC_TIMEOUT_S = 60
+DRY_REPORT_ELIDE_OVER = 120
+# The budget-vocabulary rule RSC's parser relies on: `hop` never appears in a body.
+HOP_WORD_RE = re.compile(r"\bhop\b")
 
 NOTE_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-[A-Z]{2,4}-[A-Za-z0-9._-]{1,80}\.md$")
 NOTE_NAME_MAX = 120
@@ -1474,8 +1490,348 @@ def _schema_rejection_probe(config: RunnerConfig, spawner, parent_env, cwd) -> d
     return {"exit_code": res.exit_code, "stdout": res.stdout[:2000].decode("ascii", "backslashreplace")}
 
 
+# ---------------------------------------------------------------------------
+# The section 13 dry-cycle report
+#
+# Built from what the cycle ALREADY produced - the `CycleResult`, the
+# `SpawnRequest` the recording seam saw, and the START/END pair and row the
+# cycle wrote. It re-runs nothing and starts no second session: its only child
+# processes are one `<exe> --version` and two git reads, all through ONE
+# injected seam so no test can create a process. Printed by `--dry-cycle` only;
+# the flag-file path the task fires stays silent and single-spawn.
+# ---------------------------------------------------------------------------
+
+
+def _dry_expected_tail(config: RunnerConfig) -> list:
+    """The argv tail, spelled out FROM LITERALS - the same list as the arm.
+
+    Deliberately not read out of `inbox_responder_spawn`: an expectation
+    imported from the module it checks cannot fail when that module changes.
+    Only the two long constants and the two configured values are read.
+    """
+    return [
+        "-p", "--restricted", "--tools", "Read,Glob,Grep", "--strict-mcp-config",
+        "--no-session-persistence", "--max-turns", str(config.max_turns),
+        "--model", config.model, "--output-format", "json",
+        "--json-schema", PROPOSAL_SCHEMA, "--system-prompt", SYSTEM_PROMPT,
+    ]
+
+
+def _elide(value: object) -> str:
+    """A long constant prints as its length and digest; anything short prints whole."""
+    text = str(value)
+    if len(text) <= DRY_REPORT_ELIDE_OVER:
+        return text
+    digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:12]
+    return f"<len={len(text)} sha12={digest}>"
+
+
+def _digest_path(path) -> str:
+    """One string for a file's bytes, or for a directory's listing AND contents."""
+    path = Path(path)
+    if not path.exists():
+        return "absent"
+    if path.is_file():
+        raw = path.read_bytes()
+        return f"file:{len(raw)}:{hashlib.sha256(raw).hexdigest()}"
+    parts = []
+    for child in sorted(path.rglob("*")):
+        try:
+            size = child.stat().st_size
+        except OSError:
+            continue
+        digest = ""
+        if child.is_file():
+            try:
+                digest = hashlib.sha256(child.read_bytes()).hexdigest()
+            except OSError:
+                digest = "unreadable"
+        parts.append(f"{child.relative_to(path)}|{size}|{digest}")
+    return "dir:" + hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
+
+
+def live_surface_digests(live_root, participants: Mapping[str, Any]) -> dict:
+    """Every live surface the dry cycle must leave byte-unchanged. Reads only.
+
+    Taken once before the cycle and once after; the report compares the two.
+    Nothing here writes, creates or even stats a path it did not name.
+    """
+    rt = _runtime(live_root)
+    surfaces = {
+        "hook_log": rt / "hook_invocations.jsonl",
+        "answered": responder_state_path(live_root),
+        "held": rt / HELD_DIR_NAME,
+        "outbox": rt / OUTBOX_DIR_NAME,
+        "deliveries": rt / DELIVERIES_NAME,
+        "agreement": rt / AGREEMENT_NAME,
+    }
+    for code, inbox in sorted(participants.items()):
+        surfaces[f"sibling:{code}"] = Path(inbox)
+    return {key: _digest_path(path) for key, path in surfaces.items()}
+
+
+class DryReport:
+    """Printed lines plus a PASS/FAIL tally, so a failed dry cycle exits non-zero."""
+
+    def __init__(self) -> None:
+        self.lines: list = []
+        self.passed = 0
+        self.failed = 0
+
+    def head(self, text: str) -> None:
+        self.lines.append(text)
+
+    def say(self, label: str, value: object, *, elide: bool = False) -> None:
+        """`elide` is for the two multi-kilobyte argv constants ONLY.
+
+        A path, a sha or a measurement prints WHOLE: the arming note quotes
+        these lines, and a digest where a filename belongs is not evidence.
+        """
+        self.lines.append(f"  {label}: {_elide(value) if elide else value}")
+
+    def check(self, name: str, ok: object, detail: object) -> bool:
+        verdict = bool(ok)
+        if verdict:
+            self.passed += 1
+        else:
+            self.failed += 1
+        self.lines.append(f"{'PASS' if verdict else 'FAIL'} {name}: {detail}")
+        return verdict
+
+    def summary(self) -> None:
+        self.lines.append(f"SUMMARY: PASS {self.passed} FAIL {self.failed}")
+
+
+class RecordingSpawner:
+    """Wraps the real spawner so the report can read the request that was built.
+
+    It calls the wrapped spawner exactly once per call and adds no spawn of its
+    own; without it the `SpawnRequest` never leaves `run_once`.
+    """
+
+    def __init__(self, inner: "Spawner") -> None:
+        self.inner = inner
+        self.request = None
+        self.result = None
+        self.calls = 0
+
+    def __call__(self, request):
+        self.calls += 1
+        self.request = request
+        self.result = self.inner(request)
+        return self.result
+
+
+def _dry_proc_runner(parent_env: Mapping[str, str]):
+    """The report's ONE process seam: the API key is popped here too."""
+    env = child_env(parent_env)
+
+    def _run(argv, *, cwd, stdin_bytes, timeout_s):
+        return popen_capture(list(argv), cwd=cwd, env=env, stdin_bytes=stdin_bytes,
+                             timeout_s=timeout_s, kill_budget=KillBudget())
+
+    return _run
+
+
+def _cli_version(config: RunnerConfig, proc_runner) -> str:
+    if config.claude_exe is None:
+        return "unresolved"
+    res = proc_runner([str(config.claude_exe), "--version"], cwd=Path(config.claude_exe).parent,
+                      stdin_bytes=b"", timeout_s=DRY_REPORT_PROC_TIMEOUT_S)
+    text = res.stdout.decode("ascii", "backslashreplace").strip()
+    return text.split()[0] if text else f"<no output, exit {res.exit_code}>"
+
+
+def _origin_main_sha12(config: RunnerConfig, repo_root, proc_runner) -> str:
+    res = proc_runner([str(config.git_exe), "rev-parse", "origin/main"], cwd=repo_root,
+                      stdin_bytes=b"", timeout_s=DRY_REPORT_PROC_TIMEOUT_S)
+    if res.exit_code != 0:
+        return ""
+    return res.stdout.decode("ascii", "backslashreplace").strip()[:12]
+
+
+def _export_ignored_paths(config: RunnerConfig, export_dir, repo_root, proc_runner) -> list:
+    """The `export_is_clean` predicate in ONE process instead of one per path.
+
+    `export_is_clean` runs a `check-ignore -q` per path because `-q` takes a
+    single pathname; over a 4700-file export that is minutes of process churn.
+    `--stdin` answers the same question in one call: exit 0 and the ignored
+    paths on stdout, exit 1 when nothing matched.
+    """
+    export_dir = Path(export_dir)
+    rels = sorted(str(p.relative_to(export_dir)).replace("\\", "/")
+                  for p in export_dir.rglob("*") if p.is_file())
+    if not rels:
+        return ["<the export directory holds no files>"]
+    res = proc_runner([str(config.git_exe), "check-ignore", "--stdin"], cwd=repo_root,
+                      stdin_bytes=("\n".join(rels) + "\n").encode("utf-8", "surrogatepass"),
+                      timeout_s=DRY_REPORT_PROC_TIMEOUT_S)
+    if res.exit_code == 1:
+        return []
+    if res.exit_code != 0:
+        return [f"<check-ignore exited {res.exit_code}>"]
+    return [line for line in res.stdout.decode("utf-8", "replace").splitlines() if line.strip()]
+
+
+def _jsonl(path) -> list:
+    try:
+        raw = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    out = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(payload, dict):
+            out.append(payload)
+    return out
+
+
+def _dry_facts(rep: DryReport, result: CycleResult, config: RunnerConfig, world: Mapping,
+               recorder: RecordingSpawner, parsed: Mapping, version: str, sha12: str,
+               delivered_path) -> None:
+    """The `Prints:` paragraph of section 13, in its own order."""
+    rep.head("=== RC inbox responder: dry-cycle report (section 13) ===")
+    rep.say("cycle_id", result.cycle_id)
+    rep.say("cli_version", version)
+    rep.say("cli_version_pin", PINNED_CLI_VERSION)
+    rep.say("claude_exe", config.claude_exe)
+    rep.say("exe_source", config.spawn_exe_source)
+    rep.say("export_dir", recorder.request.cwd if recorder.request is not None else "<no spawn>")
+    rep.say("export_sha12", sha12 or "<git rev-parse origin/main failed>")
+    argv = list(recorder.request.argv) if recorder.request is not None else []
+    for index, item in enumerate(argv):
+        rep.say(f"argv[{index}]", item, elide=True)
+    if not argv:
+        rep.say("argv[0]", "<no spawn request was built>")
+    spawn = recorder.result
+    rep.say("spawn_exit", getattr(spawn, "exit_code", None))
+    rep.say("subtype", parsed.get("subtype"))
+    rep.say("terminal_reason", parsed.get("terminal_reason"))
+    rep.say("num_turns", parsed.get("num_turns"))
+    rep.say("cost_notional", parsed.get("total_cost_usd"))
+    rep.say("spawn_attempts", result.spawn_attempts)
+    rep.say("budget_consumed", result.budget_consumed)
+    rep.say("m1", json.dumps(_m1(result.grammar, result.agreement_id, result.delivered)))
+    actions = list((result.m4 or {}).get("actions") or [])
+    rep.say("m4_totals", {k: v for k, v in (result.m4 or {}).items() if k != "actions"})
+    for index, entry in enumerate(actions):
+        rep.say(f"action[{index}]",
+                f"kind={entry.get('kind')} allowed={entry.get('allowed')} "
+                f"rule={entry.get('rule')} disposition={entry.get('executed_or_held')} "
+                f"exit={entry.get('exit_code')} reason={entry.get('reason')}")
+    if not actions:
+        rep.say("action[0]", "<the cycle produced no action verdicts>")
+    rep.say("filter_gates",
+            sorted({g for entry in actions for g in (entry.get("filter_gates") or [])}) or "none")
+    rep.say("termination", f"{result.termination} / {result.termination_detail}")
+    rep.say("refused_stage", result.refused_stage)
+    rep.say("delivered_path", delivered_path or "<nothing delivered>")
+    rep.say("m2_arrival_to_reply_s", result.m2)
+    rep.say("m2_note_st_mtime", (result.note_arrival or {}).get("st_mtime"))
+    rep.say("m2_reply_st_mtime", (result.reply or {}).get("st_mtime"))
+    rep.say("m2_flag", result.m2_flag)
+    rep.say("m2_basis_skew_s", result.m2_basis_skew_s)
+
+
+def dry_cycle_report(*, result: CycleResult, config: RunnerConfig, world: Mapping,
+                     recorder: RecordingSpawner, live_root, live_participants: Mapping,
+                     live_before: Mapping, repo_root, log_root, proc_runner) -> DryReport:
+    """The section 13 printout and its PASS/FAIL list. Writes nothing."""
+    rep = DryReport()
+    request = recorder.request
+    parsed: dict = {}
+    if recorder.result is not None:
+        with contextlib.suppress(ValueError):
+            loaded = json.loads(recorder.result.stdout.decode("utf-8", "replace"))
+            parsed = loaded if isinstance(loaded, dict) else {}
+
+    version = _cli_version(config, proc_runner)
+    sha12 = _origin_main_sha12(config, repo_root, proc_runner)
+    sibling_inbox = Path(world["participants"][result.sender]) if result.sender in world[
+        "participants"] else None
+    filename = (result.m5 or {}).get("filename")
+    delivered_path = (sibling_inbox / filename) if (sibling_inbox and filename) else None
+    _dry_facts(rep, result, config, world, recorder, parsed, version, sha12, delivered_path)
+
+    rep.head("--- checks ---")
+    rep.check("cli-version", version == PINNED_CLI_VERSION,
+              f"read {version!r}, pin {PINNED_CLI_VERSION!r}"
+              + ("" if version == PINNED_CLI_VERSION else
+                 " - every argv flag and result key in section 3 was measured on the pin"
+                 " and must be re-measured on this version before the runner is armed"))
+
+    expected_argv = ([str(config.claude_exe)] + _dry_expected_tail(config)
+                     if config.claude_exe is not None else [])
+    got_argv = list(request.argv) if request is not None else []
+    rep.check("argv", bool(expected_argv) and got_argv == expected_argv,
+              f"{len(got_argv)} elements, equal to [exe] + EXPECTED_TAIL: "
+              f"{got_argv == expected_argv}")
+
+    env = dict(request.env) if request is not None else None
+    rep.check("api-key-absent", env is not None and "ANTHROPIC_API_KEY" not in env,
+              "ANTHROPIC_API_KEY absent from SpawnRequest.env"
+              if env is not None and "ANTHROPIC_API_KEY" not in env
+              else "the key is present in the child env, or no request was built")
+
+    ignored = _export_ignored_paths(config, request.cwd, repo_root,
+                                   proc_runner) if request is not None else ["<no spawn>"]
+    expected_cwd = (_runtime(world["root"]) / "responder_export" / sha12) if sha12 else None
+    cwd_ok = request is not None and expected_cwd is not None and Path(request.cwd) == expected_cwd
+    rep.check("spawn-cwd-and-export-clean", cwd_ok and not ignored,
+              f"cwd={request.cwd if request is not None else None} "
+              f"expected={expected_cwd} ignored_paths={ignored[:5]}")
+
+    rep.check("termination-delivered", result.termination == "delivered",
+              f"{result.termination} / {result.termination_detail}")
+
+    body = ""
+    if delivered_path is not None and delivered_path.is_file():
+        body = delivered_path.read_text(encoding="utf-8", errors="replace")
+    ascii_ok = bool(body) and body.isascii()
+    tag_ok = bool(body) and body.splitlines()[:1] == [(result.m5 or {}).get("tag")]
+    hop_absent = bool(body) and re.search(HOP_WORD_RE, body) is None
+    rep.check("delivered-file-shape", ascii_ok and tag_ok and hop_absent,
+              f"ascii={ascii_ok} tag_on_line_1={tag_ok} hop_absent={hop_absent}")
+
+    entries = sorted(_inbox_entries(sibling_inbox)) if sibling_inbox is not None else []
+    rep.check("sibling-inbox-entries", len(entries) == 1, f"{len(entries)}: {entries}")
+
+    live_after = live_surface_digests(live_root, live_participants)
+    moved = sorted(k for k in live_before if live_before[k] != live_after.get(k))
+    rep.check("hook-log-unchanged", live_before.get("hook_log") == live_after.get("hook_log"),
+              f"sha of {_runtime(live_root) / 'hook_invocations.jsonl'} unchanged: "
+              f"{live_before.get('hook_log') == live_after.get('hook_log')}")
+    state_keys = ("answered", "held", "outbox", "deliveries", "agreement")
+    rep.check("live-state-unchanged", not [k for k in state_keys if k in moved],
+              f"guarded {list(state_keys)}, moved {[k for k in moved if k in state_keys]}")
+    sibling_keys = sorted(k for k in live_before if k.startswith("sibling:"))
+    rep.check("sibling-inboxes-unchanged",
+              bool(sibling_keys) and not [k for k in sibling_keys if k in moved],
+              f"guarded {sibling_keys}, moved {[k for k in moved if k.startswith('sibling:')]}"
+              + ("" if sibling_keys else
+                 " - NO real sibling inbox resolved, so nothing was actually guarded"))
+
+    mine = [x for x in _jsonl(invocations_path(log_root)) if x.get("cycle_id") == result.cycle_id]
+    phases = [x.get("phase") for x in mine]
+    rep.check("one-start-one-end",
+              phases == ["start", "end"] and all(x.get("dry") is True for x in mine),
+              f"phases={phases} dry={[x.get('dry') for x in mine]} cycle_id={result.cycle_id}")
+
+    rows = [x for x in _jsonl(metrics_path(log_root)) if x.get("cycle_id") == result.cycle_id]
+    rep.check("one-row", len(rows) == 1 and rows[0].get("dry") is True,
+              f"{len(rows)} row(s) with this cycle_id, dry={[x.get('dry') for x in rows]}")
+
+    rep.summary()
+    return rep
+
+
 def main(argv=None, *, run=run_once, spawner=None, export=None, singleton=None,
-         log_root=None, parent_env=None) -> int:
+         log_root=None, parent_env=None, proc_runner=None) -> int:
     """Resolve everything the cycle may not resolve, then run exactly one cycle."""
     args = list(argv or [])
     now = datetime.now
@@ -1541,13 +1897,34 @@ def main(argv=None, *, run=run_once, spawner=None, export=None, singleton=None,
             if dry and scratch:
                 world = _enter_dry_world(scratch)
 
-            run(cycle_id=cycle_id, root=world["root"], repo_root=ROOT, inbox=world["inbox"],
-                participants=world["participants"], spawner=spawner, parent_env=parent_env,
-                now=now, measure_runner=default_measure_runner, export=export, slot_root=None,
-                config=config, dry=dry, log_root=log_root)
+            # The report reads the SpawnRequest, so the seam is wrapped - never a
+            # second spawn, and only on the interactive path: the task's flag-file
+            # tick keeps passing the injected spawner through by identity.
+            reporting = "--dry-cycle" in args
+            recorder = RecordingSpawner(spawner) if reporting else None
+            live_before = live_surface_digests(ROOT, participants) if reporting else {}
+
+            result = run(cycle_id=cycle_id, root=world["root"], repo_root=ROOT,
+                         inbox=world["inbox"], participants=world["participants"],
+                         spawner=spawner if recorder is None else recorder,
+                         parent_env=parent_env, now=now,
+                         measure_runner=default_measure_runner, export=export, slot_root=None,
+                         config=config, dry=dry, log_root=log_root)
+
+            failed = 0
+            if reporting:
+                report = dry_cycle_report(
+                    result=result, config=config, world=world, recorder=recorder,
+                    live_root=ROOT, live_participants=participants, live_before=live_before,
+                    repo_root=ROOT, log_root=log_root,
+                    proc_runner=proc_runner or _dry_proc_runner(parent_env))
+                for line in report.lines:
+                    print(line)
+                failed = report.failed
             if "--dry-cycle" in args:
                 print(_schema_rejection_probe(config, spawner, parent_env, ROOT))
-            return 0
+            # A FAIL line must not reach a caller that reads only the exit code.
+            return 1 if failed else 0
     except winmutex.MutexTimeout:
         _pair("overlap", "overlap")
         return 3
