@@ -1435,7 +1435,13 @@ A_ARMS = [
      b_bad_name, c_refused_input, {"_mut_shape": _mut_shape}, ()),
     ("raw-name-sink", RAW_SINK_NEEDLE, RAW_SINK_MUTATION,
      b_bad_name, c_second_cycle_is_empty, {}, ()),
-    ("note-sha12-surrogatepass", '"surrogatepass"', '"surrogateescape"',
+    # TIGHTENED 2026-09-08: the needle was the bare token `"surrogatepass"`, which
+    # stopped being unique when the section 13 dry-cycle report added two more
+    # uses of the codec. Same call site, same mutation - only the match is
+    # anchored to the `note_sha12` line so it cannot land somewhere else.
+    ("note-sha12-surrogatepass",
+     '    return hashlib.sha256(name.encode("utf-8", "surrogatepass")).hexdigest()[:12]',
+     '    return hashlib.sha256(name.encode("utf-8", "surrogateescape")).hexdigest()[:12]',
      b_high_surrogate_name, c_refused_input, {}, ()),
     ("safe-name", "result.note = safe_name(name)", "result.note = name",
      b_surrogate_name, c_safe_name, {}, ()),
