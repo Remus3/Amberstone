@@ -69,10 +69,11 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-385** (2026-09-08). The id one below it, RM-384, was
-  ALLOCATED by the session that built the cross-repo inbox responder runner
-  from `docs/RESPONDER_RUNNER_SPEC.md`; it now heads a row in `ROADMAP.md:40`
-  and is cited in `docs/ROADMAP_HISTORY.md`, so it is no longer pointer prose.
+  Next free id = **RM-386** (2026-09-08). The two ids below it were both
+  allocated the same day by the cross-repo inbox responder runner build:
+  RM-384 for the build itself, and RM-385 for the junction-NAMED note defect
+  that build found and could not fix inside its own scope fence. Both now head
+  rows in `ROADMAP.md`, so neither is pointer prose any more.
   Allocation was checked with the pointer-vs-allocated predicate before
   minting: a repo-wide `.md` grep for the id above, outside `docs/_archive`,
   returned ZERO occurrences of any kind, pointer prose included.
