@@ -265,7 +265,8 @@ ANSWER_SWAP_MUTATION = (
 )
 
 DETAIL_VOCAB_NEEDLE = (
-    '    if "exhaust" in detail and row["termination"] != "exhausted":\n'
+    '    if ("exhaust" in detail and row["termination"] != "exhausted"\n'
+    '            and not EXHAUSTED_GATE_TAG_RE.fullmatch(detail)):\n'
     '        bad("the substring exhaust on a non-exhausted row")'
 )
 DETAIL_VOCAB_MUTATION = (
