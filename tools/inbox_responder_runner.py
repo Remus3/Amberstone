@@ -111,6 +111,11 @@ NOTE_NAME_MAX = 120
 NOTE_MAX_BYTES = 1024 * 1024
 ROW_NOTE_RE = re.compile(r"^[A-Za-z0-9._?-]{1,80}$")
 CYCLE_ID_RE = re.compile(r"^\d{8}T\d{6}-\d+-[0-9a-f]{6}$")
+# The one detail carrying `exhaust` that a non-exhausted row may hold: gate
+# 11's own exception tag, `exception:<gate-tag>:<cls>`, which names WHERE the
+# runner raised and never claims the cycle was exhausted. Anchored on both
+# ends so nothing may be appended to it - see `metrics_row_ok`.
+EXHAUSTED_GATE_TAG_RE = re.compile(r"^exception:exhausted:[A-Za-z_][A-Za-z0-9_]*$")
 PARTICIPANT_CODE_RE = re.compile(r"^[A-Z]{2,4}$")
 
 LABEL_A5_TEMPLATE = (
@@ -763,7 +768,10 @@ def metrics_row_ok(row: Mapping[str, Any], *, delivered: Optional[int] = None,
     Every invariant here exists because the alternative is a row that PARSES
     and says something false: a hop count that exceeds the replies that
     appeared, a grammar whose M1 label belongs to the other grammar, or the
-    substring `exhaust` on a row that was not exhausted.
+    substring `exhaust` on a row that was not exhausted. The one exemption is
+    `EXHAUSTED_GATE_TAG_RE`: gate 11's exception tag names the GATE that
+    raised, not the outcome, and destroying it would cost the attribution the
+    gate-exception row exists to carry.
     """
     def bad(msg: str):
         raise MetricsRowInvalid(msg)
@@ -786,7 +794,8 @@ def metrics_row_ok(row: Mapping[str, Any], *, delivered: Optional[int] = None,
     if note is not None and not ROW_NOTE_RE.fullmatch(str(note)):
         bad("note projection")
 
-    if "exhaust" in detail and row["termination"] != "exhausted":
+    if ("exhaust" in detail and row["termination"] != "exhausted"
+            and not EXHAUSTED_GATE_TAG_RE.fullmatch(detail)):
         bad("the substring exhaust on a non-exhausted row")
     if "refus" in detail and row["termination"] != "refused":
         bad("the substring refus on a non-refused row")
@@ -1106,7 +1115,8 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
                     if exe is None or not Path(exe).is_file():
                         return _terminate(result, "spawn-failed", "binary-not-found")
                     request = build_request(config, envelope, export_dir, kill_budget, env=child)
-                    spawn_detail, parsed = spawn_ok(spawner(request))  # GATE:spawn
+                    spawn_res = spawner(request)
+                    spawn_detail, parsed = spawn_ok(spawn_res)  # GATE:spawn
                     if parsed is not None:
                         result.m3 = _m3_of(parsed)
                         result.permission_denials = parsed.get("permission_denials")
@@ -1115,9 +1125,16 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
                         if result.spawn_attempts >= MAX_SPAWN_ATTEMPTS:
                             spawn_detail = f"{spawn_detail}:attempt-cap"
                             _hold_write(result, "status.txt", "attempt-cap")
+                        # `timed_out` / `survived_kill` / `kill_skipped` are the
+                        # cycle's kill-allowance record (section 3): booleans
+                        # the runner owns, coerced here so nothing
+                        # model-controlled can reach the hold through them.
                         _hold_write(result, "spawn.json", json.dumps(
                             {"cycle_id": cycle_id, "detail": spawn_detail,
-                             "attempts": result.spawn_attempts, "parsed": parsed}, indent=2))
+                             "attempts": result.spawn_attempts, "parsed": parsed,
+                             "timed_out": bool(spawn_res.timed_out),
+                             "survived_kill": bool(spawn_res.survived_kill),
+                             "kill_skipped": bool(spawn_res.kill_skipped)}, indent=2))
                         return _terminate(result, "spawn-failed", spawn_detail)
                     proposal = parsed["structured_output"]
             except slots.SlotTimeout:
