@@ -179,6 +179,40 @@ LABEL_NOT_ESTABLISHED = (
     "or row replaced); not a trial-grammar row"
 )
 
+# ---------------------------------------------------------------------------
+# The bounce: what the sender sees when RC does not deliver
+# ---------------------------------------------------------------------------
+#
+# RC has three ways to say nothing - a note refused at input, a proposal that
+# came back empty, and a note never seen at all - and the counterparty cannot
+# tell any of them from being ignored. The bounce closes the first two.
+#
+# It is NOT a note and NOT a reply. The name below fails `NOTE_NAME_RE` on
+# every clause (no date prefix, no `-from-<CODE>-` segment, a `.txt` suffix)
+# and fails the counterparty's own admission test, which requires a name
+# ending `.md` AND a parseable sender code. Their watcher therefore reports it
+# to the human as a loose file, which is exactly the visibility wanted, and
+# NEITHER responder can ever admit it as input - so a bounce cannot answer a
+# bounce. That property is structural, not a rule both ends must remember.
+#
+# It is not counted anywhere a reply is counted: no deliveries entry, no M2, no
+# M5, no `budget_consumed`, no `m1.hops`. Under RC's published definition
+# `budget_consumed` counts delivery ATTEMPTS, and spending a hop on a template
+# file that cannot be answered would redefine a published counter. Its own
+# allowance is ONE per note per agreement, kept in `BOUNCES_NAME`, which is
+# what bounds the repeat-refusal cost.
+BOUNCE_PREFIX = "BOUNCE-"
+BOUNCE_SUFFIX = ".txt"
+BOUNCE_TERMINATIONS = frozenset({"exhausted", "refused"})
+BOUNCE_HEADLINE = "RC-RESPONDER BOUNCE - this is not a note and not a reply"
+BOUNCE_CLOSING = (
+    "RC did not deliver a reply to the note named above and will not act further\n"
+    "on it. This file is written entirely by RC's runner from a fixed template: it\n"
+    "carries no model output and no free text of any kind. Its name deliberately\n"
+    "fails the note grammar on both sides, so no responder can read it and no\n"
+    "reply to it will ever be seen. A human should look.\n"
+)
+
 M1_BASIS = "delivered entries only; the budget counter may exceed this"
 M2_LABEL = (
     "note mtime on RC disk to reply write mtime, same host clock, includes up to one poll interval"
@@ -209,6 +243,7 @@ STOP_FLAG_NAME = "INBOX_RESPONDER_STOP"
 DRY_FLAG_NAME = "INBOX_RESPONDER_DRY"
 AGREEMENT_NAME = "inbox_responder_agreement.json"
 ATTEMPTS_NAME = "inbox_responder_attempts.json"
+BOUNCES_NAME = "inbox_responder_bounces.json"
 DELIVERIES_NAME = "inbox_responder_deliveries.jsonl"
 METRICS_NAME = "responder_metrics.jsonl"
 INVOCATIONS_NAME = "responder_invocations.jsonl"
@@ -286,6 +321,10 @@ class CycleResult:
     m4: Optional[dict] = None
     m5: Optional[dict] = None
     delivery: Optional[dict] = None
+    # The bounce lives in its OWN field. It is not a reply, so it may never be
+    # folded into `delivery`, `m5`, `delivered` or `budget_consumed`.
+    bounce: Optional[dict] = None
+    bounce_target: Optional[Path] = None
     permission_denials: Optional[int] = None
     scrub_count: int = 0
     spawn_exe_source: Optional[str] = None
@@ -314,6 +353,10 @@ def deliveries_path(root) -> Path:
 
 def attempts_path(root) -> Path:
     return _runtime(root) / ATTEMPTS_NAME
+
+
+def bounces_path(root) -> Path:
+    return _runtime(root) / BOUNCES_NAME
 
 
 def agreement_path(root) -> Path:
@@ -599,6 +642,117 @@ def notes_at_cap(names, attempts: Mapping[str, Any]) -> int:
 
 
 # ---------------------------------------------------------------------------
+# The bounce
+# ---------------------------------------------------------------------------
+
+
+def bounce_filename(cycle_id: str, note_name: str) -> str:
+    """A name that DELIBERATELY fails the note grammar on both sides.
+
+    No date prefix, no `-from-<CODE>-` segment and a `.txt` suffix, so neither
+    `NOTE_NAME_RE` nor the counterparty's `.md`-plus-sender-code admission test
+    can accept it. The projection is `_` rather than `safe_name`'s `?`, which
+    is not a legal filename character on Windows.
+    """
+    stem = re.sub(r"[^A-Za-z0-9._-]", "_", str(note_name))[:80]
+    return f"{BOUNCE_PREFIX}{cycle_id}-re-{stem}{BOUNCE_SUFFIX}"
+
+
+def bounce_key(agreement_id: Optional[str], sha: Optional[str]) -> str:
+    """One allowance per note per agreement. A new agreement is a new exchange."""
+    return f"{agreement_id}:{sha}"
+
+
+def bounces_of(root) -> Optional[dict]:
+    """The bounce allowance record, or None when it is unreadable.
+
+    None means FAIL CLOSED at the one call site: an unreadable record must
+    suppress the bounce, never uncap it. The whole point of the allowance is
+    that a note which can never pass cannot produce an unbounded stream.
+    """
+    path = bounces_path(root)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _record_bounce(root, key: str, entry: Mapping[str, Any]) -> None:
+    data = bounces_of(root) or {}
+    data[key] = dict(entry)
+    path = bounces_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="ascii", newline="\n")
+    tmp.replace(path)
+
+
+def bounce_body(result: "CycleResult") -> str:
+    """TEMPLATE ONLY, 100 percent runner-authored.
+
+    Every interpolated value is one the runner owns: the cycle id it minted,
+    the `safe_name` projection of the note filename, and the termination pair,
+    whose detail carries validator RULE names and runner constants only. No
+    model output and no `Decision.reason` text may ever appear here.
+    """
+    return "\n".join([
+        BOUNCE_HEADLINE,
+        f"cycle: {result.cycle_id}",
+        f"in reply to: {result.note}",
+        f"termination: {result.termination}",
+        f"detail: {result.termination_detail}",
+        f"stage: {result.refused_stage or '-'}",
+        "",
+        BOUNCE_CLOSING,
+    ])
+
+
+def _emit_bounce(result: "CycleResult") -> None:
+    """Write the bounce for an undelivered note. Called once, from `_finish`.
+
+    Touches no counter a reply is counted by: no deliveries entry, no M2, no
+    M5, `budget_consumed` and `m1.hops` untouched. The allowance is consumed
+    BEFORE the write, so a write that fails leaves the allowance spent rather
+    than re-bouncing every tick.
+    """
+    if result.termination not in BOUNCE_TERMINATIONS:
+        return
+    dest = result.bounce_target
+    if dest is None or result.note is None or result.note_sha12 is None:
+        return
+    key = bounce_key(result.agreement_id, result.note_sha12)
+    seen = bounces_of(result.root)
+    if seen is None or key in seen:
+        return
+    filename = bounce_filename(result.cycle_id, result.note)
+    entry = {"cycle_id": result.cycle_id, "ts": result.ts, "filename": filename,
+             "target_code": result.sender, "termination": result.termination,
+             "detail": result.termination_detail}
+    try:
+        _record_bounce(result.root, key, entry)
+    except OSError:
+        return
+    target = Path(dest) / filename
+    tmp = target.with_name("_" + filename + ".tmp")
+    try:
+        # `backslashreplace`, as `_hold_write` does. `_finish` runs in a
+        # `finally`, so a bounce that raised would destroy the cycle's END
+        # line and its row. Every value here is runner-owned and ASCII on the
+        # tracked path; the handler is what keeps that true when it is not.
+        tmp.write_text(bounce_body(result), encoding="ascii", errors="backslashreplace",
+                       newline="\n")
+        tmp.replace(target)
+    except OSError:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        return
+    result.bounce = dict(entry)
+
+
+# ---------------------------------------------------------------------------
 # Participants
 # ---------------------------------------------------------------------------
 
@@ -734,6 +888,9 @@ def _row_skeleton(cycle_id: str, ts: str, pid: int, dry: bool) -> dict:
         "m6": {"settling_delay_s": 0, "withdrawal_interval_s": None},
         "delivery": None, "permission_denials": None, "scrub_count": 0,
         "spawn_exe_source": None,
+        # Its OWN field. A bounce is not a reply, so it is auditable here and
+        # counted nowhere else in this row.
+        "bounce": None,
     }
 
 
@@ -769,6 +926,7 @@ def build_row(result: CycleResult) -> dict:
         "permission_denials": result.permission_denials,
         "scrub_count": result.scrub_count,
         "spawn_exe_source": result.spawn_exe_source,
+        "bounce": result.bounce,
     })
     return row
 
@@ -785,6 +943,9 @@ def fallback_row(result: CycleResult) -> dict:
         "termination": "runner-failed",
         "termination_detail": f"metrics-invalid:{result.termination}",
         "m1": _m1(grammar, result.agreement_id, result.delivered),
+        # Carried through: a bounce that was written must stay auditable even
+        # when the row that would have reported it was rejected.
+        "bounce": result.bounce,
     })
     return row
 
@@ -908,6 +1069,15 @@ def metrics_row_ok(row: Mapping[str, Any], *, delivered: Optional[int] = None,
         if want_draft != has_draft:
             bad("held draft.md presence does not match the termination")
 
+    bounce = row.get("bounce")
+    if bounce is not None:
+        if not isinstance(bounce, Mapping):
+            bad("bounce must be an object")
+        # The whole safety of the bounce rests on its name being unreadable as
+        # a note. A row is not allowed to record one that would parse.
+        if NOTE_NAME_RE.fullmatch(str(bounce.get("filename", ""))):
+            bad("a bounce filename must not parse as a note")
+
     flag = row.get("m2_flag")
     if flag not in (None, "negative", "future-arrival"):
         bad("m2_flag enum")
@@ -950,7 +1120,12 @@ def _finish(result: CycleResult) -> CycleResult:
 
     The row is built and judged BEFORE the END line is written, so an END line
     can never claim an outcome the row it accompanies does not carry.
+
+    The bounce is emitted FIRST, so the row can report it. It is not a gate: it
+    is the part of the funnel that tells the sender RC produced nothing, and it
+    is deliberately outside the ordered gate table for that reason.
     """
+    _emit_bounce(result)
     row = build_row(result)
     try:
         metrics_row_ok(row, delivered=delivered_count(result.root, result.agreement_id),
@@ -1102,6 +1277,10 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
         result.note = safe_name(name)
         result.note_sha12 = sha
         result.sender = _sender_code(result.note)
+        # Where a bounce would go if this cycle delivers nothing. Set BEFORE
+        # gate 6, because an input-stage refusal is one of the two silences
+        # the bounce exists to break.
+        result.bounce_target = participants.get(result.sender)
         note_sink: list = []
         problems = note_shape_ok(note_path, name, sink=note_sink)  # GATE:note-shape
         if problems:

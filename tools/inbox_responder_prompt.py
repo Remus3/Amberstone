@@ -130,7 +130,8 @@ def build_envelope(
 
 PROPOSAL_SCHEMA = (
     '{"type":"object","additionalProperties":false,"required":["actions"],"properties":'
-    '{"actions":{"type":"array","maxItems":6,"items":{"type":"object","additionalProperties":false,'
+    '{"actions":{"type":"array","minItems":1,"maxItems":6,"items":{"type":"object",'
+    '"additionalProperties":false,'
     '"required":["kind"],"properties":{"kind":{"type":"string","enum":["measure","suite","vendor",'
     '"pin","reply"]},"argv":{"type":"array","minItems":2,"maxItems":12,"items":{"type":"string",'
     '"maxLength":200}},"target":{"type":"string","enum":["tests","agents/daemon_slayer"]},'
@@ -148,7 +149,14 @@ PROPOSAL_SCHEMA = (
 )
 """The `--json-schema` argument. The VALIDATOR, not this schema, is the size
 authority: `body` is bounded here in CHARACTERS only, to bound parse cost, and
-`tools/inbox_responder.py` recomputes the byte limit itself."""
+`tools/inbox_responder.py` recomputes the byte limit itself.
+
+`actions` carries `minItems: 1` so the CLI itself rejects an empty proposal
+rather than leaving the rule to prose. An empty proposal answered a real note
+with silence on 2026-09-08 (cycle 20260908T152743-35768-7ff10f): the spawn
+succeeded, the model returned `{"actions": []}` for a note that asked no
+measurable question, gate 11 marked the note answered, and nothing was
+delivered. A note needing no measurement still gets a reply action."""
 
 _SYSTEM_PROMPT_PARAGRAPHS = (
     (
@@ -194,11 +202,14 @@ _SYSTEM_PROMPT_PARAGRAPHS = (
         "no author line can reach the body. Cite repo-relative paths only."
     ),
     (
-        "If there is nothing to measure, return exactly {\"actions\":[]} and nothing "
-        "else. Never return a blank reply body, and never return measures without a "
-        "reply action - measured output with no destination is thrown away, and it is "
-        "recorded against you as a prompt-contract violation rather than as an "
-        "exhausted channel."
+        "Every proposal carries at least one action. An empty actions array is not a "
+        "valid answer and the schema rejects it. A note that asks nothing measurable "
+        "is the ordinary case, not an error: propose a single reply action whose body "
+        "is a short plain acknowledgement of what the note said and a statement that "
+        "there was nothing to measure this cycle. That is a complete and expected "
+        "proposal. Never return a blank reply body, and never return measures without "
+        "a reply action - measured output with no destination is thrown away, and it "
+        "is recorded against you as a prompt-contract violation."
     ),
     (
         "Your tools are Read, Glob and Grep only - there is no Bash, no Write and no "

@@ -489,6 +489,22 @@ def world(tmp_path, git_repo):
     return World(tmp_path, git_repo["work"])
 
 
+def replies_in(target: Path) -> list:
+    """Everything that landed in a target inbox EXCEPT bounces.
+
+    A bounce is not a reply: it is a runner-authored template file whose name
+    fails the note grammar on both sides. An arm that means "nothing was
+    delivered" means no reply arrived, so it asks this rather than counting
+    directory entries.
+    """
+    return sorted(p.name for p in target.iterdir()
+                  if not p.name.startswith(runner.BOUNCE_PREFIX))
+
+
+def bounces_in(target: Path) -> list:
+    return sorted(p.name for p in target.iterdir() if p.name.startswith(runner.BOUNCE_PREFIX))
+
+
 def armed(world, **over):
     """The common shape: an agreement in force and one pending RSC note."""
     world.agreement(**over)
@@ -1706,7 +1722,9 @@ def test_exhausted_is_an_empty_action_list_and_nothing_else(world):
     assert (result.termination, result.termination_detail) == ("exhausted", "empty-proposal")
     assert calls == []
     assert NOTE_NAME in world.answered()
-    assert list(world.rsc.iterdir()) == []
+    assert replies_in(world.rsc) == []
+    # Not silence: the sender gets the bounce instead of nothing at all.
+    assert len(bounces_in(world.rsc)) == 1
     row = world.one_row(result)
     assert row["m4"]["proposed"] == 0
     assert (world.held(result.cycle_id) / "proposal.json").exists()
@@ -1760,7 +1778,8 @@ def test_measures_with_no_reply_action_run_nothing(world):
     assert (result.termination, result.termination_detail) == ("refused", "no-reply-action")
     assert world.recorder.calls == []
     assert world.one_row(result)["m4"]["refused"] >= 0
-    assert list(world.rsc.iterdir()) == []
+    assert replies_in(world.rsc) == []
+    assert len(bounces_in(world.rsc)) == 1
 
 
 def test_a_suite_action_is_validated_then_held(world):
@@ -2024,7 +2043,8 @@ def test_output_filter_refuses_and_holds(world, label, body, gate):
     held = world.held(result.cycle_id)
     for name in ("draft.md", "reasons.json", "proposal.json", "decisions.json", "status.txt"):
         assert (held / name).exists(), name
-    assert list(world.rsc.iterdir()) == []
+    assert replies_in(world.rsc) == []
+    assert len(bounces_in(world.rsc)) == 1
     assert NOTE_NAME in world.answered()
     row = world.one_row(result)
     assert row["m4"]["actions"][0]["filter_gates"] == result.termination_detail.split(":", 1)[1].split(",")
@@ -2101,7 +2121,8 @@ def test_an_oversize_assembled_body_is_refused_and_held(world, monkeypatch):
     for name in ("draft.md", "reasons.json", "proposal.json", "decisions.json", "status.txt"):
         assert (held / name).exists(), name
     assert len((held / "draft.md").read_bytes()) == 200001
-    assert list(world.rsc.iterdir()) == []
+    assert replies_in(world.rsc) == []
+    assert len(bounces_in(world.rsc)) == 1
     assert NOTE_NAME in world.answered()
     row = world.one_row(result)
     replies = [a for a in row["m4"]["actions"] if a["kind"] == "reply"]
@@ -2354,6 +2375,173 @@ def test_delivery_lands_in_a_path_carrying_a_real_space(world):
     assert " " in str(world.cs)
     assert len(list(world.cs.iterdir())) == 1
     assert list(world.rsc.iterdir()) == []
+
+
+# ---------------------------------------------------------------------------
+# The bounce - RC saying nothing is a thing the sender can SEE
+#
+# Measured live 2026-09-08, cycle 20260908T152743-35768-7ff10f: the spawn
+# succeeded, the model returned `{"actions": []}` for a note that asked no
+# measurable question, gate 11 short-circuited before gate 12, the note was
+# marked answered and NOTHING was delivered. The counterparty could not tell
+# that from being ignored.
+# ---------------------------------------------------------------------------
+
+
+def _bounce_note_grammar_rejects(name: str) -> bool:
+    """Both admission tests, RC's and the counterparty's, applied to one name.
+
+    The counterparty's `pending()` requires a name ending `.md` AND a parseable
+    sender code; anything else their watcher reports to the human as a loose
+    file. RC's own gate is `NOTE_NAME_RE`. A bounce must fail BOTH, which is
+    what makes a bounce war structurally impossible rather than a rule.
+    """
+    rc_admits = bool(runner.NOTE_NAME_RE.fullmatch(name))
+    theirs_admits = name.endswith(".md") and runner._sender_code(name) is not None
+    return not rc_admits and not theirs_admits
+
+
+def test_an_empty_proposal_bounces_a_file_neither_side_can_read_as_a_note(world):
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("exhausted", "empty-proposal")
+    assert replies_in(world.rsc) == []
+    bounces = bounces_in(world.rsc)
+    assert len(bounces) == 1, "the sender was told nothing at all"
+    name = bounces[0]
+    assert name == runner.bounce_filename(result.cycle_id, result.note)
+    assert _bounce_note_grammar_rejects(name)
+    body = (world.rsc / name).read_text(encoding="ascii")
+    assert body.isascii()
+    assert result.cycle_id in body
+    assert NOTE_NAME in body
+    assert "empty-proposal" in body
+    assert "will not act further" in body
+    assert "A human should look." in body
+
+
+def test_the_bounce_is_not_counted_as_a_reply_anywhere(world):
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    result = world.drive()
+    row = world.one_row(result)
+    # The two published counters, untouched. `budget_consumed` counts delivery
+    # ATTEMPTS, and a template file that cannot be answered must not spend a
+    # hop of the agreement's budget.
+    assert row["budget_consumed"] == 0
+    assert result.budget_consumed == 0
+    assert row["m1"]["hops"] == 0
+    # No M2 endpoint: an M2 for a note nobody answered would give the pair a
+    # left endpoint and no right one.
+    assert row["m2_arrival_to_reply_s"] is None
+    assert row["reply"] is None
+    assert row["note_arrival"] is None
+    # Not an M5 responder reply, and not a delivery.
+    assert row["m5"] is None
+    assert row["delivery"] is None
+    assert not runner.deliveries_path(world.root).exists()
+    # Auditable, in its OWN field.
+    assert row["bounce"]["filename"] == bounces_in(world.rsc)[0]
+    assert row["bounce"]["termination"] == "exhausted"
+    assert row["bounce"]["target_code"] == "RSC"
+
+
+def test_a_second_cycle_on_the_same_note_bounces_only_once(world):
+    """The allowance is what bounds the repeat-refusal cost.
+
+    A note that can never pass must not produce an unbounded stream of files.
+    The answered record already stops it re-cycling; this arm drives the case
+    the record cannot cover, where the operator clears it to try a fix again.
+    """
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    first = world.drive()
+    assert len(bounces_in(world.rsc)) == 1
+    responder_state_path(world.root).unlink()
+    second = world.drive()
+    assert second.cycle_id != first.cycle_id
+    assert second.termination == "exhausted"
+    assert second.bounce is None
+    assert world.one_row(second)["bounce"] is None
+    assert len(bounces_in(world.rsc)) == 1, "a second bounce for one note"
+
+
+def test_a_refusal_at_input_bounces_too(world):
+    world.agreement()
+    world.note(name="2026-09-07-1800-from-RSC-bad name.md")
+    result = world.drive()
+    assert (result.termination, result.refused_stage) == ("refused", "input")
+    assert world.spawner.calls == 0
+    assert replies_in(world.rsc) == []
+    bounces = bounces_in(world.rsc)
+    assert len(bounces) == 1
+    assert _bounce_note_grammar_rejects(bounces[0])
+    body = (world.rsc / bounces[0]).read_text(encoding="ascii")
+    assert "name-grammar" in body
+    # `safe_name`, not the raw name: the projection is what reaches every sink
+    # before the grammar passes, and `?` is not a legal filename character.
+    assert "2026-09-07-1800-from-RSC-bad?name.md" in body
+    assert "?" not in bounces[0]
+
+
+def test_a_delivered_cycle_bounces_nothing(world):
+    armed(world)
+    result = world.drive()
+    assert result.termination == "delivered"
+    assert bounces_in(world.rsc) == []
+    assert result.bounce is None
+    assert world.one_row(result)["bounce"] is None
+    assert not runner.bounces_path(world.root).exists()
+
+
+def test_the_bounce_carries_no_model_authored_bytes(world):
+    """A planted model string reaches the held draft and never the bounce."""
+    planted = "PLANTED-MODEL-STRING-9f3a"
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal(
+        {"kind": "measure", "argv": ["git", "log", "--oneline", planted]},
+        reply_action(body=f"{planted}\nsk-ant-abcdef0123456789\n"))))
+    result = world.drive()
+    assert result.termination == "refused"
+    assert result.refused_stage == "filter"
+    bounces = bounces_in(world.rsc)
+    assert len(bounces) == 1
+    body = (world.rsc / bounces[0]).read_text(encoding="ascii")
+    assert planted not in body
+    assert "sk-ant" not in body
+    # `Decision.reason` is model-tainted (it interpolates argv and targets) and
+    # stays out of the bounce too. The body is the template and nothing else.
+    assert body == runner.bounce_body(result)
+    row = world.one_row(result)
+    reasons = [a["reason"] for a in row["m4"]["actions"] if a["reason"]]
+    assert reasons, "the arm proves nothing if no reason was recorded"
+    for reason in reasons:
+        assert reason not in body
+
+
+def test_an_unreadable_allowance_record_suppresses_the_bounce(world):
+    """Fail CLOSED: an unreadable record must not uncap the bounce."""
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    runner.bounces_path(world.root).parent.mkdir(parents=True, exist_ok=True)
+    runner.bounces_path(world.root).write_text("{not json", encoding="ascii")
+    result = world.drive()
+    assert result.termination == "exhausted"
+    assert bounces_in(world.rsc) == []
+    assert result.bounce is None
+
+
+def test_metrics_row_ok_refuses_a_bounce_that_would_parse_as_a_note():
+    row = runner._row_skeleton("20260908T200000-1-abcdef", "t", 1, False)
+    row["termination"] = "refused"
+    row["termination_detail"] = "name-grammar"
+    row["refused_stage"] = "input"
+    row["bounce"] = {"filename": runner.bounce_filename("20260908T200000-1-abcdef", NOTE_NAME)}
+    assert runner.metrics_row_ok(row, delivered=0)
+    row["bounce"] = {"filename": NOTE_NAME}
+    with pytest.raises(runner.MetricsRowInvalid):
+        runner.metrics_row_ok(row, delivered=0)
 
 
 # ---------------------------------------------------------------------------
