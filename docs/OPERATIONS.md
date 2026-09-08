@@ -216,6 +216,7 @@ first resort.
 | `RC-ReplayRosterPull` | Hourly | Administrator / HIGHEST | TRACKED PLAYERS' ranked replays into the role-partitioned corpus: `tools/replay_roster_pull.py --quiet --log-file logs/replay_roster.log`. Roster: `data/replay_roster.json`. **Cadence is not cosmetic** - `/replays` holds only the 5 most recent retained games per account and has NO fetch-by-match-id route, so a game nobody pulls during its residency is lost permanently (measured twice on 2026-07-26: two specifically requested matches had already rotated out). Five games is the whole window, so hourly leaves roughly a 2.5x margin over a fast laddering session. Log: `logs/replay_roster.log` (pythonw discards stdout, so `--log-file` is mandatory here) |
 | `RC-ReplayChainWatch` | Every 15 min | Administrator / HIGHEST | Session-independent watchdog for the replay ingest chain (`tools/replay_chain_watch.py`). Re-enables `RC-ReplayRosterPull` and runs the event-pattern miner ONCE the long ingests (`timeline_ingest`, `build_rank_baselines`) have finished. **Exists because those follow-ups used to be held in a chat session:** if the session ended first, the roster task stayed Disabled and games rotated out of the 5-wide `/replays` window permanently, which is unrecoverable (no fetch-by-match-id route). Idempotent - no-ops while any ingest is running, never re-enables an already-enabled task, and mines only when the corpus grew. `--status` reports without changing anything |
 | `RC-WeeklyHygiene` | Weekly Sunday 04:17 | Administrator | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`) |
+| `RC-InboxResponder` | Every 5 min (`-Once` + 5-min indefinite repeat), S4U | Installing account / Highest | **Install-on-demand, NOT registered by default, and registered DISARMED.** Runs `pythonw.exe tools/inbox_responder_runner.py --cycle` to answer cross-repo inbox notes (install / probe / remove: `ops/install_RC_InboxResponder.ps1`). Registering it arms NOTHING - the runner answers only while the operator's hand-written `ops\runtime\inbox_responder_agreement.json` is present and valid; with no record every tick terminates `disarmed/no_agreement`, which is exactly how you prove the task fires. Kill switch is the flag `ops\runtime\INBOX_RESPONDER_STOP` (checked at the first gate AND again just before delivery, so a late STOP holds a finished draft), never `Disable-ScheduledTask` - that is maintenance-off only. One-shot dry run: write `ops\runtime\INBOX_RESPONDER_DRY` holding the scratch dir path; the runner consumes the flag before the cycle, so it beats a live agreement for that one tick and cannot repeat |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
@@ -225,6 +226,9 @@ first resort.
 | `RiotCommander` | At logon | Administrator / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `C:\Riot Commander`. On every logon it starts an unmanaged SECOND RC process that races `RC-Supervisor` for `:8888` and loses - which is why it stayed invisible: it fails, RC works, nothing surfaces. Live probe 2026-08-08: `State=Ready`, `LastTaskResult=1`, LastRun 2026-08-05. NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
 
 Live task count is **25**: 24 `RC-*` plus the bare `Amberstone` above.
+`RC-InboxResponder` is deliberately NOT in that count - it is install-on-demand
+and is only registered when the operator runs its installer, so the count stays
+25 until then and becomes 26 after.
 
 Check state (the `RC-*` glob alone MISSES `Amberstone`, which is exactly how it went undocumented for so long):
 
@@ -453,6 +457,71 @@ powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_Rewin
 
 Operator's play cadence is sparse (`5 games / 5 months 2026-05`), so a
 weekly cadence is enough. ExecutionTimeLimit caps each run at 20 minutes.
+
+---
+
+## Inbox responder (`RC-InboxResponder`)
+
+Answers cross-repo inbox notes from the sibling checkouts every 5 minutes
+(`tools/inbox_responder_runner.py --cycle`, run under `pythonw.exe` so no
+console flashes). Install-on-demand: nothing registers it automatically.
+
+**Registration lands DISARMED, and that is the whole safety model.** The
+task may sit Enabled and ticking while the responder answers nothing.
+Arming is a separate, hand-written operator act:
+
+- **Arming file** `ops\runtime\inbox_responder_agreement.json` - written by
+  the OPERATOR by hand, never by code. It names the counterparty CODES the
+  responder may answer (codes resolve through the `participants` map in the
+  gitignored `ops\moon_sync_repos.json`; see `ops\moon_sync_repos.example.json`),
+  the open/close window, the hop budget and the grammar. `load_agreement`
+  fails closed - missing file, bad JSON, a mistyped field, an unknown
+  counterparty or an elapsed expiry all disarm the cycle rather than
+  loosening it. With no record at all, every tick terminates
+  `disarmed/no_agreement` and writes a log row - that idle row is the proof
+  the task actually fires.
+- **STOP flag** `ops\runtime\INBOX_RESPONDER_STOP` - always wins. Checked at
+  the first gate and again immediately before delivery, so a STOP written
+  late holds a finished draft instead of sending it. This is the kill
+  switch; `Disable-ScheduledTask RC-InboxResponder` is maintenance-off only.
+- **Dry-cycle flag** `ops\runtime\INBOX_RESPONDER_DRY` - one line holding the
+  scratch dir path. The runner unlinks the flag BEFORE the cycle runs, so it
+  takes precedence over a live agreement for exactly one tick and a crash
+  can cost one dry tick but never a repeat. A dry tick is recorded with
+  `dry: true`. It is a flag file and not an environment variable on purpose:
+  an S4U task inherits MACHINE-scope environment only, so an operator-shell
+  variable would never reach it.
+
+Install the 5-minute task (elevated PowerShell):
+
+```
+powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1"
+```
+
+Verify, then remove when the trial is over:
+
+```
+powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1" -Probe
+powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1" -Remove
+Get-ScheduledTask RC-InboxResponder | Get-ScheduledTaskInfo
+schtasks /Run /TN RC-InboxResponder
+```
+
+`-Probe` prints State / Enabled / NextRunTime / the repetition read-back /
+MultipleInstances / ExecutionTimeLimit, plus whether the arming record, the
+STOP flag and the DRY flag are present. Task properties: `-Once` trigger one
+minute out repeating every 5 minutes with a null Duration (indefinite),
+ExecutionTimeLimit 10 minutes (`TASK_ETL_S` in the runner),
+`MultipleInstances IgnoreNew` so a slow tick is skipped rather than
+overlapped, `LogonType S4U` and `RunLevel Highest` with the account resolved
+at install time from the installing shell - no account name is written into
+the script.
+
+Proof the task FIRED rather than merely being registered: after
+`schtasks /Run /TN RC-InboxResponder`, look for a new START/END pair
+`disarmed/no_agreement` in the responder log whose pid is not the shell's,
+plus a metrics row with the same cycle_id. Two such pairs 5 minutes apart
+prove the repetition.
 
 ---
 

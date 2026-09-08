@@ -1,8 +1,12 @@
 {
   "_doc": "Per-host list of sibling repo checkouts that share the cross-repo inbox channel. Copy to ops/moon_sync_repos.json (gitignored) and fill in the real paths. This repo is always polled and does not need listing. An absent file means the poller only watches this repo, which is the correct behaviour for a fresh clone.",
   "_env_override": "RC_MOON_SYNC_REPOS, os.pathsep-separated, wins over this file.",
+  "_participants_doc": "participants maps a short COUNTERPARTY CODE to that sibling's checkout path, for the inbox responder (tools/inbox_responder_runner.py): the arming record ops/runtime/inbox_responder_agreement.json names counterparties by code, and a code absent from this map is refused. The poller reads only the repos key and ignores participants entirely, so the new key is backward compatible with an existing gitignored file that lacks it. The real map lives in the gitignored ops/moon_sync_repos.json. Real sibling names and paths NEVER enter a tracked file - codes only, and the example path below is a placeholder.",
   "repos": [
     "C:\\Some Sibling Repo",
     "C:\\Another Sibling Repo"
-  ]
+  ],
+  "participants": {
+    "AAA": "C:\\Example Sibling"
+  }
 }
