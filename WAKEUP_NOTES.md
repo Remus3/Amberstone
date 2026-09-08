@@ -88,8 +88,17 @@ runner is literally `runner` - it would have matched `inbox_responder_runner.py`
 and the English word and raised a FALSE accusation. Final head `cf69d7904`,
 34 commits; `ci` green with the `check` job confirmed RUN at 19 steps, and
 `docs-guards` DISPATCHED (it path-ignores `.py`, so it would not have run at
-all) and green at 11 steps. `ci` was ALREADY RED at `f4472f58e` before this
-session on missing DDragon assets - inherited, not introduced.
+all) and green at 11 steps.
+
+**And one correction this session owes itself.** The pre-session `ci` run at
+`f4472f58e` was red, and it was first written up as inherited breakage that
+covered part of this build's failure. Opening `jobs[]` instead of citing the
+run conclusion shows the failing job was `nightly-full-suite` with `check`
+SKIPPED - so that run says NOTHING about the job that judges a push, and the
+only hard `check` failure on these commits was RC's own export arm. The memory
+`reference_green_ci_run_may_have_skipped_the_job` is about a GREEN run hiding a
+skip; this is the identical error in the red direction, and it is the more
+tempting one, because "already broken" is a comfortable thing to conclude.
 
 **Operational fact worth carrying:** `RC-InboxResponder` is registered and
 Ready but DISARMED (no agreement record), and it must be DISABLED to run the
