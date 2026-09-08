@@ -156,6 +156,14 @@ CONTROL_FIXTURES: dict[str, int] = {
     # pattern correctly declines to match, and prose describing a needle is not
     # itself a needle unless it is spelled as one.
     "tests/test_no_hardcoded_home_path.py": 7,
+    # The responder scrubber's own control fixtures. `scrub_output` must turn a
+    # Windows home path into `<home>` before it can reach a metrics row or a
+    # reply body, and `filter_body` must refuse a model body carrying one, so
+    # both arms have to FEED a real home-shaped path. Forbidding the shape here
+    # would forbid testing the redaction that exists to stop it leaking.
+    # MEASURED with this module's own `findings_in`, not guessed.
+    "tests/test_inbox_responder_exec.py": 3,
+    "tests/test_inbox_responder_runner.py": 1,
 }
 
 
