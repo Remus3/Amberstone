@@ -246,6 +246,42 @@ def test_a_sibling_that_won_the_rename_is_adopted_not_clobbered(tmp_path: Path) 
     assert _sha_dirs(state_root) == [sha12]
 
 
+def test_a_rename_oserror_with_no_winner_still_raises(tmp_path: Path, monkeypatch) -> None:
+    """The adopt branch must not swallow a real rename fault.
+
+    It catches OSError rather than FileExistsError, because the errno for
+    renaming onto an existing non-empty directory is not portable (Windows
+    raises FileExistsError, POSIX raises ENOTEMPTY / ENOTDIR / EEXIST) - which
+    is why catching FileExistsError alone was green on Windows and red in Linux
+    CI. That widening is only safe if the branch decides on the STATE of the
+    destination, so this arm drives an OSError where NO winner exists and
+    asserts the export still fails loudly.
+    """
+    state_root = tmp_path / "state"
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w") as tar:
+        member = tarfile.TarInfo("tracked.txt")
+        member.size = 5
+        tar.addfile(member, io.BytesIO(b"ours\n"))
+    runner = StubRunner({
+        "rev-parse": StubResult(stdout=b"c0ffee123456f890abcdef1234567890abcdef12\n"),
+        "archive": StubResult(stdout=buf.getvalue()),
+    })
+
+    def exploding_rename(src, dst):
+        raise OSError(39, "Directory not empty")
+
+    import tools.inbox_responder_export as export_mod
+
+    monkeypatch.setattr(export_mod.os, "rename", exploding_rename)
+
+    with pytest.raises(ExportFailed) as caught:
+        ensure_export(tmp_path / "repo", state_root, runner=runner, timeout_s=60, max_bytes=4096 * 1024)
+
+    assert caught.value.detail == "exc:OSError"
+    assert _sha_dirs(state_root) == []
+
+
 # ------------------------------------------------------------- failure arms
 
 def test_no_origin_main_against_a_real_repo_without_a_remote(tmp_path: Path) -> None:
