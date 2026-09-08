@@ -6,6 +6,63 @@
 
 ---
 
+# 2026-09-08c - RM-386 second half: a refusal is no longer an answer, and the row asking for it was two-thirds stale
+
+Single-row session. Tier-1, no `ENGINE_VERSION` bump, no DS bounce, no frozen
+file. `RC-InboxResponder` was DISABLED for the run and re-enabled at wrap.
+
+**Read the code before the row.** RM-386's body named three terminal states
+that "answer a note and tell the sender NOTHING". Two were already closed when
+the session opened - the bounce shipped the same afternoon fires on exactly
+{exhausted, refused} and had arms proving it, and the `minItems: 1` fix made an
+empty proposal illegal. The third was always the RM-385 class. What was open
+was the clause the row filed as an OPTION: refusals were written to the
+answered record, which made them PERMANENT, which is why RC deleted an entry by
+hand to re-cycle RSC's 1456 note. A session that trusted the row's summary
+would have rebuilt the bounce.
+
+**Shipped.** `record_responded` went from FIVE call sites to ONE (inside
+`_deliver`), so the record means only what it says. Refusals and exhaustion now
+write a HOLD record, `ops/runtime/inbox_responder_held_notes.json`, keyed by
+`note_sha12` of the RAW name: the note stays pending and unanswered,
+`pick_note` skips it as it skips one at the spawn cap, every row carries
+`notes_held`, and gate 4b says `runner-failed / notes-held` rather than
+`empty` - `attempt-cap` still wins when a note is also at the spawn cap, and
+the guarantee is that neither is ever `empty`. One deleted entry re-cycles the
+note.
+
+**Both costs RSC disclosed are paid, not argued away:** the repeat-refusal
+storm (288 held dirs a day) is suppressed by the hold, and head-of-line
+starvation - which RC had been buying off by answering refusals without knowing
+it, RSC refutation 6 - is prevented by a younger note being picked ahead of the
+held one, with an arm driving exactly that. Both record faults fail CLOSED:
+unreadable terminates `held-record-unreadable` before anything is spent,
+unwritable clears `bounce_target` so nothing goes into the sibling's tree.
+
+**Traps worth keeping.** A fixture that makes the record a DIRECTORY does not
+test the unwritable path - the unreadable gate catches it first; the arm needs
+the `.json.tmp` name occupied instead. And `metrics_row_ok` bans the substring
+`refus` on a non-refused row, so the vocabulary had to be `notes-held`, not
+anything spelled with "refusal".
+
+**Live data measured, and one entry deliberately LEFT.** The answered record
+holds 108 entries: 106 are the deliberate seed, one is the correctly answered
+1530 note, and one - the 1456 note, `e83297be2bf9` - is the single false entry
+the old code wrote (only ever refused then exhausted, never replied to).
+Deleting it is an OPERATOR call, not a neutral repair: it is older than the two
+unanswered notes now in the inbox, so it would sort to the head and spend the
+first hop of the next agreement. Command is in `docs/LEDGER.md` 1366.
+
+**Do NOT redo:** the hold record and its two fail-closed directions, the
+`notes-held` / `held-record-unreadable` vocabulary, the three repaired mutants
+plus the one added, the amended spec sections 2 and 4b.
+
+**Still open:** RM-385 (strict-xfail untouched), RM-387, RM-388. A
+`destination`-stage refusal is still answered on purpose - `_deliver` records
+before the link attempt and a mutant pins that order.
+
+---
+
 # 2026-09-08b - the responder was ARMED, and running it found what testing could not
 
 Continues 2026-09-08 below. The runner was armed against RSC (A5-measurement-only,
