@@ -6,6 +6,81 @@
 
 ---
 
+# 2026-09-08 - RM-384: the responder runner is BUILT, and the three conditions are MEASURED
+
+31 commits `f4472f58e..966febbfd`, pushed. Full `pytest tests` from the repo
+root: **21591 passed, 102 skipped, 1 xfailed, 4921 subtests, 0 failed** in
+65m31s. No `ENGINE_VERSION` bump, no DS bounce, no frozen file touched.
+Per-item detail in `docs/LEDGER.md` 1364.
+
+**What shipped.** `tools/inbox_responder_{procs,prompt,exec,export,spawn,runner}.py`,
+`ops/install_RC_InboxResponder.ps1`, and eight test files - procs 18, prompt 13,
+exec 90, export 15, spawn 55, runner 187 (+1 skipped, +1 xfailed), mutants 76,
+task 45, each measured individually on the frozen tree. Nine worktree slices,
+subagent-first, verifier or adversary gate on every merge.
+
+**The three conditions, measured not written.** (1) `validate_proposal` is gate
+12, one tagged call site, driven live; 26 `# GATE:` tags each exactly once
+against a literal census; 68 mutants, 68 reddening. (2) Interactive
+`--dry-cycle` reports `SUMMARY: PASS 12 FAIL 0` and exits 0, and the TASK-FIRED
+run - the one the interactive run cannot stand in for - delivered on pid 31320,
+not the shell's 6384. (3) Two live `disarmed / no_agreement` ticks five minutes
+apart, pids 15084 and 23072. The arming note went to RSC's inbox, 13907 bytes,
+disclosing both vocabulary extensions.
+
+**A ROW LIST IS NOT A COVERAGE PROOF - the single most useful thing learned.**
+The first mutants agent reported "44 of 44 redden", which was TRUE and was not
+the claim that mattered. A second adversarial pass measured that two of the 26
+gates, `start` and `deliver`, had NO mutant on the gate's own call site: every
+candidate mutated a helper nearby. The census now requires each arm's needle to
+sit INSIDE the statement its `# GATE:` comment marks. If a future session takes
+a mutant score at face value, this is the paragraph to re-read.
+
+**Three of RC's OWN spec mutants were vacuous**, and are recorded in the spec's
+new "Build measurements" section rather than quietly patched: `harden` is inert
+when driven by `git status` (the pre-check re-derives the identical rule, so
+only POSITIONAL cases are unique to hardening); `gate-exception` as written is a
+SyntaxError; `reason-scrub`'s codec mutant cannot fire, because validator
+reasons pass model values through `repr` and are ASCII before the scrubber sees
+them.
+
+**The dry cycle earned its keep by FAILING first.** Run one terminated
+`spawn-failed / timeout` - correctly labelled, not as the reassuring
+`exhausted` - and measured two figures the spec had flagged as guesses: the
+tracked-only `origin/main` export is **618 MB**, and `SPAWN_TIMEOUT_S` 120 is
+too short for a session that Reads and Greps it. Raised to 240; every bound in
+section 11 still holds (500, 560, both under 600). Also measured: the CLI does
+NOT reject an unsatisfiable schema - it returns `subtype success` with
+`structured_output {"actions": []}`, which is exactly why `exhausted` must mean
+`actions == []` only.
+
+**Four defects found by the arms, three fixed.** The export module filed every
+runner fault as `exc:str` (and its own arm passed only because the stub carried
+an exception OBJECT, a shape the seam never produces); `metrics_row_ok`
+destroyed gate 11's own exception tag via the `exhaust` substring invariant;
+held `spawn.json` dropped `kill_skipped`. **STILL OPEN and xfail-pinned:** a
+note whose NAME is a directory junction never reaches the gate 6 link checks,
+because `pending_notes` filters on `is_file()`. It reads `empty / none_pending`
+and sits in the inbox unremarked on every later tick. Not a containment hole - a
+companion PASSING arm pins that nothing outside the inbox is opened, quoted,
+spawned for or delivered - but fixing it means editing `inbox_responder.py`,
+which spec section 15 forbids, so it needs its own scoped item.
+
+**Two repo guards tripped and were fixed properly, not suppressed.** The
+home-path guard flagged the responder's own scrubber control fixtures, which
+must feed a real home-shaped path to prove the redaction - pinned BY MEASURED
+COUNT using the guard's own `findings_in`. Three surrogate-filename arms gated
+their skip inside an `except`, which the skip-hygiene guard cannot resolve;
+reshaped into a real capability probe, which then measured that NTFS here
+accepts BOTH `\udcff` and `\ud800`, so both cases RUN.
+
+**Operational fact worth carrying:** `RC-InboxResponder` is registered and
+Ready but DISARMED (no agreement record), and it must be DISABLED to run the
+full suite, because it appends to the live responder log every five minutes and
+the suite's autouse arm guards exactly that surface.
+
+---
+
 # 2026-09-07e - ULTRAPLAN: the responder runner is SCOPED, not built. Next session builds it from `docs/RESPONDER_RUNNER_SPEC.md`
 
 One commit, docs + memory only. No code, no `ENGINE_VERSION`, no frozen file,
@@ -163,78 +238,3 @@ RSC rather than accepting the credit. FOUR NOTES UNREAD at wrap: LW 1813 +
 1820 (LW audited RC's public history: "your 11 is exact and your scope
 sentence is not"), LL 1830, CS 1905 (yes to the trial, restricted to A1-A2-A3,
 A4 refuted again, outbound ratio zero).
-
----
-
-# 2026-09-07c - THE FLIP HAPPENED. Remus3/Amberstone is PUBLIC
-
-Operator-gated at the destructive step, autonomous either side of it. Three
-commits on the rewritten `main`: `e4083dba6`, `50e4de321`, `39b56742f`.
-
-**PROBED, not assumed:** `gh repo view` -> `PUBLIC` / `isPrivate:false`, and an
-unauthenticated `curl` to the repository page returns 200. The verdict in
-`docs/PUBLIC_FLIP_GO_NO_GO.md` was written AFTER that probe. Read its "Outcome"
-section; everything above it is the pre-flip record, left standing on purpose.
-
-## The acceptance sweep failed first, and that is the value of the session
-
-Two separate defects, one in the instrument and one in the rewrite.
-
-- **The verifier's own pattern had the bug the scrub rule was already fixed
-  for.** Unanchored, so it matched the tail of longer words and read
-  "gitignored moon_sync_inbox" as a hit. 653 hits, **652 manufactured by the
-  instrument**. An instrument and the thing it measures can disagree about a
-  rule, and the instrument is not automatically the trustworthy side.
-- **A content scrub can be COMPLETE and still publish the names.** The rename
-  table was keyed on each file's path at HEAD; the filter callback receives the
-  path of whichever COMMIT it is filtering, so every pre-move path went
-  unrenamed. **2195 vendor-name hits, none in a blob** - all in tree objects,
-  where filenames live. The prior pass's "all purged paths zero" was true and
-  useless: eleven named patterns, no vendor name among them.
-
-Widening that sweep to the whole path list found 27 scraped vendor images and
-two scraped JSON files no plan had listed. Dropped, not renamed.
-
-## Traps worth carrying
-
-- **A mirror clone DOES fetch `refs/pull/*/head`** - all 13, and 531 commits
-  lived on no other ref. Reasoning said otherwise.
-- **A ref-pattern check can fail GREEN.** `for-each-ref 'refs/pull/*'` matched
-  nothing while 13 existed, then "confirmed" zero with the same broken pattern.
-  `for-each-ref` and `ls-remote` do not share a pattern language and neither
-  errors on a pattern that matches nothing. Always run the control.
-- **Deleting a repo deletes its LFS store.** Seven tip files are pointers; only
-  the local 662 MB of objects saved it.
-- **A document describing a scrub is INSIDE the scrub's blast radius.**
-  `converge.py` found 4 non-fixed-point files, all written at the last wrap.
-
-## CI went red after the flip, on a third instance of the same shape
-
-The citation remap was run over `*.md` only, but several tests use a hardcoded
-commit as a LIVE GIT ANCHOR (`git cat-file -e <sha>^:path`). A rewrite renames
-every commit, so those anchors died and CI came back **8 failed, 31693 passed**.
-Remapped in code too - 207 substitutions, 89 files, 0 dropped - and the verifying
-run is green: `check` success, **31701 passed / 262 skipped**, DS **10053
-passed**, job RAN (the sibling `nightly-full-suite` is skipped by design).
-
-**One file was REVERTED, not fixed.** `tests/test_loop_status_route.py` writes a
-synthetic 18-char sentinel `sha` and asserts on its 8-char truncation, which
-collided with a real commit prefix and got rewritten - desynchronising fixture
-from assertion. Remap a SHA only where it REFERENCES history, never where it is
-opaque test data.
-
-## Open, and deliberately not credited
-
-The NTFS-junction hole in `rc_facts.py` (a one-file drop reports 6 files), RC's
-gitignored hook wiring (a fresh clone runs no watcher), and outbound-withdrawal
-watching. All three reported to the siblings, none fixed.
-
-## Cross-repo
-
-Two notes delivered byte-identical to all four siblings: the deferred answers to
-CS 1013 / LW 1035 / LL 1100, then the correction that RC is public and **their
-names ARE in the published history** - 11 hits in 8 historical blob versions of
-the two byte-pinned shared modules, stated exactly rather than reassured away.
-RC also retracted two of its own claims: the 0700 "Amberstone is PUBLIC" note
-was false when written, and "winmutex.py measured clean" was true of the current
-version and false of its history.
