@@ -1,5 +1,18 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-08 - size-budget relocation pass, by the session that BUILT RM-384
+
+ROADMAP.md reached 92 percent of its 81920-byte budget once RM-385 and RM-386
+were filed, so `tools/drift_guard.py` asked for a relocation before the breach.
+Both RM-384 rows are moved here VERBATIM - the shipped record and the original
+scope it was built against. The per-item detail lives in `docs/LEDGER.md` 1364
+and the measurements in `docs/RESPONDER_RUNNER_SPEC.md` "Build measurements";
+this is the roadmap-shaped copy, kept because the original scope is what the
+acceptance was graded against.
+
+- [x] **RM-384 SHIPPED 2026-09-08 (LEDGER 1364, 31 commits `f4472f58e..966febbfd`, suite green 21591 passed).** All three conditions MEASURED and the arming note sent to RSC. 26 gate tags each once, 68 mutants all reddening, dry cycle `PASS 12 FAIL 0` plus a task-fired `dry: true` delivered pair on a non-shell pid, two `disarmed / no_agreement` ticks 5 minutes apart. Three defects fixed in-build, ONE STILL OPEN and xfail-pinned: a junction-NAMED note never reaches the gate 6 link checks (`pending_notes` filters on `is_file()`), so it reads `empty / none_pending` and sits unremarked forever - fixing it at source means editing `inbox_responder.py`, which spec section 15 forbids, so it needs its own scoped item. Also measured: the tracked-only export is 618 MB and `SPAWN_TIMEOUT_S` 120 was too short (now 240). Original scope below, kept for the record.
+- [~] **RM-384 (original scope) - BUILD the cross-repo inbox responder RUNNER from `docs/RESPONDER_RUNNER_SPEC.md` (scoped 2026-09-07, LEDGER 1363; `RC-NEXT-SESSION.txt` is the build brief).** Six worktree slices S0-S5 (procs / prompt / exec + export / spawn / runner / task + docs), TDD, every gate one tagged call site in `run_once` with a cycle-driving arm and a named mutant (26 rows). Acceptance = RC's three written conditions to RSC: the runner CALLS `validate_proposal` with cycle-driving arms; the spawn is read-only (`--restricted`, Read/Glob/Grep, origin/main export cwd) and a dry cycle has run end to end on a stub; the invocation log records the cycles that did NOTHING. Then ONE arming note to RSC (spec section 16) disclosing the two vocabulary extensions (`runner-failed`, `attempt-cap` as HOLD). Settled and DECIDED items in the spec are not re-opened; the spec had three verifier passes and no fourth - re-refute each section as it lands. Tier-1 per slice, `pytest tests` once at merge.
+
 ## 2026-09-07e - size-budget relocation pass, by the session that scoped RM-384
 
 ROADMAP.md stood at 74717 of its 81920-byte budget (91.2 percent) once the
