@@ -512,6 +512,20 @@ def armed(world, **over):
     return world
 
 
+def assert_held_not_answered(world, name, stage):
+    """RM-386: a refused or exhausted note is HELD, never answered.
+
+    The answered record means "this note has been replied to". A refusal is
+    precisely the case where it has not, and writing one there also made the
+    outcome permanent - a later fix could not re-cycle the note.
+    """
+    assert world.answered() == set(), "a refusal recorded as an answer"
+    held = runner.held_notes_of(world.root)
+    sha = runner.note_sha12(name)
+    assert sha in held, "the note was neither answered nor held"
+    assert held[sha]["stage"] == stage
+
+
 # ---------------------------------------------------------------------------
 # Census - the table's own vacuity control, restated here so the runner cannot
 # ship with a gate that has no call site.
@@ -1089,12 +1103,15 @@ def test_note_name_grammar_refuses_and_answers(world, label, name):
     row = world.one_row(result)
     assert re.fullmatch(r"^[A-Za-z0-9._?-]{1,80}$", row["note"])
     assert row["m3"] is None and row["m4"] is None
-    # The RAW name is what stops the note re-cycling, and the record stays ASCII.
-    raw = responder_state_path(world.root).read_bytes()
+    # The RAW name is what stops the note re-cycling: the hold is keyed by
+    # `note_sha12` of the name as it sits on disk. The record stays ASCII
+    # because only the `safe_name` projection is written into the entry.
+    raw = runner.held_notes_path(world.root).read_bytes()
     assert raw.decode("ascii")
-    assert name in json.loads(raw.decode("ascii"))["answered"]
+    assert runner.note_sha12(name) in json.loads(raw.decode("ascii"))
+    assert world.answered() == set()
     second = world.drive()
-    assert second.termination == "empty"
+    assert (second.termination, second.termination_detail) == ("runner-failed", "notes-held")
 
 
 def test_a_lowercase_sender_code_never_reaches_the_shape_gate(world):
@@ -1197,7 +1214,7 @@ def test_note_oversize_is_refused_and_answered(world):
     result = world.drive()
     assert (result.termination, result.termination_detail) == ("refused", "note-oversize")
     assert result.refused_stage == "input"
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "input")
     assert world.spawner.calls == 0
 
 
@@ -1237,7 +1254,7 @@ def test_note_that_is_a_hard_link_is_refused(world, tmp_path):
     assert result.termination == "refused"
     assert result.termination_detail == "note-shape:linked"
     assert world.spawner.calls == 0
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "input")
 
 
 _JUNCTION_SKIP = pytest.mark.skipif(
@@ -1285,7 +1302,7 @@ def test_a_note_that_is_a_junction_is_refused(world, tmp_path):
     assert result.termination == "refused"
     assert result.termination_detail == "note-shape:linked"
     assert result.refused_stage == "input"
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "input")
     assert list(target.iterdir()) == [target / "borrowed.txt"]
 
 
@@ -1721,7 +1738,7 @@ def test_exhausted_is_an_empty_action_list_and_nothing_else(world):
     result = world.drive(measure_runner=lambda *a, **kw: calls.append(a))
     assert (result.termination, result.termination_detail) == ("exhausted", "empty-proposal")
     assert calls == []
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "exhausted")
     assert replies_in(world.rsc) == []
     # Not silence: the sender gets the bounce instead of nothing at all.
     assert len(bounces_in(world.rsc)) == 1
@@ -1764,7 +1781,7 @@ def test_a_blank_reply_body_is_refused_by_the_validator(world):
     result = world.drive()
     assert (result.termination, result.termination_detail) == ("refused", "validator:A5")
     assert result.refused_stage == "validator"
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "validator")
     row = world.one_row(result)
     assert row["m4"] is not None
     assert (world.held(result.cycle_id) / "decisions.json").exists()
@@ -2045,7 +2062,7 @@ def test_output_filter_refuses_and_holds(world, label, body, gate):
         assert (held / name).exists(), name
     assert replies_in(world.rsc) == []
     assert len(bounces_in(world.rsc)) == 1
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "filter")
     row = world.one_row(result)
     assert row["m4"]["actions"][0]["filter_gates"] == result.termination_detail.split(":", 1)[1].split(",")
 
@@ -2123,7 +2140,7 @@ def test_an_oversize_assembled_body_is_refused_and_held(world, monkeypatch):
     assert len((held / "draft.md").read_bytes()) == 200001
     assert replies_in(world.rsc) == []
     assert len(bounces_in(world.rsc)) == 1
-    assert NOTE_NAME in world.answered()
+    assert_held_not_answered(world, NOTE_NAME, "filter")
     row = world.one_row(result)
     replies = [a for a in row["m4"]["actions"] if a["kind"] == "reply"]
     assert [a["filter_gates"] for a in replies] == [["oversize"]]
@@ -2451,14 +2468,14 @@ def test_a_second_cycle_on_the_same_note_bounces_only_once(world):
     """The allowance is what bounds the repeat-refusal cost.
 
     A note that can never pass must not produce an unbounded stream of files.
-    The answered record already stops it re-cycling; this arm drives the case
-    the record cannot cover, where the operator clears it to try a fix again.
+    The hold record already stops it re-cycling; this arm drives the case the
+    hold cannot cover, where the operator clears it to try a fix again.
     """
     armed(world)
     world.spawner = StubSpawner(result_bytes(proposal()))
     first = world.drive()
     assert len(bounces_in(world.rsc)) == 1
-    responder_state_path(world.root).unlink()
+    runner.held_notes_path(world.root).unlink()
     second = world.drive()
     assert second.cycle_id != first.cycle_id
     assert second.termination == "exhausted"
@@ -2542,6 +2559,139 @@ def test_metrics_row_ok_refuses_a_bounce_that_would_parse_as_a_note():
     row["bounce"] = {"filename": NOTE_NAME}
     with pytest.raises(runner.MetricsRowInvalid):
         runner.metrics_row_ok(row, delivered=0)
+
+
+# ---------------------------------------------------------------------------
+# RM-386 second half - a refusal is not an answer
+#
+# The answered record means "this note has been replied to", and a refusal is
+# precisely the case where it has not. Recording one there makes the record
+# assert something false, and it is PERMANENT: RC's 15:02:43 refusal of RSC's
+# 1456 note had to be deleted from that record BY HAND before the widened caps
+# could re-cycle it. RC accepted RSC's reasoning in its 1545 note; these arms
+# are that ruling made executable.
+#
+# The disclosed cost of leaving a refused note eligible - RSC measured it, 288
+# held directories a day for one note that can never pass, plus head-of-line
+# starvation reachable on purpose by a sibling - is paid by a HOLD, the shape
+# gate 4b already uses for the spawn-attempt cap: the note stays pending and
+# unanswered, stops consuming automatic cycles, is loud in every row, and
+# resumes the moment the operator clears one entry.
+#
+# Every arm here asserts the SENDER-VISIBLE outcome, not the termination
+# string, because the sender is the party the whole item exists for.
+# ---------------------------------------------------------------------------
+
+
+BAD_NAME = "2026-09-07-1800-from-RSC-bad name.md"
+
+
+def test_a_refused_note_is_held_not_answered_and_re_cycles_when_cleared(world):
+    world.agreement()
+    world.note(name=BAD_NAME)
+    first = world.drive()
+    assert (first.termination, first.refused_stage) == ("refused", "input")
+    # SENDER-VISIBLE: one bounce, no reply, and the note still on RC's disk.
+    assert len(bounces_in(world.rsc)) == 1
+    assert replies_in(world.rsc) == []
+    assert (world.inbox / BAD_NAME).exists()
+    # The answered record does not claim a reply that never happened.
+    assert world.answered() == set()
+    held = runner.held_notes_of(world.root)
+    assert set(held) == {runner.note_sha12(BAD_NAME)}
+    assert held[runner.note_sha12(BAD_NAME)]["stage"] == "input"
+
+    # The next tick is loud and adds nothing: no second bounce into the
+    # sibling's tree, and never `empty / none_pending`, which would report
+    # nothing pending while something is.
+    second = world.drive()
+    assert (second.termination, second.termination_detail) == ("runner-failed", "notes-held")
+    assert world.one_row(second)["notes_held"] == 1
+    assert world.spawner.calls == 0
+    assert len(bounces_in(world.rsc)) == 1
+    assert second.bounce is None
+
+    # The operator clears the entry after a fix and the note is cycled again -
+    # the thing the answered record made impossible.
+    runner.held_notes_path(world.root).unlink()
+    third = world.drive()
+    assert (third.termination, third.refused_stage) == ("refused", "input")
+    assert third.note_sha12 == first.note_sha12
+
+
+def test_an_exhausted_note_is_held_not_answered(world):
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("exhausted", "empty-proposal")
+    assert len(bounces_in(world.rsc)) == 1
+    assert replies_in(world.rsc) == []
+    assert world.answered() == set()
+    assert runner.note_sha12(NOTE_NAME) in runner.held_notes_of(world.root)
+
+
+def test_a_held_note_does_not_starve_a_younger_one(world):
+    """RSC refutation 6 - the cost RC used to buy off by answering refusals.
+
+    `pending_notes` is arrival-ordered, so one note that can never pass would
+    block the channel forever if the runner simply retried the oldest.
+    """
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    first = world.drive()
+    assert first.termination == "exhausted"
+
+    world.note(name=RSC_1848)
+    world.spawner = StubSpawner(result_bytes(proposal(reply_action())))
+    second = world.drive()
+    assert second.termination == "delivered"
+    assert second.note == RSC_1848
+    assert len(replies_in(world.rsc)) == 1
+    row = world.one_row(second)
+    assert row["notes_held"] == 1
+    assert (world.inbox / NOTE_NAME).exists()
+    assert NOTE_NAME not in world.answered()
+
+
+def test_an_unreadable_hold_record_stops_the_cycle_before_it_spends_anything(world):
+    """Fail CLOSED in the direction RSC measured.
+
+    RSC's own fail-open wrote five bounces into a sibling's tree with no error
+    surfaced. If RC cannot read the record that bounds the repeat, it must not
+    spawn, must not bounce and must not answer - the row carries the fault.
+    """
+    armed(world)
+    runner.held_notes_path(world.root).parent.mkdir(parents=True, exist_ok=True)
+    runner.held_notes_path(world.root).write_text("{not json", encoding="ascii")
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("runner-failed",
+                                                               "held-record-unreadable")
+    assert world.spawner.calls == 0
+    assert bounces_in(world.rsc) == []
+    assert replies_in(world.rsc) == []
+    assert world.answered() == set()
+
+
+def test_an_unrecordable_hold_suppresses_the_bounce(world):
+    """The bounce allowance only bounds the repeat while its record persists.
+
+    With the hold record unwritable, a refused note re-refuses on every tick,
+    so a bounce emitted anyway is RSC's 288-files-a-day fault with RC's name
+    on it. The hold is recorded BEFORE the bounce and its failure suppresses.
+    """
+    armed(world)
+    world.spawner = StubSpawner(result_bytes(proposal()))
+    # Readable (absent, so it reads as empty) but UNWRITABLE: the atomic
+    # write's temporary name is occupied by a directory. That is the half the
+    # gate-4b unreadable check cannot see, because it happens after the pick.
+    path = runner.held_notes_path(world.root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.with_suffix(".json.tmp").mkdir()
+    result = world.drive()
+    assert result.termination == "exhausted"
+    assert bounces_in(world.rsc) == []
+    assert result.bounce is None
+    assert world.answered() == set()
 
 
 # ---------------------------------------------------------------------------
