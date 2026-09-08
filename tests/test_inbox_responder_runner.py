@@ -1023,12 +1023,36 @@ def test_m1_reads_delivered_entries_while_the_budget_reads_attempted(world):
 # ---------------------------------------------------------------------------
 
 
+# RM-386. The exact name RC's first armed responder cycle bounced
+# `refused / name-grammar`: 130 characters, a 102-character topic. The row filed
+# for it blamed `NOTE_NAME_MAX = 120`; the binding constraint was the TOPIC
+# group, which was `{1,80}` and is tested in the same `or` as the length cap.
+RSC_BOUNCED_1456 = (
+    "2026-09-08-1456-from-RSC-window-ran-and-produced-NO-DATA-your-underscore"
+    "-question-answered-and-your-coverage-warning-lands-here.md"
+)
+
+# Boundary literals, spelled out rather than sized from the constants they
+# bound. A fixture built as `"x" * runner.NOTE_NAME_MAX` moves with the mutation
+# it is supposed to catch, so it is an amplifier, not a guard.
+TOPIC_AT_CAP = "2026-09-07-1800-from-RSC-" + "x" * 160 + ".md"        # 188 chars
+TOPIC_OVER_CAP = "2026-09-07-1800-from-RSC-" + "x" * 161 + ".md"      # 189 chars
+# The longest name the COMPOSED grammar admits: the widest sender code the
+# regex allows (4) plus a topic at the cap. 26 + 160 + 3 = 189.
+NAME_AT_LONGEST = "2026-09-07-1800-from-ABCD-" + "x" * 160 + ".md"    # 189 chars
+NAME_OVER_LONGEST = "2026-09-07-1800-from-ABCD-" + "x" * 161 + ".md"  # 190 chars
+
+
 BAD_NAMES = [
     ("space", "2026-09-07-1800-from-RSC-bad name.md"),
     ("question", "2026-09-07-1800-from-RSC-what?.md"),
     ("non-ascii", "2026-09-07-1800-from-RSC-caf\u00e9.md"),
     ("plus", "2026-09-07-1800-from-RSC-a+b.md"),
-    ("too-long", "2026-09-07-1800-from-RSC-" + "x" * 100 + ".md"),
+    # Was a 100-character topic, refused under the pre-RM-386 `{1,80}` group.
+    # That name is now ACCEPTED, so the case moves to the new boundary rather
+    # than leaving the parametrization one case lighter: one character past the
+    # `{1,160}` topic group, which is the first thing that refuses it.
+    ("too-long-topic", TOPIC_OVER_CAP),
     ("lone-surrogate", LOW_SURROGATE_NOTE_NAME),
     ("high-surrogate", HIGH_SURROGATE_NOTE_NAME),
 ]
@@ -1097,6 +1121,58 @@ def test_note_name_positive_control_is_the_rsc_1848_filename(world):
     result = world.drive()
     assert result.termination == "delivered"
     assert result.note == RSC_1848
+
+
+def test_the_rsc_1456_bounced_name_is_admitted(world):
+    """RM-386 reproduction: the real name the first armed cycle refused.
+
+    Measured across all five participant inboxes, deduplicated by name: of 207
+    unique real notes, 33 failed `NOTE_NAME_RE` and ALL 33 failed on the topic
+    group alone, while only 11 exceeded `NOTE_NAME_MAX`. Raising the length cap
+    on its own would have admitted none of them, this one included.
+    """
+    assert len(RSC_BOUNCED_1456) == 130
+    assert len(RSC_BOUNCED_1456) - 28 == 102, "25-char prefix plus `.md`"
+    world.agreement()
+    world.note(name=RSC_BOUNCED_1456)
+    result = world.drive()
+    assert (result.termination, result.termination_detail) != ("refused", "name-grammar")
+    assert result.termination == "delivered"
+    # `result.note` is the `safe_name` projection, capped at 80 to satisfy
+    # ROW_NOTE_RE. That cap PRE-DATES this change and is untouched by it: an
+    # accepted name could already reach 109 characters under the old `{1,80}`
+    # topic group. The RAW name is what the stdin envelope and the answered
+    # record carry, and the answered record is what stops the note re-cycling.
+    assert result.note == runner.safe_name(RSC_BOUNCED_1456)
+    assert RSC_BOUNCED_1456 in world.answered()
+    second = world.drive()
+    assert second.termination == "empty"
+
+
+def test_a_topic_at_the_cap_is_accepted(world):
+    """The accepting half of the topic boundary; `too-long-topic` is the other."""
+    assert len(TOPIC_AT_CAP) == 188 and len(TOPIC_OVER_CAP) == 189
+    world.agreement()
+    path = world.note(name=TOPIC_AT_CAP)
+    assert runner.note_shape_ok(path, TOPIC_AT_CAP) == []
+    result = world.drive()
+    assert result.termination == "delivered"
+    assert result.note == runner.safe_name(TOPIC_AT_CAP)
+    assert TOPIC_AT_CAP in world.answered()
+
+
+def test_the_longest_name_the_grammar_admits_is_shorter_than_the_length_cap(world):
+    """The composed bound is 189, so `NOTE_NAME_MAX` is the OUTER bound.
+
+    The name half of gate 6 judges the NAME, never the path it came from, so a
+    real note on a short path is enough to drive both sides of the boundary and
+    no 189-character path has to exist for the assertion to mean something.
+    """
+    path = world.note()
+    assert len(NAME_AT_LONGEST) == 189 and len(NAME_OVER_LONGEST) == 190
+    assert runner.note_shape_ok(path, NAME_AT_LONGEST) == []
+    assert runner.note_shape_ok(path, NAME_OVER_LONGEST) == ["name-grammar"]
+    assert len(NAME_AT_LONGEST) < runner.NOTE_NAME_MAX
 
 
 def test_note_oversize_is_refused_and_answered(world):
