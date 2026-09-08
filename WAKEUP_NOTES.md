@@ -74,6 +74,23 @@ their skip inside an `except`, which the skip-hygiene guard cannot resolve;
 reshaped into a real capability probe, which then measured that NTFS here
 accepts BOTH `\udcff` and `\ud800`, so both cases RUN.
 
+**THE WINDOWS SUITE PASSING 21591 SAID NOTHING ABOUT LINUX.** CI then found
+two real portability defects. `ensure_export`'s adopt-the-winner branch caught
+`FileExistsError`, and that errno is not portable - POSIX raises ENOTEMPTY /
+ENOTDIR / EEXIST for a rename onto an existing non-empty directory - so a
+benign two-cycle race surfaced as `ExportFailed: exc:OSError`; it now decides
+on the STATE of the destination. And the four dry-cycle-report arms depended on
+the HOST having a resolvable `claude` binary, which no runner has. The sweep
+caught two more of the same class: a shim written without the exec bit is
+invisible to POSIX `shutil.which` (one arm was passing VACUOUSLY), and the ps1
+no-account-name arm read the account from `os.environ`, which on the GitHub
+runner is literally `runner` - it would have matched `inbox_responder_runner.py`
+and the English word and raised a FALSE accusation. Final head `cf69d7904`,
+34 commits; `ci` green with the `check` job confirmed RUN at 19 steps, and
+`docs-guards` DISPATCHED (it path-ignores `.py`, so it would not have run at
+all) and green at 11 steps. `ci` was ALREADY RED at `f4472f58e` before this
+session on missing DDragon assets - inherited, not introduced.
+
 **Operational fact worth carrying:** `RC-InboxResponder` is registered and
 Ready but DISARMED (no agreement record), and it must be DISABLED to run the
 full suite, because it appends to the live responder log every five minutes and
