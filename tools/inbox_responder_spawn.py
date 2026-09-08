@@ -44,14 +44,7 @@ from typing import Any, Callable, Mapping, Optional, Union
 
 from tools import inbox_responder_procs as procs
 
-try:
-    from tools.inbox_responder_prompt import PROPOSAL_SCHEMA, SYSTEM_PROMPT
-except ImportError:  # pragma: no cover - the prompt module is a parallel slice
-    # PARALLEL-SLICE SHIM, to be deleted by the merger once S1 has landed.
-    # It exists only so this slice compiles and its arms run standalone; every
-    # arm in tests/test_inbox_responder_spawn.py pins the two constants itself.
-    SYSTEM_PROMPT = ""
-    PROPOSAL_SCHEMA = ""
+from tools.inbox_responder_prompt import PROPOSAL_SCHEMA, SYSTEM_PROMPT
 
 ROOT = Path(__file__).resolve().parent.parent
 
