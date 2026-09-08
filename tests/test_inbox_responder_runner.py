@@ -12,14 +12,17 @@ path is injected, and the module-scoped `_live_surfaces_unchanged` arm re-reads
 the live surfaces afterwards and fails if a byte moved.
 
 No test reaches `real_spawner`. `RC_RESPONDER_REAL_SPAWN` is deleted from the
-process environment by an autouse fixture, and the two arms that pass
-`spawner=real_spawner` do so only after replacing `subprocess.Popen` inside the
-procs module with a recorder - and they assert the replacement happened first.
+process environment by an autouse fixture, and every arm that passes
+`spawner=real_spawner` does so only after replacing `subprocess.Popen` inside
+the procs module with a recorder - and asserts the replacement happened first.
+The count is deliberately not recited here: a number in a docstring goes stale
+the moment an arm is added, and nothing guards it.
 """
 
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -600,6 +603,212 @@ def test_gate_exception_is_funnelled(world, monkeypatch, tag, symbol):
 
 
 # ---------------------------------------------------------------------------
+# gate-exception, the rest of gates 1 to 14.
+#
+# The nine tags above are the ones a bare symbol patch reaches on the shortest
+# cycle. The rest need the cycle carried further (a proposal with a measure in
+# it), a second call told apart from the first (`stop-late` shares its symbol
+# with `stop-pre`), or a comparison operand rather than a callable.
+#
+# Gate 8 (`export`) is NOT here and cannot be: `# GATE:export` sits inside its
+# own `except Exception` in the runner, so a raise there is filed as
+# `runner-failed / export:exc:<cls>` by design, which is what
+# `_make_runner_failed` in the funnel table already drives.
+# ---------------------------------------------------------------------------
+
+
+class _BoomOnCompare:
+    """A comparison OPERAND that raises ONCE and then answers falsely.
+
+    Two gates are comparisons, not calls: `latency-only` reads
+    `result.grammar == GRAMMAR_LATENCY_ONLY` and `measure-cap` reads
+    `executed >= MAX_MEASURES`. `str.__eq__` and `int.__ge__` both return
+    NotImplemented against an unknown type, so Python asks the reflected
+    method on this object and the gate raises from its own line - which is the
+    point: the tag in the detail has to come from the gate, not from a
+    convenient callable somewhere near it.
+
+    It raises exactly once because the two module constants are read again
+    from OUTSIDE the try - `_m1` and `metrics_row_ok` both compare against
+    `GRAMMAR_LATENCY_ONLY` while `_finish` is building the row - and a probe
+    that raised there would take the funnel down with it instead of measuring
+    it. One raise per patch, at the first comparison after the patch lands,
+    which by census (`grep GRAMMAR_LATENCY_ONLY`) is the gate itself: the only
+    earlier reader is the module-level `_GRAMMARS` tuple, bound at import.
+    """
+
+    __hash__ = object.__hash__
+
+    def __init__(self):
+        self.raised = 0
+
+    def _fire(self):
+        self.raised += 1
+        if self.raised == 1:
+            raise RuntimeError("gate raised")
+        return NotImplemented
+
+    def __eq__(self, other):
+        return self._fire()
+
+    def __le__(self, other):
+        return self._fire()
+
+
+# `for-each-ref` on a public ref prefix is the one allowed measure whose
+# pre-check runs ZERO processes (inbox_responder_exec.precheck_measure returns
+# before the `merge-base` loop), so the measure seam is reached exactly once
+# and the arm below can put its raiser there without the pre-check eating it.
+PUBLIC_MEASURE = {"kind": "measure", "argv": ["git", "for-each-ref", "refs/remotes/origin/"]}
+
+
+def _with_measure(world):
+    world.spawner = StubSpawner(result_bytes(proposal(PUBLIC_MEASURE, reply_action())))
+
+
+def _raise_at_latency_only(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "GRAMMAR_LATENCY_ONLY", _BoomOnCompare())
+
+
+def _raise_at_slot(world, monkeypatch, boom):
+    monkeypatch.setattr(runner.slots, "hold", boom)
+
+
+def _raise_at_envelope(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "build_envelope", boom)
+
+
+def _raise_at_spawn(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "spawn_ok", boom)
+
+
+def _raise_at_exhausted(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "classify_exhausted", boom)
+
+
+def _raise_at_validate(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "validate_proposal", boom)
+
+
+def _raise_at_harden(world, monkeypatch, boom):
+    _with_measure(world)
+    monkeypatch.setattr(runner, "harden_measure_argv", boom)
+
+
+def _raise_at_measure_cap(world, monkeypatch, boom):
+    _with_measure(world)
+    monkeypatch.setattr(runner, "MAX_MEASURES", _BoomOnCompare())
+
+
+def _raise_at_precheck(world, monkeypatch, boom):
+    _with_measure(world)
+    monkeypatch.setattr(runner, "precheck_measure", boom)
+
+
+def _raise_at_measure(world, monkeypatch, boom):
+    _with_measure(world)
+    world.recorder = boom
+
+
+def _raise_at_scrub(world, monkeypatch, boom):
+    _with_measure(world)
+    monkeypatch.setattr(runner, "scrub_output", boom)
+
+
+def _raise_at_reason_scrub(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "scrub_reasons", boom)
+
+
+def _raise_at_stop_late(world, monkeypatch, boom):
+    """Gate 13 shares `is_stopped` with gate 1, so only the SECOND call raises.
+
+    `pending_notes` reads its own module's `is_stopped`, not the runner's, so
+    the runner name is called exactly twice per cycle: gate 1 and gate 13.
+    """
+    real = runner.is_stopped
+    seen = []
+
+    def second_call_raises(root):
+        seen.append(root)
+        if len(seen) > 1:
+            raise RuntimeError("gate raised")
+        return real(root)
+
+    monkeypatch.setattr(runner, "is_stopped", second_call_raises)
+
+
+def _raise_at_deliver(world, monkeypatch, boom):
+    monkeypatch.setattr(runner, "_deliver", boom)
+
+
+REMAINING_GATE_RAISERS = [
+    pytest.param("latency-only", _raise_at_latency_only, id="latency-only"),
+    pytest.param("slot", _raise_at_slot, id="slot"),
+    pytest.param("envelope", _raise_at_envelope, id="envelope"),
+    pytest.param("spawn", _raise_at_spawn, id="spawn"),
+    # MEASURED DEFECT, reported not fixed. Gate 11 is the one gate whose TAG
+    # is a substring of a row invariant: `metrics_row_ok` rejects any row
+    # carrying "exhaust" whose termination is not `exhausted`, and
+    # `exception:exhausted:RuntimeError` carries it. `_finish` therefore holds
+    # a bad_row.json and rewrites the outcome to
+    # `runner-failed / metrics-invalid:runner-failed`, so a runner bug at gate
+    # 11 loses the tag that names where it happened - the exact attribution
+    # the gate-exception row exists to guarantee. Strict, so the mark has to
+    # come off the day the runner stops doing it.
+    pytest.param("exhausted", _raise_at_exhausted, id="exhausted",
+                 marks=pytest.mark.xfail(
+                     strict=True,
+                     reason="runner: the 'exhaust' substring rule in metrics_row_ok "
+                            "invalidates this gate's own exception tag")),
+    pytest.param("validate", _raise_at_validate, id="validate"),
+    pytest.param("harden", _raise_at_harden, id="harden"),
+    pytest.param("measure-cap", _raise_at_measure_cap, id="measure-cap"),
+    pytest.param("precheck", _raise_at_precheck, id="precheck"),
+    pytest.param("measure", _raise_at_measure, id="measure"),
+    pytest.param("scrub", _raise_at_scrub, id="scrub"),
+    pytest.param("reason-scrub", _raise_at_reason_scrub, id="reason-scrub"),
+    pytest.param("stop-late", _raise_at_stop_late, id="stop-late"),
+    pytest.param("deliver", _raise_at_deliver, id="deliver"),
+]
+
+REMAINING_GATE_TAGS = frozenset(p.id for p in REMAINING_GATE_RAISERS)
+
+
+@pytest.mark.parametrize("tag,arrange", REMAINING_GATE_RAISERS)
+def test_every_remaining_gate_exception_is_funnelled(world, monkeypatch, tag, arrange):
+    armed(world)
+
+    def _boom(*a, **kw):
+        raise RuntimeError("gate raised")
+
+    arrange(world, monkeypatch, _boom)
+    result = world.drive()
+    assert result.termination == "runner-failed"
+    assert result.termination_detail == f"exception:{tag}:RuntimeError"
+    row = world.one_row(result)
+    assert row["termination"] == "runner-failed"
+    assert row["termination_detail"] == f"exception:{tag}:RuntimeError"
+    assert list(world.rsc.iterdir()) == [], "a funnelled fault delivered anyway"
+    assert (world.inbox / NOTE_NAME).is_file(), "the note stopped being pending"
+    assert NOTE_NAME not in world.answered()
+    world.assert_pairing()
+
+
+def test_the_two_exception_tables_cover_gates_one_to_fourteen():
+    """Vacuity control for the two tables above.
+
+    Gate 0 (`start`) is outside the try and gate 16 (`finish`) is the finally
+    itself, so neither can be funnelled; gate 8 (`export`) catches its own
+    faults. Every other tagged gate must appear in one of the two tables, or
+    the parametrization can silently shrink while both arms stay green.
+    """
+    covered = {t for t, _ in GATE_RAISERS} | REMAINING_GATE_TAGS
+    unreachable = {"start", "finish", "export"}
+    assert covered | unreachable == GATE_TAGS
+    assert covered & unreachable == set()
+
+
+# ---------------------------------------------------------------------------
 # Gates 1 to 5
 # ---------------------------------------------------------------------------
 
@@ -893,6 +1102,78 @@ def test_note_that_is_a_hard_link_is_refused(world, tmp_path):
     assert result.termination_detail == "note-shape:linked"
     assert world.spawner.calls == 0
     assert NOTE_NAME in world.answered()
+
+
+_JUNCTION_SKIP = pytest.mark.skipif(
+    os.name != "nt",
+    reason=f"a junction is a Windows reparse point and this platform is {os.name!r}; "
+           "the hard-link arm above carries the portable half of gate 6",
+)
+
+
+def _junction_note(world, tmp_path):
+    """An armed world with a junction standing where the note goes.
+
+    Returns the junction's target directory.
+    """
+    world.agreement()
+    target = tmp_path / "junction target"
+    target.mkdir()
+    (target / "borrowed.txt").write_text("bytes from outside the inbox\n", encoding="ascii")
+    made = subprocess.run(["cmd", "/c", "mklink", "/J", str(world.inbox / NOTE_NAME),
+                           str(target)], capture_output=True, text=True)
+    if made.returncode != 0:
+        pytest.skip("this account cannot create a junction here")
+    return target
+
+
+@_JUNCTION_SKIP
+@pytest.mark.xfail(
+    strict=True,
+    reason="runner: pending_notes filters on Path.is_file(), which a junction fails, so a "
+           "junction-NAMED note never reaches the gate 6 link checks - it terminates `empty` "
+           "and is never answered, so it sits in the inbox unremarked on every later tick",
+)
+def test_a_note_that_is_a_junction_is_refused(world, tmp_path):
+    """The second half of the note-linked row: the NOTE itself is the junction.
+
+    The participants-map arm covers a junction standing in for a sibling
+    INBOX. This one puts the reparse point where the note goes, which is what
+    `st_file_attributes & FILE_ATTRIBUTE_REPARSE_POINT` in `note_shape_ok`
+    exists for - but that check is never consulted, because the note never
+    survives `pending_notes`. Reported, not repaired: repairing it is a change
+    to the runner, and the containment half is arm-covered below.
+    """
+    target = _junction_note(world, tmp_path)
+    result = world.drive()
+    assert result.termination == "refused"
+    assert result.termination_detail == "note-shape:linked"
+    assert result.refused_stage == "input"
+    assert NOTE_NAME in world.answered()
+    assert list(target.iterdir()) == [target / "borrowed.txt"]
+
+
+@_JUNCTION_SKIP
+def test_a_junction_named_note_is_contained_even_though_it_is_not_refused(world, tmp_path):
+    """What the runner DOES do with a junction, measured rather than assumed.
+
+    The arm above holds the spec's outcome open. This one pins the property
+    that actually protects the sibling: nothing outside the inbox is opened,
+    quoted, spawned for or delivered, and the cycle still writes its pair and
+    its row.
+    """
+    target = _junction_note(world, tmp_path)
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("empty", "none_pending")
+    assert world.spawner.calls == 0
+    assert world.export.calls == []
+    assert list(world.rsc.iterdir()) == []
+    assert world.answered() == set()
+    row = world.one_row(result)
+    assert row["m3"] is None and row["m4"] is None
+    assert "borrowed" not in json.dumps(row)
+    assert list(target.iterdir()) == [target / "borrowed.txt"]
+    world.assert_pairing()
 
 
 # ---------------------------------------------------------------------------
@@ -1578,6 +1859,11 @@ FILTER_CASES = [
     ("email", "reach me at a@b.co\n", "email"),
     ("secret", "token sk-ant-abcdef0123\n", "secret"),
     ("grammar-question", "Could you confirm?\n", "grammar-question"),
+    # CR reaches the filter through the model body on purpose: the validator's
+    # own ASCII test is `set(string.printable)`, which CONTAINS "\r", so a
+    # CRLF reply is admitted upstream and gate 12's filter is the only thing
+    # standing between it and a sibling's inbox.
+    ("control-char", "first line\r\nsecond line\n", "control-char"),
 ]
 
 
@@ -1642,6 +1928,38 @@ def test_a_body_whose_first_line_lacks_the_tag_is_refused(world, monkeypatch):
                         lambda **kw: "no tag here\n" + real(**kw))
     result = world.drive()
     assert "tag-missing" in result.termination_detail
+
+
+def test_an_oversize_assembled_body_is_refused_and_held(world, monkeypatch):
+    """The last filter gate, driven at the ASSEMBLED body.
+
+    Hand-assembled rather than proposed, because the two ceilings sit one byte
+    apart in opposite directions: the validator denies a model body of MORE
+    than 200000 bytes and the filter fires on an assembled body of more than
+    200000, so a model reply big enough to trip the filter is refused by the
+    validator first and never reaches gate 12. 200001 is written as a literal
+    - deriving it from `MAX_ASSEMBLED_BYTES` would make the fixture track the
+    constant it is supposed to be measuring.
+    """
+    armed(world)
+    head = "[RC-RESPONDER] oversize draft\n"
+    body = head + "x" * (200001 - len(head))
+    assert len(body.encode("ascii")) == 200001
+    monkeypatch.setattr(runner, "assemble_body", lambda **kw: body)
+
+    result = world.drive()
+    assert result.termination == "refused"
+    assert result.termination_detail == "filter:oversize"
+    assert result.refused_stage == "filter"
+    held = world.held(result.cycle_id)
+    for name in ("draft.md", "reasons.json", "proposal.json", "decisions.json", "status.txt"):
+        assert (held / name).exists(), name
+    assert len((held / "draft.md").read_bytes()) == 200001
+    assert list(world.rsc.iterdir()) == []
+    assert NOTE_NAME in world.answered()
+    row = world.one_row(result)
+    replies = [a for a in row["m4"]["actions"] if a["kind"] == "reply"]
+    assert [a["filter_gates"] for a in replies] == [["oversize"]]
 
 
 def test_a_latency_only_body_carrying_hop_is_refused(world, monkeypatch):
@@ -2159,6 +2477,233 @@ def test_real_spawner_argv_is_constant_and_the_note_rides_on_stdin(world, monkey
     assert call["start_new_session"] == (os.name != "nt")
     assert recorded[1]["communicate"]["timeout"] == world.config.spawn_timeout_s
     assert world.config.spawn_timeout_s == runner.SPAWN_TIMEOUT_S
+
+
+# ---------------------------------------------------------------------------
+# The kill allowance - `procs.popen_capture`, reached through the runner
+#
+# Every arm here replaces `subprocess.Popen` INSIDE the procs module before it
+# drives, and says so with an assertion: a fake that arrives late is a fake
+# that let a real process be born. Nothing here sets RC_RESPONDER_REAL_SPAWN.
+# ---------------------------------------------------------------------------
+
+
+class FakeTimingOutProc:
+    """A child that never finishes. Records the kill sequence applied to it."""
+
+    def __init__(self, pid: int):
+        self.pid = pid
+        self.returncode = None
+        self.waits: list = []
+        self.kills = 0
+
+    def communicate(self, **kw):
+        raise subprocess.TimeoutExpired(cmd="fake-child", timeout=kw.get("timeout"))
+
+    def wait(self, timeout=None):
+        self.waits.append(timeout)
+        self.returncode = 0
+        return 0
+
+    def kill(self):
+        self.kills += 1
+
+
+class PopenRecorder:
+    """Stands in for `subprocess.Popen`; hands out one timing-out child per call."""
+
+    def __init__(self, first_pid: int = 5100):
+        self.calls: list = []
+        self.procs: list = []
+        self._next_pid = first_pid
+
+    def __call__(self, argv, **kw):
+        self.calls.append({"argv": list(argv), **kw})
+        proc = FakeTimingOutProc(self._next_pid)
+        self._next_pid += 1
+        self.procs.append(proc)
+        return proc
+
+
+class KillerSpy:
+    """The platform call `kill_tree` makes, recorded rather than performed."""
+
+    def __init__(self):
+        self.calls: list = []
+
+    def nt_run(self, argv, **kw):
+        self.calls.append({"argv": list(argv), **kw})
+        return subprocess.CompletedProcess(list(argv), 0, b"", b"")
+
+    def posix_killpg(self, pid, sig):
+        self.calls.append({"pid": pid, "sig": sig})
+
+
+def _install_killer_spy(monkeypatch) -> KillerSpy:
+    spy = KillerSpy()
+    if os.name == "nt":
+        monkeypatch.setattr(procs.subprocess, "run", spy.nt_run)
+    else:
+        monkeypatch.setattr(procs.os, "killpg", spy.posix_killpg, raising=False)
+    return spy
+
+
+def _assert_tree_killed(spy: KillerSpy, pid: int):
+    assert len(spy.calls) == 1, f"expected exactly one kill, saw {spy.calls}"
+    call = spy.calls[0]
+    if os.name == "nt":
+        assert call["argv"] == ["taskkill", "/F", "/T", "/PID", str(pid)]
+        assert call["creationflags"] == procs.CREATION_FLAGS
+        assert call["timeout"] == procs.KILL_CMD_TIMEOUT_S
+    else:
+        assert call["pid"] == pid
+        assert call["sig"] == getattr(procs.signal, "SIGKILL", 9)
+
+
+def test_a_spawn_timeout_takes_the_full_tree_kill_and_is_filed_as_spawn_failed(world,
+                                                                               monkeypatch):
+    """Gate 10 over `real_spawner`, with the process seam faked underneath it.
+
+    The export is stubbed and no measure is proposed, so this timeout is the
+    FIRST of the cycle and the cycle's one kill allowance is intact when it
+    arrives - which is what makes the full sequence the expected one.
+    """
+    armed(world)
+    popen = PopenRecorder()
+    monkeypatch.setattr(procs.subprocess, "Popen", popen)
+    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    killer = _install_killer_spy(monkeypatch)
+    assert procs.KILL_ALLOWANCE_PER_CYCLE == 1
+
+    result = world.drive(spawner=spawn_mod.real_spawner)
+
+    assert len(popen.procs) == 1, "the spawn was not the only process of the cycle"
+    proc = popen.procs[0]
+    _assert_tree_killed(killer, proc.pid)
+    assert proc.waits == [procs.KILL_WAIT_S]
+    assert proc.kills == 0, "the tree kill was taken AND the cheap kill as well"
+
+    assert result.termination == "spawn-failed"
+    assert result.termination_detail == "timeout"
+    row = world.one_row(result)
+    assert row["termination"] == "spawn-failed"
+    assert row["termination_detail"] == "timeout"
+    assert row["m3"] is None
+    held = world.held(result.cycle_id)
+    spawn_json = json.loads((held / "spawn.json").read_text(encoding="ascii"))
+    assert spawn_json["detail"] == "timeout"
+    assert spawn_json["parsed"] is None
+    assert spawn_json["attempts"] == 1
+    assert not (held / "status.txt").exists(), "a first attempt is not the cap"
+    assert list(world.rsc.iterdir()) == []
+    assert (world.inbox / NOTE_NAME).is_file()
+    assert world.answered() == set(), "a spawn failure never answers"
+    world.assert_pairing()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="runner: held spawn.json carries cycle_id/detail/attempts/parsed only, so the "
+           "kill allowance a timed-out spawn consumed is not recorded anywhere the operator "
+           "can read - the SpawnResult knows kill_skipped and the hold drops it",
+)
+def test_a_timed_out_spawn_records_its_kill_allowance_in_the_hold(world, monkeypatch):
+    """The half of the tree-kill row the hold does not yet carry."""
+    armed(world)
+    popen = PopenRecorder()
+    monkeypatch.setattr(procs.subprocess, "Popen", popen)
+    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    _install_killer_spy(monkeypatch)
+
+    result = world.drive(spawner=spawn_mod.real_spawner)
+    spawn_json = json.loads(
+        (world.held(result.cycle_id) / "spawn.json").read_text(encoding="ascii"))
+    assert spawn_json["kill_skipped"] is False
+
+
+def test_a_measure_timeout_takes_the_kill_and_the_cycle_continues(world, monkeypatch):
+    """Gate 12's measure seam, over the real `default_measure_runner`."""
+    armed(world)
+    popen = PopenRecorder()
+    monkeypatch.setattr(procs.subprocess, "Popen", popen)
+    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    killer = _install_killer_spy(monkeypatch)
+    world.recorder = exec_mod.default_measure_runner
+    world.spawner = StubSpawner(result_bytes(proposal(PUBLIC_MEASURE, reply_action())))
+
+    result = world.drive()
+
+    assert len(popen.procs) == 1, "the pre-check spent a process it should not have"
+    proc = popen.procs[0]
+    _assert_tree_killed(killer, proc.pid)
+    assert proc.waits == [procs.KILL_WAIT_S]
+    assert proc.kills == 0
+
+    assert result.termination == "delivered"
+    row = world.one_row(result)
+    measures = [a for a in row["m4"]["actions"] if a["kind"] == "measure"]
+    assert len(measures) == 1
+    assert measures[0]["timed_out"] is True
+    assert measures[0]["kill_skipped"] is False
+    assert measures[0]["exit_code"] is None
+    assert (world.rsc / row["m5"]["filename"]).is_file()
+    assert NOTE_NAME in world.answered()
+    world.assert_pairing()
+
+
+def test_the_second_timeout_of_a_cycle_is_killed_without_the_tree_walk(world, monkeypatch):
+    """The allowance itself: one full kill per CYCLE, not per process.
+
+    Also the identity claim the allowance rests on - the export runner, the
+    spawn request and the measure runner must all hold the SAME budget object,
+    or a cycle whose every process times out pays the full sequence more than
+    once and the summed worst case is back over the task limit.
+    """
+    armed(world)
+    popen = PopenRecorder()
+    monkeypatch.setattr(procs.subprocess, "Popen", popen)
+    assert procs.subprocess.Popen is popen, "the replacement must precede the drive"
+    kills: list = []
+    monkeypatch.setattr(procs, "kill_tree", kills.append)
+
+    seen_budgets: list = []
+
+    def recording_measure_runner(argv, **kw):
+        seen_budgets.append(kw["kill_budget"])
+        return exec_mod.default_measure_runner(argv, **kw)
+
+    world.recorder = recording_measure_runner
+    world.spawner = StubSpawner(result_bytes(
+        proposal(PUBLIC_MEASURE, PUBLIC_MEASURE, reply_action())))
+
+    result = world.drive()
+
+    assert len(popen.procs) == 2, "one process per measure, no pre-check processes"
+    first, second = popen.procs
+    assert kills == [first.pid], "the tree kill went to the wrong process, or twice"
+    assert first.waits == [procs.KILL_WAIT_S]
+    assert first.kills == 0
+    assert second.waits == [], "the spent allowance still paid for a wait"
+    assert second.kills == 1
+
+    assert result.termination == "delivered"
+    row = world.one_row(result)
+    measures = [a for a in row["m4"]["actions"] if a["kind"] == "measure"]
+    assert len(measures) == 2
+    assert [m["exit_code"] for m in measures] == [None, None]
+    assert [m["timed_out"] for m in measures] == [True, True]
+    assert [m["kill_skipped"] for m in measures] == [False, True]
+    assert (world.rsc / row["m5"]["filename"]).is_file()
+
+    # ONE budget, three holders.
+    assert len(seen_budgets) == 2
+    budget = seen_budgets[0]
+    assert seen_budgets[1] is budget
+    assert world.spawner.requests[0].kill_budget is budget
+    export_runner = world.export.calls[0]["runner"]
+    assert inspect.getclosurevars(export_runner).nonlocals["kill_budget"] is budget
+    assert budget.remaining == 0
+    world.assert_pairing()
 
 
 def test_singleton_refusals_write_a_pair_and_no_row(world, tmp_path, monkeypatch):
