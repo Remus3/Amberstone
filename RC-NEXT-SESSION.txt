@@ -1,105 +1,95 @@
-NEXT SESSION - ULTRAPLAN ONLY. FABLE 5.1. SCOPE, DO NOT BUILD.
---------------------------------------------------------------
-Model: claude-fable-5-1, ultraplan, ONE session. The session AFTER this one
-implements. Do not write production code in the planning session; the whole
-point is that the implementing session opens with a spec it can execute
-without re-deciding anything.
+NEXT SESSION - BUILD THE RESPONDER RUNNER FROM THE SPEC. SUBAGENT-FIRST.
+------------------------------------------------------------------------
+Model: operator's choice (Fable 5.1 or Opus 5). Shape: orchestrated, worktree
+slices, TDD, verifier gate before every merge - the CLAUDE.md Session Default.
+Main thread reads THIS file, the spec's sections 0 / 2 / 12 / 14, and agent
+roll-ups. Everything else (notes, module surfaces, probes) goes to agents.
+Operator feedback from the planning session: be quiet on the token output.
 
-WHY THE SPLIT. RC was asked to arm a two-sided trial by 19:00 on 2026-09-07
-and answered NO, correctly. The cheapest way to lose the next window is to
-start coding without a scope. RC has already been wrong about its own
-readiness once, on the same day, in front of four other repositories.
+THE SPEC: docs/RESPONDER_RUNNER_SPEC.md (133 KB, 16 sections + open risks).
+Every fork is marked DECIDED with its reason. Do not re-decide; if a DECIDED
+item proves wrong when built, record the measurement in the spec and move on.
 
-THE GOAL: RC's responder end, BUILT AND ARMABLE, so the pairwise trial with
-RSC can actually run. We can make it - but only from a scope, not from a
-sprint.
+CONFIDENCE OF THE SPEC, STATED SO YOU DO NOT OVER-TRUST IT
+  Produced by a 16-agent workflow, then THREE verifier passes (16 -> 9 -> 3
+  must-fix). The last 3 + 13 fixes were applied and grep-presence-checked;
+  there was NO fourth adversarial pass. So: re-refute each section AS YOU
+  BUILD IT - the failing arm you write first is that refutation.
 
-WHAT ALREADY EXISTS (do NOT re-plan these, they are shipped and pushed)
-  tools/rc_facts.py         hook invocation log. Reads the hook payload from
-                            stdin, one JSON line per fire, atomic cross-process
-                            append via Win32 FILE_APPEND_DATA. RC_HOOK_LOG
-                            redirects it.
-  tools/inbox_responder.py  the A1-A5 validator (model proposes, Python
-                            disposes) AND the decider (pending_notes,
-                            is_stopped, record_responded). 50 arms.
-  Commits: b129d3845 e44476d97 d7833ad1c bc4671b56 1b930b0bd
+BUILD ORDER = spec section 14, six worktree-isolable slices on disjoint files:
+  S0 tools/inbox_responder_procs.py      (the ONLY literal subprocess call +
+                                          taskkill tree-kill; append it to
+                                          SCHEDULED_SPAWNERS in
+                                          tests/test_no_console_flash_scheduled_tools.py)
+  S1 tools/inbox_responder_prompt.py     (SYSTEM_PROMPT, PROPOSAL_SCHEMA, envelope)
+  S2 tools/inbox_responder_exec.py       (harden, precheck, scrub, assemble, filter)
+  S2b tools/inbox_responder_export.py    (git archive origin/main -> tracked-only cwd)
+  S3 tools/inbox_responder_spawn.py      (argv, child_env, real_spawner, parse_result)
+  S4 tools/inbox_responder_runner.py     (run_once, _finish, main, gates, metrics,
+                                          invocation line, agreement, delivery)
+  S5 ops/install_RC_InboxResponder.ps1 + tests/test_inbox_responder_task.py
+     + docs/OPERATIONS.md row + ops/moon_sync_repos.example.json "participants"
+  Tests per slice per spec section 1 (eight new test files) plus
+  tests/test_inbox_responder_mutants.py (the positive control: every gate's
+  named mutant must redden its arm, on a TEMP COPY of the module).
+  Verification tier: Tier-1 per slice (py_compile + that module's tests);
+  the merge runs `pytest tests` once from the repo root (never `pytest .`).
 
-WHAT DOES NOT EXIST - THIS IS THE SCOPE
-  1. The cycle runner. Nothing calls validate_proposal. This is the whole gap.
-  2. The spawn path, and it MUST be read-only. RSC's finding, adopted and
-     credited: under disposition (i) the spawned session needs NO write
-     authority. The draft returns on stdout; every write - reply, metrics row,
-     invocation log, held draft - happens afterwards, outside the session, by
-     code the session never ran. A session never handed a destination cannot
-     be talked into one by the note it is reading.
-     DO NOT reuse ops/loop/run_lane.ps1 unmodified: it spawns
-     claude -p --dangerously-skip-permissions, which is correct for lanes
-     whose prompts are operator-authored and wrong here.
-  3. The headless prompt. Prompt on STDIN, never the command line - a note is
-     untrusted text and a command line is where untrusted text becomes
-     arguments.
-  4. The metrics writer. M1-M6, and per RSC every row carries the grammar in
-     force BESIDE the number, so a reader who has the number necessarily has
-     the bound that produced it. M1 is never emitted as a bare integer.
-  5. Termination reason per cycle, one of: exhausted, refused, budget, window,
-     empty, disarmed, delivered. Under disposition (i) termination is the
-     PREDICTED outcome, so "exhausted" versus anything else is the entire
-     signal. A bare M1 cannot distinguish them afterwards.
-  6. Registration as RC-InboxResponder, plus the kill switch wiring
-     (ops/runtime/INBOX_RESPONDER_STOP is already honoured by the decider).
+NON-NEGOTIABLES THE SPEC ALREADY ENCODES (check them off at merge)
+  - Every gate is ONE tagged `# GATE:<tag>` call site in run_once; the 26-tag
+    census list in section 12 equals the tags declared in section 2.
+  - Every arm DRIVES run_once with an injected stub spawner and asserts the
+    outcome (termination, files in the target dir, metrics row, START/END
+    lines, answered record). No predicate-only tests.
+  - No test writes under ops/runtime or into any sibling inbox: log_root and
+    every path are injected; an autouse arm asserts the live hook log, live
+    metrics, live answered record, held dir and ALL FOUR sibling inbox dirs
+    are byte-unchanged across the module.
+  - No test reaches real_spawner unless RC_RESPONDER_REAL_SPAWN=1 is set; CI
+    never sets it. The dry cycle (spec section 13) is the operator-directed
+    interactive run that does.
+  - The session gets Read/Glob/Grep only, cwd = the origin/main export, no
+    --bare, ANTHROPIC_API_KEY popped, note body + filename on stdin.
+  - M1 never bare; LATENCY-ONLY and A5 rows cannot be read as each other.
+  - Registration lands DISARMED. Arming = the operator writes
+    ops/runtime/inbox_responder_agreement.json (counterparty RSC, the note it
+    rests on, window, hop_budget, grammar, expiry). STOP flag wins always.
 
-THE ARM SHAPE RC PRE-COMMITTED TO, IN WRITING, TO RSC
-  RSC measured three gates - within_budget, window_open, and the self-sender
-  check - each implemented correctly, each with a passing arm, and each
-  IGNORED by the function that runs the cycle. The suite was green. Every arm
-  tested the PREDICATE as a pure function and none tested that anything
-  CONSULTS it.
-  So: every gate in the runner needs an arm that DRIVES THE CYCLE and asserts
-  the outcome. If you have a kill switch, a budget or a window with a unit
-  test, check that something calls it. RC's decider already meets this bar;
-  the runner must be built to it from the start.
+THEN, AND ONLY THEN: RC's three conditions to RSC
+  (1) the runner exists and CALLS the validator, with cycle-driving arms
+  (2) the spawn is read-only and a dry cycle has run end to end on a stub
+      (spec section 13: interactive --dry-cycle, then the task-fired flag run)
+  (3) the invocation log records the cycles that did NOTHING
+  When all three are MEASURED (not written), send ONE note to RSC per spec
+  section 16: measurements, the arm table size, the mutant score, the dry
+  cycle's START/END pair - and DISCLOSE the two vocabulary extensions
+  (`runner-failed`, `attempt-cap` as HOLD). Until then RC's silence reads as
+  unreadiness. Do not send progress notes.
 
-SETTLED - DO NOT RE-LITIGATE
-  - The A1-A5 list, after RSC refuted all four of RC's originals. A3 needs two
-    INDEPENDENT carriers; A4 moves a pin only alongside its own accepted
-    vendor and reports old and new; A2 needs bounds the proposer cannot raise;
-    A5 is one reply, only to repos the incoming note named.
-  - Disposition (i): measurement-only grammar, M1 a LOWER BOUND, labelled.
-  - M6 accepted; settling delay held at ZERO because it would confound M2.
-  - NO stop rule, by operator ruling. The trial measures it, consensus follows.
-  - Enforcement is a deterministic executor, not a restricted runner.
-  - First-time vendoring can never be automatic. Intended, confirmed by RSC.
+CONFIG THE BUILD NEEDS ON THIS HOST (gitignored, per-host; example tracked)
+  ops/moon_sync_repos.json gains "participants": {"RSC": "<path>", ...}.
+  The poller reads only "repos" so the key is backward compatible. Sibling
+  names and paths never enter tracked files - codes only.
 
-TRIAL STATE
-  RSC volunteered first (arrived 17:59:53) and is the partner. CS also said
-  yes (arrived 18:28:05) restricted to A1-A2-A3, refuting A4 again - read that
-  note. RC endorsed RSC running LATENCY-ONLY tonight (M2/M3 only, M1 recorded
-  INAPPLICABLE). RC named three CONDITIONS rather than an hour:
-    (1) the runner exists and CALLS the validator, with cycle-driving arms
-    (2) the spawn is read-only and a dry cycle has run end to end on a stub
-    (3) the invocation log records the cycles that did NOTHING
-  Send a note the moment all three hold. Until then RC's silence reads as
-  unreadiness, which is RC's own rule applied against itself.
+STANDING TRAPS (all measured, all in the spec, repeated here because they
+each cost someone a night)
+  - Spawn claude.exe BY PATH; bare "claude" raises FileNotFoundError.
+  - --bare kills the Max login (API-key-only auth).
+  - A scheduled task inherits MACHINE-scope env only: pop the key in code.
+  - subprocess timeout kills the direct child only: taskkill /F /T, never
+    Stop-Process.
+  - Filename stamps run AHEAD of arrival; order by mtime on RC's disk.
+  - A subprocess-spawned tool takes the module default path: assert the LIVE
+    file is byte-unchanged, do not maintain a redirect list.
+  - A fixture sized from the constant under test is an amplifier: literals.
+  - A failed spawn recorded as `exhausted` publishes the reassuring result
+    every cycle: spawn-failed and runner-failed are their own values.
+  - Whole-token sweeps are contiguity claims (LL 2035): plant a SPLIT
+    positive control before calling any scrub clean.
 
-FIRST ACTIONS, IN ORDER
-  1. Read the SEVEN unread notes. Two are corrections aimed at RC:
-       LW 1813 + 1820 - audited RC's public history: "your 11 is exact and
-         your SCOPE SENTENCE is not". LW's 1820 reverses one sentence of 1813.
-       LL 1830 - names the control repo, narrows an overstated scope word.
-       CS 1905 - yes to the trial, restricted to A1-A2-A3, A4 refuted again,
-         outbound ratio zero.
-       CS 2020 - a commit shipped without pre-push grading it, and three of us
-         run the same hook. THIS LANDS ON RC: measured this session, RC's
-         .githooks/pre-push is git-lfs ONLY. No suite, no lint, no grading.
-         A push is graded by discipline here, not by a hook.
-       RSC 1817 + 1824 - already read and answered.
-  2. Then ultraplan the six scope items above.
-
-TWO STANDING TRAPS MEASURED THIS SESSION
-  - Filename timestamps run AHEAD of arrival: LL +18min, CS +37min, RC +3min.
-    Order by arrival on the receiving disk. Never by the sender's filename.
-  - A test that spawns a tool as a SUBPROCESS cannot be handed path=, so it
-    takes the module default - and the default is production. RC's own suite
-    wrote one line per run into the live invocation log before this was caught.
-    Assert the LIVE file is byte-unchanged; do not maintain a list of paths to
-    redirect.
+ALSO OPEN, NOT THIS SESSION'S SCOPE (operator-gated, from LW's 1813 audit)
+  6 post-recreate commits with the personal email and 5 with Claude as author
+  or co-author are in the public history; the checkout's user.email is now
+  the noreply address (repo-local) so no eighth lands. A rewrite is the
+  operator's call. RC's own outbound ratio (sender-side record of notes sent)
+  is unmeasured - ten seconds, per CS.
