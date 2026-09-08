@@ -746,20 +746,15 @@ REMAINING_GATE_RAISERS = [
     pytest.param("slot", _raise_at_slot, id="slot"),
     pytest.param("envelope", _raise_at_envelope, id="envelope"),
     pytest.param("spawn", _raise_at_spawn, id="spawn"),
-    # MEASURED DEFECT, reported not fixed. Gate 11 is the one gate whose TAG
-    # is a substring of a row invariant: `metrics_row_ok` rejects any row
-    # carrying "exhaust" whose termination is not `exhausted`, and
-    # `exception:exhausted:RuntimeError` carries it. `_finish` therefore holds
-    # a bad_row.json and rewrites the outcome to
-    # `runner-failed / metrics-invalid:runner-failed`, so a runner bug at gate
-    # 11 loses the tag that names where it happened - the exact attribution
-    # the gate-exception row exists to guarantee. Strict, so the mark has to
-    # come off the day the runner stops doing it.
-    pytest.param("exhausted", _raise_at_exhausted, id="exhausted",
-                 marks=pytest.mark.xfail(
-                     strict=True,
-                     reason="runner: the 'exhaust' substring rule in metrics_row_ok "
-                            "invalidates this gate's own exception tag")),
+    # Gate 11 is the one gate whose TAG is a substring of a row invariant:
+    # `metrics_row_ok` rejects any row carrying "exhaust" whose termination is
+    # not `exhausted`, and `exception:exhausted:RuntimeError` carries it. The
+    # invariant now exempts exactly that gate-tag form (and nothing else), so
+    # a runner bug at gate 11 keeps the tag naming where it happened instead
+    # of being rewritten to `runner-failed / metrics-invalid:runner-failed`.
+    # `test_the_exhaust_invariant_still_bites_outside_the_gate_tag_form` is
+    # the companion arm pinning how narrow that exemption is.
+    pytest.param("exhausted", _raise_at_exhausted, id="exhausted"),
     pytest.param("validate", _raise_at_validate, id="validate"),
     pytest.param("harden", _raise_at_harden, id="harden"),
     pytest.param("measure-cap", _raise_at_measure_cap, id="measure-cap"),
@@ -1545,6 +1540,32 @@ def test_detail_vocabulary_rejects_a_retirement_in_costume():
     row2["termination_detail"] = "refused-late"
     with pytest.raises(runner.MetricsRowInvalid):
         runner.metrics_row_ok(row2, delivered=0)
+
+
+def test_the_exhaust_invariant_still_bites_outside_the_gate_tag_form():
+    """The exemption for gate 11's own tag is exactly that form and no wider.
+
+    `exception:exhausted:<cls>` names the GATE that raised, not the outcome,
+    so it is the one detail carrying `exhaust` that a non-exhausted row may
+    hold. Everything else the invariant was written for still raises: a
+    retirement in costume, a delivered row that merely contains the
+    substring, and the gate tag with anything appended to it.
+    """
+    def hand(termination: str, detail: str) -> dict:
+        row = runner._row_skeleton("20260908T200000-1-abcdef", "t", 1, False)
+        row["termination"] = termination
+        row["termination_detail"] = detail
+        return row
+
+    for termination, detail in (
+        ("spawn-failed", "retries-exhausted"),
+        ("delivered", "delivery=1 of 1; retries-exhausted"),
+        ("runner-failed", "exception:exhausted:RuntimeError; retries-exhausted"),
+        ("runner-failed", "exhausted"),
+        ("refused", "filter:exhaust"),
+    ):
+        with pytest.raises(runner.MetricsRowInvalid):
+            runner.metrics_row_ok(hand(termination, detail), delivered=0)
 
 
 # ---------------------------------------------------------------------------
@@ -2601,14 +2622,14 @@ def test_a_spawn_timeout_takes_the_full_tree_kill_and_is_filed_as_spawn_failed(w
     world.assert_pairing()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="runner: held spawn.json carries cycle_id/detail/attempts/parsed only, so the "
-           "kill allowance a timed-out spawn consumed is not recorded anywhere the operator "
-           "can read - the SpawnResult knows kill_skipped and the hold drops it",
-)
 def test_a_timed_out_spawn_records_its_kill_allowance_in_the_hold(world, monkeypatch):
-    """The half of the tree-kill row the hold does not yet carry."""
+    """The half of the tree-kill row the hold now carries.
+
+    A spawn timeout is necessarily the FIRST timeout of its cycle (an export
+    timeout ends the cycle before any spawn), so the allowance is always spent
+    in full here: `kill_skipped` false, `timed_out` true. The operator reads
+    what the cycle's single kill allowance went on from the hold itself.
+    """
     armed(world)
     popen = PopenRecorder()
     monkeypatch.setattr(procs.subprocess, "Popen", popen)
@@ -2619,6 +2640,9 @@ def test_a_timed_out_spawn_records_its_kill_allowance_in_the_hold(world, monkeyp
     spawn_json = json.loads(
         (world.held(result.cycle_id) / "spawn.json").read_text(encoding="ascii"))
     assert spawn_json["kill_skipped"] is False
+    assert spawn_json["timed_out"] is True
+    assert spawn_json["survived_kill"] is False
+    assert spawn_json["detail"] == "timeout"
 
 
 def test_a_measure_timeout_takes_the_kill_and_the_cycle_continues(world, monkeypatch):
