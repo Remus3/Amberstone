@@ -69,7 +69,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-384** (2026-09-06). The id one below it was minted by
+  Next free id = **RM-385** (2026-09-08). The id one below it, RM-384, was
+  ALLOCATED by the session that built the cross-repo inbox responder runner
+  from `docs/RESPONDER_RUNNER_SPEC.md`; it now heads a row in `ROADMAP.md:40`
+  and is cited in `docs/ROADMAP_HISTORY.md`, so it is no longer pointer prose.
+  Allocation was checked with the pointer-vs-allocated predicate before
+  minting: a repo-wide `.md` grep for the id above, outside `docs/_archive`,
+  returned ZERO occurrences of any kind, pointer prose included.
+  The id two below it was minted by
   LEDGER 1357, LANE 10 queue cycle 17, for the inherited red that cycle's own
   pre-push suite surfaced: `config/vision_token.txt` is gitignored, so
   `f8323887e` making its absence fatal reddens every worktree and every CI
