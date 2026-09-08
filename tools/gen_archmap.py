@@ -32,6 +32,16 @@ ROOT = pathlib.Path(__file__).parent.parent
 SKIP_DIRS = {
     "__pycache__", ".git", ".claude", "node_modules",
     "_archive", "docs",
+    # `ops/runtime` is gitignored SCRATCH, not source, and it can contain a
+    # full copy of the repo: the inbox responder caches a tracked-only
+    # `git archive origin/main` export under
+    # `ops/runtime/responder_export/<sha12>/`. MEASURED 2026-09-08 - without
+    # this entry a regen on a machine holding that cache swept 194 of its
+    # files into `docs/ARCHITECTURE.md` as if they were source, and the doc
+    # then FLAPPED with whether the cache happened to exist on whichever
+    # machine committed next. Anything under a runtime dir is by definition
+    # not part of the architecture map.
+    "runtime",
 }
 
 # Files skipped only by the phase-journal scan (their docstrings/comments
