@@ -40,8 +40,11 @@ The parts worth pointing a reviewer at:
   outside the allowlist is refused and held rather than executed. If you find a
   path where model output reaches a side effect without passing that check,
   that is the report worth writing.
-- **Secrets.** The API key lives in a gitignored file outside version control
-  and is stripped from any child process environment. If you find a key, a
+- **Secrets.** The API key lives in a gitignored file outside version control,
+  and the one path that spawns a session on another party's input strips
+  `ANTHROPIC_API_KEY` from the child environment before it runs
+  (`tools/inbox_responder_spawn.py`, `child_env`). That is a statement about
+  that path, not a blanket claim about every subprocess. If you find a key, a
   token, an absolute path carrying a username, or any other credential in the
   tracked tree or in published output, report it privately - it is a leak, not
   a feature.
