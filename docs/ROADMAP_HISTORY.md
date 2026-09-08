@@ -1,5 +1,88 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-07e - size-budget relocation pass, by the session that scoped RM-384
+
+ROADMAP.md stood at 74717 of its 81920-byte budget (91.2 percent) once the
+`[!] RM-384` row was filed, past the 90 percent at which `tools/drift_guard.py`
+warns (`tools/drift_guard.py:57-58`; it measures `st_size`, raw bytes on disk).
+Block `2026-09-06l` below predicted that the next session to add a line would
+relocate one too, and RM-384 was that line - so this pass aimed to land
+comfortably under the warning line rather than one byte under it. Every line
+below is fully CLOSED, SHIPPED, STRUCK or superseded: the two removal notices
+from the head of the file, the closed pointer lines in NOW, the RM-310 and
+RM-343 shipped bodies, the two RM-01 shipped-narrative sub-bullets, the
+RM-19 / RM-20 / RM-21 fold record, and two paragraphs that were themselves
+pointers to bodies relocated on 2026-08-06 (collapsed to one line each, the
+2026-09-05 convention). Each was replaced in ROADMAP.md by a one-line pointer
+naming this block, so no `RM-NN` id left the tracker.
+
+Deliberately NOT moved, each checked rather than assumed: the `[!] RM-384` row
+and every OPEN row; the RM-118 stranded-seam line (it still frames its
+declined-by-design residual as OPEN); RM-28 (no closure record in LEDGER or in
+`docs/DEEP_AUDIT_CHARTER.md`); the mixed RM-344 / RM-345 / RM-366,
+RM-358 / RM-365, RM-302 / RM-301 / RM-303, RM-314 / RM-315 / RM-316 and
+RM-250 / RM-251 lines; the RM-117 "STILL OPEN / OWED" sub-bullet; and the
+LANE 10 `queue` line, whose tightest honest pointer saved about twenty bytes.
+
+Every fence the moved lines carried is preserved in its replacement pointer: the
+spawned ids still OPEN in `BACKLOG.md` (RM-381, RM-383, RM-369, RM-370 .. RM-379,
+RM-382); the `_write_status` + `god`-spelling fence, which now sits at
+`BACKLOG.md:440` rather than the `:420` the archived RM-211 line cites (checked
+before the move); the two do-not-re-pitch removal fences; the
+`RC_VISION_MERGE_STRICT` MUST-STAY-OFF fence and the
+`reference_coach_choices_native_emit` memory caveat; and the R134 / R135 / RM-99 /
+RM-102 / RM-104 DS fences. No pointer written by this pass states a next-free id -
+the live pin is the guarded one in `docs/DS_SWEEP_TRACKER.md`, and the next-free
+figures inside the archived lines below were already superseded when they were
+archived.
+
+Relocated verbatim, in ROADMAP document order:
+
+> **Decommissioned 2026-06-24 (operator-directed, ADR-012):** the RC<->Peer cross-Claude bridge + the lessons cross-project sync subsystem were fully removed (daemons + scheduled tasks + ~67 modules/routes/tests + docs + memory). No cross-Claude messaging remains; Peer is now only the separate private-project machine. Do NOT re-pitch a bridge or lessons-sync.
+
+> **Removed 2026-07-09 (operator-directed):** the `budget_saver` lean / 8B-local-model fallback (the `ops/budget_saver/` dir + the `RC-BudgetSaverProxy` / `RC-BudgetSaverWatchdog` scheduled tasks + the local LiteLLM/Ollama proxy + the `CLAUDE.md.full` swap-backup + the BUDGET_SAVER and LLM-vault specs) was fully removed. It produced low-quality autonomous work that got redone properly by the full model. Do NOT re-pitch a budget-saver / lean-profile / 8B-local fallback. See `docs/LEDGER.md` + memory `project_budget_saver_removal`.
+
+> **NEXT-5 TRIAGE (2026-08-02) relocated VERBATIM to `docs/ROADMAP_HISTORY.md`** - it was a point-in-time read of which rows were headless-actionable, and three of the rows it triaged have since closed. Its two durable conclusions survive as the rows themselves: RM-122 is operator-present ONLY, and RM-118's seam debt plus the RM-35..RM-48 DS sweep GAPs are the genuinely headless-actionable pair, each its own Tier-2 session.
+
+- **RM-203 CLOSED 2026-08-15 (LEDGER 1265)** - struck 2026-09-02; verdict + drift record in `docs/ROADMAP_HISTORY.md`. Do NOT re-open or re-derive the denominator.
+- **RM-208 / RM-220 / RM-209 SHIPPED 2026-09-04 (LEDGER 1324)** - bodies in `docs/ROADMAP_HISTORY.md`; rows in `BACKLOG.md`.
+- **RM-211 / RM-286 / RM-287: all CLOSED or SHIPPED 2026-08-31..09-04 (LEDGER 1313 / 1330)** - line relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-09-05c block) for the size budget; the `_write_status` + `god`-spelling fence is re-stated at `BACKLOG.md:420`.
+- **RM-212 (LEDGER 1329) / RM-342 + RM-214 (LEDGER 1330) SHIPPED 2026-09-04** - bodies in `docs/ROADMAP_HISTORY.md`; rows in `BACKLOG.md`.
+- **RM-322 .. RM-328: ALL SHIPPED or CLOSED 2026-09-01..04 (LEDGER 1317 / 1324 / 1328)** - body relocated verbatim 2026-09-06 to `docs/ROADMAP_HISTORY.md` (2026-09-06 block) when ROADMAP hit 90.6 pct of budget. Their specs were CORRECTED by measurement before any code was written; READ that block before re-filing a spec in this family.
+- **RM-329 .. RM-341 and RM-250: all SHIPPED or CLOSED 2026-09-03..05 (LEDGER 1322-1333)** - seven lines collapsed to this pointer 2026-09-05 when ROADMAP hit 90.2 pct of budget. Bodies in `docs/ROADMAP_HISTORY.md` (2026-09-05 block); rows in `BACKLOG.md`. RM-250's live id pointer is superseded: next free is RM-364, not the RM-343 that line carried.
+- **RM-343 SHIPPED 2026-09-06 (LEDGER 1357, `1a1ab477f`)** - the filed premise was WRONG: a fresh `git worktree add` produces LF and passes. The defect is staleness on the REUSE path - `ensure_worktree` returns a checkout materialized before the `fa0e7ea74` pin widening, and git never re-materializes an unchanged blob. `core.autocrlf` is SYSTEM-level, so no config was touched. Repair runs at lane-fire time; no 1884-path commit. **RM-383 OPEN** in `BACKLOG.md` - gitignored `config/vision_token.txt` is mandatory since `f8323887e`, so the RC suite is red in every worktree and on CI.
+- **RM-344 .. RM-363 (lane 5 refill) FULLY DRAINED 2026-09-06** - all twenty carry a closure record; line relocated to `docs/ROADMAP_HISTORY.md` (2026-09-06j) at 90.03 pct of budget. Bodies in `docs/_research_refill_2026-09-05.md`. Its next-free figure is superseded; the live pin is the guarded one in `docs/DS_SWEEP_TRACKER.md`.
+- **RM-347 / RM-348 / RM-349 / RM-350 .. RM-357 / RM-359 / RM-360 / RM-363 / RM-367 ALL SHIPPED 2026-09-06 (LEDGER 1337, 1339-1348, 1350-1352, 1355)** - body relocated to `docs/ROADMAP_HISTORY.md` (block 2026-09-06k) by the LANE 10 RM-364 cycle at 90.77 pct of budget. Every id in it carries a closure record. RM-367 chose the falsy no-phase on the CONSUMER contract, not on consistency: `"Unknown"` is truthy and would have disarmed two live view arms. **The ids they spawned that are still OPEN**, bodies in `BACKLOG.md`: RM-369, RM-370 .. RM-379, and RM-382. Next-free figures in that archived block are superseded; the live pin is the guarded one in `docs/DS_SWEEP_TRACKER.md`.
+- **RM-364 SHIPPED 2026-09-06 (LEDGER 1353)** - body relocated verbatim to `docs/ROADMAP_HISTORY.md` (block `2026-09-06l`) by the operator session that re-cased the repo. **RM-381 OPEN** in `BACKLOG.md` - the residual bucket, seven builders plus two `_run_coach` sites the file-level guard cannot see.
+- **RM-310 SHIPPED 2026-09-06 (`b9ca3c3c9`, LEDGER 1354)** - `core/rofl_archive.py`'s three writers delegate to `core/polled_json.py`, single-sourcing the WinError-5 retry AND the per-writer scratch name (the row named only the bare replace; the shared `index.json.tmp` was the other half). Eleven sibling sites stay open on the RM-310 row in `BACKLOG.md`. Also closes the `rofl_archive` third of RM-251's `_atomic_write_bytes` bullet. **Next free id = RM-311.**
+  - **2026-08-02 (LEDGER 1173, `ce808f81`) - the A/B choices half of this lane was BLOCKED BY A PARSER BUG, not by missing coaching.** `coaches/_base_coach.parse_fields` clipped every value to 220 chars and a 2-entry `choices` array is ~315, so the LIVE side had emitted `choices` **zero** times across the entire ARAM shadow log AND the entire Arena log - `both = 0`, `label agree 0/0`, i.e. the flip was never validatable on its primary surface. SR alone was clean (own uncapped parser). Fixed by bounding per CONTENT CLASS (prose 220 / structured 2000, both still enforced). **Do NOT read memory `reference_coach_choices_native_emit` as evidence the values arrive** - it was corrected in place; the emit was WIRED but INERT for 3 of 4 coaches from the day it shipped. **OWED and unconfirmable headless: `both` can only leave 0 after one live ARAM on a restarted process.** Action agreement is a separate matter and is NOT noise - 98.6 pct of mismatches are exactly one ladder tier apart and the rule's only one-tier operator (`wave_pct`) is hardcoded off at `dashboard/_deterministic_coaching.py:1336` while Haiku IS given it; the noise + timing-skew hypotheses are REFUTED by measurement (`docs/ARAM_ACTION_MISMATCH_2026-08-02.md`). Step 0 instrumentation shipped; Step 1 changes served coaching, needs a live game, and would add a Sonnet vision dependency to the deterministic action - an operator scope call, do NOT flip it blind._
+  - _Re-probed 2026-07-25: the 2026-07-18 "file does not exist" note is STALE - `data/fusion_shadow.jsonl` holds 230 real-game records, the accrual gate is MET, and all 41 CV overrides in the ledger history were garbage (all `gold`, all the literal value `1`), fixed at the fusion layer with a plausibility gate. The upstream half `core/vision_routing.py:118` is CLOSED too (2026-07-25, ENGINE 1.243.0). **`RC_VISION_MERGE_STRICT` is DEFAULT-OFF and MUST STAY OFF until someone re-homes `is_augment_select`** - `modes/shared_vision.py:418` aliases it to `augment_select` AFTER the merge and it is in NO coach TIERED_FIELDS, so a default-ON scope would silently regress the live-verified ARAM Mayhem augment-select path. Still shadow-only; do NOT flip. Replay numbers + the unmeasured-before-flip note: `docs/ROADMAP_HISTORY.md` (2026-07-25, and the 2026-09-02 block)._
+
+From under the `### DS defensive-half sweep GAP specs (R132, 2026-07-19) - ALL CLOSED, fences RELOCATED` heading:
+
+Relocated VERBATIM 2026-08-06 (run-02 size-budget pass) to `docs/ROADMAP_HISTORY.md`. Nothing
+is open. The fences that must not be re-pitched live there: **R134 CLOSED-REFUTED** (do NOT
+re-pitch the four-term `total_armor` sum), **R135 CLOSED-INERT** (the movespeed soft cap is real,
+correctly stated and unreachable at every live site), and **RM-99 / RM-99b / RM-101 / RM-102 /
+RM-103 / RM-104 / RM-105 / RM-108 / RM-114** - read their verdicts before touching the DS
+scorer/item surface, in particular RM-99 (the coefficient is 10 percent, NOT the spec's 8) and
+RM-102 / RM-104 (Arena mirrors, PLURAL - never re-file as a single-item fix).
+
+From under the RM-14 bullet in "Programs with open kernels":
+
+  - _RM-19 / RM-20 / RM-21 were verbatim restatements of the clauses above (`apply_passive_damage` + the 4 non-every-AA `on_hit`; Phase-D flag-flips + the 4 different-seam exclusions + Phase 11; Phase-D + the read-the-parsed-block resist lift). They are FOLDED INTO this bullet - RM-14 is the canonical index. Gated rows: `G2-04`, `G2-21`, `G5-05`. RM-21's own DONE note (the percent-of-resist Poppy/Rell seam, item 268 + R45 ENGINE 1.159.0) is shipped and relocated._
+
+From under the `### Rerouted to docs/LIVE_GAME_GATED_SYNC.md - table RELOCATED` heading:
+
+The 13-row id-to-gated-row mapping (RM-05 / RM-07 / RM-08 / RM-09 / RM-10 / RM-11 / RM-13 /
+RM-22 / RM-23 / RM-24 / RM-25) was relocated VERBATIM 2026-08-06 (run-02 size-budget pass) to
+`docs/ROADMAP_HISTORY.md`. Those items were purely "owed live capture" or "flip after a real
+game"; the gated doc already carried each one, so the ROADMAP copy was a duplicate. **The work
+is drained from the gated doc, not from here.** Ids stay reachable via that relocated table, and
+its per-row do-not-redo notes travel with it - in particular that per-champion minimap isolation
+by colour/size/motion is a validated DEAD END, that replay scroll-wrap is CORRECT and must not be
+"fixed", and that RM-13 is a standing per-game ritual which never closes.
+
 ## 2026-09-06l - the RM-364 SHIPPED line, relocated by the operator session that re-cased the repo
 
 Same cause as block `2026-09-06k` below, one cycle later and from the other
