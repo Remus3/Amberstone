@@ -78,6 +78,12 @@ SCHEDULED_SPAWNERS = (
     # in the same session precisely so this list can see it, and the scheduled
     # task was repointed at the new path.
     "tools/claude_quota_watch.py",
+    # 2026-09-08: the inbox responder's single process seam, run unattended by
+    # RC-InboxResponder under pythonw every 5 minutes. It is the ONLY module in
+    # the responder carrying a literal subprocess call - the spawn, exec and
+    # export modules all go through it - so listing this one file gives the
+    # guard exactly the two calls that matter (the Popen and the taskkill).
+    "tools/inbox_responder_procs.py",
 )
 
 # ---------------------------------------------------------------------------
