@@ -129,9 +129,10 @@ revives - and covers most of the roster.
 The engine's live counts are reported by its own `/health` endpoint rather than
 restated here, so they cannot go stale in prose.
 
-It also ships as a self-contained package for external review, with its own
-documentation and test suite: [`Share/README.md`](./Share/README.md). Depth
-reference: [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md).
+The engine is self-contained and readable on its own: the scoring code, its
+per-champion registries and its test suite all live under
+[`agents/daemon_slayer/`](./agents/daemon_slayer/), and the depth reference is
+[`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md).
 
 ---
 
@@ -207,8 +208,14 @@ For readers:
 - [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md) - build engine deep reference
 - [`docs/API.md`](./docs/API.md) - dashboard HTTP API
 - [`docs/adr/`](./docs/adr/) - architectural decision index
-- [`Share/README.md`](./Share/README.md) - the engine's external review package
+- [`agents/daemon_slayer/`](./agents/daemon_slayer/) - the build engine itself, with its own tests
 - [`ROADMAP.md`](./ROADMAP.md) - open work
+
+For anyone reporting or contributing:
+
+- [`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md) - what a useful issue looks like, and why a pull request may not be merged
+- [`.github/SECURITY.md`](./.github/SECURITY.md) - how to report a vulnerability privately
+- [`.github/CODE_OF_CONDUCT.md`](./.github/CODE_OF_CONDUCT.md) - the short version: be civil, be specific
 
 For maintenance and coding agents:
 
