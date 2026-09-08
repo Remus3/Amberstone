@@ -122,8 +122,10 @@ from tests.test_inbox_responder_runner import (  # noqa: E402
     _no_real_spawn,
     _open_singleton,
     armed,
+    bounces_in,
     filesystem_accepts_note_name,
     proposal,
+    replies_in,
     reply_action,
     result_bytes,
 )
@@ -1272,7 +1274,12 @@ def c_filter_refusal(w, result):
     held = w.held(result.cycle_id)
     for name in ("draft.md", "reasons.json", "proposal.json", "decisions.json", "status.txt"):
         assert (held / name).exists(), name
-    assert list(w.rsc.iterdir()) == []
+    assert replies_in(w.rsc) == []
+    # The refusal is announced, never delivered: one bounce, no reply, and the
+    # secret the filter caught is in neither the bounce nor the row.
+    bounces = bounces_in(w.rsc)
+    assert len(bounces) == 1
+    assert "sk-ant-abcdef0123" not in (w.rsc / bounces[0]).read_text(encoding="ascii")
     assert NOTE_NAME in w.answered()
     assert "sk-ant-abcdef0123" not in json.dumps(w.one_row(result))
 
