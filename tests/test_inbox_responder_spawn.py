@@ -107,6 +107,22 @@ def _make_exe(base: Path) -> Path:
     return exe
 
 
+def _make_shim(base: Path) -> Path:
+    """The npm shim `resolve_claude_exe` looks up with `shutil.which`.
+
+    The executable bit is load-bearing OFF Windows and is the whole reason this
+    is a helper: POSIX `shutil.which` checks `os.access(fn, F_OK | X_OK)`, so a
+    shim written with `write_text` alone (mode 0644) is invisible to it and
+    every `which` arm below silently resolves to None. Windows finds it either
+    way - it honours PATHEXT and ignores the mode bits - which is exactly how a
+    Windows-only assumption hides here until CI runs on Linux.
+    """
+    shim = base / "claude.cmd"
+    shim.write_text("shim", encoding="utf-8")
+    shim.chmod(0o755)
+    return shim
+
+
 def _result_json(**overrides) -> str:
     body = {
         "type": "result",
@@ -226,7 +242,7 @@ def test_resolve_prefers_the_configured_exe(tmp_path):
 def test_resolve_derives_from_executor_cmd_when_config_is_unset(tmp_path, monkeypatch):
     npm = tmp_path / "npm"
     npm.mkdir()
-    (npm / "claude.cmd").write_text("shim", encoding="utf-8")
+    _make_shim(npm)
     exe = _make_exe(npm)
     loop_config = tmp_path / "config.json"
     loop_config.write_text(
@@ -242,7 +258,7 @@ def test_resolve_derives_from_executor_cmd_when_config_is_unset(tmp_path, monkey
 def test_resolve_falls_through_to_which_over_the_injected_path(tmp_path, monkeypatch):
     npm = tmp_path / "npm"
     npm.mkdir()
-    (npm / "claude.cmd").write_text("shim", encoding="utf-8")
+    _make_shim(npm)
     exe = _make_exe(npm)
     missing = tmp_path / "no-such-config.json"
     monkeypatch.setattr(spawn, "LOOP_CONFIG_PATH", missing)
@@ -257,7 +273,7 @@ def test_resolve_falls_through_to_which_over_the_injected_path(tmp_path, monkeyp
 def test_resolve_reads_path_only_from_the_injected_mapping(tmp_path, monkeypatch):
     npm = tmp_path / "npm"
     npm.mkdir()
-    (npm / "claude.cmd").write_text("shim", encoding="utf-8")
+    _make_shim(npm)
     _make_exe(npm)
     monkeypatch.setattr(spawn, "LOOP_CONFIG_PATH", tmp_path / "absent.json")
     # The real binary IS on the process PATH. The injected mapping has none,
@@ -297,7 +313,7 @@ def test_resolve_survives_an_unreadable_loop_config(tmp_path, monkeypatch):
 def test_resolve_never_returns_a_bare_name(tmp_path, monkeypatch):
     npm = tmp_path / "npm"
     npm.mkdir()
-    (npm / "claude.cmd").write_text("shim", encoding="utf-8")
+    _make_shim(npm)
     _make_exe(npm)
     monkeypatch.setattr(spawn, "LOOP_CONFIG_PATH", tmp_path / "absent.json")
     path, _source = spawn.resolve_claude_exe(StandInConfig(), {"PATH": str(npm)})
