@@ -90,7 +90,14 @@ MODEL = "claude-sonnet-4-5"
 MAX_TURNS = 12
 
 SLOT_TIMEOUT_S = 20
-SPAWN_TIMEOUT_S = 120
+# MEASURED 2026-09-08, not guessed. The spec listed 120 under UNMEASURED, and
+# the first dry cycle terminated `spawn-failed / timeout` on it: the spawn cwd
+# is a 618 MB tracked-only export and the session Reads and Greps it under
+# MAX_TURNS. 240 keeps every section 11 bound: the worst-case cycle sums to 500
+# and the two-process export case to 560, both under TASK_ETL_S 600, and the
+# refuted per-call-kill sum still exceeds it. tests/test_inbox_responder_task.py
+# re-derives all three from these names, so a further raise reddens there first.
+SPAWN_TIMEOUT_S = 240
 EXPORT_TIMEOUT_S = 60
 EXPORT_MAX_BYTES = 2 * 1024 * 1024 * 1024
 MEASURE_TIMEOUT_S = 15
