@@ -6,6 +6,53 @@
 
 ---
 
+# 2026-09-08b - the responder was ARMED, and running it found what testing could not
+
+Continues 2026-09-08 below. The runner was armed against RSC (A5-measurement-only,
+`hop_budget 1`, 24 h window, `agreement_id a9f7e59541f9ab87`) and **it delivered**:
+`2026-09-08-1657-from-RC-RESPONDER-re-6e62aa1071a0.md`, `delivered / delivery=1 of 1`,
+M1 LOWER_BOUND hops 1, M3 21 turns, m4 proposed 1 allowed 1. RSC independently
+confirmed receipt at 17:00, 2889 bytes. First machine-authored note that channel
+has carried.
+
+**FOUR live defects that a green suite could not see.** Every one surfaced by
+RUNNING the thing, not by testing it. (1) The first armed tick refused a real
+note on `name-grammar` - and RC's own filed cause was WRONG: `NOTE_NAME_MAX` was
+a red herring, the binding constraint was `NOTE_NAME_RE`'s `{1,80}` TOPIC group,
+and raising the named cap alone would have fixed ZERO of the 34 failing names
+across 208 unique notes. Caps now `{1,160}` / 200; 0 of 208 fail. (2) The
+re-queued note was then EXHAUSTED silently - and the root cause was in the
+PROMPT, not the gates: `SYSTEM_PROMPT` literally instructed "if there is nothing
+to measure, return exactly `{"actions":[]}`". Fixed with `minItems: 1` plus a
+rewritten paragraph, and RSC's bounce design adopted (a `.txt` that fails the
+note grammar on every clause, own allowance, excluded from budget/M1/M2/M5).
+(3) `SPAWN_TIMEOUT_S` 120 was too short for a 618 MB export - now 240. (4)
+`MAX_TURNS` 12 was too tight - the delivering cycle used **21**, so the old
+limit would have failed a third time and hit the attempt cap. Now 30.
+
+**Three of the spec's own UNMEASURED guesses were measured by running it**:
+export size (618 MB), `SPAWN_TIMEOUT_S`, `MAX_TURNS`. Each failure labelled
+itself correctly rather than lying, which is the one thing the build got right.
+
+**Do NOT redo:** the caps, the prompt/schema fix, the bounce, the two constants.
+RC and RSC independently converged on the SAME six bounce properties, which is
+the strongest evidence the shape is right.
+
+**Open, all in `BACKLOG.md`:** RM-385 (junction-named note invisible forever,
+plus a second instance - a note with sender and date transposed), RM-386 second
+half (THREE terminal states answer a note and tell the sender nothing), RM-387
+(reply body shows the sender their filename clipped to 80), RM-388 (metrics
+ledger never trimmed while the invocation log is; from RSC's refutation list -
+four of their six were checked and do NOT apply to RC, recorded so nobody
+re-checks them).
+
+**Operational:** the task must be DISABLED to run the suite (it writes the live
+log every 5 min and the autouse arm guards exactly that). The `hop_budget 1` is
+now SPENT, so every further cycle reads `budget / consumed=1 budget=1` until a
+new agreement is written - which is an operator act.
+
+---
+
 # 2026-09-08 - RM-384: the responder runner is BUILT, and the three conditions are MEASURED
 
 31 commits `f4472f58e..966febbfd`, pushed. Full `pytest tests` from the repo
@@ -192,75 +239,3 @@ that is supposed to be sub-agent first." Recorded in
 `feedback_subagent_first_protocol` - the brief's INPUTS (115 KB of notes, ~20
 probes) go to reader agents too; the main thread reads the brief and the
 roll-ups.
-
----
-
-# 2026-09-07d - the channel got a responder program, and every claim RC made about itself was wrong once
-
-Five commits, all pushed: `b129d3845` `e44476d97` `d7833ad1c` `bc4671b56` plus
-this wrap. Suite green. Started as "check the moon sync inbox" and became a
-five-repo design round plus two shipped modules.
-
-**The operator's requirement.** Siblings must react to a note without operator
-interaction while a session is open, else at the next session start. MEASURED
-across all five trees: the SECOND half already existed everywhere (all five
-have a SessionStart watcher). The FIRST half exists nowhere - `UserPromptSubmit`
-needs the operator to TYPE, and the machine-wide poller writes `status.md` that
-nothing reads. Demonstrated live twice: notes landed inside an open RC session
-and stayed invisible until the operator sent a message.
-
-**Design settled with the channel, four operator decisions.** Full autonomy
-(reply AND execute), headless-per-arrival (never the operator's window), NO
-stop rule - the trial measures it and consensus follows, and enforcement by a
-DETERMINISTIC EXECUTOR rather than a restricted runner.
-
-**Shipped.**
-- `tools/rc_facts.py` hook invocation log. Windows `O_APPEND` is seek-then-write
-  and LOST 20 of 64 concurrent appends; replaced with a Win32
-  `FILE_APPEND_DATA` handle, verified cross-process with a positive control
-  (naive 322/2400 lost, shipped 0/2400).
-- `tools/inbox_responder.py` A1-A5 validator + decider. 50 arms.
-
-**RC WAS WRONG FOUR TIMES AND EACH WAS CAUGHT BY SOMEONE ELSE OR BY A PROBE.**
-1. RC's own A1-A4 allowlist: RSC refuted ALL FOUR entries. A3 was
-   manifest-as-key in a costume, handed to an executor instead of a detector;
-   A4 was a pin that moves itself, automating the exact softening RC had
-   refused BY HAND that morning; A2 treated a test suite as read-only; and D8
-   made a compliant responder INERT because replying matched no rule.
-2. RC claimed the invocation-log error "propagated to two repositories". RSC
-   re-measured both its notes: zero occurrences. It was CS's alone. RC made an
-   unmeasured claim inside a note about unmeasured claims propagating.
-3. RC's tie-break rule ordered volunteers by note timestamp. Filename stamps
-   run AHEAD of arrival - measured at LL +18min, CS +37min, RC's own +3min -
-   so filename order was the REVERSE of arrival order. Retired for arrival on
-   the receiving disk: one clock, named.
-4. RC's own test suite wrote one line per run into the LIVE invocation log
-   (7 -> 8, measured). A subprocess cannot be handed `path=`, so it took the
-   module default and the default was production. One of those lines had
-   already been investigated by RC as a mysterious real fire.
-
-**The single best idea of the round is RSC's and it is not RC's:** under
-disposition (i) the spawned session needs NO WRITE AUTHORITY. The draft returns
-on stdout; every write happens outside the session by code the session never
-ran. RC removed the model's authority to DECIDE; RSC removed its ability to
-REACH. A session never handed a destination cannot be talked into one.
-
-**Trial.** RSC volunteered first (arrived 17:59:53) and CS second (18:28:05).
-RSC proposed 19:00-21:00 today; RC answered NO, not built, cannot arm, and
-endorsed RSC running LATENCY-ONLY (M2/M3 only, M1 recorded INAPPLICABLE). RC
-declined to name an hour and named three CONDITIONS instead, because RC had
-already been wrong about its own readiness once that day.
-
-**DO NOT REDO.** The A1-A5 list is settled after an adversarial pass - do not
-re-litigate it. Disposition (i), the label-travels-in-the-record rule, the
-seven termination reasons and M6-at-zero are all accepted. The stop rule is
-deliberately UNCHOSEN by operator ruling.
-
-**OPEN, and it is the whole next session.** RC's cycle runner does not exist:
-no spawn path, no draft capture, no metrics writer, no headless prompt. The
-validator's gates are consequently enforced by NOTHING - which is a scope gap,
-not RSC's tested-but-not-enforced defect, and the distinction was stated to
-RSC rather than accepting the credit. FOUR NOTES UNREAD at wrap: LW 1813 +
-1820 (LW audited RC's public history: "your 11 is exact and your scope
-sentence is not"), LL 1830, CS 1905 (yes to the trial, restricted to A1-A2-A3,
-A4 refuted again, outbound ratio zero).
