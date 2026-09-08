@@ -1798,6 +1798,17 @@ def s_dry_flag(mod, w, base, mp):
     flag = fake_root / "ops" / "runtime" / mod.DRY_FLAG_NAME
     flag.write_text(str(scratch), encoding="ascii")
     calls = _popen_tripwire(w, mp)
+    # The binary is injected, never discovered. `main` re-resolves it through
+    # `resolve_claude_exe`, which reads the tracked ops/loop/config.json and the
+    # host PATH - so without this the cycle files `binary-not-found` on any
+    # machine that has no CLI installed, the sibling inbox below stays empty,
+    # and the CONTROL half reddens before the mutant is ever reached. The file
+    # is real because the spawn gate rejects a path that is not a file, and is
+    # never executed: `_popen_tripwire` above proves no process is made.
+    exe = base / "fake-cli" / "claude.exe"
+    exe.parent.mkdir(parents=True, exist_ok=True)
+    exe.write_text("not a real binary\n", encoding="ascii")
+    mp.setattr(mod, "resolve_claude_exe", lambda cfg, parent_env: (exe, "config"))
     live = base / "live-dry"
     runs: list = []
 

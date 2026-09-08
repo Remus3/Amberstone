@@ -2842,12 +2842,39 @@ def test_a_prelude_failure_writes_the_prelude_row(world, tmp_path, monkeypatch):
     assert runner.metrics_row_ok(row, delivered=0) is True
 
 
+def _inject_claude_exe(tmp_path, monkeypatch, *, label):
+    """A test-owned stand-in for the native binary, so no arm needs one on the host.
+
+    `resolve_claude_exe` discovers the binary from the tracked
+    `ops/loop/config.json` `executor_cmd` or from `PATH`. Both are facts about
+    the MACHINE the suite runs on - present on a box with the CLI installed,
+    absent on a CI runner - so an arm that lets the runner discover its own
+    precondition passes or fails by accident, and the spawn gate quietly files
+    `binary-not-found` instead of reaching anything the arm means to check.
+    The lookup itself is covered hermetically by the `resolve_claude_exe` arms
+    in `tests/test_inbox_responder_spawn.py`; the arms below are about what the
+    runner DOES once a binary is resolved, so they supply the resolved value
+    rather than hunting for one.
+
+    The file is real because the spawn gate rejects a path that is not a file.
+    It is never executed: every arm using this injects both its spawner and its
+    process seam, and a `subprocess.Popen` tripwire proves no process is made.
+    """
+    exe = tmp_path / f"fake-cli-{label}" / "claude.exe"
+    exe.parent.mkdir(parents=True, exist_ok=True)
+    exe.write_text("not a real binary\n", encoding="ascii")
+    monkeypatch.setattr(runner, "resolve_claude_exe",
+                        lambda cfg, parent_env: (exe, "config"))
+    return exe
+
+
 def test_the_dry_flag_is_consumed_first_and_writes_only_into_scratch(world, tmp_path,
                                                                     monkeypatch):
     fake_root = tmp_path / "dryroot"
     (fake_root / "ops" / "runtime").mkdir(parents=True)
     (fake_root / "moon_sync_inbox").mkdir()
     monkeypatch.setattr(runner, "ROOT", fake_root)
+    _inject_claude_exe(tmp_path, monkeypatch, label="dryflag")
     # A LIVE agreement and a pending note under the fake root: neither is touched.
     live_note = fake_root / "moon_sync_inbox" / NOTE_NAME
     live_note.write_text("live note\n", encoding="ascii")
@@ -2963,7 +2990,13 @@ class DryProcs:
 
 
 def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, stdout=None):
-    """One `--dry-cycle` invocation against a fake ROOT and four fake siblings."""
+    """One `--dry-cycle` invocation against a fake ROOT and four fake siblings.
+
+    The binary is injected rather than resolved from the host, so the cycle
+    reaches the spawn gate on any machine and the `cli-version` check reads the
+    version this arm's `DryProcs` hands it instead of the `unknown` a missing
+    binary produces. Returns that injected path so an arm can assert on it.
+    """
     fake_root = tmp_path / f"dryroot-{label}"
     (fake_root / "ops" / "runtime").mkdir(parents=True)
     (fake_root / "moon_sync_inbox").mkdir()
@@ -2975,6 +3008,7 @@ def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, s
     (fake_root / "ops" / "moon_sync_repos.json").write_text(
         json.dumps({"participants": bases}), encoding="ascii")
     monkeypatch.setattr(runner, "ROOT", fake_root)
+    exe = _inject_claude_exe(tmp_path, monkeypatch, label=label)
 
     scratch = tmp_path / f"scratch-{label}"
     export_dir = scratch / "rc" / "ops" / "runtime" / "responder_export" / DRY_SHA12
@@ -2994,7 +3028,7 @@ def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, s
                        log_root=live, parent_env=world.parent_env,
                        proc_runner=proc_runner if proc_runner is not None else DryProcs())
     assert created == [], "the dry cycle created a real process"
-    return code, scratch, live, fake_root
+    return code, scratch, live, fake_root, exe
 
 
 DRY_CHECK_NAMES = (
@@ -3007,7 +3041,8 @@ DRY_CHECK_NAMES = (
 
 def test_the_dry_cycle_report_prints_the_section_13_facts_and_every_check_passes(
         world, tmp_path, monkeypatch, capsys):
-    code, scratch, live, fake_root = _drive_dry_cycle(world, tmp_path, monkeypatch, label="ok")
+    code, scratch, live, fake_root, exe = _drive_dry_cycle(world, tmp_path, monkeypatch,
+                                                           label="ok")
     out = capsys.readouterr().out
     assert out.isascii(), "the printout must be seven-bit ASCII"
     assert code == 0
@@ -3022,6 +3057,10 @@ def test_the_dry_cycle_report_prints_the_section_13_facts_and_every_check_passes
                   "m2_arrival_to_reply_s:", "m2_note_st_mtime:", "m2_reply_st_mtime:",
                   "action[0]:", "filter_gates:"):
         assert label in out, f"the report did not print {label}"
+    # The two facts the arm INJECTED, printed back by value. A binary the host
+    # happened to supply, or none at all, reads as `unknown` here.
+    assert f"cli_version: {DRY_PINNED_CLI}" in out
+    assert f"claude_exe: {exe}" in out
     assert "executor_cmd" in out or "config" in out
     # Nothing live moved: the whole cycle wrote under the scratch and the tmp log.
     assert not (fake_root / "ops" / "runtime" / runner.METRICS_NAME).exists()
@@ -3032,7 +3071,7 @@ def test_the_dry_cycle_report_prints_the_section_13_facts_and_every_check_passes
 
 def test_a_cli_version_other_than_the_pin_is_a_fail_line_and_a_non_zero_exit(
         world, tmp_path, monkeypatch, capsys):
-    code, _scratch, _live, _root = _drive_dry_cycle(
+    code, _scratch, _live, _root, _exe = _drive_dry_cycle(
         world, tmp_path, monkeypatch, label="ver", proc_runner=DryProcs(version="2.1.999"))
     out = capsys.readouterr().out
     assert code != 0, "a FAIL line must not be reported as a good cycle by exit code"
@@ -3044,7 +3083,7 @@ def test_a_cli_version_other_than_the_pin_is_a_fail_line_and_a_non_zero_exit(
 
 def test_an_ignored_path_in_the_export_fails_the_export_clean_check(
         world, tmp_path, monkeypatch, capsys):
-    code, _scratch, _live, _root = _drive_dry_cycle(
+    code, _scratch, _live, _root, _exe = _drive_dry_cycle(
         world, tmp_path, monkeypatch, label="dirty",
         proc_runner=DryProcs(ignored=["API-Key-Claude.txt"]))
     out = capsys.readouterr().out
