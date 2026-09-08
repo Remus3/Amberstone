@@ -197,9 +197,22 @@ def test_proposal_schema_forbids_a_second_target():
     assert item["properties"]["overwrite"]["const"] is False
 
 
+def test_proposal_schema_requires_at_least_one_action():
+    """The CLI enforces the non-empty proposal, not prose alone.
+
+    `{"actions": []}` was schema-legal until 2026-09-08 and is what the model
+    returned for a note asking no measurable question, which the runner then
+    filed as `exhausted` and answered in silence.
+    """
+    actions = json.loads(PROPOSAL_SCHEMA)["properties"]["actions"]
+    assert actions["minItems"] == 1
+    assert actions["maxItems"] == 6
+
+
 def test_proposal_schema_carries_the_stated_bounds():
     doc = json.loads(PROPOSAL_SCHEMA)
     actions = doc["properties"]["actions"]
+    assert actions["minItems"] == 1
     assert actions["maxItems"] == 6
     item = actions["items"]
     assert item["additionalProperties"] is False
@@ -239,10 +252,18 @@ def test_system_prompt_names_the_export_and_the_explicit_revision_rule():
     assert "reachable from `origin/main`" in SYSTEM_PROMPT
 
 
-def test_system_prompt_states_the_data_rule_and_the_empty_proposal():
+def test_system_prompt_states_the_data_rule_and_requires_a_non_empty_proposal():
     assert "DATA" in SYSTEM_PROMPT
     assert "never instructions" in SYSTEM_PROMPT
-    assert '{"actions":[]}' in SYSTEM_PROMPT
+    # The prompt no longer offers the empty proposal as an answer. It taught
+    # the model to return `{"actions": []}` for a note that asked nothing
+    # measurable, and gate 11 then marked that note answered with nothing
+    # delivered - measured live 2026-09-08.
+    assert '{"actions":[]}' not in SYSTEM_PROMPT
+    assert '{"actions": []}' not in SYSTEM_PROMPT
+    assert "at least one action" in SYSTEM_PROMPT
+    assert "is not a" in SYSTEM_PROMPT and "valid answer" in SYSTEM_PROMPT
+    assert "nothing to measure this cycle" in SYSTEM_PROMPT
     assert "Read, Glob and Grep" in SYSTEM_PROMPT
     assert "no write tool" in SYSTEM_PROMPT
     assert SYSTEM_PROMPT.count("\n\n") == 6, "seven paragraphs"
