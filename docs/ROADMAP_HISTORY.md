@@ -1,5 +1,15 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-08b - RM-386 first half, relocated on the same day it shipped
+
+ROADMAP.md hit 93 percent of its budget once RM-385, RM-386 and RM-387 were all
+filed, and RM-386 was the single largest row in the file at 3158 bytes because
+it carried its own correction. The SHIPPED half and the census that produced it
+move here; the OPEN half stays in `ROADMAP.md` as a short row. The correction is
+the part worth keeping, so it is kept in full.
+
+**RM-386 first half SHIPPED 2026-09-08 - and this row named the WRONG cause first.** MEASURED 2026-09-08T15:02:43, the first cycle RC ran while armed: it terminated `refused / name-grammar` on `2026-09-08-1456-from-RSC-window-ran-and-produced-NO-DATA-...md`. The row as filed blamed `NOTE_NAME_MAX = 120` and the name's 130 characters. The binding constraint was actually `NOTE_NAME_RE`'s TOPIC group, `[A-Za-z0-9._-]{1,80}`, tested in the same `or` as the length cap and rejecting the 102-character topic first. **The length cap was a red herring: raising it ALONE would have fixed NOTHING.** Re-measured across all five participant inboxes (RC, LW, RSC, CS, LL), deduplicated by name: **208 unique real notes; 34 failed the old `NOTE_NAME_RE` and ALL 34 failed on the topic group alone, while only 11 exceeded the 120-char cap**; observed topic max 108 (p99 102), observed name max 136, character-class violations 0, sender-code-length violations 0. The row's original "8 of the 107 notes in RC's inbox" was RC-only and counted the non-binding cap. **The fix** (operator-approved raise): topic group to `{1,160}`, `NOTE_NAME_MAX` to `200`, both justified in-comment with the census, with the character class, the sender-code group and the date/time prefix deliberately untouched because zero notes failed on them. `25 + 160 + 3 = 188 <= 200` keeps the length cap the outer bound rather than a second conflicting one; Windows path check `35 + 200 = 235 < 260`, and the note name is never a path component. Post-change re-check: **0 of the 208 still fail.** **The lesson:** RC was one commit away from raising the number it had blamed, shipping it, and watching the next note bounce identically. Only measuring the population caught it - a cause NAMED but not MEASURED is the sibling of the gate TESTED but not ENFORCED that RSC published to this channel a day earlier.
+
 ## 2026-09-08 - size-budget relocation pass, by the session that BUILT RM-384
 
 ROADMAP.md reached 92 percent of its 81920-byte budget once RM-385 and RM-386
