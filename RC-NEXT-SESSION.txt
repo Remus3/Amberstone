@@ -1,95 +1,68 @@
-NEXT SESSION - BUILD THE RESPONDER RUNNER FROM THE SPEC. SUBAGENT-FIRST.
-------------------------------------------------------------------------
-Model: operator's choice (Fable 5.1 or Opus 5). Shape: orchestrated, worktree
-slices, TDD, verifier gate before every merge - the CLAUDE.md Session Default.
-Main thread reads THIS file, the spec's sections 0 / 2 / 12 / 14, and agent
-roll-ups. Everything else (notes, module surfaces, probes) goes to agents.
-Operator feedback from the planning session: be quiet on the token output.
+NEXT SESSION - THE RESPONDER IS BUILT AND DISARMED. WHAT COMES NEXT IS ARMING,
+RSC'S REPLY, AND ONE OPEN DEFECT.
+------------------------------------------------------------------------------
+RM-384 SHIPPED 2026-09-08 (LEDGER 1364, head 5120f3735, ci + docs-guards both
+green with the jobs confirmed RUN, not just the run conclusion read). Do NOT
+rebuild any of it. Read `docs/RESPONDER_RUNNER_SPEC.md` section "Build
+measurements" FIRST - it records every spec item that was measured wrong, the
+four forced signature deviations, three vacuous spec mutants, and the two
+Linux-only portability defects. It is the shortest path back into this work.
 
-THE SPEC: docs/RESPONDER_RUNNER_SPEC.md (133 KB, 16 sections + open risks).
-Every fork is marked DECIDED with its reason. Do not re-decide; if a DECIDED
-item proves wrong when built, record the measurement in the spec and move on.
+STATE ON THE MACHINE RIGHT NOW
+  RC-InboxResponder is REGISTERED, Enabled, State=Ready, repetition PT5M,
+  ETL PT10M, S4U, pythonw. It is DISARMED: no `ops/runtime/inbox_responder_
+  agreement.json` exists, so every tick terminates `disarmed / no_agreement`
+  and writes a START/END pair plus a row. Nothing spawns. Nothing is sent.
+  IT MUST BE DISABLED TO RUN THE FULL SUITE - it appends to the live responder
+  log every five minutes and the suite's autouse arm guards exactly that
+  surface. `Disable-ScheduledTask -TaskName RC-InboxResponder`, run the suite,
+  `Enable-ScheduledTask` after.
 
-CONFIDENCE OF THE SPEC, STATED SO YOU DO NOT OVER-TRUST IT
-  Produced by a 16-agent workflow, then THREE verifier passes (16 -> 9 -> 3
-  must-fix). The last 3 + 13 fixes were applied and grep-presence-checked;
-  there was NO fourth adversarial pass. So: re-refute each section AS YOU
-  BUILD IT - the failing arm you write first is that refutation.
+THE ARMING NOTE WENT OUT to RSC on 2026-09-08 (13907 bytes, in
+`C:\Resin Compute\moon_sync_inbox\`). It carries every measurement with its
+command, discloses both vocabulary extensions (`runner-failed`, `attempt-cap`
+as a HOLD under two terminations), and states plainly that RC is still
+disarmed. FIRST ACTION NEXT SESSION: read RC's own `moon_sync_inbox/` for
+RSC's reply and for anything from CS / LL / LW, and answer per RC's own rule
+(silence means unready, so if something is now ready, say so).
 
-BUILD ORDER = spec section 14, six worktree-isolable slices on disjoint files:
-  S0 tools/inbox_responder_procs.py      (the ONLY literal subprocess call +
-                                          taskkill tree-kill; append it to
-                                          SCHEDULED_SPAWNERS in
-                                          tests/test_no_console_flash_scheduled_tools.py)
-  S1 tools/inbox_responder_prompt.py     (SYSTEM_PROMPT, PROPOSAL_SCHEMA, envelope)
-  S2 tools/inbox_responder_exec.py       (harden, precheck, scrub, assemble, filter)
-  S2b tools/inbox_responder_export.py    (git archive origin/main -> tracked-only cwd)
-  S3 tools/inbox_responder_spawn.py      (argv, child_env, real_spawner, parse_result)
-  S4 tools/inbox_responder_runner.py     (run_once, _finish, main, gates, metrics,
-                                          invocation line, agreement, delivery)
-  S5 ops/install_RC_InboxResponder.ps1 + tests/test_inbox_responder_task.py
-     + docs/OPERATIONS.md row + ops/moon_sync_repos.example.json "participants"
-  Tests per slice per spec section 1 (eight new test files) plus
-  tests/test_inbox_responder_mutants.py (the positive control: every gate's
-  named mutant must redden its arm, on a TEMP COPY of the module).
-  Verification tier: Tier-1 per slice (py_compile + that module's tests);
-  the merge runs `pytest tests` once from the repo root (never `pytest .`).
+OPEN, IN PRIORITY ORDER
+1. RSC's reply to the arming note, and whatever it refutes. Three RC claims
+   were refuted by RSC in one hour last time; expect more, and check them
+   rather than defending.
+2. ARMING is an OPERATOR act, not an agent one. The agreement record shape,
+   its canonical id (sha256 over seven semantic fields, first 16 hex), and its
+   expiry semantics are in spec section 10 and restated in the arming note.
+   Do not write that file on the operator's behalf without being asked.
+3. THE ONE OPEN DEFECT, needs its own RM id (next free is RM-385). A note whose
+   NAME is a directory junction never reaches the gate 6 link checks, because
+   `pending_notes` filters on `Path.is_file()` and a junction fails it. The
+   cycle reads `empty / none_pending` and the entry sits in the inbox
+   unremarked on EVERY later tick. Pinned by the one remaining strict-xfail,
+   `test_a_note_that_is_a_junction_is_refused`. It is NOT a containment hole -
+   a companion PASSING arm proves nothing outside the inbox is opened, quoted,
+   spawned for or delivered - but it is silent-forever rather than a refusal.
+   Fixing it at source means editing `tools/inbox_responder.py`, which spec
+   section 15 forbade for the BUILD; that scope ended with the build, so the
+   next session may take it with a fresh decision.
+4. A design smell worth one scoped item: `main` has no config-injection seam,
+   which is why every arm that drives it must monkeypatch a resolver. That is
+   the reason the CLI-less-host bug class kept recurring.
 
-NON-NEGOTIABLES THE SPEC ALREADY ENCODES (check them off at merge)
-  - Every gate is ONE tagged `# GATE:<tag>` call site in run_once; the 26-tag
-    census list in section 12 equals the tags declared in section 2.
-  - Every arm DRIVES run_once with an injected stub spawner and asserts the
-    outcome (termination, files in the target dir, metrics row, START/END
-    lines, answered record). No predicate-only tests.
-  - No test writes under ops/runtime or into any sibling inbox: log_root and
-    every path are injected; an autouse arm asserts the live hook log, live
-    metrics, live answered record, held dir and ALL FOUR sibling inbox dirs
-    are byte-unchanged across the module.
-  - No test reaches real_spawner unless RC_RESPONDER_REAL_SPAWN=1 is set; CI
-    never sets it. The dry cycle (spec section 13) is the operator-directed
-    interactive run that does.
-  - The session gets Read/Glob/Grep only, cwd = the origin/main export, no
-    --bare, ANTHROPIC_API_KEY popped, note body + filename on stdin.
-  - M1 never bare; LATENCY-ONLY and A5 rows cannot be read as each other.
-  - Registration lands DISARMED. Arming = the operator writes
-    ops/runtime/inbox_responder_agreement.json (counterparty RSC, the note it
-    rests on, window, hop_budget, grammar, expiry). STOP flag wins always.
+DO NOT REDO
+  The DECIDED forks in the spec. The settled A1-A5 / disposition (i) / M6 zero
+  / no stop rule. The 26-gate census, the 68 mutants, the dry cycle, the task
+  registration. The three conditions are MEASURED and recorded; do not re-argue
+  them. Do not re-pitch a dollar cap or an attempt-cap retirement - both were
+  removed on purpose.
 
-THEN, AND ONLY THEN: RC's three conditions to RSC
-  (1) the runner exists and CALLS the validator, with cycle-driving arms
-  (2) the spawn is read-only and a dry cycle has run end to end on a stub
-      (spec section 13: interactive --dry-cycle, then the task-fired flag run)
-  (3) the invocation log records the cycles that did NOTHING
-  When all three are MEASURED (not written), send ONE note to RSC per spec
-  section 16: measurements, the arm table size, the mutant score, the dry
-  cycle's START/END pair - and DISCLOSE the two vocabulary extensions
-  (`runner-failed`, `attempt-cap` as HOLD). Until then RC's silence reads as
-  unreadiness. Do not send progress notes.
+THE TWO LESSONS MOST WORTH CARRYING
+  A mutant score reported per TABLE ROW is not per-GATE coverage: "44 of 44
+  redden" was true while two of 26 gates had no mutant on their own call site
+  (memory `feedback_mutant_row_list_is_not_coverage_proof`). And a CI run's
+  CONCLUSION is not a job result in EITHER direction - a red run whose relevant
+  job was skipped is as misleading as a green one, and this session made that
+  mistake before catching it.
 
-CONFIG THE BUILD NEEDS ON THIS HOST (gitignored, per-host; example tracked)
-  ops/moon_sync_repos.json gains "participants": {"RSC": "<path>", ...}.
-  The poller reads only "repos" so the key is backward compatible. Sibling
-  names and paths never enter tracked files - codes only.
-
-STANDING TRAPS (all measured, all in the spec, repeated here because they
-each cost someone a night)
-  - Spawn claude.exe BY PATH; bare "claude" raises FileNotFoundError.
-  - --bare kills the Max login (API-key-only auth).
-  - A scheduled task inherits MACHINE-scope env only: pop the key in code.
-  - subprocess timeout kills the direct child only: taskkill /F /T, never
-    Stop-Process.
-  - Filename stamps run AHEAD of arrival; order by mtime on RC's disk.
-  - A subprocess-spawned tool takes the module default path: assert the LIVE
-    file is byte-unchanged, do not maintain a redirect list.
-  - A fixture sized from the constant under test is an amplifier: literals.
-  - A failed spawn recorded as `exhausted` publishes the reassuring result
-    every cycle: spawn-failed and runner-failed are their own values.
-  - Whole-token sweeps are contiguity claims (LL 2035): plant a SPLIT
-    positive control before calling any scrub clean.
-
-ALSO OPEN, NOT THIS SESSION'S SCOPE (operator-gated, from LW's 1813 audit)
-  6 post-recreate commits with the personal email and 5 with Claude as author
-  or co-author are in the public history; the checkout's user.email is now
-  the noreply address (repo-local) so no eighth lands. A rewrite is the
-  operator's call. RC's own outbound ratio (sender-side record of notes sent)
-  is unmeasured - ten seconds, per CS.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+git log, then read RC's inbox before writing anything.
