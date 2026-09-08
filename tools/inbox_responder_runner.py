@@ -93,7 +93,21 @@ from tools.rc_facts import _append_atomic, _inbox_entries
 # ---------------------------------------------------------------------------
 
 MODEL = "claude-sonnet-4-5"
-MAX_TURNS = 12
+# MEASURED 2026-09-08, not guessed. The spec listed 12 under UNMEASURED with
+# the note that exhaustion surfaces as a non-`completed` terminal_reason, and it
+# did: two live cycles on the same counterparty note (16:02 and 16:42) both
+# terminated `spawn-failed / exit:1`, and a hand reproduction of the identical
+# spawn exited 1 with `stop_reason: tool_use` - the session was still mid
+# tool-use when it ran out of turns. A second reproduction of the SAME note
+# completed with `num_turns: 10` against the limit of 12, so the margin was two
+# turns for a session that Reads and Greps a 650 MB export. Raised to 30 so the
+# TIMEOUT is the binding bound rather than the turn count: turn exhaustion
+# wastes the whole spawn AND counts an attempt against the note, while
+# `SPAWN_TIMEOUT_S` already bounds cost and is unchanged, so no section 11
+# figure moves. NOTE the exit:1 cause is inferred from `stop_reason` plus the
+# turn margin, not from a captured `subtype` - a non-zero exit short-circuits
+# `spawn_ok` before parsing, so the held `spawn.json` carries `parsed: null`.
+MAX_TURNS = 30
 
 SLOT_TIMEOUT_S = 20
 # MEASURED 2026-09-08, not guessed. The spec listed 120 under UNMEASURED, and
