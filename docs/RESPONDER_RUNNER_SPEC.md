@@ -347,9 +347,11 @@ SIGNATURE DEVIATIONS, each forced by another spec rule:
 DEFECT FOUND AND FIXED THIS BUILD:
 - `inbox_responder_export._run_git` filed every runner fault as `exc:str`: it took `type(res.exc).__name__` where `procs.ProcResult.exc` already carries the class NAME as a string. Its own arm passed only because the test stub carried an exception OBJECT, a shape the production seam never produces. Fixed, plus a regression arm that drives a REAL `ProcResult`.
 
-DEFECTS FOUND AND HELD OPEN (each pinned by a strict-xfail arm carrying the spec assertion):
-- `metrics_row_ok` destroys gate 11's own exception tag: the `exhaust` substring invariant fires on the legitimate detail `exception:exhausted:RuntimeError`, so a runner bug at gate 11 is rewritten to `runner-failed / metrics-invalid:runner-failed` and loses the tag naming where it happened. `exhausted` is the only gate tag that is a substring of a row invariant.
-- Held `spawn.json` drops `kill_skipped`: it carries `cycle_id` / `detail` / `attempts` / `parsed` only, so section 12's "`kill_skipped` false in spawn.json" is unmeetable and the operator cannot read what the kill allowance was spent on.
+DEFECTS FOUND AND FIXED THE SAME BUILD (each found by a strict-xfail arm, then fixed and the arm flipped to passing):
+- `metrics_row_ok` destroyed gate 11's own exception tag: the `exhaust` substring invariant fired on the legitimate detail `exception:exhausted:RuntimeError`, so a runner bug at gate 11 was rewritten to `runner-failed / metrics-invalid:runner-failed` and lost the tag naming where it happened. `exhausted` is the only gate tag that is a substring of a row invariant. FIXED by exempting exactly the gate-tag form, anchored at both ends (`^exception:exhausted:<cls>$`), so nothing may be appended to it; no bare `exhaust` is exempted anywhere and the `refus` invariant is untouched. A companion arm drives five hand rows that must still raise.
+- Held `spawn.json` dropped `kill_skipped`: it carried `cycle_id` / `detail` / `attempts` / `parsed` only, so section 12's "`kill_skipped` false in spawn.json" was unmeetable and the operator could not read what the kill allowance was spent on. FIXED by recording `timed_out`, `survived_kill` and `kill_skipped`, each `bool()`-coerced so nothing model-controlled enters the hold through them.
+
+DEFECT FOUND AND HELD OPEN (pinned by a strict-xfail arm carrying the spec assertion):
 - A junction-NAMED note never reaches the gate 6 link checks: `pending_notes` filters on `Path.is_file()`, which a junction (always a directory reparse point) fails, so the cycle terminates `empty / none_pending` and the entry sits in the inbox unremarked on every later tick. NOT a containment hole - a companion passing arm pins that nothing outside the inbox is opened, quoted, spawned for or delivered. Fixing it at source would mean editing `inbox_responder.py`, which section 15 forbids.
 
 PROCEDURE-B CHAINING, MEASURED:
