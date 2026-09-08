@@ -119,6 +119,81 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-07c - THE FLIP HAPPENED. Remus3/Amberstone is PUBLIC
+
+Operator-gated at the destructive step, autonomous either side of it. Three
+commits on the rewritten `main`: `e4083dba6`, `50e4de321`, `39b56742f`.
+
+**PROBED, not assumed:** `gh repo view` -> `PUBLIC` / `isPrivate:false`, and an
+unauthenticated `curl` to the repository page returns 200. The verdict in
+`docs/PUBLIC_FLIP_GO_NO_GO.md` was written AFTER that probe. Read its "Outcome"
+section; everything above it is the pre-flip record, left standing on purpose.
+
+## The acceptance sweep failed first, and that is the value of the session
+
+Two separate defects, one in the instrument and one in the rewrite.
+
+- **The verifier's own pattern had the bug the scrub rule was already fixed
+  for.** Unanchored, so it matched the tail of longer words and read
+  "gitignored moon_sync_inbox" as a hit. 653 hits, **652 manufactured by the
+  instrument**. An instrument and the thing it measures can disagree about a
+  rule, and the instrument is not automatically the trustworthy side.
+- **A content scrub can be COMPLETE and still publish the names.** The rename
+  table was keyed on each file's path at HEAD; the filter callback receives the
+  path of whichever COMMIT it is filtering, so every pre-move path went
+  unrenamed. **2195 vendor-name hits, none in a blob** - all in tree objects,
+  where filenames live. The prior pass's "all purged paths zero" was true and
+  useless: eleven named patterns, no vendor name among them.
+
+Widening that sweep to the whole path list found 27 scraped vendor images and
+two scraped JSON files no plan had listed. Dropped, not renamed.
+
+## Traps worth carrying
+
+- **A mirror clone DOES fetch `refs/pull/*/head`** - all 13, and 531 commits
+  lived on no other ref. Reasoning said otherwise.
+- **A ref-pattern check can fail GREEN.** `for-each-ref 'refs/pull/*'` matched
+  nothing while 13 existed, then "confirmed" zero with the same broken pattern.
+  `for-each-ref` and `ls-remote` do not share a pattern language and neither
+  errors on a pattern that matches nothing. Always run the control.
+- **Deleting a repo deletes its LFS store.** Seven tip files are pointers; only
+  the local 662 MB of objects saved it.
+- **A document describing a scrub is INSIDE the scrub's blast radius.**
+  `converge.py` found 4 non-fixed-point files, all written at the last wrap.
+
+## CI went red after the flip, on a third instance of the same shape
+
+The citation remap was run over `*.md` only, but several tests use a hardcoded
+commit as a LIVE GIT ANCHOR (`git cat-file -e <sha>^:path`). A rewrite renames
+every commit, so those anchors died and CI came back **8 failed, 31693 passed**.
+Remapped in code too - 207 substitutions, 89 files, 0 dropped - and the verifying
+run is green: `check` success, **31701 passed / 262 skipped**, DS **10053
+passed**, job RAN (the sibling `nightly-full-suite` is skipped by design).
+
+**One file was REVERTED, not fixed.** `tests/test_loop_status_route.py` writes a
+synthetic 18-char sentinel `sha` and asserts on its 8-char truncation, which
+collided with a real commit prefix and got rewritten - desynchronising fixture
+from assertion. Remap a SHA only where it REFERENCES history, never where it is
+opaque test data.
+
+## Open, and deliberately not credited
+
+The NTFS-junction hole in `rc_facts.py` (a one-file drop reports 6 files), RC's
+gitignored hook wiring (a fresh clone runs no watcher), and outbound-withdrawal
+watching. All three reported to the siblings, none fixed.
+
+## Cross-repo
+
+Two notes delivered byte-identical to all four siblings: the deferred answers to
+CS 1013 / LW 1035 / LL 1100, then the correction that RC is public and **their
+names ARE in the published history** - 11 hits in 8 historical blob versions of
+the two byte-pinned shared modules, stated exactly rather than reassured away.
+RC also retracted two of its own claims: the 0700 "Amberstone is PUBLIC" note
+was false when written, and "winmutex.py measured clean" was true of the current
+version and false of its history.
+
+---
+
 # 2026-09-07b - flip attempt: scrub landed, rewrite proven, repo STILL PRIVATE
 
 Headless, operator away. Four commits pushed, `839604a02..3865c7e34`.
