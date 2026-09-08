@@ -26,8 +26,10 @@ import inspect
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -58,7 +60,54 @@ NOTE_NAME = "2026-09-07-1800-from-RSC-topic.md"
 RSC_1848 = "2026-09-07-1848-from-RSC-runner-conditions.md"
 NOW = datetime(2026, 9, 8, 20, 0, 0)
 
+# The two lone-surrogate note names, kept DISTINCT on purpose. `\udcff` sits
+# inside the surrogateescape range (a byte the OS handed back that is not valid
+# UTF-8), `\ud800` sits outside it (a high surrogate no surrogateescape decode
+# can produce). The spec requires BOTH to be refused by the grammar and NEITHER
+# to raise, so collapsing them into one arm would drop half the claim.
+LOW_SURROGATE_NOTE_NAME = "2026-09-07-1800-from-RSC-\udcff.md"
+HIGH_SURROGATE_NOTE_NAME = "2026-09-07-1800-from-RSC-\ud800.md"
+
 _TMP_LOGS: list = []
+
+
+def filesystem_accepts_note_name(name: str) -> bool:
+    """Will THIS filesystem create a file called `name`? Measured, not assumed.
+
+    Whether a lone surrogate survives into a directory entry is a real
+    environment capability and it differs by filesystem: the Windows wide API
+    hands NTFS a UTF-16 unit and a lone surrogate may or may not be rejected,
+    while a POSIX filesystem sees whatever `surrogateescape` encodes back to
+    bytes. So the answer is PROBED once, by attempting the create in a
+    throwaway directory, rather than inferred from `os.name` - a platform
+    string is a different claim and it is wrong on a POSIX filesystem that
+    does accept the name.
+
+    Written as a module-level probe feeding a `skipif` rather than as a
+    `try/except` around the write, because `tests/test_skip_condition_hygiene.py`
+    cannot resolve a skip whose condition is an exception handler: it classifies
+    the site UNRESOLVED and treats that as a defect. The probe path is
+    machine-local scratch, which is the same untracked-artifact capability the
+    hard-link and junction arms below already gate on.
+    """
+    probe_root = Path(tempfile.mkdtemp(prefix="rc-responder-fsprobe-"))
+    try:
+        probe_dir = probe_root / "rc-responder-surrogate-filename-probe"
+        probe_dir.mkdir()
+        if not probe_dir.is_dir():
+            return False
+        target = probe_dir / name
+        try:
+            target.write_bytes(b"probe\n")
+        except (OSError, ValueError, UnicodeEncodeError):
+            return False
+        return target.exists()
+    finally:
+        shutil.rmtree(probe_root, ignore_errors=True)
+
+
+FS_ACCEPTS_LOW_SURROGATE_NAME = filesystem_accepts_note_name(LOW_SURROGATE_NOTE_NAME)
+FS_ACCEPTS_HIGH_SURROGATE_NAME = filesystem_accepts_note_name(HIGH_SURROGATE_NOTE_NAME)
 
 
 # ---------------------------------------------------------------------------
@@ -980,8 +1029,8 @@ BAD_NAMES = [
     ("non-ascii", "2026-09-07-1800-from-RSC-caf\u00e9.md"),
     ("plus", "2026-09-07-1800-from-RSC-a+b.md"),
     ("too-long", "2026-09-07-1800-from-RSC-" + "x" * 100 + ".md"),
-    ("lone-surrogate", "2026-09-07-1800-from-RSC-\udcff.md"),
-    ("high-surrogate", "2026-09-07-1800-from-RSC-\ud800.md"),
+    ("lone-surrogate", LOW_SURROGATE_NOTE_NAME),
+    ("high-surrogate", HIGH_SURROGATE_NOTE_NAME),
 ]
 
 
@@ -1060,15 +1109,15 @@ def test_note_oversize_is_refused_and_answered(world):
     assert world.spawner.calls == 0
 
 
+@pytest.mark.skipif(
+    not FS_ACCEPTS_LOW_SURROGATE_NAME,
+    reason="this filesystem refuses a lone-surrogate filename outright",
+)
 def test_safe_name_projects_every_pre_gate_six_sink(world):
     record = world.agreement(hop_budget=1)
     aid = runner.agreement_id_of(record)
     world.deliveries([{"agreement_id": aid, "dry": False, "status": "delivered"}])
-    name = "2026-09-07-1800-from-RSC-\udcff.md"
-    try:
-        world.note(name=name)
-    except (OSError, ValueError, UnicodeEncodeError):
-        pytest.skip("this filesystem refuses the name outright")
+    world.note(name=LOW_SURROGATE_NOTE_NAME)
     result = world.drive()
     assert result.termination == "budget"
     row = world.one_row(result)
