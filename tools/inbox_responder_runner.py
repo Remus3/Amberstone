@@ -129,8 +129,33 @@ DRY_REPORT_ELIDE_OVER = 120
 # The budget-vocabulary rule RSC's parser relies on: `hop` never appears in a body.
 HOP_WORD_RE = re.compile(r"\bhop\b")
 
-NOTE_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-[A-Z]{2,4}-[A-Za-z0-9._-]{1,80}\.md$")
-NOTE_NAME_MAX = 120
+# RM-386. Both caps were raised on 2026-09-08, and the TOPIC group is the one
+# that was binding. MEASURED across all five participant inboxes (RC, LW, RSC,
+# CS, LL), deduplicated by name: 207 unique real notes, of which 33 (15.9
+# percent) failed NOTE_NAME_RE and ALL 33 of those failed on the topic group
+# ALONE, while only 11 exceeded the old NOTE_NAME_MAX of 120. Observed topic
+# length max 108, p99 102; observed total name length max 136; character-class
+# violations 0; sender-code-length violations 0. Raising NOTE_NAME_MAX by
+# itself would therefore have fixed ZERO of the over-length names, because the
+# `{1,80}` topic group rejected them first, in the same `or` and before the
+# length cap could matter.
+#
+# Headroom: 160 is about 48 percent above the observed topic max of 108, and
+# 200 is about 47 percent above the observed name max of 136. The fixed prefix
+# `YYYY-MM-DD-HHMM-from-XXX-` is 25 characters, so 25 + 160 + 3 = 188 <= 200,
+# which keeps NOTE_NAME_MAX the OUTER bound rather than a second, conflicting
+# one - the grammar refuses before the length cap ever can.
+#
+# Windows path safety: the longest participant inbox path is 35 characters, so
+# 35 + 200 = 235 < 260 MAX_PATH. The note name is NEVER a path component
+# anywhere else - it reaches the stdin header, the answered record and a log
+# field, each via `safe_name` before gate 6.
+#
+# The character class, the sender-code group and the date/time prefix are
+# DELIBERATELY unchanged: zero notes in the census failed on any of them, so
+# widening them would be unmeasured.
+NOTE_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-[A-Z]{2,4}-[A-Za-z0-9._-]{1,160}\.md$")
+NOTE_NAME_MAX = 200
 NOTE_MAX_BYTES = 1024 * 1024
 ROW_NOTE_RE = re.compile(r"^[A-Za-z0-9._?-]{1,80}$")
 CYCLE_ID_RE = re.compile(r"^\d{8}T\d{6}-\d+-[0-9a-f]{6}$")
