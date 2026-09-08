@@ -49,7 +49,10 @@ class StubResult:
     survived_kill: bool = False
     kill_skipped: bool = False
     wall_ms: int = 1
-    exc: BaseException | None = None
+    # Matches procs.ProcResult: the seam records the exception CLASS NAME, not
+    # the exception object. A stub carrying an object here would be a shape the
+    # production runner never produces.
+    exc: str | None = None
 
 
 @dataclass
@@ -336,13 +339,45 @@ def test_timeout_on_archive(tmp_path: Path) -> None:
 
 def test_runner_exception_is_reported_as_exc(tmp_path: Path) -> None:
     state_root = tmp_path / "state"
-    runner = StubRunner({"rev-parse": StubResult(exit_code=None, exc=OSError("no git"))})
+    runner = StubRunner({"rev-parse": StubResult(exit_code=None, exc="OSError")})
 
     with pytest.raises(ExportFailed) as caught:
         ensure_export(tmp_path / "repo", state_root, runner=runner, timeout_s=60, max_bytes=4096)
 
     assert caught.value.detail == "exc:OSError"
     assert not _export_root(state_root).exists()
+
+
+def test_runner_exception_detail_matches_the_real_procs_seam(tmp_path: Path) -> None:
+    """The stub above must carry the shape `procs.popen_capture` really returns.
+
+    Drives a REAL ProcResult - built by spawning a binary that does not exist,
+    so no process is created - through the same failure path. Guards the
+    `exc:str` regression, where `type(res.exc).__name__` on an already-string
+    field filed every runner fault under one meaningless detail.
+    """
+    from tools import inbox_responder_procs as procs
+
+    real = procs.popen_capture(
+        ["C:\\this-binary-does-not-exist-rc-responder.exe", "rev-parse"],
+        cwd=str(tmp_path),
+        env={},
+        stdin_bytes=b"",
+        timeout_s=5,
+        kill_budget=procs.KillBudget(1),
+    )
+    assert isinstance(real.exc, str), "procs records the class name, not the object"
+
+    state_root = tmp_path / "state"
+
+    def runner(_args, *, timeout_s):  # noqa: ARG001 - signature parity with the seam
+        return real
+
+    with pytest.raises(ExportFailed) as caught:
+        ensure_export(tmp_path / "repo", state_root, runner=runner, timeout_s=60, max_bytes=4096)
+
+    assert caught.value.detail == f"exc:{real.exc}"
+    assert caught.value.detail != "exc:str"
 
 
 def test_crafted_link_entry_is_rejected_by_the_data_filter(tmp_path: Path) -> None:

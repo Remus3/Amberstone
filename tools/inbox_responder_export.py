@@ -48,7 +48,10 @@ def _run_git(runner, args, timeout_s):
     failure modes lifted into `ExportFailed` before the caller sees a result."""
     res = runner(list(args), timeout_s=timeout_s)
     if res.exc is not None:
-        raise ExportFailed(f"exc:{type(res.exc).__name__}")
+        # `procs.ProcResult.exc` already carries the class NAME as a string, so
+        # taking `type(...).__name__` here would file every runner fault as
+        # `exc:str`. Interpolate the recorded name directly.
+        raise ExportFailed(f"exc:{res.exc}")
     if res.timed_out:
         raise ExportFailed("timeout")
     return res
