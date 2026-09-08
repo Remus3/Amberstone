@@ -106,6 +106,8 @@ from tools.inbox_responder_prompt import find_fences  # noqa: E402
 # The world, the stubs and the autouse guards are REUSED, never re-invented:
 # importing the fixtures registers them for this module as well.
 from tests.test_inbox_responder_runner import (  # noqa: E402
+    HIGH_SURROGATE_NOTE_NAME,
+    LOW_SURROGATE_NOTE_NAME,
     NOTE_NAME,
     NOW,
     RSC_1848,
@@ -120,6 +122,7 @@ from tests.test_inbox_responder_runner import (  # noqa: E402
     _no_real_spawn,
     _open_singleton,
     armed,
+    filesystem_accepts_note_name,
     proposal,
     reply_action,
     result_bytes,
@@ -131,6 +134,15 @@ from tests.test_inbox_responder_runner import world as _shared_world  # noqa: E4
 # is shadowed by the test parameter of the same name (ruff F811).
 git_repo = _shared_git_repo
 world = _shared_world
+
+# RE-MEASURED here rather than importing the runner module's two booleans. The
+# probe is the same call on the same names, so the answer is identical; what
+# differs is that `tests/test_skip_condition_hygiene.py` follows a module-level
+# CALL across the import and reads the helper's body, while a bare imported
+# name has no binding in this module for it to follow - and an unresolvable
+# gate is a guard failure, not a pass.
+FS_ACCEPTS_LOW_SURROGATE_NAME = filesystem_accepts_note_name(LOW_SURROGATE_NOTE_NAME)
+FS_ACCEPTS_HIGH_SURROGATE_NAME = filesystem_accepts_note_name(HIGH_SURROGATE_NOTE_NAME)
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNNER_PATH = ROOT / "tools" / "inbox_responder_runner.py"
@@ -728,19 +740,20 @@ def b_bad_name(w, mod):
 
 
 def b_surrogate_name(w, mod):
+    # `\udcff` - inside the surrogateescape range. Kept distinct from the arm
+    # below, which uses a high surrogate no surrogateescape decode can produce.
     w.agreement()
-    try:
-        w.note(name="2026-09-07-1800-from-RSC-\udcff.md")
-    except (OSError, ValueError, UnicodeEncodeError):
-        pytest.skip("this filesystem refuses the name outright")
+    if not FS_ACCEPTS_LOW_SURROGATE_NAME:
+        pytest.skip("this filesystem refuses a lone-surrogate filename outright")
+    w.note(name=LOW_SURROGATE_NOTE_NAME)
 
 
 def b_high_surrogate_name(w, mod):
+    # `\ud800` - OUTSIDE the surrogateescape range.
     w.agreement()
-    try:
-        w.note(name="2026-09-07-1800-from-RSC-\ud800.md")
-    except (OSError, ValueError, UnicodeEncodeError):
-        pytest.skip("this filesystem refuses the name outright")
+    if not FS_ACCEPTS_HIGH_SURROGATE_NAME:
+        pytest.skip("this filesystem refuses a high-surrogate filename outright")
+    w.note(name=HIGH_SURROGATE_NOTE_NAME)
 
 
 def b_latency(w, mod):
