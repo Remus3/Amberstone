@@ -40,7 +40,6 @@ machine account out of the tree; it never writes an account name of its own.
 from __future__ import annotations
 
 import ast
-import os
 import re
 from pathlib import Path
 
@@ -422,20 +421,44 @@ def test_userid_is_the_env_token_and_never_a_bare_account_name(
     assert value.startswith("$"), "a bare word -UserId value is an account name"
 
 
-def test_no_account_name_appears_anywhere_in_the_ps1(ps1_text: str) -> None:
-    """Probe with the CURRENT account rather than hardcoding one.
+# Every construct in which a Windows account name could legitimately be written
+# down: a principal argument, a per-user profile path, or a DOMAIN\account pair.
+ACCOUNT_BEARING = re.compile(
+    r"-(?:UserId|UserID|User|Principal|RunAsUser)\s+(\S+)"
+    r"|[A-Za-z]:\\Users\\([^\\\s\"']+)"
+    r"|\$env:USERDOMAIN\\(\S+)"
+)
 
-    Writing a name here to search for would itself put an account name in the
-    tree, which is the thing being prevented. So take the installing account
-    from the environment at test time and assert its absence.
+
+def test_no_account_name_appears_anywhere_in_the_ps1(ps1_text: str) -> None:
+    """Every account-bearing slot resolves from the shell; none holds a name.
+
+    This arm used to read the CURRENT account from the environment and search
+    the whole file for it, which made it a property of the machine running it.
+    On a box whose account is `Administrator` it passed; on a GitHub Linux
+    runner, where the account is literally `runner`, the same search hit
+    `inbox_responder_runner.py` and the English word "runner" and accused the
+    ps1 of hardcoding an account it does not hardcode. A probe that is only
+    correct when the host account is not an ordinary word is not a probe.
+
+    So enumerate the slots an account could occupy and assert each holds a
+    `$env:` token. That is host-independent, and stronger than the old form in
+    the direction that matters: the old one passed whenever the current account
+    happened not to appear, including on a ps1 that hardcodes somebody else's.
     """
-    account = os.environ.get("USERNAME") or os.environ.get("USER")
-    if not account or len(account) < 3:
-        pytest.skip("no usable account name in the environment to probe with")
-    assert account.lower() not in ps1_text.lower(), (
-        f"the installing account name appears in {PS1.name}; the ps1 must "
-        "resolve its principal from $env:USERNAME instead"
+    slots = [next(g for g in m.groups() if g is not None)
+             for m in ACCOUNT_BEARING.finditer(ps1_text)]
+    assert slots, (
+        f"no account-bearing slot found in {PS1.name}; the pattern has drifted "
+        "from the script and this arm would prove nothing"
     )
+    for value in slots:
+        # A `$` token is resolved by the shell - `$env:USERNAME` directly, or a
+        # variable holding the principal built from it. A bare word is a name.
+        assert value.startswith("$"), (
+            f"{PS1.name} writes the account literal {value!r}; every principal "
+            "must resolve from the shell, e.g. $env:USERNAME"
+        )
 
 
 # ---------------------------------------------------------------------------
