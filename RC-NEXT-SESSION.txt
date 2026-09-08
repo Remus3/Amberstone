@@ -1,82 +1,71 @@
-NEXT SESSION - THE RESPONDER IS BUILT AND DISARMED. WHAT COMES NEXT IS ARMING,
-RSC'S REPLY, AND ONE OPEN DEFECT.
-------------------------------------------------------------------------------
-RM-384 SHIPPED 2026-09-08 (LEDGER 1364, head 5120f3735, ci + docs-guards both
-green with the jobs confirmed RUN, not just the run conclusion read). Do NOT
-rebuild any of it. Read `docs/RESPONDER_RUNNER_SPEC.md` section "Build
-measurements" FIRST - it records every spec item that was measured wrong, the
-four forced signature deviations, three vacuous spec mutants, and the two
-Linux-only portability defects. It is the shortest path back into this work.
+NEXT SESSION - THE RESPONDER IS ARMED, IT DELIVERED ONCE, AND ITS BUDGET IS SPENT
+---------------------------------------------------------------------------------
+RM-384 SHIPPED and the runner has now RUN against a live counterparty. Read
+`docs/LEDGER.md` 1365 first, then the "Build measurements" section of
+`docs/RESPONDER_RUNNER_SPEC.md`. Between them they carry every measurement and
+every spec item that turned out wrong. Do not rebuild any of it.
 
-STATE ON THE MACHINE RIGHT NOW
-  RC-InboxResponder is REGISTERED, Enabled, State=Ready, repetition PT5M,
-  ETL PT10M, S4U, pythonw. It is DISARMED: no `ops/runtime/inbox_responder_
-  agreement.json` exists, so every tick terminates `disarmed / no_agreement`
-  and writes a START/END pair plus a row. Nothing spawns. Nothing is sent.
-  IT MUST BE DISABLED TO RUN THE FULL SUITE - it appends to the live responder
-  log every five minutes and the suite's autouse arm guards exactly that
-  surface. `Disable-ScheduledTask -TaskName RC-InboxResponder`, run the suite,
-  `Enable-ScheduledTask` after.
+STATE ON THE MACHINE
+  RC-InboxResponder is registered, Enabled, Ready, 5-minute tick, ETL 10 min.
+  ARMED: `ops/runtime/inbox_responder_agreement.json` names RSC,
+  A5-measurement-only, hop_budget 1, window to 2026-09-09T14:57:52, expires
+  2026-09-10T14:57:52, agreement_id a9f7e59541f9ab87.
+  THE BUDGET IS SPENT. One delivery happened, so every further cycle reads
+  `budget / consumed=1 budget=1`. RC will not auto-answer again under this
+  agreement. Writing a new one is an OPERATOR act - do not write it unasked.
+  STOP flag is NOT raised. The answered record holds 106 seeded notes plus the
+  ones since.
+  THE TASK MUST BE DISABLED TO RUN THE SUITE: it writes the live responder log
+  every 5 minutes and the autouse arm guards exactly that surface.
+  `Disable-ScheduledTask -TaskName RC-InboxResponder`, run, `Enable-` after.
 
-THE ARMING NOTE WENT OUT to RSC on 2026-09-08 (13907 bytes, in
-`C:\Resin Compute\moon_sync_inbox\`). It carries every measurement with its
-command, discloses both vocabulary extensions (`runner-failed`, `attempt-cap`
-as a HOLD under two terminations), and states plainly that RC is still
-disarmed. FIRST ACTION NEXT SESSION: read RC's own `moon_sync_inbox/` for
-RSC's reply and for anything from CS / LL / LW, and answer per RC's own rule
-(silence means unready, so if something is now ready, say so).
+WHAT HAPPENED, SO IT IS NOT RE-DISCOVERED
+  It delivered `2026-09-08-1657-from-RC-RESPONDER-re-6e62aa1071a0.md`
+  (`delivered / delivery=1 of 1`, M1 LOWER_BOUND hops 1, M3 21 turns). RSC
+  independently confirmed receipt. Getting there took four fixes, all found by
+  RUNNING it and none catchable by the suite: the note-name TOPIC cap (not the
+  length cap - RC's first diagnosis was wrong), an empty-proposal case whose
+  root cause was the PROMPT instructing `{"actions":[]}`, SPAWN_TIMEOUT_S
+  120 -> 240, and MAX_TURNS 12 -> 30 (the delivering cycle used 21).
 
-OPEN, IN PRIORITY ORDER
-1. RSC's reply to the arming note, and whatever it refutes. Three RC claims
-   were refuted by RSC in one hour last time; expect more, and check them
-   rather than defending.
-2. ARMING is an OPERATOR act, not an agent one. The agreement record shape,
-   its canonical id (sha256 over seven semantic fields, first 16 hex), and its
-   expiry semantics are in spec section 10 and restated in the arming note.
-   Do not write that file on the operator's behalf without being asked.
-3. THE ONE OPEN DEFECT, needs its own RM id (next free is RM-385). A note whose
-   NAME is a directory junction never reaches the gate 6 link checks, because
-   `pending_notes` filters on `Path.is_file()` and a junction fails it. The
-   cycle reads `empty / none_pending` and the entry sits in the inbox
-   unremarked on EVERY later tick. Pinned by the one remaining strict-xfail,
-   `test_a_note_that_is_a_junction_is_refused`. It is NOT a containment hole -
-   a companion PASSING arm proves nothing outside the inbox is opened, quoted,
-   spawned for or delivered - but it is silent-forever rather than a refusal.
-   Fixing it at source means editing `tools/inbox_responder.py`, which spec
-   section 15 forbade for the BUILD; that scope ended with the build, so the
-   next session may take it with a fresh decision.
-4. A design smell worth one scoped item: `main` has no config-injection seam,
-   which is why every arm that drives it must monkeypatch a resolver. That is
-   the reason the CLI-less-host bug class kept recurring.
-5. CS's 1859 CORRECTION asks a direct question and RC MEASURED the answer at
-   wrap: RC HAS THE IDENTICAL HOLE IN BOTH HALVES. `.claude/settings.json`,
-   which is where RC's `SessionStart` wiring lives, is UNTRACKED and gitignored
-   (so is `settings.local.json`), and `moon_sync_inbox/` is gitignored with
-   ZERO tracked files. A fresh clone or a WORKTREE of RC therefore gets no
-   watcher and no channel to read. CLAUDE.md already discloses the wiring half
-   in prose ("A fresh clone has NO wiring"), and nothing GRADES it, which is
-   exactly the failure mode CS describes - they hit the same prose-only fix
-   three times before adding a guard. Note the responder itself is UNAFFECTED:
-   `RC-InboxResponder` fires from Task Scheduler, not from a hook. NO REPLY WAS
-   SENT - this session was authorized to send exactly ONE note (the arming note
-   to RSC), and a second outbound note to a different party was not in scope.
-   The measurement is here so the operator can decide whether to answer CS and
-   whether RC wants CS's agreement-grading guard.
+OPEN, IN PRIORITY ORDER - all bodies in `BACKLOG.md` "Reliability / hardening"
+1. RM-386 SECOND HALF. THREE terminal states answer a note and tell the sender
+   NOTHING: `refused` at input, `exhausted`, and the RM-385 class. The bounce
+   now covers the first two, but the DECISION on whether a refusal should stop
+   marking the note answered is still open, and RSC measured the cost of the
+   alternative (a note that can never pass re-refuses forever).
+2. RM-388. `responder_metrics.jsonl` is never trimmed while
+   `responder_invocations.jsonl` is. Do NOT just add `_trim` - that file is the
+   M1/M2/M3 evidence base and `trial_rows` reads it. Decide between a large
+   keep, rotation, or an explicit archive. Companion audit in the same row: 8
+   unguarded `mkdir(parents=True, exist_ok=True)` sites, none probed for the
+   WinError 183 shape RSC hit.
+3. RM-385. A junction-NAMED note is invisible forever; so is a note with its
+   sender and date transposed (a real one sits in RC's inbox now). Pinned by
+   the one remaining strict-xfail. The `inbox_responder.py` fence expired with
+   the RM-384 build.
+4. RM-387. The reply body shows the sender their own filename clipped to 80
+   chars. Do not widen `ROW_NOTE_RE` by reflex - it is a published row
+   interface and carries a mutant needle.
+
+INBOX
+  Two RSC notes are read and marked seen: the six-refutation list (1705) and
+  the split-case note (1640, NOT yet read in full - read it). Four of RSC's six
+  refutations were CHECKED and do not apply to RC; that is recorded in RM-388's
+  body so nobody re-checks them. RC owes RSC nothing right now - the last word
+  was RC's machine-authored reply plus their receipt confirmation.
 
 DO NOT REDO
-  The DECIDED forks in the spec. The settled A1-A5 / disposition (i) / M6 zero
-  / no stop rule. The 26-gate census, the 68 mutants, the dry cycle, the task
-  registration. The three conditions are MEASURED and recorded; do not re-argue
-  them. Do not re-pitch a dollar cap or an attempt-cap retirement - both were
-  removed on purpose.
+  The caps, the prompt/schema fix, the bounce design, SPAWN_TIMEOUT_S,
+  MAX_TURNS, the seeded answered record, the gen_archmap SKIP_DIRS fix. The
+  DECIDED forks in the spec. The 26-gate census and the 68 mutants.
 
-THE TWO LESSONS MOST WORTH CARRYING
-  A mutant score reported per TABLE ROW is not per-GATE coverage: "44 of 44
-  redden" was true while two of 26 gates had no mutant on their own call site
-  (memory `feedback_mutant_row_list_is_not_coverage_proof`). And a CI run's
-  CONCLUSION is not a job result in EITHER direction - a red run whose relevant
-  job was skipped is as misleading as a green one, and this session made that
-  mistake before catching it.
+THE LESSON MOST WORTH CARRYING
+  A green suite measured internal correctness perfectly and could not see that
+  the responder said nothing to its counterparty. The 26-gate census, 68
+  mutants and a PASS 12 FAIL 0 dry cycle were all green while the SYSTEM_PROMPT
+  instructed the model to return an empty proposal. Test the sender-visible
+  outcome, not the termination string.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
 git log, then read RC's inbox before writing anything.
