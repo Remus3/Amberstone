@@ -162,15 +162,16 @@ GATE_TAGS = frozenset({
 CS_NOTE = "2026-09-07-1800-from-CS-topic.md"
 REPLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-RC-RESPONDER-re-[0-9a-f]{12}\.md$")
 
-# The gate-6 held-write block. `record_responded(` occurs five times in the
-# runner and `note_sha12(` five, so the raw-name sink needs this wider slice
-# rather than the bare call - measured, not assumed.
+# The gate-6 hold block. RM-386 moved the sink: a refused note is HELD, not
+# answered, and the hold is keyed by `note_sha12` of the RAW name. The slice
+# stays wide rather than shrinking to the bare call, because `note_sha12(`
+# occurs five times in the runner - measured, not assumed.
 RAW_SINK_NEEDLE = (
-    'record_responded(root, name)\n'
+    '_hold_note(result, sha, "input", problems[0])\n'
     '            return _terminate(result, "refused", problems[0], refused_stage="input")'
 )
 RAW_SINK_MUTATION = (
-    'record_responded(root, safe_name(name))\n'
+    '_hold_note(result, note_sha12(safe_name(name)), "input", problems[0])\n'
     '            return _terminate(result, "refused", problems[0], refused_stage="input")'
 )
 
@@ -231,13 +232,30 @@ SLOT_TIMEOUT_MUTATION = (
 
 CAP_BRANCH_NEEDLE = (
     '        if name is None:\n'
-    '            return _terminate(result, "runner-failed", "attempt-cap")'
+    '            # Two holds, two details. Neither is `empty`: reporting nothing'
 )
 CAP_BRANCH_MUTATION = (
     '        if name is None:\n'
     '            record_responded(root, names[0])\n'
-    '            return _terminate(result, "runner-failed", "attempt-cap")'
+    '            # Two holds, two details. Neither is `empty`: reporting nothing'
 )
+
+# The gate 4b termination itself. The two details are one expression, so the
+# needle carries both lines: `"runner-failed", "attempt-cap"` no longer occurs
+# adjacently anywhere in the runner.
+CAP_TERMINATION_NEEDLE = (
+    '            return _terminate(result, "runner-failed",\n'
+    '                              "attempt-cap" if result.notes_at_cap else "notes-held")'
+)
+CAP_TERMINATION_MUTATION = (
+    '            return _terminate(result, "spawn-failed",\n'
+    '                              "attempt-cap" if result.notes_at_cap else "notes-held")'
+)
+
+# RM-386. The held branch reported as the cap's, which would tell the operator
+# a note is waiting on spawn attempts it never made.
+HELD_DETAIL_NEEDLE = '"attempt-cap" if result.notes_at_cap else "notes-held")'
+HELD_DETAIL_MUTATION = '"attempt-cap")'
 
 # The true SWAP of section 12's `answered-before-link` row: the answer is moved
 # from before the link attempt to after it, so a link that fails leaves the note
@@ -535,7 +553,7 @@ def _mut_pending(w):
 
 
 def _mut_pick(w):
-    def stand_in(names, attempts):
+    def stand_in(names, attempts, held=None):
         return names[0]
     return stand_in
 
@@ -811,6 +829,17 @@ def b_at_cap(w, mod):
     w.attempts({runner.note_sha12(NOTE_NAME): runner.MAX_SPAWN_ATTEMPTS})
 
 
+def b_held_note(w, mod):
+    """RM-386: the only pending note is under a refusal hold, not at the cap."""
+    armed(w)
+    path = runner.held_notes_path(w.root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({runner.note_sha12(NOTE_NAME): {
+        "stage": "input", "detail": "name-grammar", "cycle_id": "20260908T190000-1-aaaaaa",
+        "ts": "2026-09-08T19:00:00", "note": NOTE_NAME, "agreement_id": None}}),
+        encoding="ascii", newline="\n")
+
+
 def b_empty_actions(w, mod):
     armed(w)
     w.spawner = StubSpawner(result_bytes(proposal()))
@@ -1055,11 +1084,18 @@ def c_refused_input(w, result):
     assert runner.ROW_NOTE_RE.fullmatch(row["note"] or "")
 
 
-def c_second_cycle_is_empty(w, result):
-    """The RAW name is what stops the note re-cycling."""
+def c_second_cycle_is_held(w, result):
+    """The RAW name is what stops the note re-cycling.
+
+    RM-386 moved the sink from the answered record to the hold record, so the
+    second cycle is `notes-held` rather than `empty` - the note is still
+    pending, and saying `empty` while something is pending is the label this
+    channel exists to kill.
+    """
     assert result.termination == "refused"
     second = _drive(w.driven, w)
-    assert second.termination == "empty", "the refused note was cycled a second time"
+    assert (second.termination, second.termination_detail) == ("runner-failed", "notes-held"), \
+        "the refused note was cycled a second time"
 
 
 def c_safe_name(w, result):
@@ -1145,6 +1181,16 @@ def c_attempt_cap(w, result):
     assert w.one_row(result)["notes_at_cap"] == 1
 
 
+def c_notes_held(w, result):
+    """RM-386: a held note is reported as held, never as the spawn cap."""
+    assert result.termination == "runner-failed"
+    assert result.termination_detail == "notes-held"
+    assert w.spawner.calls == 0
+    assert w.answered() == set()
+    row = w.one_row(result)
+    assert row["notes_held"] == 1 and row["notes_at_cap"] == 0
+
+
 def c_child_env(w, result):
     assert result.termination == "delivered"
     assert w.spawner.calls == 1
@@ -1156,7 +1202,9 @@ def c_child_env(w, result):
 def c_exhausted(w, result):
     assert result.termination == "exhausted"
     assert result.termination_detail == "empty-proposal"
-    assert NOTE_NAME in w.answered()
+    # RM-386: held for the operator, not answered.
+    assert w.answered() == set()
+    assert runner.note_sha12(NOTE_NAME) in runner.held_notes_of(w.root)
     row = w.one_row(result)
     assert row["m4"] is not None and row["m4"]["proposed"] == 0
     assert w.recorder.calls == []
@@ -1280,7 +1328,9 @@ def c_filter_refusal(w, result):
     bounces = bounces_in(w.rsc)
     assert len(bounces) == 1
     assert "sk-ant-abcdef0123" not in (w.rsc / bounces[0]).read_text(encoding="ascii")
-    assert NOTE_NAME in w.answered()
+    # RM-386: held for the operator, not answered.
+    assert w.answered() == set()
+    assert runner.note_sha12(NOTE_NAME) in runner.held_notes_of(w.root)
     assert "sk-ant-abcdef0123" not in json.dumps(w.one_row(result))
 
 
@@ -1441,7 +1491,7 @@ A_ARMS = [
     ("note-shape", "note_shape_ok(note_path", "_mut_shape(note_path",
      b_bad_name, c_refused_input, {"_mut_shape": _mut_shape}, ()),
     ("raw-name-sink", RAW_SINK_NEEDLE, RAW_SINK_MUTATION,
-     b_bad_name, c_second_cycle_is_empty, {}, ()),
+     b_bad_name, c_second_cycle_is_held, {}, ()),
     # TIGHTENED 2026-09-08: the needle was the bare token `"surrogatepass"`, which
     # stopped being unique when the section 13 dry-cycle report added two more
     # uses of the codec. Same call site, same mutation - only the match is
@@ -1473,10 +1523,12 @@ A_ARMS = [
     ("record-attempt", "result.spawn_attempts = _record_attempt(root, sha)",
      "result.spawn_attempts = 0",
      b_spawn_exit1, c_attempt_recorded, {}, ()),
-    ("attempt-cap-termination", '"runner-failed", "attempt-cap"',
-     '"spawn-failed", "attempt-cap"',
+    ("attempt-cap-termination", CAP_TERMINATION_NEEDLE, CAP_TERMINATION_MUTATION,
      b_at_cap, c_attempt_cap, {}, ()),
-    ("pick-note", "name = pick_note(names, attempts)", "name = _mut_pick(names, attempts)",
+    ("notes-held-detail", HELD_DETAIL_NEEDLE, HELD_DETAIL_MUTATION,
+     b_held_note, c_notes_held, {}, ()),
+    ("pick-note", "name = pick_note(names, attempts, held)",
+     "name = _mut_pick(names, attempts, held)",
      b_at_cap, c_attempt_cap, {"_mut_pick": _mut_pick}, ()),
     ("child-env", "child = child_env(parent_env)", "child = dict(parent_env)",
      b_armed, c_child_env, {}, ()),

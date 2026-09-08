@@ -258,6 +258,17 @@ DRY_FLAG_NAME = "INBOX_RESPONDER_DRY"
 AGREEMENT_NAME = "inbox_responder_agreement.json"
 ATTEMPTS_NAME = "inbox_responder_attempts.json"
 BOUNCES_NAME = "inbox_responder_bounces.json"
+# RM-386 second half. A refused or exhausted note is HELD, not answered: the
+# answered record means "this note has been replied to", and a refusal is
+# precisely the case where it has not. Recording one there made the record
+# assert something false AND made it permanent - RC's 15:02:43 refusal had to
+# be deleted from it by hand before the widened caps could re-cycle the note.
+# The hold pays that ruling's disclosed cost (RSC measured 288 held
+# directories a day for one unpassable note, plus head-of-line starvation a
+# sibling can arrange deliberately) with the shape gate 4b already uses for
+# the spawn-attempt cap: pending, unanswered, loud in every row via
+# `notes_held`, and cleared by deleting one entry.
+HELD_NOTES_NAME = "inbox_responder_held_notes.json"
 DELIVERIES_NAME = "inbox_responder_deliveries.jsonl"
 METRICS_NAME = "responder_metrics.jsonl"
 INVOCATIONS_NAME = "responder_invocations.jsonl"
@@ -325,6 +336,7 @@ class CycleResult:
     slot_waits: int = 0
     spawn_attempts: int = 0
     notes_at_cap: int = 0
+    notes_held: int = 0
     delivered: int = 0
     m2: Optional[float] = None
     m2_flag: Optional[str] = None
@@ -371,6 +383,10 @@ def attempts_path(root) -> Path:
 
 def bounces_path(root) -> Path:
     return _runtime(root) / BOUNCES_NAME
+
+
+def held_notes_path(root) -> Path:
+    return _runtime(root) / HELD_NOTES_NAME
 
 
 def agreement_path(root) -> Path:
@@ -640,19 +656,68 @@ def _record_attempt(root, sha: str) -> int:
     return count
 
 
-def pick_note(names, attempts: Mapping[str, Any]) -> Optional[str]:
+def held_notes_of(root) -> Optional[dict]:
+    """The refused/exhausted hold record, or None when it is unreadable.
+
+    None is not an empty record. This file is what bounds the repeat of a
+    refusal that can never pass, so a reader that cannot see it must not
+    spawn, bounce or answer - an unreadable bound is not permission to
+    proceed, the same argument `within_budget` makes about its counter.
+    """
+    path = held_notes_path(root)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _record_held_note(root, sha: str, entry: Mapping[str, Any]) -> bool:
+    """Write one hold. False when it could not be persisted.
+
+    Keyed by `note_sha12` of the RAW name, so the projection that reaches the
+    row and the bounce cannot change which note the next tick recognises.
+    """
+    data = held_notes_of(root)
+    if data is None:
+        return False
+    data[sha] = dict(entry)
+    path = held_notes_path(root)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8",
+                       newline="\n")
+        tmp.replace(path)
+    except OSError:
+        return False
+    return True
+
+
+def pick_note(names, attempts: Mapping[str, Any],
+              held: Optional[Mapping[str, Any]] = None) -> Optional[str]:
     """The oldest pending note still BELOW the automatic spawn-attempt cap.
 
-    A note at the cap is held for the operator: it is not retired, not answered
-    and not skipped forever - it simply stops consuming automatic spawns while
-    a younger eligible note is answered ahead of it.
+    A note at the cap - or under a refusal hold - is held for the operator: it
+    is not retired, not answered and not skipped forever. It simply stops
+    consuming automatic cycles while a younger eligible note is answered ahead
+    of it, which is what keeps one unpassable note from starving the channel.
     """
-    names = [n for n in names if int(attempts.get(note_sha12(n), 0)) < MAX_SPAWN_ATTEMPTS]
+    held = held or {}
+    names = [n for n in names
+             if int(attempts.get(note_sha12(n), 0)) < MAX_SPAWN_ATTEMPTS
+             and note_sha12(n) not in held]
     return names[0] if names else None
 
 
 def notes_at_cap(names, attempts: Mapping[str, Any]) -> int:
     return sum(1 for n in names if int(attempts.get(note_sha12(n), 0)) >= MAX_SPAWN_ATTEMPTS)
+
+
+def count_held(names, held: Mapping[str, Any]) -> int:
+    return sum(1 for n in names if note_sha12(n) in held)
 
 
 # ---------------------------------------------------------------------------
@@ -895,6 +960,10 @@ def _row_skeleton(cycle_id: str, ts: str, pid: int, dry: bool) -> dict:
         "refused_stage": None,
         "m1": _m1(None, None, None),
         "budget_consumed": 0, "slot_waits": 0, "spawn_attempts": 0, "notes_at_cap": 0,
+        # Pending notes under a refusal/exhaustion hold. The count is what
+        # makes the condition loud: RC learned of its first real refusal only
+        # because a human read the log.
+        "notes_held": 0,
         "m2_arrival_to_reply_s": None, "m2_source": "note_st_mtime", "m2_flag": None,
         "m2_basis_skew_s": None, "m2_label": M2_LABEL, "poll_interval_s": POLL_INTERVAL_S,
         "note_arrival": None, "reply": None,
@@ -928,6 +997,7 @@ def build_row(result: CycleResult) -> dict:
         "slot_waits": result.slot_waits,
         "spawn_attempts": result.spawn_attempts,
         "notes_at_cap": result.notes_at_cap,
+        "notes_held": result.notes_held,
         "m2_arrival_to_reply_s": result.m2,
         "m2_flag": result.m2_flag,
         "m2_basis_skew_s": result.m2_basis_skew_s,
@@ -1175,6 +1245,21 @@ def _hold_write(result: CycleResult, name: str, text: str) -> Path:
     return path
 
 
+def _hold_note(result: CycleResult, sha: str, stage: str, detail: str) -> None:
+    """Hold a refused or exhausted note for the operator instead of answering it.
+
+    Recorded BEFORE the bounce, which `_finish` writes. RSC measured the other
+    order failing OPEN: with its record unwritable, five cycles delivered five
+    bounces into a sibling's tree and no error surfaced. RC's allowance bounds
+    the repeat only while its records persist, so a hold that cannot be
+    written suppresses the outbound rather than trusting the next tick.
+    """
+    entry = {"stage": stage, "detail": detail, "cycle_id": result.cycle_id,
+             "ts": result.ts, "note": result.note, "agreement_id": result.agreement_id}
+    if not _record_held_note(result.root, sha, entry):
+        result.bounce_target = None
+
+
 def _export_git_runner(config: RunnerConfig, repo_root, env, kill_budget):
     """The export's git seam: `config.git_exe` prepended, everything else bound.
 
@@ -1272,10 +1357,18 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
 
         stage = "attempt-cap"
         attempts = attempts_of(root)
+        held = held_notes_of(root)
+        if held is None:
+            return _terminate(result, "runner-failed", "held-record-unreadable")
         result.notes_at_cap = notes_at_cap(names, attempts)
-        name = pick_note(names, attempts)  # GATE:attempt-cap
+        result.notes_held = count_held(names, held)
+        name = pick_note(names, attempts, held)  # GATE:attempt-cap
         if name is None:
-            return _terminate(result, "runner-failed", "attempt-cap")
+            # Two holds, two details. Neither is `empty`: reporting nothing
+            # pending while something is pending is the reassuring-label
+            # failure this channel exists to kill.
+            return _terminate(result, "runner-failed",
+                              "attempt-cap" if result.notes_at_cap else "notes-held")
         sha = note_sha12(name)
 
         stage = "budget"
@@ -1302,7 +1395,7 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
             _hold_write(result, "note.txt", f"{result.note}\n{sha}\n")
             _hold_write(result, "reasons.json",
                         json.dumps({"stage": "input", "problems": problems}, indent=2))
-            record_responded(root, name)
+            _hold_note(result, sha, "input", problems[0])
             return _terminate(result, "refused", problems[0], refused_stage="input")
         note_bytes = note_sink[0] if note_sink else b""
 
@@ -1388,7 +1481,7 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
                 _hold_write(result, "proposal.json", json.dumps(proposal, indent=2))
                 result.m4 = {"proposed": 0, "allowed": 0, "executed": 0, "held": 0,
                              "refused": 0, "actions": []}
-                record_responded(root, name)
+                _hold_note(result, sha, "exhausted", "empty-proposal")
                 return _terminate(result, "exhausted", "empty-proposal")
 
             stage = "validate"
@@ -1441,7 +1534,7 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
                             json.dumps(decision_rows(decisions), indent=2))
                 _hold_write(result, "reasons.json",
                             json.dumps({"stage": "validator", "detail": refusal}, indent=2))
-                record_responded(root, name)
+                _hold_note(result, sha, "validator", refusal)
                 return _terminate(result, "refused", refusal, refused_stage="validator")
             model_body = reply_action.get("body") or ""
             targets = list(reply_action.get("targets") or [])
@@ -1508,7 +1601,7 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
                         json.dumps({"stage": "filter", "gates": hits}, indent=2))
             _hold_write(result, "proposal.json", json.dumps(proposal, indent=2))
             _hold_write(result, "decisions.json", json.dumps(decision_rows(decisions), indent=2))
-            record_responded(root, name)
+            _hold_note(result, sha, "filter", "filter:" + ",".join(hits))
             return _terminate(result, "refused", "filter:" + ",".join(hits), refused_stage="filter")
 
         filename = reply_filename(ts, name)
