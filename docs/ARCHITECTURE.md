@@ -47,14 +47,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `app/_remediation.py` | DevRuntime remediation callbacks [FROZEN] |
 | `app/_state_authority.py` | GameEnvelope + envelope update/read paths [FROZEN] |
 | `main.py` | RC entry point; starts supervisor + RC process [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/__init__.py` | OverlayApp orchestrator; asyncio AppLoop scheduler drives poll loops (post-T2 #8, Tk-free) [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/_game_lifecycle.py` | game start/end transitions, worker management [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/_health_monitor.py` | Tk pulse + health state reporting [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/_loop.py` | async scheduler (post-tkinter-removal) [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/_overlay_manager.py` | mode switching (no UI overlays - legacy name) [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/_remediation.py` | DevRuntime remediation callbacks [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/app/_state_authority.py` | GameEnvelope + envelope update/read paths [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/main.py` | RC entry point; starts supervisor + RC process [FROZEN] |
 
 ### Vision + data pipeline
 | File | Role |
@@ -69,28 +61,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `game_reader/poller.py` | Live Client + LCU + relay IO for game state polling |
 | `game_reader/snapshot_normalizer.py` | raw liveclient JSON -> coaching state dict + derived fields |
 | `moon_vision_server.py` | vision server entrypoint shim - delegates to vision_server.main |
-| `ops/runtime/responder_export/fc0be1320a01/core/game_snapshot.py` | raw JSON -> snapshot dataclass [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/core/hud_settings.py` | parse League game.cfg + PersistedSettings for OCR region + color hardening |
-| `ops/runtime/responder_export/fc0be1320a01/core/screen_grab.py` | full-resolution screen grab for OCR + calibration (no downscale) |
-| `ops/runtime/responder_export/fc0be1320a01/core/vision_profiles.py` | profile-based hot-reloadable OCR region + reference-frame store |
-| `ops/runtime/responder_export/fc0be1320a01/core/vision_tesseract.py` | OCR pipeline (Tesseract) |
-| `ops/runtime/responder_export/fc0be1320a01/game_reader/__init__.py` | GameReader facade - composes poller + normalizer mixins |
-| `ops/runtime/responder_export/fc0be1320a01/game_reader/mode_router.py` | queue/map -> mode-key routing + TFT early-exit |
-| `ops/runtime/responder_export/fc0be1320a01/game_reader/poller.py` | Live Client + LCU + relay IO for game state polling |
-| `ops/runtime/responder_export/fc0be1320a01/game_reader/snapshot_normalizer.py` | raw liveclient JSON -> coaching state dict + derived fields |
-| `ops/runtime/responder_export/fc0be1320a01/moon_vision_server.py` | vision server entrypoint shim - delegates to vision_server.main |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_relay_lane8_cycle25.py` | lane 8 cycle 25 regression suite |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_rm344_tft_coercion.py` | regression - the TFT early-exit branch must coerce wire numerics too |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_silent_except_liveclient_subresource.py` | regression - live-client subresource reads must be falsifiable |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_snapshot_normalizer_wire_coercion.py` | regression - Live Client wire numerics must not crash or poison the snapshot |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/__init__.py` | vision_server package facade + entrypoint |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_config.py` | vision server config + Anthropic client |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_frame.py` | latest-frame cache + upload handler |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_http.py` | BaseHTTPRequestHandler routing for :8889 |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_inference.py` | Anthropic vision/coach + Tesseract OCR handlers |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_reap.py` | reap stale/orphaned :8889 vision-server instances before bind |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_relay.py` | LCU + Live Client relays |
-| `ops/runtime/responder_export/fc0be1320a01/vision_server/_stats.py` | vision server stats + log ring |
 | `tests/test_relay_lane8_cycle25.py` | lane 8 cycle 25 regression suite |
 | `tests/test_rm344_tft_coercion.py` | regression - the TFT early-exit branch must coerce wire numerics too |
 | `tests/test_silent_except_liveclient_subresource.py` | regression - live-client subresource reads must be falsifiable |
@@ -118,19 +88,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `coaches/brawl_coach.py` | Brawl mode coach - DS-before-Haiku |
 | `coaches/tft_coach.py` | TFT Set 17 mode coach |
 | `core/build_order.py` | contextual DS-backed build-ORDER planner |
-| `ops/runtime/responder_export/fc0be1320a01/champion_profiles.py` | static champion data thin loader |
-| `ops/runtime/responder_export/fc0be1320a01/coach_integration/__init__.py` | coach_integration package facade |
-| `ops/runtime/responder_export/fc0be1320a01/coach_integration/_coach.py` | CoachIntegration - SR coaching class (Haiku + cache + DS) |
-| `ops/runtime/responder_export/fc0be1320a01/coach_integration/_profiles.py` | SR champion profile constants + GAME_SENSE_VOCAB |
-| `ops/runtime/responder_export/fc0be1320a01/coach_integration/_sr_prompt.py` | SR prompt building - system prompt, helpers, WaveTracker |
-| `ops/runtime/responder_export/fc0be1320a01/coach_integration/archetype_dispatch.py` | per-coach scorer dispatch + display formatting |
-| `ops/runtime/responder_export/fc0be1320a01/coaches/aram_coach.py` | ARAM + Mayhem mode coach - DS-before-Haiku |
-| `ops/runtime/responder_export/fc0be1320a01/coaches/arena_coach.py` | Arena mode coach - DS-before-Haiku |
-| `ops/runtime/responder_export/fc0be1320a01/coaches/brawl_coach.py` | Brawl mode coach - DS-before-Haiku |
-| `ops/runtime/responder_export/fc0be1320a01/coaches/tft_coach.py` | TFT Set 17 mode coach |
-| `ops/runtime/responder_export/fc0be1320a01/core/build_order.py` | contextual DS-backed build-ORDER planner |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_cross_mode_ds_p1l6.py` | P1-L6 cross-mode Daemon Slayer integration contract tests |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_ds_pick_consumption_p1l11.py` | P1-L11 DS pick CONSUMPTION-end contract tests |
 | `tests/test_cross_mode_ds_p1l6.py` | P1-L6 cross-mode Daemon Slayer integration contract tests |
 | `tests/test_ds_pick_consumption_p1l11.py` | P1-L11 DS pick CONSUMPTION-end contract tests |
 
@@ -177,47 +134,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
 | `dashboard/routes_vision_calibrator.py` | GET/POST vision-region calibrator (frame proxy + regions read/write + page) |
 | `dashboard/routes_ward_heat.py` | ward-coverage heat strip backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_adaptation_latch.py` | cs/csd latch for STATS panel |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_deterministic_coaching.py` | deterministic coaching resolver for /api/state |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_dispatch.py` | route registration |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_errors.py` | shared JSON error envelope for the :8888 dashboard + :8895 Mission Control |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_idempotency.py` | in-process idempotency (replay) table for operator intents |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_lcu_inprocess.py` | in-process LCU snapshot reader for /api/state |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_matchers.py` | path-matcher factories (stdlib-only, importable without pydantic) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/_state_builder.py` | builds /api/state payload |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_auto_accept.py` | GET/POST /api/lcu/auto-accept (ready-check auto-accept on/off) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_build_plan.py` | build-plan panel backend (WP-C5) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_cc_blended_ehp_threat.py` | cc_blended_ehp threat panel backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_cc_conditional_pressure.py` | cc_conditional pressure panel backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_cc_pairing.py` | cc_conditional ally-pairing panel backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_champions.py` | GET /api/champions |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_combo.py` | action-queue combo simulator backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_knobs.py` | ds-engine-knobs control panel backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_matchup.py` | DS 1v1 matchup backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_profile.py` | DS champion-profile aggregate backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_relscore.py` | ds relative-score bar backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_shape.py` | ds-shape SHAPED-EMPHASIS preview backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_skill_order.py` | DS ability max-order backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ds_sweep.py` | DS stat-sweep graph backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_duo_synergy.py` | 101.qq duo-synergy backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_lobby_aux.py` | top8 + mains backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_loop_control.py` | POST /api/loop-control route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_loop_monitor.py` | GET /api/loop-monitor (per-tool-call timeline) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_loop_status.py` | GET /api/loop-status route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ops_panels.py` | ops panels backend (seam map / drift strip / gated queue) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_peel_priority.py` | peel-target verdict backend (item 304 Phase D) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_scouting.py` | player-scouting backend (rank fan-out) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_spike_curve.py` | power-curve sparkline backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_spike_markers.py` | live power-spike markers backend |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_vision_calibrator.py` | GET/POST vision-region calibrator (frame proxy + regions read/write + page) |
-| `ops/runtime/responder_export/fc0be1320a01/dashboard/routes_ward_heat.py` | ward-coverage heat strip backend |
-| `ops/runtime/responder_export/fc0be1320a01/web_dashboard.py` | :8888 HTTPS dashboard server entry |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
 
 ### Mission Control (:8895 control plane)
@@ -229,12 +145,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `mc/routes.py` | Mission Control route tables (imports, never forks, the loop routes) |
 | `mc/server.py` | Mission Control HTTPS server (:8895, tailnet + loopback only) |
 | `mission_control.py` | Mission Control process entry (:8895) |
-| `ops/runtime/responder_export/fc0be1320a01/mc/__init__.py` | Mission Control standalone serving layer (S10) |
-| `ops/runtime/responder_export/fc0be1320a01/mc/auth.py` | Mission Control bearer-token gate (POST only, fails closed) |
-| `ops/runtime/responder_export/fc0be1320a01/mc/handler.py` | Mission Control HTTP handler (minimal, no dashboard Handler) |
-| `ops/runtime/responder_export/fc0be1320a01/mc/routes.py` | Mission Control route tables (imports, never forks, the loop routes) |
-| `ops/runtime/responder_export/fc0be1320a01/mc/server.py` | Mission Control HTTPS server (:8895, tailnet + loopback only) |
-| `ops/runtime/responder_export/fc0be1320a01/mission_control.py` | Mission Control process entry (:8895) |
 
 ### Core utilities
 | File | Role |
@@ -297,96 +207,12 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/zoi_capability.py` | archetype capability-weight multiplier for ZOI influence bubbles |
 | `core/zoi_field.py` | fluid oil-and-water DMZ frontier from signed influence bubbles |
 | `lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/core/anvil_shadow.py` | arena item-anvil shadow writer |
-| `ops/runtime/responder_export/fc0be1320a01/core/aram_comp_verdict.py` | deterministic ARAM comp-balance verdict |
-| `ops/runtime/responder_export/fc0be1320a01/core/aram_deterministic_coach.py` | deterministic ARAM coach block assembler (Stage 2) |
-| `ops/runtime/responder_export/fc0be1320a01/core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
-| `ops/runtime/responder_export/fc0be1320a01/core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
-| `ops/runtime/responder_export/fc0be1320a01/core/arena_augment_playline.py` | deterministic Arena augment play-line |
-| `ops/runtime/responder_export/fc0be1320a01/core/arena_deterministic_coach.py` | deterministic Arena coach block assembler (Stage 2) |
-| `ops/runtime/responder_export/fc0be1320a01/core/augment_shadow.py` | arena augment-select shadow writer |
-| `ops/runtime/responder_export/fc0be1320a01/core/build_order_precompute.py` | Lane B build-order precompute (comp-archetype table) |
-| `ops/runtime/responder_export/fc0be1320a01/core/build_order_variants.py` | Lane B build-order VARIANTS (anti-tank / anti-squishy, A3-driven) |
-| `ops/runtime/responder_export/fc0be1320a01/core/cc_threat.py` | deterministic hard-CC threat / tenacity nudge |
-| `ops/runtime/responder_export/fc0be1320a01/core/champ_select_advisor_deterministic.py` | deterministic champ-select pick-advisor |
-| `ops/runtime/responder_export/fc0be1320a01/core/champ_select_shadow.py` | champ-select pick-advisor shadow writer |
-| `ops/runtime/responder_export/fc0be1320a01/core/champion_info_overrides.py` | curated DDragon info.attack/magic overrides for damage-type classification |
-| `ops/runtime/responder_export/fc0be1320a01/core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
-| `ops/runtime/responder_export/fc0be1320a01/core/data_retention.py` | retention policy + report over data/ |
-| `ops/runtime/responder_export/fc0be1320a01/core/defensive_picks.py` | defensive item ranker |
-| `ops/runtime/responder_export/fc0be1320a01/core/district_fusion.py` | API-ground-truth fusion over the CV district presence vector |
-| `ops/runtime/responder_export/fc0be1320a01/core/ds_support_route_overrides.py` | Slice C support-tag route-override loader (RM-84) |
-| `ops/runtime/responder_export/fc0be1320a01/core/enemy_aware_stats.py` | enemy stats from liveclient items |
-| `ops/runtime/responder_export/fc0be1320a01/core/event_callouts.py` | deterministic event-milestone callout table |
-| `ops/runtime/responder_export/fc0be1320a01/core/heal_threat.py` | deterministic heal-threat / anti-heal nudge |
-| `ops/runtime/responder_export/fc0be1320a01/core/laning_cv_overrides.py` | RC2-P5.1 CV-driven laning verdict overrides (vision_state) |
-| `ops/runtime/responder_export/fc0be1320a01/core/laning_scenario_precompute.py` | Lane A laning-scenario precompute (matchup-engine table) |
-| `ops/runtime/responder_export/fc0be1320a01/core/lcu_events.py` | LCU WAMP event subscription - push replacement for endpoint polling |
-| `ops/runtime/responder_export/fc0be1320a01/core/lcu_mastery.py` | key-free champion mastery for any PUUID via the LCU |
-| `ops/runtime/responder_export/fc0be1320a01/core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
-| `ops/runtime/responder_export/fc0be1320a01/core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
-| `ops/runtime/responder_export/fc0be1320a01/core/log_retention.py` | periodic logs/ trimmer (age + hard size cap) |
-| `ops/runtime/responder_export/fc0be1320a01/core/log_setup.py` | log init [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/core/macro_context.py` | fog-only macro snapshot for the deterministic decision tree |
-| `ops/runtime/responder_export/fc0be1320a01/core/macro_decision_tree.py` | ordered pure-rule registry for deterministic macro callouts |
-| `ops/runtime/responder_export/fc0be1320a01/core/macro_response.py` | RC2-P5.7 deterministic lost-objective + stagnation response |
-| `ops/runtime/responder_export/fc0be1320a01/core/meta_crawl.py` | participant-graph crawler for event-mode champion stats |
-| `ops/runtime/responder_export/fc0be1320a01/core/mia_reachability.py` | MIA reachability rings - SOLE zoi.mia producer (ZOI Wave 3, spec E-2) |
-| `ops/runtime/responder_export/fc0be1320a01/core/mode_capabilities.py` | static per-mode capability truth table (fail-CLOSED) |
-| `ops/runtime/responder_export/fc0be1320a01/core/moon_proxy.py` | vision server proxy [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/core/next_buy_fallback.py` | static DS build-order fallback for the NEXT BUY feed |
-| `ops/runtime/responder_export/fc0be1320a01/core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
-| `ops/runtime/responder_export/fc0be1320a01/core/ops_panels.py` | data layer for the three ops dashboard panels |
-| `ops/runtime/responder_export/fc0be1320a01/core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
-| `ops/runtime/responder_export/fc0be1320a01/core/ports.py` | canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations |
-| `ops/runtime/responder_export/fc0be1320a01/core/precomputed_anvil_advisor.py` | arena item-anvil deterministic substrate |
-| `ops/runtime/responder_export/fc0be1320a01/core/precomputed_build_coach.py` | HZ-C2 precomputed BUILD A/B choice-coach over the HZ-B2 variants table |
-| `ops/runtime/responder_export/fc0be1320a01/core/precomputed_laning_coach.py` | HZ-C1 precomputed A/B choice-coach over the laning + build tables |
-| `ops/runtime/responder_export/fc0be1320a01/core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
-| `ops/runtime/responder_export/fc0be1320a01/core/provider_cascade.py` | multi-source provider cascade with provenance stamping |
-| `ops/runtime/responder_export/fc0be1320a01/core/queue_modes.py` | queue_id -> dashboard mode_key |
-| `ops/runtime/responder_export/fc0be1320a01/core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
-| `ops/runtime/responder_export/fc0be1320a01/core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
-| `ops/runtime/responder_export/fc0be1320a01/core/sgp_client.py` | service-gateway match-history client - serves event modes Match-V5 refuses |
-| `ops/runtime/responder_export/fc0be1320a01/core/vision_fusion.py` | confidence-weighted partial-read fusion of Live Client + CV reads |
-| `ops/runtime/responder_export/fc0be1320a01/core/ward_cue.py` | ward-readiness extractor over the active player's Live Client items |
-| `ops/runtime/responder_export/fc0be1320a01/core/ward_events.py` | ward-coverage rolling-window backend |
-| `ops/runtime/responder_export/fc0be1320a01/core/ward_producer.py` | ward-placement producer over allPlayers inventory delta |
-| `ops/runtime/responder_export/fc0be1320a01/core/zoi_capability.py` | archetype capability-weight multiplier for ZOI influence bubbles |
-| `ops/runtime/responder_export/fc0be1320a01/core/zoi_field.py` | fluid oil-and-water DMZ frontier from signed influence bubbles |
-| `ops/runtime/responder_export/fc0be1320a01/lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_coach_choices_characterization_p2_2.py` | P2.2 structured-output hardening - coach_choices wire golden-master |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_coach_output_p2_2.py` | P2.2 tail - shared coach-output model parity golden master |
 | `tests/test_coach_choices_characterization_p2_2.py` | P2.2 structured-output hardening - coach_choices wire golden-master |
 | `tests/test_coach_output_p2_2.py` | P2.2 tail - shared coach-output model parity golden master |
 
 ### Tools / ops
 | File | Role |
 |---|---|
-| `ops/runtime/responder_export/fc0be1320a01/tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
-| `ops/runtime/responder_export/fc0be1320a01/tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
-| `ops/runtime/responder_export/fc0be1320a01/tools/build_order_coverage.py` | Lane B precomputed build-order COVERAGE measurement |
-| `ops/runtime/responder_export/fc0be1320a01/tools/champ_select_shadow_report.py` | champ-select pick-advisor shadow agreement report (flip-readiness gate) |
-| `ops/runtime/responder_export/fc0be1320a01/tools/daemon_slayer_cdragon_ratio_extract.py` | cdragon ability-ratio sidecar extractor (character bins -> cdragon_ability_ratios.json) + Meraki drift |
-| `ops/runtime/responder_export/fc0be1320a01/tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
-| `ops/runtime/responder_export/fc0be1320a01/tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
-| `ops/runtime/responder_export/fc0be1320a01/tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
-| `ops/runtime/responder_export/fc0be1320a01/tools/det_coach_shadow_report.py` | B1 deterministic-coaching flip-readiness report over the det shadow log |
-| `ops/runtime/responder_export/fc0be1320a01/tools/gated_live_probe.py` | one-shot live-game evidence probe for the gated-drain lane |
-| `ops/runtime/responder_export/fc0be1320a01/tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
-| `ops/runtime/responder_export/fc0be1320a01/tools/hz_mismatch_diagnose.py` | HZ mismatch root-cause diagnosis over the laning-combat shadow log |
-| `ops/runtime/responder_export/fc0be1320a01/tools/hz_shadow_arena_contamination.py` | RM-158 data half - SR-derived ARENA precompute detector + provenance flagger over the HZ-C1 shadow corpus |
-| `ops/runtime/responder_export/fc0be1320a01/tools/hz_shadow_report.py` | HZ-C validation report over the precompute shadow logs |
-| `ops/runtime/responder_export/fc0be1320a01/tools/live_benchmark_band_report.py` | LBAND1 validation report over the live-benchmark-band shadow log |
-| `ops/runtime/responder_export/fc0be1320a01/tools/macro_response_shadow_report.py` | RC2-P5.7 (WS4) macro-response register flip-readiness report over the macro shadow log |
-| `ops/runtime/responder_export/fc0be1320a01/tools/objective_playbook_shadow_report.py` | RC2-P5.5 (WS3) objective-playbook flip-readiness report over the objective shadow log |
-| `ops/runtime/responder_export/fc0be1320a01/tools/ocr_shadow_report.py` | OCR-vs-Sonnet shadow agreement report (Lane E OCR-only flip gate) |
-| `ops/runtime/responder_export/fc0be1320a01/tools/perseus_recall.py` | compact projection over Perseus Vault recall |
-| `ops/runtime/responder_export/fc0be1320a01/tools/rc_facts.py` | live RC health + topology probe |
-| `ops/runtime/responder_export/fc0be1320a01/tools/regen_arena_laning_table.py` | RM-158 data half - patch-pinned ARENA laning-table regen runner |
-| `ops/runtime/responder_export/fc0be1320a01/tools/sanitize_agent6_reports.py` | 7-bit ASCII normalizer for cloud-routine audit reports |
-| `ops/runtime/responder_export/fc0be1320a01/tools/unresolved_token_scan.py` | RM-108 unresolved-template-token detector over vendored feeds |
-| `ops/runtime/responder_export/fc0be1320a01/tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon / qq / queues) |
 | `tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
 | `tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
 | `tools/build_order_coverage.py` | Lane B precomputed build-order COVERAGE measurement |
@@ -415,9 +241,6 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 ### Tests
 | File | Role |
 |---|---|
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_lcu_pool.py` | port-safety pooled-connection + min-interval primitives (RC2 P6.4) |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_port_cpu_footprint_rc2.py` | consolidated port/CPU footprint regression guard (RC2 P6.6) |
-| `ops/runtime/responder_export/fc0be1320a01/tests/test_rc_lcu_pool_default_prose_guard_rm358.py` | guard that RC_LCU_POOL prose cannot contradict the measured default |
 | `tests/test_lcu_pool.py` | port-safety pooled-connection + min-interval primitives (RC2 P6.4) |
 | `tests/test_port_cpu_footprint_rc2.py` | consolidated port/CPU footprint regression guard (RC2 P6.6) |
 | `tests/test_rc_lcu_pool_default_prose_guard_rm358.py` | guard that RC_LCU_POOL prose cannot contradict the measured default |
@@ -478,35 +301,18 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 
 | Phase | Date | Location | Note |
 |---|---|---|---|
-| 2.4 | 2026-05-09 | `ops/runtime/responder_export/fc0be1320a01/tools/build_portable.py:75` | vision server entrypoint shim (real code in vision_server/) |
 | 2.4 | 2026-05-09 | `tools/build_portable.py:75` | vision server entrypoint shim (real code in vision_server/) |
-| 7 | 2026-05-09 | `ops/runtime/responder_export/fc0be1320a01/scripts/precommit_msg_check.py:4` | make Conventional Commits subject lines mechanical |
-| 7 | 2026-05-09 | `ops/runtime/responder_export/fc0be1320a01/scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
 | 7 | 2026-05-09 | `scripts/precommit_msg_check.py:4` | make Conventional Commits subject lines mechanical |
 | 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
-| 4.2 | 2026-05-08 | `ops/runtime/responder_export/fc0be1320a01/tools/gen_archmap.py:78` | bridge envelope schema additions |
-| ...` examples that would self | - | `ops/runtime/responder_export/fc0be1320a01/tools/gen_archmap.py:38` | pollute the journal). |
 | 0.13 | - | `ops/rc_self_monitor.py:197` | bounded bootstrap window. |
-| 0.13 | - | `ops/runtime/responder_export/fc0be1320a01/ops/rc_self_monitor.py:197` | bounded bootstrap window. |
-| 0.13 | - | `ops/runtime/responder_export/fc0be1320a01/tools/gen_archmap.py:77` | bounded bootstrap window |
 | 0.3 | - | `ops/rc_self_monitor.py:236` | monotonic timestamp when worker first seen dead (fix 3) |
-| 0.3 | - | `ops/runtime/responder_export/fc0be1320a01/ops/rc_self_monitor.py:236` | monotonic timestamp when worker first seen dead (fix 3) |
 | 0.7 | - | `core/metrics_cache.py:440` | supervisor_state added to status.json; tolerate absence in older files |
-| 0.7 | - | `ops/runtime/responder_export/fc0be1320a01/core/metrics_cache.py:440` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:338` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:546` | _check_health() returns 3-value state string instead of plain bool |
-| 0.9 | - | `ops/runtime/responder_export/fc0be1320a01/ops/rc_self_monitor.py:338` | _check_health() returns a (state, detail) tuple |
-| 0.9 | - | `ops/runtime/responder_export/fc0be1320a01/ops/rc_self_monitor.py:546` | _check_health() returns 3-value state string instead of plain bool |
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1310` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
-| 1 step 3 | - | `ops/runtime/responder_export/fc0be1320a01/game_reader/snapshot_normalizer.py:1310` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
-| 1 step 3 | - | `ops/runtime/responder_export/fc0be1320a01/tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
-| 3 | - | `ops/runtime/responder_export/fc0be1320a01/agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
-| 3 step 1.1 | - | `ops/runtime/responder_export/fc0be1320a01/tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |
-| 7 P2 | - | `ops/runtime/responder_export/fc0be1320a01/tft/tft_live_analysis.py:308` | C - clear stale choices on augment-select force scan |
-| 7 P2 | - | `ops/runtime/responder_export/fc0be1320a01/tools/gen_archmap.py:79` | C - clear stale choices on force scan |
 | 7 P2 | - | `tft/tft_live_analysis.py:308` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->
