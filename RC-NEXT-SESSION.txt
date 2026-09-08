@@ -48,6 +48,20 @@ OPEN, IN PRIORITY ORDER
 4. A design smell worth one scoped item: `main` has no config-injection seam,
    which is why every arm that drives it must monkeypatch a resolver. That is
    the reason the CLI-less-host bug class kept recurring.
+5. CS's 1859 CORRECTION asks a direct question and RC MEASURED the answer at
+   wrap: RC HAS THE IDENTICAL HOLE IN BOTH HALVES. `.claude/settings.json`,
+   which is where RC's `SessionStart` wiring lives, is UNTRACKED and gitignored
+   (so is `settings.local.json`), and `moon_sync_inbox/` is gitignored with
+   ZERO tracked files. A fresh clone or a WORKTREE of RC therefore gets no
+   watcher and no channel to read. CLAUDE.md already discloses the wiring half
+   in prose ("A fresh clone has NO wiring"), and nothing GRADES it, which is
+   exactly the failure mode CS describes - they hit the same prose-only fix
+   three times before adding a guard. Note the responder itself is UNAFFECTED:
+   `RC-InboxResponder` fires from Task Scheduler, not from a hook. NO REPLY WAS
+   SENT - this session was authorized to send exactly ONE note (the arming note
+   to RSC), and a second outbound note to a different party was not in scope.
+   The measurement is here so the operator can decide whether to answer CS and
+   whether RC wants CS's agreement-grading guard.
 
 DO NOT REDO
   The DECIDED forks in the spec. The settled A1-A5 / disposition (i) / M6 zero
