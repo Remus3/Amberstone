@@ -1182,6 +1182,37 @@ def test_the_rsc_1456_bounced_name_is_admitted(world):
     assert second.termination == "empty"
 
 
+def test_the_delivered_body_names_the_file_the_sender_actually_sent(world):
+    """RM-387: the ROW's projection is not the BODY's, and never was.
+
+    The row wants a bounded, regex-pinned field, so it keeps `safe_name`. The
+    body is written only after gate 6, where the name has already passed
+    `NOTE_NAME_RE` - 7-bit ASCII, `[A-Za-z0-9._-]`, at most `NOTE_NAME_MAX`
+    characters - which is the SAME ground the stdin envelope already stands on
+    when it carries the raw name. Sharing one projection with the row bought
+    the body nothing and cost the sender the end of their own filename.
+
+    The arm asserts the SENDER-VISIBLE string in the delivered file, not the
+    internal field: the clipped form is a PREFIX of the raw one, so a plain
+    substring check would pass on the truncated body too.
+    """
+    clipped = runner.safe_name(RSC_BOUNCED_1456)
+    assert len(RSC_BOUNCED_1456) == 130 and clipped == RSC_BOUNCED_1456[:80]
+    world.agreement()
+    world.note(name=RSC_BOUNCED_1456)
+    result = world.drive()
+    assert result.termination == "delivered"
+    replies = replies_in(world.rsc)
+    assert len(replies) == 1
+    body = (world.rsc / replies[0]).read_text(encoding="ascii")
+    assert f"answering {RSC_BOUNCED_1456}; cycle " in body
+    assert f"answering {clipped}; cycle " not in body
+    # The row is untouched by this, and stays inside its published grammar.
+    row = world.one_row(result)
+    assert row["note"] == clipped
+    assert runner.ROW_NOTE_RE.fullmatch(row["note"])
+
+
 def test_a_topic_at_the_cap_is_accepted(world):
     """The accepting half of the topic boundary; `too-long-topic` is the other."""
     assert len(TOPIC_AT_CAP) == 188 and len(TOPIC_OVER_CAP) == 189
@@ -2203,6 +2234,35 @@ def test_a_latency_only_body_carrying_hop_is_refused(world, monkeypatch):
     result = world.drive()
     assert result.termination == "refused"
     assert "tag-hop-word" in result.termination_detail
+
+
+def test_a_raw_name_carrying_hop_refuses_only_the_grammar_that_bans_the_word(world):
+    """RM-387 residual, pinned rather than left for someone to discover.
+
+    `tag-hop-word` reads the WHOLE assembled body, so a filename carrying the
+    standalone word `hop` could always refuse a LATENCY-ONLY cycle - within the
+    first 80 characters before RM-387, anywhere the name grammar admits after
+    it. That is the gate WORKING, and fail-closed: a LATENCY-ONLY body saying
+    `hop` reads as M1 in the artifact RSC parses, and M1 is the one thing that
+    grammar does not measure. A sender can only do it to their own note, and
+    the row and the bounce both say so. The coupling is one grammar wide, not
+    general - the same name delivers under A5.
+    """
+    latency_name = "2026-09-08-1200-from-RSC-" + "z" * 70 + "-hop-past-the-clip.md"
+    a5_name = "2026-09-08-1200-from-RSC-" + "y" * 70 + "-hop-past-the-clip.md"
+    assert latency_name.index("-hop-") > 80
+
+    world.agreement(grammar=runner.GRAMMAR_LATENCY_ONLY)
+    path = world.note(name=latency_name)
+    assert runner.note_shape_ok(path, latency_name) == []
+    refused = world.drive()
+    assert refused.termination == "refused"
+    assert "tag-hop-word" in refused.termination_detail
+
+    world.agreement()
+    world.note(name=a5_name)
+    delivered = world.drive()
+    assert delivered.termination == "delivered"
 
 
 # ---------------------------------------------------------------------------
