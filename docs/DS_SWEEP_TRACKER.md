@@ -69,13 +69,33 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-392** (2026-09-08, re-derived at the RM-389 wrap). The
-  pin sat at RM-389 while RM-389, RM-390 and RM-391 all carried row bodies in
+  Next free id = **RM-395** (2026-09-09, moved at the RM-392/RM-393/RM-394
+  filing). **RM-392, RM-393 and RM-394 were all allocated 2026-09-09**
+  (LEDGER 1373), all three filed under BACKLOG "Reliability / hardening", none
+  taking a roster checkbox and none changing the Summary count: RM-392 the
+  false-RED external-binary call sites in `tests/`, RM-393 the four
+  unchecked-`stdout` git assertions carved out of it by adjudication because
+  their trigger set is DISJOINT from tool absence, and RM-394 the frozen-header
+  contract guard that enumerates the disk and is therefore red on Legion and
+  green in CI. Allocation was checked with the pointer-vs-allocated predicate
+  before minting each: RM-392's three occurrences at the time were all
+  next-free POINTER prose (this file, `docs/LEDGER.md` 1370,
+  `WAKEUP_NOTES.md`), and a repo-wide `.md` plus `.py` grep outside
+  `docs/_archive` returned ZERO occurrences of RM-393, ZERO of RM-394 and ZERO
+  of the id pinned above, pointer prose included. **RM-394 was minted mid-wrap**
+  - the pin had already been moved to it once, so if a reader finds a commit
+  where it is the pin and a later one where it heads a row, that is this
+  filing, not drift. The pin previously read
+  RM-389 while RM-389, RM-390 and RM-391 all carried row bodies in
   `BACKLOG.md`, so `tests/test_rm_id_registry_drift.py` was RED on `main` for
   the whole of that window - inherited, not caused by the RM-389 wrap, and the
-  wrap is what re-derived it. The pinned id above occurs elsewhere only as
-  next-free POINTER prose (`WAKEUP_NOTES.md`, `docs/LEDGER.md` 1370), which the
-  guard exempts per-occurrence - and note that naming it possessively HERE was
+  wrap is what re-derived it. **That sentence used to say the pinned id
+  occurred elsewhere only as next-free pointer prose in `WAKEUP_NOTES.md` and
+  `docs/LEDGER.md` 1370; it described the id pinned BEFORE this filing, which
+  is now allocated, and it is corrected rather than carried forward - a
+  pointer-prose census goes stale the moment its subject is minted.** The id
+  pinned above occurs nowhere at all, which the guard also accepts, and note
+  that naming a pinned id possessively HERE was
   itself scored as an allocation on the first attempt, so describe the pinned
   id, never re-spell it. Ignore `RM-3801` when re-deriving: it is a probe string
   recorded in `docs/LEDGER.md`, not an allocation. The eight ids below it were
