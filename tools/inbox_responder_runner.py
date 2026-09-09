@@ -1595,8 +1595,19 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
         result.m4 = _m4_totals(m4_actions)
 
         stage = "assemble"
+        # RM-387: the RAW name, as the stdin envelope already carries it, and
+        # for the same reason - both are reachable only after gate 6, where the
+        # name has passed `NOTE_NAME_RE` and is ASCII, `[A-Za-z0-9._-]` and
+        # within `NOTE_NAME_MAX`. `result.note` is the ROW's projection, capped
+        # at 80 to satisfy `ROW_NOTE_RE`, and the row's bound is not the body's
+        # bound: spending it here showed the sender their own filename clipped.
+        # The BOUNCE keeps `safe_name` on BOTH its halves deliberately: it is
+        # the one body that must also serve a name which never passed the
+        # grammar (`refused / name-grammar` bounces from gate 6 itself), and
+        # one template reading one runner-owned field is worth more there than
+        # showing a post-gate-6 sender the last 50 characters of their name.
         assembled = assemble_body(  # GATE:assemble
-            grammar=result.grammar, cycle_id=cycle_id, note_filename=result.note,
+            grammar=result.grammar, cycle_id=cycle_id, note_filename=name,
             delivery_number=delivery_number, budget=agreement["hop_budget"],
             model_body=model_body, measurements=measurements, held=held_actions,
             arrived_iso=arrived_iso,
