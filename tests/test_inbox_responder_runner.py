@@ -3635,3 +3635,299 @@ def test_the_flag_file_path_prints_nothing_at_all(world, tmp_path, monkeypatch, 
                        log_root=live, parent_env=world.parent_env)
     assert code == 0
     assert capsys.readouterr().out == ""
+
+
+# ---------------------------------------------------------------------------
+# RM-388: the metrics ledger is the trial's EVIDENCE BASE, so it rotates
+# ---------------------------------------------------------------------------
+#
+# The invocation log may be trimmed because a lost `start`/`end` pair costs
+# nothing that is not also in the row. The metrics ledger is the opposite: it
+# is where M1, M2, M3, M4 and M5 live, `trial_rows` quotes it into an arming
+# note, and evicting its oldest rows would delete the measurements the trial
+# exists to produce. So rotation MOVES rows to a dated archive and never drops
+# one - and the live agreement's rows are carried forward whatever their age,
+# because a trial cannot be asked to quote a file its own evidence just left.
+
+
+def _seed_rows(path, count, agreement_id, start=0):
+    """Rows shaped like real ones exactly where the rotator looks."""
+    lines = [json.dumps({"cycle_id": f"c{i}", "agreement_id": agreement_id,
+                         "ts": f"2026-09-0{1 + i % 9}T00:00:0{i % 10}",
+                         # `grammar` non-null and `dry` false are what make a
+                         # row QUOTABLE, so a `trial_rows` arm over these seeds
+                         # measures rotation rather than the filter.
+                         "grammar": runner.GRAMMAR_A5, "dry": False,
+                         "pad": "x" * 200}, ensure_ascii=True)
+             for i in range(start, start + count)]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="ascii", newline="") as fh:
+        fh.write("".join(line + "\n" for line in lines))
+    return lines
+
+
+def _archives(path):
+    return sorted(path.parent.glob(f"{path.stem}.*{path.suffix}"))
+
+
+def test_the_metrics_ledger_rotates_rather_than_evicting(world, monkeypatch):
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 10)
+    _seed_rows(path, 60, "old")
+    before = path.read_text(encoding="utf-8").splitlines()
+    assert path.stat().st_size > runner.METRICS_ROTATE_BYTES
+
+    runner._rotate_metrics(path)
+
+    live = path.read_text(encoding="utf-8").splitlines()
+    archives = _archives(path)
+    assert len(archives) == 1
+    archived = archives[0].read_text(encoding="utf-8").splitlines()
+    # NOTHING LOST and nothing reordered: this is the whole point of the item.
+    assert archived + live == before
+    assert live == before[-10:]
+    assert path.stat().st_size < len("".join(before))
+    # The archive is named for the last row it carries, so the file says what
+    # is inside it without being opened.
+    assert archives[0].name == f"{path.stem}.20260905T000009{path.suffix}"
+
+
+def test_rotation_never_separates_the_live_agreement_from_its_own_rows(world, monkeypatch):
+    """The tail rule alone would archive them: they are the OLDEST rows here."""
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 5)
+    live_id = runner.agreement_id_of(world.agreement())
+    _seed_rows(path, 3, live_id)
+    _seed_rows(path, 60, "old", start=100)
+
+    runner._rotate_metrics(path)
+
+    live = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]
+    archived = [json.loads(x) for x in _archives(path)[0].read_text(encoding="utf-8").splitlines()]
+    assert [r["agreement_id"] for r in live].count(live_id) == 3
+    assert len(live) == 8 and all(r["agreement_id"] == "old" for r in archived)
+    assert len(archived) == 55
+
+
+def test_a_cycle_rotates_the_ledger_and_never_archives_its_own_row(world, monkeypatch):
+    """`_finish` writes the row and `--dry-cycle` reads it back out of the live file."""
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 2)
+    _seed_rows(path, 60, "old")
+    armed(world)
+    result = world.drive()
+    assert result.termination == "delivered"
+    assert _archives(path)
+    row = world.one_row(result)
+    assert row["cycle_id"] == result.cycle_id
+
+
+def test_a_stop_flag_tick_does_not_archive_the_live_agreement(world, monkeypatch):
+    """The refutation that killed the first cut of this item.
+
+    `result.agreement_id` is set at gate 2, so a cycle that ends BEFORE it -
+    a stop-flag tick at gate 1, a malformed record, a prelude failure - used to
+    reach `_finish` with None while an agreement was genuinely live, and the
+    identity carry silently did nothing. Measured then: `trial_rows` 30 -> 0.
+    The identity now comes from the RECORD on disk, which every one of those
+    cycles can still read.
+    """
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 5)
+    record = world.agreement()
+    live_id = runner.agreement_id_of(record)
+    _seed_rows(path, 30, live_id)
+    _seed_rows(path, 40, "someone-else", start=100)
+    world.note()
+    world.stop()
+
+    result = world.drive()
+
+    assert (result.termination, result.agreement_id) == ("disarmed", None)
+    assert _archives(path)
+    quotable = runner.trial_rows(path, live_id)
+    assert len(quotable) == 30
+    archived = [json.loads(x) for x in _archives(path)[0].read_text(encoding="utf-8").splitlines()]
+    assert all(r["agreement_id"] == "someone-else" for r in archived)
+
+
+def test_rotation_refuses_to_run_when_the_record_cannot_be_read(world, monkeypatch):
+    """Fail CLOSED: rotation that cannot say which rows are evidence moves none."""
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 5)
+    _seed_rows(path, 60, "old")
+    before = path.read_bytes()
+    runner.agreement_path(world.root).write_text("{not json", encoding="ascii")
+
+    runner._rotate_metrics(path)
+
+    assert path.read_bytes() == before
+    assert _archives(path) == []
+    # An ABSENT record is not an unreadable one: nothing is live, so it rotates.
+    runner.agreement_path(world.root).unlink()
+    runner._rotate_metrics(path)
+    assert _archives(path)
+
+
+def test_a_prelude_failure_records_the_row_even_when_the_pair_cannot_be_written(
+        world, tmp_path, monkeypatch):
+    """RSC refutation 3 at the one site that had it: a partial write, unreported.
+
+    The handler exists so that no prelude failure is silent. Sequentially, an
+    OSError in the invocation pair left the row unwritten and crashed the
+    handler itself; the two writes are independent now.
+    """
+    live = tmp_path / "prelude-live"
+    _TMP_LOGS.append(runner.invocations_path(live))
+    monkeypatch.setattr(runner, "_load_config",
+                        lambda env: (_ for _ in ()).throw(RuntimeError("prelude boom")))
+    real_pair = runner.log_start
+
+    def explode(*a, **kw):
+        raise PermissionError(13, "ops/runtime is a file")
+
+    monkeypatch.setattr(runner, "log_start", explode)
+    code = runner.main(["--cycle"], spawner=world.spawner, export=world.export,
+                       singleton=_open_singleton, log_root=live, parent_env=world.parent_env)
+    assert code == 2
+    assert real_pair is not runner.log_start
+    rows = [json.loads(x) for x in
+            runner.metrics_path(live).read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 1
+    assert rows[0]["termination"] == "runner-failed"
+    assert rows[0]["termination_detail"].startswith("prelude:config:")
+
+
+def test_a_dry_tick_does_not_archive_the_live_agreement(world, tmp_path, monkeypatch):
+    """The SECOND door onto the same failure, and the reason nothing is passed in.
+
+    On the dry path `main` runs the cycle against a SCRATCH root while its rows
+    go to the LIVE ledger. A rotation keyed on the cycle's root therefore
+    vouched with the scratch agreement and archived the live one's rows - the
+    identical `trial_rows` 30 -> 0 the record-based carry was supposed to have
+    closed. The record is read beside the LEDGER now, so the two trees cannot
+    be confused.
+    """
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 5)
+    fake_root = tmp_path / "dryroot"
+    (fake_root / "ops" / "runtime").mkdir(parents=True)
+    (fake_root / "moon_sync_inbox").mkdir()
+    monkeypatch.setattr(runner, "ROOT", fake_root)
+    scratch = tmp_path / "dry-scratch"
+    scratch.mkdir()
+    (fake_root / "ops" / "runtime" / runner.DRY_FLAG_NAME).write_text(str(scratch), encoding="ascii")
+
+    live = tmp_path / "live-ledger"
+    (live / "ops" / "runtime").mkdir(parents=True)
+    _TMP_LOGS.append(runner.invocations_path(live))
+    record = world.agreement()
+    live_id = runner.agreement_id_of(record)
+    runner.agreement_path(live).write_text(json.dumps(record), encoding="ascii")
+    path = runner.metrics_path(live)
+    _seed_rows(path, 30, live_id)
+    _seed_rows(path, 40, "someone-else", start=100)
+
+    code = runner.main(["--cycle"], spawner=world.spawner, export=ExportStub(world.export_dir),
+                       singleton=_open_singleton, log_root=live, parent_env=world.parent_env)
+
+    assert code == 0
+    assert _archives(path)
+    assert len(runner.trial_rows(path, live_id)) == 30
+
+
+def test_a_prelude_failure_whose_row_cannot_be_written_keeps_the_pair(world, tmp_path,
+                                                                     monkeypatch):
+    """The SWALLOW direction of the same flag, which nothing else pins.
+
+    The re-raise arm below covers "neither write landed". This covers the other
+    side: the pair landed, so the failure IS reported and the row's OSError
+    must not be turned into a crash on top of a report that already exists.
+    Without it, `if not recorded:` could be `if True:` and the suite stays
+    green - measured.
+    """
+    live = tmp_path / "prelude-row-only"
+    _TMP_LOGS.append(runner.invocations_path(live))
+    monkeypatch.setattr(runner, "_load_config",
+                        lambda env: (_ for _ in ()).throw(RuntimeError("prelude boom")))
+    monkeypatch.setattr(runner, "_append_metrics_row",
+                        lambda *a, **kw: (_ for _ in ()).throw(
+                            PermissionError(13, "ops/runtime is a file")))
+    code = runner.main(["--cycle"], spawner=world.spawner, export=world.export,
+                       singleton=_open_singleton, log_root=live, parent_env=world.parent_env)
+    assert code == 2
+    written = runner.invocations_path(live).read_text(encoding="ascii").splitlines()
+    assert [json.loads(x)["phase"] for x in written if x.strip()] == ["start", "end"]
+    assert not runner.metrics_path(live).exists()
+
+
+def test_a_prelude_failure_that_can_record_nothing_stays_loud(world, tmp_path, monkeypatch):
+    """The floor under the split: silence is never the report.
+
+    Attempting the two writes independently is what stops one failure eating
+    the other. It must NOT turn "recorded nothing at all" into the same exit 2
+    a recorded prelude failure returns - so when neither lands, the OSError
+    escapes exactly as it did before the split.
+    """
+    live = tmp_path / "prelude-mute"
+    _TMP_LOGS.append(runner.invocations_path(live))
+    monkeypatch.setattr(runner, "_load_config",
+                        lambda env: (_ for _ in ()).throw(RuntimeError("prelude boom")))
+
+    def explode(*a, **kw):
+        raise PermissionError(13, "ops/runtime is a file")
+
+    monkeypatch.setattr(runner, "log_start", explode)
+    monkeypatch.setattr(runner, "_append_line", explode)
+    with pytest.raises(OSError):
+        runner.main(["--cycle"], spawner=world.spawner, export=world.export,
+                    singleton=_open_singleton, log_root=live, parent_env=world.parent_env)
+
+
+def test_a_rotation_that_cannot_write_leaves_the_ledger_complete(world, monkeypatch):
+    """RSC's refutation 3, answered for the code this item adds.
+
+    Theirs raised AFTER the held file and the bounce were already written. Here
+    every write sits in one guarded block ordered so the LIVE file is replaced
+    LAST, so a rotation that cannot write its archive leaves the ledger
+    complete rather than short, and raises nothing at the caller.
+    """
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2000)
+    monkeypatch.setattr(runner, "METRICS_CARRY_ROWS", 10)
+    _seed_rows(path, 60, "old")
+    before = path.read_bytes()
+    # The archive name is taken by a DIRECTORY, so every write into it fails -
+    # PermissionError on Windows, IsADirectoryError on POSIX, both OSError.
+    (path.parent / f"{path.stem}.20260905T000009{path.suffix}").mkdir()
+
+    runner._rotate_metrics(path)
+
+    assert path.read_bytes() == before
+    assert not path.with_suffix(".jsonl.rotate").exists()
+
+
+def test_the_shipped_rotation_constants_converge():
+    """A carry bigger than the trigger would rotate on EVERY later cycle.
+
+    Row sizes measured off the live ledger on 2026-09-08 (98 rows, UTF-8 bytes
+    without the newline) are min 1214, mean 1412.5, max 3087, so 4096 is the
+    per-row bound this asserts against - 3.2x headroom over the observed max.
+    """
+    assert runner.METRICS_CARRY_ROWS * 4096 < runner.METRICS_ROTATE_BYTES
+
+
+def test_rotation_is_inert_below_the_byte_trigger(world, monkeypatch):
+    """One `stat` per cycle in the common case, and no rewrite at all."""
+    path = runner.metrics_path(world.log_root)
+    monkeypatch.setattr(runner, "METRICS_ROTATE_BYTES", 2_000_000)
+    _seed_rows(path, 20, "old")
+    before = path.read_bytes()
+    runner._rotate_metrics(path)
+    assert path.read_bytes() == before
+    assert _archives(path) == []
