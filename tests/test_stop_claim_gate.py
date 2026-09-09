@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from tools import stop_claim_gate as gate
+
 ROOT = Path(__file__).resolve().parent.parent
 GATE = ROOT / "tools" / "stop_claim_gate.py"
 
@@ -964,3 +966,154 @@ def test_a_ci_count_with_no_ci_fetch_is_still_unbacked(tmp_path):
         _assistant(_text("CI green: 31706 passed.")),
     ]
     assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+# ------------------------------------------------- RM-397 possessive blinding
+# SIXTH shape, and the first that makes the gate blind rather than noisy. Every
+# fix above narrowed what the gate would FLAG; this one is the opposite failure
+# - a claim the gate never got to examine at all.
+#
+# strip_prose_noise deleted every span between two single quotes. In PROSE a
+# single quote is far more often an apostrophe than a delimiter, so two ordinary
+# possessives or contractions in one paragraph paired as if they opened and
+# closed a quotation, and the whole span between them was deleted before the
+# claim scan ever ran. Measured: "The runner's log says 9999 passed, and the
+# session's report agrees." stripped to "The runner s report agrees." and the
+# count claim vanished; the same sentence with no apostrophes was flagged.
+#
+# The fix is a SEPARATE prose-only pattern. strip_command_noise keeps the
+# original, because shell quoting has no possessives and narrowing there would
+# change evidence detection for commands - a different blast radius entirely.
+# The direction of this fix WIDENS what the gate examines, which is exactly the
+# direction that produced the nine false positives of LEDGER 1154, so the
+# suppression half below is as load-bearing as the exposure half.
+
+PROBE_POSSESSIVE = ("The runner's log says 9999 passed, and the session's "
+                    "report agrees.")
+
+
+def test_a_pair_of_possessives_no_longer_swallows_a_count_claim(tmp_path):
+    """The measured defect, end to end: two apostrophes hid a false count."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text(PROBE_POSSESSIVE)),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_strip_prose_noise_keeps_a_possessive_sentence_intact():
+    """Unit-level pin on the same sentence - nothing is deleted at all."""
+    assert gate.strip_prose_noise(PROBE_POSSESSIVE) == PROBE_POSSESSIVE
+
+
+def test_a_genuine_single_quoted_claim_is_still_suppressed(tmp_path):
+    """The anti-regression half. A real quotation must still be quotation."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("An example of a bad claim is 'the run reported 9999 "
+                         "passed' and that is all it is.")),
+    ]
+    assert _run_gate(tmp_path, rows)["findings"] == []
+
+
+def test_a_quoted_span_containing_a_contraction_is_suppressed_end_to_end(tmp_path):
+    """An apostrophe INSIDE a quotation must not terminate it early.
+
+    Truncating there would re-expose the tail of the quotation as prose, which
+    is the same false-positive class the stripping exists to prevent.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("An example of a bad claim is 'the runner doesn't "
+                         "say 9999 passed' and that is all it is.")),
+    ]
+    assert _run_gate(tmp_path, rows)["findings"] == []
+
+
+def test_a_quoted_span_at_the_start_of_the_text_is_suppressed(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("'the run reported 9999 passed' was only an example.")),
+    ]
+    assert _run_gate(tmp_path, rows)["findings"] == []
+
+
+def test_a_quoted_span_at_the_end_of_the_text_is_suppressed(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("The example reads 'the run reported 9999 passed'")),
+    ]
+    assert _run_gate(tmp_path, rows)["findings"] == []
+
+
+def test_the_double_quote_branch_is_unaffected(tmp_path):
+    """The defect is single-quote only; the double-quote branch is untouched."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text('The fixture says "the run reported 9999 passed" and '
+                         'that is all it is.')),
+    ]
+    assert _run_gate(tmp_path, rows)["findings"] == []
+
+
+PROBE_MIXED_QUOTES = ('The agent\'s note "quote with the runner\'s word" then '
+                      '9999 passed and "a second quote" end.')
+
+
+def test_an_apostrophe_span_no_longer_eats_a_double_quote_delimiter(tmp_path):
+    """The INTERACTION between the two branches, which neither test above pins.
+
+    test_the_double_quote_branch_is_unaffected carries no apostrophe at all, so
+    it exercises the double-quote branch in ISOLATION and stays green under the
+    old pattern. The real corpus hit needed both branches at once: under the old
+    `_QUOTED` the apostrophe of "agent's" paired with the one in "runner's", and
+    that span swallowed the OPENING double quote of the first quotation. The
+    orphaned closing quote then paired with a LATER quote, so the deletion ran
+    past the count and hid it - measured at 988 chars in the corpus, and here as
+
+        OLD: The agent s word a second quote" end.
+        NEW: The agent's note   then 9999 passed and   end.
+
+    Both halves are asserted, because either alone is satisfiable by a wrong
+    pattern: a branch that simply stopped deleting single-quoted spans would
+    expose the count AND leak both quotations back into the claim scan, which is
+    the false-positive class of LEDGER 1154. The exposure half is end to end on
+    a real count_mismatch finding; the suppression half is asserted at the strip
+    level, because two suppressed quotations produce NO finding to assert on and
+    an empty findings list cannot distinguish "both stripped" from "the sentence
+    never reached the scanner at all".
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text(PROBE_MIXED_QUOTES)),
+    ]
+    findings = _run_gate(tmp_path, rows)["findings"]
+    assert any(f["check"] == "count_mismatch" and f["claimed"] == "9999"
+               for f in findings), findings
+    stripped = gate.strip_prose_noise(PROBE_MIXED_QUOTES)
+    assert "quote with the runner" not in stripped
+    assert "a second quote" not in stripped
+    assert '"' not in stripped
+    assert "9999 passed" in stripped
+
+
+def test_strip_command_noise_still_deletes_every_single_quoted_literal():
+    """strip_command_noise is DELIBERATELY unchanged - pinned, not assumed.
+
+    Shell quoting carries no possessives, so the prose narrowing has no reason
+    to reach here, and applying it would change which commands count as
+    evidence. Both halves are pinned: a real shell literal still vanishes, and
+    the naive apostrophe pairing that the prose path now rejects still happens
+    here.
+    """
+    assert (gate.strip_command_noise("echo 'no tests ran' && git status")
+            == "echo   && git status")
+    assert (gate.strip_command_noise("a runner's log and a session's report")
+            == "a runner s report")
