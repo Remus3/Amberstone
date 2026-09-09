@@ -2,7 +2,108 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-396/RM-397 pass (relocated `2026-09-09e` RM-394 shipped; newest 3 = RM-396 refuted / RM-397 filed `2026-09-09h` + RM-395 shipped `2026-09-09g` + ADR-015 `2026-09-09f`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-397 SHIPPED pass (relocated `2026-09-09f` ADR-015; newest 3 = RM-397 shipped `2026-09-09i` + RM-396 refuted / RM-397 filed `2026-09-09h` + RM-395 shipped `2026-09-09g`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09i - RM-397 SHIPPED: the first repair to this gate that WIDENS what it examines, measured against a frozen corpus rather than argued
+
+Seventh row of the same headless day, operator AWAY. Tier-1: one tool module plus
+its test, no engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward -
+**except that the gate is ARMED, so this one does change what happens at every
+wrap.** LEDGER 1380, shipped as `e518786e2`.
+
+**The defect.** `_QUOTED` (`:184`) is `'[^']*'|"[^"]*"` with `re.S`, and
+`strip_prose_noise` applies it to every assistant text block BEFORE the claim
+scan. Two ordinary possessives in one paragraph therefore paired as quote
+delimiters and everything between them was deleted, so a claim landing in that
+span was never examined at all. A FALSE-NEGATIVE hole in the instrument that
+audits this session's own claims.
+
+**The fix.** A prose-only `_QUOTED_PROSE` used by `strip_prose_noise` ALONE. It
+refuses to open a span on an apostrophe flanked by word characters, and tolerates
+an inner contraction inside a genuine quoted span so that span is suppressed END
+TO END rather than truncated at the apostrophe. `_QUOTED` is BYTE-UNCHANGED
+(md5-verified by a verifier, not asserted) and `strip_command_noise` is untouched
+- shell quoting has no possessives - with a test pinning that scope decision so a
+later pass does not unify the two patterns.
+
+**THE CORPUS IS 91 TRANSCRIPTS, NOT THE 90 THE ROW WAS FILED WITH** - one session
+was created after filing. **And the trap worth carrying forward: it had to be
+FROZEN to a scratchpad copy first.** The live directory contains the RUNNING
+session's own growing transcript, so a before/after comparison over it compares
+two different corpora and the "after" side is inflated by text the "before" run
+never saw. Every future measurement over this corpus hits that.
+
+**Measured, not argued: baseline 26 findings over 15 transcripts -> 34 over 21.
+8 NEW, 0 LOST**, and merged `main` replays IDENTICAL to the adjudicated state.
+**An INDEPENDENT adjudicator classified all 8 against their transcripts and found
+ZERO clean false positives - that is the ADJUDICATOR'S classification, not my own
+re-derivation.** I did not re-adjudicate all 8 by hand. **The one I DID
+corroborate myself**, by grepping the frozen transcript `db9fa5f4`: a claim of
+`17 passed / 205 errors of 221 collected` was re-measured by a LATER session in
+the same corpus as `18 passed` with `222 collected` - a wrong count that shipped
+unchallenged precisely because this hole hid it.
+
+**Seven of the eight are direct apostrophe pairing. The EIGHTH is the subtler
+half of the same defect** - an apostrophe span swallowed the OPENING double quote
+of a phrase, the orphaned closing quote paired with a later one, and 988 chars
+were deleted. The adjudicator required a test for exactly that interaction and it
+is MUTATION-CHECKED (empty findings list under the old pattern). The anchor test
+`test_the_real_transcript_that_produced_nine_false_positives_is_clean` is
+NON-VACUOUS: 2 of the 9 assistant blocks in its fixture strip differently under
+the new pattern. Regex is linear, re-timed independently to 160k chars.
+`tests/test_stop_claim_gate.py` gains 9 tests in an RM-397 section, file total
+**81 passed** observed on `main` after the merge.
+
+**THE DIRECTION WAS THE RISK AND IT HELD.** Every prior repair to this file
+(LEDGER 1154 / 1156 / 1175 / 1178) NARROWED the gate to kill a false positive;
+this one WIDENS what it examines. The 1175/1178 precedent does NOT transfer, by
+its own stated justification: those were right because the cheapest way to
+satisfy the gate was behaviour the repo wants, whereas here the cheapest remedy
+is to run the probe yourself, which is the standing rule anyway.
+
+**THE COST, stated plainly rather than sold as "more findings": 6 of the 91
+sessions go from quiet to Stop-BLOCKING, one block each**, bounded by the
+re-entry guard.
+
+**Filed rather than bundled: RM-398.** `count_mismatch` cannot distinguish a
+count asserted as SUCCESS from one asserted as a RED or mutation state, and 3 of
+the 8 new findings are that shape. NOT fixed here on purpose: a `"mutation:"` or
+`"red state:"` suppressor is an evasion prefix available to the party the
+instrument polices and would reopen the hole RM-397 just closed. Any acceptable
+design must derive RED-ness from evidence the session cannot author at will. The
+row also carries the genuine pre-existing formatting false positive already in
+the corpus - `10 856 passed` parsed as claimed `856` - a clean parser narrowing
+with no evasion surface, independent of the RED-state question.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial, and
+SUBAGENT-FIRST TO KEEP THE MAIN WINDOW CLEAR. ONE row per cycle, gate BEFORE the
+irreversible act, commit, push, LEDGER entry. ARMING is never adjudicated - if a
+row needs it, PING THE OPERATOR.
+
+**Expect the gate to be louder, and that is the change working, not a
+regression.** 6 sessions in the corpus now block where they were quiet. Do NOT
+respond to a new `count_mismatch` by narrowing the gate - RM-396 is REFUTED and
+RM-398 pre-refutes the prose-marker version. Run the probe.
+
+**Also open, not adjudicated, carried from the previous block:**
+`tests/test_inbox_responder_runner.py` carries two defects in one module -
+`:214` asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the
+arms were skipped" from "the runner is broken"; and `_live_surfaces_unchanged` is
+non-hermetic against a LIVE RC appending to `ops/runtime` mid-suite, measured
+three times on 2026-09-09 and absent on two other runs, so it is window-dependent
+by construction.
+
+**Housekeeping still NOT done:** `MEMORY.md` is over the hook's preferred size.
+It is not a free edit - the file's own footer requires re-deriving reachability
+over every non-exempt memory against `MEMORY.md` plus every `INDEX_*` before a
+consolidation may be called safe. Its own row, not a tidy-up.
+
+**Check `moon_sync_inbox/` at session start** for RSC's answer to the three
+questions RC asked at the 2026-09-09h wrap.
 
 ---
 
@@ -221,89 +322,3 @@ items, neither adjudicated into a row:
    is off PATH). And `_live_surfaces_unchanged` is non-hermetic against a LIVE RC
    appending to `ops/runtime` mid-suite - measured three times on 2026-09-09,
    absent on a fourth run, so it is window-dependent by construction.
-
----
-
-# 2026-09-09f - ADR-015 written: the record _repo_walk never had, and the reason a ledger row alone would not have worked
-
-Fourth row of the same headless day, operator AWAY. Docs-only, Tier-0: no code,
-no test, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1377.
-
-**The code was never the gap.** `tests/_repo_walk.py` shipped 2026-09-07 in
-`a0a23b57c` carrying a real decision - git index first, `EXCLUDED_DIRS` as
-backstop, `tracked_relpaths()` returning `None` never an empty set - with its own
-anti-vacuity guard and four consumers, and NO ledger row, NO ADR, NO `CLAUDE.md`
-line. Two days later RM-394 proposed re-deciding the universe from scratch
-because nobody could find the decision that had already been made.
-
-**A ledger row alone would not have fixed that, so this is three places.**
-`docs/adr/ADR-015-shared-repo-enumeration.md` plus an index row and a Test guards
-line in the reading order (the ADR index is what `CLAUDE.md` declares as "before
-re-litigating a past choice, check here first"), and ONE rule line in the
-`CLAUDE.md` Testing Discipline section - because the moment discoverability has
-to work is the moment somebody is WRITING a new root-walking guard, and that is
-the file auto-loaded then. The ledger is append-only history 1377 entries deep,
-findable only by someone who already knows what to grep for: exactly the reader
-RM-394 proved does not exist.
-
-**The ADR records the trade-off, not a sales pitch.** Untracked new `.py` is
-invisible until staged (and staged is what the hook and CI see). Alternatives
-named with why they lose. And the failure mode the decision CREATES is in Watch
-for: converting an empty-set-safe assertion can turn a machine-local RED into a
-silent always-GREEN, measured at 56 passed during RM-394.
-
-**RM-395 filed for the two holdouts - and the gate made it a better row than I
-wrote.** I filed one of them as safe; BOTH are green by luck.
-`tests/test_dead_endpoint_cleanup_item186.py:199` walks **9112 `.py`, 4772 (52
-percent) inside the gitignored export copies**, its two filters removing ZERO
-files today. My "green because the symbols are absent there" was REFUTED - they
-are PRESENT, in each export tree's copy of that guard file, which its path-exact
-self-exemption misses. It is green because no line there carries both `import`
-and a deleted symbol: one line-shape from a phantom. And the hazard is TIME - an
-export is a snapshot of an OLDER repo. `tests/test_laning_verdict_flip_retired.py:85`
-I called safe-by-accident on `ops`; also refuted as understated - it does not
-skip `python-embed` and walks **2082 files, 1685 (81 percent) vendored
-`python-embed`**. Bound corrected too: a stronger AST resolver finds **2** root
-walkers against **39** subdirectory walks; my "11 files, 9 subdirectory" was a
-receiver-name-heuristic artifact. Two is the whole set, both passes.
-
-**A guard caught my id allocation, same lesson one size down.** I checked RM-395
-was free with `grep -c RM-395` over BACKLOG / ROADMAP / LEDGER, got 0, called it
-free. `tests/test_rm_id_registry_drift.py` went RED: `docs/DS_SWEEP_TRACKER.md:72`
-already PINNED RM-395 as next-free. A grep finding no ROW body is not a claim
-about the registry. The pin was advanced with the allocation recorded beside it
-in the same commit. **Take an RM id from that registry, never from a grep** - and
-do NOT recite the advanced figure in prose elsewhere: writing it into the LEDGER
-entry made the same guard red a second time, because the classifier reads a bare
-id as an ALLOCATION unless a "next free" cue precedes it. ROADMAP's eleven
-next-free pointers were left alone - NOT because they defer to the tracker (only
-three of the eleven do; the gate refuted that reason) but because RM-316 already
-owns them.
-
-**Do NOT redo.** Do not convert those two here - RM-395 owns them, and both are
-`assert not offenders` shapes that MUST be anchored before conversion. Do not
-turn a grep for `rglob` into a repo-wide rewrite: 11 AST hits, 9 of them
-SUBDIRECTORY walks that need nothing. Two is the whole set.
-
-## NEXT SESSION - HEADLESS, operator away
-
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
-row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
-The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
-operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
-never adjudicated - if a row needs it, say so and move on.
-
-**The next row is RM-395** - small, bounded, fully measured above, and the ONLY
-thing it needs that is not already written down is the anchor decision: for each
-of the two guards, state whether an EMPTY enumeration would PASS its assertion
-before you convert it, and add the anchor where it would. Read ADR-015 first.
-
-**Also open, neither adjudicated into a row:** `tools/stop_claim_gate.py:38`
-(`CLAIM_COUNT` has no counterfactual or citation suppression, unlike `CLAIM_FILE`
-at `:47-83`, so quoting a figure IN ORDER TO REFUTE IT re-fires every turn - read
-the hazard its own comments name at `:74-77` first - **SUPERSEDED 2026-09-09h:
-became RM-396, REFUTED, and that `:74-77` cite is FALSE**); and
-`tests/test_inbox_responder_runner.py:214`, whose `_TMP_LOGS` positive control
-cannot tell "the arms were skipped" from "the runner is broken", in a module
-measured today to be non-hermetic against a LIVE RC writing `ops/runtime`
-mid-suite.
