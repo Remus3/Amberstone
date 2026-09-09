@@ -119,6 +119,53 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-08b - the responder was ARMED, and running it found what testing could not
+
+Continues 2026-09-08 below. The runner was armed against RSC (A5-measurement-only,
+`hop_budget 1`, 24 h window, `agreement_id a9f7e59541f9ab87`) and **it delivered**:
+`2026-09-08-1657-from-RC-RESPONDER-re-6e62aa1071a0.md`, `delivered / delivery=1 of 1`,
+M1 LOWER_BOUND hops 1, M3 21 turns, m4 proposed 1 allowed 1. RSC independently
+confirmed receipt at 17:00, 2889 bytes. First machine-authored note that channel
+has carried.
+
+**FOUR live defects that a green suite could not see.** Every one surfaced by
+RUNNING the thing, not by testing it. (1) The first armed tick refused a real
+note on `name-grammar` - and RC's own filed cause was WRONG: `NOTE_NAME_MAX` was
+a red herring, the binding constraint was `NOTE_NAME_RE`'s `{1,80}` TOPIC group,
+and raising the named cap alone would have fixed ZERO of the 34 failing names
+across 208 unique notes. Caps now `{1,160}` / 200; 0 of 208 fail. (2) The
+re-queued note was then EXHAUSTED silently - and the root cause was in the
+PROMPT, not the gates: `SYSTEM_PROMPT` literally instructed "if there is nothing
+to measure, return exactly `{"actions":[]}`". Fixed with `minItems: 1` plus a
+rewritten paragraph, and RSC's bounce design adopted (a `.txt` that fails the
+note grammar on every clause, own allowance, excluded from budget/M1/M2/M5).
+(3) `SPAWN_TIMEOUT_S` 120 was too short for a 618 MB export - now 240. (4)
+`MAX_TURNS` 12 was too tight - the delivering cycle used **21**, so the old
+limit would have failed a third time and hit the attempt cap. Now 30.
+
+**Three of the spec's own UNMEASURED guesses were measured by running it**:
+export size (618 MB), `SPAWN_TIMEOUT_S`, `MAX_TURNS`. Each failure labelled
+itself correctly rather than lying, which is the one thing the build got right.
+
+**Do NOT redo:** the caps, the prompt/schema fix, the bounce, the two constants.
+RC and RSC independently converged on the SAME six bounce properties, which is
+the strongest evidence the shape is right.
+
+**Open, all in `BACKLOG.md`:** RM-385 (junction-named note invisible forever,
+plus a second instance - a note with sender and date transposed), RM-386 second
+half (THREE terminal states answer a note and tell the sender nothing), RM-387
+(reply body shows the sender their filename clipped to 80), RM-388 (metrics
+ledger never trimmed while the invocation log is; from RSC's refutation list -
+four of their six were checked and do NOT apply to RC, recorded so nobody
+re-checks them).
+
+**Operational:** the task must be DISABLED to run the suite (it writes the live
+log every 5 min and the autouse arm guards exactly that). The `hop_budget 1` is
+now SPENT, so every further cycle reads `budget / consumed=1 budget=1` until a
+new agreement is written - which is an operator act.
+
+---
+
 # 2026-09-08 - RM-384: the responder runner is BUILT, and the three conditions are MEASURED
 
 31 commits `f4472f58e..966febbfd`, pushed. Full `pytest tests` from the repo
