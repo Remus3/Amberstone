@@ -1,71 +1,38 @@
-NEXT SESSION - THE RESPONDER IS ARMED, IT DELIVERED ONCE, AND ITS BUDGET IS SPENT
----------------------------------------------------------------------------------
-RM-384 SHIPPED and the runner has now RUN against a live counterparty. Read
-`docs/LEDGER.md` 1365 first, then the "Build measurements" section of
-`docs/RESPONDER_RUNNER_SPEC.md`. Between them they carry every measurement and
-every spec item that turned out wrong. Do not rebuild any of it.
-
-STATE ON THE MACHINE
-  RC-InboxResponder is registered, Enabled, Ready, 5-minute tick, ETL 10 min.
-  ARMED: `ops/runtime/inbox_responder_agreement.json` names RSC,
-  A5-measurement-only, hop_budget 1, window to 2026-09-09T14:57:52, expires
-  2026-09-10T14:57:52, agreement_id a9f7e59541f9ab87.
-  THE BUDGET IS SPENT. One delivery happened, so every further cycle reads
-  `budget / consumed=1 budget=1`. RC will not auto-answer again under this
-  agreement. Writing a new one is an OPERATOR act - do not write it unasked.
-  STOP flag is NOT raised. The answered record holds 106 seeded notes plus the
-  ones since.
-  THE TASK MUST BE DISABLED TO RUN THE SUITE: it writes the live responder log
-  every 5 minutes and the autouse arm guards exactly that surface.
-  `Disable-ScheduledTask -TaskName RC-InboxResponder`, run, `Enable-` after.
-
-WHAT HAPPENED, SO IT IS NOT RE-DISCOVERED
-  It delivered `2026-09-08-1657-from-RC-RESPONDER-re-6e62aa1071a0.md`
-  (`delivered / delivery=1 of 1`, M1 LOWER_BOUND hops 1, M3 21 turns). RSC
-  independently confirmed receipt. Getting there took four fixes, all found by
-  RUNNING it and none catchable by the suite: the note-name TOPIC cap (not the
-  length cap - RC's first diagnosis was wrong), an empty-proposal case whose
-  root cause was the PROMPT instructing `{"actions":[]}`, SPAWN_TIMEOUT_S
-  120 -> 240, and MAX_TURNS 12 -> 30 (the delivering cycle used 21).
-
-OPEN, IN PRIORITY ORDER - all bodies in `BACKLOG.md` "Reliability / hardening"
-1. RM-386 SECOND HALF. THREE terminal states answer a note and tell the sender
-   NOTHING: `refused` at input, `exhausted`, and the RM-385 class. The bounce
-   now covers the first two, but the DECISION on whether a refusal should stop
-   marking the note answered is still open, and RSC measured the cost of the
-   alternative (a note that can never pass re-refuses forever).
-2. RM-388. `responder_metrics.jsonl` is never trimmed while
-   `responder_invocations.jsonl` is. Do NOT just add `_trim` - that file is the
-   M1/M2/M3 evidence base and `trial_rows` reads it. Decide between a large
-   keep, rotation, or an explicit archive. Companion audit in the same row: 8
-   unguarded `mkdir(parents=True, exist_ok=True)` sites, none probed for the
-   WinError 183 shape RSC hit.
-3. RM-385. A junction-NAMED note is invisible forever; so is a note with its
-   sender and date transposed (a real one sits in RC's inbox now). Pinned by
-   the one remaining strict-xfail. The `inbox_responder.py` fence expired with
-   the RM-384 build.
-4. RM-387. The reply body shows the sender their own filename clipped to 80
-   chars. Do not widen `ROW_NOTE_RE` by reflex - it is a published row
-   interface and carries a mutant needle.
-
-INBOX
-  Two RSC notes are read and marked seen: the six-refutation list (1705) and
-  the split-case note (1640, NOT yet read in full - read it). Four of RSC's six
-  refutations were CHECKED and do not apply to RC; that is recorded in RM-388's
-  body so nobody re-checks them. RC owes RSC nothing right now - the last word
-  was RC's machine-authored reply plus their receipt confirmation.
-
-DO NOT REDO
-  The caps, the prompt/schema fix, the bounce design, SPAWN_TIMEOUT_S,
-  MAX_TURNS, the seeded answered record, the gen_archmap SKIP_DIRS fix. The
-  DECIDED forks in the spec. The 26-gate census and the 68 mutants.
-
-THE LESSON MOST WORTH CARRYING
-  A green suite measured internal correctness perfectly and could not see that
-  the responder said nothing to its counterparty. The 26-gate census, 68
-  mutants and a PASS 12 FAIL 0 dry cycle were all green while the SYSTEM_PROMPT
-  instructed the model to return an empty proposal. Test the sender-visible
-  outcome, not the termination string.
-
+NEXT SESSION
+------------
+Task: RM-387 (body in BACKLOG.md "Reliability / hardening") - the reply body
+      shows the sender their own filename clipped to 80 chars, because
+      `result.note` is the `safe_name` projection that satisfies `ROW_NOTE_RE`
+      and `assemble_body(note_filename=result.note)` reuses it. Alternative if
+      you want the smaller one: RM-388 (responder_metrics.jsonl is never
+      trimmed while its sibling invocation log is).
+Context: tools/inbox_responder_runner.py (ROW_NOTE_RE, safe_name, the
+      `result.note` assignment near the note-shape gate, assemble_body's call
+      site); docs/RESPONDER_RUNNER_SPEC.md sections 2 and 8 plus the three
+      "Build measurements" sections; docs/LEDGER.md 1365/1366/1367. Probe live
+      state with `curl -k https://127.0.0.1:8888/api/state` and
+      ops/runtime/health.json. Read RC's moon_sync_inbox - two RSC notes are
+      pending and unanswered (2026-09-08 1640 and 1705).
+Acceptance: per the item. For RM-387 specifically: do NOT widen ROW_NOTE_RE by
+      reflex - it is a published row interface RSC may parse and it carries a
+      mutant needle. Measure the row-consumer side first, then decide whether
+      the row and the body should share one projection at all. Whatever you
+      change, assert the SENDER-VISIBLE string in the delivered body, not the
+      internal field.
+Do NOT redo: RM-386 second half (the hold record, `notes_held`, the two
+      fail-closed directions, the `notes-held` / `held-record-unreadable`
+      vocabulary) and RM-385 (pending_notes admits by name and record;
+      `note-shape:not-a-file`; the junction arm is passing and is the last
+      xfail in the suite). Both are verifier-confirmed and pushed. Also do not
+      re-add the GitHub community files or re-check the README links - both
+      shipped this session, community health is 100 percent, and private
+      vulnerability reporting is now ENABLED on the repository.
+Live state: RC-InboxResponder is ARMED (task Ready, 5-minute tick) but the
+      agreement's hop_budget 1 is SPENT, so every cycle reads `budget`. A new
+      agreement is an OPERATOR act. DISABLE the task before running the suite -
+      it writes the live log every 5 minutes and the autouse arm guards that.
+      One operator call is still open: ops/runtime/inbox_responder_answered.json
+      carries one false entry (the 1456 note, e83297be2bf9, never replied to);
+      the command to remove it and the reason not to are in docs/LEDGER.md 1366.
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-git log, then read RC's inbox before writing anything.
+      git log.
