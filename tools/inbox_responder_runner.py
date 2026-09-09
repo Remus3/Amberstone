@@ -464,15 +464,22 @@ def note_shape_ok(path, name: str, *, sink: Optional[list] = None) -> list:
         problems.append("note-shape:linked")
     elif os.name == "nt" and getattr(lst, "st_file_attributes", 0) & 0x400:
         problems.append("note-shape:linked")
-    elif lst.st_nlink != 1:
-        problems.append("note-shape:linked")
     elif not stat.S_ISREG(lst.st_mode):
         # RM-385: reachable since `pending_notes` stopped dropping non-files
-        # silently. Ordered AFTER the reparse branches so a junction keeps its
-        # own detail - a plain directory is not linked to anything, and
-        # `linked` would be the reassuring wrong label this channel keeps
-        # filing. The open below would refuse it too, but as `linked`.
+        # silently. A plain directory is not linked to anything, and `linked`
+        # would be the reassuring wrong label this channel keeps filing.
+        #
+        # ORDERING, and it is platform-load-bearing - MEASURED on CI 2026-09-08
+        # after this branch shipped one line lower and went red on Linux only:
+        # a directory's `st_nlink` is 2 on POSIX (itself plus `.`) and 1 on
+        # Windows, so the `st_nlink != 1` check below claimed every directory
+        # as `linked` on the runner while Windows fell through to here. It must
+        # sit AFTER the two reparse branches, so a junction keeps its own
+        # detail, and BEFORE the nlink branch, which is about hard links to a
+        # FILE and has no meaning for a directory.
         problems.append("note-shape:not-a-file")
+    elif lst.st_nlink != 1:
+        problems.append("note-shape:linked")
     if lst.st_size > NOTE_MAX_BYTES:
         problems.append("note-oversize")
     if problems:
