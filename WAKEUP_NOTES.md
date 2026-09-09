@@ -2,7 +2,127 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-08, RM-387 pass (relocated `2026-09-08b` "the responder was ARMED"; newest 3 = RM-387 `2026-09-08e` + RM-385 `2026-09-08d` + RM-386 second half `2026-09-08c`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-392/RM-393 filing pass (relocated `2026-09-08f` "the ledger rotates"; newest 3 = RM-392/RM-393 `2026-09-09b` + RM-390/RM-391 `2026-09-09` + RM-389 `2026-09-08g`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09b - RM-392, RM-393 and RM-394 FILED: every inherited number was wrong, and so was the premise
+
+Single-row headless session, operator AWAY. The row was FILED-BUT-ROWLESS and
+filing it WAS the act. Docs-only, Tier-0: no code, no test, no `ENGINE_VERSION`
+bump, no DS bounce, nothing delivered outward. Full account in LEDGER 1373.
+
+**The row.** RC's suite carries external-binary call sites that ERROR on tool
+absence instead of skipping. RC has a 2116-line guard against the MIRROR defect
+(`tests/test_skip_condition_hygiene.py`) that is structurally blind to this one -
+it audits skip CONDITIONS, and an ungated spawn has no skip to inspect.
+
+**Every inherited number was wrong.** The prior session filed 115 call sites over
+the 940 top-level `tests/*.py`. Re-derived from scratch, because the
+classification was never persisted: 148 over 147 distinct lines, then a hostile
+pass found it ONE SHORT (`tests/test_overlay_callouts_ui_audit.py:394-395`, a
+real Chromium launch two independent AST passes both missed, correctly gated
+anyway) - 149. The two passes reconciled SITE BY SITE, not by totals: two
+`shutil.which` calls on one line at `tests/test_subagent_prompt_flag.py:76`, and
+an aliased `_shutil.which` at `tests/test_inbox_responder_runner.py:2966`.
+Separately 120 spawn sites across the four guarded trees, 31 of them
+`sys.executable` - that pair derived twice, identical. The headline was off by
+one in two places; measured here, git off PATH gives 222 collected, 18 passed,
+205 error entries over 204 unique ids.
+
+**Enumeration trap worth keeping:** git pathspec `*` crosses `/`, so
+`git ls-files 'tests/*.py'` returns 1068, not 940. Depth-filter or be wrong.
+
+**The inbound PATH warning does not reach RC, refuted twice.** No RC git hook
+runs pytest (all six `.githooks` bodies read; `pre-push` is git-lfs only), and a
+live probe shows the hook PATH differs by ONE prepended entry with all eight
+probed tools still RESOLVING - only `git` RELOCATES, and a false-RED site needs
+ABSENCE. **And the premise was wrong too:** `check=True` is not the
+discriminator, since many ungated sites omit it and error identically.
+
+**THE ONE RULE, paid for a third time.** Adjudication ran twice. Pass one
+rejected the do-nothing option on a "live false-GREEN passing vacuously today";
+the shape is real (and pass one found a site the census missed) but the "today"
+half is false. My correction of THAT called the trigger set "wider" than tool
+absence - it is DISJOINT, because absence raises `FileNotFoundError` before
+`.stdout` exists. Three corrections deep, and each one needed the next.
+
+**Do NOT redo.** The census (149 / 120 / 31 / 204-of-222) is measured and in the
+rows. Do not re-derive the RM-392 totals; do not re-open whether the pre-push
+PATH finding applies here; do not build a conftest fixture that converts absence
+errors to skips - it was REJECTED on measurement, it moves the whole population
+out of a STATIC auditor's reach, and `ci.yml:110-113` already records RC losing a
+nightly to that pattern. Do not write a predicate keyed on `check=True`.
+
+**Marked NOT-re-derived in the row itself, so nobody quotes them as measured:**
+the bucket split over the 149, the truly-ungated-of-89 figure with its
+false-positive rate, and the guard cost estimate.
+
+**An INHERITED red the wrap ritual found, now RM-394.** The local docs-guard
+suite returned 1 failed / 1752 passed / 1 skipped:
+`tests/test_frozen_file_list_contract.py::test_frozen_arch_headers_are_a_subset_of_the_authority`
+reports 24 orphan `frozen=yes` headers, ALL under
+`ops/runtime/responder_export/<sha>/` - gitignored (`.gitignore:178`), 0 tracked
+files, export trees dated 2026-09-08 so older than this session. `:171-185`
+walks the DISK, so it is red on Legion and green on every CI runner. Do NOT
+"fix" it by adding one more name to the `HEADER_SCAN_SKIP_DIRS` hand-list at
+`:56-64`; the row states the two real options.
+
+**The gate returned FAIL and all five findings were real.** In order: a future
+act ("re-enabled at wrap") written in the past tense in the record itself; "CI
+provisions git and chromium explicitly" when only chromium is explicit and git
+arrives via `actions/checkout`; an "8 across 3 files" census that counted a
+`check=True` call as unchecked (truth: 7 across 2); "55 of the 62" when 55
+MENTION the fixture and one of them defines it (truth: 54 request it); and two
+citation ranges off by a line at each end. All five were fixed in the working
+tree BEFORE the commit. **That is the entire argument for where the gate goes.**
+
+**A SECOND gate over the FIXES also returned FAIL, and the finding is sharper
+than the first.** All five fixes held under independent re-derivation, including
+a hunt for a helper-mediated eighth unchecked spawn that a naive AST pass cannot
+see (three candidates, all correctly excluded - their callers assert on
+`.returncode`). Both new defects were in RM-394, the row added AFTER gate 1, and
+both were the SAME citation-range class gate 1 had just failed. **A row added
+after a gate inherits none of its coverage and will repeat the defect the gate
+just taught.** Gate whatever you add, however late and however small.
+
+**Two instrument defects filed as notes, deliberately NOT fixed here.**
+`tools/stop_claim_gate.py:38` `CLAIM_COUNT` has no counterfactual or citation
+suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so quoting a figure
+IN ORDER TO REFUTE IT is unsuppressable and re-fires every turn for the rest of
+the session. Patching the instrument that audits your own claims, in the same
+session, to stop it flagging your own claim, is the hazard its own comments name
+at `:74-77`. And three agents sharing one scratchpad collided on a common
+filename; two intermediates were written inside that window and never
+regenerated, so nothing sourced from them is quoted anywhere.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**The next row is RM-392's adopted scope, and it is deliberately ONE SITE:** put
+a `shutil.which` capability gate on `tests/test_inbox_responder_runner.py:462,465`
+(the session-scoped `git_repo` fixture at `:453`). `shutil.which` is the ONLY
+repair shape that passes both the new intent and the existing false-GREEN guard -
+measured: `try/except FileNotFoundError -> skip`, `try/except OSError -> skip`
+and probe-the-returncode -> skip ALL score UNRESOLVED against `scan_source`
+(`tests/test_skip_condition_hygiene.py:1285`), and `:1539-1551` fails on anything
+that is not CAPABILITY. Verify the repair by re-running the git-off-PATH
+reproduction and asserting the 204 errors become 204 skips.
+
+RM-393 is the follow-on after it: inspect the return code in `_status`
+(`tests/test_lane_worktree_eol_rm343.py:92-94`) and `_content_diff` (`:97-100`).
+Do not widen it into a general unchecked-`stdout` sweep - the 3-file census that
+bounds it is in the row.
+
+Start with `/clear`, bootstrap from CLAUDE.md + MEMORY.md + this file + `git
+log`, then `python tools/perseus_recall.py "<the row in your own words>"` BEFORE
+touching anything. Disable `RC-InboxResponder` before any suite run and re-enable
+it at wrap. Never `pytest .`.
 
 ---
 
@@ -153,95 +273,3 @@ unmeasured:** RSC's finding that a pre-push hook runs with a PATH that is not
 the shell's (git puts `mingw64/libexec/git-core` on it), which puts the 39
 FALSE-RED classification in doubt in exactly the environment that gates every
 push.
-
----
-
-# 2026-09-08f - RM-388: the ledger rotates, and "which agreement is live" took three answers
-
-Single-row session, straight after RM-387. Tier-1, no `ENGINE_VERSION` bump,
-no DS bounce, no Share sync, no frozen file. Task DISABLED before the first
-edit, re-enabled at wrap. Commit `470d3158a`, pushed; CI `check: success` and
-`docs-guards: success` on that sha (`nightly-full-suite` skipped, as every
-push run skips it - the run conclusion alone would not have said so). LEDGER
-1369 (which calls this session `2026-09-08e`; the letter series are PER FILE
-and have diverged - see the header note).
-
-**The fix.** `responder_metrics.jsonl` grew forever while its sibling
-invocation log was trimmed. A `_trim` here was the wrong answer and the filed
-row said so: that file is where M1-M5 live and `trial_rows` quotes it into an
-arming note. Rows now MOVE to `responder_metrics.<stamp>.jsonl` and none is
-discarded; the trigger is BYTES via one `stat`; the carry is the last 200 rows
-plus every row of the live agreement.
-
-**THREE VERIFIER PASSES, THE FIRST TWO REFUTED IT, and both refutations were
-the same question with different answers.** "Which agreement is live" is the
-whole item. (1) `result.agreement_id` is set at GATE 2, so a stop-flag tick, a
-malformed record and a prelude failure all reach `_finish` with None while an
-agreement is live - measured `trial_rows` 30 -> 0. (2) A passed-in `root` then
-failed through the DRY path, where the cycle runs against a scratch root while
-its rows go to the LIVE ledger - measured 30 -> 0 again, and my docstring had
-the rationale backwards. (3) Shipped: `_rotate_metrics(path)` reads the
-agreement record BESIDE the ledger it is rotating. Nothing is passed in, so
-nothing can be passed in wrong. Memory:
-`feedback_which_instance_is_live_is_its_own_question`.
-
-**Do NOT** add `_trim` to the ledger, and **do NOT** add a parameter telling
-the rotator which agreement is live - that exact parameter was refuted twice.
-
-**Companion audit (RSC refutation 3).** The `mkdir(parents=True)` /
-`WinError 183` shape reproduces on RC; nine sites; exactly one had their
-partial-write-then-crash half - `main`'s prelude handler. The two writes are
-independent now, and when NEITHER lands the OSError still escapes, so exit 2
-never claims a failure was recorded when nothing was. The rest write nothing
-before they can raise and are RECORDED, not changed.
-
-**Two process notes.** A procedure-A mutant needle broke twice mid-item
-because it quotes runner source text at a call site this work moved. And
-verifier pass 3 reported `RC-InboxResponder` as "not registered at all" -
-FALSE; re-probing found it registered and Disabled. A subagent's claim about
-MACHINE state deserves the same distrust as its claim about a test count.
-
-**Suite:** runner + mutants 298 passed / 1 skipped (+11 arms), the eight
-sibling responder files 295 passed, ruff clean, 0 non-ASCII in four files.
-
-## NEXT SESSION - HEADLESS, and every sibling has the same directive
-
-Operator, 2026-09-08: all five repos were told to continue the responder work
-and propagate it, and RSC immediately asked for consensus BEFORE anyone builds
-(`moon_sync_inbox/2026-09-08-2155-from-RSC-consensus-requested-...`, five
-questions, one to RC by name, and it states that SILENCE READS AS DISSENT).
-**The operator then narrowed it: `CS`, `LW` and `LL` are on STANDBY** ("i will
-keep it to the test for now"), so the exchange is **RC <-> RSC ONLY** and
-nothing is written into the other three trees. **The operator is AWAY and both
-sessions run headless:** a decision that would normally be escalated goes to
-an ADJUDICATOR agent - a distinct agent choosing between the stated positions
-against stated criteria, never the agent that authored one of them - and the
-decision plus its criteria are recorded in the ledger entry. The one act that
-does NOT get adjudicated is ARMING: writing an agreement record commits RC to
-a counterparty under a budget, and nothing in this queue needs it (RSC has
-said it will not build a runner or arm either), so if a row ever seems to
-require it, that row is out of scope until the operator returns.
-
-Rows, in order: **RM-389** (answer the consensus note and propagate - ONE note
-to RSC, measured claims only, no request for a reply),
-**RM-390** (`trial_rows` sees only the live ledger now that rotation exists -
-settle whether the quotable set spans archives, and write it into the spec),
-**RM-391** (the per-note records, filed WITH their measurement: they grow per
-NOTE, not per tick, and `deliveries.jsonl` is the budget governor and must
-never be trimmed).
-
-Concurrency, because RSC runs headless on this same box at the same time:
-read `docs/CONCURRENT_HEADLESS_CONTRACT.md` first; do NOT re-pin
-`SHARED_SHA256` (`tests/test_loop_concurrency.py:474`) unilaterally, since
-both trees hashing equal IS the acceptance and a sibling's file is taken with
-a BYTE-level copy, never `write_text`; and keep suite parallelism modest,
-because parallel full-suite slices have OOM'd this box and it presents as an
-API error.
-
-Still open and unchanged: the responder is DISARMED and `hop_budget 1` is
-SPENT, so a new agreement is an OPERATOR act and every outbound note is
-hand-delivered rather than a trial hop. The one false entry in
-`inbox_responder_answered.json` still stands per LEDGER 1366.
-
-_Sessions 2026-09-08e, 2026-09-08d and 2026-09-08c relocated verbatim to
-`docs/history_notes.md` on 2026-09-09 (relocate-only, nothing dropped)._
