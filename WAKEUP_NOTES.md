@@ -2,7 +2,109 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-395 shipping pass (relocated `2026-09-09d` RM-393 shipped; newest 3 = RM-395 shipped `2026-09-09g` + ADR-015 `2026-09-09f` + RM-394 shipped `2026-09-09e`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-396/RM-397 pass (relocated `2026-09-09e` RM-394 shipped; newest 3 = RM-396 refuted / RM-397 filed `2026-09-09h` + RM-395 shipped `2026-09-09g` + ADR-015 `2026-09-09f`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09h - RM-396 REFUTED, RM-397 FILED: the row was to patch the instrument that audits me, and the answer was DO NOTHING
+
+Sixth row of the same headless day, operator AWAY. Docs + memory only, Tier-0:
+no code, no test, no `ENGINE_VERSION` bump, no DS bounce, nothing outward.
+LEDGER 1379.
+
+**The conflict of interest was the first fact, not an afterthought.**
+`tools/stop_claim_gate.py` audits this session's own claims, and the standing
+memory names the hazard of the audited party patching it. **Cite correction a
+gate caught: that hazard is NOT a comment in the file.** Searching it for that
+language returns ZERO matches, and `:74-77` is the `CLAIM_CITATION` note about
+not chilling precedent-citation. The false cite lived in the memory and this row
+repeated it into three artifacts while rewriting that same memory. So the
+decision went
+to an INDEPENDENT adjudicator with the conflict disclosed, told to say DO NOTHING
+if that was honest, and handed the acceptance test that could kill the proposal -
+this session's own `41 passed` flag, which fired CORRECTLY when I quoted a
+subagent's count without probing it.
+
+**It returned DO NOTHING. Four measured grounds, none of them rhetorical.**
+(1) The cure already exists and is one backtick pair wide: `strip_prose_noise`
+already deletes fenced, inline-code and quoted spans for EVERY check - probed
+here, bare prose flags, backticked and quoted forms do not. (2) No discriminator
+survives the corpus - THE ADJUDICATOR'S SCORING, not re-derived by me: against 19
+real `count_mismatch` findings over the 90 transcripts, a negation rule launders
+`"not a cascade: 1 failed / 29496 passed"`,
+a priorness rule launders three genuine unbacked counts, and their conjunction
+fires on nothing. (3) No veto exists for numbers the way `CLAIM_FIRST_PERSON_DID`
+vetoes the file suppressors, so any count suppressor is a one-phrase evasion by
+the party writing the sentence. (4) The 1175/1178 precedent does not transfer -
+there the cheap cure was to stop citing precedent, which the repo wants; here it
+is to mark a quotation as a quotation.
+
+**The asymmetry, narrower than I first wrote it.** `count_mismatch` has an honest
+in-session cure when the claim is TRUE - today's `41 passed` flag cleared the
+moment I ran the guard myself - but it is NOT the only check with one; four
+others (`ran_pytest`, `probed_ci`, `did_commit`, `did_push`) clear the same way.
+**And the cure is PROSPECTIVE ONLY:** a bare-prose refuted figure can never
+clear, because a number you are refuting never enters `observed_counts`. That is
+the motivating case exactly. The refutation stands on grounds (2) and (3), which
+do not depend on a cure existing at all.
+
+**RM-397 is the real defect, and it points the other way.** `_QUOTED` (`:184`) is
+`'[^']*'` with `re.S`, so two ordinary prose APOSTROPHES pair as delimiters and
+the span between them is deleted before any check. My own probe:
+`"The runner's log says 9999 passed, and the session's report agrees."` strips to
+`"The runner s report agrees."` and the count vanishes. **My first blast-radius
+figure was WRONG BY 2.3x, in the direction that flattered the finding, and a gate
+caught it:** I counted every `type=="text"` block and got 1408 spans / 131
+claim-shaped / longest 5502, but `collect_evidence` (`:257`) takes text ONLY when
+`role == "assistant"`, so user-side text is never scanned. Re-derived with the
+split: **SCANNED 565 spans / 57 claim-shaped / longest claim-bearing 1658**;
+never-scanned 843 / 74 / 4441, and the 5502 headline carries no claim shape at
+all. The gate-relevant number is **57**. It disarms EIGHT checks over the span,
+not nine - `hook_bypass` (`:368`) runs in the bash loop and never sees
+`strip_prose_noise`.
+
+**Two more recorded rather than built:** `CLAIM_COUNT` mis-parses space-grouped
+digits (`"DS 10 856 passed"` yields `('10','856')`, reporting a `claimed` string
+that never appeared) - unscheduled parser narrowing. And the heredoc-invisible
+pytest trap is REAL AS A MECHANISM BUT MEASURED INERT - the adjudicator's figure,
+not mine: 49 such commands across the 90 transcripts, ZERO produced an `N passed`
+result. Closed so it is not re-pitched; re-derive before acting on it.
+
+**Do NOT redo.** Do not re-pitch `CLAIM_COUNT` suppression - RM-396 is REFUTED
+with the corpus scoring in the row. Do not build a retraction token or per-turn
+scope; both were rejected, the first as a self-serve silencer. Do not quote a
+refuted figure in bare prose - backtick it. And do NOT cite `:74-77` for the
+audited-party hazard; that cite is false and this row is where it was killed.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**The next row is RM-397**, fully measured above. **Its DIRECTION is the risk and
+that is the whole brief:** every prior repair to this gate (LEDGER 1154 / 1156 /
+1175 / 1178) NARROWED it to kill a false positive; this one WIDENS what it
+examines. Narrow `_QUOTED` so an apostrophe flanked by word characters cannot open
+a span, keep genuine single-quoted spans suppressed, anchor on the real-transcript
+corpus the file already uses, and MEASURE the change against all 90 transcripts
+for new false positives before arming. `feedback_mutation_probe_vs_naive_alternative`
+applies - derive the attack families from the mechanism, not from a naive foil.
+
+**Also open, not adjudicated:** `tests/test_inbox_responder_runner.py` carries two
+defects in one module - `:214` asserts `_TMP_LOGS` non-empty, a positive control
+that cannot tell "the arms were skipped" from "the runner is broken"; and
+`_live_surfaces_unchanged` is non-hermetic against a LIVE RC appending to
+`ops/runtime` mid-suite, measured three times on 2026-09-09 and absent on two
+other runs, so it is window-dependent by construction.
+
+**Housekeeping the harness asked for and this session did NOT do:** `MEMORY.md` is
+19.7 KB against a 24.4 KB read limit and the hook wants it under 17.1 KB. It is
+not a free edit - the file's own footer requires re-deriving reachability over
+every non-exempt memory against `MEMORY.md` plus every `INDEX_*` before a
+consolidation may be called safe. Treat it as its own row, not a tidy-up.
 
 ---
 
@@ -77,7 +179,9 @@ items, neither adjudicated into a row:
 1. **`tools/stop_claim_gate.py:38`** - `CLAIM_COUNT` has no counterfactual or
    citation suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so
    quoting a figure IN ORDER TO REFUTE IT re-fires every turn. Read the hazard
-   its own comments name at `:74-77` before touching it.
+   its own comments name at `:74-77` before touching it. **SUPERSEDED
+   2026-09-09h: this candidate became RM-396 and is REFUTED, and the `:74-77`
+   cite in this sentence is FALSE - no such comment exists in the file.**
 2. **`tests/test_inbox_responder_runner.py`** - two defects in one module. `:214`
    asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the arms
    were skipped" from "the runner is broken" (it is the 1 residual error when git
@@ -164,97 +268,9 @@ before you convert it, and add the anchor where it would. Read ADR-015 first.
 **Also open, neither adjudicated into a row:** `tools/stop_claim_gate.py:38`
 (`CLAIM_COUNT` has no counterfactual or citation suppression, unlike `CLAIM_FILE`
 at `:47-83`, so quoting a figure IN ORDER TO REFUTE IT re-fires every turn - read
-the hazard its own comments name at `:74-77` first); and
+the hazard its own comments name at `:74-77` first - **SUPERSEDED 2026-09-09h:
+became RM-396, REFUTED, and that `:74-77` cite is FALSE**); and
 `tests/test_inbox_responder_runner.py:214`, whose `_TMP_LOGS` positive control
 cannot tell "the arms were skipped" from "the runner is broken", in a module
 measured today to be non-hermetic against a LIVE RC writing `ops/runtime`
 mid-suite.
-
----
-
-# 2026-09-09e - RM-394 SHIPPED: the decision was already made in code, and the gate caught the conversion trading a red for a silent green
-
-Third row of the same headless day, operator AWAY. Tier-1: seven test-support
-files, no engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward.
-LEDGER 1376. Five parallel single-file slices, one merger, TWO read-only gates
-before the commit - and the second gate existed only because the first one's
-repairs were written after it ran.
-
-**The row asked which universe to build. Neither had to be built.**
-`tests/_repo_walk.py` already implements the tracked-set-primary answer, with
-`EXCLUDED_DIRS` as a backstop and `tracked_relpaths()` returning `None` (never an
-empty set) on git failure, plus its own anti-vacuity guard and four consumers.
-**Settled as CODE, not as a recorded decision** - added in `a0a23b57c`
-(2026-09-07, public-flip scrub) with no ledger row naming it, which is exactly
-how five guards kept hand-rolling their own root walks beside it. So the fix was
-ADOPTION, not invention.
-
-**All five converted**, plus `responder_export` added to the shared
-`EXCLUDED_DIRS` for the git-absent fallback - one entry in one shared list, which
-is the whole difference from the per-file hand-list the row rejects. Notable
-local call: `docs` was the only genuinely non-infrastructure skip anywhere in the
-five, and it was DROPPED after measuring that `pytest.ini` `norecursedirs` does
-not exclude `docs`, so a test landing there really would be collected and really
-would belong in the scan.
-
-**The gate refuted the claim that mattered.** I claimed none of the five could
-pass on an empty enumeration. Four cannot. `test_skip_condition_hygiene.py`
-COULD - `discovered - set(_TEST_TREES)` is empty-set-safe, and forcing the
-enumeration empty left it at 56 passed. Unrepaired, the conversion would have
-traded a machine-local RED for a silent always-GREEN, which is worse than what it
-fixed. Anchored on the directory holding the guard itself
-(`assert "tests" in discovered`, asserted against the DISK so it is not circular
-with `_TEST_TREES`) and proven to bite by my own mutation probe. The gate's
-second finding: the new `EXCLUDED_DIRS` entry was pinned only indirectly by
-another guard's fixture, so `tests/test_repo_walk.py` pins it directly now.
-**Both repairs were added AFTER gate 1, so a SECOND gate ran over them and the
-docs - and it found two more defects, both in the post-gate material**: the
-header said six changed `.py` when repair 2 made it seven, and the row still
-carried gate 1's "the only failure across all six files" three sentences after
-describing the repair that makes it two. LEDGER 1374 paid for this exact lesson
-two rows ago; it took a third payment to actually gate the post-gate material.
-
-**Counts, all re-derived against the OLD algorithms on this disk and all held:**
-8 phantom trees, 34 phantom ctor sites, 50 unclassified builders, 36 frozen
-headers of which 24 under `responder_export` (12 modules x 2 export trees). New:
-12 headers, the 4 real test trees, 17 ctor sites = `CONSTRUCT_FILES`, 17 census
-entries with 0 unclassified and 0 stale.
-
-**Suite:** `pytest tests -n 8` = 21639 passed, 97 skipped, 4921 subtests, 0
-failed. Three whole-suite runs agreed on every count and DISAGREED on one ERROR
-(`_live_surfaces_unchanged` teardown, "live surfaces moved") - present in mine,
-absent in gate 1, present in gate 2. That disagreement IS the evidence: the LIVE
-RC process was measured appending to `ops/runtime/responder_metrics.jsonl` inside
-the suite window, a fresh cycle row every five minutes from a changing pid.
-External writer, not a regression - the responder runner module is non-hermetic
-against a live RC.
-
-**Do NOT redo.** Do not delete the `responder_export` trees. Do not extend any
-hand-list. Do not "tidy" the two cosmetic divergences between the five slices
-(`relative_posix` versus `p.relative_to(...).as_posix()`, one positional
-`patterns`) - no behavioural effect, and churn on five freshly converted guards
-is not worth it. Do not re-derive the phantom counts.
-
-## NEXT SESSION - HEADLESS, operator away
-
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
-row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
-The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
-operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
-never adjudicated - if a row needs it, say so and move on.
-
-**No row is queued - pick one.** RM-392, RM-393 and RM-394 all shipped today.
-The three known-open items, none of them adjudicated into a row yet:
-
-1. **`tests/_repo_walk.py` has no ledger row and four-plus-five consumers now.**
-   That is the condition that caused RM-394: a settled decision nobody could
-   find. Writing its row is cheap and prevents the next five divergent walks.
-2. **`tools/stop_claim_gate.py:38`** - `CLAIM_COUNT` has no counterfactual or
-   citation suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so
-   quoting a figure IN ORDER TO REFUTE IT re-fires every turn. Note the hazard
-   its own comments name at `:74-77` before touching it.
-3. **`tests/test_inbox_responder_runner.py:214`** - the `_live_surfaces_unchanged`
-   teardown asserts `_TMP_LOGS` non-empty, a positive control that cannot tell
-   "the arms were skipped" from "the runner is broken"; it is the 1 residual
-   error when git is off PATH. And the same fixture is non-hermetic against a
-   LIVE RC writing `ops/runtime` mid-suite, measured today.
