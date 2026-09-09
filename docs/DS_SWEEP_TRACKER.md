@@ -69,7 +69,18 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-398** (2026-09-09, moved at the RM-396/RM-397 filing).
+  Next free id = **RM-399** (2026-09-09, moved at the RM-398 filing).
+  **RM-398 was allocated 2026-09-09** (LEDGER 1380), filed under BACKLOG
+  "Reliability / hardening", taking no roster checkbox and not changing the
+  Summary count: `count_mismatch` cannot tell a count asserted as SUCCESS from
+  one asserted as a RED or mutation state, a gap that RM-397 EXPOSED (3 of its
+  8 new findings are that shape) and deliberately did NOT fix, because the
+  obvious remedy - a "mutation:" or "red state:" suppressor - is a one-phrase
+  evasion available to the party the instrument polices and would reopen the
+  hole RM-397 just closed. Id taken from THIS pin, and the pointer-vs-allocated
+  predicate was re-run before minting: `tools/rm_id_registry.py` reported the
+  pinned id free across all 7 scanned docs.
+  Earlier next-free pointer (2026-09-09, moved at the RM-396/RM-397 filing).
   **RM-396 and RM-397 were allocated 2026-09-09** (LEDGER 1379), both filed
   under BACKLOG "Reliability / hardening", neither taking a roster checkbox nor
   changing the Summary count: RM-396 is the `stop_claim_gate` `CLAIM_COUNT`
