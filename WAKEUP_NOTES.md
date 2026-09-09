@@ -53,6 +53,18 @@ in the record at all, is measured here.)
 **Suite:** 581 passed / 1 skipped / 0 xfailed / 0 failed (`pytest tests -k
 inbox_responder`). Ruff clean.
 
+**THEN CI FOUND A REAL BUG NO WINDOWS GATE COULD SEE - keep this one.** The
+push run went red, 2 failed / 32296 passed, both mine: `note-shape:linked !=
+note-shape:not-a-file`. **A directory's `st_nlink` is 2 on POSIX and 1 on
+Windows.** The new branch sat one line BELOW the `st_nlink != 1` check, so on
+Linux every directory was claimed `linked` first, while on Windows it fell
+through and read correctly. Local suite, local slice AND the verifier's direct
+`note_shape_ok` calls were all green - every one ran on this machine. Fixed in
+`dd156b690`; order is now symlink, reparse, not-a-regular-file, then nlink.
+**Also:** the first RM-385 CI run read `cancelled` (two later docs pushes
+superseded it), and `gh run watch --exit-status` exits 0 on cancelled - read
+`conclusion`, never the exit code.
+
 **Still open:** RM-387, RM-388.
 
 ---
