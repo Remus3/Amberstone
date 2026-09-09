@@ -119,6 +119,92 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09f - ADR-015 written: the record _repo_walk never had, and the reason a ledger row alone would not have worked
+
+Fourth row of the same headless day, operator AWAY. Docs-only, Tier-0: no code,
+no test, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1377.
+
+**The code was never the gap.** `tests/_repo_walk.py` shipped 2026-09-07 in
+`a0a23b57c` carrying a real decision - git index first, `EXCLUDED_DIRS` as
+backstop, `tracked_relpaths()` returning `None` never an empty set - with its own
+anti-vacuity guard and four consumers, and NO ledger row, NO ADR, NO `CLAUDE.md`
+line. Two days later RM-394 proposed re-deciding the universe from scratch
+because nobody could find the decision that had already been made.
+
+**A ledger row alone would not have fixed that, so this is three places.**
+`docs/adr/ADR-015-shared-repo-enumeration.md` plus an index row and a Test guards
+line in the reading order (the ADR index is what `CLAUDE.md` declares as "before
+re-litigating a past choice, check here first"), and ONE rule line in the
+`CLAUDE.md` Testing Discipline section - because the moment discoverability has
+to work is the moment somebody is WRITING a new root-walking guard, and that is
+the file auto-loaded then. The ledger is append-only history 1377 entries deep,
+findable only by someone who already knows what to grep for: exactly the reader
+RM-394 proved does not exist.
+
+**The ADR records the trade-off, not a sales pitch.** Untracked new `.py` is
+invisible until staged (and staged is what the hook and CI see). Alternatives
+named with why they lose. And the failure mode the decision CREATES is in Watch
+for: converting an empty-set-safe assertion can turn a machine-local RED into a
+silent always-GREEN, measured at 56 passed during RM-394.
+
+**RM-395 filed for the two holdouts - and the gate made it a better row than I
+wrote.** I filed one of them as safe; BOTH are green by luck.
+`tests/test_dead_endpoint_cleanup_item186.py:199` walks **9112 `.py`, 4772 (52
+percent) inside the gitignored export copies**, its two filters removing ZERO
+files today. My "green because the symbols are absent there" was REFUTED - they
+are PRESENT, in each export tree's copy of that guard file, which its path-exact
+self-exemption misses. It is green because no line there carries both `import`
+and a deleted symbol: one line-shape from a phantom. And the hazard is TIME - an
+export is a snapshot of an OLDER repo. `tests/test_laning_verdict_flip_retired.py:85`
+I called safe-by-accident on `ops`; also refuted as understated - it does not
+skip `python-embed` and walks **2082 files, 1685 (81 percent) vendored
+`python-embed`**. Bound corrected too: a stronger AST resolver finds **2** root
+walkers against **39** subdirectory walks; my "11 files, 9 subdirectory" was a
+receiver-name-heuristic artifact. Two is the whole set, both passes.
+
+**A guard caught my id allocation, same lesson one size down.** I checked RM-395
+was free with `grep -c RM-395` over BACKLOG / ROADMAP / LEDGER, got 0, called it
+free. `tests/test_rm_id_registry_drift.py` went RED: `docs/DS_SWEEP_TRACKER.md:72`
+already PINNED RM-395 as next-free. A grep finding no ROW body is not a claim
+about the registry. The pin was advanced with the allocation recorded beside it
+in the same commit. **Take an RM id from that registry, never from a grep** - and
+do NOT recite the advanced figure in prose elsewhere: writing it into the LEDGER
+entry made the same guard red a second time, because the classifier reads a bare
+id as an ALLOCATION unless a "next free" cue precedes it. ROADMAP's eleven
+next-free pointers were left alone - NOT because they defer to the tracker (only
+three of the eleven do; the gate refuted that reason) but because RM-316 already
+owns them.
+
+**Do NOT redo.** Do not convert those two here - RM-395 owns them, and both are
+`assert not offenders` shapes that MUST be anchored before conversion. Do not
+turn a grep for `rglob` into a repo-wide rewrite: 11 AST hits, 9 of them
+SUBDIRECTORY walks that need nothing. Two is the whole set.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**The next row is RM-395** - small, bounded, fully measured above, and the ONLY
+thing it needs that is not already written down is the anchor decision: for each
+of the two guards, state whether an EMPTY enumeration would PASS its assertion
+before you convert it, and add the anchor where it would. Read ADR-015 first.
+
+**Also open, neither adjudicated into a row:** `tools/stop_claim_gate.py:38`
+(`CLAIM_COUNT` has no counterfactual or citation suppression, unlike `CLAIM_FILE`
+at `:47-83`, so quoting a figure IN ORDER TO REFUTE IT re-fires every turn - read
+the hazard its own comments name at `:74-77` first - **SUPERSEDED 2026-09-09h:
+became RM-396, REFUTED, and that `:74-77` cite is FALSE**); and
+`tests/test_inbox_responder_runner.py:214`, whose `_TMP_LOGS` positive control
+cannot tell "the arms were skipped" from "the runner is broken", in a module
+measured today to be non-hermetic against a LIVE RC writing `ops/runtime`
+mid-suite.
+
+---
+
 # 2026-09-09e - RM-394 SHIPPED: the decision was already made in code, and the gate caught the conversion trading a red for a silent green
 
 Third row of the same headless day, operator AWAY. Tier-1: seven test-support
