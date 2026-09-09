@@ -69,7 +69,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-396** (2026-09-09, moved at the RM-395 filing).
+  Next free id = **RM-398** (2026-09-09, moved at the RM-396/RM-397 filing).
+  **RM-396 and RM-397 were allocated 2026-09-09** (LEDGER 1379), both filed
+  under BACKLOG "Reliability / hardening", neither taking a roster checkbox nor
+  changing the Summary count: RM-396 is the `stop_claim_gate` `CLAIM_COUNT`
+  suppression proposal, allocated in order to be recorded REFUTED so it is not
+  re-pitched; RM-397 is the apostrophe over-strip false-NEGATIVE hole in the
+  same file, found by the pass that refuted RM-396. Ids taken from THIS pin and
+  not from a grep - the RM-395 filing learned that the hard way.
   **RM-395 was allocated 2026-09-09** (LEDGER 1377), filed under BACKLOG
   "Reliability / hardening", taking no roster checkbox and not changing the
   Summary count: the two guards that still walk the repo root without
