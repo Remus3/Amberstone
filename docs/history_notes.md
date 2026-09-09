@@ -119,6 +119,74 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09d - RM-393 SHIPPED: the helpers now inspect the return code, and the sibling census held up
+
+Second row of the same headless day, operator AWAY. Tier-1: one test module, no
+engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1375.
+
+**The defect, stated honestly:** `_status` and `_content_diff` in
+`tests/test_lane_worktree_eol_rm343.py` returned `subprocess.run(...).stdout`
+with the return code inspected nowhere. A failing `git` exits non-zero with an
+EMPTY stdout and its message on stderr, which `capture_output` swallows, so the
+four consumers that assert against `""` would have passed vacuously. Not a live
+false-GREEN - an assertion that could not fail for the reason it exists to catch.
+
+**The repair is one helper.** Both delegate to `_query(args, cwd)` (`:92-109`),
+which asserts `returncode == 0` and carries the command, rc, cwd and the
+SWALLOWED STDERR in the message. `check=True` would inspect the code too; it was
+rejected because `CalledProcessError` throws away the stderr text, which is the
+whole diagnostic in this failure mode.
+
+**TDD, RED watched first:** the new arm (`:122-144`) reported
+`Failed: DID NOT RAISE` against the old helpers, and it ships with a positive
+control (`:147-155`) so the gate cannot be met by raising unconditionally. The
+git failure is manufactured with a `.git` gitfile reading `gitdir: nowhere` -
+rc 128, empty stdout, and independent of whatever sits above `tmp_path`, which a
+plain non-repo directory would NOT be.
+
+**The sibling census was re-derived and the filed row survived it.** In
+`tests/test_loop_audit_range.py` the sites at `:100,164,168,181` assert
+MEMBERSHIP and fail loudly; `:58` feeds `_log_count`, whose three callers assert
+`>= 2`, `== 2`, `== 4` (`:98`, `:116`, `:130`), so a failure returning 0 fails
+all three. Nothing outside the row needed touching. Module green at 16 passed,
+ruff clean.
+
+**Citation shift, measured (`git diff --numstat` = `59 4`, net +55):** RM-393's
+four consumer cites `:111,135,164,261` are now `:166,190,219,316`.
+
+**Do NOT redo.** Do not widen this into a general unchecked-`stdout` sweep - the
+census that bounds it is re-derived and in the row. Do not swap `_query`'s assert
+for `check=True`; the stderr text is the point.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**The next row is RM-394, and it is a DECISION, not a measurement.** Five guards
+are measured red on Legion and green in CI, every one failing solely on the
+gitignored `ops/runtime/responder_export/<sha>/` trees, which are a COPY OF THE
+REPO. Pick the universe once and apply it to all five: `git ls-files` (fixes
+every future ignored tree, at the cost of no longer scanning untracked working
+files) or `os.walk` minus everything `git check-ignore` claims. Do NOT add a
+sixth hand-list entry - that repairs one of five. **Take the red list from a full
+`pytest tests` run, never from a grep:** the fifth member was invisible to the
+22-site grep that found the first four, because its enumeration spans two lines.
+
+**Also open, both from the RM-392 session and deliberately not fixed there:**
+`tools/stop_claim_gate.py:38` `CLAIM_COUNT` has no counterfactual or citation
+suppression (unlike `CLAIM_FILE` at `:47-83`, which has both), so quoting a
+figure IN ORDER TO REFUTE IT re-fires every turn; and the module-scoped
+`_live_surfaces_unchanged` teardown in `tests/test_inbox_responder_runner.py:214`
+asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the arms were
+skipped" from "the runner is broken" (it is the 1 residual error when git is off
+PATH).
+
+---
+
 # 2026-09-09c - RM-392 ADOPTED SCOPE SHIPPED: two lines of code, and the row it was not looking for was five times its filed size
 
 Single-row headless session, operator AWAY. Tier-1: one test-support fixture, no
