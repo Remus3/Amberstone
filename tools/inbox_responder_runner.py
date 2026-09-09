@@ -253,6 +253,17 @@ AGREEMENT_STATES = frozenset(
 )
 
 INVOCATION_LOG_KEEP = 4000
+# RM-388. The metrics ledger is NOT the invocation log and must not be trimmed
+# like one. A dropped `start`/`end` pair costs nothing the row does not also
+# carry; a dropped ROW deletes M1, M2, M3, M4 and M5 for that cycle, which are
+# the measurements the whole trial exists to produce, and `trial_rows` quotes
+# them into an arming note. So the ledger ROTATES: rows move to a dated
+# archive beside it and none is ever discarded. The trigger is BYTES, read
+# with one `stat`, so an unrotated cycle does no work at all.
+METRICS_ROTATE_BYTES = 2_000_000
+# Carried forward on every rotation, on top of the live agreement's own rows:
+# enough recent history that the live file still reads as a log to a human.
+METRICS_CARRY_ROWS = 200
 STOP_FLAG_NAME = "INBOX_RESPONDER_STOP"
 DRY_FLAG_NAME = "INBOX_RESPONDER_DRY"
 AGREEMENT_NAME = "inbox_responder_agreement.json"
@@ -916,6 +927,132 @@ def _append_line(path: Path, payload: dict) -> None:
     _append_atomic(path, (json.dumps(payload, ensure_ascii=True) + "\n").encode("ascii"))
 
 
+def _row_of(line: str) -> Optional[dict]:
+    try:
+        row = json.loads(line)
+    except ValueError:
+        return None
+    return row if isinstance(row, dict) else None
+
+
+def _archive_stamp(line: str) -> str:
+    """Name the archive for the LAST row it carries, so the file says what is in it."""
+    row = _row_of(line) or {}
+    return re.sub(r"[^0-9A-Za-z]", "", str(row.get("ts") or ""))[:15] or "unknown"
+
+
+def _recorded_agreement_id(path: Path) -> tuple:
+    """`(vouched, id)` for the agreement record BESIDE a ledger, judging nothing.
+
+    Takes the LEDGER's path, not a root, and reads the record next to it. That
+    is not a convenience: `root` and `log_root` are different trees on the dry
+    path (`main` runs the cycle against a scratch root while its rows go to the
+    LIVE ledger), so a root-keyed lookup read the scratch agreement and left
+    the live agreement's rows unprotected in the very file being rotated. The
+    only record that can vouch for a ledger is the one in its own tree.
+
+    Rotation asks a narrower question than gate 2 does. Not "is this agreement
+    in force" - which needs participants, a clock and a window - but "whose
+    rows must not move". `agreement_id_of` is a hash over the semantic fields,
+    so it answers that for any record shaped enough to read, expired or not.
+
+    `vouched` is False for exactly one case: a record EXISTS and cannot be
+    read. Rotation must not run then, because it cannot say which rows are
+    evidence. An ABSENT record is vouched with no id - no trial is live, so
+    nothing needs carrying by identity.
+    """
+    record_path = path.parent / AGREEMENT_NAME
+    try:
+        if not record_path.exists():
+            return True, None
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False, None
+    if not isinstance(record, dict):
+        return False, None
+    return True, agreement_id_of(record)
+
+
+def _rotate_metrics(path: Path) -> None:
+    """ROTATE, never evict - the ledger is the trial's evidence base (RM-388).
+
+    Two rules, both load-bearing. Rows leave the live file only by MOVING to
+    `responder_metrics.<stamp>.jsonl` beside it, so a rotation deletes nothing
+    and the measurements survive a machine that ticks every five minutes
+    forever. And the LIVE agreement's rows are carried forward whatever their
+    age, on top of the recent tail: `trial_rows` quotes the live file into an
+    arming note, and a rotation that fell mid-window would silently empty the
+    evidence an armed trial is about to cite.
+
+    THE IDENTITY COMES FROM THE LEDGER'S OWN TREE, and this took two
+    refutations to get right. It cannot come from the CYCLE:
+    `result.agreement_id` is set at gate 2, so a stop-flag tick at gate 1, a
+    malformed record and a prelude failure in `main` all reach `_finish` with
+    None while an agreement is live - measured, `trial_rows` 30 to 0, an armed
+    trial's whole evidence archived. It cannot come from a passed-in ROOT
+    either: on the dry path `main` runs the cycle against a scratch root while
+    the rows go to the LIVE ledger, so a root-keyed lookup vouched with the
+    SCRATCH agreement and archived the live one's rows - the same failure by a
+    different door. `_recorded_agreement_id` therefore takes this ledger's own
+    path and reads the record beside it, which is the only record that can
+    speak for the file being rotated. Nothing is passed in, so nothing can be
+    passed in wrong.
+
+    DISCLOSED RESIDUAL: an ABSENT record vouches with no id, so a ledger whose
+    record has been MOVED mid-trial archives everything outside the tail
+    (measured: `trial_rows` 30 to 0). No running trial can reach that - gate 2
+    cannot establish an agreement whose record is gone either - but an operator
+    who relocates the record mid-window empties what the live file can quote.
+    The rows are in the archive beside it, not deleted.
+
+    ORDER IS THE FAIL DIRECTION. The carry file is written first, the archive
+    appended second and the live file replaced last, so every failure leaves
+    the live file COMPLETE rather than short. The disclosed cost is that a
+    crash between the append and the replace can duplicate rows into an
+    archive on the next rotation - duplicated evidence beats deleted evidence,
+    and the stamp in the name makes it visible.
+    """
+    try:
+        if path.stat().st_size <= METRICS_ROTATE_BYTES:
+            return
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines(True)
+    except OSError:
+        return
+    vouched, recorded = _recorded_agreement_id(path)
+    if not vouched:
+        return
+    keep_ids = {recorded} - {None}
+    tail = len(lines) - METRICS_CARRY_ROWS
+    carry, archive = [], []
+    for index, line in enumerate(lines):
+        keep = index >= tail or (_row_of(line) or {}).get("agreement_id") in keep_ids
+        (carry if keep else archive).append(line)
+    if not archive:
+        return
+    dest = path.with_name(f"{path.stem}.{_archive_stamp(archive[-1])}{path.suffix}")
+    tmp = path.with_suffix(".jsonl.rotate")
+    try:
+        tmp.write_text("".join(carry), encoding="utf-8", newline="")
+        with dest.open("ab") as handle:
+            handle.write("".join(archive).encode("utf-8", "replace"))
+        tmp.replace(path)
+    except OSError:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+
+
+def _append_metrics_row(log_root, row: dict) -> None:
+    """The ONE way a row reaches the ledger: append, then rotate if it is time.
+
+    Takes `log_root` and nothing else. The rotation's carry rule reads the
+    agreement record beside the ledger itself, so no caller can hand it the
+    wrong tree - which is exactly what the dry path did when this took a root.
+    """
+    path = metrics_path(log_root)
+    _append_line(path, row)
+    _rotate_metrics(path)
+
+
 def log_start(log_root, cycle_id: str, dry: bool, ts: str, pid: int) -> None:
     path = invocations_path(log_root)
     _append_line(path, {"ts": ts, "event": EVENT_NAME, "phase": "start",
@@ -1235,7 +1372,7 @@ def _finish(result: CycleResult) -> CycleResult:
         result.termination_detail = row["termination_detail"]
         result.agreement_state = row["agreement_state"]
     log_end(result.log_root, _end_payload(result))
-    _append_line(metrics_path(result.log_root), row)
+    _append_metrics_row(result.log_root, row)
     return result
 
 
@@ -2217,9 +2354,27 @@ def main(argv=None, *, run=run_once, spawner=None, export=None, singleton=None,
                     export = ensure_export
             except BaseException as exc:  # noqa: BLE001 - section 9: no prelude failure is silent
                 cls = type(exc).__name__
-                _pair("runner-failed", f"prelude:{stage}:{cls}", dry)
-                _append_line(metrics_path(log_root),
-                             prelude_row(cycle_id, ts, pid, stage, cls, dry))
+                # RM-388 companion audit, RSC refutation 3. These two writes
+                # are attempted INDEPENDENTLY. Sequential, an OSError in the
+                # first - `mkdir` under an `ops/runtime` that exists as a FILE
+                # raises WinError 183 - left the invocation pair written, the
+                # row missing, and the crash unreported by the one handler
+                # whose contract is that no prelude failure is silent. If BOTH
+                # fail nothing can be recorded at all and the exit code is the
+                # only signal left; that is the floor, not a reason to let one
+                # failure eat the other.
+                recorded = False
+                with contextlib.suppress(OSError):
+                    _pair("runner-failed", f"prelude:{stage}:{cls}", dry)
+                    recorded = True
+                try:
+                    _append_metrics_row(log_root, prelude_row(cycle_id, ts, pid, stage, cls, dry))
+                except OSError:
+                    # NEITHER write landed, so exit 2 would claim a prelude
+                    # failure was recorded when nothing was. Stay as loud as
+                    # this was before the split: let it out.
+                    if not recorded:
+                        raise
                 return 2
 
             if "--probe" in args:
