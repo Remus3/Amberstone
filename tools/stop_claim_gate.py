@@ -185,6 +185,37 @@ _QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"", re.S)
 _FENCED = re.compile(r"```.*?```", re.S)
 _INLINE_CODE = re.compile(r"`[^`]*`")
 
+# SIXTH shape in the false-reading family, and the FIRST that makes the gate
+# blind rather than noisy - every fix above narrowed what would be FLAGGED, this
+# one is a claim the gate never got to examine at all. RM-397, measured
+# 2026-09-09.
+#
+# `_QUOTED` deletes everything between two single quotes. That is right for a
+# COMMAND, where a single quote is a delimiter. It is wrong for PROSE, where a
+# single quote is far more often an apostrophe: two ordinary possessives or
+# contractions in one paragraph pair as if they opened and closed a quotation,
+# and the span between them is deleted before the claim scan runs. Measured:
+#   "The runner's log says 9999 passed, and the session's report agrees."
+# strips to "The runner s report agrees." and CLAIM_COUNT finds nothing; the
+# same sentence without apostrophes yields the claim.
+#
+# So prose gets its OWN pattern and `_QUOTED` is left alone for
+# `strip_command_noise` - shell quoting has no possessives, and narrowing there
+# would change evidence detection for commands, which is a different blast
+# radius and not this defect.
+#
+# Only the single-quote branch changes. An apostrophe FLANKED BY WORD
+# CHARACTERS can neither open a span nor close one, so "doesn't" inside a real
+# quotation does not truncate it either - truncating would re-expose the tail as
+# prose, which is the very false-positive class the stripping exists to stop.
+# The inner alternation is unambiguous by construction (`[^']` never matches a
+# quote, the second branch only matches a quote), so there is no nested-quantifier
+# blowup: MEASURED on this machine at 0.44 ms for a 5000-char pathological input
+# and 0.72 ms at 10000, i.e. linear, not exponential.
+_QUOTED_PROSE = re.compile(
+    r"(?<![A-Za-z0-9])'(?:[^']|(?<=[A-Za-z0-9])'(?=[A-Za-z0-9]))*'(?![A-Za-z0-9])"
+    r"|\"[^\"]*\"", re.S)
+
 
 # A quoted token that is an EXECUTABLE PATH is the command, not data. Windows
 # forces the quotes - `C:\Program Files\GitHub CLI\gh.exe` cannot be written
@@ -210,8 +241,12 @@ def strip_command_noise(command):
 
 
 def strip_prose_noise(text):
-    """Fenced blocks, inline code and quoted spans are quotation, not assertion."""
-    return _QUOTED.sub(" ", _INLINE_CODE.sub(" ", _FENCED.sub(" ", text)))
+    """Fenced blocks, inline code and quoted spans are quotation, not assertion.
+
+    Uses `_QUOTED_PROSE`, NOT `_QUOTED`: in prose an apostrophe is not a
+    delimiter, and reading it as one deleted the claims between two possessives.
+    """
+    return _QUOTED_PROSE.sub(" ", _INLINE_CODE.sub(" ", _FENCED.sub(" ", text)))
 # Split on sentence boundaries only, never on the dot inside `core/ports.py` -
 # a naive [.;\n] split severs every filename and silently kills check 3.
 _SENTENCE = re.compile(r"(?<=[.;!?])\s+|\n")
