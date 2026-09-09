@@ -1927,6 +1927,11 @@ MAIN_ARMS = [
      "main did not reach run_once"),
     ("real-spawn-guard", 'if env.get("RC_RESPONDER_REAL_SPAWN") == "1":', "if True:",
      s_real_spawn_guard, {}, "an unarmed default spawner did not stop the cycle"),
+    # RM-388 moved this call site - the two prelude writes are attempted
+    # independently now - and the needle survives as a SUBSTRING of a longer
+    # line (`_append_metrics_row(log_root, prelude_row(...))`), not because the
+    # runner's line is unchanged. A source-text needle is only as stable as the
+    # exact text it quotes: re-check this one whenever that call site moves.
     ("prelude-failure", "prelude_row(cycle_id, ts, pid, stage, cls, dry))",
      "_mut_prelude_row(cycle_id, ts, pid, stage, cls, dry))",
      s_prelude_failure, {"_mut_prelude_row": _mut_prelude_row},
