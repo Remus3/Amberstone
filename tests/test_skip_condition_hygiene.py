@@ -53,6 +53,8 @@ from pathlib import Path
 
 import pytest
 
+from tests import _repo_walk
+
 _HERE = Path(__file__).resolve()
 _REPO_ROOT = _HERE.parent.parent
 
@@ -1398,30 +1400,48 @@ def _excused(finding: _Finding) -> bool:
 def _discovered_test_trees() -> set[str]:
     """Every directory in the repo that actually holds pytest test modules.
 
-    Derived from the FILESYSTEM, never from `_TEST_TREES`, so it can contradict
-    the tuple. Directories are rolled up to their shallowest test-bearing
-    ancestor: `tests/snapshot_panels` is part of the `tests` tree, not a tree of
-    its own. Vendored / mirrored / archived trees are excluded on the same
-    grounds pytest.ini excludes them from collection.
+    Derived from the TREE, never from `_TEST_TREES`, so it can contradict the
+    tuple. Directories are rolled up to their shallowest test-bearing ancestor:
+    `tests/snapshot_panels` is part of the `tests` tree, not a tree of its own.
+    Enumeration is `tests/_repo_walk`, so "the tree" means the git-tracked set
+    when git answers and the shared `EXCLUDED_DIRS` skips when it does not -
+    vendored, mirrored, archived and machine-local runtime copies are out on
+    the same grounds pytest.ini excludes them from collection.
     """
-    # "moon_sync_inbox" added 2026-09-07. Sibling repos deliver verbatim source
-    # payloads into that gitignored directory, and those payloads carry THEIR
-    # test modules. Those are INBOUND MAIL, not RC's test surface: RC does not
-    # run them, does not own them, and adding them to _TEST_TREES would assert
-    # RC's skip-hygiene rules over another project's code. The guard was right
-    # to flag them - a directory holding test_*.py really was outside the scan -
-    # and the correct answer is that the inbox is not part of the repo's own
-    # tree set, not that the tuple should grow. Same grounds as any vendored
-    # copy: it is somebody else's code sitting inside this checkout.
-    skip_parts = {".git", ".claude", "__pycache__", "node_modules",
-                  "python-embed", "_archive", "docs", ".venv", "venv", "build",
-                  "dist", "moon_sync_inbox"}
+    # RM-394 (2026-09-09): enumeration moved from a raw `rglob` plus a private
+    # hand-list to `tests/_repo_walk`, the repo's canonical walker - git index
+    # first, `EXCLUDED_DIRS` segment skips as the backstop when git is absent or
+    # the index read fails. The hand-list is GONE, not extended, and there is no
+    # local skip set left to drift: every entry it used to carry is either an
+    # infrastructure exclusion the shared walker already owns, or the `docs`
+    # entry deleted below on purpose.
+    #
+    # What that fixes here: the inbox responder writes a full COPY OF THE REPO
+    # to ops/runtime/responder_export/<sha>/, gitignored and machine-local, so
+    # on this box the old rglob reported 8 phantom trees (four per export sha)
+    # and this guard was RED here while green in CI. Untracked means not RC's
+    # test surface, which is the same reasoning the old hand-list applied to
+    # `moon_sync_inbox` on 2026-09-07: sibling repos deliver verbatim source
+    # payloads there and those payloads carry THEIR test modules. Those are
+    # INBOUND MAIL, not RC's - RC does not run them, does not own them, and
+    # adding them to `_TEST_TREES` would assert RC's skip-hygiene rules over
+    # another project's code. Neither name is hand-listed here any more; both
+    # are untracked, and both are in the shared `EXCLUDED_DIRS` backstop.
+    #
+    # `docs` DELETED deliberately, and it is the one entry that was genuinely
+    # this guard's own scope choice rather than infrastructure - it is not in
+    # `_repo_walk.EXCLUDED_DIRS`. Dropping it because: (a) its only plausible
+    # target was `docs/_archive` dated artifacts, and `_archive` IS a shared
+    # exclusion now, so the motive is served; (b) `pytest.ini` `norecursedirs`
+    # does NOT exclude `docs`, so a `test_*.py` landing there would really be
+    # collected by a repo-root run and would really belong in this scan -
+    # keeping the skip would blind the guard to exactly the class it exists to
+    # catch. Measured 2026-09-09: zero `test_*.py` under `docs/`, tracked or on
+    # disk, so this removal changes nothing today - it changes tomorrow.
     holders: set[str] = set()
-    for path in _REPO_ROOT.rglob("test_*.py"):
-        rel = path.resolve().relative_to(_REPO_ROOT).as_posix()
+    for path in _repo_walk.repo_files(_REPO_ROOT, patterns=("test_*.py",)):
+        rel = _repo_walk.relative_posix(path, _REPO_ROOT)
         parts = rel.split("/")
-        if any(p in skip_parts for p in parts):
-            continue
         holders.add("/".join(parts[:-1]) or ".")
     rolled: set[str] = set()
     for d in holders:
@@ -1447,6 +1467,21 @@ def test_universe_covers_every_test_bearing_tree_in_the_repo():
     tree dropped from the tuple is still found on disk and still fails here.
     """
     discovered = _discovered_test_trees()
+    # ANTI-VACUITY, and this arm is why the RM-394 conversion is not a
+    # regression. `discovered - set(_TEST_TREES)` is empty-set-safe: an
+    # enumeration that returns NOTHING satisfies it, so after the walk moved
+    # behind `tests/_repo_walk` an over-broad EXCLUDED_DIRS, a failed git index
+    # read handled wrongly, or a bad pattern would all present as a clean repo.
+    # Measured 2026-09-09 by a gate pass: forcing the enumeration empty left
+    # this module at 56 passed. The anchor is this file's OWN directory - if
+    # discovery cannot see the tree holding the guard that is running, the
+    # enumeration is broken, and that is not circular with `_TEST_TREES`
+    # because it is asserted against the disk, not against the tuple.
+    assert "tests" in discovered, (
+        "test-tree discovery did not find the `tests` directory that holds "
+        f"this very file - the enumeration is broken, not the repo. Got: "
+        f"{sorted(discovered)}"
+    )
     missing = sorted(discovered - set(_TEST_TREES))
     assert not missing, (
         "these directories hold pytest test modules but are OUTSIDE the skip "

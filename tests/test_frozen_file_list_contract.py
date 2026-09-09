@@ -29,9 +29,10 @@ number is the COUNT, because a change in the count is precisely the event that
 should force a human to look.
 """
 import ast
-import os
 import pathlib
 import re
+
+from tests import _repo_walk
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -47,22 +48,26 @@ HEADERLESS_FROZEN_PY = frozenset({
     "ops/rc_supervisor.py",
 })
 
-# Directories the `# arch:` header scan skips. The worktree entries duplicate
-# real modules verbatim, so scanning one would manufacture phantom frozen
-# entries for copy paths that are not - and must not be - on the authority
-# list. The rest is VCS / vendor / build / archive noise. Keep this list
-# minimal and justified: an over-broad exclusion is how live code gets
-# misdiagnosed as absent.
-HEADER_SCAN_SKIP_DIRS = frozenset({
-    ".git",
-    "_archive",
-    ".venv",
-    "venv",
-    "node_modules",
-    "__pycache__",
-    "rc-worktrees",
-    "worktrees",
-})
+# There is deliberately NO local skip list here any more. The header scan used
+# to hand-maintain HEADER_SCAN_SKIP_DIRS = {.git, _archive, .venv, venv,
+# node_modules, __pycache__, rc-worktrees, worktrees} over an os.walk of the
+# whole repo root. Every one of those eight names is now covered by
+# tests/_repo_walk.EXCLUDED_DIRS, and the tracked-set filter in front of it
+# removes far more besides - which is the actual fix for the defect this guard
+# hit: ops/runtime/responder_export/<sha>/ is a full untracked COPY OF THE REPO
+# written by the inbox responder, so twelve real frozen modules were being seen
+# twice per export and reported as orphan frozen=yes headers on this box while
+# CI (no exports on disk) stayed green.
+#
+# Nothing remains that is genuinely this guard's OWN scope choice: the original
+# rationale - "the worktree entries duplicate real modules verbatim, so scanning
+# one would manufacture phantom frozen entries for copy paths" - is exactly the
+# duplicate-copy problem the shared walker exists to solve, for worktrees and
+# for every other copy tree alike. Re-adding a name here (responder_export
+# included) is the hand-list fix that RM-394 rejected: the next copy tree with a
+# different name would reopen the same hole. If a future need really is local to
+# this guard, apply it ON TOP of _repo_walk.repo_files, the way
+# tests/test_riot_api_cache_eviction.py applies its own {tests, docs} skip.
 
 # gen_archmap.py reads only the first 8 lines when looking for a file-header
 # marker; mirror that window so this guard and the generator agree on what
@@ -169,23 +174,37 @@ def _parse_frozen_authority():
 
 
 def _scan_frozen_headers():
-    """Return the forward-slashed .py paths whose `# arch:` header says frozen=yes."""
+    """Return the forward-slashed .py paths whose `# arch:` header says frozen=yes.
+
+    Enumeration comes from tests/_repo_walk - the repo's canonical sweep - not
+    from a local os.walk plus a hand-list. That means the git INDEX is the
+    primary filter, with EXCLUDED_DIRS as the backstop when git is unavailable,
+    so untracked copy trees (worktrees, vendored bytes, and the responder's
+    ops/runtime/responder_export/<sha>/ repo copies) cannot manufacture phantom
+    frozen entries. `tracked_relpaths` returns None rather than an empty set on
+    a git failure, so a broken git degrades to the directory skips instead of
+    silently reporting an empty tree.
+
+    Everything the guard needs is preserved: the first-`_HEADER_WINDOW`-lines
+    rule, the `# arch:` + `frozen=yes` predicate, forward-slashed repo-relative
+    results, and tolerance of unreadable files.
+
+    Non-vacuity: an empty scan and a clean tree are the same verdict to both
+    consumers of this function, so the walker's own anchor check is called first
+    and raises rather than letting the guards pass for the wrong reason.
+    """
+    _repo_walk.self_check(ROOT)
     found = set()
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in HEADER_SCAN_SKIP_DIRS]
-        for name in filenames:
-            if not name.endswith(".py"):
-                continue
-            path = pathlib.Path(dirpath) / name
-            try:
-                head = path.read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                continue
-            for line in head[:_HEADER_WINDOW]:
-                stripped = line.strip()
-                if stripped.startswith("# arch:") and "frozen=yes" in stripped:
-                    found.add(path.relative_to(ROOT).as_posix())
-                    break
+    for path in _repo_walk.iter_repo_files(ROOT, patterns=("*.py",)):
+        try:
+            head = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in head[:_HEADER_WINDOW]:
+            stripped = line.strip()
+            if stripped.startswith("# arch:") and "frozen=yes" in stripped:
+                found.add(_repo_walk.relative_posix(path, ROOT))
+                break
     return found
 
 
