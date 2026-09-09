@@ -23,10 +23,17 @@ Do NOT redo: RM-386 second half (the hold record, `notes_held`, the two
       fail-closed directions, the `notes-held` / `held-record-unreadable`
       vocabulary) and RM-385 (pending_notes admits by name and record;
       `note-shape:not-a-file`; the junction arm is passing and is the last
-      xfail in the suite). Both are verifier-confirmed and pushed. Also do not
-      re-add the GitHub community files or re-check the README links - both
-      shipped this session, community health is 100 percent, and private
-      vulnerability reporting is now ENABLED on the repository.
+      xfail in the suite). Both are verifier-confirmed, CI-green and pushed.
+      Also do not re-add the GitHub community files or re-check the README
+      links - both shipped this session, community health is 100 percent, and
+      private vulnerability reporting is now ENABLED on the repository.
+Carry this forward: CI caught a POSIX-only bug in RM-385 that EVERY Windows
+      gate missed - a directory's `st_nlink` is 2 on POSIX and 1 on Windows, so
+      a branch ordered after an `st_nlink != 1` check flips per platform. The
+      local suite, the local slice and the independent verifier were all green.
+      Fixed in dd156b690; memory `reference_directory_st_nlink_posix_vs_windows`.
+      Second trap from the same wrap: `gh run watch --exit-status` exits 0 on a
+      CANCELLED run, so read `conclusion`, never the exit code.
 Live state: RC-InboxResponder is ARMED (task Ready, 5-minute tick) but the
       agreement's hop_budget 1 is SPENT, so every cycle reads `budget`. A new
       agreement is an OPERATOR act. DISABLE the task before running the suite -
