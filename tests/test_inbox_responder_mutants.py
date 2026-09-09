@@ -829,6 +829,12 @@ def b_at_cap(w, mod):
     w.attempts({runner.note_sha12(NOTE_NAME): runner.MAX_SPAWN_ATTEMPTS})
 
 
+def b_dir_note(w, mod):
+    """RM-385: an entry named like a note that is a DIRECTORY, not a file."""
+    w.agreement()
+    (w.inbox / NOTE_NAME).mkdir()
+
+
 def b_held_note(w, mod):
     """RM-386: the only pending note is under a refusal hold, not at the cap."""
     armed(w)
@@ -1181,6 +1187,14 @@ def c_attempt_cap(w, result):
     assert w.one_row(result)["notes_at_cap"] == 1
 
 
+def c_not_a_file(w, result):
+    """RM-385: the label names what the entry IS, not what refused it."""
+    assert (result.termination, result.termination_detail) == ("refused", "note-shape:not-a-file")
+    assert result.refused_stage == "input"
+    assert w.spawner.calls == 0
+    assert w.answered() == set()
+
+
 def c_notes_held(w, result):
     """RM-386: a held note is reported as held, never as the spawn cap."""
     assert result.termination == "runner-failed"
@@ -1490,6 +1504,12 @@ A_ARMS = [
      b_budget_spent, c_budget, {"_mut_budget": _mut_budget}, ()),
     ("note-shape", "note_shape_ok(note_path", "_mut_shape(note_path",
      b_bad_name, c_refused_input, {"_mut_shape": _mut_shape}, ()),
+    # RM-385. Reachable only since `pending_notes` stopped dropping non-files.
+    # Collapsed, the entry is still refused - by the `os.open` fault, as
+    # `note-shape:linked`, which is the reassuring wrong label for a directory
+    # that is linked to nothing.
+    ("note-shape-regular-file", "elif not stat.S_ISREG(lst.st_mode):", "elif False:",
+     b_dir_note, c_not_a_file, {}, ()),
     ("raw-name-sink", RAW_SINK_NEEDLE, RAW_SINK_MUTATION,
      b_bad_name, c_second_cycle_is_held, {}, ()),
     # TIGHTENED 2026-09-08: the needle was the bare token `"surrogatepass"`, which

@@ -96,6 +96,57 @@ def test_non_note_entries_are_ignored(tmp_path):
     ]
 
 
+# ---------------------------------------------------------------------------
+# RM-385 - what is NOT a note still has to be SEEN
+#
+# `pending_notes` used to drop two classes silently, on `Path.is_file()` and on
+# a missing sender code. Both are invisible-forever conditions rather than
+# refusals: the entry sits in the inbox and every later tick reports `empty /
+# none_pending`, which is the responder saying nothing is pending while
+# something is. Admitting them here does not admit them to the model - gate 6
+# judges every one, and anything that is not a plain file with a legal name is
+# refused and held for the operator.
+# ---------------------------------------------------------------------------
+
+
+TRANSPOSED = "from-LL-2026-09-07-2035-correction-our-git-identity-count-is-now-two.md"
+
+
+def test_an_entry_named_like_a_note_but_not_a_file_is_pending(tmp_path):
+    """A directory stands in for the junction: both fail `Path.is_file()`."""
+    box = tmp_path / "moon_sync_inbox"
+    box.mkdir()
+    (box / "2026-09-07-1800-from-RSC-x.md").mkdir()
+    assert pending_notes(box, tmp_path, participants=("RSC",)) == [
+        "2026-09-07-1800-from-RSC-x.md"
+    ]
+
+
+def test_an_md_with_no_sender_code_is_pending_so_gate_6_can_refuse_it(tmp_path):
+    """The live instance: a real note with its sender and date TRANSPOSED.
+
+    `_sender_code` looks for `-from-`, and this name begins with `from-`, so
+    it returned None and the note was dropped. The live file has sat in RC's
+    inbox unseen since 2026-09-07 - and is separately inside the answered
+    record, so admitting the CLASS does not put that one file back in the live
+    queue.
+    """
+    box = _inbox(tmp_path, TRANSPOSED)
+    assert pending_notes(box, tmp_path, participants=("RSC",)) == [TRANSPOSED]
+
+
+def test_a_note_from_a_non_participant_is_still_dropped_not_refused(tmp_path):
+    """The line RM-385 must NOT cross.
+
+    A note from a repo outside this agreement is not a silent failure - it is
+    somebody else's correspondence, and refusing it would put a hold on a note
+    RC was never asked to answer. Only an entry with NO identifiable sender is
+    admitted for refusal.
+    """
+    box = _inbox(tmp_path, "2026-09-07-1800-from-LL-x.md")
+    assert pending_notes(box, tmp_path, participants=("RSC",)) == []
+
+
 def test_pending_is_ordered_by_arrival_not_by_filename(tmp_path):
     """RC retired its own timestamp tie-break after measuring the skew.
 
