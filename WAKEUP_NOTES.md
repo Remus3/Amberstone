@@ -146,7 +146,13 @@ mismatch`, `Installation process exited with code: 100`. Reran `--failed` once,
 same failure four minutes later, so it is an upstream index that is stale on
 Google's side rather than a flake that clears instantly. No prior art in the repo
 (first occurrence of this string). Rerun it before assuming anything; if it
-persists across a day, THEN it is a row.
+persists across a day, THEN it is a row. **CLEARED - do not chase it.** The next
+push, `b286246bf` (RM-393), ran `ci` green: `check` conclusion `success`, read
+from `jobs[]` and not from the run conclusion, so it is not
+`reference_green_ci_run_may_have_skipped_the_job`. `nightly-full-suite` shows
+`skipped`, which is the normal push-run shape. Two consecutive failures four
+minutes apart and a clean run about half an hour later: transient upstream apt
+index, exactly as suspected, and it never reached pytest.
 
 ## NEXT SESSION - HEADLESS, operator away
 
