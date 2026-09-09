@@ -191,15 +191,31 @@ def pending_notes(inbox: Path, root: Path, *, participants: tuple[str, ...]) -> 
     except OSError:
         return []
     for p in entries:
-        if not p.is_file() or p.suffix != _NOTE_SUFFIX or p.name in answered:
+        if p.suffix != _NOTE_SUFFIX or p.name in answered:
             continue
         code = _sender_code(p.name)
         # "RC" is excluded even when present in `participants`: a responder that
         # answers its own note is a loop needing no second participant.
-        if code is None or code == "RC" or code not in participants:
+        if code == "RC":
             continue
+        # A note from a repo outside this agreement stays invisible ON PURPOSE.
+        # It is somebody else's correspondence, not a silent failure, and
+        # admitting it would put a hold on a note RC was never asked to answer.
+        if code is not None and code not in participants:
+            continue
+        # RM-385, and the two filters this replaces were BOTH silent-forever
+        # conditions rather than skips. `Path.is_file()` is false for a
+        # junction (always a reparse point), and `code is None` is true for a
+        # name with its sender and date transposed - so either entry sat in
+        # the inbox while every later tick reported `empty / none_pending`,
+        # which is the responder saying nothing is pending while something is.
+        # Admitting them here does NOT admit them to the model: gate 6 judges
+        # every one and refuses anything that is not a plain file with a legal
+        # name, so the entry becomes a refusal held for the operator. `lstat`
+        # rather than `stat` so a reparse point is ordered by when the ENTRY
+        # appeared and a dangling one cannot raise.
         try:
-            out.append((p.stat().st_mtime, p.name))
+            out.append((p.lstat().st_mtime, p.name))
         except OSError:
             continue
     return [n for _, n in sorted(out)]
