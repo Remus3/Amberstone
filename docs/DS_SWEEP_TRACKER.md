@@ -69,7 +69,19 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-395** (2026-09-09, moved at the RM-392/RM-393/RM-394
+  Next free id = **RM-396** (2026-09-09, moved at the RM-395 filing).
+  **RM-395 was allocated 2026-09-09** (LEDGER 1377), filed under BACKLOG
+  "Reliability / hardening", taking no roster checkbox and not changing the
+  Summary count: the two guards that still walk the repo root without
+  `tests/_repo_walk` after RM-394 converted five, one of them safe only because
+  its skip list happens to exclude `ops` wholesale. Allocation was checked with
+  the pointer-vs-allocated predicate, and the check that MATTERED was not the
+  grep - a plain `grep -c RM-395` over `BACKLOG.md` / `ROADMAP.md` /
+  `docs/LEDGER.md` returned 0 and read as "free", while this pin already named
+  it. `tests/test_rm_id_registry_drift.py` caught it at the docs-guard run,
+  which is exactly the drift that guard exists for: **take the id from this
+  registry, never from a grep that only proves no ROW body exists yet.**
+  Earlier next-free pointer (2026-09-09, moved at the RM-392/RM-393/RM-394
   filing). **RM-392, RM-393 and RM-394 were all allocated 2026-09-09**
   (LEDGER 1373), all three filed under BACKLOG "Reliability / hardening", none
   taking a roster checkbox and none changing the Summary count: RM-392 the

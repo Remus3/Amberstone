@@ -24,6 +24,7 @@ adding a row here in the same commit.
 | [012](ADR-012-bridge-decommissioned.md) | RC<->Peer cross-Claude bridge + lessons-sync decommissioned | Accepted (supersedes ADR-004) |
 | [013](ADR-013-laning-verdict-flip-retired.md) | HZ-A laning-verdict flip RETIRED - the verdict carries zero information | Accepted (closes RM-155) |
 | [014](ADR-014-aram-laning-table-known-wrong-not-regenerated.md) | Shipped ARAM laning tables are KNOWN-WRONG on economy (`gold_at_band` x `0.5/1.01`) and are deliberately NOT regenerated | Accepted (closes RM-175) |
+| [015](ADR-015-shared-repo-enumeration.md) | Repo-root enumeration in tests goes through `tests/_repo_walk`, git index primary and directory skips as backstop | Accepted (records a 2026-09-07 decision that had no record; RM-394 shipped separately, RM-395 open for the two holdouts) |
 
 ## Reading order for a new session
 
@@ -34,7 +35,9 @@ retired - read before touching Lane A precompute or re-running its flip gate),
 **014** (the shipped ARAM laning tables are known-wrong on economy - read before
 trusting or regenerating any `laning_scenarios_*.json`).
 Data policy: **006** (Riot key), **009** (replay cleanroom). Frontend: **008**
-(asset hash). Retired: **004** -> **012** (bridge).
+(asset hash). Test guards: **015** (repo-root enumeration - read before writing
+or converting any guard that sweeps the whole tree). Retired: **004** -> **012**
+(bridge).
 
 Related routing: open work is `ROADMAP.md`, aspirational is `BACKLOG.md`, the per-item
 completion ledger is `docs/LEDGER.md` (items 325+) with the deep archive in
