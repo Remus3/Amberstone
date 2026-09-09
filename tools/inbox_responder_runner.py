@@ -1323,7 +1323,32 @@ def metrics_row_ok(row: Mapping[str, Any], *, delivered: Optional[int] = None,
 
 
 def trial_rows(path, agreement_id: str) -> list:
-    """The rows an arming note may quote: live, this agreement, grammar established."""
+    """The rows an arming note may quote: live, this agreement, grammar established.
+
+    SINGLE FILE BY DECISION, not by omission (RM-390). It takes a PATH and
+    reads exactly that file - no glob, no iterdir, no root - so the quotable
+    set is ONE agreement's live window. That is bounded on purpose, because
+    consent is bounded: a new trial is a new record and a new `agreement_id`.
+
+    IT IS COMPLETE FOR A LIVE AGREEMENT FOR AS LONG AS THE RECORD BESIDE THE
+    LEDGER IS READABLE AND STILL HASHES TO THAT ID, since that is the identity
+    `_rotate_metrics` carries rows forward by. An absent record, or one edited
+    into a different agreement, archives the whole window - measured, 30 to 0
+    in both shapes. A record that exists and cannot be READ is the safe case,
+    not a third break: rotation fails closed and moves nothing (measured, 30 to
+    30, zero archives), which is why this is a sufficient condition and not a
+    necessary one. It is also HISTORICAL: a record absent for the one tick a
+    rotation fell on has already emptied the window, and restoring it restores
+    nothing, so reading the record at arm time proves nothing. Spec section 8
+    carries the check that does - a listing of the archives beside the ledger.
+
+    The caller picks the file, so passing an archive path is legal and answers
+    PARTIALLY with no error. History ACROSS agreements is rendered outside the
+    runner by the fan-out recipe in `docs/RESPONDER_RUNNER_SPEC.md` section 8.
+    Do not grow a glob here and do not add a spanning reader beside it - the
+    path signature IS the seam, and a root-keyed metrics reader is one of the
+    two shapes `_rotate_metrics` was refuted into (the other was cycle-keyed).
+    """
     out = []
     try:
         raw = Path(path).read_text(encoding="utf-8")

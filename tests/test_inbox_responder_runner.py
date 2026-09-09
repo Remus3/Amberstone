@@ -3841,6 +3841,40 @@ def test_a_dry_tick_does_not_archive_the_live_agreement(world, tmp_path, monkeyp
     assert len(runner.trial_rows(path, live_id)) == 30
 
 
+def test_trial_rows_is_the_live_window_only(tmp_path):
+    """RM-390 DECIDED: the quotable set is the LIVE ledger, never the archives.
+
+    The two arms above pin the half that rotation owns - a live agreement's
+    rows are carried forward, so the live window cannot be silently emptied.
+    This pins the half the READER owns, which the spec was silent about until
+    rotation made it a choice: an archive holding rows of the SAME id is not
+    read, reading one is legal and answers partially, and the reader has no
+    glob to grow one. History across agreements is the section 8 fan-out
+    recipe, run by hand, not a second symbol in this module.
+    """
+    live = tmp_path / runner.METRICS_NAME
+    _seed_rows(live, 3, "live-id")
+    archive = tmp_path / "responder_metrics.20260101T000000.jsonl"
+    _seed_rows(archive, 5, "live-id", start=100)
+
+    assert len(runner.trial_rows(live, "live-id")) == 3
+    assert len(runner.trial_rows(archive, "live-id")) == 5
+    # The DOCSTRING says "no glob" in prose, so scanning the whole source finds
+    # the word and proves nothing. Split the docstring off and scan the BODY,
+    # with the prose asserted separately as the vacuity control. Do NOT strip
+    # it with `.replace(__doc__, "")`: Python 3.13+ removes the common leading
+    # indentation from `__doc__` at compile time, so the attribute is not a
+    # substring of the source and the replace silently does nothing (measured
+    # here - it is what made the first cut of this arm red).
+    source = inspect.getsource(runner.trial_rows)
+    head, doc, body = source.split('"""')
+    assert "no glob, no iterdir, no root" in doc
+    assert "glob" not in head + body and "iterdir" not in head + body
+
+    spec = (runner.ROOT / "docs" / "RESPONDER_RUNNER_SPEC.md").read_text(encoding="utf-8")
+    assert spec.count("SINGLE-FILE reader BY DECISION") == 1
+
+
 def test_a_prelude_failure_whose_row_cannot_be_written_keeps_the_pair(world, tmp_path,
                                                                      monkeypatch):
     """The SWALLOW direction of the same flag, which nothing else pins.
