@@ -119,6 +119,112 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09c - RM-392 ADOPTED SCOPE SHIPPED: two lines of code, and the row it was not looking for was five times its filed size
+
+Single-row headless session, operator AWAY. Tier-1: one test-support fixture, no
+engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1374.
+
+**The change is two lines.** `tests/test_inbox_responder_runner.py:466-467` now
+opens the session-scoped `git_repo` fixture with
+`if shutil.which("git") is None: pytest.skip(...)`, plus a `:454-465` docstring
+saying why this shape and no other. That was the whole adopted scope, twice
+adjudicated down to one site before this session started.
+
+**Measured both sides, same box, same command, PATH sanitized so
+`shutil.which("git")` is `None`:** before `18 passed, 205 errors` (205 ERROR
+lines, 204 unique ids - the filed figures, to the entry); after `18 passed,
+204 skipped, 1 error`. The stated acceptance was 204 errors -> 204 skips, and
+that is what happened.
+
+**The 1 residual error is PRE-EXISTING and is not this defect** - checked
+against the BEFORE log, not asserted. It is `_live_surfaces_unchanged` teardown
+at `:214` failing `assert _TMP_LOGS`: a positive control that cannot tell "the
+arms were skipped" from "the runner is broken". Left alone on purpose.
+
+**My own edit staled the row's citations inside the same commit, and my first
+correction of that was wrong twice.** Re-deriving after the last edit caught the
+gated spawns `:462,465` -> `:475,478` and `world` `:488` -> `:501` (I had
+already written the stale `:488` into the new docstring). The GATE caught the
+rest: the insertion is `14 1` in `git diff --numstat`, not "13 inserted lines",
+and my warning scoped itself to "every `:4xx` number" while a `:29xx` cite sat
+in the same paragraph (`:2965,2966` -> `:2978,2979`) and TWO stale cites sat in
+the RM-393 row three lines below (`:482` -> `:495`, `run` helper `:461-463` ->
+`:474-476`). RM-393 is the next row, so that one would have shipped pre-edit
+numbers to the next session. All corrected in the tree.
+
+**RM-394 was filed at one-fifth size, and finding that out was the session's
+real yield.** Running the target file alongside the hygiene guard produced an
+unrelated red: `test_universe_covers_every_test_bearing_tree_in_the_repo`, 8
+phantom test trees, all under `ops/runtime/responder_export/<sha>/`. Those
+export trees are a COPY OF THE REPO, so the class is any guard that globs the
+repo root and filters by a HAND-LIST instead of by git. A sweep (22
+`os.walk(`/`rglob(` sites anchored on ROOT/REPO in `tests/*.py`) measured FOUR
+red guards: `test_frozen_file_list_contract.py` (filed),
+`test_skip_condition_hygiene.py:1420`, `test_anthropic_base_url_pin.py:74`,
+`test_target_state_caller_p1l4.py:197`. **The gate then found a FIFTH by
+running the whole suite** - `test_rm364_prompt_sanitizer_population.py`
+`::test_anthropic_egress_census_is_fully_classified`, 50 phantom builders,
+assert `:426` - which that grep CANNOT see, because its enumeration spans two
+lines (`REPO_ROOT / root` on `:408`, `rglob(` on `:411`). **So 22 is not a
+bound.** Five measured red; 18 grep hits are candidates; the real candidate set
+is bigger by an unmeasured amount. Adding `responder_export` to one
+`HEADER_SCAN_SKIP_DIRS` repairs one of five.
+
+**Do NOT redo.** Do not re-measure the 204/205 reproduction. Do not widen the
+gate to a second site - the residual false-RED tail is an explicit non-goal in
+the row. Do not delete the `responder_export` trees to make the five guards
+green; that is the symptom, it is destructive, and nobody asked. Do not extend
+any hand-list.
+
+**Suite state at wrap, measured on this tree, not inherited:** `pytest tests -n 8`
+= `5 failed, 21632 passed, 97 skipped, 4921 subtests` in 248s, and the 5 reds are
+EXACTLY the five RM-394-class guards. Nothing else in `tests/` is red. The gate's
+run also showed a 6th, `phase8_smoke/test_sr_draft_profile_engine.py`
+`::TestLiveEngineIntegration::test_live_three_profiles`; it passes standalone and
+did not recur here - parallel-only flake.
+
+**CI on `main` is RED at `58468b276` and it is NOT this change - do not debug it
+as if it were.** `docs-guards` is GREEN. `ci` fails in the `check` job at the
+`Install Playwright Chromium` step, before pytest ever runs:
+`apt` cannot fetch `dl.google.com/linux/chrome-stable/.../Packages.gz`, `Hash Sum
+mismatch`, `Installation process exited with code: 100`. Reran `--failed` once,
+same failure four minutes later, so it is an upstream index that is stale on
+Google's side rather than a flake that clears instantly. No prior art in the repo
+(first occurrence of this string). Rerun it before assuming anything; if it
+persists across a day, THEN it is a row. **CLEARED - do not chase it.** The next
+push, `b286246bf` (RM-393), ran `ci` green: `check` conclusion `success`, read
+from `jobs[]` and not from the run conclusion, so it is not
+`reference_green_ci_run_may_have_skipped_the_job`. `nightly-full-suite` shows
+`skipped`, which is the normal push-run shape. Two consecutive failures four
+minutes apart and a clean run about half an hour later: transient upstream apt
+index, exactly as suspected, and it never reached pytest.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**The next row is RM-393**, which is small, bounded and already fully measured:
+inspect the return code in `_status` (`tests/test_lane_worktree_eol_rm343.py:92-94`)
+and `_content_diff` (`:97-100`), so the four consumers that assert against EMPTY
+(`:111`, `:135`, `:164`, `:261`) can no longer pass vacuously when git runs and
+FAILS. Do NOT widen it into a general unchecked-`stdout` sweep - the 2-file /
+7-site census that bounds it is in the row, and an earlier draft's "8 across 3
+files" was already refuted.
+
+**RM-394 is the bigger one and it is now a decision, not a measurement.** The
+five red guards are measured; what is unchosen is the universe: `git ls-files`
+(fixes every future ignored tree, stops scanning untracked working files) or
+`os.walk` minus everything `git check-ignore` claims. Pick one, apply it to all
+five, and do not add a sixth hand-list. Before you start, run the full `tests/`
+suite once and take the red list from THAT - not from a grep, which already
+missed one member of this class.
+
+---
+
 # 2026-09-09b - RM-392, RM-393 and RM-394 FILED: every inherited number was wrong, and so was the premise
 
 Single-row headless session, operator AWAY. The row was FILED-BUT-ROWLESS and
