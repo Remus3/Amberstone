@@ -69,7 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-389** (2026-09-08). The five ids below it were all
+  Next free id = **RM-392** (2026-09-08, re-derived at the RM-389 wrap). The
+  pin sat at RM-389 while RM-389, RM-390 and RM-391 all carried row bodies in
+  `BACKLOG.md`, so `tests/test_rm_id_registry_drift.py` was RED on `main` for
+  the whole of that window - inherited, not caused by the RM-389 wrap, and the
+  wrap is what re-derived it. The pinned id above occurs elsewhere only as
+  next-free POINTER prose (`WAKEUP_NOTES.md`, `docs/LEDGER.md` 1370), which the
+  guard exempts per-occurrence - and note that naming it possessively HERE was
+  itself scored as an allocation on the first attempt, so describe the pinned
+  id, never re-spell it. Ignore `RM-3801` when re-deriving: it is a probe string
+  recorded in `docs/LEDGER.md`, not an allocation. The eight ids below it were
   allocated the same day by the cross-repo inbox responder runner build:
   RM-384 for the build itself, RM-385 for the junction-NAMED note defect that
   build found and could not fix inside its own scope fence, RM-386 for the
