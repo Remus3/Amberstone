@@ -76,6 +76,13 @@ EXCLUDED_DIRS = frozenset({
     "venv",
     ".pytest_cache",
     ".ruff_cache",
+    # runtime exports: the inbox responder writes a full COPY OF THE REPO to
+    # ops/runtime/responder_export/<sha>/, gitignored and untracked. The
+    # tracked-set filter already removes it, so this entry only matters on the
+    # fallback path (git absent or the index read failing) - which is exactly
+    # the path RM-394's five red guards were on. One entry here, in the one
+    # shared list, is the alternative to five per-guard hand-lists.
+    "responder_export",
     # scratch + build output
     "_scratch",
     "build",
