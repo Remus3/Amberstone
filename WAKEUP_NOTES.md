@@ -6,6 +6,95 @@
 
 ---
 
+# 2026-09-08f - RM-388: the ledger rotates, and "which agreement is live" took three answers
+
+Single-row session, straight after RM-387. Tier-1, no `ENGINE_VERSION` bump,
+no DS bounce, no Share sync, no frozen file. Task DISABLED before the first
+edit, re-enabled at wrap. Commit `470d3158a`, pushed; CI `check: success` and
+`docs-guards: success` on that sha (`nightly-full-suite` skipped, as every
+push run skips it - the run conclusion alone would not have said so). LEDGER
+1369 (which calls this session `2026-09-08e`; the letter series are PER FILE
+and have diverged - see the header note).
+
+**The fix.** `responder_metrics.jsonl` grew forever while its sibling
+invocation log was trimmed. A `_trim` here was the wrong answer and the filed
+row said so: that file is where M1-M5 live and `trial_rows` quotes it into an
+arming note. Rows now MOVE to `responder_metrics.<stamp>.jsonl` and none is
+discarded; the trigger is BYTES via one `stat`; the carry is the last 200 rows
+plus every row of the live agreement.
+
+**THREE VERIFIER PASSES, THE FIRST TWO REFUTED IT, and both refutations were
+the same question with different answers.** "Which agreement is live" is the
+whole item. (1) `result.agreement_id` is set at GATE 2, so a stop-flag tick, a
+malformed record and a prelude failure all reach `_finish` with None while an
+agreement is live - measured `trial_rows` 30 -> 0. (2) A passed-in `root` then
+failed through the DRY path, where the cycle runs against a scratch root while
+its rows go to the LIVE ledger - measured 30 -> 0 again, and my docstring had
+the rationale backwards. (3) Shipped: `_rotate_metrics(path)` reads the
+agreement record BESIDE the ledger it is rotating. Nothing is passed in, so
+nothing can be passed in wrong. Memory:
+`feedback_which_instance_is_live_is_its_own_question`.
+
+**Do NOT** add `_trim` to the ledger, and **do NOT** add a parameter telling
+the rotator which agreement is live - that exact parameter was refuted twice.
+
+**Companion audit (RSC refutation 3).** The `mkdir(parents=True)` /
+`WinError 183` shape reproduces on RC; nine sites; exactly one had their
+partial-write-then-crash half - `main`'s prelude handler. The two writes are
+independent now, and when NEITHER lands the OSError still escapes, so exit 2
+never claims a failure was recorded when nothing was. The rest write nothing
+before they can raise and are RECORDED, not changed.
+
+**Two process notes.** A procedure-A mutant needle broke twice mid-item
+because it quotes runner source text at a call site this work moved. And
+verifier pass 3 reported `RC-InboxResponder` as "not registered at all" -
+FALSE; re-probing found it registered and Disabled. A subagent's claim about
+MACHINE state deserves the same distrust as its claim about a test count.
+
+**Suite:** runner + mutants 298 passed / 1 skipped (+11 arms), the eight
+sibling responder files 295 passed, ruff clean, 0 non-ASCII in four files.
+
+## NEXT SESSION - HEADLESS, and every sibling has the same directive
+
+Operator, 2026-09-08: all five repos were told to continue the responder work
+and propagate it, and RSC immediately asked for consensus BEFORE anyone builds
+(`moon_sync_inbox/2026-09-08-2155-from-RSC-consensus-requested-...`, five
+questions, one to RC by name, and it states that SILENCE READS AS DISSENT).
+**The operator then narrowed it: `CS`, `LW` and `LL` are on STANDBY** ("i will
+keep it to the test for now"), so the exchange is **RC <-> RSC ONLY** and
+nothing is written into the other three trees. **The operator is AWAY and both
+sessions run headless:** a decision that would normally be escalated goes to
+an ADJUDICATOR agent - a distinct agent choosing between the stated positions
+against stated criteria, never the agent that authored one of them - and the
+decision plus its criteria are recorded in the ledger entry. The one act that
+does NOT get adjudicated is ARMING: writing an agreement record commits RC to
+a counterparty under a budget, and nothing in this queue needs it (RSC has
+said it will not build a runner or arm either), so if a row ever seems to
+require it, that row is out of scope until the operator returns.
+
+Rows, in order: **RM-389** (answer the consensus note and propagate - ONE note
+to RSC, measured claims only, no request for a reply),
+**RM-390** (`trial_rows` sees only the live ledger now that rotation exists -
+settle whether the quotable set spans archives, and write it into the spec),
+**RM-391** (the per-note records, filed WITH their measurement: they grow per
+NOTE, not per tick, and `deliveries.jsonl` is the budget governor and must
+never be trimmed).
+
+Concurrency, because RSC runs headless on this same box at the same time:
+read `docs/CONCURRENT_HEADLESS_CONTRACT.md` first; do NOT re-pin
+`SHARED_SHA256` (`tests/test_loop_concurrency.py:474`) unilaterally, since
+both trees hashing equal IS the acceptance and a sibling's file is taken with
+a BYTE-level copy, never `write_text`; and keep suite parallelism modest,
+because parallel full-suite slices have OOM'd this box and it presents as an
+API error.
+
+Still open and unchanged: the responder is DISARMED and `hop_budget 1` is
+SPENT, so a new agreement is an OPERATOR act and every outbound note is
+hand-delivered rather than a trial hop. The one false entry in
+`inbox_responder_answered.json` still stands per LEDGER 1366.
+
+---
+
 # 2026-09-08e - RM-387: a row's 80-char bound had reached the human-readable body
 
 Single-row session, straight after RM-385. Tier-1, no `ENGINE_VERSION` bump, no
