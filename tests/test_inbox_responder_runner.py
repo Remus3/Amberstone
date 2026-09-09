@@ -451,7 +451,20 @@ class World:
 
 @pytest.fixture(scope="session")
 def git_repo(tmp_path_factory):
-    """A real small repo with an origin remote, a pushed main and a reflog-only commit."""
+    """A real small repo with an origin remote, a pushed main and a reflog-only commit.
+
+    The capability gate is the point of RM-392: every spawn below names the `git`
+    binary, so on a checkout without it the fixture RAISES instead of skipping and
+    every test that requests it - directly or through `world` (`:501`) - reports as
+    an ERROR rather than a skip with a true reason. Measured 2026-09-09 with git off
+    PATH: 205 error entries over 204 unique ids in this module alone, against about
+    14 for the next-largest site in `tests/`. `shutil.which` is also the only repair
+    shape here that scores CAPABILITY against `tests/test_skip_condition_hygiene.py`
+    (`scan_source`, `:1285`); catching `FileNotFoundError` or `OSError`, or probing
+    the return code, all score UNRESOLVED and would turn that guard RED.
+    """
+    if shutil.which("git") is None:
+        pytest.skip("git not on PATH - this fixture builds a real repo")
     base = tmp_path_factory.mktemp("gitrepo")
     origin = base / "origin.git"
     work = base / "work"

@@ -2,7 +2,97 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-392/RM-393 filing pass (relocated `2026-09-08f` "the ledger rotates"; newest 3 = RM-392/RM-393 `2026-09-09b` + RM-390/RM-391 `2026-09-09` + RM-389 `2026-09-08g`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-392 shipping pass (relocated `2026-09-08g` RM-389; newest 3 = RM-392 shipped `2026-09-09c` + RM-392/RM-393/RM-394 filed `2026-09-09b` + RM-390/RM-391 `2026-09-09`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09c - RM-392 ADOPTED SCOPE SHIPPED: two lines of code, and the row it was not looking for was five times its filed size
+
+Single-row headless session, operator AWAY. Tier-1: one test-support fixture, no
+engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1374.
+
+**The change is two lines.** `tests/test_inbox_responder_runner.py:466-467` now
+opens the session-scoped `git_repo` fixture with
+`if shutil.which("git") is None: pytest.skip(...)`, plus a `:454-465` docstring
+saying why this shape and no other. That was the whole adopted scope, twice
+adjudicated down to one site before this session started.
+
+**Measured both sides, same box, same command, PATH sanitized so
+`shutil.which("git")` is `None`:** before `18 passed, 205 errors` (205 ERROR
+lines, 204 unique ids - the filed figures, to the entry); after `18 passed,
+204 skipped, 1 error`. The stated acceptance was 204 errors -> 204 skips, and
+that is what happened.
+
+**The 1 residual error is PRE-EXISTING and is not this defect** - checked
+against the BEFORE log, not asserted. It is `_live_surfaces_unchanged` teardown
+at `:214` failing `assert _TMP_LOGS`: a positive control that cannot tell "the
+arms were skipped" from "the runner is broken". Left alone on purpose.
+
+**My own edit staled the row's citations inside the same commit, and my first
+correction of that was wrong twice.** Re-deriving after the last edit caught the
+gated spawns `:462,465` -> `:475,478` and `world` `:488` -> `:501` (I had
+already written the stale `:488` into the new docstring). The GATE caught the
+rest: the insertion is `14 1` in `git diff --numstat`, not "13 inserted lines",
+and my warning scoped itself to "every `:4xx` number" while a `:29xx` cite sat
+in the same paragraph (`:2965,2966` -> `:2978,2979`) and TWO stale cites sat in
+the RM-393 row three lines below (`:482` -> `:495`, `run` helper `:461-463` ->
+`:474-476`). RM-393 is the next row, so that one would have shipped pre-edit
+numbers to the next session. All corrected in the tree.
+
+**RM-394 was filed at one-fifth size, and finding that out was the session's
+real yield.** Running the target file alongside the hygiene guard produced an
+unrelated red: `test_universe_covers_every_test_bearing_tree_in_the_repo`, 8
+phantom test trees, all under `ops/runtime/responder_export/<sha>/`. Those
+export trees are a COPY OF THE REPO, so the class is any guard that globs the
+repo root and filters by a HAND-LIST instead of by git. A sweep (22
+`os.walk(`/`rglob(` sites anchored on ROOT/REPO in `tests/*.py`) measured FOUR
+red guards: `test_frozen_file_list_contract.py` (filed),
+`test_skip_condition_hygiene.py:1420`, `test_anthropic_base_url_pin.py:74`,
+`test_target_state_caller_p1l4.py:197`. **The gate then found a FIFTH by
+running the whole suite** - `test_rm364_prompt_sanitizer_population.py`
+`::test_anthropic_egress_census_is_fully_classified`, 50 phantom builders,
+assert `:426` - which that grep CANNOT see, because its enumeration spans two
+lines (`REPO_ROOT / root` on `:408`, `rglob(` on `:411`). **So 22 is not a
+bound.** Five measured red; 18 grep hits are candidates; the real candidate set
+is bigger by an unmeasured amount. Adding `responder_export` to one
+`HEADER_SCAN_SKIP_DIRS` repairs one of five.
+
+**Do NOT redo.** Do not re-measure the 204/205 reproduction. Do not widen the
+gate to a second site - the residual false-RED tail is an explicit non-goal in
+the row. Do not delete the `responder_export` trees to make the five guards
+green; that is the symptom, it is destructive, and nobody asked. Do not extend
+any hand-list.
+
+**Suite state at wrap, measured on this tree, not inherited:** `pytest tests -n 8`
+= `5 failed, 21632 passed, 97 skipped, 4921 subtests` in 248s, and the 5 reds are
+EXACTLY the five RM-394-class guards. Nothing else in `tests/` is red. The gate's
+run also showed a 6th, `phase8_smoke/test_sr_draft_profile_engine.py`
+`::TestLiveEngineIntegration::test_live_three_profiles`; it passes standalone and
+did not recur here - parallel-only flake.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**The next row is RM-393**, which is small, bounded and already fully measured:
+inspect the return code in `_status` (`tests/test_lane_worktree_eol_rm343.py:92-94`)
+and `_content_diff` (`:97-100`), so the four consumers that assert against EMPTY
+(`:111`, `:135`, `:164`, `:261`) can no longer pass vacuously when git runs and
+FAILS. Do NOT widen it into a general unchecked-`stdout` sweep - the 2-file /
+7-site census that bounds it is in the row, and an earlier draft's "8 across 3
+files" was already refuted.
+
+**RM-394 is the bigger one and it is now a decision, not a measurement.** The
+five red guards are measured; what is unchosen is the universe: `git ls-files`
+(fixes every future ignored tree, stops scanning untracked working files) or
+`os.walk` minus everything `git check-ignore` claims. Pick one, apply it to all
+five, and do not add a sixth hand-list. Before you start, run the full `tests/`
+suite once and take the red list from THAT - not from a grep, which already
+missed one member of this class.
 
 ---
 
@@ -212,64 +302,3 @@ Start with `/clear`, bootstrap from CLAUDE.md + MEMORY.md + this file + `git
 log`, then `python tools/perseus_recall.py "<the row in your own words>"` BEFORE
 touching anything. Disable `RC-InboxResponder` before any suite run and re-enable
 it at wrap. Never `pytest .`.
-
----
-
-# 2026-09-08g - RM-389: five questions answered, and three outbound notes that each needed correcting
-
-Single-row outward session, operator AWAY. Tier-0 code impact (three doc
-commits), plus three cross-repo notes to RSC. Task DISABLED before the first
-suite run and re-enabled at wrap. `df07bfe1c`, `0895db035`, `3ae50ddb3`, all
-pushed. Responder slice 595 passed / 1 skipped. Full account in LEDGER 1370.
-
-**The row shipped.** All five of RSC's consensus questions are answered:
-Q1/Q4 agreed, Q2 `# GATE:<tag>` with the census trap stated in BOTH directions,
-Q5 answered as the SHAPE (`GATE_MUTANTS` plus four machine-checked companions,
-with the honest caveat that `GATE_STATEMENT_LINES = 4` makes "the gate's own
-statement" a 5-LINE WINDOW rather than an AST scope). The correction RC owed
-them was delivered: they quoted RC's `start`/`deliver` blind spot as an open
-warning and both are CLOSED.
-
-**Q3 was answered by AUDITING, and RC failed its own audit.** 39 of 115
-external-binary call sites are FALSE-RED RISK, 4 false-green. MEASURED, not
-static-read: with git off PATH, `tests/test_inbox_responder_runner.py` gives
-17 passed / 205 errors of 221 collected, `FileNotFoundError [WinError 2]`
-raised inside the SESSION fixture. RC has a 2116-line guard against false-GREEN
-skips and NOTHING against false-RED, and it is structurally blind to an ungated
-`subprocess.run([...], check=True)` because there is no skip to inspect.
-
-**THE PROCESS LESSON, which cost more than the row.** RC wrote note 1 DIRECTLY
-into the sibling's inbox and gated it AFTERWARDS. The gate found nine defects,
-so RC edited a delivered note - breaking `docs/CONCURRENT_HEADLESS_CONTRACT.md`
-rule 7.2 - and RSC had already read v1 and rebroadcast RC's wrong "121 of 139"
-to four inboxes. **A verification step placed after the irreversible act turns
-its own findings into a contract violation.** Note 2 then shipped three NEW
-false sentences. Note 3 was drafted to SCRATCH and took FIVE gate passes before
-it was clean; every pass found real defects, and the last two found only prose,
-never a figure.
-
-**What separated the good numbers from the bad:** not machine-versus-memory -
-the wrong 121 came from a grep. Every figure that survived was RE-DERIVED BY A
-SECOND METHOD (125 survived because an AST pass disagreed with the grep).
-Every sentence written from recollection between gates was wrong, including
-three claims RC made ABOUT ITS OWN prior errors, one of which "quoted" a phrase
-that existed only in an undelivered draft.
-
-**A count this repo was wrong about in three directions.** `738ec83af` edited
-THREE places in `RESPONDER_RUNNER_SPEC.md` - true as an EDIT count, which is
-what its message meant. Exactly ONE carried the false `name == safe_name(name)`
-claim; a SECOND site (`:149`) survived. RC called it "the fourth site" in
-`df07bfe1c`, then over-corrected to "never true", also false. **The "Corrected
-in three places" wording at `WAKEUP_NOTES.md:134` below, `BACKLOG.md:264` and
-`docs/LEDGER.md:51` is that same claim-count reading and is superseded by
-LEDGER 1370** - three places edited, one carrying the claim, one claim site
-missed. `df07bfe1c`'s message stays wrong in the permanent record; no rewrite.
-
-**NEXT:** RM-390 (does the `trial_rows` quotable set span
-`responder_metrics.<stamp>.jsonl` archives? Decide and write it into the spec
-either way; no production call site yet, so it is a seam to settle before it
-has a consumer), then RM-391 if time. Next free id RM-392. **Adopt inbound and
-unmeasured:** RSC's finding that a pre-push hook runs with a PATH that is not
-the shell's (git puts `mingw64/libexec/git-core` on it), which puts the 39
-FALSE-RED classification in doubt in exactly the environment that gates every
-push.
