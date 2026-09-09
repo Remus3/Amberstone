@@ -2,7 +2,88 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, ADR-015 pass (relocated `2026-09-09c` RM-392 shipped; newest 3 = ADR-015 `2026-09-09f` + RM-394 shipped `2026-09-09e` + RM-393 shipped `2026-09-09d`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-395 shipping pass (relocated `2026-09-09d` RM-393 shipped; newest 3 = RM-395 shipped `2026-09-09g` + ADR-015 `2026-09-09f` + RM-394 shipped `2026-09-09e`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09g - RM-395 SHIPPED: the row I filed one commit earlier was wrong twice, and the step that caught it is the one the row demanded
+
+Fifth row of the same headless day, operator AWAY. Tier-1: two test modules, no
+engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1378.
+Two parallel single-file slices, one merger, gate before the commit.
+
+**Both corrections came from doing the step the row itself demanded FIRST** -
+state whether an EMPTY enumeration would PASS each assertion before converting.
+That step is in ADR-015's Watch for because RM-394 nearly shipped a silent
+always-green. Here it caught my own filing.
+
+1. **"Both are ABSENCE guards, the empty-set-safe shape" is FALSE for the laning
+   guard.** `_app_source_files()` has exactly one consumer and it asserts SET
+   EQUALITY against a two-element expectation, so an empty enumeration gives
+   `set()` and FAILS. Self-anchoring, no anchor needed - PROVEN by mutation
+   (`assert set() == {...}`, 1 failed / 26 passed), not reasoned.
+2. **The row named two exposed sites; there are three** - and my framing of the
+   third was ALSO wrong. `CallerSurfaceAbsenceTests.test_no_live_caller` sweeps
+   6377 files with 5044 under the export trees, but its own
+   `rel.startswith("ops/runtime/")` skip existed at HEAD (`:172`) and dropped
+   every one BEFORE any read: read-set 1260 both sides, symmetric difference
+   EMPTY. **Cost, not correctness.** I told the operator otherwise mid-session.
+   Its real defect is the ADR's other green-by-luck sense - it never skipped
+   `python-embed` / `node_modules` / `.claude`.
+
+**Shipped.** `test_laning_verdict_flip_retired.py`: 2082 -> 397 enumerated, all
+1685 removed are vendored `python-embed`, set-diff confirms 0 RC source lost and
+0 gained, 15 first-party SCOPE skips kept and only 4 infrastructure entries
+deleted; 27 passed. `test_dead_endpoint_cleanup_item186.py`: both sites, site 1
+9112 -> 2386 (its two filters were removing ZERO files), site 2 to one root walk
+plus a prefix filter reaching the identical 1260 read-set; 4 passed. **A gate
+caught 1331 recited as the read-set in four places: 1331 is the caller SURFACE,
+and this guard's own `dashboard/routes_` skip removes exactly 71 of them before
+anything is opened.** Surface and read-set are different populations one line
+apart, and the in-file comment saying "1331 across the caller surface" was right
+while every doc restating it as the read-set was wrong.
+
+**The anchors, and the mutation that justifies them.** With the identical
+forced-empty mutation applied to the PRE-conversion code both tests PASSED
+VACUOUSLY. After, they fail under three independent mutations (`Path.rglob`
+empty, the `_repo_walk` enumerators empty, `EXCLUDED_DIRS` widened to a partial
+collapse leaving 76 files). Each anchor checks TWO oracles - on disk AND actually
+delivered to the scanning arm - so a decayed constant reports "anchor gone", not
+"walk collapsed"; a `_MIN_SCANNED = 100` floor sits far below the true 2386/1260
+so it tracks collapse, not roster.
+
+**Suite:** `pytest tests -n 8` = 21639 passed, 97 skipped, 4921 subtests, 0
+failed, exit 0. No `_live_surfaces_unchanged` error this run - consistent with
+the window-dependent external-writer attribution, not evidence against it.
+
+**Do NOT redo.** ADR-015 needs no amendment - both Watch-for items did exactly
+what they were written to do. Do not add an anchor to the laning guard; set
+equality already is one. Do not "fix" site 2's `ops/runtime/` skip as dead - it
+is a no-op only under `tracked_only=True`, and still fires on the git-absent
+fallback, which is the path RM-394's reds were on.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**No row is queued - pick one.** RM-392, RM-393, RM-394 and RM-395 all shipped
+today, and ADR-015 records the decision behind the last two. The two known-open
+items, neither adjudicated into a row:
+
+1. **`tools/stop_claim_gate.py:38`** - `CLAIM_COUNT` has no counterfactual or
+   citation suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so
+   quoting a figure IN ORDER TO REFUTE IT re-fires every turn. Read the hazard
+   its own comments name at `:74-77` before touching it.
+2. **`tests/test_inbox_responder_runner.py`** - two defects in one module. `:214`
+   asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the arms
+   were skipped" from "the runner is broken" (it is the 1 residual error when git
+   is off PATH). And `_live_surfaces_unchanged` is non-hermetic against a LIVE RC
+   appending to `ops/runtime` mid-suite - measured three times on 2026-09-09,
+   absent on a fourth run, so it is window-dependent by construction.
 
 ---
 
@@ -177,71 +258,3 @@ The three known-open items, none of them adjudicated into a row yet:
    "the arms were skipped" from "the runner is broken"; it is the 1 residual
    error when git is off PATH. And the same fixture is non-hermetic against a
    LIVE RC writing `ops/runtime` mid-suite, measured today.
-
----
-
-# 2026-09-09d - RM-393 SHIPPED: the helpers now inspect the return code, and the sibling census held up
-
-Second row of the same headless day, operator AWAY. Tier-1: one test module, no
-engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1375.
-
-**The defect, stated honestly:** `_status` and `_content_diff` in
-`tests/test_lane_worktree_eol_rm343.py` returned `subprocess.run(...).stdout`
-with the return code inspected nowhere. A failing `git` exits non-zero with an
-EMPTY stdout and its message on stderr, which `capture_output` swallows, so the
-four consumers that assert against `""` would have passed vacuously. Not a live
-false-GREEN - an assertion that could not fail for the reason it exists to catch.
-
-**The repair is one helper.** Both delegate to `_query(args, cwd)` (`:92-109`),
-which asserts `returncode == 0` and carries the command, rc, cwd and the
-SWALLOWED STDERR in the message. `check=True` would inspect the code too; it was
-rejected because `CalledProcessError` throws away the stderr text, which is the
-whole diagnostic in this failure mode.
-
-**TDD, RED watched first:** the new arm (`:122-144`) reported
-`Failed: DID NOT RAISE` against the old helpers, and it ships with a positive
-control (`:147-155`) so the gate cannot be met by raising unconditionally. The
-git failure is manufactured with a `.git` gitfile reading `gitdir: nowhere` -
-rc 128, empty stdout, and independent of whatever sits above `tmp_path`, which a
-plain non-repo directory would NOT be.
-
-**The sibling census was re-derived and the filed row survived it.** In
-`tests/test_loop_audit_range.py` the sites at `:100,164,168,181` assert
-MEMBERSHIP and fail loudly; `:58` feeds `_log_count`, whose three callers assert
-`>= 2`, `== 2`, `== 4` (`:98`, `:116`, `:130`), so a failure returning 0 fails
-all three. Nothing outside the row needed touching. Module green at 16 passed,
-ruff clean.
-
-**Citation shift, measured (`git diff --numstat` = `59 4`, net +55):** RM-393's
-four consumer cites `:111,135,164,261` are now `:166,190,219,316`.
-
-**Do NOT redo.** Do not widen this into a general unchecked-`stdout` sweep - the
-census that bounds it is re-derived and in the row. Do not swap `_query`'s assert
-for `check=True`; the stderr text is the point.
-
-## NEXT SESSION - HEADLESS, operator away
-
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
-row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
-The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
-operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
-never adjudicated - if a row needs it, say so and move on.
-
-**The next row is RM-394, and it is a DECISION, not a measurement.** Five guards
-are measured red on Legion and green in CI, every one failing solely on the
-gitignored `ops/runtime/responder_export/<sha>/` trees, which are a COPY OF THE
-REPO. Pick the universe once and apply it to all five: `git ls-files` (fixes
-every future ignored tree, at the cost of no longer scanning untracked working
-files) or `os.walk` minus everything `git check-ignore` claims. Do NOT add a
-sixth hand-list entry - that repairs one of five. **Take the red list from a full
-`pytest tests` run, never from a grep:** the fifth member was invisible to the
-22-site grep that found the first four, because its enumeration spans two lines.
-
-**Also open, both from the RM-392 session and deliberately not fixed there:**
-`tools/stop_claim_gate.py:38` `CLAIM_COUNT` has no counterfactual or citation
-suppression (unlike `CLAIM_FILE` at `:47-83`, which has both), so quoting a
-figure IN ORDER TO REFUTE IT re-fires every turn; and the module-scoped
-`_live_surfaces_unchanged` teardown in `tests/test_inbox_responder_runner.py:214`
-asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the arms were
-skipped" from "the runner is broken" (it is the 1 residual error when git is off
-PATH).

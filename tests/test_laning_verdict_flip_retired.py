@@ -28,6 +28,8 @@ from pathlib import Path
 
 import pytest
 
+from tests import _repo_walk
+
 _ROOT = Path(__file__).resolve().parent.parent
 _TOOLS = _ROOT / "tools"
 for _p in (str(_ROOT), str(_TOOLS)):
@@ -54,11 +56,20 @@ _ALLOWED_REFERENCES = {
     "dashboard/_deterministic_coaching.py",
 }
 
-# Directories that are not RC application source for the purposes of this guard.
+# This guard's OWN SCOPE choice, and nothing else (ADR-015). Every name below is
+# a FIRST-PARTY tree that this guard deliberately declines to read, because the
+# question it asks is "does RC APPLICATION source serve the retired verdict?" -
+# a test, a tool or a doc naming the precompute is not a served consumer.
+#
+# The other half - INFRASTRUCTURE exclusion - used to live here too (`.claude`,
+# `.git`, `__pycache__`, `node_modules`) and has been deleted: `tests/_repo_walk`
+# owns it, along with the ones this list never had (`python-embed`,
+# `responder_export`, `moon_sync_inbox`, `_archive`, ...). Do not re-add an
+# infrastructure name here; add it to the shared list or it fixes one guard of
+# many. Do not add `python-embed` or `responder_export` at all - already there.
 _SKIP_DIRS = {
-    ".claude", ".git", "__pycache__", "tests", "tools", "scripts", "benchmarks",
-    "docs", "ops", "node_modules", "data", "logs", "web", "rc-shell",
-    "agents", "lib", "config", "assets", "modules",
+    "tests", "tools", "scripts", "benchmarks", "docs", "ops", "data", "logs",
+    "web", "rc-shell", "agents", "lib", "config", "assets", "modules",
 }
 
 
@@ -78,11 +89,26 @@ PROBE = _load_tool("laning_verdict_information_probe")
 def _app_source_files():
     """Every RC application .py under the repo root this test file lives in.
 
-    Rooted at ``_ROOT`` rather than a hard-coded path so the guard is not
-    worktree-blind, and ``_SKIP_DIRS`` is applied to the RELATIVE path so a
-    worktree nested under ``.claude/`` cannot smuggle its own tree in.
+    Enumeration comes from ``tests/_repo_walk`` (ADR-015): the git INDEX is the
+    universe, with the shared ``EXCLUDED_DIRS`` as the backstop when git is
+    absent. The hand-rolled ``rglob`` this replaced reached 2082 files of which
+    1685 (81 percent) were vendored ``python-embed`` - untracked third-party
+    bytes that are RC application source by nobody's definition. It was green
+    only because no embedded-interpreter module happens to import the RC
+    precompute.
+
+    ``_SKIP_DIRS`` is applied ON TOP of the walker and is scope, not
+    infrastructure - see its comment above.
+
+    Still rooted at ``_ROOT`` rather than a hard-coded path so the guard is not
+    worktree-blind, and the skip is still matched against the RELATIVE path.
+    That is a real trap, not tidiness: when the checkout ITSELF lives under
+    ``.claude/worktrees/<id>/``, every absolute path carries ``.claude`` in its
+    parts and the walk returns nothing, which reads exactly like a clean tree.
+    ``tests/_repo_walk`` handles the same trap for its own list - see its
+    "Relative, never absolute" docstring section.
     """
-    for path in _ROOT.rglob("*.py"):
+    for path in _repo_walk.repo_files(_ROOT, ("*.py",)):
         rel = path.relative_to(_ROOT)
         if any(part in _SKIP_DIRS for part in rel.parts[:-1]):
             continue
