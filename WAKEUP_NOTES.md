@@ -2,7 +2,67 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-08-30, merger + RM-227(a) pass (relocated `2026-08-29b` RM-222 flat-pen layout guard; newest 3 = merger + RM-227(a) `2026-08-30b` + lane-7 headless-repo `2026-08-30` + port-block collision `2026-08-29c`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-08, RM-387 pass (relocated `2026-09-08b` "the responder was ARMED"; newest 3 = RM-387 `2026-09-08e` + RM-385 `2026-09-08d` + RM-386 second half `2026-09-08c`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-08e - RM-387: a row's 80-char bound had reached the human-readable body
+
+Single-row session, straight after RM-385. Tier-1, no `ENGINE_VERSION` bump, no
+DS bounce, no Share sync, no frozen file. Task DISABLED before the first edit
+and re-enabled at wrap. Commit `738ec83af`, pushed; CI `check: success` and
+`docs-guards: success` on that sha (`nightly-full-suite` skipped, as a push run
+always does - the run conclusion alone would not have said that).
+
+LETTER SERIES NOTE, so nobody "reconciles" it later: `docs/LEDGER.md` calls this
+session **2026-09-08d** (entry 1368) because the two files started lettering on
+different sessions. They have already diverged for RM-385, which is `c` in the
+LEDGER and `d` here. Neither is wrong; do not renumber either.
+
+**The defect.** `assemble_body(note_filename=result.note)` was handed the ROW's
+`safe_name` projection, which clips at 80 to satisfy `ROW_NOTE_RE`, so the
+counterparty read their own filename truncated in the one line written for a
+human. Pre-existing; the RM-386 topic-cap raise made it routine rather than rare.
+
+**The decision, which is the item's real content.** `ROW_NOTE_RE` was NOT
+widened - it is a published row interface RSC may parse and it carries a mutant
+needle, and the row-consumer side was measured first (only `metrics_row_ok` plus
+four arms read that field). The row wants a bounded, regex-pinned value; the body
+wants the name the sender chose. They stopped sharing one projection. The row,
+`safe_name`, `NOTE_NAME_RE` and `NOTE_NAME_MAX` are byte-unchanged, and the whole
+production diff is one argument plus its comment.
+
+**Why the raw name is safe there:** assembly is reachable ONLY after gate 6,
+where the name has passed `NOTE_NAME_RE` - the same ground the stdin envelope has
+stood on since the first build. The BOUNCE deliberately keeps the projection on
+both halves: it is the one sender-visible body that must also serve a name which
+never passed the grammar.
+
+**The spec was carrying a false premise and that is where the defect grew.**
+Section 2 asserted a post-gate-6 name "equals its own `safe_name` by
+construction". False the day it was written (the grammar already admitted 109
+characters), routine after the cap raise, and asserted by no test. Corrected in
+three places. New memory:
+`feedback_shared_projection_carries_the_tightest_bound`.
+
+**Two arms, both on the SENDER-VISIBLE string** (the clipped name is a PREFIX of
+the raw one, so a plain substring check passes on the broken body): the delivered
+file must carry `answering <raw>; cycle ` and not the clipped clause; and a name
+carrying `hop` past character 80 now refuses a LATENCY-ONLY cycle the clip used
+to hide - fail closed, correct (a LATENCY-ONLY body saying `hop` reads as M1),
+one grammar wide, delivering normally under A5. The second was found by the
+adversarial verifier, not by me; its other residual (a post-gate-6 bounce still
+clips) was answered in the comment rather than filed.
+
+**Do NOT redo:** RM-387 in any form, and do not revisit widening `ROW_NOTE_RE` -
+that was considered and rejected on the row-consumer measurement, not skipped.
+
+**Still open and unchanged:** RM-388 (metrics ledger never trimmed; do NOT just
+add `_trim`, it is the M1/M2/M3 evidence base) which also carries the unaudited
+`mkdir(parents=True)` / `WinError 183` shape across 8 runner call sites. The two
+RSC notes (1640, 1705) are still pending and unanswered - `hop_budget 1` is SPENT
+so every cycle reads `budget`, and a new agreement is an OPERATOR act. The one
+false entry in `inbox_responder_answered.json` still stands per LEDGER 1366.
 
 ---
 
@@ -123,50 +183,3 @@ plus the one added, the amended spec sections 2 and 4b.
 **Still open:** RM-385 (strict-xfail untouched), RM-387, RM-388. A
 `destination`-stage refusal is still answered on purpose - `_deliver` records
 before the link attempt and a mutant pins that order.
-
----
-
-# 2026-09-08b - the responder was ARMED, and running it found what testing could not
-
-Continues 2026-09-08 below. The runner was armed against RSC (A5-measurement-only,
-`hop_budget 1`, 24 h window, `agreement_id a9f7e59541f9ab87`) and **it delivered**:
-`2026-09-08-1657-from-RC-RESPONDER-re-6e62aa1071a0.md`, `delivered / delivery=1 of 1`,
-M1 LOWER_BOUND hops 1, M3 21 turns, m4 proposed 1 allowed 1. RSC independently
-confirmed receipt at 17:00, 2889 bytes. First machine-authored note that channel
-has carried.
-
-**FOUR live defects that a green suite could not see.** Every one surfaced by
-RUNNING the thing, not by testing it. (1) The first armed tick refused a real
-note on `name-grammar` - and RC's own filed cause was WRONG: `NOTE_NAME_MAX` was
-a red herring, the binding constraint was `NOTE_NAME_RE`'s `{1,80}` TOPIC group,
-and raising the named cap alone would have fixed ZERO of the 34 failing names
-across 208 unique notes. Caps now `{1,160}` / 200; 0 of 208 fail. (2) The
-re-queued note was then EXHAUSTED silently - and the root cause was in the
-PROMPT, not the gates: `SYSTEM_PROMPT` literally instructed "if there is nothing
-to measure, return exactly `{"actions":[]}`". Fixed with `minItems: 1` plus a
-rewritten paragraph, and RSC's bounce design adopted (a `.txt` that fails the
-note grammar on every clause, own allowance, excluded from budget/M1/M2/M5).
-(3) `SPAWN_TIMEOUT_S` 120 was too short for a 618 MB export - now 240. (4)
-`MAX_TURNS` 12 was too tight - the delivering cycle used **21**, so the old
-limit would have failed a third time and hit the attempt cap. Now 30.
-
-**Three of the spec's own UNMEASURED guesses were measured by running it**:
-export size (618 MB), `SPAWN_TIMEOUT_S`, `MAX_TURNS`. Each failure labelled
-itself correctly rather than lying, which is the one thing the build got right.
-
-**Do NOT redo:** the caps, the prompt/schema fix, the bounce, the two constants.
-RC and RSC independently converged on the SAME six bounce properties, which is
-the strongest evidence the shape is right.
-
-**Open, all in `BACKLOG.md`:** RM-385 (junction-named note invisible forever,
-plus a second instance - a note with sender and date transposed), RM-386 second
-half (THREE terminal states answer a note and tell the sender nothing), RM-387
-(reply body shows the sender their filename clipped to 80), RM-388 (metrics
-ledger never trimmed while the invocation log is; from RSC's refutation list -
-four of their six were checked and do NOT apply to RC, recorded so nobody
-re-checks them).
-
-**Operational:** the task must be DISABLED to run the suite (it writes the live
-log every 5 min and the autouse arm guards exactly that). The `hop_budget 1` is
-now SPENT, so every further cycle reads `budget / consumed=1 budget=1` until a
-new agreement is written - which is an operator act.
