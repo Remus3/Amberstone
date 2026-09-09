@@ -36,6 +36,8 @@ from pathlib import Path
 
 import pytest
 
+from tests import _repo_walk
+
 _ROOT = Path(__file__).resolve().parent.parent
 _CHAMP_PATH = _ROOT / "data" / "meta" / "ddragon_champions.json"
 _ITEM_PATH = _ROOT / "data" / "meta" / "ddragon_items.json"
@@ -194,15 +196,15 @@ class TestCoachFeedsFixedCurveNotEnemyBuild:
         needle = "compute_target_stats" + "_from_items("  # avoid self-match
         skip_names = {"enemy_aware_stats.py", Path(__file__).name}
         callers = []
-        for p in _ROOT.rglob("*.py"):
-            # Exclusion is RELATIVE to _ROOT: skip vendored .claude/worktree
-            # + _archive copies NESTED under the repo, without nuking the whole
-            # tree when _ROOT itself lives under a .claude/worktrees/<id> path
-            # (absolute p.parts would then match ".claude" for every file and
-            # the caller scan would come back empty).
-            rel_parts = p.relative_to(_ROOT).parts
-            if ".claude" in rel_parts or "_archive" in rel_parts:
-                continue
+        # Enumeration is tests/_repo_walk's job, not a raw rglob: it filters to
+        # the git-tracked set (so the gitignored ops/runtime/responder_export/
+        # <sha>/ full-repo COPIES cannot be scanned as if they were callers),
+        # with EXCLUDED_DIRS segment skips as the backstop. It also owns the
+        # relative-vs-absolute trap the inline .claude / _archive check used to
+        # record: matching ABSOLUTE parts returns nothing at all when the
+        # checkout itself lives under a .claude/worktrees/<id> path, which reads
+        # exactly like a clean tree. See tests/_repo_walk.py.
+        for p in _repo_walk.repo_files(_ROOT, patterns=("*.py",)):
             if p.name in skip_names:
                 continue
             txt = p.read_text(encoding="utf-8", errors="ignore")

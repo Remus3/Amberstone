@@ -41,6 +41,8 @@ import re
 
 import pytest
 
+from tests import _repo_walk
+
 # Private by name, contract by role: these two literals ARE the observable
 # output of the sanitiser, so a test that hard-codes "[BLOCKED:override]"
 # instead would silently stop testing anything if the marker were retuned.
@@ -403,17 +405,30 @@ _NOT_BUILDERS = {
 
 
 def _measured_egress_census() -> set[str]:
+    """Every census-root .py the repo actually OWNS that carries an egress call.
+
+    Enumerated through `tests/_repo_walk`, the repo's canonical walker, and not
+    a raw `rglob`. A raw disk walk measured the machine rather than the repo:
+    `ops` is a census root, the inbox responder writes a full COPY OF THE REPO
+    to the gitignored `ops/runtime/responder_export/<sha>/`, and every builder
+    in every copy was reported as a new unclassified builder - 50 phantoms on
+    this box, none of them in CI, where those trees do not exist (RM-394).
+
+    `iter_repo_files` is called PER CENSUS ROOT, which is safe here because
+    `tracked_relpaths` runs `git ls-files` with cwd set to that root, so the
+    tracked set it returns is relative to the SAME base the walker measures
+    `rel` against - measured 2026-09-09 for all 15 roots. The result is then
+    re-expressed repo-relative so the bucket keys below are unchanged.
+    """
     found = set()
     for root in _CENSUS_ROOTS:
         base = REPO_ROOT / root
         if not base.exists():
             continue
-        for path in base.rglob("*.py"):
-            if "__pycache__" in path.parts:
-                continue
+        for path in _repo_walk.iter_repo_files(base, ("*.py",)):
             text = path.read_text(encoding="utf-8", errors="replace")
             if _EGRESS_RE.search(text):
-                found.add(path.relative_to(REPO_ROOT).as_posix())
+                found.add(_repo_walk.relative_posix(path, REPO_ROOT))
     return found
 
 

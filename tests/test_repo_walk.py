@@ -28,8 +28,15 @@ def test_excluded_dirs_covers_the_measured_contaminators():
     gitignored sibling mail) and `_archive` (dated artifacts). Measured
     2026-09-07; each was missing from at least one guard's hand-rolled set.
     """
+    # `responder_export` added 2026-09-09 (RM-394): the inbox responder writes
+    # a full COPY OF THE REPO under ops/runtime/responder_export/<sha>/, which
+    # made five root-walking guards red on Legion and green in CI. The tracked
+    # set already removes it; this entry is the fallback path, and it is pinned
+    # HERE so it cannot be dropped silently - a gate pass found it was
+    # otherwise held only indirectly, by another guard's synthetic fixture.
     for name in (".claude", "worktrees", "python-embed", "moon_sync_inbox",
-                 "_archive", ".git", "node_modules", "__pycache__", ".venv"):
+                 "_archive", ".git", "node_modules", "__pycache__", ".venv",
+                 "responder_export"):
         assert name in rw.EXCLUDED_DIRS, f"{name} dropped from EXCLUDED_DIRS"
 
 

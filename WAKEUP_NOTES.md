@@ -2,7 +2,96 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-393 shipping pass (relocated `2026-09-09` RM-390/RM-391; newest 3 = RM-393 shipped `2026-09-09d` + RM-392 shipped `2026-09-09c` + RM-392/RM-393/RM-394 filed `2026-09-09b`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-394 shipping pass (relocated `2026-09-09b` the RM-392/393/394 filing note; newest 3 = RM-394 shipped `2026-09-09e` + RM-393 shipped `2026-09-09d` + RM-392 shipped `2026-09-09c`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09e - RM-394 SHIPPED: the decision was already made in code, and the gate caught the conversion trading a red for a silent green
+
+Third row of the same headless day, operator AWAY. Tier-1: seven test-support
+files, no engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward.
+LEDGER 1376. Five parallel single-file slices, one merger, TWO read-only gates
+before the commit - and the second gate existed only because the first one's
+repairs were written after it ran.
+
+**The row asked which universe to build. Neither had to be built.**
+`tests/_repo_walk.py` already implements the tracked-set-primary answer, with
+`EXCLUDED_DIRS` as a backstop and `tracked_relpaths()` returning `None` (never an
+empty set) on git failure, plus its own anti-vacuity guard and four consumers.
+**Settled as CODE, not as a recorded decision** - added in `a0a23b57c`
+(2026-09-07, public-flip scrub) with no ledger row naming it, which is exactly
+how five guards kept hand-rolling their own root walks beside it. So the fix was
+ADOPTION, not invention.
+
+**All five converted**, plus `responder_export` added to the shared
+`EXCLUDED_DIRS` for the git-absent fallback - one entry in one shared list, which
+is the whole difference from the per-file hand-list the row rejects. Notable
+local call: `docs` was the only genuinely non-infrastructure skip anywhere in the
+five, and it was DROPPED after measuring that `pytest.ini` `norecursedirs` does
+not exclude `docs`, so a test landing there really would be collected and really
+would belong in the scan.
+
+**The gate refuted the claim that mattered.** I claimed none of the five could
+pass on an empty enumeration. Four cannot. `test_skip_condition_hygiene.py`
+COULD - `discovered - set(_TEST_TREES)` is empty-set-safe, and forcing the
+enumeration empty left it at 56 passed. Unrepaired, the conversion would have
+traded a machine-local RED for a silent always-GREEN, which is worse than what it
+fixed. Anchored on the directory holding the guard itself
+(`assert "tests" in discovered`, asserted against the DISK so it is not circular
+with `_TEST_TREES`) and proven to bite by my own mutation probe. The gate's
+second finding: the new `EXCLUDED_DIRS` entry was pinned only indirectly by
+another guard's fixture, so `tests/test_repo_walk.py` pins it directly now.
+**Both repairs were added AFTER gate 1, so a SECOND gate ran over them and the
+docs - and it found two more defects, both in the post-gate material**: the
+header said six changed `.py` when repair 2 made it seven, and the row still
+carried gate 1's "the only failure across all six files" three sentences after
+describing the repair that makes it two. LEDGER 1374 paid for this exact lesson
+two rows ago; it took a third payment to actually gate the post-gate material.
+
+**Counts, all re-derived against the OLD algorithms on this disk and all held:**
+8 phantom trees, 34 phantom ctor sites, 50 unclassified builders, 36 frozen
+headers of which 24 under `responder_export` (12 modules x 2 export trees). New:
+12 headers, the 4 real test trees, 17 ctor sites = `CONSTRUCT_FILES`, 17 census
+entries with 0 unclassified and 0 stale.
+
+**Suite:** `pytest tests -n 8` = 21639 passed, 97 skipped, 4921 subtests, 0
+failed. Three whole-suite runs agreed on every count and DISAGREED on one ERROR
+(`_live_surfaces_unchanged` teardown, "live surfaces moved") - present in mine,
+absent in gate 1, present in gate 2. That disagreement IS the evidence: the LIVE
+RC process was measured appending to `ops/runtime/responder_metrics.jsonl` inside
+the suite window, a fresh cycle row every five minutes from a changing pid.
+External writer, not a regression - the responder runner module is non-hermetic
+against a live RC.
+
+**Do NOT redo.** Do not delete the `responder_export` trees. Do not extend any
+hand-list. Do not "tidy" the two cosmetic divergences between the five slices
+(`relative_posix` versus `p.relative_to(...).as_posix()`, one positional
+`patterns`) - no behavioural effect, and churn on five freshly converted guards
+is not worth it. Do not re-derive the phantom counts.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**No row is queued - pick one.** RM-392, RM-393 and RM-394 all shipped today.
+The three known-open items, none of them adjudicated into a row yet:
+
+1. **`tests/_repo_walk.py` has no ledger row and four-plus-five consumers now.**
+   That is the condition that caused RM-394: a settled decision nobody could
+   find. Writing its row is cheap and prevents the next five divergent walks.
+2. **`tools/stop_claim_gate.py:38`** - `CLAIM_COUNT` has no counterfactual or
+   citation suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so
+   quoting a figure IN ORDER TO REFUTE IT re-fires every turn. Note the hazard
+   its own comments name at `:74-77` before touching it.
+3. **`tests/test_inbox_responder_runner.py:214`** - the `_live_surfaces_unchanged`
+   teardown asserts `_TMP_LOGS` non-empty, a positive control that cannot tell
+   "the arms were skipped" from "the runner is broken"; it is the 1 residual
+   error when git is off PATH. And the same fixture is non-hermetic against a
+   LIVE RC writing `ops/runtime` mid-suite, measured today.
 
 ---
 
@@ -177,123 +266,3 @@ five red guards are measured; what is unchosen is the universe: `git ls-files`
 five, and do not add a sixth hand-list. Before you start, run the full `tests/`
 suite once and take the red list from THAT - not from a grep, which already
 missed one member of this class.
-
----
-
-# 2026-09-09b - RM-392, RM-393 and RM-394 FILED: every inherited number was wrong, and so was the premise
-
-Single-row headless session, operator AWAY. The row was FILED-BUT-ROWLESS and
-filing it WAS the act. Docs-only, Tier-0: no code, no test, no `ENGINE_VERSION`
-bump, no DS bounce, nothing delivered outward. Full account in LEDGER 1373.
-
-**The row.** RC's suite carries external-binary call sites that ERROR on tool
-absence instead of skipping. RC has a 2116-line guard against the MIRROR defect
-(`tests/test_skip_condition_hygiene.py`) that is structurally blind to this one -
-it audits skip CONDITIONS, and an ungated spawn has no skip to inspect.
-
-**Every inherited number was wrong.** The prior session filed 115 call sites over
-the 940 top-level `tests/*.py`. Re-derived from scratch, because the
-classification was never persisted: 148 over 147 distinct lines, then a hostile
-pass found it ONE SHORT (`tests/test_overlay_callouts_ui_audit.py:394-395`, a
-real Chromium launch two independent AST passes both missed, correctly gated
-anyway) - 149. The two passes reconciled SITE BY SITE, not by totals: two
-`shutil.which` calls on one line at `tests/test_subagent_prompt_flag.py:76`, and
-an aliased `_shutil.which` at `tests/test_inbox_responder_runner.py:2966`.
-Separately 120 spawn sites across the four guarded trees, 31 of them
-`sys.executable` - that pair derived twice, identical. The headline was off by
-one in two places; measured here, git off PATH gives 222 collected, 18 passed,
-205 error entries over 204 unique ids.
-
-**Enumeration trap worth keeping:** git pathspec `*` crosses `/`, so
-`git ls-files 'tests/*.py'` returns 1068, not 940. Depth-filter or be wrong.
-
-**The inbound PATH warning does not reach RC, refuted twice.** No RC git hook
-runs pytest (all six `.githooks` bodies read; `pre-push` is git-lfs only), and a
-live probe shows the hook PATH differs by ONE prepended entry with all eight
-probed tools still RESOLVING - only `git` RELOCATES, and a false-RED site needs
-ABSENCE. **And the premise was wrong too:** `check=True` is not the
-discriminator, since many ungated sites omit it and error identically.
-
-**THE ONE RULE, paid for a third time.** Adjudication ran twice. Pass one
-rejected the do-nothing option on a "live false-GREEN passing vacuously today";
-the shape is real (and pass one found a site the census missed) but the "today"
-half is false. My correction of THAT called the trigger set "wider" than tool
-absence - it is DISJOINT, because absence raises `FileNotFoundError` before
-`.stdout` exists. Three corrections deep, and each one needed the next.
-
-**Do NOT redo.** The census (149 / 120 / 31 / 204-of-222) is measured and in the
-rows. Do not re-derive the RM-392 totals; do not re-open whether the pre-push
-PATH finding applies here; do not build a conftest fixture that converts absence
-errors to skips - it was REJECTED on measurement, it moves the whole population
-out of a STATIC auditor's reach, and `ci.yml:110-113` already records RC losing a
-nightly to that pattern. Do not write a predicate keyed on `check=True`.
-
-**Marked NOT-re-derived in the row itself, so nobody quotes them as measured:**
-the bucket split over the 149, the truly-ungated-of-89 figure with its
-false-positive rate, and the guard cost estimate.
-
-**An INHERITED red the wrap ritual found, now RM-394.** The local docs-guard
-suite returned 1 failed / 1752 passed / 1 skipped:
-`tests/test_frozen_file_list_contract.py::test_frozen_arch_headers_are_a_subset_of_the_authority`
-reports 24 orphan `frozen=yes` headers, ALL under
-`ops/runtime/responder_export/<sha>/` - gitignored (`.gitignore:178`), 0 tracked
-files, export trees dated 2026-09-08 so older than this session. `:171-185`
-walks the DISK, so it is red on Legion and green on every CI runner. Do NOT
-"fix" it by adding one more name to the `HEADER_SCAN_SKIP_DIRS` hand-list at
-`:56-64`; the row states the two real options.
-
-**The gate returned FAIL and all five findings were real.** In order: a future
-act ("re-enabled at wrap") written in the past tense in the record itself; "CI
-provisions git and chromium explicitly" when only chromium is explicit and git
-arrives via `actions/checkout`; an "8 across 3 files" census that counted a
-`check=True` call as unchecked (truth: 7 across 2); "55 of the 62" when 55
-MENTION the fixture and one of them defines it (truth: 54 request it); and two
-citation ranges off by a line at each end. All five were fixed in the working
-tree BEFORE the commit. **That is the entire argument for where the gate goes.**
-
-**A SECOND gate over the FIXES also returned FAIL, and the finding is sharper
-than the first.** All five fixes held under independent re-derivation, including
-a hunt for a helper-mediated eighth unchecked spawn that a naive AST pass cannot
-see (three candidates, all correctly excluded - their callers assert on
-`.returncode`). Both new defects were in RM-394, the row added AFTER gate 1, and
-both were the SAME citation-range class gate 1 had just failed. **A row added
-after a gate inherits none of its coverage and will repeat the defect the gate
-just taught.** Gate whatever you add, however late and however small.
-
-**Two instrument defects filed as notes, deliberately NOT fixed here.**
-`tools/stop_claim_gate.py:38` `CLAIM_COUNT` has no counterfactual or citation
-suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so quoting a figure
-IN ORDER TO REFUTE IT is unsuppressable and re-fires every turn for the rest of
-the session. Patching the instrument that audits your own claims, in the same
-session, to stop it flagging your own claim, is the hazard its own comments name
-at `:74-77`. And three agents sharing one scratchpad collided on a common
-filename; two intermediates were written inside that window and never
-regenerated, so nothing sourced from them is quoted anywhere.
-
-## NEXT SESSION - HEADLESS, operator away
-
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
-row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
-The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
-operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
-never adjudicated - if a row needs it, say so and move on.
-
-**The next row is RM-392's adopted scope, and it is deliberately ONE SITE:** put
-a `shutil.which` capability gate on `tests/test_inbox_responder_runner.py:462,465`
-(the session-scoped `git_repo` fixture at `:453`). `shutil.which` is the ONLY
-repair shape that passes both the new intent and the existing false-GREEN guard -
-measured: `try/except FileNotFoundError -> skip`, `try/except OSError -> skip`
-and probe-the-returncode -> skip ALL score UNRESOLVED against `scan_source`
-(`tests/test_skip_condition_hygiene.py:1285`), and `:1539-1551` fails on anything
-that is not CAPABILITY. Verify the repair by re-running the git-off-PATH
-reproduction and asserting the 204 errors become 204 skips.
-
-RM-393 is the follow-on after it: inspect the return code in `_status`
-(`tests/test_lane_worktree_eol_rm343.py:92-94`) and `_content_diff` (`:97-100`).
-Do not widen it into a general unchecked-`stdout` sweep - the 3-file census that
-bounds it is in the row.
-
-Start with `/clear`, bootstrap from CLAUDE.md + MEMORY.md + this file + `git
-log`, then `python tools/perseus_recall.py "<the row in your own words>"` BEFORE
-touching anything. Disable `RC-InboxResponder` before any suite run and re-enable
-it at wrap. Never `pytest .`.
