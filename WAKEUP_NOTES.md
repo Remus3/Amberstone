@@ -70,6 +70,16 @@ run also showed a 6th, `phase8_smoke/test_sr_draft_profile_engine.py`
 `::TestLiveEngineIntegration::test_live_three_profiles`; it passes standalone and
 did not recur here - parallel-only flake.
 
+**CI on `main` is RED at `58468b276` and it is NOT this change - do not debug it
+as if it were.** `docs-guards` is GREEN. `ci` fails in the `check` job at the
+`Install Playwright Chromium` step, before pytest ever runs:
+`apt` cannot fetch `dl.google.com/linux/chrome-stable/.../Packages.gz`, `Hash Sum
+mismatch`, `Installation process exited with code: 100`. Reran `--failed` once,
+same failure four minutes later, so it is an upstream index that is stale on
+Google's side rather than a flake that clears instantly. No prior art in the repo
+(first occurrence of this string). Rerun it before assuming anything; if it
+persists across a day, THEN it is a row.
+
 ## NEXT SESSION - HEADLESS, operator away
 
 Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
