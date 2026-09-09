@@ -119,6 +119,95 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09e - RM-394 SHIPPED: the decision was already made in code, and the gate caught the conversion trading a red for a silent green
+
+Third row of the same headless day, operator AWAY. Tier-1: seven test-support
+files, no engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward.
+LEDGER 1376. Five parallel single-file slices, one merger, TWO read-only gates
+before the commit - and the second gate existed only because the first one's
+repairs were written after it ran.
+
+**The row asked which universe to build. Neither had to be built.**
+`tests/_repo_walk.py` already implements the tracked-set-primary answer, with
+`EXCLUDED_DIRS` as a backstop and `tracked_relpaths()` returning `None` (never an
+empty set) on git failure, plus its own anti-vacuity guard and four consumers.
+**Settled as CODE, not as a recorded decision** - added in `a0a23b57c`
+(2026-09-07, public-flip scrub) with no ledger row naming it, which is exactly
+how five guards kept hand-rolling their own root walks beside it. So the fix was
+ADOPTION, not invention.
+
+**All five converted**, plus `responder_export` added to the shared
+`EXCLUDED_DIRS` for the git-absent fallback - one entry in one shared list, which
+is the whole difference from the per-file hand-list the row rejects. Notable
+local call: `docs` was the only genuinely non-infrastructure skip anywhere in the
+five, and it was DROPPED after measuring that `pytest.ini` `norecursedirs` does
+not exclude `docs`, so a test landing there really would be collected and really
+would belong in the scan.
+
+**The gate refuted the claim that mattered.** I claimed none of the five could
+pass on an empty enumeration. Four cannot. `test_skip_condition_hygiene.py`
+COULD - `discovered - set(_TEST_TREES)` is empty-set-safe, and forcing the
+enumeration empty left it at 56 passed. Unrepaired, the conversion would have
+traded a machine-local RED for a silent always-GREEN, which is worse than what it
+fixed. Anchored on the directory holding the guard itself
+(`assert "tests" in discovered`, asserted against the DISK so it is not circular
+with `_TEST_TREES`) and proven to bite by my own mutation probe. The gate's
+second finding: the new `EXCLUDED_DIRS` entry was pinned only indirectly by
+another guard's fixture, so `tests/test_repo_walk.py` pins it directly now.
+**Both repairs were added AFTER gate 1, so a SECOND gate ran over them and the
+docs - and it found two more defects, both in the post-gate material**: the
+header said six changed `.py` when repair 2 made it seven, and the row still
+carried gate 1's "the only failure across all six files" three sentences after
+describing the repair that makes it two. LEDGER 1374 paid for this exact lesson
+two rows ago; it took a third payment to actually gate the post-gate material.
+
+**Counts, all re-derived against the OLD algorithms on this disk and all held:**
+8 phantom trees, 34 phantom ctor sites, 50 unclassified builders, 36 frozen
+headers of which 24 under `responder_export` (12 modules x 2 export trees). New:
+12 headers, the 4 real test trees, 17 ctor sites = `CONSTRUCT_FILES`, 17 census
+entries with 0 unclassified and 0 stale.
+
+**Suite:** `pytest tests -n 8` = 21639 passed, 97 skipped, 4921 subtests, 0
+failed. Three whole-suite runs agreed on every count and DISAGREED on one ERROR
+(`_live_surfaces_unchanged` teardown, "live surfaces moved") - present in mine,
+absent in gate 1, present in gate 2. That disagreement IS the evidence: the LIVE
+RC process was measured appending to `ops/runtime/responder_metrics.jsonl` inside
+the suite window, a fresh cycle row every five minutes from a changing pid.
+External writer, not a regression - the responder runner module is non-hermetic
+against a live RC.
+
+**Do NOT redo.** Do not delete the `responder_export` trees. Do not extend any
+hand-list. Do not "tidy" the two cosmetic divergences between the five slices
+(`relative_posix` versus `p.relative_to(...).as_posix()`, one positional
+`patterns`) - no behavioural effect, and churn on five freshly converted guards
+is not worth it. Do not re-derive the phantom counts.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+**No row is queued - pick one.** RM-392, RM-393 and RM-394 all shipped today.
+The three known-open items, none of them adjudicated into a row yet:
+
+1. **`tests/_repo_walk.py` has no ledger row and four-plus-five consumers now.**
+   That is the condition that caused RM-394: a settled decision nobody could
+   find. Writing its row is cheap and prevents the next five divergent walks.
+2. **`tools/stop_claim_gate.py:38`** - `CLAIM_COUNT` has no counterfactual or
+   citation suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so
+   quoting a figure IN ORDER TO REFUTE IT re-fires every turn. Note the hazard
+   its own comments name at `:74-77` before touching it.
+3. **`tests/test_inbox_responder_runner.py:214`** - the `_live_surfaces_unchanged`
+   teardown asserts `_TMP_LOGS` non-empty, a positive control that cannot tell
+   "the arms were skipped" from "the runner is broken"; it is the 1 residual
+   error when git is off PATH. And the same fixture is non-hermetic against a
+   LIVE RC writing `ops/runtime` mid-suite, measured today.
+
+---
+
 # 2026-09-09d - RM-393 SHIPPED: the helpers now inspect the return code, and the sibling census held up
 
 Second row of the same headless day, operator AWAY. Tier-1: one test module, no
