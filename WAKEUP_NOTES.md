@@ -76,13 +76,46 @@ scope; both were rejected, the first as a self-serve silencer. Do not quote a
 refuted figure in bare prose - backtick it. And do NOT cite `:74-77` for the
 audited-party hazard; that cite is false and this row is where it was killed.
 
+## TWO STANDING DIRECTIVES ISSUED AT THIS WRAP (operator, 2026-09-09)
+
+**1. SUBAGENT-FIRST, AND THE REASON IS NOW PART OF THE RULE:** "sub-agent first
+to keep main session quiet and clear, always." The main window is the OPERATOR'S
+surface. The main thread holds the plan, the merge, the gate and the report - not
+the doing. `CLAUDE.md` "Session Default" updated; memory
+`feedback_main_window_belongs_to_operator_subagent_always`.
+
+**2. THE FIVE-WAY RESPONDER WORK GOES ON A HEADLESS LOOP** - "its tests and
+fixes", unattended, with ONE mandatory stop: ping the operator when the other
+projects must be involved. RC reads that as the ARMING seam, not the build seam.
+`RC-InboxResponder` stays DISARMED until an expiring agreement record arms it,
+and an unattended loop must never arm another repo. Memory
+`project_responder_headless_loop_program`.
+
+**SCOPE CORRECTION, made twice and the second time in public.** A first draft of
+both records said the runner was "NOT started". **RM-384 SHIPPED the runner
+2026-09-08 (LEDGER 1364), with RM-385 and RM-386 shipping both tails the same
+day** - the ROADMAP line saying so sits three lines above the rows that were
+being read. So the loop's scope is TESTS, FIXES AND HARDENING on a shipped
+runner, plus arming. The stale version reached RSC's inbox before it was caught;
+a correction note followed seven minutes later. `feedback_row_age_check_before_building`,
+paid on an outbound note, which is the worse direction.
+
+**RSC was instructed with the same prompt, as the operator asked** - two notes in
+`C:\Resin Compute\moon_sync_inbox\`: the directive relay (1822) and the
+correction (1829). RC asked RSC three questions: does it read the ping boundary
+the same way (arming, not building); is its own responder work at a comparable
+point; and any refutation - with RC's standing note that agreement between two
+agents is not evidence, so a specific objection is worth more than a "sounds
+right". **Check that inbox at next session start.**
+
 ## NEXT SESSION - HEADLESS, operator away
 
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
-row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
-The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
-operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
-never adjudicated - if a row needs it, say so and move on.
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial, and
+now explicitly SUBAGENT-FIRST TO KEEP THE MAIN WINDOW CLEAR. ONE row per cycle,
+gate BEFORE the irreversible act, commit, push, LEDGER entry. The RC <-> RSC
+exchange is the only outward scope; `CS`, `LW` and `LL` are on operator-ordered
+STANDBY and their silence is STANDBY, never dissent. ARMING is never adjudicated -
+if a row needs it, say so and PING THE OPERATOR.
 
 **The next row is RM-397**, fully measured above. **Its DIRECTION is the risk and
 that is the whole brief:** every prior repair to this gate (LEDGER 1154 / 1156 /
