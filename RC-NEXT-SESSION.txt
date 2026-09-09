@@ -1,6 +1,6 @@
 # RC - next session, HEADLESS, operator AWAY
 
-Repo: C:\Riot Commander (branch main, HEAD f36cc3a0b, clean, CI green). Shape:
+Repo: C:\Riot Commander (branch main, HEAD 0d54ee3af, clean, CI green). Shape:
 orchestrated, multi-agent, self-adjudicating, self-adversarial - CLAUDE.md
 "Session Default". ONE row per cycle, each ending in an independent read-only
 verifier gate, then commit, push, and a `docs/LEDGER.md` entry. Never batch two
@@ -8,134 +8,143 @@ rows.
 
 ## THE ONE RULE THIS SESSION EXISTS TO CARRY FORWARD
 
-**Gate BEFORE the irreversible act, never after.** RM-389 ran its adversarial
-gate AFTER writing a note into a sibling repo. The gate worked - nine defects -
-but the only way to apply them was to EDIT A DELIVERED NOTE, which
-`docs/CONCURRENT_HEADLESS_CONTRACT.md` rule 7.2 forbids, and the sibling had
-already read v1 and rebroadcast a wrong figure to four inboxes. The correction
-note then shipped three NEW false sentences. The third note was drafted to
-SCRATCH and needed FIVE gate passes to come back clean.
+**Your correction is a claim too, and it will be wrong.** RM-389 taught WHERE to
+gate (before the irreversible act). RM-390 and RM-391 paid the RIDER. Five gate
+rounds ran across the two rows and every one found something, but the expensive
+findings were not in the original work - they were in the FIXES:
 
-Draft anything outward to the scratchpad, gate it, then deliver by BYTE-LEVEL
-copy (`cp`, never `write_text` - LF becomes CRLF). Memory:
-`feedback_gate_before_the_irreversible_act`.
+- "archives 40 rows" was corrected to 35 and the truth is **36**. The rotation
+  sees 71 lines, not 70, because the cycle appends its own row before it runs.
+  Neither cited test asserts an archived count at all, so the spec now quotes
+  none. A number nobody guards should not be in a doc.
+- A claim that the metrics ledger is "trimmed to 200 rows" reached an
+  adjudicator's ruling. It is NOT trimmed - RM-388 made it ROTATE and
+  `METRICS_CARRY_ROWS` is a carry tail. My correction of THAT then quoted a row
+  count from a file that gains a row every five minutes.
+- A contract was over-read in three files at once: `CONCURRENT_HEADLESS_CONTRACT`
+  rule 7.2 bans EDITING a delivered note and says nothing about a receiver
+  archiving its own inbox.
 
-Two riders, both measured:
-- **Machine-derived is NOT the safe category.** The worst figure came from a
-  grep whose PATTERN was wrong. Every figure that survived had been RE-DERIVED
-  BY A SECOND METHOD.
-- **Your account of your OWN prior error is a claim too, and it will be wrong.**
-  Three self-corrections were themselves false; one "quoted" a phrase that
-  existed only in an undelivered draft. Gate the apology like the finding.
+Gate the apology like the finding. Re-derive by a SECOND method; machine-derived
+is not the safe category. Memory: `feedback_gate_before_the_irreversible_act`.
 
 ## Standing rules for an operator-away run
 
 - **No blocking questions.** A decision that would normally be escalated goes to
-  an ADJUDICATOR: a distinct agent that chooses between stated positions against
+  an ADJUDICATOR: a distinct agent choosing between stated positions against
   stated criteria. The agent that authored a position never grades it. Record
-  the decision AND its criteria in the ledger entry.
+  the decision AND its criteria in the ledger entry. Both rows this session had
+  the adjudicator overturn or reject its inputs, so the step is not ceremony.
 - **The one act that is NOT adjudicated is ARMING.** If a row appears to require
   arming, it is OUT OF SCOPE until the operator returns - say so and move on.
 - **Scope: the exchange is RC <-> RSC ONLY.** `CS`, `LW` and `LL` are on
-  operator-ordered STANDBY. Do not write into those three trees and do not
-  "restore" the earlier four-note plan. Record their silence as STANDBY, never
-  as dissent.
+  operator-ordered STANDBY. Do not write into those three trees. Record their
+  silence as STANDBY, never as dissent.
 
 ## Order of work
 
-Bodies are in `BACKLOG.md` under "Reliability / hardening".
+**There is no responder row left open in `BACKLOG.md` "Reliability / hardening".**
+RM-387, RM-388, RM-389, RM-390 and RM-391 are all CLOSED.
 
-**RM-390 first** - `trial_rows` now sees only the live ledger, because RM-388
-made rotation real. Decide whether the quotable set spans
-`responder_metrics.<stamp>.jsonl` archives, and **write the answer into
-`docs/RESPONDER_RUNNER_SPEC.md` either way** - the current silence reads as "the
-live file is everything", which is exactly what stopped being true. It has NO
-production call site today (three call sites, all in `tests/`), so this is a
-seam to settle BEFORE it has a consumer, not a bug with a victim. This row is
-adjudicable: state both positions (quotable set spans archives, with a stated
-bound on the read; versus an arming note deliberately cites only the live window
-and something else renders history) and have a distinct agent choose.
+The strongest candidate is FILED-BUT-ROWLESS, and filing it IS the first act:
 
-**RM-391 only if time remains** - read the measurement in the row FIRST. Those
-records grow per NOTE, not per tick, so the row is LOW by measurement, not by
-guess. `inbox_responder_deliveries.jsonl` is the BUDGET GOVERNOR and must NEVER
-be trimmed - trimming it would let a spent budget re-open.
+**The FALSE-RED external-binary call sites in `tests/`.** 39 of 115 audited call
+sites are false-RED risk (tool ABSENT produces ERROR, not a skip with a true
+reason); 4 are false-GREEN. MEASURED: with git off PATH,
+`tests/test_inbox_responder_runner.py` gives 17 passed / 205 errors of 221
+collected. RC has a 2116-line guard against false-GREEN skips and NOTHING
+against false-RED, and that guard is structurally blind to an ungated
+`subprocess.run([...], check=True)` because there is no skip to inspect.
 
-## Live state, re-probed at the RM-389 wrap - two premises were WRONG last time
+Three things to establish BEFORE scoping it, in this order:
 
-- **The runner is ARMED, not disarmed.** A live operator-authored agreement
-  record exists (`ops/runtime/inbox_responder_agreement.json`: counterparties
-  `["RSC"]`, window 2026-09-08T14:57:52 to 2026-09-09T14:57:52, grammar
-  `A5-measurement-only`, `hop_budget: 1`). The BUDGET is spent
-  (`consumed=2 budget=1`), so every tick terminates `budget`. RC's own
-  vocabulary: `record is None` means disarmed (`inbox_responder_runner.py:550`),
-  and the record is not None. **The window expires 2026-09-09T14:57:52 - check
-  whether it is still open before repeating any of this.**
-- **`RC-InboxResponder` was READY (enabled) at session start,** not disabled.
-  It is Ready again now. **DISABLE it before any suite run and re-enable at
-  wrap:** `schtasks /Change /TN "RC-InboxResponder" /DISABLE`. It writes the
-  live log every 5 minutes and an autouse arm guards exactly that surface.
+1. **Re-probe the inbound RSC finding first.** A pre-push hook runs with a PATH
+   that is not the shell's, because git puts `mingw64/libexec/git-core` on it.
+   That puts the FALSE-RED classification in doubt in exactly the environment
+   that gates every push. If the tools are present there, the severity changes.
+2. **The count UNDERSTATES and the bound is known.** The audit covered only the
+   940 files directly in `tests/`; 1068 `.py` are tracked under `tests/`, so 128
+   subdirectory modules were never audited. Measure, do not extrapolate.
+3. **The 4 false-GREEN rows are unconfirmed by mutation.** Confirm or drop them.
+
+Then adjudicate the scope: a guard, a conftest-level fixture, per-call gating, or
+a documented non-goal. All four are defensible; pick by stated criteria.
+
+## Live state, re-probed at the RM-391 wrap
+
+- **The runner is ARMED but its budget is SPENT.** `ops/runtime/
+  inbox_responder_agreement.json`: counterparties `["RSC"]`, window
+  2026-09-08T14:57:52 to **2026-09-09T14:57:52**, grammar `A5-measurement-only`,
+  `hop_budget: 1`, consumed 2. Every tick terminates `budget`. **That window has
+  very likely CLOSED by the time you read this - check before repeating any of
+  it.** RC's own vocabulary: `record is None` means disarmed
+  (`inbox_responder_runner.py:550`).
+- **`RC-InboxResponder` is READY (enabled)** and was re-enabled before the first
+  commit of this session. **DISABLE it before any suite run and re-enable at
+  wrap:** `schtasks /Change /TN "RC-InboxResponder" /DISABLE`. It writes the live
+  log every 5 minutes and an autouse arm guards exactly that surface. Note
+  `schtasks` needs the PowerShell tool - under Git Bash the `/Change` argument is
+  path-mangled into `C:/Program Files/Git/Change`.
+- Live ledger `ops/runtime/responder_metrics.jsonl` grows every tick; zero
+  archives exist (2000000-byte rotate trigger, file was 251820 at RM-390).
 
 ## Constraints that were paid for - do not rediscover them
 
-- Do NOT widen `ROW_NOTE_RE` (RM-387) and do NOT add `_trim` to the metrics
-  ledger (RM-388). Both were decided against ON MEASUREMENT.
+- Do NOT widen `ROW_NOTE_RE` (RM-387), do NOT add `_trim` to the metrics ledger
+  (RM-388), do NOT build a spanning or root-taking `trial_rows` (RM-390), and do
+  NOT add a cap or an automated pruner to the answered record (RM-391). All four
+  were decided ON MEASUREMENT.
 - `_rotate_metrics` takes ONLY the ledger path. A parameter naming the live
-  agreement was refuted twice, in two shapes, with the same `trial_rows` 30 -> 0.
+  agreement was refuted twice, in two DIFFERENT shapes - one cycle-keyed on
+  `result.agreement_id`, one root-keyed - with the same `trial_rows` 30 -> 0.
+- The answered record's ONLY sanctioned removal is the single-entry OPERATOR
+  deletion spec section 2 already defines, and its purpose is re-cycling ONE
+  note, never reclamation.
 - The procedure-A needle `prelude_row(cycle_id, ts, pid, stage, cls, dry))`
   quotes runner SOURCE TEXT; touching that call site breaks it.
-- Suite: `pytest tests -k inbox_responder` from the repo root (595 passed / 1
-  skipped at f36cc3a0b). Never `pytest .` - it has deleted the live supervisor
+- Suite: `pytest tests -k inbox_responder` from the repo root (596 passed / 1
+  skipped at 0d54ee3af). Never `pytest .` - it has deleted the live supervisor
   lock.
 - **The RM-id registry guard scores per-OCCURRENCE, not per-line.** Prose that
-  spells the pinned next-free id - even a sentence explaining that it is only
-  pointer prose - is scored as an ALLOCATION. Describe the pinned id, never
-  re-spell it. Next free id is pinned in `docs/DS_SWEEP_TRACKER.md`; read the
-  pin, do not recite a figure from here.
+  spells the pinned next-free id is scored as an ALLOCATION. Describe the pinned
+  id, never re-spell it. Read the pin in `docs/DS_SWEEP_TRACKER.md`.
+- A docs-only push does NOT run `ci` (ci.yml path-ignores `**/*.md`);
+  `docs-guards` is its gate. And a green `ci` run may have SKIPPED the job - open
+  `jobs[].steps[]`, never cite the run conclusion alone.
 - RSC runs headless on this same box concurrently. Read
   `docs/CONCURRENT_HEADLESS_CONTRACT.md` first. Do NOT re-pin `SHARED_SHA256`
   (`tests/test_loop_concurrency.py:474`) unilaterally - both trees hashing equal
   IS the acceptance. Keep suite parallelism modest; parallel full-suite slices
   have OOM'd this box and it presents as an API error.
 - Re-probe every claim about a test count, a file's existence, or MACHINE state,
-  INCLUDING a verifier's. Verifiers were right about ground truth every time
-  this session and wrong about a line number twice.
+  INCLUDING a verifier's and INCLUDING your own from ten minutes ago.
 
 ## Do NOT redo
 
-RM-387, RM-388 and RM-389 - shipped, verifier-gated, CI-green, pushed
-(`738ec83af`, `470d3158a`, `df07bfe1c`, `0895db035`, `3ae50ddb3`, `edc710456`,
-`f36cc3a0b`). RM-389's full account, including the three-note process failure
-and the four-layer "corrected in three places" miscount, is LEDGER 1370.
+RM-387 through RM-391 - all shipped, gated, CI-green, pushed (`738ec83af`,
+`470d3158a`, `df07bfe1c`, `0895db035`, `3ae50ddb3`, `edc710456`, `f36cc3a0b`,
+`84e42da40`, `0d54ee3af`). Full accounts in LEDGER 1370, 1371 and 1372.
 
-**Do not re-answer RSC's five questions.** All five are answered and delivered.
-Three notes are in their inbox (2214, 2235, 2323 on 2026-09-08). Neither side
-wants a reply; RSC has said it will not read RC's silence as assent and RC has
-said the same. If a NEW inbound note arrives, that is different - read it.
+**Do not re-answer RSC's five questions.** All five are answered and delivered;
+three notes are in their inbox (2214, 2235, 2323 on 2026-09-08). Neither side
+wants a reply. A NEW inbound note is different - read it.
 
-**Do not re-open the "corrected in three places" arithmetic.** Settled:
-`738ec83af` edited THREE places in `docs/RESPONDER_RUNNER_SPEC.md`, exactly ONE
-of them carried the false `name == safe_name(name)` claim, and a SECOND site
-(`:149`) survived and is now fixed. Three places edited, one carrying the claim,
-one claim site missed. `df07bfe1c`'s commit message calls the survivor "the
-fourth site" and stays wrong in the permanent record - no history rewrite.
+**Do not re-open the "corrected in three places" arithmetic.** Settled in
+LEDGER 1370: three places edited, one carrying the claim, one claim site missed.
+`df07bfe1c`'s message stays wrong in the permanent record - no history rewrite.
 
-## Known-open, filed and NOT to be silently closed
+**Do not re-derive the RM-390 archive count.** It is 36 under the pinned seed,
+measured three ways, and it is deliberately NOT quoted in any doc.
 
-- **39 of 115 external-binary call sites in `tests/` are FALSE-RED RISK** (tool
-  ABSENT produces ERROR, not a skip with a true reason); 4 are false-GREEN.
-  MEASURED: with git off PATH, `tests/test_inbox_responder_runner.py` gives
-  17 passed / 205 errors of 221 collected. RC has a 2116-line guard against
-  false-GREEN skips and NOTHING against false-RED, and it is structurally blind
-  to an ungated `subprocess.run([...], check=True)` because there is no skip to
-  inspect. **Bound:** the audit covered only the 940 files directly in `tests/`;
-  1068 `.py` are tracked under `tests/`, so 128 subdirectory modules were never
-  audited and the count UNDERSTATES. The 4 false-GREEN rows are unconfirmed by
-  mutation. No row is filed for this yet - file one before acting on it.
-- **Inbound from RSC, adopted and unmeasured:** a pre-push hook runs with a PATH
-  that is not the shell's, because git puts `mingw64/libexec/git-core` on it.
-  That puts the FALSE-RED classification in doubt in exactly the environment
-  that gates every push.
+## Two traps measured this session, both cheap to re-hit
+
+- **Python 3.13+ strips the common leading indentation from `__doc__` at compile
+  time**, so `inspect.getsource(f).replace(f.__doc__, "")` silently does NOTHING.
+  A body scan then trips on the docstring's own prose. Split on the triple quotes
+  and assert the prose separately as the vacuity control.
+- **A command printed in a doc must be RUN before it ships.** The section 8
+  fan-out recipe was executed verbatim from the repo root before it was written
+  down. A recipe that has not been run is a claim.
 
 ## Start with
 
