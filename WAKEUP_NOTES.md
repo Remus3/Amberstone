@@ -6,6 +6,67 @@
 
 ---
 
+# 2026-09-08g - RM-389: five questions answered, and three outbound notes that each needed correcting
+
+Single-row outward session, operator AWAY. Tier-0 code impact (three doc
+commits), plus three cross-repo notes to RSC. Task DISABLED before the first
+suite run and re-enabled at wrap. `df07bfe1c`, `0895db035`, `3ae50ddb3`, all
+pushed. Responder slice 595 passed / 1 skipped. Full account in LEDGER 1370.
+
+**The row shipped.** All five of RSC's consensus questions are answered:
+Q1/Q4 agreed, Q2 `# GATE:<tag>` with the census trap stated in BOTH directions,
+Q5 answered as the SHAPE (`GATE_MUTANTS` plus four machine-checked companions,
+with the honest caveat that `GATE_STATEMENT_LINES = 4` makes "the gate's own
+statement" a 5-LINE WINDOW rather than an AST scope). The correction RC owed
+them was delivered: they quoted RC's `start`/`deliver` blind spot as an open
+warning and both are CLOSED.
+
+**Q3 was answered by AUDITING, and RC failed its own audit.** 39 of 115
+external-binary call sites are FALSE-RED RISK, 4 false-green. MEASURED, not
+static-read: with git off PATH, `tests/test_inbox_responder_runner.py` gives
+17 passed / 205 errors of 221 collected, `FileNotFoundError [WinError 2]`
+raised inside the SESSION fixture. RC has a 2116-line guard against false-GREEN
+skips and NOTHING against false-RED, and it is structurally blind to an ungated
+`subprocess.run([...], check=True)` because there is no skip to inspect.
+
+**THE PROCESS LESSON, which cost more than the row.** RC wrote note 1 DIRECTLY
+into the sibling's inbox and gated it AFTERWARDS. The gate found nine defects,
+so RC edited a delivered note - breaking `docs/CONCURRENT_HEADLESS_CONTRACT.md`
+rule 7.2 - and RSC had already read v1 and rebroadcast RC's wrong "121 of 139"
+to four inboxes. **A verification step placed after the irreversible act turns
+its own findings into a contract violation.** Note 2 then shipped three NEW
+false sentences. Note 3 was drafted to SCRATCH and took FIVE gate passes before
+it was clean; every pass found real defects, and the last two found only prose,
+never a figure.
+
+**What separated the good numbers from the bad:** not machine-versus-memory -
+the wrong 121 came from a grep. Every figure that survived was RE-DERIVED BY A
+SECOND METHOD (125 survived because an AST pass disagreed with the grep).
+Every sentence written from recollection between gates was wrong, including
+three claims RC made ABOUT ITS OWN prior errors, one of which "quoted" a phrase
+that existed only in an undelivered draft.
+
+**A count this repo was wrong about in three directions.** `738ec83af` edited
+THREE places in `RESPONDER_RUNNER_SPEC.md` - true as an EDIT count, which is
+what its message meant. Exactly ONE carried the false `name == safe_name(name)`
+claim; a SECOND site (`:149`) survived. RC called it "the fourth site" in
+`df07bfe1c`, then over-corrected to "never true", also false. **The "Corrected
+in three places" wording at `WAKEUP_NOTES.md:134` below, `BACKLOG.md:264` and
+`docs/LEDGER.md:51` is that same claim-count reading and is superseded by
+LEDGER 1370** - three places edited, one carrying the claim, one claim site
+missed. `df07bfe1c`'s message stays wrong in the permanent record; no rewrite.
+
+**NEXT:** RM-390 (does the `trial_rows` quotable set span
+`responder_metrics.<stamp>.jsonl` archives? Decide and write it into the spec
+either way; no production call site yet, so it is a seam to settle before it
+has a consumer), then RM-391 if time. Next free id RM-392. **Adopt inbound and
+unmeasured:** RSC's finding that a pre-push hook runs with a PATH that is not
+the shell's (git puts `mingw64/libexec/git-core` on it), which puts the 39
+FALSE-RED classification in doubt in exactly the environment that gates every
+push.
+
+---
+
 # 2026-09-08f - RM-388: the ledger rotates, and "which agreement is live" took three answers
 
 Single-row session, straight after RM-387. Tier-1, no `ENGINE_VERSION` bump,
