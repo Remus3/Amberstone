@@ -89,15 +89,70 @@ def repo(tmp_path):
     return r
 
 
+def _query(args, cwd) -> str:
+    """Run a read-only `git` query and return stdout, or FAIL if git failed.
+
+    RM-393: the callers below assert on emptiness, and a failing `git` also
+    yields an empty stdout with the diagnostic on stderr, where
+    `capture_output` swallows it. Inspecting the return code is what separates
+    "git ran and saw no change" from "git failed and printed nothing".
+    `check=True` would do it too, but the message an `AssertionError` carries
+    here names the command AND the swallowed stderr, which is the whole
+    diagnostic a caller would otherwise lose.
+    """
+    p = subprocess.run(["git", *args], cwd=str(cwd),
+                       capture_output=True, text=True, env=_env())
+    assert p.returncode == 0, (
+        f"git {' '.join(args)} failed with rc={p.returncode} in {cwd} - an "
+        f"empty stdout here is a FAILURE, not an empty answer. stderr: "
+        f"{p.stderr.strip()!r}")
+    return p.stdout
+
+
 def _status(cwd) -> str:
-    return subprocess.run(["git", "status", "--porcelain"], cwd=str(cwd),
-                          capture_output=True, text=True, env=_env()).stdout
+    return _query(["status", "--porcelain"], cwd)
 
 
 def _content_diff(cwd) -> str:
     """What git sees as a real CONTENT change, filters applied."""
-    return subprocess.run(["git", "diff", "--name-only"], cwd=str(cwd),
-                          capture_output=True, text=True, env=_env()).stdout
+    return _query(["diff", "--name-only"], cwd)
+
+
+# --------------------------------------------------------------- the query helpers
+def test_the_query_helpers_refuse_to_read_a_failure_as_an_empty_answer(tmp_path):
+    """RM-393: an empty stdout must never be reported as "git saw no change".
+
+    Both helpers consume `stdout` from a `git` spawn. When git FAILS it exits
+    non-zero with a zero-length stdout and the diagnostic on stderr, which
+    `capture_output` swallows - so every consumer below that asserts against
+    `""` would pass for the wrong reason. That is not a live false-GREEN today;
+    git works here and those arms pass honestly. It is an assertion that cannot
+    fail for the reason it exists to catch, and this arm is what makes it able
+    to.
+
+    The failure is manufactured with a `.git` gitfile pointing at a path that
+    does not exist, which exits 128 no matter what sits above `tmp_path` - a
+    plain non-repo directory would depend on no ancestor being a repo.
+    """
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / ".git").write_bytes(b"gitdir: nowhere\n")
+
+    with pytest.raises(AssertionError, match="git status --porcelain"):
+        _status(broken)
+    with pytest.raises(AssertionError, match="git diff --name-only"):
+        _content_diff(broken)
+
+
+def test_the_query_helpers_still_report_a_genuine_empty_answer(repo):
+    """Positive control: the gate above must not turn "no change" into a raise.
+
+    Without this, both helpers could satisfy the arm above by raising
+    unconditionally, and every emptiness assertion in this module would go red
+    for a new wrong reason instead of the old one.
+    """
+    assert _status(repo) == "", "a clean committed repo has no porcelain output"
+    assert _content_diff(repo) == "", "a clean committed repo has no content diff"
 
 
 # --------------------------------------------------------------- the invisibility

@@ -119,6 +119,95 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09 - RM-390 and RM-391: two seams decided, and FIVE gate rounds that all found something
+
+Two-row headless session, operator AWAY, one row per cycle. Both rows adjudicated
+(two position agents, a distinct adjudicator that never graded its own work) and
+both gated BEFORE the commit. Commits `84e42da40` (RM-390) and `0d54ee3af`
+(RM-391), both pushed. RM-390's CI is genuinely green - `check: success` with 19
+steps and ZERO skipped, `docs-guards: success`, `nightly-full-suite` skipped as a
+push run always skips it. RM-391 is docs-only, so `ci` never fired (ci.yml
+path-ignores `**/*.md`) and `docs-guards` is its gate. Responder slice 596 passed
+/ 1 skipped (595 / 1 at `f36cc3a0b`, so exactly one arm added, in RM-390).
+`RC-InboxResponder` was DISABLED for the suite runs and re-enabled before the
+first commit. Full accounts in LEDGER 1371 and 1372.
+
+**RM-390 DECIDED: the quotable set is the LIVE WINDOW ONLY.** `trial_rows` is a
+single-file reader BY DECISION - it takes a path, never a root, and has no glob -
+because consent is bounded by ONE agreement. History across agreements is
+rendered outside the runner by a fan-out recipe now printed verbatim in spec
+section 8, which doubles as the only pre-arm check that the live window is not
+short. The losing position (a bounded spanning reader) lost on EVIDENCE TRUTH,
+not cost: it added a SECOND way to be silently partial whose `complete=False`
+flag is printed by a renderer that does not exist. Spec sections 8 / 15 / 16,
+the `trial_rows` docstring, one mutation-proven arm.
+
+**RM-391 CLOSED, docs-only, no code: the answered record takes no cap and no
+pruner.** The adjudicator rejected BOTH drafted positions on a clause neither had
+read - spec section 2 already licenses deleting ONE entry by hand, and
+`tools/inbox_responder_runner.py:272-276` records such a deletion performed. So
+the row's question was upside down: a name IS dropped, by a human, precisely in
+order to re-cycle the note it names. Measured `answered - inbox` = 0 of 108, so a
+pruner would drop nothing today.
+
+**THE PROCESS FINDING, and it is the whole session.** Five gate rounds ran and
+every one found something. RM-389's lesson was WHERE to gate; this session paid
+its RIDER instead - an account of your own prior error is a claim too. **In
+RM-390 my correction of a wrong number was itself wrong:** "archives 40" became
+"archives 35" became a measured 36, because the rotation sees 71 lines (the cycle
+appends its own row first), not 70. Neither cited test asserts an archived count
+at all, so the spec now quotes none. **In RM-391 three claims made during the
+adjudication were corrected before shipping:** the metrics ledger is NOT "trimmed
+to 200 rows" (RM-388 made it ROTATE; `METRICS_CARRY_ROWS` is a carry tail), my
+own correction of that quoted a row count from a file that gains a row every five
+minutes, and "all dry-cycle stubs" was false (6 of 10 note-bearing rows are live
+cycles). **And a contract was over-read in three files at once:** rule 7.2 bans
+EDITING a delivered note and says nothing about a receiver archiving its own
+inbox, so RM-391's flip condition rests on a GAP plus current practice, never on
+a prohibition.
+
+**Two traps worth keeping.** Python 3.13+ strips the common leading indentation
+from `__doc__` at compile time, so `inspect.getsource(f).replace(f.__doc__, "")`
+silently does NOTHING and a body scan then trips on the docstring's own prose -
+split on the triple quotes instead, and assert the prose separately as a vacuity
+control. And a `python -c` recipe printed in a doc must be RUN before it ships;
+this one was, verbatim, from the repo root.
+
+**Do NOT redo:** RM-390 and RM-391 in any form. Do not build a spanning or
+root-taking `trial_rows`, do not add a cap or a pruner to the answered record,
+and do not re-open the "corrected in three places" arithmetic (LEDGER 1370).
+
+**Still open, unchanged:** the 39 FALSE-RED-risk external-binary call sites in
+`tests/` (no row filed yet; the audit covered only the 940 top-level files, so it
+UNDERSTATES), and the inbound RSC finding that a pre-push hook runs with git's
+own PATH, which puts that classification in doubt in exactly the environment that
+gates every push.
+
+## NEXT SESSION - HEADLESS, operator away
+
+Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
+row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
+The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
+operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
+never adjudicated - if a row needs it, say so and move on.
+
+`BACKLOG.md` "Reliability / hardening" has no responder row left open. The
+strongest candidate is the one filed but ROWLESS above: **file a row for the
+FALSE-RED external-binary call sites**, then decide its scope by adjudication -
+RC has a 2116-line guard against false-GREEN skips and NOTHING against false-RED,
+and the guard is structurally blind to an ungated `subprocess.run([...],
+check=True)` because there is no skip to inspect. Measure before scoping: the
+audit covered 940 top-level `tests/*.py` while 1068 `.py` are tracked under
+`tests/`, so 128 subdirectory modules were never looked at. Re-probe the inbound
+PATH finding first - it may change the classification of every one of them.
+
+Start with `/clear`, bootstrap from CLAUDE.md + MEMORY.md + this file + `git
+log`, then `python tools/perseus_recall.py "<the row in your own words>"` BEFORE
+touching anything. Disable `RC-InboxResponder` before any suite run and re-enable
+it at wrap. Never `pytest .`.
+
+---
+
 # 2026-09-08g - RM-389: five questions answered, and three outbound notes that each needed correcting
 
 Single-row outward session, operator AWAY. Tier-0 code impact (three doc
