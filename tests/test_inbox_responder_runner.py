@@ -1281,21 +1281,15 @@ def _junction_note(world, tmp_path):
 
 
 @_JUNCTION_SKIP
-@pytest.mark.xfail(
-    strict=True,
-    reason="runner: pending_notes filters on Path.is_file(), which a junction fails, so a "
-           "junction-NAMED note never reaches the gate 6 link checks - it terminates `empty` "
-           "and is never answered, so it sits in the inbox unremarked on every later tick",
-)
 def test_a_note_that_is_a_junction_is_refused(world, tmp_path):
     """The second half of the note-linked row: the NOTE itself is the junction.
 
     The participants-map arm covers a junction standing in for a sibling
     INBOX. This one puts the reparse point where the note goes, which is what
     `st_file_attributes & FILE_ATTRIBUTE_REPARSE_POINT` in `note_shape_ok`
-    exists for - but that check is never consulted, because the note never
-    survives `pending_notes`. Reported, not repaired: repairing it is a change
-    to the runner, and the containment half is arm-covered below.
+    exists for. RM-385 (2026-09-08) made that check reachable: `pending_notes`
+    no longer drops the entry on `Path.is_file()` before gate 6 can judge it.
+    Was a strict-xfail from the RM-384 build until then.
     """
     target = _junction_note(world, tmp_path)
     result = world.drive()
@@ -1307,26 +1301,81 @@ def test_a_note_that_is_a_junction_is_refused(world, tmp_path):
 
 
 @_JUNCTION_SKIP
-def test_a_junction_named_note_is_contained_even_though_it_is_not_refused(world, tmp_path):
-    """What the runner DOES do with a junction, measured rather than assumed.
+def test_a_junction_named_note_is_contained_while_it_is_refused(world, tmp_path):
+    """Containment, measured rather than assumed, on the REFUSAL path.
 
-    The arm above holds the spec's outcome open. This one pins the property
-    that actually protects the sibling: nothing outside the inbox is opened,
-    quoted, spawned for or delivered, and the cycle still writes its pair and
-    its row.
+    The arm above pins the outcome; this one pins the property that actually
+    protects the sibling: nothing outside the inbox is opened, quoted, spawned
+    for or delivered, and the cycle still writes its pair and its row. It kept
+    holding while the junction terminated `empty / none_pending`, and it holds
+    now that RM-385 has made the same entry a refusal - which is the point of
+    keeping it separate from the outcome arm.
     """
     target = _junction_note(world, tmp_path)
     result = world.drive()
-    assert (result.termination, result.termination_detail) == ("empty", "none_pending")
+    assert (result.termination, result.refused_stage) == ("refused", "input")
     assert world.spawner.calls == 0
     assert world.export.calls == []
-    assert list(world.rsc.iterdir()) == []
+    assert replies_in(world.rsc) == []
     assert world.answered() == set()
     row = world.one_row(result)
     assert row["m3"] is None and row["m4"] is None
     assert "borrowed" not in json.dumps(row)
     assert list(target.iterdir()) == [target / "borrowed.txt"]
     world.assert_pairing()
+
+
+# ---------------------------------------------------------------------------
+# RM-385 - the second instance of the class, and it is not a junction
+#
+# `_sender_code` looks for `-from-`, so a name that BEGINS `from-` returns
+# None and the note was dropped before gate 4 could see it. The live instance
+# has sat in RC's inbox since 2026-09-07 and was never once SEEN by a cycle.
+# MEASURED 2026-09-08 while fixing this: that particular file is also in the
+# answered record, so the fix does not put it back in the live queue - the
+# pending set is the same two RSC notes before and after. (The record holds
+# 108 flat entries; that 106 of them are the operator seed comes from LEDGER
+# 1366 and is not re-derivable from the file itself.) The defect was never about that one file; it is that the class is
+# invisible, and the counterparty cannot tell invisible from ignored.
+# ---------------------------------------------------------------------------
+
+
+TRANSPOSED_NOTE = "from-LL-2026-09-07-2035-correction-our-git-identity-count-is-now-two.md"
+
+
+def test_a_note_with_its_sender_and_date_transposed_is_refused_not_invisible(world):
+    world.agreement()
+    world.note(name=TRANSPOSED_NOTE)
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("refused", "name-grammar")
+    assert result.refused_stage == "input"
+    assert world.spawner.calls == 0
+    assert_held_not_answered(world, TRANSPOSED_NOTE, "input")
+    # NO bounce: the name carries no sender code, so there is no address to
+    # send one to. Silence to the sender is unavoidable here; silence to the
+    # OPERATOR is not, and the row is what closes that half.
+    assert bounces_in(world.rsc) == []
+    assert bounces_in(world.cs) == []
+    row = world.one_row(result)
+    assert row["sender"] is None
+    assert row["note"] == TRANSPOSED_NOTE[:80]
+    # And the next tick says HELD, never `empty / none_pending` - the label
+    # that made this invisible for a day.
+    second = world.drive()
+    assert (second.termination, second.termination_detail) == ("runner-failed", "notes-held")
+
+
+def test_a_directory_named_like_a_note_is_refused_as_not_a_file(world):
+    """A plain directory is not a reparse point, so `linked` would misname it."""
+    world.agreement()
+    (world.inbox / NOTE_NAME).mkdir()
+    (world.inbox / NOTE_NAME / "inside.txt").write_text("not a note\n", encoding="ascii")
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("refused", "note-shape:not-a-file")
+    assert result.refused_stage == "input"
+    assert world.spawner.calls == 0
+    assert_held_not_answered(world, NOTE_NAME, "input")
+    assert "not a note" not in json.dumps(world.one_row(result))
 
 
 # ---------------------------------------------------------------------------

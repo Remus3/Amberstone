@@ -466,6 +466,13 @@ def note_shape_ok(path, name: str, *, sink: Optional[list] = None) -> list:
         problems.append("note-shape:linked")
     elif lst.st_nlink != 1:
         problems.append("note-shape:linked")
+    elif not stat.S_ISREG(lst.st_mode):
+        # RM-385: reachable since `pending_notes` stopped dropping non-files
+        # silently. Ordered AFTER the reparse branches so a junction keeps its
+        # own detail - a plain directory is not linked to anything, and
+        # `linked` would be the reassuring wrong label this channel keeps
+        # filing. The open below would refuse it too, but as `linked`.
+        problems.append("note-shape:not-a-file")
     if lst.st_size > NOTE_MAX_BYTES:
         problems.append("note-oversize")
     if problems:

@@ -6,6 +6,54 @@
 
 ---
 
+# 2026-09-08d - RM-385: what is NOT a note still has to be SEEN
+
+Single-row session, straight after RM-386 and dependent on it. Tier-1, no
+`ENGINE_VERSION` bump, no frozen file. Task DISABLED before the first edit,
+re-enabled at wrap.
+
+**Two silent filters, one class.** `pending_notes` dropped an entry on
+`Path.is_file()` (false for a junction - always a directory reparse point) and
+on `_sender_code(...) is None` (true for a name that BEGINS `from-`, sender and
+date transposed). Neither produced a refusal, a hold, a row field or a log
+line: the cycle said `empty / none_pending`, which is the responder reporting
+nothing pending while something is. Admission is now by NAME and by the
+answered record, so both reach gate 6 and are refused.
+
+**The fence expired.** Spec section 15 put `inbox_responder.py` out of scope
+for the RM-384 build, which is why this shipped as a strict-xfail instead of a
+fix. `test_a_note_that_is_a_junction_is_refused` is now a PASSING arm - the
+stated acceptance and the last strict-xfail in the responder suite. Its
+companion containment arm was re-pointed at the refusal path, not deleted.
+
+**RM-386 supplied the disposal.** The row asked for "refused, answered so it
+stops re-cycling" - and answering is exactly what RM-386 had just stopped
+doing. The refusal is HELD instead. In the other order this would have shipped
+a permanent answer for a note nobody read.
+
+**The line NOT crossed:** a note from a sender outside the agreement is still
+dropped silently - somebody else's correspondence, not a silent failure - and
+an arm pins that. Admitting is not trusting: `NOTE_NAME_RE` is strictly
+stronger than `_sender_code`, so a code-less name is refused `name-grammar`
+before any spawn.
+
+**New label with its own mutant:** a plain directory named like a note reads
+`note-shape:not-a-file`, ordered after the reparse branches so a junction keeps
+`note-shape:linked`. Without it the entry is still refused, but as `linked`,
+and a directory is linked to nothing.
+
+**Live impact ZERO, and my first probe of it was wrong.** The transposed-name
+file is inside the operator's 106-entry answered-record seed, so the pending
+set is the same two RSC notes before and after. Both arm comments were
+corrected to say so.
+
+**Suite:** 581 passed / 1 skipped / 0 xfailed / 0 failed (`pytest tests -k
+inbox_responder`). Ruff clean.
+
+**Still open:** RM-387, RM-388.
+
+---
+
 # 2026-09-08c - RM-386 second half: a refusal is no longer an answer, and the row asking for it was two-thirds stale
 
 Single-row session. Tier-1, no `ENGINE_VERSION` bump, no DS bounce, no frozen
