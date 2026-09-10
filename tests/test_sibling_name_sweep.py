@@ -139,6 +139,92 @@ def test_armed_via_env_override_paths_only(tmp_path: Path):
     assert cfg.codes == ()
 
 
+def test_env_override_survives_a_posix_pathsep_on_a_windows_path_list(
+    monkeypatch, tmp_path: Path
+):
+    """CI-RED regression, run 34538335778 on the ubuntu runner.
+
+    ``os.pathsep`` is ``;`` on Windows and ``:`` on POSIX, and a drive-letter
+    path CONTAINS a colon. So the same override string that loads four names on
+    Windows severed into eight fragments on Linux, and the leading ``C`` of each
+    path became a fifth NAME. That is not a cosmetic miscount: a one-character
+    needle compiles to ``(?<![A-Za-z0-9])C(?![A-Za-z0-9])``, which matches a
+    standalone ``C`` anywhere in the tree and would halt every push.
+
+    Forced here rather than left to the runner, so this case is exercised on
+    Windows too - the defect was invisible on the machine that shipped it.
+    """
+    root = tmp_path / "posixsep"
+    (root / "ops").mkdir(parents=True)
+    monkeypatch.setattr(os, "pathsep", ":")
+    cfg = sweep.load_config(
+        root=root, env={"RC_MOON_SYNC_REPOS": ":".join(_SYNTH_REPOS)}
+    )
+    assert cfg.mode == sweep.MODE_ARMED
+    assert len(cfg.names) == 4, cfg.names
+    assert "C" not in cfg.names, cfg.names
+
+
+def test_split_repo_list_rejoins_a_severed_drive_letter():
+    parts = sweep.split_repo_list(":".join(_SYNTH_REPOS), sep=":")
+    assert len(parts) == 4, parts
+    assert all(p.startswith(_D) for p in parts), parts
+
+
+def test_split_repo_list_leaves_posix_paths_alone():
+    """The repair must not glue an ordinary POSIX list back together."""
+    assert sweep.split_repo_list("/srv/one:/srv/two", sep=":") == [
+        "/srv/one",
+        "/srv/two",
+    ]
+    assert sweep.split_repo_list("/srv/one:" + _D + "Two", sep=":") == [
+        "/srv/one",
+        _D + "Two",
+    ]
+
+
+def test_split_repo_list_does_not_repair_on_a_windows_pathsep():
+    """With ``;`` as the separator a colon is never a delimiter, so nothing is
+    severed and nothing needs rejoining."""
+    assert sweep.split_repo_list(";".join(_SYNTH_REPOS), sep=";") == _SYNTH_REPOS
+
+
+def test_split_repo_list_restores_a_bare_drive_that_lost_its_colon(tmp_path: Path):
+    """A lone drive letter must never become a one-character NEEDLE.
+
+    ``C:`` splits to ``["C", ""]`` on a POSIX separator with nothing rooted to
+    rejoin it. Handing ``C`` on to the loader compiles a needle that matches a
+    standalone ``C`` anywhere in the tree; handing back ``C:`` lets ``_leaf``
+    discard it by the bare-drive rule it already has. FAULT is the correct
+    verdict for an override that names no project, and it is not a clean one.
+    """
+    assert sweep.split_repo_list("C:", sep=":") == ["C:"]
+    assert sweep._leaf("C:") == ""
+    root = tmp_path / "baredrive"
+    (root / "ops").mkdir(parents=True)
+    cfg = sweep.load_config(root=root, env={"RC_MOON_SYNC_REPOS": "C:"})
+    assert cfg.mode == sweep.MODE_FAULT
+    assert cfg.names == ()
+
+
+def test_env_override_accepts_platform_native_paths(tmp_path: Path):
+    """The other half: on each host the NATIVE convention must still work.
+
+    The regression test above feeds Windows-shaped values through a POSIX
+    separator on purpose. This one feeds whatever this host actually produces,
+    so a repair that only worked for drive letters could not pass both.
+    """
+    root = tmp_path / "native"
+    (root / "ops").mkdir(parents=True)
+    native = [str(tmp_path / "siblings" / n) for n in _SYNTH_NAMES]
+    cfg = sweep.load_config(
+        root=root, env={"RC_MOON_SYNC_REPOS": os.pathsep.join(native)}
+    )
+    assert cfg.mode == sweep.MODE_ARMED
+    assert len(cfg.names) == 4, cfg.names
+    assert set(cfg.names) == set(_SYNTH_NAMES), cfg.names
+
+
 def test_degraded_when_config_absent(tmp_path: Path):
     root = tmp_path / "noconfig2"
     (root / "ops").mkdir(parents=True)
