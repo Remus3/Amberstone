@@ -15,7 +15,9 @@ Participants are now RC, Sibling-A and Sibling-B. The count is
 unchanged at three, so `MAX_CONCURRENT_SLOTS` stays 3: the bucket models
 ANTHROPIC ACCOUNT concurrency, one rate-limit pool, and a pool does not shrink
 because a name changed. Source: `moon_sync_inbox/2026-09-06-1702-from-RM-
-archived-resin-compute-takes-the-third-slot.md`, RM's final message.
+archived-<Sibling-B>-takes-the-third-slot.md`, RM's final message - the topic
+slug in that real filename names the sibling, so it is shown here with the name
+elided; resolve it from the gitignored `ops/moon_sync_repos.json`.
 
 **The shared-file half is DONE on RC's side, and RC was the follower.** RM's
 message asked for `ops/loop/slots.py` line 5 to read "Sibling-B" where it
