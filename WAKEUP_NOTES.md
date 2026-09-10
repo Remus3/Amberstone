@@ -2,7 +2,51 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, RM-397 SHIPPED pass (relocated `2026-09-09f` ADR-015; newest 3 = RM-397 shipped `2026-09-09i` + RM-396 refuted / RM-397 filed `2026-09-09h` + RM-395 shipped `2026-09-09g`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-09, MEMORY.md compaction pass (relocated `2026-09-09g` RM-395 SHIPPED; newest 3 = MEMORY.md compaction `2026-09-09j` + RM-397 shipped `2026-09-09i` + RM-396 refuted / RM-397 filed `2026-09-09h`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-09j - MEMORY.md compacted to 16.9 KB by relocating two blocks; no repo code touched
+
+Tier-0 housekeeping on the memory index only - nothing in this repo changed
+except this note. The PostToolUse hook was warning: `MEMORY.md` sat at **20548
+bytes / 124 lines** against a 17.1 KB target.
+
+**What moved, and nothing else.** Two coherent blocks were relocated VERBATIM
+into two NEW sub-indexes, hooks and links intact:
+
+* the whole `## Tooling` block, 11 entries -> `INDEX_tooling.md`;
+* 17 of the 19 `## Projects & parking-lots` lines -> `INDEX_projects.md`.
+
+**Two project rows stayed INLINE on purpose**, on the same precedent as the
+three costliest ops entries: `project_repo_is_public` and
+`project_responder_headless_loop_program`. Both change what a session is
+ALLOWED to do, so neither may be one hop away. Each vacated section keeps its
+heading plus a one-line pointer, matching the Riot-API / ops / testing-traps
+shape already in the file.
+
+**AFTER: 17307 bytes / 97 lines (16.9 KB)** - under target, with **NOTHING
+dropped and NOTHING unindexed**, which is the one forbidden move here.
+
+**The acceptance is reachability, not bytes.** Re-derived the way
+`check_memory_index` does it (`tools/drift_guard.py:165-215`: `*.md` stems minus
+the index, markdown link targets, ONE level into `INDEX_*` from a snapshot taken
+before the loop, exempt prefixes `project_ds_sweep_` and `_` at `:75`/`:207`).
+BEFORE: 497 memory files, 100 exempt, **397 non-exempt, 0 unreachable, 0 dead**.
+AFTER: 499 files, 100 exempt, **399 non-exempt, 0 unreachable, 0 dead** - the
+two extra non-exempt files are the new sub-indexes themselves, both linked
+directly from `MEMORY.md` (they must be: the recursion snapshot means a sub-index
+linked only from another sub-index is never followed). `python tools/drift_guard.py`
+-> `0 breach(es)`, exit 0. `tests/test_drift_guard.py` 47 passed;
+`tests/test_citation_drift_guard_rm171.py` 11 passed / 125 subtests.
+`tools/perseus_sync.py` re-run: memory=499, `--verify` active=1622 embedded=1622.
+
+**TRAP, and it bit on the first pass: do NOT write a bare markdown link target
+inside MEMORY.md's own footer prose.** Describing the guard's regex by quoting a
+literal link target made the guard parse it as a REAL link to a file that does
+not exist - one dead index link, from a sentence that was only ever describing
+the check. The footer now says "markdown link targets" in words and carries the
+warning. A doc that documents its own guard can breach that guard.
 
 ---
 
@@ -239,86 +283,3 @@ other runs, so it is window-dependent by construction.
 not a free edit - the file's own footer requires re-deriving reachability over
 every non-exempt memory against `MEMORY.md` plus every `INDEX_*` before a
 consolidation may be called safe. Treat it as its own row, not a tidy-up.
-
----
-
-# 2026-09-09g - RM-395 SHIPPED: the row I filed one commit earlier was wrong twice, and the step that caught it is the one the row demanded
-
-Fifth row of the same headless day, operator AWAY. Tier-1: two test modules, no
-engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward. LEDGER 1378.
-Two parallel single-file slices, one merger, gate before the commit.
-
-**Both corrections came from doing the step the row itself demanded FIRST** -
-state whether an EMPTY enumeration would PASS each assertion before converting.
-That step is in ADR-015's Watch for because RM-394 nearly shipped a silent
-always-green. Here it caught my own filing.
-
-1. **"Both are ABSENCE guards, the empty-set-safe shape" is FALSE for the laning
-   guard.** `_app_source_files()` has exactly one consumer and it asserts SET
-   EQUALITY against a two-element expectation, so an empty enumeration gives
-   `set()` and FAILS. Self-anchoring, no anchor needed - PROVEN by mutation
-   (`assert set() == {...}`, 1 failed / 26 passed), not reasoned.
-2. **The row named two exposed sites; there are three** - and my framing of the
-   third was ALSO wrong. `CallerSurfaceAbsenceTests.test_no_live_caller` sweeps
-   6377 files with 5044 under the export trees, but its own
-   `rel.startswith("ops/runtime/")` skip existed at HEAD (`:172`) and dropped
-   every one BEFORE any read: read-set 1260 both sides, symmetric difference
-   EMPTY. **Cost, not correctness.** I told the operator otherwise mid-session.
-   Its real defect is the ADR's other green-by-luck sense - it never skipped
-   `python-embed` / `node_modules` / `.claude`.
-
-**Shipped.** `test_laning_verdict_flip_retired.py`: 2082 -> 397 enumerated, all
-1685 removed are vendored `python-embed`, set-diff confirms 0 RC source lost and
-0 gained, 15 first-party SCOPE skips kept and only 4 infrastructure entries
-deleted; 27 passed. `test_dead_endpoint_cleanup_item186.py`: both sites, site 1
-9112 -> 2386 (its two filters were removing ZERO files), site 2 to one root walk
-plus a prefix filter reaching the identical 1260 read-set; 4 passed. **A gate
-caught 1331 recited as the read-set in four places: 1331 is the caller SURFACE,
-and this guard's own `dashboard/routes_` skip removes exactly 71 of them before
-anything is opened.** Surface and read-set are different populations one line
-apart, and the in-file comment saying "1331 across the caller surface" was right
-while every doc restating it as the read-set was wrong.
-
-**The anchors, and the mutation that justifies them.** With the identical
-forced-empty mutation applied to the PRE-conversion code both tests PASSED
-VACUOUSLY. After, they fail under three independent mutations (`Path.rglob`
-empty, the `_repo_walk` enumerators empty, `EXCLUDED_DIRS` widened to a partial
-collapse leaving 76 files). Each anchor checks TWO oracles - on disk AND actually
-delivered to the scanning arm - so a decayed constant reports "anchor gone", not
-"walk collapsed"; a `_MIN_SCANNED = 100` floor sits far below the true 2386/1260
-so it tracks collapse, not roster.
-
-**Suite:** `pytest tests -n 8` = 21639 passed, 97 skipped, 4921 subtests, 0
-failed, exit 0. No `_live_surfaces_unchanged` error this run - consistent with
-the window-dependent external-writer attribution, not evidence against it.
-
-**Do NOT redo.** ADR-015 needs no amendment - both Watch-for items did exactly
-what they were written to do. Do not add an anchor to the laning guard; set
-equality already is one. Do not "fix" site 2's `ops/runtime/` skip as dead - it
-is a no-op only under `tracked_only=True`, and still fires on the git-absent
-fallback, which is the path RM-394's reds were on.
-
-## NEXT SESSION - HEADLESS, operator away
-
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial. ONE
-row per cycle, gate BEFORE the irreversible act, commit, push, LEDGER entry.
-The RC <-> RSC exchange is the only outward scope; `CS`, `LW` and `LL` are on
-operator-ordered STANDBY and their silence is STANDBY, never dissent. ARMING is
-never adjudicated - if a row needs it, say so and move on.
-
-**No row is queued - pick one.** RM-392, RM-393, RM-394 and RM-395 all shipped
-today, and ADR-015 records the decision behind the last two. The two known-open
-items, neither adjudicated into a row:
-
-1. **`tools/stop_claim_gate.py:38`** - `CLAIM_COUNT` has no counterfactual or
-   citation suppression, unlike `CLAIM_FILE` (`:47-83`) which has both, so
-   quoting a figure IN ORDER TO REFUTE IT re-fires every turn. Read the hazard
-   its own comments name at `:74-77` before touching it. **SUPERSEDED
-   2026-09-09h: this candidate became RM-396 and is REFUTED, and the `:74-77`
-   cite in this sentence is FALSE - no such comment exists in the file.**
-2. **`tests/test_inbox_responder_runner.py`** - two defects in one module. `:214`
-   asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the arms
-   were skipped" from "the runner is broken" (it is the 1 residual error when git
-   is off PATH). And `_live_surfaces_unchanged` is non-hermetic against a LIVE RC
-   appending to `ops/runtime` mid-suite - measured three times on 2026-09-09,
-   absent on a fourth run, so it is window-dependent by construction.
