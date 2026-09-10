@@ -262,22 +262,28 @@ def split_repo_list(raw: str, sep: Optional[str] = None) -> list:
     A lone drive that could NOT be rejoined (the override was a bare ``C:``)
     gets its colon back instead, so ``_leaf`` discards it by the rule it already
     has, rather than emitting that same catastrophic one-character needle.
+
+    On a POSIX separator ``;`` is honoured as a delimiter too. A Windows-shaped
+    VALUE usually arrives inside a Windows-shaped LIST, and without this the
+    two-path form silently loses a sibling name into the middle of a fragment -
+    an UNDER-detect, which is the one direction a leak gate must not fail in.
+    A POSIX path may legally contain ``;``, so the cost is a possible extra
+    needle: an over-detect, which halts loudly and is inspected on the spot.
     """
     separator = os.pathsep if sep is None else sep
-    parts: list = []
-    for frag in (raw or "").split(separator):
-        if (
-            separator == ":"
-            and parts
-            and _LONE_DRIVE.match(parts[-1])
-            and _ROOTED.match(frag)
-        ):
-            parts[-1] = parts[-1].strip() + ":" + frag
-            continue
-        parts.append(frag)
-    if separator == ":":
+    if separator != ":":
+        return [p.strip() for p in (raw or "").split(separator) if p.strip()]
+    out: list = []
+    for chunk in (raw or "").split(";"):
+        parts: list = []
+        for frag in chunk.split(":"):
+            if parts and _LONE_DRIVE.match(parts[-1]) and _ROOTED.match(frag):
+                parts[-1] = parts[-1].strip() + ":" + frag
+                continue
+            parts.append(frag)
         parts = [p.strip() + ":" if _LONE_DRIVE.match(p) else p for p in parts]
-    return [p.strip() for p in parts if p.strip()]
+        out.extend(p.strip() for p in parts if p.strip())
+    return out
 
 
 def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> SweepConfig:

@@ -185,8 +185,40 @@ def test_split_repo_list_leaves_posix_paths_alone():
 
 def test_split_repo_list_does_not_repair_on_a_windows_pathsep():
     """With ``;`` as the separator a colon is never a delimiter, so nothing is
-    severed and nothing needs rejoining."""
+    severed and nothing needs rejoining.
+
+    The second assertion is the DISCRIMINATING one. The first cannot fail
+    either way - a ``;``-joined Windows list yields no lone-letter fragment, so
+    the repair clause never fires on it and a mutant that dropped the
+    separator check survives. A lone letter followed by a rooted fragment is
+    the only input that tells the two apart.
+    """
     assert sweep.split_repo_list(";".join(_SYNTH_REPOS), sep=";") == _SYNTH_REPOS
+    assert sweep.split_repo_list("A;\\shared\\x", sep=";") == ["A", "\\shared\\x"]
+
+
+def test_split_repo_list_does_not_glue_a_lone_letter_to_an_unrooted_fragment():
+    """The rooted-fragment requirement, tested on its own.
+
+    Without it ``A:Bee`` glues into one path. That clause is what keeps the
+    repair to things that actually look like a severed drive, so it needs a
+    case of its own rather than being carried by the drive-letter tests.
+    """
+    assert sweep.split_repo_list("A:Bee", sep=":") == ["A:", "Bee"]
+
+
+def test_split_repo_list_accepts_a_windows_shaped_list_on_a_posix_separator():
+    """The under-detect hole, found by an adversarial pass on the first fix.
+
+    A Windows-shaped VALUE usually arrives inside a Windows-shaped LIST. Split
+    on ``:`` alone, ``<drive>:<pathA>;<drive>:<pathB>`` leaves the first name
+    buried mid-fragment and it is NEVER needled - a silent under-detect, which
+    is the one direction a leak gate must not fail in.
+    """
+    parts = sweep.split_repo_list(";".join(_SYNTH_REPOS), sep=":")
+    assert parts == _SYNTH_REPOS, parts
+    cfg = sweep.config_from_parts(parts, {})
+    assert len(cfg.names) == 4, cfg.names
 
 
 def test_split_repo_list_restores_a_bare_drive_that_lost_its_colon(tmp_path: Path):
