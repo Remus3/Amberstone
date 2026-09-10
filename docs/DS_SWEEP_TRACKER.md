@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-399** (2026-09-09, moved at the RM-398 filing).
+  Next free id = **RM-400** (2026-09-09, moved at the RM-399 filing).
+  **RM-399 was allocated 2026-09-09** (LEDGER 1381), filed under BACKLOG
+  "Reliability / hardening", taking no roster checkbox and not changing the
+  Summary count: BUILD RC'S SIBLING-NAME SWEEP, so the diff-content push gate
+  adopted into CLAUDE.md the same day has its second half. The gate halts a push
+  whose DIFF touches a byte-pinned cross-repo artifact OR trips the sibling-name
+  sweep, and RC has no sweep - there is no `tests/test_no_sibling_names.py` here
+  (that file is RSC's) and `.githooks/pre-push` is GIT LFS ONLY. Id taken from
+  THIS pin, and the pointer-vs-allocated predicate was re-run before minting:
+  `tools/rm_id_registry.py` reported the pinned id free across all 7 scanned docs.
+  Earlier next-free pointer (2026-09-09, moved at the RM-398 filing).
   **RM-398 was allocated 2026-09-09** (LEDGER 1380), filed under BACKLOG
   "Reliability / hardening", taking no roster checkbox and not changing the
   Summary count: `count_mismatch` cannot tell a count asserted as SUCCESS from
