@@ -1,44 +1,52 @@
 NEXT SESSION
 ------------
-Task: RM-397 - narrow `_QUOTED` in tools/stop_claim_gate.py so a possessive or
-contraction cannot open a quoted span. Two ordinary prose apostrophes currently
-pair as delimiters and the span between them is deleted before any check runs.
+Task: RSC's reply on the JOINT RE-PIN is the gating item. A two-word sibling
+  project name sits at tests/test_loop_concurrency.py:492, INSIDE the
+  SHARED_SHA256 byte-identical block (lines 474-539), split across a
+  comment-continuation line wrap. It is NOT contiguous in the raw blob, so every
+  whole-token sweep ever run here reported it clean. RC cannot fix it alone:
+  re-pinning is a JOINT act and digests are never regenerated from local disk.
+  Relayed to RSC 2026-09-10; read moon_sync_inbox/ for their answer FIRST.
+  If they have not replied, do NOT touch that file and do NOT re-pin. Pick
+  RM-398 instead (see below).
 
-SHAPE (standing, operator 2026-09-09): SUBAGENT-FIRST, ALWAYS. The main window is
-the operator's surface - it holds the plan, the merge, the gate and the report,
-never the doing. Decompose, dispatch disjoint slices, gate with an independent
-read-only pass, report a roll-up.
+Second task if RSC is silent: RM-398 - count_mismatch in
+  tools/stop_claim_gate.py cannot distinguish a count asserted as SUCCESS from
+  one asserted as a RED or mutation state. THE TRAP IS IN THE FIX: a "mutation:"
+  or "red state:" suppressor is an evasion prefix available to the party the
+  instrument polices, and would reopen the hole RM-397 just closed. Read the
+  RM-398 row before designing anything.
 
 Context:
-  - tools/stop_claim_gate.py:184 `_QUOTED`, :212-214 `strip_prose_noise`,
-    :257 `collect_evidence` (assistant text ONLY - this is what bounds the defect)
-  - tests/test_stop_claim_gate.py - the real-transcript corpus it anchors on
-  - Transcripts: C:\Users\Administrator\.claude\projects\C--Riot-Commander\*.jsonl (90 files)
-  - Rows: BACKLOG.md RM-397; docs/LEDGER.md 1379; memory
-    reference_stop_claim_gate_apostrophe_over_strip
+  - tools/sibling_name_sweep.py + tests/test_sibling_name_sweep.py (RM-399,
+    SHIPPED a715baf58). Armed via .githooks/pre-push, sweep runs BEFORE
+    git lfs pre-push. Verify live: python tools/sibling_name_sweep.py --tree
+    from the REPO ROOT - it resolves its root from __file__, so running it in a
+    worktree scans the WORKTREE, not main.
+  - Expect EXACTLY 1 finding: the KNOWN byte-pinned site above. Anything else
+    is new and must be triaged before any push.
+  - ops/moon_sync_repos.json is gitignored per-host config and the ONLY thing
+    resolving a code to a real name. Absent in a fresh clone and in CI, where
+    the sweep runs DEGRADED (structural arm only, banner says it proved
+    nothing).
+  - CLAUDE.md "Session Default" holds the adopted boundary. The push half gates
+    on DIFF CONTENT, not destination.
 
 Acceptance:
-  - A possessive cannot open a span; genuine single-quoted spans stay suppressed.
-  - Measured against all 90 transcripts for NEW false positives before arming.
-    THE DIRECTION IS THE RISK: every prior repair to this gate (LEDGER 1154 /
-    1156 / 1175 / 1178) NARROWED it to kill a false positive; this one WIDENS
-    what it examines.
-  - tests/test_stop_claim_gate.py green, docs-guard selection green.
+  - Joint re-pin: BOTH trees hash equal, digests re-derived from each tree's
+    own disk and compared. A note claiming parity is NOT the acceptance.
+  - The sweep's tree arm drops to 0 findings only after that lands.
 
 Do NOT redo:
-  - RM-392 / RM-393 / RM-394 / RM-395 all SHIPPED 2026-09-09 (LEDGER 1374-1378).
-  - ADR-015 records the repo-root enumeration decision (LEDGER 1377).
-  - RM-396 is REFUTED - do NOT re-pitch CLAIM_COUNT suppression, a retraction
-    token, or per-turn scope. Backtick a refuted figure instead.
-  - The responder RUNNER is BUILT: RM-384/385/386 all shipped 2026-09-08.
-    The headless-loop program is TESTS, FIXES AND HARDENING plus arming.
-
-Also pending:
-  - Read C:\Riot Commander\moon_sync_inbox\ for RSC's reply to RC's two notes of
-    2026-09-09 (directive relay + correction). RC asked three questions; the
-    live one is whether the operator-ping boundary is ARMING, not building.
-  - MEMORY.md is 20 KB against a 24.4 KB read limit and the harness wants it
-    under 17.1. Its own footer requires re-deriving reachability over every
-    non-exempt memory before a consolidation may be called safe. Own row.
+  - RM-397 SHIPPED (e518786e2), RM-398 FILED, RM-399 SHIPPED (a715baf58).
+  - The BOUNDARY was adopted and then SUPERSEDED within the same session. Do
+    NOT restore the destination wording, and do NOT restore the own-origin push
+    carve-out - RSC proved it removed seam (f) rather than narrowing it.
+  - MEMORY.md compaction is DONE (17454 bytes, zero unreachable).
+  - The four sibling-name redactions are done at HEAD (f6cf005bb). Publication
+    is NOT undone - the names remain in old commits on the public remote and no
+    history rewrite was performed. Do not re-file that as a new leak, and do not
+    claim it is fixed.
+  - Do NOT dispatch a CI run by hand (RM-157). The push IS the full suite.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
