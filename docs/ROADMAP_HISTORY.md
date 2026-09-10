@@ -1,5 +1,19 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-10 - size-budget relocation, by the RM-399 wrap session
+
+`ROADMAP.md` reached 93 percent of its 81920-byte budget once the RM-397 /
+RM-399 shipped rows, the RM-398 row and the joint-re-pin row were added, and
+`tools/drift_guard.py` breached on it. The four FULLY SHIPPED responder rows
+below move here VERBATIM; `ROADMAP.md` keeps one pointer line in their place.
+Nothing is dropped and nothing is summarised away - the open tails RM-387 and
+RM-388 stay in `ROADMAP.md` as rows, because they are still open.
+
+- **RM-384 SHIPPED 2026-09-08 - the cross-repo inbox responder RUNNER.** Both rows (shipped record + original scope) relocated VERBATIM to `docs/ROADMAP_HISTORY.md` in the 2026-09-08 block for the size budget. Detail: `docs/LEDGER.md` 1364; measurements: `docs/RESPONDER_RUNNER_SPEC.md` "Build measurements". Its two open tails are RM-385 and RM-386 below.
+- **RM-386 SECOND HALF SHIPPED 2026-09-08 - a refusal is no longer an answer; body and the full shipped record in `BACKLOG.md` "Reliability / hardening".** `refused` (input, validator, filter) and `exhausted` stopped calling `record_responded` and now write a HOLD record instead: the note stays pending and unanswered, `pick_note` skips it as it skips one at the spawn cap, every row carries `notes_held`, gate 4b says `runner-failed / notes-held` rather than `empty` (`attempt-cap` still wins when any note is also at the spawn cap; what is guaranteed is that neither is ever `empty`), and one deleted entry re-cycles the note - the thing the answered record made impossible after RC's 15:02:43 refusal. Both costs RSC disclosed are paid (the repeat-refusal storm, and the head-of-line starvation RC had been buying off), and both record faults fail CLOSED. The other two states named in the filed row had already been closed the same afternoon by the prompt/schema fix and the bounce; the third was always the RM-385 class and stays there. First half (the name-grammar caps) SHIPPED; body in `docs/ROADMAP_HISTORY.md` 2026-09-08b.
+- **RM-386 first half - SHIPPED 2026-09-08, body in `docs/ROADMAP_HISTORY.md` 2026-09-08b.** Kept as a pointer because the correction it carries (a cause NAMED but not MEASURED) is the reusable part: RC blamed `NOTE_NAME_MAX = 120` on the strength of one name's 130 characters, when the binding constraint was the regex's `{1,80}` TOPIC group, and raising the named cap alone would have fixed ZERO of the 34 failing names. A cause NAMED but not MEASURED.
+- **RM-385 SHIPPED 2026-09-08 - what is NOT a note still has to be SEEN; body and shipped record in `BACKLOG.md`, measurements in `docs/RESPONDER_RUNNER_SPEC.md` "Build measurements (2026-09-08c)".** `pending_notes` stopped dropping two classes silently - a junction-named entry (`Path.is_file()` is false for any reparse point) and a name with its sender and date transposed (`_sender_code` returns None) - so both now reach gate 6, are refused, and are HELD by the RM-386 mechanism that landed one item earlier. The last strict-xfail in the responder suite is now a passing arm. A note from a sender outside the agreement is still dropped on purpose, with an arm pinning that line. Live impact measured as ZERO: the same two RSC notes are pending before and after.
+
 ## 2026-09-08b - RM-386 first half, relocated on the same day it shipped
 
 ROADMAP.md hit 93 percent of its budget once RM-385, RM-386 and RM-387 were all
