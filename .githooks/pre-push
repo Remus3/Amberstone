@@ -3,4 +3,54 @@
 # This is the hook that UPLOADS LFS objects - losing it means pushes that look
 # clean while LFS content never reaches the remote.
 command -v git-lfs >/dev/null 2>&1 || { printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'pre-push' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks')."; exit 2; }
+
+# RM-399 sibling-name sweep, wired AHEAD of the LFS step.
+#
+# TWO TRAPS THE NAIVE READING MISSES, and both are why this is not a one-line
+# append at the bottom of the file:
+#
+#   1. `git lfs pre-push` DRAINS STDIN. The ref lines git feeds this hook are
+#      consumed by it, so a sweep appended AFTER it receives an empty stdin and
+#      reports a clean push over nothing at all. Stdin is therefore captured
+#      ONCE here and replayed to both consumers.
+#   2. `git lfs pre-push` UPLOADS. A sweep placed after it halts a push whose
+#      LFS objects have already left this machine, which is not a gate, it is a
+#      notification. The sweep runs FIRST for that reason.
+#
+# The LFS invocation below must remain the LAST command in this file so the
+# hook's exit status stays LFS's on the clean path. Deliberately no `set -e`:
+# the sweep's exit code is inspected explicitly, and 2 (HALT) must never be
+# confused with 3 (FAULT - the guard could not run).
+REFS="$(cat)"
+
+ROOT="$(git rev-parse --show-toplevel)"
+PY="${PYTHON:-py}"
+
+# Python 3.x - prefer `py` (the Windows launcher) but fall back to `python`.
+if ! command -v "$PY" >/dev/null 2>&1; then
+    PY=python
+fi
+
+if [ -f "$ROOT/tools/sibling_name_sweep.py" ]; then
+    if ! command -v "$PY" >/dev/null 2>&1; then
+        printf >&2 "%s\n" "[sibling-sweep] FAULT - no python on PATH, so the sibling-name sweep could not run. This is not a clean verdict. Install python or push with --no-verify only if you have checked the diff by hand."
+        exit 3
+    fi
+    printf '%s\n' "$REFS" | "$PY" "$ROOT/tools/sibling_name_sweep.py" --pre-push "$@"
+    SWEEP_RC=$?
+    if [ "$SWEEP_RC" -ne 0 ]; then
+        exit "$SWEEP_RC"
+    fi
+fi
+
+# Replay the captured ref lines to LFS on stdin without touching the invocation
+# line itself. `exec <` redirects this shell's stdin, so the command below reads
+# exactly what git handed us.
+REFS_FILE="$(mktemp "${TMPDIR:-/tmp}/rc-prepush-refs.XXXXXX" 2>/dev/null)"
+if [ -n "$REFS_FILE" ]; then
+    printf '%s\n' "$REFS" > "$REFS_FILE"
+    exec < "$REFS_FILE"
+    rm -f "$REFS_FILE" 2>/dev/null || true
+fi
+
 git lfs pre-push "$@"
