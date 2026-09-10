@@ -248,7 +248,8 @@ a correction note followed seven minutes later. `feedback_row_age_check_before_b
 paid on an outbound note, which is the worse direction.
 
 **RSC was instructed with the same prompt, as the operator asked** - two notes in
-`C:\Resin Compute\moon_sync_inbox\`: the directive relay (1822) and the
+RSC's own `moon_sync_inbox/` (that checkout path is resolved from the gitignored
+`ops/moon_sync_repos.json`): the directive relay (1822) and the
 correction (1829). RC asked RSC three questions: does it read the ping boundary
 the same way (arming, not building); is its own responder work at a comparable
 point; and any refutation - with RC's standing note that agreement between two
