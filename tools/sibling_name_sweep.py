@@ -229,6 +229,57 @@ def _leaf(path_like: str) -> str:
     return leaf.strip()
 
 
+# A drive-letter path CONTAINS the POSIX path separator, and this gate does not
+# run only on Windows: the tree is a Linux CI job away at all times.
+_LONE_DRIVE = re.compile(r"^\s*[A-Za-z]\s*$")
+_ROOTED = re.compile(r"^[\\/]")
+
+
+def split_repo_list(raw: str, sep: Optional[str] = None) -> list:
+    """Split an ``RC_MOON_SYNC_REPOS`` override into paths, drive-letter safe.
+
+    MEASURED (CI run 34538335778, ubuntu runner): ``os.pathsep`` is ``;`` on
+    Windows and ``:`` on POSIX, so the same override that loaded four paths here
+    severed into EIGHT fragments there - every drive-letter path cut in two at
+    its own colon - and the leading drive letter loaded as a fifth NAME. (No
+    drive-rooted example is spelled out below, because this file is scanned by
+    its own structural arm and an illustrative path is a live hit.) That is not a
+    miscount to be waved through: a one-character needle compiles to
+    ``(?<![A-Za-z0-9])C(?![A-Za-z0-9])``, which matches a standalone ``C``
+    anywhere in the tree, so the gate would halt every push while pointing at
+    nothing. Every sibling this repo coordinates with is a Windows checkout, so
+    a Windows-shaped value arriving in a Linux process is the expected case, not
+    an exotic one.
+
+    The repair is narrow on purpose. Only when the separator is ``:`` does a
+    fragment that is a lone letter, immediately followed by a fragment starting
+    with ``\\`` or ``/``, get rejoined with its colon. An ordinary POSIX list is
+    therefore untouched, because ``/srv/one`` is not a lone letter. The one
+    genuinely ambiguous input - a relative POSIX directory literally named
+    ``C`` sitting before an absolute path - resolves to the drive letter, which
+    is the reading that matches every real caller of this tool.
+
+    A lone drive that could NOT be rejoined (the override was a bare ``C:``)
+    gets its colon back instead, so ``_leaf`` discards it by the rule it already
+    has, rather than emitting that same catastrophic one-character needle.
+    """
+    separator = os.pathsep if sep is None else sep
+    parts: list = []
+    for frag in (raw or "").split(separator):
+        if (
+            separator == ":"
+            and parts
+            and _LONE_DRIVE.match(parts[-1])
+            and _ROOTED.match(frag)
+        ):
+            parts[-1] = parts[-1].strip() + ":" + frag
+            continue
+        parts.append(frag)
+    if separator == ":":
+        parts = [p.strip() + ":" if _LONE_DRIVE.match(p) else p for p in parts]
+    return [p.strip() for p in parts if p.strip()]
+
+
 def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> SweepConfig:
     """Build an ARMED config from already-loaded parts. Used by tests and by
     the env-override path, which carries paths only and therefore no codes."""
@@ -261,13 +312,20 @@ def load_config(
     because a CODE next to a NAME publishes the resolution and must outrank a
     bare name hit. The poller ignores that key, so the two readers stay
     compatible with the same gitignored file.
+
+    DELIBERATE DIVERGENCE from the poller, added after CI run 34538335778: the
+    override is split by ``split_repo_list``, not by a bare ``raw.split(
+    os.pathsep)``. The poller runs on Windows only, where ``os.pathsep`` is
+    ``;`` and the naive split is correct; this gate additionally runs in a Linux
+    CI job, where ``:`` cuts every drive-letter path in half. Same file, same
+    keys, one reader that has to survive a platform the other never sees.
     """
     base = Path(root) if root is not None else REPO_ROOT
     environ = os.environ if env is None else env
 
     raw = (environ.get("RC_MOON_SYNC_REPOS") or "").strip()
     if raw:
-        paths = [p.strip() for p in raw.split(os.pathsep) if p.strip()]
+        paths = split_repo_list(raw)
         cfg = config_from_parts(paths, {})
         cfg.source = "RC_MOON_SYNC_REPOS"
         if cfg.mode == MODE_FAULT:
