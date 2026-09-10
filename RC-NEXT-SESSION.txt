@@ -10,6 +10,18 @@ Task: RSC's reply on the JOINT RE-PIN is the gating item. A two-word sibling
   If they have not replied, do NOT touch that file and do NOT re-pin. Pick
   RM-398 instead (see below).
 
+  FOLD INTO THE SAME RE-PIN: tests/test_loop_concurrency.py:44 splits
+  RC_MOON_SYNC_REPOS on a bare os.pathsep. On POSIX that is ':', and a
+  drive-letter path contains one, so a Windows path list shatters into
+  fragments. In tools/sibling_name_sweep.py this shipped a ONE-CHARACTER
+  NEEDLE ('C') that would have halted every push on a Linux host while
+  pointing at nothing - fixed there by split_repo_list (54a9d5736). The
+  copy in test_loop_concurrency.py is LATENT (no workflow sets that env
+  var, and its fragments become filesystem paths rather than needles), and
+  it is in the byte-pinned block, so do NOT fix it unilaterally.
+  tools/moon_sync_poller.py:101 has the same split and is deliberately
+  left alone - Windows-only in practice, fragments become paths.
+
 Second task if RSC is silent: RM-398 - count_mismatch in
   tools/stop_claim_gate.py cannot distinguish a count asserted as SUCCESS from
   one asserted as a RED or mutation state. THE TRAP IS IN THE FIX: a "mutation:"
