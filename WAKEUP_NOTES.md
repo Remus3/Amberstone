@@ -25,7 +25,9 @@ ALLOWED to do, so neither may be one hop away. Each vacated section keeps its
 heading plus a one-line pointer, matching the Riot-API / ops / testing-traps
 shape already in the file.
 
-**AFTER: 17307 bytes / 97 lines (16.9 KB)** - under target, with **NOTHING
+**AFTER: 17303 bytes / 97 lines (16.9 KB)**, re-derived after the LAST edit -
+the commit message `15e9ca198` cites 17307, measured before a four-byte footer
+correction, which is the standing "your own edit staled the citation" trap - under target, with **NOTHING
 dropped and NOTHING unindexed**, which is the one forbidden move here.
 
 **The acceptance is reachability, not bytes.** Re-derived the way
