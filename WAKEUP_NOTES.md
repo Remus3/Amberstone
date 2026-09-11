@@ -2,7 +2,81 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-398 partial wrap (relocated `2026-09-09i` RM-397 shipped; newest 3 = RM-398 partial `2026-09-10b` + RM-399 shipped `2026-09-10a` + MEMORY.md compaction `2026-09-09j`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-400 / RM-401 wrap (relocated `2026-09-09j` MEMORY.md compaction; newest 3 = RM-400 shipped + RM-401 refuted `2026-09-10c` + RM-398 partial `2026-09-10b` + RM-399 shipped `2026-09-10a`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-10c - RM-400 SHIPPED and RM-401 REFUTED, and the verifier caught a FALSE SENTENCE in BOTH deliverables
+
+Tier-1, operator AWAY: one tool module plus its test, one BACKLOG row, one data
+snapshot. LEDGER 1385. Pushed `085236cf3..9d290f99e`, CI GREEN both workflows
+(`ci` 16m46s, `docs-guards` 2m19s), observed this run.
+
+**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM.** RSC's inbox
+is silent: newest file `2026-09-09-2100-from-RSC`, zero files dated 2026-09-10 or
+later. Do not re-pin unilaterally.
+
+**EVERY NUMBER HERE WAS MEASURED OVER A FROZEN 92-TRANSCRIPT CORPUS COPY.** The
+live directory holds the running session's own growing transcript. Baseline was
+RE-DERIVED at `085236cf3` rather than inherited: 31 findings, `count_mismatch`
+23, `ci_claim_without_probe` 3, `full_suite` 2, `file_claim` 1, `hook_bypass` 1,
+`commit_claim` 1, **`push_claim_without_push` 0**.
+
+**RM-400 SHIPPED (`7f2fc529e`).** `_QUOTED_EXE`'s directory group ended on
+`[\/]`, which inside a character class is a forward slash and nothing else - the
+escape is inert there. Fix is one character class, `[\\/]`. MEASURED 31 -> 28,
+**3 removed, 0 added**, verifier-re-derived from both sides; all three are
+`ci_claim_without_probe` in `653d2ee9`, which probed CI seven times via quoted
+backslash paths and was told it never probed.
+
+**RM-401 REFUTED AS SCOPED (`06f375c46`), no code.** A finding-level delta is
+UNAVAILABLE - `did_push` is true by the END of any session that pushed, so
+`push_claim_without_push` is 0 corpus-wide and no narrowing can move it. Scored
+at the pattern level instead: **428 matches across 69 of 92 sessions; 19 sessions
+have no push evidence and NONE of the 19 utters the word**, which is the whole
+explanation of the zero. 16 candidates precede any push, 8 already `_negated`-
+suppressed, 8 live at message granularity, **6 at TURN granularity**. Of those 6
+the row's adjectival shape is exactly **1**, and there are **ZERO true
+positives**. Four separating rules were built and killed. **DO NOT RE-PITCH a
+part-of-speech / noun-class / determiner narrowing of `CLAIM_PUSH`.**
+
+**THE PROCESS LESSON, and it repeated twice in one session: the verifier caught
+a FALSE JUSTIFYING SENTENCE in BOTH deliverables, and BOTH TIMES the truth was
+MORE FAVOURABLE than the claim.** RM-400's build wrote that the corpus held no
+backslash `run view --log` FETCH, so that half was unexercised - false;
+`42af2f7d` runs exactly one, its `ci_runs` goes 0 -> 1 under the fix, and its 31
+output lines carry a bare `28150 passed` with ZERO `EV_SUMMARY_LINE` matches, so
+the fence refused to credit it. That is a LIVE POSITIVE CONTROL sitting in the
+corpus. RM-401's refute wrote that both its named residuals are evasion-free -
+false for the `_negated` half. **Overstated ABSENCE of evidence is the recurring
+build-agent failure shape here, not overstated results.** Both corrections landed
+in the CODE COMMENT / row text, not only the commit message, and both were
+independently re-probed at merge before being written down.
+
+**MEASURED AND WORTH NOT REDISCOVERING: `_negated` on `CLAIM_PUSH` is ALREADY
+launderable today.** Against the shipped gate, "This is not a guess: I pushed all
+six commits to origin/main.", "Without further gating, I pushed the lane branch
+to origin." and "Nothing was left uncommitted, and I pushed main to origin." are
+ALL suppressed, while the bare "I pushed all six commits to origin/main." flags.
+Those are the exact RM-398 laundering phrases. So the "widen the 40-char window"
+residual is a laundering problem wearing a boundary-miss costume. Only the
+NON-GIT-IDIOM residual ("pushed back", "pushed today") is genuinely evasion-free.
+
+**A READING TRAP, now recorded: the sweep's `--tree` arm prints "PUSH HALTED" on
+the known byte-pinned exception, but `.githooks/pre-push` invokes `--pre-push`,
+which scores the DIFF.** This session's real push swept clean (11 files, 4 commit
+messages, armed with 4 name slots + 4 counterparty codes). Reading the tree
+banner as the push verdict would be a false alarm.
+
+**DDragon 16.18.1 (`d0f7ab74f`)** committed on its own, matching the
+16.11.1-16.17.1 precedent. Exactly 5 top-level JSONs track per version;
+`champion_detail/` + `_assets_manifest.json` are gitignored at
+`.gitignore:159-160`, which is why the dir read as fully untracked while only 5
+of its 179 files staged.
+
+**DO NOT REDO:** RM-397, RM-399, RM-400 SHIPPED. RM-398 PARTIAL with its
+mechanism refuted. RM-401 REFUTED as scoped. The sweep re-verification (exactly
+1 known finding) was run twice this session and has not moved.
 
 ---
 
@@ -110,49 +184,3 @@ SHIPPED. The halt-before-any-byte-leaves boundary is ADOPTED, binds EVERY sessio
 but its PUSH half was SUPERSEDED the same session by `8facd08d4`: **the push gate is on DIFF
 CONTENT, not destination.** Do NOT restore the destination wording and do NOT restore the
 own-origin carve-out (RSC conceded it removed seam (f)).
-
----
-
-# 2026-09-09j - MEMORY.md compacted to 16.9 KB by relocating two blocks; no repo code touched
-
-Tier-0 housekeeping on the memory index only - nothing in this repo changed
-except this note. The PostToolUse hook was warning: `MEMORY.md` sat at **20548
-bytes / 124 lines** against a 17.1 KB target.
-
-**What moved, and nothing else.** Two coherent blocks were relocated VERBATIM
-into two NEW sub-indexes, hooks and links intact:
-
-* the whole `## Tooling` block, 11 entries -> `INDEX_tooling.md`;
-* 17 of the 19 `## Projects & parking-lots` lines -> `INDEX_projects.md`.
-
-**Two project rows stayed INLINE on purpose**, on the same precedent as the
-three costliest ops entries: `project_repo_is_public` and
-`project_responder_headless_loop_program`. Both change what a session is
-ALLOWED to do, so neither may be one hop away. Each vacated section keeps its
-heading plus a one-line pointer, matching the Riot-API / ops / testing-traps
-shape already in the file.
-
-**AFTER: 17303 bytes / 97 lines (16.9 KB)**, re-derived after the LAST edit -
-the commit message `15e9ca198` cites 17307, measured before a four-byte footer
-correction, which is the standing "your own edit staled the citation" trap - under target, with **NOTHING
-dropped and NOTHING unindexed**, which is the one forbidden move here.
-
-**The acceptance is reachability, not bytes.** Re-derived the way
-`check_memory_index` does it (`tools/drift_guard.py:165-215`: `*.md` stems minus
-the index, markdown link targets, ONE level into `INDEX_*` from a snapshot taken
-before the loop, exempt prefixes `project_ds_sweep_` and `_` at `:75`/`:207`).
-BEFORE: 497 memory files, 100 exempt, **397 non-exempt, 0 unreachable, 0 dead**.
-AFTER: 499 files, 100 exempt, **399 non-exempt, 0 unreachable, 0 dead** - the
-two extra non-exempt files are the new sub-indexes themselves, both linked
-directly from `MEMORY.md` (they must be: the recursion snapshot means a sub-index
-linked only from another sub-index is never followed). `python tools/drift_guard.py`
--> `0 breach(es)`, exit 0. `tests/test_drift_guard.py` 47 passed;
-`tests/test_citation_drift_guard_rm171.py` 11 passed / 125 subtests.
-`tools/perseus_sync.py` re-run: memory=499, `--verify` active=1622 embedded=1622.
-
-**TRAP, and it bit on the first pass: do NOT write a bare markdown link target
-inside MEMORY.md's own footer prose.** Describing the guard's regex by quoting a
-literal link target made the guard parse it as a REAL link to a file that does
-not exist - one dead index link, from a sentence that was only ever describing
-the check. The footer now says "markdown link targets" in words and carries the
-warning. A doc that documents its own guard can breach that guard.
