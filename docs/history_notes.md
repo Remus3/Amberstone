@@ -119,6 +119,52 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09j - MEMORY.md compacted to 16.9 KB by relocating two blocks; no repo code touched
+
+Tier-0 housekeeping on the memory index only - nothing in this repo changed
+except this note. The PostToolUse hook was warning: `MEMORY.md` sat at **20548
+bytes / 124 lines** against a 17.1 KB target.
+
+**What moved, and nothing else.** Two coherent blocks were relocated VERBATIM
+into two NEW sub-indexes, hooks and links intact:
+
+* the whole `## Tooling` block, 11 entries -> `INDEX_tooling.md`;
+* 17 of the 19 `## Projects & parking-lots` lines -> `INDEX_projects.md`.
+
+**Two project rows stayed INLINE on purpose**, on the same precedent as the
+three costliest ops entries: `project_repo_is_public` and
+`project_responder_headless_loop_program`. Both change what a session is
+ALLOWED to do, so neither may be one hop away. Each vacated section keeps its
+heading plus a one-line pointer, matching the Riot-API / ops / testing-traps
+shape already in the file.
+
+**AFTER: 17303 bytes / 97 lines (16.9 KB)**, re-derived after the LAST edit -
+the commit message `15e9ca198` cites 17307, measured before a four-byte footer
+correction, which is the standing "your own edit staled the citation" trap - under target, with **NOTHING
+dropped and NOTHING unindexed**, which is the one forbidden move here.
+
+**The acceptance is reachability, not bytes.** Re-derived the way
+`check_memory_index` does it (`tools/drift_guard.py:165-215`: `*.md` stems minus
+the index, markdown link targets, ONE level into `INDEX_*` from a snapshot taken
+before the loop, exempt prefixes `project_ds_sweep_` and `_` at `:75`/`:207`).
+BEFORE: 497 memory files, 100 exempt, **397 non-exempt, 0 unreachable, 0 dead**.
+AFTER: 499 files, 100 exempt, **399 non-exempt, 0 unreachable, 0 dead** - the
+two extra non-exempt files are the new sub-indexes themselves, both linked
+directly from `MEMORY.md` (they must be: the recursion snapshot means a sub-index
+linked only from another sub-index is never followed). `python tools/drift_guard.py`
+-> `0 breach(es)`, exit 0. `tests/test_drift_guard.py` 47 passed;
+`tests/test_citation_drift_guard_rm171.py` 11 passed / 125 subtests.
+`tools/perseus_sync.py` re-run: memory=499, `--verify` active=1622 embedded=1622.
+
+**TRAP, and it bit on the first pass: do NOT write a bare markdown link target
+inside MEMORY.md's own footer prose.** Describing the guard's regex by quoting a
+literal link target made the guard parse it as a REAL link to a file that does
+not exist - one dead index link, from a sentence that was only ever describing
+the check. The footer now says "markdown link targets" in words and carries the
+warning. A doc that documents its own guard can breach that guard.
+
+---
+
 # 2026-09-09i - RM-397 SHIPPED: the first repair to this gate that WIDENS what it examines, measured against a frozen corpus rather than argued
 
 Seventh row of the same headless day, operator AWAY. Tier-1: one tool module plus
