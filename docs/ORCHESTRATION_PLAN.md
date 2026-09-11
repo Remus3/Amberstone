@@ -771,6 +771,12 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 | R224 | overlay-listener-leak | DIRECTOR REFILL 2026-07-28, cycle 31. RM-126 fix: `_placeAll` re-runs `_makeHandle` on every repaint and its only guard asked "does a `.ovx-handle` child exist", which every renderer that rebuilds its mount destroys - so both el-level binds re-ran on the SAME persistent element. **Two distinct latches, because the two hosts have different lifetimes:** `_installDrag` stores its `begin` closure on the element and returns the STORED one on re-entry; `_makeHandle` latches the ACTIVE-mode body `pointerdown` on `el.dataset.ovxBodyDrag`, the idiom `_makeHideMenu` already used, placed AFTER the handle bind so the fresh `.ovx-handle` child keeps rebinding. Returning the STORED closure is load-bearing, not tidiness - a fresh closure would leave the surviving el-level listeners reading drag state nobody writes, trading the leak for a silent desync. **Proven behaviourally, not only by source-parse:** a node harness (stub DOM, three `_makeHandle` passes, handle child dropped between them) measures 12 el-level binds on baseline `f124f67f` (4 per pass, linear) vs 4 on the fixed tree, handle rebinding 3x on both sides. Defect-class enumeration over all 19 `addEventListener` sites in `overlay_layout.js` + `overlay_idle.js`: 4 FIXED, 15 OUT-OF-SCOPE with reasons, 0 new instances - `_ensureLauncher` was already immune for exactly the reason `_makeHandle` was not, it queries the HOST itself rather than a child. TDD RED (2 failed / 2 passed) against the unmodified tree before the fix, verifier reproduced that RED independently. `_LIVE_HALF_DIGEST` re-stamped after a two-tree diff showed exactly 1 of 165 web/ sources changed its live half. ENGINE-IMPACT NONE; ADR-008 asset-hash auto-reload, no RC restart, no `:8860` bounce. Overlay visual PNG OWED (behaviour-only change, zero markup/CSS bytes; the directive's named `ui_recon` harness and `:8810` preview do not exist on disk). | DONE | `ef7836be` |
 | R225 | ds-rm97-pet-damage-probe | DIRECTOR REFILL 2026-07-28, cycle 32. Section 8 DS audit iteration, PROBE-FIRST. **The directive tagged its own RM-97 premise `[UNVERIFIED]` and the probe HELD it - with one correction that matters more than the confirmation.** RM-97 is filed as "pet damage scores exactly ZERO"; measured on disk that is true of the DAMAGE numerator ONLY. Two non-damage axes already credit the whole class by name - `objdamage.py:79-83` SUMMON_DPS 0.55 and `zonecontrol.py:73-77` SUMMON 0.60 - each enumerating Zyra plants / Heimerdinger turrets / Yorick ghouls + Maiden / Malzahar voidlings / Annie Tibbers / Elise spiders / Ivern Daisy. **The class also splits in two, which the one-line spec hid.** GREP RUN: `grep -rniE "pet|summon|voidling|maiden|tibbers|daisy|spiderling|minion.?damage" agents/daemon_slayer/ --include=*.py` = **472 instances**, of which the `summon` half (146 prod / 233 all) is almost entirely SUMMONER-SPELL noise (`summoners.py`, `dsp_live_consumers.py` DSP5, `boot_utility.py` Ionian) - OUT-OF-SCOPE, not pet paths. The pet-name hits disposition as: `voidling` 2, `maiden` 3+1, `tibbers` 5+1, `daisy` 3, `spiderling` 2, `plant` 7, `ghoul` 3+1, word-boundary `pet` 9+3 - and every one of them is PROSE (a docstring, a comment, or a registry `source_quote`) except the two scoring registries above. ZERO pet-damage folds exist in the numerator. DEFECT-CLASS ENUMERATION (STEP 2, measured against `data/daemon_slayer/16.14.1/champion_abilities.json`, 171 champs): **UNCREDITED, 7 forms** - Zyra P Garden of Thorns `damage_blocks == []`, Zyra W Rampant Growth `[]`, Heimerdinger Q H-28G Evolution Turret `[]`, Heimerdinger Q H-28Q Apex Turret `[]` (TWO forms, not one - the brief said one), Ivern R Daisy! `[]`, Yorick P Shepherd of Souls `[]`, Yorick R Eulogy of the Isles whose single block is `("Mist Walkers","other")`, a COUNT at index 0 correctly excluded by the `attribute_kind == "damage"` filter (`abilities.py:274`, `ability_dps.py:459`) - the near-miss worth pinning, because dropping that filter would score a mist-walker COUNT as magic damage. **CREDITED, 3 forms** - Malzahar W Void Swarm (`Voidling Duration/duration`, `Magic Damage/damage`, `Minion Damage/modifier`), Annie R Summon: Tibbers (`Magic Penetration/other`, `Initial Magic Damage/damage` - the summon BURST only, Tibbers' persistent autos uncredited), Elise W Volatile Spiderling (`Magic Damage/damage`, a one-shot explosion; its second form Skittering Frenzy carries 2 duration blocks and 0 damage). So the honest statement is **"no PERSISTENT-ENTITY uptime model"**, not "no summon ever scores". ENGINE MEASUREMENT, Zyra level 11 / SR / armor 30 / MR 30 / no items: `per_spell` W dps **0.0** at rank 2 (unlocked - the zero is the block filter, not a lock, pinned via `rank >= 0` because `_zero_spell` hardcodes `rank=-1`), Q 9.147609147609147, E 1.2968849332485697, R 1.0865999671969822, total 11.5310940480547, `primary_scaling == "AP"`; the **P row is ABSENT rather than zero** (`SPELL_KEYS` at `ability_dps.py:209` is `("Q","W","E","R")`) so the pin asserts absence, which is what was observed rather than what was expected. SHIPPED: `agents/daemon_slayer/tests/test_pet_summon_damage_uncredited_rm97.py`, 12 tests / 27 subtests, driven off two module-level tables (`PET_BEARING_FORMS_ZERO_DAMAGE` 7 rows, `CREDITED_SUMMON_BURST_FORMS` 3 rows) so the population is readable at a glance, with form-NAME pins so a Riot rename fails loudly instead of silently pinning a different ability and `form_index` pinned explicitly on Elise W. Verifier CONFIRM and adversarial: it re-ran the file (12 passed / 27 subtests), re-ran the whole DS suite for pollution (10080 passed / 32 skipped / 5728 subtests), resolved all five docstring `file:line` citations, and specifically tried to break two assertions as tautologies and could not - `total_dps` is NOT merely `sum(per_spell)` (it is amp-multiplied at `:1338` and accumulates `item_proc_dps` at `:1414`), so the total-equals-the-three-non-pet-rows equality is a real cross-check that reds the day W scores. **The Share mirror was the one thing that went red and it is worth recording:** a NEW file under `agents/daemon_slayer/tests/` is a mirrored DS source, so `tests/test_ds_share_sync_determinism.py` failed with `DRIFT (missing from Share/src)` - a test-only, engine-impact-NONE cycle still owes the Share sync. ENGINE-IMPACT NONE - no scorer math, no schema, no `ENGINE_VERSION` (stays 1.262.0), no served path, no `:8860` bounce. RM-97 stays SPEC-ONLY / OPEN; a fix is still a schema lift (a persistent-entity damage form with uptime and attack cadence), deliberately NOT built this cycle. | DONE | `03624044` |
 
+## Sessions - DIRECTOR REFILL 2026-09-11
+
+| Id | Slug | Notes | Status | Commit |
+|---|---|---|---|---|
+| R226 | suite-live-tree-writes | DIRECTOR REFILL 2026-09-11, cycle 68. Census of the defect class "a test writes / deletes / replaces a path that is the operator's LIVE state instead of `tmp_path`". Filed as R226 and not R225 because the directive's own id was already occupied by `ds-rm97-pet-damage-probe` (DONE). **LANDED cycle 69** - cycle 68 measured and shipped nothing, so the deliverable was an uncommitted tree. AFTER re-measured on the final tree: **13 units over 1 path, and that path is the declared EXCEPTION**, against 201079 over 17 BEFORE. Both adversarial slices returned findings that changed the commit (slice 1 BLOCK, slice 2 SHIP-with-misses); the overclaims they refuted were deleted rather than softened. ENGINE-IMPACT NONE. | DONE | `<this commit>` |
+
 ## Older findings - relocated 2026-07-28
 
 R205 / R206 / R207 / R216 / R217 / R217-U1 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
@@ -810,82 +816,98 @@ Relocated by R224 under the steady-state rule above - keep exactly ONE
 findings block at the tail so the newest `| R<n> |` row never drifts out
 of the director's 16000-byte tail window.
 
-## R224 findings - 2026-07-28 - the guard was right about the leak and wrong about the fix shape
+## R224 findings - relocated 2026-09-11
 
-RM-126 was filed by R223 with an unusually complete diagnosis, and it held up on
-disk without amendment. The interesting part of this cycle is what the filing did
-NOT say.
+R224's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+Relocated by R226 under the steady-state rule above - keep exactly ONE
+findings block at the tail so the newest `| R<n> |` row never drifts out
+of the director's 16000-byte tail window.
 
-**The obvious fix is the wrong fix.** The row prescribed "attach once per element,
-or tear down before re-attaching". Attach-once alone is a trap. `_installDrag`
-returns a `begin` closure that `_makeHandle` binds to the `.ovx-handle` child, and
-that child is LEGITIMATELY recreated on every repaint - it has to be, the renderer
-destroyed it. So an implementation that early-returns before the binds but still
-builds and returns a FRESH `begin` looks correct, passes any "listeners bound
-once" test, and is broken: the el-level `pointermove`/`pointerup` listeners that
-survived from the first call close over the FIRST call's `dragging`/`startX` state,
-while the new handle drives a second, unobserved copy. The leak becomes a desync.
-The fix stores `begin` on the element and hands back the stored one, so there is
-exactly one closure and one listener set for the life of the mount. This was
-called out to the build agent up front and re-verified by the verifier as a
-gating claim, because it is invisible in a bind-count assertion.
+## R226 findings - 2026-09-11 (cycle 69, LAND)
 
-**A population of 1 is still a measured result.** The enumeration covered 19
-`addEventListener` sites (17 in `overlay_layout.js`, 2 in `overlay_idle.js`) and
-found 4 defective instances, all in one defect class, all in the reported
-function pair. Nothing else. The load-bearing negative is `_ensureLauncher`
-(sites 674/715/749/750): it is re-entered by the same MutationObserver and by
-`resetOverlayLayout`, but it early-returns on
-`document.querySelector("#w-launcher")` - it asks whether the HOST still exists,
-not whether some CHILD of the host still exists. That single word is the entire
-difference between the launcher being immune and `_makeHandle` leaking for
-months. The defect class is not "unguarded listener attach", it is **"guarded on
-a child's existence when the listener's host is the parent"**, and that is the
-shape to grep for next time.
+**Cycle 68 measured and committed nothing, so the whole deliverable was a dirty
+working tree.** This cycle landed it, and the landing was not a rubber stamp:
+two read-only adversarial slices in the MAIN checkout (a worktree cannot see
+uncommitted work, so worktree fan-out was forbidden) returned findings that
+changed what shipped. Slice 1 returned **BLOCK**, slice 2 **SHIP with two
+misses**. The merger adjudicated both.
 
-**Two corrections to the directive's own premises, both minor, both worth
-recording.** (1) The stale-grounding override at the top of the file was right
-that `67e3863c` is already an ancestor of HEAD, but it was reasoning about the
-wrong thing: `67e3863c` is the docs-only FILING of RM-126, not its fix, so the
-unit was not a duplicate and was executed as written. (2) The directive routed
-STEP 4 through "the ui_recon Playwright harness + :8810 static preview". Neither
-exists on disk - `ls tools/ | grep -i recon` is empty and `8810` appears in no
-tracked `.py` or `.ps1`. Rather than log a skip, the cycle substituted something
-strictly stronger for a behaviour fix: node v24.15.0 IS present, `overlay_layout.js`
-has ZERO imports and exports `_makeHandle` through `_internals`, so the module
-loads under a stubbed DOM and the leak can be MEASURED instead of inferred. That
-harness is what produced the 12-vs-4 number above, and it is the reason this
-slice did not have to trust its own source-parsing guard.
+**THE HEADLINE NUMBER, re-derived on the final tree rather than inherited.**
+`tools/live_write_tracer.py` over `pytest tests -n 8 --dist loadfile`, all nine
+per-process reports merged by the tool's own `--merge`: **13 units across 1
+path**, and that path is `moon_sync_inbox/rc_audit_probe_inside.txt` - the one
+row the census DECLARES as deliberately unprevented, because the write IS the
+assertion in `tests/test_vision_server_http_hardening.py` and the test removes
+it again. BEFORE was 201079 units over 17 paths. The AFTER run reproducing
+exactly the declared exception and nothing else is the evidence that the other
+sixteen rows are closed. Two zero-byte opens survive, both `.lock` files, which
+is what a lock is for. `atomic_tmp_units` is empty. Pinned as a JOIN against
+the census table at `tests/test_suite_does_not_write_live_tree.py`, not as a
+restated literal: flipping the EXCEPTION row to FIXED reds it (observed).
 
-**The digest pin fired again, as designed.** `_LIVE_HALF_DIGEST` went red on the
-one-line-plus-comments edit to a LIVE web source. Re-stamped only after running
-the same tokeniser over `f124f67f` and the post-fix tree: 1 of 165 web/ sources
-changed its live half, `overlay_layout.js`, which is this slice's whole file set.
-Second consecutive cycle where this guard did its job on the first try.
+**SLICE 2 FOUND TWO PRODUCERS THE NARROW FIX MISSED, and that is the more
+valuable half of the cycle.** The root cause was never "ddragon_mirror_refresh
+used `write_text`" - it is that on Windows `Path.write_text` rewrites LF as
+CRLF while `read_text` translates it back, and for a TRACKED file that git
+normalizes in the index `git status` stays CLEAN, so the defect is invisible
+from both directions at once. `tools/daemon_slayer_extract._atomic_write_json`
+(writing 44 tracked `data/daemon_slayer/**` JSON files, all pinned `eol=lf`),
+its `_atomic_write_text` sibling, and
+`tools/daemon_slayer_abilities_extract._atomic_write_json` all had the
+identical shape and were latent - they would emit CRLF on the next DS extract.
+Fixed, plus a class guard
+(`tests/test_tracked_json_producers_emit_lf_bytes.py`, 20 tests) that carries
+all six producers including the two RM-287 already fixed, asserts each named
+target is still tracked AND still `eol=lf` via `git check-attr` so a rotted
+premise fails loudly, and sweeps the tracked tree for CRLF that an earlier
+broken run left behind. RED first: 6 real failures across the three unfixed
+producers before the fix, 20 passed after.
 
-**OWED, carried forward:** the overlay visual PNG. This change alters zero markup
-and zero CSS bytes, the ASCII phase is measured clean (0 non-ASCII in all three
-touched files) and the HIT-TARGETS question - does drag still actuate - is
-answered by the behavioural harness rather than by pixels. STRUCTURE, TYPOGRAPHY
-and HIERARCHY are confirm-unchanged by construction. Same standing debt as R223.
+**SLICE 1'S REFUTATIONS WERE ACCEPTED, NOT ARGUED WITH.** (a) The guard's
+docstring claimed "removing any one redirect turns this file red"; it does not.
+Narrowing `_tmp_log_path` to pass one filename through leaves both arms of
+`_check_logging_handler_ctor` satisfied, and under `--dist loadfile` the test
+that would attach that handler need not share the worker. The claim is now four
+stated limits with the demonstrated mutation named. (b) The tracer reported
+`wrote_bytes` while `_datalen` returns CHARACTERS for text handles - wrong in
+the direction that undercounts, by one byte per newline plus UTF-8 expansion.
+Renamed `wrote_units` throughout with the unit stated. (c) No merge code
+existed for the per-worker reports, and the xdist CONTROLLER wrote an
+unsuffixed near-empty file at the documented default path - a partial census
+that looks like a clean one. The controller is now suffixed too and
+`--merge` ships in the tool. (d) The tracer credited both the `*.tmp` half of
+an atomic write and its destination, double-counting; tmp now has its own
+bucket that totals never sum. (e) The default report path was inside
+`ops/runtime/` - the instrument was a writer in the tree it polices, excluded
+from its own count. Moved outside the repo. (f) A raise between patching
+`builtins.open` and publishing `_state` would have left the process patched
+forever; `_state` is published first. (g) Two tautologies removed, the
+tracked-only blind spot declared, one misleading failure message corrected.
 
-**SELF-CORRECTION appended before wrap - the harness probe was wrong.** STEP 1 of
-the directive said to prefer a BEHAVIOURAL test if a JS-execution harness exists,
-falling back to a source-parsing guard only if none does. The probe grep returned
-`tests/snapshot_panels/*.py`; those hits were dismissed as unrelated and they were
-not. The repo HAS a node-subprocess harness, used in at least 5 tests
-(`tests/test_coach_choices_trigger_render.py`, `tests/snapshot_panels/test_xss_escaping.py`
-and siblings), which shell to `node --input-type=module -e` and import a web
-module's `_internals`. So the ad-hoc node probe this cycle improvised to measure
-the 12-vs-4 number was the repo's own committed idiom, and it belonged in the
-suite. Corrected in-run: `tests/test_overlay_drag_listener_leak_behavior.py` pins
-the bind count (RED 12 / GREEN 4), the handle's per-pass rebind (green both sides
-by design, so an over-broad latch that killed dragging is caught), and that
-`_installDrag` returns the SAME `begin` object across passes - the anti-desync
-property a bind-count assertion cannot see, measuring `beginIdentical: False` on
-the unfixed tree. The source-parsing guard is kept alongside it; it needs no node.
+**STEP 3 DEFECT-CLASS ENUMERATION.** The prescribed grep over `tests/` returned
+**991 instances across 259 files** - a population that must be shown, not
+assumed. Layer 1 is lexical and reproducible (`--include=*.py`, receiver
+resolved to its binding in the same file): 374 TMP-or-fixture-rooted, 154
+local-only with no live marker, 361 with no statically resolvable target
+(almost all `self.<attr>` bound in `setUp` from a tmp dir), 82 `.replace(` that
+are string operations and not filesystem calls at all, 5 comment-only, and 15
+LIVE-PATH candidates - **every one of which was opened by hand and resolves to
+a tmp root**, or reads from the live tree and writes to tmp
+(`shutil.copyfile(REPO / rel, tmp_path / rel)`, three sites). Layer 2 is the
+authoritative one: the instrumented run attributes actual live-tree writes to
+nodeids, and it found exactly the declared exception. Sibling trees
+cross-checked with the same grep - `agents/agent3_testing/suite` 29,
+`tools/tests` 16, `agents/daemon_slayer/tests` 97, 142 together, 3 live-path
+candidates, all three safe (two read-live/write-tmp, one `rmtree` of a
+tempdir).
 
-**The carryable lesson is not about this file.** A NEGATIVE harness probe deserves
-the same verification as a positive claim. "The grep returned files I did not
-recognise" is not "no harness exists", and the error is comfortable to make
-precisely because the fallback is cheaper than the thing it replaces.
+**KNOWN AND NOT CLOSED, stated rather than buried.** `lib/ddragon/fetch.py`
+now ships its writer as bytes but is still exercised by no test of its own -
+the four tests that import it drive `_pull` and pruning, never the writer - so
+it is carried in the new class guard's table and nowhere else.
+`data/meta_build/ddragon/16.18.1/_assets_manifest.json` is UNTRACKED and still
+carries 42318 CRLF pairs from a pre-fix run; the tracked bundles were repaired
+when the fixed tool re-ran, and the new sweep asserts zero CRLF across all
+tracked, git-normalized `.json`/`.txt`. The seven `-text` LFS payloads under
+`data/laning_scenarios/` carry CRLF on purpose and are exempt, as
+`tests/test_text_line_endings.py` already documents.

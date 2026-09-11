@@ -198,17 +198,59 @@ def _live_surface_map() -> dict:
     return surfaces
 
 
+# The two surfaces a LIVE DAEMON appends to continuously, excluded from the
+# changed-detection below by name so the exclusion is visible rather than
+# silent. MEASURED 2026-09-11 on Legion, a 120-second IDLE control with NO
+# suite running at all, sha256 + size at t0 and t+120s:
+#   ops/runtime/responder_metrics.jsonl     1138315 -> 1139558 bytes
+#                                           df6363034ee6 -> 2d550b03ada6
+#   ops/runtime/responder_invocations.jsonl  402261 ->  402738 bytes
+#                                           fb59dec98804 -> 638e0f8a7cd4
+# A file that moves while nothing is running attributes NOTHING to this
+# module, so for these two keys the assertion was a false-positive machine: it
+# produced an intermittent teardown ERROR in 1 of 3 full-suite runs that day
+# ("live surfaces moved: ['worktree:metrics', 'worktree:responder_log']")
+# while an in-process write tracer recorded ZERO writes to either path from
+# the pytest process. Same reasoning, same precedent as the 2026-07-28 note in
+# `tests/conftest.py` that removed `ops/loop/control/controller.log` from
+# `_PROD_ARTIFACT_GUARD`: a guard that fires on correct behaviour is one
+# people learn to ignore, which costs more than the coverage it provided.
+#
+# WHAT THIS COSTS, stated plainly because the exclusion is NOT free: a test
+# that drives the runner's `main()` without injecting a log root would append
+# to these two live files, and that is no longer caught here. The other 11
+# keys - answered, held, outbox, agreement, deliveries, attempts,
+# export_cache, every sibling inbox, and their `main:` twins in a worktree -
+# keep their coverage unchanged, and no daemon writes those. That last clause
+# is MEASURED, not assumed: a third idle control over all 13 surfaces at once,
+# 130s with no suite running, moved exactly these two keys and left the other
+# 11 byte-identical. Across all three controls the two deltas were +1243 and
+# +477 EVERY time, from three different absolute offsets - a fixed-size
+# periodic record, which is what a live writer looks like and what a test
+# writing once does not.
+_DAEMON_WRITTEN_KEYS = frozenset({"worktree:metrics", "worktree:responder_log"})
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _live_surfaces_unchanged():
     surfaces = _live_surface_map()
     # Vacuity control: a map that resolved no real sibling inbox is not proof
     # that none was touched, so say which half is being guarded.
     present = sorted(k for k, v in surfaces.items() if Path(v).exists())
-    before = {k: _digest_path(v) for k, v in surfaces.items()}
+    # The exclusion must not be able to widen silently into the other keys.
+    assert set(_DAEMON_WRITTEN_KEYS) == {"worktree:metrics", "worktree:responder_log"}, (
+        f"the daemon-written exclusion set drifted: {sorted(_DAEMON_WRITTEN_KEYS)}")
+    guarded = sorted(k for k in surfaces if k not in _DAEMON_WRITTEN_KEYS)
+    assert guarded, (
+        "every live surface was excluded - the comparison below would then "
+        f"pass for the wrong reason (surfaces: {sorted(surfaces)})")
+    before = {k: _digest_path(surfaces[k]) for k in guarded}
     yield
     after = {k: _digest_path(v) for k, v in _live_surface_map().items()}
     changed = sorted(k for k in before if before[k] != after.get(k))
-    assert changed == [], f"live surfaces moved: {changed} (guarded and present: {present})"
+    assert changed == [], (
+        f"live surfaces moved: {changed} (guarded: {guarded}; present: {present}; "
+        f"NOT guarded, daemon-written: {sorted(_DAEMON_WRITTEN_KEYS)})")
     # Positive control: the module must have written SOME responder log, or the
     # comparison above passed because nothing ran at all.
     assert _TMP_LOGS, "no tmp responder log was written - the arms did not drive"
