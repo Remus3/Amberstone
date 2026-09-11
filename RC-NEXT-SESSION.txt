@@ -97,16 +97,35 @@ Context: moon_sync_inbox/ (read RC's own; newest first - newest overall is
       _state_builder.py:173 gates it on RC_LCU_INPROCESS, unset.
 
       WRAP-GATE WARNING, measured at the RM-405 wrap: tools/stop_claim_gate.py
-      blocked that wrap TWICE, on three headline numbers that were all TRUE.
-      Every one had been measured by a SUBAGENT, never by the main thread, so
-      the gate read them as unbacked - correctly. A verifier's CONFIRM grades
-      the SLICE; it is still not the main thread's own evidence. Re-run in the
-      MAIN thread whatever you intend to PRINT, or attribute it to the agent
-      that ran it. One figure (a bespoke md-guard selection, "1782 passed") was
-      RETRACTED rather than re-run because the selection could not be
-      reproduced from its own prose; CI green at the final HEAD was stronger
-      and was verified directly. Memory:
+      blocked that wrap FOUR times, on headline numbers that were all measured
+      by a SUBAGENT and none by the main thread, so the gate read them as
+      unbacked - correctly. A verifier's CONFIRM grades the SLICE; it is still
+      not the main thread's own evidence. Re-run in the MAIN thread whatever
+      you intend to PRINT, or attribute it to the agent that ran it. Memory:
       reference_stop_gate_a_subagent_measurement_is_not_yours.
+
+      Three of those numbers re-ran and matched exactly. The fourth was first
+      RETRACTED as unreproducible, which was WRONG: tools/md_guard_selector.py
+      is a tracked CLI that emits the selection and tests/
+      test_ci_docs_guard_coverage.py:56 already names it. Re-run at HEAD
+      c7c7247b2: 65 modules, 1777 passed, 1 skipped, 327 subtests, 149.86s.
+      The filed figure said 1782 and was over by 5.
+
+      CRLF TRAP found doing that, and it matters MORE than the count - it is
+      the same shape as the fallback work below. Piping the selector's stdout
+      straight into pytest printed `no tests ran in 0.05s` and EXITED 0: the
+      output carries \r, every path was malformed, pytest matched nothing, and
+      the run reported success. That is a silently always-green step over zero
+      tests, arriving through line endings rather than through a bad guard.
+      `tr -d '\r'` fixes it. When wiring the orphan suites, ASSERT A NONZERO
+      COLLECTED COUNT - never trust an exit code alone.
+
+      KNOWN GATE LIMITATION, do not fight it: stop_claim_gate scans the WHOLE
+      transcript, so a number corrected in a later turn keeps matching its
+      original occurrence forever. Backticking suppresses it only in the turn
+      where it appears, and a past turn cannot be edited. Correct the number in
+      the DOCS, say so plainly, and move on - do not re-loop the wrap over it,
+      and never patch CLAIM_COUNT (already REFUTED).
 
       Live state at wrap: pid 23096 alive, mode=client, last_reload_ok=true.
       Probe ops/runtime/health.json and https://127.0.0.1:8888/api/state
