@@ -34,11 +34,18 @@ Task: RSC's reply on the JOINT RE-PIN is STILL the gating item and was still
 
 Next non-gated work. BOTH previously-filed stop_claim_gate rows are now CLOSED
   (RM-400 shipped, RM-401 refuted), so this is genuinely open ground:
-  - THE ONLY RESIDUAL WORTH FILING from the RM-401 work is the NON-GIT-IDIOM
-    sense of "pushed" - "pushed back correctly on one of my own", a third-party
-    repo listing's "250044 stars / 37627 forks / pushed today". 2 of the 6 live
-    false positives, and genuinely evasion-free: those are not git senses at
-    all. File it fresh with a new RM number and cite BACKLOG's RM-401 block.
+  - RM-402 IS FILED AND OPEN (2026-09-10, BACKLOG "Reliability / hardening"):
+    the NON-GIT-IDIOM sense of "pushed" - "pushed back correctly on one of my
+    own", a third-party repo listing's "250044 stars / 37627 forks / pushed
+    today". 2 of the 6 live false positives. It no longer needs filing; read
+    its SCOPE FENCE before starting. Two things that fence exists to stop: it
+    must not touch the _negated window, and it must not reopen RM-401 under a
+    new number. The row does NOT assert the class is evasion-free - it names
+    the attack to measure first ("pushed back to origin/main" as a deliberate
+    evasion of any idiom exclusion list), because asserting evasion-freedom is
+    what measurement refuted twice on 2026-09-10. Re-open the two cited
+    sentences yourself: they were hand-opened by a build agent and a verifier,
+    not by the merger.
   - DO NOT take the other residual the RM-401 writeup named. The `_negated`
     WINDOW defect (a negation ending exactly 40 chars before the match) LOOKS
     like a one-character boundary miss and is NOT. MEASURED against the shipped
