@@ -60,9 +60,16 @@ Run locally:
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_matchdb_mcp_server.py
   (or via the boot launcher tools/start_ds_matchdb_mcp.py)
 
-Schedule at logon for persistence:
-  schtasks /Create /TN "RC-DS-MatchDB-MCP" /SC ONLOGON /RL HIGHEST /F ^
-    /TR "pythonw C:\\Riot Commander\\tools\\start_ds_matchdb_mcp.py"
+Schedule at logon for persistence (PowerShell; runs as the current user).
+RM-404: this was a caret-continued `schtasks /Create`, which PowerShell
+splits into two commands with ZERO parse errors - the /TR payload was
+silently dropped. Register-ScheduledTask takes the executable and its
+arguments as SEPARATE parameters, so no continuation escaping arises.
+Pinned by tests/test_scheduled_task_docstring_commands.py.
+
+  Register-ScheduledTask -TaskName "RC-DS-MatchDB-MCP" -Force -RunLevel Highest `
+    -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
+    -Action (New-ScheduledTaskAction -Execute "pythonw.exe" -Argument '"C:\\Riot Commander\\tools\\start_ds_matchdb_mcp.py"')
 
 Configure local Claude Code .mcp.json (or settings.json mcpServers):
   {

@@ -38,11 +38,20 @@ frame. Fetch the secondary stream via `/latest-frame?source=<channel>`.
     # UI debug (secondary): monitor 1, NOT primary, addressable by channel
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe screen_agent.py --monitor 1 --channel legion-ui --no-primary
 
-Scheduled tasks (run as user, ONLOGON):
-    schtasks /Create /TN "RC-ScreenAgent-League" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0 --channel legion-league"
-    schtasks /Create /TN "RC-ScreenAgent-UI" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 1 --channel legion-ui --no-primary"
+Scheduled tasks (PowerShell; run as the current user, ONLOGON). RM-404:
+these were caret-continued `schtasks /Create` blocks, and a caret does
+NOT continue a line in PowerShell - each parsed as two commands with zero
+errors and dropped its /TR payload. Register-ScheduledTask takes the
+executable and its arguments separately, so nothing needs escaping.
+Pinned by tests/test_scheduled_task_docstring_commands.py.
+
+    Register-ScheduledTask -TaskName "RC-ScreenAgent-League" -Force -RunLevel Highest `
+        -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
+        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument 'C:\\RC-Agent\\screen_agent.py --monitor 0 --channel legion-league')
+
+    Register-ScheduledTask -TaskName "RC-ScreenAgent-UI" -Force -RunLevel Highest `
+        -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
+        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument 'C:\\RC-Agent\\screen_agent.py --monitor 1 --channel legion-ui --no-primary')
 """
 import argparse
 import base64
