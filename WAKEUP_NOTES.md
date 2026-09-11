@@ -95,6 +95,23 @@ NOT live-verified and not claimed: `RC_LCU_INPROCESS` is unset and no live
 champ-select was driven, so the WARN's production text is proven by unit test
 only.
 
+**WRAP ADDENDUM - `tools/stop_claim_gate.py` blocked this session TWICE, and was
+right both times.** Every headline number in the first two reports had been
+MEASURED BY A SUBAGENT, never by the main thread, so the gate read them as
+unbacked claims. That is the gate working as designed, not a false positive:
+CLAUDE.md's Verification Discipline already says never carry a subagent-reported
+count forward, and a verifier's CONFIRM is the adversarial gate on the SLICE -
+it is still not the main thread's own measurement. All headline figures were
+then re-run in the main thread and matched exactly: 359 + 348 = 707 uncovered
+tests, 19 on the new guard, 192 / 21716 deselected / 56 subtests widened, ruff
+clean on 8 files. The `ci.yml:165` + `:537` "neither CI tree" half was likewise
+re-derived by hand rather than inherited. ONE claim was RETRACTED rather than
+re-run: the docs slice's "md-guards 1782 passed" came from a bespoke module
+selection that cannot be reproduced from the prose, and it was never
+load-bearing - CI green on the final HEAD is the stronger evidence and was
+verified directly. Next session: run the numbers you intend to PRINT before you
+print them, or attribute them to the agent that ran them.
+
 **DO NOT REDO:** RM-405, RM-403, RM-404, RM-312 all SHIPPED. RM-387 / RM-388
 shipped 2026-09-08. RM-313 deliberately OPEN. A general bare-`except Exception`
 sweep - RM-312's fence stands, the remaining sites are a CANDIDATE POPULATION
