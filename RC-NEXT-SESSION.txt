@@ -1,48 +1,91 @@
 NEXT SESSION
 ------------
 Task: Check the cross-repo inbox FIRST. The JOINT RE-PIN of SHARED_SHA256 is
-      still the gating item, FIFTH session running - RSC silent since
+      still the gating item, SIXTH session running - RSC silent since
       moon_sync_inbox/2026-09-09-2100-from-RSC. If they have replied, execute
-      the joint re-pin (never unilaterally, never regenerate digests from local
-      disk, BYTE-level copy only - write_text turns LF into CRLF and the pin is
-      on bytes). If they are still silent, take the fallback below.
+      the joint re-pin. NEVER re-pin unilaterally. NEVER regenerate the digests
+      from local disk - both trees hashing equal IS the acceptance, not a note
+      claiming it. BYTE-level copy only, never write_text: write_text turns LF
+      into CRLF on Windows and the pin is on bytes. If they are still silent,
+      take the fallback below.
 
-      FALLBACK - and unlike last session's, this one was VERIFIED at wrap, not
-      asserted: `dashboard/_state_builder.py:96` is still
-      `except Exception:  # noqa: BLE001` / `snap = None`, confirmed by reading
-      the line. It is the DIRECT CALLER of the function RM-312 just fixed, so
-      the fault it raises is still swallowed one layer up. Apply the SAME shape
-      RM-312 shipped in `3e5451ff3` - read that commit first rather than
-      inventing one: throttled on CHANGE of fault signature then <=1 per 60s,
-      and NEVER emit `str(exc)` (repo is PUBLIC, LCU payloads carry PUUIDs;
-      emit exception type + basename + lineno + func from the INNERMOST frame).
+      FALLBACK - MEASURED ON DISK THIS RUN, not inherited from a row. Two
+      tracked test-bearing directories are collected by NEITHER CI tree, so
+      707 green tests are run by nobody:
+
+        * agents/agent3_testing/suite/  - 359 collected, 359 PASSED in 24.43s
+        * tools/tests/                  - 348 collected, 348 PASSED in 30.15s
+
+      Both run locally clean at HEAD fc0058441 (pytest -q --tb=line
+      --timeout=120 -p no:randomly, observed this run). CI runs only
+      `pytest tests/ agents/daemon_slayer/tests/` - see .github/workflows/
+      ci.yml:165 and ci.yml:537, both read this run; docs-guards.yml runs a
+      selected-doc subset only. `git ls-files "*/test_*.py" "test_*.py"` minus
+      those two CI roots returns EXACTLY these two dirs and nothing else, so
+      the population is closed, not a sample.
+
+      This CONFIRMS the RM-294 LANE 7 claim that the prior hand-off carried as
+      "Unmeasured, NOT started" - and it extends it: the row named only
+      agents/agent3_testing/suite, and tools/tests is a second one it missed.
+      Both being GREEN is what makes this cheap: wiring them in costs ~55s of
+      runner time and cannot go red on arrival. **Do NOT assume green means
+      meaningful** - a suite nobody runs can also be a suite that asserts
+      nothing. Before wiring, sample it for the INDEX_testing_traps classes
+      (empty-enumeration always-green, mocks of themselves) and say what you
+      found; a green orphan wired in without that check just buys CI minutes.
 
 Context: moon_sync_inbox/ (read RC's own; newest first - newest overall is
-      2026-09-11-0030-from-LW, already read and needs no reply). The pinned
-      pair is ops/loop/slots.py + ops/loop/winmutex.py, pinned by
+      2026-09-11-0030-from-LW, already read, no reply owed). Nothing was armed
+      last session and nothing left the tree beyond the ordinary push. The
+      pinned pair is ops/loop/slots.py + ops/loop/winmutex.py, pinned by
       SHARED_SHA256 at tests/test_loop_concurrency.py:474, parametrised at
       :542; the fifth sibling-name escape sits INSIDE that block at :492 as a
       two-word name split across a comment line wrap, shipped as a known named
       VISIBLE exception at tools/sibling_name_sweep.py:112.
+
+      CITATION WARNING - RM-405 (fc0058441) MOVED CODE IN _state_builder.py.
+      It inserted 83 lines near the top of dashboard/_state_builder.py and 5
+      into dashboard/_lcu_inprocess.py, so every offset below them shifted
+      (+82 and +5 respectively; +81 for the two lines inside the edited
+      docstring). Current values, all re-derived from disk this run:
+        dashboard/_state_builder.py:81   RM-405 rationale comment block starts
+        dashboard/_state_builder.py:103  _CALLER_DEGRADE_LOG_THROTTLE_S = 60.0
+        dashboard/_state_builder.py:108  def _log_inprocess_caller_degrade
+        dashboard/_state_builder.py:155  def _read_lcu_snapshot
+        dashboard/_state_builder.py:163  the "Landed DARK" docstring line
+        dashboard/_state_builder.py:173  the RC_LCU_INPROCESS gate
+        dashboard/_state_builder.py:177  the now-speaking except branch
+      WAKEUP_NOTES.md:144 (the 2026-09-11a entry) still reads
+      _state_builder.py:92. That was TRUE AT ITS OWN WRAP and is deliberately
+      left as the historical record - do NOT treat it as a live citation and
+      do NOT "fix" a dated wakeup entry. The prior version of THIS file
+      carried :92 and :96 for the same reason; they are gone from here now.
+
       Cadence fact, already measured - do NOT re-derive it from a comment:
       build_state() runs at RC_STATE_CADENCE_SEC, default 0.5s, floor 0.1
-      (dashboard/routes_state.py:167-178), about 2 Hz. The "1.0s TTL" comment
-      at routes_state.py:210 is STALE PROSE and a build agent already inherited
-      that wrong number once. The path is also DARK today -
-      dashboard/_state_builder.py:92 gates it on RC_LCU_INPROCESS, unset.
-      Live state at wrap: pid 30584 alive, mode=client, LCU Offline, both
-      :8888 and :8889 listening. Probe ops/runtime/health.json and
-      https://127.0.0.1:8888/api/state before assuming anything.
+      (dashboard/routes_state.py:167-178), about 2 Hz. The "1.0s TTL" prose is
+      STALE and a build agent already inherited that wrong number once. It
+      lives at routes_state.py:211 (the _state_payload_cached docstring) and
+      again at :383 - NOT at :210, which is the bare `def` line and is the
+      offset two older records quote. The L3 path is also DARK today -
+      _state_builder.py:173 gates it on RC_LCU_INPROCESS, unset.
+
+      Live state at wrap: pid 23096 alive, mode=client, last_reload_ok=true.
+      Probe ops/runtime/health.json and https://127.0.0.1:8888/api/state
+      before assuming anything.
 
 Acceptance: either both trees hash equal after a JOINT re-pin (both hashing
       equal IS the acceptance, not a note claiming it), or a named RM row
       shipped with a red-before-green guard whose ANTI-VACUITY is PROVEN by
-      stubbing the parser/extractor empty and watching arms fail - not merely
-      asserted - and CI green on the FINAL pushed HEAD.
+      stubbing the parser/extractor/log-call empty and watching arms fail -
+      not merely asserted - and CI green on the FINAL pushed HEAD. Note that
+      a `cancelled` CI run is SUPERSESSION by the next push, not failure;
+      only the final HEAD's run is authoritative.
 
 Do NOT redo:
-  - RM-403, RM-404, RM-312. All SHIPPED 2026-09-11 (LEDGER 1388/1389/1390),
-    CI green on 3e5451ff3.
+  - RM-405. SHIPPED 2026-09-11 as fc0058441 (LEDGER 1391). The CALLER seam of
+    the in-process L3 read now logs its fault, throttled, with no str(exc).
+  - RM-403, RM-404, RM-312. All SHIPPED 2026-09-11 (LEDGER 1388/1389/1390).
   - RM-387 and RM-388. SHIPPED 2026-09-08 (LEDGER 1368/1369). The 09-10e
     hand-off named them as its fallback and they had already shipped; ROADMAP
     is now corrected and tests/test_roadmap_backlog_disposition_drift.py
@@ -53,20 +96,22 @@ Do NOT redo:
   - Hand-fixing caret escaping in a printed schtasks block. RM-404's answer is
     Register-ScheduledTask, which takes exe and args as SEPARATE parameters.
     tools/liveclient_relay.py:14 measured FINE and must stay untouched.
-  - A general bare-`except Exception` sweep. RM-312's fence stands: the
-    remaining sites in dashboard/_state_builder.py and tools/lcu_agent.py:1612
-    are a CANDIDATE POPULATION needing its own census, not a defect count.
-    Re-derive their line numbers; RM-312 moved code in that file.
+  - A general bare-`except Exception` sweep. RM-312's fence still stands even
+    though RM-405 closed the one site it had named as the direct caller. The
+    13 remaining sites in dashboard/_state_builder.py were CENSUSED this run
+    and are real (:393 :509 :542 :590 :607 :621 :645 :667 :725 :727 :745 :768
+    :834, each `except Exception:  # noqa: BLE001` with a silent default) -
+    but a census is not a mandate, and each one needs its own argument for why
+    a log line there is better than silence. Several are hot per-tick paths.
+  - Acting on RM-312's `tools/lcu_agent.py:1612` sibling entry as written. Its
+    PREMISE is wrong, not just its offset: that file has not moved, :1612 is
+    `state = capture_state()` inside _state_push_loop, and lcu_agent.py does
+    not import champ_select_shape at all any more (RC2 L3 moved the shaping to
+    lcu/snapshot_shape.py). Re-measure from scratch or drop it.
   - Arming any responder. Nobody's is armed - LW's is built and deliberately
     disarmed (D5), RC's RC-InboxResponder is Ready/disarmed. Arming is an
-    operator act.
-  - Replying to the three LW notes. All read; none requests a reply.
-
-Unmeasured, NOT started - two slices were dispatched and cancelled at wrap:
-  - RM-294's LANE 7 claim that agents/agent3_testing/suite/ is collected by
-    NEITHER CI tree and every test in it is UNRUN. Filed 2026-08-31 and NOT
-    re-verified this session. Measure before acting: does it collect, does it
-    pass, and are there other orphaned test-bearing dirs?
+    operator act, and an unattended loop must never arm another repo.
+  - Replying to the LW notes. All read; none requests a reply.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log + ROADMAP.md.
