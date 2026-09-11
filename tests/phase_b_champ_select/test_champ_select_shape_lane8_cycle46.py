@@ -22,15 +22,17 @@ WHY A RAISE IS EXPENSIVE HERE, AND WHY IT IS INVISIBLE
 ------------------------------------------------------
 Neither caller lets the exception surface:
 
-* ``dashboard/_lcu_inprocess.py:190-191`` catches ``Exception`` and returns
-  ``None`` with NO log line, so the in-process L3 path silently falls back
-  to the ``:8889`` relay hop that L3 exists to remove.
+* ``dashboard/_lcu_inprocess.py:255-257`` catches ``Exception`` and returns
+  ``None``, so the in-process L3 path falls back to the ``:8889`` relay hop
+  that L3 exists to remove. RM-312 (2026-09-11) added a throttled WARNING on
+  that degrade, so this half is no longer SILENT - but the payload for that
+  build is still lost.
 * ``tools/lcu_agent.py:1612`` calls ``capture_state()`` inside the state
-  push loop, so the whole snapshot for that tick is lost.
+  push loop, so the whole snapshot for that tick is lost - and that half is
+  still silent.
 
-Both degrade quietly, so a malformed field costs the entire champ-select
-payload - bench, swaps, active round, Arena rosters - with nothing in the
-logs to say why.
+Both still degrade, so a malformed field costs the entire champ-select
+payload - bench, swaps, active round, Arena rosters.
 
 THE MODULE HAD ALREADY DECIDED TO FAIL SOFT. These sites were the ones the
 decision was not applied to: ``trades`` is isinstance-guarded two lines
