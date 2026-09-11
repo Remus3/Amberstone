@@ -119,6 +119,82 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-09i - RM-397 SHIPPED: the first repair to this gate that WIDENS what it examines, measured against a frozen corpus rather than argued
+
+Seventh row of the same headless day, operator AWAY. Tier-1: one tool module plus
+its test, no engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward -
+**except that the gate is ARMED, so this one does change what happens at every
+wrap.** LEDGER 1380, shipped as `e518786e2`.
+
+**The defect.** `_QUOTED` (`:184`) is `'[^']*'|"[^"]*"` with `re.S`, and
+`strip_prose_noise` applies it to every assistant text block BEFORE the claim
+scan. Two ordinary possessives in one paragraph therefore paired as quote
+delimiters and everything between them was deleted, so a claim landing in that
+span was never examined at all. A FALSE-NEGATIVE hole in the instrument that
+audits this session's own claims.
+
+**The fix.** A prose-only `_QUOTED_PROSE` used by `strip_prose_noise` ALONE. It
+refuses to open a span on an apostrophe flanked by word characters, and tolerates
+an inner contraction inside a genuine quoted span so that span is suppressed END
+TO END rather than truncated at the apostrophe. `_QUOTED` is BYTE-UNCHANGED
+(md5-verified by a verifier, not asserted) and `strip_command_noise` is untouched
+- shell quoting has no possessives - with a test pinning that scope decision so a
+later pass does not unify the two patterns.
+
+**THE CORPUS IS 91 TRANSCRIPTS, NOT THE 90 THE ROW WAS FILED WITH** - one session
+was created after filing. **And the trap worth carrying forward: it had to be
+FROZEN to a scratchpad copy first.** The live directory contains the RUNNING
+session's own growing transcript, so a before/after comparison over it compares
+two different corpora and the "after" side is inflated by text the "before" run
+never saw. Every future measurement over this corpus hits that.
+
+**Measured, not argued: baseline 26 findings over 15 transcripts -> 34 over 21.
+8 NEW, 0 LOST**, and merged `main` replays IDENTICAL to the adjudicated state.
+**An INDEPENDENT adjudicator classified all 8 against their transcripts and found
+ZERO clean false positives - that is the ADJUDICATOR'S classification, not my own
+re-derivation.** I did not re-adjudicate all 8 by hand. **The one I DID
+corroborate myself**, by grepping the frozen transcript `db9fa5f4`: a claim of
+`17 passed / 205 errors of 221 collected` was re-measured by a LATER session in
+the same corpus as `18 passed` with `222 collected` - a wrong count that shipped
+unchallenged precisely because this hole hid it.
+
+**Seven of the eight are direct apostrophe pairing. The EIGHTH is the subtler
+half of the same defect** - an apostrophe span swallowed the OPENING double quote
+of a phrase, the orphaned closing quote paired with a later one, and 988 chars
+were deleted. The adjudicator required a test for exactly that interaction and it
+is MUTATION-CHECKED (empty findings list under the old pattern). The anchor test
+`test_the_real_transcript_that_produced_nine_false_positives_is_clean` is
+NON-VACUOUS: 2 of the 9 assistant blocks in its fixture strip differently under
+the new pattern. Regex is linear, re-timed independently to 160k chars.
+`tests/test_stop_claim_gate.py` gains 9 tests in an RM-397 section, file total
+**81 passed** observed on `main` after the merge.
+
+**THE DIRECTION WAS THE RISK AND IT HELD.** Every prior repair to this file
+(LEDGER 1154 / 1156 / 1175 / 1178) NARROWED the gate to kill a false positive;
+this one WIDENS what it examines. The 1175/1178 precedent does NOT transfer, by
+its own stated justification: those were right because the cheapest way to
+satisfy the gate was behaviour the repo wants, whereas here the cheapest remedy
+is to run the probe yourself, which is the standing rule anyway.
+
+**THE COST, stated plainly rather than sold as "more findings": 6 of the 91
+sessions go from quiet to Stop-BLOCKING, one block each**, bounded by the
+re-entry guard.
+
+**Filed rather than bundled: RM-398.** `count_mismatch` cannot distinguish a
+count asserted as SUCCESS from one asserted as a RED or mutation state, and 3 of
+the 8 new findings are that shape. NOT fixed here on purpose: a `"mutation:"` or
+`"red state:"` suppressor is an evasion prefix available to the party the
+instrument polices and would reopen the hole RM-397 just closed. Any acceptable
+design must derive RED-ness from evidence the session cannot author at will. The
+row also carries the genuine pre-existing formatting false positive already in
+the corpus - `10 856 passed` parsed as claimed `856` - a clean parser narrowing
+with no evasion surface, independent of the RED-state question. **RELOCATION
+NOTE (2026-09-10): the RED-state MECHANISM this paragraph files was REFUTED at
+the RM-398 partial - see LEDGER 1384. The paragraph is kept verbatim as the
+record of what was believed on the day.**
+
+---
+
 # 2026-09-09h - RM-396 REFUTED, RM-397 FILED: the row was to patch the instrument that audits me, and the answer was DO NOTHING
 
 Sixth row of the same headless day, operator AWAY. Docs + memory only, Tier-0:
