@@ -775,7 +775,7 @@ DS bounce, no RC restart, no Share sync (no `agents/daemon_slayer/` path touched
 
 | Id | Slug | Notes | Status | Commit |
 |---|---|---|---|---|
-| R226 | suite-live-tree-writes | DIRECTOR REFILL 2026-09-11, cycle 68. Census of the defect class "a test writes / deletes / replaces a path that is the operator's LIVE state instead of `tmp_path`". Filed as R226 and not R225 because the directive's own id was already occupied by `ds-rm97-pet-damage-probe` (DONE). **LANDED cycle 69** - cycle 68 measured and shipped nothing, so the deliverable was an uncommitted tree. AFTER re-measured on the final tree: **13 units over 1 path, and that path is the declared EXCEPTION**, against 201079 over 17 BEFORE. Both adversarial slices returned findings that changed the commit (slice 1 BLOCK, slice 2 SHIP-with-misses); the overclaims they refuted were deleted rather than softened. ENGINE-IMPACT NONE. | DONE | `<this commit>` |
+| R226 | suite-live-tree-writes | DIRECTOR REFILL 2026-09-11, cycle 68. Census of the defect class "a test writes / deletes / replaces a path that is the operator's LIVE state instead of `tmp_path`". Filed as R226 and not R225 because the directive's own id was already occupied by `ds-rm97-pet-damage-probe` (DONE). **LANDED cycle 69** - cycle 68 measured and shipped nothing, so the deliverable was an uncommitted tree. AFTER re-measured on the final tree: **13 units over 1 path, and that path is the declared EXCEPTION**, against 201079 over 17 BEFORE. Both adversarial slices returned findings that changed the commit (slice 1 BLOCK, slice 2 SHIP-with-misses); the overclaims they refuted were deleted rather than softened. ENGINE-IMPACT NONE. | DONE | `c00b9af89` |
 
 ## Older findings - relocated 2026-07-28
 
