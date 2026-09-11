@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-406** (2026-09-11, moved at the RM-405 filing).
+  Next free id = **RM-407** (2026-09-11, moved at the RM-406 filing).
+  **RM-406 was allocated 2026-09-11** (LEDGER 1392, plan row R226), filed under
+  BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
+  the Summary count. RM-406 SHIPPED: the suite was writing the operator's LIVE
+  tree - 201079 units over 17 paths BEFORE, 13 over the single declared
+  EXCEPTION after - measured with a process-local pytest write tracer rather
+  than a before/after filesystem diff, because an idle control on this box
+  moves `logs/`, `data/` and `ops/runtime/` with no suite running at all. The
+  sibling sweep caught three more `Path.write_text` producers writing 44
+  tracked `eol=lf`-pinned `data/daemon_slayer/**` files, latent until the next
+  DS extract; ENGINE-IMPACT NONE and no `ENGINE_VERSION` move.
   **RM-405 was allocated 2026-09-11** (LEDGER 1391), filed under BACKLOG
   "Reliability / hardening", taking no roster checkbox and not changing the
   Summary count. RM-405 SHIPPED: the DIRECT CALLER of the in-process L3 read,
