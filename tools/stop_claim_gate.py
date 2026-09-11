@@ -44,6 +44,43 @@ CLAIM_COUNT_ORDINAL = frozenset({
     "test", "case", "step", "phase", "mutant", "option", "slice", "agent",
     "check", "round", "attempt", "item", "fixture", "run", "batch", "lane",
 })
+# Same blindness, a different separator: a SPACE-grouped thousand is ONE
+# number, not a word plus a number. MEASURED 2026-09-10 on the prose
+# "10 856 passed" - CLAIM_COUNT.findall returns ('10', '856') and the gate
+# reports the session claimed "856", a string that appears nowhere in the
+# transcript. The claim was TRUE (the run printed 10856), so the finding is a
+# pure false positive, the class this module's header calls costlier than a
+# miss. Widening the prefix group is not available: it is what feeds
+# CLAIM_COUNT_ORDINAL, so the grouping SHAPE is filtered at the consumer.
+#
+# The shape alone is NOT the discriminator, and a first version that used it
+# alone was measured wrong the same day. That version dropped the pair
+# unconditionally whenever the prefix was 1-3 digits and the count exactly 3,
+# on the theory that an evader would have to write a count no reader parses as
+# a suite total. Running the real gate against an observed 1397 refuted it:
+# "lane 8 328 passed", "run 2 654 passed", "12 999 passed", "123 999 passed"
+# and "0 000 passed" ALL went from FLAG to SILENT. "lane 8 328 passed" reads
+# as an ordinary suite total, so the fence was false and EVERY 3-digit total
+# 000-999 became unflaggable behind any 1-3 digit token. Do NOT re-simplify
+# this back to the shape-only test.
+#
+# So the suppression is EVIDENCE-DERIVED: the shape opens the door, and the
+# JOINED form having actually been OBSERVED is what walks through it. "10 856"
+# is suppressed only because 10856 is in observed_counts; "lane 8 328" is not,
+# because 8328 never ran. This also disposes of the anti-join objection that
+# motivated the blanket drop - "run 2 1397 passed" would join to a false 21397,
+# but its count is 4 digits and never reaches this guard at all.
+#
+# Residual, honestly: this can only ever be evaded by making the joined form
+# equal a genuinely observed count, i.e. by telling the truth about a run that
+# happened. It stays a MISS-shaped rule, never a false-pass one - suppression
+# only ever deletes a claim, so no wrong number is laundered into agreement.
+# On fall-through the reported `claimed` stays the trailing group (856), not
+# the joined form: once the join is unobserved there is no evidence the prefix
+# was a separator at all, and for "lane 8 328 passed" the claim genuinely IS
+# 328. Reporting 8328 there would re-commit the exact defect this block
+# exists to fix - a `claimed` string that appears nowhere in the prose.
+CLAIM_COUNT_GROUPED = re.compile(r"^\d{1,3}$")
 CLAIM_FILE = re.compile(
     r"\b(?:updated|edited|created|added|wrote|written|modified|fixed|patched)\b"
     r"[^.\n]{0,40}?([\w./\\-]+\.(?:py|md|js|css|json|html|ps1|txt|ya?ml))\b", re.I)
@@ -106,7 +143,26 @@ EV_PYTEST = re.compile(r"(?:^|\s|-m\s)pytest\b", re.I)
 # correctly-sourced figures trains the reader to wave it through, which is
 # exactly when it stops catching the real thing. The same session it caught a
 # genuine one - a "25 passed" computed as 28 minus 3 rather than observed.
-EV_CI_LOG = re.compile(r"\bgh\s+run\s+view\b[^\n]*--log(?:-failed)?\b", re.I)
+#
+# The binary is spelled `gh(?:\.exe)?`, matching EV_CI below. It was NOT, until
+# 2026-09-10: the two patterns for the same binary had diverged by exactly one
+# token, and this one required a literal `gh`. RC's prescribed invocation is a
+# quoted absolute path, which strip_command_noise collapses to the basename, so
+# the command reached this pattern as ` gh.exe  run view <id> --log`. The `.`
+# broke `\bgh\s+run`, EV_CI_LOG returned False while EV_CI returned True on the
+# very same string, and the fix above was inert for the way this repo actually
+# fetches a log. Found by MEASUREMENT, not by reading - a frozen 91-transcript
+# corpus put 4 of its 28 count_mismatch findings on this miss, across three
+# unrelated shapes (a `>` redirect, a PowerShell `&` call operator, a `| grep`).
+# Two patterns naming one binary must be kept in step; reading either alone
+# gives the wrong answer.
+#
+# This widens only which COMMAND is recognised. What is credited from the
+# fetched output is unchanged - `audit` still keeps CI counts to lines matching
+# EV_SUMMARY_LINE, so a stale count echoed from a workflow comment is no more
+# believable through this spelling than through the old one.
+EV_CI_LOG = re.compile(r"\bgh(?:\.exe)?\s+run\s+view\b[^\n]*--log(?:-failed)?\b",
+                       re.I)
 # Node's built-in runner is the SECOND suite in this repo (rc-shell). Until
 # 2026-08-11 the gate could not see it at all: it parsed only pytest's
 # "N passed", so an accurate "rc-shell 328 passed" scored as count_mismatch -
@@ -413,6 +469,14 @@ def audit(ev):
                  observed="; ".join(r["cmd"] for r in runs))
         for prefix, count in CLAIM_COUNT.findall(sentence):
             if prefix.lower() in CLAIM_COUNT_ORDINAL:
+                continue
+            # Space-grouped thousands - see CLAIM_COUNT_GROUPED. The shape is
+            # necessary but NOT sufficient: suppress only when the JOINED form
+            # was actually observed, otherwise fall through and flag the
+            # trailing group exactly as before.
+            joined = prefix + count
+            if (CLAIM_COUNT_GROUPED.match(prefix) and len(count) == 3
+                    and "," not in count and joined in observed_counts):
                 continue
             bare = count.replace(",", "")
             if observed_counts and bare not in observed_counts:

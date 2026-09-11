@@ -658,6 +658,102 @@ def test_a_real_count_claim_next_to_a_noun_still_flags(tmp_path):
     assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
 
 
+# --------------------------- space-grouped thousands are ONE number (RM-398)
+# Same family as the ordinal narrowing above, different separator. MEASURED
+# 2026-09-10 against the prose "10 856 passed": CLAIM_COUNT.findall returns
+# ('10', '856'), so the gate reports the session claimed "856" - a string that
+# appears nowhere in the transcript. The claim is TRUE (the run printed 10856)
+# and the finding is a pure false positive.
+#
+# The discriminator is EVIDENCE-DERIVED, not shape-only: the pair is dropped
+# only when the JOINED form is in observed_counts. A shape-only first version
+# was measured the same day to swallow "lane 8 328 passed" against an observed
+# 1397, which reads as an ordinary suite total - see CLAIM_COUNT_GROUPED for
+# the full refutation. An unobserved join falls through to the ORIGINAL
+# behaviour, so nothing that used to flag stops flagging.
+
+GROUPED_GREEN = "==== 10856 passed, 12 skipped in 410.02s ===="
+
+
+def test_space_grouped_thousands_are_not_read_as_two_numbers(tmp_path):
+    """The load-bearing case: a TRUE claim written with a space separator."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(GROUPED_GREEN),
+        _assistant(_text("Full suite green: 10 856 passed.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "count_mismatch" not in _checks(report), (
+        "'856' was never claimed - it is the trailing group of 10856")
+
+
+def test_a_space_grouped_count_nobody_observed_still_flags(tmp_path):
+    """The same prose with NO 10856 run behind it must still flag.
+
+    Suppression is licensed by the evidence, not by the shape. Observed is
+    1397, so the join 10856 is unobserved and the pair falls through to the
+    original behaviour.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("Full suite green: 10 856 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_a_word_then_digit_then_three_digit_total_still_flags(tmp_path):
+    """Regression fence for the hole the shape-only version opened.
+
+    MEASURED 2026-09-10: under the blanket drop this went FLAG -> SILENT, which
+    made every 3-digit suite total 000-999 unflaggable behind any 1-3 digit
+    token. "lane 8 328 passed" reads as an ordinary suite total, so the
+    "no reader parses it as a total" fence was false.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("On lane 8 328 passed and nothing failed.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "count_mismatch" in _checks(report)
+    claimed = [f["claimed"] for f in report["findings"]
+               if f["check"] == "count_mismatch"]
+    assert claimed == ["328"], (
+        "the claim is 328 - reporting the join 8328 would invent a string "
+        "that appears nowhere in the prose")
+
+
+def test_a_digit_prefix_that_is_not_a_grouping_is_left_alone(tmp_path):
+    """Anti-join fence: "run 2 1397 passed" is two numbers, and 1397 is TRUE.
+
+    Green today and green under the evidence-derived guard, because a 4-digit
+    count never reaches it. It exists to fail loudly if the length test is ever
+    widened, which would read this as a claim of 21397.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text("In run 2 1397 passed and nothing failed.")),
+    ]
+    assert "count_mismatch" not in _checks(_run_gate(tmp_path, rows))
+
+
+@pytest.mark.parametrize("sentence", [
+    "Full suite green: 1234 passed.",          # bare, unchanged
+    "Full suite green: 1,234 passed.",         # comma-grouped, unchanged
+    "Full suite: 3 failed 856 passed.",        # two real numbers, unchanged
+])
+def test_unseparated_and_comma_grouped_counts_still_flag(tmp_path, sentence):
+    """Every shape the narrowing must NOT reach. Observed is 1397."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_text(sentence)),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
 # ---------------------------------- gh invoked by absolute path via a variable
 # Third false positive, measured 2026-08-01 during /done. EV_CI required `gh`
 # ADJACENT to its subcommand, but OPERATIONS/the done ritual mandate the
@@ -964,6 +1060,54 @@ def test_a_ci_count_with_no_ci_fetch_is_still_unbacked(tmp_path):
         _assistant(_tool_use("Bash", command="python -m pytest -q")),
         _tool_result(PYTEST_GREEN),
         _assistant(_text("CI green: 31706 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+# -------------------------------- the gh.exe basename form (measured 2026-09-10)
+#
+# EV_CI_LOG required a literal `gh` token; EV_CI, twenty lines below it, already
+# wrote the same binary as `gh(?:\.exe)?`. RC's prescribed invocation is a quoted
+# absolute path, which strip_command_noise collapses to the basename `gh.exe`, so
+# the `.` broke `\bgh\s+run` and the fetch was never indexed. Found by corpus
+# measurement over 91 transcripts - 4 of the 28 count_mismatch findings were this
+# miss, across three different shapes: `> file`, a PowerShell `&` call operator,
+# and a `| grep` pipe.
+
+GH_LOG_REDIRECT = ('"C:/Program Files/GitHub CLI/gh.exe" run view 31874678071 '
+                   "--log-failed > ci.txt")
+GH_LOG_CALLOP = ('& "C:/Program Files/GitHub CLI/gh.exe" run view 30770489475 '
+                 "--log --job=98765432")
+GH_LOG_PIPE = ('"C:/Program Files/GitHub CLI/gh.exe" run view 34538335778 '
+               "--log-failed | grep -i fail")
+
+
+@pytest.mark.parametrize("command", [GH_LOG_REDIRECT, GH_LOG_CALLOP, GH_LOG_PIPE])
+def test_ci_log_fetched_by_absolute_path_counts_as_evidence(tmp_path, command):
+    """All three corpus shapes. The local run is required or this is vacuous."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_tool_use("Bash", command=command)),
+        _tool_result(CI_LOG_OUTPUT),
+        _assistant(_text("CI green: 31706 passed.")),
+    ]
+    assert "count_mismatch" not in _checks(_run_gate(tmp_path, rows))
+
+
+@pytest.mark.parametrize("command", [GH_LOG_REDIRECT, GH_LOG_CALLOP, GH_LOG_PIPE])
+def test_basename_fetch_still_honours_the_summary_line_restriction(tmp_path, command):
+    """Widening the COMMAND must not widen the LINE filter.
+
+    23607 sits in the same fetched log inside an echoed workflow comment with no
+    terminal-summary shape, so it must still fail however the log was fetched.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_tool_use("Bash", command=command)),
+        _tool_result(CI_LOG_OUTPUT),
+        _assistant(_text("CI green: 23607 passed.")),
     ]
     assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
 
