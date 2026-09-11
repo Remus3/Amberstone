@@ -86,7 +86,24 @@ _EXCEPTED = "EXCEPTED"
 _COLLECTION_ROOTS = (
     ("tests", _WIRED, ""),
     ("agents/daemon_slayer/tests", _WIRED, ""),
-    ("agents/agent3_testing/suite", _WIRED, ""),
+    # RM-407 adjudication 2026-09-11. MEASURED, not judged: an independent
+    # verifier ran this tree's post-exclusion set three times and run 1 gave
+    # 1 failed / 348 passed - test_supervisor.py::test_supervisor_starts_and
+    # _binds_ports, "lockfile heartbeat never refreshed to a second value" at
+    # test_supervisor.py:203 - while runs 2 and 3 were green and the test
+    # passes 3/3 in isolation. A 1-in-3 load-dependent flake wired into push
+    # CI manufactures fake reds, which is worse than the zero signal this row
+    # replaces. Two further blockers sit behind it: 7 tests gate on a live
+    # supervisor at 127.0.0.1:8890, and test_scheduler_lock.py:48-49 states in
+    # its own comment that CI does not run this suite because its retry loop
+    # is tuned around that. Wiring this tree needs the flake fixed at source,
+    # not an exclusion list that grows every time the tree is re-measured.
+    ("agents/agent3_testing/suite", _EXCEPTED,
+     "1-in-3 load-dependent flake in test_supervisor.py::test_supervisor_"
+     "starts_and_binds_ports (heartbeat never refreshes, test_supervisor.py:"
+     "203), plus 7 tests gated on a live supervisor at 127.0.0.1:8890 that "
+     "mutate operator state when that port is open. RM-407 stays WIP for "
+     "this tree."),
     ("tools/tests", _WIRED, ""),
 )
 

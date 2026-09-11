@@ -69,7 +69,23 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-407** (2026-09-11, moved at the RM-406 filing).
+  Next free id = **RM-410** (2026-09-11, moved at the RM-407/RM-408/RM-409 filing).
+  **RM-407, RM-408 and RM-409 were all allocated 2026-09-11** (LEDGER 1393,
+  plan row R227), filed under BACKLOG "Reliability / hardening", none taking a
+  roster checkbox and none changing the Summary count. RM-407 SHIPPED: two test
+  trees were collected by no CI job; `tools/tests` (348) is now WIRED with a
+  nonzero-collected assert and a 17-arm class guard, while
+  `agents/agent3_testing/suite` (359) is DECLARED EXCEPTED - named by no CI
+  step, carrying a verifier-measured 1-in-3 flake as its mechanism string, with
+  the guard proved RED-before-GREEN to bind that exception. RM-408 and RM-409 are FINDINGS of that work, not the
+  work itself: `tools/live_write_tracer.py` carries no planted control, so a
+  run whose patches intercept nothing reports a clean zero; and the suite
+  mutates the operator's LIVE supervisor over a SOCKET at `:8890`, a route
+  RM-406's path-based census structurally cannot see. **THE PIN MOVED BY THREE,
+  NOT ONE, AND THE DIRECTIVE ASKED FOR ONE.** R227 instructed advancing to
+  RM-408; that was written before the two findings existed. Leaving the pin on
+  an id already occupied is the exact defect `591bf1e0d` repaired one commit
+  earlier, so the pin follows the allocations rather than the instruction.
   **RM-406 was allocated 2026-09-11** (LEDGER 1392, plan row R226), filed under
   BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
   the Summary count. RM-406 SHIPPED: the suite was writing the operator's LIVE
