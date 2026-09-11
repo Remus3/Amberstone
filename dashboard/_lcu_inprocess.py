@@ -68,10 +68,14 @@ the relay payload for those two keys:
 """
 from __future__ import annotations
 
+import logging
+import os
 import threading
 import time
 
 from lcu.snapshot_shape import shape_snapshot
+
+log = logging.getLogger("rc.web_dashboard")
 
 _client = None
 _client_lock = threading.Lock()
@@ -93,6 +97,62 @@ _AGENT_CONFIG_DEFAULTS = {
 _CONFIG_TTL_S = 3.0
 _config_lock = threading.Lock()
 _config_cache: dict = {"config": None, "ts": None}
+
+
+# --- RM-312: the degrade to the relay must not be SILENT --------------------
+# lcu_summary_inprocess() returns None on ANY fault so the caller falls back to
+# the :8889 relay. That contract is correct and stays. What was wrong is that
+# the fallback emitted nothing, so a real shaping fault was indistinguishable
+# from the ordinary, expected "League is not running" case - RC would pay the
+# relay hop that lever L3 exists to REMOVE, forever, with nothing in logs/ to
+# say why.
+#
+# The path is HOT: build_state() is the /api/state assembler and runs on a 1 Hz
+# shared TTL / SSE cadence (dashboard/routes_state.py:210-230 + :378-390), so an
+# unconditional WARN would write ~3600 lines an hour for ONE persistent fault -
+# the exact failure mode lcu/lcu_client.py:68-77 already documents (20144 of
+# 21082 log lines on a day League never launched). So: log on CHANGE of the
+# fault signature, then at most once per _DEGRADE_LOG_THROTTLE_S. Same shape as
+# core/decision_detector.py:1015-1025.
+#
+# The line is built from the exception TYPE plus the innermost raising frame,
+# never str(exc) and never the payload: an LCU snapshot carries PUUIDs and this
+# repo is public. Frame coordinates are what actually localise the fault, and
+# they are payload-free by construction.
+_DEGRADE_LOG_THROTTLE_S = 60.0
+_degrade_log_lock = threading.Lock()
+_degrade_log_state: dict = {"sig": None, "ts": None}
+
+
+def _log_degrade(exc: BaseException) -> None:
+    """WARN once per distinct in-process LCU fault, then at most once a minute.
+
+    Never raises: it runs inside the except clause of a fail-soft path, so a
+    fault in the logging itself must not escalate past the degrade.
+    """
+    try:
+        filename, lineno, func = "?", 0, "?"
+        tb = exc.__traceback__
+        while tb is not None:
+            filename = os.path.basename(tb.tb_frame.f_code.co_filename)
+            lineno = tb.tb_lineno
+            func = tb.tb_frame.f_code.co_name
+            tb = tb.tb_next
+        sig = (type(exc).__name__, filename, lineno, func)
+        now = time.monotonic()
+        with _degrade_log_lock:
+            prev_sig = _degrade_log_state["sig"]
+            prev_ts = _degrade_log_state["ts"]
+            if (sig == prev_sig and prev_ts is not None
+                    and (now - prev_ts) < _DEGRADE_LOG_THROTTLE_S):
+                return
+            _degrade_log_state["sig"] = sig
+            _degrade_log_state["ts"] = now
+        log.warning(
+            "in-process LCU read failed - degrading to the :8889 relay: "
+            "%s raised at %s:%d in %s()", sig[0], sig[1], sig[2], sig[3])
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _get_client():
@@ -178,6 +238,11 @@ def lcu_summary_inprocess():
     Returns None (never raises) whenever the LCU client is not connected or
     anything goes wrong, so the caller cleanly degrades to the relay
     ``lcu_summary()``.
+
+    RM-312: the not-connected return is SILENT on purpose - it is the ordinary,
+    expected case and a line there would be worse than none. The except branch
+    is NOT silent: it WARNs through the throttled ``_log_degrade`` so a real
+    fault is visible instead of presenting as a permanent quiet relay hop.
     """
     try:
         client = _get_client()
@@ -187,7 +252,8 @@ def lcu_summary_inprocess():
         snap = {"config": config, "lcu_port": str(client._port)}
         snap.update(shape_snapshot(_make_request(client), config))
         return snap
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        _log_degrade(exc)
         return None
 
 
@@ -197,6 +263,7 @@ def _reset_client_for_tests() -> None:
     with _client_lock:
         _client = None
     _reset_config_cache_for_tests()
+    _reset_degrade_log_for_tests()
 
 
 def _reset_config_cache_for_tests() -> None:
@@ -211,3 +278,17 @@ def _expire_config_cache_for_tests() -> None:
     the next relay read without losing the 'hold last known' behavior."""
     with _config_lock:
         _config_cache["ts"] = None
+
+
+def _reset_degrade_log_for_tests() -> None:
+    """Forget the last logged fault so the RM-312 WARN is re-drivable."""
+    with _degrade_log_lock:
+        _degrade_log_state["sig"] = None
+        _degrade_log_state["ts"] = None
+
+
+def _expire_degrade_log_for_tests() -> None:
+    """Expire the RM-312 throttle but KEEP the last signature, so a test can
+    drive the 'same fault, throttle elapsed' re-log without time travel."""
+    with _degrade_log_lock:
+        _degrade_log_state["ts"] = None
