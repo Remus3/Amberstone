@@ -23,6 +23,7 @@ import concurrent.futures
 import json
 import logging
 import os
+import threading
 import time
 import unicodedata
 from pathlib import Path
@@ -77,6 +78,80 @@ MODE_TO_FILE = {
 MODE_FILES: tuple[str, ...] = tuple(dict.fromkeys(MODE_TO_FILE.values()))
 
 
+# --- RM-405: the CALLER seam of the L3 read must not degrade silently -------
+# RM-312 made a fault raised INSIDE dashboard/_lcu_inprocess visible. It cannot
+# see a fault that ESCAPES that module, because _read_lcu_snapshot below wraps
+# the whole call in a SECOND try/except one frame higher. Two classes land
+# there and nowhere else:
+#
+#   * the LAZY IMPORT on the "from dashboard._lcu_inprocess import ..." line.
+#     When that raises (broken/renamed module, circular import, a failure
+#     inside lcu.snapshot_shape at module load), RM-312's _log_degrade does
+#     not exist to run - its module never loaded;
+#   * anything re-raised past lcu_summary_inprocess's own guard.
+#
+# Swallowed silently, either one means RC pays the :8889 relay hop that lever
+# L3 exists to REMOVE, forever, with nothing in logs/ saying why - the exact
+# failure RM-312 closed, one frame up. Same shape as the fix it mirrors
+# (dashboard/_lcu_inprocess.py:102-160): WARN on CHANGE of the fault
+# signature, then at most once per throttle window, built from the exception
+# TYPE plus the innermost raising frame and NEVER from str(exc) - an LCU
+# payload carries PUUIDs and this repo is public.
+#
+# The wording is deliberately DISTINCT from RM-312's line so a log reader can
+# tell the caller seam from the module seam.
+_CALLER_DEGRADE_LOG_THROTTLE_S = 60.0
+_caller_degrade_log_lock = threading.Lock()
+_caller_degrade_log_state: dict = {"sig": None, "ts": None}
+
+
+def _log_inprocess_caller_degrade(exc: BaseException) -> None:
+    """WARN once per distinct caller-seam fault, then at most once a minute.
+
+    Never raises: it runs inside the except clause of a fail-soft path, so a
+    fault in the logging itself must not escalate past the degrade.
+    """
+    try:
+        filename, lineno, func = "?", 0, "?"
+        tb = exc.__traceback__
+        while tb is not None:
+            filename = os.path.basename(tb.tb_frame.f_code.co_filename)
+            lineno = tb.tb_lineno
+            func = tb.tb_frame.f_code.co_name
+            tb = tb.tb_next
+        sig = (type(exc).__name__, filename, lineno, func)
+        now = time.monotonic()
+        with _caller_degrade_log_lock:
+            prev_sig = _caller_degrade_log_state["sig"]
+            prev_ts = _caller_degrade_log_state["ts"]
+            if (sig == prev_sig and prev_ts is not None
+                    and (now - prev_ts) < _CALLER_DEGRADE_LOG_THROTTLE_S):
+                return
+            _caller_degrade_log_state["sig"] = sig
+            _caller_degrade_log_state["ts"] = now
+        log.warning(
+            "in-process LCU caller seam failed (fault escaped "
+            "lcu_summary_inprocess, import included) - degrading to the :8889 "
+            "relay: %s escaped at %s:%d in %s()",
+            sig[0], sig[1], sig[2], sig[3])
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _reset_caller_degrade_log_for_tests() -> None:
+    """Forget the last logged caller-seam fault so the WARN is re-drivable."""
+    with _caller_degrade_log_lock:
+        _caller_degrade_log_state["sig"] = None
+        _caller_degrade_log_state["ts"] = None
+
+
+def _expire_caller_degrade_log_for_tests() -> None:
+    """Expire the throttle but KEEP the last signature, so a test can drive
+    the 'same fault, throttle elapsed' re-log without time travel."""
+    with _caller_degrade_log_lock:
+        _caller_degrade_log_state["ts"] = None
+
+
 def _read_lcu_snapshot() -> dict:
     """Source the whole LCU snapshot for build_state.
 
@@ -88,12 +163,19 @@ def _read_lcu_snapshot() -> dict:
     byte-identical. Landed DARK; G1-00 live confirm (flag ON in a live
     champ-select) is owed before flipping. Imported lazily to avoid an import
     cycle through dashboard._lcu_inprocess -> lcu.lcu_client at module load.
+
+    RM-405: the except branch is no longer SILENT. ``snap = None`` and the
+    fall-through to the relay are UNCHANGED - only the trace is added, via the
+    throttled, payload-free ``_log_inprocess_caller_degrade`` above. The
+    success path and the ordinary ``snap is None`` (League not running) path
+    are untouched: a line there would be worse than none.
     """
     if os.environ.get("RC_LCU_INPROCESS") == "1":
         try:
             from dashboard._lcu_inprocess import lcu_summary_inprocess
             snap = lcu_summary_inprocess()
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            _log_inprocess_caller_degrade(exc)
             snap = None
         if snap is not None:
             return snap
