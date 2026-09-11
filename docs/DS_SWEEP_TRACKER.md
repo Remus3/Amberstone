@@ -69,7 +69,20 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-400** (2026-09-09, moved at the RM-399 filing).
+  Next free id = **RM-402** (2026-09-10, moved at the RM-400/RM-401 filing).
+  **RM-400 and RM-401 were allocated 2026-09-10** (LEDGER 1384), both filed
+  under BACKLOG "Reliability / hardening", neither taking a roster checkbox nor
+  changing the Summary count. Both are `tools/stop_claim_gate.py` defects found
+  beside the RM-398 partial and deliberately not bundled with it: RM-400 is
+  `_QUOTED_EXE` (`:285`) accepting only a FORWARD-SLASH directory, so a quoted
+  backslash `gh.exe` never strips to its basename and is invisible to both
+  `EV_CI_LOG` and `EV_CI` - pre-existing at HEAD and untouched by `271d69a53`;
+  RM-401 is `CLAIM_PUSH` (`:131`) matching an adjectival "pushed", flagged
+  against the very session that would have fixed it, which is why it was filed
+  instead. Ids taken from THIS pin, and the pointer-vs-allocated predicate was
+  re-run before minting: `tools/rm_id_registry.py` reported the pinned id free
+  across all 7 scanned docs.
+  Earlier next-free pointer (2026-09-09, moved at the RM-399 filing).
   **RM-399 was allocated 2026-09-09** (LEDGER 1381), filed under BACKLOG
   "Reliability / hardening", taking no roster checkbox and not changing the
   Summary count: BUILD RC'S SIBLING-NAME SWEEP, so the diff-content push gate

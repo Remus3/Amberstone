@@ -2,7 +2,84 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-399 wrap (relocated `2026-09-09h` RM-396 refuted / RM-397 filed; newest 3 = RM-399 shipped `2026-09-10a` + MEMORY.md compaction `2026-09-09j` + RM-397 shipped `2026-09-09i`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-398 partial wrap (relocated `2026-09-09i` RM-397 shipped; newest 3 = RM-398 partial `2026-09-10b` + RM-399 shipped `2026-09-10a` + MEMORY.md compaction `2026-09-09j`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-10b - RM-398 PARTIAL SHIPPED, and the row's own mechanism was REFUTED while its population claim survived
+
+Tier-1, operator AWAY: one tool module plus its test, docs. LEDGER 1384, shipped
+as `271d69a53`. The gate was already armed, so nothing outward changed.
+
+**EVERY NUMBER HERE WAS MEASURED OVER A FROZEN 91-TRANSCRIPT CORPUS COPY, and
+that is not a detail.** The live transcript directory holds the RUNNING session's
+own growing transcript, so a before/after comparison over it compares two
+different corpora. Carry that trap into every future pass over this corpus.
+
+**TWO PARSER FIXES, both to `tools/stop_claim_gate.py`.** FIX 1: `CLAIM_COUNT`
+read `10 856 passed` as prefix `10` plus count `856` and flagged `claimed=856`, a
+string never in the prose, while the true `10856` sat in `observed_counts`. **Its
+FIRST version was REFUTED BY MEASUREMENT** - dropping any 1-3 digit prefix plus a
+comma-free 3-digit count silenced `lane 8 328 passed`, `run 2 654 passed`,
+`12 999`, `123 999` and `0 000` against an observed `1397`, making every 3-digit
+suite total unflaggable whenever a small number preceded it. Shipped form is
+evidence-derived: suppress only when `prefix + count` is ITSELF in
+`observed_counts`, so the evader would have to be telling the truth. Two tests
+kill the blanket-drop mutant. FIX 2: `EV_CI_LOG` demanded a literal `gh` token
+while `EV_CI` in the same file already wrote `gh(?:\.exe)?`, and RC's prescribed
+quoted-absolute-path form strips to basename `gh.exe`, whose `.` broke
+`\bgh\s+run`. It WIDENS belief, so the summary-line restriction was verified by
+call path and fenced by a test.
+
+**MEASURED, verifier-re-derived: `count_mismatch` 28 -> 23, 5 removed, 0 added,
+removed set a strict SUBSET of the 6 predicted, perfectly additive.** FIX 1
+removes 2 (the `856` artifact in `c4bf4a1a`), FIX 2 removes 3 (`274b84bc` x2,
+`958c1483`). **FIX 2 was predicted to remove 4 and removed 3** - the verifier
+refuted the prediction, `42af2f7d` correctly survives because its claimed `28150`
+is not on a summary line in the fetched log. Do not carry the 4 forward. Suite:
+`94 passed`.
+
+**THE HEADLINE IS THAT RM-398'S OWN MECHANISM IS REFUTED.** `observed_counts`
+applies `EV_PASSED` to run output with NO green/red filter: an adjudicator
+measured 1354 paired runs, 347 with a nonzero `N failed`, and 312 of those had
+their `N passed` harvested normally (the 35 that did not are runs where nothing
+passed). **0 of 28 findings are caused by red-ness; a RED-state discriminator is
+not the fix.** **But the POPULATION CLAIM SURVIVES, and the probe's counter-
+headline "the RED-state population is ZERO" is itself REFUTED** - at least 9 of
+the 28 do assert their count in an explicitly non-green state. The row had the
+SHAPE right and the CAUSE wrong: the cause is invisibility of the run.
+**Measured causes of the 28:** SUBAGENT-INVISIBLE 12, CI-LOG PATTERN MISS 4,
+FILE-ONLY / prior-session recital 7, SPACE-GROUPED 2, UNRECOGNISED RUNNER 1,
+NEGATED/RETRACTED 1, TRUE POSITIVE by design 1.
+
+**DO NOT RE-PITCH crediting subagent transcripts.** An adjudicator opened all 12
+SUBAGENT-INVISIBLE findings: **12 relay / 0 independent parent re-run**, and
+THREE were later RETRACTED by the authoring session as wrong (`17e9bb48` 18226,
+`39bc4be6` 18953 branch-local, `1131adbe` 10722 stale). The proposal's own guard
+- credit only paired run output - does not help, because each of those WAS a real
+paired subagent run. It is the LARGEST TRUE-POSITIVE class in the corpus, and
+crediting it would suppress true positives against CLAUDE.md Verification
+Discipline. The narrowed variant INVERTS the incentive - it silences a
+mis-attributed "Measured this run" while still flagging the corpus's most honest
+phrasing. **DO NOT RE-PITCH `_negated` reuse for `CLAIM_COUNT` either**: already
+shipped once, refuted for laundering phrases, third version closed as a dead end.
+
+**FILED, NOT FIXED, and the reason is a conflict of interest worth remembering:**
+RM-400 (`_QUOTED_EXE` at `:285` accepts only a forward-slash directory, so a
+quoted backslash `gh.exe` is invisible to both `EV_CI_LOG` and `EV_CI`;
+pre-existing at HEAD, untouched by this diff) and RM-401 (`CLAIM_PUSH` at `:131`
+matches an adjectival "pushed"). **RM-401 flagged THIS session twice, which is
+exactly why this session is not the one to patch it** - the session a gate flags
+is the worst-placed one to narrow that gate.
+
+**LEAVE ALONE, adjudicator-agreed:** the 7 file-only / prior-session recitals,
+the 1 workflow-comment recital, the 1 unrecognised runner. Every "fix" widens
+evidence toward "a number that appeared somewhere", which is the poisoning that
+wrecked the first armed session.
+
+**DO NOT REDO:** RM-397 SHIPPED, RM-399 SHIPPED, RM-398 PARTIAL SHIPPED with its
+mechanism refuted and two proposals refused. The JOINT RE-PIN for the fifth
+sibling-name escape is still AWAITING RSC's reply - do not re-pin unilaterally.
 
 ---
 
@@ -79,104 +156,3 @@ literal link target made the guard parse it as a REAL link to a file that does
 not exist - one dead index link, from a sentence that was only ever describing
 the check. The footer now says "markdown link targets" in words and carries the
 warning. A doc that documents its own guard can breach that guard.
-
----
-
-# 2026-09-09i - RM-397 SHIPPED: the first repair to this gate that WIDENS what it examines, measured against a frozen corpus rather than argued
-
-Seventh row of the same headless day, operator AWAY. Tier-1: one tool module plus
-its test, no engine, no `ENGINE_VERSION` bump, no DS bounce, nothing outward -
-**except that the gate is ARMED, so this one does change what happens at every
-wrap.** LEDGER 1380, shipped as `e518786e2`.
-
-**The defect.** `_QUOTED` (`:184`) is `'[^']*'|"[^"]*"` with `re.S`, and
-`strip_prose_noise` applies it to every assistant text block BEFORE the claim
-scan. Two ordinary possessives in one paragraph therefore paired as quote
-delimiters and everything between them was deleted, so a claim landing in that
-span was never examined at all. A FALSE-NEGATIVE hole in the instrument that
-audits this session's own claims.
-
-**The fix.** A prose-only `_QUOTED_PROSE` used by `strip_prose_noise` ALONE. It
-refuses to open a span on an apostrophe flanked by word characters, and tolerates
-an inner contraction inside a genuine quoted span so that span is suppressed END
-TO END rather than truncated at the apostrophe. `_QUOTED` is BYTE-UNCHANGED
-(md5-verified by a verifier, not asserted) and `strip_command_noise` is untouched
-- shell quoting has no possessives - with a test pinning that scope decision so a
-later pass does not unify the two patterns.
-
-**THE CORPUS IS 91 TRANSCRIPTS, NOT THE 90 THE ROW WAS FILED WITH** - one session
-was created after filing. **And the trap worth carrying forward: it had to be
-FROZEN to a scratchpad copy first.** The live directory contains the RUNNING
-session's own growing transcript, so a before/after comparison over it compares
-two different corpora and the "after" side is inflated by text the "before" run
-never saw. Every future measurement over this corpus hits that.
-
-**Measured, not argued: baseline 26 findings over 15 transcripts -> 34 over 21.
-8 NEW, 0 LOST**, and merged `main` replays IDENTICAL to the adjudicated state.
-**An INDEPENDENT adjudicator classified all 8 against their transcripts and found
-ZERO clean false positives - that is the ADJUDICATOR'S classification, not my own
-re-derivation.** I did not re-adjudicate all 8 by hand. **The one I DID
-corroborate myself**, by grepping the frozen transcript `db9fa5f4`: a claim of
-`17 passed / 205 errors of 221 collected` was re-measured by a LATER session in
-the same corpus as `18 passed` with `222 collected` - a wrong count that shipped
-unchallenged precisely because this hole hid it.
-
-**Seven of the eight are direct apostrophe pairing. The EIGHTH is the subtler
-half of the same defect** - an apostrophe span swallowed the OPENING double quote
-of a phrase, the orphaned closing quote paired with a later one, and 988 chars
-were deleted. The adjudicator required a test for exactly that interaction and it
-is MUTATION-CHECKED (empty findings list under the old pattern). The anchor test
-`test_the_real_transcript_that_produced_nine_false_positives_is_clean` is
-NON-VACUOUS: 2 of the 9 assistant blocks in its fixture strip differently under
-the new pattern. Regex is linear, re-timed independently to 160k chars.
-`tests/test_stop_claim_gate.py` gains 9 tests in an RM-397 section, file total
-**81 passed** observed on `main` after the merge.
-
-**THE DIRECTION WAS THE RISK AND IT HELD.** Every prior repair to this file
-(LEDGER 1154 / 1156 / 1175 / 1178) NARROWED the gate to kill a false positive;
-this one WIDENS what it examines. The 1175/1178 precedent does NOT transfer, by
-its own stated justification: those were right because the cheapest way to
-satisfy the gate was behaviour the repo wants, whereas here the cheapest remedy
-is to run the probe yourself, which is the standing rule anyway.
-
-**THE COST, stated plainly rather than sold as "more findings": 6 of the 91
-sessions go from quiet to Stop-BLOCKING, one block each**, bounded by the
-re-entry guard.
-
-**Filed rather than bundled: RM-398.** `count_mismatch` cannot distinguish a
-count asserted as SUCCESS from one asserted as a RED or mutation state, and 3 of
-the 8 new findings are that shape. NOT fixed here on purpose: a `"mutation:"` or
-`"red state:"` suppressor is an evasion prefix available to the party the
-instrument polices and would reopen the hole RM-397 just closed. Any acceptable
-design must derive RED-ness from evidence the session cannot author at will. The
-row also carries the genuine pre-existing formatting false positive already in
-the corpus - `10 856 passed` parsed as claimed `856` - a clean parser narrowing
-with no evasion surface, independent of the RED-state question.
-
-## NEXT SESSION - HEADLESS, operator away
-
-Same shape: orchestrated, multi-agent, self-adjudicating, self-adversarial, and
-SUBAGENT-FIRST TO KEEP THE MAIN WINDOW CLEAR. ONE row per cycle, gate BEFORE the
-irreversible act, commit, push, LEDGER entry. ARMING is never adjudicated - if a
-row needs it, PING THE OPERATOR.
-
-**Expect the gate to be louder, and that is the change working, not a
-regression.** 6 sessions in the corpus now block where they were quiet. Do NOT
-respond to a new `count_mismatch` by narrowing the gate - RM-396 is REFUTED and
-RM-398 pre-refutes the prose-marker version. Run the probe.
-
-**Also open, not adjudicated, carried from the previous block:**
-`tests/test_inbox_responder_runner.py` carries two defects in one module -
-`:214` asserts `_TMP_LOGS` non-empty, a positive control that cannot tell "the
-arms were skipped" from "the runner is broken"; and `_live_surfaces_unchanged` is
-non-hermetic against a LIVE RC appending to `ops/runtime` mid-suite, measured
-three times on 2026-09-09 and absent on two other runs, so it is window-dependent
-by construction.
-
-**Housekeeping still NOT done:** `MEMORY.md` is over the hook's preferred size.
-It is not a free edit - the file's own footer requires re-deriving reachability
-over every non-exempt memory against `MEMORY.md` plus every `INDEX_*` before a
-consolidation may be called safe. Its own row, not a tidy-up.
-
-**Check `moon_sync_inbox/` at session start** for RSC's answer to the three
-questions RC asked at the 2026-09-09h wrap.
