@@ -28,7 +28,7 @@ against itself proves nothing. Concretely, all four mutations red:
 
 THE GLOB TRAP THIS GUARD MUST NOT FALL INTO
 -------------------------------------------
-`git ls-files "*test_*.py"` reports a SIXTEENTH directory, bare `tools`, whose
+`git ls-files "*test_*.py"` reports an EXTRA directory, bare `tools`, whose
 only match is `tools/pytest_guard.py` - the Claude PostToolUse hook script,
 which matches only because "pytest_guard" contains the substring "test_". A
 guard built on that pathspec files a phantom orphan tree it can never close.
@@ -39,9 +39,10 @@ loosening back to a substring match reds this file instead of inventing work.
 
 COVERAGE IS BY PREFIX, NOT BY EXACT STRING
 ------------------------------------------
-`pytest tests/` already collects `tests/phase2_smoke`, `tests/rc2_l3` and nine
-other subdirectories transitively. An exact-match model would report all eleven
-as orphans. A target covers a tree when it IS that tree or is an ancestor of it.
+`pytest tests/` already collects `tests/phase2_smoke`, `tests/rc2_l3` and its
+other subdirectories transitively. An exact-match model would report every one
+of them as an orphan. A target covers a tree when it IS that tree or is an
+ancestor of it.
 Targets that name a FILE or a nodeid (`tests/test_drift_guard.py::Foo`, of which
 ci.yml has several) deliberately cover no tree at all - running four hand-picked
 files is exactly the state RM-119 found insufficient.
@@ -113,9 +114,10 @@ _COLLECTION_ROOTS = (
 _PHANTOM_TREE = "tools"
 _PHANTOM_SOURCE = "tools/pytest_guard.py"
 
-# A floor, not the measured 15. Counts drift with every new subdirectory; what
-# must never happen is the enumeration collapsing to a handful and every
-# coverage assertion below passing over an empty set.
+# A floor, deliberately well below the measured population rather than equal to
+# it. Counts drift with every new subdirectory; what must never happen is the
+# enumeration collapsing to a handful and every coverage assertion below
+# passing over an empty set.
 _MIN_DISCOVERED_TREES = 10
 
 # Trees whose absence means the enumeration broke rather than the repo changed.
@@ -272,8 +274,8 @@ def test_discovery_predicate_is_basename_anchored():
     """The `tools` phantom must stay out, and `tools/tests` must stay in.
 
     Loosening the predicate to a substring match - the shape of
-    `git ls-files "*test_*.py"` - files a sixteenth orphan tree that can never
-    be closed, because its only member is a hook script.
+    `git ls-files "*test_*.py"` - files an extra orphan tree that can never be
+    closed, because its only member is a hook script.
     """
     tracked = _repo_walk.tracked_relpaths(str(REPO_ROOT))
     assert tracked is not None
@@ -389,8 +391,10 @@ def test_wired_roots_are_named_by_a_ci_tree_invocation():
 def test_excepted_roots_are_absent_from_ci():
     """The stale-exception arm.
 
-    It genuinely has nothing to iterate while every root is WIRED, which is the
-    current state and the desirable one. It is not load-bearing for vacuity -
+    It iterates whichever rows carry _EXCEPTED, so it has work exactly when at
+    least one root is excepted and is vacuous when none is - that is a property
+    of `_COLLECTION_ROOTS`, not a count this docstring should restate. It is
+    not load-bearing for vacuity -
     `test_every_discovered_tree_is_claimed_by_a_root_row` is - and it exists so
     that flipping a row to EXCEPTED while leaving its step in place reds
     instead of recording a lie.
