@@ -119,6 +119,80 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-10c - RM-400 SHIPPED and RM-401 REFUTED, and the verifier caught a FALSE SENTENCE in BOTH deliverables
+
+Tier-1, operator AWAY: one tool module plus its test, one BACKLOG row, one data
+snapshot. LEDGER 1385. Pushed `085236cf3..9d290f99e`, CI GREEN both workflows
+(`ci` 16m46s, `docs-guards` 2m19s), observed this run.
+
+**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM.** RSC's inbox
+is silent: newest file `2026-09-09-2100-from-RSC`, zero files dated 2026-09-10 or
+later. Do not re-pin unilaterally.
+
+**EVERY NUMBER HERE WAS MEASURED OVER A FROZEN 92-TRANSCRIPT CORPUS COPY.** The
+live directory holds the running session's own growing transcript. Baseline was
+RE-DERIVED at `085236cf3` rather than inherited: 31 findings, `count_mismatch`
+23, `ci_claim_without_probe` 3, `full_suite` 2, `file_claim` 1, `hook_bypass` 1,
+`commit_claim` 1, **`push_claim_without_push` 0**.
+
+**RM-400 SHIPPED (`7f2fc529e`).** `_QUOTED_EXE`'s directory group ended on
+`[\/]`, which inside a character class is a forward slash and nothing else - the
+escape is inert there. Fix is one character class, `[\\/]`. MEASURED 31 -> 28,
+**3 removed, 0 added**, verifier-re-derived from both sides; all three are
+`ci_claim_without_probe` in `653d2ee9`, which probed CI seven times via quoted
+backslash paths and was told it never probed.
+
+**RM-401 REFUTED AS SCOPED (`06f375c46`), no code.** A finding-level delta is
+UNAVAILABLE - `did_push` is true by the END of any session that pushed, so
+`push_claim_without_push` is 0 corpus-wide and no narrowing can move it. Scored
+at the pattern level instead: **428 matches across 69 of 92 sessions; 19 sessions
+have no push evidence and NONE of the 19 utters the word**, which is the whole
+explanation of the zero. 16 candidates precede any push, 8 already `_negated`-
+suppressed, 8 live at message granularity, **6 at TURN granularity**. Of those 6
+the row's adjectival shape is exactly **1**, and there are **ZERO true
+positives**. Four separating rules were built and killed. **DO NOT RE-PITCH a
+part-of-speech / noun-class / determiner narrowing of `CLAIM_PUSH`.**
+
+**THE PROCESS LESSON, and it repeated twice in one session: the verifier caught
+a FALSE JUSTIFYING SENTENCE in BOTH deliverables, and BOTH TIMES the truth was
+MORE FAVOURABLE than the claim.** RM-400's build wrote that the corpus held no
+backslash `run view --log` FETCH, so that half was unexercised - false;
+`42af2f7d` runs exactly one, its `ci_runs` goes 0 -> 1 under the fix, and its 31
+output lines carry a bare `28150 passed` with ZERO `EV_SUMMARY_LINE` matches, so
+the fence refused to credit it. That is a LIVE POSITIVE CONTROL sitting in the
+corpus. RM-401's refute wrote that both its named residuals are evasion-free -
+false for the `_negated` half. **Overstated ABSENCE of evidence is the recurring
+build-agent failure shape here, not overstated results.** Both corrections landed
+in the CODE COMMENT / row text, not only the commit message, and both were
+independently re-probed at merge before being written down.
+
+**MEASURED AND WORTH NOT REDISCOVERING: `_negated` on `CLAIM_PUSH` is ALREADY
+launderable today.** Against the shipped gate, "This is not a guess: I pushed all
+six commits to origin/main.", "Without further gating, I pushed the lane branch
+to origin." and "Nothing was left uncommitted, and I pushed main to origin." are
+ALL suppressed, while the bare "I pushed all six commits to origin/main." flags.
+Those are the exact RM-398 laundering phrases. So the "widen the 40-char window"
+residual is a laundering problem wearing a boundary-miss costume. Only the
+NON-GIT-IDIOM residual ("pushed back", "pushed today") is genuinely evasion-free.
+
+**A READING TRAP, now recorded: the sweep's `--tree` arm prints "PUSH HALTED" on
+the known byte-pinned exception, but `.githooks/pre-push` invokes `--pre-push`,
+which scores the DIFF.** This session's real push swept clean (11 files, 4 commit
+messages, armed with 4 name slots + 4 counterparty codes). Reading the tree
+banner as the push verdict would be a false alarm.
+
+**DDragon 16.18.1 (`d0f7ab74f`)** committed on its own, matching the
+16.11.1-16.17.1 precedent. Exactly 5 top-level JSONs track per version;
+`champion_detail/` + `_assets_manifest.json` are gitignored at
+`.gitignore:159-160`, which is why the dir read as fully untracked while only 5
+of its 179 files staged.
+
+**DO NOT REDO:** RM-397, RM-399, RM-400 SHIPPED. RM-398 PARTIAL with its
+mechanism refuted. RM-401 REFUTED as scoped. The sweep re-verification (exactly
+1 known finding) was run twice this session and has not moved.
+
+---
+
 # 2026-09-10b - RM-398 PARTIAL SHIPPED, and the row's own mechanism was REFUTED while its population claim survived
 
 Tier-1, operator AWAY: one tool module plus its test, docs. LEDGER 1384, shipped

@@ -2,7 +2,69 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, Q5-relay / gitignore-negation wrap (relocated `2026-09-10b` RM-398 partial; newest 3 = `2026-09-10e` Q5 relay + inert-negation fix, `2026-09-10d` RM-402 refuted, `2026-09-10c` RM-400 shipped / RM-401 refuted). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-11, RM-403/404/312 wrap (relocated `2026-09-10c` RM-400 shipped / RM-401 refuted; newest 3 = `2026-09-11a` stale-fallback + three silent failures, `2026-09-10e` Q5 relay + inert-negation fix, `2026-09-10d` RM-402 refuted). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-11a - the HAND-OFF PROMPT was the defect, and three silent failures shipped with guards
+
+**THE SESSION'S OWN FALLBACK WAS STALE, which is why RM-403 exists.** The 09-10e
+hand-off said: if RSC is still silent, pick up RM-387 or RM-388. RSC IS still
+silent (inbox newest from them remains `2026-09-09-2100`, checked FIRST as
+directed, and the JOINT RE-PIN stayed gated and untouched for the FOURTH session
+running). But RM-387 and RM-388 had BOTH SHIPPED on 2026-09-08, LEDGER 1368/1369,
+provable in source at `tools/inbox_responder_runner.py:1772` and `:976`. Second
+consecutive session opening on rediscovery - 09-10e was Q5. **The difference: no
+recall gate covers a stale FALLBACK, because ROADMAP was the instrument and
+ROADMAP was wrong.** So the answer was a machine check, not a doc edit.
+
+**THREE ITEMS SHIPPED, ALL THE SAME FAILURE MODE IN DIFFERENT COSTUMES - nothing
+announced itself.**
+
+- **RM-403** (`8895793d9`, filings `dd0a2f3b0`, LEDGER 1388) - ROADMAP and BACKLOG
+  could disagree about whether a row was OPEN and nothing checked. FOUR rows were
+  drifted (RM-250 / RM-291 / RM-387 / RM-388), each corroborated TWICE, by a
+  LEDGER entry AND a code probe. Guard `tests/test_roadmap_backlog_disposition_drift.py`.
+  **The binding rule is the whole substance:** a disposition binds to the NEAREST
+  PRECEDING id only. Two live controls are pinned - `RM-281 HALF-CLOSED + RM-283
+  OPEN` (the OPEN belongs to RM-283) and RM-204, whose first vocabulary hit sits
+  in lowercase prose. A first parser called RM-204 a fifth drift row and was
+  NARROWED, never allowlisted. Do not widen it.
+- **RM-404** (`2ca7bb66c`, LEDGER 1389) - **4 of 5 printed `schtasks` commands were
+  broken and the failure is SILENT**: PowerShell reports errors=0 and splits the
+  block into 2 statements, running `schtasks /Create` WITHOUT its `/TR` payload.
+  `tools/liveclient_relay.py:14` measured FINE and was deliberately left alone.
+  Repaired with `Register-ScheduledTask`; **do NOT hand-fix the caret escaping.**
+- **RM-312** (`3e5451ff3`, LEDGER 1390) - `dashboard/_lcu_inprocess.py` swallowed
+  every L3 fault with NO logger in the module at all. Row was ACCURATE, not stale.
+  Now throttled WARNING; contract unchanged; **`str(exc)` never emitted** because
+  the repo is PUBLIC and LCU payloads carry PUUIDs.
+
+**THE RECURRING SHAPE THIS SESSION, worth carrying forward: a build agent's FIX
+was right while its JUSTIFICATION was wrong.** RM-312's "1 Hz hot path" was
+inherited from a STALE COMMENT (`routes_state.py:210` says 1.0s TTL); the real
+cadence is `RC_STATE_CADENCE_SEC` default 0.5s (~2 Hz), and the path is **DARK**
+today - `_state_builder.py:92` gates it on `RC_LCU_INPROCESS`, which is unset.
+RM-404's builder reported 9/9 red with one message when only 8 carried it. Both
+corrected in the shipped artifacts, not just in chat.
+
+**ANTI-VACUITY WAS PROVEN, NOT ASSERTED, on every guard** - stubbing RM-403's
+parser empty turns 15 arms red; RM-312's arm went red alone under a mutated
+short-circuit. A guard asserting an empty set passes forever once the docs are fixed.
+
+**CI TRAP, now measured: two `ci` runs this session read `cancelled`, which is
+SUPERSESSION, not failure** - each was killed by the next push. Only the final
+HEAD's run is authoritative. `3e5451ff3` is green on BOTH `ci` and `docs-guards`.
+
+**INBOUND: three LW notes read, none requiring a reply.** LW refuted the
+shared-conftest premise on a SECOND tree (now dead, not merely retracted), and
+repaired their own 43 false-RED sites to 0. Their 00:30 note disclosed a published
+`schtasks` line that did not work - **that is where RM-404 came from.** The rule:
+an arm proving a command is not executed says nothing about whether it is correct.
+
+**DO NOT REDO:** RM-403, RM-404, RM-312 SHIPPED. RM-387/RM-388 shipped 2026-09-08.
+RM-313 deliberately OPEN. The joint re-pin is still BLOCKED on RSC - do not re-pin
+unilaterally and do not regenerate digests from local disk.
 
 ---
 
@@ -107,77 +169,3 @@ and pytest reports files missing that exist - pipe through `tr -d '\r'`.
 (3) A `Monitor` watching CI emitted NOTHING for 30 minutes and timed out while
 both jobs actually SUCCEEDED; its own filter failed silently. Silence from a
 monitor is not success - query the SHA directly.
-
----
-
-# 2026-09-10c - RM-400 SHIPPED and RM-401 REFUTED, and the verifier caught a FALSE SENTENCE in BOTH deliverables
-
-Tier-1, operator AWAY: one tool module plus its test, one BACKLOG row, one data
-snapshot. LEDGER 1385. Pushed `085236cf3..9d290f99e`, CI GREEN both workflows
-(`ci` 16m46s, `docs-guards` 2m19s), observed this run.
-
-**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM.** RSC's inbox
-is silent: newest file `2026-09-09-2100-from-RSC`, zero files dated 2026-09-10 or
-later. Do not re-pin unilaterally.
-
-**EVERY NUMBER HERE WAS MEASURED OVER A FROZEN 92-TRANSCRIPT CORPUS COPY.** The
-live directory holds the running session's own growing transcript. Baseline was
-RE-DERIVED at `085236cf3` rather than inherited: 31 findings, `count_mismatch`
-23, `ci_claim_without_probe` 3, `full_suite` 2, `file_claim` 1, `hook_bypass` 1,
-`commit_claim` 1, **`push_claim_without_push` 0**.
-
-**RM-400 SHIPPED (`7f2fc529e`).** `_QUOTED_EXE`'s directory group ended on
-`[\/]`, which inside a character class is a forward slash and nothing else - the
-escape is inert there. Fix is one character class, `[\\/]`. MEASURED 31 -> 28,
-**3 removed, 0 added**, verifier-re-derived from both sides; all three are
-`ci_claim_without_probe` in `653d2ee9`, which probed CI seven times via quoted
-backslash paths and was told it never probed.
-
-**RM-401 REFUTED AS SCOPED (`06f375c46`), no code.** A finding-level delta is
-UNAVAILABLE - `did_push` is true by the END of any session that pushed, so
-`push_claim_without_push` is 0 corpus-wide and no narrowing can move it. Scored
-at the pattern level instead: **428 matches across 69 of 92 sessions; 19 sessions
-have no push evidence and NONE of the 19 utters the word**, which is the whole
-explanation of the zero. 16 candidates precede any push, 8 already `_negated`-
-suppressed, 8 live at message granularity, **6 at TURN granularity**. Of those 6
-the row's adjectival shape is exactly **1**, and there are **ZERO true
-positives**. Four separating rules were built and killed. **DO NOT RE-PITCH a
-part-of-speech / noun-class / determiner narrowing of `CLAIM_PUSH`.**
-
-**THE PROCESS LESSON, and it repeated twice in one session: the verifier caught
-a FALSE JUSTIFYING SENTENCE in BOTH deliverables, and BOTH TIMES the truth was
-MORE FAVOURABLE than the claim.** RM-400's build wrote that the corpus held no
-backslash `run view --log` FETCH, so that half was unexercised - false;
-`42af2f7d` runs exactly one, its `ci_runs` goes 0 -> 1 under the fix, and its 31
-output lines carry a bare `28150 passed` with ZERO `EV_SUMMARY_LINE` matches, so
-the fence refused to credit it. That is a LIVE POSITIVE CONTROL sitting in the
-corpus. RM-401's refute wrote that both its named residuals are evasion-free -
-false for the `_negated` half. **Overstated ABSENCE of evidence is the recurring
-build-agent failure shape here, not overstated results.** Both corrections landed
-in the CODE COMMENT / row text, not only the commit message, and both were
-independently re-probed at merge before being written down.
-
-**MEASURED AND WORTH NOT REDISCOVERING: `_negated` on `CLAIM_PUSH` is ALREADY
-launderable today.** Against the shipped gate, "This is not a guess: I pushed all
-six commits to origin/main.", "Without further gating, I pushed the lane branch
-to origin." and "Nothing was left uncommitted, and I pushed main to origin." are
-ALL suppressed, while the bare "I pushed all six commits to origin/main." flags.
-Those are the exact RM-398 laundering phrases. So the "widen the 40-char window"
-residual is a laundering problem wearing a boundary-miss costume. Only the
-NON-GIT-IDIOM residual ("pushed back", "pushed today") is genuinely evasion-free.
-
-**A READING TRAP, now recorded: the sweep's `--tree` arm prints "PUSH HALTED" on
-the known byte-pinned exception, but `.githooks/pre-push` invokes `--pre-push`,
-which scores the DIFF.** This session's real push swept clean (11 files, 4 commit
-messages, armed with 4 name slots + 4 counterparty codes). Reading the tree
-banner as the push verdict would be a false alarm.
-
-**DDragon 16.18.1 (`d0f7ab74f`)** committed on its own, matching the
-16.11.1-16.17.1 precedent. Exactly 5 top-level JSONs track per version;
-`champion_detail/` + `_assets_manifest.json` are gitignored at
-`.gitignore:159-160`, which is why the dir read as fully untracked while only 5
-of its 179 files staged.
-
-**DO NOT REDO:** RM-397, RM-399, RM-400 SHIPPED. RM-398 PARTIAL with its
-mechanism refuted. RM-401 REFUTED as scoped. The sweep re-verification (exactly
-1 known finding) was run twice this session and has not moved.
