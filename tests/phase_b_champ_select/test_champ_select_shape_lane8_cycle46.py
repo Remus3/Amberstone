@@ -22,7 +22,7 @@ WHY A RAISE IS EXPENSIVE HERE, AND WHY IT IS INVISIBLE
 ------------------------------------------------------
 Neither caller lets the exception surface:
 
-* ``dashboard/_lcu_inprocess.py:255-257`` catches ``Exception`` and returns
+* ``dashboard/_lcu_inprocess.py:260-262`` catches ``Exception`` and returns
   ``None``, so the in-process L3 path falls back to the ``:8889`` relay hop
   that L3 exists to remove. RM-312 (2026-09-11) added a throttled WARNING on
   that degrade, so this half is no longer SILENT - but the payload for that

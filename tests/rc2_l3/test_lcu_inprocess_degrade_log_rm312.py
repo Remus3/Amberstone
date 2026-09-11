@@ -30,7 +30,7 @@ This guard pins the SIGNAL without touching the contract:
     NOT the 1.0 s the TTL comment at :210 states, which is stale prose this
     test deliberately does not repeat. At 2 Hz an unthrottled persistent fault
     is on the order of 7000 WARNING lines an hour.
-    Note the call itself is DARK today: ``_state_builder.py:92`` gates it on
+    Note the call itself is DARK today: ``_state_builder.py:173`` gates it on
     ``RC_LCU_INPROCESS == "1"`` and that variable is unset, so this is the
     cadence the path assumes WHEN FLIPPED, not traffic it carries now.
 
@@ -47,17 +47,20 @@ Spies here are RECORDING, never raising: an ``AssertionError`` IS an
 
 API surface, RE-DERIVED after the RM-312 edit landed - the fix moved every
 offset in this module, so the pre-edit numbers this block first carried were
-all stale (``feedback_your_own_edit_staled_the_citation``):
-  * ``lcu_summary_inprocess``        dashboard/_lcu_inprocess.py:232
-  * ``_log_degrade``                 dashboard/_lcu_inprocess.py:127
-  * ``_get_client``                  dashboard/_lcu_inprocess.py:158
+all stale (``feedback_your_own_edit_staled_the_citation``). RE-DERIVED AGAIN
+under RM-405, which added 5 comment lines to ``_lcu_inprocess`` at :110 and 83
+lines to ``_state_builder`` near its top - the same failure class arriving a
+second time from a NEIGHBOURING slice rather than from this file's own edit:
+  * ``lcu_summary_inprocess``        dashboard/_lcu_inprocess.py:237
+  * ``_log_degrade``                 dashboard/_lcu_inprocess.py:132
+  * ``_get_client``                  dashboard/_lcu_inprocess.py:163
   * ``shape_snapshot`` (module ref)  dashboard/_lcu_inprocess.py:76
-  * ``_read_relay_snapshot``         dashboard/_lcu_inprocess.py:190
-  * ``_reset_client_for_tests``      dashboard/_lcu_inprocess.py:260
-  * ``_expire_degrade_log_for_tests`` dashboard/_lcu_inprocess.py:290
-  * ``client._port`` read            dashboard/_lcu_inprocess.py:173, :249, :252
+  * ``_read_relay_snapshot``         dashboard/_lcu_inprocess.py:195
+  * ``_reset_client_for_tests``      dashboard/_lcu_inprocess.py:265
+  * ``_expire_degrade_log_for_tests`` dashboard/_lcu_inprocess.py:295
+  * ``client._port`` read            dashboard/_lcu_inprocess.py:178, :254, :257
   * logger name "rc.web_dashboard"   dashboard/_lcu_inprocess.py:78,
-                                     dashboard/_state_builder.py:41
+                                     dashboard/_state_builder.py:42
 
 All authored content here is 7-bit ASCII.
 """

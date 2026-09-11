@@ -373,7 +373,7 @@ class TestDegenerateSessions(unittest.TestCase):
         # positionSwaps / actions entries to be DROPPED, not raised - the
         # same function, the same class of input, the opposite policy. And
         # the raise was never observable: both callers swallow it
-        # (dashboard/_lcu_inprocess.py:255-257 returns None - silently until
+        # (dashboard/_lcu_inprocess.py:260-262 returns None - silently until
         # RM-312 added a throttled WARN there on 2026-09-11;
         # tools/lcu_agent.py:1612 loses the snapshot for the tick and is
         # still silent), so it deleted the whole champ-select payload
