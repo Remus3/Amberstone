@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-402** (2026-09-10, moved at the RM-400/RM-401 filing).
+  Next free id = **RM-403** (2026-09-10, moved at the RM-402 filing).
+  **RM-402 was allocated 2026-09-10** (LEDGER 1385), filed under BACKLOG
+  "Reliability / hardening", taking no roster checkbox and not changing the
+  Summary count: the NON-GIT-IDIOM sense of "pushed" in `CLAIM_PUSH`, which is
+  the ONLY residual the RM-401 refute left standing. RM-401 itself closed
+  REFUTED the same day - do not read this row as a re-pitch of it, and do not
+  let it drag in the `_negated` window half, which was measured to be RM-398
+  laundering rather than a boundary miss. Id taken from THIS pin, and
+  `tools/rm_id_registry.py` reported it free across all 7 scanned docs before
+  minting.
+  Earlier next-free pointer (2026-09-10, moved at the RM-400/RM-401 filing).
   **RM-400 and RM-401 were allocated 2026-09-10** (LEDGER 1384), both filed
   under BACKLOG "Reliability / hardening", neither taking a roster checkbox nor
   changing the Summary count. Both are `tools/stop_claim_gate.py` defects found
