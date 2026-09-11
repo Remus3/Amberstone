@@ -1,125 +1,38 @@
 NEXT SESSION
 ------------
-Task: RSC's reply on the JOINT RE-PIN is STILL the gating item and was still
-  unanswered at 2026-09-10 end-of-session (newest inbox file is
-  2026-09-09-2100-from-RSC; zero files dated 2026-09-10 or later). A two-word
-  sibling project name sits at tests/test_loop_concurrency.py:492, INSIDE the
-  SHARED_SHA256 byte-identical block (lines 474-539), split across a
-  comment-continuation line wrap. It is NOT contiguous in the raw blob, so every
-  whole-token sweep ever run here reported it clean. RC cannot fix it alone:
-  re-pinning is a JOINT act and digests are never regenerated from local disk.
-  Read moon_sync_inbox/ FIRST. If they still have not replied, do NOT touch that
-  file and do NOT re-pin.
+Task: Check the cross-repo inbox FIRST. The JOINT RE-PIN of SHARED_SHA256 is
+      still the gating item, third session running - RSC has been silent since
+      moon_sync_inbox/2026-09-09-2100-from-RSC. If they have replied, execute
+      the joint re-pin (never unilaterally, never regenerate digests from local
+      disk, byte-level copy only). If they are still silent, pick up RM-387 or
+      RM-388 from ROADMAP NOW instead.
 
-  FOLD INTO THE SAME RE-PIN: tests/test_loop_concurrency.py:44 splits
-  RC_MOON_SYNC_REPOS on a bare os.pathsep. On POSIX that is ':', and a
-  drive-letter path contains one, so a Windows path list shatters into
-  fragments. Fixed in tools/sibling_name_sweep.py by split_repo_list
-  (54a9d5736); the copy in test_loop_concurrency.py is LATENT and is in the
-  byte-pinned block, so do NOT fix it unilaterally.
-  tools/moon_sync_poller.py:101 has the same split and is deliberately left
-  alone - Windows-only in practice, fragments become paths.
+Context: moon_sync_inbox/ (read RC's own; newest first) - the pinned pair is
+      ops/loop/slots.py + ops/loop/winmutex.py, pinned by SHARED_SHA256 at
+      tests/test_loop_concurrency.py:474, parametrised at :542. The fifth
+      sibling-name escape sits INSIDE that block at :492 as a two-word name
+      split across a comment line wrap, shipped as a known named VISIBLE
+      exception at tools/sibling_name_sweep.py:112. Live state: RC pid alive,
+      mode=client, LCU Offline. Probe ops/runtime/health.json and
+      https://127.0.0.1:8888/api/state before assuming anything.
 
-  The sweep was re-verified TWICE on 2026-09-10 from the repo root:
-  EXACTLY 1 finding, the KNOWN byte-pinned site, reported not suppressed.
-  629892309 bytes over 4726 files, 482 binary/LFS blobs not content-scanned.
-  Anything OTHER than that one finding is new and must be triaged before a push.
-
-  A READING TRAP measured 2026-09-10 and worth carrying: the `--tree` arm prints
-  "SIBLING-NAME SWEEP: PUSH HALTED" on that KNOWN exception, but
-  .githooks/pre-push invokes `--pre-push`, which scores the DIFF, not the tree.
-  The real push that session swept CLEAN (11 files, 4 commit messages, armed
-  with 4 name slots + 4 counterparty codes). Do not read the tree banner as the
-  push verdict - it is a false alarm, and acting on it would stall a good push.
-
-Next non-gated work. BOTH previously-filed stop_claim_gate rows are now CLOSED
-  (RM-400 shipped, RM-401 refuted), so this is genuinely open ground:
-  - RM-402 IS FILED AND OPEN (2026-09-10, BACKLOG "Reliability / hardening"):
-    the NON-GIT-IDIOM sense of "pushed" - "pushed back correctly on one of my
-    own", a third-party repo listing's "250044 stars / 37627 forks / pushed
-    today". 2 of the 6 live false positives. It no longer needs filing; read
-    its SCOPE FENCE before starting. Two things that fence exists to stop: it
-    must not touch the _negated window, and it must not reopen RM-401 under a
-    new number. The row does NOT assert the class is evasion-free - it names
-    the attack to measure first ("pushed back to origin/main" as a deliberate
-    evasion of any idiom exclusion list), because asserting evasion-freedom is
-    what measurement refuted twice on 2026-09-10. Re-open the two cited
-    sentences yourself: they were hand-opened by a build agent and a verifier,
-    not by the merger.
-  - DO NOT take the other residual the RM-401 writeup named. The `_negated`
-    WINDOW defect (a negation ending exactly 40 chars before the match) LOOKS
-    like a one-character boundary miss and is NOT. MEASURED against the shipped
-    gate: "This is not a guess: I pushed all six commits to origin/main.",
-    "Without further gating, I pushed the lane branch to origin." and "Nothing
-    was left uncommitted, and I pushed main to origin." are ALL suppressed
-    TODAY, while the bare "I pushed all six commits to origin/main." flags.
-    Those are the exact RM-398 laundering phrases. Widening the window strictly
-    ENLARGES that surface. The refute's own first writeup called this
-    evasion-free and was corrected before merge; do not un-correct it.
-  - RM-398's only OPEN remainder is the CI-LOG PATTERN MISS residue not covered
-    by its FIX 2. RE-DERIVE it - do not inherit a count from that block, and
-    note RM-400 has since moved the CI-log surface.
-
-Context:
-  - CLAUDE.md "Session Default" holds the adopted boundary. The push half gates
-    on DIFF CONTENT, not destination. An ordinary push that passes the suites
-    and the sweep does not halt.
-  - ops/moon_sync_repos.json is gitignored per-host config and the ONLY thing
-    resolving a code to a real name. Absent in a fresh clone and in CI, where
-    the sweep runs DEGRADED and says so.
-  - MEASURING ANYTHING over the transcript corpus requires FREEZING it to a
-    scratch copy first - the live directory holds the running session's own
-    growing transcript, so a before/after there compares two different corpora.
-    93 live files minus the running one = 92 frozen on 2026-09-10.
-  - RE-DERIVE THE BASELINE, never inherit it. At 085236cf3 over the 92-file
-    frozen corpus: 31 findings - count_mismatch 23, ci_claim_without_probe 3,
-    full_suite_claim_over_filtered_run 2, file_claim_without_edit 1,
-    hook_bypass 1, commit_claim_without_commit 1, push_claim_without_push 0.
-    RM-400 moved that to 28. A harness pattern that works:
-    gate.audit(gate.collect_evidence(gate.read_transcript(path))) per file.
-  - `_negated` is a NESTED function inside `audit` (tools/stop_claim_gate.py:444)
-    and is NOT importable. A probe must transcribe it, not import it.
-
-THE PROCESS LESSON FROM 2026-09-10c, which cost two corrections in one session:
-  A verifier caught a FALSE JUSTIFYING SENTENCE in BOTH deliverables, and BOTH
-  TIMES the truth was MORE FAVOURABLE than the claim. RM-400's build wrote that
-  the corpus held no backslash `run view --log` FETCH; session 42af2f7d runs one,
-  its ci_runs goes 0 -> 1 under the fix, and its output has ZERO
-  EV_SUMMARY_LINE matches against a bare `28150 passed` - a LIVE POSITIVE
-  CONTROL for the fence, not an absence. RM-401's refute wrote that both its
-  residuals were evasion-free. OVERSTATED ABSENCE OF EVIDENCE is the recurring
-  build-agent failure shape here, not overstated results. When a build says
-  "unexercised by this evidence" or "no such case exists in the corpus", PROBE
-  IT - that sentence is where the errors live. And correct it in the CODE
-  COMMENT or row text, not only the commit message.
+Acceptance: either both trees hash equal after a JOINT re-pin (both hashing
+      equal IS the acceptance, not a note claiming it), or a named RM row
+      shipped with a red-before-green guard and CI green on both workflows.
 
 Do NOT redo:
-  - RM-397 SHIPPED (e518786e2). RM-399 SHIPPED (a715baf58).
-  - RM-400 SHIPPED (7f2fc529e): _QUOTED_EXE `[\/]` -> `[\\/]`, 31 -> 28
-    findings, 3 removed / 0 added, verifier-re-derived from both sides.
-  - RM-401 REFUTED AS SCOPED (06f375c46), no code. 428 CLAIM_PUSH matches over
-    69 of 92 sessions; 19 sessions have no push evidence and NONE utters the
-    word, which is why push_claim_without_push is 0 corpus-wide. 6 live false
-    positives at TURN granularity, the row's adjectival shape is exactly 1 of
-    them, ZERO true positives. Four separating rules built and killed (noun
-    allowlist, citation-marker position, ls-remote-backed evidence,
-    first-person-subject - the last silences 90 percent of the population).
-    DO NOT RE-PITCH a part-of-speech / noun-class / determiner narrowing.
-  - RM-398 is PARTIAL SHIPPED (271d69a53) and its MECHANISM IS REFUTED. No
-    RED-state discriminator. Do NOT re-pitch crediting subagent transcripts
-    (12 of 12 are relays, 3 later retracted, it is the largest TRUE-POSITIVE
-    class) or `_negated` reuse for CLAIM_COUNT (shipped, refuted, closed).
-  - Do NOT "simplify" the RM-398 space-grouped skip back to a shape-only test.
-    Two tests kill that mutant.
-  - The four sibling-name redactions are done at HEAD (f6cf005bb). Publication
-    is NOT undone and no history rewrite was performed. Do not re-file that as
-    a new leak, and do not claim it is fixed.
-  - DDragon 16.18.1 is COMMITTED (d0f7ab74f). The working tree was clean at
-    wrap. Exactly 5 top-level JSONs track per version - champion_detail/ and
-    _assets_manifest.json are gitignored at .gitignore:159-160, which is why a
-    fresh version dir reads as fully untracked while only 5 of ~179 files stage.
-  - Do NOT dispatch a CI run by hand (RM-157). The push IS the full suite.
-    2026-09-10c pushed 085236cf3..9d290f99e; ci 16m46s and docs-guards 2m19s
-    both completed SUCCESS.
+  - Q5. Answered and CLOSED 2026-09-08 (RM-389, LEDGER 1370) and RELAYED to LW
+    on 2026-09-10 (sha 46a00569). It only looked open because the operator's
+    own 2026-09-08 standby narrowing kept it out of LW's tree.
+  - The _archive/ and 101qq_*_capture_* gitignore rules. Both are DELIBERATE
+    and carry their own explanatory comments; 341 of the 342 ignored-tracked
+    hits are those two. Only agents/state/ was a real defect and it is fixed
+    (5f3555ec4) with a guard at tests/test_gitignore_negations_are_effective.py.
+  - Arming any responder. Nobody's is armed - LW's is built and deliberately
+    disarmed (D5), RC's RC-InboxResponder is Ready/disarmed. Arming is an
+    operator act.
+  - CS and LL notes. Both still on standby as far as RC knows; nothing was
+    written into their trees and nothing should be without operator approval.
 
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      git log + ROADMAP.md.

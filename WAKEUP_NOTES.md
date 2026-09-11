@@ -2,7 +2,48 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-402 refute wrap (relocated `2026-09-10a` RM-399; newest 3 = RM-402 refuted + RM-398 residue re-derived `2026-09-10d` + RM-400 shipped / RM-401 refuted `2026-09-10c` + RM-398 partial `2026-09-10b`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, Q5-relay / gitignore-negation wrap (relocated `2026-09-10b` RM-398 partial; newest 3 = `2026-09-10e` Q5 relay + inert-negation fix, `2026-09-10d` RM-402 refuted, `2026-09-10c` RM-400 shipped / RM-401 refuted). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-10e - the Q5 ask was REDISCOVERY, and the ignored-tracked probe found ONE real defect in 342 hits
+
+Tier-1, operator PRESENT. One `.gitignore` line plus a new guard test, shipped
+as `5f3555ec4`, pushed `df58efa7e..5f3555ec4`. Plus one note DELIVERED to LW.
+
+**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM, THIRD SESSION
+RUNNING.** RSC silent since `2026-09-09-2100`; CS and LL silent. Do not re-pin.
+
+**RE-ARM STATUS, since the operator expected one: PARTIAL AND NOT AS EXPECTED.**
+LW re-armed as a CORRESPONDENT only - standby lifted 2026-09-10, two notes filed.
+Its responder is BUILT and DELIBERATELY NOT ARMED (registering the task is D5).
+RC's is `Ready`/disarmed too. **Nobody's responder is armed.**
+
+**Q5 WAS ALREADY ANSWERED AND CLOSED - RM-389, LEDGER 1370, 2026-09-08.** Writing
+a fresh answer would have been pure rediscovery; the recall gate earned its keep.
+**The cause of LW reading it as open is in OUR record:** the operator narrowed the
+exchange to RC <-> RSC only that day and put CS/LW/LL on standby, so RC's answer
+was never written into LW's tree. Relay DELIVERED 2026-09-10 with operator
+approval (sha `46a00569`, 4545 bytes, sibling sweep clean, 4 name slots armed).
+CS and LL deliberately NOT written to - still on standby as far as we know.
+
+**IGNORED-TRACKED PROBE (LW finding 5.3) RUN ON RC: 342 of 4726 tracked files sit
+under an ignore rule, and 341 are ALREADY DOCUMENTED AND DELIBERATE.** `_archive/`
+carries its own TRAP comment plus the `git mv` ritual; the 101qq block says
+outright that listing a tracked file does not untrack it. Reporting those as
+findings would have been three false MUST-FIX. **The one real defect:**
+`!agents/state/resolved_decisions.json` was INERT - git cannot re-include a file
+whose PARENT DIRECTORY is excluded. Fixed to `agents/state/*`; probe 342 -> 341,
+nothing else exposed. The other two negations were checked and are effective.
+
+**INSTRUMENT TRAP, cost one wrong table:** `git check-ignore -v` exits 0 on a
+NEGATION match too, so `-v` output conflates "ignored" with "matched". Only the
+bare `check-ignore -q` exit code answers the question. My first spot-check table
+was wrong in every row; the 342 corpus count survived re-derivation unchanged.
+
+**DO NOT REDO:** Q5 (closed, and now relayed). The `_archive/` and 101qq ignore
+rules (deliberate, documented). An RM row for the negation - operator chose fix
+over file, and it shipped with a red-before-green guard.
 
 ---
 
@@ -140,80 +181,3 @@ of its 179 files staged.
 **DO NOT REDO:** RM-397, RM-399, RM-400 SHIPPED. RM-398 PARTIAL with its
 mechanism refuted. RM-401 REFUTED as scoped. The sweep re-verification (exactly
 1 known finding) was run twice this session and has not moved.
-
----
-
-# 2026-09-10b - RM-398 PARTIAL SHIPPED, and the row's own mechanism was REFUTED while its population claim survived
-
-Tier-1, operator AWAY: one tool module plus its test, docs. LEDGER 1384, shipped
-as `271d69a53`. The gate was already armed, so nothing outward changed.
-
-**EVERY NUMBER HERE WAS MEASURED OVER A FROZEN 91-TRANSCRIPT CORPUS COPY, and
-that is not a detail.** The live transcript directory holds the RUNNING session's
-own growing transcript, so a before/after comparison over it compares two
-different corpora. Carry that trap into every future pass over this corpus.
-
-**TWO PARSER FIXES, both to `tools/stop_claim_gate.py`.** FIX 1: `CLAIM_COUNT`
-read `10 856 passed` as prefix `10` plus count `856` and flagged `claimed=856`, a
-string never in the prose, while the true `10856` sat in `observed_counts`. **Its
-FIRST version was REFUTED BY MEASUREMENT** - dropping any 1-3 digit prefix plus a
-comma-free 3-digit count silenced `lane 8 328 passed`, `run 2 654 passed`,
-`12 999`, `123 999` and `0 000` against an observed `1397`, making every 3-digit
-suite total unflaggable whenever a small number preceded it. Shipped form is
-evidence-derived: suppress only when `prefix + count` is ITSELF in
-`observed_counts`, so the evader would have to be telling the truth. Two tests
-kill the blanket-drop mutant. FIX 2: `EV_CI_LOG` demanded a literal `gh` token
-while `EV_CI` in the same file already wrote `gh(?:\.exe)?`, and RC's prescribed
-quoted-absolute-path form strips to basename `gh.exe`, whose `.` broke
-`\bgh\s+run`. It WIDENS belief, so the summary-line restriction was verified by
-call path and fenced by a test.
-
-**MEASURED, verifier-re-derived: `count_mismatch` 28 -> 23, 5 removed, 0 added,
-removed set a strict SUBSET of the 6 predicted, perfectly additive.** FIX 1
-removes 2 (the `856` artifact in `c4bf4a1a`), FIX 2 removes 3 (`274b84bc` x2,
-`958c1483`). **FIX 2 was predicted to remove 4 and removed 3** - the verifier
-refuted the prediction, `42af2f7d` correctly survives because its claimed `28150`
-is not on a summary line in the fetched log. Do not carry the 4 forward. Suite:
-`94 passed`.
-
-**THE HEADLINE IS THAT RM-398'S OWN MECHANISM IS REFUTED.** `observed_counts`
-applies `EV_PASSED` to run output with NO green/red filter: an adjudicator
-measured 1354 paired runs, 347 with a nonzero `N failed`, and 312 of those had
-their `N passed` harvested normally (the 35 that did not are runs where nothing
-passed). **0 of 28 findings are caused by red-ness; a RED-state discriminator is
-not the fix.** **But the POPULATION CLAIM SURVIVES, and the probe's counter-
-headline "the RED-state population is ZERO" is itself REFUTED** - at least 9 of
-the 28 do assert their count in an explicitly non-green state. The row had the
-SHAPE right and the CAUSE wrong: the cause is invisibility of the run.
-**Measured causes of the 28:** SUBAGENT-INVISIBLE 12, CI-LOG PATTERN MISS 4,
-FILE-ONLY / prior-session recital 7, SPACE-GROUPED 2, UNRECOGNISED RUNNER 1,
-NEGATED/RETRACTED 1, TRUE POSITIVE by design 1.
-
-**DO NOT RE-PITCH crediting subagent transcripts.** An adjudicator opened all 12
-SUBAGENT-INVISIBLE findings: **12 relay / 0 independent parent re-run**, and
-THREE were later RETRACTED by the authoring session as wrong (`17e9bb48` 18226,
-`39bc4be6` 18953 branch-local, `1131adbe` 10722 stale). The proposal's own guard
-- credit only paired run output - does not help, because each of those WAS a real
-paired subagent run. It is the LARGEST TRUE-POSITIVE class in the corpus, and
-crediting it would suppress true positives against CLAUDE.md Verification
-Discipline. The narrowed variant INVERTS the incentive - it silences a
-mis-attributed "Measured this run" while still flagging the corpus's most honest
-phrasing. **DO NOT RE-PITCH `_negated` reuse for `CLAIM_COUNT` either**: already
-shipped once, refuted for laundering phrases, third version closed as a dead end.
-
-**FILED, NOT FIXED, and the reason is a conflict of interest worth remembering:**
-RM-400 (`_QUOTED_EXE` at `:285` accepts only a forward-slash directory, so a
-quoted backslash `gh.exe` is invisible to both `EV_CI_LOG` and `EV_CI`;
-pre-existing at HEAD, untouched by this diff) and RM-401 (`CLAIM_PUSH` at `:131`
-matches an adjectival "pushed"). **RM-401 flagged THIS session twice, which is
-exactly why this session is not the one to patch it** - the session a gate flags
-is the worst-placed one to narrow that gate.
-
-**LEAVE ALONE, adjudicator-agreed:** the 7 file-only / prior-session recitals,
-the 1 workflow-comment recital, the 1 unrecognised runner. Every "fix" widens
-evidence toward "a number that appeared somewhere", which is the poisoning that
-wrecked the first armed session.
-
-**DO NOT REDO:** RM-397 SHIPPED, RM-399 SHIPPED, RM-398 PARTIAL SHIPPED with its
-mechanism refuted and two proposals refused. The JOINT RE-PIN for the fifth
-sibling-name escape is still AWAITING RSC's reply - do not re-pin unilaterally.
