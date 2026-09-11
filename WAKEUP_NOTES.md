@@ -105,12 +105,29 @@ it is still not the main thread's own measurement. All headline figures were
 then re-run in the main thread and matched exactly: 359 + 348 = 707 uncovered
 tests, 19 on the new guard, 192 / 21716 deselected / 56 subtests widened, ruff
 clean on 8 files. The `ci.yml:165` + `:537` "neither CI tree" half was likewise
-re-derived by hand rather than inherited. ONE claim was RETRACTED rather than
-re-run: the docs slice's "md-guards 1782 passed" came from a bespoke module
-selection that cannot be reproduced from the prose, and it was never
-load-bearing - CI green on the final HEAD is the stronger evidence and was
-verified directly. Next session: run the numbers you intend to PRINT before you
-print them, or attribute them to the agent that ran them.
+re-derived by hand rather than inherited.
+
+ONE figure was first retracted as unreproducible and then turned out to be both
+reproducible AND WRONG. The docs slice reported `md-guards 1782 passed`. The
+selection is NOT bespoke - `tools/md_guard_selector.py` is a tracked CLI that
+emits it, and `tests/test_ci_docs_guard_coverage.py:56` already names it. Run
+fresh at HEAD `c7c7247b2`: **65 modules, 1777 passed, 1 skipped, 327 subtests in
+149.86s**. The filed number was over by 5. Calling it unreproducible was the
+LAZIER error of the two - the selector was one grep away, and running it is what
+exposed the bad count.
+
+**CRLF TRAP, worth more than the count.** The first invocation piped the
+selector's output straight into pytest and printed `no tests ran in 0.05s` with
+**exit code 0**. The selector's stdout carries `\r`, so every path was malformed,
+pytest matched nothing, and the run reported SUCCESS. A CI step shaped that way
+is silently always-green over zero tests - the `INDEX_testing_traps`
+empty-enumeration class, arriving through line endings rather than through a
+guard. `tr -d '\r'` fixes it. Anyone wiring the orphan suites (the fallback
+below) will be composing exactly this shape: assert a NONZERO collected count,
+never just an exit code.
+
+Next session: run the numbers you intend to PRINT before you print them, or
+attribute them to the agent that ran them.
 
 **DO NOT REDO:** RM-405, RM-403, RM-404, RM-312 all SHIPPED. RM-387 / RM-388
 shipped 2026-09-08. RM-313 deliberately OPEN. A general bare-`except Exception`
