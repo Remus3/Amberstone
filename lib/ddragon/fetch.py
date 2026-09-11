@@ -33,7 +33,14 @@ logger = logging.getLogger("lib.ddragon")
 def _atomic_write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+    # Bytes, not write_text - this writes the same TRACKED, eol=lf-pinned files
+    # as tools/ddragon_mirror_refresh._atomic_write_json, where write_text put
+    # CRLF on disk while git's index normalization kept `git status` clean. The
+    # compact separators leave no LF in today's payload, so this is byte-for-byte
+    # identical now; it is the writer, not the current payload, that has to be
+    # safe, because adding an `indent=` here would silently reintroduce the
+    # defect against files nothing would flag as dirty.
+    tmp.write_bytes(json.dumps(data, separators=(",", ":")).encode("utf-8"))
     os.replace(tmp, path)
 
 
