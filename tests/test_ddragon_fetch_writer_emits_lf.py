@@ -31,9 +31,15 @@ asserts NONE of the following five:
      See ``test_compact_separators_emit_no_literal_newline``.
   3. The ``indent=2`` positive control, which measures 20 CRLF pairs on this
      machine against the real writer's 0.
-  4. The no-surviving-``.tmp`` assertion.
+  4. The no-surviving-``.tmp`` assertion on the SUCCESS path.
   5. The ``os.replace``-raises fault injection, proving a pre-existing target
-     keeps its bytes when the swap fails.
+     keeps its bytes when the swap fails. The injection is DESTINATION-SCOPED
+     and carries a control assertion inside its own armed window - see that
+     test's docstring for why an unscoped shim is a process-wide hazard.
+  6. A zero-patching arm that induces a REAL ``os.replace`` failure, plus the
+     CHARACTERIZED (not endorsed) finding that the ``.tmp`` sibling LEAKS on
+     the failure path because ``lib/ddragon/fetch.py:33-44`` carries no
+     ``try``/``finally``. That file is deliberately UNMODIFIED this cycle.
 
 HONESTY NOTE, kept deliberately. An earlier draft of this docstring claimed the
 producer had no direct caller and that this file was the first to call it. That
@@ -79,6 +85,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -172,16 +181,111 @@ def test_atomic_write_json_leaves_target_intact_when_replace_fails(
     only then swaps it in, so the target either holds its old bytes or the new
     ones - never a half-written file. Fault-injected at the module's own ``os``
     handle (``lib/ddragon/fetch.py:18``).
+
+    THE INJECTION IS DESTINATION-SCOPED, AND THAT SCOPING IS LOAD-BEARING.
+    ``fetch_mod.os`` is NOT a per-module copy - it is the stdlib ``os`` module
+    singleton itself (MEASURED: ``lib.ddragon.fetch.os is os`` -> True), so
+    ``monkeypatch.setattr(fetch_mod.os, "replace", ...)`` replaces
+    ``os.replace`` PROCESS-WIDE for as long as the patch is armed. An
+    unconditional shim therefore breaks ``os.replace`` for everything else
+    running in that process during this test - background threads in
+    particular, plus pytest plugins and any other atomic writer - and those
+    victims fail somewhere else entirely, which is the expensive part. The shim
+    below raises ONLY when the destination resolves under this test's
+    ``tmp_path`` and DELEGATES to the real callable captured before patching
+    for every other destination.
+
+    The control assertion inside the armed window is the proof of that
+    delegation, and it is the red-before-green arm: swap ``_scoped_boom`` for an
+    unconditional ``raise`` and the control ``os.replace`` below is what fails
+    first.
+
+    The ``.tmp`` leak is characterized in
+    ``test_atomic_write_json_surfaces_a_real_replace_failure``; it is asserted
+    here too because it costs nothing.
     """
     target = tmp_path / "runesReforged.json"
     target.write_bytes(_SENTINEL)
 
-    def _boom(src, dst):
-        raise OSError("injected: replace failed")
+    # Captured BEFORE patching - this is what the shim delegates to.
+    _real_replace = os.replace
+    _tmp_root = tmp_path.resolve()
 
-    monkeypatch.setattr(fetch_mod.os, "replace", _boom)
+    def _scoped_boom(src, dst):
+        resolved = Path(os.fspath(dst)).resolve()
+        if resolved == _tmp_root or _tmp_root in resolved.parents:
+            raise OSError("injected: replace failed")
+        return _real_replace(src, dst)
 
-    with pytest.raises(OSError, match="injected"):
-        _atomic_write_json(target, _PAYLOAD)
+    control_dir = Path(tempfile.mkdtemp())
+    try:
+        monkeypatch.setattr(fetch_mod.os, "replace", _scoped_boom)
+
+        # CONTROL, inside the armed window: a replace whose destination lives
+        # OUTSIDE tmp_path must still SUCCEED, because the process-wide patch
+        # has to stay inert for everyone but this test.
+        control_src = control_dir / "control.src"
+        control_dst = control_dir / "control.dst"
+        control_src.write_bytes(b"control-payload")
+        os.replace(control_src, control_dst)
+        assert control_dst.read_bytes() == b"control-payload"
+        assert not control_src.exists()
+
+        with pytest.raises(OSError, match="injected"):
+            _atomic_write_json(target, _PAYLOAD)
+    finally:
+        shutil.rmtree(control_dir, ignore_errors=True)
 
     assert target.read_bytes() == _SENTINEL
+
+    # CHARACTERIZED, NOT ENDORSED - the .tmp sibling survives a failed swap.
+    assert sorted(p.name for p in tmp_path.glob("*.tmp")) == [
+        "runesReforged.json.tmp"
+    ]
+
+
+def test_atomic_write_json_surfaces_a_real_replace_failure(tmp_path):
+    """The same guarantee with ZERO patching - a REAL ``os.replace`` failure.
+
+    The destination is pre-created as a non-empty DIRECTORY, which no platform
+    lets a file replace. Nothing is monkeypatched here, so this arm is immune to
+    the process-wide ``os`` singleton hazard described above, and it proves the
+    scoped shim in that test models a failure the OS really produces rather than
+    one only a mock can.
+
+    ``OSError`` is caught BROADLY on purpose: the concrete subclass is
+    platform-specific. MEASURED on this machine (Windows) it is
+    ``PermissionError`` - ``[WinError 5] Access is denied`` - while POSIX raises
+    ``IsADirectoryError`` / ``NotADirectoryError``. All are ``OSError``
+    subclasses; pinning the Windows one would red this file on a POSIX runner.
+
+    CHARACTERIZED, NOT ENDORSED - THE ``.tmp`` SIBLING LEAKS. MEASURED: after
+    the failed swap, ``runesReforged.json.tmp`` survives on disk carrying the
+    full new payload, because ``lib/ddragon/fetch.py:33-44`` has no
+    ``try``/``finally`` around ``os.replace`` and never unlinks the temp file.
+    This test records the writer's ACTUAL behaviour - it does not bless it.
+    ``lib/ddragon/fetch.py`` is DELIBERATELY UNMODIFIED this cycle, so a later
+    cleanup that adds the ``finally`` must flip these two assertions on purpose
+    instead of meeting them as a surprise.
+    """
+    target = tmp_path / "runesReforged.json"
+    target.mkdir()
+    marker = target / "marker.txt"
+    marker.write_bytes(b"marker-stays")
+
+    with pytest.raises(OSError):
+        _atomic_write_json(target, _PAYLOAD)
+
+    # The pre-existing destination is untouched, contents included.
+    assert target.is_dir()
+    assert sorted(p.name for p in target.iterdir()) == ["marker.txt"]
+    assert marker.read_bytes() == b"marker-stays"
+
+    # The leak, asserted as measured.
+    leaked = sorted(p.name for p in tmp_path.glob("*.tmp"))
+    assert leaked == ["runesReforged.json.tmp"], (
+        f"expected the CHARACTERIZED .tmp leak, saw {leaked}"
+    )
+    assert (tmp_path / "runesReforged.json.tmp").read_bytes() == json.dumps(
+        _PAYLOAD, separators=(",", ":")
+    ).encode("utf-8")

@@ -196,3 +196,126 @@ byte pin, tmp and fault-injection properties the guard cannot assert. That
 edit shifts the `:916-925` line numbers quoted above, which are pinned to
 `ca6f42554` on purpose - they are where the stale text lived, not where the
 correction lives.
+
+## Defect-class census - process-wide destructive stdlib patches (R230, 2026-09-11)
+
+RM-410's fault-injection arm patched `os.replace` PROCESS-WIDE for the duration
+of one test. R230 retargeted that one site and then censused the class, because
+a single scoped fix is worth nothing if the shape is common.
+
+### The exact command
+
+```
+grep -rn "monkeypatch.setattr(" --include=*.py tests/ agents/daemon_slayer/tests/ tools/tests/ agents/agent3_testing/suite | grep -E "os, \"(replace|remove|rename|unlink)\"|\.os, \"|shutil|builtins, \"open\""
+```
+
+Run twice: once by the orchestrator BEFORE the edit, once by the verifier AFTER.
+
+### The counts, and why they differ by one
+
+- PRE-EDIT: **29 lines, all 29 real call sites.**
+- POST-EDIT: **30 lines, of which 29 are real call sites and 1 is PROSE.**
+
+The extra line is `tests/test_ddragon_fetch_writer_emits_lf.py:188`, a net-new
+DOCSTRING line that names the pattern it is documenting. The census grep matched
+its own documentation. Worth stating plainly rather than reconciling silently:
+**a census whose pattern appears in the prose describing the census will drift
+upward every time someone documents it**, and the drift is indistinguishable
+from a real new call site by count alone. Read the matched line, never the
+tally.
+
+### The DESTRUCTIVE subset - 8 call sites across 6 files
+
+Narrowing to patches of a destructive filesystem primitive
+(`replace` / `remove` / `rename` / `unlink`):
+
+| # | Site | Patch target | Disposition |
+|---|---|---|---|
+| 1 | `tests/test_ddragon_fetch_writer_emits_lf.py:222` | `fetch_mod.os, "replace"` | **FIXED this cycle** - destination-scoped shim that delegates to a pre-captured `_real_replace` |
+| 2 | `tests/test_inbox_responder_export.py:276` | `export_mod.os, "rename"` | OUT OF SCOPE - filed RM-411 |
+| 3 | `tests/test_p2w1_core_f.py:58` | `polled_json.os, "replace"` | OUT OF SCOPE - filed RM-411 |
+| 4 | `tests/test_p2w1_core_f.py:73` | `polled_json.os, "replace"` | OUT OF SCOPE - filed RM-411 |
+| 5 | `tests/test_p2w1_core_f.py:93` | `polled_json.os, "replace"` | OUT OF SCOPE - filed RM-411 |
+| 6 | `tests/test_p2w2_ds_h.py:296` | `common.os, "replace"` | OUT OF SCOPE - filed RM-411 |
+| 7 | `tests/test_polled_json_lane8_cycle24.py:224` | `polled_json.os, "replace"` | OUT OF SCOPE - filed RM-411 |
+| 8 | `tests/test_rofl_archive_lane8_download_bounds.py:259` | `os, "replace"` - the STDLIB module object directly, no handle at all | OUT OF SCOPE - filed RM-411 |
+
+Every one of the eight has a disposition. Seven remain, across five files.
+
+### Why the remainder was filed rather than swept
+
+The directive's threshold routes a class to a filed id once the instance count
+exceeds 5. The destructive subset is **8**, above that line, so sweeping it
+in-cycle would have meant seven unrelated test files in a wrap slice. Filed as
+RM-411 under BACKLOG "Reliability / hardening" instead.
+
+### A module-attribute handle is NOT containment
+
+`setattr(mod.os, "replace", ...)` LOOKS narrower than `setattr(os, "replace",
+...)`. It is not. `mod.os` is a reference to the one stdlib `os` module object,
+so rebinding an attribute on it rebinds it for every importer in the process.
+Proved by identity, not argued:
+
+- `lib.ddragon.fetch.os is os` -> `True`
+- `core.polled_json.os is os` -> `True`
+- `agents._supervisor_common.os is os` -> `True`
+- `tools.inbox_responder_export.os is os` -> `True`
+
+Four of four. The handle spelling is cosmetic. Site 8 in the table above drops
+the pretence entirely and patches `os` itself.
+
+The exposure is not theoretical in these files: **`tests/test_p2w1_core_f.py:30`,
+`tests/test_polled_json_lane8_cycle24.py:49` and `tests/test_p2w2_ds_h.py:47`
+each `import threading`**, so same-process concurrent callers exist in the very
+files doing the patching.
+
+### REFUTED: the directive's stated reason for this work
+
+R230 justified the retarget with "Serial run contains it; this repo runs `-n 8`".
+**That mechanism is WRONG and is recorded here so nobody re-files it.**
+pytest-xdist workers are separate PROCESSES, and each worker runs its own tests
+SERIALLY. `-n 8` therefore does not widen the exposure at all - it gives you
+eight independent processes, each with its own `os` module object.
+
+The real exposure window is other callers **inside the SAME process** during the
+patched interval, background threads above all. The fix is still correct and was
+still worth shipping. The reason given for it was not. A directive can order the
+right work for a refuted reason, and the refutation has to be written down or
+the wrong mechanism propagates into the next filing.
+
+### The proven-safe remedies
+
+1. **Destination-scoped delegating shim** -
+   `tests/test_ddragon_fetch_writer_emits_lf.py:211-222`. Capture
+   `_real_replace = os.replace` BEFORE patching; raise only when the resolved
+   destination is `tmp_path` or under it; delegate everything else. The armed
+   window carries a CONTROL assertion - an `os.replace` into a
+   `tempfile.mkdtemp()` directory OUTSIDE `tmp_path` must still succeed, torn
+   down in a `finally` with `shutil.rmtree`.
+2. **Better, where the fault can be provoked for real: patch nothing.**
+   `test_atomic_write_json_surfaces_a_real_replace_failure` (`:247`) uses ZERO
+   patching - it pre-creates the destination as a non-empty directory and
+   asserts the genuine `OSError`. Caught broadly, because the concrete subclass
+   is platform-dependent: Windows raised `PermissionError [WinError 5]`.
+
+### Red-before-green, OBSERVED not asserted
+
+With the shim reverted to its unconditional form:
+`1 failed, 6 passed in 1.31s`, and the FIRST failure was the control
+`os.replace`. With the scoped form restored: `7 passed in 1.10s`. The control is
+the proof; the ordering was observed this run, not reasoned about.
+
+### Characterization, not a fix: the `.tmp` sibling LEAKS
+
+Advisory 2 landed as CHARACTERIZATION. Both fault arms assert that the `.tmp`
+sibling SURVIVES. `lib/ddragon/fetch.py:33-44` `_atomic_write_json` is four
+statements with no `try` / `finally` and no unlink, so a failed `os.replace`
+strands `runesReforged.json.tmp` holding the full compact payload.
+`lib/ddragon/fetch.py` was deliberately NOT edited this cycle. **A future
+`finally` must flip those assertions deliberately** - they are pinned to
+today's behaviour on purpose, so the flip is a decision and not a surprise.
+
+### Gate observed
+
+`pytest tests/test_ddragon_fetch_writer_emits_lf.py tests/test_tracked_json_producers_emit_lf_bytes.py -q -p no:randomly` -> **27 passed in 3.09s**.
+ruff clean, `py_compile` clean, 0 non-ASCII bytes in 13954.

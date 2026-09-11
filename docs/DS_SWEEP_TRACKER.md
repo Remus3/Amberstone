@@ -69,7 +69,34 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-410** (2026-09-11, moved at the RM-407/RM-408/RM-409 filing).
+  Next free id = **RM-412** (2026-09-11, moved at the RM-410 landing plus the
+  RM-411 filing).
+  **RM-410 SHIPPED 2026-09-11** at `7ff5fc853` (LEDGER 1396, plan row R229,
+  flipped WIP -> DONE this cycle): the direct byte / atomicity test for
+  `lib/ddragon/fetch._atomic_write_json` -
+  `tests/test_ddragon_fetch_writer_emits_lf.py`, adding the properties the
+  RM-406 class guard does not assert (exact compact-encoding byte pin, the
+  measured finding that a compact dump holds no literal LF, an `indent=2`
+  positive control at 20 CRLF pairs against the real writer's 0, no surviving
+  `.tmp`, and `os.replace`-raises fault injection). Its directive's headline
+  premise - that no test calls that writer - was REFUTED before any code was
+  written; the false premise came from a plan sentence that self-staled inside
+  `c00b9af89`, the same commit that added the guard refuting it.
+  **RM-411 was allocated 2026-09-11** (LEDGER 1396, plan row R230), filed under
+  BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
+  the Summary count. RM-411 is the residual of the R230 census: 7 remaining test
+  call sites across 5 files patch a destructive stdlib filesystem primitive
+  PROCESS-WIDE. Filed rather than swept because the destructive subset measured
+  8, above the directive's in-cycle threshold of 5.
+  **THE PIN MOVED BY TWO, NOT ONE, AND THE DIRECTIVE ASKED FOR ONE.** R230
+  instructed advancing to RM-411; that instruction was written before RM-411 was
+  the id this cycle would consume. Pinning RM-411 while filing RM-411 leaves the
+  pin on an OCCUPIED id, which `tools/rm_id_registry.py::audit` grades as a
+  collision and which is the same defect already recorded on the RM-407 block
+  below. The pin follows the allocations rather than the instruction, exactly as
+  it did there. The new pin was confirmed free across all 7 scanned docs before
+  the move.
+  Earlier next-free pointer (2026-09-11, moved at the RM-407/RM-408/RM-409 filing).
   **RM-407, RM-408 and RM-409 were all allocated 2026-09-11** (LEDGER 1393,
   plan row R227), filed under BACKLOG "Reliability / hardening", none taking a
   roster checkbox and none changing the Summary count. RM-407 SHIPPED: two test
