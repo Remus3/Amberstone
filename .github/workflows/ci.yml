@@ -449,6 +449,52 @@ jobs:
             tests/test_build_order_axis_parity.py \
             -q --tb=short --timeout=120
 
+      # RM-407 (2026-09-11). The two steps below wire the repo's two ORPHAN
+      # test trees. Until this commit `agents/agent3_testing/suite` and
+      # `tools/tests` were named by NO pytest invocation in this file - not by
+      # the push `check` job, not by nightly-full-suite - so 359 + 348 tracked,
+      # collecting, passing tests had never gated a push, a pull request or a
+      # nightly. That is the same zero-signal shape RM-119 found for the Daemon
+      # Slayer tree, and it was found by hand both times.
+      # `tests/test_ci_collects_orphan_suite_trees.py` is what makes the third
+      # instance impossible: it joins the git-index enumeration of test trees to
+      # a parse of THIS file, so deleting either step below reds that guard
+      # instead of silently un-gating a tree.
+      #
+      # ONE STEP PER TREE, EACH ITS OWN PROCESS, and that is load-bearing rather
+      # than tidy. The dual-suite step below hosts `tests/snapshot_panels`,
+      # which drives Playwright's SYNC api; that leaves asyncio's per-thread
+      # running-loop marker set on the main thread for the remainder of the
+      # session. `agents/agent3_testing/suite` drives its loop bodies with bare
+      # `asyncio.run()`, which raises "cannot be called from a running event
+      # loop" whenever that marker is set - which is exactly why that tree ships
+      # an autouse conftest fixture clearing the marker (s236). A separate
+      # interpreter is the total fix. Do NOT fold either tree into the
+      # dual-suite invocation.
+      #
+      # THE COLLECTED-COUNT ASSERTION COMES FIRST, and it is the point of the
+      # step rather than belt-and-braces. A path list that reaches pytest
+      # malformed makes it print "no tests ran" and exit 0 - measured at the
+      # RM-405 wrap, where a CRLF-carrying path list did exactly that - so a
+      # bare `pytest <tree>` step can be green having collected nothing, which
+      # is the defect these steps exist to end, reintroduced one layer down.
+      - name: "orphan tree gated: agents/agent3_testing/suite (RM-407)"
+        timeout-minutes: 10
+        run: |
+          python -c "import subprocess,sys; t='agents/agent3_testing/suite'; p=subprocess.run([sys.executable,'-m','pytest',t,'--collect-only','-q'],capture_output=True,text=True); n=sum(1 for line in p.stdout.splitlines() if '::' in line); print(p.stdout[-2000:]); print('RM-407 collected nodeids under '+t+': '+str(n)); sys.exit(0 if p.returncode==0 and n>0 else 1)"
+          pytest agents/agent3_testing/suite -q --tb=short --timeout=300
+
+      # No conftest.py of its own, and it does not need one: all nine modules
+      # under tools/tests carry their own `sys.path.insert(_TOOLS)` derived from
+      # __file__, so the imports resolve the same on a clean Linux runner as
+      # they do on Legion. Third-party reach is json5 via the extractors it
+      # imports, and that arrives with requirements.txt above.
+      - name: "orphan tree gated: tools/tests (RM-407)"
+        timeout-minutes: 10
+        run: |
+          python -c "import subprocess,sys; t='tools/tests'; p=subprocess.run([sys.executable,'-m','pytest',t,'--collect-only','-q'],capture_output=True,text=True); n=sum(1 for line in p.stdout.splitlines() if '::' in line); print(p.stdout[-2000:]); print('RM-407 collected nodeids under '+t+': '+str(n)); sys.exit(0 if p.returncode==0 and n>0 else 1)"
+          pytest tools/tests -q --tb=short --timeout=300
+
       - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
         # RM-156: this is the ceiling that should fire, not the job's. See the
         # block above `timeout-minutes: 95` for the measurement; the short
