@@ -2,7 +2,70 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-400 / RM-401 wrap (relocated `2026-09-09j` MEMORY.md compaction; newest 3 = RM-400 shipped + RM-401 refuted `2026-09-10c` + RM-398 partial `2026-09-10b` + RM-399 shipped `2026-09-10a`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-10, RM-402 refute wrap (relocated `2026-09-10a` RM-399; newest 3 = RM-402 refuted + RM-398 residue re-derived `2026-09-10d` + RM-400 shipped / RM-401 refuted `2026-09-10c` + RM-398 partial `2026-09-10b`). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-10d - RM-402 REFUTED AS SCOPED, RM-398 residue RE-DERIVED, and a CIRCULAR MEASUREMENT caught by adjudication
+
+Tier-1, operator AWAY: one comment block in `tools/stop_claim_gate.py`, two
+BACKLOG rows, two ROADMAP rows. LEDGER 1386. Pushed `08fa98d2c..2c389200b`, CI
+GREEN both workflows (`ci` + `docs-guards`), observed this run.
+
+**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM, SECOND SESSION
+RUNNING.** Inbox newest is still `2026-09-09-2100-from-RSC`, zero files dated
+2026-09-10 or later, verbatim subdirs included. Do not re-pin unilaterally.
+
+**CORPUS FROZEN FIRST AT 93 FILES**, live transcript excluded by name. 93 not 92
+- a session landed since RM-401, which is exactly why the baseline was
+RE-DERIVED. Whole-gate histogram at HEAD, reproduced by three separate passes:
+28 findings / 19 sessions - `count_mismatch` 23, `full_suite` 2, `commit_claim`
+1, `file_claim` 1, `hook_bypass` 1, **`push_claim_without_push` 0**.
+
+**RM-402 REFUTED AS SCOPED, no code.** Its OWN FILED NUMBERS were wrong in both
+directions: "6 live false positives, 2 of them this class" - there are **ZERO**
+live findings of this check, and the latent non-git population is **15 across 9
+sessions**. Cause read BY HAND at `tools/stop_claim_gate.py:480`: `did_push` is
+computed ONCE over the session's whole bash record before the sentence loop at
+`:495`, so all 15 sit in sessions it already clears and narrowing buys ZERO
+live-finding reduction. The dominant class is NOT the repo listing the row leads
+with - it is our own drift-guard budget idiom ("my entry pushed it over") at 10
+of 15. Every removing candidate was RUN against its attack and fell, the row's
+own named one included. Its suggested bash-record alternative measured WORSE in
+both directions, because the budget idiom is written DURING THE WRAP, which is
+exactly when pushes happen. **DO NOT RE-PITCH** an idiom / word-sense exclusion
+list, a repo-listing shape, or a bash-window discriminator for `CLAIM_PUSH`.
+
+**THE FINDING WORTH MORE THAN THE REFUTE: A CIRCULAR MEASUREMENT.** The
+narrowing slice enumerated the non-git population with an IDIOM-SHAPED SCAN and
+returned 6, while its entire job was evaluating idiom-list narrowings - so it was
+structurally incapable of measuring its own false negatives, and every 0 in its
+false-negative column was meaningless. Exhaustive classification returns 15; all
+9 it missed lie outside its own three shapes. **Two agents agreeing would have
+shipped that 6.** It was caught only because the counts DIVERGED and the
+divergence was resolved against the corpus rather than averaged.
+
+**RM-398 RESIDUE RE-DERIVED AT 1** - unchanged in count by RM-400
+(`count_mismatch` 23 both sides), MOVED in mechanism: formerly an unindexed
+fetch, now an INDEXED one whose real summary is split by a console wrap. **This
+also explains the hand-off's 31-vs-28 divergence: that baseline was pre-RM-400.**
+
+**A SHIPPED COMMENT STATED A REFUTED REASON, corrected here for the SECOND
+time.** `tools/stop_claim_gate.py:305-310` called `42af2f7d` "a bare `28150
+passed`" and "a LIVE POSITIVE CONTROL for the fence". Verified false against the
+raw tool result: it is a GENUINE pytest summary hard-wrapped across three
+physical lines, so it is a FALSE POSITIVE against a real summary. ROADMAP
+corrected too; **LEDGER 1385 deliberately NOT edited** (append-only).
+
+**THREE INSTRUMENT FAILURES THAT COST TIME, all caught.** (1) `grep -P` is
+UNSUPPORTED in this locale - it exits 2 with "supports only unibyte and UTF-8
+locales", and a `|| echo 0` fallback turned that error into a passing ASCII
+scan. Verify the instrument before believing a clean 0. (2) `tools/md_guard_
+selector.py` emits CRLF, so `xargs` passes a trailing `\r` INSIDE each filename
+and pytest reports files missing that exist - pipe through `tr -d '\r'`.
+(3) A `Monitor` watching CI emitted NOTHING for 30 minutes and timed out while
+both jobs actually SUCCEEDED; its own filter failed silently. Silence from a
+monitor is not success - query the SHA directly.
 
 ---
 
@@ -154,33 +217,3 @@ wrecked the first armed session.
 **DO NOT REDO:** RM-397 SHIPPED, RM-399 SHIPPED, RM-398 PARTIAL SHIPPED with its
 mechanism refuted and two proposals refused. The JOINT RE-PIN for the fifth
 sibling-name escape is still AWAITING RSC's reply - do not re-pin unilaterally.
-
----
-
-# 2026-09-10a - RM-399 SHIPPED, and specifying it found FIVE sibling-name escapes already PUBLISHED from RC's own tree
-
-Tier-1, operator AWAY: one tool, one guard, one hook, docs. LEDGER 1383, merged `a715baf58`.
-
-**THE HEADLINE IS THE ESCAPES, NOT THE TOOL. FIVE REAL sibling PROJECT NAMES sat in RC's own
-tracked prose, all live in HEAD and ALL FIVE ALREADY PUBLISHED** to the public remote; the
-2026-09-07 identity scrub reported CLEAN and missed every one. **FOUR are redacted AT HEAD
-ONLY (`f6cf005bb`) - remediating HEAD does NOT undo publication and NO history rewrite was
-performed** (operator decision; a force-push does not reach `refs/pull/N/head` anyway).
-
-**THE FIFTH IS OPEN AND UNFIXABLE ALONE:** `tests/test_loop_concurrency.py:492`, inside the
-`SHARED_SHA256` byte-identical block (474-539), a two-word name SPLIT ACROSS A COMMENT LINE
-WRAP - not contiguous in the blob, which is why every whole-token sweep ever run here called
-it clean. It ships as a KNOWN, NAMED, VISIBLE exception (`tools/sibling_name_sweep.py:112`,
-asserted REPORTED not suppressed). Removal is a JOINT re-pin, relayed to RSC 2026-09-10 and
-**AWAITING THEIR REPLY** - do not re-pin unilaterally.
-
-**MEASURED on main:** 126 passed; ARMED tree scan = EXACTLY 1 finding (the known site) over
-627214858 bytes / 4721 files, 482 binary/LFS blobs declared un-scanned; the gate ran on its
-OWN push, clean over 95220 bytes / 6 files / 2 commit messages. The honest claim is "the sweep
-half is ARMED with a measured escape rate above zero", never "sibling names cannot leak".
-
-**DO NOT REDO:** RM-397 SHIPPED (`e518786e2`), RM-398 FILED (deliberately NOT bundled), RM-399
-SHIPPED. The halt-before-any-byte-leaves boundary is ADOPTED, binds EVERY session, no timeout -
-but its PUSH half was SUPERSEDED the same session by `8facd08d4`: **the push gate is on DIFF
-CONTENT, not destination.** Do NOT restore the destination wording and do NOT restore the
-own-origin carve-out (RSC conceded it removed seam (f)).
