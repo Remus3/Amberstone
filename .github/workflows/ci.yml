@@ -449,8 +449,10 @@ jobs:
             tests/test_build_order_axis_parity.py \
             -q --tb=short --timeout=120
 
-      # RM-407 (2026-09-11). The two steps below wire the repo's two ORPHAN
-      # test trees. Until this commit `agents/agent3_testing/suite` and
+      # RM-407 (2026-09-11). The step below wires ONE of the repo's two ORPHAN
+      # test trees; the other is BLOCKED on a measured flake and is declared as
+      # an exception in the guard - see the comment further down.
+      # Until this commit `agents/agent3_testing/suite` and
       # `tools/tests` were named by NO pytest invocation in this file - not by
       # the push `check` job, not by nightly-full-suite - so 359 + 348 tracked,
       # collecting, passing tests had never gated a push, a pull request or a
@@ -478,11 +480,20 @@ jobs:
       # RM-405 wrap, where a CRLF-carrying path list did exactly that - so a
       # bare `pytest <tree>` step can be green having collected nothing, which
       # is the defect these steps exist to end, reintroduced one layer down.
-      - name: "orphan tree gated: agents/agent3_testing/suite (RM-407)"
-        timeout-minutes: 10
-        run: |
-          python -c "import subprocess,sys; t='agents/agent3_testing/suite'; p=subprocess.run([sys.executable,'-m','pytest',t,'--collect-only','-q'],capture_output=True,text=True); n=sum(1 for line in p.stdout.splitlines() if '::' in line); print(p.stdout[-2000:]); print('RM-407 collected nodeids under '+t+': '+str(n)); sys.exit(0 if p.returncode==0 and n>0 else 1)"
-          pytest agents/agent3_testing/suite -q --tb=short --timeout=300
+      # `agents/agent3_testing/suite` IS NOT WIRED, and that is a measured
+      # verdict rather than an omission. An independent verifier ran its
+      # post-exclusion set three times: run 1 returned 1 failed / 348 passed -
+      # `test_supervisor.py::test_supervisor_starts_and_binds_ports`, "lockfile
+      # heartbeat never refreshed to a second value" - while runs 2 and 3 were
+      # green and the test passes 3/3 in isolation. A 1-in-3 load-dependent
+      # flake in a push-blocking job manufactures fake reds, and a fake red is
+      # worse than the zero signal it would replace. Behind it sit 7 tests
+      # gated on a live supervisor at 127.0.0.1:8890 and a `test_scheduler_lock`
+      # comment stating CI does not run this suite. The exception is DECLARED
+      # in `tests/test_ci_collects_orphan_suite_trees.py::_COLLECTION_ROOTS`
+      # with that mechanism, so this tree cannot be forgotten: adding a step
+      # for it here without flipping that row reds the guard, and so does
+      # deleting the row. Wiring it needs the flake fixed at source.
 
       # No conftest.py of its own, and it does not need one: all nine modules
       # under tools/tests carry their own `sys.path.insert(_TOOLS)` derived from
