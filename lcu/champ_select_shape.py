@@ -57,14 +57,16 @@ ARENA_QUEUE_IDS = (1700, 1710, 1750)
 
 # -- Fail-soft field readers -------------------------------------------------
 # This module is called from two places that both swallow exceptions, so a
-# raise here is not an error the operator ever sees - it is a silently
-# missing champ-select payload:
+# raise here still costs the whole champ-select payload:
 #
-#   dashboard/_lcu_inprocess.py:190-191  catches Exception, returns None with
-#       NO log line, and the in-process L3 path falls back to the :8889 relay
-#       hop that L3 exists to remove.
+#   dashboard/_lcu_inprocess.py:255-257  catches Exception and returns None,
+#       and the in-process L3 path falls back to the :8889 relay hop that L3
+#       exists to remove. RM-312 (2026-09-11) made that degrade VISIBLE - it
+#       now WARNs once per distinct fault signature - so the fault is no
+#       longer invisible, but the payload for that build is still gone.
 #   tools/lcu_agent.py:1612              calls capture_state() inside the
-#       state push loop, so the whole snapshot for that tick is lost.
+#       state push loop, so the whole snapshot for that tick is lost, and
+#       that half is still silent.
 #
 # The module already fails soft nearly everywhere (isinstance guards on
 # trades, bench entries, action groups, team entries). These readers exist so
