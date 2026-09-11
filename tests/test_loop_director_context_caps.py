@@ -293,6 +293,70 @@ def test_real_orchestration_plan_newest_row_survives(lc, tmp_path):
     )
 
 
+# --- 2026-09-11: the row-survives guard above is a fire alarm that rings once
+# --- the house is gone - it goes red only AFTER the newest row has already
+# --- fallen out of the director's window, at which point the cheapest repair
+# --- (relocate a findings block) has to happen under a red suite. Every cycle
+# --- appends a row AND a findings block, but the findings land AFTER the rows,
+# --- so the newest row drifts toward EOF by roughly one findings block per
+# --- cycle while the row itself barely moves. A HEADROOM bound trips while
+# --- there is still room to act. 4000 bytes is about one findings block, so
+# --- this reds one cycle early rather than one cycle late.
+_TAIL_HEADROOM_BYTES = 4_000
+
+
+def test_real_orchestration_plan_newest_row_keeps_tail_headroom(lc):
+    """Measured on the live plan, like its sibling above, but bounding the
+    MARGIN rather than the bare fact of survival.
+
+    The tail boundary is DERIVED - from PLAN_CTX_CAP, PLAN_CTX_HEAD and the
+    length of the marker the helper actually emits - rather than pinned at the
+    15,888 it happens to equal today. A literal would rot silently the moment
+    either constant moved, leaving this asserting against a window the
+    controller no longer uses.
+    """
+    plan = _REPO / "docs" / "ORCHESTRATION_PLAN.md"
+    assert plan.exists(), f"tracked doc missing from the checkout: {plan}"
+    text = plan.read_text(encoding="utf-8", errors="replace")
+    rows = re.findall(r"^\| (R\d+) \|", text, re.M)
+    assert rows, "no | R<n> | rows found - the plan row shape changed"
+    newest = rows[-1]
+
+    capped = lc.cap_bytes_head_tail(
+        text, lc.PLAN_CTX_CAP, "ORCHESTRATION_PLAN", lc.PLAN_CTX_HEAD
+    )
+    if len(text) <= lc.PLAN_CTX_CAP:
+        # Not a vacuous pass: below the cap the helper returns the text
+        # unchanged, so the WHOLE plan reaches the director and there is no
+        # tail boundary to have headroom against. The live plan is ~397KB, so
+        # this branch is unreachable today and is here to fail loudly with the
+        # reason if the plan is ever cut down to size.
+        assert text in capped, "sub-cap plan must pass through verbatim"
+        return
+    marker = re.search(
+        r"\n\.\.\.\[ORCHESTRATION_PLAN truncated at \d+ bytes[^\]]*\]\.\.\.\n", capped
+    )
+    assert marker, (
+        "cap_bytes_head_tail truncated the plan but emitted no recognisable "
+        "marker - the marker text changed and this guard can no longer locate "
+        "the head/tail split"
+    )
+    tail_bytes = len(capped) - marker.end()
+    from_eof = len(text) - text.rindex(f"| {newest} |")
+    headroom = tail_bytes - from_eof
+
+    assert headroom >= _TAIL_HEADROOM_BYTES, (
+        f"the plan's newest row {newest} sits {from_eof} bytes from EOF against "
+        f"a {tail_bytes}-byte director tail window, leaving {headroom} bytes of "
+        f"headroom - under the {_TAIL_HEADROOM_BYTES} required. Relocate the "
+        "OLDEST findings block out of docs/ORCHESTRATION_PLAN.md into "
+        "docs/ORCHESTRATION_PLAN_HISTORY.md, verbatim. Do NOT raise "
+        "PLAN_CTX_CAP, shrink the new row, or relax this bound: the cap exists "
+        "because the director CLI returns silent-empty on an oversized stdin, "
+        "so buying tail with cap trades one starvation mode for the other."
+    )
+
+
 def test_real_ledger_newest_items_survive(lc, tmp_path):
     """Measured on the live 3MB ledger. Before the fix exactly ONE item id
     survived; the item recording the previous cycle's closure did not."""

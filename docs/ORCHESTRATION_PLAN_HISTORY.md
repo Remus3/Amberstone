@@ -828,3 +828,176 @@ the unfixed tree. The source-parsing guard is kept alongside it; it needs no nod
 the same verification as a positive claim. "The grep returned files I did not
 recognise" is not "no harness exists", and the error is comfortable to make
 precisely because the fallback is cheaper than the thing it replaces.
+
+---
+
+## Relocated 2026-09-11 - everything the plan carried after the R230 findings log
+
+(From `docs/ORCHESTRATION_PLAN.md`, moved VERBATIM and unedited: the R227 and
+R226 findings blocks, the "Older findings" doctrine block, and the three
+already-relocated R220 / R221 / R224 pointer stubs. The stubs are kept rather
+than dropped because they are the provenance chain - they record which cycle
+relocated which block, and "the steady-state rule above" they refer to is the
+doctrine block that now sits immediately above them here.
+
+**Why this move happened.** The plan's newest `| R<n> |` row had drifted to
+21306 bytes from EOF against the director's 15888-byte tail window, so
+`tests/test_loop_director_context_caps.py::test_real_orchestration_plan_newest_row_survives`
+was RED - the director could no longer see the newest session row and would
+mis-ground the next cycle. Moving these 12962 bytes puts the row back at about
+8300 bytes from EOF, inside the window with several cycles of room. The same
+commit adds a HEADROOM guard alongside the survival guard, so the next drift
+reds while there is still room to act instead of after the row is already gone.)
+
+### Findings log - R227 (2026-09-11)
+
+- **The WRAP cycle itself introduced a regression, and it was a text MOVE - the one defect shape no repo guard in this tree can see.** Fixed in `54fcf67c8` (cycle 72). The RM-407 wrap cut the `**Stated limits, not buried:**` census-guard sentence out of the RM-406 ROADMAP row and pasted it onto the RM-407 row, so RM-407 shipped four residuals that are not true of it while RM-406 - which has no `BACKLOG.md` body row, so its ROADMAP line is its only body - lost its limits entirely. Every byte stayed valid prose; only the OWNER was wrong, which is why ASCII hygiene, link checks, the disposition-drift guard and the RM-id registry all stayed green over it. The audit returned REGRESS; no automated gate did. **The transferable half is the counting trap, not the move:** the same wrap also duplicated `Next free id = RM-410` TWICE ON ONE LINE, and `grep -c` returns `1` both before and after the repair because it counts LINES - only `grep -o` piped to `wc -l` (2 -> 1) can see it. A wrap that verifies its own row edits with `grep -c` is verifying nothing. Population of the misattribution class measured and shown at 2 (`ROADMAP.md:48` FIXED, `ROADMAP.md:49` CORRECT and left alone, `BACKLOG.md` 0), and the move was proved byte-identical against `f6eef7e69` by sha256 rather than eyeballed.
+- **The directive's own enumeration command manufactures a phantom.** `git ls-files "*test_*.py"` returns a sixteenth directory, bare `tools`, whose only match is `tools/pytest_guard.py` - the substring "test_" inside "pytest_". A guard built on that predicate files an orphan tree it can never close. The precise universe is 15 trees; 13 are covered by the `tests/` and `agents/daemon_slayer/tests/` prefixes and exactly 2 were orphans. No unexpected third tree exists.
+- **A single green run is not a green tree.** The audit slice reported "0 failed" from one run; three runs found a 1-in-3 flake. Any future WIRE verdict on a tree must come from repeated runs under load, not one sample.
+- **RM-406's census has a structural blind spot that its own AFTER figure cannot reveal.** State leaving over a SOCKET touches none of its four patched write routes and sits under none of its watched paths. `:8890` is OPEN on Legion, so the 6 `live_supervisor` tests do not skip here and POST real records into the running supervisor. Both slice agents and the verifier's own measurement tripped it. Filed RM-409.
+- **The push half is closed, the nightly half is not.** Both wired steps landed in `check` only; `nightly-full-suite` still names neither tree. The guard discloses this as its own limitation rather than hiding it.
+- **RM-408 - an instrument with no planted control cannot distinguish a clean tree from a dead probe.** `tools/live_write_tracer.py` carries no positive control, so a run whose patches intercept NOTHING reports a clean zero that reads exactly like a clean tree, and LEDGER 1392's headline AFTER figure rests entirely on that uncontrolled instrument. The sibling repo's equivalent control returned `proved: false` on its FIRST run against a tracer that was working correctly, because Windows `tempfile.mkdtemp` hands back the 8.3 SHORT path while the watcher resolves the LONG form - so the failure mode is real and has already been observed once. Filed as RM-408, not fixed here.
+- **A cycle that measures and adjudicates but never commits leaves HEAD shipping the defect it just diagnosed.** Cycle 70 reached the right verdict - agent3 EXCEPTED, with the flake measured three ways - and wrote the repair into the working tree, but the wrap commit was never made. So for a full cycle `.github/workflows/ci.yml` ran the agent3 tree BARE in a push-blocking job while the audit doc and the guard both described a state the gate did not implement. The deliverable of a cycle is a commit, not a correct working tree.
+
+## Older findings - relocated 2026-07-28
+
+R205 / R206 / R207 / R216 / R217 / R217-U1 findings now live in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+
+**Why, because this WILL recur:** the director context caps this file with
+`cap_bytes_head_tail(..., PLAN_CTX_CAP=24000, PLAN_CTX_HEAD=8000)`, so only the
+first 8000 and the LAST 16000 bytes reach the director, and
+`tests/test_loop_director_context_caps.py::test_real_orchestration_plan_newest_row_survives`
+fails when the newest `| R<n> |` row falls outside that tail window. Every cycle
+appends a row AND a findings block, but the findings land AFTER the rows - so each
+cycle pushes the newest row roughly one findings-block further from EOF while the
+row itself barely moves. R216 crossed the line at 16087 bytes from EOF, missing the
+window by 87 bytes. **The fix is to relocate old findings blocks, never to shrink the
+new row or trim the guard.** Budget about two to three cycles per relocation.
+
+**R217 changed the relocation from a periodic chore into a steady state.** Budgeting
+"two to three cycles per relocation" is still a countdown to the same failure; the
+distance from the newest row to EOF is just the total size of the findings blocks
+sitting after the rows, so the stable rule is to keep exactly ONE findings block at
+the tail. R217 relocated R216's block (5509 bytes) at the same time it appended its
+own, which put the newest row at about 5000 bytes from EOF instead of 10696. Do the
+same every cycle: relocate the previous cycle's findings block verbatim as you append
+yours. The newest row then never drifts, and the director keeps seeing the most
+recent findings because the block it can read is always the newest one.
+
+## R220 findings - relocated 2026-07-28
+
+R220's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+Relocated by R221 under the steady-state rule above - keep exactly ONE
+findings block at the tail so the newest `| R<n> |` row never drifts out
+of the director's 16000-byte tail window.
+
+## R221 findings - relocated 2026-07-28
+
+R221's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+Relocated by R224 under the steady-state rule above - keep exactly ONE
+findings block at the tail so the newest `| R<n> |` row never drifts out
+of the director's 16000-byte tail window.
+
+## R224 findings - relocated 2026-09-11
+
+R224's findings block now lives in `docs/ORCHESTRATION_PLAN_HISTORY.md`.
+Relocated by R226 under the steady-state rule above - keep exactly ONE
+findings block at the tail so the newest `| R<n> |` row never drifts out
+of the director's 16000-byte tail window.
+
+## R226 findings - 2026-09-11 (cycle 69, LAND)
+
+**Cycle 68 measured and committed nothing, so the whole deliverable was a dirty
+working tree.** This cycle landed it, and the landing was not a rubber stamp:
+two read-only adversarial slices in the MAIN checkout (a worktree cannot see
+uncommitted work, so worktree fan-out was forbidden) returned findings that
+changed what shipped. Slice 1 returned **BLOCK**, slice 2 **SHIP with two
+misses**. The merger adjudicated both.
+
+**THE HEADLINE NUMBER, re-derived on the final tree rather than inherited.**
+`tools/live_write_tracer.py` over `pytest tests -n 8 --dist loadfile`, all nine
+per-process reports merged by the tool's own `--merge`: **13 units across 1
+path**, and that path is `moon_sync_inbox/rc_audit_probe_inside.txt` - the one
+row the census DECLARES as deliberately unprevented, because the write IS the
+assertion in `tests/test_vision_server_http_hardening.py` and the test removes
+it again. BEFORE was 201079 units over 17 paths. The AFTER run reproducing
+exactly the declared exception and nothing else is the evidence that the other
+sixteen rows are closed. Two zero-byte opens survive, both `.lock` files, which
+is what a lock is for. `atomic_tmp_units` is empty. Pinned as a JOIN against
+the census table at `tests/test_suite_does_not_write_live_tree.py`, not as a
+restated literal: flipping the EXCEPTION row to FIXED reds it (observed).
+
+**SLICE 2 FOUND TWO PRODUCERS THE NARROW FIX MISSED, and that is the more
+valuable half of the cycle.** The root cause was never "ddragon_mirror_refresh
+used `write_text`" - it is that on Windows `Path.write_text` rewrites LF as
+CRLF while `read_text` translates it back, and for a TRACKED file that git
+normalizes in the index `git status` stays CLEAN, so the defect is invisible
+from both directions at once. `tools/daemon_slayer_extract._atomic_write_json`
+(writing 44 tracked `data/daemon_slayer/**` JSON files, all pinned `eol=lf`),
+its `_atomic_write_text` sibling, and
+`tools/daemon_slayer_abilities_extract._atomic_write_json` all had the
+identical shape and were latent - they would emit CRLF on the next DS extract.
+Fixed, plus a class guard
+(`tests/test_tracked_json_producers_emit_lf_bytes.py`, 20 tests) that carries
+all six producers including the two RM-287 already fixed, asserts each named
+target is still tracked AND still `eol=lf` via `git check-attr` so a rotted
+premise fails loudly, and sweeps the tracked tree for CRLF that an earlier
+broken run left behind. RED first: 6 real failures across the three unfixed
+producers before the fix, 20 passed after.
+
+**SLICE 1'S REFUTATIONS WERE ACCEPTED, NOT ARGUED WITH.** (a) The guard's
+docstring claimed "removing any one redirect turns this file red"; it does not.
+Narrowing `_tmp_log_path` to pass one filename through leaves both arms of
+`_check_logging_handler_ctor` satisfied, and under `--dist loadfile` the test
+that would attach that handler need not share the worker. The claim is now four
+stated limits with the demonstrated mutation named. (b) The tracer reported
+`wrote_bytes` while `_datalen` returns CHARACTERS for text handles - wrong in
+the direction that undercounts, by one byte per newline plus UTF-8 expansion.
+Renamed `wrote_units` throughout with the unit stated. (c) No merge code
+existed for the per-worker reports, and the xdist CONTROLLER wrote an
+unsuffixed near-empty file at the documented default path - a partial census
+that looks like a clean one. The controller is now suffixed too and
+`--merge` ships in the tool. (d) The tracer credited both the `*.tmp` half of
+an atomic write and its destination, double-counting; tmp now has its own
+bucket that totals never sum. (e) The default report path was inside
+`ops/runtime/` - the instrument was a writer in the tree it polices, excluded
+from its own count. Moved outside the repo. (f) A raise between patching
+`builtins.open` and publishing `_state` would have left the process patched
+forever; `_state` is published first. (g) Two tautologies removed, the
+tracked-only blind spot declared, one misleading failure message corrected.
+
+**STEP 3 DEFECT-CLASS ENUMERATION.** The prescribed grep over `tests/` returned
+**991 instances across 259 files** - a population that must be shown, not
+assumed. Layer 1 is lexical and reproducible (`--include=*.py`, receiver
+resolved to its binding in the same file): 374 TMP-or-fixture-rooted, 154
+local-only with no live marker, 361 with no statically resolvable target
+(almost all `self.<attr>` bound in `setUp` from a tmp dir), 82 `.replace(` that
+are string operations and not filesystem calls at all, 5 comment-only, and 15
+LIVE-PATH candidates - **every one of which was opened by hand and resolves to
+a tmp root**, or reads from the live tree and writes to tmp
+(`shutil.copyfile(REPO / rel, tmp_path / rel)`, three sites). Layer 2 is the
+authoritative one: the instrumented run attributes actual live-tree writes to
+nodeids, and it found exactly the declared exception. Sibling trees
+cross-checked with the same grep - `agents/agent3_testing/suite` 29,
+`tools/tests` 16, `agents/daemon_slayer/tests` 97, 142 together, 3 live-path
+candidates, all three safe (two read-live/write-tmp, one `rmtree` of a
+tempdir).
+
+**KNOWN AND NOT CLOSED, stated rather than buried.** `lib/ddragon/fetch.py`
+now ships its writer as bytes. **CORRECTED 2026-09-11 (R229 / RM-410): the
+rest of this sentence self-staled inside its own commit and is struck.** It
+read "is still exercised by no test of its own ... carried in the new class
+guard's table and nowhere else", which treated a `_PRODUCERS` row as inert
+bookkeeping when it is a CALL SITE - the guard this same commit added invokes
+every one of its six producers (`_invoke` at
+`tests/test_tracked_json_producers_emit_lf_bytes.py:115`, bytes read `:137`,
+asserts `:141` and `:146`; `-k fetch` collects 3). The writer HAS behavioural
+CRLF coverage and always did. What it genuinely lacked, and what RM-410
+shipped, is the byte-pin / tmp / fault-injection half the guard cannot assert -
+see `docs/audits/LF_WRITER_DIRECT_COVERAGE_2026-09-11.md`.
+`data/meta_build/ddragon/16.18.1/_assets_manifest.json` is UNTRACKED and still
+carries 42318 CRLF pairs from a pre-fix run; the tracked bundles were repaired
+when the fixed tool re-ran, and the new sweep asserts zero CRLF across all
+tracked, git-normalized `.json`/`.txt`. The seven `-text` LFS payloads under
+`data/laning_scenarios/` carry CRLF on purpose and are exempt, as
+`tests/test_text_line_endings.py` already documents.
