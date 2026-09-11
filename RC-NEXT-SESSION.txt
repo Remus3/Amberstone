@@ -1,64 +1,92 @@
 NEXT SESSION
 ------------
-Task: RSC's reply on the JOINT RE-PIN is the gating item. A two-word sibling
-  project name sits at tests/test_loop_concurrency.py:492, INSIDE the
-  SHARED_SHA256 byte-identical block (lines 474-539), split across a
-  comment-continuation line wrap. It is NOT contiguous in the raw blob, so every
-  whole-token sweep ever run here reported it clean. RC cannot fix it alone:
-  re-pinning is a JOINT act and digests are never regenerated from local disk.
-  Relayed to RSC 2026-09-10; read moon_sync_inbox/ for their answer FIRST.
-  If they have not replied, do NOT touch that file and do NOT re-pin. Pick
-  RM-398 instead (see below).
+Task: RSC's reply on the JOINT RE-PIN is STILL the gating item and was still
+  unanswered at 2026-09-10 (newest inbox file is 2026-09-09-2100-from-RSC, zero
+  files dated 2026-09-10). A two-word sibling project name sits at
+  tests/test_loop_concurrency.py:492, INSIDE the SHARED_SHA256 byte-identical
+  block (lines 474-539), split across a comment-continuation line wrap. It is
+  NOT contiguous in the raw blob, so every whole-token sweep ever run here
+  reported it clean. RC cannot fix it alone: re-pinning is a JOINT act and
+  digests are never regenerated from local disk. Read moon_sync_inbox/ FIRST.
+  If they still have not replied, do NOT touch that file and do NOT re-pin.
 
   FOLD INTO THE SAME RE-PIN: tests/test_loop_concurrency.py:44 splits
   RC_MOON_SYNC_REPOS on a bare os.pathsep. On POSIX that is ':', and a
   drive-letter path contains one, so a Windows path list shatters into
-  fragments. In tools/sibling_name_sweep.py this shipped a ONE-CHARACTER
-  NEEDLE ('C') that would have halted every push on a Linux host while
-  pointing at nothing - fixed there by split_repo_list (54a9d5736). The
-  copy in test_loop_concurrency.py is LATENT (no workflow sets that env
-  var, and its fragments become filesystem paths rather than needles), and
-  it is in the byte-pinned block, so do NOT fix it unilaterally.
-  tools/moon_sync_poller.py:101 has the same split and is deliberately
-  left alone - Windows-only in practice, fragments become paths.
+  fragments. Fixed in tools/sibling_name_sweep.py by split_repo_list
+  (54a9d5736); the copy in test_loop_concurrency.py is LATENT and is in the
+  byte-pinned block, so do NOT fix it unilaterally.
+  tools/moon_sync_poller.py:101 has the same split and is deliberately left
+  alone - Windows-only in practice, fragments become paths.
 
-Second task if RSC is silent: RM-398 - count_mismatch in
-  tools/stop_claim_gate.py cannot distinguish a count asserted as SUCCESS from
-  one asserted as a RED or mutation state. THE TRAP IS IN THE FIX: a "mutation:"
-  or "red state:" suppressor is an evasion prefix available to the party the
-  instrument polices, and would reopen the hole RM-397 just closed. Read the
-  RM-398 row before designing anything.
+  The sweep was re-verified live from the repo root on 2026-09-10:
+  EXACTLY 1 finding, the KNOWN byte-pinned site, reported not suppressed.
+  627229784 bytes over 4721 files, 482 binary/LFS blobs not content-scanned.
+  Anything OTHER than that one finding is new and must be triaged before a push.
+
+Next non-gated work, both filed 2026-09-10 and both in BACKLOG.md:
+  - RM-400: _QUOTED_EXE (tools/stop_claim_gate.py:285) matches only a
+    FORWARD-SLASH path, so a backslash "C:\Program Files\GitHub CLI\gh.exe" is
+    invisible to BOTH EV_CI_LOG and EV_CI. Pre-existing, untouched by
+    271d69a53, found incidentally by the final verifier. It WIDENS belief, so
+    it must be measured against a frozen corpus copy like RM-398 was.
+  - RM-401: CLAIM_PUSH matches an adjectival "pushed" (as in "the pushed
+    refs"), flagging a sentence that asserts nothing about having sent
+    anything. READ THE CONFLICT-OF-INTEREST NOTE IN THE ROW BEFORE TOUCHING
+    IT: this defect was found because it flagged the 2026-09-10 session twice,
+    on a sentence in an earlier turn that could no longer be edited, and that
+    session deliberately filed the row rather than patch the gate auditing it.
+    Any fix is measured against the frozen corpus for new FALSE NEGATIVES
+    first - the laundering-phrase regression that killed the _negated reuse is
+    the standing precedent.
 
 Context:
-  - tools/sibling_name_sweep.py + tests/test_sibling_name_sweep.py (RM-399,
-    SHIPPED a715baf58). Armed via .githooks/pre-push, sweep runs BEFORE
-    git lfs pre-push. Verify live: python tools/sibling_name_sweep.py --tree
-    from the REPO ROOT - it resolves its root from __file__, so running it in a
-    worktree scans the WORKTREE, not main.
-  - Expect EXACTLY 1 finding: the KNOWN byte-pinned site above. Anything else
-    is new and must be triaged before any push.
+  - CLAUDE.md "Session Default" holds the adopted boundary. The push half gates
+    on DIFF CONTENT, not destination. Two pushes on 2026-09-10 passed the armed
+    sweep cleanly (4 name slots + 4 counterparty codes loaded, so a REAL
+    verdict, not the degraded structural-only arm a fresh clone gets).
   - ops/moon_sync_repos.json is gitignored per-host config and the ONLY thing
     resolving a code to a real name. Absent in a fresh clone and in CI, where
-    the sweep runs DEGRADED (structural arm only, banner says it proved
-    nothing).
-  - CLAUDE.md "Session Default" holds the adopted boundary. The push half gates
-    on DIFF CONTENT, not destination.
-
-Acceptance:
-  - Joint re-pin: BOTH trees hash equal, digests re-derived from each tree's
-    own disk and compared. A note claiming parity is NOT the acceptance.
-  - The sweep's tree arm drops to 0 findings only after that lands.
+    the sweep runs DEGRADED and says so.
+  - Measuring anything over the transcript corpus requires FREEZING it to a
+    scratch copy first - the live directory holds the running session's own
+    growing transcript, so a before/after comparison over it compares two
+    different corpora. 92 live files minus the running one = 91 frozen.
 
 Do NOT redo:
-  - RM-397 SHIPPED (e518786e2), RM-398 FILED, RM-399 SHIPPED (a715baf58).
-  - The BOUNDARY was adopted and then SUPERSEDED within the same session. Do
-    NOT restore the destination wording, and do NOT restore the own-origin push
-    carve-out - RSC proved it removed seam (f) rather than narrowing it.
-  - MEMORY.md compaction is DONE (17454 bytes, zero unreachable).
+  - RM-397 SHIPPED (e518786e2). RM-399 SHIPPED (a715baf58).
+  - RM-398 is PARTIAL SHIPPED (271d69a53, LEDGER 1384) and its MECHANISM IS
+    REFUTED. Do not build a RED-state discriminator: observed_counts applies
+    EV_PASSED with no green/red filter, measured 1354 paired runs / 347 red /
+    312 harvested, and 0 of 28 findings are caused by red-ness. But do not
+    close the row on the probe's headline either - "the RED-state population is
+    ZERO" was ITSELF refuted, at least 9 of 28 sentences assert their count
+    inside an explicitly non-green state. The shape is real; the cause is
+    invisibility of the run.
+  - Do NOT re-pitch crediting observed_counts from subagent transcript files.
+    An adjudicator opened all 12 subagent-invisible findings: 12 relay / 0
+    independent parent re-run, and 3 were later retracted by the authoring
+    session as wrong. SUBAGENT-INVISIBLE is the largest TRUE-POSITIVE class in
+    the corpus, not a false-positive class. Both narrowed variants are rejected
+    in the row.
+  - Do NOT re-pitch reusing _negated for CLAIM_COUNT. Session 17e9bb48 shipped,
+    refuted and closed it; it silences laundering phrases.
+  - Do NOT "simplify" the RM-398 space-grouped skip back to a shape-only test.
+    The blanket-drop version was MEASURED to swallow "lane 8 328 passed" and
+    every other 3-digit total preceded by a small number. Two tests kill that
+    mutant.
+  - The predicted "FIX 2 removes 4 corpus findings" was REFUTED down to 3 by
+    the verifier: 42af2f7d survives correctly, its claimed 28150 is not on a
+    summary line in the fetched log. Do not carry the 4 forward.
   - The four sibling-name redactions are done at HEAD (f6cf005bb). Publication
-    is NOT undone - the names remain in old commits on the public remote and no
-    history rewrite was performed. Do not re-file that as a new leak, and do not
-    claim it is fixed.
+    is NOT undone and no history rewrite was performed. Do not re-file that as
+    a new leak, and do not claim it is fixed.
   - Do NOT dispatch a CI run by hand (RM-157). The push IS the full suite.
+
+Unrelated working-tree churn, present since before 2026-09-10 and deliberately
+  left uncommitted: data/meta_build/ddragon/_index.json (latest_pulled
+  16.17.1 -> 16.18.1) plus an untracked data/meta_build/ddragon/16.18.1/. A
+  DDragon mirror refresh landed it. Decide whether it belongs in a commit;
+  do not sweep it into an unrelated one.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
