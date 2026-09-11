@@ -302,12 +302,22 @@ _QUOTED_PROSE = re.compile(
 # backslash `run view --log` FETCH, which an adversarial pass REFUTED before it
 # shipped. The fetch IS exercised: session 42af2f7d runs
 # `& "C:\Program Files\GitHub CLI\gh.exe" run view <id> --log --job=...`, newly
-# indexed by this fix (its ci_runs goes 0 -> 1). Its 31 output lines carry a bare
-# `28150 passed` and ZERO lines matching EV_SUMMARY_LINE, so the fence below
-# refused to credit it and the session's count stayed flagged. That is a LIVE
-# POSITIVE CONTROL for the fence sitting in the corpus, not an absence of
-# evidence, and it is a better fact than the one it replaces. The fix is still
-# not widened to chase a number that did not move.
+# indexed by this fix (its ci_runs goes 0 -> 1). Its count stays flagged - but
+# the reason written here was ITSELF REFUTED, re-measured 2026-09-10, and this
+# is the second correction to the same sentence. The output does NOT carry a
+# bare `28150 passed`. Hand-opened, the fetched lines read
+# `28150 passed, 266 skipped, 8059` / `subtests passed in 1609.87s` / `(0:26:49)`
+# - a GENUINE pytest terminal summary, hard-wrapped by that session's own
+# `Select-String | Select-Object -Last 5` rendering. EV_SUMMARY_LINE is applied
+# LINE BY LINE in the comprehension below, so the count and its `in <n>s`
+# duration land on different physical lines and neither half matches alone.
+# So this is a FALSE POSITIVE against a real summary, NOT a positive control.
+# Corpus-wide it is the only one: of 60 indexed ci_runs across 24 sessions,
+# exactly one carries a summary recoverable only by un-wrapping, and
+# command-level misses are now ZERO. The fix is still not widened, and the
+# reason is unchanged even though the fact under it moved - un-wrapping widens
+# what is BELIEVED from output, not which command is recognised, and that is
+# the direction this fence exists to refuse.
 #
 # The directory group stays OPTIONAL - a bare `"gh.exe"` has no separator and must
 # still rewrite - and the lazy `[^"']*?` stops at the LAST separator before the
