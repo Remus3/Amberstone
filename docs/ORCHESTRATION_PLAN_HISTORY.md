@@ -748,3 +748,83 @@ stale-tool-result replay CLAUDE.md documents, and the slice-2 agent independentl
 same thing (`ls` / `Glob` / `git status` all reporting a file missing while it was on
 disk). Treat a single green re-run as weak evidence when the pipe has already misbehaved
 in a session - CI on a pushed SHA is the ground truth that actually settled this.
+
+## R224 findings - 2026-07-28 - the guard was right about the leak and wrong about the fix shape
+
+RM-126 was filed by R223 with an unusually complete diagnosis, and it held up on
+disk without amendment. The interesting part of this cycle is what the filing did
+NOT say.
+
+**The obvious fix is the wrong fix.** The row prescribed "attach once per element,
+or tear down before re-attaching". Attach-once alone is a trap. `_installDrag`
+returns a `begin` closure that `_makeHandle` binds to the `.ovx-handle` child, and
+that child is LEGITIMATELY recreated on every repaint - it has to be, the renderer
+destroyed it. So an implementation that early-returns before the binds but still
+builds and returns a FRESH `begin` looks correct, passes any "listeners bound
+once" test, and is broken: the el-level `pointermove`/`pointerup` listeners that
+survived from the first call close over the FIRST call's `dragging`/`startX` state,
+while the new handle drives a second, unobserved copy. The leak becomes a desync.
+The fix stores `begin` on the element and hands back the stored one, so there is
+exactly one closure and one listener set for the life of the mount. This was
+called out to the build agent up front and re-verified by the verifier as a
+gating claim, because it is invisible in a bind-count assertion.
+
+**A population of 1 is still a measured result.** The enumeration covered 19
+`addEventListener` sites (17 in `overlay_layout.js`, 2 in `overlay_idle.js`) and
+found 4 defective instances, all in one defect class, all in the reported
+function pair. Nothing else. The load-bearing negative is `_ensureLauncher`
+(sites 674/715/749/750): it is re-entered by the same MutationObserver and by
+`resetOverlayLayout`, but it early-returns on
+`document.querySelector("#w-launcher")` - it asks whether the HOST still exists,
+not whether some CHILD of the host still exists. That single word is the entire
+difference between the launcher being immune and `_makeHandle` leaking for
+months. The defect class is not "unguarded listener attach", it is **"guarded on
+a child's existence when the listener's host is the parent"**, and that is the
+shape to grep for next time.
+
+**Two corrections to the directive's own premises, both minor, both worth
+recording.** (1) The stale-grounding override at the top of the file was right
+that `67e3863c` is already an ancestor of HEAD, but it was reasoning about the
+wrong thing: `67e3863c` is the docs-only FILING of RM-126, not its fix, so the
+unit was not a duplicate and was executed as written. (2) The directive routed
+STEP 4 through "the ui_recon Playwright harness + :8810 static preview". Neither
+exists on disk - `ls tools/ | grep -i recon` is empty and `8810` appears in no
+tracked `.py` or `.ps1`. Rather than log a skip, the cycle substituted something
+strictly stronger for a behaviour fix: node v24.15.0 IS present, `overlay_layout.js`
+has ZERO imports and exports `_makeHandle` through `_internals`, so the module
+loads under a stubbed DOM and the leak can be MEASURED instead of inferred. That
+harness is what produced the 12-vs-4 number above, and it is the reason this
+slice did not have to trust its own source-parsing guard.
+
+**The digest pin fired again, as designed.** `_LIVE_HALF_DIGEST` went red on the
+one-line-plus-comments edit to a LIVE web source. Re-stamped only after running
+the same tokeniser over `f124f67f` and the post-fix tree: 1 of 165 web/ sources
+changed its live half, `overlay_layout.js`, which is this slice's whole file set.
+Second consecutive cycle where this guard did its job on the first try.
+
+**OWED, carried forward:** the overlay visual PNG. This change alters zero markup
+and zero CSS bytes, the ASCII phase is measured clean (0 non-ASCII in all three
+touched files) and the HIT-TARGETS question - does drag still actuate - is
+answered by the behavioural harness rather than by pixels. STRUCTURE, TYPOGRAPHY
+and HIERARCHY are confirm-unchanged by construction. Same standing debt as R223.
+
+**SELF-CORRECTION appended before wrap - the harness probe was wrong.** STEP 1 of
+the directive said to prefer a BEHAVIOURAL test if a JS-execution harness exists,
+falling back to a source-parsing guard only if none does. The probe grep returned
+`tests/snapshot_panels/*.py`; those hits were dismissed as unrelated and they were
+not. The repo HAS a node-subprocess harness, used in at least 5 tests
+(`tests/test_coach_choices_trigger_render.py`, `tests/snapshot_panels/test_xss_escaping.py`
+and siblings), which shell to `node --input-type=module -e` and import a web
+module's `_internals`. So the ad-hoc node probe this cycle improvised to measure
+the 12-vs-4 number was the repo's own committed idiom, and it belonged in the
+suite. Corrected in-run: `tests/test_overlay_drag_listener_leak_behavior.py` pins
+the bind count (RED 12 / GREEN 4), the handle's per-pass rebind (green both sides
+by design, so an over-broad latch that killed dragging is caught), and that
+`_installDrag` returns the SAME `begin` object across passes - the anti-desync
+property a bind-count assertion cannot see, measuring `beginIdentical: False` on
+the unfixed tree. The source-parsing guard is kept alongside it; it needs no node.
+
+**The carryable lesson is not about this file.** A NEGATIVE harness probe deserves
+the same verification as a positive claim. "The grep returned files I did not
+recognise" is not "no harness exists", and the error is comfortable to make
+precisely because the fallback is cheaper than the thing it replaces.

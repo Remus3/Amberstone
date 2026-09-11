@@ -121,14 +121,27 @@ def _fetch_json(url: str, timeout: int = 15) -> Any:
 def _atomic_write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Bytes, not write_text. Every target here is TRACKED and pinned eol=lf by
+    # .gitattributes, and on Windows write_text rewrites each LF as CRLF while
+    # read_text translates it back - so the extra bytes are invisible to every
+    # reader AND `git status` stays clean, because git normalizes them in the
+    # index. An indent=2 payload is line-dense, so the on-disk size is off by
+    # the line count and any digest or byte-length compare over
+    # data/daemon_slayer/**.json is wrong. Same fix and same reason as RM-287
+    # (coaches/_base_coach.safe_write, core/polled_json.atomic_write_json).
+    # Guarded by tests/test_tracked_json_producers_emit_lf_bytes.py.
+    tmp.write_bytes(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
     tmp.replace(path)
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
+    # Bytes for the same reason as _atomic_write_json above. Today's only
+    # caller writes data/daemon_slayer/current.txt, a bare patch string with
+    # no LF in it, so this is byte-identical NOW - it is the writer, not the
+    # current payload, that has to be safe.
+    tmp.write_bytes(content.encode("utf-8"))
     tmp.replace(path)
 
 

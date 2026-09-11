@@ -189,7 +189,19 @@ def _atomic_write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     # 2-space indent + trailing newline = friendly diffs in tracked manifests.
-    tmp.write_text(json.dumps(obj, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    # Bytes, not write_text: on Windows Path.write_text rewrites every LF as
+    # CRLF while read_text translates it back, so the extra bytes are invisible
+    # to readers yet real on disk. These targets are TRACKED and pinned
+    # ``eol=lf`` by .gitattributes, and git normalizes them in the index, so
+    # `git status` stays clean while the working tree is wrong - measured
+    # 2026-09-11: six bundles under data/meta_build/ddragon/, profileicon.json
+    # alone 60510 CRLF pairs. Any size, digest or byte-length compare over
+    # them is then off by the line count. Same decision and same reason as
+    # coaches/_base_coach.safe_write and core/polled_json.atomic_write_json.
+    # Encoding here makes the payload byte-identical on every platform; this
+    # moves line endings only - indent, sort_keys and the trailing newline are
+    # unchanged. Do NOT "simplify" this back to write_text.
+    tmp.write_bytes((json.dumps(obj, indent=2, sort_keys=True) + "\n").encode("utf-8"))
     os.replace(tmp, path)
 
 
