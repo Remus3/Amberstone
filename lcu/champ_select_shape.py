@@ -59,7 +59,7 @@ ARENA_QUEUE_IDS = (1700, 1710, 1750)
 # This module is called from two places that both swallow exceptions, so a
 # raise here still costs the whole champ-select payload:
 #
-#   dashboard/_lcu_inprocess.py:255-257  catches Exception and returns None,
+#   dashboard/_lcu_inprocess.py:260-262  catches Exception and returns None,
 #       and the in-process L3 path falls back to the :8889 relay hop that L3
 #       exists to remove. RM-312 (2026-09-11) made that degrade VISIBLE - it
 #       now WARNs once per distinct fault signature - so the fault is no
