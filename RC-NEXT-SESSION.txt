@@ -1,5 +1,31 @@
 NEXT SESSION
 ------------
+SHAPE: HEADLESS LOOP (operator, 2026-09-11 wrap). The next session does NOT run
+      attended. It runs as a headless loop and does not ask permission per
+      cycle. The four standing properties still apply INSIDE each cycle -
+      orchestrated, multi-agent, self-adjudicating, self-adversarial - so the
+      loop body is still a merger plus worktree slices plus an independent
+      verifier gate, never solo inline work.
+
+      THE BOUNDARY, unchanged and non-negotiable: HALT AND PING THE OPERATOR
+      BEFORE ANY BYTE LEAVES THE TREE. That means before any write, delete or
+      lock acquisition outside the repository root; before any edit to a
+      cross-repository byte-pinned or grammar-pinned artifact; before arming
+      any task; and before any PUSH WHOSE DIFF CAN LEAK. The push half is
+      gated on DIFF CONTENT, not destination: an ordinary push that passes the
+      suites and the pre-push sibling-name sweep proceeds, but a diff touching
+      ops/loop/slots.py or ops/loop/winmutex.py (SHARED_SHA256 at
+      tests/test_loop_concurrency.py:474, parametrised at :542) HALTS. There is
+      NO TIMEOUT - RC halts and WAITS. Never proceed after a delay; a bilateral
+      rule that auto-proceeds is a unilateral rule with extra steps.
+
+      CONSEQUENCE FOR THE GATING ITEM BELOW: the joint re-pin IS a halt point
+      by definition, so the loop can CHECK the inbox every cycle but must NOT
+      execute a re-pin unattended. If RSC has replied, halt and ping; do not
+      re-pin inside the loop. If they are still silent, the loop proceeds to
+      the fallback and then to ROADMAP rows, one row per cycle, shipped end to
+      end. The loop must never arm another repo's responder.
+
 Task: Check the cross-repo inbox FIRST. The JOINT RE-PIN of SHARED_SHA256 is
       still the gating item, SIXTH session running - RSC silent since
       moon_sync_inbox/2026-09-09-2100-from-RSC. If they have replied, execute
