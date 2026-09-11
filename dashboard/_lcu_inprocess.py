@@ -107,9 +107,14 @@ _config_cache: dict = {"config": None, "ts": None}
 # relay hop that lever L3 exists to REMOVE, forever, with nothing in logs/ to
 # say why.
 #
-# The path is HOT: build_state() is the /api/state assembler and runs on a 1 Hz
-# shared TTL / SSE cadence (dashboard/routes_state.py:210-230 + :378-390), so an
-# unconditional WARN would write ~3600 lines an hour for ONE persistent fault -
+# The path is HOT when flipped: build_state() is the /api/state assembler and
+# runs on the shared TTL / SSE cadence _STATE_CADENCE_S, which is
+# RC_STATE_CADENCE_SEC and defaults to 0.5s with a 0.1 floor
+# (dashboard/routes_state.py:167-178) - about 2 Hz, NOT the 1 Hz earlier prose
+# here claimed. It is also DARK today: dashboard/_state_builder.py:173 gates the
+# call on RC_LCU_INPROCESS == "1" and that variable is unset, so 2 Hz is the
+# cadence this path ASSUMES once flipped, not traffic it carries now. At that
+# cadence an unconditional WARN would write ~7200 lines an hour for ONE fault -
 # the exact failure mode lcu/lcu_client.py:68-77 already documents (20144 of
 # 21082 log lines on a day League never launched). So: log on CHANGE of the
 # fault signature, then at most once per _DEGRADE_LOG_THROTTLE_S. Same shape as

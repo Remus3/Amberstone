@@ -716,7 +716,7 @@ survivability flips below cannot roll otherwise.
   `core/build_order_precompute.py:275`, `core/build_planner/kit_synergy.py:347,399`,
   `core/ds_antitank_hint.py:89`, `core/zoi_capability.py:138`, `dashboard/routes_archetype.py:52,90`,
   `dashboard/routes_ds_sweep.py:200`, `dashboard/routes_spike_curve.py:196`,
-  `dashboard/routes_state.py:590,964`, `dashboard/_state_builder.py:386`. `True` is passed NOWHERE
+  `dashboard/routes_state.py:590,964`, `dashboard/_state_builder.py:589`. `True` is passed NOWHERE
   outside tests and one build script, so playing Zilean in a live ARAM would change nothing on screen.
   SECOND HAZARD, previously unflagged: **none of the 13 call sites is mode-gated**, so flipping the
   resolver default would apply the ARAM-win-anchored archetype in SR and Arena too (blast radius
@@ -1437,7 +1437,7 @@ JADE-specific VALUES (`JADE`, `Jade_Ahri`) still need a real JADE game. NB the r
   `jade` mode_key and deliberately left the three `kCustom` ids (3260 / 3261 / 3262) unmapped.
   **CHECK (field path corrected 2026-08-02):** in a JADE lobby, read the queue id off `/api/state` at
   `lcu.champ_select.queue_id` (champ-select, wins) or `lcu.lobby.queue_id` (lobby fallback) - the raw
-  LCU key `queueId` is renamed snake_case at `dashboard/_state_builder.py:112-119` - and confirm it is
+  LCU key `queueId` is renamed snake_case at `dashboard/_state_builder.py:194-201` - and confirm it is
   one S3 maps: `4300`-`4311` (kJade PvP) or `4320` / `4321` (kJade VersusAI), per `core/queue_modes.py:97-117`.
   A `3260` / `3261` / `3262` means a JADE CUSTOM, which S3 left unmapped by design (`queue_modes.py:118-123`).
   Closes on ONE lobby - no game needed, which makes this the cheapest row here and the one to do first.
