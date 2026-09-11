@@ -564,6 +564,42 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "EXTERNAL",
         "Same gitignored ops/runtime/ recon script, never tracked.",
     ),
+    #
+    # 2026-09-11. docs/ORCHESTRATION_PLAN.md shed its R227 and R226 findings
+    # blocks to docs/ORCHESTRATION_PLAN_HISTORY.md (verbatim, sha256-proved) to
+    # pull the newest | R<n> | row back inside the director's tail window. That
+    # cut the plan from 948 lines to 796, which turned both citations below
+    # PAST_EOF. Note the guard could not see them BEFORE the relocation even
+    # though they were already content-stale: at 948 lines, :916-919 resolved to
+    # the "STEP 3 DEFECT-CLASS ENUMERATION" paragraph, not the one quoted. A
+    # resolvable-but-wrong line number is invisible to this guard by
+    # construction; only running off the end exposed it.
+    #
+    (
+        "docs/ORCHESTRATION_PLAN.md",
+        "docs/ORCHESTRATION_PLAN.md:916-919",
+        "HISTORICAL",
+        "The R229 row cites the lines that CARRIED the self-staled 'exercised "
+        "by no test of its own' premise, and says in the same breath that the "
+        "sentence 'is struck and corrected in this commit'. The prose survives "
+        "at docs/ORCHESTRATION_PLAN_HISTORY.md:986-989, but in its CORRECTED "
+        "form - so a re-point would aim a 'said X' claim at lines that now say "
+        "the opposite, which is the WP_C2_SPEC failure mode above: a false "
+        "claim carried to a real line. The citation records a pre-correction "
+        "state and cannot be repaired by renumbering.",
+    ),
+    (
+        "docs/audits/LF_WRITER_DIRECT_COVERAGE_2026-09-11.md",
+        "docs/ORCHESTRATION_PLAN.md:916-919",
+        "HISTORICAL",
+        "The same lines, cited by the dated audit that found the defect. This "
+        "one is explicitly SHA-QUALIFIED in its own prose - 'at ca6f42554; "
+        ":915-918 at 8ad4b6678' - and is followed by a blockquote of the "
+        "pre-correction text. Re-pointing it at the history file would break "
+        "the sha qualifier (that block did not exist there at ca6f42554) and "
+        "leave the blockquote disagreeing with the lines it cites. A dated "
+        "audit artifact records the tree it audited.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})
