@@ -26,10 +26,17 @@ Deploy (one time):
     2. Copy this file to:   C:\\RC-Agent\\keybind_listener.py
     3. Run:                 $env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\keybind_listener.py
 
-Scheduled task (run as user, ONLOGON - same elevation tier as other
-RC-* Legion agents):
-    schtasks /Create /TN "RC-KeybindListener" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\keybind_listener.py"
+Scheduled task (PowerShell; runs as the current user, ONLOGON - same
+elevation tier as other RC-* Legion agents). RM-404: this was a caret-
+continued `schtasks /Create`, and a caret does NOT continue a line in
+PowerShell - it parsed as two commands with zero errors and dropped the
+/TR payload. Register-ScheduledTask takes the executable and its
+arguments separately. Pinned by
+tests/test_scheduled_task_docstring_commands.py.
+
+    Register-ScheduledTask -TaskName "RC-KeybindListener" -Force -RunLevel Highest `
+        -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
+        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument 'C:\\RC-Agent\\keybind_listener.py')
 
 Note on permissions: the `keyboard` library hooks the Win32 low-level
 keyboard event API. On Windows it works without admin for most users;
