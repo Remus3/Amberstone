@@ -119,6 +119,36 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-10a - RM-399 SHIPPED, and specifying it found FIVE sibling-name escapes already PUBLISHED from RC's own tree
+
+Tier-1, operator AWAY: one tool, one guard, one hook, docs. LEDGER 1383, merged `a715baf58`.
+
+**THE HEADLINE IS THE ESCAPES, NOT THE TOOL. FIVE REAL sibling PROJECT NAMES sat in RC's own
+tracked prose, all live in HEAD and ALL FIVE ALREADY PUBLISHED** to the public remote; the
+2026-09-07 identity scrub reported CLEAN and missed every one. **FOUR are redacted AT HEAD
+ONLY (`f6cf005bb`) - remediating HEAD does NOT undo publication and NO history rewrite was
+performed** (operator decision; a force-push does not reach `refs/pull/N/head` anyway).
+
+**THE FIFTH IS OPEN AND UNFIXABLE ALONE:** `tests/test_loop_concurrency.py:492`, inside the
+`SHARED_SHA256` byte-identical block (474-539), a two-word name SPLIT ACROSS A COMMENT LINE
+WRAP - not contiguous in the blob, which is why every whole-token sweep ever run here called
+it clean. It ships as a KNOWN, NAMED, VISIBLE exception (`tools/sibling_name_sweep.py:112`,
+asserted REPORTED not suppressed). Removal is a JOINT re-pin, relayed to RSC 2026-09-10 and
+**AWAITING THEIR REPLY** - do not re-pin unilaterally.
+
+**MEASURED on main:** 126 passed; ARMED tree scan = EXACTLY 1 finding (the known site) over
+627214858 bytes / 4721 files, 482 binary/LFS blobs declared un-scanned; the gate ran on its
+OWN push, clean over 95220 bytes / 6 files / 2 commit messages. The honest claim is "the sweep
+half is ARMED with a measured escape rate above zero", never "sibling names cannot leak".
+
+**DO NOT REDO:** RM-397 SHIPPED (`e518786e2`), RM-398 FILED (deliberately NOT bundled), RM-399
+SHIPPED. The halt-before-any-byte-leaves boundary is ADOPTED, binds EVERY session, no timeout -
+but its PUSH half was SUPERSEDED the same session by `8facd08d4`: **the push gate is on DIFF
+CONTENT, not destination.** Do NOT restore the destination wording and do NOT restore the
+own-origin carve-out (RSC conceded it removed seam (f)).
+
+---
+
 # 2026-09-09j - MEMORY.md compacted to 16.9 KB by relocating two blocks; no repo code touched
 
 Tier-0 housekeeping on the memory index only - nothing in this repo changed
