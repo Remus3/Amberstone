@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-403** (2026-09-10, moved at the RM-402 filing).
+  Next free id = **RM-405** (2026-09-11, moved at the RM-403/RM-404 filing).
+  **RM-403 and RM-404 were allocated 2026-09-11** (LEDGER 1388), both filed
+  under BACKLOG "Reliability / hardening", neither taking a roster checkbox and
+  neither changing the Summary count. RM-403 SHIPPED: a red-before-green guard
+  on ROADMAP-vs-BACKLOG disposition drift, after four rows were found OPEN here
+  while their BACKLOG bodies said SHIPPED or CLOSED. RM-404 OPEN: five printed
+  `schtasks` lines that no test has ever executed, filed as a candidate
+  population and NOT as a defect count. Ids taken from THIS pin, and
+  `tools/rm_id_registry.py` reported both free across all 7 scanned docs before
+  the filing.
+  Earlier next-free pointer (2026-09-10, moved at the RM-402 filing).
   **RM-402 was allocated 2026-09-10** (LEDGER 1385), filed under BACKLOG
   "Reliability / hardening", taking no roster checkbox and not changing the
   Summary count: the NON-GIT-IDIOM sense of "pushed" in `CLAIM_PUSH`, which is
