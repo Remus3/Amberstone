@@ -1112,7 +1112,86 @@ def test_basename_fetch_still_honours_the_summary_line_restriction(tmp_path, com
     assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
 
 
-# ------------------------------------------------- RM-397 possessive blinding
+# ---------------------------- the WINDOWS BACKSLASH path form (RM-400, 2026-09-10)
+#
+# The block above fixed the pattern that CONSUMES the basename. This one fixes the
+# pattern that PRODUCES it. `_QUOTED_EXE` ended its optional directory group on
+# `[\/]`, which inside a character class is a forward slash and nothing else, so
+# only a POSIX-spelled path ever collapsed to `gh.exe`. A native Windows spelling
+# - `"C:\Program Files\GitHub CLI\gh.exe"` - matched no exe branch at all, fell
+# through to `_QUOTED`, and was DELETED whole, leaving ` run view <id> --log` with
+# no binary token for EV_CI_LOG or EV_CI to see. Same end state as the 2026-08-04
+# defect that created `_QUOTED_EXE` in the first place, reached by a different
+# spelling of the very same command.
+#
+# Three forms are pinned because each fails differently: pure backslash (the
+# native spelling), MIXED separators (a path pasted from one shell into another),
+# and a bare `"gh.exe"` with no directory at all, which already worked and must
+# keep working - the fix must not make the directory group mandatory.
+GH_LOG_BACKSLASH = ('"C:\\Program Files\\GitHub CLI\\gh.exe" run view 31874678071 '
+                    "--log-failed > ci.txt")
+GH_LOG_MIXED = ('"C:\\Program Files/GitHub CLI\\gh.exe" run view 30770489475 '
+                "--log --job=98765432")
+GH_LOG_BARE = '"gh.exe" run view 34538335778 --log-failed | grep -i fail'
+_BACKSLASH_FORMS = [GH_LOG_BACKSLASH, GH_LOG_MIXED, GH_LOG_BARE]
+
+
+@pytest.mark.parametrize("command", _BACKSLASH_FORMS)
+def test_ci_log_fetched_by_a_backslash_path_counts_as_evidence(tmp_path, command):
+    """End to end. The local run is required or the count check never arms."""
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_tool_use("Bash", command=command)),
+        _tool_result(CI_LOG_OUTPUT),
+        _assistant(_text("CI green: 31706 passed.")),
+    ]
+    assert "count_mismatch" not in _checks(_run_gate(tmp_path, rows))
+
+
+@pytest.mark.parametrize("command", _BACKSLASH_FORMS)
+def test_backslash_fetch_still_honours_the_summary_line_restriction(tmp_path, command):
+    """THE FENCE. This widening moves BELIEF, so the line filter is pinned here.
+
+    Recognising one more command spelling is the whole change; what may be
+    credited from the fetched output is untouched. 23607 sits in the same log
+    inside an echoed workflow comment with no terminal-summary shape, and it must
+    stay uncreditable however the log was fetched. Without this test a fix that
+    also relaxed EV_SUMMARY_LINE would pass the test above.
+    """
+    rows = [
+        _assistant(_tool_use("Bash", command="python -m pytest -q")),
+        _tool_result(PYTEST_GREEN),
+        _assistant(_tool_use("Bash", command=command)),
+        _tool_result(CI_LOG_OUTPUT),
+        _assistant(_text("CI green: 23607 passed.")),
+    ]
+    assert "count_mismatch" in _checks(_run_gate(tmp_path, rows))
+
+
+def test_the_exe_rewrite_is_a_basename_and_nothing_else():
+    """Unit level, because the end-to-end tests cannot see WHAT was left behind.
+
+    Both halves matter. The binary must survive as a bare basename, and the
+    directory it came from must not - leaking `C:\\Program Files` back into the
+    command would hand the evidence patterns tokens the operator never invoked.
+    """
+    for command in _BACKSLASH_FORMS:
+        stripped = gate.strip_command_noise(command)
+        assert " gh.exe " in stripped, stripped
+        assert "Program Files" not in stripped, stripped
+        assert "GitHub CLI" not in stripped, stripped
+
+
+def test_a_quoted_backslash_literal_that_is_not_an_exe_is_still_deleted():
+    """Scope pin. The rewrite is for EXECUTABLES; other quoted data is DATA.
+
+    A quoted Windows path to a LOG is an argument, not a command, and must keep
+    vanishing with the rest of the quoted literals. If the backslash alternative
+    were added somewhere broader than the exe branch, this would leak.
+    """
+    assert (gate.strip_command_noise(r'type "C:\Riot Commander\logs\no tests ran.txt"')
+            == "type  ")
 # SIXTH shape, and the first that makes the gate blind rather than noisy. Every
 # fix above narrowed what the gate would FLAG; this one is the opposite failure
 # - a claim the gate never got to examine at all.

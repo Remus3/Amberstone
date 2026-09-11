@@ -282,7 +282,42 @@ _QUOTED_PROSE = re.compile(
 # ` run view <id>` with no `gh` token left for any pattern to see. The repo's
 # own /done instructions mandate that absolute quoted path, so this was not an
 # unusual way to invoke it - it was the prescribed one.
-_QUOTED_EXE = re.compile(r"""["']([^"']*?[\/])?([\w.-]+\.exe)["']""", re.I)
+#
+# The separator class is `[\\/]`, and the BACKSLASH half of it is RM-400, measured
+# 2026-09-10. The original wrote `[\/]`, which inside a character class is a
+# forward slash and nothing else - the escape is inert there. So only a
+# POSIX-spelled path ever collapsed, and the NATIVE Windows spelling of the very
+# same command, `"C:\Program Files\GitHub CLI\gh.exe" run view <id> --log`, matched
+# no branch, fell through to `_QUOTED`, and was deleted whole. That is the exact
+# 2026-08-04 end state this pattern was written to prevent, reached by a different
+# spelling: EV_CI_LOG and EV_CI both saw ` run view <id> --log` with no binary in
+# it, so the fetch was never indexed and its CI counts never reached
+# observed_counts. Found incidentally by RM-398's final verifier, not by that fix.
+#
+# MEASURED over the same frozen 92-transcript corpus: 3 findings REMOVED, 0 added,
+# 31 -> 28. All three are `ci_claim_without_probe` in ONE session that probed CI
+# SEVEN times, every one of them `& "C:\Program Files\GitHub CLI\gh.exe" run ...`,
+# and was told it had never probed. NOT ONE count_mismatch moved, and the reason
+# is the OPPOSITE of the one first written here - a claim that this corpus held no
+# backslash `run view --log` FETCH, which an adversarial pass REFUTED before it
+# shipped. The fetch IS exercised: session 42af2f7d runs
+# `& "C:\Program Files\GitHub CLI\gh.exe" run view <id> --log --job=...`, newly
+# indexed by this fix (its ci_runs goes 0 -> 1). Its 31 output lines carry a bare
+# `28150 passed` and ZERO lines matching EV_SUMMARY_LINE, so the fence below
+# refused to credit it and the session's count stayed flagged. That is a LIVE
+# POSITIVE CONTROL for the fence sitting in the corpus, not an absence of
+# evidence, and it is a better fact than the one it replaces. The fix is still
+# not widened to chase a number that did not move.
+#
+# The directory group stays OPTIONAL - a bare `"gh.exe"` has no separator and must
+# still rewrite - and the lazy `[^"']*?` stops at the LAST separator before the
+# basename, so a mixed-separator path pasted between shells resolves too.
+#
+# This widens only which COMMAND is recognised, never what is believed from its
+# output: `audit` still keeps CI counts to lines matching EV_SUMMARY_LINE, so a
+# stale count echoed from a workflow comment is no more creditable through this
+# spelling than through the old one. Pinned by a test, not by this sentence.
+_QUOTED_EXE = re.compile(r"""["']([^"']*?[\\/])?([\w.-]+\.exe)["']""", re.I)
 
 
 def strip_command_noise(command):
