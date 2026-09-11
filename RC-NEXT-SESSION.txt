@@ -1,38 +1,72 @@
 NEXT SESSION
 ------------
 Task: Check the cross-repo inbox FIRST. The JOINT RE-PIN of SHARED_SHA256 is
-      still the gating item, third session running - RSC has been silent since
+      still the gating item, FIFTH session running - RSC silent since
       moon_sync_inbox/2026-09-09-2100-from-RSC. If they have replied, execute
       the joint re-pin (never unilaterally, never regenerate digests from local
-      disk, byte-level copy only). If they are still silent, pick up RM-387 or
-      RM-388 from ROADMAP NOW instead.
+      disk, BYTE-level copy only - write_text turns LF into CRLF and the pin is
+      on bytes). If they are still silent, take the fallback below.
 
-Context: moon_sync_inbox/ (read RC's own; newest first) - the pinned pair is
-      ops/loop/slots.py + ops/loop/winmutex.py, pinned by SHARED_SHA256 at
-      tests/test_loop_concurrency.py:474, parametrised at :542. The fifth
-      sibling-name escape sits INSIDE that block at :492 as a two-word name
-      split across a comment line wrap, shipped as a known named VISIBLE
-      exception at tools/sibling_name_sweep.py:112. Live state: RC pid alive,
-      mode=client, LCU Offline. Probe ops/runtime/health.json and
+      FALLBACK - and unlike last session's, this one was VERIFIED at wrap, not
+      asserted: `dashboard/_state_builder.py:96` is still
+      `except Exception:  # noqa: BLE001` / `snap = None`, confirmed by reading
+      the line. It is the DIRECT CALLER of the function RM-312 just fixed, so
+      the fault it raises is still swallowed one layer up. Apply the SAME shape
+      RM-312 shipped in `3e5451ff3` - read that commit first rather than
+      inventing one: throttled on CHANGE of fault signature then <=1 per 60s,
+      and NEVER emit `str(exc)` (repo is PUBLIC, LCU payloads carry PUUIDs;
+      emit exception type + basename + lineno + func from the INNERMOST frame).
+
+Context: moon_sync_inbox/ (read RC's own; newest first - newest overall is
+      2026-09-11-0030-from-LW, already read and needs no reply). The pinned
+      pair is ops/loop/slots.py + ops/loop/winmutex.py, pinned by
+      SHARED_SHA256 at tests/test_loop_concurrency.py:474, parametrised at
+      :542; the fifth sibling-name escape sits INSIDE that block at :492 as a
+      two-word name split across a comment line wrap, shipped as a known named
+      VISIBLE exception at tools/sibling_name_sweep.py:112.
+      Cadence fact, already measured - do NOT re-derive it from a comment:
+      build_state() runs at RC_STATE_CADENCE_SEC, default 0.5s, floor 0.1
+      (dashboard/routes_state.py:167-178), about 2 Hz. The "1.0s TTL" comment
+      at routes_state.py:210 is STALE PROSE and a build agent already inherited
+      that wrong number once. The path is also DARK today -
+      dashboard/_state_builder.py:92 gates it on RC_LCU_INPROCESS, unset.
+      Live state at wrap: pid 30584 alive, mode=client, LCU Offline, both
+      :8888 and :8889 listening. Probe ops/runtime/health.json and
       https://127.0.0.1:8888/api/state before assuming anything.
 
 Acceptance: either both trees hash equal after a JOINT re-pin (both hashing
       equal IS the acceptance, not a note claiming it), or a named RM row
-      shipped with a red-before-green guard and CI green on both workflows.
+      shipped with a red-before-green guard whose ANTI-VACUITY is PROVEN by
+      stubbing the parser/extractor empty and watching arms fail - not merely
+      asserted - and CI green on the FINAL pushed HEAD.
 
 Do NOT redo:
-  - Q5. Answered and CLOSED 2026-09-08 (RM-389, LEDGER 1370) and RELAYED to LW
-    on 2026-09-10 (sha 46a00569). It only looked open because the operator's
-    own 2026-09-08 standby narrowing kept it out of LW's tree.
-  - The _archive/ and 101qq_*_capture_* gitignore rules. Both are DELIBERATE
-    and carry their own explanatory comments; 341 of the 342 ignored-tracked
-    hits are those two. Only agents/state/ was a real defect and it is fixed
-    (5f3555ec4) with a guard at tests/test_gitignore_negations_are_effective.py.
+  - RM-403, RM-404, RM-312. All SHIPPED 2026-09-11 (LEDGER 1388/1389/1390),
+    CI green on 3e5451ff3.
+  - RM-387 and RM-388. SHIPPED 2026-09-08 (LEDGER 1368/1369). The 09-10e
+    hand-off named them as its fallback and they had already shipped; ROADMAP
+    is now corrected and tests/test_roadmap_backlog_disposition_drift.py
+    guards the class.
+  - Widening that guard's binding rule. A disposition binds to the NEAREST
+    PRECEDING id only. RM-281/RM-283 and RM-204 are pinned controls; a first
+    parser called RM-204 a fifth drift row and was NARROWED, never allowlisted.
+  - Hand-fixing caret escaping in a printed schtasks block. RM-404's answer is
+    Register-ScheduledTask, which takes exe and args as SEPARATE parameters.
+    tools/liveclient_relay.py:14 measured FINE and must stay untouched.
+  - A general bare-`except Exception` sweep. RM-312's fence stands: the
+    remaining sites in dashboard/_state_builder.py and tools/lcu_agent.py:1612
+    are a CANDIDATE POPULATION needing its own census, not a defect count.
+    Re-derive their line numbers; RM-312 moved code in that file.
   - Arming any responder. Nobody's is armed - LW's is built and deliberately
     disarmed (D5), RC's RC-InboxResponder is Ready/disarmed. Arming is an
     operator act.
-  - CS and LL notes. Both still on standby as far as RC knows; nothing was
-    written into their trees and nothing should be without operator approval.
+  - Replying to the three LW notes. All read; none requests a reply.
+
+Unmeasured, NOT started - two slices were dispatched and cancelled at wrap:
+  - RM-294's LANE 7 claim that agents/agent3_testing/suite/ is collected by
+    NEITHER CI tree and every test in it is UNRUN. Filed 2026-08-31 and NOT
+    re-verified this session. Measure before acting: does it collect, does it
+    pass, and are there other orphaned test-bearing dirs?
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       git log + ROADMAP.md.
