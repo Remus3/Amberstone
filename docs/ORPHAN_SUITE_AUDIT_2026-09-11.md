@@ -18,9 +18,16 @@ in the same sentence.
 | tree | collected (measured) | run result (observed) | vacuity candidates | platform blockers | conftest-redirect status | VERDICT |
 |---|---|---|---|---|---|---|
 | `tools/tests` | **348** | **348 passed, 0 failed, 0 error, 0 skipped, 20.17s** | **0 confirmed** (17 probe survivors, all hand-reviewed and cleared - list below) | **0** | root `conftest.py` applies; `tests/conftest.py` RM-406 redirects do NOT. Moot: 0 live-path writes measured | **WIRE** |
-| `agents/agent3_testing/suite` | **359** | **357 passed, 0 failed, 0 error, 2 skipped, 21.16s** | **0 confirmed** (24 probe survivors, all hand-reviewed and cleared - list below) | **1** (`test_supervisor.py:206`, correctly two-branched - not a blocker) | root `conftest.py` + own `suite/conftest.py` apply; `tests/conftest.py` RM-406 redirects do NOT. Moot for the filesystem (all 15 writes tmp-rooted) but NOT for the network - see live-write findings | **WIRE-WITH-EXCLUSIONS** |
+| `agents/agent3_testing/suite` | **359** | **357 passed, 0 failed, 0 error, 2 skipped, 21.16s in the ONE run this audit made - CORRECTED AT MERGE, see MERGER ADJUDICATION: an independent verifier ran the post-exclusion set THREE times and got 1 failed / 348 passed / 2 skipped / 2 deselected on run 1, so the "0 failed" above is a single-sample result and not a property of the tree** | **0 confirmed** (24 probe survivors, all hand-reviewed and cleared - list below) | **1** (`test_supervisor.py:206`, correctly two-branched - not a blocker) | root `conftest.py` + own `suite/conftest.py` apply; `tests/conftest.py` RM-406 redirects do NOT. Moot for the filesystem (all 15 writes tmp-rooted) but NOT for the network - see live-write findings | **EXCEPTED** - downgraded from WIRE-WITH-EXCLUSIONS at merge, see MERGER ADJUDICATION. This is the same word the gate uses: the tree is an `_EXCEPTED` row in `tests/test_ci_collects_orphan_suite_trees.py::_COLLECTION_ROOTS`, and NO CI step names it |
 
-### Exact exclusions for the agent3 verdict
+### Exact exclusions for the agent3 verdict - MEASURED BUT **NOT APPLIED**
+
+**These exclusions are NOT in `.github/workflows/ci.yml` and never were.** They
+are recorded here as evidence for a future re-wire, not as a description of the
+gate. The tree is EXCEPTED outright, so there is no invocation for an exclusion
+to attach to. The block below is what a re-wire would START from once the
+`test_supervisor.py:203` flake is fixed at source - it is not sufficient on its
+own, because the flake is not in this list and cannot be excluded away.
 
 ```
 pytest agents/agent3_testing/suite \
@@ -165,7 +172,7 @@ helpers are resolved transitively; `pytest.raises` / `pytest.warns` /
 `pytest.fail` count as assertions; a test taking a non-builtin fixture is
 treated as "reach unknown" and skipped rather than flagged.
 
-**41 survivors of 674** (the 674 is the AST-visible `def test*` count; it differs
+**41 survivors of 675** (the 675 is the AST-visible `def test*` count; it differs
 from 359+348=707 collected because `@pytest.mark.parametrize` expands one
 definition into several collected items). All 41 were hand-reviewed. All 41
 CLEARED. Printed in full.
@@ -446,3 +453,59 @@ Stated plainly, because a verdict is only as good as its blind spots.
    25s port deadline (`test_supervisor.py:170`) plus up to 20 one-second
    heartbeat polls (`:192`) under a 60s timeout mark (`:110`). Whether that is
    worth the minutes is an operator call this audit does not make.
+
+## MERGER ADJUDICATION (added at merge, 2026-09-11)
+
+This section is written by the merger, not by the audit's author, because the
+audit's own verdict did not survive an independent pass. The rule that produced
+it is the standing one: the agent that produced a thing never grades it, and two
+agents agreeing is not evidence.
+
+**`tools/tests` = WIRE. MERGED AND WIRED.** Independently re-run: 348 passed, 0
+failed, 0 skipped. Zero network, zero subprocess, zero platform gates, zero
+conditional skips, all 16 writes tmp-rooted. Nothing contradicted the audit.
+
+**`agents/agent3_testing/suite` = EXCEPTED. NOT WIRED.** The audit returned
+WIRE-WITH-EXCLUSIONS on a single run that reported
+"0 failed". A verifier ran the post-exclusion set THREE times and run 1 returned
+**1 failed, 348 passed, 2 skipped, 2 deselected** -
+`test_supervisor.py::test_supervisor_starts_and_binds_ports`, `Failed: lockfile
+heartbeat never refreshed to a second value` at `test_supervisor.py:203`. Runs 2
+and 3 were green, and the test passes 3/3 in isolation. That is a 1-in-3
+load-dependent serial flake, and a single sample could never have seen it.
+
+**Why EXCEPTED and not a fourth exclusion.** An exclusion list that grows by one
+row every time somebody re-measures the tree is not a gate, it is a record of
+what has been noticed so far. Three of the four candidate exclusions were found
+by two different passes on the same afternoon. The tree also carries 7 tests
+gated on a live supervisor at `127.0.0.1:8890`, and `test_scheduler_lock.py:48-49`
+states in its own comment that CI does not run this suite because its retry loop
+is tuned around that - a comment that stays TRUE under this adjudication and
+would have been silently falsified by wiring the tree.
+
+**The blocker is recorded where it cannot be lost.** The tree is a DECLARED
+EXCEPTION row in `tests/test_ci_collects_orphan_suite_trees.py::_COLLECTION_ROOTS`
+carrying the mechanism above, and that table is joined to the assertion:
+verifier mutation runs proved 7 of 7 mutations red, including deleting the row,
+emptying the mechanism, and forcing the discovered-tree set to empty. So adding
+a CI step for this tree without flipping its row reds the guard, and so does
+deleting the row.
+
+**Two corrections applied to the body above at merge:** the section (c)
+denominator read 674 against a measured 675 (the doc's own section (b) says
+675), and the agent3 run-result cell claimed "0 failed" without disclosing it was
+a single sample.
+
+**One claim in this document is NOT reproducible and is flagged rather than
+trusted.** The commit contains one file. The mocks-of-itself AST detector and the
+proxy probe behind "0 flagged over 675" and "flagged 2 of 3" were not committed,
+so that zero is hand-analysis nobody can re-run. The empty-enumeration census
+that IS reproducible was re-derived independently and checks out exactly: 5 hits
+across both trees, every one anchored.
+
+**The finding this audit produced that outlives its verdict** is the live-state
+escape in LIMITS item 5 and at `:386-388`: `:8890` was measured OPEN on Legion,
+so the 6 `live_supervisor` tests do NOT skip here and POST real records into the
+operator's running supervisor. RM-406 redirects PATHS; this leaves over a SOCKET
+and touches none of its four patched write routes. Filed as RM-409. Both slice
+agents and this audit each tripped it while working.
