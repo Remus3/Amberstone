@@ -1306,22 +1306,75 @@ def test_a_clean_directive_is_untouched_on_the_live_repo(tmp_path: Path):
     assert out == body and logs == [] and written == {}
 
 
-def test_the_live_directive_suffix_sha256_pins_are_not_read_as_commits():
-    """FALSE-POSITIVE side, measured against real data rather than a fixture.
+# A 64-char hex run this file OWNS. The property under test belongs to the
+# DETECTOR - a 64-char run has no word boundary at position 40, so the 7-to-40
+# token shape skips it whole rather than probing git for a digest that can never
+# be a commit. Binding that property to whatever digests the live operator brief
+# happened to carry was the defect: the brief is designed to be rewritten every
+# run, and the 2026-09-11 RM-405 rewrite legitimately dropped all three pins,
+# which reddened a detector test over a content change. The control below never
+# asks the brief anything.
+_SYNTHETIC_SHA256 = "0123456789abcdef" * 4
 
-    ops/loop/config.json's directive_suffix is appended to every directive and
-    carries three SHARED_SHA256 file digests. A 64-char hex run has no word
-    boundary at position 40, so the 7-to-40 token shape skips them whole - which
-    is the difference between this guard being quiet on every live cycle and
-    probing git for three digests that can never be commits.
+# Maximal hex runs of exactly 64, on hex lookarounds rather than \b: the live
+# pins are spelled `SHARED_SHA256 = "<digest>"` and an underscore is a word
+# character, so a \b-anchored search reads the surroundings, not the run.
+_HEX64_RE = re.compile(r"(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])")
+
+
+def test_a_sha256_digest_is_never_read_as_a_commit_token():
+    """UNCONDITIONAL control: the detector is exercised against a 64-char hex run
+    on every run, from a string this test owns.
+
+    The two short shas are the anti-vacuity half. If the scan never ran at all
+    the digest assertion below would pass for the wrong reason, so the same run
+    has to prove the scanner IS probing - and the probes it does make must not
+    contain so much as a prefix of the digest.
+    """
+    body = (f"GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1074 CHAIN-LAST=cycle 5\n"
+            f"Pin ops/loop/slots.py at SHARED_SHA256 = \"{_SYNTHETIC_SHA256}\" and\n"
+            f"re-read f173ce39 before starting.\n")
+    g = _Git()
+    assert executor.grounding_findings(body, **g.kwargs()) == []
+    assert "f173ce39" in g.probed, \
+        "the sha scan did not run at all - the digest arm below would be vacuous"
+    assert [t for t in g.probed if t.lower() in _SYNTHETIC_SHA256] == [], \
+        "a 64-char digest, or any prefix of one, must not reach git"
+
+
+def test_the_live_directive_suffix_sha256_pins_are_not_read_as_commits():
+    """OPPORTUNISTIC real-data arm, kept because measuring against the live brief
+    rather than a fixture was the original point of this guard.
+
+    Its status is EXPLICIT in both states, because a suffix with zero digests
+    must not turn this into a silent always-green (the empty-enumeration class).
+    When the brief carries digests they are asserted over directly; when it
+    carries none, the same property is asserted over the live brief with the
+    synthetic digest spliced in, so the arm still fails on a broken detector.
+    MEASURED 2026-09-11: the post-RM-405 brief carries ZERO digests, so the
+    spliced branch is the one running - the unconditional control above is what
+    carries the real-digest coverage.
     """
     suffix = json.loads((ROOT / "ops" / "loop" / "config.json").read_text(
         encoding="utf-8")).get("directive_suffix", "")
     assert len(suffix) > 500, "the suffix is the live operator brief - it should be long"
-    assert "95077a62527c9764e896e3bd1da9027e5efd2b15631feb725fe6138cee5054f9" in suffix
+    digests = _HEX64_RE.findall(suffix)
+
     g = _Git()
     assert executor.grounding_findings(suffix, **g.kwargs()) == []
-    assert g.probed == [], "a 64-char digest must not reach git at all"
+    if digests:
+        status = f"{len(digests)} live digest(s) in the brief"
+        assert [t for t in g.probed
+                if any(t.lower() in d.lower() for d in digests)] == [], \
+            "a 64-char digest in the live brief must not reach git at all"
+    else:
+        status = "no live digest - synthetic digest spliced into the live brief"
+        spliced = f"{suffix}\nSHARED_SHA256 = \"{_SYNTHETIC_SHA256}\"\n"
+        h = _Git()
+        assert executor.grounding_findings(spliced, **h.kwargs()) == []
+        assert [t for t in h.probed if t.lower() in _SYNTHETIC_SHA256] == [], \
+            "a 64-char digest must not reach git at all"
+    print(f"[real-data arm] {status}")
 
 
 def test_the_live_head_lookup_resolves_in_this_repo():
