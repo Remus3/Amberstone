@@ -70,6 +70,18 @@ Context: moon_sync_inbox/ (read RC's own; newest first - newest overall is
       offset two older records quote. The L3 path is also DARK today -
       _state_builder.py:173 gates it on RC_LCU_INPROCESS, unset.
 
+      WRAP-GATE WARNING, measured at the RM-405 wrap: tools/stop_claim_gate.py
+      blocked that wrap TWICE, on three headline numbers that were all TRUE.
+      Every one had been measured by a SUBAGENT, never by the main thread, so
+      the gate read them as unbacked - correctly. A verifier's CONFIRM grades
+      the SLICE; it is still not the main thread's own evidence. Re-run in the
+      MAIN thread whatever you intend to PRINT, or attribute it to the agent
+      that ran it. One figure (a bespoke md-guard selection, "1782 passed") was
+      RETRACTED rather than re-run because the selection could not be
+      reproduced from its own prose; CI green at the final HEAD was stronger
+      and was verified directly. Memory:
+      reference_stop_gate_a_subagent_measurement_is_not_yours.
+
       Live state at wrap: pid 23096 alive, mode=client, last_reload_ok=true.
       Probe ops/runtime/health.json and https://127.0.0.1:8888/api/state
       before assuming anything.
