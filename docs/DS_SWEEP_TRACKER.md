@@ -69,7 +69,19 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-405** (2026-09-11, moved at the RM-403/RM-404 filing).
+  Next free id = **RM-406** (2026-09-11, moved at the RM-405 filing).
+  **RM-405 was allocated 2026-09-11** (LEDGER 1391), filed under BACKLOG
+  "Reliability / hardening", taking no roster checkbox and not changing the
+  Summary count. RM-405 SHIPPED: the DIRECT CALLER of the in-process L3 read,
+  `_read_lcu_snapshot()` in `dashboard/_state_builder.py`, caught `Exception`
+  and set `snap = None` with no log line, re-swallowing one frame higher the
+  fault RM-312 had just made visible - plus the `ImportError`-on-lazy-import
+  class RM-312 provably cannot cover, since its module never loaded. The id
+  was consumed by commit `fc0058441` BEFORE this pin moved, which is why the
+  registry guard went red at the docs-sync rather than at the code commit:
+  the id entered the tree as a test filename and a commit message, neither of
+  which `tools/rm_id_registry.py` scans. Take the next id from THIS pin.
+  Earlier next-free pointer (2026-09-11, moved at the RM-403/RM-404 filing).
   **RM-403 and RM-404 were allocated 2026-09-11** (LEDGER 1388), both filed
   under BACKLOG "Reliability / hardening", neither taking a roster checkbox and
   neither changing the Summary count. RM-403 SHIPPED: a red-before-green guard

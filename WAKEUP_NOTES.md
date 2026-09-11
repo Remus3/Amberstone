@@ -2,7 +2,104 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-11, RM-403/404/312 wrap (relocated `2026-09-10c` RM-400 shipped / RM-401 refuted; newest 3 = `2026-09-11a` stale-fallback + three silent failures, `2026-09-10e` Q5 relay + inert-negation fix, `2026-09-10d` RM-402 refuted). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-11, RM-405 wrap (relocated `2026-09-10d` RM-402 refuted + circular measurement; newest 3 = `2026-09-11b` RM-405 caller-seam silent degrade, `2026-09-11a` stale-fallback + three silent failures, `2026-09-10e` Q5 relay + inert-negation fix). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-11b - RM-405 SHIPPED: RM-312 had fixed the silence one layer too low, and the CALLER re-swallowed it
+
+Tier-1, one module plus one new 19-arm guard, shipped as `fc0058441` and pushed
+to `origin/main`. 9 files, 525 insertions, 24 deletions. LEDGER 1391. No engine,
+no `ENGINE_VERSION` bump, no DS bounce, no Share sync, no `web/` change, no
+frozen file touched. Live at wrap: pid 23096 alive, `mode=client`,
+`last_reload_ok=true`.
+
+**THE JOINT RE-PIN OF `SHARED_SHA256` IS STILL BLOCKED AND IS STILL THE GATING
+ITEM, SIXTH SESSION RUNNING.** RSC silent since
+`moon_sync_inbox/2026-09-09-2100-from-RSC...`. The newest inbox item overall is
+`2026-09-11-0030-from-LW`, already read, no reply owed. **Nothing was armed and
+nothing left the tree beyond the ordinary push** - the push diff touched neither
+`ops/loop/slots.py` nor `ops/loop/winmutex.py`, and the pre-push sibling-name
+sweep reported CLEAN (28588 bytes, 9 files, 1 commit message, 0 binary/LFS blobs
+- LFS OBJECT CONTENT is never content-scanned, which is a named blind spot, not
+a clean bill). Do NOT re-pin unilaterally and do NOT regenerate the digests from
+local disk; a BYTE-level copy only, because `write_text` turns LF into CRLF and
+the pin is on bytes.
+
+**THE DEFECT: RM-312 (`3e5451ff3`, LEDGER 1390) made a fault raised INSIDE
+`dashboard/_lcu_inprocess.py` visible, and its DIRECT CALLER swallowed the same
+fault one frame higher.** `_read_lcu_snapshot()` at `dashboard/_state_builder.py`
+caught `Exception` and set `snap = None` with no log line. **This was not
+rediscovery** - RM-312's own SHIPPED body had REPORTED that site as a sibling
+candidate under its fence against an unbounded bare-`except Exception` sweep, so
+the previous slice filed it and this one closed it.
+
+**THE HALF RM-312 PROVABLY CANNOT COVER IS AN `ImportError` ON THE LAZY IMPORT.**
+When `from dashboard._lcu_inprocess import lcu_summary_inprocess` raises, the
+module never loaded, so RM-312's logger never existed to run. That is a
+structural limit of a module-local logger, not a gap in RM-312, and it has its
+own arm - which also asserts RM-312's module state stays untouched, so neither
+seam can mask the other. Independent lock and throttle state, deliberately
+different prose, so a log reader can tell WHICH layer faulted.
+
+**`str(exc)` IS NEVER EMITTED, RE-PROVED AT THIS SEAM RATHER THAN INHERITED.**
+No `exc_info`, no `stack_info`, no f-string. A verifier drove
+`RuntimeError("puuid=SECRET-LEAK-MARKER")` live and observed the marker absent
+from `getMessage()`, `record.args`, `record.__dict__` and a full `Formatter`
+render. The repo is PUBLIC and LCU payloads carry PUUIDs, so this gets measured
+per seam every time. Contract byte-for-byte unchanged: still `None` on fault,
+still falls through to `lcu_summary()`, and the success / `snap is None` /
+flag-unset paths all stay SILENT.
+
+**THE PRE-FIX RED WAS WEAK BY CONSTRUCTION AND IS NOT OFFERED AS DEFECT
+EVIDENCE.** All 19 arms went red pre-fix, but on a MISSING TEST HELPER, not on
+the defect - LEDGER 1390 had to make that exact correction one entry earlier, so
+this slice anticipated it rather than being caught by it. **The real evidence is
+anti-vacuity: stub the log call to a no-op and 13 of 19 arms go red while 6
+survive, and the 6 are exactly the silent-path arms that must survive.** An
+INDEPENDENT verifier reproduced the 13/6 split from a scratchpad copy instead of
+inheriting the number.
+
+**THE SLICE STALED ITS OWN CITATIONS - CAUGHT BY THE FIRST VERIFIER PASS, NOT BY
+THE AUTHOR.** +83 lines near the top of `_state_builder.py`, +5 in
+`_lcu_inprocess.py`. Repo-wide re-derivation followed: shift-caused offsets fixed
+at +82 and +5 onto byte-identical code checked against `git show HEAD:`,
+citations already wrong at HEAD for unrelated reasons left alone and reported.
+`feedback_your_own_edit_staled_the_citation`, three times in four days.
+
+**READ THIS BEFORE BELIEVING ANY `_state_builder.py:<n>` IN AN OLDER RECORD.**
+`WAKEUP_NOTES.md:144` (the 2026-09-11a entry; it was `:47` before this entry was
+prepended) and the pre-rewrite
+`RC-NEXT-SESSION.txt:11,32` carried `_state_builder.py:92` and `:96`. Those were
+TRUE AT THEIR OWN WRAP and were deliberately left as the historical record; the
+`:92` gate now lives at `:173` and the `:96` except at `:177-179`. Do not read
+them as live citations and do not "fix" the dated wakeup entry. **The
+docs-sync pass also found that the commit's "repo-wide" sweep did NOT reach
+`ROADMAP.md` or `BACKLOG.md`** - neither is in the 9-file diff - so the RM-312
+SHIPPED body at `BACKLOG.md` was still quoting pre-shift offsets. All re-derived
+from disk and corrected in the 2026-09-11d docs-sync; `tools/lcu_agent.py:1612`
+was left VERBATIM because it was already wrong at HEAD for an unrelated reason.
+
+**TIER-0 IN THE SAME SLICE, and it is the same shape as 2026-09-11a's lesson: a
+build's FIX was right while its JUSTIFICATION was inherited from a comment.**
+RM-312's shipped comment claimed 1 Hz from the stale "1.0s TTL" prose. Measured
+truth is `RC_STATE_CADENCE_SEC`, default 0.5s with a 0.1 floor
+(`dashboard/routes_state.py:167-178`), about 2 Hz, so the worst case is ~7200
+lines/hr not ~3600. The path is DARK today - the gate at
+`dashboard/_state_builder.py:173` reads `RC_LCU_INPROCESS`, unset on this box.
+
+**OBSERVED, both figures re-run independently by a verifier to an exact match:
+19 passed on the new guard; 192 passed / 21716 deselected / 56 subtests on the
+widened scope; ruff clean on 8 `.py` files; 0 codepoints above 126 across all 9.**
+NOT live-verified and not claimed: `RC_LCU_INPROCESS` is unset and no live
+champ-select was driven, so the WARN's production text is proven by unit test
+only.
+
+**DO NOT REDO:** RM-405, RM-403, RM-404, RM-312 all SHIPPED. RM-387 / RM-388
+shipped 2026-09-08. RM-313 deliberately OPEN. A general bare-`except Exception`
+sweep - RM-312's fence stands, the remaining sites are a CANDIDATE POPULATION
+needing its own census, and their line numbers MUST be re-derived because this
+slice moved code in that file.
 
 ---
 
@@ -106,66 +203,3 @@ was wrong in every row; the 342 corpus count survived re-derivation unchanged.
 **DO NOT REDO:** Q5 (closed, and now relayed). The `_archive/` and 101qq ignore
 rules (deliberate, documented). An RM row for the negation - operator chose fix
 over file, and it shipped with a red-before-green guard.
-
----
-
-# 2026-09-10d - RM-402 REFUTED AS SCOPED, RM-398 residue RE-DERIVED, and a CIRCULAR MEASUREMENT caught by adjudication
-
-Tier-1, operator AWAY: one comment block in `tools/stop_claim_gate.py`, two
-BACKLOG rows, two ROADMAP rows. LEDGER 1386. Pushed `08fa98d2c..2c389200b`, CI
-GREEN both workflows (`ci` + `docs-guards`), observed this run.
-
-**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM, SECOND SESSION
-RUNNING.** Inbox newest is still `2026-09-09-2100-from-RSC`, zero files dated
-2026-09-10 or later, verbatim subdirs included. Do not re-pin unilaterally.
-
-**CORPUS FROZEN FIRST AT 93 FILES**, live transcript excluded by name. 93 not 92
-- a session landed since RM-401, which is exactly why the baseline was
-RE-DERIVED. Whole-gate histogram at HEAD, reproduced by three separate passes:
-28 findings / 19 sessions - `count_mismatch` 23, `full_suite` 2, `commit_claim`
-1, `file_claim` 1, `hook_bypass` 1, **`push_claim_without_push` 0**.
-
-**RM-402 REFUTED AS SCOPED, no code.** Its OWN FILED NUMBERS were wrong in both
-directions: "6 live false positives, 2 of them this class" - there are **ZERO**
-live findings of this check, and the latent non-git population is **15 across 9
-sessions**. Cause read BY HAND at `tools/stop_claim_gate.py:480`: `did_push` is
-computed ONCE over the session's whole bash record before the sentence loop at
-`:495`, so all 15 sit in sessions it already clears and narrowing buys ZERO
-live-finding reduction. The dominant class is NOT the repo listing the row leads
-with - it is our own drift-guard budget idiom ("my entry pushed it over") at 10
-of 15. Every removing candidate was RUN against its attack and fell, the row's
-own named one included. Its suggested bash-record alternative measured WORSE in
-both directions, because the budget idiom is written DURING THE WRAP, which is
-exactly when pushes happen. **DO NOT RE-PITCH** an idiom / word-sense exclusion
-list, a repo-listing shape, or a bash-window discriminator for `CLAIM_PUSH`.
-
-**THE FINDING WORTH MORE THAN THE REFUTE: A CIRCULAR MEASUREMENT.** The
-narrowing slice enumerated the non-git population with an IDIOM-SHAPED SCAN and
-returned 6, while its entire job was evaluating idiom-list narrowings - so it was
-structurally incapable of measuring its own false negatives, and every 0 in its
-false-negative column was meaningless. Exhaustive classification returns 15; all
-9 it missed lie outside its own three shapes. **Two agents agreeing would have
-shipped that 6.** It was caught only because the counts DIVERGED and the
-divergence was resolved against the corpus rather than averaged.
-
-**RM-398 RESIDUE RE-DERIVED AT 1** - unchanged in count by RM-400
-(`count_mismatch` 23 both sides), MOVED in mechanism: formerly an unindexed
-fetch, now an INDEXED one whose real summary is split by a console wrap. **This
-also explains the hand-off's 31-vs-28 divergence: that baseline was pre-RM-400.**
-
-**A SHIPPED COMMENT STATED A REFUTED REASON, corrected here for the SECOND
-time.** `tools/stop_claim_gate.py:305-310` called `42af2f7d` "a bare `28150
-passed`" and "a LIVE POSITIVE CONTROL for the fence". Verified false against the
-raw tool result: it is a GENUINE pytest summary hard-wrapped across three
-physical lines, so it is a FALSE POSITIVE against a real summary. ROADMAP
-corrected too; **LEDGER 1385 deliberately NOT edited** (append-only).
-
-**THREE INSTRUMENT FAILURES THAT COST TIME, all caught.** (1) `grep -P` is
-UNSUPPORTED in this locale - it exits 2 with "supports only unibyte and UTF-8
-locales", and a `|| echo 0` fallback turned that error into a passing ASCII
-scan. Verify the instrument before believing a clean 0. (2) `tools/md_guard_
-selector.py` emits CRLF, so `xargs` passes a trailing `\r` INSIDE each filename
-and pytest reports files missing that exist - pipe through `tr -d '\r'`.
-(3) A `Monitor` watching CI emitted NOTHING for 30 minutes and timed out while
-both jobs actually SUCCEEDED; its own filter failed silently. Silence from a
-monitor is not success - query the SHA directly.
