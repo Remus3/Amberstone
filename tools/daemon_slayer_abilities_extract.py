@@ -283,7 +283,13 @@ def _fetch_json(url: str, timeout: int = 60) -> Any:
 def _atomic_write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Bytes, not write_text - champion_abilities.json is TRACKED and pinned
+    # eol=lf, so a CRLF working tree reads back correctly through read_text and
+    # shows CLEAN under `git status` while every byte-length or digest compare
+    # over it is off by the line count. Same fix and same reason as
+    # tools/daemon_slayer_extract._atomic_write_json and RM-287. Guarded by
+    # tests/test_tracked_json_producers_emit_lf_bytes.py.
+    tmp.write_bytes(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
     tmp.replace(path)
 
 
