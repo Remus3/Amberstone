@@ -162,11 +162,31 @@ class DashboardAllowlistRuneCmdTests(unittest.TestCase):
             'relay rejects the rune push.')
 
     def test_apply_handler_threads_push_runes_default_true(self):
-        self.assertIn(
-            'push_runes = payload.get("push_runes",   True)',
-            self.text,
-            "_serve_loadout_apply_post must default push_runes=True "
-            "when the JS body omits the flag.",
+        # RM-296d converted this from a SOURCE-TEXT assertion to a BEHAVIOURAL
+        # one. It used to assert the literal spelling
+        # `push_runes = payload.get("push_runes",   True)`, including that
+        # line's incidental double space, so it broke the moment the bare
+        # `.get(..., True)` became a coercion that rejects a truthy string
+        # "false" - a change that PRESERVED the very default this test names.
+        # The old form graded the implementation's characters, not its
+        # contract, so it could only ever fail for the wrong reason: green
+        # while the defect shipped, red when the defect was fixed.
+        from dashboard.routes_loadout import _coerce_push_flag
+
+        for key in ("push_runes", "push_items", "push_summoners"):
+            with self.subTest(key=key):
+                self.assertIs(
+                    _coerce_push_flag({}, key),
+                    True,
+                    f"_serve_loadout_apply_post must default {key}=True "
+                    "when the JS body omits the flag.",
+                )
+        # Anchor: an omitted key must not be contaminated by a SIBLING key
+        # that was supplied, which a naive "any flag present" reading passes.
+        self.assertIs(
+            _coerce_push_flag({"push_items": False}, "push_runes"),
+            True,
+            "An omitted push_runes must stay True when a sibling flag is set.",
         )
 
     def test_apply_handler_enqueues_rune_cmd(self):
