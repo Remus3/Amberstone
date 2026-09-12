@@ -69,7 +69,31 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-413** (2026-09-12, moved at the RM-412 filing).
+  Next free id = **RM-420** (2026-09-12, moved at the RM-413..RM-419 filing).
+  **RM-413 through RM-419 were allocated 2026-09-12** by the five-slice DOC SYNC
+  session (LEDGER 1400-1404), all seven filed under BACKLOG "Reliability /
+  hardening", none taking a roster checkbox and none changing the Summary count.
+  They are the residuals the five merged slices FOUND and deliberately left
+  unfixed: **RM-413** 8 more sites executing `PRAGMA journal_mode=WAL` and
+  discarding the returned row (RM-233(a)'s root cause, unfixed); **RM-414** 5
+  more route sites branching on bare truthiness over CLIENT-SUPPLIED JSON
+  (RM-296d's class - two of them INVERT intent into the dangerous direction),
+  carrying a recorded excluded-after-checking set of 5 ruled-out candidates;
+  **RM-415** the unguarded `or {}` envelope idiom, 17 sites across 4 modules
+  (RM-318's class), with `core/vision_tracker.py:161` recorded as NOT a member;
+  **RM-416** wire the new `core/smoothed_rates_101qq.health()` into
+  `dashboard/routes_duo_synergy._build_payload` plus the missing duo-synergy
+  entry on `/api/health/all` - it shipped with NO consumer, which is the exact
+  mistake RM-295b was filed for; **RM-417** the RM-313 sibling fields, each
+  needing its OWN consumer census; **RM-418** RM-260 is STALE IN ALL THREE
+  CITATIONS and needs RE-FILING rather than building (its dormant-hook premise
+  holds, its "the only thing keeping the key out of logs is a `%s`" headline
+  does NOT - a `_redact` helper is now live); **RM-419** RM-255 is REFUTED at
+  HEAD and must not be re-attempted (`lib/http/client.py` FAILS CLOSED per `:30`
+  and `:111-113`, `certifi==2026.2.25` IS at `requirements.txt:2`, closed by lane
+  8 cycle 27, LEDGER 1293), leaving only the much smaller missing-`certifi`-in-
+  `requirements.lock` residual. ENGINE-IMPACT NONE across all seven and no
+  `ENGINE_VERSION` move. The `ROADMAP.md` restatement moved in the SAME edit.
   **RM-412 was allocated 2026-09-12** (LEDGER 1399, code `48ac8986a`), filed
   under BACKLOG "Reliability / hardening" on the OSS extraction blueprint row,
   taking no roster checkbox and not changing the Summary count. RM-412 SHIPPED:
