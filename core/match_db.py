@@ -146,7 +146,22 @@ class MatchDB:
             # journal_mode=WAL is a persistent file property; once set the
             # DB stays in WAL across reopens. synchronous=NORMAL is the
             # WAL-safe fast pairing.
-            setup.execute("PRAGMA journal_mode = WAL")
+            #
+            # RM-233: this pragma is a QUERY, not a command. SQLite answers
+            # with the journal mode it actually settled on, and it can
+            # legitimately answer something else (a filesystem with no
+            # shared-memory support, another connection holding the old
+            # mode, a locked db). Discarding that row made the module's own
+            # concurrency claim - and the "opened (WAL)" log line - unfalsifiable
+            # from outside. Record it and warn on a fallback instead.
+            jm_row = setup.execute("PRAGMA journal_mode = WAL").fetchone()
+            self.journal_mode = (
+                str(jm_row[0]).lower() if jm_row else "unknown")
+            if self.journal_mode != "wal":
+                _log.warning(
+                    "MatchDB journal_mode fell back to %r (wanted wal): %s - "
+                    "concurrent readers WILL block writers on this database",
+                    self.journal_mode, self._path)
             setup.execute("PRAGMA synchronous = NORMAL")
             setup.execute("PRAGMA busy_timeout = 5000")
             # Item 211: handle fresh vs legacy DB separately. executescript()
@@ -174,7 +189,8 @@ class MatchDB:
             setup.commit()
         finally:
             setup.close()
-        _log.info("MatchDB opened (WAL): %s", self._path)
+        _log.info("MatchDB opened (journal_mode=%s): %s",
+                  self.journal_mode, self._path)
 
     def _conn(self) -> sqlite3.Connection:
         c = getattr(self._tlocal, "conn", None)
@@ -185,8 +201,18 @@ class MatchDB:
             self._tlocal.conn = c
         return c
 
-    def save_match(self, data: dict) -> None:
-        """Save a match record. Accepts rating data dict from performance_tracker."""
+    def save_match(self, data: dict) -> bool:
+        """Save a match record. Accepts rating data dict from performance_tracker.
+
+        Returns True when the row was inserted and committed, False when the
+        write was lost. RM-233: this was annotated `-> None` and the
+        `except Exception` arm logged and fell off the end, so a lost match
+        and a saved one were indistinguishable to every caller. The method
+        still never raises - both production callers already wrap it in a
+        try/except and would keep working either way - but the outcome is
+        now readable. Widening the return is additive: no caller in the tree
+        reads it (performance_tracker.py:415 and :477 discard it).
+        """
         cols = [
             "timestamp", "mode", "champion", "grade", "game_time_s",
             "kills", "deaths", "assists", "cs", "cs_per_min",
@@ -246,11 +272,23 @@ class MatchDB:
                 _gt().note_match_boundary()
             except Exception as _exc:  # noqa: BLE001
                 _log.debug("cost note_match_boundary: %s", _exc)
+            return True
         except Exception as exc:  # noqa: BLE001
             _log.error("Match save failed: %s", exc)
+            return False
 
     def get_recent(self, mode: str = "", limit: int = 20) -> list:
-        """Get recent matches, optionally filtered by mode."""
+        """Get recent matches, optionally filtered by mode.
+
+        RM-233: SQLite reads a NEGATIVE `LIMIT` as UNLIMITED, so the whole
+        table came back for `get_recent(mode, -1)`. Clamped here rather than
+        only at the caller - `tools/ds_matchdb_mcp_server.py:342` does clamp
+        (`max(1, min(int(limit), 200))`), but this is a public method with a
+        default argument and "LIMIT n returns at most n rows" belongs to it.
+        `_as_int` keeps a numeric string working and never raises; 0 stays 0,
+        which is what SQLite already did.
+        """
+        limit = max(0, _as_int(limit))
         c = self._conn()
         if mode:
             rows = c.execute(
