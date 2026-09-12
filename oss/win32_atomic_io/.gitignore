@@ -1,0 +1,20 @@
+# Package-local ignores.
+#
+# This duplicates rules a surrounding repository almost certainly already has.
+# That is the point: the package is shaped to be separated from whatever tree
+# it currently sits in, and on the day it is copied out on its own it takes no
+# root .gitignore with it. A bytecode cache is not merely clutter here - a
+# .pyc embeds the ABSOLUTE SOURCE PATH it was compiled from, so a cache built
+# in a private tree carries that tree's directory names inside a file that
+# looks like a harmless build artifact.
+#
+# Plain ignore lines only. No `!` negation patterns: a negation whose parent
+# directory is itself excluded never re-includes anything, so it reads as a
+# deliberate exception while doing nothing at all.
+
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+*.egg-info/

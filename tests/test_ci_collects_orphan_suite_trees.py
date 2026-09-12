@@ -106,6 +106,14 @@ _COLLECTION_ROOTS = (
      "mutate operator state when that port is open. RM-407 stays WIP for "
      "this tree."),
     ("tools/tests", _WIRED, ""),
+    # The extracted, not-yet-published `oss/win32_atomic_io` package ships its
+    # own suite. It is WIRED rather than EXCEPTED because none of the usual
+    # reasons to except a tree apply: it is stdlib-only, it touches no port, no
+    # live process and no tracked path (every test uses `tmp_path`), and it
+    # collects 38 tests in well under a second. An in-tree copy of logic that
+    # also lives in `core/polled_json.py` is exactly the thing that rots
+    # unnoticed, so it gates a push like every other tree.
+    ("oss/win32_atomic_io/tests", _WIRED, ""),
 )
 
 # The bare `tools` directory the substring pathspec invents, and the single file

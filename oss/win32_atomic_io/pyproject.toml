@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "win32-atomic-io"
+version = "0.1.0"
+description = "Atomic file writes and a tolerant JSON read for files that other processes poll."
+readme = "README.md"
+requires-python = ">=3.9"
+# SPDX expression form, per PEP 639. Kept as a string rather than the older
+# `{file = "LICENSE"}` table so the declaration is machine-readable, and
+# matched by the OSI classifier below - a tool that reads only one of the two
+# must not be able to reach a different answer.
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+# No dependencies. Stdlib only, by design - this is a primitive, and a
+# primitive that drags in a dependency tree is not worth vendoring.
+dependencies = []
+keywords = ["atomic", "windows", "json", "filesystem", "ipc", "polling"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: System :: Filesystems",
+    "Typing :: Typed",
+]
+
+# NOTE: the `LICENSE` file beside this one is a byte-for-byte copy of the
+# surrounding repository's root LICENSE, not a separate or narrower grant. It
+# is duplicated here so the directory is self-contained - a copy of this
+# directory alone must not ship without the grant it is distributed under. Keep
+# the two in sync; a drift guard in the surrounding repository asserts they are
+# byte-identical. See the License section of README.md.
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# PEP 561 marker. The `Typing :: Typed` classifier above is a claim that a
+# consumer's type checker can read this package's annotations, and a checker
+# only honours that for an INSTALLED package when `py.typed` is actually
+# present in the installed tree. The marker file alone is not enough: it is
+# not a `.py` file, so the wheel build skips it unless it is declared here.
+# Classifier, marker file and this declaration have to travel together - two
+# out of three is a claim that silently does not hold once installed.
+[tool.setuptools.package-data]
+win32_atomic_io = ["py.typed"]
+
+# Deliberately NO [tool.pytest.ini_options] here. pytest picks its rootdir from
+# the nearest ancestor config that declares one, so adding a section here would
+# silently make this directory the rootdir and detach the suite from the
+# surrounding project's pytest config and conftest. Run the tests with
+# `python -m pytest tests` from this directory, or by path from anywhere.
