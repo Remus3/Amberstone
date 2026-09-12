@@ -133,6 +133,35 @@ def _coerce_num(value, default=0.0) -> float:
     return f if math.isfinite(f) else float(default)
 
 
+def _runes_text_from_structured(runes_full) -> str:
+    """Derive the legacy "Keystone | Primary / Secondary" string from the
+    structured `_read_my_runes_structured()` result.
+
+    RM-234: `_process_game` used to call `_read_my_runes()` for this string a
+    few lines after `_read_my_runes_structured()`, paying a SECOND
+    `/activeplayerrunes` GET per tick and counting one 404 TWICE in
+    `_subresource_failures`. This is byte-equivalent to that formatter for
+    the same payload: "" when the keystone name is empty (or the input is
+    not the structured dict), and the same `.strip(" |/")` trim when a tree
+    is missing. The one divergence: a NON-STRING keystone displayName (None,
+    0) is stringified upstream by `_read_my_runes_structured`, so it reads
+    truthy here where the legacy path read it falsy - Riot never sends one.
+    Pure - no I/O, never raises on a malformed structure (it runs on the
+    poll thread with no try/except around it).
+    """
+    if not isinstance(runes_full, dict):
+        return ""
+    keystone = runes_full.get("keystone")
+    if not isinstance(keystone, dict):
+        return ""
+    ks_name = keystone.get("name", "")
+    if not ks_name:
+        return ""
+    pri_name = runes_full.get("primary_tree", "")
+    sec_name = runes_full.get("secondary_tree", "")
+    return f"{ks_name} | {pri_name} / {sec_name}".strip(" |/")
+
+
 def _coerce_int(value, default=0) -> int:
     """Coerce a Live Client JSON numeric to an int, via `_coerce_num`.
 
@@ -501,12 +530,13 @@ class _NormalizerMixin:
 
         cs_per_min = round(cs / max(game_time / 60, 0.5), 1)
 
-        # R65-A: fetched once and reused for both runes_full and stat_shards.
-        # CORRECTED lane 8 cycle 17: this said the snapshot "pays a single
-        # /activeplayerrunes GET, not two". It pays TWO - `_read_my_runes()`
-        # below issues a second GET against the same endpoint on the same
-        # tick, which also double-counts that endpoint in
-        # `_subresource_failures` on a 404. Deduplicating is RM-234.
+        # R65-A: fetched ONCE and reused for runes_full, stat_shards AND the
+        # legacy `my_runes` string. RM-234 (deduped): the tick pays a SINGLE
+        # /activeplayerrunes GET - `my_runes` is derived from this payload by
+        # `_runes_text_from_structured` instead of a second `_read_my_runes()`
+        # GET, so a 404 counts ONCE per tick in `_subresource_failures`.
+        # Guarded by tests/test_rm234_runes_single_get.py (transport census,
+        # byte-equivalence table, single counter increment).
         runes_full = self._read_my_runes_structured()
 
         return {
@@ -562,8 +592,9 @@ class _NormalizerMixin:
             "risk_derived":       risk_lines,
             "map_derived":        map_lines,
             "reset_derived":      f"{my_gold}g available | Items: {', '.join(my_items) if my_items else 'None'}",
-            # AUDIT-PHASE-2-RUNE-001: rune fields
-            "my_runes":           self._read_my_runes(),
+            # AUDIT-PHASE-2-RUNE-001: rune fields. RM-234: `my_runes` is
+            # derived from `runes_full` above - no second GET.
+            "my_runes":           _runes_text_from_structured(runes_full),
             "enemy_runes":        self._read_enemy_runes(enemies),
             # R65-A (L9/L10): structured combat/rune/shard ingestion - the
             # legacy my_runes string stays for existing coach prompts.

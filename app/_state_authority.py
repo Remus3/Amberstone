@@ -82,9 +82,12 @@ class StateAuthority:
         elif hp < 60:  pct -= 3
         elif hp >= 85: pct += 4
         pct += min(12, state.get("dead_count", 0) * 4)
-        items = [i for i in state.get("items", [])
-                 if i and not any(x in i.lower()
-                                  for x in ("ward", "potion", "biscuit", "doran", "elixir"))]
+        # Type-clamp: keep str, decode bytes (utf-8, replace), skip int/None/dict/list - see tests/test_calc_win_pct_type_clamp.py
+        items = [i for i in (j.decode("utf-8", errors="replace") if isinstance(j, bytes) else j
+                             for j in state.get("items", []))
+                 if isinstance(i, str) and i
+                 and not any(x in i.lower()
+                             for x in ("ward", "potion", "biscuit", "doran", "elixir"))]
         if len(items) >= 3:   pct += 8
         elif len(items) >= 2: pct += 4
         obj = (state.get("objectives", "") or "").lower()
