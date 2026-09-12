@@ -348,6 +348,116 @@ def _check_scan_files(paths: list[str]) -> int:
     return 1 if failures else 0
 
 
+# ---------------------------------------------------------------------------
+# Advisory non-atomic-write check on NET-NEW lines (slice D, 2026-09-11).
+#
+# CLAUDE.md hard rule: "Atomic writes only: tmp.write_text(...); tmp.replace(
+# target). Overlays poll mid-write." The canonical writer is
+# core/polled_json.atomic_write_json (scratch via _scratch_path, publish via
+# _replace_with_retry). Nothing at commit time enforced the rule, so a net-new
+# `Path(...).write_text(...)` straight onto a polled file passed unremarked.
+#
+# Scope is an ALLOWLIST of production surfaces - the dirs whose files a poller
+# can be reading mid-write - with an explicit denylist on top. tests/ and
+# tools/ write scratch fixtures and one-off outputs where the rule does not
+# apply, and ops/loop/ holds slots.py + winmutex.py, which are BYTE-PINNED
+# across sibling repos (tests/test_loop_concurrency.py SHARED_SHA256): a hook
+# suggestion that touched them would break a joint pin, so this check must
+# never even look there.
+#
+# Mode is read from RC_ATOMIC_WRITE_GATE. Default WARN: this is a first-cycle
+# MEASUREMENT of the false-positive rate, not enforcement. "block" reuses the
+# exit-2 path the glyph half uses; "off" skips the check entirely.
+_ATOMIC_WRITE_MODE_ENV = "RC_ATOMIC_WRITE_GATE"
+_ATOMIC_WRITE_MODES = ("warn", "block", "off")
+_ATOMIC_SCOPE_PREFIXES = (
+    "app/", "core/", "coaches/", "dashboard/", "game_reader/", "agents/",
+    "modes/", "lcu/", "vision_server/",
+)
+_ATOMIC_SCOPE_FILES = ("web_dashboard.py",)
+_ATOMIC_EXEMPT_PREFIXES = ("tests/", "tools/", "scripts/", "docs/", "ops/loop/")
+# Any tests/ segment, not only a leading one: agents/daemon_slayer/tests/ is
+# under an in-scope prefix and is still a test tree.
+_ATOMIC_EXEMPT_PARTS = ("/tests/",)
+# pytest's own discovery convention, by BASENAME. MEASURED 2026-09-11 over the
+# whole tree: 14 of the 18 hits were agents/agent3_testing/suite/test_*.py, a
+# 42-file suite under an in-scope prefix with no tests/ segment, writing
+# tmp_path fixtures. The rule is about polled files; a fixture is not one.
+_ATOMIC_EXEMPT_BASENAME_PREFIXES = ("test_",)
+_ATOMIC_EXEMPT_BASENAMES = ("conftest.py",)
+# Same-line markers that say "this is the scratch half of the idiom". `tmp`
+# covers `_tmp` and `.tmp`; the comparison is case-insensitive.
+_ATOMIC_SCRATCH_MARKERS = ("tmp", "scratch", ".part")
+# Hunk-level markers that say "the publish step is here". `.replace(` covers
+# `os.replace(` and `tmp.replace(`; `atomic_write` covers atomic_write_json /
+# atomic_write_text / atomic_write_bytes / _atomic_write* (every helper the tree
+# defines, measured 2026-09-11). The polled_json internals are named so a hunk
+# that calls them directly is not flagged either.
+_ATOMIC_PUBLISH_MARKERS = (
+    ".replace(", "os.replace(", "atomic_write", "_atomic_write",
+    "_write_then_replace", "_replace_with_retry",
+)
+# The write shapes. open() must carry a "w..." mode literal (positional or
+# mode=) - "r"/"rb"/"a" are not this rule's concern.
+_ATOMIC_WRITE_CALL = re.compile(
+    r"\.write_text\(|\.write_bytes\(|\bjson\.dump\(|"
+    r"\bopen\([^)]*?(?:\bmode\s*=\s*)?[\"']w[abt+]*[\"']"
+)
+_ATOMIC_WRITE_LABEL = re.compile(r"(\.write_text\(|\.write_bytes\(|json\.dump\(|\bopen\()")
+
+
+def _atomic_write_mode() -> str:
+    """One of warn / block / off. Unset, empty or unrecognised -> warn."""
+    raw = (os.environ.get(_ATOMIC_WRITE_MODE_ENV) or "").strip().lower()
+    return raw if raw in _ATOMIC_WRITE_MODES else "warn"
+
+
+def _atomic_write_in_scope(path: str) -> bool:
+    p = (path or "").replace("\\", "/")
+    if p.startswith(_ATOMIC_EXEMPT_PREFIXES) or any(part in p for part in _ATOMIC_EXEMPT_PARTS):
+        return False
+    base = p.rsplit("/", 1)[-1]
+    if base in _ATOMIC_EXEMPT_BASENAMES or base.startswith(_ATOMIC_EXEMPT_BASENAME_PREFIXES):
+        return False
+    return p in _ATOMIC_SCOPE_FILES or p.startswith(_ATOMIC_SCOPE_PREFIXES)
+
+
+def _atomic_write_hits(added_lines: list[tuple[int, str]], path: str) -> list[str]:
+    """Net-new lines in `path` that write a file without the tmp+replace idiom.
+
+    `added_lines` is the `(lineno, text)` list `_staged_added` builds per file.
+    A line is a hit when ALL of:
+      * the file is a production surface (see _atomic_write_in_scope);
+      * the line calls .write_text( / .write_bytes( / open(x, "w..") / json.dump(;
+      * the line itself carries no scratch marker (tmp / scratch / .part);
+      * NO added line of this file carries a publish marker (.replace( /
+        atomic_write* / _write_then_replace / _replace_with_retry).
+    The hunk-level half is deliberately lenient: a str.replace( elsewhere in
+    the hunk also exempts. That is a false-NEGATIVE bias, which is the right
+    bias for a check whose block mode is not yet earned.
+    """
+    if not _atomic_write_in_scope(path):
+        return []
+    rel = path.replace("\\", "/")
+    texts = [t for _, t in added_lines]
+    if any(m in t for t in texts for m in _ATOMIC_PUBLISH_MARKERS):
+        return []
+    out: list[str] = []
+    for lineno, text in added_lines:
+        stripped = text.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if not _ATOMIC_WRITE_CALL.search(text):
+            continue
+        low = text.lower()
+        if any(m in low for m in _ATOMIC_SCRATCH_MARKERS):
+            continue
+        m = _ATOMIC_WRITE_LABEL.search(text)
+        call = m.group(1).rstrip("(") if m else "write"
+        out.append(f"  {rel}:{lineno}  non-atomic write ({call}): {stripped[:110]}")
+    return out
+
+
 def main() -> int:
     # commit-msg mode. Explicit flag rather than sniffing argv, so the hook's
     # intent is readable in the hook body itself.
@@ -388,6 +498,25 @@ def main() -> int:
     msg_hits = _glyph_hits(command, "<commit-message>")
     if msg_hits:
         violations.append(f"  commit message  banned glyph: {', '.join(msg_hits)}")
+
+    # 2b. non-atomic writes on net-new PRODUCTION lines. Advisory by default
+    # (RC_ATOMIC_WRITE_GATE unset / warn); "block" joins the exit-2 path above;
+    # "off" checks nothing. See _atomic_write_hits for the rule.
+    atomic_mode = _atomic_write_mode()
+    if atomic_mode != "off":
+        atomic_hits: list[str] = []
+        for path, info in staged.items():
+            atomic_hits.extend(_atomic_write_hits(info["lines"], path))
+        if atomic_hits and atomic_mode == "block":
+            violations.extend(atomic_hits)
+        elif atomic_hits:
+            sys.stderr.write(
+                "precommit_gate ADVISORY - non-atomic write(s) on net-new lines "
+                f"({_ATOMIC_WRITE_MODE_ENV}=warn, NOT blocking):\n"
+                + "\n".join(atomic_hits)
+                + "\n  Rule: tmp.write_text(...); tmp.replace(target), or "
+                "core.polled_json.atomic_write_json - overlays poll mid-write.\n"
+            )
 
     # 3. net-new ruff errors on staged .py
     pyfiles = [
