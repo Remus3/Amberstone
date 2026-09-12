@@ -264,22 +264,45 @@ CHAMPION_TAGS = {
 
 # -- Matchup weights loader ---------------------------------------------------
 import json as _json
+import logging as _logging
 from pathlib import Path as _Path
 
+_log = _logging.getLogger(__name__)
+
+_MATCHUP_WEIGHTS_PATH = _Path(__file__).parent / "data" / "meta_build" / "matchup_weights.json"
 _MATCHUP_WEIGHTS = None
+
+# Paths whose load failure has already been logged in this process. A failed
+# load is deliberately NOT cached (see _load_exclusions), so without this
+# guard a persistently missing file would warn on every is_redundant() call.
+_WARNED_LOAD_PATHS: set = set()
+
+
+def _warn_load_once(path, exc) -> None:
+    key = str(path)
+    if key in _WARNED_LOAD_PATHS:
+        return
+    _WARNED_LOAD_PATHS.add(key)
+    _log.warning(
+        "item_advisor: could not load %s (%s: %s) - running degraded, "
+        "will retry on next call", path, type(exc).__name__, exc,
+    )
 
 
 def _load_matchup_weights():
-    """Lazily load matchup_weights.json. Returns None on failure."""
+    """Lazily load matchup_weights.json. Returns None on failure.
+
+    A failure is NOT cached: the next call retries, so a transient read error
+    (AV scan / editor lock on Windows, or a deploy that lands the file late)
+    self-heals. It is logged once per process rather than silently swallowed.
+    """
     global _MATCHUP_WEIGHTS
     if _MATCHUP_WEIGHTS is not None:
         return _MATCHUP_WEIGHTS
     try:
-        p = _Path(__file__).parent / "data" / "meta_build" / "matchup_weights.json"
-        if p.exists():
-            _MATCHUP_WEIGHTS = _json.loads(p.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        pass
+        _MATCHUP_WEIGHTS = _json.loads(_MATCHUP_WEIGHTS_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        _warn_load_once(_MATCHUP_WEIGHTS_PATH, exc)
     return _MATCHUP_WEIGHTS
 
 
@@ -398,9 +421,15 @@ def _load_exclusions():
         return _EXCLUSIONS_CACHE
     try:
         raw = _json.loads(_EXCLUSIONS_PATH.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        _EXCLUSIONS_CACHE = {}
-        return _EXCLUSIONS_CACHE
+        if not isinstance(raw, dict):
+            raise TypeError(f"expected a JSON object, got {type(raw).__name__}")
+    except Exception as exc:  # noqa: BLE001
+        # Do NOT promote the failure into the cache. A {} cached here is
+        # success-shaped (the `is not None` sentinel above accepts it), so one
+        # transient read error would leave is_redundant() exclusion-blind for
+        # the whole process lifetime with nothing retrying and nothing logged.
+        _warn_load_once(_EXCLUSIONS_PATH, exc)
+        return {}
     out = {}
     for k, v in raw.items():
         if k.startswith("_"):
@@ -599,9 +628,14 @@ def get_purchase_advice(champion, current_items, gold, enemy_champs,
     """
     Main entry point. Returns dict with build_path, next_item, buy_now, display.
     """
-    build = resolve_build(champion, enemy_champs, current_items)
-    if not build:
+    # Decide "unknown" on the table, not on the resolved list: resolve_build
+    # also returns [] for a KNOWN champion whose every curated item is owned
+    # or exclusion-redundant, and that case is BUILD COMPLETE (below), not
+    # an unknown champion. The frozen caller app/_game_lifecycle.py renders
+    # this display string verbatim.
+    if champion not in CHAMPION_BUILDS:
         return {"display": "Unknown champion", "build_path": [], "buy_now": []}
+    build = resolve_build(champion, enemy_champs, current_items)
 
     owned = set(current_items or [])
     owned_normalized = {n.lower().replace("'", "").replace(" ", "") for n in owned}
