@@ -119,6 +119,68 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-11d - operator-directed lane-8 pre-flight: 4 hardening slices shipped, 5 directive claims refuted or already-shipped
+
+LEDGER 1398 (`2026-09-11k` there). NOT a loop cycle: operator-directed while
+`ops/loop/control/STOP` sat on disk. Worktree `lane/true-audit`, merge sha in
+LEDGER 1398 at wrap. Tier-1, ENGINE-IMPACT NONE, RC restart required. 7
+agents, 993884 subagent tokens, 18.4 min. Verifier: 9 pytest commands, 0
+failed / 0 errors; `py_compile` OK on all 8 changed files; ruff clean; 0
+non-ASCII, 0 CR bytes.
+
+**TRIAGE FIRST - five directive claims did not survive it.** (1) REFUTED:
+`dashboard/_state_builder.py` "duplicate `/activeplayerrunes` request tax" -
+zero rune hits in that file. (2) REFUTED: "move `PolledJsonFile` onto
+`NamedMutex`" - `core/polled_json.py:204` records ZERO production
+instantiations (RM-264 holds adopt-or-remove); `ops/loop/winmutex.py` has NO
+`NamedMutex` (only `hold()` `:51` + `MutexTimeout` `:46`); both byte-pinned,
+nothing changed. (3) orphan tree wiring = RM-407, ALREADY SHIPPED today. (4)
+split-form sibling-name scanner = RM-399 (`tools/sibling_name_sweep.py:113`),
+ALREADY SHIPPED. (5) `SHARED_SHA256` pins MATCH live bytes. STOP (operator
+17:32, "No cycle 9") deliberately NOT cleared - clearing re-arms the loop,
+the arming halt point. `RUNNING.lock` pid 22888 = electron.exe, left alone.
+
+**SLICE A - RM-234 CLOSED as DEDUPE.** `game_reader/snapshot_normalizer.py`
+derives `my_runes` from `runes_full` via new pure `_runes_text_from_structured`
+(`:136-164`, `:596`); second GET gone. `tests/test_rm234_runes_single_get.py`
+8 tests RED "got 2" -> GREEN; 38 named existing tests green; refuter PASS.
+PREMISE CORRECTION: BACKLOG RM-234 and LEDGER 1117 claimed "no production
+consumer of `my_runes`" - FALSE, `coaches/aram_coach.py:430` + `:1031` feed it
+into the Haiku prompt. True only for `runes_full` / `stat_shards`.
+
+**SLICE B - FROZEN `app/_state_authority.py`, operator-named, refuter APPROVE.**
+`calc_win_pct` +6/-3: keeps str, decodes bytes, skips int/None/dict/list;
+`tests/test_calc_win_pct_type_clamp.py` 23 tests, mutation-red. Correction:
+`app/_game_lifecycle.py:465-467` already caught the crash - effect was STALE `win_pct`.
+
+**SLICE D - `tools/precommit_gate.py` +129, `RC_ATOMIC_WRITE_GATE` warn
+(default) / block / off.** 43 tests (41 red with the scanner reverted); gate
+family 90 green. Whole tree: strict 4 hits / 2 files, lenient 11 / 9. BLOCK
+MODE NOT VIABLE YET, and that is the finding - the BACKLOG row carries the
+false-negative / false-positive lists and the `ops/` + root scope gap.
+
+**SLICE E - `item_advisor.py` +45/-11.** H1 REAL (failed loads cached as `{}`
+for the process lifetime, no log - now not cached, one WARNING per path); H3
+REAL (fully-bought curated champion read "Unknown champion" - now gates on
+`CHAMPION_BUILDS`); H2 aliasing REFUTED. 14 tests, mutation-red 8. The
+directive's `:79` / `:89` cites belonged to `coaches/_arena_item_advisor.py`,
+NOT edited. **OSS extraction blueprint** (operator message) ASSESSED, NOT
+executed: C1 extractable, C2 partial, C3 NO (byte-pinned across three repos,
+API mismatch, carries the known sibling-name escape). Filed to BACKLOG.
+
+**NEXT SESSION**
+(a) Slice D block-mode follow-up: `ops/` + root into scope, fix the hunk-level
+    `str.replace(` exemption, one red-first case per listed false negative.
+(b) Slice E residuals: `dashboard/_liveclient.py:455` predicate;
+    `coaches/_arena_item_advisor.py:73-90` + `:110-127` H1 pattern.
+(c) `ops/loop/control/STOP` is STILL PRESENT - operator decides whether to
+    clear it before the next loop launch.
+(d) `moon_sync_inbox` 2026-09-11-1415 `lw_write_tracer.py.from-lw` (Apache-2.0): license-gated evaluation pending, not vendored.
+(e) Inert stubs `r._read_my_runes = lambda: ""` at `tests/test_liveclient_championstats_ingestion.py:163`
+    + `tests/test_p2w1_app_a.py:61` - harmless, deletable in a later cleanup.
+
+---
+
 # 2026-09-11c - the headless loop ran 8 cycles and was stopped by the OPERATOR, not by max_cycles
 
 Run `63545b4e`, `loop start dry_run=False max_cycles=100 head=eaf13e82` at

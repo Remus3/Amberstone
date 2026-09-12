@@ -2,7 +2,86 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the five-slice DOC SYNC wrap (relocated `2026-09-11c`, the 8-cycle loop run stopped by operator STOP, VERBATIM via `scripts/wakeup_prune.py --keep 3`, proved line-set-identical against the archive addition rather than eyeballed; newest 3 = `2026-09-12b` the five-slice merge, `2026-09-12a` RM-412 C1 OSS extraction, `2026-09-11d` the lane-8 pre-flight). The prior pass at this line relocated `2026-09-11b` and `2026-09-11a` the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the SESSION WRAP doc-sync (relocated `2026-09-11d`, the lane-8 pre-flight, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and left the archive at 959 - read that count off the tool's own output, never off a recollection; newest 3 = `2026-09-12c` this wrap, `2026-09-12b` the five-slice merge, `2026-09-12a` RM-412 C1 OSS extraction). The pass before this one relocated `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-12c - SESSION WRAP doc sync: LEDGER 1407-1412, two rows filed, and three of the merger's OWN errors written into the record
+
+LEDGER 1407-1412. DOCS ONLY - six markdown files, zero production files, zero
+test files, ENGINE-IMPACT NONE. Nothing pushed. The six unpushed commits this
+wrap covers are `86e4d4f0f`, `93f0e3efc` + merge `910cf8204`, `1d6d1e882` +
+`2dc0cff76`, `3b5038fcb`, `14c0eadd2` + merge `dd0f43f78`, `54743bec0`.
+
+**WHAT SHIPPED, one line each.** 1407 - `tools/outbound_reciprocity_check.py`,
+RC's own answer to a sibling's delivery defect: **0 undelivered of 87**, scored
+on a CONTENT DIGEST never a name, read-only across the boundary pinned at the
+syscall by `sys.addaudithook`. 1408 - the fifth sibling-name escape CLOSED
+UNILATERALLY and `KNOWN_EXCEPTIONS` retired to `{}`. 1409 -
+`docs/REFUTATION_COST_MEASUREMENT_2026-09-12.md`, N = 42 ledger entries. 1410 -
+the sweep's TREE arm wired into CI behind a gate that cannot emit an unearned
+green. 1411 - the RM-296d regression fixed by grading behaviour instead of
+source text. 1412 - this wrap.
+
+**THE DURABLE PART IS THAT THREE ERRORS WERE THE MERGER'S OWN, and all three
+are in `docs/LEDGER.md` rather than smoothed away.**
+1. **A CRLF defect was ASSERTED into `oss/win32_atomic_io/LICENSE` and it does
+   not exist.** Re-measured: **12115 bytes, CR 0, LF 219**. The "219 CR" was the
+   file's LINE COUNT from a `grep -c` whose pattern degraded to empty. The
+   FIRST measurement was right and said 0; the second was run because the first
+   disagreed with a hypothesis already held, and was promoted over it without a
+   cross-check. **`feedback_empty_grep_is_a_claim_about_the_pattern` INVERTED -
+   a FULL-COUNT grep is equally a claim about the pattern**, and a count that
+   matches a plausible expected magnitude is the most dangerous output the tool
+   produces. Re-derive by a different mechanism whenever a re-measurement
+   overturns an earlier one in the direction you wanted.
+2. **Two agents were dispatched into the MAIN TREE concurrently**, against
+   `feedback_verifier_needs_a_frozen_tree`. One saw the other's writes, watched
+   the modified-file count move under it, and **misattributed them to an
+   unrelated interactive session**. Numbers were re-derived and stand, but the
+   second pass is what is relied on. **The main tree is a shared mutable
+   resource; if two agents must run, at most one of them writes.**
+3. **"Roughly 10 tree-scope findings" was the wrong SCOPE and reads as a live
+   leak.** Those were **DIFF-arm** hits over **200-plus commits of
+   ALREADY-PUBLISHED history** - commit messages and historical added lines.
+   **Tree scope is 0 before and 0 after.** Re-measured at the end of this wrap
+   with the sweep FULLY ARMED (4 name slots, 4 counterparty codes from
+   per-host config): **clean, 630763605 bytes, 4762 files, 0 commit messages,
+   482 binary/LFS blobs not content-scanned, exit 0.**
+
+**TWO ROWS FILED to `BACKLOG.md` ("Reliability / hardening"), pin advanced by
+TWO in `docs/DS_SWEEP_TRACKER.md` and `ROADMAP.md` in the same commit.**
+**RM-422** - `core.longpaths` UNSET at local, global AND system scope; longest
+tracked path **154 chars** (all five longest under
+`docs/_archive/2026-07-26-orphaned-audit-drops/`); clone-ROOT budget therefore
+**105 chars** at MAX_PATH 260. The session scratchpad root is 114, which is why
+a checkout there aborted partway - and a later enumeration over the directory
+the abort left MISSING printed a clean total, **a vacuous measurement arriving
+through the filesystem rather than through a glob**. Fix has a CONFIG half and
+a PATH-LENGTH half; the row refuses to pick one. **RM-423** - OPERATOR-GATED,
+**no default recommended**: the lane refs cannot be pushed while the sweep
+re-scans already-published history on every lane push. The bytes are already on
+`origin/main` and all six lane worktrees sit at `86e4d4f0f`, an ancestor of it,
+so nothing is stranded today.
+
+**`CLAUDE.md` corrected at EXACTLY ONE sentence** - the Session Default block
+still claimed the fifth escape "remains as a KNOWN, NAMED, VISIBLE exception
+(declared in the tool)" while the tool's register is `{}`. Replaced with the
+measured close plus an explicit do-not-restore. 53296 bytes, budget 61440.
+
+**`ROADMAP.md` 72941 -> 75744 bytes** (budget 81920). Three rows relocated
+VERBATIM to a new `## 2026-09-12b` block in `docs/ROADMAP_HISTORY.md`: the
+FIFTH ESCAPE row, the five-slice announcement row, and the RM-420 FILED row -
+**6261 chars relocated against six new rows added, so the pass ended NET
+POSITIVE by 2803 bytes and is recorded as such rather than being forced to a
+net reduction by gutting fences.** Every id and every fence stayed reachable.
+
+**NEXT SESSION.** Nothing is blocked. The six commits above are still UNPUSHED
+by instruction - **read RM-423 before pushing anything**, because the lane refs
+and `main` are different questions and only one of them is gated. Do NOT
+re-spell the next-free id in a ledger entry; a bare mention classifies as an
+ALLOCATION and collides with the pin it announces
+(`tests/test_rm_id_registry_drift.py`).
 
 ---
 
@@ -178,65 +257,3 @@ non-ASCII; `core/polled_json.py` diff empty; pre-commit `py_compile OK (9 files)
 (d) Still carried from `2026-09-11d`: Slice D block-mode follow-up, Slice E
     residuals, `ops/loop/control/STOP` still present, and the
     `moon_sync_inbox` Apache-2.0 file awaiting license-gated evaluation.
-
----
-
-# 2026-09-11d - operator-directed lane-8 pre-flight: 4 hardening slices shipped, 5 directive claims refuted or already-shipped
-
-LEDGER 1398 (`2026-09-11k` there). NOT a loop cycle: operator-directed while
-`ops/loop/control/STOP` sat on disk. Worktree `lane/true-audit`, merge sha in
-LEDGER 1398 at wrap. Tier-1, ENGINE-IMPACT NONE, RC restart required. 7
-agents, 993884 subagent tokens, 18.4 min. Verifier: 9 pytest commands, 0
-failed / 0 errors; `py_compile` OK on all 8 changed files; ruff clean; 0
-non-ASCII, 0 CR bytes.
-
-**TRIAGE FIRST - five directive claims did not survive it.** (1) REFUTED:
-`dashboard/_state_builder.py` "duplicate `/activeplayerrunes` request tax" -
-zero rune hits in that file. (2) REFUTED: "move `PolledJsonFile` onto
-`NamedMutex`" - `core/polled_json.py:204` records ZERO production
-instantiations (RM-264 holds adopt-or-remove); `ops/loop/winmutex.py` has NO
-`NamedMutex` (only `hold()` `:51` + `MutexTimeout` `:46`); both byte-pinned,
-nothing changed. (3) orphan tree wiring = RM-407, ALREADY SHIPPED today. (4)
-split-form sibling-name scanner = RM-399 (`tools/sibling_name_sweep.py:113`),
-ALREADY SHIPPED. (5) `SHARED_SHA256` pins MATCH live bytes. STOP (operator
-17:32, "No cycle 9") deliberately NOT cleared - clearing re-arms the loop,
-the arming halt point. `RUNNING.lock` pid 22888 = electron.exe, left alone.
-
-**SLICE A - RM-234 CLOSED as DEDUPE.** `game_reader/snapshot_normalizer.py`
-derives `my_runes` from `runes_full` via new pure `_runes_text_from_structured`
-(`:136-164`, `:596`); second GET gone. `tests/test_rm234_runes_single_get.py`
-8 tests RED "got 2" -> GREEN; 38 named existing tests green; refuter PASS.
-PREMISE CORRECTION: BACKLOG RM-234 and LEDGER 1117 claimed "no production
-consumer of `my_runes`" - FALSE, `coaches/aram_coach.py:430` + `:1031` feed it
-into the Haiku prompt. True only for `runes_full` / `stat_shards`.
-
-**SLICE B - FROZEN `app/_state_authority.py`, operator-named, refuter APPROVE.**
-`calc_win_pct` +6/-3: keeps str, decodes bytes, skips int/None/dict/list;
-`tests/test_calc_win_pct_type_clamp.py` 23 tests, mutation-red. Correction:
-`app/_game_lifecycle.py:465-467` already caught the crash - effect was STALE `win_pct`.
-
-**SLICE D - `tools/precommit_gate.py` +129, `RC_ATOMIC_WRITE_GATE` warn
-(default) / block / off.** 43 tests (41 red with the scanner reverted); gate
-family 90 green. Whole tree: strict 4 hits / 2 files, lenient 11 / 9. BLOCK
-MODE NOT VIABLE YET, and that is the finding - the BACKLOG row carries the
-false-negative / false-positive lists and the `ops/` + root scope gap.
-
-**SLICE E - `item_advisor.py` +45/-11.** H1 REAL (failed loads cached as `{}`
-for the process lifetime, no log - now not cached, one WARNING per path); H3
-REAL (fully-bought curated champion read "Unknown champion" - now gates on
-`CHAMPION_BUILDS`); H2 aliasing REFUTED. 14 tests, mutation-red 8. The
-directive's `:79` / `:89` cites belonged to `coaches/_arena_item_advisor.py`,
-NOT edited. **OSS extraction blueprint** (operator message) ASSESSED, NOT
-executed: C1 extractable, C2 partial, C3 NO (byte-pinned across three repos,
-API mismatch, carries the known sibling-name escape). Filed to BACKLOG.
-
-**NEXT SESSION**
-(a) Slice D block-mode follow-up: `ops/` + root into scope, fix the hunk-level
-    `str.replace(` exemption, one red-first case per listed false negative.
-(b) Slice E residuals: `dashboard/_liveclient.py:455` predicate;
-    `coaches/_arena_item_advisor.py:73-90` + `:110-127` H1 pattern.
-(c) `ops/loop/control/STOP` is STILL PRESENT - operator decides whether to
-    clear it before the next loop launch.
-(d) `moon_sync_inbox` 2026-09-11-1415 `lw_write_tracer.py.from-lw` (Apache-2.0): license-gated evaluation pending, not vendored.
-(e) Inert stubs `r._read_my_runes = lambda: ""` at `tests/test_liveclient_championstats_ingestion.py:163`
-    + `tests/test_p2w1_app_a.py:61` - harmless, deletable in a later cleanup.
