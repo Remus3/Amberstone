@@ -243,8 +243,18 @@ def _team_picks(team_arr, local_cell=None) -> list[dict]:
         # render hover state and locked state distinctly, and
         # ``championId`` falls back to the intent so legacy renderers that
         # read only championId still see the hover.
-        cid_locked = p.get("championId", 0) or 0
-        cid_intent = p.get("championPickIntent", 0) or 0
+        # RM-313: coerce through the module's own _as_int, exactly as
+        # localPlayerCellId / cellId already are at :346 and :349. s155
+        # (tools/lcu_agent.py:919-921) measured that some LCU builds emit
+        # champ-select ids as JSON STRINGS depending on the patch, and
+        # these three were emitted VERBATIM, so "67" reached every
+        # consumer of my_team / their_team. The damage is not merely a
+        # type mismatch: the s171 fallback below is an ``or`` chain, and
+        # the STRING "0" IS TRUTHY - so a hovering player on such a build
+        # emitted championId "0" and the hovered champion was DROPPED,
+        # reintroducing the exact defect the fallback exists to fix.
+        cid_locked = _as_int(p.get("championId"), 0)
+        cid_intent = _as_int(p.get("championPickIntent"), 0)
         cid_effective = cid_locked or cid_intent
         out.append({
             "cellId":      p.get("cellId"),
