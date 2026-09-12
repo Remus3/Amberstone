@@ -2,7 +2,122 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-11, RM-405 wrap (relocated `2026-09-10d` RM-402 refuted + circular measurement; newest 3 = `2026-09-11b` RM-405 caller-seam silent degrade, `2026-09-11a` stale-fallback + three silent failures, `2026-09-10e` Q5 relay + inert-negation fix). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-11, headless-loop-stop wrap (relocated `2026-09-10e` Q5 relay + inert-negation fix; newest 3 = `2026-09-11c` the 8-cycle loop run stopped by operator STOP, `2026-09-11b` RM-405 caller-seam silent degrade, `2026-09-11a` stale-fallback + three silent failures). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-11c - the headless loop ran 8 cycles and was stopped by the OPERATOR, not by max_cycles
+
+Run `63545b4e`, `loop start dry_run=False max_cycles=100 head=eaf13e82` at
+10:52:26, controller exit at 18:04:04 on `external STOP seen (cycle top)`.
+Eight cycles, LEDGER 1392 through 1397, plan rows R226 through R230. Six of the
+eight reported an executor cost and those six total **$104.18**; cycle 1 and
+cycle 6 reported none. Final HEAD `1f4b8a23e` == `origin/main`, working tree
+clean, `ci` and `docs-guards` both **success** at that sha. Live at wrap: pid
+40472 alive, `mode=client`, `last_reload_ok=true`. Operator-run verification at
+wrap: `pytest tests` 21890 passed / 102 skipped / 4938 subtests in 1:12:22.
+
+**THE RUN ENDED BY OPERATOR STOP AND THE STOP WAS OBEYED EXACTLY AS WRITTEN.**
+`ops/loop/control/STOP` was written 17:32:14 reading "operator 2026-09-11 17:32
+- finish cycle 8, then disarm for /done. No cycle 9." Cycle 8 was already in
+flight; it finished normally at 18:01:53 (`sha=1f4b8a23 tests=21895
+regress=False`), audited CLEAN at 18:04:04, and the controller then exited at
+the cycle top without opening a cycle 9. **The cap was never approached** - 8 of
+100. The STOP file is still on disk, so a re-arm has to clear it deliberately.
+Three headless-claude scheduled tasks were disabled in the same wrap:
+`RC-CIWatchdog`, `RC-WeeklyHygiene`, `RC-InboxResponder`. Re-arming the loop
+means clearing STOP **and** re-enabling those three deliberately.
+
+**WHAT EACH CYCLE SHIPPED.** Cycle 1 (10:55-12:25) shipped NOTHING - `sdk
+timeout after 5400s - killing the child tree`, sha unchanged at `eaf13e82`,
+audit CLEAN on an unchanged tree. Cycle 2 shipped RM-406 (`c00b9af89`, LEDGER
+1392, plan row R226 - the suite writing the operator's LIVE tree) plus the
+next-free-id pin advance to RM-407 (`591bf1e0d`). Cycles 3 and 4 shipped RM-407,
+the orphan test-tree CI wiring (LEDGER 1393, R227). Cycle 5 shipped the
+R227-REGRESS-FIX (`54fcf67c8`, LEDGER 1394). Cycle 6 cleared the `drift_guard`
+RED by relocating `ROADMAP.md` 74881 -> 65475 bytes (`23c1bca31`, LEDGER 1395,
+R228). Cycle 7 shipped RM-410, the direct byte/atomicity test for the ddragon
+fetch writer (`7ff5fc853`). Cycle 8 shipped the RM-411 half - the destination-
+scoped `os.replace` fault injection, the `.tmp` leak CHARACTERIZATION, and the
+process-wide census (`eb440accf`, LEDGER 1396, R229 + R230) - then the director
+tail-window fix (`ea45b15e3`, LEDGER 1397).
+
+**CYCLE 3 AUDITED REGRESS, AND THE REASON IS THE ONE WORTH CARRYING.** It
+reached the right RM-407 verdict and wrote the repair into the working tree,
+then ended without a wrap commit. So HEAD `c00e2f1d6` spent a full cycle running
+`pytest agents/agent3_testing/suite` BARE, zero exclusions, inside a
+push-BLOCKING job - shipping the 1-in-3 `test_supervisor.py::
+test_supervisor_starts_and_binds_ports` flake that the same cycle had just
+measured (run 1 of 3: 1 failed / 348 passed / 2 skipped / 2 deselected, runs 2
+and 3 green, 3/3 in isolation). Cycle 4 was directed to LAND THE ALREADY-WRITTEN
+FIX rather than redesign it, and did: `2df4d10e0` declares the tree EXCEPTED -
+not wired, not excluded, not forgotten - with the measured flake as the stated
+reason, and aligns gate, guard row and audit verdict on one word. `tools/tests`
+(348 collected) IS wired into the push `check` job; `agents/agent3_testing/suite`
+(359 collected) is not.
+
+**CYCLE 4 THEN AUDITED REGRESS TOO, FOR A DIFFERENT AND DOCS-ONLY REASON -
+correct any recollection that says only cycle 3 did.** The RM-407 wrap moved
+RM-406's residuals block onto the RM-407 row, so for one cycle RM-407 published
+four false residuals about itself while RM-406, which has no `BACKLOG.md` body
+row, carried no limits at all. Cycle 5 moved it back (`54fcf67c8`, byte-identity
+proved at 353 bytes / sha256 `3e4f71e9...` on both sides) and audited CLEAN. The
+defect class is row MISATTRIBUTION, not a typo: every byte was valid prose on
+the wrong owner, which no spell-check, ASCII guard or link checker can see.
+
+**CYCLE 7 SHIPPED WITHOUT RUNNING THE SUITE AND CYCLE 8 PAID FOR IT - the guard
+was ALREADY RED at `7ff5fc853`.**
+`tests/test_loop_director_context_caps.py::test_real_orchestration_plan_newest_row_survives`
+was failing, and the only reason it was found is that cycle 8 ran the full
+`tests/` tree. The stated reason cycle 7 skipped it - a prior serial run
+measured at roughly four hours - no longer held: under `-n 8` the same tree
+finishes in **307 seconds**. The failure is not cosmetic.
+`ops/loop/loop_controller.py:623` `build_director_context` caps the plan
+head-and-tail and CUTS THE MIDDLE, the session table sits in the middle, and
+each appended findings block walks the newest row toward the cut - past which
+the director plans the next cycle without ever seeing the newest session row.
+FIXED STRUCTURALLY, not by raising the cap: six older blocks relocated VERBATIM
+into `docs/ORCHESTRATION_PLAN_HISTORY.md`, R230 21306 -> **9692 bytes** against
+the 15888-byte window, and a new arm requires 4000 bytes of clearance derived
+from `lc.PLAN_CTX_CAP` / `lc.PLAN_CTX_HEAD` rather than a literal.
+
+**THE EXECUTOR OVERRIDE FIRED ON SEVEN OF EIGHT CYCLES AND ITS TWO COMPLAINTS
+ARE BOTH STRUCTURAL.** STALE-GROUNDING on every cycle except cycle 2 - 1, 3, 4,
+5, 6, 7 and 8 - because the director keeps sourcing premises from an audit
+DIGEST rather than the tree, and it was right to: cycle 7's headline premise
+("NO test anywhere calls
+`lib/ddragon/fetch.py`'s own writer") was REFUTED before any code was written.
+SERIALIZED-DEVIATION on cycles 6, 7 and 8, on non-disjoint agent file sets. Its
+collision lists are not trustworthy in detail - one names "AGENT 1 and AGENT 1"
+against genuinely disjoint sets - but serializing was kept anyway as strictly
+safer at the cost of one round.
+
+**NOTHING LEFT THE TREE BEYOND ORDINARY PUSHES AND THE JOINT RE-PIN STAYED
+GATED, SEVENTH SESSION RUNNING.** Zero commits today touch `ops/loop/slots.py`
+or `ops/loop/winmutex.py`. RSC's newest inbox note is still
+`2026-09-09-2100-from-RSC`. **Four inbox notes landed mid-run** (mtimes 12:49 to
+12:55: two from LW on plugin licences and a superseded plugin, two from CS
+including a WITHDRAWAL of two of their own claims and a defect report that our
+hook DOES export `GIT_DIR`). **No tracked file in this run's commit range names
+any of the four**, so they are unread work for the next session, not something
+this run answered.
+
+Next session: the loop is disarmed with STOP on disk and the tree clean at
+`1f4b8a23e`. Read the four mid-run inbox notes before arming anything, and run
+the full `tests/` tree per cycle now that `-n 8` puts it at 307 seconds - the
+four-hour figure that justified skipping it is dead.
+
+**DO NOT REDO:** RM-406, RM-407, RM-410 all SHIPPED. RM-411 is the FILED
+destructive-patch subset (8 call sites across 6 files, dispositions in
+`docs/audits/LF_WRITER_DIRECT_COVERAGE_2026-09-11.md`), body in `BACKLOG.md`,
+next-free pin now RM-411 in `docs/DS_SWEEP_TRACKER.md`. **The `.tmp` leak in
+`lib/ddragon/fetch.py:33-44` is CHARACTERIZED, NOT FIXED** - both fault arms
+assert the sibling LEAKS, so a future `finally` must flip those assertions
+DELIBERATELY. Do NOT re-wire `agents/agent3_testing/suite` without measuring the
+supervisor flake on the runner first; the exception is the result, not a
+shortfall. Do NOT re-file "`-n 8` widens the `os.replace` exposure" - xdist
+workers are separate PROCESSES and that premise is REFUTED; the real window is
+same-process callers, threads above all.
 
 ---
 
@@ -196,44 +311,3 @@ an arm proving a command is not executed says nothing about whether it is correc
 **DO NOT REDO:** RM-403, RM-404, RM-312 SHIPPED. RM-387/RM-388 shipped 2026-09-08.
 RM-313 deliberately OPEN. The joint re-pin is still BLOCKED on RSC - do not re-pin
 unilaterally and do not regenerate digests from local disk.
-
----
-
-# 2026-09-10e - the Q5 ask was REDISCOVERY, and the ignored-tracked probe found ONE real defect in 342 hits
-
-Tier-1, operator PRESENT. One `.gitignore` line plus a new guard test, shipped
-as `5f3555ec4`, pushed `df58efa7e..5f3555ec4`. Plus one note DELIVERED to LW.
-
-**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM, THIRD SESSION
-RUNNING.** RSC silent since `2026-09-09-2100`; CS and LL silent. Do not re-pin.
-
-**RE-ARM STATUS, since the operator expected one: PARTIAL AND NOT AS EXPECTED.**
-LW re-armed as a CORRESPONDENT only - standby lifted 2026-09-10, two notes filed.
-Its responder is BUILT and DELIBERATELY NOT ARMED (registering the task is D5).
-RC's is `Ready`/disarmed too. **Nobody's responder is armed.**
-
-**Q5 WAS ALREADY ANSWERED AND CLOSED - RM-389, LEDGER 1370, 2026-09-08.** Writing
-a fresh answer would have been pure rediscovery; the recall gate earned its keep.
-**The cause of LW reading it as open is in OUR record:** the operator narrowed the
-exchange to RC <-> RSC only that day and put CS/LW/LL on standby, so RC's answer
-was never written into LW's tree. Relay DELIVERED 2026-09-10 with operator
-approval (sha `46a00569`, 4545 bytes, sibling sweep clean, 4 name slots armed).
-CS and LL deliberately NOT written to - still on standby as far as we know.
-
-**IGNORED-TRACKED PROBE (LW finding 5.3) RUN ON RC: 342 of 4726 tracked files sit
-under an ignore rule, and 341 are ALREADY DOCUMENTED AND DELIBERATE.** `_archive/`
-carries its own TRAP comment plus the `git mv` ritual; the 101qq block says
-outright that listing a tracked file does not untrack it. Reporting those as
-findings would have been three false MUST-FIX. **The one real defect:**
-`!agents/state/resolved_decisions.json` was INERT - git cannot re-include a file
-whose PARENT DIRECTORY is excluded. Fixed to `agents/state/*`; probe 342 -> 341,
-nothing else exposed. The other two negations were checked and are effective.
-
-**INSTRUMENT TRAP, cost one wrong table:** `git check-ignore -v` exits 0 on a
-NEGATION match too, so `-v` output conflates "ignored" with "matched". Only the
-bare `check-ignore -q` exit code answers the question. My first spot-check table
-was wrong in every row; the 342 corpus count survived re-derivation unchanged.
-
-**DO NOT REDO:** Q5 (closed, and now relayed). The `_archive/` and 101qq ignore
-rules (deliberate, documented). An RM row for the negation - operator chose fix
-over file, and it shipped with a red-before-green guard.
