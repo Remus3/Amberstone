@@ -332,9 +332,17 @@ already has as a written rule, reaches 5 events. A mutation-and-non-vacuity gate
 roughly 12.
 
 **Second, and decisively, it covers the MOST EXPENSIVE class.** A stale citation costs a
-correction. A stale ROW costs a session. The window contains at least nine instances
+correction. A stale ROW costs a session. The window contains at least seven instances
 where a refutation's finding was that the work was already done or the row was already
 dead:
+
+> **Correction, appended post-publication 2026-09-12, not applied retroactively.** This
+> sentence read "at least nine instances" as published, and then enumerated **seven**
+> bullets. The seven below are the whole enumerated set; the other two were never named
+> and cannot be located, reconstructed or graded, so the number is corrected to seven
+> rather than the list being extended. Recorded here rather than silently fixed because
+> **the count-drift class this file measures was present in this file itself**: a figure
+> asserted in prose, not re-derived against its own list. See section 9.
 
 - A row was picked up and worked whose acceptance prescribed building a thing another
   row in the SAME FILE had refused by name 25 days earlier. Both rows sat in one file for
@@ -621,3 +629,48 @@ lane at all.
   whole document corpus, is the difference between a usable gate and one that gets
   deleted in a week. That scoping decision is unmeasured here and is the first thing the
   lane should measure.
+
+---
+
+## 9. Post-publication: the recommendation was back-tested and does not survive as specified
+
+Sections 1 through 8 are left exactly as published. This section is appended, not applied
+backwards. Two independent measurement arms tested the section 3 Q4 gate on 2026-09-12,
+after this file was broadcast. Full evidence, tables and limits:
+**`docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`**.
+
+**The historical back-test.** Of the seven rediscovery instances enumerated above, all
+seven were located with primary evidence and graded against the tree as it stood at
+pick-up: **3 CAUGHT, 3 MISSED, 1 PARTIAL** (the two unenumerated ones are ungradeable).
+The three misses share one structural cause, and it is the finding that matters more than
+the ratio: **every one of the five resolvers is a PRESENCE check over tokens the row
+NAMES, and this defect class is an ABSENCE.** A stale row does not name the id that kills
+it. The first instance listed above - this file's own lead example, presented as the
+archetype of the highest-cost class - is a clean miss, with its citations resolving and
+its symbols present.
+
+**The cost arm.** Over a seeded random sample of 20 of the 326 RM-bearing rows, the gate
+as specified **refuses 18 (90 percent) with zero genuinely stale rows found**. All ~91
+failure instances are benign, across eleven mechanisms (ports read as line citations,
+directory prefixes, HTTP routes, CLI flags, commit SHAs, out-of-tree memory filenames,
+external names that must not exist here, and more). The work-item-id resolver
+false-positives on 26 of 30 ids, because RC rows recite sibling closures by design.
+Refusal correlates with **citation density, not staleness**: the two rows that pass are
+the two that carry almost no evidence, and two rows are refused while being verbatim
+correct - one of them for accurately asserting an absence. The one mechanically sound
+resolver, full `path:N` citations, failed **0 of 44** in the sample and 9 of 891 across
+the dispatch corpus, and is already shipped and already guarded.
+
+**What this changes.** Surviving: symbol existence; disposition drift, whose predicate RC
+has since shipped as `tests/test_roadmap_backlog_disposition_drift.py`; and the
+inherited-figure clause as a WARN. Measured-refuted, and not to be re-pitched: the
+five-resolver gate as a dispatch refusal, full-citation resolution as a blocker, and the
+named-instrument resolver. The narrowing the data supports is a one-resolver **warning**
+that prints existing hard-failure citations and refuses nothing, predicted to fire on 4 of
+326 rows. Section 7's recommendation to the fleet should be read as superseded by that
+narrowing. Two further corrections belong here rather than in the sections above: this
+file's claim that every mechanical component "already exists in this tree" overstates the
+work-item-id half, since the allocation registry reports allocation and collisions and
+calls shipped ids free; and the section 8 citation census, re-derived days later, moved on
+every volume figure while the load-bearing 63 hard failures reproduced exactly - a census
+recited in prose without a tree state is a decaying claim.
