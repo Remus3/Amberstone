@@ -360,20 +360,35 @@ class StalenessSignalTests(unittest.TestCase):
         self.assertIs(h2["last_refresh_ok"], False)
         self.assertGreater(h2["stale_for_s"], 0.0)
 
-    def test_source_no_longer_reports_the_original_seed_unqualified(self):
+    def test_source_stays_bare_and_freshness_lives_on_health(self):
+        """A `stale:` prefix on `source()` was built, measured and REFUSED
+        at merge (2026-09-12). This pins the refusal from the other side.
+
+        `source()` answers provenance and keeps its three values; the
+        freshness answer the prefix was reaching for is on `health()`,
+        which is where a consumer must look. The sibling guard
+        `test_source_stays_in_the_declared_domain`
+        (tests/test_smoothed_rates_101qq_lock.py:375) pins the domain and
+        was deliberately NOT widened - it stays green unmodified, which is
+        the proof the contract is intact.
+        """
         self._prime()
         self._break_every_source()
         self._drive_refresh(4.0)
 
-        s = S101.source()
-        self.assertNotEqual(
-            s, "live",
-            "source() still names the seed that built a snapshot frozen "
-            "hours ago, so a frozen cache is indistinguishable from a "
-            "fresh one")
-        self.assertTrue(s.startswith(S101._STALE_PREFIX))
-        # The seed that built the frozen data stays recoverable.
-        self.assertIn("live", s)
+        # Frozen for 24h, and source() still reports bare provenance.
+        self.assertEqual(S101.source(), "live")
+        self.assertIn(S101.source(), ("live", "static", "none"))
+        self.assertNotIn(S101._STALE_PREFIX, S101.source())
+
+        # The freshness that source() deliberately does not carry.
+        h = S101.health()
+        self.assertIs(h["degraded"], True)
+        self.assertIs(h["last_refresh_ok"], False)
+        self.assertGreater(h["stale_for_s"], 0.0)
+        self.assertTrue(h["source"].startswith(S101._STALE_PREFIX))
+        # The seed that built the frozen data stays recoverable there.
+        self.assertEqual(h["seed"], "live")
 
     def test_a_successful_refresh_clears_the_degraded_flag(self):
         self._prime()
