@@ -69,8 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-412** (2026-09-11, moved at the RM-410 landing plus the
-  RM-411 filing).
+  Next free id = **RM-413** (2026-09-12, moved at the RM-412 filing).
+  **RM-412 was allocated 2026-09-12** (LEDGER 1399, code `48ac8986a`), filed
+  under BACKLOG "Reliability / hardening" on the OSS extraction blueprint row,
+  taking no roster checkbox and not changing the Summary count. RM-412 SHIPPED:
+  C1 of that blueprint - `oss/win32_atomic_io/`, a stdlib-only src-layout
+  package holding the atomic-write primitives extracted from
+  `core/polled_json.py`, which is itself UNMODIFIED (20-plus live importers, so
+  the package is a SIBLING and not a replacement), with the two copies pinned by
+  an AST-normalized executable-logic drift guard. ENGINE-IMPACT NONE and no
+  `ENGINE_VERSION` move.
   **RM-410 SHIPPED 2026-09-11** at `7ff5fc853` (LEDGER 1396, plan row R229,
   flipped WIP -> DONE this cycle): the direct byte / atomicity test for
   `lib/ddragon/fetch._atomic_write_json` -
