@@ -103,21 +103,43 @@ BYPASS_LOG = Path("ops") / "runtime" / "sibling_sweep_bypass.log"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # ---------------------------------------------------------------------------
-# KNOWN OPEN HIT.
+# KNOWN OPEN HITS.
 #
-# Declared, named and visible - NOT a silent allowlist entry, and never excused
-# as noise. It is a real hit whose remediation is not RC's to make alone.
+# Declared, named and visible - NEVER a silent allowlist. An entry here
+# ANNOTATES a finding in the report; it never removes one, and it never changes
+# the exit code. That property is what separates this register from a
+# suppression list, and it is guarded by its own test.
+#
+# THE REGISTER IS EMPTY, AND THAT IS A MEASUREMENT RATHER THAN A DEFAULT.
+# A tree-scope run (`--tree`) over the whole git index returns ZERO findings at
+# this commit, so there is no open hit left to declare.
+#
+# The single entry that used to sit here named `tests/test_loop_concurrency.py`
+# and justified itself with "this file is BYTE-PINNED across the participating
+# repositories by SHARED_SHA256, so remediation is a JOINT act". That
+# justification was FALSE, and it was false on the day it was written. The
+# `SHARED_SHA256` dict pins exactly two files - `ops/loop/slots.py` and
+# `ops/loop/winmutex.py` - and it hashes them as `ROOT / "ops" / "loop" /
+# name`, so the PINNING FILE NEVER PINNED ITSELF. The hit was RC's to redact
+# unilaterally all along; it was redacted in 86e4d4f0f, the two pinned digests
+# were untouched, and `tests/test_loop_concurrency.py` stayed green across that
+# edit. That green run is the disproof, not an argument about it.
+#
+# Two things this emptiness does NOT mean.
+#   1. It does not undo PUBLICATION. The escapes reached the public remote and
+#      no history was rewritten. Remediating HEAD is not recall.
+#   2. It does not lower the escape rate, which stays measurably above zero.
+#      LFS OBJECT content is never scanned, `--no-verify` bypasses the whole
+#      hook, and the needle arm is inert without the per-host config.
+#
+# A future entry belongs here ONLY when a LIVE finding exists that RC genuinely
+# cannot remediate alone - a hit inside one of the two byte-pinned files would
+# qualify, because moving those bytes is a joint re-pin. Do NOT pre-declare an
+# exception against a file that scans clean: an exception for a finding that
+# does not exist is the same false declaration this block was just corrected
+# for, merely pointed at a different path.
 # ---------------------------------------------------------------------------
-KNOWN_EXCEPTIONS = {
-    "tests/test_loop_concurrency.py": (
-        "Carries a sibling name in the P4 split form (wrapped across a comment "
-        "continuation). This file is BYTE-PINNED across the participating "
-        "repositories by SHARED_SHA256, so editing it here breaks the pin "
-        "everywhere. Remediation is a JOINT re-pin routed through the "
-        "coordination step, not a unilateral edit. Reported on every run so it "
-        "stays visible until that lands."
-    ),
-}
+KNOWN_EXCEPTIONS: dict = {}
 
 
 # ---------------------------------------------------------------------------
