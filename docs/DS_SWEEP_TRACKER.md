@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-421** (2026-09-12, moved at the RM-420 filing).
+  Next free id = **RM-422** (2026-09-12, moved at the RM-421 filing).
+  **RM-421 was allocated 2026-09-12** by the RM-217 REFUTATION slice, filed under
+  BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
+  the Summary count. RM-421 is a FILED-WITH-MEASUREMENT row, not a build: the
+  stop-claim gate never reads the CONTENT a session writes, so a fabricated
+  count shipped into a tracked file through `Write` / `Edit` draws zero
+  findings (three-case control in the row). Confirmed free across the scanned
+  docs before the move, and the `ROADMAP.md` pointer moves in the SAME commit,
+  per the LEDGER 1334 note that the documented way this pointer goes stale is a
+  batch moving only one of the two.
+  Prior pin, kept for the audit trail: Next free id was **RM-421** (2026-09-12, moved at the RM-420 filing).
   **RM-420 was allocated 2026-09-12** by the VERIFY-THEN-FILE slice, filed under
   BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
   the Summary count. RM-420 is a REFUTATION ROW, not a build: a sibling carrier
