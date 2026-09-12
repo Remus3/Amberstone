@@ -370,3 +370,160 @@ def test_list_route_matcher_rejects_suffix_paths(path, expected):
     matcher = next(m for m, fn in mod.POST_ROUTES
                    if fn is mod._serve_loadout_list_post)
     assert matcher(path) is expected
+
+
+# ------------------------------- RM-296d: push_* flags read as bare truthiness
+# `_serve_loadout_apply_post` read the three push flags with
+# `payload.get(k, True)` and consumed them as BARE TRUTHINESS. A JSON body
+# {"push_runes": "false"} yields the non-empty string "false", which is truthy,
+# so the runes were pushed anyway - the route overwrote the operator's live
+# rune page with the one thing the body had just asked it not to touch. Same
+# for "0", "no", "off".
+#
+# Contract pinned here:
+#   absent      -> push (the live default, unchanged)
+#   real bool   -> as-is (unchanged)
+#   string/num  -> parsed off/on spellings
+#   ambiguous   -> 400, nothing pushed
+
+_PUSH_KEYS = ("push_runes", "push_items", "push_summoners")
+_PUSH_CMD = {
+    "push_runes": "apply_runes",
+    "push_items": "apply_items",
+    "push_summoners": "apply_summoners",
+}
+
+
+def _apply(monkeypatch, body_extra):
+    """Drive /api/loadout/apply with all three commands resolvable.
+
+    The resolver stub always offers a rune, item AND summoner command, so
+    `queued` names exactly the pushes the flag coercion let through. Returns
+    (status, parsed_body, enqueued_cmd_names).
+    """
+    seen = []
+
+    def _capture(cmd_obj):
+        seen.append(cmd_obj.get("cmd"))
+        return b"{}"
+
+    monkeypatch.setattr(mod, "_post_lcu_cmd", _capture)
+    monkeypatch.setattr(
+        mod, "_resolve_variant",
+        lambda champ, variant, mode, ov: {
+            "ok": True, "mode": "sr", "label": "x",
+            "rune_cmd": {"cmd": "apply_runes"},
+            "item_cmd": {"cmd": "apply_items"},
+            "summ_cmd": {"cmd": "apply_summoners"},
+            "raw_items": [],
+        },
+    )
+    h = FakeHandler("/api/loadout/apply")
+    payload = {"champion": "Jinx", "variant": "v1"}
+    payload.update(body_extra)
+    mod._serve_loadout_apply_post(h, payload)
+    assert h.sent is not None, "handler returned without sending a response"
+    status, raw, _ = h.sent
+    return status, json.loads(raw.decode("utf-8")), seen
+
+
+@pytest.mark.parametrize("key", _PUSH_KEYS)
+@pytest.mark.parametrize("off_value", [
+    False,          # the already-correct client
+    "false",        # THE BUG: truthy non-empty string
+    "False",        # case must not matter
+    " off ",        # whitespace must not matter
+    "no",
+    "off",
+    "n",
+    "0",            # 0-as-string, truthy in Python
+    "",             # blank form field
+    0,              # real JSON zero
+    0.0,
+])
+def test_explicit_falsey_push_flag_turns_that_push_off(
+        monkeypatch, key, off_value):
+    status, body, seen = _apply(monkeypatch, {key: off_value})
+    assert status == 200
+    suppressed = _PUSH_CMD[key]
+    assert suppressed not in seen, (
+        f"{key}={off_value!r} still pushed {suppressed}")
+    # The other two are untouched by one flag being off.
+    for other in _PUSH_KEYS:
+        if other != key:
+            assert _PUSH_CMD[other] in seen
+    assert body["ok"] is True
+    assert suppressed not in body["queued"]
+
+
+def test_omitted_push_flags_still_push_everything(monkeypatch):
+    """The live contract. Only an EXPLICITLY supplied falsey value may turn a
+    push off; a body that never mentions the key keeps push-everything."""
+    status, body, seen = _apply(monkeypatch, {})
+    assert status == 200
+    assert sorted(seen) == sorted(_PUSH_CMD.values())
+    assert sorted(body["queued"]) == sorted(_PUSH_CMD.values())
+
+
+@pytest.mark.parametrize("key", _PUSH_KEYS)
+def test_explicit_true_bool_is_unchanged(monkeypatch, key):
+    status, body, seen = _apply(monkeypatch, {key: True})
+    assert status == 200
+    assert _PUSH_CMD[key] in seen
+
+
+@pytest.mark.parametrize("key", _PUSH_KEYS)
+@pytest.mark.parametrize("on_value", ["true", "True", " on ", "yes", "y",
+                                      "1", 1, 1.0])
+def test_explicit_truthy_spellings_keep_that_push_on(
+        monkeypatch, key, on_value):
+    status, body, seen = _apply(monkeypatch, {key: on_value})
+    assert status == 200
+    assert _PUSH_CMD[key] in seen
+
+
+def test_all_three_flags_off_pushes_nothing(monkeypatch):
+    status, body, seen = _apply(
+        monkeypatch, {k: "false" for k in _PUSH_KEYS})
+    assert status == 200
+    assert seen == []
+    assert body["queued"] == []
+
+
+@pytest.mark.parametrize("key", _PUSH_KEYS)
+@pytest.mark.parametrize("ambiguous", [
+    "maybe",
+    "FALSE!",
+    2,          # truthy under the old read, but not a boolean
+    -1,
+    3.7,
+    None,       # JSON null is NOT the same statement as an absent key
+    [],
+    ["false"],
+    {},
+    {"v": False},
+])
+def test_ambiguous_push_flag_is_a_400_and_pushes_nothing(
+        monkeypatch, key, ambiguous):
+    """A value the server cannot read is not consent to overwrite a live rune
+    page. Defaulting ambiguity to push is the original defect; defaulting it
+    to skip is a silent failure of the operator's intent behind a green
+    status. Reject, the way the sibling `dismiss` flag does at
+    `dashboard/routes_diag.py:347-350` for the same wrong-type class."""
+    status, body, seen = _apply(monkeypatch, {key: ambiguous})
+    assert status == 400, f"{key}={ambiguous!r} was accepted"
+    assert seen == [], "a rejected body must not enqueue anything"
+    assert body["error"] == "bad_push_flag"
+    assert body["field"] == key
+
+
+def test_bad_push_flag_does_not_preempt_the_champion_check(monkeypatch):
+    """Error precedence is unchanged: a body missing champion+variant still
+    reports that first, whatever its flags look like."""
+    monkeypatch.setattr(mod, "_post_lcu_cmd", lambda cmd_obj: b"{}")
+    h = FakeHandler("/api/loadout/apply")
+    mod._serve_loadout_apply_post(h, {"push_runes": "maybe"})
+    status, raw, _ = h.sent
+    assert status == 400
+    assert json.loads(raw.decode("utf-8"))["error"] == (
+        "champion+variant required")
