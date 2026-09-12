@@ -161,6 +161,104 @@ from core.event_callouts import (  # noqa: E402
 )
 
 
+# -- Envelope coercion (RM-318) ------------------------------------------------
+# The six detectors read the Live Client envelope positionally and used
+# `or {}` as their only guard. `or {}` defends against a MISSING or FALSY
+# value and against nothing else: a truthy value of the WRONG TYPE passes
+# straight through it and raises on the next `.get(...)` or `float(...)`.
+#
+# MEASURED at 8d4173c31, driving each detector from a snapshot that makes
+# it fire and retyping one field (raises / 6 detectors): a str `gameData`
+# 6/6, a str `gameTime` 6/6, a None `gameTime` 6/6, a str `activePlayer`
+# 4/6, a str or non-dict-bearing `events.Events` 3/6, a malformed
+# `vision_state` / `enemies` 3/6, a leading non-dict `allPlayers` row 2/6.
+#
+# The loop catches those per-detector, so none of them is a crash. Each is
+# a detector that is silently dead for a whole game while the heartbeat
+# pill counts up - which is exactly the failure the cycle-12 heartbeat was
+# built to make VISIBLE. RM-318 prevents it.
+#
+# These readers coerce; they do NOT swallow. A blanket try/except around a
+# detector would suppress a genuine logic bug too, and would re-blind the
+# `detector_errors` counter that cycle 12 added. Anything these functions
+# cannot type-check is still free to raise into DecisionLoop._loop, where
+# it is counted and surfaced.
+
+def _as_dict(value: object) -> dict:
+    """`value` when it is a dict, else an empty dict."""
+    return value if isinstance(value, dict) else {}
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    """`value` as a float when it is a real number, else `default`.
+
+    bool is excluded deliberately: `True` is an int to Python but never a
+    game time, an HP value or an event timestamp on the wire."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    return float(value)
+
+
+def _as_str(value: object, default: str = "") -> str:
+    """`value` when it is a str, else `default`. Used where the old code
+    wrote `x.get(k) or ""` and would have concatenated a non-str."""
+    return value if isinstance(value, str) else default
+
+
+def _game_data(snapshot: dict) -> dict:
+    return _as_dict(_as_dict(snapshot).get("gameData"))
+
+
+def _game_time(snapshot: dict) -> float:
+    return _as_float(_game_data(snapshot).get("gameTime"), 0.0)
+
+
+def _game_mode(snapshot: dict) -> str:
+    mode = _game_data(snapshot).get("gameMode")
+    return str(mode).upper() if isinstance(mode, str) else ""
+
+
+def _active_player(snapshot: dict) -> dict:
+    return _as_dict(_as_dict(snapshot).get("activePlayer"))
+
+
+def _self_name(snapshot: dict) -> Optional[str]:
+    active = _active_player(snapshot)
+    for key in ("summonerName", "riotIdGameName"):
+        nm = active.get(key)
+        if isinstance(nm, str) and nm:
+            return nm
+    return None
+
+
+def _all_players(snapshot: dict) -> list[dict]:
+    """allPlayers, dict rows only. Dropping a malformed row rather than
+    tolerating it in place matters: the two detectors that scan this list
+    `break` on their match, so a bad row's POSITION decided whether the
+    old code raised at all - a trailing one measured clean and a leading
+    one measured broken, on the same payload."""
+    raw = _as_dict(snapshot).get("allPlayers")
+    if not isinstance(raw, list):
+        return []
+    return [p for p in raw if isinstance(p, dict)]
+
+
+def _events(snapshot: dict) -> list[dict]:
+    """events.Events, dict rows only. The `(x or {}).get("Events") or []`
+    idiom this replaces was already guarded for a LIST `events` - that arm
+    is a green control and is unchanged by RM-318."""
+    raw = _as_dict(_as_dict(snapshot).get("events")).get("Events")
+    if not isinstance(raw, list):
+        return []
+    return [ev for ev in raw if isinstance(ev, dict)]
+
+
+def _enemies(vision_state: object) -> dict:
+    """vision_tracker's enemies map, dict values only."""
+    enemies = _as_dict(_as_dict(vision_state).get("enemies"))
+    return {k: v for k, v in enemies.items() if isinstance(v, dict)}
+
+
 def _next_objective_spawn(events: list, game_time: float, *,
                           name: str, first_at: float, respawn: float,
                           kill_event: str) -> Optional[float]:
@@ -190,12 +288,11 @@ def detect_objective_contest_with_missing(
 ) -> Optional[Decision]:
     """Trigger when a major objective spawns within ~60s AND >=2 enemies
     are missing per vision_tracker. Player decides contest vs give."""
-    game_data = snapshot.get("gameData") or {}
-    game_time = float(game_data.get("gameTime", 0.0))
-    events = (snapshot.get("events") or {}).get("Events") or []
+    game_time = _game_time(snapshot)
+    events = _events(snapshot)
 
     # Skip non-SR modes - Dragon/Baron only exist there.
-    mode = str(game_data.get("gameMode", "")).upper()
+    mode = _game_mode(snapshot)
     if mode and mode != "CLASSIC":
         return None
 
@@ -219,7 +316,7 @@ def detect_objective_contest_with_missing(
     candidates.sort()
     time_to_spawn, name, spawn_t = candidates[0]
 
-    enemies = (vision_state or {}).get("enemies") or {}
+    enemies = _enemies(vision_state)
     missing = []
     for nm, e in enemies.items():
         if e.get("is_dead"):
@@ -270,24 +367,22 @@ def detect_low_hp_backable(
     alive_for to 90s (post-respawn pre-fight has stable framing).
     Bucket the id to 60-second windows so a single drawn-out low-HP
     episode doesn't re-prompt every tick."""
-    active = snapshot.get("activePlayer") or {}
-    stats = active.get("championStats") or {}
-    cur = float(stats.get("currentHealth") or 0.0)
-    mx = float(stats.get("maxHealth") or 0.0)
+    stats = _as_dict(_active_player(snapshot).get("championStats"))
+    cur = _as_float(stats.get("currentHealth"), 0.0)
+    mx = _as_float(stats.get("maxHealth"), 0.0)
     if mx <= 0:
         return None
     pct = cur / mx
     if pct >= 0.25:
         return None
 
-    game_data = snapshot.get("gameData") or {}
-    game_time = float(game_data.get("gameTime", 0.0))
+    game_time = _game_time(snapshot)
     if game_time < 90:        # nothing to back to in the first 90s
         return None
 
     # Find self in allPlayers to confirm alive + measure time since last death.
-    self_name = active.get("summonerName") or active.get("riotIdGameName")
-    all_players = snapshot.get("allPlayers") or []
+    self_name = _self_name(snapshot)
+    all_players = _all_players(snapshot)
     me = None
     for p in all_players:
         nm = p.get("summonerName") or p.get("riotIdGameName")
@@ -298,7 +393,7 @@ def detect_low_hp_backable(
         return None
 
     # Walk events for our deaths; require >=90s alive.
-    events = (snapshot.get("events") or {}).get("Events") or []
+    events = _events(snapshot)
     last_death_t = 0.0
     for ev in events:
         if (ev.get("EventName") == "ChampionKill"
@@ -337,17 +432,16 @@ def detect_lane_roam_window(
     """>=2 enemies missing 12s+ AND no objective contest is the right
     framing (deferred to detect_objective_contest_with_missing) -> the
     player has a roam-or-push window. Bucketed to 90s windows."""
-    game_data = snapshot.get("gameData") or {}
-    game_time = float(game_data.get("gameTime", 0.0))
+    game_time = _game_time(snapshot)
     if game_time < 240:    # roams matter past ~4min
         return None
-    mode = str(game_data.get("gameMode", "")).upper()
+    mode = _game_mode(snapshot)
     if mode and mode != "CLASSIC":
         return None     # ARAM has no roams
 
     # If a major objective is in the contest window, the contest detector
     # owns this signal - don't double-prompt.
-    events = (snapshot.get("events") or {}).get("Events") or []
+    events = _events(snapshot)
     for name, first_at, respawn, kill_event in (
         ("Dragon", _DRAGON_FIRST_S, _DRAGON_RESPAWN_S, "DragonKill"),
         ("Baron",  _BARON_FIRST_S,  _BARON_RESPAWN_S,  "BaronKill"),
@@ -359,7 +453,7 @@ def detect_lane_roam_window(
         if spawn_t is not None and -5 <= (spawn_t - game_time) <= 60:
             return None
 
-    enemies = (vision_state or {}).get("enemies") or {}
+    enemies = _enemies(vision_state)
     missing_long = []
     for nm, e in enemies.items():
         if e.get("is_dead") or e.get("visible"):
@@ -407,17 +501,15 @@ def detect_postfight_objective(
     """In the last 20s of game time, ally team has a +3 (or better) kill
     differential AND a major objective is alive within ~30s. Player has
     to choose: take the objective with tempo, or cross-map for towers."""
-    game_data = snapshot.get("gameData") or {}
-    game_time = float(game_data.get("gameTime", 0.0))
+    game_time = _game_time(snapshot)
     if game_time < 600:    # post-fight objectives are mid+ game
         return None
-    mode = str(game_data.get("gameMode", "")).upper()
+    mode = _game_mode(snapshot)
     if mode and mode != "CLASSIC":
         return None
 
-    active = snapshot.get("activePlayer") or {}
-    self_name = active.get("summonerName") or active.get("riotIdGameName")
-    all_players = snapshot.get("allPlayers") or []
+    self_name = _self_name(snapshot)
+    all_players = _all_players(snapshot)
     # _team_of isinstance-guards each row; the hand-rolled loop this
     # replaced raised on a non-dict allPlayers entry before ever reaching
     # the guarded lookup below (lane-8 cycle 12).
@@ -426,7 +518,7 @@ def detect_postfight_objective(
         return None
 
     # Walk events: count ally kills minus ally deaths in the last 20s.
-    events = (snapshot.get("events") or {}).get("Events") or []
+    events = _events(snapshot)
     window_start = game_time - 20
     last_event_t = 0.0
     diff = 0
@@ -503,12 +595,12 @@ def _enemy_has_smite(p: dict) -> bool:
     but the code read only displayName + rawDescription, so a payload
     carrying the cited rawDisplayName alone returned False. Both raw keys
     are now read."""
-    spells = p.get("summonerSpells") or {}
+    spells = _as_dict(_as_dict(p).get("summonerSpells"))
     for slot in ("summonerSpellOne", "summonerSpellTwo"):
-        s = spells.get(slot) or {}
-        nm = (s.get("displayName") or "").lower()
-        raw = ((s.get("rawDescription") or "")
-               + (s.get("rawDisplayName") or "")).lower()
+        s = _as_dict(spells.get(slot))
+        nm = _as_str(s.get("displayName")).lower()
+        raw = (_as_str(s.get("rawDescription"))
+               + _as_str(s.get("rawDisplayName"))).lower()
         if "smite" in nm or "summonersmite" in raw:
             return True
     return False
@@ -541,16 +633,15 @@ def detect_jungler_gank_likely(
     Bucketed to 90-second windows so a stationary missing JG doesn't
     re-fire every tick. Skips while a major objective is in the contest
     window - `detect_objective_contest_with_missing` owns that case."""
-    game_data = snapshot.get("gameData") or {}
-    game_time = float(game_data.get("gameTime", 0.0))
-    mode = str(game_data.get("gameMode", "")).upper()
+    game_time = _game_time(snapshot)
+    mode = _game_mode(snapshot)
     if mode and mode != "CLASSIC":
         return None
     if game_time < 180:   # ganks usually past 3min
         return None
 
     # Defer to objective_contest if drake/baron is imminent.
-    events = (snapshot.get("events") or {}).get("Events") or []
+    events = _events(snapshot)
     for name, first_at, respawn, kill_event in (
         ("Dragon", _DRAGON_FIRST_S, _DRAGON_RESPAWN_S, "DragonKill"),
         ("Baron",  _BARON_FIRST_S,  _BARON_RESPAWN_S,  "BaronKill"),
@@ -563,9 +654,8 @@ def detect_jungler_gank_likely(
             return None
 
     # Resolve self team so we know which side is "enemy".
-    active = snapshot.get("activePlayer") or {}
-    self_name = active.get("summonerName") or active.get("riotIdGameName")
-    all_players = snapshot.get("allPlayers") or []
+    self_name = _self_name(snapshot)
+    all_players = _all_players(snapshot)
     # _team_of isinstance-guards each row; the hand-rolled loop this
     # replaced raised on a non-dict allPlayers entry before ever reaching
     # the guarded lookup below (lane-8 cycle 12).
@@ -589,7 +679,7 @@ def detect_jungler_gank_likely(
 
     # Pull the JG's vision state. Key shape from vision_tracker._compute_enemies
     # uses summonerName-or-riotIdGameName as the key.
-    enemies = (vision_state or {}).get("enemies") or {}
+    enemies = _enemies(vision_state)
     jg = enemies.get(enemy_jg_name)
     if not jg:
         # Try a champion-keyed fallback for short-form keys.
@@ -600,9 +690,11 @@ def detect_jungler_gank_likely(
     if not jg or jg.get("is_dead") or jg.get("visible"):
         return None
     missing_for = jg.get("missing_for_s")
-    if not isinstance(missing_for, (int, float)) or missing_for < 20:
+    if (isinstance(missing_for, bool)
+            or not isinstance(missing_for, (int, float))
+            or missing_for < 20):
         return None
-    last_zone = jg.get("last_seen_zone") or ""
+    last_zone = _as_str(jg.get("last_seen_zone"))
     # Likely-ganking signal: last seen OUTSIDE their own jungle.
     if _is_enemy_jungle_zone(last_zone, enemy_team):
         return None
@@ -637,17 +729,15 @@ def detect_throwing_lead(
 
     Stateless: relies only on the events list in `snapshot`. Doesn't need
     a gold-history tracker - death-cluster IS the throwing signal."""
-    game_data = snapshot.get("gameData") or {}
-    game_time = float(game_data.get("gameTime", 0.0))
+    game_time = _game_time(snapshot)
     if game_time < 480:   # 8 min - early-game deaths happen, not "throwing"
         return None
 
-    active = snapshot.get("activePlayer") or {}
-    self_name = active.get("summonerName") or active.get("riotIdGameName")
+    self_name = _self_name(snapshot)
     if not self_name:
         return None
 
-    events = (snapshot.get("events") or {}).get("Events") or []
+    events = _events(snapshot)
     window_start = game_time - 90
     my_deaths_t: list[float] = []
     for ev in events:
@@ -977,7 +1067,12 @@ class DecisionLoop:
                     self._stop.wait(self._poll_s)
                     continue
                 vs = self._read_vision_state()
-                game_time = float((snap.get("gameData") or {}).get("gameTime", 0.0))
+                # RM-318: same coercion the detectors use. This read sat
+                # OUTSIDE the per-detector try/except, so a retyped
+                # gameTime raised into the loop's own broad handler and
+                # skipped the whole tick - reconcile included - rather
+                # than costing one detector.
+                game_time = _game_time(snap)
                 # Reset per-game cap on a backwards game-time jump
                 # (new match) or a resync from 0.
                 if game_time + 5 < self._prev_game_time:
