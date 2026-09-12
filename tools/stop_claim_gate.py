@@ -671,8 +671,25 @@ def main(argv=None):
     append_history(report, args.history, args.history_max)
 
     if should_block:
+        # The remedy named here must be one this file IMPLEMENTS. It used to
+        # read "Fix or retract, then finish", and there is no retraction path in
+        # `audit` - RM-217 asked for one, RM-396 refused it by name as a
+        # self-serve silencer, and RM-398 recorded the decision to keep the
+        # strict behaviour and ACCEPT that retractions flag. Half the sentence
+        # was therefore false, and it was not inert - it told sessions to keep
+        # retracting, which cannot work, because the scan re-reads the WHOLE
+        # transcript every Stop and an earlier turn cannot be edited. The
+        # re-flagging that follows is structural and large: measured 2026-09-12
+        # over `ops/runtime/stop_claim_history.jsonl` (500 rows, the rolling
+        # cap), one session carries 49 Stops with findings, 48 of them
+        # count_mismatch, and five more sessions carry 14 or more. Prescribing
+        # the remedy that works is the fix; the gate's behaviour is unchanged.
         lines = [f"stop_claim_gate: {len(findings)} claim(s) not backed by this "
-                 f"session's own evidence. Fix or retract, then finish."]
+                 f"session's own evidence. Back them with a real run, or "
+                 f"backtick a figure you are quoting rather than asserting "
+                 f"(a backticked count is stripped before any check). A later "
+                 f"withdrawal does NOT clear a finding - the scan re-reads the "
+                 f"whole transcript every Stop."]
         for finding in findings:
             detail = ""
             if finding["claimed"] or finding["observed"]:
