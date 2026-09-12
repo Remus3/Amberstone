@@ -151,6 +151,65 @@ def _coerce_override_summoners(value) -> tuple | None:
     return (out[0], out[1])
 
 
+# RM-296d: `/api/loadout/apply` read its three push_* flags with
+# `payload.get(k, True)` and consumed them as BARE TRUTHINESS. A JSON body
+# {"push_runes": "false"} yields the non-empty string "false", which is
+# truthy, so the route pushed the runes anyway - overwriting the operator's
+# live rune page with the one thing the body had just asked it not to touch.
+# "0", "no" and "off" all failed the same way.
+_PUSH_FLAG_FALSE = frozenset({"false", "0", "no", "off", "n", ""})
+_PUSH_FLAG_TRUE = frozenset({"true", "1", "yes", "on", "y"})
+
+
+def _coerce_push_flag(payload, key: str):
+    """Read one push_* flag. Returns True, False, or None for AMBIGUOUS.
+
+    Contract (RM-296d):
+      key ABSENT      -> True. Push-everything is the live default and this
+                         route's own body comment declares it, so only an
+                         EXPLICITLY supplied falsey value may turn a push off.
+      real JSON bool  -> used as-is.
+      string          -> stripped + lowercased, looked up in the two tables
+                         above.
+      int / float     -> 0 is off, 1 is on.
+      anything else   -> None, i.e. AMBIGUOUS.
+
+    `None` is the caller's cue to answer 400. It is NOT "fall back to the
+    default": a value the server cannot read is not consent to overwrite a
+    rune page, and a silent default is wrong in whichever direction it goes.
+    Defaulting ambiguity to True is the original defect. Defaulting it to
+    False is a quiet failure of the operator's intent behind a green
+    "check <label>" - `web/js/panels/item_build.js:445` already reads `ok`,
+    so there is a live UI channel for an honest error but none for a silent
+    skip. Rejecting is the resolution the sibling `dismiss` flag took at
+    `routes_diag.py:347-350` for the same wrong-type class, on the same
+    reasoning that the downstream act is irreversible.
+
+    A JSON `null` is deliberately ambiguous rather than absent: a client that
+    computed `null` had an opinion and failed to express it, which is a
+    different statement from never mentioning the key. Hence the test is
+    `key not in payload`, not the value's own truthiness.
+    """
+    if key not in payload:
+        return True
+    raw = payload[key]
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        token = raw.strip().lower()
+        if token in _PUSH_FLAG_FALSE:
+            return False
+        if token in _PUSH_FLAG_TRUE:
+            return True
+        return None
+    if isinstance(raw, (int, float)):
+        if raw == 0:
+            return False
+        if raw == 1:
+            return True
+    return None
+
+
 def _post_lcu_cmd(cmd_obj: dict) -> bytes:
     """POST one command to the vision server's LCU queue; return its body.
 
@@ -379,7 +438,11 @@ def _serve_loadout_apply_post(h, payload) -> None:
     #        override_runes?:{keystone,primary,secondary},
     #        override_items?:[id1,...],
     #        override_summoners?:[d,f]}.
-    # Defaults: push everything that the variant declares.
+    # Defaults: push everything that the variant declares. Only an
+    # EXPLICITLY supplied falsey push_* value turns a push off; an omitted
+    # key keeps the push-everything default, and a value that cannot be
+    # read as a boolean is answered 400 rather than guessed at
+    # (RM-296d, `_coerce_push_flag`).
     # Resolves the variant to LCU command payloads and queues them
     # one-by-one through the vision server's LCU endpoint. Returns
     # immediately; results come back via the LCU command queue
@@ -388,9 +451,18 @@ def _serve_loadout_apply_post(h, payload) -> None:
         champ   = _text(payload, "champion")
         variant = _text(payload, "variant")
         mode    = _text(payload, "mode", "sr")
-        push_runes = payload.get("push_runes",   True)
-        push_items = payload.get("push_items",   True)
-        push_summ  = payload.get("push_summoners", True)
+        # RM-296d: coerced, never bare-truthy. See `_coerce_push_flag` for
+        # the contract. A None here means the value was AMBIGUOUS; it is
+        # reported below, AFTER the champion+variant check, so that error's
+        # existing precedence is unchanged.
+        push_runes = _coerce_push_flag(payload, "push_runes")
+        push_items = _coerce_push_flag(payload, "push_items")
+        push_summ  = _coerce_push_flag(payload, "push_summoners")
+        bad_flag = next(
+            (name for name, val in (("push_runes", push_runes),
+                                    ("push_items", push_items),
+                                    ("push_summoners", push_summ))
+             if val is None), None)
         # s209: optional override of the variant's stored summoners.
         # Used by the champ-select build chooser's adaptive-summoners
         # pipeline - when enemy comp pressures a different second spell
@@ -405,6 +477,10 @@ def _serve_loadout_apply_post(h, payload) -> None:
         # userbuild_* + the variant resolver.
         if not champ or not variant:
             h._send(400, b'{"error":"champion+variant required"}', "application/json"); return
+        if bad_flag:
+            h._send(400, json.dumps({"error": "bad_push_flag",
+                                     "field": bad_flag}).encode(),
+                    "application/json"); return
         # 2026-05-28: operator user-curated build. Namespaced
         # "userbuild_<id>" by /api/loadout/list; routed here BEFORE the
         # experimental + resolver paths so the colon-free key never
