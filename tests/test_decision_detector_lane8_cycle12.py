@@ -272,10 +272,31 @@ class TestHeartbeatSurfacesDetectorErrors:
         t.join(timeout=3)
 
     def test_partial_detector_failure_is_reported(self, tmp_path, monkeypatch):
-        """events.Events arriving as a str (an upstream shape change)
-        crashes 2 of 6 detectors on every tick. Before the fix the pill
-        read alive=True with a clean counter and no failure signal."""
+        """A detector raising on every tick must reach the pill. Before the
+        cycle-12 fix it read alive=True with a clean counter and no failure
+        signal.
+
+        RM-318 CHANGED THE PROVOCATION, NOT THE ASSERTION. This used to
+        drive the fault with `events.Events` arriving as a str, which then
+        crashed 2 of 6 detectors; RM-318 hardened exactly that read, so the
+        old payload now evaluates cleanly and the test measured 0 errors -
+        i.e. it had become a test of a fault it could no longer produce,
+        not a test of the heartbeat. The W3 question (does a raising
+        detector reach the pill?) is unchanged and is now asked with an
+        injected detector that raises unconditionally, which no amount of
+        envelope hardening can make green.
+
+        The events.Events-as-str payload itself did not go away: it is a
+        row of the RM-318 matrix at the end of this file, where it is now
+        asserted NOT to raise."""
         monkeypatch.setattr(dd, "_HEARTBEAT_PATH", tmp_path / "hb.json")
+
+        def _raiser(snapshot, vision_state):
+            raise AttributeError("'str' object has no attribute 'get'")
+
+        _raiser.__name__ = "detect_throwing_lead"
+        monkeypatch.setattr(dd, "DECISION_REGISTRY",
+                            list(dd.DECISION_REGISTRY[:-1]) + [_raiser])
         loop = DecisionLoop(store=DecisionStore(
             pending_path=tmp_path / "p.json", log_path=tmp_path / "l.jsonl"))
         self._run_one_pass(loop, {
@@ -286,11 +307,29 @@ class TestHeartbeatSurfacesDetectorErrors:
         })
         hb = loop.heartbeat()
         assert hb["counter"] > 0, "loop must still be running"
-        assert hb["detector_errors"] == 2
-        # Registry order ends with detect_throwing_lead, so it is the last
-        # of the two crashers to be recorded.
+        assert hb["detector_errors"] == 1
         assert "detect_throwing_lead" in (hb["last_detector_error"] or "")
         assert "AttributeError" in (hb["last_detector_error"] or "")
+
+    def test_the_old_events_payload_no_longer_crashes_any_detector(
+            self, tmp_path, monkeypatch):
+        """The counterpart to the note above: the exact payload that used
+        to crash 2 of 6 is now clean through the real registry. Without
+        this, the reframing above could be hiding a regression rather than
+        recording a fix."""
+        monkeypatch.setattr(dd, "_HEARTBEAT_PATH", tmp_path / "hb.json")
+        loop = DecisionLoop(store=DecisionStore(
+            pending_path=tmp_path / "p.json", log_path=tmp_path / "l.jsonl"))
+        self._run_one_pass(loop, {
+            "gameData": {"gameTime": 900.0, "gameMode": "CLASSIC"},
+            "activePlayer": {"summonerName": "Me"},
+            "allPlayers": [{"summonerName": "Me", "team": "ORDER"}],
+            "events": {"Events": "shape-changed"},
+        })
+        hb = loop.heartbeat()
+        assert hb["counter"] > 0
+        assert hb["detector_errors"] == 0
+        assert hb["last_detector_error"] is None
 
     def test_healthy_pass_reports_zero_errors(self, tmp_path, monkeypatch):
         monkeypatch.setattr(dd, "_HEARTBEAT_PATH", tmp_path / "hb.json")
@@ -522,3 +561,394 @@ class TestSmiteFieldNames:
                 "rawDisplayName":
                     "GeneratedTip_SummonerSpell_SummonerDot_DisplayName"}}}
         assert _enemy_has_smite(p) is False
+
+
+# == RM-318: envelope shape-hardening across all six detectors =================
+#
+# The six registered detectors read the Live Client envelope positionally -
+# `snapshot["gameData"]["gameTime"]`, `snapshot["allPlayers"][i]["team"]`,
+# `vision_state["enemies"][k]["visible"]` - with `or {}` as the only guard.
+# `or {}` defends against a MISSING or FALSY value and against nothing else:
+# a truthy value of the wrong TYPE sails straight through it and raises on
+# the next attribute or float() call.
+#
+# MEASURED at 8d4173c31, each detector driven from a WELL-FORMED snapshot
+# that makes it fire, then one field retyped (raises / 6 detectors):
+#
+#   gameData is a str .................. 6/6  AttributeError
+#   gameTime is a str .................. 6/6  ValueError
+#   gameTime is None ................... 6/6  TypeError
+#   activePlayer is a str .............. 4/6  AttributeError
+#   events.Events is a str ............. 3/6  AttributeError
+#   events.Events holds a non-dict ..... 3/6  AttributeError
+#   vision_state is a str .............. 3/6  AttributeError
+#   vision_state.enemies is a str ...... 3/6  AttributeError
+#   an enemies VALUE is a str .......... 3/6  AttributeError
+#   allPlayers[0] is a str ............. 2/6  AttributeError
+#   championStats is a str ............. 1/6  AttributeError
+#   allPlayers is a str ................ 1/6  AttributeError
+#   summonerSpells is a str ............ 1/6  AttributeError
+#   gameData is a list ................. 0/6  (GREEN CONTROL)
+#   events is a list ................... 0/6  (GREEN CONTROL)
+#   allPlayers[-1] is a str ............ 0/6  (GREEN CONTROL, see below)
+#
+# Three of those rows correct the inherited RM-318 filing, which was taken
+# from a MINIMAL snapshot rather than a firing one:
+#   - "a string gameData raises in 5/6" is really 6/6. The sixth,
+#     detect_low_hp_backable, reads activePlayer FIRST and returns at
+#     `mx <= 0`, so a minimal snapshot retires it before it ever touches
+#     gameData. Give it real HP and it raises like the rest.
+#   - "a non-numeric gameTime raises in 5/6" is 6/6 for the same reason.
+#   - "a string element inside allPlayers raises in 1/6" is really 2/6, and
+#     it is POSITION-DEPENDENT: detect_low_hp_backable and
+#     detect_jungler_gank_likely scan allPlayers with unguarded `p.get(...)`
+#     and both `break` on a match, so a bad row AFTER the row they want is
+#     never reached and the same payload measures 0/6. A fixture that
+#     appends the bad row therefore reports the defect as absent. Both
+#     orderings are parametrised below.
+#
+# The events-as-LIST row is the deliberate green control: `(snapshot.get(
+# "events") or {}).get("Events")` is already guarded at :195 / :301 / :350,
+# so it passes before the fix as well as after, and the hardening cannot be
+# graded on it.
+
+def _rm318_player(name, team, **kw):
+    p = {"summonerName": name, "team": team, "isDead": False,
+         "championName": name,
+         "summonerSpells": {
+             "summonerSpellOne": {"displayName": "Flash",
+                                  "rawDescription": "",
+                                  "rawDisplayName": ""},
+             "summonerSpellTwo": {"displayName": "Ignite",
+                                  "rawDescription": "",
+                                  "rawDisplayName": ""}}}
+    p.update(kw)
+    return p
+
+
+_RM318_SMITE = {
+    "summonerSpellOne": {"displayName": "Smite", "rawDescription": "",
+                         "rawDisplayName": ""},
+    "summonerSpellTwo": {"displayName": "Flash", "rawDescription": "",
+                         "rawDisplayName": ""}}
+
+
+def _rm318_env(game_time, events=(), players=None, enemies=None,
+               hp=(1000.0, 1000.0)):
+    """A well-formed (snapshot, vision_state) pair in Live Client shape."""
+    players = players if players is not None else [
+        _rm318_player("Me", "ORDER")]
+    snapshot = {
+        "gameData": {"gameTime": game_time, "gameMode": "CLASSIC"},
+        "activePlayer": {
+            "summonerName": "Me",
+            "championStats": {"currentHealth": hp[0], "maxHealth": hp[1]}},
+        "allPlayers": players,
+        "events": {"Events": list(events)},
+    }
+    return snapshot, {"enemies": enemies or {}}
+
+
+_RM318_MISSING_TWO = {
+    "E1": {"is_dead": False, "visible": False, "missing_for_s": 30,
+           "last_seen_zone": "mid", "champion": "LeeSin"},
+    "E2": {"is_dead": False, "visible": False, "missing_for_s": 30,
+           "last_seen_zone": "mid", "champion": "Ahri"},
+}
+
+
+def _rm318_positive(detector_name):
+    """A (snapshot, vision_state) pair on which `detector_name` FIRES.
+
+    Load-bearing: the hardening below must leave every one of these firing.
+    A detector coerced into returning None for everything would satisfy a
+    raise-free matrix while proving nothing, which is the failure mode this
+    arm exists to catch.
+    """
+    if detector_name == "detect_objective_contest_with_missing":
+        # Dragon first-spawns at 300; at 260 it is 40s out, inside the
+        # 60s alert window, and two enemies are missing.
+        return _rm318_env(260.0, enemies=_RM318_MISSING_TWO)
+    if detector_name == "detect_low_hp_backable":
+        return _rm318_env(300.0, hp=(100.0, 1000.0))
+    if detector_name == "detect_lane_roam_window":
+        # Dragon taken at 300 -> respawns 600, i.e. 200s out at t=400, so
+        # the objective-contest detector does not own this signal.
+        return _rm318_env(
+            400.0, events=[{"EventName": "DragonKill", "EventTime": 300.0}],
+            enemies=_RM318_MISSING_TWO)
+    if detector_name == "detect_postfight_objective":
+        # Dragon taken at 320 -> respawns 620, 10s out at t=610 (inside the
+        # -10..30 window); three ally kills inside the 20s fight window.
+        return _rm318_env(610.0, events=[
+            {"EventName": "DragonKill", "EventTime": 320.0},
+            {"EventName": "ChampionKill", "EventTime": 595.0,
+             "KillerName": "Me", "VictimName": "E1"},
+            {"EventName": "ChampionKill", "EventTime": 600.0,
+             "KillerName": "Me", "VictimName": "E2"},
+            {"EventName": "ChampionKill", "EventTime": 605.0,
+             "KillerName": "A1", "VictimName": "E3"},
+        ], players=[
+            _rm318_player("Me", "ORDER"), _rm318_player("A1", "ORDER"),
+            _rm318_player("E1", "CHAOS"), _rm318_player("E2", "CHAOS"),
+            _rm318_player("E3", "CHAOS")])
+    if detector_name == "detect_jungler_gank_likely":
+        return _rm318_env(
+            400.0, events=[{"EventName": "DragonKill", "EventTime": 300.0}],
+            players=[_rm318_player("Me", "ORDER"),
+                     _rm318_player("E1", "CHAOS",
+                                   summonerSpells=_RM318_SMITE)],
+            enemies={"E1": {"is_dead": False, "visible": False,
+                            "missing_for_s": 40, "last_seen_zone": "mid",
+                            "champion": "LeeSin"}})
+    if detector_name == "detect_throwing_lead":
+        return _rm318_env(600.0, events=[
+            {"EventName": "ChampionKill", "EventTime": 550.0,
+             "KillerName": "E1", "VictimName": "Me"},
+            {"EventName": "ChampionKill", "EventTime": 570.0,
+             "KillerName": "E2", "VictimName": "Me"},
+        ])
+    raise AssertionError("no RM-318 positive fixture for " + detector_name)
+
+
+# Each mutator retypes exactly ONE envelope field in place. `vision_state`
+# is returned rather than mutated so a mutator can replace it wholesale.
+
+def _mut_game_data_str(s, v):
+    s["gameData"] = "12:34 CLASSIC"
+    return v
+
+
+def _mut_game_data_list(s, v):
+    s["gameData"] = []
+    return v
+
+
+def _mut_game_time_str(s, v):
+    s["gameData"]["gameTime"] = "12:34"
+    return v
+
+
+def _mut_game_time_none(s, v):
+    s["gameData"]["gameTime"] = None
+    return v
+
+
+def _mut_active_player_str(s, v):
+    s["activePlayer"] = "Me"
+    return v
+
+
+def _mut_champion_stats_str(s, v):
+    s["activePlayer"]["championStats"] = "100/1000"
+    return v
+
+
+def _mut_all_players_str(s, v):
+    s["allPlayers"] = "Me,A1,E1"
+    return v
+
+
+def _mut_all_players_bad_row_first(s, v):
+    s["allPlayers"] = ["Me"] + list(s["allPlayers"])
+    return v
+
+
+def _mut_all_players_bad_row_last(s, v):
+    s["allPlayers"] = list(s["allPlayers"]) + ["E9"]
+    return v
+
+
+def _mut_events_is_list(s, v):
+    s["events"] = []
+    return v
+
+
+def _mut_events_events_str(s, v):
+    s["events"]["Events"] = "ChampionKill"
+    return v
+
+
+def _mut_events_bad_row(s, v):
+    s["events"]["Events"] = ["ChampionKill"] + list(s["events"]["Events"])
+    return v
+
+
+def _mut_summoner_spells_str(s, v):
+    for p in s["allPlayers"]:
+        if isinstance(p, dict):
+            p["summonerSpells"] = "Smite,Flash"
+    return v
+
+
+def _mut_vision_state_str(s, v):
+    return "no vision"
+
+
+def _mut_enemies_str(s, v):
+    v["enemies"] = "E1,E2"
+    return v
+
+
+def _mut_enemies_value_str(s, v):
+    v["enemies"] = {"E1": "mid 30s", "E2": "mid 30s"}
+    return v
+
+
+_RM318_SHAPES = [
+    ("game_data_str", _mut_game_data_str),
+    ("game_data_list", _mut_game_data_list),
+    ("game_time_str", _mut_game_time_str),
+    ("game_time_none", _mut_game_time_none),
+    ("active_player_str", _mut_active_player_str),
+    ("champion_stats_str", _mut_champion_stats_str),
+    ("all_players_str", _mut_all_players_str),
+    ("all_players_bad_row_first", _mut_all_players_bad_row_first),
+    ("all_players_bad_row_last", _mut_all_players_bad_row_last),
+    ("events_is_list", _mut_events_is_list),
+    ("events_events_str", _mut_events_events_str),
+    ("events_bad_row", _mut_events_bad_row),
+    ("summoner_spells_str", _mut_summoner_spells_str),
+    ("vision_state_str", _mut_vision_state_str),
+    ("enemies_str", _mut_enemies_str),
+    ("enemies_value_str", _mut_enemies_value_str),
+]
+
+_RM318_DETECTOR_NAMES = [
+    "detect_objective_contest_with_missing",
+    "detect_low_hp_backable",
+    "detect_lane_roam_window",
+    "detect_postfight_objective",
+    "detect_jungler_gank_likely",
+    "detect_throwing_lead",
+]
+
+
+class TestRegistryIsWhatWeThinkItIs:
+    """The matrix is parametrised by NAME, so it would silently stop
+    covering a detector that was renamed or unregistered."""
+
+    def test_registry_holds_exactly_the_six_named_detectors(self):
+        assert ([fn.__name__ for fn in dd.DECISION_REGISTRY]
+                == _RM318_DETECTOR_NAMES)
+
+
+class TestRM318PositiveControls:
+    """Load-bearing half. Without these the raise-free matrix below is
+    satisfied by six detectors that return None unconditionally."""
+
+    @pytest.mark.parametrize("name", _RM318_DETECTOR_NAMES)
+    def test_well_formed_envelope_still_fires(self, name):
+        fn = getattr(dd, name)
+        snapshot, vision = _rm318_positive(name)
+        decision = fn(snapshot, vision)
+        assert decision is not None, (
+            name + " no longer fires on a well-formed firing envelope - "
+            "the hardening turned it into a no-op")
+        assert isinstance(decision.id, str) and decision.id
+        assert isinstance(decision.type, str) and decision.type
+        assert isinstance(decision.options, list) and decision.options
+
+
+class TestRM318MalformedEnvelopeDoesNotRaise:
+    """A retyped Live Client field must degrade to "no decision", never to
+    an exception. The loop catches per-detector exceptions, so a raise here
+    is not a crash - it is a detector that is silently dead for the whole
+    game while the heartbeat pill keeps counting up."""
+
+    @pytest.mark.parametrize("name", _RM318_DETECTOR_NAMES)
+    @pytest.mark.parametrize("shape,mutate", _RM318_SHAPES,
+                             ids=[s[0] for s in _RM318_SHAPES])
+    def test_detector_returns_none_or_a_decision(self, name, shape, mutate):
+        fn = getattr(dd, name)
+        snapshot, vision = _rm318_positive(name)
+        vision = mutate(snapshot, vision)
+        try:
+            result = fn(snapshot, vision)
+        except Exception as exc:  # noqa: BLE001 - the assertion IS the point
+            raise AssertionError(
+                f"{name} raised {type(exc).__name__} on shape "
+                f"{shape}: {exc}") from exc
+        assert result is None or isinstance(result, dd.Decision)
+
+
+class TestRM318GreenControls:
+    """Pinned as already-passing so the fix cannot be graded on them.
+
+    `(snapshot.get("events") or {}).get("Events") or []` is guarded at
+    :195 / :301 / :350 for the LIST case, and `_next_objective_spawn`
+    isinstance-guards each event row. These pass at 8d4173c31 and must
+    keep passing; they prove nothing about the hardening."""
+
+    @pytest.mark.parametrize("name", _RM318_DETECTOR_NAMES)
+    def test_events_as_a_list_was_already_safe(self, name):
+        fn = getattr(dd, name)
+        snapshot, vision = _rm318_positive(name)
+        snapshot["events"] = []
+        result = fn(snapshot, vision)
+        assert result is None or isinstance(result, dd.Decision)
+
+    @pytest.mark.parametrize("name", _RM318_DETECTOR_NAMES)
+    def test_a_trailing_bad_all_players_row_was_already_safe(self, name):
+        fn = getattr(dd, name)
+        snapshot, vision = _rm318_positive(name)
+        snapshot["allPlayers"] = list(snapshot["allPlayers"]) + ["E9"]
+        result = fn(snapshot, vision)
+        assert result is None or isinstance(result, dd.Decision)
+
+
+class TestRM318HeartbeatIsNotBlinded:
+    """Step 4 of the slice. The cycle-12 `detector_errors` heartbeat makes a
+    retyped field VISIBLE; RM-318 prevents it. The prevention must not also
+    swallow a GENUINE detector bug - if the hardening had been written as a
+    blanket try/except inside each detector, `detector_errors` would report
+    0 forever and the pill would go back to being unable to tell "alive and
+    deciding not to fire" from "alive and crashing"."""
+
+    def _run_one_pass(self, loop, snapshot, vision):
+        # Same shape as TestHeartbeatSurfacesDetectorErrors._run_one_pass.
+        # Setting _stop BEFORE calling _loop() runs ZERO passes (the flag
+        # is checked at the top of the while), which is how the first draft
+        # of this test read 0 errors and looked like a real finding.
+        loop._fetch_snapshot = lambda: (snapshot, 0.1)
+        loop._read_vision_state = lambda: vision
+        loop._poll_s = 0.01
+        t = threading.Thread(target=loop._loop, daemon=True)
+        t.start()
+        time.sleep(0.3)
+        loop._stop.set()
+        t.join(timeout=3)
+
+    def test_a_genuinely_raising_detector_still_increments_the_counter(
+            self, tmp_path, monkeypatch):
+        def _boom(snapshot, vision_state):
+            raise RuntimeError("genuine logic bug")
+
+        _boom.__name__ = "detect_boom"
+        monkeypatch.setattr(dd, "DECISION_REGISTRY",
+                            list(dd.DECISION_REGISTRY) + [_boom])
+        monkeypatch.setattr(dd, "_HEARTBEAT_PATH", tmp_path / "hb.json")
+        loop = DecisionLoop(store=DecisionStore(
+            pending_path=tmp_path / "pending.json",
+            log_path=tmp_path / "log.jsonl"))
+        snapshot, vision = _rm318_positive("detect_throwing_lead")
+        self._run_one_pass(loop, snapshot, vision)
+        hb = loop.heartbeat()
+        assert hb["counter"] > 0, "loop must actually have run a pass"
+        assert hb["detector_errors"] == 1
+        assert hb["last_detector_error"].startswith(
+            "detect_boom: RuntimeError")
+
+    def test_a_malformed_envelope_reports_zero_errors_after_the_fix(
+            self, tmp_path, monkeypatch):
+        monkeypatch.setattr(dd, "_HEARTBEAT_PATH", tmp_path / "hb.json")
+        loop = DecisionLoop(store=DecisionStore(
+            pending_path=tmp_path / "pending.json",
+            log_path=tmp_path / "log.jsonl"))
+        snapshot, vision = _rm318_positive("detect_throwing_lead")
+        snapshot["gameData"] = "12:34 CLASSIC"
+        self._run_one_pass(loop, snapshot, vision)
+        hb = loop.heartbeat()
+        assert hb["counter"] > 0, "loop must actually have run a pass"
+        assert hb["detector_errors"] == 0
+        assert hb["last_detector_error"] is None
