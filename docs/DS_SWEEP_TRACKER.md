@@ -69,7 +69,29 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-422** (2026-09-12, moved at the RM-421 filing).
+  Next free id = **RM-424** (2026-09-12, moved at the two-row SESSION WRAP filing).
+  **RM-422 and RM-423 were both allocated 2026-09-12** by the SESSION WRAP doc-sync
+  session (LEDGER 1412), both filed under BACKLOG "Reliability / hardening", neither
+  taking a roster checkbox and neither changing the Summary count. **THE PIN MOVED BY
+  TWO.** RM-422 is a FRESH-CLONE HAZARD row: `core.longpaths` is UNSET at local,
+  global AND system scope on this machine, the longest tracked path is 154 chars
+  (all five longest under `docs/_archive/2026-07-26-orphaned-audit-drops/`), so the
+  budget for a clone ROOT is 260 - 154 - 1 = 105 chars and a deeper root aborts the
+  checkout partway. It also manufactured a VACUOUS measurement this session - an
+  aborted checkout left a directory missing and a later enumeration over it printed a
+  clean total - which is why the row is MED and not LOW. Its fix has a CONFIG half
+  and a PATH-LENGTH half and the row deliberately refuses to pick one. RM-423 is
+  OPERATOR-GATED with NO recommended default: the lane refs cannot be pushed while
+  the sibling sweep re-scans already-published history on every lane push, the halting
+  findings are DIFF-arm hits over 200-plus PUBLISHED commits rather than tree content
+  (tree-scope count is 0 before and 0 after), the bytes are already on `origin/main`,
+  and all three measured options trade a publication-risk control against convenience
+  on a PUBLIC repository. Both ids were confirmed free across the scanned docs before
+  the move, and the `ROADMAP.md` pointer moves in the SAME commit, per the LEDGER 1334
+  note that the documented way this pointer goes stale is a batch moving only one of
+  the two. The new figure is deliberately NOT re-spelled in `docs/LEDGER.md` - a bare
+  mention there is classified as an ALLOCATION and collides with the pin it announces.
+  Prior pin, kept for the audit trail: Next free id was **RM-422** (2026-09-12, moved at the RM-421 filing).
   **RM-421 was allocated 2026-09-12** by the RM-217 REFUTATION slice, filed under
   BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
   the Summary count. RM-421 is a FILED-WITH-MEASUREMENT row, not a build: the
