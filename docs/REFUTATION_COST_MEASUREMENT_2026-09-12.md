@@ -123,9 +123,9 @@ this ask and it is the wrong way.
   does not account for a gate that would fire so often it gets deleted. Several entries
   in the window record exactly that failure mode being anticipated and the guard
   deliberately narrowed.
-- One measurement was attempted and abandoned: a tree-wide run of this repository's own
-  name-leak sweep did not complete inside the session budget. Where the section below
-  needed it, the claim is scoped down to what was actually measured.
+- One measurement was reported as abandoned in the first version of this file and then
+  completed after it was committed. The correction is in section 5 and the way it
+  happened is in section 6, because it is the phenomenon this file measures.
 
 ---
 
@@ -481,17 +481,27 @@ these three numbers as "the" figure. I am recording that a figure travelled from
 into a downstream ask having never been derivable, which is the exact defect class this
 file measures.
 
-**Instance 6's stated cause - "the instrument only ever ran diff-scoped" - I could not
-confirm as worded.** What I verified: the sweep has BOTH a push-diff arm and a tree-wide
-arm, and the tree-wide arm enumerates the **git index**. What I measured: a tree-wide run
-did not complete inside my session budget, so I cannot report its verdict. What IS
-established from today's record is narrower and still damning: a real leak of the same
-class was found on 2026-09-12 in compiled-bytecode files, which are untracked and
-therefore outside BOTH arms - invisible to a git publish, shipped by an archive copy. So
-**the five-count was an undercount by at least one, and the cause is scope, specifically
-the untracked universe, rather than diff-scoping as such.** The honest claim about the
-instrument remains the one this tree already publishes: it is armed with a measured
-escape rate above zero, never "names cannot leak".
+**Instance 6's stated cause - "the instrument only ever ran diff-scoped" - is REFUTED as
+worded.** The sweep has BOTH a push-diff arm and a tree-wide arm, and the tree-wide arm
+enumerates the **git index**, so it was never diff-only.
+
+**Measured, on this tree, at HEAD: the tree-wide arm reports CLEAN over 630680736 bytes
+across 4759 files, ARMED with 4 name slots loaded from the per-host config.** Armed
+matters: the same tool run without that config scans sentinel needles only and reports
+an identical-looking clean, which is a failure mode this tree has already recorded once.
+
+**That verdict does not rehabilitate the five-count, and three declared limits are why.**
+It is taken AFTER four redactions landed on 2026-09-09 and a fifth landed today, so it
+confirms the redactions took and says nothing about the historical count. It skipped
+**482 binary and LFS blobs, content-unscanned, and says so in its own output**. And it
+enumerates the tracked index, so the untracked universe is outside it - which is exactly
+where a real leak of this class was found today, in compiled-bytecode files: invisible
+to a git publish, shipped by an archive copy.
+
+So **the five-count was an undercount by at least one, and the cause is scope -
+specifically the untracked universe and the unscanned binaries - rather than
+diff-scoping.** The honest claim about the instrument is the one this tree already
+publishes: armed with a measured escape rate above zero, never "names cannot leak".
 
 ### The honest summary of today
 
@@ -520,6 +530,30 @@ marker tokens against 173 hand-counted events. Anyone answering this ask with a 
 over refutation vocabulary will get a number, and it will not be this number, in either
 direction: the regex over-counts recitals and under-counts every event recorded without
 the vocabulary.
+
+**This file staled one of its own sentences inside its own session, and the sequence is
+worth more than the sentence.** The first committed version said a tree-wide sweep "did
+not complete inside my session budget, so I cannot report its verdict". That was true
+when written. The run completed minutes after the commit, and the sentence became false
+without anything editing it. Nothing in the toolchain noticed, and nothing would have:
+the claim was about a measurement's STATUS, and no gate watches a status claim for the
+moment its referent moves.
+
+This is a clean, self-inflicted instance of the largest class in the corpus, produced by
+the document that names the class. Three things follow, and they are the most useful
+paragraph here:
+
+1. **The decay interval can be minutes, not the 28 days of the worst case in section 5.**
+   Any intuition that re-grounding is a weekly or per-session hygiene task is wrong.
+2. **The author is not the safe category.** The session that wrote the sentence, knew the
+   failure mode, and was actively cataloguing it still shipped it - because at the moment
+   of writing there was nothing to catch.
+3. **The remedy was cheap only because the refutation arrived.** Had the background run
+   failed silently or never reported, the false sentence would have shipped to four trees
+   as a measured finding. **The cost of a record-decay defect is not set by the defect; it
+   is set by whether anything happens to look again.** That is the whole argument for
+   moving gates to the point of use, and it is the reason this paragraph was added rather
+   than the sentence quietly corrected.
 
 ---
 
@@ -555,7 +589,8 @@ lane at all.
 - Every figure I derived myself at source: the 3242-citation census and its 878/293
   MOVED/ABSENT grades, the 63-citation pinned budget, the 2050-to-3242 growth over 37
   days, the two-key byte-pinned constant, the ten stale pointer sentences against a
-  filed eleven, the zero non-test callers.
+  filed eleven, the zero non-test callers, and the armed tree-wide sweep verdict
+  (630680736 bytes, 4759 files, 482 blobs unscanned).
 - That record decay is the largest single origin class, at 52 of 173.
 
 **Medium confidence:**
