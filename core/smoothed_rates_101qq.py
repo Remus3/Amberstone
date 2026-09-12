@@ -35,8 +35,8 @@ Public API:
       The specific pair record (None if the pair isn't in the top 200).
 
   source() -> str
-      The seed behind the served snapshot, "stale:"-prefixed once that
-      snapshot is frozen (RM-295a).
+      The seed behind the served snapshot: live | static | none. Provenance
+      only - it says nothing about age, by decision. Freshness is health().
 
   health() -> dict
       Machine-readable freshness: snapshot age, degraded flag, failed-
@@ -120,9 +120,12 @@ _ITEMP_TO_SAMPLE_SCALE = 1000.0
 # Default Laplace alpha (mirrors core.smoothed_rates default).
 _LAPLACE_ALPHA = 1.0
 
-# Prefix `source()` puts in front of the seed name once the served snapshot
-# is frozen. A prefix, not a replacement, so the seed that built the frozen
-# data stays recoverable: `src.split(":")[-1]`.
+# Prefix `health()["source"]` puts in front of the seed name once the served
+# snapshot is frozen. A prefix, not a replacement, so the seed that built the
+# frozen data stays recoverable: `src.split(":")[-1]`.
+#
+# It lives ONLY on the health block. `source()` was deliberately left
+# unqualified at merge - see the refusal note in that function.
 _STALE_PREFIX = "stale:"
 
 # Live refresh (item 277): pull the duo table from the Tencent getRankDouble
@@ -607,22 +610,34 @@ def _load_once() -> None:
 
 
 def source() -> str:
-    """Which seed the live cache is currently serving.
+    """Which seed the live cache is currently serving: live | static | none.
 
-    "live" | "static" | "none" while the snapshot is being kept current, and
-    "stale:live" / "stale:static" once a refresh has demonstrably failed to
-    land and the served data is therefore frozen (RM-295a).
+    This answers PROVENANCE only, and deliberately says nothing about age.
 
-    The qualifier is a PREFIX so both halves survive: `src.startswith("stale:")`
-    is the degraded test and `src.split(":")[-1]` recovers the seed. Before
-    RM-295a this returned the original seed unqualified forever, so a snapshot
-    frozen for hours was indistinguishable from one fetched a second ago.
-    Callers wanting the age or the counters should read `health()` instead.
+    RM-295a built a `"stale:"`-prefixed fourth/fifth return value here, so a
+    frozen snapshot reported `"stale:live"`. It was measured working and then
+    REFUSED at merge on 2026-09-12. Do not re-pitch it. Three reasons, the
+    first two of which outlive the argument that killed the row's own stated
+    justification:
+
+      * shipping it required WIDENING `test_source_stays_in_the_declared_domain`
+        (tests/test_smoothed_rates_101qq_lock.py:375), a guard pinning this
+        domain to exactly ("live", "static", "none"), so that the change
+        could pass. Editing a guard to admit your own change is the
+        anti-pattern, not a migration;
+      * provenance and freshness are different questions and want different
+        fields. `health()` answers freshness - `degraded`, `age_s`,
+        `stale_for_s`, `last_refresh_ok`, `failed_refreshes`;
+      * the fence in BACKLOG.md:126 gave a reason that is FALSE at HEAD (it
+        claimed the duo-synergy route and a UI badge read these values; the
+        route has zero `source()` calls and no such badge exists). That kills
+        the reason, not the fence - and the fence was only ever crossed
+        because a slice prompt said to, which is not re-litigation on merit.
+
+    So: freshness callers read `health()`. This returns the bare seed forever.
     """
     _load_once()
     with _CACHE_LOCK:
-        if _LOADED and _FAILED_REFRESHES:
-            return _STALE_PREFIX + _SOURCE
         return _SOURCE
 
 
@@ -816,8 +831,10 @@ def health() -> dict:
     signal that tells them apart, and it is JSON-safe so a route can embed
     it verbatim.
 
-        source           qualified seed - "live" or "stale:live" etc,
-                         identical to what `source()` returns
+        source           qualified seed - "live", or "stale:live" once the
+                         snapshot is frozen. This DIFFERS from `source()`
+                         on purpose: that function answers provenance and
+                         stays bare, this one is the freshness surface
         seed             the UNqualified seed that built the served data
         loaded           False before the first successful publish
         degraded         True once a refresh has failed to land new data
