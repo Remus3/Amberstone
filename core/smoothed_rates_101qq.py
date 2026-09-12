@@ -34,6 +34,16 @@ Public API:
   pair_synergy(bot_champ, sup_champ) -> DuoRec | None
       The specific pair record (None if the pair isn't in the top 200).
 
+  source() -> str
+      The seed behind the served snapshot: live | static | none. Provenance
+      only - it says nothing about age, by decision. Freshness is health().
+
+  health() -> dict
+      Machine-readable freshness: snapshot age, degraded flag, failed-
+      refresh count, plus the coverage() block. A persistently failing
+      live source KEEPS the previous snapshot, which is correct; this is
+      how a consumer learns the panel has been serving it for N hours.
+
 Smoothing notes:
   doublewinrate is already a percentage (e.g. 0.5653 = 56.53%). itemp1
   is a "play rate at tier" percentage (e.g. "4.78%") proxy for sample
@@ -85,8 +95,16 @@ _REFRESH_LOCK = threading.Lock()
 _REFRESH_THREAD: threading.Thread | None = None   # in-flight background refresh
 _CACHE_GEN = 0                      # bumped by _reset_cache; stale publishes drop
 _LOADED = False
-_LOADED_AT: float = 0.0             # monotonic stamp of last (re)load
+_LOADED_AT: float = 0.0             # monotonic stamp of last (re)load ATTEMPT
 _SOURCE: str = "none"               # "live" | "static" | "none" - which seed won
+# RM-295a staleness trio. `_LOADED_AT` is the TTL stamp and is deliberately
+# bumped even by a refresh that landed NOTHING (so the retry is one TTL out,
+# not on every read), which makes it useless as an age. These three describe
+# the DATA rather than the retry schedule:
+_LAST_GOOD_AT: float = 0.0          # monotonic stamp of the last publish that
+#                                     actually swapped records in
+_FAILED_REFRESHES: int = 0          # consecutive refreshes that landed nothing
+_DEGRADED_SINCE: float | None = None  # monotonic stamp of the first of them
 _ID_TO_NAME: dict[int, str] = {}
 _NAME_TO_ID: dict[str, int] = {}
 _DUO_RECS: list[dict] = []          # raw records (envelope unwrapped)
@@ -101,6 +119,14 @@ _ITEMP_TO_SAMPLE_SCALE = 1000.0
 
 # Default Laplace alpha (mirrors core.smoothed_rates default).
 _LAPLACE_ALPHA = 1.0
+
+# Prefix `health()["source"]` puts in front of the seed name once the served
+# snapshot is frozen. A prefix, not a replacement, so the seed that built the
+# frozen data stays recoverable: `src.split(":")[-1]`.
+#
+# It lives ONLY on the health block. `source()` was deliberately left
+# unqualified at merge - see the refusal note in that function.
+_STALE_PREFIX = "stale:"
 
 # Live refresh (item 277): pull the duo table from the Tencent getRankDouble
 # endpoint via core.synergy_external_source, falling back to the committed
@@ -425,6 +451,38 @@ def _build_snapshot() -> dict:
     }
 
 
+def _mark_frozen_locked(reason: str) -> None:
+    """Record that a refresh did NOT land new data. Call with _CACHE_LOCK held.
+
+    RM-295a. Every path that leaves the previous snapshot in place is CORRECT
+    - serving hours-old pairings beats blanking the panel - but each of them
+    used to be invisible past a single log line, so `source()` kept naming
+    the seed that built the snapshot and nothing could say "this has been
+    frozen for N hours". This is the one place that fact is written down.
+
+    Only meaningful while something is being served: before the first
+    successful publish there is no snapshot to freeze, so a cold-start
+    failure is not degradation, it is absence (`loaded` covers that).
+    """
+    global _FAILED_REFRESHES, _DEGRADED_SINCE
+    if not _LOADED:
+        return
+    _FAILED_REFRESHES += 1
+    if _DEGRADED_SINCE is None:
+        _DEGRADED_SINCE = _clock()
+    log.warning(
+        "duo-synergy: refresh did not land (%s); serving a %d-record %s "
+        "snapshot frozen for %.2f h (%d consecutive failed refreshes)",
+        reason, len(_DUO_RECS), _SOURCE,
+        max(0.0, _clock() - _LAST_GOOD_AT) / 3600.0, _FAILED_REFRESHES)
+
+
+def _mark_frozen(reason: str) -> None:
+    """Lock-taking wrapper for callers that do not already hold the lock."""
+    with _CACHE_LOCK:
+        _mark_frozen_locked(reason)
+
+
 def _publish(snapshot: dict, gen: int) -> None:
     """Swap a freshly built snapshot in. Assignment only - no I/O, so the
     cache lock is held for microseconds.
@@ -444,13 +502,12 @@ def _publish(snapshot: dict, gen: int) -> None:
     """
     global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
     global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
+    global _LAST_GOOD_AT, _FAILED_REFRESHES, _DEGRADED_SINCE
     with _CACHE_LOCK:
         if gen != _CACHE_GEN:
             return
         if not snapshot["records"] and _DUO_RECS:
-            log.warning(
-                "duo-synergy: refresh yielded 0 records; keeping the previous "
-                "%d-record %s snapshot", len(_DUO_RECS), _SOURCE)
+            _mark_frozen_locked("rebuild yielded 0 records")
             _LOADED_AT = _clock()
             return
         _ID_TO_NAME = snapshot["id_to_name"]
@@ -462,15 +519,25 @@ def _publish(snapshot: dict, gen: int) -> None:
         _LOADED = True
         _LOADED_AT = _clock()
         _SOURCE = snapshot["source"]
+        # Real data landed: this is the only place the age clock restarts
+        # and the only place degradation clears.
+        _LAST_GOOD_AT = _LOADED_AT
+        _FAILED_REFRESHES = 0
+        _DEGRADED_SINCE = None
 
 
 def _refresh(gen: int) -> None:
     """Build outside every lock, then publish. Fail-soft end to end."""
     try:
         snapshot = _build_snapshot()
-    except Exception:  # noqa: BLE001 - belt and braces: this runs on a
+    except Exception as exc:  # noqa: BLE001 - belt and braces: this runs on a
         # background thread whose exception nothing would ever see, and a
         # failed refresh must leave the previous snapshot in place.
+        #
+        # RM-295a sibling of the _publish keep-branch: this path froze the
+        # snapshot with NO log at all, which is the same silence one level
+        # louder. It is marked so the frozen age is still accountable.
+        _mark_frozen(f"builder raised: {exc.__class__.__name__}")
         return
     _publish(snapshot, gen)
 
@@ -505,9 +572,9 @@ def _start_background_refresh(gen: int) -> None:
         t.start()
     except RuntimeError:
         _REFRESH_LOCK.release()
-        log.warning(
-            "duo-synergy: could not start the refresh thread; serving the "
-            "existing snapshot and retrying on a later read")
+        # RM-295a: third freeze path. It already logged, but the log was the
+        # ONLY trace - mark it so the age is machine-readable like the rest.
+        _mark_frozen("refresh thread could not be started")
         return
     _REFRESH_THREAD = t
 
@@ -543,7 +610,32 @@ def _load_once() -> None:
 
 
 def source() -> str:
-    """Which seed the live cache is currently serving: live | static | none."""
+    """Which seed the live cache is currently serving: live | static | none.
+
+    This answers PROVENANCE only, and deliberately says nothing about age.
+
+    RM-295a built a `"stale:"`-prefixed fourth/fifth return value here, so a
+    frozen snapshot reported `"stale:live"`. It was measured working and then
+    REFUSED at merge on 2026-09-12. Do not re-pitch it. Three reasons, the
+    first two of which outlive the argument that killed the row's own stated
+    justification:
+
+      * shipping it required WIDENING `test_source_stays_in_the_declared_domain`
+        (tests/test_smoothed_rates_101qq_lock.py:375), a guard pinning this
+        domain to exactly ("live", "static", "none"), so that the change
+        could pass. Editing a guard to admit your own change is the
+        anti-pattern, not a migration;
+      * provenance and freshness are different questions and want different
+        fields. `health()` answers freshness - `degraded`, `age_s`,
+        `stale_for_s`, `last_refresh_ok`, `failed_refreshes`;
+      * the fence in BACKLOG.md:126 gave a reason that is FALSE at HEAD (it
+        claimed the duo-synergy route and a UI badge read these values; the
+        route has zero `source()` calls and no such badge exists). That kills
+        the reason, not the fence - and the fence was only ever crossed
+        because a slice prompt said to, which is not re-litigation on merit.
+
+    So: freshness callers read `health()`. This returns the bare seed forever.
+    """
     _load_once()
     with _CACHE_LOCK:
         return _SOURCE
@@ -557,10 +649,14 @@ def _reset_cache() -> None:
     """
     global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
     global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT, _CACHE_GEN
+    global _LAST_GOOD_AT, _FAILED_REFRESHES, _DEGRADED_SINCE
     with _CACHE_LOCK:
         _CACHE_GEN += 1
         _LOADED = False
         _LOADED_AT = 0.0
+        _LAST_GOOD_AT = 0.0
+        _FAILED_REFRESHES = 0
+        _DEGRADED_SINCE = None
         _SOURCE = "none"
         _ID_TO_NAME = {}
         _NAME_TO_ID = {}
@@ -704,7 +800,19 @@ def top_solo_picks(role: Literal["bot", "sup"], top_n: int = 4) -> list[SoloRec]
 
 
 def coverage() -> dict:
-    """Diagnostic: how many unique champs + records are loaded."""
+    """Diagnostic: how many unique champs + records are loaded.
+
+    RM-295b verdict ADOPT, not delete (2026-09-12). Re-measured: this has no
+    production consumer at all - `dashboard/routes_duo_synergy.py` reaches
+    only `_resolve_id` / `pair_synergy` / `top_duos_for_bot` /
+    `top_duos_for_sup` / `top_solo_picks`, `dashboard/routes_draft_score.py`
+    imports only `pair_synergy`, the module declares no `__all__` and nothing
+    reflects over it, so only tests ever called this. Kept rather than deleted
+    because it returns exactly the four numbers a duo-synergy diagnostic
+    wants: `health()` now carries it, so the one route wiring that lands
+    `health()` adopts this with it. It is STILL unreached until that wiring
+    lands, and saying otherwise would be the claim this row exists to kill.
+    """
     _load_once()
     with _CACHE_LOCK:
         return {
@@ -713,3 +821,67 @@ def coverage() -> dict:
             "unique_bot_ids":   len(_SUPS_BY_BOT),
             "unique_sup_ids":   len(_BOTS_BY_SUP),
         }
+
+
+def health() -> dict:
+    """Machine-readable freshness of the served snapshot (RM-295a).
+
+    The keep-the-previous-snapshot degrade is correct but was silent: a
+    frozen cache and a fresh one looked identical from outside. This is the
+    signal that tells them apart, and it is JSON-safe so a route can embed
+    it verbatim.
+
+        source           qualified seed - "live", or "stale:live" once the
+                         snapshot is frozen. This DIFFERS from `source()`
+                         on purpose: that function answers provenance and
+                         stays bare, this one is the freshness surface
+        seed             the UNqualified seed that built the served data
+        loaded           False before the first successful publish
+        degraded         True once a refresh has failed to land new data
+        age_s            seconds since the data itself last changed. NOT
+                         `_LOADED_AT`, which a failed refresh also bumps
+        age_hours        the same figure in the units the alert is phrased in
+        degraded_for_s   seconds since the FIRST failed refresh (0 when fresh)
+        failed_refreshes consecutive refreshes that landed nothing
+        last_refresh_ok  RM-295a's name for `not degraded`
+        stale_for_s      RM-295a's name for `age_s`
+        coverage         the `coverage()` block, unchanged
+
+    The RM-295a row specifies `stale_for_s` as "now minus `_LOADED_AT`". That
+    parenthetical is WRONG and following it would have shipped a signal that
+    reads 0 during the exact outage it exists to report: the keep-branch bumps
+    `_LOADED_AT` on every failed refresh precisely so the retry is one TTL out.
+    The figure is measured from `_LAST_GOOD_AT` instead - the last time the
+    data actually changed - which is the quantity the row's own prose asks for
+    ("a snapshot that stopped advancing days ago").
+
+    `coverage()` is called BEFORE `_CACHE_LOCK` is taken on purpose: it calls
+    `_load_once()`, whose cold-start path takes `_REFRESH_LOCK`, and this
+    module's lock order is _REFRESH_LOCK before _CACHE_LOCK, never the
+    reverse. The two reads can therefore straddle a refresh - acceptable
+    because both halves are diagnostics and no invariant binds them, and a
+    deadlock to keep them coherent would be a far worse trade.
+    """
+    cov = coverage()
+    with _CACHE_LOCK:
+        seed = _SOURCE
+        loaded = _LOADED
+        failed = _FAILED_REFRESHES
+        degraded = bool(loaded and failed)
+        age = max(0.0, _clock() - _LAST_GOOD_AT) if loaded else 0.0
+        degraded_for = (
+            max(0.0, _clock() - _DEGRADED_SINCE)
+            if degraded and _DEGRADED_SINCE is not None else 0.0)
+    return {
+        "source":           (_STALE_PREFIX + seed) if degraded else seed,
+        "seed":             seed,
+        "loaded":           loaded,
+        "degraded":         degraded,
+        "age_s":            round(age, 3),
+        "age_hours":        round(age / 3600.0, 3),
+        "degraded_for_s":   round(degraded_for, 3),
+        "failed_refreshes": failed,
+        "last_refresh_ok":  not degraded,
+        "stale_for_s":      round(age, 3),
+        "coverage":         cov,
+    }
