@@ -611,3 +611,73 @@ jobs:
       - name: mypy gradual typing
         continue-on-error: true
         run: mypy
+
+  # ---------------------------------------------------------------------------
+  # The sibling-name sweep's TREE arm.
+  #
+  # `tools/sibling_name_sweep.py` has two arms. `--pre-push` is DIFF scoped and
+  # is wired in `.githooks/pre-push` ahead of the preserved `git lfs pre-push`.
+  # `--tree` walks the whole git index and, until this job, was wired NOWHERE.
+  # The consequence is not subtle: every clean verdict this repository has
+  # produced means "clean since the last push", never "clean". An offending byte
+  # is invisible to the diff arm the moment it is one push old.
+  #
+  # THIS JOB DOES NOT RUN `--tree` DIRECTLY, and that is the whole design.
+  # MEASURED in a checkout with no per-host config, which is exactly what a
+  # runner has:
+  #     python tools/sibling_name_sweep.py --tree
+  #     [sibling-sweep] DEGRADED - no per-host config on this machine ...
+  #     [sibling-sweep] clean: 166858934 bytes, 4759 file(s) ...
+  #     exit 0
+  # `load_config` returns DEGRADED when `ops/moon_sync_repos.json` is absent,
+  # and `_run_scan` builds needles only under ARMED - so the needle arm runs
+  # with zero needles, silently, and the step goes green having proved nothing.
+  # `tools/sibling_sweep_ci.py` proves the detection machinery on a fabricated
+  # control BEFORE it reports any tree verdict, enforces a non-empty-corpus
+  # floor, refuses to collapse FAULT into a pass, and tolerates exactly the one
+  # DECLARED open exception while failing on anything else.
+  #
+  # NO `if:` GUARD, deliberately. `push` and `pull_request` above carry
+  # `paths-ignore: '**/*.md'`, so a docs-only commit runs no CI at all, and
+  # `schedule` is the only event that ignores paths-ignore. Gating this job away
+  # from the nightly cron would leave an md-only sibling name unscanned until the
+  # next code push. tests/test_ci_sibling_sweep_tree_wiring.py pins that.
+  #
+  # `fetch-depth: 1` is correct here and is NOT the shallow-clone trap that
+  # tests/test_ci_checkout_history_depth.py guards: the tree arm reads
+  # `git ls-files` plus the working tree and asks git no history question. LFS
+  # objects are deliberately not fetched - a pointer is plain text, scans clean
+  # truthfully, and the OBJECT it points at is a DECLARED blind spot of the
+  # sweep either way, so fetching 40MB of binaries would buy nothing.
+  #
+  # RC_MOON_SYNC_REPOS comes from a repository SECRET and is empty until an
+  # operator sets one. Empty means DEGRADED, which passes while stating in
+  # capitals that the real-name arm did not run. It is read here so that arming
+  # the real-name arm is a SETTINGS change and never a code change - the names
+  # live only in gitignored per-host config and this repository is PUBLIC, so a
+  # committed manifest is the leak itself, not a workaround for it.
+  sibling-sweep-tree:
+    runs-on: ubuntu-latest
+    # MEASURED on Legion at 8c576c180: 5.1s DEGRADED (structural arm only) and
+    # 3m08s ARMED with 4 name slots over 4759 files / 166MB. A runner is slower
+    # per core, so 20 is sized against the ARMED case with room, not against the
+    # 5-second one this job will actually see until the secret is set.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          lfs: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # Stdlib only, on purpose. This gate must be able to run on a runner where
+      # `pip install -r requirements.txt` has failed, because a dependency
+      # outage that silently skipped the leak gate would be the worst possible
+      # shape for this particular guard.
+      - name: sibling-name sweep - TREE arm
+        env:
+          RC_MOON_SYNC_REPOS: ${{ secrets.RC_MOON_SYNC_REPOS }}
+        run: python tools/sibling_sweep_ci.py
