@@ -482,5 +482,142 @@ class HappyPathCharacterization(unittest.TestCase):
         self.assertNotIn("champ_select", out)
 
 
+class StringChampionIdsAreEmittedAsInts(unittest.TestCase):
+    """RM-313: the s155 string-typing sibling inside ``_team_picks``.
+
+    ``tools/lcu_agent.py:919-921`` measured (2026-05-09, s155) that some
+    LCU builds emit champ-select ids as JSON STRINGS depending on the
+    patch. ``lcu/champ_select_shape.py:346`` and ``:349`` already route
+    ``localPlayerCellId`` / ``cellId`` through the module's ``_as_int``
+    for exactly that reason. ``_team_picks`` did not: ``championId``,
+    ``championPickIntent`` and the derived effective id were emitted
+    VERBATIM, so a string-typing build shipped ``"67"`` to every
+    consumer of ``my_team`` / ``their_team``.
+
+    The damage is not merely cosmetic, because the s171 hover fallback is
+    an ``or`` chain over the raw values and the STRING ``"0"`` IS TRUTHY::
+
+        cid_locked    = p.get("championId", 0) or 0        # "0"  (truthy)
+        cid_intent    = p.get("championPickIntent", 0) or 0
+        cid_effective = cid_locked or cid_intent           # "0", never the intent
+
+    So on a string-typing build a hovering, not-yet-locked player emits
+    ``championId == "0"`` and the hovered champion is DROPPED - the exact
+    s171 defect the fallback was written to fix, reintroduced by type.
+
+    This is a CONSUMER CONTRACT change: the emitted value TYPES change.
+    The census run for RM-313 found no consumer that compares these keys
+    against a string.
+    """
+
+    @staticmethod
+    def _session(champion_id, pick_intent):
+        return {
+            "localPlayerCellId": 1,
+            "myTeam": [{"cellId": 1, "championId": champion_id,
+                        "championPickIntent": pick_intent}],
+            "theirTeam": [{"cellId": 5, "championId": champion_id,
+                           "championPickIntent": pick_intent}],
+        }
+
+    def _rows(self, champion_id, pick_intent):
+        cs = _shape(self._session(champion_id, pick_intent))["champ_select"]
+        return [cs["my_team"][0], cs["their_team"][0]]
+
+    def test_a_string_locked_id_is_emitted_as_an_int(self):
+        """The headline case: "67" reaches every consumer as 67."""
+        for row in self._rows("67", "0"):
+            self.assertEqual(row["championId"], 67)
+            self.assertEqual(row["champion_locked"], 67)
+            self.assertEqual(row["champion_pick_intent"], 0)
+            self.assertIsInstance(row["championId"], int)
+            self.assertIsInstance(row["champion_locked"], int)
+            self.assertIsInstance(row["champion_pick_intent"], int)
+
+    def test_a_string_zero_no_longer_swallows_the_hover(self):
+        """"0" is truthy, so the s171 ``or`` chain returned it verbatim."""
+        for row in self._rows("0", "22"):
+            self.assertEqual(row["championId"], 22)
+            self.assertEqual(row["champion_locked"], 0)
+            self.assertEqual(row["champion_pick_intent"], 22)
+            self.assertIsInstance(row["championId"], int)
+
+    def test_junk_ids_normalise_to_zero_rather_than_leaking_the_junk(self):
+        """Matches the ``local_cell`` contract - uncoercible means default."""
+        for junk in ("", None, "abc", "67.0", {}, [], "  "):
+            with self.subTest(junk=junk):
+                for row in self._rows(junk, junk):
+                    self.assertEqual(row["championId"], 0)
+                    self.assertEqual(row["champion_locked"], 0)
+                    self.assertEqual(row["champion_pick_intent"], 0)
+                    self.assertIsInstance(row["championId"], int)
+
+    def test_a_real_float_still_coerces(self):
+        """``int(67.0)`` succeeds; only the float STRING is uncoercible."""
+        for row in self._rows(67.0, 0):
+            self.assertEqual(row["championId"], 67)
+            self.assertIsInstance(row["championId"], int)
+
+    def test_mixed_string_and_int_typing_in_one_roster(self):
+        """LCU has no guarantee the two fields agree on type."""
+        cs = _shape({
+            "localPlayerCellId": 1,
+            "myTeam": [{"cellId": 1, "championId": 0,
+                        "championPickIntent": "412"},
+                       {"cellId": 2, "championId": "103",
+                        "championPickIntent": 0}],
+        })["champ_select"]
+        self.assertEqual(cs["my_team"][0]["championId"], 412)
+        self.assertEqual(cs["my_team"][0]["champion_pick_intent"], 412)
+        self.assertEqual(cs["my_team"][1]["championId"], 103)
+        self.assertEqual(cs["my_team"][1]["champion_locked"], 103)
+
+    # -- GREEN CONTROL --------------------------------------------------
+    # An already-int session must be byte-identical to the pre-fix output,
+    # so the coercion cannot be graded on a case that already passed.
+
+    _INT_SESSION = {
+        "localPlayerCellId": 1,
+        "myTeam": [
+            {"cellId": 0, "championId": 0, "championPickIntent": 22,
+             "spell1Id": 4, "spell2Id": 7, "puuid": "p0"},
+            {"cellId": 1, "championId": 67, "spell1Id": 4, "spell2Id": 14,
+             "puuid": "p1", "assignedPosition": "bottom", "completed": True},
+        ],
+        "theirTeam": [{"cellId": 5, "championId": 103}],
+    }
+
+    _EXPECTED_MY_TEAM = [
+        {"cellId": 0, "championId": 22, "champion_pick_intent": 22,
+         "champion_locked": 0, "summonerId": None, "summonerName": "Ally 1",
+         "puuid": "p0", "completed": False, "assignedPosition": "",
+         "summoners": [4, 7]},
+        {"cellId": 1, "championId": 67, "champion_pick_intent": 0,
+         "champion_locked": 67, "summonerId": None, "summonerName": "You",
+         "puuid": "p1", "completed": True, "assignedPosition": "bottom",
+         "summoners": [4, 14]},
+    ]
+
+    _EXPECTED_THEIR_TEAM = [
+        {"cellId": 5, "championId": 103, "champion_pick_intent": 0,
+         "champion_locked": 103, "summonerId": None,
+         "summonerName": "Ally 1", "puuid": "", "completed": False,
+         "assignedPosition": "", "summoners": [0, 0]},
+    ]
+
+    def test_green_control_int_session_output_is_unchanged(self):
+        cs = _shape(self._INT_SESSION)["champ_select"]
+        self.assertEqual(cs["my_team"], self._EXPECTED_MY_TEAM)
+        self.assertEqual(cs["their_team"], self._EXPECTED_THEIR_TEAM)
+
+    def test_green_control_int_session_types_are_unchanged(self):
+        cs = _shape(self._INT_SESSION)["champ_select"]
+        for row in cs["my_team"] + cs["their_team"]:
+            for key in ("championId", "champion_pick_intent",
+                        "champion_locked"):
+                self.assertIsInstance(row[key], int)
+                self.assertNotIsInstance(row[key], bool)
+
+
 if __name__ == "__main__":
     unittest.main()
