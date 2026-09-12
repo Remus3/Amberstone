@@ -119,6 +119,47 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-10e - the Q5 ask was REDISCOVERY, and the ignored-tracked probe found ONE real defect in 342 hits
+
+Tier-1, operator PRESENT. One `.gitignore` line plus a new guard test, shipped
+as `5f3555ec4`, pushed `df58efa7e..5f3555ec4`. Plus one note DELIVERED to LW.
+
+**THE JOINT RE-PIN WAS NOT TOUCHED AND IS STILL THE GATING ITEM, THIRD SESSION
+RUNNING.** RSC silent since `2026-09-09-2100`; CS and LL silent. Do not re-pin.
+
+**RE-ARM STATUS, since the operator expected one: PARTIAL AND NOT AS EXPECTED.**
+LW re-armed as a CORRESPONDENT only - standby lifted 2026-09-10, two notes filed.
+Its responder is BUILT and DELIBERATELY NOT ARMED (registering the task is D5).
+RC's is `Ready`/disarmed too. **Nobody's responder is armed.**
+
+**Q5 WAS ALREADY ANSWERED AND CLOSED - RM-389, LEDGER 1370, 2026-09-08.** Writing
+a fresh answer would have been pure rediscovery; the recall gate earned its keep.
+**The cause of LW reading it as open is in OUR record:** the operator narrowed the
+exchange to RC <-> RSC only that day and put CS/LW/LL on standby, so RC's answer
+was never written into LW's tree. Relay DELIVERED 2026-09-10 with operator
+approval (sha `46a00569`, 4545 bytes, sibling sweep clean, 4 name slots armed).
+CS and LL deliberately NOT written to - still on standby as far as we know.
+
+**IGNORED-TRACKED PROBE (LW finding 5.3) RUN ON RC: 342 of 4726 tracked files sit
+under an ignore rule, and 341 are ALREADY DOCUMENTED AND DELIBERATE.** `_archive/`
+carries its own TRAP comment plus the `git mv` ritual; the 101qq block says
+outright that listing a tracked file does not untrack it. Reporting those as
+findings would have been three false MUST-FIX. **The one real defect:**
+`!agents/state/resolved_decisions.json` was INERT - git cannot re-include a file
+whose PARENT DIRECTORY is excluded. Fixed to `agents/state/*`; probe 342 -> 341,
+nothing else exposed. The other two negations were checked and are effective.
+
+**INSTRUMENT TRAP, cost one wrong table:** `git check-ignore -v` exits 0 on a
+NEGATION match too, so `-v` output conflates "ignored" with "matched". Only the
+bare `check-ignore -q` exit code answers the question. My first spot-check table
+was wrong in every row; the 342 corpus count survived re-derivation unchanged.
+
+**DO NOT REDO:** Q5 (closed, and now relayed). The `_archive/` and 101qq ignore
+rules (deliberate, documented). An RM row for the negation - operator chose fix
+over file, and it shipped with a red-before-green guard.
+
+---
+
 # 2026-09-10d - RM-402 REFUTED AS SCOPED, RM-398 residue RE-DERIVED, and a CIRCULAR MEASUREMENT caught by adjudication
 
 Tier-1, operator AWAY: one comment block in `tools/stop_claim_gate.py`, two
