@@ -1,0 +1,13 @@
+# LF in the repository AND in the working tree, on every platform.
+#
+# Not a style preference. This package's own test suite asserts that every
+# shipped file contains zero CR bytes, and a checkout on a machine configured
+# with `core.autocrlf=true` will rewrite a text file to CRLF on the way out
+# unless an attribute says otherwise. Without this rule the suite is green for
+# whoever authored a file and red for whoever clones it next, which is the
+# worst of both: a real failure that looks like a local environment problem.
+#
+# `text=auto` keeps git's binary detection, so this only affects files git
+# already considers text.
+
+* text=auto eol=lf
