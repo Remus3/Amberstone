@@ -506,6 +506,20 @@ jobs:
           python -c "import subprocess,sys; t='tools/tests'; p=subprocess.run([sys.executable,'-m','pytest',t,'--collect-only','-q'],capture_output=True,text=True); n=sum(1 for line in p.stdout.splitlines() if '::' in line); print(p.stdout[-2000:]); print('RM-407 collected nodeids under '+t+': '+str(n)); sys.exit(0 if p.returncode==0 and n>0 else 1)"
           pytest tools/tests -q --tb=short --timeout=300
 
+      # The extracted `oss/win32_atomic_io` package. Its own suite, its own
+      # process, same collected-count assertion first for the same reason: a
+      # path list that reaches pytest malformed prints "no tests ran" and exits
+      # 0, so a bare `pytest <tree>` step can be green having collected nothing.
+      # It needs nothing from requirements.txt - the package is stdlib-only and
+      # the tests use `tmp_path` exclusively, so this step is safe to run on a
+      # clean runner. Its `tests/conftest.py` puts the src-layout package on
+      # sys.path, so no install step is required.
+      - name: "orphan tree gated: oss/win32_atomic_io/tests"
+        timeout-minutes: 10
+        run: |
+          python -c "import subprocess,sys; t='oss/win32_atomic_io/tests'; p=subprocess.run([sys.executable,'-m','pytest',t,'--collect-only','-q'],capture_output=True,text=True); n=sum(1 for line in p.stdout.splitlines() if '::' in line); print(p.stdout[-2000:]); print('collected nodeids under '+t+': '+str(n)); sys.exit(0 if p.returncode==0 and n>0 else 1)"
+          pytest oss/win32_atomic_io/tests -q --tb=short --timeout=300
+
       - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
         # RM-156: this is the ceiling that should fire, not the job's. See the
         # block above `timeout-minutes: 95` for the measurement; the short

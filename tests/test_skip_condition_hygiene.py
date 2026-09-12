@@ -73,7 +73,8 @@ _REPO_ROOT = _HERE.parent.parent
 # the producing-side property it exists for. Removing a tree means editing this
 # tuple, in the same commit, on purpose.
 _TEST_TREES = ("tests", "agents/daemon_slayer/tests",
-               "agents/agent3_testing/suite", "tools/tests")
+               "agents/agent3_testing/suite", "tools/tests",
+               "oss/win32_atomic_io/tests")
 
 _GIT = shutil.which("git")
 
