@@ -2,7 +2,102 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, RM-412 OSS-extraction wrap (relocated `2026-09-11b` RM-405 caller-seam silent degrade and `2026-09-11a` stale-fallback + three silent failures, both VERBATIM via `scripts/wakeup_prune.py --keep 3`, proved line-set-identical against the archive additions rather than eyeballed; newest 3 = `2026-09-12a` RM-412 C1 OSS extraction, `2026-09-11d` the lane-8 pre-flight, `2026-09-11c` the 8-cycle loop run stopped by operator STOP). The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the five-slice DOC SYNC wrap (relocated `2026-09-11c`, the 8-cycle loop run stopped by operator STOP, VERBATIM via `scripts/wakeup_prune.py --keep 3`, proved line-set-identical against the archive addition rather than eyeballed; newest 3 = `2026-09-12b` the five-slice merge, `2026-09-12a` RM-412 C1 OSS extraction, `2026-09-11d` the lane-8 pre-flight). The prior pass at this line relocated `2026-09-11b` and `2026-09-11a` the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-12b - FIVE slices merged (RM-233 / RM-296d / RM-313 / RM-318 / RM-295a+b), and THREE filed specs were wrong in ways that mattered
+
+LEDGER 1400-1404. Five `--no-ff` merges on `main`: `14c5b4571` (RM-233),
+`adfcb195a` (RM-296d), `d7596d3d2` (RM-313), `8b688761f` (RM-318),
+`1cb82683e` (RM-295a+b). All Tier-1, ENGINE-IMPACT NONE across all five - no
+`ENGINE_VERSION` move, no DS `:8860` bounce, no Share mirror, no frozen file.
+This session was DOCS ONLY: no source file was touched and nothing was pushed.
+
+**WHAT SHIPPED, one line each.** RM-233 - `core/match_db.py` reads the WAL
+pragma result, `save_match` widened to `-> bool` (still never raises), negative
+`get_recent` limit clamped at the MODULE boundary. RM-296d - the three
+`push_*` flags on `/api/loadout/apply` are PARSED, not bare-truthy. RM-313 -
+`championId` routed through `_as_int`. RM-318 - a coercion seam over the six
+decision detectors, NOT a bare except. RM-295a+b - `health()` exposing the
+three staleness globals, `coverage()` adopted rather than deleted.
+
+**THE DURABLE PART IS THAT THREE FILED SPECS WERE WRONG, and each was
+corrected rather than followed.**
+1. **RM-295a's `stale_for_s` parenthetical said "now minus `_LOADED_AT`".**
+   `_LOADED_AT` is the **RETRY** stamp and is bumped by a refresh that landed
+   nothing, so following the spec literally ships a staleness signal reading
+   **`0` during the exact outage it exists to report**. Shipped code measures
+   from `_LAST_GOOD_AT` and keeps the row's two key names.
+2. **RM-295a's `source()` fence gave a REASON that is false in both halves.**
+   "`dashboard/routes_duo_synergy.py` and the UI badge both read them" - that
+   file has **ZERO** `source()` calls and there is no non-test `.source()`
+   caller on the module repo-wide (re-probed at merge, independently of the
+   slice). **The FENCE STANDS anyway**, on the row's own second reason plus the
+   guard-widening ground. A dead reason is not a dead fence.
+3. **RM-260 is STALE IN ALL THREE CITATIONS** - `performance_tracker.py:406`
+   is not the key read (`:500` is), `experimental_builder.py:237` is not the
+   `%s` site (`:241` is), and both hook functions moved. Its premise holds; its
+   headline does not, because a `_redact` helper is now live at `:531`. Filed
+   as RM-418 for RE-FILING, not building.
+   **RM-255 is outright REFUTED at HEAD** - `lib/http/client.py` FAILS CLOSED
+   (`:30`, `:111-113`) and `certifi==2026.2.25` IS at `requirements.txt:2`;
+   closed same-day by lane 8 cycle 27, LEDGER 1293. Filed as RM-419 so nobody
+   re-attempts it.
+
+**A REFUSAL WORTH MORE THAN THE FEATURE: the `stale:live` / `stale:static`
+prefix on `source()` was BUILT, MEASURED and DELIBERATELY REFUSED at merge.**
+It shipped in `95c5fa2fa` and was reverted in `b51b05092`. The ground is not
+taste - **shipping it REQUIRED widening the guard at
+`tests/test_smoothed_rates_101qq_lock.py:375` so the change could pass**, and a
+change whose cost is editing the test that exists to forbid it is a change the
+guard already answered. Now guarded from BOTH sides: that lock test is
+untouched and byte-identical across both slice commits, plus an inverted test
+asserts the prefix is ABSENT and the domain is still exactly `live|static|none`.
+**DO-NOT-RE-PITCH.**
+
+**THREE CAVEATS RECORDED RATHER THAN SMOOTHED AWAY.**
+- **RM-233's non-`wal` WARN branch is UNFALSIFIABLE on this host.** This
+  platform returns `wal`, so the verifier confirmed the branch READS the
+  pragma - **not that it ever EMITS**. RM-413 inherits this limit for its 8
+  sibling sites; do not claim the emit half is covered.
+- **"byte-for-byte" on the `source()` revert was REFUTED as worded.** The
+  function text grew **162 -> 1573 chars** (docstring only); executable body
+  AST-identical, return domain unchanged. **The overstatement was the MERGER's,
+  introduced in the verifier's own prompt** - the worst place to put one.
+- **RM-313's one-pass acceptance is deliberately UNMET.** Only `championId`
+  shipped, because the census found TWO LIVE consumer defects on ONE field
+  (`champ_select.js:3516` badged the WRONG ARENA PLAYER AS ME; `:3523`/`:3612`
+  read `"0"` as truthy) and that does not generalise by assumption. Siblings are
+  RM-417, each needing its own census - and `arena_teams() :195` PARTIALLY
+  LIMITS the `:3516` repair, since that line reads `arena_teams[].cells[]` first.
+
+**TWO SUITE FIGURES, BOTH RECORDED WITH THE REASON so nobody later reads them
+as a contradiction.** Merger's own run over the merged tree and all five slice
+suites = **518 passed, 63 subtests**. Independent verifier's narrower combined
+run = **394 passed, 60 subtests**. The **entire** delta is one directory versus
+one file: the merger ran all of `tests/phase_b_champ_select`, the verifier ran
+the single file inside it (12+145+**171**+151+25+14 = 518 against
+12+145+**47**+151+25+14 = 394). Same tree, same result, different scope.
+
+**SEVEN NEW ROWS FILED, ids RM-413..RM-419, pin advanced to RM-420.** RM-413
+(8 more WAL-discard sites), RM-414 (5 more bare-truthiness route sites, two
+inverting intent into the dangerous direction - `routes_state.py:773` turns the
+seam ON with the correct `_parse_tristate` helper sitting FOUR LINES BELOW;
+`routes_coach.py:226` engages the coach kill-switch AND PERSISTS it), RM-415
+(the `or {}` idiom, 17 sites / 4 modules), RM-416 (wire `health()` - it shipped
+with NO consumer, which is RM-295b's own mistake, so it is filed rather than
+repeated silently), RM-417, RM-418, RM-419. **Each carries its
+EXCLUDED-AFTER-CHECKING set** so the ruled-out candidates are not re-filed.
+
+**DOC-SIZE NOTE, stated because the first pass got it backwards.** Appending
+five closures plus a seven-id filing row GREW `ROADMAP.md` 67973 -> 70938. The
+pass continued until it showed a net reduction rather than stopping there: six
+rows relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-12` block),
+each proved byte-identical against `git show HEAD:ROADMAP.md` rather than
+eyeballed. Final **68372 bytes**, 83.5 percent of the 81920 budget, +399 on the
+session. RM-295 and RM-296 were edited IN PLACE, not relocated, because each
+closed only PARTIALLY (RM-295c and RM-296a/b/c/e remain OPEN).
 
 ---
 
@@ -145,118 +240,3 @@ API mismatch, carries the known sibling-name escape). Filed to BACKLOG.
 (d) `moon_sync_inbox` 2026-09-11-1415 `lw_write_tracer.py.from-lw` (Apache-2.0): license-gated evaluation pending, not vendored.
 (e) Inert stubs `r._read_my_runes = lambda: ""` at `tests/test_liveclient_championstats_ingestion.py:163`
     + `tests/test_p2w1_app_a.py:61` - harmless, deletable in a later cleanup.
-
----
-
-# 2026-09-11c - the headless loop ran 8 cycles and was stopped by the OPERATOR, not by max_cycles
-
-Run `63545b4e`, `loop start dry_run=False max_cycles=100 head=eaf13e82` at
-10:52:26, controller exit at 18:04:04 on `external STOP seen (cycle top)`.
-Eight cycles, LEDGER 1392 through 1397, plan rows R226 through R230. Six of the
-eight reported an executor cost and those six total **$104.18**; cycle 1 and
-cycle 6 reported none. Final HEAD `1f4b8a23e` == `origin/main`, working tree
-clean, `ci` and `docs-guards` both **success** at that sha. Live at wrap: pid
-40472 alive, `mode=client`, `last_reload_ok=true`. Operator-run verification at
-wrap: `pytest tests` 21890 passed / 102 skipped / 4938 subtests in 1:12:22.
-
-**THE RUN ENDED BY OPERATOR STOP AND THE STOP WAS OBEYED EXACTLY AS WRITTEN.**
-`ops/loop/control/STOP` was written 17:32:14 reading "operator 2026-09-11 17:32
-- finish cycle 8, then disarm for /done. No cycle 9." Cycle 8 was already in
-flight; it finished normally at 18:01:53 (`sha=1f4b8a23 tests=21895
-regress=False`), audited CLEAN at 18:04:04, and the controller then exited at
-the cycle top without opening a cycle 9. **The cap was never approached** - 8 of
-100. The STOP file is still on disk, so a re-arm has to clear it deliberately.
-Three headless-claude scheduled tasks were disabled in the same wrap:
-`RC-CIWatchdog`, `RC-WeeklyHygiene`, `RC-InboxResponder`. Re-arming the loop
-means clearing STOP **and** re-enabling those three deliberately.
-
-**WHAT EACH CYCLE SHIPPED.** Cycle 1 (10:55-12:25) shipped NOTHING - `sdk
-timeout after 5400s - killing the child tree`, sha unchanged at `eaf13e82`,
-audit CLEAN on an unchanged tree. Cycle 2 shipped RM-406 (`c00b9af89`, LEDGER
-1392, plan row R226 - the suite writing the operator's LIVE tree) plus the
-next-free-id pin advance to RM-407 (`591bf1e0d`). Cycles 3 and 4 shipped RM-407,
-the orphan test-tree CI wiring (LEDGER 1393, R227). Cycle 5 shipped the
-R227-REGRESS-FIX (`54fcf67c8`, LEDGER 1394). Cycle 6 cleared the `drift_guard`
-RED by relocating `ROADMAP.md` 74881 -> 65475 bytes (`23c1bca31`, LEDGER 1395,
-R228). Cycle 7 shipped RM-410, the direct byte/atomicity test for the ddragon
-fetch writer (`7ff5fc853`). Cycle 8 shipped the RM-411 half - the destination-
-scoped `os.replace` fault injection, the `.tmp` leak CHARACTERIZATION, and the
-process-wide census (`eb440accf`, LEDGER 1396, R229 + R230) - then the director
-tail-window fix (`ea45b15e3`, LEDGER 1397).
-
-**CYCLE 3 AUDITED REGRESS, AND THE REASON IS THE ONE WORTH CARRYING.** It
-reached the right RM-407 verdict and wrote the repair into the working tree,
-then ended without a wrap commit. So HEAD `c00e2f1d6` spent a full cycle running
-`pytest agents/agent3_testing/suite` BARE, zero exclusions, inside a
-push-BLOCKING job - shipping the 1-in-3 `test_supervisor.py::
-test_supervisor_starts_and_binds_ports` flake that the same cycle had just
-measured (run 1 of 3: 1 failed / 348 passed / 2 skipped / 2 deselected, runs 2
-and 3 green, 3/3 in isolation). Cycle 4 was directed to LAND THE ALREADY-WRITTEN
-FIX rather than redesign it, and did: `2df4d10e0` declares the tree EXCEPTED -
-not wired, not excluded, not forgotten - with the measured flake as the stated
-reason, and aligns gate, guard row and audit verdict on one word. `tools/tests`
-(348 collected) IS wired into the push `check` job; `agents/agent3_testing/suite`
-(359 collected) is not.
-
-**CYCLE 4 THEN AUDITED REGRESS TOO, FOR A DIFFERENT AND DOCS-ONLY REASON -
-correct any recollection that says only cycle 3 did.** The RM-407 wrap moved
-RM-406's residuals block onto the RM-407 row, so for one cycle RM-407 published
-four false residuals about itself while RM-406, which has no `BACKLOG.md` body
-row, carried no limits at all. Cycle 5 moved it back (`54fcf67c8`, byte-identity
-proved at 353 bytes / sha256 `3e4f71e9...` on both sides) and audited CLEAN. The
-defect class is row MISATTRIBUTION, not a typo: every byte was valid prose on
-the wrong owner, which no spell-check, ASCII guard or link checker can see.
-
-**CYCLE 7 SHIPPED WITHOUT RUNNING THE SUITE AND CYCLE 8 PAID FOR IT - the guard
-was ALREADY RED at `7ff5fc853`.**
-`tests/test_loop_director_context_caps.py::test_real_orchestration_plan_newest_row_survives`
-was failing, and the only reason it was found is that cycle 8 ran the full
-`tests/` tree. The stated reason cycle 7 skipped it - a prior serial run
-measured at roughly four hours - no longer held: under `-n 8` the same tree
-finishes in **307 seconds**. The failure is not cosmetic.
-`ops/loop/loop_controller.py:623` `build_director_context` caps the plan
-head-and-tail and CUTS THE MIDDLE, the session table sits in the middle, and
-each appended findings block walks the newest row toward the cut - past which
-the director plans the next cycle without ever seeing the newest session row.
-FIXED STRUCTURALLY, not by raising the cap: six older blocks relocated VERBATIM
-into `docs/ORCHESTRATION_PLAN_HISTORY.md`, R230 21306 -> **9692 bytes** against
-the 15888-byte window, and a new arm requires 4000 bytes of clearance derived
-from `lc.PLAN_CTX_CAP` / `lc.PLAN_CTX_HEAD` rather than a literal.
-
-**THE EXECUTOR OVERRIDE FIRED ON SEVEN OF EIGHT CYCLES AND ITS TWO COMPLAINTS
-ARE BOTH STRUCTURAL.** STALE-GROUNDING on every cycle except cycle 2 - 1, 3, 4,
-5, 6, 7 and 8 - because the director keeps sourcing premises from an audit
-DIGEST rather than the tree, and it was right to: cycle 7's headline premise
-("NO test anywhere calls
-`lib/ddragon/fetch.py`'s own writer") was REFUTED before any code was written.
-SERIALIZED-DEVIATION on cycles 6, 7 and 8, on non-disjoint agent file sets. Its
-collision lists are not trustworthy in detail - one names "AGENT 1 and AGENT 1"
-against genuinely disjoint sets - but serializing was kept anyway as strictly
-safer at the cost of one round.
-
-**NOTHING LEFT THE TREE BEYOND ORDINARY PUSHES AND THE JOINT RE-PIN STAYED
-GATED, SEVENTH SESSION RUNNING.** Zero commits today touch `ops/loop/slots.py`
-or `ops/loop/winmutex.py`. RSC's newest inbox note is still
-`2026-09-09-2100-from-RSC`. **Four inbox notes landed mid-run** (mtimes 12:49 to
-12:55: two from LW on plugin licences and a superseded plugin, two from CS
-including a WITHDRAWAL of two of their own claims and a defect report that our
-hook DOES export `GIT_DIR`). **No tracked file in this run's commit range names
-any of the four**, so they are unread work for the next session, not something
-this run answered.
-
-Next session: the loop is disarmed with STOP on disk and the tree clean at
-`1f4b8a23e`. Read the four mid-run inbox notes before arming anything, and run
-the full `tests/` tree per cycle now that `-n 8` puts it at 307 seconds - the
-four-hour figure that justified skipping it is dead.
-
-**DO NOT REDO:** RM-406, RM-407, RM-410 all SHIPPED. RM-411 is the FILED
-destructive-patch subset (8 call sites across 6 files, dispositions in
-`docs/audits/LF_WRITER_DIRECT_COVERAGE_2026-09-11.md`), body in `BACKLOG.md`,
-next-free pin now RM-411 in `docs/DS_SWEEP_TRACKER.md`. **The `.tmp` leak in
-`lib/ddragon/fetch.py:33-44` is CHARACTERIZED, NOT FIXED** - both fault arms
-assert the sibling LEAKS, so a future `finally` must flip those assertions
-DELIBERATELY. Do NOT re-wire `agents/agent3_testing/suite` without measuring the
-supervisor flake on the runner first; the exception is the result, not a
-shortfall. Do NOT re-file "`-n 8` widens the `os.replace` exposure" - xdist
-workers are separate PROCESSES and that premise is REFUTED; the real window is
-same-process callers, threads above all.
