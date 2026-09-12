@@ -489,8 +489,8 @@ SHARED_SHA256 = {
     # window; RC copied the file verbatim off the carrier's live tree with a byte-level
     # copy (not a text write - `write_text` would CRLF-mangle it on Windows and
     # the pin is on bytes) and re-hashed from its OWN disk, which is how this
-    # value was obtained rather than by trusting RM's hand-off note. Resin
-    # Compute vendors LAST: it has no pin to break until it has one.
+    # value was obtained rather than by trusting RM's hand-off note. The newest
+    # participant vendors LAST: it has no pin to break until it has one.
     # previous 5297f2d041030398a9ba240aad527b2b01a86d6e7f57a196719af8f0a91cb0a6
     #
     # re-pinned 2026-09-06 (carrier commit 374c79e): the hold() release-path leak.
