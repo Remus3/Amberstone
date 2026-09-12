@@ -2,9 +2,87 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-11, headless-loop-stop wrap (relocated `2026-09-10e` Q5 relay + inert-negation fix; newest 3 = `2026-09-11c` the 8-cycle loop run stopped by operator STOP, `2026-09-11b` RM-405 caller-seam silent degrade, `2026-09-11a` stale-fallback + three silent failures). The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
->
-> **RELOCATION DUE (noted 2026-09-11k):** this file now holds FOUR full sessions, one over the keep-3 rule - the docs slice that added `2026-09-11d` was not permitted to edit `docs/history_notes.md`. At the next wrap, relocate the OLDEST section (`2026-09-11a`) VERBATIM to the top of the archive section there (`scripts/wakeup_prune.py --keep 3`), then delete this note.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, RM-412 OSS-extraction wrap (relocated `2026-09-11b` RM-405 caller-seam silent degrade and `2026-09-11a` stale-fallback + three silent failures, both VERBATIM via `scripts/wakeup_prune.py --keep 3`, proved line-set-identical against the archive additions rather than eyeballed; newest 3 = `2026-09-12a` RM-412 C1 OSS extraction, `2026-09-11d` the lane-8 pre-flight, `2026-09-11c` the 8-cycle loop run stopped by operator STOP). The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-12a - RM-412 SHIPPED: C1 of the OSS extraction blueprint is EXECUTED, and the verifier refuted the builder's "all green"
+
+LEDGER 1399. Code commit `48ac8986a`, 17 files, +1619/-23. Tier-1,
+ENGINE-IMPACT NONE, no RC restart required.
+
+**WHAT SHIPPED.** `oss/win32_atomic_io/` - a stdlib-only src-layout package
+holding `_replace_with_retry`, `_scratch_path`, `_write_then_replace`,
+`atomic_write_json` / `_bytes` / `_text` and `read_json_dict`, extracted from
+`core/polled_json.py`. **`core/polled_json.py` is UNMODIFIED and its diff is
+empty** - 20-plus live importers, so the package is a SIBLING, not a
+replacement. `PolledJsonFile` deliberately EXCLUDED (`core/polled_json.py:204`,
+ZERO production instantiations; RM-264 holds adopt-or-remove). New guard
+`tests/test_oss_win32_atomic_io_drift.py` pins the two copies by
+AST-normalized EXECUTABLE LOGIC over 7 functions plus the retry-delay
+constant - docstrings and comments ignored, because the RC-specific prose was
+deliberately scrubbed for sharing - and declares exactly ONE textual
+allowance, the log-message prefix, with an arm asserting EQUAL hit counts on
+both sides so it cannot widen into a blanket forgiveness. Also touched:
+`.github/workflows/ci.yml`, `docs/OPERATIONS.md`,
+`tests/test_ci_collects_orphan_suite_trees.py`,
+`tests/test_skip_condition_hygiene.py`.
+
+**FINDINGS - these are the durable value, not the code.**
+1. **An independent verifier REFUTED the builder's "all green"** and found a
+   hard red the builder never reported: adding a tree to `_TEST_TREES` obliges
+   a same-commit row in the `docs/OPERATIONS.md` test-scope table, which calls
+   itself authoritative. Fixed in the same commit.
+2. **The empty-enumeration false green, hit LIVE.** 16 repo-root-enumerating
+   guards returned **317 passed** and proved nothing - they enumerate the GIT
+   INDEX (ADR-015) and the new files were untracked, hence invisible.
+   `git add -N` surfaced **2 real failures**.
+3. **The one real sibling-name leak was in `__pycache__`, not source.** Source
+   swept clean over 31 banned identifiers x 3 variants plus a 17-term domain
+   probe; the `.pyc` files embedded the absolute repo path and leaked the
+   project name - invisible to a `git` publish, SHIPPED by `tar` / `cp -r`.
+   Deleted, and the package now carries its own `.gitignore`. **Residual: that
+   sweep is TRANSIENT - any pytest run repopulates `__pycache__`.**
+4. **A self-contradicting license, built by this session.** The package
+   declared itself all-rights-reserved and "not yet distributable" inside a
+   PUBLIC repo whose root `LICENSE` grants Apache-2.0 - the exact
+   self-contradicting-repo trap CLAUDE.md's own license gate warns about,
+   committed against our OWN tree. Fixed with a byte-identical Apache-2.0 copy
+   (sha256 `5bfe6fb7f5a2`, grantor line `Copyright 2026 Moonbeam` present and
+   unedited), declared in `pyproject.toml`, plus three guards.
+5. **Docs corrected to match real behaviour, not the reverse** (the drift guard
+   pins logic, so prose moved): TWO degraded inputs are silent, not one; a bare
+   `PermissionError` catch means `EACCES` DOES fire the retry on POSIX (4
+   attempts / ~275 ms on an ACL denial); and "never left behind" is false for
+   `SIGKILL` / `taskkill /F` / power loss.
+
+**TWO LIMITS STATED, NOT PAPERED OVER.** `py.typed` is verified STRUCTURALLY
+only - `setuptools` is absent from this interpreter, so no wheel was ever
+built and the marker has never been observed inside an artifact. And a
+package-local `.gitattributes` pinning `eol=lf` was REQUIRED: `core.autocrlf=true`
+plus a root `.gitattributes` covering only `*.py` / `*.md` would have checked
+the new `.gitignore` out as CRLF in a fresh clone - green locally, red on clone.
+
+**MEASURED on a frozen tree after every agent exited:** package suite 38
+passed; drift guard 51 passed; `tests/test_docs_operations_test_scope_rm322.py`
+3 passed; `tests/test_polled_json_lane8_cycle24.py` +
+`tests/test_atomic_write_fault_injection_is_portable.py` 37 passed;
+index-dependent guards 75 passed once staged; `ruff check` clean; 0 CR / 0
+non-ASCII; `core/polled_json.py` diff empty; pre-commit `py_compile OK (9 files)`.
+
+**NEXT SESSION**
+(a) Narrow the `PermissionError` catch to WinError 5 / `EACCES` - a LOGIC
+    change, so it needs a SAME-SLICE edit to BOTH copies (the drift guard pins
+    them) and its blast radius is `core/polled_json.py`'s 20-plus importers.
+(b) Install `setuptools`, build a wheel, and OBSERVE `py.typed` inside the
+    BUILT artifact. Re-reading the source layout is the check that already passes.
+(c) DECIDE whether `core/polled_json.py` should ADOPT the package rather than
+    duplicate it - that retires the drift guard, and it inverts the
+    "sibling, not a replacement" property RM-412 shipped on purpose. Do NOT do
+    it as a tidy-up inside another slice.
+(d) Still carried from `2026-09-11d`: Slice D block-mode follow-up, Slice E
+    residuals, `ops/loop/control/STOP` still present, and the
+    `moon_sync_inbox` Apache-2.0 file awaiting license-gated evaluation.
 
 ---
 
@@ -67,6 +145,8 @@ API mismatch, carries the known sibling-name escape). Filed to BACKLOG.
 (d) `moon_sync_inbox` 2026-09-11-1415 `lw_write_tracer.py.from-lw` (Apache-2.0): license-gated evaluation pending, not vendored.
 (e) Inert stubs `r._read_my_runes = lambda: ""` at `tests/test_liveclient_championstats_ingestion.py:163`
     + `tests/test_p2w1_app_a.py:61` - harmless, deletable in a later cleanup.
+
+---
 
 # 2026-09-11c - the headless loop ran 8 cycles and was stopped by the OPERATOR, not by max_cycles
 
@@ -180,196 +260,3 @@ supervisor flake on the runner first; the exception is the result, not a
 shortfall. Do NOT re-file "`-n 8` widens the `os.replace` exposure" - xdist
 workers are separate PROCESSES and that premise is REFUTED; the real window is
 same-process callers, threads above all.
-
----
-
-# 2026-09-11b - RM-405 SHIPPED: RM-312 had fixed the silence one layer too low, and the CALLER re-swallowed it
-
-Tier-1, one module plus one new 19-arm guard, shipped as `fc0058441` and pushed
-to `origin/main`. 9 files, 525 insertions, 24 deletions. LEDGER 1391. No engine,
-no `ENGINE_VERSION` bump, no DS bounce, no Share sync, no `web/` change, no
-frozen file touched. Live at wrap: pid 23096 alive, `mode=client`,
-`last_reload_ok=true`.
-
-**THE JOINT RE-PIN OF `SHARED_SHA256` IS STILL BLOCKED AND IS STILL THE GATING
-ITEM, SIXTH SESSION RUNNING.** RSC silent since
-`moon_sync_inbox/2026-09-09-2100-from-RSC...`. The newest inbox item overall is
-`2026-09-11-0030-from-LW`, already read, no reply owed. **Nothing was armed and
-nothing left the tree beyond the ordinary push** - the push diff touched neither
-`ops/loop/slots.py` nor `ops/loop/winmutex.py`, and the pre-push sibling-name
-sweep reported CLEAN (28588 bytes, 9 files, 1 commit message, 0 binary/LFS blobs
-- LFS OBJECT CONTENT is never content-scanned, which is a named blind spot, not
-a clean bill). Do NOT re-pin unilaterally and do NOT regenerate the digests from
-local disk; a BYTE-level copy only, because `write_text` turns LF into CRLF and
-the pin is on bytes.
-
-**THE DEFECT: RM-312 (`3e5451ff3`, LEDGER 1390) made a fault raised INSIDE
-`dashboard/_lcu_inprocess.py` visible, and its DIRECT CALLER swallowed the same
-fault one frame higher.** `_read_lcu_snapshot()` at `dashboard/_state_builder.py`
-caught `Exception` and set `snap = None` with no log line. **This was not
-rediscovery** - RM-312's own SHIPPED body had REPORTED that site as a sibling
-candidate under its fence against an unbounded bare-`except Exception` sweep, so
-the previous slice filed it and this one closed it.
-
-**THE HALF RM-312 PROVABLY CANNOT COVER IS AN `ImportError` ON THE LAZY IMPORT.**
-When `from dashboard._lcu_inprocess import lcu_summary_inprocess` raises, the
-module never loaded, so RM-312's logger never existed to run. That is a
-structural limit of a module-local logger, not a gap in RM-312, and it has its
-own arm - which also asserts RM-312's module state stays untouched, so neither
-seam can mask the other. Independent lock and throttle state, deliberately
-different prose, so a log reader can tell WHICH layer faulted.
-
-**`str(exc)` IS NEVER EMITTED, RE-PROVED AT THIS SEAM RATHER THAN INHERITED.**
-No `exc_info`, no `stack_info`, no f-string. A verifier drove
-`RuntimeError("puuid=SECRET-LEAK-MARKER")` live and observed the marker absent
-from `getMessage()`, `record.args`, `record.__dict__` and a full `Formatter`
-render. The repo is PUBLIC and LCU payloads carry PUUIDs, so this gets measured
-per seam every time. Contract byte-for-byte unchanged: still `None` on fault,
-still falls through to `lcu_summary()`, and the success / `snap is None` /
-flag-unset paths all stay SILENT.
-
-**THE PRE-FIX RED WAS WEAK BY CONSTRUCTION AND IS NOT OFFERED AS DEFECT
-EVIDENCE.** All 19 arms went red pre-fix, but on a MISSING TEST HELPER, not on
-the defect - LEDGER 1390 had to make that exact correction one entry earlier, so
-this slice anticipated it rather than being caught by it. **The real evidence is
-anti-vacuity: stub the log call to a no-op and 13 of 19 arms go red while 6
-survive, and the 6 are exactly the silent-path arms that must survive.** An
-INDEPENDENT verifier reproduced the 13/6 split from a scratchpad copy instead of
-inheriting the number.
-
-**THE SLICE STALED ITS OWN CITATIONS - CAUGHT BY THE FIRST VERIFIER PASS, NOT BY
-THE AUTHOR.** +83 lines near the top of `_state_builder.py`, +5 in
-`_lcu_inprocess.py`. Repo-wide re-derivation followed: shift-caused offsets fixed
-at +82 and +5 onto byte-identical code checked against `git show HEAD:`,
-citations already wrong at HEAD for unrelated reasons left alone and reported.
-`feedback_your_own_edit_staled_the_citation`, three times in four days.
-
-**READ THIS BEFORE BELIEVING ANY `_state_builder.py:<n>` IN AN OLDER RECORD.**
-`WAKEUP_NOTES.md:144` (the 2026-09-11a entry; it was `:47` before this entry was
-prepended) and the pre-rewrite
-`RC-NEXT-SESSION.txt:11,32` carried `_state_builder.py:92` and `:96`. Those were
-TRUE AT THEIR OWN WRAP and were deliberately left as the historical record; the
-`:92` gate now lives at `:173` and the `:96` except at `:177-179`. Do not read
-them as live citations and do not "fix" the dated wakeup entry. **The
-docs-sync pass also found that the commit's "repo-wide" sweep did NOT reach
-`ROADMAP.md` or `BACKLOG.md`** - neither is in the 9-file diff - so the RM-312
-SHIPPED body at `BACKLOG.md` was still quoting pre-shift offsets. All re-derived
-from disk and corrected in the 2026-09-11d docs-sync; `tools/lcu_agent.py:1612`
-was left VERBATIM because it was already wrong at HEAD for an unrelated reason.
-
-**TIER-0 IN THE SAME SLICE, and it is the same shape as 2026-09-11a's lesson: a
-build's FIX was right while its JUSTIFICATION was inherited from a comment.**
-RM-312's shipped comment claimed 1 Hz from the stale "1.0s TTL" prose. Measured
-truth is `RC_STATE_CADENCE_SEC`, default 0.5s with a 0.1 floor
-(`dashboard/routes_state.py:167-178`), about 2 Hz, so the worst case is ~7200
-lines/hr not ~3600. The path is DARK today - the gate at
-`dashboard/_state_builder.py:173` reads `RC_LCU_INPROCESS`, unset on this box.
-
-**OBSERVED, both figures re-run independently by a verifier to an exact match:
-19 passed on the new guard; 192 passed / 21716 deselected / 56 subtests on the
-widened scope; ruff clean on 8 `.py` files; 0 codepoints above 126 across all 9.**
-NOT live-verified and not claimed: `RC_LCU_INPROCESS` is unset and no live
-champ-select was driven, so the WARN's production text is proven by unit test
-only.
-
-**WRAP ADDENDUM - `tools/stop_claim_gate.py` blocked this session TWICE, and was
-right both times.** Every headline number in the first two reports had been
-MEASURED BY A SUBAGENT, never by the main thread, so the gate read them as
-unbacked claims. That is the gate working as designed, not a false positive:
-CLAUDE.md's Verification Discipline already says never carry a subagent-reported
-count forward, and a verifier's CONFIRM is the adversarial gate on the SLICE -
-it is still not the main thread's own measurement. All headline figures were
-then re-run in the main thread and matched exactly: 359 + 348 = 707 uncovered
-tests, 19 on the new guard, 192 / 21716 deselected / 56 subtests widened, ruff
-clean on 8 files. The `ci.yml:165` + `:537` "neither CI tree" half was likewise
-re-derived by hand rather than inherited.
-
-ONE figure was first retracted as unreproducible and then turned out to be both
-reproducible AND WRONG. The docs slice reported `md-guards 1782 passed`. The
-selection is NOT bespoke - `tools/md_guard_selector.py` is a tracked CLI that
-emits it, and `tests/test_ci_docs_guard_coverage.py:56` already names it. Run
-fresh at HEAD `c7c7247b2`: **65 modules, 1777 passed, 1 skipped, 327 subtests in
-149.86s**. The filed number was over by 5. Calling it unreproducible was the
-LAZIER error of the two - the selector was one grep away, and running it is what
-exposed the bad count.
-
-**CRLF TRAP, worth more than the count.** The first invocation piped the
-selector's output straight into pytest and printed `no tests ran in 0.05s` with
-**exit code 0**. The selector's stdout carries `\r`, so every path was malformed,
-pytest matched nothing, and the run reported SUCCESS. A CI step shaped that way
-is silently always-green over zero tests - the `INDEX_testing_traps`
-empty-enumeration class, arriving through line endings rather than through a
-guard. `tr -d '\r'` fixes it. Anyone wiring the orphan suites (the fallback
-below) will be composing exactly this shape: assert a NONZERO collected count,
-never just an exit code.
-
-Next session: run the numbers you intend to PRINT before you print them, or
-attribute them to the agent that ran them.
-
-**DO NOT REDO:** RM-405, RM-403, RM-404, RM-312 all SHIPPED. RM-387 / RM-388
-shipped 2026-09-08. RM-313 deliberately OPEN. A general bare-`except Exception`
-sweep - RM-312's fence stands, the remaining sites are a CANDIDATE POPULATION
-needing its own census, and their line numbers MUST be re-derived because this
-slice moved code in that file.
-
----
-
-# 2026-09-11a - the HAND-OFF PROMPT was the defect, and three silent failures shipped with guards
-
-**THE SESSION'S OWN FALLBACK WAS STALE, which is why RM-403 exists.** The 09-10e
-hand-off said: if RSC is still silent, pick up RM-387 or RM-388. RSC IS still
-silent (inbox newest from them remains `2026-09-09-2100`, checked FIRST as
-directed, and the JOINT RE-PIN stayed gated and untouched for the FOURTH session
-running). But RM-387 and RM-388 had BOTH SHIPPED on 2026-09-08, LEDGER 1368/1369,
-provable in source at `tools/inbox_responder_runner.py:1772` and `:976`. Second
-consecutive session opening on rediscovery - 09-10e was Q5. **The difference: no
-recall gate covers a stale FALLBACK, because ROADMAP was the instrument and
-ROADMAP was wrong.** So the answer was a machine check, not a doc edit.
-
-**THREE ITEMS SHIPPED, ALL THE SAME FAILURE MODE IN DIFFERENT COSTUMES - nothing
-announced itself.**
-
-- **RM-403** (`8895793d9`, filings `dd0a2f3b0`, LEDGER 1388) - ROADMAP and BACKLOG
-  could disagree about whether a row was OPEN and nothing checked. FOUR rows were
-  drifted (RM-250 / RM-291 / RM-387 / RM-388), each corroborated TWICE, by a
-  LEDGER entry AND a code probe. Guard `tests/test_roadmap_backlog_disposition_drift.py`.
-  **The binding rule is the whole substance:** a disposition binds to the NEAREST
-  PRECEDING id only. Two live controls are pinned - `RM-281 HALF-CLOSED + RM-283
-  OPEN` (the OPEN belongs to RM-283) and RM-204, whose first vocabulary hit sits
-  in lowercase prose. A first parser called RM-204 a fifth drift row and was
-  NARROWED, never allowlisted. Do not widen it.
-- **RM-404** (`2ca7bb66c`, LEDGER 1389) - **4 of 5 printed `schtasks` commands were
-  broken and the failure is SILENT**: PowerShell reports errors=0 and splits the
-  block into 2 statements, running `schtasks /Create` WITHOUT its `/TR` payload.
-  `tools/liveclient_relay.py:14` measured FINE and was deliberately left alone.
-  Repaired with `Register-ScheduledTask`; **do NOT hand-fix the caret escaping.**
-- **RM-312** (`3e5451ff3`, LEDGER 1390) - `dashboard/_lcu_inprocess.py` swallowed
-  every L3 fault with NO logger in the module at all. Row was ACCURATE, not stale.
-  Now throttled WARNING; contract unchanged; **`str(exc)` never emitted** because
-  the repo is PUBLIC and LCU payloads carry PUUIDs.
-
-**THE RECURRING SHAPE THIS SESSION, worth carrying forward: a build agent's FIX
-was right while its JUSTIFICATION was wrong.** RM-312's "1 Hz hot path" was
-inherited from a STALE COMMENT (`routes_state.py:210` says 1.0s TTL); the real
-cadence is `RC_STATE_CADENCE_SEC` default 0.5s (~2 Hz), and the path is **DARK**
-today - `_state_builder.py:92` gates it on `RC_LCU_INPROCESS`, which is unset.
-RM-404's builder reported 9/9 red with one message when only 8 carried it. Both
-corrected in the shipped artifacts, not just in chat.
-
-**ANTI-VACUITY WAS PROVEN, NOT ASSERTED, on every guard** - stubbing RM-403's
-parser empty turns 15 arms red; RM-312's arm went red alone under a mutated
-short-circuit. A guard asserting an empty set passes forever once the docs are fixed.
-
-**CI TRAP, now measured: two `ci` runs this session read `cancelled`, which is
-SUPERSESSION, not failure** - each was killed by the next push. Only the final
-HEAD's run is authoritative. `3e5451ff3` is green on BOTH `ci` and `docs-guards`.
-
-**INBOUND: three LW notes read, none requiring a reply.** LW refuted the
-shared-conftest premise on a SECOND tree (now dead, not merely retracted), and
-repaired their own 43 false-RED sites to 0. Their 00:30 note disclosed a published
-`schtasks` line that did not work - **that is where RM-404 came from.** The rule:
-an arm proving a command is not executed says nothing about whether it is correct.
-
-**DO NOT REDO:** RM-403, RM-404, RM-312 SHIPPED. RM-387/RM-388 shipped 2026-09-08.
-RM-313 deliberately OPEN. The joint re-pin is still BLOCKED on RSC - do not re-pin
-unilaterally and do not regenerate digests from local disk.
