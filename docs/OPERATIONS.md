@@ -35,11 +35,12 @@ commit and NOTHING guards them - deliberately, because a count guard here would
 go red on any commit that adds a test, which is the same reason
 `tests/test_docs_daemon_slayer_drift.py` refuses to pin `def test_` counts. Read
 the date, and if it matters to your decision, re-measure. What IS stable is the
-SHAPE: five trees, and the five summing exactly to the repo-root total.
+SHAPE: the trees named below, and those trees summing exactly to the repo-root
+total whenever both halves are measured on the same day.
 
-The repo has **four** test trees. `tests/test_skip_condition_hygiene.py:73`
+The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:75`
 is the single place that enumerates them (`_TEST_TREES`), and it is the
-producing side - if you add a fifth tree, add it there:
+producing side - if you add a sixth tree, add it there:
 
 | Tree | Tests collected | In `pytest tests`? | In the "dual suite"? | Run by any CI job? |
 |---|---|---|---|---|
@@ -47,34 +48,52 @@ producing side - if you add a fifth tree, add it there:
 | `agents/daemon_slayer/tests` | 10856 | no | yes | yes |
 | `agents/agent3_testing/suite` | 359 | no | no | **no** |
 | `tools/tests` | 348 | no | no | **no** |
+| `oss/win32_atomic_io/tests` | 38 | no | no | yes |
 | **repo-root `pytest .`** | **32685** | | | |
 
 Measured 2026-09-06 with `pytest <tree> --collect-only -q` from the repo root on
-Python314; the four trees sum exactly to the repo-root total (21122 + 10856 +
-359 + 348 = 32685), so there is no fifth tree hiding. **Re-measure before
-quoting any of these - nothing guards them.** The previous figures here were
-taken on 2026-09-04 and `tests` had already drifted 20645 -> 21122 in two days.
+Python314, EXCEPT the `oss/win32_atomic_io/tests` row: that tree did not exist
+then and was measured the same way on 2026-09-12. On 2026-09-06 the four trees
+of the day summed exactly to the repo-root total (21122 + 10856 + 359 + 348 =
+32685), so nothing was hiding. **The repo-root figure has NOT been re-measured
+since `oss/win32_atomic_io/tests` landed, so it now understates the true total
+by at least that tree's 38** - the five rows no longer sum to it, and that is a
+stale measurement rather than a missing tree. **Re-measure before quoting any of
+these - nothing guards them.** The previous figures here were taken on
+2026-09-04 and `tests` had already drifted 20645 -> 21122 in two days.
+
+The three percentages below are all derived from the 2026-09-06 four-tree
+measurement and inherit its staleness:
 
 - **`pytest tests`** covers 21122 of 32685 (65 percent). This is the NARROW bar.
 - **The "dual suite"** (`tests` + the DS tree) that CLAUDE.md's Tier-2 rule and
   the DS batch ritual refer to covers 31978 of 32685 (98 percent).
 - **`pytest .` from the repo root** is the only command that means "everything".
 
-**"Not in the local suites" and "unrun in CI" USED to be different sets. Since
-2026-09-06 they are the same set**, and the distinction is recorded here only so
-that an older doc quoting it is recognisable as stale. The `benchmarks` tree was
-the sole member of the difference: outside both local suites, but run in CI by
-CodSpeed. It was deleted along with `.github/workflows/codspeed.yml` - see
-"Why CodSpeed was dropped" below. So today two trees
-(`agents/agent3_testing/suite` + `tools/tests`, 359 + 348 = **707** tests) are
-outside both local suites AND run by no CI job.
+**"Not in the local suites" and "unrun in CI" USED to be different sets, were
+the same set from 2026-09-06, and are DIFFERENT AGAIN since 2026-09-12.** The
+`benchmarks` tree was the original sole member of the difference: outside both
+local suites, but run in CI by CodSpeed. It was deleted along with
+`.github/workflows/codspeed.yml` - see "Why CodSpeed was dropped" below, which
+is what collapsed the two sets into one. `oss/win32_atomic_io/tests` now
+occupies that slot for an unrelated reason: it is outside both local suites, but
+it has its own `ci.yml` step and so gates a push. The distinction is recorded
+here because it is live again, not merely so an older doc reads as stale. So
+today two trees (`agents/agent3_testing/suite` + `tools/tests`, 359 + 348 =
+**707** tests) are outside both local suites AND run by no CI job, and a third
+(`oss/win32_atomic_io/tests`, 38 tests) is outside both local suites but IS run
+by CI.
 
-CI is still not two commands: there are **eight** pytest invocation sites across
-the two workflows that run pytest (a third, `patch-day-ddragon-sync.yml`, runs
-none): `ci.yml:165`, `:366`, `:382`, `:414`, `:438`, `:530` (`:414` and `:438`
-are `RC_REQUIRE_*=1 pytest` env-prefixed forms that a naive grep for a line
-starting with `pytest` will miss), plus `docs-guards.yml:148` and `:154`. These
-line numbers move whenever a workflow is edited - re-derive them, do not inherit
+CI is still not two commands: there are **eleven** pytest invocation sites
+across the two workflows that run pytest (a third, `patch-day-ddragon-sync.yml`,
+runs none): `ci.yml:165`, `:358`, `:374`, `:389`, `:421`, `:445`, `:507`,
+`:521`, `:608` (`:421` and `:445` are `RC_REQUIRE_*=1 pytest` env-prefixed forms
+that a naive grep for a line starting with `pytest` will miss), plus
+`docs-guards.yml:151` and `:157` (`:151` is a `python -m pytest` form, which the
+same naive grep also misses). Not counted: the two `--collect-only` probes
+embedded in `python -c` at `ci.yml:506` and `:520`, which exist to prove a step
+collected something rather than to run tests. Re-derived 2026-09-12; these line
+numbers move whenever a workflow is edited - re-derive them, do not inherit
 them.
 
 Until RM-170 the repo's habitual green bar was quietly one of the narrow two,
