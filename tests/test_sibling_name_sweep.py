@@ -811,25 +811,61 @@ def test_pre_push_hook_is_ascii():
 
 
 # --------------------------------------------------------------------------
-# KNOWN OPEN HIT - declared, named and visible; never a silent allowlist entry
+# KNOWN OPEN HITS - declared, named and visible; never a silent allowlist entry
 # --------------------------------------------------------------------------
-def test_the_known_open_hit_is_declared_with_its_reason():
-    assert sweep.KNOWN_EXCEPTIONS
-    rel, reason = next(iter(sweep.KNOWN_EXCEPTIONS.items()))
-    assert rel == "tests/test_loop_concurrency.py"
-    assert "joint" in reason.lower()
-    assert "byte" in reason.lower()
+def test_the_known_hit_register_is_empty_and_any_entry_carries_a_reason():
+    """DELIBERATELY REWRITTEN when the one declared exception was retired.
+
+    It previously asserted the entry was keyed to `tests/test_loop_concurrency.py`
+    with a "joint" + "byte" justification. That justification was false: the
+    `SHARED_SHA256` dict pins `ops/loop/slots.py` and `ops/loop/winmutex.py`
+    only, hashed as `ROOT / "ops" / "loop" / name`, so the pinning file never
+    pinned itself and the hit was RC's to redact alone. It was redacted in
+    86e4d4f0f without moving either pinned digest.
+
+    Emptiness here is a MEASUREMENT - a tree-scope sweep returns zero findings -
+    so it is asserted directly. The per-entry shape is asserted too, so the test
+    does not go quietly vacuous the moment someone adds a row back.
+    """
+    assert isinstance(sweep.KNOWN_EXCEPTIONS, dict)
+    assert not sweep.KNOWN_EXCEPTIONS, (
+        "an exception is declared while the tree scans clean. An entry must "
+        "correspond to a LIVE finding RC cannot remediate alone, never to a "
+        "file that has nothing to find.")
+    for rel, reason in sweep.KNOWN_EXCEPTIONS.items():
+        assert (REPO_ROOT / rel).exists(), f"{rel} is declared but not on disk"
+        assert len(reason) > 40, f"{rel} is declared without a real reason"
 
 
-def test_known_exceptions_are_reported_not_suppressed(synth_cfg, synth_needles):
+def test_known_exceptions_are_reported_not_suppressed(
+    synth_cfg, synth_needles, monkeypatch
+):
+    """The never-suppressed property, proven against a SYNTHETIC entry.
+
+    The real register is empty, so this monkeypatches one in rather than
+    depending on a live declaration - otherwise retiring the last exception
+    would silently retire the guard on the property as well.
+    """
+    rel = "tests/test_loop_concurrency.py"
+    monkeypatch.setattr(
+        sweep,
+        "KNOWN_EXCEPTIONS",
+        {rel: "synthetic entry, this test only - long enough to be a real reason"},
+    )
     findings = _hits(synth_cfg, synth_needles, "C:\\" + synth_cfg.names[0] + "\\x")
+    assert findings, "the synthetic probe produced no finding to annotate"
     for f in findings:
-        f.path = "tests/test_loop_concurrency.py"
+        f.path = rel
     stats = sweep.ScanStats()
     stats.scanned_bytes = 10
     text = sweep.render_report(findings, stats, synth_cfg, known_ok=True)
     assert "KNOWN" in text
-    assert "test_loop_concurrency.py" in text
+    assert rel in text
+    # ANNOTATED, not dropped: the finding row itself is still printed, and it
+    # is flagged. A suppression list would have removed the row instead.
+    assert "[KNOWN]" in text
+    for f in findings:
+        assert f"{rel}:{f.line}" in text
 
 
 # --------------------------------------------------------------------------
