@@ -69,7 +69,29 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-420** (2026-09-12, moved at the RM-413..RM-419 filing).
+  Next free id = **RM-421** (2026-09-12, moved at the RM-420 filing).
+  **RM-420 was allocated 2026-09-12** by the VERIFY-THEN-FILE slice, filed under
+  BACKLOG "Reliability / hardening", taking no roster checkbox and not changing
+  the Summary count. RM-420 is a REFUTATION ROW, not a build: a sibling carrier
+  relayed "RC's test suite overwrites the operator's live data files" as a live
+  finding, and it is ALREADY FIXED - RM-406 shipped it at `c00b9af89`, which
+  `git merge-base --is-ancestor` confirms is an ancestor of `fc6a40276`. **9 of
+  their 10 figures match RC's OWN archived BEFORE census EXACTLY**
+  (`tests/test_suite_does_not_write_live_tree.py:100-166`), so the relay is a
+  COPY of our own pre-fix state, not an independent confirmation. Their claimed
+  one-shape root cause is REFUTED as a universal (true at
+  `tft/placement_aggregator.py:21`; false at `coaches/_base_coach.py:660`,
+  `core/coaching_timestamps.py:33` and `tools/hotkey_listener.py:95`, all three
+  of which already derive at CALL time or have no constant to patch), and their
+  ordering-effect corroboration is REFUTED by the 120-second idle control
+  already recorded at `tests/test_inbox_responder_runner.py:203-218`. Measured
+  this slice in an isolated worktree with `RC_TRACER_ROOT` on the LIVE root:
+  **0 units / 0 files / 0 tests** across 239 passed + 1 skipped, with a planted
+  positive control proving the instrument fires at **25 units / 2 files** - the
+  control RM-408 filed as missing. Full-suite scale left **UNVERIFIED** on
+  purpose. ENGINE-IMPACT NONE and no `ENGINE_VERSION` move. The `ROADMAP.md`
+  restatement moved in the SAME edit.
+  Earlier next-free pointer (2026-09-12, moved at the RM-413..RM-419 filing).
   **RM-413 through RM-419 were allocated 2026-09-12** by the five-slice DOC SYNC
   session (LEDGER 1400-1404), all seven filed under BACKLOG "Reliability /
   hardening", none taking a roster checkbox and none changing the Summary count.
