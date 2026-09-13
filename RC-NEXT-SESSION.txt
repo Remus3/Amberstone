@@ -1,56 +1,62 @@
 NEXT SESSION
 ------------
-Task: Continue the fleet TOOLING-TIER lane. RC has attacked pin v1.3 (5 FATAL)
-and is waiting on the contract owner's response. Next unit is whichever lands
-first: (a) respond to LW's v1.4 or their defence of v1.3, (b) answer the open
-fleet question RC put on the table - whether comparability across trees is
-reachable at all, or whether every tree should publish raw per-event rows and
-let each reader score them (RC has already shipped all 198 of its rows, so it
-is testable), or (c) if the fleet lane is quiet, pick up RM-422.
+Task: Fleet calibration lane. RC's own scoring convention v1 FAILED its
+calibration gate twice (NOT CALIBRATED, 0 of 4 and 1 of 4 anchors), so RC is
+NOT scoring RSC's 96 rows and must not until the instrument is repaired. The
+next unit is the convention's three UNEXECUTABLE clauses plus its
+self-contamination, OR answering LW's open question. If the lane is quiet,
+pick up RM-422.
 
-Context to probe first:
-  - moon_sync_inbox/ - read newest first, then `python tools/rc_facts.py --mark-inbox-seen`
-  - docs/REFUTATION_COST_MEASUREMENT_2026-09-12.md - RC's measurement, now carrying
-    a correction and a section 9
-  - docs/REFUTATION_GATE_BACKTEST_2026-09-12.md - why the re-grounding gate died
-  - docs/_rescore/ - 198 per-event rows, tally.py, adjudication, band sweep,
-    v13 attack files. tally.py and band_recompute.py are runnable.
-  - docs/LEDGER.md entry 1413, WAKEUP_NOTES 2026-09-12d
+Context: moon_sync_inbox/ newest-first then `python tools/rc_facts.py
+--mark-inbox-seen`; docs/_rsc_score/ (RC_SCORING_CONVENTION_v1.md,
+PREREGISTRATION.md, CALIBRATION.md 0-of-4, CALIBRATION_REPLICATION.md 1-of-4,
+P1_RESULT.md, scores_A/B, scores_cal_1/2/3, tally_cal.py, tally_ab.py - all
+runnable); docs/_overlap/ (the n=60 pre-registered pass); LEDGER 1415;
+WAKEUP_NOTES 2026-09-12f.
 
-Acceptance: any number RC publishes to the fleet carries its aggregation rule and
-its individuation convention named, and any claim about another tree is verified
-against that tree's own note rather than relayed.
+Open threads, each self-contained:
+ (a) RC owes LW an answer it CANNOT settle alone - LW's two-value replication
+     (22 of 22 on RC's corpus, 24 of 24 on RSC's, "zero counterexamples") has
+     the shape of a TRIVIALLY-TRUE predicate. Under the trivial reading (either
+     set merely CARRIES PROXY-MEASURE or ADVERSARY) it is an analytic identity
+     of the family grouping and cannot fail anywhere; under the informative
+     reading (the DIFFERING value is one of the two) RC got 13 of 15 with
+     counterexamples chunk3-17 and chunk3-36. Settling it needs LW's own script
+     (docs/_crossscore/bvsc.py, rsc.py). Ask; do not assert.
+ (b) RC's convention has 3 UNEXECUTABLE clauses and a self-contamination
+     channel: it RECITES RC's own filed counts in its own text and every scorer
+     must read it verbatim. Neither is repairable by amendment - the file is
+     pre-registered. A v2 is a NEW pre-registration, not an edit.
+ (c) fix_chain is VACUOUS under clause 6.1 in any partitioned pass, so the
+     fix-of-a-fix anchor measured the floor rule and not the corpus.
+ (d) Pre-registration 7b, the per-chunk breakdown and the Wilson intervals are
+     still unadjudicated from the n=60 pass.
 
-Do NOT redo:
-  - Do NOT re-propose the pre-dispatch re-grounding gate. Built, back-tested,
-    measured-refuted. 90 pct refusal, 0 genuinely stale.
-  - Do NOT re-score RC's corpus against v1.3. Deliberately not done - the contract
-    is still under attack and its owner asked that it be attacked first.
-  - Do NOT quote RC's bands. Withdrawn: all four intervals are non-monotonic.
-    Only fine-grain figures are quotable, with the rule named.
-  - Do NOT "repair" the nine baselined citations in BACKLOG.md. They are in
-    _KNOWN_BROKEN with written reasons; a repair was tried and reverted.
-  - Do NOT re-plumb tools/live_write_tracer.py for pathlib - io.open is already
-    patched at :489-495. Confirm with a mutation arm instead.
+Acceptance: any number RC publishes carries its GRAIN, its AGGREGATION RULE and
+its ADJUDICATOR in the same sentence; any claim about another tree is verified
+against that tree's own note, never relayed; and no share is published off a
+corpus RC's instrument has not calibrated against.
 
-Two operator steers drained 2026-09-12, still open:
-  1. The live-write row gets NO separate recovery pass. Fold a regeneration
-     assertion into the SAME row: call tft.placement_aggregator.update_heatmap()
-     once, then assert the live heatmap EQUALS a freshly rebuilt one. Make it
-     anti-vacuous - seed a rating with tft_unit_positions in a tmp ratings dir as
-     a positive control so it cannot pass on two empties.
-  2. LW retracted its tracer instrument (patched builtins.open/os.replace/
-     os.rename, missed pathlib), so every figure LW put on the channel about RC
-     is a FLOOR. RC is unaffected. Worth lifting is LW's IDEA set, not code:
-     negative arms (a read is not reported, a write outside the watched root is
-     not reported) and an arm asserting its own known limit.
+Do NOT redo: re-score RC's corpus against contract v1.3 (LW ended the clause
+set and recommends no tree score against it); re-propose the pre-dispatch
+re-grounding gate (measured-refuted, 90 pct refusal, 0 genuinely stale); quote
+RC's withdrawn bands (all four intervals non-monotonic); quote the n=60
+CONFIRMED verdict without its FAMILY-grain INDETERMINATE half; quote P1's
+13.6364 pct as a vindication - it measures a KNOWN-DEFECTIVE instrument and
+CONFIRM is the weaker outcome on a same-model design; re-run the calibration
+expecting a different verdict; "repair" the nine baselined BACKLOG citations
+(a repair was tried and reverted); re-plumb live_write_tracer.py for pathlib
+(io.open already patched at :489-495, proven by mutation).
 
-Open and untouched: RM-422 (core.longpaths unset, fresh clone fails partway on
-long docs/_archive paths), RM-423 (OPERATOR-GATED, no default recommended).
-RC's 18 files in the machine-scope scratch surface outside the repo root are
-untouched - removal is a halt-and-ping act.
-
-Standing boundary: halt and ping before any byte leaves the tree, EXCEPT the
-sync inboxes, which are pre-authorised for writes (operator 2026-09-12).
+Three traps this session paid for:
+ - A doc that QUOTES a broken citation REPRODUCES it. The citation guard went
+   red THREE times from quoted corpora; the fix is scoping the frozen corpus
+   into _HISTORY_PREFIXES in tools/citation_audit.py, never editing the corpus.
+ - A subagent's garbled final summary is NOT evidence the agent died. Probing
+   the tree is. Re-dispatching on one produced THREE concurrent calibration
+   passes writing one directory.
+ - Reading inbox notes with `cd .../moon_sync_inbox` DRIFTS the session cwd and
+   breaks any relative-path hook. RC survives only because RC's hooks use
+   absolute paths.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
