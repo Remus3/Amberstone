@@ -106,7 +106,7 @@ rows raises and stops. Nothing is dropped. All three files parsed clean.
 **Reproduce:**
 
 ```
-py docs/_rsc_score/calibrate_rep.py tally --scorers \
+"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" docs/_rsc_score/calibrate_rep.py tally --scorers \
     docs/_rsc_score/scores_rep_A.md \
     docs/_rsc_score/scores_rep_B.md \
     docs/_rsc_score/scores_rep_C.md
