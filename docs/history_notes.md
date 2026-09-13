@@ -119,6 +119,85 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-12c - SESSION WRAP doc sync: LEDGER 1407-1412, two rows filed, and three of the merger's OWN errors written into the record
+
+LEDGER 1407-1412. DOCS ONLY - six markdown files, zero production files, zero
+test files, ENGINE-IMPACT NONE. Nothing pushed. The six unpushed commits this
+wrap covers are `86e4d4f0f`, `93f0e3efc` + merge `910cf8204`, `1d6d1e882` +
+`2dc0cff76`, `3b5038fcb`, `14c0eadd2` + merge `dd0f43f78`, `54743bec0`.
+
+**WHAT SHIPPED, one line each.** 1407 - `tools/outbound_reciprocity_check.py`,
+RC's own answer to a sibling's delivery defect: **0 undelivered of 87**, scored
+on a CONTENT DIGEST never a name, read-only across the boundary pinned at the
+syscall by `sys.addaudithook`. 1408 - the fifth sibling-name escape CLOSED
+UNILATERALLY and `KNOWN_EXCEPTIONS` retired to `{}`. 1409 -
+`docs/REFUTATION_COST_MEASUREMENT_2026-09-12.md`, N = 42 ledger entries. 1410 -
+the sweep's TREE arm wired into CI behind a gate that cannot emit an unearned
+green. 1411 - the RM-296d regression fixed by grading behaviour instead of
+source text. 1412 - this wrap.
+
+**THE DURABLE PART IS THAT THREE ERRORS WERE THE MERGER'S OWN, and all three
+are in `docs/LEDGER.md` rather than smoothed away.**
+1. **A CRLF defect was ASSERTED into `oss/win32_atomic_io/LICENSE` and it does
+   not exist.** Re-measured: **12115 bytes, CR 0, LF 219**. The "219 CR" was the
+   file's LINE COUNT from a `grep -c` whose pattern degraded to empty. The
+   FIRST measurement was right and said 0; the second was run because the first
+   disagreed with a hypothesis already held, and was promoted over it without a
+   cross-check. **`feedback_empty_grep_is_a_claim_about_the_pattern` INVERTED -
+   a FULL-COUNT grep is equally a claim about the pattern**, and a count that
+   matches a plausible expected magnitude is the most dangerous output the tool
+   produces. Re-derive by a different mechanism whenever a re-measurement
+   overturns an earlier one in the direction you wanted.
+2. **Two agents were dispatched into the MAIN TREE concurrently**, against
+   `feedback_verifier_needs_a_frozen_tree`. One saw the other's writes, watched
+   the modified-file count move under it, and **misattributed them to an
+   unrelated interactive session**. Numbers were re-derived and stand, but the
+   second pass is what is relied on. **The main tree is a shared mutable
+   resource; if two agents must run, at most one of them writes.**
+3. **"Roughly 10 tree-scope findings" was the wrong SCOPE and reads as a live
+   leak.** Those were **DIFF-arm** hits over **200-plus commits of
+   ALREADY-PUBLISHED history** - commit messages and historical added lines.
+   **Tree scope is 0 before and 0 after.** Re-measured at the end of this wrap
+   with the sweep FULLY ARMED (4 name slots, 4 counterparty codes from
+   per-host config): **clean, 630763605 bytes, 4762 files, 0 commit messages,
+   482 binary/LFS blobs not content-scanned, exit 0.**
+
+**TWO ROWS FILED to `BACKLOG.md` ("Reliability / hardening"), pin advanced by
+TWO in `docs/DS_SWEEP_TRACKER.md` and `ROADMAP.md` in the same commit.**
+**RM-422** - `core.longpaths` UNSET at local, global AND system scope; longest
+tracked path **154 chars** (all five longest under
+`docs/_archive/2026-07-26-orphaned-audit-drops/`); clone-ROOT budget therefore
+**105 chars** at MAX_PATH 260. The session scratchpad root is 114, which is why
+a checkout there aborted partway - and a later enumeration over the directory
+the abort left MISSING printed a clean total, **a vacuous measurement arriving
+through the filesystem rather than through a glob**. Fix has a CONFIG half and
+a PATH-LENGTH half; the row refuses to pick one. **RM-423** - OPERATOR-GATED,
+**no default recommended**: the lane refs cannot be pushed while the sweep
+re-scans already-published history on every lane push. The bytes are already on
+`origin/main` and all six lane worktrees sit at `86e4d4f0f`, an ancestor of it,
+so nothing is stranded today.
+
+**`CLAUDE.md` corrected at EXACTLY ONE sentence** - the Session Default block
+still claimed the fifth escape "remains as a KNOWN, NAMED, VISIBLE exception
+(declared in the tool)" while the tool's register is `{}`. Replaced with the
+measured close plus an explicit do-not-restore. 53296 bytes, budget 61440.
+
+**`ROADMAP.md` 72941 -> 75744 bytes** (budget 81920). Three rows relocated
+VERBATIM to a new `## 2026-09-12b` block in `docs/ROADMAP_HISTORY.md`: the
+FIFTH ESCAPE row, the five-slice announcement row, and the RM-420 FILED row -
+**6261 chars relocated against six new rows added, so the pass ended NET
+POSITIVE by 2803 bytes and is recorded as such rather than being forced to a
+net reduction by gutting fences.** Every id and every fence stayed reachable.
+
+**NEXT SESSION.** Nothing is blocked. The six commits above are still UNPUSHED
+by instruction - **read RM-423 before pushing anything**, because the lane refs
+and `main` are different questions and only one of them is gated. Do NOT
+re-spell the next-free id in a ledger entry; a bare mention classifies as an
+ALLOCATION and collides with the pin it announces
+(`tests/test_rm_id_registry_drift.py`).
+
+---
+
 # 2026-09-12b - FIVE slices merged (RM-233 / RM-296d / RM-313 / RM-318 / RM-295a+b), and THREE filed specs were wrong in ways that mattered
 
 LEDGER 1400-1404. Five `--no-ff` merges on `main`: `14c5b4571` (RM-233),
