@@ -1,174 +1,56 @@
 NEXT SESSION
 ------------
-SHAPE: HEADLESS LOOP (operator, 2026-09-11 wrap). The next session does NOT run
-      attended. It runs as a headless loop and does not ask permission per
-      cycle. The four standing properties still apply INSIDE each cycle -
-      orchestrated, multi-agent, self-adjudicating, self-adversarial - so the
-      loop body is still a merger plus worktree slices plus an independent
-      verifier gate, never solo inline work.
+Task: Continue the fleet TOOLING-TIER lane. RC has attacked pin v1.3 (5 FATAL)
+and is waiting on the contract owner's response. Next unit is whichever lands
+first: (a) respond to LW's v1.4 or their defence of v1.3, (b) answer the open
+fleet question RC put on the table - whether comparability across trees is
+reachable at all, or whether every tree should publish raw per-event rows and
+let each reader score them (RC has already shipped all 198 of its rows, so it
+is testable), or (c) if the fleet lane is quiet, pick up RM-422.
 
-      THE BOUNDARY, unchanged and non-negotiable: HALT AND PING THE OPERATOR
-      BEFORE ANY BYTE LEAVES THE TREE. That means before any write, delete or
-      lock acquisition outside the repository root; before any edit to a
-      cross-repository byte-pinned or grammar-pinned artifact; before arming
-      any task; and before any PUSH WHOSE DIFF CAN LEAK. The push half is
-      gated on DIFF CONTENT, not destination: an ordinary push that passes the
-      suites and the pre-push sibling-name sweep proceeds, but a diff touching
-      ops/loop/slots.py or ops/loop/winmutex.py (SHARED_SHA256 at
-      tests/test_loop_concurrency.py:474, parametrised at :542) HALTS. There is
-      NO TIMEOUT - RC halts and WAITS. Never proceed after a delay; a bilateral
-      rule that auto-proceeds is a unilateral rule with extra steps.
+Context to probe first:
+  - moon_sync_inbox/ - read newest first, then `python tools/rc_facts.py --mark-inbox-seen`
+  - docs/REFUTATION_COST_MEASUREMENT_2026-09-12.md - RC's measurement, now carrying
+    a correction and a section 9
+  - docs/REFUTATION_GATE_BACKTEST_2026-09-12.md - why the re-grounding gate died
+  - docs/_rescore/ - 198 per-event rows, tally.py, adjudication, band sweep,
+    v13 attack files. tally.py and band_recompute.py are runnable.
+  - docs/LEDGER.md entry 1413, WAKEUP_NOTES 2026-09-12d
 
-      CONSEQUENCE FOR THE GATING ITEM BELOW: the joint re-pin IS a halt point
-      by definition, so the loop can CHECK the inbox every cycle but must NOT
-      execute a re-pin unattended. If RSC has replied, halt and ping; do not
-      re-pin inside the loop. If they are still silent, the loop proceeds to
-      the fallback and then to ROADMAP rows, one row per cycle, shipped end to
-      end. The loop must never arm another repo's responder.
-
-Task: Check the cross-repo inbox FIRST. The JOINT RE-PIN of SHARED_SHA256 is
-      still the gating item, SIXTH session running - RSC silent since
-      moon_sync_inbox/2026-09-09-2100-from-RSC. If they have replied, execute
-      the joint re-pin. NEVER re-pin unilaterally. NEVER regenerate the digests
-      from local disk - both trees hashing equal IS the acceptance, not a note
-      claiming it. BYTE-level copy only, never write_text: write_text turns LF
-      into CRLF on Windows and the pin is on bytes. If they are still silent,
-      take the fallback below.
-
-      FALLBACK - MEASURED ON DISK THIS RUN, not inherited from a row. Two
-      tracked test-bearing directories are collected by NEITHER CI tree, so
-      707 green tests are run by nobody:
-
-        * agents/agent3_testing/suite/  - 359 collected, 359 PASSED in 24.43s
-        * tools/tests/                  - 348 collected, 348 PASSED in 30.15s
-
-      Both run locally clean at HEAD fc0058441 (pytest -q --tb=line
-      --timeout=120 -p no:randomly, observed this run). CI runs only
-      `pytest tests/ agents/daemon_slayer/tests/` - see .github/workflows/
-      ci.yml:165 and ci.yml:537, both read this run; docs-guards.yml runs a
-      selected-doc subset only. `git ls-files "*/test_*.py" "test_*.py"` minus
-      those two CI roots returns EXACTLY these two dirs and nothing else, so
-      the population is closed, not a sample.
-
-      This CONFIRMS the RM-294 LANE 7 claim that the prior hand-off carried as
-      "Unmeasured, NOT started" - and it extends it: the row named only
-      agents/agent3_testing/suite, and tools/tests is a second one it missed.
-      Both being GREEN is what makes this cheap: wiring them in costs ~55s of
-      runner time and cannot go red on arrival. **Do NOT assume green means
-      meaningful** - a suite nobody runs can also be a suite that asserts
-      nothing. Before wiring, sample it for the INDEX_testing_traps classes
-      (empty-enumeration always-green, mocks of themselves) and say what you
-      found; a green orphan wired in without that check just buys CI minutes.
-
-Context: moon_sync_inbox/ (read RC's own; newest first - newest overall is
-      2026-09-11-0030-from-LW, already read, no reply owed). Nothing was armed
-      last session and nothing left the tree beyond the ordinary push. The
-      pinned pair is ops/loop/slots.py + ops/loop/winmutex.py, pinned by
-      SHARED_SHA256 at tests/test_loop_concurrency.py:474, parametrised at
-      :542; the fifth sibling-name escape sits INSIDE that block at :492 as a
-      two-word name split across a comment line wrap, shipped as a known named
-      VISIBLE exception at tools/sibling_name_sweep.py:112.
-
-      CITATION WARNING - RM-405 (fc0058441) MOVED CODE IN _state_builder.py.
-      It inserted 83 lines near the top of dashboard/_state_builder.py and 5
-      into dashboard/_lcu_inprocess.py, so every offset below them shifted
-      (+82 and +5 respectively; +81 for the two lines inside the edited
-      docstring). Current values, all re-derived from disk this run:
-        dashboard/_state_builder.py:81   RM-405 rationale comment block starts
-        dashboard/_state_builder.py:103  _CALLER_DEGRADE_LOG_THROTTLE_S = 60.0
-        dashboard/_state_builder.py:108  def _log_inprocess_caller_degrade
-        dashboard/_state_builder.py:155  def _read_lcu_snapshot
-        dashboard/_state_builder.py:163  the "Landed DARK" docstring line
-        dashboard/_state_builder.py:173  the RC_LCU_INPROCESS gate
-        dashboard/_state_builder.py:177  the now-speaking except branch
-      WAKEUP_NOTES.md:144 (the 2026-09-11a entry) still reads
-      _state_builder.py:92. That was TRUE AT ITS OWN WRAP and is deliberately
-      left as the historical record - do NOT treat it as a live citation and
-      do NOT "fix" a dated wakeup entry. The prior version of THIS file
-      carried :92 and :96 for the same reason; they are gone from here now.
-
-      Cadence fact, already measured - do NOT re-derive it from a comment:
-      build_state() runs at RC_STATE_CADENCE_SEC, default 0.5s, floor 0.1
-      (dashboard/routes_state.py:167-178), about 2 Hz. The "1.0s TTL" prose is
-      STALE and a build agent already inherited that wrong number once. It
-      lives at routes_state.py:211 (the _state_payload_cached docstring) and
-      again at :383 - NOT at :210, which is the bare `def` line and is the
-      offset two older records quote. The L3 path is also DARK today -
-      _state_builder.py:173 gates it on RC_LCU_INPROCESS, unset.
-
-      WRAP-GATE WARNING, measured at the RM-405 wrap: tools/stop_claim_gate.py
-      blocked that wrap FOUR times, on headline numbers that were all measured
-      by a SUBAGENT and none by the main thread, so the gate read them as
-      unbacked - correctly. A verifier's CONFIRM grades the SLICE; it is still
-      not the main thread's own evidence. Re-run in the MAIN thread whatever
-      you intend to PRINT, or attribute it to the agent that ran it. Memory:
-      reference_stop_gate_a_subagent_measurement_is_not_yours.
-
-      Three of those numbers re-ran and matched exactly. The fourth was first
-      RETRACTED as unreproducible, which was WRONG: tools/md_guard_selector.py
-      is a tracked CLI that emits the selection and tests/
-      test_ci_docs_guard_coverage.py:56 already names it. Re-run at HEAD
-      c7c7247b2: 65 modules, 1777 passed, 1 skipped, 327 subtests, 149.86s.
-      The filed figure said 1782 and was over by 5.
-
-      CRLF TRAP found doing that, and it matters MORE than the count - it is
-      the same shape as the fallback work below. Piping the selector's stdout
-      straight into pytest printed `no tests ran in 0.05s` and EXITED 0: the
-      output carries \r, every path was malformed, pytest matched nothing, and
-      the run reported success. That is a silently always-green step over zero
-      tests, arriving through line endings rather than through a bad guard.
-      `tr -d '\r'` fixes it. When wiring the orphan suites, ASSERT A NONZERO
-      COLLECTED COUNT - never trust an exit code alone.
-
-      KNOWN GATE LIMITATION, do not fight it: stop_claim_gate scans the WHOLE
-      transcript, so a number corrected in a later turn keeps matching its
-      original occurrence forever. Backticking suppresses it only in the turn
-      where it appears, and a past turn cannot be edited. Correct the number in
-      the DOCS, say so plainly, and move on - do not re-loop the wrap over it,
-      and never patch CLAIM_COUNT (already REFUTED).
-
-      Live state at wrap: pid 23096 alive, mode=client, last_reload_ok=true.
-      Probe ops/runtime/health.json and https://127.0.0.1:8888/api/state
-      before assuming anything.
-
-Acceptance: either both trees hash equal after a JOINT re-pin (both hashing
-      equal IS the acceptance, not a note claiming it), or a named RM row
-      shipped with a red-before-green guard whose ANTI-VACUITY is PROVEN by
-      stubbing the parser/extractor/log-call empty and watching arms fail -
-      not merely asserted - and CI green on the FINAL pushed HEAD. Note that
-      a `cancelled` CI run is SUPERSESSION by the next push, not failure;
-      only the final HEAD's run is authoritative.
+Acceptance: any number RC publishes to the fleet carries its aggregation rule and
+its individuation convention named, and any claim about another tree is verified
+against that tree's own note rather than relayed.
 
 Do NOT redo:
-  - RM-405. SHIPPED 2026-09-11 as fc0058441 (LEDGER 1391). The CALLER seam of
-    the in-process L3 read now logs its fault, throttled, with no str(exc).
-  - RM-403, RM-404, RM-312. All SHIPPED 2026-09-11 (LEDGER 1388/1389/1390).
-  - RM-387 and RM-388. SHIPPED 2026-09-08 (LEDGER 1368/1369). The 09-10e
-    hand-off named them as its fallback and they had already shipped; ROADMAP
-    is now corrected and tests/test_roadmap_backlog_disposition_drift.py
-    guards the class.
-  - Widening that guard's binding rule. A disposition binds to the NEAREST
-    PRECEDING id only. RM-281/RM-283 and RM-204 are pinned controls; a first
-    parser called RM-204 a fifth drift row and was NARROWED, never allowlisted.
-  - Hand-fixing caret escaping in a printed schtasks block. RM-404's answer is
-    Register-ScheduledTask, which takes exe and args as SEPARATE parameters.
-    tools/liveclient_relay.py:14 measured FINE and must stay untouched.
-  - A general bare-`except Exception` sweep. RM-312's fence still stands even
-    though RM-405 closed the one site it had named as the direct caller. The
-    13 remaining sites in dashboard/_state_builder.py were CENSUSED this run
-    and are real (:393 :509 :542 :590 :607 :621 :645 :667 :725 :727 :745 :768
-    :834, each `except Exception:  # noqa: BLE001` with a silent default) -
-    but a census is not a mandate, and each one needs its own argument for why
-    a log line there is better than silence. Several are hot per-tick paths.
-  - Acting on RM-312's `tools/lcu_agent.py:1612` sibling entry as written. Its
-    PREMISE is wrong, not just its offset: that file has not moved, :1612 is
-    `state = capture_state()` inside _state_push_loop, and lcu_agent.py does
-    not import champ_select_shape at all any more (RC2 L3 moved the shaping to
-    lcu/snapshot_shape.py). Re-measure from scratch or drop it.
-  - Arming any responder. Nobody's is armed - LW's is built and deliberately
-    disarmed (D5), RC's RC-InboxResponder is Ready/disarmed. Arming is an
-    operator act, and an unattended loop must never arm another repo.
-  - Replying to the LW notes. All read; none requests a reply.
+  - Do NOT re-propose the pre-dispatch re-grounding gate. Built, back-tested,
+    measured-refuted. 90 pct refusal, 0 genuinely stale.
+  - Do NOT re-score RC's corpus against v1.3. Deliberately not done - the contract
+    is still under attack and its owner asked that it be attacked first.
+  - Do NOT quote RC's bands. Withdrawn: all four intervals are non-monotonic.
+    Only fine-grain figures are quotable, with the rule named.
+  - Do NOT "repair" the nine baselined citations in BACKLOG.md. They are in
+    _KNOWN_BROKEN with written reasons; a repair was tried and reverted.
+  - Do NOT re-plumb tools/live_write_tracer.py for pathlib - io.open is already
+    patched at :489-495. Confirm with a mutation arm instead.
 
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      git log + ROADMAP.md.
+Two operator steers drained 2026-09-12, still open:
+  1. The live-write row gets NO separate recovery pass. Fold a regeneration
+     assertion into the SAME row: call tft.placement_aggregator.update_heatmap()
+     once, then assert the live heatmap EQUALS a freshly rebuilt one. Make it
+     anti-vacuous - seed a rating with tft_unit_positions in a tmp ratings dir as
+     a positive control so it cannot pass on two empties.
+  2. LW retracted its tracer instrument (patched builtins.open/os.replace/
+     os.rename, missed pathlib), so every figure LW put on the channel about RC
+     is a FLOOR. RC is unaffected. Worth lifting is LW's IDEA set, not code:
+     negative arms (a read is not reported, a write outside the watched root is
+     not reported) and an arm asserting its own known limit.
+
+Open and untouched: RM-422 (core.longpaths unset, fresh clone fails partway on
+long docs/_archive paths), RM-423 (OPERATOR-GATED, no default recommended).
+RC's 18 files in the machine-scope scratch surface outside the repo root are
+untouched - removal is a halt-and-ping act.
+
+Standing boundary: halt and ping before any byte leaves the tree, EXCEPT the
+sync inboxes, which are pre-authorised for writes (operator 2026-09-12).
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
