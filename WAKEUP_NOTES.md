@@ -2,7 +2,31 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the SESSION WRAP doc-sync (relocated `2026-09-11d`, the lane-8 pre-flight, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and left the archive at 959 - read that count off the tool's own output, never off a recollection; newest 3 = `2026-09-12c` this wrap, `2026-09-12b` the five-slice merge, `2026-09-12a` RM-412 C1 OSS extraction). The pass before this one relocated `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the discovery-axis + inter-scorer wrap (relocated `2026-09-12b` the five-slice merge and `2026-09-12a` RM-412 C1 OSS extraction, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 2 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 961" - read those counts off the tool's own output, never off a recollection; newest 3 = `2026-09-12e` this wrap, `2026-09-12d` the fleet tooling-tier lane, `2026-09-12c` the prior SESSION WRAP doc-sync). The pass before this one relocated `2026-09-11d`, the one before that `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-12e - Discovery axis verified, RM-408 shipped, and an n=60 inter-scorer experiment that CONFIRMED LW and found five defects of RC's own
+
+Four commits, NONE PUSHED (the merger pushes): `0d1528b8b` (RM-408 planted-specimen control), `56cd1fdac` (discovery-axis verification), `3434990c0` (n=60 pre-registration), `a489a816d` (the n=60 result). LEDGER 1414. Tier-1: one new test file, zero production files, the rest docs. ENGINE-IMPACT NONE.
+
+**RM-408 SHIPPED and the instrument was PROVEN BY MUTATION, not self-graded.** `tests/test_live_write_tracer_selftest.py`, 6 tests. Positive arms through the `builtins.open` append route, the `os.replace` atomic route and the pathlib route; TWO negative specimens outside every watched root; scrub before the report is built; anti-vacuous evidence graded against a SECOND ORACLE (on-disk sizes plus patch-identity flags); a regeneration arm re-firing the control twice in one process. **The proof: deleting `io.open = traced_open` reds exactly three named arms and drops the report from 3 files to 2 - reproduced independently by a verifier.** **`tools/live_write_tracer.py` IS UNCHANGED** - the `io.open` pathlib patch was confirmed already present at `:489-495` and MEASURED rather than re-plumbed. BOTH drained operator steers landed in this one row, so there is NO separate recovery pass. The merger added one cleanup line so the control leaves no `_scratch` directory, verified against a pre-existing non-empty `_scratch`. Limits NOT claimed away, and in the module docstring: subprocess blindness, and routes-fire is not watch-set-complete.
+
+**DISCOVERY AXIS** (`docs/DISCOVERY_AXIS_RC_2026-09-13.md`). LW's RC-attributed claims verified: **36 GATE-FIRED-CAUGHT rows and 29 of them SELF-AUDIT, both CONFIRMED by two independent routes.** **RC's OWN published +9.0 union arm does NOT reproduce at ROW grain** - its 18 movers are enumerated in no RC artifact; composition is reconstructable only at CLASS grain (8 PROXY-MEASURE pre-empted by rank 1 at `docs/_rescore/v13_attack_clauses2to5.md:187`, plus ADVERSARY = 10). A collision recorded rather than smoothed: two distinct routes both land on 170/198. **Part 3's headline was DOWNGRADED by RC's own refutation pass from CONFIRMED to NOT ESTABLISHED, and explicitly NOT to REFUTED**, because `discovery` and `refuter` were written by one scorer in one pass, making the tiebreaker circular; non-circular residue 3 rows. Two riding corrections: 6 unambiguous RUN rows to 5, and a "27 of 29" sentence that had swapped its own predicate.
+
+**n=60 INTER-SCORER OVERLAP, PRE-REGISTERED BEFORE ANY ROW WAS SCORED** (`docs/_overlap/PREREGISTRATION.md`): deterministic seedless interleaved selection, longest same-chunk run 1 so scorer is FULLY CROSSED with chunk - repairing a confound LW reported against LW's own design - mechanically verified blinding, confirm/refute thresholds pinned in advance. **RESULT** (`docs/_overlap/RESULT.md`): three blind scorers, 60 rows, LW's convention v1 unamended. `prevention` SET identity per row: A-B 44/60, A-C 48/60, B-C 41/60; pooled 133/180 agree, 47/180 = 26.1111 pct disagree; **verdict CONFIRMED against the pinned bars**, and per the pre-registration's own section 8 that is the STRONGER verdict, since same-model scorers bias toward agreement. **THE HALF THAT MUST TRAVEL WITH IT: FAMILY grain is pooled 154/180 = 85.5556 pct agree, 14.4444 pct disagree, which FAILS the same 15.0 bar by 0.5556 points - INDETERMINATE at the grain RC itself argues the instrument underwrites.** LW asked to be refuted and RC's larger sample confirmed them instead.
+
+**STRUCTURAL FINDING, reproduced independently by all three scorers: LW's convention CITES v1.2's eight `prevention` definitions and does not CONTAIN them.** Each scorer manufactured working definitions and diverged on the repair. Qualifier RC must keep: **RC's own harness forbade scorers from fetching v1.2, so part of that gap is RC's design.**
+
+**FIVE DEFECTS OF RC'S OWN**, found by an independent pass over RC's own result, all recorded: (1) the FAMILY INDETERMINATE was absent until the refuter demanded it - RC applying its own reading selectively, in the direction flattering RC; (2) a FALSE sensitivity claim - the mixed-set rule is inert here, result ROBUST to both alternatives; (3) attribution overstated 19 of 23 to approximately 15 of 23, pooled 39-of-47 WITHDRAWN; (4) a blanket "nothing was counted by eye" that is false for the attribution section; (5) **a REAL BLINDING LEAK - `chunk1-04`'s retained `quote` carries the stripped `origin_time` value in plain prose, all three scorers returned it, and the name-only blinding check is structurally blind to that class**, so RC's 100.0 pct `origin_time` agreement may be inflated and must NOT be run as a clean contrast against LW's 89.7 pct. RSC argued exactly this hours earlier and gets the credit.
+
+**DELIVERY:** two notes delivered to all four sibling inboxes, both verified DELIVERED 4 of 4 by content digest.
+
+**NOT REPORTED, do not assume covered:** pre-registration item 7b, the per-chunk breakdown, Wilson intervals.
+
+**DO NOT REDO.** (1) Do NOT re-propose the pre-dispatch re-grounding gate - measured-REFUTED, evidence `docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`. (2) Do NOT re-score RC's corpus against contract v1.3 - LW has ENDED the clause set and recommends no tree score against those clauses. (3) Do NOT quote RC's WITHDRAWN bands; only fine-grain figures, and only with the aggregation rule named. (4) Do NOT "repair" the nine baselined `BACKLOG.md` citations - `_KNOWN_BROKEN` in `tests/test_citation_drift_guard_rm171.py`, with written reasons. (5) Do NOT re-plumb `tools/live_write_tracer.py` for pathlib - the patch is present at `:489-495` and was measured. (6) Do NOT quote the n=60 CONFIRMED verdict without its FAMILY-grain INDETERMINATE half.
+
+**NEXT SESSION - open threads.** (a) **RSC has offered 96 rows that are BLIND BY CONSTRUCTION** - never scored, so there is no strip to trust - **and invited a scorer. That is the cleanest available input for the scorer term and the natural follow-on.** (b) Pre-registration 7b, the per-chunk breakdown and Wilson intervals remain UNADJUDICATED. (c) RM-422 and RM-423 remain OPEN; RM-423 is OPERATOR-GATED. (d) **`tests/test_citation_drift_guard_rm171.py::test_no_net_new_broken_citation` is RED AT HEAD and this wrap did NOT cause it - confirmed by stashing the wrap's edits and re-running, which still fails.** The one net-new entry is `docs/_overlap/sample_60_blinded.md -> ORCHESTRATION_PLAN.md:916-919`, landed by `3434990c0`; `ORCHESTRATION_PLAN.md` is NOT a tracked file. **It is a QUOTED citation inside a blinded corpus row** (`docs/_overlap/sample_60_blinded.md:117`, a scored row's own `claim` text), not a live citation the doc is making, so the repair is a `_KNOWN_BROKEN` entry WITH A REASON or a corpus exclusion for `docs/_overlap/`, NOT an edit to the blinded sample - editing that file would corrupt the frozen experiment corpus. Left for the merger because the guard file was outside this wrap's named file set.
 
 ---
 
@@ -102,178 +126,3 @@ and `main` are different questions and only one of them is gated. Do NOT
 re-spell the next-free id in a ledger entry; a bare mention classifies as an
 ALLOCATION and collides with the pin it announces
 (`tests/test_rm_id_registry_drift.py`).
-
----
-
-# 2026-09-12b - FIVE slices merged (RM-233 / RM-296d / RM-313 / RM-318 / RM-295a+b), and THREE filed specs were wrong in ways that mattered
-
-LEDGER 1400-1404. Five `--no-ff` merges on `main`: `14c5b4571` (RM-233),
-`adfcb195a` (RM-296d), `d7596d3d2` (RM-313), `8b688761f` (RM-318),
-`1cb82683e` (RM-295a+b). All Tier-1, ENGINE-IMPACT NONE across all five - no
-`ENGINE_VERSION` move, no DS `:8860` bounce, no Share mirror, no frozen file.
-This session was DOCS ONLY: no source file was touched and nothing was pushed.
-
-**WHAT SHIPPED, one line each.** RM-233 - `core/match_db.py` reads the WAL
-pragma result, `save_match` widened to `-> bool` (still never raises), negative
-`get_recent` limit clamped at the MODULE boundary. RM-296d - the three
-`push_*` flags on `/api/loadout/apply` are PARSED, not bare-truthy. RM-313 -
-`championId` routed through `_as_int`. RM-318 - a coercion seam over the six
-decision detectors, NOT a bare except. RM-295a+b - `health()` exposing the
-three staleness globals, `coverage()` adopted rather than deleted.
-
-**THE DURABLE PART IS THAT THREE FILED SPECS WERE WRONG, and each was
-corrected rather than followed.**
-1. **RM-295a's `stale_for_s` parenthetical said "now minus `_LOADED_AT`".**
-   `_LOADED_AT` is the **RETRY** stamp and is bumped by a refresh that landed
-   nothing, so following the spec literally ships a staleness signal reading
-   **`0` during the exact outage it exists to report**. Shipped code measures
-   from `_LAST_GOOD_AT` and keeps the row's two key names.
-2. **RM-295a's `source()` fence gave a REASON that is false in both halves.**
-   "`dashboard/routes_duo_synergy.py` and the UI badge both read them" - that
-   file has **ZERO** `source()` calls and there is no non-test `.source()`
-   caller on the module repo-wide (re-probed at merge, independently of the
-   slice). **The FENCE STANDS anyway**, on the row's own second reason plus the
-   guard-widening ground. A dead reason is not a dead fence.
-3. **RM-260 is STALE IN ALL THREE CITATIONS** - `performance_tracker.py:406`
-   is not the key read (`:500` is), `experimental_builder.py:237` is not the
-   `%s` site (`:241` is), and both hook functions moved. Its premise holds; its
-   headline does not, because a `_redact` helper is now live at `:531`. Filed
-   as RM-418 for RE-FILING, not building.
-   **RM-255 is outright REFUTED at HEAD** - `lib/http/client.py` FAILS CLOSED
-   (`:30`, `:111-113`) and `certifi==2026.2.25` IS at `requirements.txt:2`;
-   closed same-day by lane 8 cycle 27, LEDGER 1293. Filed as RM-419 so nobody
-   re-attempts it.
-
-**A REFUSAL WORTH MORE THAN THE FEATURE: the `stale:live` / `stale:static`
-prefix on `source()` was BUILT, MEASURED and DELIBERATELY REFUSED at merge.**
-It shipped in `95c5fa2fa` and was reverted in `b51b05092`. The ground is not
-taste - **shipping it REQUIRED widening the guard at
-`tests/test_smoothed_rates_101qq_lock.py:375` so the change could pass**, and a
-change whose cost is editing the test that exists to forbid it is a change the
-guard already answered. Now guarded from BOTH sides: that lock test is
-untouched and byte-identical across both slice commits, plus an inverted test
-asserts the prefix is ABSENT and the domain is still exactly `live|static|none`.
-**DO-NOT-RE-PITCH.**
-
-**THREE CAVEATS RECORDED RATHER THAN SMOOTHED AWAY.**
-- **RM-233's non-`wal` WARN branch is UNFALSIFIABLE on this host.** This
-  platform returns `wal`, so the verifier confirmed the branch READS the
-  pragma - **not that it ever EMITS**. RM-413 inherits this limit for its 8
-  sibling sites; do not claim the emit half is covered.
-- **"byte-for-byte" on the `source()` revert was REFUTED as worded.** The
-  function text grew **162 -> 1573 chars** (docstring only); executable body
-  AST-identical, return domain unchanged. **The overstatement was the MERGER's,
-  introduced in the verifier's own prompt** - the worst place to put one.
-- **RM-313's one-pass acceptance is deliberately UNMET.** Only `championId`
-  shipped, because the census found TWO LIVE consumer defects on ONE field
-  (`champ_select.js:3516` badged the WRONG ARENA PLAYER AS ME; `:3523`/`:3612`
-  read `"0"` as truthy) and that does not generalise by assumption. Siblings are
-  RM-417, each needing its own census - and `arena_teams() :195` PARTIALLY
-  LIMITS the `:3516` repair, since that line reads `arena_teams[].cells[]` first.
-
-**TWO SUITE FIGURES, BOTH RECORDED WITH THE REASON so nobody later reads them
-as a contradiction.** Merger's own run over the merged tree and all five slice
-suites = **518 passed, 63 subtests**. Independent verifier's narrower combined
-run = **394 passed, 60 subtests**. The **entire** delta is one directory versus
-one file: the merger ran all of `tests/phase_b_champ_select`, the verifier ran
-the single file inside it (12+145+**171**+151+25+14 = 518 against
-12+145+**47**+151+25+14 = 394). Same tree, same result, different scope.
-
-**SEVEN NEW ROWS FILED, ids RM-413..RM-419, pin advanced to RM-420.** RM-413
-(8 more WAL-discard sites), RM-414 (5 more bare-truthiness route sites, two
-inverting intent into the dangerous direction - `routes_state.py:773` turns the
-seam ON with the correct `_parse_tristate` helper sitting FOUR LINES BELOW;
-`routes_coach.py:226` engages the coach kill-switch AND PERSISTS it), RM-415
-(the `or {}` idiom, 17 sites / 4 modules), RM-416 (wire `health()` - it shipped
-with NO consumer, which is RM-295b's own mistake, so it is filed rather than
-repeated silently), RM-417, RM-418, RM-419. **Each carries its
-EXCLUDED-AFTER-CHECKING set** so the ruled-out candidates are not re-filed.
-
-**DOC-SIZE NOTE, stated because the first pass got it backwards.** Appending
-five closures plus a seven-id filing row GREW `ROADMAP.md` 67973 -> 70938. The
-pass continued until it showed a net reduction rather than stopping there: six
-rows relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-12` block),
-each proved byte-identical against `git show HEAD:ROADMAP.md` rather than
-eyeballed. Final **68372 bytes**, 83.5 percent of the 81920 budget, +399 on the
-session. RM-295 and RM-296 were edited IN PLACE, not relocated, because each
-closed only PARTIALLY (RM-295c and RM-296a/b/c/e remain OPEN).
-
----
-
-# 2026-09-12a - RM-412 SHIPPED: C1 of the OSS extraction blueprint is EXECUTED, and the verifier refuted the builder's "all green"
-
-LEDGER 1399. Code commit `48ac8986a`, 17 files, +1619/-23. Tier-1,
-ENGINE-IMPACT NONE, no RC restart required.
-
-**WHAT SHIPPED.** `oss/win32_atomic_io/` - a stdlib-only src-layout package
-holding `_replace_with_retry`, `_scratch_path`, `_write_then_replace`,
-`atomic_write_json` / `_bytes` / `_text` and `read_json_dict`, extracted from
-`core/polled_json.py`. **`core/polled_json.py` is UNMODIFIED and its diff is
-empty** - 20-plus live importers, so the package is a SIBLING, not a
-replacement. `PolledJsonFile` deliberately EXCLUDED (`core/polled_json.py:204`,
-ZERO production instantiations; RM-264 holds adopt-or-remove). New guard
-`tests/test_oss_win32_atomic_io_drift.py` pins the two copies by
-AST-normalized EXECUTABLE LOGIC over 7 functions plus the retry-delay
-constant - docstrings and comments ignored, because the RC-specific prose was
-deliberately scrubbed for sharing - and declares exactly ONE textual
-allowance, the log-message prefix, with an arm asserting EQUAL hit counts on
-both sides so it cannot widen into a blanket forgiveness. Also touched:
-`.github/workflows/ci.yml`, `docs/OPERATIONS.md`,
-`tests/test_ci_collects_orphan_suite_trees.py`,
-`tests/test_skip_condition_hygiene.py`.
-
-**FINDINGS - these are the durable value, not the code.**
-1. **An independent verifier REFUTED the builder's "all green"** and found a
-   hard red the builder never reported: adding a tree to `_TEST_TREES` obliges
-   a same-commit row in the `docs/OPERATIONS.md` test-scope table, which calls
-   itself authoritative. Fixed in the same commit.
-2. **The empty-enumeration false green, hit LIVE.** 16 repo-root-enumerating
-   guards returned **317 passed** and proved nothing - they enumerate the GIT
-   INDEX (ADR-015) and the new files were untracked, hence invisible.
-   `git add -N` surfaced **2 real failures**.
-3. **The one real sibling-name leak was in `__pycache__`, not source.** Source
-   swept clean over 31 banned identifiers x 3 variants plus a 17-term domain
-   probe; the `.pyc` files embedded the absolute repo path and leaked the
-   project name - invisible to a `git` publish, SHIPPED by `tar` / `cp -r`.
-   Deleted, and the package now carries its own `.gitignore`. **Residual: that
-   sweep is TRANSIENT - any pytest run repopulates `__pycache__`.**
-4. **A self-contradicting license, built by this session.** The package
-   declared itself all-rights-reserved and "not yet distributable" inside a
-   PUBLIC repo whose root `LICENSE` grants Apache-2.0 - the exact
-   self-contradicting-repo trap CLAUDE.md's own license gate warns about,
-   committed against our OWN tree. Fixed with a byte-identical Apache-2.0 copy
-   (sha256 `5bfe6fb7f5a2`, grantor line `Copyright 2026 Moonbeam` present and
-   unedited), declared in `pyproject.toml`, plus three guards.
-5. **Docs corrected to match real behaviour, not the reverse** (the drift guard
-   pins logic, so prose moved): TWO degraded inputs are silent, not one; a bare
-   `PermissionError` catch means `EACCES` DOES fire the retry on POSIX (4
-   attempts / ~275 ms on an ACL denial); and "never left behind" is false for
-   `SIGKILL` / `taskkill /F` / power loss.
-
-**TWO LIMITS STATED, NOT PAPERED OVER.** `py.typed` is verified STRUCTURALLY
-only - `setuptools` is absent from this interpreter, so no wheel was ever
-built and the marker has never been observed inside an artifact. And a
-package-local `.gitattributes` pinning `eol=lf` was REQUIRED: `core.autocrlf=true`
-plus a root `.gitattributes` covering only `*.py` / `*.md` would have checked
-the new `.gitignore` out as CRLF in a fresh clone - green locally, red on clone.
-
-**MEASURED on a frozen tree after every agent exited:** package suite 38
-passed; drift guard 51 passed; `tests/test_docs_operations_test_scope_rm322.py`
-3 passed; `tests/test_polled_json_lane8_cycle24.py` +
-`tests/test_atomic_write_fault_injection_is_portable.py` 37 passed;
-index-dependent guards 75 passed once staged; `ruff check` clean; 0 CR / 0
-non-ASCII; `core/polled_json.py` diff empty; pre-commit `py_compile OK (9 files)`.
-
-**NEXT SESSION**
-(a) Narrow the `PermissionError` catch to WinError 5 / `EACCES` - a LOGIC
-    change, so it needs a SAME-SLICE edit to BOTH copies (the drift guard pins
-    them) and its blast radius is `core/polled_json.py`'s 20-plus importers.
-(b) Install `setuptools`, build a wheel, and OBSERVE `py.typed` inside the
-    BUILT artifact. Re-reading the source layout is the check that already passes.
-(c) DECIDE whether `core/polled_json.py` should ADOPT the package rather than
-    duplicate it - that retires the drift guard, and it inverts the
-    "sibling, not a replacement" property RM-412 shipped on purpose. Do NOT do
-    it as a tidy-up inside another slice.
-(d) Still carried from `2026-09-11d`: Slice D block-mode follow-up, Slice E
-    residuals, `ops/loop/control/STOP` still present, and the
-    `moon_sync_inbox` Apache-2.0 file awaiting license-gated evaluation.
