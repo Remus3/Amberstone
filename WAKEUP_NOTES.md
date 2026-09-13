@@ -2,7 +2,37 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the discovery-axis + inter-scorer wrap (relocated `2026-09-12b` the five-slice merge and `2026-09-12a` RM-412 C1 OSS extraction, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 2 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 961" - read those counts off the tool's own output, never off a recollection; newest 3 = `2026-09-12e` this wrap, `2026-09-12d` the fleet tooling-tier lane, `2026-09-12c` the prior SESSION WRAP doc-sync). The pass before this one relocated `2026-09-11d`, the one before that `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-12, the calibration wrap (relocated `2026-09-12c` the SESSION WRAP doc-sync, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 962" - read those counts off the tool's own output, never off a recollection; newest 3 = `2026-09-12f` this wrap, `2026-09-12e` the discovery-axis + inter-scorer lane, `2026-09-12d` the fleet tooling-tier lane). The pass before this one relocated `2026-09-12b` the five-slice merge and `2026-09-12a` RM-412 C1 OSS extraction, and reported "moving 2 session(s)" / "archive now has 961". The pass before that relocated `2026-09-11d`, the one before that `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+
+---
+
+# 2026-09-12f - RC pre-registered its own scoring instrument, then FAILED to calibrate it TWICE, and broke its own citation guard the same way twice
+
+Seven commits, and **they ARE PUSHED - the hand-off brief said "NONE PUSHED" and that was FALSE.** Measured at wrap with `git ls-remote origin main`, which returned `f07e0b736`, so the remote was queried rather than the local tracking ref believed. **Only the wrap commit is unpushed; the merger pushes it.** The seven: `fd83f9fbf` (citation-guard scope fix), `73aef40c8` (convention v1 PRE-REGISTERED), `d77b02d6b` (calibration method half plus the blinded 198), `3bbee3c77` (CALIBRATION - 0 of 4), `10041443f` (preserve two scorings the merger nearly discarded), `8f0acc86b` (scorer B at 198, A-vs-B tally, P1), `f07e0b736` (independent replication - 1 of 4). LEDGER 1415. Tier-1: one tool, one guard test, zero production files, the rest docs. ENGINE-IMPACT NONE.
+
+**THE HEADLINE CUTS AGAINST RC AND IS FILED THAT WAY.** RC criticised a sibling for naming eight `prevention` values without defining them, then defined all eight itself with boundary cases, PRE-REGISTERED the convention before any target row was read (`73aef40c8`, three predictions with accepted consequences), and could not reproduce its own filed numbers with it. **TWO passes, both NOT CALIBRATED.**
+
+**PASS ONE** (`3bbee3c77`, `docs/_rsc_score/CALIBRATION.md`): **0 of 4 anchors.** `inherited` **-8.10** (40.4 vs 48.5, tolerance +/- 5.0), `fix-of-a-fix` **-8.60** (3.5 vs 12.1), `BORN-WRONG:DECAYED` **+1.71** (4.33 vs 2.62, tolerance +/- 0.50), `gate-or-contract` **-5.60** (79.8 vs 85.4). Its ambiguity list outlives its numbers: 32 logged resolutions deduplicating to **23 distinct - 13 GAP, 7 CONTRADICTION, 3 UNEXECUTABLE**, three hit by all three scorers. **The undefined term did not get defined away - it RELOCATED into the predicates that arbitrate between the eight values**, the same defect RC filed against someone else's document, one layer down.
+
+**PASS TWO** (`f07e0b736`, `docs/_rsc_score/CALIBRATION_REPLICATION.md`): **NOT CALIBRATED, 1 of 4**, run concurrently in the same tree. That session found the collision mid-run, refused to overwrite a committed artifact it had not produced, and wrote under non-colliding names. **The two passes are NOT independent and the entanglement is MEASURED: `scores_rep_B.md` and `scores_B.md` are BYTE-IDENTICAL by sha256, so one of three scorers is shared.** Two entangled passes agreeing is weaker than two independent passes agreeing, and it is recorded that way rather than as corroboration. **The separating anchor is the lesson: `gate-or-contract` missed at -5.60 in pass one and reproduced at -0.30 in pass two - the SAME anchor on OPPOSITE sides of its own tolerance.**
+
+**AND THAT REPRODUCED HEADLINE WAS HOLLOW. FAMILY share reproduced to 0.3 points (85.1 vs 85.4) while the COMPOSITION COLLAPSED: `CONTRACT` 50 rows to ZERO, `GATE-FIRED-CAUGHT` 36 to 100.** A reproduced headline is NOT evidence the classification beneath it reproduced. Diff the distribution, never the aggregate alone.
+
+**THE INSTRUMENT IS ITSELF A CONTAMINATION CHANNEL and it cannot be redacted without amending a pre-registered file.** `RC_SCORING_CONVENTION_v1.md` recites RC's own filed counts in prose the scorers cannot skip (`:253`, `:484`, `:592`, `:671`, `:289`). **The evidence it did not pull them: the count named as 36 came back as 100.** Real, structural, and demonstrably not decisive - all three said together.
+
+**P1 CONFIRMED, AND THE VINDICATION READING IS BLOCKED** (`8f0acc86b`, `docs/_rsc_score/P1_RESULT.md`): scorer B recovered to 198 rows, tallied against A, single available pairwise `prevention` SET disagreement **13.6364 percent against the 26.1 percent threshold**. **NOT a vindication - the instrument failed calibration 0 of 4 then 1 of 4, and 13.6364 falls BELOW the [20.0, 35.0] replication band, which is itself a divergence.** The two-value concentration did **NOT** replicate under the reading that can fail (13 of 15; counterexamples `chunk3-17`, `chunk3-36`). **Durable: that claim has TWO readings and only ONE is informative** - reading 2 is an analytic identity returning 15 of 15 that cannot fail anywhere, so a pass reporting it reports nothing.
+
+**THE CITATION GUARD WAS FIXED, THEN THIS LANE BROKE IT AGAIN THE SAME WAY, ONE COMMIT APART.** `fd83f9fbf` scoped the frozen `docs/_overlap/**` corpus out via the EXISTING `_HISTORY_PREFIXES` mechanism and baselined a second net-new `WAKEUP_NOTES.md` row as HISTORICAL; positive control ran red on two planted citations, green after revert. **That red was CAUSED by this lane's own `3434990c0`, and a wrap note quoting the guard's failure output PROPAGATED it - reporting a broken citation reproduced it.** **Then `d77b02d6b` added `docs/_rsc_score/rc198_blinded.md`, whose row `chunk4-04` quotes the same citation inside its own `claim` text, and the guard was RED AT HEAD again - MEASURED by this wrap, not inherited.** Same mechanism applied, no new one: `docs/_rsc_score/` joins `_HISTORY_PREFIXES`, because that pre-registration says in its first paragraph that it is not amended after the numbers come in. **`feedback_gate_does_not_cover_what_you_add_after_it`, twice in one lane.**
+
+**A SECOND GUARD DEFECT, FIXED PROPERLY RATHER THAN LOOSENED.** `test_the_artifact_exclusion_still_matches_real_files` asserted `guarded > excluded * 4` and went red at excluded 40 / guarded 143 **with no living doc excluded**. The ratio coupled a guard on the LIVING corpus to an APPEND-ONLY artifact class that grows every measurement, so one busy session reds it while the named property is untouched. **Raising the constant only defers the same false red.** Replaced with the property itself: every prefix-excluded doc under `docs/_` (bounded by construction), seven named living docs each still GUARDED, absolute floor on the guarded count. Module green, ruff clean.
+
+**OUT-OF-TREE WRITE, OPERATOR-INSTRUCTED, RECORDED BECAUSE A BYTE LEFT THE TREE.** RC edited `.claude/settings.json` inside a SIBLING TREE (code only, deliberately unnamed) to repair relative-path hooks blocking every prompt there. Not unilateral; the file is tracked there and the change is revertable there.
+
+**DELIVERY, at the strength the evidence supports.** Two notes were REPORTED delivered to all four sibling inboxes (calibration failure verified 4 of 4; a hook-fix note still in flight at wrap). **No outbound artifact for either was committed in-tree by any of the seven commits, so this wrap ATTRIBUTES the delivery rather than measuring it.**
+
+**DO NOT REDO.** (1) Do NOT re-score RC's corpus against contract v1.3 - LW has ENDED the clause set and recommends NO tree score against those clauses. (2) Do NOT re-propose the pre-dispatch re-grounding gate - measured-REFUTED, evidence `docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`. (3) Do NOT quote RC's WITHDRAWN bands. (4) Do NOT quote the n=60 CONFIRMED verdict without its FAMILY-grain INDETERMINATE half. (5) Do NOT quote P1's 13.6364 as a vindication - the instrument FAILED calibration 0 of 4 and 1 of 4. (6) Do NOT re-run the calibration expecting a different verdict - a third pass on the same instrument buys nothing until the 23 ambiguities are repaired. (7) Do NOT "repair" the nine baselined `BACKLOG.md` citations - `_KNOWN_BROKEN` in `tests/test_citation_drift_guard_rm171.py`, with written reasons. (8) Do NOT edit `docs/_rsc_score/rc198_blinded.md` to fix its quoted citation - it is the frozen corpus; the scope-out IS the remedy.
+
+**NEXT SESSION - open threads.** (a) **RC still owes LW an answer on the trivial-versus-informative reading of the two-value claim, and it needs LW's OWN script to settle** - RC cannot decide which reading LW measured by reading LW's prose. (b) **RSC's 96 rows remain UNSCORED BY RC and stay that way until RC holds a CALIBRATED instrument** - scoring someone else's corpus with an instrument that failed 0 of 4 and 1 of 4 on RC's own would publish a number nobody should use. (c) The convention's **self-contamination** and its **three UNEXECUTABLE clauses** are UNREPAIRED. (d) Pre-registration **7b**, the **per-chunk breakdown** and **Wilson intervals** remain UNADJUDICATED. (e) **RM-422 and RM-423 remain OPEN; RM-423 is OPERATOR-GATED.**
 
 ---
 
@@ -47,82 +77,3 @@ Four commits, ALL PUSHED to `origin/main`: `e69266ca0` (back-test of RC's own re
 **DO NOT REDO.** (1) Do NOT re-propose the pre-dispatch re-grounding gate - it was built as a proposal, back-tested, and measured-REFUTED; the evidence is `docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`. (2) Do NOT re-score RC's corpus against v1.3 - RC deliberately has not, because the contract is still under attack and its owner asked that it be attacked BEFORE anyone scores against it. (3) Do NOT quote RC's bands - they are WITHDRAWN; only the fine-grain figures are quotable, and only with the aggregation rule named. (4) Do NOT "repair" the nine baselined citations in `BACKLOG.md` - they sit deliberately in `_KNOWN_BROKEN` in `tests/test_citation_drift_guard_rm171.py` with written reasons, and a repair attempt this session was REVERTED after the guard caught it. (5) RM-422 and RM-423 remain OPEN and untouched; RM-423 is OPERATOR-GATED.
 
 **NEXT SESSION - two operator steers were DRAINED here and belong in the hand-off, not in this session's work:** (a) the live-write row gets NO separate recovery pass - fold a regeneration assertion into the SAME row, with an anti-vacuous positive control; (b) `tools/live_write_tracer.py` ALREADY patches `io.open` for the pathlib route, so do NOT re-plumb it - confirm with a MUTATION arm instead.
-
----
-
-# 2026-09-12c - SESSION WRAP doc sync: LEDGER 1407-1412, two rows filed, and three of the merger's OWN errors written into the record
-
-LEDGER 1407-1412. DOCS ONLY - six markdown files, zero production files, zero
-test files, ENGINE-IMPACT NONE. Nothing pushed. The six unpushed commits this
-wrap covers are `86e4d4f0f`, `93f0e3efc` + merge `910cf8204`, `1d6d1e882` +
-`2dc0cff76`, `3b5038fcb`, `14c0eadd2` + merge `dd0f43f78`, `54743bec0`.
-
-**WHAT SHIPPED, one line each.** 1407 - `tools/outbound_reciprocity_check.py`,
-RC's own answer to a sibling's delivery defect: **0 undelivered of 87**, scored
-on a CONTENT DIGEST never a name, read-only across the boundary pinned at the
-syscall by `sys.addaudithook`. 1408 - the fifth sibling-name escape CLOSED
-UNILATERALLY and `KNOWN_EXCEPTIONS` retired to `{}`. 1409 -
-`docs/REFUTATION_COST_MEASUREMENT_2026-09-12.md`, N = 42 ledger entries. 1410 -
-the sweep's TREE arm wired into CI behind a gate that cannot emit an unearned
-green. 1411 - the RM-296d regression fixed by grading behaviour instead of
-source text. 1412 - this wrap.
-
-**THE DURABLE PART IS THAT THREE ERRORS WERE THE MERGER'S OWN, and all three
-are in `docs/LEDGER.md` rather than smoothed away.**
-1. **A CRLF defect was ASSERTED into `oss/win32_atomic_io/LICENSE` and it does
-   not exist.** Re-measured: **12115 bytes, CR 0, LF 219**. The "219 CR" was the
-   file's LINE COUNT from a `grep -c` whose pattern degraded to empty. The
-   FIRST measurement was right and said 0; the second was run because the first
-   disagreed with a hypothesis already held, and was promoted over it without a
-   cross-check. **`feedback_empty_grep_is_a_claim_about_the_pattern` INVERTED -
-   a FULL-COUNT grep is equally a claim about the pattern**, and a count that
-   matches a plausible expected magnitude is the most dangerous output the tool
-   produces. Re-derive by a different mechanism whenever a re-measurement
-   overturns an earlier one in the direction you wanted.
-2. **Two agents were dispatched into the MAIN TREE concurrently**, against
-   `feedback_verifier_needs_a_frozen_tree`. One saw the other's writes, watched
-   the modified-file count move under it, and **misattributed them to an
-   unrelated interactive session**. Numbers were re-derived and stand, but the
-   second pass is what is relied on. **The main tree is a shared mutable
-   resource; if two agents must run, at most one of them writes.**
-3. **"Roughly 10 tree-scope findings" was the wrong SCOPE and reads as a live
-   leak.** Those were **DIFF-arm** hits over **200-plus commits of
-   ALREADY-PUBLISHED history** - commit messages and historical added lines.
-   **Tree scope is 0 before and 0 after.** Re-measured at the end of this wrap
-   with the sweep FULLY ARMED (4 name slots, 4 counterparty codes from
-   per-host config): **clean, 630763605 bytes, 4762 files, 0 commit messages,
-   482 binary/LFS blobs not content-scanned, exit 0.**
-
-**TWO ROWS FILED to `BACKLOG.md` ("Reliability / hardening"), pin advanced by
-TWO in `docs/DS_SWEEP_TRACKER.md` and `ROADMAP.md` in the same commit.**
-**RM-422** - `core.longpaths` UNSET at local, global AND system scope; longest
-tracked path **154 chars** (all five longest under
-`docs/_archive/2026-07-26-orphaned-audit-drops/`); clone-ROOT budget therefore
-**105 chars** at MAX_PATH 260. The session scratchpad root is 114, which is why
-a checkout there aborted partway - and a later enumeration over the directory
-the abort left MISSING printed a clean total, **a vacuous measurement arriving
-through the filesystem rather than through a glob**. Fix has a CONFIG half and
-a PATH-LENGTH half; the row refuses to pick one. **RM-423** - OPERATOR-GATED,
-**no default recommended**: the lane refs cannot be pushed while the sweep
-re-scans already-published history on every lane push. The bytes are already on
-`origin/main` and all six lane worktrees sit at `86e4d4f0f`, an ancestor of it,
-so nothing is stranded today.
-
-**`CLAUDE.md` corrected at EXACTLY ONE sentence** - the Session Default block
-still claimed the fifth escape "remains as a KNOWN, NAMED, VISIBLE exception
-(declared in the tool)" while the tool's register is `{}`. Replaced with the
-measured close plus an explicit do-not-restore. 53296 bytes, budget 61440.
-
-**`ROADMAP.md` 72941 -> 75744 bytes** (budget 81920). Three rows relocated
-VERBATIM to a new `## 2026-09-12b` block in `docs/ROADMAP_HISTORY.md`: the
-FIFTH ESCAPE row, the five-slice announcement row, and the RM-420 FILED row -
-**6261 chars relocated against six new rows added, so the pass ended NET
-POSITIVE by 2803 bytes and is recorded as such rather than being forced to a
-net reduction by gutting fences.** Every id and every fence stayed reachable.
-
-**NEXT SESSION.** Nothing is blocked. The six commits above are still UNPUSHED
-by instruction - **read RM-423 before pushing anything**, because the lane refs
-and `main` are different questions and only one of them is gated. Do NOT
-re-spell the next-free id in a ledger entry; a bare mention classifies as an
-ALLOCATION and collides with the pin it announces
-(`tests/test_rm_id_registry_drift.py`).
