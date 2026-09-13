@@ -127,8 +127,10 @@ matters because collapsing it hid real breakage once already:
 * GUARDED   - the living docs, budgeted by the guard. 2050 citations.
 * HISTORY   - append-only by policy (``docs/_archive/**``, ``docs/LEDGER.md``,
               ``docs/history_notes.md``, the ROADMAP/ORCHESTRATION history
-              files). A stale citation here is CORRECT - it records what was
-              true when written - and editing it is a history rewrite
+              files) PLUS the dated measurement artifacts ``docs/_rescore/**``
+              and ``docs/_scratch_*.md``. A stale citation here is CORRECT - it
+              records what was true when written, or it is a rot example the
+              artifact exists to QUOTE - and editing it is a history rewrite
               (``feedback_no_history_rewrite``). Report-only, never budgeted.
 * UNGUARDED - everything else: ``ops/**``, ``agents/**``, ``tools/*.md``.
               882 citations carrying 22 broken, including
@@ -232,7 +234,31 @@ UNGUARDED = "UNGUARDED"  # neither - reported, not yet budgeted
 # Append-only by policy. A stale citation in one of these records what was
 # true when it was written; editing it is a history rewrite
 # (`feedback_no_history_rewrite`).
-_HISTORY_PREFIXES = ("docs/_archive/",)
+#
+# DATED MEASUREMENT ARTIFACTS belong to the same class and are listed here for
+# the same reason, added 2026-09-12. `docs/_rescore/**` and `docs/_scratch_*.md`
+# are single-run working files: a probe report, an adversarial cost arm, a
+# per-chunk re-score. They are reports ABOUT citation rot, so they QUOTE broken
+# citations as their SUBJECT MATTER, and two of those quotes
+# (`core/NOSUCHFILE_zzz.py:12`, `core/polled_json.py:999999`) are FABRICATED
+# NEEDLES - positive controls a false-positive measurement invented to prove
+# its own detector fires. Baselining a fabricated needle would make the budget
+# a record of fiction, and "repairing" a quoted rot example would destroy the
+# measurement it documents. So the rule is a PREFIX CLASS, never a filename
+# list: anything under the rescore working directory, and anything written to
+# the `_scratch_` convention, is a dated artifact by construction.
+#
+# DELIBERATELY NARROW. This does NOT cover every `docs/_` name. A dated
+# CONSOLIDATED evidence file (`docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`) is
+# a LIVING doc that supersedes its own scratch inputs, and the correspondence
+# and refill files (`docs/_outbound_*`, `docs/_draft_*`,
+# `docs/_research_refill_*`) carry zero broken citations and stay budgeted. A
+# blanket `docs/_` rule would have bought nothing and surrendered coverage.
+_HISTORY_PREFIXES = (
+    "docs/_archive/",
+    "docs/_rescore/",
+    "docs/_scratch_",
+)
 _HISTORY_FILES = frozenset(
     {
         "docs/LEDGER.md",

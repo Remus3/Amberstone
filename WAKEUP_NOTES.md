@@ -6,6 +6,26 @@
 
 ---
 
+# 2026-09-12d - Fleet tooling-tier: RC's OWN gate proposal back-tested and REFUTED, nine defects conceded, bands WITHDRAWN
+
+Four commits, ALL PUSHED to `origin/main`: `e69266ca0` (back-test of RC's own re-grounding gate - it does not survive), `a87400677` (deliver the retraction to four trees), `89721455b` (corrections and the pinned re-score, published as a band), `d47d3dfb4` (attack v1.3, withdraw our own bands, upgrade the delivery check). LEDGER 1413.
+
+**RC'S HIGHEST-LEVERAGE PUBLISHED RECOMMENDATION DID NOT SURVIVE ITS OWN BACK-TEST.** Cost arm: 18 of 20 sampled rows refused (90 pct), ZERO genuinely stale, ~91 benign false positives over 11 mechanisms, RM-id closure false positives 26 of 30 - refusal tracked citation DENSITY, not staleness. Back-test arm, 7 located instances: 3 CAUGHT, 3 MISSED, 1 PARTIAL, 2 UNGRADEABLE. The generalising result: **EVERY RESOLVER IS A PRESENCE CHECK OVER TOKENS A ROW NAMES, AND THIS DEFECT CLASS IS AN ABSENCE.** Evidence: `docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`.
+
+**NINE defects were established in RC's published measurement** (five found by peers, each re-derived independently here). WITHDRAWN: the "rot still compounds" inference (1.805 to 1.943 pct is constant), the "29 of 33" novelty claim (z = 1.81 against a chunk-size null), the claim that RC's window is a natural unit, and a back-test limit that was too generous to RC.
+
+**RE-SCORE under the sibling contract:** 198 per-event rows, four independent scorers over disjoint LEDGER chunks 1365-1406, machine tally with ZERO claimed-versus-actual discrepancies, independently adjudicated 40-row sample (148 of 160 field comparisons agree). Gate-or-contract 85.4 pct fine; inherited 48.5 pct; BORN-WRONG to DECAYED 2.62 to 1; fix-of-a-fix 12.1 pct. **It CONTRADICTS two of RC's own published headlines:** the 30.1 pct "record decay" axis is the MINORITY half (decay alone 10.6 pct), so the sibling reframe to RECORD TRUST is right; and "the constraint is WHEN checks run, not WHICH exist" is contradicted by GATE-ABSENT to GATE-EXISTING at 3.82 to 1.
+
+**CONTRACT.** RC audited the sibling scoring contract v1.2 and found 5 FATAL underspecifications, led by **THE CONTRACT NEVER DEFINES WHAT ONE EVENT IS**, so it never defines the denominator of every ratio it publishes; the owner conceded all five, priced that one at 22.5 points on their own corpus, and shipped v1.3. RC then ATTACKED v1.3 as its owner asked: 2 FATAL on clause 1, 3 FATAL on clauses 2-5. Worst: clause 2's precedence order is total as a RANKING but not as a DECISION PROCEDURE (predicates exist for ranks 1-4 only, and 126 of 198 rows, 63.6 pct, fall in an un-predicated tail), and clause 1 contradicts the unwithdrawn v1.2 section 6, moving N from 198 to 226.
+
+**RC WITHDREW ITS OWN BANDS.** An aggregation sweep showed all four intervals NON-MONOTONIC, and the rule RC published for the ratio (any-of, 1.73) sits BELOW RC's fine value (2.62), so the interval ran backwards. Aggregation dominates individuation 4 of 4 here. **DELIVERY:** RC's self-check is clean (100 distinct notes, 0 delivery faults, 0 address-list omissions), and was upgraded to the stronger roster-versus-address-list check after a sibling showed the adopted check cannot see an OMITTED addressee.
+
+**DO NOT REDO.** (1) Do NOT re-propose the pre-dispatch re-grounding gate - it was built as a proposal, back-tested, and measured-REFUTED; the evidence is `docs/REFUTATION_GATE_BACKTEST_2026-09-12.md`. (2) Do NOT re-score RC's corpus against v1.3 - RC deliberately has not, because the contract is still under attack and its owner asked that it be attacked BEFORE anyone scores against it. (3) Do NOT quote RC's bands - they are WITHDRAWN; only the fine-grain figures are quotable, and only with the aggregation rule named. (4) Do NOT "repair" the nine baselined citations in `BACKLOG.md` - they sit deliberately in `_KNOWN_BROKEN` in `tests/test_citation_drift_guard_rm171.py` with written reasons, and a repair attempt this session was REVERTED after the guard caught it. (5) RM-422 and RM-423 remain OPEN and untouched; RM-423 is OPERATOR-GATED.
+
+**NEXT SESSION - two operator steers were DRAINED here and belong in the hand-off, not in this session's work:** (a) the live-write row gets NO separate recovery pass - fold a regeneration assertion into the SAME row, with an anti-vacuous positive control; (b) `tools/live_write_tracer.py` ALREADY patches `io.open` for the pathlib route, so do NOT re-plumb it - confirm with a MUTATION arm instead.
+
+---
+
 # 2026-09-12c - SESSION WRAP doc sync: LEDGER 1407-1412, two rows filed, and three of the merger's OWN errors written into the record
 
 LEDGER 1407-1412. DOCS ONLY - six markdown files, zero production files, zero
