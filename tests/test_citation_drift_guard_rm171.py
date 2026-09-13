@@ -258,6 +258,22 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "notifications that alert a player when a power spike hits.",
     ),
     (
+        "docs/REFUTATION_GATE_BACKTEST_2026-09-12.md",
+        "web/js/panels/spike_cue.js:45",
+        "DELETED",
+        "The SAME citation and the same removal as the BACKLOG.md entry above - "
+        "the guard keys on (doc, raw citation), so an identical citation in a "
+        "second doc is a second entry. The backtest is a LIVING consolidated "
+        "evidence file, not a dated scratch artifact, so it stays in the budget. "
+        "Its :439 paragraph records the ONE true positive that survived that "
+        "run's revert: a row asserting in the present tense that RC has an "
+        "edge-trigger mechanism, whose path was deleted in 1a401b4b2 ('remove "
+        "Riot-banned surfaces', 2026-08-11, 158 lines). The prose was corrected "
+        "and the citation deliberately LEFT IN PLACE - the doc says so in its "
+        "own body - because the broken cite IS the evidence the paragraph "
+        "presents. Re-pointing it would delete the finding.",
+    ),
+    (
         "docs/ORCHESTRATION_PLAN.md",
         "spike_cue.js:109-112",
         "DELETED",
@@ -689,6 +705,55 @@ class CitationAuditMechanics(unittest.TestCase):
         ):
             with self.subTest(doc=doc):
                 self.assertEqual(ca.scope_of(doc), ca.HISTORY)
+
+    def test_dated_measurement_artifacts_are_not_guarded(self) -> None:
+        # Added 2026-09-12 with the exclusion itself. `docs/_rescore/**` and
+        # `docs/_scratch_*.md` are single-run working files that QUOTE broken
+        # citations as their subject matter, including two FABRICATED NEEDLES a
+        # false-positive measurement invented as positive controls. Budgeting
+        # them would force a fabricated citation into the baseline.
+        for doc in (
+            "docs/_rescore/ROWS_PINNED.md",
+            "docs/_rescore/chunk4_rows.md",
+            "docs/_scratch_fparm_B.md",
+            "docs/_scratch_gitbucket_D.md",
+        ):
+            with self.subTest(doc=doc):
+                self.assertEqual(ca.scope_of(doc), ca.HISTORY)
+
+    def test_the_artifact_exclusion_is_not_too_wide(self) -> None:
+        # The failure mode of any exclusion is that it quietly swallows the
+        # living docs and the guard degrades into an always-pass. These names
+        # are all adjacent to the excluded class - a DATED consolidated file, a
+        # dated audit, and three other `docs/_` names - and every one of them
+        # must stay budgeted. A blanket `docs/_` or `docs/*2026-*` rule fails
+        # here, which is the point.
+        for doc in (
+            "docs/REFUTATION_GATE_BACKTEST_2026-09-12.md",
+            "docs/audits/LF_WRITER_DIRECT_COVERAGE_2026-09-11.md",
+            "docs/_outbound_2026-09-12-2100-from-RC.md",
+            "docs/_draft_fleet_reply_2026-09-12.md",
+            "docs/_research_refill_2026-09-05.md",
+        ):
+            with self.subTest(doc=doc):
+                self.assertEqual(ca.scope_of(doc), ca.GUARDED)
+
+    def test_the_artifact_exclusion_still_matches_real_files(self) -> None:
+        # An exclusion whose prefixes match nothing is dead rule text that
+        # reads as coverage. Assert from the git INDEX that the class is
+        # non-empty, and that it is a bounded slice rather than the tree.
+        docs = [p for p in ca.tracked_files(REPO_ROOT) if p.endswith(".md")]
+        self.assertGreater(len(docs), 100, "tracked-doc enumeration collapsed")
+        excluded = [
+            d
+            for d in docs
+            if d.startswith("docs/_rescore/") or d.startswith("docs/_scratch_")
+        ]
+        self.assertGreater(len(excluded), 0, "artifact exclusion matches nothing")
+        guarded = [d for d in docs if ca.scope_of(d) == ca.GUARDED]
+        self.assertGreater(
+            len(guarded), len(excluded) * 4, "exclusion ate the guarded corpus"
+        )
 
     def test_living_docs_are_guarded(self) -> None:
         for doc in (
