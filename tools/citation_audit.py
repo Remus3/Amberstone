@@ -128,7 +128,8 @@ matters because collapsing it hid real breakage once already:
 * HISTORY   - append-only by policy (``docs/_archive/**``, ``docs/LEDGER.md``,
               ``docs/history_notes.md``, the ROADMAP/ORCHESTRATION history
               files) PLUS the dated measurement artifacts ``docs/_rescore/**``,
-              ``docs/_overlap/**`` and ``docs/_scratch_*.md``. A stale
+              ``docs/_overlap/**``, ``docs/_rsc_score/**`` and
+              ``docs/_scratch_*.md``. A stale
               citation here is CORRECT - it
               records what was true when written, or it is a rot example the
               artifact exists to QUOTE - and editing it is a history rewrite
@@ -276,6 +277,7 @@ _HISTORY_PREFIXES = (
     "docs/_archive/",
     "docs/_overlap/",
     "docs/_rescore/",
+    "docs/_rsc_score/",
     "docs/_scratch_",
 )
 _HISTORY_FILES = frozenset(

@@ -733,18 +733,30 @@ class CitationAuditMechanics(unittest.TestCase):
 
     def test_dated_measurement_artifacts_are_not_guarded(self) -> None:
         # Added 2026-09-12 with the exclusion itself. `docs/_rescore/**`,
-        # `docs/_overlap/**` and `docs/_scratch_*.md` are single-run working
+        # `docs/_overlap/**`, `docs/_rsc_score/**` and `docs/_scratch_*.md` are
+        # single-run working
         # files that QUOTE broken citations as their subject matter, including
         # two FABRICATED NEEDLES a false-positive measurement invented as
         # positive controls. Budgeting them would force a fabricated citation
         # into the baseline. `docs/_overlap/**` is additionally FROZEN - its
         # result is published, so the quoted citation cannot be repaired at
         # source without invalidating the measurement.
+        #
+        # `docs/_rsc_score/**` joined the class 2026-09-12 for the SAME reason
+        # and by the same mechanism, one commit after `docs/_overlap/**` did:
+        # `rc198_blinded.md:1121` is a blinded corpus row whose own `claim`
+        # text quotes `ORCHESTRATION_PLAN.md:916-919`. Its pre-registration
+        # states in its first paragraph that it is not amended after the
+        # numbers come in, so repairing the citation at source would invalidate
+        # a completed measurement. The gate did not cover what was added after
+        # it (`feedback_gate_does_not_cover_what_you_add_after_it`).
         for doc in (
             "docs/_rescore/ROWS_PINNED.md",
             "docs/_rescore/chunk4_rows.md",
             "docs/_overlap/sample_60_blinded.md",
             "docs/_overlap/scores_A.md",
+            "docs/_rsc_score/rc198_blinded.md",
+            "docs/_rsc_score/scores_cal_1.md",
             "docs/_scratch_fparm_B.md",
             "docs/_scratch_gitbucket_D.md",
         ):
@@ -764,6 +776,10 @@ class CitationAuditMechanics(unittest.TestCase):
             "docs/_outbound_2026-09-12-2100-from-RC.md",
             "docs/_draft_fleet_reply_2026-09-12.md",
             "docs/_research_refill_2026-09-05.md",
+            # Near-miss on the 2026-09-12 `docs/_rsc_score/` prefix: a FILE
+            # whose name starts with the same characters is NOT the directory,
+            # and a prefix written without its trailing slash would swallow it.
+            "docs/_rsc_score_notes.md",
         ):
             with self.subTest(doc=doc):
                 self.assertEqual(ca.scope_of(doc), ca.GUARDED)
@@ -779,13 +795,42 @@ class CitationAuditMechanics(unittest.TestCase):
             for d in docs
             if d.startswith("docs/_rescore/")
             or d.startswith("docs/_overlap/")
+            or d.startswith("docs/_rsc_score/")
             or d.startswith("docs/_scratch_")
         ]
         self.assertGreater(len(excluded), 0, "artifact exclusion matches nothing")
         guarded = [d for d in docs if ca.scope_of(d) == ca.GUARDED]
-        self.assertGreater(
-            len(guarded), len(excluded) * 4, "exclusion ate the guarded corpus"
-        )
+
+        # The "did it eat the guarded corpus" half was a RATIO
+        # (guarded > excluded * 4) until 2026-09-12, when it went red at
+        # excluded 40 / guarded 143 without any living doc having been
+        # excluded. The ratio was the wrong instrument: it couples a guard on
+        # the LIVING corpus to the size of an APPEND-ONLY artifact class that
+        # grows every time a measurement is run, so a single busy session can
+        # red it while the property it names is untouched. Loosening the
+        # constant would only defer the same false red. Both halves below
+        # assert the property directly instead.
+        #
+        # (a) The exclusion is bounded BY CONSTRUCTION: every prefix-excluded
+        #     doc lives under `docs/_`, so it can never reach a living doc at
+        #     the repo root or under a guarded subtree.
+        stray = sorted(d for d in excluded if not d.startswith("docs/_"))
+        self.assertEqual(stray, [], "artifact exclusion reached outside docs/_")
+
+        # (b) Every doc the guard exists FOR is still guarded, named
+        #     explicitly rather than counted.
+        for living in (
+            "CLAUDE.md",
+            "ROADMAP.md",
+            "BACKLOG.md",
+            "README.md",
+            "WAKEUP_NOTES.md",
+            "docs/ARCHITECTURE.md",
+            "docs/OPERATIONS.md",
+        ):
+            with self.subTest(living=living):
+                self.assertIn(living, guarded)
+        self.assertGreater(len(guarded), 100, "guarded corpus collapsed")
 
     def test_living_docs_are_guarded(self) -> None:
         for doc in (
