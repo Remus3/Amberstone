@@ -127,8 +127,9 @@ matters because collapsing it hid real breakage once already:
 * GUARDED   - the living docs, budgeted by the guard. 2050 citations.
 * HISTORY   - append-only by policy (``docs/_archive/**``, ``docs/LEDGER.md``,
               ``docs/history_notes.md``, the ROADMAP/ORCHESTRATION history
-              files) PLUS the dated measurement artifacts ``docs/_rescore/**``
-              and ``docs/_scratch_*.md``. A stale citation here is CORRECT - it
+              files) PLUS the dated measurement artifacts ``docs/_rescore/**``,
+              ``docs/_overlap/**`` and ``docs/_scratch_*.md``. A stale
+              citation here is CORRECT - it
               records what was true when written, or it is a rot example the
               artifact exists to QUOTE - and editing it is a history rewrite
               (``feedback_no_history_rewrite``). Report-only, never budgeted.
@@ -254,8 +255,26 @@ UNGUARDED = "UNGUARDED"  # neither - reported, not yet budgeted
 # and refill files (`docs/_outbound_*`, `docs/_draft_*`,
 # `docs/_research_refill_*`) carry zero broken citations and stay budgeted. A
 # blanket `docs/_` rule would have bought nothing and surrendered coverage.
+#
+# `docs/_overlap/**` joined the class 2026-09-12 for the SAME reason and under
+# the same narrowness rule. It is the working directory of ONE pre-registered
+# inter-scorer experiment: a pre-registration, a 60-row blinded sample, three
+# independent score sets and a tally script. The sample rows are QUOTED
+# VERBATIM from RC's own re-score rows, so the corpus reproduces whatever
+# citations those rows contained - `sample_60_blinded.md:117` quotes a scored
+# row whose own `claim` text cites `ORCHESTRATION_PLAN.md:916-919`. That
+# citation's staleness is a property of the QUOTED SOURCE ROW, not of the
+# corpus, and the corpus is not making the citation - it is reporting it as
+# subject matter, exactly like the `_rescore` and `_scratch_` files above.
+#
+# The files are also FROZEN: the experiment's result is committed at
+# `a489a816d` and delivered to four sibling trees, so an edit to the sample or
+# to any `scores_*.md` would silently invalidate a published measurement and
+# destroy its reproducibility. The citation therefore cannot be repaired at
+# source, which leaves scope as the only honest lever.
 _HISTORY_PREFIXES = (
     "docs/_archive/",
+    "docs/_overlap/",
     "docs/_rescore/",
     "docs/_scratch_",
 )

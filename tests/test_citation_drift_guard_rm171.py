@@ -616,6 +616,31 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "leave the blockquote disagreeing with the lines it cites. A dated "
         "audit artifact records the tree it audited.",
     ),
+    #
+    # 2026-09-12. The SAME citation, in the wrap note that reported this guard
+    # going red. The other half of that red - the copy inside
+    # `docs/_overlap/sample_60_blinded.md` - was closed by SCOPE rather than by
+    # a baseline entry: that whole directory is one frozen pre-registered
+    # experiment and joined the dated-artifact class in the same commit
+    # (see `_HISTORY_PREFIXES` in tools/citation_audit.py). WAKEUP_NOTES.md is
+    # not an artifact, so scope cannot reach it and it is budgeted here.
+    #
+    (
+        "WAKEUP_NOTES.md",
+        "ORCHESTRATION_PLAN.md:916-919",
+        "HISTORICAL",
+        "A MENTION, not a live pointer. The wrap note is QUOTING the guard's "
+        "own failure output to hand the red to the next session, so the whole "
+        "value of the string is that it is the broken citation the row is "
+        "about - the same shape as the ROADMAP.md:231 entry above. Its "
+        "staleness belongs to the row it quotes, not to WAKEUP_NOTES.md, and "
+        "re-pointing it would make the note describe a failure that never "
+        "happened. EXPECT THIS ENTRY TO DISCHARGE: WAKEUP_NOTES.md is pruned "
+        "to the last 2-3 sessions, so when this session's block relocates to "
+        "docs/history_notes.md (HISTORY scope) the guard will report the entry "
+        "as no longer broken - delete it then, that is the baseline shrinking "
+        "with the debt and not a regression.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})
@@ -707,14 +732,19 @@ class CitationAuditMechanics(unittest.TestCase):
                 self.assertEqual(ca.scope_of(doc), ca.HISTORY)
 
     def test_dated_measurement_artifacts_are_not_guarded(self) -> None:
-        # Added 2026-09-12 with the exclusion itself. `docs/_rescore/**` and
-        # `docs/_scratch_*.md` are single-run working files that QUOTE broken
-        # citations as their subject matter, including two FABRICATED NEEDLES a
-        # false-positive measurement invented as positive controls. Budgeting
-        # them would force a fabricated citation into the baseline.
+        # Added 2026-09-12 with the exclusion itself. `docs/_rescore/**`,
+        # `docs/_overlap/**` and `docs/_scratch_*.md` are single-run working
+        # files that QUOTE broken citations as their subject matter, including
+        # two FABRICATED NEEDLES a false-positive measurement invented as
+        # positive controls. Budgeting them would force a fabricated citation
+        # into the baseline. `docs/_overlap/**` is additionally FROZEN - its
+        # result is published, so the quoted citation cannot be repaired at
+        # source without invalidating the measurement.
         for doc in (
             "docs/_rescore/ROWS_PINNED.md",
             "docs/_rescore/chunk4_rows.md",
+            "docs/_overlap/sample_60_blinded.md",
+            "docs/_overlap/scores_A.md",
             "docs/_scratch_fparm_B.md",
             "docs/_scratch_gitbucket_D.md",
         ):
@@ -747,7 +777,9 @@ class CitationAuditMechanics(unittest.TestCase):
         excluded = [
             d
             for d in docs
-            if d.startswith("docs/_rescore/") or d.startswith("docs/_scratch_")
+            if d.startswith("docs/_rescore/")
+            or d.startswith("docs/_overlap/")
+            or d.startswith("docs/_scratch_")
         ]
         self.assertGreater(len(excluded), 0, "artifact exclusion matches nothing")
         guarded = [d for d in docs if ca.scope_of(d) == ca.GUARDED]
