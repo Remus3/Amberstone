@@ -1,0 +1,22 @@
+### Synthetic console-flash capture, hand-authored - NOT a real recording.
+### Shape matches tools/console_flash_detector.py + tools/console_flash_trace.ps1
+### + tools/console_flash_control.py merged into one stream. Basenames only: no
+### drive-rooted path and no account name may ever appear in a tracked capture,
+### which tests/test_console_flash_attribute.py asserts on these exact bytes.
+START ts=2026-09-15T22:29:00.000000Z seconds=90 pid=4242 out=console_flash_detector.log
+START-TRACE ts=2026-09-15T22:29:00.010000Z seconds=90 out=console_flash_trace.log
+SNAPSHOT phase=START ts=2026-09-15T22:29:00.020000Z name=pythonw.exe pid=20720 ppid=900 created=2026-09-15T22:28:00.000000Z
+CONTROL ts=2026-09-15T22:29:10.000000Z seq=1 flagged=0 name=cmd.exe pid=41410
+PROCESS ts=2026-09-15T22:29:10.005000Z name=cmd.exe pid=41410 ppid=20720 created=2026-09-15T22:29:10.001000Z
+PROCESS ts=2026-09-15T22:29:10.030000Z name=conhost.exe pid=41412 ppid=41410 created=2026-09-15T22:29:10.020000Z
+EVENT ts=2026-09-15T22:29:10.035000Z event=0x8002 hwnd=0x00120abc pid=41412 exe=conhost.exe cls=ConsoleWindowClass
+CONTROL ts=2026-09-15T22:29:11.000000Z seq=2 flagged=0 name=git.exe pid=41420
+PROCESS ts=2026-09-15T22:29:11.005000Z name=git.exe pid=41420 ppid=20720 created=2026-09-15T22:29:11.001000Z
+PROCESS ts=2026-09-15T22:29:11.030000Z name=conhost.exe pid=41422 ppid=41420 created=2026-09-15T22:29:11.020000Z
+EVENT ts=2026-09-15T22:29:11.035000Z event=0x8002 hwnd=0x00120def pid=41422 exe=conhost.exe cls=ConsoleWindowClass
+CONTROL ts=2026-09-15T22:29:12.000000Z seq=3 flagged=1 name=cmd.exe pid=41430
+PROCESS ts=2026-09-15T22:29:12.005000Z name=cmd.exe pid=41430 ppid=20720 created=2026-09-15T22:29:12.001000Z
+HEARTBEAT ts=2026-09-15T22:29:30.000000Z pumps=3600 pumps_per_second=120.0 events=2
+HEARTBEAT-TRACE ts=2026-09-15T22:29:30.010000Z events=5
+END ts=2026-09-15T22:30:30.000000Z events=2 pumps=10800
+END-TRACE ts=2026-09-15T22:30:30.010000Z events=5

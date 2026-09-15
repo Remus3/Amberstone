@@ -18,7 +18,10 @@ $ErrorActionPreference = "Stop"
 $TaskName  = "RC-PostmortemAnalyze"
 $PsExe     = "powershell.exe"
 $Wrapper   = "C:\Riot Commander\ops\run_postmortem_with_restart.ps1"
-$Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$Wrapper`""
+# -WindowStyle Hidden: without it a re-install recreates an interactive
+# powershell.exe window every Sunday 04:15. The LIVE task does not have this
+# drift (its principal is S4U, read live 2026-09-15); the installer did.
+$Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Wrapper`""
 
 if (-not (Test-Path $Wrapper)) { throw "wrapper not found at $Wrapper" }
 
@@ -29,9 +32,12 @@ $action    = New-ScheduledTaskAction `
     -Execute $PsExe `
     -Argument $Arguments
 $trigger   = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 4:15AM
+# S4U, matching the live task read 2026-09-15. S4U runs on a non-interactive
+# desktop, so the task structurally cannot show a window; -LogonType Interactive
+# here would have re-created exactly the flash this installer is meant to avoid.
 $principal = New-ScheduledTaskPrincipal `
     -UserId "$env:USERDOMAIN\$env:USERNAME" `
-    -LogonType Interactive `
+    -LogonType S4U `
     -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
