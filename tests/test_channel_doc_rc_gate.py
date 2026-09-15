@@ -61,6 +61,34 @@ def _sibling_roots() -> list[Path]:
     return [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
 
 
+def _adopted_carrier_docs() -> dict[Path, Path]:
+    """Carrier root -> that carrier's own copy of the doc, for the carrier
+    trees on THIS machine that have actually vendored it.
+
+    Re-derived from the per-host config on every call rather than taken from
+    the parameter, because both halves of the answer live OUTSIDE this
+    checkout: which trees are carriers at all is named only by the gitignored
+    `ops/moon_sync_repos.json` (or `RC_MOON_SYNC_REPOS`), so a fresh clone, CI
+    and every worktree see none; and whether a carrier that does exist has
+    adopted the doc is that project's decision, unreachable from here.
+
+    Written this way on purpose. RC's own `docs/CHANNEL.md` is TRACKED and is
+    therefore present in every checkout, so it is never the missing half - and
+    a gate spelled `(root / "docs" / "CHANNEL.md").is_file()` resolves, to a
+    static reader, to that tracked path, which reads as an always-passing guard
+    over RC's own artifact and is exactly the shape
+    tests/test_skip_condition_hygiene.py rejects. Routing the question through
+    the per-host config makes the absent thing - a sibling tree named by
+    machine-local state - the thing the gate is seen to depend on.
+    """
+    out: dict[Path, Path] = {}
+    for root in _sibling_roots():
+        doc = root / "docs" / "CHANNEL.md"
+        if doc.is_file():
+            out[root] = doc
+    return out
+
+
 def _grammar_rows() -> list[dict]:
     """Rows of the filename-grammar table in the review-conventions section.
 
@@ -185,9 +213,15 @@ def test_channel_doc_matches_the_sibling_copies_when_present(root):
     yet, so every parameter skips and the LEDGER denominator says 0 of N. If
     you are relying on byte identity, assert this arm actually RAN.
     """
-    carrier = root / "docs" / "CHANNEL.md"
-    if not carrier.is_file():
-        pytest.skip(f"carrier {root.name} does not carry the doc yet")
+    adopted = _adopted_carrier_docs()
+    if root not in adopted:
+        pytest.skip(
+            f"carrier {root.name} is not among the {len(adopted)} carrier "
+            "tree(s) this machine's gitignored config names that have vendored "
+            "the doc - the trees are machine-local and each sibling owns its "
+            "own adoption, so neither half is RC's to make true"
+        )
+    carrier = adopted[root]
     mine = (REPO_ROOT / CHANNEL_DOC).read_bytes().replace(b"\r\n", b"\n")
     theirs = carrier.read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(theirs).hexdigest() == hashlib.sha256(mine).hexdigest(), (
