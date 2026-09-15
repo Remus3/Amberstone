@@ -232,6 +232,16 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     live = _ROOT / "ops" / "runtime" / "hook_invocations.jsonl"
     before = live.read_bytes() if live.exists() else None
 
+    # A stdin-less run has no session id, and without one the watcher fails
+    # OPEN: it prints as before and writes NEITHER the per-session record nor
+    # the report file. Captured here because this is the one arm that runs the
+    # real CLI against the real _ROOT, so a writer that ignored the sid rule
+    # would create live ops/runtime files from the suite.
+    reported = _ROOT / "ops" / "runtime" / "sync_inbox_reported.json"
+    report = _ROOT / "ops" / "runtime" / "sync_inbox_report.txt"
+    reported_before = reported.read_bytes() if reported.exists() else None
+    report_before = report.read_bytes() if report.exists() else None
+
     env = dict(os.environ, RC_HOOK_LOG=str(tmp_path / "redirected.jsonl"))
     r = subprocess.run(
         [_PY, str(_ROOT / "tools" / "rc_facts.py"), "--inbox-only"],
@@ -245,3 +255,8 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     after = live.read_bytes() if live.exists() else None
     assert after == before, "the suite wrote into the live invocation log"
     assert (tmp_path / "redirected.jsonl").exists(), "the redirect did not take effect"
+
+    reported_after = reported.read_bytes() if reported.exists() else None
+    report_after = report.read_bytes() if report.exists() else None
+    assert reported_after == reported_before, "a sid-less run wrote the reported record"
+    assert report_after == report_before, "a sid-less run wrote the inbox report file"
