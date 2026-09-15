@@ -523,6 +523,61 @@ def test_status_md_size_cap_5x250(state: Path, tmp_path: Path):
     assert text.count("more - findings.json") >= 5
 
 
+def test_status_md_bytes_on_disk_are_lf_only(state: Path):
+    """The LF hold in _atomic_write is a GUARD, so it gets an assertion.
+
+    Read the RAW BYTES. A text read normalises the ending on the way in, so a
+    file written CRLF reads back LF and the check passes over the defect it
+    exists to catch. Both writers are covered: the normal render and the
+    minimal fault render, because they share the one atomic writer.
+    """
+    rows = [P._fleet_row("AAA", "OK", 3), P._fleet_row("BBB", "INBOX ABSENT")]
+    raw = P.write_status({}, 1.0, 300, rows=rows).read_bytes()
+    assert b"\r\n" not in raw, "status.md must be LF on disk"
+    assert raw.count(b"\n") > 5, raw
+
+    raw_fault = P._write_minimal_status(RuntimeError("boom")).read_bytes()
+    assert b"\r\n" not in raw_fault, "the fault render must be LF on disk too"
+
+
+def test_status_md_size_cap_holds_when_the_render_lands_just_under_the_bound(state: Path):
+    """The cap is measured in memory and enforced on DISK, and the two agree
+    only while the writer holds LF.
+
+    The 5x250 fixture cannot see this: it renders 3337 bytes over 42 lines, so
+    even CRLF reaches 3379 - nowhere near 4096, and the bound never binds. The
+    production shape is the opposite one. _render_status steps the name count
+    3 -> 2 -> 1 -> 0 and stops at the FIRST size that fits, so a wide fleet
+    routinely lands JUST under 4096, which is exactly the band where one extra
+    byte per line overflows the bound the render believed it had respected.
+
+    So the fixture is SEARCHED, not hardcoded: pick the fleet width whose LF
+    render fits the bound while its CRLF twin would not. If no width in the
+    sweep lands in that band this test fails loudly rather than quietly
+    degrading into a non-discriminating one.
+    """
+    now = time.time()
+    checked = P._iso(now)
+    chosen = None
+    for n in range(2, 200):
+        rows = [P._fleet_row(f"R{i:03d}", "OK", 7) for i in range(n)]
+        window, failure = P._window_view(rows, now)
+        text = P._render_status({}, 1.0, 300, rows, None, 0, now, 0, window, failure, checked)
+        size = len(text.encode("utf-8"))
+        crlf_size = size + text.count("\n")
+        if size <= 4096 < crlf_size:
+            chosen = (rows, size, crlf_size)
+            break
+    assert chosen is not None, "no fleet width lands in the CRLF-discriminating band"
+    rows, lf_size, crlf_size = chosen
+
+    raw = P.write_status({}, 1.0, 300, rows=rows).read_bytes()
+    # The bound is the LITERAL, never P.STATUS_MAX_BYTES - see the 5x250 note.
+    assert len(raw) <= 4096, (len(raw), lf_size, crlf_size)
+    assert b"\r\n" not in raw
+    assert f"- {rows[-1]['code']}: 7 entries" in raw.decode("utf-8")
+
+
 def test_status_md_carries_the_prompt_half_line_and_dead_when_blind(state: Path, tmp_path: Path):
     root = _self_root(state)
     now = time.time()
