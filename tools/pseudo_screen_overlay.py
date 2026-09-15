@@ -55,7 +55,7 @@ MODES = ("sr", "aram", "mayhem", "complete")
 
 # Synthetic backdrop. The overlay body is transparent by design (it composits
 # over the live game in the Electron window), so a headless capture reads
-# black. Inject the proven HEXCORE gradient from the HARNESS only - never from
+# black. Inject the proven ATLAS gradient from the HARNESS only - never from
 # web/css/overlay.css, or the background would leak into the real overlay
 # window over the live game.
 BACKDROP_CSS = (
