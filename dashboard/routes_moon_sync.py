@@ -64,19 +64,34 @@ same way the thing it watches goes quiet. A file that EXISTS but carries no
 parseable stamp is a different animal and grades STALE, by the rule, on both
 sides.
 
-FAULT OUTRANKS THE MISSING-STAMP SHORTCUT TOO, and the code says so rather than
-leaving it to the prose. ``build_moon_sync_status`` takes its UNMEASURED
-shortcut only when there is no fault line; with one, it delegates to
-``status_verdict``, whose step 1 returns FAULT. The shape this closes is
-production-reachable and precisely the one a liveness surface must not
-mis-grade: a poller that faults BEFORE it stamps writes a header carrying
-``- fault:``, ``- pid:`` and ``- next interval:`` and NO ``- checked:`` line.
-Graded by the missing gate alone that read UNMEASURED, which is the opposite of
-what step 1 promises. ``status_missing`` stays True on that shape - the stamp
-really is absent - so the two facts are reported separately and neither is
-inferred from the other. Pinned by
-``test_fault_before_the_stamp_is_fault_not_unmeasured``, whose second arm holds
-the un-faulted shape at UNMEASURED so the fix cannot over-correct.
+THE PRE-RULE GATE ASKS ONE QUESTION ONLY: IS THERE A FILE. It used to ask a
+wider one - "is there a file AND does it carry a parseable stamp" - and that
+width is what let an existing-but-unstampable header be intercepted and
+reported UNMEASURED before the rule was ever called, while the poller's own
+``--status`` graded the identical file by the rule and printed STALE. Two
+surfaces, one file, two answers. The gate is now ``text is None``, so every
+existing header - stampable or not - is graded by ``status_verdict``, which
+answers FAULT when a fault line is present and STALE when there is no stamp to
+grade. That is also why FAULT needs no special pleading any more: the
+production-reachable shape a liveness surface must not mis-grade - a poller
+that faults BEFORE it stamps, writing ``- fault:``, ``- pid:`` and
+``- next interval:`` and NO ``- checked:`` line - now simply reaches step 1.
+
+``status_missing`` KEEPS ITS WIDER MEANING and is reported as its own wire
+fact: "there is no usable stamp", true for an absent file and for an existing
+header whose stamp will not parse. It is no longer the predicate that selects
+UNMEASURED, and that separation is the point - the two facts are reported
+independently and neither is inferred from the other. Pinned by
+``test_fault_before_the_stamp_is_fault_not_unmeasured``, whose first arm holds
+the faulted no-stamp shape at FAULT with ``status_missing`` still True, and
+whose second arm holds the un-faulted no-stamp shape at STALE.
+
+THE TWO ENTRY POINTS ARE BOUND, not merely the rule. A parity test over
+``status_verdict`` alone cannot see a divergence introduced ABOVE the rule,
+which is exactly how the UNMEASURED-vs-STALE split survived a full
+reconciliation pass. ``test_entry_points_agree_on_the_same_status_md`` drives
+``build_moon_sync_status`` and the poller's ``status_report`` over ONE
+status.md in one temp state dir and asserts the verdicts are equal.
 
 WHAT REACHES THE WIRE. Codes and counts only. Note names and inbox filenames
 never leave the box: the per-repo rows carry a short CODE plus integers plus a
@@ -339,7 +354,24 @@ def status_verdict(fault, pid_alive, checked, expect, interval_s, now) -> str:
 
 def build_moon_sync_status() -> dict:
     """Read status.md once and grade it. No writes, no mkdir, no exceptions
-    for the ordinary absent-file case."""
+    for the ordinary absent-file case.
+
+    THE VOCABULARY, stated here because it is the thing that drifted:
+    UNMEASURED means THE FILE IS ABSENT. STALE means the file exists but
+    cannot be stamped - either it carries no ``- checked:`` line at all, or the
+    one it carries will not parse. Nothing else may emit UNMEASURED, so the
+    verdict this route puts on the wire agrees with the verdict the poller's
+    own ``--status`` prints over the very same file. That agreement is not a
+    claim: ``tests/test_moon_sync_status_route.py`` drives BOTH entry points
+    over one status.md and asserts the two verdicts are equal.
+
+    ``status_missing`` is a SEPARATE wire fact and keeps its original, wider
+    meaning - "there is no usable stamp", true for an absent file AND for an
+    existing header whose stamp will not parse. It is deliberately no longer
+    the predicate that selects UNMEASURED; reporting the two independently is
+    what lets a caller tell "no file" from "a file that cannot be graded"
+    without either fact being inferred from the other.
+    """
     now = _now()
     path = _state_dir_path() / STATUS_FILENAME
     try:
@@ -348,17 +380,29 @@ def build_moon_sync_status() -> dict:
         text = None
 
     facts = parse_status_header(text) if text is not None else parse_status_header("")
-    missing = text is None or facts["checked_dt"] is None
+
+    # TWO DIFFERENT QUESTIONS, deliberately no longer the same predicate.
+    # `file_absent` gates the pre-rule UNMEASURED verdict and asks only "is
+    # there a file"; `status_missing` is a WIRE FACT and asks "is there a
+    # usable stamp", which an existing-but-unstampable header also answers no
+    # to. Collapsing the two is exactly the bug this split fixes: the wider
+    # predicate intercepted an existing header with no parseable `- checked:`
+    # line and reported UNMEASURED, while the poller's own --status graded the
+    # same file by the rule and printed STALE.
+    file_absent = text is None
+    status_missing = file_absent or facts["checked_dt"] is None
 
     pid = facts["pid"]
     pid_alive = _pid_alive(pid) if pid is not None else None
 
-    # THE ONE RULE step 1 is FAULT and it outranks everything - the missing
-    # shortcut included. A poller that faults BEFORE it stamps produces exactly
-    # that shape, so the fault line is evaluated FIRST by delegating to
-    # status_verdict, which is the single owner of the rule. The shortcut stays
-    # for the un-faulted missing case, where UNMEASURED is the honest answer.
-    if missing and not facts["fault"]:
+    # UNMEASURED means THE FILE IS ABSENT. Everything else - including a header
+    # that exists but carries no gradeable stamp - is delegated to
+    # status_verdict, the single owner of THE ONE RULE, which answers FAULT
+    # when a fault line is present and STALE when there is no stamp to grade.
+    # The `not facts["fault"]` guard is retained as a belt-and-braces statement
+    # of step 1's precedence; an absent file parses to no facts at all, so it
+    # cannot fire, and FAULT can only ever be reached through the rule.
+    if file_absent and not facts["fault"]:
         verdict = "UNMEASURED"
     else:
         verdict = status_verdict(
@@ -377,7 +421,7 @@ def build_moon_sync_status() -> dict:
     return {
         "ok": True,
         "verdict": verdict,
-        "status_missing": missing,
+        "status_missing": status_missing,
         "status_age_s": age,
         "checked": facts["checked"],
         "next_interval_s": facts["next_interval_s"],

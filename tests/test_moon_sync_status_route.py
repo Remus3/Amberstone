@@ -16,6 +16,16 @@ Ground truth this module was written against (each grepped before use):
   tools/moon_sync_poller.py:122  `state_dir()` - the resolution this mirrors
   tools/moon_sync_poller.py:268  `write_status()` - the status.md header shape
 
+THE RULE IS BOUND TWICE OVER, AT TWO DIFFERENT ALTITUDES, and both bindings
+are load-bearing. `test_route_and_poller_agree_on_the_verdict` binds the RULE
+(`status_verdict` against `status_verdict`) and is blind to anything either
+surface does before calling it.
+`test_entry_points_agree_on_the_same_status_md` binds the ENTRY POINTS
+(`build_moon_sync_status` against the poller's `status_report`) over one
+status.md and is what catches a divergence introduced ABOVE the rule - the
+class of bug that once shipped UNMEASURED on the route and STALE on --status
+for the identical file. Do not drop either for the other.
+
 TWO TESTS ARE EXPECTED RED IN THE BUILD WORKTREE, BY DESIGN.
 `test_route_and_poller_agree_on_the_verdict` and
 `test_state_dir_resolution_matches_the_poller` HARD-import
@@ -232,8 +242,13 @@ def test_fault_before_the_stamp_is_fault_not_unmeasured(statedir, monkeypatch):
     stamp really is absent - so the two facts are reported independently.
 
     The second arm is the over-correction control: strip the fault line from
-    the same shape and it must still be UNMEASURED, so "fault first" cannot be
-    implemented as "never UNMEASURED".
+    the same shape and the SAME delegation must happen, landing on the rule's
+    own no-stamp answer, STALE. It must NOT be UNMEASURED - UNMEASURED means
+    the file is ABSENT, and this file exists - so "fault first" still cannot be
+    implemented as "never delegate", and the pre-rule gate still cannot be
+    widened back to swallow an existing header. `status_missing` stays True on
+    BOTH arms: it is the separate, wider "no usable stamp" wire fact, not the
+    predicate that selects UNMEASURED.
     """
     faulted = _verdict_for(
         statedir, monkeypatch,
@@ -245,7 +260,7 @@ def test_fault_before_the_stamp_is_fault_not_unmeasured(statedir, monkeypatch):
     assert faulted["status_age_s"] is None
 
     clean = _verdict_for(statedir, monkeypatch, _header(checked=None))
-    assert clean["verdict"] == "UNMEASURED"
+    assert clean["verdict"] == "STALE"
     assert clean["fault"] is None
     assert clean["status_missing"] is True
 
@@ -399,14 +414,16 @@ _CASES = (
     # same ordering, but only as a side effect of the promise being derived
     # inside the rule; this one pins it by intent.
     ("long_dead", None, True, -5000, -4640, 300, "STALE"),
-    # No stamp AND no promise. This is NOT UNMEASURED: UNMEASURED now lives
-    # ABOVE the rule on both sides - it is the ABSENT-FILE verdict, emitted by
-    # build_moon_sync_status:361-362 before delegating and by the poller's own
-    # --status absent-file branch. A file that exists but carries no parseable
-    # stamp cannot be graded by time, and both copies answer STALE. The
-    # pre-rule verdict is bound by test_absent_status_is_loud_not_empty, by the
-    # absent-directory arm of test_route_reads_only_and_creates_nothing, and by
-    # the second arm of test_fault_before_the_stamp_is_fault_not_unmeasured.
+    # No stamp AND no promise. This is NOT UNMEASURED: UNMEASURED lives ABOVE
+    # the rule on both sides - it is the ABSENT-FILE verdict, emitted by
+    # build_moon_sync_status's `text is None` gate before delegating and by the
+    # poller's own --status absent-file branch. A file that exists but carries
+    # no parseable stamp cannot be graded by time, and both copies answer
+    # STALE. The pre-rule verdict is bound by test_absent_status_is_loud_not_empty,
+    # by the absent-directory arm of test_route_reads_only_and_creates_nothing,
+    # and by the second arm of test_fault_before_the_stamp_is_fault_not_unmeasured.
+    # None of those can see a divergence introduced ABOVE the rule on only ONE
+    # surface, which is what test_entry_points_agree_on_the_same_status_md is for.
     ("no_stamp_no_promise", None, None, None, None, None, "STALE"),
 )
 
@@ -452,3 +469,136 @@ def test_state_dir_resolution_matches_the_poller(tmp_path, monkeypatch):
     monkeypatch.delenv("RC_MOON_SYNC_STATE", raising=False)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "appdata"))
     assert mod._state_dir_path() == poller_state_dir()
+
+
+# -------------------------------------------------- parity at the ENTRY POINTS
+# THE RULE-LEVEL PARITY TEST ABOVE IS NOT ENOUGH, and this module is where that
+# was proved. `test_route_and_poller_agree_on_the_verdict` binds
+# `status_verdict` to `status_verdict`; it is blind to anything either surface
+# does BEFORE calling the rule. A divergence lived in exactly that blind spot -
+# the route's pre-rule gate intercepted an existing-but-unstampable status.md
+# and answered UNMEASURED while the poller's --status delegated to the rule and
+# printed STALE - and it survived a full reconciliation pass of the rule
+# because nothing in the suite had ever driven the two ENTRY POINTS over one
+# file. These tests do that: one status.md, one temp state dir, both surfaces,
+# compare the VERDICT (never the prose, which differs by design).
+
+_VERDICT_LINE = re.compile(r"^verdict ([A-Z]+)$")
+
+
+def _poller_verdict_from_status_report(poller, state_dir, tmp_path, now_epoch) -> str:
+    """The verdict the poller's own --status would print over `state_dir`.
+
+    `status_report` is the narrowest entry point that produces it: main()'s
+    --status branch only prints what this returns. Every out-of-tmp read the
+    report makes for UNRELATED facts (desktop idle, the prompt-half ladder, the
+    pid probe) is pinned here, so the only thing that can move the verdict is
+    the status.md under test.
+    """
+    lines = poller.status_report(
+        now=now_epoch,
+        state_path=state_dir,
+        repos=(),
+        self_root=str(tmp_path),
+    )
+    hits = [m.group(1) for m in (_VERDICT_LINE.match(ln) for ln in lines) if m]
+    assert len(hits) == 1, f"expected exactly one verdict line, got {lines!r}"
+    return hits[0]
+
+
+@pytest.fixture
+def entry_points(tmp_path, monkeypatch):
+    """Both surfaces, pinned to one temp state dir and one fixed clock.
+
+    Neither side may touch the real %LOCALAPPDATA%/moonsync and neither may
+    write anything: the route gets the env override it really reads, and the
+    poller gets `state_path` passed explicitly.
+    """
+    from tools import moon_sync_poller as poller
+
+    state = tmp_path / "moonsync"
+    state.mkdir()
+    monkeypatch.setenv("RC_MOON_SYNC_STATE", str(state))
+
+    # Facts that are not the status.md under test, pinned on both sides so a
+    # machine-local answer can never move a verdict.
+    monkeypatch.setattr(mod, "_now", lambda: NOW)
+    monkeypatch.setattr(mod, "_pid_alive", lambda pid: True)
+    monkeypatch.setattr(poller, "_pid_alive_detail", lambda pid: (True, "yes"))
+    monkeypatch.setattr(poller, "effective_idle_seconds", lambda now=None: 12.0)
+    monkeypatch.setattr(
+        poller, "prompt_half",
+        lambda now=None, self_root=None: ("last ping 1s via repo-root", False))
+
+    def _both(text: str | None) -> tuple[str, str]:
+        target = state / "status.md"
+        if text is None:
+            if target.exists():
+                target.unlink()
+        else:
+            target.write_text(text, encoding="utf-8")
+        route = mod.build_moon_sync_status()["verdict"]
+        poll = _poller_verdict_from_status_report(
+            poller, state, tmp_path, NOW.timestamp())
+        return route, poll
+
+    return _both
+
+
+# label -> the status.md text under test (None means no file at all).
+_ENTRY_POINT_CASES = (
+    # The file is genuinely absent. Both surfaces answer from their OWN
+    # pre-rule absent-file branch, and UNMEASURED is what that branch means.
+    ("absent", None, "UNMEASURED"),
+    # The file EXISTS and carries no `- checked:` line at all. This is the case
+    # that diverged: the route said UNMEASURED, the poller said STALE.
+    ("exists_no_stamp", _header(checked=None), "STALE"),
+    # The file EXISTS and the checked line is present but will not parse. Same
+    # answer by the same route through the rule - a stamp that cannot be read
+    # is not a stamp.
+    ("exists_bad_stamp",
+     _header(checked=None).replace(
+         "- desktop+prompt idle: 12s",
+         "- checked: not-a-timestamp\n- desktop+prompt idle: 12s"),
+     "STALE"),
+    # Cheap extensions, so the test also fails if agreement is achieved by
+    # collapsing every existing file to one verdict.
+    ("healthy", _header(expect=NOW + timedelta(minutes=5)), "LIVE"),
+    ("faulted",
+     _header(expect=NOW + timedelta(minutes=5), fault="SEEN_STORE_UNREADABLE"),
+     "FAULT"),
+)
+
+
+def test_entry_points_agree_on_the_same_status_md(entry_points):
+    """Drive BOTH entry points over the same status.md and compare verdicts.
+
+    Asserted on the verdict token, never on prose: the route returns JSON and
+    the poller returns report lines, and holding those to each other would bind
+    formatting rather than meaning. The expected column is asserted too, so the
+    pair cannot agree on a wrong answer and pass.
+    """
+    for label, text, expected in _ENTRY_POINT_CASES:
+        route, poll = entry_points(text)
+        assert route == poll, (
+            f"{label}: the two entry points disagree over one status.md - "
+            f"route said {route}, poller --status said {poll}")
+        assert route == expected, f"{label}: both said {route}, table says {expected}"
+
+
+def test_entry_point_parity_fixture_writes_nothing_outside_tmp(entry_points, tmp_path):
+    """The parity fixture must not create or touch the real state dir.
+
+    A parity test that quietly reads %LOCALAPPDATA%/moonsync would agree with
+    itself on whatever the live poller happened to have written, which is the
+    one way this test could pass while proving nothing.
+    """
+    import os
+
+    real = mod._state_dir_path()
+    assert str(tmp_path) in str(real), f"route still resolves outside tmp: {real}"
+    assert os.environ["RC_MOON_SYNC_STATE"] == str(tmp_path / "moonsync")
+
+    entry_points(_header())
+    written = sorted(p.name for p in (tmp_path / "moonsync").iterdir())
+    assert written == ["status.md"], written
