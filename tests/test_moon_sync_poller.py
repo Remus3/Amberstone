@@ -864,8 +864,16 @@ def test_status_command_reports_prompt_half_dead_when_invocations_outrun_pings(s
 
 def test_virtualized_view_line_when_final_path_is_under_localcache(state: Path, monkeypatch):
     P.write_status({}, 1.0, 300, rows=[])
+    # The account segment is the placeholder `<user>`, not a real account name:
+    # `_final_path` is monkeypatched here, so nothing resolves this string - the
+    # detector at tools/moon_sync_poller.py:1187 only looks for `\Packages\` and
+    # `\LocalCache\`. Spelling an account in it would make this file a runnable
+    # surface carrying a home-shaped path, which tests/test_no_hardcoded_home_path.py
+    # forbids and which names `<user>` as one of the correct forms.
     monkeypatch.setattr(
-        P, "_final_path", lambda p: r"\\?\C:\Users\x\AppData\Local\Packages\x\LocalCache\Local\moonsync\status.md"
+        P,
+        "_final_path",
+        lambda p: r"\\?\C:\Users\<user>\AppData\Local\Packages\x\LocalCache\Local\moonsync\status.md",
     )
     assert any("VIRTUALIZED VIEW: status.md" in ln for ln in P.status_report())
     monkeypatch.setattr(P, "_final_path", lambda p: str(p))
