@@ -75,6 +75,7 @@ A restated fact is a fact that will drift.
 | `docs/OPERATIONS.md` | Commands, restart, scheduled tasks, runbooks | Architecture, rationale |
 | `docs/adr/` | One file per architectural decision, indexed in `docs/adr/README.md` | Anything not a decision |
 | `docs/GATED.md` (Amberstone: `docs/LIVE_GAME_GATED_SYNC.md`) | Items blocked on something outside the repo | Items merely unstarted |
+| `docs/CHANNEL.md` | Cross-repo channel grammar, code roster, note skeleton, prefixes, practised rules, its version pin and joint re-pin | Any sibling's real name or path, any per-repo alias, any repo-relative path or line-number cite |
 | `WAKEUP_NOTES.md` | Last 2-3 sessions at full fidelity | Anything older (archive it) |
 | `docs/history_notes.md` | Deep archive of pruned notes and old ledger items | Current state |
 | `memory/` | Durable cross-project and cross-session facts (section 11) | Project state derivable from code |
