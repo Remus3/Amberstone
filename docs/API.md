@@ -76,6 +76,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/lcu/auto-accept` | auto_accept |
 | `/api/loop-monitor` / `/loop-monitor` | loop_monitor |
 | `/api/mains` / `/api/top8` | lobby_aux |
+| `/api/moon-sync-status` | moon_sync |
 | `/api/op-score-curve` | op_score |
 | `/api/peel-priority` | peel_priority |
 | `/api/perf-curve` | perf_curve |
