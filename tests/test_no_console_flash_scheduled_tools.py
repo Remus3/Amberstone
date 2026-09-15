@@ -86,6 +86,32 @@ SCHEDULED_SPAWNERS = (
     "tools/inbox_responder_procs.py",
 )
 
+# Modules run by a CLAUDE HOOK, which is the same exposure by a different route:
+# a hook is hosted by an interpreter with no console of its own, so every
+# console-subsystem child it spawns gets a fresh console allocated and flashes.
+#
+# WHY THESE FOUR, 2026-09-14. A sibling's (code LL) pythonw Stop hook and
+# PreToolUse gate spawning git.exe without CREATE_NO_WINDOW, measured
+# 2026-09-14, was the live instance of this shape on the box. RC's own four
+# hook scripts were ALREADY compliant when swept - spawn sites / flagged read
+# 2/2 (rc_facts.py:92, :110), 3/3 (precommit_gate.py:66, :254, :540), 1/1
+# (pytest_guard.py:56) and 1/1 (edit_lint_check.py:68), every one of them
+# `creationflags=_NO_WINDOW` resolving through
+# `getattr(subprocess, "CREATE_NO_WINDOW", 0)`. They are listed so that stays
+# true, because the guard's failure mode is a NEW spawn in an old file, and
+# nothing else would notice: a hook's console flash is invisible in CI and
+# shows up only as a flicker on a desktop.
+HOOK_SPAWNERS = (
+    "tools/rc_facts.py",
+    "tools/precommit_gate.py",
+    "tools/pytest_guard.py",
+    "tools/edit_lint_check.py",
+)
+
+#: Both tests below run over the union. Unattended-by-schedule and
+#: unattended-by-hook are the same defect with two entry points.
+ALL_SPAWNERS = SCHEDULED_SPAWNERS + HOOK_SPAWNERS
+
 # ---------------------------------------------------------------------------
 # THE BLIND SPOT, stated so it is not mistaken for coverage. SCHEDULED_SPAWNERS
 # is a hand-list of IN-REPO paths, so any scheduled task whose target lives
@@ -98,6 +124,10 @@ SCHEDULED_SPAWNERS = (
 # "I watched and saw nothing" is not evidence of absence at this timescale.
 # The decisive probe is to spawn the same command from pythonw twice, once
 # unflagged and once flagged, and diff the visible ConsoleWindowClass set.
+# tools/console_flash_control.py is that probe made repeatable, and it is
+# deliberately absent from both lists above: its unflagged spawns ARE the
+# positive control, so listing it would redden the guard on the one file whose
+# job is to produce the symptom.
 # ---------------------------------------------------------------------------
 
 _SPAWN_ATTRS = {"run", "Popen", "check_output", "call", "check_call"}
@@ -117,7 +147,7 @@ def _spawn_calls(tree: ast.AST) -> list[ast.Call]:
     return found
 
 
-@pytest.mark.parametrize("rel", SCHEDULED_SPAWNERS)
+@pytest.mark.parametrize("rel", ALL_SPAWNERS)
 def test_every_subprocess_spawn_passes_creationflags(rel: str) -> None:
     path = ROOT / rel
     assert path.exists(), f"{rel} is missing - update SCHEDULED_SPAWNERS"
@@ -187,7 +217,7 @@ def _is_no_window(expr: ast.expr, names: dict[str, list[ast.expr]],
     return False
 
 
-@pytest.mark.parametrize("rel", SCHEDULED_SPAWNERS)
+@pytest.mark.parametrize("rel", ALL_SPAWNERS)
 def test_the_no_window_constant_is_the_real_win32_value(rel: str) -> None:
     # The kwarg being PRESENT is not sufficient: a mistyped getattr attribute or
     # a variable that never held the flag both spawn fine and still flash. So
@@ -204,3 +234,36 @@ def test_the_no_window_constant_is_the_real_win32_value(rel: str) -> None:
             f"getattr(subprocess, ...) attribute name - that form returns the "
             f"default 0 and fails open, flashing a console anyway."
         )
+
+
+def _subprocess_import_forms(tree: ast.AST) -> list[str]:
+    """Every import of `subprocess` that is NOT a bare `import subprocess`."""
+    out = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "subprocess" and alias.asname:
+                    out.append(f"import subprocess as {alias.asname}")
+        elif isinstance(node, ast.ImportFrom) and node.module == "subprocess":
+            names = ", ".join(a.name for a in node.names)
+            out.append(f"from subprocess import {names}")
+    return out
+
+
+@pytest.mark.parametrize("rel", HOOK_SPAWNERS)
+def test_hook_spawners_import_subprocess_by_name_only(rel: str) -> None:
+    # PINS THE SCANNER'S BLIND SPOT. _spawn_calls above matches only
+    # `subprocess.<attr>(`, so `import subprocess as sp` or
+    # `from subprocess import run` makes every spawn in the file invisible to
+    # the guard - which goes GREEN while the module flashes. There is no way to
+    # resolve that from the call site alone, so the import form is pinned
+    # instead: these four files spawn under a hook, and a hook's flash is the
+    # one this repository has actually paid for.
+    tree = ast.parse((ROOT / rel).read_text(encoding="utf-8"))
+    forms = _subprocess_import_forms(tree)
+    assert forms == [], (
+        f"{rel} imports subprocess under an alias or by name ({forms}). "
+        f"The creationflags scanner in this file only sees `subprocess.run(` "
+        f"and friends, so those spawns would be invisible to it. Use a bare "
+        f"`import subprocess`."
+    )
