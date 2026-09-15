@@ -15,7 +15,7 @@ every one of which actually happened here:
     of a session (LEDGER 1064).
   * 11 authored ``.claude/commands/*.md`` had ZERO version control for months,
     because the directory is gitignored.
-  * An ENGINE bump left a stale version in ``docs/HEXCORE_offline.html`` - a
+  * An ENGINE bump left a stale version in ``atlas.html`` - a
     FOURTH anchor site no checklist named - and it surfaced only 25 minutes into
     a full CI run (2026-07-26, ENGINE 1.259.0).
   * A release-history doc said "the fifteen most recent" above a list of twenty.
@@ -245,7 +245,7 @@ def check_version_anchors(
     """After a bump, no authored doc may still present the OLD version as live.
 
     Sweeps HTML as well as markdown - a ``*.md``-only grep is exactly how the
-    ``docs/HEXCORE_offline.html`` anchor was missed on the 1.259.0 bump.
+    ``atlas.html`` anchor was missed on the 1.259.0 bump.
     Changelogs, ledgers and history files legitimately name old versions and are
     excluded by name.
 

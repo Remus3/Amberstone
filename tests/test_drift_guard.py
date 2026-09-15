@@ -291,7 +291,7 @@ class MemoryIndexTests(unittest.TestCase):
 
 
 class VersionAnchorTests(unittest.TestCase):
-    """The hexcore-anchor class: a version site no checklist names."""
+    """The atlas-anchor class: a version site no checklist names."""
 
     def _tree(self) -> pathlib.Path:
         root = pathlib.Path(tempfile.mkdtemp())
@@ -307,7 +307,7 @@ class VersionAnchorTests(unittest.TestCase):
         self.assertTrue(out)
 
     def test_html_sites_are_swept_too(self) -> None:
-        """A *.md-only grep is exactly how the hexcore site was missed."""
+        """A *.md-only grep is exactly how the atlas site was missed."""
         import drift_guard
 
         root = self._tree()
