@@ -661,14 +661,35 @@ def test_status_verdict_six_way(state: Path, monkeypatch):
     faulted = _header(t0, 300, fault="RuntimeError")
     assert P.status_verdict(faulted, t0 + 1, True) == "FAULT"
 
+    # _close_handle MUST be patched alongside _open_process. The fake handle
+    # below is a bare integer, and every nonzero integer is somebody's REAL live
+    # OS handle - in this case one owned by the pytest process itself. Handing
+    # it to the real CloseHandle corrupts the interpreter, and every later
+    # CreateProcess in the same pytest process then dies with 0xC0000142
+    # (STATUS_DLL_INIT_FAILED) and empty stdout/stderr. Patching it here is not
+    # merely defensive: recording the closes turns the seam into a positive
+    # assertion that the production code neither LEAKS the handle nor closes one
+    # it never opened.
+    closed: list[int] = []
+    monkeypatch.setattr(P, "_close_handle", closed.append)
+
+    # Open failed (ERROR_INVALID_PARAMETER / ERROR_ACCESS_DENIED): production
+    # returns before _close_handle, so there is nothing to release and closing
+    # the 0 would be a bug.
     monkeypatch.setattr(P, "_open_process", lambda pid: (0, 87))
     assert P._pid_alive(4242) is False
+    assert closed == [], "a failed OpenProcess must not be closed"
     monkeypatch.setattr(P, "_open_process", lambda pid: (0, 5))
     assert P._pid_alive(4242) is None
     assert P.status_verdict(h, t0 + 400, P._pid_alive(4242)) == "OVERDUE"
+    assert closed == [], "a failed OpenProcess must not be closed"
+
+    # Open succeeded: the handle production was handed must be released exactly
+    # once, with the exact value _open_process returned.
     monkeypatch.setattr(P, "_open_process", lambda pid: (7, 0))
     monkeypatch.setattr(P, "_process_exit_code", lambda h_: 259)
     assert P._pid_alive(4242) is True
+    assert closed == [7], "the opened handle must be closed exactly once, by value"
 
 
 # ----------------------------------------------------------------- run loop
@@ -949,3 +970,84 @@ def test_status_and_fleet_flags_are_not_wired_to_any_hook():
 
     walk(blob)
     assert found == [], found
+
+
+# ------------------------------------------------- handle-hygiene regression
+
+# Acquire seam -> the seam that RELEASES what it handed back. A test that fakes
+# the left-hand name and not the right-hand one hands a made-up integer to a
+# real OS release call. Add a row here whenever a new acquire/release pair
+# appears; the guard below is only as wide as this table.
+_HANDLE_SEAM_PAIRS = (("_open_process", "_close_handle"),)
+
+
+def _setattr_targets(fn: ast.FunctionDef) -> set[str]:
+    """Every name this test function monkeypatches, however it is spelled.
+
+    Covers `monkeypatch.setattr(MOD, "name", ...)` and the string form
+    `monkeypatch.setattr("mod.name", ...)`, since both reach the same seam.
+    """
+    names: set[str] = set()
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Call):
+            continue
+        f = node.func
+        if not (isinstance(f, ast.Attribute) and f.attr in ("setattr", "patch")):
+            continue
+        for arg in node.args[:2]:
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                names.add(arg.value.rsplit(".", 1)[-1])
+    return names
+
+
+def test_no_test_fakes_an_acquire_seam_without_its_release_seam():
+    """The guard on the CLASS of defect, not on the one instance of it.
+
+    A test that patches `_open_process` to hand back a fake handle and leaves
+    `_close_handle` real makes production close an integer it was told it owns.
+    Every nonzero integer is somebody's live OS handle - here, one belonging to
+    the pytest process itself - so the close silently corrupts the interpreter.
+    Nothing fails at the faking site. What breaks is process creation, far away
+    and much later: subsequent CreateProcess calls return 3221225794
+    (0xC0000142, STATUS_DLL_INIT_FAILED) with EMPTY stdout and stderr. That is
+    why this escaped as two unrelated subprocess-spawning tests in a DIFFERENT
+    module failing only when the two modules ran together.
+
+    WHY THIS SHAPE AND NOT A SPAWN CHECK. The obvious guard - spawn a trivial
+    child at the end of this module and assert rc 0 - was built first and
+    MEASURED NOT TO BIND: against a mutant copy of this module with the
+    `_close_handle` patch removed, an in-module spawn guard passed 10 runs out
+    of 10, in six shapes (with and without a stdin pipe, with and without an
+    inherited env), while the same mutant still corrupted the run - the two
+    downstream tests in test_inbox_reported_record.py failed every time. The
+    manifestation is real but it does not surface reliably inside the module
+    that causes it, so a spawn guard here would have been green and worthless.
+    This AST check is deterministic instead: it fails the moment the pairing is
+    dropped, whatever the OS happens to do about it afterwards.
+    """
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        patched = _setattr_targets(node)
+        for acquire, release in _HANDLE_SEAM_PAIRS:
+            if acquire in patched and release not in patched:
+                offenders.append(f"{node.name}: patches {acquire}, not {release}")
+
+    assert offenders == [], (
+        "a test fakes an OS handle through its acquire seam while leaving the "
+        "release seam real, so a made-up handle value reaches the live OS "
+        "call: " + "; ".join(offenders)
+    )
+
+
+def test_the_seam_pair_table_still_names_real_functions():
+    """A typo in _HANDLE_SEAM_PAIRS would make the guard above vacuously green.
+
+    The guard only ever compares strings, so a renamed or misspelled seam costs
+    it nothing and silently retires it. Anchor both halves to the module.
+    """
+    for acquire, release in _HANDLE_SEAM_PAIRS:
+        assert callable(getattr(P, acquire, None)), acquire
+        assert callable(getattr(P, release, None)), release
