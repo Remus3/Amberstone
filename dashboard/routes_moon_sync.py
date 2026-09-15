@@ -1,9 +1,4 @@
-# Route module: GET /api/moon-sync-status (section dashboard, not frozen).
-# Deliberately NOT an `# arch:` marker line. tools/gen_archmap.py derives
-# docs/ARCHITECTURE.md from those markers and `--check` is a pre-commit gate, so
-# adding one here would require regenerating docs/ARCHITECTURE.md - a file this
-# slice does not own. Promote this to a real `# arch:` header at the merge, in
-# the same commit as `python tools/gen_archmap.py`.
+# arch: GET /api/moon-sync-status - read-only moon_sync poller liveness | section=dashboard | frozen=no
 """GET /api/moon-sync-status - is the cross-repo moon_sync poller still alive?
 
 A thin, additive, READ-ONLY reader over the poller's own ``status.md``. It adds
@@ -41,6 +36,20 @@ UNMEASURED is the verdict when status.md is absent or carries no parseable
 stamp. A missing file is never a fabricated DEAD and never an empty 200 - the
 one thing a liveness surface must not do is go quiet in the same way the thing
 it watches goes quiet.
+
+FAULT OUTRANKS THE MISSING-STAMP SHORTCUT TOO, and the code says so rather than
+leaving it to the prose. ``build_moon_sync_status`` takes its UNMEASURED
+shortcut only when there is no fault line; with one, it delegates to
+``status_verdict``, whose step 1 returns FAULT. The shape this closes is
+production-reachable and precisely the one a liveness surface must not
+mis-grade: a poller that faults BEFORE it stamps writes a header carrying
+``- fault:``, ``- pid:`` and ``- next interval:`` and NO ``- checked:`` line.
+Graded by the missing gate alone that read UNMEASURED, which is the opposite of
+what step 1 promises. ``status_missing`` stays True on that shape - the stamp
+really is absent - so the two facts are reported separately and neither is
+inferred from the other. Pinned by
+``test_fault_before_the_stamp_is_fault_not_unmeasured``, whose second arm holds
+the un-faulted shape at UNMEASURED so the fix cannot over-correct.
 
 WHAT REACHES THE WIRE. Codes and counts only. Note names and inbox filenames
 never leave the box: the per-repo rows carry a short CODE plus integers plus a
@@ -311,7 +320,12 @@ def build_moon_sync_status() -> dict:
     pid = facts["pid"]
     pid_alive = _pid_alive(pid) if pid is not None else None
 
-    if missing:
+    # THE ONE RULE step 1 is FAULT and it outranks everything - the missing
+    # shortcut included. A poller that faults BEFORE it stamps produces exactly
+    # that shape, so the fault line is evaluated FIRST by delegating to
+    # status_verdict, which is the single owner of the rule. The shortcut stays
+    # for the un-faulted missing case, where UNMEASURED is the honest answer.
+    if missing and not facts["fault"]:
         verdict = "UNMEASURED"
     else:
         verdict = status_verdict(

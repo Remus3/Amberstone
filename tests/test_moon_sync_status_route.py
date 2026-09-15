@@ -1,5 +1,4 @@
-# Tests for GET /api/moon-sync-status (section tests, not frozen). Deliberately
-# NOT an `# arch:` marker line - see the note at the top of the route module.
+# arch: guard - GET /api/moon-sync-status verdict, read-only reads, codes-only wire | section=tests | frozen=no
 """Behaviour tests for dashboard.routes_moon_sync - the read-only JSON route
 that reports whether the moon_sync cross-repo poller is still alive.
 
@@ -223,6 +222,34 @@ def test_verdict_six_way_table(statedir, monkeypatch):
     assert ok_half["prompt_half_dead"] is False
 
 
+def test_fault_before_the_stamp_is_fault_not_unmeasured(statedir, monkeypatch):
+    """A poller that faults BEFORE it stamps must grade FAULT, not UNMEASURED.
+
+    The shape is production-reachable: a header carrying `- fault:`, `- pid:`
+    and `- next interval:` and NO `- checked:` line. THE ONE RULE makes FAULT
+    step 1 and says it outranks everything, so the route's missing-stamp
+    shortcut must not pre-empt it. `status_missing` stays True regardless - the
+    stamp really is absent - so the two facts are reported independently.
+
+    The second arm is the over-correction control: strip the fault line from
+    the same shape and it must still be UNMEASURED, so "fault first" cannot be
+    implemented as "never UNMEASURED".
+    """
+    faulted = _verdict_for(
+        statedir, monkeypatch,
+        _header(checked=None, fault="SEEN_STORE_UNREADABLE"))
+    assert faulted["verdict"] == "FAULT"
+    assert faulted["fault"] == "SEEN_STORE_UNREADABLE"
+    assert faulted["status_missing"] is True
+    assert faulted["checked"] is None
+    assert faulted["status_age_s"] is None
+
+    clean = _verdict_for(statedir, monkeypatch, _header(checked=None))
+    assert clean["verdict"] == "UNMEASURED"
+    assert clean["fault"] is None
+    assert clean["status_missing"] is True
+
+
 # ------------------------------------------------------------------ read-only
 def _snapshot(d):
     return {p.name: (p.read_bytes(), p.stat().st_mtime_ns)
@@ -365,6 +392,12 @@ _CASES = (
     ("fault", "SEEN_STORE_UNREADABLE", True, 0, 300, 300, "FAULT"),
     ("access_denied", None, None, 0, 300, 300, "LIVE"),
     ("tier_climb", None, True, -360, None, 300, "LIVE"),
+    # The ONLY input that reaches the UNMEASURED branch: no stamp AND no
+    # promise. Without this row that branch is bound by nothing on either side
+    # of the parity contract - and it is the verdict most likely to differ
+    # between the route's copy of the rule and the poller's, because each
+    # reaches it from a different absent-file path.
+    ("unmeasured", None, None, None, None, None, "UNMEASURED"),
 )
 
 
