@@ -26,17 +26,17 @@ status.md and is what catches a divergence introduced ABOVE the rule - the
 class of bug that once shipped UNMEASURED on the route and STALE on --status
 for the identical file. Do not drop either for the other.
 
-TWO TESTS ARE EXPECTED RED IN THE BUILD WORKTREE, BY DESIGN.
+FOUR TESTS HARD-IMPORT THE POLLER, AND NONE OF THEM MAY CARRY A SKIP.
 `test_route_and_poller_agree_on_the_verdict` and
-`test_state_dir_resolution_matches_the_poller` HARD-import
-`tools.moon_sync_poller.status_verdict` / `._state_dir_path`, which a sibling
-slice is adding in a different worktree. The import sits INSIDE each test body
-so an ImportError reds exactly those two and every other test in this module
-still collects and runs. There is deliberately NO skip: a skip gated on a
+`test_state_dir_resolution_matches_the_poller` import `status_verdict` /
+`._state_dir_path` inside their own bodies; the `entry_points` fixture imports
+the module whole, so the two entry-point tests depend on it through fixture
+setup and would ERROR rather than fail if it were absent. That asymmetry is
+worth knowing when reading a red run: 2 failed + 2 errors, not 4 failures.
+There is deliberately NO skip anywhere in this module: a skip gated on a
 tracked module is a DEFECT skip under tests/test_skip_condition_hygiene.py and
-would survive the merge, quietly retiring the only check that binds the route's
-verdict to the poller's. After the rebase onto a main that carries both
-symbols, all of this module must be green with zero skips.
+would quietly retire the only checks that bind the route's verdict to the
+poller's. This module must be green with zero skips.
 """
 from __future__ import annotations
 
