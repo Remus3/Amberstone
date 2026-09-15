@@ -392,12 +392,22 @@ _CASES = (
     ("fault", "SEEN_STORE_UNREADABLE", True, 0, 300, 300, "FAULT"),
     ("access_denied", None, None, 0, 300, 300, "LIVE"),
     ("tier_climb", None, True, -360, None, 300, "LIVE"),
-    # The ONLY input that reaches the UNMEASURED branch: no stamp AND no
-    # promise. Without this row that branch is bound by nothing on either side
-    # of the parity contract - and it is the verdict most likely to differ
-    # between the route's copy of the rule and the poller's, because each
-    # reaches it from a different absent-file path.
-    ("unmeasured", None, None, None, None, None, "UNMEASURED"),
+    # The promise has passed AND the stamp is older than 2*interval+60, so the
+    # STALE step must be reached BEFORE the OVERDUE step. This row exists to
+    # make the ordering fail loudly: reinstate an OVERDUE-first rule on either
+    # side and it reds immediately. The `stale` row above now discriminates the
+    # same ordering, but only as a side effect of the promise being derived
+    # inside the rule; this one pins it by intent.
+    ("long_dead", None, True, -5000, -4640, 300, "STALE"),
+    # No stamp AND no promise. This is NOT UNMEASURED: UNMEASURED now lives
+    # ABOVE the rule on both sides - it is the ABSENT-FILE verdict, emitted by
+    # build_moon_sync_status:361-362 before delegating and by the poller's own
+    # --status absent-file branch. A file that exists but carries no parseable
+    # stamp cannot be graded by time, and both copies answer STALE. The
+    # pre-rule verdict is bound by test_absent_status_is_loud_not_empty, by the
+    # absent-directory arm of test_route_reads_only_and_creates_nothing, and by
+    # the second arm of test_fault_before_the_stamp_is_fault_not_unmeasured.
+    ("no_stamp_no_promise", None, None, None, None, None, "STALE"),
 )
 
 
