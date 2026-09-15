@@ -170,13 +170,13 @@ changed`; after the bounce the same regen changed 82 of 173).
 5. **The three hand-authored doc anchor sites** (all verified present on disk):
    - `agents/daemon_slayer/CHANGELOG.md` - PREPEND a new entry, never extend a prior version's line.
    - `docs/DAEMON_SLAYER.md:5` - the status banner (`ENGINE_VERSION x.y.z - N tests - patch`). Guarded by `tests/test_docs_daemon_slayer_drift.py`.
-   - `docs/HEXCORE_offline.html` - carries the ENGINE version AND the DS test count in THREE places (the HUD `engine:` row text, its `title=` tooltip, the
-     `daemonslayer` NODES `desc`). Guarded by three named tests in `tests/test_hexcore_offline_dust.py`: `test_hud_engine_anchor_matches_repo`,
+   - `atlas.html` - carries the ENGINE version AND the DS test count in THREE places (the HUD `engine:` row text, its `title=` tooltip, the
+     `daemonslayer` NODES `desc`). Guarded by three named tests in `tests/test_atlas_dust.py`: `test_hud_engine_anchor_matches_repo`,
      `test_engine_tooltip_anchors_match_repo`, `test_daemonslayer_node_desc_engine_anchor_matches_repo`. It is HTML, so an `--include=*.md` grep misses it, and
      it lives in `tests/` not the DS suite, so a DS-only run never catches the drift. The count is the PASSED count and must match `docs/DAEMON_SLAYER.md` - set
      both from the same measured number.
 6. ONE dual suite run from the repo root. Run the two guard modules ALONE first (fast, and in the full run they surface only at the very end): `pytest
-   tests/test_docs_daemon_slayer_drift.py tests/test_hexcore_offline_dust.py`
+   tests/test_docs_daemon_slayer_drift.py tests/test_atlas_dust.py`
 
 ### 8. DS server restart - :8860 is NOT supervisor-watched
 

@@ -1,6 +1,6 @@
-"""R138 guards for docs/HEXCORE_offline.html.
+"""R138 guards for atlas.html.
 
-The offline HEXCORE explorer embeds its whole dataset as inline JS literals:
+The offline ATLAS explorer embeds its whole dataset as inline JS literals:
 a CATS map, a NODES array, and a semicolon-joined DUST string of
 ``basename.py|category|parentNodeId`` triples. Nothing validates those at
 runtime, so a hand-edited dust entry can silently point at a category or a
@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HEXCORE = REPO_ROOT / "docs" / "HEXCORE_offline.html"
+ATLAS = REPO_ROOT / "atlas.html"
 
 # The 54 net-new non-test .py files added since d584e02e. Everything under
 # tests/ is excluded, which is what "non-test" means here.
@@ -87,8 +87,8 @@ EXPECTED_NEW_BASENAMES = (
 
 @pytest.fixture(scope="module")
 def html() -> str:
-    assert HEXCORE.is_file(), f"missing {HEXCORE}"
-    return HEXCORE.read_text(encoding="utf-8")
+    assert ATLAS.is_file(), f"missing {ATLAS}"
+    return ATLAS.read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -176,7 +176,7 @@ def test_no_duplicate_dust_entries(dust_entries: list[str]) -> None:
 
 
 def test_file_is_pure_ascii() -> None:
-    raw = HEXCORE.read_bytes()
+    raw = ATLAS.read_bytes()
     offenders = [(i, b) for i, b in enumerate(raw) if b > 127]
     assert not offenders[:10], f"non-ascii bytes at {offenders[:10]}"
 
@@ -221,7 +221,7 @@ def test_main_script_block_parses_under_node(html: str) -> None:
     body = html[open_at + len("<script>") : close_at]
     assert "var DUST=" in body, "extracted the wrong script block"
 
-    fd, path = tempfile.mkstemp(suffix=".js", prefix="hexcore_")
+    fd, path = tempfile.mkstemp(suffix=".js", prefix="atlas_")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(body)
