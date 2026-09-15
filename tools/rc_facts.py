@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import socket
 import ssl
 import subprocess
@@ -32,6 +33,42 @@ import urllib.request
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
+
+# Captured at MODULE scope, deliberately. The import happens at process start,
+# so this measures the same window the harness's hook timeout does, and a name
+# defined only under `__main__` would raise NameError when `_save_reported` is
+# reached from an IMPORTED copy of this module (the test path, and the poller
+# path) - which the widened except would then swallow into an UNMEASURED line
+# for a reason that has nothing to do with the inbox.
+_T0 = time.monotonic()
+
+# The SessionStart hook is killed at 8 s by the harness. A hook that prints at
+# 7.9 s, records its block as reported, and is killed at 8.0 s has its stdout
+# DROPPED - so the record would say "shown" for a block nobody ever saw, and
+# every later prompt in that session would subtract it. That is the one
+# whole-session suppression this design forbids, and the guard costs one clock
+# read. Past the budget: print, record nothing, re-print next fire.
+SESSIONSTART_RECORD_BUDGET_S = 6.0
+
+# Newest N full names in the transcript; everything else goes to the report
+# file the pointer line names. Capping the LIST, never the banner: the count is
+# the part that says whether to go and look.
+_INBOX_LIST_CAP = 10
+
+# The ONE could-not-measure state that is recorded. A structurally absent
+# directory can hide no mail, so showing it once per session id loses nothing.
+# The transient faults (an unreadable seen store, a watcher failure) are NOT
+# entries and are never recorded: a blind state that printed once and then went
+# quiet reads exactly like a clean inbox.
+_INBOX_ABSENT_KEY = "UNMEASURED:inbox-absent"
+
+_REPORTED_MAX_SIDS = 64
+_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9-]{1,64}$")
+
+# os.walk budget for one subdirectory drop, and the Windows attribute bit that
+# marks a junction / symlink / mount point.
+_PAYLOAD_WALK_BUDGET = 5000
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 
 # SessionStart hook runs under windowless pythonw.exe; a powershell.exe child
 # would otherwise get a fresh console allocated - an on-screen + taskbar flash.
@@ -123,7 +160,7 @@ def _health_all() -> dict | None:
     return _http_get_json(f"{_LEGION_BASE}/api/health/all")
 
 
-def main() -> int:
+def main(session: str | None = None) -> int:
     out = []
     out.append("# RC live state (rc_facts.py)\n")
     out.append(f"_probed at {time.strftime('%Y-%m-%d %H:%M:%S')}_\n")
@@ -277,46 +314,42 @@ def main() -> int:
     # edit - exactly inverted, since an edit changes the content and therefore
     # the hash. Their rule is worth carrying: a wrong rationale outlives a
     # wrong line of code, because it answers the question before it is asked.
-    try:
-        inbox = _ROOT / "moon_sync_inbox"
-        seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
-        if inbox.is_dir():
-            names = _inbox_entries(inbox)
-            try:
-                seen = set(json.loads(seen_path.read_text(encoding="utf-8")).get("seen", []))
-            except (OSError, ValueError):
-                seen = set()
-            unread = sorted(names - seen)
-            withdrawn = _inbox_withdrawn(names, seen)
-            if unread:
-                anomalies.append(
-                    f"moon_sync_inbox: {len(unread)} unread note(s) from sibling repos")
-                out.append("")
-                out.append(f"## Cross-repo inbox - {len(unread)} UNREAD")
-                for n in unread[:10]:
-                    out.append(f"- {n}")
-                if len(unread) > 10:
-                    out.append(f"- ... and {len(unread) - 10} more")
-            if withdrawn:
-                anomalies.append(
-                    f"moon_sync_inbox: {len(withdrawn)} entry(s) WITHDRAWN by a sibling")
-                out.append("")
-                out.append(f"## Cross-repo inbox - {len(withdrawn)} WITHDRAWN since last ack")
-                for n in withdrawn[:10]:
-                    out.append(f"- {n}")
-                if len(withdrawn) > 10:
-                    out.append(f"- ... and {len(withdrawn) - 10} more")
-            if unread or withdrawn:
-                out.append("Read them, then record them as seen:")
-                out.append("  python tools/rc_facts.py --mark-inbox-seen")
-    except OSError:
-        pass  # a hook must never fail the session start
+    #
+    # SUBTRACT NOTHING HERE. SessionStart always prints the full block, and
+    # only records it. A resume, a compact or a /clear that keeps the same
+    # session id therefore re-prints once, by design: the loud direction. The
+    # alternative - subtracting the record at session start - delivers an EMPTY
+    # block into a fresh context, which is the failure this whole design is
+    # against.
+    block, inbox_anomalies, inbox_keys = _inbox_section(_ROOT, session, subtract=False)
+    anomalies.extend(inbox_anomalies)
+    if block:
+        out.append("")
+        out.extend(block)
 
     # -- Anomaly summary first if any ------------------------------------
-    if anomalies:
-        head = "## ! Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
-        sys.stdout.write(head)
-    sys.stdout.write("\n".join(out) + "\n")
+    #
+    # ORDER: the report file is already written (inside _inbox_section, which
+    # records nothing, so a kill after it suppresses nothing and the pointer
+    # never names an absent file). Now stdout, then the flush, and only THEN
+    # the record. A record written before delivery marks a block reported that
+    # a killed hook never delivered.
+    delivered = True
+    try:
+        if anomalies:
+            head = "## ! Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
+            sys.stdout.write(head)
+        sys.stdout.write("\n".join(out) + "\n")
+        sys.stdout.flush()
+    except Exception:  # noqa: BLE001 - a hook must never fail the session start
+        # NOT `except OSError`: under pythonw.exe sys.stdout can be None, and
+        # print/write then raises AttributeError. Nothing is re-printed here
+        # either, because when the failure IS stdout a second write raises
+        # again and the process exits 1. The invocation log written before this
+        # is the evidence the fire happened.
+        delivered = False
+    if delivered and session is not None and inbox_keys:
+        _save_reported(session, inbox_keys)
     return 0
 
 
@@ -360,6 +393,25 @@ def _file_digest(p: Path) -> str:
         return f"UNREADABLE:{type(exc).__name__}"
 
 
+def _is_reparse_point(p: Path) -> bool:
+    """True for a junction, a symlink or a mount point.
+
+    `Path.is_symlink()` alone is not enough on Windows: a DIRECTORY JUNCTION is
+    a reparse point that older Python builds do not report as a symlink, and a
+    junction is exactly the cheap shape a sender could use to aim this walk
+    outside the drop. The attribute bit is the authority; is_symlink is the
+    portable half. An lstat failure is not treated as a refusal - the file is
+    then handled by `_file_digest`, which records the error class.
+    """
+    try:
+        if p.is_symlink():
+            return True
+        st = os.lstat(p)
+    except OSError:
+        return False
+    return bool(getattr(st, "st_file_attributes", 0) & _FILE_ATTRIBUTE_REPARSE_POINT)
+
+
 def _payload_key(p: Path) -> str:
     """Identify a subdirectory payload by a digest over its CONTENTS.
 
@@ -384,19 +436,59 @@ def _payload_key(p: Path) -> str:
     a changed drop.
 
     A manifest, when present, is reported for human context but is NOT the key.
+
+    THE WALK REFUSES REPARSE POINTS (2026-09-15). `rglob("*")` follows a
+    junction, so a sender could aim one at an arbitrary directory and this
+    watcher would read and digest whatever is behind it, unbounded, inside a
+    hook that must finish in seconds. A refusal is not silent: it contributes
+    its own line so the digest MOVES, the same idiom `_file_digest` uses for an
+    unreadable file. A payload that GAINS a junction is not equal to the one
+    already acknowledged.
+
+    BYTE-STABLE for a plain drop: with no reparse point and at most
+    `_PAYLOAD_WALK_BUDGET` files, the lines and their order are identical to
+    the previous `rglob` formula, so no already-recorded key shifts.
     """
-    files = sorted((f for f in p.rglob("*") if f.is_file()), key=lambda f: f.as_posix())
-    lines = [
-        f"{f.relative_to(p).as_posix()}\0{_file_digest(f)}".encode("utf-8", "surrogateescape")
-        for f in files
-    ]
+    entries: list[tuple[str, bytes]] = []
+    refused: list[tuple[str, bytes]] = []
+    exceeded = False
+    for dirpath, dirnames, filenames in os.walk(p):
+        d = Path(dirpath)
+        keep: list[str] = []
+        for name in dirnames:
+            child = d / name
+            if _is_reparse_point(child):
+                rel = child.relative_to(p).as_posix()
+                refused.append((child.as_posix(), f"REFUSED:reparse:{rel}\0-".encode()))
+            else:
+                keep.append(name)
+        dirnames[:] = keep
+        for name in filenames:
+            f = d / name
+            if _is_reparse_point(f):
+                rel = f.relative_to(p).as_posix()
+                refused.append((f.as_posix(), f"REFUSED:reparse:{rel}\0-".encode()))
+                continue
+            if len(entries) >= _PAYLOAD_WALK_BUDGET:
+                exceeded = True
+                break
+            rel = f.relative_to(p).as_posix()
+            entries.append((
+                f.as_posix(),
+                f"{rel}\0{_file_digest(f)}".encode("utf-8", "surrogateescape"),
+            ))
+        if exceeded:
+            break
+    lines = [line for _sort, line in sorted(entries + refused)]
     digest = hashlib.sha256(b"\n".join(lines)).hexdigest()[:12]
     manifest = next(
         (n for n in ("MANIFEST.sha256", "MANIFEST.txt", "manifest.json") if (p / n).is_file()),
         None,
     )
     tail = f", {manifest} present" if manifest else ""
-    return f"[{len(files)} files, content {digest}{tail}]"
+    if exceeded:
+        return f"[{_PAYLOAD_WALK_BUDGET}+ files, content {digest}, BUDGET-EXCEEDED{tail}]"
+    return f"[{len(entries)} files, content {digest}{tail}]"
 
 
 def _inbox_entries(inbox: Path) -> set[str]:
@@ -459,7 +551,136 @@ def mark_inbox_seen() -> int:
     return 0
 
 
-def report_inbox_only() -> int:
+# ---------------------------------------------------------------------------
+# The per-session REPORTED record.
+#
+# REPORTED IS NOT SEEN, and the distinction is the whole point. `seen` is the
+# operator's acknowledgement, written only by --mark-inbox-seen. `reported` is
+# "this session has already had these lines put in front of it", written by the
+# watcher itself. Collapsing the two is the defect a sibling repo measured in
+# its own tree: a subagent's session start marked the operator's queue read.
+#
+# Keyed per hook-stdin session_id because two SessionStart fires can share a
+# second (13 same-second pairs measured on this box since 2026-09-07) and only
+# one of them goes on to serve prompts. A single-session file would let the
+# twin's block suppress the live session's.
+#
+# EVICTION CAN ONLY CAUSE A RE-PRINT. The bound drops the oldest sids by "at";
+# a dropped sid simply sees its block again. There is no path here that turns
+# eviction into silence, and the test says so.
+
+
+def _reported_path() -> Path:
+    return _ROOT / "ops" / "runtime" / "sync_inbox_reported.json"
+
+
+def _load_reported() -> dict:
+    """The record, or {} for anything unreadable. Fail OPEN: an unreadable
+    record means nothing is subtracted, so the block prints again."""
+    try:
+        data = json.loads(_reported_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _reported_keys(session: str | None) -> set[str]:
+    if not session:
+        return set()
+    row = (_load_reported().get("sessions") or {}).get(session)
+    keys = row.get("keys") if isinstance(row, dict) else None
+    return set(keys) if isinstance(keys, list) else set()
+
+
+def _save_reported(session: str, keys: set[str]) -> None:
+    """Union `keys` into this session's row. Never raises, never blocks.
+
+    Returns WITHOUT WRITING past `SESSIONSTART_RECORD_BUDGET_S`, so a hook the
+    harness is about to kill cannot mark a block reported whose stdout is then
+    dropped. Any OSError is swallowed: a failed write means the entries print
+    again, which is the safe direction.
+    """
+    if time.monotonic() - _T0 > SESSIONSTART_RECORD_BUDGET_S:
+        return
+    try:
+        data = _load_reported()
+        sessions = data.get("sessions")
+        if not isinstance(sessions, dict):
+            sessions = {}
+        row = sessions.get(session)
+        old = row.get("keys") if isinstance(row, dict) else None
+        merged = set(old) if isinstance(old, list) else set()
+        merged |= set(keys)
+        sessions[session] = {
+            "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "keys": sorted(merged),
+        }
+        if len(sessions) > _REPORTED_MAX_SIDS:
+            # Stable on ties: sids written inside the same second evict in
+            # insertion order, oldest first.
+            ordered = sorted(sessions.items(), key=lambda kv: str((kv[1] or {}).get("at") or ""))
+            for dead, _row in ordered[: len(sessions) - _REPORTED_MAX_SIDS]:
+                sessions.pop(dead, None)
+        path = _reported_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".json.tmp.{os.getpid()}")
+        tmp.write_text(json.dumps({"schema": 1, "sessions": sessions}, indent=2),
+                       encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        pass  # fail open - the entries re-print next fire
+
+
+def _ascii(s: str) -> str:
+    """Printed names only. Free hardening, not an anti-injection claim: the
+    harness sets PYTHONUTF8 already, so this is about the one remaining way a
+    name could raise on write and cost the whole block."""
+    return s.encode("ascii", "backslashreplace").decode()
+
+
+def _write_inbox_report(unread: list[str], withdrawn: list[str]) -> bool:
+    """Render EVERY unread key and withdrawn name to the gitignored report.
+
+    Written BEFORE stdout on purpose. It records nothing, so a kill after it
+    suppresses nothing - and the pointer line that names it is then never a
+    pointer to an absent file.
+
+    Rewritten, never appended, and skipped entirely when the bytes already
+    match, so an idle session does not touch the file's mtime. Returns False on
+    an OSError; the caller then prints an UNMEASURED pointer and does NOT treat
+    the entries beyond the cap as shown.
+    """
+    path = _ROOT / "ops" / "runtime" / "sync_inbox_report.txt"
+    body = "".join(f"{_ascii(n)}\n" for n in unread)
+    body += "".join(f"WITHDRAWN:{_ascii(n)}\n" for n in withdrawn)
+    data = body.encode("ascii")
+    try:
+        if path.is_file() and path.read_bytes() == data:
+            return True
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".txt.tmp.{os.getpid()}")
+        # write_bytes, not write_text: text mode turns LF into CRLF on Windows,
+        # which moves the bytes every run and defeats the unchanged check.
+        tmp.write_bytes(data)
+        tmp.replace(path)
+        return True
+    except OSError:
+        return False
+
+
+def _session_id(payload: dict | None) -> str | None:
+    """The hook payload's session_id, or None unless it is plainly a session id.
+
+    Validated before it is ever used as a dict key or a filename component.
+    The same field `record_invocation` logs, read the same way.
+    """
+    sid = payload.get("session_id") if isinstance(payload, dict) else None
+    if isinstance(sid, str) and _SESSION_ID_RE.match(sid):
+        return sid
+    return None
+
+
+def report_inbox_only(session: str | None = None) -> int:
     """Inbox scan alone, cheap enough to run on EVERY operator message.
 
     Exists because `SessionStart` fires once and never again. A note that lands
@@ -480,37 +701,146 @@ def report_inbox_only() -> int:
     never advances the seen watermark: acknowledgement stays a separate,
     deliberate act, which is what keeps a subagent's start from marking the
     operator's queue read (a defect a sibling repo measured in its own tree).
+
+    SUBTRACTS the per-session reported record, which is what keeps it worth
+    reading: a new name, a changed digest or a retraction shows once, and the
+    same block does not re-print on every prompt for the life of the session.
+    With no validated session id it fails OPEN - prints as before, records
+    nothing.
     """
+    lines, _anomalies, keys = _inbox_section(_ROOT, session)
+    if not lines:
+        return 0
+    delivered = True
     try:
-        inbox = _ROOT / "moon_sync_inbox"
-        if not inbox.is_dir():
-            return 0
-        seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
-        names = _inbox_entries(inbox)
-        try:
-            seen = set(json.loads(seen_path.read_text(encoding="utf-8")).get("seen", []))
-        except (OSError, ValueError):
-            seen = set()
-        unread = sorted(names - seen)
-        withdrawn = _inbox_withdrawn(names, seen)
-        if not unread and not withdrawn:
-            return 0
-        if unread:
-            print(f"## Cross-repo inbox - {len(unread)} UNREAD (checked this message)")
-            for n in unread[:10]:
-                print(f"- {n}")
-            if len(unread) > 10:
-                print(f"- ... and {len(unread) - 10} more")
-        if withdrawn:
-            print(f"## Cross-repo inbox - {len(withdrawn)} WITHDRAWN since last ack")
-            for n in withdrawn[:10]:
-                print(f"- {n}")
-            if len(withdrawn) > 10:
-                print(f"- ... and {len(withdrawn) - 10} more")
-        print("Read them, then: python tools/rc_facts.py --mark-inbox-seen")
-    except OSError:
-        pass  # a hook must never fail the turn
+        for line in lines:
+            print(line)
+        sys.stdout.flush()
+    except Exception:  # noqa: BLE001 - a hook must never fail the turn
+        # See main(): not OSError, and nothing is re-printed from in here.
+        delivered = False
+    if delivered and session is not None and keys:
+        _save_reported(session, keys)
     return 0
+
+
+def _inbox_section(
+    root: Path, session: str | None, *, subtract: bool = True
+) -> tuple[list[str], list[str], set[str]]:
+    """The whole watcher, once, for both entry points.
+
+    Returns (block lines, anomaly lines, keys to record). ONE implementation
+    because the two callers' copies were near-duplicates edited in lockstep,
+    and a golden-output test can only be written against something that does
+    not run live probes.
+
+    `subtract=False` is SessionStart: it prints the full block and records it,
+    never the other way round.
+
+    WHAT IS AND IS NOT AN ENTRY. An unread note, a changed digest and a
+    withdrawal are entries: each is shown once per validated session id. An
+    absent moon_sync_inbox/ is the ONE recorded fault - with no directory there
+    is nowhere for mail to land, so once per session loses nothing, and when
+    the directory comes back its entries print because they were never
+    recorded. An unreadable seen store and an unexpected failure are NOT
+    entries and are never recorded: they re-print on every fire while the fault
+    persists, because a blind state that goes quiet reads as a clean inbox.
+
+    Nothing here executes at import - tools/moon_sync_poller.py and
+    tools/inbox_responder_runner.py both import this module, and an import
+    fault would take out a restart loop rather than one hook fire.
+    """
+    def unmeasured(reason: str) -> tuple[list[str], list[str], set[str]]:
+        line = f"## Cross-repo inbox - UNMEASURED: {reason}"
+        return [line], [f"moon_sync_inbox: UNMEASURED: {reason}"], set()
+
+    try:
+        reported = _reported_keys(session) if subtract else set()
+
+        inbox = root / "moon_sync_inbox"
+        if not inbox.is_dir():
+            if _INBOX_ABSENT_KEY in reported:
+                return [], [], set()
+            lines, anomalies, _keys = unmeasured("moon_sync_inbox/ absent")
+            return lines, anomalies, {_INBOX_ABSENT_KEY}
+
+        seen_path = root / "ops" / "runtime" / "sync_inbox_seen.json"
+        try:
+            raw = seen_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            # A store that never existed is "nothing acknowledged yet", not a
+            # failure to look. Coercing THIS to UNMEASURED would hide a fresh
+            # tree's whole inbox behind one line until someone ran the ack.
+            seen: set[str] = set()
+        except Exception as exc:  # noqa: BLE001
+            return unmeasured(f"seen store unreadable ({type(exc).__name__})")
+        else:
+            try:
+                seen = set(json.loads(raw).get("seen", []))
+            except Exception as exc:  # noqa: BLE001
+                # .get on a valid-JSON non-dict raises AttributeError and set()
+                # on a non-iterable raises TypeError. Neither was caught
+                # before, so the hook exited 1 and its stdout was dropped.
+                return unmeasured(f"seen store unreadable ({type(exc).__name__})")
+
+        names = _inbox_entries(inbox)
+        unread = [k for k in sorted(names - seen) if k not in reported]
+        withdrawn = [
+            n for n in _inbox_withdrawn(names, seen) if f"WITHDRAWN:{n}" not in reported
+        ]
+        if not unread and not withdrawn:
+            return [], [], set()
+
+        # The report file FIRST, and only under a validated session id: a
+        # sid-less run prints today's plain pointer and writes nothing at all.
+        report_ok = True
+        report_exc = "OSError"
+        if session is not None:
+            try:
+                report_ok = bool(_write_inbox_report(unread, withdrawn))
+            except Exception as exc:  # noqa: BLE001
+                report_ok = False
+                report_exc = type(exc).__name__
+
+        def pointer(total: int) -> str:
+            over = total - _INBOX_LIST_CAP
+            if session is None:
+                return f"- ... and {over} more"
+            if not report_ok:
+                return f"- ... and {over} more - UNMEASURED: report file unwritable ({report_exc})"
+            return f"- ... and {over} more - ops/runtime/sync_inbox_report.txt"
+
+        lines: list[str] = []
+        anomalies: list[str] = []
+        if unread:
+            anomalies.append(
+                f"moon_sync_inbox: {len(unread)} unread note(s) from sibling repos")
+            lines.append(f"## Cross-repo inbox - {len(unread)} UNREAD")
+            lines.extend(f"- {_ascii(n)}" for n in unread[-_INBOX_LIST_CAP:])
+            if len(unread) > _INBOX_LIST_CAP:
+                lines.append(pointer(len(unread)))
+        if withdrawn:
+            anomalies.append(
+                f"moon_sync_inbox: {len(withdrawn)} entry(s) WITHDRAWN by a sibling")
+            lines.append(f"## Cross-repo inbox - {len(withdrawn)} WITHDRAWN since last ack")
+            lines.extend(f"- {_ascii(n)}" for n in withdrawn[-_INBOX_LIST_CAP:])
+            if len(withdrawn) > _INBOX_LIST_CAP:
+                lines.append(pointer(len(withdrawn)))
+        lines.append("Read them, then record them as seen:")
+        lines.append("  python tools/rc_facts.py --mark-inbox-seen")
+
+        # The pointer IS the showing of the entries beyond the cap - but only
+        # when the file it names actually holds them. When the write failed,
+        # they were never shown, so they are not recorded and print next fire.
+        if report_ok:
+            shown_unread, shown_withdrawn = unread, withdrawn
+        else:
+            shown_unread = unread[-_INBOX_LIST_CAP:]
+            shown_withdrawn = withdrawn[-_INBOX_LIST_CAP:]
+        keys = set(shown_unread) | {f"WITHDRAWN:{n}" for n in shown_withdrawn}
+        return lines, anomalies, keys
+    except Exception as exc:  # noqa: BLE001
+        return unmeasured(f"watcher failed ({type(exc).__name__})")
 
 
 # ---------------------------------------------------------------------------
@@ -756,8 +1086,11 @@ if __name__ == "__main__":
     # place mapping an entrypoint to a hook event. --mark-inbox-seen records
     # nothing on purpose: it is a deliberate operator act, not a hook firing.
     _payload, _why = _read_hook_payload_with_reason()
+    # No validated session id means fail OPEN: print exactly as before and
+    # write nothing, neither the record nor the report file.
+    _sid = _session_id(_payload)
     if "--inbox-only" in sys.argv:
         record_invocation("UserPromptSubmit", _payload, stdin_state=_why)
-        sys.exit(report_inbox_only())
+        sys.exit(report_inbox_only(session=_sid))
     record_invocation("SessionStart", _payload, stdin_state=_why)
-    sys.exit(main())
+    sys.exit(main(session=_sid))
