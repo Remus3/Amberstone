@@ -7,12 +7,25 @@ answer is one browser tab or one curl away from any machine that can reach
 ``https://legion-rc:8888``.
 
 WHY A DUPLICATE OF THE POLLER'S RULE LIVES HERE. ``status_verdict`` below is a
-deliberate second copy of the poller's own grading rule, not an oversight. The
-two ship as independent slices and neither imports the other at module scope -
-the dashboard must not grow an import edge into a tools/ script that runs under
-a different task identity. ``tests/test_moon_sync_status_route.py`` binds the
-two copies with a parity test over the whole case table, so they cannot drift
-silently; if you change one rule, change both and let that test prove it.
+deliberate second copy of the poller's own grading rule, not an oversight, and
+it is BRANCH-FOR-BRANCH IDENTICAL to ``tools/moon_sync_poller.status_verdict``
+- same steps, same order, same derivation - differing only in dialect: the
+poller grades epoch floats, this route grades timezone-aware datetimes. It is a
+mirror, NOT a variant, and this docstring used to say the two copies could
+legitimately differ. They cannot. Three real divergences shipped under that
+wording (STALE/OVERDUE ordering, the missing-stamp gate, and an UNMEASURED the
+poller's rule could not emit at all) and the parity test caught none of them,
+because the route's case table graded the route against ITSELF.
+
+The two ship as independent slices and neither imports the other at module
+scope - the dashboard takes NO import edge into ``tools/``, verified by grep:
+zero ``from tools`` / ``import tools`` statements across the dashboard package
+and ``web_dashboard.py``. That separation is why the copy exists; it is not a
+licence to let the copies drift. ``tests/test_moon_sync_status_route.py`` binds
+them with a parity test that calls BOTH functions by binding every parameter BY
+NAME from one fact table, so a signature change on either side fails loudly
+rather than being defaulted around. If you change one rule, change both and let
+that test prove it.
 
 THE ONE RULE, in order:
 
@@ -25,17 +38,31 @@ THE ONE RULE, in order:
            ``None``, never ``False``, so a pre-fleet-view status.md - the shape
            that persists if the pid line is never added - is graded by TIME
            alone and can never be reported DEAD on no evidence.
-  OVERDUE  now is past the header's own promised "expect next poll by".
-  STALE    the stamp is older than twice the header's PROMISED interval plus
-           60s. The promise is read, never assumed: the poller climbs its
+  STALE    no parseable stamp at all. A header with no ``checked`` line cannot
+           be graded by time, and grading it LIVE on a promise alone is exactly
+           the "broken poller reads healthy" shape this step exists to stop.
+  LIVE     now is at or before the promised "expect next poll by". The promise
+           is DERIVED here when the header carries none, by the poller's own
+           formula (checked + interval + 60), so a parser that does not derive
+           it grades identically to one that does.
+  STALE    the promise has passed AND the stamp is older than twice the
+           header's PROMISED interval plus 60s. This step sits BEFORE the
+           OVERDUE step and the order is load-bearing: an OVERDUE-first rule
+           can never reach this branch, so a long-dead poller reads as merely
+           late. The promise is read, never assumed - the poller climbs its
            interval when the desktop is idle, so a hardcoded ceiling would call
            a healthy idle poller stale every night.
-  LIVE     none of the above.
+  OVERDUE  the promise has passed but the stamp is still inside the stale
+           window.
 
-UNMEASURED is the verdict when status.md is absent or carries no parseable
-stamp. A missing file is never a fabricated DEAD and never an empty 200 - the
-one thing a liveness surface must not do is go quiet in the same way the thing
-it watches goes quiet.
+UNMEASURED IS A PRE-RULE VERDICT ON BOTH SIDES, never a branch of the rule
+itself. It is the answer when status.md is ABSENT: ``build_moon_sync_status``
+emits it before delegating, and the poller's own ``--status`` prints it from
+its absent-file branch. A missing file is never a fabricated DEAD and never an
+empty 200 - the one thing a liveness surface must not do is go quiet in the
+same way the thing it watches goes quiet. A file that EXISTS but carries no
+parseable stamp is a different animal and grades STALE, by the rule, on both
+sides.
 
 FAULT OUTRANKS THE MISSING-STAMP SHORTCUT TOO, and the code says so rather than
 leaving it to the prose. ``build_moon_sync_status`` takes its UNMEASURED
@@ -70,7 +97,7 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dashboard._errors import send_error
@@ -287,21 +314,27 @@ def _pid_alive(pid: int) -> bool | None:
 
 
 def status_verdict(fault, pid_alive, checked, expect, interval_s, now) -> str:
-    """THE ONE RULE. See the module docstring for the ordering and why each
-    step is where it is. Duplicated from the poller on purpose; the parity test
-    is what keeps the two copies honest."""
+    """THE ONE RULE, branch-for-branch identical to
+    ``tools/moon_sync_poller.status_verdict`` in the datetime dialect. See the
+    module docstring for the ordering and why each step is where it is.
+    Duplicated from the poller on purpose; the parity test is what keeps the
+    two copies honest, and it binds every parameter BY NAME, so the two
+    signatures differ only in the units their facts carry."""
     if fault:
         return "FAULT"
     if pid_alive is False:
         return "DEAD"
-    if expect is not None and now > expect:
-        return "OVERDUE"
-    if checked is not None and interval_s:
-        if (now - checked).total_seconds() > (2 * interval_s) + 60:
-            return "STALE"
-    if checked is None and expect is None:
-        return "UNMEASURED"
-    return "LIVE"
+    if checked is None:
+        return "STALE"
+    if expect is None and interval_s:
+        expect = checked + timedelta(seconds=interval_s + 60)
+    if expect is None:
+        return "STALE"
+    if now <= expect:
+        return "LIVE"
+    if (now - checked).total_seconds() > 2 * (interval_s or 0) + 60:
+        return "STALE"
+    return "OVERDUE"
 
 
 def build_moon_sync_status() -> dict:
