@@ -931,8 +931,14 @@ def parse_status_header(text: str) -> dict:
     return h
 
 
-def status_verdict(header: dict, now: float, pid_alive: bool | None) -> str:
+def status_verdict(fault, pid_alive, checked_epoch, expect_epoch, interval_s, now_epoch) -> str:
     """The ONE grading rule, shared by every reader of status.md.
+
+    FACT-SHAPED ON PURPOSE. The rule takes the six facts, never a header dict,
+    so a second reader in another dialect (the dashboard route grades the same
+    six facts as datetimes) can be held branch-for-branch identical to this by
+    a parity test that binds every parameter BY NAME. ``verdict_for_header``
+    below is the header-shaped wrapper this module's own callers use.
 
     FAULT comes FIRST. A file carrying a fault line has a fresh stamp and a
     live pid by construction - the fault is exactly what stopped it saying
@@ -941,21 +947,39 @@ def status_verdict(header: dict, now: float, pid_alive: bool | None) -> str:
     the poller runs under the scheduler and a reader may simply lack the right
     to query it, and fabricating DEAD from a permissions answer is worse than
     falling back to the time rule.
+
+    THE PROMISE IS DERIVED INSIDE THE RULE, by the same formula
+    ``parse_status_header`` uses at :929-930, so a caller whose own parser does not
+    derive it gets the same answer as one whose parser does. The two
+    derivations are idempotent with each other, never in competition.
+
+    STALE IS CHECKED BEFORE OVERDUE and that order is load-bearing: once the
+    promise has passed, a stamp older than twice the promised interval plus 60s
+    is STALE, and an OVERDUE-first rule can never reach the stale branch at all,
+    so a long-dead poller reads as merely late.
     """
-    if header.get("fault"):
+    if fault:
         return "FAULT"
     if pid_alive is False:
         return "DEAD"
-    checked = header.get("checked")
-    expect = header.get("expect_next_poll_by")
-    interval = header.get("interval") or 0
-    if expect is None or checked is None:
+    if checked_epoch is None:
         return "STALE"
-    if now <= expect:
+    if expect_epoch is None and interval_s:
+        expect_epoch = checked_epoch + interval_s + 60
+    if expect_epoch is None:
+        return "STALE"
+    if now_epoch <= expect_epoch:
         return "LIVE"
-    if now - checked > 2 * interval + 60:
+    if now_epoch - checked_epoch > 2 * (interval_s or 0) + 60:
         return "STALE"
     return "OVERDUE"
+
+
+def verdict_for_header(header: dict, now: float, pid_alive: bool | None) -> str:
+    """Header-shaped adapter over ``status_verdict``. This module's callers hold
+    a parsed header dict; the rule itself holds only facts."""
+    return status_verdict(header.get("fault"), pid_alive, header.get("checked"),
+                          header.get("expect_next_poll_by"), header.get("interval") or 0, now)
 
 
 # ------------------------------------------------------------ process probe
@@ -1129,7 +1153,7 @@ def status_report(
         out.append("fleet view yes" if header["fleet_view"] else "fleet view no")
         alive, label = _pid_alive_detail(header.get("pid"))
         out.append(f"pid {header.get('pid') if header.get('pid') is not None else 'none'} alive {label}")
-        out.append(f"verdict {status_verdict(header, now, alive)}")
+        out.append(f"verdict {verdict_for_header(header, now, alive)}")
         if header.get("fault"):
             out.append(f"fault: {header['fault']}")
         # The poller already resolved the roster this poll; re-deriving it here

@@ -647,19 +647,19 @@ def _header(
 def test_status_verdict_six_way(state: Path, monkeypatch):
     t0 = 1_000_000.0
     h = _header(t0, 300)
-    assert P.status_verdict(h, t0 + 100, True) == "LIVE"
-    assert P.status_verdict(h, t0 + 400, True) == "OVERDUE"
-    assert P.status_verdict(h, t0 + 5000, True) == "STALE"
-    assert P.status_verdict(h, t0 + 100, False) == "DEAD"
+    assert P.verdict_for_header(h, t0 + 100, True) == "LIVE"
+    assert P.verdict_for_header(h, t0 + 400, True) == "OVERDUE"
+    assert P.verdict_for_header(h, t0 + 5000, True) == "STALE"
+    assert P.verdict_for_header(h, t0 + 100, False) == "DEAD"
 
     # A pre-fleet-view file carries no pid line, so pid_alive is None. The time
     # rule must apply and the verdict must never be DEAD.
     pre = _header(t0, 300, pid=None, fleet_view=False)
-    assert P.status_verdict(pre, t0 + 500, None) == "OVERDUE"
-    assert P.status_verdict(pre, t0 + 5000, None) == "STALE"
+    assert P.verdict_for_header(pre, t0 + 500, None) == "OVERDUE"
+    assert P.verdict_for_header(pre, t0 + 5000, None) == "STALE"
 
     faulted = _header(t0, 300, fault="RuntimeError")
-    assert P.status_verdict(faulted, t0 + 1, True) == "FAULT"
+    assert P.verdict_for_header(faulted, t0 + 1, True) == "FAULT"
 
     # _close_handle MUST be patched alongside _open_process. The fake handle
     # below is a bare integer, and every nonzero integer is somebody's REAL live
@@ -681,7 +681,7 @@ def test_status_verdict_six_way(state: Path, monkeypatch):
     assert closed == [], "a failed OpenProcess must not be closed"
     monkeypatch.setattr(P, "_open_process", lambda pid: (0, 5))
     assert P._pid_alive(4242) is None
-    assert P.status_verdict(h, t0 + 400, P._pid_alive(4242)) == "OVERDUE"
+    assert P.verdict_for_header(h, t0 + 400, P._pid_alive(4242)) == "OVERDUE"
     assert closed == [], "a failed OpenProcess must not be closed"
 
     # Open succeeded: the handle production was handed must be released exactly
@@ -736,7 +736,7 @@ def test_a_tier_climb_between_polls_keeps_the_written_promise(state: Path, tmp_p
 
     h = P.parse_status_header(texts[0])
     for offset in range(0, int(gap), 60):
-        assert P.status_verdict(h, h["checked"] + offset, True) == "LIVE"
+        assert P.verdict_for_header(h, h["checked"] + offset, True) == "LIVE"
 
 
 def test_write_status_survives_a_reader_holding_the_target(state: Path):
