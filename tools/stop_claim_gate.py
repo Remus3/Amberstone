@@ -16,7 +16,14 @@ Contract:
     so arming waits until the report is observed quiet on clean sessions.
 
 Usage (hook):
-  pythonw.exe tools/stop_claim_gate.py
+  python.exe tools/stop_claim_gate.py --arm
+
+python.exe here is deliberate, not drift. Under the desktop harness a hook
+inherits a windowless console from its bash parent and does not flash (measured
+2026-09-14), so the pythonw token buys nothing; and this gate's only block
+channel is exit 2 plus stderr, which is unmeasured under pythonw on Stop. An
+interpreter swap was proposed as a console-flash remedy and REFUTED by that
+measurement - do not redo it.
 """
 import argparse
 import json
