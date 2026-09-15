@@ -38,7 +38,7 @@ data/meta/ddragon_*.json          linguist-generated=true
 # main measured 73915 and breached, and earlier a tool rewrote the file LF-only,
 # measured 81917 and shipped green against a real checkout size of 82134.
 # eol=lf makes on-disk equal the blob everywhere. Guarded by
-# tests/test_md_line_endings.py.
+# tests/test_text_line_endings.py.
 *.md text eol=lf
 
 # RM-284 follow-on (2026-09-03): the same pin for every other tracked TEXT type,
