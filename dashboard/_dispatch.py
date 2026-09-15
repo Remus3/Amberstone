@@ -80,6 +80,7 @@ def _gather_get() -> list:
                                routes_loadout,
                                routes_loop_monitor,
                                routes_lobby_aux, routes_metrics,
+                               routes_moon_sync,
                                routes_pickban, routes_adaptive_summoners,
                                routes_ban_suggestions, routes_dictionary,
                                routes_personal_context,
@@ -142,6 +143,7 @@ def _gather_get() -> list:
                       + list(routes_loop_monitor.GET_ROUTES)
                       + list(routes_lobby_aux.GET_ROUTES)
                       + list(routes_metrics.GET_ROUTES)
+                      + list(routes_moon_sync.GET_ROUTES)
                       + list(routes_pickban.GET_ROUTES)
                       + list(routes_adaptive_summoners.GET_ROUTES)
                       + list(routes_ban_suggestions.GET_ROUTES)
