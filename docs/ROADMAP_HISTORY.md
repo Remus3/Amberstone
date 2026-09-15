@@ -3340,3 +3340,8 @@ could land under the 90 pct warn at `tools/drift_guard.py:58`. The pointer that
 replaces it is the merged `RM-347 / RM-350 .. RM-357 / RM-359` line.
 
 - **RM-357 SHIPPED 2026-09-06 (LEDGER 1348)** - `core/base_worker.py` documented a `time.time()` pulse while the frozen consumer differences against `time.monotonic()`, so a subclass obeying the contract would pin `game_poll_worker_alive` TRUE forever. Contract corrected, `pulse_ts` now fails safe. **RM-377 OPEN** in `BACKLOG.md` (`health_pulse()` has no production caller; fences RM-198). Its next-free figure (RM-378) is RETIRED - consumed by LEDGER 1349, and RM-378 is itself OPEN in `BACKLOG.md`.
+
+
+## RM-410 - relocated from ROADMAP.md 2026-09-14 (shipped, LEDGER 1396; the RM-411 fence also lives on the RM-411 row in BACKLOG.md)
+
+- **RM-410 SHIPPED 2026-09-11** (`7ff5fc853`; LEDGER 1396; plan row R229) - the direct byte / atomicity test for `lib/ddragon/fetch._atomic_write_json`; its "no test calls that writer" premise was REFUTED before any code was written. **RM-411 FILED to `BACKLOG.md`** - 7 test call sites patch a destructive stdlib primitive process-wide; the `-n 8` reason for it is refuted, do not re-file it.
