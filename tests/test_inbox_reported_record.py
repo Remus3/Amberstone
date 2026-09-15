@@ -461,16 +461,38 @@ def test_full_report_file_lists_every_unread_beyond_the_cap(tmp_path, monkeypatc
 
 
 def test_report_file_is_rewritten_not_appended(tmp_path, monkeypatch):
+    """The second write REPLACES the first body rather than growing past it.
+
+    THE TWO CALLS MUST DIFFER IN CONTENT or this test proves nothing. Two
+    byte-identical bodies hit the `read_bytes() == data` short-circuit in
+    `_write_inbox_report` and the write branch is never reached at all, so an
+    appending implementation stays green - measured: an earlier version of this
+    test fired session "s" then session "t" over an unchanged inbox, and
+    mutating the writer to `tmp.write_bytes(prev + data)` left the whole module
+    at 35 passed. The note dropped between the two fires is what forces the
+    write to happen.
+
+    The assertion is on the EXACT bytes, not on the size: a size equality is
+    dischargeable by that same short-circuit, which is the property
+    test_report_file_untouched_when_unchanged already owns independently.
+    """
     root = _repo(tmp_path, monkeypatch)
-    _many(root, 250)
+    keys = _many(root, 250)
 
     _capture(monkeypatch)
     rc_facts.report_inbox_only(session="s")
-    size1 = _report_file(root).stat().st_size
+    first = "".join(f"{k}\n" for k in sorted(keys)).encode("ascii")
+    assert _report_file(root).read_bytes() == first
+
+    # A sibling writes while the session is live - the exact case the watcher
+    # exists for, and the only one that makes the second write real.
+    keys.append(_note(root, "zzz-late-arrival.md", "landed between the two fires"))
 
     _capture(monkeypatch)
     rc_facts.report_inbox_only(session="t")
-    assert _report_file(root).stat().st_size == size1
+    second = "".join(f"{k}\n" for k in sorted(keys)).encode("ascii")
+    assert second != first, "the two bodies must differ or the unchanged guard absorbs this"
+    assert _report_file(root).read_bytes() == second
 
 
 def test_report_file_untouched_when_unchanged(tmp_path, monkeypatch):
