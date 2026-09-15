@@ -59,10 +59,10 @@ HARD RULES for the directive you emit:
        blank line. Guard: `agents/daemon_slayer/tests/test_changelog_tracks_engine_version.py`.
     3. `docs/DAEMON_SLAYER.md:5` - the status banner: version + DS test count + patch.
        Guard: `tests/test_docs_daemon_slayer_drift.py`.
-    4. `docs/HEXCORE_offline.html:144` (TWO anchors on that one line - the `title=` tooltip and
-       the `engine: DS X / patch Y` HUD row) plus `:291` (the `daemonslayer` node `desc`). Also
+    4. `atlas.html:144` (TWO anchors on that one line - the `title=` tooltip and
+       the `engine: DS X / patch Y` HUD row) plus `:260` (the `daemonslayer` node `desc`). Also
        carries the DS test count, which must equal the number written at (3). It is HTML, so a
-       `*.md`-only grep misses it entirely. Guard: `tests/test_hexcore_offline_dust.py`, 3 tests.
+       `*.md`-only grep misses it entirely. Guard: `tests/test_atlas_dust.py`, 3 tests.
     5. `CLAUDE.md:6` - the Deep-references `ENGINE_VERSION` + patch anchor. No pytest pins it;
        `python tools/drift_guard.py` does (`check_version_anchors`, sweeps .md AND .html).
   DELIBERATELY NOT in the list, because they are MECHANICAL and hand-typing them is its own
