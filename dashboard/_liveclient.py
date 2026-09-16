@@ -33,8 +33,10 @@ curated champions in `item_advisor.CHAMPION_BUILDS`, so the other 167
 emitted no next-buy row. `core.next_buy_fallback` re-sources those from
 the STATIC precomputed Daemon Slayer build-order tables (mode-aware
 sr/aram/arena, no live :8860 call, kill switch
-`RC_NEXTBUY_DS_FALLBACK=0`). It is consulted ONLY when `resolve_build`
-returns [], so the curated 6 keep priority and are byte-identical.
+`RC_NEXTBUY_DS_FALLBACK=0`). It is consulted ONLY for a champion NOT in
+`CHAMPION_BUILDS`, so the curated 6 keep priority and are byte-identical -
+including a curated champion whose build is fully bought, for which
+`resolve_build` also returns [].
 """
 from __future__ import annotations
 
@@ -46,6 +48,7 @@ from core import next_buy_fallback as _next_buy_fallback
 from core.vision_token import get_vision_token
 from core.ward_cue import compute_ward_cue
 from item_advisor import (
+    CHAMPION_BUILDS,
     boots_phase,
     endgame_boots_swap_target,
     is_redundant,
@@ -451,7 +454,12 @@ def liveclient_summary() -> dict:
                 # balanced. Same roster resolve_build already receives on the
                 # line above, so this adds no data source and no new failure
                 # mode; a comp that does not lean resolves back to balanced.
-                if not build:
+                # Gate on the TABLE, not on the resolved list: resolve_build
+                # also returns [] for a CURATED champion whose every item is
+                # owned or exclusion-redundant, and that finished build must
+                # not be re-sourced from the DS table (item_advisor residual
+                # (a); same predicate as item_advisor.get_purchase_advice).
+                if champ not in CHAMPION_BUILDS:
                     try:
                         build = _next_buy_fallback.fallback_build(
                             champ, out.get("game_mode"), enemy_team
