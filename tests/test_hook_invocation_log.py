@@ -254,7 +254,15 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
 
     after = live.read_bytes() if live.exists() else None
     assert after == before, "the suite wrote into the live invocation log"
-    assert (tmp_path / "redirected.jsonl").exists(), "the redirect did not take effect"
+    # RM-451: a payload-less run on a tty is a hand run and records NOTHING.
+    # Windows reports NUL as a tty, POSIX /dev/null is not one, so the row is
+    # expected exactly when DEVNULL is not a tty. Either way it never reaches
+    # the live log; tests/test_hook_log_live_isolation.py proves the redirect
+    # with an empty pipe, which is a non-tty on every OS.
+    with open(os.devnull, "rb") as nul:
+        devnull_is_tty = nul.isatty()
+    assert (tmp_path / "redirected.jsonl").exists() is (not devnull_is_tty), (
+        "the redirect did not take effect, or a tty hand run was recorded")
 
     reported_after = reported.read_bytes() if reported.exists() else None
     report_after = report.read_bytes() if report.exists() else None
