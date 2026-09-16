@@ -36,6 +36,7 @@ import re
 import shutil
 import stat
 import sys
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -84,7 +85,8 @@ from tools.inbox_responder_spawn import (
     spawn_ok,
 )
 from tools.inbox_responder_spawn import real_spawner
-from tools.rc_facts import _append_atomic, _inbox_entries
+from tools.rc_facts import _LOG_KEEP, _append_atomic, _inbox_entries
+from tools.sibling_name_sweep import resolve_config_path
 
 # ---------------------------------------------------------------------------
 # Constants. Each assigned exactly ONCE at module level: the summed-timeout arm
@@ -1038,7 +1040,9 @@ def load_participants(repo_root) -> tuple:
     a path. The END line carries a count and a digest of the sorted dropped set,
     which is enough to notice a change and carries nothing to leak.
     """
-    path = Path(repo_root) / "ops" / "moon_sync_repos.json"
+    # RM-433: the ONE shared resolver, so a linked worktree reads the main
+    # working tree's gitignored copy instead of resolving zero participants.
+    path = resolve_config_path(Path(repo_root))
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -2219,15 +2223,100 @@ def _digest_path(path) -> str:
     return "dir:" + hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
 
+# The first bytes of every row `rc_facts.record_invocation` writes: `json.dumps`
+# of a dict whose first key is `ts`, with compact separators.
+HOOK_ROW_PREFIX = b'{"ts":"'
+
+
+def _read_bytes_or_none(path) -> Optional[bytes]:
+    try:
+        return Path(path).read_bytes()
+    except FileNotFoundError:
+        return None
+
+
+def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
+                        own_pids) -> list:
+    """What moved in one hook log that a FOREIGN hook fire cannot explain (RM-434).
+
+    `ops/runtime/hook_invocations.jsonl` has exactly one writer,
+    `tools/rc_facts.py` `record_invocation`, and every Claude Code hook fire from
+    ANY live session on the box reaches it as its own process. A whole-file
+    digest compare therefore cannot tell "this cycle wrote the log" from
+    "another session's hook fired mid-check", and went red on the second. A
+    foreign fire can do exactly two things to the file:
+
+    - append one compact-JSON row carrying `pid` = the WRITING process, via one
+      `_append_atomic` call, so a reader may briefly see an unterminated tail
+      beginning with `HOOK_ROW_PREFIX`;
+    - trim the HEAD once the file passes `rc_facts._LOG_KEEP` rows.
+
+    Everything else is a violation: a row whose pid is in `own_pids`, a row with
+    no integer pid, a non-record line or unterminated non-record tail, a
+    deleted log, a removed row outside a head trim, or a head trim leaving fewer
+    rows than `rc_facts` keeps. Same rule as the test-side guard of `43a7ab9ae`,
+    which now delegates here so the two cannot drift.
+
+    Named blind spot: a CHILD process writing a well-formed row under its own
+    pid is indistinguishable from a foreign fire. The dry cycle's only child
+    that could fire a hook is the spawned CLI, and its `--restricted` shape
+    ignores the user, project and local settings files that register hooks.
+    """
+    pids = {int(p) for p in own_pids}
+    if after is None:
+        return ["the log was deleted"] if before is not None else []
+    old = (before or b"").splitlines(keepends=True)
+    if old and not old[-1].endswith(b"\n"):
+        old = old[:-1]  # a foreign row mid-write when the first snapshot was taken
+    new = after.splitlines(keepends=True)
+    problems: list = []
+    remaining = Counter(old)
+    appended = []
+    for index, line in enumerate(new):
+        if remaining[line] > 0:
+            remaining[line] -= 1
+        else:
+            appended.append((index, line))
+    removed = sum(remaining.values())
+    if removed:
+        if +remaining != Counter(old[:removed]):
+            problems.append(f"{removed} existing row(s) removed from outside the head")
+        elif len(new) < _LOG_KEEP:
+            problems.append(f"head trimmed to {len(new)} rows, under the "
+                            f"{_LOG_KEEP} rc_facts keeps")
+    for index, line in appended:
+        if index == len(new) - 1 and not line.endswith(b"\n"):
+            if not line.startswith(HOOK_ROW_PREFIX):
+                problems.append(f"unterminated non-record tail {line[:60]!r}")
+            continue
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            problems.append(f"non-record line {line[:60]!r}")
+            continue
+        if not isinstance(rec, dict):
+            problems.append(f"non-record line {line[:60]!r}")
+            continue
+        row_pid = rec.get("pid")
+        if not isinstance(row_pid, int) or isinstance(row_pid, bool):
+            problems.append(f"row with no integer pid {line[:60]!r}")
+        elif row_pid in pids:
+            problems.append(f"row written by this process (pid {row_pid}) {line[:60]!r}")
+    return problems
+
+
 def live_surface_digests(live_root, participants: Mapping[str, Any]) -> dict:
     """Every live surface the dry cycle must leave byte-unchanged. Reads only.
 
     Taken once before the cycle and once after; the report compares the two.
     Nothing here writes, creates or even stats a path it did not name.
+
+    `hook_log` is the exception to "digest": it carries the RAW bytes (or None
+    when absent), because other live sessions append to that file mid-check and
+    only the rows themselves can be attributed by pid (`hook_log_violations`).
     """
     rt = _runtime(live_root)
     surfaces = {
-        "hook_log": rt / "hook_invocations.jsonl",
         "answered": responder_state_path(live_root),
         "held": rt / HELD_DIR_NAME,
         "outbox": rt / OUTBOX_DIR_NAME,
@@ -2236,7 +2325,9 @@ def live_surface_digests(live_root, participants: Mapping[str, Any]) -> dict:
     }
     for code, inbox in sorted(participants.items()):
         surfaces[f"sibling:{code}"] = Path(inbox)
-    return {key: _digest_path(path) for key, path in surfaces.items()}
+    digests: dict = {"hook_log": _read_bytes_or_none(rt / "hook_invocations.jsonl")}
+    digests.update({key: _digest_path(path) for key, path in surfaces.items()})
+    return digests
 
 
 class DryReport:
@@ -2472,9 +2563,12 @@ def dry_cycle_report(*, result: CycleResult, config: RunnerConfig, world: Mappin
 
     live_after = live_surface_digests(live_root, live_participants)
     moved = sorted(k for k in live_before if live_before[k] != live_after.get(k))
-    rep.check("hook-log-unchanged", live_before.get("hook_log") == live_after.get("hook_log"),
-              f"sha of {_runtime(live_root) / 'hook_invocations.jsonl'} unchanged: "
-              f"{live_before.get('hook_log') == live_after.get('hook_log')}")
+    hook_problems = hook_log_violations(live_before.get("hook_log"),
+                                        live_after.get("hook_log"), {os.getpid()})
+    rep.check("hook-log-unchanged", not hook_problems,
+              f"rows of {_runtime(live_root) / 'hook_invocations.jsonl'} attributable to "
+              f"this process (pid {os.getpid()}), foreign-session rows excluded: "
+              f"{hook_problems[:3] if hook_problems else 'none'}")
     state_keys = ("answered", "held", "outbox", "deliveries", "agreement")
     rep.check("live-state-unchanged", not [k for k in state_keys if k in moved],
               f"guarded {list(state_keys)}, moved {[k for k in moved if k in state_keys]}")
