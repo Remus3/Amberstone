@@ -1335,6 +1335,16 @@ class SdkExecutor:
         model = self.cfg.get("executor_model")
         if model:
             argv += ["--model", str(model)]
+        # Operator 2026-09-16: the headless lanes run at effort HIGH. Config-driven
+        # for the same reason as subagent_prompt above - if a CLI upgrade ever
+        # rejects the flag, the kill is deleting one key, not editing code
+        # mid-incident. Absent or empty means the flag is not passed at all, so
+        # the argv is byte-identical to the pre-RM version for anyone who does
+        # not set it. Accepted values are MACHINE-VERIFIED on CLI 2.1.251 (a
+        # bogus value makes it print the set): low, medium, high, xhigh, max.
+        effort = str(self.cfg.get("executor_effort", "") or "").strip()
+        if effort:
+            argv += ["--effort", effort]
         budget = self.cfg.get("cycle_budget_usd")
         if budget:
             argv += ["--max-budget-usd", str(budget)]
