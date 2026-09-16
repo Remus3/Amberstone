@@ -107,6 +107,7 @@ from tools.inbox_responder_prompt import find_fences  # noqa: E402
 # importing the fixtures registers them for this module as well.
 from tests.test_inbox_responder_runner import (  # noqa: E402
     HIGH_SURROGATE_NOTE_NAME,
+    HIGH_SURROGATE_UNLISTABLE,
     LOW_SURROGATE_NOTE_NAME,
     NOTE_NAME,
     NOW,
@@ -1656,8 +1657,19 @@ A_ARMS = [
 ]
 
 
-@pytest.mark.parametrize("tag,needle,mutation,build,check,patches,omit", A_ARMS,
-                         ids=[a[0] for a in A_ARMS])
+# An arm built on the HIGH-surrogate name carries the runner module's capability
+# skip: its CONTROL cannot pass where the filesystem codec cannot encode the name
+# (MEASURED 2026-09-16 under emulated POSIX path encoding: the control ended
+# `runner-failed`), and no listing on such a host can yield that name anyway.
+# Keyed on the build function, so a future arm on the same name inherits it.
+A_PARAMS = [
+    pytest.param(*row, id=row[0],
+                 marks=[HIGH_SURROGATE_UNLISTABLE] if row[3] is b_high_surrogate_name else [])
+    for row in A_ARMS
+]
+
+
+@pytest.mark.parametrize("tag,needle,mutation,build,check,patches,omit", A_PARAMS)
 def test_procedure_a_mutant_reddens_its_arm(world, tmp_path, git_repo, monkeypatch, tag, needle,
                                             mutation, build, check, patches, omit):
     """The same assert helper passes on the tracked runner and fails on the mutant."""

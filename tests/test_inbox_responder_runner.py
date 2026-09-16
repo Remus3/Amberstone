@@ -118,6 +118,37 @@ def filesystem_accepts_note_name(name: str) -> bool:
 FS_ACCEPTS_LOW_SURROGATE_NAME = filesystem_accepts_note_name(LOW_SURROGATE_NOTE_NAME)
 
 
+def posix_fsencode(name) -> bytes:
+    """What CPython on POSIX does to a str path before ANY filesystem syscall.
+
+    The filesystem encoding is UTF-8 with `surrogateescape`, which round-trips
+    only U+DC80..U+DCFF (the bytes 0x80..0xFF a listing could not decode). A
+    HIGH lone surrogate such as U+D800 raises UnicodeEncodeError here. Windows
+    uses `surrogatepass` instead and encodes every lone surrogate.
+    """
+    return os.fspath(name).encode("utf-8", "surrogateescape")
+
+
+def filesystem_can_list_note_name(name: str, encoding=None, errors=None) -> bool:
+    """Can a directory listing on a host with this filesystem codec ever yield `name`?
+
+    A str listing (`Path.iterdir`, which `pending_notes` uses) DECODES every
+    entry with the filesystem codec, so anything it yields re-encodes with that
+    same codec. A name the codec cannot encode is therefore not a name the
+    runner can ever be handed on this host - it is an unreachable input, not a
+    gate the runner fails. Measured, not inferred from `sys.platform`.
+    """
+    try:
+        name.encode(encoding or sys.getfilesystemencoding(),
+                    errors or sys.getfilesystemencodeerrors())
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+FS_LISTS_HIGH_SURROGATE_NAME = filesystem_can_list_note_name(HIGH_SURROGATE_NOTE_NAME)
+
+
 # ---------------------------------------------------------------------------
 # F14: the live surfaces this module may not touch
 # ---------------------------------------------------------------------------
@@ -1417,6 +1448,28 @@ BAD_NAMES = [
 PORTABLE_BAD_NAMES = [c for c in BAD_NAMES if c[0] not in ("question", "high-surrogate")]
 
 
+# The stubbed grammar arm runs every BAD_NAMES case on every host EXCEPT one
+# whose name this host's filesystem codec cannot encode. MEASURED on ubuntu CI
+# 2026-09-16: `\ud800` made `note_shape_ok`'s `os.lstat` raise
+# UnicodeEncodeError before the syscall, so the cycle ended `runner-failed` and
+# no `reasons.json` existed. That is not a runner defect on that host: its
+# `pending_notes` listing decodes with `surrogateescape`, which yields only
+# U+DC80..U+DCFF, so the name is unreachable there. The skip names that
+# capability; `test_grammar_cases_run_only_where_a_posix_listing_can_yield_them`
+# pins that the skip exists and uses this predicate.
+HIGH_SURROGATE_UNLISTABLE = pytest.mark.skipif(
+    not FS_LISTS_HIGH_SURROGATE_NAME,
+    reason="this host's filesystem codec cannot encode a lone HIGH surrogate, so no "
+           "directory listing can yield the name (POSIX surrogateescape decodes only "
+           "U+DC80..U+DCFF)",
+)
+GRAMMAR_PARAMS = [
+    pytest.param(label, name, id=label,
+                 marks=[HIGH_SURROGATE_UNLISTABLE] if label == "high-surrogate" else [])
+    for label, name in BAD_NAMES
+]
+
+
 def _assert_refused_and_held(world, result, name):
     assert result.termination == "refused"
     assert result.termination_detail == "name-grammar"
@@ -1436,9 +1489,13 @@ def _assert_refused_and_held(world, result, name):
     assert (second.termination, second.termination_detail) == ("runner-failed", "notes-held")
 
 
-@pytest.mark.parametrize("label,name", BAD_NAMES, ids=[c[0] for c in BAD_NAMES])
+@pytest.mark.parametrize("label,name", GRAMMAR_PARAMS)
 def test_note_name_grammar_refuses_and_answers(world, monkeypatch, label, name):
-    """Gate 6 refuses every hostile name, on every host - no skip path.
+    """Gate 6 refuses every hostile name a listing on this host can yield.
+
+    One capability skip remains, and it is not a create probe: "high-surrogate"
+    skips only where the filesystem codec cannot encode the name, which is
+    exactly where no listing can hand it to the runner (see `GRAMMAR_PARAMS`).
 
     This used to create the note on disk and `pytest.skip` when the filesystem
     refused the name, so "question" skipped on every Windows run and
@@ -1465,6 +1522,53 @@ def test_note_name_grammar_refuses_and_answers(world, monkeypatch, label, name):
     assert reasons == {"stage": "input", "problems": ["name-grammar"]}
     _assert_refused_and_held(world, result, name)
     assert len(listed) == 2, "the stubbed listing must be the one run_once consulted"
+
+
+def _emulate_posix_path_encoding(monkeypatch):
+    """Make every path syscall the gate reaches encode its str path the POSIX way.
+
+    CI reddened on ubuntu only: `note_shape_ok` calls `os.lstat(inbox / name)`,
+    and on POSIX CPython encodes that str path with UTF-8 + `surrogateescape`
+    before the syscall, so a high lone surrogate raises UnicodeEncodeError (a
+    ValueError, not the OSError the gate catches). `run_once` files it as
+    `runner-failed / exception:note-shape:UnicodeEncodeError` and no
+    `reasons.json` is written. Windows hands NTFS UTF-16 and never raises.
+    """
+    for attr in ("lstat", "stat", "open"):
+        real = getattr(os, attr)
+
+        def wrapped(path, *args, _real=real, **kwargs):
+            if not isinstance(path, (int, bytes)):
+                posix_fsencode(path)
+            return _real(path, *args, **kwargs)
+
+        monkeypatch.setattr(os, attr, wrapped)
+
+
+@pytest.mark.parametrize("label,name", BAD_NAMES, ids=[c[0] for c in BAD_NAMES])
+def test_grammar_cases_run_only_where_a_posix_listing_can_yield_them(world, monkeypatch,
+                                                                       label, name):
+    """Every BAD_NAMES case the grammar arm runs on a POSIX host passes there.
+
+    Reproduces the ubuntu-only red on any host by emulating POSIX path
+    encoding at the exact seam that raised. A case whose name a POSIX listing
+    can never yield (`os.listdir` decodes undecodable bytes to U+DC80..U+DCFF
+    only) must instead carry the capability skip on the real grammar arm, and
+    the skip condition must be this same predicate evaluated on the host.
+    """
+    if not filesystem_can_list_note_name(name, "utf-8", "surrogateescape"):
+        marks = [m for p in GRAMMAR_PARAMS if p.id == label for m in p.marks]
+        assert [m.name for m in marks] == ["skipif"], f"{label} runs where it cannot be listed"
+        assert marks[0].args == (not filesystem_can_list_note_name(name),)
+        return
+    _emulate_posix_path_encoding(monkeypatch)
+    world.agreement()
+    monkeypatch.setattr(runner, "pending_notes", lambda inbox, root, *, participants: [name])
+    result = world.drive()
+    assert (result.termination, result.termination_detail) == ("refused", "name-grammar"), (
+        result.termination, result.termination_detail)
+    reasons = json.loads((world.held(result.cycle_id) / "reasons.json").read_text(encoding="ascii"))
+    assert reasons == {"stage": "input", "problems": ["name-grammar"]}
 
 
 @pytest.mark.parametrize("label,name", PORTABLE_BAD_NAMES,
