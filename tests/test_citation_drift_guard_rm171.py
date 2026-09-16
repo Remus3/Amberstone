@@ -617,30 +617,13 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "audit artifact records the tree it audited.",
     ),
     #
-    # 2026-09-12. The SAME citation, in the wrap note that reported this guard
-    # going red. The other half of that red - the copy inside
-    # `docs/_overlap/sample_60_blinded.md` - was closed by SCOPE rather than by
-    # a baseline entry: that whole directory is one frozen pre-registered
-    # experiment and joined the dated-artifact class in the same commit
-    # (see `_HISTORY_PREFIXES` in tools/citation_audit.py). WAKEUP_NOTES.md is
-    # not an artifact, so scope cannot reach it and it is budgeted here.
+    # 2026-09-12's WAKEUP_NOTES.md -> ORCHESTRATION_PLAN.md:916-919 entry was
+    # DISCHARGED on 2026-09-15 exactly as its own reason predicted: the wrap
+    # block quoting that citation relocated to docs/history_notes.md (HISTORY
+    # scope) under `scripts/wakeup_prune.py --keep 3`, the guard reported the
+    # entry as no longer broken, and it was deleted here. That is the baseline
+    # shrinking with the debt, not a regression - do not re-add it.
     #
-    (
-        "WAKEUP_NOTES.md",
-        "ORCHESTRATION_PLAN.md:916-919",
-        "HISTORICAL",
-        "A MENTION, not a live pointer. The wrap note is QUOTING the guard's "
-        "own failure output to hand the red to the next session, so the whole "
-        "value of the string is that it is the broken citation the row is "
-        "about - the same shape as the ROADMAP.md:231 entry above. Its "
-        "staleness belongs to the row it quotes, not to WAKEUP_NOTES.md, and "
-        "re-pointing it would make the note describe a failure that never "
-        "happened. EXPECT THIS ENTRY TO DISCHARGE: WAKEUP_NOTES.md is pruned "
-        "to the last 2-3 sessions, so when this session's block relocates to "
-        "docs/history_notes.md (HISTORY scope) the guard will report the entry "
-        "as no longer broken - delete it then, that is the baseline shrinking "
-        "with the debt and not a regression.",
-    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})
