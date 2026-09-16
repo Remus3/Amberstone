@@ -77,6 +77,32 @@ it is. Two traps, both hit on 2026-07-28:
   `NOTICE` named three adapted upstreams - clean license, still not vendor-safe.
   **Also note BUSL-1.1**: source-available, not copyleft, DO-NOT-VENDOR anyway,
   though its Additional Use Grant may permit running it internally.
+- **The WRAPPER does not clear the PAYLOAD.** Measured in a cross-repo review
+  2026-09-16: one repo declares MIT at the top level, its hosting API agrees,
+  its `LICENSE` carries two real copyright lines, and its declared upstream
+  verifies MIT - all clean - yet its `THIRD_PARTY_NOTICES.md` names
+  CC-BY-NC-SA-4.0 on an embedded brand mark, described there as "Embedded as
+  vector-path data", plus CC-BY-SA-3.0 and CC-BY-SA-4.0 on two others. A
+  top-level SPDX id describes the WRAPPER, not the embedded assets: before
+  recording ANY verdict, enumerate the third-party notices for MARKS, ICONS,
+  FONTS, SAMPLE DATA and COMMITTED BINARIES, each of which can carry its OWN
+  terms. RC is Apache-2.0 and PUBLIC, so what bites RC is publishing
+  NON-COMMERCIAL bytes under a permissive label - NC and SA assets cannot be
+  absorbed. **The trap is licence-family INDEPENDENT**, which is the part most
+  often missed: it bites a copyleft-outbound tree as a compatibility conflict
+  and a permissive-outbound tree as a mislabelling problem, so a tree reasoning
+  only about its OWN outbound licence checks for the wrong thing.
+- **A LICENCE audit and a BEHAVIOUR audit are DIFFERENT audits, and enumerating
+  EVERY TOP-LEVEL DIRECTORY is a precondition for both.** Same review: an audit
+  of one package walked its source directory of 117 files and passed, while a
+  wired-in network egress path sat in a separate top-level hooks directory of 98
+  files and was missed by two independent reviewers. An empty grep is a claim
+  about your PATTERN, not about the codebase. Secondary and NOT the cause: that
+  package's published tarball and its repository differ (673945 bytes at the
+  tag, 674733 on the default branch, 674738 in the tarball, 267 differing
+  lines), but the file that was missed is BYTE-IDENTICAL in both, so the
+  divergence is a real reproducibility caveat and is not what hid the finding.
+  Do NOT write "audit the tarball, not the repo" - that lesson is REFUTED.
 
 GPL/copyleft stays DO-NOT-VENDOR regardless of verbal clearance - vendoring it
 would relicense RC itself. The always-legal path is the one RC already uses:

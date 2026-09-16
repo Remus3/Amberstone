@@ -530,6 +530,10 @@ FIXTURE_OK = {
     "window_open": "2026-09-08T19:00:00", "window_close": "2026-09-08T21:00:00",
     "hop_budget": 8, "grammar": runner.GRAMMAR_A5,
     "expires": "2026-09-08T21:30:00",
+    # The arming contract's model pin and channel contract version. Both fail
+    # CLOSED in `load_agreement`, so the permissive stand-in has to carry them
+    # too or it is no longer the record a passing gate would have returned.
+    "model": runner.MODEL, "contract_version": runner.CHANNEL_VERSION,
     "authored_by": "operator", "authored_at": "2026-09-08T18:00:00",
 }
 
@@ -1870,7 +1874,8 @@ def s_dry_flag(mod, w, base, mp):
         json.dumps({"counterparties": ["RSC"], "note": "x",
                     "window_open": "2026-09-08T19:00:00",
                     "window_close": "2026-09-08T21:00:00", "hop_budget": 8,
-                    "grammar": mod.GRAMMAR_A5, "expires": "2026-09-08T21:30:00"}),
+                    "grammar": mod.GRAMMAR_A5, "expires": "2026-09-08T21:30:00",
+                    "model": mod.MODEL, "contract_version": mod.CHANNEL_VERSION}),
         encoding="ascii")
     scratch = base / "scratch"
     scratch.mkdir(parents=True, exist_ok=True)

@@ -409,6 +409,10 @@ class World:
             "window_open": "2026-09-08T19:00:00", "window_close": "2026-09-08T21:00:00",
             "hop_budget": 8, "grammar": runner.GRAMMAR_A5,
             "expires": "2026-09-08T21:30:00",
+            # Required since the arming contract grew the model pin and the
+            # channel contract version; both fail CLOSED, so a fixture without
+            # them disarms every cycle built on it.
+            "model": runner.MODEL, "contract_version": runner.CHANNEL_VERSION,
             "authored_by": "operator", "authored_at": "2026-09-08T18:00:00",
         }
         record.update(over)
@@ -3460,7 +3464,9 @@ def test_the_dry_flag_is_consumed_first_and_writes_only_into_scratch(world, tmp_
         json.dumps({"counterparties": ["RSC"], "note": "x",
                     "window_open": "2026-09-08T19:00:00",
                     "window_close": "2026-09-08T21:00:00", "hop_budget": 8,
-                    "grammar": runner.GRAMMAR_A5, "expires": "2026-09-08T21:30:00"}),
+                    "grammar": runner.GRAMMAR_A5, "expires": "2026-09-08T21:30:00",
+                    "model": runner.MODEL,
+                    "contract_version": runner.CHANNEL_VERSION}),
         encoding="ascii")
     scratch = tmp_path / "scratch"
     scratch.mkdir()
