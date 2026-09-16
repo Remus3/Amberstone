@@ -4158,6 +4158,45 @@ def test_with_no_child_session_id_any_row_appended_during_the_spawn_fails_the_ch
     assert code != 0
 
 
+def test_with_no_child_session_id_a_row_still_mid_write_fails_the_check(
+        world, tmp_path, monkeypatch, capsys):
+    """Re-verifier MUST-FIX: the conservative branch for an UNTERMINATED tail was
+    untested. With the session unknown, a half-written row cannot be disowned."""
+    code, _s, _l, _r, _e = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label="hk-no-session-midwrite",
+        hook_seed=_hook_row(seq=1),
+        during_spawn=lambda log: _append_bytes(log, _hook_row(seq=2)[:25]))
+    out = capsys.readouterr().out
+    assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert "mid-write" in out
+    assert code != 0
+
+
+@pytest.mark.parametrize("session", [None, "", "   "], ids=["null", "empty", "blank"])
+def test_a_row_with_no_session_appended_while_the_child_ran_fails_the_check(
+        world, tmp_path, monkeypatch, capsys, session):
+    """Re-verifier SHOULD-FIX: `record_invocation` writes a null session when it
+    cannot read hook stdin, so a CHILD hook in that state carries no session to
+    match. With a child known to have run, such a row is not disowned."""
+    row = _hook_row(seq=2, session=session)
+    assert json.loads(row)["session"] == session
+    code, _s, _l, _r, _e = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label=f"hk-sessionless-{session!r}".replace(" ", "_"),
+        hook_seed=_hook_row(seq=1), stdout=_CHILD_STDOUT,
+        during_spawn=lambda log: _append_bytes(log, row))
+    out = capsys.readouterr().out
+    assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert code != 0
+
+
+def test_a_sessionless_row_is_still_tolerated_when_no_child_was_spawned():
+    """Scope control: the sessionless rule binds only while a child ran. With no
+    spawn (the test-side fixture's case) a sessionless foreign row stays ignored."""
+    before = _hook_row(seq=1)
+    after = before + _hook_row(seq=2, session=None)
+    assert runner.hook_log_violations(before, after, {os.getpid()}, frozenset()) == []
+
+
 def test_child_session_of_distinguishes_no_spawn_known_session_and_unknown_session():
     no_spawn = runner.RecordingSpawner(StubSpawner())
     assert runner.child_session_of(no_spawn) == frozenset()
@@ -4193,7 +4232,10 @@ def test_a_middle_row_removed_from_a_log_past_the_cap_fails_on_the_removal_rule_
 
 
 def _own_pid_record(log: Path) -> None:
-    rc_facts_mod.record_invocation("SessionStart", {"hook_event_name": "SessionStart"},
+    # A non-empty session that is NOT the child's, so only the pid rule can
+    # catch this row (a null session would be caught by the sessionless rule).
+    rc_facts_mod.record_invocation("SessionStart", {"hook_event_name": "SessionStart",
+                                                    "session_id": "unrelated-session"},
                                    path=log)
 
 

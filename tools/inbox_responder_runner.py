@@ -2291,6 +2291,17 @@ def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
 
     Pid attribution still catches a row written in THIS process (an in-process
     `record_invocation`); session attribution is what catches the child.
+
+    A row with a null, empty or blank `session` appended while a child of KNOWN
+    session ran is also a violation: `record_invocation` writes a null session
+    when it cannot read the hook's stdin, so a child hook in that state carries
+    nothing to match and is not disowned. With no child (`frozenset()`) such a
+    row stays tolerated, so the test-side fixture keeps the foreign-fire rule.
+
+    RESIDUAL, INTENTIONAL: a row carrying some OTHER non-empty session id is
+    ignored. That is exactly what another live session's hook looks like, and
+    ignoring it is the flake fix; a process the child starts under a NEW session
+    of its own would look the same and is not caught here.
     """
     pids = {int(p) for p in own_pids}
     unknown_child = own_sessions is None
@@ -2341,6 +2352,9 @@ def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
         elif isinstance(row_session, str) and row_session in sessions:
             problems.append(f"row from the spawned child's session {row_session!r} "
                             f"(hook pid {row_pid})")
+        elif sessions and not (isinstance(row_session, str) and row_session.strip()):
+            problems.append(f"row with no session while the spawned child ran "
+                            f"(pid {row_pid}) {line[:60]!r}")
         elif unknown_child:
             problems.append(f"row appended while a child of unknown session ran "
                             f"(pid {row_pid}) {line[:60]!r}")
