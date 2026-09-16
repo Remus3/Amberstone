@@ -7,11 +7,18 @@ exactly that mutation and pass on the shipped source.
 
 1. `mark_inbox_seen` - `if not inbox.is_dir(): ... return 3`.
    With the guard removed, an absent inbox is still refused, but only because
-   the later listing probe happens to raise FileNotFoundError. The guard gives
-   two things the probe does not: the ABSENT diagnosis (the remedy is "run this
-   from the tree that holds the inbox", not "fix permissions"), and a refusal
-   that does not depend on the probe raising. Arm B removes the second
-   dependency and demands the store survive.
+   the later `_probe_inbox_listable` happens to raise FileNotFoundError. That
+   probe lists through TWO primitives since 17f158045 - `Path.iterdir` and a
+   direct `os.scandir` - so either one raising is enough to mask the missing
+   guard. The guard gives two things the probe does not: the ABSENT diagnosis
+   (the remedy is "run this from the tree that holds the inbox", not "fix
+   permissions"), and a refusal that does not depend on the probe raising.
+   Arm B makes BOTH listing primitives report an empty listing for the absent
+   inbox path only (every other path delegates to the real primitive), so no
+   listing layer raises for it, and demands the store survive. Patching only
+   one primitive is not enough: the first version of this arm patched
+   `Path.iterdir` alone and still passed with the guard removed, because the
+   probe's `os.scandir` raised instead.
 
 2. `_payload_key` - `if _is_reparse_point(f):` on the FILE loop.
    The existing junction test covers the directory loop only. A file symlink in
@@ -84,15 +91,51 @@ def test_absent_inbox_refuses_even_when_the_listing_probe_does_not_raise(
     before = _sha(_store(root))
     inbox = root / "moon_sync_inbox"
     real_iterdir = Path.iterdir
+    real_scandir = os.scandir
+
+    def _is_inbox(target) -> bool:
+        try:
+            return os.path.normcase(os.path.abspath(os.fspath(target))) == (
+                os.path.normcase(os.path.abspath(os.fspath(inbox)))
+            )
+        except TypeError:
+            return False
+
+    class _EmptyScandir:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            raise StopIteration
+
+        def close(self):
+            pass
 
     def quiet_iterdir(self):
         # A listing that reports "nothing here" for the absent inbox instead
-        # of raising: the shape a softened probe would take.
-        if self == inbox:
+        # of raising: the shape a softened pathlib layer would take.
+        if _is_inbox(self):
             return iter(())
         return real_iterdir(self)
 
+    def quiet_scandir(path="."):
+        # Same softening one layer down, for the absent inbox ONLY.
+        if _is_inbox(path):
+            return _EmptyScandir()
+        return real_scandir(path)
+
     monkeypatch.setattr(Path, "iterdir", quiet_iterdir)
+    monkeypatch.setattr(os, "scandir", quiet_scandir)
+
+    # Precondition: no listing primitive raises for the absent inbox, so a
+    # refusal below can only come from the absent-inbox guard itself.
+    rc_facts._probe_inbox_listable(inbox)
 
     rc = rc_facts.mark_inbox_seen()
     out = capsys.readouterr().out
