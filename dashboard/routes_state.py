@@ -18,6 +18,11 @@ import urllib.request
 
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
+from dashboard._json_flags import (
+    bad_flag_body,
+    coerce_json_flag,
+    first_ambiguous_flag,
+)
 from dashboard._state_builder import build_state
 from dashboard._writers import (
     atomic_write_json,
@@ -760,6 +765,13 @@ def _ds_preview_seam_kwargs(payload: dict) -> dict:
     values are dropped (a malformed seam must never 500 the preview or
     silently flip a different knob).
 
+    RM-414: the default-OFF boolean seams are read with
+    ``coerce_json_flag`` (dashboard/_json_flags.py), never bare truthiness -
+    ``{"assume_magic_burst": "false"}`` used to turn the seam ON. An
+    AMBIGUOUS boolean seam is answered 400 by ``_serve_ds_preview_post``
+    before this runs; the drop here is only the fail-safe for a direct
+    caller.
+
     The tri-state seams are the one exception to "non-default only": an
     explicit ``false`` IS forwarded, because their engine default is True
     and omission is what means "inherit" (see _DS_PREVIEW_SEAM_TRISTATE).
@@ -770,7 +782,7 @@ def _ds_preview_seam_kwargs(payload: dict) -> dict:
         return seams
 
     for key in _DS_PREVIEW_SEAM_BOOLS:
-        if bool(payload.get(key)):
+        if coerce_json_flag(payload, key, False) is True:
             seams[key] = True
 
     for key in _DS_PREVIEW_SEAM_TRISTATE:
@@ -835,6 +847,12 @@ def _serve_ds_preview_post(h, payload) -> None:
         champion = str(payload.get("champion") or "").strip()
         if not champion:
             h._send(400, json.dumps({"error": "champion required"}).encode(), "application/json")
+            return
+        # RM-414: an AMBIGUOUS boolean seam flag is a client error, answered
+        # after the champion check so that error's precedence is unchanged.
+        bad_flag = first_ambiguous_flag(payload, _DS_PREVIEW_SEAM_BOOLS)
+        if bad_flag:
+            h._send(400, bad_flag_body(bad_flag), "application/json")
             return
         # 2026-06-10: the active-match panel sends the coach payload's
         # champion verbatim - a Live Client DISPLAY name ("Tahm Kench").
