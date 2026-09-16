@@ -150,7 +150,14 @@ def _open_db() -> sqlite3.Connection:
     """
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
-    conn.execute("PRAGMA journal_mode=WAL")
+    # RM-413 (RM-233 shape): read the adopted mode; warn, never raise.
+    jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+    if journal_mode != "wal":
+        _log.warning(
+            "rewind_live_writer journal_mode fell back to %r (wanted wal): %s - "
+            "concurrent readers WILL block writers on this database",
+            journal_mode, DB_PATH)
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
