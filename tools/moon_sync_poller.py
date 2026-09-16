@@ -105,6 +105,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools.rc_facts import _entry_name, _inbox_entries, _probe_inbox_listable  # noqa: E402
+from tools.sibling_name_sweep import resolve_config_path  # noqa: E402
 
 BASE_SECONDS = 5 * 60
 
@@ -126,8 +127,14 @@ TIERS: tuple[tuple[float, int], ...] = (
 # gitignored config beside the other per-host values, with this repo as the
 # only built-in. An absent or unreadable config degrades to "poll myself",
 # which is exactly what a fresh clone should do.
-_REPO_CONFIG = Path(__file__).parent.parent / "ops" / "moon_sync_repos.json"
 _SELF_REPO = str(Path(__file__).parent.parent)
+
+
+def _repo_config() -> Path:
+    """The per-host config for `_SELF_REPO`, resolved through the ONE shared
+    resolver (RM-433): a linked worktree carries no copy of the gitignored
+    file, so it reads the main working tree's instead of polling only itself."""
+    return resolve_config_path(Path(_SELF_REPO))
 
 # Rendering bounds. rc_facts carries no display constant this module may reuse
 # (its MAX_DISPLAY_CHARS belongs to a different surface), so the poller defines
@@ -154,7 +161,7 @@ def _load_repo_roots() -> tuple[str, ...]:
         extra = [p.strip() for p in raw.split(os.pathsep) if p.strip()]
     else:
         try:
-            blob = json.loads(_REPO_CONFIG.read_text(encoding="utf-8"))
+            blob = json.loads(_repo_config().read_text(encoding="utf-8"))
             extra = [str(p) for p in (blob.get("repos") or []) if str(p).strip()]
         except (OSError, ValueError, AttributeError):
             extra = []
@@ -179,7 +186,7 @@ def _load_participants() -> dict[str, str]:
     """
     raw: object = {}
     try:
-        blob = json.loads(_REPO_CONFIG.read_text(encoding="utf-8"))
+        blob = json.loads(_repo_config().read_text(encoding="utf-8"))
         raw = blob.get("participants") or {}
     except (OSError, ValueError, AttributeError):
         raw = {}

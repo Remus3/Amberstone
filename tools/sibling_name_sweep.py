@@ -334,24 +334,20 @@ def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> 
 CONFIG_RELATIVE = Path("ops") / "moon_sync_repos.json"
 
 
-def _git_line(cwd: Path, args: Sequence[str]) -> Optional[str]:
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(cwd), *args], capture_output=True, timeout=30
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if proc.returncode != 0:
-        return None
-    out = proc.stdout.decode("utf-8", errors="replace").strip()
-    return out or None
-
-
 def _same_dir(a: Path, b: Path) -> bool:
     try:
         return os.path.normcase(str(a.resolve())) == os.path.normcase(str(b.resolve()))
     except OSError:
         return False
+
+
+def _read_link_line(path: Path) -> Optional[str]:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, ValueError):
+        return None
+    line = text.strip().splitlines()[0].strip() if text.strip() else ""
+    return line or None
 
 
 def main_working_tree(base: Path) -> Optional[Path]:
@@ -366,26 +362,71 @@ def main_working_tree(base: Path) -> Optional[Path]:
     inside some repository does not resolve upward, so an odd ``--config-root``
     cannot arm itself from a repository it is not.
 
-    ``--path-format=absolute`` needs git 2.31+; older git gets the plain form,
-    which may be relative to ``base``. Returns None for the main tree itself, a
-    non-repository, or any git failure.
+    RM-433: resolved from git's own on-disk worktree link, WITHOUT running git.
+    This is now the shared resolver for every reader of the per-host config,
+    and two of them must not create a process: the inbox responder resolves
+    participants BEFORE its real-spawn guard, which promises no subprocess, and
+    the poller resolves at import on a hook path, where a console child flashes.
+    The link is ``<base>/.git`` as a FILE reading ``gitdir: <dir>``, and that
+    dir's ``commondir`` names the shared ``.git`` (either may be relative). A
+    submodule's ``.git`` file also names a gitdir, but one with NO
+    ``commondir``, so it returns None here rather than resolving to its
+    superproject. Returns None for the main tree itself (whose ``.git`` is a
+    directory), a non-repository, a non-top-level directory, or any unreadable
+    link.
     """
     base = Path(base)
-    top = _git_line(base, ["rev-parse", "--show-toplevel"])
-    if top is None or not _same_dir(Path(top), base):
+    link = base / ".git"
+    if not link.is_file():
         return None
-    common = _git_line(base, ["rev-parse", "--path-format=absolute", "--git-common-dir"])
+    first = _read_link_line(link)
+    if first is None or not first.startswith("gitdir:"):
+        return None
+    gitdir = Path(first[len("gitdir:"):].strip())
+    if not gitdir.is_absolute():
+        gitdir = base / gitdir
+    common = _read_link_line(gitdir / "commondir")
     if common is None:
-        common = _git_line(base, ["rev-parse", "--git-common-dir"])
-        if common is None:
-            return None
+        return None
     common_path = Path(common)
     if not common_path.is_absolute():
-        common_path = base / common_path
+        common_path = gitdir / common_path
+    # Collapse the `..` segments BEFORE taking the parent: git writes
+    # `commondir` as `../..`, and `.parent` of an uncollapsed path is lexical,
+    # which would name the `worktrees` dir instead of the checkout.
+    common_path = Path(os.path.normpath(str(common_path)))
     main = common_path.parent
     if _same_dir(main, base) or not main.is_dir():
         return None
+    # The shared dir must be the MAIN checkout's own `.git` directory; a bare
+    # common dir has no working tree whose config could be borrowed.
+    if not (main / ".git").is_dir() or not _same_dir(main / ".git", common_path):
+        return None
     return main
+
+
+def resolve_config_path(base: Path) -> Path:
+    """THE resolver for the gitignored per-host sync config (RM-433).
+
+    Every reader of ``ops/moon_sync_repos.json`` calls this, so a linked
+    worktree - which never carries the gitignored file - reads the MAIN working
+    tree's copy instead of silently degrading to zero siblings.
+
+    Order: the checkout's own file when it exists, else the main working tree's
+    file when THAT exists, else the checkout's own (absent) path, so a caller's
+    existing absent-file handling stays the honest answer. The
+    ``RC_MOON_SYNC_REPOS`` override is NOT consulted here: it carries only a
+    repo list, each reader already checks it BEFORE touching the file, and that
+    precedence is unchanged. No git process runs when the local file exists.
+    """
+    base = Path(base)
+    local = base / CONFIG_RELATIVE
+    if local.exists():
+        return local
+    main_tree = main_working_tree(base)
+    if main_tree is not None and (main_tree / CONFIG_RELATIVE).exists():
+        return main_tree / CONFIG_RELATIVE
+    return local
 
 
 def load_config(
@@ -417,14 +458,10 @@ def load_config(
             cfg.detail = "RC_MOON_SYNC_REPOS is set but yields zero usable names"
         return cfg
 
-    config_path = base / CONFIG_RELATIVE
-    if not config_path.exists():
-        # A linked worktree never carries the gitignored config, but the MAIN
-        # working tree of the same repository does. Borrow it only when it
-        # exists there; an absent file stays an honest DEGRADED.
-        main_tree = main_working_tree(base)
-        if main_tree is not None and (main_tree / CONFIG_RELATIVE).exists():
-            config_path = main_tree / CONFIG_RELATIVE
+    # A linked worktree never carries the gitignored config, but the MAIN
+    # working tree of the same repository does. Borrow it only when it exists
+    # there; an absent file stays an honest DEGRADED.
+    config_path = resolve_config_path(base)
     if not config_path.exists():
         return SweepConfig(
             mode=MODE_DEGRADED,
