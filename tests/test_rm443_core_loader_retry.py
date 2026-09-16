@@ -27,15 +27,18 @@ CENSUS (re-derived 2026-09-16 against base 6c42caf48; line = the ``def`` line
 there). Instrument: an AST scan over core/ for functions that write a
 module-level cache name either (A) inside / after a try-except whose handler
 does not exit, or (B) from the return value of a same-module function that
-holds a non-raising handler. One row per function; A-or-B hits = 57, plus one
-row the scan cannot see (riot_api, cited by the filed row) = 58 rows. An empty
-scan is a claim about the pattern: pass B was added after a verifier found
-three sites pass A missed (load_grid, load_own_history's scan, _atlas).
+holds a non-raising handler. One row per function; A-or-B hits = 57, plus
+three rows the scan cannot see (riot_api, cited by the filed row;
+log_retention.start and vision_routing.read_or_escalate, raised by review) =
+60 rows. An empty scan is a claim about the pattern: pass B was added after a
+verifier found three sites pass A missed (load_grid, load_own_history's scan,
+_atlas), and a re-verifier then showed a pass B hit (match_detail) had been
+mis-classed BENIGN - the helper swallowing the failure was one call away.
 
   file:line | function | class | reason
   core/anvil_shadow.py:94 | log_anvil_advice | NOT-A-LOADER | dedupe signature
   core/aram_item_interaction_context.py:235 | _get_index | BENIGN | gated by RM-439
-  core/archetype_picks.py:628 | save_archetype_pick | DEFECT-UNFIXED | re-read failure writes {}+entry over the file (data loss); file owned by another slice
+  core/archetype_picks.py:628 | save_archetype_pick | FIXED-ELSEWHERE | re-read failure wrote {}+entry over the file; fixed by RM-444
   core/archetype_picks.py:754 | clear_archetype_pick | BENIGN | re-read failure returns False, nothing cached or written
   core/arena_augment_playline.py:106 | _rows | DEFECT-FIXED | gate (+ _load_index projection)
   core/augment_external_source.py:387 | get_priors | DEFECT-UNFIXED | network failure cached under mtime -1; retry is an HTTP timeout on the augment tick
@@ -70,6 +73,7 @@ three sites pass A missed (load_grid, load_own_history's scan, _atlas).
   core/liveclient_cache.py:229 | _loop | NOT-A-LOADER | poll loop snapshot
   core/liveclient_cache.py:301 | start | NOT-A-LOADER | task handle
   core/liveclient_cache.py:331 | stop | NOT-A-LOADER | task handle
+  core/log_retention.py:305 | start | NOT-A-LOADER | worker/task handle (not a scan hit)
   core/log_retention.py:354 | stop | NOT-A-LOADER | task handle
   core/log_setup.py:110 | setup | NOT-A-LOADER | configured flag (frozen file)
   core/macro_response_shadow.py:40 | log_macro_response | NOT-A-LOADER | dedupe signature
@@ -83,16 +87,17 @@ three sites pass A missed (load_grid, load_own_history's scan, _atlas).
   core/pickban_targets.py:73 | load_pickban_targets | DEFECT-FIXED | OSError under unchanged mtime no longer cached
   core/rank_tier_bench.py:200 | _refresh_now | BENIGN | keeps the prior grid; TTL retry
   core/rank_tier_source.py:345 | fetch_rows | BENIGN | negative cache expires
-  core/replay_history.py:253 | match_detail | BENIGN | only a success is cached
+  core/replay_history.py:253 | match_detail | DEFECT-FIXED | cached a result built after _load_champ_index swallowed a read failure; per-path gate
   core/replay_narrative_shadow.py:37 | log_replay_narrative | NOT-A-LOADER | dedupe signature
   core/riot_api.py:73 | _get_api_key | BENIGN | failures return uncached (not a scan hit)
+  core/vision_routing.py:50 | read_or_escalate | NOT-A-LOADER | warn-once dropped-key signature set (not a scan hit)
   core/vision_template_match.py:131 | _atlas | DEFECT-FIXED | folder-scan failure per-category gate; absent opencv stays cached
   core/vision_template_match.py:164 | _index | DEFECT-FIXED | caches only a projection of a loaded atlas
   core/vision_tesseract.py:69 | _regions | DEFECT-FIXED | legacy-file read error; absent file still cached
   core/vision_tesseract.py:627 | read_fast_fields | NOT-A-LOADER | per-tick OCR slow-field cache
   core/ward_producer.py:243 | tick | NOT-A-LOADER | per-tick diff state
 
-  TOTALS: DEFECT-FIXED 25 | DEFECT-UNFIXED 3 | BENIGN 11 | NOT-A-LOADER 19 | rows 58
+  TOTALS: DEFECT-FIXED 26 | DEFECT-UNFIXED 2 | FIXED-ELSEWHERE 1 | BENIGN 10 | NOT-A-LOADER 21 | rows 60
 """
 from __future__ import annotations
 
@@ -125,9 +130,11 @@ import core.minimap_identity as mmi
 import core.next_buy_fallback as nbf
 import core.personal_build_wr as pbw
 import core.pickban_targets as pbt
+import core.replay_history as rh
 import core.vision_profiles as vprof
 import core.vision_template_match as vtm
 import core.vision_tesseract as vt
+from core.failed_load_gate import FailedLoadGate
 
 _PATCH = "9.9.9"
 _BAD = "{ this is not json"
@@ -331,7 +338,7 @@ _IDS = [s.id for s in SITES]
 
 
 _ALL_MODULES = (dsc, cms, eas, dp, ft, rp, sit, aap, pbw, mmi, vt, lsp, nbf,
-                bop, bov, pbt, md, vtm, ar)
+                bop, bov, pbt, md, vtm, ar, rh)
 
 
 def _drop_caches_keep_gates() -> None:
@@ -369,19 +376,43 @@ def _drop_caches_keep_gates() -> None:
     vtm._TPL_CACHE.clear()
     ar._own_cache.clear()
     ar._own_cache_key.clear()
+    rh._MATCH_DETAIL_CACHE.clear()
+    rh._id_to_champ.clear()
 
 
 def _reset_all() -> None:
-    """Drop every cache under test plus any failure gate. Gates are found by
-    duck type so this helper also runs against the pre-fix tree."""
+    """Drop every cache under test plus EVERY failure gate. Gates are found by
+    TYPE, not by a name suffix (a suffix rule missed ``_own_gates`` and let a
+    backoff leak between tests): a module-level FailedLoadGate is reset and a
+    module-level dict holding gates is cleared."""
     _drop_caches_keep_gates()
     for mod in _ALL_MODULES:
-        for name in dir(mod):
-            obj = getattr(mod, name)
-            if name.endswith("_GATE") and callable(getattr(obj, "reset", None)):
+        for obj in list(vars(mod).values()):
+            if isinstance(obj, FailedLoadGate):
                 obj.reset()
-            elif name.endswith("_GATES") and isinstance(obj, dict):
+            elif isinstance(obj, dict) and any(
+                isinstance(v, FailedLoadGate) for v in list(obj.values())
+            ):
                 obj.clear()
+
+
+def test_reset_all_finds_every_gate():
+    """Guard for the reset itself: after _reset_all no module under test holds
+    a gate in a failure streak or a non-empty gate dict."""
+    for mod in _ALL_MODULES:
+        for obj in list(vars(mod).values()):
+            if isinstance(obj, FailedLoadGate):
+                obj.record_failure()
+    ar._own_gates["probe"] = FailedLoadGate()
+    ar._own_gates["probe"].record_failure()
+    _reset_all()
+    for mod in _ALL_MODULES:
+        for name, obj in vars(mod).items():
+            if isinstance(obj, FailedLoadGate):
+                assert obj.should_attempt(), f"{mod.__name__}.{name}"
+            elif isinstance(obj, dict):
+                assert not any(isinstance(v, FailedLoadGate)
+                               for v in obj.values()), f"{mod.__name__}.{name}"
 
 
 @pytest.fixture(autouse=True)
@@ -679,19 +710,156 @@ def test_own_history_success_and_absent_db_are_cached(tmp_path, monkeypatch):
     assert "mayhem" in ar._own_cache
 
 
+def test_own_history_success_ends_the_failure_streak(
+    tmp_path, monkeypatch, clock, caplog,
+):
+    db = _history_db(tmp_path)
+    state = _flaky_connect(monkeypatch)
+    caplog.set_level(logging.DEBUG)
+    ar.load_own_history("mayhem", db_path=db)
+    state["fail"] = False
+    clock.advance(_PAST_BACKOFF)
+    assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
+    _drop_caches_keep_gates()
+    state["fail"] = True
+    assert ar.load_own_history("mayhem", db_path=db).n_matches == 0  # no advance
+    assert len(_warnings(caplog, ar._log.name)) == 2
+
+
+def test_atlas_success_ends_the_failure_streak(
+    tmp_path, monkeypatch, clock, caplog,
+):
+    flaky = _flaky_items_dir(tmp_path, monkeypatch)
+    caplog.set_level(logging.DEBUG)
+    vtm._atlas("items")
+    flaky.fail = False
+    clock.advance(_PAST_BACKOFF)
+    assert vtm._atlas("items")
+    _drop_caches_keep_gates()
+    flaky.fail = True
+    assert vtm._atlas("items") == {}  # no advance
+    assert len(_warnings(caplog, vtm._log.name)) == 2
+
+
+@pytest.mark.parametrize("text, why", [
+    ("[1, 2]", "not a JSON object"),
+    (json.dumps({"districts": [{"bogus": 1}]}), "no usable districts"),
+], ids=["not-an-object", "no-usable-districts"])
+def test_grid_content_failures_are_not_cached(
+    text, why, tmp_path, monkeypatch, clock, caplog,
+):
+    target = _point_md(tmp_path, monkeypatch)
+    target.write_text(text, encoding="utf-8")
+    caplog.set_level(logging.DEBUG)
+    grid = md.load_grid("sr")
+    assert [d.id for d in grid.districts] == ["sr_map"]
+    assert not md._CACHE
+    msgs = [r.getMessage() for r in _warnings(caplog, "rc.minimap_districts")]
+    assert len(msgs) == 1 and why in msgs[0], msgs
+    target.write_text(_SR_GRID_TEXT, encoding="utf-8")
+    clock.advance(_PAST_BACKOFF)
+    assert len(md.load_grid("sr").districts) == 13
+
+
+def test_grid_no_grid_declaration_stays_cached(tmp_path, monkeypatch):
+    target = _point_md(tmp_path, monkeypatch)
+    target.write_text(json.dumps({"districts": []}), encoding="utf-8")
+    assert md.load_grid("sr") is None
+    assert md._CACHE == {("sr", str(md._CONFIG_DIR)): None}
+
+
+# -- replay_history match_detail ------------------------------------------------
+
+_REWIND_SCHEMA = """
+CREATE TABLE matches (
+    match_id TEXT PRIMARY KEY, queue_id INTEGER, game_mode TEXT,
+    game_duration_s INTEGER, game_creation_ts INTEGER, patch TEXT,
+    tracked_champion_id INTEGER);
+CREATE TABLE participants (
+    match_id TEXT, participant_id INTEGER, team_id INTEGER,
+    champion_id INTEGER, champion_name TEXT, riot_id_game_name TEXT,
+    summoner_name TEXT, summoner_level INTEGER);
+CREATE TABLE teams (match_id TEXT, team_id INTEGER, win INTEGER);
+CREATE TABLE timeline_frames (
+    match_id TEXT, timestamp_ms INTEGER, participant_id INTEGER,
+    level INTEGER, total_gold INTEGER, minions_killed INTEGER,
+    jungle_minions INTEGER, pos_x INTEGER, pos_y INTEGER,
+    total_dmg_done INTEGER, total_dmg_taken INTEGER);
+CREATE TABLE timeline_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, match_id TEXT,
+    timestamp_ms INTEGER, event_type TEXT, participant_id INTEGER,
+    item_id INTEGER, killer_id INTEGER, victim_id INTEGER,
+    assisting_ids_json TEXT, kill_pos_x INTEGER, kill_pos_y INTEGER,
+    raw_json TEXT);
+"""
+_AHRI = json.dumps({"data": {"Ahri": {"key": "103", "name": "Ahri"}}})
+
+
+def _point_rewind(tmp_path: Path, mp: pytest.MonkeyPatch) -> Path:
+    db = tmp_path / "rewind_history.db"
+    c = sqlite3.connect(str(db))
+    c.executescript(_REWIND_SCHEMA)
+    c.execute("INSERT INTO matches VALUES ('M1', 2400, 'KIWI', 1200, 0, "
+              "'16.15', 103)")
+    c.commit()
+    c.close()
+    mp.setattr(rh, "_REWIND_DB", db)
+    champs = tmp_path / "ddragon_champions.json"
+    mp.setattr(rh, "_DDR_CHAMPS", champs)
+    return champs
+
+
+def _tracked_name(detail):
+    return (detail or {}).get("tracked", {}).get("champion_name")
+
+
+def test_match_detail_not_cached_when_champion_index_failed(
+    tmp_path, monkeypatch, clock, reads, caplog,
+):
+    champs = _point_rewind(tmp_path, monkeypatch)
+    champs.write_text(_BAD, encoding="utf-8")
+    caplog.set_level(logging.DEBUG)
+
+    first = rh.match_detail("M1")
+    assert first is not None and _tracked_name(first) is None
+    assert not rh._MATCH_DETAIL_CACHE, "a result built from a failed index was cached"
+    rh.match_detail("M1")
+    assert reads.get(str(champs), 0) == 1, "inside the backoff: no re-read"
+
+    champs.write_text(_AHRI, encoding="utf-8")
+    clock.advance(_PAST_BACKOFF)
+    assert _tracked_name(rh.match_detail("M1")) == "Ahri"
+    assert len(rh._MATCH_DETAIL_CACHE) == 1
+    assert len(_warnings(caplog, rh._log.name)) == 1
+
+
+def test_match_detail_success_is_cached(tmp_path, monkeypatch, clock, reads):
+    champs = _point_rewind(tmp_path, monkeypatch)
+    champs.write_text(_AHRI, encoding="utf-8")
+    assert _tracked_name(rh.match_detail("M1")) == "Ahri"
+    assert len(rh._MATCH_DETAIL_CACHE) == 1
+    assert _tracked_name(rh.match_detail("M1")) == "Ahri"
+    assert reads.get(str(champs), 0) == 1
+
+
 def test_census_totals_match_its_rows():
-    """The census in this module's docstring: the TOTALS line must equal the
-    per-class row counts, and every DEFECT-FIXED file must still exist."""
+    """The census in this module's docstring: the per-class row counts must be
+    EXACTLY the recorded ones (not merely self-consistent), the TOTALS line
+    must say the same, and every cited file must still exist."""
     import re
 
+    expected = {"DEFECT-FIXED": 26, "DEFECT-UNFIXED": 2, "FIXED-ELSEWHERE": 1,
+                "BENIGN": 10, "NOT-A-LOADER": 21}
     rows = [ln.strip() for ln in __doc__.splitlines()
             if re.match(r"\s+core/\S+:\d+ \| ", ln)]
     classes = [r.split(" | ")[2] for r in rows]
+    assert set(classes) == set(expected), set(classes) ^ set(expected)
+    assert {c: classes.count(c) for c in expected} == expected
     totals = dict(re.findall(r"([A-Za-z-]+) (\d+)",
                              __doc__.split("TOTALS:")[1].splitlines()[0]))
-    for cls in ("DEFECT-FIXED", "DEFECT-UNFIXED", "BENIGN", "NOT-A-LOADER"):
-        assert classes.count(cls) == int(totals[cls]), cls
-    assert len(rows) == int(totals["rows"]) == len(classes)
+    assert {c: int(totals[c]) for c in expected} == expected
+    assert len(rows) == int(totals["rows"]) == sum(expected.values()) == 60
+    assert len({r.split(" | ")[0] for r in rows}) == len(rows), "duplicate row"
     root = Path(__file__).resolve().parent.parent
     for r in rows:
         assert (root / r.split(":")[0]).is_file(), r
