@@ -30,6 +30,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -42,6 +43,7 @@ import tools.inbox_responder_export as export_mod  # noqa: E402
 import tools.inbox_responder_procs as procs  # noqa: E402
 import tools.inbox_responder_runner as runner  # noqa: E402
 import tools.inbox_responder_spawn as spawn_mod  # noqa: E402
+import tools.rc_facts as rc_facts_mod  # noqa: E402
 from tools.inbox_responder import responder_state_path  # noqa: E402
 from tools.inbox_responder_exec import MeasureResult  # noqa: E402
 from tools.inbox_responder_procs import ProcResult  # noqa: E402
@@ -83,12 +85,19 @@ def filesystem_accepts_note_name(name: str) -> bool:
     string is a different claim and it is wrong on a POSIX filesystem that
     does accept the name.
 
+    It now gates exactly ONE arm, `test_safe_name_projects_every_pre_gate_six_sink`,
+    through `FS_ACCEPTS_LOW_SURROGATE_NAME`. The name-grammar arms and the
+    surrogate-name mutant arms in `tests/test_inbox_responder_mutants.py` used
+    to create the hostile note on disk and skip when the host refused it. They
+    now stub the `pending_notes` listing seam, and their real-listing
+    companions use only names creatable on every host, so none has a skip path
+    and no high-surrogate probe remains.
+
     Written as a module-level probe feeding a `skipif` rather than as a
     `try/except` around the write, because `tests/test_skip_condition_hygiene.py`
     cannot resolve a skip whose condition is an exception handler: it classifies
     the site UNRESOLVED and treats that as a defect. The probe path is
-    machine-local scratch, which is the same untracked-artifact capability the
-    hard-link and junction arms below already gate on.
+    machine-local scratch, an untracked-artifact capability.
     """
     probe_root = Path(tempfile.mkdtemp(prefix="rc-responder-fsprobe-"))
     try:
@@ -107,7 +116,6 @@ def filesystem_accepts_note_name(name: str) -> bool:
 
 
 FS_ACCEPTS_LOW_SURROGATE_NAME = filesystem_accepts_note_name(LOW_SURROGATE_NOTE_NAME)
-FS_ACCEPTS_HIGH_SURROGATE_NAME = filesystem_accepts_note_name(HIGH_SURROGATE_NOTE_NAME)
 
 
 # ---------------------------------------------------------------------------
@@ -257,14 +265,267 @@ def _live_surfaces_unchanged():
     assert any(Path(p).exists() for p in _TMP_LOGS)
 
 
+# The first bytes of every row `rc_facts.record_invocation` writes: `json.dumps`
+# of a dict whose first key is `ts`, with compact separators.
+_HOOK_ROW_PREFIX = b'{"ts":"'
+
+
+def _read_hook_log(path: Path):
+    try:
+        return path.read_bytes()
+    except FileNotFoundError:
+        return None
+
+
+def _hook_log_violations(before, after, pid: int) -> list:
+    """What moved in one hook log that a FOREIGN hook fire cannot explain.
+
+    The live `ops/runtime/hook_invocations.jsonl` has exactly one writer,
+    `tools/rc_facts.py` `record_invocation`, and every Claude Code hook fire from
+    ANY live session on this box reaches it as its own process. So a whole-file
+    digest compare cannot tell "a test wrote the log" from "another session's
+    hook fired while the test ran", and it errored intermittently on the second.
+    What a foreign fire can do to the file, and nothing else, is:
+
+    - append one compact-JSON row that always carries `pid` = the WRITING
+      process (`record_invocation` sets `"pid": os.getpid()`), via one
+      `_append_atomic` WriteFile call - so a reader can briefly see an
+      unterminated tail that begins with `_HOOK_ROW_PREFIX`;
+    - trim the HEAD once the file passes `rc_facts._LOG_KEEP` rows
+      (`_trim_invocation_log` keeps the last `_LOG_KEEP` and `replace`s).
+
+    Anything else is attributed to this test process: a row carrying THIS pid,
+    a row with no integer pid, a non-record line, a deleted log, a removed row
+    that is not part of a head trim, or a head trim that left fewer rows than
+    `rc_facts` keeps. Lost: a test that spawns a CHILD which writes a
+    well-formed row under the child's pid is indistinguishable from a foreign
+    fire here; no arm in this module spawns one (`_no_real_spawn`).
+    """
+    if after is None:
+        return ["the log was deleted"] if before is not None else []
+    old = (before or b"").splitlines(keepends=True)
+    if old and not old[-1].endswith(b"\n"):
+        old = old[:-1]  # a foreign row mid-write when the snapshot was taken
+    new = after.splitlines(keepends=True)
+    problems = []
+    remaining = Counter(old)
+    appended = []
+    for index, line in enumerate(new):
+        if remaining[line] > 0:
+            remaining[line] -= 1
+        else:
+            appended.append((index, line))
+    removed = sum(remaining.values())
+    if removed:
+        if +remaining != Counter(old[:removed]):
+            problems.append(f"{removed} existing row(s) removed from outside the head")
+        elif len(new) < rc_facts_mod._LOG_KEEP:
+            problems.append(f"head trimmed to {len(new)} rows, under the "
+                            f"{rc_facts_mod._LOG_KEEP} rc_facts keeps")
+    for index, line in appended:
+        if index == len(new) - 1 and not line.endswith(b"\n"):
+            if not line.startswith(_HOOK_ROW_PREFIX):
+                problems.append(f"unterminated non-record tail {line[:60]!r}")
+            continue
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            problems.append(f"non-record line {line[:60]!r}")
+            continue
+        if not isinstance(rec, dict):
+            problems.append(f"non-record line {line[:60]!r}")
+            continue
+        row_pid = rec.get("pid")
+        if not isinstance(row_pid, int) or isinstance(row_pid, bool):
+            problems.append(f"row with no integer pid {line[:60]!r}")
+        elif row_pid == pid:
+            problems.append(f"row written by this process (pid {pid}) {line[:60]!r}")
+    return problems
+
+
+def _guard_hook_logs(logs, pid):
+    before = {p: _read_hook_log(p) for p in logs}
+    yield
+    problems = [f"{p}: {msg}" for p in logs
+                for msg in _hook_log_violations(before[p], _read_hook_log(p), pid)]
+    assert problems == [], f"the live hook log moved in a way this test caused: {problems}"
+
+
 @pytest.fixture(autouse=True)
 def _hook_log_unchanged():
     """PER TEST, never module-scoped: the operator's own hooks append mid-suite."""
     logs = [root / "ops" / "runtime" / "hook_invocations.jsonl"
             for root in _live_roots().values()]
-    before = [_digest_path(p) for p in logs]
-    yield
-    assert [_digest_path(p) for p in logs] == before, "the live hook log moved"
+    yield from _guard_hook_logs(logs, os.getpid())
+
+
+# ---------------------------------------------------------------------------
+# The hook-log guard itself, driven against tmp logs
+# ---------------------------------------------------------------------------
+
+
+def _run_hook_guard(logs, during, pid=None):
+    gen = _guard_hook_logs(logs, os.getpid() if pid is None else pid)
+    next(gen)
+    during()
+    try:
+        next(gen)
+    except StopIteration:
+        return
+    raise AssertionError("the hook-log guard yielded twice")
+
+
+_FOREIGN_PID = os.getpid() ^ 0x40000
+
+
+def _hook_row(pid=_FOREIGN_PID, seq=0, **over) -> bytes:
+    rec = {"ts": "2026-09-16T08:00:00", "event": "UserPromptSubmit", "source": "unknown",
+           "payload": True, "stdin": "json", "session": "foreign-session", "pid": pid,
+           "seq": seq}
+    rec.update(over)
+    return (json.dumps(rec, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+def _foreign_process_records(log: Path) -> None:
+    """The REAL writer, `rc_facts.record_invocation`, run in ANOTHER process.
+
+    That is exactly what a Claude Code hook from a different live session is:
+    its own interpreter appending one row carrying its own pid.
+    """
+    code = ("import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); "
+            "from tools.rc_facts import record_invocation; "
+            "record_invocation('UserPromptSubmit', {'hook_event_name': 'UserPromptSubmit', "
+            "'session_id': 'foreign-session'}, path=Path(sys.argv[2]), stdin_state='json')")
+    env = dict(os.environ, RC_HOOK_LOG=str(log))
+    flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    done = subprocess.run([sys.executable, "-c", code, str(runner.ROOT), str(log)],
+                          env=env, capture_output=True, text=True, timeout=120,
+                          creationflags=flags)
+    assert done.returncode == 0, done.stderr
+
+
+def _rows(log: Path) -> list:
+    return [json.loads(x) for x in log.read_bytes().splitlines() if x.strip()]
+
+
+def test_hook_guard_ignores_a_foreign_process_append(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(seq=1) + _hook_row(seq=2))
+    before = log.read_bytes()
+    _run_hook_guard([log], lambda: _foreign_process_records(log))
+    # Vacuity control: the file really moved, under a pid that is not ours.
+    assert log.read_bytes() != before
+    assert _rows(log)[-1]["pid"] not in (os.getpid(), None)
+
+
+def test_hook_guard_ignores_a_foreign_append_that_creates_the_log(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    _run_hook_guard([log], lambda: _foreign_process_records(log))
+    assert len(_rows(log)) == 1
+
+
+def test_hook_guard_ignores_a_foreign_append_that_trims_the_log(tmp_path):
+    keep = rc_facts_mod._LOG_KEEP
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(b"".join(_hook_row(seq=i) for i in range(keep)))
+    _run_hook_guard([log], lambda: _foreign_process_records(log))
+    rows = _rows(log)
+    # Vacuity control: the head really was trimmed away by the foreign writer.
+    assert len(rows) == keep and rows[0].get("seq") == 1
+
+
+def test_hook_guard_ignores_a_foreign_row_still_being_written(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(seq=1))
+
+    def partial():
+        with log.open("ab") as fh:
+            fh.write(_hook_row(seq=2)[:25])
+
+    _run_hook_guard([log], partial)
+
+
+def test_hook_guard_ignores_a_foreign_row_completed_after_the_snapshot(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    row = _hook_row(seq=2)
+    log.write_bytes(_hook_row(seq=1) + row[:25])
+
+    def finish():
+        with log.open("ab") as fh:
+            fh.write(row[25:])
+
+    _run_hook_guard([log], finish)
+    assert len(_rows(log)) == 2
+
+
+def test_hook_guard_fails_when_this_process_records_an_invocation(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(seq=1))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: rc_facts_mod.record_invocation(
+            "SessionStart", {"hook_event_name": "SessionStart"}, path=log))
+    assert _rows(log)[-1]["pid"] == os.getpid()
+
+
+def test_hook_guard_fails_when_this_process_creates_the_log(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: rc_facts_mod.record_invocation("SessionStart", path=log))
+
+
+def test_hook_guard_fails_on_a_row_carrying_no_pid(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(seq=1))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: log.write_bytes(log.read_bytes() + _hook_row(pid=None)))
+
+
+@pytest.mark.parametrize("junk", [b"not json\n", b"[1, 2]\n", b"junk-tail"],
+                         ids=["unparseable", "not-a-record", "unterminated-junk"])
+def test_hook_guard_fails_on_a_non_record_append(tmp_path, junk):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(seq=1))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: log.write_bytes(log.read_bytes() + junk))
+
+
+def test_hook_guard_fails_when_the_log_is_deleted(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(seq=1))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], log.unlink)
+
+
+def test_hook_guard_fails_when_a_middle_row_is_removed(tmp_path):
+    keep = rc_facts_mod._LOG_KEEP
+    log = tmp_path / "hook_invocations.jsonl"
+    rows = [_hook_row(seq=i) for i in range(keep + 5)]
+    log.write_bytes(b"".join(rows))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: log.write_bytes(b"".join(rows[:3] + rows[4:])))
+
+
+def test_hook_guard_fails_when_the_log_is_truncated(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(b"".join(_hook_row(seq=i) for i in range(5)))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: log.write_bytes(b""))
+
+
+def test_hook_guard_fails_when_a_head_trim_leaves_fewer_rows_than_rc_facts_keeps(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    rows = [_hook_row(seq=i) for i in range(5)]
+    log.write_bytes(b"".join(rows))
+    with pytest.raises(AssertionError):
+        _run_hook_guard([log], lambda: log.write_bytes(b"".join(rows[2:])))
+
+
+def test_hook_log_fixture_guards_every_live_root_as_this_process():
+    src = Path(__file__).read_text(encoding="utf-8")
+    body = src.split("def _hook_log_unchanged():", 1)[1].split("\n\n\n", 1)[0]
+    assert "_live_roots()" in body
+    assert "hook_invocations.jsonl" in body
+    assert "_guard_hook_logs(logs, os.getpid())" in body
 
 
 @pytest.fixture(autouse=True)
