@@ -158,6 +158,18 @@ def _agent6_audit_outcomes_ex(max_count: int = 3) -> tuple[list, bool]:
 log = logging.getLogger("rc.web_dashboard")
 
 
+def _as_list(value: object) -> list:
+    """RM-415 envelope coercion seam: ``value`` when it is a list, else ``[]``.
+
+    ``data.get("allPlayers") or []`` substitutes only for a MISSING / falsey
+    value; a retyped non-iterable (bool, int, float) reached the ``for`` and
+    raised TypeError, which every caller here caught and logged - silently
+    discarding the live answer. core/liveclient_cache.py validates only the
+    top-level envelope, so inner fields arrive untouched.
+    """
+    return value if isinstance(value, list) else []
+
+
 # RC2 6.3 (L4): the dashboard update cadence is ONE tunable shared by the
 # /api/state TTL cache AND the SSE re-build tick. The IO timing map
 # (docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md) flagged that these two MUST
@@ -254,7 +266,7 @@ def _resolve_my_champion(liveclient_data) -> str:
     me_name = ap.get("summonerName") or ap.get("riotIdGameName") or ""
     if not me_name:
         return ""
-    for p in (liveclient_data.get("allPlayers") or []):
+    for p in _as_list(liveclient_data.get("allPlayers")):
         if not isinstance(p, dict):
             continue
         rid = p.get("riotIdGameName") or p.get("summonerName") or ""
@@ -279,7 +291,7 @@ def _capgap_shadow_eval(liveclient_data, mode: str = "SR"):
             return None
         enemies = [
             str(p.get("championName") or "")
-            for p in (liveclient_data.get("allPlayers") or [])
+            for p in _as_list(liveclient_data.get("allPlayers"))
             if isinstance(p, dict) and p.get("team") != my_team and p.get("championName")
         ]
         res = build_capability_gap(my_champ, enemies, mode)
@@ -1042,7 +1054,7 @@ def _resolve_enemy_champions(payload: dict) -> list:
         my_team = active_player_team(snap.data)
         if not my_team:
             return []
-        players = (snap.data or {}).get("allPlayers") or []
+        players = _as_list((snap.data or {}).get("allPlayers"))
         return [str(p.get("championName") or "")
                 for p in players
                 if isinstance(p, dict)
@@ -1067,7 +1079,7 @@ def _enemy_champions_for_target(liveclient_data: dict, exclude_team) -> list:
     if not isinstance(liveclient_data, dict):
         return []
     out: list = []
-    for p in (liveclient_data.get("allPlayers") or []):
+    for p in _as_list(liveclient_data.get("allPlayers")):
         if not isinstance(p, dict):
             continue
         if exclude_team and p.get("team") == exclude_team:
