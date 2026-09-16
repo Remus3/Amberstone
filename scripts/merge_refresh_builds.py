@@ -45,9 +45,17 @@ def _write_json_lf(path: Path, payload: dict) -> None:
     CRLF, and the canonical build files are TRACKED (RM-441; same pattern as
     scripts/data_pipeline.py ``_atomic_write_text``).
     """
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
-    tmp.replace(path)
+    # RM-447: full-name temp in the same dir; remove it if write/rename raises.
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_bytes(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
+        tmp.replace(path)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass  # best-effort; never mask the original error
+        raise
 
 
 def merge_champ(existing: dict, refresh: dict) -> dict:

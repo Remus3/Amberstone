@@ -101,9 +101,28 @@ def _atomic_write_text(path: Path, text: str) -> None:
     tests/test_text_line_endings.py (2026-09-16 RC-PatchRefresh run).
     tools/ddragon_mirror_refresh.py writes bytes for the same reason.
     """
-    tmp = path.with_suffix(".tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    tmp.replace(path)
+    _atomic_write_bytes(path, text.encode("utf-8"))
+
+
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Write ``data`` to a sibling temp file, then rename it over ``path``.
+
+    RM-447: the temp name APPENDS ``.tmp`` to the full file name, so same-stem
+    outputs (``a.json`` / ``a.md``) never share a temp path - ``with_suffix``
+    dropped the real suffix. If the write or the rename raises, the temp file
+    is removed and the original error propagates, so a failed run does not
+    strand an untracked ``*.tmp`` beside the target.
+    """
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_bytes(data)
+        tmp.replace(path)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass  # cleanup is best-effort; never mask the original error
+        raise
 
 
 def _write_json(path: Path, data) -> None:
@@ -154,9 +173,7 @@ def _drop_throwback_rows(filename: str, doc):
 
 
 def _write_bytes(path: Path, data: bytes) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+    _atomic_write_bytes(path, data)
 
 
 def _get_live_version() -> str:
@@ -757,10 +774,9 @@ def cmd_rank_tiers(force: bool = False) -> bool:
     out["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())  # UTC (RM-442)
 
     RANK_TIERS_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = RANK_TIERS_LIVE.with_suffix(".json.tmp")
     # ensure_ascii=True: the artifact must stay 7-bit ASCII (repo hard rule).
-    tmp.write_text(json.dumps(out, indent=2, ensure_ascii=True), encoding="utf-8")
-    tmp.replace(RANK_TIERS_LIVE)
+    # Shared helper (RM-447): cleans up its temp file if the write fails.
+    _atomic_write_text(RANK_TIERS_LIVE, json.dumps(out, indent=2, ensure_ascii=True))
     n_tiers = len(out.get("tiers") or {})
     log.info("rank_tier_averages.json: %d tiers, patch %s - written to %s",
              n_tiers, patch or "(none)", RANK_TIERS_LIVE)
