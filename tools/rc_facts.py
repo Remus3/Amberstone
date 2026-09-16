@@ -1176,8 +1176,19 @@ def record_invocation(
     broken one, which is strictly worse than having no log at all.
     """
     try:
-        p = Path(path) if path is not None else invocation_log_path()
         has_payload = isinstance(payload, dict) and bool(payload)
+        if not has_payload and stdin_state == "tty":
+            # RM-451: a hand run, never a hook fire. Claude Code always pipes a
+            # JSON payload to a hook; a tty with no payload is someone (an
+            # agent's shell tool included - on Windows NUL reports isatty) running
+            # this file by hand. Measured 2026-09-16: every null-session row in the
+            # live log that carries a stdin field says `tty`, and the five newest
+            # were attributed by timestamp to agent shell calls running this file
+            # by hand. Such a row is a VIOLATION to the responder dry cycle, so
+            # it is not written. The other payload-less states still record:
+            # they diagnose a real misfire.
+            return
+        p = Path(path) if path is not None else invocation_log_path()
         declared = payload.get("hook_event_name") if isinstance(payload, dict) else None
         sid = payload.get("session_id") if isinstance(payload, dict) else None
         rec = {
@@ -1200,18 +1211,27 @@ def record_invocation(
         pass  # a hook must never fail the turn
 
 
-if __name__ == "__main__":
-    if "--mark-inbox-seen" in sys.argv:
-        sys.exit(mark_inbox_seen())
+def _cli(argv: list[str]) -> int:
+    """Entrypoint dispatch; returns the process exit code.
+
+    Lifted out of the `__main__` block (RM-452) so every branch is reachable
+    in-process: tests/test_rc_facts_cli_dispatch.py holds one arm per branch.
+    """
+    if "--mark-inbox-seen" in argv:
+        return mark_inbox_seen()
     # Wired here rather than inside the probe functions so there is exactly one
     # place mapping an entrypoint to a hook event. --mark-inbox-seen records
     # nothing on purpose: it is a deliberate operator act, not a hook firing.
-    _payload, _why = _read_hook_payload_with_reason()
+    payload, why = _read_hook_payload_with_reason()
     # No validated session id means fail OPEN: print exactly as before and
     # write nothing, neither the record nor the report file.
-    _sid = _session_id(_payload)
-    if "--inbox-only" in sys.argv:
-        record_invocation("UserPromptSubmit", _payload, stdin_state=_why)
-        sys.exit(report_inbox_only(session=_sid))
-    record_invocation("SessionStart", _payload, stdin_state=_why)
-    sys.exit(main(session=_sid))
+    sid = _session_id(payload)
+    if "--inbox-only" in argv:
+        record_invocation("UserPromptSubmit", payload, stdin_state=why)
+        return report_inbox_only(session=sid)
+    record_invocation("SessionStart", payload, stdin_state=why)
+    return main(session=sid)
+
+
+if __name__ == "__main__":
+    sys.exit(_cli(sys.argv))
