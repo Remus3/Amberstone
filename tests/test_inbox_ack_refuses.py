@@ -182,6 +182,30 @@ def test_ack_still_refuses_when_inbox_entries_swallows_the_listing_error(
 
 
 # --------------------------------------------------------------------------
+# C2. ONE PROBE, NOT TWO COPIES. The acknowledge path corroborates listability
+#     through the SAME `_probe_inbox_listable` the watcher and the poller call,
+#     so a hardening of that helper reaches all three readers. A private inline
+#     copy here would pass every behaviour arm above and silently miss it.
+# --------------------------------------------------------------------------
+def test_ack_path_probes_through_the_shared_helper(tmp_path, monkeypatch, capsys):
+    root = _make_root(tmp_path, monkeypatch, with_inbox=True)
+    (root / "moon_sync_inbox" / "note.md").write_text("hello", encoding="utf-8")
+
+    calls: list[Path] = []
+    real_probe = rc_facts._probe_inbox_listable
+
+    def spy(inbox: Path) -> None:
+        calls.append(inbox)
+        real_probe(inbox)
+
+    monkeypatch.setattr(rc_facts, "_probe_inbox_listable", spy)
+
+    assert rc_facts.mark_inbox_seen() == 0
+    capsys.readouterr()
+    assert calls == [root / "moon_sync_inbox"], calls
+
+
+# --------------------------------------------------------------------------
 # D. NEGATIVE CONTROL. Mandatory: without it, arms A to C all pass on a
 #    function that refuses unconditionally.
 # --------------------------------------------------------------------------

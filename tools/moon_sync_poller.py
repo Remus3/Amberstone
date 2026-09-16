@@ -598,6 +598,18 @@ def scan_fleet(repos: tuple[str, ...] | None = None, participants: dict[str, str
             rows.append(_fleet_row(code, "OK", len(names), new, gone))
         except Exception as exc:  # noqa: BLE001 - one bad tree must not end the poll
             rows.append(_fleet_row(code, f"SCAN FAULT {type(exc).__name__}"))
+    # SAVED ON A FAULT PASS TOO, DELIBERATELY. A faulted repo's entry is
+    # carried through untouched (the branch above never assigns seen_all[repo]),
+    # so the only thing a fault pass changes here is the `updated` stamp, and
+    # that stamp means "the poller last completed a pass", not "the data last
+    # changed". Its two readers both need that meaning: `_boot_rebaseline`
+    # judges a restart by the store's AGE, so freezing the stamp during a fault
+    # would make a crash-restart minutes later look like a days-old store and
+    # reset EVERY repo's watermark - the healthy ones included - dropping a real
+    # window; and `status_report` prints the stamp's age as poller liveness, so a
+    # frozen stamp would read a live-but-blind poller as a dead one. The fault
+    # itself is reported loudly in the row, not by starving the heartbeat.
+    # tests/test_moon_sync_poller.py pins the every-call rewrite.
     _save_seen(seen_all)
     return {"findings": findings, "rows": rows}
 
