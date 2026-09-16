@@ -917,10 +917,61 @@ _COMPARE_OPS = {
 }
 
 
-def _is_unbound_builtin(name: str, model: _Model, scope: ast.AST) -> bool:
-    """True when `name` can only be the builtin - nothing in the module binds it."""
-    return (name not in model.imports and not model.lookup(name, scope)
-            and model.lookup_func(name, scope) is None)
+# Marks a host profile whose platform reads must come from the REAL modules
+# (see `_can_fire_off_runner`). Never a dotted name, so never a host value.
+_STRICT = "\x00strict"
+
+
+class _Unverified(Exception):
+    """A strict evaluation reached a platform read it cannot trust."""
+
+
+def _name_rebound(name: str, model: _Model, allow_plain_import: bool = False) -> bool:
+    """True when ANY construct anywhere in the module binds `name`.
+
+    Deliberately module-wide and scope-blind: assignment, loop and with
+    targets, walrus, del, parameters, def / class names, except-as names and
+    imports all count, in every scope. `allow_plain_import` exempts a plain
+    `import <name>` / `import <name>.sub`, which binds the real module.
+    """
+    cache = model.__dict__.setdefault("_rm449_rebound", {})
+    key = (name, allow_plain_import)
+    if key in cache:
+        return cache[key]
+    hit = False
+    for n in ast.walk(model.tree):
+        if isinstance(n, ast.Name) and n.id == name and not isinstance(n.ctx, ast.Load):
+            hit = True
+        elif isinstance(n, ast.arg) and n.arg == name:
+            hit = True
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+                            ast.ExceptHandler)) and n.name == name:
+            hit = True
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            hit = any((a.asname or a.name.split(".")[0]) == name
+                      and not (allow_plain_import and isinstance(n, ast.Import)
+                               and a.asname is None)
+                      for a in n.names)
+        if hit:
+            break
+    cache[key] = hit
+    return hit
+
+
+def _is_real_module(name: str, model: _Model) -> bool:
+    """True when `name` is bound ONLY by a plain `import <name>` somewhere."""
+    imported = any(isinstance(n, ast.Import)
+                   and any(a.asname is None and a.name.split(".")[0] == name
+                           for a in n.names)
+                   for n in ast.walk(model.tree))
+    return imported and not _name_rebound(name, model, allow_plain_import=True)
+
+
+def _platform_read(dotted: str, model: _Model, host: dict):
+    if (host.get(_STRICT) and dotted in host
+            and not _is_real_module(dotted.split(".")[0], model)):
+        raise _Unverified(dotted)
+    return host.get(dotted, _UNKNOWN)
 
 
 class _Truth:
@@ -954,15 +1005,15 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
             return _UNKNOWN
         return tuple(vals)
     if isinstance(node, ast.Attribute):
-        return host.get(_dotted(node), _UNKNOWN)
+        return _platform_read(_dotted(node), model, host)
     if isinstance(node, ast.Call):
         if node.keywords:
             return _UNKNOWN
         if _dotted(node.func) == "platform.system" and not node.args:
-            return host["platform.system"]
+            return _platform_read("platform.system", model, host)
         if (isinstance(node.func, ast.Name)
                 and node.func.id in _WRAPPER_BUILTINS and len(node.args) == 1
-                and _is_unbound_builtin(node.func.id, model, scope)):
+                and not _name_rebound(node.func.id, model)):
             arg = _host_eval(node.args[0], model, scope, host, seen, depth + 1)
             if isinstance(arg, (str, tuple)):
                 return _WRAPPER_BUILTINS[node.func.id](arg)
@@ -996,23 +1047,26 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
             return _UNKNOWN
         sl = node.slice
         if isinstance(sl, ast.Slice):
-            parts = [None if p is None
-                     else _host_eval(p, model, scope, host, seen, depth + 1)
-                     for p in (sl.lower, sl.upper, sl.step)]
-            if not all(p is None or (type(p) is int) for p in parts):
-                return _UNKNOWN
-            key = slice(*parts)
+            key = slice(*[None if p is None
+                          else _host_eval(p, model, scope, host, seen, depth + 1)
+                          for p in (sl.lower, sl.upper, sl.step)])
         else:
             key = _host_eval(sl, model, scope, host, seen, depth + 1)
-            if type(key) is not int:
-                return _UNKNOWN
+        # No pre-check on the key: indexing a str / tuple with anything but an
+        # int (or a slice of ints) raises TypeError, `_UNKNOWN` and `_Truth`
+        # included, so the exception IS the type check. Zero step is
+        # ValueError, out of range IndexError; all three read as unresolved.
         try:
             return recv[key]
-        except (IndexError, ValueError):
+        except (IndexError, TypeError, ValueError):
             return _UNKNOWN
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         v = _host_eval(node.operand, model, scope, host, seen, depth + 1)
         return _UNKNOWN if v is _UNKNOWN else (not v)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        # RM-449: negative indexes and slice bounds (`os.name[-1]`).
+        v = _host_eval(node.operand, model, scope, host, seen, depth + 1)
+        return -v if isinstance(v, int) else _UNKNOWN
     if isinstance(node, ast.BoolOp):
         decides = isinstance(node.op, ast.Or)  # truthiness that short-circuits
         unknown = False
@@ -1078,12 +1132,28 @@ def _can_fire_off_runner(tests: list[tuple[ast.AST, bool]], model: _Model,
     disable a test anywhere RC is tested whatever the answer. An unknown value
     counts as "could": the runner values were known and differ from this host's
     only through the platform reads, so the gate is a platform question.
+
+    Every evaluation here is STRICT: a platform read whose module name is not
+    bound solely by a plain `import sys` / `import os` / `import platform`
+    refuses the rescue outright. The never-fires premise is re-derived on the
+    runners under the same rule, because a darwin evaluation can short-circuit
+    past a fake read that decides the runner answer.
     """
-    for host in _OFF_RUNNER_PROFILES:
-        if all(v is _UNKNOWN or bool(v) is fires
-               for v, fires in ((_host_eval(t, model, scope, host), f)
-                                for t, f in tests)):
-            return True
+    try:
+        for host in _HOST_PROFILES:
+            strict = {**host, _STRICT: True}
+            if not any(v is not _UNKNOWN and bool(v) is not fires
+                       for v, fires in ((_host_eval(t, model, scope, strict), f)
+                                        for t, f in tests)):
+                return False
+        for host in _OFF_RUNNER_PROFILES:
+            strict = {**host, _STRICT: True}
+            if all(v is _UNKNOWN or bool(v) is fires
+                   for v, fires in ((_host_eval(t, model, scope, strict), f)
+                                    for t, f in tests)):
+                return True
+    except _Unverified:
+        return False
     return False
 
 
@@ -3149,3 +3219,177 @@ def test_rm449_shadowed_builtin_is_not_folded(builtin):
     }[builtin]
     assert _verdicts(_rm449_wrapped_source(probe, prelude)) == [CAPABILITY]
     assert _verdicts(_rm449_wrapped_source(probe)) == [DEFECT]
+
+
+# --- RM-449 round 2 --------------------------------------------------------- #
+# (a) The off-runner rescue must only trust REAL platform modules. Each form
+# rebinds the module name; the expected verdict is the one the guard gave
+# before RM-449, so the rescue adds no acceptance. Each control is the same
+# text with the real import and nothing rebinding it, and is still rescued.
+_RM449_TRACKED_BODY = '''
+def test_thing():
+    if sys.platform == "darwin":
+        pytest.skip("darwin")
+    assert (REPO / "ops" / "rc_config.json").read_text()
+'''
+_RM449_FAKE_PLATFORM = {
+    "module_rebinding_bare_skip": ('''
+import sys
+import types
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+sys = types.SimpleNamespace(platform="darwin")
+''' + _RM449_TRACKED_BODY, "\nsys = types.SimpleNamespace(platform=\"darwin\")", DEFECT),
+    "module_rebinding_skipif_and_tracked": ('''
+import sys
+import types
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+sys = types.SimpleNamespace(platform="darwin")
+@pytest.mark.skipif(sys.platform == "darwin"
+                    and not (REPO / "ops" / "rc_config.json").is_file(),
+                    reason="darwin")
+def test_thing():
+    assert True
+''', "\nsys = types.SimpleNamespace(platform=\"darwin\")", UNRESOLVED),
+    "local_rebinding_bare_skip": ('''
+import sys
+import types
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    sys = types.SimpleNamespace(platform="darwin")
+    if sys.platform == "darwin":
+        pytest.skip("darwin")
+    assert (REPO / "ops" / "rc_config.json").read_text()
+''', "\n    sys = types.SimpleNamespace(platform=\"darwin\")", DEFECT),
+    "from_import_of_a_fake_platform": ('''
+import pytest
+from pathlib import Path
+from fakeplat import platform
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    if platform.system() == "Darwin":
+        pytest.skip("darwin")
+    assert (REPO / "ops" / "rc_config.json").read_text()
+''', "from fakeplat import platform", DEFECT),
+    # darwin short-circuits the OR before the fake read, so checking only the
+    # darwin evaluation would miss it - yet on a runner the fake read decides.
+    "short_circuit_hides_a_fake_read_from_darwin": ('''
+import sys
+import pytest
+from pathlib import Path
+from fakeplat import platform
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    if sys.platform == "darwin" or platform.system() == "Nope":
+        pytest.skip("darwin")
+    assert (REPO / "ops" / "rc_config.json").read_text()
+''', "from fakeplat import platform", DEFECT),
+    # The reverse: the runners short-circuit past the fake read and only the
+    # darwin evaluation reaches it, so that pass must be strict too.
+    "fake_read_reached_only_on_darwin": ('''
+import sys
+import pytest
+from pathlib import Path
+from fakeplat import platform
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    if sys.platform == "darwin" and platform.system() == "Darwin":
+        pytest.skip("darwin")
+    assert (REPO / "ops" / "rc_config.json").read_text()
+''', "from fakeplat import platform", DEFECT),
+    # A plain `import sys` does not make `sys` real when an aliased import
+    # elsewhere binds the same name.
+    "aliased_import_rebinds_a_plainly_imported_name": ('''
+import sys
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+import fakesys as sys
+''' + _RM449_TRACKED_BODY, "\nimport fakesys as sys", DEFECT),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_RM449_FAKE_PLATFORM))
+def test_rm449_off_runner_rescue_requires_the_real_platform_module(name):
+    src, rebinding, expected = _RM449_FAKE_PLATFORM[name]
+    assert src.count(rebinding) == 1
+    assert _verdicts(src) == [expected], name
+    control = src.replace(rebinding, "import platform" if "fakeplat" in rebinding
+                          else "")
+    assert _verdicts(control) == [CAPABILITY], name
+
+
+# (b) Ordering comparisons, each operator pinned in both directions. Runner
+# lengths: sys.platform 5 / 5, os.name 2 / 5; darwin: 6 / 5.
+_RM449_ORDERING = {
+    "len(os.name) < 9": DEFECT,
+    "len(os.name) < 3": CAPABILITY,
+    "len(sys.platform) < 5": UNRESOLVED,
+    "len(sys.platform) <= 5": DEFECT,
+    "len(os.name) <= 2": CAPABILITY,
+    "len(sys.platform) > 5": CAPABILITY,
+    "len(sys.platform) >= 5": DEFECT,
+    "len(os.name) >= 5": CAPABILITY,
+    "len(os.name) >= 9": UNRESOLVED,
+}
+
+
+@pytest.mark.parametrize("condition", sorted(_RM449_ORDERING))
+def test_rm449_ordering_comparisons_evaluate_per_host(condition):
+    assert _verdicts(_rm449_wrapped_source(condition)) == [
+        _RM449_ORDERING[condition]]
+
+
+# (c) Negative indexes and slices are always-true on both runners here.
+_RM449_NEGATIVE = {
+    'os.name[-1] in "tx"': 'os.name[-1] == "t"',
+    'sys.platform[-1:] != "q"': 'sys.platform[-1:] == "2"',
+}
+
+
+@pytest.mark.parametrize("probe", sorted(_RM449_NEGATIVE))
+def test_rm449_negative_index_and_slice_are_folded(probe):
+    assert _verdicts(_rm449_wrapped_source(probe)) == [DEFECT]
+    assert _verdicts(_rm449_wrapped_source(_RM449_NEGATIVE[probe])) == [CAPABILITY]
+
+
+# (d) Inputs the evaluator cannot fold must read as unresolved, never raise:
+# a non-int index or slice bound, a zero slice step, an out-of-range index on
+# one runner, and arithmetic negation of a string.
+@pytest.mark.parametrize("condition", [
+    'os.name["a"] == "n"',
+    'os.name["a":] == "n"',
+    'os.name[::0] == "n"',
+    'os.name[3] == "i"',
+    '(-os.name) == 1',
+])
+def test_rm449_unfoldable_subscripts_do_not_raise(condition):
+    # Each still names `os.name`, so with nothing folded it keeps the platform
+    # credit it had before RM-449.
+    assert _verdicts(_rm449_wrapped_source(condition)) == [CAPABILITY]
+
+
+# (e) Every way a module can rebind a builtin wrapper blocks the fold. The
+# rebound `len` makes the probe genuinely differ by host, so CAPABILITY is
+# right; the unrebound probe is DEFECT (asserted in the shadow test above).
+_RM449_LEN = 'lambda x: 0 if x == "win32" else 1'
+_RM449_REBIND_FORMS = {
+    "for_loop_target": f"for len in ({_RM449_LEN},):\n    pass\n",
+    "import_binding": "from fakebuiltins import len\n",
+    "function_parameter": "def _helper(len):\n    return len\n",
+    "except_handler_name": ("try:\n    pass\nexcept Exception as len:\n"
+                            "    pass\n"),
+    "class_definition": "class len:\n    pass\n",
+}
+
+
+@pytest.mark.parametrize("form", sorted(_RM449_REBIND_FORMS))
+def test_rm449_any_rebinding_of_a_builtin_wrapper_blocks_the_fold(form):
+    src = _rm449_wrapped_source("len(sys.platform) > 0",
+                                _RM449_REBIND_FORMS[form])
+    assert _verdicts(src) == [CAPABILITY], form
