@@ -243,21 +243,21 @@ def test_refresh_cache_contract_unchanged(tmp_path, monkeypatch, clock):
 
 # -- 2. augment_recommender row count --------------------------------------------
 
-def _raw(big: bool = False) -> str:
-    return json.dumps({"tracked_puuid": "P", "pad": "x" * (20000 if big else 0),
-                       "lcu_match_detail": {
+def _raw(aug: int = 101) -> str:
+    return json.dumps({"tracked_puuid": "P", "lcu_match_detail": {
         "gameMode": "KIWI", "queueId": 2400,
         "participantIdentities": [{"participantId": 1, "player": {"puuid": "P"}}],
         "participants": [{"participantId": 1,
-                          "stats": {"playerAugment1": 101, "win": True}}],
+                          "stats": {"playerAugment1": aug, "win": True}}],
     }})
 
 
-def _history_db(tmp_path: Path) -> Path:
+def _history_db(tmp_path: Path, journal: str = "delete") -> Path:
     db = tmp_path / "match_history.db"
     conn = sqlite3.connect(db)
-    conn.execute("CREATE TABLE matches (raw_data TEXT)")
-    conn.execute("INSERT INTO matches VALUES (?)", (_raw(),))
+    conn.execute(f"PRAGMA journal_mode={journal}")
+    conn.execute("CREATE TABLE matches (id INTEGER PRIMARY KEY, raw_data TEXT)")
+    conn.execute("INSERT INTO matches (raw_data) VALUES (?)", (_raw(),))
     conn.commit()
     conn.close()
     return db
@@ -278,39 +278,103 @@ def _count_queries(monkeypatch) -> dict:
                 seen["scan"] += 1
             return self._real.execute(sql, *a)
 
-        def close(self) -> None:
-            self._real.close()
+        def __getattr__(self, name):
+            return getattr(self._real, name)
 
     monkeypatch.setattr(sqlite3, "connect",
                         lambda *a, **kw: _Conn(real_connect(*a, **kw)))
     return seen
 
 
-def test_row_count_query_is_not_run_on_every_call(tmp_path, monkeypatch, clock):
-    db = _history_db(tmp_path)
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_row_count_query_is_not_run_on_every_call(journal, tmp_path, monkeypatch):
+    db = _history_db(tmp_path, journal)
+    keep = sqlite3.connect(db)  # a live RC holds the db open (MatchDB)
+    keep.execute("SELECT 1 FROM matches").fetchone()  # ...and has read it
+    try:
+        seen = _count_queries(monkeypatch)
+        for _ in range(6):
+            assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
+        assert seen["count"] == 1, f"row count ran {seen['count']} times"
+        assert seen["scan"] == 1
+    finally:
+        keep.close()
+
+
+# The writes below are deliberately SMALL rows, back to back: a same-size
+# page rewrite inside one mtime tick is exactly what a stat signature misses.
+
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_small_new_game_invalidates_every_time(journal, tmp_path):
+    db = _history_db(tmp_path, journal)
+    writer = sqlite3.connect(db)  # held open across back-to-back writes
+    try:
+        for n in range(2, 12):
+            writer.execute("INSERT INTO matches (raw_data) VALUES (?)", (_raw(),))
+            writer.commit()
+            hist = ar.load_own_history("mayhem", db_path=db)
+            assert hist.n_matches == n and hist.games == {101: n}
+    finally:
+        writer.close()
+
+
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_in_place_update_invalidates(journal, tmp_path):
+    """The live ingest (dashboard LCU stamp) UPDATEs an existing row, which
+    need not change the row count - the cache must still move."""
+    db = _history_db(tmp_path, journal)
+    writer = sqlite3.connect(db)
+    try:
+        assert ar.load_own_history("mayhem", db_path=db).games == {101: 1}
+        for aug in (202, 303, 404):
+            writer.execute("UPDATE matches SET raw_data = ? WHERE id = 1", (_raw(aug),))
+            writer.commit()
+            assert ar.load_own_history("mayhem", db_path=db).games == {aug: 1}
+    finally:
+        writer.close()
+
+
+def test_no_exact_signal_falls_back_to_counting(tmp_path, monkeypatch):
+    """WAL with no -shm (no connection open anywhere) has no exact change
+    token; the loader must then count on every call rather than guess."""
+    db = _history_db(tmp_path, "wal")
+    assert ar._change_token(db) is None
+    monkeypatch.setattr(ar, "_change_token", lambda p: None)
     seen = _count_queries(monkeypatch)
-    for _ in range(6):
+    for _ in range(3):
         assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
-    assert seen["count"] == 1, f"row count ran {seen['count']} times"
-    assert seen["scan"] == 1
-
-    clock.advance(ar._ROW_COUNT_TTL_S + 1.0)  # TTL bounds staleness
-    ar.load_own_history("mayhem", db_path=db)
-    assert seen["count"] == 2
-    assert seen["scan"] == 1, "unchanged count must not rescan"
-
-
-def test_new_game_still_invalidates_without_waiting_for_the_ttl(
-    tmp_path, monkeypatch, clock,
-):
-    db = _history_db(tmp_path)
-    assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
+    assert seen["count"] == 3
     conn = sqlite3.connect(db)
-    conn.execute("INSERT INTO matches VALUES (?)", (_raw(big=True),))
+    conn.execute("INSERT INTO matches (raw_data) VALUES (?)", (_raw(),))
     conn.commit()
     conn.close()
-    hist = ar.load_own_history("mayhem", db_path=db)  # no clock advance
-    assert hist.n_matches == 2 and hist.games == {101: 2}
+    assert ar.load_own_history("mayhem", db_path=db).n_matches == 2
+
+
+@pytest.mark.parametrize("mutate", ["torn-shm", "uninitialised-shm", "not-sqlite"])
+def test_change_token_refuses_an_unreliable_read(mutate, tmp_path):
+    db = _history_db(tmp_path, "wal")
+    keep = sqlite3.connect(db)
+    try:
+        keep.execute("SELECT 1 FROM matches").fetchone()
+        assert ar._change_token(db) is not None
+        real = ar._read_head
+
+        def fake(path, n):
+            data = bytearray(real(path, n))
+            if path.endswith("-shm") and mutate == "torn-shm":
+                data[8] ^= 0xFF  # first header copy only
+            elif path.endswith("-shm") and mutate == "uninitialised-shm":
+                data[12] = data[60] = 0
+            elif not path.endswith(("-shm", "-wal")) and mutate == "not-sqlite":
+                data[0:16] = b"x" * 16
+            return bytes(data)
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(ar, "_read_head", fake)
+            assert ar._change_token(db) is None
+    finally:
+        keep.close()
 
 
 # -- 3. vision_template_match missing category folder --------------------------
