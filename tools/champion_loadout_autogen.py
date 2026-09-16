@@ -399,7 +399,9 @@ def atomic_write_loadouts(payload: dict) -> None:
         prefix=".champion_loadouts.", suffix=".tmp", dir=str(out_dir),
     )
     try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+        # newline="\n": the loadouts file is TRACKED and a default text-mode
+        # handle writes CRLF on Windows (RM-441).
+        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as f:
             # Sort within champions, but preserve top-level ordering.
             ordered = {
                 "_schema_version": payload.get("_schema_version", SCHEMA_VERSION),

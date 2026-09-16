@@ -27,6 +27,7 @@ from core import corpus_hygiene as ch                         # noqa: E402
 from core import event_patterns as ep                         # noqa: E402
 from core import replay_roster as rr                          # noqa: E402
 from core import riot_api                                     # noqa: E402
+from core.polled_json import atomic_write_text                # noqa: E402
 
 
 def main(argv=None) -> int:
@@ -77,10 +78,8 @@ def main(argv=None) -> int:
                "undetectable_afk_rate": ch.UNDETECTABLE_AFK_RATE,
                "roles": baselines}
     dest = Path(args.out)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    tmp.replace(dest)
+    # TRACKED output: atomic LF bytes, never write_text (RM-441).
+    atomic_write_text(dest, json.dumps(payload, indent=2))
 
     for role in sorted(baselines):
         print(f"\n== {role} ==")
