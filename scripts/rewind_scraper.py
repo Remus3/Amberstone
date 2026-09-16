@@ -21,12 +21,17 @@ Usage:
 
 import argparse
 import json
+import logging
 import sqlite3
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+# No handler is configured for this CLI; a WARNING still reaches stderr via
+# logging's last-resort handler.
+_log = logging.getLogger("rc.scripts.rewind_scraper")
 
 # -- Config ---------------------------------------------------------------------
 ROOT     = Path(__file__).parent.parent
@@ -610,7 +615,15 @@ def insert_rows(conn: sqlite3.Connection, table: str, rows: list[dict]):
 def get_conn() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
-    conn.execute("PRAGMA journal_mode=WAL")
+    # RM-413 (RM-233 shape): read the adopted mode; warn, never raise - a
+    # hard failure here would turn a degraded DB into a dead batch job.
+    jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+    if journal_mode != "wal":
+        _log.warning(
+            "rewind_scraper journal_mode fell back to %r (wanted wal): %s - "
+            "concurrent readers WILL block writers on this database",
+            journal_mode, DB_PATH)
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn

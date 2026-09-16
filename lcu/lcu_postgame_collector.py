@@ -253,7 +253,14 @@ _db_lock = threading.Lock()
 
 def _get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
-    conn.execute("PRAGMA journal_mode=WAL")
+    # RM-413 (RM-233 shape): read the adopted mode; warn, never raise.
+    jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+    if journal_mode != "wal":
+        _log.warning(
+            "postgame journal_mode fell back to %r (wanted wal): %s - "
+            "concurrent readers WILL block writers on this database",
+            journal_mode, _DB_PATH)
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 

@@ -75,7 +75,14 @@ class CacheEngine:
 
     def _conn(self):
         conn = sqlite3.connect(str(self.db_path), timeout=5.0)
-        conn.execute("PRAGMA journal_mode=WAL")
+        # RM-413 (RM-233 shape): read the adopted mode; warn, never raise.
+        jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+        journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+        if journal_mode != "wal":
+            logger.warning(
+                "CacheEngine journal_mode fell back to %r (wanted wal): %s - "
+                "concurrent readers WILL block writers on this database",
+                journal_mode, self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 
