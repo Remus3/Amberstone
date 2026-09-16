@@ -158,8 +158,8 @@ def _atlas(category):
         return {}
     try:
         # RM-450: a MISSING or EMPTY category folder is a failure, not a
-        # design state. The three folders are tracked in git and filled by
-        # the icon pipeline (lib/icons, scripts/data_pipeline.py), which can
+        # design state. The three folders under data/icons are tracked in git
+        # and refilled by scripts/data_pipeline.py (weekly task), which can
         # run while RC is up, so an empty atlas cached here would outlive the
         # folder appearing. Retried after the gate's backoff instead; the
         # retry costs one directory listing per window.
