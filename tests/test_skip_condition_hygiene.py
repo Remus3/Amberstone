@@ -845,8 +845,12 @@ def _record_chain(segs: list[str] | None, sig: _Signals) -> None:
 # --------------------------------------------------------------------------- #
 # Condition resolution
 # --------------------------------------------------------------------------- #
+# The filesystem codec is an interpreter-per-platform fact (UTF-8 +
+# `surrogatepass` on Windows, `surrogateescape` on POSIX), never a checkout
+# artifact, so a skip on what that codec can encode is a platform capability.
 _PLATFORM_DOTTED = {"sys.platform", "os.name", "platform.system",
-                    "platform.machine", "platform.release"}
+                    "platform.machine", "platform.release",
+                    "sys.getfilesystemencoding", "sys.getfilesystemencodeerrors"}
 _ENV_CALLS = {"getenv", "environ"}
 _NETWORK_TOKENS = {"urlopen", "urlretrieve", "create_connection", "socket",
                    "gethostbyname", "connect", "getaddrinfo"}
@@ -1856,6 +1860,20 @@ _CAPABILITY_CONTROLS = {
 import sys
 import pytest
 @pytest.mark.skipif(sys.platform != "win32", reason="win32 only")
+def test_thing():
+    assert True
+''',
+    "filesystem_codec": '''
+import sys
+import pytest
+def _encodable(name):
+    try:
+        name.encode(sys.getfilesystemencoding(), sys.getfilesystemencodeerrors())
+    except UnicodeEncodeError:
+        return False
+    return True
+CAN = _encodable("x")
+@pytest.mark.skipif(not CAN, reason="filesystem codec cannot encode the name")
 def test_thing():
     assert True
 ''',
