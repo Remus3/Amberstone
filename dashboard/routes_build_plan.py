@@ -55,6 +55,7 @@ import json
 import logging
 
 from dashboard._dispatch import equals
+from dashboard._json_flags import coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -292,6 +293,24 @@ def _serve_build_plan(h, payload) -> None:
             }).encode("utf-8"), "application/json")
             return
 
+        # RM-414: parsed, never bare-truthy - {"reset_overrides": "false"}
+        # used to DISCARD the operator's override snapshot. Absent keeps the
+        # old default (honour the snapshot); an ambiguous value is a 400 that
+        # still carries the full contract envelope, so a caller reading
+        # `ok` / `live` degrades exactly as it does for any other non-ok body.
+        # Rule: dashboard/_json_flags.py.
+        reset_overrides = coerce_json_flag(payload, "reset_overrides", False)
+        if reset_overrides is None:
+            h._send(400, json.dumps({
+                "ok": False, "reason": "bad_flag",
+                "error": "bad_flag", "field": "reset_overrides",
+                "live": [], "meta": [], "knobs": knobs,
+                "plan_meta": {"stage": "", "clock": 0.0, "scorer": "",
+                              "target_stats": {}},
+                "counter_hints": [],
+            }).encode("utf-8"), "application/json")
+            return
+
         mode = str(payload.get("mode") or "SR").upper()
         try:
             level = max(1, min(18, int(payload.get("level") or 11)))
@@ -372,8 +391,8 @@ def _serve_build_plan(h, payload) -> None:
         from core.build_planner.replan import ItemOverrideStore, ReplanLoop
 
         # WP-D3: optional per-item operator overrides snapshot (mirrors the
-        # client store web/js/lib/item_overrides.js). A truthy reset_overrides
-        # forces an empty store (nothing to honor). Snapshot parsing is wrapped
+        # client store web/js/lib/item_overrides.js). An ON reset_overrides
+        # (parsed above, RM-414) forces an empty store (nothing to honor). Snapshot parsing is wrapped
         # so a malformed payload NEVER raises into the route.
         # NOTE: full cross-tick Defer-Once re-entry timing in the LIVE route is
         # OWED - this per-request loop only sinks a deferred item that tick (no
@@ -381,7 +400,7 @@ def _serve_build_plan(h, payload) -> None:
         # are honored live now.
         store = None
         try:
-            if not payload.get("reset_overrides"):
+            if not reset_overrides:
                 ov_snap = payload.get("overrides")
                 if isinstance(ov_snap, dict) and ov_snap:
                     store = ItemOverrideStore.from_snapshot(

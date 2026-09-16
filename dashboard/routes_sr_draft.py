@@ -45,6 +45,11 @@ import json
 import logging
 
 from dashboard._dispatch import equals
+from dashboard._json_flags import (
+    bad_flag_body,
+    coerce_json_flag,
+    first_ambiguous_flag,
+)
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -130,9 +135,18 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
         if not champ or not key:
             h._send(400, b'{"error":"champion+key required"}', "application/json")
             return
-        push_runes = payload.get("push_runes",     True)
-        push_items = payload.get("push_items",     True)
-        push_summ  = payload.get("push_summoners", True)
+        # RM-414: parsed, never bare-truthy - {"push_runes": "false"} used to
+        # push the runes. Same rule and same 400 envelope as the twin route
+        # /api/loadout/apply (RM-296d); see dashboard/_json_flags.py.
+        push_runes = coerce_json_flag(payload, "push_runes",     True)
+        push_items = coerce_json_flag(payload, "push_items",     True)
+        push_summ  = coerce_json_flag(payload, "push_summoners", True)
+        bad_flag = first_ambiguous_flag(
+            payload, ("push_runes", "push_items", "push_summoners"))
+        if bad_flag:
+            h._send(400, bad_flag_body(bad_flag, "bad_push_flag"),
+                    "application/json")
+            return
 
         runes    = payload.get("runes")           or {}
         spells   = payload.get("summoner_spells") or []
