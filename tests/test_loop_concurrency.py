@@ -42,12 +42,18 @@ def _sibling_roots() -> list[Path]:
     raw = os.environ.get("RC_MOON_SYNC_REPOS", "")
     if raw:
         return [Path(p.strip()) for p in raw.split(os.pathsep) if p.strip()]
+    # RM-433: the shared resolver, so a linked worktree reads the MAIN working
+    # tree's gitignored copy rather than resolving zero carriers.
+    from tools.sibling_name_sweep import resolve_config_path
+    cfg = resolve_config_path(ROOT)
     try:
-        blob = json.loads(
-            (ROOT / "ops" / "moon_sync_repos.json").read_text(encoding="utf-8"))
+        blob = json.loads(cfg.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
-    return [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
+    roots = [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
+    assert roots, (f"{cfg} exists but names zero repos; an empty carrier set "
+                   f"would turn every cross-repo guard below into a silent skip")
+    return roots
 
 
 def _carrier_copy(relative: Path):
