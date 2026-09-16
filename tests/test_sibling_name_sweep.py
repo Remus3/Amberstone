@@ -869,6 +869,158 @@ def test_known_exceptions_are_reported_not_suppressed(
 
 
 # --------------------------------------------------------------------------
+# WORKTREES - the per-host config lives in the MAIN working tree only
+#
+# MEASURED: `core.hooksPath` is shared by every worktree, but the hook resolves
+# the sweep through `git rev-parse --show-toplevel`, so a push from a worktree
+# runs the WORKTREE's copy of this tool. The config is gitignored, so it exists
+# only in the main checkout, and every worktree push ran DEGRADED - the needle
+# arm silently skipped - while still exiting 0. Two fixes, each guarded below:
+#   (a) resolve the config from the main working tree when it is absent here;
+#   (b) on the --pre-push path ONLY, a DEGRADED run halts instead of passing.
+# --------------------------------------------------------------------------
+def _git_in(cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    hooks = cwd.parent / "_no_hooks"
+    hooks.mkdir(exist_ok=True)
+    return subprocess.run(
+        [
+            "git",
+            "-c", f"core.hooksPath={hooks}",
+            "-c", "user.name=sweep-test",
+            "-c", "user.email=sweep-test@example.invalid",
+            "-c", "commit.gpgsign=false",
+            *args,
+        ],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+def _main_with_worktree(tmp_path: Path, with_config: bool):
+    main = tmp_path / "mainrepo"
+    main.mkdir()
+    _git_in(main, "init", "-q")
+    (main / "README.txt").write_text("fixture\n", encoding="utf-8")
+    _git_in(main, "add", "README.txt")
+    _git_in(main, "commit", "-q", "--no-verify", "-m", "fixture")
+    if with_config:
+        (main / "ops").mkdir()
+        (main / "ops" / "moon_sync_repos.json").write_text(
+            json.dumps({"repos": _SYNTH_REPOS, "participants": _SYNTH_PARTICIPANTS}),
+            encoding="utf-8",
+        )
+    wt = tmp_path / "linkedwt"
+    _git_in(main, "worktree", "add", "-q", "--detach", str(wt))
+    return main, wt
+
+
+def test_worktree_resolves_config_from_the_main_working_tree(tmp_path: Path):
+    _main, wt = _main_with_worktree(tmp_path, with_config=True)
+    assert not (wt / "ops" / "moon_sync_repos.json").exists()
+    cfg = sweep.load_config(root=wt, env={})
+    assert cfg.mode == sweep.MODE_ARMED, (cfg.mode, cfg.detail)
+    assert len(cfg.names) == len(_SYNTH_NAMES)
+    assert len(cfg.codes) == len(_SYNTH_PARTICIPANTS)
+
+
+def test_worktree_without_a_main_config_stays_degraded(tmp_path: Path):
+    """Control arm: the fallback borrows a file that EXISTS, never a guess."""
+    _main, wt = _main_with_worktree(tmp_path, with_config=False)
+    cfg = sweep.load_config(root=wt, env={})
+    assert cfg.mode == sweep.MODE_DEGRADED
+
+
+def test_a_non_toplevel_subdirectory_does_not_borrow_the_enclosing_config(tmp_path: Path):
+    """Only a real worktree ROOT resolves upward. An arbitrary directory that
+    merely sits inside a checkout keeps its own answer, so a --config-root
+    pointed somewhere odd cannot silently arm from a repository it is not."""
+    main, _wt = _main_with_worktree(tmp_path, with_config=True)
+    sub = main / "nested"
+    sub.mkdir()
+    cfg = sweep.load_config(root=sub, env={})
+    assert cfg.mode == sweep.MODE_DEGRADED
+
+
+def test_worktree_cli_reports_armed(tmp_path: Path):
+    _main, wt = _main_with_worktree(tmp_path, with_config=True)
+    probe = tmp_path / "probe.txt"
+    probe.write_text("an ordinary line\n", encoding="utf-8")
+    env = dict(os.environ)
+    env.pop("RC_MOON_SYNC_REPOS", None)
+    env.pop(sweep.BYPASS_ENV, None)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools" / "sibling_name_sweep.py"),
+            "--scan-file", str(probe),
+            "--config-root", str(wt),
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert proc.returncode == sweep.EXIT_CLEAN, proc.stderr
+    assert "ARMED" in proc.stderr
+    assert "DEGRADED" not in proc.stderr
+
+
+def _degraded_root(tmp_path: Path) -> Path:
+    root = tmp_path / "noconfig"
+    root.mkdir()
+    return root
+
+
+def test_pre_push_halts_when_degraded(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.delenv("RC_MOON_SYNC_REPOS", raising=False)
+    monkeypatch.delenv(sweep.BYPASS_ENV, raising=False)
+    monkeypatch.setattr(sweep, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    rc = sweep.main(["--pre-push", "origin", "--config-root", str(_degraded_root(tmp_path))])
+    err = capsys.readouterr().err
+    assert rc != sweep.EXIT_CLEAN, err
+    assert rc == sweep.EXIT_FAULT, err
+    assert "DEGRADED" in err
+    assert "RC_MOON_SYNC_REPOS" in err
+    assert sweep.BYPASS_ENV in err
+
+
+def test_pre_push_degraded_bypass_proceeds_reports_and_logs(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.delenv("RC_MOON_SYNC_REPOS", raising=False)
+    monkeypatch.setenv(sweep.BYPASS_ENV, "1")
+    monkeypatch.setattr(sweep, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    rc = sweep.main(["--pre-push", "origin", "--config-root", str(_degraded_root(tmp_path))])
+    err = capsys.readouterr().err
+    assert rc == sweep.EXIT_CLEAN, err
+    assert "BYPASS" in err
+    assert "DEGRADED" in err
+    log = tmp_path / sweep.BYPASS_LOG
+    assert log.is_file()
+    assert "DEGRADED" in log.read_text(encoding="utf-8")
+
+
+def test_non_push_modes_still_pass_when_degraded(monkeypatch, tmp_path: Path, capsys):
+    """CI runs the TREE arm on a runner with no config and must stay green in
+    DEGRADED, so the halt is scoped to --pre-push and nothing else."""
+    monkeypatch.delenv("RC_MOON_SYNC_REPOS", raising=False)
+    monkeypatch.delenv(sweep.BYPASS_ENV, raising=False)
+    root = _degraded_root(tmp_path)
+    probe = tmp_path / "probe.txt"
+    probe.write_text("an ordinary line\n", encoding="utf-8")
+    assert sweep.main(["--scan-file", str(probe), "--config-root", str(root)]) == sweep.EXIT_CLEAN
+
+    def _fake_tree(_root, stats):
+        stats.files = 1
+        return [sweep.Blob("TREE", "some/tracked/file.py", "T", "an ordinary line\n")]
+
+    monkeypatch.setattr(sweep, "collect_tree_blobs", _fake_tree)
+    assert sweep.main(["--tree", "--config-root", str(root)]) == sweep.EXIT_CLEAN
+    assert "DEGRADED" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
 # ASCII hygiene on both new files (repo-wide hard rule)
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize("rel", _GUARD_FILES)
