@@ -532,6 +532,26 @@ def _inbox_entries(inbox: Path) -> set[str]:
     return out
 
 
+def _probe_inbox_listable(inbox: Path) -> None:
+    """Raise OSError when `inbox` cannot be listed. Returns None otherwise.
+
+    The acknowledge path's readability check (`mark_inbox_seen`), lifted so the
+    two NON-acknowledging readers can make the same check. Call it AFTER
+    `_inbox_entries`, on an inbox already known to be a directory: an empty
+    result from a listing that failed and an empty result from an inbox that is
+    really empty look identical, and only this probe tells them apart.
+
+    It exists because both the watcher's withdrawal count and the poller's
+    watermark save were protected only by `_inbox_entries` happening to RAISE.
+    If that listing ever swallows its error and returns an empty set, the
+    watcher reports every acknowledged note WITHDRAWN and the poller saves an
+    empty entry over its watermark. `tests/test_inbox_swallowed_listing.py`
+    applies that mutant and demands both still refuse.
+    """
+    for _probe in inbox.iterdir():
+        break
+
+
 def mark_inbox_seen() -> int:
     """Record every current inbox note as seen. Idempotent.
 
@@ -845,7 +865,13 @@ def _inbox_section(
                 # before, so the hook exited 1 and its stdout was dropped.
                 return unmeasured(f"seen store unreadable ({type(exc).__name__})")
 
-        names = _inbox_entries(inbox)
+        try:
+            names = _inbox_entries(inbox)
+            # Not a recorded fault: an unlistable inbox re-prints every fire,
+            # because a blind state that goes quiet reads as a clean inbox.
+            _probe_inbox_listable(inbox)
+        except OSError as exc:
+            return unmeasured(f"moon_sync_inbox/ unlistable ({type(exc).__name__})")
         unread = [k for k in sorted(names - seen) if k not in reported]
         withdrawn = [
             n for n in _inbox_withdrawn(names, seen) if f"WITHDRAWN:{n}" not in reported

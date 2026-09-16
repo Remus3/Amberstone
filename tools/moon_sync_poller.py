@@ -104,7 +104,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tools.rc_facts import _entry_name, _inbox_entries  # noqa: E402
+from tools.rc_facts import _entry_name, _inbox_entries, _probe_inbox_listable  # noqa: E402
 
 BASE_SECONDS = 5 * 60
 
@@ -569,6 +569,11 @@ def scan_fleet(repos: tuple[str, ...] | None = None, participants: dict[str, str
                 rows.append(_fleet_row(code, "INBOX ABSENT"))
                 continue
             names = _inbox_entries(inbox)
+            # An inbox that cannot be LISTED is not an EMPTY inbox. Probed
+            # explicitly, so the raise lands in the SCAN FAULT branch below -
+            # leaving this repo's watermark untouched - even if _inbox_entries
+            # ever swallows its own listing error and returns an empty set.
+            _probe_inbox_listable(inbox)
 
             # FIRST SIGHT OF A REPO IS A BASELINE, NOT NEWS. Without this the
             # very first run reports every note the channel has ever carried -
