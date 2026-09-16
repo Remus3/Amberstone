@@ -74,6 +74,69 @@ Traps this session paid for, worth not re-paying:
     file, so a bare `grep -c` returns 2 and must NEVER be used as an apply check. No line number
     is given here on purpose.
 
+SECOND TASK, operator-added 2026-09-15: IMPLEMENT https://github.com/tt-a1i/archify
+  What it is (measured from its repo page, re-verify): an agent SKILL that turns a codebase or
+  system description into interactive diagrams - architecture, workflow, sequence, data-flow,
+  lifecycle - via a typed JSON IR that compiles to self-contained HTML/SVG. TypeScript/Node.
+  Ships as a skill for Claude Code among others. Obvious RC fit: docs/ARCHITECTURE.md and the
+  archmap are hand-maintained today.
+  LICENSE GATE FIRST - this is a CLAUDE.md hard rule and it has caught real traps here:
+    - Reported license is MIT with a LICENSE file present. That is NOT sufficient to proceed.
+    - READ THE COPYRIGHT LINE, not just the license name. A reviewed repo once shipped an MIT
+      LICENSE that was an unrendered template reading literally "Copyright (c) {{ year }}
+      {{ organization }}" - a grant with no grantor, which passes an SPDX grep.
+    - Check package.json's license field against the LICENSE file. A repo can contradict
+      itself; one reviewed plugin shipped MIT in LICENSE and "UNLICENSED"/"private": true in
+      its manifest, another GPL-3 in LICENSE and "ISC" in the manifest.
+    - Check for a truncated MIT (warranty clause cut) and for a NOTICE naming adapted
+      upstreams - a clean license is still not vendor-safe if the work has other holders.
+    - RC is Apache-2.0. MIT vendors in fine WITH attribution recorded in RC's NOTICE.
+      GPL/copyleft stays DO-NOT-VENDOR regardless of any verbal clearance.
+    - The always-legal path if the gate fails: re-implement the mechanic from observed
+      behaviour in RC's own code. Techniques are not copyrightable; source is.
+  Then decide adopt-as-skill vs vendor vs re-implement, and say which and why.
+
+THIRD TASK, operator-added 2026-09-15: https://github.com/mksglu/context-mode
+  What it is (measured from its repo page, re-verify): a context-window optimisation tool for
+  coding agents - sandboxes tool output, persists session memory in SQLite, enforces routing
+  across many platforms via MCP plus hooks. TypeScript, shipped as an npm package and
+  marketplace plugins.
+  ** ITS LICENSE IS ELv2 (ELASTIC LICENSE v2) AND THAT CHANGES THE ANSWER BEFORE YOU START. **
+    - ELv2 is SOURCE-AVAILABLE, NOT OPEN SOURCE. It is the same family as BUSL-1.1, which
+      CLAUDE.md's licence gate already names: source-available, not copyleft, DO-NOT-VENDOR
+      anyway, though its Additional Use Grant may permit running it internally.
+    - So: DO NOT VENDOR ANY OF ITS SOURCE INTO RC. RC is PUBLIC and Apache-2.0; carrying ELv2
+      source in this tree would misstate RC's own license to everyone who clones it, and it is
+      exactly the failure the gate exists to prevent.
+    - INSTALLING AND USING IT IS A DIFFERENT QUESTION and is the likely-fine path: an installed
+      npm package or marketplace plugin is a dependency the operator runs, not a file RC
+      redistributes. If you go that way, record it as a TOOL, not as vendored code, and keep it
+      out of the tracked tree.
+    - If a specific mechanic is wanted IN-tree, re-implement it from observed behaviour in RC's
+      own code. Techniques and protocol facts are not copyrightable; source is.
+    - READ THE LICENSE FILE YOURSELF before acting on any of this. The badge is evidence, not
+      proof, and a repo can contradict itself between its LICENSE and its manifest.
+
+PENDING OUTBOUND - NEEDS AN OPERATOR PING BEFORE IT LEAVES THE TREE:
+  LL REFUSED docs/CHANNEL.md at their license gate on 2026-09-15T23:33 (their note is in
+  moon_sync_inbox; they filed it as OPS-91). They are RIGHT: RC's FYI named a commit and called
+  the tree public, and public is a VISIBILITY, NOT A GRANT. They hold no copy, no pin, no
+  paraphrase - deliberately - so CHANNEL.md is pinned in 1 of 5 trees until RC answers.
+  The answer is already verified against RC's own tree this session and needs no new work:
+    - repository Remus3/Amberstone, PUBLIC
+    - root LICENSE is Apache-2.0
+    - README (the licence paragraph) states that source code AND AUTHORED DOCUMENTATION are
+      Apache-2.0; docs/CHANNEL.md is authored documentation, so it is covered
+    - the ONLY carve-out is third-party-sourced DATA under data/, recorded source by source in
+      NOTICE - documentation is not in that carve-out
+    - the three-way contradiction LL cites from RC's 2026-09-07 note is RESOLVED:
+      Share/LICENSE.md no longer exists, and no "all rights reserved" text remains in README
+      or in the doc
+    - sole copyright holder; vendoring intended
+  Write that as a short note and HALT AND PING before copying it into their inbox. LL applied
+  the same rule to LW and their operator then ruled VENDOR, so this is a routine unblock, not a
+  dispute - and do not soften RC's own FYI wording, which genuinely omitted the license.
+
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
 Session default applies: orchestrated, multi-agent, self-adjudicating, self-adversarial, all
 doing in subagents. Halt and ping before any byte leaves the tree.
