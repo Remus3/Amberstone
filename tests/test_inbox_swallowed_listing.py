@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -62,6 +63,33 @@ def _deny_listing(monkeypatch, inbox: Path) -> None:
         return real_iterdir(self)
 
     monkeypatch.setattr(Path, "iterdir", deny)
+
+
+def _deny_scandir_and_swallow_iterdir(monkeypatch, inbox: Path) -> None:
+    """The fault at the OS-listing primitive, hidden by a swallow ONE LAYER UP.
+
+    Measured on Python 3.14: `Path.iterdir` IS `os.scandir` plus an eager list,
+    so denying `os.scandir` for the inbox makes the real `iterdir` raise, and
+    the wrapper then reads that raise as an empty directory. Every reader that
+    lists through `Path.iterdir` - the UNMUTATED `_inbox_entries` included - now
+    sees an empty inbox. Only a probe that calls `os.scandir` itself can tell.
+    """
+    real_scandir = os.scandir
+    real_iterdir = Path.iterdir
+
+    def deny(path=".", *a, **kw):
+        if Path(path) == inbox:
+            raise PermissionError(13, "Access is denied")
+        return real_scandir(path, *a, **kw)
+
+    def swallow(self):
+        try:
+            return real_iterdir(self)
+        except OSError:
+            return iter(())
+
+    monkeypatch.setattr(os, "scandir", deny)
+    monkeypatch.setattr(Path, "iterdir", swallow)
 
 
 def _swallowing_entries(p: Path) -> set[str]:
@@ -121,6 +149,43 @@ def test_watcher_unlistable_line_names_the_condition(tmp_path, monkeypatch):
     assert lines == [
         "## Cross-repo inbox - UNMEASURED: moon_sync_inbox/ unlistable (PermissionError)"
     ], lines
+
+
+@pytest.mark.parametrize("session", [None, "s"])
+def test_watcher_refuses_when_the_swallow_is_in_path_iterdir_itself(
+    tmp_path, monkeypatch, session
+):
+    """The shared-seam arm. `_inbox_entries` is NOT mutated here: the swallow
+    sits in `Path.iterdir`, which both it and a Path.iterdir-only probe call, so
+    a probe built on that one primitive is defeated together with the listing."""
+    root = _watcher_root(tmp_path, monkeypatch)
+    _deny_scandir_and_swallow_iterdir(monkeypatch, root / "moon_sync_inbox")
+
+    lines, anomalies, keys = rc_facts._inbox_section(root, session, subtract=False)
+    text = "\n".join(lines + anomalies)
+
+    assert "WITHDRAWN" not in text, text
+    assert lines == [
+        "## Cross-repo inbox - UNMEASURED: moon_sync_inbox/ unlistable (PermissionError)"
+    ], lines
+    assert keys == set(), keys
+    assert not (root / "ops" / "runtime" / "sync_inbox_report.txt").exists()
+
+
+def test_ack_refuses_when_the_swallow_is_in_path_iterdir_itself(
+    tmp_path, monkeypatch, capsys
+):
+    root = _watcher_root(tmp_path, monkeypatch)
+    store = root / "ops" / "runtime" / "sync_inbox_seen.json"
+    before = _sha(store)
+    _deny_scandir_and_swallow_iterdir(monkeypatch, root / "moon_sync_inbox")
+
+    rc = rc_facts.mark_inbox_seen()
+    out = capsys.readouterr().out
+
+    assert _sha(store) == before, "the ack erased the watermark: " + out
+    assert rc == 3, (rc, out)
+    assert "REFUSED" in out and "PermissionError" in out, out
 
 
 def test_watcher_negative_control_a_truly_empty_inbox_does_report_withdrawals(
@@ -185,6 +250,35 @@ def test_poller_does_not_erase_its_watermark_when_listing_is_swallowed(
     assert row["withdrawn"] == [], row
     assert row["status"] != "OK", row
     assert "PermissionError" in row["status"], row
+
+
+def test_poller_refuses_when_the_swallow_is_in_path_iterdir_itself(
+    state: Path, tmp_path: Path, monkeypatch
+):
+    root, parts = _baselined_repo(tmp_path, state)
+    store = state / "poller_seen.json"
+    before = _sha(store)
+
+    _deny_scandir_and_swallow_iterdir(monkeypatch, root / "moon_sync_inbox")
+    out = P.scan_fleet((str(root),), parts)
+
+    assert _sha(store) == before, "the poller saved an empty entry over its watermark"
+    assert out["findings"] == {}, out["findings"]
+    row = out["rows"][0]
+    assert row["withdrawn"] == [], row
+    assert row["status"] == "SCAN FAULT PermissionError", row
+
+
+def test_seam_negative_control_the_wrapper_alone_changes_nothing(
+    state: Path, tmp_path: Path, monkeypatch
+):
+    """Without a denied path the injected wrappers must be transparent, or the
+    three arms above could be passing on a helper that breaks every listing."""
+    root, parts = _baselined_repo(tmp_path, state)
+    _deny_scandir_and_swallow_iterdir(monkeypatch, tmp_path / "not-the-inbox")
+    out = P.scan_fleet((str(root),), parts)
+    assert out["rows"][0]["status"] == "OK", out["rows"]
+    assert out["rows"][0]["entries"] == 3, out["rows"]
 
 
 def test_poller_negative_control_a_truly_emptied_inbox_is_a_withdrawal(
