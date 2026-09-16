@@ -77,6 +77,11 @@ from typing import Any, Optional
 
 log = logging.getLogger("rc.riot_api_cache")
 
+# RM-413: _connect opens a connection per operation, so the non-wal warning
+# fires once per db path per process, not on every call. A set.add race is a
+# harmless duplicate line at worst.
+_WAL_WARNED: set[str] = set()
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_DB_PATH = _PROJECT_ROOT / "data" / "riot_api_cache.db"
 
@@ -157,7 +162,8 @@ class RiotApiCache:
         # a non-wal answer is degraded, not broken, so warn and carry on.
         jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
         journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
-        if journal_mode != "wal":
+        if journal_mode != "wal" and str(self._db_path) not in _WAL_WARNED:
+            _WAL_WARNED.add(str(self._db_path))
             log.warning(
                 "RiotApiCache journal_mode fell back to %r (wanted wal): %s - "
                 "concurrent readers WILL block writers on this database",
