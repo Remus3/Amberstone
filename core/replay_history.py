@@ -47,6 +47,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.replay_history")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -64,21 +66,34 @@ import collections as _collections
 _MATCH_DETAIL_CACHE: "_collections.OrderedDict[str, dict]" = _collections.OrderedDict()
 _MATCH_DETAIL_CACHE_MAX = 8
 _match_cache_lock = threading.Lock()
+# RM-443: per-source-path failure gates for the champion index.
+_CHAMP_INDEX_GATES: dict = {}
 
 
-def _load_champ_index() -> None:
+def _load_champ_index() -> bool:
+    """Publish the champion id -> name index. True when it is loaded.
+
+    RM-443: False means the DDragon read failed (or is inside the backoff that
+    follows a failure, one gate per source path); match_detail must not cache
+    a result built without the index, or the missing names stick in its LRU.
+    """
     # AUDIT 2026-06-11 (deep-audit P2-W1-A): build the index in a local
     # dict and publish it complete. The previous loop populated the
     # module dict key-by-key, so a concurrent caller could observe a
     # truthy-but-partial index and resolve champion names to "?" - and
     # match_detail() would then cache that bad name in its LRU.
     if _id_to_champ:
-        return
+        return True
+    gate = _CHAMP_INDEX_GATES.setdefault(str(_DDR_CHAMPS), FailedLoadGate())
+    if not gate.should_attempt():
+        return False
     try:
         data = json.loads(_DDR_CHAMPS.read_text(encoding="utf-8"))
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        if gate.record_failure():
+            _log.warning("replay_history: champion index load failed: %s", exc)
+        return False
     built: dict[int, str] = {}
     for slug, entry in (data.get("data") or {}).items():
         try:
@@ -86,10 +101,12 @@ def _load_champ_index() -> None:
         except (TypeError, ValueError):
             continue
         built[cid] = entry.get("name") or slug
+    gate.record_success()
     with _idx_lock:
         if _id_to_champ:
-            return
+            return True
         _id_to_champ.update(built)
+    return True
 
 
 def _open() -> Optional[sqlite3.Connection]:
@@ -263,7 +280,7 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
             # touch - move to end of OrderedDict (most-recent)
             _MATCH_DETAIL_CACHE.move_to_end(cache_key)
             return cached
-    _load_champ_index()
+    index_ok = _load_champ_index()
     c = _open()
     if c is None:
         return None
@@ -429,6 +446,9 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
             "snapshots":        snapshots,
             "kills":            kills,
         }
+        if not index_ok:
+            # RM-443: names resolved without the index; serve, do not cache.
+            return result
         with _match_cache_lock:
             _MATCH_DETAIL_CACHE[cache_key] = result
             while len(_MATCH_DETAIL_CACHE) > _MATCH_DETAIL_CACHE_MAX:
