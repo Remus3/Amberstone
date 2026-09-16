@@ -44,8 +44,11 @@ Never raises into a coach tick: every path is fail-soft. ASCII only
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
+
+from core.failed_load_gate import FailedLoadGate
 
 from core.aram_comp_verdict import compute_factors
 from core.aram_item_interaction import (
@@ -74,6 +77,9 @@ _ARAM_MODES = frozenset(
 # Module-level memo. ``None`` = not loaded yet (distinct from ``{}`` = loaded
 # and empty / unusable). Tests override it via ``_load_index(path=...)``.
 _INDEX: Optional[Dict[str, Any]] = None
+# RM-439: failure streak for ``_get_index`` (see core/failed_load_gate.py).
+_INDEX_GATE = FailedLoadGate()
+_log = logging.getLogger(__name__)
 
 
 def _fmt_cue(cell: dict) -> Optional[str]:
@@ -145,15 +151,32 @@ def _load_index(path: Path | str | None = None) -> Dict[str, Any]:
     Cues are pre-rendered at load time so a coach tick is pure dict lookup.
     """
     src = Path(path) if path is not None else _DEFAULT_PATH
+    raw, _why = _read_snapshot(src)
+    if raw is None:
+        return {}
+    return _build_index(raw)
+
+
+def _read_snapshot(src: Path) -> tuple[Optional[dict], str]:
+    """``(doc, "")`` for a readable snapshot object carrying a ``cells`` list,
+    else ``(None, reason)``. The reason feeds the RM-439 once-per-streak warning;
+    ``None`` is a FAILURE (never cached by ``_get_index``), distinct from a
+    well-formed snapshot with no usable cells (a legitimate, cacheable ``{}``).
+    """
     try:
         raw = json.loads(src.read_text(encoding="utf-8"))
-    except (OSError, ValueError, UnicodeDecodeError):
-        return {}
+    except (OSError, ValueError, UnicodeDecodeError) as exc:
+        return None, f"{type(exc).__name__}: {exc}"
     if not isinstance(raw, dict):
-        return {}
-    cells = raw.get("cells")
-    if not isinstance(cells, list):
-        return {}
+        return None, f"expected a JSON object, got {type(raw).__name__}"
+    if not isinstance(raw.get("cells"), list):
+        return None, "no 'cells' list"
+    return raw, ""
+
+
+def _build_index(raw: dict) -> Dict[str, Any]:
+    """Build the lookup structures from a snapshot ``_read_snapshot`` accepted."""
+    cells = raw["cells"]
 
     by_id: Dict[tuple, str] = {}
     by_name: Dict[tuple, str] = {}
@@ -210,13 +233,34 @@ def _load_index(path: Path | str | None = None) -> Dict[str, Any]:
 
 
 def _get_index() -> Dict[str, Any]:
-    """Return the memoised index, loading it on first use."""
+    """Return the memoised index, loading it on first use.
+
+    RM-439: a FAILED load (unreadable / unparseable / wrong-shape snapshot, or
+    an unexpected build error) returns ``{}`` WITHOUT being memoised, so the
+    next call after the gate's backoff retries it; it warns once per failure
+    streak. A well-formed snapshot with no usable cells is a success and stays
+    memoised as ``{}``.
+    """
     global _INDEX
     if _INDEX is None:
+        if not _INDEX_GATE.should_attempt():
+            return {}
+        index: Optional[Dict[str, Any]] = None
         try:
-            _INDEX = _load_index()
-        except Exception:  # noqa: BLE001 - must never raise into a coach tick
-            _INDEX = {}
+            raw, why = _read_snapshot(_DEFAULT_PATH)
+            if raw is not None:
+                index = _build_index(raw)
+        except Exception as exc:  # noqa: BLE001 - must never raise into a coach tick
+            why = f"{type(exc).__name__}: {exc}"
+        if index is None:
+            if _INDEX_GATE.record_failure():
+                _log.warning(
+                    "aram_item_interaction_context: snapshot %s unavailable (%s) "
+                    "- cues render the sentinel, will retry", _DEFAULT_PATH, why,
+                )
+            return {}
+        _INDEX_GATE.record_success()
+        _INDEX = index
     return _INDEX
 
 

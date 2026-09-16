@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.ds_onhit_ap_roster import load_onhit_ap_roster
+from core.failed_load_gate import FailedLoadGate
 from core.ds_support_route_overrides import load_support_route_overrides
 
 _log = logging.getLogger("rc.archetype_picks")
@@ -109,6 +110,16 @@ _TAGS_CACHE: dict[str, list[str]] | None = None
 _KEY_NAME_CACHE: dict[str, str] | None = None
 _ID_CACHE: dict[str, str] | None = None
 _TAGS_LOCK = threading.Lock()
+
+# RM-439: every cached loader in this module returns its empty value WITHOUT
+# caching it when the load fails, retries after the gate's backoff, and warns
+# once per failure streak (core/failed_load_gate.py). One gate per cache.
+_TAGS_GATE = FailedLoadGate()
+_KEY_NAME_GATE = FailedLoadGate()
+_ID_GATE = FailedLoadGate()
+_PICKS_GATE = FailedLoadGate()
+_AXIS_GATE = FailedLoadGate()
+_ARAM_OVERRIDE_GATE = FailedLoadGate()
 
 # Per-process cache for the persisted picks. Reloaded on every write
 # (atomic replace invalidates other readers).
@@ -209,31 +220,44 @@ def _load_damage_axes() -> dict[str, str]:
     with _AXIS_LOCK:
         if _DAMAGE_AXIS_CACHE is not None:
             return _DAMAGE_AXIS_CACHE
+        if not _AXIS_GATE.should_attempt():
+            return {}
         out: dict[str, str] = {}
         patch = _resolve_ds_patch()
-        if patch:
-            path = _DS_DIR / patch / "champions.json"
-            try:
-                raw = json.loads(path.read_text(encoding="utf-8"))
-                data = raw.get("data", raw)
-                for entry in data.values():
-                    if not isinstance(entry, dict):
+        if not patch:
+            if _AXIS_GATE.record_failure():
+                _log.warning(
+                    "archetype_picks: %s unreadable - no axis correction",
+                    _DS_DIR / "current.txt",
+                )
+            return {}
+        path = _DS_DIR / patch / "champions.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            data = raw.get("data", raw)
+            for entry in data.values():
+                if not isinstance(entry, dict):
+                    continue
+                dd = (entry.get("lolmath") or {}).get("damage_distribution") or {}
+                axis = _axis_from_distribution(dd)
+                if not axis:
+                    continue
+                for key in (entry.get("name"), entry.get("id")):
+                    if not key:
                         continue
-                    dd = (entry.get("lolmath") or {}).get("damage_distribution") or {}
-                    axis = _axis_from_distribution(dd)
-                    if not axis:
-                        continue
-                    for key in (entry.get("name"), entry.get("id")):
-                        if not key:
-                            continue
-                        out[key] = axis
-                        out[key.replace("'", "")] = axis
-                        out[key.replace(" ", "")] = axis
-                        out[key.replace("'", "").replace(" ", "")] = axis
-            except FileNotFoundError:
+                    out[key] = axis
+                    out[key.replace("'", "")] = axis
+                    out[key.replace(" ", "")] = axis
+                    out[key.replace("'", "").replace(" ", "")] = axis
+        except FileNotFoundError:
+            if _AXIS_GATE.record_failure():
                 _log.warning("archetype_picks: %s missing - no axis correction", path)
-            except Exception as exc:  # noqa: BLE001 - fail-soft, defaults stay tag-based
+            return {}
+        except Exception as exc:  # noqa: BLE001 - fail-soft, defaults stay tag-based
+            if _AXIS_GATE.record_failure():
                 _log.warning("archetype_picks: damage-axis load failed: %s", exc)
+            return {}
+        _AXIS_GATE.record_success()
         _DAMAGE_AXIS_CACHE = out
         return out
 
@@ -251,6 +275,7 @@ def _invalidate_axis_cache() -> None:
     global _DAMAGE_AXIS_CACHE
     with _AXIS_LOCK:
         _DAMAGE_AXIS_CACHE = None
+        _AXIS_GATE.reset()
 
 
 def _load_aram_overrides() -> dict[str, str]:
@@ -260,6 +285,8 @@ def _load_aram_overrides() -> dict[str, str]:
     with _ARAM_OVERRIDE_LOCK:
         if _ARAM_OVERRIDE_CACHE is not None:
             return _ARAM_OVERRIDE_CACHE
+        if not _ARAM_OVERRIDE_GATE.should_attempt():
+            return {}
         out: dict[str, str] = {}
         try:
             raw = json.loads(_ARAM_OVERRIDE_PATH.read_text(encoding="utf-8"))
@@ -268,12 +295,17 @@ def _load_aram_overrides() -> dict[str, str]:
                 if champ and ov in ARCHETYPE_SET:
                     out[champ] = ov
         except FileNotFoundError:
-            _log.warning(
-                "archetype_picks: %s missing - no ARAM overrides",
-                _ARAM_OVERRIDE_PATH,
-            )
+            if _ARAM_OVERRIDE_GATE.record_failure():
+                _log.warning(
+                    "archetype_picks: %s missing - no ARAM overrides",
+                    _ARAM_OVERRIDE_PATH,
+                )
+            return {}
         except Exception as exc:  # noqa: BLE001 - fail-soft, kit default stands
-            _log.warning("archetype_picks: ARAM override load failed: %s", exc)
+            if _ARAM_OVERRIDE_GATE.record_failure():
+                _log.warning("archetype_picks: ARAM override load failed: %s", exc)
+            return {}
+        _ARAM_OVERRIDE_GATE.record_success()
         _ARAM_OVERRIDE_CACHE = out
         return out
 
@@ -283,6 +315,7 @@ def _invalidate_aram_overrides_cache() -> None:
     global _ARAM_OVERRIDE_CACHE
     with _ARAM_OVERRIDE_LOCK:
         _ARAM_OVERRIDE_CACHE = None
+        _ARAM_OVERRIDE_GATE.reset()
 
 
 def aram_archetype_override(champion: str) -> Optional[str]:
@@ -340,6 +373,8 @@ def _load_champion_tags() -> dict[str, list[str]]:
     with _TAGS_LOCK:
         if _TAGS_CACHE is not None:
             return _TAGS_CACHE
+        if not _TAGS_GATE.should_attempt():
+            return {}
         out: dict[str, list[str]] = {}
         try:
             raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
@@ -356,9 +391,14 @@ def _load_champion_tags() -> dict[str, list[str]]:
                     out[key.replace(" ", "")] = tags
                     out[key.replace("'", "").replace(" ", "")] = tags
         except FileNotFoundError:
-            _log.warning("archetype_picks: %s missing - defaults will use carry", _CHAMPS_PATH)
+            if _TAGS_GATE.record_failure():
+                _log.warning("archetype_picks: %s missing - defaults will use carry", _CHAMPS_PATH)
+            return {}
         except Exception as exc:  # noqa: BLE001
-            _log.warning("archetype_picks: tags load failed: %s", exc)
+            if _TAGS_GATE.record_failure():
+                _log.warning("archetype_picks: tags load failed: %s", exc)
+            return {}
+        _TAGS_GATE.record_success()
         _TAGS_CACHE = out
         return out
 
@@ -375,6 +415,8 @@ def champion_name_by_key(key) -> str:
         return ""
     with _TAGS_LOCK:
         if _KEY_NAME_CACHE is None:
+            if not _KEY_NAME_GATE.should_attempt():
+                return ""
             m: dict[str, str] = {}
             try:
                 raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
@@ -387,12 +429,17 @@ def champion_name_by_key(key) -> str:
                     if k is not None and nm:
                         m[str(k)] = str(nm)
             except FileNotFoundError:
-                _log.warning(
-                    "archetype_picks: %s missing - champion_name_by_key empty",
-                    _CHAMPS_PATH,
-                )
+                if _KEY_NAME_GATE.record_failure():
+                    _log.warning(
+                        "archetype_picks: %s missing - champion_name_by_key empty",
+                        _CHAMPS_PATH,
+                    )
+                return ""
             except Exception as exc:  # noqa: BLE001 - fail-soft resolver
-                _log.warning("archetype_picks: key->name load failed: %s", exc)
+                if _KEY_NAME_GATE.record_failure():
+                    _log.warning("archetype_picks: key->name load failed: %s", exc)
+                return ""
+            _KEY_NAME_GATE.record_success()
             _KEY_NAME_CACHE = m
         return _KEY_NAME_CACHE.get(str(key), "")
 
@@ -416,6 +463,8 @@ def canonical_champion_id(name: str) -> str:
     global _ID_CACHE
     with _TAGS_LOCK:
         if _ID_CACHE is None:
+            if not _ID_GATE.should_attempt():
+                return name
             m: dict[str, str] = {}
             try:
                 raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
@@ -434,12 +483,17 @@ def canonical_champion_id(name: str) -> str:
                         m[key.replace(" ", "")] = cid
                         m[key.replace("'", "").replace(" ", "")] = cid
             except FileNotFoundError:
-                _log.warning(
-                    "archetype_picks: %s missing - canonical_champion_id "
-                    "passthrough", _CHAMPS_PATH,
-                )
+                if _ID_GATE.record_failure():
+                    _log.warning(
+                        "archetype_picks: %s missing - canonical_champion_id "
+                        "passthrough", _CHAMPS_PATH,
+                    )
+                return name
             except Exception as exc:  # noqa: BLE001 - fail-soft resolver
-                _log.warning("archetype_picks: id map load failed: %s", exc)
+                if _ID_GATE.record_failure():
+                    _log.warning("archetype_picks: id map load failed: %s", exc)
+                return name
+            _ID_GATE.record_success()
             _ID_CACHE = m
         return _ID_CACHE.get(name, name)
 
@@ -519,19 +573,29 @@ def _load_picks() -> dict[str, dict]:
     with _PICKS_LOCK:
         if _PICKS_CACHE is not None:
             return _PICKS_CACHE
+        if not _PICKS_GATE.should_attempt():
+            return {}
         try:
-            if _PICKS_PATH.exists():
-                data = json.loads(_PICKS_PATH.read_text(encoding="utf-8"))
-                if isinstance(data, dict):
-                    _PICKS_CACHE = data
-                    return _PICKS_CACHE
-                _log.warning(
-                    "archetype_picks: %s not a dict (%s) - ignoring",
-                    _PICKS_PATH, type(data).__name__,
-                )
+            if not _PICKS_PATH.exists():
+                # Gitignored and absent in a fresh clone: NO picks is the
+                # normal state, a legitimate cacheable empty - not a failure.
+                _PICKS_GATE.record_success()
+                _PICKS_CACHE = {}
+                return _PICKS_CACHE
+            data = json.loads(_PICKS_PATH.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                if _PICKS_GATE.record_failure():
+                    _log.warning(
+                        "archetype_picks: %s not a dict (%s) - ignoring",
+                        _PICKS_PATH, type(data).__name__,
+                    )
+                return {}
         except Exception as exc:  # noqa: BLE001
-            _log.warning("archetype_picks: load failed: %s", exc)
-        _PICKS_CACHE = {}
+            if _PICKS_GATE.record_failure():
+                _log.warning("archetype_picks: load failed: %s", exc)
+            return {}
+        _PICKS_GATE.record_success()
+        _PICKS_CACHE = data
         return _PICKS_CACHE
 
 
@@ -540,6 +604,7 @@ def _invalidate_picks_cache() -> None:
     global _PICKS_CACHE
     with _PICKS_LOCK:
         _PICKS_CACHE = None
+        _PICKS_GATE.reset()
 
 
 def _atomic_write_picks(picks: dict[str, dict]) -> None:
