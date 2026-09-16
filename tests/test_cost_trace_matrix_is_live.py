@@ -65,6 +65,33 @@ _DOC = _ROOT / "docs" / "COST_TRACE.md"
 _ROW = re.compile(r"^\|(?P<cells>.+)\|\s*$")
 # `path/to/file.py:123`, tolerating backticks and ~~strikethrough~~.
 _SITE = re.compile(r"([A-Za-z0-9_][A-Za-z0-9_./-]*\.py):(\d+)")
+# RM-435: `_SITE` admits no space, so `tools/my dir/x.py:9` read as
+# `dir/x.py:9` and a real row went red on a phantom path. A spaced site counts
+# only when it is the WHOLE of one bounded unit, never searched loose:
+#   * one paired backtick span (the channel-pin bound, 1f42fd481 + 8e85ded6f);
+#   * or the whole site cell once `~` / `*` / whitespace decoration is
+#     stripped. The matrix cells are NOT backticked today, so the markdown
+#     code-span bound alone would never fire on a real row; the cell is the
+#     table's own bound, since a site cell's entire content is the claim.
+# Deliberate limits: a spaced site needs a `/`, and no segment may start or
+# end with a space. Everything else falls back to the unspaced `_SITE`.
+_SPACED_SEGMENT = r"[A-Za-z0-9_.-](?:[A-Za-z0-9_. -]*[A-Za-z0-9_.-])?"
+_SPACED_SITE = re.compile(
+    rf"((?:{_SPACED_SEGMENT}/)+{_SPACED_SEGMENT}\.py):(\d+)"
+)
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
+
+
+def _site_path(cell: str) -> str | None:
+    """The site path one matrix cell names, or None."""
+    units = [s.group(0)[1:-1] for s in _CODE_SPAN.finditer(cell)]
+    units.append(cell.strip("~* \t"))
+    for unit in units:
+        spaced = _SPACED_SITE.fullmatch(unit)
+        if spaced is not None and " " in spaced.group(1):
+            return spaced.group(1)
+    site = _SITE.search(cell)
+    return None if site is None else site.group(1)
 
 _LIVE_TIERS = {"HAIKU", "SONNET", "OPUS"}
 
@@ -133,10 +160,10 @@ def _parse_row(raw: str) -> tuple[str, str] | None:
     cells = [c.strip() for c in m.group("cells").split("|")]
     if len(cells) < 2:
         return None
-    site = _SITE.search(cells[0])
-    if not site:
+    site = _site_path(cells[0])
+    if site is None:
         return None
-    return site.group(1), cells[1].strip("`~* ").upper()
+    return site, cells[1].strip("`~* ").upper()
 
 
 def _matrix_rows() -> list[tuple[str, str, str]]:
@@ -268,6 +295,53 @@ class CostTraceMatrixTests(unittest.TestCase):
             "real change to the Haiku-to-ZERO position, not a test problem - "
             "un-retire its COST_TRACE row and update the ledger.",
         )
+
+
+class SiteParserSpacedPathTests(unittest.TestCase):
+    """RM-435: `_SITE` must not truncate a spaced site path to its tail.
+
+    The old parser read `tools/my dir/x.py:9` as `dir/x.py:9`, so a real row
+    would go red against a phantom path. A space is admitted only when the
+    site is the WHOLE of one bounded unit - one backtick span, or the whole
+    (de-decorated) site cell - never searched loose across cell prose.
+    """
+
+    def _site(self, cell: str) -> str | None:
+        parsed = _parse_row(f"| {cell} | HAIKU | YES | POLLING | p |")
+        return None if parsed is None else parsed[0]
+
+    def test_bare_spaced_site_cell_is_not_truncated(self) -> None:
+        self.assertEqual(self._site("tools/my dir/x.py:9"), "tools/my dir/x.py")
+
+    def test_backticked_spaced_site_is_not_truncated(self) -> None:
+        self.assertEqual(self._site("`tools/my dir/x.py:9`"), "tools/my dir/x.py")
+
+    def test_struck_spaced_site_is_not_truncated(self) -> None:
+        self.assertEqual(self._site("~~tools/my dir/x.py:9~~"), "tools/my dir/x.py")
+        self.assertEqual(self._site("~~`tools/my dir/x.py:9`~~"), "tools/my dir/x.py")
+
+    def test_prose_cell_is_not_joined_into_a_path(self) -> None:
+        self.assertEqual(self._site("see notes and x.py:3"), "x.py")
+        self.assertEqual(self._site("see notes/and x.py:3 later"), "x.py")
+
+    def test_two_backtick_spans_are_not_paired_across(self) -> None:
+        self.assertEqual(self._site("`tools/a b` and `c/y.py:3`"), "c/y.py")
+
+    def test_and_or_clock_time_is_not_a_site(self) -> None:
+        self.assertIsNone(self._site("and/or 12:30"))
+
+    def test_leading_space_segment_is_not_a_path(self) -> None:
+        self.assertEqual(self._site("tools/ my/x.py:9 x"), "my/x.py")
+
+    def test_real_matrix_rows_parse_exactly_as_the_unspaced_regex(self) -> None:
+        body = _matrix_body()
+        self.assertEqual(len(body), _EXPECTED_ROWS)
+        for raw in body:
+            cells = [c.strip() for c in _ROW.match(raw.strip()).group("cells").split("|")]
+            old = _SITE.search(cells[0])
+            with self.subTest(row=raw.strip()[:60]):
+                self.assertIsNotNone(old)
+                self.assertEqual(_parse_row(raw)[0], old.group(1))
 
 
 if __name__ == "__main__":  # pragma: no cover
