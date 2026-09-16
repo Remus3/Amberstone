@@ -33,6 +33,7 @@ import json
 import logging
 import sqlite3
 import threading
+import time
 from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
@@ -65,6 +66,16 @@ _lock = threading.Lock()
 _own_cache: dict[str, "OwnHistory"] = {}
 _own_cache_key: dict[str, tuple] = {}
 _own_gates: dict[str, FailedLoadGate] = {}  # RM-443: per-mode, see load_own_history
+# RM-450: the LCU row count (db open + a full LIKE scan of every raw_data row)
+# used to run on EVERY load_own_history call, before the cache check. It is
+# now memoised per db path under a cheap stat signature - (mtime, size) of the
+# db AND of its -wal sidecar, where a WAL-mode INSERT lands before any
+# checkpoint - and recounted when that signature moves or after the TTL. The
+# TTL is the backstop for a write the stat signature cannot see; own history
+# only grows post-game, never mid-pick, so a 60 s bound is invisible to the
+# augment select that reads it.
+_ROW_COUNT_TTL_S = 60.0
+_row_count_memo: dict[str, tuple[tuple, float, int]] = {}
 
 
 @dataclass(frozen=True)
@@ -245,6 +256,32 @@ def _lcu_row_count(path: Path) -> int:
             pass
 
 
+def _db_stat_signature(path: Path) -> tuple:
+    """(mtime_ns, size) of the db plus of its -wal sidecar (None when absent).
+    Raises OSError when the db itself cannot be stat'd."""
+    stt = path.stat()
+    try:
+        w = Path(f"{path}-wal").stat()
+        wal: Optional[tuple] = (w.st_mtime_ns, w.st_size)
+    except OSError:
+        wal = None
+    return (stt.st_mtime_ns, stt.st_size, wal)
+
+
+def _memo_row_count(path: Path, sig: tuple) -> int:
+    """_lcu_row_count, re-run only when ``sig`` moved or the TTL elapsed."""
+    now = time.monotonic()
+    memo_key = str(path)
+    with _lock:
+        memo = _row_count_memo.get(memo_key)
+        if memo is not None and memo[0] == sig and now - memo[1] < _ROW_COUNT_TTL_S:
+            return memo[2]
+    count = _lcu_row_count(path)
+    with _lock:
+        _row_count_memo[memo_key] = (sig, now, count)
+    return count
+
+
 def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) -> OwnHistory:
     """Cached own-history scan. Re-scans only when the count of
     augment-bearing rows (or db mtime/size) changes - augment history
@@ -252,8 +289,8 @@ def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) ->
     augment-select tick."""
     path = db_path or _DB_PATH
     try:
-        stt = path.stat()
-        key = (stt.st_mtime, stt.st_size, _lcu_row_count(path))
+        sig = _db_stat_signature(path)
+        key = (sig, _memo_row_count(path, sig))
     except OSError:
         key = (-1.0, -1, -1)
     with _lock:
@@ -397,3 +434,4 @@ def reset_cache() -> None:
         _own_cache.clear()
         _own_cache_key.clear()
         _own_gates.clear()
+        _row_count_memo.clear()

@@ -89,18 +89,32 @@ def _load_champ_index() -> bool:
         return False
     try:
         data = json.loads(_DDR_CHAMPS.read_text(encoding="utf-8"))
+        # RM-450: the shape checks sit INSIDE the try. A non-object document
+        # used to raise AttributeError out of every caller (data.get), and an
+        # index that built empty returned True, so match_detail cached
+        # name-less results. Both are failures now: not cached, retried after
+        # the backoff.
+        if not isinstance(data, dict):
+            raise ValueError(f"top level is {type(data).__name__}, want object")
+        rows = data.get("data")
+        if not isinstance(rows, dict):
+            raise ValueError("'data' is not an object")
+        built: dict[int, str] = {}
+        for slug, entry in rows.items():
+            if not isinstance(entry, dict):
+                continue
+            try:
+                cid = int(entry.get("key"))
+            except (TypeError, ValueError):
+                continue
+            built[cid] = entry.get("name") or slug
+        if not built:
+            raise ValueError("no usable champion rows")
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         if gate.record_failure():
             _log.warning("replay_history: champion index load failed: %s", exc)
         return False
-    built: dict[int, str] = {}
-    for slug, entry in (data.get("data") or {}).items():
-        try:
-            cid = int(entry.get("key"))
-        except (TypeError, ValueError):
-            continue
-        built[cid] = entry.get("name") or slug
     gate.record_success()
     with _idx_lock:
         if _id_to_champ:
