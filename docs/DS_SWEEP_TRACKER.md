@@ -69,7 +69,18 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-447** (2026-09-16, moved at the laned loop wave 3 doc-sync).
+  Next free id = **RM-454** (2026-09-16, moved at the laned orchestrated loop wave 1 doc-sync).
+  **SEVEN ids were allocated 2026-09-16 by the laned orchestrated loop wave 1 (LEDGER 1421), and
+  THE PIN MOVED BY SEVEN.** All seven are OPEN under BACKLOG "Reliability / hardening": RM-447
+  atomic writers leave a temp file on failure plus a same-stem temp collision; RM-448 the DS
+  regenerators still write tracked outputs in text mode (DS batch decision); RM-449 skip
+  hygiene guard residuals; RM-450 five `core/` load-path residuals of RM-443; RM-451 null-session
+  rows written into the live hook log; RM-452 the `rc_facts` main block invisible to in-process
+  tests; RM-453 a contracted negation read as a push claim by the stop claim gate. The same
+  wave marked RM-433, RM-434, RM-437, RM-440, RM-441, RM-442, RM-443, RM-444 and RM-446 SHIPPED.
+  None takes a roster checkbox and none changes the Summary count. The `ROADMAP.md` pointer
+  moves in the SAME commit.
+  Prior pin, kept for the audit trail: Next free id was **RM-447** (2026-09-16, moved at the laned loop wave 3 doc-sync).
   **SEVEN ids were allocated 2026-09-16 by the laned loop wave 3 (LEDGER 1420), and THE PIN
   MOVED BY SEVEN.** All seven are OPEN under BACKLOG "Reliability / hardening": RM-440 the
   skip-condition hygiene guard accepts constant-true conditions; RM-441 repo-wide text-mode
