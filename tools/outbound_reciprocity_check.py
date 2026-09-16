@@ -293,16 +293,17 @@ def _scan(inbox: Path, staging: bool) -> Optional[dict]:
     `staging` selects WHICH half: the visible entries a recipient's watcher will
     actually report (the delivery surface), or the `_`-prefixed drafts.
 
-    There is deliberately no separate `is_dir()` pre-check (RM-438): every
+    There is deliberately no separate `is_dir()` pre-check (RM-438). A
     non-directory inbox - absent, a plain file, a dangling or file-targeting
-    link, a link loop - makes `iterdir()` raise an OSError subclass, and the
-    except below turns that into None. A pre-check graded behaviour-equivalent
-    to it, so it is not coming back as decoration.
+    link, a link loop - makes `iterdir()` raise an OSError subclass. A path
+    carrying a NUL byte (possible in a root read from per-host config) makes
+    it raise ValueError instead, which is NOT an OSError; the removed pre-check
+    had silently absorbed that case, so the except below names both.
     """
     out: dict = {}
     try:
         children = sorted(inbox.iterdir())
-    except OSError:
+    except (OSError, ValueError):
         return None
     for child in children:
         is_staged = child.name.startswith(_STAGING_PREFIX)
