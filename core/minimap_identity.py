@@ -79,12 +79,15 @@ _TPL_CACHE: dict = {}
 # retried after the gate's backoff, warned once per failure streak
 # (core/failed_load_gate.py). A clean build is cached as before.
 _ICON_INDEX_GATE = FailedLoadGate()
+# The partial index a failed build produced, served during its backoff.
+_PARTIAL_ICON_INDEX: dict = {}
 
 
 def _reset_caches() -> None:
     """Test seam: drop the lazy caches (mirrors core/champion_movespeed.py:61)."""
-    global _ICON_INDEX
+    global _ICON_INDEX, _PARTIAL_ICON_INDEX
     _ICON_INDEX = None
+    _PARTIAL_ICON_INDEX = {}
     _TPL_CACHE.clear()
     _ICON_INDEX_GATE.reset()
 
@@ -121,9 +124,13 @@ def _icon_index() -> dict:
     (stem variants: "MissFortune" -> "missfortune") and (b) the DDragon mirror
     (display names: "Wukong" -> MonkeyKing.png). Empty dict on total failure;
     a missing DDragon mirror degrades to dir-scan keys only."""
-    global _ICON_INDEX
+    global _ICON_INDEX, _PARTIAL_ICON_INDEX
     if _ICON_INDEX is not None:
         return _ICON_INDEX
+    if not _ICON_INDEX_GATE.should_attempt():
+        # Inside the backoff after a failed build: serve the partial index
+        # that build produced (dir-scan keys) without touching the disk.
+        return _PARTIAL_ICON_INDEX
     out: dict = {}
     failures: list[str] = []
     try:
@@ -132,10 +139,6 @@ def _icon_index() -> dict:
                 out.setdefault(k, p)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
         failures.append(f"icon dir scan failed: {exc}")
-    if not _ICON_INDEX_GATE.should_attempt():
-        # Inside the backoff after a failed DDragon read: the dir scan (no
-        # file parse) still serves, the name index waits for the retry.
-        return out
     try:
         raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
         data = raw.get("data", raw)
@@ -161,6 +164,7 @@ def _icon_index() -> dict:
     if failures:
         if _ICON_INDEX_GATE.record_failure():
             _log.warning("minimap_identity: %s", "; ".join(failures))
+        _PARTIAL_ICON_INDEX = out
         return out
     _ICON_INDEX_GATE.record_success()
     _ICON_INDEX = out

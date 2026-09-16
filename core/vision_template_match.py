@@ -47,6 +47,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.vision_template_match")
 
 _ICON_ROOT = Path(__file__).resolve().parent.parent / "data" / "icons"
@@ -81,6 +83,9 @@ _USE_CIRCLE_MASK = False
 _ATLAS_CACHE: dict = {}
 _INDEX_CACHE: dict = {}
 _TPL_CACHE: dict = {}
+# RM-443: per-category failure gates. A failed folder scan is NOT cached (it
+# used to be, forever) - retried after the backoff, warned once per streak.
+_ATLAS_GATES: dict = {}
 
 
 def _reset_caches() -> None:
@@ -88,6 +93,7 @@ def _reset_caches() -> None:
     _ATLAS_CACHE.clear()
     _INDEX_CACHE.clear()
     _TPL_CACHE.clear()
+    _ATLAS_GATES.clear()
 
 
 def _num(v):
@@ -145,6 +151,9 @@ def _atlas(category):
     except Exception:  # noqa: BLE001 - opencv optional
         _ATLAS_CACHE[category] = out
         return out
+    gate = _ATLAS_GATES.setdefault(category, FailedLoadGate())
+    if not gate.should_attempt():
+        return {}
     try:
         for p in sorted(d.glob("*.png")):
             try:
@@ -156,7 +165,10 @@ def _atlas(category):
             except Exception as exc:  # noqa: BLE001 - skip one bad icon
                 _log.debug("vision_template_match: icon %s skipped: %s", p, exc)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
-        _log.warning("vision_template_match: atlas scan %s failed: %s", category, exc)
+        if gate.record_failure():
+            _log.warning("vision_template_match: atlas scan %s failed: %s", category, exc)
+        return {}
+    gate.record_success()
     _ATLAS_CACHE[category] = out
     return out
 
@@ -174,7 +186,10 @@ def _index(category):
                 out.setdefault(k, stem)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
         _log.debug("vision_template_match: index %s failed: %s", category, exc)
-    _INDEX_CACHE[category] = out
+    # RM-443: memoise only a projection of a LOADED atlas; a failed scan is
+    # not cached, so neither is the empty index built from it.
+    if category in _ATLAS_CACHE:
+        _INDEX_CACHE[category] = out
     return out
 
 
