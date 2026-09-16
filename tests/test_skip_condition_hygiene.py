@@ -48,6 +48,7 @@ import fnmatch
 import functools
 import shutil
 import subprocess
+import operator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -380,8 +381,12 @@ class _Signals:
     untracked: set = field(default_factory=set)
     vanished: set = field(default_factory=set)
     firstparty_import: set = field(default_factory=set)
+    # RM-440: verdicts forced by a single firing arm of the condition, as
+    # "<VERDICT>:<why>". See `_forced_by_arms`.
+    forced: set = field(default_factory=set)
 
     def merge(self, other: "_Signals") -> None:
+        self.forced |= other.forced
         self.unconditional |= other.unconditional
         self.platform |= other.platform
         self.env |= other.env
@@ -419,6 +424,8 @@ class _Signals:
         if self.firstparty_import:
             bits.append("first-party import="
                         + ",".join(sorted(self.firstparty_import)))
+        if self.forced:
+            bits.append("forced=" + ",".join(sorted(self.forced)))
         return "; ".join(bits) or "nothing resolvable"
 
 
@@ -451,8 +458,19 @@ def _classify(sig: _Signals) -> str:
     # including a capability one that happens to be in the same function.
     if sig.unconditional:
         return DEFECT
-    # A capability signal wins: `not SIDECAR.is_dir() or sys.platform != "win32"`
-    # cannot fire on a healthy checkout no matter what else it touches.
+    # RM-440: one firing arm of the condition was convicted ON ITS OWN, or the
+    # condition is true on every host RC runs on. Checked before capability,
+    # because an OR fires when ANY arm does, so a capability in a sibling arm
+    # restricts nothing: `shutil.which("node") is None or not TRACKED.exists()`
+    # skips on a node-bearing runner exactly when the tracked file is broken.
+    if any(f.startswith(DEFECT + ":") for f in sig.forced):
+        return DEFECT
+    if any(f.startswith(ROTTED + ":") for f in sig.forced):
+        return ROTTED
+    # A capability signal wins over the WHOLE-condition signal set:
+    # `not SIDECAR.is_dir() or sys.platform != "win32"` (SIDECAR gitignored)
+    # cannot fire on a healthy checkout no matter what else it touches. The
+    # per-arm rule above has already refused the OR shapes where it could.
     #
     # This precedence is also what keeps the B4 rule below precise, and it is
     # not incidental. tests/test_vision_server_bind_rm150.py:210 gates on
@@ -856,6 +874,157 @@ _PATH_PREDICATES = {"exists", "is_file", "is_dir", "is_symlink", "isfile",
                     "listdir", "iterdir", "open"}
 
 
+# --------------------------------------------------------------------------- #
+# RM-440: host evaluation - is a platform expression actually a question?
+# --------------------------------------------------------------------------- #
+# Naming `os.name` is not the same as depending on it. `os.name in ("nt",
+# "posix")` is true on every host RC is tested on, so a skip gated on it is a
+# disabled test that the platform vocabulary above used to read as CAPABILITY.
+# The fix is to EVALUATE platform expressions under each supported host and
+# credit the platform signal only when the answer differs between them.
+#
+# The hosts are the two RC actually runs its suites on: Windows (Legion) and
+# ubuntu (CI). A condition true on both skips everywhere RC is ever tested,
+# which is the definition of a disabled test here, whatever it would do on a
+# host nobody runs. Only `sys.platform`, `os.name` and `platform.system()` are
+# modelled; `platform.machine` / `platform.release` stay opaque, so they keep
+# their capability credit exactly as before.
+_HOST_PROFILES = (
+    {"sys.platform": "win32", "os.name": "nt", "platform.system": "Windows"},
+    {"sys.platform": "linux", "os.name": "posix", "platform.system": "Linux"},
+)
+_UNKNOWN = object()
+_STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
+_COMPARE_OPS = {
+    ast.Eq: operator.eq, ast.NotEq: operator.ne,
+    ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b,
+    ast.Is: operator.is_, ast.IsNot: operator.is_not,
+}
+
+
+class _Truth:
+    """A BoolOp result whose truthiness is known but whose VALUE is not.
+
+    `X or "a"` is truthy on every host, but its value may be X's, so it must
+    not compare equal to "a". Compare refuses these; `_host_truth` reads them.
+    """
+
+    def __init__(self, value: bool) -> None:
+        self.value = value
+
+    def __bool__(self) -> bool:
+        return self.value
+
+
+_TRUTHY, _FALSY = _Truth(True), _Truth(False)
+
+
+def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
+               host: dict, seen: frozenset = frozenset(), depth: int = 0):
+    """The value of `node` on `host`, or `_UNKNOWN`. Never guesses."""
+    if node is None or depth > _MAX_RESOLUTION_DEPTH:
+        return _UNKNOWN
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        vals = [_host_eval(e, model, scope, host, seen, depth + 1)
+                for e in node.elts]
+        if any(v is _UNKNOWN or isinstance(v, _Truth) for v in vals):
+            return _UNKNOWN
+        return tuple(vals)
+    if isinstance(node, ast.Attribute):
+        return host.get(_dotted(node), _UNKNOWN)
+    if isinstance(node, ast.Call):
+        if node.keywords:
+            return _UNKNOWN
+        if _dotted(node.func) == "platform.system" and not node.args:
+            return host["platform.system"]
+        if (isinstance(node.func, ast.Attribute)
+                and node.func.attr in _STR_METHODS):
+            recv = _host_eval(node.func.value, model, scope, host, seen,
+                              depth + 1)
+            args = [_host_eval(a, model, scope, host, seen, depth + 1)
+                    for a in node.args]
+            if isinstance(recv, str) and not any(
+                    a is _UNKNOWN or isinstance(a, _Truth) for a in args):
+                try:
+                    return getattr(recv, node.func.attr)(*args)
+                except (TypeError, ValueError):
+                    return _UNKNOWN
+        return _UNKNOWN
+    if isinstance(node, ast.Name):
+        # A guarded-import sentinel is a capability question by construction,
+        # even when each branch binds a literal.
+        if node.id in seen or node.id in model.optional_names:
+            return _UNKNOWN
+        bound = model.lookup(node.id, scope)
+        if len(bound) != 1:
+            return _UNKNOWN
+        return _host_eval(bound[0], model, scope, host, seen | {node.id},
+                          depth + 1)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        v = _host_eval(node.operand, model, scope, host, seen, depth + 1)
+        return _UNKNOWN if v is _UNKNOWN else (not v)
+    if isinstance(node, ast.BoolOp):
+        decides = isinstance(node.op, ast.Or)  # truthiness that short-circuits
+        unknown = False
+        for part in node.values:
+            v = _host_eval(part, model, scope, host, seen, depth + 1)
+            if v is _UNKNOWN:
+                unknown = True
+            elif bool(v) is decides:
+                return (_TRUTHY if decides else _FALSY) if unknown else v
+        return _UNKNOWN if unknown else v
+    if isinstance(node, ast.Compare):
+        left = _host_eval(node.left, model, scope, host, seen, depth + 1)
+        for op, comp in zip(node.ops, node.comparators):
+            fn = _COMPARE_OPS.get(type(op))
+            if isinstance(op, (ast.Is, ast.IsNot)) and not (
+                    isinstance(comp, ast.Constant)
+                    and (comp.value is None or isinstance(comp.value, bool))):
+                return _UNKNOWN
+            right = _host_eval(comp, model, scope, host, seen, depth + 1)
+            if (fn is None or left is _UNKNOWN or right is _UNKNOWN
+                    or isinstance(left, _Truth) or isinstance(right, _Truth)):
+                return _UNKNOWN
+            try:
+                if not fn(left, right):
+                    return False
+            except TypeError:
+                return _UNKNOWN
+            left = right
+        return True
+    return _UNKNOWN
+
+
+def _host_values(node, model: _Model, scope: ast.AST) -> list:
+    return [_host_eval(node, model, scope, h) for h in _HOST_PROFILES]
+
+
+def _host_constant(node, model: _Model, scope: ast.AST) -> bool:
+    """True when `node` has one known value on every supported host."""
+    vals = _host_values(node, model, scope)
+    if any(v is _UNKNOWN for v in vals):
+        return False
+    # Values are AST literals, strings and tuples of them, so `==` is plain.
+    first = vals[0]
+    return all(v is first or (not isinstance(v, _Truth)
+                              and not isinstance(first, _Truth)
+                              and v == first) for v in vals[1:])
+
+
+def _host_truth(node, model: _Model, scope: ast.AST) -> bool | None:
+    """The truthiness of `node` when it is the same on every host, else None."""
+    vals = _host_values(node, model, scope)
+    if any(v is _UNKNOWN for v in vals):
+        return None
+    truths = {bool(v) for v in vals}
+    return truths.pop() if len(truths) == 1 else None
+
+
+_HOST_FOLDABLE = (ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Call)
+
+
 class _Ctx:
     """Accumulator plus the set of path expressions already accounted for.
 
@@ -898,6 +1067,12 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
     if node is None:
         return
     sig = ctx.sig
+
+    # RM-440: an expression with one known value on every supported host asks
+    # nothing, so nothing under it may be credited - above all not the platform
+    # signal its `os.name` would otherwise earn.
+    if isinstance(node, _HOST_FOLDABLE) and _host_constant(node, model, scope):
+        return
 
     if isinstance(node, ast.Attribute):
         dotted = _dotted(node)
@@ -1228,6 +1403,103 @@ def _in_catch_everything_handler(model: _Model, node: ast.AST) -> bool:
     return False
 
 
+def _firing_arms(node: ast.AST, fires_when_true: bool, model: _Model,
+                 scope: ast.AST, seen: frozenset = frozenset(),
+                 depth: int = 0) -> list[tuple[ast.AST, bool]]:
+    """Split a condition into arms EACH of which fires the skip on its own.
+
+    `a or b` fires when either is true; `not (a and b)` - the skipUnless and
+    else-branch spelling - fires when either is false (De Morgan). An `and`
+    in firing polarity is ONE arm: its conjuncts restrict each other, so a
+    capability there still gates the tracked half.
+    """
+    if depth > _MAX_RESOLUTION_DEPTH:
+        return [(node, fires_when_true)]
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return _firing_arms(node.operand, not fires_when_true, model, scope,
+                            seen, depth + 1)
+    splits = ast.Or if fires_when_true else ast.And
+    if isinstance(node, ast.BoolOp) and isinstance(node.op, splits):
+        out: list[tuple[ast.AST, bool]] = []
+        for part in node.values:
+            out.extend(_firing_arms(part, fires_when_true, model, scope, seen,
+                                    depth + 1))
+        return out
+    if (isinstance(node, ast.Name) and node.id not in seen
+            and node.id not in model.optional_names):
+        bound = model.lookup(node.id, scope)
+        if len(bound) == 1 and isinstance(bound[0], (ast.BoolOp, ast.UnaryOp,
+                                                     ast.Name)):
+            return _firing_arms(bound[0], fires_when_true, model, scope,
+                                seen | {node.id}, depth + 1)
+    return [(node, fires_when_true)]
+
+
+def _forced_by_arms(tests: list[tuple[ast.AST, bool]], model: _Model,
+                    scope: ast.AST, broad: bool,
+                    extra: list[ast.AST] = ()) -> set[str]:
+    """RM-440: convict a site on any single firing arm.
+
+    `tests` are the conditions that must ALL hold for the skip to fire, each
+    with the truth value that fires it; `extra` is surrounding context that is
+    not a boolean test (an except clause, a try body). Two rules:
+
+    * the conjunction is true on every supported host -> DEFECT, constant-true;
+    * an arm, together with the OTHER tests and the context, classifies DEFECT
+      or ROTTED on its own -> that verdict. A capability in a sibling OR arm
+      no longer launders it.
+
+    An arm that is constant-false on every host can never fire and is dropped;
+    a constant-true arm contributes no signal and leaves the others to decide.
+    """
+    forced: set[str] = set()
+    if not tests:
+        return forced
+    truths = []
+    for test, fires in tests:
+        t = _host_truth(test, model, scope)
+        truths.append(None if t is None else (t is fires))
+    if any(t is False for t in truths):
+        return forced
+    if all(t is True for t in truths) and not extra:
+        forced.add(DEFECT + ":constant-true")
+        return forced
+    for i, (test, fires) in enumerate(tests):
+        others = [o for j, (o, _) in enumerate(tests)
+                  if j != i and truths[j] is not True]
+        for arm, arm_fires in _firing_arms(test, fires, model, scope):
+            t = _host_truth(arm, model, scope)
+            if t is not None and t is not arm_fires:
+                continue  # this arm never fires on a supported host
+            if t is not None and not others and not extra:
+                forced.add(DEFECT + ":constant-true")
+                continue
+            ctx = _Ctx(broad)
+            for n in ([] if t is not None else [arm]) + others + list(extra):
+                _collect(n, model, scope, ctx, frozenset(), 0)
+            verdict = _classify(ctx.sig)
+            if verdict in (DEFECT, ROTTED):
+                forced.add(verdict + ":firing-arm")
+    return forced
+
+
+def _polar_context(model: _Model, node: ast.AST) -> list[tuple[ast.AST, bool]]:
+    """Enclosing if / while tests with the truth value that reaches `node`."""
+    out: list[tuple[ast.AST, bool]] = []
+    cur: ast.AST | None = node
+    parent = model.parent.get(cur)
+    while parent is not None and not isinstance(parent, _SCOPES):
+        if isinstance(parent, ast.If):
+            if any(s is cur for s in parent.body):
+                out.append((parent.test, True))
+            elif any(s is cur for s in parent.orelse):
+                out.append((parent.test, False))
+        elif isinstance(parent, ast.While) and any(s is cur for s in parent.body):
+            out.append((parent.test, True))
+        cur, parent = parent, model.parent.get(parent)
+    return out
+
+
 def _signals_for(model: _Model, site: _Site) -> _Signals:
     scope = model.scope_of(site.node)
     broad = _in_catch_everything_handler(model, site.node)
@@ -1252,12 +1524,19 @@ def _signals_for(model: _Model, site: _Site) -> _Signals:
     if site.condition is not None:
         ctx = _Ctx(broad)
         _collect(site.condition, model, scope, ctx, frozenset(), 0)
+        fires = site.kind.rsplit(".", 1)[-1] != "skipUnless"
+        ctx.sig.forced |= _forced_by_arms([(site.condition, fires)], model,
+                                          scope, broad)
         return ctx.sig
 
     # Bare skip: nearest guards first, then widen to the enclosing function.
     near = _Ctx(broad)
-    for cond in _context_conditions(model, site.node):
+    context = _context_conditions(model, site.node)
+    for cond in context:
         _collect(cond, model, scope, near, frozenset(), 0)
+    polar = _polar_context(model, site.node)
+    extra = [c for c in context if not any(c is t for t, _ in polar)]
+    near.sig.forced |= _forced_by_arms(polar, model, scope, broad, extra)
     if _classify(near.sig) != UNRESOLVED:
         return near.sig
     if isinstance(scope, _CALLABLE_SCOPES):
@@ -1283,6 +1562,28 @@ class _Finding:
     verdict: str
     evidence: str
     gates_on: frozenset
+    forced: frozenset = frozenset()
+    # False when the condition folds to a known value on every host, or names
+    # a symbol bound more than once. `_REVIEWED_UNRESOLVED` is keyed on the
+    # condition TEXT, so without this a reviewed symbol re-bound to a literal
+    # keeps its exemption (RM-440).
+    condition_pinned: bool = True
+
+
+def _condition_pinned(model: _Model, site: _Site) -> bool:
+    cond = site.condition
+    if cond is None:
+        return True
+    scope = model.scope_of(site.node)
+    if any(v is not _UNKNOWN for v in _host_values(cond, model, scope)):
+        return False
+    for n in ast.walk(cond):
+        if not isinstance(n, ast.Name):
+            continue
+        bound = model.lookup(n.id, scope)
+        if len(bound) > 1 or (bound and isinstance(bound[0], ast.Constant)):
+            return False
+    return True
 
 
 def scan_source(rel: str, source: str) -> list[_Finding]:
@@ -1295,6 +1596,7 @@ def scan_source(rel: str, source: str) -> list[_Finding]:
         findings.append(_Finding(
             site, _classify(sig), sig.evidence(),
             frozenset(sig.tracked | sig.firstparty_import | sig.vanished),
+            frozenset(sig.forced), _condition_pinned(model, site),
         ))
     return findings
 
@@ -1365,9 +1667,13 @@ def _condition_source(finding: _Finding) -> str | None:
 
 
 def _excused(finding: _Finding) -> bool:
-    if (finding.verdict == UNRESOLVED
+    if (finding.verdict == UNRESOLVED and finding.condition_pinned
             and (finding.site.rel, _condition_source(finding)) in _REVIEWED_UNRESOLVED):
         return True
+    # A skip that fires on every supported host is a disabled test; no
+    # artifact exemption was ever reviewed for that.
+    if DEFECT + ":constant-true" in finding.forced:
+        return False
     entry = _ALLOWLIST.get(finding.site.rel)
     if entry is None or not finding.gates_on:
         return False
@@ -2140,6 +2446,8 @@ def test_reviewed_unresolved_entries_each_match_exactly_one_site():
         assert len(hits) == 1, f"{rel}: {cond!r} matches {len(hits)} skip sites, not 1"
         assert hits[0].verdict == UNRESOLVED, (
             f"{rel}: {cond!r} now classifies {hits[0].verdict} - drop or re-review the entry")
+        assert hits[0].condition_pinned, (
+            f"{rel}: {cond!r} now folds to a constant or names a re-bound symbol")
 
 
 _CODEC_LOOPHOLE_PROBES = {
@@ -2192,6 +2500,286 @@ def test_codec_skips_outside_the_reviewed_table_are_rejected(name):
         assert not _excused(f), f"{name}: excused by the reviewed table"
     if name == "tracked_path_or_codec":
         assert {f.verdict for f in findings} == {DEFECT}
+
+
+# --- RM-440: constant-true conditions and the OR-laundering loophole -------- #
+# Each probe is paired with a control in `_RM440_CONTROLS` that differs ONLY in
+# the loophole, so an over-broad fix fails the control and an absent fix fails
+# the probe. The supported hosts are the two RC runs on: Windows (Legion) and
+# Linux (CI). A condition true on BOTH skips everywhere RC is ever tested.
+_RM440_PROBES = {
+    # control: platform_equality_differs_by_host
+    "os_name_in_every_supported_value": ('''
+import os
+import pytest
+@pytest.mark.skipif(os.name in ("nt", "posix"), reason="host")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: skipunless_single_host
+    "sys_platform_in_every_supported_value": ('''
+import sys
+import pytest
+@pytest.mark.skipif(sys.platform in ("win32", "linux"), reason="host")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: platform_equality_differs_by_host
+    "platform_compare_or_truthy_literal": ('''
+import os
+import pytest
+@pytest.mark.skipif(os.name == "nt" or 1, reason="host")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: sys_platform_startswith_one_host
+    "constant_true_hidden_behind_a_module_binding": ('''
+import sys
+import pytest
+_ANY = sys.platform.startswith(("win", "linux"))
+@pytest.mark.skipif(_ANY, reason="host")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: skipunless_single_host
+    "skipunless_on_a_host_neither_runner_is": ('''
+import sys
+import unittest
+class T(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "sunos5", "solaris only")
+    def test_thing(self):
+        self.assertTrue(True)
+''', DEFECT),
+    # control: capability_or_capability
+    "capability_or_constant_platform": ('''
+import os
+import shutil
+import pytest
+@pytest.mark.skipif(shutil.which("node") is None or os.name in ("nt", "posix"),
+                    reason="node")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: bare_skip_under_a_host_specific_if
+    "bare_skip_under_a_constant_true_platform_if": ('''
+import os
+import pytest
+def test_thing():
+    if os.name in ("nt", "posix"):
+        pytest.skip("host")
+    assert True
+''', DEFECT),
+    # control: platform_equality_differs_by_host. A constant conjunct
+    # restricts nothing, so it must not supply the capability signal.
+    "constant_platform_conjunct_launders_an_opaque_gate": ('''
+import os
+import pytest
+def _flag():
+    return int("1")
+@pytest.mark.skipif(os.name in ("nt", "posix") and _flag(), reason="opaque")
+def test_thing():
+    assert True
+''', UNRESOLVED),
+    # control: capability_or_gitignored_artifact
+    "capability_or_tracked_file": ('''
+import shutil
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+@pytest.mark.skipif(shutil.which("node") is None
+                    or not (REPO / "ops" / "rc_config.json").is_file(),
+                    reason="node or config")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: capability_or_capability
+    "platform_or_tracked_file": ('''
+import sys
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+@pytest.mark.skipif(sys.platform != "win32"
+                    or not (REPO / "data" / "daemon_slayer" / "current.txt").exists(),
+                    reason="win32 or pointer")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: bare_skip_env_or_gitignored_artifact
+    "bare_skip_env_or_tracked_file": ('''
+import os
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    p = REPO / "ops" / "rc_config.json"
+    if not os.environ.get("RC_LIVE") or not p.is_file():
+        pytest.skip("opt-in or config absent")
+    assert p.read_text()
+''', DEFECT),
+    # control: skipunless_capability_and_gitignored_artifact (De Morgan: the
+    # skip fires when EITHER arm is false, so the tracked arm fires alone)
+    "skipunless_capability_and_tracked_file": ('''
+import os
+import shutil
+import unittest
+class T(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node")
+                         and os.path.exists("web/legacy_index.html"), "absent")
+    def test_thing(self):
+        self.assertTrue(True)
+''', DEFECT),
+}
+
+_RM440_CONTROLS = {
+    "platform_equality_differs_by_host": '''
+import os
+import pytest
+@pytest.mark.skipif(os.name != "nt", reason="host")
+def test_thing():
+    assert True
+''',
+    "sys_platform_startswith_one_host": '''
+import sys
+import pytest
+_WIN = sys.platform.startswith("win")
+@pytest.mark.skipif(_WIN, reason="host")
+def test_thing():
+    assert True
+''',
+    "skipunless_single_host": '''
+import sys
+import unittest
+class T(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "win32 only")
+    def test_thing(self):
+        self.assertTrue(True)
+''',
+    "capability_or_capability": '''
+import shutil
+import sys
+import pytest
+@pytest.mark.skipif(shutil.which("node") is None or sys.platform != "win32",
+                    reason="node")
+def test_thing():
+    assert True
+''',
+    "bare_skip_under_a_host_specific_if": '''
+import os
+import pytest
+def test_thing():
+    if os.name == "nt":
+        pytest.skip("host")
+    assert True
+''',
+    "capability_or_gitignored_artifact": '''
+import shutil
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+@pytest.mark.skipif(shutil.which("node") is None
+                    or not (REPO / "data" / "rewind_history.db").is_file(),
+                    reason="node or corpus")
+def test_thing():
+    assert True
+''',
+    "bare_skip_env_or_gitignored_artifact": '''
+import os
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    p = REPO / "data" / "rewind_history.db"
+    if not os.environ.get("RC_LIVE") or not p.is_file():
+        pytest.skip("opt-in or corpus absent")
+    assert p.stat()
+''',
+    "skipunless_capability_and_gitignored_artifact": '''
+import os
+import shutil
+import unittest
+class T(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("node")
+                         and os.path.exists("data/rewind_history.db"), "absent")
+    def test_thing(self):
+        self.assertTrue(True)
+''',
+    # A guarded-import sentinel has ONE binding per branch but is a capability
+    # question, so constant evaluation must never read through it.
+    "optional_import_sentinel_compared_to_none": '''
+import pytest
+try:
+    import numpy as np
+except ImportError:
+    np = None
+@pytest.mark.skipif(np is None, reason="numpy absent")
+def test_thing():
+    assert np
+''',
+}
+
+
+@pytest.mark.parametrize("name", sorted(_RM440_PROBES))
+def test_rm440_loophole_probe_is_rejected(name):
+    src, expected = _RM440_PROBES[name]
+    findings = scan_source("tests/test_mutant.py", src)
+    assert findings, f"{name}: no skip site found at all"
+    assert [f.verdict for f in findings] == [expected], (
+        f"{name}: expected {expected}, got "
+        + "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
+    )
+
+
+@pytest.mark.parametrize("name", sorted(_RM440_CONTROLS))
+def test_rm440_control_differing_only_in_the_loophole_stays_capability(name):
+    findings = scan_source("tests/test_mutant.py", _RM440_CONTROLS[name])
+    assert findings, f"{name}: no skip site found at all"
+    bad = [f"{f.verdict}:{f.evidence}" for f in findings if f.verdict != CAPABILITY]
+    assert not bad, f"{name}: legitimate capability skip flagged - {bad}"
+
+
+def test_rm440_rm150_measured_false_positive_is_still_accepted():
+    """The precedence comment in `_classify` names this case; it must survive.
+
+    The real module no longer carries the skip, so the control is its recorded
+    shape: a deleted repo-root file named in the reason, a live endpoint as the
+    premise, a bare skip whose own condition resolves to nothing.
+    """
+    src = _CAPABILITY_CONTROLS["vanished_path_but_the_premise_is_a_live_endpoint"]
+    findings = scan_source("tests/test_vision_server_bind_rm150.py", src)
+    assert [f.verdict for f in findings] == [CAPABILITY], (
+        "; ".join(f"{f.verdict}:{f.evidence}" for f in findings))
+
+
+_RM440_REVIEWED_DEF = (
+    "FS_LISTS_HIGH_SURROGATE_NAME = "
+    "filesystem_can_list_note_name(HIGH_SURROGATE_NOTE_NAME)"
+)
+
+
+def _reviewed_site_flags(src: str) -> bool:
+    rel, cond = next(iter(_REVIEWED_UNRESOLVED))
+    hits = [f for f in scan_source(rel, src) if _condition_source(f) == cond]
+    assert len(hits) == 1, f"{cond!r} matched {len(hits)} sites"
+    f = hits[0]
+    return f.verdict != CAPABILITY and not _excused(f)
+
+
+@pytest.mark.parametrize("variant", ["replaced_by_false", "replaced_by_true",
+                                     "rebound_after_definition"])
+def test_rm440_reviewed_symbol_redefined_as_a_constant_is_refused(variant):
+    rel = next(iter(_REVIEWED_UNRESOLVED))[0]
+    clean = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+    assert clean.count(_RM440_REVIEWED_DEF) == 1, "reviewed definition moved"
+    # Control first, in the same test: the unmodified module is excused, so a
+    # guard that refused everything could not pass the probe below.
+    assert not _reviewed_site_flags(clean)
+    new = {
+        "replaced_by_false": "FS_LISTS_HIGH_SURROGATE_NAME = False",
+        "replaced_by_true": "FS_LISTS_HIGH_SURROGATE_NAME = True",
+        "rebound_after_definition": (_RM440_REVIEWED_DEF
+                                     + "\nFS_LISTS_HIGH_SURROGATE_NAME = False"),
+    }[variant]
+    assert _reviewed_site_flags(clean.replace(_RM440_REVIEWED_DEF, new))
 
 
 def test_known_real_sites_classify_as_documented():
