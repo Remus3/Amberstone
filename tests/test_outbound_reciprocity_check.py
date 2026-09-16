@@ -283,6 +283,103 @@ def test_root_present_but_inbox_absent_is_unknown(tmp_path):
     assert rep.notes[0].per_slot[0] == orc.STATUS_UNKNOWN
 
 
+# RM-438: the inbox-not-a-directory cases. These are a BEHAVIOUR PIN, not a
+# fail-first test: they pass with and without the former `is_dir()` guard in
+# `_scan`, which was removed because the `except OSError` around `iterdir()`
+# already returns None for every one of them (absent -> FileNotFoundError;
+# file or link-to-file -> NotADirectoryError, WinError 267 / ENOTDIR; dangling
+# link -> FileNotFoundError or NotADirectoryError; link loop -> OSError/ELOOP).
+# What makes them load-bearing is the except path: a mutation that turns that
+# `return None` into an empty dict fails every non-directory arm below.
+
+_NON_DIR_KINDS = (
+    "absent",
+    "plain_file",
+    "dangling_file_link",
+    "dangling_dir_link",
+    "file_link",
+    "link_loop",
+)
+
+
+def _symlink_or_skip(link: Path, target: Path, is_dir: bool) -> None:
+    try:
+        os.symlink(target, link, target_is_directory=is_dir)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable on this host: {exc}")
+
+
+def _make_inbox_kind(tmp_path: Path, kind: str) -> Path:
+    """Build one inbox-shaped path of `kind` under tmp_path and return it."""
+    inbox = tmp_path / "root" / orc.INBOX_DIRNAME
+    inbox.parent.mkdir(parents=True)
+    if kind == "absent":
+        pass
+    elif kind == "plain_file":
+        _write(inbox, "not a directory\n")
+    elif kind == "dangling_file_link":
+        gone = _write(tmp_path / "gone.txt", "x\n")
+        _symlink_or_skip(inbox, gone, is_dir=False)
+        gone.unlink()
+    elif kind == "dangling_dir_link":
+        gone = tmp_path / "gone-dir"
+        gone.mkdir()
+        _symlink_or_skip(inbox, gone, is_dir=True)
+        gone.rmdir()
+    elif kind == "file_link":
+        target = _write(tmp_path / "target.txt", "x\n")
+        _symlink_or_skip(inbox, target, is_dir=False)
+    elif kind == "link_loop":
+        other = tmp_path / "loop-b"
+        _symlink_or_skip(inbox, other, is_dir=True)
+        _symlink_or_skip(other, inbox, is_dir=True)
+    elif kind == "real_dir":
+        _note(inbox, "2026-09-16-0900", SELF, "visible", "# From ZZ\n")
+        _write(inbox / "_draft.md", "# draft\n")
+    elif kind == "dir_link":
+        real = tmp_path / "real-inbox"
+        _note(real, "2026-09-16-0900", SELF, "visible", "# From ZZ\n")
+        _write(real / "_draft.md", "# draft\n")
+        _symlink_or_skip(inbox, real, is_dir=True)
+    else:  # pragma: no cover - a typo in the parametrisation
+        raise AssertionError(kind)
+    return inbox
+
+
+@pytest.mark.parametrize("kind", _NON_DIR_KINDS)
+def test_non_directory_inbox_scans_as_none(tmp_path, kind):
+    """None, never {}: an empty dict would score every note ABSENT against a
+    slot that was never readable, manufacturing undelivered rows."""
+    inbox = _make_inbox_kind(tmp_path, kind)
+    assert orc.scan_visible(inbox) is None
+    assert orc.scan_staged(inbox) is None
+
+
+@pytest.mark.parametrize("kind", _NON_DIR_KINDS)
+def test_non_directory_inbox_is_an_unknown_slot(tmp_path, kind):
+    inbox = _make_inbox_kind(tmp_path, kind)
+    local, _ = _make_tree(tmp_path / "t", 0)
+    _note(local / orc.INBOX_DIRNAME, "2026-09-16-0900", SELF, "probe", "# From ZZ\n")
+
+    rep = orc.check(local, roots=[inbox.parent], self_code=SELF)
+
+    assert rep.slots_unknown == 1
+    assert rep.slots_readable == 0
+    assert rep.notes[0].per_slot[0] == orc.STATUS_UNKNOWN
+    assert rep.undelivered_count == 0
+
+
+@pytest.mark.parametrize("kind", ("real_dir", "dir_link"))
+def test_directory_inbox_still_lists_both_halves(tmp_path, kind):
+    """Positive control: without it, a _scan that returned None for EVERYTHING
+    would pass both tests above."""
+    inbox = _make_inbox_kind(tmp_path, kind)
+    visible = orc.scan_visible(inbox)
+    staged = orc.scan_staged(inbox)
+    assert visible is not None and list(visible) == ["2026-09-16-0900-from-ZZ-visible.md"]
+    assert staged is not None and list(staged) == ["_draft.md"]
+
+
 def test_zero_readable_slots_is_unknown_not_undelivered(tmp_path):
     """With nothing readable to compare against, a stranded note and a
     perfectly delivered one are indistinguishable. Saying UNDELIVERED here

@@ -292,9 +292,13 @@ def _scan(inbox: Path, staging: bool) -> Optional[dict]:
 
     `staging` selects WHICH half: the visible entries a recipient's watcher will
     actually report (the delivery surface), or the `_`-prefixed drafts.
+
+    There is deliberately no separate `is_dir()` pre-check (RM-438): every
+    non-directory inbox - absent, a plain file, a dangling or file-targeting
+    link, a link loop - makes `iterdir()` raise an OSError subclass, and the
+    except below turns that into None. A pre-check graded behaviour-equivalent
+    to it, so it is not coming back as decoration.
     """
-    if not inbox.is_dir():
-        return None
     out: dict = {}
     try:
         children = sorted(inbox.iterdir())
