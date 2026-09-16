@@ -405,7 +405,8 @@ class _Signals:
     def capability(self) -> bool:
         return (self.platform or self.env or self.binary
                 or self.optional_import or self.network
-                or self.tree_shape or self.external_tree)
+                or self.tree_shape or self.external_tree
+                or any(f.startswith(CAPABILITY + ":") for f in self.forced))
 
     def evidence(self) -> str:
         bits = [n for n in ("unconditional", "platform", "env", "binary",
@@ -893,13 +894,33 @@ _HOST_PROFILES = (
     {"sys.platform": "win32", "os.name": "nt", "platform.system": "Windows"},
     {"sys.platform": "linux", "os.name": "posix", "platform.system": "Linux"},
 )
+# RM-449: hosts nobody runs RC's suites on. They NEVER decide constant-true -
+# that stays a question about the runners above, so `sys.platform in ("win32",
+# "linux")` is refused although it is false on darwin. They are consulted only
+# for a skip that cannot fire on either runner: one that fires here instead is
+# a legitimate off-runner platform gate (`sys.platform == "darwin"`), and one
+# that fires on no modelled host at all keeps its UNRESOLVED verdict.
+_OFF_RUNNER_PROFILES = (
+    {"sys.platform": "darwin", "os.name": "posix", "platform.system": "Darwin"},
+)
 _UNKNOWN = object()
 _STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
+# RM-449: builtins that only re-shape a platform value. `len(sys.platform) > 0`
+# and `str(os.name) != "java"` are as constant as the bare reads they wrap.
+_WRAPPER_BUILTINS = {"len": len, "str": str}
 _COMPARE_OPS = {
     ast.Eq: operator.eq, ast.NotEq: operator.ne,
     ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b,
     ast.Is: operator.is_, ast.IsNot: operator.is_not,
+    ast.Lt: operator.lt, ast.LtE: operator.le,
+    ast.Gt: operator.gt, ast.GtE: operator.ge,
 }
+
+
+def _is_unbound_builtin(name: str, model: _Model, scope: ast.AST) -> bool:
+    """True when `name` can only be the builtin - nothing in the module binds it."""
+    return (name not in model.imports and not model.lookup(name, scope)
+            and model.lookup_func(name, scope) is None)
 
 
 class _Truth:
@@ -939,6 +960,13 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
             return _UNKNOWN
         if _dotted(node.func) == "platform.system" and not node.args:
             return host["platform.system"]
+        if (isinstance(node.func, ast.Name)
+                and node.func.id in _WRAPPER_BUILTINS and len(node.args) == 1
+                and _is_unbound_builtin(node.func.id, model, scope)):
+            arg = _host_eval(node.args[0], model, scope, host, seen, depth + 1)
+            if isinstance(arg, (str, tuple)):
+                return _WRAPPER_BUILTINS[node.func.id](arg)
+            return _UNKNOWN
         if (isinstance(node.func, ast.Attribute)
                 and node.func.attr in _STR_METHODS):
             recv = _host_eval(node.func.value, model, scope, host, seen,
@@ -962,6 +990,26 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
             return _UNKNOWN
         return _host_eval(bound[0], model, scope, host, seen | {node.id},
                           depth + 1)
+    if isinstance(node, ast.Subscript):
+        recv = _host_eval(node.value, model, scope, host, seen, depth + 1)
+        if not isinstance(recv, (str, tuple)):
+            return _UNKNOWN
+        sl = node.slice
+        if isinstance(sl, ast.Slice):
+            parts = [None if p is None
+                     else _host_eval(p, model, scope, host, seen, depth + 1)
+                     for p in (sl.lower, sl.upper, sl.step)]
+            if not all(p is None or (type(p) is int) for p in parts):
+                return _UNKNOWN
+            key = slice(*parts)
+        else:
+            key = _host_eval(sl, model, scope, host, seen, depth + 1)
+            if type(key) is not int:
+                return _UNKNOWN
+        try:
+            return recv[key]
+        except (IndexError, ValueError):
+            return _UNKNOWN
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         v = _host_eval(node.operand, model, scope, host, seen, depth + 1)
         return _UNKNOWN if v is _UNKNOWN else (not v)
@@ -1022,7 +1070,24 @@ def _host_truth(node, model: _Model, scope: ast.AST) -> bool | None:
     return truths.pop() if len(truths) == 1 else None
 
 
-_HOST_FOLDABLE = (ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Call)
+def _can_fire_off_runner(tests: list[tuple[ast.AST, bool]], model: _Model,
+                         scope: ast.AST) -> bool:
+    """RM-449: could the conjunction fire on a host from `_OFF_RUNNER_PROFILES`?
+
+    Only asked of a skip already known NEVER to fire on a runner, so it cannot
+    disable a test anywhere RC is tested whatever the answer. An unknown value
+    counts as "could": the runner values were known and differ from this host's
+    only through the platform reads, so the gate is a platform question.
+    """
+    for host in _OFF_RUNNER_PROFILES:
+        if all(v is _UNKNOWN or bool(v) is fires
+               for v, fires in ((_host_eval(t, model, scope, host), f)
+                                for t, f in tests)):
+            return True
+    return False
+
+
+_HOST_FOLDABLE = (ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Call, ast.Subscript)
 
 
 class _Ctx:
@@ -1460,6 +1525,12 @@ def _forced_by_arms(tests: list[tuple[ast.AST, bool]], model: _Model,
         t = _host_truth(test, model, scope)
         truths.append(None if t is None else (t is fires))
     if any(t is False for t in truths):
+        # Never fires on a runner. RM-449: a gate that fires on an off-runner
+        # host instead is a platform gate, and gets that verdict here rather
+        # than falling through to UNRESOLVED (or, for a bare skip, to a
+        # function-wide scan that reads the test BODY as the gate).
+        if _can_fire_off_runner(tests, model, scope):
+            forced.add(CAPABILITY + ":off-runner-platform-gate")
         return forced
     if all(t is True for t in truths) and not extra:
         forced.add(DEFECT + ":constant-true")
@@ -2835,3 +2906,246 @@ def test_known_real_sites_classify_as_documented():
     stack = by_module.get(
         "agents/daemon_slayer/tests/test_stack_ramp_schema_126.py", [])
     assert not stack, f"BurstSkipTests misread as a skip site: {stack}"
+
+
+# --- RM-449: residuals of RM-440 -------------------------------------------- #
+def _verdicts(src: str) -> list[str]:
+    findings = scan_source("tests/test_mutant.py", src)
+    assert findings, "no skip site found at all"
+    return [f.verdict for f in findings]
+
+
+# (1) A skip that cannot fire on either runner but does fire on a host nobody
+# runs is a platform gate, not an unresolvable one. Each entry: source and the
+# verdict it must get. The DEFECT and UNRESOLVED rows are the controls that
+# keep the off-runner profile from loosening the runner-based constant-true
+# rule: a condition that fires on BOTH runners stays refused however it reads
+# on darwin, and one that fires on no modelled host at all stays unresolved.
+_RM449_OFF_RUNNER = {
+    "skipif_darwin_only": ('''
+import sys
+import pytest
+@pytest.mark.skipif(sys.platform == "darwin", reason="darwin only")
+def test_thing():
+    assert True
+''', CAPABILITY),
+    "skipif_platform_system_neither_runner": ('''
+import platform
+import pytest
+@pytest.mark.skipif(platform.system().lower() not in ("windows", "linux"),
+                    reason="runners only")
+def test_thing():
+    assert True
+''', CAPABILITY),
+    # Without a verdict at the bare-skip site the scan widens to the whole
+    # function, reads the tracked config the body opens, and calls it DEFECT.
+    "bare_skip_under_a_darwin_if_with_a_tracked_body": ('''
+import sys
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+def test_thing():
+    if sys.platform == "darwin":
+        pytest.skip("darwin")
+    assert (REPO / "ops" / "rc_config.json").read_text()
+''', CAPABILITY),
+    "darwin_and_opaque_flag": ('''
+import sys
+import pytest
+def _flag():
+    return int("1")
+@pytest.mark.skipif(sys.platform == "darwin" and _flag(), reason="darwin")
+def test_thing():
+    assert True
+''', CAPABILITY),
+    # Fires when FALSE, and darwin leaves the value unknown: an unknown must
+    # read as "could fire" in either polarity, not as a truthy object.
+    "skipunless_not_darwin_or_opaque_flag": ('''
+import sys
+import unittest
+def _flag():
+    return int("1")
+class T(unittest.TestCase):
+    @unittest.skipUnless(sys.platform != "darwin" or _flag(), "not darwin")
+    def test_thing(self):
+        self.assertTrue(True)
+''', CAPABILITY),
+    # control: fires on both runners, so darwin being different saves nothing.
+    "skipunless_darwin_only": ('''
+import sys
+import unittest
+class T(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "darwin", "darwin only")
+    def test_thing(self):
+        self.assertTrue(True)
+''', DEFECT),
+    # control: true on every modelled host.
+    "platform_system_in_all_three": ('''
+import platform
+import pytest
+@pytest.mark.skipif(platform.system().lower() in ("windows", "linux", "darwin"),
+                    reason="host")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: a 3-host rule would call this CAPABILITY, because it is false on
+    # darwin. It fires on both runners, so it is a disabled test.
+    "runner_constant_true_but_false_on_darwin": ('''
+import sys
+import pytest
+@pytest.mark.skipif(sys.platform.startswith(("win", "linux")), reason="host")
+def test_thing():
+    assert True
+''', DEFECT),
+    # control: a runner-constant conjunct must still not supply a capability.
+    "runner_constant_conjunct_false_on_darwin_launders_nothing": ('''
+import sys
+import pytest
+def _flag():
+    return int("1")
+@pytest.mark.skipif(sys.platform in ("win32", "linux") and _flag(), reason="x")
+def test_thing():
+    assert True
+''', UNRESOLVED),
+    # control: fires on no modelled host - a dead gate, still not judged.
+    "skipif_on_a_host_nobody_models": ('''
+import sys
+import pytest
+@pytest.mark.skipif(sys.platform == "sunos5", reason="solaris only")
+def test_thing():
+    assert True
+''', UNRESOLVED),
+    # control: the darwin arm is dropped, the tracked arm convicts on its own.
+    "darwin_or_tracked_file": ('''
+import sys
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+@pytest.mark.skipif(sys.platform == "darwin"
+                    or not (REPO / "ops" / "rc_config.json").is_file(),
+                    reason="darwin or config")
+def test_thing():
+    assert True
+''', DEFECT),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_RM449_OFF_RUNNER))
+def test_rm449_off_runner_platform_gates_get_a_verdict(name):
+    src, expected = _RM449_OFF_RUNNER[name]
+    assert _verdicts(src) == [expected], name
+
+
+# (2) The constant-true refusal in `_excused` must beat an artifact exemption.
+_RM449_ALLOWLISTED_POINTER = (
+    '(_RM449_R / "data" / "daemon_slayer" / "current.txt").exists()')
+
+
+def _rm449_allowlisted_injection(condition: str) -> str:
+    return f'''
+
+import sys
+from pathlib import Path as _RM449_Path
+_RM449_R = _RM449_Path(__file__).resolve().parent.parent
+@pytest.mark.skipif({condition}, reason="pointer")
+def test_rm449_injected():
+    assert True
+'''
+
+
+def test_rm449_constant_true_skip_is_not_excused_by_the_artifact_allowlist():
+    rel = "tests/test_ds_ability_data_status_rm95.py"
+    claimed = _ALLOWLIST[rel][0]
+    clean = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+
+    def injected(condition):
+        want = ast.unparse(ast.parse(condition, mode="eval").body)
+        src = clean + _rm449_allowlisted_injection(condition)
+        found = [f for f in scan_source(rel, src) if _condition_source(f) == want]
+        assert len(found) == 1, [f.site.label for f in found]
+        return found[0]
+
+    # Control: the same pointer without the constant-true wrapper IS excused,
+    # so the allowlist genuinely reaches this site and only the refusal below
+    # can be what keeps the probe out.
+    control = injected(f"not {_RM449_ALLOWLISTED_POINTER}")
+    assert control.verdict == DEFECT and control.gates_on == claimed
+    assert _excused(control)
+
+    # `sys.platform` is truthy on every runner, so this skips everywhere RC is
+    # tested - yet it gates on exactly the allowlisted artifact.
+    probe = injected(f"sys.platform or not {_RM449_ALLOWLISTED_POINTER}")
+    assert DEFECT + ":constant-true" in probe.forced
+    assert probe.gates_on and probe.gates_on <= claimed
+    assert not _excused(probe)
+
+
+# (3) Wrapped platform reads. Each probe is always true on both runners; its
+# control differs only in the literal and genuinely differs per host.
+_RM449_WRAPPED = {
+    "len_of_sys_platform": (
+        "len(sys.platform) > 0", "len(os.name) == 2"),
+    "slice_of_sys_platform": (
+        'sys.platform[:3] != "xyz"', 'sys.platform[:3] == "win"'),
+    "index_of_os_name": (
+        'os.name[0] in ("n", "p")', 'os.name[0] == "n"'),
+    "str_of_os_name": (
+        'str(os.name) != "java"', 'str(os.name) == "nt"'),
+}
+
+
+def _rm449_wrapped_source(condition: str, prelude: str = "") -> str:
+    return f'''
+import os
+import sys
+import pytest
+{prelude}
+@pytest.mark.skipif({condition}, reason="host")
+def test_thing():
+    assert True
+'''
+
+
+@pytest.mark.parametrize("name", sorted(_RM449_WRAPPED))
+def test_rm449_wrapped_constant_true_platform_check_is_refused(name):
+    probe, _ = _RM449_WRAPPED[name]
+    findings = scan_source("tests/test_mutant.py", _rm449_wrapped_source(probe))
+    assert [f.verdict for f in findings] == [DEFECT], name
+    assert all(DEFECT + ":constant-true" in f.forced for f in findings)
+
+
+@pytest.mark.parametrize("name", sorted(_RM449_WRAPPED))
+def test_rm449_wrapped_check_that_differs_by_host_stays_capability(name):
+    _, control = _RM449_WRAPPED[name]
+    assert _verdicts(_rm449_wrapped_source(control)) == [CAPABILITY], name
+
+
+def test_rm449_constant_subscript_disjunct_supplies_no_capability():
+    """`os.name[:0]` is "" on every host: it asks nothing, so it credits nothing.
+
+    The control differs only in the slice bounds and genuinely varies by host.
+    """
+    prelude = 'def _flag():\n    return int("1")\n'
+    assert _verdicts(_rm449_wrapped_source(
+        "os.name[:0] or _flag()", prelude)) == [UNRESOLVED]
+    assert _verdicts(_rm449_wrapped_source(
+        'os.name[1:2] == "t" or _flag()', prelude)) == [CAPABILITY]
+
+
+@pytest.mark.parametrize("builtin", ["len", "str"])
+def test_rm449_shadowed_builtin_is_not_folded(builtin):
+    """A module-bound `len` / `str` is not the builtin; never guess its value.
+
+    Each shadow makes the probe GENUINELY differ by host, so CAPABILITY is the
+    correct verdict and folding it as the builtin would be a false DEFECT. The
+    unshadowed text is asserted DEFECT alongside, so the pair cannot pass by
+    the fold being absent altogether.
+    """
+    probe, prelude = {
+        "len": ("len(sys.platform) > 0",
+                'def len(x):\n    return 0 if x == "win32" else 1\n'),
+        "str": ('str(os.name) != "java"',
+                'def str(x):\n    return "java" if x == "nt" else x\n'),
+    }[builtin]
+    assert _verdicts(_rm449_wrapped_source(probe, prelude)) == [CAPABILITY]
+    assert _verdicts(_rm449_wrapped_source(probe)) == [DEFECT]
