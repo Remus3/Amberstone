@@ -45,7 +45,7 @@ mis-classed BENIGN - the helper swallowing the failure was one call away.
   core/arena_augment_playline.py:106 | _rows | DEFECT-FIXED | gate (+ _load_index projection)
   core/augment_external_source.py:429 | get_priors | DEFECT-FIXED | RM-450: network failure served degraded, retried once per 300 s window (vs 15 s HTTP timeout)
   core/augment_external_source.py:713 | get_augment_meta | DEFECT-FIXED | RM-450: same shape and window as get_priors
-  core/augment_recommender.py:311 | load_own_history | DEFECT-FIXED | locked-db scan cached under an unchanged key; per-mode gate; RM-450 row count memoised under an exact per-commit SQLite change token
+  core/augment_recommender.py:248 | load_own_history | DEFECT-FIXED | locked-db scan cached under an unchanged key; per-mode gate; RM-450 row-count memo refuted twice and removed (per-call count cost is a follow-up)
   core/augment_shadow.py:99 | log_augment_advice | NOT-A-LOADER | dedupe signature
   core/build_order_precompute.py:732 | load_build_order_precompute | DEFECT-FIXED | OSError under unchanged mtime no longer cached
   core/build_order_variants.py:464 | load_build_order_variants | DEFECT-FIXED | OSError under unchanged mtime no longer cached
@@ -381,7 +381,6 @@ def _drop_caches_keep_gates() -> None:
     vtm._TPL_CACHE.clear()
     ar._own_cache.clear()
     ar._own_cache_key.clear()
-    ar._row_count_memo.clear()
     rh._MATCH_DETAIL_CACHE.clear()
     rh._id_to_champ.clear()
 

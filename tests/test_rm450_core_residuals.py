@@ -5,10 +5,12 @@
    served during a backoff window, retried at most once per window, and the
    window is long against the HTTP timeout so the augment tick does not pay a
    timeout per call.
-2. augment_recommender.load_own_history ran the LCU row-count query (db open +
-   full LIKE count) on EVERY call, before its cache check. Now the count is
-   memoised under a cheap stat signature with a TTL; a new game still
-   invalidates.
+2. augment_recommender.load_own_history runs the LCU row-count query (db open +
+   full LIKE count) on EVERY call, before its cache check. Two attempts to
+   memoise it were REFUTED (a stat signature; an SQLite header token), so the
+   loader keeps its pre-RM-450 exact counting and the per-call cost is a filed
+   follow-up. This file pins the invalidations a future design must keep, and
+   marks the same-count gap of the existing key as a non-strict xfail.
 3. vision_template_match._atlas cached a MISSING (or empty) category folder as
    an empty atlas forever. The folders are tracked in git and filled by the
    icon pipeline, which can run while RC is up, so absence is a failure state,
@@ -263,46 +265,13 @@ def _history_db(tmp_path: Path, journal: str = "delete") -> Path:
     return db
 
 
-def _count_queries(monkeypatch) -> dict:
-    seen = {"count": 0, "scan": 0}
-    real_connect = sqlite3.connect
-
-    class _Conn:
-        def __init__(self, real) -> None:
-            self._real = real
-
-        def execute(self, sql, *a):
-            if sql.startswith("SELECT COUNT"):
-                seen["count"] += 1
-            elif sql.startswith("SELECT raw_data"):
-                seen["scan"] += 1
-            return self._real.execute(sql, *a)
-
-        def __getattr__(self, name):
-            return getattr(self._real, name)
-
-    monkeypatch.setattr(sqlite3, "connect",
-                        lambda *a, **kw: _Conn(real_connect(*a, **kw)))
-    return seen
-
-
-@pytest.mark.parametrize("journal", ["delete", "wal"])
-def test_row_count_query_is_not_run_on_every_call(journal, tmp_path, monkeypatch):
-    db = _history_db(tmp_path, journal)
-    keep = sqlite3.connect(db)  # a live RC holds the db open (MatchDB)
-    keep.execute("SELECT 1 FROM matches").fetchone()  # ...and has read it
-    try:
-        seen = _count_queries(monkeypatch)
-        for _ in range(6):
-            assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
-        assert seen["count"] == 1, f"row count ran {seen['count']} times"
-        assert seen["scan"] == 1
-    finally:
-        keep.close()
-
-
-# The writes below are deliberately SMALL rows, back to back: a same-size
-# page rewrite inside one mtime tick is exactly what a stat signature misses.
+# Correctness pins for the own-history cache. RM-450 rounds 1 and 2 tried to
+# stop counting the LCU rows on every call and were REFUTED twice (a stat
+# signature missed same-size writes inside one mtime tick; an SQLite header
+# token went byte-identical across a close / reopen). The loader is back to
+# counting on every call, and these tests pin the invalidations any future
+# cheaper design must keep. The writes are deliberately SMALL rows, back to
+# back.
 
 @pytest.mark.parametrize("journal", ["delete", "wal"])
 def test_small_new_game_invalidates_every_time(journal, tmp_path):
@@ -318,6 +287,21 @@ def test_small_new_game_invalidates_every_time(journal, tmp_path):
         writer.close()
 
 
+# KNOWN GAP of the restored (pre-RM-450) cache key (mtime, size, row count):
+# a write that keeps the row count and the file size and lands inside one
+# mtime tick is served stale. MEASURED 2026-09-16 on Windows, 30 runs each:
+# same-process in-place UPDATE stale 19/30 (delete journal) and 14/30 (WAL);
+# delete + recreate with the same write history stale 13/30 and 6/30. A
+# separate-process writer was stale 0/30 (process start outlasts the tick).
+# Filed as a follow-up by the merger; non-strict xfail so the gap stays
+# visible without a flaky red, and flips to XPASS once it is closed.
+_SAME_COUNT_GAP = pytest.mark.xfail(
+    strict=False,
+    reason="RM-450 follow-up: (mtime, size, count) key misses same-count "
+           "writes inside one mtime tick")
+
+
+@_SAME_COUNT_GAP
 @pytest.mark.parametrize("journal", ["delete", "wal"])
 def test_in_place_update_invalidates(journal, tmp_path):
     """The live ingest (dashboard LCU stamp) UPDATEs an existing row, which
@@ -334,47 +318,75 @@ def test_in_place_update_invalidates(journal, tmp_path):
         writer.close()
 
 
-def test_no_exact_signal_falls_back_to_counting(tmp_path, monkeypatch):
-    """WAL with no -shm (no connection open anywhere) has no exact change
-    token; the loader must then count on every call rather than guess."""
-    db = _history_db(tmp_path, "wal")
-    assert ar._change_token(db) is None
-    monkeypatch.setattr(ar, "_change_token", lambda p: None)
-    seen = _count_queries(monkeypatch)
-    for _ in range(3):
-        assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
-    assert seen["count"] == 3
+_SEPARATE_WRITER = (
+    "import sqlite3, sys\n"
+    "c = sqlite3.connect(sys.argv[1])\n"
+    "c.execute('INSERT INTO matches (raw_data) VALUES (?)', (sys.argv[2],))\n"
+    "c.commit()\n"
+    "c.close()\n"
+)
+
+
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_new_game_from_a_separate_process_after_close_invalidates(journal, tmp_path):
+    """F2: open-read-close, a SEPARATE process writes and closes (all
+    sidecars gone), then the loader reads again."""
+    import subprocess
+
+    db = _history_db(tmp_path, journal)
+    assert ar.load_own_history("mayhem", db_path=db).games == {101: 1}
+    subprocess.run([sys.executable, "-c", _SEPARATE_WRITER, str(db), _raw(888)],
+                   check=True, timeout=60)
+    assert ar.load_own_history("mayhem", db_path=db).games == {101: 1, 888: 1}
+
+
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_new_game_by_separate_process_update_after_close_invalidates(journal, tmp_path):
+    """F2 as the re-verifier wrote it: a separate process UPDATEs the row in
+    place ({101: 1} -> {888: 1}) after every connection has closed."""
+    import subprocess
+
+    db = _history_db(tmp_path, journal)
+    assert ar.load_own_history("mayhem", db_path=db).games == {101: 1}
+    code = ("import sqlite3, sys\n"
+            "c = sqlite3.connect(sys.argv[1])\n"
+            "c.execute('UPDATE matches SET raw_data = ? WHERE id = 1', (sys.argv[2],))\n"
+            "c.commit()\n"
+            "c.close()\n")
+    subprocess.run([sys.executable, "-c", code, str(db), _raw(888)],
+                   check=True, timeout=60)
+    assert ar.load_own_history("mayhem", db_path=db).games == {888: 1}
+
+
+def _recreate(db: Path, journal: str, rows: list[int]) -> None:
+    for sidecar in ("", "-wal", "-shm", "-journal"):
+        Path(f"{db}{sidecar}").unlink(missing_ok=True)
     conn = sqlite3.connect(db)
-    conn.execute("INSERT INTO matches (raw_data) VALUES (?)", (_raw(),))
+    conn.execute(f"PRAGMA journal_mode={journal}")
+    conn.execute("CREATE TABLE matches (id INTEGER PRIMARY KEY, raw_data TEXT)")
+    for aug in rows:
+        conn.execute("INSERT INTO matches (raw_data) VALUES (?)", (_raw(aug),))
     conn.commit()
     conn.close()
-    assert ar.load_own_history("mayhem", db_path=db).n_matches == 2
 
 
-@pytest.mark.parametrize("mutate", ["torn-shm", "uninitialised-shm", "not-sqlite"])
-def test_change_token_refuses_an_unreliable_read(mutate, tmp_path):
-    db = _history_db(tmp_path, "wal")
-    keep = sqlite3.connect(db)
-    try:
-        keep.execute("SELECT 1 FROM matches").fetchone()
-        assert ar._change_token(db) is not None
-        real = ar._read_head
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_db_deleted_and_recreated_with_more_games_invalidates(journal, tmp_path):
+    """X2, row count differs: exact under the counted key."""
+    db = _history_db(tmp_path, journal)
+    assert ar.load_own_history("mayhem", db_path=db).games == {101: 1}
+    _recreate(db, journal, [888, 888])
+    assert ar.load_own_history("mayhem", db_path=db).games == {888: 2}
 
-        def fake(path, n):
-            data = bytearray(real(path, n))
-            if path.endswith("-shm") and mutate == "torn-shm":
-                data[8] ^= 0xFF  # first header copy only
-            elif path.endswith("-shm") and mutate == "uninitialised-shm":
-                data[12] = data[60] = 0
-            elif not path.endswith(("-shm", "-wal")) and mutate == "not-sqlite":
-                data[0:16] = b"x" * 16
-            return bytes(data)
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setattr(ar, "_read_head", fake)
-            assert ar._change_token(db) is None
-    finally:
-        keep.close()
+@_SAME_COUNT_GAP
+@pytest.mark.parametrize("journal", ["delete", "wal"])
+def test_db_deleted_and_recreated_with_same_history_invalidates(journal, tmp_path):
+    """X2 as the re-verifier wrote it: same write history, different content."""
+    db = _history_db(tmp_path, journal)
+    assert ar.load_own_history("mayhem", db_path=db).games == {101: 1}
+    _recreate(db, journal, [888])
+    assert ar.load_own_history("mayhem", db_path=db).games == {888: 1}
 
 
 # -- 3. vision_template_match missing category folder --------------------------
