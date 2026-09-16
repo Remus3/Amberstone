@@ -85,7 +85,7 @@ from tools.inbox_responder_spawn import (
     spawn_ok,
 )
 from tools.inbox_responder_spawn import real_spawner
-from tools.rc_facts import _LOG_KEEP, _append_atomic, _inbox_entries
+from tools.rc_facts import _FIELD_MAX, _LOG_KEEP, _append_atomic, _inbox_entries
 from tools.sibling_name_sweep import resolve_config_path
 
 # ---------------------------------------------------------------------------
@@ -2235,8 +2235,30 @@ def _read_bytes_or_none(path) -> Optional[bytes]:
         return None
 
 
+def child_session_of(recorder: "RecordingSpawner"):
+    """The `own_sessions` argument for `hook_log_violations`, from one recorded spawn.
+
+    No spawn at all -> `frozenset()`: no child existed, so no hook row can be
+    ours. A spawn whose JSON result carries a non-empty string `session_id` ->
+    that one id. A spawn whose result carries none (unparseable stdout, a CLI
+    that stopped reporting it) -> None, the CONSERVATIVE answer: a child ran
+    and its rows cannot be told apart, so none is disowned.
+    """
+    result = getattr(recorder, "result", None)
+    if result is None:
+        return frozenset()
+    try:
+        loaded = json.loads(bytes(result.stdout or b"").decode("utf-8", "replace"))
+    except ValueError:
+        return None
+    sid = loaded.get("session_id") if isinstance(loaded, dict) else None
+    if isinstance(sid, str) and sid.strip():
+        return frozenset({sid})
+    return None
+
+
 def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
-                        own_pids) -> list:
+                        own_pids, own_sessions) -> list:
     """What moved in one hook log that a FOREIGN hook fire cannot explain (RM-434).
 
     `ops/runtime/hook_invocations.jsonl` has exactly one writer,
@@ -2251,18 +2273,28 @@ def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
       beginning with `HOOK_ROW_PREFIX`;
     - trim the HEAD once the file passes `rc_facts._LOG_KEEP` rows.
 
-    Everything else is a violation: a row whose pid is in `own_pids`, a row with
-    no integer pid, a non-record line or unterminated non-record tail, a
-    deleted log, a removed row outside a head trim, or a head trim leaving fewer
-    rows than `rc_facts` keeps. Same rule as the test-side guard of `43a7ab9ae`,
-    which now delegates here so the two cannot drift.
+    Everything else is a violation: a row whose pid is in `own_pids`, a row whose
+    `session` is in `own_sessions`, a row with no integer pid, a non-record line
+    or unterminated non-record tail, a deleted log, a removed row outside a head
+    trim, or a head trim leaving fewer rows than `rc_facts` keeps. Same rule as
+    the test-side guard of `43a7ab9ae`, which now delegates here.
 
-    Named blind spot: a CHILD process writing a well-formed row under its own
-    pid is indistinguishable from a foreign fire. The dry cycle's only child
-    that could fire a hook is the spawned CLI, and its `--restricted` shape
-    ignores the user, project and local settings files that register hooks.
+    WHY SESSION AND NOT PID for a spawned child: `record_invocation` stamps the
+    pid of the short-lived HOOK process, which is neither this process nor the
+    spawned CLI, so a hook fired BY the child never matches a pid. It does carry
+    the child's `session`, taken from the hook payload. `own_sessions` is the
+    set of session ids this caller owns (compared after the same `_FIELD_MAX`
+    clip `record_invocation` applies); `None` means a child ran whose session id
+    is unknown, and then EVERY appended row, a mid-write tail included, is a
+    violation - the conservative behaviour, never a silent pass. A caller that
+    spawned nothing passes `frozenset()`.
+
+    Pid attribution still catches a row written in THIS process (an in-process
+    `record_invocation`); session attribution is what catches the child.
     """
     pids = {int(p) for p in own_pids}
+    unknown_child = own_sessions is None
+    sessions = set() if unknown_child else {str(s)[:_FIELD_MAX] for s in own_sessions}
     if after is None:
         return ["the log was deleted"] if before is not None else []
     old = (before or b"").splitlines(keepends=True)
@@ -2288,6 +2320,9 @@ def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
         if index == len(new) - 1 and not line.endswith(b"\n"):
             if not line.startswith(HOOK_ROW_PREFIX):
                 problems.append(f"unterminated non-record tail {line[:60]!r}")
+            elif unknown_child:
+                problems.append(f"row mid-write while a child of unknown session ran "
+                                f"{line[:60]!r}")
             continue
         try:
             rec = json.loads(line)
@@ -2298,10 +2333,17 @@ def hook_log_violations(before: Optional[bytes], after: Optional[bytes],
             problems.append(f"non-record line {line[:60]!r}")
             continue
         row_pid = rec.get("pid")
+        row_session = rec.get("session")
         if not isinstance(row_pid, int) or isinstance(row_pid, bool):
             problems.append(f"row with no integer pid {line[:60]!r}")
         elif row_pid in pids:
             problems.append(f"row written by this process (pid {row_pid}) {line[:60]!r}")
+        elif isinstance(row_session, str) and row_session in sessions:
+            problems.append(f"row from the spawned child's session {row_session!r} "
+                            f"(hook pid {row_pid})")
+        elif unknown_child:
+            problems.append(f"row appended while a child of unknown session ran "
+                            f"(pid {row_pid}) {line[:60]!r}")
     return problems
 
 
@@ -2563,11 +2605,15 @@ def dry_cycle_report(*, result: CycleResult, config: RunnerConfig, world: Mappin
 
     live_after = live_surface_digests(live_root, live_participants)
     moved = sorted(k for k in live_before if live_before[k] != live_after.get(k))
+    own_sessions = child_session_of(recorder)
     hook_problems = hook_log_violations(live_before.get("hook_log"),
-                                        live_after.get("hook_log"), {os.getpid()})
+                                        live_after.get("hook_log"), {os.getpid()},
+                                        own_sessions)
     rep.check("hook-log-unchanged", not hook_problems,
               f"rows of {_runtime(live_root) / 'hook_invocations.jsonl'} attributable to "
-              f"this process (pid {os.getpid()}), foreign-session rows excluded: "
+              f"this process (pid {os.getpid()}) or the spawned child (session "
+              f"{'unknown' if own_sessions is None else sorted(own_sessions) or 'none'}), "
+              f"other sessions' rows excluded: "
               f"{hook_problems[:3] if hook_problems else 'none'}")
     state_keys = ("answered", "held", "outbox", "deliveries", "agreement")
     rep.check("live-state-unchanged", not [k for k in state_keys if k in moved],
