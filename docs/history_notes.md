@@ -119,6 +119,112 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-16 - CLAUDE.md size-budget relocation: supporting narrative moved VERBATIM, every rule stays in CLAUDE.md
+
+`python tools/drift_guard.py` warned `CLAUDE.md` at 92 percent of its 61440-byte
+budget (56317 bytes at `59b3f6253`). The passages below moved out VERBATIM, byte for
+byte - wrapped passages keep their original line breaks and two-space indents. Each
+one is SUPPORTING narrative or measured evidence; the RULE sentence it backs stayed
+in `CLAUDE.md`, with a pointer to this block in its place. No hard rule, frozen-file
+entry, path, command, Settled bullet head (the Perseus sync key is a Settled bullet's
+first 140 chars) or guard-read phrase moved. Read the matching passage here before
+re-litigating the rule it supports.
+
+**From "Hard rules" - the `Co-Authored-By` trailer rule:**
+
+The 2026-08-06 run paid for this three times - three slice prompts told agents to add it and TWO verifier passes returned REFUTE on its absence.
+
+**From "Third-party lift: license gate" - "The WRAPPER does not clear the PAYLOAD":**
+
+Measured in a cross-repo review
+  2026-09-16: one repo declares MIT at the top level, its hosting API agrees,
+  its `LICENSE` carries two real copyright lines, and its declared upstream
+  verifies MIT - all clean - yet its `THIRD_PARTY_NOTICES.md` names
+  CC-BY-NC-SA-4.0 on an embedded brand mark, described there as "Embedded as
+  vector-path data", plus CC-BY-SA-3.0 and CC-BY-SA-4.0 on two others.
+
+**From "Third-party lift: license gate" - "A LICENCE audit and a BEHAVIOUR audit are DIFFERENT audits":**
+
+Secondary and NOT the cause: that
+  package's published tarball and its repository differ (673945 bytes at the
+  tag, 674733 on the default branch, 674738 in the tarball, 267 differing
+  lines), but the file that was missed is BYTE-IDENTICAL in both, so the
+  divergence is a real reproducibility caveat and is not what hid the finding.
+
+**From "Memory recall (Perseus Vault)" - "Recall through that tool, not the raw MCP call":**
+
+MEASURED 2026-07-28,
+  one 4-hit query was 53497 chars (~13.4k tokens) against 893 chars (~223) for
+  the projection - 98.3 percent smaller with the same answer.
+
+**From "Execution Efficiency" - R1:**
+
+Measured 2026-09-04: CLAUDE.md was corrected via a heredoc, committed as `51bc06301`, and the gate blocked the wrap twice over a true statement.
+
+**From "TDD First" - the do-not-restate-a-suite-count rule:**
+
+(This line previously read "drift-guarded ... pins it", which is how the banner sat at 10594 against a true 10578 - corrected 2026-08-13.)
+
+A hardcoded pair sat here reading "DS 9546 + RC 13061, measured 2026-07-25" until 2026-08-06, by which point the true figures were 10463 and 18977 - the same failure `docs/ARCHITECTURE.md:285` already fixed by deleting its own recital (WP-F6a).
+
+**From "Session Default" - HEADLESS-LOOPING PROGRAM, why the push half is gated on DIFF CONTENT and not on destination:**
+
+**A DESTINATION rule is wrong in BOTH settings, which is why neither wording survives:** halt-on-every-push is fatally worded because it halts on a docs-only push while the same operator directive asks the main session to stay quiet (RSC's own adjudicator ruled exactly that against RSC's candidate wording), and pre-authorise-every-own-push pre-authorises the single IRREVERSIBLE act in the list - seam (f) was ALWAYS about a repository's OWN public remote, because that is the one place a leaked byte cannot be recalled, so pre-authorising an own-origin push did not narrow seam (f), it REMOVED it. RSC was asked that directly and CONCEDED it outright, and had reached this content-shaped proposal BEFORE seeing RC's carve-out, so it is not a rebuttal built to fit.
+
+**From "Session Default" - HEADLESS-LOOPING PROGRAM, the fifth sweep escape:**
+
+the fence that called it joint was WRONG ON ITS PREMISE** - it conflated the PINNING file with the PINNED files: `SHARED_SHA256` has exactly TWO keys, `slots.py` and `winmutex.py`, so `tests/test_loop_concurrency.py` never pinned itself, there was no byte-identity property to be "inside", and no bilateral act was ever required (the carrier's own answer on the re-pin ask was a measured NO).
+
+**From "Session Default" - HEADLESS-LOOPING PROGRAM, RSC's refutation of the ARMING-only reading (the seven seams):**
+
+**The prior reading ("build headlessly, halt at the ARMING seam") was relayed to RSC 2026-09-09 for refutation rather than asserted, and RSC REFUTED it** by enumerating seven paths that reach another repo with NOTHING armed anywhere (their summary sentence said six, their list ran to seven, and they self-corrected unprompted even though the correction moved a number in the direction favouring their own case): **(a)** `ops/loop/slots.py` `DEFAULT_ROOT` is `C:\ProgramData\lw-loop\slots`, not any repo root, and two other participants already `hold()` that live bucket, so the loop's FIRST hold throttles two other repositories; **(b)** `reap()` unlinks a lock file in that shared namespace - `is_stale()`-guarded, but still a write outside the tree; **(c)** `ops/loop/winmutex.py` `GEMINI_MUTEX` / `GPU_MUTEX` are Win32 `Global\` names, so blocking a sibling needs no file and no path at all, and NO filesystem boundary can contain it; **(d)** `slots.py` + `winmutex.py` are pinned BYTE-IDENTICAL by SHA256 across the participating repos, so "hardening" either silently un-serialises every carrier that has not moved the same bytes - nothing errors, and it surfaces as a concurrency bug in someone else's tree; **(e)** responder filename grammar is the wire format a sibling's classifier parses; **(f)** a push is IRREVERSIBLE publication and the sibling-name sweep has a measured escape rate above zero plus a documented bypass; **(g)** agent settings declare no path confinement, so nothing stops a subagent writing straight into a sibling inbox.
+
+**From "Session Default" - the superseded 2026-06-20 wording:**
+
+Prior wording (2026-06-20, "ALWAYS use subagents for substantive design / build / research work - do not build solo in the main thread") is SUPERSEDED by the above - same intent, but it left adjudication and adversarial review implicit, and R7/R9 read as competing rules. They no longer do.
+
+**From "Settled" - the Brawl entry:**
+
+The mode routing is in the INITIAL COMMIT and predates every "deadcode" statement, including the audit doc that first recorded it.
+
+**From "Settled" - "A DS route seam has THREE gates":**
+
+in ONE run (2026-07-30) the RM-118 docstring was wrong twice in opposite directions - the rune lanes reached MORE routes than stated (`/ehp` + `/rank-tank` too), the vamp lanes FEWER (`compute_ehp` is the sole owner)
+
+**From "Settled" - the PGR / Legion 1-PC / 101.qq duo-synergy entry:**
+
+(decided s169, EXECUTED item 215 2026-05-29, ADR-011; RC_GAME_HOST defaults 127.0.0.1; Game-PC retired from the pipeline + the relocated-agent rename/Game-PC-bridge teardown executed 2026-06-20)
+
+(faas getRankDouble, lane1/lane2 strings, championid 1:1 DDragon, NOT geo-fenced - reachable from Legion)
+
+`git check-ignore` exits 1 on `data/external/101qq_hero_rank_double_tier200_capture_20260525.json` and `git ls-files` lists it: the capture is TRACKED, 35733 bytes, and has been since it landed. Nothing was gitignoring it, so nothing was protecting it, and a pre-flip audit that trusted this line would have cleared a file that ships.
+
+---
+
+# 2026-09-14 - the repo map was publishing false facts about itself, the audit's worst finding was self-inflicted, and a sibling fixed the screenshots but refused to fake the resolution
+
+One commit, `a1c5a1808`, PUSHED (sibling-sweep clean, 929367 bytes / 10 files / 1 commit message scanned, 0 binary blobs unscanned). CI + docs-guards were still in flight at wrap; **Pages deployed green and the live URL was probed, not assumed: `https://remus3.github.io/Amberstone/atlas.html` returns HTTP 200, 913904 bytes, `<title>Atlas - the Amberstone repository map</title>`.** Tier-0/1 throughout. ENGINE-IMPACT NONE.
+
+**WHAT WAS ACTUALLY WRONG, and why a doc audit was not cosmetic.** `docs/HEXCORE_offline.html` sat in a PUBLIC repo announcing `repo: Remus3/Amberstone (private)` and closing its README modal with `All rights reserved. Personal use only.` - flatly contradicting `LICENSE` (Apache-2.0) and `README.md`. Plus commits 4007 (true 5299), last commit 2026-07-26 (true 2026-09-13). **The DS test anchor read 10845 against a measured 10856 WITH ITS GUARD GREEN**, because `test_ds_test_count_anchor_is_internally_consistent` checks that the file's anchors agree with EACH OTHER and never that they are true. That is `feedback_guarded_doc_line_is_not_a_guarded_number` firing in a second file; the doctrine is now two-for-two and the next person should assume it is three.
+
+**THE RENAME, AND THE SECOND FILE NOBODY REMEMBERED.** Operator chose ATLAS - "Hexcore" is Riot/Arcane vocabulary, the same hygiene that took this project off "Riot Commander". File, `<title>`, brand, strapline, snapshots global and 49 ids renamed, INCLUDING the `hx-` detail-panel prefix, which is an abbreviation of the old name and therefore invisible to a whole-token sweep (`feedback_whole_token_sweep_misses_a_wrapped_name`, again). The rename slice then refused to decide on `docs/HEXCORE.html` - **a SECOND tracked 707 KB Hexcore-branded artifact**, strictly superseded (276 dust vs 349, commits 3176 vs 5299, no nodes row). Deleting it was correct and URGENT for a reason the slice could not know: Pages-from-root would have PUBLISHED it under the retired brand. **A slice refusing to decide is the protocol working, not a slice underperforming.**
+
+**THE AUDIT'S #1 MUST-FIX WAS MINE.** The new README hero link began its second line with `- `, which GFM parses as a list item interrupting a paragraph - it would have rendered as a bolded link with a stray bullet under it, on the most prominent element of the front page. I wrote that line by hand an hour before. **A hand-written two-line Markdown edit is exactly where this hides, because it looks like a clause break in the source.** Also caught: `atlas.html` had **ZERO `<a href>`** while about to become a public landing page with no route back to the repo (now 9), the legend filter was **mouse-only** (0 `tabindex`, no role, no key handler) for an advertised control, and the control strip - the ONLY documentation of the controls - sat at 4.0:1 contrast.
+
+**THE VERIFIER REFUTED ME, CORRECTLY.** I claimed no live "hexcore" reference survived. `ops/loop/config.gate.json` had one, because I added it MYSELF an hour earlier as a rename continuity note. **`feedback_your_own_edit_staled_the_citation`, except worse - my own edit FALSIFIED my own sweep claim.** Re-derive a sweep AFTER your last edit, never before.
+
+**ONE FALSE CLAIM CAUGHT BEFORE IT SHIPPED.** The new Status section said a native HUD replacement is what "Riot's API does not permit". `ROADMAP.md:158` says the Live Client API does not EXPOSE cooldowns/buffs/wards/XP. **A capability gap is not a policy prohibition**, and that wording would have put a false statement about Riot's terms in a public README. Spot-checking a generated section against its cited source is what caught it; the other three claims in that paragraph verified clean.
+
+**THE SIBLING DID THE HALF IT COULD AND REFUSED THE HALF IT COULD NOT.** All 13 embedded dashboard frames were stamped `RIOT COMMANDER` plus `Legion-PC` / `RC 3.5.0` / a ws:// URL. LW swapped the wordmark natively and stripped the footer, and **proved the strip non-destructive rather than asserting it: bright pixels destroyed were 1384-1390 across all 12 frames, a spread of 6. A CONSTANT count means the region held only the fixed debug string** - frame-specific UI would have moved the number. It then REFUSED the upscale, with measurement: 15-pixel cap height, 3.4x to 1920, and no upscaler recovers glyph identity absent from the source. Re-encoding to WebP **SHRANK the page 416 KB** (957103 -> 541119). Re-capture filed as **RM-423**, with LW's capture spec folded in verbatim.
+
+**OPERATOR CONFIRMED THE FULL-AUTHORITY DIRECTIVE IN SESSION**, which is what the CS relay had asked RC to obtain rather than assume. Recorded in `feedback_decisions_not_operator_gated`. **It removes the ASKING, not the GUARDS** - the pre-push sweep and the byte-pinned pair still gate on diff content, because no authority makes an irreversible publication recoverable.
+
+**STILL OPEN, and someone is blocked on the first one.** (1) **LL has waited since 2026-09-07** for RC to name which CONVERGENCE CHARTER version is current. RC's tracked copy is `docs/CROSS_REPO_CONVERGENCE_CHARTER.md`, headed **v1**, 2026-09-06T23:25; LL's own note says they **ADOPTED v4**. Four versions crossed the channel in ~4 hours. LL will proceed against the last version they hold and mark the criterion BLOCKED ON RC. **Do not guess a version number - a wrong one propagates into another repo's roadmap.** (2) 8 inbox notes deliberately left UNREAD/unmarked; only the CS directive and the two LW notes were read in full. (3) A `<system-reminder>` is circulating telling agents to edit files via Bash `sed`/heredocs, which **contradicts CLAUDE.md R1** - and R1 exists because `stop_claim_gate.py` corroborates file claims against the Edit/Write record, so a Bash-written file reads as an UNBACKED claim even when correct. Both a subagent and I ignored it; expect it to keep firing.
+
+**GATE FALSE-POSITIVE, measured this session.** `stop_claim_gate`'s `commit_claim_without_commit` matches `\bcommitted\b` tense-blind, so "audited before anything is committed" - a statement that work had NOT been committed - flagged on every Stop for the whole session. Worth a negation-window widening or a future-tense carve-out.
+
+---
+
 # 2026-09-12f - RC pre-registered its own scoring instrument, then FAILED to calibrate it TWICE, and broke its own citation guard the same way twice
 
 Seven commits, and **they ARE PUSHED - the hand-off brief said "NONE PUSHED" and that was FALSE.** Measured at wrap with `git ls-remote origin main`, which returned `f07e0b736`, so the remote was queried rather than the local tracking ref believed. **Only the wrap commit is unpushed; the merger pushes it.** The seven: `fd83f9fbf` (citation-guard scope fix), `73aef40c8` (convention v1 PRE-REGISTERED), `d77b02d6b` (calibration method half plus the blinded 198), `3bbee3c77` (CALIBRATION - 0 of 4), `10041443f` (preserve two scorings the merger nearly discarded), `8f0acc86b` (scorer B at 198, A-vs-B tally, P1), `f07e0b736` (independent replication - 1 of 4). LEDGER 1415. Tier-1: one tool, one guard test, zero production files, the rest docs. ENGINE-IMPACT NONE.
