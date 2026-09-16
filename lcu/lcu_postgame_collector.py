@@ -31,6 +31,11 @@ from typing import Any, Optional
 
 _log = logging.getLogger("rc.postgame")
 
+# RM-413: _get_conn opens a connection per operation, so the non-wal warning
+# fires once per db path per process, not on every call. A set.add race is a
+# harmless duplicate line at worst.
+_WAL_WARNED: set[str] = set()
+
 # -- Paths ---------------------------------------------------------------------
 _ROOT    = Path(__file__).parent.parent
 _DB_PATH = _ROOT / "data" / "postgame_stats.db"
@@ -256,7 +261,8 @@ def _get_conn() -> sqlite3.Connection:
     # RM-413 (RM-233 shape): read the adopted mode; warn, never raise.
     jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
     journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
-    if journal_mode != "wal":
+    if journal_mode != "wal" and str(_DB_PATH) not in _WAL_WARNED:
+        _WAL_WARNED.add(str(_DB_PATH))
         _log.warning(
             "postgame journal_mode fell back to %r (wanted wal): %s - "
             "concurrent readers WILL block writers on this database",
