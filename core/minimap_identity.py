@@ -42,6 +42,8 @@ import json
 import logging
 from pathlib import Path
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.minimap_identity")
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -73,6 +75,10 @@ _SEARCH_PAD = 6         # px searched around the dot centroid (blob-centroid
 # not built yet). _TPL_CACHE: (icon stem, size) -> (tpl_rgb, mask) uint8.
 _ICON_INDEX: dict | None = None
 _TPL_CACHE: dict = {}
+# RM-443: an index built while either source failed is served but NOT cached -
+# retried after the gate's backoff, warned once per failure streak
+# (core/failed_load_gate.py). A clean build is cached as before.
+_ICON_INDEX_GATE = FailedLoadGate()
 
 
 def _reset_caches() -> None:
@@ -80,6 +86,7 @@ def _reset_caches() -> None:
     global _ICON_INDEX
     _ICON_INDEX = None
     _TPL_CACHE.clear()
+    _ICON_INDEX_GATE.reset()
 
 
 def _num(v):
@@ -118,12 +125,17 @@ def _icon_index() -> dict:
     if _ICON_INDEX is not None:
         return _ICON_INDEX
     out: dict = {}
+    failures: list[str] = []
     try:
         for p in sorted(_ICON_DIR.glob("*.png")):
             for k in _name_keys(p.stem):
                 out.setdefault(k, p)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
-        _log.warning("minimap_identity: icon dir scan failed: %s", exc)
+        failures.append(f"icon dir scan failed: {exc}")
+    if not _ICON_INDEX_GATE.should_attempt():
+        # Inside the backoff after a failed DDragon read: the dir scan (no
+        # file parse) still serves, the name index waits for the retry.
+        return out
     try:
         raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
         data = raw.get("data", raw)
@@ -145,7 +157,12 @@ def _icon_index() -> dict:
                     for k in _name_keys(form):
                         out.setdefault(k, p)
     except Exception as exc:  # noqa: BLE001 - dir-scan keys still serve
-        _log.debug("minimap_identity: ddragon name index unavailable: %s", exc)
+        failures.append(f"ddragon name index unavailable: {exc}")
+    if failures:
+        if _ICON_INDEX_GATE.record_failure():
+            _log.warning("minimap_identity: %s", "; ".join(failures))
+        return out
+    _ICON_INDEX_GATE.record_success()
     _ICON_INDEX = out
     return out
 

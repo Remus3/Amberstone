@@ -26,11 +26,13 @@ The dict is the GET /api/personal-build contract; see _empty() for the shape.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
 from pathlib import Path
 from typing import Optional
 
+from core.failed_load_gate import FailedLoadGate
 from core.smoothed_rates import DEFAULT_K, blend, shrink
 
 # Rift map ids, same basis as core.player_gpi.MODE_MAPS.
@@ -55,6 +57,10 @@ _BOOTS_IDS = frozenset({
 })
 
 _META_CACHE: Optional[dict[str, dict]] = None
+# RM-443: a failed load is NOT cached - retried after the gate's backoff and
+# warned once per failure streak (core/failed_load_gate.py).
+_META_GATE = FailedLoadGate()
+_log = logging.getLogger(__name__)
 
 
 def _item_meta() -> dict[str, dict]:
@@ -62,6 +68,8 @@ def _item_meta() -> dict[str, dict]:
     global _META_CACHE
     if _META_CACHE is not None:
         return _META_CACHE
+    if not _META_GATE.should_attempt():
+        return {}
     out: dict[str, dict] = {}
     try:
         import json
@@ -81,8 +89,11 @@ def _item_meta() -> dict[str, dict]:
                 gold = (entry.get("gold") or {}).get("total") or 0
                 out[str(iid)] = {"name": str(entry.get("name") or ""), "gold": int(gold)}
             break
-    except Exception:  # noqa: BLE001 - metadata is a nicety; ids stand alone
-        out = {}
+    except Exception as exc:  # noqa: BLE001 - metadata is a nicety; ids stand alone
+        if _META_GATE.record_failure():
+            _log.warning("personal_build_wr: item metadata load failed: %s", exc)
+        return {}
+    _META_GATE.record_success()
     _META_CACHE = out
     return out
 
@@ -98,6 +109,7 @@ def reset_cache() -> None:
     """Drop the cached item-meta map so the next read re-pulls. Used by tests."""
     global _META_CACHE
     _META_CACHE = None
+    _META_GATE.reset()
 
 
 def _empty(champion: object, mode: str, n_games: int, reason: str) -> dict:

@@ -168,6 +168,7 @@ from agents.daemon_slayer.spike_markers import compute_spike_markers
 # per-cell recall/back-timing + spike-ETA economy block. Pure import (no cycle:
 # lead_projection imports nothing from core).
 from core import lead_projection as _lead
+from core.failed_load_gate import FailedLoadGate
 
 # Project root: core/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
@@ -251,6 +252,10 @@ _BUILD_BUCKET = "balanced"
 
 # Memoised build_orders_<mode>.json by lower-case mode: champ -> bucket -> [id].
 _BUILD_ORDERS_CACHE: dict[str, dict] = {}
+# RM-443: a failed build-orders load is NOT memoised - one gate PER MODE (so a
+# broken arena table never backs off the SR one), retried after its backoff and
+# warned once per failure streak (core/failed_load_gate.py).
+_BUILD_ORDERS_GATES: dict[str, FailedLoadGate] = {}
 
 # Read cache keyed (mode, requested_patch) -> (mtime, payload, served_patch).
 # mtime + served-patch aware: an entry is dropped when the resolved file on disk
@@ -358,6 +363,9 @@ def load_build_orders(mode: str = "SR") -> dict:
     key = str(mode).lower()
     if key in _BUILD_ORDERS_CACHE:
         return _BUILD_ORDERS_CACHE[key]
+    gate = _BUILD_ORDERS_GATES.setdefault(key, FailedLoadGate())
+    if not gate.should_attempt():
+        return {}
     out: dict = {}
     patch = resolve_patch()
     path = _DS_DIR / patch / f"build_orders_{key}.json"
@@ -366,8 +374,11 @@ def load_build_orders(mode: str = "SR") -> dict:
         out = raw.get("build_orders") or {}
         if not isinstance(out, dict):
             out = {}
-    except Exception:  # noqa: BLE001 - missing / malformed -> no item bonus
-        out = {}
+    except Exception as exc:  # noqa: BLE001 - missing / malformed -> no item bonus
+        if gate.record_failure():
+            logger.warning("build_orders_%s load failed: %s", key, exc)
+        return {}
+    gate.record_success()
     _BUILD_ORDERS_CACHE[key] = out
     return out
 
@@ -1039,6 +1050,12 @@ def load_laning_scenarios(mode: str = "sr", patch: Optional[str] = None) -> dict
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             payload = {}
+    except OSError:
+        # RM-443: a transient read error (a Windows sharing violation during
+        # an atomic replace) is NOT cached - the file will not change again, so
+        # an entry under this mtime would pin the empty payload. Malformed
+        # CONTENT below is deterministic for this mtime and stays cached.
+        return {}
     except Exception:  # noqa: BLE001 - malformed -> empty
         payload = {}
     if payload and served != requested:

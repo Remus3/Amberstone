@@ -41,6 +41,8 @@ import json
 import logging
 from pathlib import Path
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.champion_movespeed")
 
 _META_DIR = Path(__file__).resolve().parent.parent / "data" / "meta"
@@ -59,11 +61,14 @@ _SR_MAP_EXTENT = 14800.0
 _MS_FLAT_KEY = "FlatMovementSpeedMod"
 _MS_PCT_KEY = "PercentMovementSpeedMod"
 
-# Lazy module-level caches. None == not loaded yet; {} == load failed/empty
-# (both are cheap re-checks; a failed load caches the empty dict so we do not
-# re-stat a missing file on every call).
+# Lazy module-level caches. None == not loaded yet. RM-443: a failed load is
+# NOT cached (it used to be, forever) - it returns {} and the gate keeps the
+# loader off the disk for its backoff window, warning once per failure streak
+# (core/failed_load_gate.py). A successful load is cached as before.
 _CHAMP_MS: dict[str, float] | None = None
 _ITEM_MS: dict[str, tuple[float, float]] | None = None
+_CHAMP_GATE = FailedLoadGate()
+_ITEM_GATE = FailedLoadGate()
 
 
 def _reset_caches() -> None:
@@ -72,6 +77,8 @@ def _reset_caches() -> None:
     global _CHAMP_MS, _ITEM_MS
     _CHAMP_MS = None
     _ITEM_MS = None
+    _CHAMP_GATE.reset()
+    _ITEM_GATE.reset()
 
 
 def _num(v):
@@ -105,6 +112,8 @@ def _champ_index() -> dict[str, float]:
     global _CHAMP_MS
     if _CHAMP_MS is not None:
         return _CHAMP_MS
+    if not _CHAMP_GATE.should_attempt():
+        return {}
     out: dict[str, float] = {}
     try:
         raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
@@ -121,8 +130,10 @@ def _champ_index() -> dict[str, float]:
                 for k in _name_keys(form):
                     out.setdefault(k, ms)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
-        _log.warning("champion_movespeed: champ index load failed: %s", exc)
-        out = {}
+        if _CHAMP_GATE.record_failure():
+            _log.warning("champion_movespeed: champ index load failed: %s", exc)
+        return {}
+    _CHAMP_GATE.record_success()
     _CHAMP_MS = out
     return out
 
@@ -133,6 +144,8 @@ def _item_index() -> dict[str, tuple[float, float]]:
     global _ITEM_MS
     if _ITEM_MS is not None:
         return _ITEM_MS
+    if not _ITEM_GATE.should_attempt():
+        return {}
     out: dict[str, tuple[float, float]] = {}
     try:
         raw = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
@@ -162,8 +175,10 @@ def _item_index() -> dict[str, tuple[float, float]]:
                 continue
             out.setdefault(str(iid).strip(), pair)
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
-        _log.warning("champion_movespeed: item index load failed: %s", exc)
-        out = {}
+        if _ITEM_GATE.record_failure():
+            _log.warning("champion_movespeed: item index load failed: %s", exc)
+        return {}
+    _ITEM_GATE.record_success()
     _ITEM_MS = out
     return out
 

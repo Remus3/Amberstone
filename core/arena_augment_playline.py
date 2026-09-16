@@ -57,8 +57,11 @@ NO LLM, NO NETWORK, NO SERVED-OUTPUT CHANGE
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
+
+from core.failed_load_gate import FailedLoadGate
 
 _DS_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
 _AUGMENT_FILE = "arena_augments.json"
@@ -86,6 +89,11 @@ _MIN_REAL_WORDS = 2
 
 _ROWS_CACHE: list[dict] | None = None
 _INDEX_CACHE: dict[str, dict] | None = None
+# RM-443: a failed load (unreadable patch pointer or augment table) is NOT
+# cached - retried after the gate's backoff, warned once per failure streak
+# (core/failed_load_gate.py).
+_ROWS_GATE = FailedLoadGate()
+_log = logging.getLogger(__name__)
 
 
 def reset_cache() -> None:
@@ -93,6 +101,7 @@ def reset_cache() -> None:
     global _ROWS_CACHE, _INDEX_CACHE
     _ROWS_CACHE = None
     _INDEX_CACHE = None
+    _ROWS_GATE.reset()
 
 
 def _resolve_patch() -> str | None:
@@ -108,16 +117,24 @@ def _rows() -> list[dict]:
     global _ROWS_CACHE
     if _ROWS_CACHE is not None:
         return _ROWS_CACHE
+    if not _ROWS_GATE.should_attempt():
+        return []
     rows: list[dict] = []
     patch = _resolve_patch()
-    if patch:
-        try:
-            raw = (_DS_DIR / patch / _AUGMENT_FILE).read_text(encoding="utf-8")
-            loaded = json.loads(raw).get("augments")
-            if isinstance(loaded, list):
-                rows = [r for r in loaded if isinstance(r, dict)]
-        except (OSError, ValueError, TypeError, AttributeError):
-            rows = []
+    if not patch:
+        if _ROWS_GATE.record_failure():
+            _log.warning("arena_augment_playline: DS patch pointer unreadable")
+        return []
+    try:
+        raw = (_DS_DIR / patch / _AUGMENT_FILE).read_text(encoding="utf-8")
+        loaded = json.loads(raw).get("augments")
+        if isinstance(loaded, list):
+            rows = [r for r in loaded if isinstance(r, dict)]
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        if _ROWS_GATE.record_failure():
+            _log.warning("arena_augment_playline: augment table load failed: %s", exc)
+        return []
+    _ROWS_GATE.record_success()
     _ROWS_CACHE = rows
     return rows
 
@@ -145,7 +162,10 @@ def _load_index() -> dict[str, dict]:
         key = _norm(row.get("name"))
         if key and key not in index:
             index[key] = row
-    _INDEX_CACHE = index
+    # RM-443: memoise only a projection of a LOADED table; a failed row load
+    # is not cached, so neither is the empty index built from it.
+    if _ROWS_CACHE is not None:
+        _INDEX_CACHE = index
     return index
 
 

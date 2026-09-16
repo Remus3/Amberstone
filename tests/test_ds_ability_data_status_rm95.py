@@ -39,9 +39,9 @@ _REAL_DS_DATA_DIR = M._DS_DATA_DIR
 def _reset_caches():
     """Drop every champion-keyed cache before AND after each case."""
     def _clear():
-        M._champ_ability_index = None
-        M._champ_stale_index = None
-        M._champ_attackrange_index = None
+        # RM-443: also resets the failure gates, or a failed load in one case
+        # backs off the next case's load.
+        M.reset_snapshot_indexes()
 
     _clear()
     yield
@@ -62,9 +62,7 @@ def _point_at(tmp_path: Path, *, abilities, staleness, patch: str = "16.14.1"):
             json.dumps(staleness), encoding="utf-8"
         )
     M._DS_DATA_DIR = tmp_path
-    M._champ_ability_index = None
-    M._champ_stale_index = None
-    M._champ_attackrange_index = None
+    M.reset_snapshot_indexes()
 
 
 def _live_patch() -> str:

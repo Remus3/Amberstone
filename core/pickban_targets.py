@@ -96,6 +96,11 @@ def load_pickban_targets(mode: str = "sr", patch: Optional[str] = None) -> dict:
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             payload = {}
+    except OSError:
+        # RM-443: a transient read error is NOT cached (the file will not
+        # change again, so an entry under this mtime would pin the empty
+        # payload). Malformed CONTENT is deterministic per mtime - cached.
+        return {}
     except Exception:  # noqa: BLE001 - malformed -> empty
         payload = {}
 
