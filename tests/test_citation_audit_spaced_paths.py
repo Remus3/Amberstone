@@ -18,6 +18,8 @@ Two fences, both load-bearing:
 """
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -131,6 +133,79 @@ def test_truncated_tail_alone_would_not_resolve(spaced_tree):
     (cite,) = ca.extract_citations("`docs/my notes/x.md:12`", "d.md")
     assert spaced_tree.candidates(cite.path) == []
     assert ca.prefer_resolving_reading(cite, spaced_tree) == ["docs/my notes/x.md"]
+
+
+# --- RM-446: residuals of the resolve-first rework, graded end to end --------
+#
+# These run the REAL `audit()` over a git-initialised temp tree, so the line
+# check that lives after candidate selection is exercised rather than stubbed.
+
+
+def _git_tree(root: Path, files: dict[str, int], doc: str) -> list[tuple[str, str, str | None]]:
+    """Write `files` (rel -> line count) plus `docs/cites.md`, index them, audit."""
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("git not on PATH - audit() reads the git index")
+    for rel, n in files.items():
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("line\n" * n, encoding="ascii")
+    (root / "docs").mkdir(exist_ok=True)
+    (root / "docs" / "cites.md").write_text(doc + "\n", encoding="ascii")
+    subprocess.run([git, "init", "-q"], cwd=root, check=True, capture_output=True)
+    subprocess.run([git, "add", "-A"], cwd=root, check=True, capture_output=True)
+    rows = ca.audit(root)
+    return [(r.path, r.status, r.resolved) for r in rows if r.doc == "docs/cites.md"]
+
+
+def test_spaced_path_wins_when_the_plain_tail_is_too_short_for_the_cited_line(tmp_path):
+    # Plain tail `notes/x.md` resolves (by suffix) to a 5-line file, so the old
+    # code returned it and graded PAST_EOF. The spaced reading `my notes/x.md`
+    # resolves to a 30-line file that hosts line 12.
+    got = _git_tree(
+        tmp_path,
+        {"a/notes/x.md": 5, "docs/my notes/x.md": 30},
+        "see `my notes/x.md:12` here",
+    )
+    assert got == [("my notes/x.md", "RESOLVES", "docs/my notes/x.md")]
+
+
+def test_spaced_dir_then_bare_filename_reads_the_whole_spaced_path(tmp_path):
+    # `docs/my x.md:5` extracts the bare `x.md`, which resolves EXACTLY to a
+    # root file. The whole span is itself a tracked path, so it is the referent.
+    got = _git_tree(
+        tmp_path,
+        {"x.md": 30, "docs/my x.md": 30},
+        "see `docs/my x.md:5` here",
+    )
+    assert got == [("docs/my x.md", "RESOLVES", "docs/my x.md")]
+
+
+def test_command_word_span_still_keeps_the_valid_unspaced_cite(tmp_path):
+    # RM-435 guarantee, re-asserted end to end after the RM-446 change.
+    got = _git_tree(tmp_path, {"tools/x.py": 30}, "run `python tools/x.py:3` now")
+    assert got == [("tools/x.py", "RESOLVES", "tools/x.py")]
+
+
+def test_plain_tail_that_hosts_the_line_is_kept_over_a_suffix_spaced_reading(tmp_path):
+    # Both readings resolve by suffix and both host line 3: the resolve-first
+    # default (plain) is unchanged. Only a plain reading that CANNOT host the
+    # line, or a whole span that is literally a tracked path, yields.
+    got = _git_tree(
+        tmp_path,
+        {"a/notes/x.md": 30, "docs/my notes/x.md": 30},
+        "see `my notes/x.md:3` here",
+    )
+    assert got == [("notes/x.md", "RESOLVES", "a/notes/x.md")]
+
+
+def test_both_readings_too_short_keeps_the_plain_past_eof(tmp_path):
+    got = _git_tree(
+        tmp_path,
+        {"a/notes/x.md": 5, "docs/my notes/x.md": 5},
+        "see `my notes/x.md:12` here",
+    )
+    assert got == [("notes/x.md", "PAST_EOF", "a/notes/x.md")]
 
 
 # --- the bound: never searched loose ---------------------------------------
