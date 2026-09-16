@@ -17,6 +17,7 @@ rounds since arena pairings rotate).
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Iterable
 
@@ -69,24 +70,57 @@ _arena_builds_cache: dict | None = None
 _aram_builds_cache: dict | None = None
 _tags_cache: dict[str, list[str]] | None = None
 
+_log = logging.getLogger(__name__)
+
+# Paths whose load failure has already been logged in this process. A failed
+# load is deliberately NOT cached (the `is None` sentinels above would accept
+# a cached {} as success and the advisor would run degraded for the process
+# lifetime), so without this guard a persistently missing file would warn on
+# every coach tick. Same shape as item_advisor._warn_load_once.
+_WARNED_LOAD_PATHS: set = set()
+
+
+def _warn_load_once(path, exc) -> None:
+    key = str(path)
+    if key in _WARNED_LOAD_PATHS:
+        return
+    _WARNED_LOAD_PATHS.add(key)
+    _log.warning(
+        "arena_item_advisor: could not load %s (%s: %s) - running degraded, "
+        "will retry on next call", path, type(exc).__name__, exc,
+    )
+
+
+def _read_json_object(path: Path) -> dict | None:
+    """Read a JSON object from `path`. Returns None (logged once, NOT cached
+    by the caller) on any read / parse error or a non-object document."""
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(doc, dict):
+            raise TypeError(f"expected a JSON object, got {type(doc).__name__}")
+    except Exception as exc:  # noqa: BLE001
+        _warn_load_once(path, exc)
+        return None
+    return doc
+
 
 def _load_arena_builds() -> dict:
     global _arena_builds_cache
     if _arena_builds_cache is None:
-        try:
-            _arena_builds_cache = json.loads(_ARENA_BUILDS_PATH.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
-            _arena_builds_cache = {}
+        doc = _read_json_object(_ARENA_BUILDS_PATH)
+        if doc is None:
+            return {}
+        _arena_builds_cache = doc
     return _arena_builds_cache
 
 
 def _load_aram_builds() -> dict:
     global _aram_builds_cache
     if _aram_builds_cache is None:
-        try:
-            _aram_builds_cache = json.loads(_ARAM_BUILDS_PATH.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
-            _aram_builds_cache = {}
+        doc = _read_json_object(_ARAM_BUILDS_PATH)
+        if doc is None:
+            return {}
+        _aram_builds_cache = doc
     return _aram_builds_cache
 
 
@@ -118,15 +152,19 @@ def _load_tags() -> dict[str, list[str]]:
     emits in `teams[*].name`."""
     global _tags_cache
     if _tags_cache is None:
+        doc = _read_json_object(_DDRAGON_PATH)
+        if doc is None:
+            return {}
         out: dict[str, list[str]] = {}
         try:
-            doc = json.loads(_DDRAGON_PATH.read_text(encoding="utf-8"))
             for entry in (doc.get("data") or {}).values():
                 name = entry.get("name")
                 if name:
                     out[name] = list(entry.get("tags") or [])
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            # Malformed `data` block: same rule - log once, do not cache.
+            _warn_load_once(_DDRAGON_PATH, exc)
+            return {}
         _tags_cache = out
     return _tags_cache
 
