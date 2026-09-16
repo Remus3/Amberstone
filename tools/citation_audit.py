@@ -191,6 +191,11 @@ CITATION_RE = re.compile(
 # WHOLE content of ONE paired backtick span (_CODE_SPAN, consumed left to
 # right so a closing backtick is never re-read as an opening one). Never
 # searched loose - a loose spaced search joins prose words into a phantom path.
+# And even then it is only a CANDIDATE: a command-style span such as
+# `python tools/x.py:3` fits the same shape, so prefer_resolving_reading keeps
+# the plain tail whenever it resolves and takes the spaced reading only when
+# the tail does not and the whole spaced path does (a verifier caught the
+# first cut, which took the spaced reading unconditionally and broke those).
 #
 # KNOWN, DELIBERATE LIMITS, each would buy false findings in prose: a spaced
 # path outside a code span (it keeps the pre-RM-435 tail reading); a spaced
@@ -379,6 +384,9 @@ class Citation:
     claim_tokens: list[str] = field(default_factory=list)
     found_lines: list[int] = field(default_factory=list)
     ambiguous: int = 0
+    # RM-435: (col, path, raw) of a whole-backtick-span spaced reading whose
+    # tail this plain cite is. Consulted only by prefer_resolving_reading.
+    spaced_reading: tuple[int, str, str] | None = None
 
     @property
     def scope(self) -> str:
@@ -391,38 +399,57 @@ def extract_citations(text: str, doc: str) -> list[Citation]:
     """All `path:<N>` / `path:<N>-<M>` tokens in one document."""
     found: list[Citation] = []
     for lineno, line in enumerate(text.splitlines(), start=1):
-        # (col, path, start, end, raw) per hit, spaced pass first. A plain
-        # CITATION_RE hit starting inside a span already captured whole is
-        # its truncated TAIL and is dropped; with no spaced span on the line
-        # this is exactly the pre-RM-435 CITATION_RE-only extraction.
-        hits: list[tuple[int, str, int, int | None, str]] = []
-        spans: list[tuple[int, int]] = []
+        # Whole-span spaced readings on this line, keyed by span end. The
+        # extractor still emits ONLY the plain CITATION_RE readings - exactly
+        # the pre-RM-435 output - and merely ATTACHES the spaced reading to
+        # the plain hit that is its tail. Choosing between the two needs the
+        # tracked-path index, which extraction runs before, so the choice is
+        # made at classification (prefer_resolving_reading), never here.
+        spaced: dict[int, tuple[int, str, str]] = {}
         for span in _CODE_SPAN.finditer(line):
             inner = span.group(0)[1:-1]
-            m = SPACED_CITATION_RE.fullmatch(inner)
-            if m is None or " " not in m.group(1):
+            sm = SPACED_CITATION_RE.fullmatch(inner)
+            if sm is None or " " not in sm.group(1):
                 continue
-            spans.append((span.start(), span.end()))
-            b = m.group(3)
-            hits.append((span.start() + 1, m.group(1), int(m.group(2)), b, inner))
+            spaced[span.end() - 1] = (span.start() + 1, sm.group(1), inner)
         for m in CITATION_RE.finditer(line):
-            if any(lo <= m.start() < hi for lo, hi in spans):
-                continue
-            hits.append((m.start(), m.group(1), int(m.group(2)), m.group(3), m.group(0)))
-        hits.sort(key=lambda h: h[0])
-        for col, path, a, b, raw in hits:
-            found.append(
-                Citation(
-                    doc=doc,
-                    doc_line=lineno,
-                    raw=raw,
-                    path=path.replace("\\", "/"),
-                    start=a,
-                    end=int(b) if b else a,
-                    col=col,
-                )
+            path, a, b = m.group(1), int(m.group(2)), m.group(3)
+            cite = Citation(
+                doc=doc,
+                doc_line=lineno,
+                raw=m.group(0),
+                path=path.replace("\\", "/"),
+                start=a,
+                end=int(b) if b else a,
+                col=m.start(),
             )
+            alt = spaced.get(m.end())
+            if alt is not None and alt[0] <= m.start():
+                cite.spaced_reading = alt
+            found.append(cite)
     return found
+
+
+def prefer_resolving_reading(cite: Citation, index: _Index) -> list[str]:
+    """RESOLVE-FIRST choice between a plain cite and its whole-span spaced
+    reading (RM-435). Returns the candidates for the reading kept.
+
+    * plain resolves               -> plain (`see docs/x.md:3` stays docs/x.md)
+    * plain fails, spaced resolves -> spaced (`docs/my notes/x.md:12`)
+    * both fail                    -> plain, the pre-RM-435 behaviour.
+
+    A spaced reading can therefore never turn a resolving cite broken, and a
+    tree with no spaced tracked path is classified exactly as before.
+    """
+    cands = index.candidates(cite.path)
+    if cands or cite.spaced_reading is None:
+        return cands
+    col, path, raw = cite.spaced_reading
+    alt = index.candidates(path)
+    if not alt:
+        return cands
+    cite.path, cite.raw, cite.col = path, raw, col
+    return alt
 
 
 class _Index:
@@ -555,7 +582,7 @@ def audit(root: Path | None = None, include_immutable: bool = False) -> list[Cit
             continue
         doc_lines = text.splitlines()
         for cite in extract_citations(text, rel):
-            cands = index.candidates(cite.path)
+            cands = prefer_resolving_reading(cite, index)
             if not cands:
                 cite.status = "FILE_MISSING"
                 cite.detail = "no tracked file"
