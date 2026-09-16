@@ -1,62 +1,79 @@
 NEXT SESSION
 ------------
-Task: Fleet calibration lane. RC's own scoring convention v1 FAILED its
-calibration gate twice (NOT CALIBRATED, 0 of 4 and 1 of 4 anchors), so RC is
-NOT scoring RSC's 96 rows and must not until the instrument is repaired. The
-next unit is the convention's three UNEXECUTABLE clauses plus its
-self-contamination, OR answering LW's open question. If the lane is quiet,
-pick up RM-422.
+Task: Close every remaining blocking item for the FIVE-WAY ARM that is RC's to close.
+  Operator directive 2026-09-15. This SUPERSEDES the earlier "not buildable yet" freeze,
+  which was right about the fleet halves and wrong to extend to RC's own.
 
-Context: moon_sync_inbox/ newest-first then `python tools/rc_facts.py
---mark-inbox-seen`; docs/_rsc_score/ (RC_SCORING_CONVENTION_v1.md,
-PREREGISTRATION.md, CALIBRATION.md 0-of-4, CALIBRATION_REPLICATION.md 1-of-4,
-P1_RESULT.md, scores_A/B, scores_cal_1/2/3, tally_cal.py, tally_ab.py - all
-runnable); docs/_overlap/ (the n=60 pre-registered pass); LEDGER 1415;
-WAKEUP_NOTES 2026-09-12f.
+Context, read first and re-derive rather than trust:
+  CLAUDE.md, MEMORY.md, WAKEUP_NOTES.md (2026-09-15 block), docs/LEDGER.md entry 1417,
+  docs/CHANNEL.md, and the BACKLOG.md arming-stage row under "Reliability / hardening".
+  The eleven arming criteria are restated in the stage-4 prompts artifact on the operator's
+  Desktop. RE-MEASURE their state; both that artifact and this prompt are hypotheses.
+  Live state to probe: python tools/moon_sync_poller.py --status ;
+  curl -k https://127.0.0.1:8888/api/moon-sync-status ; ops/runtime/health.json.
 
-Open threads, each self-contained:
- (a) RC owes LW an answer it CANNOT settle alone - LW's two-value replication
-     (22 of 22 on RC's corpus, 24 of 24 on RSC's, "zero counterexamples") has
-     the shape of a TRIVIALLY-TRUE predicate. Under the trivial reading (either
-     set merely CARRIES PROXY-MEASURE or ADVERSARY) it is an analytic identity
-     of the family grouping and cannot fail anywhere; under the informative
-     reading (the DIFFERING value is one of the two) RC got 13 of 15 with
-     counterexamples chunk3-17 and chunk3-36. Settling it needs LW's own script
-     (docs/_crossscore/bvsc.py, rsc.py). Ask; do not assert.
- (b) RC's convention has 3 UNEXECUTABLE clauses and a self-contamination
-     channel: it RECITES RC's own filed counts in its own text and every scorer
-     must read it verbatim. Neither is repairable by amendment - the file is
-     pre-registered. A v2 is a NEW pre-registration, not an edit.
- (c) fix_chain is VACUOUS under clause 6.1 in any partitioned pass, so the
-     fix-of-a-fix anchor measured the floor rule and not the corpus.
- (d) Pre-registration 7b, the per-chunk breakdown and the Wilson intervals are
-     still unadjudicated from the n=60 pass.
+RC's side - buildable now, in rough value order:
+  (d) THE NOTE-NAME GRAMMAR, the biggest one. It refuses 21 of 176 live notes today and every
+      refusal writes a PERMANENT BOUNCE into the sender's inbox, so arming without this sprays
+      bounces across four trees. Widen it to admit the no-HHMM variant while still refusing the
+      code-first variant, parametrised over the table INSIDE docs/CHANNEL.md. Editing that doc
+      is a CHANNEL_VERSION 2 five-way re-pin, never a unilateral edit - the doc is byte-pinned
+      by sha256 and a push whose diff touches it HALTS.
+  (g) Re-measure which CLI binary the S4U scheduled task actually resolves. Re-pin or fail
+      loudly. It is UNVERIFIED today.
+  (h) Name the model id in the arming data contract.
+  (i) Draft RC's written BOUNCE-policy position. Never arm with it undecided.
+  (j) Design the same-version contract field: a required, fail-closed field of every agreement
+      record, checked by load_agreement.
+  (f) Re-run tools/outbound_reciprocity_check.py now that live rows exist.
 
-Acceptance: any number RC publishes carries its GRAIN, its AGGREGATION RULE and
-its ADJUDICATOR in the same sentence; any claim about another tree is verified
-against that tree's own note, never relayed; and no share is published off a
-corpus RC's instrument has not calibrated against.
+NOT RC's - do not do these:
+  (a) the CS exit-code flip; (b) the RSC and LW per-prompt watcher work; (e) the LW
+  validate-and-deliver seam. Those are the four sibling-adoption prompts already delivered to
+  the inboxes; each tree ingests its own. (c) fleet view is already GREEN as of the
+  2026-09-15 poller restart.
 
-Do NOT redo: re-score RC's corpus against contract v1.3 (LW ended the clause
-set and recommends no tree score against it); re-propose the pre-dispatch
-re-grounding gate (measured-refuted, 90 pct refusal, 0 genuinely stale); quote
-RC's withdrawn bands (all four intervals non-monotonic); quote the n=60
-CONFIRMED verdict without its FAMILY-grain INDETERMINATE half; quote P1's
-13.6364 pct as a vindication - it measures a KNOWN-DEFECTIVE instrument and
-CONFIRM is the weaker outcome on a same-model design; re-run the calibration
-expecting a different verdict; "repair" the nine baselined BACKLOG citations
-(a repair was tried and reverted); re-plumb live_write_tracer.py for pathlib
-(io.open already patched at :489-495, proven by mutation).
+Acceptance:
+  Each RC-side criterion is either CLOSED with a measurement and a guard test, or recorded as
+  still-open with the specific reason and what would close it. No criterion is marked closed on
+  reasoning alone. The grammar change ships with a mutation proof that it still REFUSES the
+  code-first variant.
 
-Three traps this session paid for:
- - A doc that QUOTES a broken citation REPRODUCES it. The citation guard went
-   red THREE times from quoted corpora; the fix is scoping the frozen corpus
-   into _HISTORY_PREFIXES in tools/citation_audit.py, never editing the corpus.
- - A subagent's garbled final summary is NOT evidence the agent died. Probing
-   the tree is. Re-dispatching on one produced THREE concurrent calibration
-   passes writing one directory.
- - Reading inbox notes with `cd .../moon_sync_inbox` DRIFTS the session cwd and
-   breaks any relative-path hook. RC survives only because RC's hooks use
-   absolute paths.
+DO NOT ARM ANYTHING. "Close the blockers" is not licence to arm.
+  Criterion (k) is standing and structural: RC halts and PINGS before writing its own agreement
+  record and before enabling RC-InboxResponder; it never touches another repo's record, HALT
+  file or task; each repo's operator hand-writes their OWN expiring record; there is no timeout
+  and no auto-proceed. Arming is five separate operator acts in five trees, by construction,
+  never one prompt. Order when it comes: pairwise RC and RSC first. LW is NEVER armed in its
+  current shape - its write path IS a bypassPermissions session.
+
+Do NOT redo - all shipped 2026-09-15, all pushed:
+  - The moon-sync five slices (poller, watcher, docs/CHANNEL.md, console-flash tool, the
+    /api/moon-sync-status route). Closed.
+  - The console-flash attribution. The interpreter-token swap is REFUTED by measurement; no
+    swap was made and none may be made - swapping it CREATES a flash.
+  - The docs/OPERATIONS.md scheduled-task drift: the missing RC-MoonSyncPoller row, the stale
+    count, and the bare task's name (RiotCommander, never renamed by the product rename, which
+    is why the documented check command could not see it). Fixed. A different number on
+    re-measure is machine state moving, not drift returning.
+  - The MSIX shadow delete, the poller restart, and the FYI delivery to four inboxes. Done and
+    verified.
+  - Any fleet-surfacing mechanism in ledger 1417's do-not-redo list - twelve are refuted with
+    reasons.
+
+Traps this session paid for, worth not re-paying:
+  - A COUNT GOES STALE INSIDE THE COMMIT THAT WRITES IT. That happened three times here, once
+    to a correction that was itself correcting a stale count. Stamp every count to the commit
+    it was measured at; never write "at this commit".
+  - GREEN ON WINDOWS IS NOT GREEN. CI is Linux and gates the whole tree. A local 22452-passed
+    run missed four platform defects. Check the CI run, not just the local suite.
+  - A MODULE RUN ALONE HIDES CROSS-MODULE DAMAGE. A test that closed a real OS handle corrupted
+    every later subprocess in the same pytest process and was invisible until a second module
+    ran beside it.
+  - docs/DS_SWEEP_TRACKER.md carries a SECOND, never-demoted "Next free id = " pin far down the
+    file, so a bare `grep -c` returns 2 and must NEVER be used as an apply check. No line number
+    is given here on purpose.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
+Session default applies: orchestrated, multi-agent, self-adjudicating, self-adversarial, all
+doing in subagents. Halt and ping before any byte leaves the tree.
