@@ -15,6 +15,7 @@ Covers `dashboard/routes_duo_synergy.py`:
 from __future__ import annotations
 
 import json
+import socket
 import sys
 import time
 import unittest
@@ -256,7 +257,37 @@ class RouteHealthSurfaceTests(unittest.TestCase):
     The live seam is stubbed (`_live_data_rows`), so no network is touched.
     """
 
+    def _install_network_guard(self) -> None:
+        """Refuse AND record every DNS lookup / outbound connect.
+
+        Raising alone is not enough: `S101._live_data_rows` swallows every
+        exception by design, so a refused call would still pass quietly.
+        Each attempt is therefore recorded, and tearDown fails the test if
+        any were made - a live Tencent fetch is loud, never silent.
+        """
+        self._net_attempts: list[str] = []
+        self._orig_getaddrinfo = socket.getaddrinfo
+        self._orig_create_connection = socket.create_connection
+
+        def _refuse(name: str):
+            def _blocked(*args, **kwargs):
+                self._net_attempts.append(f"{name}{args[:2]!r}")
+                raise OSError(f"network blocked in RouteHealthSurfaceTests: "
+                              f"{name}{args[:2]!r}")
+            return _blocked
+
+        socket.getaddrinfo = _refuse("getaddrinfo")
+        socket.create_connection = _refuse("create_connection")
+        # Cleanups run after tearDown AND even when setUp fails part-way,
+        # so the socket module is never left patched for later tests.
+        self.addCleanup(self._remove_network_guard)
+
+    def _remove_network_guard(self) -> None:
+        socket.getaddrinfo = self._orig_getaddrinfo
+        socket.create_connection = self._orig_create_connection
+
     def setUp(self):
+        self._install_network_guard()
         self._prior_env = os.environ.get("RC_DUO_SYNERGY_LIVE")
         os.environ["RC_DUO_SYNERGY_LIVE"] = "1"
         self._orig_live_rows = S101._live_data_rows
@@ -279,6 +310,9 @@ class RouteHealthSurfaceTests(unittest.TestCase):
             os.environ["RC_DUO_SYNERGY_LIVE"] = self._prior_env
         RDS._reset_caches()
         S101._reset_cache()
+        self.assertEqual(self._net_attempts, [],
+                         "test attempted real network I/O - stub the live "
+                         "seam (S101._live_data_rows) before any read")
 
     def _join(self, timeout: float = 15.0) -> None:
         t = getattr(S101, "_REFRESH_THREAD", None)
@@ -338,6 +372,9 @@ class RouteHealthSurfaceTests(unittest.TestCase):
     def test_health_exception_degrades_without_500_or_raw_error(self):
         def _raise() -> dict:
             raise RuntimeError("secret raw health failure text")
+        # Live seam off: the grid loads from the committed static seed, so
+        # the cold `_load_once` never reaches the real `fetch_rows`.
+        S101._live_data_rows = lambda: None
         S101.health = _raise
 
         with self.assertLogs("rc.web_dashboard", level="WARNING") as logs:
