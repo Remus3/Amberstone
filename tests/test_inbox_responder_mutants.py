@@ -1662,6 +1662,8 @@ A_ARMS = [
 # (MEASURED 2026-09-16 under emulated POSIX path encoding: the control ended
 # `runner-failed`), and no listing on such a host can yield that name anyway.
 # Keyed on the build function, so a future arm on the same name inherits it.
+# The skip-hygiene guard excuses that mark through its `_REVIEWED_UNRESOLVED`
+# table, keyed on the runner module's condition, not through any codec vocabulary.
 A_PARAMS = [
     pytest.param(*row, id=row[0],
                  marks=[HIGH_SURROGATE_UNLISTABLE] if row[3] is b_high_surrogate_name else [])
