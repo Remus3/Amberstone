@@ -117,6 +117,35 @@ THIRD TASK, operator-added 2026-09-15: https://github.com/mksglu/context-mode
     - READ THE LICENSE FILE YOURSELF before acting on any of this. The badge is evidence, not
       proof, and a repo can contradict itself between its LICENSE and its manifest.
 
+FOURTH TASK, operator-added 2026-09-15: review https://github.com/timharris707/skills
+  What it is (measured from its repo page, re-verify): 23 agent skills for Claude Code and
+  Codex, in five buckets - Orient (router, setup, domain-memory), Decide (grilling,
+  decision-map, advisory-board), Investigate (research, prototype, codebase-review, ingest),
+  Run (handoff, orchestrate, adversarial-review, diagnose, implement, blast-radius and more),
+  Author (writing-for-agents, writing-for-humans, plainspoken, huh). Several overlap RC's
+  existing skills, so review for WHAT TO STEAL rather than wholesale adoption; RC already has
+  its own diagnose, root-cause-fix, brainstorming and adversarial-review equivalents.
+  ** LICENSE GATE - THIS ONE IS THE "CLEAN LICENSE, STILL NOT VENDOR-SAFE" SHAPE. **
+    - It ships an MIT LICENSE.md. That alone does NOT clear it.
+    - MUCH OF THE CATALOG IS ADAPTED FROM OTHER PEOPLE'S WORK: the README says much of it
+      derives from mattpocock/skills (MIT), three skills are adapted from another author's
+      cursor/plugins repository, and every adapted skill names its upstream in its OWN file
+      rather than in a central list. So there are MULTIPLE COPYRIGHT HOLDERS and the
+      maintainer's MIT cannot unilaterally relicense what they adapted.
+    - CLAUDE.md's gate names this exact trap twice - "the person who cleared it may not own
+      it", and a measured case of "a repo with a valid MIT whose NOTICE named three adapted
+      upstreams - clean license, still not vendor-safe".
+    - THEREFORE, per skill you want: open THAT skill's attribution section, identify its
+      upstream, and verify the UPSTREAM's license yourself. mattpocock/skills is reported MIT -
+      confirm it. The other upstream's license is UNKNOWN from here and must be read before any
+      skill adapted from it is touched.
+    - Read the copyright LINE in LICENSE.md, not just the license name.
+    - If vendored, record EVERY upstream in RC's NOTICE, not just timharris707.
+    - RC already credits mattpocock/skills for its own diagnose skill, so there is prior art in
+      this tree for how to attribute this family.
+    - The always-legal path stands: read for the IDEA and re-implement in RC's own words and
+      code. Techniques are not copyrightable; source and prose are.
+
 PENDING OUTBOUND - NEEDS AN OPERATOR PING BEFORE IT LEAVES THE TREE:
   LL REFUSED docs/CHANNEL.md at their license gate on 2026-09-15T23:33 (their note is in
   moon_sync_inbox; they filed it as OPS-91). They are RIGHT: RC's FYI named a commit and called
