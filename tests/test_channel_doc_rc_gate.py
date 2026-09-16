@@ -1,7 +1,8 @@
 """RC-ONLY gate arms for the cross-repo channel doc - never vendored.
 
-`tests/test_channel_doc_pin.py` is the portable half every participating
-repository copies byte-identical. THIS module is the half that stays here: it
+`tests/test_channel_doc_pin.py` is RC's own stdlib-only portable half; it is
+not copied byte-identical anywhere, and the only byte-pinned artifact is
+`docs/CHANNEL.md`, via CHANNEL_PIN. THIS module is the half that stays here: it
 hard-imports RC-only tools and reads an RC-only config shape, so a vendored
 copy would fail at import in every sibling tree and each sibling would then
 edit it - the exact drift the pin exists to prevent.
