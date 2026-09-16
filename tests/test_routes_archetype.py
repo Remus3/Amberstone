@@ -130,6 +130,36 @@ class PostEndpointTests(RoutesArchetypeBase):
         self.assertEqual(h.last_status, 200)
         self.assertFalse(h.parsed()["cleared"])
 
+    def test_post_clear_read_failure_500s_without_leak(self):
+        # RM-444 caller check: clear_archetype_pick now raises instead of
+        # overwriting the file; the route must degrade, not crash, and the
+        # raw exception text (may carry a path) stays in the log.
+        leak = "C:/secret/path/cs_archetype_picks.json"
+
+        def _boom(champion):
+            raise archetype_picks.PicksReadError(leak)
+
+        h = StubHandler()
+        with mock.patch.object(routes_archetype, "clear_archetype_pick", _boom):
+            routes_archetype._serve_archetype_post(h, {
+                "champion": "Aatrox", "clear": True,
+            })
+        self.assertEqual(h.last_status, 500)
+        self.assertNotIn(leak, h.last_body.decode("utf-8"))
+
+    def test_post_save_read_failure_500s_without_leak(self):
+        leak = self.tmpdir.name
+        self.tmp_path.write_text('{"Aatrox": {"primary": "ta', encoding="utf-8")
+        before = self.tmp_path.read_bytes()
+        h = StubHandler()
+        with self.assertLogs("rc.web_dashboard", level="WARNING"):
+            routes_archetype._serve_archetype_post(h, {
+                "champion": "Lux", "primary": "mage",
+            })
+        self.assertEqual(h.last_status, 500)
+        self.assertNotIn(leak, h.last_body.decode("utf-8"))
+        self.assertEqual(self.tmp_path.read_bytes(), before)
+
     def test_post_missing_champion_400s(self):
         h = StubHandler()
         routes_archetype._serve_archetype_post(h, {"primary": "tank"})
