@@ -260,7 +260,11 @@ def _team_picks(team_arr, local_cell=None) -> list[dict]:
         cid_intent = _as_int(p.get("championPickIntent"), 0)
         cid_effective = cid_locked or cid_intent
         out.append({
-            "cellId":      p.get("cellId"),
+            # RM-417: coerced like localPlayerCellId, so a string-typed build
+            # compares like against like in champ_select.js / ds_matchup.js.
+            # Default stays None, NOT 0: cell 0 is a real cell, and the JS
+            # consumers guard on ``!= null`` / ``typeof === "number"``.
+            "cellId":      _as_int(p.get("cellId"), None),
             "championId":  cid_effective,
             "champion_pick_intent": cid_intent,
             "champion_locked": cid_locked,
