@@ -40,6 +40,7 @@ from core.archetype_picks import (
     save_archetype_pick,
 )
 from dashboard._dispatch import equals
+from dashboard._json_flags import bad_flag_body, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -84,8 +85,15 @@ def _serve_archetype_post(h, payload) -> None:
                 "application/json")
         return
 
-    # Clear path
-    if payload.get("clear"):
+    # Clear path. RM-414: parsed, never bare-truthy - {"clear": "false"} used
+    # to DELETE the saved pick. Absent keeps the old default (no clear); an
+    # ambiguous value is a 400 before anything is written.
+    # Rule: dashboard/_json_flags.py.
+    clear = coerce_json_flag(payload, "clear", False)
+    if clear is None:
+        h._send(400, bad_flag_body("clear"), "application/json")
+        return
+    if clear:
         cleared = clear_archetype_pick(champion)
         entry = get_archetype_for(champion)
         h._send(200, json.dumps({

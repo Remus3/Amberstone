@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
+from dashboard._json_flags import bad_flag_body, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -223,10 +224,18 @@ def _serve_coach_toggle_post(h, payload) -> None:
     # Body: {mode: "aram", disabled: true}
     try:
         mode = str(payload.get("mode") or "").strip().lower()
-        disabled = bool(payload.get("disabled"))
+        # RM-414: parsed, never bare-truthy. `bool(payload.get("disabled"))`
+        # read {"disabled": "false"} as True, engaged the kill-switch and
+        # PERSISTED it to coach_settings.json. Absent keeps the old default
+        # (False); an ambiguous value is a 400 BEFORE anything is written.
+        # Rule: dashboard/_json_flags.py.
+        disabled = coerce_json_flag(payload, "disabled", False)
         from core.cost_tracker import GATES
         if mode not in set(GATES):
             h._send(400, b'{"error":"invalid mode"}', "application/json")
+            return
+        if disabled is None:
+            h._send(400, bad_flag_body("disabled"), "application/json")
             return
         from core.cost_tracker import get_tracker as _gt
         cur = _gt().set_coach_disabled(mode, disabled)
