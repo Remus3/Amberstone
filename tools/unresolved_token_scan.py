@@ -256,7 +256,9 @@ def load_registry(path: Path | None = None) -> dict:
 
 def _write_atomic(target: Path, payload: str) -> None:
     tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(payload, encoding="utf-8")
+    # Bytes, not write_text: the registry is TRACKED and write_text turns LF
+    # into CRLF on Windows (RM-441).
+    tmp.write_bytes(payload.encode("utf-8"))
     tmp.replace(target)
 
 
