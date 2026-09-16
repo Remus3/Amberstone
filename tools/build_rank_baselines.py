@@ -49,6 +49,7 @@ from core import cohort_baseline as cb                        # noqa: E402
 from core import corpus_hygiene as ch                         # noqa: E402
 from core import event_patterns as ep                         # noqa: E402
 from core import riot_api                                     # noqa: E402
+from core.polled_json import atomic_write_text                # noqa: E402
 
 PLATFORM = "na1"
 REGION = "americas"
@@ -214,10 +215,8 @@ def main(argv=None) -> int:
         print(f"  {name}: matches={kept} dropped={dropped} failed={failed} "
               f"rows={len(rows)} elapsed={time.time() - t0:.0f}s", flush=True)
 
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
-    tmp.replace(dest)
+    # TRACKED output: atomic LF bytes, never write_text (RM-441).
+    atomic_write_text(dest, json.dumps(out, indent=2))
     print(f"\nwrote {dest} elapsed={time.time() - t0:.0f}s", flush=True)
 
     print(f"\n{'tier':14} {'rows':>6} " + " ".join(

@@ -169,7 +169,11 @@ def main() -> int:
         print("state_schema.js is out of sync - run: python tools/gen_state_schema.py")
         return 1
 
-    OUTPUT.write_text(content, encoding="utf-8")
+    # Atomic LF bytes, not write_text: on Windows write_text turns LF into
+    # CRLF and state_schema.js is TRACKED (RM-441).
+    tmp = OUTPUT.with_suffix(OUTPUT.suffix + ".tmp")
+    tmp.write_bytes(content.encode("utf-8"))
+    tmp.replace(OUTPUT)
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
     return 0
 

@@ -475,7 +475,11 @@ def cmd_ddragon(force: bool = False):
             ok = False
 
     if ok:
-        _write_json(META / "ddragon_version.json", {"version": live, "downloaded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")})
+        # gmtime, not the tuple-less strftime: that formats LOCAL time, which
+        # the literal Z would then mislabel as UTC (RM-442).
+        _write_json(META / "ddragon_version.json",
+                    {"version": live,
+                     "downloaded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
         log.info("DDragon meta complete - patch %s", live)
     return ok
 
@@ -694,9 +698,8 @@ def cmd_aram_builds(force: bool = False) -> bool:
             f"Tiers auto-updated; build notes manually curated."
         )
 
-    tmp = BUILDS_FILE.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(builds, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(BUILDS_FILE)
+    # TRACKED file: LF bytes via the shared helper, never write_text (RM-441).
+    _atomic_write_text(BUILDS_FILE, json.dumps(builds, indent=2, ensure_ascii=False))
     log.info("ARAM builds: %d updated, %d unchanged, %d not in source", updated, unchanged, skipped)
     return True
 
@@ -751,7 +754,7 @@ def cmd_rank_tiers(force: bool = False) -> bool:
 
     out = dict(seed)
     out["patch"] = patch
-    out["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    out["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())  # UTC (RM-442)
 
     RANK_TIERS_DIR.mkdir(parents=True, exist_ok=True)
     tmp = RANK_TIERS_LIVE.with_suffix(".json.tmp")
