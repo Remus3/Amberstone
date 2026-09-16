@@ -93,6 +93,7 @@ from __future__ import annotations
 import argparse
 import ctypes
 import json
+import math
 import os
 import re
 import sys
@@ -397,6 +398,30 @@ def effective_idle_seconds(now: float | None = None) -> float:
     if since_input is None:
         return since_prompt  # unknown input: fall back to prompts alone
     return min(since_input, since_prompt)
+
+
+def idle_text(idle_seconds: float) -> str:
+    """The idle duration as it is DISPLAYED. The one renderer for all surfaces.
+
+    INFINITY IS THE SENTINEL, NOT AN ACCIDENT. `input_idle_seconds` returns
+    None off Windows and on any probe failure, and its docstring is explicit
+    that callers must read that as "unknown", never as "idle";
+    `effective_idle_seconds` then falls back to the prompt half alone, and when
+    no repo has ever pinged either, `now - 0` is not the answer - the whole
+    measurement is missing, so it returns `float("inf")`.
+
+    `int(inf)` raises OverflowError, which is how three status surfaces
+    crashed on Linux while every Windows run stayed green. Rounding or
+    clamping the sentinel to a number would be worse than the crash: it would
+    print a duration nobody measured. So the unmeasured case renders as the
+    word, and only a real measurement renders as seconds.
+
+    A finite value renders byte-for-byte as it always did, which is every
+    Windows run where the Win32 probe answers.
+    """
+    if not math.isfinite(idle_seconds):
+        return "UNMEASURED"
+    return f"{int(idle_seconds)}s"
 
 
 def interval_for(idle_seconds: float) -> int:
@@ -772,7 +797,7 @@ def _render_status(
         "# moon_sync cross-repo poller",
         "",
         f"- checked: {checked}",
-        f"- desktop+prompt idle: {int(idle)}s",
+        f"- desktop+prompt idle: {idle_text(idle)}",
         f"- next interval: {interval}s",
         f"- pid: {os.getpid()}",
         f"- expect next poll by: {_iso(now + interval + 60)}",
@@ -1024,8 +1049,24 @@ def _close_handle(handle: int) -> None:
         pass
 
 
+def _win32_pid_probe_available() -> bool:
+    """Whether the Win32 liveness probe below can run at all.
+
+    A NAMED SEAM, not a style preference. The three functions above are the
+    entire platform-specific surface of the pid probe; everything after the
+    gate in `_pid_alive_detail` is error-code arithmetic that holds on any
+    platform. With the gate written inline as `sys.platform.startswith("win")`
+    the only way to exercise that arithmetic off Windows was to reach into the
+    real `sys` module, so on Linux the branch was simply never entered and the
+    seams a test had already patched were never called. Naming the gate lets
+    the test drive the decision logic everywhere, instead of skipping it where
+    it is least often run by hand.
+    """
+    return sys.platform.startswith("win")
+
+
 def _pid_alive_detail(pid: int | None) -> tuple[bool | None, str]:
-    if pid is None or not sys.platform.startswith("win"):
+    if pid is None or not _win32_pid_probe_available():
         return None, "unknown"
     try:
         handle, err = _open_process(int(pid))
@@ -1132,7 +1173,7 @@ def status_report(
     root = _SELF_REPO if self_root is None else self_root
 
     idle = effective_idle_seconds(now)
-    out = [f"idle={int(idle)}s interval={interval_for(idle)}s state={state}"]
+    out = [f"idle={idle_text(idle)} interval={interval_for(idle)}s state={state}"]
 
     status_md = state / "status.md"
     try:
@@ -1252,7 +1293,7 @@ def run(repos: tuple[str, ...] = DEFAULT_REPOS, once: bool = False) -> int:
                 # arrived" from "the poller stopped polling", and those are the
                 # two states it exists to tell apart.
                 _log_line(
-                    f"poll idle={int(idle)}s next={interval}s findings={total}{' codes=' + str(found) if found else ''}"
+                    f"poll idle={idle_text(idle)} next={interval}s findings={total}{' codes=' + str(found) if found else ''}"
                 )
             except Exception as exc:  # noqa: BLE001 - the poller outlives any one poll
                 _log_line(f"FAULT {type(exc).__name__}")

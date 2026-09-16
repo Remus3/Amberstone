@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ast
 import json
+import math
 import os
 import sys
 import time
@@ -673,6 +674,16 @@ def test_status_verdict_six_way(state: Path, monkeypatch):
     closed: list[int] = []
     monkeypatch.setattr(P, "_close_handle", closed.append)
 
+    # The pid probe is gated on Win32 being available, and off Windows it
+    # short-circuits to (None, "unknown") BEFORE any of the seams patched here
+    # are reached - so on Linux the three assertions below were asserting
+    # against production code they never entered, and `_pid_alive(4242) is
+    # False` read `None is False`. Everything past that gate is error-code
+    # arithmetic with no platform dependency, and every Win32 call it makes is
+    # faked in this test, so forcing the gate exercises the real decision logic
+    # on every platform rather than skipping it on the one CI runs.
+    monkeypatch.setattr(P, "_win32_pid_probe_available", lambda: True)
+
     # Open failed (ERROR_INVALID_PARAMETER / ERROR_ACCESS_DENIED): production
     # returns before _close_handle, so there is nothing to release and closing
     # the 0 would be a bug.
@@ -690,6 +701,90 @@ def test_status_verdict_six_way(state: Path, monkeypatch):
     monkeypatch.setattr(P, "_process_exit_code", lambda h_: 259)
     assert P._pid_alive(4242) is True
     assert closed == [7], "the opened handle must be closed exactly once, by value"
+
+
+# ------------------------------------------------------- the unmeasured path
+#
+# Everything below exercises the branches a Windows run can never reach. The
+# poller ships on Windows and its whole test suite ran there, so the platform
+# halves stayed green locally and CI on Linux was the first thing to enter
+# them - which is how three status surfaces and one pid assertion shipped
+# broken. These force the same branches on any platform.
+
+
+def test_the_pid_probe_reports_unknown_without_win32_and_opens_nothing(monkeypatch):
+    """No Win32, no probe, no claim - and no call into the Win32 seams.
+
+    The negative half matters as much as the verdict: the seams raise here, so
+    a future refactor that moved the gate below the OpenProcess call would fail
+    this rather than quietly probing a pid on a platform that cannot answer.
+    """
+
+    def boom(*a, **k):
+        raise AssertionError("the Win32 seam must not be reached without the probe")
+
+    monkeypatch.setattr(P, "_win32_pid_probe_available", lambda: False)
+    monkeypatch.setattr(P, "_open_process", boom)
+    monkeypatch.setattr(P, "_process_exit_code", boom)
+    monkeypatch.setattr(P, "_close_handle", boom)
+
+    assert P._pid_alive_detail(4242) == (None, "unknown")
+    assert P._pid_alive(4242) is None
+
+
+def test_idle_is_infinite_when_neither_half_of_the_ladder_can_be_probed(state: Path, monkeypatch):
+    """Pins the SENTINEL the renderer keys on.
+
+    The desktop probe is Windows-only and answers None everywhere else; with no
+    repo ping either, there is no measurement at all and the module says so
+    with infinity rather than with a zero it did not observe.
+    """
+    monkeypatch.setattr(P, "input_idle_seconds", lambda: None)
+    assert P.last_prompt_epoch() == 0.0
+    assert math.isinf(P.effective_idle_seconds(1_000_000.0))
+
+    _plant_ping(_self_root(state), 1_000_000.0 - 90)
+    assert P.effective_idle_seconds(1_000_000.0) == 90
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (0.0, "0s"),
+        (1.0, "1s"),
+        (42.9, "42s"),
+        (float("inf"), "UNMEASURED"),
+        (float("nan"), "UNMEASURED"),
+    ],
+)
+def test_idle_text_renders_a_measurement_as_seconds_and_the_sentinel_as_a_word(value, expected):
+    assert P.idle_text(value) == expected
+
+
+def test_an_unmeasured_idle_renders_on_every_surface_instead_of_crashing(state: Path, monkeypatch):
+    """All three idle surfaces, driven with the sentinel.
+
+    `int(inf)` raises OverflowError, so before the fix status_report raised
+    outright, write_status swallowed the same error and degraded the fleet view
+    to a one-line fault file, and the run loop's heartbeat killed the poll it
+    was supposed to be reporting on. None of that is visible on Windows.
+    """
+    monkeypatch.setattr(P, "effective_idle_seconds", lambda now=None: float("inf"))
+
+    assert P.status_report(state_path=state)[0].startswith("idle=UNMEASURED interval=43200s ")
+
+    text = P.write_status({}, float("inf"), 300, rows=[]).read_text(encoding="utf-8")
+    assert "- desktop+prompt idle: UNMEASURED" in text
+    header = P.parse_status_header(text)
+    assert header["fault"] is None, "the full fleet view must render, not the minimal fault file"
+    assert "## Fleet" in text
+
+    monkeypatch.setattr(P, "_acquire_singleton", lambda *a, **k: True)
+    monkeypatch.setattr(P, "scan_fleet", lambda *a, **k: {"findings": {}, "rows": []})
+    assert P.run(repos=(), once=True) == 0
+    log = (state / "poller.log").read_text(encoding="utf-8")
+    assert "poll idle=UNMEASURED next=43200s findings=0" in log
+    assert "FAULT" not in log
 
 
 # ----------------------------------------------------------------- run loop
