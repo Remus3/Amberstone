@@ -91,10 +91,23 @@ def _fetch_bytes(url: str, timeout: int = 30) -> bytes:
         return r.read()
 
 
-def _write_json(path: Path, data) -> None:
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Atomically write ``text`` as UTF-8 with LF line endings.
+
+    Bytes, not ``write_text``: on Windows ``Path.write_text`` rewrites every
+    LF as CRLF, and the outputs of this pipeline (data/meta/ddragon_*.json,
+    web/data/*_index.json) are TRACKED files that git normalises to LF, so a
+    text-mode write dirties the tree on every patch refresh and trips
+    tests/test_text_line_endings.py (2026-09-16 RC-PatchRefresh run).
+    tools/ddragon_mirror_refresh.py writes bytes for the same reason.
+    """
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.write_bytes(text.encode("utf-8"))
     tmp.replace(path)
+
+
+def _write_json(path: Path, data) -> None:
+    _atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False))
 
 
 def _drop_throwback_rows(filename: str, doc):
@@ -262,9 +275,7 @@ def cmd_items_index(force: bool = False) -> bool:
 
     payload = {"version": version, "byName": by_name, "byId": by_id}
     dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(dest)
+    _atomic_write_text(dest, json.dumps(payload, indent=2, ensure_ascii=False))
     log.info("items_index.json: %d items, patch %s - written to %s",
              len(by_id), version, dest)
     return True
@@ -321,9 +332,7 @@ def cmd_champions_index(force: bool = False) -> bool:
 
     payload = {"version": version, "byId": by_id, "byName": by_name}
     dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(dest)
+    _atomic_write_text(dest, json.dumps(payload, indent=2, ensure_ascii=False))
     log.info("champions_index.json: %d champs, patch %s - written to %s",
              len(by_id), version, dest)
     return True
@@ -407,11 +416,8 @@ def cmd_spells_index(force: bool = False) -> bool:
 
     payload = {"version": version, "byName": by_name}
     dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
     # Match the existing compact-on-one-line layout.
-    tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-                   encoding="utf-8")
-    tmp.replace(dest)
+    _atomic_write_text(dest, json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     log.info("spells_index.json: %d entries, patch %s - written to %s",
              len(by_name), version, dest)
     return True
