@@ -137,7 +137,9 @@ def available_categories():
 def _atlas(category):
     """category -> {stem: full_res_template_rgb_uint8}. Built once by scanning
     the category dir and loading each PNG BGR->RGB. Empty dict on any failure
-    (cv2 absent, unknown category, unreadable dir). Cached."""
+    (cv2 absent, unknown category, unreadable / missing / empty dir). A loaded
+    atlas, cv2 absent and an unknown category are cached; a folder failure is
+    not (RM-443, RM-450) and is retried after the gate's backoff."""
     cached = _ATLAS_CACHE.get(category)
     if cached is not None:
         return cached
@@ -155,6 +157,14 @@ def _atlas(category):
     if not gate.should_attempt():
         return {}
     try:
+        # RM-450: a MISSING or EMPTY category folder is a failure, not a
+        # design state. The three folders are tracked in git and filled by
+        # the icon pipeline (lib/icons, scripts/data_pipeline.py), which can
+        # run while RC is up, so an empty atlas cached here would outlive the
+        # folder appearing. Retried after the gate's backoff instead; the
+        # retry costs one directory listing per window.
+        if not d.is_dir():
+            raise OSError(f"category folder missing: {d}")
         for p in sorted(d.glob("*.png")):
             try:
                 img = cv2.imread(str(p), cv2.IMREAD_COLOR)
@@ -164,6 +174,8 @@ def _atlas(category):
                 out[p.stem] = rgb
             except Exception as exc:  # noqa: BLE001 - skip one bad icon
                 _log.debug("vision_template_match: icon %s skipped: %s", p, exc)
+        if not out:
+            raise OSError(f"no loadable icons in {d}")
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
         if gate.record_failure():
             _log.warning("vision_template_match: atlas scan %s failed: %s", category, exc)
