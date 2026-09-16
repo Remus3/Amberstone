@@ -74,16 +74,23 @@ _DRIVE_ROOTED = re.compile(r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]")
 # Mirror of the backticked bare-path shape a sibling's docs-citation guard
 # enumerates over its own `git ls-files`. Every repo-relative path in the
 # shared bytes has to resolve in EVERY tree, and only one of them does.
+#
+# The segment class admits a literal SPACE after a segment's first character,
+# because a path may hold one and this is a BAN arm: a class without it let
+# `docs/my notes/x.md` through while refusing its underscore twin. Space only -
+# never a newline or a tab - so a match cannot pair backticks across lines, and
+# a segment still has to START on a word character.
 _BARE_PATH_RE = re.compile(
-    r"`\.?[A-Za-z0-9_][A-Za-z0-9_.-]*"
-    r"(?:/[A-Za-z0-9_][A-Za-z0-9_.-]*)+"
+    r"`\.?[A-Za-z0-9_][A-Za-z0-9_. -]*"
+    r"(?:/[A-Za-z0-9_][A-Za-z0-9_. -]*)+"
     r"\.(?:py|md|json|toml|yml|yaml|cfg|txt|ini)`"
 )
 
 # A line cite into the gitignored inbox: a note filename with a line number
 # glued to it. The directory is absent from a fresh clone and every worktree,
-# so such a cite can never resolve anywhere.
-_INBOX_LINE_CITE = re.compile(r"-from-[A-Za-z]{2,4}-[^\s`]*\.md:\d+")
+# so such a cite can never resolve anywhere. Same space rule as the path arm:
+# a literal space may sit inside the name, a newline, tab or backtick may not.
+_INBOX_LINE_CITE = re.compile(r"-from-[A-Za-z]{2,4}-(?:[^\s`]| )*?\.md:\d+")
 
 _PER_REPO_ALIAS = re.compile(r"\bSibling-[A-Z]\b")
 
@@ -200,17 +207,71 @@ def test_channel_doc_headings_carry_no_date_and_declares_live_before_the_first_h
         previous = line
 
 
+def _forbidden_repo_paths(text: str) -> list[str]:
+    """Every backticked repo-relative path in `text` other than the doc itself.
+
+    The single detector the ban arm below grades the shared bytes with, so the
+    synthetic arms exercise exactly what the ban applies and cannot drift from it.
+    """
+    return [m.group(0) for m in _BARE_PATH_RE.finditer(text) if m.group(0) != f"`{CHANNEL_DOC}`"]
+
+
+def _inbox_line_cites(text: str) -> list[str]:
+    return [m.group(0) for m in _INBOX_LINE_CITE.finditer(text)]
+
+
 def test_channel_doc_carries_no_repo_relative_path_or_line_cite():
     text = _text()
-    for match in _BARE_PATH_RE.finditer(text):
-        assert match.group(0) == f"`{CHANNEL_DOC}`", (
-            f"repo-relative path {match.group(0)} in the shared bytes; it "
-            "resolves in at most one tree. Name RC-only artifacts by role or "
-            "task name instead."
-        )
-    assert _INBOX_LINE_CITE.search(text) is None, (
+    found = _forbidden_repo_paths(text)
+    assert found == [], (
+        f"repo-relative path(s) {found} in the shared bytes; each resolves in "
+        "at most one tree. Name RC-only artifacts by role or task name instead."
+    )
+    assert _inbox_line_cites(text) == [], (
         "inbox notes are cited by BARE filename - a line cite into a gitignored directory resolves nowhere"
     )
+
+
+def test_ban_arm_refuses_a_repo_relative_path_with_a_space_in_it():
+    """A space inside a path segment must not carry a token past the ban.
+
+    A repository path may legally hold a space, and a detector whose segment
+    class omits it lets `docs/my notes/x.md` through while refusing
+    `docs/my_notes/x.md`. In a BAN arm a missed token is a forbidden thing that
+    passes, so each shape here has to be refused, and the no-space twin is
+    asserted alongside it so the arm cannot pass by refusing nothing.
+    """
+    spaced = (
+        "`docs/my notes/x.md`",
+        "`my dir/sub dir/file.json`",
+        "`tools/a b.py`",
+        "`.github/work flows/ci.yml`",
+    )
+    for token in spaced:
+        twin = token.replace(" ", "_")
+        assert _forbidden_repo_paths(f"see {twin} here\n") == [twin], f"control: {twin} must be refused"
+        assert _forbidden_repo_paths(f"see {token} here\n") == [token], (
+            f"spaced repo-relative path {token} passed the ban arm"
+        )
+    cite = "`2026-09-16-1200-from-RC-my note.md:12`"
+    assert _inbox_line_cites(f"per {cite.replace(' ', '-')}\n"), "control: unspaced inbox line cite must be refused"
+    assert _inbox_line_cites(f"per {cite}\n"), f"spaced inbox line cite {cite} passed the ban arm"
+
+
+def test_ban_arm_does_not_flag_ordinary_prose_with_slashes_and_spaces():
+    """Negative controls: widening the segment class must not reach prose."""
+    prose = (
+        "Use and/or here, with read/write access for the operator.\n"
+        "The docs/ and tests/ directories both hold notes.md and CHANNEL.md.\n"
+        "`and/or` and `read/write access` are not paths.\n"
+        "`CHANNEL_VERSION` bumps with the bytes, see notes/x.md later.\n"
+        "`a` then b/c d.md without a closing tick\n"
+        "`docs/CHANNEL.md` names the doc itself.\n"
+        "```\nsome/dir name\nfile.md`\n```\n"
+        "a note-from-RC-topic is cited by name, and CHANNEL.md stays unnumbered\n"
+    )
+    assert _forbidden_repo_paths(prose) == [], _forbidden_repo_paths(prose)
+    assert _inbox_line_cites(prose) == [], _inbox_line_cites(prose)
 
 
 def test_channel_doc_names_no_per_repo_alias_and_rosters_five_codes_once():
