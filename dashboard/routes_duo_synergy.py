@@ -237,6 +237,26 @@ def _laning_tips_for(bot: str, sup: str) -> str | None:
     return tips["default"] or None
 
 
+def _health_block() -> dict:
+    """RM-416: freshness of the served snapshot, or a degraded marker.
+
+    `_ssq.health()` is JSON-safe by contract (RM-295a) and is embedded
+    verbatim plus `available: True`, so `last_refresh_ok` / `stale_for_s`
+    and the adopted `coverage()` block reach a served route. A diagnostic
+    must never take the grid down with it: any failure here yields a
+    friendly marker, the raw error goes to the log only (CLAUDE.md Error
+    Handling), and the rows are still served with a 200.
+    """
+    try:
+        block = dict(_ssq.health())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/duo-synergy: health unavailable: %s", exc)
+        return {"available": False,
+                "message": "freshness unavailable - see logs"}
+    block["available"] = True
+    return block
+
+
 def _build_payload(my_role: str, bot_lock: str, bot_hover: str,
                    sup_lock: str, sup_hover: str, top_n: int) -> dict:
     """Pure builder - no HTTP / no caching. Returns the response dict
@@ -319,6 +339,8 @@ def _build_payload(my_role: str, bot_lock: str, bot_hover: str,
         "top_row":     top_row,
         "bottom_row":  bottom_row,
         "laning_tips": laning_tips,
+        # RM-416: also a response key - see _health_block() for its shape.
+        "health":      _health_block(),
     }
 
 

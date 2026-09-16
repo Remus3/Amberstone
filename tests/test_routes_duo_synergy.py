@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -230,6 +231,129 @@ class FailSoftEnvelopeTests(DuoSynergyBase):
             self.assertTrue(body["error"])
         finally:
             RDS._build_payload = original
+
+
+def _live_rows(pairs: list) -> list:
+    """Rows in the Tencent `data` schema the indexer consumes. Duplicated
+    from tests/test_smoothed_rates_101qq.py so this file stays standalone."""
+    return [
+        {
+            "championid1": str(c1), "championid2": str(c2),
+            "doublewinrate": wr, "iwinrate1": 0.5, "iwinrate2": 0.5,
+            "itemp1": pick, "irank": i + 1,
+            "lane1": "bottom", "lane2": "support",
+        }
+        for i, (c1, c2, wr, pick) in enumerate(pairs)
+    ]
+
+
+class RouteHealthSurfaceTests(unittest.TestCase):
+    """RM-416: `health()` must reach an operator THROUGH the served route.
+
+    Every assertion here reads the JSON body `_serve_duo_synergy` emits,
+    never `S101.health()` directly - a test that calls the function proves
+    the function, which tests/test_smoothed_rates_101qq.py already proves.
+    The live seam is stubbed (`_live_data_rows`), so no network is touched.
+    """
+
+    def setUp(self):
+        self._prior_env = os.environ.get("RC_DUO_SYNERGY_LIVE")
+        os.environ["RC_DUO_SYNERGY_LIVE"] = "1"
+        self._orig_live_rows = S101._live_data_rows
+        self._orig_clock = S101._clock
+        self._orig_records_path = S101._RECORDS_PATH
+        self._orig_health = S101.health
+        RDS._reset_caches()
+        S101._reset_cache()
+
+    def tearDown(self):
+        self._join()
+        S101._live_data_rows = self._orig_live_rows
+        S101._clock = self._orig_clock
+        S101._RECORDS_PATH = self._orig_records_path
+        S101.health = self._orig_health
+        # Restore the module-level pin this file's setUpModule set.
+        if self._prior_env is None:
+            os.environ.pop("RC_DUO_SYNERGY_LIVE", None)
+        else:
+            os.environ["RC_DUO_SYNERGY_LIVE"] = self._prior_env
+        RDS._reset_caches()
+        S101._reset_cache()
+
+    def _join(self, timeout: float = 15.0) -> None:
+        t = getattr(S101, "_REFRESH_THREAD", None)
+        if t is not None:
+            t.join(timeout)
+
+    def _prime(self) -> None:
+        S101._live_data_rows = lambda: _live_rows([(22, 147, 0.61, "4.00%")])
+        S101._reset_cache()
+        self.assertEqual(S101.source(), "live")
+
+    def _break_every_source(self) -> None:
+        def _boom() -> list:
+            raise RuntimeError("CN endpoint down")
+        S101._live_data_rows = _boom
+        S101._RECORDS_PATH = (
+            self._orig_records_path.parent / "does_not_exist_rm416.json")
+
+    def _drive_failed_refresh(self, multiple: float) -> None:
+        base = time.monotonic()
+        S101._clock = lambda: base + (S101._LIVE_TTL_S * multiple)
+        S101.top_duos_for_bot("Ashe")
+        self._join()
+
+    def test_fresh_snapshot_reports_healthy_through_the_route(self):
+        self._prime()
+        h = _do("/api/duo-synergy?my_role=bot")
+        self.assertEqual(h.last_status, 200)
+        body = h.parsed()
+        self.assertIn("health", body)
+        health = body["health"]
+        self.assertIs(health["available"], True)
+        self.assertIs(health["last_refresh_ok"], True)
+        self.assertEqual(health["failed_refreshes"], 0)
+        self.assertGreater(health["coverage"]["total_records"], 0)
+
+    def test_two_failed_refreshes_surface_stale_through_the_route(self):
+        self._prime()
+        self._break_every_source()
+        self._drive_failed_refresh(4.0)
+        self._drive_failed_refresh(8.0)
+
+        RDS._reset_caches()     # never serve a pre-outage cached payload
+        h = _do("/api/duo-synergy?my_role=bot")
+        self.assertEqual(h.last_status, 200)
+        body = h.parsed()
+        self.assertTrue(body["ok"])
+        # The kept snapshot still serves the grid.
+        self.assertGreater(len(body["top_row"]), 0)
+        health = body["health"]
+        self.assertIs(health["available"], True)
+        self.assertGreaterEqual(health["failed_refreshes"], 2)
+        self.assertIs(health["last_refresh_ok"], False)
+        self.assertGreater(health["stale_for_s"], 0.0)
+        self.assertGreater(health["coverage"]["total_records"], 0)
+
+    def test_health_exception_degrades_without_500_or_raw_error(self):
+        def _raise() -> dict:
+            raise RuntimeError("secret raw health failure text")
+        S101.health = _raise
+
+        with self.assertLogs("rc.web_dashboard", level="WARNING") as logs:
+            h = _do("/api/duo-synergy?my_role=bot")
+        self.assertEqual(h.last_status, 200)
+        body = h.parsed()
+        self.assertTrue(body["ok"])
+        self.assertEqual(len(body["top_row"]), 4)
+        health = body["health"]
+        self.assertIs(health["available"], False)
+        self.assertTrue(health["message"])
+        self.assertNotIn("secret raw health failure text",
+                         h.last_body.decode("utf-8"))
+        # The raw error goes to the log, not the response.
+        self.assertTrue(any("secret raw health failure text" in line
+                            for line in logs.output))
 
 
 class RouteRegistrationTests(DuoSynergyBase):
