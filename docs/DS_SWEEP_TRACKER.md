@@ -69,7 +69,20 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-431** (2026-09-15, moved at the moon-sync five-slice merge session).
+  Next free id = **RM-440** (2026-09-16, moved at the laned loop run doc-sync).
+  **NINE ids were allocated since the prior pin, and THE PIN MOVED BY NINE.** RM-431 was
+  filed 2026-09-16 by the arm-blocker wrap session WITHOUT moving this pin, which left the
+  pin naming an allocated id - `tests/test_rm_id_registry_drift.py` went red on it, and
+  that red was pre-existing at base `4a1c5e7a6`. RM-432 through RM-439 were filed
+  2026-09-16 by the laned loop run (LEDGER 1419), all under BACKLOG "Reliability /
+  hardening": RM-432 worktree hooks run worktree tool copies (design question); RM-433
+  seven more worktree-degrading readers of `ops/moon_sync_repos.json`; RM-434 the
+  responder runner's whole-file hook-log self-check; RM-435 two more space-truncating
+  path regexes; RM-436 spec vs test bad-name example lists; RM-437 a swallow inside
+  `os.scandir` defeats the listability probe; RM-438 a dead inbox-not-a-directory guard;
+  RM-439 the cache-a-failed-load-forever pattern in `core/`. None takes a roster checkbox
+  and none changes the Summary count. The `ROADMAP.md` pointer moves in the SAME commit.
+  Prior pin, kept for the audit trail: Next free id was **RM-431** (2026-09-15, moved at the moon-sync five-slice merge session).
   **SEVEN ids were allocated 2026-09-15** by the moon-sync five-slice merge session
   (LEDGER 1417). **THE PIN MOVED BY SEVEN.** Five are SHIPPED, in slice order: RM-424
   the poller hardening slice (findings ledger with names, status.md as persistent state,
