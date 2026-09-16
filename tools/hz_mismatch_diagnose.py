@@ -753,9 +753,17 @@ def write_markdown(report: dict, path: Path) -> None:
     # Bytes, not write_text: the report is TRACKED and write_text turns LF into
     # CRLF on Windows (RM-441). No core helper import - this module must stay
     # importable from the bare tools/-on-sys.path CLI (see the header).
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(render_markdown(report).encode("utf-8"))
-    tmp.replace(path)
+    # RM-447: full-name temp in the same dir; remove it if write/rename raises.
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_bytes(render_markdown(report).encode("utf-8"))
+        tmp.replace(path)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass  # best-effort; never mask the original error
+        raise
 
 
 def _print_human(report: dict, md_path: Optional[Path]) -> None:
