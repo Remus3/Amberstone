@@ -172,6 +172,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/ds_support_route_overrides.py` | Slice C support-tag route-override loader (RM-84) |
 | `core/enemy_aware_stats.py` | enemy stats from liveclient items |
 | `core/event_callouts.py` | deterministic event-milestone callout table |
+| `core/failed_load_gate.py` | RM-439 failed-load gate (not-cached retry backoff + warn-once-per-streak) |
 | `core/heal_threat.py` | deterministic heal-threat / anti-heal nudge |
 | `core/laning_cv_overrides.py` | RC2-P5.1 CV-driven laning verdict overrides (vision_state) |
 | `core/laning_scenario_precompute.py` | Lane A laning-scenario precompute (matchup-engine table) |

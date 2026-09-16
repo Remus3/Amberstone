@@ -36,6 +36,8 @@ import threading
 from pathlib import Path
 from typing import Optional
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.build_planner.champ_kit_data")
 
 _DS_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "daemon_slayer"
@@ -53,6 +55,10 @@ _AXES: tuple[str, ...] = (
 _CHAMP_CACHE: Optional[dict[str, dict]] = None
 _RATIO_CACHE: Optional[dict[str, dict]] = None
 _LOCK = threading.Lock()
+# RM-439: a failed load is NOT cached - retried after the gate's backoff and
+# warned once per failure streak (core/failed_load_gate.py).
+_CHAMP_GATE = FailedLoadGate()
+_RATIO_GATE = FailedLoadGate()
 
 
 def _resolve_ds_patch() -> Optional[str]:
@@ -82,25 +88,36 @@ def _load_champions() -> dict[str, dict]:
     with _LOCK:
         if _CHAMP_CACHE is not None:
             return _CHAMP_CACHE
+        if not _CHAMP_GATE.should_attempt():
+            return {}
         index: dict[str, dict] = {}
         patch = _resolve_ds_patch()
-        if patch:
-            path = _DS_DIR / patch / "champions.json"
-            try:
-                raw = json.loads(path.read_text(encoding="utf-8"))
-                data = raw.get("data", raw)
-                if isinstance(data, dict):
-                    for cid, entry in data.items():
-                        if not isinstance(entry, dict):
-                            continue
-                        for k in (cid, entry.get("id"), entry.get("name")):
-                            if k:
-                                for v in _key_variants(str(k)):
-                                    index.setdefault(v, entry)
-            except FileNotFoundError:
+        if not patch:
+            if _CHAMP_GATE.record_failure():
+                _log.warning("champ_kit_data: %s unreadable - no champ data",
+                             _DS_DIR / "current.txt")
+            return {}
+        path = _DS_DIR / patch / "champions.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            data = raw.get("data", raw)
+            if isinstance(data, dict):
+                for cid, entry in data.items():
+                    if not isinstance(entry, dict):
+                        continue
+                    for k in (cid, entry.get("id"), entry.get("name")):
+                        if k:
+                            for v in _key_variants(str(k)):
+                                index.setdefault(v, entry)
+        except FileNotFoundError:
+            if _CHAMP_GATE.record_failure():
                 _log.warning("champ_kit_data: %s missing - no champ data", path)
-            except Exception as exc:  # noqa: BLE001 - fail-soft to {}
+            return {}
+        except Exception as exc:  # noqa: BLE001 - fail-soft to {}
+            if _CHAMP_GATE.record_failure():
                 _log.warning("champ_kit_data: champ load failed: %s", exc)
+            return {}
+        _CHAMP_GATE.record_success()
         _CHAMP_CACHE = index
         return index
 
@@ -111,19 +128,30 @@ def _load_ability_ratios() -> dict[str, dict]:
     with _LOCK:
         if _RATIO_CACHE is not None:
             return _RATIO_CACHE
+        if not _RATIO_GATE.should_attempt():
+            return {}
         out: dict[str, dict] = {}
         patch = _resolve_ds_patch()
-        if patch:
-            path = _DS_DIR / patch / "cdragon_ability_ratios.json"
-            try:
-                raw = json.loads(path.read_text(encoding="utf-8"))
-                champs = raw.get("champions", {})
-                if isinstance(champs, dict):
-                    out = {str(k): v for k, v in champs.items() if isinstance(v, dict)}
-            except FileNotFoundError:
+        if not patch:
+            if _RATIO_GATE.record_failure():
+                _log.warning("champ_kit_data: %s unreadable - ability ratios skipped",
+                             _DS_DIR / "current.txt")
+            return {}
+        path = _DS_DIR / patch / "cdragon_ability_ratios.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            champs = raw.get("champions", {})
+            if isinstance(champs, dict):
+                out = {str(k): v for k, v in champs.items() if isinstance(v, dict)}
+        except FileNotFoundError:
+            if _RATIO_GATE.record_failure():
                 _log.info("champ_kit_data: %s missing - ability ratios skipped", path)
-            except Exception as exc:  # noqa: BLE001 - fail-soft
+            return {}
+        except Exception as exc:  # noqa: BLE001 - fail-soft
+            if _RATIO_GATE.record_failure():
                 _log.warning("champ_kit_data: ratio load failed: %s", exc)
+            return {}
+        _RATIO_GATE.record_success()
         _RATIO_CACHE = out
         return out
 
@@ -134,6 +162,8 @@ def invalidate_cache() -> None:
     with _LOCK:
         _CHAMP_CACHE = None
         _RATIO_CACHE = None
+        _CHAMP_GATE.reset()
+        _RATIO_GATE.reset()
 
 
 def _resolve_champ(champ) -> dict:

@@ -34,6 +34,8 @@ import threading
 from pathlib import Path
 from typing import Optional
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger(__name__)
 
 _ROSTER_PATH = Path(__file__).resolve().parent / "ds_support_route_overrides.json"
@@ -46,6 +48,7 @@ _VALID_ARCHETYPES = frozenset(
 
 _ROSTER_LOCK = threading.Lock()
 _ROSTER_CACHE: Optional[dict[str, tuple[str, str]]] = None
+_ROSTER_GATE = FailedLoadGate()
 
 
 def _flatten(raw) -> dict[str, tuple[str, str]]:
@@ -82,15 +85,21 @@ def load_support_route_overrides() -> dict[str, tuple[str, str]]:
     with _ROSTER_LOCK:
         if _ROSTER_CACHE is not None:
             return _ROSTER_CACHE
-        out: dict[str, tuple[str, str]] = {}
+        if not _ROSTER_GATE.should_attempt():
+            return {}
         try:
             out = _flatten(json.loads(_ROSTER_PATH.read_text(encoding="utf-8")))
         except (OSError, ValueError) as exc:
-            _log.warning(
-                "ds_support_route_overrides: roster load failed (%s); "
-                "every champion keeps its DDragon-tag route",
-                exc,
-            )
+            # RM-439: a failed load is NOT cached - retried after the gate's
+            # backoff, warned once per failure streak.
+            if _ROSTER_GATE.record_failure():
+                _log.warning(
+                    "ds_support_route_overrides: roster load failed (%s); "
+                    "every champion keeps its DDragon-tag route",
+                    exc,
+                )
+            return {}
+        _ROSTER_GATE.record_success()
         _ROSTER_CACHE = out
         return _ROSTER_CACHE
 
@@ -100,3 +109,4 @@ def reset_support_route_override_cache() -> None:
     global _ROSTER_CACHE
     with _ROSTER_LOCK:
         _ROSTER_CACHE = None
+        _ROSTER_GATE.reset()

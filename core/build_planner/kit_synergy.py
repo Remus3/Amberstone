@@ -40,6 +40,7 @@ from typing import Optional
 
 from core.archetype_picks import get_archetype_for, kit_damage_axis
 from core.build_planner.champ_kit_data import derive_kit_weights
+from core.failed_load_gate import FailedLoadGate
 
 _log = logging.getLogger("rc.build_planner.kit_synergy")
 
@@ -171,6 +172,11 @@ _HIGH_AS_WEIGHT = 0.6  # threshold above which a champ is "high-AS"
 # --------------------------------------------------------------------------- #
 _ITEM_CACHE: Optional[dict[str, dict]] = None
 _ITEM_LOCK = threading.Lock()
+# RM-439: a failed items.json load is NOT cached - retried after the gate's
+# backoff, warned once per failure streak (core/failed_load_gate.py). The
+# backoff matters here: canonical_item_id calls _load_items per mirror id and a
+# parse of the 845 KB 16.15.1 items.json measured ~3.5 ms.
+_ITEM_GATE = FailedLoadGate()
 
 
 def _resolve_ds_patch() -> Optional[str]:
@@ -191,21 +197,32 @@ def _load_items() -> dict[str, dict]:
     with _ITEM_LOCK:
         if _ITEM_CACHE is not None:
             return _ITEM_CACHE
+        if not _ITEM_GATE.should_attempt():
+            return {}
         out: dict[str, dict] = {}
         patch = _resolve_ds_patch()
-        if patch:
-            path = _DS_DIR / patch / "items.json"
-            try:
-                raw = json.loads(path.read_text(encoding="utf-8"))
-                data = raw.get("data", raw)
-                if isinstance(data, dict):
-                    for k, v in data.items():
-                        if isinstance(v, dict):
-                            out[str(k)] = v
-            except FileNotFoundError:
+        if not patch:
+            if _ITEM_GATE.record_failure():
+                _log.warning("kit_synergy: %s unreadable - no item data",
+                             _DS_DIR / "current.txt")
+            return {}
+        path = _DS_DIR / patch / "items.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            data = raw.get("data", raw)
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    if isinstance(v, dict):
+                        out[str(k)] = v
+        except FileNotFoundError:
+            if _ITEM_GATE.record_failure():
                 _log.warning("kit_synergy: %s missing - no item data", path)
-            except Exception as exc:  # noqa: BLE001 - fail-soft to {}
+            return {}
+        except Exception as exc:  # noqa: BLE001 - fail-soft to {}
+            if _ITEM_GATE.record_failure():
                 _log.warning("kit_synergy: item load failed: %s", exc)
+            return {}
+        _ITEM_GATE.record_success()
         _ITEM_CACHE = out
         return out
 
@@ -219,6 +236,7 @@ def _invalidate_item_cache() -> None:
     global _ITEM_CACHE
     with _ITEM_LOCK:
         _ITEM_CACHE = None
+        _ITEM_GATE.reset()
     _invalidate_alias_index()
 
 
@@ -385,6 +403,12 @@ def _alias_index() -> dict[str, str]:
             try:
                 _ALIAS_INDEX = _build_alias_index()
             except Exception as exc:  # noqa: BLE001 - fail-soft to structural
+                # RM-439 reviewed, deliberately cached: the index is a pure
+                # projection of the CACHED items catalog (canonical_item_id only
+                # reaches here when that catalog is non-empty), so a retry would
+                # rebuild from identical input and fail identically. Its
+                # lifetime is already bound to the catalog's -
+                # _invalidate_item_cache drops both.
                 _log.warning("kit_synergy: alias index build failed: %s", exc)
                 _ALIAS_INDEX = {}
         return _ALIAS_INDEX
