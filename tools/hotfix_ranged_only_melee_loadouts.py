@@ -147,8 +147,10 @@ def main() -> None:
     data = json.loads(_LOADOUTS.read_text(encoding="utf-8"))
     n = apply(data)
     tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_text(
-        json.dumps(data, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
+    # Bytes, not write_text: on Windows write_text turns LF into CRLF and the
+    # loadouts file is TRACKED (RM-441).
+    tmp.write_bytes(
+        (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8")
     )
     os.replace(tmp, _LOADOUTS)
     print(f"ranged-only melee backfill applied: {n} item list(s) fixed")
