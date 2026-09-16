@@ -192,7 +192,10 @@ def arena_teams(sess: dict) -> list[dict]:
                 continue
             cells.append({
                 "cellId":     m.get("cellId"),
-                "championId": m.get("championId", 0),
+                # RM-417: the RM-313 sibling. Emitted verbatim, a string id
+                # never matched champ_select.js's int ``myCid`` (wrong Arena
+                # cell badged as ME) and a string "0" read as a pick.
+                "championId": _as_int(m.get("championId"), 0),
             })
         out.append({
             "id":    sid,
