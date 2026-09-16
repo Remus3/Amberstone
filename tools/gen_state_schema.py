@@ -171,9 +171,17 @@ def main() -> int:
 
     # Atomic LF bytes, not write_text: on Windows write_text turns LF into
     # CRLF and state_schema.js is TRACKED (RM-441).
-    tmp = OUTPUT.with_suffix(OUTPUT.suffix + ".tmp")
-    tmp.write_bytes(content.encode("utf-8"))
-    tmp.replace(OUTPUT)
+    # RM-447: full-name temp in the same dir; remove it if write/rename raises.
+    tmp = OUTPUT.with_name(OUTPUT.name + ".tmp")
+    try:
+        tmp.write_bytes(content.encode("utf-8"))
+        tmp.replace(OUTPUT)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass  # best-effort; never mask the original error
+        raise
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
     return 0
 
