@@ -563,6 +563,20 @@ def _probe_inbox_listable(inbox: Path) -> None:
     carrying an explicit deny-list ACE. The `Path.iterdir` pass is kept as well
     so a fault injected at either layer refuses. The scandir handle is closed
     explicitly by the `with`, so a Windows directory handle is never left open.
+
+    ACCEPTED LIMIT (RM-437, decision (a), 2026-09-16). A denial swallowed INSIDE
+    the OS listing primitive (`os.scandir`, or `os.listdir` on interpreters
+    whose `Path.iterdir` uses it) is NOT detected: probe and listing share that
+    one primitive, the probe returns None, and the watcher reports fake
+    WITHDRAWN entries while the poller overwrites its watermark. No second
+    primitive was added because the fault is only reachable by patching: a real
+    ACL denial cannot be produced on the measured host (the process token holds
+    SeBackupPrivilege, so a deny-Everyone ACE still lists), and no real OS call
+    has been observed to return an empty listing for a denied directory. A
+    second check would defend against a lie nothing real tells. The class is
+    NOT closed. `tests/test_inbox_swallowed_listing.py` pins the limit as
+    asserted-to-still-defeat arms, so a change that closes it turns them red
+    and must update that pin and this paragraph together.
     """
     for _probe in inbox.iterdir():
         break
