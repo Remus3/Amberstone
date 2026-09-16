@@ -182,6 +182,27 @@ CITATION_RE = re.compile(
     r"(?![\d\w])"
 )
 
+# RM-435: a path segment may hold a SPACE (`docs/my notes/x.md:12`), which
+# CITATION_RE's `[\w.-]+` segments cannot see - it extracted the tail
+# `notes/x.md:12` and graded the WRONG path. CITATION_RE itself is left
+# byte-identical (tests/test_channel_doc_rc_gate.py imports it directly), and
+# the spaced shape is a SECOND pass bounded exactly as the channel-pin fix in
+# 1f42fd481 + 8e85ded6f bounded its ban arm: it counts only when it is the
+# WHOLE content of ONE paired backtick span (_CODE_SPAN, consumed left to
+# right so a closing backtick is never re-read as an opening one). Never
+# searched loose - a loose spaced search joins prose words into a phantom path.
+#
+# KNOWN, DELIBERATE LIMITS, each would buy false findings in prose: a spaced
+# path outside a code span (it keeps the pre-RM-435 tail reading); a spaced
+# path with no `/` (`my file.md:3`); a segment that starts or ends with a
+# space; a TAB in a path; a backslash separator in the spaced form.
+_SPACED_SEGMENT = r"[\w.-](?:[\w. -]*[\w.-])?"
+SPACED_CITATION_RE = re.compile(
+    r"((?:" + _SPACED_SEGMENT + r"/)+" + _SPACED_SEGMENT + r"\.(?:" + _EXTS + r"))"
+    r":(\d+)(?:\s*-\s*(\d+))?"
+)
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
+
 # Backticked spans are where this repo puts identifiers. Prose outside them is
 # too noisy to mine without manufacturing false MOVED/ABSENT rows.
 _BACKTICK_RE = re.compile(r"`([^`\n]{1,200})`")
@@ -370,17 +391,35 @@ def extract_citations(text: str, doc: str) -> list[Citation]:
     """All `path:<N>` / `path:<N>-<M>` tokens in one document."""
     found: list[Citation] = []
     for lineno, line in enumerate(text.splitlines(), start=1):
+        # (col, path, start, end, raw) per hit, spaced pass first. A plain
+        # CITATION_RE hit starting inside a span already captured whole is
+        # its truncated TAIL and is dropped; with no spaced span on the line
+        # this is exactly the pre-RM-435 CITATION_RE-only extraction.
+        hits: list[tuple[int, str, int, int | None, str]] = []
+        spans: list[tuple[int, int]] = []
+        for span in _CODE_SPAN.finditer(line):
+            inner = span.group(0)[1:-1]
+            m = SPACED_CITATION_RE.fullmatch(inner)
+            if m is None or " " not in m.group(1):
+                continue
+            spans.append((span.start(), span.end()))
+            b = m.group(3)
+            hits.append((span.start() + 1, m.group(1), int(m.group(2)), b, inner))
         for m in CITATION_RE.finditer(line):
-            path, a, b = m.group(1), int(m.group(2)), m.group(3)
+            if any(lo <= m.start() < hi for lo, hi in spans):
+                continue
+            hits.append((m.start(), m.group(1), int(m.group(2)), m.group(3), m.group(0)))
+        hits.sort(key=lambda h: h[0])
+        for col, path, a, b, raw in hits:
             found.append(
                 Citation(
                     doc=doc,
                     doc_line=lineno,
-                    raw=m.group(0),
+                    raw=raw,
                     path=path.replace("\\", "/"),
                     start=a,
                     end=int(b) if b else a,
-                    col=m.start(),
+                    col=col,
                 )
             )
     return found
