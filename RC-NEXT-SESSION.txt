@@ -1,171 +1,60 @@
-NEXT SESSION
-------------
-Task: Close every remaining blocking item for the FIVE-WAY ARM that is RC's to close.
-  Operator directive 2026-09-15. This SUPERSEDES the earlier "not buildable yet" freeze,
-  which was right about the fleet halves and wrong to extend to RC's own.
+NEXT SESSION - RC laned headless orchestrated parallel loop (continue)
+--------------------------------------------------------------------
+Task: Continue laned orchestrated cycles against RC's RC-local open rows until drained
+      or interrupted. Same standing SHAPE (merger + worktree slices on disjoint files +
+      independent adversarial verifier before every merge; producer never grades).
 
-Context, read first and re-derive rather than trust:
-  CLAUDE.md, MEMORY.md, WAKEUP_NOTES.md (2026-09-15 block), docs/LEDGER.md entry 1417,
-  docs/CHANNEL.md, and the BACKLOG.md arming-stage row under "Reliability / hardening".
-  The eleven arming criteria are restated in the stage-4 prompts artifact on the operator's
-  Desktop. RE-MEASURE their state; both that artifact and this prompt are hypotheses.
-  Live state to probe: python tools/moon_sync_poller.py --status ;
-  curl -k https://127.0.0.1:8888/api/moon-sync-status ; ops/runtime/health.json.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES.md
+      (2026-09-16b block) + docs/LEDGER.md 1419 and 1420 + git log. Probe live:
+      python tools/rc_facts.py ; python tools/moon_sync_poller.py --status ;
+      gh run list --branch main --limit 4 (confirm CI green on the wrap commit;
+      docs-guards was red on 59b3f6253 from phantom example cites in BACKLOG RM-446,
+      fixed in the wrap commit - verify, do not re-fix).
 
-RC's side - buildable now, in rough value order:
-  (d) THE NOTE-NAME GRAMMAR, the biggest one. It refuses 21 of 176 live notes today and every
-      refusal writes a PERMANENT BOUNCE into the sender's inbox, so arming without this sprays
-      bounces across four trees. Widen it to admit the no-HHMM variant while still refusing the
-      code-first variant, parametrised over the table INSIDE docs/CHANNEL.md. Editing that doc
-      is a CHANNEL_VERSION 2 five-way re-pin, never a unilateral edit - the doc is byte-pinned
-      by sha256 and a push whose diff touches it HALTS.
-  (g) Re-measure which CLI binary the S4U scheduled task actually resolves. Re-pin or fail
-      loudly. It is UNVERIFIED today.
-  (h) Name the model id in the arming data contract.
-  (i) Draft RC's written BOUNCE-policy position. Never arm with it undecided.
-  (j) Design the same-version contract field: a required, fail-closed field of every agreement
-      record, checked by load_agreement.
-  (f) Re-run tools/outbound_reciprocity_check.py now that live rows exist.
+BOUNDARY (unchanged): halt and ping before any byte leaves the tree. No sibling-inbox
+      writes, no arming, no edits to docs/CHANNEL.md, ops/loop/slots.py,
+      ops/loop/winmutex.py. Ordinary pushes that pass suites + the pre-push sweep proceed.
 
-NOT RC's - do not do these:
-  (a) the CS exit-code flip; (b) the RSC and LW per-prompt watcher work; (e) the LW
-  validate-and-deliver seam. Those are the four sibling-adoption prompts already delivered to
-  the inboxes; each tree ingests its own. (c) fleet view is already GREEN as of the
-  2026-09-15 poller restart.
+CYCLE 1: read RC's own moon_sync_inbox/ (triage only, do not reply).
 
-Acceptance:
-  Each RC-side criterion is either CLOSED with a measurement and a guard test, or recorded as
-  still-open with the specific reason and what would close it. No criterion is marked closed on
-  reasoning alone. The grammar change ships with a mutation proof that it still REFUSES the
-  code-first variant.
+DRAINABLE QUEUE (RC-local, filed 2026-09-16; read each row first, recall gate first):
+  RM-433 other ops/moon_sync_repos.json readers degrade in a worktree
+  RM-434 inbox_responder_runner.py:2475 whole-file hash of the live hook log (flake class)
+  RM-440 skip-hygiene guard accepts constant-true conditions (os.name/sys.platform, OR loophole)
+  RM-441 text-mode writers of TRACKED files without newline control (CRLF on Windows)
+  RM-442 data_pipeline.py downloaded_at local time labelled Z
+  RM-443 17 unclassified core loaders with a cache-failure shape
+  RM-444 archetype_picks transient read failure + save overwrites picks
+  RM-446 RM-435 residuals (PAST_EOF tail preference, spaced dir + bare filename)
+  RM-437 os.scandir-level swallow defeats the listability probe (decide: accept or fix)
+  RM-432 hooks execute worktree tool copies - DESIGN question (.githooks shared); may be
+         operator-facing, record rather than force
+  then older open rows (RM-413, RM-415, RM-417 ...), one row per slice.
+  RM-445 (DS does not model 16.18.1 Rageblade 3 -> 4; runes never refreshed) is a DS
+  batch decision - Tier-2, full dual suite + DS :8860 restart if taken.
 
-DO NOT ARM ANYTHING. "Close the blockers" is not licence to arm.
-  Criterion (k) is standing and structural: RC halts and PINGS before writing its own agreement
-  record and before enabling RC-InboxResponder; it never touches another repo's record, HALT
-  file or task; each repo's operator hand-writes their OWN expiring record; there is no timeout
-  and no auto-proceed. Arming is five separate operator acts in five trees, by construction,
-  never one prompt. Order when it comes: pairwise RC and RSC first. LW is NEVER armed in its
-  current shape - its write path IS a bypassPermissions session.
+SLICE PROMPT RULES LEARNED 2026-09-16 (put in every slice prompt):
+  - STEP ZERO: pwd under .claude\worktrees\, then git merge --ff-only <local main sha>
+    (worktrees are cut from ORIGIN, not local main).
+  - At MERGE, before push: run tests/test_*hygiene*.py, citation drift, rm-id registry,
+    doc size budget, line endings on the merged tree - slices miss repo-wide guards.
+  - An un-skip or platform-gated change must be exercised under the OTHER OS's semantics
+    (CI is Linux; os.lstat raises UnicodeEncodeError, not OSError, on POSIX).
+  - Never widen a guard's accepted vocabulary without a probe proving an always-true
+    condition is still rejected.
+  - No example path:line cites in BACKLOG/LEDGER prose (citation drift guard).
+  - RC-PatchRefresh (Wed 11:07) rewrites tracked data; a dirty data tree mid-session is
+    that task, not a slice.
 
-Do NOT redo - all shipped 2026-09-15, all pushed:
-  - The moon-sync five slices (poller, watcher, docs/CHANNEL.md, console-flash tool, the
-    /api/moon-sync-status route). Closed.
-  - The console-flash attribution. The interpreter-token swap is REFUTED by measurement; no
-    swap was made and none may be made - swapping it CREATES a flash.
-  - The docs/OPERATIONS.md scheduled-task drift: the missing RC-MoonSyncPoller row, the stale
-    count, and the bare task's name (RiotCommander, never renamed by the product rename, which
-    is why the documented check command could not see it). Fixed. A different number on
-    re-measure is machine state moving, not drift returning.
-  - The MSIX shadow delete, the poller restart, and the FYI delivery to four inboxes. Done and
-    verified.
-  - Any fleet-surfacing mechanism in ledger 1417's do-not-redo list - twelve are refuted with
-    reasons.
+HALT AND RECORD, DO NOT ATTEMPT: criterion (d) flip / CHANNEL_VERSION 2 re-pin;
+  docs/BOUNCE_POLICY.md NOT-DECIDED; replies to LL/LW/RSC/CS; the two BLOCKED third-party
+  skills; responder MODEL pin tools/inbox_responder_runner.py:95.
 
-Traps this session paid for, worth not re-paying:
-  - A COUNT GOES STALE INSIDE THE COMMIT THAT WRITES IT. That happened three times here, once
-    to a correction that was itself correcting a stale count. Stamp every count to the commit
-    it was measured at; never write "at this commit".
-  - GREEN ON WINDOWS IS NOT GREEN. CI is Linux and gates the whole tree. A local 22452-passed
-    run missed four platform defects. Check the CI run, not just the local suite.
-  - A MODULE RUN ALONE HIDES CROSS-MODULE DAMAGE. A test that closed a real OS handle corrupted
-    every later subprocess in the same pytest process and was invisible until a second module
-    ran beside it.
-  - docs/DS_SWEEP_TRACKER.md carries a SECOND, never-demoted "Next free id = " pin far down the
-    file, so a bare `grep -c` returns 2 and must NEVER be used as an apply check. No line number
-    is given here on purpose.
+DO NOT REDO (shipped + pushed 2026-09-16, LEDGER 1419/1420): ban-arm space bypass;
+  always-skipping surrogate tests; worktree hook exposure measurement + sweep DEGRADED
+  fix; spec grammar drift + example list (RM-436); ungraded-guard sweep; durable-store
+  digest rule in CLAUDE.md; unlistable-inbox watcher/poller + shared probe; hook-log
+  teardown flake; RM-414; RM-416; item_advisor residuals; RM-435; RM-438; RM-439;
+  CRLF writer fix; DDragon 16.18.1 data commit; CLAUDE.md/ROADMAP relocate-only trim.
 
-SECOND TASK, operator-added 2026-09-15: IMPLEMENT https://github.com/tt-a1i/archify
-  What it is (measured from its repo page, re-verify): an agent SKILL that turns a codebase or
-  system description into interactive diagrams - architecture, workflow, sequence, data-flow,
-  lifecycle - via a typed JSON IR that compiles to self-contained HTML/SVG. TypeScript/Node.
-  Ships as a skill for Claude Code among others. Obvious RC fit: docs/ARCHITECTURE.md and the
-  archmap are hand-maintained today.
-  LICENSE GATE FIRST - this is a CLAUDE.md hard rule and it has caught real traps here:
-    - Reported license is MIT with a LICENSE file present. That is NOT sufficient to proceed.
-    - READ THE COPYRIGHT LINE, not just the license name. A reviewed repo once shipped an MIT
-      LICENSE that was an unrendered template reading literally "Copyright (c) {{ year }}
-      {{ organization }}" - a grant with no grantor, which passes an SPDX grep.
-    - Check package.json's license field against the LICENSE file. A repo can contradict
-      itself; one reviewed plugin shipped MIT in LICENSE and "UNLICENSED"/"private": true in
-      its manifest, another GPL-3 in LICENSE and "ISC" in the manifest.
-    - Check for a truncated MIT (warranty clause cut) and for a NOTICE naming adapted
-      upstreams - a clean license is still not vendor-safe if the work has other holders.
-    - RC is Apache-2.0. MIT vendors in fine WITH attribution recorded in RC's NOTICE.
-      GPL/copyleft stays DO-NOT-VENDOR regardless of any verbal clearance.
-    - The always-legal path if the gate fails: re-implement the mechanic from observed
-      behaviour in RC's own code. Techniques are not copyrightable; source is.
-  Then decide adopt-as-skill vs vendor vs re-implement, and say which and why.
-
-THIRD TASK, operator-added 2026-09-15: https://github.com/mksglu/context-mode
-  What it is (measured from its repo page, re-verify): a context-window optimisation tool for
-  coding agents - sandboxes tool output, persists session memory in SQLite, enforces routing
-  across many platforms via MCP plus hooks. TypeScript, shipped as an npm package and
-  marketplace plugins.
-  ** ITS LICENSE IS ELv2 (ELASTIC LICENSE v2) AND THAT CHANGES THE ANSWER BEFORE YOU START. **
-    - ELv2 is SOURCE-AVAILABLE, NOT OPEN SOURCE. It is the same family as BUSL-1.1, which
-      CLAUDE.md's licence gate already names: source-available, not copyleft, DO-NOT-VENDOR
-      anyway, though its Additional Use Grant may permit running it internally.
-    - So: DO NOT VENDOR ANY OF ITS SOURCE INTO RC. RC is PUBLIC and Apache-2.0; carrying ELv2
-      source in this tree would misstate RC's own license to everyone who clones it, and it is
-      exactly the failure the gate exists to prevent.
-    - INSTALLING AND USING IT IS A DIFFERENT QUESTION and is the likely-fine path: an installed
-      npm package or marketplace plugin is a dependency the operator runs, not a file RC
-      redistributes. If you go that way, record it as a TOOL, not as vendored code, and keep it
-      out of the tracked tree.
-    - If a specific mechanic is wanted IN-tree, re-implement it from observed behaviour in RC's
-      own code. Techniques and protocol facts are not copyrightable; source is.
-    - READ THE LICENSE FILE YOURSELF before acting on any of this. The badge is evidence, not
-      proof, and a repo can contradict itself between its LICENSE and its manifest.
-
-FOURTH TASK, operator-added 2026-09-15: review https://github.com/timharris707/skills
-  What it is (measured from its repo page, re-verify): 23 agent skills for Claude Code and
-  Codex, in five buckets - Orient (router, setup, domain-memory), Decide (grilling,
-  decision-map, advisory-board), Investigate (research, prototype, codebase-review, ingest),
-  Run (handoff, orchestrate, adversarial-review, diagnose, implement, blast-radius and more),
-  Author (writing-for-agents, writing-for-humans, plainspoken, huh). Several overlap RC's
-  existing skills, so review for WHAT TO STEAL rather than wholesale adoption; RC already has
-  its own diagnose, root-cause-fix, brainstorming and adversarial-review equivalents.
-  ** LICENSE GATE - THIS ONE IS THE "CLEAN LICENSE, STILL NOT VENDOR-SAFE" SHAPE. **
-    - It ships an MIT LICENSE.md. That alone does NOT clear it.
-    - MUCH OF THE CATALOG IS ADAPTED FROM OTHER PEOPLE'S WORK: the README says much of it
-      derives from mattpocock/skills (MIT), three skills are adapted from another author's
-      cursor/plugins repository, and every adapted skill names its upstream in its OWN file
-      rather than in a central list. So there are MULTIPLE COPYRIGHT HOLDERS and the
-      maintainer's MIT cannot unilaterally relicense what they adapted.
-    - CLAUDE.md's gate names this exact trap twice - "the person who cleared it may not own
-      it", and a measured case of "a repo with a valid MIT whose NOTICE named three adapted
-      upstreams - clean license, still not vendor-safe".
-    - THEREFORE, per skill you want: open THAT skill's attribution section, identify its
-      upstream, and verify the UPSTREAM's license yourself. mattpocock/skills is reported MIT -
-      confirm it. The other upstream's license is UNKNOWN from here and must be read before any
-      skill adapted from it is touched.
-    - Read the copyright LINE in LICENSE.md, not just the license name.
-    - If vendored, record EVERY upstream in RC's NOTICE, not just timharris707.
-    - RC already credits mattpocock/skills for its own diagnose skill, so there is prior art in
-      this tree for how to attribute this family.
-    - The always-legal path stands: read for the IDEA and re-implement in RC's own words and
-      code. Techniques are not copyrightable; source and prose are.
-
-PENDING OUTBOUND - NEEDS AN OPERATOR PING BEFORE IT LEAVES THE TREE:
-  LL REFUSED docs/CHANNEL.md at their license gate on 2026-09-15T23:33 (their note is in
-  moon_sync_inbox; they filed it as OPS-91). They are RIGHT: RC's FYI named a commit and called
-  the tree public, and public is a VISIBILITY, NOT A GRANT. They hold no copy, no pin, no
-  paraphrase - deliberately - so CHANNEL.md is pinned in 1 of 5 trees until RC answers.
-  The answer is already verified against RC's own tree this session and needs no new work:
-    - repository Remus3/Amberstone, PUBLIC
-    - root LICENSE is Apache-2.0
-    - README (the licence paragraph) states that source code AND AUTHORED DOCUMENTATION are
-      Apache-2.0; docs/CHANNEL.md is authored documentation, so it is covered
-    - the ONLY carve-out is third-party-sourced DATA under data/, recorded source by source in
-      NOTICE - documentation is not in that carve-out
-    - the three-way contradiction LL cites from RC's 2026-09-07 note is RESOLVED:
-      Share/LICENSE.md no longer exists, and no "all rights reserved" text remains in README
-      or in the doc
-    - sole copyright holder; vendoring intended
-  Write that as a short note and HALT AND PING before copying it into their inbox. LL applied
-  the same rule to LW and their operator then ruled VENDOR, so this is a routine unblock, not a
-  dispute - and do not soften RC's own FYI wording, which genuinely omitted the license.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
-Session default applies: orchestrated, multi-agent, self-adjudicating, self-adversarial, all
-doing in subagents. Halt and ping before any byte leaves the tree.
+When the drainable queue is empty emit NO_WORK. End with /done plus the next prompt.
