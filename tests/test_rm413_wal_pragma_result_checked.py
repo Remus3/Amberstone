@@ -103,6 +103,23 @@ _IDS = [name for name, _ in SITES]
 _OPENERS = [fn for _, fn in SITES]
 
 
+_PER_OPERATION_MODULES = (riot_api_cache, postgame, cache_engine)
+
+
+@pytest.fixture(autouse=True)
+def _reset_wal_warned():
+    """Per-operation openers warn once per db path per process; start clean."""
+    for mod in _PER_OPERATION_MODULES:
+        seen = getattr(mod, "_WAL_WARNED", None)
+        if seen is not None:
+            seen.clear()
+    yield
+    for mod in _PER_OPERATION_MODULES:
+        seen = getattr(mod, "_WAL_WARNED", None)
+        if seen is not None:
+            seen.clear()
+
+
 def _journal_warnings(caplog) -> list[str]:
     return [r.getMessage() for r in caplog.records
             if r.levelno >= logging.WARNING and "journal_mode" in r.getMessage()]
@@ -138,6 +155,35 @@ def test_real_wal_answer_is_silent(tmp_path, monkeypatch, caplog, opener):
         probe.close()
     assert adopted.lower() == "wal", "precondition: this filesystem must support WAL"
     assert _journal_warnings(caplog) == []
+
+
+# -- per-operation openers: warn ONCE per db path, not on every call ----------------
+
+def _twice_riot_api_cache(monkeypatch, db):
+    cache = riot_api_cache.RiotApiCache(db_path=db)
+    for _ in range(2):
+        cache._connect().close()
+
+
+def _twice_postgame(monkeypatch, db):
+    monkeypatch.setattr(postgame, "_DB_PATH", db)
+    for _ in range(2):
+        postgame._get_conn().close()
+
+
+def _twice_cache_engine(monkeypatch, db):
+    engine = cache_engine.CacheEngine(db)  # construction opens once already
+    for _ in range(2):
+        engine._conn().close()
+
+
+@pytest.mark.parametrize("twice", [_twice_riot_api_cache, _twice_postgame, _twice_cache_engine],
+                         ids=["core/riot_api_cache", "lcu/lcu_postgame_collector",
+                              "modules/cache_engine"])
+def test_per_operation_opener_warns_once_per_db(monkeypatch, caplog, twice):
+    caplog.set_level(logging.WARNING)
+    twice(monkeypatch, Path(":memory:"))
+    assert len(_journal_warnings(caplog)) == 1, _journal_warnings(caplog)
 
 
 # -- proxied answers: pin the comparison -------------------------------------------
