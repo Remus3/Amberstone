@@ -75,6 +75,10 @@ _SITE = re.compile(r"([A-Za-z0-9_][A-Za-z0-9_./-]*\.py):(\d+)")
 #     table's own bound, since a site cell's entire content is the claim.
 # Deliberate limits: a spaced site needs a `/`, and no segment may start or
 # end with a space. Everything else falls back to the unspaced `_SITE`.
+# RESOLVE-FIRST, because a command-style cell such as `python tools/x.py:3`
+# fits the same shape: the plain `_SITE` reading wins whenever it names an
+# existing file, and the spaced reading is taken only when the plain one does
+# not exist AND the whole spaced path does. Both missing keeps the plain one.
 _SPACED_SEGMENT = r"[A-Za-z0-9_.-](?:[A-Za-z0-9_. -]*[A-Za-z0-9_.-])?"
 _SPACED_SITE = re.compile(
     rf"((?:{_SPACED_SEGMENT}/)+{_SPACED_SEGMENT}\.py):(\d+)"
@@ -82,16 +86,20 @@ _SPACED_SITE = re.compile(
 _CODE_SPAN = re.compile(r"`[^`\n]*`")
 
 
-def _site_path(cell: str) -> str | None:
-    """The site path one matrix cell names, or None."""
+def _site_path(cell: str, root: pathlib.Path = _ROOT) -> str | None:
+    """The site path one matrix cell names, or None. See RESOLVE-FIRST above."""
+    site = _SITE.search(cell)
+    plain = None if site is None else site.group(1)
+    if plain is not None and (root / plain).is_file():
+        return plain
     units = [s.group(0)[1:-1] for s in _CODE_SPAN.finditer(cell)]
     units.append(cell.strip("~* \t"))
     for unit in units:
         spaced = _SPACED_SITE.fullmatch(unit)
         if spaced is not None and " " in spaced.group(1):
-            return spaced.group(1)
-    site = _SITE.search(cell)
-    return None if site is None else site.group(1)
+            if (root / spaced.group(1)).is_file():
+                return spaced.group(1)
+    return plain
 
 _LIVE_TIERS = {"HAIKU", "SONNET", "OPUS"}
 
@@ -297,51 +305,62 @@ class CostTraceMatrixTests(unittest.TestCase):
         )
 
 
-class SiteParserSpacedPathTests(unittest.TestCase):
-    """RM-435: `_SITE` must not truncate a spaced site path to its tail.
+# --- RM-435: `_SITE` must not truncate a spaced site path to its tail -------
+#
+# The old parser read `tools/my dir/x.py:9` as `dir/x.py:9`, so a real row
+# would go red against a phantom path. The spaced reading is bounded (one
+# backtick span or the whole site cell) AND resolve-first: a command-style
+# cell whose plain tail exists keeps the plain reading. Files are created
+# under tmp_path so every "exists" in these arms is a real filesystem fact.
 
-    The old parser read `tools/my dir/x.py:9` as `dir/x.py:9`, so a real row
-    would go red against a phantom path. A space is admitted only when the
-    site is the WHOLE of one bounded unit - one backtick span, or the whole
-    (de-decorated) site cell - never searched loose across cell prose.
-    """
 
-    def _site(self, cell: str) -> str | None:
-        parsed = _parse_row(f"| {cell} | HAIKU | YES | POLLING | p |")
-        return None if parsed is None else parsed[0]
+def _touch(root: pathlib.Path, *rels: str) -> pathlib.Path:
+    for rel in rels:
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("x = 1\n", encoding="ascii")
+    return root
 
-    def test_bare_spaced_site_cell_is_not_truncated(self) -> None:
-        self.assertEqual(self._site("tools/my dir/x.py:9"), "tools/my dir/x.py")
 
-    def test_backticked_spaced_site_is_not_truncated(self) -> None:
-        self.assertEqual(self._site("`tools/my dir/x.py:9`"), "tools/my dir/x.py")
+def test_rm435_command_style_cells_keep_the_existing_plain_site(tmp_path) -> None:
+    # Regressions against bb2686c8b, which took the spaced reading blindly.
+    root = _touch(tmp_path, "docs/x.py", "tools/x.py", "tools/y.py")
+    assert _site_path("see docs/x.py:3", root) == "docs/x.py"
+    assert _site_path("python tools/x.py:3", root) == "tools/x.py"
+    assert _site_path("`see docs/x.py:3` and `in tools/y.py:4-6`", root) == "docs/x.py"
+    assert _site_path("`python tools/x.py:3`", root) == "tools/x.py"
 
-    def test_struck_spaced_site_is_not_truncated(self) -> None:
-        self.assertEqual(self._site("~~tools/my dir/x.py:9~~"), "tools/my dir/x.py")
-        self.assertEqual(self._site("~~`tools/my dir/x.py:9`~~"), "tools/my dir/x.py")
 
-    def test_prose_cell_is_not_joined_into_a_path(self) -> None:
-        self.assertEqual(self._site("see notes and x.py:3"), "x.py")
-        self.assertEqual(self._site("see notes/and x.py:3 later"), "x.py")
+def test_rm435_spaced_site_resolves_whole_when_its_tail_does_not(tmp_path) -> None:
+    root = _touch(tmp_path, "tools/my dir/x.py")
+    assert _site_path("tools/my dir/x.py:9", root) == "tools/my dir/x.py"
+    assert _site_path("`tools/my dir/x.py:9`", root) == "tools/my dir/x.py"
+    assert _site_path("~~tools/my dir/x.py:9~~", root) == "tools/my dir/x.py"
+    assert _site_path("~~`tools/my dir/x.py:9`~~", root) == "tools/my dir/x.py"
 
-    def test_two_backtick_spans_are_not_paired_across(self) -> None:
-        self.assertEqual(self._site("`tools/a b` and `c/y.py:3`"), "c/y.py")
 
-    def test_and_or_clock_time_is_not_a_site(self) -> None:
-        self.assertIsNone(self._site("and/or 12:30"))
+def test_rm435_both_readings_missing_keeps_the_old_plain_site(tmp_path) -> None:
+    assert _site_path("tools/my dir/x.py:9", tmp_path) == "dir/x.py"
 
-    def test_leading_space_segment_is_not_a_path(self) -> None:
-        self.assertEqual(self._site("tools/ my/x.py:9 x"), "my/x.py")
 
-    def test_real_matrix_rows_parse_exactly_as_the_unspaced_regex(self) -> None:
-        body = _matrix_body()
-        self.assertEqual(len(body), _EXPECTED_ROWS)
-        for raw in body:
-            cells = [c.strip() for c in _ROW.match(raw.strip()).group("cells").split("|")]
-            old = _SITE.search(cells[0])
-            with self.subTest(row=raw.strip()[:60]):
-                self.assertIsNotNone(old)
-                self.assertEqual(_parse_row(raw)[0], old.group(1))
+def test_rm435_prose_is_never_joined_into_a_site(tmp_path) -> None:
+    # Even with the joined path EXISTING, an unbounded prose cell never
+    # yields it: the spaced reading must be the whole span or whole cell.
+    root = _touch(tmp_path, "see notes/and x.py", "tools/a b/c/y.py")
+    assert _site_path("see notes/and x.py:3 later", root) == "x.py"
+    assert _site_path("`tools/a b` and `c/y.py:3`", root) == "c/y.py"
+    assert _site_path("tools/ my/x.py:9 x", root) == "my/x.py"
+    assert _site_path("and/or 12:30", root) is None
+
+
+def test_rm435_real_matrix_rows_parse_exactly_as_the_unspaced_regex() -> None:
+    body = _matrix_body()
+    assert len(body) == _EXPECTED_ROWS
+    for raw in body:
+        cells = [c.strip() for c in _ROW.match(raw.strip()).group("cells").split("|")]
+        old = _SITE.search(cells[0])
+        assert old is not None, raw
+        assert _parse_row(raw)[0] == old.group(1), raw
 
 
 if __name__ == "__main__":  # pragma: no cover
