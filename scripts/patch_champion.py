@@ -65,8 +65,10 @@ def load_builds() -> dict:
 
 
 def save_builds(builds: dict) -> None:
+    # Bytes, not write_text: on Windows write_text turns LF into CRLF and this
+    # is a TRACKED file (RM-441; same pattern as data_pipeline._atomic_write_text).
     tmp = BUILDS_FILE.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(builds, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.write_bytes(json.dumps(builds, indent=2, ensure_ascii=False).encode("utf-8"))
     tmp.replace(BUILDS_FILE)
 
 

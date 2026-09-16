@@ -39,6 +39,7 @@ from core.aram_item_interaction import (  # noqa: E402
     MIN_BUCKET_N,
     compute_aram_item_interaction_from_db,
 )
+from core.polled_json import atomic_write_text  # noqa: E402
 
 SCHEMA = "aram_item_interaction/v1"
 
@@ -131,14 +132,13 @@ def build_payload(result: dict, patch_min: str | None = None,
 
 
 def write_atomic(payload: dict, out_path: Path) -> None:
-    """Serialise ``payload`` to ``out_path`` via a tmp file + replace."""
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    tmp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True),
-        encoding="utf-8",
-    )
-    tmp.replace(out_path)
+    """Serialise ``payload`` to ``out_path`` via a tmp file + replace.
+
+    LF bytes via the shared helper, never write_text: the output is TRACKED
+    and write_text turns LF into CRLF on Windows (RM-441).
+    """
+    atomic_write_text(
+        out_path, json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True))
 
 
 def main(argv: list[str] | None = None) -> int:
