@@ -810,8 +810,8 @@ def coverage() -> dict:
     reflects over it, so only tests ever called this. Kept rather than deleted
     because it returns exactly the four numbers a duo-synergy diagnostic
     wants: `health()` now carries it, so the one route wiring that lands
-    `health()` adopts this with it. It is STILL unreached until that wiring
-    lands, and saying otherwise would be the claim this row exists to kill.
+    `health()` adopts this with it. RM-416 landed that wiring: GET
+    /api/duo-synergy embeds health() - and so this - as its `health` key.
     """
     _load_once()
     with _CACHE_LOCK:
