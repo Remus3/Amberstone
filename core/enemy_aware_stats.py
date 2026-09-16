@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 
 from core.failed_load_gate import FailedLoadGate
@@ -75,6 +76,43 @@ _CHAMP_INDEX: dict[str, dict] | None = None
 # backoff and warned once per failure streak (core/failed_load_gate.py).
 _CHAMP_GATE = FailedLoadGate()
 _STAT_GATE = FailedLoadGate()
+
+
+# RM-415: the live-client envelope coercion seam for this module. The readers
+# below used ``envelope.get(k) or {}`` / ``or []``, which substitutes the empty
+# container only for a MISSING or falsey value and forwards a RETYPED one (a
+# string, a bool, an int) unchanged, so the next ``.get()`` / ``for`` raised.
+# core/liveclient_cache.py validates only the TOP-LEVEL envelope; every inner
+# field arrives here untouched. One seam, not a per-site isinstance ladder.
+def _as_dict(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value: object) -> list:
+    return value if isinstance(value, list) else []
+
+
+def _as_str(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def _as_num(value: object) -> float | None:
+    """A finite number from an int / float / numeric string, else None.
+
+    ``bool`` is rejected (``True >= 6`` is valid Python and silently wrong).
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        f = float(value)
+    elif isinstance(value, str):
+        try:
+            f = float(value)
+        except ValueError:
+            return None
+    else:
+        return None
+    return f if math.isfinite(f) else None
 
 
 def _riot_growth_multiplier(level: int) -> float:
@@ -327,20 +365,22 @@ def enemy_items_from_liveclient(liveclient_data: dict,
     """
     if not isinstance(liveclient_data, dict):
         return []
-    players = liveclient_data.get("allPlayers") or []
+    players = _as_list(liveclient_data.get("allPlayers"))
     out: list[list[int]] = []
     for p in players:
         if not isinstance(p, dict):
             continue
         if exclude_team and p.get("team") == exclude_team:
             continue
-        items = p.get("items") or []
+        items = _as_list(p.get("items"))
         ids: list[int] = []
         for it in items:
             if not isinstance(it, dict):
                 continue
             iid = it.get("itemID") or it.get("itemId") or 0
-            slot = it.get("slot")
+            # An unparseable slot is "slot unknown" (same as absent), never a
+            # TypeError from comparing a string to 6.
+            slot = _as_num(it.get("slot"))
             # Slot 6 is the trinket - skip; 0-5 are real items.
             if slot is not None and slot >= 6:
                 continue
@@ -356,15 +396,17 @@ def active_player_team(liveclient_data: dict) -> str | None:
     their team from enemy lists."""
     if not isinstance(liveclient_data, dict):
         return None
-    ap = liveclient_data.get("activePlayer") or {}
-    me_name = ap.get("summonerName") or ap.get("riotIdGameName") or ""
+    ap = _as_dict(liveclient_data.get("activePlayer"))
+    me_name = _as_str(ap.get("summonerName") or ap.get("riotIdGameName"))
     if not me_name:
         return None
-    for p in (liveclient_data.get("allPlayers") or []):
+    for p in _as_list(liveclient_data.get("allPlayers")):
         if not isinstance(p, dict):
             continue
         # Match on either summonerName or composed riotId
-        rid = p.get("riotIdGameName") or p.get("summonerName") or ""
+        rid = _as_str(p.get("riotIdGameName") or p.get("summonerName"))
+        if not rid:
+            continue
         if rid == me_name or me_name.startswith(rid + "#") or rid == me_name.split("#", 1)[0]:
             return p.get("team")
     return None

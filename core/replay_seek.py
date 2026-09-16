@@ -68,6 +68,7 @@ Transport is injected, so everything except those three is testable headless.
 from __future__ import annotations
 
 import json
+import math
 import ssl
 import time
 import urllib.request
@@ -143,24 +144,62 @@ class ReplayClient:
             return json.loads(r.read().decode("utf-8"))
 
 
+# RM-415: the envelope coercion seam for this module. ``x.get(k) or {}`` only
+# substitutes for a MISSING / falsey value and forwards a RETYPED one, and a
+# bare ``int()`` raises on a non-numeric string. Nothing above
+# ``sample_series_lenient`` catches anything but SeekError, so one malformed
+# inner field used to abort the whole sweep. A retyped INNER field now
+# degrades; a non-object FRAME is still a typed SeekError (see sample_at).
+def _as_dict(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value: object) -> list:
+    return value if isinstance(value, list) else []
+
+
+def _as_num(value: object) -> float | None:
+    """A finite number from an int / float / numeric string, else None.
+    ``bool`` is rejected rather than read as 0 / 1."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        f = float(value)
+    elif isinstance(value, str):
+        try:
+            f = float(value)
+        except ValueError:
+            return None
+    else:
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _as_int(value: object) -> int:
+    n = _as_num(value)
+    return int(n) if n is not None else 0
+
+
 def _player_from(raw: dict) -> PlayerState:
-    scores = raw.get("scores") or {}
+    scores = _as_dict(raw.get("scores"))
     items = []
-    for slot in raw.get("items") or []:
+    for slot in _as_list(raw.get("items")):
         # `items` is null in a LIVE game (only items_display populates); in a
         # replay it does populate, but tolerate either shape.
-        if isinstance(slot, dict) and slot.get("itemID"):
-            items.append(int(slot["itemID"]))
+        if isinstance(slot, dict):
+            iid = _as_int(slot.get("itemID"))
+            if iid:
+                items.append(iid)
     return PlayerState(
         champion=str(raw.get("championName") or ""),
         summoner=str(raw.get("summonerName") or ""),
-        level=int(raw.get("level") or 0),
+        level=_as_int(raw.get("level")),
         role=str(raw.get("position") or ""),
         team=str(raw.get("team") or ""),
-        kills=int(scores.get("kills") or 0),
-        deaths=int(scores.get("deaths") or 0),
-        assists=int(scores.get("assists") or 0),
-        cs=int(scores.get("creepScore") or 0),
+        kills=_as_int(scores.get("kills")),
+        deaths=_as_int(scores.get("deaths")),
+        assists=_as_int(scores.get("assists")),
+        cs=_as_int(scores.get("creepScore")),
         item_ids=items)
 
 
@@ -174,10 +213,16 @@ def sample_at(client, t_s: float) -> SeekSample:
         blob = client.get_allgamedata()
     except Exception as exc:  # noqa: BLE001
         raise SeekError(f"read at {t_s}s failed: {exc}") from exc
-    observed = ((blob.get("gameData") or {}).get("gameTime"))
+    if not isinstance(blob, dict):
+        # A non-object frame is a failed READ, not a degradable field: raise
+        # the typed error so the lenient sampler records it as failed.
+        raise SeekError(f"read at {t_s}s returned a non-object frame "
+                        f"({type(blob).__name__})")
+    observed = _as_num(_as_dict(blob.get("gameData")).get("gameTime"))
     return SeekSample(
-        t_s=float(observed if observed is not None else t_s),
-        players=[_player_from(p) for p in blob.get("allPlayers") or []])
+        t_s=observed if observed is not None else float(t_s),
+        players=[_player_from(p) for p in _as_list(blob.get("allPlayers"))
+                 if isinstance(p, dict)])
 
 
 def sample_series(client, times) -> list:

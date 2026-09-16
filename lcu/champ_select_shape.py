@@ -192,7 +192,10 @@ def arena_teams(sess: dict) -> list[dict]:
                 continue
             cells.append({
                 "cellId":     m.get("cellId"),
-                "championId": m.get("championId", 0),
+                # RM-417: the RM-313 sibling. Emitted verbatim, a string id
+                # never matched champ_select.js's int ``myCid`` (wrong Arena
+                # cell badged as ME) and a string "0" read as a pick.
+                "championId": _as_int(m.get("championId"), 0),
             })
         out.append({
             "id":    sid,
@@ -257,7 +260,11 @@ def _team_picks(team_arr, local_cell=None) -> list[dict]:
         cid_intent = _as_int(p.get("championPickIntent"), 0)
         cid_effective = cid_locked or cid_intent
         out.append({
-            "cellId":      p.get("cellId"),
+            # RM-417: coerced like localPlayerCellId, so a string-typed build
+            # compares like against like in champ_select.js / ds_matchup.js.
+            # Default stays None, NOT 0: cell 0 is a real cell, and the JS
+            # consumers guard on ``!= null`` / ``typeof === "number"``.
+            "cellId":      _as_int(p.get("cellId"), None),
             "championId":  cid_effective,
             "champion_pick_intent": cid_intent,
             "champion_locked": cid_locked,
