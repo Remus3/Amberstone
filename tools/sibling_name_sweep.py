@@ -331,6 +331,63 @@ def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> 
     )
 
 
+CONFIG_RELATIVE = Path("ops") / "moon_sync_repos.json"
+
+
+def _git_line(cwd: Path, args: Sequence[str]) -> Optional[str]:
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(cwd), *args], capture_output=True, timeout=30
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    out = proc.stdout.decode("utf-8", errors="replace").strip()
+    return out or None
+
+
+def _same_dir(a: Path, b: Path) -> bool:
+    try:
+        return os.path.normcase(str(a.resolve())) == os.path.normcase(str(b.resolve()))
+    except OSError:
+        return False
+
+
+def main_working_tree(base: Path) -> Optional[Path]:
+    """The MAIN working tree when ``base`` is the root of a LINKED worktree.
+
+    MEASURED: the pre-push hook resolves this tool through ``git rev-parse
+    --show-toplevel``, so a push from a worktree runs the worktree's copy, whose
+    ``REPO_ROOT`` has no gitignored per-host config. Every such push ran
+    DEGRADED and still exited 0.
+
+    ``base`` must itself be a checkout TOP LEVEL. A directory that merely sits
+    inside some repository does not resolve upward, so an odd ``--config-root``
+    cannot arm itself from a repository it is not.
+
+    ``--path-format=absolute`` needs git 2.31+; older git gets the plain form,
+    which may be relative to ``base``. Returns None for the main tree itself, a
+    non-repository, or any git failure.
+    """
+    base = Path(base)
+    top = _git_line(base, ["rev-parse", "--show-toplevel"])
+    if top is None or not _same_dir(Path(top), base):
+        return None
+    common = _git_line(base, ["rev-parse", "--path-format=absolute", "--git-common-dir"])
+    if common is None:
+        common = _git_line(base, ["rev-parse", "--git-common-dir"])
+        if common is None:
+            return None
+    common_path = Path(common)
+    if not common_path.is_absolute():
+        common_path = base / common_path
+    main = common_path.parent
+    if _same_dir(main, base) or not main.is_dir():
+        return None
+    return main
+
+
 def load_config(
     root: Optional[Path] = None, env: Optional[Mapping[str, str]] = None
 ) -> SweepConfig:
@@ -360,7 +417,14 @@ def load_config(
             cfg.detail = "RC_MOON_SYNC_REPOS is set but yields zero usable names"
         return cfg
 
-    config_path = base / "ops" / "moon_sync_repos.json"
+    config_path = base / CONFIG_RELATIVE
+    if not config_path.exists():
+        # A linked worktree never carries the gitignored config, but the MAIN
+        # working tree of the same repository does. Borrow it only when it
+        # exists there; an absent file stays an honest DEGRADED.
+        main_tree = main_working_tree(base)
+        if main_tree is not None and (main_tree / CONFIG_RELATIVE).exists():
+            config_path = main_tree / CONFIG_RELATIVE
     if not config_path.exists():
         return SweepConfig(
             mode=MODE_DEGRADED,
@@ -1154,6 +1218,16 @@ def _emit(text: str) -> None:
     sys.stderr.write(text + "\n")
 
 
+def _append_bypass_log(text: str) -> None:
+    try:
+        log_path = REPO_ROOT / BYPASS_LOG
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8") as fh:
+            fh.write(text + "\n")
+    except OSError:
+        _emit("[sibling-sweep] BYPASS log could not be written.")
+
+
 class _UsageParser(argparse.ArgumentParser):
     """An ArgumentParser whose argument errors exit EXIT_USAGE, not 2.
 
@@ -1203,6 +1277,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     _emit(mode_banner(cfg))
 
+    bypass = os.environ.get(BYPASS_ENV, "").strip() not in ("", "0", "false", "False")
+
+    # A DEGRADED run on the PUSH path is not a clean verdict, so it must not
+    # exit like one. Scoped to --pre-push: CI runs the tree arm on a runner
+    # with no config and relies on DEGRADED passing there.
+    if args.pre_push is not None and cfg.mode == MODE_DEGRADED:
+        notice = (
+            "[sibling-sweep] PUSH HALTED - DEGRADED on the pre-push path: the "
+            "per-host config was found neither in this checkout nor in the main "
+            "working tree, so sibling-name matching did NOT run. Restore "
+            "ops/moon_sync_repos.json in the main working tree or set "
+            f"RC_MOON_SYNC_REPOS to arm it. Deliberate override: {BYPASS_ENV}=1 "
+            f"proceeds and appends this notice to {BYPASS_LOG.as_posix()}."
+        )
+        _emit(notice)
+        if not bypass:
+            return EXIT_FAULT
+        _append_bypass_log(notice)
+        _emit("[sibling-sweep] BYPASS engaged on a DEGRADED push - proceeding "
+              "with the structural arm only.")
+
     try:
         if args.scan_file:
             target = Path(args.scan_file)
@@ -1248,17 +1343,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         return EXIT_CLEAN
 
-    bypass = os.environ.get(BYPASS_ENV, "").strip() not in ("", "0", "false", "False")
     report = render_report(findings, stats, cfg, bypassed=bypass)
     _emit(report)
     if bypass:
-        try:
-            log_path = REPO_ROOT / BYPASS_LOG
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(log_path, "a", encoding="utf-8") as fh:
-                fh.write(report + "\n")
-        except OSError:
-            _emit("[sibling-sweep] BYPASS log could not be written.")
+        _append_bypass_log(report)
         _emit("[sibling-sweep] BYPASS engaged - proceeding anyway.")
         return EXIT_CLEAN
     return EXIT_HALT
