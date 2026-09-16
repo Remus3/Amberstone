@@ -1147,14 +1147,16 @@ BAD_NAMES = [
 ]
 
 
-@pytest.mark.parametrize("label,name", BAD_NAMES, ids=[c[0] for c in BAD_NAMES])
-def test_note_name_grammar_refuses_and_answers(world, label, name):
-    world.agreement()
-    try:
-        world.note(name=name)
-    except (OSError, ValueError, UnicodeEncodeError):
-        pytest.skip("this filesystem refuses the name outright")
-    result = world.drive()
+# The BAD_NAMES cases every host this suite runs on can hold as a real file.
+# Named, not probed: a create-then-skip probe is exactly what made the grammar
+# test below assert nothing for one case on EVERY host. `?` is a reserved
+# character on NTFS (Windows raises OSError), and `\ud800` sits outside the
+# POSIX `surrogateescape` range (Linux raises UnicodeEncodeError before any
+# syscall), so "question" and "high-surrogate" are each uncreatable somewhere.
+PORTABLE_BAD_NAMES = [c for c in BAD_NAMES if c[0] not in ("question", "high-surrogate")]
+
+
+def _assert_refused_and_held(world, result, name):
     assert result.termination == "refused"
     assert result.termination_detail == "name-grammar"
     assert result.refused_stage == "input"
@@ -1171,6 +1173,51 @@ def test_note_name_grammar_refuses_and_answers(world, label, name):
     assert world.answered() == set()
     second = world.drive()
     assert (second.termination, second.termination_detail) == ("runner-failed", "notes-held")
+
+
+@pytest.mark.parametrize("label,name", BAD_NAMES, ids=[c[0] for c in BAD_NAMES])
+def test_note_name_grammar_refuses_and_answers(world, monkeypatch, label, name):
+    """Gate 6 refuses every hostile name, on every host - no skip path.
+
+    This used to create the note on disk and `pytest.skip` when the filesystem
+    refused the name, so "question" skipped on every Windows run and
+    "high-surrogate" on every Linux run: each host asserted nothing for one
+    case while counting green. The property is the GATE's verdict on a name
+    the listing admitted, not whether this host can spell it, so the listing
+    seam is stubbed instead: `run_once` reads the module-global
+    `pending_notes` (imported from `tools.inbox_responder`, called with
+    `(inbox, root, participants=...)`), and no file is created at all.
+    `note_shape_ok` still runs for real; its `lstat` finds nothing and it
+    returns the name problem it already recorded, which is `name-grammar`.
+    The real-listing path is kept below for the portable names.
+    """
+    world.agreement()
+    listed = []
+
+    def _listing(inbox, root, *, participants):
+        listed.append(inbox)
+        return [name]
+
+    monkeypatch.setattr(runner, "pending_notes", _listing)
+    result = world.drive()
+    reasons = json.loads((world.held(result.cycle_id) / "reasons.json").read_text(encoding="ascii"))
+    assert reasons == {"stage": "input", "problems": ["name-grammar"]}
+    _assert_refused_and_held(world, result, name)
+    assert len(listed) == 2, "the stubbed listing must be the one run_once consulted"
+
+
+@pytest.mark.parametrize("label,name", PORTABLE_BAD_NAMES,
+                         ids=[c[0] for c in PORTABLE_BAD_NAMES])
+def test_note_name_grammar_refuses_a_real_listed_file(world, label, name):
+    """The same refusal through the REAL `pending_notes` directory listing.
+
+    No try/except around the create: every name here is creatable on both
+    Windows and Linux, so a create failure is a red test, never a skip.
+    """
+    world.agreement()
+    world.note(name=name)
+    result = world.drive()
+    _assert_refused_and_held(world, result, name)
 
 
 def test_a_lowercase_sender_code_never_reaches_the_shape_gate(world):
