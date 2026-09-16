@@ -50,12 +50,17 @@ import json
 import logging
 from pathlib import Path
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.defensive_picks")
 
 _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
 
 # Module-level cache: champion-name -> {tags, attack, magic, defense, difficulty}.
 _CHAMP_INFO: dict[str, dict] | None = None
+# RM-443: a failed load is NOT cached - retried after the gate's backoff and
+# warned once per failure streak (core/failed_load_gate.py).
+_CHAMP_INFO_GATE = FailedLoadGate()
 
 
 def _load_champ_info() -> dict[str, dict]:
@@ -65,6 +70,8 @@ def _load_champ_info() -> dict[str, dict]:
     global _CHAMP_INFO
     if _CHAMP_INFO is not None:
         return _CHAMP_INFO
+    if not _CHAMP_INFO_GATE.should_attempt():
+        return {}
     out: dict[str, dict] = {}
     try:
         raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
@@ -87,9 +94,14 @@ def _load_champ_info() -> dict[str, dict]:
                 out[key.replace(" ", "")] = slim          # Miss Fortune -> MissFortune
                 out[key.replace("'", "").replace(" ", "")] = slim
     except FileNotFoundError:
-        _log.warning("defensive_picks: %s missing - using empty index", _CHAMPS_PATH)
+        if _CHAMP_INFO_GATE.record_failure():
+            _log.warning("defensive_picks: %s missing - using empty index", _CHAMPS_PATH)
+        return {}
     except Exception as exc:  # noqa: BLE001
-        _log.warning("defensive_picks: champ info load failed: %s", exc)
+        if _CHAMP_INFO_GATE.record_failure():
+            _log.warning("defensive_picks: champ info load failed: %s", exc)
+        return {}
+    _CHAMP_INFO_GATE.record_success()
     _CHAMP_INFO = out
     return out
 
