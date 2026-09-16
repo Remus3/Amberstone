@@ -25,14 +25,22 @@ default), never raises - a roster problem must never crash coaching.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Optional
+
+from core.failed_load_gate import FailedLoadGate
+
+_log = logging.getLogger(__name__)
 
 _ROSTER_PATH = Path(__file__).resolve().parent / "ds_onhit_ap_roster.json"
 
 _ROSTER_LOCK = threading.Lock()
 _ROSTER_CACHE: Optional[dict[str, float]] = None
+# RM-439: a failed load is NOT cached (retried after a short backoff, warned
+# once per failure streak) - see core/failed_load_gate.py.
+_ROSTER_GATE = FailedLoadGate()
 
 
 def _flatten(raw: dict) -> dict[str, float]:
@@ -67,9 +75,19 @@ def load_onhit_ap_roster() -> dict[str, float]:
     global _ROSTER_CACHE
     with _ROSTER_LOCK:
         if _ROSTER_CACHE is None:
+            if not _ROSTER_GATE.should_attempt():
+                return {}
             try:
                 raw = json.loads(_ROSTER_PATH.read_text(encoding="utf-8"))
-                _ROSTER_CACHE = _flatten(raw)
-            except Exception:  # noqa: BLE001 - fail-soft loader, never raise
-                _ROSTER_CACHE = {}
+                flat = _flatten(raw)
+            except Exception as exc:  # noqa: BLE001 - fail-soft loader, never raise
+                if _ROSTER_GATE.record_failure():
+                    _log.warning(
+                        "ds_onhit_ap_roster: roster load failed (%s: %s) - "
+                        "coherence gate off, will retry",
+                        type(exc).__name__, exc,
+                    )
+                return {}
+            _ROSTER_GATE.record_success()
+            _ROSTER_CACHE = flat
         return _ROSTER_CACHE
