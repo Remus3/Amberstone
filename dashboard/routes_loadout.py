@@ -38,6 +38,7 @@ import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
 from dashboard._dispatch import equals, prefix
+from dashboard._json_flags import FALSE_TOKENS, TRUE_TOKENS, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -157,14 +158,17 @@ def _coerce_override_summoners(value) -> tuple | None:
 # truthy, so the route pushed the runes anyway - overwriting the operator's
 # live rune page with the one thing the body had just asked it not to touch.
 # "0", "no" and "off" all failed the same way.
-_PUSH_FLAG_FALSE = frozenset({"false", "0", "no", "off", "n", ""})
-_PUSH_FLAG_TRUE = frozenset({"true", "1", "yes", "on", "y"})
+# RM-414: the parser now lives in `dashboard/_json_flags.py` so the five
+# sibling routes read flags by the SAME rule; this wrapper keeps its name and
+# its push-everything default, with no behaviour change here.
+_PUSH_FLAG_FALSE = FALSE_TOKENS
+_PUSH_FLAG_TRUE = TRUE_TOKENS
 
 
 def _coerce_push_flag(payload, key: str):
     """Read one push_* flag. Returns True, False, or None for AMBIGUOUS.
 
-    Contract (RM-296d):
+    Contract (RM-296d; implemented by `coerce_json_flag`, default True):
       key ABSENT      -> True. Push-everything is the live default and this
                          route's own body comment declares it, so only an
                          EXPLICITLY supplied falsey value may turn a push off.
@@ -190,24 +194,7 @@ def _coerce_push_flag(payload, key: str):
     different statement from never mentioning the key. Hence the test is
     `key not in payload`, not the value's own truthiness.
     """
-    if key not in payload:
-        return True
-    raw = payload[key]
-    if isinstance(raw, bool):
-        return raw
-    if isinstance(raw, str):
-        token = raw.strip().lower()
-        if token in _PUSH_FLAG_FALSE:
-            return False
-        if token in _PUSH_FLAG_TRUE:
-            return True
-        return None
-    if isinstance(raw, (int, float)):
-        if raw == 0:
-            return False
-        if raw == 1:
-            return True
-    return None
+    return coerce_json_flag(payload, key, True)
 
 
 def _post_lcu_cmd(cmd_obj: dict) -> bytes:

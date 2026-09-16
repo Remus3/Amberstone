@@ -100,6 +100,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_dispatch.py` | route registration |
 | `dashboard/_errors.py` | shared JSON error envelope for the :8888 dashboard + :8895 Mission Control |
 | `dashboard/_idempotency.py` | in-process idempotency (replay) table for operator intents |
+| `dashboard/_json_flags.py` | shared boolean-flag parser for client-supplied JSON route bodies |
 | `dashboard/_lcu_inprocess.py` | in-process LCU snapshot reader for /api/state |
 | `dashboard/_matchers.py` | path-matcher factories (stdlib-only, importable without pydantic) |
 | `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
@@ -245,6 +246,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `tests/test_lcu_pool.py` | port-safety pooled-connection + min-interval primitives (RC2 P6.4) |
 | `tests/test_port_cpu_footprint_rc2.py` | consolidated port/CPU footprint regression guard (RC2 P6.6) |
 | `tests/test_rc_lcu_pool_default_prose_guard_rm358.py` | guard that RC_LCU_POOL prose cannot contradict the measured default |
+| `tests/test_rm414_json_flag_truthiness.py` | RM-414 client-supplied JSON flag truthiness tests across five route sites |
 
 <!-- archmap:end -->
 
