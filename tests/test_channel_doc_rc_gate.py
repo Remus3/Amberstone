@@ -48,18 +48,26 @@ def _sibling_roots() -> list[Path]:
     """Where the byte-identical carrier repos live ON THIS MACHINE.
 
     Same per-host config the cross-repo inbox poller reads. It is gitignored,
-    so a fresh clone, CI and every worktree resolve an EMPTY list here and the
-    mirror arm below reports an empty parameter set rather than passing. That
-    is the honest shape: a skip that says no carrier was checked.
+    so a fresh clone and CI resolve an EMPTY list here and the mirror arm below
+    reports an empty parameter set rather than passing. That is the honest
+    shape: a skip that says no carrier was checked. A linked worktree is NOT in
+    that set (RM-433): it reads the main working tree's copy. A config that
+    EXISTS but names zero repos is an assertion failure, never an empty set.
     """
     raw = os.environ.get("RC_MOON_SYNC_REPOS", "")
     if raw:
         return [Path(p.strip()) for p in raw.split(os.pathsep) if p.strip()]
+    # RM-433: the shared resolver, so a linked worktree reads the MAIN working
+    # tree's gitignored copy rather than resolving zero carriers.
+    cfg = sweep.resolve_config_path(REPO_ROOT)
     try:
-        blob = json.loads((REPO_ROOT / "ops" / "moon_sync_repos.json").read_text(encoding="utf-8"))
+        blob = json.loads(cfg.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
-    return [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
+    roots = [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
+    assert roots, (f"{cfg} exists but names zero repos; an empty carrier set "
+                   f"would turn the mirror arm into an empty parametrisation")
+    return roots
 
 
 def _adopted_carrier_docs() -> dict[Path, Path]:
@@ -69,8 +77,8 @@ def _adopted_carrier_docs() -> dict[Path, Path]:
     Re-derived from the per-host config on every call rather than taken from
     the parameter, because both halves of the answer live OUTSIDE this
     checkout: which trees are carriers at all is named only by the gitignored
-    `ops/moon_sync_repos.json` (or `RC_MOON_SYNC_REPOS`), so a fresh clone, CI
-    and every worktree see none; and whether a carrier that does exist has
+    `ops/moon_sync_repos.json` (or `RC_MOON_SYNC_REPOS`), so a fresh clone and
+    CI see none; and whether a carrier that does exist has
     adopted the doc is that project's decision, unreachable from here.
 
     Written this way on purpose. RC's own `docs/CHANNEL.md` is TRACKED and is
