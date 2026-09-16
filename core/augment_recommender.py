@@ -33,7 +33,6 @@ import json
 import logging
 import sqlite3
 import threading
-import time
 from dataclasses import dataclass, field
 from itertools import combinations
 from pathlib import Path
@@ -66,16 +65,16 @@ _lock = threading.Lock()
 _own_cache: dict[str, "OwnHistory"] = {}
 _own_cache_key: dict[str, tuple] = {}
 _own_gates: dict[str, FailedLoadGate] = {}  # RM-443: per-mode, see load_own_history
-# RM-450: the LCU row count (db open + a full LIKE scan of every raw_data row)
-# used to run on EVERY load_own_history call, before the cache check. It is
-# now memoised per db path under a cheap stat signature - (mtime, size) of the
-# db AND of its -wal sidecar, where a WAL-mode INSERT lands before any
-# checkpoint - and recounted when that signature moves or after the TTL. The
-# TTL is the backstop for a write the stat signature cannot see; own history
-# only grows post-game, never mid-pick, so a 60 s bound is invisible to the
-# augment select that reads it.
-_ROW_COUNT_TTL_S = 60.0
-_row_count_memo: dict[str, tuple[tuple, float, int]] = {}
+# RM-450: the LCU row count (db open + a full LIKE scan of every raw_data row;
+# MEASURED 2026-09-16 on the live 17 MB db: ~11.5 ms) used to run on EVERY
+# load_own_history call, before the cache check. It is now memoised per db
+# path under an EXACT per-commit change token read from SQLite's own on-disk
+# structures (see _change_token), and recounted only when the token moves.
+# A stat signature is NOT enough and was refuted: a small INSERT can leave the
+# size unchanged inside one mtime tick. When no exact token is available the
+# loader counts on every call, exactly as before RM-450.
+_row_count_memo: dict[str, tuple[tuple, int]] = {}
+_SQLITE_MAGIC = b"SQLite format 3\x00"
 
 
 @dataclass(frozen=True)
@@ -256,29 +255,56 @@ def _lcu_row_count(path: Path) -> int:
             pass
 
 
-def _db_stat_signature(path: Path) -> tuple:
-    """(mtime_ns, size) of the db plus of its -wal sidecar (None when absent).
-    Raises OSError when the db itself cannot be stat'd."""
-    stt = path.stat()
+def _read_head(path: str, n: int) -> bytes:
+    with open(path, "rb") as f:
+        return f.read(n)
+
+
+def _change_token(path: Path) -> Optional[tuple]:
+    """Bytes that change on EVERY committed transaction, or None.
+
+    Read from SQLite's documented file formats, with no connection opened and
+    no handle kept (a kept connection would pin the file on Windows):
+
+      * rollback-journal db (header bytes 18-19 == 1): the file change counter
+        at header offset 24, which SQLite increments on every commit, plus the
+        version-valid-for number at offset 92.
+      * WAL db (header bytes 18-19 == 2): the wal-index header at the start of
+        the -shm file, whose iChange / mxFrame / salt fields move on every
+        commit and checkpoint restart, plus the -wal file header (checkpoint
+        sequence and salts). SQLite keeps two copies of that header; a torn
+        read (copies differ) or an uninitialised index gives None.
+
+    None whenever no exact token exists - notably a WAL db with no connection
+    open anywhere (no -shm): the caller then counts, as before RM-450.
+    """
     try:
-        w = Path(f"{path}-wal").stat()
-        wal: Optional[tuple] = (w.st_mtime_ns, w.st_size)
+        hdr = _read_head(str(path), 100)
+        if len(hdr) < 100 or hdr[:16] != _SQLITE_MAGIC:
+            return None
+        if hdr[18] == 1 and hdr[19] == 1:
+            return ("rollback", hdr[24:28], hdr[92:96])
+        if hdr[18] == 2 and hdr[19] == 2:
+            shm = _read_head(f"{path}-shm", 96)
+            wal = _read_head(f"{path}-wal", 32)
+            if len(shm) < 96 or shm[:48] != shm[48:96] or shm[12] != 1:
+                return None
+            return ("wal", hdr[24:28], shm[:48], wal)
     except OSError:
-        wal = None
-    return (stt.st_mtime_ns, stt.st_size, wal)
+        return None
+    return None
 
 
-def _memo_row_count(path: Path, sig: tuple) -> int:
-    """_lcu_row_count, re-run only when ``sig`` moved or the TTL elapsed."""
-    now = time.monotonic()
+def _memo_row_count(path: Path, token: tuple) -> int:
+    """_lcu_row_count, re-run only when the change token moved."""
     memo_key = str(path)
     with _lock:
         memo = _row_count_memo.get(memo_key)
-        if memo is not None and memo[0] == sig and now - memo[1] < _ROW_COUNT_TTL_S:
-            return memo[2]
+        if memo is not None and memo[0] == token:
+            return memo[1]
     count = _lcu_row_count(path)
     with _lock:
-        _row_count_memo[memo_key] = (sig, now, count)
+        _row_count_memo[memo_key] = (token, count)
     return count
 
 
@@ -288,11 +314,17 @@ def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) ->
     grows post-game, never mid-pick, so this is safe to call per
     augment-select tick."""
     path = db_path or _DB_PATH
-    try:
-        sig = _db_stat_signature(path)
-        key = (sig, _memo_row_count(path, sig))
-    except OSError:
-        key = (-1.0, -1, -1)
+    token = _change_token(path)
+    if token is not None:
+        # RM-450: any commit moves the token, so the key (and the scan) moves
+        # on an in-place UPDATE too, not only on a row-count change.
+        key = (token, _memo_row_count(path, token))
+    else:
+        try:
+            stt = path.stat()
+            key = (stt.st_mtime, stt.st_size, _lcu_row_count(path))
+        except OSError:
+            key = (-1.0, -1, -1)
     with _lock:
         if _own_cache.get(mode) is not None and _own_cache_key.get(mode) == key:
             return _own_cache[mode]
