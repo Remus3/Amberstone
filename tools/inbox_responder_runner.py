@@ -171,6 +171,95 @@ HOP_WORD_RE = re.compile(r"\bhop\b")
 NOTE_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-[A-Z]{2,4}-[A-Za-z0-9._-]{1,160}\.md$")
 NOTE_NAME_MAX = 200
 NOTE_MAX_BYTES = 1024 * 1024
+# The topic group's own bound, restated as a name so the variant table can
+# COMPOSE its longest legal name instead of a test hardcoding one. It is the
+# `{1,160}` in every pattern below, and the arm that proves 160 admits and 161
+# refuses is what keeps this name honest against the literal.
+NOTE_TOPIC_MAX = 160
+
+# ---------------------------------------------------------------------------
+# Gate 6's name grammar, as a TABLE rather than a lone regex
+# ---------------------------------------------------------------------------
+#
+# `docs/CHANNEL.md` section 6 carries a filename-grammar table naming each
+# observed variant, a synthetic example, and what RC's gate 6 does with it.
+# Before this table existed, that doc recorded RC's dispositions in prose while
+# gate 6 carried one regex, and the two could drift with nothing to say so.
+#
+# Every disposition here is EXACTLY what the doc records today, and that is not
+# a placeholder: those bytes are byte-identical in five repositories, so
+# flipping a cell to ADMIT changes what five trees have pinned and is a
+# CHANNEL_VERSION 2 joint re-pin, not a unilateral widening. What the table buys
+# is that the flip becomes a one-cell edit under a guard
+# (`tests/test_responder_grammar_table.py`, which parses the doc's own table and
+# compares it cell for cell) instead of a regex rewrite beside a doc that
+# silently disagrees.
+#
+# ORDER IS THE SEMANTICS: the verdict is the FIRST matching row's disposition,
+# so PRIMARY leads. The other patterns are disjoint from it anyway - Variant A
+# has no HHMM group, Variant B leads with the code, Variant C is not `.md` -
+# which is why this table is behaviour-identical to the single `NOTE_NAME_RE`
+# test it replaces, proven over a corpus rather than asserted.
+#
+# Variant D, a DIRECTORY dropped beside the notes, is deliberately absent: it
+# has no note name, so it is not a row in the doc's table either. `note_shape_ok`
+# refuses it further down as `note-shape:not-a-file`.
+GRAMMAR_ADMIT = "ADMIT"
+GRAMMAR_REFUSE = "REFUSE"
+
+VARIANT_A_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-from-[A-Z]{2,4}-[A-Za-z0-9._-]{1,160}\.md$")
+VARIANT_B_RE = re.compile(r"^from-[A-Z]{2,4}-\d{4}-\d{2}-\d{2}-\d{4}-[A-Za-z0-9._-]{1,160}\.md$")
+VARIANT_C_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-[A-Z]{2,4}-[A-Za-z0-9._-]{1,160}\.txt$")
+
+
+@dataclass(frozen=True)
+class NameVariant:
+    """One row of the grammar table: shape, example, matcher, disposition.
+
+    `template` carries the longest-code form with a `{topic}` hole, so the
+    composed-length property can be re-derived per row rather than restated.
+    """
+
+    shape: str
+    example: str
+    pattern: Any
+    disposition: str
+    template: str
+
+    def longest_name(self, topic_len: int = NOTE_TOPIC_MAX) -> str:
+        return self.template.format(topic="t" * topic_len)
+
+
+NAME_GRAMMAR_TABLE = (
+    NameVariant(
+        shape="PRIMARY",
+        example="2026-09-15-0930-from-RC-FYI-example-topic.md",
+        pattern=NOTE_NAME_RE,
+        disposition=GRAMMAR_ADMIT,
+        template="2026-09-15-0930-from-ABCD-{topic}.md",
+    ),
+    NameVariant(
+        shape="Variant A",
+        example="2026-09-15-from-RC-FYI-example-topic.md",
+        pattern=VARIANT_A_RE,
+        disposition=GRAMMAR_REFUSE,
+        template="2026-09-15-from-ABCD-{topic}.md",
+    ),
+    NameVariant(
+        shape="Variant B",
+        example="from-RC-2026-09-15-0930-FYI-example-topic.md",
+        pattern=VARIANT_B_RE,
+        disposition=GRAMMAR_REFUSE,
+        template="from-ABCD-2026-09-15-0930-{topic}.md",
+    ),
+    NameVariant(
+        shape="Variant C",
+        example="2026-09-15-0930-from-RC-FYI-example-topic.txt",
+        pattern=VARIANT_C_RE,
+        disposition=GRAMMAR_REFUSE,
+        template="2026-09-15-0930-from-ABCD-{topic}.txt",
+    ),
+)
 ROW_NOTE_RE = re.compile(r"^[A-Za-z0-9._?-]{1,80}$")
 CYCLE_ID_RE = re.compile(r"^\d{8}T\d{6}-\d+-[0-9a-f]{6}$")
 # The one detail carrying `exhaust` that a non-exhausted row may hold: gate
@@ -290,8 +379,46 @@ MUTEX_NAME = "Global\\RC_INBOX_RESPONDER"
 EVENT_NAME = "InboxResponder"
 
 _GRAMMARS = (GRAMMAR_A5, GRAMMAR_LATENCY_ONLY)
+
+# Criterion (h). The agreement record must NAME the model the spawned child
+# runs, and `load_agreement` refuses a record that does not. Membership in this
+# tuple is the first half - a typo or a retired id never reaches the equality
+# check - and the second half is that the named id must EQUAL `MODEL`, the pin
+# `RunnerConfig.model` defaults to and `build_request` passes as `--model`.
+#
+# A required MATCH, deliberately, rather than an override: the record is the
+# arming artifact and names the counterparty, so letting it select the child
+# model would give that file an authority the spawn never handed it. Swapping
+# the child stays a code change, and the record has to be re-written to agree -
+# which is the point, because a record that silently outlives a model swap is a
+# record that no longer describes what it armed.
+ALLOWED_MODELS = (
+    MODEL,
+    "claude-fable-5-1",
+    "claude-opus-5",
+    "claude-sonnet-5",
+    "claude-haiku-4-5-20251001",
+)
+
+# Criterion (j). The channel contract these bytes were written against, mirrored
+# from the `CHANNEL_VERSION:` line in `docs/CHANNEL.md` and held here as a
+# CONSTANT rather than read from that doc at import time: an import that parses
+# a markdown file fails in any tree where the doc is absent, renamed or mid
+# re-pin, and a runner that cannot import cannot even write its disarmed row.
+# `tests/test_responder_arming_contract.py` is what keeps the two equal, and it
+# reddens whichever side moves first.
+#
+# WHAT IT BUYS: a five-way re-pin is otherwise invisible to the responder. After
+# a bump to CHANNEL_VERSION 2, every agreement record written against version 1
+# DISARMS ITSELF rather than running under a contract that moved underneath it -
+# the sibling grammar, the bounce shape and the filename table all live in those
+# re-pinned bytes, so a record that predates the bump is describing a channel
+# that no longer exists.
+CHANNEL_VERSION = 1
+
 _AGREEMENT_FIELDS = (
     "counterparties", "note", "window_open", "window_close", "hop_budget", "grammar", "expires",
+    "model", "contract_version",
 )
 
 
@@ -456,6 +583,33 @@ def classify_exhausted(proposal: object) -> bool:
     return isinstance(proposal, dict) and proposal.get("actions") == []
 
 
+def name_grammar_verdict(name: str) -> str:
+    """ADMIT or REFUSE, from the FIRST row of `NAME_GRAMMAR_TABLE` that matches.
+
+    A name no row matches is REFUSED: the table names the shapes the channel has
+    actually observed, and an unobserved shape is not an admitted one.
+    """
+    for variant in NAME_GRAMMAR_TABLE:
+        if variant.pattern.fullmatch(name):
+            return variant.disposition
+    return GRAMMAR_REFUSE
+
+
+def name_grammar_bad(name: str) -> bool:
+    """Gate 6's NAME half. True means the note earns `name-grammar`.
+
+    The three clauses are independent and the order is the one they shipped in:
+    ASCII, then the OUTER length cap, then the grammar - which in practice
+    refuses first, because no row of the table can compose a name that reaches
+    `NOTE_NAME_MAX`.
+    """
+    return (
+        not name.isascii()
+        or len(name) > NOTE_NAME_MAX
+        or name_grammar_verdict(name) != GRAMMAR_ADMIT
+    )
+
+
 def note_shape_ok(path, name: str, *, sink: Optional[list] = None) -> list:
     """Judge one note's NAME and FILE. Empty list means it may be answered.
 
@@ -464,7 +618,7 @@ def note_shape_ok(path, name: str, *, sink: Optional[list] = None) -> list:
     rather than leaving a window between them.
     """
     problems = []
-    if not name.isascii() or len(name) > NOTE_NAME_MAX or not NOTE_NAME_RE.fullmatch(name):
+    if name_grammar_bad(name):
         problems.append("name-grammar")
     path = Path(path)
     try:
@@ -531,6 +685,8 @@ def agreement_id_of(record: Mapping[str, Any]) -> str:
 
     A CRLF save, a trailing newline or reordered keys keep the id, the budget
     and the M1 chain; changing `hop_budget` or the window is a new agreement.
+    So is changing `model` or `contract_version`: a hop chain must not carry
+    across a change of child model or across a contract re-pin.
     """
     semantic = {k: record.get(k) for k in _AGREEMENT_FIELDS}
     blob = json.dumps(semantic, sort_keys=True, separators=(",", ":"))
@@ -570,6 +726,20 @@ def load_agreement(root, participants: Mapping[str, Any], *, now: datetime):
         return None, "malformed:hop_budget"
     if record.get("grammar") not in _GRAMMARS:
         return None, "malformed:grammar"
+    # (h) The child model. Unknown and not-the-pin share one detail because both
+    # are the same refusal: this record does not describe the spawn it arms.
+    model = record.get("model")
+    if not isinstance(model, str) or model not in ALLOWED_MODELS or model != MODEL:
+        return None, "malformed:model"
+    # (j) The contract version. Two details, not one: a record that declares no
+    # contract is an incomplete record, while a record that declares a DIFFERENT
+    # one is a complete record from the far side of a re-pin, and an operator
+    # reading the row needs to know which.
+    version = record.get("contract_version")
+    if not isinstance(version, int) or isinstance(version, bool):
+        return None, "malformed:contract_version"
+    if version != CHANNEL_VERSION:
+        return None, "malformed:contract_version_mismatch"
     opened = _parse_iso(record.get("window_open"))
     closed = _parse_iso(record.get("window_close"))
     expires = _parse_iso(record.get("expires"))
@@ -1967,6 +2137,7 @@ def _enter_dry_world(scratch_dir) -> dict:
         "window_open": _iso(opened), "window_close": _iso(opened + timedelta(hours=1)),
         "hop_budget": 1, "grammar": GRAMMAR_A5,
         "expires": _iso(opened + timedelta(hours=2)),
+        "model": MODEL, "contract_version": CHANNEL_VERSION,
         "authored_by": "operator", "authored_at": _iso(datetime.now()),
     }
     agreement_path(root).write_text(json.dumps(agreement, indent=2), encoding="ascii", newline="\n")

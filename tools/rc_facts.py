@@ -539,10 +539,72 @@ def mark_inbox_seen() -> int:
     session, once it has actually read them) ACKNOWLEDGES. Advancing the
     watermark inside the hook is the failure this design avoids - see the note
     in main().
+
+    REFUSES RATHER THAN ERASES when the inbox cannot be enumerated (2026-09-16).
+    Until this guard, the function computed `names = ... if inbox.is_dir() else
+    []` and then wrote UNCONDITIONALLY, so an ABSENT `moon_sync_inbox/` wrote an
+    empty seen set over the live watermark and printed a success line. Measured
+    on an isolated copy of the real store: 22503 bytes holding 198 keys became
+    18 bytes holding `{"seen": []}`, exit 0, stdout `recorded 0 inbox note(s) as
+    seen`.
+
+    THIS IS REACHABLE, NOT THEORETICAL. `moon_sync_inbox/` is GITIGNORED, so it
+    is absent in a fresh clone, absent in every worktree, and removable by a
+    `git clean -xdf`. RC keeps six long-lived lane worktrees plus agent
+    worktrees. Any session that runs the acknowledge path with the directory
+    missing destroys the watermark the whole watcher exists to keep.
+
+    THE ASYMMETRY THIS CLOSES. RC's WATCHER (`_inbox_section`) treats an absent
+    inbox as a RECORDED FAULT and prints an `UNMEASURED` line for it. The
+    acknowledge path treated the IDENTICAL condition as "zero notes". One
+    condition, two readings, and the destructive one was the silent one.
+
+    BOTH refusal conditions are probed EXPLICITLY here - absent, and present but
+    unlistable. The unlistable case used to be protected only by the fact that
+    the unwrapped `iterdir()` in `_inbox_entries` raised before the write, which
+    is luck rather than a guard: a later reader who wraps that call in a
+    try/except returning an empty set - the shape a sibling tree actually has -
+    would silently reintroduce the erasure. The probe below does not depend on
+    `_inbox_entries` raising, and `tests/test_inbox_ack_refuses.py` applies that
+    exact mutation and demands this function still refuse.
+
+    EXIT 3 is deliberate. 1 is what an uncaught exception (a syntax error in
+    this module included) produces and 2 is the conventional CLI-usage code, so
+    neither is self-evidencing: a reader seeing 2 cannot tell a deliberate
+    refusal from a module that failed to parse. Nothing in the interpreter or
+    the stdlib returns 3 on its own, so a 3 from this entry point can only have
+    come from the `return 3` below, and the `REFUSED` line on stdout corroborates
+    it. An empty inbox that IS listable is still a normal, successful 0.
     """
     inbox = _ROOT / "moon_sync_inbox"
     seen_path = _ROOT / "ops" / "runtime" / "sync_inbox_seen.json"
-    names = sorted(_inbox_entries(inbox)) if inbox.is_dir() else []
+
+    if not inbox.is_dir():
+        print(
+            "REFUSED: moon_sync_inbox/ is absent - not acknowledging anything. "
+            f"The seen store at {seen_path} is UNCHANGED. An inbox that is not "
+            "there is not an empty inbox, and overwriting the watermark here "
+            "would lose every acknowledgement already recorded. The directory "
+            "is gitignored, so this is the normal state of a fresh clone or a "
+            "worktree - run this from the tree that actually holds the inbox."
+        )
+        return 3
+
+    try:
+        names = sorted(_inbox_entries(inbox))
+        # Corroborate listability independently of _inbox_entries, so a future
+        # try/except inside it cannot turn this refusal back into an erasure.
+        for _probe in inbox.iterdir():
+            break
+    except OSError as exc:
+        print(
+            f"REFUSED: moon_sync_inbox/ could not be listed ({type(exc).__name__}"
+            f": {exc}) - not acknowledging anything. The seen store at "
+            f"{seen_path} is UNCHANGED. An inbox RC cannot read is not an empty "
+            "inbox."
+        )
+        return 3
+
     seen_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = seen_path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps({"seen": names}, indent=2), encoding="utf-8")
