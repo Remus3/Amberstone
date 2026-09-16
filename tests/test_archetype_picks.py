@@ -230,6 +230,129 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(entry["primary"], "bruiser")
 
 
+class FailedReadRefusesWriteTests(PersistenceTests):
+    """RM-444: a failed re-read must never be written back as an empty map.
+
+    Pre-fix ``_read_picks_locked`` returned ``{}`` on ANY read failure, so
+    the save (and clear) path wrote that empty map plus the one new pick
+    over the file, destroying every prior pick. An ABSENT file is the
+    legitimate empty state; a file that exists but cannot be read is not.
+    """
+
+    _SEED = {
+        "Aatrox": {"champion": "Aatrox", "primary": "tank",
+                   "secondary": "bruiser", "source": "user_cs",
+                   "set_at": "2026-09-01T00:00:00Z"},
+        "Lulu": {"champion": "Lulu", "primary": "mage",
+                 "secondary": "enchanter", "source": "user_cs",
+                 "set_at": "2026-09-01T00:00:00Z"},
+        "Jinx": {"champion": "Jinx", "primary": "carry",
+                 "secondary": "bruiser", "source": "user_ingame",
+                 "set_at": "2026-09-01T00:00:00Z"},
+    }
+
+    def _seed(self) -> bytes:
+        self.tmp_path.write_text(json.dumps(self._SEED), encoding="utf-8")
+        return self.tmp_path.read_bytes()
+
+    def _fail_picks_read(self, exc: BaseException):
+        """Make ONLY the picks file's read_text raise; every other path
+        (DDragon champion tags etc.) reads normally."""
+        target = self.tmp_path
+        real = Path.read_text
+
+        def _read_text(path_self, *args, **kwargs):
+            if Path(path_self) == target:
+                raise exc
+            return real(path_self, *args, **kwargs)
+
+        return mock.patch.object(Path, "read_text", _read_text)
+
+    def test_save_after_permission_error_keeps_existing_picks(self):
+        before = self._seed()
+        with self._fail_picks_read(PermissionError("sharing violation")):
+            with self.assertRaises(archetype_picks.PicksReadError):
+                archetype_picks.save_archetype_pick(
+                    "Yasuo", primary="bruiser", secondary="assassin",
+                )
+        self.assertEqual(self.tmp_path.read_bytes(), before)
+        on_disk = json.loads(self.tmp_path.read_text(encoding="utf-8"))
+        self.assertEqual(set(on_disk), {"Aatrox", "Lulu", "Jinx"})
+
+    def test_save_after_generic_oserror_keeps_existing_picks(self):
+        before = self._seed()
+        with self._fail_picks_read(OSError(5, "I/O error")):
+            with self.assertRaises(archetype_picks.PicksReadError):
+                archetype_picks.save_archetype_pick(
+                    "Yasuo", primary="bruiser", secondary="assassin",
+                )
+        self.assertEqual(self.tmp_path.read_bytes(), before)
+
+    def test_save_over_undecodable_file_refuses_and_keeps_bytes(self):
+        # Real on-disk arm, no patching: a truncated JSON body.
+        self.tmp_path.write_text('{"Aatrox": {"primary": "ta', encoding="utf-8")
+        before = self.tmp_path.read_bytes()
+        with self.assertRaises(archetype_picks.PicksReadError):
+            archetype_picks.save_archetype_pick(
+                "Yasuo", primary="bruiser", secondary="assassin",
+            )
+        self.assertEqual(self.tmp_path.read_bytes(), before)
+
+    def test_save_over_non_dict_file_refuses_and_keeps_bytes(self):
+        self.tmp_path.write_text('["not", "a", "map"]', encoding="utf-8")
+        before = self.tmp_path.read_bytes()
+        with self.assertRaises(archetype_picks.PicksReadError):
+            archetype_picks.save_archetype_pick(
+                "Yasuo", primary="bruiser", secondary="assassin",
+            )
+        self.assertEqual(self.tmp_path.read_bytes(), before)
+
+    def test_clear_after_read_failure_keeps_existing_picks(self):
+        # Sibling path: clear_archetype_pick shares _read_picks_locked.
+        before = self._seed()
+        with self._fail_picks_read(PermissionError("sharing violation")):
+            with self.assertRaises(archetype_picks.PicksReadError):
+                archetype_picks.clear_archetype_pick("Aatrox")
+        self.assertEqual(self.tmp_path.read_bytes(), before)
+
+    def test_failed_save_does_not_poison_cache(self):
+        self._seed()
+        with self._fail_picks_read(PermissionError("sharing violation")):
+            with self.assertRaises(archetype_picks.PicksReadError):
+                archetype_picks.save_archetype_pick(
+                    "Yasuo", primary="bruiser", secondary="assassin",
+                )
+        picks = archetype_picks.list_archetype_picks()
+        self.assertEqual(set(picks), {"Aatrox", "Lulu", "Jinx"})
+
+    def test_positive_control_normal_save_merges_with_existing(self):
+        self._seed()
+        archetype_picks.save_archetype_pick(
+            "Yasuo", primary="bruiser", secondary="assassin",
+        )
+        on_disk = json.loads(self.tmp_path.read_text(encoding="utf-8"))
+        self.assertEqual(set(on_disk), {"Aatrox", "Lulu", "Jinx", "Yasuo"})
+
+    def test_positive_control_absent_file_save_creates_it(self):
+        self.assertFalse(self.tmp_path.exists())
+        archetype_picks.save_archetype_pick(
+            "Yasuo", primary="bruiser", secondary="assassin",
+        )
+        on_disk = json.loads(self.tmp_path.read_text(encoding="utf-8"))
+        self.assertEqual(set(on_disk), {"Yasuo"})
+
+    def test_positive_control_file_vanishing_mid_read_is_absent(self):
+        # exists() then read_text() race: the file is gone by the read.
+        # That is the absent state, not a failed read.
+        self._seed()
+        with self._fail_picks_read(FileNotFoundError("gone")):
+            archetype_picks.save_archetype_pick(
+                "Yasuo", primary="bruiser", secondary="assassin",
+            )
+        on_disk = json.loads(self.tmp_path.read_text(encoding="utf-8"))
+        self.assertEqual(set(on_disk), {"Yasuo"})
+
+
 class ConstantsTests(unittest.TestCase):
     def test_six_canonical_archetypes(self):
         self.assertEqual(len(archetype_picks.ARCHETYPES), 6)
