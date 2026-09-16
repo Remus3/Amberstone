@@ -13,7 +13,8 @@ the minimap left (core/minimap_geometry.py:104-108); ``district_of``
 de-flips by mirroring x -> 1 - x BEFORE any lookup.
 
 Configs live in ``config/minimap_grids/<mode>.json`` (mode lowercased).
-Missing / corrupt files degrade to an EMBEDDED minimal config; only modes
+Missing / corrupt files degrade to an EMBEDDED minimal config (a corrupt or
+unreadable file is not cached - it is retried after a backoff); only modes
 that genuinely have no grid (tft) load as ``None``. Every public function
 follows the fail-soft contract of ``core.zoi_influence``: never raises on
 any input - degrade to a fallback id / ``[]`` / ``set()`` / ``None``.
@@ -28,10 +29,15 @@ tests/test_minimap_districts.py).
 from __future__ import annotations
 
 import json
+import logging
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+from core.failed_load_gate import FailedLoadGate
+
+_log = logging.getLogger("rc.minimap_districts")
 
 _CONFIG_DIR = Path(__file__).resolve().parent.parent / "config" / "minimap_grids"
 
@@ -100,11 +106,14 @@ _EMBEDDED = {
 }
 
 _CACHE: dict = {}
+# RM-443: per (mode, config_dir) failure gates - see load_grid.
+_GATES: dict = {}
 
 
 def _reset_cache():
-    """Test seam: drop every cached grid."""
+    """Test seam: drop every cached grid (and any failure backoff)."""
     _CACHE.clear()
+    _GATES.clear()
 
 
 # --- parsing -------------------------------------------------------------------
@@ -235,7 +244,20 @@ def load_grid(mode, config_dir=None):
         cache_key = (key_mode, str(base))
         if cache_key in _CACHE:
             return _CACHE[cache_key]
-        grid = _load_uncached(key_mode, base)
+        gate = _GATES.setdefault(cache_key, FailedLoadGate())
+        if not gate.should_attempt():
+            return _grid_from_dict(key_mode, _EMBEDDED.get(key_mode))
+        grid, error = _load_uncached(key_mode, base)
+        if error is not None:
+            # RM-443: an EXISTING grid file that cannot be read or parsed
+            # serves the embedded fallback WITHOUT caching it - retried after
+            # the gate's backoff, warned once per failure streak. A missing
+            # file is the documented degrade and stays cached.
+            if gate.record_failure():
+                _log.warning("minimap_districts: %s grid load failed: %s",
+                             key_mode, error)
+            return grid
+        gate.record_success()
         _CACHE[cache_key] = grid
         return grid
     except Exception:  # noqa: BLE001 - fail-soft contract: never raises
@@ -243,20 +265,26 @@ def load_grid(mode, config_dir=None):
 
 
 def _load_uncached(mode, base):
+    """(grid, error): ``error`` is None unless an existing file failed to load."""
     raw = None
+    error = None
     try:
         path = base / (mode + ".json")
         if path.is_file():
             raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 - fail-soft contract: never raises
+            if not isinstance(raw, dict):
+                error = "not a JSON object"
+    except Exception as exc:  # noqa: BLE001 - fail-soft contract: never raises
         raw = None
+        error = str(exc) or type(exc).__name__
     if isinstance(raw, dict):
         grid = _grid_from_dict(mode, raw)
         if grid is not None:
-            return grid
+            return grid, None
         if _declares_no_grid(raw):
-            return None  # legit no-grid declaration, not corruption
-    return _grid_from_dict(mode, _EMBEDDED.get(mode))
+            return None, None  # legit no-grid declaration, not corruption
+        error = "no usable districts"
+    return _grid_from_dict(mode, _EMBEDDED.get(mode)), error
 
 
 # --- geometry -------------------------------------------------------------------

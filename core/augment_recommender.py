@@ -40,6 +40,7 @@ from typing import Optional, Sequence
 
 from core import augment_external_source as _ext
 from core import smoothed_rates as _sr
+from core.failed_load_gate import FailedLoadGate
 
 _log = logging.getLogger("rc.augment_recommender")
 
@@ -63,6 +64,7 @@ DEFAULT_SYNERGY_WEIGHT = 1.0        # lambda on the (already-shrunk) synergy ter
 _lock = threading.Lock()
 _own_cache: dict[str, "OwnHistory"] = {}
 _own_cache_key: dict[str, tuple] = {}
+_own_gates: dict[str, FailedLoadGate] = {}  # RM-443: per-mode, see load_own_history
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,15 @@ def _participant_for_puuid(detail: dict, puuid: str) -> Optional[dict]:
 
 
 def _scan_own_history(mode: str, db_path: Path) -> OwnHistory:
+    return _scan_own_history_checked(mode, db_path)[0]
+
+
+def _scan_own_history_checked(
+    mode: str, db_path: Path,
+) -> tuple[OwnHistory, Optional[str]]:
+    """(history, error). ``error`` is None for a completed scan (an absent db
+    included - no history yet is a normal state) and a message when the db
+    could not be opened or queried (RM-443: the caller must not cache that)."""
     gm, qids = _MODE_FILTERS.get(mode, ("", set()))
     games: dict[int, int] = {}
     wins: dict[int, int] = {}
@@ -138,21 +149,19 @@ def _scan_own_history(mode: str, db_path: Path) -> OwnHistory:
     total_games = total_wins = n_matches = 0
 
     if not db_path.exists():
-        return OwnHistory(mode=mode)
+        return OwnHistory(mode=mode), None
     try:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     except sqlite3.Error as exc:
-        _log.warning("augment_recommender: cannot open %s: %s", db_path, exc)
-        return OwnHistory(mode=mode)
+        return OwnHistory(mode=mode), f"cannot open {db_path}: {exc}"
     try:
         rows = conn.execute(
             "SELECT raw_data FROM matches "
             "WHERE raw_data LIKE '%lcu_match_detail%'"
         ).fetchall()
     except sqlite3.Error as exc:
-        _log.warning("augment_recommender: query failed: %s", exc)
         conn.close()
-        return OwnHistory(mode=mode)
+        return OwnHistory(mode=mode), f"query failed: {exc}"
     finally:
         try:
             conn.close()
@@ -205,7 +214,7 @@ def _scan_own_history(mode: str, db_path: Path) -> OwnHistory:
         total_games=total_games,
         total_wins=total_wins,
         n_matches=n_matches,
-    )
+    ), None
 
 
 def _lcu_row_count(path: Path) -> int:
@@ -250,7 +259,17 @@ def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) ->
     with _lock:
         if _own_cache.get(mode) is not None and _own_cache_key.get(mode) == key:
             return _own_cache[mode]
-    hist = _scan_own_history(mode, path)
+        gate = _own_gates.setdefault(mode, FailedLoadGate())
+    if not gate.should_attempt():
+        return OwnHistory(mode=mode)
+    hist, error = _scan_own_history_checked(mode, path)
+    if error is not None:
+        # RM-443: not cached - the key only moves when a game is ingested, so
+        # a cached failure (a locked db) would stand until the next game.
+        if gate.record_failure():
+            _log.warning("augment_recommender: %s", error)
+        return hist
+    gate.record_success()
     with _lock:
         _own_cache[mode] = hist
         _own_cache_key[mode] = key
@@ -377,3 +396,4 @@ def reset_cache() -> None:
     with _lock:
         _own_cache.clear()
         _own_cache_key.clear()
+        _own_gates.clear()

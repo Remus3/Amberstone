@@ -22,6 +22,77 @@ Two shapes are pinned:
    still is; a success is cached.
 
 The clock is advanced by patching ``time.monotonic``. No network, no live ports.
+
+CENSUS (re-derived 2026-09-16 against base 6c42caf48; line = the ``def`` line
+there). Instrument: an AST scan over core/ for functions that write a
+module-level cache name either (A) inside / after a try-except whose handler
+does not exit, or (B) from the return value of a same-module function that
+holds a non-raising handler. One row per function; A-or-B hits = 57, plus one
+row the scan cannot see (riot_api, cited by the filed row) = 58 rows. An empty
+scan is a claim about the pattern: pass B was added after a verifier found
+three sites pass A missed (load_grid, load_own_history's scan, _atlas).
+
+  file:line | function | class | reason
+  core/anvil_shadow.py:94 | log_anvil_advice | NOT-A-LOADER | dedupe signature
+  core/aram_item_interaction_context.py:235 | _get_index | BENIGN | gated by RM-439
+  core/archetype_picks.py:628 | save_archetype_pick | DEFECT-UNFIXED | re-read failure writes {}+entry over the file (data loss); file owned by another slice
+  core/archetype_picks.py:754 | clear_archetype_pick | BENIGN | re-read failure returns False, nothing cached or written
+  core/arena_augment_playline.py:106 | _rows | DEFECT-FIXED | gate (+ _load_index projection)
+  core/augment_external_source.py:387 | get_priors | DEFECT-UNFIXED | network failure cached under mtime -1; retry is an HTTP timeout on the augment tick
+  core/augment_external_source.py:636 | get_augment_meta | DEFECT-UNFIXED | same shape as get_priors
+  core/augment_recommender.py:239 | load_own_history | DEFECT-FIXED | locked-db scan cached under an unchanged key; per-mode gate
+  core/augment_shadow.py:99 | log_augment_advice | NOT-A-LOADER | dedupe signature
+  core/build_order_precompute.py:732 | load_build_order_precompute | DEFECT-FIXED | OSError under unchanged mtime no longer cached
+  core/build_order_variants.py:464 | load_build_order_variants | DEFECT-FIXED | OSError under unchanged mtime no longer cached
+  core/build_planner/fed_threat.py:70 | _load_gold_map | DEFECT-FIXED | gate
+  core/build_planner/kit_synergy.py:399 | _alias_index | BENIGN | projection of the cached catalog (RM-439 reviewed)
+  core/build_planner/replan.py:76 | _load_recipe | DEFECT-FIXED | gate (was silent)
+  core/build_planner/situational.py:92 | _load_catalog | DEFECT-FIXED | gate (was silent)
+  core/champ_select_shadow.py:54 | log_champ_select_advice | NOT-A-LOADER | dedupe signature
+  core/champion_movespeed.py:103 | _champ_index | DEFECT-FIXED | gate
+  core/champion_movespeed.py:130 | _item_index | DEFECT-FIXED | gate
+  core/coaching_data_lock.py:216 | _note_file_lock_failure | NOT-A-LOADER | lock-episode bookkeeping
+  core/daemon_slayer_client.py:2165 | champion_attackrange | DEFECT-FIXED | gate
+  core/daemon_slayer_client.py:2200 | champion_has_ability_data | DEFECT-FIXED | gate
+  core/daemon_slayer_client.py:2250 | _champion_is_stale | DEFECT-FIXED | gate; absent report stays cached
+  core/daemon_slayer_resolver.py:267 | _load_hp_if_stale | BENIGN | failure returns before the cache write; mtime reload
+  core/defensive_picks.py:61 | _load_champ_info | DEFECT-FIXED | gate
+  core/det_coach_shadow.py:35 | log_det_coaching | NOT-A-LOADER | dedupe signature
+  core/ds_onhit_ap_roster.py:67 | load_onhit_ap_roster | BENIGN | gated by RM-439
+  core/enemy_aware_stats.py:84 | _load_champ_index | DEFECT-FIXED | gate
+  core/enemy_aware_stats.py:144 | _load_stat_index | DEFECT-FIXED | gate
+  core/hz_build_shadow.py:38 | log_precomputed_build | NOT-A-LOADER | dedupe signature
+  core/hz_choice_shadow.py:119 | log_precomputed_choices | NOT-A-LOADER | dedupe signature
+  core/laning_scenario_precompute.py:352 | load_build_orders | DEFECT-FIXED | per-mode gate
+  core/laning_scenario_precompute.py:1004 | load_laning_scenarios | DEFECT-FIXED | OSError under unchanged mtime no longer cached
+  core/live_benchmark_band_shadow.py:50 | log_live_bands | NOT-A-LOADER | dedupe signature
+  core/live_metrics.py:63 | _resolve_streamer | BENIGN | import failure is deterministic in-process
+  core/liveclient_cache.py:229 | _loop | NOT-A-LOADER | poll loop snapshot
+  core/liveclient_cache.py:301 | start | NOT-A-LOADER | task handle
+  core/liveclient_cache.py:331 | stop | NOT-A-LOADER | task handle
+  core/log_retention.py:354 | stop | NOT-A-LOADER | task handle
+  core/log_setup.py:110 | setup | NOT-A-LOADER | configured flag (frozen file)
+  core/macro_response_shadow.py:40 | log_macro_response | NOT-A-LOADER | dedupe signature
+  core/minimap_blob_detect.py:394 | _compute_and_cache_dots | NOT-A-LOADER | per-frame compute cache
+  core/minimap_districts.py:225 | load_grid | DEFECT-FIXED | existing-file read error cached the embedded grid; per-key gate
+  core/minimap_identity.py:112 | _icon_index | DEFECT-FIXED | partial build not cached; no rescan inside backoff
+  core/next_buy_fallback.py:138 | _canon_table | DEFECT-FIXED | caches only a non-empty table
+  core/objective_playbook_shadow.py:39 | log_objective_playbook | NOT-A-LOADER | dedupe signature
+  core/obs_frame_source.py:54 | _get_obs_cfg | BENIGN | 5 s TTL retry
+  core/personal_build_wr.py:60 | _item_meta | DEFECT-FIXED | gate (was silent)
+  core/pickban_targets.py:73 | load_pickban_targets | DEFECT-FIXED | OSError under unchanged mtime no longer cached
+  core/rank_tier_bench.py:200 | _refresh_now | BENIGN | keeps the prior grid; TTL retry
+  core/rank_tier_source.py:345 | fetch_rows | BENIGN | negative cache expires
+  core/replay_history.py:253 | match_detail | BENIGN | only a success is cached
+  core/replay_narrative_shadow.py:37 | log_replay_narrative | NOT-A-LOADER | dedupe signature
+  core/riot_api.py:73 | _get_api_key | BENIGN | failures return uncached (not a scan hit)
+  core/vision_template_match.py:131 | _atlas | DEFECT-FIXED | folder-scan failure per-category gate; absent opencv stays cached
+  core/vision_template_match.py:164 | _index | DEFECT-FIXED | caches only a projection of a loaded atlas
+  core/vision_tesseract.py:69 | _regions | DEFECT-FIXED | legacy-file read error; absent file still cached
+  core/vision_tesseract.py:627 | read_fast_fields | NOT-A-LOADER | per-tick OCR slow-field cache
+  core/ward_producer.py:243 | tick | NOT-A-LOADER | per-tick diff state
+
+  TOTALS: DEFECT-FIXED 25 | DEFECT-UNFIXED 3 | BENIGN 11 | NOT-A-LOADER 19 | rows 58
 """
 from __future__ import annotations
 
@@ -34,7 +105,11 @@ from typing import Any, Callable
 
 import pytest
 
+import sqlite3
+import sys
+
 import core.arena_augment_playline as aap
+import core.augment_recommender as ar
 import core.build_order_precompute as bop
 import core.build_order_variants as bov
 import core.build_planner.fed_threat as ft
@@ -45,11 +120,13 @@ import core.daemon_slayer_client as dsc
 import core.defensive_picks as dp
 import core.enemy_aware_stats as eas
 import core.laning_scenario_precompute as lsp
+import core.minimap_districts as md
 import core.minimap_identity as mmi
 import core.next_buy_fallback as nbf
 import core.personal_build_wr as pbw
 import core.pickban_targets as pbt
 import core.vision_profiles as vprof
+import core.vision_template_match as vtm
 import core.vision_tesseract as vt
 
 _PATCH = "9.9.9"
@@ -142,6 +219,17 @@ def _point_lsp(tmp_path: Path, mp: pytest.MonkeyPatch) -> Path:
     return ds / _PATCH / "build_orders_sr.json"
 
 
+_SR_GRID_TEXT = (Path(md.__file__).resolve().parent.parent / "config"
+                 / "minimap_grids" / "sr.json").read_text(encoding="utf-8")
+
+
+def _point_md(tmp_path: Path, mp: pytest.MonkeyPatch) -> Path:
+    grids = tmp_path / "minimap_grids"
+    grids.mkdir()
+    mp.setattr(md, "_CONFIG_DIR", grids)
+    return grids / "sr.json"
+
+
 def _none(module, attr):
     return lambda: getattr(module, attr) is None
 
@@ -224,6 +312,12 @@ SITES = [
          json.dumps({"_base": [1920, 1080], "gold": [1, 2, 3, 4]}),
          lambda r: r.get("gold") == [1, 2, 3, 4],
          lambda r: r == vt._DEFAULT_REGIONS, _none(vt, "_REGIONS_CACHE")),
+    Site("minimap_districts.load_grid", "rc.minimap_districts",
+         _point_md, lambda: md.load_grid("sr"),
+         _SR_GRID_TEXT,
+         lambda r: r is not None and len(r.districts) == 13,
+         lambda r: r is not None and [d.id for d in r.districts] == ["sr_map"],
+         lambda: not md._CACHE),
     Site("laning_scenario_precompute.load_build_orders", _LSP_LOG, _point_lsp,
          lambda: lsp.load_build_orders("sr"), _BUILD_ORDERS,
          lambda r: r == {"Lux": {"core": ["3089"]}}, lambda r: r == {},
@@ -236,31 +330,52 @@ SITES = [
 _IDS = [s.id for s in SITES]
 
 
-def _reset_all() -> None:
-    """Drop every cache under test plus any failure gate. Gates are found by
-    duck type so this helper also runs against the pre-fix tree."""
+_ALL_MODULES = (dsc, cms, eas, dp, ft, rp, sit, aap, pbw, mmi, vt, lsp, nbf,
+                bop, bov, pbt, md, vtm, ar)
+
+
+def _drop_caches_keep_gates() -> None:
+    """Drop every cache under test by BARE assignment, leaving any failure gate
+    exactly as it is (the streak-reset test needs that distinction)."""
     dsc._champ_attackrange_index = None
     dsc._champ_ability_index = None
     dsc._champ_stale_index = None
-    cms._reset_caches()
+    cms._CHAMP_MS = None
+    cms._ITEM_MS = None
     eas._CHAMP_INDEX = None
     eas._STAT_INDEX = None
     dp._CHAMP_INFO = None
     ft._GOLD_MAP = None
     rp._RECIPE = None
     sit._CATALOG = None
-    aap.reset_cache()
-    pbw.reset_cache()
-    mmi._reset_caches()
-    vt.reload_regions()
+    aap._ROWS_CACHE = None
+    aap._INDEX_CACHE = None
+    pbw._META_CACHE = None
+    mmi._ICON_INDEX = None
+    mmi._PARTIAL_ICON_INDEX = {}
+    mmi._TPL_CACHE.clear()
+    vt._REGIONS_CACHE = None
+    vt._BASE_CACHE = (vt.BASE_W, vt.BASE_H)
     lsp._BUILD_ORDERS_CACHE.clear()
     lsp._CACHE.clear()
-    nbf.reset_cache()
+    nbf._CANON_CACHE.clear()
+    nbf._ID_TO_NAME_CACHE.clear()
     bop._CACHE.clear()
     bov._CACHE.clear()
     pbt._CACHE.clear()
-    for mod in (dsc, cms, eas, dp, ft, rp, sit, aap, pbw, mmi, vt, lsp, nbf,
-                bop, bov, pbt):
+    md._CACHE.clear()
+    vtm._ATLAS_CACHE.clear()
+    vtm._INDEX_CACHE.clear()
+    vtm._TPL_CACHE.clear()
+    ar._own_cache.clear()
+    ar._own_cache_key.clear()
+
+
+def _reset_all() -> None:
+    """Drop every cache under test plus any failure gate. Gates are found by
+    duck type so this helper also runs against the pre-fix tree."""
+    _drop_caches_keep_gates()
+    for mod in _ALL_MODULES:
         for name in dir(mod):
             obj = getattr(mod, name)
             if name.endswith("_GATE") and callable(getattr(obj, "reset", None)):
@@ -365,6 +480,221 @@ def test_failure_warns_once_per_streak_and_backs_off(
     assert len(_warnings(caplog, site.logger_name)) == 1, [
         r.getMessage() for r in _warnings(caplog, site.logger_name)
     ]
+
+
+@pytest.mark.parametrize("site", SITES, ids=_IDS)
+def test_success_ends_the_failure_streak(
+    site, tmp_path, monkeypatch, clock, caplog,
+):
+    """A success must END the streak (record_success): after the cache is
+    dropped by bare assignment, a NEW failure is attempted at once (no stale
+    backoff) and warns again."""
+    target = site.point(tmp_path, monkeypatch)
+    target.write_text(_BAD, encoding="utf-8")
+    caplog.set_level(logging.DEBUG)
+
+    site.call()
+    clock.advance(_PAST_BACKOFF)
+    target.write_text(site.good_text, encoding="utf-8")
+    assert site.is_good(site.call())
+
+    _drop_caches_keep_gates()
+    target.write_text(_BAD, encoding="utf-8")
+    assert site.is_fallback(site.call())  # no clock advance
+    assert len(_warnings(caplog, site.logger_name)) == 2, [
+        r.getMessage() for r in _warnings(caplog, site.logger_name)
+    ]
+
+
+def test_icon_dir_scan_waits_out_the_backoff(tmp_path, monkeypatch, clock):
+    """minimap_identity: inside the backoff after a failed DDragon read the
+    icon folder is NOT rescanned per call; the partial index still serves."""
+    target = _point_mmi(tmp_path, monkeypatch)
+    target.write_text(_BAD, encoding="utf-8")
+    icons = str(mmi._ICON_DIR)
+    globs = {"n": 0}
+    real_glob = Path.glob
+
+    def counting_glob(self, *a, **kw):
+        if str(self) == icons:
+            globs["n"] += 1
+        return real_glob(self, *a, **kw)
+
+    monkeypatch.setattr(Path, "glob", counting_glob)
+    assert "monkeyking" in mmi._icon_index()
+    assert "monkeyking" in mmi._icon_index()
+    assert globs["n"] == 1
+    clock.advance(_PAST_BACKOFF)
+    mmi._icon_index()
+    assert globs["n"] == 2
+
+
+def test_missing_grid_file_is_a_cached_embedded_fallback(tmp_path, monkeypatch):
+    """No grid file is the documented degrade-to-embedded state - cached."""
+    _point_md(tmp_path, monkeypatch)
+    grid = md.load_grid("sr")
+    assert [d.id for d in grid.districts] == ["sr_map"]
+    assert ("sr", str(md._CONFIG_DIR)) in md._CACHE
+
+
+# -- vision_template_match atlas ---------------------------------------------
+
+class _FakeCv2:
+    IMREAD_COLOR = 1
+    COLOR_BGR2RGB = 4
+
+    @staticmethod
+    def imread(path, flag):
+        return "img:" + Path(path).stem
+
+    @staticmethod
+    def cvtColor(img, code):
+        return img
+
+
+class _FlakyDir:
+    """A category dir whose glob raises while ``fail`` is set."""
+
+    def __init__(self, real: Path) -> None:
+        self.real = real
+        self.fail = True
+        self.calls = 0
+
+    def glob(self, pattern):
+        self.calls += 1
+        if self.fail:
+            raise OSError("icon folder unavailable")
+        return self.real.glob(pattern)
+
+
+def _flaky_items_dir(tmp_path, monkeypatch) -> _FlakyDir:
+    real = tmp_path / "items"
+    real.mkdir()
+    (real / "Thornmail.png").write_bytes(b"")
+    flaky = _FlakyDir(real)
+    monkeypatch.setitem(sys.modules, "cv2", _FakeCv2)
+    monkeypatch.setitem(vtm._CATEGORY_DIRS, "items", flaky)
+    return flaky
+
+
+def test_atlas_scan_failure_is_not_cached_and_recovers(
+    tmp_path, monkeypatch, clock, caplog,
+):
+    flaky = _flaky_items_dir(tmp_path, monkeypatch)
+    caplog.set_level(logging.DEBUG)
+
+    assert vtm._atlas("items") == {}
+    assert "items" not in vtm._ATLAS_CACHE
+    assert vtm._index("items") == {}
+    assert "items" not in vtm._INDEX_CACHE
+    assert flaky.calls == 1, "inside the backoff the folder is not rescanned"
+
+    flaky.fail = False
+    clock.advance(_PAST_BACKOFF)
+    assert vtm._atlas("items") == {"Thornmail": "img:Thornmail"}
+    assert "thornmail" in vtm._index("items")
+    assert "items" in vtm._ATLAS_CACHE and "items" in vtm._INDEX_CACHE
+    assert len(_warnings(caplog, vtm._log.name)) == 1
+
+
+def test_atlas_without_opencv_stays_a_cached_empty(monkeypatch):
+    """opencv is an optional dependency: its absence is permanent, cached."""
+    monkeypatch.setitem(sys.modules, "cv2", None)
+    assert vtm._atlas("items") == {}
+    assert vtm._ATLAS_CACHE.get("items") == {}
+
+
+# -- augment_recommender own history -------------------------------------------
+
+def _history_db(tmp_path: Path) -> Path:
+    db = tmp_path / "match_history.db"
+    raw = json.dumps({"tracked_puuid": "P", "lcu_match_detail": {
+        "gameMode": "KIWI", "queueId": 2400,
+        "participantIdentities": [{"participantId": 1, "player": {"puuid": "P"}}],
+        "participants": [{"participantId": 1,
+                          "stats": {"playerAugment1": 101, "win": True}}],
+    }})
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE matches (raw_data TEXT)")
+    conn.execute("INSERT INTO matches VALUES (?)", (raw,))
+    conn.commit()
+    conn.close()
+    return db
+
+
+class _FlakyConn:
+    def __init__(self, real, state) -> None:
+        self._real = real
+        self._state = state
+
+    def execute(self, sql, *a):
+        if sql.startswith("SELECT raw_data") and self._state["fail"]:
+            self._state["calls"] += 1
+            raise sqlite3.OperationalError("database is locked")
+        return self._real.execute(sql, *a)
+
+    def close(self) -> None:
+        self._real.close()
+
+
+def _flaky_connect(monkeypatch) -> dict:
+    state = {"fail": True, "calls": 0}
+    real_connect = sqlite3.connect
+
+    def connect(*a, **kw):
+        return _FlakyConn(real_connect(*a, **kw), state)
+
+    monkeypatch.setattr(sqlite3, "connect", connect)
+    return state
+
+
+def test_own_history_query_failure_is_not_cached(
+    tmp_path, monkeypatch, clock, caplog,
+):
+    """The DB does not change between calls, so its (mtime, size, row count)
+    cache key does not either: a cached failure would stand until the next
+    game is ingested."""
+    db = _history_db(tmp_path)
+    state = _flaky_connect(monkeypatch)
+    caplog.set_level(logging.DEBUG)
+
+    assert ar.load_own_history("mayhem", db_path=db).n_matches == 0
+    assert "mayhem" not in ar._own_cache
+    ar.load_own_history("mayhem", db_path=db)
+    assert state["calls"] == 1, "inside the backoff the query is not retried"
+
+    state["fail"] = False
+    clock.advance(_PAST_BACKOFF)
+    hist = ar.load_own_history("mayhem", db_path=db)
+    assert hist.n_matches == 1 and hist.games == {101: 1}
+    assert len(_warnings(caplog, ar._log.name)) == 1
+
+
+def test_own_history_success_and_absent_db_are_cached(tmp_path, monkeypatch):
+    db = _history_db(tmp_path)
+    assert ar.load_own_history("mayhem", db_path=db).n_matches == 1
+    assert "mayhem" in ar._own_cache
+    ar.reset_cache()
+    assert ar.load_own_history("mayhem", db_path=tmp_path / "absent.db").n_matches == 0
+    assert "mayhem" in ar._own_cache
+
+
+def test_census_totals_match_its_rows():
+    """The census in this module's docstring: the TOTALS line must equal the
+    per-class row counts, and every DEFECT-FIXED file must still exist."""
+    import re
+
+    rows = [ln.strip() for ln in __doc__.splitlines()
+            if re.match(r"\s+core/\S+:\d+ \| ", ln)]
+    classes = [r.split(" | ")[2] for r in rows]
+    totals = dict(re.findall(r"([A-Za-z-]+) (\d+)",
+                             __doc__.split("TOTALS:")[1].splitlines()[0]))
+    for cls in ("DEFECT-FIXED", "DEFECT-UNFIXED", "BENIGN", "NOT-A-LOADER"):
+        assert classes.count(cls) == int(totals[cls]), cls
+    assert len(rows) == int(totals["rows"]) == len(classes)
+    root = Path(__file__).resolve().parent.parent
+    for r in rows:
+        assert (root / r.split(":")[0]).is_file(), r
 
 
 def test_invalidate_clears_a_backoff(tmp_path, monkeypatch, clock):
