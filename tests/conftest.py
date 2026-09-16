@@ -65,6 +65,14 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 # import time, and both pytest and the tracer already ignore the system temp
 # tree, so plain `mkdtemp` is the right tool at this point in the lifecycle.
 _SUITE_LOG_DIR = Path(tempfile.mkdtemp(prefix="rc-suite-logs-"))
+
+# RM-451: `tools/rc_facts.py` appends every fire to the LIVE hook log unless
+# `RC_HOOK_LOG` redirects it, and the responder dry cycle reads a null-session
+# row there as a violation. Set in os.environ at IMPORT, unconditionally, so an
+# in-process call AND every child process that inherits the environment
+# resolves to this per-worker tmp file. A test that needs its own log still
+# passes `path=` or its own env. Guarded by tests/test_hook_log_live_isolation.py.
+os.environ["RC_HOOK_LOG"] = str(_SUITE_LOG_DIR / "hook_invocations.jsonl")
 _REAL_LOG_DIR = _REPO_ROOT / "logs"
 
 
