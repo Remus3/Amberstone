@@ -535,8 +535,11 @@ def _inbox_entries(inbox: Path) -> set[str]:
 def _probe_inbox_listable(inbox: Path) -> None:
     """Raise OSError when `inbox` cannot be listed. Returns None otherwise.
 
-    The acknowledge path's readability check (`mark_inbox_seen`), lifted so the
-    two NON-acknowledging readers can make the same check. Call it AFTER
+    The ONE listability check shared by all three readers: the acknowledge path
+    (`mark_inbox_seen`), the watcher (`_inbox_section`) and the poller
+    (`scan_fleet`). It was first written inline in the acknowledge path and
+    lifted here; that inline copy is gone, so hardening this helper reaches
+    every reader and `tests/test_inbox_ack_refuses.py` pins the wiring. Call it AFTER
     `_inbox_entries`, on an inbox already known to be a directory: an empty
     result from a listing that failed and an empty result from an inbox that is
     really empty look identical, and only this probe tells them apart.
@@ -547,9 +550,24 @@ def _probe_inbox_listable(inbox: Path) -> None:
     watcher reports every acknowledged note WITHDRAWN and the poller saves an
     empty entry over its watermark. `tests/test_inbox_swallowed_listing.py`
     applies that mutant and demands both still refuse.
+
+    TWO PRIMITIVES, ON PURPOSE. `_inbox_entries` lists through `Path.iterdir`,
+    so a probe on `Path.iterdir` alone shares that seam: a swallow AT the
+    pathlib layer returns an empty listing to both and the probe cannot object.
+    Measured on Python 3.14.4 (2026-09-16): `Path.iterdir` IS `os.scandir` plus
+    an eager `list`, so calling `os.scandir` directly sits one layer BELOW that
+    seam and still sees the raise. The independence is exactly one layer deep,
+    and that is the honest claim: a fault swallowed inside `os.scandir` itself,
+    or below it in FindFirstFileW, defeats this probe too. `os.access` is NOT a
+    substitute - on the same host it returned True for R_OK on a directory
+    carrying an explicit deny-list ACE. The `Path.iterdir` pass is kept as well
+    so a fault injected at either layer refuses. The scandir handle is closed
+    explicitly by the `with`, so a Windows directory handle is never left open.
     """
     for _probe in inbox.iterdir():
         break
+    with os.scandir(inbox) as it:
+        next(it, None)
 
 
 def mark_inbox_seen() -> int:
@@ -614,8 +632,9 @@ def mark_inbox_seen() -> int:
         names = sorted(_inbox_entries(inbox))
         # Corroborate listability independently of _inbox_entries, so a future
         # try/except inside it cannot turn this refusal back into an erasure.
-        for _probe in inbox.iterdir():
-            break
+        # The SHARED probe, not a private copy: the watcher and the poller call
+        # the same helper, so one hardening reaches all three readers.
+        _probe_inbox_listable(inbox)
     except OSError as exc:
         print(
             f"REFUSED: moon_sync_inbox/ could not be listed ({type(exc).__name__}"
