@@ -23,6 +23,8 @@ import os.path
 from pathlib import Path
 from typing import Iterable, Optional
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.vision_tesseract")
 _APP_DIR = Path(__file__).parent.parent
 
@@ -63,6 +65,7 @@ _DEFAULT_REGIONS = {
 }
 
 _REGIONS_CACHE: Optional[dict] = None
+_REGIONS_GATE = FailedLoadGate()  # RM-443: see the legacy-file arm of _regions()
 _BASE_CACHE: tuple = (BASE_W, BASE_H)
 
 
@@ -110,19 +113,32 @@ def _regions() -> dict:
     except Exception as exc:  # noqa: BLE001
         _log.debug("vision profile load failed, using legacy regions: %s", exc)
     if _REGIONS_FILE.exists():
+        # RM-443: a failed read of an EXISTING calibration file is not cached
+        # (it used to pin the defaults for the process lifetime) - the defaults
+        # serve while the gate backs off, then the file is re-read. An ABSENT
+        # file is the fresh-install state and still caches + seeds defaults.
+        if not _REGIONS_GATE.should_attempt():
+            _BASE_CACHE = (BASE_W, BASE_H)
+            return dict(_DEFAULT_REGIONS)
         try:
             data = json.loads(_REGIONS_FILE.read_text(encoding="utf-8"))
             base = data.get("_base")
+            new_base = None
             if isinstance(base, (list, tuple)) and len(base) == 2:
-                _BASE_CACHE = (int(base[0]), int(base[1]))
-            _REGIONS_CACHE = {
+                new_base = (int(base[0]), int(base[1]))
+            regions = {
                 k: list(v) for k, v in data.items()
                 if not k.startswith("_") and isinstance(v, (list, tuple))
             }
         except Exception as exc:  # noqa: BLE001
-            _log.warning("vision_regions.json load failed: %s - using defaults", exc)
-            _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
+            if _REGIONS_GATE.record_failure():
+                _log.warning("vision_regions.json load failed: %s - using defaults", exc)
             _BASE_CACHE = (BASE_W, BASE_H)
+            return dict(_DEFAULT_REGIONS)
+        _REGIONS_GATE.record_success()
+        if new_base is not None:
+            _BASE_CACHE = new_base
+        _REGIONS_CACHE = regions
     else:
         _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
         _BASE_CACHE = (BASE_W, BASE_H)
@@ -153,6 +169,7 @@ def reload_regions() -> None:
     global _REGIONS_CACHE, _BASE_CACHE
     _REGIONS_CACHE = None
     _BASE_CACHE = (BASE_W, BASE_H)
+    _REGIONS_GATE.reset()
 
 
 def _tesseract_candidates() -> list:
