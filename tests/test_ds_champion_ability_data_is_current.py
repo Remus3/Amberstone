@@ -18,7 +18,8 @@ import core.daemon_slayer_client as M
 
 
 def _reset():
-    M._champ_stale_index = None
+    # RM-443: resets the failure gates too (a bare None leaves a backoff).
+    M.reset_snapshot_indexes()
 
 
 def _point_at(monkeypatch, tmp_path, payload, patch="16.14.1"):

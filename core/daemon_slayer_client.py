@@ -25,6 +25,7 @@ from core.build_planner.coherence import coherence_rerank
 from core.ds_archetype_hp_pct import archetype_target_current_hp_pct
 from core.ds_burst_target import squishy_carry_target
 from core.ds_champion_fight_length import champion_fight_length
+from core.failed_load_gate import FailedLoadGate
 
 logger = logging.getLogger("rc.core.daemon_slayer_client")
 
@@ -2067,6 +2068,25 @@ CARRY_COHERENCE_WINDOW: int = 40
 
 _DS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
 _champ_attackrange_index: Optional[dict] = None
+# RM-443: the three snapshot indexes below do NOT cache a failed load - it is
+# retried after the gate's backoff and warned once per failure streak
+# (core/failed_load_gate.py). A successful load is cached as before.
+_ATTACKRANGE_GATE = FailedLoadGate()
+_ABILITY_GATE = FailedLoadGate()
+_STALE_GATE = FailedLoadGate()
+
+
+def reset_snapshot_indexes() -> None:
+    """Drop the three local-snapshot indexes (attackrange, ability presence,
+    staleness report) AND their failure gates - tests / patch refresh. Setting
+    an index to None alone leaves a failure backoff in force."""
+    global _champ_attackrange_index, _champ_ability_index, _champ_stale_index
+    _champ_attackrange_index = None
+    _champ_ability_index = None
+    _champ_stale_index = None
+    _ATTACKRANGE_GATE.reset()
+    _ABILITY_GATE.reset()
+    _STALE_GATE.reset()
 
 
 def _resolve_enemy_shares(
@@ -2169,6 +2189,8 @@ def champion_attackrange(champion: str) -> float:
     snapshot cannot identify."""
     global _champ_attackrange_index
     if _champ_attackrange_index is None:
+        if not _ATTACKRANGE_GATE.should_attempt():
+            return 0.0
         index: dict = {}
         try:
             patch = (_DS_DATA_DIR / "current.txt").read_text(
@@ -2188,8 +2210,11 @@ def champion_attackrange(champion: str) -> float:
                 name = (rec or {}).get("name")
                 if name:
                     index[_norm_champ_key(str(name))] = rng
-        except (OSError, ValueError):
-            index = {}
+        except (OSError, ValueError) as exc:
+            if _ATTACKRANGE_GATE.record_failure():
+                logger.warning("DS attackrange index load failed: %s", exc)
+            return 0.0
+        _ATTACKRANGE_GATE.record_success()
         _champ_attackrange_index = index
     return float(_champ_attackrange_index.get(_canon_champ_key(champion), 0.0))
 
@@ -2217,6 +2242,8 @@ def champion_has_ability_data(champion: str) -> bool:
     """
     global _champ_ability_index
     if _champ_ability_index is None:
+        if not _ABILITY_GATE.should_attempt():
+            return True
         index: dict = {}
         try:
             patch = (_DS_DATA_DIR / "current.txt").read_text(
@@ -2229,8 +2256,11 @@ def champion_has_ability_data(champion: str) -> bool:
             data = data.get("data") if isinstance(data.get("data"), dict) else data
             for cid in (data or {}):
                 index[_norm_champ_key(str(cid))] = True
-        except (OSError, ValueError, AttributeError):
-            index = {}
+        except (OSError, ValueError, AttributeError) as exc:
+            if _ABILITY_GATE.record_failure():
+                logger.warning("DS ability-data index load failed: %s", exc)
+            return True
+        _ABILITY_GATE.record_success()
         _champ_ability_index = index
     if not _champ_ability_index:
         return True
@@ -2256,18 +2286,26 @@ def _champion_is_stale(champion: str) -> bool:
     """
     global _champ_stale_index
     if _champ_stale_index is None:
+        if not _STALE_GATE.should_attempt():
+            return False
         index: dict = {}
         try:
             patch = (_DS_DATA_DIR / "current.txt").read_text(
                 encoding="utf-8"
             ).strip()
-            raw = (_DS_DATA_DIR / patch / "ability_staleness.json").read_text(
-                encoding="utf-8"
-            )
-            for cid in json.loads(raw).get("stale_champions") or []:
-                index[_norm_champ_key(str(cid))] = True
-        except (OSError, ValueError, AttributeError):
-            index = {}
+            report = _DS_DATA_DIR / patch / "ability_staleness.json"
+            # An ABSENT report is a normal state (the wiki check is a separate
+            # optional tool) and caches as the empty index; only an unreadable
+            # or malformed report, or a missing patch pointer, is a failure.
+            if report.is_file():
+                raw = report.read_text(encoding="utf-8")
+                for cid in json.loads(raw).get("stale_champions") or []:
+                    index[_norm_champ_key(str(cid))] = True
+        except (OSError, ValueError, AttributeError) as exc:
+            if _STALE_GATE.record_failure():
+                logger.warning("DS staleness report load failed: %s", exc)
+            return False
+        _STALE_GATE.record_success()
         _champ_stale_index = index
     return bool(_champ_stale_index.get(_canon_champ_key(champion), False))
 

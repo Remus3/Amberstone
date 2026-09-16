@@ -53,6 +53,8 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.fed_threat")
 
 # Net kills-minus-deaths that reads as snowballing (3-0 / 5-2 / 7-4).
@@ -65,6 +67,9 @@ LEVEL_GOLD = 130.0
 
 _ITEMS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "meta" / "ddragon_items.json"
 _GOLD_MAP: dict | None = None
+# RM-443: a failed load is NOT cached - retried after the gate's backoff and
+# warned once per failure streak (core/failed_load_gate.py).
+_GOLD_MAP_GATE = FailedLoadGate()
 
 
 def _load_gold_map() -> dict:
@@ -77,6 +82,8 @@ def _load_gold_map() -> dict:
     global _GOLD_MAP
     if _GOLD_MAP is not None:
         return _GOLD_MAP
+    if not _GOLD_MAP_GATE.should_attempt():
+        return {}
     out: dict = {}
     try:
         raw = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
@@ -87,7 +94,10 @@ def _load_gold_map() -> dict:
             except (TypeError, ValueError, AttributeError):
                 continue
     except Exception as exc:  # noqa: BLE001 - any load failure -> empty map
-        _log.debug("fed_threat gold map: %s", exc)
+        if _GOLD_MAP_GATE.record_failure():
+            _log.warning("fed_threat gold map load failed: %s", exc)
+        return {}
+    _GOLD_MAP_GATE.record_success()
     _GOLD_MAP = out
     return out
 

@@ -62,6 +62,8 @@ import json
 import logging
 from pathlib import Path
 
+from core.failed_load_gate import FailedLoadGate
+
 _log = logging.getLogger("rc.enemy_aware_stats")
 
 _ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_items.json"
@@ -69,6 +71,10 @@ _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddrag
 
 # Module-level cache of champ name -> base stat tuple. Lazy-loaded.
 _CHAMP_INDEX: dict[str, dict] | None = None
+# RM-443: neither index caches a failed load - it is retried after the gate's
+# backoff and warned once per failure streak (core/failed_load_gate.py).
+_CHAMP_GATE = FailedLoadGate()
+_STAT_GATE = FailedLoadGate()
 
 
 def _riot_growth_multiplier(level: int) -> float:
@@ -91,6 +97,8 @@ def _load_champ_index() -> dict[str, dict]:
     global _CHAMP_INDEX
     if _CHAMP_INDEX is not None:
         return _CHAMP_INDEX
+    if not _CHAMP_GATE.should_attempt():
+        return {}
     out: dict[str, dict] = {}
     try:
         raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
@@ -109,10 +117,15 @@ def _load_champ_index() -> dict[str, dict]:
                 "hpperlevel":   float(st.get("hpperlevel") or 0.0),
             }
     except FileNotFoundError:
-        _log.warning("enemy_aware_stats: %s missing - base layer disabled",
-                     _CHAMPS_PATH)
+        if _CHAMP_GATE.record_failure():
+            _log.warning("enemy_aware_stats: %s missing - base layer disabled",
+                         _CHAMPS_PATH)
+        return {}
     except Exception as exc:  # noqa: BLE001
-        _log.warning("enemy_aware_stats: champ index load failed: %s", exc)
+        if _CHAMP_GATE.record_failure():
+            _log.warning("enemy_aware_stats: champ index load failed: %s", exc)
+        return {}
+    _CHAMP_GATE.record_success()
     _CHAMP_INDEX = out
     return out
 
@@ -152,6 +165,8 @@ def _load_stat_index() -> dict[str, dict]:
     global _STAT_INDEX
     if _STAT_INDEX is not None:
         return _STAT_INDEX
+    if not _STAT_GATE.should_attempt():
+        return {}
     out: dict[str, dict] = {}
     try:
         raw = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
@@ -164,10 +179,15 @@ def _load_stat_index() -> dict[str, dict]:
             if armor or mr or hp:
                 out[str(item_id)] = {"armor": armor, "mr": mr, "hp": hp}
     except FileNotFoundError:
-        _log.warning("enemy_aware_stats: %s missing - falling back to empty index",
-                     _ITEMS_PATH)
+        if _STAT_GATE.record_failure():
+            _log.warning("enemy_aware_stats: %s missing - falling back to empty index",
+                         _ITEMS_PATH)
+        return {}
     except Exception as exc:  # noqa: BLE001
-        _log.warning("enemy_aware_stats: load failed: %s", exc)
+        if _STAT_GATE.record_failure():
+            _log.warning("enemy_aware_stats: load failed: %s", exc)
+        return {}
+    _STAT_GATE.record_success()
     _STAT_INDEX = out
     return out
 

@@ -33,10 +33,12 @@ ASCII only - use " - " for a clause break (repo hard rule).
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 from core.enemy_aware_stats import _load_stat_index
+from core.failed_load_gate import FailedLoadGate
 
 # --------------------------------------------------------------------------- #
 # Curated NAME rosters (every name VERIFIED present in the catalog this
@@ -83,6 +85,11 @@ HP_SAT = 800.0   # soft-saturation HP for the C4 mix reward (~half-credit @800)
 
 _ITEMS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "meta" / "ddragon_items.json"
 _CATALOG: dict | None = None
+# RM-443: a failed load is NOT cached (it used to be, silently and forever) -
+# retried after the gate's backoff, warned once per failure streak
+# (core/failed_load_gate.py).
+_CATALOG_GATE = FailedLoadGate()
+_log = logging.getLogger(__name__)
 
 
 def _clamp01(x: float) -> float:
@@ -99,6 +106,8 @@ def _load_catalog() -> dict:
     global _CATALOG
     if _CATALOG is not None:
         return _CATALOG
+    if not _CATALOG_GATE.should_attempt():
+        return {}
     out: dict = {}
     try:
         raw = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
@@ -108,10 +117,11 @@ def _load_catalog() -> dict:
                 "name": entry.get("name", "") or "",
                 "tags": frozenset(entry.get("tags") or ()),
             }
-    except FileNotFoundError:
-        pass
-    except Exception:  # noqa: BLE001 - any parse failure -> empty catalog
-        pass
+    except Exception as exc:  # noqa: BLE001 - any load failure -> empty catalog
+        if _CATALOG_GATE.record_failure():
+            _log.warning("situational: item catalog load failed: %s", exc)
+        return {}
+    _CATALOG_GATE.record_success()
     _CATALOG = out
     return out
 

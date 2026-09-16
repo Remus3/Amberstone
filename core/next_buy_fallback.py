@@ -155,9 +155,13 @@ def _canon_table(stem: str) -> dict:
                 if canon:
                     out[canon] = buckets
     except Exception:  # noqa: BLE001 - missing / malformed table -> no fallback
-        out = {}
-    with _lock:
-        _CANON_CACHE[stem] = out
+        return {}
+    # RM-443: memoise only a table that loaded. An empty table is either a
+    # failed (uncached, retried) build-orders load or a genuinely empty one
+    # that load_build_orders already memoises, so re-deriving it is free.
+    if out:
+        with _lock:
+            _CANON_CACHE[stem] = out
     return out
 
 

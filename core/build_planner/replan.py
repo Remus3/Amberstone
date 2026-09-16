@@ -44,6 +44,7 @@ ASCII only - use " - " for a clause break (repo hard rule).
 from __future__ import annotations
 
 import json
+import logging
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,7 @@ from typing import Optional
 from core.build_planner.planner import BuildPlan, plan_build
 from core.build_planner.scoring import score_build, stage_for
 from core.build_planner.situational import classify_item
+from core.failed_load_gate import FailedLoadGate
 
 # --------------------------------------------------------------------------- #
 # Lazy recipe / boots catalog - the same ddragon_items.json situational.py
@@ -59,6 +61,11 @@ from core.build_planner.situational import classify_item
 # --------------------------------------------------------------------------- #
 _ITEMS_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "meta" / "ddragon_items.json"
 _RECIPE: dict | None = None  # id_str -> {"from": tuple[str, ...], "tags": frozenset}
+# RM-443: a failed load is NOT cached (it used to be, silently and forever) -
+# retried after the gate's backoff, warned once per failure streak
+# (core/failed_load_gate.py).
+_RECIPE_GATE = FailedLoadGate()
+_log = logging.getLogger(__name__)
 
 # Base-boots id - the from-closure fallback for finished boots that still chain
 # back to it ('Boots' tag is the primary signal; this covers any tag drift).
@@ -82,6 +89,8 @@ def _load_recipe() -> dict:
     global _RECIPE
     if _RECIPE is not None:
         return _RECIPE
+    if not _RECIPE_GATE.should_attempt():
+        return {}
     out: dict = {}
     try:
         raw = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
@@ -92,10 +101,11 @@ def _load_recipe() -> dict:
                 "from": tuple(str(c) for c in comps),
                 "tags": frozenset(entry.get("tags") or ()),
             }
-    except FileNotFoundError:
-        pass
-    except Exception:  # noqa: BLE001 - any parse failure -> empty recipe graph
-        pass
+    except Exception as exc:  # noqa: BLE001 - any load failure -> empty recipe graph
+        if _RECIPE_GATE.record_failure():
+            _log.warning("replan: recipe catalog load failed: %s", exc)
+        return {}
+    _RECIPE_GATE.record_success()
     _RECIPE = out
     return out
 

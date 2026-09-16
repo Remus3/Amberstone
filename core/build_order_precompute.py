@@ -752,6 +752,11 @@ def load_build_order_precompute(
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             payload = {}
+    except OSError:
+        # RM-443: a transient read error is NOT cached (the file will not
+        # change again, so an entry under this mtime would pin the empty
+        # payload). Malformed CONTENT is deterministic per mtime - cached.
+        return {}
     except Exception:  # noqa: BLE001 - malformed -> empty
         payload = {}
     _CACHE[key] = (mtime, payload)
