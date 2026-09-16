@@ -69,7 +69,18 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-440** (2026-09-16, moved at the laned loop run doc-sync).
+  Next free id = **RM-447** (2026-09-16, moved at the laned loop wave 3 doc-sync).
+  **SEVEN ids were allocated 2026-09-16 by the laned loop wave 3 (LEDGER 1420), and THE PIN
+  MOVED BY SEVEN.** All seven are OPEN under BACKLOG "Reliability / hardening": RM-440 the
+  skip-condition hygiene guard accepts constant-true conditions; RM-441 repo-wide text-mode
+  writers of tracked files without newline control; RM-442 a local-time `downloaded_at`
+  stamp with a `Z` suffix in `scripts/data_pipeline.py`; RM-443 17 unclassified
+  cache-failure-shaped `core/` loaders; RM-444 the `archetype_picks` save-after-failed-read
+  overwrite; RM-445 the DS engine not modelling the 16.18.1 Rageblade change plus runes
+  never refreshed by the pipeline (engine half is a DS batch decision); RM-446 RM-435
+  spaced-cite residuals. None takes a roster checkbox and none changes the Summary count.
+  The `ROADMAP.md` pointer moves in the SAME commit.
+  Prior pin, kept for the audit trail: Next free id was **RM-440** (2026-09-16, moved at the laned loop run doc-sync).
   **NINE ids were allocated since the prior pin, and THE PIN MOVED BY NINE.** RM-431 was
   filed 2026-09-16 by the arm-blocker wrap session WITHOUT moving this pin, which left the
   pin naming an allocated id - `tests/test_rm_id_registry_drift.py` went red on it, and
