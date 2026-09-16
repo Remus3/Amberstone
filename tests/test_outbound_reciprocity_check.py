@@ -302,37 +302,46 @@ _NON_DIR_KINDS = (
 )
 
 
-def _symlink_or_skip(link: Path, target: Path, is_dir: bool) -> None:
+def _symlink_error(link: Path, target: Path, is_dir: bool) -> Exception | None:
+    """Create one symlink; return the host's refusal instead of raising it.
+
+    The skip is taken by the CALLER, not here, so the skip-hygiene scanner
+    binds the real call-site paths to these parameters and can see what the
+    skip gates on (a skip inside this helper gates on bare parameters and
+    resolves to nothing).
+    """
     try:
         os.symlink(target, link, target_is_directory=is_dir)
     except (OSError, NotImplementedError) as exc:
-        pytest.skip(f"symlink creation unavailable on this host: {exc}")
+        return exc
+    return None
 
 
 def _make_inbox_kind(tmp_path: Path, kind: str) -> Path:
     """Build one inbox-shaped path of `kind` under tmp_path and return it."""
     inbox = tmp_path / "root" / orc.INBOX_DIRNAME
     inbox.parent.mkdir(parents=True)
+    link_err = None
     if kind == "absent":
         pass
     elif kind == "plain_file":
         _write(inbox, "not a directory\n")
     elif kind == "dangling_file_link":
         gone = _write(tmp_path / "gone.txt", "x\n")
-        _symlink_or_skip(inbox, gone, is_dir=False)
+        link_err = _symlink_error(inbox, gone, False)
         gone.unlink()
     elif kind == "dangling_dir_link":
         gone = tmp_path / "gone-dir"
         gone.mkdir()
-        _symlink_or_skip(inbox, gone, is_dir=True)
+        link_err = _symlink_error(inbox, gone, True)
         gone.rmdir()
     elif kind == "file_link":
         target = _write(tmp_path / "target.txt", "x\n")
-        _symlink_or_skip(inbox, target, is_dir=False)
+        link_err = _symlink_error(inbox, target, False)
     elif kind == "link_loop":
         other = tmp_path / "loop-b"
-        _symlink_or_skip(inbox, other, is_dir=True)
-        _symlink_or_skip(other, inbox, is_dir=True)
+        link_err = (_symlink_error(inbox, other, True)
+                    or _symlink_error(other, inbox, True))
     elif kind == "real_dir":
         _note(inbox, "2026-09-16-0900", SELF, "visible", "# From ZZ\n")
         _write(inbox / "_draft.md", "# draft\n")
@@ -340,9 +349,11 @@ def _make_inbox_kind(tmp_path: Path, kind: str) -> Path:
         real = tmp_path / "real-inbox"
         _note(real, "2026-09-16-0900", SELF, "visible", "# From ZZ\n")
         _write(real / "_draft.md", "# draft\n")
-        _symlink_or_skip(inbox, real, is_dir=True)
+        link_err = _symlink_error(inbox, real, True)
     else:  # pragma: no cover - a typo in the parametrisation
         raise AssertionError(kind)
+    if link_err is not None:
+        pytest.skip(f"symlink creation unavailable on this host: {link_err}")
     return inbox
 
 
