@@ -153,7 +153,15 @@ class RiotApiCache:
             check_same_thread=False,
             isolation_level=None,   # autocommit; we manage TX explicitly
         )
-        conn.execute("PRAGMA journal_mode=WAL")
+        # RM-413 (RM-233 shape): the pragma answers the mode SQLite ADOPTED;
+        # a non-wal answer is degraded, not broken, so warn and carry on.
+        jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+        journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+        if journal_mode != "wal":
+            log.warning(
+                "RiotApiCache journal_mode fell back to %r (wanted wal): %s - "
+                "concurrent readers WILL block writers on this database",
+                journal_mode, self._db_path)
         conn.execute("PRAGMA synchronous=NORMAL")
         return conn
 

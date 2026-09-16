@@ -117,12 +117,28 @@ def db_path(mode: str) -> Path:
     return DB_DIR / fname
 
 
+def _enable_wal(conn: sqlite3.Connection, p: Path) -> str:
+    """Request WAL and report the mode SQLite actually adopted (RM-413).
+
+    Same shape as core/match_db.py (RM-233): the pragma is a query, and a
+    non-wal answer is degraded rather than broken, so warn - never raise.
+    """
+    jm_row = conn.execute("PRAGMA journal_mode = WAL").fetchone()
+    journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+    if journal_mode != "wal":
+        logger.warning(
+            "mode-db journal_mode fell back to %r (wanted wal): %s - "
+            "concurrent readers WILL block writers on this database",
+            journal_mode, p)
+    return journal_mode
+
+
 def open_db(mode: str) -> sqlite3.Connection:
     p = db_path(mode)
     p.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(p)
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
+    _enable_wal(conn, p)
     return conn
 
 
@@ -131,7 +147,7 @@ def init_mode(mode: str) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(p) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA journal_mode = WAL")
+        _enable_wal(conn, p)
         for stmt in SCHEMA_STATEMENTS:
             conn.execute(stmt)
         conn.commit()
