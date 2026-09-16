@@ -336,7 +336,8 @@ def _hook_log_violations(before, after, pid: int) -> list:
     production check cannot drift apart. Looked up at call time on purpose.
     """
     assert _HOOK_ROW_PREFIX == runner.HOOK_ROW_PREFIX
-    return runner.hook_log_violations(before, after, {pid})
+    # No arm in this module spawns a child, so no session is ours.
+    return runner.hook_log_violations(before, after, {pid}, frozenset())
 
 
 def _guard_hook_logs(logs, pid):
@@ -4112,12 +4113,83 @@ def test_a_foreign_hook_row_landing_mid_check_does_not_fail_the_hook_log_check(
         moved.append(log.read_bytes() != before)
 
     code, _s, _l, _r, _e = _drive_dry_cycle(world, tmp_path, monkeypatch, label=f"hk-{arm}",
-                                            hook_seed=seed(), during_spawn=mutate)
+                                            hook_seed=seed(), during_spawn=mutate,
+                                            stdout=_CHILD_STDOUT)
     out = capsys.readouterr().out
     # Vacuity control: the log really moved between the two snapshots.
     assert moved == [True], "the arm did not move the hook log mid-check"
     assert "PASS hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
     assert code == 0
+
+
+# The spawned child's session id, as the CLI's JSON result reports it. A hook
+# fired BY that child runs as its own short-lived process, so its row carries a
+# pid that is neither the runner's nor the CLI's - only `session` ties it back.
+_CHILD_SESSION = "child-session-0001"
+_CHILD_STDOUT = result_bytes(proposal(reply_action()), session_id=_CHILD_SESSION)
+
+
+def test_a_hook_row_from_the_spawned_childs_session_fails_the_check_whatever_its_pid(
+        world, tmp_path, monkeypatch, capsys):
+    """RM-434 verifier MUST-FIX 1: pid attribution alone let a real child hook
+    row through, because `record_invocation` stamps the HOOK process's pid."""
+    child_row = _hook_row(pid=_FOREIGN_PID, seq=7, session=_CHILD_SESSION)
+    assert json.loads(child_row)["pid"] != os.getpid()
+    code, _s, _l, _r, _e = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label="hk-child-session",
+        hook_seed=_hook_row(seq=1), stdout=_CHILD_STDOUT,
+        during_spawn=lambda log: _append_bytes(log, child_row))
+    out = capsys.readouterr().out
+    assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert _CHILD_SESSION in out
+    assert code != 0
+
+
+def test_with_no_child_session_id_any_row_appended_during_the_spawn_fails_the_check(
+        world, tmp_path, monkeypatch, capsys):
+    """Conservative fallback: when the child's result carries no session id, a row
+    appended in the spawn window cannot be disowned, so it is not ignored."""
+    code, _s, _l, _r, _e = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label="hk-no-session",
+        hook_seed=_hook_row(seq=1),
+        during_spawn=lambda log: _append_bytes(log, _hook_row(seq=2)))
+    out = capsys.readouterr().out
+    assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert code != 0
+
+
+def test_child_session_of_distinguishes_no_spawn_known_session_and_unknown_session():
+    no_spawn = runner.RecordingSpawner(StubSpawner())
+    assert runner.child_session_of(no_spawn) == frozenset()
+    known = runner.RecordingSpawner(StubSpawner(_CHILD_STDOUT))
+    known(None)
+    assert runner.child_session_of(known) == frozenset({_CHILD_SESSION})
+    for stdout in (result_bytes(proposal(reply_action())), b"not json", b"[1]",
+                   result_bytes(proposal(reply_action()), session_id="  ")):
+        unknown = runner.RecordingSpawner(StubSpawner(stdout))
+        unknown(None)
+        assert runner.child_session_of(unknown) is None, stdout[:40]
+
+
+def test_a_middle_row_removed_from_a_log_past_the_cap_fails_on_the_removal_rule_alone(
+        world, tmp_path, monkeypatch, capsys):
+    """Verifier MUST-FIX 3: with fewer than `_LOG_KEEP` rows the short-trim rule
+    also fires, so a mutant disabling the outside-the-head rule survived. Past
+    the cap, only the outside-the-head rule can catch this."""
+    keep = rc_facts_mod._LOG_KEEP
+    rows = [_hook_row(seq=i) for i in range(keep + 5)]
+    after = b"".join(rows[:500] + rows[501:])
+    assert runner.hook_log_violations(b"".join(rows), after, {os.getpid()},
+                                      frozenset()) == [
+        "1 existing row(s) removed from outside the head"]
+    code, _s, _l, _r, _e = _drive_dry_cycle(
+        world, tmp_path, monkeypatch, label="hk-mid-removal-past-cap",
+        hook_seed=b"".join(rows), stdout=_CHILD_STDOUT,
+        during_spawn=lambda log: log.write_bytes(after))
+    out = capsys.readouterr().out
+    assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert "removed from outside the head" in out
+    assert code != 0
 
 
 def _own_pid_record(log: Path) -> None:
@@ -4162,7 +4234,11 @@ def test_a_hook_log_change_a_foreign_fire_cannot_explain_fails_the_check(
         world, tmp_path, monkeypatch, capsys, arm):
     seed, during = _OWN_HOOK_ARMS[arm]
     code, _s, _l, _r, _e = _drive_dry_cycle(world, tmp_path, monkeypatch, label=f"hk-{arm}",
-                                            hook_seed=seed(), during_spawn=during)
+                                            hook_seed=seed(), during_spawn=during,
+                                            # Session KNOWN, so the conservative
+                                            # no-session fallback cannot be what
+                                            # catches these arms.
+                                            stdout=_CHILD_STDOUT)
     out = capsys.readouterr().out
     assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
     assert code != 0
@@ -4171,7 +4247,8 @@ def test_a_hook_log_change_a_foreign_fire_cannot_explain_fails_the_check(
 def test_the_hook_log_check_passes_an_untouched_log(world, tmp_path, monkeypatch, capsys):
     """Control arm: a seeded log nobody touches stays a PASS."""
     code, _s, _l, _r, _e = _drive_dry_cycle(world, tmp_path, monkeypatch, label="hk-still",
-                                            hook_seed=_hook_row(seq=1) + _hook_row(seq=2))
+                                            hook_seed=_hook_row(seq=1) + _hook_row(seq=2),
+                                            stdout=_CHILD_STDOUT)
     out = capsys.readouterr().out
     assert "PASS hook-log-unchanged:" in out
     assert code == 0
