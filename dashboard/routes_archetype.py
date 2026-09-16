@@ -94,7 +94,15 @@ def _serve_archetype_post(h, payload) -> None:
         h._send(400, bad_flag_body("clear"), "application/json")
         return
     if clear:
-        cleared = clear_archetype_pick(champion)
+        try:
+            cleared = clear_archetype_pick(champion)
+        except Exception as exc:  # noqa: BLE001
+            # RM-444: an unreadable picks file now raises instead of being
+            # overwritten. Raw text (may carry a path) stays in the log.
+            log.warning("cs-archetype-pick clear: %s", exc)
+            h._send(500, json.dumps({"error": "clear failed - see logs"}).encode(),
+                    "application/json")
+            return
         entry = get_archetype_for(champion)
         h._send(200, json.dumps({
             "ok":      True,
