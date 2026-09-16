@@ -123,7 +123,6 @@ from tests.test_inbox_responder_runner import (  # noqa: E402
     _open_singleton,
     armed,
     bounces_in,
-    filesystem_accepts_note_name,
     proposal,
     replies_in,
     reply_action,
@@ -136,15 +135,6 @@ from tests.test_inbox_responder_runner import world as _shared_world  # noqa: E4
 # is shadowed by the test parameter of the same name (ruff F811).
 git_repo = _shared_git_repo
 world = _shared_world
-
-# RE-MEASURED here rather than importing the runner module's two booleans. The
-# probe is the same call on the same names, so the answer is identical; what
-# differs is that `tests/test_skip_condition_hygiene.py` follows a module-level
-# CALL across the import and reads the helper's body, while a bare imported
-# name has no binding in this module for it to follow - and an unresolvable
-# gate is a guard failure, not a pass.
-FS_ACCEPTS_LOW_SURROGATE_NAME = filesystem_accepts_note_name(LOW_SURROGATE_NOTE_NAME)
-FS_ACCEPTS_HIGH_SURROGATE_NAME = filesystem_accepts_note_name(HIGH_SURROGATE_NOTE_NAME)
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNNER_PATH = ROOT / "tools" / "inbox_responder_runner.py"
@@ -763,21 +753,49 @@ def b_bad_name(w, mod):
     w.note(name="2026-09-07-1800-from-RSC-bad name.md")
 
 
+def _listed_only(w, mod, name):
+    """List `name` as pending WITHOUT creating it, on the module being driven.
+
+    These arms used to create the note on disk and `pytest.skip` when a probe
+    said the filesystem would refuse it, so the high-surrogate arm skipped on
+    every Linux run (`\\ud800` is outside POSIX `surrogateescape`, so the
+    create raises UnicodeEncodeError before any syscall) while asserting
+    nothing. The property is what `run_once` does with a name the listing
+    admitted, so the listing seam is stubbed instead: `run_once` reads its
+    module-global `pending_notes` (imported from `tools.inbox_responder`,
+    called as `(inbox, root, participants=...)`), and the stub is installed on
+    `mod` - the tracked runner for the control, the mutant copy for the arm -
+    through the test's own monkeypatch, so it is undone at teardown.
+    `note_shape_ok` still runs for real and finds no file, which leaves the
+    name problem it already recorded as the first one.
+    """
+    w.agreement()
+
+    def _listing(inbox, root, *, participants):
+        return [name]
+
+    w.mp.setattr(mod, "pending_notes", _listing)
+
+
 def b_surrogate_name(w, mod):
     # `\udcff` - inside the surrogateescape range. Kept distinct from the arm
     # below, which uses a high surrogate no surrogateescape decode can produce.
+    _listed_only(w, mod, LOW_SURROGATE_NOTE_NAME)
+
+
+def b_surrogate_name_on_disk(w, mod):
+    # The real-listing companion of `b_surrogate_name`. No skip and no probe:
+    # `\udcff` is creatable on both hosts this suite runs on (NTFS stores the
+    # UTF-16 unit; POSIX `surrogateescape` encodes it to the byte 0xFF), so a
+    # create failure here is a red test, never a silent pass.
     w.agreement()
-    if not FS_ACCEPTS_LOW_SURROGATE_NAME:
-        pytest.skip("this filesystem refuses a lone-surrogate filename outright")
     w.note(name=LOW_SURROGATE_NOTE_NAME)
 
 
 def b_high_surrogate_name(w, mod):
-    # `\ud800` - OUTSIDE the surrogateescape range.
-    w.agreement()
-    if not FS_ACCEPTS_HIGH_SURROGATE_NAME:
-        pytest.skip("this filesystem refuses a high-surrogate filename outright")
-    w.note(name=HIGH_SURROGATE_NOTE_NAME)
+    # `\ud800` - OUTSIDE the surrogateescape range. Not creatable on POSIX,
+    # so it has no real-disk companion.
+    _listed_only(w, mod, HIGH_SURROGATE_NOTE_NAME)
 
 
 def b_latency(w, mod):
@@ -1526,6 +1544,8 @@ A_ARMS = [
      b_high_surrogate_name, c_refused_input, {}, ()),
     ("safe-name", "result.note = safe_name(name)", "result.note = name",
      b_surrogate_name, c_safe_name, {}, ()),
+    ("safe-name-real-listing", "result.note = safe_name(name)", "result.note = name",
+     b_surrogate_name_on_disk, c_safe_name, {}, ()),
     ("latency-only", "GRAMMAR_LATENCY_ONLY  # GATE:latency-only",
      '"NEVER-A-GRAMMAR"  # GATE:latency-only',
      b_latency, c_latency, {}, ()),
