@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sqlite3
 import sys
 import time
@@ -50,6 +51,8 @@ from scripts.rewind_scraper import (  # noqa: E402
     parse_team,
 )
 
+_log = logging.getLogger("rc.scripts.rewind_catchup")
+
 DB_PATH = ROOT / "data" / "rewind_history.db"
 STATE_PATH = ROOT / "data" / "rewind_catchup.state.json"
 
@@ -66,7 +69,15 @@ COLD_START_SECS = COLD_START_DAYS * 86400
 def open_db() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
-    conn.execute("PRAGMA journal_mode=WAL")
+    # RM-413 (RM-233 shape): read the adopted mode; warn, never raise - a
+    # hard failure here would turn a degraded DB into a dead batch job.
+    jm_row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    journal_mode = str(jm_row[0]).lower() if jm_row else "unknown"
+    if journal_mode != "wal":
+        _log.warning(
+            "rewind_catchup journal_mode fell back to %r (wanted wal): %s - "
+            "concurrent readers WILL block writers on this database",
+            journal_mode, DB_PATH)
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
