@@ -263,6 +263,8 @@ Prior wording (2026-06-20, "ALWAYS use subagents for substantive design / build 
 
 **A test that enumerates the REPO ROOT uses `tests/_repo_walk` - never a fresh `rglob` plus a hand-rolled skip set (ADR-015).** The universe is the git index first, `EXCLUDED_DIRS` as backstop; a guard keeps only its OWN scope skips on top. Ask first whether an EMPTY enumeration would PASS your assertion, and anchor it if so - that is how a conversion turns a machine-local red into a silent always-green. A subdirectory walk is not a root walk and needs none of this.
 
+Before any mutation or fault-injection round, snapshot the digest of every durable store it could reach (seen stores, watermarks, ledgers, hook logs), compare after the round, and attribute any change to a named writer before grading a single arm - an unattributed change voids the round.
+
 Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly. Before writing any probe or test, grep the codebase to confirm every method, field, and data shape it will use actually exists - cite file:line for each; never scaffold against an assumed API surface (past misses: heal/shield assumed in raw_modifiers, wrong file shapes). **Tier scope (R5):** "full suite" = Tier-2 (schema / engine / ENGINE_VERSION / item-effect); Tier-0 cosmetic + Tier-1 local-logic edits are exempt - see "Execution Efficiency & Tooling Rules".
 
 ## Error Handling
