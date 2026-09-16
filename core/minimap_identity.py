@@ -81,6 +81,12 @@ _TPL_CACHE: dict = {}
 _ICON_INDEX_GATE = FailedLoadGate()
 # The partial index a failed build produced, served during its backoff.
 _PARTIAL_ICON_INDEX: dict = {}
+# RM-450: per-icon-file gates for _masked_template. An icon is only rewritten
+# by the icon pipeline, so a 60 s window (not the gate's 5 s file default)
+# keeps a corrupt PNG to one decode per minute on the per-frame path while a
+# refreshed icon still heals without a restart.
+_ICON_RETRY_AFTER_S = 60.0
+_TPL_GATES: dict = {}
 
 
 def _reset_caches() -> None:
@@ -90,6 +96,7 @@ def _reset_caches() -> None:
     _PARTIAL_ICON_INDEX = {}
     _TPL_CACHE.clear()
     _ICON_INDEX_GATE.reset()
+    _TPL_GATES.clear()
 
 
 def _num(v):
@@ -222,9 +229,18 @@ def _masked_template(champion, size):
         cached = _TPL_CACHE.get(key)
         if cached is not None:
             return cached
+    except Exception as exc:  # noqa: BLE001 - fail-soft contract
+        _log.debug("minimap_identity: template %r@%r failed: %s", champion, size, exc)
+        return None
+    # RM-450: an unreadable icon used to be re-read (and re-decoded) on every
+    # call - per dot, per frame. One gate per icon file, shared by every size.
+    gate = _TPL_GATES.setdefault(str(path), FailedLoadGate(_ICON_RETRY_AFTER_S))
+    if not gate.should_attempt():
+        return None
+    try:
         img = cv2.imread(str(path), cv2.IMREAD_COLOR)
         if img is None:
-            return None
+            raise OSError(f"unreadable icon {path}")
         tpl = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # crops are RGB
         tpl = cv2.resize(tpl, (s, s), interpolation=cv2.INTER_AREA)
         yy, xx = np.ogrid[:s, :s]
@@ -232,11 +248,13 @@ def _masked_template(champion, size):
         mask = (((xx - c) ** 2 + (yy - c) ** 2) <= (s / 2.0) ** 2)
         mask = mask.astype(np.uint8) * 255
         out = (np.ascontiguousarray(tpl), mask)
-        _TPL_CACHE[key] = out
-        return out
     except Exception as exc:  # noqa: BLE001 - fail-soft contract
-        _log.debug("minimap_identity: template %r@%r failed: %s", champion, size, exc)
+        if gate.record_failure():
+            _log.warning("minimap_identity: template %r@%r failed: %s", champion, size, exc)
         return None
+    gate.record_success()
+    _TPL_CACHE[key] = out
+    return out
 
 
 def _match_score(cv2, np, win, tpl, mask) -> float:

@@ -44,6 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from core.failed_load_gate import FailedLoadGate
 from core.polled_json import atomic_write_json, read_json_dict
 
 _log = logging.getLogger("rc.augment_external_source")
@@ -72,6 +73,22 @@ _MAX_BODY_BYTES = 32 * 1024 * 1024
 _lock = threading.Lock()
 _cache: dict[str, "AugmentPriorTable"] = {}
 _cache_mtime: dict[str, float] = {}
+
+# RM-450: a NETWORK failure used to be cached as the degraded table under an
+# unchanged mtime (-1 when no snapshot exists yet), so the prior stayed empty
+# until restart. It is now served during a backoff window and the fetch is
+# retried at most once per window. The window is written against the tick:
+# one attempt against a dead host blocks the caller for up to _HTTP_TIMEOUT_S
+# (15 s), and the arena coach reaches get_priors + get_augment_meta from its
+# augment-select handling on a ~20 s vision cadence. A 5 s window (the gate's
+# file-loader default) would let nearly every tick pay a full timeout on EACH
+# source; 300 s caps the cost at one timeout per source per 5 minutes (at most
+# ~10 percent of wall time in the worst case) while a transient outage still
+# heals within the same game. The gate blocks only the network: a snapshot
+# written by another process inside the window is read at once (mtime check).
+_NETWORK_RETRY_AFTER_S = 300.0
+_PRIORS_GATES: dict[str, FailedLoadGate] = {}
+_priors_degraded: set[str] = set()
 
 
 class AugmentSourceError(RuntimeError):
@@ -335,6 +352,21 @@ def refresh_cache(
     flip per S4). With ``force=True`` a failed fetch raises
     AugmentSourceError; without it, fetch failure degrades to the last
     cached snapshot (any patch) or an empty table."""
+    return _refresh_priors(mode, force=force, timeout_s=timeout_s, gate=None)[0]
+
+
+def _refresh_priors(
+    mode: str,
+    *,
+    force: bool,
+    timeout_s: float,
+    gate: Optional[FailedLoadGate],
+    honour_backoff: bool = True,
+) -> tuple[AugmentPriorTable, bool]:
+    """``refresh_cache`` body -> (table, degraded). With a ``gate`` (the
+    get_priors path) the network is skipped inside its backoff window and a
+    failure warns once per streak; without one (the explicit refresh path)
+    every call attempts the fetch and warns, as before RM-450."""
     if mode not in _ENDPOINTS:
         raise AugmentSourceError(f"unknown mode {mode!r}")
     patch = _current_patch()
@@ -343,8 +375,13 @@ def refresh_cache(
     if path and path.exists() and not force:
         snap = read_json_dict(path)
         if snap.get("augments"):
-            return _table_from_snapshot(mode, snap)
+            if gate is not None:
+                gate.record_success()
+            return _table_from_snapshot(mode, snap), False
         # present-but-corrupt -> fall through to re-fetch
+
+    if gate is not None and honour_backoff and not gate.should_attempt():
+        return _load_degraded(mode), True
 
     try:
         raw = _http_get_json(_ENDPOINTS[mode], timeout_s)
@@ -352,15 +389,20 @@ def refresh_cache(
     except AugmentSourceError as exc:
         if force:
             raise
-        _log.warning("augment_external_source: %s refresh failed (%s); degrading", mode, exc)
-        return _load_degraded(mode)
+        if gate is None or gate.record_failure():
+            _log.warning("augment_external_source: %s refresh failed (%s); degrading", mode, exc)
+        else:
+            _log.debug("augment_external_source: %s refresh still failing (%s)", mode, exc)
+        return _load_degraded(mode), True
 
+    if gate is not None:
+        gate.record_success()
     if path is not None:
         try:
             atomic_write_json(path, snap)
         except OSError as exc:  # cache write best-effort; still return data
             _log.warning("augment_external_source: cache write failed: %s", exc)
-    return _table_from_snapshot(mode, snap)
+    return _table_from_snapshot(mode, snap), False
 
 
 def _load_degraded(mode: str) -> AugmentPriorTable:
@@ -399,17 +441,27 @@ def get_priors(mode: str = "mayhem", *, force_refresh: bool = False) -> AugmentP
 
     with _lock:
         cached = _cache.get(mode)
+        gate = _PRIORS_GATES.setdefault(mode, FailedLoadGate(_NETWORK_RETRY_AFTER_S))
         if (
             cached is not None
             and not force_refresh
             and _cache_mtime.get(mode, -2.0) == mtime
+            # RM-450: a degraded table is served only inside its backoff.
+            and (mode not in _priors_degraded or not gate.should_attempt())
         ):
             return cached
 
-    table = refresh_cache(mode, force=False)
+    table, degraded = _refresh_priors(
+        mode, force=False, timeout_s=_HTTP_TIMEOUT_S, gate=gate,
+        honour_backoff=not force_refresh,
+    )
 
     with _lock:
         _cache[mode] = table
+        if degraded:
+            _priors_degraded.add(mode)
+        else:
+            _priors_degraded.discard(mode)
         # Re-stat: refresh_cache may have just written the file.
         try:
             _cache_mtime[mode] = (
@@ -440,6 +492,9 @@ _META_SCHEMA = 1
 _meta_lock = threading.Lock()
 _meta_cache: Optional["AugmentMetaTable"] = None
 _meta_cache_mtime: float = -2.0
+# RM-450: same backoff contract as _PRIORS_GATES (see _NETWORK_RETRY_AFTER_S).
+_META_GATE = FailedLoadGate(_NETWORK_RETRY_AFTER_S)
+_meta_degraded = False
 
 
 def _norm_name(s: str) -> str:
@@ -606,13 +661,30 @@ def refresh_meta_cache(
     `refresh_cache`: file present for current patch + not `force` -> no
     network; fetch failure raises only when `force`, else degrades to the
     last cached snapshot or an empty table."""
+    return _refresh_meta(force=force, timeout_s=timeout_s, gate=None)[0]
+
+
+def _refresh_meta(
+    *,
+    force: bool,
+    timeout_s: float,
+    gate: Optional[FailedLoadGate],
+    honour_backoff: bool = True,
+) -> tuple[AugmentMetaTable, bool]:
+    """``refresh_meta_cache`` body -> (table, degraded); gate semantics as in
+    ``_refresh_priors`` (RM-450)."""
     patch = _current_patch()
     path = _meta_path(patch) if patch else None
 
     if path and path.exists() and not force:
         snap = read_json_dict(path)
         if snap.get("augments"):
-            return _table_from_meta_snapshot(snap)
+            if gate is not None:
+                gate.record_success()
+            return _table_from_meta_snapshot(snap), False
+
+    if gate is not None and honour_backoff and not gate.should_attempt():
+        return _load_degraded_meta(), True
 
     try:
         cherry = _http_get(CHERRY_AUGMENTS_URL, timeout_s)
@@ -622,20 +694,25 @@ def refresh_meta_cache(
     except AugmentSourceError as exc:
         if force:
             raise
-        _log.warning("augment_external_source: meta refresh failed (%s); degrading", exc)
-        return _load_degraded_meta()
+        if gate is None or gate.record_failure():
+            _log.warning("augment_external_source: meta refresh failed (%s); degrading", exc)
+        else:
+            _log.debug("augment_external_source: meta refresh still failing (%s)", exc)
+        return _load_degraded_meta(), True
 
+    if gate is not None:
+        gate.record_success()
     if path is not None:
         try:
             atomic_write_json(path, snap)
         except OSError as exc:
             _log.warning("augment_external_source: meta cache write failed: %s", exc)
-    return _table_from_meta_snapshot(snap)
+    return _table_from_meta_snapshot(snap), False
 
 
 def get_augment_meta(*, force_refresh: bool = False) -> AugmentMetaTable:
     """Process-cached, mtime-gated, never-raises accessor."""
-    global _meta_cache, _meta_cache_mtime
+    global _meta_cache, _meta_cache_mtime, _meta_degraded
     patch = _current_patch()
     path = _meta_path(patch) if patch else None
     try:
@@ -648,13 +725,19 @@ def get_augment_meta(*, force_refresh: bool = False) -> AugmentMetaTable:
             _meta_cache is not None
             and not force_refresh
             and _meta_cache_mtime == mtime
+            # RM-450: a degraded table is served only inside its backoff.
+            and (not _meta_degraded or not _META_GATE.should_attempt())
         ):
             return _meta_cache
 
-    table = refresh_meta_cache(force=False)
+    table, degraded = _refresh_meta(
+        force=False, timeout_s=_HTTP_TIMEOUT_S, gate=_META_GATE,
+        honour_backoff=not force_refresh,
+    )
 
     with _meta_lock:
         _meta_cache = table
+        _meta_degraded = degraded
         try:
             _meta_cache_mtime = (
                 path.stat().st_mtime if path and path.exists() else mtime
@@ -666,10 +749,14 @@ def get_augment_meta(*, force_refresh: bool = False) -> AugmentMetaTable:
 
 def reset_cache() -> None:
     """Test hook - clear both process caches (WR prior + metadata)."""
-    global _meta_cache, _meta_cache_mtime
+    global _meta_cache, _meta_cache_mtime, _meta_degraded
     with _lock:
         _cache.clear()
         _cache_mtime.clear()
+        _PRIORS_GATES.clear()
+        _priors_degraded.clear()
     with _meta_lock:
         _meta_cache = None
         _meta_cache_mtime = -2.0
+        _meta_degraded = False
+        _META_GATE.reset()
