@@ -68,6 +68,25 @@ def _as_int(v) -> int:
         return 0
 
 
+# RM-415: the envelope coercion seam for this module. ``d.get(k) or {}`` /
+# ``or []`` substitutes only for a MISSING / falsey value and forwards a
+# RETYPED one (string, bool, int) unchanged, so the next ``.get()`` / ``for``
+# raised. liveclient_summary wraps its whole body in one ``except`` that
+# returns ``{}``, so a single retyped inner field used to BLANK THE ENTIRE
+# SUMMARY. core/liveclient_cache.py validates only the top-level envelope.
+def _as_dict(v) -> dict:
+    return v if isinstance(v, dict) else {}
+
+
+def _as_list(v) -> list:
+    return v if isinstance(v, list) else []
+
+
+def _dicts(v) -> list:
+    """The dict entries of ``v`` when it is a list, else ``[]``."""
+    return [x for x in _as_list(v) if isinstance(x, dict)]
+
+
 def _lean_roster(all_players) -> list:
     """Project the raw Live Client ``allPlayers`` list down to the lean per-player
     shape the in-game BUILD panel counter-hint consumers read
@@ -81,11 +100,10 @@ def _lean_roster(all_players) -> list:
     for p in all_players if isinstance(all_players, list) else []:
         if not isinstance(p, dict):
             continue
-        sc = p.get("scores") or {}
+        sc = _as_dict(p.get("scores"))
         items = [
             {"itemID": it.get("itemID"), "slot": it.get("slot")}
-            for it in (p.get("items") or [])
-            if isinstance(it, dict)
+            for it in _dicts(p.get("items"))
         ]
         out.append({
             "summonerName":    p.get("summonerName", ""),
@@ -143,13 +161,13 @@ def liveclient_summary() -> dict:
         if snap.data is None or snap.age_s > 5:
             return {}
         d = snap.data
-        ap = d.get("activePlayer") or {}
-        gd = d.get("gameData") or {}
-        cs = ap.get("championStats") or {}
+        ap = _as_dict(d.get("activePlayer"))
+        gd = _as_dict(d.get("gameData"))
+        cs = _as_dict(ap.get("championStats"))
         me_name = ap.get("summonerName", "")
+        all_players = _dicts(d.get("allPlayers"))
         me_pl = next(
-            (p for p in (d.get("allPlayers") or [])
-             if p.get("summonerName") == me_name),
+            (p for p in all_players if p.get("summonerName") == me_name),
             None,
         )
         gt = gd.get("gameTime", 0)
@@ -182,11 +200,11 @@ def liveclient_summary() -> dict:
         enemy_item_ids: list = []
         ally_item_ids: list = []
         if me_pl:
-            s = me_pl.get("scores") or {}
+            s = _as_dict(me_pl.get("scores"))
             out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
             out["cs"]  = s.get("creepScore", 0)
             out["champion"] = me_pl.get("championName")
-            owned_items = [it.get("displayName", "") for it in (me_pl.get("items") or [])]
+            owned_items = [it.get("displayName", "") for it in _dicts(me_pl.get("items"))]
             # s184 - item-id list so server-side consumers (archetype_mismatch
             # nudge, DS relscore / knobs build context) don't need a name -> id
             # resolver for the operator's own inventory.
@@ -206,11 +224,10 @@ def liveclient_summary() -> dict:
             from core.daemon_slayer_resolver import NON_INVENTORY_IDS
             owned_item_ids = [
                 iid for iid in
-                (str(it.get("itemID", "")) for it in (me_pl.get("items") or []))
+                (str(it.get("itemID", "")) for it in _dicts(me_pl.get("items")))
                 if iid and iid not in NON_INVENTORY_IDS
             ]
             my_team = me_pl.get("team")
-            all_players = d.get("allPlayers") or []
             enemy_team = [p.get("championName", "") for p in all_players
                           if p.get("team") and p.get("team") != my_team]
             # Symmetric ally roster (full same-team champion list, incl the
@@ -224,10 +241,10 @@ def liveclient_summary() -> dict:
             # scanning enemy sustain + ally anti-heal is a hard live fact.
             enemy_item_ids = [str(it.get("itemID", "")) for p in all_players
                               if p.get("team") and p.get("team") != my_team
-                              for it in (p.get("items") or [])]
+                              for it in _dicts(p.get("items"))]
             ally_item_ids = [str(it.get("itemID", "")) for p in all_players
                              if p.get("team") and p.get("team") == my_team
-                             for it in (p.get("items") or [])]
+                             for it in _dicts(p.get("items"))]
             # Riot compliance 2026-08-11: the per-enemy summoner-spell producer
             # (slice 4, 2026-06-28) was REMOVED here along with its overlay
             # tap-tracker. Riot's third-party rules ban tracking enemy summoner
@@ -243,11 +260,10 @@ def liveclient_summary() -> dict:
                 {
                     "position":    p.get("position") or "",
                     "team":        p.get("team") or "",
-                    "creep_score": int((p.get("scores") or {}).get("creepScore", 0)),
+                    "creep_score": int(_as_dict(p.get("scores")).get("creepScore", 0)),
                     "is_active":   p.get("summonerName") == me_name,
                 }
                 for p in all_players
-                if isinstance(p, dict)
             ]
             # Kill Participation (item 281) - a fully LIVE-derivable STATS
             # metric. allPlayers[].scores carries kills/assists for ALL 10
@@ -259,7 +275,7 @@ def liveclient_summary() -> dict:
             # to an omitted key, never an exception.
             try:
                 team_kills = sum(
-                    int((p.get("scores") or {}).get("kills", 0))
+                    int(_as_dict(p.get("scores")).get("kills", 0))
                     for p in all_players
                     if p.get("team") and p.get("team") == my_team
                 )
@@ -294,7 +310,7 @@ def liveclient_summary() -> dict:
         # projection via ``_lean_roster``; an empty list when no live roster ->
         # _hasRoster false -> honest COUNTER hide (identical to the pre-fix
         # live-absent behavior).
-        out["allPlayers"] = _lean_roster(d.get("allPlayers") or [])
+        out["allPlayers"] = _lean_roster(all_players)
         out["activePlayer"] = {
             "summonerName":   ap.get("summonerName", ""),
             "riotIdGameName": ap.get("riotIdGameName", ""),
@@ -310,7 +326,7 @@ def liveclient_summary() -> dict:
         # every event-derived callout; verified live 2026-06-27).
         inhib_events: list = []
         try:
-            for ev in (d.get("events") or {}).get("Events") or []:
+            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
                 if not isinstance(ev, dict) or ev.get("EventName") != "InhibKilled":
                     continue
                 t = ev.get("EventTime")
@@ -329,7 +345,7 @@ def liveclient_summary() -> dict:
         # earliest. Isolated try so a malformed block degrades to [].
         minion_events: list = []
         try:
-            for ev in (d.get("events") or {}).get("Events") or []:
+            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
                 if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
                     continue
                 t = ev.get("EventTime")
@@ -344,7 +360,7 @@ def liveclient_summary() -> dict:
         # name. Isolated try so a malformed block degrades to [].
         turret_events: list = []
         try:
-            for ev in (d.get("events") or {}).get("Events") or []:
+            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
                 if not isinstance(ev, dict) or ev.get("EventName") != "TurretKilled":
                     continue
                 t = ev.get("EventTime")
@@ -367,7 +383,7 @@ def liveclient_summary() -> dict:
                           "HeraldKill": "herald"}
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
-            for ev in (d.get("events") or {}).get("Events") or []:
+            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
                 if not isinstance(ev, dict):
                     continue
                 obj = _obj_names.get(ev.get("EventName"))
@@ -413,7 +429,7 @@ def liveclient_summary() -> dict:
         # try so a malformed events block degrades to [].
         minion_spawn_events: list = []
         try:
-            for ev in (d.get("events") or {}).get("Events") or []:
+            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
                 if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
                     continue
                 t = ev.get("EventTime")
