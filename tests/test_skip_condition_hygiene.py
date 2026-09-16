@@ -845,12 +845,8 @@ def _record_chain(segs: list[str] | None, sig: _Signals) -> None:
 # --------------------------------------------------------------------------- #
 # Condition resolution
 # --------------------------------------------------------------------------- #
-# The filesystem codec is an interpreter-per-platform fact (UTF-8 +
-# `surrogatepass` on Windows, `surrogateescape` on POSIX), never a checkout
-# artifact, so a skip on what that codec can encode is a platform capability.
 _PLATFORM_DOTTED = {"sys.platform", "os.name", "platform.system",
-                    "platform.machine", "platform.release",
-                    "sys.getfilesystemencoding", "sys.getfilesystemencodeerrors"}
+                    "platform.machine", "platform.release"}
 _ENV_CALLS = {"getenv", "environ"}
 _NETWORK_TOKENS = {"urlopen", "urlretrieve", "create_connection", "socket",
                    "gethostbyname", "connect", "getaddrinfo"}
@@ -1339,7 +1335,39 @@ _ALLOWLIST: dict[str, tuple[frozenset, str]] = {
 }
 
 
+# Reviewed UNRESOLVED sites. `_ALLOWLIST` above excuses a tracked ARTIFACT and
+# cannot reach a site that gates on nothing the resolver can name, so this is a
+# separate, narrower table: (module, exact `ast.unparse` of the skip condition)
+# -> written reason. It excuses UNRESOLVED only - never DEFECT or ROTTED - and
+# every key must match exactly ONE site (a stale or ambiguous key fails).
+#
+# Deliberately NOT done: adding the filesystem-codec calls to the platform
+# vocabulary. That made `skipif(sys.getfilesystemencoding() == "utf-8")`, true
+# on CI and Windows alike, classify CAPABILITY, and let a codec call OR'd onto
+# a tracked-file check launder a DEFECT (capability wins in `_classify`).
+_REVIEWED_UNRESOLVED: dict[tuple[str, str], str] = {
+    ("tests/test_inbox_responder_runner.py", "not FS_LISTS_HIGH_SURROGATE_NAME"): (
+        "The mark is shared by the runner grammar arm and the mutants "
+        "note-sha12-surrogatepass arm. It fires only where the filesystem codec "
+        "cannot encode a lone HIGH surrogate (POSIX surrogateescape), which is "
+        "exactly where no directory listing can yield that note name - an "
+        "unreachable input, measured on ubuntu CI 2026-09-16. The resolver sees "
+        "only a str.encode call. "
+        "test_grammar_cases_run_only_where_a_posix_listing_can_yield_them pins "
+        "the condition to the predicate."
+    ),
+}
+
+
+def _condition_source(finding: _Finding) -> str | None:
+    cond = finding.site.condition
+    return None if cond is None else ast.unparse(cond)
+
+
 def _excused(finding: _Finding) -> bool:
+    if (finding.verdict == UNRESOLVED
+            and (finding.site.rel, _condition_source(finding)) in _REVIEWED_UNRESOLVED):
+        return True
     entry = _ALLOWLIST.get(finding.site.rel)
     if entry is None or not finding.gates_on:
         return False
@@ -1863,20 +1891,6 @@ import pytest
 def test_thing():
     assert True
 ''',
-    "filesystem_codec": '''
-import sys
-import pytest
-def _encodable(name):
-    try:
-        name.encode(sys.getfilesystemencoding(), sys.getfilesystemencodeerrors())
-    except UnicodeEncodeError:
-        return False
-    return True
-CAN = _encodable("x")
-@pytest.mark.skipif(not CAN, reason="filesystem codec cannot encode the name")
-def test_thing():
-    assert True
-''',
     "external_binary": '''
 import shutil
 import pytest
@@ -2113,6 +2127,71 @@ def test_allowlist_does_not_excuse_a_different_defect():
         f"injecting a skip on tracked web/legacy_index.html into the "
         f"allowlisted {rel} was swallowed by its exemption"
     )
+
+
+def test_reviewed_unresolved_entries_each_match_exactly_one_site():
+    """A stale, moved-away or ambiguous reviewed key fails, never rots silently."""
+    for (rel, cond), reason in _REVIEWED_UNRESOLVED.items():
+        assert reason.strip(), f"{rel}: reviewed entry carries no reason"
+        path = _REPO_ROOT / rel
+        assert path.is_file(), f"{rel}: reviewed module no longer on disk"
+        hits = [f for f in scan_source(rel, path.read_text(encoding="utf-8"))
+                if _condition_source(f) == cond]
+        assert len(hits) == 1, f"{rel}: {cond!r} matches {len(hits)} skip sites, not 1"
+        assert hits[0].verdict == UNRESOLVED, (
+            f"{rel}: {cond!r} now classifies {hits[0].verdict} - drop or re-review the entry")
+
+
+_CODEC_LOOPHOLE_PROBES = {
+    # Always true on CI and on Windows alike: a disabled test in disguise.
+    "codec_equals_utf8": '''
+import sys
+import pytest
+@pytest.mark.skipif(sys.getfilesystemencoding() == "utf-8", reason="codec")
+def test_thing():
+    assert True
+''',
+    # The same shape as the reviewed site, but NOT the reviewed condition.
+    "unlisted_codec_comparison": '''
+import sys
+import pytest
+def _encodable(name):
+    try:
+        name.encode(sys.getfilesystemencoding(), sys.getfilesystemencodeerrors())
+    except UnicodeEncodeError:
+        return False
+    return True
+CAN = _encodable("x")
+@pytest.mark.skipif(not CAN, reason="filesystem codec cannot encode the name")
+def test_thing():
+    assert True
+''',
+    # A codec call OR'd onto a tracked-file check must not launder the DEFECT.
+    "tracked_path_or_codec": '''
+import sys
+import pytest
+from pathlib import Path
+REPO = Path(__file__).resolve().parent.parent
+@pytest.mark.skipif(not (REPO / "data" / "daemon_slayer" / "current.txt").exists()
+                    or sys.getfilesystemencodeerrors() == "surrogateescape",
+                    reason="no patch pointer")
+def test_thing():
+    assert True
+''',
+}
+
+
+@pytest.mark.parametrize("name", sorted(_CODEC_LOOPHOLE_PROBES))
+def test_codec_skips_outside_the_reviewed_table_are_rejected(name):
+    """Scanned AS the reviewed module, so the file half of the key cannot excuse them."""
+    rel = next(iter(_REVIEWED_UNRESOLVED))[0]
+    findings = scan_source(rel, _CODEC_LOOPHOLE_PROBES[name])
+    assert findings, f"{name}: no skip site found at all"
+    for f in findings:
+        assert f.verdict in (UNRESOLVED, DEFECT), f"{name}: classified {f.verdict}"
+        assert not _excused(f), f"{name}: excused by the reviewed table"
+    if name == "tracked_path_or_codec":
+        assert {f.verdict for f in findings} == {DEFECT}
 
 
 def test_known_real_sites_classify_as_documented():
