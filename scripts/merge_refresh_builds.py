@@ -38,6 +38,18 @@ def load_refresh(phase_file: str) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+def _write_json_lf(path: Path, payload: dict) -> None:
+    """Atomically write ``payload`` as UTF-8 JSON with LF line endings.
+
+    Bytes, not ``write_text``: on Windows ``write_text`` turns every LF into
+    CRLF, and the canonical build files are TRACKED (RM-441; same pattern as
+    scripts/data_pipeline.py ``_atomic_write_text``).
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_bytes(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
+    tmp.replace(path)
+
+
 def merge_champ(existing: dict, refresh: dict) -> dict:
     """Merge new refresh entry over existing. Refresh wins on overlap;
     existing fills in any keys not present in refresh."""
@@ -76,10 +88,7 @@ def merge_aram(dry_run: bool = False) -> tuple[int, int]:
         "updated": updated_count, "new": new_count,
     }
     if not dry_run:
-        canonical_path.write_text(
-            json.dumps(canonical, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        _write_json_lf(canonical_path, canonical)
     return updated_count, new_count
 
 
@@ -107,10 +116,7 @@ def merge_sr(dry_run: bool = False) -> tuple[int, int]:
         "updated": updated_count, "new": new_count,
     }
     if not dry_run:
-        canonical_path.write_text(
-            json.dumps(canonical, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        _write_json_lf(canonical_path, canonical)
     return updated_count, new_count
 
 
@@ -150,10 +156,7 @@ def merge_arena(dry_run: bool = False) -> tuple[int, int]:
         ),
     }
     if not dry_run:
-        canonical_path.write_text(
-            json.dumps(canonical, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        _write_json_lf(canonical_path, canonical)
     return 0, new_count
 
 
