@@ -1,8 +1,11 @@
 """PORTABLE pin guard for the cross-repo channel doc.
 
-This module is the half of the channel-doc guard that every participating
-repository vendors BYTE-IDENTICAL, so it uses the standard library only and
-reads NOTHING outside its own repository root. Every RC-only arm - the
+This module is RC's OWN implementation of the portable half of the channel-doc
+guard. It is NOT vendored byte-identical: the only byte-pinned artifact is
+`docs/CHANNEL.md` itself, via CHANNEL_PIN below, and each participating tree
+writes its own pin module (measured 2026-09-16: no carrier copy matches these
+bytes). It still uses the standard library only and reads NOTHING outside its
+own repository root, so that it stays portable in shape. Every RC-only arm - the
 sibling-name sweep, the responder grammar, the on-box mirror of the sibling
 checkouts - lives in `tests/test_channel_doc_rc_gate.py`, which is never
 vendored. A vendored file that reached for an RC-only tool or an RC-only
@@ -75,22 +78,36 @@ _DRIVE_ROOTED = re.compile(r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]")
 # enumerates over its own `git ls-files`. Every repo-relative path in the
 # shared bytes has to resolve in EVERY tree, and only one of them does.
 #
-# The segment class admits a literal SPACE after a segment's first character,
-# because a path may hold one and this is a BAN arm: a class without it let
-# `docs/my notes/x.md` through while refusing its underscore twin. Space only -
-# never a newline or a tab - so a match cannot pair backticks across lines, and
-# a segment still has to START on a word character.
-_BARE_PATH_RE = re.compile(
-    r"`\.?[A-Za-z0-9_][A-Za-z0-9_. -]*"
-    r"(?:/[A-Za-z0-9_][A-Za-z0-9_. -]*)+"
-    r"\.(?:py|md|json|toml|yml|yaml|cfg|txt|ini)`"
-)
+#
+# TWO shapes, because this is a BAN arm and a path may hold a space. The
+# space-free shape is searched ANYWHERE, starting at any backtick. The spaced
+# shape is accepted only as the WHOLE of one paired backtick span (see
+# _CODE_SPAN), never searched loose: a loose spaced search starts at a CLOSING
+# backtick and runs across prose, so `x`s notes/y z.md`z` read as a path.
+_PATH_SEGMENT = r"[A-Za-z0-9_][A-Za-z0-9_.-]*"
+_SPACED_SEGMENT = r"[A-Za-z0-9_][A-Za-z0-9_. -]*"
+_PATH_EXT = r"\.(?:py|md|json|toml|yml|yaml|cfg|txt|ini)`"
+_BARE_PATH_RE = re.compile(rf"`\.?{_PATH_SEGMENT}(?:/{_PATH_SEGMENT})+{_PATH_EXT}")
+_SPACED_PATH_RE = re.compile(rf"`\.?{_SPACED_SEGMENT}(?:/{_SPACED_SEGMENT})+{_PATH_EXT}")
+#
+# KNOWN, DELIBERATE LIMITS - not widened, each would buy false positives in
+# prose: a segment that STARTS with a space or a dash (`docs/ leading.md`,
+# `docs/-dash.md`); a TAB inside a path; and a spaced path on a line where an
+# unpaired stray backtick earlier throws the span pairing off. A space-free
+# path is still caught in that last case, because its shape is searched loose.
+
+# One inline code span: paired backticks on a single line, consumed left to
+# right, so a closing backtick is never re-read as an opening one.
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
 
 # A line cite into the gitignored inbox: a note filename with a line number
 # glued to it. The directory is absent from a fresh clone and every worktree,
-# so such a cite can never resolve anywhere. Same space rule as the path arm:
-# a literal space may sit inside the name, a newline, tab or backtick may not.
-_INBOX_LINE_CITE = re.compile(r"-from-[A-Za-z]{2,4}-(?:[^\s`]| )*?\.md:\d+")
+# so such a cite can never resolve anywhere. Same two-shape rule as the path
+# arm: the space-free cite is searched anywhere; a cite holding a space counts
+# only INSIDE one code span, so free prose such as "a note-from-RC-topic is
+# cited by name, and CHANNEL.md:3" can never be joined into one cite.
+_INBOX_LINE_CITE = re.compile(r"-from-[A-Za-z]{2,4}-[^\s`]*\.md:\d+")
+_SPACED_INBOX_LINE_CITE = re.compile(r"-from-[A-Za-z]{2,4}-[^`\n]*\.md:\d+")
 
 _PER_REPO_ALIAS = re.compile(r"\bSibling-[A-Z]\b")
 
@@ -213,11 +230,17 @@ def _forbidden_repo_paths(text: str) -> list[str]:
     The single detector the ban arm below grades the shared bytes with, so the
     synthetic arms exercise exactly what the ban applies and cannot drift from it.
     """
-    return [m.group(0) for m in _BARE_PATH_RE.finditer(text) if m.group(0) != f"`{CHANNEL_DOC}`"]
+    found = [m.group(0) for m in _BARE_PATH_RE.finditer(text)]
+    found += [m.group(0) for m in _CODE_SPAN.finditer(text) if _SPACED_PATH_RE.fullmatch(m.group(0))]
+    own = f"`{CHANNEL_DOC}`"
+    return [token for token in dict.fromkeys(found) if token != own]
 
 
 def _inbox_line_cites(text: str) -> list[str]:
-    return [m.group(0) for m in _INBOX_LINE_CITE.finditer(text)]
+    found = [m.group(0) for m in _INBOX_LINE_CITE.finditer(text)]
+    for span in _CODE_SPAN.finditer(text):
+        found += [m.group(0) for m in _SPACED_INBOX_LINE_CITE.finditer(span.group(0))]
+    return list(dict.fromkeys(found))
 
 
 def test_channel_doc_carries_no_repo_relative_path_or_line_cite():
@@ -269,6 +292,8 @@ def test_ban_arm_does_not_flag_ordinary_prose_with_slashes_and_spaces():
         "`docs/CHANNEL.md` names the doc itself.\n"
         "```\nsome/dir name\nfile.md`\n```\n"
         "a note-from-RC-topic is cited by name, and CHANNEL.md stays unnumbered\n"
+        "a note-from-RC-topic is cited by name, and CHANNEL.md:3\n"
+        "`x`s notes/y z.md`z`\n"
     )
     assert _forbidden_repo_paths(prose) == [], _forbidden_repo_paths(prose)
     assert _inbox_line_cites(prose) == [], _inbox_line_cites(prose)
