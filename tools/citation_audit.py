@@ -160,6 +160,7 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -192,10 +193,11 @@ CITATION_RE = re.compile(
 # right so a closing backtick is never re-read as an opening one). Never
 # searched loose - a loose spaced search joins prose words into a phantom path.
 # And even then it is only a CANDIDATE: a command-style span such as
-# `python tools/x.py:3` fits the same shape, so prefer_resolving_reading keeps
-# the plain tail whenever it resolves and takes the spaced reading only when
-# the tail does not and the whole spaced path does (a verifier caught the
-# first cut, which took the spaced reading unconditionally and broke those).
+# `python tools/x.py:3` fits the same shape, so prefer_resolving_reading takes
+# the spaced reading only when the whole spaced path RESOLVES (a verifier caught
+# the first cut, which took it unconditionally and broke those), and then only
+# when the plain tail does not resolve, cannot host the cited line, or the span
+# is itself a tracked path (RM-446; see that function for the order).
 #
 # KNOWN, DELIBERATE LIMITS, each would buy false findings in prose: a spaced
 # path outside a code span (it keeps the pre-RM-435 tail reading); a spaced
@@ -430,23 +432,42 @@ def extract_citations(text: str, doc: str) -> list[Citation]:
     return found
 
 
-def prefer_resolving_reading(cite: Citation, index: _Index) -> list[str]:
+def prefer_resolving_reading(
+    cite: Citation,
+    index: _Index,
+    line_count: Callable[[str], int] | None = None,
+) -> list[str]:
     """RESOLVE-FIRST choice between a plain cite and its whole-span spaced
-    reading (RM-435). Returns the candidates for the reading kept.
+    reading (RM-435, residuals RM-446). Returns the candidates for the reading
+    kept. The spaced reading is only ever taken when IT resolves, so it can
+    never turn a resolving cite into FILE_MISSING.
 
-    * plain resolves               -> plain (`see docs/x.md:3` stays docs/x.md)
-    * plain fails, spaced resolves -> spaced (`docs/my notes/x.md:12`)
-    * both fail                    -> plain, the pre-RM-435 behaviour.
+    * spaced does not resolve         -> plain (`python tools/x.py:3` stays)
+    * plain fails, spaced resolves    -> spaced (`docs/my notes/x.md:12`)
+    * whole span is a tracked path    -> spaced (`docs/my x.md:5`, whose bare
+      `x.md` tail would otherwise bind to an unrelated root `x.md`)
+    * no plain candidate can host the cited line but a spaced one can
+                                      -> spaced (needs `line_count`)
+    * otherwise                       -> plain, the pre-RM-435 behaviour.
 
-    A spaced reading can therefore never turn a resolving cite broken, and a
-    tree with no spaced tracked path is classified exactly as before.
+    RM-446 moved the line check forward for the last rule: the plain reading
+    used to win on mere existence and was then graded PAST_EOF against a
+    too-short tail. `line_count` is optional so an index-only caller keeps the
+    first three rules; `audit()` always passes it.
     """
     cands = index.candidates(cite.path)
-    if cands or cite.spaced_reading is None:
+    if cite.spaced_reading is None:
         return cands
     col, path, raw = cite.spaced_reading
     alt = index.candidates(path)
     if not alt:
+        return cands
+    take = not cands or path in index.exact
+    if not take and line_count is not None:
+        take = not any(cite.end <= line_count(c) for c in cands) and any(
+            cite.end <= line_count(c) for c in alt
+        )
+    if not take:
         return cands
     cite.path, cite.raw, cite.col = path, raw, col
     return alt
@@ -572,6 +593,19 @@ def audit(root: Path | None = None, include_immutable: bool = False) -> list[Cit
     results: list[Citation] = []
     src_cache: dict[str, list[str]] = {}
 
+    def _lines(target: str) -> list[str]:
+        if target not in src_cache:
+            try:
+                src_cache[target] = (
+                    (root / target).read_text(encoding="utf-8", errors="replace").splitlines()
+                )
+            except OSError:
+                src_cache[target] = []
+        return src_cache[target]
+
+    def _line_count(target: str) -> int:
+        return len(_lines(target))
+
     for doc in docs:
         rel = doc.replace("\\", "/")
         if not include_immutable and not in_scope(rel):
@@ -582,24 +616,12 @@ def audit(root: Path | None = None, include_immutable: bool = False) -> list[Cit
             continue
         doc_lines = text.splitlines()
         for cite in extract_citations(text, rel):
-            cands = prefer_resolving_reading(cite, index)
+            cands = prefer_resolving_reading(cite, index, _line_count)
             if not cands:
                 cite.status = "FILE_MISSING"
                 cite.detail = "no tracked file"
                 results.append(cite)
                 continue
-
-            def _lines(target: str) -> list[str]:
-                if target not in src_cache:
-                    try:
-                        src_cache[target] = (
-                            (root / target)
-                            .read_text(encoding="utf-8", errors="replace")
-                            .splitlines()
-                        )
-                    except OSError:
-                        src_cache[target] = []
-                return src_cache[target]
 
             cite.claim_tokens = _claim_tokens(doc_lines, cite)
             # Only candidates long enough to host the cited line can be the

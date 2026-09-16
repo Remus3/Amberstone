@@ -92,6 +92,60 @@ def _deny_scandir_and_swallow_iterdir(monkeypatch, inbox: Path) -> None:
     monkeypatch.setattr(Path, "iterdir", swallow)
 
 
+class _EmptyListing:
+    """What a swallowing `os.scandir` hands back: a context manager that lists
+    nothing. Shaped like a real ScandirIterator for the calls pathlib and the
+    probe make (`with`, iteration, `next`, `close`)."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise StopIteration
+
+    def close(self) -> None:
+        return None
+
+
+def _swallow_at_the_os_listing_primitive(monkeypatch, inbox: Path) -> None:
+    """RM-437 ACCEPTED LIMIT: the denial is swallowed INSIDE the OS listing call.
+
+    Both `os.scandir` and `os.listdir` are wrapped, because which one
+    `Path.iterdir` sits on is interpreter-version specific (3.12, the CI
+    interpreter, lists through `os.listdir`; 3.13+ through `os.scandir`). With
+    both lying, every listing path in the process - `_inbox_entries`, the
+    probe's `Path.iterdir` pass and its direct `os.scandir` pass - reads the
+    inbox as empty, on every supported interpreter and OS.
+    """
+    real_scandir = os.scandir
+    real_listdir = os.listdir
+
+    def scandir(path=".", *a, **kw):
+        try:
+            if Path(path) == inbox:
+                raise PermissionError(13, "Access is denied")
+            return real_scandir(path, *a, **kw)
+        except PermissionError:
+            return _EmptyListing()
+
+    def listdir(path=".", *a, **kw):
+        try:
+            if Path(path) == inbox:
+                raise PermissionError(13, "Access is denied")
+            return real_listdir(path, *a, **kw)
+        except PermissionError:
+            return []
+
+    monkeypatch.setattr(os, "scandir", scandir)
+    monkeypatch.setattr(os, "listdir", listdir)
+
+
 def _swallowing_entries(p: Path) -> set[str]:
     """The mutant: list the inbox, and read ANY listing error as empty."""
     try:
@@ -279,6 +333,77 @@ def test_seam_negative_control_the_wrapper_alone_changes_nothing(
     out = P.scan_fleet((str(root),), parts)
     assert out["rows"][0]["status"] == "OK", out["rows"]
     assert out["rows"][0]["entries"] == 3, out["rows"]
+
+
+# ------------------------------------------- RM-437 accepted limit (pinned)
+#
+# Decision (a), 2026-09-16: a swallow INSIDE the OS listing primitive is an
+# ACCEPTED LIMIT of `_probe_inbox_listable`, not a closed class. The arms below
+# assert the limit STILL HOLDS - the probe is defeated and the damage lands - so
+# a future change that adds an independent primitive turns them red and must
+# update this pin and the probe docstring together, visibly. They do NOT claim
+# the class closed.
+
+
+def test_accepted_limit_probe_does_not_detect_an_os_level_swallow(
+    tmp_path, monkeypatch
+):
+    inbox = tmp_path / "moon_sync_inbox"
+    inbox.mkdir()
+    for i in range(3):
+        (inbox / f"n{i}.md").write_text(str(i), encoding="utf-8")
+    assert len(rc_facts._inbox_entries(inbox)) == 3, "control: inbox really has notes"
+
+    _swallow_at_the_os_listing_primitive(monkeypatch, inbox)
+
+    assert rc_facts._inbox_entries(inbox) == set(), "the swallow did not reach the listing"
+    # THE ACCEPTED LIMIT: no raise, although the directory was denied.
+    assert rc_facts._probe_inbox_listable(inbox) is None
+
+
+def test_accepted_limit_watcher_reports_fake_withdrawals_under_os_level_swallow(
+    tmp_path, monkeypatch
+):
+    root = _watcher_root(tmp_path, monkeypatch)
+    inbox = root / "moon_sync_inbox"
+    for i in range(3):
+        (inbox / f"n{i}.md").write_text(str(i), encoding="utf-8")
+    real_keys = sorted(rc_facts._inbox_entries(inbox))
+    (root / "ops" / "runtime" / "sync_inbox_seen.json").write_text(
+        json.dumps({"seen": real_keys}, indent=2), encoding="utf-8"
+    )
+    control, _a, _k = rc_facts._inbox_section(root, None, subtract=False)
+    assert not any("WITHDRAWN" in ln for ln in control), control
+
+    _swallow_at_the_os_listing_primitive(monkeypatch, inbox)
+    lines, _anomalies, _keys = rc_facts._inbox_section(root, None, subtract=False)
+
+    assert "## Cross-repo inbox - 3 WITHDRAWN since last ack" in lines, (
+        "the OS-level swallow is now DETECTED by the watcher - RM-437's accepted "
+        "limit no longer holds; update this pin and the probe docstring:\n"
+        + "\n".join(lines)
+    )
+
+
+def test_accepted_limit_poller_overwrites_watermark_under_os_level_swallow(
+    state: Path, tmp_path: Path, monkeypatch
+):
+    root, parts = _baselined_repo(tmp_path, state)
+    store = state / "poller_seen.json"
+    control = P.scan_fleet((str(root),), parts)
+    assert control["rows"][0]["status"] == "OK" and control["findings"] == {}, control
+    before = _sha(store)
+
+    _swallow_at_the_os_listing_primitive(monkeypatch, root / "moon_sync_inbox")
+    out = P.scan_fleet((str(root),), parts)
+
+    assert out["rows"][0]["status"] == "OK", (
+        "the OS-level swallow is now DETECTED by the poller - RM-437's accepted "
+        "limit no longer holds; update this pin and the probe docstring: "
+        + repr(out["rows"])
+    )
+    assert len(out["findings"][str(root)]["withdrawn"]) == 3, out["findings"]
+    assert _sha(store) != before, "the documented damage (watermark overwrite) did not land"
 
 
 def test_poller_negative_control_a_truly_emptied_inbox_is_a_withdrawal(

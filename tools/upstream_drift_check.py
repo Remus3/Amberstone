@@ -342,6 +342,7 @@ def write_queue_snapshot(catalog=None) -> dict:
     root = str(ROOT)
     if root not in sys.path:
         sys.path.insert(0, root)
+    from core.polled_json import atomic_write_text
     from core.queue_modes import QUEUE_ID_TO_MODE_KEY
 
     cat = fetch_queue_catalog() if catalog is None else catalog
@@ -368,10 +369,8 @@ def write_queue_snapshot(catalog=None) -> dict:
         },
         "coverage_candidates": _coverage_candidates(by_id, QUEUE_ID_TO_MODE_KEY),
     }
-    QUEUE_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = QUEUE_SNAPSHOT_PATH.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(snap, indent=2) + "\n", encoding="utf-8")
-    os.replace(tmp, QUEUE_SNAPSHOT_PATH)
+    # TRACKED snapshot: atomic LF bytes, never write_text (RM-441).
+    atomic_write_text(QUEUE_SNAPSHOT_PATH, json.dumps(snap, indent=2) + "\n")
     return snap
 
 
@@ -409,7 +408,7 @@ def load_sentinel() -> dict:
 def _atomic_write_sentinel(obj: dict) -> None:
     SENTINEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = SENTINEL_PATH.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8")
+    tmp.write_bytes((json.dumps(obj, indent=2) + "\n").encode("utf-8"))
     os.replace(tmp, SENTINEL_PATH)
 
 
@@ -636,7 +635,7 @@ def main(argv: list[str] | None = None) -> int:
             }
             json_path = Path(args.json)
             json_path.parent.mkdir(parents=True, exist_ok=True)
-            json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            json_path.write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
 
         if args.check_only:
             # Cron gate: do NOT write the sentinel, do NOT fire side effects.
