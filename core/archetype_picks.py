@@ -635,7 +635,8 @@ def save_archetype_pick(
 
     Raises ``ValueError`` on invalid archetype/source. Caller is expected
     to validate ``champion`` is non-empty before calling - we don't store
-    blank-key entries.
+    blank-key entries. Raises ``PicksReadError`` (nothing written) when the
+    existing picks file cannot be read - RM-444.
     """
     if not champion or not champion.strip():
         raise ValueError("champion must be a non-empty string")
@@ -675,18 +676,47 @@ def save_archetype_pick(
     return entry
 
 
+class PicksReadError(RuntimeError):
+    """The picks file exists but could not be read as a map (RM-444).
+
+    Raised by the WRITE paths (``save_archetype_pick`` /
+    ``clear_archetype_pick``) instead of writing over a file whose current
+    contents are unknown. The read path (``_load_picks``) stays fail-soft.
+    """
+
+
 def _read_picks_locked() -> dict[str, dict]:
-    """Pull picks from disk while holding ``_PICKS_LOCK``. Helper for
-    save_archetype_pick - we can't call ``_load_picks`` recursively
-    because it acquires the same lock."""
+    """Pull picks from disk while holding ``_PICKS_LOCK``. Helper for the
+    write paths - we can't call ``_load_picks`` recursively because it
+    acquires the same lock.
+
+    RM-444: ``{}`` ONLY when the file is absent (fresh clone, or it vanished
+    between check and read). A file that exists but fails to read or parse,
+    or parses to a non-dict, raises ``PicksReadError`` - pre-fix it returned
+    ``{}`` and the caller wrote that empty map plus one pick over the file,
+    destroying every prior pick. The unreadable file is left untouched so it
+    can be recovered by hand."""
     try:
-        if _PICKS_PATH.exists():
-            data = json.loads(_PICKS_PATH.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return data
+        raw = _PICKS_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
     except Exception as exc:  # noqa: BLE001
-        _log.warning("archetype_picks: re-read failed: %s", exc)
-    return {}
+        _log.warning(
+            "archetype_picks: re-read failed, refusing to write: %s", exc)
+        raise PicksReadError(f"picks file unreadable: {exc}") from exc
+    try:
+        data = json.loads(raw)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning(
+            "archetype_picks: re-read undecodable, refusing to write: %s", exc)
+        raise PicksReadError(f"picks file undecodable: {exc}") from exc
+    if not isinstance(data, dict):
+        _log.warning(
+            "archetype_picks: re-read not a dict (%s), refusing to write",
+            type(data).__name__)
+        raise PicksReadError(
+            f"picks file is {type(data).__name__}, not a map")
+    return data
 
 
 def _now_iso() -> str:
@@ -754,7 +784,8 @@ def list_archetype_picks() -> dict[str, dict]:
 def clear_archetype_pick(champion: str) -> bool:
     """Delete the persisted pick for ``champion`` so the next read falls
     back to the DDragon-tag default. Returns True if a pick was removed.
-    Useful for the UI's "reset to default" button + tests."""
+    Useful for the UI's "reset to default" button + tests. Raises
+    ``PicksReadError`` (nothing written) when the file cannot be read."""
     if not champion:
         return False
     with _PICKS_LOCK:
