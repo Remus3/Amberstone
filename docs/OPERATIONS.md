@@ -218,6 +218,7 @@ first resort.
 |---|---|---|---|
 | `RC-Supervisor` | At logon | Administrator / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
 | `RC-MissionControl` | At logon + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_mission_control_task.ps1`) | Administrator / Highest | Runs `pythonw.exe mission_control.py` - the :8895 control plane. Deliberately its OWN scheduled task, not an `rc_supervisor` entry: RestartCount 3 / RestartInterval 1 min gives self-restart on crash, and the repeat trigger makes Task Scheduler itself the watchdog (`MultipleInstances=IgnoreNew` no-ops while alive; process dead -> next tick starts it). An RC restart for a game-overlay change must never touch the control plane (S10, decoupled 2026-07-31) |
+| `RC-MoonSyncPoller` | At logon | Administrator / HIGHEST | ONE machine-wide cross-repo channel poller for all five participants (`pythonw.exe tools/moon_sync_poller.py`). Named-mutex singleton - a second poller anywhere on the box is forbidden by the channel contract. Idle-tiered ladder; writes `%LOCALAPPDATA%\moonsync\status.md`. Read it with `--status` or the `/api/moon-sync-status` route; see the section below |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8861) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
@@ -244,15 +245,15 @@ first resort.
 
 | `RiotCommander` | At logon | Administrator / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `C:\Riot Commander`. On every logon it starts an unmanaged SECOND RC process that races `RC-Supervisor` for `:8888` and loses - which is why it stayed invisible: it fails, RC works, nothing surfaces. Live probe 2026-08-08: `State=Ready`, `LastTaskResult=1`, LastRun 2026-08-05. NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
 
-Live task count is **25**: 24 `RC-*` plus the bare `Amberstone` above.
-`RC-InboxResponder` is deliberately NOT in that count - it is install-on-demand
-and is only registered when the operator runs its installer, so the count stays
-25 until then and becomes 26 after.
+Live task count is **27**: 26 `RC-*` plus the bare `RiotCommander` above.
+`RC-InboxResponder` is install-on-demand and used to be excluded from this
+count; it IS registered now (State `Disabled`, measured 2026-09-15) and IS
+counted here, so removing it takes the count back to 26.
 
-Check state (the `RC-*` glob alone MISSES `Amberstone`, which is exactly how it went undocumented for so long):
+Check state (the `RC-*` glob alone MISSES `RiotCommander`, which is exactly how it went undocumented for so long - and note the name: the bare task was NEVER renamed by the product rename, so a filter spelled `Amberstone` matches nothing and silently returns the `RC-*` count alone):
 
 ```powershell
-Get-ScheduledTask | Where-Object { $_.TaskName -like 'RC-*' -or $_.TaskName -eq 'Amberstone' } | Select-Object TaskName, State
+Get-ScheduledTask | Where-Object { $_.TaskName -like 'RC-*' -or $_.TaskName -eq 'RiotCommander' } | Select-Object TaskName, State
 ```
 
 Subscription failover routing: MEASURED 2026-07-29 - the MSIX Claude desktop GUI does NOT honor `ANTHROPIC_BASE_URL` (it talks to claude.ai's own app backend, not `api.anthropic.com`; the proxy activity log stayed empty after live GUI prompts). So the GUI CANNOT be transparently routed through the teamclaude proxy. The user-wide var was set then REMOVED (it only helped the CLI/headless surfaces the operator does not use, and added proxy-down fragility to the headless RC-* Claude tasks). GUI failover is therefore MANUAL: switch the desktop login from acct A to acct B when acct A's weekly quota is high - `RC-ClaudeQuotaWatch` toasts the reminder at >=90%. The `cf` shim (`C:\Users\Administrator\AppData\Roaming\npm\cf.cmd`) remains for an explicit failover-backed CLI session if ever wanted.
@@ -476,6 +477,101 @@ powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_Rewin
 
 Operator's play cadence is sparse (`5 games / 5 months 2026-05`), so a
 weekly cadence is enough. ExecutionTimeLimit caps each run at 20 minutes.
+
+---
+
+## Moon-sync poller (`RC-MoonSyncPoller`)
+
+ONE machine-wide poller for the whole five-way channel
+(`tools/moon_sync_poller.py`), run under `pythonw.exe` from a scheduled task.
+A second poller anywhere on the box is forbidden by the channel contract - five
+independent pollers would cost five wakeups per interval for one shared question
+- and the process enforces it with a named-mutex singleton.
+
+### Reading its state (no session required)
+
+Three read paths, all on-demand, none of which acknowledges anything:
+
+1. **The status file.** `%LOCALAPPDATA%\moonsync\status.md` - written only by
+   the poller task, never by a session process. The header carries `checked`,
+   the next interval, `pid:` and `expect next poll by <UTC>`; then one line per
+   participant CODE. Read it with any editor or `type`.
+2. **The computed view**, which is the one to prefer because it GRADES the file
+   rather than showing it:
+
+       python tools\moon_sync_poller.py --status
+
+   Prints the status file's age, the recorded pid's liveness, the seen-store
+   stamp, whether a fleet view is present, and an explicit
+   `LIVE / OVERDUE / STALE / DEAD / FAULT` verdict. It reads only and writes
+   nothing. `UNMEASURED` means the status file is ABSENT; `STALE` means it
+   exists but cannot be stamped.
+3. **The JSON route**, from any browser or shell on the tailnet, with no RC
+   session and no poller shell:
+
+       curl -k https://127.0.0.1:8888/api/moon-sync-status
+
+   Same verdict vocabulary as `--status`, codes only, never paths. The two
+   entry points are pinned to agree by a parity test.
+
+### Deploying a code change (the ONLY supported sequence)
+
+    python -m py_compile tools\moon_sync_poller.py
+    taskkill /F /PID <pid>
+    schtasks /Run /TN RC-MoonSyncPoller
+
+Derive `<pid>` from the NEWEST `BOOT` line in the poller log, never from a
+document - it moves on every logon and has moved twice inside a single session.
+
+**Never `Stop-Process`** (standing repo rule - it hangs the MCP pipe).
+**Never `Start-Process` the poller from a session**: a session-launched poller
+inherits the session's virtualised package context, so it writes into an MSIX
+shadow instead of the real state directory and every later read disagrees with
+it. The scheduled task is the only correct launcher.
+
+Verify after a restart: a new `BOOT` line, at most one baseline note, and TWO
+polls at base tier with the REAL seen store's mtime advancing.
+
+### The shadow trap, stated once
+
+A tool shell or hook running under the Claude desktop app carries MSIX package
+identity. Anything it writes under `%LOCALAPPDATA%` lands in the package's
+`LocalCache` twin and SHADOWS the real file for every later read from that same
+harness - silently, with no error and no permission failure. Repo roots are NOT
+virtualised and are unaffected. So a harness shell can read a months-old copy of
+the poller's state while the live poller rewrites the real file every tick, and
+the two look identical from inside the session. If a harness read of the state
+directory contradicts the live poller, suspect the shadow before suspecting the
+poller. The package family name is deliberately not recorded here - it re-rolls
+on a Store repackage.
+
+### Measurements behind the two rules
+
+**Console flash, measured 2026-09-14.** 17.5 minutes of proven-alive sampling
+over the live task population. A bash-invoked hook under the desktop harness
+inherits a WINDOWLESS console, so a console-subsystem CHILD of it flashes unless
+it is spawned with `CREATE_NO_WINDOW`; the interpreter token removes no flash,
+and a windowless interpreter still keeps stdin, stdout, stderr and exit code
+when the parent redirects them. RC's own per-prompt `pythonw` hooks are the
+standing precedent that redirection survives.
+
+The positive control RAN on 2026-09-15 and PASSED on all three arms: both
+unflagged spawns under a windowless `pythonw` parent produced a
+`ConsoleWindowClass` event, the `CREATE_NO_WINDOW` spawn produced NONE, and a
+heartbeat landed after the last spawn with no liveness gap. That CONFIRMS THE
+DETECTOR AND THE FLAG. It does NOT confirm the attribution: the capture's only
+four events were the control's OWN spawns, so no independent flash was
+recorded, and attribution of the residual observed flash stays PROBABLE at
+n = 1.
+
+**MSIX shadow, measured 2026-09-15** on the poller's own state directory,
+through the harness chain. A foreground test run under package identity wrote a
+copy-on-write twin, and every later harness read returned the twin's bytes while
+the live task kept rewriting the real file on every poll. The real file's write
+pattern is visible in the USN journal as a tmp-create, delete, rename triple at
+each poll stamp; the twin's mtime does not move. The consequence that matters
+operationally: a stat-after-save fault check CANNOT diagnose this, because a
+packaged process would see its OWN shadow advance and report itself healthy.
 
 ---
 
