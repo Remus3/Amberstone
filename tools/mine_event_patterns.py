@@ -67,6 +67,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core import corpus_hygiene as ch                          # noqa: E402
 from core import event_patterns as ep                          # noqa: E402
 from core import replay_roster as rr                           # noqa: E402
+from core.polled_json import atomic_write_text                 # noqa: E402
 
 # Criteria whose Finding.value is a per-player ratio: mine the MEAN.
 RATIO_CRITERIA = {"objective_participation", "kill_participation",
@@ -325,10 +326,8 @@ def main(argv=None) -> int:
             "absent_win": gap["win"], "absent_loss": gap["loss"]})
 
     dest = Path(args.out)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dest.with_suffix(".tmp")
-    tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
-    tmp.replace(dest)
+    # TRACKED output: atomic LF bytes, never write_text (RM-441).
+    atomic_write_text(dest, json.dumps(out, indent=2))
 
     print(f"{'role':8} {'criterion':26} {'win':>10} {'loss':>10} "
           f"{'delta':>10} {'effect':>7}  n(w/l)  absent(w/l)  verdict "

@@ -272,7 +272,9 @@ def main(argv=None):
         out_path = _ROOT / out_path
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    tmp.write_text(md, encoding="utf-8")
+    # Bytes, not write_text: the report is TRACKED and write_text turns LF into
+    # CRLF on Windows (RM-441).
+    tmp.write_bytes(md.encode("utf-8"))
     tmp.replace(out_path)
     print("wrote " + str(out_path))
     return 0

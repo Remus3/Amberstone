@@ -750,7 +750,12 @@ def write_markdown(report: dict, path: Path) -> None:
     """The ONLY side effect: write the markdown report (mkdir parents)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_markdown(report), encoding="utf-8")
+    # Bytes, not write_text: the report is TRACKED and write_text turns LF into
+    # CRLF on Windows (RM-441). No core helper import - this module must stay
+    # importable from the bare tools/-on-sys.path CLI (see the header).
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_bytes(render_markdown(report).encode("utf-8"))
+    tmp.replace(path)
 
 
 def _print_human(report: dict, md_path: Optional[Path]) -> None:

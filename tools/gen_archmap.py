@@ -209,7 +209,9 @@ def _update_file(path: pathlib.Path, start_marker: str, end_marker: str, new_blo
         return False
     if not check:
         tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(updated, encoding="utf-8")
+        # Bytes, not write_text: on Windows write_text turns LF into CRLF and
+        # docs/ARCHITECTURE.md is TRACKED (RM-441).
+        tmp.write_bytes(updated.encode("utf-8"))
         tmp.replace(path)
     return True
 
