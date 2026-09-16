@@ -369,6 +369,37 @@ def test_non_directory_inbox_is_an_unknown_slot(tmp_path, kind):
     assert rep.undelivered_count == 0
 
 
+def test_nul_in_inbox_path_scans_as_none(tmp_path):
+    """RM-438 rework: a NUL byte in a path makes os.scandir raise ValueError,
+    which is NOT an OSError. The removed is_dir() guard had absorbed it; the
+    except in _scan must now do so, or the whole run crashes."""
+    inbox = tmp_path / "bad\0root" / orc.INBOX_DIRNAME
+    assert orc.scan_visible(inbox) is None
+    assert orc.scan_staged(inbox) is None
+
+
+def test_nul_root_in_per_host_config_is_unknown_and_exits_inconclusive(
+        tmp_path, monkeypatch, capsys):
+    """Same input arriving the way it would in production: a root read from the
+    per-host config. It must degrade to an UNKNOWN slot and exit 3, never crash
+    with exit 1."""
+    monkeypatch.delenv(orc.REPOS_ENV, raising=False)
+    local, _ = _make_tree(tmp_path, 0)
+    _note(local / orc.INBOX_DIRNAME, "2026-09-16-1000", SELF, "nul", "# From ZZ\n")
+    cfg = local / orc.CONFIG_RELATIVE
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text(json.dumps({"repos": [str(tmp_path / "bad\0root")]}), encoding="utf-8")
+
+    rep = orc.check(local, self_code=SELF, env={})
+    assert rep.slots_configured == 1
+    assert rep.slots_unknown == 1
+    assert rep.notes[0].per_slot[0] == orc.STATUS_UNKNOWN
+
+    rc = orc.main(["--root", str(local), "--self-code", SELF])
+    capsys.readouterr()
+    assert rc == orc.EXIT_INCONCLUSIVE
+
+
 @pytest.mark.parametrize("kind", ("real_dir", "dir_link"))
 def test_directory_inbox_still_lists_both_halves(tmp_path, kind):
     """Positive control: without it, a _scan that returned None for EVERYTHING
