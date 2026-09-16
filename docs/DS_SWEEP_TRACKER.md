@@ -69,7 +69,27 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-424** (2026-09-12, moved at the two-row SESSION WRAP filing).
+  Next free id = **RM-431** (2026-09-15, moved at the moon-sync five-slice merge session).
+  **SEVEN ids were allocated 2026-09-15** by the moon-sync five-slice merge session
+  (LEDGER 1417). **THE PIN MOVED BY SEVEN.** Five are SHIPPED, in slice order: RM-424
+  the poller hardening slice (findings ledger with names, status.md as persistent state,
+  codes never paths, restart-baseline rule, per-repo fault isolation, the repo-root ping
+  file, the on-demand `--status` view); RM-425 the once-per-session reported record in
+  `tools/rc_facts.py` plus the reparse refusal and entry budget in `_payload_key`;
+  RM-426 `docs/CHANNEL.md` v1 and its two guard modules; RM-427 the event-driven
+  console-flash detector and the hook-spawner guard; RM-428 the read-only
+  `GET /api/moon-sync-status` dashboard route. Two are FILED-NOT-BUILT rows under
+  BACKLOG "Reliability / hardening": RM-429 the deferred per-repo ack-debt reader over
+  sibling native stores (two gates before building, neither met), and RM-430 the
+  arming-stage filename-grammar, BOUNCE-policy and retention follow-up (gated on the
+  section 4.5 criteria, a CHANNEL_VERSION 2 five-way re-pin). None of the seven takes a
+  roster checkbox and none changes the Summary count. All seven were confirmed free
+  across the scanned docs before the move, and the `ROADMAP.md` pointer moves in the
+  SAME commit, per the LEDGER 1334 note that the documented way this pointer goes stale
+  is a batch moving only one of the two. The new figure is deliberately NOT re-spelled
+  in `docs/LEDGER.md`, `WAKEUP_NOTES.md` or `BACKLOG.md` - a bare mention in any of
+  those is classified as an ALLOCATION and collides with the pin it announces.
+  Prior pin, kept for the audit trail: Next free id was **RM-424** (2026-09-12, moved at the two-row SESSION WRAP filing).
   **RM-422 and RM-423 were both allocated 2026-09-12** by the SESSION WRAP doc-sync
   session (LEDGER 1412), both filed under BACKLOG "Reliability / hardening", neither
   taking a roster checkbox and neither changing the Summary count. **THE PIN MOVED BY
