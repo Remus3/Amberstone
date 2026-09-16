@@ -58,6 +58,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from tools import outbound_reciprocity_check as orc  # noqa: E402
+from tools import sibling_name_sweep as sweep  # noqa: E402
 
 SELF = "ZZ"  # synthetic self code; resolves to nothing real
 OTHER = "QQ"  # synthetic counterparty code
@@ -660,11 +661,19 @@ def test_unparseable_config_yields_no_roots(tmp_path):
     assert orc.load_sibling_roots(local, env={}) == []
 
 
+def _per_host_config_path() -> Path:
+    """RM-433: through the shared resolver the tool uses, so a linked worktree
+    compares against the main working tree's gitignored config instead of
+    skipping. Called on the module-level import, not through the tool's lazy
+    one, so the skip below gates on machine-local state alone."""
+    return sweep.resolve_config_path(REPO_ROOT)
+
+
 def test_no_sibling_literal_is_embedded_in_the_tool_or_this_test():
     """The tool must not spell what it reports on. Both files are checked
     against the live per-host config when there is one; when there is not, the
     assertion is ANCHORED so an absent config cannot pass it silently."""
-    cfg_path = REPO_ROOT / "ops" / "moon_sync_repos.json"
+    cfg_path = _per_host_config_path()
     if not cfg_path.exists():
         pytest.skip("no per-host config on this machine; nothing to compare against")
     blob = json.loads(cfg_path.read_text(encoding="utf-8"))

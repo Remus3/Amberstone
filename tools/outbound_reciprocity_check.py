@@ -245,6 +245,24 @@ def _split_roots(raw: str) -> list[str]:
     return split_repo_list(raw)
 
 
+def _config_path(base: Path) -> Path:
+    """The per-host config for ``base``, through the ONE shared resolver.
+
+    RM-433: a linked worktree carries no copy of the gitignored file, so the
+    shared resolver falls back to the main working tree's copy.
+
+    Deliberately NO ImportError fallback to the bare local path: that fallback
+    is the silent worktree degradation this resolver exists to remove, and run
+    as a script this file's own directory (not the repo root) heads sys.path,
+    so the root is put there first.
+    """
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from tools.sibling_name_sweep import resolve_config_path
+
+    return resolve_config_path(Path(base))
+
+
 def load_sibling_roots(
     root: Optional[Path] = None, env: Optional[Mapping[str, str]] = None
 ) -> list[Path]:
@@ -268,7 +286,7 @@ def load_sibling_roots(
         return [Path(p) for p in _split_roots(raw)]
 
     try:
-        blob = json.loads((base / CONFIG_RELATIVE).read_text(encoding="utf-8"))
+        blob = json.loads(_config_path(base).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
     return [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]

@@ -30,7 +30,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -331,47 +330,13 @@ def _hook_log_violations(before, after, pid: int) -> list:
     `rc_facts` keeps. Lost: a test that spawns a CHILD which writes a
     well-formed row under the child's pid is indistinguishable from a foreign
     fire here; no arm in this module spawns one (`_no_real_spawn`).
+
+    RM-434: the rule now lives in `runner.hook_log_violations`, which the dry
+    report's `hook-log-unchanged` check uses too, so this fixture and the
+    production check cannot drift apart. Looked up at call time on purpose.
     """
-    if after is None:
-        return ["the log was deleted"] if before is not None else []
-    old = (before or b"").splitlines(keepends=True)
-    if old and not old[-1].endswith(b"\n"):
-        old = old[:-1]  # a foreign row mid-write when the snapshot was taken
-    new = after.splitlines(keepends=True)
-    problems = []
-    remaining = Counter(old)
-    appended = []
-    for index, line in enumerate(new):
-        if remaining[line] > 0:
-            remaining[line] -= 1
-        else:
-            appended.append((index, line))
-    removed = sum(remaining.values())
-    if removed:
-        if +remaining != Counter(old[:removed]):
-            problems.append(f"{removed} existing row(s) removed from outside the head")
-        elif len(new) < rc_facts_mod._LOG_KEEP:
-            problems.append(f"head trimmed to {len(new)} rows, under the "
-                            f"{rc_facts_mod._LOG_KEEP} rc_facts keeps")
-    for index, line in appended:
-        if index == len(new) - 1 and not line.endswith(b"\n"):
-            if not line.startswith(_HOOK_ROW_PREFIX):
-                problems.append(f"unterminated non-record tail {line[:60]!r}")
-            continue
-        try:
-            rec = json.loads(line)
-        except ValueError:
-            problems.append(f"non-record line {line[:60]!r}")
-            continue
-        if not isinstance(rec, dict):
-            problems.append(f"non-record line {line[:60]!r}")
-            continue
-        row_pid = rec.get("pid")
-        if not isinstance(row_pid, int) or isinstance(row_pid, bool):
-            problems.append(f"row with no integer pid {line[:60]!r}")
-        elif row_pid == pid:
-            problems.append(f"row written by this process (pid {pid}) {line[:60]!r}")
-    return problems
+    assert _HOOK_ROW_PREFIX == runner.HOOK_ROW_PREFIX
+    return runner.hook_log_violations(before, after, {pid})
 
 
 def _guard_hook_logs(logs, pid):
@@ -3985,16 +3950,24 @@ class DryProcs:
         return _proc(1, b"")
 
 
-def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, stdout=None):
+def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, stdout=None,
+                     hook_seed=None, during_spawn=None):
     """One `--dry-cycle` invocation against a fake ROOT and four fake siblings.
 
     The binary is injected rather than resolved from the host, so the cycle
     reaches the spawn gate on any machine and the `cli-version` check reads the
     version this arm's `DryProcs` hands it instead of the `unknown` a missing
     binary produces. Returns that injected path so an arm can assert on it.
+
+    `hook_seed` pre-writes the fake ROOT's hook log; `during_spawn(log)` runs
+    inside the spawn, i.e. BETWEEN the report's before and after snapshots,
+    which is exactly where another live session's hook fire lands.
     """
     fake_root = tmp_path / f"dryroot-{label}"
     (fake_root / "ops" / "runtime").mkdir(parents=True)
+    hook_log = fake_root / "ops" / "runtime" / "hook_invocations.jsonl"
+    if hook_seed is not None:
+        hook_log.write_bytes(hook_seed)
     (fake_root / "moon_sync_inbox").mkdir()
     bases = {}
     for code in ("RSC", "SBB", "SBC", "SBD"):
@@ -4017,8 +3990,17 @@ def _drive_dry_cycle(world, tmp_path, monkeypatch, *, label, proc_runner=None, s
                             AssertionError("a process was created")))
     live = tmp_path / f"live-{label}"
     _TMP_LOGS.append(runner.invocations_path(live))
+    fired: list = []
+
+    def _once(_request):
+        # The cycle's spawn only; the schema-rejection probe that follows the
+        # report calls the spawner again, after the second snapshot.
+        if during_spawn is not None and not fired:
+            fired.append(True)
+            during_spawn(hook_log)
+
     spawner = StubSpawner(stdout if stdout is not None
-                          else result_bytes(proposal(reply_action())))
+                          else result_bytes(proposal(reply_action())), on_call=_once)
     code = runner.main(["--dry-cycle", "--scratch", str(scratch)], spawner=spawner,
                        export=ExportStub(export_dir), singleton=_open_singleton,
                        log_root=live, parent_env=world.parent_env,
@@ -4086,6 +4068,113 @@ def test_an_ignored_path_in_the_export_fails_the_export_clean_check(
     assert code != 0
     assert "FAIL spawn-cwd-and-export-clean:" in out
     assert "API-Key-Claude.txt" in out
+
+
+# ---------------------------------------------------------------------------
+# RM-434: the dry report's hook-log check attributes rows by pid. The live
+# `hook_invocations.jsonl` is appended by EVERY live session's hooks, so a
+# whole-file digest compare went red on a foreign row landing mid-check.
+# ---------------------------------------------------------------------------
+
+
+def _append_bytes(log: Path, data: bytes) -> None:
+    with log.open("ab") as fh:
+        fh.write(data)
+
+
+def _foreign_trim(log: Path) -> None:
+    """What `rc_facts` does on a foreign fire past the cap: append, keep the tail."""
+    rows = log.read_bytes().splitlines(keepends=True) + [_hook_row(seq=99999)]
+    log.write_bytes(b"".join(rows[-rc_facts_mod._LOG_KEEP:]))
+
+
+_FOREIGN_HOOK_ARMS = {
+    "foreign-append": (lambda: _hook_row(seq=1) + _hook_row(seq=2),
+                       lambda log: _append_bytes(log, _hook_row(seq=3))),
+    "foreign-append-creates-log": (lambda: None,
+                                   lambda log: log.write_bytes(_hook_row(seq=1))),
+    "foreign-trim": (lambda: b"".join(_hook_row(seq=i) for i in range(rc_facts_mod._LOG_KEEP)),
+                     _foreign_trim),
+    "foreign-row-mid-write": (lambda: _hook_row(seq=1),
+                              lambda log: _append_bytes(log, _hook_row(seq=2)[:25])),
+}
+
+
+@pytest.mark.parametrize("arm", sorted(_FOREIGN_HOOK_ARMS))
+def test_a_foreign_hook_row_landing_mid_check_does_not_fail_the_hook_log_check(
+        world, tmp_path, monkeypatch, capsys, arm):
+    seed, during = _FOREIGN_HOOK_ARMS[arm]
+    moved = []
+
+    def mutate(log):
+        before = log.read_bytes() if log.exists() else None
+        during(log)
+        moved.append(log.read_bytes() != before)
+
+    code, _s, _l, _r, _e = _drive_dry_cycle(world, tmp_path, monkeypatch, label=f"hk-{arm}",
+                                            hook_seed=seed(), during_spawn=mutate)
+    out = capsys.readouterr().out
+    # Vacuity control: the log really moved between the two snapshots.
+    assert moved == [True], "the arm did not move the hook log mid-check"
+    assert "PASS hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert code == 0
+
+
+def _own_pid_record(log: Path) -> None:
+    rc_facts_mod.record_invocation("SessionStart", {"hook_event_name": "SessionStart"},
+                                   path=log)
+
+
+def _delete_middle_row(log: Path) -> None:
+    rows = log.read_bytes().splitlines(keepends=True)
+    log.write_bytes(b"".join(rows[:3] + rows[4:]))
+
+
+def _short_head_trim(log: Path) -> None:
+    rows = log.read_bytes().splitlines(keepends=True)
+    log.write_bytes(b"".join(rows[2:]))
+
+
+_OWN_HOOK_ARMS = {
+    # Each arm is a failure mode the pid attribution must NOT launder.
+    "own-pid-row": (lambda: _hook_row(seq=1), _own_pid_record),
+    "own-pid-row-creates-log": (lambda: None, _own_pid_record),
+    "row-without-pid": (lambda: _hook_row(seq=1),
+                        lambda log: _append_bytes(log, _hook_row(pid=None))),
+    "non-json-line": (lambda: _hook_row(seq=1),
+                      lambda log: _append_bytes(log, b"not json\n")),
+    "non-record-json": (lambda: _hook_row(seq=1),
+                        lambda log: _append_bytes(log, b"[1, 2]\n")),
+    "unterminated-junk-tail": (lambda: _hook_row(seq=1),
+                               lambda log: _append_bytes(log, b"junk-tail")),
+    "deleted": (lambda: _hook_row(seq=1), lambda log: log.unlink()),
+    "truncated": (lambda: b"".join(_hook_row(seq=i) for i in range(5)),
+                  lambda log: log.write_bytes(b"")),
+    "non-front-removal": (lambda: b"".join(_hook_row(seq=i) for i in range(12)),
+                          _delete_middle_row),
+    "short-head-trim": (lambda: b"".join(_hook_row(seq=i) for i in range(5)),
+                        _short_head_trim),
+}
+
+
+@pytest.mark.parametrize("arm", sorted(_OWN_HOOK_ARMS))
+def test_a_hook_log_change_a_foreign_fire_cannot_explain_fails_the_check(
+        world, tmp_path, monkeypatch, capsys, arm):
+    seed, during = _OWN_HOOK_ARMS[arm]
+    code, _s, _l, _r, _e = _drive_dry_cycle(world, tmp_path, monkeypatch, label=f"hk-{arm}",
+                                            hook_seed=seed(), during_spawn=during)
+    out = capsys.readouterr().out
+    assert "FAIL hook-log-unchanged:" in out, [x for x in out.splitlines() if "hook-log" in x]
+    assert code != 0
+
+
+def test_the_hook_log_check_passes_an_untouched_log(world, tmp_path, monkeypatch, capsys):
+    """Control arm: a seeded log nobody touches stays a PASS."""
+    code, _s, _l, _r, _e = _drive_dry_cycle(world, tmp_path, monkeypatch, label="hk-still",
+                                            hook_seed=_hook_row(seq=1) + _hook_row(seq=2))
+    out = capsys.readouterr().out
+    assert "PASS hook-log-unchanged:" in out
+    assert code == 0
 
 
 def test_the_flag_file_path_prints_nothing_at_all(world, tmp_path, monkeypatch, capsys):
