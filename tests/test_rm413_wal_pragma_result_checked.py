@@ -471,6 +471,18 @@ def test_guard_rm465_negative_controls_stay_clean():
     assert _discarded_journal_pragmas(clean) == []
 
 
+@pytest.mark.parametrize("src", [
+    "() = conn.execute('PRAGMA journal_mode=WAL')\n",
+    "[] = conn.execute('PRAGMA journal_mode=WAL').fetchall()\n",
+], ids=["empty-tuple-target", "empty-list-target"])
+def test_guard_rm465_empty_unpacking_target_is_not_a_discard(src):
+    """An EMPTY target binds no name at all, so it is not an all-``_`` target.
+    Unpacking a row into it raises ValueError at run time - loud, not a silent
+    discard. Pins the ``bool(target.elts)`` check: without it ``all([])`` is
+    True and these read as discards."""
+    assert _discarded_journal_pragmas(src) == []
+
+
 def test_guard_rm457_negative_controls_stay_clean():
     """Non-journal pragmas and non-pragma f-strings are not findings."""
     clean = (
