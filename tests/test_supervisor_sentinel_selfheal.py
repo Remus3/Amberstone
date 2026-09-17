@@ -56,6 +56,7 @@ from pathlib import Path
 import pytest
 
 from agents import _supervisor_common as common
+from tests._replace_faults import scoped_fs_fault
 
 
 # ---------------------------------------------------------------------------
@@ -298,15 +299,17 @@ def test_repair_uses_exclusive_create_not_a_plain_write(
     sentinel = state / "lockfile.sentinel"
 
     seen: list[tuple[str, int]] = []
-    real_open = os.open
 
-    def _spy_open(path, flags, *a, **kw):
+    def _spy_open(real, path, flags, *a, **kw):
         if str(path).endswith("lockfile.sentinel"):
             seen.append((str(path), int(flags)))
-        return real_open(path, flags, *a, **kw)
+        return real(path, flags, *a, **kw)
 
-    monkeypatch.setattr(common.os, "open", _spy_open)
-    common.refresh_lock()
+    # RM-464: common.os IS the process-wide os module. The spy is scoped to the
+    # tmp state dir (armed control outside it), so another thread's os.open of
+    # a same-NAMED sentinel can neither be recorded nor redirected.
+    with scoped_fs_fault("open", state, _spy_open):
+        common.refresh_lock()
 
     assert seen, "the sentinel repair did not go through os.open at all"
     _, flags = seen[-1]
@@ -327,16 +330,15 @@ def test_sentinel_reappearing_mid_repair_is_lost_gracefully(
     state = _point_state_at(tmp_path, monkeypatch)
     _claim(monkeypatch)
     sentinel = state / "lockfile.sentinel"
-    real_open = os.open
 
-    def _racing_open(path, flags, *a, **kw):
+    def _racing_open(real, path, flags, *a, **kw):
         if str(path).endswith("lockfile.sentinel") and not sentinel.exists():
             sentinel.write_bytes(str(live_foreign_pid).encode("ascii"))
-        return real_open(path, flags, *a, **kw)
+        return real(path, flags, *a, **kw)
 
-    monkeypatch.setattr(common.os, "open", _racing_open)
-
-    common.refresh_lock()  # must not raise
+    # RM-464: scoped to the tmp state dir, not to a file NAME.
+    with scoped_fs_fault("open", state, _racing_open):
+        common.refresh_lock()  # must not raise
 
     assert sentinel.read_bytes() == str(live_foreign_pid).encode("ascii")
 
@@ -352,16 +354,21 @@ def test_repair_failure_never_kills_the_heartbeat(
     """
     state = _point_state_at(tmp_path, monkeypatch)
     _claim(monkeypatch)
-    real_open = os.open
+    fired: list[str] = []
 
-    def _boom(path, flags, *a, **kw):
+    def _boom(real, path, flags, *a, **kw):
         if str(path).endswith("lockfile.sentinel"):
+            fired.append(str(path))
             raise OSError(13, "permission denied")
-        return real_open(path, flags, *a, **kw)
+        return real(path, flags, *a, **kw)
 
-    monkeypatch.setattr(common.os, "open", _boom)
+    # RM-464: a NAME-only deny (any path ending in lockfile.sentinel, anywhere in
+    # the process) is not a scope - the real supervisor's sentinel has the same
+    # name. The deny is scoped to the tmp state dir with an armed control.
+    with scoped_fs_fault("open", state, _boom):
+        common.refresh_lock()  # must not raise
 
-    common.refresh_lock()  # must not raise
+    assert fired, "the sentinel open was never attempted - the fault proved nothing"
 
     data = json.loads((state / "lockfile").read_text(encoding="utf-8"))
     assert data["pid"] == os.getpid()
