@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import agents._supervisor_ephemeral as se
 from agents._supervisor_ephemeral import _write_agent6_failure_stub
+from tests._replace_faults import scoped_path_fault
 
 
 def test_failure_stub_written(tmp_path, monkeypatch):
@@ -39,8 +40,13 @@ def test_failure_stub_written(tmp_path, monkeypatch):
 def test_failure_stub_swallows_oserror(tmp_path, monkeypatch):
     monkeypatch.setattr(se, "_PROJECT_ROOT", tmp_path)
 
-    def boom(*a, **k):
+    def boom(real, self, *a, **k):
         raise OSError("disk full")
 
-    monkeypatch.setattr(Path, "mkdir", boom)
-    _write_agent6_failure_stub("t-x", "op", {}, 2, tmp_path / "l.log", "ts")
+    # RM-464: Path.mkdir is a CLASS attribute, so an unscoped patch fails every
+    # mkdir in the process; scoped_path_fault faults only under tmp_path, proves
+    # it with a control mkdir outside, and asserts the fault actually fired.
+    with scoped_path_fault("mkdir", tmp_path, boom):
+        _write_agent6_failure_stub("t-x", "op", {}, 2, tmp_path / "l.log", "ts")
+    # Anchor: without this, a fault that silently stopped biting would pass too.
+    assert list(tmp_path.rglob("*-FAILED-t-x.md")) == [], "the mkdir fault did not bite"
