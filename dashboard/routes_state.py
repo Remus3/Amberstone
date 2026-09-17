@@ -304,10 +304,14 @@ def _capgap_shadow_eval(liveclient_data, mode: str = "SR"):
         my_team = active_player_team(liveclient_data)
         if not my_team:
             return None
+        # RM-461: a non-string championName is REFUSED (skipped) through the
+        # same _as_str _resolve_my_champion uses, not stringified into a fake
+        # enemy like "5" or "True". Valid string names are unchanged.
         enemies = [
-            str(p.get("championName") or "")
+            _as_str(p.get("championName"))
             for p in _as_list(liveclient_data.get("allPlayers"))
-            if isinstance(p, dict) and p.get("team") != my_team and p.get("championName")
+            if isinstance(p, dict) and p.get("team") != my_team
+            and _as_str(p.get("championName"))
         ]
         res = build_capability_gap(my_champ, enemies, mode)
         return res if res.get("applies") else None
