@@ -18,9 +18,14 @@ All authored content here is 7-bit ASCII.
 from __future__ import annotations
 
 import re
+import shutil
 import unittest
 
-from tests.test_legacy_lcu_panel_phase_rm382 import LEGACY_HTML, NODE, REPO_ROOT, render_cases
+from tests.test_legacy_lcu_panel_phase_rm382 import LEGACY_HTML, REPO_ROOT, render_cases
+
+# Resolved locally, not imported: the skip-condition hygiene guard can only
+# credit a capability probe it can see in this module.
+NODE = shutil.which("node")
 
 _RETIRED = re.compile(r"game[\s_-]?pc", re.I)
 
