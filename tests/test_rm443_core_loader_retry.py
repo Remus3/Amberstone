@@ -24,7 +24,9 @@ Two shapes are pinned:
 The clock is advanced by patching ``time.monotonic``. No network, no live ports.
 
 CENSUS (re-derived 2026-09-16 against base 6c42caf48; line = the ``def`` line
-there). Instrument: an AST scan over core/ for functions that write a
+there, EXCEPT the rows in the five modules RM-450 edited - augment_external_source,
+augment_recommender, minimap_identity, replay_history, vision_template_match -
+whose lines were re-derived after RM-450). Instrument: an AST scan over core/ for functions that write a
 module-level cache name either (A) inside / after a try-except whose handler
 does not exit, or (B) from the return value of a same-module function that
 holds a non-raising handler. One row per function; A-or-B hits = 57, plus
@@ -41,9 +43,9 @@ mis-classed BENIGN - the helper swallowing the failure was one call away.
   core/archetype_picks.py:628 | save_archetype_pick | FIXED-ELSEWHERE | re-read failure wrote {}+entry over the file; fixed by RM-444
   core/archetype_picks.py:754 | clear_archetype_pick | BENIGN | re-read failure returns False, nothing cached or written
   core/arena_augment_playline.py:106 | _rows | DEFECT-FIXED | gate (+ _load_index projection)
-  core/augment_external_source.py:387 | get_priors | DEFECT-UNFIXED | network failure cached under mtime -1; retry is an HTTP timeout on the augment tick
-  core/augment_external_source.py:636 | get_augment_meta | DEFECT-UNFIXED | same shape as get_priors
-  core/augment_recommender.py:239 | load_own_history | DEFECT-FIXED | locked-db scan cached under an unchanged key; per-mode gate
+  core/augment_external_source.py:429 | get_priors | DEFECT-FIXED | RM-450: network failure served degraded, retried once per 300 s window (vs 15 s HTTP timeout)
+  core/augment_external_source.py:713 | get_augment_meta | DEFECT-FIXED | RM-450: same shape and window as get_priors
+  core/augment_recommender.py:248 | load_own_history | DEFECT-FIXED | locked-db scan cached under an unchanged key; per-mode gate; RM-450 row-count memo refuted twice and removed (per-call count cost is a follow-up)
   core/augment_shadow.py:99 | log_augment_advice | NOT-A-LOADER | dedupe signature
   core/build_order_precompute.py:732 | load_build_order_precompute | DEFECT-FIXED | OSError under unchanged mtime no longer cached
   core/build_order_variants.py:464 | load_build_order_variants | DEFECT-FIXED | OSError under unchanged mtime no longer cached
@@ -79,7 +81,7 @@ mis-classed BENIGN - the helper swallowing the failure was one call away.
   core/macro_response_shadow.py:40 | log_macro_response | NOT-A-LOADER | dedupe signature
   core/minimap_blob_detect.py:394 | _compute_and_cache_dots | NOT-A-LOADER | per-frame compute cache
   core/minimap_districts.py:225 | load_grid | DEFECT-FIXED | existing-file read error cached the embedded grid; per-key gate
-  core/minimap_identity.py:112 | _icon_index | DEFECT-FIXED | partial build not cached; no rescan inside backoff
+  core/minimap_identity.py:129 | _icon_index | DEFECT-FIXED | partial build not cached; no rescan inside backoff; RM-450 per-icon gate on _masked_template
   core/next_buy_fallback.py:138 | _canon_table | DEFECT-FIXED | caches only a non-empty table
   core/objective_playbook_shadow.py:39 | log_objective_playbook | NOT-A-LOADER | dedupe signature
   core/obs_frame_source.py:54 | _get_obs_cfg | BENIGN | 5 s TTL retry
@@ -87,17 +89,20 @@ mis-classed BENIGN - the helper swallowing the failure was one call away.
   core/pickban_targets.py:73 | load_pickban_targets | DEFECT-FIXED | OSError under unchanged mtime no longer cached
   core/rank_tier_bench.py:200 | _refresh_now | BENIGN | keeps the prior grid; TTL retry
   core/rank_tier_source.py:345 | fetch_rows | BENIGN | negative cache expires
-  core/replay_history.py:253 | match_detail | DEFECT-FIXED | cached a result built after _load_champ_index swallowed a read failure; per-path gate
+  core/replay_history.py:284 | match_detail | DEFECT-FIXED | cached a result built after _load_champ_index swallowed a read failure; per-path gate; RM-450 non-object / empty index is a failure
   core/replay_narrative_shadow.py:37 | log_replay_narrative | NOT-A-LOADER | dedupe signature
   core/riot_api.py:73 | _get_api_key | BENIGN | failures return uncached (not a scan hit)
   core/vision_routing.py:50 | read_or_escalate | NOT-A-LOADER | warn-once dropped-key signature set (not a scan hit)
-  core/vision_template_match.py:131 | _atlas | DEFECT-FIXED | folder-scan failure per-category gate; absent opencv stays cached
-  core/vision_template_match.py:164 | _index | DEFECT-FIXED | caches only a projection of a loaded atlas
+  core/vision_template_match.py:137 | _atlas | DEFECT-FIXED | folder-scan failure per-category gate; absent opencv stays cached; RM-450 missing / empty folder is a failure
+  core/vision_template_match.py:188 | _index | DEFECT-FIXED | caches only a projection of a loaded atlas
   core/vision_tesseract.py:69 | _regions | DEFECT-FIXED | legacy-file read error; absent file still cached
   core/vision_tesseract.py:627 | read_fast_fields | NOT-A-LOADER | per-tick OCR slow-field cache
   core/ward_producer.py:243 | tick | NOT-A-LOADER | per-tick diff state
 
-  TOTALS: DEFECT-FIXED 26 | DEFECT-UNFIXED 2 | FIXED-ELSEWHERE 1 | BENIGN 10 | NOT-A-LOADER 21 | rows 60
+  TOTALS: DEFECT-FIXED 28 | DEFECT-UNFIXED 0 | FIXED-ELSEWHERE 1 | BENIGN 10 | NOT-A-LOADER 21 | rows 60
+
+RM-450 (2026-09-16) closed the two DEFECT-UNFIXED rows and three residuals on
+DEFECT-FIXED rows; its pins live in tests/test_rm450_core_residuals.py.
 """
 from __future__ import annotations
 
@@ -591,6 +596,9 @@ class _FlakyDir:
         self.fail = True
         self.calls = 0
 
+    def is_dir(self):
+        return self.real.is_dir()
+
     def glob(self, pattern):
         self.calls += 1
         if self.fail:
@@ -848,12 +856,14 @@ def test_census_totals_match_its_rows():
     must say the same, and every cited file must still exist."""
     import re
 
-    expected = {"DEFECT-FIXED": 26, "DEFECT-UNFIXED": 2, "FIXED-ELSEWHERE": 1,
+    expected = {"DEFECT-FIXED": 28, "DEFECT-UNFIXED": 0, "FIXED-ELSEWHERE": 1,
                 "BENIGN": 10, "NOT-A-LOADER": 21}
     rows = [ln.strip() for ln in __doc__.splitlines()
             if re.match(r"\s+core/\S+:\d+ \| ", ln)]
     classes = [r.split(" | ")[2] for r in rows]
-    assert set(classes) == set(expected), set(classes) ^ set(expected)
+    # A zero-count class (DEFECT-UNFIXED since RM-450) has no row, so the
+    # vocabulary check is a subset check; the exact counts below still pin it.
+    assert set(classes) <= set(expected), set(classes) - set(expected)
     assert {c: classes.count(c) for c in expected} == expected
     totals = dict(re.findall(r"([A-Za-z-]+) (\d+)",
                              __doc__.split("TOTALS:")[1].splitlines()[0]))
