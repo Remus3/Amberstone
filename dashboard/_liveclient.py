@@ -189,7 +189,14 @@ def liveclient_summary() -> dict:
         out["game_time_s"] = gt
         mm, ss = divmod(gt, 60)
         out["game_time"] = f"{mm}:{ss:02d}"
-        out["level"] = ap.get("level")
+        # RM-461: level degrades to None, its MISSING default (stats_panel.js
+        # renders a null level as "-"), never a fabricated 0. Same int()
+        # vocabulary as _int_or_zero, so a valid level is unchanged.
+        _lvl = ap.get("level")
+        try:
+            out["level"] = None if _lvl is None else int(_lvl)
+        except (TypeError, ValueError, OverflowError):
+            out["level"] = None
         out["gold"]  = _int_or_zero(ap.get("currentGold", 0))
         out["hp"]    = _int_or_zero(cs.get("currentHealth", 0))
         out["hp_max"]   = _int_or_zero(cs.get("maxHealth", 0))
@@ -217,7 +224,8 @@ def liveclient_summary() -> dict:
         if me_pl:
             s = _as_dict(me_pl.get("scores"))
             out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
-            out["cs"]  = s.get("creepScore", 0)
+            # RM-461: same seam as players[].creep_score below (same leaf).
+            out["cs"]  = _int_or_zero(s.get("creepScore", 0))
             out["champion"] = me_pl.get("championName")
             owned_items = [it.get("displayName", "") for it in _dicts(me_pl.get("items"))]
             # s184 - item-id list so server-side consumers (archetype_mismatch
@@ -287,16 +295,19 @@ def liveclient_summary() -> dict:
             # active player's team kills + crediting the operator's own
             # kills+assists is a hard live fact. KP = involvements / team
             # kills. Emit ONLY when the denominator is > 0 (KP undefined at
-            # 0 team kills) - isolated try so any non-numeric score degrades
-            # to an omitted key, never an exception.
+            # 0 team kills). RM-461: each score goes through _int_or_zero, so
+            # one None / junk value degrades THAT value to 0 (the default a
+            # missing key already produced) instead of dropping the whole
+            # percentage; the try stays as a last-resort guard.
             try:
                 team_kills = sum(
-                    int(_as_dict(p.get("scores")).get("kills", 0))
+                    _int_or_zero(_as_dict(p.get("scores")).get("kills", 0))
                     for p in all_players
                     if p.get("team") and p.get("team") == my_team
                 )
                 if team_kills > 0:
-                    involved = int(s.get("kills", 0)) + int(s.get("assists", 0))
+                    involved = (_int_or_zero(s.get("kills", 0))
+                                + _int_or_zero(s.get("assists", 0)))
                     pct = round(100 * involved / team_kills)
                     out["kill_participation_pct"] = f"{pct}%"
             except Exception:  # noqa: BLE001
