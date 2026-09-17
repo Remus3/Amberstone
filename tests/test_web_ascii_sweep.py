@@ -403,7 +403,16 @@ _WEB = _REPO_ROOT / "web"
 # now read the null phase RM-382 emits instead of the retired truthy
 # 'Offline' / 'Unknown' sentinels. Pinned behaviourally by
 # tests/test_legacy_lcu_panel_phase_rm382.py.
-_LIVE_HALF_DIGEST = "97abbb4efd9bc0b631d5cfd0c190f5743c28d0c0eeafc3003b7746142d791ccf"
+# RE-CAPTURED at RM-462 (2026-09-17), superseding the RM-382 round 2 capture
+# immediately above. Ordinary case: one LIVE web edit, no tokeniser change, no
+# file added or removed; `_web_sources()` still returns 171. Attributed, not
+# inferred: substituting the pre-edit web/legacy_index.html (HEAD 23e20e810)
+# back into the digest reproduces the prior value exactly, so that one file is
+# the whole change - the relay-offline text in renderLcuPanel no longer sends
+# the operator to the retired Game-PC (ADR-011) and a deleted script; it names
+# the RC-LCUAgent task and tools/lcu_agent.py. Pinned behaviourally by
+# tests/test_legacy_index_retired_gamepc_rm462.py.
+_LIVE_HALF_DIGEST = "e4b4aee2cc7ea323a9eedfaabaa7ce7f3c131812cecbbf10c2c765c37b93fa70"
 
 
 def _web_sources() -> list[Path]:
