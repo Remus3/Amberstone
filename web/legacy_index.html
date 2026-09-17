@@ -1416,7 +1416,7 @@ function renderLcuPanel(lcu) {
   // lcu_port present = one failed phase read. Only no snapshot is relay-down.
   if (!lcu || (!lcu.phase && !lcu.config)) {
     sec.innerHTML = '<h3>League Client (LCU)</h3>'
-      + '<div class="lcu-offline">Relay offline. Run gamepc_lcu_agent.py on Game-PC.</div>';
+      + '<div class="lcu-offline">Relay offline. Check the RC-LCUAgent task (tools/lcu_agent.py).</div>';
     return sec;
   }
   const cfg = lcuCfgState();
