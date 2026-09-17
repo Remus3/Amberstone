@@ -34,10 +34,13 @@ from __future__ import annotations
 import gzip
 import os
 import pathlib
+import shutil
+import tempfile
 
 import pytest
 
 import core.rofl_archive as ra
+from tests._replace_faults import scoped_fs_fault
 
 
 _URL = (
@@ -244,22 +247,33 @@ def test_maybe_gunzip_expands_every_member_of_a_multi_member_body():
 # W3 - a Windows reader holding the target no longer loses the write
 # ---------------------------------------------------------------------------
 
-def test_index_write_retries_a_windows_permission_error(tmp_path, monkeypatch):
+def test_index_write_retries_a_windows_permission_error(tmp_path):
     """WinError 5 on os.replace is routine on Windows when a reader has the
     destination open. A bare replace surfaces it as a lost write."""
-    real_replace = os.replace
     state = {"failures": 2}
 
-    def flaky(src, dst):
+    # RM-411: patching `os` itself is process-wide; the fault is scoped to
+    # tmp_path and a control replace outside it must still succeed.
+    def flaky(real, src, dst, *a, **kw):
         if str(dst).endswith("index.json") and state["failures"] > 0:
             state["failures"] -= 1
             raise PermissionError(5, "Access is denied")
-        return real_replace(src, dst)
-
-    monkeypatch.setattr(os, "replace", flaky)
+        return real(src, dst, *a, **kw)
 
     fetch = _Fetcher({"NA1_5595187452": _REAL})
-    res = ra.download_replays([_URL], tmp_path, fetcher=fetch, now=_FRESH)
+    with scoped_fs_fault("replace", tmp_path, flaky):
+        # Site control: the action matches on the NAME index.json, so the
+        # helper's generic control cannot see an unscoped shim here. Another
+        # index.json outside tmp_path must replace cleanly and burn no failure.
+        control = pathlib.Path(tempfile.mkdtemp(prefix="rm411_rofl_"))
+        try:
+            (control / "index.json.src").write_bytes(b"{}")
+            os.replace(control / "index.json.src", control / "index.json")
+            assert (control / "index.json").read_bytes() == b"{}"
+        finally:
+            shutil.rmtree(control, ignore_errors=True)
+        assert state["failures"] == 2
+        res = ra.download_replays([_URL], tmp_path, fetcher=fetch, now=_FRESH)
 
     assert res.downloaded == ["NA1_5595187452"]
     assert state["failures"] == 0, "the retry path was never exercised"
