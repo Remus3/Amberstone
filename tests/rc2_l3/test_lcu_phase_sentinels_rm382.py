@@ -29,9 +29,11 @@ THE DECISION: both join the RM-367 falsy no-phase. Every consumer was read:
     against ChampSelect / GameStart / InProgress only - no change.
   * ``tools/lcu_agent`` ``_maybe_refresh_team_context`` /
     ``_maybe_ingest_last_match`` read ``state.get("phase") or ""`` - no change.
-  * ``dashboard/routes_state._timed_build_state`` and ``tools/rc_facts.py``
-    print the phase for diagnostics (``or "?"``). These are the ONLY
-    consumers that lose a word: a closed client now reads ``phase=?``.
+  * ``dashboard/routes_state._timed_build_state`` prints the phase for
+    diagnostics (``or "?"``, still there), so a closed client reads ``?`` in
+    that log line. ``tools/rc_facts.py`` no longer does (RM-462): it derives
+    ``phase=-(client-closed)`` / ``phase=-(phase-read-failed)`` from
+    ``lcu_port``, and keeps ``?`` only for a snapshot with no phase key.
   * ``web/legacy_index.html`` (``?ui=legacy`` fallback only) had a label for
     both sentinels; a falsy phase now takes its pre-existing no-phase branch.
 

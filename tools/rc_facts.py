@@ -165,17 +165,20 @@ def _lcu_phase_label(lcu: dict) -> str:
 
     RM-382 made both producers emit ``None`` where they used to emit the
     truthy ``"Offline"`` / ``"Unknown"`` sentinels, so ``phase or "?"``
-    collapsed both states into ``?``. The state is recovered from the shape,
-    the same derivation as ``renderLcuPanel`` in web/legacy_index.html:
-    ``lcu_port`` is stamped only while connected. ``?`` is kept for a
-    snapshot that carries no phase key at all.
+    collapsed both states into ``?``. The client-closed / phase-read-failed
+    split uses the same shape derivation as ``renderLcuPanel`` in
+    web/legacy_index.html: ``lcu_port`` is stamped only while connected.
+    Keeping ``?`` for a snapshot with no phase key at all is this module's own
+    choice. The null labels lead with ``-`` (the repo's no-data sentinel), never
+    ``None``: ``"None"`` is a REAL LCU phase (logged in, idle) and prints as
+    ``phase=None``, so a ``None(...)`` label would collide with it.
     """
     if "phase" not in lcu:
         return "?"
     phase = lcu.get("phase")
     if phase:
         return str(phase)
-    return "None(phase-read-failed)" if lcu.get("lcu_port") else "None(client-closed)"
+    return "-(phase-read-failed)" if lcu.get("lcu_port") else "-(client-closed)"
 
 
 def main(session: str | None = None) -> int:
