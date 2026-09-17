@@ -43,6 +43,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import tools.rc_facts as rc_facts  # noqa: E402
+from tests._replace_faults import scoped_path_fault  # noqa: E402
 
 _PY = sys.executable
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -657,12 +658,14 @@ def test_reported_write_failure_falls_open(tmp_path, monkeypatch):
     root = _repo(tmp_path, monkeypatch)
     _note(root, "a.md", "one")
 
-    def boom(self, _target):
+    def boom(real, self, _target):
         raise PermissionError("denied")
 
-    monkeypatch.setattr(Path, "replace", boom)
+    # RM-464: Path.replace is a CLASS attribute; scope the deny to tmp_path so
+    # every other replace in the process keeps working while it is armed.
     buf = _capture(monkeypatch)
-    rc_facts.report_inbox_only(session="s")
+    with scoped_path_fault("replace", tmp_path, boom):
+        rc_facts.report_inbox_only(session="s")
     assert "a.md" in buf.getvalue()
     monkeypatch.undo()
     monkeypatch.setattr(rc_facts, "_ROOT", root)

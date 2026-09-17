@@ -28,6 +28,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from tests._replace_faults import scoped_fs_fault
 from tft.tft_coach_engine import FIELD_MAP, TftCoachEngine, _parse_response
 
 
@@ -142,28 +143,26 @@ class TestAtomicWrites(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             eng = _engine(Path(d))
-            calls = {"n": 0}
-            import core.polled_json as pj
-            real = pj.os.replace
-
-            def flaky(src, dst):
-                calls["n"] += 1
-                if calls["n"] == 1:
+            def flaky(real, src, dst, *a, **kw):
+                if rec.attempts == 1:
                     raise PermissionError(5, "Access is denied")
-                return real(src, dst)
+                return real(src, dst, *a, **kw)
 
-            with patch.object(pj.os, "replace", flaky):
+            # RM-464: pj.os IS the process-wide os module; scope the fault to
+            # this temp dir, proven by a control replace outside it.
+            with scoped_fs_fault("replace", d, flaky) as rec:
                 eng._write_fields("Action: ROLL\n", {})
-            self.assertGreaterEqual(calls["n"], 2, "no retry after WinError 5")
+            self.assertGreaterEqual(rec.attempts, 2, "no retry after WinError 5")
             self.assertTrue(eng._data_file.exists())
 
     def test_no_scratch_file_is_left_behind_on_failure(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             eng = _engine(Path(d))
-            import core.polled_json as pj
-            with patch.object(pj.os, "replace",
-                              side_effect=PermissionError(5, "denied")):
+            def denied(real, src, dst, *a, **kw):
+                raise PermissionError(5, "denied")
+
+            with scoped_fs_fault("replace", d, denied):  # RM-464
                 eng._write_fields("Action: ROLL\n", {})
             leftovers = [p.name for p in Path(d).iterdir()
                          if p.name != "tft_coaching_data.json"]
