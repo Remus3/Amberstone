@@ -52,7 +52,8 @@ import time
 import pytest
 
 from core import polled_json
-from tests._replace_faults import scoped_fs_fault
+from tests._replace_faults import scoped_fs_fault, scoped_path_fault
+from tests._sleep_probe import thread_scoped
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +229,9 @@ def _deny_replace(monkeypatch, root):
     """
     def always_denied(real, src, dst, *a, **kw):
         raise PermissionError(13, "Access is denied")
-    monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
+    # RM-464: polled_json.time IS the time module, so a bare no-op turns every
+    # other thread's sleep into a busy-spin; only this thread skips the backoff.
+    monkeypatch.setattr(polled_json.time, "sleep", thread_scoped(lambda s: None, time.sleep))
     return scoped_fs_fault("replace", root, always_denied)
 
 
@@ -254,14 +257,14 @@ def test_successful_write_leaves_no_scratch_file(tmp_path):
 
 def test_scratch_file_is_removed_when_the_write_itself_fails(tmp_path, monkeypatch):
     """A mid-write failure must clean up too, not just a failed rename."""
-    real_write_bytes = polled_json.Path.write_bytes
-
-    def boom(self, data):
-        real_write_bytes(self, data[:2])
+    def boom(real, self, data):
+        real(self, data[:2])
         raise OSError(28, "No space left on device")
 
-    monkeypatch.setattr(polled_json.Path, "write_bytes", boom)
-    with pytest.raises(OSError):
+    # RM-464: polled_json.Path IS pathlib.Path, so an unscoped patch fails every
+    # Path.write_bytes in the process; scope it to tmp_path.
+    assert polled_json.Path is pathlib.Path
+    with scoped_path_fault("write_bytes", tmp_path, boom), pytest.raises(OSError):
         polled_json.atomic_write_json(tmp_path / "out.json", {"k": 1})
     assert _scratch_files(tmp_path) == []
 

@@ -23,6 +23,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core import log_retention
+from tests._replace_faults import scoped_path_fault
 
 
 def _write(path: Path, size: int, age_days: float) -> Path:
@@ -89,16 +90,15 @@ def test_size_pass_deletes_oldest_first_and_stops_under_cap(tmp_path):
 def test_unlink_failure_does_not_abort_the_sweep(tmp_path, monkeypatch):
     stubborn = _write(tmp_path / "a-locked.log", 10, age_days=30)
     other = _write(tmp_path / "b-free.log", 10, age_days=30)
-    real_unlink = Path.unlink
-
-    def _fake_unlink(self, *a, **kw):
+    def _fake_unlink(real, self, *a, **kw):
         if self.name == "a-locked.log":
             raise PermissionError("held open by another process")
-        return real_unlink(self, *a, **kw)
+        return real(self, *a, **kw)
 
-    monkeypatch.setattr(Path, "unlink", _fake_unlink)
-
-    deleted, _ = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=100)
+    # RM-464: a NAME check is not a scope - the fault is keyed on the path
+    # under tmp_path, and a control unlink outside it must still succeed.
+    with scoped_path_fault("unlink", tmp_path, _fake_unlink):
+        deleted, _ = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=100)
 
     assert deleted == 1
     assert stubborn.exists()
@@ -181,12 +181,13 @@ def test_cap_that_cannot_be_met_is_reported(tmp_path, monkeypatch, caplog):
     for i, age in enumerate((5, 4, 3)):
         _write(tmp_path / f"f{i}.log", 500_000, age_days=age)
 
-    def _always_denied(self, *a, **kw):
+    def _always_denied(real, self, *a, **kw):
         raise PermissionError("held open by another process")
 
-    monkeypatch.setattr(Path, "unlink", _always_denied)
-
-    with caplog.at_level(logging.WARNING, logger="rc.log_retention"):
+    # RM-464: an unconditional Path.unlink deny breaks every unlink in the
+    # process while armed; scope it to tmp_path.
+    with scoped_path_fault("unlink", tmp_path, _always_denied), \
+            caplog.at_level(logging.WARNING, logger="rc.log_retention"):
         deleted, _ = log_retention.prune(tmp_path, max_age_days=14, max_total_mb=1)
 
     assert deleted == 0

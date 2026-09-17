@@ -36,6 +36,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dashboard import _writers  # noqa: E402
+from tests._replace_faults import scoped_fs_fault  # noqa: E402
+
+
+def _always_denied(real, src, dst, *a, **kw):
+    raise PermissionError(13, "Access is denied")
 
 
 class AtomicWriteRetryTests(unittest.TestCase):
@@ -45,25 +50,21 @@ class AtomicWriteRetryTests(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
-            real_replace = _writers.os.replace if hasattr(_writers, "os") else None
-            calls = {"n": 0}
-            import os as _os
-            real = _os.replace
 
-            def flaky(src, dst):
-                calls["n"] += 1
-                if calls["n"] <= 2:
+            def flaky(real, src, dst, *a, **kw):
+                if rec.attempts <= 2:
                     raise PermissionError(13, "Access is denied")
-                return real(src, dst)
+                return real(src, dst, *a, **kw)
 
+            # RM-464: "core.polled_json.os.replace" IS os.replace process-wide;
+            # the fault is scoped to this temp dir with an armed outside control.
             with mock.patch.object(_writers, "APP_DIR", tmp), \
-                 mock.patch("core.polled_json.os.replace", side_effect=flaky):
+                 scoped_fs_fault("replace", tmp, flaky) as rec:
                 _writers.atomic_write_json("probe.json", {"a": 1})
 
-            self.assertEqual(calls["n"], 3, "expected two retries then success")
+            self.assertEqual(rec.attempts, 3, "expected two retries then success")
             written = json.loads((tmp / "probe.json").read_text(encoding="utf-8"))
             self.assertEqual(written, {"a": 1})
-            self.assertIs(real_replace, real_replace)  # no-op, keeps linters quiet
 
     def test_a_persistent_winerror5_still_raises(self):
         """The retry must be BOUNDED - an unbounded loop would hang a thread."""
@@ -71,8 +72,7 @@ class AtomicWriteRetryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
             with mock.patch.object(_writers, "APP_DIR", tmp), \
-                 mock.patch("core.polled_json.os.replace",
-                            side_effect=PermissionError(13, "Access is denied")):
+                 scoped_fs_fault("replace", tmp, _always_denied):
                 with self.assertRaises(PermissionError):
                     _writers.atomic_write_json("probe.json", {"a": 1})
 
@@ -97,8 +97,7 @@ class AtomicWriteRetryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
             with mock.patch.object(_writers, "APP_DIR", tmp), \
-                 mock.patch("core.polled_json.os.replace",
-                            side_effect=PermissionError(13, "Access is denied")):
+                 scoped_fs_fault("replace", tmp, _always_denied):
                 with self.assertRaises(PermissionError):
                     _writers.atomic_write_json("probe.json", {"a": 1})
             leftovers = list(tmp.glob("*.tmp"))
