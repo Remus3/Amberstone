@@ -99,10 +99,18 @@ def _as_int(value, default: int) -> int:
 
     A ``.get(key, default)`` default only fires for an ABSENT key, so a
     present-and-null field reached ``int()`` and raised.
+
+    RM-456: a bool is REFUSED (-> ``default``). bool is an int subclass, so
+    ``int(True)`` read as 1, and no LCU champ-select id or cell is ever a
+    JSON boolean: ``True`` as a cellId named cell 1 (a real player) and as a
+    championId named champion 1. A non-finite float (``json`` accepts
+    ``Infinity``) raised OverflowError past the except; it degrades too.
     """
+    if isinstance(value, bool):
+        return default
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return default
 
 
@@ -191,7 +199,11 @@ def arena_teams(sess: dict) -> list[dict]:
             if not isinstance(m, dict):
                 continue
             cells.append({
-                "cellId":     m.get("cellId"),
+                # RM-456: the RM-417 per-field rule. Coerced like _team_picks
+                # cellId; default None, NOT 0, because cell 0 is a real cell.
+                # No web/js reader of this field today (Arena panes read
+                # championId / completed / summonerName only).
+                "cellId":     _as_int(m.get("cellId"), None),
                 # RM-417: the RM-313 sibling. Emitted verbatim, a string id
                 # never matched champ_select.js's int ``myCid`` (wrong Arena
                 # cell badged as ME) and a string "0" read as a pick.
