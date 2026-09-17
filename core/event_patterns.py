@@ -219,8 +219,17 @@ def skill_order(match, timeline, pid) -> list:
 def item_order(match, timeline, pid) -> list:
     """Purchase sequence with timestamps, corrected for undos.
 
-    An ITEM_UNDO removes the most recent matching purchase; without that the
-    sequence contains items the player never actually kept.
+    An ITEM_UNDO carries no itemId: Riot sends ``beforeId`` (the item held
+    before the undo) and ``afterId`` (the item held after it). The two
+    directions are NOT interchangeable here (RM-290):
+
+    - undone PURCHASE (beforeId set): the item never stayed, so the most
+      recent matching purchase is removed;
+    - undone SALE (beforeId 0, afterId set): the item came back, so the player
+      KEPT it and its purchase already in the sequence must stand.
+
+    This is a purchase-ORDER view, so afterId is never appended - that would
+    be an inventory fold (``core.replay_history``), not a purchase.
     """
     seq = []
     for e in _events(timeline):
@@ -230,9 +239,11 @@ def item_order(match, timeline, pid) -> list:
         if typ == "ITEM_PURCHASED":
             seq.append((int(e.get("timestamp") or 0), int(e.get("itemId") or 0)))
         elif typ == "ITEM_UNDO":
-            before = e.get("beforeId") or e.get("afterId") or 0
+            before = int(e.get("beforeId") or 0)
+            if not before:
+                continue  # undone sale: the purchase stands
             for i in range(len(seq) - 1, -1, -1):
-                if seq[i][1] == int(before or 0):
+                if seq[i][1] == before:
                     seq.pop(i)
                     break
     if not seq:
