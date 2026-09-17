@@ -8,6 +8,8 @@ import pytest
 from win32_atomic_io import _atomic
 from win32_atomic_io._atomic import _REPLACE_RETRY_DELAYS_S, _replace_with_retry, _scratch_path
 
+from _fault_scope import record_sleeps, scoped_os_fault
+
 
 def test_scratch_path_is_distinct_per_call(tmp_path):
     """A name derived from the destination ALONE gives every writer of a file
@@ -39,85 +41,86 @@ def test_scratch_path_carries_the_process_id(tmp_path):
     assert f".{os.getpid()}." in _scratch_path(dest).name
 
 
-def test_replace_with_retry_succeeds_on_a_later_attempt(tmp_path, monkeypatch):
+def test_replace_with_retry_succeeds_on_a_later_attempt(tmp_path):
     src = tmp_path / "src"
     dst = tmp_path / "dst"
     src.write_bytes(b"payload")
     calls = {"n": 0}
-    slept = []
-    monkeypatch.setattr(_atomic.time, "sleep", lambda s: slept.append(s))
-    real_replace = _atomic.os.replace
 
-    def _flaky(a, b):
+    def _flaky(real, a, b, *rest, **kw):
         calls["n"] += 1
         if calls["n"] <= 2:
             raise PermissionError(5, "Access is denied")
-        return real_replace(a, b)
+        return real(a, b, *rest, **kw)
 
-    monkeypatch.setattr(_atomic.os, "replace", _flaky)
-    _replace_with_retry(src, dst)
+    with record_sleeps(_atomic.time) as slept, \
+            scoped_os_fault(_atomic.os, "replace", tmp_path, _flaky) as rec:
+        _replace_with_retry(src, dst)
 
     assert calls["n"] == 3
+    assert rec.attempts == calls["n"]
     assert dst.read_bytes() == b"payload"
     assert not src.exists()
     assert slept == list(_REPLACE_RETRY_DELAYS_S[:2])
 
 
-def test_replace_with_retry_succeeds_on_the_very_last_attempt(tmp_path, monkeypatch):
+def test_replace_with_retry_succeeds_on_the_very_last_attempt(tmp_path):
     src = tmp_path / "src"
     dst = tmp_path / "dst"
     src.write_bytes(b"payload")
     calls = {"n": 0}
-    monkeypatch.setattr(_atomic.time, "sleep", lambda _s: None)
-    real_replace = _atomic.os.replace
     attempts = len(_REPLACE_RETRY_DELAYS_S)
 
-    def _flaky(a, b):
+    def _flaky(real, a, b, *rest, **kw):
         calls["n"] += 1
         if calls["n"] <= attempts:
             raise PermissionError(5, "Access is denied")
-        return real_replace(a, b)
+        return real(a, b, *rest, **kw)
 
-    monkeypatch.setattr(_atomic.os, "replace", _flaky)
-    _replace_with_retry(src, dst)
+    with record_sleeps(_atomic.time) as slept, \
+            scoped_os_fault(_atomic.os, "replace", tmp_path, _flaky) as rec:
+        _replace_with_retry(src, dst)
     assert calls["n"] == attempts + 1
+    assert rec.attempts == calls["n"]
+    assert len(slept) == attempts
     assert dst.read_bytes() == b"payload"
 
 
-def test_replace_with_retry_reraises_once_the_delays_are_exhausted(tmp_path, monkeypatch):
+def test_replace_with_retry_reraises_once_the_delays_are_exhausted(tmp_path):
     src = tmp_path / "src"
     dst = tmp_path / "dst"
     src.write_bytes(b"payload")
     calls = {"n": 0}
-    slept = []
-    monkeypatch.setattr(_atomic.time, "sleep", lambda s: slept.append(s))
 
-    def _always_denied(a, b):
+    def _always_denied(real, a, b, *rest, **kw):
         calls["n"] += 1
         raise PermissionError(5, "Access is denied")
 
-    monkeypatch.setattr(_atomic.os, "replace", _always_denied)
-    with pytest.raises(PermissionError):
-        _replace_with_retry(src, dst)
+    with record_sleeps(_atomic.time) as slept, \
+            scoped_os_fault(_atomic.os, "replace", tmp_path, _always_denied) as rec:
+        with pytest.raises(PermissionError):
+            _replace_with_retry(src, dst)
 
     assert calls["n"] == len(_REPLACE_RETRY_DELAYS_S) + 1
+    assert rec.attempts == calls["n"]
     assert slept == list(_REPLACE_RETRY_DELAYS_S)
     assert not dst.exists()
 
 
-def test_replace_with_retry_does_not_swallow_other_oserrors(tmp_path, monkeypatch):
+def test_replace_with_retry_does_not_swallow_other_oserrors(tmp_path):
     src = tmp_path / "src"
     dst = tmp_path / "dst"
     calls = {"n": 0}
 
-    def _enoent(a, b):
+    def _enoent(real, a, b, *rest, **kw):
         calls["n"] += 1
         raise FileNotFoundError(2, "No such file")
 
-    monkeypatch.setattr(_atomic.os, "replace", _enoent)
-    with pytest.raises(FileNotFoundError):
-        _replace_with_retry(src, dst)
+    with scoped_os_fault(_atomic.os, "replace", tmp_path, _enoent) as rec:
+        with pytest.raises(FileNotFoundError):
+            _replace_with_retry(src, dst)
     assert calls["n"] == 1
+    assert rec.attempts == calls["n"]
 
 
 def test_retry_delays_are_a_bounded_ascending_tuple():

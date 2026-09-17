@@ -159,11 +159,28 @@ class TestAtomicWrites(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             eng = _engine(Path(d))
+            fired = {"n": 0}
+
             def denied(real, src, dst, *a, **kw):
+                fired["n"] += 1
                 raise PermissionError(5, "denied")
 
-            with scoped_fs_fault("replace", d, denied):  # RM-464
+            with scoped_fs_fault("replace", d, denied) as rec:  # RM-464
                 eng._write_fields("Action: ROLL\n", {})
+
+            # RM-469: a CLEANUP test whose injected failure never fires is
+            # green and proves nothing - a successful write leaves no scratch
+            # either. Assert the fault actually fired before reading the
+            # litter. `rec.attempts` is the helper's count of in-scope
+            # os.replace calls; `fired` is this action's own count, so the two
+            # cross-check each other rather than restating one number twice.
+            self.assertGreaterEqual(
+                fired["n"], 1,
+                "the injected replace failure never fired - _write_fields did "
+                "not reach os.replace under the scratch directory, so the "
+                "no-litter assertion below is vacuous")
+            self.assertEqual(rec.attempts, fired["n"])
+
             leftovers = [p.name for p in Path(d).iterdir()
                          if p.name != "tft_coaching_data.json"]
             self.assertEqual(leftovers, [], f"scratch litter: {leftovers}")

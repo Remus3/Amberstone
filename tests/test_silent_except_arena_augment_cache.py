@@ -17,11 +17,74 @@ Per the section-4 rule these tests MUST fail while the error is swallowed:
 
 import json
 import logging
+import shutil
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 
 from coaches import arena_coach
+
+
+@contextmanager
+def _iterdir_raises_under(root):
+    """Make ``Path.iterdir`` raise OSError at or under ``root``, and only there.
+
+    RM-469. ``monkeypatch.setattr(Path, "iterdir", _boom)`` patches the CLASS,
+    so while it is armed EVERY Path instance in the process raises - including
+    a background thread's, and including pytest's own collection machinery if
+    it enumerates during the window. The shim is scoped on the path the method
+    is called on; ``root`` here is the snapshot directory
+    ``_augment_name_map`` actually walks, so the code under test still takes
+    the fault it took before.
+
+    Delegation is proven, not asserted in prose: on entry, inside the armed
+    window, a control ``iterdir`` lists a fresh directory outside ``root`` and
+    must see the real entry.
+
+    ``tests/_replace_faults.scoped_path_fault`` cannot serve - its
+    ``_PATH_NAMES`` whitelist has no ``iterdir`` entry and that module is
+    read-only for this row.
+
+    Yields a record whose ``n`` counts in-scope calls, so a test can assert the
+    fault FIRED rather than infer it from a downstream symptom.
+    """
+    root = Path(root).resolve()
+    real = Path.__dict__["iterdir"]
+    rec = {"n": 0}
+
+    def _scoped(self, *a, **kw):
+        try:
+            here = Path(self).resolve()
+            under = here == root or root in here.parents
+        except OSError:  # pragma: no cover - unresolvable path is never ours
+            under = False
+        if under:
+            rec["n"] += 1
+            raise OSError("simulated snapshot dir failure")
+        return real(self, *a, **kw)
+
+    Path.iterdir = _scoped
+    try:
+        control = Path(tempfile.mkdtemp(prefix="rm469_iterdir_control_"))
+        try:
+            with open(control / "probe.txt", "wb") as fh:
+                fh.write(b"rm469-control")
+            names = sorted(p.name for p in control.iterdir())
+            if names != ["probe.txt"]:
+                raise AssertionError(
+                    f"Path.iterdir outside {root} did not delegate to the real "
+                    f"method (saw {names})"
+                )
+        finally:
+            shutil.rmtree(control, ignore_errors=True)
+        yield rec
+    finally:
+        Path.iterdir = real
+
+
+_SNAP_DIR = arena_coach._APP_DIR / "data" / "daemon_slayer"
 
 
 @pytest.fixture(autouse=True)
@@ -121,18 +184,17 @@ class _PartialList(list):
             yield item
 
 
-def test_total_failure_is_not_cached_and_map_recovers(monkeypatch):
+def test_total_failure_is_not_cached_and_map_recovers():
     """RECOVERY shape - a total build failure must not poison the cache."""
-    real_iterdir = Path.iterdir
-
-    def _boom(self):
-        raise OSError("simulated snapshot dir failure")
-
-    monkeypatch.setattr(Path, "iterdir", _boom)
-    first = arena_coach._augment_name_map()
+    with _iterdir_raises_under(_SNAP_DIR) as rec:
+        first = arena_coach._augment_name_map()
+    assert rec["n"] >= 1, (
+        "the injected snapshot-dir failure never fired - _augment_name_map did "
+        "not iterate the snapshot directory, so the empty map below proves "
+        "nothing"
+    )
     assert first == {}, "a failed build should yield an empty map on that call"
 
-    monkeypatch.setattr(Path, "iterdir", real_iterdir)
     second = arena_coach._augment_name_map()
     assert second, (
         "the failed build was cached for the process lifetime - the map never "
@@ -195,15 +257,15 @@ def test_partial_build_resolves_every_augment_after_recovery(monkeypatch):
     )
 
 
-def test_build_failure_logs_at_warning(monkeypatch, arena_warnings):
+def test_build_failure_logs_at_warning(arena_warnings):
     """OBSERVABILITY shape - a DEBUG line cannot satisfy this."""
+    with _iterdir_raises_under(_SNAP_DIR) as rec:
+        arena_coach._augment_name_map()
 
-    def _boom(self):
-        raise OSError("simulated snapshot dir failure")
-
-    monkeypatch.setattr(Path, "iterdir", _boom)
-    arena_coach._augment_name_map()
-
+    assert rec["n"] >= 1, (
+        "the injected snapshot-dir failure never fired - there was no build "
+        "failure to log, so the WARNING assertion below proves nothing"
+    )
     assert arena_warnings, (
         "augment name-map build failure is invisible - it is only logged at "
         "DEBUG, so no operator, alert, or health surface ever sees it"
