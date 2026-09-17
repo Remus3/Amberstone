@@ -16,7 +16,8 @@
    icon pipeline, which can run while RC is up, so absence is a failure state,
    not a design state: not cached, retried after the backoff.
 4. minimap_identity._masked_template re-read an unreadable icon on every call.
-   Now gated per icon stem.
+   Now gated per icon FILE PATH (one gate per path, shared by every template
+   size); the template cache itself is keyed by (stem, size).
 5. replay_history._load_champ_index raised AttributeError on non-object JSON
    (the data.get sat outside the try) and treated an empty index as loaded, so
    match_detail cached name-less results.
@@ -200,6 +201,46 @@ def test_priors_file_landing_inside_the_backoff_is_read_without_network(
         encoding="utf-8")
     assert aes.get_priors("mayhem").win_rate(7) == 0.6
     assert net.calls == 1
+
+
+def test_priors_corrupt_snapshot_inside_the_backoff_does_not_pay_network(
+    tmp_path, monkeypatch, clock,
+):
+    """RM-455: the INNER backoff check in _refresh_priors. A present-but-corrupt
+    snapshot landing inside the window moves the mtime, so get_priors misses
+    its cache and the corrupt file falls through towards a re-fetch; only the
+    inner check keeps that fall-through off the network until the window
+    ends."""
+    ds = _point_aes(tmp_path, monkeypatch)
+    net = _Net(_PRIORS_PAYLOAD)
+    monkeypatch.setattr(aes, "_http_get_json", net)
+    assert not aes.get_priors("mayhem").has_data
+    assert net.calls == 1
+    (ds / _PATCH / "mayhem_augment_stats.json").write_text(
+        json.dumps({"rc_patch": _PATCH, "augments": {}}), encoding="utf-8")
+    clock.advance(aes._HTTP_TIMEOUT_S + 5.0)
+    assert not aes.get_priors("mayhem").has_data
+    assert net.calls == 1, "a corrupt snapshot inside the backoff paid an HTTP attempt"
+    net.fail = False
+    clock.advance(_PAST_BACKOFF)
+    assert aes.get_priors("mayhem").win_rate(1088) == 0.5
+    assert net.calls == 2
+
+
+def test_meta_corrupt_snapshot_inside_the_backoff_does_not_pay_network(
+    tmp_path, monkeypatch, clock,
+):
+    """RM-455 sibling: the same inner check in _refresh_meta."""
+    ds = _point_aes(tmp_path, monkeypatch)
+    net = _Net(_CHERRY_PAYLOAD)
+    monkeypatch.setattr(aes, "_http_get", net)
+    assert not aes.get_augment_meta().has_data
+    assert net.calls == 1
+    (ds / _PATCH / "cherry_augments.json").write_text(
+        json.dumps({"rc_patch": _PATCH, "augments": {}}), encoding="utf-8")
+    clock.advance(aes._HTTP_TIMEOUT_S + 5.0)
+    assert not aes.get_augment_meta().has_data
+    assert net.calls == 1, "a corrupt snapshot inside the backoff paid an HTTP attempt"
 
 
 def test_meta_network_failure_is_retried_after_the_backoff(
@@ -480,6 +521,29 @@ def test_missing_category_folder_is_not_cached_and_recovers(
     assert vtm._atlas("items") == {"Thornmail": "img:Thornmail"}
     assert "items" in vtm._ATLAS_CACHE
     assert len(_warnings(caplog, vtm._log.name)) == 1
+
+
+@pytest.mark.parametrize("make_dir, expected", [
+    (False, "category folder missing"),
+    (True, "no loadable icons"),
+], ids=["absent", "empty"])
+def test_atlas_failure_warning_names_the_folder_state(
+    make_dir, expected, tmp_path, monkeypatch, caplog, fake_cv,
+):
+    """RM-455: the explicit missing-folder raise in _atlas. Without it an
+    absent folder still fails (glob of a missing dir yields nothing), so the
+    ONLY thing the branch buys is the diagnosis: an operator reading the log
+    must be able to tell a folder that does not exist from one that exists
+    and holds no loadable icon. Pinning the warning is what kills the
+    branch-removed mutant."""
+    folder = tmp_path / "items"
+    if make_dir:
+        folder.mkdir()
+    monkeypatch.setitem(vtm._CATEGORY_DIRS, "items", folder)
+    caplog.set_level(logging.DEBUG)
+    assert vtm._atlas("items") == {}
+    warns = _warnings(caplog, vtm._log.name)
+    assert len(warns) == 1 and expected in warns[0], warns
 
 
 def test_unknown_category_and_absent_opencv_stay_cached(monkeypatch):

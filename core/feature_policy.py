@@ -87,6 +87,18 @@ _SR_DISABLED_PAYLOAD = {
     "win_pct": None,
 }
 
+
+def _disabled_payload_for(mode: str) -> dict:
+    """The neutral disabled placeholder for an SR-family artifact, carrying
+    THAT artifact's ``mode`` discriminator (RM-292a).
+
+    ``core.coaching_payload.validate_coaching_payload`` dispatches on
+    ``mode``: the SR payload's "game" routed a disabled aram / arena / brawl
+    artifact to SrPayload. A fresh dict per call, so no write can mutate the
+    shared SR constant."""
+    return {**_SR_DISABLED_PAYLOAD, "mode": mode}
+
+
 _TFT_COACHING_DISABLED_PAYLOAD = {
     "mode": "tft",
     "action": "COACHING DISABLED",
@@ -412,11 +424,11 @@ def write_disabled_placeholder(mode: str, feature: Optional[str] = None,
         if mode_key == "sr":
             _write_json(_sr, _SR_DISABLED_PAYLOAD)
         elif mode_key == "aram":
-            _write_json(_data / "aram_coaching_data.json", _SR_DISABLED_PAYLOAD)
+            _write_json(_data / "aram_coaching_data.json", _disabled_payload_for("aram"))
         elif mode_key == "arena":
-            _write_json(_data / "arena_coaching_data.json", _SR_DISABLED_PAYLOAD)
+            _write_json(_data / "arena_coaching_data.json", _disabled_payload_for("arena"))
         elif mode_key == "brawl":
-            _write_json(_data / "brawl_coaching_data.json", _SR_DISABLED_PAYLOAD)
+            _write_json(_data / "brawl_coaching_data.json", _disabled_payload_for("brawl"))
         elif mode_key == "tft":
             if feature is None or feature == "live_coaching":
                 _write_json(_data / "tft_coaching_data.json",

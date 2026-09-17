@@ -74,6 +74,40 @@ class TestDisabledPlaceholders(unittest.TestCase):
         self.assertTrue(p.exists())
         self.assertEqual(self._read(p).get("action"), "COACHING DISABLED")
 
+    # -- Mode discriminator (RM-292a) ---------------------------------------
+
+    def test_each_disabled_artifact_carries_its_own_mode_discriminator(self):
+        """RM-292(a): aram/arena/brawl placeholders used to be written with the
+        SR payload verbatim, whose ``mode`` is "game", so
+        validate_coaching_payload dispatched a disabled ARAM artifact to
+        SrPayload. Each artifact must resolve to ITS OWN model."""
+        from core.coaching_payload import (
+            _MODE_TO_MODEL, AramPayload, ArenaPayload, BrawlPayload,
+            SrPayload, validate_coaching_payload,
+        )
+        cases = [
+            ("sr", self._td / "coaching_data.json", SrPayload),
+            ("aram", self._td / "data" / "aram_coaching_data.json", AramPayload),
+            ("arena", self._td / "data" / "arena_coaching_data.json", ArenaPayload),
+            ("brawl", self._td / "data" / "brawl_coaching_data.json", BrawlPayload),
+        ]
+        for mode, path, model in cases:
+            with self.subTest(mode=mode):
+                write_disabled_placeholder(mode, artifact_root=self._td)
+                content = self._read(path)
+                self.assertIs(_MODE_TO_MODEL.get(content.get("mode")), model)
+                self.assertTrue(validate_coaching_payload(content))
+                self.assertEqual(content.get("action"), "COACHING DISABLED")
+        self.assertEqual(self._read(self._td / "data" / "aram_coaching_data.json")["mode"], "aram")
+
+    def test_disabled_payload_writes_do_not_share_one_mutable_dict(self):
+        """A per-mode payload built by mutating the shared SR dict would leak
+        the last written mode into every later write."""
+        write_disabled_placeholder("brawl", artifact_root=self._td)
+        write_disabled_placeholder("sr", artifact_root=self._td)
+        self.assertEqual(self._read(self._td / "coaching_data.json")["mode"], "game")
+        self.assertEqual(fp._SR_DISABLED_PAYLOAD["mode"], "game")
+
     # -- TFT independence ---------------------------------------------------
 
     def test_tft_live_coaching_writes_only_coaching_artifact(self):
