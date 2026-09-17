@@ -13,8 +13,11 @@ on every ephemeral spawn. It now rejects a non-positive cap rather than
 sweeping on it, matching `core/log_retention._validate_policy` (LEDGER 1200).
 """
 import os
+import shutil
 import sys
+import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -23,6 +26,59 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agents._supervisor_ephemeral import TASK_LOG_MAX_AGE_DAYS, prune_task_logs
 from tests._replace_faults import scoped_path_fault
+
+
+@contextmanager
+def _glob_raises_under(root):
+    """Make ``Path.glob`` raise for paths at or under ``root``, and only there.
+
+    RM-469. ``monkeypatch.setattr(Path, "glob", boom)`` patches the CLASS, so
+    while it is armed EVERY Path instance in the process hits the raiser - a
+    background thread's included. The shim below is scoped on the path the
+    method is called on, and the delegation is PROVEN rather than asserted in
+    prose: on entry, inside the armed window, a control glob runs in a fresh
+    directory outside ``root`` and must return the real listing.
+
+    ``tests/_replace_faults.scoped_path_fault`` cannot serve here - its
+    ``_PATH_NAMES`` whitelist carries no ``glob`` entry, and that module is
+    read-only for this row.
+
+    Yields a one-key record whose ``n`` counts in-scope calls, so the caller
+    can tell "the code under test never globbed" apart from "the shim was
+    never installed".
+    """
+    root = Path(root).resolve()
+    real = Path.__dict__["glob"]
+    rec = {"n": 0}
+
+    def _scoped(self, *a, **kw):
+        try:
+            here = Path(self).resolve()
+            under = here == root or root in here.parents
+        except OSError:  # pragma: no cover - unresolvable path is never ours
+            under = False
+        if under:
+            rec["n"] += 1
+            raise AssertionError("filesystem touched before the policy check")
+        return real(self, *a, **kw)
+
+    Path.glob = _scoped
+    try:
+        control = Path(tempfile.mkdtemp(prefix="rm469_glob_control_"))
+        try:
+            with open(control / "probe.txt", "wb") as fh:
+                fh.write(b"rm469-control")
+            names = sorted(p.name for p in control.glob("*.txt"))
+            if names != ["probe.txt"]:
+                raise AssertionError(
+                    f"Path.glob outside {root} did not delegate to the real "
+                    f"method (saw {names})"
+                )
+        finally:
+            shutil.rmtree(control, ignore_errors=True)
+        yield rec
+    finally:
+        Path.glob = real
 
 
 def _aged(path: Path, days: float) -> None:
@@ -80,15 +136,21 @@ def test_prune_rejects_non_positive_age_cap(tmp_path, bad_cap):
     assert old.exists(), "a rejected policy still deleted an aged log"
 
 
-def test_prune_rejects_before_touching_the_filesystem(tmp_path, monkeypatch):
+def test_prune_rejects_before_touching_the_filesystem(tmp_path):
     """The guard runs ahead of the is_dir()/glob work, so a bad cap is
     rejected even when the log root does not exist - the missing-dir early
     return must not be able to mask the policy error."""
-    def boom(*a, **k):
-        raise AssertionError("filesystem touched before the policy check")
-    monkeypatch.setattr(Path, "glob", boom)
-    with pytest.raises(ValueError):
-        prune_task_logs(log_root=tmp_path / "absent", max_age_days=0)
+    with _glob_raises_under(tmp_path) as rec:
+        with pytest.raises(ValueError):
+            prune_task_logs(log_root=tmp_path / "absent", max_age_days=0)
+        assert rec["n"] == 0, "the policy check ran AFTER the glob"
+        # Positive control, still inside the armed window: the raiser IS
+        # installed and IS in scope for the very path prune_task_logs would
+        # have globbed. Without it a shim that never installed at all reads
+        # exactly like a guard that rejected first.
+        with pytest.raises(AssertionError):
+            list((tmp_path / "absent").glob("*"))
+    assert rec["n"] == 1, "the in-scope positive control never reached the shim"
 
 
 def test_prune_accepts_the_shipped_default_and_the_boundary(tmp_path):
