@@ -9,6 +9,8 @@ import pytest
 from win32_atomic_io import atomic_write_bytes, atomic_write_json, atomic_write_text
 from win32_atomic_io import _atomic
 
+from _fault_scope import record_sleeps, scoped_os_fault, scoped_path_fault
+
 
 def _names_in(directory):
     return sorted(p.name for p in directory.iterdir())
@@ -81,49 +83,53 @@ def test_overwrite_replaces_previous_content_entirely(tmp_path):
     assert json.loads(target.read_bytes().decode("utf-8")) == {"short": 1}
 
 
-def test_scratch_file_is_not_left_behind_when_the_write_raises(tmp_path, monkeypatch):
+def test_scratch_file_is_not_left_behind_when_the_write_raises(tmp_path):
     """Exhausting the replace retries must re-raise AND remove the scratch
     file. A per-writer scratch name is never reused, so an orphan would be
     unbounded litter rather than a file the next write overwrites.
     """
     target = tmp_path / "victim.json"
     target.write_bytes(b"{}")
-    monkeypatch.setattr(_atomic.time, "sleep", lambda _s: None)
 
-    def _always_denied(src, dst):
+    def _always_denied(real, src, dst, *a, **kw):
         raise PermissionError(5, "Access is denied")
 
-    monkeypatch.setattr(_atomic.os, "replace", _always_denied)
-    with pytest.raises(PermissionError):
-        atomic_write_json(target, {"new": True})
+    with record_sleeps(_atomic.time) as slept, \
+            scoped_os_fault(_atomic.os, "replace", tmp_path, _always_denied) as rec:
+        with pytest.raises(PermissionError):
+            atomic_write_json(target, {"new": True})
 
+    assert rec.attempts >= 1, "the injected replace denial never fired"
+    assert slept, "the retry backoff never slept - the fault missed the retry loop"
     assert _names_in(tmp_path) == ["victim.json"]
     assert not any(p.suffix == ".tmp" for p in tmp_path.iterdir())
     assert target.read_bytes() == b"{}"
 
 
-def test_scratch_file_is_not_left_behind_when_the_encode_write_raises(tmp_path, monkeypatch):
+def test_scratch_file_is_not_left_behind_when_the_encode_write_raises(tmp_path):
     target = tmp_path / "victim.bin"
     real_replace = os.replace
 
-    def _boom(self, data):
+    def _boom(real, self, data, *a, **kw):
         raise OSError(28, "No space left on device")
 
-    monkeypatch.setattr(_atomic.Path, "write_bytes", _boom)
-    with pytest.raises(OSError):
-        atomic_write_bytes(target, b"data")
+    with scoped_path_fault(_atomic.Path, "write_bytes", tmp_path, _boom) as rec:
+        with pytest.raises(OSError):
+            atomic_write_bytes(target, b"data")
+    assert rec.attempts >= 1, "the injected ENOSPC never fired"
     assert list(tmp_path.iterdir()) == []
     assert os.replace is real_replace
 
 
-def test_scratch_file_is_not_left_behind_on_keyboard_interrupt(tmp_path, monkeypatch):
+def test_scratch_file_is_not_left_behind_on_keyboard_interrupt(tmp_path):
     """BaseException, not Exception - a Ctrl-C mid-write must not litter."""
     target = tmp_path / "victim.bin"
 
-    def _interrupt(src, dst):
+    def _interrupt(real, src, dst, *a, **kw):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(_atomic.os, "replace", _interrupt)
-    with pytest.raises(KeyboardInterrupt):
-        atomic_write_bytes(target, b"data")
+    with scoped_os_fault(_atomic.os, "replace", tmp_path, _interrupt) as rec:
+        with pytest.raises(KeyboardInterrupt):
+            atomic_write_bytes(target, b"data")
+    assert rec.attempts >= 1, "the injected KeyboardInterrupt never fired"
     assert list(tmp_path.iterdir()) == []

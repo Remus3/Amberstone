@@ -295,17 +295,57 @@ def _install_fake_websockets(monkeypatch, connect):
     monkeypatch.setitem(sys.modules, "websockets", module)
 
 
-def _record_backoff_delays(monkeypatch, bus, stop_after):
+def _assert_wait_for_delegates_off_target(delays):
+    """Armed control for the task-scoped ``asyncio.wait_for`` fake (RM-469).
+
+    Runs INSIDE the patched window, on a different task and a different loop
+    thread: the real ``wait_for`` must complete normally and must not leave a
+    delay in the recorded list. Widen the shim past the bus task and this is
+    what fails first.
+    """
+    async def _control():
+        await asyncio.wait_for(asyncio.sleep(0), timeout=5.0)
+        return True
+
+    before = len(delays)
+    try:
+        ok = run_coro(_control(), timeout=5.0)
+    except TimeoutError as exc:
+        raise AssertionError(
+            "patched asyncio.wait_for did not delegate outside the bus task"
+        ) from exc
+    if ok is not True or len(delays) != before:
+        raise AssertionError(
+            "patched asyncio.wait_for recorded a delay for a task that is not "
+            "the bus - the fake is not task-scoped"
+        )
+
+
+def _record_backoff_delays(monkeypatch, bus, stop_after, target):
     """Capture every backoff timeout and stop the bus after ``stop_after``.
 
     Patches ``asyncio.wait_for``, which run() uses ONLY for the interruptible
     backoff sleep - the read loop races with ``asyncio.wait`` instead, so this
-    does not touch the read path. Nothing else in this test file may use
-    wait_for while the patch is live.
+    does not touch the read path.
+
+    RM-469: ``asyncio`` here is the ONE module object every importer in the
+    process shares, so an unconditional fake makes EVERY ``wait_for`` in the
+    process raise TimeoutError instantly - other threads' event loops included.
+    The fake below is TASK-scoped: it fires only for the task driving
+    ``target`` (``run_coro`` wraps that coroutine in a Task via
+    ``run_until_complete``) and delegates every other caller to the real
+    ``asyncio.wait_for`` captured before patching. The control asserts that
+    delegation from inside the armed window.
+
+    ``target`` must be the ``bus.run()`` coroutine the caller is about to run.
     """
     delays = []
+    real_wait_for = asyncio.wait_for
 
     async def fake_wait_for(awaitable, timeout):
+        task = asyncio.current_task()
+        if task is None or task.get_coro() is not target:
+            return await real_wait_for(awaitable, timeout)
         delays.append(timeout)
         close = getattr(awaitable, "close", None)
         if close is not None:
@@ -315,6 +355,7 @@ def _record_backoff_delays(monkeypatch, bus, stop_after):
         raise TimeoutError
 
     monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
+    _assert_wait_for_delegates_off_target(delays)
     return delays
 
 
@@ -370,9 +411,10 @@ class TestTransportLifecycle:
         _install_fake_websockets(
             monkeypatch, lambda *a, **k: _FakeConnection(_ScriptedSocket()),
         )
-        delays = _record_backoff_delays(monkeypatch, bus, stop_after=12)
+        target = bus.run()
+        delays = _record_backoff_delays(monkeypatch, bus, stop_after=12, target=target)
 
-        run_coro(bus.run(), timeout=8.0)
+        run_coro(target, timeout=8.0)
 
         assert delays[:6] == [1.0, 2.0, 5.0, 10.0, 30.0, 30.0]
         assert delays[-1] == 30.0
@@ -389,9 +431,10 @@ class TestTransportLifecycle:
         _install_fake_websockets(
             monkeypatch, lambda *a, **k: _FakeConnection(_ScriptedSocket()),
         )
-        delays = _record_backoff_delays(monkeypatch, bus, stop_after=4)
+        target = bus.run()
+        delays = _record_backoff_delays(monkeypatch, bus, stop_after=4, target=target)
 
-        run_coro(bus.run(), timeout=8.0)
+        run_coro(target, timeout=8.0)
 
         assert delays == [1.0, 1.0, 1.0, 1.0]
 
@@ -403,8 +446,9 @@ class TestTransportLifecycle:
             raise OSError("connection refused")
 
         _install_fake_websockets(monkeypatch, refuse)
-        delays = _record_backoff_delays(monkeypatch, bus, stop_after=5)
+        target = bus.run()
+        delays = _record_backoff_delays(monkeypatch, bus, stop_after=5, target=target)
 
-        run_coro(bus.run(), timeout=8.0)
+        run_coro(target, timeout=8.0)
 
         assert delays == [1.0, 2.0, 5.0, 10.0, 30.0]
