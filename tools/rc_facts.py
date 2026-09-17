@@ -1016,6 +1016,17 @@ def invocation_log_path() -> Path:
     return _ROOT / "ops" / "runtime" / "hook_invocations.jsonl"
 
 
+def skipped_invocation_log_path(log: Path) -> Path:
+    """Sidecar for fires `record_invocation` REFUSED (RM-459), beside `log`.
+
+    Derived from the resolved hook log, so `RC_HOOK_LOG` moves it too. It is a
+    separate file on purpose: the responder dry cycle reads only the hook log,
+    where a null-session marker row would be a violation.
+    """
+    log = Path(log)
+    return log.with_name(log.stem + ".skipped" + log.suffix)
+
+
 def _hook_source(payload: dict | None) -> str:
     """The payload's `source` field, bounded, defaulting EXPLICITLY.
 
@@ -1159,6 +1170,25 @@ def _trim_invocation_log(p: Path) -> None:
         pass
 
 
+def _record_skipped_invocation(event: str, path: Path | None, stdin_state: str) -> None:
+    """Append one marker row for a refused fire. Carries no `session` key, so it
+    cannot be mistaken for a hook row. Never raises."""
+    try:
+        log = Path(path) if path is not None else invocation_log_path()
+        p = skipped_invocation_log_path(log)
+        rec = {
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "event": str(event)[:_FIELD_MAX],
+            "reason": "tty-no-payload",
+            "stdin": str(stdin_state)[:_FIELD_MAX],
+            "pid": os.getpid(),
+        }
+        _append_atomic(p, (json.dumps(rec, separators=(",", ":")) + "\n").encode("utf-8"))
+        _trim_invocation_log(p)
+    except Exception:  # noqa: BLE001 - a hook must never fail the turn
+        pass
+
+
 def record_invocation(
     event: str,
     payload: dict | None = None,
@@ -1187,6 +1217,10 @@ def record_invocation(
             # by hand. Such a row is a VIOLATION to the responder dry cycle, so
             # it is not written. The other payload-less states still record:
             # they diagnose a real misfire.
+            # RM-459: not a SILENT drop. The refusal leaves a marker in the
+            # sidecar, so a real fire that ever arrived this way is still
+            # visible after the fact without reddening the dry cycle.
+            _record_skipped_invocation(event, path, stdin_state)
             return
         p = Path(path) if path is not None else invocation_log_path()
         declared = payload.get("hook_event_name") if isinstance(payload, dict) else None

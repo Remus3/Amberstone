@@ -73,6 +73,39 @@ _SUITE_LOG_DIR = Path(tempfile.mkdtemp(prefix="rc-suite-logs-"))
 # resolves to this per-worker tmp file. A test that needs its own log still
 # passes `path=` or its own env. Guarded by tests/test_hook_log_live_isolation.py.
 os.environ["RC_HOOK_LOG"] = str(_SUITE_LOG_DIR / "hook_invocations.jsonl")
+
+# RM-383: `core/vision_token.py` raises at IMPORT when neither `RC_VISION_TOKEN`
+# nor `config/vision_token.txt` exists, and that file is gitignored, so every
+# worktree and hermetic checkout went red at collection. A throwaway default is
+# applied ONLY when BOTH are absent. Never when the file exists: the env var
+# BEATS the file in the resolver, so a default in the primary checkout would
+# swap the operator's real token for a dummy. The value is deliberately not
+# 32-hex shaped (same fence as tests/test_ci_vision_token_env.py). The resolver
+# itself is untouched, so the real runtime path still fails loud.
+# Guarded by tests/test_conftest_vision_token_default.py.
+_VISION_TOKEN_TEST_DEFAULT = "pytest-dummy-not-a-real-token-loopback-only"
+_VISION_TOKEN_CONFIG_PATH = _REPO_ROOT / "config" / "vision_token.txt"
+
+
+def _apply_vision_token_test_default(environ, config_path) -> bool:
+    """Set the test default in ``environ`` iff env AND file are both absent.
+
+    A blank env value counts as absent, matching `core.vision_token._resolve`.
+    Any config file that EXISTS blocks the default, whatever it holds: an empty
+    or unreadable operator file is the operator's problem to see, not ours to
+    paper over. Returns whether the default was applied. Never writes a file.
+    """
+    current = environ.get("RC_VISION_TOKEN")
+    if current and current.strip():
+        return False
+    if Path(config_path).exists():
+        return False
+    environ["RC_VISION_TOKEN"] = _VISION_TOKEN_TEST_DEFAULT
+    return True
+
+
+_VISION_TOKEN_DEFAULT_APPLIED = _apply_vision_token_test_default(os.environ, _VISION_TOKEN_CONFIG_PATH)
+
 _REAL_LOG_DIR = _REPO_ROOT / "logs"
 
 
