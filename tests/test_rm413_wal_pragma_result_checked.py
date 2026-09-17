@@ -269,21 +269,52 @@ def _literal_sql(arg: ast.expr) -> str | None:
     if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
         return arg.value
     if isinstance(arg, ast.JoinedStr):
-        return "?".join(v.value for v in arg.values
-                        if isinstance(v, ast.Constant) and isinstance(v.value, str))
+        return "".join(_fstring_part(v) for v in arg.values)
     return None
+
+
+def _fstring_part(part: ast.expr) -> str:
+    """One f-string component as SQL text.
+
+    RM-465: a replacement field that formats a string CONSTANT (or a nested
+    f-string) with no conversion and no format spec contributes its own text,
+    so ``f"PRAGMA {'journal_mode'}=WAL"`` reads ``journal_mode=``. Anything
+    else is a placeholder, as before.
+    """
+    if isinstance(part, ast.Constant) and isinstance(part.value, str):
+        return part.value
+    if isinstance(part, ast.FormattedValue) and part.conversion == -1 and part.format_spec is None:
+        inner = _literal_sql(part.value)
+        if inner is not None:
+            return inner
+    return "?"
+
+
+def _binds_only_underscore(target: ast.expr) -> bool:
+    """True when every name the target binds is ``_`` (RM-465: ``_, = ...``,
+    ``[_] = ...``, ``*_, = ...``)."""
+    if isinstance(target, ast.Name):
+        return target.id == "_"
+    if isinstance(target, ast.Starred):
+        return _binds_only_underscore(target.value)
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return bool(target.elts) and all(_binds_only_underscore(e) for e in target.elts)
+    return False
 
 
 def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     """The value expression of a statement that throws its result away.
 
-    A bare expression statement, or an assignment whose every target is ``_``
-    (RM-457: ``_ = conn.execute(...)`` names the result only to drop it).
+    A bare expression statement, or an assignment whose every target binds only
+    ``_`` (RM-457: ``_ = conn.execute(...)`` names the result only to drop it;
+    RM-465: the annotated ``_: T = ...`` and unpacking ``_, = ...`` spellings).
     """
     if isinstance(node, ast.Expr):
         return node.value
     if (isinstance(node, ast.Assign) and node.targets
-            and all(isinstance(t, ast.Name) and t.id == "_" for t in node.targets)):
+            and all(_binds_only_underscore(t) for t in node.targets)):
+        return node.value
+    if isinstance(node, ast.AnnAssign) and node.value is not None and _binds_only_underscore(node.target):
         return node.value
     return None
 
@@ -358,6 +389,88 @@ def test_guard_positive_control_rm457_shapes(bad, good):
     assert _discarded_journal_pragmas(good) == [], good
 
 
+# RM-465: three more shapes the RM-457 matcher did not see - an annotated
+# discard, a tuple / list / starred target that binds only ``_``, and a pragma
+# NAME built inside an f-string from constant parts. Each positive control is
+# paired with a negative control that keeps the answer.
+_RM465_SHAPES = [
+    (
+        "_: object = conn.execute('PRAGMA journal_mode=WAL')\n",
+        "jm: object = conn.execute('PRAGMA journal_mode=WAL')\n",
+    ),
+    (
+        "_: tuple = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+        "row: tuple = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+    ),
+    (
+        "_, = conn.execute('PRAGMA journal_mode=WAL')\n",
+        "mode, = conn.execute('PRAGMA journal_mode=WAL')\n",
+    ),
+    (
+        "(_,) = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+        "(mode,) = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+    ),
+    (
+        "[_] = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+        "[mode] = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+    ),
+    (
+        "*_, = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+        "*modes, = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA {'journal_mode'}=WAL\")\n",
+        "row = conn.execute(f\"PRAGMA {'journal_mode'}=WAL\").fetchone()\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA journal{'_mode'} = {mode}\")\n",
+        "row = conn.execute(f\"PRAGMA journal{'_mode'} = {mode}\").fetchone()\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA {f'{\"journal\"}_mode'}=WAL\")\n",
+        "row = conn.execute(f\"PRAGMA {f'{\"journal\"}_mode'}=WAL\").fetchone()\n",
+    ),
+]
+_RM465_IDS = ["annotated-cursor", "annotated-row", "tuple-target", "paren-tuple-target", "list-target",
+              "starred-target", "fstring-name", "fstring-split-name", "fstring-nested-name"]
+
+
+@pytest.mark.parametrize("bad, good", _RM465_SHAPES, ids=_RM465_IDS)
+def test_guard_positive_control_rm465_shapes(bad, good):
+    assert _discarded_journal_pragmas(bad) == [1], bad
+    assert _discarded_journal_pragmas(good) == [], good
+
+
+@pytest.mark.parametrize("bad", [b for b, _ in _RM465_SHAPES], ids=_RM465_IDS)
+def test_scan_reports_each_rm465_shape_through_the_real_path(bad):
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/seeded.py", bad)])
+    assert offenders == ["core/seeded.py:1"]
+    with pytest.raises(AssertionError, match="discarded at"):
+        _assert_scan(sites, offenders)
+
+
+def test_scan_prefilter_is_case_blind():
+    """RM-465: a file that spells the pragma only in upper case is scanned."""
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/upper.py", "conn.execute('PRAGMA JOURNAL_MODE=WAL')\n")])
+    assert offenders == ["core/upper.py:1"]
+
+
+def test_guard_rm465_negative_controls_stay_clean():
+    """A partly-kept target, an annotation with no value and a non-journal
+    f-string pragma name are not findings."""
+    clean = (
+        "_, mode = conn.execute('PRAGMA journal_mode=WAL').fetchone(), 1\n"
+        "_: object\n"
+        "_: object = conn.execute(f\"PRAGMA {'synchronous'}=NORMAL\")\n"
+        "(_, _), mode = ((1, 2), conn.execute('PRAGMA journal_mode=WAL').fetchone())\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
 def test_guard_rm457_negative_controls_stay_clean():
     """Non-journal pragmas and non-pragma f-strings are not findings."""
     clean = (
@@ -378,7 +491,10 @@ def _scan(files) -> tuple[int, list[str]]:
     for rel, text in files:
         if "tests" in rel.split("/"):
             continue
-        if "journal_mode" not in text:
+        # RM-465: the pre-filter is case-blind and needs only "journal", so a
+        # file spelling JOURNAL_MODE or splitting the name across f-string
+        # fields still reaches the matcher.
+        if "journal" not in text.lower():
             continue
         checked_sites += len(_JOURNAL_RE.findall(text))
         try:
