@@ -15,6 +15,7 @@ never saw an in-scope call fails loudly unless ``expect_fire=False``.
 
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -22,7 +23,7 @@ from pathlib import Path
 import pytest
 
 import tests._replace_faults as rf
-from tests._replace_faults import scoped_path_fault
+from tests._replace_faults import scoped_fs_fault, scoped_path_fault
 
 _NAMES = ["unlink", "replace", "rename", "mkdir", "write_bytes", "write_text"]
 
@@ -124,6 +125,73 @@ def test_never_fired_is_loud_by_default(tmp_path):
 
 def test_expect_fire_false_allows_zero_in_scope_calls(tmp_path):
     with scoped_path_fault("unlink", tmp_path, _deny, expect_fire=False) as rec:
+        pass
+    assert rec.attempts == 0
+
+
+# --------------------------------------------------------------------------- #
+# Round 2: scoped_fs_fault("open") - os.open scoped on its PATH argument
+# --------------------------------------------------------------------------- #
+
+def _deny_open(real, path, flags, *a, **kw):
+    raise PermissionError(13, "injected", str(path))
+
+
+def _os_open_write(p: Path) -> None:
+    fd = os.open(p, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    try:
+        os.write(fd, b"x")
+    finally:
+        os.close(fd)
+
+
+def test_os_open_fault_bites_in_scope_and_delegates_outside(tmp_path):
+    real = os.open
+    outside = Path(tempfile.mkdtemp(prefix="rm464_open_outside_"))
+    try:
+        with scoped_fs_fault("open", tmp_path, _deny_open) as rec:
+            assert os.open is not real, "the shim was never installed"
+            with pytest.raises(PermissionError, match="injected"):
+                _os_open_write(tmp_path / "in.bin")
+            assert rec.attempts == 1
+            _os_open_write(outside / "out.bin")  # must NOT raise
+            assert (outside / "out.bin").read_bytes() == b"x"
+            assert rec.attempts == 1, "an out-of-scope open was counted as in scope"
+        after = os.open
+    finally:
+        os.open = real
+        shutil.rmtree(outside, ignore_errors=True)
+    assert after is real
+    assert not (tmp_path / "in.bin").exists()
+
+
+def test_os_open_restored_after_the_body_raises(tmp_path):
+    real = os.open
+    try:
+        with pytest.raises(RuntimeError, match="body failed"):
+            with scoped_fs_fault("open", tmp_path, _deny_open):
+                raise RuntimeError("body failed")
+        after = os.open
+    finally:
+        os.open = real
+    assert after is real
+
+
+def test_os_open_control_is_armed_against_an_unconditional_shim(tmp_path, monkeypatch):
+    real = os.open
+    monkeypatch.setattr(rf, "_fs_in_scope", lambda root, p: True)
+    try:
+        with pytest.raises(AssertionError, match="did not delegate"):
+            with scoped_fs_fault("open", tmp_path, _deny_open):
+                pass
+        after = os.open
+    finally:
+        os.open = real
+    assert after is real
+
+
+def test_os_open_expect_fire_false_allows_zero_in_scope_calls(tmp_path):
+    with scoped_fs_fault("open", tmp_path, _deny_open, expect_fire=False) as rec:
         pass
     assert rec.attempts == 0
 
