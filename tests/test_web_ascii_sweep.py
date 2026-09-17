@@ -394,7 +394,16 @@ _WEB = _REPO_ROOT / "web"
 # inside comments, which is the SWEPT half and does not reach this digest -
 # confirmed by running that per-file live-half comparison, not inferred from
 # the file list.
-_LIVE_HALF_DIGEST = "6886c75f942c613c639c038bc4e50436ee7b25140ed028d2c0de1384852bda9e"
+# RE-CAPTURED at RM-382 round 2 (2026-09-17), superseding the pre-public scrub
+# capture. Ordinary case: one LIVE web edit, no tokeniser change.
+# `_web_sources()` still returns 171. The drift is attributed, not inferred:
+# substituting the pre-edit web/legacy_index.html (73a0dcf00) back into the
+# digest reproduces the prior value exactly, so that one file is the whole
+# change - renderLcuPanel's relay-offline gate and rawPhase fallback, which
+# now read the null phase RM-382 emits instead of the retired truthy
+# 'Offline' / 'Unknown' sentinels. Pinned behaviourally by
+# tests/test_legacy_lcu_panel_phase_rm382.py.
+_LIVE_HALF_DIGEST = "97abbb4efd9bc0b631d5cfd0c190f5743c28d0c0eeafc3003b7746142d791ccf"
 
 
 def _web_sources() -> list[Path]:

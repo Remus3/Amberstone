@@ -343,7 +343,8 @@ class LcuPregame:
         champ-select logic with nothing to retry on.
 
         None rather than '' (lcu_postgame_collector._get_gameflow_phase)
-        or 'Unknown' (snapshot_shape.shape_snapshot) because it is the
+        or the truthy 'Unknown' that snapshot_shape.shape_snapshot used
+        to emit before RM-382 moved it to None too, because it is the
         value the live consumer contract in dashboard/_cs_retention.py
         already treats as "unknown, do not act on it": the *string*
         'None' is an explicit clear phase there, a Python None
