@@ -43,10 +43,11 @@ The predicate is NOT re-implemented here. ``lcu/lcu_pregame.py:96``
 body is not a phase name"), and lives in the same package - a near-copy is the
 ``feedback_resolver_fix_is_not_a_consumer_fix`` failure class.
 
-NOT in scope, recorded so a later pass does not read the omission as an
-oversight: the unguarded ``phase.decode()`` on the bytes branch is already
-filed as RM-293, and the ``else: "Unknown"`` branch is left exactly as it is -
-its truthiness is measured and filed separately rather than changed here.
+NOT in scope of RM-367, recorded so a later pass does not read the omission
+as an oversight: the unguarded ``phase.decode()`` on the bytes branch was filed
+as RM-293(b), and the ``else: "Unknown"`` branch was filed as RM-382. Both
+were later closed to the same falsy no-phase; see
+``test_lcu_phase_sentinels_rm382.py``.
 
 All authored content here is 7-bit ASCII.
 """
@@ -147,14 +148,14 @@ class EmptyGameflowBodyIsNotAPhaseTest(unittest.TestCase):
         """
         self.assertEqual(_phase_of('"None"'), "None")
 
-    def test_unreadable_body_type_still_reports_Unknown(self):
-        """The ``else`` branch is deliberately NOT changed by this row.
+    def test_unreadable_body_type_is_no_phase(self):
+        """The ``else`` branch was left alone by RM-367 and closed by RM-382.
 
-        A non-str/non-bytes body (a failed request answering None) keeps
-        reporting "Unknown". Its truthiness is a separate question, measured
-        and filed rather than folded into this fix.
+        A non-str/non-bytes body (a failed request answering None) reported
+        the truthy "Unknown" until RM-382 joined it to the same falsy
+        no-phase; ``test_lcu_phase_sentinels_rm382.py`` carries that row.
         """
-        self.assertEqual(_phase_of(None), "Unknown")
+        self.assertIsNone(_phase_of(None))
 
     # -- the breadcrumb follows the decision ----------------------------
 
