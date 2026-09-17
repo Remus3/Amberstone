@@ -42,9 +42,9 @@ import scripts.merge_refresh_builds as mrb
 import tools.gen_state_schema as gss
 import tools.hz_mismatch_diagnose as hmd
 
+from tests._replace_faults import scoped_path_fault
+
 _REAL_WRITE_BYTES = pathlib.Path.write_bytes
-_REAL_WRITE_TEXT = pathlib.Path.write_text
-_REAL_REPLACE = pathlib.Path.replace
 
 
 class _Fault:
@@ -52,43 +52,51 @@ class _Fault:
         self.fired = 0
 
 
+# RM-464: a ``.tmp`` NAME is not a scope - every atomic writer in the tree
+# writes a ``*.tmp`` scratch, so a class-level patch keyed on the suffix alone
+# faulted any such write anywhere in the process. Both arms are now scoped to
+# ``tmp_path`` by scoped_path_fault (armed control outside it); the ``.tmp``
+# check still selects WHICH in-scope write fails. ``expect_fire=False`` because
+# each test asserts ``fault.fired`` itself and a writer uses only one of
+# write_bytes / write_text.
+
 @pytest.fixture
-def write_fails(monkeypatch):
+def write_fails(tmp_path):
     """A temp-file write lands HALF its payload on disk, then raises."""
     fault = _Fault()
 
-    def _write_bytes(self, data):
+    def _write_bytes(real, self, data):
         if self.name.endswith(".tmp"):
             _REAL_WRITE_BYTES(self, data[: max(1, len(data) // 2)])
             fault.fired += 1
             raise OSError(28, "No space left on device (injected)")
-        return _REAL_WRITE_BYTES(self, data)
+        return real(self, data)
 
-    def _write_text(self, data, *args, **kwargs):
+    def _write_text(real, self, data, *args, **kwargs):
         if self.name.endswith(".tmp"):
             _REAL_WRITE_BYTES(self, data[: max(1, len(data) // 2)].encode("utf-8"))
             fault.fired += 1
             raise OSError(28, "No space left on device (injected)")
-        return _REAL_WRITE_TEXT(self, data, *args, **kwargs)
+        return real(self, data, *args, **kwargs)
 
-    monkeypatch.setattr(pathlib.Path, "write_bytes", _write_bytes)
-    monkeypatch.setattr(pathlib.Path, "write_text", _write_text)
-    return fault
+    with scoped_path_fault("write_bytes", tmp_path, _write_bytes, expect_fire=False), \
+            scoped_path_fault("write_text", tmp_path, _write_text, expect_fire=False):
+        yield fault
 
 
 @pytest.fixture
-def replace_fails(monkeypatch):
+def replace_fails(tmp_path):
     """The temp write succeeds; renaming it over the target raises."""
     fault = _Fault()
 
-    def _replace(self, target):
+    def _replace(real, self, target):
         if self.name.endswith(".tmp"):
             fault.fired += 1
             raise PermissionError(5, "Access is denied (injected)")
-        return _REAL_REPLACE(self, target)
+        return real(self, target)
 
-    monkeypatch.setattr(pathlib.Path, "replace", _replace)
-    return fault
+    with scoped_path_fault("replace", tmp_path, _replace, expect_fire=False):
+        yield fault
 
 
 @pytest.fixture(params=["write", "replace"])
