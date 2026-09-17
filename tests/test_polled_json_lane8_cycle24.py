@@ -52,6 +52,7 @@ import time
 import pytest
 
 from core import polled_json
+from tests._replace_faults import scoped_fs_fault
 
 
 # ---------------------------------------------------------------------------
@@ -218,11 +219,17 @@ def test_polled_json_file_snapshots_the_constructor_default(tmp_path):
 # W4 - a failed write must not leave its scratch file behind.
 # ---------------------------------------------------------------------------
 
-def _deny_replace(monkeypatch):
-    def always_denied(src, dst):
+def _deny_replace(monkeypatch, root):
+    """Deny os.replace for destinations under ``root`` only (RM-411).
+
+    polled_json.os is the process-wide os module; an unscoped deny would break
+    every other replace in the process while armed. The returned context
+    manager proves the scoping with a control replace outside ``root``.
+    """
+    def always_denied(real, src, dst, *a, **kw):
         raise PermissionError(13, "Access is denied")
-    monkeypatch.setattr(polled_json.os, "replace", always_denied)
     monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
+    return scoped_fs_fault("replace", root, always_denied)
 
 
 def _scratch_files(d):
@@ -235,8 +242,7 @@ def _scratch_files(d):
     ("atomic_write_bytes", b"blob"),
 ])
 def test_exhausted_retry_leaves_no_scratch_file(tmp_path, monkeypatch, writer, payload):
-    _deny_replace(monkeypatch)
-    with pytest.raises(PermissionError):
+    with _deny_replace(monkeypatch, tmp_path), pytest.raises(PermissionError):
         getattr(polled_json, writer)(tmp_path / "out.json", payload)
     assert _scratch_files(tmp_path) == [], "an exhausted retry orphaned its scratch file"
 

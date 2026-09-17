@@ -56,6 +56,7 @@ from agents import _supervisor_ephemeral as eph
 from agents import supervisor as sup_mod
 from agents.supervisor import Supervisor
 from tests._asyncio_isolation import run_coro as _run_coro
+from tests._replace_faults import scoped_fs_fault
 
 
 # ---------------------------------------------------------------------------
@@ -287,18 +288,22 @@ def test_refresh_lock_is_atomic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(common, "LOCKFILE", lock)
 
     calls: list[tuple[str, str]] = []
-    real_replace = common.os.replace
 
-    def _spy_replace(src, dst):
+    # RM-411: common.os is the process-wide os module. The spy records and
+    # delegates only for destinations under tmp_path, so another replace in
+    # the process can neither be disturbed nor land in `calls`.
+    def _spy_replace(real, src, dst, *a, **kw):
         calls.append((str(src), str(dst)))
-        return real_replace(src, dst)
+        return real(src, dst, *a, **kw)
 
-    monkeypatch.setattr(common.os, "replace", _spy_replace)
-    common.refresh_lock()
+    with scoped_fs_fault("replace", tmp_path, _spy_replace):
+        common.refresh_lock()
 
     # NEW behavior: the final move targets the lockfile via os.replace, and
     # the source is a distinct temp (never written directly to LOCKFILE).
     assert calls, "refresh_lock must finalize via os.replace (atomic write)"
+    # The spy saw only this test's own destinations - not the control replace.
+    assert all(tmp_path.resolve() in Path(d).resolve().parents for _, d in calls), calls
     src, dst = calls[-1]
     assert dst == str(lock)
     assert src != str(lock)

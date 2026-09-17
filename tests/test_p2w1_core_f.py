@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pytest
 from tests._asyncio_isolation import run_coro as _run_coro
+from tests._replace_faults import scoped_fs_fault
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -46,56 +47,51 @@ def test_atomic_write_json_retries_transient_permission_error(tmp_path, monkeypa
     from core import polled_json
 
     target = tmp_path / "out.json"
-    calls = {"n": 0}
-    real_replace = polled_json.os.replace
-
-    def flaky_replace(src, dst):
-        calls["n"] += 1
-        if calls["n"] <= 2:
+    # RM-411: polled_json.os IS the process-wide os module, so the fault is
+    # scoped to tmp_path and a control replace outside it must still succeed.
+    def flaky_replace(real, src, dst, *a, **kw):
+        if rec.attempts <= 2:
             raise PermissionError(13, "Access is denied")
-        return real_replace(src, dst)
+        return real(src, dst, *a, **kw)
 
-    monkeypatch.setattr(polled_json.os, "replace", flaky_replace)
     monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
 
-    polled_json.atomic_write_json(target, {"k": 1})
+    with scoped_fs_fault("replace", tmp_path, flaky_replace) as rec:
+        polled_json.atomic_write_json(target, {"k": 1})
 
-    assert calls["n"] == 3
+    assert rec.attempts == 3
     assert json.loads(target.read_text(encoding="utf-8")) == {"k": 1}
 
 
 def test_atomic_write_json_reraises_after_exhausted_retries(tmp_path, monkeypatch):
     from core import polled_json
 
-    def always_denied(src, dst):
+    def always_denied(real, src, dst, *a, **kw):
         raise PermissionError(13, "Access is denied")
 
-    monkeypatch.setattr(polled_json.os, "replace", always_denied)
     monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
 
-    with pytest.raises(PermissionError):
-        polled_json.atomic_write_json(tmp_path / "out.json", {"k": 1})
+    with scoped_fs_fault("replace", tmp_path, always_denied):
+        with pytest.raises(PermissionError):
+            polled_json.atomic_write_json(tmp_path / "out.json", {"k": 1})
 
 
 def test_atomic_write_text_retries_transient_permission_error(tmp_path, monkeypatch):
     from core import polled_json
 
     target = tmp_path / "trigger.txt"
-    calls = {"n": 0}
-    real_replace = polled_json.os.replace
 
-    def flaky_replace(src, dst):
-        calls["n"] += 1
-        if calls["n"] == 1:
+    def flaky_replace(real, src, dst, *a, **kw):
+        if rec.attempts == 1:
             raise PermissionError(13, "Access is denied")
-        return real_replace(src, dst)
+        return real(src, dst, *a, **kw)
 
-    monkeypatch.setattr(polled_json.os, "replace", flaky_replace)
     monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
 
-    polled_json.atomic_write_text(target, "restart")
+    with scoped_fs_fault("replace", tmp_path, flaky_replace) as rec:
+        polled_json.atomic_write_text(target, "restart")
 
-    assert calls["n"] == 2
+    assert rec.attempts == 2
     assert target.read_text(encoding="utf-8") == "restart"
 
 
