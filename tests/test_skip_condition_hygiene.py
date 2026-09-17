@@ -936,15 +936,19 @@ _UNKNOWN = object()
 _STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
 # RM-449: builtins that only re-shape a platform value. `len(sys.platform) > 0`
 # and `str(os.name) != "java"` are as constant as the bare reads they wrap.
-# RM-458: `bool`, `min`, `max` and `sorted` re-shape it just the same. `sorted`
-# is returned as a tuple because a list literal evaluates to one here.
+# RM-458: `bool`, `min` and `max` re-shape it just the same, and each returns
+# exactly the CPython value and type (a bool; an element of the argument).
+# `sorted` is DELIBERATELY NOT folded: CPython returns a list, and a list has no
+# faithful model here (list literals evaluate to tuples), so a tuple stand-in
+# made `sorted(os.name[:0]) != ()` fold False where Python says True - which
+# laundered a tracked-file DEFECT into CAPABILITY. Refuted round 2; removed,
+# not redesigned. Any future fold must return CPython's own type and repr.
 _WRAPPER_BUILTINS = {
     "len": len,
     "str": str,
     "bool": bool,
     "min": min,
     "max": max,
-    "sorted": lambda v: tuple(sorted(v)),
 }
 # RM-458: f-string conversions folded over a known str or int value (`!s`,
 # `!r`, `!a` and none), with a format spec that itself folds to a str. Keyword
@@ -1041,7 +1045,7 @@ def _host_eval(
             # `_Truth` is not an int, so a short-circuit result never folds.
             if isinstance(arg, (str, tuple, int)):
                 # min / max of an empty value raise ValueError; len / min /
-                # max / sorted of an int, or sorted over mixed types, raise
+                # max of an int, or min / max over mixed types, raise
                 # TypeError: both read as unresolved.
                 try:
                     return _WRAPPER_BUILTINS[node.func.id](arg)
@@ -3432,15 +3436,19 @@ def test_rm449_any_rebinding_of_a_builtin_wrapper_blocks_the_fold(form):
 # MEASURED at the RM-449 head: every probe below graded CAPABILITY - ACCEPTED,
 # not "neither accepted nor refused" as the filed row assumed. Each probe is
 # always true on both runners; its control differs only in a literal or slice
-# bound and genuinely differs per host, so it must stay CAPABILITY. Folding
-# was measured over a 4593-row generated corpus: 0 new acceptances, and the
-# real-tree verdicts are identical.
+# bound and genuinely differs per host, so it must stay CAPABILITY. Round 1
+# claimed 0 new acceptances and was REFUTED (the `sorted` fold, now removed).
+# Round 2, against c3cde5dc6 over 4865 rows: 6 acceptances new to their
+# spelling, every one with a base spelling already accepted - five are sound
+# (`bool(os.name[:0])` etc. really are False on both hosts), and one,
+# `max(str([])) != ")"`, inherits RM-449's `str` fold rendering a list literal
+# as a tuple, exactly as `str([]) != "()"` did before RM-458. Real-tree
+# verdicts are identical.
 _RM458_WRAPPED = {
     "bool_of_os_name": ("bool(os.name[:1])", "bool(os.name[2:])"),
     "bool_of_an_int": ("bool(len(os.name))", "bool(len(os.name[2:]))"),
     "min_of_os_name": ('min(os.name) != "z"', 'min(os.name) == "n"'),
     "max_of_os_name": ('max(os.name) != "a"', 'max(os.name) == "t"'),
-    "sorted_of_os_name": ('sorted(os.name) != ["z"]', 'sorted(os.name) == ["n", "t"]'),
     "fstring_of_os_name": ('f"{os.name}" != "java"', 'f"{os.name}" == "nt"'),
     "fstring_repr": ('f"{os.name!r}" != "java"', 'f"{os.name!r}" == "\'nt\'"'),
     "fstring_format_spec": ('f"{os.name:>8}" != "java"', 'f"{os.name:>8}" == "      nt"'),
@@ -3461,6 +3469,36 @@ def test_rm458_wrapped_constant_true_platform_check_is_refused(name):
 def test_rm458_wrapped_check_that_differs_by_host_stays_capability(name):
     _, control = _RM458_WRAPPED[name]
     assert _verdicts(_rm449_wrapped_source(control)) == [CAPABILITY], name
+
+
+# Round 2 refutation (verifier, db6c38bab): a tuple-modelled `sorted` folded
+# `sorted(os.name[:0]) != ()` to False where CPython says True, dropping the
+# tracked-file arm and grading this CAPABILITY. The fold was REMOVED; each of
+# these must keep the DEFECT it had before RM-458.
+_RM458_SORTED_REFUTATIONS = [
+    '(sorted(os.name[:0]) != () and not TR.exists()) or shutil.which("git") is None',
+    '(str(sorted(os.name[:0])) != "()" and not TR.exists()) or shutil.which("git") is None',
+    "(bool(sorted(os.name[:0])) or True) and not TR.exists()",
+    '(f"{sorted(os.name[:0])}" != "()" and not TR.exists()) or shutil.which("git") is None',
+]
+
+
+@pytest.mark.parametrize("condition", _RM458_SORTED_REFUTATIONS)
+def test_rm458_sorted_is_not_folded_so_a_tracked_arm_still_convicts(condition):
+    src = f"""
+import os
+import shutil
+import pytest
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]
+TR = ROOT / "core" / "match_db.py"
+@pytest.mark.skipif({condition}, reason="h")
+def test_x():
+    pass
+"""
+    findings = scan_source("tests/test_mutant.py", src)
+    assert [f.verdict for f in findings] == [DEFECT], condition
+    assert not any(_excused(f) for f in findings)
 
 
 def test_rm458_constant_fstring_disjunct_supplies_no_capability():
@@ -3496,7 +3534,7 @@ class T(unittest.TestCase):
     assert _verdicts(src) == [UNRESOLVED], name
 
 
-@pytest.mark.parametrize("builtin", ["bool", "min", "max", "sorted"])
+@pytest.mark.parametrize("builtin", ["bool", "min", "max"])
 def test_rm458_shadowed_wrapper_is_not_folded(builtin):
     """A module-bound wrapper is not the builtin; the shadow makes each probe
     genuinely differ by host, and the unshadowed probe is DEFECT alongside."""
@@ -3504,7 +3542,6 @@ def test_rm458_shadowed_wrapper_is_not_folded(builtin):
         "bool": ("bool(os.name[:1])", 'def bool(x):\n    return x == "n"\n'),
         "min": ('min(os.name) != "z"', 'def min(x):\n    return "z" if x == "nt" else x\n'),
         "max": ('max(os.name) != "a"', 'def max(x):\n    return "a" if x == "nt" else x\n'),
-        "sorted": ('sorted(os.name) != ["z"]', 'def sorted(x):\n    return ["z"] if x == "nt" else x\n'),
     }[builtin]
     assert _verdicts(_rm449_wrapped_source(probe, prelude)) == [CAPABILITY]
     assert _verdicts(_rm449_wrapped_source(probe)) == [DEFECT]
@@ -3518,7 +3555,6 @@ def test_rm458_shadowed_wrapper_is_not_folded(builtin):
     "condition",
     [
         'min(os.name[3:]) == "a"',
-        "sorted(len(os.name)) == 1",
         'f"{os.name:d}" == "1"',
         'f"{os.name:{os}}" == "nt"',
         'min(os.name, key=len) != "z"',
