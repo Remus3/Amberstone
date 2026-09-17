@@ -1410,13 +1410,17 @@ const SUMM_SPELLS = [
 function renderLcuPanel(lcu) {
   const sec = document.createElement('div');
   sec.className = 'lobby-section';
-  if (!lcu || !lcu.phase) {
+  // RM-382: the producers emit a null phase instead of the old truthy
+  // 'Offline' / 'Unknown' sentinels. Every producer stamps `config`, so a
+  // snapshot WITH config is a reachable agent: no lcu_port = client closed,
+  // lcu_port present = one failed phase read. Only no snapshot is relay-down.
+  if (!lcu || (!lcu.phase && !lcu.config)) {
     sec.innerHTML = '<h3>League Client (LCU)</h3>'
       + '<div class="lcu-offline">Relay offline. Run gamepc_lcu_agent.py on Game-PC.</div>';
     return sec;
   }
   const cfg = lcuCfgState();
-  const rawPhase = lcu.phase || 'Unknown';
+  const rawPhase = lcu.phase || (lcu.lcu_port ? 'Unknown' : 'Offline');
   // Map the raw LCU phase names to friendlier labels
   const phaseLabel = ({
     'None':           'Idle (logged in)',
