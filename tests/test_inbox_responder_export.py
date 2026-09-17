@@ -27,6 +27,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from tests._replace_faults import scoped_fs_fault  # noqa: E402
 from tools.inbox_responder_export import (  # noqa: E402
     ExportFailed,
     ensure_export,
@@ -246,7 +247,7 @@ def test_a_sibling_that_won_the_rename_is_adopted_not_clobbered(tmp_path: Path) 
     assert _sha_dirs(state_root) == [sha12]
 
 
-def test_a_rename_oserror_with_no_winner_still_raises(tmp_path: Path, monkeypatch) -> None:
+def test_a_rename_oserror_with_no_winner_still_raises(tmp_path: Path) -> None:
     """The adopt branch must not swallow a real rename fault.
 
     It catches OSError rather than FileExistsError, because the errno for
@@ -268,14 +269,12 @@ def test_a_rename_oserror_with_no_winner_still_raises(tmp_path: Path, monkeypatc
         "archive": StubResult(stdout=buf.getvalue()),
     })
 
-    def exploding_rename(src, dst):
+    def exploding_rename(real, src, dst, *a, **kw):
         raise OSError(39, "Directory not empty")
 
-    import tools.inbox_responder_export as export_mod
-
-    monkeypatch.setattr(export_mod.os, "rename", exploding_rename)
-
-    with pytest.raises(ExportFailed) as caught:
+    # RM-411: export_mod.os is the process-wide os module, so the fault is
+    # scoped to tmp_path and proven inert elsewhere by a control rename.
+    with scoped_fs_fault("rename", tmp_path, exploding_rename), pytest.raises(ExportFailed) as caught:
         ensure_export(tmp_path / "repo", state_root, runner=runner, timeout_s=60, max_bytes=4096 * 1024)
 
     assert caught.value.detail == "exc:OSError"
