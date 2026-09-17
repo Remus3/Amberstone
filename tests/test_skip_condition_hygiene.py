@@ -936,20 +936,7 @@ _UNKNOWN = object()
 _STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
 # RM-449: builtins that only re-shape a platform value. `len(sys.platform) > 0`
 # and `str(os.name) != "java"` are as constant as the bare reads they wrap.
-# RM-458: `bool`, `min`, `max` and `sorted` re-shape it just the same. `sorted`
-# is returned as a tuple because a list literal evaluates to one here.
-_WRAPPER_BUILTINS = {
-    "len": len,
-    "str": str,
-    "bool": bool,
-    "min": min,
-    "max": max,
-    "sorted": lambda v: tuple(sorted(v)),
-}
-# RM-458: f-string conversions folded over a known str or int value (`!s`,
-# `!r`, `!a` and none), with a format spec that itself folds to a str. Keyword
-# arguments (`min(x, key=len)`) are still never folded, as for every call here.
-_FSTRING_CONVERSIONS = {-1: str, 115: str, 114: repr, 97: ascii}
+_WRAPPER_BUILTINS = {"len": len, "str": str}
 _COMPARE_OPS = {
     ast.Eq: operator.eq,
     ast.NotEq: operator.ne,
@@ -1037,16 +1024,8 @@ def _host_eval(
             and not _name_rebound(node.func.id, model)
         ):
             arg = _host_eval(node.args[0], model, scope, host, seen, depth + 1)
-            # RM-458: an int (`bool(len(os.name))`) is as foldable as a str.
-            # `_Truth` is not an int, so a short-circuit result never folds.
-            if isinstance(arg, (str, tuple, int)):
-                # min / max of an empty value raise ValueError; len / min /
-                # max / sorted of an int, or sorted over mixed types, raise
-                # TypeError: both read as unresolved.
-                try:
-                    return _WRAPPER_BUILTINS[node.func.id](arg)
-                except (TypeError, ValueError):
-                    return _UNKNOWN
+            if isinstance(arg, (str, tuple)):
+                return _WRAPPER_BUILTINS[node.func.id](arg)
             return _UNKNOWN
         if isinstance(node.func, ast.Attribute) and node.func.attr in _STR_METHODS:
             recv = _host_eval(node.func.value, model, scope, host, seen, depth + 1)
@@ -1057,25 +1036,6 @@ def _host_eval(
                 except (TypeError, ValueError):
                     return _UNKNOWN
         return _UNKNOWN
-    if isinstance(node, ast.JoinedStr):
-        # RM-458: `f"{sys.platform}"` is as constant as the read it formats.
-        parts = []
-        for part in node.values:
-            if isinstance(part, ast.Constant) and isinstance(part.value, str):
-                parts.append(part.value)
-                continue
-            if not isinstance(part, ast.FormattedValue):
-                return _UNKNOWN
-            conv = _FSTRING_CONVERSIONS.get(part.conversion)
-            v = _host_eval(part.value, model, scope, host, seen, depth + 1)
-            spec = "" if part.format_spec is None else _host_eval(part.format_spec, model, scope, host, seen, depth + 1)
-            if conv is None or not isinstance(v, (str, int)) or not isinstance(spec, str):
-                return _UNKNOWN
-            try:
-                parts.append(format(conv(v) if part.conversion != -1 else v, spec))
-            except (TypeError, ValueError):
-                return _UNKNOWN
-        return "".join(parts)
     if isinstance(node, ast.Name):
         # A guarded-import sentinel is a capability question by construction,
         # even when each branch binds a literal.
@@ -1176,7 +1136,7 @@ def _host_truth(node, model: _Model, scope: ast.AST) -> bool | None:
     return truths.pop() if len(truths) == 1 else None
 
 
-_HOST_FOLDABLE = (ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Call, ast.Subscript, ast.JoinedStr)
+_HOST_FOLDABLE = (ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Call, ast.Subscript)
 
 
 class _Ctx:
@@ -3426,103 +3386,3 @@ _RM449_REBIND_FORMS = {
 def test_rm449_any_rebinding_of_a_builtin_wrapper_blocks_the_fold(form):
     src = _rm449_wrapped_source("len(sys.platform) > 0", _RM449_REBIND_FORMS[form])
     assert _verdicts(src) == [CAPABILITY], form
-
-
-# --- RM-458: forms RM-449 left unfolded ------------------------------------- #
-# MEASURED at the RM-449 head: every probe below graded CAPABILITY - ACCEPTED,
-# not "neither accepted nor refused" as the filed row assumed. Each probe is
-# always true on both runners; its control differs only in a literal or slice
-# bound and genuinely differs per host, so it must stay CAPABILITY. Folding
-# was measured over a 4593-row generated corpus: 0 new acceptances, and the
-# real-tree verdicts are identical.
-_RM458_WRAPPED = {
-    "bool_of_os_name": ("bool(os.name[:1])", "bool(os.name[2:])"),
-    "bool_of_an_int": ("bool(len(os.name))", "bool(len(os.name[2:]))"),
-    "min_of_os_name": ('min(os.name) != "z"', 'min(os.name) == "n"'),
-    "max_of_os_name": ('max(os.name) != "a"', 'max(os.name) == "t"'),
-    "sorted_of_os_name": ('sorted(os.name) != ["z"]', 'sorted(os.name) == ["n", "t"]'),
-    "fstring_of_os_name": ('f"{os.name}" != "java"', 'f"{os.name}" == "nt"'),
-    "fstring_repr": ('f"{os.name!r}" != "java"', 'f"{os.name!r}" == "\'nt\'"'),
-    "fstring_format_spec": ('f"{os.name:>8}" != "java"', 'f"{os.name:>8}" == "      nt"'),
-    "fstring_of_an_int": ('f"{len(sys.platform)}" == "5"', 'f"{len(os.name)}" == "2"'),
-    "bare_fstring": ('f"x{os.name}"', 'f"{os.name[2:]}"'),
-}
-
-
-@pytest.mark.parametrize("name", sorted(_RM458_WRAPPED))
-def test_rm458_wrapped_constant_true_platform_check_is_refused(name):
-    probe, _ = _RM458_WRAPPED[name]
-    findings = scan_source("tests/test_mutant.py", _rm449_wrapped_source(probe))
-    assert [f.verdict for f in findings] == [DEFECT], name
-    assert all(DEFECT + ":constant-true" in f.forced for f in findings)
-
-
-@pytest.mark.parametrize("name", sorted(_RM458_WRAPPED))
-def test_rm458_wrapped_check_that_differs_by_host_stays_capability(name):
-    _, control = _RM458_WRAPPED[name]
-    assert _verdicts(_rm449_wrapped_source(control)) == [CAPABILITY], name
-
-
-def test_rm458_constant_fstring_disjunct_supplies_no_capability():
-    """`f"{os.name:.0}"` is "" on every host: it asks nothing, so it credits
-    nothing, even though its only child is a bare platform read. The control
-    differs only in the slice and genuinely varies by host."""
-    prelude = 'def _flag():\n    return int("1")\n'
-    assert _verdicts(_rm449_wrapped_source('f"{os.name:.0}" or _flag()', prelude)) == [UNRESOLVED]
-    assert _verdicts(_rm449_wrapped_source('f"{os.name[2:]:.1}" or _flag()', prelude)) == [CAPABILITY]
-
-
-# RESIDUAL, not fixed here: a skipUnless whose condition has a constant TRUTH
-# but a host-varying VALUE (`f"x{os.name}"`, `len(os.name)`) still credits the
-# platform read, because `_collect` refuses only value-constant nodes. That is
-# a truth-versus-value question independent of which wrapper is folded, so it
-# is excluded here rather than pinned.
-_RM458_VALUE_VARIES = {"bare_fstring"}
-
-
-@pytest.mark.parametrize("name", sorted(set(_RM458_WRAPPED) - _RM458_VALUE_VARIES))
-def test_rm458_skip_unless_of_an_always_true_form_is_never_capability(name):
-    """skipUnless on an always-true form never fires: UNRESOLVED, not accepted."""
-    probe, _ = _RM458_WRAPPED[name]
-    src = f"""
-import os
-import sys
-import unittest
-class T(unittest.TestCase):
-    @unittest.skipUnless({probe}, "host")
-    def test_thing(self):
-        self.assertTrue(True)
-"""
-    assert _verdicts(src) == [UNRESOLVED], name
-
-
-@pytest.mark.parametrize("builtin", ["bool", "min", "max", "sorted"])
-def test_rm458_shadowed_wrapper_is_not_folded(builtin):
-    """A module-bound wrapper is not the builtin; the shadow makes each probe
-    genuinely differ by host, and the unshadowed probe is DEFECT alongside."""
-    probe, prelude = {
-        "bool": ("bool(os.name[:1])", 'def bool(x):\n    return x == "n"\n'),
-        "min": ('min(os.name) != "z"', 'def min(x):\n    return "z" if x == "nt" else x\n'),
-        "max": ('max(os.name) != "a"', 'def max(x):\n    return "a" if x == "nt" else x\n'),
-        "sorted": ('sorted(os.name) != ["z"]', 'def sorted(x):\n    return ["z"] if x == "nt" else x\n'),
-    }[builtin]
-    assert _verdicts(_rm449_wrapped_source(probe, prelude)) == [CAPABILITY]
-    assert _verdicts(_rm449_wrapped_source(probe)) == [DEFECT]
-
-
-# Inputs the new folds cannot evaluate read as unresolved and never raise, so
-# each keeps the platform credit it had before. The keyword call is a RECORDED
-# RESIDUAL, not an endorsement: keyword arguments are unmodelled for every call
-# in this evaluator (len / str included), and folding them is a separate change.
-@pytest.mark.parametrize(
-    "condition",
-    [
-        'min(os.name[3:]) == "a"',
-        "sorted(len(os.name)) == 1",
-        'f"{os.name:d}" == "1"',
-        'f"{os.name:{os}}" == "nt"',
-        'min(os.name, key=len) != "z"',
-    ],
-)
-def test_rm458_unfoldable_forms_do_not_raise(condition):
-    assert _verdicts(_rm449_wrapped_source(condition)) == [CAPABILITY]
