@@ -1,173 +1,159 @@
-NEXT SESSION - RC laned headless orchestrated parallel loop (wave 5)
+NEXT SESSION - RC laned headless orchestrated parallel loop (wave 6)
 -------------------------------------------------------------------
 Task: Continue laned orchestrated cycles against RC-local open rows until drained
       or interrupted. Same SHAPE: merger + worktree slices on disjoint files +
       independent adversarial verifier before every merge; producer never grades.
+      Wave 5 proved the shape again - verifiers overturned or amended a producer
+      claim in EVERY slice and EVERY census, so do not treat a slice report as
+      the answer.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES.md
-      (2026-09-17b block) + docs/LEDGER.md 1423 and 1424 + git log. Probe live:
+      (2026-09-17c block) + docs/LEDGER.md 1424 and 1425 + git log. Probe live:
       python tools/rc_facts.py ; python tools/moon_sync_poller.py --status ;
-      gh run list --branch main --limit 4 (confirm CI green on the wrap commit).
-      Confirm the wave 4 push decision was taken (wave 4 carries one web/ file,
-      web/legacy_index.html). RESTART CHECK: RM-461 needs RC AND RC-LCUAgent
-      restarted (tools/lcu_agent.py imports the champ-select shaper through
-      lcu/snapshot_shape.py); RM-462's legacy page wording needs the RC restart
-      too (dashboard/_static.py caches web/legacy_index.html per process - it does
-      NOT auto-reload). Re-probe ops/runtime/health.json (pid, alive,
-      last_reload_ok) and the RC-LCUAgent pid; do not inherit the wrap's result.
+      gh run list --branch main --limit 4 (confirm CI green on the wave 5 wrap).
+      RESTART CHECK: wave 5 touched NO runtime code - three test modules, one new
+      oss test helper, and docs. No restart is owed. Re-probe health.json anyway
+      (pid, alive, last_reload_ok) and do not inherit this claim. NOTE the RC pid
+      changed mid-wave-5 (19336 -> 11360, supervisor bounce during the tests
+      suite); health was clean after, but if it recurs it is worth a look.
 
 BOUNDARY (unchanged): halt and ping before any byte leaves the tree. No sibling-inbox
       writes, no arming, no edits to docs/CHANNEL.md, ops/loop/slots.py,
       ops/loop/winmutex.py. Ordinary pushes that pass suites + pre-push sweep proceed.
 
-CYCLE 1: read RC's own moon_sync_inbox/ (triage only, do not reply). Record-only asks
-      carried: RSC clause-by-clause answer, CS approval, LW shared-skills question
-      (default NO), LW correction 2-of-4 -> 3-of-4; rule 17 wording + criterion (d)
-      at next re-pin. Record what cycle 1 finds; wave 4's inbox outcome is in
-      LEDGER 1424 - read it, do not assume.
+CYCLE 1: read RC's own moon_sync_inbox/ (triage only, do not reply). Nothing newer
+      than 2026-09-16 had arrived as of wave 5; record what you find, do not assume.
+      Record-only asks still carried: RSC clause-by-clause answer, CS approval,
+      LW shared-skills question (default NO), LW correction 2-of-4 -> 3-of-4;
+      rule 17 wording + criterion (d) at next re-pin.
 
-WAVE 5 PARTITION (specced 2026-09-17 at 495d81b24; re-run recall + AGE check first,
-      cites drift; each slice owns ONLY the files named - anything else is a halt back
-      to the merger):
-  PHASE A - READ-ONLY AGE CENSUS FIRST (no code, no BACKLOG edits by slices; the merger
-     applies label flips from the verified census). Block: RM-229..RM-283,
-     RM-192..RM-198, RM-377, RM-381. A marker grep at 495d81b24 found about 49 rows
-     carrying an OPEN marker in that block (48 once RM-275 is flipped CLOSED), plus
-     RM-281 HALF-CLOSED and RM-250 first-half SHIPPED; several ids in the range
-     (e.g. RM-229, RM-232, RM-249, RM-252, RM-257, RM-265, RM-271) had no status-
-     prefixed row at all. That count is a HYPOTHESIS until re-derived. Why this
-     first: wave 4 spot checks found RM-275 already fixed (by RM-351) and RM-378's
-     write half already done (by RM-441), and RM-419 recorded RM-255 as REFUTED AT
-     HEAD while its row still reads OPEN. Split the block into 3 read-only census
-     slices by id range (e.g. RM-192..RM-198 + RM-229..RM-248, RM-249..RM-268,
-     RM-269..RM-283 + RM-377 + RM-381). Per row: git log -S'RM-NNN' on BACKLOG.md,
-     git log on each named target file since the filing date, open the call path,
-     check EVERY acceptance clause, and grade one of: ALREADY-DONE (commit + clause
-     evidence), PARTIAL (which clauses remain), STILL-OPEN (premise re-verified at
-     HEAD), REFUTED (premise false at HEAD), MISLABELLED (status marker disagrees
-     with LEDGER). Output a table in the slice scratch dir; an independent verifier
-     re-derives every ALREADY-DONE / REFUTED / MISLABELLED verdict before the
-     merger flips a single label. Build nothing from the census in the same wave
-     unless the merger re-partitions.
-  PHASE B - BUILD (can run in parallel with Phase A; disjoint files):
-  S1 RM-466 + RM-467 (ONE slice - both live in tests/test_skip_condition_hygiene.py).
-     RM-466: probe-laundering bypasses past the RM-463 taint - bool(sys.platform in
-     os.environ), min(sys.platform in os.environ, 1), dict(os.environ).get(
-     sys.platform), os.environ.copy().get(sys.platform), socket.gethostbyname(
-     sys.platform) (network credit, outside _PROBE_CREDITS), str(os.getenv(
-     sys.platform)) != "None". Close by REFUSAL, never by widening; the RM-463 taint
-     is NOT to be removed. RM-467: definite-raise credit residuals - len/str
-     multi-arg, os.name * / % ** "a", ~os.name, +os.name, sys.platform(),
-     sys.platform.nonexistent, int(os.name), os.name.split()[5], {"nt":1}[os.name],
-     str(len(os.name))+1, os.name["a"] if shutil.which("git") else 1; plus the
-     _Truth BoolOp assumption that an UNKNOWN operand does not raise. Refuse only on
-     a definite raise over KNOWN operands; value nothing new. Both: 0 new
-     acceptances vs base over the RM-463 corpus + verifier attack rows; real-site
-     census (180 at the wave 4 base, re-derive) identical or each change fixed.
-  S2 RM-468 (tests/test_rm413_wal_pragma_result_checked.py): for _ in
-     conn.execute(PRAGMA), (_ := ...), f-string replacement with !s or :s,
-     {'journal' + '_mode'} inside an f-string, 'PRAGMA ' + 'journal_mode=WAL'.
-     Positive + paired negative control per shape; inline a constant only where
-     CPython yields exactly that text; floor still bites; real tree no new finding.
-  S3 RM-469 (RM-464 residuals): tests/test_lcu_loop_resilience.py to_thread
-     park-forever fake, tests/test_lcu_events.py wait_for raiser,
-     tests/test_silent_except_arena_augment_cache.py Path.iterdir x2,
-     tests/test_agent_task_log_retention.py Path.glob, oss/win32_atomic_io/tests
-     (6 os.replace, 1 write_bytes, 4 sleep; cannot import tests/ helpers - decide a
-     local helper), tests/test_tft_coach_engine_audit.py
-     test_no_scratch_file_is_left_behind_on_failure (assert the fault fired),
-     tests/test_moon_sync_poller.py P.time.time, platform-simulation patches
-     (census + verdict BEFORE converting). Re-derive by AST over every patched
-     attribute of os / asyncio / builtins / shutil / pathlib / time / sys. May READ
-     tests/_replace_faults.py and tests/_sleep_probe.py; changing either is a halt
-     back to the merger (existing callers must keep their behaviour).
-  RECORD-ONLY: RM-454 (data_version needs a persistent connection; fails
-     close/reopen + recreate), RM-293(a)/(c), RM-292(b-d), RM-290 site 2, RM-409,
-     RM-376 (design), RM-448 (DS), RM-445 (DS Tier-2), RM-432 (design), RM-453
-     (stop_claim_gate - only a session the gate is NOT flagging may edit it; it
-     flags a subagent's commit/pass claim in the merger transcript until the merger
-     itself runs git commit / pytest), RM-378 (HELD on RM-448: write half done in
-     a1b5ebae8, the sibling clause waits on the DS text-mode writers - do not re-fix
-     tools/gen_archmap.py). Also recorded, not filed, from wave 4: RM-461 residuals
-     (state_schema.js JSDoc cs drift, raw kda f-string, kill participation over 100
-     percent, bare int in _local_pick_completed, latch int() without OverflowError,
-     routes_state phase or "?"); RM-459 theoretical residuals (identical torn tail
-     re-appended, vacuous worktree arm); the --restricted finding (RC hooks do not
-     fire in the pinned responder spawn - relevant only when the responder is
-     ever armed, which is a HALT item).
+WAVE 6 PARTITION (each slice owns ONLY the files named; anything else is a halt
+      back to the merger). Re-run recall + an AGE check before building - wave 5
+      found the filed count wrong AGAIN and three rows already fixed by later rows.
+
+  S1 RM-470 (tests/test_rm413_wal_pragma_result_checked.py): the guard does not
+     handle ast.AsyncFor - `async for _ in conn.execute("PRAGMA journal_mode=WAL")`
+     is missed while the sync spelling is caught, and the strings ast.AsyncFor and
+     async appear nowhere in the file. Found by a verifier mutation probe whose
+     async-for mutant SURVIVED while eight others were killed. FALSE NEGATIVE ONLY:
+     sqlite3 has no async execute, 0 live sites. Acceptance: async spelling caught
+     with a PAIRED NEGATIVE CONTROL, no new real-tree finding, floor still bites
+     (prove by mutation). Do NOT widen the accepted vocabulary.
+
+  S2 RM-472 (tests/test_skip_condition_hygiene.py): comprehension-shaped and
+     lambda-shaped platform laundering still get CAPABILITY credit -
+     any(k == sys.platform for k in os.environ),
+     [k for k in os.environ if k == sys.platform],
+     (lambda p: os.environ.get(p))(sys.platform).
+     All three read CAPABILITY at BOTH base and head, so they are NOT regressions
+     and NOT new acceptances. They join the DECLARED two-hop receiver gap (receiver
+     resolution follows one level of binding, for measured perf reasons - scan_tree
+     went 12.87s -> 19.87s median already, so weigh any further cost). Close BY
+     REFUSAL only. Acceptance: 0 new acceptances vs base over the RM-463 corpus
+     (build it AST-harvested from BOTH revisions, as wave 5's verifier did, so a
+     deleted row cannot vanish from the comparison); real-site census identical or
+     each difference justified individually.
+
+  S3 RM-471 (oss/win32_atomic_io drift guard): the LICENSE byte-compare guard's
+     verdict DEPENDS ON WHEN THE TREE WAS CHECKED OUT. The extensionless LICENSE
+     resolves no line-ending attribute (.gitattributes pins eol=lf by EXTENSION
+     only, so it falls through to core.autocrlf=true); the root copy materialises
+     CRLF in a fresh worktree while the package copy resolves LF. Both paths are
+     the SAME git blob. Main checkout passes; a worktree fails the byte compare.
+     Wave 5 could not verify the worktree arm directly (worktree add is a write and
+     the census agents were read-only) - VERIFY IT FIRST, in a real fresh worktree.
+     Acceptance: the guard's verdict is checkout-independent, PROVED by running it
+     in both a primary checkout and a fresh worktree.
+
+  S4 RM-276 RE-FILE, do NOT hand it to a fixer as written. Its acceptance clause (1)
+     is UNSATISFIABLE: it forbids a synthetic fixture and mandates one drawn from
+     the real WAKEUP_NOTES.md, but that file no longer contains the shape that
+     triggers the defect (row asserts 7 sessions / 49907 bytes; the file measures
+     3 / 20682), so satisfying it literally yields a VACUOUSLY GREEN guard. The
+     DEFECT IS LIVE - the session splitter never re-splits the first part. Re-file
+     with a re-derived census and an acceptance that can actually fail.
+
+  ALSO READY (pick up if a slice finishes early): RM-239 + RM-242 are ON HOLD and
+     need ADJUDICATION before any build - same defect class, but their acceptances
+     CONFLICT (RM-239 blanket convert-all vs RM-242 arguing against a blanket
+     scrub), and the population is unsettled across THREE disagreeing derivations
+     (filed 22 sites / 19 modules; census 20 / 18; independent AST 25 / 19 with 9
+     uncapped). Three live sites nobody names sit in dashboard/routes_sr_draft.py,
+     dashboard/routes_damage_mix.py and dashboard/routes_ds_statcheck.py, and one
+     directory the row cites has ZERO sites at HEAD. Settle the population and the
+     acceptance conflict FIRST; do not merge the two rows (that silently picks a
+     winner).
+
+  RM-279 CAUTION if anyone works it: its stated gate-scope mechanism is FALSE at
+     HEAD. Two repo-wide guards already see the glyphs and allow them by name, one
+     of which ASSERTS the residual equals exactly those glyphs and PREDATES the row,
+     plus a recorded design deferral in ops/audit/P3_WORKMAP.md. Fixing the site
+     turns a green guard RED unless BOTH guards are amended in the SAME slice.
+     Satisfiable, but NOT independently.
+
+RECORD-ONLY, CARRIED UNCHANGED: RM-454, RM-293(a)/(c), RM-292(b-d), RM-290 site 2,
+  RM-409, RM-376, RM-448, RM-445, RM-432, RM-453 (stop_claim_gate - only a session
+  the gate is NOT flagging may edit it), RM-378 (HELD on RM-448).
+  Side finding, unchased: two python processes resident since 2026-09-15, one a
+  PreToolUse hook that should be short-lived.
 
 SLICE PROMPT RULES (keep in every slice prompt):
   - STEP ZERO: pwd under .claude\worktrees\, then git merge --ff-only <local main sha>.
   - Module/related tests only in slices (parallel full suites OOM the box); merger
-    runs the full dual suite once on the frozen merged tree before the docs commit.
-  - Any slice that ADDS OR CHANGES A SKIP (skipif / skipIf / skipUnless / importorskip
-    / pytest.skip) runs tests/test_skip_condition_hygiene.py before reporting. A skip
-    predicate IMPORTED from another module is UNRESOLVED to that guard - resolve it
-    in the module itself (shutil.which(...) locally), as 495d81b24 had to at merge.
-  - At MERGE: tests/test_skip_condition_hygiene.py on the merged tree; doc guards
-    via tools/md_guard_selector.py after docs edits; after filing any RM id, run
-    python -B tools/rm_id_registry.py and move the docs/DS_SWEEP_TRACKER.md pin in
-    the SAME commit.
-  - Platform-gated changes exercised under the OTHER OS semantics (CI is Linux; no
-    WSL distro here, so CI is the Linux check - say so, do not claim a Linux run).
-  - Never widen a guard's accepted vocabulary; never add a cache without a verifier
-    probe of close/reopen, recreate-same-path and small same-size writes.
-  - A fold or evaluator that models a Python value must match CPython exactly,
+    runs the full dual suite ONCE on the FROZEN merged tree, and edits NOTHING while
+    it runs - a suite straddling a docs edit reports a tree that no longer exists.
+  - Any slice that ADDS OR CHANGES A SKIP runs tests/test_skip_condition_hygiene.py
+    before reporting. A skip predicate IMPORTED from another module is UNRESOLVED to
+    that guard - resolve it locally.
+  - At MERGE: skip hygiene on the merged tree; doc guards after docs edits; after
+    filing any RM id run python -B tools/rm_id_registry.py and move the
+    docs/DS_SWEEP_TRACKER.md pin in the SAME commit. NOTE md_guard_selector.py does
+    NOT accept a changed-file list - it errors on positional args; run its full set.
+  - Never widen a guard's accepted vocabulary; never add a cache or memo without a
+    verifier probe of close/reopen, recreate-same-path and small same-size writes.
+  - A fold or evaluator modelling a Python value must match CPython EXACTLY,
     including raising where CPython raises; otherwise refuse, do not fold.
-  - Second refute of an ADDED cache/rescue/fold that ACCEPTS: rule REMOVAL, keep the
-    strict half (memory feedback_second_refute_means_remove_not_redesign). A strict
-    REFUSAL refuted on completeness is NOT removed - it stays and the gap is filed
-    (the wave 4 RM-463 adjudication).
-  - Producer numbers are claims: wave 4's "fidelity 0 mismatches" was false (58,
-    all base-identical). Grade against the verifier's own census.
-  - Census by AST shape over every patched attribute, never by name grep (wave 4
-    round 1 missed os.open and asyncio shapes).
-  - Degrade-to-zero is not neutral: a 0 can be latched downstream for a whole game.
-    Use None where the consumer skips unknowns. A null label must not collide with a
-    real enum string ("None" is a real LCU gameflow phase).
-  - Read the ROW, not the brief: wave 3 briefs misplaced RM-293(b) and misstated the
-    RM-411 acceptance; wave 4's RM-275 row named a constant the fix spelled
-    DEFAULT_MAX_RESPONSE_BYTES - age-check by behaviour, not by name.
-  - A served page (web/, including web/legacy_index.html) is a consumer: grep it for
-    any value you change, run the 5-phase UI audit before its commit, and check its
-    loader before claiming auto-reload (legacy_index is process-cached).
-  - A pid is not an identity across time: Windows reuses pids, so never attribute a
-    live-log row by pid; diff content snapshots or attribute by session.
+  - Second refute of an ADDED cache/rescue/fold that ACCEPTS: REMOVE it. A strict
+    REFUSAL refuted on completeness STAYS and the gap is filed.
+  - Producer numbers are CLAIMS. Wave 5: S3's census total did not reproduce (201 vs
+    173) and resolved as two sound populations, not an error - publish the
+    decomposition, never a fourth figure. S1's marker overclaimed a closed class.
+    S2's control docstring named a mutation it could not discriminate.
+  - Census by AST shape over every patched attribute, never by name grep.
+  - A conversion that passes but no longer exercises the fault is a REGRESSION.
+    DISARM each injector and confirm the test then FAILS - that is the only proof.
+  - Read the ROW, not the brief: age-check by BEHAVIOUR, not by name. Wave 5 found a
+    row whose predicate was SUBSTITUTED (not respelled) by a later fix, and a row
+    whose "test-reachable" symbol was actually production-reachable via a decorator
+    registry - a test-caller story invites deletion of live code.
+  - Do NOT recite a next-free-id figure in prose. Wave 5 measured SIX ids in
+    RM-229..283 spent on nothing but stale pointer text; the guarded pin in
+    docs/DS_SWEEP_TRACKER.md is the only live one.
+  - A verifier that declares a coverage gap gets that gap CLOSED by another agent,
+    not waved through. Wave 5 closed two such gaps and both returned real findings.
+  - Unique scratch filenames per agent; verifier probes ONLY under the scratchpad.
   - No example path:line cites in BACKLOG/LEDGER prose.
-  - Use unique scratch filenames per agent (shared scratchpad collisions happened).
-  - Verifiers must write probes only under the scratchpad (an empty b1.py leaked to
-    the repo root once).
 
 HALT AND RECORD, DO NOT ATTEMPT: criterion (d) flip / CHANNEL_VERSION 2 re-pin;
   docs/BOUNCE_POLICY.md NOT-DECIDED; replies to LL/LW/RSC/CS; the two BLOCKED
   third-party skills; responder MODEL pin in tools/inbox_responder_runner.py;
-  arming RC-InboxResponder (the --restricted finding does not change this).
+  arming RC-InboxResponder.
 
-DO NOT REDO (shipped + pushed 2026-09-16c, LEDGER 1421/1422): RM-433, RM-434, RM-437,
-  RM-440, RM-441, RM-442, RM-443, RM-444, RM-446, RM-447, RM-413, RM-449 (darwin
-  rescue DECLINED on purpose), RM-450 (row-count memo REMOVED on purpose), RM-451,
-  RM-452, RM-415, RM-417; RM-419/RM-420 closed as already done.
-  Shipped 2026-09-17 wave 3 (LEDGER 1423, pushed, CI green on 23e20e810): RM-290
-  site 1, RM-292(a), RM-455, RM-456, RM-382 + RM-293(b), RM-457, RM-458 (folds
-  REFUTED twice and REVERTED on purpose - do not re-fold; the refusal taint is the
-  shipped half, and refusing bool(sys.platform == ...) is its accepted cost), RM-411
-  (scoped_fs_fault), RM-383, RM-459 items 1-2 and the PID-reuse follow-up 1894fda47;
-  RM-364 label flipped (shipped a97bdfc0b, LEDGER 1353).
-  Shipped / closed 2026-09-17 wave 4 (LEDGER 1424, merges d8b773ced, 84b3ecd85,
-  667d58861, 73540ce53, fix 495d81b24): RM-461 (cs / level / creep_score None on bad
-  or missing - NOT 0, which poisoned the latch; do not "restore" 0), RM-462 (null
-  phase prints -(client-closed) / -(phase-read-failed); never None(...)), RM-464
-  (scoped_path_fault, scoped_fs_fault os.open, hot03 task-scoped), RM-465 (annotated
-  / unpacked / f-string-name discards; () = and [] = are NOT discards on purpose),
-  RM-459 item 3 (session_id MEASURED present on CLI 2.1.251; byte compare
-  ATTRIBUTED on purpose, not loosened; torn tail settled by content, no pid),
-  RM-463 in part (RM-449 list/set/platform.system folds REMOVED and the truth-
-  carrying refusal REMOVED on purpose - do not re-add either; the probe-laundering
-  taint KEPT by merger adjudication - do not remove it; remaining gaps are RM-466 /
-  RM-467), RM-460 CLOSED (no output depends on item_order; do not regenerate the
-  mined files), RM-275 CLOSED (RM-351 cap + the cd13cd003 cap+1 test; do not re-add
-  a MAX_RESPONSE_BYTES constant), RM-378 HELD (see RECORD-ONLY).
-  Known flake: tests/test_ds_matchdb_mcp_server.py test_http_auth_required timed out
-  once under full-suite load, 43/43 on 3 isolated reruns.
+DO NOT REDO (shipped 2026-09-17 wave 5, LEDGER 1425, merges fe2fcd52d / 44e816ee5 /
+  36aaf1765): RM-468 (WAL pragma guard - nine shapes, each with a paired negative
+  control), RM-469 (fault-injection conversions across six test modules plus the oss
+  suite, with a NEW stdlib-only local helper there - do NOT replace it with an import
+  of tests/, the package manifest requires self-containment, and do NOT add a
+  cross-tree byte pin), RM-467 (definite-raise residuals), RM-466 SHIPPED IN PART
+  (the class is NOT closed - the survivors are RM-472). Label flips APPLIED, do not
+  re-investigate: RM-192 ACCEPTANCE MET (predicate SUBSTITUTED by RM-360's artifact;
+  its literal clause would FALSE-RED on a gap id - do NOT restore it), RM-246
+  ACCEPTANCE MET (not refuted - different flip), RM-255 CLOSED/REFUTED AT HEAD (cite
+  0589d171a from git log; LEDGER 1293 carries no sha), RM-281 HALF-CLOSED. RM-260 is
+  SUPERSEDED BY RM-418, not closed and not refuted. Six ids are PHANTOM and must not
+  be given rows: RM-232, RM-249, RM-252, RM-257, RM-265, RM-271. Headline count for
+  the block is 49 open-family after the RM-255 flip (was 50; the old "about 49"
+  estimate was wrong, and it wrongly treated RM-229 as row-less).
+  Earlier waves: see the 2026-09-17b block and LEDGER 1421-1424.
 
 When the drainable queue is empty emit NO_WORK. End with /done plus the next prompt.
