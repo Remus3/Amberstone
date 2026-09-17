@@ -6,13 +6,17 @@ leaf serialises as the bare token ``NaN`` (not JSON), a "nan" string renders
 the text "nan" in the stats panel, and a list / dict reached the panel as
 ``String([1])``.
 
-DEGRADE VALUE = what a MISSING leaf already produced, the RM-456 precedent:
-  * ``cs``: missing -> 0 (``s.get("creepScore", 0)``), so a bad value -> 0
-    through the module's ``_int_or_zero`` seam, the SAME seam the sibling
-    ``players[].creep_score`` read of the very same leaf already uses.
-  * ``level``: missing -> None (``ap.get("level")``), and
-    ``web/js/panels/stats_panel.js`` renders ``lc.level == null`` as "-",
-    so a bad value -> None, never a fabricated 0.
+DEGRADE VALUE = None for both, through ``_int_or_none``:
+  * ``cs``: round 1 degraded a bad cs to 0. The verifier refuted that: the
+    adaptation latch skips a None cs frame but LATCHES a 0 as cs_at_10 /
+    csd_at_15 for the rest of the game (tests/test_rm461_latch_cs.py). A
+    MISSING creepScore used to give 0 and had the same latch defect, so
+    missing and bad are now both None. ``web/js/panels/stats_panel.js``
+    renders ``lc.cs == null`` as "-"; coach_choices.js
+    ``coach.cs || lc.cs || 0`` and ``_deterministic_coaching._first`` both
+    treat None as unknown.
+  * ``level``: missing -> None (``ap.get("level")``), and stats_panel.js
+    renders ``lc.level == null`` as "-", so a bad value -> None too.
 BOOL follows this module's recorded RM-456 decision for ``_int_or_zero``
 (``int(True) == 1``, pinned by test_rm456_liveclient_numeric), not the
 lcu ``_as_int`` refusal; one bool policy per summary.
@@ -76,21 +80,20 @@ def _assert_rest_intact(out):
 # --- (1) cs -------------------------------------------------------------
 
 @pytest.mark.parametrize("bad", _BAD, ids=_BAD_IDS)
-def test_cs_bad_degrades_to_zero_that_field_only(bad):
+def test_cs_bad_degrades_to_none_that_field_only(bad):
     f = _frame()
     f["allPlayers"][0]["scores"]["creepScore"] = bad
     out = _summary(f)
     _assert_rest_intact(out)
-    assert out["cs"] == 0
-    assert type(out["cs"]) is int
+    assert out["cs"] is None
     assert out["level"] == 9
     assert out["kill_participation_pct"] == "100%"
 
 
-def test_cs_missing_stays_zero():
+def test_cs_missing_is_none_like_bad():
     f = _frame()
     del f["allPlayers"][0]["scores"]["creepScore"]
-    assert _summary(f)["cs"] == 0
+    assert _summary(f)["cs"] is None
 
 
 @pytest.mark.parametrize("v,expect", [(0, 0), (77, 77), ("12", 12), (True, 1)],
