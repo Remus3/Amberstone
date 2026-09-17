@@ -27,6 +27,12 @@ WHAT IS PROVEN HERE, AND WHAT IS NOT
   ``executescript`` (which returns no rows at all), one built as an f-string,
   and one assigned only to ``_`` are all findings. The real-tree scan keeps its
   site floor, and a control proves an EMPTY enumeration fails it.
+* RM-468 added five more: a ``for`` target that binds only ``_``, a walrus into
+  ``_`` in an ``if`` / ``while`` test, an f-string replacement under an
+  IDENTITY conversion or format spec, a replacement built by ``+``, and SQL
+  concatenated with ``+``. Every fold was measured against the project
+  interpreter first; a conversion or spec that could change the text, and a
+  ``+`` with a non-str operand, are REFUSED rather than modelled.
 """
 from __future__ import annotations
 
@@ -265,12 +271,53 @@ def _literal_sql(arg: ast.expr) -> str | None:
 
     An f-string is reduced to its constant fragments joined with a placeholder,
     so ``f"PRAGMA journal_mode={mode}"`` still reads ``journal_mode=``.
+
+    RM-468: a ``+`` of two str-yielding operands is folded, because CPython
+    concatenates them at run time with no other effect - MEASURED on the
+    project interpreter, ``'PRAGMA ' + 'journal_mode=WAL'`` is exactly
+    ``'PRAGMA journal_mode=WAL'``. If EITHER operand is not str-yielding the
+    expression is refused (``None``), never guessed: CPython raises
+    ``TypeError`` there, and a matcher that invented a value would be modelling
+    something the interpreter never produces. ``*`` and every other operator
+    stay refused for the same reason.
     """
     if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
         return arg.value
     if isinstance(arg, ast.JoinedStr):
         return "".join(_fstring_part(v) for v in arg.values)
+    if isinstance(arg, ast.BinOp) and isinstance(arg.op, ast.Add):
+        left = _literal_sql(arg.left)
+        right = _literal_sql(arg.right)
+        if left is not None and right is not None:
+            return left + right
     return None
+
+
+# RM-468: ``!s`` on a str is ``str(x)`` - the value itself. ``-1`` is "no
+# conversion". ``!r`` (114) and ``!a`` (97) both wrap the text in quotes, so
+# they are NOT foldable and stay out of this set.
+_IDENTITY_CONVERSIONS = frozenset({-1, ord("s")})
+
+
+def _spec_is_identity(spec: ast.expr | None) -> bool:
+    """True when a format spec cannot change a str value's text.
+
+    MEASURED on CPython 3.14.4: ``format('journal_mode', '')`` and
+    ``format('journal_mode', 's')`` both return ``'journal_mode'`` unchanged,
+    while ``format('journal_mode', '>20')`` pads it. Only the first two are
+    treated as identity; anything else - including a spec built from a runtime
+    value - is refused.
+    """
+    if spec is None:
+        return True
+    if not isinstance(spec, ast.JoinedStr):
+        return False
+    text = ""
+    for piece in spec.values:
+        if not (isinstance(piece, ast.Constant) and isinstance(piece.value, str)):
+            return False
+        text += piece.value
+    return text in ("", "s")
 
 
 def _fstring_part(part: ast.expr) -> str:
@@ -280,10 +327,17 @@ def _fstring_part(part: ast.expr) -> str:
     f-string) with no conversion and no format spec contributes its own text,
     so ``f"PRAGMA {'journal_mode'}=WAL"`` reads ``journal_mode=``. Anything
     else is a placeholder, as before.
+
+    RM-468: that also holds under an IDENTITY conversion or format spec
+    (``!s``, ``:s``, ``:``), each measured to reproduce the value verbatim, and
+    for a value built by ``+`` from constants. A conversion or spec that could
+    change the text stays a placeholder.
     """
     if isinstance(part, ast.Constant) and isinstance(part.value, str):
         return part.value
-    if isinstance(part, ast.FormattedValue) and part.conversion == -1 and part.format_spec is None:
+    if (isinstance(part, ast.FormattedValue)
+            and part.conversion in _IDENTITY_CONVERSIONS
+            and _spec_is_identity(part.format_spec)):
         inner = _literal_sql(part.value)
         if inner is not None:
             return inner
@@ -308,6 +362,13 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     A bare expression statement, or an assignment whose every target binds only
     ``_`` (RM-457: ``_ = conn.execute(...)`` names the result only to drop it;
     RM-465: the annotated ``_: T = ...`` and unpacking ``_, = ...`` spellings).
+
+    RM-468 adds two statement positions that never bind the answer either: a
+    ``for`` whose target binds only ``_``, and an ``if`` / ``while`` whose test
+    is a walrus into ``_``. Only the iterated / tested expression is returned,
+    so nothing in the loop or branch BODY is attributed to this statement. The
+    bare ``(_ := ...)`` statement needs no rule of its own - it is an
+    ``ast.Expr`` and the first branch above already reports it.
     """
     if isinstance(node, ast.Expr):
         return node.value
@@ -316,6 +377,11 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
         return node.value
     if isinstance(node, ast.AnnAssign) and node.value is not None and _binds_only_underscore(node.target):
         return node.value
+    if isinstance(node, ast.For) and _binds_only_underscore(node.target):
+        return node.iter
+    if (isinstance(node, (ast.If, ast.While)) and isinstance(node.test, ast.NamedExpr)
+            and _binds_only_underscore(node.test.target)):
+        return node.test.value
     return None
 
 
@@ -493,6 +559,117 @@ def test_guard_rm457_negative_controls_stay_clean():
     assert _discarded_journal_pragmas(clean) == []
 
 
+# RM-468: five more shapes the RM-465 matcher did not see - a loop target that
+# binds only ``_``, a walrus into ``_`` in an ``if`` / ``while`` test, an
+# f-string replacement carrying an identity conversion or format spec, a
+# replacement that concatenates constants, and SQL built by ``+`` outright.
+# Each positive control is paired with a negative control that keeps the answer.
+#
+# The bare-statement walrus ``(_ := conn.execute(...))`` is NOT listed: it is an
+# ``ast.Expr`` and the RM-413 matcher already reports it (measured). Only the
+# test-position spellings were missed.
+_RM468_SHAPES = [
+    (
+        "for _ in conn.execute('PRAGMA journal_mode=WAL'):\n    pass\n",
+        "for mode in conn.execute('PRAGMA journal_mode=WAL'):\n    pass\n",
+    ),
+    (
+        "for (_,) in conn.execute('PRAGMA journal_mode=WAL'):\n    pass\n",
+        "for (mode,) in conn.execute('PRAGMA journal_mode=WAL'):\n    pass\n",
+    ),
+    (
+        "if (_ := conn.execute('PRAGMA journal_mode=WAL')):\n    pass\n",
+        "if (mode := conn.execute('PRAGMA journal_mode=WAL').fetchone()):\n    pass\n",
+    ),
+    (
+        "while (_ := conn.execute('PRAGMA journal_mode=WAL')):\n    pass\n",
+        "while (mode := conn.execute('PRAGMA journal_mode=WAL')):\n    pass\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA {'journal_mode'!s}=WAL\")\n",
+        "row = conn.execute(f\"PRAGMA {'journal_mode'!s}=WAL\").fetchone()\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA {'journal_mode':s}=WAL\")\n",
+        "row = conn.execute(f\"PRAGMA {'journal_mode':s}=WAL\").fetchone()\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA {'journal_mode':}=WAL\")\n",
+        "row = conn.execute(f\"PRAGMA {'journal_mode':}=WAL\").fetchone()\n",
+    ),
+    (
+        "conn.execute(f\"PRAGMA {'journal' + '_mode'}=WAL\")\n",
+        "row = conn.execute(f\"PRAGMA {'journal' + '_mode'}=WAL\").fetchone()\n",
+    ),
+    (
+        "conn.execute('PRAGMA ' + 'journal_mode=WAL')\n",
+        "row = conn.execute('PRAGMA ' + 'journal_mode=WAL').fetchone()\n",
+    ),
+    (
+        "conn.execute('PRAGMA ' + 'journal' + '_mode=WAL')\n",
+        "row = conn.execute('PRAGMA ' + 'journal' + '_mode=WAL').fetchone()\n",
+    ),
+]
+_RM468_IDS = ["for-target", "for-tuple-target", "walrus-if", "walrus-while",
+              "conversion-s", "spec-s", "spec-empty", "fstring-concat",
+              "sql-concat", "sql-concat-chain"]
+
+
+@pytest.mark.parametrize("bad, good", _RM468_SHAPES, ids=_RM468_IDS)
+def test_guard_positive_control_rm468_shapes(bad, good):
+    assert _discarded_journal_pragmas(bad) == [1], bad
+    assert _discarded_journal_pragmas(good) == [], good
+
+
+def test_guard_rm468_unfoldable_conversion_or_spec_stays_a_placeholder():
+    """A conversion or format spec that CHANGES the text is refused, not folded.
+
+    MEASURED on CPython 3.14.4 (the project interpreter), each printed verbatim:
+
+    * ``f"PRAGMA {'journal_mode'!r}=WAL"`` -> ``PRAGMA 'journal_mode'=WAL``
+    * ``f"PRAGMA {'journal_mode'!a}=WAL"`` -> ``PRAGMA 'journal_mode'=WAL``
+    * ``f"PRAGMA {'journal_mode':>20}=WAL"`` -> ``PRAGMA         journal_mode=WAL``
+
+    None of the three is the text the matcher would have inlined, so the
+    replacement stays a placeholder. The guard refuses rather than models a
+    value it cannot reproduce exactly.
+    """
+    clean = (
+        "conn.execute(f\"PRAGMA {'journal_mode'!r}=WAL\")\n"
+        "conn.execute(f\"PRAGMA {'journal_mode'!a}=WAL\")\n"
+        "conn.execute(f\"PRAGMA {'journal_mode':>20}=WAL\")\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
+def test_guard_rm468_non_string_concatenation_is_refused():
+    """Only a ``+`` whose BOTH sides yield str text is folded.
+
+    MEASURED on CPython 3.14.4: ``'a' + 1`` raises ``TypeError: can only
+    concatenate str (not "int") to str``, and ``'PRAGMA journal' * 2`` yields
+    ``'PRAGMA journalPRAGMA journal'`` - neither is a value the matcher may
+    invent, so both operands must be str-yielding or the expression is refused.
+    """
+    clean = (
+        "conn.execute('PRAGMA ' + journal_mode_name)\n"
+        "conn.execute(f\"PRAGMA {'journal' + 1}=WAL\")\n"
+        "conn.execute('PRAGMA journal' * 2)\n"
+        "conn.execute('PRAGMA ' + 'synchronous=NORMAL')\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
+def test_guard_rm468_partly_kept_loop_and_walrus_targets_stay_clean():
+    """A loop target that binds a real name alongside ``_``, and a walrus that
+    binds a real name, both keep the answer - neither is a finding."""
+    clean = (
+        "for _, mode in conn.execute('PRAGMA journal_mode=WAL'):\n    pass\n"
+        "if (row := conn.execute('PRAGMA journal_mode=WAL').fetchone()):\n    pass\n"
+        "for _ in conn.execute('PRAGMA synchronous=NORMAL'):\n    pass\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
 _SITE_FLOOR = 9  # the RM-233 site plus the eight RM-413 sites
 
 
@@ -539,6 +716,16 @@ def test_scan_reports_each_rm457_shape_through_the_real_path(src):
     padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
                for i in range(_SITE_FLOOR)]
     sites, offenders = _scan([*padding, ("core/seeded.py", src)])
+    assert offenders == ["core/seeded.py:1"]
+    with pytest.raises(AssertionError, match="discarded at"):
+        _assert_scan(sites, offenders)
+
+
+@pytest.mark.parametrize("bad", [b for b, _ in _RM468_SHAPES], ids=_RM468_IDS)
+def test_scan_reports_each_rm468_shape_through_the_real_path(bad):
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/seeded.py", bad)])
     assert offenders == ["core/seeded.py:1"]
     with pytest.raises(AssertionError, match="discarded at"):
         _assert_scan(sites, offenders)
