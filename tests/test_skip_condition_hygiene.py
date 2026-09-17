@@ -50,6 +50,7 @@ import functools
 import shutil
 import subprocess
 import operator
+import types
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -396,9 +397,14 @@ class _Signals:
     # RM-440: verdicts forced by a single firing arm of the condition, as
     # "<VERDICT>:<why>". See `_forced_by_arms`.
     forced: set = field(default_factory=set)
+    # RM-463: a platform dotted name was READ somewhere under this walk, whether
+    # or not a taint then withheld the `platform` credit. Never a capability on
+    # its own; only `_probe_reads_platform` consults it.
+    platform_read: bool = False
 
     def merge(self, other: "_Signals") -> None:
         self.forced |= other.forced
+        self.platform_read |= other.platform_read
         self.unconditional |= other.unconditional
         self.platform |= other.platform
         self.env |= other.env
@@ -933,6 +939,33 @@ _HOST_PROFILES = (
 # star imports, globals(), exec, match captures ...) - which never closes. No
 # real skip site needs it. Such a skip stays UNRESOLVED, the safe direction.
 _UNKNOWN = object()
+
+
+class _Refused:
+    """RM-463: a value the evaluator will NOT model, because modelling it
+    cannot match CPython exactly (a list / set display, a bare uncalled
+    `platform.system`). It never compares, indexes or formats to anything.
+
+    `truth` is its truthiness when that alone is exact - a display whose
+    members all evaluated completely is truthy iff it has members, and a
+    function object is always truthy - else None. Truthiness is kept so a
+    short-circuit that USED to convict a site (`os.getenv("X") or ["a"]` fires
+    on every host) still does; removing the fold must not hand out acceptances.
+    A foldable expression that reaches a refusal earns no platform credit
+    (`_collect`).
+    """
+
+    __slots__ = ("truth",)
+
+    def __init__(self, truth: bool | None) -> None:
+        self.truth = truth
+
+
+_REFUSED = _Refused(None)
+_REFUSED_TRUE, _REFUSED_FALSE = _Refused(True), _Refused(False)
+# Evaluation provably raises in CPython (`{[]}`, `-1 in b"nt"`), so nothing
+# after it runs and no truthiness exists.
+_RAISES = _Refused(None)
 _STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
 # RM-449: builtins that only re-shape a platform value. `len(sys.platform) > 0`
 # and `str(os.name) != "java"` are as constant as the bare reads they wrap.
@@ -997,6 +1030,36 @@ class _Truth:
 _TRUTHY, _FALSY = _Truth(True), _Truth(False)
 
 
+def _refused_truth(truth: bool | None) -> _Refused:
+    if truth is None:
+        return _REFUSED
+    return _REFUSED_TRUE if truth else _REFUSED_FALSE
+
+
+def _first_refusal(vals) -> _Refused | None:
+    """`_RAISES` if an operand (in evaluation order) raises, else any refusal."""
+    for v in vals:
+        if v is _RAISES:
+            return _RAISES
+    return _REFUSED if any(isinstance(v, _Refused) for v in vals) else None
+
+
+def _completed(v) -> bool:
+    """A modelled value whose evaluation finished: plain, or refused with known truth."""
+    if isinstance(v, _Refused):
+        return v.truth is not None
+    return v is not _UNKNOWN and not isinstance(v, _Truth)
+
+
+_UNHASHABLE_DISPLAYS = (ast.List, ast.Set, ast.Dict, ast.ListComp, ast.SetComp, ast.DictComp)
+
+
+def _unhashable_display(node: ast.AST) -> bool:
+    if isinstance(node, _UNHASHABLE_DISPLAYS):
+        return True
+    return isinstance(node, ast.Tuple) and any(_unhashable_display(e) for e in node.elts)
+
+
 def _host_eval(
     node: ast.AST | None, model: _Model, scope: ast.AST, host: dict, seen: frozenset = frozenset(), depth: int = 0
 ):
@@ -1005,13 +1068,38 @@ def _host_eval(
         return _UNKNOWN
     if isinstance(node, ast.Constant):
         return node.value
-    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+    if isinstance(node, (ast.List, ast.Set)):
+        # RM-463: REMOVED fold. These were modelled as tuples, which CPython
+        # does not do (`str([])`, `[] != ()`, set ordering and duplicates, an
+        # unhashable set member that raises). Refused, never valued.
         vals = [_host_eval(e, model, scope, host, seen, depth + 1) for e in node.elts]
+        if any(v is _RAISES for v in vals):
+            return _RAISES
+        if isinstance(node, ast.Set) and any(_unhashable_display(e) for e in node.elts):
+            return _RAISES
+        if not all(_completed(v) for v in vals) or (
+            isinstance(node, ast.Set) and any(isinstance(v, _Refused) for v in vals)
+        ):
+            return _REFUSED
+        return _refused_truth(bool(node.elts))
+    if isinstance(node, ast.Tuple):
+        vals = [_host_eval(e, model, scope, host, seen, depth + 1) for e in node.elts]
+        refusal = _first_refusal(vals)
+        if refusal is not None:
+            if refusal is _RAISES:
+                return _RAISES
+            return _refused_truth(bool(node.elts) if all(_completed(v) for v in vals) else None)
         if any(v is _UNKNOWN or isinstance(v, _Truth) for v in vals):
             return _UNKNOWN
         return tuple(vals)
     if isinstance(node, ast.Attribute):
-        return host.get(_dotted(node), _UNKNOWN)
+        dotted = _dotted(node)
+        if dotted == "platform.system":
+            # RM-463: REMOVED fold. Uncalled, this is a function object - always
+            # truthy, never equal to the string its call returns. Only the call
+            # below is modelled.
+            return _REFUSED_TRUE
+        return host.get(dotted, _UNKNOWN)
     if isinstance(node, ast.Call):
         if node.keywords:
             return _UNKNOWN
@@ -1024,12 +1112,18 @@ def _host_eval(
             and not _name_rebound(node.func.id, model)
         ):
             arg = _host_eval(node.args[0], model, scope, host, seen, depth + 1)
+            refusal = _first_refusal([arg])
+            if refusal is not None:
+                return refusal
             if isinstance(arg, (str, tuple)):
                 return _WRAPPER_BUILTINS[node.func.id](arg)
             return _UNKNOWN
         if isinstance(node.func, ast.Attribute) and node.func.attr in _STR_METHODS:
             recv = _host_eval(node.func.value, model, scope, host, seen, depth + 1)
             args = [_host_eval(a, model, scope, host, seen, depth + 1) for a in node.args]
+            refusal = _first_refusal([recv, *args])
+            if refusal is not None:
+                return refusal
             if isinstance(recv, str) and not any(a is _UNKNOWN or isinstance(a, _Truth) for a in args):
                 try:
                     return getattr(recv, node.func.attr)(*args)
@@ -1047,18 +1141,25 @@ def _host_eval(
         return _host_eval(bound[0], model, scope, host, seen | {node.id}, depth + 1)
     if isinstance(node, ast.Subscript):
         recv = _host_eval(node.value, model, scope, host, seen, depth + 1)
+        if isinstance(recv, _Refused):
+            return _RAISES if recv is _RAISES else _REFUSED
         if not isinstance(recv, (str, tuple)):
             return _UNKNOWN
         sl = node.slice
         if isinstance(sl, ast.Slice):
-            key = slice(
-                *[
-                    None if p is None else _host_eval(p, model, scope, host, seen, depth + 1)
-                    for p in (sl.lower, sl.upper, sl.step)
-                ]
-            )
+            parts = [
+                None if p is None else _host_eval(p, model, scope, host, seen, depth + 1)
+                for p in (sl.lower, sl.upper, sl.step)
+            ]
+            refusal = _first_refusal(parts)
+            if refusal is not None:
+                return refusal
+            key = slice(*parts)
         else:
             key = _host_eval(sl, model, scope, host, seen, depth + 1)
+            refusal = _first_refusal([key])
+            if refusal is not None:
+                return refusal
         # No pre-check on the key: indexing a str / tuple with anything but an
         # int (or a slice of ints) raises TypeError, `_UNKNOWN` and `_Truth`
         # included, so the exception IS the type check. Zero step is
@@ -1069,23 +1170,49 @@ def _host_eval(
             return _UNKNOWN
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         v = _host_eval(node.operand, model, scope, host, seen, depth + 1)
-        return _UNKNOWN if v is _UNKNOWN else (not v)
+        if isinstance(v, _Refused):
+            # Exact: `not` reads truthiness only.
+            return v if v.truth is None else (not v.truth)
+        return v if v is _UNKNOWN else (not v)
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
         # RM-449: negative indexes and slice bounds (`os.name[-1]`).
         v = _host_eval(node.operand, model, scope, host, seen, depth + 1)
+        refusal = _first_refusal([v])
+        if refusal is not None:
+            return refusal
         return -v if isinstance(v, int) else _UNKNOWN
     if isinstance(node, ast.BoolOp):
         decides = isinstance(node.op, ast.Or)  # truthiness that short-circuits
-        unknown = False
+        unknown = refused = False
         for part in node.values:
             v = _host_eval(part, model, scope, host, seen, depth + 1)
+            if v is _RAISES:
+                # Reached for certain -> CPython raises. Reached only if an
+                # UNKNOWN operand failed to short-circuit -> it may not raise,
+                # so claim nothing.
+                return _REFUSED if unknown else _RAISES
+            if isinstance(v, _Refused):
+                # RM-463: only the truthiness of a refusal is used, and only
+                # when it is exact; the result is a refusal, never a value.
+                refused = True
+                if v.truth is None:
+                    unknown = True
+                elif v.truth is decides:
+                    return _refused_truth(decides)
+                continue
             if v is _UNKNOWN:
                 unknown = True
             elif bool(v) is decides:
-                return (_TRUTHY if decides else _FALSY) if unknown else v
-        return _UNKNOWN if unknown else v
+                if not unknown:
+                    return v
+                return _refused_truth(decides) if refused else (_TRUTHY if decides else _FALSY)
+        if unknown:
+            return _REFUSED if refused else _UNKNOWN
+        return v
     if isinstance(node, ast.Compare):
         left = _host_eval(node.left, model, scope, host, seen, depth + 1)
+        if isinstance(left, _Refused):
+            return _RAISES if left is _RAISES else _REFUSED
         for op, comp in zip(node.ops, node.comparators):
             fn = _COMPARE_OPS.get(type(op))
             if isinstance(op, (ast.Is, ast.IsNot)) and not (
@@ -1093,6 +1220,8 @@ def _host_eval(
             ):
                 return _UNKNOWN
             right = _host_eval(comp, model, scope, host, seen, depth + 1)
+            if isinstance(right, _Refused):
+                return _RAISES if right is _RAISES else _REFUSED
             if (
                 fn is None
                 or left is _UNKNOWN
@@ -1106,6 +1235,9 @@ def _host_eval(
                     return False
             except TypeError:
                 return _UNKNOWN
+            except ValueError:
+                # RM-463: `-1 in b"nt"` raised straight out of the guard.
+                return _RAISES
             left = right
         return True
     return _UNKNOWN
@@ -1115,10 +1247,11 @@ def _host_values(node, model: _Model, scope: ast.AST) -> list:
     return [_host_eval(node, model, scope, h) for h in _HOST_PROFILES]
 
 
-def _host_constant(node, model: _Model, scope: ast.AST) -> bool:
-    """True when `node` has one known value on every supported host."""
-    vals = _host_values(node, model, scope)
-    if any(v is _UNKNOWN for v in vals):
+def _constant_values(vals: list) -> bool:
+    """True when per-host `vals` are one known value on every supported host."""
+    # RM-463: a refusal has no value, so it is never a constant; `_collect`
+    # taints it instead. Its truthiness is read only by `_host_truth`.
+    if any(v is _UNKNOWN or isinstance(v, _Refused) for v in vals):
         return False
     # Values are AST literals, strings and tuples of them, so `==` is plain.
     first = vals[0]
@@ -1130,9 +1263,9 @@ def _host_constant(node, model: _Model, scope: ast.AST) -> bool:
 def _host_truth(node, model: _Model, scope: ast.AST) -> bool | None:
     """The truthiness of `node` when it is the same on every host, else None."""
     vals = _host_values(node, model, scope)
-    if any(v is _UNKNOWN for v in vals):
+    if any(v is _UNKNOWN or (isinstance(v, _Refused) and v.truth is None) for v in vals):
         return None
-    truths = {bool(v) for v in vals}
+    truths = {v.truth if isinstance(v, _Refused) else bool(v) for v in vals}
     return truths.pop() if len(truths) == 1 else None
 
 
@@ -1156,6 +1289,9 @@ class _Ctx:
         # dynamic import failed for want of an optional dependency - it catches
         # a deleted first-party file and a SyntaxError just as happily.
         self.broad_handler = broad_handler
+        # RM-463: True inside a refusal taint (RM-458 wrapper or `_Refused`),
+        # where a capability probe fed a platform read is refused too.
+        self.tainted = False
 
     def take(self, expr: ast.AST | None, model: _Model, scope: ast.AST, seen: frozenset) -> None:
         if expr is None or id(expr) in self.consumed:
@@ -1180,6 +1316,53 @@ def _is_reshaping_wrapper(node: ast.AST, model: _Model) -> bool:
     )
 
 
+_PROBE_CREDITS = ("platform", "binary", "env", "optional_import")
+# Every signal `_classify` turns into CAPABILITY.
+_CAPABILITY_CREDITS = (*_PROBE_CREDITS, "network", "tree_shape", "external_tree", "lfs", "untracked")
+_PROBE_IMPORT_TAILS = ("find_spec", "import_module", "importorskip", "__import__")
+
+
+def _is_capability_probe(node: ast.AST) -> bool:
+    """A call or lookup whose ANSWER is what `_collect_call` credits as a
+    binary / env / optional-import capability."""
+    if isinstance(node, ast.Subscript):
+        return _dotted(node.value).rsplit(".", 1)[-1] == "environ"
+    if not isinstance(node, ast.Call):
+        return False
+    fname = _dotted(node.func)
+    parts = fname.split(".")
+    return (
+        fname in ("shutil.which", "which", "distutils.spawn.find_executable")
+        or parts[-1] in _ENV_CALLS
+        or "environ" in parts
+        or parts[-1] in _PROBE_IMPORT_TAILS
+    )
+
+
+def _probe_reads_platform(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> bool:
+    args = [node.slice] if isinstance(node, ast.Subscript) else list(node.args) + [k.value for k in node.keywords]
+    probe = _Ctx(ctx.broad_handler)
+    probe.consumed = set(ctx.consumed)  # a copy: reading here consumes nothing
+    for arg in args:
+        _collect(arg, model, scope, probe, seen, depth)
+    return probe.sig.platform_read
+
+
+def _collect_tainted(
+    node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int, clear: tuple
+) -> None:
+    """Collect `node`'s children, withholding the `clear` credits (and always
+    the platform credit). Every other signal under the node still counts."""
+    sub = _Ctx(ctx.broad_handler)
+    sub.consumed = ctx.consumed
+    sub.tainted = True
+    for child in ast.iter_child_nodes(node):
+        _collect(child, model, scope, sub, seen, depth)
+    for name in ("platform", *clear):
+        setattr(sub.sig, name, set() if isinstance(getattr(sub.sig, name), set) else False)
+    ctx.sig.merge(sub.sig)
+
+
 def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     """Walk a condition (or a whole region) accumulating what it depends on.
 
@@ -1195,26 +1378,42 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: froz
     # RM-440: an expression with one known value on every supported host asks
     # nothing, so nothing under it may be credited - above all not the platform
     # signal its `os.name` would otherwise earn.
-    if isinstance(node, _HOST_FOLDABLE) and _host_constant(node, model, scope):
-        return
+    refused = False
+    if isinstance(node, _HOST_FOLDABLE):
+        vals = _host_values(node, model, scope)
+        if _constant_values(vals):
+            return
+        refused = any(isinstance(v, _Refused) for v in vals)
 
     # RM-458 (refusal taint, NOT a fold): a platform read re-shaped by bool /
     # min / max / sorted or formatted into an f-string earns no platform
     # credit. Two rounds of folding these were refuted on CPython fidelity, so
     # no value is modelled; every OTHER signal under the wrapper still counts.
+    # RM-463: an expression that reaches a `_REFUSED` value (a removed fold)
+    # takes the same taint, so removing the fold hands no credit back.
+    if refused:
+        # A removed fold used to VALUE this expression, and whatever it folded
+        # to (`len([]) and os.getenv("X")` never fires; `{[]} or ...` always
+        # raises) is now unknown - so nothing under it may make the site
+        # acceptable. Defect evidence under it still counts.
+        _collect_tainted(node, model, scope, ctx, seen, depth, clear=_CAPABILITY_CREDITS)
+        return
     if _is_reshaping_wrapper(node, model):
-        sub = _Ctx(ctx.broad_handler)
-        sub.consumed = ctx.consumed
-        for child in ast.iter_child_nodes(node):
-            _collect(child, model, scope, sub, seen, depth)
-        sub.sig.platform = False
-        sig.merge(sub.sig)
+        _collect_tainted(node, model, scope, ctx, seen, depth, clear=("platform",))
+        return
+
+    # RM-463: inside a taint, a capability probe whose argument reads the
+    # platform (`bool(shutil.which(sys.platform))`) is the platform question
+    # in disguise, so it supplies no probe credit either.
+    if ctx.tainted and _is_capability_probe(node) and _probe_reads_platform(node, model, scope, ctx, seen, depth):
+        _collect_tainted(node, model, scope, ctx, seen, depth, clear=_PROBE_CREDITS)
         return
 
     if isinstance(node, ast.Attribute):
         dotted = _dotted(node)
         if dotted in _PLATFORM_DOTTED:
             sig.platform = True
+            sig.platform_read = True
         if dotted.split(".")[-1] == "environ" or dotted.startswith("environ"):
             sig.env = True
         # `.parents` / `.parts` asks about the SHAPE of the checkout (am I in a
@@ -3492,3 +3691,272 @@ def test_x():
     findings = scan_source("tests/test_mutant.py", src)
     assert [f.verdict for f in findings] == [DEFECT], condition
     assert not any(_excused(f) for f in findings)
+
+
+# --- RM-463: unsound RM-449 folds REMOVED, probe laundering refused ---------- #
+# The evaluator modelled list and set literals as tuples and a bare
+# `platform.system` (a function) as its return value, so it VALUED forms CPython
+# values differently or raises on. Per the second-refute rule those folds are
+# removed, not patched. A removed fold must not turn a formerly refused site
+# into an accepted one, so the value it used to supply is replaced by a
+# refusal (`_Refused`) that is a taint exactly like the RM-458 wrapper taint -
+# the expression folds to nothing and earns no platform credit - and that keeps
+# only what CPython guarantees: a display's truthiness, and a provable raise.
+def _rm463_cpython(expr: str) -> list:
+    out = []
+    for plat, name, system in (("win32", "nt", "Windows"), ("linux", "posix", "Linux")):
+        ns = {
+            "sys": types.SimpleNamespace(platform=plat),
+            "os": types.SimpleNamespace(name=name),
+            "platform": types.SimpleNamespace(system=lambda s=system: s),
+        }
+        try:
+            out.append(("V", eval(expr, ns)))  # noqa: S307 - literal test corpus
+        except Exception as exc:  # noqa: BLE001 - any raise is the datum
+            out.append(("RAISE", type(exc).__name__))
+    return out
+
+
+def _rm463_model(expr: str) -> list:
+    model = _Model(_REPO_ROOT / "tests" / "test_mutant.py", f"import os\nimport sys\nimport platform\nX = ({expr})\n")
+    node = model.tree.body[-1].value
+    return _host_values(node, model, model.tree)
+
+
+def _rm463_is_value(v) -> bool:
+    return v is not _UNKNOWN and not isinstance(v, (_Refused, _Truth))
+
+
+def _rm463_assert_faithful(expr: str, model: list, real: list) -> None:
+    """Every claim the evaluator makes must hold in CPython: a VALUE equal in
+    type, value and repr; a refusal's TRUTHINESS; `_RAISES` only where CPython
+    raises. `_UNKNOWN` and a truth-less refusal claim nothing."""
+    for got, (kind, want) in zip(model, real):
+        if got is _RAISES:
+            assert kind == "RAISE", f"{expr}: modelled a raise, CPython gives {want!r}"
+        elif isinstance(got, (_Refused, _Truth)):
+            truth = got.truth if isinstance(got, _Refused) else got.value
+            if truth is not None:
+                assert kind == "V" and bool(want) is truth, (expr, truth, want)
+        elif got is not _UNKNOWN:
+            assert kind == "V", f"{expr}: modelled {got!r}, CPython raises {want}"
+            assert type(got) is type(want) and got == want and repr(got) == repr(want), (expr, got, want)
+
+
+# Each was VALUED at 23e20e810 where CPython differs in type, value or repr, or
+# raises. Found by an exhaustive sweep of atoms x unary x binary forms (4008
+# mismatches over 67014 expressions, every one a list / set literal or a bare
+# `platform.system`, plus a guard crash on bytes containment).
+_RM463_UNSOUND = [
+    "str([])",
+    "[] != ()",
+    '["nt"] == ("nt",)',
+    'not ({"b"} > {"a", "z"})',
+    "not len({[]})",
+    'len({"nt", "nt"})',
+    '"" or ["nt"]',
+    'sys.platform.startswith(["win", "lin"])',
+    'os.name in {"nt", []}',
+    'platform.system == "Windows"',
+    "len(platform.system) > 0",
+    'platform.system < ""',
+    "-1 in b'nt'",
+]
+
+
+@pytest.mark.parametrize("expr", _RM463_UNSOUND)
+def test_rm463_evaluator_never_values_a_form_cpython_does_not(expr):
+    _rm463_assert_faithful(expr, _rm463_model(expr), _rm463_cpython(expr))
+
+
+# The refusal keeps an EXACT truthiness (so short-circuit convictions survive)
+# and an exact raise. Each is checked against CPython, and each must carry the
+# claim - a refusal that knows nothing would pass the faithfulness check above
+# while handing the acceptances below straight back.
+@pytest.mark.parametrize(
+    "expr, truth",
+    [
+        ('["nt"]', True),
+        ("[]", False),
+        ('{"a", "a"}', True),
+        ("platform.system", True),
+        ('"" or ["nt"]', True),
+        ("sys.platform and []", False),
+        ('(["a"],)', True),
+        ("not []", True),
+        ("{[]}", "raises"),
+        ("not len({[]})", "raises"),
+        ("{([],)} or True", "raises"),
+        ("-1 in b'nt'", "raises"),
+    ],
+)
+def test_rm463_refusal_keeps_only_exact_truthiness(expr, truth):
+    model, real = _rm463_model(expr), _rm463_cpython(expr)
+    _rm463_assert_faithful(expr, model, real)
+    for got in model:
+        if truth == "raises":
+            assert got is _RAISES, (expr, got)
+        elif isinstance(got, _Refused):
+            assert got.truth is truth, (expr, got.truth)
+        else:
+            assert got is truth, (expr, got)
+
+
+# Control: the sound half stays folded, so the test above cannot pass by the
+# evaluator refusing everything.
+_RM463_SOUND = [
+    "len(sys.platform)",
+    "os.name[-1]",
+    "sys.platform[:3]",
+    'sys.platform.startswith(("win", "lin"))',
+    'str(("nt", 1))',
+    '(os.name, 1) == ("nt", 1)',
+    "not os.name[:0]",
+    'platform.system().lower() in ("windows", "linux")',
+]
+
+
+@pytest.mark.parametrize("expr", _RM463_SOUND)
+def test_rm463_sound_folds_are_kept_and_match_cpython(expr):
+    model, real = _rm463_model(expr), _rm463_cpython(expr)
+    assert all(_rm463_is_value(v) for v in model), (expr, model)
+    assert [("V", v) for v in model] == real
+    assert [repr(v) for v in model] == [repr(w) for _, w in real]
+
+
+_RM463_HDR = """
+import os
+import sys
+import shutil
+import platform
+import importlib.util
+import pytest
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]
+TR = ROOT / "core" / "match_db.py"
+HOSTS = ["win32", "linux"]
+PLAT = sys.platform
+"""
+
+
+def _rm463_verdicts(condition: str) -> list:
+    src = _RM463_HDR + f"@pytest.mark.skipif({condition}, reason='h')\ndef test_x():\n    pass\n"
+    return [(f.verdict, _excused(f)) for f in scan_source("tests/test_mutant.py", src)]
+
+
+# Mutation / positive controls: each laundered a tracked-file arm at 23e20e810.
+# The unsound fold valued the left arm constant-FALSE, so it was dropped as
+# never firing and the `shutil.which` arm made the site CAPABILITY. In CPython
+# the arm fires (or raises), so the tracked check is live and the site is DEFECT.
+_RM463_LAUNDERED = {
+    "str_of_empty_list": 'str([]) != "()"',
+    "list_vs_tuple": "[] != ()",
+    "set_superset": 'not ({"b"} > {"a", "z"})',
+    "len_of_unhashable_set": "not len({[]})",
+    "bare_platform_system_attribute": 'platform.system < ""',
+}
+
+
+@pytest.mark.parametrize("name", sorted(_RM463_LAUNDERED))
+def test_rm463_removed_fold_no_longer_launders_a_tracked_arm(name):
+    arm = _RM463_LAUNDERED[name]
+    cond = f'({arm} and not TR.exists()) or shutil.which("git") is None'
+    assert _rm463_verdicts(cond) == [(DEFECT, False)], name
+
+
+def test_rm463_a_sound_constant_false_arm_is_still_dropped():
+    """Control: the arm-dropping machinery still works when the fold is sound."""
+    cond = '(os.name[:0] != "" and not TR.exists()) or shutil.which("git") is None'
+    assert _rm463_verdicts(cond) == [(CAPABILITY, False)]
+
+
+# Refused at 23e20e810 THROUGH a removed fold (it valued them constant-true).
+# Removal alone would hand the bare platform read its credit back and accept
+# them; the `_REFUSED` taint keeps every one out.
+_RM463_NO_NEW_ACCEPTANCE = [
+    'sys.platform in ["win32", "linux"]',
+    'os.name in {"nt", "posix"}',
+    "sys.platform in HOSTS",
+    "len([sys.platform]) == 1",
+    'sys.platform.startswith(["win", "lin"])',
+    "len(platform.system) > 0",
+    "platform.system",
+    'sys.platform in ("win32",) or ["x"]',
+    'not (os.name not in ["nt", "posix"])',
+    # Short-circuit through a refusal. A refusal that dropped its truthiness
+    # accepted every one of these (measured on the first RM-463 draft).
+    '(os.getenv("X") in ["a"] or True) and not TR.exists()',
+    'os.getenv("X") or ["a"]',
+    'os.getenv("X") in ["a"] and False',
+    'os.getenv("X") or (["a"],)',
+    'not not (os.getenv("X") in ["a"] and False)',
+    'os.getenv("X") or {"a"}',
+    'os.getenv("X") or platform.system',
+    '(os.getenv("X") or ["a"]) and not TR.exists()',
+    '(["a"] or sys.platform) == "win32"',
+    # A raising display reached only when the probe does not short-circuit:
+    # it either skips or errors, so it is still constant-true where it runs.
+    'os.getenv("X") or {([],)}',
+    '((os.getenv("X") or {[]}) and not TR.exists()) or shutil.which("git") is None',
+    # Found by a widened adversarial corpus (probe x display x shape): the old
+    # fold decided these (`len([])` is 0; `{[]}` was valued truthy), so no
+    # capability under a refusal may make them acceptable.
+    'len([]) and os.getenv("X")',
+    '{[]} or os.getenv("X")',
+    '[{[]}] or shutil.which("git")',
+    '({([],)} or os.getenv("X")) and not TR.exists()',
+    'os.getenv("X") or {[]}',
+    # Documented cost: a genuine env gate compared against a list display is
+    # refused too - spell the display as a tuple.
+    'sys.platform == "win32" and os.getenv("X") in ["1"]',
+]
+
+
+@pytest.mark.parametrize("condition", _RM463_NO_NEW_ACCEPTANCE)
+def test_rm463_removed_fold_does_not_create_an_acceptance(condition):
+    got = _rm463_verdicts(condition)
+    assert got and all(v != CAPABILITY and not ex for v, ex in got), (condition, got)
+
+
+def test_rm463_the_tuple_spelling_is_still_constant_true():
+    """Control: the strict half - a tuple literal still folds and convicts."""
+    assert _rm463_verdicts('sys.platform in ("win32", "linux")') == [(DEFECT, False)]
+
+
+# (2) A capability probe fed a platform read launders the RM-458 taint: the
+# wrapper drops the platform credit, and the probe re-supplies binary / env /
+# optional-import credit for what is still a question about the platform.
+_RM463_PROBE_LAUNDERING = [
+    "bool(shutil.which(sys.platform))",
+    "bool(shutil.which(cmd=sys.platform))",
+    "bool(shutil.which(PLAT))",
+    'f"{shutil.which(sys.platform)}" != "None"',
+    "bool(os.environ.get(sys.platform))",
+    "bool(os.environ[os.name])",
+    "bool(os.getenv(os.name))",
+    "bool(importlib.util.find_spec(os.name))",
+    'min(os.getenv(sys.platform, "a"))',
+]
+
+
+@pytest.mark.parametrize("condition", _RM463_PROBE_LAUNDERING)
+def test_rm463_capability_probe_cannot_launder_a_tainted_platform_read(condition):
+    got = _rm463_verdicts(condition)
+    assert got and all(v != CAPABILITY and not ex for v, ex in got), (condition, got)
+
+
+@pytest.mark.parametrize(
+    "condition",
+    [
+        'bool(shutil.which("git"))',
+        'bool(os.environ.get("CI"))',
+        'bool(os.getenv("CI"))',
+        'bool(importlib.util.find_spec("numpy"))',
+        "shutil.which(sys.platform)",
+        'sys.platform == "win32" and os.getenv("X") in ("1",)',
+    ],
+)
+def test_rm463_probe_controls_keep_their_capability(condition):
+    """A probe on a literal keeps its credit under a wrapper; an UNWRAPPED
+    platform-named probe still reads the platform, as it did at base."""
+    assert _rm463_verdicts(condition) == [(CAPABILITY, False)]
