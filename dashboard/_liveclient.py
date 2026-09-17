@@ -73,6 +73,22 @@ def _int_or_zero(v) -> int:
         return 0
 
 
+def _int_or_none(v) -> int | None:
+    """RM-461: ``int(v)`` where ``int()`` accepts it, else None.
+
+    The SAME accepted vocabulary as ``_int_or_zero`` (valid values map to the
+    same int), but an unreadable or missing value stays None instead of a
+    fabricated 0. Used where 0 is a COUNTABLE value to a consumer: the
+    adaptation latch (``_adaptation_latch.compute``) skips a None cs /
+    creep_score frame but latches a 0 for the rest of the game."""
+    if v is None:
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def _as_int(v) -> int:
     """Coerce a scoreboard value to a non-negative int; junk -> 0. Mirrors the
     client-side ``_bpInt`` (active_match.js) so a malformed live frame degrades
@@ -189,7 +205,9 @@ def liveclient_summary() -> dict:
         out["game_time_s"] = gt
         mm, ss = divmod(gt, 60)
         out["game_time"] = f"{mm}:{ss:02d}"
-        out["level"] = ap.get("level")
+        # RM-461: level degrades to None, its MISSING default (stats_panel.js
+        # renders a null level as "-"), never a fabricated 0.
+        out["level"] = _int_or_none(ap.get("level"))
         out["gold"]  = _int_or_zero(ap.get("currentGold", 0))
         out["hp"]    = _int_or_zero(cs.get("currentHealth", 0))
         out["hp_max"]   = _int_or_zero(cs.get("maxHealth", 0))
@@ -217,7 +235,11 @@ def liveclient_summary() -> dict:
         if me_pl:
             s = _as_dict(me_pl.get("scores"))
             out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
-            out["cs"]  = s.get("creepScore", 0)
+            # RM-461: a missing OR unreadable creep score is None, not 0. The
+            # adaptation latch skips a None cs frame but latches a 0 as
+            # cs_at_10 / csd_at_15 for the rest of the game; stats_panel.js
+            # renders a null cs as "-". Same seam as players[].creep_score.
+            out["cs"]  = _int_or_none(s.get("creepScore"))
             out["champion"] = me_pl.get("championName")
             owned_items = [it.get("displayName", "") for it in _dicts(me_pl.get("items"))]
             # s184 - item-id list so server-side consumers (archetype_mismatch
@@ -275,8 +297,12 @@ def liveclient_summary() -> dict:
                 {
                     "position":    p.get("position") or "",
                     "team":        p.get("team") or "",
-                    "creep_score": _int_or_zero(
-                        _as_dict(p.get("scores")).get("creepScore", 0)),
+                    # RM-461: None (not RM-456's 0) for a missing or
+                    # unreadable creep score, so _find_opponent_cs returns
+                    # None and csd_at_15 waits instead of latching a diff
+                    # against a phantom 0. No JS reader (grepped).
+                    "creep_score": _int_or_none(
+                        _as_dict(p.get("scores")).get("creepScore")),
                     "is_active":   p.get("summonerName") == me_name,
                 }
                 for p in all_players
@@ -287,16 +313,19 @@ def liveclient_summary() -> dict:
             # active player's team kills + crediting the operator's own
             # kills+assists is a hard live fact. KP = involvements / team
             # kills. Emit ONLY when the denominator is > 0 (KP undefined at
-            # 0 team kills) - isolated try so any non-numeric score degrades
-            # to an omitted key, never an exception.
+            # 0 team kills). RM-461: each score goes through _int_or_zero, so
+            # one None / junk value degrades THAT value to 0 (the default a
+            # missing key already produced) instead of dropping the whole
+            # percentage; the try stays as a last-resort guard.
             try:
                 team_kills = sum(
-                    int(_as_dict(p.get("scores")).get("kills", 0))
+                    _int_or_zero(_as_dict(p.get("scores")).get("kills", 0))
                     for p in all_players
                     if p.get("team") and p.get("team") == my_team
                 )
                 if team_kills > 0:
-                    involved = int(s.get("kills", 0)) + int(s.get("assists", 0))
+                    involved = (_int_or_zero(s.get("kills", 0))
+                                + _int_or_zero(s.get("assists", 0)))
                     pct = round(100 * involved / team_kills)
                     out["kill_participation_pct"] = f"{pct}%"
             except Exception:  # noqa: BLE001
