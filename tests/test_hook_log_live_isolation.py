@@ -43,6 +43,7 @@ import pytest
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
+import tools.inbox_responder_runner as runner  # noqa: E402
 from tools import rc_facts  # noqa: E402
 
 _PY = sys.executable
@@ -104,6 +105,7 @@ def test_real_cli_under_pytest_writes_its_row_to_the_redirect_not_the_live_log()
     refused by defence 1 and this arm isolates defence 2.
     """
     redirect = Path(os.environ["RC_HOOK_LOG"])
+    live_before = _snapshot(_LIVE)
     proc = subprocess.Popen([_PY, str(_ROOT / "tools" / "rc_facts.py"), "--inbox-only"],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, creationflags=_NO_WINDOW)
@@ -112,7 +114,73 @@ def test_real_cli_under_pytest_writes_its_row_to_the_redirect_not_the_live_log()
     mine = [r for r in _rows(redirect) if r.get("pid") == proc.pid]
     assert len(mine) == 1, f"expected one row for pid {proc.pid} in {redirect}"
     assert mine[0]["stdin"] == "empty"
-    assert not [r for r in _rows(_LIVE) if r.get("pid") == proc.pid]
+    problems = _child_live_problems(live_before, _snapshot(_LIVE), proc.pid)
+    assert not problems, f"the child wrote into the live hook log: {problems}"
+
+
+# RM-459 follow-up: PID REUSE. The live log keeps up to `_LOG_KEEP` HISTORICAL
+# rows from every session on the box, and Windows recycles pids, so a
+# whole-log `pid == proc.pid` scan fails whenever an old real fire happens to
+# carry the child's reused pid (measured: pid 23092, a UserPromptSubmit row from
+# a day earlier). Only rows ADDED during the child's run are attributable to it.
+# The diff is by row IDENTITY (multiset), not by index, so a foreign head trim
+# at the keep cap mid-run cannot shift a historical row into the "added" set;
+# that rule, plus absent-log and mid-write-tail handling, is delegated to
+# `runner.hook_log_violations`, the RM-434 rule the responder dry cycle uses.
+
+
+def _snapshot(p: Path) -> bytes | None:
+    return p.read_bytes() if p.exists() else None
+
+
+def _child_live_problems(before: bytes | None, after: bytes | None, child_pid: int) -> list:
+    return list(runner.hook_log_violations(before, after, {child_pid}, frozenset()))
+
+
+def _hook_row(pid: int, session: str | None = "s", ts: str = "2026-09-16T09:21:52") -> bytes:
+    rec = {"ts": ts, "event": "UserPromptSubmit", "payload": True, "stdin": "json",
+           "session": session, "pid": pid}
+    return (json.dumps(rec, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+_REUSED = 23092
+
+
+def test_pid_reuse_historical_row_is_not_attributed_to_the_child(tmp_path):
+    """Seeded reproduction of the flake, in a tmp log - never the live one."""
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(1000) + _hook_row(_REUSED, "f37ae0e9") + _hook_row(1001))
+    before = _snapshot(log)
+    with log.open("ab") as fh:  # a foreign session fires during the window
+        fh.write(_hook_row(4242, "foreign"))
+    # The OLD whole-log predicate goes red here: this is the flake.
+    assert [r for r in _rows(log) if r.get("pid") == _REUSED]
+    # The new rule does not.
+    assert _child_live_problems(before, _snapshot(log), _REUSED) == []
+
+
+def test_child_row_appended_during_the_window_still_fails(tmp_path):
+    log = tmp_path / "hook_invocations.jsonl"
+    log.write_bytes(_hook_row(1000) + _hook_row(_REUSED, "f37ae0e9"))
+    before = _snapshot(log)
+    with log.open("ab") as fh:
+        fh.write(_hook_row(_REUSED, None, ts="2026-09-17T00:00:00"))
+    assert _child_live_problems(before, _snapshot(log), _REUSED)
+
+
+def test_child_row_survives_a_foreign_head_trim_at_the_keep_cap(tmp_path):
+    """Identity, not index: a trim during the window must not hide the child."""
+    full = [_hook_row(2000 + i) for i in range(rc_facts._LOG_KEEP - 1)] + [_hook_row(_REUSED)]
+    before = b"".join(full)
+    trimmed = b"".join(full[1:]) + _hook_row(4242, "foreign")
+    assert _child_live_problems(before, trimmed, _REUSED) == []
+    assert _child_live_problems(before, trimmed + _hook_row(_REUSED, None), _REUSED)
+
+
+def test_absent_live_log_is_not_a_child_write(tmp_path):
+    missing = tmp_path / "absent.jsonl"
+    assert _child_live_problems(_snapshot(missing), _snapshot(missing), _REUSED) == []
+    assert _child_live_problems(None, _hook_row(_REUSED, None), _REUSED)
 
 
 # ------------------------------------------------ defence 1: refuse a hand run
