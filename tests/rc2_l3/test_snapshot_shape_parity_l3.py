@@ -168,7 +168,8 @@ class TestOfflineAgentPathPreserved(unittest.TestCase):
         _reset_caches()
         with mock.patch.object(agent, "ensure_lcu_conn", return_value=False):
             st = agent.capture_state()
-        self.assertEqual(st["phase"], "Offline")
+        # RM-382: a falsy no-phase, not the truthy "Offline" sentinel.
+        self.assertIsNone(st["phase"])
         self.assertIn("config", st)
         self.assertIn("ts", st)
         self.assertNotIn("champ_select", st)
