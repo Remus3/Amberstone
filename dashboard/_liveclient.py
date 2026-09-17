@@ -58,14 +58,26 @@ from item_advisor import (
 _VISION_TOKEN = get_vision_token()
 
 
+def _int_or_zero(v) -> int:
+    """RM-456 numeric-leaf seam: ``int(v)`` where ``int()`` accepts it, else 0.
+
+    Deliberately ``int()`` with a wider except and NOTHING else, so every value
+    that coerced before maps to the same int (valid frames byte-identical).
+    ``int(None)`` raised TypeError, ``int("nan")`` / ``int(float("nan"))``
+    ValueError and ``int(float("inf"))`` OverflowError; each one used to reach
+    liveclient_summary's outer ``except`` and BLANK THE WHOLE SUMMARY. 0 is the
+    same default a MISSING leaf already produced."""
+    try:
+        return int(v)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
 def _as_int(v) -> int:
     """Coerce a scoreboard value to a non-negative int; junk -> 0. Mirrors the
     client-side ``_bpInt`` (active_match.js) so a malformed live frame degrades
     to 0 rather than raising."""
-    try:
-        return max(0, int(v))
-    except (TypeError, ValueError):
-        return 0
+    return max(0, _int_or_zero(v))
 
 
 # RM-415: the envelope coercion seam for this module. ``d.get(k) or {}`` /
@@ -170,28 +182,31 @@ def liveclient_summary() -> dict:
             (p for p in all_players if p.get("summonerName") == me_name),
             None,
         )
-        gt = gd.get("gameTime", 0)
-        out["game_time_s"] = int(gt)
-        mm, ss = divmod(int(gt), 60)
+        # RM-456: every numeric leaf goes through _int_or_zero so one None /
+        # "nan" / inf leaf degrades THAT field to 0 instead of blanking the
+        # whole summary via the outer except.
+        gt = _int_or_zero(gd.get("gameTime", 0))
+        out["game_time_s"] = gt
+        mm, ss = divmod(gt, 60)
         out["game_time"] = f"{mm}:{ss:02d}"
         out["level"] = ap.get("level")
-        out["gold"]  = int(ap.get("currentGold", 0))
-        out["hp"]    = int(cs.get("currentHealth", 0))
-        out["hp_max"]   = int(cs.get("maxHealth", 0))
-        out["mana"]  = int(cs.get("resourceValue", 0))
-        out["mana_max"] = int(cs.get("resourceMax", 0))
+        out["gold"]  = _int_or_zero(ap.get("currentGold", 0))
+        out["hp"]    = _int_or_zero(cs.get("currentHealth", 0))
+        out["hp_max"]   = _int_or_zero(cs.get("maxHealth", 0))
+        out["mana"]  = _int_or_zero(cs.get("resourceValue", 0))
+        out["mana_max"] = _int_or_zero(cs.get("resourceMax", 0))
         # Slice 4b (2026-06-28): the API-backed stats the overlay stats mini-panel
         # renders. championStats is ground truth (HP/mana above + these); the
         # overlay augments the native HUD with them (a HUD *replacement* is not
         # possible - the API has no live ability/summoner cooldowns, buffs, or
         # wards, see docs). Ints are fine for a glanceable read.
         out["stats"] = {
-            "ability_haste": int(cs.get("abilityHaste", 0)),
-            "move_speed":    int(cs.get("moveSpeed", 0)),
-            "armor":         int(cs.get("armor", 0)),
-            "magic_resist":  int(cs.get("magicResist", 0)),
-            "attack_damage": int(cs.get("attackDamage", 0)),
-            "ability_power": int(cs.get("abilityPower", 0)),
+            "ability_haste": _int_or_zero(cs.get("abilityHaste", 0)),
+            "move_speed":    _int_or_zero(cs.get("moveSpeed", 0)),
+            "armor":         _int_or_zero(cs.get("armor", 0)),
+            "magic_resist":  _int_or_zero(cs.get("magicResist", 0)),
+            "attack_damage": _int_or_zero(cs.get("attackDamage", 0)),
+            "ability_power": _int_or_zero(cs.get("abilityPower", 0)),
             "resource_type": cs.get("resourceType", ""),
         }
         owned_items: list = []
@@ -260,7 +275,8 @@ def liveclient_summary() -> dict:
                 {
                     "position":    p.get("position") or "",
                     "team":        p.get("team") or "",
-                    "creep_score": int(_as_dict(p.get("scores")).get("creepScore", 0)),
+                    "creep_score": _int_or_zero(
+                        _as_dict(p.get("scores")).get("creepScore", 0)),
                     "is_active":   p.get("summonerName") == me_name,
                 }
                 for p in all_players

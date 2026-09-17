@@ -170,6 +170,15 @@ def _as_list(value: object) -> list:
     return value if isinstance(value, list) else []
 
 
+def _as_str(value: object) -> str:
+    """RM-456 sibling of ``_as_list``: ``value`` when it is a str, else ``""``.
+
+    Same rule as ``core.enemy_aware_stats._as_str``, which the name matcher in
+    ``_resolve_my_champion`` mirrors; kept module-local like ``_as_list``.
+    """
+    return value if isinstance(value, str) else ""
+
+
 # RC2 6.3 (L4): the dashboard update cadence is ONE tunable shared by the
 # /api/state TTL cache AND the SSE re-build tick. The IO timing map
 # (docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md) flagged that these two MUST
@@ -263,15 +272,21 @@ def _resolve_my_champion(liveclient_data) -> str:
     ap = liveclient_data.get("activePlayer")
     if not isinstance(ap, dict):
         return ""
-    me_name = ap.get("summonerName") or ap.get("riotIdGameName") or ""
+    # RM-456: coerce both names exactly as active_player_team does (``or`` first,
+    # THEN the string check) and skip an empty roster name. A non-string name
+    # used to raise at ``.startswith`` / ``rid + "#"``; the caller caught it,
+    # so it degraded, but through the except rather than by design.
+    me_name = _as_str(ap.get("summonerName") or ap.get("riotIdGameName"))
     if not me_name:
         return ""
     for p in _as_list(liveclient_data.get("allPlayers")):
         if not isinstance(p, dict):
             continue
-        rid = p.get("riotIdGameName") or p.get("summonerName") or ""
+        rid = _as_str(p.get("riotIdGameName") or p.get("summonerName"))
+        if not rid:
+            continue
         if rid == me_name or me_name.startswith(rid + "#") or rid == me_name.split("#", 1)[0]:
-            return str(p.get("championName") or "")
+            return _as_str(p.get("championName"))
     return ""
 
 
