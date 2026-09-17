@@ -1166,6 +1166,18 @@ class _Ctx:
 
 
 _MAX_RESOLUTION_DEPTH = 8
+_RESHAPING_WRAPPERS = frozenset({"bool", "min", "max", "sorted"})
+
+
+def _is_reshaping_wrapper(node: ast.AST, model: _Model) -> bool:
+    if isinstance(node, ast.JoinedStr):
+        return True
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in _RESHAPING_WRAPPERS
+        and not _name_rebound(node.func.id, model)
+    )
 
 
 def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> None:
@@ -1184,6 +1196,19 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: froz
     # nothing, so nothing under it may be credited - above all not the platform
     # signal its `os.name` would otherwise earn.
     if isinstance(node, _HOST_FOLDABLE) and _host_constant(node, model, scope):
+        return
+
+    # RM-458 (refusal taint, NOT a fold): a platform read re-shaped by bool /
+    # min / max / sorted or formatted into an f-string earns no platform
+    # credit. Two rounds of folding these were refuted on CPython fidelity, so
+    # no value is modelled; every OTHER signal under the wrapper still counts.
+    if _is_reshaping_wrapper(node, model):
+        sub = _Ctx(ctx.broad_handler)
+        sub.consumed = ctx.consumed
+        for child in ast.iter_child_nodes(node):
+            _collect(child, model, scope, sub, seen, depth)
+        sub.sig.platform = False
+        sig.merge(sub.sig)
         return
 
     if isinstance(node, ast.Attribute):
@@ -3386,3 +3411,84 @@ _RM449_REBIND_FORMS = {
 def test_rm449_any_rebinding_of_a_builtin_wrapper_blocks_the_fold(form):
     src = _rm449_wrapped_source("len(sys.platform) > 0", _RM449_REBIND_FORMS[form])
     assert _verdicts(src) == [CAPABILITY], form
+
+
+# --- RM-458: refusal taint, after two refuted fold attempts ------------------ #
+# Folding bool / min / max / sorted / f-strings was refuted twice on CPython
+# fidelity (list and set literals are modelled as tuples) and reverted. What
+# remains is a pure refusal: a platform read under one of those wrappers earns
+# no platform credit. MEASURED against c3cde5dc6 over 5609 generated and
+# verifier-authored conditions: 0 refused-then-accepted, and all 179 real skip
+# sites keep their verdicts. The cost is deliberate: a genuinely host-varying
+# wrapped read (`bool(sys.platform == "win32")`) is refused too - write the
+# bare comparison instead.
+_RM458_TAINTED = [
+    "bool(sys.platform)",
+    "bool(os.name[:1])",
+    'bool(sys.platform == "win32")',
+    'min(os.name) != "z"',
+    'max(os.name) == "t"',
+    'sorted(os.name) == ["n", "t"]',
+    'f"{os.name}" != "java"',
+    'f"{os.name!r:>9}" == "nt"',
+]
+
+
+@pytest.mark.parametrize("condition", _RM458_TAINTED)
+def test_rm458_wrapped_platform_read_earns_no_capability(condition):
+    assert _verdicts(_rm449_wrapped_source(condition)) == [UNRESOLVED], condition
+
+
+@pytest.mark.parametrize(
+    "condition, control",
+    [
+        ('bool(sys.platform == "win32")', 'sys.platform == "win32"'),
+        ('min(os.name) == "n"', 'os.name[0] == "n"'),
+        ('f"{os.name}" == "nt"', 'os.name == "nt"'),
+    ],
+)
+def test_rm458_the_same_read_unwrapped_keeps_its_capability(condition, control):
+    """Control: only the wrapper differs, so the taint is what refuses it."""
+    assert _verdicts(_rm449_wrapped_source(control)) == [CAPABILITY]
+    assert _verdicts(_rm449_wrapped_source(condition)) != [CAPABILITY]
+
+
+def test_rm458_taint_removes_only_the_platform_signal():
+    """A non-platform capability under a wrapper still counts."""
+    prelude = "import shutil\n"
+    assert _verdicts(_rm449_wrapped_source('bool(shutil.which("git"))', prelude)) == [CAPABILITY]
+
+
+def test_rm458_a_shadowed_wrapper_is_not_tainted():
+    prelude = "def bool(x):\n    return x\n"
+    assert _verdicts(_rm449_wrapped_source("bool(sys.platform)", prelude)) == [CAPABILITY]
+
+
+# The verifier's refuting snippets against both fold rounds. Each was DEFECT at
+# c3cde5dc6, became CAPABILITY under a fold, and must stay DEFECT.
+_RM458_REFUTATIONS = [
+    '(sorted(os.name[:0]) != () and not TR.exists()) or shutil.which("git") is None',
+    '(str(sorted(os.name[:0])) != "()" and not TR.exists()) or shutil.which("git") is None',
+    "(bool(sorted(os.name[:0])) or True) and not TR.exists()",
+    '(f"{sorted(os.name[:0])}" != "()" and not TR.exists()) or shutil.which("git") is None',
+    '(not (max([{"a","z"},{"b"}]) == ("b",)) and not TR.exists()) or shutil.which("git") is None',
+    '(not (str(max([[]])) == "()") and not TR.exists()) or shutil.which("git") is None',
+]
+
+
+@pytest.mark.parametrize("condition", _RM458_REFUTATIONS)
+def test_rm458_refuted_fold_snippets_stay_refused(condition):
+    src = f"""
+import os
+import shutil
+import pytest
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]
+TR = ROOT / "core" / "match_db.py"
+@pytest.mark.skipif({condition}, reason="h")
+def test_x():
+    pass
+"""
+    findings = scan_source("tests/test_mutant.py", src)
+    assert [f.verdict for f in findings] == [DEFECT], condition
+    assert not any(_excused(f) for f in findings)
