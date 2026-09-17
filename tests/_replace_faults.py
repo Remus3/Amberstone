@@ -51,7 +51,7 @@ import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
-__all__ = ["ReplaceFaults", "replace_fails", "scoped_fs_fault"]
+__all__ = ["ReplaceFaults", "replace_fails", "scoped_fs_fault", "scoped_path_fault"]
 
 # NOTE on the companion real-OS tests: they gate with a literal
 # `sys.platform != "win32"` at the decorator rather than importing a named
@@ -144,7 +144,9 @@ def replace_fails(target, times: int | None = None, *, expect_fire: bool = True)
 # directory outside ``root`` and must succeed. Make the shim unconditional and
 # that control is what fails first.
 
-_SCOPED_NAMES = ("replace", "rename")
+# RM-464 round 2 adds "open": os.open(path, flags, ...) is scoped on its PATH
+# argument (the first positional), where replace / rename are scoped on dst.
+_SCOPED_NAMES = ("replace", "rename", "open")
 
 
 def _at_or_under(root: Path, dst) -> bool:
@@ -155,11 +157,38 @@ def _at_or_under(root: Path, dst) -> bool:
     return resolved == root or root in resolved.parents
 
 
+def _fs_in_scope(root: Path, dst) -> bool:
+    # The SHIM's scope seam, separate from the control-dir check (RM-464), so a
+    # mutation that widens the shim leaves the control's own check honest.
+    return _at_or_under(root, dst)
+
+
+def _assert_open_control_delegates(root: Path, control: Path) -> None:
+    p = control / "control.open"
+    try:
+        fd = os.open(p, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        try:
+            os.write(fd, b"rm464-control")
+        finally:
+            os.close(fd)
+        with open(p, "rb") as fh:
+            ok = fh.read() == b"rm464-control"
+    except Exception as exc:
+        raise AssertionError(
+            f"os.open outside {root} did not delegate to the real call: {exc!r}"
+        ) from exc
+    if not ok:
+        raise AssertionError(f"os.open outside {root} did not delegate to the real call")
+
+
 def _assert_control_delegates(name: str, root: Path) -> None:
     control = Path(tempfile.mkdtemp(prefix="rm411_control_"))
     try:
         if _at_or_under(root, control):
             raise AssertionError(f"control dir {control} is under {root}; it proves nothing")
+        if name == "open":
+            _assert_open_control_delegates(root, control)
+            return
         src, dst = control / "control.src", control / "control.dst"
         src.write_bytes(b"rm411-control")
         getattr(os, name)(src, dst)
@@ -170,27 +199,32 @@ def _assert_control_delegates(name: str, root: Path) -> None:
 
 
 @contextmanager
-def scoped_fs_fault(name: str, root, action):
-    """Patch ``os.<name>`` so ``action(real, src, dst, *a, **kw)`` runs only when
-    ``dst`` resolves at or under ``root``; every other call is delegated.
+def scoped_fs_fault(name: str, root, action, *, expect_fire: bool = True):
+    """Patch ``os.<name>`` so ``action(real, *args, **kw)`` runs only when the
+    scoped path resolves at or under ``root``; every other call is delegated.
 
-    ``name`` is ``"replace"`` or ``"rename"``. Yields a :class:`ReplaceFaults`
-    whose ``attempts`` counts the in-scope calls (``failures`` is left to the
-    action). Asserts the control delegation on entry and, on a clean exit, that
-    at least one in-scope call happened - a mistyped root would otherwise leave
-    a green test that injected nothing.
+    ``name`` is ``"replace"`` / ``"rename"`` (scoped on ``dst``, the action is
+    called as ``action(real, src, dst, *a, **kw)``) or ``"open"`` (scoped on
+    ``path``, called as ``action(real, path, flags, *a, **kw)``). Yields a
+    :class:`ReplaceFaults` whose ``attempts`` counts the in-scope calls
+    (``failures`` is left to the action). Asserts the control delegation on
+    entry and, on a clean exit, that at least one in-scope call happened - a
+    mistyped root would otherwise leave a green test that injected nothing -
+    unless ``expect_fire=False`` is passed for a spy that may see none.
     """
     if name not in _SCOPED_NAMES:
         raise ValueError(f"scoped_fs_fault supports {_SCOPED_NAMES}, not {name!r}")
     root = Path(root).resolve()
     real = getattr(os, name)
     rec = ReplaceFaults()
+    scoped_index, scoped_kw = (0, "path") if name == "open" else (1, "dst")
 
-    def _scoped(src, dst, *a, **kw):
-        if _at_or_under(root, dst):
+    def _scoped(*args, **kw):
+        scoped = args[scoped_index] if len(args) > scoped_index else kw.get(scoped_kw)
+        if scoped is not None and _fs_in_scope(root, scoped):
             rec.attempts += 1
-            return action(real, src, dst, *a, **kw)
-        return real(src, dst, *a, **kw)
+            return action(real, *args, **kw)
+        return real(*args, **kw)
 
     setattr(os, name, _scoped)
     try:
@@ -199,5 +233,122 @@ def scoped_fs_fault(name: str, root, action):
     finally:
         setattr(os, name, real)
 
-    if rec.attempts == 0:
+    if expect_fire and rec.attempts == 0:
         raise AssertionError(f"scoped_fs_fault(os.{name}, {root}) never saw an in-scope call - the test proved nothing")
+
+
+# --------------------------------------------------------------------------- #
+# RM-464: the pathlib sibling - a ROOT-scoped Path method fault
+# --------------------------------------------------------------------------- #
+# ``monkeypatch.setattr(Path, "unlink", boom)`` patches the CLASS, so every Path
+# instance in the process hits ``boom`` while it is armed - the same blast
+# radius as the ``os.replace`` patches RM-411 scoped, one layer up. A test
+# that keys its fault on a NAME (``self.name.endswith(".tmp")``) is not scoped
+# either: every atomic writer in the tree writes a ``*.tmp`` scratch.
+#
+# ``scoped_path_fault`` scopes on a PATH. For ``replace`` / ``rename`` the
+# scoped path is the DESTINATION (matching ``scoped_fs_fault``); for every other
+# method it is the path the method is called on. The control on entry runs the
+# method through the patched class attribute on a fresh directory outside
+# ``root`` and must see the real effect on disk; any exception there is turned
+# into an AssertionError naming the delegation failure.
+
+_PATH_NAMES = ("unlink", "replace", "rename", "mkdir", "write_bytes", "write_text")
+_PATH_DEST_ARG = ("replace", "rename")
+_CONTROL_PAYLOAD = b"rm464-control"
+
+
+def _path_in_scope(root: Path, path) -> bool:
+    # A separate seam from _at_or_under, so a mutation of the SHIM's scoping
+    # leaves the control's own "is my directory outside root" check honest.
+    return _at_or_under(root, path)
+
+
+def _raw_write(p: Path, data: bytes) -> None:
+    with open(p, "wb") as fh:  # builtins.open, never a Path method under test
+        fh.write(data)
+
+
+def _raw_read(p: Path) -> bytes:
+    with open(p, "rb") as fh:
+        return fh.read()
+
+
+def _assert_path_control_delegates(name: str, root: Path) -> None:
+    control = Path(tempfile.mkdtemp(prefix="rm464_control_"))
+    try:
+        if _at_or_under(root, control):
+            raise AssertionError(f"control dir {control} is under {root}; it proves nothing")
+        method = getattr(Path, name)
+        try:
+            if name == "unlink":
+                p = control / "control.del"
+                _raw_write(p, _CONTROL_PAYLOAD)
+                method(p)
+                ok = not os.path.lexists(p)
+            elif name in _PATH_DEST_ARG:
+                src, dst = control / "control.src", control / "control.dst"
+                _raw_write(src, _CONTROL_PAYLOAD)
+                method(src, dst)
+                ok = not os.path.lexists(src) and _raw_read(dst) == _CONTROL_PAYLOAD
+            elif name == "mkdir":
+                p = control / "control.dir"
+                method(p)
+                ok = os.path.isdir(p)
+            elif name == "write_bytes":
+                p = control / "control.bin"
+                method(p, _CONTROL_PAYLOAD)
+                ok = _raw_read(p) == _CONTROL_PAYLOAD
+            else:  # write_text
+                p = control / "control.txt"
+                method(p, _CONTROL_PAYLOAD.decode("ascii"), encoding="ascii")
+                ok = _raw_read(p) == _CONTROL_PAYLOAD
+        except Exception as exc:
+            raise AssertionError(
+                f"Path.{name} outside {root} did not delegate to the real method: {exc!r}"
+            ) from exc
+        if not ok:
+            raise AssertionError(f"Path.{name} outside {root} did not delegate to the real method")
+    finally:
+        shutil.rmtree(control, ignore_errors=True)
+
+
+@contextmanager
+def scoped_path_fault(name: str, root, action, *, expect_fire: bool = True):
+    """Patch ``pathlib.Path.<name>`` so ``action(real, self, *a, **kw)`` runs
+    only when the scoped path resolves at or under ``root``; every other call
+    is delegated to the real method captured before patching.
+
+    The scoped path is the destination for ``replace`` / ``rename`` and
+    ``self`` otherwise. Yields a :class:`ReplaceFaults` whose ``attempts``
+    counts in-scope calls. Asserts the control delegation on entry and, on a
+    clean exit, that at least one in-scope call happened - unless
+    ``expect_fire=False`` is passed for a spy that may legitimately see none.
+    """
+    if name not in _PATH_NAMES:
+        raise ValueError(f"scoped_path_fault supports {_PATH_NAMES}, not {name!r}")
+    root = Path(root).resolve()
+    real = Path.__dict__[name]
+    rec = ReplaceFaults()
+
+    def _scoped(self, *a, **kw):
+        if name in _PATH_DEST_ARG:
+            scoped = a[0] if a else kw.get("target")
+        else:
+            scoped = self
+        if scoped is not None and _path_in_scope(root, scoped):
+            rec.attempts += 1
+            return action(real, self, *a, **kw)
+        return real(self, *a, **kw)
+
+    setattr(Path, name, _scoped)
+    try:
+        _assert_path_control_delegates(name, root)
+        yield rec
+    finally:
+        setattr(Path, name, real)
+
+    if expect_fire and rec.attempts == 0:
+        raise AssertionError(
+            f"scoped_path_fault(Path.{name}, {root}) never saw an in-scope call - the test proved nothing"
+        )

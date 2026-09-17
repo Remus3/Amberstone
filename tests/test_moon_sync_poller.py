@@ -28,6 +28,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools import moon_sync_poller as P  # noqa: E402
+from tests._replace_faults import scoped_fs_fault  # noqa: E402
+from tests._sleep_probe import thread_scoped  # noqa: E402
 
 
 @pytest.fixture()
@@ -809,7 +811,9 @@ def test_a_tier_climb_between_polls_keeps_the_written_promise(state: Path, tmp_p
         if len(polls) >= 2:
             raise StopIteration
 
-    monkeypatch.setattr(P.time, "sleep", fake_sleep)
+    # RM-464: P.time IS the time module; an unscoped fake would advance this
+    # test's clock from, and raise StopIteration into, any other thread.
+    monkeypatch.setattr(P.time, "sleep", thread_scoped(fake_sleep, time.sleep))
     monkeypatch.setattr(P, "_acquire_singleton", lambda *a, **k: True)
     monkeypatch.setattr(P, "effective_idle_seconds", lambda now=None: 16 * 60 if not polls else 21 * 60)
 
@@ -850,17 +854,16 @@ def test_write_status_survives_a_reader_holding_the_target(state: Path):
 def test_replace_retries_once_then_a_permanent_failure_logs_fault_and_the_loop_continues(
     state: Path, tmp_path: Path, monkeypatch
 ):
-    calls = {"n": 0}
-    real_replace = os.replace
-
-    def once(src, dst):
-        calls["n"] += 1
-        if calls["n"] == 1:
+    def once(real, src, dst, *a, **kw):
+        if rec.attempts == 1:
             raise PermissionError(5, "held")
-        return real_replace(src, dst)
+        return real(src, dst, *a, **kw)
 
-    monkeypatch.setattr(P.os, "replace", once)
-    p = P.write_status({}, 1.0, 300, rows=[])
+    # RM-464: P.os IS the process-wide os module; the first-call fault is
+    # scoped to the state dir and proven with a control replace outside it.
+    with scoped_fs_fault("replace", state, once) as rec:
+        p = P.write_status({}, 1.0, 300, rows=[])
+    assert rec.attempts >= 2, "the first replace was not retried"
     assert p.exists() and "- pid:" in p.read_text(encoding="utf-8")
     monkeypatch.undo()
 
@@ -881,7 +884,7 @@ def test_replace_retries_once_then_a_permanent_failure_logs_fault_and_the_loop_c
             raise StopIteration
 
     monkeypatch.setattr(P, "write_status", lambda *a, **k: (_ for _ in ()).throw(PermissionError(5, "held")))
-    monkeypatch.setattr(P.time, "sleep", fake_sleep)
+    monkeypatch.setattr(P.time, "sleep", thread_scoped(fake_sleep, time.sleep))  # RM-464
     monkeypatch.setattr(P, "_write_minimal_status", lambda *a, **k: always)
     with pytest.raises(StopIteration):
         P.run((repo,))
