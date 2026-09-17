@@ -1403,11 +1403,40 @@ _PROBE_IMPORT_TAILS = ("find_spec", "import_module", "importorskip", "__import__
 
 
 def _reads(signal: str, node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> bool:
-    """True when `signal` is raised anywhere under `node`. Consumes nothing."""
+    """True when `signal` is raised anywhere under `node`. Consumes nothing.
+
+    This RESOLVES - it follows bindings and enters helpers - so it is only ever
+    asked about the KEYS of something already recognised as a probe, which is a
+    small set of nodes. Asking it about every receiver in the tree made the
+    real-tree scan four times slower than the whole check is worth.
+    """
     probe = _Ctx(ctx.broad_handler)
     probe.consumed = set(ctx.consumed)  # a copy: reading here consumes nothing
     _collect(node, model, scope, probe, seen, depth)
     return bool(getattr(probe.sig, signal))
+
+
+_ENV_TOKENS = frozenset({"environ", *_ENV_CALLS})
+
+
+def _names_the_environment(node: ast.AST, model: _Model, scope: ast.AST, resolve: bool = True) -> bool:
+    """Cheap SYNTACTIC test: does `node` mention the environment?
+
+    A pre-filter, never a credit. It decides only whether a receiver is worth
+    treating as an environment probe, and one level of name binding is
+    followed so `E = os.environ` then `dict(E).get(...)` is still seen. A
+    deeper indirection is missed, which can only FAIL TO REFUSE - the gap
+    direction, never a new acceptance.
+    """
+    for n in ast.walk(node):
+        if isinstance(n, ast.Attribute) and n.attr in _ENV_TOKENS:
+            return True
+        if isinstance(n, ast.Name):
+            if n.id in _ENV_TOKENS:
+                return True
+            if resolve and any(_names_the_environment(b, model, scope, False) for b in model.lookup(n.id, scope)):
+                return True
+    return False
 
 
 def _probe_keys(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> list | None:
@@ -1421,16 +1450,14 @@ def _probe_keys(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: f
     """
     if isinstance(node, ast.Subscript):
         # `os.environ[...]`, and RM-466 `dict(os.environ)[...]`.
-        if _dotted(node.value).rsplit(".", 1)[-1] == "environ" or _reads(
-            "env", node.value, model, scope, ctx, seen, depth
-        ):
+        if _dotted(node.value).rsplit(".", 1)[-1] == "environ" or _names_the_environment(node.value, model, scope):
             return [node.slice]
         return None
     if isinstance(node, ast.Compare):
         # RM-466: `sys.platform in os.environ` asks the environment a question
         # about the platform, and earned the env credit for it.
         if any(isinstance(op, (ast.In, ast.NotIn)) for op in node.ops) and any(
-            _reads("env", c, model, scope, ctx, seen, depth) for c in node.comparators
+            _names_the_environment(c, model, scope) for c in node.comparators
         ):
             return [node.left]
         return None
@@ -1451,7 +1478,7 @@ def _probe_keys(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: f
         # RM-466: a method on anything that reads the environment, which is how
         # `dict(os.environ).get(...)` and `os.environ.copy().get(...)` get past
         # a name-shaped test - `_dotted` reads them as `().get`.
-        or (isinstance(node.func, ast.Attribute) and _reads("env", node.func.value, model, scope, ctx, seen, depth))
+        or (isinstance(node.func, ast.Attribute) and _names_the_environment(node.func.value, model, scope))
     )
     return list(node.args) + [k.value for k in node.keywords] if keyed else None
 
@@ -1468,6 +1495,26 @@ def _collect_tainted(
     for name in ("platform", *clear):
         setattr(sub.sig, name, set() if isinstance(getattr(sub.sig, name), set) else False)
     ctx.sig.merge(sub.sig)
+
+
+def _may_refuse_attribute(node: ast.Attribute, model: _Model, scope: ast.AST) -> bool:
+    """A cheap NECESSARY condition for `_host_eval` refusing a bare attribute.
+
+    `_host_eval` refuses an attribute only for the bare `platform.system`, or
+    when the value it hangs off is KNOWN (and then lacks it) or is itself
+    refused. A value is only ever known through the host table or through a
+    binding, so an attribute chain rooted at an unbound name - `self.x`,
+    `pytest.ini`, every module alias - can never refuse, and running the
+    evaluator on it was pure cost. Over-answering True is only slower, never
+    wrong: the evaluator still decides.
+    """
+    dotted = _dotted(node)
+    if dotted == "platform.system" or dotted.rsplit(".", 1)[0] in _PLATFORM_DOTTED:
+        return True
+    root = node.value
+    while isinstance(root, ast.Attribute):
+        root = root.value
+    return bool(model.lookup(root.id, scope)) if isinstance(root, ast.Name) else True
 
 
 def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> None:
@@ -1498,7 +1545,12 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: froz
     # no value is modelled; every OTHER signal under the wrapper still counts.
     # RM-463: an expression that reaches a `_REFUSED` value (a removed fold)
     # takes the same taint, so removing the fold hands no credit back.
-    if not refused and isinstance(node, ast.Attribute) and not _is_called(node, model):
+    if (
+        not refused
+        and isinstance(node, ast.Attribute)
+        and not _is_called(node, model)
+        and _may_refuse_attribute(node, model, scope)
+    ):
         # RM-463: a bare `platform.system` is refused by `_host_eval` but is
         # not a foldable node, so it is tainted here. Its CALL keeps the
         # credit. RM-467 generalises the test from that one name to whatever
@@ -4181,7 +4233,7 @@ def test_rm463_probe_controls_keep_their_capability(condition):
 # accepted: the check no longer needs a taint to fire, the set of shapes
 # recognised as a PROBE grows (recognising more probes can only withhold more
 # credit - it is never a grant), and the withheld set gains `network`.
-_RM466_HDR = _RM463_HDR + "import socket\n"
+_RM466_HDR = _RM463_HDR + "import socket\nE = os.environ\nE2 = E\n"
 
 
 def _rm466_verdicts(condition: str) -> list:
@@ -4207,6 +4259,7 @@ _RM466_LAUNDERED = [
     'os.getenv(sys.platform, "a")',
     'os.environ.get(f"RC_{sys.platform}")',
     "dict(os.environ)[sys.platform]",
+    "dict(E).get(sys.platform)",
     "shutil.which(sys.platform)",
 ]
 
@@ -4228,6 +4281,21 @@ _RM466_CONTROLS = [
     'str(os.getenv("CI")) != "None"',
     'len(os.environ.copy().get("CI", ()))',
 ]
+
+
+def test_rm466_the_receiver_prefilter_gap_is_deliberate_and_one_level_deep():
+    """KNOWN GAP, recorded rather than hidden.
+
+    Whether a RECEIVER reads the environment is decided syntactically, because
+    resolving every receiver in the tree made the real-tree scan four times
+    slower. One level of binding is followed, so `E = os.environ` is seen; a
+    second hop (`E2 = E`) is not. The miss direction is FAILURE TO REFUSE, so
+    it can never create an acceptance that base did not already have - which is
+    what the second assertion pins.
+    """
+    one_hop = _rm466_verdicts("dict(E).get(sys.platform)")
+    assert one_hop and all(v != CAPABILITY and not ex for v, ex in one_hop), one_hop
+    assert _rm466_verdicts("dict(E2).get(sys.platform)") == [(CAPABILITY, False)]
 
 
 @pytest.mark.parametrize("condition", _RM466_CONTROLS)
