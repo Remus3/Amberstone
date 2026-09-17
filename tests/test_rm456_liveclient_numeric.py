@@ -20,7 +20,9 @@ JS consumer census (web/js), grepped before the change:
     coach_choices.js ``lc.game_time_s || ...`` - 0 is a number, safe.
   * ``hp_max``: stats_panel.js ``!Number(lc.hp_max)`` HIDES the panel on 0,
     which is the honest render for an unreadable max HP.
-  * ``players[].creep_score``: Python-only (``_adaptation_latch``).
+  * ``players[].creep_score``: Python-only (``_adaptation_latch``). RM-461
+    later changed THIS leaf to None: the latch treats 0 as a real, latchable
+    creep score (see tests/test_rm461_latch_cs.py).
 No consumer distinguishes 0 from a real zero in a way a None would improve,
 and None would fail the ``@property {number}`` contract in state_schema.js.
 
@@ -138,7 +140,9 @@ def test_creep_score_bad_degrades_that_player_row_only(bad):
     f["allPlayers"][1]["scores"]["creepScore"] = bad
     out = _summary(f)
     _assert_rest_intact(out)
-    assert [p["creep_score"] for p in out["players"]] == [50, 0]
+    # RM-461 superseded the RM-456 degrade value for THIS leaf: 0 is countable
+    # to the adaptation latch, so a bad creep score is None (skipped) instead.
+    assert [p["creep_score"] for p in out["players"]] == [50, None]
 
 
 @pytest.mark.parametrize("field", ["level", "kills"])
