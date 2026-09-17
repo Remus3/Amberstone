@@ -428,16 +428,25 @@ def shape_snapshot(request: Callable[..., tuple], config,
     # "unknown, do not act on it" - its _CLEAR_PHASES holds the *string*
     # "None", a REAL idle phase, which is why that one must survive intact.
     # The predicate is RM-347's, deliberately imported rather than copied.
+    #
+    # RM-382: the two remaining non-phase values join the same falsy no-phase.
+    # A non-str/non-bytes body is what a FAILED request answers (None from
+    # lcu/lcu_client.py, forwarded verbatim by dashboard/_lcu_inprocess.py),
+    # and it used to publish the truthy "Unknown" on an otherwise fresh
+    # snapshot - disarming both view arms above. RM-293(b): an invalid-UTF-8
+    # bytes body used to raise out of a bare strict .decode() and cost the
+    # whole snapshot for the tick; it is None, NOT errors="replace", because a
+    # replaced body is a truthy garbage string - the same sentinel class.
+    # tests/rc2_l3/test_lcu_phase_sentinels_rm382.py censuses this field.
     if isinstance(phase, str):
         state["phase"] = _phase_or_none(phase)
     elif isinstance(phase, bytes):
-        state["phase"] = _phase_or_none(phase.decode())
+        try:
+            state["phase"] = _phase_or_none(phase.decode())
+        except UnicodeDecodeError:
+            state["phase"] = None
     else:
-        # Left as-is by RM-367: a non-str/non-bytes body is a different
-        # question from an empty one, and its truthiness is filed, not fixed
-        # here. The unguarded .decode() above is likewise RM-293's, not this
-        # row's.
-        state["phase"] = "Unknown"
+        state["phase"] = None
 
     # KNOWN-BUG diagnostic breadcrumb (2026-05-17): the operator's
     # ARAM / ARAM Mayhem / Arena champ-select view kept rendering blank.
