@@ -38,7 +38,7 @@ the date, and if it matters to your decision, re-measure. What IS stable is the
 SHAPE: the trees named below, and those trees summing exactly to the repo-root
 total whenever both halves are measured on the same day.
 
-The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:75`
+The repo has **five** test trees. `tests/test_skip_condition_hygiene.py:78`
 is the single place that enumerates them (`_TEST_TREES`), and it is the
 producing side - if you add a sixth tree, add it there:
 
