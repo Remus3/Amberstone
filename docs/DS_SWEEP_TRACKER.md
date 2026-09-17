@@ -69,7 +69,16 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-466** (2026-09-17, moved at the laned orchestrated loop wave 3 doc-sync).
+  Next free id = **RM-470** (2026-09-17, moved at the laned orchestrated loop wave 4 doc-sync).
+  **FOUR ids were allocated 2026-09-17 by the laned orchestrated loop wave 4 (LEDGER 1424), and
+  THE PIN MOVED BY FOUR.** All four are OPEN under BACKLOG "Reliability / hardening": RM-466
+  probe-laundering bypasses left after RM-463 part (2); RM-467 definite-raise credit residuals
+  in the skip hygiene guard; RM-468 five WAL pragma guard shapes still uncovered after RM-465;
+  RM-469 process-wide test patches RM-464 left outside its file scope. The same wave marked
+  RM-459, RM-461, RM-462, RM-464 and RM-465 SHIPPED, RM-460 and RM-275 CLOSED, RM-463 PARTIAL,
+  and RM-378 HELD on RM-448. None takes a roster checkbox and none changes the Summary count.
+  No `ROADMAP.md` line names these ids, so no ROADMAP pointer moves.
+  Prior pin, kept for the audit trail: Next free id was **RM-466** (2026-09-17, moved at the laned orchestrated loop wave 3 doc-sync).
   **SIX ids were allocated 2026-09-17 by the laned orchestrated loop wave 3 (LEDGER 1423), and
   THE PIN MOVED BY SIX.** All six are OPEN under BACKLOG "Reliability / hardening": RM-460 the
   mined-statistics backfill owed by RM-290 site 1; RM-461 wrong-type field residuals of RM-456;
