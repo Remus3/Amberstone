@@ -163,6 +163,44 @@ def test_item_order_removes_an_undone_purchase():
     assert [i for _, i in f[0].detail["purchases"]] == [1055]
 
 
+def test_item_order_keeps_the_purchase_when_a_sale_is_undone():
+    """RM-290: an undone SALE carries only afterId (the item is back in the
+    inventory), so the player KEPT the item and its purchase must stand. The
+    old ``beforeId or afterId`` fallback treated it as an undone purchase and
+    deleted the purchase from the sequence."""
+    ev = [{"type": "ITEM_PURCHASED", "timestamp": 100, "participantId": 7,
+           "itemId": 1055},
+          {"type": "ITEM_PURCHASED", "timestamp": 200, "participantId": 7,
+           "itemId": 2003},
+          {"type": "ITEM_SOLD", "timestamp": 240, "participantId": 7,
+           "itemId": 2003},
+          {"type": "ITEM_UNDO", "timestamp": 250, "participantId": 7,
+           "beforeId": 0, "afterId": 2003}]
+    f = ep.item_order(_match(), _tl(ev), 7)
+    assert [i for _, i in f[0].detail["purchases"]] == [1055, 2003]
+
+
+def test_item_order_undone_sale_with_missing_before_key_keeps_the_purchase():
+    """Same direction when Riot omits beforeId entirely instead of sending 0."""
+    ev = [{"type": "ITEM_PURCHASED", "timestamp": 100, "participantId": 7,
+           "itemId": 1055},
+          {"type": "ITEM_UNDO", "timestamp": 250, "participantId": 7,
+           "afterId": 1055}]
+    f = ep.item_order(_match(), _tl(ev), 7)
+    assert [i for _, i in f[0].detail["purchases"]] == [1055]
+
+
+def test_item_order_undone_purchase_removes_only_the_most_recent_copy():
+    ev = [{"type": "ITEM_PURCHASED", "timestamp": 100, "participantId": 7,
+           "itemId": 2003},
+          {"type": "ITEM_PURCHASED", "timestamp": 200, "participantId": 7,
+           "itemId": 2003},
+          {"type": "ITEM_UNDO", "timestamp": 250, "participantId": 7,
+           "beforeId": 2003, "afterId": 0}]
+    f = ep.item_order(_match(), _tl(ev), 7)
+    assert f[0].detail["purchases"] == [(100, 2003)]
+
+
 def test_item_order_ignores_another_players_purchases():
     ev = [{"type": "ITEM_PURCHASED", "timestamp": 100, "participantId": 2,
            "itemId": 1055}]
