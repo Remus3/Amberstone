@@ -129,7 +129,9 @@ def test_other_player_scores_retyped_keeps_the_rest_of_the_summary(bad):
     zed["scores"] = bad
     out = _summary(_frame(allPlayers=[_player("Me", "ORDER", kills=1), zed]))
     assert out.get("champion") == "Me"
-    assert [p["creep_score"] for p in out.get("players", [])] == [50, 0]
+    # RM-461: a missing creep score is None, not 0, so the adaptation latch
+    # does not diff csd_at_15 against a phantom 0 (tests/test_rm461_latch_cs.py).
+    assert [p["creep_score"] for p in out.get("players", [])] == [50, None]
 
 
 @pytest.mark.parametrize("bad", _HOSTILE, ids=_HOSTILE_IDS)
