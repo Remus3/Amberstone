@@ -69,7 +69,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-470** (2026-09-17, moved at the laned orchestrated loop wave 4 doc-sync).
+  Next free id = **RM-473** (2026-09-17, moved at the wave 5 three-way age census doc-sync).
+  **THREE ids were allocated 2026-09-17 by the wave 5 census docs slice, and THE PIN MOVED BY
+  THREE.** All three are OPEN under BACKLOG "Reliability / hardening": RM-470 the WAL pragma
+  result guard does not handle `ast.AsyncFor`; RM-471 the `oss/win32_atomic_io` LICENSE
+  byte-compare guard's verdict depends on when the tree was checked out; RM-472 comprehension-
+  shaped and lambda-shaped platform laundering still credited by the skip-condition hygiene
+  guard. The same wave flipped RM-192 and RM-246 to ACCEPTANCE MET and RM-255 to CLOSED /
+  REFUTED AT HEAD, and recorded RM-260 SUPERSEDED BY RM-418. None takes a roster checkbox and
+  none changes the Summary count. No `ROADMAP.md` line names RM-470..RM-472, so no ROADMAP
+  pointer moves.
+  Prior pin, kept for the audit trail: Next free id was **RM-470** (2026-09-17, moved at the laned orchestrated loop wave 4 doc-sync).
   **FOUR ids were allocated 2026-09-17 by the laned orchestrated loop wave 4 (LEDGER 1424), and
   THE PIN MOVED BY FOUR.** All four are OPEN under BACKLOG "Reliability / hardening": RM-466
   probe-laundering bypasses left after RM-463 part (2); RM-467 definite-raise credit residuals
