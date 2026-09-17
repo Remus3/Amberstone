@@ -197,6 +197,18 @@ class ExplicitCapTests(_CapTestBase):
             resp = self.client.get(URL, max_bytes=2048)
         self.assertEqual(resp.body, body)
 
+    def test_a_finite_body_one_byte_over_the_cap_raises(self):
+        """RM-275 boundary, the FINITE half. The endless-stream test cannot see
+        an off-by-one that lets exactly cap+1 bytes through (the stream always
+        has more to give past cap+1); a real body of exactly cap+1 bytes can.
+        Paired with the exact-cap test above: cap passes, cap+1 raises."""
+        body = b"y" * 2049
+        with self._patch_opener(return_value=_FiniteResponse(body)):
+            with self.assertRaises(http_client.ResponseTooLarge) as ctx:
+                self.client.get(URL, max_bytes=2048)
+        self.assertIn("max_bytes=2048", str(ctx.exception))
+        self.assertIn(URL, str(ctx.exception))
+
     def test_max_bytes_none_disables_the_cap(self):
         """An explicit opt-out exists for a caller that knows it wants it all."""
         body = b"z" * 4096

@@ -7,7 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from agents._supervisor_common import _atomic_write_json, _reap_orphan_lockfile_tmps
-from tests._sleep_probe import record_sleeps, thread_scoped
+from tests._replace_faults import scoped_fs_fault
+from tests._sleep_probe import record_sleeps
 
 
 class TestAtomicWriteJsonRetry:
@@ -25,21 +26,19 @@ class TestAtomicWriteJsonRetry:
 
     def test_retries_permissionerror_twice_then_succeeds(self, tmp_path):
         target = tmp_path / "lockfile"
-        calls = []
-        real_replace = os.replace
-
-        def flaky_replace(src, dst):
-            calls.append(1)
-            if len(calls) < 3:
+        def flaky_replace(real, src, dst, *a, **kw):
+            if rec.attempts < 3:
                 raise PermissionError("transient")
-            real_replace(src, dst)
+            real(src, dst, *a, **kw)
 
+        # RM-464: thread scoping still faulted every same-thread replace in the
+        # process; scoped_fs_fault keys on the destination under tmp_path and
+        # proves it with a control replace outside tmp_path.
         with record_sleeps() as sleeps, \
-             patch("os.replace",
-                   side_effect=thread_scoped(flaky_replace, real_replace)):
+             scoped_fs_fault("replace", tmp_path, flaky_replace) as rec:
             _atomic_write_json(target, {"pid": 3})
 
-        assert len(calls) == 3
+        assert rec.attempts == 3
         # Assert the VALUES, not a bare call_count. `patch("mod.time.sleep")`
         # is process-wide (mod.time IS the global time module), so a bare count
         # tallies every thread's sleeps - that is how this read 21378 on CI
@@ -51,18 +50,16 @@ class TestAtomicWriteJsonRetry:
 
     def test_final_failure_raises_and_cleans_tmp(self, tmp_path):
         target = tmp_path / "lockfile"
-        real_replace = os.replace
-
-        def always_fail(src, dst):
+        def always_fail(real, src, dst, *a, **kw):
             raise PermissionError("always")
 
-        # thread_scoped matters more here than in the retry test: an unscoped
+        # Scoping matters more here than in the retry test: an unscoped
         # `patch("os.replace", side_effect=PermissionError)` raises in EVERY
         # thread for the duration, so a concurrent atomic write anywhere else in
         # the worker process fails for a reason that has nothing to do with it.
+        # RM-464: scoped by destination (tmp_path), not merely by thread.
         with record_sleeps(), \
-             patch("os.replace",
-                   side_effect=thread_scoped(always_fail, real_replace)):
+             scoped_fs_fault("replace", tmp_path, always_fail):
             with pytest.raises(PermissionError):
                 _atomic_write_json(target, {"pid": 4})
 

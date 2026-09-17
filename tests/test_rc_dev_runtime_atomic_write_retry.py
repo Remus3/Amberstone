@@ -35,13 +35,18 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest import mock
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from ops import rc_dev_runtime as rdr  # noqa: E402
+from tests._replace_faults import scoped_fs_fault  # noqa: E402
+from tests._sleep_probe import record_sleeps  # noqa: E402
+
+
+def _always_denied(real, src, dst, *a, **kw):
+    raise PermissionError(5, "Access is denied")
 
 
 class AtomicWriteRetryTests(unittest.TestCase):
@@ -65,25 +70,26 @@ class AtomicWriteRetryTests(unittest.TestCase):
     def test_transient_permission_error_is_retried_and_the_write_succeeds(self) -> None:
         target = Path(self.enterContext(_tmpdir())) / "health.json"
         payload = {"pid": 1344, "alive": True}
-        real_replace = rdr.os.replace
-        calls = {"n": 0}
 
-        def flaky(src, dst):
-            calls["n"] += 1
-            if calls["n"] < 3:
+        def flaky(real, src, dst, *a, **kw):
+            if rec.attempts < 3:
                 raise PermissionError(5, "Access is denied")
-            return real_replace(src, dst)
+            return real(src, dst, *a, **kw)
 
-        with mock.patch.object(rdr.os, "replace", side_effect=flaky), \
-                mock.patch.object(rdr.time, "sleep") as slept:
+        # RM-464: rdr.os / rdr.time ARE the process-wide modules. The replace
+        # fault is scoped to this temp dir (armed outside control), and the
+        # sleep probe records and skips only THIS thread's backoff - a bare
+        # mock tallied every thread's sleeps (tests/_sleep_probe.py: 21378).
+        with scoped_fs_fault("replace", target.parent, flaky) as rec, \
+                record_sleeps() as slept:
             rdr._atomic_write_json(target, payload)
 
-        self.assertEqual(calls["n"], 3, "should have retried twice then succeeded")
+        self.assertEqual(rec.attempts, 3, "should have retried twice then succeeded")
         self.assertEqual(json.loads(target.read_text(encoding="utf-8")), payload)
         # Backoff must actually be applied between attempts, not busy-looped.
-        self.assertEqual(slept.call_count, 2)
+        self.assertEqual(len(slept), 2)
         self.assertTrue(
-            all(c.args[0] > 0 for c in slept.call_args_list),
+            all(s > 0 for s in slept),
             "each backoff must be a positive delay",
         )
 
@@ -92,9 +98,9 @@ class AtomicWriteRetryTests(unittest.TestCase):
         # delay. A regression that sleeps before every replace would add a
         # per-tick stall to a 1 Hz loop.
         target = Path(self.enterContext(_tmpdir())) / "health.json"
-        with mock.patch.object(rdr.time, "sleep") as slept:
+        with record_sleeps() as slept:
             rdr._atomic_write_json(target, {"ok": True})
-        slept.assert_not_called()
+        self.assertEqual(slept, [])
         self.assertEqual(json.loads(target.read_text(encoding="utf-8")), {"ok": True})
 
     def test_persistent_failure_still_raises_so_the_caller_can_report_it(self) -> None:
@@ -102,9 +108,7 @@ class AtomicWriteRetryTests(unittest.TestCase):
         # visible stale-health bug for a silent one. _heartbeat_loop's
         # write_fatal path stays reachable.
         target = Path(self.enterContext(_tmpdir())) / "health.json"
-        with mock.patch.object(
-            rdr.os, "replace", side_effect=PermissionError(5, "Access is denied")
-        ), mock.patch.object(rdr.time, "sleep"):
+        with scoped_fs_fault("replace", target.parent, _always_denied), record_sleeps():
             with self.assertRaises(PermissionError):
                 rdr._atomic_write_json(target, {"ok": True})
 
@@ -113,9 +117,7 @@ class AtomicWriteRetryTests(unittest.TestCase):
         # read: the payload existed on disk under the wrong name.
         tmpdir = Path(self.enterContext(_tmpdir()))
         target = tmpdir / "health.json"
-        with mock.patch.object(
-            rdr.os, "replace", side_effect=PermissionError(5, "Access is denied")
-        ), mock.patch.object(rdr.time, "sleep"):
+        with scoped_fs_fault("replace", tmpdir, _always_denied), record_sleeps():
             with self.assertRaises(PermissionError):
                 rdr._atomic_write_json(target, {"ok": True})
         self.assertEqual(
@@ -128,17 +130,14 @@ class AtomicWriteRetryTests(unittest.TestCase):
         # Only rename-contention is retryable. A TypeError from a bad payload
         # is a bug and must surface on the first attempt.
         target = Path(self.enterContext(_tmpdir())) / "health.json"
-        calls = {"n": 0}
 
-        def boom(src, dst):
-            calls["n"] += 1
+        def boom(real, src, dst, *a, **kw):
             raise TypeError("not a rename problem")
 
-        with mock.patch.object(rdr.os, "replace", side_effect=boom), \
-                mock.patch.object(rdr.time, "sleep"):
+        with scoped_fs_fault("replace", target.parent, boom) as rec, record_sleeps():
             with self.assertRaises(TypeError):
                 rdr._atomic_write_json(target, {"ok": True})
-        self.assertEqual(calls["n"], 1, "a non-OSError must not be retried")
+        self.assertEqual(rec.attempts, 1, "a non-OSError must not be retried")
 
 
 def _tmpdir():

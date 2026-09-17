@@ -22,6 +22,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from agents._supervisor_ephemeral import TASK_LOG_MAX_AGE_DAYS, prune_task_logs
+from tests._replace_faults import scoped_path_fault
 
 
 def _aged(path: Path, days: float) -> None:
@@ -50,12 +51,13 @@ def test_prune_missing_dir_is_noop(tmp_path):
 def test_prune_tolerates_locked_file(tmp_path, monkeypatch):
     f = tmp_path / "task-t-cccc.log"; f.write_text("x", encoding="utf-8")
     _aged(f, 30)
-    real_unlink = Path.unlink
-    def boom(self, *a, **k):
+    def boom(real, self, *a, **k):
         raise PermissionError("locked")
-    monkeypatch.setattr(Path, "unlink", boom)
-    assert prune_task_logs(log_root=tmp_path, max_age_days=7) == 0
-    monkeypatch.setattr(Path, "unlink", real_unlink)
+    # RM-464: scoped to tmp_path - an unscoped Path.unlink patch fails every
+    # unlink in the process while armed.
+    with scoped_path_fault("unlink", tmp_path, boom):
+        assert prune_task_logs(log_root=tmp_path, max_age_days=7) == 0
+    assert f.exists()
 
 
 # - RM-161: the age cap must not be able to erase the corpus ---------------

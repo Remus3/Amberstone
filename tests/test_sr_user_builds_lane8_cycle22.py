@@ -44,6 +44,13 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from coaches import sr_user_builds
 import dashboard.routes_sr_user_builds as routes
+from tests._replace_faults import scoped_fs_fault
+
+
+def _locked(real, src, dst, *a, **kw):
+    """RM-464: sr_user_builds.os IS the process-wide os module, so the deny
+    is scoped to the store's temp dir with an armed control outside it."""
+    raise PermissionError("locked")
 
 
 class _HermeticStoreCase(unittest.TestCase):
@@ -141,8 +148,7 @@ class TestNoPhantomStateOnFailedSave(_HermeticStoreCase):
         list_for STILL reported the uncommitted build - which
         coaches/rune_pages.py:142 would then fold into a live rune page."""
         self._seed_one()
-        with mock.patch.object(sr_user_builds.os, "replace",
-                               side_effect=PermissionError("locked")):
+        with scoped_fs_fault("replace", self.store_path.parent, _locked):
             with self.assertRaises(PermissionError):
                 sr_user_builds.add("Tristana", {"label": "ghost build"})
 
@@ -155,8 +161,7 @@ class TestNoPhantomStateOnFailedSave(_HermeticStoreCase):
         """W7, the destructive direction: a failed save must not make a build
         disappear from the in-memory view while it is still on disk."""
         self._seed_one()
-        with mock.patch.object(sr_user_builds.os, "replace",
-                               side_effect=PermissionError("locked")):
+        with scoped_fs_fault("replace", self.store_path.parent, _locked):
             with self.assertRaises(PermissionError):
                 sr_user_builds.delete("Tristana", "aabbccdd")
 
@@ -220,8 +225,7 @@ class TestTempFileLifetime(_HermeticStoreCase):
     def test_exhausted_replace_retry_cleans_up_its_tmp(self):
         """W6. Pre-fix the retry re-raised and orphaned user_builds.json.tmp."""
         self._seed_one()
-        with mock.patch.object(sr_user_builds.os, "replace",
-                               side_effect=PermissionError("locked")):
+        with scoped_fs_fault("replace", self.store_path.parent, _locked):
             with self.assertRaises(PermissionError):
                 sr_user_builds.add("Tristana", {"label": "x"})
 
