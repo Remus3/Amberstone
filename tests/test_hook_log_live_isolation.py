@@ -118,11 +118,74 @@ def test_real_cli_under_pytest_writes_its_row_to_the_redirect_not_the_live_log()
 # ------------------------------------------------ defence 1: refuse a hand run
 
 
-def test_a_payloadless_tty_run_records_nothing(tmp_path):
+def test_a_payloadless_tty_run_writes_no_hook_row(tmp_path):
     log = tmp_path / "hooks.jsonl"
     rc_facts.record_invocation("SessionStart", {}, path=log, stdin_state="tty")
     rc_facts.record_invocation("UserPromptSubmit", None, path=log, stdin_state="tty")
     assert not log.exists(), "a hand run on a tty wrote a null-session row"
+
+
+# RM-459 (1). DECISION: the refused tty run leaves a MARKER ROW in a SIDECAR
+# (`<log stem>.skipped.jsonl`, beside the resolved hook log), never a row in the
+# hook log itself and never nothing. Why each alternative loses:
+#   - nothing (RM-451 as shipped): a real fire that ever arrived this way would
+#     vanish without trace, and after-the-fact auditability is this log's only
+#     purpose.
+#   - a marker row IN the hook log: `runner.hook_log_violations` flags any
+#     null-session row appended during a known-child cycle, so it reinstates
+#     exactly the dry-cycle red RM-451 removed, and changing that rule is
+#     responder grammar this row may not touch.
+#   - a stderr line only: gone when the process exits, so it answers nothing
+#     after the fact.
+# The sidecar path derives from the resolved log path, so `RC_HOOK_LOG` (and the
+# per-worker redirect in tests/conftest.py) moves it too.
+
+
+def test_skip_marker_path_sits_beside_the_log_and_is_not_the_log(tmp_path):
+    log = tmp_path / "hooks.jsonl"
+    marker = rc_facts.skipped_invocation_log_path(log)
+    assert marker == tmp_path / "hooks.skipped.jsonl"
+    assert marker != log
+    live = rc_facts.skipped_invocation_log_path(_LIVE)
+    assert live.name == "hook_invocations.skipped.jsonl"
+    assert live.parent == _LIVE.parent
+
+
+def test_a_payloadless_tty_run_leaves_one_skip_marker_per_refusal(tmp_path):
+    log = tmp_path / "hooks.jsonl"
+    rc_facts.record_invocation("SessionStart", {}, path=log, stdin_state="tty")
+    rc_facts.record_invocation("UserPromptSubmit", None, path=log, stdin_state="tty")
+    rows = _rows(rc_facts.skipped_invocation_log_path(log))
+    assert [r["event"] for r in rows] == ["SessionStart", "UserPromptSubmit"]
+    for r in rows:
+        assert r["reason"] == "tty-no-payload"
+        assert r["stdin"] == "tty"
+        assert r["pid"] == os.getpid()
+        assert "session" not in r, "a marker must not look like a hook row"
+    assert not log.exists()
+
+
+@pytest.mark.parametrize("state", ["none", "empty", "notdict", "error", "n/a", "json"])
+def test_no_skip_marker_unless_the_row_was_refused(tmp_path, state):
+    log = tmp_path / "hooks.jsonl"
+    rc_facts.record_invocation("SessionStart", {}, path=log, stdin_state=state)
+    rc_facts.record_invocation("SessionStart", {"session_id": "s-2"}, path=log, stdin_state="tty")
+    assert not rc_facts.skipped_invocation_log_path(log).exists()
+
+
+def test_skip_marker_follows_the_pytest_redirect_not_the_live_tree():
+    redirect = rc_facts.invocation_log_path()
+    marker = rc_facts.skipped_invocation_log_path(redirect)
+    assert marker.resolve().parent == Path(os.environ["RC_HOOK_LOG"]).resolve().parent
+    assert marker.resolve() != rc_facts.skipped_invocation_log_path(_LIVE).resolve()
+
+
+def test_skip_marker_write_failure_never_raises(tmp_path):
+    """A logger that failed would convert a working hook into a broken one."""
+    log = tmp_path / "hooks.jsonl"
+    rc_facts.skipped_invocation_log_path(log).mkdir()  # occupy the marker path
+    rc_facts.record_invocation("SessionStart", {}, path=log, stdin_state="tty")
+    assert not log.exists()
 
 
 def test_a_tty_run_that_carries_a_payload_still_records(tmp_path):
