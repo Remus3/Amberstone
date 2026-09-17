@@ -23,6 +23,10 @@ WHAT IS PROVEN HERE, AND WHAT IS NOT
   and a missing row (both must warn), pinning the comparison itself.
 * A static guard fails on any non-test module that executes a journal_mode
   pragma as a bare statement, with a positive control proving it detects one.
+* RM-457 made that matcher stricter: a journal_mode pragma through
+  ``executescript`` (which returns no rows at all), one built as an f-string,
+  and one assigned only to ``_`` are all findings. The real-tree scan keeps its
+  site floor, and a control proves an EMPTY enumeration fails it.
 """
 from __future__ import annotations
 
@@ -251,21 +255,62 @@ def test_answer_comparison(tmp_path, monkeypatch, caplog, opener, row, should_wa
 
 # -- static guard: no discarded journal_mode result anywhere ------------------------
 
+# ``executescript`` never yields the pragma's answer at all, so ANY statement
+# using it for a journal_mode pragma is a discard, not only a bare one (RM-457).
+_EXECUTE_ATTRS = frozenset({"execute", "executescript"})
+
+
+def _literal_sql(arg: ast.expr) -> str | None:
+    """The SQL text of a string literal, or of an f-string's literal parts.
+
+    An f-string is reduced to its constant fragments joined with a placeholder,
+    so ``f"PRAGMA journal_mode={mode}"`` still reads ``journal_mode=``.
+    """
+    if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+        return arg.value
+    if isinstance(arg, ast.JoinedStr):
+        return "?".join(v.value for v in arg.values
+                        if isinstance(v, ast.Constant) and isinstance(v.value, str))
+    return None
+
+
+def _is_discard_statement(node: ast.AST) -> ast.expr | None:
+    """The value expression of a statement that throws its result away.
+
+    A bare expression statement, or an assignment whose every target is ``_``
+    (RM-457: ``_ = conn.execute(...)`` names the result only to drop it).
+    """
+    if isinstance(node, ast.Expr):
+        return node.value
+    if (isinstance(node, ast.Assign) and node.targets
+            and all(isinstance(t, ast.Name) and t.id == "_" for t in node.targets)):
+        return node.value
+    return None
+
+
+def _journal_pragma_call(sub: ast.AST) -> bool:
+    if not (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+            and sub.func.attr in _EXECUTE_ATTRS and sub.args):
+        return False
+    sql = _literal_sql(sub.args[0])
+    return sql is not None and bool(_JOURNAL_RE.search(sql))
+
+
 def _discarded_journal_pragmas(source: str) -> list[int]:
-    """Line numbers of statement-level calls whose journal_mode answer is dropped."""
-    hits = []
+    """Line numbers of statements whose journal_mode answer is dropped."""
+    hits: set[int] = set()
     for node in ast.walk(ast.parse(source)):
-        if not isinstance(node, ast.Expr):
+        # executescript returns no rows (measured: fetchall() == []), so a
+        # journal_mode pragma through it is a discard however it is spelled.
+        if _journal_pragma_call(node) and node.func.attr == "executescript":
+            hits.add(node.lineno)
             continue
-        for sub in ast.walk(node.value):
-            if (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
-                    and sub.func.attr == "execute" and sub.args
-                    and isinstance(sub.args[0], ast.Constant)
-                    and isinstance(sub.args[0].value, str)
-                    and _JOURNAL_RE.search(sub.args[0].value)):
-                hits.append(node.lineno)
-                break
-    return hits
+        value = _is_discard_statement(node)
+        if value is None:
+            continue
+        if any(_journal_pragma_call(sub) for sub in ast.walk(value)):
+            hits.add(node.lineno)
+    return sorted(hits)
 
 
 def test_guard_positive_control():
@@ -282,15 +327,57 @@ def test_guard_positive_control():
     assert _discarded_journal_pragmas(good) == []
 
 
-def test_no_module_discards_the_journal_mode_answer():
-    _repo_walk.self_check()
+# RM-457: three call shapes the RM-413 matcher did not see. Each positive
+# control below is paired with a negative control that differs only in that the
+# answer is actually kept, so a matcher that flags everything cannot pass.
+@pytest.mark.parametrize("bad, good", [
+    (
+        "conn.executescript('PRAGMA journal_mode=WAL;')\n",
+        "row = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+    ),
+    (
+        "cur = conn.executescript('PRAGMA journal_mode=WAL;')\n",
+        "cur = conn.execute('PRAGMA journal_mode=WAL')\n",
+    ),
+    (
+        "conn.execute(f'PRAGMA journal_mode={mode}')\n",
+        "row = conn.execute(f'PRAGMA journal_mode={mode}').fetchone()\n",
+    ),
+    (
+        "_ = conn.execute('PRAGMA journal_mode=WAL')\n",
+        "jm = conn.execute('PRAGMA journal_mode=WAL')\n",
+    ),
+    (
+        "_ = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+        "jm_row = conn.execute('PRAGMA journal_mode=WAL').fetchone()\n",
+    ),
+], ids=["executescript-bare", "executescript-assigned", "f-string",
+        "underscore-cursor", "underscore-row"])
+def test_guard_positive_control_rm457_shapes(bad, good):
+    assert _discarded_journal_pragmas(bad) == [1], bad
+    assert _discarded_journal_pragmas(good) == [], good
+
+
+def test_guard_rm457_negative_controls_stay_clean():
+    """Non-journal pragmas and non-pragma f-strings are not findings."""
+    clean = (
+        "conn.executescript('PRAGMA synchronous=NORMAL; CREATE TABLE t(x);')\n"
+        "_ = conn.execute(f'PRAGMA synchronous={level}')\n"
+        "conn.execute(f'SELECT {col} FROM t')\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
+_SITE_FLOOR = 9  # the RM-233 site plus the eight RM-413 sites
+
+
+def _scan(files) -> tuple[int, list[str]]:
+    """(journal_mode sites reached, offenders) over ``(rel, text)`` pairs."""
     offenders = []
     checked_sites = 0
-    for path in _repo_walk.iter_repo_files():
-        rel = _repo_walk.relative_posix(path)
+    for rel, text in files:
         if "tests" in rel.split("/"):
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
         if "journal_mode" not in text:
             continue
         checked_sites += len(_JOURNAL_RE.findall(text))
@@ -299,6 +386,39 @@ def test_no_module_discards_the_journal_mode_answer():
         except SyntaxError:
             continue
         offenders.extend(f"{rel}:{n}" for n in lines)
-    # Anchor: the RM-233 site plus the eight RM-413 sites must be in the scan.
-    assert checked_sites >= 9, f"scan reached only {checked_sites} journal_mode sites"
+    return checked_sites, offenders
+
+
+def _assert_scan(checked_sites: int, offenders: list[str]) -> None:
+    assert checked_sites >= _SITE_FLOOR, (
+        f"scan reached only {checked_sites} journal_mode sites")
     assert offenders == [], f"journal_mode result discarded at: {offenders}"
+
+
+def test_scan_floor_bites_on_an_empty_enumeration():
+    """An empty universe must FAIL the guard, not pass it vacuously."""
+    with pytest.raises(AssertionError, match="scan reached only 0"):
+        _assert_scan(*_scan([]))
+
+
+@pytest.mark.parametrize("src", [
+    "conn.executescript('PRAGMA journal_mode=WAL;')\n",
+    "conn.execute(f'PRAGMA journal_mode={m}')\n",
+    "_ = conn.execute('PRAGMA journal_mode=WAL')\n",
+], ids=["executescript", "f-string", "underscore"])
+def test_scan_reports_each_rm457_shape_through_the_real_path(src):
+    """A seeded file carrying the shape reaches offenders via _scan itself."""
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/seeded.py", src)])
+    assert offenders == ["core/seeded.py:1"]
+    with pytest.raises(AssertionError, match="discarded at"):
+        _assert_scan(sites, offenders)
+
+
+def test_no_module_discards_the_journal_mode_answer():
+    _repo_walk.self_check()
+    rels = ((_repo_walk.relative_posix(p), p) for p in _repo_walk.iter_repo_files())
+    files = ((rel, p.read_text(encoding="utf-8", errors="replace"))
+             for rel, p in rels if "tests" not in rel.split("/"))
+    _assert_scan(*_scan(files))
