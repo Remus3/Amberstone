@@ -645,10 +645,28 @@ def test_guard_rm468_unfoldable_conversion_or_spec_stays_a_placeholder():
 def test_guard_rm468_non_string_concatenation_is_refused():
     """Only a ``+`` whose BOTH sides yield str text is folded.
 
-    MEASURED on CPython 3.14.4: ``'a' + 1`` raises ``TypeError: can only
-    concatenate str (not "int") to str``, and ``'PRAGMA journal' * 2`` yields
-    ``'PRAGMA journalPRAGMA journal'`` - neither is a value the matcher may
-    invent, so both operands must be str-yielding or the expression is refused.
+    READ WHAT EACH LINE ACTUALLY PINS - three of the four do NOT discriminate a
+    fold POLICY, and an earlier draft of this docstring claimed they did.
+    ``'PRAGMA ' + journal_mode_name``, ``f"PRAGMA {'journal' + 1}=WAL"`` and
+    ``'PRAGMA journal' * 2`` carry no spelling of ``journal_mode=``, and NO fold
+    policy over them - refusing, inlining a guess, or dropping the operand -
+    produces text the ``_JOURNAL_RE`` would match. So what they pin is that the
+    matcher REACHES A VERDICT on an expression it cannot reproduce: it returns
+    cleanly instead of raising, and instead of crediting the file on the strength
+    of the bare word ``journal`` that got it past the pre-filter. They kill a
+    matcher that crashes or that goes SQL-blind, not one whose arithmetic is
+    wrong.
+
+    The fourth line, ``'PRAGMA ' + 'synchronous=NORMAL'``, is the one that pins
+    the policy itself: both operands are str, so the RM-468 fold DOES fire, and
+    the folded text must still read as a non-journal pragma. It is the paired
+    negative control for the ``sql-concat`` positive above.
+
+    The refusal is nonetheless the correct behaviour, MEASURED on CPython 3.14.4:
+    ``'a' + 1`` raises ``TypeError: can only concatenate str (not "int") to
+    str``, and ``'PRAGMA journal' * 2`` yields ``'PRAGMA journalPRAGMA
+    journal'``. Neither is a value the matcher may invent - it just happens that
+    inventing one here would not change this row's verdict.
     """
     clean = (
         "conn.execute('PRAGMA ' + journal_mode_name)\n"
