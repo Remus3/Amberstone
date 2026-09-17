@@ -27,6 +27,7 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from ops import rc_transactional_deploy as D  # noqa: E402
+from tests._replace_faults import scoped_fs_fault  # noqa: E402
 
 
 class _TmpTreeCase(unittest.TestCase):
@@ -331,56 +332,43 @@ class AtomicWriteTests(unittest.TestCase):
 
     def test_atomic_write_json_retries_through_permission_error(self) -> None:
         target = self.dir / "polled.json"
-        real_replace = os.replace
-        calls = {"n": 0}
 
-        def flaky(src, dst):
-            calls["n"] += 1
-            if calls["n"] <= 2:
+        def flaky(real, src, dst, *a, **kw):
+            if rec.attempts <= 2:
                 raise PermissionError(5, "Access is denied")
-            return real_replace(src, dst)
+            return real(src, dst, *a, **kw)
 
-        D.os.replace = flaky
-        try:
+        # RM-464: `D.os.replace = ...` rebinds os.replace for the whole process;
+        # scope the fault to this test's dir, proven by an outside control.
+        with scoped_fs_fault("replace", self.dir, flaky) as rec:
             D.atomic_write_json(target, {"k": "v"})
-        finally:
-            D.os.replace = real_replace
-        self.assertGreaterEqual(calls["n"], 3)
+        self.assertGreaterEqual(rec.attempts, 3)
         self.assertEqual(json.loads(target.read_text(encoding="utf-8")),
                          {"k": "v"})
 
     def test_atomic_write_json_re_raises_after_the_retry_budget(self) -> None:
         target = self.dir / "wedged.json"
-        real_replace = os.replace
 
-        def always_denied(src, dst):
+        def always_denied(real, src, dst, *a, **kw):
             raise PermissionError(5, "Access is denied")
 
-        D.os.replace = always_denied
-        try:
-            with self.assertRaises(PermissionError):
-                D.atomic_write_json(target, {"k": "v"})
-        finally:
-            D.os.replace = real_replace
+        with scoped_fs_fault("replace", self.dir, always_denied), \
+                self.assertRaises(PermissionError):
+            D.atomic_write_json(target, {"k": "v"})
 
     def test_copy_atomic_retries_through_permission_error(self) -> None:
         src = self.dir / "src.txt"
         src.write_text("body", encoding="utf-8")
         dst = self.dir / "dst.txt"
-        real_replace = os.replace
-        calls = {"n": 0}
 
-        def flaky(s, d):
-            calls["n"] += 1
-            if calls["n"] <= 1:
+        def flaky(real, s, d, *a, **kw):
+            if rec.attempts <= 1:
                 raise PermissionError(5, "Access is denied")
-            return real_replace(s, d)
+            return real(s, d, *a, **kw)
 
-        D.os.replace = flaky
-        try:
+        with scoped_fs_fault("replace", self.dir, flaky) as rec:
             D.copy_atomic(src, dst)
-        finally:
-            D.os.replace = real_replace
+        self.assertGreaterEqual(rec.attempts, 2)
         self.assertEqual(dst.read_text(encoding="utf-8"), "body")
 
 

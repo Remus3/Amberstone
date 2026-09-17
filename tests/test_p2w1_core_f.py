@@ -28,13 +28,22 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+import time
 from pathlib import Path
 
 import pytest
 from tests._asyncio_isolation import run_coro as _run_coro
 from tests._replace_faults import scoped_fs_fault
+from tests._sleep_probe import thread_scoped
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _skip_backoff_this_thread(monkeypatch, polled_json) -> None:
+    """RM-464: ``polled_json.time`` IS the process-wide time module, so a bare
+    no-op sleep turns every other thread's sleep into a busy-spin. Only the
+    calling thread skips the retry backoff; other threads sleep for real."""
+    monkeypatch.setattr(polled_json.time, "sleep", thread_scoped(lambda s: None, time.sleep))
 
 _BANNED_CHARS = "\u2013\u2014\u2018\u2019\u201c\u201d"
 
@@ -54,7 +63,7 @@ def test_atomic_write_json_retries_transient_permission_error(tmp_path, monkeypa
             raise PermissionError(13, "Access is denied")
         return real(src, dst, *a, **kw)
 
-    monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
+    _skip_backoff_this_thread(monkeypatch, polled_json)
 
     with scoped_fs_fault("replace", tmp_path, flaky_replace) as rec:
         polled_json.atomic_write_json(target, {"k": 1})
@@ -69,7 +78,7 @@ def test_atomic_write_json_reraises_after_exhausted_retries(tmp_path, monkeypatc
     def always_denied(real, src, dst, *a, **kw):
         raise PermissionError(13, "Access is denied")
 
-    monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
+    _skip_backoff_this_thread(monkeypatch, polled_json)
 
     with scoped_fs_fault("replace", tmp_path, always_denied):
         with pytest.raises(PermissionError):
@@ -86,7 +95,7 @@ def test_atomic_write_text_retries_transient_permission_error(tmp_path, monkeypa
             raise PermissionError(13, "Access is denied")
         return real(src, dst, *a, **kw)
 
-    monkeypatch.setattr(polled_json.time, "sleep", lambda s: None)
+    _skip_backoff_this_thread(monkeypatch, polled_json)
 
     with scoped_fs_fault("replace", tmp_path, flaky_replace) as rec:
         polled_json.atomic_write_text(target, "restart")
