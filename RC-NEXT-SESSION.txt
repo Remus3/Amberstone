@@ -1,60 +1,72 @@
-NEXT SESSION - RC laned headless orchestrated parallel loop (continue)
---------------------------------------------------------------------
-Task: Continue laned orchestrated cycles against RC's RC-local open rows until drained
-      or interrupted. Same standing SHAPE (merger + worktree slices on disjoint files +
-      independent adversarial verifier before every merge; producer never grades).
+NEXT SESSION - RC laned headless orchestrated parallel loop (wave 3)
+-------------------------------------------------------------------
+Task: Continue laned orchestrated cycles against RC-local open rows until drained
+      or interrupted. Same SHAPE: merger + worktree slices on disjoint files +
+      independent adversarial verifier before every merge; producer never grades.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES.md
-      (2026-09-16b block) + docs/LEDGER.md 1419 and 1420 + git log. Probe live:
+      (2026-09-16c block) + docs/LEDGER.md 1421 and 1422 + git log. Probe live:
       python tools/rc_facts.py ; python tools/moon_sync_poller.py --status ;
-      gh run list --branch main --limit 4 (confirm CI green on the wrap commit;
-      docs-guards was red on 59b3f6253 from phantom example cites in BACKLOG RM-446,
-      fixed in the wrap commit - verify, do not re-fix).
+      gh run list --branch main --limit 4 (confirm CI green on the wrap commit).
 
 BOUNDARY (unchanged): halt and ping before any byte leaves the tree. No sibling-inbox
       writes, no arming, no edits to docs/CHANNEL.md, ops/loop/slots.py,
-      ops/loop/winmutex.py. Ordinary pushes that pass suites + the pre-push sweep proceed.
+      ops/loop/winmutex.py. Ordinary pushes that pass suites + pre-push sweep proceed.
 
-CYCLE 1: read RC's own moon_sync_inbox/ (triage only, do not reply).
+CYCLE 1: read RC's own moon_sync_inbox/ (triage only, do not reply). As of 2026-09-16
+      all 25 messages dated that day were already seen; record-only asks: RSC
+      clause-by-clause answer, CS approval, LW shared-skills question (default NO),
+      LW correction 2-of-4 -> 3-of-4; rule 17 wording + criterion (d) at next re-pin.
 
-DRAINABLE QUEUE (RC-local, filed 2026-09-16; read each row first, recall gate first):
-  RM-433 other ops/moon_sync_repos.json readers degrade in a worktree
-  RM-434 inbox_responder_runner.py:2475 whole-file hash of the live hook log (flake class)
-  RM-440 skip-hygiene guard accepts constant-true conditions (os.name/sys.platform, OR loophole)
-  RM-441 text-mode writers of TRACKED files without newline control (CRLF on Windows)
-  RM-442 data_pipeline.py downloaded_at local time labelled Z
-  RM-443 17 unclassified core loaders with a cache-failure shape
-  RM-444 archetype_picks transient read failure + save overwrites picks
-  RM-446 RM-435 residuals (PAST_EOF tail preference, spaced dir + bare filename)
-  RM-437 os.scandir-level swallow defeats the listability probe (decide: accept or fix)
-  RM-432 hooks execute worktree tool copies - DESIGN question (.githooks shared); may be
-         operator-facing, record rather than force
-  then older open rows (RM-413, RM-415, RM-417 ...), one row per slice.
-  RM-445 (DS does not model 16.18.1 Rageblade 3 -> 4; runes never refreshed) is a DS
-  batch decision - Tier-2, full dual suite + DS :8860 restart if taken.
+WAVE 3 PARTITION (specced 2026-09-16 at b27c7236a; re-run recall + AGE check first,
+      cites drift):
+  S1 RM-455 (untested RM-450 branches, stale census prose), RM-290 site 1
+     (core/event_patterns.py), RM-292(a) (core/feature_policy.py disabled payload mode)
+  S2 RM-456 (liveclient_summary numeric None/nan; routes_state _resolve_my_champion
+     string check; champ_select_shape _as_int bool; arena member cellId - check JS
+     consumers first)
+  S3 RM-382 + RM-293(b) (lcu/snapshot_shape.py "Unknown", tools/lcu_agent.py "Offline"
+     and bare decode -> return None on decode error, not errors="replace");
+     needs RC + RC-LCUAgent restart to go live
+  S4 RM-457 (stricter WAL-pragma matcher, keep floor), RM-458 (ruff format of
+     tests/test_skip_condition_hygiene.py in its OWN commit; any fold only toward
+     refusal: zero new acceptances over the probe corpus, 179 real sites unchanged),
+     RM-411 (7 test sites, catch OSError)
+  S5 RM-459 items 1-2 (tty-skip decision; replace live-log byte compare with
+     append-only + null-session/child-pid assertions - do not loosen), RM-383
+     (conftest vision token default ONLY when env AND config file both absent;
+     never override main's real token)
+  RECORD-ONLY: RM-454 (data_version needs a persistent connection; fails
+     close/reopen + recreate), RM-293(a)/(c), RM-292(b-d), RM-290 site 2, RM-409,
+     RM-376 (design), RM-448 (DS), RM-445 (DS Tier-2), RM-432 (design), RM-453
+     (stop_claim_gate - only a session the gate is NOT flagging may edit it).
+  FLIP: RM-364 is ALREADY SHIPPED (a97bdfc0b, LEDGER 1353); BACKLOG label is stale.
 
-SLICE PROMPT RULES LEARNED 2026-09-16 (put in every slice prompt):
-  - STEP ZERO: pwd under .claude\worktrees\, then git merge --ff-only <local main sha>
-    (worktrees are cut from ORIGIN, not local main).
-  - At MERGE, before push: run tests/test_*hygiene*.py, citation drift, rm-id registry,
-    doc size budget, line endings on the merged tree - slices miss repo-wide guards.
-  - An un-skip or platform-gated change must be exercised under the OTHER OS's semantics
-    (CI is Linux; os.lstat raises UnicodeEncodeError, not OSError, on POSIX).
-  - Never widen a guard's accepted vocabulary without a probe proving an always-true
-    condition is still rejected.
-  - No example path:line cites in BACKLOG/LEDGER prose (citation drift guard).
-  - RC-PatchRefresh (Wed 11:07) rewrites tracked data; a dirty data tree mid-session is
-    that task, not a slice.
+SLICE PROMPT RULES (keep in every slice prompt):
+  - STEP ZERO: pwd under .claude\worktrees\, then git merge --ff-only <local main sha>.
+  - Module/related tests only in slices (parallel full suites OOM the box); merger
+    runs the full dual suite once on the frozen merged tree before the docs commit.
+  - At MERGE: tests/test_skip_condition_hygiene.py on the merged tree; doc guards
+    via tools/md_guard_selector.py after docs edits.
+  - Platform-gated changes exercised under the OTHER OS semantics (CI is Linux).
+  - Never widen a guard's accepted vocabulary; never add a cache without a verifier
+    probe of close/reopen, recreate-same-path and small same-size writes.
+  - Second refute of an ADDED cache/rescue: rule REMOVAL, keep the strict half
+    (memory feedback_second_refute_means_remove_not_redesign).
+  - No example path:line cites in BACKLOG/LEDGER prose.
+  - Use unique scratch filenames per agent (shared scratchpad collisions happened).
+  - Verifiers must write probes only under the scratchpad (an empty b1.py leaked to
+    the repo root once).
 
 HALT AND RECORD, DO NOT ATTEMPT: criterion (d) flip / CHANNEL_VERSION 2 re-pin;
-  docs/BOUNCE_POLICY.md NOT-DECIDED; replies to LL/LW/RSC/CS; the two BLOCKED third-party
-  skills; responder MODEL pin tools/inbox_responder_runner.py:95.
+  docs/BOUNCE_POLICY.md NOT-DECIDED; replies to LL/LW/RSC/CS; the two BLOCKED
+  third-party skills; responder MODEL pin in tools/inbox_responder_runner.py.
 
-DO NOT REDO (shipped + pushed 2026-09-16, LEDGER 1419/1420): ban-arm space bypass;
-  always-skipping surrogate tests; worktree hook exposure measurement + sweep DEGRADED
-  fix; spec grammar drift + example list (RM-436); ungraded-guard sweep; durable-store
-  digest rule in CLAUDE.md; unlistable-inbox watcher/poller + shared probe; hook-log
-  teardown flake; RM-414; RM-416; item_advisor residuals; RM-435; RM-438; RM-439;
-  CRLF writer fix; DDragon 16.18.1 data commit; CLAUDE.md/ROADMAP relocate-only trim.
+DO NOT REDO (shipped + pushed 2026-09-16c, LEDGER 1421/1422): RM-433, RM-434, RM-437,
+  RM-440, RM-441, RM-442, RM-443, RM-444, RM-446, RM-447, RM-413, RM-449 (darwin
+  rescue DECLINED on purpose), RM-450 (row-count memo REMOVED on purpose), RM-451,
+  RM-452, RM-415, RM-417; RM-419/RM-420 closed as already done.
+  Known flake: tests/test_ds_matchdb_mcp_server.py test_http_auth_required timed out
+  once under full-suite load, 43/43 on 3 isolated reruns.
 
 When the drainable queue is empty emit NO_WORK. End with /done plus the next prompt.
