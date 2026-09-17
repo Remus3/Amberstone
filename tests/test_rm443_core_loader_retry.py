@@ -24,9 +24,12 @@ Two shapes are pinned:
 The clock is advanced by patching ``time.monotonic``. No network, no live ports.
 
 CENSUS (re-derived 2026-09-16 against base 6c42caf48; line = the ``def`` line
-there, EXCEPT the rows in the five modules RM-450 edited - augment_external_source,
-augment_recommender, minimap_identity, replay_history, vision_template_match -
-whose lines were re-derived after RM-450). Instrument: an AST scan over core/ for functions that write a
+there, EXCEPT the rows in the four modules RM-450 edited - augment_external_source,
+minimap_identity, replay_history, vision_template_match - and in
+augment_recommender, whose lines were re-derived after RM-450. RM-450 touched
+augment_recommender too, but its round 3 restored that module byte-identical
+to its pre-RM-450 state after the row-count memo was refuted twice, so it is
+NOT among the modules RM-450 edited). Instrument: an AST scan over core/ for functions that write a
 module-level cache name either (A) inside / after a try-except whose handler
 does not exit, or (B) from the return value of a same-module function that
 holds a non-raising handler. One row per function; A-or-B hits = 57, plus
