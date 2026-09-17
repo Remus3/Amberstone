@@ -20,6 +20,7 @@ import json
 import math
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -792,6 +793,31 @@ def test_an_unmeasured_idle_renders_on_every_surface_instead_of_crashing(state: 
 # ----------------------------------------------------------------- run loop
 
 
+def _assert_clock_delegates_off_thread(fake_now: float) -> None:
+    """Armed control for the thread-scoped fake clock (RM-469).
+
+    Runs INSIDE the patched window on a different thread: ``time.time()`` there
+    must still return the REAL wall clock. Widen the shim past the owning
+    thread and this is what fails first. The floor is a fixed past epoch
+    (2020-09-13) rather than a live reading, so the control cannot pass by
+    comparing the fake against itself.
+    """
+    box: dict = {}
+
+    def _read() -> None:
+        box["t"] = time.time()
+
+    t = threading.Thread(target=_read)
+    t.start()
+    t.join(5.0)
+    assert not t.is_alive(), "the control thread never finished"
+    got = box.get("t")
+    assert got is not None and got != fake_now and got > 1_600_000_000.0, (
+        "patched time.time did not delegate outside the owning thread "
+        f"(control read {got!r}, fake is {fake_now!r})"
+    )
+
+
 def test_a_tier_climb_between_polls_keeps_the_written_promise(state: Path, tmp_path: Path, monkeypatch):
     """run() recomputes the ladder every tick; the FILE promised an interval.
 
@@ -804,7 +830,20 @@ def test_a_tier_climb_between_polls_keeps_the_written_promise(state: Path, tmp_p
     polls: list[float] = []
     texts: list[str] = []
 
-    monkeypatch.setattr(P.time, "time", lambda: clock["t"])
+    reads = {"n": 0}
+
+    def fake_time():
+        reads["n"] += 1
+        return clock["t"]
+
+    # RM-469: P.time IS the one global time module, so an unscoped fake clock
+    # is read by EVERY time.time() caller in the process while it is armed -
+    # logging timestamps and any background thread included, each of which
+    # would jump to 1970 and back. thread_scoped keeps the fake for the thread
+    # running this test and delegates everywhere else; the control below proves
+    # that delegation from INSIDE the armed window.
+    monkeypatch.setattr(P.time, "time", thread_scoped(fake_time, time.time))
+    _assert_clock_delegates_off_thread(clock["t"])
 
     def fake_sleep(sec):
         clock["t"] += sec
@@ -829,6 +868,10 @@ def test_a_tier_climb_between_polls_keeps_the_written_promise(state: Path, tmp_p
     with pytest.raises(StopIteration):
         P.run((repo,))
 
+    assert reads["n"] >= 1, (
+        "the fake clock was never read on this thread - run() did not call "
+        "time.time(), so the interval arithmetic below is not the code's"
+    )
     assert len(polls) >= 2
     gap = polls[1] - polls[0]
     assert gap <= 300 + P.TICK_SECONDS, f"the written 5 minute promise was not honoured (gap {gap}s)"

@@ -31,6 +31,29 @@ import threading
 from lcu.lcu_client import LcuClient
 from lcu.lcu_rune_writer import RuneWriter
 from tests._asyncio_isolation import run_coro as _run_coro
+from tests._asyncio_isolation import run_coro_capturing_thread
+
+
+def _assert_to_thread_delegates_off_target() -> None:
+    """Armed control for the task-scoped ``asyncio.to_thread`` fake (RM-469).
+
+    Runs INSIDE the patched window on a different task and a different loop
+    thread: to_thread must REALLY offload, i.e. the callable must run on a
+    worker thread that is not the control loop's own. Widen the shim past the
+    target task and this fails first - either by returning the loop thread's
+    ident (the fake runs the callable inline) or by hanging until the timeout
+    (the fake parks on an Event nothing sets).
+    """
+    async def _control():
+        return await asyncio.to_thread(threading.get_ident)
+
+    box: dict = {}
+    worker = run_coro_capturing_thread(_control(), box, timeout=5.0)
+    if worker == box["loop_thread"]:
+        raise AssertionError(
+            "patched asyncio.to_thread did not delegate outside the target "
+            "task - the callable ran on the control loop thread"
+        )
 
 
 class _Boom(BaseException):
@@ -128,10 +151,26 @@ def test_async_auto_accept_cancel_stops_loop():
         await asyncio.Event().wait()  # never set - only a cancel escapes
 
     async def _drive():
+        # RM-469: `asyncio` is the ONE module object every importer in the
+        # process shares, so a bare `asyncio.to_thread = _fake_to_thread` makes
+        # EVERY to_thread in the process run its work inline and then park
+        # forever on an Event that is never set - any other thread's event loop
+        # included. The shim is TASK-scoped: it stands in only for the task
+        # driving `target`, and delegates every other caller to the real
+        # to_thread captured before patching.
+        target = c._auto_accept_loop_async(0)
         real_to_thread = asyncio.to_thread
-        asyncio.to_thread = _fake_to_thread
+
+        async def _scoped_to_thread(fn, *args, **kwargs):
+            task = asyncio.current_task()
+            if task is not None and task.get_coro() is target:
+                return await _fake_to_thread(fn, *args, **kwargs)
+            return await real_to_thread(fn, *args, **kwargs)
+
+        asyncio.to_thread = _scoped_to_thread
         try:
-            task = asyncio.ensure_future(c._auto_accept_loop_async(0))
+            _assert_to_thread_delegates_off_target()
+            task = asyncio.ensure_future(target)
             await parked.wait()  # tick is now awaiting inside the loop
             task.cancel()
             # The loop catches the injected CancelledError and returns. Whether
