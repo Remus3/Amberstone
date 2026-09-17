@@ -23,6 +23,7 @@ import json
 import os
 import subprocess
 import sys
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -30,7 +31,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import tools.inbox_responder_runner as runner  # noqa: E402
 from tools.rc_facts import (  # noqa: E402
+    _LOG_KEEP,
     _hook_source,
     _read_hook_payload,
     record_invocation,
@@ -217,6 +220,149 @@ def test_read_hook_payload_survives_garbage():
 # ------------------------------------------- the thing that actually matters
 
 
+def _old_complete_rows(before: bytes | None) -> list[bytes]:
+    old = (before or b"").splitlines(keepends=True)
+    if old and not old[-1].endswith(b"\n"):
+        old = old[:-1]  # a foreign row mid-write when `before` was read
+    return old
+
+
+def _diff_rows(before: bytes | None, after: bytes | None) -> tuple[int, list[bytes]]:
+    """(old rows no longer present, terminated rows in `after` not in `before`)."""
+    old = _old_complete_rows(before)
+    remaining = Counter(old)
+    appended = []
+    for line in (after or b"").splitlines(keepends=True):
+        if remaining[line] > 0:
+            remaining[line] -= 1
+        elif line.endswith(b"\n"):
+            appended.append(line)
+    return sum(remaining.values()), appended
+
+
+def _live_log_problems(before: bytes | None, after: bytes | None, child_pid: int) -> list:
+    """What moved in the live hook log that a FOREIGN hook fire cannot explain.
+
+    Append-only rules (deletion, truncation, a rewritten or removed row outside a
+    legitimate head trim, a non-record line, a row written by this process or by
+    the child) are delegated to `runner.hook_log_violations`, the RM-434 rule the
+    responder dry cycle itself uses. On top, ANY appended row with a null or
+    blank session fails: a real hook fire always carries one (RM-451), so such a
+    row is a hand run - the class this test exists to keep off the live log. A
+    row carrying some other non-empty session is another live session and is
+    ignored, which is the flake fix.
+
+    ORDER is checked here as well, because the runner rule compares rows as a
+    MULTISET and so cannot see a same-count reorder. A foreign writer can only
+    append at the tail or drop rows from the head, so the surviving old rows
+    must still open the file, byte for byte, in their original order.
+    """
+    problems = list(runner.hook_log_violations(before, after, {os.getpid(), child_pid}, frozenset()))
+    if after is None:
+        return problems
+    removed, appended = _diff_rows(before, after)
+    if not after.startswith(b"".join(_old_complete_rows(before)[removed:])):
+        problems.append("existing rows rewritten or reordered in place")
+    for line in appended:
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue  # already reported by the runner rule
+        if not isinstance(rec, dict):
+            continue
+        session = rec.get("session")
+        if not (isinstance(session, str) and session.strip()):
+            problems.append(f"null-session row appended {line[:60]!r}")
+    return problems
+
+
+def _row(session, pid=4242, ts="2026-09-17T00:00:00") -> bytes:
+    rec = {
+        "ts": ts,
+        "event": "UserPromptSubmit",
+        "source": "unknown",
+        "payload": True,
+        "stdin": "json",
+        "session": session,
+        "pid": pid,
+    }
+    return (json.dumps(rec, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+_BASE = b"".join(_row(f"s-{i}", pid=1000 + i, ts=f"2026-09-17T00:00:{i:02d}") for i in range(5))
+_CHILD_PID = 777777
+
+
+def test_live_log_rule_ignores_a_foreign_session_append():
+    """Anchor: the rule is not always-red, so the failing arms below mean something."""
+    assert _live_log_problems(_BASE, _BASE, _CHILD_PID) == []
+    assert _live_log_problems(_BASE, _BASE + _row("foreign-session"), _CHILD_PID) == []
+    assert _live_log_problems(None, None, _CHILD_PID) == []
+
+
+@pytest.mark.parametrize("session", [None, "", "   "])
+def test_live_log_rule_fails_on_a_seeded_null_session_row(session):
+    problems = _live_log_problems(_BASE, _BASE + _row(session), _CHILD_PID)
+    assert any("null-session" in p for p in problems), problems
+
+
+def test_live_log_rule_fails_on_a_null_session_row_into_a_fresh_log():
+    assert _live_log_problems(None, _row(None), _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_the_child_pid():
+    assert _live_log_problems(_BASE, _BASE + _row("s-x", pid=_CHILD_PID), _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_this_process_pid():
+    assert _live_log_problems(_BASE, _BASE + _row("s-x", pid=os.getpid()), _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_truncation():
+    lines = _BASE.splitlines(keepends=True)
+    assert _live_log_problems(_BASE, b"".join(lines[:-1]), _CHILD_PID)
+    assert _live_log_problems(_BASE, b"", _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_deletion():
+    assert _live_log_problems(_BASE, None, _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_a_rewritten_row():
+    lines = _BASE.splitlines(keepends=True)
+    lines[2] = _row("s-rewritten", pid=1002, ts="2026-09-17T00:00:02")
+    assert _live_log_problems(_BASE, b"".join(lines), _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_a_reorder_that_keeps_every_row():
+    """The multiset rule alone passes this; the order check must not."""
+    lines = _BASE.splitlines(keepends=True)
+    reordered = b"".join([lines[0], lines[2], lines[1], lines[3], lines[4]])
+    assert runner.hook_log_violations(_BASE, reordered, {_CHILD_PID}, frozenset()) == []
+    assert _live_log_problems(_BASE, reordered, _CHILD_PID)
+
+
+def test_live_log_rule_fails_on_a_head_drop_under_the_keep_cap():
+    lines = _BASE.splitlines(keepends=True)
+    assert _live_log_problems(_BASE, b"".join(lines[1:]) + _row("s-new"), _CHILD_PID)
+
+
+def test_live_log_rule_allows_a_foreign_head_trim_at_the_keep_cap():
+    """What `_trim_invocation_log` does when another session's fire passes the cap."""
+    full = [_row(f"s-{i}", pid=2000 + i) for i in range(_LOG_KEEP)]
+    before = b"".join(full)
+    after = b"".join(full[1:]) + _row("foreign-session")
+    assert _live_log_problems(before, after, _CHILD_PID) == []
+    after_null = b"".join(full[1:]) + _row(None)
+    assert _live_log_problems(before, after_null, _CHILD_PID)
+
+
+def test_live_log_rule_tolerates_a_foreign_row_mid_write_at_first_read():
+    tail = _row("foreign-session")
+    before = _BASE + tail[:20]
+    assert _live_log_problems(before, _BASE + tail, _CHILD_PID) == []
+
+
 def test_cli_does_not_hang_without_stdin(tmp_path):
     """The regression this change could plausibly introduce.
 
@@ -230,6 +376,9 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     real fire.
     """
     live = _ROOT / "ops" / "runtime" / "hook_invocations.jsonl"
+    # RM-459 (2): NOT a whole-file byte compare. Other live sessions append to
+    # this file mid-run, which flaked the old `after == before`. The rows are
+    # attributed instead - see `_live_log_problems`.
     before = live.read_bytes() if live.exists() else None
 
     # A stdin-less run has no session id, and without one the watcher fails
@@ -243,17 +392,20 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     report_before = report.read_bytes() if report.exists() else None
 
     env = dict(os.environ, RC_HOOK_LOG=str(tmp_path / "redirected.jsonl"))
-    r = subprocess.run(
+    proc = subprocess.Popen(
         [_PY, str(_ROOT / "tools" / "rc_facts.py"), "--inbox-only"],
         stdin=subprocess.DEVNULL,
-        capture_output=True,
-        timeout=30,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         env=env,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
-    assert r.returncode == 0
+    proc.communicate(timeout=30)
+    assert proc.returncode == 0
 
     after = live.read_bytes() if live.exists() else None
-    assert after == before, "the suite wrote into the live invocation log"
+    problems = _live_log_problems(before, after, proc.pid)
+    assert not problems, f"the suite wrote into the live invocation log: {problems}"
     # RM-451: a payload-less run on a tty is a hand run and records NOTHING.
     # Windows reports NUL as a tty, POSIX /dev/null is not one, so the row is
     # expected exactly when DEVNULL is not a tty. Either way it never reaches
@@ -263,6 +415,9 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
         devnull_is_tty = nul.isatty()
     assert (tmp_path / "redirected.jsonl").exists() is (not devnull_is_tty), (
         "the redirect did not take effect, or a tty hand run was recorded")
+    # RM-459 (1): the refused tty run is not silent - its marker follows the
+    # redirect too.
+    assert (tmp_path / "redirected.skipped.jsonl").exists() is devnull_is_tty
 
     reported_after = reported.read_bytes() if reported.exists() else None
     report_after = report.read_bytes() if report.exists() else None
