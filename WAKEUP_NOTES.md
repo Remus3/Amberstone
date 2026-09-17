@@ -6,23 +6,25 @@
 
 ---
 
-# 2026-09-16c - laned orchestrated loop wave 1: nine rows shipped through five verified slices, two slices refuted twice, nothing pushed
+# 2026-09-16c - laned orchestrated loop waves 1 and 2: seventeen rows shipped through ten verified slices, four slices refuted twice, wave 2 not pushed
 
-**LOCAL ONLY at `894eca969`** plus this doc edit - NOT pushed, NOT committed by the docs pass. LEDGER **1421**. Every slice had an independent adversarial verifier; S1 (RM-433 + RM-434) and S4 (RM-443) were each refuted TWICE, the other three confirmed first pass.
+**Wave 1 PUSHED and CI GREEN on `6d24b75db`** (ci + docs-guards success). **Wave 2 LOCAL ONLY at `b27c7236a`** plus this doc edit - NOT pushed, NOT committed by the docs pass. LEDGER **1421** (wave 1) and **1422** (wave 2). Every slice had an independent adversarial verifier and no producer graded its own work. Wave 1: S1 (RM-433 + RM-434) and S4 (RM-443) refuted TWICE, the other three confirmed first pass. Wave 2: S1 one pre-merge fix; S2 (RM-450) and S4 (RM-449) refuted TWICE, each settled by a merger ruling that REMOVED the refuted part; S3 and S5 confirmed first pass.
 
-**SHIPPED:** RM-433 (one shared worktree config resolver), RM-434 (hook-log check attributes by child SESSION id, not pid), RM-437 (option (a) ACCEPTED LIMIT, pinned by tests), RM-440 (skip hygiene loopholes), RM-441 + RM-442 (LF writers, UTC stamps), RM-443 (census re-derived: 60 rows, not 17), RM-444 (picks save refuses to overwrite an unreadable file), RM-446 (spaced cite residuals).
+**SHIPPED wave 1:** RM-433 (one shared worktree config resolver), RM-434 (hook-log check attributes by child SESSION id, not pid), RM-437 (option (a) ACCEPTED LIMIT, pinned by tests), RM-440 (skip hygiene loopholes), RM-441 + RM-442 (LF writers, UTC stamps), RM-443 (census re-derived: 60 rows, not 17), RM-444 (picks save refuses to overwrite an unreadable file), RM-446 (spaced cite residuals).
 
-**RC RESTART NEEDED** for RM-443 and RM-444 to go live.
+**SHIPPED wave 2:** RM-447 (atomic writers clean up their temp; `*.tmp` deliberately not gitignored), RM-413 (all 8 WAL pragma sites read the adopted mode and warn once per db path), RM-450 (four load paths retry after failure; the `augment_recommender` memo REFUTED twice and removed, module byte-identical to base, pre-existing staleness pinned by two non-strict xfail tests; census 28/0/1/10/21), RM-449 (guard folds wrapped platform reads and catches rebinding; the darwin rescue DECLINED, darwin-only skips stay UNRESOLVED), RM-451 + RM-452 (null-session rows were agent hand runs of `tools/rc_facts.py`; tests now use a per-worker hook log; `__main__` only calls `_cli`), RM-415 (18 `or {}` wrong-type sites), RM-417 (arena ids coerced, missing `cellId` stays None). **CLOSED as ALREADY-DONE:** RM-419 (lock already pins certifi), RM-420 (RM-408 on HEAD). A stray empty untracked `b1.py` at the repo root was removed.
 
-**OPEN:** RM-447 through RM-453 (filed this wave: temp-file cleanup, DS text-mode regenerators, skip-guard residuals, five `core/` load residuals, the null-session live hook-log writer, the `rc_facts` main block, the contracted-negation push claim); RM-432 (design, operator call, `.githooks/` edit halts on push diff); RM-445 (DS half is a batch decision); older RM-413 / RM-415 / RM-417.
+**RC RESTART NEEDED** for RM-443, RM-444 and RM-450 to go live.
 
-**Inbox cycle 1:** 25 notes dated 2026-09-16, all already seen; **NO reply sent**. Record-only asks: RSC clause-by-clause; CS approval; LW shared-skills question (default NO); LW correction 2-of-4 -> 3-of-4; rule 17 wording and criterion (d) at the next re-pin.
+**OPEN:** filed wave 2 - RM-454 (augment recommender own-history cache staleness plus per-call row count; key must survive close/reopen and include the db path; try `PRAGMA data_version`), RM-455 (RM-450 untested branches and stale docstrings), RM-456 (RM-415 / RM-417 wrong-type residuals), RM-457 (WAL guard missed shapes), RM-458 (skip guard format debt, unfolded forms), RM-459 (RM-451 residuals; CLI `session_id` key still unmeasured). Carried: RM-448 (no non-DS part left - DS batch), RM-453 (HELD - this session was flagged by the gate, so RM-401 forbids editing it; second false positive recorded: a row id in prose read as a test count), RM-432 (design, operator call, `.githooks/` edit halts on push diff), RM-445 (DS half is a batch decision). Older rows not yet aged: RM-376, RM-382, RM-383, RM-364, RM-292, RM-293, RM-290, RM-409, RM-411.
 
-**TRAPS PAID:** a pid is the wrong attribution key for hook rows - the row carries the HOOK process pid. A filed census count (17) was off by a factor of three; re-derive, never copy.
+**Inbox cycle 1:** 25 notes dated 2026-09-16, all already seen; **NO reply sent**. Record-only asks, unchanged through wave 2: RSC clause-by-clause; CS approval; LW shared-skills question (default NO); LW correction 2-of-4 -> 3-of-4; rule 17 wording and criterion (d) at the next re-pin.
+
+**TRAPS PAID:** a pid is the wrong attribution key for hook rows - the row carries the HOOK process pid. A filed census count (17) was off by a factor of three; re-derive, never copy. A cache key that passes one refute round can still fail on close and reopen - the `-shm` header comes back identical. Widening a guard to rescue one skip shape widened what it ACCEPTS; decline rather than enumerate.
 
 ## NEXT SESSION
 
-Commit and push decision first (the push halts on its diff). Then RM-451 before any responder dry cycle, since null-session rows now fail one. Every HALT row from 2026-09-16b still needs the operator.
+Push decision for wave 2 first (the push halts on its diff). RC restart for RM-443 / RM-444 / RM-450. Then the Tier-0/1 residuals RM-454 through RM-459, and age the older rows before building any. Every HALT row from 2026-09-16b still needs the operator.
 
 ---
 
