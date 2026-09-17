@@ -69,7 +69,18 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-460** (2026-09-16, moved at the laned orchestrated loop wave 2 doc-sync).
+  Next free id = **RM-466** (2026-09-17, moved at the laned orchestrated loop wave 3 doc-sync).
+  **SIX ids were allocated 2026-09-17 by the laned orchestrated loop wave 3 (LEDGER 1423), and
+  THE PIN MOVED BY SIX.** All six are OPEN under BACKLOG "Reliability / hardening": RM-460 the
+  mined-statistics backfill owed by RM-290 site 1; RM-461 wrong-type field residuals of RM-456;
+  RM-462 two leftovers of the RM-382 null-phase change; RM-463 unsound RM-449 folds and
+  capability-probe laundering in the skip hygiene guard; RM-464 process-wide filesystem and
+  sleep patches RM-411 did not enumerate; RM-465 three shapes the WAL pragma guard still misses.
+  The same wave marked RM-382, RM-383, RM-411, RM-455, RM-456, RM-457 and RM-458 SHIPPED,
+  RM-290, RM-292, RM-293 and RM-459 PARTIAL, and corrected the stale RM-364 OPEN label. None
+  takes a roster checkbox and none changes the Summary count. The `ROADMAP.md` pointer moves in
+  the SAME commit.
+  Prior pin, kept for the audit trail: Next free id was **RM-460** (2026-09-16, moved at the laned orchestrated loop wave 2 doc-sync).
   **SIX ids were allocated 2026-09-16 by the laned orchestrated loop wave 2 (LEDGER 1422), and
   THE PIN MOVED BY SIX.** All six are OPEN under BACKLOG "Reliability / hardening": RM-454 the
   augment recommender own-history cache stale for writes that keep mtime, size and row count;
