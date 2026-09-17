@@ -405,8 +405,7 @@ class _Signals:
     def capability(self) -> bool:
         return (self.platform or self.env or self.binary
                 or self.optional_import or self.network
-                or self.tree_shape or self.external_tree
-                or any(f.startswith(CAPABILITY + ":") for f in self.forced))
+                or self.tree_shape or self.external_tree)
 
     def evidence(self) -> str:
         bits = [n for n in ("unconditional", "platform", "env", "binary",
@@ -894,15 +893,12 @@ _HOST_PROFILES = (
     {"sys.platform": "win32", "os.name": "nt", "platform.system": "Windows"},
     {"sys.platform": "linux", "os.name": "posix", "platform.system": "Linux"},
 )
-# RM-449: hosts nobody runs RC's suites on. They NEVER decide constant-true -
-# that stays a question about the runners above, so `sys.platform in ("win32",
-# "linux")` is refused although it is false on darwin. They are consulted only
-# for a skip that cannot fire on either runner: one that fires here instead is
-# a legitimate off-runner platform gate (`sys.platform == "darwin"`), and one
-# that fires on no modelled host at all keeps its UNRESOLVED verdict.
-_OFF_RUNNER_PROFILES = (
-    {"sys.platform": "darwin", "os.name": "posix", "platform.system": "Darwin"},
-)
+# RM-449 DECLINED part (1): no off-runner (darwin) host profile. A rescue that
+# credits a skip which cannot fire on either runner WIDENS what this guard
+# accepts, and it could only be made sound by enumerating every way a module
+# can fake a platform read (rebinding, attribute stores, setattr, monkeypatch,
+# star imports, globals(), exec, match captures ...) - which never closes. No
+# real skip site needs it. Such a skip stays UNRESOLVED, the safe direction.
 _UNKNOWN = object()
 _STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
 # RM-449: builtins that only re-shape a platform value. `len(sys.platform) > 0`
@@ -917,61 +913,33 @@ _COMPARE_OPS = {
 }
 
 
-# Marks a host profile whose platform reads must come from the REAL modules
-# (see `_can_fire_off_runner`). Never a dotted name, so never a host value.
-_STRICT = "\x00strict"
-
-
-class _Unverified(Exception):
-    """A strict evaluation reached a platform read it cannot trust."""
-
-
-def _name_rebound(name: str, model: _Model, allow_plain_import: bool = False) -> bool:
+def _name_rebound(name: str, model: _Model) -> bool:
     """True when ANY construct anywhere in the module binds `name`.
 
-    Deliberately module-wide and scope-blind: assignment, loop and with
-    targets, walrus, del, parameters, def / class names, except-as names and
-    imports all count, in every scope. `allow_plain_import` exempts a plain
-    `import <name>` / `import <name>.sub`, which binds the real module.
+    Guards the `len` / `str` fold: a rebound wrapper is not the builtin, so its
+    value is never guessed. Deliberately module-wide and scope-blind -
+    assignment, loop / with / walrus targets, del, parameters, def / class /
+    except-as / match-capture / type-parameter names, and imports all count.
+    Missing a form here can only fold a shadowed call as the builtin, which
+    makes the guard stricter, never more accepting.
     """
     cache = model.__dict__.setdefault("_rm449_rebound", {})
-    key = (name, allow_plain_import)
-    if key in cache:
-        return cache[key]
+    if name in cache:
+        return cache[name]
     hit = False
     for n in ast.walk(model.tree):
-        if isinstance(n, ast.Name) and n.id == name and not isinstance(n.ctx, ast.Load):
-            hit = True
-        elif isinstance(n, ast.arg) and n.arg == name:
-            hit = True
-        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
-                            ast.ExceptHandler)) and n.name == name:
-            hit = True
-        elif isinstance(n, (ast.Import, ast.ImportFrom)):
-            hit = any((a.asname or a.name.split(".")[0]) == name
-                      and not (allow_plain_import and isinstance(n, ast.Import)
-                               and a.asname is None)
-                      for a in n.names)
+        if isinstance(n, ast.Name):
+            hit = n.id == name and not isinstance(n.ctx, ast.Load)
+        elif isinstance(n, ast.arg):
+            hit = n.arg == name
+        elif isinstance(n, ast.alias):
+            hit = (n.asname or n.name.split(".")[0]) == name
+        else:
+            hit = name in (getattr(n, "name", None), getattr(n, "rest", None))
         if hit:
             break
-    cache[key] = hit
+    cache[name] = hit
     return hit
-
-
-def _is_real_module(name: str, model: _Model) -> bool:
-    """True when `name` is bound ONLY by a plain `import <name>` somewhere."""
-    imported = any(isinstance(n, ast.Import)
-                   and any(a.asname is None and a.name.split(".")[0] == name
-                           for a in n.names)
-                   for n in ast.walk(model.tree))
-    return imported and not _name_rebound(name, model, allow_plain_import=True)
-
-
-def _platform_read(dotted: str, model: _Model, host: dict):
-    if (host.get(_STRICT) and dotted in host
-            and not _is_real_module(dotted.split(".")[0], model)):
-        raise _Unverified(dotted)
-    return host.get(dotted, _UNKNOWN)
 
 
 class _Truth:
@@ -1005,12 +973,12 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
             return _UNKNOWN
         return tuple(vals)
     if isinstance(node, ast.Attribute):
-        return _platform_read(_dotted(node), model, host)
+        return host.get(_dotted(node), _UNKNOWN)
     if isinstance(node, ast.Call):
         if node.keywords:
             return _UNKNOWN
         if _dotted(node.func) == "platform.system" and not node.args:
-            return _platform_read("platform.system", model, host)
+            return host["platform.system"]
         if (isinstance(node.func, ast.Name)
                 and node.func.id in _WRAPPER_BUILTINS and len(node.args) == 1
                 and not _name_rebound(node.func.id, model)):
@@ -1122,39 +1090,6 @@ def _host_truth(node, model: _Model, scope: ast.AST) -> bool | None:
         return None
     truths = {bool(v) for v in vals}
     return truths.pop() if len(truths) == 1 else None
-
-
-def _can_fire_off_runner(tests: list[tuple[ast.AST, bool]], model: _Model,
-                         scope: ast.AST) -> bool:
-    """RM-449: could the conjunction fire on a host from `_OFF_RUNNER_PROFILES`?
-
-    Only asked of a skip already known NEVER to fire on a runner, so it cannot
-    disable a test anywhere RC is tested whatever the answer. An unknown value
-    counts as "could": the runner values were known and differ from this host's
-    only through the platform reads, so the gate is a platform question.
-
-    Every evaluation here is STRICT: a platform read whose module name is not
-    bound solely by a plain `import sys` / `import os` / `import platform`
-    refuses the rescue outright. The never-fires premise is re-derived on the
-    runners under the same rule, because a darwin evaluation can short-circuit
-    past a fake read that decides the runner answer.
-    """
-    try:
-        for host in _HOST_PROFILES:
-            strict = {**host, _STRICT: True}
-            if not any(v is not _UNKNOWN and bool(v) is not fires
-                       for v, fires in ((_host_eval(t, model, scope, strict), f)
-                                        for t, f in tests)):
-                return False
-        for host in _OFF_RUNNER_PROFILES:
-            strict = {**host, _STRICT: True}
-            if all(v is _UNKNOWN or bool(v) is fires
-                   for v, fires in ((_host_eval(t, model, scope, strict), f)
-                                    for t, f in tests)):
-                return True
-    except _Unverified:
-        return False
-    return False
 
 
 _HOST_FOLDABLE = (ast.Compare, ast.BoolOp, ast.UnaryOp, ast.Call, ast.Subscript)
@@ -1595,12 +1530,6 @@ def _forced_by_arms(tests: list[tuple[ast.AST, bool]], model: _Model,
         t = _host_truth(test, model, scope)
         truths.append(None if t is None else (t is fires))
     if any(t is False for t in truths):
-        # Never fires on a runner. RM-449: a gate that fires on an off-runner
-        # host instead is a platform gate, and gets that verdict here rather
-        # than falling through to UNRESOLVED (or, for a bare skip, to a
-        # function-wide scan that reads the test BODY as the gate).
-        if _can_fire_off_runner(tests, model, scope):
-            forced.add(CAPABILITY + ":off-runner-platform-gate")
         return forced
     if all(t is True for t in truths) and not extra:
         forced.add(DEFECT + ":constant-true")
@@ -2985,12 +2914,13 @@ def _verdicts(src: str) -> list[str]:
     return [f.verdict for f in findings]
 
 
-# (1) A skip that cannot fire on either runner but does fire on a host nobody
-# runs is a platform gate, not an unresolvable one. Each entry: source and the
-# verdict it must get. The DEFECT and UNRESOLVED rows are the controls that
-# keep the off-runner profile from loosening the runner-based constant-true
-# rule: a condition that fires on BOTH runners stays refused however it reads
-# on darwin, and one that fires on no modelled host at all stays unresolved.
+# (1) DECLINED (merger ruling, round 3). A skip that cannot fire on either
+# runner is NOT credited as an off-runner platform gate: that rescue widened
+# the guard and could not be closed against faked platform reads. These pin
+# the decline - each darwin-only gate keeps the verdict it had before RM-449
+# (UNRESOLVED, or DEFECT where the bare-skip scan reads the tracked body), and
+# none may classify CAPABILITY. The remaining rows are controls on the runner
+# constant-true rule.
 _RM449_OFF_RUNNER = {
     "skipif_darwin_only": ('''
 import sys
@@ -2998,7 +2928,7 @@ import pytest
 @pytest.mark.skipif(sys.platform == "darwin", reason="darwin only")
 def test_thing():
     assert True
-''', CAPABILITY),
+''', UNRESOLVED),
     "skipif_platform_system_neither_runner": ('''
 import platform
 import pytest
@@ -3006,9 +2936,9 @@ import pytest
                     reason="runners only")
 def test_thing():
     assert True
-''', CAPABILITY),
-    # Without a verdict at the bare-skip site the scan widens to the whole
-    # function, reads the tracked config the body opens, and calls it DEFECT.
+''', UNRESOLVED),
+    # The site gets no verdict of its own, so the scan widens to the whole
+    # function and reads the tracked config the body opens.
     "bare_skip_under_a_darwin_if_with_a_tracked_body": ('''
 import sys
 import pytest
@@ -3018,7 +2948,7 @@ def test_thing():
     if sys.platform == "darwin":
         pytest.skip("darwin")
     assert (REPO / "ops" / "rc_config.json").read_text()
-''', CAPABILITY),
+''', DEFECT),
     "darwin_and_opaque_flag": ('''
 import sys
 import pytest
@@ -3027,9 +2957,7 @@ def _flag():
 @pytest.mark.skipif(sys.platform == "darwin" and _flag(), reason="darwin")
 def test_thing():
     assert True
-''', CAPABILITY),
-    # Fires when FALSE, and darwin leaves the value unknown: an unknown must
-    # read as "could fire" in either polarity, not as a truthy object.
+''', UNRESOLVED),
     "skipunless_not_darwin_or_opaque_flag": ('''
 import sys
 import unittest
@@ -3039,7 +2967,7 @@ class T(unittest.TestCase):
     @unittest.skipUnless(sys.platform != "darwin" or _flag(), "not darwin")
     def test_thing(self):
         self.assertTrue(True)
-''', CAPABILITY),
+''', UNRESOLVED),
     # control: fires on both runners, so darwin being different saves nothing.
     "skipunless_darwin_only": ('''
 import sys
@@ -3101,9 +3029,10 @@ def test_thing():
 
 
 @pytest.mark.parametrize("name", sorted(_RM449_OFF_RUNNER))
-def test_rm449_off_runner_platform_gates_get_a_verdict(name):
+def test_rm449_off_runner_platform_gates_are_not_rescued(name):
     src, expected = _RM449_OFF_RUNNER[name]
     assert _verdicts(src) == [expected], name
+    assert expected != CAPABILITY
 
 
 # (2) The constant-true refusal in `_excused` must beat an artifact exemption.
@@ -3222,25 +3151,57 @@ def test_rm449_shadowed_builtin_is_not_folded(builtin):
 
 
 # --- RM-449 round 2 --------------------------------------------------------- #
-# (a) The off-runner rescue must only trust REAL platform modules. Each form
-# rebinds the module name; the expected verdict is the one the guard gave
-# before RM-449, so the rescue adds no acceptance. Each control is the same
-# text with the real import and nothing rebinding it, and is still rescued.
-_RM449_TRACKED_BODY = '''
-def test_thing():
-    if sys.platform == "darwin":
-        pytest.skip("darwin")
-    assert (REPO / "ops" / "rc_config.json").read_text()
-'''
+# (a) Faked platform reads, from the two refute rounds against the withdrawn
+# off-runner rescue. With no rescue none of these can be accepted; each pins
+# the verdict the guard gave before RM-449 and must never be CAPABILITY.
+_RM449_HDR = ("import pytest\nfrom pathlib import Path\n"
+              "REPO = Path(__file__).resolve().parent.parent\n")
+
+
+def _rm449_fake_bare(prelude: str, cond: str = 'sys.platform == "darwin"',
+                     local: str = "", params: str = "") -> str:
+    return (_RM449_HDR + prelude + f"\ndef test_thing({params}):\n"
+            + (f"    {local}\n" if local else "")
+            + f"    if {cond}:\n        pytest.skip('darwin')\n"
+            "    assert (REPO / 'ops' / 'rc_config.json').read_text()\n")
+
+
+_RM449_FAKE_BARE = {
+    "real_import_control": ("import sys", "", ""),
+    "module_rebinding": (
+        "import sys, types\nsys = types.SimpleNamespace(platform='darwin')", "", ""),
+    "local_rebinding": (
+        "import sys, types", "sys = types.SimpleNamespace(platform='darwin')", ""),
+    "aliased_import": ("import sys\nimport fakesys as sys", "", ""),
+    "match_capture": ("import sys, types\nmatch types.SimpleNamespace(platform="
+                      "'darwin'):\n    case sys:\n        pass", "", ""),
+    "match_as": ("import sys\nmatch 1:\n    case object() as sys:\n        pass",
+                 "", ""),
+    "monkeypatch_setattr": (
+        "import sys", "monkeypatch.setattr(sys, 'platform', 'darwin')",
+        "monkeypatch"),
+    "attribute_store": ("import sys\nsys.platform = 'darwin'", "", ""),
+    "setattr_call": ("import sys\nsetattr(sys, 'platform', 'darwin')", "", ""),
+    "star_import": ("import sys\nfrom fakeplat import *", "", ""),
+    "globals_store": ("import sys, types\nglobals()['sys'] = "
+                      "types.SimpleNamespace(platform='darwin')", "", ""),
+    "exec_rebinding": (
+        "import sys\nexec(\"sys = type('S', (), {'platform': 'darwin'})\")", "", ""),
+}
 _RM449_FAKE_PLATFORM = {
-    "module_rebinding_bare_skip": ('''
-import sys
-import types
-import pytest
-from pathlib import Path
-REPO = Path(__file__).resolve().parent.parent
-sys = types.SimpleNamespace(platform="darwin")
-''' + _RM449_TRACKED_BODY, "\nsys = types.SimpleNamespace(platform=\"darwin\")", DEFECT),
+    **{name: (_rm449_fake_bare(pre, local=local, params=params), DEFECT)
+       for name, (pre, local, params) in _RM449_FAKE_BARE.items()},
+    "platform_system_patched": (_rm449_fake_bare(
+        "import platform\nplatform.system = lambda: 'Darwin'",
+        'platform.system() == "Darwin"'), DEFECT),
+    "from_import_of_a_fake_platform": (_rm449_fake_bare(
+        "from fakeplat import platform", 'platform.system() == "Darwin"'), DEFECT),
+    "short_circuit_past_a_fake_read": (_rm449_fake_bare(
+        "import sys\nfrom fakeplat import platform",
+        'sys.platform == "darwin" or platform.system() == "Nope"'), DEFECT),
+    "fake_read_behind_a_darwin_conjunct": (_rm449_fake_bare(
+        "import sys\nfrom fakeplat import platform",
+        'sys.platform == "darwin" and platform.system() == "Darwin"'), DEFECT),
     "module_rebinding_skipif_and_tracked": ('''
 import sys
 import types
@@ -3253,86 +3214,28 @@ sys = types.SimpleNamespace(platform="darwin")
                     reason="darwin")
 def test_thing():
     assert True
-''', "\nsys = types.SimpleNamespace(platform=\"darwin\")", UNRESOLVED),
-    "local_rebinding_bare_skip": ('''
-import sys
-import types
-import pytest
-from pathlib import Path
-REPO = Path(__file__).resolve().parent.parent
-def test_thing():
-    sys = types.SimpleNamespace(platform="darwin")
-    if sys.platform == "darwin":
-        pytest.skip("darwin")
-    assert (REPO / "ops" / "rc_config.json").read_text()
-''', "\n    sys = types.SimpleNamespace(platform=\"darwin\")", DEFECT),
-    "from_import_of_a_fake_platform": ('''
-import pytest
-from pathlib import Path
-from fakeplat import platform
-REPO = Path(__file__).resolve().parent.parent
-def test_thing():
-    if platform.system() == "Darwin":
-        pytest.skip("darwin")
-    assert (REPO / "ops" / "rc_config.json").read_text()
-''', "from fakeplat import platform", DEFECT),
-    # darwin short-circuits the OR before the fake read, so checking only the
-    # darwin evaluation would miss it - yet on a runner the fake read decides.
-    "short_circuit_hides_a_fake_read_from_darwin": ('''
-import sys
-import pytest
-from pathlib import Path
-from fakeplat import platform
-REPO = Path(__file__).resolve().parent.parent
-def test_thing():
-    if sys.platform == "darwin" or platform.system() == "Nope":
-        pytest.skip("darwin")
-    assert (REPO / "ops" / "rc_config.json").read_text()
-''', "from fakeplat import platform", DEFECT),
-    # The reverse: the runners short-circuit past the fake read and only the
-    # darwin evaluation reaches it, so that pass must be strict too.
-    "fake_read_reached_only_on_darwin": ('''
-import sys
-import pytest
-from pathlib import Path
-from fakeplat import platform
-REPO = Path(__file__).resolve().parent.parent
-def test_thing():
-    if sys.platform == "darwin" and platform.system() == "Darwin":
-        pytest.skip("darwin")
-    assert (REPO / "ops" / "rc_config.json").read_text()
-''', "from fakeplat import platform", DEFECT),
-    # A plain `import sys` does not make `sys` real when an aliased import
-    # elsewhere binds the same name.
-    "aliased_import_rebinds_a_plainly_imported_name": ('''
-import sys
-import pytest
-from pathlib import Path
-REPO = Path(__file__).resolve().parent.parent
-import fakesys as sys
-''' + _RM449_TRACKED_BODY, "\nimport fakesys as sys", DEFECT),
+''', UNRESOLVED),
 }
 
 
 @pytest.mark.parametrize("name", sorted(_RM449_FAKE_PLATFORM))
-def test_rm449_off_runner_rescue_requires_the_real_platform_module(name):
-    src, rebinding, expected = _RM449_FAKE_PLATFORM[name]
-    assert src.count(rebinding) == 1
+def test_rm449_faked_platform_reads_are_never_capability(name):
+    src, expected = _RM449_FAKE_PLATFORM[name]
+    assert expected != CAPABILITY
     assert _verdicts(src) == [expected], name
-    control = src.replace(rebinding, "import platform" if "fakeplat" in rebinding
-                          else "")
-    assert _verdicts(control) == [CAPABILITY], name
 
 
 # (b) Ordering comparisons, each operator pinned in both directions. Runner
-# lengths: sys.platform 5 / 5, os.name 2 / 5; darwin: 6 / 5.
+# lengths: sys.platform 5 / 5, os.name 2 / 5. A condition false on both runners
+# fires nowhere RC is tested and stays UNRESOLVED (part 1 declined).
 _RM449_ORDERING = {
     "len(os.name) < 9": DEFECT,
     "len(os.name) < 3": CAPABILITY,
     "len(sys.platform) < 5": UNRESOLVED,
     "len(sys.platform) <= 5": DEFECT,
     "len(os.name) <= 2": CAPABILITY,
-    "len(sys.platform) > 5": CAPABILITY,
+    "len(sys.platform) > 5": UNRESOLVED,
+    "len(os.name) > 2": CAPABILITY,
     "len(sys.platform) >= 5": DEFECT,
     "len(os.name) >= 5": CAPABILITY,
     "len(os.name) >= 9": UNRESOLVED,
@@ -3385,6 +3288,10 @@ _RM449_REBIND_FORMS = {
     "except_handler_name": ("try:\n    pass\nexcept Exception as len:\n"
                             "    pass\n"),
     "class_definition": "class len:\n    pass\n",
+    "match_capture": "match 1:\n    case len:\n        pass\n",
+    "match_mapping_rest": "match {}:\n    case {**len}:\n        pass\n",
+    "dotted_import": "import len.sub\n",
+    "aliased_import": "from fakebuiltins import measure as len\n",
 }
 
 
