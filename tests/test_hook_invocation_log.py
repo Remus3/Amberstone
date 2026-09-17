@@ -386,6 +386,27 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     # the report file. Captured here because this is the one arm that runs the
     # real CLI against the real _ROOT, so a writer that ignored the sid rule
     # would create live ops/runtime files from the suite.
+    #
+    # RM-459 residual, ATTRIBUTED and deliberately NOT loosened. Each file has
+    # ONE writer, both in tools/rc_facts.py: `_save_reported` (the record) and
+    # `_write_inbox_report` (the report, rewritten only when its bytes differ).
+    # Both run only under a VALIDATED hook session id with an unread or
+    # withdrawn inbox entry to show. The live callers are the SessionStart and
+    # UserPromptSubmit hooks, which the main checkout's local .claude settings
+    # wire to the MAIN checkout's rc_facts.py by absolute path, so they write
+    # the main checkout's ops/runtime. The flake window is therefore narrow and
+    # specific: this arm runs with `_ROOT` = the main checkout (a suite run
+    # there, not in a worktree, where both paths are usually absent and the
+    # compare is None == None) AND another session in that checkout fires a
+    # hook with something unread during the child's run. SessionStart re-records
+    # on every fire that has unread entries (subtract=False), bumping the
+    # record's `at`. Measured 2026-09-17: the last live write to both files was
+    # the same instant, 2026-09-16T07:21:48, over a day old, so the files move
+    # per inbox arrival, not per prompt - unlike the hook log. A byte compare
+    # stays because a sid-less child writing ANY bytes here is the defect this
+    # asserts, and there is nothing to attribute by: both files are rewritten
+    # whole (tmp + replace), the record's rows are keyed by session id and this
+    # child has none, and the report is a rendered list with no writer field.
     reported = _ROOT / "ops" / "runtime" / "sync_inbox_reported.json"
     report = _ROOT / "ops" / "runtime" / "sync_inbox_report.txt"
     reported_before = reported.read_bytes() if reported.exists() else None
