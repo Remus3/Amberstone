@@ -135,9 +135,14 @@ def active_round(sess: dict) -> dict | None:
         # Group should be homogeneous (all bans or all picks). Pick the
         # type from the first in-progress entry and collect its cells.
         kind = "ban" if str(in_progress[0].get("type", "")) == "ban" else "pick"
-        cell_ids = [a.get("actorCellId") for a in in_progress
-                    if str(a.get("type", "")) == kind
-                    and a.get("actorCellId") is not None]
+        # RM-461: actorCellId through _as_int (default None), exactly as the
+        # my_team cellIds the dashboard matches these against. A missing or
+        # uncoercible cell is DROPPED, as a null one always was - never 0,
+        # because cell 0 is a real player.
+        cell_ids = [c for c in (_as_int(a.get("actorCellId"), None)
+                                for a in in_progress
+                                if str(a.get("type", "")) == kind)
+                    if c is not None]
         return {"type": kind, "cell_ids": cell_ids}
     return None
 
@@ -156,7 +161,8 @@ def swap_entries(arr) -> list[dict]:
             continue
         out.append({
             "id":     e.get("id"),
-            "cellId": e.get("cellId"),
+            # RM-461: default None, NOT 0 - cell 0 is a real cell.
+            "cellId": _as_int(e.get("cellId"), None),
             "state":  e.get("state"),
         })
     return out
@@ -418,7 +424,8 @@ def shape_champ_select(
         "my_team":     _team_picks(sess.get("myTeam"), local_cell),
         "their_team":  _team_picks(sess.get("theirTeam"), local_cell),
         "trades": [
-            {"id": t.get("id"), "cellId": t.get("cellId"),
+            # RM-461: cellId through _as_int, default None (cell 0 is real).
+            {"id": t.get("id"), "cellId": _as_int(t.get("cellId"), None),
              "state": t.get("state")}
             for t in _as_list(sess.get("trades"))
             if isinstance(t, dict)
