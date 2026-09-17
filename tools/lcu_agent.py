@@ -327,7 +327,12 @@ def capture_state() -> dict:
     because LCU calls run slow under League CPU pressure."""
     state = {"config": dict(CONFIG)}
     if not ensure_lcu_conn():
-        state["phase"] = "Offline"
+        # RM-382: no client is a falsy no-phase (None), never the truthy
+        # "Offline" - that disarmed the two !phase view arms in
+        # web/js/main.js _viewAutoDerive, so a live game beside a closed
+        # client never advanced the sticky. "Client closed" stays readable
+        # structurally: lcu_port is stamped below ONLY when connected.
+        state["phase"] = None
         state["ts"] = time.time()
         return state
     state["lcu_port"] = _lcu["port"]
