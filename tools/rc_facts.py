@@ -160,6 +160,27 @@ def _health_all() -> dict | None:
     return _http_get_json(f"{_LEGION_BASE}/api/health/all")
 
 
+def _lcu_phase_label(lcu: dict) -> str:
+    """Render ``/api/state.lcu.phase`` for the facts block (RM-462).
+
+    RM-382 made both producers emit ``None`` where they used to emit the
+    truthy ``"Offline"`` / ``"Unknown"`` sentinels, so ``phase or "?"``
+    collapsed both states into ``?``. The client-closed / phase-read-failed
+    split uses the same shape derivation as ``renderLcuPanel`` in
+    web/legacy_index.html: ``lcu_port`` is stamped only while connected.
+    Keeping ``?`` for a snapshot with no phase key at all is this module's own
+    choice. The null labels lead with ``-`` (the repo's no-data sentinel), never
+    ``None``: ``"None"`` is a REAL LCU phase (logged in, idle) and prints as
+    ``phase=None``, so a ``None(...)`` label would collide with it.
+    """
+    if "phase" not in lcu:
+        return "?"
+    phase = lcu.get("phase")
+    if phase:
+        return str(phase)
+    return "-(phase-read-failed)" if lcu.get("lcu_port") else "-(client-closed)"
+
+
 def main(session: str | None = None) -> int:
     out = []
     out.append("# RC live state (rc_facts.py)\n")
@@ -261,7 +282,7 @@ def main(session: str | None = None) -> int:
     lcu = (state or {}).get("lcu") or {}
     lcu_ts = float(lcu.get("ts") or 0)
     lcu_age = int(time.time() - lcu_ts) if lcu_ts else None
-    lcu_phase = lcu.get("phase") or "?"
+    lcu_phase = _lcu_phase_label(lcu)
     if lcu_age is not None:
         out.append(f"- LCU agent: phase={lcu_phase} age={lcu_age}s")
         if lcu_age > 30:
