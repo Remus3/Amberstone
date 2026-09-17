@@ -46,10 +46,12 @@ that fails to apply looks exactly like a mutation the guard caught.
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
-__all__ = ["ReplaceFaults", "replace_fails"]
+__all__ = ["ReplaceFaults", "replace_fails", "scoped_fs_fault"]
 
 # NOTE on the companion real-OS tests: they gate with a literal
 # `sys.platform != "win32"` at the decorator rather than importing a named
@@ -124,3 +126,78 @@ def replace_fails(target, times: int | None = None, *, expect_fire: bool = True)
             f"test proved nothing - check the path, and check that the writer "
             f"still routes through core.polled_json."
         )
+
+
+# --------------------------------------------------------------------------- #
+# RM-411: a ROOT-scoped injector with a control inside the armed window
+# --------------------------------------------------------------------------- #
+# ``monkeypatch.setattr(mod.os, "replace", ...)`` READS like containment and is
+# not: ``mod.os`` is the one stdlib ``os`` module every importer in the process
+# shares, so an unconditional shim breaks ``os.replace`` for every other caller
+# in the process while it is armed - background threads above all. (The -n 8
+# xdist reason once given for this is REFUTED: workers are separate processes.)
+#
+# ``scoped_fs_fault`` runs ``action`` only for a destination at or under
+# ``root`` and delegates everything else to the real callable captured before
+# patching. The scoping is PROVEN, not assumed: on entry, inside the armed
+# window, a CONTROL call through the patched name moves a file in a fresh
+# directory outside ``root`` and must succeed. Make the shim unconditional and
+# that control is what fails first.
+
+_SCOPED_NAMES = ("replace", "rename")
+
+
+def _at_or_under(root: Path, dst) -> bool:
+    try:
+        resolved = Path(os.fspath(dst)).resolve()
+    except TypeError:  # an fd or similar - never ours
+        return False
+    return resolved == root or root in resolved.parents
+
+
+def _assert_control_delegates(name: str, root: Path) -> None:
+    control = Path(tempfile.mkdtemp(prefix="rm411_control_"))
+    try:
+        if _at_or_under(root, control):
+            raise AssertionError(f"control dir {control} is under {root}; it proves nothing")
+        src, dst = control / "control.src", control / "control.dst"
+        src.write_bytes(b"rm411-control")
+        getattr(os, name)(src, dst)
+        if src.exists() or dst.read_bytes() != b"rm411-control":
+            raise AssertionError(f"os.{name} outside {root} did not delegate to the real call")
+    finally:
+        shutil.rmtree(control, ignore_errors=True)
+
+
+@contextmanager
+def scoped_fs_fault(name: str, root, action):
+    """Patch ``os.<name>`` so ``action(real, src, dst, *a, **kw)`` runs only when
+    ``dst`` resolves at or under ``root``; every other call is delegated.
+
+    ``name`` is ``"replace"`` or ``"rename"``. Yields a :class:`ReplaceFaults`
+    whose ``attempts`` counts the in-scope calls (``failures`` is left to the
+    action). Asserts the control delegation on entry and, on a clean exit, that
+    at least one in-scope call happened - a mistyped root would otherwise leave
+    a green test that injected nothing.
+    """
+    if name not in _SCOPED_NAMES:
+        raise ValueError(f"scoped_fs_fault supports {_SCOPED_NAMES}, not {name!r}")
+    root = Path(root).resolve()
+    real = getattr(os, name)
+    rec = ReplaceFaults()
+
+    def _scoped(src, dst, *a, **kw):
+        if _at_or_under(root, dst):
+            rec.attempts += 1
+            return action(real, src, dst, *a, **kw)
+        return real(src, dst, *a, **kw)
+
+    setattr(os, name, _scoped)
+    try:
+        _assert_control_delegates(name, root)
+        yield rec
+    finally:
+        setattr(os, name, real)
+
+    if rec.attempts == 0:
+        raise AssertionError(f"scoped_fs_fault(os.{name}, {root}) never saw an in-scope call - the test proved nothing")

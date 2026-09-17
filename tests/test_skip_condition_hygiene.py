@@ -41,6 +41,7 @@ the very class they existed to catch:
    expressions are evaluated symbolically before being checked against
    `git ls-files`.
 """
+
 from __future__ import annotations
 
 import ast
@@ -73,15 +74,18 @@ _REPO_ROOT = _HERE.parent.parent
 # failed twice on the missing directory rather than shrinking quietly, which is
 # the producing-side property it exists for. Removing a tree means editing this
 # tuple, in the same commit, on purpose.
-_TEST_TREES = ("tests", "agents/daemon_slayer/tests",
-               "agents/agent3_testing/suite", "tools/tests",
-               "oss/win32_atomic_io/tests")
+_TEST_TREES = (
+    "tests",
+    "agents/daemon_slayer/tests",
+    "agents/agent3_testing/suite",
+    "tools/tests",
+    "oss/win32_atomic_io/tests",
+)
 
 _GIT = shutil.which("git")
 
 if _GIT is None:
-    pytest.skip("git not on PATH - trackedness is unresolvable without it",
-                allow_module_level=True)
+    pytest.skip("git not on PATH - trackedness is unresolvable without it", allow_module_level=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -90,8 +94,11 @@ if _GIT is None:
 def _git_tracked() -> frozenset[str]:
     out = subprocess.run(
         [_GIT, "ls-files", "-z"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True,
-        timeout=180, check=True,
+        cwd=str(_REPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=True,
     ).stdout
     return frozenset(p for p in out.split("\0") if p)
 
@@ -145,15 +152,15 @@ def _git_lfs_tracked(tracked: frozenset[str]) -> frozenset[str]:
     out = subprocess.run(
         [_GIT, "check-attr", "filter", "-z", "--stdin"],
         input="\0".join(sorted(tracked)),
-        cwd=str(_REPO_ROOT), capture_output=True, text=True,
-        timeout=180, check=True,
+        cwd=str(_REPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=True,
     ).stdout
     # `-z` output is a flat NUL-separated stream of (path, attr, value) triples.
     fields = out.split("\0")
-    return frozenset(
-        fields[i] for i in range(0, len(fields) - 2, 3)
-        if fields[i + 2] == "lfs"
-    )
+    return frozenset(fields[i] for i in range(0, len(fields) - 2, 3) if fields[i + 2] == "lfs")
 
 
 _LFS_TRACKED = _git_lfs_tracked(_TRACKED)
@@ -176,7 +183,7 @@ def _chain_matches_any(chain: str, pool: frozenset[str]) -> bool:
     n = len(needle)
     for rel in pool:
         parts = rel.split("/")
-        if any(parts[i:i + n] == needle for i in range(len(parts) - n + 1)):
+        if any(parts[i : i + n] == needle for i in range(len(parts) - n + 1)):
             return True
     return False
 
@@ -227,8 +234,11 @@ def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
     """
     out = subprocess.run(
         [_GIT, "log", "--all", "--diff-filter=DR", "--name-status", "--format="],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True,
-        timeout=300, check=True,
+        cwd=str(_REPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=True,
     ).stdout
     seen: set[str] = set()
     for line in out.splitlines():
@@ -247,8 +257,7 @@ def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
         for end in range(1, len(segs)):
             dirs.add("/".join(segs[:end]))
     # A directory that still holds tracked files has not vanished at all.
-    dirs = {d for d in dirs
-            if not any(t.startswith(d + "/") for t in _TRACKED)}
+    dirs = {d for d in dirs if not any(t.startswith(d + "/") for t in _TRACKED)}
     return frozenset(gone), frozenset(dirs)
 
 
@@ -273,9 +282,7 @@ def _is_tracked_chain(chain: str) -> bool:
         return False
     if "*" in chain or "?" in chain or "[" in chain:
         pats = (chain, "*/" + chain)
-        return any(
-            fnmatch.fnmatch(rel, pat) for rel in _TRACKED for pat in pats
-        )
+        return any(fnmatch.fnmatch(rel, pat) for rel in _TRACKED for pat in pats)
     return chain in _TRACKED_SUFFIXES
 
 
@@ -283,9 +290,13 @@ def _is_tracked_chain(chain: str) -> bool:
 # Skip-construct recognition
 # --------------------------------------------------------------------------- #
 _DECORATOR_SKIPS = {
-    "pytest.mark.skipif", "mark.skipif", "skipif",
-    "unittest.skipIf", "skipIf",
-    "unittest.skipUnless", "skipUnless",
+    "pytest.mark.skipif",
+    "mark.skipif",
+    "skipif",
+    "unittest.skipIf",
+    "skipIf",
+    "unittest.skipUnless",
+    "skipUnless",
 }
 _IMPORTORSKIP = "importorskip"
 _BODY_SKIPS = {"pytest.skip", "skip"}
@@ -323,11 +334,12 @@ _SKIP_EXC_SUFFIXES = ("SkipTest", "Skipped")
 # Measured before shipping: the five RC test trees contain ZERO of them today,
 # so recognising them adds no false positives and turns nothing red.
 _UNCONDITIONAL_SKIPS = {
-    "pytest.mark.skip", "mark.skip", "unittest.skip",
+    "pytest.mark.skip",
+    "mark.skip",
+    "unittest.skip",
 }
 
-_SCOPES = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
-           ast.ClassDef, ast.Lambda)
+_SCOPES = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
 _CALLABLE_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 CAPABILITY = "CAPABILITY"
@@ -403,27 +415,41 @@ class _Signals:
 
     @property
     def capability(self) -> bool:
-        return (self.platform or self.env or self.binary
-                or self.optional_import or self.network
-                or self.tree_shape or self.external_tree)
+        return (
+            self.platform
+            or self.env
+            or self.binary
+            or self.optional_import
+            or self.network
+            or self.tree_shape
+            or self.external_tree
+        )
 
     def evidence(self) -> str:
-        bits = [n for n in ("unconditional", "platform", "env", "binary",
-                            "optional_import",
-                            "network", "tree_shape", "external_tree")
-                if getattr(self, n)]
+        bits = [
+            n
+            for n in (
+                "unconditional",
+                "platform",
+                "env",
+                "binary",
+                "optional_import",
+                "network",
+                "tree_shape",
+                "external_tree",
+            )
+            if getattr(self, n)
+        ]
         if self.tracked:
             bits.append("tracked=" + ",".join(sorted(self.tracked)))
         if self.lfs:
             bits.append("tracked-lfs=" + ",".join(sorted(self.lfs)))
         if self.vanished:
-            bits.append("was-tracked-now-gone="
-                        + ",".join(sorted(self.vanished)))
+            bits.append("was-tracked-now-gone=" + ",".join(sorted(self.vanished)))
         if self.untracked:
             bits.append("untracked=" + ",".join(sorted(self.untracked)))
         if self.firstparty_import:
-            bits.append("first-party import="
-                        + ",".join(sorted(self.firstparty_import)))
+            bits.append("first-party import=" + ",".join(sorted(self.firstparty_import)))
         if self.forced:
             bits.append("forced=" + ",".join(sorted(self.forced)))
         return "; ".join(bits) or "nothing resolvable"
@@ -443,12 +469,9 @@ def _prune_prefix_chains(sig: _Signals) -> None:
     slices resolvable for the first time.
     """
     longer = sig.tracked | sig.lfs | sig.untracked | sig.vanished
-    sig.tracked = {c for c in sig.tracked
-                   if not any(o != c and o.startswith(c + "/") for o in longer)}
-    sig.lfs = {c for c in sig.lfs
-               if not any(o != c and o.startswith(c + "/") for o in longer)}
-    sig.vanished = {c for c in sig.vanished
-                    if not any(o != c and o.startswith(c + "/") for o in longer)}
+    sig.tracked = {c for c in sig.tracked if not any(o != c and o.startswith(c + "/") for o in longer)}
+    sig.lfs = {c for c in sig.lfs if not any(o != c and o.startswith(c + "/") for o in longer)}
+    sig.vanished = {c for c in sig.vanished if not any(o != c and o.startswith(c + "/") for o in longer)}
 
 
 def _classify(sig: _Signals) -> str:
@@ -508,8 +531,7 @@ def _classify(sig: _Signals) -> str:
 # --------------------------------------------------------------------------- #
 # Module model: parents, scopes, bindings, imports
 # --------------------------------------------------------------------------- #
-_OPTIONAL_IMPORT_EXC = {"ImportError", "ModuleNotFoundError", "Exception",
-                        "OSError", "AttributeError"}
+_OPTIONAL_IMPORT_EXC = {"ImportError", "ModuleNotFoundError", "Exception", "OSError", "AttributeError"}
 
 
 class _Model:
@@ -630,8 +652,7 @@ class _Model:
 
 
 def _try_swallows_import(node: ast.Try) -> bool:
-    if not any(isinstance(s, (ast.Import, ast.ImportFrom))
-               for s in ast.walk(node)):
+    if not any(isinstance(s, (ast.Import, ast.ImportFrom)) for s in ast.walk(node)):
         return False
     for h in node.handlers:
         if h.type is None:
@@ -688,19 +709,25 @@ def _first_party_file(dotted: str) -> Path | None:
 # Symbolic path evaluation
 # --------------------------------------------------------------------------- #
 _ABS = "\x00abs\x00"
-_PASSTHROUGH_CALLS = {"resolve", "absolute", "expanduser", "as_posix",
-                      "abspath", "realpath", "normpath", "strip", "rstrip"}
-_PATHY_CALLS = {"Path", "PurePath", "PurePosixPath", "PureWindowsPath",
-                "fspath"}
+_PASSTHROUGH_CALLS = {
+    "resolve",
+    "absolute",
+    "expanduser",
+    "as_posix",
+    "abspath",
+    "realpath",
+    "normpath",
+    "strip",
+    "rstrip",
+}
+_PATHY_CALLS = {"Path", "PurePath", "PurePosixPath", "PureWindowsPath", "fspath"}
 
 
 def _is_abs_literal(s: str) -> bool:
-    return bool(s) and (s.startswith("/")
-                        or (len(s) > 1 and s[1] == ":" and s[0].isalpha()))
+    return bool(s) and (s.startswith("/") or (len(s) > 1 and s[1] == ":" and s[0].isalpha()))
 
 
-def _segments(expr: ast.AST, model: _Model, scope: ast.AST,
-              seen: frozenset, depth: int) -> list[str] | None:
+def _segments(expr: ast.AST, model: _Model, scope: ast.AST, seen: frozenset, depth: int) -> list[str] | None:
     """Evaluate a path expression to segments; None marks an opaque segment."""
     if depth > 12:
         return None
@@ -724,8 +751,7 @@ def _segments(expr: ast.AST, model: _Model, scope: ast.AST,
     if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Div):
         left = _segments(expr.left, model, scope, seen, depth + 1)
         right = _segments(expr.right, model, scope, seen, depth + 1)
-        return (left if left is not None else [None]) + \
-               (right if right is not None else [None])
+        return (left if left is not None else [None]) + (right if right is not None else [None])
 
     if isinstance(expr, ast.Name):
         if expr.id == "__file__":
@@ -734,8 +760,7 @@ def _segments(expr: ast.AST, model: _Model, scope: ast.AST,
             return None
         bound = model.lookup(expr.id, scope)
         if len(bound) == 1:
-            return _segments(bound[0], model, scope,
-                             seen | {expr.id}, depth + 1)
+            return _segments(bound[0], model, scope, seen | {expr.id}, depth + 1)
         return None
 
     if isinstance(expr, ast.Attribute):
@@ -760,8 +785,7 @@ def _segments(expr: ast.AST, model: _Model, scope: ast.AST,
     return None
 
 
-def _cross_module_segments(expr: ast.Attribute, model: _Model, scope,
-                           seen: frozenset, depth: int) -> list[str] | None:
+def _cross_module_segments(expr: ast.Attribute, model: _Model, scope, seen: frozenset, depth: int) -> list[str] | None:
     if not isinstance(expr.value, ast.Name):
         return None
     target = _resolve_module(expr.value.id, model)
@@ -783,8 +807,7 @@ def _resolve_module(alias: str, model: _Model) -> _Model | None:
     return _model_for(path)
 
 
-def _call_segments(expr: ast.Call, model: _Model, scope,
-                   seen: frozenset, depth: int) -> list[str] | None:
+def _call_segments(expr: ast.Call, model: _Model, scope, seen: frozenset, depth: int) -> list[str] | None:
     fname = _dotted(expr.func)
     tail = fname.rsplit(".", 1)[-1]
     args = expr.args
@@ -833,7 +856,7 @@ def _record_chain(segs: list[str] | None, sig: _Signals) -> None:
         return
     for s in segs:
         if s and s.startswith(_ABS):
-            root = s[len(_ABS):]
+            root = s[len(_ABS) :]
             try:
                 inside = _REPO_ROOT.resolve().is_relative_to(Path(root))
             except (OSError, ValueError):
@@ -863,15 +886,25 @@ def _record_chain(segs: list[str] | None, sig: _Signals) -> None:
 # --------------------------------------------------------------------------- #
 # Condition resolution
 # --------------------------------------------------------------------------- #
-_PLATFORM_DOTTED = {"sys.platform", "os.name", "platform.system",
-                    "platform.machine", "platform.release"}
+_PLATFORM_DOTTED = {"sys.platform", "os.name", "platform.system", "platform.machine", "platform.release"}
 _ENV_CALLS = {"getenv", "environ"}
-_NETWORK_TOKENS = {"urlopen", "urlretrieve", "create_connection", "socket",
-                   "gethostbyname", "connect", "getaddrinfo"}
+_NETWORK_TOKENS = {"urlopen", "urlretrieve", "create_connection", "socket", "gethostbyname", "connect", "getaddrinfo"}
 _NETWORK_ROOTS = {"requests", "httpx", "urllib", "socket", "http", "aiohttp"}
-_PATH_PREDICATES = {"exists", "is_file", "is_dir", "is_symlink", "isfile",
-                    "isdir", "islink", "read_text", "read_bytes", "stat",
-                    "listdir", "iterdir", "open"}
+_PATH_PREDICATES = {
+    "exists",
+    "is_file",
+    "is_dir",
+    "is_symlink",
+    "isfile",
+    "isdir",
+    "islink",
+    "read_text",
+    "read_bytes",
+    "stat",
+    "listdir",
+    "iterdir",
+    "open",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -905,11 +938,16 @@ _STR_METHODS = {"startswith", "endswith", "lower", "upper", "casefold", "strip"}
 # and `str(os.name) != "java"` are as constant as the bare reads they wrap.
 _WRAPPER_BUILTINS = {"len": len, "str": str}
 _COMPARE_OPS = {
-    ast.Eq: operator.eq, ast.NotEq: operator.ne,
-    ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b,
-    ast.Is: operator.is_, ast.IsNot: operator.is_not,
-    ast.Lt: operator.lt, ast.LtE: operator.le,
-    ast.Gt: operator.gt, ast.GtE: operator.ge,
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.In: lambda a, b: a in b,
+    ast.NotIn: lambda a, b: a not in b,
+    ast.Is: operator.is_,
+    ast.IsNot: operator.is_not,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
 }
 
 
@@ -959,16 +997,16 @@ class _Truth:
 _TRUTHY, _FALSY = _Truth(True), _Truth(False)
 
 
-def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
-               host: dict, seen: frozenset = frozenset(), depth: int = 0):
+def _host_eval(
+    node: ast.AST | None, model: _Model, scope: ast.AST, host: dict, seen: frozenset = frozenset(), depth: int = 0
+):
     """The value of `node` on `host`, or `_UNKNOWN`. Never guesses."""
     if node is None or depth > _MAX_RESOLUTION_DEPTH:
         return _UNKNOWN
     if isinstance(node, ast.Constant):
         return node.value
     if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
-        vals = [_host_eval(e, model, scope, host, seen, depth + 1)
-                for e in node.elts]
+        vals = [_host_eval(e, model, scope, host, seen, depth + 1) for e in node.elts]
         if any(v is _UNKNOWN or isinstance(v, _Truth) for v in vals):
             return _UNKNOWN
         return tuple(vals)
@@ -979,21 +1017,20 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
             return _UNKNOWN
         if _dotted(node.func) == "platform.system" and not node.args:
             return host["platform.system"]
-        if (isinstance(node.func, ast.Name)
-                and node.func.id in _WRAPPER_BUILTINS and len(node.args) == 1
-                and not _name_rebound(node.func.id, model)):
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id in _WRAPPER_BUILTINS
+            and len(node.args) == 1
+            and not _name_rebound(node.func.id, model)
+        ):
             arg = _host_eval(node.args[0], model, scope, host, seen, depth + 1)
             if isinstance(arg, (str, tuple)):
                 return _WRAPPER_BUILTINS[node.func.id](arg)
             return _UNKNOWN
-        if (isinstance(node.func, ast.Attribute)
-                and node.func.attr in _STR_METHODS):
-            recv = _host_eval(node.func.value, model, scope, host, seen,
-                              depth + 1)
-            args = [_host_eval(a, model, scope, host, seen, depth + 1)
-                    for a in node.args]
-            if isinstance(recv, str) and not any(
-                    a is _UNKNOWN or isinstance(a, _Truth) for a in args):
+        if isinstance(node.func, ast.Attribute) and node.func.attr in _STR_METHODS:
+            recv = _host_eval(node.func.value, model, scope, host, seen, depth + 1)
+            args = [_host_eval(a, model, scope, host, seen, depth + 1) for a in node.args]
+            if isinstance(recv, str) and not any(a is _UNKNOWN or isinstance(a, _Truth) for a in args):
                 try:
                     return getattr(recv, node.func.attr)(*args)
                 except (TypeError, ValueError):
@@ -1007,17 +1044,19 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
         bound = model.lookup(node.id, scope)
         if len(bound) != 1:
             return _UNKNOWN
-        return _host_eval(bound[0], model, scope, host, seen | {node.id},
-                          depth + 1)
+        return _host_eval(bound[0], model, scope, host, seen | {node.id}, depth + 1)
     if isinstance(node, ast.Subscript):
         recv = _host_eval(node.value, model, scope, host, seen, depth + 1)
         if not isinstance(recv, (str, tuple)):
             return _UNKNOWN
         sl = node.slice
         if isinstance(sl, ast.Slice):
-            key = slice(*[None if p is None
-                          else _host_eval(p, model, scope, host, seen, depth + 1)
-                          for p in (sl.lower, sl.upper, sl.step)])
+            key = slice(
+                *[
+                    None if p is None else _host_eval(p, model, scope, host, seen, depth + 1)
+                    for p in (sl.lower, sl.upper, sl.step)
+                ]
+            )
         else:
             key = _host_eval(sl, model, scope, host, seen, depth + 1)
         # No pre-check on the key: indexing a str / tuple with anything but an
@@ -1050,12 +1089,17 @@ def _host_eval(node: ast.AST | None, model: _Model, scope: ast.AST,
         for op, comp in zip(node.ops, node.comparators):
             fn = _COMPARE_OPS.get(type(op))
             if isinstance(op, (ast.Is, ast.IsNot)) and not (
-                    isinstance(comp, ast.Constant)
-                    and (comp.value is None or isinstance(comp.value, bool))):
+                isinstance(comp, ast.Constant) and (comp.value is None or isinstance(comp.value, bool))
+            ):
                 return _UNKNOWN
             right = _host_eval(comp, model, scope, host, seen, depth + 1)
-            if (fn is None or left is _UNKNOWN or right is _UNKNOWN
-                    or isinstance(left, _Truth) or isinstance(right, _Truth)):
+            if (
+                fn is None
+                or left is _UNKNOWN
+                or right is _UNKNOWN
+                or isinstance(left, _Truth)
+                or isinstance(right, _Truth)
+            ):
                 return _UNKNOWN
             try:
                 if not fn(left, right):
@@ -1078,9 +1122,9 @@ def _host_constant(node, model: _Model, scope: ast.AST) -> bool:
         return False
     # Values are AST literals, strings and tuples of them, so `==` is plain.
     first = vals[0]
-    return all(v is first or (not isinstance(v, _Truth)
-                              and not isinstance(first, _Truth)
-                              and v == first) for v in vals[1:])
+    return all(
+        v is first or (not isinstance(v, _Truth) and not isinstance(first, _Truth) and v == first) for v in vals[1:]
+    )
 
 
 def _host_truth(node, model: _Model, scope: ast.AST) -> bool | None:
@@ -1113,8 +1157,7 @@ class _Ctx:
         # a deleted first-party file and a SyntaxError just as happily.
         self.broad_handler = broad_handler
 
-    def take(self, expr: ast.AST | None, model: _Model, scope: ast.AST,
-             seen: frozenset) -> None:
+    def take(self, expr: ast.AST | None, model: _Model, scope: ast.AST, seen: frozenset) -> None:
         if expr is None or id(expr) in self.consumed:
             return
         for n in ast.walk(expr):
@@ -1123,10 +1166,21 @@ class _Ctx:
 
 
 _MAX_RESOLUTION_DEPTH = 8
+_RESHAPING_WRAPPERS = frozenset({"bool", "min", "max", "sorted"})
 
 
-def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
-             seen: frozenset, depth: int) -> None:
+def _is_reshaping_wrapper(node: ast.AST, model: _Model) -> bool:
+    if isinstance(node, ast.JoinedStr):
+        return True
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in _RESHAPING_WRAPPERS
+        and not _name_rebound(node.func.id, model)
+    )
+
+
+def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     """Walk a condition (or a whole region) accumulating what it depends on.
 
     `depth` counts RESOLUTION steps only - following a binding, entering a
@@ -1144,6 +1198,19 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
     if isinstance(node, _HOST_FOLDABLE) and _host_constant(node, model, scope):
         return
 
+    # RM-458 (refusal taint, NOT a fold): a platform read re-shaped by bool /
+    # min / max / sorted or formatted into an f-string earns no platform
+    # credit. Two rounds of folding these were refuted on CPython fidelity, so
+    # no value is modelled; every OTHER signal under the wrapper still counts.
+    if _is_reshaping_wrapper(node, model):
+        sub = _Ctx(ctx.broad_handler)
+        sub.consumed = ctx.consumed
+        for child in ast.iter_child_nodes(node):
+            _collect(child, model, scope, sub, seen, depth)
+        sub.sig.platform = False
+        sig.merge(sub.sig)
+        return
+
     if isinstance(node, ast.Attribute):
         dotted = _dotted(node)
         if dotted in _PLATFORM_DOTTED:
@@ -1156,9 +1223,11 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx,
         # with an index, and crediting it as tree-shape is what made an
         # otherwise-identical B5 invisible when written in the idiomatic form.
         # Only the non-indexed use keeps the signal.
-        if (node.attr in ("parents", "parts")
-                and not _is_constant_indexed_parents(node, model)
-                and _derives_from_file(node.value, model, scope, seen, 0)):
+        if (
+            node.attr in ("parents", "parts")
+            and not _is_constant_indexed_parents(node, model)
+            and _derives_from_file(node.value, model, scope, seen, 0)
+        ):
             sig.tree_shape = True
         if node.attr in _PATH_PREDICATES:
             ctx.take(node.value, model, scope, seen)
@@ -1207,12 +1276,15 @@ def _is_constant_indexed_parents(node: ast.Attribute, model: _Model) -> bool:
     if not isinstance(parent, ast.Subscript) or parent.value is not node:
         return False
     idx = parent.slice
-    return (isinstance(idx, ast.Constant) and isinstance(idx.value, int)
-            and not isinstance(idx.value, bool) and idx.value >= 0)
+    return (
+        isinstance(idx, ast.Constant)
+        and isinstance(idx.value, int)
+        and not isinstance(idx.value, bool)
+        and idx.value >= 0
+    )
 
 
-def _derives_from_file(expr: ast.AST | None, model: _Model, scope: ast.AST,
-                       seen: frozenset, depth: int) -> bool:
+def _derives_from_file(expr: ast.AST | None, model: _Model, scope: ast.AST, seen: frozenset, depth: int) -> bool:
     """True when the expression traces back to this module's own __file__."""
     if expr is None or depth > _MAX_RESOLUTION_DEPTH:
         return False
@@ -1224,14 +1296,12 @@ def _derives_from_file(expr: ast.AST | None, model: _Model, scope: ast.AST,
         if n.id in seen:
             continue
         for bound in model.lookup(n.id, scope):
-            if _derives_from_file(bound, model, scope, seen | {n.id},
-                                  depth + 1):
+            if _derives_from_file(bound, model, scope, seen | {n.id}, depth + 1):
                 return True
     return False
 
 
-def _collect_import(node: ast.AST, sig: _Signals,
-                    model: _Model | None = None) -> None:
+def _collect_import(node: ast.AST, sig: _Signals, model: _Model | None = None) -> None:
     if isinstance(node, ast.Import):
         targets = [a.name for a in node.names]
         bound = [a.asname or a.name.split(".")[0] for a in node.names]
@@ -1253,8 +1323,7 @@ def _collect_import(node: ast.AST, sig: _Signals,
             sig.optional_import = True
 
 
-def _cross_module_attr(node: ast.Attribute, model: _Model, ctx: _Ctx,
-                       seen: frozenset, depth: int) -> None:
+def _cross_module_attr(node: ast.Attribute, model: _Model, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     if not isinstance(node.value, ast.Name) or depth >= _MAX_RESOLUTION_DEPTH:
         return
     target = _resolve_module(node.value.id, model)
@@ -1263,8 +1332,7 @@ def _cross_module_attr(node: ast.Attribute, model: _Model, ctx: _Ctx,
     _enter_symbol(target, node.attr, model, ctx, seen, depth)
 
 
-def _enter_symbol(target: _Model, symbol: str, model: _Model, ctx: _Ctx,
-                  seen: frozenset, depth: int) -> None:
+def _enter_symbol(target: _Model, symbol: str, model: _Model, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     key = f"{target.rel}::{symbol}"
     if key in seen:
         return
@@ -1285,8 +1353,7 @@ def _positional_params(fn: ast.AST) -> list[str]:
     return [a.arg for a in list(args.posonlyargs) + list(args.args)]
 
 
-def _enter_local_function(fn: ast.AST, call: ast.Call, model: _Model,
-                          ctx: _Ctx, seen: frozenset, depth: int) -> None:
+def _enter_local_function(fn: ast.AST, call: ast.Call, model: _Model, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     """Descend into a helper with its ARGUMENTS bound to its parameters.
 
     `if not _lane_counts(LW_ROOT):` says nothing until LW_ROOT reaches the
@@ -1306,8 +1373,7 @@ def _enter_local_function(fn: ast.AST, call: ast.Call, model: _Model,
         model.assigns[fn] = saved
 
 
-def _collect_call(node: ast.Call, model: _Model, scope: ast.AST,
-                  ctx: _Ctx, seen: frozenset, depth: int) -> None:
+def _collect_call(node: ast.Call, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     sig = ctx.sig
     fname = _dotted(node.func)
     tail = fname.rsplit(".", 1)[-1]
@@ -1317,8 +1383,7 @@ def _collect_call(node: ast.Call, model: _Model, scope: ast.AST,
         sig.binary = True
     if tail in _ENV_CALLS or fname.startswith("os.environ"):
         sig.env = True
-    if tail in ("find_spec", "import_module", "importorskip", "util.find_spec",
-                "__import__"):
+    if tail in ("find_spec", "import_module", "importorskip", "util.find_spec", "__import__"):
         # A DYNAMIC import is only a capability question when the thing being
         # imported is somebody else's. `importlib.import_module("mc.server")`
         # names a TRACKED file, so swallowing its failure into a skip is the
@@ -1327,9 +1392,11 @@ def _collect_call(node: ast.Call, model: _Model, scope: ast.AST,
         # before deciding; a non-literal target stays a capability signal
         # because nothing here can say what it will hold at run time.
         target = node.args[0] if node.args else None
-        if (isinstance(target, ast.Constant)
-                and isinstance(target.value, str)
-                and _first_party_file(target.value) is not None):
+        if (
+            isinstance(target, ast.Constant)
+            and isinstance(target.value, str)
+            and _first_party_file(target.value) is not None
+        ):
             sig.firstparty_import.add(target.value)
         elif tail == "importorskip" or not ctx.broad_handler:
             # `importorskip` is itself a skip primitive - it skips on absence
@@ -1347,8 +1414,7 @@ def _collect_call(node: ast.Call, model: _Model, scope: ast.AST,
         sig.network = True
     if tail in _PATH_PREDICATES and isinstance(node.func, ast.Attribute):
         ctx.take(node.func.value, model, scope, seen)
-    if tail in _PATH_PREDICATES and node.args and fname.startswith(
-            ("os.path.", "path.", "os.")):
+    if tail in _PATH_PREDICATES and node.args and fname.startswith(("os.path.", "path.", "os.")):
         ctx.take(node.args[0], model, scope, seen)
     if tail in ("glob", "iglob", "rglob"):
         ctx.take(node, model, scope, seen)
@@ -1381,20 +1447,17 @@ def _skip_sites(model: _Model) -> list[_Site]:
                 parent = model.parent.get(node)
                 # `pytest.mark.skip(...)` - record the Call, not the Attribute,
                 # so the site is reported once at the call's line.
-                target = parent if (isinstance(parent, ast.Call)
-                                    and parent.func is node) else node
+                target = parent if (isinstance(parent, ast.Call) and parent.func is node) else node
                 if id(target) not in seen_calls:
                     seen_calls.add(id(target))
-                    sites.append(_Site(model.rel, target.lineno,
-                                       "unconditional " + dotted, None, target))
+                    sites.append(_Site(model.rel, target.lineno, "unconditional " + dotted, None, target))
             continue
         if isinstance(node, ast.Raise):
             exc = node.exc
             target = exc.func if isinstance(exc, ast.Call) else exc
             name = _dotted(target).rsplit(".", 1)[-1] if target is not None else ""
             if name.endswith(_SKIP_EXC_SUFFIXES):
-                sites.append(_Site(model.rel, node.lineno, "raise SkipTest",
-                                   None, node))
+                sites.append(_Site(model.rel, node.lineno, "raise SkipTest", None, node))
             continue
         if not isinstance(node, ast.Call):
             continue
@@ -1405,11 +1468,9 @@ def _skip_sites(model: _Model) -> list[_Site]:
             sites.append(_Site(model.rel, node.lineno, fname, cond, node))
         elif tail == _IMPORTORSKIP:
             cond = node.args[0] if node.args else None
-            sites.append(_Site(model.rel, node.lineno, "importorskip",
-                               cond, node))
+            sites.append(_Site(model.rel, node.lineno, "importorskip", cond, node))
         elif fname in _BODY_SKIPS or tail in _BODY_SKIP_TAILS:
-            sites.append(_Site(model.rel, node.lineno, fname or tail,
-                               None, node))
+            sites.append(_Site(model.rel, node.lineno, fname or tail, None, node))
     sites.sort(key=lambda s: (s.rel, s.line))
     return sites
 
@@ -1473,9 +1534,9 @@ def _in_catch_everything_handler(model: _Model, node: ast.AST) -> bool:
     return False
 
 
-def _firing_arms(node: ast.AST, fires_when_true: bool, model: _Model,
-                 scope: ast.AST, seen: frozenset = frozenset(),
-                 depth: int = 0) -> list[tuple[ast.AST, bool]]:
+def _firing_arms(
+    node: ast.AST, fires_when_true: bool, model: _Model, scope: ast.AST, seen: frozenset = frozenset(), depth: int = 0
+) -> list[tuple[ast.AST, bool]]:
     """Split a condition into arms EACH of which fires the skip on its own.
 
     `a or b` fires when either is true; `not (a and b)` - the skipUnless and
@@ -1486,28 +1547,23 @@ def _firing_arms(node: ast.AST, fires_when_true: bool, model: _Model,
     if depth > _MAX_RESOLUTION_DEPTH:
         return [(node, fires_when_true)]
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-        return _firing_arms(node.operand, not fires_when_true, model, scope,
-                            seen, depth + 1)
+        return _firing_arms(node.operand, not fires_when_true, model, scope, seen, depth + 1)
     splits = ast.Or if fires_when_true else ast.And
     if isinstance(node, ast.BoolOp) and isinstance(node.op, splits):
         out: list[tuple[ast.AST, bool]] = []
         for part in node.values:
-            out.extend(_firing_arms(part, fires_when_true, model, scope, seen,
-                                    depth + 1))
+            out.extend(_firing_arms(part, fires_when_true, model, scope, seen, depth + 1))
         return out
-    if (isinstance(node, ast.Name) and node.id not in seen
-            and node.id not in model.optional_names):
+    if isinstance(node, ast.Name) and node.id not in seen and node.id not in model.optional_names:
         bound = model.lookup(node.id, scope)
-        if len(bound) == 1 and isinstance(bound[0], (ast.BoolOp, ast.UnaryOp,
-                                                     ast.Name)):
-            return _firing_arms(bound[0], fires_when_true, model, scope,
-                                seen | {node.id}, depth + 1)
+        if len(bound) == 1 and isinstance(bound[0], (ast.BoolOp, ast.UnaryOp, ast.Name)):
+            return _firing_arms(bound[0], fires_when_true, model, scope, seen | {node.id}, depth + 1)
     return [(node, fires_when_true)]
 
 
-def _forced_by_arms(tests: list[tuple[ast.AST, bool]], model: _Model,
-                    scope: ast.AST, broad: bool,
-                    extra: list[ast.AST] = ()) -> set[str]:
+def _forced_by_arms(
+    tests: list[tuple[ast.AST, bool]], model: _Model, scope: ast.AST, broad: bool, extra: list[ast.AST] = ()
+) -> set[str]:
     """RM-440: convict a site on any single firing arm.
 
     `tests` are the conditions that must ALL hold for the skip to fire, each
@@ -1535,8 +1591,7 @@ def _forced_by_arms(tests: list[tuple[ast.AST, bool]], model: _Model,
         forced.add(DEFECT + ":constant-true")
         return forced
     for i, (test, fires) in enumerate(tests):
-        others = [o for j, (o, _) in enumerate(tests)
-                  if j != i and truths[j] is not True]
+        others = [o for j, (o, _) in enumerate(tests) if j != i and truths[j] is not True]
         for arm, arm_fires in _firing_arms(test, fires, model, scope):
             t = _host_truth(arm, model, scope)
             if t is not None and t is not arm_fires:
@@ -1595,8 +1650,7 @@ def _signals_for(model: _Model, site: _Site) -> _Signals:
         ctx = _Ctx(broad)
         _collect(site.condition, model, scope, ctx, frozenset(), 0)
         fires = site.kind.rsplit(".", 1)[-1] != "skipUnless"
-        ctx.sig.forced |= _forced_by_arms([(site.condition, fires)], model,
-                                          scope, broad)
+        ctx.sig.forced |= _forced_by_arms([(site.condition, fires)], model, scope, broad)
         return ctx.sig
 
     # Bare skip: nearest guards first, then widen to the enclosing function.
@@ -1663,11 +1717,16 @@ def scan_source(rel: str, source: str) -> list[_Finding]:
     findings: list[_Finding] = []
     for site in _skip_sites(model):
         sig = _signals_for(model, site)
-        findings.append(_Finding(
-            site, _classify(sig), sig.evidence(),
-            frozenset(sig.tracked | sig.firstparty_import | sig.vanished),
-            frozenset(sig.forced), _condition_pinned(model, site),
-        ))
+        findings.append(
+            _Finding(
+                site,
+                _classify(sig),
+                sig.evidence(),
+                frozenset(sig.tracked | sig.firstparty_import | sig.vanished),
+                frozenset(sig.forced),
+                _condition_pinned(model, site),
+            )
+        )
     return findings
 
 
@@ -1675,9 +1734,7 @@ def scan_tree() -> list[_Finding]:
     findings: list[_Finding] = []
     for path in _iter_modules():
         rel = path.resolve().relative_to(_REPO_ROOT).as_posix()
-        findings.extend(
-            scan_source(rel, path.read_text(encoding="utf-8", errors="replace"))
-        )
+        findings.extend(scan_source(rel, path.read_text(encoding="utf-8", errors="replace")))
     return findings
 
 
@@ -1737,8 +1794,11 @@ def _condition_source(finding: _Finding) -> str | None:
 
 
 def _excused(finding: _Finding) -> bool:
-    if (finding.verdict == UNRESOLVED and finding.condition_pinned
-            and (finding.site.rel, _condition_source(finding)) in _REVIEWED_UNRESOLVED):
+    if (
+        finding.verdict == UNRESOLVED
+        and finding.condition_pinned
+        and (finding.site.rel, _condition_source(finding)) in _REVIEWED_UNRESOLVED
+    ):
         return True
     # A skip that fires on every supported host is a disabled test; no
     # artifact exemption was ever reviewed for that.
@@ -1941,8 +2001,7 @@ def test_lfs_oracle_comes_from_git_and_covers_only_lfs_paths():
 def test_lfs_chain_rule_is_all_not_any():
     """A chain is a capability gate only when EVERY path it names is LFS."""
     # Fully covered: file, patch dir, and the tables root.
-    assert _is_lfs_chain(
-        "data/daemon_slayer/laning_scenarios/16.13.1/laning_scenarios_aram.json")
+    assert _is_lfs_chain("data/daemon_slayer/laning_scenarios/16.13.1/laning_scenarios_aram.json")
     assert _is_lfs_chain("data/daemon_slayer/laning_scenarios")
     assert _is_lfs_chain("laning_scenarios_aram.json")
     # Partially covered: these all reach at least one ordinary tracked file, so
@@ -1971,8 +2030,7 @@ def test_lfs_chains_do_not_leak_into_the_tracked_defect_signal():
     sig = _signals_for(model, sites[0])
     _prune_prefix_chains(sig)
     assert sig.lfs and not sig.tracked, (
-        f"expected the LFS path in sig.lfs only, got tracked={sig.tracked} "
-        f"lfs={sig.lfs}"
+        f"expected the LFS path in sig.lfs only, got tracked={sig.tracked} lfs={sig.lfs}"
     )
     assert not sig.capability, (
         "the fixture must be rescued by the LFS rule alone - if it already "
@@ -1998,10 +2056,7 @@ def test_every_skip_gates_on_an_environment_capability():
 def test_allowlisted_modules_still_exist():
     """A deleted file must not rot an exemption into a silent pass."""
     missing = [rel for rel in _ALLOWLIST if not (_REPO_ROOT / rel).is_file()]
-    assert not missing, (
-        f"allowlisted modules no longer on disk: {missing} - delete the "
-        "_ALLOWLIST entries with them"
-    )
+    assert not missing, f"allowlisted modules no longer on disk: {missing} - delete the _ALLOWLIST entries with them"
 
 
 def test_allowlisted_modules_still_flag():
@@ -2027,8 +2082,7 @@ def test_allowlist_excuses_exactly_what_it_claims():
             if f.verdict != CAPABILITY:
                 actual |= set(f.gates_on)
         if actual != set(claimed):
-            drifted.append(f"{rel}: claims {sorted(claimed)}, flags "
-                           f"{sorted(actual)}")
+            drifted.append(f"{rel}: claims {sorted(claimed)}, flags {sorted(actual)}")
     assert not drifted, (
         "allowlist entries no longer describe the skip they exempt - re-review "
         "each before re-pinning:\n" + "\n".join(drifted)
@@ -2037,7 +2091,7 @@ def test_allowlist_excuses_exactly_what_it_claims():
 
 # --- mutation probes: the teeth, pinned in-suite ---------------------------- #
 _DEFECT_MUTATIONS = {
-    "mark_skipif_on_tracked_path": '''
+    "mark_skipif_on_tracked_path": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2045,8 +2099,8 @@ REPO = Path(__file__).resolve().parent.parent
                     reason="no patch pointer")
 def test_thing():
     assert True
-''',
-    "bare_skip_on_tracked_path": '''
+""",
+    "bare_skip_on_tracked_path": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2055,8 +2109,8 @@ def test_thing():
     if not p.is_file():
         pytest.skip("config absent")
     assert p.read_text()
-''',
-    "aliased_pytest_bare_skip_on_tracked_path": '''
+""",
+    "aliased_pytest_bare_skip_on_tracked_path": """
 import pytest as _p
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2065,16 +2119,16 @@ def test_thing():
     if not p.is_file():
         _p.skip("config absent")
     assert p.read_text()
-''',
-    "unittest_skipunless_on_tracked_path": '''
+""",
+    "unittest_skipunless_on_tracked_path": """
 import os
 import unittest
 class T(unittest.TestCase):
     @unittest.skipUnless(os.path.exists("web/legacy_index.html"), "absent")
     def test_thing(self):
         self.assertTrue(True)
-''',
-    "helper_gate_reading_a_tracked_file": '''
+""",
+    "helper_gate_reading_a_tracked_file": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2084,11 +2138,11 @@ def test_thing():
     if _patch() != "16.14.1":
         pytest.skip("pinned")
     assert True
-''',
+""",
     # RM-119 B5, the tests/test_ports.py shape: a first-party module pulled in
     # dynamically and its failure swallowed into a skip. Every module named
     # this way is TRACKED, so the skip can only fire on a broken checkout.
-    "dynamic_first_party_import_swallowed": '''
+    "dynamic_first_party_import_swallowed": """
 import importlib
 import pytest
 def test_thing():
@@ -2097,7 +2151,7 @@ def test_thing():
     except Exception:
         pytest.skip("mc.server not importable here")
     assert mod.PORT
-''',
+""",
     # The verbatim pre-fix tests/test_ports.py shape: a runtime-named dynamic
     # import whose EVERY failure - deleted tracked file, SyntaxError, our own
     # ImportError - is swallowed by `except Exception` and called a missing
@@ -2109,7 +2163,7 @@ def test_thing():
     # survive a mutation the real file did not, so it was shaped to pass rather
     # than shaped to the bug (verifier, 2026-08-06). Byte-for-byte the pre-fix
     # tests/test_ports.py `_live` now, import placement included.
-    "runtime_named_import_swallowed_by_bare_except": '''
+    "runtime_named_import_swallowed_by_bare_except": """
 import unittest
 class T(unittest.TestCase):
     def _live(self, module_path, attr):
@@ -2122,12 +2176,12 @@ class T(unittest.TestCase):
         return getattr(mod, attr)
     def test_thing(self):
         self.assertEqual(8888, self._live("dashboard.server", "PORT"))
-''',
+""",
     # The same B5 in the idiomatic path spelling. `.parent.parent` was caught
     # and `.parents[1]` was not, in a resolver that treated `parents` as an
     # unanswerable tree-shape question; nine skip-bearing modules already write
     # it this way.
-    "skip_on_a_tracked_path_via_parents_index": '''
+    "skip_on_a_tracked_path_via_parents_index": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
@@ -2136,8 +2190,8 @@ def test_thing():
     if not p.is_file():
         pytest.skip("config absent")
     assert p.read_text()
-''',
-    "mark_skipif_on_a_tracked_path_via_parents_index": '''
+""",
+    "mark_skipif_on_a_tracked_path_via_parents_index": """
 import pytest
 from pathlib import Path
 _HERE = Path(__file__).resolve()
@@ -2145,8 +2199,8 @@ _HERE = Path(__file__).resolve()
                     reason="page absent")
 def test_thing():
     assert True
-''',
-    "dunder_import_of_a_first_party_module": '''
+""",
+    "dunder_import_of_a_first_party_module": """
 import pytest
 def test_thing():
     try:
@@ -2154,14 +2208,14 @@ def test_thing():
     except ImportError:
         pytest.skip("ports registry not importable")
     assert mod
-''',
-    "importorskip_on_a_first_party_module": '''
+""",
+    "importorskip_on_a_first_party_module": """
 import pytest
 mod = pytest.importorskip("core.build_order")
 def test_thing():
     assert mod
-''',
-    "skiptest_raise_on_tracked_path": '''
+""",
+    "skiptest_raise_on_tracked_path": """
 import unittest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2171,50 +2225,50 @@ class T(unittest.TestCase):
         if not p.exists():
             raise unittest.SkipTest("no pointer")
         self.assertTrue(p.read_text())
-''',
+""",
     # --- UNCONDITIONAL skips. The scanner was blind to all four until
     # 2026-08-06, and blindness is worse than misclassification: an invisible
     # site is not weighed at all. The last of these is the exact spelling of
     # the original pengu B4 defect, and a verifier proved a re-injected copy
     # of it left the guard GREEN.
-    "bare_unconditional_mark_skip_decorator": '''
+    "bare_unconditional_mark_skip_decorator": """
 import pytest
 @pytest.mark.skip
 def test_thing():
     assert True
-''',
-    "unconditional_mark_skip_with_reason": '''
+""",
+    "unconditional_mark_skip_with_reason": """
 import pytest
 @pytest.mark.skip(reason="flaky, will fix later")
 def test_thing():
     assert True
-''',
-    "unconditional_unittest_skip": '''
+""",
+    "unconditional_unittest_skip": """
 import unittest
 class T(unittest.TestCase):
     @unittest.skip("disabled")
     def test_thing(self):
         self.assertTrue(True)
-''',
-    "module_level_pytestmark_unconditional_skip": '''
+""",
+    "module_level_pytestmark_unconditional_skip": """
 import pytest
 pytestmark = pytest.mark.skip(reason="whole module parked")
 def test_thing():
     assert True
-''',
+""",
     # --- RM-119 B4 proper: the gate names something git tracked once and no
     # longer does. `pengu/` is the real instance - renamed into
     # docs/_archive/2026-07-07-pengu-stub/ at f08ade78 - and it is written here
     # in the module-level form the original defect used.
-    "skip_gated_on_a_path_git_used_to_track": '''
+    "skip_gated_on_a_path_git_used_to_track": """
 import pytest
 from pathlib import Path
 PENGU = Path(__file__).resolve().parent.parent / "pengu"
 pytestmark = pytest.mark.skipif(not PENGU.is_dir(), reason="stub relocated")
 def test_thing():
     assert (PENGU / "index.js").is_file()
-''',
-    "bare_skip_gated_on_a_removed_archive_path": '''
+""",
+    "bare_skip_gated_on_a_removed_archive_path": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2223,7 +2277,7 @@ def test_thing():
     if not p.is_file():
         pytest.skip("archived file absent on this checkout")
     assert p.read_bytes()
-''',
+""",
     # --- the git-LFS carve-out, from the DEFECT side. Both of these reach an
     # LFS path and neither may be rescued by it, because the LFS rule is
     # "every tracked path this chain names is LFS", not "any".
@@ -2231,7 +2285,7 @@ def test_thing():
     # A directory one level above the LFS tables. `data/daemon_slayer` holds
     # `current.txt` and the whole DDragon mirror, none of it LFS, so the gate
     # can only fire on a broken checkout and stays B5.
-    "skip_on_a_dir_holding_both_lfs_and_ordinary_tracked_files": '''
+    "skip_on_a_dir_holding_both_lfs_and_ordinary_tracked_files": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2240,12 +2294,12 @@ def test_thing():
     if not d.is_dir():
         pytest.skip("engine data tree absent")
     assert any(d.iterdir())
-''',
+""",
     # Laundering: one real LFS gate sitting in the same condition as an
     # ordinary tracked gate. If the LFS signal were allowed to outrank
     # `sig.tracked` in `_classify`, this would read CAPABILITY and every B5
     # defect could be hidden by adding an LFS path to its condition.
-    "lfs_path_used_to_launder_a_tracked_non_lfs_path": '''
+    "lfs_path_used_to_launder_a_tracked_non_lfs_path": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2256,18 +2310,18 @@ def test_thing():
     if not table.is_file() or not pointer.is_file():
         pytest.skip("inputs absent on this checkout")
     assert table.stat().st_size and pointer.read_text()
-''',
+""",
 }
 
 _CAPABILITY_CONTROLS = {
-    "platform": '''
+    "platform": """
 import sys
 import pytest
 @pytest.mark.skipif(sys.platform != "win32", reason="win32 only")
 def test_thing():
     assert True
-''',
-    "external_binary": '''
+""",
+    "external_binary": """
 import shutil
 import pytest
 NODE = shutil.which("node")
@@ -2275,8 +2329,8 @@ def test_thing():
     if not NODE:
         pytest.skip("node not on PATH")
     assert NODE
-''',
-    "gitignored_artifact": '''
+""",
+    "gitignored_artifact": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2285,28 +2339,28 @@ def test_thing():
     if not db.is_file():
         pytest.skip("machine-local corpus absent")
     assert db
-''',
-    "env_opt_in": '''
+""",
+    "env_opt_in": """
 import os
 import unittest
 @unittest.skipUnless(os.environ.get("RC_LIVE_LOBBY"), "opt-in")
 class T(unittest.TestCase):
     def test_thing(self):
         self.assertTrue(True)
-''',
-    "optional_third_party": '''
+""",
+    "optional_third_party": """
 import pytest
 np = pytest.importorskip("numpy")
 def test_thing():
     assert np
-''',
+""",
     # The false-positive side of the parents[N] resolver. Without it the path
     # is opaque, the site lands in UNRESOLVED, and a legitimate gitignored-data
     # skip written in the idiomatic spelling reads as a defect. This control is
     # what makes the resolver itself load-bearing rather than an equivalent
     # mutant: the DEFECT probes above still flag without it (via UNRESOLVED),
     # this one does not survive without it.
-    "gitignored_artifact_via_parents_index": '''
+    "gitignored_artifact_via_parents_index": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
@@ -2315,11 +2369,11 @@ def test_thing():
     if not db.is_file():
         pytest.skip("machine-local corpus absent")
     assert db
-''',
+""",
     # The false-positive side of the dynamic-import rule: a target this scan
     # cannot read cannot be called first-party, so it stays a capability skip.
     # tests/test_ports.py is exactly this shape after the RM-119 B5 fix.
-    "dynamic_import_of_a_runtime_named_module": '''
+    "dynamic_import_of_a_runtime_named_module": """
 import importlib
 import pytest
 def _live(module_path):
@@ -2329,7 +2383,7 @@ def _live(module_path):
         pytest.skip(f"optional dependency absent: {exc.name}")
 def test_thing():
     assert _live("some.module")
-''',
+""",
     # The false-positive side of the historical-trackedness rule, and the two
     # cases that actually shaped it. Neither may flag.
     #
@@ -2338,7 +2392,7 @@ def test_thing():
     # `data/daemon_slayer/16.9.1/`. Suffix matching flags it; root-anchored
     # matching does not, which is why `_is_vanished_chain` refuses to consult a
     # suffix index.
-    "vanished_name_collision_in_a_tmp_fixture": '''
+    "vanished_name_collision_in_a_tmp_fixture": """
 import os
 import pytest
 def test_thing(tmp_path):
@@ -2346,12 +2400,12 @@ def test_thing(tmp_path):
     if not (tmp_path / "16.9.1").is_dir():
         pytest.skip("fixture tree not created")
     assert True
-''',
+""",
     # A genuinely deleted repo-root file whose test premise is nevertheless a
     # live machine/network question. The `network` signal must win in
     # `_classify`, which is what makes the B4 rule precise without a
     # special case.
-    "vanished_path_but_the_premise_is_a_live_endpoint": '''
+    "vanished_path_but_the_premise_is_a_live_endpoint": """
 import urllib.request
 import unittest
 class T(unittest.TestCase):
@@ -2361,13 +2415,13 @@ class T(unittest.TestCase):
         if status == 200:
             self.skipTest("moon_monitor.html is present on this box")
         self.assertEqual(status, 404)
-''',
+""",
     # The git-LFS carve-out from the CAPABILITY side, and the shape of the two
     # real sites in tests/test_rm175_aram_table_known_wrong.py. The path is
     # tracked, so the pre-LFS guard called it B5 masking; the content is a
     # pointer stub in any checkout that did not smudge or `git lfs pull`, which
     # is every CI run here, so the gate is an environment capability.
-    "tracked_artifact_behind_a_git_lfs_filter": '''
+    "tracked_artifact_behind_a_git_lfs_filter": """
 import pytest
 from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
@@ -2377,11 +2431,11 @@ def test_thing():
     if not t.is_file():
         pytest.skip("LFS table not fetched on this checkout")
     assert t.stat().st_size
-''',
+""",
     # The same carve-out reached through the LFS DIRECTORY rather than a file.
     # Every tracked path under it is LFS, so the ALL quantifier still holds -
     # this is the tests/test_rm175_aram_table_known_wrong.py:257 spelling.
-    "git_lfs_directory_every_member_of_which_is_filtered": '''
+    "git_lfs_directory_every_member_of_which_is_filtered": """
 import pytest
 from pathlib import Path
 TABLES = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer" / "laning_scenarios"
@@ -2390,12 +2444,12 @@ def test_thing():
     if not TABLES.is_dir() or not p.is_file():
         pytest.skip("LFS tables not fetched on this checkout")
     assert p.stat().st_size
-''',
+""",
     # Tree-shape: a module asking WHERE IN THE CHECKOUT it is running from.
     # That is a capability question (the answer changes what the surrounding
     # tree contains), and it must stay one - this is the positive control for
     # the non-indexed `.parents` branch in `_collect`.
-    "checkout_tree_shape_path": '''
+    "checkout_tree_shape_path": """
 import unittest
 from pathlib import Path
 _IN_WORKTREE = "worktrees" in (p.name.lower() for p in Path(__file__).resolve().parents)
@@ -2403,7 +2457,7 @@ _IN_WORKTREE = "worktrees" in (p.name.lower() for p in Path(__file__).resolve().
 class T(unittest.TestCase):
     def test_thing(self):
         self.assertTrue(True)
-''',
+""",
 }
 
 
@@ -2424,26 +2478,29 @@ def test_mutation_defective_skip_is_flagged(name):
     )
 
 
-@pytest.mark.parametrize("name,expected", [
-    ("skip_gated_on_a_path_git_used_to_track", ROTTED),
-    ("bare_skip_gated_on_a_removed_archive_path", ROTTED),
-    ("bare_unconditional_mark_skip_decorator", DEFECT),
-    ("unconditional_mark_skip_with_reason", DEFECT),
-    ("unconditional_unittest_skip", DEFECT),
-    ("module_level_pytestmark_unconditional_skip", DEFECT),
-    # Class B5 proper, pinned by NAME rather than by "not CAPABILITY", so the
-    # git-LFS carve-out below cannot quietly widen into the whole tracked set.
-    # These three gate on ordinary tracked files (ops/rc_config.json,
-    # data/daemon_slayer/current.txt, web/legacy_index.html) and must stay
-    # DEFECT forever.
-    ("bare_skip_on_tracked_path", DEFECT),
-    ("mark_skipif_on_tracked_path", DEFECT),
-    ("skiptest_raise_on_tracked_path", DEFECT),
-    # The two LFS-adjacent defects: a chain that also names non-LFS tracked
-    # files, and an LFS gate sharing a condition with an ordinary one.
-    ("skip_on_a_dir_holding_both_lfs_and_ordinary_tracked_files", DEFECT),
-    ("lfs_path_used_to_launder_a_tracked_non_lfs_path", DEFECT),
-])
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("skip_gated_on_a_path_git_used_to_track", ROTTED),
+        ("bare_skip_gated_on_a_removed_archive_path", ROTTED),
+        ("bare_unconditional_mark_skip_decorator", DEFECT),
+        ("unconditional_mark_skip_with_reason", DEFECT),
+        ("unconditional_unittest_skip", DEFECT),
+        ("module_level_pytestmark_unconditional_skip", DEFECT),
+        # Class B5 proper, pinned by NAME rather than by "not CAPABILITY", so the
+        # git-LFS carve-out below cannot quietly widen into the whole tracked set.
+        # These three gate on ordinary tracked files (ops/rc_config.json,
+        # data/daemon_slayer/current.txt, web/legacy_index.html) and must stay
+        # DEFECT forever.
+        ("bare_skip_on_tracked_path", DEFECT),
+        ("mark_skipif_on_tracked_path", DEFECT),
+        ("skiptest_raise_on_tracked_path", DEFECT),
+        # The two LFS-adjacent defects: a chain that also names non-LFS tracked
+        # files, and an LFS gate sharing a condition with an ordinary one.
+        ("skip_on_a_dir_holding_both_lfs_and_ordinary_tracked_files", DEFECT),
+        ("lfs_path_used_to_launder_a_tracked_non_lfs_path", DEFECT),
+    ],
+)
 def test_mutation_lands_in_the_intended_verdict(name, expected):
     """Pin the REASON, not just the colour.
 
@@ -2454,9 +2511,8 @@ def test_mutation_lands_in_the_intended_verdict(name, expected):
     the B4 rule did nothing. Naming the expected verdict makes that visible.
     """
     findings = scan_source("tests/test_mutant.py", _DEFECT_MUTATIONS[name])
-    assert [f.verdict for f in findings] == [expected], (
-        f"{name}: expected {expected}, got "
-        + "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
+    assert [f.verdict for f in findings] == [expected], f"{name}: expected {expected}, got " + "; ".join(
+        f"{f.verdict}:{f.evidence}" for f in findings
     )
 
 
@@ -2465,8 +2521,7 @@ def test_mutation_capability_skip_is_not_flagged(name):
     """False-positive side: a legitimate capability skip must stay green."""
     findings = scan_source("tests/test_mutant.py", _CAPABILITY_CONTROLS[name])
     assert findings, f"{name}: no skip site found at all"
-    bad = [f"{f.verdict}:{f.evidence}" for f in findings
-           if f.verdict != CAPABILITY]
+    bad = [f"{f.verdict}:{f.evidence}" for f in findings if f.verdict != CAPABILITY]
     assert not bad, f"{name}: legitimate capability skip flagged - {bad}"
 
 
@@ -2476,16 +2531,13 @@ def test_mutation_on_a_real_module_goes_red_then_green(tmp_path):
     clean = real.read_text(encoding="utf-8")
     baseline = scan_source("tests/test_pro_match_index.py", clean)
     assert baseline, "no skip sites in the control module"
-    assert all(f.verdict == CAPABILITY for f in baseline), (
-        "control module is not clean: "
-        + "; ".join(f"{f.site.label}={f.verdict}" for f in baseline)
+    assert all(f.verdict == CAPABILITY for f in baseline), "control module is not clean: " + "; ".join(
+        f"{f.site.label}={f.verdict}" for f in baseline
     )
 
     mutant = tmp_path / "test_mutated.py"
-    mutant.write_text(clean + _DEFECT_MUTATIONS["bare_skip_on_tracked_path"],
-                      encoding="utf-8")
-    after = scan_source("tests/test_pro_match_index.py",
-                        mutant.read_text(encoding="utf-8"))
+    mutant.write_text(clean + _DEFECT_MUTATIONS["bare_skip_on_tracked_path"], encoding="utf-8")
+    after = scan_source("tests/test_pro_match_index.py", mutant.read_text(encoding="utf-8"))
     assert any(f.verdict == DEFECT for f in after), (
         "injecting a skip gated on tracked ops/rc_config.json did not flag: "
         + "; ".join(f"{f.site.label}={f.verdict}" for f in after)
@@ -2497,11 +2549,9 @@ def test_allowlist_does_not_excuse_a_different_defect():
     rel = next(iter(_ALLOWLIST))
     src = (_REPO_ROOT / rel).read_text(encoding="utf-8")
     injected = src + _DEFECT_MUTATIONS["unittest_skipunless_on_tracked_path"]
-    fresh = [f for f in scan_source(rel, injected)
-             if f.verdict != CAPABILITY and not _excused(f)]
+    fresh = [f for f in scan_source(rel, injected) if f.verdict != CAPABILITY and not _excused(f)]
     assert fresh, (
-        f"injecting a skip on tracked web/legacy_index.html into the "
-        f"allowlisted {rel} was swallowed by its exemption"
+        f"injecting a skip on tracked web/legacy_index.html into the allowlisted {rel} was swallowed by its exemption"
     )
 
 
@@ -2511,26 +2561,25 @@ def test_reviewed_unresolved_entries_each_match_exactly_one_site():
         assert reason.strip(), f"{rel}: reviewed entry carries no reason"
         path = _REPO_ROOT / rel
         assert path.is_file(), f"{rel}: reviewed module no longer on disk"
-        hits = [f for f in scan_source(rel, path.read_text(encoding="utf-8"))
-                if _condition_source(f) == cond]
+        hits = [f for f in scan_source(rel, path.read_text(encoding="utf-8")) if _condition_source(f) == cond]
         assert len(hits) == 1, f"{rel}: {cond!r} matches {len(hits)} skip sites, not 1"
         assert hits[0].verdict == UNRESOLVED, (
-            f"{rel}: {cond!r} now classifies {hits[0].verdict} - drop or re-review the entry")
-        assert hits[0].condition_pinned, (
-            f"{rel}: {cond!r} now folds to a constant or names a re-bound symbol")
+            f"{rel}: {cond!r} now classifies {hits[0].verdict} - drop or re-review the entry"
+        )
+        assert hits[0].condition_pinned, f"{rel}: {cond!r} now folds to a constant or names a re-bound symbol"
 
 
 _CODEC_LOOPHOLE_PROBES = {
     # Always true on CI and on Windows alike: a disabled test in disguise.
-    "codec_equals_utf8": '''
+    "codec_equals_utf8": """
 import sys
 import pytest
 @pytest.mark.skipif(sys.getfilesystemencoding() == "utf-8", reason="codec")
 def test_thing():
     assert True
-''',
+""",
     # The same shape as the reviewed site, but NOT the reviewed condition.
-    "unlisted_codec_comparison": '''
+    "unlisted_codec_comparison": """
 import sys
 import pytest
 def _encodable(name):
@@ -2543,9 +2592,9 @@ CAN = _encodable("x")
 @pytest.mark.skipif(not CAN, reason="filesystem codec cannot encode the name")
 def test_thing():
     assert True
-''',
+""",
     # A codec call OR'd onto a tracked-file check must not launder the DEFECT.
-    "tracked_path_or_codec": '''
+    "tracked_path_or_codec": """
 import sys
 import pytest
 from pathlib import Path
@@ -2555,7 +2604,7 @@ REPO = Path(__file__).resolve().parent.parent
                     reason="no patch pointer")
 def test_thing():
     assert True
-''',
+""",
 }
 
 
@@ -2579,49 +2628,65 @@ def test_codec_skips_outside_the_reviewed_table_are_rejected(name):
 # Linux (CI). A condition true on BOTH skips everywhere RC is ever tested.
 _RM440_PROBES = {
     # control: platform_equality_differs_by_host
-    "os_name_in_every_supported_value": ('''
+    "os_name_in_every_supported_value": (
+        """
 import os
 import pytest
 @pytest.mark.skipif(os.name in ("nt", "posix"), reason="host")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: skipunless_single_host
-    "sys_platform_in_every_supported_value": ('''
+    "sys_platform_in_every_supported_value": (
+        """
 import sys
 import pytest
 @pytest.mark.skipif(sys.platform in ("win32", "linux"), reason="host")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: platform_equality_differs_by_host
-    "platform_compare_or_truthy_literal": ('''
+    "platform_compare_or_truthy_literal": (
+        """
 import os
 import pytest
 @pytest.mark.skipif(os.name == "nt" or 1, reason="host")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: sys_platform_startswith_one_host
-    "constant_true_hidden_behind_a_module_binding": ('''
+    "constant_true_hidden_behind_a_module_binding": (
+        """
 import sys
 import pytest
 _ANY = sys.platform.startswith(("win", "linux"))
 @pytest.mark.skipif(_ANY, reason="host")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: skipunless_single_host
-    "skipunless_on_a_host_neither_runner_is": ('''
+    "skipunless_on_a_host_neither_runner_is": (
+        """
 import sys
 import unittest
 class T(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "sunos5", "solaris only")
     def test_thing(self):
         self.assertTrue(True)
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: capability_or_capability
-    "capability_or_constant_platform": ('''
+    "capability_or_constant_platform": (
+        """
 import os
 import shutil
 import pytest
@@ -2629,19 +2694,25 @@ import pytest
                     reason="node")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: bare_skip_under_a_host_specific_if
-    "bare_skip_under_a_constant_true_platform_if": ('''
+    "bare_skip_under_a_constant_true_platform_if": (
+        """
 import os
 import pytest
 def test_thing():
     if os.name in ("nt", "posix"):
         pytest.skip("host")
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: platform_equality_differs_by_host. A constant conjunct
     # restricts nothing, so it must not supply the capability signal.
-    "constant_platform_conjunct_launders_an_opaque_gate": ('''
+    "constant_platform_conjunct_launders_an_opaque_gate": (
+        """
 import os
 import pytest
 def _flag():
@@ -2649,9 +2720,12 @@ def _flag():
 @pytest.mark.skipif(os.name in ("nt", "posix") and _flag(), reason="opaque")
 def test_thing():
     assert True
-''', UNRESOLVED),
+""",
+        UNRESOLVED,
+    ),
     # control: capability_or_gitignored_artifact
-    "capability_or_tracked_file": ('''
+    "capability_or_tracked_file": (
+        """
 import shutil
 import pytest
 from pathlib import Path
@@ -2661,9 +2735,12 @@ REPO = Path(__file__).resolve().parent.parent
                     reason="node or config")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: capability_or_capability
-    "platform_or_tracked_file": ('''
+    "platform_or_tracked_file": (
+        """
 import sys
 import pytest
 from pathlib import Path
@@ -2673,9 +2750,12 @@ REPO = Path(__file__).resolve().parent.parent
                     reason="win32 or pointer")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: bare_skip_env_or_gitignored_artifact
-    "bare_skip_env_or_tracked_file": ('''
+    "bare_skip_env_or_tracked_file": (
+        """
 import os
 import pytest
 from pathlib import Path
@@ -2685,10 +2765,13 @@ def test_thing():
     if not os.environ.get("RC_LIVE") or not p.is_file():
         pytest.skip("opt-in or config absent")
     assert p.read_text()
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: skipunless_capability_and_gitignored_artifact (De Morgan: the
     # skip fires when EITHER arm is false, so the tracked arm fires alone)
-    "skipunless_capability_and_tracked_file": ('''
+    "skipunless_capability_and_tracked_file": (
+        """
 import os
 import shutil
 import unittest
@@ -2697,34 +2780,36 @@ class T(unittest.TestCase):
                          and os.path.exists("web/legacy_index.html"), "absent")
     def test_thing(self):
         self.assertTrue(True)
-''', DEFECT),
+""",
+        DEFECT,
+    ),
 }
 
 _RM440_CONTROLS = {
-    "platform_equality_differs_by_host": '''
+    "platform_equality_differs_by_host": """
 import os
 import pytest
 @pytest.mark.skipif(os.name != "nt", reason="host")
 def test_thing():
     assert True
-''',
-    "sys_platform_startswith_one_host": '''
+""",
+    "sys_platform_startswith_one_host": """
 import sys
 import pytest
 _WIN = sys.platform.startswith("win")
 @pytest.mark.skipif(_WIN, reason="host")
 def test_thing():
     assert True
-''',
-    "skipunless_single_host": '''
+""",
+    "skipunless_single_host": """
 import sys
 import unittest
 class T(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "win32 only")
     def test_thing(self):
         self.assertTrue(True)
-''',
-    "capability_or_capability": '''
+""",
+    "capability_or_capability": """
 import shutil
 import sys
 import pytest
@@ -2732,16 +2817,16 @@ import pytest
                     reason="node")
 def test_thing():
     assert True
-''',
-    "bare_skip_under_a_host_specific_if": '''
+""",
+    "bare_skip_under_a_host_specific_if": """
 import os
 import pytest
 def test_thing():
     if os.name == "nt":
         pytest.skip("host")
     assert True
-''',
-    "capability_or_gitignored_artifact": '''
+""",
+    "capability_or_gitignored_artifact": """
 import shutil
 import pytest
 from pathlib import Path
@@ -2751,8 +2836,8 @@ REPO = Path(__file__).resolve().parent.parent
                     reason="node or corpus")
 def test_thing():
     assert True
-''',
-    "bare_skip_env_or_gitignored_artifact": '''
+""",
+    "bare_skip_env_or_gitignored_artifact": """
 import os
 import pytest
 from pathlib import Path
@@ -2762,8 +2847,8 @@ def test_thing():
     if not os.environ.get("RC_LIVE") or not p.is_file():
         pytest.skip("opt-in or corpus absent")
     assert p.stat()
-''',
-    "skipunless_capability_and_gitignored_artifact": '''
+""",
+    "skipunless_capability_and_gitignored_artifact": """
 import os
 import shutil
 import unittest
@@ -2772,10 +2857,10 @@ class T(unittest.TestCase):
                          and os.path.exists("data/rewind_history.db"), "absent")
     def test_thing(self):
         self.assertTrue(True)
-''',
+""",
     # A guarded-import sentinel has ONE binding per branch but is a capability
     # question, so constant evaluation must never read through it.
-    "optional_import_sentinel_compared_to_none": '''
+    "optional_import_sentinel_compared_to_none": """
 import pytest
 try:
     import numpy as np
@@ -2784,7 +2869,7 @@ except ImportError:
 @pytest.mark.skipif(np is None, reason="numpy absent")
 def test_thing():
     assert np
-''',
+""",
 }
 
 
@@ -2793,9 +2878,8 @@ def test_rm440_loophole_probe_is_rejected(name):
     src, expected = _RM440_PROBES[name]
     findings = scan_source("tests/test_mutant.py", src)
     assert findings, f"{name}: no skip site found at all"
-    assert [f.verdict for f in findings] == [expected], (
-        f"{name}: expected {expected}, got "
-        + "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
+    assert [f.verdict for f in findings] == [expected], f"{name}: expected {expected}, got " + "; ".join(
+        f"{f.verdict}:{f.evidence}" for f in findings
     )
 
 
@@ -2816,14 +2900,10 @@ def test_rm440_rm150_measured_false_positive_is_still_accepted():
     """
     src = _CAPABILITY_CONTROLS["vanished_path_but_the_premise_is_a_live_endpoint"]
     findings = scan_source("tests/test_vision_server_bind_rm150.py", src)
-    assert [f.verdict for f in findings] == [CAPABILITY], (
-        "; ".join(f"{f.verdict}:{f.evidence}" for f in findings))
+    assert [f.verdict for f in findings] == [CAPABILITY], "; ".join(f"{f.verdict}:{f.evidence}" for f in findings)
 
 
-_RM440_REVIEWED_DEF = (
-    "FS_LISTS_HIGH_SURROGATE_NAME = "
-    "filesystem_can_list_note_name(HIGH_SURROGATE_NOTE_NAME)"
-)
+_RM440_REVIEWED_DEF = "FS_LISTS_HIGH_SURROGATE_NAME = filesystem_can_list_note_name(HIGH_SURROGATE_NOTE_NAME)"
 
 
 def _reviewed_site_flags(src: str) -> bool:
@@ -2834,8 +2914,7 @@ def _reviewed_site_flags(src: str) -> bool:
     return f.verdict != CAPABILITY and not _excused(f)
 
 
-@pytest.mark.parametrize("variant", ["replaced_by_false", "replaced_by_true",
-                                     "rebound_after_definition"])
+@pytest.mark.parametrize("variant", ["replaced_by_false", "replaced_by_true", "rebound_after_definition"])
 def test_rm440_reviewed_symbol_redefined_as_a_constant_is_refused(variant):
     rel = next(iter(_REVIEWED_UNRESOLVED))[0]
     clean = (_REPO_ROOT / rel).read_text(encoding="utf-8")
@@ -2846,8 +2925,7 @@ def test_rm440_reviewed_symbol_redefined_as_a_constant_is_refused(variant):
     new = {
         "replaced_by_false": "FS_LISTS_HIGH_SURROGATE_NAME = False",
         "replaced_by_true": "FS_LISTS_HIGH_SURROGATE_NAME = True",
-        "rebound_after_definition": (_RM440_REVIEWED_DEF
-                                     + "\nFS_LISTS_HIGH_SURROGATE_NAME = False"),
+        "rebound_after_definition": (_RM440_REVIEWED_DEF + "\nFS_LISTS_HIGH_SURROGATE_NAME = False"),
     }[variant]
     assert _reviewed_site_flags(clean.replace(_RM440_REVIEWED_DEF, new))
 
@@ -2895,15 +2973,12 @@ def test_known_real_sites_classify_as_documented():
     assert len(rm175) == 2, f"expected 2 skip sites in RM-175, got {len(rm175)}"
     assert {f.verdict for f in rm175} == {CAPABILITY}
     assert all("tracked-lfs=" in f.evidence for f in rm175), (
-        "RM-175 sites are CAPABILITY for some reason other than git-LFS: "
-        + "; ".join(f.evidence for f in rm175)
+        "RM-175 sites are CAPABILITY for some reason other than git-LFS: " + "; ".join(f.evidence for f in rm175)
     )
-    assert all("tracked=" not in f.evidence.replace("tracked-lfs=", "")
-               for f in rm175)
+    assert all("tracked=" not in f.evidence.replace("tracked-lfs=", "") for f in rm175)
 
     # Guards ABOUT skips must not be mistaken for skip sites.
-    stack = by_module.get(
-        "agents/daemon_slayer/tests/test_stack_ramp_schema_126.py", [])
+    stack = by_module.get("agents/daemon_slayer/tests/test_stack_ramp_schema_126.py", [])
     assert not stack, f"BurstSkipTests misread as a skip site: {stack}"
 
 
@@ -2922,24 +2997,31 @@ def _verdicts(src: str) -> list[str]:
 # none may classify CAPABILITY. The remaining rows are controls on the runner
 # constant-true rule.
 _RM449_OFF_RUNNER = {
-    "skipif_darwin_only": ('''
+    "skipif_darwin_only": (
+        """
 import sys
 import pytest
 @pytest.mark.skipif(sys.platform == "darwin", reason="darwin only")
 def test_thing():
     assert True
-''', UNRESOLVED),
-    "skipif_platform_system_neither_runner": ('''
+""",
+        UNRESOLVED,
+    ),
+    "skipif_platform_system_neither_runner": (
+        """
 import platform
 import pytest
 @pytest.mark.skipif(platform.system().lower() not in ("windows", "linux"),
                     reason="runners only")
 def test_thing():
     assert True
-''', UNRESOLVED),
+""",
+        UNRESOLVED,
+    ),
     # The site gets no verdict of its own, so the scan widens to the whole
     # function and reads the tracked config the body opens.
-    "bare_skip_under_a_darwin_if_with_a_tracked_body": ('''
+    "bare_skip_under_a_darwin_if_with_a_tracked_body": (
+        """
 import sys
 import pytest
 from pathlib import Path
@@ -2948,8 +3030,11 @@ def test_thing():
     if sys.platform == "darwin":
         pytest.skip("darwin")
     assert (REPO / "ops" / "rc_config.json").read_text()
-''', DEFECT),
-    "darwin_and_opaque_flag": ('''
+""",
+        DEFECT,
+    ),
+    "darwin_and_opaque_flag": (
+        """
 import sys
 import pytest
 def _flag():
@@ -2957,8 +3042,11 @@ def _flag():
 @pytest.mark.skipif(sys.platform == "darwin" and _flag(), reason="darwin")
 def test_thing():
     assert True
-''', UNRESOLVED),
-    "skipunless_not_darwin_or_opaque_flag": ('''
+""",
+        UNRESOLVED,
+    ),
+    "skipunless_not_darwin_or_opaque_flag": (
+        """
 import sys
 import unittest
 def _flag():
@@ -2967,36 +3055,48 @@ class T(unittest.TestCase):
     @unittest.skipUnless(sys.platform != "darwin" or _flag(), "not darwin")
     def test_thing(self):
         self.assertTrue(True)
-''', UNRESOLVED),
+""",
+        UNRESOLVED,
+    ),
     # control: fires on both runners, so darwin being different saves nothing.
-    "skipunless_darwin_only": ('''
+    "skipunless_darwin_only": (
+        """
 import sys
 import unittest
 class T(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "darwin", "darwin only")
     def test_thing(self):
         self.assertTrue(True)
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: true on every modelled host.
-    "platform_system_in_all_three": ('''
+    "platform_system_in_all_three": (
+        """
 import platform
 import pytest
 @pytest.mark.skipif(platform.system().lower() in ("windows", "linux", "darwin"),
                     reason="host")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: a 3-host rule would call this CAPABILITY, because it is false on
     # darwin. It fires on both runners, so it is a disabled test.
-    "runner_constant_true_but_false_on_darwin": ('''
+    "runner_constant_true_but_false_on_darwin": (
+        """
 import sys
 import pytest
 @pytest.mark.skipif(sys.platform.startswith(("win", "linux")), reason="host")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
     # control: a runner-constant conjunct must still not supply a capability.
-    "runner_constant_conjunct_false_on_darwin_launders_nothing": ('''
+    "runner_constant_conjunct_false_on_darwin_launders_nothing": (
+        """
 import sys
 import pytest
 def _flag():
@@ -3004,17 +3104,23 @@ def _flag():
 @pytest.mark.skipif(sys.platform in ("win32", "linux") and _flag(), reason="x")
 def test_thing():
     assert True
-''', UNRESOLVED),
+""",
+        UNRESOLVED,
+    ),
     # control: fires on no modelled host - a dead gate, still not judged.
-    "skipif_on_a_host_nobody_models": ('''
+    "skipif_on_a_host_nobody_models": (
+        """
 import sys
 import pytest
 @pytest.mark.skipif(sys.platform == "sunos5", reason="solaris only")
 def test_thing():
     assert True
-''', UNRESOLVED),
+""",
+        UNRESOLVED,
+    ),
     # control: the darwin arm is dropped, the tracked arm convicts on its own.
-    "darwin_or_tracked_file": ('''
+    "darwin_or_tracked_file": (
+        """
 import sys
 import pytest
 from pathlib import Path
@@ -3024,7 +3130,9 @@ REPO = Path(__file__).resolve().parent.parent
                     reason="darwin or config")
 def test_thing():
     assert True
-''', DEFECT),
+""",
+        DEFECT,
+    ),
 }
 
 
@@ -3036,12 +3144,11 @@ def test_rm449_off_runner_platform_gates_are_not_rescued(name):
 
 
 # (2) The constant-true refusal in `_excused` must beat an artifact exemption.
-_RM449_ALLOWLISTED_POINTER = (
-    '(_RM449_R / "data" / "daemon_slayer" / "current.txt").exists()')
+_RM449_ALLOWLISTED_POINTER = '(_RM449_R / "data" / "daemon_slayer" / "current.txt").exists()'
 
 
 def _rm449_allowlisted_injection(condition: str) -> str:
-    return f'''
+    return f"""
 
 import sys
 from pathlib import Path as _RM449_Path
@@ -3049,7 +3156,7 @@ _RM449_R = _RM449_Path(__file__).resolve().parent.parent
 @pytest.mark.skipif({condition}, reason="pointer")
 def test_rm449_injected():
     assert True
-'''
+"""
 
 
 def test_rm449_constant_true_skip_is_not_excused_by_the_artifact_allowlist():
@@ -3082,19 +3189,15 @@ def test_rm449_constant_true_skip_is_not_excused_by_the_artifact_allowlist():
 # (3) Wrapped platform reads. Each probe is always true on both runners; its
 # control differs only in the literal and genuinely differs per host.
 _RM449_WRAPPED = {
-    "len_of_sys_platform": (
-        "len(sys.platform) > 0", "len(os.name) == 2"),
-    "slice_of_sys_platform": (
-        'sys.platform[:3] != "xyz"', 'sys.platform[:3] == "win"'),
-    "index_of_os_name": (
-        'os.name[0] in ("n", "p")', 'os.name[0] == "n"'),
-    "str_of_os_name": (
-        'str(os.name) != "java"', 'str(os.name) == "nt"'),
+    "len_of_sys_platform": ("len(sys.platform) > 0", "len(os.name) == 2"),
+    "slice_of_sys_platform": ('sys.platform[:3] != "xyz"', 'sys.platform[:3] == "win"'),
+    "index_of_os_name": ('os.name[0] in ("n", "p")', 'os.name[0] == "n"'),
+    "str_of_os_name": ('str(os.name) != "java"', 'str(os.name) == "nt"'),
 }
 
 
 def _rm449_wrapped_source(condition: str, prelude: str = "") -> str:
-    return f'''
+    return f"""
 import os
 import sys
 import pytest
@@ -3102,7 +3205,7 @@ import pytest
 @pytest.mark.skipif({condition}, reason="host")
 def test_thing():
     assert True
-'''
+"""
 
 
 @pytest.mark.parametrize("name", sorted(_RM449_WRAPPED))
@@ -3125,10 +3228,8 @@ def test_rm449_constant_subscript_disjunct_supplies_no_capability():
     The control differs only in the slice bounds and genuinely varies by host.
     """
     prelude = 'def _flag():\n    return int("1")\n'
-    assert _verdicts(_rm449_wrapped_source(
-        "os.name[:0] or _flag()", prelude)) == [UNRESOLVED]
-    assert _verdicts(_rm449_wrapped_source(
-        'os.name[1:2] == "t" or _flag()', prelude)) == [CAPABILITY]
+    assert _verdicts(_rm449_wrapped_source("os.name[:0] or _flag()", prelude)) == [UNRESOLVED]
+    assert _verdicts(_rm449_wrapped_source('os.name[1:2] == "t" or _flag()', prelude)) == [CAPABILITY]
 
 
 @pytest.mark.parametrize("builtin", ["len", "str"])
@@ -3141,10 +3242,8 @@ def test_rm449_shadowed_builtin_is_not_folded(builtin):
     the fold being absent altogether.
     """
     probe, prelude = {
-        "len": ("len(sys.platform) > 0",
-                'def len(x):\n    return 0 if x == "win32" else 1\n'),
-        "str": ('str(os.name) != "java"',
-                'def str(x):\n    return "java" if x == "nt" else x\n'),
+        "len": ("len(sys.platform) > 0", 'def len(x):\n    return 0 if x == "win32" else 1\n'),
+        "str": ('str(os.name) != "java"', 'def str(x):\n    return "java" if x == "nt" else x\n'),
     }[builtin]
     assert _verdicts(_rm449_wrapped_source(probe, prelude)) == [CAPABILITY]
     assert _verdicts(_rm449_wrapped_source(probe)) == [DEFECT]
@@ -3154,55 +3253,65 @@ def test_rm449_shadowed_builtin_is_not_folded(builtin):
 # (a) Faked platform reads, from the two refute rounds against the withdrawn
 # off-runner rescue. With no rescue none of these can be accepted; each pins
 # the verdict the guard gave before RM-449 and must never be CAPABILITY.
-_RM449_HDR = ("import pytest\nfrom pathlib import Path\n"
-              "REPO = Path(__file__).resolve().parent.parent\n")
+_RM449_HDR = "import pytest\nfrom pathlib import Path\nREPO = Path(__file__).resolve().parent.parent\n"
 
 
-def _rm449_fake_bare(prelude: str, cond: str = 'sys.platform == "darwin"',
-                     local: str = "", params: str = "") -> str:
-    return (_RM449_HDR + prelude + f"\ndef test_thing({params}):\n"
-            + (f"    {local}\n" if local else "")
-            + f"    if {cond}:\n        pytest.skip('darwin')\n"
-            "    assert (REPO / 'ops' / 'rc_config.json').read_text()\n")
+def _rm449_fake_bare(prelude: str, cond: str = 'sys.platform == "darwin"', local: str = "", params: str = "") -> str:
+    return (
+        _RM449_HDR
+        + prelude
+        + f"\ndef test_thing({params}):\n"
+        + (f"    {local}\n" if local else "")
+        + f"    if {cond}:\n        pytest.skip('darwin')\n"
+        "    assert (REPO / 'ops' / 'rc_config.json').read_text()\n"
+    )
 
 
 _RM449_FAKE_BARE = {
     "real_import_control": ("import sys", "", ""),
-    "module_rebinding": (
-        "import sys, types\nsys = types.SimpleNamespace(platform='darwin')", "", ""),
-    "local_rebinding": (
-        "import sys, types", "sys = types.SimpleNamespace(platform='darwin')", ""),
+    "module_rebinding": ("import sys, types\nsys = types.SimpleNamespace(platform='darwin')", "", ""),
+    "local_rebinding": ("import sys, types", "sys = types.SimpleNamespace(platform='darwin')", ""),
     "aliased_import": ("import sys\nimport fakesys as sys", "", ""),
-    "match_capture": ("import sys, types\nmatch types.SimpleNamespace(platform="
-                      "'darwin'):\n    case sys:\n        pass", "", ""),
-    "match_as": ("import sys\nmatch 1:\n    case object() as sys:\n        pass",
-                 "", ""),
-    "monkeypatch_setattr": (
-        "import sys", "monkeypatch.setattr(sys, 'platform', 'darwin')",
-        "monkeypatch"),
+    "match_capture": (
+        "import sys, types\nmatch types.SimpleNamespace(platform='darwin'):\n    case sys:\n        pass",
+        "",
+        "",
+    ),
+    "match_as": ("import sys\nmatch 1:\n    case object() as sys:\n        pass", "", ""),
+    "monkeypatch_setattr": ("import sys", "monkeypatch.setattr(sys, 'platform', 'darwin')", "monkeypatch"),
     "attribute_store": ("import sys\nsys.platform = 'darwin'", "", ""),
     "setattr_call": ("import sys\nsetattr(sys, 'platform', 'darwin')", "", ""),
     "star_import": ("import sys\nfrom fakeplat import *", "", ""),
-    "globals_store": ("import sys, types\nglobals()['sys'] = "
-                      "types.SimpleNamespace(platform='darwin')", "", ""),
-    "exec_rebinding": (
-        "import sys\nexec(\"sys = type('S', (), {'platform': 'darwin'})\")", "", ""),
+    "globals_store": ("import sys, types\nglobals()['sys'] = types.SimpleNamespace(platform='darwin')", "", ""),
+    "exec_rebinding": ("import sys\nexec(\"sys = type('S', (), {'platform': 'darwin'})\")", "", ""),
 }
 _RM449_FAKE_PLATFORM = {
-    **{name: (_rm449_fake_bare(pre, local=local, params=params), DEFECT)
-       for name, (pre, local, params) in _RM449_FAKE_BARE.items()},
-    "platform_system_patched": (_rm449_fake_bare(
-        "import platform\nplatform.system = lambda: 'Darwin'",
-        'platform.system() == "Darwin"'), DEFECT),
-    "from_import_of_a_fake_platform": (_rm449_fake_bare(
-        "from fakeplat import platform", 'platform.system() == "Darwin"'), DEFECT),
-    "short_circuit_past_a_fake_read": (_rm449_fake_bare(
-        "import sys\nfrom fakeplat import platform",
-        'sys.platform == "darwin" or platform.system() == "Nope"'), DEFECT),
-    "fake_read_behind_a_darwin_conjunct": (_rm449_fake_bare(
-        "import sys\nfrom fakeplat import platform",
-        'sys.platform == "darwin" and platform.system() == "Darwin"'), DEFECT),
-    "module_rebinding_skipif_and_tracked": ('''
+    **{
+        name: (_rm449_fake_bare(pre, local=local, params=params), DEFECT)
+        for name, (pre, local, params) in _RM449_FAKE_BARE.items()
+    },
+    "platform_system_patched": (
+        _rm449_fake_bare("import platform\nplatform.system = lambda: 'Darwin'", 'platform.system() == "Darwin"'),
+        DEFECT,
+    ),
+    "from_import_of_a_fake_platform": (
+        _rm449_fake_bare("from fakeplat import platform", 'platform.system() == "Darwin"'),
+        DEFECT,
+    ),
+    "short_circuit_past_a_fake_read": (
+        _rm449_fake_bare(
+            "import sys\nfrom fakeplat import platform", 'sys.platform == "darwin" or platform.system() == "Nope"'
+        ),
+        DEFECT,
+    ),
+    "fake_read_behind_a_darwin_conjunct": (
+        _rm449_fake_bare(
+            "import sys\nfrom fakeplat import platform", 'sys.platform == "darwin" and platform.system() == "Darwin"'
+        ),
+        DEFECT,
+    ),
+    "module_rebinding_skipif_and_tracked": (
+        """
 import sys
 import types
 import pytest
@@ -3214,7 +3323,9 @@ sys = types.SimpleNamespace(platform="darwin")
                     reason="darwin")
 def test_thing():
     assert True
-''', UNRESOLVED),
+""",
+        UNRESOLVED,
+    ),
 }
 
 
@@ -3244,8 +3355,7 @@ _RM449_ORDERING = {
 
 @pytest.mark.parametrize("condition", sorted(_RM449_ORDERING))
 def test_rm449_ordering_comparisons_evaluate_per_host(condition):
-    assert _verdicts(_rm449_wrapped_source(condition)) == [
-        _RM449_ORDERING[condition]]
+    assert _verdicts(_rm449_wrapped_source(condition)) == [_RM449_ORDERING[condition]]
 
 
 # (c) Negative indexes and slices are always-true on both runners here.
@@ -3264,13 +3374,16 @@ def test_rm449_negative_index_and_slice_are_folded(probe):
 # (d) Inputs the evaluator cannot fold must read as unresolved, never raise:
 # a non-int index or slice bound, a zero slice step, an out-of-range index on
 # one runner, and arithmetic negation of a string.
-@pytest.mark.parametrize("condition", [
-    'os.name["a"] == "n"',
-    'os.name["a":] == "n"',
-    'os.name[::0] == "n"',
-    'os.name[3] == "i"',
-    '(-os.name) == 1',
-])
+@pytest.mark.parametrize(
+    "condition",
+    [
+        'os.name["a"] == "n"',
+        'os.name["a":] == "n"',
+        'os.name[::0] == "n"',
+        'os.name[3] == "i"',
+        "(-os.name) == 1",
+    ],
+)
 def test_rm449_unfoldable_subscripts_do_not_raise(condition):
     # Each still names `os.name`, so with nothing folded it keeps the platform
     # credit it had before RM-449.
@@ -3285,8 +3398,7 @@ _RM449_REBIND_FORMS = {
     "for_loop_target": f"for len in ({_RM449_LEN},):\n    pass\n",
     "import_binding": "from fakebuiltins import len\n",
     "function_parameter": "def _helper(len):\n    return len\n",
-    "except_handler_name": ("try:\n    pass\nexcept Exception as len:\n"
-                            "    pass\n"),
+    "except_handler_name": ("try:\n    pass\nexcept Exception as len:\n    pass\n"),
     "class_definition": "class len:\n    pass\n",
     "match_capture": "match 1:\n    case len:\n        pass\n",
     "match_mapping_rest": "match {}:\n    case {**len}:\n        pass\n",
@@ -3297,6 +3409,86 @@ _RM449_REBIND_FORMS = {
 
 @pytest.mark.parametrize("form", sorted(_RM449_REBIND_FORMS))
 def test_rm449_any_rebinding_of_a_builtin_wrapper_blocks_the_fold(form):
-    src = _rm449_wrapped_source("len(sys.platform) > 0",
-                                _RM449_REBIND_FORMS[form])
+    src = _rm449_wrapped_source("len(sys.platform) > 0", _RM449_REBIND_FORMS[form])
     assert _verdicts(src) == [CAPABILITY], form
+
+
+# --- RM-458: refusal taint, after two refuted fold attempts ------------------ #
+# Folding bool / min / max / sorted / f-strings was refuted twice on CPython
+# fidelity (list and set literals are modelled as tuples) and reverted. What
+# remains is a pure refusal: a platform read under one of those wrappers earns
+# no platform credit. MEASURED against c3cde5dc6 over 5609 generated and
+# verifier-authored conditions: 0 refused-then-accepted, and all 179 real skip
+# sites keep their verdicts. The cost is deliberate: a genuinely host-varying
+# wrapped read (`bool(sys.platform == "win32")`) is refused too - write the
+# bare comparison instead.
+_RM458_TAINTED = [
+    "bool(sys.platform)",
+    "bool(os.name[:1])",
+    'bool(sys.platform == "win32")',
+    'min(os.name) != "z"',
+    'max(os.name) == "t"',
+    'sorted(os.name) == ["n", "t"]',
+    'f"{os.name}" != "java"',
+    'f"{os.name!r:>9}" == "nt"',
+]
+
+
+@pytest.mark.parametrize("condition", _RM458_TAINTED)
+def test_rm458_wrapped_platform_read_earns_no_capability(condition):
+    assert _verdicts(_rm449_wrapped_source(condition)) == [UNRESOLVED], condition
+
+
+@pytest.mark.parametrize(
+    "condition, control",
+    [
+        ('bool(sys.platform == "win32")', 'sys.platform == "win32"'),
+        ('min(os.name) == "n"', 'os.name[0] == "n"'),
+        ('f"{os.name}" == "nt"', 'os.name == "nt"'),
+    ],
+)
+def test_rm458_the_same_read_unwrapped_keeps_its_capability(condition, control):
+    """Control: only the wrapper differs, so the taint is what refuses it."""
+    assert _verdicts(_rm449_wrapped_source(control)) == [CAPABILITY]
+    assert _verdicts(_rm449_wrapped_source(condition)) != [CAPABILITY]
+
+
+def test_rm458_taint_removes_only_the_platform_signal():
+    """A non-platform capability under a wrapper still counts."""
+    prelude = "import shutil\n"
+    assert _verdicts(_rm449_wrapped_source('bool(shutil.which("git"))', prelude)) == [CAPABILITY]
+
+
+def test_rm458_a_shadowed_wrapper_is_not_tainted():
+    prelude = "def bool(x):\n    return x\n"
+    assert _verdicts(_rm449_wrapped_source("bool(sys.platform)", prelude)) == [CAPABILITY]
+
+
+# The verifier's refuting snippets against both fold rounds. Each was DEFECT at
+# c3cde5dc6, became CAPABILITY under a fold, and must stay DEFECT.
+_RM458_REFUTATIONS = [
+    '(sorted(os.name[:0]) != () and not TR.exists()) or shutil.which("git") is None',
+    '(str(sorted(os.name[:0])) != "()" and not TR.exists()) or shutil.which("git") is None',
+    "(bool(sorted(os.name[:0])) or True) and not TR.exists()",
+    '(f"{sorted(os.name[:0])}" != "()" and not TR.exists()) or shutil.which("git") is None',
+    '(not (max([{"a","z"},{"b"}]) == ("b",)) and not TR.exists()) or shutil.which("git") is None',
+    '(not (str(max([[]])) == "()") and not TR.exists()) or shutil.which("git") is None',
+]
+
+
+@pytest.mark.parametrize("condition", _RM458_REFUTATIONS)
+def test_rm458_refuted_fold_snippets_stay_refused(condition):
+    src = f"""
+import os
+import shutil
+import pytest
+from pathlib import Path
+ROOT = Path(__file__).resolve().parents[1]
+TR = ROOT / "core" / "match_db.py"
+@pytest.mark.skipif({condition}, reason="h")
+def test_x():
+    pass
+"""
+    findings = scan_source("tests/test_mutant.py", src)
+    assert [f.verdict for f in findings] == [DEFECT], condition
+    assert not any(_excused(f) for f in findings)
