@@ -1392,6 +1392,61 @@ def _is_called(node: ast.AST, model: _Model) -> bool:
     return isinstance(parent, ast.Call) and parent.func is node
 
 
+# RM-472: shapes the guard REFUSES to read, rather than learns to read.
+#
+# A comprehension or a lambda re-expresses a probe relationship the resolver
+# recognises only in its direct spelling. `any(k == sys.platform for k in
+# os.environ)` and `[k for k in os.environ if k == sys.platform]` are
+# `sys.platform in os.environ` with the membership test turned inside out, and
+# `(lambda p: os.environ.get(p))(sys.platform)` hides the probe KEY behind a
+# parameter binding that `_probe_keys` never sees. All three graded CAPABILITY
+# at BOTH base and head, so none of them is a regression and none of them is a
+# new acceptance - they were un-refused shapes, standing alongside the declared
+# two-hop receiver gap, and this closes them.
+#
+# The close is BY REFUSAL, never by widening. Teaching `_probe_keys` to read a
+# comprehension would GROW the accepted vocabulary, and every growth of that
+# vocabulary is a fresh chance to grant credit by accident. Refusal is monotone
+# - it can only WITHHOLD - so it cannot create an acceptance base did not have.
+#
+# The refusal is aimed at the shape CARRYING A PLATFORM NAME, and the first
+# draft that refused every comprehension was MEASURED WRONG on the real tree.
+# `tests/test_build_order_producer_fail_loud.py:331` gates a `skipTest` on a
+# list comprehension over the DDragon registries - a genuine tree-shape and
+# environment question with no platform read anywhere in it - and refusing it
+# wholesale stripped those credits and convicted the site DEFECT. A blunt
+# refusal is therefore not free: the real-site census pays for it. The mention
+# test keeps the refusal on exactly the laundering family the row names.
+#
+# It is PURELY SYNTACTIC: no binding is followed, no helper is entered, no
+# module is crossed. Receiver resolution already costs what the tree can bear
+# (extending it once took `scan_tree` from 12.87s to 19.87s median), so a
+# refusal that resolves nothing is the only affordable shape. The price of that
+# is a DECLARED GAP, in the same family as the two-hop receiver gap: a platform
+# read reached through a binding (`P = sys.platform` and then
+# `[k for k in os.environ if k == P]`) is not seen, because seeing it means
+# resolving. The miss direction is FAILURE TO REFUSE, so it can never create an
+# acceptance that base did not already have.
+_UNANALYSABLE_SHAPES = (ast.Lambda, ast.GeneratorExp, ast.ListComp, ast.SetComp, ast.DictComp)
+
+
+def _mentions_platform_syntactically(node: ast.AST) -> bool:
+    """Does a platform dotted name appear literally under `node`? No resolution."""
+    return any(isinstance(n, ast.Attribute) and _dotted(n) in _PLATFORM_DOTTED for n in ast.walk(node))
+
+
+def _is_unanalysable_shape(node: ast.AST) -> bool:
+    """True for a platform-naming comprehension, lambda, or invoked lambda."""
+    shaped = isinstance(node, _UNANALYSABLE_SHAPES) or (
+        # An immediately-invoked lambda refuses at the CALL, not merely at the
+        # lambda. Refusing only the body leaves the ARGUMENT outside the taint,
+        # and the argument is where `sys.platform` sits - the whole shape.
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Lambda)
+    )
+    return shaped and _mentions_platform_syntactically(node)
+
+
 _PROBE_CREDITS = ("platform", "binary", "env", "optional_import")
 # RM-466: what a laundered platform read forfeits. `network` joins the probe
 # credits because `socket.gethostbyname(sys.platform)` is a platform question
@@ -1528,6 +1583,14 @@ def _collect(node: ast.AST, model: _Model, scope: ast.AST, ctx: _Ctx, seen: froz
     if node is None:
         return
     sig = ctx.sig
+
+    # RM-472: a comprehension- or lambda-shaped condition is UN-ANALYSABLE, and
+    # is refused outright. Placed FIRST, ahead of the host fold, so no folding,
+    # probe or credit rule ever runs over a shape the resolver has declined to
+    # read - and because the check is syntactic it costs one isinstance.
+    if _is_unanalysable_shape(node):
+        _collect_tainted(node, model, scope, ctx, seen, depth, clear=_CAPABILITY_CREDITS)
+        return
 
     # RM-440: an expression with one known value on every supported host asks
     # nothing, so nothing under it may be credited - above all not the platform
@@ -4440,3 +4503,133 @@ def test_rm467_boolop_truth_over_an_unknown_operand_is_recorded_not_refused():
     assert _host_truth(m.tree.body[-1].value, m, m.tree) is False
     got = _rm466_verdicts('("" or f() and "") and os.getenv("X")')
     assert got and all(v != CAPABILITY for v, _ in got), got
+
+
+# --------------------------------------------------------------------------- #
+# RM-472: comprehension- and lambda-shaped platform laundering
+# --------------------------------------------------------------------------- #
+# Three shapes were measured grading CAPABILITY at BOTH base and head, so none
+# of them was a regression and none was a new acceptance - they were un-refused
+# shapes standing next to the declared two-hop receiver gap:
+#
+#     any(k == sys.platform for k in os.environ)
+#     [k for k in os.environ if k == sys.platform]
+#     (lambda p: os.environ.get(p))(sys.platform)
+#
+# The first two are `sys.platform in os.environ` with the membership test
+# turned inside out; the third hides the probe KEY behind a parameter binding.
+# All three are closed BY REFUSAL (`_is_unanalysable_shape`), never by teaching
+# `_probe_keys` to read a comprehension - see the note on that function for why
+# growing the accepted vocabulary is the fix this row rules out.
+_RM472_HDR = _RM466_HDR + "F = lambda p: os.environ.get(p)\nP = sys.platform\n"
+
+
+def _rm472_verdicts(condition: str) -> list:
+    src = _RM472_HDR + f"@pytest.mark.skipif({condition}, reason='h')\ndef test_x():\n    pass\n"
+    return [(f.verdict, _excused(f)) for f in scan_source("tests/test_mutant.py", src)]
+
+
+_RM472_LAUNDERED = [
+    # The three shapes named in the row.
+    "any(k == sys.platform for k in os.environ)",
+    "[k for k in os.environ if k == sys.platform]",
+    "(lambda p: os.environ.get(p))(sys.platform)",
+    # Siblings, found by varying the consumer, the comprehension kind, the
+    # platform name and the probe the lambda hides.
+    "all(k != sys.platform for k in os.environ)",
+    "sum(1 for k in os.environ if k == sys.platform)",
+    "{k for k in os.environ if k == sys.platform}",
+    "{k: 1 for k in os.environ if k == sys.platform}",
+    "len([k for k in os.environ if k == sys.platform])",
+    "any(sys.platform in k for k in os.environ)",
+    "[k for k in os.environ if k == os.name]",
+    "[k for k in E if k == sys.platform]",
+    "(lambda p: os.environ.get(p))(os.name)",
+    "(lambda p: socket.gethostbyname(p))(sys.platform)",
+    "(lambda p: shutil.which(p))(sys.platform)",
+]
+
+
+@pytest.mark.parametrize("condition", _RM472_LAUNDERED)
+def test_rm472_comprehension_and_lambda_laundered_reads_earn_no_capability(condition):
+    got = _rm472_verdicts(condition)
+    assert got and all(v != CAPABILITY and not ex for v, ex in got), (condition, got)
+
+
+# Negative controls. Each is the SAME shape with the platform name taken out,
+# and each must keep its capability: the refusal is aimed at the laundering
+# family, not at comprehensions or lambdas in general. The first draft of this
+# row refused every comprehension and was MEASURED WRONG on the real tree - see
+# `test_rm472_a_platform_free_comprehension_gate_keeps_its_credits`.
+_RM472_CONTROLS = [
+    'any(k == "CI" for k in os.environ)',
+    '[k for k in os.environ if k == "CI"]',
+    '(lambda p: os.environ.get(p))("CI")',
+    '{k for k in os.environ if k == "CI"}',
+    '(lambda p: socket.gethostbyname(p))("localhost")',
+    '"CI" in os.environ',
+    'os.environ.get("CI")',
+]
+
+
+@pytest.mark.parametrize("condition", _RM472_CONTROLS)
+def test_rm472_the_same_shape_without_a_platform_name_keeps_its_capability(condition):
+    assert _rm472_verdicts(condition) == [(CAPABILITY, False)], condition
+
+
+def test_rm472_disarming_the_refusal_restores_every_acceptance(monkeypatch):
+    """The DISARM control: without `_is_unanalysable_shape` every laundered row
+    above grades CAPABILITY again.
+
+    This is what keeps the parametrized test from passing for the wrong reason.
+    Several of those conditions are refused for OTHER, older reasons the moment
+    a detail changes - `(lambda: sys.platform in os.environ)()` was already
+    refused at base by RM-466, because its zero-argument body spells the probe
+    directly - so a row that never exercised THIS refusal would still look
+    green. Disarming proves each row is carried by the RM-472 rule and nothing
+    else.
+    """
+    monkeypatch.setitem(globals(), "_is_unanalysable_shape", lambda node: False)
+    still_refused = [c for c in _RM472_LAUNDERED if _rm472_verdicts(c) != [(CAPABILITY, False)]]
+    assert still_refused == [], still_refused
+
+
+def test_rm472_a_platform_free_comprehension_gate_keeps_its_credits():
+    """The measurement that killed the blunt draft, pinned as a test.
+
+    `tests/test_build_order_producer_fail_loud.py` gates a `skipTest` on a list
+    comprehension over the real DDragon registries. It names no platform, and
+    its comprehension is where the environment and tree-shape credits live. A
+    refusal that did not test for a platform mention stripped both and convicted
+    that site DEFECT - a real-site census change, in the wrong direction, on a
+    site that is gating honestly. The shape is reproduced here rather than
+    cited by line, so moving the real site cannot rot the control.
+    """
+    cond = "not [p for p in Path(os.environ['R']).parents if (p / 'x.json').is_file()]"
+    assert _rm472_verdicts(cond) == [(CAPABILITY, False)]
+
+
+def test_rm472_the_refusal_needs_no_resolution_and_the_binding_hop_is_a_declared_gap():
+    """KNOWN GAP, recorded rather than hidden - the same shape as RM-466's.
+
+    `_is_unanalysable_shape` is purely SYNTACTIC: it asks whether a platform
+    dotted name appears literally under the comprehension or lambda, and
+    follows no binding, enters no helper and crosses no module. Receiver
+    resolution already costs what the tree can bear (extending it once took
+    `scan_tree` from 12.87s to 19.87s median), and measured on this tree the
+    refusal is effectively free. Timed by INTERLEAVING base and head in one
+    process, because a back-to-back before / after pair on this box is not
+    comparable - other slices were running, and one such pair timed a strictly
+    SLOWER draft as faster than the unmodified base. Interleaved, two runs of
+    five gave base 21.253s / head 21.188s (-0.3 percent) and base 20.237s /
+    head 20.449s (+1.1 percent): inside the run-to-run noise either way.
+
+    What that buys is three misses, all in the FAILURE TO REFUSE direction, so
+    none of them can create an acceptance base did not already have:
+      - a platform read reached through a binding (`P = sys.platform`),
+      - a lambda reached through a name (`F = lambda p: ...`, then `F(...)`),
+      - a named helper, which was never comprehension- or lambda-shaped at all.
+    """
+    assert _rm472_verdicts("[k for k in os.environ if k == P]") == [(CAPABILITY, False)]
+    assert _rm472_verdicts("F(sys.platform)") == [(CAPABILITY, False)]
+    assert _rm472_verdicts("(lambda p: os.environ.get(p))(P)") == [(CAPABILITY, False)]
