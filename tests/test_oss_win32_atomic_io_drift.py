@@ -300,10 +300,14 @@ def test_rc_specific_prose_is_absent_from_every_shipped_file(token):
 
 
 def test_every_shipped_file_is_ascii_with_lf_endings():
-    # The breadth of this file set is LOAD-BEARING beyond hygiene: it is what
-    # catches a CRLF-drifted shipped LICENSE, which the license compare below
-    # deliberately cannot see. Narrowing it is guarded - see
-    # test_the_ascii_lf_guard_still_enumerates_every_shipped_file.
+    # The breadth of this file set is LOAD-BEARING beyond hygiene: it is the
+    # ONLY CR guard the shipped non-.py files have, because the license
+    # compare below deliberately normalizes line endings away. Narrowing the
+    # set this loop READS is guarded, including by a filter placed BEFORE the
+    # read below - but NOT by the same filter placed after it. Do not edit
+    # this loop on the strength of that guard's name; read its WHAT IS NOT
+    # COVERED list first. See
+    # test_the_ascii_lf_guard_still_covers_the_non_py_shipped_files.
     problems = []
     for path in _package_all_files():
         raw = path.read_bytes()
@@ -316,67 +320,134 @@ def test_every_shipped_file_is_ascii_with_lf_endings():
     assert problems == [], f"ASCII / LF hygiene failed: {problems}"
 
 
-def _called_names(func: ast.FunctionDef) -> set:
-    """Every bare-name function called anywhere inside `func`."""
-    return {
-        n.func.id for n in ast.walk(func) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
-    }
+def _files_inspected_by(func, monkeypatch) -> set:
+    """Run `func` and return the set of resolved paths it actually READ.
+
+    This is how the coverage guard below grades the RESULT of the survivor's
+    enumeration instead of its source text. `Path.read_bytes` is recorded for
+    the duration of the call, so the returned set is exactly the files the
+    survivor opened, whatever route it took to decide on them.
+
+    `func`'s own VERDICT is deliberately discarded. An AssertionError from it
+    means it found real drift, which is that test's job to report and not this
+    one's; swallowing it keeps a single real CRLF regression from being
+    reported twice, and keeps this guard answering only the question it asks.
+    """
+    seen: set = set()
+    real_read_bytes = Path.read_bytes
+
+    def _recording_read_bytes(self):
+        seen.add(self.resolve())
+        return real_read_bytes(self)
+
+    monkeypatch.setattr(Path, "read_bytes", _recording_read_bytes)
+    try:
+        func()
+    except AssertionError:
+        pass
+    finally:
+        monkeypatch.undo()
+    return seen
 
 
-def test_the_ascii_lf_guard_still_enumerates_every_shipped_file():
-    """Make the LICENSE's dependence on the ASCII/LF guard EXPLICIT (RM-474).
+def test_the_ascii_lf_guard_still_covers_the_non_py_shipped_files(monkeypatch):
+    """Make the shipped non-.py files' dependence on the ASCII/LF guard
+    EXPLICIT and enforced (RM-474, then RM-474 gap-close).
 
-    WHY this exists, measured 2026-09-18 by performing the edit rather than
-    arguing about it: RM-471 replaced the LICENSE byte compare with a
+    WHY this exists, measured 2026-09-18 by performing the edits rather than
+    arguing about them: RM-471 replaced the LICENSE byte compare with a
     line-ending-NORMALIZED content compare, which is correct and is not in
-    question - but it cost a CRLF-drifted SHIPPED LICENSE its second
-    independent guard. Only `test_every_shipped_file_is_ascii_with_lf_endings`
-    still catches that, and it did not know it was load-bearing.
+    question - but it cost the shipped non-.py files their CR guard.
+    `test_every_shipped_file_is_ascii_with_lf_endings` is the only test that
+    still catches CRLF drift in them, and it did not know it was
+    load-bearing. Which files those are is DERIVED, not recited: it is
+    `_package_all_files()` with the `.py` files removed, which is why a newly
+    added shipped file is covered without editing this test. Read the
+    derivation rather than a list - an earlier draft of this docstring recited
+    four names and silently omitted `src/win32_atomic_io/py.typed`, which is
+    the staleness the derivation exists to avoid. (The LICENSE itself also has
+    `test_the_shipped_license_line_endings_are_pinned_independently`; its
+    siblings have nothing else.)
 
-    Observed at this HEAD: CRLF-drift the shipped LICENSE and that one test is
-    the ONLY failure (51 passed, 1 failed). Then narrow its file set from
-    `_package_all_files()` to `_package_py_files()` - a ONE-TOKEN edit, and
-    `_package_py_files()` already sits in this module as a ready-made
-    alternative - and the fully CRLF-drifted LICENSE goes green again (52
-    passed, 0 failed). Nothing in the suite objected. This test is what
-    objects.
+    Counts measured at this commit, 54 tests total:
+      - CRLF-drift the shipped README.md: 53 passed, 1 failed - the survivor.
+      - CRLF-drift the shipped LICENSE: 52 passed, 2 failed - the survivor
+        plus the independent CR pin.
+      - Narrow the survivor's file set from `_package_all_files()` to
+        `_package_py_files()`: caught here.
+      - Add `if path.suffix != ".py": continue` INSIDE the survivor's loop
+        BEFORE its `path.read_bytes()`, still calling `_package_all_files()`:
+        also caught here. An earlier, source-introspective version of this
+        guard read the survivor's AST for the names it called, and that filter
+        was INVISIBLE to it - CRLF README went 54 passed, 0 failed. That is
+        the gap this shape closes.
 
-    WHY this SHAPE rather than moving the CR check into the compare test: the
-    row permitted either, but only this one fails on the NARROWING ITSELF,
-    with no drift needed. Moving the check would merely make the narrowing
-    harmless and silent, and a future reader would still have no way to learn
-    that the breadth was ever deliberate. Both are wanted, so the independent
-    CR pin is ALSO restored, next to the compare test that needs it.
+    WHAT IS COVERED. Any narrowing of the set the survivor actually READS:
+    a filter inside its loop placed BEFORE `path.read_bytes()`, a swap of the
+    helper it calls, a rename or removal of the survivor itself, and a
+    narrowing of `_package_all_files()` (the required set is derived from it,
+    and the anchors below refuse an empty or .py-only answer). Each of those
+    four was measured at 53 passed, 1 failed.
 
-    A rewrite of the guard that enumerates the shipped files some other legal
-    way will trip this too. That is intended: it is a LOUD stop, not a silent
-    downgrade, and the fix is to re-point this assertion on purpose.
+    NOT the same filter placed AFTER `path.read_bytes()`. The bytes are
+    already read by then, so this guard observes full coverage and passes -
+    measured 54 passed, 0 failed, with and without a CRLF-drifted README.
+    That is an instance of the neutered-assertion class disclosed below, one
+    LINE-ORDER away from the edit that IS caught, so read "a filter inside the
+    loop" as "before the read" and nothing wider.
+
+    WHAT IS NOT COVERED, stated plainly so the next reader does not stop
+    looking:
+      - A survivor that still inspects every file but has its ASSERTION
+        neutered. It would read all the bytes and this guard would pass.
+      - A survivor rewritten to read bytes by some route other than
+        `Path.read_bytes` (`open(path, "rb").read()`, say). That fails HERE,
+        loudly, as a false positive rather than a silent miss - re-point
+        `_files_inspected_by` on purpose if that day comes.
+      - Deletion of THIS test. The chain terminates here and the terminal link
+        is unguarded; that is a disclosed gap, not an oversight.
     """
     survivor_name = "test_every_shipped_file_is_ascii_with_lf_endings"
-    tree = ast.parse(_THIS_FILE.read_bytes().decode("utf-8"))
-    survivor = _functions(tree).get(survivor_name)
-    assert survivor is not None, (
-        f"{survivor_name} was renamed or removed. It is the only test that catches a "
-        f"CRLF-drifted shipped LICENSE; re-point this guard at its replacement."
+    survivor = globals().get(survivor_name)
+    assert callable(survivor), (
+        f"{survivor_name} was renamed or removed. It is the only CR guard the shipped "
+        f"non-.py files have (see the derivation below for which those are), because "
+        f"the license compare normalizes line endings away on purpose. Re-point this "
+        f"guard at its replacement."
     )
 
-    called = _called_names(survivor)
-    assert "_package_all_files" in called, (
-        f"{survivor_name} no longer enumerates _package_all_files(), so it no longer "
-        f"covers the shipped LICENSE - and the license compare normalizes line endings "
-        f"away on purpose, so nothing else would catch a CRLF-drifted LICENSE. It calls "
-        f"{sorted(called)} instead."
-    )
-    assert "_package_py_files" not in called, (
-        f"{survivor_name} was narrowed to the .py files only. That is exactly the "
-        f"one-token regression this guard exists to stop: it leaves a CRLF-drifted "
-        f"shipped LICENSE fully green."
+    # The required set is DERIVED, so a newly added shipped file is covered
+    # without editing this test - but a derived set can go empty, and an empty
+    # set would satisfy the coverage assertion vacuously. These anchors are
+    # what stop that: the derivation must still produce these non-.py shipped
+    # files, by exact path. They are a deliberate SUBSET of it and not a
+    # census - `required` below is the full set, and it is wider than this
+    # list.
+    required = [p for p in _package_all_files() if p.suffix != ".py"]
+    anchors = [
+        _PKG_ROOT / "LICENSE",
+        _PKG_ROOT / "README.md",
+        _PKG_ROOT / "pyproject.toml",
+        _PKG_ROOT / ".gitattributes",
+        _PKG_ROOT / ".gitignore",
+    ]
+    absent = [str(p.relative_to(_REPO_ROOT)) for p in anchors if p not in required]
+    assert absent == [], (
+        f"_package_all_files() no longer yields these shipped non-.py files, so the "
+        f"coverage assertion below would be vacuous: {absent}"
     )
 
-    pkg_license = _PKG_ROOT / "LICENSE"
-    assert pkg_license in _package_all_files(), (
-        "the shipped LICENSE is not in _package_all_files(), so the ASCII/LF guard does "
-        "not actually reach it however it is spelled"
+    inspected = _files_inspected_by(survivor, monkeypatch)
+    assert inspected, (
+        f"{survivor_name} read no files at all. Either it was gutted, or it now reads "
+        f"bytes by a route _files_inspected_by does not observe."
+    )
+    missed = sorted(str(p.relative_to(_REPO_ROOT)) for p in required if p.resolve() not in inspected)
+    assert missed == [], (
+        f"{survivor_name} no longer inspects these shipped non-.py files, so nothing in "
+        f"the suite would catch CRLF or non-ASCII drift in them: {missed}. It inspected "
+        f"{len(inspected)} file(s). This is a NARROWING of the only guard they have - "
+        f"widen it back, or add a replacement guard and re-point this test at it."
     )
 
 
