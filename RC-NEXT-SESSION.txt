@@ -1,101 +1,39 @@
-NEXT SESSION - RC laned headless orchestrated parallel loop (wave 7)
--------------------------------------------------------------------
-Task: Continue laned orchestrated cycles against RC-local open rows. Same SHAPE:
-      merger + worktree slices on disjoint files + an independent adversarial
-      verifier before EVERY merge; the producer never grades its own work.
-      Wave 6 proved it for the SECOND wave running - a verifier overturned or
-      amended a producer claim in EVERY slice, no exceptions. Treat an ungraded
-      producer claim as UNVERIFIED by default and budget the grading pass.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES.md
-      (2026-09-18 block) + docs/LEDGER.md 1426 + git log. Probe live:
-      python tools/rc_facts.py ; python tools/moon_sync_poller.py --status ;
-      gh run list --branch main --limit 4.
-      RESTART CHECK: wave 6 touched NO runtime code except one DOCSTRING in
-      dashboard/_errors.py (executable region hash-identical). No restart owed -
-      but re-probe health.json anyway, do not inherit this.
-      WATCH ITEM, do NOT inherit as a bug: the RC pid moved during the suite in
-      BOTH wave 5 and wave 6 (wave 6: 24252 -> 18660), a supervisor bounce.
-      Health was clean after, both times. Second occurrence, so re-probe it -
-      do not diagnose it from a single reading and do not file it as a defect yet.
-
-WAVE 6 SHIPPED AND PUSHED: main at cabbc40bd, CI green (ci, docs-guards, pages).
-      Full dual suite run ONCE on the frozen merged tree, both exit 0.
-
-WAVE 7 CANDIDATES:
-  S1 RM-474 (NEW, filed at the wave 6 merge). Closing RM-471 cost the shipped
-     oss LICENSE its SECOND independent guard. The surviving compensating test
-     does not know it is load-bearing: a ONE-TOKEN narrowing of its file set
-     leaves a CRLF-drifted shipped LICENSE fully green. Acceptance: make the
-     coupling explicit and enforced - either assert the shipped-file set
-     actually contains the LICENSE, or move the CR check into the compare test -
-     and PROVE it by performing the one-token narrowing, showing the suite goes
-     RED, then reverting. Do NOT re-introduce a byte compare; RM-471's
-     normalisation is deliberate and its reason is recorded in the guard.
-
-  S2 RM-276 (re-filed AND amended in wave 6, now has an acceptance that can
-     actually fail). The defect is LIVE in the code but the live file does NOT
-     currently exercise it - every heading today sits behind a real separator.
-     The amended acceptance requires BOTH (4a) first-part blindness and (4b) the
-     interior-heading-in-a-later-block blindness, in TWO route shapes, with one
-     fixture arm per shape and a numeric disarm (2 of 3, then 3 of 3) for each.
-     A (4a)-only fix was BUILT AND MEASURED to leave both sibling arms failing,
-     so it cannot be argued into compliance. Read the row, not this summary.
-
-  OPERATOR CALL, not a slice: RM-239 / RM-242. Both stay OPEN and HELD. Wave 6
-     recorded a SETTLED result after the pair INVERTED FOUR TIMES. The blocker
-     is NOT effort - it is that RM-239's OWN LITERAL ACCEPTANCE IS UNSATISFIABLE
-     for seven of its own sites: six handlers have no handler object in scope,
-     and the helper the row prescribes emits a payload shape that would destroy
-     keys the UI and the tests depend on. That is a defect IN THE ROW. Rewriting
-     the acceptance is an authoring decision and needs the operator. Do NOT hand
-     either row to a fixer first. Do NOT re-derive the population from scratch -
-     compare against the published inclusion rule instead (25 sites / 19 modules,
-     rule published alongside the number), and note the TRAP: the total matches a
-     prior derivation to the digit while the MEMBERSHIP differs by six.
-
-DO NOT REDO (wave 6, LEDGER 1426, merges 8c14e8413 / bebadbafd / 342f71aeb /
-      5a5d18d92 / 82c1eafda / cabbc40bd): RM-470 SHIPPED (ast.AsyncFor arm),
-      RM-473 SHIPPED (the with / async with / no-as arm - the arm is
-      DELIBERATELY BROADER than the gap that was declared and the widening was
-      independently adjudicated CORRECT, because a bare journal-mode execute has
-      been a finding since RM-413, so excluding the with-wrapped form would make
-      the WRAPPER strictly more permissive than the statement it wraps; do NOT
-      narrow it back as scope creep), RM-471 SHIPPED (LICENSE guard
-      checkout-independent, fixed at the COMPARISON not at .gitattributes, reason
-      recorded in the guard - do not helpfully move it), RM-472 SHIPPED (closed
-      BY REFUSAL, zero new acceptances, real-site census identical at 181 sites).
-      dashboard/_errors.py docstring CORRECTED - do not restore the old wording.
-
-TRAPS PAID IN WAVE 6, carry these forward:
-  - PROPAGATED CHARACTERISATIONS were the recurring failure, THREE times. A claim
-    asserted by one pass and inherited by the next without re-derivation. The
-    most instructive instance: the MERGER, the main session, was ITSELF the
-    propagation vector - it wrote an unverified mechanism claim into a slice
-    brief and the slice MEASURED IT FALSE and pushed back. The orchestrator sits
-    inside the blast radius of its own unverified claims, and a brief is exactly
-    the artifact a slice has every reason to trust. Re-derive before briefing.
-  - A STALE DOCSTRING misled THREE independent passes into believing a module was
-    served on two listeners. A doc is not a source of truth; execute the matcher.
-  - A census figure was staled by ITS OWN AUTHOR'S EDIT inside the same change.
-    Re-derive AFTER the last edit, and name the tree a census was taken on.
-  - A CONTROL can be PATH-DIVERGENT from the site it stands in for - green, and
-    exercising a neighbouring path. Instrument the real site before trusting it.
-  - DISCLOSE the anomaly you cannot explain. One producer did, and that
-    disclosure is exactly what let a verifier find the mechanism.
-  - A cardinality mismatch gets REPORTED, not silently re-derived into agreement.
-
-BOUNDARY (unchanged, binds attended sessions too): halt and ping before any byte
-      leaves the tree - no sibling-inbox writes, no arming RC-InboxResponder, no
-      edits to docs/CHANNEL.md, ops/loop/slots.py, ops/loop/winmutex.py. The push
-      half gates on DIFF CONTENT, not destination: an ordinary push that passes
-      the suites and the pre-push sibling sweep proceeds without a halt.
-
-ALSO OPEN, not touched in wave 6: 36 stale worktree-agent-* branches are still
-      present (prior waves left theirs too, so removing them is a convention
-      change worth an explicit operator decision rather than a quiet sweep).
-      RM-279 remains CAUTIONED: its stated mechanism is FALSE at HEAD and fixing
-      the site reddens two green guards unless both are amended in the same slice.
-
+NEXT SESSION
+------------
+Task: Wave 8 - laned orchestrated loop. Merger + worktree slices on disjoint
+      files + an independent adversarial verifier before EVERY merge. Three
+      waves running, a verifier overturned or amended a producer claim in
+      EVERY slice, so budget the grading pass rather than hoping to skip it.
+Context: RM-475 (new, filed from wave 7's S4 verification: keep/move accounting
+      counts zero-heading BLOCKS as sessions in FILE ORDER, so --keep 3 over a
+      file containing one can retain only TWO real sessions - the exact
+      under-enforcement class RM-276 exists to fix; NOT live today, the real
+      WAKEUP carries zero such blocks, and archive safety is unaffected).
+      Files: scripts/wakeup_prune.py + tests/phase7_polish/test_wakeup_prune.py.
+      Cheap side item: name the xfail that flipped to xpass by running
+      `pytest tests/test_inbox_responder_runner.py
+      tests/test_rm450_core_residuals.py tests/test_truth_gate.py -q -rX`
+      (wave 7 saw 1 xfailed / 3 xpassed against wave 6's 2 / 2; no file wave 7
+      touched carries an xfail marker, so it is environment-conditional).
+      Probe live first: tools/rc_facts.py, ops/runtime/health.json,
+      python tools/moon_sync_poller.py --status, gh run list.
+Acceptance: RM-475's own ACCEPTANCE clause, verifier-CONFIRMED before merge;
+      full dual suite ONCE on the frozen merged tree. State disarm numbers as
+      counts returned, never as a verdict.
+Do NOT redo: RM-474 and RM-276 are SHIPPED (merges 233a3d13b and 06cde1618) -
+      read the markers, do not re-investigate. The pid-bounce WATCH ITEM from
+      waves 5/6/7 is EXPLAINED and CLOSED: the PRODUCTION hot-reload watcher
+      writes restart_trigger.txt whenever a non-frozen .py changes, so a
+      .py-bearing merge restarting RC is the path working, not a supervisor
+      fault (tests/conftest.py:238-253 documents it and states the attribution
+      limit). Do NOT re-open that. STILL OPEN inside it: logs/2026-09-18.log
+      shows a CLUSTER of four RC starts inside three minutes at 04:36-04:38
+      plus two at 05:00, which merge-driven reload does NOT explain and which
+      nobody has investigated.
+Operator call, not a slice: RM-239 / RM-242. The rewrite question was put to
+      the operator in wave 7 and NO confirmed answer was received, so nothing
+      was started and both rows stay OPEN and HELD. Do not start it unilaterally.
+Also owed: the wave 7 PUSH DECISION if it is still unmade - check
+      `git log @{u}..` before assuming, because wave 7's wrap pushed.
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       docs/LEDGER.md + git log.
