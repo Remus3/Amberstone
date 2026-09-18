@@ -524,5 +524,403 @@ class TestKeepCountIsBounded(unittest.TestCase):
         self.assertEqual(self._sessions_left(), 3)
 
 
+class TestSplitterBlindnessRM276(unittest.TestCase):
+    """RM-276. `split_sessions` had TWO blindnesses, not one, and a fix that
+    closed only the first would have gone green with the second still live.
+
+    (4a) FIRST-PART BLINDNESS. `split_sessions` does `text.split(SEP)` and
+    takes `parts[0]` as the pinned header without ever scanning it, so a
+    /done append that omits the `\\n---\\n\\n` separator lands its heading
+    inside `parts[0]` and is returned INSIDE the header block - the one block
+    prune never archives. `_split_on_interior_headings`, which exists exactly
+    to recover glued blocks, was reached only for `parts[1:]`.
+
+    (4b) INTERIOR-HEADING-IN-A-LATER-BLOCK BLINDNESS. The per-block gate was
+    `SESSION_RE.match(block.lstrip("\\n"))`, so ONLY a block that STARTS with
+    a heading was ever re-split. A block that does not start with a heading
+    but CONTAINS one fell through to `leading_pins` (folded into the header,
+    unarchivable) or to `trailing_extras` (appended whole, so several glued
+    sessions counted as one). This fires with ZERO headings in `parts[0]`,
+    which is why splitting `parts[0]` alone provably cannot reach it - hence
+    one arm per route SHAPE below.
+
+    DISARM RECORD (RM-276 acceptance clause 3, as tightened 2026-09-18 -
+    numbers returned by `split_sessions`, not a verdict). Observed by driving
+    the real module over these exact fixtures at HEAD `1c7726330`:
+
+        CONTROL  (all SEP-separated)  3 of 3 before -> 3 of 3 after
+        ARM-4a   (glued parts[0])     2 of 3 before -> 3 of 3 after
+        ARM-4b-i (leading_pins)       2 of 3 before -> 3 of 3 after
+        ARM-4b-ii(trailing_extras)    2 of 3 before -> 3 of 3 after
+        BONUS    (no SEP anywhere)    0 of 3 before -> 3 of 3 after
+
+    The CONTROL returns 3 of 3 both before and after on purpose: it is a
+    control, NOT a guard arm. The row says so explicitly - a fixture in which
+    every session is properly separated passes against the unfixed splitter
+    and therefore proves nothing. It is kept only to show the fix did not
+    break the well-formed shape.
+    """
+
+    HEADER = "# RC wakeup notes\n\nOperator hand-off file.\n"
+    S1 = "# 2026-09-18 - session one\n\nbody one\n"
+    S2 = "# 2026-09-17 - session two\n\nbody two\n"
+    S3 = "# 2026-09-16 - session three\n\nbody three\n"
+    STRAY = "leftover prose with no heading\n\n"
+
+    def setUp(self):
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp(prefix="rc_wakeup_rm276_"))
+        self._orig_wakeup = WP.WAKEUP
+        self._orig_archive = WP.ARCHIVE
+        WP.WAKEUP = self.tmp / "WAKEUP_NOTES.md"
+        WP.ARCHIVE = self.tmp / "docs" / "history_notes.md"
+
+    def tearDown(self):
+        WP.WAKEUP = self._orig_wakeup
+        WP.ARCHIVE = self._orig_archive
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    # -- the five fixture shapes ------------------------------------------
+    def _control(self) -> str:
+        return (self.HEADER + WP.SEP + self.S1 + WP.SEP + self.S2
+                + WP.SEP + self.S3)
+
+    def _glued_parts0(self) -> str:
+        """ARM-4a: the first session is glued into `parts[0]` behind a blank
+        line instead of a separator. Its later sessions carry a REAL
+        separator, which is what makes this a VALID synthetic per clause (2)
+        rather than the worthless all-separated shape."""
+        return (self.HEADER + "\n" + self.S1 + WP.SEP + self.S2
+                + WP.SEP + self.S3)
+
+    def _stray_ahead_of_first_block(self) -> str:
+        """ARM-4b-i, the `leading_pins` route SHAPE: ZERO headings in
+        `parts[0]`; the FIRST rest-block carries one stray non-heading line
+        ahead of its heading, so the gate rejects it before any session has
+        been seen and the block is folded into the header."""
+        return (self.HEADER + WP.SEP + self.STRAY + self.S1 + WP.SEP
+                + self.S2 + WP.SEP + self.S3)
+
+    def _stray_ahead_of_later_block(self) -> str:
+        """ARM-4b-ii, the `trailing_extras` route SHAPE: ZERO headings in
+        `parts[0]`; a LATER block - reached after a session has already been
+        seen - carries one stray non-heading line ahead of TWO headings, so
+        two sessions are appended whole as a single unsplit tail block."""
+        return (self.HEADER + WP.SEP + self.S1 + WP.SEP + self.STRAY
+                + self.S2 + "\n" + self.S3)
+
+    def _no_separator_anywhere(self) -> str:
+        """BONUS arm, not required by clause (4): with no `SEP` in the file
+        at all, the old separator-presence early return reported zero
+        sessions at any file size. Scanning `parts[0]` "rather than by
+        assuming a separator" closes this too."""
+        return self.HEADER + "\n" + self.S1 + "\n" + self.S2 + "\n" + self.S3
+
+    @staticmethod
+    def _headings(text: str) -> int:
+        return len(WP.SESSION_RE.findall(text))
+
+    # -- CONTROL (not a guard arm) ----------------------------------------
+    def test_control_every_session_separated_is_a_control_not_an_arm(self):
+        header, sessions = WP.split_sessions(self._control())
+
+        self.assertEqual(len(sessions), 3)
+        self.assertEqual(self._headings(header), 0)
+
+    # -- ARM 4a: first-part blindness --------------------------------------
+    def test_arm_4a_session_glued_into_parts0_is_found(self):
+        text = self._glued_parts0()
+        self.assertEqual(self._headings(text.split(WP.SEP)[0]), 1,
+                         "fixture must actually hide a heading in parts[0]")
+
+        header, sessions = WP.split_sessions(text)
+
+        self.assertEqual(len(sessions), 3)
+        self.assertEqual(
+            self._headings(header), 0,
+            "a session left inside the header block can never be archived")
+        self.assertIn("session one", sessions[0])
+        self.assertIn("session two", sessions[1])
+        self.assertIn("session three", sessions[2])
+
+    # -- ARM 4b-i: interior heading, leading_pins SHAPE --------------------
+    def test_arm_4b_i_stray_line_ahead_of_first_block_heading(self):
+        text = self._stray_ahead_of_first_block()
+        self.assertEqual(
+            self._headings(text.split(WP.SEP)[0]), 0,
+            "this arm must fire with ZERO headings in parts[0], or it is "
+            "just arm 4a again and a parts[0]-only fix would pass it")
+
+        header, sessions = WP.split_sessions(text)
+
+        self.assertEqual(len(sessions), 3)
+        self.assertEqual(self._headings(header), 0)
+        self.assertIn("session one", sessions[0])
+        self.assertIn("session two", sessions[1])
+        self.assertIn("session three", sessions[2])
+        self.assertIn("leftover prose", "".join(sessions) + header,
+                      "content must never be silently dropped")
+
+    # -- ARM 4b-ii: interior heading, trailing_extras SHAPE ----------------
+    def test_arm_4b_ii_stray_line_ahead_of_two_later_headings(self):
+        text = self._stray_ahead_of_later_block()
+        self.assertEqual(
+            self._headings(text.split(WP.SEP)[0]), 0,
+            "this arm must fire with ZERO headings in parts[0]")
+
+        header, sessions = WP.split_sessions(text)
+
+        self.assertEqual(len(sessions), 3)
+        self.assertEqual(self._headings(header), 0)
+        # One heading per returned block: two sessions glued into one block
+        # is exactly the under-count this arm exists to catch.
+        self.assertEqual([self._headings(b) for b in sessions], [1, 1, 1])
+        # Newest-first order must survive the re-split.
+        self.assertIn("session one", sessions[0])
+        self.assertIn("session two", sessions[1])
+        self.assertIn("session three", sessions[2])
+        # The stray preamble must SURVIVE, and survive IN POSITION. 4b-i
+        # asserted this and 4b-ii did not, which is the gap wave 7 slice S4
+        # was sent to close: the two arms take different routes through
+        # `split_sessions`, so survival on one is not evidence for the other.
+        # Order-sensitive on purpose - "the characters are all still there"
+        # is exactly the order-blind claim that let a 5.7 MB reorder through.
+        self.assertIn("leftover prose", sessions[1])
+        self.assertLess(sessions[1].index("leftover prose"),
+                        sessions[1].index("session two"),
+                        "the stray preamble must stay AHEAD of the heading "
+                        "it preceded on disk, not merely be present")
+
+    # -- BONUS arm ---------------------------------------------------------
+    def test_bonus_no_separator_anywhere_still_finds_every_session(self):
+        _, sessions = WP.split_sessions(self._no_separator_anywhere())
+
+        self.assertEqual(len(sessions), 3)
+
+    # -- clause (4) first half: --keep 3 must RELOCATE the surplus ---------
+    def test_keep_3_relocates_the_surplus_from_a_glued_parts0_file(self):
+        WP.WAKEUP.write_text(
+            self.HEADER + "\n" + self.S1 + WP.SEP + self.S2 + WP.SEP
+            + self.S3 + WP.SEP + "# 2026-09-15 - session four\n\nbody four\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(WP.prune(keep=3, dry_run=False), 0)
+
+        after = WP.WAKEUP.read_text(encoding="utf-8")
+        self.assertEqual(len(WP.split_sessions(after)[1]), 3)
+        self.assertIn("session one", after)
+        self.assertNotIn("session four", after)
+        self.assertIn("session four",
+                      WP.ARCHIVE.read_text(encoding="utf-8"))
+
+    def test_keep_3_relocates_the_surplus_from_a_stray_line_file(self):
+        WP.WAKEUP.write_text(
+            self.HEADER + WP.SEP + self.S1 + WP.SEP + self.STRAY + self.S2
+            + "\n" + self.S3 + WP.SEP
+            + "# 2026-09-15 - session four\n\nbody four\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(WP.prune(keep=3, dry_run=False), 0)
+
+        after = WP.WAKEUP.read_text(encoding="utf-8")
+        self.assertEqual(len(WP.split_sessions(after)[1]), 3)
+        self.assertNotIn("session four", after)
+        self.assertIn("session four",
+                      WP.ARCHIVE.read_text(encoding="utf-8"))
+
+    # -- clause (5): --check shares split_sessions, so it shares the fix ---
+    def test_check_sees_the_glued_parts0_session(self):
+        WP.WAKEUP.write_text(self._glued_parts0(), encoding="utf-8")
+
+        self.assertEqual(WP.check(keep=3), 0)
+        self.assertEqual(WP.check(keep=2), 1,
+                         "--check must count the glued session too")
+
+    def test_check_sees_the_stray_line_sessions(self):
+        WP.WAKEUP.write_text(self._stray_ahead_of_later_block(),
+                             encoding="utf-8")
+
+        self.assertEqual(WP.check(keep=3), 0)
+        self.assertEqual(WP.check(keep=2), 1)
+
+
+class TestZeroHeadingBlockStaysInPosition(unittest.TestCase):
+    """RM-276 (4c). The MECHANISM behind the reorder, and it PRE-DATES the
+    (4a)/(4b) fixes: `split_sessions` used to file every zero-heading block
+    seen after the first session into a `trailing_extras` bucket and return
+    `sessions + trailing_extras`, hoisting it to the FILE TAIL.
+
+    On this minimal fixture the old code returned `[S1, S2, ZERO]` on BOTH
+    sides of the (4a)/(4b) fixes, so nothing in the RM-276 suite could see
+    it. What the (4b) fix changed was the REAL archive: 63 of its 95
+    non-matching blocks became in-place sessions, leaving 32 zero-heading
+    blocks interleaved among them instead of sitting contiguously at the
+    tail, so the hoist stopped being a byte-identical no-op and started
+    reordering `docs/history_notes.md` - which `prune()` re-renders whole.
+
+    Every assertion here is ORDER-SENSITIVE. "The character multiset is
+    identical and no line is lost" is true of a reorder too, and order is
+    precisely what the repo's no-history-rewrite rule protects.
+    """
+
+    HEADER = "# RC wakeup notes\n\nOperator hand-off file.\n"
+    S1 = "# 2026-09-18 - session one\n\nbody one\n"
+    ZERO = "an operator note with no heading at all\n"
+    S2 = "# 2026-09-17 - session two\n\nbody two\n"
+
+    def test_zero_heading_block_keeps_its_index(self):
+        text = (self.HEADER + WP.SEP + self.S1 + WP.SEP + self.ZERO
+                + WP.SEP + self.S2)
+        self.assertEqual(
+            len(WP.SESSION_RE.findall(self.ZERO)), 0,
+            "fixture must actually carry a ZERO-heading block")
+
+        _, sessions = WP.split_sessions(text)
+
+        # Exact ordered equality, not `assertCountEqual` and not a substring
+        # sweep. The old bucket returned [S1, S2, ZERO].
+        self.assertEqual(sessions, [self.S1, self.ZERO, self.S2])
+
+    def test_zero_heading_block_round_trips_byte_identically(self):
+        text = (self.HEADER + WP.SEP + self.S1 + WP.SEP + self.ZERO
+                + WP.SEP + self.S2)
+
+        header, blocks = WP.split_blocks(text)
+
+        self.assertEqual(WP.render_blocks(header, blocks), text)
+
+    def test_zero_heading_block_between_glued_sessions_keeps_its_index(self):
+        """The interesting shape is the one the (4b) fix created on the real
+        archive: zero-heading blocks INTERLEAVED with glued ones, not parked
+        contiguously at the tail."""
+        glued = self.S1 + "\n" + "# 2026-09-16 - session three\n\nbody three\n"
+        text = self.HEADER + WP.SEP + glued + WP.SEP + self.ZERO + WP.SEP + self.S2
+
+        _, sessions = WP.split_sessions(text)
+
+        self.assertEqual(len(sessions), 4)
+        self.assertEqual([len(WP.SESSION_RE.findall(b)) for b in sessions],
+                         [1, 1, 0, 1])
+        self.assertIn("session one", sessions[0])
+        self.assertIn("session three", sessions[1])
+        self.assertEqual(sessions[2], self.ZERO)
+        self.assertIn("session two", sessions[3])
+
+
+class TestSplitRenderIsByteStable(unittest.TestCase):
+    """THE MISSING INVARIANT. `prune()` re-renders the WHOLE archive via
+    `render_blocks(*prepend_sessions(...))`, so ANY change to how blocks are
+    split changes what gets written back over `docs/history_notes.md` - the
+    protected append-only archive. Nothing in this suite asserted that the
+    round trip was faithful, so a splitter change that reordered 5.7 MB of
+    history went green.
+
+    Measured before the wave 7 fix: `render(split_sessions(archive))` came
+    back +304 bytes with real deletions in the difflib opcode stream (1477
+    lines inserted, 1335 deleted - a reorder, not an append). Measured after:
+    0 bytes delta, identical sha256, zero opcodes. Both tracked files are
+    read READ-ONLY here and every assertion is anchored against a vacuous
+    pass: an empty or missing file would satisfy `rendered == disk` trivially
+    (`split_blocks("")` returns `("", [])`), so size, block count and heading
+    count are asserted first.
+    """
+
+    TRACKED = ("docs/history_notes.md", "WAKEUP_NOTES.md")
+
+    def _read(self, rel: str) -> str:
+        path = _PROJECT_ROOT / rel
+        self.assertTrue(path.is_file(), f"tracked file missing: {path}")
+        text = path.read_text(encoding="utf-8")
+        # -- anti-vacuity anchors -----------------------------------------
+        self.assertGreater(len(text), 1000,
+                           f"{rel} read back too small to be the real file; "
+                           f"an empty read would pass every assertion below")
+        self.assertGreater(len(WP.SESSION_RE.findall(text)), 0,
+                           f"{rel} carries no session heading at all")
+        return text
+
+    def test_split_render_reproduces_both_tracked_files_byte_for_byte(self):
+        import hashlib
+        for rel in self.TRACKED:
+            with self.subTest(rel):
+                text = self._read(rel)
+
+                header, blocks = WP.split_blocks(text)
+                rendered = WP.render_blocks(header, blocks)
+
+                self.assertGreater(len(blocks), 0,
+                                   f"{rel} parsed to zero blocks")
+                self.assertEqual(
+                    len(rendered.encode("utf-8")), len(text.encode("utf-8")),
+                    f"{rel}: re-render changed the byte count")
+                self.assertEqual(
+                    hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
+                    hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                    f"{rel}: re-render is not byte-identical, so a prune "
+                    f"would rewrite it")
+                self.assertEqual(rendered, text)
+
+    def test_heading_sequence_survives_the_split_in_order(self):
+        """Order-sensitive content preservation. A multiset check passes on a
+        reorder; this does not."""
+        for rel in self.TRACKED:
+            with self.subTest(rel):
+                text = self._read(rel)
+                on_disk = WP.SESSION_RE.findall(text)
+
+                header, blocks = WP.split_blocks(text)
+                recovered = WP.SESSION_RE.findall(header) + [
+                    m for b in blocks for m in WP.SESSION_RE.findall(b.body)
+                ]
+
+                self.assertEqual(recovered, on_disk)
+
+    def test_a_prune_of_the_real_archive_is_a_pure_insertion(self):
+        """The write path, not just the round trip: prepending to the real
+        archive must not rewrite, move or re-space one pre-existing byte.
+
+        Read-only - `prepend_sessions` / `render_blocks` are pure and nothing
+        is written to disk.
+        """
+        text = self._read("docs/history_notes.md")
+        header, blocks = WP.split_blocks(text)
+        moved = ["# 2026-09-18 - probe session\n\nprobe body\n"]
+
+        out_header, out_blocks = WP.prepend_sessions(header, blocks, moved)
+        rebuilt = WP.render_blocks(out_header, out_blocks)
+
+        self.assertIn("probe session", rebuilt)
+        self.assertGreater(len(rebuilt), len(text))
+        self.assertTrue(rebuilt.startswith(out_header))
+        # Full positional reconstruction, which is strictly stronger than an
+        # `endswith` check: deleting exactly the inserted span - the bytes
+        # between the header and the pre-existing tail - must give the
+        # archive back EXACTLY. `endswith` alone would accept extra bytes
+        # smuggled in just ahead of the tail.
+        kept_tail = len(text) - len(out_header)
+        self.assertEqual(
+            rebuilt[:len(out_header)] + rebuilt[len(rebuilt) - kept_tail:],
+            text,
+            "a prune did not merely insert - it rewrote pre-existing archive "
+            "bytes, which is a history rewrite")
+
+    def test_the_faithful_pair_is_not_a_no_op_renderer(self):
+        """Anti-vacuity for the guard itself: `render_blocks` must actually
+        reassemble from the parsed blocks, not echo an input it kept a
+        reference to. Drop a block and the output must shrink accordingly."""
+        text = self._read("docs/history_notes.md")
+        header, blocks = WP.split_blocks(text)
+
+        short = WP.render_blocks(header, blocks[:-1])
+
+        self.assertLess(len(short), len(text))
+        self.assertEqual(
+            len(short) + len(blocks[-1].sep) + len(blocks[-1].body),
+            len(text))
+
+
 if __name__ == "__main__":
     unittest.main()
