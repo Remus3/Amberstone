@@ -119,6 +119,50 @@ champion/build data and land it for live usage.
 
 ---
 
+# 2026-09-17 - laned orchestrated loop wave 3: eleven rows or row parts shipped through five verified slices, two slices refuted, the RM-458 folds removed after a second refute
+
+**LOCAL ONLY at `1129cc5e3`** plus this doc edit - NOT pushed by the docs pass; origin at `c3cde5dc6`. Wave 2 and its wrap were pushed and CI is green (ci + docs-guards on `b21e23148`, ci on `c3cde5dc6`). LEDGER **1423**. Every slice had an independent adversarial verifier and no producer graded its own work. S1, S2 and S5 confirmed first pass; S3 (RM-382) refuted once, confirmed round 2; S4 (RM-458) refuted TWICE, the refuted folds reverted, confirmed round 3. Full dual suite on the merged tree: the first `tests` run at `685935c07` stopped at 1 failure in `tests/test_hook_log_live_isolation.py` - a pre-existing RM-451 PID-REUSE false positive (a real day-old live hook row from another session carried the child's reused Windows pid 23092); `agents/daemon_slayer` 10856 passed at `685935c07`. Fixed test-only in `1894fda47` (merge `1129cc5e3`): the live-log check now diffs before and after snapshots through `runner.hook_log_violations` (content identity, trim-safe); verifier CONFIRMED (a child-pid row is still flagged even with a real session and payload; a duplicate identical append is flagged; residual: an unterminated child-pid line is ignored). `tests` rerun at `1129cc5e3`: 23761 passed, 102 skipped, 3 xfailed, 1 xpassed, 4994 subtests, rc 0 (1:36:20).
+
+**SHIPPED:** RM-290 site 1 (`item_order` drops a purchase only when `beforeId` is set; an undone sale keeps it), RM-292(a) (disabled aram / arena / brawl placeholders carry their own `mode`), RM-455 (RM-450 mutants killed, prose corrected; tests and docstrings only), RM-456 (live-client numerics and roster coerced, `_as_int` refuses bool, arena `cellId` coerced), RM-382 + RM-293(b) ("Unknown" and "Offline" phase sentinels and the bad-UTF-8 branch now emit None; the legacy page reads the null phase; the 5-phase UI audit on `web/legacy_index.html` RAN before the `65dde5d46` commit and PASSED all five phases - a render diff in node over 6 states, served `?ui=legacy` bytes equal HEAD), RM-457 (WAL guard catches `executescript`, f-string SQL and `_` discards), RM-458 (format in its own commit, then a refusal taint - wrapped platform reads earn no credit, nothing folded), RM-411 (`scoped_fs_fault` scopes all 7 sites under `tmp_path` with an armed outside control), RM-383 (conftest vision token default only when env AND file are absent; no sibling import-time gitignored read in 2465 files), RM-459 items 1-2 (tty no-payload runs leave a marker row in a gitignored sidecar; live-log test attributed) plus the PID-reuse follow-up above. **LABEL FLIP:** RM-364 read OPEN but shipped as `a97bdfc0b` (LEDGER 1353).
+
+**RESTART NEEDED:** RC plus RC-LCUAgent for RM-382; the same RC restart carries RM-290 site 1, RM-292(a) and RM-456. Merger result: RC restarted via `restart_trigger.txt` (health pid 22512 -> 2816, alive true, last_reload_ok true); RC-LCUAgent restarted (old pid killed with taskkill, `Start-ScheduledTask`, new pid 15312); live `/api/state` lcu carries keys config, phase and ts, with phase None and no `lcu_port` (client closed) - the RM-382 contract is live.
+
+**NOT DONE, AND IT IS OWED:** the RM-290 site 1 fix changed how undo events are read, but `data/event_pattern_rates.json` and the baselines built by the old logic were NOT regenerated - filed as RM-460 under the Data Fixes rule.
+
+**OPEN, filed this wave:** RM-460 (the backfill above), RM-461 (RM-456 residuals: raw `cs` / `level`, whole kill participation lost on one None, uncoerced swap / trade / round cell ids, `str()` on a champion name), RM-462 (`rc_facts` prints `phase=?`; retired Game-PC wording on the legacy page), RM-463 (unsound RM-449 folds, capability-probe laundering), RM-464 (RM-411 siblings: `mock.patch` and class-level `Path` patches, `time.sleep` patches), RM-465 (three WAL guard shapes). Still open in part: RM-459 item 3 (CLI `session_id` from a real spawn) plus its byte-compare residual and the unterminated child-pid line residual. Carried record-only: RM-454, RM-293(a)/(c), RM-292(b-d), RM-290 site 2, RM-409, RM-376, RM-448, RM-445, RM-432, RM-453. Close-on-inspection candidates spotted, NOT applied: RM-378 (generator already writes bytes) and RM-275 (response cap already present).
+
+**Inbox cycle 1:** nothing newer than 2026-09-16; **NO reply sent**. Record-only asks unchanged.
+
+**TRAPS PAID:** a fold that models a Python value must match CPython exactly - `sorted` and set literals are not tuples, and a form CPython raises on must not be given a value; the second refute removed the folds and kept the strict half. A served LEGACY page is a consumer too - the sentinel change looked complete until `web/legacy_index.html` was found mapping the old strings. A brief can misplace a site (RM-293(b) was in the shaper, not the agent) or restate a row's acceptance wrongly (RM-411 was never "catch OSError"); read the row, not the brief. A pid is not an identity across days: Windows reuses pids, so a live-log check keyed on the child pid failed on a real row from another session - diff content snapshots instead. `tools/stop_claim_gate.py` flags a subagent's commit or pass claim in the merger transcript until the merger runs git commit or pytest itself (RM-453 territory, record only).
+
+## NEXT SESSION
+
+Push decision for wave 3 first (the push halts on its diff; it carries one `web/` file). The RC + RC-LCUAgent restart already landed at the wrap - re-probe, do not inherit. Then wave 4 per `RC-NEXT-SESSION.txt`: RM-460 through RM-465, RM-459 item 3, and the RM-378 / RM-275 close-on-inspection checks. Every HALT row still needs the operator.
+
+---
+
+# 2026-09-16c - laned orchestrated loop waves 1 and 2: seventeen rows shipped through ten verified slices, four slices refuted twice, wave 2 not pushed
+
+**Wave 1 PUSHED and CI GREEN on `6d24b75db`** (ci + docs-guards success). **Wave 2 LOCAL ONLY at `b27c7236a`** plus this doc edit - NOT pushed, NOT committed by the docs pass. LEDGER **1421** (wave 1) and **1422** (wave 2). Every slice had an independent adversarial verifier and no producer graded its own work. Wave 1: S1 (RM-433 + RM-434) and S4 (RM-443) refuted TWICE, the other three confirmed first pass. Wave 2: S1 one pre-merge fix; S2 (RM-450) and S4 (RM-449) refuted TWICE, each settled by a merger ruling that REMOVED the refuted part; S3 and S5 confirmed first pass.
+
+**SHIPPED wave 1:** RM-433 (one shared worktree config resolver), RM-434 (hook-log check attributes by child SESSION id, not pid), RM-437 (option (a) ACCEPTED LIMIT, pinned by tests), RM-440 (skip hygiene loopholes), RM-441 + RM-442 (LF writers, UTC stamps), RM-443 (census re-derived: 60 rows, not 17), RM-444 (picks save refuses to overwrite an unreadable file), RM-446 (spaced cite residuals).
+
+**SHIPPED wave 2:** RM-447 (atomic writers clean up their temp; `*.tmp` deliberately not gitignored), RM-413 (all 8 WAL pragma sites read the adopted mode and warn once per db path), RM-450 (four load paths retry after failure; the `augment_recommender` memo REFUTED twice and removed, module byte-identical to base, pre-existing staleness pinned by two non-strict xfail tests; census 28/0/1/10/21), RM-449 (guard folds wrapped platform reads and catches rebinding; the darwin rescue DECLINED, darwin-only skips stay UNRESOLVED), RM-451 + RM-452 (null-session rows were agent hand runs of `tools/rc_facts.py`; tests now use a per-worker hook log; `__main__` only calls `_cli`), RM-415 (18 `or {}` wrong-type sites), RM-417 (arena ids coerced, missing `cellId` stays None). **CLOSED as ALREADY-DONE:** RM-419 (lock already pins certifi), RM-420 (RM-408 on HEAD). A stray empty untracked `b1.py` at the repo root was removed.
+
+**RC RESTART NEEDED** for RM-443, RM-444 and RM-450 to go live.
+
+**OPEN:** filed wave 2 - RM-454 (augment recommender own-history cache staleness plus per-call row count; key must survive close/reopen and include the db path; try `PRAGMA data_version`), RM-455 (RM-450 untested branches and stale docstrings), RM-456 (RM-415 / RM-417 wrong-type residuals), RM-457 (WAL guard missed shapes), RM-458 (skip guard format debt, unfolded forms), RM-459 (RM-451 residuals; CLI `session_id` key still unmeasured). Carried: RM-448 (no non-DS part left - DS batch), RM-453 (HELD - this session was flagged by the gate, so RM-401 forbids editing it; second false positive recorded: a row id in prose read as a test count), RM-432 (design, operator call, `.githooks/` edit halts on push diff), RM-445 (DS half is a batch decision). Older rows not yet aged: RM-376, RM-382, RM-383, RM-364, RM-292, RM-293, RM-290, RM-409, RM-411.
+
+**Inbox cycle 1:** 25 notes dated 2026-09-16, all already seen; **NO reply sent**. Record-only asks, unchanged through wave 2: RSC clause-by-clause; CS approval; LW shared-skills question (default NO); LW correction 2-of-4 -> 3-of-4; rule 17 wording and criterion (d) at the next re-pin.
+
+**TRAPS PAID:** a pid is the wrong attribution key for hook rows - the row carries the HOOK process pid. A filed census count (17) was off by a factor of three; re-derive, never copy. A cache key that passes one refute round can still fail on close and reopen - the `-shm` header comes back identical. Widening a guard to rescue one skip shape widened what it ACCEPTS; decline rather than enumerate.
+
+## NEXT SESSION
+
+Push decision for wave 2 first (the push halts on its diff). RC restart for RM-443 / RM-444 / RM-450. Then the Tier-0/1 residuals RM-454 through RM-459, and age the older rows before building any. Every HALT row from 2026-09-16b still needs the operator.
+
+---
+
 # 2026-09-16b - laned headless orchestrated loop, operator away: three waves shipped, the inbox read but unanswered, every HALT row left untouched
 
 **Pushed `4a1c5e7a6..59b3f6253`** plus this wrap commit. LEDGER **1419** (waves 1-2) and **1420** (wave 3). CI green on `b2a71d710`; later heads were still pending when this was written - re-probe with `gh`, do not inherit a verdict.

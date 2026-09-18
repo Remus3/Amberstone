@@ -1,159 +1,101 @@
-NEXT SESSION - RC laned headless orchestrated parallel loop (wave 6)
+NEXT SESSION - RC laned headless orchestrated parallel loop (wave 7)
 -------------------------------------------------------------------
-Task: Continue laned orchestrated cycles against RC-local open rows until drained
-      or interrupted. Same SHAPE: merger + worktree slices on disjoint files +
-      independent adversarial verifier before every merge; producer never grades.
-      Wave 5 proved the shape again - verifiers overturned or amended a producer
-      claim in EVERY slice and EVERY census, so do not treat a slice report as
-      the answer.
+Task: Continue laned orchestrated cycles against RC-local open rows. Same SHAPE:
+      merger + worktree slices on disjoint files + an independent adversarial
+      verifier before EVERY merge; the producer never grades its own work.
+      Wave 6 proved it for the SECOND wave running - a verifier overturned or
+      amended a producer claim in EVERY slice, no exceptions. Treat an ungraded
+      producer claim as UNVERIFIED by default and budget the grading pass.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES.md
-      (2026-09-17c block) + docs/LEDGER.md 1424 and 1425 + git log. Probe live:
+      (2026-09-18 block) + docs/LEDGER.md 1426 + git log. Probe live:
       python tools/rc_facts.py ; python tools/moon_sync_poller.py --status ;
-      gh run list --branch main --limit 4 (confirm CI green on the wave 5 wrap).
-      RESTART CHECK: wave 5 touched NO runtime code - three test modules, one new
-      oss test helper, and docs. No restart is owed. Re-probe health.json anyway
-      (pid, alive, last_reload_ok) and do not inherit this claim. NOTE the RC pid
-      changed mid-wave-5 (19336 -> 11360, supervisor bounce during the tests
-      suite); health was clean after, but if it recurs it is worth a look.
+      gh run list --branch main --limit 4.
+      RESTART CHECK: wave 6 touched NO runtime code except one DOCSTRING in
+      dashboard/_errors.py (executable region hash-identical). No restart owed -
+      but re-probe health.json anyway, do not inherit this.
+      WATCH ITEM, do NOT inherit as a bug: the RC pid moved during the suite in
+      BOTH wave 5 and wave 6 (wave 6: 24252 -> 18660), a supervisor bounce.
+      Health was clean after, both times. Second occurrence, so re-probe it -
+      do not diagnose it from a single reading and do not file it as a defect yet.
 
-BOUNDARY (unchanged): halt and ping before any byte leaves the tree. No sibling-inbox
-      writes, no arming, no edits to docs/CHANNEL.md, ops/loop/slots.py,
-      ops/loop/winmutex.py. Ordinary pushes that pass suites + pre-push sweep proceed.
+WAVE 6 SHIPPED AND PUSHED: main at cabbc40bd, CI green (ci, docs-guards, pages).
+      Full dual suite run ONCE on the frozen merged tree, both exit 0.
 
-CYCLE 1: read RC's own moon_sync_inbox/ (triage only, do not reply). Nothing newer
-      than 2026-09-16 had arrived as of wave 5; record what you find, do not assume.
-      Record-only asks still carried: RSC clause-by-clause answer, CS approval,
-      LW shared-skills question (default NO), LW correction 2-of-4 -> 3-of-4;
-      rule 17 wording + criterion (d) at next re-pin.
+WAVE 7 CANDIDATES:
+  S1 RM-474 (NEW, filed at the wave 6 merge). Closing RM-471 cost the shipped
+     oss LICENSE its SECOND independent guard. The surviving compensating test
+     does not know it is load-bearing: a ONE-TOKEN narrowing of its file set
+     leaves a CRLF-drifted shipped LICENSE fully green. Acceptance: make the
+     coupling explicit and enforced - either assert the shipped-file set
+     actually contains the LICENSE, or move the CR check into the compare test -
+     and PROVE it by performing the one-token narrowing, showing the suite goes
+     RED, then reverting. Do NOT re-introduce a byte compare; RM-471's
+     normalisation is deliberate and its reason is recorded in the guard.
 
-WAVE 6 PARTITION (each slice owns ONLY the files named; anything else is a halt
-      back to the merger). Re-run recall + an AGE check before building - wave 5
-      found the filed count wrong AGAIN and three rows already fixed by later rows.
+  S2 RM-276 (re-filed AND amended in wave 6, now has an acceptance that can
+     actually fail). The defect is LIVE in the code but the live file does NOT
+     currently exercise it - every heading today sits behind a real separator.
+     The amended acceptance requires BOTH (4a) first-part blindness and (4b) the
+     interior-heading-in-a-later-block blindness, in TWO route shapes, with one
+     fixture arm per shape and a numeric disarm (2 of 3, then 3 of 3) for each.
+     A (4a)-only fix was BUILT AND MEASURED to leave both sibling arms failing,
+     so it cannot be argued into compliance. Read the row, not this summary.
 
-  S1 RM-470 (tests/test_rm413_wal_pragma_result_checked.py): the guard does not
-     handle ast.AsyncFor - `async for _ in conn.execute("PRAGMA journal_mode=WAL")`
-     is missed while the sync spelling is caught, and the strings ast.AsyncFor and
-     async appear nowhere in the file. Found by a verifier mutation probe whose
-     async-for mutant SURVIVED while eight others were killed. FALSE NEGATIVE ONLY:
-     sqlite3 has no async execute, 0 live sites. Acceptance: async spelling caught
-     with a PAIRED NEGATIVE CONTROL, no new real-tree finding, floor still bites
-     (prove by mutation). Do NOT widen the accepted vocabulary.
+  OPERATOR CALL, not a slice: RM-239 / RM-242. Both stay OPEN and HELD. Wave 6
+     recorded a SETTLED result after the pair INVERTED FOUR TIMES. The blocker
+     is NOT effort - it is that RM-239's OWN LITERAL ACCEPTANCE IS UNSATISFIABLE
+     for seven of its own sites: six handlers have no handler object in scope,
+     and the helper the row prescribes emits a payload shape that would destroy
+     keys the UI and the tests depend on. That is a defect IN THE ROW. Rewriting
+     the acceptance is an authoring decision and needs the operator. Do NOT hand
+     either row to a fixer first. Do NOT re-derive the population from scratch -
+     compare against the published inclusion rule instead (25 sites / 19 modules,
+     rule published alongside the number), and note the TRAP: the total matches a
+     prior derivation to the digit while the MEMBERSHIP differs by six.
 
-  S2 RM-472 (tests/test_skip_condition_hygiene.py): comprehension-shaped and
-     lambda-shaped platform laundering still get CAPABILITY credit -
-     any(k == sys.platform for k in os.environ),
-     [k for k in os.environ if k == sys.platform],
-     (lambda p: os.environ.get(p))(sys.platform).
-     All three read CAPABILITY at BOTH base and head, so they are NOT regressions
-     and NOT new acceptances. They join the DECLARED two-hop receiver gap (receiver
-     resolution follows one level of binding, for measured perf reasons - scan_tree
-     went 12.87s -> 19.87s median already, so weigh any further cost). Close BY
-     REFUSAL only. Acceptance: 0 new acceptances vs base over the RM-463 corpus
-     (build it AST-harvested from BOTH revisions, as wave 5's verifier did, so a
-     deleted row cannot vanish from the comparison); real-site census identical or
-     each difference justified individually.
+DO NOT REDO (wave 6, LEDGER 1426, merges 8c14e8413 / bebadbafd / 342f71aeb /
+      5a5d18d92 / 82c1eafda / cabbc40bd): RM-470 SHIPPED (ast.AsyncFor arm),
+      RM-473 SHIPPED (the with / async with / no-as arm - the arm is
+      DELIBERATELY BROADER than the gap that was declared and the widening was
+      independently adjudicated CORRECT, because a bare journal-mode execute has
+      been a finding since RM-413, so excluding the with-wrapped form would make
+      the WRAPPER strictly more permissive than the statement it wraps; do NOT
+      narrow it back as scope creep), RM-471 SHIPPED (LICENSE guard
+      checkout-independent, fixed at the COMPARISON not at .gitattributes, reason
+      recorded in the guard - do not helpfully move it), RM-472 SHIPPED (closed
+      BY REFUSAL, zero new acceptances, real-site census identical at 181 sites).
+      dashboard/_errors.py docstring CORRECTED - do not restore the old wording.
 
-  S3 RM-471 (oss/win32_atomic_io drift guard): the LICENSE byte-compare guard's
-     verdict DEPENDS ON WHEN THE TREE WAS CHECKED OUT. The extensionless LICENSE
-     resolves no line-ending attribute (.gitattributes pins eol=lf by EXTENSION
-     only, so it falls through to core.autocrlf=true); the root copy materialises
-     CRLF in a fresh worktree while the package copy resolves LF. Both paths are
-     the SAME git blob. Main checkout passes; a worktree fails the byte compare.
-     Wave 5 could not verify the worktree arm directly (worktree add is a write and
-     the census agents were read-only) - VERIFY IT FIRST, in a real fresh worktree.
-     Acceptance: the guard's verdict is checkout-independent, PROVED by running it
-     in both a primary checkout and a fresh worktree.
+TRAPS PAID IN WAVE 6, carry these forward:
+  - PROPAGATED CHARACTERISATIONS were the recurring failure, THREE times. A claim
+    asserted by one pass and inherited by the next without re-derivation. The
+    most instructive instance: the MERGER, the main session, was ITSELF the
+    propagation vector - it wrote an unverified mechanism claim into a slice
+    brief and the slice MEASURED IT FALSE and pushed back. The orchestrator sits
+    inside the blast radius of its own unverified claims, and a brief is exactly
+    the artifact a slice has every reason to trust. Re-derive before briefing.
+  - A STALE DOCSTRING misled THREE independent passes into believing a module was
+    served on two listeners. A doc is not a source of truth; execute the matcher.
+  - A census figure was staled by ITS OWN AUTHOR'S EDIT inside the same change.
+    Re-derive AFTER the last edit, and name the tree a census was taken on.
+  - A CONTROL can be PATH-DIVERGENT from the site it stands in for - green, and
+    exercising a neighbouring path. Instrument the real site before trusting it.
+  - DISCLOSE the anomaly you cannot explain. One producer did, and that
+    disclosure is exactly what let a verifier find the mechanism.
+  - A cardinality mismatch gets REPORTED, not silently re-derived into agreement.
 
-  S4 RM-276 RE-FILE, do NOT hand it to a fixer as written. Its acceptance clause (1)
-     is UNSATISFIABLE: it forbids a synthetic fixture and mandates one drawn from
-     the real WAKEUP_NOTES.md, but that file no longer contains the shape that
-     triggers the defect (row asserts 7 sessions / 49907 bytes; the file measures
-     3 / 20682), so satisfying it literally yields a VACUOUSLY GREEN guard. The
-     DEFECT IS LIVE - the session splitter never re-splits the first part. Re-file
-     with a re-derived census and an acceptance that can actually fail.
+BOUNDARY (unchanged, binds attended sessions too): halt and ping before any byte
+      leaves the tree - no sibling-inbox writes, no arming RC-InboxResponder, no
+      edits to docs/CHANNEL.md, ops/loop/slots.py, ops/loop/winmutex.py. The push
+      half gates on DIFF CONTENT, not destination: an ordinary push that passes
+      the suites and the pre-push sibling sweep proceeds without a halt.
 
-  ALSO READY (pick up if a slice finishes early): RM-239 + RM-242 are ON HOLD and
-     need ADJUDICATION before any build - same defect class, but their acceptances
-     CONFLICT (RM-239 blanket convert-all vs RM-242 arguing against a blanket
-     scrub), and the population is unsettled across THREE disagreeing derivations
-     (filed 22 sites / 19 modules; census 20 / 18; independent AST 25 / 19 with 9
-     uncapped). Three live sites nobody names sit in dashboard/routes_sr_draft.py,
-     dashboard/routes_damage_mix.py and dashboard/routes_ds_statcheck.py, and one
-     directory the row cites has ZERO sites at HEAD. Settle the population and the
-     acceptance conflict FIRST; do not merge the two rows (that silently picks a
-     winner).
+ALSO OPEN, not touched in wave 6: 36 stale worktree-agent-* branches are still
+      present (prior waves left theirs too, so removing them is a convention
+      change worth an explicit operator decision rather than a quiet sweep).
+      RM-279 remains CAUTIONED: its stated mechanism is FALSE at HEAD and fixing
+      the site reddens two green guards unless both are amended in the same slice.
 
-  RM-279 CAUTION if anyone works it: its stated gate-scope mechanism is FALSE at
-     HEAD. Two repo-wide guards already see the glyphs and allow them by name, one
-     of which ASSERTS the residual equals exactly those glyphs and PREDATES the row,
-     plus a recorded design deferral in ops/audit/P3_WORKMAP.md. Fixing the site
-     turns a green guard RED unless BOTH guards are amended in the SAME slice.
-     Satisfiable, but NOT independently.
-
-RECORD-ONLY, CARRIED UNCHANGED: RM-454, RM-293(a)/(c), RM-292(b-d), RM-290 site 2,
-  RM-409, RM-376, RM-448, RM-445, RM-432, RM-453 (stop_claim_gate - only a session
-  the gate is NOT flagging may edit it), RM-378 (HELD on RM-448).
-  Side finding, unchased: two python processes resident since 2026-09-15, one a
-  PreToolUse hook that should be short-lived.
-
-SLICE PROMPT RULES (keep in every slice prompt):
-  - STEP ZERO: pwd under .claude\worktrees\, then git merge --ff-only <local main sha>.
-  - Module/related tests only in slices (parallel full suites OOM the box); merger
-    runs the full dual suite ONCE on the FROZEN merged tree, and edits NOTHING while
-    it runs - a suite straddling a docs edit reports a tree that no longer exists.
-  - Any slice that ADDS OR CHANGES A SKIP runs tests/test_skip_condition_hygiene.py
-    before reporting. A skip predicate IMPORTED from another module is UNRESOLVED to
-    that guard - resolve it locally.
-  - At MERGE: skip hygiene on the merged tree; doc guards after docs edits; after
-    filing any RM id run python -B tools/rm_id_registry.py and move the
-    docs/DS_SWEEP_TRACKER.md pin in the SAME commit. NOTE md_guard_selector.py does
-    NOT accept a changed-file list - it errors on positional args; run its full set.
-  - Never widen a guard's accepted vocabulary; never add a cache or memo without a
-    verifier probe of close/reopen, recreate-same-path and small same-size writes.
-  - A fold or evaluator modelling a Python value must match CPython EXACTLY,
-    including raising where CPython raises; otherwise refuse, do not fold.
-  - Second refute of an ADDED cache/rescue/fold that ACCEPTS: REMOVE it. A strict
-    REFUSAL refuted on completeness STAYS and the gap is filed.
-  - Producer numbers are CLAIMS. Wave 5: S3's census total did not reproduce (201 vs
-    173) and resolved as two sound populations, not an error - publish the
-    decomposition, never a fourth figure. S1's marker overclaimed a closed class.
-    S2's control docstring named a mutation it could not discriminate.
-  - Census by AST shape over every patched attribute, never by name grep.
-  - A conversion that passes but no longer exercises the fault is a REGRESSION.
-    DISARM each injector and confirm the test then FAILS - that is the only proof.
-  - Read the ROW, not the brief: age-check by BEHAVIOUR, not by name. Wave 5 found a
-    row whose predicate was SUBSTITUTED (not respelled) by a later fix, and a row
-    whose "test-reachable" symbol was actually production-reachable via a decorator
-    registry - a test-caller story invites deletion of live code.
-  - Do NOT recite a next-free-id figure in prose. Wave 5 measured SIX ids in
-    RM-229..283 spent on nothing but stale pointer text; the guarded pin in
-    docs/DS_SWEEP_TRACKER.md is the only live one.
-  - A verifier that declares a coverage gap gets that gap CLOSED by another agent,
-    not waved through. Wave 5 closed two such gaps and both returned real findings.
-  - Unique scratch filenames per agent; verifier probes ONLY under the scratchpad.
-  - No example path:line cites in BACKLOG/LEDGER prose.
-
-HALT AND RECORD, DO NOT ATTEMPT: criterion (d) flip / CHANNEL_VERSION 2 re-pin;
-  docs/BOUNCE_POLICY.md NOT-DECIDED; replies to LL/LW/RSC/CS; the two BLOCKED
-  third-party skills; responder MODEL pin in tools/inbox_responder_runner.py;
-  arming RC-InboxResponder.
-
-DO NOT REDO (shipped 2026-09-17 wave 5, LEDGER 1425, merges fe2fcd52d / 44e816ee5 /
-  36aaf1765): RM-468 (WAL pragma guard - nine shapes, each with a paired negative
-  control), RM-469 (fault-injection conversions across six test modules plus the oss
-  suite, with a NEW stdlib-only local helper there - do NOT replace it with an import
-  of tests/, the package manifest requires self-containment, and do NOT add a
-  cross-tree byte pin), RM-467 (definite-raise residuals), RM-466 SHIPPED IN PART
-  (the class is NOT closed - the survivors are RM-472). Label flips APPLIED, do not
-  re-investigate: RM-192 ACCEPTANCE MET (predicate SUBSTITUTED by RM-360's artifact;
-  its literal clause would FALSE-RED on a gap id - do NOT restore it), RM-246
-  ACCEPTANCE MET (not refuted - different flip), RM-255 CLOSED/REFUTED AT HEAD (cite
-  0589d171a from git log; LEDGER 1293 carries no sha), RM-281 HALF-CLOSED. RM-260 is
-  SUPERSEDED BY RM-418, not closed and not refuted. Six ids are PHANTOM and must not
-  be given rows: RM-232, RM-249, RM-252, RM-257, RM-265, RM-271. Headline count for
-  the block is 49 open-family after the RM-255 flip (was 50; the old "about 49"
-  estimate was wrong, and it wrongly treated RM-229 as row-less).
-  Earlier waves: see the 2026-09-17b block and LEDGER 1421-1424.
-
-When the drainable queue is empty emit NO_WORK. End with /done plus the next prompt.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+      docs/LEDGER.md + git log.
