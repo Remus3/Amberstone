@@ -680,6 +680,17 @@ class TestSplitterBlindnessRM276(unittest.TestCase):
         self.assertIn("session one", sessions[0])
         self.assertIn("session two", sessions[1])
         self.assertIn("session three", sessions[2])
+        # The stray preamble must SURVIVE, and survive IN POSITION. 4b-i
+        # asserted this and 4b-ii did not, which is the gap wave 7 slice S4
+        # was sent to close: the two arms take different routes through
+        # `split_sessions`, so survival on one is not evidence for the other.
+        # Order-sensitive on purpose - "the characters are all still there"
+        # is exactly the order-blind claim that let a 5.7 MB reorder through.
+        self.assertIn("leftover prose", sessions[1])
+        self.assertLess(sessions[1].index("leftover prose"),
+                        sessions[1].index("session two"),
+                        "the stray preamble must stay AHEAD of the heading "
+                        "it preceded on disk, not merely be present")
 
     # -- BONUS arm ---------------------------------------------------------
     def test_bonus_no_separator_anywhere_still_finds_every_session(self):
@@ -734,6 +745,181 @@ class TestSplitterBlindnessRM276(unittest.TestCase):
 
         self.assertEqual(WP.check(keep=3), 0)
         self.assertEqual(WP.check(keep=2), 1)
+
+
+class TestZeroHeadingBlockStaysInPosition(unittest.TestCase):
+    """RM-276 (4c). The MECHANISM behind the reorder, and it PRE-DATES the
+    (4a)/(4b) fixes: `split_sessions` used to file every zero-heading block
+    seen after the first session into a `trailing_extras` bucket and return
+    `sessions + trailing_extras`, hoisting it to the FILE TAIL.
+
+    On this minimal fixture the old code returned `[S1, S2, ZERO]` on BOTH
+    sides of the (4a)/(4b) fixes, so nothing in the RM-276 suite could see
+    it. What the (4b) fix changed was the REAL archive: 63 of its 95
+    non-matching blocks became in-place sessions, leaving 32 zero-heading
+    blocks interleaved among them instead of sitting contiguously at the
+    tail, so the hoist stopped being a byte-identical no-op and started
+    reordering `docs/history_notes.md` - which `prune()` re-renders whole.
+
+    Every assertion here is ORDER-SENSITIVE. "The character multiset is
+    identical and no line is lost" is true of a reorder too, and order is
+    precisely what the repo's no-history-rewrite rule protects.
+    """
+
+    HEADER = "# RC wakeup notes\n\nOperator hand-off file.\n"
+    S1 = "# 2026-09-18 - session one\n\nbody one\n"
+    ZERO = "an operator note with no heading at all\n"
+    S2 = "# 2026-09-17 - session two\n\nbody two\n"
+
+    def test_zero_heading_block_keeps_its_index(self):
+        text = (self.HEADER + WP.SEP + self.S1 + WP.SEP + self.ZERO
+                + WP.SEP + self.S2)
+        self.assertEqual(
+            len(WP.SESSION_RE.findall(self.ZERO)), 0,
+            "fixture must actually carry a ZERO-heading block")
+
+        _, sessions = WP.split_sessions(text)
+
+        # Exact ordered equality, not `assertCountEqual` and not a substring
+        # sweep. The old bucket returned [S1, S2, ZERO].
+        self.assertEqual(sessions, [self.S1, self.ZERO, self.S2])
+
+    def test_zero_heading_block_round_trips_byte_identically(self):
+        text = (self.HEADER + WP.SEP + self.S1 + WP.SEP + self.ZERO
+                + WP.SEP + self.S2)
+
+        header, blocks = WP.split_blocks(text)
+
+        self.assertEqual(WP.render_blocks(header, blocks), text)
+
+    def test_zero_heading_block_between_glued_sessions_keeps_its_index(self):
+        """The interesting shape is the one the (4b) fix created on the real
+        archive: zero-heading blocks INTERLEAVED with glued ones, not parked
+        contiguously at the tail."""
+        glued = self.S1 + "\n" + "# 2026-09-16 - session three\n\nbody three\n"
+        text = self.HEADER + WP.SEP + glued + WP.SEP + self.ZERO + WP.SEP + self.S2
+
+        _, sessions = WP.split_sessions(text)
+
+        self.assertEqual(len(sessions), 4)
+        self.assertEqual([len(WP.SESSION_RE.findall(b)) for b in sessions],
+                         [1, 1, 0, 1])
+        self.assertIn("session one", sessions[0])
+        self.assertIn("session three", sessions[1])
+        self.assertEqual(sessions[2], self.ZERO)
+        self.assertIn("session two", sessions[3])
+
+
+class TestSplitRenderIsByteStable(unittest.TestCase):
+    """THE MISSING INVARIANT. `prune()` re-renders the WHOLE archive via
+    `render_blocks(*prepend_sessions(...))`, so ANY change to how blocks are
+    split changes what gets written back over `docs/history_notes.md` - the
+    protected append-only archive. Nothing in this suite asserted that the
+    round trip was faithful, so a splitter change that reordered 5.7 MB of
+    history went green.
+
+    Measured before the wave 7 fix: `render(split_sessions(archive))` came
+    back +304 bytes with real deletions in the difflib opcode stream (1477
+    lines inserted, 1335 deleted - a reorder, not an append). Measured after:
+    0 bytes delta, identical sha256, zero opcodes. Both tracked files are
+    read READ-ONLY here and every assertion is anchored against a vacuous
+    pass: an empty or missing file would satisfy `rendered == disk` trivially
+    (`split_blocks("")` returns `("", [])`), so size, block count and heading
+    count are asserted first.
+    """
+
+    TRACKED = ("docs/history_notes.md", "WAKEUP_NOTES.md")
+
+    def _read(self, rel: str) -> str:
+        path = _PROJECT_ROOT / rel
+        self.assertTrue(path.is_file(), f"tracked file missing: {path}")
+        text = path.read_text(encoding="utf-8")
+        # -- anti-vacuity anchors -----------------------------------------
+        self.assertGreater(len(text), 1000,
+                           f"{rel} read back too small to be the real file; "
+                           f"an empty read would pass every assertion below")
+        self.assertGreater(len(WP.SESSION_RE.findall(text)), 0,
+                           f"{rel} carries no session heading at all")
+        return text
+
+    def test_split_render_reproduces_both_tracked_files_byte_for_byte(self):
+        import hashlib
+        for rel in self.TRACKED:
+            with self.subTest(rel):
+                text = self._read(rel)
+
+                header, blocks = WP.split_blocks(text)
+                rendered = WP.render_blocks(header, blocks)
+
+                self.assertGreater(len(blocks), 0,
+                                   f"{rel} parsed to zero blocks")
+                self.assertEqual(
+                    len(rendered.encode("utf-8")), len(text.encode("utf-8")),
+                    f"{rel}: re-render changed the byte count")
+                self.assertEqual(
+                    hashlib.sha256(rendered.encode("utf-8")).hexdigest(),
+                    hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                    f"{rel}: re-render is not byte-identical, so a prune "
+                    f"would rewrite it")
+                self.assertEqual(rendered, text)
+
+    def test_heading_sequence_survives_the_split_in_order(self):
+        """Order-sensitive content preservation. A multiset check passes on a
+        reorder; this does not."""
+        for rel in self.TRACKED:
+            with self.subTest(rel):
+                text = self._read(rel)
+                on_disk = WP.SESSION_RE.findall(text)
+
+                header, blocks = WP.split_blocks(text)
+                recovered = WP.SESSION_RE.findall(header) + [
+                    m for b in blocks for m in WP.SESSION_RE.findall(b.body)
+                ]
+
+                self.assertEqual(recovered, on_disk)
+
+    def test_a_prune_of_the_real_archive_is_a_pure_insertion(self):
+        """The write path, not just the round trip: prepending to the real
+        archive must not rewrite, move or re-space one pre-existing byte.
+
+        Read-only - `prepend_sessions` / `render_blocks` are pure and nothing
+        is written to disk.
+        """
+        text = self._read("docs/history_notes.md")
+        header, blocks = WP.split_blocks(text)
+        moved = ["# 2026-09-18 - probe session\n\nprobe body\n"]
+
+        out_header, out_blocks = WP.prepend_sessions(header, blocks, moved)
+        rebuilt = WP.render_blocks(out_header, out_blocks)
+
+        self.assertIn("probe session", rebuilt)
+        self.assertGreater(len(rebuilt), len(text))
+        self.assertTrue(rebuilt.startswith(out_header))
+        # Full positional reconstruction, which is strictly stronger than an
+        # `endswith` check: deleting exactly the inserted span - the bytes
+        # between the header and the pre-existing tail - must give the
+        # archive back EXACTLY. `endswith` alone would accept extra bytes
+        # smuggled in just ahead of the tail.
+        kept_tail = len(text) - len(out_header)
+        self.assertEqual(
+            rebuilt[:len(out_header)] + rebuilt[len(rebuilt) - kept_tail:],
+            text,
+            "a prune did not merely insert - it rewrote pre-existing archive "
+            "bytes, which is a history rewrite")
+
+    def test_the_faithful_pair_is_not_a_no_op_renderer(self):
+        """Anti-vacuity for the guard itself: `render_blocks` must actually
+        reassemble from the parsed blocks, not echo an input it kept a
+        reference to. Drop a block and the output must shrink accordingly."""
+        text = self._read("docs/history_notes.md")
+        header, blocks = WP.split_blocks(text)
+
+        short = WP.render_blocks(header, blocks[:-1])
+
+        self.assertLess(len(short), len(text))
+        self.assertEqual(
+            len(short) + len(blocks[-1].sep) + len(blocks[-1].body),
+            len(text))
 
 
 if __name__ == "__main__":
