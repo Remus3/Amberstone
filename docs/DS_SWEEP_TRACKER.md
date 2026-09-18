@@ -69,7 +69,15 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-475** (2026-09-18, moved at the wave 6 merge).
+  Next free id = **RM-476** (2026-09-18, moved at the laned orchestrated loop wave 7 merge).
+  **ONE id was allocated 2026-09-18 by the wave 7 merge, and THE PIN MOVED BY ONE.** RM-475 is
+  OPEN under BACKLOG "Reliability / hardening": `scripts/wakeup_prune.py` keep/move accounting
+  counts zero-heading BLOCKS as sessions in FILE ORDER, so `--keep 3` over a file containing one
+  can retain only TWO real sessions. Filed from the adversarial verification of wave 7 slice S4;
+  NOT live today (the real `WAKEUP_NOTES.md` carries zero such blocks) and archive safety is
+  unaffected, which is why it did not block the RM-276 merge. It takes no roster checkbox and
+  does not change the Summary count. The same wave marked RM-474 and RM-276 SHIPPED.
+  Prior pin, kept for the audit trail: Next free id was **RM-475** (2026-09-18, moved at the wave 6 merge).
   **TWO ids were allocated 2026-09-18 by the wave 6 merge, and THE PIN MOVED BY TWO.**
   RM-473 is SHIPPED (the WAL pragma guard's `with` / `async with` arm, closing a gap an
   adversarial verifier declared against RM-470); RM-474 is OPEN (the LICENSE drift guard's
