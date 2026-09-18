@@ -2,8 +2,16 @@
 """Scrubbed JSON error envelope shared by every dashboard/MC route module.
 
 RM-134. This helper is the last-resort error path for BOTH surfaces: `:8888`
-serves these route modules directly, and `mc/routes.py` splices the very same
-`routes_loop_status` / `routes_loop_control` tables into `:8895`. It used to
+serves the dashboard route modules directly, and `mc/routes.py` splices the
+`routes_loop_status` / `routes_loop_control` tables into `:8895`. CORRECTED
+2026-09-18 (RM-239 / RM-242 adjudication): the superseded wording read "`:8888`
+serves these route modules directly" of ALL of them, which is FALSE at HEAD for
+`routes_loop_control` - that module is MC-ONLY. Settled by executing the
+matchers, not by grep: the dashboard dispatch source carries no reference to it,
+`/api/loop-control` matches zero routes in both the `:8888` POST and GET tables,
+the MC route table's sole entry resolves to `_serve_loop_control`, and the
+auth-tuple entry in the dashboard handler is vestigial (auth runs, then 404).
+The splice half above is the TRUE half and is kept. It used to
 serialize ``str(exc)[:200]`` verbatim, so a filesystem path, a module name or a
 secret-shaped traceback fragment reached the wire on any unhandled route error.
 
