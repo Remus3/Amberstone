@@ -39,13 +39,17 @@ WHAT IS PROVEN HERE, AND WHAT IS NOT
   ONLY - sqlite3 exposes no async ``execute`` and the tree carries no async
   journal_mode site, so nothing was broken; the arm is coverage against a
   future async driver.
-* An RM-470 FOLLOW-UP added the ``with`` position, in both spellings. A
+* RM-473, an RM-470 follow-up, added the ``with`` position in both spellings. A
   ``with`` binds through ``withitem.optional_vars``, which neither the loop arm
   nor the assignment arms ever read, so ``with conn.execute(...) as _:``, its
   no-``as`` sibling and the ``async with`` twin were all FALSE NEGATIVES that
   predate RM-470. Coverage only, again: a real-tree census BY AST SHAPE over
-  all 2479 tracked ``.py`` files found 4403 ``ast.With`` and 3 ``ast.AsyncWith``
+  all 2479 tracked ``.py`` files found 4405 ``ast.With`` and 3 ``ast.AsyncWith``
   nodes and ZERO with-items whose context manager is a journal_mode pragma.
+  The node totals are measured WITH this module's own arms present - the
+  ``with pytest.raises(...)`` blocks below are themselves ``ast.With`` nodes,
+  so a census taken before they existed reads two lower. Re-derive AFTER any
+  edit to this file; only the ZERO is invariant.
 """
 from __future__ import annotations
 
@@ -423,7 +427,7 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     live site spells it - sqlite3 has no async ``execute`` - so this widens what
     the matcher DETECTS, never what it accepts.
 
-    The RM-470 FOLLOW-UP adds the ``with`` position in both spellings, delegated
+    RM-473 adds the ``with`` position in both spellings, delegated
     to ``_with_discarded_items`` because a ``with`` binds per ITEM through
     ``withitem.optional_vars`` and there is no single target to test.
     ``ast.AsyncWith`` is a separate node type from ``ast.With`` (MEASURED), the
@@ -810,13 +814,13 @@ def test_guard_rm470_negative_controls_stay_clean():
     assert _discarded_journal_pragmas(clean) == []
 
 
-# RM-470 FOLLOW-UP: the ``with`` position, which predates RM-470 and which the
+# RM-473 (an RM-470 follow-up): the ``with`` position, which predates RM-470 and which the
 # RM-468 loop arm never reached - a ``with`` binds through
 # ``withitem.optional_vars``, not through a ``node.target``.
 #
 # THIS IS A FALSE NEGATIVE ONLY, the same grade as RM-470. A census BY AST SHAPE
 # over all 2479 tracked ``.py`` files (git ls-files, os.walk and
-# ``_repo_walk.iter_repo_files`` agreeing exactly) found 4403 ``ast.With`` and 3
+# ``_repo_walk.iter_repo_files`` agreeing exactly) found 4405 ``ast.With`` and 3
 # ``ast.AsyncWith`` nodes and ZERO with-items whose context manager is a
 # journal_mode pragma execute. The arm is coverage, not a live-defect fix.
 #
