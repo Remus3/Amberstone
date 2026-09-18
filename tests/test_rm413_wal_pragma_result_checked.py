@@ -39,6 +39,13 @@ WHAT IS PROVEN HERE, AND WHAT IS NOT
   ONLY - sqlite3 exposes no async ``execute`` and the tree carries no async
   journal_mode site, so nothing was broken; the arm is coverage against a
   future async driver.
+* An RM-470 FOLLOW-UP added the ``with`` position, in both spellings. A
+  ``with`` binds through ``withitem.optional_vars``, which neither the loop arm
+  nor the assignment arms ever read, so ``with conn.execute(...) as _:``, its
+  no-``as`` sibling and the ``async with`` twin were all FALSE NEGATIVES that
+  predate RM-470. Coverage only, again: a real-tree census BY AST SHAPE over
+  all 2479 tracked ``.py`` files found 4403 ``ast.With`` and 3 ``ast.AsyncWith``
+  nodes and ZERO with-items whose context manager is a journal_mode pragma.
 """
 from __future__ import annotations
 
@@ -362,6 +369,40 @@ def _binds_only_underscore(target: ast.expr) -> bool:
     return False
 
 
+def _with_discarded_items(node: ast.With | ast.AsyncWith) -> ast.expr | None:
+    """The context managers of a ``with`` whose answer nothing keeps.
+
+    A ``with`` binds through ``withitem.optional_vars``, NOT through a
+    ``node.target``, so the For-shaped logic does not transfer and each item is
+    read on its own. An item keeps nothing when it has no ``as`` clause at all
+    (``optional_vars`` is ``None``), and keeps nothing when its target binds only
+    ``_``. Every OTHER item keeps its value and is excluded here, so
+    ``with conn, c.execute(...) as row:`` stays clean while
+    ``with conn, c.execute(...) as _:`` does not.
+
+    The no-``as`` spelling is a discard for the same reason the RM-465 empty
+    unpacking target is NOT one, read the other way round: ``() = row`` raises
+    ``ValueError`` at run time, loud, while ``with conn.execute(...):`` runs
+    silently and drops the answer - which is this row's whole defect.
+
+    ``optional_vars`` is exactly the Name / Tuple / List / Starred family
+    ``_binds_only_underscore`` already decides (MEASURED on CPython 3.14.4:
+    ``with a() as (*_,):`` parses to a Starred inside a Tuple), so that helper
+    is reused rather than re-derived for withitem binding.
+
+    Only the CONTEXT MANAGER expressions are returned, wrapped in a Tuple so the
+    single caller can walk them together - nothing in the ``with`` BODY is
+    attributed to this statement. A ``with`` whose every item keeps its value
+    returns ``None``: it is not a statement that throws a result away.
+    """
+    discarding = [item.context_expr for item in node.items
+                  if item.optional_vars is None
+                  or _binds_only_underscore(item.optional_vars)]
+    if not discarding:
+        return None
+    return ast.Tuple(elts=discarding, ctx=ast.Load())
+
+
 def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     """The value expression of a statement that throws its result away.
 
@@ -381,6 +422,15 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     False), so the async spelling of that same loop was a false negative. No
     live site spells it - sqlite3 has no async ``execute`` - so this widens what
     the matcher DETECTS, never what it accepts.
+
+    The RM-470 FOLLOW-UP adds the ``with`` position in both spellings, delegated
+    to ``_with_discarded_items`` because a ``with`` binds per ITEM through
+    ``withitem.optional_vars`` and there is no single target to test.
+    ``ast.AsyncWith`` is a separate node type from ``ast.With`` (MEASURED), the
+    same trap RM-470 hit one node over. No live site spells either - the tree
+    carries ZERO with-items whose context manager is a journal_mode pragma
+    (MEASURED by AST shape over all 2479 tracked ``.py`` files) - so this too
+    widens what the matcher DETECTS, never what it accepts.
     """
     if isinstance(node, ast.Expr):
         return node.value
@@ -394,6 +444,8 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     if (isinstance(node, (ast.If, ast.While)) and isinstance(node.test, ast.NamedExpr)
             and _binds_only_underscore(node.test.target)):
         return node.test.value
+    if isinstance(node, (ast.With, ast.AsyncWith)):
+        return _with_discarded_items(node)
     return None
 
 
@@ -758,6 +810,117 @@ def test_guard_rm470_negative_controls_stay_clean():
     assert _discarded_journal_pragmas(clean) == []
 
 
+# RM-470 FOLLOW-UP: the ``with`` position, which predates RM-470 and which the
+# RM-468 loop arm never reached - a ``with`` binds through
+# ``withitem.optional_vars``, not through a ``node.target``.
+#
+# THIS IS A FALSE NEGATIVE ONLY, the same grade as RM-470. A census BY AST SHAPE
+# over all 2479 tracked ``.py`` files (git ls-files, os.walk and
+# ``_repo_walk.iter_repo_files`` agreeing exactly) found 4403 ``ast.With`` and 3
+# ``ast.AsyncWith`` nodes and ZERO with-items whose context manager is a
+# journal_mode pragma execute. The arm is coverage, not a live-defect fix.
+#
+# Every positive control is paired with a negative that differs only in that the
+# answer is actually bound.
+_RM470W_SHAPES = [
+    (
+        "with c.execute('PRAGMA journal_mode=WAL') as _:\n    pass\n",
+        "with c.execute('PRAGMA journal_mode=WAL') as row:\n    pass\n",
+    ),
+    (
+        "with c.execute('PRAGMA journal_mode=WAL') as (_,):\n    pass\n",
+        "with c.execute('PRAGMA journal_mode=WAL') as (row,):\n    pass\n",
+    ),
+    (
+        "with c.execute('PRAGMA journal_mode=WAL'):\n    pass\n",
+        "with c.execute('PRAGMA journal_mode=WAL') as row:\n    pass\n",
+    ),
+    (
+        "with conn, c.execute('PRAGMA journal_mode=WAL') as _:\n    pass\n",
+        "with conn, c.execute('PRAGMA journal_mode=WAL') as row:\n    pass\n",
+    ),
+]
+_RM470W_IDS = ["with-as-underscore", "with-as-tuple-underscore", "with-no-binding",
+               "with-second-item-underscore"]
+
+
+# The async spelling, wrapped in an ``async def`` - the only place it can
+# legally live - so the finding lands on line 2, exactly as the RM-470 async-for
+# controls do.
+_RM470AW_SHAPES = [
+    (
+        "async def f(c):\n"
+        "    async with c.execute('PRAGMA journal_mode=WAL') as _:\n        pass\n",
+        "async def f(c):\n"
+        "    async with c.execute('PRAGMA journal_mode=WAL') as row:\n        pass\n",
+    ),
+    (
+        "async def f(c):\n"
+        "    async with c.execute('PRAGMA journal_mode=WAL'):\n        pass\n",
+        "async def f(c):\n"
+        "    async with c.execute('PRAGMA journal_mode=WAL') as row:\n        pass\n",
+    ),
+]
+_RM470AW_IDS = ["async-with-as-underscore", "async-with-no-binding"]
+
+
+@pytest.mark.parametrize("bad, good", _RM470W_SHAPES, ids=_RM470W_IDS)
+def test_guard_positive_control_rm470_with_shapes(bad, good):
+    assert _discarded_journal_pragmas(bad) == [1], bad
+    assert _discarded_journal_pragmas(good) == [], good
+
+
+@pytest.mark.parametrize("bad, good", _RM470AW_SHAPES, ids=_RM470AW_IDS)
+def test_guard_positive_control_rm470_async_with_shapes(bad, good):
+    assert _discarded_journal_pragmas(bad) == [2], bad
+    assert _discarded_journal_pragmas(good) == [], good
+
+
+def test_guard_rm470_async_with_is_a_distinct_node_type():
+    """The fact the async half of the arm rests on, asserted rather than assumed.
+
+    MEASURED on CPython 3.14.4: ``issubclass(ast.AsyncWith, ast.With)`` is
+    False, the same node-identity trap RM-470 hit with ``ast.AsyncFor``. Naming
+    ``ast.With`` alone would miss the async spelling, and the controls above
+    would then be passing for a reason unrelated to the arm written for them.
+    """
+    assert not issubclass(ast.AsyncWith, ast.With)
+
+
+def test_guard_rm470_with_negative_controls_stay_clean():
+    """Four shapes that must NOT become findings.
+
+    A real name bound by the ``as`` clause; a target that binds a real name
+    alongside ``_``; a ``with`` over a NON-journal pragma; and - the one that
+    pins the BODY boundary - a discarding ``with`` whose body keeps a journal
+    answer. The last line fails if the arm returns the ``with`` NODE instead of
+    its context managers, because the walk would then reach the body. The arm
+    must DETECT a discarded answer, not learn to accept more shapes.
+    """
+    clean = (
+        "with c.execute('PRAGMA journal_mode=WAL') as row:\n    pass\n"
+        "with c.execute('PRAGMA journal_mode=WAL') as (_, mode):\n    pass\n"
+        "with c.execute('PRAGMA synchronous=NORMAL'):\n    pass\n"
+        "with conn.cursor() as _:\n"
+        "    row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
+def test_guard_rm470_with_starred_underscore_target_is_a_discard():
+    """``with ... as (*_,):`` binds only throwaway names, so it is a discard.
+
+    MEASURED on CPython 3.14.4: that target parses to a Starred inside a Tuple,
+    which is exactly the family ``_binds_only_underscore`` already decides -
+    evidence that reusing it for withitem binding is correct rather than
+    convenient. The paired negative names a real target through the same shape.
+    """
+    assert _discarded_journal_pragmas(
+        "with c.execute('PRAGMA journal_mode=WAL') as (*_,):\n    pass\n") == [1]
+    assert _discarded_journal_pragmas(
+        "with c.execute('PRAGMA journal_mode=WAL') as (*rows,):\n    pass\n") == []
+
+
 _SITE_FLOOR = 9  # the RM-233 site plus the eight RM-413 sites
 
 
@@ -821,6 +984,27 @@ def test_scan_reports_each_rm468_shape_through_the_real_path(bad):
 
 @pytest.mark.parametrize("bad", [b for b, _ in _RM470_SHAPES], ids=_RM470_IDS)
 def test_scan_reports_each_rm470_shape_through_the_real_path(bad):
+    """Line 2, not line 1 - the statement sits inside its ``async def``."""
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/seeded.py", bad)])
+    assert offenders == ["core/seeded.py:2"]
+    with pytest.raises(AssertionError, match="discarded at"):
+        _assert_scan(sites, offenders)
+
+
+@pytest.mark.parametrize("bad", [b for b, _ in _RM470W_SHAPES], ids=_RM470W_IDS)
+def test_scan_reports_each_rm470_with_shape_through_the_real_path(bad):
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/seeded.py", bad)])
+    assert offenders == ["core/seeded.py:1"]
+    with pytest.raises(AssertionError, match="discarded at"):
+        _assert_scan(sites, offenders)
+
+
+@pytest.mark.parametrize("bad", [b for b, _ in _RM470AW_SHAPES], ids=_RM470AW_IDS)
+def test_scan_reports_each_rm470_async_with_shape_through_the_real_path(bad):
     """Line 2, not line 1 - the statement sits inside its ``async def``."""
     padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
                for i in range(_SITE_FLOOR)]
