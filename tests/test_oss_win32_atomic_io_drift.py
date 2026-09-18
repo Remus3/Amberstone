@@ -311,21 +311,88 @@ def test_every_shipped_file_is_ascii_with_lf_endings():
     assert problems == [], f"ASCII / LF hygiene failed: {problems}"
 
 
+def _license_content(raw: bytes) -> bytes:
+    """Return the LICENSE's CONTENT, with the line-ending REPRESENTATION removed.
+
+    WHY the comparison is normalized rather than the attribute being fixed
+    (RM-471, measured 2026-09-18):
+
+    The two LICENSE paths are the SAME git blob - `git rev-parse HEAD:LICENSE`
+    and `git rev-parse HEAD:oss/win32_atomic_io/LICENSE` both return
+    ed51d99f7579c6d7f692320d6fd8412ef1f9a7b3 - yet a raw byte compare of the
+    WORKING-TREE copies passed in the primary checkout and FAILED in a fresh
+    worktree of the same commit. Nothing had drifted. The divergence was
+    line-ending ATTRIBUTE RESOLUTION:
+
+      - the root `.gitattributes` pins `eol=lf` BY EXTENSION, and `LICENSE` is
+        EXTENSIONLESS, so the root copy resolves NO text and NO eol attribute
+        (`git check-attr -a -- LICENSE` prints nothing) and falls through to
+        `core.autocrlf`, measured `true` on this machine - it materializes CRLF;
+      - the package copy is covered by `oss/win32_atomic_io/.gitattributes`
+        catch-all `text=auto eol=lf`, so it ALWAYS materializes LF.
+
+    So the raw compare's verdict depended on WHEN and WHERE the tree was
+    checked out, which is exactly what a drift guard must not do.
+
+    Fixing the ATTRIBUTE instead was considered and rejected: a
+    `.gitattributes` change only takes effect on RE-CHECKOUT, so every tree
+    already materialized - including the one running this test - would keep
+    failing until someone re-checked the file out, and the guard's verdict
+    would still be a function of checkout history. It would also leave the
+    verdict dependent on the git attribute pipeline, which a plain `cp -r` or a
+    zip export of the package does not honour at all.
+
+    Normalizing here loses nothing the guard is FOR. Its subject is whether the
+    shipped copy is a DIFFERENT OR NARROWER GRANT, and CRLF-vs-LF is never that.
+    The shipped copy's own line endings are still pinned, separately and
+    strictly, by `test_every_shipped_file_is_ascii_with_lf_endings`, which
+    fails on a single CR byte anywhere in the package - so this normalization
+    cannot hide a CRLF regression in the file that actually ships. Only the
+    ROOT copy's representation is left unpinned, deliberately: it is a checkout
+    artifact of the consuming machine, not repository content.
+
+    The normalization is deliberately the narrowest one that does the job:
+    CRLF and lone CR are mapped to LF, and NOTHING else is touched - no
+    whitespace stripping, no case folding, no blank-line collapsing. Widening
+    it would start hiding real differences. `test_license_content_normalizes_only_line_endings`
+    is the positive control that pins it to exactly that.
+    """
+    return raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
+def test_license_content_normalizes_only_line_endings():
+    """Positive control for `_license_content`. A normalizer that quietly
+    widened into stripping or folding would make the LICENSE compare above
+    pass over real content drift, and nothing else would notice."""
+    assert _license_content(b"a\r\nb\rc\n") == b"a\nb\nc\n"
+    # Texts that differ in CONTENT must stay different after normalization.
+    assert _license_content(b"Copyright (c) Moon\n") != _license_content(b"Copyright (c) Other\r\n")
+    assert _license_content(b"Apache License\n") != _license_content(b"apache license\n")
+    assert _license_content(b" leading\n") != _license_content(b"leading\n")
+    assert _license_content(b"trailing \n") != _license_content(b"trailing\n")
+    assert _license_content(b"a\n\nb\n") != _license_content(b"a\nb\n")
+
+
 def test_the_package_ships_the_repository_license_byte_for_byte():
     """The package sits inside an Apache-2.0 repository, so it IS Apache-2.0.
     The copy exists so a `cp -r` of this directory alone carries its grant; a
     copy that has DRIFTED from the root is worse than no copy, because it reads
-    as a separate and possibly narrower grant."""
+    as a separate and possibly narrower grant.
+
+    The compare is over line-ending-normalized CONTENT, not raw bytes, so the
+    verdict is the same in every checkout - see `_license_content` for the
+    measurement and for why the attribute was not the thing fixed."""
     pkg_license = _PKG_ROOT / "LICENSE"
     assert pkg_license.is_file(), "the package must ship its own copy of the repository LICENSE"
     root_bytes = (_REPO_ROOT / "LICENSE").read_bytes()
-    assert pkg_license.read_bytes() == root_bytes, (
-        "oss/win32_atomic_io/LICENSE has drifted from the root LICENSE; "
+    assert _license_content(pkg_license.read_bytes()) == _license_content(root_bytes), (
+        "oss/win32_atomic_io/LICENSE has drifted from the root LICENSE in CONTENT "
+        "(the compare already ignores line endings, so this is real drift); "
         "re-copy it at byte level (text-mode writes rewrite LF as CRLF on Windows)"
     )
     # The grant must name a grantor. An unrendered template is a grant with
     # nobody granting it, and it passes a naive SPDX grep.
-    text = root_bytes.decode("utf-8")
+    text = _license_content(root_bytes).decode("utf-8")
     assert "Apache License" in text and "Version 2.0" in text
     assert "{{" not in text and "[name of copyright owner]" not in text, (
         "the LICENSE carries an unfilled copyright placeholder - a grant with no grantor"
