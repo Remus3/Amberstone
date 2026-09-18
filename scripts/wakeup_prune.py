@@ -25,6 +25,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 WAKEUP = ROOT / "WAKEUP_NOTES.md"
@@ -97,27 +98,102 @@ def _split_on_interior_headings(block: str) -> list[str]:
     return out
 
 
-def split_sessions(text: str) -> tuple[str, list[str]]:
-    """Return (header_block, [session_blocks_newest_first]).
+class Block(NamedTuple):
+    """One parsed block plus the EXACT bytes that preceded it on disk.
 
-    A "session block" is the body of a session entry (without the leading
-    `\\n---\\n\\n` separator). Order is preserved as it appears in the file
-    (newest first by RC convention).
+    RM-276 (4d) SEPARATOR-INVENTION. `render` joins every block with `SEP`,
+    so the moment `_split_on_interior_headings` cuts a glued block into two
+    entries, re-rendering INSERTS a `\\n---\\n\\n` rule that was never in the
+    file. On `docs/history_notes.md` that is 54 cut points and 142 inserted
+    lines, and `prune()` writes the whole re-render back over the protected
+    append-only archive. Splitting glued sessions is CORRECT - counting them
+    separately is the entire point of RM-276 - so the fix is not to stop
+    splitting but to stop inventing: each block remembers its own `sep`
+    (`SEP` for a genuinely separated block, `""` for a piece that was glued
+    to the one before it), and `render_blocks` replays exactly that.
     """
-    parts = text.split(SEP)
-    if len(parts) <= 1:
+
+    sep: str
+    body: str
+
+
+def split_blocks(text: str) -> tuple[str, list[Block]]:
+    """Return (header_text, [Block,...]) such that
+
+        header_text + "".join(b.sep + b.body for b in blocks) == text
+
+    byte for byte. That identity is what `render_blocks` relies on, and it is
+    asserted against both tracked files by
+    `tests/phase7_polish/test_wakeup_prune.py` TestSplitRenderIsByteStable -
+    on the real files, not by construction, so a parsing regression is caught.
+    """
+    header, *rest = text.split(SEP)
+    # RM-276 (4a) FIRST-PART BLINDNESS. `parts[0]` used to be taken as the
+    # pinned header unconditionally, without ever being scanned. A /done
+    # append that omits the separator before its heading therefore landed
+    # that session INSIDE the header block - the one block prune never
+    # archives - so the newest sessions became structurally unprunable while
+    # the tool reported success. Cut the header at its FIRST heading and hand
+    # the remainder to the same per-block path as everything else. This is
+    # done BEFORE any separator-presence test on purpose: the header must be
+    # split at a heading "rather than by assuming a separator", which also
+    # means a file carrying no separator at all is no longer reported empty.
+    raw: list[Block] = []
+    first = SESSION_RE.search(header)
+    if first is not None:
+        # Glued into the header, so NOTHING separated it on disk: sep = "".
+        raw.append(Block("", header[first.start():]))
+        header = header[: first.start()]
+    raw.extend(Block(SEP, part) for part in rest)
+    if not raw:
         return text, []
-    header, *rest = parts
-    leading_pins: list[str] = []
-    sessions: list[str] = []
-    trailing_extras: list[str] = []
+    leading_pins: list[Block] = []
+    # RM-276 (4c) OUT-OF-POSITION HOIST. There used to be a third bucket,
+    # `trailing_extras`, holding every zero-heading block seen AFTER the first
+    # session, and `return sessions + trailing_extras` appended it at the FILE
+    # TAIL. That is a reorder, and `prune()` re-renders the WHOLE archive via
+    # `render(a_header, move_sessions + a_sessions)`, so the reorder is written
+    # back to `docs/history_notes.md` - the protected append-only archive the
+    # repo's no-history-rewrite rule exists to defend. The hoist PRE-DATES the
+    # (4a)/(4b) fixes above: a fixture `H, S1, ZERO-note, S2` returned
+    # `[S1, S2, ZERO-note]` on both sides of them. It was merely INVISIBLE on
+    # the real archive, because every non-matching block happened to sit
+    # contiguously at the tail already, which made the hoist a byte-identical
+    # no-op. Closing (4b) turned 63 of those blocks into in-place sessions and
+    # left 32 zero-heading blocks interleaved among them, which ACTIVATED the
+    # hoist and moved 5.7 MB of history out of order.
+    #
+    # The cause is the separate bucket, not the archive, so the bucket is
+    # GONE: a zero-heading block after the first session is appended to
+    # `sessions` AT ITS OWN INDEX. Nothing is dropped (same blocks, same
+    # count) and nothing moves. Do NOT reintroduce a tail bucket, and do NOT
+    # "fix" a future reorder by skipping the re-render - order preservation is
+    # the invariant, and `tests/phase7_polish/test_wakeup_prune.py`
+    # TestSplitRenderIsByteStable asserts it against both tracked files.
+    blocks: list[Block] = []
     seen_session = False
-    for block in rest:
-        if SESSION_RE.match(block.lstrip("\n")):
+    for block in raw:
+        # RM-276 (4b) INTERIOR-HEADING-IN-A-LATER-BLOCK BLINDNESS. This gate
+        # was `SESSION_RE.match(block.lstrip("\n"))`, which admitted only a
+        # block that STARTS with a heading. A block that does not start with
+        # one but CONTAINS one fell straight through to the two branches
+        # below and was appended WHOLE: into `leading_pins` (folded into the
+        # header, hence unarchivable) or into `trailing_extras` (so several
+        # glued sessions counted as one). That fires with ZERO headings in
+        # `parts[0]`, so the (4a) fix above provably cannot reach it - the
+        # gate itself was the defect. `search` subsumes the old
+        # `match(lstrip)` form because SESSION_RE is `re.M`-anchored.
+        if SESSION_RE.search(block.body):
             seen_session = True
             # A missing separator can glue several sessions into one block;
-            # re-split so each is counted independently.
-            sessions.extend(_split_on_interior_headings(block))
+            # re-split so each is counted independently. Any non-heading
+            # preamble ahead of the first heading rides with the first
+            # sub-block, so nothing is dropped and nothing is reordered. The
+            # pieces are CONTIGUOUS slices of `block.body`, so every piece
+            # after the first was glued: sep = "".
+            pieces = _split_on_interior_headings(block.body)
+            blocks.append(Block(block.sep, pieces[0]))
+            blocks.extend(Block("", piece) for piece in pieces[1:])
         elif not seen_session:
             # Pinned non-session block(s) that precede the first session
             # (e.g. `# <U+2705> RESOLVED ... `). These belong with the header so
@@ -125,12 +201,31 @@ def split_sessions(text: str) -> tuple[str, list[str]]:
             leading_pins.append(block)
         else:
             # Unexpected non-session block AFTER sessions began (e.g. a
-            # stray separator / malformed block). Preserve it at the tail
-            # so we never silently drop content.
-            trailing_extras.append(block)
-    if leading_pins:
-        header = render(header, leading_pins)
-    return header, sessions + trailing_extras
+            # stray separator / malformed block). Preserve it IN POSITION -
+            # see the (4c) note above. Appending here, rather than into a
+            # tail bucket, is what makes split -> render byte-stable.
+            blocks.append(block)
+    # Fold the pins into the header with their OWN separators, not with a
+    # canonical `render` pass - the same (4d) no-invention rule.
+    for pin in leading_pins:
+        header = header + pin.sep + pin.body
+    return header, blocks
+
+
+def split_sessions(text: str) -> tuple[str, list[str]]:
+    """Return (header_block, [session_blocks_newest_first]).
+
+    A "session block" is the body of a session entry (without the leading
+    `\\n---\\n\\n` separator). Order is preserved as it appears in the file
+    (newest first by RC convention).
+
+    Thin projection of `split_blocks`, kept because it is the historical
+    public surface. It DROPS each block's separator, so a caller that
+    re-renders from this view cannot be byte-faithful - use `split_blocks` +
+    `render_blocks` when the target is `docs/history_notes.md`.
+    """
+    header, blocks = split_blocks(text)
+    return header, [b.body for b in blocks]
 
 
 def render(header: str, sessions: list[str]) -> str:
@@ -146,6 +241,45 @@ def render(header: str, sessions: list[str]) -> str:
     body_parts = [b.rstrip("\n") + "\n" for b in sessions]
     body = SEP.join(body_parts)
     return header + SEP + body
+
+
+def render_blocks(header: str, blocks: list[Block]) -> str:
+    """Faithful inverse of `split_blocks`: replay each block's own separator.
+
+    Unlike `render`, this invents nothing and normalises nothing, so it
+    reproduces the parsed file byte for byte. Use it for
+    `docs/history_notes.md`, which the no-history-rewrite rule protects.
+    """
+    return header + "".join(b.sep + b.body for b in blocks)
+
+
+def prepend_sessions(
+    header: str, blocks: list[Block], new_bodies: list[str]
+) -> tuple[str, list[Block]]:
+    """Insert `new_bodies` newest-first ahead of `blocks`, as a PURE INSERTION.
+
+    The result satisfies
+
+        render_blocks(out_header, out_blocks).endswith(
+            render_blocks(header, blocks)[len(out_header):])
+
+    i.e. not one pre-existing byte after the insertion point is rewritten,
+    moved or re-spaced. The awkward case is a first block whose `sep` is `""`
+    because it was glued into the header: the visual break between header and
+    that block lived in the HEADER's trailing newline run, so that run is
+    moved intact to sit ahead of the block again rather than being replaced
+    by a `---` rule the archive never had.
+    """
+    if not new_bodies:
+        return header, list(blocks)
+    fresh = [Block(SEP, b.rstrip("\n") + "\n") for b in new_bodies]
+    out = list(blocks)
+    if out and out[0].sep == "":
+        stem = header.rstrip("\n")
+        glue = header[len(stem):] or "\n\n"
+        fresh[-1] = Block(fresh[-1].sep, fresh[-1].body.rstrip("\n") + glue)
+        header = stem
+    return header, fresh + out
 
 
 def _atomic_write(target: Path, content: str) -> None:
@@ -197,12 +331,19 @@ def prune(*, keep: int, dry_run: bool) -> int:
 
     new_wakeup = render(header, keep_sessions)
 
+    # The archive is the protected append-only history, so it is parsed and
+    # re-rendered through the FAITHFUL pair - `split_blocks` / `render_blocks`
+    # via `prepend_sessions` - not through `render`, which would normalise
+    # every glued boundary in 5.7 MB of history into a `---` rule it never
+    # had. WAKEUP_NOTES above deliberately keeps the canonical `render`: it is
+    # the live working file, and repairing a malformed separator there is the
+    # documented behaviour (TestRender.test_render_repairs_buggy_input).
     if ARCHIVE.exists():
-        a_header, a_sessions = split_sessions(ARCHIVE.read_text(encoding="utf-8"))
+        a_header, a_blocks = split_blocks(ARCHIVE.read_text(encoding="utf-8"))
     else:
         a_header = ARCHIVE_HEADER
-        a_sessions = []
-    new_archive = render(a_header, move_sessions + a_sessions)
+        a_blocks = []
+    new_archive = render_blocks(*prepend_sessions(a_header, a_blocks, move_sessions))
 
     if dry_run:
         print("(dry-run - no files written)")
@@ -212,7 +353,7 @@ def prune(*, keep: int, dry_run: bool) -> int:
     ARCHIVE.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write(ARCHIVE, new_archive)
     print(f"wakeup_prune: WAKEUP_NOTES now has {len(keep_sessions)} session(s); "
-          f"archive now has {len(move_sessions) + len(a_sessions)}")
+          f"archive now has {len(move_sessions) + len(a_blocks)}")
     return 0
 
 
