@@ -69,7 +69,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-473** (2026-09-17, moved at the wave 5 three-way age census doc-sync).
+  Next free id = **RM-475** (2026-09-18, moved at the wave 6 merge).
+  **TWO ids were allocated 2026-09-18 by the wave 6 merge, and THE PIN MOVED BY TWO.**
+  RM-473 is SHIPPED (the WAL pragma guard's `with` / `async with` arm, closing a gap an
+  adversarial verifier declared against RM-470); RM-474 is OPEN (the LICENSE drift guard's
+  lost second arm, a latent coupling left by RM-471). Both sit under BACKLOG
+  "Reliability / hardening"; neither takes a roster checkbox nor changes the Summary count.
+  Earlier next-free pointer (2026-09-17, moved at the wave 5 three-way age census doc-sync).
   **THREE ids were allocated 2026-09-17 by the wave 5 census docs slice, and THE PIN MOVED BY
   THREE.** All three are OPEN under BACKLOG "Reliability / hardening": RM-470 the WAL pragma
   result guard does not handle `ast.AsyncFor`; RM-471 the `oss/win32_atomic_io` LICENSE
