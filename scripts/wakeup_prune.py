@@ -104,19 +104,44 @@ def split_sessions(text: str) -> tuple[str, list[str]]:
     `\\n---\\n\\n` separator). Order is preserved as it appears in the file
     (newest first by RC convention).
     """
-    parts = text.split(SEP)
-    if len(parts) <= 1:
+    header, *rest = text.split(SEP)
+    # RM-276 (4a) FIRST-PART BLINDNESS. `parts[0]` used to be taken as the
+    # pinned header unconditionally, without ever being scanned. A /done
+    # append that omits the separator before its heading therefore landed
+    # that session INSIDE the header block - the one block prune never
+    # archives - so the newest sessions became structurally unprunable while
+    # the tool reported success. Cut the header at its FIRST heading and hand
+    # the remainder to the same per-block path as everything else. This is
+    # done BEFORE any separator-presence test on purpose: the header must be
+    # split at a heading "rather than by assuming a separator", which also
+    # means a file carrying no separator at all is no longer reported empty.
+    first = SESSION_RE.search(header)
+    if first is not None:
+        rest.insert(0, header[first.start():])
+        header = header[: first.start()]
+    if not rest:
         return text, []
-    header, *rest = parts
     leading_pins: list[str] = []
     sessions: list[str] = []
     trailing_extras: list[str] = []
     seen_session = False
     for block in rest:
-        if SESSION_RE.match(block.lstrip("\n")):
+        # RM-276 (4b) INTERIOR-HEADING-IN-A-LATER-BLOCK BLINDNESS. This gate
+        # was `SESSION_RE.match(block.lstrip("\n"))`, which admitted only a
+        # block that STARTS with a heading. A block that does not start with
+        # one but CONTAINS one fell straight through to the two branches
+        # below and was appended WHOLE: into `leading_pins` (folded into the
+        # header, hence unarchivable) or into `trailing_extras` (so several
+        # glued sessions counted as one). That fires with ZERO headings in
+        # `parts[0]`, so the (4a) fix above provably cannot reach it - the
+        # gate itself was the defect. `search` subsumes the old
+        # `match(lstrip)` form because SESSION_RE is `re.M`-anchored.
+        if SESSION_RE.search(block):
             seen_session = True
             # A missing separator can glue several sessions into one block;
-            # re-split so each is counted independently.
+            # re-split so each is counted independently. Any non-heading
+            # preamble ahead of the first heading rides with the first
+            # sub-block, so nothing is dropped and nothing is reordered.
             sessions.extend(_split_on_interior_headings(block))
         elif not seen_session:
             # Pinned non-session block(s) that precede the first session
