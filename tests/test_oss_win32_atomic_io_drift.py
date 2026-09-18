@@ -29,7 +29,8 @@ from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent
+_THIS_FILE = Path(__file__).resolve()
+_REPO_ROOT = _THIS_FILE.parent.parent
 _RC_SOURCE = _REPO_ROOT / "core" / "polled_json.py"
 _PKG_ROOT = _REPO_ROOT / "oss" / "win32_atomic_io"
 _PKG_SOURCE = _PKG_ROOT / "src" / "win32_atomic_io" / "_atomic.py"
@@ -299,6 +300,10 @@ def test_rc_specific_prose_is_absent_from_every_shipped_file(token):
 
 
 def test_every_shipped_file_is_ascii_with_lf_endings():
+    # The breadth of this file set is LOAD-BEARING beyond hygiene: it is what
+    # catches a CRLF-drifted shipped LICENSE, which the license compare below
+    # deliberately cannot see. Narrowing it is guarded - see
+    # test_the_ascii_lf_guard_still_enumerates_every_shipped_file.
     problems = []
     for path in _package_all_files():
         raw = path.read_bytes()
@@ -309,6 +314,70 @@ def test_every_shipped_file_is_ascii_with_lf_endings():
         if non_ascii:
             problems.append(f"{path.name}: {non_ascii} non-ASCII bytes")
     assert problems == [], f"ASCII / LF hygiene failed: {problems}"
+
+
+def _called_names(func: ast.FunctionDef) -> set:
+    """Every bare-name function called anywhere inside `func`."""
+    return {
+        n.func.id for n in ast.walk(func) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+    }
+
+
+def test_the_ascii_lf_guard_still_enumerates_every_shipped_file():
+    """Make the LICENSE's dependence on the ASCII/LF guard EXPLICIT (RM-474).
+
+    WHY this exists, measured 2026-09-18 by performing the edit rather than
+    arguing about it: RM-471 replaced the LICENSE byte compare with a
+    line-ending-NORMALIZED content compare, which is correct and is not in
+    question - but it cost a CRLF-drifted SHIPPED LICENSE its second
+    independent guard. Only `test_every_shipped_file_is_ascii_with_lf_endings`
+    still catches that, and it did not know it was load-bearing.
+
+    Observed at this HEAD: CRLF-drift the shipped LICENSE and that one test is
+    the ONLY failure (51 passed, 1 failed). Then narrow its file set from
+    `_package_all_files()` to `_package_py_files()` - a ONE-TOKEN edit, and
+    `_package_py_files()` already sits in this module as a ready-made
+    alternative - and the fully CRLF-drifted LICENSE goes green again (52
+    passed, 0 failed). Nothing in the suite objected. This test is what
+    objects.
+
+    WHY this SHAPE rather than moving the CR check into the compare test: the
+    row permitted either, but only this one fails on the NARROWING ITSELF,
+    with no drift needed. Moving the check would merely make the narrowing
+    harmless and silent, and a future reader would still have no way to learn
+    that the breadth was ever deliberate. Both are wanted, so the independent
+    CR pin is ALSO restored, next to the compare test that needs it.
+
+    A rewrite of the guard that enumerates the shipped files some other legal
+    way will trip this too. That is intended: it is a LOUD stop, not a silent
+    downgrade, and the fix is to re-point this assertion on purpose.
+    """
+    survivor_name = "test_every_shipped_file_is_ascii_with_lf_endings"
+    tree = ast.parse(_THIS_FILE.read_bytes().decode("utf-8"))
+    survivor = _functions(tree).get(survivor_name)
+    assert survivor is not None, (
+        f"{survivor_name} was renamed or removed. It is the only test that catches a "
+        f"CRLF-drifted shipped LICENSE; re-point this guard at its replacement."
+    )
+
+    called = _called_names(survivor)
+    assert "_package_all_files" in called, (
+        f"{survivor_name} no longer enumerates _package_all_files(), so it no longer "
+        f"covers the shipped LICENSE - and the license compare normalizes line endings "
+        f"away on purpose, so nothing else would catch a CRLF-drifted LICENSE. It calls "
+        f"{sorted(called)} instead."
+    )
+    assert "_package_py_files" not in called, (
+        f"{survivor_name} was narrowed to the .py files only. That is exactly the "
+        f"one-token regression this guard exists to stop: it leaves a CRLF-drifted "
+        f"shipped LICENSE fully green."
+    )
+
+    pkg_license = _PKG_ROOT / "LICENSE"
+    assert pkg_license in _package_all_files(), (
+        "the shipped LICENSE is not in _package_all_files(), so the ASCII/LF guard does "
+        "not actually reach it however it is spelled"
+    )
 
 
 def _license_content(raw: bytes) -> bytes:
@@ -396,6 +465,35 @@ def test_the_package_ships_the_repository_license_byte_for_byte():
     assert "Apache License" in text and "Version 2.0" in text
     assert "{{" not in text and "[name of copyright owner]" not in text, (
         "the LICENSE carries an unfilled copyright placeholder - a grant with no grantor"
+    )
+
+
+def test_the_shipped_license_line_endings_are_pinned_independently():
+    """The SECOND independent guard on the shipped LICENSE's representation,
+    restored next to the compare that stopped providing it (RM-474).
+
+    The compare above normalizes CRLF away deliberately, for the reasons
+    recorded on `_license_content`, and that is not being re-litigated here -
+    this is NOT a byte compare and re-introducing one would undo RM-471. It
+    asserts one narrower thing the normalized compare cannot: that the copy
+    which actually SHIPS is LF, read straight off disk with no file-set helper
+    in the path. So this survives any rewrite or narrowing of
+    `test_every_shipped_file_is_ascii_with_lf_endings`, while that test in turn
+    catches the same drift in every OTHER shipped file. Two independent guards
+    again, which is the state RM-471 cost and this restores.
+
+    Scope is deliberately CR ONLY. Non-ASCII drift in this file is already
+    caught by the CONTENT compare above (a changed byte is a changed byte once
+    line endings are normalized); CR is the single thing that normalization is
+    blind to by design.
+    """
+    raw = (_PKG_ROOT / "LICENSE").read_bytes()
+    cr_count = raw.count(b"\r")
+    assert cr_count == 0, (
+        f"the shipped oss/win32_atomic_io/LICENSE carries {cr_count} CR bytes. The "
+        f"package's own .gitattributes pins it to LF, so a CRLF copy means it was "
+        f"re-copied with a text-mode write (write_text rewrites LF as CRLF on Windows) "
+        f"or checked out around that pin. Re-copy it at BYTE level."
     )
 
 
