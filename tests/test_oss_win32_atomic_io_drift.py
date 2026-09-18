@@ -29,7 +29,8 @@ from pathlib import Path
 
 import pytest
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent
+_THIS_FILE = Path(__file__).resolve()
+_REPO_ROOT = _THIS_FILE.parent.parent
 _RC_SOURCE = _REPO_ROOT / "core" / "polled_json.py"
 _PKG_ROOT = _REPO_ROOT / "oss" / "win32_atomic_io"
 _PKG_SOURCE = _PKG_ROOT / "src" / "win32_atomic_io" / "_atomic.py"
@@ -299,6 +300,14 @@ def test_rc_specific_prose_is_absent_from_every_shipped_file(token):
 
 
 def test_every_shipped_file_is_ascii_with_lf_endings():
+    # The breadth of this file set is LOAD-BEARING beyond hygiene: it is the
+    # ONLY CR guard the shipped non-.py files have, because the license
+    # compare below deliberately normalizes line endings away. Narrowing the
+    # set this loop READS is guarded, including by a filter placed BEFORE the
+    # read below - but NOT by the same filter placed after it. Do not edit
+    # this loop on the strength of that guard's name; read its WHAT IS NOT
+    # COVERED list first. See
+    # test_the_ascii_lf_guard_still_covers_the_non_py_shipped_files.
     problems = []
     for path in _package_all_files():
         raw = path.read_bytes()
@@ -309,6 +318,137 @@ def test_every_shipped_file_is_ascii_with_lf_endings():
         if non_ascii:
             problems.append(f"{path.name}: {non_ascii} non-ASCII bytes")
     assert problems == [], f"ASCII / LF hygiene failed: {problems}"
+
+
+def _files_inspected_by(func, monkeypatch) -> set:
+    """Run `func` and return the set of resolved paths it actually READ.
+
+    This is how the coverage guard below grades the RESULT of the survivor's
+    enumeration instead of its source text. `Path.read_bytes` is recorded for
+    the duration of the call, so the returned set is exactly the files the
+    survivor opened, whatever route it took to decide on them.
+
+    `func`'s own VERDICT is deliberately discarded. An AssertionError from it
+    means it found real drift, which is that test's job to report and not this
+    one's; swallowing it keeps a single real CRLF regression from being
+    reported twice, and keeps this guard answering only the question it asks.
+    """
+    seen: set = set()
+    real_read_bytes = Path.read_bytes
+
+    def _recording_read_bytes(self):
+        seen.add(self.resolve())
+        return real_read_bytes(self)
+
+    monkeypatch.setattr(Path, "read_bytes", _recording_read_bytes)
+    try:
+        func()
+    except AssertionError:
+        pass
+    finally:
+        monkeypatch.undo()
+    return seen
+
+
+def test_the_ascii_lf_guard_still_covers_the_non_py_shipped_files(monkeypatch):
+    """Make the shipped non-.py files' dependence on the ASCII/LF guard
+    EXPLICIT and enforced (RM-474, then RM-474 gap-close).
+
+    WHY this exists, measured 2026-09-18 by performing the edits rather than
+    arguing about them: RM-471 replaced the LICENSE byte compare with a
+    line-ending-NORMALIZED content compare, which is correct and is not in
+    question - but it cost the shipped non-.py files their CR guard.
+    `test_every_shipped_file_is_ascii_with_lf_endings` is the only test that
+    still catches CRLF drift in them, and it did not know it was
+    load-bearing. Which files those are is DERIVED, not recited: it is
+    `_package_all_files()` with the `.py` files removed, which is why a newly
+    added shipped file is covered without editing this test. Read the
+    derivation rather than a list - an earlier draft of this docstring recited
+    four names and silently omitted `src/win32_atomic_io/py.typed`, which is
+    the staleness the derivation exists to avoid. (The LICENSE itself also has
+    `test_the_shipped_license_line_endings_are_pinned_independently`; its
+    siblings have nothing else.)
+
+    Counts measured at this commit, 54 tests total:
+      - CRLF-drift the shipped README.md: 53 passed, 1 failed - the survivor.
+      - CRLF-drift the shipped LICENSE: 52 passed, 2 failed - the survivor
+        plus the independent CR pin.
+      - Narrow the survivor's file set from `_package_all_files()` to
+        `_package_py_files()`: caught here.
+      - Add `if path.suffix != ".py": continue` INSIDE the survivor's loop
+        BEFORE its `path.read_bytes()`, still calling `_package_all_files()`:
+        also caught here. An earlier, source-introspective version of this
+        guard read the survivor's AST for the names it called, and that filter
+        was INVISIBLE to it - CRLF README went 54 passed, 0 failed. That is
+        the gap this shape closes.
+
+    WHAT IS COVERED. Any narrowing of the set the survivor actually READS:
+    a filter inside its loop placed BEFORE `path.read_bytes()`, a swap of the
+    helper it calls, a rename or removal of the survivor itself, and a
+    narrowing of `_package_all_files()` (the required set is derived from it,
+    and the anchors below refuse an empty or .py-only answer). Each of those
+    four was measured at 53 passed, 1 failed.
+
+    NOT the same filter placed AFTER `path.read_bytes()`. The bytes are
+    already read by then, so this guard observes full coverage and passes -
+    measured 54 passed, 0 failed, with and without a CRLF-drifted README.
+    That is an instance of the neutered-assertion class disclosed below, one
+    LINE-ORDER away from the edit that IS caught, so read "a filter inside the
+    loop" as "before the read" and nothing wider.
+
+    WHAT IS NOT COVERED, stated plainly so the next reader does not stop
+    looking:
+      - A survivor that still inspects every file but has its ASSERTION
+        neutered. It would read all the bytes and this guard would pass.
+      - A survivor rewritten to read bytes by some route other than
+        `Path.read_bytes` (`open(path, "rb").read()`, say). That fails HERE,
+        loudly, as a false positive rather than a silent miss - re-point
+        `_files_inspected_by` on purpose if that day comes.
+      - Deletion of THIS test. The chain terminates here and the terminal link
+        is unguarded; that is a disclosed gap, not an oversight.
+    """
+    survivor_name = "test_every_shipped_file_is_ascii_with_lf_endings"
+    survivor = globals().get(survivor_name)
+    assert callable(survivor), (
+        f"{survivor_name} was renamed or removed. It is the only CR guard the shipped "
+        f"non-.py files have (see the derivation below for which those are), because "
+        f"the license compare normalizes line endings away on purpose. Re-point this "
+        f"guard at its replacement."
+    )
+
+    # The required set is DERIVED, so a newly added shipped file is covered
+    # without editing this test - but a derived set can go empty, and an empty
+    # set would satisfy the coverage assertion vacuously. These anchors are
+    # what stop that: the derivation must still produce these non-.py shipped
+    # files, by exact path. They are a deliberate SUBSET of it and not a
+    # census - `required` below is the full set, and it is wider than this
+    # list.
+    required = [p for p in _package_all_files() if p.suffix != ".py"]
+    anchors = [
+        _PKG_ROOT / "LICENSE",
+        _PKG_ROOT / "README.md",
+        _PKG_ROOT / "pyproject.toml",
+        _PKG_ROOT / ".gitattributes",
+        _PKG_ROOT / ".gitignore",
+    ]
+    absent = [str(p.relative_to(_REPO_ROOT)) for p in anchors if p not in required]
+    assert absent == [], (
+        f"_package_all_files() no longer yields these shipped non-.py files, so the "
+        f"coverage assertion below would be vacuous: {absent}"
+    )
+
+    inspected = _files_inspected_by(survivor, monkeypatch)
+    assert inspected, (
+        f"{survivor_name} read no files at all. Either it was gutted, or it now reads "
+        f"bytes by a route _files_inspected_by does not observe."
+    )
+    missed = sorted(str(p.relative_to(_REPO_ROOT)) for p in required if p.resolve() not in inspected)
+    assert missed == [], (
+        f"{survivor_name} no longer inspects these shipped non-.py files, so nothing in "
+        f"the suite would catch CRLF or non-ASCII drift in them: {missed}. It inspected "
+        f"{len(inspected)} file(s). This is a NARROWING of the only guard they have - "
+        f"widen it back, or add a replacement guard and re-point this test at it."
+    )
 
 
 def _license_content(raw: bytes) -> bytes:
@@ -396,6 +536,35 @@ def test_the_package_ships_the_repository_license_byte_for_byte():
     assert "Apache License" in text and "Version 2.0" in text
     assert "{{" not in text and "[name of copyright owner]" not in text, (
         "the LICENSE carries an unfilled copyright placeholder - a grant with no grantor"
+    )
+
+
+def test_the_shipped_license_line_endings_are_pinned_independently():
+    """The SECOND independent guard on the shipped LICENSE's representation,
+    restored next to the compare that stopped providing it (RM-474).
+
+    The compare above normalizes CRLF away deliberately, for the reasons
+    recorded on `_license_content`, and that is not being re-litigated here -
+    this is NOT a byte compare and re-introducing one would undo RM-471. It
+    asserts one narrower thing the normalized compare cannot: that the copy
+    which actually SHIPS is LF, read straight off disk with no file-set helper
+    in the path. So this survives any rewrite or narrowing of
+    `test_every_shipped_file_is_ascii_with_lf_endings`, while that test in turn
+    catches the same drift in every OTHER shipped file. Two independent guards
+    again, which is the state RM-471 cost and this restores.
+
+    Scope is deliberately CR ONLY. Non-ASCII drift in this file is already
+    caught by the CONTENT compare above (a changed byte is a changed byte once
+    line endings are normalized); CR is the single thing that normalization is
+    blind to by design.
+    """
+    raw = (_PKG_ROOT / "LICENSE").read_bytes()
+    cr_count = raw.count(b"\r")
+    assert cr_count == 0, (
+        f"the shipped oss/win32_atomic_io/LICENSE carries {cr_count} CR bytes. The "
+        f"package's own .gitattributes pins it to LF, so a CRLF copy means it was "
+        f"re-copied with a text-mode write (write_text rewrites LF as CRLF on Windows) "
+        f"or checked out around that pin. Re-copy it at BYTE level."
     )
 
 
