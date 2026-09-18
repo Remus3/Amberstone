@@ -33,6 +33,12 @@ WHAT IS PROVEN HERE, AND WHAT IS NOT
   concatenated with ``+``. Every fold was measured against the project
   interpreter first; a conversion or spec that could change the text, and a
   ``+`` with a non-str operand, are REFUSED rather than modelled.
+* RM-470 added the ASYNC spelling of the RM-468 loop position. ``ast.AsyncFor``
+  is not a subclass of ``ast.For`` (MEASURED), so ``async for _ in
+  conn.execute(...)`` was invisible to the matcher. This was a FALSE NEGATIVE
+  ONLY - sqlite3 exposes no async ``execute`` and the tree carries no async
+  journal_mode site, so nothing was broken; the arm is coverage against a
+  future async driver.
 """
 from __future__ import annotations
 
@@ -369,6 +375,12 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
     so nothing in the loop or branch BODY is attributed to this statement. The
     bare ``(_ := ...)`` statement needs no rule of its own - it is an
     ``ast.Expr`` and the first branch above already reports it.
+
+    RM-470 names ``ast.AsyncFor`` alongside ``ast.For``. It is a SEPARATE node
+    type, not a subclass (MEASURED: ``issubclass(ast.AsyncFor, ast.For)`` is
+    False), so the async spelling of that same loop was a false negative. No
+    live site spells it - sqlite3 has no async ``execute`` - so this widens what
+    the matcher DETECTS, never what it accepts.
     """
     if isinstance(node, ast.Expr):
         return node.value
@@ -377,7 +389,7 @@ def _is_discard_statement(node: ast.AST) -> ast.expr | None:
         return node.value
     if isinstance(node, ast.AnnAssign) and node.value is not None and _binds_only_underscore(node.target):
         return node.value
-    if isinstance(node, ast.For) and _binds_only_underscore(node.target):
+    if isinstance(node, (ast.For, ast.AsyncFor)) and _binds_only_underscore(node.target):
         return node.iter
     if (isinstance(node, (ast.If, ast.While)) and isinstance(node.test, ast.NamedExpr)
             and _binds_only_underscore(node.test.target)):
@@ -688,6 +700,64 @@ def test_guard_rm468_partly_kept_loop_and_walrus_targets_stay_clean():
     assert _discarded_journal_pragmas(clean) == []
 
 
+# RM-470: the ASYNC spelling of the loop position RM-468 added. ``ast.AsyncFor``
+# is a separate node type, so ``async for _ in conn.execute(...)`` was a false
+# negative while the synchronous spelling was caught.
+#
+# THIS IS A FALSE NEGATIVE ONLY. sqlite3 exposes no async ``execute`` and the
+# tree carries ZERO async journal_mode sites (MEASURED), so nothing is broken
+# today - the arm covers a future async DB driver.
+#
+# Each source is wrapped in an ``async def``, the only place the statement can
+# legally live in a real module, so the finding lands on line 2 rather than
+# line 1. Every positive control is paired with a negative that differs only in
+# that the answer is actually bound.
+_RM470_SHAPES = [
+    (
+        "async def f(conn):\n"
+        "    async for _ in conn.execute('PRAGMA journal_mode=WAL'):\n        pass\n",
+        "async def f(conn):\n"
+        "    async for mode in conn.execute('PRAGMA journal_mode=WAL'):\n        pass\n",
+    ),
+    (
+        "async def f(conn):\n"
+        "    async for (_,) in conn.execute('PRAGMA journal_mode=WAL'):\n        pass\n",
+        "async def f(conn):\n"
+        "    async for (mode,) in conn.execute('PRAGMA journal_mode=WAL'):\n        pass\n",
+    ),
+]
+_RM470_IDS = ["async-for-target", "async-for-tuple-target"]
+
+
+@pytest.mark.parametrize("bad, good", _RM470_SHAPES, ids=_RM470_IDS)
+def test_guard_positive_control_rm470_shapes(bad, good):
+    assert _discarded_journal_pragmas(bad) == [2], bad
+    assert _discarded_journal_pragmas(good) == [], good
+
+
+def test_guard_rm470_async_for_is_a_distinct_node_type():
+    """The fact the RM-470 arm rests on, asserted rather than assumed.
+
+    MEASURED on CPython 3.14.4: ``issubclass(ast.AsyncFor, ast.For)`` is False,
+    which is exactly why naming ``ast.For`` alone missed the async spelling. If
+    a future Python ever merged the two, the controls above would pass for a
+    reason unrelated to the arm written for them - this line says so out loud.
+    """
+    assert not issubclass(ast.AsyncFor, ast.For)
+
+
+def test_guard_rm470_negative_controls_stay_clean():
+    """An async loop that binds a real name alongside ``_``, and an async loop
+    over a NON-journal pragma, are not findings. The arm must DETECT a discarded
+    async answer, not learn to accept more shapes."""
+    clean = (
+        "async def f(conn):\n"
+        "    async for _, mode in conn.execute('PRAGMA journal_mode=WAL'):\n        pass\n"
+        "    async for _ in conn.execute('PRAGMA synchronous=NORMAL'):\n        pass\n"
+    )
+    assert _discarded_journal_pragmas(clean) == []
+
+
 _SITE_FLOOR = 9  # the RM-233 site plus the eight RM-413 sites
 
 
@@ -745,6 +815,17 @@ def test_scan_reports_each_rm468_shape_through_the_real_path(bad):
                for i in range(_SITE_FLOOR)]
     sites, offenders = _scan([*padding, ("core/seeded.py", bad)])
     assert offenders == ["core/seeded.py:1"]
+    with pytest.raises(AssertionError, match="discarded at"):
+        _assert_scan(sites, offenders)
+
+
+@pytest.mark.parametrize("bad", [b for b, _ in _RM470_SHAPES], ids=_RM470_IDS)
+def test_scan_reports_each_rm470_shape_through_the_real_path(bad):
+    """Line 2, not line 1 - the statement sits inside its ``async def``."""
+    padding = [(f"core/pad{i}.py", "row = c.execute('PRAGMA journal_mode=WAL').fetchone()\n")
+               for i in range(_SITE_FLOOR)]
+    sites, offenders = _scan([*padding, ("core/seeded.py", bad)])
+    assert offenders == ["core/seeded.py:2"]
     with pytest.raises(AssertionError, match="discarded at"):
         _assert_scan(sites, offenders)
 
