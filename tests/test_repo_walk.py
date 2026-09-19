@@ -30,6 +30,10 @@ def _record_scandir(monkeypatch, sink: list[str]) -> None:
     real = os.scandir
 
     def hook(path=".", *args, **kwargs):
+        if isinstance(path, int):
+            # POSIX shutil.rmtree (pytest's tmp_path cleanup) scans by file
+            # descriptor; an fd is not a directory path and os.fspath raises.
+            return real(path, *args, **kwargs)
         raw = os.fspath(path)
         if isinstance(raw, bytes):
             raw = raw.decode("utf-8", errors="replace")
