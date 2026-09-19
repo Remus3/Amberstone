@@ -43,6 +43,25 @@ Do NOT redo: the EIGHT brief defects are already corrected IN the rows - read
       hot-reload watcher writes restart_trigger.txt on any non-frozen .py
       change; tests/conftest.py:238-253 documents it and states the
       attribution limit). Do NOT re-open it.
+FIRST, and it is NOT yet filed - a ROADMAP/BACKLOG vs LEDGER state-drift class.
+      An operator report claims RC has 25 ids flat OPEN on its roadmap while
+      closed in its ledger. That 25 did NOT reproduce under any of five rules
+      tried (any-RM-in-ROADMAP x ledger-closed 56; ROADMAP-marked-OPEN x
+      ledger-closed 4; BACKLOG-says-OPEN x ledger-closed 4; BACKLOG-OPEN x
+      any-ledger-mention 77; any x any 198). DO NOT adopt 25, and do NOT invent
+      a sixth rule to force agreement - get the reporter's rule, or publish
+      yours alongside the number. The CLASS is real regardless: RM-472's
+      BACKLOG row at line 267 still reads OPEN while LEDGER 1426 records wave 6
+      shipping it CLOSED BY REFUSAL at 82c1eafda. That one is CONFIRMED drift.
+      My own instrument over-counted and the false positives are instructive -
+      a grouped header like "RM-234 SHIPPED ...; RM-235 / RM-236 / RM-237 OPEN"
+      makes a naive regex read RM-234 as OPEN, and "RM-281 HALF-CLOSED +
+      RM-283 OPEN" does the same to RM-281. Any census here MUST parse the
+      marker bound to each id, not the nearest OPEN token on the line.
+      tools/drift_guard.py passes clean on this tree, so this class is a GAP in
+      the guard, not a breach it caught - closing it probably means a new check
+      plus a case in tests/test_drift_guard.py. File it with the correct next
+      free RM id (read the next-free-id pin, do not guess).
 Also open, unclaimed: RM-475 (scripts/wakeup_prune.py keep/move accounting
       counts zero-heading BLOCKS as sessions in file order, so --keep 3 over a
       file containing one retains only TWO real sessions; NOT live today).
