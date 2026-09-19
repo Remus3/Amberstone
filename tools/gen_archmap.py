@@ -23,6 +23,7 @@ Note: the frozen-file list in CLAUDE.md is manually maintained because it
 includes non-Python files (.ps1, .json, .xml, .md) that cannot carry # arch: headers.
 """
 import argparse
+import os
 import pathlib
 import re
 import sys
@@ -93,14 +94,33 @@ PHASE_RE = re.compile(
 )
 
 
+def _iter_source_py() -> list[pathlib.Path]:
+    """Every .py under ROOT outside SKIP_DIRS, sorted by path.
+
+    Scoping, not filtering: the walk PRUNES. A directory whose name is in
+    SKIP_DIRS is removed from os.walk's dirnames in place and never entered.
+    The pre-fix `sorted(ROOT.rglob("*.py"))` + parts-filter enumerated every
+    directory under the repo root first - `.claude/worktrees` (~40 agent
+    worktrees, ~197k files) and `ops/runtime/responder_export` (~14k files)
+    included - and this module is wired into .githooks/pre-commit via
+    --check, so that cost landed on EVERY commit, twice (one walk per
+    collector). Same set of files, same Path ordering, as the rglob form.
+    """
+    found: list[pathlib.Path] = []
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        # Prune in place: a skipped directory is never descended.
+        dirnames[:] = [n for n in dirnames if n not in SKIP_DIRS]
+        for name in filenames:
+            if name.endswith(".py"):
+                found.append(pathlib.Path(dirpath, name))
+    return sorted(found)
+
+
 def _collect() -> dict[str, list[tuple[str, str, bool]]]:
     """Returns {section: [(rel_path, role, frozen), ...]} sorted by path."""
     data: dict[str, list] = {s: [] for s in SECTION_ORDER}
 
-    for py in sorted(ROOT.rglob("*.py")):
-        parts = set(py.relative_to(ROOT).parts)
-        if parts & SKIP_DIRS:
-            continue
+    for py in _iter_source_py():
         try:
             head = py.read_text(encoding="utf-8", errors="replace").splitlines()[:8]
         except OSError:
@@ -123,10 +143,7 @@ def _collect_phase_markers() -> list[tuple[str, str, str, int, str]]:
     """Returns [(phase_id, date_or_empty, rel_path, lineno, note), ...] sorted by date desc, then phase_id."""
     rows: list[tuple[str, str, str, int, str]] = []
 
-    for py in sorted(ROOT.rglob("*.py")):
-        parts = set(py.relative_to(ROOT).parts)
-        if parts & SKIP_DIRS:
-            continue
+    for py in _iter_source_py():
         rel = py.relative_to(ROOT).as_posix()
         if rel in PHASE_SCAN_SKIP_FILES:
             continue

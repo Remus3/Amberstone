@@ -67,14 +67,22 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import os
 import re
+import tempfile
 import unittest
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
+from typing import Iterator
+from unittest import mock
 
 from agents.daemon_slayer import antitank as at
 from agents.daemon_slayer.antitank import _ANTITANK_AXES, _ANTITANK_REGISTRY
+
+# Importable from the DS suite without hacks: the repo-root conftest.py puts the
+# repo root on sys.path for BOTH suites and tests/ is a package (ADR-015).
+from tests._repo_walk import EXCLUDED_DIRS, is_excluded, tracked_relpaths
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
@@ -106,13 +114,80 @@ _SCORING_FUNCTION_NAMES = (
     "compute_antitank_live",
 )
 
-# Directories excluded from the structural repo scan. _archive/ is quarantined
-# history, and data/ holds no code.
-_SCAN_SKIP_DIRS = frozenset(
-    {"_archive", ".git", "node_modules", ".venv", "venv", "logs", "data"}
-)
+# This test's OWN scope skips for the structural repo scan, applied ON TOP of
+# the shared tests/_repo_walk universe (ADR-015). Infrastructure exclusions
+# (.git, _archive, node_modules, venvs, .claude/worktrees, responder_export)
+# live in tests/_repo_walk.EXCLUDED_DIRS and are deliberately NOT repeated here.
+# logs/ and data/ hold no code.
+_SCAN_SKIP_DIRS = frozenset({"logs", "data"})
 
 _DOT_AXIS_READ = re.compile(r"(?<![\w])\.axis\b")
+
+
+def _in_scan_scope(rel: Path) -> bool:
+    """This test's own scope: non-test ``.py`` outside ``_SCAN_SKIP_DIRS``.
+
+    ``rel`` is RELATIVE to the walk root - matching absolute parts is the trap
+    ``tests/_repo_walk.py`` documents (a checkout living under
+    ``.claude/worktrees/<id>/`` would make every file look excluded).
+    """
+    if rel.suffix != ".py":
+        return False
+    if set(rel.parts) & _SCAN_SKIP_DIRS:
+        return False
+    if "tests" in rel.parts or rel.name.startswith("test_"):
+        return False
+    return True
+
+
+def _iter_scan_scope(root: Path) -> Iterator[Path]:
+    """Yield every in-scope ``.py`` under ``root`` per ADR-015.
+
+    Universe = the git index first (``tracked_relpaths``; no disk walk at all),
+    with ``EXCLUDED_DIRS`` as the backstop. When the index is unavailable
+    (``None`` - a tmp tree, git absent, or the call failing) fall back to an
+    ``os.walk`` that PRUNES ``dirnames`` in place, so the scaffolding and
+    runtime-export trees are never entered. ``tests/_repo_walk.iter_repo_files``
+    was scoped the same way on 2026-09-19 (index first, pruned walk on the
+    fallback); this helper keeps a private copy only because it also applies
+    the ``_in_scan_scope`` filter at the same point (measured 2026-09-19:
+    ~96k .py under .claude/worktrees plus ~5k under ops/runtime/responder_export
+    on Legion were being enumerated before either was scoped).
+    """
+    tracked = tracked_relpaths(str(root))
+    if tracked is not None:
+        for rel_posix in sorted(tracked):
+            rel = Path(rel_posix)
+            if is_excluded(rel) or not _in_scan_scope(rel):
+                continue
+            yield root / rel
+        return
+    prune = EXCLUDED_DIRS | _SCAN_SKIP_DIRS | {"tests"}
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in prune)
+        for name in sorted(filenames):
+            path = Path(dirpath) / name
+            if _in_scan_scope(path.relative_to(root)):
+                yield path
+
+
+def _antitank_candidate_sources(root: Path) -> list[Path]:
+    """Every in-scope ``.py`` under ``root`` whose source mentions antitank.
+
+    Factored out with a ``root`` parameter so the pruning contract is testable
+    on a tmp tree; the repo-wide pin below calls it with ``_REPO_ROOT``.
+    """
+    root = Path(root).resolve()
+    candidates: list[Path] = []
+    for path in _iter_scan_scope(root):
+        try:
+            source = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "antitank" not in source.lower():
+            continue
+        candidates.append(path)
+    return candidates
 
 
 def _roster() -> tuple[str, ...]:
@@ -307,21 +382,12 @@ class AxisReadSiteStructuralPinTests(unittest.TestCase):
         # of them may read .axis. Discovery is a walk rather than a hard-coded
         # list so a NEW consumer is covered the day it lands. Measured
         # 2026-07-26: 17 files reference antitank (16 consumers plus the module
-        # itself) and every one of them has zero .axis reads.
-        candidates: list[Path] = []
+        # itself) and every one of them has zero .axis reads. Re-measured
+        # 2026-09-19 over the git-index universe (ADR-015): 16 tracked files.
+        candidates = _antitank_candidate_sources(_REPO_ROOT)
         offenders: list[str] = []
-        for path in _REPO_ROOT.rglob("*.py"):
-            if set(path.parts) & _SCAN_SKIP_DIRS:
-                continue
-            if "tests" in path.parts or path.name.startswith("test_"):
-                continue
-            try:
-                source = path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            if "antitank" not in source.lower():
-                continue
-            candidates.append(path)
+        for path in candidates:
+            source = path.read_text(encoding="utf-8", errors="replace")
             if _DOT_AXIS_READ.search(source):
                 offenders.append(str(path.relative_to(_REPO_ROOT)))
         self.assertGreaterEqual(
@@ -334,6 +400,51 @@ class AxisReadSiteStructuralPinTests(unittest.TestCase):
             " is on a scoring path the R196 metadata-only contract is broken:"
             f" {offenders}",
         )
+
+    def test_antitank_candidate_scan_does_not_descend_scratch_trees(self) -> None:
+        # ADR-015: a repo-root scan must PRUNE the agent-scaffolding and
+        # runtime-export trees at directory level. A post-filter over rglob
+        # still enumerates .claude/worktrees (~96k .py on Legion) and
+        # ops/runtime/responder_export (~5k) on every DS suite run. Directory
+        # arguments handed to os.scandir are the observable: os.walk and
+        # Path.rglob both go through it (measured on 3.14).
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            legit = root / "core" / "uses_antitank.py"
+            decoys = (
+                root / ".claude" / "worktrees" / "agent-x" / "core" / "z.py",
+                root / "ops" / "runtime" / "responder_export" / "abcdef123456" / "core" / "z.py",
+            )
+            for target in (legit, *decoys):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("ROW = antitank_registry.axis\n", encoding="utf-8")
+            decoy_roots = (root / ".claude", root / "ops" / "runtime" / "responder_export")
+
+            real_scandir = os.scandir
+            scanned: list[Path] = []
+
+            def recording_scandir(path=".", *args, **kwargs):
+                scanned.append(Path(os.fspath(path)).resolve())
+                return real_scandir(path, *args, **kwargs)
+
+            with mock.patch("os.scandir", recording_scandir):
+                candidates = _antitank_candidate_sources(root)
+
+            descended = sorted(
+                str(d.relative_to(root))
+                for d in scanned
+                if any(d == base or base in d.parents for base in decoy_roots)
+            )
+            self.assertEqual(
+                descended,
+                [],
+                "the antitank candidate scan descended into a scratch tree instead"
+                f" of pruning it at directory level: {descended}",
+            )
+            # Hook-intercept anchor: an empty `descended` is only evidence if the
+            # recorder saw the walk at all.
+            self.assertIn(root, scanned, "os.scandir was never called on the root - the recorder saw nothing")
+            self.assertEqual([p.resolve() for p in candidates], [legit])
 
 
 class AxisStampedPopulationProvenanceTests(unittest.TestCase):

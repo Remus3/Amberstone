@@ -22,7 +22,16 @@ Signals:
   - Status: ops/runtime/hot_reload.json has {watching, last_change, last_compile}.
 
 Caveats:
-  - Polling interval is 2s (not inotify - cross-platform).
+  - Polling interval is 2s (not inotify - cross-platform). Each poll is a
+    PRUNING os.scandir walk of the watch dirs - a skipped directory is never
+    entered, the repo root is listed non-recursively, and the mtime comes
+    from the DirEntry so no per-file stat is issued. The pre-2026-09-19 scan
+    used pathlib.rglob from the root, which enumerates EVERY directory before
+    the filter runs: measured live, that descended .claude/worktrees (~197k
+    files) and ops/runtime/responder_export (~14k files) every 2s and drove
+    ~37,000 filesystem metadata ops/sec from the idle RC process. The first
+    fix (os.walk, same day) pruned the descent but still re-statted every
+    accepted file after the listing - ~5,858 ops/sec at idle.
   - The watcher writes restart_trigger.txt; the supervisor handles the actual
     process restart. The ~5s latency of process restart is inherent to
     pythonw.exe + supervisor cycle.
@@ -60,7 +69,11 @@ _FROZEN_PATHS: set[str] = {
     Path("app/_game_lifecycle.py").as_posix(),
 }
 
-# Directories excluded from watching.
+# Directories excluded from watching. The scanner PRUNES these - it never
+# descends into them - so an entry here is also a promise about I/O cost.
+# `git ls-files .claude ops/runtime moon_sync_inbox` returned zero tracked
+# files on 2026-09-19, so the three gitignored entries cannot hide a real
+# module.
 _SKIP_DIRS: tuple[str, ...] = (
     ".git",
     "__pycache__",
@@ -69,6 +82,13 @@ _SKIP_DIRS: tuple[str, ...] = (
     "data",  # JSON data, not code
     "web",  # JS/CSS hot-reloaded separately by Electron
     "node_modules",
+    # Gitignored runtime state, including responder_export/<sha12>/ which
+    # are full copies of the repo - their .py must never trigger a restart.
+    "ops/runtime",
+    # Harness scratch: .claude/worktrees/agent-* checkouts are not runtime.
+    ".claude",
+    # Gitignored cross-repo inbox (see CLAUDE.md, cross-repo channel).
+    "moon_sync_inbox",
 )
 
 # Derived from _SKIP_DIRS (which stays the single source of truth) so the
@@ -81,7 +101,9 @@ _SKIP_RUNS: tuple[tuple[str, ...], ...] = tuple(
     tuple(s.split("/")) for s in _SKIP_DIRS if "/" in s
 )
 
-# Directories we DO watch (only these subtrees contain editable .py).
+# Directories we DO watch (only these subtrees contain editable .py). The
+# "" entry is the repo root and means ROOT-LEVEL FILES ONLY (e.g.
+# web_dashboard.py): it is listed non-recursively, never walked.
 _WATCH_DIRS: tuple[str, ...] = (
     "agents",
     "core",
@@ -118,6 +140,22 @@ def _is_skipped(rel: str) -> bool:
     directory segments at any depth.
     """
     dirs = rel.replace("\\", "/").split("/")[:-1]  # drop the basename
+    return _dirs_match_skip(dirs)
+
+
+def _is_skipped_dir(rel_dir: str) -> bool:
+    """True if a DIRECTORY path (repo-relative) is excluded by _SKIP_DIRS.
+
+    Same segment-anchored semantics as _is_skipped, but every segment is a
+    directory segment (there is no basename to drop). This is the prune
+    predicate: _scan_py_files never descends into a directory for which it
+    returns True.
+    """
+    return _dirs_match_skip(rel_dir.replace("\\", "/").split("/"))
+
+
+def _dirs_match_skip(dirs: list[str]) -> bool:
+    """Shared segment test behind _is_skipped and _is_skipped_dir."""
     if _SKIP_SEGMENTS.intersection(dirs):
         return True
     for run in _SKIP_RUNS:
@@ -145,19 +183,80 @@ def _should_watch(rel: str) -> bool:
 
 
 def _scan_py_files(root: Path) -> dict[str, float]:
-    """Walk watch dirs and return {rel_path: mtime} for all .py files."""
+    """Walk watch dirs and return {rel_path: mtime} for all .py files.
+
+    Scoping AND cost, not filtering. Two properties, each pinned by a test:
+
+      - The walk PRUNES. A directory matching _SKIP_DIRS is never pushed,
+        so it is never entered, and the root ("") is a single non-recursive
+        listing that accepts root-level files only. Every allowed directory
+        is enumerated exactly once per scan (one os.scandir each).
+      - The walk issues NO per-file stat. os.scandir already returns a
+        DirEntry per name, and entry.stat(follow_symlinks=False) reads the
+        mtime that the directory listing carried (Windows: free; POSIX: one
+        C-level lstat, never the Python-level os.stat). The round-1 walker
+        used os.walk, which threw the DirEntry away, and then re-statted
+        every accepted file - 2,331 extra stats per 2s poll on the live
+        tree, ~5,858 metadata ops/sec at idle.
+
+    Which top-level watch dirs exist is read off the root listing rather
+    than probed with is_dir(): a missing watch dir then costs nothing, and
+    on Linux os.path.isdir would itself be an os.stat call.
+
+    _should_watch / _is_frozen remain the acceptance filter for FILES;
+    _is_skipped_dir is the prune predicate for DIRECTORIES.
+    """
     files: dict[str, float] = {}
-    for wd in _WATCH_DIRS:
-        d = root / wd if wd else root
-        if not d.exists():
+    subtrees = frozenset(wd for wd in _WATCH_DIRS if wd)
+    # Stack of (absolute path, repo-relative posix path) still to list.
+    stack: list[tuple[str, str]] = []
+
+    # Root: accept root-level *.py, and seed the stack with the watch
+    # subtrees that actually exist. Never recurse from the repo root.
+    try:
+        with os.scandir(root) as it:
+            for entry in it:
+                name = entry.name
+                if entry.is_dir(follow_symlinks=False):
+                    if name in subtrees and not _is_skipped_dir(name):
+                        stack.append((entry.path, name))
+                elif (
+                    name.endswith(".py")
+                    and entry.is_file(follow_symlinks=False)
+                    and _should_watch(name)
+                ):
+                    try:
+                        files[name] = entry.stat(follow_symlinks=False).st_mtime
+                    except OSError:
+                        pass
+    except OSError:
+        return files
+
+    while stack:
+        dirpath, rel_dir = stack.pop()
+        try:
+            with os.scandir(dirpath) as it:
+                for entry in it:
+                    rel = f"{rel_dir}/{entry.name}"
+                    if entry.is_dir(follow_symlinks=False):
+                        # Prune: a skipped directory is never pushed.
+                        if not _is_skipped_dir(rel):
+                            stack.append((entry.path, rel))
+                    elif (
+                        rel.endswith(".py")
+                        and entry.is_file(follow_symlinks=False)
+                        and _should_watch(rel)
+                    ):
+                        try:
+                            files[rel] = entry.stat(
+                                follow_symlinks=False
+                            ).st_mtime
+                        except OSError:
+                            pass
+        except OSError:
+            # A directory that vanished between push and list, or one we
+            # cannot read: skip it, same as os.walk's default onerror.
             continue
-        for p in d.rglob("*.py"):
-            rel = p.relative_to(root).as_posix()
-            if _should_watch(rel):
-                try:
-                    files[rel] = p.stat().st_mtime
-                except OSError:
-                    pass
     return files
 
 
