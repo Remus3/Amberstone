@@ -186,6 +186,44 @@ class PostEndpointTests(RoutesArchetypeBase):
         })
         self.assertEqual(h.last_status, 400)
 
+    def test_post_validation_400_does_not_leak_exception_text(self):
+        """RM-239 / RM-242 SITE 1 - the ValueError arm around
+        ``save_archetype_pick`` used to serialize ``str(exc)`` verbatim, so
+        the raiser's message reached the wire. Post-fix the body is a
+        curated generic line and the raw cause stays in the log only.
+
+        Behavioural on purpose: this drives the handler and reads the
+        response body. It deliberately does NOT extend the symbol-identity
+        tuple in tests/test_dashboard_error_scrub_rm134.py - that guard
+        asserts binding, never use, which is why this class of leak
+        survived three sweeps.
+        """
+        h = StubHandler()
+        routes_archetype._serve_archetype_post(h, {
+            "champion": "Aatrox", "primary": "bogus",
+        })
+        self.assertEqual(h.last_status, 400)
+        body = h.parsed()
+        self.assertEqual(body["error"], "invalid pick - see logs")
+        # No fragment of core.archetype_picks' raiser text may survive.
+        raw = h.last_body.decode("utf-8")
+        for fragment in ("must be one of", "bogus", "primary must"):
+            self.assertNotIn(fragment, raw)
+
+    def test_post_invalid_source_400_does_not_leak_exception_text(self):
+        """Same arm, the source-validation raiser. Pinned separately so a
+        partial fix that only covers one raiser cannot pass.
+        """
+        h = StubHandler()
+        routes_archetype._serve_archetype_post(h, {
+            "champion": "Aatrox", "primary": "tank", "source": "bogus",
+        })
+        self.assertEqual(h.last_status, 400)
+        raw = h.last_body.decode("utf-8")
+        self.assertEqual(h.parsed()["error"], "invalid pick - see logs")
+        for fragment in ("must be one of", "bogus", "source must"):
+            self.assertNotIn(fragment, raw)
+
     def test_post_non_object_body_400s(self):
         h = StubHandler()
         routes_archetype._serve_archetype_post(h, ["not", "a", "dict"])

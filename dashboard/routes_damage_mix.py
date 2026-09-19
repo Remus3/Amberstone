@@ -49,6 +49,7 @@ import threading
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -123,8 +124,18 @@ def _serve_damage_mix(h) -> None:
                 snapshot, champ_raw, items, level=level, mode=mode,
             )
         except ValueError as exc:
-            # Translate domain errors into 400 with the error tag.
-            _bad(h, str(exc))
+            # RM-239 / RM-242: this used to be _bad(h, str(exc)), putting
+            # core.damage_mix' raiser text on the wire - it carried the raw
+            # champ/item input and the live snapshot patch. Raw cause now
+            # goes to the log only.
+            #
+            # Two deliberate consequences of routing through send_error:
+            #  - status=400 is passed explicitly; send_error defaults to 500.
+            #  - the body is exactly {"error": msg}, so the "ok": False key
+            #    that _bad emits is DROPPED here. Measured + accepted: the
+            #    sole live consumer (web/js/panels/threat_donut.js) returns
+            #    null on !resp.ok and never reads the body.
+            send_error(h, exc, status=400, public_msg="invalid_request")
             return
 
         payload = mix.to_dict()

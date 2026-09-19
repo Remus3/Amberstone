@@ -251,10 +251,17 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(h.last_status, 400)
 
     def test_unknown_champ_returns_400(self):
+        # RM-239 / RM-242 SITE 2 re-pin: this used to assert the body
+        # CONTAINED "unknown champ", i.e. it pinned the raiser's text
+        # reaching the wire. The scrubbed contract is status 400 plus the
+        # generic tag, with no fragment of core.damage_mix' message.
         h = StubHandler("/api/damage-mix?champ_id=99999&items=3074")
         routes_damage_mix._serve_damage_mix(h)
         self.assertEqual(h.last_status, 400)
-        self.assertIn("unknown champ", h.parsed()["error"])
+        self.assertEqual(h.parsed()["error"], "invalid_request")
+        raw = h.last_body.decode("utf-8")
+        for fragment in ("unknown champ", "99999", "snapshot"):
+            self.assertNotIn(fragment, raw)
 
     def test_missing_items_returns_400_items_required(self):
         h = StubHandler("/api/damage-mix?champ_id=86")
@@ -275,17 +282,59 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(h.parsed()["error"], "items_required")
 
     def test_invalid_item_id_returns_400(self):
+        # RM-239 / RM-242 SITE 2 re-pin - see test_unknown_champ_returns_400.
         h = StubHandler("/api/damage-mix?champ_id=86&items=99999999")
         routes_damage_mix._serve_damage_mix(h)
         self.assertEqual(h.last_status, 400)
-        self.assertIn("unknown item", h.parsed()["error"])
+        self.assertEqual(h.parsed()["error"], "invalid_request")
+        raw = h.last_body.decode("utf-8")
+        for fragment in ("unknown item", "99999999", "snapshot"):
+            self.assertNotIn(fragment, raw)
 
     def test_too_many_items_returns_400(self):
+        # RM-239 / RM-242 SITE 2 re-pin - see test_unknown_champ_returns_400.
         items = ",".join(["3074", "3071", "3047", "3053", "3065", "3110", "3068"])
         h = StubHandler(f"/api/damage-mix?champ_id=86&items={items}")
         routes_damage_mix._serve_damage_mix(h)
         self.assertEqual(h.last_status, 400)
-        self.assertIn("too many items", h.parsed()["error"])
+        self.assertEqual(h.parsed()["error"], "invalid_request")
+        raw = h.last_body.decode("utf-8")
+        for fragment in ("too many items", "> 6"):
+            self.assertNotIn(fragment, raw)
+
+    def test_compute_valueerror_400_body_is_scrubbed(self):
+        """RM-239 / RM-242 SITE 2 - the ``except ValueError`` arm around
+        ``compute_damage_mix`` used to call ``_bad(h, str(exc))``, putting
+        the raiser's text on the wire. Drive it with a stubbed raiser so
+        the assertion does not depend on which validation fires first.
+
+        Also pins the measured, accepted consequence of routing through
+        ``dashboard._errors.send_error``: the body is exactly
+        ``{"error": msg}``, so the ``ok: False`` key that ``_bad`` used to
+        emit is DROPPED. The sole live consumer,
+        web/js/panels/threat_donut.js, returns null on ``!resp.ok`` without
+        reading the body, so nothing rendered depends on that key.
+        """
+        token = "LEAKTOKEN_damage_mix_secret_path"
+
+        def _boom(*a, **kw):
+            raise ValueError(token)
+
+        orig = damage_mix.compute_damage_mix
+        damage_mix.compute_damage_mix = _boom
+        try:
+            h = StubHandler("/api/damage-mix?champ_id=86&items=3074")
+            routes_damage_mix._serve_damage_mix(h)
+        finally:
+            damage_mix.compute_damage_mix = orig
+
+        self.assertEqual(h.last_status, 400)
+        raw = h.last_body.decode("utf-8")
+        self.assertNotIn(token, raw)
+        body = h.parsed()
+        self.assertEqual(body["error"], "invalid_request")
+        # Measured + accepted: send_error emits {"error": msg} only.
+        self.assertEqual(set(body), {"error"})
 
     def test_level_out_of_range_returns_400(self):
         h = StubHandler("/api/damage-mix?champ_id=86&items=3074&level=99")
