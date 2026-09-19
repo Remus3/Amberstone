@@ -251,6 +251,10 @@ def _record_enumerated_dirs(monkeypatch, root: Path) -> list[str]:
     root_norm = os.path.normcase(os.path.normpath(str(root)))
 
     def _wrapped(path=".", *args, **kwargs):
+        if isinstance(path, int):
+            # POSIX shutil.rmtree (pytest's tmp_path cleanup) scans by file
+            # descriptor; an fd is not a directory path and os.fspath raises.
+            return real_scandir(path, *args, **kwargs)
         p = os.path.normcase(os.path.normpath(os.fspath(path)))
         if p == root_norm or p.startswith(root_norm + os.sep):
             rel = os.path.relpath(p, root_norm)
