@@ -23,14 +23,29 @@ import os
 import re
 import shutil
 import tarfile
+import time
 from pathlib import Path
 
 EXPORT_DIR_NAME = "responder_export"
 KEEP_EXPORTS = 2
 CHECK_IGNORE_TIMEOUT_S = 30
 
+# A `.tmp-*` scratch dir older than this is an ORPHAN, not an extract in
+# flight. An extract writes ~3,500 files / ~320 MB and completes in seconds;
+# the dir's mtime is set at mkdir and moves again only as DIRECT children
+# land (NTFS does not bubble nested writes up), but an hour of age is still
+# fifteen hundred extract-lengths past that, so it cannot be a live sibling.
+# Orphans arise when the process is killed
+# mid-extract, or when `rmtree(ignore_errors=True)` on the failure paths below
+# loses to a Windows file lock and silently leaves the tree behind. Measured
+# 2026-09-19 on Legion: two such dirs, ~640 MB, untouched for eleven days,
+# because retention matched only the 12-hex finals. Age, not pid liveness, is
+# the test: a pid can be reused and its liveness is not portable.
+ORPHAN_TMP_MAX_AGE_S = 3600
+
 _SHA_RE = re.compile(r"^[0-9a-f]{7,64}$")
 _SHA12_RE = re.compile(r"^[0-9a-f]{12}$")
+_TMP_PREFIX = ".tmp-"
 
 
 class ExportFailed(Exception):
@@ -57,10 +72,29 @@ def _run_git(runner, args, timeout_s):
     return res
 
 
+def _sweep_orphan_tmp(export_root: Path, now: float | None = None) -> None:
+    """Remove every direct `.tmp-*` child of `export_root` whose mtime is
+    older than `ORPHAN_TMP_MAX_AGE_S`. Younger ones are left alone: a sibling
+    cycle may be extracting into them right now. Strictly older, so a dir
+    exactly at the cap survives."""
+    cutoff = (time.time() if now is None else now) - ORPHAN_TMP_MAX_AGE_S
+    for entry in export_root.iterdir():
+        if not entry.name.startswith(_TMP_PREFIX) or not entry.is_dir():
+            continue
+        try:
+            mtime = entry.stat().st_mtime
+        except OSError:
+            continue
+        if mtime < cutoff:
+            shutil.rmtree(entry, ignore_errors=True)
+
+
 def _prune(export_root: Path, keep_final: Path) -> None:
-    """Keep the newest `KEEP_EXPORTS` exports plus the one just returned."""
+    """Keep the newest `KEEP_EXPORTS` exports plus the one just returned, and
+    sweep any orphaned `.tmp-*` scratch older than `ORPHAN_TMP_MAX_AGE_S`."""
     if not export_root.is_dir():
         return
+    _sweep_orphan_tmp(export_root)
     entries = [p for p in export_root.iterdir() if p.is_dir() and _SHA12_RE.match(p.name)]
     entries.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     keep = [keep_final] if keep_final in entries else []

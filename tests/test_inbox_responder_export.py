@@ -27,6 +27,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import tools.inbox_responder_export as export_mod  # noqa: E402
 from tests._replace_faults import scoped_fs_fault  # noqa: E402
 from tools.inbox_responder_export import (  # noqa: E402
     ExportFailed,
@@ -212,6 +213,104 @@ def test_prune_keeps_the_last_two_exports(fixture_repo: Path, tmp_path: Path) ->
     assert newer.is_dir()
     assert not older.exists()
     assert len(_sha_dirs(state_root)) == 2
+
+
+# ------------------------------------------------------- orphaned scratch
+
+TWO_DAYS_S = 2 * 24 * 3600
+
+
+def _plant(root: Path, name: str, *, age_s: float = 0.0) -> Path:
+    """A directory holding one file, with its mtime pushed `age_s` into the
+    past. The file makes rmtree do real work, so a sweep that only unlinks an
+    empty dir would not pass."""
+    d = root / name
+    d.mkdir(parents=True)
+    (d / "payload.txt").write_text("bytes\n", encoding="ascii")
+    stamp = os.stat(d).st_mtime - age_s
+    os.utime(d, (stamp, stamp))
+    return d
+
+
+def test_prune_removes_an_orphaned_tmp_dir_older_than_the_cap(tmp_path: Path) -> None:
+    """A `.tmp-<sha12>-<pid>-<8hex>` dir left by a killed extract, or by an
+    `rmtree(ignore_errors=True)` that lost to a Windows file lock, was never
+    swept: `_prune` matched only 12-hex finals. Two such orphans held ~640 MB
+    on Legion for eleven days (measured 2026-09-19)."""
+    root = _export_root(tmp_path / "state")
+    keeper = _plant(root, "a" * 12)
+    _plant(root, ".tmp-abcdefabcdef-1234-deadbeef", age_s=TWO_DAYS_S)
+
+    export_mod._prune(root, keeper)
+
+    assert {p.name for p in root.iterdir()} == {"a" * 12}
+
+
+def test_prune_leaves_a_fresh_tmp_dir_alone(tmp_path: Path) -> None:
+    """A sibling cycle may be mid-extract into a young `.tmp-*`: the dir was
+    made seconds ago and an extract takes seconds, so a fresh one is in
+    flight, not orphaned."""
+    root = _export_root(tmp_path / "state")
+    keeper = _plant(root, "a" * 12)
+    _plant(root, ".tmp-abcdefabcdef-1234-deadbeef")
+
+    export_mod._prune(root, keeper)
+
+    assert {p.name for p in root.iterdir()} == {"a" * 12, ".tmp-abcdefabcdef-1234-deadbeef"}
+
+
+def test_prune_at_the_age_boundary(tmp_path: Path) -> None:
+    """Strictly older than the cap is swept; exactly at the cap is not. Pins
+    the comparison direction so a mutated `>=` or an off-by-one cannot pass."""
+    root = _export_root(tmp_path / "state")
+    keeper = _plant(root, "a" * 12)
+    cap = export_mod.ORPHAN_TMP_MAX_AGE_S
+    _plant(root, ".tmp-abcdefabcdef-1111-00000001", age_s=cap + 60)
+    _plant(root, ".tmp-abcdefabcdef-2222-00000002", age_s=cap - 60)
+
+    export_mod._prune(root, keeper)
+
+    assert {p.name for p in root.iterdir()} == {"a" * 12, ".tmp-abcdefabcdef-2222-00000002"}
+
+
+def test_prune_sweeps_orphans_and_keeps_two_finals_in_one_call(tmp_path: Path) -> None:
+    """The orphan sweep rides on the existing final-dir retention: in ONE call
+    the two newest finals survive, the older final goes, the old orphan goes
+    and the fresh orphan stays. `KEEP_EXPORTS` is unchanged."""
+    assert export_mod.KEEP_EXPORTS == 2
+    root = _export_root(tmp_path / "state")
+    keeper = _plant(root, "c" * 12)
+    _plant(root, "a" * 12, age_s=-100)
+    _plant(root, "b" * 12, age_s=100)
+    _plant(root, ".tmp-cccccccccccc-1234-deadbeef", age_s=TWO_DAYS_S)
+    _plant(root, ".tmp-cccccccccccc-5678-cafebabe")
+
+    export_mod._prune(root, keeper)
+
+    assert {p.name for p in root.iterdir()} == {
+        "c" * 12,
+        "a" * 12,
+        ".tmp-cccccccccccc-5678-cafebabe",
+    }
+
+
+def test_cache_hit_sweeps_an_old_orphan(fixture_repo: Path, tmp_path: Path) -> None:
+    """The live shape on Legion: the final for a sha EXISTS and its `.tmp-*`
+    twin sits beside it. Every later cycle is a cache hit, which runs only
+    `rev-parse` and `_prune` - so the hit path must sweep, or the orphan is
+    permanent."""
+    state_root = tmp_path / "state"
+    runner = RealRunner(fixture_repo)
+    final = ensure_export(fixture_repo, state_root, runner=runner, timeout_s=60, max_bytes=4096 * 1024)
+    root = _export_root(state_root)
+    _plant(root, f".tmp-{final.name}-25328-b0eddca7", age_s=TWO_DAYS_S)
+
+    again = ensure_export(fixture_repo, state_root, runner=runner, timeout_s=60, max_bytes=4096 * 1024)
+
+    assert again == final
+    assert [c[0][0] for c in runner.calls] == ["rev-parse", "archive", "rev-parse"]
+    assert {p.name for p in root.iterdir()} == {final.name}
+    assert (final / "tracked.txt").is_file()
 
 
 def test_a_sibling_that_won_the_rename_is_adopted_not_clobbered(tmp_path: Path) -> None:
