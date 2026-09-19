@@ -1,72 +1,203 @@
 NEXT SESSION
 ------------
-Task: RM-239 / RM-242 are now READY FOR A FIXER - the row defect is fixed and
-      the acceptance is satisfiable. Convert the remaining 23 of 25 leak sites
-      under the rewritten acceptance, laned and orchestrated: merger + worktree
-      slices on disjoint files + an independent adversarial verifier before
-      EVERY merge. Verifiers have overturned or amended a producer claim in
-      every slice for four waves running, so budget the grading pass.
-Context: The rewritten acceptance lives IN the rows - BACKLOG.md line 526
-      (RM-239) and line 523 (RM-242). Read them before planning. It is
-      organised on GENERIC-SAFE vs CURATED-MESSAGE via the public_msg hatch,
-      NOT tool-facing vs UI-facing (refuted) and NOT blanket (refuted). Three
-      dispositions: D-A generic conversion, D-B curated conversion, D-C curated
-      literal in place for the SEVEN sites that have no `h` in scope and return
-      tuple[int, dict] (six in dashboard/routes_loop_control.py plus
-      dashboard/routes_sr_draft.py:185). send_error DEFAULTS TO status=500, so
-      every 400-site conversion must pass status=400 explicitly or the status
-      silently changes while every string assertion stays green.
-      Cheapest first site: dashboard/routes_damage_mix.py:152, the outer
-      except Exception 500 arm in a file already converted this session - clean
-      conversion, no status override needed, same safe consumer
-      (web/js/panels/threat_donut.js:71-76 discards the body).
-      Probe live first: tools/rc_facts.py, ops/runtime/health.json,
-      python tools/moon_sync_poller.py --status, gh run list.
-Acceptance: the rows' own rewritten ACCEPTANCE clause, including its explicit
-      FAILURE CONDITION, verifier-CONFIRMED before merge. Re-pin any broken
-      string pin in the SAME slice. Do NOT extend the tuple in
-      tests/test_dashboard_error_scrub_rm134.py and do NOT reintroduce an
-      allowlist - both are the named vacuity mechanisms that let this leak
-      class survive three times. Full dual suite ONCE on the frozen merged tree.
-Do NOT redo: the EIGHT brief defects are already corrected IN the rows - read
-      the markers, do not re-derive them. The population 25 sites / 19 modules
-      AND its full membership are settled and were reproduced by two separate
-      independent AST derivations this session - compare against the published
-      inclusion rule, never re-derive from scratch. RM-239's old
-      "convert each site to send_error(h, exc)" clause is SUPERSEDED - do not
-      re-litigate it. The six routes_loop_control citations are stale by
-      checkout (exact at c74b9e065); canonical HEAD spans are 288, 317-318,
-      378, 381, 434-435, 469-470 - RE-DERIVE at your own HEAD, do not offset.
-      dashboard/routes_archetype.py and dashboard/routes_damage_mix.py:127 are
-      SHIPPED in a0dcae6e6.
-      The pid-bounce watch item is EXPLAINED and CLOSED (the production
-      hot-reload watcher writes restart_trigger.txt on any non-frozen .py
-      change; tests/conftest.py:238-253 documents it and states the
-      attribution limit). Do NOT re-open it.
-FIRST, and it is NOT yet filed - a ROADMAP/BACKLOG vs LEDGER state-drift class.
-      An operator report claims RC has 25 ids flat OPEN on its roadmap while
-      closed in its ledger. That 25 did NOT reproduce under any of five rules
-      tried (any-RM-in-ROADMAP x ledger-closed 56; ROADMAP-marked-OPEN x
-      ledger-closed 4; BACKLOG-says-OPEN x ledger-closed 4; BACKLOG-OPEN x
-      any-ledger-mention 77; any x any 198). DO NOT adopt 25, and do NOT invent
-      a sixth rule to force agreement - get the reporter's rule, or publish
-      yours alongside the number. The CLASS is real regardless: RM-472's
-      BACKLOG row at line 267 still reads OPEN while LEDGER 1426 records wave 6
-      shipping it CLOSED BY REFUSAL at 82c1eafda. That one is CONFIRMED drift.
-      My own instrument over-counted and the false positives are instructive -
-      a grouped header like "RM-234 SHIPPED ...; RM-235 / RM-236 / RM-237 OPEN"
-      makes a naive regex read RM-234 as OPEN, and "RM-281 HALF-CLOSED +
-      RM-283 OPEN" does the same to RM-281. Any census here MUST parse the
-      marker bound to each id, not the nearest OPEN token on the line.
-      tools/drift_guard.py passes clean on this tree, so this class is a GAP in
-      the guard, not a breach it caught - closing it probably means a new check
-      plus a case in tests/test_drift_guard.py. File it with the correct next
-      free RM id (read the next-free-id pin, do not guess).
-Also open, unclaimed: RM-475 (scripts/wakeup_prune.py keep/move accounting
-      counts zero-heading BLOCKS as sessions in file order, so --keep 3 over a
-      file containing one retains only TWO real sessions; NOT live today).
-      And logs/2026-09-18.log still shows a CLUSTER of four RC starts inside
-      three minutes at 04:36-04:38 plus two at 05:00, which merge-driven reload
-      does NOT explain and nobody has investigated.
+Task: build the LANE / WORKER MONITOR WIDGET - an idempotent desktop overlay
+      with a transparent background that shows, for EVERY repo's session on
+      this machine, which dedicated lanes / workers are running and what they
+      are doing. Operator-specified on 2026-09-19:
+        - transparent background, always-on-top desktop widget
+        - draggable and resizable, but the window never overflows its
+          contents (clamp min size to content, no scrollbars needed at rest)
+        - right-click menu on the widget: Minimize, Close to tray
+        - tray icon right-click menu: Open, Settings, Exit (full shutdown)
+        - idempotent: a second launch must focus / reopen the existing
+          instance, never spawn a twin (single-instance lock)
+        - startable from a desktop shortcut
+Context - probe these BEFORE choosing a stack, do not assume:
+      - RC is tkinter-free (CLAUDE.md). Memory feedback_electron_overlay_only
+        names the sanctioned overlay surface; rc-shell/ is the Electron shell.
+        Electron gives transparent+frameless BrowserWindow, Tray, and
+        app.requestSingleInstanceLock for free - measure that it fits before
+        writing a Python GUI.
+      - Lane state is machine-wide: ops/loop/slots.py defines the shared
+        slots root and ops/loop/winmutex.py the Global mutexes. BOTH are
+        BYTE-PINNED cross-repo (SHARED_SHA256 in tests/test_loop_concurrency.py)
+        - READ them, NEVER edit them. The widget reads slot / heartbeat state
+        from that root for every participating repo.
+      - Existing lane views to reuse, not duplicate: mission_control.py + mc/
+        (find its port in memory reference_cross_project_port_blocks),
+        dashboard/routes_loop_status.py (LANE_LOG_DIR = ops/loop/reports),
+        dashboard/routes_loop_monitor.py (transcript dir glob),
+        ops/loop/lane_launcher.py (C:\rc-worktrees\rc-lane-* worktrees).
+      - Text-first: the widget polls JSON / files, never screenshots. Poll
+        cadence must be scoped: this session shipped the fix for a 2 s
+        hot-reload rglob that walked 200k scratch files (LEDGER entry
+        2026-09-19) - a widget that rglobs anything on a timer repeats it.
+      - Creating the desktop shortcut writes OUTSIDE the repo root: that is a
+        halt-and-ping act under the byte-leaves-tree rule. Build the
+        tools/ script that creates the .lnk, then ping the operator before
+        running it.
+Acceptance: single instance proven (launch twice, one window); tray round
+      trip proven (close to tray, reopen from tray, Exit kills the process);
+      resize clamps to content (no overflow at min size); shows at least the
+      RC lanes plus every sibling lane the slots root exposes, refreshing
+      without a restart; 5-phase UI fixture audit BEFORE commit; independent
+      verifier gate before "done".
+Do NOT redo: the hot-reload walker fix, the responder_export orphan sweep,
+      the gen_archmap / audit_api_surface prune, the DS antitank test walk
+      conversion and the runner-fixture tmp-retention fix all SHIPPED
+      2026-09-19 (see docs/LEDGER.md newest entry). Do not re-scan for
+      unscoped walkers in non-test code - the sweep table is in that entry.
+
+Also queued (carried over, lower priority than the widget):
+      - MACHINE STRAY-WORK RECONCILIATION - RC OWES ITS OWN REPORT. Four
+        sibling REVIEW notes landed 2026-09-19 14:26-14:35 (LL, LW, CS, plus
+        an LL correction; all marked seen) answering the sweep prompt below.
+        They attribute to RC: a ~26-27 GB drive-root purge-staging folder
+        idle 12 days (LW proposes PRUNE on RC's confirmation), the lane
+        worktree root (~4 GB, RC to adjudicate), an empty recordings husk,
+        an agent folder, and a dangling rm339 json (LL says RM, CS says RC).
+        Unclaimed by everyone: Tools (two subtrees), Monster, ReplayBook,
+        AMD, Ghost Toolbox, xnx, _lt.txt, does, a dated ClaudeBackup dir.
+        Two LL questions to answer in RC's note: the 68,630 figure was
+        %TEMP% as a whole across ~9 pytest runs, not pytest-of-* alone; and
+        RC fixed the walkers by CHANGING THE TRAVERSAL (scandir walk that
+        prunes before descending, mtime off the DirEntry), not by filtering
+        after the walk. RC's own inventory to add: 39 agent worktrees under
+        .claude/worktrees all git-registered (~96k .py), the export cache
+        now empty, %TEMP% retention now policy=failed. Write ONE REVIEW note
+        per docs/CHANNEL.md into each sibling inbox, then the reconciliation
+        table; every delete stays operator-gated.
+      - FROZEN-FILE DECISION for the operator: ops/rc_supervisor.py:513
+        _newest_code_mtime does a 1 Hz rglob over agents/ and post-filters
+        agents/daemon_slayer (87 percent of what it stats) - measured ~1,220
+        metadata ops/s in the SUPERVISOR pid at idle. Same family as the
+        fixed hot-reload defect but the file is frozen; needs an explicit
+        grant before anyone touches it.
+      - 39 agent worktrees under .claude/worktrees are all still git-
+        registered (git worktree prune removes none). The harness tool
+        mcp__ccd_host__clean_up_worktrees exists for exactly this; it is a
+        delete, so it is operator-gated.
+      - Inbox asks from CS (2026-09-06 verbatim drop, now marked seen):
+        check the scope of RC's own inbox watcher before trusting its count
+        (their CS-934: a watcher that sees only top-level .md), and two
+        checks on tools/precommit_gate.py --scan-files in the CI path and on
+        skip-count-vs-PASS. Unanswered for 13 days as of 2026-09-19.
+      - ROADMAP/BACKLOG vs LEDGER state-drift class (NOT yet filed): the "25
+        ids OPEN on roadmap while closed in ledger" claim did not reproduce
+        under five rules; RM-472 BACKLOG:267 OPEN vs LEDGER 1426 CLOSED is the
+        one CONFIRMED case. tools/drift_guard.py passes, so it is a guard
+        GAP: new check + case in tests/test_drift_guard.py, filed against the
+        next-free-id pin. Do not adopt 25.
+      - RM-239 / RM-242 fixer: remaining 23 of 25 leak sites under the
+        rewritten acceptance in BACKLOG.md rows 526 / 523 (GENERIC-SAFE vs
+        CURATED-MESSAGE via public_msg; send_error DEFAULTS to status=500;
+        cheapest first site dashboard/routes_damage_mix.py:152; do NOT extend
+        the rm134 guard tuple, do NOT reintroduce an allowlist).
+      - RM-475; the logs/2026-09-18.log cluster of four RC starts at
+        04:36-04:38 plus two at 05:00, still uninvestigated.
+      - DESKTOP WALLPAPER (operator ask 2026-09-19): right-click on the
+        desktop should offer "Next background image" to skip the current
+        one; today that entry does not exist. Probe FIRST what rotates the
+        wallpaper on Legion (Windows slideshow under Personalization, or a
+        script / scheduled task of ours - grep tools/ and the RC-* task
+        list for wallpaper / background / slideshow). If Windows owns it,
+        the built-in "Next desktop background" verb only appears while the
+        Personalization slideshow is ON. If a script of ours owns it, ship
+        a tools/ "next" entrypoint plus an installer that registers a
+        HKCU\Software\Classes\DesktopBackground\Shell verb pointing at it.
+        Applying the registry entry is a write OUTSIDE the repo root:
+        halt and ping the operator before applying it.
+      - RESPONDER EXPORT RETENTION DESIGN GAP (found 2026-09-19): the
+        cache keeps KEEP_EXPORTS=2 full repo copies (~665 MB each) with no
+        age bound and no "responder disarmed" bound, so two 11-day-stale
+        shas sat at 1.3 GB while RC-InboxResponder was Disabled. The
+        orphan .tmp-* sweep SHIPPED; both stale finals were reclaimed by a
+        one-time manual delete (cache now empty, regenerated on the next
+        armed cycle). Whether finals should carry an age bound is a
+        docs/RESPONDER_RUNNER_SPEC.md change ("prune to last 2") and is the
+        operator's call - file it, do not silently change the spec.
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-      docs/LEDGER.md + git log.
+      docs/LEDGER.md + git log; then python tools/perseus_recall.py on the
+      widget task before designing anything.
+
+============================================================================
+PASTE-READY PROMPT FOR THE SIBLING PROJECTS - MACHINE STRAY-WORK SWEEP
+(one prompt, same text to every sibling session; ASCII; no repo names)
+============================================================================
+
+You are running in one of the repos that share this machine and the moon
+sync channel. Goal: a READ-ONLY inventory of stray work on this machine -
+gitignored trees, scratch, caches, agent worktrees, temp dirs, exports,
+orphaned staging dirs and unknown top-level folders - classified so the
+operator can decide what to PRUNE, MOVE or KEEP. Nothing is deleted, moved
+or renamed in this pass. Halt and ping the operator before any write outside
+your repository root; this pass needs none.
+
+Recall first: python tools/perseus_recall.py (or your equivalent) on
+"machine stray work sweep" - if a prior sweep is filed, extend it, do not
+redo it.
+
+WHAT TO ENUMERATE (cite the command you used for each; an empty result is a
+claim about your pattern, so show the pattern):
+ A. Inside this repo root
+    1. git status --ignored --porcelain and git ls-files --others
+       --exclude-standard --directory : every untracked or ignored top-level
+       entry with file count, bytes, newest mtime, and the .gitignore line
+       that ignores it.
+    2. git worktree list --porcelain : every linked worktree with branch,
+       dirty state, last commit age, whether the branch is merged into main,
+       and whether the directory still exists; plus any directory under
+       .claude/worktrees or a <code>-worktrees root that git does NOT
+       register (orphan).
+    3. Runtime export / cache trees that are full copies of the repo (for
+       example an export cache under ops/runtime), with per-copy file count
+       and bytes, and any .tmp-* staging dir older than an hour (orphaned
+       atomic-write staging; RC found two dated 11 days back).
+    4. __pycache__ or other build residue INSIDE gitignored copy trees and
+       inside moon_sync_inbox payload dirs. RC measured today that .pyc files
+       written into a verbatim drop change its content key and re-surface
+       the note as UNREAD in every reader - report any such pollution and
+       what wrote it if you can attribute it.
+ B. Machine-wide, read-only
+    5. %TEMP% and %LOCALAPPDATA%\Temp : pytest-of-* trees, Claude
+       scratchpads (Temp\claude\<project>), installer leftovers - count,
+       bytes, age. RC measured 68,630 temp files across about 9 pytest runs
+       stalling logon by roughly 155 s; RC now sets
+       tmp_path_retention_policy = failed in pytest.ini - check yours.
+    6. ~/.claude/projects/<your project>/ : transcripts, subagents,
+       workflows - bytes and age; the harness keeps every agent jsonl.
+    7. Every top-level directory on C:\ that is not a standard Windows,
+       Program Files, ProgramData or Users tree: name, bytes, newest mtime,
+       and which repo (by CODE) claims it, if any. This is the comparison
+       input: each unknown folder should end up claimed by exactly one repo
+       or by none.
+ C. Walker self-check (bonus, same defect family as RC's finding today)
+    8. grep your non-test code for rglob( , os.walk( , glob( , iterdir( ,
+       scandir( on a timer, in a git hook, or per request, whose root can
+       contain a worktree or export tree and which only POST-FILTERS skip
+       dirs instead of pruning them. RC's hot-reload watcher did a 2 s
+       rglob over ~200k scratch files = ~37,000 metadata ops/s at idle.
+       Report file:line, driver, root, prunes yes/no.
+
+CLASSIFY every row: PRUNE (regenerable cache, orphaned staging, merged and
+clean worktree, temp older than 7 days), MOVE (belongs under a repo's
+gitignored runtime dir or under another repo, say which by CODE), KEEP (live
+runtime state, locks, seen-stores, referenced exports), UNKNOWN (send for
+review). Give the evidence in the row: size, count, age, and the config or
+code line that references it.
+
+REPORT via the channel, exactly per docs/CHANNEL.md in your tree (it is
+byte-identical across the repos that carry it; LL reports it has none,
+refused at its license gate as OPS-91, so LL follows the note grammar as
+relayed by the others): one REVIEW- note named per the L32-37
+grammar, skeleton per L63-79 including the "Nothing in your tree was
+changed" line, class rules L83-92, subject digest L195-204, roster addressed
+per L14-24 (CS / LL / LW / RC / RSC), written into EACH sibling's
+moon_sync_inbox/ (you write into theirs, you read your own). Prose only -
+tables, no payload directory. Refer to repos by CODE only; report paths
+relative to the repo root or to an environment root (%TEMP%,
+%LOCALAPPDATA%, ~), never an absolute path carrying an account name.
+Sections: A repo scratch inventory, B machine-wide unknowns, C worktrees,
+D walker self-check, E proposed action per row, then "## Reply". Then stop.
+RC merges the reports into one machine-wide reconciliation and the operator
+adjudicates before any gated deletion pass.
