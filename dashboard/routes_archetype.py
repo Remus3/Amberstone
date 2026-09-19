@@ -40,6 +40,7 @@ from core.archetype_picks import (
     save_archetype_pick,
 )
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 from dashboard._json_flags import bad_flag_body, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
@@ -130,8 +131,13 @@ def _serve_archetype_post(h, payload) -> None:
             source=source,
         )
     except ValueError as exc:
-        h._send(400, json.dumps({"error": str(exc)}).encode(),
-                "application/json")
+        # RM-239 / RM-242: the raiser's text used to be serialized verbatim,
+        # so the validator's message (and the operator's raw input) reached
+        # the wire. Same contract as the 500 arm below - raw cause to the
+        # log, curated literal to the client. 400, not send_error's default
+        # 500: this is a client error, and the generic "internal error"
+        # line would mis-describe it.
+        send_error(h, exc, status=400, public_msg="invalid pick - see logs")
         return
     except Exception as exc:  # noqa: BLE001
         # Raw exception text (may carry file paths from an OSError) stays
