@@ -1,39 +1,53 @@
 NEXT SESSION
 ------------
-Task: Wave 8 - laned orchestrated loop. Merger + worktree slices on disjoint
-      files + an independent adversarial verifier before EVERY merge. Three
-      waves running, a verifier overturned or amended a producer claim in
-      EVERY slice, so budget the grading pass rather than hoping to skip it.
-Context: RM-475 (new, filed from wave 7's S4 verification: keep/move accounting
-      counts zero-heading BLOCKS as sessions in FILE ORDER, so --keep 3 over a
-      file containing one can retain only TWO real sessions - the exact
-      under-enforcement class RM-276 exists to fix; NOT live today, the real
-      WAKEUP carries zero such blocks, and archive safety is unaffected).
-      Files: scripts/wakeup_prune.py + tests/phase7_polish/test_wakeup_prune.py.
-      Cheap side item: name the xfail that flipped to xpass by running
-      `pytest tests/test_inbox_responder_runner.py
-      tests/test_rm450_core_residuals.py tests/test_truth_gate.py -q -rX`
-      (wave 7 saw 1 xfailed / 3 xpassed against wave 6's 2 / 2; no file wave 7
-      touched carries an xfail marker, so it is environment-conditional).
+Task: RM-239 / RM-242 are now READY FOR A FIXER - the row defect is fixed and
+      the acceptance is satisfiable. Convert the remaining 23 of 25 leak sites
+      under the rewritten acceptance, laned and orchestrated: merger + worktree
+      slices on disjoint files + an independent adversarial verifier before
+      EVERY merge. Verifiers have overturned or amended a producer claim in
+      every slice for four waves running, so budget the grading pass.
+Context: The rewritten acceptance lives IN the rows - BACKLOG.md line 526
+      (RM-239) and line 523 (RM-242). Read them before planning. It is
+      organised on GENERIC-SAFE vs CURATED-MESSAGE via the public_msg hatch,
+      NOT tool-facing vs UI-facing (refuted) and NOT blanket (refuted). Three
+      dispositions: D-A generic conversion, D-B curated conversion, D-C curated
+      literal in place for the SEVEN sites that have no `h` in scope and return
+      tuple[int, dict] (six in dashboard/routes_loop_control.py plus
+      dashboard/routes_sr_draft.py:185). send_error DEFAULTS TO status=500, so
+      every 400-site conversion must pass status=400 explicitly or the status
+      silently changes while every string assertion stays green.
+      Cheapest first site: dashboard/routes_damage_mix.py:152, the outer
+      except Exception 500 arm in a file already converted this session - clean
+      conversion, no status override needed, same safe consumer
+      (web/js/panels/threat_donut.js:71-76 discards the body).
       Probe live first: tools/rc_facts.py, ops/runtime/health.json,
       python tools/moon_sync_poller.py --status, gh run list.
-Acceptance: RM-475's own ACCEPTANCE clause, verifier-CONFIRMED before merge;
-      full dual suite ONCE on the frozen merged tree. State disarm numbers as
-      counts returned, never as a verdict.
-Do NOT redo: RM-474 and RM-276 are SHIPPED (merges 233a3d13b and 06cde1618) -
-      read the markers, do not re-investigate. The pid-bounce WATCH ITEM from
-      waves 5/6/7 is EXPLAINED and CLOSED: the PRODUCTION hot-reload watcher
-      writes restart_trigger.txt whenever a non-frozen .py changes, so a
-      .py-bearing merge restarting RC is the path working, not a supervisor
-      fault (tests/conftest.py:238-253 documents it and states the attribution
-      limit). Do NOT re-open that. STILL OPEN inside it: logs/2026-09-18.log
-      shows a CLUSTER of four RC starts inside three minutes at 04:36-04:38
-      plus two at 05:00, which merge-driven reload does NOT explain and which
-      nobody has investigated.
-Operator call, not a slice: RM-239 / RM-242. The rewrite question was put to
-      the operator in wave 7 and NO confirmed answer was received, so nothing
-      was started and both rows stay OPEN and HELD. Do not start it unilaterally.
-Also owed: the wave 7 PUSH DECISION if it is still unmade - check
-      `git log @{u}..` before assuming, because wave 7's wrap pushed.
+Acceptance: the rows' own rewritten ACCEPTANCE clause, including its explicit
+      FAILURE CONDITION, verifier-CONFIRMED before merge. Re-pin any broken
+      string pin in the SAME slice. Do NOT extend the tuple in
+      tests/test_dashboard_error_scrub_rm134.py and do NOT reintroduce an
+      allowlist - both are the named vacuity mechanisms that let this leak
+      class survive three times. Full dual suite ONCE on the frozen merged tree.
+Do NOT redo: the EIGHT brief defects are already corrected IN the rows - read
+      the markers, do not re-derive them. The population 25 sites / 19 modules
+      AND its full membership are settled and were reproduced by two separate
+      independent AST derivations this session - compare against the published
+      inclusion rule, never re-derive from scratch. RM-239's old
+      "convert each site to send_error(h, exc)" clause is SUPERSEDED - do not
+      re-litigate it. The six routes_loop_control citations are stale by
+      checkout (exact at c74b9e065); canonical HEAD spans are 288, 317-318,
+      378, 381, 434-435, 469-470 - RE-DERIVE at your own HEAD, do not offset.
+      dashboard/routes_archetype.py and dashboard/routes_damage_mix.py:127 are
+      SHIPPED in a0dcae6e6.
+      The pid-bounce watch item is EXPLAINED and CLOSED (the production
+      hot-reload watcher writes restart_trigger.txt on any non-frozen .py
+      change; tests/conftest.py:238-253 documents it and states the
+      attribution limit). Do NOT re-open it.
+Also open, unclaimed: RM-475 (scripts/wakeup_prune.py keep/move accounting
+      counts zero-heading BLOCKS as sessions in file order, so --keep 3 over a
+      file containing one retains only TWO real sessions; NOT live today).
+      And logs/2026-09-18.log still shows a CLUSTER of four RC starts inside
+      three minutes at 04:36-04:38 plus two at 05:00, which merge-driven reload
+      does NOT explain and nobody has investigated.
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
       docs/LEDGER.md + git log.
