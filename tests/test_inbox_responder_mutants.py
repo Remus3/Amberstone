@@ -120,6 +120,12 @@ from tests.test_inbox_responder_runner import (  # noqa: E402
     _fill_slots,
     _hook_log_unchanged,
     _live_surfaces_unchanged,
+    # The module-scoped guard above asserts on the evidence this function-scoped
+    # observer records while each test's tmp dir still exists (pytest.ini
+    # tmp_path_retention_policy=failed removes it at that test's teardown).
+    # Importing the guard without its observer left `_TMP_LOGS_SEEN` empty
+    # here: measured 2026-09-19, 140 recorded, 0 observed, module teardown ERROR.
+    _observe_tmp_logs,
     _no_real_spawn,
     _open_singleton,
     armed,

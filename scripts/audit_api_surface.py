@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import re
 import sys
 from collections import defaultdict
@@ -41,8 +42,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # Exclude directories that contain fixtures, vendored data, or dated artifacts.
+# `.claude` holds the agent worktrees (~40 full copies of the repo): MEASURED
+# 2026-09-19, 112115 of the 117223 files the old walk returned sat under
+# `.claude/worktrees`, so every callsite in the report was counted once per
+# worktree. Not source; never scanned.
 SKIP_DIRS = {
-    ".git", ".github", "__pycache__", "node_modules", ".playwright-mcp",
+    ".git", ".github", ".claude", "__pycache__", "node_modules", ".playwright-mcp",
     "data", "logs", "ops", "ds_cache", "rewind_cache",
 }
 SKIP_PARTS = {"_archive"}
@@ -96,23 +101,31 @@ SCAN_SUFFIXES = {".py", ".js", ".ts", ".jsx", ".tsx", ".ps1", ".bat",
 
 
 def iter_source_files() -> list[Path]:
-    """Yield candidate source files under ROOT, excluding fixture/data dirs."""
+    """Candidate source files under ROOT, excluding fixture/data dirs, sorted.
+
+    Scoping, not filtering: the walk PRUNES. A directory whose name is in
+    SKIP_DIRS or SKIP_PARTS is removed from os.walk's dirnames in place and
+    never entered. The pre-fix `ROOT.rglob("*")` + parts-filter enumerated
+    every directory under the repo root before the filter ran (same defect
+    family as core/hot_reload.py and tools/gen_archmap.py). File-level
+    filters (suffix, name) are unchanged.
+    """
     out: list[Path] = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-        if any(part in SKIP_DIRS for part in path.parts):
-            continue
-        if any(part in SKIP_PARTS for part in path.parts):
-            continue
-        if path.suffix in SKIP_FILE_SUFFIXES:
-            continue
-        if path.name in SKIP_FILES:
-            continue
-        if path.suffix not in SCAN_SUFFIXES:
-            continue
-        out.append(path)
-    return out
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        # Prune in place: a skipped directory is never descended.
+        dirnames[:] = [
+            n for n in dirnames if n not in SKIP_DIRS and n not in SKIP_PARTS
+        ]
+        for name in filenames:
+            path = Path(dirpath, name)
+            if path.suffix in SKIP_FILE_SUFFIXES:
+                continue
+            if name in SKIP_FILES:
+                continue
+            if path.suffix not in SCAN_SUFFIXES:
+                continue
+            out.append(path)
+    return sorted(out)
 
 
 def scan_file(path: Path, surfaces: list[str]) -> list[dict]:

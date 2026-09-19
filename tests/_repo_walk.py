@@ -46,10 +46,26 @@ nested worktree's ignored files and most build output. The explicit
 is absent, the checkout is not a work tree, or the call fails - see
 ``tracked_relpaths()``, which returns ``None`` rather than an empty set on
 failure so a git error can never masquerade as "nothing is tracked".
+
+Scoped, never rglob-then-filter
+-------------------------------
+The first version did ``base.rglob(pattern)`` and post-filtered every hit.
+``rglob`` never prunes, so each call descended every excluded tree on disk
+before throwing the hits away - measured 2026-09-19 on Legion at 22500
+``os.scandir`` calls and 5.08 s per call for 2479 yielded files, 16760 of those
+calls under ``.claude/worktrees`` (40 agent worktrees) and 1008 under
+``ops/runtime/responder_export``. Sixteen guards paid that per call. Now the
+tracked path iterates the INDEX and stats each entry (no directory is
+enumerated at all), and the git-absent path is an ``os.walk`` that prunes
+``EXCLUDED_DIRS`` at directory level. ``tests/test_repo_walk.py`` records
+``os.scandir`` during both walks to prove neither enters a scratch tree, and
+checks the tracked path equals ``{index and on disk and not excluded}``.
 """
 
 from __future__ import annotations
 
+import fnmatch
+import os
 import subprocess
 from functools import lru_cache
 from pathlib import Path
@@ -130,6 +146,28 @@ def tracked_relpaths(root: str = "") -> Optional[frozenset[str]]:
     return frozenset(entries)
 
 
+def _name_matches(name: str, pattern: str) -> bool:
+    """Basename glob match with the platform's case rule.
+
+    ``fnmatch.fnmatch`` normcases both sides, so it is case-insensitive on
+    Windows and case-sensitive on POSIX - the same default ``Path.rglob`` used
+    before the walk was scoped, which keeps the yielded set identical.
+    """
+    return fnmatch.fnmatch(name, pattern)
+
+
+def _walk_pruned(base: Path) -> Iterator[tuple[Path, str]]:
+    """Every regular file under ``base`` as ``(dir, name)``, never entering an
+    excluded directory. Symlinked directories are listed but not followed, and
+    unreadable directories are skipped - both match the rglob defaults.
+    """
+    for dirpath, dirnames, filenames in os.walk(base):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDED_DIRS]
+        here = Path(dirpath)
+        for name in filenames:
+            yield here, name
+
+
 def iter_repo_files(
     root: Path | str = REPO_ROOT,
     patterns: Iterable[str] = ("*.py",),
@@ -140,21 +178,37 @@ def iter_repo_files(
     Excludes ``EXCLUDED_DIRS`` always, and untracked files when ``tracked_only``
     and the git index is readable. Order is stable (sorted per pattern) and no
     path is yielded twice even when two patterns overlap.
+
+    Excluded directories are never DESCENDED: with a readable index the index
+    itself is the candidate list and no directory is enumerated at all; without
+    one, ``os.walk`` prunes at directory level. ``patterns`` are basename globs
+    (``*.py``, ``test_*.py``), as every consumer passes.
     """
+    patterns = tuple(patterns)
+    for pattern in patterns:
+        # Basename globs only. A pattern with a directory component or `**`
+        # would match NOTHING against a basename and yield an empty walk that
+        # reads as clean - the exact vacuity this module exists to prevent.
+        if "/" in pattern or "\\" in pattern or "**" in pattern:
+            raise ValueError(
+                f"iter_repo_files takes basename globs only, got {pattern!r}"
+            )
     base = Path(root).resolve()
     tracked = tracked_relpaths(str(base)) if tracked_only else None
+    if tracked is not None:
+        candidates: list[Path] = [
+            base / rel for rel in tracked if not is_excluded(rel)
+        ]
+    else:
+        candidates = [
+            here / name for here, name in _walk_pruned(base)
+            if not is_excluded((here / name).relative_to(base))
+        ]
     seen: set[Path] = set()
     for pattern in patterns:
-        for path in sorted(base.rglob(pattern)):
+        matches = sorted(p for p in candidates if _name_matches(p.name, pattern))
+        for path in matches:
             if path in seen or not path.is_file():
-                continue
-            try:
-                rel = path.relative_to(base)
-            except ValueError:
-                continue
-            if is_excluded(rel):
-                continue
-            if tracked is not None and rel.as_posix() not in tracked:
                 continue
             seen.add(path)
             yield path

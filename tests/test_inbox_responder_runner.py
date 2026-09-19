@@ -70,6 +70,16 @@ LOW_SURROGATE_NOTE_NAME = "2026-09-07-1800-from-RSC-\udcff.md"
 HIGH_SURROGATE_NOTE_NAME = "2026-09-07-1800-from-RSC-\ud800.md"
 
 _TMP_LOGS: list = []
+# Evidence for the positive control in `_live_surfaces_unchanged`: every
+# `_TMP_LOGS` entry that was OBSERVED on disk, recorded by `_observe_tmp_logs`
+# at the owning test's teardown. Every `_TMP_LOGS.append` site (`World.__init__`
+# and the arms that hand `main()` a tmp `log_root`) records the PATH before the
+# runner writes it, so existence cannot be recorded at the append; and under
+# `pytest.ini` `tmp_path_retention_policy = failed` (2026-09-19) pytest removes
+# a PASSED test's tmp_path in that test's own teardown, so by MODULE teardown
+# every one of these paths is already gone - `Path.exists()` there was measured
+# as a guaranteed teardown ERROR (1 error with the policy, 0 with policy=all).
+_TMP_LOGS_SEEN: set = set()
 
 
 def filesystem_accepts_note_name(name: str) -> bool:
@@ -290,9 +300,27 @@ def _live_surfaces_unchanged():
         f"live surfaces moved: {changed} (guarded: {guarded}; present: {present}; "
         f"NOT guarded, daemon-written: {sorted(_DAEMON_WRITTEN_KEYS)})")
     # Positive control: the module must have written SOME responder log, or the
-    # comparison above passed because nothing ran at all.
+    # comparison above passed because nothing ran at all. Asserted on the
+    # evidence `_observe_tmp_logs` recorded while the files still existed, not
+    # on `Path.exists()` here - see the note at `_TMP_LOGS_SEEN`.
     assert _TMP_LOGS, "no tmp responder log was written - the arms did not drive"
-    assert any(Path(p).exists() for p in _TMP_LOGS)
+    assert _TMP_LOGS_SEEN, (
+        "no tmp responder log was ever observed on disk - every recorded path was "
+        f"absent at its own test's teardown ({len(_TMP_LOGS)} recorded)")
+
+
+@pytest.fixture(autouse=True)
+def _observe_tmp_logs(tmp_path):
+    """Record which tmp responder logs exist BEFORE `tmp_path` is torn down.
+
+    Requesting `tmp_path` is load-bearing, not decoration: pytest finishes a
+    fixture's dependents before the fixture itself, so this observer's
+    teardown runs before `tmp_path` applies the retention policy's `rmtree`.
+    Without the dependency it would be set up first, torn down last, and see
+    the same empty directory the module teardown does.
+    """
+    yield
+    _TMP_LOGS_SEEN.update(p for p in _TMP_LOGS if Path(p).exists())
 
 
 # The first bytes of every row `rc_facts.record_invocation` writes: `json.dumps`

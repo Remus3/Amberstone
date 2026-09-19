@@ -8,11 +8,49 @@ what is asserted here is therefore anti-vacuity, not feature coverage.
 
 from __future__ import annotations
 
+import fnmatch
+import os
 from pathlib import Path
 
 import pytest
 
 from tests import _repo_walk as rw
+
+
+def _record_scandir(monkeypatch, sink: list[str]) -> None:
+    """Route every os.scandir call through ``sink`` (directory argument).
+
+    Both the pathlib globber (``glob.py`` ``with os.scandir(path)``) and
+    ``os.walk`` (``os.py`` ``scandir(top)``) look the name up on the ``os``
+    module at CALL time, so patching the attribute intercepts either walk
+    mechanism. The tests below still assert the walk ROOT was recorded, so a
+    future mechanism that binds ``scandir`` early cannot make the "no excluded
+    directory was entered" assertion pass vacuously.
+    """
+    real = os.scandir
+
+    def hook(path=".", *args, **kwargs):
+        raw = os.fspath(path)
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="replace")
+        sink.append(raw)
+        return real(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "scandir", hook)
+
+
+def _rel_dirs(recorded: list[str], base: Path) -> list[str]:
+    """Recorded scandir directories re-expressed forward-slash relative to base."""
+    prefix = str(base)
+    out = []
+    for raw in recorded:
+        if raw == prefix:
+            out.append("")
+        elif raw.startswith(prefix + os.sep) or raw.startswith(prefix + "/"):
+            out.append(raw[len(prefix) + 1:].replace("\\", "/"))
+        else:
+            out.append(raw.replace("\\", "/"))
+    return out
 
 
 def test_root_resolves_to_the_repo_checkout():
@@ -118,3 +156,140 @@ def test_self_check_raises_on_a_vacuous_tree(tmp_path):
     (tmp_path / "lonely.py").write_text("x = 1\n", encoding="utf-8")
     with pytest.raises(AssertionError, match="collapsed|missing anchor"):
         rw.self_check(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# Pruning: the walker must never DESCEND an excluded tree, not merely filter
+# its hits out afterwards. Measured 2026-09-19 on Legion: the rglob-then-filter
+# shape made one iter_repo_files() cost 22500 os.scandir calls and 5.08 s for
+# 2479 files, 16760 of those calls inside .claude/worktrees and 1008 inside
+# ops/runtime/responder_export - trees whose every hit the filter then threw
+# away. Sixteen guards pay that per call.
+# ---------------------------------------------------------------------------
+
+_LIVE_FORBIDDEN_PREFIXES = (".claude", "ops/runtime", "moon_sync_inbox")
+
+
+def _touch(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("x = 1\n", encoding="utf-8")
+
+
+def test_fallback_walk_prunes_excluded_trees_at_directory_level(
+        tmp_path, monkeypatch):
+    """No git (tracked set None): excluded directories are never entered.
+
+    The decoys sit two or more levels under the excluded segment, so a
+    file-level post-filter passes the RESULT assertion while still paying the
+    descent; the scandir record is what distinguishes pruning from filtering.
+    """
+    base = tmp_path.resolve()
+    legit = {"top.py", "core/a.py", "tests/b.py", "ops/runtime/keep.py"}
+    for rel in legit:
+        _touch(base / rel)
+    _touch(base / "README.md")  # wrong pattern, must not be yielded
+    decoys = (
+        ".claude/worktrees/agent-x/core/z.py",
+        ".claude/worktrees/agent-x/tests/deep/er/z.py",
+        "ops/runtime/responder_export/abcdef123456/core/z.py",
+        "ops/runtime/responder_export/abcdef123456/tests/z.py",
+    )
+    for rel in decoys:
+        _touch(base / rel)
+
+    # Force the git-absent branch regardless of where tmp_path lives.
+    monkeypatch.setattr(rw, "tracked_relpaths", lambda root="": None)
+
+    recorded: list[str] = []
+    _record_scandir(monkeypatch, recorded)
+    got = list(rw.iter_repo_files(base, ("*.py",)))
+    dirs = _rel_dirs(recorded, base)
+
+    assert "" in dirs, "os.scandir hook never saw the walk root - not intercepting"
+    entered = sorted(
+        d for d in dirs
+        if d.startswith(".claude") or d.startswith("ops/runtime/responder_export")
+    )
+    assert not entered, f"walker descended excluded trees: {entered}"
+    assert all(isinstance(p, Path) and p.is_absolute() for p in got)
+    assert {p.relative_to(base).as_posix() for p in got} == legit
+    assert got == sorted(got), "ordering is no longer sorted"
+
+
+def test_live_walk_never_enters_scratch_trees(monkeypatch):
+    """On the real checkout, neither walk path enters a scratch tree.
+
+    Tracked path: no scandir call under .claude / ops/runtime /
+    moon_sync_inbox (the index is the candidate list, so the honest count is
+    zero calls anywhere - asserted as a bound, not just a prefix check).
+    Fallback path: no call under any EXCLUDED segment, and it must have
+    recorded the repo root so the hook is proven to intercept. ``ops/runtime``
+    ITSELF is legitimately entered there: ``runtime`` is not an EXCLUDED_DIRS
+    segment (ADR-015 names ``responder_export`` as the entry, nothing wider),
+    and the ``tracked_only=False`` arm exists so a guard's net-new-site control
+    can see UNTRACKED files - ``git ls-files ops/runtime`` is empty (measured
+    2026-09-19), so a walk that skipped the directory would change that arm's
+    output, not merely its cost. Both anchored at >= 1000 files.
+    """
+    base = rw.REPO_ROOT.resolve()
+    recorded: list[str] = []
+    _record_scandir(monkeypatch, recorded)
+    tracked_files = list(rw.iter_repo_files())
+    n_tracked_calls = len(recorded)
+    fallback_files = list(rw.iter_repo_files(tracked_only=False))
+    dirs = _rel_dirs(recorded, base)
+    tracked_dirs = dirs[:n_tracked_calls]
+    fallback_dirs = dirs[n_tracked_calls:]
+
+    assert len(tracked_files) >= 1000, len(tracked_files)
+    assert len(fallback_files) >= 1000, len(fallback_files)
+
+    entered = sorted(
+        d for d in tracked_dirs
+        if any(d.startswith(p) for p in _LIVE_FORBIDDEN_PREFIXES)
+    )
+    assert not entered, (
+        f"tracked path made {len(entered)} scandir calls inside scratch trees "
+        f"(of {n_tracked_calls} total); first: {entered[:5]}")
+    assert n_tracked_calls < len(tracked_files), (
+        f"tracked path enumerated {n_tracked_calls} directories for "
+        f"{len(tracked_files)} files - it is walking the disk again")
+
+    assert "" in fallback_dirs, (
+        "fallback walk never scandir'd the repo root - hook not intercepting")
+    entered = sorted(
+        d for d in fallback_dirs
+        if any(seg in rw.EXCLUDED_DIRS for seg in d.strip("/").split("/"))
+    )
+    assert not entered, (
+        f"fallback path made {len(entered)} scandir calls inside excluded "
+        f"trees (of {len(fallback_dirs)} total); first: {entered[:5]}")
+
+
+def test_index_path_equals_tracked_and_on_disk_and_not_excluded():
+    """Equivalence self-check: the tracked path yields exactly the index
+    entries that match the pattern, are not excluded, and exist as files.
+    """
+    base = rw.REPO_ROOT.resolve()
+    tracked = rw.tracked_relpaths(str(base))
+    assert tracked is not None, "git index unreadable in the checkout"
+    expected = {
+        p for p in tracked
+        if fnmatch.fnmatch(p.rsplit("/", 1)[-1], "*.py")
+        and not rw.is_excluded(p)
+        and (base / p).is_file()
+    }
+    got = {rw.relative_posix(p, base) for p in rw.iter_repo_files(base, ("*.py",))}
+    assert len(got) >= 1000, len(got)
+    assert got == expected, (
+        f"missing={sorted(expected - got)[:5]} extra={sorted(got - expected)[:5]}")
+
+
+@pytest.mark.parametrize("pattern", ["core/*.py", "**/*.py", "tests\\test_*.py"])
+def test_non_basename_pattern_is_rejected_loudly(pattern):
+    """A directory component or `**` cannot match a basename, so it would
+    yield an EMPTY walk that reads as clean. The module's contract is that
+    empty is never clean, so the call must raise instead of returning nothing.
+    """
+    with pytest.raises(ValueError, match="basename globs only"):
+        list(rw.iter_repo_files(rw.REPO_ROOT, (pattern,)))
