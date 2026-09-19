@@ -1,0 +1,16 @@
+{
+  "name": "lane-widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only desktop widget showing lane / worker locks across every participating repo.",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/clamp.test.js test/store.test.js test/poll.test.js test/repos.test.js test/locks.test.js test/proctree.test.js test/heartbeat.test.js test/model.test.js test/render.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
