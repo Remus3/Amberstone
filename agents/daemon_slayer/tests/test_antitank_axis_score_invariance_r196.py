@@ -424,6 +424,10 @@ class AxisReadSiteStructuralPinTests(unittest.TestCase):
             scanned: list[Path] = []
 
             def recording_scandir(path=".", *args, **kwargs):
+                if isinstance(path, int):
+                    # POSIX shutil.rmtree scans by file descriptor; an fd is
+                    # not a directory path and os.fspath raises on it.
+                    return real_scandir(path, *args, **kwargs)
                 scanned.append(Path(os.fspath(path)).resolve())
                 return real_scandir(path, *args, **kwargs)
 
