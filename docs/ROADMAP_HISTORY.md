@@ -1,5 +1,22 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-19 - size-budget relocation, by the LANE WIDGET session
+
+`python tools/drift_guard.py` breached at 90 percent of the 81920-byte budget
+after four new rows landed for LEDGER 1430. **The "SHIPPED / CLOSED pointer
+cluster II" line moves here VERBATIM, byte for byte as it stood at `ed759ef4a`**,
+and `ROADMAP.md` keeps a one-line pointer to this block in its place. It was
+already a pointer to the `## 2026-09-16` block below, so nothing new is buried -
+this is the pointer-to-a-pointer being collapsed one level.
+
+Two rows were examined for relocation and DELIBERATELY LEFT IN `ROADMAP.md`,
+because relocating them would have hidden live work: the RM-302 line still
+carries RM-301 / RM-303 OPEN, and the RM-314 line still carries RM-315 / RM-316
+OPEN. A line that says SHIPPED in its first clause is not necessarily a closed
+row - read the whole line before moving it.
+
+- **SHIPPED / CLOSED pointer cluster II - twelve pointer lines relocated VERBATIM 2026-09-16 to `docs/ROADMAP_HISTORY.md` (`## 2026-09-16` block), covering RM-384 / RM-385 / RM-386 / RM-388, RM-397 / RM-398 / RM-399 / RM-400 / RM-401 / RM-402, the FIFTH ESCAPE, the RECIPROCITY CHECK, REFUTATION COST and its FOLLOW-ON, the SWEEP TREE ARM, the RM-296d RESIDUAL, RM-387 / RM-403 / RM-404 / RM-405 / RM-406 / RM-407, RM-412, RM-233 / RM-296d / RM-313 / RM-318 / RM-295a / RM-295b, and RM-291.** READ that block before re-opening any of them; every fence rides there verbatim. Load-bearing fences restated: RM-388 - do NOT just add a `_trim`, the ledger ROTATES; **RM-399 - the sweep found FIVE REAL sibling names in RC's tracked prose, ALL FIVE ALREADY PUBLISHED, redacted AT HEAD ONLY with NO history rewrite - the honest claim is "ARMED with a measured escape rate above zero", never "sibling names cannot leak"**; the fifth-escape JOINT-act fence was WRONG ON ITS PREMISE and `KNOWN_EXCEPTIONS` is `{}`; DO NOT make the reciprocity check match on filename; DO NOT quote the refutation-cost figures as a fleet-wide rate, DO NOT quote RC's WITHDRAWN bands, DO NOT re-propose the re-grounding gate; the sweep tree arm does NOT and cannot run the real-name arm; a source-text guard can only fail for the wrong reason - import the symbol and assert behaviour; DO NOT widen `ROW_NOTE_RE` or the nearest-preceding-id binding rule. RM-413 through RM-419 bodies are in `BACKLOG.md`; RM-418 needs RE-FILING, and RM-419 records that RM-255 is REFUTED at HEAD - do not re-attempt it.
+
 ## 2026-09-16 - size-budget relocation, by the DOC WRAP session
 
 `python tools/drift_guard.py` warned at 90 percent of the 81920-byte budget
