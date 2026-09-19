@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  Lane / worker widget - renderer shell.
+
+  This file is deliberately a STATIC SKELETON. Every element the renderer ever
+  needs already exists here; widget.js only fills text and toggles classes. That
+  is what makes the "no reflow when rows arrive" rule cheap to keep - the panel,
+  the tab strip, the card grid and the summary strip are all present and sized
+  before the first model push lands.
+
+  CSP is deny-by-default with no remote origin of any kind: the widget receives
+  everything over IPC and must never reach the network. 'self' here is the
+  file:// directory this page was loaded from.
+-->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; form-action 'none'; base-uri 'none'">
+<title>Lane widget</title>
+<link rel="stylesheet" href="widget.css">
+</head>
+<body>
+
+<!--
+  Only .panel paints. The BrowserWindow itself is transparent (main.js sets
+  transparent:true + backgroundColor #00000000), so anything outside this
+  element is desktop.
+-->
+<main class="panel" id="panel" role="main" aria-label="Lane and worker monitor">
+
+  <!-- Tab strip: one pill per repo CODE, "All" first, gear pinned right. -->
+  <nav class="tabstrip" id="tabstrip" role="tablist" aria-label="Repositories">
+    <div class="tabstrip-tabs" id="tabstrip-tabs"></div>
+    <button type="button" class="gear" id="gear"
+            aria-label="Settings" aria-expanded="false" aria-controls="settings"
+            title="Settings">
+      <!--
+        Gear affordance drawn inline. No icon font, no remote asset, no lifted
+        artwork: a stroked ring plus eight radial teeth.
+      -->
+      <svg class="gear-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="5.2"></circle>
+        <circle cx="12" cy="12" r="1.7"></circle>
+        <g class="gear-teeth">
+          <line x1="12" y1="2.6" x2="12" y2="6.0"></line>
+          <line x1="12" y1="18.0" x2="12" y2="21.4"></line>
+          <line x1="2.6" y1="12" x2="6.0" y2="12"></line>
+          <line x1="18.0" y1="12" x2="21.4" y2="12"></line>
+          <line x1="5.4" y1="5.4" x2="7.8" y2="7.8"></line>
+          <line x1="16.2" y1="16.2" x2="18.6" y2="18.6"></line>
+          <line x1="18.6" y1="5.4" x2="16.2" y2="7.8"></line>
+          <line x1="7.8" y1="16.2" x2="5.4" y2="18.6"></line>
+        </g>
+      </svg>
+    </button>
+  </nav>
+
+  <!--
+    Card grid. Never empty: widget.js pads to a minimum slot count with
+    placeholder cards of identical geometry, so the empty state occupies the
+    same box as a populated one.
+  -->
+  <section class="cards" id="cards" aria-label="Workers" aria-live="polite"></section>
+
+  <!-- Settings pane. Present always, hidden by attribute - no layout thrash. -->
+  <section class="settings" id="settings" aria-label="Settings" hidden>
+    <div class="setting">
+      <label class="setting-label" for="opt-opacity">Panel opacity</label>
+      <input class="setting-range" id="opt-opacity" type="range"
+             min="0.3" max="1" step="0.02">
+      <output class="setting-value" id="opt-opacity-out" for="opt-opacity">-</output>
+    </div>
+    <div class="setting">
+      <label class="setting-label" for="opt-ontop">Always on top</label>
+      <input class="setting-check" id="opt-ontop" type="checkbox">
+      <span class="setting-value" id="opt-ontop-out">-</span>
+    </div>
+    <div class="setting">
+      <label class="setting-label" for="opt-showfree">Show free repos</label>
+      <input class="setting-check" id="opt-showfree" type="checkbox">
+      <span class="setting-value" id="opt-showfree-out">-</span>
+    </div>
+    <div class="setting">
+      <label class="setting-label" for="opt-poll">Poll interval</label>
+      <input class="setting-range" id="opt-poll" type="range"
+             min="500" max="10000" step="500">
+      <output class="setting-value" id="opt-poll-out" for="opt-poll">-</output>
+    </div>
+  </section>
+
+  <!-- Summary strip pinned at the foot: REPOS n - RUNNING n - STALE n - CHILDREN n -->
+  <footer class="summary" id="summary" aria-label="Totals"></footer>
+
+</main>
+
+<script src="widget.js"></script>
+</body>
+</html>
