@@ -1,0 +1,487 @@
+/* lane-widget/src/renderer/widget.css
+ *
+ * Arcane-themed translucent panel for the lane / worker widget.
+ *
+ * PALETTE PROVENANCE: these tokens are a TRANSCRIPTION of RC's own Arcane theme
+ * (web/css/themes.css:401-472). The widget is a standalone Electron app and
+ * cannot import RC's stylesheets, so the values are copied rather than shared.
+ * They are copies of RC's own code - nothing here is lifted from any external
+ * repo, template or asset pack. Each token is authored hex-first with the
+ * oklch() line directly after it as an override, exactly the way themes.css
+ * does it: Electron supports oklch, and the hex stays as the fallback and as
+ * the human-readable value. Do not "improve" a value here - re-transcribe it.
+ *
+ * PALETTE DISCIPLINE (inherited from the theme's own authoring note):
+ *   - Cyan #35d9d2 is the SCARCE POP, under about 3 percent of pixels. It rides
+ *     the focus ring, the active tab's 2px underline, and the END of the
+ *     hextech gradient. It is never a fill and never a body text color.
+ *   - Structural metal is LAVENDER-SILVER --accent, never gold.
+ *   - --hextech-fill is a THIN TOP RULE on the panel, never a wash.
+ *   - State color is REDUNDANT with the state word in the card. Color alone
+ *     never carries meaning.
+ *
+ * CONTRAST: every foreground/background pair below was computed, not estimated.
+ * Cards sit on --surface (not --surface-2) for a measured reason: --bad on
+ * --surface-2 computes 4.27:1 and fails AA for normal text, while --bad on
+ * --surface computes 4.82:1 and passes. --faint is used ONLY on --surface,
+ * which is the backdrop it was computed against (5.46:1); it never touches
+ * --surface-3, where it drops to 4.19:1.
+ *
+ * OPACITY: panel translucency is owned by MAIN, not by this stylesheet.
+ * src/main.js:272 and :308 call mainWindow.setOpacity(state.opacity) from the
+ * persisted setting, so re-applying the same number to the panel background
+ * here would dim it twice. The alpha values below are the panel's own acrylic
+ * tint and are constant; the persisted setting rides on top of them.
+ */
+
+:root {
+  --canvas: #17101f;
+  --canvas: oklch(0.16 0.040 300);
+  --surface: #231730;
+  --surface: oklch(0.22 0.050 300);
+  --surface-2: #2f1f42;
+  --surface-2: oklch(0.27 0.060 302);
+  --surface-3: #3b2853;
+  --surface-3: oklch(0.32 0.070 305);
+  --text: #F3ECFF;
+  --text: oklch(0.94 0.020 305);
+  --dim: #B7A6D0;
+  --dim: oklch(0.74 0.045 305);
+  /* WCAG-AA 5.47:1 on --surface - that pairing is the only sanctioned one. */
+  --faint: #9C8ABA;
+  --faint: oklch(0.63 0.055 305 / 1);
+  /* lavender-silver structural metal */
+  --accent: #ad9dbd;
+  --accent: oklch(0.72 0.045 305);
+  /* primary purple */
+  --accent-2: #9646d9;
+  --accent-2: oklch(0.58 0.190 305);
+  --border: rgba(173, 157, 189, .30);
+  --border-soft: rgba(173, 157, 189, .18);
+  /* scarce cyan pop */
+  --focus-ring: 0 0 0 2px #35d9d2;
+  --focus-ring: 0 0 0 2px oklch(0.80 0.130 195);
+  --cyan: #35d9d2;
+  --cyan: oklch(0.80 0.130 195);
+  --hextech-fill: linear-gradient(90deg, #9646d9, #e5449a, #35d9d2);
+  /* magenta bloom - transcribed for completeness; this panel keeps motion and
+     bloom to a minimum, so nothing currently paints with it. */
+  --glow: rgba(229, 68, 154, .40);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-card: 0 6px 26px -8px rgba(0, 0, 0, 0.72), 0 2px 8px rgba(0, 0, 0, 0.46);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0, 0, 0, 0.60);
+  /* status colors are NOT theme-overridden */
+  --good: #59be6c;
+  --warn: #e7b643;
+  --bad: #e65a56;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* ---------------------------------------------------------------- shell -- */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* The window is transparent. ONLY .panel paints. */
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow: hidden;
+  /* A frameless widget should not look like selectable page text. */
+  user-select: none;
+  cursor: default;
+}
+
+/* The whole panel drags the frameless window, except interactive controls. */
+.panel {
+  -webkit-app-region: drag;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* width:max-content lets the panel size to its content so main.js can clamp
+     the window to the reported box rather than to a guessed viewport. */
+  width: max-content;
+  min-width: 320px;
+  max-width: 960px;
+  margin: 8px;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.15);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* --hextech-fill as a THIN TOP RULE, the way hextech.css uses it on .hx-card.
+   Never a wash: 2px tall, full bleed, nothing else carries the gradient. */
+.panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--hextech-fill);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+button,
+input {
+  -webkit-app-region: no-drag;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ------------------------------------------------------------ tab strip -- */
+
+.tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.tabstrip-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* Pill tab. 32px minimum in its smallest dimension is a hit-target floor. */
+.tab {
+  -webkit-app-region: no-drag;
+  min-height: 32px;
+  min-width: 42px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  /* --dim on --canvas = 8.30:1 */
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  position: relative;
+}
+
+.tab:hover {
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  color: var(--text);
+}
+
+/* Active tab: raised surface fill, --text on --surface-3 = 11.31:1 */
+.tab.is-active {
+  background: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--shadow-card-soft);
+}
+
+/* The scarce cyan pop: a 2px underline on the ACTIVE tab only. */
+.tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--cyan);
+}
+
+.gear {
+  -webkit-app-region: no-drag;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  /* --dim on --canvas = 8.30:1 */
+  color: var(--dim);
+}
+
+.gear:hover,
+.gear.is-open {
+  background: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.gear-glyph {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* ----------------------------------------------------------- card grid -- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  gap: 10px;
+  /* Mirrors the reference's mixed-width rows without any JS measuring. */
+  grid-auto-flow: row dense;
+}
+
+/* Cards live on --surface over a --canvas panel: lighter than the panel, and
+   the only backdrop --faint and --bad are allowed on. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Fixed minimum height is what keeps the empty state the same box as a
+     populated one - the placeholder card is geometrically identical. */
+  min-height: 108px;
+  min-width: 172px;
+  padding: 10px 12px 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-card-soft);
+  overflow: hidden;
+}
+
+/* A wide row every third card, echoing the reference's mixed widths. */
+.card.is-wide {
+  grid-column: span 2;
+}
+
+.card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 16px;
+}
+
+/* --dim on --surface = 7.58:1 */
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --faint on --surface = 5.46:1 (the pairing the token was computed for) */
+.card-run {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* Hero. 22px, light weight, reads from across the room. --text = 14.76:1 */
+.card-hero {
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 30px;
+}
+
+/* An idle hero is deliberately quieter - --faint on --surface = 5.46:1 */
+.card.state-idle .card-hero {
+  color: var(--faint);
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  /* --dim on --surface = 7.58:1 */
+  color: var(--dim);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.card-state {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.card-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/*
+ * The reference screenshot's sparkline strip becomes a FLAT STATE RULE.
+ * We have no time series in v1 and must not fake one, so this is a solid 3px
+ * bar tinted by state and nothing more. The state WORD above carries the same
+ * information, so this rule is redundant encoding, never the only signal.
+ */
+.state-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--faint);
+}
+
+.card.state-running .card-state { color: var(--good); }
+.card.state-running .state-rule { background: var(--good); }
+.card.state-stale .card-state { color: var(--warn); }
+.card.state-stale .state-rule { background: var(--warn); }
+.card.state-unreadable .card-state { color: var(--bad); }
+.card.state-unreadable .state-rule { background: var(--bad); }
+.card.state-idle .card-state { color: var(--faint); }
+.card.state-idle .state-rule { background: var(--faint); }
+
+/* Placeholder: identical geometry, quieter paint. No reflow when real rows
+   replace it - only text and class change. */
+.card.is-placeholder {
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  border-style: dashed;
+  border-color: var(--border-soft);
+}
+
+.card.is-placeholder .state-rule {
+  background: var(--border-soft);
+}
+
+/* ------------------------------------------------------------ settings -- */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.settings[hidden] {
+  display: none;
+}
+
+.setting {
+  display: grid;
+  grid-template-columns: 1fr auto 76px;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+/* --dim on --surface = 7.58:1 */
+.setting-label {
+  font-size: 12px;
+  color: var(--dim);
+  -webkit-app-region: no-drag;
+}
+
+/* --text on --surface = 14.76:1 */
+.setting-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  text-align: right;
+}
+
+.setting-range {
+  width: 150px;
+  height: 32px;
+  accent-color: var(--accent-2);
+}
+
+.setting-check {
+  width: 20px;
+  height: 20px;
+  /* The 32px hit target is the row, which is min-height:32px. */
+  margin: 6px 0;
+  accent-color: var(--accent-2);
+}
+
+/* ------------------------------------------------------- summary strip -- */
+
+.summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+  min-height: 24px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* --dim on --canvas = 8.30:1 */
+.summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+
+/* --text on --canvas = 16.15:1 */
+.summary-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The separator glyph is the only place the lavender-silver structural metal
+   shows as ink rather than as a border alpha. --accent on --canvas = 7.37:1,
+   though as pure decoration it carries no information of its own. */
+.summary-sep {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* Motion is minimal by design: nothing pulses and nothing animates on a timer.
+   The only transitions are direct responses to a pointer. */
+@media (prefers-reduced-motion: no-preference) {
+  .tab,
+  .gear {
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+}
