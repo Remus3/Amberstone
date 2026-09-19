@@ -78,7 +78,9 @@ def _deny_scandir_and_swallow_iterdir(monkeypatch, inbox: Path) -> None:
     real_iterdir = Path.iterdir
 
     def deny(path=".", *a, **kw):
-        if Path(path) == inbox:
+        # POSIX shutil.rmtree (pytest's tmp_path cleanup) scans by file
+        # descriptor; an fd is not the inbox and Path(int) raises TypeError.
+        if not isinstance(path, int) and Path(path) == inbox:
             raise PermissionError(13, "Access is denied")
         return real_scandir(path, *a, **kw)
 
@@ -127,6 +129,9 @@ def _swallow_at_the_os_listing_primitive(monkeypatch, inbox: Path) -> None:
     real_listdir = os.listdir
 
     def scandir(path=".", *a, **kw):
+        if isinstance(path, int):
+            # fd-based scandir from POSIX shutil.rmtree - never the inbox.
+            return real_scandir(path, *a, **kw)
         try:
             if Path(path) == inbox:
                 raise PermissionError(13, "Access is denied")
