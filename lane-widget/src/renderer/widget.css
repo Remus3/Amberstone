@@ -20,12 +20,22 @@
  *   - State color is REDUNDANT with the state word in the card. Color alone
  *     never carries meaning.
  *
- * CONTRAST: every foreground/background pair below was computed, not estimated.
+ * CONTRAST: every foreground/background pair below was computed, not estimated,
+ * and every one of them is computed FROM THE oklch() VALUE, because that is the
+ * declaration that actually paints. Each token below is authored hex-first with
+ * an oklch() override on the very next line; Electron/Chromium supports oklch,
+ * so the second declaration wins and the hex never renders here. A ratio
+ * derived from the hex is a ratio for a color the user never sees - every
+ * number in this file was wrong that way until 2026-09-19. If you re-derive
+ * these, expect the last digit to move slightly: they come from the standard
+ * OKLab matrices, rounded to two decimals.
  * Cards sit on --surface (not --surface-2) for a measured reason: --bad on
- * --surface-2 computes 4.27:1 and fails AA for normal text, while --bad on
- * --surface computes 4.82:1 and passes. --faint is used ONLY on --surface,
- * which is the backdrop it was computed against (5.46:1); it never touches
- * --surface-3, where it drops to 4.19:1.
+ * --surface-2 computes 4.36:1 and fails AA for normal text, while --bad on
+ * --surface computes 4.97:1 and passes. (--bad carries no oklch override, so
+ * those two are its hex and that is correct for this token.)
+ * --faint is NOT a text color anywhere. On --surface it is only 4.91:1 and on
+ * --surface-3 it falls to 3.65:1, so it is reserved for the state rule and
+ * other non-text ink; text that used to use it now uses --dim.
  *
  * OPACITY: panel translucency is owned by MAIN, not by this stylesheet.
  * src/main.js:272 and :308 call mainWindow.setOpacity(state.opacity) from the
@@ -47,7 +57,8 @@
   --text: oklch(0.94 0.020 305);
   --dim: #B7A6D0;
   --dim: oklch(0.74 0.045 305);
-  /* WCAG-AA 5.47:1 on --surface - that pairing is the only sanctioned one. */
+  /* 4.91:1 on --surface, 3.65:1 on --surface-3. NON-TEXT ink only - see the
+     CONTRAST note in the file header. */
   --faint: #9C8ABA;
   --faint: oklch(0.63 0.055 305 / 1);
   /* lavender-silver structural metal */
@@ -114,6 +125,28 @@ body {
   min-width: 320px;
   max-width: 960px;
   margin: 8px;
+  /* THE CAP IS A WORK-AREA CONSTANT, NEVER A VIEWPORT LENGTH. Read this before
+     touching it, because the obvious-looking calc(100vh - 16px) that used to
+     sit here is a measured, shipped, user-visible defect:
+
+       window height -> 100vh -> panel max-height -> the box widget.js reports
+       -> clamp.js -> window height
+
+     is a closed loop, and because BOTH viewport bounds subtracted a constant,
+     every turn of it gave H_next <= H - 4. A live run watched the window walk
+     down through 24 sizes in 590ms and settle at 415x126 with an EMPTY grid.
+     Retuning the constant does not help - the loop is the bug, not the number.
+
+     --panel-max-height is set by widget.js from screen.availHeight, which is
+     the DISPLAY WORK AREA: a hardware fact that nothing this panel does can
+     move. The map stops being a feedback loop and becomes a constant function,
+     so it lands on its fixed point in a single step. See the iterated-map
+     acceptance in test/clamp.test.js and the no-viewport-unit guard in
+     test/render.test.js - they are what stop this reverting by accident.
+
+     Default `none` is deliberate: only the renderer knows the work area, and a
+     guessed cap here would be a second source of truth for the same number. */
+  max-height: var(--panel-max-height, none);
   padding: 14px 16px 12px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
@@ -149,6 +182,32 @@ input {
   box-shadow: var(--focus-ring);
 }
 
+/* Windows High Contrast / forced-colors does NOT paint box-shadow, but the
+   outline:none above still applies - so the cyan ring silently vanishes for
+   exactly the users who depend on it. Restore a real outline there. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+/* Visually hidden, still announced. Used by #status, the polite live region
+   that carries transition sentences; the card grid itself must NOT be live,
+   because it is torn down and rebuilt on every poll. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ------------------------------------------------------------ tab strip -- */
 
 .tabstrip {
@@ -156,6 +215,11 @@ input {
   align-items: center;
   gap: 10px;
   min-height: 34px;
+  /* .cards is the ONLY child of .panel allowed to shrink. When the roster
+     overflows the work-area cap, a default flex-shrink here would let the tab
+     strip give up height too, and the grid would then be short by whatever the
+     strip surrendered - the scroll container has to absorb all of it. */
+  flex: 0 0 auto;
 }
 
 .tabstrip-tabs {
@@ -176,7 +240,7 @@ input {
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  /* --dim on --canvas = 8.30:1 */
+  /* --dim on --canvas = 8.34:1 */
   color: var(--dim);
   font-size: 13px;
   font-weight: 500;
@@ -189,7 +253,7 @@ input {
   color: var(--text);
 }
 
-/* Active tab: raised surface fill, --text on --surface-3 = 11.31:1 */
+/* Active tab: raised surface fill, --text on --surface-3 = 10.87:1 */
 .tab.is-active {
   background: var(--surface-3);
   border-color: var(--border);
@@ -221,7 +285,7 @@ input {
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  /* --dim on --canvas = 8.30:1 */
+  /* --dim on --canvas = 8.34:1 */
   color: var(--dim);
 }
 
@@ -244,15 +308,69 @@ input {
 /* ----------------------------------------------------------- card grid -- */
 
 .cards {
+  /* THE SCROLL CONTAINER MUST OPT OUT OF THE DRAG REGION. .panel is
+     `-webkit-app-region: drag`, and a drag region hit-tests as window CAPTION:
+     the compositor consumes the pointer before the page sees it, so wheel
+     events and scrollbar drags never arrive. Measured on screen 2026-09-19 with
+     the grid genuinely overflowing: the wheel did not move the content, in
+     either direction, focused or unfocused. Keyboard scrolling worked (#cards
+     is tabindex="0", so Tab then End reaches the last card), which is what made
+     the defect easy to miss - the rows were reachable, just not by mouse.
+
+     AN EARLIER SLICE CONSIDERED THIS EXACT LINE AND DECLINED IT, on the premise
+     that wheel scrolling works over a drag region and that no-drag here would
+     leave only the ~34px tab strip to move the window by. The live run refuted
+     the first half outright, and the second half was an undercount: the drag
+     area that survives this line is the whole SUMMARY FOOTER (full content
+     width, 8px padding-top plus a 24px min-height, and nothing inside it is
+     no-drag), the 16px left and right padding gutters running the panel's FULL
+     height, the 14px top and 12px bottom padding bands, the two 10px gaps
+     between panel sections, and whatever of the tab strip row the pills and the
+     gear do not cover. The footer alone is a full-width grab handle that is
+     always present, so the widget stays repositionable. The cost is that you
+     can no longer drag the window by grabbing a card. That is the trade, it was
+     made deliberately, and content that is only reachable by keyboard is not an
+     acceptable alternative - do not re-litigate it from the refuted premise. */
+  -webkit-app-region: no-drag;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  /* PINNED COLUMN COUNT, and this is load-bearing, not taste. The old
+     repeat(auto-fill, minmax(172px, 1fr)) was resolved against a panel that is
+     width:max-content, so the track widths tracked the WIDEST CARD'S CONTENT
+     and the whole window jumped sideways as rows arrived (measured: 409 <-> 471
+     as workers came and went). Two fixed 172px tracks make the grid's width a
+     constant, so only HEIGHT varies with the row count - which is what makes
+     the no-reflow claim in index.html true for the card grid. */
+  grid-template-columns: repeat(2, 172px);
   gap: 10px;
   /* Mirrors the reference's mixed-width rows without any JS measuring. */
   grid-auto-flow: row dense;
+  /* The window is hard-clamped to the display work area and .panel is
+     overflow:hidden, so without this the cards past the clamp were simply
+     unreachable - lanes disappeared with nothing on screen saying so. Truncate
+     the VIEWPORT, never the data.
+
+     HOW THIS IS BOUNDED, and why it no longer carries a max-height of its own.
+     It used to read calc(100vh - 130px), which made the grid's height a
+     function of the window height the grid itself was about to set - see the
+     feedback-loop note on .panel. The bound now comes from the PARENT: .panel
+     is a capped column flexbox, so `flex: 1 1 auto` plus `min-height: 0` lets
+     this item shrink below its content inside whatever box the panel actually
+     got, and overflow-y:auto makes the remainder scrollable. That is the same
+     reachability guarantee with no viewport term anywhere in it, so there is
+     no constant left here to drift and no loop left to re-enter.
+
+     min-height:0 is what lets a flex item shrink below its content at all;
+     without it the grid would push the panel past its cap and clip again. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
 }
 
 /* Cards live on --surface over a --canvas panel: lighter than the panel, and
-   the only backdrop --faint and --bad are allowed on. */
+   the only backdrop --bad is allowed on. --faint no longer paints any text. */
 .card {
   position: relative;
   display: flex;
@@ -283,7 +401,7 @@ input {
   min-height: 16px;
 }
 
-/* --dim on --surface = 7.58:1 */
+/* --dim on --surface = 7.48:1 */
 .card-label {
   font-size: 12px;
   font-weight: 600;
@@ -295,16 +413,22 @@ input {
   text-overflow: ellipsis;
 }
 
-/* --faint on --surface = 5.46:1 (the pairing the token was computed for) */
+/* --dim on --surface = 7.48:1. This was --faint (4.91:1 from the oklch value),
+   which fails AA once the panel's own translucency and main.js setOpacity are
+   both in front of it. flex is 0 1 auto, not 0 0 auto: a long runId shrinks and
+   ellipsizes instead of squeezing .card-label down to nothing. */
 .card-run {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--faint);
+  color: var(--dim);
   white-space: nowrap;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Hero. 22px, light weight, reads from across the room. --text = 14.76:1 */
+/* Hero. 22px, light weight, reads from across the room. --text = 14.61:1 */
 .card-hero {
   font-size: 22px;
   font-weight: 300;
@@ -316,9 +440,11 @@ input {
   min-height: 30px;
 }
 
-/* An idle hero is deliberately quieter - --faint on --surface = 5.46:1 */
+/* An idle hero is deliberately quieter, but quiet still has to be READABLE:
+   --dim on --surface = 7.48:1. It was --faint (4.91:1), which does not survive
+   the panel translucency plus the setOpacity the user controls. */
 .card.state-idle .card-hero {
-  color: var(--faint);
+  color: var(--dim);
 }
 
 .card-foot {
@@ -326,7 +452,7 @@ input {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  /* --dim on --surface = 7.58:1 */
+  /* --dim on --surface = 7.48:1 */
   color: var(--dim);
   font-size: 12px;
   margin-bottom: 8px;
@@ -339,11 +465,17 @@ input {
   font-size: 12px;
 }
 
+/* nowrap inside .card { overflow:hidden } clipped mid-glyph with no ellipsis -
+   observed on screen as "age ... - kids 0 - log 2(" sheared at the card edge,
+   with nothing saying text had been lost. --dim on --surface = 7.48:1. */
 .card-meta {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--dim);
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /*
@@ -367,7 +499,9 @@ input {
 .card.state-stale .state-rule { background: var(--warn); }
 .card.state-unreadable .card-state { color: var(--bad); }
 .card.state-unreadable .state-rule { background: var(--bad); }
-.card.state-idle .card-state { color: var(--faint); }
+/* --dim, not --faint: the state WORD is the card's only non-color-dependent
+   carrier of state, so it is the last thing that may sit at 4.91:1. */
+.card.state-idle .card-state { color: var(--dim); }
 .card.state-idle .state-rule { background: var(--faint); }
 
 /* Placeholder: identical geometry, quieter paint. No reflow when real rows
@@ -388,6 +522,9 @@ input {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Never shrinks - see the note on .tabstrip. A squashed settings pane would
+     clip the poll slider with no scrollbar anywhere to reach it. */
+  flex: 0 0 auto;
   padding: 12px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
@@ -406,14 +543,20 @@ input {
   min-height: 32px;
 }
 
-/* --dim on --surface = 7.58:1 */
+/* --dim on --surface = 7.48:1. The min-height + flex centering is not cosmetic:
+   a bare <label for> is one 12px line box, about 16px tall, which is under the
+   24px hit-target floor. This makes the whole 32px row height clickable in the
+   label column, and a label click activates its control. */
 .setting-label {
   font-size: 12px;
   color: var(--dim);
   -webkit-app-region: no-drag;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
 }
 
-/* --text on --surface = 14.76:1 */
+/* --text on --surface = 14.61:1 */
 .setting-value {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -427,11 +570,15 @@ input {
   accent-color: var(--accent-2);
 }
 
+/* 24x24 is the hit-target floor and this box IS the target. It used to be 20x20
+   under a comment claiming the row supplied a 32px target; that was false - the
+   row is a plain div with no handler, and the <label for> next to it was one
+   12px line box. .setting-label below now carries a real 32px strip of its own,
+   so there are two conforming targets per row instead of zero. */
 .setting-check {
-  width: 20px;
-  height: 20px;
-  /* The 32px hit target is the row, which is min-height:32px. */
-  margin: 6px 0;
+  width: 24px;
+  height: 24px;
+  margin: 0;
   accent-color: var(--accent-2);
 }
 
@@ -445,6 +592,10 @@ input {
   padding-top: 8px;
   border-top: 1px solid var(--border-soft);
   min-height: 24px;
+  /* Never shrinks - see the note on .tabstrip. The footer reading "STALE 3"
+     over an empty card area was the visible signature of defect A, so this
+     strip staying put while the grid scrolls is the intended end state. */
+  flex: 0 0 auto;
 }
 
 .summary-item {
@@ -453,7 +604,7 @@ input {
   gap: 6px;
 }
 
-/* --dim on --canvas = 8.30:1 */
+/* --dim on --canvas = 8.34:1 */
 .summary-label {
   font-size: 12px;
   font-weight: 600;
@@ -461,7 +612,7 @@ input {
   color: var(--dim);
 }
 
-/* --text on --canvas = 16.15:1 */
+/* --text on --canvas = 16.28:1 */
 .summary-value {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -470,11 +621,71 @@ input {
 }
 
 /* The separator glyph is the only place the lavender-silver structural metal
-   shows as ink rather than as a border alpha. --accent on --canvas = 7.37:1,
+   shows as ink rather than as a border alpha. --accent on --canvas = 7.75:1,
    though as pure decoration it carries no information of its own. */
 .summary-sep {
   color: var(--accent);
   font-size: 12px;
+}
+
+/* --------------------------------------------------- focus indicators -- */
+
+/*
+ * THE GENERIC `:focus-visible` RULE NEAR THE TOP OF THIS FILE IS NOT ENOUGH,
+ * and these rules are the measured proof rather than a precaution.
+ *
+ * `:focus-visible` is one pseudo-class: specificity (0,1,0). `.tab.is-active`
+ * is two classes, (0,2,0), and it declares box-shadow - so on a pill that is
+ * both active and focused the ACTIVE rule wins the cascade and the ring never
+ * paints. The `outline: none` in that same generic rule has already removed the
+ * browser's own fallback, so the user is left with no focus indicator at all.
+ * The roving tabindex in widget.js makes it total: it keeps the strip's single
+ * tab stop ON the active pill, so the focused pill is ALWAYS the active one and
+ * NO pill could ever show a ring. Measured on screen 2026-09-19 - arrowing
+ * across the strip produced nothing, while the gear and #cards both showed the
+ * cyan ring in the very same frame.
+ *
+ * THIS IS A DEFECT CLASS, NOT ONE RULE. Any rule that declares box-shadow and
+ * can co-occur with focus defeats the generic ring: on specificity, or - at
+ * equal specificity - on source order. The full census of box-shadow
+ * declarations in this stylesheet, and the verdict for each:
+ *   .panel          (0,1,0), declared BEFORE `:focus-visible`, so it LOSES to
+ *                   it on source order; and <main class="panel"> carries no
+ *                   tabindex. Clean twice over, no rule needed.
+ *   .tab.is-active  (0,2,0). THE LIVE DEFECT. Fixed below.
+ *   .card           (0,1,0), but declared AFTER `:focus-visible`, so it WINS on
+ *                   source order and would swallow the ring the same way. Cards
+ *                   carry no tabindex today, so this one is LATENT rather than
+ *                   live - fixed below regardless, because "not focusable yet"
+ *                   is a fact about widget.js, not about this stylesheet.
+ *   .gear           declares no box-shadow at all, which is precisely why it
+ *                   was the control that showed a ring.
+ *
+ * THE FIX SHAPE, in two parts. First, COMPOSE rather than replace: each rule
+ * re-states the element's own shadow after the ring, so a focused active pill
+ * keeps its raised look AND gains the ring instead of trading one for the
+ * other. Second, out-specify rather than rely on position: the
+ * `.tab.is-active:focus-visible` form is (0,3,0) and beats `.tab.is-active`
+ * (0,2,0) outright, so a future state class on .tab cannot quietly take the
+ * ring away again by landing later in the file.
+ *
+ * Forced-colors is unaffected: box-shadow is not painted there at all, and the
+ * `@media (forced-colors: active)` block near the top restores a real outline.
+ * Keep it that way - no box-shadow belongs inside a media query in this file,
+ * and test/render.test.js asserts exactly that so the flat cascade model the
+ * guard test uses stays true.
+ */
+
+.tab:focus-visible {
+  box-shadow: var(--focus-ring), var(--shadow-card-soft);
+}
+
+.tab.is-active:focus-visible {
+  box-shadow: var(--focus-ring), var(--shadow-card-soft);
+}
+
+.card:focus-visible {
+  box-shadow: var(--focus-ring), var(--shadow-card-soft);
 }
 
 /* Motion is minimal by design: nothing pulses and nothing animates on a timer.
