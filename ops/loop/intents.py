@@ -295,7 +295,14 @@ def _refuse_if_gated(prompt: str) -> None:
 
 
 def write_prompt(*, prompt, base=None) -> dict:
-    """Write the Desktop hand-off. No intent required, none consumed.
+    """Write the REPO-ROOT hand-off. No intent required, none consumed.
+
+    NOTE ON THE PROSE BELOW: it was written when the file still landed on the
+    Desktop, and the Desktop references in it are HISTORY, not the current
+    destination. Since 2026-09-06 this writes `RC-NEXT-SESSION.txt` in the REPO
+    ROOT (`DEFAULT_NEXT_SESSION_PATH`), because a Desktop file is untracked and
+    unreviewable - and because the Desktop is OUTSIDE the repository root, so
+    writing there is a boundary HALT.
 
     ADDED 2026-09-06, because the two things below were conflated and the
     coupling silently broke the ordinary case:
