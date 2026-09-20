@@ -348,7 +348,11 @@ def test_interrupt_preview_needs_no_arm_and_is_how_you_get_the_fingerprint(ctldi
 
 def test_arm_writes_nothing_to_the_control_dir(ctldir, irq):
     before = sorted(p.name for p in ctldir.iterdir())
-    _arm("interrupt")
+    status, armed = _arm("interrupt")
+    # Assert the arm SUCCEEDED first. Without this the test passed even with
+    # the gate disabled, because `arm` then 400s before doing anything - it was
+    # asserting the postcondition of a request it never checked had run.
+    assert status == 200 and armed["ok"] is True and armed["arm_token"]
     assert sorted(p.name for p in ctldir.iterdir()) == before
 
 
@@ -388,6 +392,9 @@ def test_the_gated_set_is_exactly_the_irreversible_three():
 
 
 def test_every_gated_action_is_a_real_action():
+    # Anchored: a bare `for action in GATED_ACTIONS` passes on an empty tuple,
+    # which is the exact mutation this file exists to catch.
+    assert len(armgate.GATED_ACTIONS) == 3
     for action in armgate.GATED_ACTIONS:
         assert action in mod._VALID_ACTIONS
 
@@ -405,3 +412,141 @@ def test_the_arm_table_is_bounded():
     for i in range(armgate.MAX_ARMED + 10):
         armgate.arm("interrupt", "interrupt")
     assert armgate.armed_count() <= armgate.MAX_ARMED
+
+
+# ===================================================== ONE ARM IS ONE INTENT
+# An adversarial pass on 2026-09-20 upheld the headline refusal - no call
+# reaches an irreversible act without an arm - but REFUTED the weaker property
+# the module claims for itself next to it. Three separate sequences got TWO
+# real side effects out of ONE arm. Each is pinned below by the sequence that
+# produced it, not by a paraphrase of it.
+
+def test_a_spent_arm_does_not_re_fire_when_the_replay_table_forgets(ctldir, irq,
+                                                                    monkeypatch):
+    """HOLE 1. The two tables evict on DIFFERENT axes, so time reasoning fails.
+
+    `_CONSUMED` retains by TIME and caps at MAX_CONSUMED; the idempotency table
+    caps at MAX_ENTRIES and is fed by UNGATED actions. The original code
+    reasoned "past the retain window the replay table has forgotten the answer
+    anyway" - true of TIME and false of CAPACITY. Evicting the stored answer
+    with unrelated traffic therefore made a spent token dispatch a SECOND real
+    kill. The gate now answers a settled repeat from its OWN record, so the
+    idempotency table's capacity cannot resurrect a spent intent.
+    """
+    _status, armed = _arm("interrupt")
+    body = {"action": "interrupt", "fingerprint": "fp1",
+            "arm_token": armed["arm_token"]}
+    status, first, _ = _post(dict(body))
+    assert status == 200 and len(irq.executed) == 1
+
+    # Evict the remembered answer the cheap way: the table is bounded, so
+    # MAX_ENTRIES+1 unrelated keys push it out. No sleeping, no clock games.
+    for i in range(idem.MAX_ENTRIES + 1):
+        idem.remember(f"{i:032x}", {"ok": True})
+    assert idem.seen(armed["idempotency_key"]) is None, "precondition: evicted"
+
+    status, second, _ = _post(dict(body))
+    assert status == 200, second
+    assert second["replayed"] is True
+    assert len(irq.executed) == 1, "a spent arm fired a SECOND kill"
+
+
+def test_a_confirm_that_did_not_settle_burns_the_arm(ctldir, irq):
+    """HOLE 2. A 503 confirm left the spent token resolvable.
+
+    ops/loop/interrupt.py kills SERIALLY, so a raise mid-loop means victims are
+    already dead, the answer is deliberately NOT remembered (a fault must not
+    replay forever), and under the old code the still-resolvable token let a
+    re-send kill again. A confirm that did not settle must therefore RELEASE
+    the arm entirely: the operator has to re-preview and re-arm, which is the
+    only safe answer when the victim set has provably moved.
+    """
+    calls = {"n": 0}
+
+    def boom(fingerprint, key=None):
+        calls["n"] += 1
+        raise OSError("taskkill died halfway")
+
+    irq.execute = boom
+    _status, armed = _arm("interrupt")
+    body = {"action": "interrupt", "fingerprint": "fp1",
+            "arm_token": armed["arm_token"]}
+    status, _payload, _ = _post(dict(body))
+    assert status == 503 and calls["n"] == 1
+
+    status, payload, _ = _post(dict(body))
+    assert status == 409, payload
+    assert payload["refused"] == "bad_token"
+    assert calls["n"] == 1, "a failed confirm left the arm live and it re-fired"
+
+
+def test_a_spent_arm_cannot_be_re_aimed_at_a_different_body(ctldir, irq):
+    """HOLE 2, variant. The arm binds the ACTION; the body must be pinned too.
+
+    `interrupt`'s arm target is the constant "interrupt" - the victim set is
+    pinned by the FINGERPRINT, not by the arm. So a first confirm that failed,
+    followed by a re-send carrying a DIFFERENT fingerprint, used to reach
+    execute() against a victim set no preview had ever named. That is exactly
+    the blind kill the preview exists to prevent.
+    """
+    _status, armed = _arm("interrupt")
+    token = armed["arm_token"]
+    status, _payload, _ = _post({"action": "interrupt", "fingerprint": "fp1",
+                                 "arm_token": token})
+    assert status == 200 and irq.executed == [("fp1", armed["idempotency_key"])]
+
+    status, payload, _ = _post({"action": "interrupt",
+                                "fingerprint": "TOTALLY-DIFFERENT",
+                                "arm_token": token})
+    assert status == 409, payload
+    assert payload["refused"] == "consumed"
+    assert len(irq.executed) == 1
+
+
+def test_a_malformed_key_does_not_burn_the_arm_into_a_free_shot(ctldir, irq):
+    """HOLE 3. resolve() consumed the token, then the key check 400'd.
+
+    The 400 is correct and fail-closed, but the arm was spent by a request that
+    never acted - and the keyless retry on that spent token then DID act. One
+    arm, one rejected request, and one kill nobody armed for. A confirm that
+    did not settle releases the arm, so the retry must re-arm.
+    """
+    _status, armed = _arm("interrupt")
+    token = armed["arm_token"]
+    status, _payload, _ = _post({"action": "interrupt", "fingerprint": "fp1",
+                                 "arm_token": token,
+                                 "idempotency_key": "!!!not a key!!!"})
+    assert status == 400
+    assert irq.executed == []
+
+    status, payload, _ = _post({"action": "interrupt", "fingerprint": "fp1",
+                                "arm_token": token})
+    assert status == 409, payload
+    assert irq.executed == [], "a rejected confirm left a free shot behind"
+
+
+def test_the_arm_mints_its_own_key_and_ignores_a_client_supplied_one(ctldir):
+    """HOLE 4. A fully client-chosen key carries no server entropy.
+
+    It was not a bypass - the token stays uuid4 - but it let a client AIM the
+    eviction attack in hole 1 rather than wait for it. The arm now always
+    mints, so the key half of the pair is unguessable too. A client that wants
+    to choose its own key can still do so on the CONFIRM, which is the shape
+    that ever mattered.
+    """
+    status, payload, _ = _post({"action": "arm", "target_action": "interrupt",
+                                "idempotency_key": KEY_A})
+    assert status == 200
+    assert payload["idempotency_key"] != KEY_A
+
+
+def test_the_arm_window_is_read_at_call_time_not_at_import(ctldir, monkeypatch):
+    """HOLE 5. RC_MC_ARM_WINDOW_S was bound once at module load.
+
+    A perimeter tightened after the process started was inert, and the arm
+    response went on advertising the stale 60 s.
+    """
+    monkeypatch.setenv("RC_MC_ARM_WINDOW_S", "5")
+    _status, armed = _arm("interrupt")
+    assert armed["window_s"] == 5.0
+    assert armed["expires_at"] - armgate._now() <= 5.0 + 0.5

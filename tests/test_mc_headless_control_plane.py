@@ -74,13 +74,43 @@ def test_the_two_route_modules_are_still_imported_not_forked():
 # ============================================== 2. bearer perimeter survives
 
 def test_an_unauthenticated_post_is_401_and_never_reaches_a_route(monkeypatch):
-    """Reachable is not the same as open."""
-    from mc import auth
+    """Reachable is not the same as open.
+
+    Drives `Handler.do_POST` end to end rather than calling `auth.check`
+    directly. The direct-call version of this test was green and proved
+    nothing: moving the auth call to AFTER the route loop in mc/handler.py
+    would have left it passing while every POST ran first and was refused
+    afterwards. This version fails on exactly that mistake, because the route
+    table is replaced with one that records being reached.
+    """
+    from mc import handler, routes
 
     monkeypatch.setenv("RC_MC_TOKEN", "a-real-token")
-    ok, status, body = auth.check(None)
-    assert ok is False and status == 401
-    assert body == {"ok": False, "error": "unauthorized"}
+    reached = []
+    monkeypatch.setattr(
+        routes, "POST_ROUTES",
+        [(lambda p: True, lambda h, b: reached.append(b))])
+
+    class Fake:
+        path = "/api/loop-control"
+        headers = {}
+
+        def __init__(self):
+            self.sent = None
+            self.rfile = None
+
+        def _send(self, code, body, ctype, cache_control=None):
+            self.sent = (code, body, ctype)
+
+        _send_json = handler.Handler._send_json
+
+    f = Fake()
+    f.headers = {"Content-Length": "2"}
+    handler.Handler.do_POST(f)
+    code, raw, _ctype = f.sent
+    assert code == 401
+    assert json.loads(raw.decode("utf-8")) == {"ok": False, "error": "unauthorized"}
+    assert reached == [], "the route ran before the bearer check"
 
 
 def test_a_wrong_token_is_401_with_the_same_body_as_no_token(monkeypatch):
@@ -177,16 +207,24 @@ def test_no_live_module_loads_a_deleted_web_mc_file(token):
     word appearing. An empty grep is a claim about a pattern, so the shapes
     above are enumerated explicitly rather than left to a single regex.
     """
-    roots = [ROOT / "mc", ROOT / "dashboard", ROOT / "web" / "js",
-             ROOT / "web" / "css", ROOT / "ops" / "loop"]
+    # Scope WIDENED after an adversarial pass pointed out the first version
+    # could not see a reference from web/*.html, app/, tools/, scripts/, or any
+    # .ps1 / .bat / .json - which is most of the tree that could actually load
+    # a web asset. An empty grep is a claim about a pattern, and the pattern
+    # was the weak part, not the tree.
+    roots = [ROOT / "mc", ROOT / "dashboard", ROOT / "web", ROOT / "ops",
+             ROOT / "app", ROOT / "tools", ROOT / "scripts", ROOT / "core"]
+    suffixes = (".py", ".js", ".css", ".html", ".mjs", ".json", ".ps1",
+                ".bat", ".cmd", ".ahk", ".sh")
     hits = []
+    seen_any = False
     for root in roots:
         if not root.exists():
             continue
         for path in root.rglob("*"):
-            if not path.is_file() or path.suffix not in (".py", ".js", ".css",
-                                                         ".html", ".mjs"):
+            if not path.is_file() or path.suffix not in suffixes:
                 continue
+            seen_any = True
             try:
                 text = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
@@ -194,25 +232,41 @@ def test_no_live_module_loads_a_deleted_web_mc_file(token):
             for i, line in enumerate(text.splitlines(), 1):
                 if token in line and any(s in line for s in _LIVE_REFERENCE_SHAPES):
                     hits.append(f"{path.relative_to(ROOT).as_posix()}:{i}")
+    assert seen_any, "the scan walked ZERO files - an empty enumeration passes"
     assert not hits, f"{token} is still LOADED by live code: {hits}"
 
 
 # ============================================== 4. loop-monitor is NOT MC's
 
 def test_loop_monitor_is_registered_on_the_game_dashboard_not_on_mc():
-    """The surface most likely to be deleted by mistake. Pinned both ways."""
+    """The surface most likely to be deleted by mistake. Pinned both ways.
+
+    The first version of this test guarded the dashboard half behind
+    `hasattr(_dispatch, "build_get_routes")` - a function that does not exist,
+    so the guard was always False and the assertion behind it was a tautology.
+    An adversarial pass caught it. The real assembly point is
+    `dashboard._dispatch._gather_get`, and it is called here for real, which is
+    what makes this a claim about :8888 rather than about a name.
+    """
     from dashboard import _dispatch, routes_loop_monitor
     from mc import routes as mc_routes
 
-    dash_paths = [m for m, _fn in _dispatch.build_get_routes()] \
-        if hasattr(_dispatch, "build_get_routes") else None
     # The registration itself, read from the module that owns it.
     own = [m for m, _fn in routes_loop_monitor.GET_ROUTES]
     assert any(m("/api/loop-monitor") for m in own)
     assert any(m("/loop-monitor") for m in own)
-    # And it is NOT on Mission Control.
+
+    # And it is genuinely spliced into the :8888 GET table.
+    dash = _dispatch._gather_get()
+    assert dash, "the dashboard GET table is empty - the probe is wrong"
+    assert any(m("/api/loop-monitor") for m, _fn in dash)
+    assert any(m("/loop-monitor") for m, _fn in dash)
+
+    # And it is NOT on Mission Control, in either direction.
     assert not any(m("/api/loop-monitor") for m, _fn in mc_routes.GET_ROUTES)
-    assert dash_paths is None or any(m("/api/loop-monitor") for m in dash_paths)
+    assert not any(m("/loop-monitor") for m, _fn in mc_routes.GET_ROUTES)
+    # The converse: the loop CONTROL route is on MC and not on :8888.
+    assert not any(m("/api/loop-control") for m, _fn in dash)
 
 
 def test_the_loop_monitor_page_no_longer_fetches_a_route_this_port_lacks():

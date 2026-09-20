@@ -630,15 +630,16 @@ def _handle_arm(body: dict) -> tuple[int, dict]:
     # body; otherwise it is read from the same fields the confirm will carry.
     target = (str(body["target"]).strip() if body.get("target") is not None
               else armgate.target_of(target_action, body))
-    rec = armgate.arm(target_action, target, key=body.get("idempotency_key"))
+    rec = armgate.arm(target_action, target)
+    window = armgate.window_s()
     return 200, {
         "ok": True, "action": "arm", "state": _state(),
         "target_action": target_action, "target": target,
         "arm_token": rec["arm_token"],
         "idempotency_key": rec["idempotency_key"],
         "expires_at": rec["expires_at"],
-        "window_s": armgate.ARM_WINDOW_S,
-        "detail": (f"{target_action} armed for {armgate.ARM_WINDOW_S:.0f}s - "
+        "window_s": window,
+        "detail": (f"{target_action} armed for {window:.0f}s - "
                    "re-send the action with this arm_token to confirm"),
     }
 
@@ -669,9 +670,17 @@ def route_action(action: str, body: dict) -> tuple[int, dict]:
         return 400, {"ok": False, "error": f"unknown action: {action!r}",
                      "valid": list(armgate.ROUTE_ACTIONS) + list(_VALID_ACTIONS)}
     if action in armgate.GATED_ACTIONS:
+        token = body.get("arm_token")
         verdict = armgate.resolve(action, armgate.target_of(action, body),
-                                  body.get("arm_token"),
-                                  body.get("idempotency_key"))
+                                  token, body.get("idempotency_key"),
+                                  armgate.body_pin(action, body))
+        if verdict.ok and verdict.answer is not None:
+            # A settled repeat. The gate answers from its OWN record and NEVER
+            # dispatches, so no other table's eviction policy can resurrect a
+            # spent intent into a second side effect.
+            replayed = dict(verdict.answer)
+            replayed["replayed"] = True
+            return 200, replayed
         if not verdict.ok:
             # 409, not 400 and not 503: this is a STATE conflict, not a
             # malformed body and not an outage. 503 in particular would be
@@ -693,6 +702,19 @@ def route_action(action: str, body: dict) -> tuple[int, dict]:
             # and the suite reuses body dicts across asserts.
             body = dict(body)
             body["idempotency_key"] = verdict.key
+        # The arm is now SPENT and its outcome is unreported. settle() must run
+        # on every path out of here, including one where apply_action raises -
+        # an unreported arm refuses every later confirm on that token, which is
+        # fail-closed but strands the operator behind a token that will never
+        # work again. Same `finally` discipline _apply_idempotent uses for its
+        # own claim, and for the same reason.
+        status = 0
+        payload: dict = {}
+        try:
+            status, payload = apply_action(action, body)
+        finally:
+            armgate.settle(token, status, payload)
+        return status, payload
     return apply_action(action, body)
 
 
