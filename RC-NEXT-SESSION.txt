@@ -204,21 +204,23 @@ WHAT TO DO NEXT
    RULED OUT: the 67 MB laning_scenarios JSONs are LFS, so git's blob is 133
    bytes and they were never the trigger.
 
-4. ROADMAP.md NEEDS A DEDICATED RELOCATION PASS. tools/drift_guard.py warns
-   from 90 percent of the 81920-byte budget and ROADMAP.md sits at roughly 98
-   percent. It was ALREADY there before the 2026-09-20 wrap (80043 bytes at
-   f4a742fd9), so this is not new damage - but it means the file breaches on
-   the next session's first substantial row. Three closed rows were relocated
-   VERBATIM to docs/ROADMAP_HISTORY.md during that wrap and it was not enough;
-   clearing the warning needs about 7 KB out, which is a pass of its own.
-   METHOD, and it is not optional: type the row into docs/ROADMAP_HISTORY.md
-   FIRST, then use that exact text as the old_string that removes it from
-   ROADMAP.md - the removal can only succeed on an exact byte match, so
-   verbatim is PROVEN rather than asserted.
-   THE TRAP, which that file's own preamble records: a line whose first clause
-   says SHIPPED is not necessarily a closed row. Read the WHOLE line. Two rows
-   were examined and deliberately LEFT during an earlier pass because
-   relocating them would have hidden live work.
+4. ROADMAP.md RELOCATION PASS - DONE 2026-09-20, the eighth pass. CLOSED, do
+   not re-open. drift_guard.py reports ZERO breaches. ROADMAP.md went 80835 ->
+   71589 bytes, 99 percent -> 87 percent of the 81920-byte budget, so there is
+   about 2.1 KB of headroom under the 90 percent warn line. Nineteen fragments
+   of SHIPPED / CLOSED narrative and BLOCKED-row measurement evidence moved
+   VERBATIM into a new `## 2026-09-20b` block in docs/ROADMAP_HISTORY.md
+   (which carries no budget of its own), each surviving ROADMAP row keeping its
+   verdict, its residual and a pointer. NO open work moved and NO RM id was
+   dropped: the id set was enumerated before and after and the diff is EMPTY.
+   THE METHOD HELD - each block was typed into docs/ROADMAP_HISTORY.md FIRST
+   and then used as the old_string that removed it from ROADMAP.md, so verbatim
+   is PROVEN by the edit succeeding, not asserted.
+   CARRY THE TRAP FORWARD, it is durable and not specific to this pass: a line
+   whose first clause says SHIPPED is not necessarily a closed row, and these
+   rows are single enormous lines carrying several independent fences, so
+   truncating one mid-line silently drops a fence. Read the WHOLE line.
+   The budget will need this again; it is a recurring pass, not a one-off.
 
 5. Then the older queue, unchanged and still in order: RC's stray-work sweep
    plus the reconciliation, now a SIX-way act (RC still owes its own report);
