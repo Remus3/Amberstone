@@ -33,6 +33,7 @@ import types
 
 import pytest
 
+from dashboard import _arm_confirm as armgate
 from dashboard import _idempotency as idem
 from dashboard import routes_loop_control as mod
 
@@ -71,12 +72,32 @@ def ctldir(tmp_path, monkeypatch):
     return ctl
 
 
-def _post(body):
+def _raw_post(body):
     h = FakeHandler()
     mod._serve_loop_control(h, body)
     assert h.sent is not None
     status, raw, ctype = h.sent
     return status, json.loads(raw.decode("utf-8")), ctype
+
+
+def _post(body):
+    """Drive the route the way an OPERATOR does: arm, then confirm.
+
+    See tests/test_interrupt_route.py::_post for the full reason. Short
+    version: the arm-then-confirm gate moved out of web/mc/arm_confirm.js and
+    into dashboard/_arm_confirm.py when the Mission Control web UI was retired,
+    so every irreversible action now needs a two-step. This helper supplies the
+    first step; the gate's own properties - above all that an UNARMED call is
+    REFUSED - are asserted in tests/test_arm_confirm_server_gate.py.
+    """
+    action = str(body.get("action") or "")
+    if action in armgate.GATED_ACTIONS and "arm_token" not in body:
+        st, armed, _ = _raw_post({"action": "arm", "target_action": action,
+                                  "target": armgate.target_of(action, body)})
+        assert st == 200, armed
+        body = dict(body)
+        body["arm_token"] = armed["arm_token"]
+    return _raw_post(body)
 
 
 class FakeLanes:
@@ -340,9 +361,23 @@ def test_queue_intent_distinct_keys_are_distinct_intents(ctldir):
 
 
 def test_queue_intent_missing_key_is_400(ctldir):
-    status, payload, _ = _post({"action": "queue_intent", "intent": "done_continue"})
+    """Still true at the side-effect layer; the ARM may now mint the key.
+
+    See tests/test_interrupt_route.py::test_interrupt_requires_an_idempotency_key
+    for the full reasoning. Three asserts, one per layer.
+    """
+    status, payload = mod.apply_action("queue_intent", {"intent": "done_continue"})
     assert status == 400 and payload["ok"] is False
     assert not (ctldir / "INTENT_DONE_CONTINUE.json").exists()
+
+    status, payload, _ = _raw_post({"action": "queue_intent",
+                                    "intent": "done_continue"})
+    assert status == 409 and payload["refused"] == "arm_required"
+    assert not (ctldir / "INTENT_DONE_CONTINUE.json").exists()
+
+    status, payload, _ = _post({"action": "queue_intent", "intent": "done_continue"})
+    assert status == 200 and payload["ok"] is True
+    assert (ctldir / "INTENT_DONE_CONTINUE.json").exists()
 
 
 @pytest.mark.parametrize("bad", ["", "not a key", "f" * 65, 12345, None])
@@ -597,9 +632,20 @@ def test_fire_lane_replay_does_not_acquire_twice(ctldir, lanes):
 
 
 def test_fire_lane_missing_key_is_400_and_never_acquires(ctldir, lanes):
-    status, payload, _ = _post({"action": "fire_lane", "lane": "repo",
-                                "run_id": "cafe0001", "worktree": "C:/wt/repo"})
+    """Still true at the side-effect layer; the ARM may now mint the key.
+
+    See tests/test_interrupt_route.py::test_interrupt_requires_an_idempotency_key.
+    """
+    status, payload = mod.apply_action(
+        "fire_lane", {"lane": "repo", "run_id": "cafe0001",
+                      "worktree": "C:/wt/repo"})
     assert status == 400 and payload["ok"] is False
+    assert lanes.calls == []
+
+    status, payload, _ = _raw_post({"action": "fire_lane", "lane": "repo",
+                                    "run_id": "cafe0001",
+                                    "worktree": "C:/wt/repo"})
+    assert status == 409 and payload["refused"] == "arm_required"
     assert lanes.calls == []
 
 

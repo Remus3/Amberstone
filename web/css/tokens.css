@@ -97,12 +97,14 @@
    * clock and the textarea resolved to different stacks. One declaration
    * settles both. Deliberately theme-invariant: no theme re-skins type,
    * so this belongs at the base :root and in none of the data-theme
-   * blocks. Stack matches the literal web/mc/mc.css already inlines.
+   * blocks. The stack was chosen to match the literal the retired Mission
+   * Control stylesheet inlined, so the two surfaces could not diverge.
    *
-   * NOTE for whoever next reads mc.css: its two comments say this token is
-   * "defined in NO stylesheet in web/css". That was true and is no longer;
-   * mc.css is outside this change's file set, so its literal stack stands
-   * (identical output) and the stale prose is filed rather than edited. */
+   * That stylesheet was DELETED on 2026-09-20 with the rest of the Mission
+   * Control web UI, which closes the stale-prose note that used to sit here:
+   * there is no second file left carrying a duplicate literal, and no reader
+   * left to mislead. The stack below is now the single declaration it was
+   * always meant to be. */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* 8px spacing grid. Six existing rungs unchanged (replaces off-grid

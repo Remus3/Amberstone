@@ -441,25 +441,37 @@ def test_guard_corpus_is_populated():
     Census measured 2026-09-04 at f2906ce15: 120 JS modules, 10 HTML
     documents, 348 literal getElementById sites, 256 distinct ids referenced,
     654 ids in markup, 60 created or emitted by JS.
+
+    RE-MEASURED 2026-09-20 after the Mission Control web UI was retired and
+    `web/mc/` was deleted: 117 JS modules, 9 HTML documents, 235 distinct ids
+    referenced, 319 reference sites. The floors below were lowered to match
+    and still sit BELOW the live figures, which is what makes them floors
+    rather than pins - re-deriving a floor from the tree it guards would make
+    it unfailable. A count is a hypothesis until it is re-derived, so these
+    are the numbers this run printed, not carried forward from the old census.
     """
     modules = {_rel(WEB, p) for p in _modules(WEB)}
     documents = {_rel(WEB, p) for p in _documents(WEB)}
     assert len(modules) >= 110, f"only {len(modules)} JS modules scanned"
     assert len(documents) >= 8, f"only {len(documents)} HTML documents scanned"
+    # web/mc/ removal took 3 modules, 1 document and 21 distinct ids out of
+    # this corpus. Floors re-derived from the 2026-09-20 measurement above.
     for must in (
         "web/js/main.js",
         "web/js/panels/dev.js",
         "web/js/panels/champ_select.js",
         "web/js/panels/active_match.js",
         "web/js/panels/last_match.js",
-        "web/mc/mc.js",
+        # web/mc/mc.js is deliberately absent: the Mission Control web UI was
+        # retired and web/mc/ no longer exists. The `len(modules) >= 110` floor
+        # above is what still catches a corpus that collapses otherwise.
         "web/index.html",
         "web/ops.html",
     ):
         assert must in modules or must in documents, f"guard corpus missing {must}"
     refs = _references(WEB)
-    assert len(refs) >= 240, f"reference scan found only {len(refs)} distinct ids"
-    assert sum(len(v) for v in refs.values()) >= 330, "reference site count collapsed"
+    assert len(refs) >= 225, f"reference scan found only {len(refs)} distinct ids"
+    assert sum(len(v) for v in refs.values()) >= 310, "reference site count collapsed"
 
 
 def test_inline_page_script_residue_is_pinned():

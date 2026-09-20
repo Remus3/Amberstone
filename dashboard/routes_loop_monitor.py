@@ -345,15 +345,9 @@ header h1{font-size:16px;margin:0;color:var(--gold);letter-spacing:.5px}
 padding:10px 12px;margin-bottom:10px}
 h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--teal);margin:0 0 8px}
 .muted{color:var(--mut);font-weight:400;text-transform:none;letter-spacing:0}
-.row{display:flex;gap:18px;flex-wrap:wrap}
-.kv .k{color:var(--mut);font-size:12px;margin-right:6px;text-transform:uppercase}
-.kv .v{font-weight:600}
-.pill{padding:1px 8px;border-radius:10px;font-size:12px;font-weight:700}
-.pill.running{background:rgba(63,185,80,.15);color:var(--grn)}
-.pill.idle{background:rgba(91,100,120,.2);color:var(--mut)}
-.pill.stopped{background:rgba(200,69,90,.15);color:var(--red)}
-.commit{margin-top:6px;color:var(--mut);font-family:ui-monospace,Consolas,monospace;font-size:12px}
-.stop{margin-top:6px;color:var(--red);font-weight:600}
+/* .row/.kv/.pill/.commit/.stop went with the loop-status panel they styled -
+   see the comment on rStatus below. Grepped before deleting: no other rule or
+   emitted markup in this file referenced any of them. */
 .now{font-size:14px;padding:4px 0;color:var(--gold)}
 .now .tgt{color:var(--mut);font-family:ui-monospace,Consolas,monospace;font-size:12px}
 table{width:100%;border-collapse:collapse}
@@ -383,28 +377,28 @@ if(s<60)return'd-warn';return'd-slow'}
 function esc(t){return (t==null?'':String(t)).replace(/[&<>]/g,function(c){
 return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
 function tm(s){return esc((s||'').slice(11,19))}
-function kv(k,v){return '<div class="kv"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'}
 async function jget(u){try{var r=await fetch(u,{cache:'no-store'});return r.ok?await r.json():null}catch(e){return null}}
 async function load(){
- var a=await Promise.all([jget('/api/loop-monitor'),jget('/api/loop-status')]);
- var m=a[0],s=a[1];
+ var m=await jget('/api/loop-monitor');
  $('updated').textContent=m?('updated '+(m.updated_at||'')):'(endpoint down)';
  $('sess').textContent=m&&m.session?m.session:'';
- rStatus(s);rMon(m);
+ rStatus();rMon(m);
 }
-function rStatus(s){
- var el=$('loopstatus');
- if(!s){el.innerHTML='<div class="muted">loop-status unavailable</div>';return}
- var st=(s.state||'?'),b=s.budget||{},lc=s.last_commit||{};
- var cyc=(s.cycle!=null)?(s.cycle+(s.max_cycles?(' / '+s.max_cycles):'')):'-';
- el.innerHTML='<div class="row">'
-  +kv('state','<span class="pill '+st+'">'+st.toUpperCase()+'</span>')
-  +kv('cycle',cyc)
-  +kv('adjudicator',b.adjudicator_usd!=null?('$'+b.adjudicator_usd+(b.adjudicator?(' ('+b.adjudicator+')'):'')):'-')
-  +kv('claude',b.claude_usd_info!=null?('$'+b.claude_usd_info):'-')
-  +'</div>'
-  +(lc.sha?('<div class="commit">HEAD '+esc(lc.sha)+'  '+esc(lc.subject)+'</div>'):'')
-  +(s.stop_reason?('<div class="stop">STOPPED: '+esc(s.stop_reason)+'</div>'):'');
+// THE /api/loop-status FETCH THAT USED TO LIVE HERE IS GONE, AND ITS ABSENCE
+// IS THE FIX. This page fetched /api/loop-status from THIS port, which has not
+// served that route since Mission Control S10 moved the loop routes onto the
+// standalone :8895 control plane (dashboard/_dispatch.py:143 registers only
+// routes_loop_monitor). Every load therefore issued a request that 404'd and
+// rendered "loop-status unavailable" - a panel that had been permanently empty
+// and a request that could never succeed, failing soft enough that nobody
+// noticed. Re-registering the route here was the alternative and was rejected:
+// it would reverse S10 and put loop state back on a process that
+// restart_trigger.txt bounces for game overlay changes. So the panel now
+// states where the data actually is instead of pretending to look for it.
+function rStatus(){
+ $('loopstatus').innerHTML='<div class="muted">loop status is served by '
+  +'Mission Control on :8895 (GET /api/loop-status), not by this dashboard. '
+  +'This page owns the tool-call timeline below.</div>';
 }
 function rMon(m){
  if(!m){$('inflight').innerHTML='<div class="muted">monitor endpoint down</div>';

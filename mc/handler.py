@@ -1,43 +1,44 @@
-# arch: Mission Control HTTP handler (minimal, no dashboard Handler) | section=mc | frozen=no
+# arch: Mission Control HTTP handler (HEADLESS - JSON only, no static assets) | section=mc | frozen=no
 """The Mission Control request handler.
 
 Deliberately minimal. It implements exactly what the two loop-route modules
-consume - `_send(code, body, ctype)` and a parsed JSON POST body - plus static
-file serving for web/mc/. It does NOT subclass or import the dashboard's
-Handler, which carries game state, supervisor proxying and vision auth.
+consume - `_send(code, body, ctype)` and a parsed JSON POST body. It does NOT
+subclass or import the dashboard's Handler, which carries game state,
+supervisor proxying and vision auth.
+
+HEADLESS SINCE THE MC WEB UI WAS RETIRED. This server used to also serve
+`web/mc/` (index.html, mc.js, mc.css, arm_confirm.js) as a phone-friendly page.
+That page and its static-serving branch are gone: the surviving consumers are
+curl, scripts and the loop itself, and every one of them speaks JSON. The
+control plane - the bearer perimeter, `/api/loop-status` and all nine
+`/api/loop-control` actions - is unchanged, which is the whole point of
+retiring the VIEW half rather than the process.
+
+The one thing the page carried that was NOT view-only was the arm-then-confirm
+gate in `web/mc/arm_confirm.js`. That was ported to the SERVER before this
+removal, not deleted with it - see `dashboard/_arm_confirm.py` and
+`tests/test_arm_confirm_server_gate.py`. Deleting a client cannot make a server
+safer, so a UI-only guard was never a guard at all.
 
 CSRF: the bearer requirement on POST is itself the cross-origin defence. A
 browser cannot attach an Authorization header cross-origin without a CORS
 preflight, and this server answers no preflight, so a hostile page cannot
-drive this surface even from a machine that can reach it.
-
-Static assets are served no-store: web/mc/ is outside the dashboard's
-compute_asset_hash sweep, so there is no cache-busting hash on these URLs and
-a cached mc.js would silently serve stale control-plane code.
+drive this surface even from a machine that can reach it. With the static tree
+gone there is also no same-origin page left to host such an attempt.
 """
 from __future__ import annotations
 
 import json
 import logging
 from http.server import BaseHTTPRequestHandler
-from pathlib import Path
 
 from mc import auth, routes
 
 log = logging.getLogger("rc.mc.handler")
 
-WEB_DIR = Path(__file__).resolve().parent.parent / "web" / "mc"
-
 # RC is single-operator and these bodies are tiny (an action plus an
 # idempotency key). Mirrors the dashboard's 1 MiB cap.
 _MAX_POST_BYTES = 1 * 1024 * 1024
-
-_CTYPES = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".mjs": "text/javascript; charset=utf-8",
-}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -65,36 +66,22 @@ class Handler(BaseHTTPRequestHandler):
         """Route access logs into RC logging instead of stderr."""
         log.info("%s %s", self.address_string(), fmt % args)
 
-    # -- static ------------------------------------------------------
-
-    def _serve_static(self) -> bool:
-        rel = "index.html" if self.path in ("/", "") else self.path.lstrip("/")
-        rel = rel.split("?", 1)[0]
-        target = (WEB_DIR / rel).resolve()
-        # Path traversal guard: the resolved path must stay inside WEB_DIR.
-        # is_relative_to is a real path-component check. A plain
-        # str(target).startswith(str(WEB_DIR)) has a sibling-prefix bypass:
-        # web/mc-evil/ starts with the same characters as web/mc/, so a
-        # string prefix check lets ../mc-evil/secret.txt through even
-        # though mc-evil is a sibling directory, not a subpath of mc.
-        if not target.is_relative_to(WEB_DIR.resolve()):
-            return False
-        if not target.is_file():
-            return False
-        ctype = _CTYPES.get(target.suffix, "application/octet-stream")
-        self._send(200, target.read_bytes(), ctype)
-        return True
-
     # -- verbs -------------------------------------------------------
 
     def do_GET(self) -> None:
+        """Route table only. Nothing on this port reads the filesystem.
+
+        There is no static branch and no document root, so the whole class of
+        path-traversal question this handler used to have to answer - a
+        resolved path escaping WEB_DIR, a sibling-prefix bypass on
+        `web/mc-evil/` - is now structurally absent rather than guarded. Any
+        unmatched path, traversal-shaped or not, is a JSON 404.
+        """
         try:
             for matcher, handler in routes.GET_ROUTES:
                 if matcher(self.path):
                     handler(self)
                     return
-            if self._serve_static():
-                return
             self._send_json(404, {"ok": False, "error": "not found"})
         except Exception as exc:  # noqa: BLE001 - never take the server down
             log.warning("do_GET %s: %s", self.path, exc)

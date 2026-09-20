@@ -48,12 +48,36 @@ def ctldir(tmp_path, monkeypatch):
     return ctl
 
 
-def _post(body):
+def _raw_post(body):
     h = FakeHandler()
     mod._serve_loop_control(h, body)
     assert h.sent is not None
     status, raw, _ = h.sent
     return status, json.loads(raw.decode("utf-8"))
+
+
+def _post(body):
+    """Drive the route the way an OPERATOR does: arm, then confirm.
+
+    The route grew a server-side arm-then-confirm gate
+    (dashboard/_arm_confirm.py) when the Mission Control web UI was retired,
+    because the gate used to live in browser JS and deleting a client cannot
+    make a server safer. Every gated action therefore needs a two-step, and
+    this helper performs the first step so the assertions below keep testing
+    what they were written to test. The gate ITSELF is asserted in
+    tests/test_arm_confirm_server_gate.py - including that an UNARMED call is
+    refused, which is the property this helper must never mask.
+    """
+    from dashboard import _arm_confirm as armgate
+
+    action = str(body.get("action") or "")
+    if action in armgate.GATED_ACTIONS and "arm_token" not in body:
+        st, armed = _raw_post({"action": "arm", "target_action": action,
+                               "target": armgate.target_of(action, body)})
+        assert st == 200, armed
+        body = dict(body)
+        body["arm_token"] = armed["arm_token"]
+    return _raw_post(body)
 
 
 VICTIM = {"pid": 4242, "name": "claude.exe", "kind": "lane", "lane": "ds",
@@ -123,11 +147,34 @@ def test_preview_is_not_remembered_by_the_replay_table(ctldir, fake):
 
 # --------------------------------------------------------------------------- execute
 def test_interrupt_requires_an_idempotency_key(ctldir, fake):
-    status, out = _post({"action": "interrupt", "fingerprint": "abc123"})
+    """Still true - but the ARM is now allowed to be the one that mints it.
 
+    REWRITTEN when the arm-then-confirm gate moved server-side. The original
+    asserted that an omitted key is a 400 at the HTTP surface, which was the
+    right contract while every client was web/mc/mc.js and minted its own key
+    per send. With the gate in front, an omitted key on an ARMED request is
+    filled from the arm record (dashboard/_arm_confirm.arm mints one key per
+    intent), so the 400 would only ever fire for a caller that had already
+    passed the stronger gate. Both halves of the real property are asserted:
+    the side-effect layer still refuses a keyless call, and an UNARMED call is
+    refused harder, at 409, before it reaches that layer at all.
+    """
+    # 1. The side-effect layer is unchanged - no key, no kill.
+    status, out = mod.apply_action("interrupt", {"fingerprint": "abc123"})
     assert status == 400
     assert out["ok"] is False
     assert fake.executed == []
+
+    # 2. Over HTTP, an unarmed call never gets that far.
+    status, out = _raw_post({"action": "interrupt", "fingerprint": "abc123"})
+    assert status == 409
+    assert out["refused"] == "arm_required"
+    assert fake.executed == []
+
+    # 3. Armed and keyless is a COMPLETE request: the arm minted the key.
+    status, out = _post({"action": "interrupt", "fingerprint": "abc123"})
+    assert status == 200, out
+    assert len(fake.executed) == 1
 
 
 def test_interrupt_requires_a_fingerprint(ctldir, fake):

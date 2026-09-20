@@ -270,12 +270,21 @@ exposes an action that KILLS PROCESSES - the auth and TLS notes below are
 load-bearing, not boilerplate. Scheduled-task row: see `RC-MissionControl`
 in the table above.
 
+**There is no Mission Control web page any more (removed 2026-09-20).** The
+`web/mc/` tree is deleted and `mc/handler.py` has no document root, so
+`https://legion-rc:8895/` itself is a JSON 404. Drive it with `curl` against
+`GET /api/loop-status` and `POST /api/loop-control` (the two routes below);
+the listener, the bearer perimeter, the scheduled task and all nine
+loop-control actions are unchanged. The arm-then-confirm step that the page's
+JavaScript used to run is now SERVER-side in `dashboard/_arm_confirm.py`, so
+a curl operator gets the same gate - see "Arm-then-confirm" below.
+
 **Token provisioning.** `mc/auth.py` resolves the bearer token from env
 `RC_MC_TOKEN`, else the first line of `config/mission_control_token.txt`.
-There is no other fallback and it fails CLOSED: with no token configured the
-page still loads and every GET still reads fine, but every POST returns 503.
-That is correct designed behavior and it looks exactly like a bug - check
-this first before debugging anything else. Generate and install one:
+There is no other fallback and it fails CLOSED: with no token configured
+every GET still reads fine, but every POST returns 503. That is correct
+designed behavior and it looks exactly like a bug - check this first before
+debugging anything else. Generate and install one:
 ```powershell
 python -c "import secrets; print(secrets.token_hex(16))"
 ```
@@ -298,6 +307,19 @@ token from `config/mission_control_token.txt` above). Do NOT use
 `-k`/`--insecure` here: it disables all four checks (hostname, chain,
 expiry, revocation) and would admit a MITM against an endpoint that can
 kill processes.
+
+**Arm-then-confirm (three actions, server-enforced).** `fire_lane`,
+`queue_intent` and `interrupt` are irreversible and cannot be fired in one
+POST. Send `{"action":"arm","target_action":"<action>", ...}` first - it
+writes nothing and returns an `arm_token` plus an `idempotency_key` - then
+re-send the real action carrying that `arm_token`. An unarmed gated call
+returns **HTTP 409** `{"ok":false,"refused":"arm_required"}`, which is a
+refusal working as designed, not an outage. `{"action":"disarm",
+"arm_token":"..."}` throws the token away. The window is 60 s by default and
+is overridable with env `RC_MC_ARM_WINDOW_S`. `stop`, `resume`,
+`set_directive`, `clear_directive`, `steer` and `interrupt_preview` are NOT
+gated. Gate: `dashboard/_arm_confirm.py`, enforced by
+`dashboard/routes_loop_control.route_action`.
 
 **Restart.** Mission Control is deliberately NOT supervisor-managed and does
 NOT watch `restart_trigger.txt` - that independence from RC is the entire

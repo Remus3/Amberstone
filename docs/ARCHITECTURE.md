@@ -95,6 +95,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | File | Role |
 |---|---|
 | `dashboard/_adaptation_latch.py` | cs/csd latch for STATS panel |
+| `dashboard/_arm_confirm.py` | server-side arm-then-confirm gate for irreversible loop-control acts |
 | `dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
 | `dashboard/_deterministic_coaching.py` | deterministic coaching resolver for /api/state |
 | `dashboard/_dispatch.py` | route registration |
@@ -143,7 +144,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 |---|---|
 | `mc/__init__.py` | Mission Control standalone serving layer (S10) |
 | `mc/auth.py` | Mission Control bearer-token gate (POST only, fails closed) |
-| `mc/handler.py` | Mission Control HTTP handler (minimal, no dashboard Handler) |
+| `mc/handler.py` | Mission Control HTTP handler (HEADLESS - JSON only, no static assets) |
 | `mc/routes.py` | Mission Control route tables (imports, never forks, the loop routes) |
 | `mc/server.py` | Mission Control HTTPS server (:8895, tailnet + loopback only) |
 | `mission_control.py` | Mission Control process entry (:8895) |
