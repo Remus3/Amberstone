@@ -92,8 +92,54 @@ function clampToContent(args) {
   return { x, y, width, height };
 }
 
+// minimumSizeFor({ content, workArea, min }) -> { width, height }
+//
+// The floor handed to setMinimumSize, i.e. the narrowest box the USER may drag
+// the window to. It is NOT the same number as `min` above, and that difference
+// is the whole point of this function.
+//
+// WHY THE WIDTH TRACKS THE CONTENT. widget.css gives .panel `width:max-content`,
+// which is load bearing (main.js clamps to a measured box rather than a guessed
+// viewport) and which does NOT shrink: a panel whose content is 499px wide stays
+// 499px wide in a 240px window, and `body { overflow: hidden }` clips the
+// remainder - the gear on the right edge included. A static 240px floor
+// therefore hands the user a drag range in which the widget is visibly broken
+// until the resize-settle clamp snaps it back. Since clampToContent already
+// forces the width back to the content box on every settle, that range was
+// never a real degree of freedom; refusing the drag is the honest expression of
+// a contract the clamp was enforcing anyway.
+//
+// The width is computed by the same clampAxis the clamp uses, with no requested
+// size, so it lands on exactly the width clampToContent would choose. That
+// equality matters: a floor ABOVE the clamped width would make the clamp's own
+// setBounds unsatisfiable on a work area narrower than the content.
+//
+// WHY THE HEIGHT DOES NOT. A short window is not the same defect as a narrow
+// one - .panel is capped by the work-area-derived --panel-max-height and .cards
+// scrolls, so vertical truncation degrades gracefully. More importantly the
+// height axis is the one that carried the 2026-09-19 SHRINK RATCHET, so it
+// keeps the static floor and nothing here reads a window-derived height.
+//
+// This is a constant function of the CONTENT, never of the window: max-content
+// does not vary with the width it is given, so no feedback loop is opened.
+function minimumSizeFor(args) {
+  const a = args && typeof args === "object" ? args : {};
+  const content = a.content && typeof a.content === "object" ? a.content : {};
+  const workArea = a.workArea && typeof a.workArea === "object" ? a.workArea : {};
+  const min = a.min && typeof a.min === "object" ? a.min : {};
+
+  const minW = posNum(min.width, DEFAULT_MIN_WIDTH);
+  const minH = posNum(min.height, DEFAULT_MIN_HEIGHT);
+
+  return {
+    width: clampAxis(0, content.width, workArea.width, minW),
+    height: minH,
+  };
+}
+
 module.exports = {
   DEFAULT_MIN_WIDTH,
   DEFAULT_MIN_HEIGHT,
   clampToContent,
+  minimumSizeFor,
 };

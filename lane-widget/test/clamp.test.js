@@ -11,7 +11,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { clampToContent } = require("../src/clamp.js");
+const { clampToContent, minimumSizeFor } = require("../src/clamp.js");
 
 const WA = { x: 0, y: 0, width: 1920, height: 1080 };
 const MIN = { width: 240, height: 120 };
@@ -380,6 +380,122 @@ test("the clamp restores a maximized window before it reads bounds", () => {
   assert.ok(
     code.indexOf("mainWindow.unmaximize()") < code.indexOf(".getBounds()"),
     "unmaximize must run BEFORE the bounds are read"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The DRAG FLOOR (minimumSizeFor).
+//
+// THE DEFECT: MIN_SIZE.width was 240 while .panel is `width:max-content` with a
+// 320px min-width, and max-content does not shrink. With the sixth roster
+// participant the panel measures about 499px, so the whole 240..499 band of the
+// drag was panel clipped by `body { overflow: hidden }` - the gear on the right
+// edge included - until the settle clamp snapped the window back out.
+//
+// The fix is the floor, NOT a new CSS width: making .panel shrink would mean
+// bounding it by its own container, and a container-derived width is the exact
+// shape of the height ratchet that shipped on 2026-09-19 (window -> viewport ->
+// measured box -> window). These cases are the acceptance for the floor being
+// content-derived on width, static on height, and never above the clamp.
+
+test("the drag floor tracks the panel content width, not the 240px constant", () => {
+  // The measured regression: six participants, about 499px of content.
+  const out = minimumSizeFor({
+    content: { width: 499, height: 360 },
+    workArea: WA,
+    min: MIN,
+  });
+  assert.strictEqual(out.width, 499);
+  assert.notStrictEqual(out.width, MIN.width);
+});
+
+test("the drag floor never exceeds the width the clamp would apply", () => {
+  // A floor ABOVE the clamped width makes the clamp's own setBounds
+  // unsatisfiable, so this is checked where the two can disagree: content
+  // wider than the work area.
+  for (const content of [
+    { width: 499, height: 360 },
+    { width: 5000, height: 4000 },
+    { width: 320, height: 200 },
+    { width: 0, height: 0 },
+  ]) {
+    for (const work of [WA, { x: 0, y: 0, width: 1280, height: 720 }, { x: 0, y: 0, width: 400, height: 300 }]) {
+      const floor = minimumSizeFor({ content, workArea: work, min: MIN });
+      const next = clampToContent({
+        requested: { x: 0, y: 0, width: 900, height: 700 },
+        content,
+        workArea: work,
+        min: MIN,
+      });
+      assert.ok(
+        floor.width <= next.width,
+        `floor ${floor.width} > clamped ${next.width} for content ${content.width} in work ${work.width}`
+      );
+      assert.ok(floor.height <= next.height, "floor height above the clamped height");
+    }
+  }
+});
+
+test("the drag floor height is the static minimum, never the content height", () => {
+  // The height axis is the one that carried the shrink ratchet. It stays a
+  // constant here on purpose: .panel is capped by the work area and .cards
+  // scrolls, so a short window degrades, where a narrow one clips.
+  const tall = minimumSizeFor({
+    content: { width: 499, height: 1185 },
+    workArea: WA,
+    min: MIN,
+  });
+  assert.strictEqual(tall.height, MIN.height);
+});
+
+test("the drag floor falls back to min before the first content report", () => {
+  const out = minimumSizeFor({
+    content: { width: 0, height: 0 },
+    workArea: WA,
+    min: MIN,
+  });
+  assert.deepStrictEqual(out, { width: MIN.width, height: MIN.height });
+  // And with nothing at all, rather than throwing.
+  const bare = minimumSizeFor();
+  assert.ok(bare.width > 0 && bare.height > 0);
+});
+
+test("the drag floor is a constant function of the content, not of the window", () => {
+  // The anti-ratchet acceptance, in the same iterated-map shape as the height
+  // case above: feed the floor back in as the window width and it must not
+  // walk. A floor derived from the WINDOW instead of from max-content would
+  // shrink on every turn.
+  const content = { width: 499, height: 360 };
+  let width = 1200;
+  for (let i = 0; i < 24; i += 1) {
+    const floor = minimumSizeFor({ content, workArea: WA, min: MIN });
+    const next = clampToContent({
+      requested: { x: 0, y: 0, width, height: 400 },
+      content,
+      workArea: WA,
+      min: { width: floor.width, height: floor.height },
+    });
+    width = next.width;
+    assert.strictEqual(width, 499, `width walked on turn ${i}`);
+  }
+});
+
+test("the clamp enforces the content-derived floor, not the bare constant", () => {
+  // Source guard: the pure function above is worthless if main.js still hands
+  // setMinimumSize the static MIN_SIZE.
+  const code = codeOf("applyClampNow");
+  assert.ok(
+    code.includes("clampMod.minimumSizeFor"),
+    "applyClampNow no longer computes a content-derived floor"
+  );
+  assert.ok(
+    !/setMinimumSize\(\s*MIN_SIZE\.width/.test(code),
+    "applyClampNow still floors the drag at the bare MIN_SIZE - the panel will clip"
+  );
+  assert.match(
+    code,
+    /setMinimumSize\(\s*floor\.width,\s*floor\.height\s*\)/,
+    "applyClampNow must apply the computed floor"
   );
 });
 
