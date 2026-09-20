@@ -671,13 +671,29 @@ jobs:
     #
     # DEGRADED (structural arm only) is seconds, and DEGRADED is what this
     # runner actually sees, because RC_MOON_SYNC_REPOS is an unset secret. So
-    # 20 minutes is headroom against a case this job does not run today. If that
-    # secret is ever set, RE-MEASURE before trusting it: 11 minutes on Legion
-    # with a runner's slower core is not comfortably inside 20.
+    # neither ceiling below binds today; they are sized for the day the secret
+    # is set, which is the day the margin has to already be there.
+    #
+    # THE CEILINGS, and why 20 was not kept (2026-09-20). 11 minutes was
+    # measured on Legion. The scan is SERIAL - collect_tree_blobs read_bytes()
+    # every tracked path and _run_scan walks every blob with no pool anywhere in
+    # tools/sibling_name_sweep.py - so a hosted runner's slower single core is
+    # not absorbed by its vCPU count, and the usual ~2x puts the ARMED arm near
+    # 22 minutes, i.e. OVER the old 20 before any variance. On top of that
+    # tools/sibling_sweep_ci.py runs four control subprocesses at timeout=300
+    # each. Per the step-vs-job note further up this file the STEP ceiling is
+    # the one meant to fire (a step timeout reports failure; a job timeout
+    # reports cancelled, which is indistinguishable from a superseded run), and
+    # a ceiling hugging the worst observation turns runner variance into a fake
+    # red - so the step gets 45 (about 2x the projected ARMED run) and the job
+    # keeps the house's 20-minute gap above it.
+    #
+    # RE-MEASURE when the secret is set. These are projections from one Legion
+    # run, not an observation of this runner.
     #
     # No sibling name appears here, in either direction. Slot COUNTS and the
     # narrowed COUNT are the only things this comment is allowed to carry.
-    timeout-minutes: 20
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v6
         with:
@@ -693,6 +709,8 @@ jobs:
       # outage that silently skipped the leak gate would be the worst possible
       # shape for this particular guard.
       - name: sibling-name sweep - TREE arm
+        # Fires before the job ceiling on purpose: failure, not cancelled.
+        timeout-minutes: 45
         env:
           RC_MOON_SYNC_REPOS: ${{ secrets.RC_MOON_SYNC_REPOS }}
           # The env-path equivalent of the config's `narrowed_names` key, for a
