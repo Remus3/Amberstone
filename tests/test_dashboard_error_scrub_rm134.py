@@ -134,8 +134,15 @@ class MissionControlRouteScrubTests(unittest.TestCase):
 
         fn = self._mc_handler("/api/loop-control", "POST_ROUTES")
         h = _FakeHandler()
+        # "resume", not "pause". The route grew an arm-then-confirm layer
+        # (dashboard/_arm_confirm.py) that answers an UNKNOWN action with its
+        # own 400 before apply_action is reached, so patching apply_action and
+        # then sending a nonsense action would have exercised nothing and
+        # asserted nothing - the mock would never have been called. "resume" is
+        # a real, ungated, key-free action, so it reaches the patched callable
+        # and the last-resort guard is genuinely driven.
         with mock.patch.object(rlc, "apply_action", side_effect=OSError(LEAKY)):
-            fn(h, {"action": "pause"})
+            fn(h, {"action": "resume"})
         self.assertEqual(h.sent[0], 500)
         _assert_scrubbed(self, h.body["error"])
 
