@@ -252,7 +252,7 @@ For maintenance and coding agents:
 - [`BACKLOG.md`](./BACKLOG.md) - filed work items, each with acceptance criteria
 - [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion record, newest first
 - [`docs/history_notes.md`](./docs/history_notes.md) - the deep archive
-- [`WAKEUP_NOTES.md`](./WAKEUP_NOTES.md), [`NEXT_SESSION_PROMPT.md`](./NEXT_SESSION_PROMPT.md) and `RC-NEXT-SESSION.txt` - session-to-session continuity, rewritten most nights. Useful for watching how the work proceeds, and not written for a first read
+- [`WAKEUP_NOTES.md`](./WAKEUP_NOTES.md) and [`RC-NEXT-SESSION.txt`](./RC-NEXT-SESSION.txt) - session-to-session continuity, rewritten most nights. `RC-NEXT-SESSION.txt` is the single hand-off file: one file in the repo root, OVERWRITTEN every `/done`, never appended and never dated-suffixed, with a Desktop shortcut pointing at it. The older `NEXT_SESSION_PROMPT.md` was the same idea in a second place and was retired to `docs/_archive/2026-09-07-NEXT_SESSION_PROMPT.md` on 2026-09-20. Useful for watching how the work proceeds, and not written for a first read
 
 ---
 
