@@ -276,6 +276,64 @@ test("a thrown listDir and a thrown processSnapshot still produce a model", asyn
   assert.ok(seen.rows.every((r) => r.children === 0), "children fail soft to 0");
 });
 
+test("a participant with NO ops/loop/reports directory still renders its rows", async () => {
+  // The common shape, not an edge case: a participant only grows that directory
+  // once its loop has run at least once, so a freshly joined repo has none and
+  // several established ones never will. listDir is fail-soft on a missing
+  // directory (src/poll.js:121-131 catches and returns []), and this pins what
+  // the poller does with that empty answer: the repo keeps its rows with no
+  // heartbeat, and the OTHER repo's logs stay where they belong.
+  //
+  // The failure this excludes is a bleed, not a throw. A poller that carried one
+  // repo's listing forward would decorate the reports-less repo with a sibling's
+  // heartbeat, and the row would look alive on evidence from another machine.
+  const io = fakeIo({
+    listDir(dir) {
+      this.calls.listDir.push(dir);
+      if (dir.indexOf(ROOT_B) === 0) {
+        return []; // absent directory, exactly as the real listDir reports one
+      }
+      return [{ name: "lane_ds_r1.log", mtimeMs: 1000 }];
+    },
+  });
+  let seen = null;
+  const deps = fakeDeps();
+  const p = mkPoller(io, deps, { onModel: (m) => { seen = m; } });
+  await p.tickSlow();
+
+  assert.ok(seen, "a model is still produced");
+  assert.strictEqual(seen.rows.length, 2, "both participants still have a row");
+  const byCode = Object.fromEntries(seen.rows.map((r) => [r.repoCode, r]));
+  assert.ok(byCode["REPO-2"], "the reports-less participant is not dropped");
+  assert.strictEqual(byCode["REPO-2"].logCount, 0, "it carries no heartbeat rows");
+  assert.strictEqual(byCode.RC.logCount, 1, "the other participant keeps its own");
+  assert.ok(
+    io.calls.listDir.some((d) => d.indexOf(ROOT_B) === 0),
+    "the directory is still ATTEMPTED - absence is discovered, not assumed"
+  );
+});
+
+test("a reports-less participant stays reports-less across repeated slow ticks", async () => {
+  // The bleed above could also arrive as staleness: a cache that keeps the last
+  // non-empty listing per repo would populate on tick one and never clear.
+  const io = fakeIo({
+    listDir(dir) {
+      this.calls.listDir.push(dir);
+      return dir.indexOf(ROOT_B) === 0 ? [] : [{ name: "lane_ds_r1.log", mtimeMs: 1000 }];
+    },
+  });
+  const seen = [];
+  const p = mkPoller(io, fakeDeps(), { onModel: (m) => { seen.push(m); } });
+  await p.tickSlow();
+  await p.tickSlow();
+  await p.tickSlow();
+  assert.strictEqual(seen.length, 3);
+  for (let i = 0; i < seen.length; i += 1) {
+    const byCode = Object.fromEntries(seen[i].rows.map((r) => [r.repoCode, r]));
+    assert.strictEqual(byCode["REPO-2"].logCount, 0, `tick ${i + 1} stays empty`);
+  }
+});
+
 test("a rejected processSnapshot promise is fail-soft", async () => {
   const io = fakeIo({
     processSnapshot() {
