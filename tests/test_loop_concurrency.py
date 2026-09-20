@@ -541,7 +541,33 @@ SHARED_SHA256 = {
     # 6190 bytes, zero CR bytes, pure ASCII.
     # previous f1b4b011112685efb88616c52752657cf896fbb0993b2d2d264e7b3edde8b4f4
     # before that c21bfe4f309c9ed27e68f7cdf0458d001a9942e6a35c61869e6dedd16cc23b79
-    "winmutex.py": "0b112a4f6bfa88cf5f537f8869225c1821ebfe97428b1e899979797ddd71a61e",
+    #
+    # re-pinned 2026-09-20 (ROUND B): the comment block above the gated ACQUIRED
+    # log carried a CARRIER CODE in its attribution, so the agreed bytes violated
+    # the rule the shared header states in its own opening paragraph. Six bytes
+    # removed from one comment line; the engineering content - why an
+    # unconditional ACQUIRED on the fail-open path makes the one unserialized
+    # case invisible to a window-pairing parser - is preserved VERBATIM. The
+    # discovery channel and the date survive; only the tree name goes, because
+    # WHICH tree is recoverable from the per-tree channel notes and this is the
+    # one file where naming one is not allowed.
+    #
+    # A carrier authored the candidate and proved it (py_compile, AST identity
+    # with a mutation control, behavioural identity, two-process mutual exclusion
+    # in BOTH directions). RC did NOT copy the delivered bytes: RC applied the
+    # six-byte edit to its OWN disk and re-derived the digest, so the published
+    # value was a value to CHECK against and never the source. Measured here:
+    # 6190 -> 6184 bytes, 0 CR, 0 non-ASCII, 137 newlines, py_compile OK.
+    #
+    # TRAP FOUND DOING THIS, recorded because it nearly cost a regression: the
+    # inbox carries an artifact named winmutex.py.from-lw that LOOKS like the
+    # candidate and is NOT - it is the 2026-07-26 original at 6146 bytes,
+    # digest f1b4b011 (the "previous" two lines above), carrying the OLD mutex
+    # name values and a docstring that names two trees. Applying a delivered
+    # file because its NAME matches would have rotated the mutex names backwards
+    # and silently de-serialized the fleet. Build the bytes from your own disk.
+    # previous 0b112a4f6bfa88cf5f537f8869225c1821ebfe97428b1e899979797ddd71a61e
+    "winmutex.py": "df0a7a40c28818130dfde25144c971c06060b4645e5eb5f679fbdaf55e2e08d7",
 }
 
 

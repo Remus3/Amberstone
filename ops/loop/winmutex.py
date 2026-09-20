@@ -115,7 +115,7 @@ def hold(name: str, *, timeout: float | None = None, log=None):
         # that RELEASED (gated) never closes, so a window-pairing parser drops it
         # silently - making the ONE case where the mutex did not serialize the
         # one case invisible to the overlap check. An unserialized concurrent
-        # call would then pass green. Found by RC on review, 2026-07-26.
+        # call would then pass green. Found on review, 2026-07-26.
         if acquired:
             if log:
                 log(f"winmutex: ACQUIRED {name}")
