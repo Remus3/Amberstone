@@ -2,6 +2,40 @@
 
 ROADMAP NOW-1 (`ROADMAP.md:39`), operator direction 2026-09-19, LEDGER 1430.
 
+> ## STATUS: ACTED ON 2026-09-20. OPTION A WAS IMPLEMENTED.
+>
+> The operator adjudicated **Option A** from section 4: keep the `:8895`
+> control plane HEADLESS, retire the Mission Control web UI. As of 2026-09-20
+> the whole `web/mc/` tree is DELETED, `mc/handler.py` has no static branch and
+> no document root, and `tests/test_mission_control_panel.py`,
+> `tests/test_interrupt_panel.py` and `tests/test_mc_lane_roster_contract.py`
+> are deleted with it. The listener, the bearer perimeter, the
+> `RC-MissionControl` task, `GET /api/loop-status` and all nine
+> `POST /api/loop-control` actions are UNCHANGED.
+>
+> **Option A's named cost was NOT paid blindly.** Section 3a H6 says the
+> arm-then-confirm gate in `web/mc/arm_confirm.js` "is the only thing standing
+> between one click and an irreversible act", and deleting a client cannot make
+> a server safer. That gate was therefore PORTED into the route layer before
+> the removal, not lost with it: it now lives in `dashboard/_arm_confirm.py`
+> and is enforced by `dashboard/routes_loop_control.route_action`, with two new
+> route actions (`arm`, `disarm`) and a 409 refusal for any unarmed
+> `fire_lane` / `queue_intent` / `interrupt`. Proven by
+> `tests/test_arm_confirm_server_gate.py`. What the browser had for one client,
+> every client now has.
+>
+> **Every `web/mc/...` citation below is AS-OF `HEAD` = `0945ff334` and points
+> into files that no longer exist.** They are PRESERVED rather than repaired,
+> because this document is the record of a measurement taken before the
+> deletion, and re-pointing a citation at a surviving file would turn a true
+> historical claim into a false current one. They are declared to the citation
+> guard in `tests/test_citation_drift_guard_rm171.py` under family `HISTORICAL`
+> for exactly that reason - declared, not hidden.
+>
+> One citation IS corrected rather than preserved, because it points at a
+> SURVIVING file whose line numbers this change moved: section 3b S8 now reads
+> `dashboard/routes_loop_monitor.py:453-456`.
+
 **ANALYSIS ONLY. Nothing was deleted, nothing was changed, no sibling repository
 was read or written.** Every claim below carries a `file:line` verified in this
 run on 2026-09-20 against `HEAD` = `0945ff334`.
@@ -184,7 +218,7 @@ at `lane-widget/src/store.js:111-126`. Nothing in the app can reach
 | S5 | `set_directive` / `clear_directive` (C5, C6) | Same shape - `ops/loop/control/directive_override.md` is consumed by `ops/loop/loop_controller.py:186-193`, which does not care who wrote it. |
 | S6 | `fire_lane` (C7) | `ops/loop/queue_loop.py:207-208` binds `ops.loop.lanes` and `ops.loop.lane_launcher` directly; `ops/loop/run_lane.ps1` and `ops/loop/spawn_lanes.ps1:7,18-26` launch lanes without any HTTP. The **lock-claim-and-refuse** semantics would need to be re-obtained from `lanes.py` by hand, but the launcher path exists. |
 | S7 | `last_commit` (V15) | `git log -1`. |
-| S8 | The tool-call timeline | **Not an MC surface at all.** `/api/loop-monitor` and `/loop-monitor` are registered at `dashboard/routes_loop_monitor.py:459-462` and dispatched on `:8888` at `dashboard/_dispatch.py:81,143`. Measured live: **200 on `:8888`, 404 on `:8895`.** It survives MC deletion untouched. This is worth stating explicitly because it is the surface most likely to be mistaken for MC's. |
+| S8 | The tool-call timeline | **Not an MC surface at all.** `/api/loop-monitor` and `/loop-monitor` are registered at `dashboard/routes_loop_monitor.py:453-456` (re-pointed 2026-09-20 after the dangling `/api/loop-status` fetch was cut from that page; the registration itself is unchanged) and dispatched on `:8888` at `dashboard/_dispatch.py:81,143`. Measured live: **200 on `:8888`, 404 on `:8895`.** It survives MC deletion untouched. This is worth stating explicitly because it is the surface most likely to be mistaken for MC's. |
 
 **One pre-existing defect found while sweeping this, reported rather than fixed.**
 The `:8888` loop-monitor page already fetches `/api/loop-status`

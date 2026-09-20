@@ -108,7 +108,7 @@ health swings.
 | :8889 | Vision server |
 | :8890 | Agents supervisor (proxied by the dashboard) |
 | :8891 | Agents WS relay |
-| :8895 | Mission Control (separate process) |
+| :8895 | Mission Control (separate process, JSON API only - the web UI was removed 2026-09-20) |
 | :8860 | Daemon Slayer build engine |
 | :8861 | Daemon Slayer match-history MCP server |
 | :2999 | Riot Live Client API (the game client's own feed) |

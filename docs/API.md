@@ -145,6 +145,33 @@ they are reachable on `:8888` - they are not.
 | `/api/loop-status` | GET | loop_status | `mc/routes.py` -> `:8895` |
 | `/api/loop-control` | POST | loop_control | `mc/routes.py` -> `:8895` |
 
+`:8895` is a JSON API and nothing else. The Mission Control web UI (`web/mc/`)
+was removed on 2026-09-20: `mc/handler.py` has no `WEB_DIR`, no static
+handler and no document root, so a GET that matches no route in the table
+above is a JSON 404 (`mc/handler.py:85`). There is no page to load.
+
+**`/api/loop-control` actions and the arm-then-confirm gate.** The nine side
+-effect actions are `stop`, `resume`, `set_directive`, `clear_directive`,
+`fire_lane`, `queue_intent`, `steer`, `interrupt_preview` and `interrupt`.
+Three of them are IRREVERSIBLE and are gated server-side by
+`dashboard/_arm_confirm.py`, enforced at the route layer in
+`dashboard/routes_loop_control.route_action`: `fire_lane`, `queue_intent` and
+`interrupt` (`dashboard/_arm_confirm.py:78`). The gate used to live in the
+deleted page's JavaScript; it is now on the server, so a `curl` cannot skip
+it. Two further actions drive it:
+
+| Action | Body | Returns |
+|---|---|---|
+| `arm` | `{"action":"arm","target_action":"<gated action>", ...}` | `arm_token` + an `idempotency_key` |
+| `disarm` | `{"action":"disarm","arm_token":"..."}` | always 200; discards the token |
+
+Re-send the real action with that `arm_token` inside the window. An unarmed
+gated call returns **HTTP 409** with `{"ok": false, "refused": "arm_required"}`
+(409 is a state conflict, not a malformed body and not an outage -
+`dashboard/routes_loop_control.py:671-680`). The window defaults to 60 s and
+is overridable with env `RC_MC_ARM_WINDOW_S`. The other six actions are not
+gated.
+
 (`/api/loop-monitor` + `/loop-monitor` ARE on `:8888` - different module,
 `dashboard/routes_loop_monitor.py`, registered in `_dispatch.py`.)
 
