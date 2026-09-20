@@ -7,7 +7,8 @@ r"""CLI for the S3 session-intent seam - what the done ritual actually calls.
 
 `--peek` is the safe-boundary check: it prints {"pending": <doc>|null} and
 always exits 0, so it can sit at the top of a ritual without a failure mode of
-its own. `--write-prompt` writes Desktop/RC-NEXT-SESSION.txt unconditionally and
+its own. `--write-prompt` writes the REPO-ROOT RC-NEXT-SESSION.txt unconditionally
+(it moved off the Desktop 2026-09-06 so the hand-off is tracked) and
 is what every /done calls; `--consume` writes the same file and marks the intent
 consumed, printing the result dict; it exits 1 when there was nothing to
 consume or the intent was already consumed, so a script can branch on it.

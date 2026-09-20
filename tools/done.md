@@ -306,16 +306,16 @@ Report the byte count above the banner. This needs no queued intent and consumes
 
 #### 10b. Consume a queued intent (only when section 0 found one pending)
 
-Write the exact prompt block you just printed to a temp file, then hand it over. This is the only writer of `Desktop/RC-NEXT-SESSION.txt` (RC- namespaced: LW and RM own their own prefixes on the shared Desktop):
+Write the exact prompt block you just printed to a temp file, then hand it over. This is the only writer of `RC-NEXT-SESSION.txt` in the REPO ROOT (RC- namespaced: the `RC-` prefix is enforced by the consumer). **Do NOT write a Desktop copy** - the Desktop is OUTSIDE the repository root, so writing there is a boundary HALT, and a second copy is untracked, invisible to review and free to diverge:
 
 ```
 python tools/session_intent.py --consume --prompt-file <tmp>
 ```
 
-- `{"ok": true, ...}` - the prompt is on the Desktop and the intent is marked `consumed`. Say so above the banner, with the byte count.
+- `{"ok": true, ...}` - the prompt is in the repo root and the intent is marked `consumed`. Say so above the banner, with the byte count.
 - `already_consumed` / `no_pending_intent` - a refusal, not an error. Nothing was written twice; report it and move on.
 - **halt_save**: `control/STOP` stays raised on purpose. Do not clear it - the operator is parking the work and will change topic. End the session.
-- **done_continue**: same line of work. After the banner, the operator (or the bridge) `/clear`s and re-feeds `Desktop/RC-NEXT-SESSION.txt` verbatim. Emit no directive of your own - the consumed prompt is the whole hand-off.
+- **done_continue**: same line of work. After the banner, the operator (or the bridge) `/clear`s and re-feeds `RC-NEXT-SESSION.txt` from the REPO ROOT verbatim. Emit no directive of your own - the consumed prompt is the whole hand-off.
 
 ### Safety rails
 
