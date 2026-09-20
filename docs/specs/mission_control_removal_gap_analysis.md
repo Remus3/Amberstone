@@ -361,7 +361,9 @@ is a stronger gate than a hook, but the commit itself will not be blocked.
 `docs/CONCURRENT_HEADLESS_CONTRACT.md` 1, `docs/DS_SWEEP_TRACKER.md` 1,
 `docs/REFUTATION_GATE_BACKTEST_2026-09-12.md` 1, `README.md` 1 (`:111`),
 `docs/_scratch_fparm_B.md` 2, `docs/COST_LATENCY_SWEEP_2026-08-02.md` (`:233`),
-`docs/RESPONDER_RUNNER_SPEC.md` (`:231`), `NEXT_SESSION_PROMPT.md` (`:80`),
+`docs/RESPONDER_RUNNER_SPEC.md` (`:231`), `NEXT_SESSION_PROMPT.md` (`:80`, since
+2026-09-20 at `docs/_archive/2026-09-07-NEXT_SESSION_PROMPT.md`; the count above
+is the census AS MEASURED and is deliberately not restated),
 `BACKLOG.md:592` (an OPEN row whose whole subject is this task's
 `MultipleInstances=IgnoreNew` watchdog gap), plus the lane skill prompts:
 `tools/headless-ds.md` 3, `tools/headless-queue.md` 3, `tools/headless-repo.md` 3,

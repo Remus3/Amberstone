@@ -147,7 +147,9 @@ Scoped sessions - each focused task is one session.
 
 ## Session-End Ritual
 
-When user says 'wrap', '/done', or 'end session': run tests, commit with descriptive message, push, sync living docs (append the per-item ledger entry to `docs/LEDGER.md`, NOT CLAUDE.md), and confirm CI green before declaring done.
+When user says 'wrap', '/done', or 'end session': run tests, commit with descriptive message, push, sync living docs (append the per-item ledger entry to `docs/LEDGER.md`, NOT CLAUDE.md), **write the next-session continuation prompt to `RC-NEXT-SESSION.txt` in the REPO ROOT**, and confirm CI green before declaring done.
+
+**`RC-NEXT-SESSION.txt` is the ONE hand-off file and the write is UNCONDITIONAL.** Repo root, TRACKED, OVERWRITTEN every `/done` - never appended, never dated-suffixed, never a second copy anywhere. `Desktop\RC-NEXT-SESSION.lnk` is only a shortcut to it; do NOT write to the Desktop (it moved off 2026-09-06). Printing the prompt into chat is not the hand-off - chat dies at `/clear`. This matches the convention every sibling uses (`<CODE>-NEXT-SESSION.txt` plus a Desktop `.lnk`). The old second file `NEXT_SESSION_PROMPT.md` is RETIRED to `docs/_archive/2026-09-07-NEXT_SESSION_PROMPT.md` (2026-09-20) - do not recreate it, and do not file its absence as a defect.
 
 ## Output Constraints
 
@@ -299,7 +301,7 @@ Before launching a background RC or test suite right after a DS change, wait for
 
 ## Session Wrap-up
 
-When invoked with `/done` or asked to wrap a session: (1) audit pending changes, (2) commit and push, (3) update ROADMAP/README + append the per-item completion entry to `docs/LEDGER.md` (NEVER to CLAUDE.md; it is CI size-budgeted < 60KB - touch CLAUDE.md only for rule/frozen-list/Settled changes), (4) process lessons/WAKEUP_NOTES, (5) print final banner. Run independent steps in parallel. (Deprecated 2026-06-21 per operator: the Peer cross-Claude bridge probe / `/loop /process-bridge-tasks` re-run is NO LONGER part of the /done ritual - do not probe the bridge or flag a dead Peer loop at wrap.)
+When invoked with `/done` or asked to wrap a session: (1) audit pending changes, (2) commit and push, (3) update ROADMAP/README + append the per-item completion entry to `docs/LEDGER.md` (NEVER to CLAUDE.md; it is CI size-budgeted < 60KB - touch CLAUDE.md only for rule/frozen-list/Settled changes), (4) process lessons/WAKEUP_NOTES, (5) OVERWRITE `RC-NEXT-SESSION.txt` in the repo root with the continuation prompt and commit it with the session's work (see "Session-End Ritual"), (6) print final banner. Run independent steps in parallel. (Deprecated 2026-06-21 per operator: the Peer cross-Claude bridge probe / `/loop /process-bridge-tasks` re-run is NO LONGER part of the /done ritual - do not probe the bridge or flag a dead Peer loop at wrap.)
 
 ## Active priorities
 
