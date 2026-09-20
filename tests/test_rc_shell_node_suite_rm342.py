@@ -189,7 +189,33 @@ class RcShellNodeSuite(unittest.TestCase):
         )
 
     def test_every_named_test_file_exists(self):
-        """A phantom name makes node error; failing here says why."""
+        """A phantom name is SILENTLY IGNORED by node, so this guard is it.
+
+        The comment that stood here until 2026-09-19 claimed "a phantom name
+        makes node error". That is FALSE in the case that matters, and it is
+        the case this harness runs.
+
+        MEASURED 2026-09-19 on node v24.15.0 (Legion), from `rc-shell/`:
+        appending `test/this_file_does_not_exist_rm_phantom.test.js` to a
+        path list that also named real files printed the SAME tally as the
+        control run without it ("ok pass 41 / fail 0"), exited 0, wrote ZERO
+        bytes to stderr, and never printed the phantom name anywhere in
+        stdout. Node DOES error - "Could not find '<path>'", exit 1 - but
+        only when NO path in the list resolves; a single surviving real file
+        is enough to swallow every missing sibling in silence.
+
+        That is why the two enumeration guards in this module are
+        load-bearing rather than belt-and-braces. If a named file vanishes,
+        `test_the_rc_shell_node_suite_passes` still sees exit 0 and
+        `test_the_run_was_not_vacuous` still parses a tally with fail 0, just
+        a quietly smaller one - so neither can catch it. Only this guard,
+        which fails on a name that is not on disk, and
+        `test_the_script_is_the_enumerated_node_invocation`, which fails when
+        the parsed list collapses, stand between a deleted test file and a
+        green tick over reduced coverage. RM-212's
+        `test_script_names_exactly_the_files_on_disk` covers the opposite
+        direction (a file on disk that the script never names).
+        """
         missing = [tok for tok in _argv()
                    if tok.endswith(".test.js") and not (SHELL / tok).is_file()]
         self.assertEqual(
