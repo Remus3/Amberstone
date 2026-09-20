@@ -1028,3 +1028,496 @@ def test_new_files_are_seven_bit_ascii(rel):
     raw = (REPO_ROOT / rel).read_bytes()
     bad = [i for i, b in enumerate(raw) if b > 127]
     assert not bad, f"{rel} carries non-ASCII at byte offsets {bad[:5]}"
+
+
+# --------------------------------------------------------------------------
+# PER-SLOT NARROWING for a participant whose checkout basename is an ordinary
+# English word.
+#
+# WHY THIS EXISTS. The needle arm matches a name in THREE shapes: a drive-rooted
+# path, a github URL, and the BARE spelling anywhere in prose. The bare arm is
+# the right default, because a sibling name is normally a coined word that has
+# no business appearing in RC's own source. It is the WRONG arm for a
+# participant whose basename is a dictionary word: that word occurs hundreds of
+# times in RC's own charters, schedulers and roadmap prose, none of which
+# identifies anybody, and a gate that halts on all of them is a gate that gets
+# switched off.
+#
+# FOUR PROPERTIES, and the tests below exist to pin each one:
+#   1. Narrowing is DECLARED, never inferred. No heuristic anywhere asks whether
+#      a name "looks like" a dictionary word.
+#   2. The declaration lives ONLY in the gitignored per-host config (or its env
+#      companion). No real name reaches a tracked file.
+#   3. A narrowed slot loses the BARE arm in BOTH views and KEEPS the drive and
+#      URL arms in both. The path-shaped and repo-adjacent forms are the ones
+#      that actually identify a counterparty, and they stay armed.
+#   4. The default is UNCHANGED full strength. A slot with no declaration keeps
+#      every arm it has today.
+#
+# Every literal below is INVENTED for this test and resolves to nothing. The
+# drive prefix is assembled through `_D` for the reason given at the top of this
+# file: a spelled drive-rooted path is a live hit for the structural arm.
+# --------------------------------------------------------------------------
+_NARROW_ONE = "Grommet"           # one word - the generic-noun case itself
+_NARROW_TWO = "Tindal Sprocket"   # two words, so HYPHEN/UNDER/PCT20/CONCAT differ
+_FULL_NAME = "Widget Foundry"     # NOT declared - the regression control
+
+
+def _narrow_blob(narrowed):
+    return {
+        "repos": [_D + _NARROW_ONE, _D + _NARROW_TWO, _D + _FULL_NAME],
+        "participants": {"GRM": _D + _NARROW_ONE},
+        "narrowed_names": list(narrowed),
+    }
+
+
+@pytest.fixture()
+def narrow_cfg(tmp_path: Path):
+    root = _write_config(tmp_path, _narrow_blob([_NARROW_ONE, _NARROW_TWO]))
+    return sweep.load_config(root=root, env={})
+
+
+@pytest.fixture()
+def narrow_needles(narrow_cfg):
+    return sweep.build_needles(narrow_cfg)
+
+
+def _needle_for(needles, name: str):
+    for needle in needles:
+        if needle.name == name:
+            return needle
+    raise AssertionError(f"no needle for {name!r}")
+
+
+def _shape_families(needle) -> set:
+    return {s.shape.split("/", 1)[0] for s in needle.patterns}
+
+
+# --- the declaration itself -----------------------------------------------
+def test_narrowed_names_load_from_the_per_host_config(narrow_cfg):
+    assert narrow_cfg.mode == sweep.MODE_ARMED
+    assert len(narrow_cfg.names) == 3
+    assert set(narrow_cfg.narrowed_names) == {_NARROW_ONE, _NARROW_TWO}
+
+
+def test_a_slot_is_narrowed_only_because_the_config_says_so(narrow_needles):
+    """Property 1. No inference, no "looks like a dictionary word" heuristic."""
+    assert _needle_for(narrow_needles, _NARROW_ONE).narrowed is True
+    assert _needle_for(narrow_needles, _NARROW_TWO).narrowed is True
+    assert _needle_for(narrow_needles, _FULL_NAME).narrowed is False
+
+
+def test_the_same_generic_word_is_full_strength_without_a_declaration(tmp_path: Path):
+    """Property 4. The ONLY difference between the two configs is the key."""
+    root = _write_config(tmp_path, _narrow_blob([]))
+    cfg = sweep.load_config(root=root, env={})
+    needles = sweep.build_needles(cfg)
+    assert _needle_for(needles, _NARROW_ONE).narrowed is False
+    assert _hits(cfg, needles, "an ordinary " + _NARROW_ONE + " in prose"), (
+        "an UNDECLARED slot must keep the bare arm - narrowing must be "
+        "impossible to create by accident"
+    )
+
+
+def test_an_absent_narrowed_names_key_is_full_strength(tmp_path: Path):
+    """An existing per-host config that predates this key must not change."""
+    root = _write_config(
+        tmp_path, {"repos": [_D + _NARROW_ONE], "participants": {}}
+    )
+    cfg = sweep.load_config(root=root, env={})
+    assert cfg.narrowed_names == ()
+    needles = sweep.build_needles(cfg)
+    assert _hits(cfg, needles, "an ordinary " + _NARROW_ONE + " in prose")
+
+
+def test_a_declaration_naming_no_slot_narrows_nothing(tmp_path: Path):
+    """A typo in the declaration fails CLOSED, at full strength."""
+    root = _write_config(tmp_path, _narrow_blob(["No Such Slot Here"]))
+    cfg = sweep.load_config(root=root, env={})
+    needles = sweep.build_needles(cfg)
+    assert all(n.narrowed is False for n in needles)
+    assert _hits(cfg, needles, "an ordinary " + _NARROW_ONE + " in prose")
+
+
+def test_narrowing_is_declarable_through_the_env_companion(tmp_path: Path):
+    """RC_MOON_SYNC_REPOS carries PATHS only and cannot express a declaration,
+    so the companion variable is the env path's equivalent."""
+    root = tmp_path / "noconfig"
+    (root / "ops").mkdir(parents=True)
+    cfg = sweep.load_config(
+        root=root,
+        env={
+            "RC_MOON_SYNC_REPOS": os.pathsep.join([_D + _NARROW_ONE, _D + _FULL_NAME]),
+            "RC_MOON_SYNC_NARROWED_NAMES": _NARROW_ONE,
+        },
+    )
+    assert cfg.mode == sweep.MODE_ARMED
+    assert cfg.narrowed_names == (_NARROW_ONE,)
+    needles = sweep.build_needles(cfg)
+    assert _needle_for(needles, _NARROW_ONE).narrowed is True
+    assert _needle_for(needles, _FULL_NAME).narrowed is False
+
+
+# --- POSITIVE CONTROLS: a NARROWED name must still halt on every path-shaped
+# --- and repo-adjacent form. Each is asserted on its own, so a regression
+# --- names the exact shape it broke rather than reddening one omnibus case.
+def test_narrowed_still_halts_on_a_backslash_drive_path(narrow_cfg, narrow_needles):
+    assert _hits(narrow_cfg, narrow_needles, "see " + _D + _NARROW_ONE + " today")
+
+
+def test_narrowed_still_halts_on_a_forward_slash_drive_path(narrow_cfg, narrow_needles):
+    assert _hits(narrow_cfg, narrow_needles, "see C:/" + _NARROW_ONE + "/tools")
+
+
+def test_narrowed_still_halts_on_the_double_separator_drive_path(
+    narrow_cfg, narrow_needles
+):
+    assert _hits(narrow_cfg, narrow_needles, "see C:" + "\\\\" + _NARROW_ONE + "\\\\ops")
+
+
+def test_narrowed_still_halts_on_a_github_url(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg, narrow_needles, "https://github.com/some-owner/" + _NARROW_ONE
+    )
+
+
+def test_narrowed_still_halts_on_a_hyphenated_drive_path(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg, narrow_needles, "at " + _D + "-".join(_NARROW_TWO.split()) + "\\ops"
+    )
+
+
+def test_narrowed_still_halts_on_an_underscored_drive_path(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg, narrow_needles, "at " + _D + "_".join(_NARROW_TWO.split()) + "\\ops"
+    )
+
+
+def test_narrowed_still_halts_on_a_percent20_drive_path(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg,
+        narrow_needles,
+        "at " + _D + "%20".join(_NARROW_TWO.split()) + "\\ops",
+    )
+
+
+def test_narrowed_still_halts_on_a_concatenated_drive_path(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg, narrow_needles, "at " + _D + "".join(_NARROW_TWO.split()) + "\\ops"
+    )
+
+
+def test_narrowed_still_halts_on_a_hyphenated_github_url(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg,
+        narrow_needles,
+        "https://github.com/o/" + "-".join(_NARROW_TWO.split()),
+    )
+
+
+def test_narrowed_still_halts_on_an_underscored_github_url(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg,
+        narrow_needles,
+        "https://github.com/o/" + "_".join(_NARROW_TWO.split()),
+    )
+
+
+def test_narrowed_still_halts_on_a_percent20_github_url(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg,
+        narrow_needles,
+        "https://github.com/o/" + "%20".join(_NARROW_TWO.split()),
+    )
+
+
+def test_narrowed_still_halts_on_a_concatenated_github_url(narrow_cfg, narrow_needles):
+    assert _hits(
+        narrow_cfg,
+        narrow_needles,
+        "https://github.com/o/" + "".join(_NARROW_TWO.split()),
+    )
+
+
+def test_narrowed_still_halts_on_a_drive_path_split_across_a_wrapped_line(
+    narrow_cfg, narrow_needles
+):
+    """The TIGHT view, which is the arm no contiguous search can replace.
+
+    Two details are load-bearing and both cost a red run to learn.
+
+    The split is MID-TOKEN, not at the space. A split at the space is also
+    visible to the SPACE view (whose SPACED fragment tolerates the separator),
+    and `scan_text` keeps one finding per line and slot - so the space-view hit
+    wins the tie and the tight arm is never proved. Cutting inside a word leaves
+    the tight view as the ONLY arm that can see it.
+
+    The drive letter must also sit after a non-alphanumeric character IN THE
+    TIGHT TEXT, because that view has no whitespace left to satisfy the
+    lookbehind - hence the leading `path:` rather than a bare word.
+    """
+    whole = "".join(_NARROW_TWO.split())
+    head, tail = whole[:5], whole[5:]
+    blob = "path: " + _D + head + "\n#   " + tail + "\\ops\n"
+    found = _hits(narrow_cfg, narrow_needles, blob)
+    assert found, "the narrowed slot lost its TIGHT-view drive arm"
+    assert any(f.shape.startswith(sweep.SHAPE_DRIVE) for f in found)
+    assert any(f.view == sweep.VIEW_TIGHT for f in found), [
+        (f.shape, f.view) for f in found
+    ]
+
+
+# --- NEGATIVE CONTROL: the whole point of the narrowing ---------------------
+def test_narrowed_does_not_halt_on_the_bare_word_in_prose(narrow_cfg, narrow_needles):
+    for name in (_NARROW_ONE, _NARROW_TWO):
+        blob = "the " + name + " scheduler charter mentions the " + name + " lane"
+        assert _hits(narrow_cfg, narrow_needles, blob) == [], name
+
+
+def test_narrowed_does_not_halt_on_the_bare_slug_spellings(narrow_cfg, narrow_needles):
+    """The bare arm is suppressed for EVERY variant family, not just SPACED."""
+    for joiner in ("-", "_", "%20", ""):
+        blob = "a token " + joiner.join(_NARROW_TWO.split()) + " in prose"
+        assert _hits(narrow_cfg, narrow_needles, blob) == [], joiner
+
+
+def test_narrowed_does_not_halt_on_a_bare_word_split_across_a_wrapped_line(
+    narrow_cfg, narrow_needles
+):
+    """Suppression covers BOTH views, so the tight bare arm goes too."""
+    head, tail = _NARROW_TWO.split()
+    blob = "# wrapped " + head + "\n#   " + tail + " end\n"
+    assert _hits(narrow_cfg, narrow_needles, blob) == []
+
+
+# --- REGRESSION CONTROL: an undeclared slot is untouched -------------------
+def test_a_non_narrowed_slot_still_halts_on_the_bare_prose_form(
+    narrow_cfg, narrow_needles
+):
+    assert _hits(narrow_cfg, narrow_needles, "we synced with " + _FULL_NAME + " today")
+
+
+def test_a_non_narrowed_slot_keeps_every_bare_variant(narrow_cfg, narrow_needles):
+    for joiner in ("-", "_", "%20", ""):
+        blob = "a token " + joiner.join(_FULL_NAME.split()) + " in prose"
+        assert _hits(narrow_cfg, narrow_needles, blob) != [], joiner
+
+
+def test_a_non_narrowed_slot_keeps_its_tight_bare_arm(narrow_cfg, narrow_needles):
+    head, tail = _FULL_NAME.split()
+    blob = "# wrapped " + head + "\n#   " + tail + " end\n"
+    assert _hits(narrow_cfg, narrow_needles, blob)
+
+
+def test_narrowing_one_slot_does_not_narrow_its_neighbours(narrow_needles):
+    full = _needle_for(narrow_needles, _FULL_NAME)
+    assert sweep.SHAPE_BARE in _shape_families(full)
+    for name in (_NARROW_ONE, _NARROW_TWO):
+        assert sweep.SHAPE_BARE not in _shape_families(_needle_for(narrow_needles, name))
+
+
+# --- shape inventory, asserted directly rather than only through behaviour --
+def test_a_narrowed_needle_keeps_its_drive_and_url_shapes(narrow_needles):
+    for name in (_NARROW_ONE, _NARROW_TWO):
+        families = _shape_families(_needle_for(narrow_needles, name))
+        assert sweep.SHAPE_DRIVE in families, name
+        assert sweep.SHAPE_URL in families, name
+
+
+def test_a_narrowed_needle_keeps_the_tight_drive_shape(narrow_needles):
+    for name in (_NARROW_ONE, _NARROW_TWO):
+        needle = _needle_for(narrow_needles, name)
+        tight_drive = [
+            s
+            for s in needle.patterns
+            if s.view == sweep.VIEW_TIGHT and s.shape.startswith(sweep.SHAPE_DRIVE)
+        ]
+        assert tight_drive, name
+
+
+# --- assert_non_vacuous is EXTENDED, never bypassed ------------------------
+def test_assert_non_vacuous_accepts_a_narrowed_needle(narrow_needles):
+    sweep.assert_non_vacuous(narrow_needles)
+
+
+def test_assert_non_vacuous_rejects_a_narrowed_to_nothing_needle(narrow_needles):
+    empty = sweep.Needle(
+        slot=9, name=_NARROW_ONE, variants=_needle_for(narrow_needles, _NARROW_ONE).variants,
+        patterns=(), narrowed=True,
+    )
+    with pytest.raises(AssertionError):
+        sweep.assert_non_vacuous([empty])
+
+
+def test_assert_non_vacuous_rejects_a_needle_that_lost_its_drive_shape(narrow_needles):
+    """Mutation probe, kept as a permanent control: strip the drive arm from a
+    NARROWED slot and the anti-vacuity bound must refuse it. Without this, a
+    future edit could narrow a slot all the way down to a URL-only needle and
+    every behavioural test above would still be green for the wrong reason."""
+    needle = _needle_for(narrow_needles, _NARROW_ONE)
+    stripped = sweep.Needle(
+        slot=needle.slot,
+        name=needle.name,
+        variants=needle.variants,
+        patterns=tuple(
+            s for s in needle.patterns if not s.shape.startswith(sweep.SHAPE_DRIVE)
+        ),
+        narrowed=True,
+    )
+    assert stripped.patterns, "the probe must not be vacuous"
+    with pytest.raises(AssertionError):
+        sweep.assert_non_vacuous([stripped])
+
+
+def test_assert_non_vacuous_rejects_a_needle_that_lost_its_url_shape(narrow_needles):
+    needle = _needle_for(narrow_needles, _NARROW_ONE)
+    stripped = sweep.Needle(
+        slot=needle.slot,
+        name=needle.name,
+        variants=needle.variants,
+        patterns=tuple(
+            s for s in needle.patterns if not s.shape.startswith(sweep.SHAPE_URL)
+        ),
+        narrowed=True,
+    )
+    assert stripped.patterns
+    with pytest.raises(AssertionError):
+        sweep.assert_non_vacuous([stripped])
+
+
+def test_assert_non_vacuous_still_rejects_a_missing_variant_family(narrow_needles):
+    """The pre-existing per-family bound must keep working for a normal slot."""
+    needle = _needle_for(narrow_needles, _FULL_NAME)
+    broken = sweep.Needle(
+        slot=needle.slot,
+        name=needle.name,
+        variants={**needle.variants, "PCT20": ""},
+        patterns=needle.patterns,
+    )
+    with pytest.raises(AssertionError):
+        sweep.assert_non_vacuous([broken])
+
+
+def test_assert_non_vacuous_rejects_a_non_narrowed_needle_missing_its_bare_shape(
+    narrow_needles,
+):
+    """A silent narrowing - the arm gone with no declaration behind it - is the
+    exact accident property 4 forbids, so the bound refuses it too."""
+    needle = _needle_for(narrow_needles, _FULL_NAME)
+    silent = sweep.Needle(
+        slot=needle.slot,
+        name=needle.name,
+        variants=needle.variants,
+        patterns=tuple(
+            s for s in needle.patterns if not s.shape.startswith(sweep.SHAPE_BARE)
+        ),
+    )
+    with pytest.raises(AssertionError):
+        sweep.assert_non_vacuous([silent])
+
+
+# --- NOT SILENT: every surface that prints the armed line says so ----------
+def test_the_armed_banner_states_how_many_slots_are_narrowed(narrow_cfg):
+    banner = sweep.mode_banner(narrow_cfg)
+    assert "ARMED" in banner
+    assert "3 name slot(s)" in banner
+    assert "2 NARROWED" in banner
+
+
+def test_the_armed_banner_explains_what_a_narrowed_slot_lost(narrow_cfg):
+    banner = sweep.mode_banner(narrow_cfg)
+    assert "bare" in banner.lower()
+    assert "WEAKENED" in banner
+
+
+def test_the_armed_banner_states_zero_when_nothing_is_narrowed(tmp_path: Path):
+    root = _write_config(tmp_path, _narrow_blob([]))
+    banner = sweep.mode_banner(sweep.load_config(root=root, env={}))
+    assert "0 NARROWED" in banner
+    assert "WEAKENED" not in banner
+
+
+def test_the_banner_never_names_a_narrowed_slot(narrow_cfg):
+    banner = sweep.mode_banner(narrow_cfg)
+    for name in (_NARROW_ONE, _NARROW_TWO, _FULL_NAME):
+        assert name not in banner
+        assert "".join(name.split()) not in banner
+
+
+def test_the_halting_report_carries_the_narrowing_count(narrow_cfg, narrow_needles):
+    findings = _hits(narrow_cfg, narrow_needles, "at " + _D + _NARROW_ONE + "\\ops")
+    report = sweep.render_report(findings, sweep.ScanStats(), narrow_cfg)
+    assert "2 NARROWED" in report
+
+
+def test_the_ci_gate_report_carries_the_narrowing_count(narrow_cfg):
+    sweep_ci = pytest.importorskip("tools.sibling_sweep_ci")
+    stats = sweep.ScanStats(files=10**6, scanned_bytes=10**9)
+    _ok, lines = sweep_ci.evaluate(narrow_cfg, stats, [])
+    assert any("2 NARROWED" in ln for ln in lines)
+
+
+def test_the_cli_announces_the_narrowing_on_stderr(tmp_path: Path):
+    root = _write_config(tmp_path, _narrow_blob([_NARROW_ONE, _NARROW_TWO]))
+    blob_path = tmp_path / "clean.txt"
+    blob_path.write_text("ordinary prose with no path in it\n", encoding="utf-8")
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools" / "sibling_name_sweep.py"),
+            "--scan-file",
+            str(blob_path),
+            "--config-root",
+            str(root),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == sweep.EXIT_CLEAN, proc.stdout + proc.stderr
+    assert "2 NARROWED" in proc.stderr
+
+
+def test_the_pre_push_path_announces_the_narrowing(monkeypatch, tmp_path: Path, capsys):
+    """Requirement named explicitly: the HOOK surface must say it too.
+
+    The hook shells out to this CLI, so the banner it shows is whatever
+    `main` emits before it scans - which is exactly what is asserted here.
+    """
+    monkeypatch.delenv("RC_MOON_SYNC_REPOS", raising=False)
+    monkeypatch.delenv(sweep.NARROWED_ENV, raising=False)
+    monkeypatch.delenv(sweep.BYPASS_ENV, raising=False)
+    root = _write_config(tmp_path, _narrow_blob([_NARROW_ONE, _NARROW_TWO]))
+    monkeypatch.setattr(sweep, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+    rc = sweep.main(["--pre-push", "origin", "--config-root", str(root)])
+    err = capsys.readouterr().err
+    assert rc == sweep.EXIT_CLEAN, err
+    assert "ARMED" in err
+    assert "2 NARROWED" in err
+    assert "WEAKENED" in err
+
+
+def test_the_ci_workflow_passes_the_narrowing_declaration_as_a_secret():
+    """Arming the needle arm in CI without this halts on 339 lines of RC's own
+    prose, so the env companion must reach the job the same way the path list
+    does - from a SECRET, never a literal."""
+    text = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert sweep.NARROWED_ENV in text
+    for line in text.splitlines():
+        if line.strip().startswith(sweep.NARROWED_ENV + ":"):
+            assert "secrets." in line, line
+            break
+    else:
+        raise AssertionError(f"{sweep.NARROWED_ENV} is named but never bound")
+
+
+def test_the_example_template_documents_the_narrowing_key():
+    """The key shape is DISCOVERABLE without reading the gitignored file, and
+    the tracked template carries a PLACEHOLDER only."""
+    text = (REPO_ROOT / "ops" / "moon_sync_repos.example.json").read_text(
+        encoding="utf-8"
+    )
+    blob = json.loads(text)
+    assert "narrowed_names" in blob
+    assert "_narrowed_names_doc" in blob
+    assert isinstance(blob["narrowed_names"], list) and blob["narrowed_names"]

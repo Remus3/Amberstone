@@ -658,10 +658,25 @@ jobs:
   # committed manifest is the leak itself, not a workaround for it.
   sibling-sweep-tree:
     runs-on: ubuntu-latest
-    # MEASURED on Legion at 8c576c180: 5.1s DEGRADED (structural arm only) and
-    # 3m08s ARMED with 4 name slots over 4759 files / 166MB. A runner is slower
-    # per core, so 20 is sized against the ARMED case with room, not against the
-    # 5-second one this job will actually see until the secret is set.
+    # RE-MEASURED on Legion 2026-09-20. The prior note here recorded 3m08s ARMED
+    # with 4 NAME SLOTS over 4759 files / 166MB at 8c576c180; all four of those
+    # numbers are stale and it is superseded, not amended.
+    #
+    # Now: 5 name slots, 1 of them NARROWED by declaration in the per-host
+    # config (bare-word arm suppressed, drive-path and github-URL arms still
+    # armed in both views). The ARMED tree arm took about 11 minutes over 4913
+    # files / 633MB with that fifth slot still at FULL strength, which is the
+    # SLOW case - a dictionary-word needle matches constantly, and that same
+    # run produced 339 findings, every one of them this repo's own prose.
+    #
+    # DEGRADED (structural arm only) is seconds, and DEGRADED is what this
+    # runner actually sees, because RC_MOON_SYNC_REPOS is an unset secret. So
+    # 20 minutes is headroom against a case this job does not run today. If that
+    # secret is ever set, RE-MEASURE before trusting it: 11 minutes on Legion
+    # with a runner's slower core is not comfortably inside 20.
+    #
+    # No sibling name appears here, in either direction. Slot COUNTS and the
+    # narrowed COUNT are the only things this comment is allowed to carry.
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -680,4 +695,13 @@ jobs:
       - name: sibling-name sweep - TREE arm
         env:
           RC_MOON_SYNC_REPOS: ${{ secrets.RC_MOON_SYNC_REPOS }}
+          # The env-path equivalent of the config's `narrowed_names` key, for a
+          # participant whose checkout basename is an ordinary English word.
+          # RC_MOON_SYNC_REPOS carries PATHS only and cannot express a
+          # declaration, so arming the needle arm here without this would halt
+          # on every legitimate use of that word in RC's own prose. Also a
+          # SECRET, for the same reason as the path list: a basename in this
+          # file is the leak itself. Empty is the default and means FULL
+          # STRENGTH, so the secret being unset never weakens anything.
+          RC_MOON_SYNC_NARROWED_NAMES: ${{ secrets.RC_MOON_SYNC_NARROWED_NAMES }}
         run: python tools/sibling_sweep_ci.py

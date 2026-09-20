@@ -51,6 +51,45 @@ WHY THREE SOURCES ARE SCANNED
 A content diff alone misses two publication routes that were both measured here:
 a RENAME publishes a new path with no content change, and a name in a COMMIT
 SUBJECT is published permanently while appearing in no diff at all.
+
+PER-SLOT NARROWING, FOR A PARTICIPANT WHOSE BASENAME IS AN ORDINARY WORD
+------------------------------------------------------------------------
+The needle arm matches a name in three shapes: a drive-rooted PATH, a github
+URL, and the BARE spelling anywhere in prose. The bare arm is the right default
+because a sibling checkout is normally named with a coined word that has no
+business appearing in RC's own source at all.
+
+It is the wrong arm for a participant whose basename is a dictionary word. Such
+a word occurs freely in RC's own charters, schedulers and roadmap prose, none of
+which identifies anybody, and a gate that halts on hundreds of those is a gate
+that gets switched off within a day. Measured when the fifth slot was armed: 339
+findings, every one of them RC's own prose.
+
+The remedy is narrow and it is DECLARED:
+
+* The declaration lives in the gitignored per-host config under
+  ``narrowed_names`` - a list of checkout BASENAMES - or, on the env path, in
+  ``RC_MOON_SYNC_NARROWED_NAMES`` (``RC_MOON_SYNC_REPOS`` carries paths only and
+  cannot express it). A real name therefore never enters a tracked file.
+* NOTHING is inferred. There is no heuristic here that asks whether a name
+  "looks like" a dictionary word, because such a heuristic would silently
+  weaken a slot nobody chose to weaken.
+* A narrowed slot loses the BARE arm in BOTH views and KEEPS the DRIVE and URL
+  arms in both. The path-shaped and repo-adjacent forms are the ones that
+  actually identify a counterparty; they stay armed, and
+  ``assert_non_vacuous`` refuses a needle that has lost either of them.
+* The default is UNCHANGED full strength. A slot with no declaration, and a
+  config with no key at all, keep every arm they have today. A declaration that
+  matches no slot narrows nothing, so a typo fails CLOSED.
+* It is NOT SILENT. Every surface that prints the ARMED line prints the
+  narrowed COUNT with it, and says in capitals what a narrowed slot gave up. A
+  weakened guard that does not announce itself is the failure mode this whole
+  file exists to avoid.
+
+This is a REDUCTION IN COVERAGE, stated plainly: a bare mention of a narrowed
+participant's name, in prose, with no path and no URL around it, will not halt a
+push. That form was judged not to identify a counterparty on its own. The forms
+that do are all still armed.
 """
 
 from __future__ import annotations
@@ -237,6 +276,11 @@ class SweepConfig:
     participants: dict = field(default_factory=dict)
     source: str = ""
     detail: str = ""
+    # Appended at the END with a default, per the repo's dataclass rule: a
+    # mid-class required field breaks every existing positional construction.
+    # Holds the CANONICAL slot spellings that resolved from the declaration, so
+    # a declared name matching no slot simply is not here and narrows nothing.
+    narrowed_names: tuple = ()
 
 
 def _leaf(path_like: str) -> str:
@@ -308,9 +352,36 @@ def split_repo_list(raw: str, sep: Optional[str] = None) -> list:
     return out
 
 
-def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> SweepConfig:
+NARROWED_ENV = "RC_MOON_SYNC_NARROWED_NAMES"
+
+# A Windows path COMPONENT may contain neither `;` nor `:`, so both are safe
+# delimiters for a list of basenames on either platform. That is why this does
+# NOT reuse `split_repo_list`: the repair that variable needs exists purely
+# because a drive-letter PATH carries a colon of its own, and a basename does
+# not.
+_NARROWED_SEP = re.compile(r"[;:]")
+
+
+def _narrow_key(name: str) -> str:
+    """Comparison key for a declaration: case-folded, whitespace-collapsed."""
+    return " ".join(str(name).split()).lower()
+
+
+def config_from_parts(
+    repos: Iterable[str],
+    participants: Mapping[str, str],
+    narrowed: Iterable[str] = (),
+) -> SweepConfig:
     """Build an ARMED config from already-loaded parts. Used by tests and by
-    the env-override path, which carries paths only and therefore no codes."""
+    the env-override path, which carries paths only and therefore no codes.
+
+    ``narrowed`` is the DECLARED list of basenames whose bare-word arm is to be
+    suppressed. It is resolved against the loaded slot names here rather than in
+    ``build_needles`` so that the resolution happens exactly once, and so that a
+    declaration naming no slot is visibly dropped instead of silently carried
+    around. Appended at the END with a default, so every existing two-argument
+    call - including the CI gate's - is unchanged.
+    """
     names: list[str] = []
     for raw in repos:
         leaf = _leaf(raw)
@@ -321,6 +392,8 @@ def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> 
         if leaf and leaf not in names:
             names.append(leaf)
     codes = tuple(str(c).strip() for c in (participants or {}) if str(c).strip())
+    declared = {_narrow_key(n) for n in (narrowed or ()) if str(n).strip()}
+    narrowed_names = tuple(n for n in names if _narrow_key(n) in declared)
     return SweepConfig(
         mode=MODE_ARMED if names else MODE_FAULT,
         names=tuple(names),
@@ -328,6 +401,7 @@ def config_from_parts(repos: Iterable[str], participants: Mapping[str, str]) -> 
         participants=dict(participants or {}),
         source="parts",
         detail="",
+        narrowed_names=narrowed_names,
     )
 
 
@@ -449,10 +523,16 @@ def load_config(
     base = Path(root) if root is not None else REPO_ROOT
     environ = os.environ if env is None else env
 
+    narrowed_env = [
+        part.strip()
+        for part in _NARROWED_SEP.split(environ.get(NARROWED_ENV) or "")
+        if part.strip()
+    ]
+
     raw = (environ.get("RC_MOON_SYNC_REPOS") or "").strip()
     if raw:
         paths = split_repo_list(raw)
-        cfg = config_from_parts(paths, {})
+        cfg = config_from_parts(paths, {}, narrowed_env)
         cfg.source = "RC_MOON_SYNC_REPOS"
         if cfg.mode == MODE_FAULT:
             cfg.detail = "RC_MOON_SYNC_REPOS is set but yields zero usable names"
@@ -482,7 +562,12 @@ def load_config(
     participants = {
         str(k): str(v) for k, v in (blob.get("participants") or {}).items() if str(k).strip()
     }
-    cfg = config_from_parts(repos, participants)
+    # An absent key means an empty declaration, which means FULL STRENGTH. That
+    # is the whole compatibility story for a per-host config written before this
+    # key existed, and it is the direction a leak gate must default in.
+    narrowed = [str(n) for n in (blob.get("narrowed_names") or []) if str(n).strip()]
+    narrowed += [n for n in narrowed_env if n not in narrowed]
+    cfg = config_from_parts(repos, participants, narrowed)
     cfg.source = str(config_path)
     if cfg.mode == MODE_FAULT:
         cfg.detail = "config parsed but yields zero usable sibling names"
@@ -490,11 +575,28 @@ def load_config(
 
 
 def mode_banner(cfg: SweepConfig) -> str:
+    """The ARMED line states the narrowed COUNT on every surface that prints it.
+
+    The count is printed even when it is zero, so "nothing is narrowed here" is
+    an assertion the reader can make rather than an absence they have to infer.
+    No name is ever printed - a banner that spells a narrowed slot would
+    relocate the very leak this gate exists to stop, into CI logs.
+    """
     if cfg.mode == MODE_ARMED:
-        return (
-            f"[sibling-sweep] ARMED - {len(cfg.names)} name slot(s), "
-            f"{len(cfg.codes)} counterparty code(s) loaded from per-host config."
+        narrowed = len(cfg.narrowed_names)
+        line = (
+            f"[sibling-sweep] ARMED - {len(cfg.names)} name slot(s) "
+            f"({narrowed} NARROWED), {len(cfg.codes)} counterparty code(s) "
+            "loaded from per-host config."
         )
+        if narrowed:
+            line += (
+                " WEAKENED BY DECLARATION: a narrowed slot has its BARE-WORD arm "
+                "suppressed in BOTH views, so a bare mention of that name in "
+                "prose will NOT halt. Its drive-path and github URL arms stay "
+                "armed in both views, and the structural arm is unaffected."
+            )
+        return line
     if cfg.mode == MODE_DEGRADED:
         return (
             "[sibling-sweep] DEGRADED - no per-host config on this machine, so "
@@ -522,6 +624,9 @@ class Needle:
     name: str
     variants: dict
     patterns: tuple
+    # Appended at the END with a default (repo dataclass rule). True only when
+    # the per-host config DECLARED this slot; never inferred from the name.
+    narrowed: bool = False
 
 
 def _variant_fragments(name: str) -> dict:
@@ -547,8 +652,13 @@ _RIGHT_EDGE = r"(?![A-Za-z0-9])"
 
 
 def build_needles(cfg: SweepConfig) -> list:
+    narrowed_keys = {_narrow_key(n) for n in (cfg.narrowed_names or ())}
     needles: list = []
     for slot, name in enumerate(cfg.names):
+        # PER-SLOT and EXPLICIT. The only input to this decision is the
+        # declaration loaded from the gitignored config; the name itself is
+        # never examined for "genericness".
+        narrowed = _narrow_key(name) in narrowed_keys
         variants = _variant_fragments(name)
         tight = "".join(re.escape(t) for t in re.split(r"\s+", name.strip()) if t)
         shapes: list = []
@@ -574,14 +684,16 @@ def build_needles(cfg: SweepConfig) -> list:
                     ),
                 )
             )
-            # S3: the spelling anywhere in prose.
-            shapes.append(
-                CompiledShape(
-                    f"{SHAPE_BARE}/{family}",
-                    VIEW_SPACE,
-                    re.compile(_LEFT_EDGE + frag + _RIGHT_EDGE, re.I),
+            # S3: the spelling anywhere in prose. THIS is the arm a narrowed
+            # slot gives up, and the only one.
+            if not narrowed:
+                shapes.append(
+                    CompiledShape(
+                        f"{SHAPE_BARE}/{family}",
+                        VIEW_SPACE,
+                        re.compile(_LEFT_EDGE + frag + _RIGHT_EDGE, re.I),
+                    )
                 )
-            )
         # S6 tight view: the name reassembled after ALL whitespace and comment
         # continuation prefixes are removed. This is the arm that sees a name
         # split MID-TOKEN across a wrapped line, which no contiguous search can.
@@ -592,9 +704,15 @@ def build_needles(cfg: SweepConfig) -> list:
         # the split form goes unseen - the exact miss the tight view exists to
         # catch. The boundaries are therefore re-checked against the ORIGINAL
         # text in `scan_text` instead, where they still mean something.
-        shapes.append(
-            CompiledShape(f"{SHAPE_BARE}/CONCAT", VIEW_TIGHT, re.compile(tight, re.I))
-        )
+        # Suppression covers BOTH views or it covers nothing: leaving the tight
+        # bare arm armed would halt on the same prose the space view was just
+        # told to ignore, merely with a stranger error message.
+        if not narrowed:
+            shapes.append(
+                CompiledShape(
+                    f"{SHAPE_BARE}/CONCAT", VIEW_TIGHT, re.compile(tight, re.I)
+                )
+            )
         shapes.append(
             CompiledShape(
                 f"{SHAPE_DRIVE}/CONCAT",
@@ -603,14 +721,35 @@ def build_needles(cfg: SweepConfig) -> list:
             )
         )
         needles.append(
-            Needle(slot=slot, name=name, variants=variants, patterns=tuple(shapes))
+            Needle(
+                slot=slot,
+                name=name,
+                variants=variants,
+                patterns=tuple(shapes),
+                narrowed=narrowed,
+            )
         )
     return needles
 
 
 def assert_non_vacuous(needles: Sequence) -> None:
     """ADR-015 anchor. An empty enumeration and a clean tree are the same
-    verdict to every consumer, so refuse to be silently vacuous."""
+    verdict to every consumer, so refuse to be silently vacuous.
+
+    EXTENDED for per-slot narrowing, rather than bypassed for it. Narrowing is a
+    deliberate reduction in coverage, and the way such a reduction goes wrong is
+    by continuing past the point that was agreed. So:
+
+    * EVERY needle, narrowed or not, must still carry a DRIVE shape and a URL
+      shape. A narrowed-to-nothing slot therefore raises here rather than
+      passing every push quietly.
+    * A NON-narrowed needle must additionally carry its BARE shape. That catches
+      the opposite accident - an arm lost with no declaration behind it - which
+      no behavioural test can distinguish from a correct narrowing.
+    * The pre-existing per-family variant bound is untouched and still applies
+      to every slot: ``variants`` is built identically either way, because
+      narrowing suppresses SHAPES, not spellings.
+    """
     if not needles:
         raise AssertionError(
             "sibling-name sweep has ZERO needles. An empty needle set passes "
@@ -625,6 +764,20 @@ def assert_non_vacuous(needles: Sequence) -> None:
             )
         if not needle.patterns:
             raise AssertionError(f"needle slot {needle.slot} compiled zero patterns")
+        families = {s.shape.split("/", 1)[0] for s in needle.patterns}
+        required = {SHAPE_DRIVE, SHAPE_URL}
+        if not getattr(needle, "narrowed", False):
+            required.add(SHAPE_BARE)
+        absent = sorted(required - families)
+        if absent:
+            raise AssertionError(
+                f"needle slot {needle.slot} "
+                f"(narrowed={bool(getattr(needle, 'narrowed', False))}) is "
+                f"missing required shape(s) {absent}. Narrowing suppresses the "
+                f"{SHAPE_BARE} arm and NOTHING else; a slot that has lost its "
+                "drive-path or URL arm identifies a counterparty and no longer "
+                "halts on it."
+            )
 
 
 # ---------------------------------------------------------------------------
