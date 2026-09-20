@@ -244,6 +244,53 @@ test("the tab list is All first, then RC, then each other repo code once", () =>
   ]);
 });
 
+// The strip grows a pill per participant and never truncates, so the count is
+// worth pinning at a roster size larger than the two-sibling case above. It is
+// also the input to the width question: the panel is width:max-content, so the
+// window simply widens by a pill and the strip stays on one row. Measured with
+// the real stylesheet at six participants / seven tabs: the pills occupy one
+// row, the tab strip is 34px tall, and the panel border box is about 483px wide
+// against its 960px cap - the first wrap does not arrive until seventeen tabs.
+// The CSS half of that (wrap is available, and a cap exists to make it fire) is
+// guarded separately below, near the other stylesheet assertions.
+test("a six-participant roster yields seven tabs, uncapped and in roster order", () => {
+  const codes = ["RC", "AAA", "BBB", "CCC", "DDD", "EEE"];
+  const rows = [];
+  for (const code of codes) {
+    rows.push(row({ key: code + ":lane", repoCode: code }));
+    rows.push(row({ key: code + ":controller", repoCode: code, kind: "controller" }));
+  }
+  const tabs = w.buildTabs(model(rows));
+  assert.equal(tabs.length, codes.length + 1, "All plus one pill per participant");
+  assert.deepEqual(
+    tabs.map((t) => t.id),
+    ["ALL"].concat(codes),
+    "no truncation, no cap, no reordering past the RC-first rule"
+  );
+  // Every pill must still address its own repo, or a tab renders an empty grid.
+  // rowCount, not cards.length: buildView pads the grid to MIN_CARD_SLOTS with
+  // placeholders, so the card array is never the row count.
+  for (const code of codes) {
+    const view = w.buildView(model(rows), { activeTab: code });
+    assert.equal(view.rowCount, 2, `tab ${code} shows its own two rows`);
+    assert.equal(view.empty, false, `tab ${code} is not an empty grid`);
+  }
+});
+
+test("a participant with only FREE rows still gets its own tab", () => {
+  // buildTabs runs on the UNFILTERED rows (src/renderer/widget.js:304-307), so
+  // a freshly joined participant that has never run is still selectable even
+  // with "show free repos" turned off. Keyed off the tab strip rather than the
+  // grid on purpose: losing the pill would hide the repo entirely.
+  const rows = [
+    row({ key: "RC:lane", repoCode: "RC", state: "RUNNING" }),
+    row({ key: "AAA:lane", repoCode: "AAA", state: "FREE", label: "idle", lane: null }),
+    row({ key: "AAA:controller", repoCode: "AAA", kind: "controller", state: "FREE", label: "idle", lane: null }),
+  ];
+  const view = w.buildView(model(rows), { showFree: false });
+  assert.deepEqual(view.tabs.map((t) => t.id), ["ALL", "RC", "AAA"]);
+});
+
 test("zero rows still yields the All tab", () => {
   assert.deepEqual(w.buildTabs(model([])), [{ id: "ALL", label: "All" }]);
   assert.deepEqual(w.buildTabs(null), [{ id: "ALL", label: "All" }]);
@@ -1045,6 +1092,43 @@ test("the panel is capped by a value the renderer supplies, not by the viewport"
     /max-height:\s*var\(--panel-max-height/,
     ".panel must take its cap from --panel-max-height"
   );
+});
+
+test("the tab strip can wrap, and the panel is capped so that wrapping fires", () => {
+  // HOW THE STRIP SURVIVES A GROWING ROSTER, as the two rules that make it work
+  // rather than as a pill count nobody will update.
+  //
+  // .panel is width:max-content, so for any roster the panel simply WIDENS and
+  // the pills stay on one row - measured against this stylesheet at seven tabs:
+  // one row, 34px strip, panel border box about 483px. Growth is therefore not
+  // bounded by the tab strip at all; it is bounded by .panel's max-width, and
+  // only once that cap binds does .tabstrip-tabs get less than its max-content
+  // and wrap. Measured first wrap: seventeen tabs, where the panel pins at its
+  // cap and the strip grows to a second row instead of overflowing.
+  //
+  // So BOTH halves are load bearing and neither is sufficient alone. Drop the
+  // wrap and a large roster overflows a capped panel that is overflow:hidden,
+  // which clips pills with nothing on screen saying so. Drop the cap and the
+  // panel grows without limit until the work-area clamp truncates it, which is
+  // the same clip one step later. Neither number is asserted here - the point
+  // is that the mechanism exists, not where it happens to trip today.
+  const tabs = withoutComments(cssBlock(".tabstrip-tabs"));
+  assert.match(tabs, /flex-wrap:\s*wrap/, ".tabstrip-tabs must be allowed to wrap");
+  assert.match(
+    tabs,
+    /min-width:\s*0/,
+    ".tabstrip-tabs must be allowed to shrink below its content, or wrap never fires"
+  );
+  const panel = withoutComments(cssBlock(".panel"));
+  assert.match(
+    panel,
+    /max-width:\s*\d+px/,
+    ".panel must carry a hard width cap - it is what makes the strip wrap"
+  );
+  // The strip itself must NOT be the flexing child: it absorbs a wrapped row by
+  // growing, and a shrink here would hand that height back to nobody.
+  const strip = withoutComments(cssBlock(".tabstrip"));
+  assert.match(strip, /flex:\s*0\s+0\s+auto/, ".tabstrip must not shrink");
 });
 
 test("the card grid is still a reachable scroll container inside the panel", () => {

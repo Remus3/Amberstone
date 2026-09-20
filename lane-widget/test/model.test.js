@@ -366,6 +366,70 @@ test("duplicate repo codes are rendered, not dropped", () => {
   assert.equal(m.summary.repos, 2);
 });
 
+// --------------------------------------- attribution is a ROSTER fact only --
+//
+// A lock payload is written by another repo's loop and is therefore the one
+// input here that RC cannot enforce the spelling of. These three pin that the
+// payload has no say in WHICH repo a row belongs to: attribution flows from the
+// roster code alone, so a remote tree's spelling cannot desync RC's view.
+//
+// Today this is true because buildModel reads only pid / claimed_by_pid / lane
+// / run_id / worktree / ts / pid_started off a payload and takes repoCode from
+// the roster (src/model.js:91-113). These tests exist so that adding a payload
+// side to the attribution later has to be a deliberate act that turns them red,
+// rather than a quiet one-line change nobody notices until a lane stops
+// appearing.
+
+test("a payload repo field never overrides the ROSTER code, whatever its case", () => {
+  for (const spelling of ["aa", "AA", "Aa", "ZZZ", "", 42, null]) {
+    const lane = running();
+    lane.payload.repo = spelling;
+    const m = buildModel({ repos: [repo({ code: "AA", isSelf: false, lane })], now: NOW });
+    const row = byKey(m)["AA:lane"];
+    assert.ok(row, `the row must exist for payload repo=${String(spelling)}`);
+    assert.equal(row.repoCode, "AA");
+    assert.equal(row.key, "AA:lane");
+    assert.equal(row.state, "RUNNING", "a payload repo field must not drop the row");
+  }
+});
+
+test("a payload repo field is not copied onto the row", () => {
+  // The row contract is pinned in full by "a row carries exactly the contracted
+  // fields" above. This says the same thing from the other direction, about the
+  // ONE field a sibling repo controls: it must not arrive on a rendered row at
+  // all, under any casing.
+  const lane = running();
+  lane.payload.repo = "aa";
+  const m = buildModel({ repos: [repo({ code: "AA", isSelf: false, lane })], now: NOW });
+  for (const row of m.rows) {
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(row, "repo"),
+      false,
+      "no row may carry a payload-sourced repo field"
+    );
+  }
+});
+
+test("two repos are attributed by roster code even when both payloads disagree", () => {
+  // The mis-attribution shape: if anything keyed on the payload, these two rows
+  // would swap or collapse. Both codes must survive, each with its own lane.
+  const a = running({ lane: "queue" });
+  a.payload.repo = "bb";
+  const b = running({ lane: "repo" });
+  b.payload.repo = "aa";
+  const m = buildModel({
+    repos: [
+      repo({ code: "AA", isSelf: false, lane: a }),
+      repo({ code: "BB", isSelf: false, lane: b }),
+    ],
+    now: NOW,
+  });
+  const rows = byKey(m);
+  assert.equal(rows["AA:lane"].lane, "queue");
+  assert.equal(rows["BB:lane"].lane, "repo");
+  assert.equal(m.summary.repos, 2);
+});
+
 test("a non-finite now yields a null updatedAt and null ages", () => {
   for (const now of [undefined, null, NaN, Infinity, "x"]) {
     const m = buildModel({ repos: [repo({ lane: running() })], now });
