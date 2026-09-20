@@ -123,7 +123,37 @@ WHAT TO DO NEXT
    bytes. NOTE: LL reports it has NO docs/CHANNEL.md at all (refused at its
    license gate, OPS-91), so any "byte-identical in your tree" premise is false
    for LL and the round has to account for that.
-3. Then the older queue: RC's stray-work sweep plus the five-way
+3. FOUND IN PASSING 2026-09-20, NOT FIXED, FILE A ROW:
+   `python tools/sibling_name_sweep.py --tree` DIES WITH MemoryError on this
+   repo. It cannot complete, so a full-tree sibling-name audit currently cannot
+   be run to completion.
+   ROOT CAUSE, from the code and arithmetic, not inferred: `_strip_continuations`
+   (`:795-815`) and `_collapse` (`:818-838`) build a per-CHARACTER Python list -
+   one 1-char str plus one DISTINCT int offset per byte - and `build_views`
+   (`:840`) runs that three times per blob. That is roughly 200+ bytes of Python
+   objects per input byte. `collect_tree_blobs` (`:1233`) reads WHOLE FILES
+   (`target.read_bytes()`, `:1241`), and the tree holds `docs/history_notes.md`
+   at 5,733,852 bytes and `docs/LEDGER.md` at 5,291,650 bytes, both plain text
+   and both growing every session. Two files of that size are enough on their own.
+   SEVERITY IS BOUNDED, AND THE BOUND IS THE POINT: the ARMED pre-push gate is
+   NOT affected. `--pre-push` parses `diff --git` hunks (`:1205`) and carries a
+   `base_line` offset, so it scans DIFF HUNKS, not whole blobs. `--scan-file` is
+   also fine and was used to clear five files this session. It is the TREE AUDIT
+   that is broken.
+   WHY IT STILL MATTERS: the standing claim is "armed with a MEASURED escape
+   rate above zero", and the five real escapes were found by tree-scope
+   auditing. That measurement cannot currently be repeated.
+   DO NOT "fix" it by excluding the big docs - that blinds the audit to the two
+   files most likely to quote a sibling. Stream or chunk the views instead, and
+   write the failing test FIRST.
+   TRAP THAT HID IT, worth carrying on its own: the crash was first read as a
+   PASS because the run was `sweep --tree | tail -20; echo "EXIT=$?"`, and `$?`
+   after a pipe is TAIL'S status, not the script's. The background-task
+   notification likewise reported exit 0 for the wrapping shell command. A
+   Python traceback scrolled past inside a "clean" verdict. Never take an exit
+   code through a pipe; use PIPESTATUS or do not pipe.
+
+4. Then the older queue: RC's stray-work sweep plus the five-way
    reconciliation (RC still owes its own report), the frozen supervisor walker
    at ops/rc_supervisor.py:513 (a 1 Hz rglob over agents/ that post-filters
    agents/daemon_slayer, about 1,220 ops/s in the supervisor pid - it is a

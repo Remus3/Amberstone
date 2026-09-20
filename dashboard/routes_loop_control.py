@@ -11,7 +11,7 @@ Trust model (re-measured lane 8 cycle 21 - the previous wording described the
 production importer, so the perimeter is Mission Control's, not the dashboard's:
 mc/server.py:39 binds 127.0.0.1 + the Tailscale address ONLY (never a wildcard,
 never the LAN address), mc/server.py:62-66 refuses to start without TLS, and
-mc/handler.py:105-108 gates every POST on a bearer token that fails CLOSED
+mc/handler.py:92 gates every POST on a bearer token that fails CLOSED
 (mc/auth.py:48-61 - 503 when unconfigured, 401 on absent/mismatched). That is a
 STRONGER perimeter than the old paragraph claimed, not a weaker one; do not
 relax this route on the belief that it is only as guarded as /api/command.
@@ -92,6 +92,7 @@ import time
 from pathlib import Path
 
 from core.polled_json import atomic_write_bytes
+from dashboard import _arm_confirm as armgate
 from dashboard import _idempotency as idem
 from dashboard._errors import send_error
 from dashboard._matchers import equals
@@ -507,24 +508,28 @@ def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
         # which is how a retrying phone got two kills out of one intent.
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            # 200 + ok=false, NOT 503: web/mc/mc.js:51-53 maps EVERY 503 to
-            # "auth not configured on the server" and returns before r.json(),
-            # so a 503 would report a false cause and discard this payload
-            # (filed as RM-283).
+            # 200 + ok=false, NOT 503. This shape was chosen against the
+            # Mission Control browser panel, which mapped EVERY 503 to "auth
+            # not configured on the server" and returned before reading the
+            # body, so a 503 reported a false cause AND discarded this payload
+            # (filed as RM-283). That panel was retired on 2026-09-20 and its
+            # line numbers are deliberately NOT cited here any more - the file
+            # is gone, and a citation into a deleted file is worse than none.
+            # The SHAPE is kept anyway, because the reasoning outlived the
+            # client: a 503 is an outage claim, and a duplicate in flight is
+            # not an outage.
             #
-            # `refused` is REQUIRED, not decoration. Each panel has its own
-            # renderer and only _mcFire (mc.js:161, queue_intent) treats a bare
-            # ok=false as a refusal; _mcFireLane (mc.js:221) and _mcIrqFire
-            # (mc.js:363) branch on `refused` and otherwise fall through to
-            # "<label> failed:", which would report a still-running interrupt
-            # as a FAILED one.
+            # `refused` is REQUIRED, not decoration, for the same reason: a
+            # client that only branches on `ok` reports a still-running
+            # interrupt as a FAILED one, and "failed" is exactly the word that
+            # makes an operator press the button again.
             #
-            # The text must not invite an immediate retry either. Every client
-            # mints a fresh key per send (mc.js:717 "one key per SEND"), so a
-            # re-send is a NEW key that this gate cannot dedupe - it would run
-            # the side effect a second time alongside the first. Telling the
-            # operator to wait is the only advice that does not manufacture the
-            # double-fire this whole protocol exists to prevent.
+            # The text must not invite an immediate retry either. A client that
+            # mints a fresh key per send makes a re-send a NEW key that this
+            # gate cannot dedupe - it would run the side effect a second time
+            # alongside the first. Telling the operator to wait is the only
+            # advice that does not manufacture the double-fire this whole
+            # protocol exists to prevent.
             return 200, {"ok": False, "action": action, "in_flight": True,
                          "refused": "in_flight",
                          "detail": "the original request is still running - "
@@ -602,6 +607,95 @@ def apply_action(action: str, body: dict) -> tuple[int, dict]:
     return 200, {"ok": True, "action": action, "state": _state(), "detail": detail}
 
 
+def _handle_arm(body: dict) -> tuple[int, dict]:
+    """Issue an arm token for one irreversible intent. Writes NOTHING.
+
+    Deliberately not in _VALID_ACTIONS and deliberately not routed through
+    apply_action: apply_action is the SIDE-EFFECT layer and mkdirs CONTROL_DIR
+    on entry (`:580`). An arm that created a control directory would be a
+    write, and the whole point of an arm is that it is not one yet.
+    """
+    target_action = str(body.get("target_action") or "").strip()
+    if not target_action:
+        return 400, {"ok": False, "action": "arm",
+                     "error": "arm requires 'target_action'",
+                     "gated": list(armgate.GATED_ACTIONS)}
+    if target_action not in armgate.GATED_ACTIONS:
+        return 400, {"ok": False, "action": "arm",
+                     "error": f"{target_action!r} is not a gated action - only "
+                              "irreversible acts are armed, the rest fire "
+                              "directly",
+                     "gated": list(armgate.GATED_ACTIONS)}
+    # An explicit 'target' wins so a caller can arm without restating the whole
+    # body; otherwise it is read from the same fields the confirm will carry.
+    target = (str(body["target"]).strip() if body.get("target") is not None
+              else armgate.target_of(target_action, body))
+    rec = armgate.arm(target_action, target, key=body.get("idempotency_key"))
+    return 200, {
+        "ok": True, "action": "arm", "state": _state(),
+        "target_action": target_action, "target": target,
+        "arm_token": rec["arm_token"],
+        "idempotency_key": rec["idempotency_key"],
+        "expires_at": rec["expires_at"],
+        "window_s": armgate.ARM_WINDOW_S,
+        "detail": (f"{target_action} armed for {armgate.ARM_WINDOW_S:.0f}s - "
+                   "re-send the action with this arm_token to confirm"),
+    }
+
+
+def _handle_disarm(body: dict) -> tuple[int, dict]:
+    """Discard an armed token and its key. Always 200 - a no-op disarm is fine."""
+    dropped = armgate.disarm(body.get("arm_token"))
+    return 200, {"ok": True, "action": "disarm", "state": _state(),
+                 "disarmed": bool(dropped),
+                 "detail": "arm discarded" if dropped else "nothing was armed"}
+
+
+def route_action(action: str, body: dict) -> tuple[int, dict]:
+    """The ROUTE layer: arm-then-confirm, then the side effect.
+
+    This sits in front of apply_action rather than inside it because the gate
+    defends the HTTP SURFACE. apply_action stays the pure side-effect layer the
+    suite drives directly, and POST_ROUTES below wires _serve_loop_control -
+    which calls THIS - as the one and only entry point. A second, ungated
+    sibling entry point would defeat the gate entirely, which is why
+    tests/test_arm_confirm_server_gate.py pins the registered handler.
+    """
+    if action == "arm":
+        return _handle_arm(body)
+    if action == "disarm":
+        return _handle_disarm(body)
+    if action not in _VALID_ACTIONS:
+        return 400, {"ok": False, "error": f"unknown action: {action!r}",
+                     "valid": list(armgate.ROUTE_ACTIONS) + list(_VALID_ACTIONS)}
+    if action in armgate.GATED_ACTIONS:
+        verdict = armgate.resolve(action, armgate.target_of(action, body),
+                                  body.get("arm_token"),
+                                  body.get("idempotency_key"))
+        if not verdict.ok:
+            # 409, not 400 and not 503: this is a STATE conflict, not a
+            # malformed body and not an outage. 503 in particular would be
+            # read by a generic client as "the server is down" and would send
+            # the operator looking in the wrong place for a refusal that is
+            # working exactly as designed.
+            return 409, {"ok": False, "action": action,
+                         "refused": verdict.reason,
+                         "arm_required": True,
+                         "error": f"arm-then-confirm: {verdict.reason}",
+                         "detail": armgate.detail_for(verdict.reason)}
+        # `not in body`, NOT a falsy check. A caller that SUPPLIES a key - even
+        # a malformed one - is asserting its own contract and must get the
+        # existing 400 from _apply_idempotent rather than have the arm's key
+        # silently substituted for the one it meant to send. Only an OMITTED
+        # field is filled, which is the curl case the arm exists to serve.
+        if verdict.key and "idempotency_key" not in body:
+            # Copy rather than mutate: the caller's body is not ours to edit,
+            # and the suite reuses body dicts across asserts.
+            body = dict(body)
+            body["idempotency_key"] = verdict.key
+    return apply_action(action, body)
+
+
 def _serve_loop_control(h, body) -> None:
     """POST /api/loop-control handler."""
     try:
@@ -609,7 +703,7 @@ def _serve_loop_control(h, body) -> None:
             status, payload = 400, {"ok": False, "error": "expected a JSON object body"}
         else:
             action = str(body.get("action") or "").strip()
-            status, payload = apply_action(action, body)
+            status, payload = route_action(action, body)
         h._send(status, json.dumps(payload).encode("utf-8"), "application/json")
     except PermissionError as exc:
         # A control file stayed share-locked past the retry window. This is a

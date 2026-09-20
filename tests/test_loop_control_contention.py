@@ -84,12 +84,31 @@ def _transient_reader(path):
     return replace_fails(path, times=2)
 
 
-def _post(body):
+def _raw_post(body):
     h = FakeHandler()
     mod._serve_loop_control(h, body)
     assert h.sent is not None
     status, raw, ctype = h.sent
     return status, json.loads(raw.decode("utf-8")), ctype
+
+
+def _post(body):
+    """Drive the route the way an OPERATOR does: arm, then confirm.
+
+    See tests/test_interrupt_route.py::_post. The gate itself is asserted in
+    tests/test_arm_confirm_server_gate.py; this helper only supplies the arm so
+    the contention assertions below keep testing contention.
+    """
+    from dashboard import _arm_confirm as armgate
+
+    action = str(body.get("action") or "")
+    if action in armgate.GATED_ACTIONS and "arm_token" not in body:
+        st, armed, _ = _raw_post({"action": "arm", "target_action": action,
+                                  "target": armgate.target_of(action, body)})
+        assert st == 200, armed
+        body = dict(body)
+        body["arm_token"] = armed["arm_token"]
+    return _raw_post(body)
 
 
 # ------------------------------------------------- contention on the halt path

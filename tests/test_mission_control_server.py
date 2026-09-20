@@ -185,38 +185,35 @@ def test_handler_send_signature_matches_route_expectations():
 
 # --------------------------------------------------------------------------- fix round 1 (reviewer findings)
 
-def test_static_guard_blocks_sibling_directory_prefix_collision(tmp_path, monkeypatch):
-    """FINDING 1. A plain str(target).startswith(str(WEB_DIR)) is a STRING
-    prefix check, not a path-component check: a sibling directory whose
-    name merely starts with the same characters (web/mc-evil/ beside
-    web/mc/) passes it, because the string "..../mc-evil/secret.txt"
-    starts with the string "..../mc". Live-verified: pointing WEB_DIR at a
-    real web/mc/ and requesting /../mc-evil/secret.txt served the sibling
-    file with HTTP 200. A correct guard must reject this even though plain
-    '..' escapes (covered implicitly here too) already passed before this
-    fix - the sibling-prefix case is the one that did not."""
+def test_the_handler_has_no_filesystem_surface_at_all():
+    """REPLACES the old sibling-prefix traversal guard, and is STRICTER.
+
+    FINDING 1 used to be a bug in a string prefix check: with a document root
+    at web/mc/, the sibling directory web/mc-evil/ passed
+    `str(target).startswith(str(WEB_DIR))` because "..../mc-evil/secret.txt"
+    starts with the characters "..../mc". That was fixed with
+    `Path.is_relative_to`, and then the whole question was DELETED along with
+    the Mission Control web UI: this server serves JSON from a route table and
+    nothing else.
+
+    A guard is weaker than an absence. So the assertion moved from "the
+    traversal guard rejects the sibling directory" to "there is no document
+    root, no static branch and no file read to guard", which cannot regress
+    into a subtly-wrong prefix check the way the old one did. If a static
+    branch is ever reintroduced this goes RED, which is the point: it would
+    need its own traversal test back.
+    """
+    import inspect
+
     from mc import handler
-    web_root = tmp_path / "fakeweb2"
-    real_dir = web_root / "mc"
-    real_dir.mkdir(parents=True)
-    evil_dir = web_root / "mc-evil"
-    evil_dir.mkdir()
-    (evil_dir / "secret.txt").write_text("TOP SECRET", encoding="utf-8")
-    monkeypatch.setattr(handler, "WEB_DIR", real_dir)
 
-    class Fake:
-        path = "/../mc-evil/secret.txt"
-
-        def __init__(self):
-            self.sent = None
-
-        def _send(self, code, body, ctype, cache_control=None):
-            self.sent = (code, body, ctype)
-
-    f = Fake()
-    served = handler.Handler._serve_static(f)
-    assert served is False, "sibling directory mc-evil/ must not be reachable via .."
-    assert f.sent is None, f"secret content must never be sent, got {f.sent!r}"
+    assert not hasattr(handler, "WEB_DIR"), \
+        "MC is headless - a document root means static serving came back"
+    assert not hasattr(handler.Handler, "_serve_static")
+    src = inspect.getsource(handler)
+    for banned in ("read_bytes", "read_text", "open(", "is_relative_to"):
+        assert banned not in src, \
+            f"mc/handler.py must not touch the filesystem, found {banned!r}"
 
 
 def test_post_rejects_negative_content_length_without_reading_body(monkeypatch):
@@ -376,14 +373,24 @@ def test_live_static_traversal_is_refused(live_mc):
     single-line whitespace-free `*.md` string literal as "this module reads
     a tracked doc", which would drag this security test's whole import graph
     into the lightweight docs-guards CI job. See tools/md_guard_selector.py.)
+
+    THE ASSERTION WAS STRENGTHENED when the web UI was retired, because the
+    plain `status == 404` it used to make became a SILENT PASS: with no static
+    branch left, every unmatched path 404s whether or not a traversal guard
+    exists, so the old test would have kept passing while testing nothing. It
+    now also asserts the 404 is the route table's JSON answer and that not one
+    byte of the escape target came back, which is a claim about THIS request
+    rather than about the shape of the route table.
     """
     addr, _ = live_mc
     conn = http.client.HTTPConnection(addr[0], addr[1], timeout=10)
     conn.request("GET", "/../../main.py")
     resp = conn.getresponse()
-    resp.read()
+    raw = resp.read()
     conn.close()
     assert resp.status == 404
+    assert json.loads(raw.decode("utf-8")) == {"ok": False, "error": "not found"}
+    assert b"import" not in raw and b"def " not in raw
 
 
 # --------------------------------------------------------------------------- task 5 (bind, TLS, process entry)
