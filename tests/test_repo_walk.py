@@ -151,6 +151,27 @@ def test_js_pattern_selects_something():
     assert all(p.suffix == ".js" for p in js)
 
 
+def test_css_and_html_patterns_select_something():
+    """ROADMAP NOW-3: the walker is the ADR-015 route for ASCII hygiene over
+    stylesheets and pages, so prove it reaches them before a guard leans on it.
+
+    Until 2026-09-20 every one of this module's seventeen consumers asked for
+    `*.py` (or `*.py` plus `*.js`) and nothing asked for `*.css` or `*.html`,
+    so this pattern pair had never been exercised here.
+    `tests/test_css_html_ascii_hygiene.py` is the consumer.
+    """
+    css = rw.repo_files(patterns=("*.css",))
+    html = rw.repo_files(patterns=("*.html",))
+    assert len(css) > 40, f"only {len(css)} tracked .css - the sweep went vacuous"
+    assert len(html) > 5, f"only {len(html)} tracked .html - the sweep went vacuous"
+    assert all(p.suffix == ".css" for p in css)
+    assert all(p.suffix == ".html" for p in html)
+    # Both trees that carry them, not just `web/`.
+    rel = {rw.relative_posix(p) for p in css + html}
+    assert "web/css/dashboard.css" in rel
+    assert "lane-widget/src/renderer/index.html" in rel
+
+
 def test_self_check_passes_on_the_real_checkout():
     rw.self_check()
 
