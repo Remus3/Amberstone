@@ -286,8 +286,9 @@ own single-thread edits. Tier-0 cosmetic edits are exempt; nothing else is.
 8. Sync living docs (`docs/ARCHITECTURE.md`, `docs/OPERATIONS.md`, `ROADMAP.md`, `BACKLOG.md`), update `WAKEUP_NOTES.md` and prune with `scripts/wakeup_prune.py
    --keep 3`, confirm CI green via `gh run list --limit 4` (the RIGHT workflow, per trap 4), run `/done`, then `python tools/perseus_sync.py`. Leave `git status` clean,
    `git stash list` empty, and no scratch in the worktree.
-9. Write the next-session prompt to `C:\Users\Administrator\Desktop\RC-NEXT-SESSION.txt` (overwrite; the `RC-` prefix is enforced because the Desktop is SHARED with
-   sibling repos). Name what closed, what was PROPOSED-not-executed, and the do-not-redo set. A bare "continue the work" is a failure.
+9. Write the next-session prompt to `RC-NEXT-SESSION.txt` in the REPO ROOT (overwrite; the `RC-` prefix is enforced by the consumer). It is TRACKED, so each hand-off
+   is versioned and diffable, and there is exactly ONE of them - do NOT write a Desktop copy, which would be untracked, invisible to review and free to diverge.
+   Name what closed, what was PROPOSED-not-executed, and the do-not-redo set. A bare "continue the work" is a failure.
 
 ### 11. Anti-patterns
 
@@ -322,7 +323,7 @@ HEADLESS-REPO WRAP
   tests: RC <N> passed / <N> skipped | DS <N> passed (repo root) | <other suites>
   CI: <N>/<N> green (workflow: <ci | docs-guards>)
   ledger: docs/LEDGER.md <entry id>
-  Next session: C:/Users/Administrator/Desktop/RC-NEXT-SESSION.txt
+  Next session: <repo root>/RC-NEXT-SESSION.txt
   Ready for /done.
 ```
 

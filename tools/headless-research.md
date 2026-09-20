@@ -134,7 +134,7 @@ Research fails differently from code - it fails by believing something.
 3. **Append the ledger entry** at the TOP of `docs/LEDGER.md`, newest-first, directly under the `---` rule, matching the surrounding entry format: item number, `DONE <date>`, a one-line scope, then what was MEASURED (numbers, file:line, what was refuted). Cite the MERGE hash, never a worktree slice hash - roughly half the pre-July slice-hash citations are unresolvable and that is expected, not rot.
 4. **Commit + push `lane/research`.** Stage explicitly, never `git add -A`. Write the message via `git commit -F <tmpfile>` (ASCII-only) or a single-quoted here-string - never a double-quoted here-string or a piped string.
 5. **Do NOT merge into `main` from the worktree** unless the main tree is verifiably idle (`docs/MISSION_CONTROL_PLAN.md`, Decisions, resolved 2026-07-30). Leave the merge to the merger and say in the hand-off that the branch is ready.
-6. **Write the next-session prompt** to `C:\Users\Administrator\Desktop\RC-NEXT-SESSION.txt` (overwrite; the `RC-` prefix is enforced because the Desktop is shared with sibling repos). Name the filed row ids, their acceptance checks, and the do-not-redo set. A bare "continue the work" is a failure.
+6. **Write the next-session prompt** to `RC-NEXT-SESSION.txt` in the REPO ROOT (overwrite; the `RC-` prefix is enforced by the consumer). **Do NOT write a Desktop copy** - the Desktop is OUTSIDE the repository root, so writing there is a boundary HALT. Name the filed row ids, their acceptance checks, and the do-not-redo set. A bare "continue the work" is a failure.
 7. **Update `WAKEUP_NOTES.md`**, then leave `git status` clean and `git stash list` empty.
 
 ### 9. Anti-patterns for this lane
@@ -160,5 +160,5 @@ HEADLESS RESEARCH WRAP
   license: <N> targets gated, <M> rejected (reason)
   artifact: docs/COMPETITOR_LIFT_<date>.md
   verifier: <N> findings CONFIRMED / <M> REFUTED
-  Next session: C:/Users/Administrator/Desktop/RC-NEXT-SESSION.txt
+  Next session: <repo root>/RC-NEXT-SESSION.txt
 ```
