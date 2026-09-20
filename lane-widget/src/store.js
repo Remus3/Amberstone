@@ -24,6 +24,16 @@ const STATE_FILE_NAME = "lane-widget-state.json";
 const MIN_FAST_MS = 500;
 const MAX_FAST_MS = 60000;
 
+// Opacity floor. This MUST stay equal to the renderer's opacity slider floor
+// (web widget.css / widget.js) - the two are COUPLED and must move together.
+// The clamp used to floor at 0.1 while the slider floored at 0.3, so a
+// hand-edited state file could persist a functionally invisible panel that the
+// UI then had no way to recover from. 0.85 is the contrast floor: the `--faint`
+// text measures 3.18:1 over a light desktop at the 0.94 default and collapses
+// to roughly 1.3:1 at 0.3, so anything lower is unreadable, not just dim.
+const MIN_OPACITY = 0.85;
+const MAX_OPACITY = 1;
+
 // Exactly the persisted keys - the guard test pins this list.
 const DEFAULTS = Object.freeze({
   x: null,
@@ -108,7 +118,7 @@ function normalizeState(raw) {
     y: typeof s.y === "number" && isFinite(s.y) ? s.y : null,
     width: posOr(s.width, DEFAULTS.width),
     height: posOr(s.height, DEFAULTS.height),
-    opacity: Math.min(1, Math.max(0.1, opacity)),
+    opacity: Math.min(MAX_OPACITY, Math.max(MIN_OPACITY, opacity)),
     alwaysOnTop: boolOr(s.alwaysOnTop, DEFAULTS.alwaysOnTop),
     showFree: boolOr(s.showFree, DEFAULTS.showFree),
     fastMs: Math.min(MAX_FAST_MS, Math.max(MIN_FAST_MS, fastMs)),
@@ -120,6 +130,8 @@ module.exports = {
   DEFAULTS,
   MIN_FAST_MS,
   MAX_FAST_MS,
+  MIN_OPACITY,
+  MAX_OPACITY,
   load,
   save,
   normalizeState,

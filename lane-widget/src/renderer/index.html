@@ -6,10 +6,25 @@
   Lane / worker widget - renderer shell.
 
   This file is deliberately a STATIC SKELETON. Every element the renderer ever
-  needs already exists here; widget.js only fills text and toggles classes. That
-  is what makes the "no reflow when rows arrive" rule cheap to keep - the panel,
-  the tab strip, the card grid and the summary strip are all present and sized
+  needs already exists here; widget.js only fills text and toggles classes - the
+  panel, the tab strip, the card grid and the summary strip are all present
   before the first model push lands.
+
+  WHAT "NO REFLOW" ACTUALLY GUARANTEES - read this before quoting it. The rule
+  held only up to MIN_CARD_SLOTS rows: .panel is width:max-content, so an
+  auto-fill card grid sized itself to the widest card's CONTENT and the window
+  slid sideways as workers came and went (a live run measured the width
+  toggling 409 <-> 471 and a +309w/+366h jump at startup). widget.css now pins
+  .cards to a fixed two-column track list, so the CARD GRID contributes a
+  constant width and only its HEIGHT varies with the row count.
+
+  Two things still change the panel's width, and neither is a bug to "fix" by
+  weakening this note: the tab strip grows a pill per repo, and opening the
+  settings pane adds a wider block. Both are responses to a user action or to a
+  repo appearing, not to a per-poll data push, which is the case the rule was
+  written for. The honest statement is: a poll that changes card CONTENT never
+  reflows; a poll that changes the ROW COUNT changes height only; a new REPO
+  still changes width.
 
   CSP is deny-by-default with no remote origin of any kind: the widget receives
   everything over IPC and must never reach the network. 'self' here is the
@@ -29,9 +44,14 @@
 -->
 <main class="panel" id="panel" role="main" aria-label="Lane and worker monitor">
 
-  <!-- Tab strip: one pill per repo CODE, "All" first, gear pinned right. -->
-  <nav class="tabstrip" id="tabstrip" role="tablist" aria-label="Repositories">
-    <div class="tabstrip-tabs" id="tabstrip-tabs"></div>
+  <!-- Tab strip: one pill per repo CODE, "All" first, gear pinned right.
+       role="tablist" belongs on the element that DIRECTLY owns the role="tab"
+       children, so it sits on #tabstrip-tabs, not on this <nav>. On the <nav>
+       it owned zero tabs directly (they are grandchildren) and it did own the
+       gear, which is not a tab. -->
+  <nav class="tabstrip" id="tabstrip">
+    <div class="tabstrip-tabs" id="tabstrip-tabs"
+         role="tablist" aria-label="Repositories"></div>
     <button type="button" class="gear" id="gear"
             aria-label="Settings" aria-expanded="false" aria-controls="settings"
             title="Settings">
@@ -61,14 +81,29 @@
     placeholder cards of identical geometry, so the empty state occupies the
     same box as a populated one.
   -->
-  <section class="cards" id="cards" aria-label="Workers" aria-live="polite"></section>
+  <section class="cards" id="cards" role="tabpanel" aria-label="Workers"
+           tabindex="0"></section>
+
+  <!--
+    The ONLY live region. #cards used to carry aria-live="polite", but widget.js
+    tears the grid down and rebuilds it every poll, so assistive tech re-read
+    every card once every 2s forever. The grid is now silent and widget.js
+    writes short transition sentences here instead.
+  -->
+  <div id="status" class="sr-only" role="status" aria-live="polite"></div>
 
   <!-- Settings pane. Present always, hidden by attribute - no layout thrash. -->
   <section class="settings" id="settings" aria-label="Settings" hidden>
     <div class="setting">
       <label class="setting-label" for="opt-opacity">Panel opacity</label>
+      <!-- Floor is 0.85, NOT 0.3. main.js applies setOpacity on top of a panel
+           that is already color-mix(... 88%, transparent) over the desktop, so
+           the old floor let a user drive every foreground pair to about
+           1.3-1.7:1 - the panel simply stopped being readable, with no way to
+           tell that the slider was the cause. At 0.85 the worst surviving pair
+           still clears AA. -->
       <input class="setting-range" id="opt-opacity" type="range"
-             min="0.3" max="1" step="0.02">
+             min="0.85" max="1" step="0.02">
       <output class="setting-value" id="opt-opacity-out" for="opt-opacity">-</output>
     </div>
     <div class="setting">
