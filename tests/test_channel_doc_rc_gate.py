@@ -39,6 +39,16 @@ from tools.inbox_responder_runner import NOTE_NAME_RE  # noqa: E402
 
 _TWELVE_HEX = re.compile(r"[0-9a-f]{12}")
 
+# The version a copy of the doc DECLARES about itself. Read from the bytes on
+# each side rather than from RC's pin, so a carrier's copy is graded by what it
+# says it is and never by what RC believes it should be.
+_DECLARED_VERSION = re.compile(r"^CHANNEL_VERSION: (\d+)$", re.MULTILINE)
+
+
+def _declared_version(raw: bytes) -> int | None:
+    match = _DECLARED_VERSION.search(raw.decode("ascii", "replace"))
+    return int(match.group(1)) if match else None
+
 
 def _text() -> str:
     return (REPO_ROOT / CHANNEL_DOC).read_bytes().decode("ascii")
@@ -216,11 +226,20 @@ def test_channel_doc_grammar_table_matches_rc_gate6():
 
 @pytest.mark.parametrize("root", _sibling_roots(), ids=lambda p: p.name)
 def test_channel_doc_matches_the_sibling_copies_when_present(root):
-    """Byte identity with a carrier that has already vendored the doc.
+    """Byte identity with a carrier that has already vendored THIS version.
 
-    Green-by-skip is the KNOWN state at ship time: no carrier holds the file
-    yet, so every parameter skips and the LEDGER denominator says 0 of N. If
-    you are relying on byte identity, assert this arm actually RAN.
+    Green-by-skip is a REAL state here and there are now two ways to reach it,
+    so if you are relying on byte identity, assert this arm actually RAN and
+    read which branch it took:
+
+    1. The carrier holds no copy of the doc at all. Adoption is that sibling's
+       to make true and RC cannot make it true from here.
+    2. The carrier holds an OLDER declared CHANNEL_VERSION, which means the
+       re-pin round for the current version is still open. Byte identity is not
+       asserted across that gap and the skip line says so with both digests.
+
+    Everything else is an assertion, including two copies that declare the SAME
+    version with different bytes.
     """
     adopted = _adopted_carrier_docs()
     if root not in adopted:
@@ -233,8 +252,38 @@ def test_channel_doc_matches_the_sibling_copies_when_present(root):
     carrier = adopted[root]
     mine = (REPO_ROOT / CHANNEL_DOC).read_bytes().replace(b"\r\n", b"\n")
     theirs = carrier.read_bytes().replace(b"\r\n", b"\n")
-    assert hashlib.sha256(theirs).hexdigest() == hashlib.sha256(mine).hexdigest(), (
-        f"carrier {root.name} holds different bytes. Re-pin is a JOINT act: "
-        "hand over the exact bytes, re-hash in both trees from their own disk, "
-        "and bump CHANNEL_VERSION in the same round."
+    my_digest = hashlib.sha256(mine).hexdigest()
+    their_digest = hashlib.sha256(theirs).hexdigest()
+    if their_digest == my_digest:
+        return
+
+    # An OPEN re-pin round is not drift. The doc's own re-pin section orders the
+    # acts: the author writes the bytes FIRST and every other carrier vendors
+    # afterwards, and it calls the gap between those two acts PROVISIONAL. A
+    # permanently red arm across that gap would say nothing, and the pressure
+    # would be to delete it.
+    #
+    # The discriminator is the version each copy DECLARES in its own bytes, and
+    # ONLY a strictly OLDER declared version on the carrier's side buys this
+    # branch. Two copies declaring the SAME version with different bytes is the
+    # silent divergence this arm exists for and still fails hard, as does a
+    # carrier that is AHEAD of RC (then RC is the tree that owes a vendor) and a
+    # copy that declares no version at all.
+    my_version = _declared_version(mine)
+    their_version = _declared_version(theirs)
+    if my_version is not None and their_version is not None and their_version < my_version:
+        pytest.skip(
+            f"PROVISIONAL: carrier {root.name} still declares CHANNEL_VERSION "
+            f"{their_version} while this tree declares {my_version}, so the "
+            "re-pin round for this version is OPEN and byte identity was NOT "
+            "asserted here. It becomes an assertion the moment that carrier "
+            f"vendors.\n  this tree: {my_digest}\n  carrier:   {their_digest}"
+        )
+
+    raise AssertionError(
+        f"carrier {root.name} holds different bytes at CHANNEL_VERSION "
+        f"{their_version} against this tree's {my_version}. Re-pin is a JOINT "
+        "act: hand over the exact bytes, re-hash in both trees from their own "
+        "disk, and bump CHANNEL_VERSION in the same round."
+        f"\n  this tree: {my_digest}\n  carrier:   {their_digest}"
     )

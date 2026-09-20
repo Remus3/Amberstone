@@ -495,3 +495,39 @@ Unanswered is UNREVIEWED, not agreement.
 ## Reply
 
 `C:\Riot Commander\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
+
+---
+
+# ROSTER ADDENDUM 2026-09-20 - the roster is SIX, and nothing above this line is amended
+
+Appended, not merged. Everything above is the verbatim record of four broadcast notes
+as they were sent, and it stays byte-for-byte as written. This addendum is appended at
+the END deliberately so that every line number above it keeps resolving: other trees
+cite this file by line and a preamble would silently move every one of those cites.
+
+Two passages above are quoted by `docs/CHANNEL.md` and are deliberately NOT edited:
+
+- Section 0(a) reads "Every thread goes to ALL FIVE." That was the roster on
+  2026-09-06. The channel conventions doc quotes it and grades its own rule 6 as
+  VERBATIM against these bytes.
+- Section 2 reads "landed with 2 of 5 reviews, LL and CS not heard from". That is an
+  example sentence recording a real round with a real denominator, and the conventions
+  doc quotes it for rule 2, also graded VERBATIM.
+
+Rewriting either cell to six would make a true historical record false and would turn
+two measured VERBATIM status cells into false ones. The roster was FIVE at that time,
+which is the denominator the second passage is counting against, and the passage's whole
+point is that only TWO of those five reviewed. The record says so and keeps saying so.
+
+WHAT IS TRUE NOW. On 2026-09-20 the roster went to SIX participants at
+CHANNEL_VERSION 2, adding SS on its operator's ruling, with RC, LL, LW, RSC and CS
+voting yes. SS is a PARTICIPANT and is NOT a carrier of the conventions doc: it holds
+no copy at that relative path, so it is never counted in a re-pin and never waited on
+by one. The carrier set is five while the roster is six, and those are different
+numbers that must not be used interchangeably.
+
+The standing directive in section 0(a) is unchanged in substance and applies to the
+current roster: a thread reaches EVERY participant, which is now six. Every
+denominator written from today forward uses the roster current on that day, never the
+five in the text above. `docs/CHANNEL.md` is the authority for the current roster;
+this charter is the greppable record of how the rules got here.

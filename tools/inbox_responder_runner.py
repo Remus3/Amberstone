@@ -189,9 +189,12 @@ NOTE_TOPIC_MAX = 160
 # gate 6 carried one regex, and the two could drift with nothing to say so.
 #
 # Every disposition here is EXACTLY what the doc records today, and that is not
-# a placeholder: those bytes are byte-identical in five repositories, so
-# flipping a cell to ADMIT changes what five trees have pinned and is a
-# CHANNEL_VERSION 2 joint re-pin, not a unilateral widening. What the table buys
+# a placeholder: those bytes are byte-identical in every CARRIER repository, so
+# flipping a cell to ADMIT changes what every carrier has pinned and is a joint
+# re-pin at the next CHANNEL_VERSION, not a unilateral widening. (The doc's
+# table gained an SS column at CHANNEL_VERSION 2 reading UNMEASURED throughout;
+# SS is a roster PARTICIPANT and not a carrier, and no responder column here
+# changed.) What the table buys
 # is that the flip becomes a one-cell edit under a guard
 # (`tests/test_responder_grammar_table.py`, which parses the doc's own table and
 # compares it cell for cell) instead of a regex rewrite beside a doc that
@@ -416,7 +419,12 @@ ALLOWED_MODELS = (
 # the sibling grammar, the bounce shape and the filename table all live in those
 # re-pinned bytes, so a record that predates the bump is describing a channel
 # that no longer exists.
-CHANNEL_VERSION = 1
+#
+# Bumped to 2 on 2026-09-20 with the doc, in the same commit that authored
+# CHANNEL_VERSION 2. Every agreement record written against version 1 now
+# disarms itself, which is the designed consequence and not a regression: the
+# roster those records describe was five and is now six.
+CHANNEL_VERSION = 2
 
 _AGREEMENT_FIELDS = (
     "counterparties", "note", "window_open", "window_close", "hop_budget", "grammar", "expires",

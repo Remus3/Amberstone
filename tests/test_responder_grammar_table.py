@@ -343,7 +343,15 @@ def _corpus() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-# The table as it stands under CHANNEL_VERSION 1, EVERY CELL OF EVERY ROW.
+# The table as it stands under CHANNEL_VERSION 2, EVERY CELL OF EVERY ROW.
+#
+# RE-READ AT THE VERSION 2 RE-PIN, 2026-09-20, which is the exact moment the
+# comment below predicted. The roster went to six and the doc's table gained an
+# SS column whose every cell reads UNMEASURED. UNMEASURED is not a synonym for
+# "no responder": "no responder" is an affirmative measured finding, and nothing
+# in any tree has measured SS. This arm reddened on the hand-edit, which is what
+# it is for - the cells below were re-read from the doc line by line, not
+# regenerated from it.
 #
 # A shape summary is not a pin. A sibling tree measured exactly that on its own
 # version of this arm: grading the column count, the row count, the Shape order,
@@ -358,17 +366,17 @@ def _corpus() -> list[str]:
 # EXACTLY ONE MOMENT: a CHANNEL_VERSION 2 re-pin, when the digest is legitimately
 # replaced and a hand-copied table is most likely to be mangled - which is the
 # only moment this arm was ever going to be load-bearing.
-_H = ("Example", "RC gate 6", "RSC", "LW", "CS", "LL", "Shape")
+_H = ("Example", "RC gate 6", "RSC", "LW", "CS", "LL", "SS", "Shape")
 EXPECTED_HEADER = _H
 EXPECTED_ROWS = (
     ("`2026-09-15-0930-from-RC-FYI-example-topic.md`", "ADMIT", "routes", "any entry",
-     "no responder", "no responder", "PRIMARY"),
+     "no responder", "no responder", "UNMEASURED", "PRIMARY"),
     ("`2026-09-15-from-RC-FYI-example-topic.md`", "REFUSE", "routes", "any entry",
-     "no responder", "no responder", "Variant A"),
+     "no responder", "no responder", "UNMEASURED", "Variant A"),
     ("`from-RC-2026-09-15-0930-FYI-example-topic.md`", "REFUSE", "zero destinations",
-     "any entry", "no responder", "no responder", "Variant B"),
+     "any entry", "no responder", "no responder", "UNMEASURED", "Variant B"),
     ("`2026-09-15-0930-from-RC-FYI-example-topic.txt`", "REFUSE", "routes", "any entry",
-     "no responder", "no responder", "Variant C"),
+     "no responder", "no responder", "UNMEASURED", "Variant C"),
 )
 
 
@@ -387,16 +395,16 @@ EXPECTED_VERDICTS = ("ADMIT", "REFUSE", "REFUSE", "REFUSE")
 # asserts that no OTHER arm here covers it, so a later reader cannot assume
 # something else does.
 EXPECTED_TABLE_BLOCK = (
-    "| Example | RC gate 6 | RSC | LW | CS | LL | Shape |",
-    "|---|---|---|---|---|---|---|",
+    "| Example | RC gate 6 | RSC | LW | CS | LL | SS | Shape |",
+    "|---|---|---|---|---|---|---|---|",
     "| `2026-09-15-0930-from-RC-FYI-example-topic.md` | ADMIT | routes | any entry "
-    "| no responder | no responder | PRIMARY |",
+    "| no responder | no responder | UNMEASURED | PRIMARY |",
     "| `2026-09-15-from-RC-FYI-example-topic.md` | REFUSE | routes | any entry "
-    "| no responder | no responder | Variant A |",
+    "| no responder | no responder | UNMEASURED | Variant A |",
     "| `from-RC-2026-09-15-0930-FYI-example-topic.md` | REFUSE | zero destinations "
-    "| any entry | no responder | no responder | Variant B |",
+    "| any entry | no responder | no responder | UNMEASURED | Variant B |",
     "| `2026-09-15-0930-from-RC-FYI-example-topic.txt` | REFUSE | routes | any entry "
-    "| no responder | no responder | Variant C |",
+    "| no responder | no responder | UNMEASURED | Variant C |",
 )
 
 
