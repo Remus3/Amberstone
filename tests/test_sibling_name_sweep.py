@@ -1451,7 +1451,14 @@ def test_the_halting_report_carries_the_narrowing_count(narrow_cfg, narrow_needl
 
 
 def test_the_ci_gate_report_carries_the_narrowing_count(narrow_cfg):
-    sweep_ci = pytest.importorskip("tools.sibling_sweep_ci")
+    # A PLAIN import, deliberately. tools/sibling_sweep_ci.py is FIRST-PARTY and
+    # is present in every checkout, so importorskip here would gate the skip on
+    # the thing under test rather than on an absent environment capability - if
+    # the CI gate module ever went missing, this guard would go quietly green
+    # instead of red, on the leak gate of a public repo. Caught by
+    # tests/test_skip_condition_hygiene.py; see docs/SKIPIF_AUDIT_2026-07-27.md.
+    from tools import sibling_sweep_ci as sweep_ci
+
     stats = sweep.ScanStats(files=10**6, scanned_bytes=10**9)
     _ok, lines = sweep_ci.evaluate(narrow_cfg, stats, [])
     assert any("2 NARROWED" in ln for ln in lines)
