@@ -1,5 +1,37 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-09-20 - size-budget relocation, by the NOW-BLOCK DRAIN session
+
+`python tools/drift_guard.py` breached at 103 percent of the 81920-byte budget
+after this session's wrap added its closed-row pointers for LEDGER 1432 to 1438.
+**The LANE WIDGET GATE row moves here VERBATIM, byte for byte as it stood at
+`f4a742fd9`**, and `ROADMAP.md` keeps a one-line pointer to this block in its
+place. It is a fully CLOSED row - the gate closed 2026-09-19, its four residuals
+are named inside it and none of them blocks anything - so relocating it hides no
+live work.
+
+**Verbatim was checked the strong way rather than asserted:** the text below was
+typed into this file FIRST and then used as the `old_string` that removed it from
+`ROADMAP.md`, so the removal could only have succeeded on an exact byte match.
+
+- **[OK] LANE WIDGET GATE CLOSED 2026-09-19 - the UI FIXTURE AUDIT AND THE LIVE ACCEPTANCE RUN BOTH RAN** (**full detail LEDGER 1431**; the ship itself is LEDGER 1430 / `ed759ef4a`). The audit found EIGHT classes of real defect and all eight are fixed and re-verified on screen: an UNREACHABLE window context menu (`-webkit-app-region: drag` made every right-click raise the Windows system menu), keyboard focus destroyed by the 2 s repaint, every age wrong by 1000x (ms passed into a seconds contract, which also made stall detection meaningless), a SHRINK RATCHET introduced by this session's own first fix and caught only by the live run (viewport-relative `max-height` inside a content-sized window, measured collapsing through 24 sizes to 415x126 with ZERO cards while the footer read "STALE 3"), a focus ring unreachable by CSS specificity, a non-scrollable overflow, an un-re-clamped user resize, and a half-implemented ARIA tab pattern. Final state: **`npm test` GREEN, 0 failed**, having grown from 217 tests at the start of that audit, **12 passed** on the two python guards, nine files byte-verified ASCII. **The live count is deliberately NOT recited here** - nothing guards it, the recited 276 had already rotted to 288 by 2026-09-20, and per the CLAUDE.md TDD-First rule a doc is not a source of truth for a suite count. Measure it with `npm test` from `lane-widget/`. **Do NOT re-run this audit and do NOT re-derive the design.** **FOUR RESIDUALS, small and honest, none blocking:** mid-drag resize is UNVERIFIED on a default box (this machine has `DragFullWindows = 0`, so the 2000 ms drag watchdog path is unreachable here - needs a box with `DragFullWindows = 1`); tray EXIT was verified in an earlier run but UNTESTED in the final one (the notification area is above this session's permission tier - close-means-hide WAS verified); the window reveals briefly at the pre-layout 404x352 box, a 5x12 px delta within acceptance; and the drag handles are discoverable only via the footer. Launch: `rc-shell\node_modules\electron\dist\electron.exe "C:\Riot Commander\lane-widget"`, or the operator's Desktop shortcut `Lane Widget.lnk`, which lives OUTSIDE the repo and is not version-controlled. Kill orphans with `taskkill /F /PID <pid> /T`, never `Stop-Process`.
+
+A second row went the same way in the same pass, because one relocation left the
+file still 101 percent of budget. **NOW-3 is fully CLOSED and its body moves here
+VERBATIM, checked the same strong way.** Its ONE load-bearing fence - the refuted
+premise, which a later session would otherwise re-file - is restated inline in
+`ROADMAP.md` rather than buried here.
+
+- **NOW-3: ASCII HYGIENE OVER `.css` / `.html` - DONE 2026-09-20, and the row's PREMISE WAS REFUTED ON THE WAY** (filed 2026-09-19; LEDGER 1430/1431). **The claim "guarded only by the staged-line precommit hook, not by any test" is FALSE and was measured false end to end, not read false.** A probe `.css` carrying U+2014 + U+2713 was written OUTSIDE `web/` and staged; `tests/test_ascii_source_sweep.py::test_no_net_new_non_ascii_in_tracked_source` and `tests/test_smart_quote_hygiene.py::test_no_smart_quotes_in_authored_source` BOTH failed on it. The lane widget's CSS/HTML was never clean by luck. Do not restore that wording. **What WAS missing, and is what landed:** (1) all 17 `tests/_repo_walk` consumers passed `*.py` (or `*.py` + `*.js`) and NOTHING asked the ADR-015 walker for `*.css` / `*.html`; (2) neither existing guard anchors a PER-EXTENSION floor - `test_the_sweep_selects_something` asserts `> 500` across 14 patterns, which `*.py` alone satisfies, so dropping `"*.css"` / `"*.html"` from its `_PATTERNS` would have left it GREEN; (3) the sweep is a RATCHET, and the CLAUDE.md banned-8 set has no legitimate use in a stylesheet or a page. New `tests/test_css_html_ascii_hygiene.py` walks 70 `.css` + 13 `.html` through `tests/_repo_walk`, bans the 8 flat (no baseline - measured clean), anchors an extension-wise floor plus named anchor files, carries both a planted-glyph and a clean-ASCII control, and pins the walker's set against the sweep's independent `git ls-files` set so one rule cannot get two readings. `tests/test_repo_walk.py` gains the matching pattern-pair anti-vacuity test.
+
+A THIRD row followed, for headroom rather than for a breach: two relocations left
+the file at exactly 100 percent, which the guard warns on and which would breach
+on the next session's first line. It is fully closed and its bodies are in
+`docs/LEDGER.md` 1434 / 1435 / 1437; `ROADMAP.md` keeps the two sharpest fences
+inline.
+
+- **[OK] ALSO CLOSED 2026-09-20, three small lanes, bodies in the LEDGER rather than here.** **LEDGER 1434** - the sibling sweep gained **per-slot DECLARED narrowing** (`93b5af910`) so a participant whose code is an ordinary English word does not drown the sweep in prose hits: its drive-path and github-URL arms stay ARMED and only its BARE-WORD arm is suppressed, BY DECLARATION. **Do NOT propagate "RC's sweep leaves the sixth participant unswept" - measured FALSE twice.** CI sweep ceilings went 20 -> 65 min with a step-level 45 (`38067d87a`), because a sweep KILLED BY A TIMEOUT reads as a flaky sweep and the natural remedy for a flaky guard is to weaken it. **LEDGER 1435** - lane-widget residuals pinned by tests (attribution renders the participant CODE, never a directory basename; tab growth; absent-`reports` tolerance), the drag floor moved off a hard-coded `240px` onto the panel CONTENT width, and **an `importorskip` on a FIRST-PARTY module replaced with a plain import** - on your own code that idiom turns a real breakage into a GREEN SKIP. **LEDGER 1437** - the doc-truth pass: two stale-count defects removed (**CITE THE PIN AT `tests/test_loop_concurrency.py:474`, NEVER THE DIGEST VALUE**), RM-283 reconciled with its BACKLOG body, a FOREIGN backticked `path:line` fixed at source rather than by widening the citation guard, the hand-off consolidated onto the single tracked `RC-NEXT-SESSION.txt` (root `NEXT_SESSION_PROMPT.md` RETIRED to `docs/_archive/` - do not recreate it, do not file its absence as a defect), and **a sibling REAL NAME removed from `tools/headless-repo.md` where it sat SPLIT ACROSS A LINE WRAP**, a form no whole-token search can see.
+
 ## 2026-09-19 - size-budget relocation, by the LANE WIDGET session
 
 `python tools/drift_guard.py` breached at 90 percent of the 81920-byte budget
