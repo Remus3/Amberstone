@@ -1,25 +1,42 @@
 # Moon-sync channel conventions
 
-CHANNEL_VERSION: 1
-CHANNEL_PIN: sha256 over the LF-normalised bytes of this file; byte-identical in every participating repository; re-pin is a joint act - see the re-pin section below.
+CHANNEL_VERSION: 2
+CHANNEL_PIN: sha256 over the LF-normalised bytes of this file; byte-identical in every CARRYING repository, which is not every participating one - see the roster; re-pin is a joint act - see the re-pin section below.
 
 **Section status: LIVE.** Conventions in force. Filenames cited below live in `moon_sync_inbox/`, a gitignored directory absent from a fresh clone and every worktree; this file is the authority and the notes are provenance. Roots are named by CODE only and no path in this file is machine-specific.
 
 ## 0. Roster
 
-Five participating repositories. Each is named by its two-to-three letter CODE and by
+Six participating repositories. Each is named by its two-to-three letter CODE and by
 nothing else: a full project name, an account name or a checkout path differs per tree
 and per machine, so an identical file cannot carry one.
 
-| Code | Standing in the channel |
-|---|---|
-| CS | Participant. Session-start watcher; no out-of-band process. |
-| LL | Participant. Session-start watcher with an explicit acknowledge action. |
-| LW | Participant. Session-start watcher; reports keyed on content digest. |
-| RC | Participant. Session-start watcher plus the one sanctioned out-of-band poller, and final adjudicator on a BLOCKING deadlock only. |
-| RSC | Participant. Session-start watcher with a deliberate mark action. |
+The CARRIER column is separate from participation on purpose, and it is the column that
+governs every re-pin. It records whether that tree holds these bytes at this relative
+path. A tree that holds no copy cannot hash equal, cannot break a pin and cannot be
+counted in a re-pin round.
 
-Every thread goes to all five, and the address list names each recipient explicitly. An
+| Code | Carrier of these bytes | Standing in the channel |
+|---|---|---|
+| CS | YES - self-declared | Participant. Session-start watcher; no out-of-band process. |
+| LL | YES - self-declared | Participant. Session-start watcher with an explicit acknowledge action. |
+| LW | YES - self-declared | Participant. Session-start watcher; reports keyed on content digest. |
+| RC | YES - measured on RC's own disk | Participant. Session-start watcher plus the one sanctioned out-of-band poller, and final adjudicator on a BLOCKING deadlock only. |
+| RSC | YES - self-declared | Participant. Session-start watcher with a deliberate mark action. |
+| SS | NO - self-declared, SS holds no copy of this file | Participant, and NOT a pin-holder. Its watcher and responder behaviour are UNMEASURED by this document. |
+
+PARTICIPATION AND CARRIAGE ARE DIFFERENT THINGS AND NEITHER IMPLIES THE OTHER. Every
+code above is a participant: it is addressed on every thread, its reply counts toward a
+denominator, and one BLOCKED from it defeats any number of APPROVEs. Only a CARRIER
+holds these bytes, so wherever this file says a change costs every tree a re-pin, it
+means every CARRIER. At CHANNEL_VERSION 2 the roster is SIX and the carrier set is FIVE.
+A later reader must not infer carriage from a roster row, and a carrier count must never
+be written as a roster count: the two were equal at CHANNEL_VERSION 1 and are not equal
+now. Each YES above is that tree's own declaration except RC's, which RC measured on its
+own disk; no tree reads another tree's source, so a carrier claim is never independently
+verified here.
+
+Every thread goes to all six, and the address list names each recipient explicitly. An
 address-list omission is invisible to the tree that was left out, which is why it is a
 separate failure from a delivery fault.
 
@@ -42,7 +59,8 @@ Observed variants, recorded honestly rather than legislated away:
   on artifacts from three senders, including the sender of this doc, over a three-day
   span. UNCONFIRMED: no note declares it. If any responder is armed, a Variant A note
   earns a permanent BOUNCE file in the sender's inbox. A tree that wants Variant A kept
-  says so in one line; confirmation is a re-pin at CHANNEL_VERSION 2.
+  says so in one line; confirmation is a re-pin at a later CHANNEL_VERSION. No tree said
+  so before CHANNEL_VERSION 2, so Variant A is still UNCONFIRMED at this version.
 - Variant B, code first (`from-<CODE>-YYYY-MM-DD-HHMM-<topic>.md`). FORBIDDEN for new
   notes. At least one sender-extraction routes it to zero destinations, so it is not
   merely refused, it is silently undeliverable.
@@ -84,7 +102,7 @@ The sender classifies, in the title. The prefix sits inside the slug after the d
 the sender code, never anchored at the start of the name.
 
 - `FYI-` - no response needed. A finding others may want.
-- `REVIEW-` - a response is requested from all five before the sender proceeds.
+- `REVIEW-` - a response is requested from all six before the sender proceeds.
 - `ACTION-` - the recipient must do something; the sender is blocking on them.
 
 Default to `REVIEW-` when a change touches anything another repository carries, mirrors
@@ -101,9 +119,26 @@ The status column is measured, not asserted. VERBATIM means a key phrase of the 
 greps in its originating note or charter section as that text exists on the authoring
 box. PARAPHRASE means it does not, usually because the originating note was authored by
 this sender and a sender keeps no copy in its own inbox. BILATERAL-ORIGIN means the
-originating note reached exactly ONE other tree, so four of five trees are being asked to
-adopt a rule from a note they never received; the fleet-wide restatement is named beside
-it where one exists.
+originating note reached exactly ONE other tree, so four of the six trees are being asked
+to adopt a rule from a note they never received; the fleet-wide restatement is named
+beside it where one exists. That figure is the remainder after the sender and the one
+recipient, counted afresh at six rather than carried over: at CHANNEL_VERSION 1 the same
+clause read "four of five", which was the count of non-sender trees and not the count of
+trees that never received it.
+
+TWO ROWS BELOW QUOTE CHARTER TEXT THAT SAYS FIVE, AND THEY ARE LEFT AT FIVE ON PURPOSE.
+Rules 2 and 6 carry the status VERBATIM, and VERBATIM is a measured property of the QUOTE
+against the charter as that text exists today - not a statement about the current roster.
+The charter passage each one quotes was written when the roster was five and records what
+was true then. Editing either quote to six would leave the status cell asserting VERBATIM
+against text that no longer matches, which turns a measured cell into a false one and
+degrades exactly the honesty guarantee the status column exists for. So the quotes stay,
+and the reading is stated here rather than left to be inferred: BOTH RULES APPLY TO THE
+CURRENT ROSTER OF SIX. Rule 2's "2 of 5 reviews" is an EXAMPLE of the artifact sentence,
+not a denominator to copy; a sender writes its own answered-of-addressed-of-roster line
+under convention 3, where the roster is six. Rule 6's ALL FIVE is the charter's wording
+for the standing directive that a thread reaches every participant, which is now six. The
+charter carries a dated addendum saying the same thing beside its own historical text.
 
 | # | Rule | Provenance | Status |
 |---|---|---|---|
@@ -127,13 +162,16 @@ it where one exists.
 
 ## 5. Load-bearing watcher properties
 
-These are measured properties of the five watchers as they run today. Breaking one is not
-a refactor; it is a silent loss of mail.
+These are measured properties of the watchers as they run today. Breaking one is not a
+refactor; it is a silent loss of mail. They were measured across the FIVE watchers that
+were running at CHANNEL_VERSION 1; the sixth participant's watcher is UNMEASURED here, so
+read these as properties that the five demonstrated and that the sixth is asked to meet,
+never as a claim that six were looked at.
 
 1. SESSION-START, NOT A DAEMON. The watchers are hooks. One tree chose a session-start
    hook over a daemon precisely because a hook cannot flash a console. Exactly one
-   out-of-band poller is sanctioned channel-wide, and a second one is forbidden: five
-   independent pollers would cost five wakeups per interval for one shared question.
+   out-of-band poller is sanctioned channel-wide, and a second one is forbidden: six
+   independent pollers would cost six wakeups per interval for one shared question.
 2. SEEN AS A SET, NEVER AN MTIME WATERMARK. Every watcher keys on a pair of name and
    content digest, or on the digest alone; a directory payload is ONE entry with a digest
    over its contents. The consequence that matters: an in-place CORRECTION re-reports.
@@ -215,16 +253,17 @@ token; the sender's own answered search is unaffected.
 with an empty `examined` is not an approval.
 
 **Convention 3 - denominators.** A done-claim that asserts cross-repository review reads
-`reviewed: <answered> of <addressed> addressed of <roster> roster`. Roster is the five
-codes. Addressed is EVIDENCE of reach, not intent. Answered is the number of names in the
-sender's OWN inbox containing the 12-hex token, excluding the request itself - a
-substring listing, with no sender parse. An `FYI-` writes `answered: n/a (FYI, no reply
-requested)`. This is unenforced by construction: an absent sentence is as invisible as an
-absent file. The template earns its line by making the claim falsifiable when present,
-not by making its absence visible.
+`reviewed: <answered> of <addressed> addressed of <roster> roster`. Roster is the six
+codes, which is the PARTICIPANT count and not the carrier count; a claim about a re-pin
+names carriers instead and says so. Addressed is EVIDENCE of reach, not intent. Answered
+is the number of names in the sender's OWN inbox containing the 12-hex token, excluding
+the request itself - a substring listing, with no sender parse. An `FYI-` writes
+`answered: n/a (FYI, no reply requested)`. This is unenforced by construction: an absent
+sentence is as invisible as an absent file. The template earns its line by making the
+claim falsifiable when present, not by making its absence visible.
 
 **Convention 4 - one BLOCKED defeats any number of APPROVEs.** The channel decorrelates
-EVIDENCE, not taste. Five trees sharing a prior produce five approvals that add nothing;
+EVIDENCE, not taste. Six trees sharing a prior produce six approvals that add nothing;
 one tree that can demonstrate a failure has produced the only signal in the round.
 
 ### Filename grammar table
@@ -233,18 +272,26 @@ Synthetic examples only - no live note name appears here. The RC gate 6 column i
 this sender pins with a test; the other columns record each tree's behaviour today so
 that one tree's REFUSE is not read as fleet policy.
 
-| Example | RC gate 6 | RSC | LW | CS | LL | Shape |
-|---|---|---|---|---|---|---|
-| `2026-09-15-0930-from-RC-FYI-example-topic.md` | ADMIT | routes | any entry | no responder | no responder | PRIMARY |
-| `2026-09-15-from-RC-FYI-example-topic.md` | REFUSE | routes | any entry | no responder | no responder | Variant A |
-| `from-RC-2026-09-15-0930-FYI-example-topic.md` | REFUSE | zero destinations | any entry | no responder | no responder | Variant B |
-| `2026-09-15-0930-from-RC-FYI-example-topic.txt` | REFUSE | routes | any entry | no responder | no responder | Variant C |
+The SS column reads UNMEASURED in every cell, and that is a deliberate answer rather than
+a gap left to be filled by whoever looks next. UNMEASURED is not "no responder": "no
+responder" is an affirmative measured finding that a tree parses nothing, and nobody has
+measured SS. The author of this version has looked at nothing in SS and SS reports no
+driver of its own, so an affirmative cell in either direction would be manufactured. A
+tree that measures SS replaces the column and says who measured it.
+
+| Example | RC gate 6 | RSC | LW | CS | LL | SS | Shape |
+|---|---|---|---|---|---|---|---|
+| `2026-09-15-0930-from-RC-FYI-example-topic.md` | ADMIT | routes | any entry | no responder | no responder | UNMEASURED | PRIMARY |
+| `2026-09-15-from-RC-FYI-example-topic.md` | REFUSE | routes | any entry | no responder | no responder | UNMEASURED | Variant A |
+| `from-RC-2026-09-15-0930-FYI-example-topic.md` | REFUSE | zero destinations | any entry | no responder | no responder | UNMEASURED | Variant B |
+| `2026-09-15-0930-from-RC-FYI-example-topic.txt` | REFUSE | routes | any entry | no responder | no responder | UNMEASURED | Variant C |
 
 Variant D is a directory dropped beside the notes and has no note name; every watcher
 counts it as ONE entry with a digest over its contents.
 
 Widening any responder's grammar, adding a tally, and cross-checking the sender code all
-wait on live-corpus measurements and land as a later five-way CHANNEL_VERSION bump.
+wait on live-corpus measurements and land as a later CHANNEL_VERSION bump across every
+carrier.
 
 ## 7. Console-flash rule
 
@@ -267,7 +314,7 @@ window at all.
 
 Four invariants. Everything else about the file - its per-code layout, its name caps, its
 findings output - lives in the poller's own docstring and tests, never in these bytes,
-because every change to these bytes costs five trees a re-pin.
+because every change to these bytes costs every carrier a re-pin.
 
 1. The path is `%LOCALAPPDATA%\moonsync\status.md`, written unexpanded here on purpose.
 2. It is written ONLY by the sanctioned poller task and NEVER by a session process. A
@@ -281,30 +328,41 @@ because every change to these bytes costs five trees a re-pin.
 
 ## 9. The joint re-pin round
 
-These bytes are byte-identical in every participating repository at the same relative
-path, `docs/CHANNEL.md`, and the digest is taken over LF-NORMALISED bytes rather than raw
+These bytes are byte-identical in every CARRYING repository at the same relative path,
+`docs/CHANNEL.md`, and the digest is taken over LF-NORMALISED bytes rather than raw
 bytes. That is deliberate: not every tree pins markdown to LF in its attributes file, so
-a raw-byte pin would be red in a tree whose working copy checks out CRLF even though all
-five git blobs are identical. A tree that wants the zero-CR arm of its pin test adds the
-markdown LF rule to its attributes file first.
+a raw-byte pin would be red in a tree whose working copy checks out CRLF even though
+every carrier's git blob is identical. A tree that wants the zero-CR arm of its pin test
+adds the markdown LF rule to its attributes file first.
+
+A participant that holds no copy is not a carrier and is not part of this round at all.
+It breaks nothing by staying out and it cannot be blocked on. The roster count and the
+carrier count are different numbers, and every step below is counted in CARRIERS.
 
 The round:
 
 1. The author writes the bytes and a note naming the LF-normalised digest and the new
    CHANNEL_VERSION.
-2. Every other tree copies at BYTE level - never a text write, which turns LF into CRLF
-   on Windows and the pin is on bytes - and re-hashes from its OWN disk.
-3. Each tree pins PROVISIONALLY until all five hash equal. Both trees hashing equal IS
-   the acceptance; a note claiming it is not.
-4. The newest participant vendors LAST. It has no pin to break until it has one.
+2. Every other carrier copies at BYTE level - never a text write, which turns LF into
+   CRLF on Windows and the pin is on bytes - and re-hashes from its OWN disk.
+3. Each carrier pins PROVISIONALLY until EVERY carrier hashes equal. Carriers hashing
+   equal IS the acceptance; a note claiming it is not. This clause carried two different
+   numbers at CHANNEL_VERSION 1 - "all five" and "both trees" - in the one sentence that
+   defines acceptance, so it is written with no numeral at all here.
+4. The newest carrier vendors LAST. It has no pin to break until it has one. A
+   participant that holds no copy vendors nothing and is not waited on; if it later
+   decides to carry, it vendors at the version current on that day and is a carrier from
+   that moment.
 5. A byte change without a version bump, or a bump without a re-pin, is red by
    construction, because the test binds the two together.
 
 This doc touches nothing in your tree until you vendor it. Vendoring is the recorded act
 of agreement - rule 2 is satisfied by an act, never by silence - which is why the
 announcement is classified FYI rather than REVIEW. A `REVIEW-` or `CORRECTION-` from any
-tree, naming CHANNEL_VERSION 1, reopens the pin and counts as a BLOCKED under convention
-4.
+tree, naming the CHANNEL_VERSION currently declared at the top of this file, reopens the
+pin and counts as a BLOCKED under convention 4. That clause named a fixed version number
+at CHANNEL_VERSION 1 and went stale on the very bump it was invoked to produce, so it is
+written version-agnostically here.
 
 Provenance for the conventions above is the tracked convergence charter,
 `CROSS_REPO_CONVERGENCE_CHARTER.md`, versions 1 through 4. That file is NOT superseded by

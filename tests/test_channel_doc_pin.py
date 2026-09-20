@@ -40,11 +40,13 @@ CHANNEL_DOC = "docs/CHANNEL.md"
 # would be red in a tree whose working copy checks out CRLF even though all of
 # the git blobs are identical.
 #
-# CHANNEL_VERSION 1 is pinned in 1 of 5 trees today. That is the honest count,
-# and it stays that way until a sibling vendors the bytes.
+# CHANNEL_VERSION 2 is pinned in 1 of 5 CARRIER trees today. That is the honest
+# count, and it stays that way until a sibling vendors the bytes. The carrier
+# count is 5 while the ROSTER is 6: the sixth participant holds no copy of the
+# doc, so it is never part of a re-pin round. Never conflate the two numbers.
 CHANNEL_PIN = {
-    "version": 1,
-    "sha256": "899f6eb957cc26ee25993d83d65d8ca291841fe4eec24a48f729c2dc005f4c6b",
+    "version": 2,
+    "sha256": "fc22e86eebe93bb247a91f44835257a3fe717a287c4a3184a8e7a7b9a463fb9c",
 }
 
 _VERSION_RE = re.compile(r"^CHANNEL_VERSION: (\d+)$", re.MULTILINE)
@@ -111,7 +113,12 @@ _SPACED_INBOX_LINE_CITE = re.compile(r"-from-[A-Za-z]{2,4}-[^`\n]*\.md:\d+")
 
 _PER_REPO_ALIAS = re.compile(r"\bSibling-[A-Z]\b")
 
-ROSTER_CODES = ("CS", "LL", "LW", "RC", "RSC")
+# The ROSTER, which is the PARTICIPANT set and not the carrier set. SS joined at
+# CHANNEL_VERSION 2 and holds no copy of the doc, so it is a roster row here and
+# is absent from every re-pin. A future widening adds the code to this tuple and
+# to the doc's section 0 table in the SAME commit: the exact-set assertion below
+# reddens on either half alone, which is the point.
+ROSTER_CODES = ("CS", "LL", "LW", "RC", "RSC", "SS")
 
 
 def _raw() -> bytes:
@@ -299,7 +306,7 @@ def test_ban_arm_does_not_flag_ordinary_prose_with_slashes_and_spaces():
     assert _inbox_line_cites(prose) == [], _inbox_line_cites(prose)
 
 
-def test_channel_doc_names_no_per_repo_alias_and_rosters_five_codes_once():
+def test_channel_doc_names_no_per_repo_alias_and_rosters_every_code_once():
     text = _text()
     alias = _PER_REPO_ALIAS.search(text)
     assert alias is None, (
