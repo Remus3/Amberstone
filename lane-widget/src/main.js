@@ -40,6 +40,13 @@ const RC_ROOT = path.resolve(__dirname, "..", "..");
 
 // Hard floor for the window. clamp.js will not go below this even on an absurd
 // work area - a 20px window is worse than one that overhangs.
+//
+// This is the floor of LAST RESORT, not the floor the user drags against. Once
+// the renderer has reported a content box, applyClampNow raises the enforced
+// minimum WIDTH to clamp.js minimumSizeFor - the width the clamp is going to
+// impose anyway - because .panel is width:max-content and does not shrink, so
+// every pixel of drag below it is clipped panel (the gear first). Until that
+// first report there is no content box to track and this constant stands.
 const MIN_SIZE = { width: 240, height: 120 };
 
 // First paint used to land the pre-layout box (404x352) and the first model
@@ -243,10 +250,19 @@ function applyClampNow() {
     return;
   }
   const b = mainWindow.getBounds();
+  const work = workAreaFor(b);
   const next = clampMod.clampToContent({
     requested: b,
     content: contentSize,
-    workArea: workAreaFor(b),
+    workArea: work,
+    min: MIN_SIZE,
+  });
+  // The floor the USER drags against, which tracks the content width - see the
+  // note on minimumSizeFor. It is never wider than next.width, so it cannot
+  // make the setBounds below unsatisfiable.
+  const floor = clampMod.minimumSizeFor({
+    content: contentSize,
+    workArea: work,
     min: MIN_SIZE,
   });
   // Remember what we are about to ask for BEFORE asking - setBounds can emit
@@ -256,7 +272,7 @@ function applyClampNow() {
   const hasPos = typeof next.x === "number" && typeof next.y === "number";
   const samePos = !hasPos || (b.x === next.x && b.y === next.y);
   try {
-    mainWindow.setMinimumSize(MIN_SIZE.width, MIN_SIZE.height);
+    mainWindow.setMinimumSize(floor.width, floor.height);
     // Skip the OS call when the window is already exactly right. Geometry is
     // unchanged either way; what this avoids is a pointless `resize` event.
     if (!sameSize || !samePos) {
