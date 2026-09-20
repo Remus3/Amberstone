@@ -120,9 +120,11 @@ construction. Never compute the frozen set from headers.
 
 `ops/loop/slots.py` and `ops/loop/winmutex.py` are **BYTE-IDENTICAL-BY-CONTRACT** with the copies in `C:\Sibling-A` (a REAL SPACE since 2026-09-06; the GitHub repo keeps the hyphen as `the Sibling-A repo`, so the two spellings differ on purpose). Verified on disk:
 
-- `tests/test_loop_concurrency.py:432-457` pins `SHARED_SHA256` - `slots.py` at `1c4f8af4...58c492` (re-pinned 2026-09-06 when Sibling-B replaced the archived Red
-  Moon on line 5 of the docstring; LW authored those bytes), `winmutex.py` at `f1b4b011...e8b4f4` (unchanged since 2026-07-26). `:460-472` asserts it, and the failure
-  message is the instruction: "If this change is intended, re-sync BOTH trees and re-pin on BOTH sides in the same round - do not just update this constant."
+- `tests/test_loop_concurrency.py` pins both digests in the `SHARED_SHA256` dict, and a parametrised test below it asserts each file against its pin. **The digest
+  VALUES are deliberately NOT recited here.** This doc carried two literals for months and both went stale across re-pins, which is the whole failure mode: a second
+  copy of a digest is a second thing to go stale, and a stale digest in prose is worse than none because it reads as authority. Read the current value out of
+  `SHARED_SHA256` and re-hash the file from your own disk; never copy a digest out of prose, a hand-off note or a commit message. The assertion's failure message is
+  the instruction: "If this change is intended, re-sync BOTH trees and re-pin on BOTH sides in the same round - do not just update this constant."
 - `:53-63` is the sibling-tree byte comparison, and it `pytest.skip`s when the Sibling-A tree is absent - which is every CI runner. **That is why the pinned digest
   exists**: without it CI is blind to cross-repo drift and goes green-by-skip. A skipped test is a green tick. **It skipped on Legion too** from LW's 2026-09-06 root
   rename until the constant was corrected the same day - the guard was pointing at a directory that no longer existed and said nothing. Line numbers in this section go
