@@ -624,6 +624,75 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # entry as no longer broken, and it was deleted here. That is the baseline
     # shrinking with the debt, not a regression - do not re-add it.
     #
+) + tuple(
+    # 2026-09-20. THE MISSION CONTROL WEB UI WAS RETIRED, so `web/mc/` and the
+    # three panel test files are gone from the tree. Every citation below was
+    # CORRECT when it was written and points into a file this change deleted.
+    #
+    # WHY THESE ARE BASELINED RATHER THAN REPAIRED, stated once for all 32.
+    # Each cited line is EVIDENCE INSIDE A DATED ARTIFACT. The gap analysis
+    # (docs/specs/mission_control_removal_gap_analysis.md) is the measurement
+    # that the removal decision was taken FROM, and the two S10 documents are
+    # the design and plan of the change that created the deleted files. Their
+    # value is that they say what was true at the HEAD they were written
+    # against - `0945ff334` for the analysis. Re-pointing any of these at a
+    # surviving file would convert a true historical claim into a false
+    # current one, which is RM-171's own failure class. Deleting the prose
+    # would destroy the record of why the UI could be removed at all.
+    #
+    # THIS BLOCK IS NOT A LICENCE TO GROW. A LIVING doc must never be added
+    # here for the same reason: the arm-then-confirm gate that these citations
+    # describe was PORTED, not deleted, and it is documented where it now
+    # lives (dashboard/_arm_confirm.py, tests/test_arm_confirm_server_gate.py)
+    # with citations that resolve. If a future removal of `web/mc` prose in
+    # any of these three files makes an entry stop being broken, the guard
+    # will say so and the entry must be deleted here - the budget shrinks with
+    # the debt.
+    (doc, raw, "HISTORICAL",
+     "Points into web/mc/ or a Mission Control panel test, all deleted when "
+     "the MC web UI was retired on 2026-09-20. Evidence inside a dated "
+     "artifact - see the block comment above for why it is not re-pointed.")
+    for doc, raw in (
+        # The gap analysis: the pre-removal surface inventory, as-of 0945ff334.
+        ("docs/specs/mission_control_removal_gap_analysis.md", "mc.js:509"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/arm_confirm.js:21"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/arm_confirm.js:45"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/index.html:1-21"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/index.html:7"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/index.html:19"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:92"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:101"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:133"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:172-194"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:320-343"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:384-447"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:537-538"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:542-543"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:544"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:554-557"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:560"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:566"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:567"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:572-579"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:583-590"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:595-599"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:617-637"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:643-644"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:687-690"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:700-703"),
+        ("docs/specs/mission_control_removal_gap_analysis.md", "web/mc/mc.js:894-895"),
+        # The S10 plan and design: they created the panel tests now deleted.
+        ("docs/superpowers/plans/2026-07-31-mission-control-s10-decouple.md",
+         "test_mission_control_panel.py:4-5"),
+        ("docs/superpowers/plans/2026-07-31-mission-control-s10-decouple.md",
+         "test_interrupt_panel.py:5"),
+        ("docs/superpowers/plans/2026-07-31-mission-control-s10-decouple.md",
+         "test_interrupt_panel.py:213"),
+        ("docs/superpowers/specs/2026-07-31-mission-control-s10-decouple-design.md",
+         "test_mission_control_panel.py:4"),
+        ("docs/superpowers/specs/2026-07-31-mission-control-s10-decouple-design.md",
+         "test_interrupt_panel.py:5"),
+    )
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})
