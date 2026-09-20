@@ -42,11 +42,68 @@ const RC_ROOT = path.resolve(__dirname, "..", "..");
 // work area - a 20px window is worse than one that overhangs.
 const MIN_SIZE = { width: 240, height: 120 };
 
+// First paint used to land the pre-layout box (404x352) and the first model
+// push then resized it to its real size about 110 ms later - a visible pop on
+// every launch. The window is now held hidden until the first clamp has sized
+// it. This is the SAFETY net for that: if the renderer never reports a content
+// size (a poll that yields no model, a renderer that failed to boot) the window
+// must still appear rather than being invisible forever. 1500 ms is ~13x the
+// measured 110 ms first-push latency, so it never fires on a healthy launch.
+const FIRST_LAYOUT_TIMEOUT_MS = 1500;
+
+// --- user-resize settle (see scheduleSettleClamp) ----------------------------
+// A manual resize is re-clamped when the DRAG ENDS, not on every `resize` tick:
+// Windows streams `resize` continuously while a handle is held, and snapping on
+// each one makes the window feel stuck. `resized` (electron 33.4.11
+// electron.d.ts:4306-4314, @platform darwin,win32) is exactly "emitted once when
+// the window has finished being resized", so that is the primary trigger.
+//
+// These two timers are the fallback for the resizes `resized` does NOT cover.
+//   RESIZE_SETTLE_MS  no drag is in progress (an Aero snap, a programmatic
+//                     resize, or a platform where `resized` never fires).
+//                     Short, because there is no drag to interrupt.
+//                     A MAXIMIZE arms this timer too, and that used to read as
+//                     coverage when it was none: the timer fired on schedule
+//                     and the clamp it ran was INERT, because Windows silently
+//                     discards setBounds on a maximized window. Measured on
+//                     screen: 2576x1416 at -8,-8 over a 2560x1400 work area,
+//                     uncorrected for 9 s, with 409x1185 of content - the rest
+//                     invisible transparent gutter still eating mouse input
+//                     across the whole desktop, and persisted in that state.
+//                     The timer was never the missing piece; applyClamp
+//                     calling unmaximize() first is.
+//   DRAG_WATCHDOG_MS  a drag IS in progress (`will-resize` seen, `resized` not
+//                     yet). Purely a latch-breaker so `userResizing` cannot stay
+//                     true forever on a platform without `resized`. Every
+//                     will-resize / resize tick re-arms it, so on a real drag it
+//                     only fires if the handle is held perfectly still for two
+//                     full seconds - far longer than a normal mid-drag pause.
+const RESIZE_SETTLE_MS = 400;
+const DRAG_WATCHDOG_MS = 2000;
+
 let mainWindow = null;
 let tray = null;
 let poller = null;
 let isQuitting = false; // ONLY the tray Exit item sets this; close means hide.
 let contentSize = { width: 0, height: 0 }; // last renderer-reported content box.
+
+// --- re-entrancy guard for the clamp (see reclampAfterUserResize) ------------
+// setBounds/setSize themselves emit `resize`, so a clamp that re-triggers its
+// own clamp is a genuine ratchet - an earlier build of this widget walked down
+// through 24 sizes to a collapsed 415x126. The guard is EXACT rather than
+// time-based: applyClamp records the size it asked the OS for, and the resize
+// path no-ops when the window already measures that. Our own echo therefore
+// terminates in one step, and a real user drag (which by definition lands on
+// some OTHER size) is still handled.
+let lastAppliedSize = null; // { width, height } applyClamp last asked for.
+let userResizing = false; // a manual drag is in flight (will-resize seen).
+let settleTimer = null;
+
+// --- first-show gating (see FIRST_LAYOUT_TIMEOUT_MS) -------------------------
+let readyToShow = false; // the renderer has painted at least once.
+let firstClampDone = false; // a content size has been reported and applied.
+let windowShown = false; // reveal is idempotent - show() only ever runs once.
+let showTimer = null;
 
 function statePath() {
   return path.join(app.getPath("userData"), store.STATE_FILE_NAME);
@@ -70,7 +127,24 @@ function currentGeometry() {
   if (!mainWindow || mainWindow.isDestroyed()) {
     return null;
   }
-  const b = mainWindow.getBounds();
+  // A MAXIMIZED RECT MUST NEVER REACH THE STATE FILE. applyClamp restores and
+  // re-clamps within one settle interval, so the debounced writer normally sees
+  // the clamped box - but persistWindowStateNow is SYNCHRONOUS and runs on
+  // close / before-quit, so a tray Exit inside that window would otherwise
+  // freeze the bad geometry on disk and reload it maximized at next launch.
+  // getNormalBounds (electron 33.4.11 electron.d.ts:2596-2604 BaseWindow /
+  // :5164-5172 BrowserWindow) is documented to return "the position and size of
+  // the window in normal state" whatever the current state, and to equal
+  // getBounds in the normal state - so it is only consulted while maximized,
+  // keeping every other path byte-for-byte what it already was.
+  let b;
+  try {
+    b = mainWindow.isMaximized()
+      ? mainWindow.getNormalBounds()
+      : mainWindow.getBounds();
+  } catch (_e) {
+    b = mainWindow.getBounds();
+  }
   return {
     x: b.x,
     y: b.y,
@@ -119,10 +193,53 @@ function workAreaFor(bounds) {
   }
 }
 
+// Re-entrancy latch for applyClamp. unmaximize / setBounds / setSize all emit
+// `resize`, and `resized` (whose handler calls straight back into the clamp) is
+// documented only as "usually" manual, so a nested call is not something to
+// reason about per platform. A nested call is dropped instead: the outer call
+// is already going to finish by applying the clamped box, and the very resize
+// events that could nest also arm the settle timer, which re-checks the real
+// bounds afterwards. Nothing is lost by dropping the inner call.
+let clampInFlight = false;
+
 // Apply the clamp decision. The window is never larger than its content needs,
 // never larger than the work area, and never smaller than MIN_SIZE.
 function applyClamp() {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+  if (!mainWindow || mainWindow.isDestroyed() || clampInFlight) {
+    return;
+  }
+  clampInFlight = true;
+  try {
+    applyClampNow();
+  } finally {
+    clampInFlight = false;
+  }
+}
+
+function applyClampNow() {
+  // WINDOWS IGNORES setBounds ON A MAXIMIZED WINDOW - it does not fail, it does
+  // nothing, so the clamp below would record lastAppliedSize and believe it had
+  // succeeded while the window stayed at the maximized rect forever. Restoring
+  // FIRST is what makes every line after this one able to take effect.
+  // isMaximized (electron 33.4.11 electron.d.ts:2734 BaseWindow / :5306
+  // BrowserWindow, "Whether the window is maximized") and unmaximize
+  // (electron.d.ts:3344 / :5974, "Unmaximizes the window") are both unqualified
+  // by @platform, so this needs no platform test.
+  //
+  // Bounds are read AFTER the restore on purpose: unmaximize returns the window
+  // to its pre-maximize rect, which is a box this same clamp already approved,
+  // so the usual path finds nothing to change and skips the OS call entirely.
+  // If a platform ever reports the maximized rect here anyway, the clamp caps
+  // it to the work area and setBounds - now legal, the window is restored -
+  // corrects it in the same single step. Neither branch needs the other.
+  try {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    }
+  } catch (_e) {
+    // a window that vanished mid-restore is not an error worth crashing over.
+  }
+  if (mainWindow.isDestroyed()) {
     return;
   }
   const b = mainWindow.getBounds();
@@ -132,22 +249,116 @@ function applyClamp() {
     workArea: workAreaFor(b),
     min: MIN_SIZE,
   });
+  // Remember what we are about to ask for BEFORE asking - setBounds can emit
+  // `resize` synchronously, and the handler reads this to recognise the echo.
+  lastAppliedSize = { width: next.width, height: next.height };
+  const sameSize = b.width === next.width && b.height === next.height;
+  const hasPos = typeof next.x === "number" && typeof next.y === "number";
+  const samePos = !hasPos || (b.x === next.x && b.y === next.y);
   try {
     mainWindow.setMinimumSize(MIN_SIZE.width, MIN_SIZE.height);
-    if (typeof next.x === "number" && typeof next.y === "number") {
-      mainWindow.setBounds({
-        x: next.x,
-        y: next.y,
-        width: next.width,
-        height: next.height,
-      });
-    } else {
-      mainWindow.setSize(next.width, next.height);
+    // Skip the OS call when the window is already exactly right. Geometry is
+    // unchanged either way; what this avoids is a pointless `resize` event.
+    if (!sameSize || !samePos) {
+      if (hasPos) {
+        mainWindow.setBounds({
+          x: next.x,
+          y: next.y,
+          width: next.width,
+          height: next.height,
+        });
+      } else {
+        mainWindow.setSize(next.width, next.height);
+      }
     }
   } catch (_e) {
     // a window that vanished mid-resize is not an error worth crashing over.
   }
+  // The window is now at its real size, so it is safe to reveal.
+  firstClampDone = true;
+  revealWindow();
   persistWindowState();
+}
+
+// Show the window exactly once, and never before the renderer has painted -
+// showing unpainted content just trades the resize pop for a blank flash. Both
+// preconditions can arrive in either order, so both callers try and whichever
+// completes the pair wins.
+function revealWindow() {
+  if (windowShown || !readyToShow) {
+    return;
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  windowShown = true;
+  clearShowTimer();
+  mainWindow.show();
+}
+
+function clearShowTimer() {
+  if (showTimer) {
+    clearTimeout(showTimer);
+    showTimer = null;
+  }
+}
+
+// --- user-resize re-clamp ----------------------------------------------------
+// The defect this closes: `resize` was wired to persistWindowState ONLY, and
+// applyClamp ran solely from the lane-widget:size IPC. The renderer de-dupes
+// identical content sizes, so a user drag changed no MEASURED content box,
+// re-reported nothing, and was never corrected - a drag to 250x220 hard-clipped
+// the tab strip and put the gear and footer out of reach, and a drag to
+// 1800x1500 sat outside a 2560x1400 work area until the next content change
+// happened to heal it.
+//
+// The fix runs the SAME applyClamp against the SAME last-known content size, so
+// the result is identical no matter who initiated the resize.
+
+function clearSettleTimer() {
+  if (settleTimer) {
+    clearTimeout(settleTimer);
+    settleTimer = null;
+  }
+}
+
+function onResizeSettled() {
+  settleTimer = null;
+  userResizing = false;
+  reclampAfterUserResize();
+}
+
+function scheduleSettleClamp() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  clearSettleTimer();
+  settleTimer = setTimeout(
+    onResizeSettled,
+    userResizing ? DRAG_WATCHDOG_MS : RESIZE_SETTLE_MS
+  );
+}
+
+function reclampAfterUserResize() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  // Before the first layout the reveal gate owns sizing. Clamping here would
+  // set firstClampDone and show the window early, which is the pop this widget
+  // was built to avoid.
+  if (!firstClampDone) {
+    return;
+  }
+  const b = mainWindow.getBounds();
+  if (
+    lastAppliedSize &&
+    b.width === lastAppliedSize.width &&
+    b.height === lastAppliedSize.height
+  ) {
+    return; // the echo of our own setBounds, not a user resize. No loop.
+  }
+  clearSettleTimer();
+  applyClamp();
 }
 
 // --- menus ------------------------------------------------------------------
@@ -182,6 +393,34 @@ function buildWindowMenu() {
       },
     },
   ]);
+}
+
+// Pop the window menu at the cursor.
+//
+// NO x/y is passed, on purpose. `PopupOptions` (electron 33.4.11
+// electron.d.ts:20772-20786) documents x and y only as "Default is the current
+// mouse cursor position. Must be declared if `y` is declared." - it never
+// states their frame of reference, so any coordinate supplied here is a guess.
+// The first implementation guessed window-relative and translated the screen
+// point into it; that was measured WRONG on live screen - a right-click at
+// screen (1406,401) with the window at (1272,304) popped the menu at roughly
+// screen (137,105), exactly the untranslated delta, so popup() had treated the
+// window-relative offset as a screen point.
+//
+// Both callers are mouse-driven and both want the menu exactly where the click
+// landed, so the documented default IS the correct answer for both:
+//   - the system-context-menu handler, whose Point (electron.d.ts:2330-2334,
+//     "The screen coordinates the context menu was triggered at") is by
+//     definition the cursor position at that instant;
+//   - the lane-widget:win:menu IPC from a DOM contextmenu in a no-drag control
+//     area, which carries no point at all (preload.js:46 sends none).
+// Deferring to the default removes the coordinate math, the frame-of-reference
+// question and the whole class of error with it.
+function popupWindowMenu() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  buildWindowMenu().popup({ window: mainWindow });
 }
 
 function buildTrayMenu() {
@@ -223,6 +462,23 @@ function createTray() {
 // --- window -----------------------------------------------------------------
 
 function createWindow() {
+  // The show-gating flags describe THIS window, so reset them for every window
+  // this function builds. Without the reset a second createWindow (the
+  // "activate" path) would inherit windowShown = true from the first and the
+  // new window would never be revealed at all.
+  clearShowTimer();
+  readyToShow = false;
+  firstClampDone = false;
+  windowShown = false;
+  contentSize = { width: 0, height: 0 }; // the old window's box is meaningless.
+
+  // Same reasoning for the resize-settle state: it describes THIS window, and a
+  // stale lastAppliedSize carried over from a destroyed window could make the
+  // new window's first real resize look like our own echo and be skipped.
+  clearSettleTimer();
+  userResizing = false;
+  lastAppliedSize = null;
+
   const state = loadState();
   const probe = {
     x: state.x,
@@ -247,6 +503,27 @@ function createWindow() {
     alwaysOnTop: state.alwaysOnTop,
     skipTaskbar: true,
     resizable: true,
+    // A maximized state is meaningless for a window that sizes itself to its
+    // content, and on a frame:false + transparent:true window it is harmful:
+    // nothing calls setIgnoreMouseEvents, so the empty gutter is invisible and
+    // still takes mouse input over everything beneath it. maximizable:false
+    // (BaseWindowConstructorOptions, electron 33.4.11 electron.d.ts:3607-3612,
+    // @platform darwin,win32; the live property is electron.d.ts:3422 / :6048)
+    // clears WS_MAXIMIZEBOX, which is the gate Windows checks for Win+Up, the
+    // maximize button and a caption double-click - and widget.css makes the
+    // whole panel a drag region, i.e. caption, so that double-click is a real
+    // path here rather than a hypothetical one.
+    //
+    // PREVENTION ONLY, and deliberately not the whole fix. A half-screen Aero
+    // snap is gated on WS_THICKFRAME (resizable:true) and not on this flag, a
+    // third-party window manager can size the window however it likes, and any
+    // future programmatic maximize() ignores it outright - so this flag can
+    // never be the only defence. applyClamp's unmaximize() is the correction
+    // that holds no matter how the window got maximized; this only keeps the
+    // common paths from ever painting a full-desktop blocker in the first
+    // place, which the correction alone would leave on screen for up to one
+    // RESIZE_SETTLE_MS. Belt and braces, with the braces doing the work.
+    maximizable: false,
     focusable: true,
     hasShadow: false,
     show: false, // until ready-to-show, so it never appears pre-layout.
@@ -272,11 +549,72 @@ function createWindow() {
   mainWindow.setOpacity(state.opacity);
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
+    readyToShow = true;
+    if (firstClampDone) {
+      revealWindow(); // the size arrived first - nothing left to wait for.
+      return;
+    }
+    // Painted but not yet sized. Wait for the first clamp, under a timeout so a
+    // renderer that never reports a size cannot leave the window invisible.
+    clearShowTimer();
+    showTimer = setTimeout(() => {
+      showTimer = null;
+      firstClampDone = true; // give up waiting; show at the pre-layout size.
+      revealWindow();
+    }, FIRST_LAYOUT_TIMEOUT_MS);
+  });
+
+  // WINDOWS ONLY. widget.css puts `-webkit-app-region: drag` on the whole
+  // panel, which makes every pixel non-client area: a right-click there raises
+  // the Windows system menu and the DOM contextmenu event NEVER fires, so the
+  // lane-widget:win:menu IPC could never be reached from the panel body and
+  // "Close to tray" was unreachable. Electron emits this event for exactly that
+  // case (verified against electron 33.4.11, @platform win32, electron.d.ts:
+  // 2330-2334). Preventing the system menu and popping our own reaches the drag
+  // region WITHOUT giving up full-window drag; the IPC path still serves the
+  // no-drag control areas, and on any other platform this event never fires.
+  // The event's second argument (the trigger point, in SCREEN coordinates) is
+  // deliberately ignored - it is the cursor position, which is what popup()
+  // defaults to anyway. See popupWindowMenu for why passing it was wrong.
+  mainWindow.on("system-context-menu", (event) => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+    event.preventDefault();
+    popupWindowMenu();
   });
 
   mainWindow.on("move", persistWindowState);
-  mainWindow.on("resize", persistWindowState);
+
+  // A manual resize is corrected when the drag ENDS. `resize` keeps doing what
+  // it always did (debounced persistence - the gate confirmed geometry survives
+  // a tray Exit and relaunch) and additionally arms the settle fallback; it
+  // never clamps directly, because clamping on a stream of drag ticks is the
+  // "fighting the user" failure.
+  mainWindow.on("resize", () => {
+    persistWindowState();
+    scheduleSettleClamp();
+  });
+
+  // `will-resize` fires ONLY for a manual resize - "Resizing the window with
+  // `setBounds`/`setSize` will not emit this event" (electron 33.4.11
+  // electron.d.ts:4873-4891, @platform darwin,win32). That makes it an exact
+  // "a drag is in flight" marker, which is what lengthens the settle fallback
+  // so a mid-drag pause cannot snap the window out from under the cursor. The
+  // newBounds/details arguments are deliberately unused: we clamp the REAL
+  // bounds at drag end, not a predicted one, and the event is never prevented.
+  mainWindow.on("will-resize", () => {
+    userResizing = true;
+    scheduleSettleClamp();
+  });
+
+  // The primary trigger. "Emitted once when the window has finished being
+  // resized... usually emitted when the window has been resized manually"
+  // (electron 33.4.11 electron.d.ts:4306-4314, @platform darwin,win32).
+  mainWindow.on("resized", () => {
+    userResizing = false;
+    reclampAfterUserResize();
+  });
 
   // CLOSE MEANS HIDE. Only the tray Exit item quits (isQuitting).
   mainWindow.on("close", (event) => {
@@ -314,11 +652,12 @@ function registerIpc() {
     return next;
   });
 
+  // The no-drag path: a DOM contextmenu inside a control area, where the
+  // renderer DOES get the event. The frozen channel carries no payload, so the
+  // menu pops at the cursor - which is where that right-click landed. The drag
+  // region is covered by the system-context-menu handler.
   ipcMain.on("lane-widget:win:menu", () => {
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      return;
-    }
-    buildWindowMenu().popup({ window: mainWindow });
+    popupWindowMenu();
   });
 
   ipcMain.on("lane-widget:size", (_event, size) => {
@@ -339,7 +678,13 @@ function startPolling() {
     rcRoot: RC_ROOT,
     env: process.env,
     io: pollMod.createDefaultIo({}),
-    now: Date.now,
+    // NO `now` key on purpose. poll.js defaults to nowSeconds() and every pure
+    // module downstream (locks.js ageS, heartbeat.js, model.js) documents `now`
+    // as epoch SECONDS, because the lock `ts` is written by python time.time().
+    // Passing Date.now (MILLISECONDS) here made every age 1000x too large - the
+    // live run rendered "age 20695328d" - and silently tripped every age-based
+    // threshold in the app, including the heartbeat stall check. Inheriting the
+    // module's own default is one fewer place to get the unit wrong.
     fastMs: state.fastMs,
     log: (msg) => {
       console.warn(msg);
@@ -376,6 +721,8 @@ if (!gotLock) {
   });
 
   app.on("will-quit", () => {
+    clearShowTimer();
+    clearSettleTimer();
     if (poller) {
       poller.stop();
       poller = null;

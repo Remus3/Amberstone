@@ -105,7 +105,9 @@ test("normalizeState keeps good values and clamps fastMs", () => {
     y: 20,
     width: 500,
     height: 400,
-    opacity: 0.5,
+    // In range: at or above MIN_OPACITY, so it must survive untouched. It used
+    // to be 0.5, which the 0.85 contrast floor now clamps up.
+    opacity: 0.9,
     alwaysOnTop: false,
     showFree: false,
     fastMs: 10,
@@ -114,10 +116,43 @@ test("normalizeState keeps good values and clamps fastMs", () => {
   assert.strictEqual(n.y, 20);
   assert.strictEqual(n.width, 500);
   assert.strictEqual(n.height, 400);
-  assert.strictEqual(n.opacity, 0.5);
+  assert.strictEqual(n.opacity, 0.9);
   assert.strictEqual(n.alwaysOnTop, false);
   assert.strictEqual(n.showFree, false);
   assert.ok(n.fastMs >= store.MIN_FAST_MS, "fastMs floored");
+});
+
+// The regression this pins: the clamp floored at 0.1 while the UI slider
+// floored higher, so a hand-edited state file could persist a functionally
+// invisible panel that the slider could never reach to undo. The floor is now
+// MIN_OPACITY and the two are COUPLED - moving one without the other reopens
+// exactly this hole.
+test("normalizeState clamps a hand-edited low opacity UP to the floor", () => {
+  for (const bad of [0.1, 0.3, 0.5, 0.84, 0.0001]) {
+    const n = store.normalizeState({ opacity: bad });
+    assert.strictEqual(
+      n.opacity,
+      store.MIN_OPACITY,
+      "opacity " + bad + " must be raised to the floor, not honoured"
+    );
+  }
+});
+
+test("normalizeState clamps opacity down to MAX_OPACITY", () => {
+  for (const bad of [1.0001, 5, 1e9]) {
+    assert.strictEqual(store.normalizeState({ opacity: bad }).opacity, store.MAX_OPACITY, String(bad));
+  }
+});
+
+test("MIN_OPACITY is the documented contrast floor and DEFAULTS clears it", () => {
+  // If this moves, the renderer's slider floor MUST move with it.
+  assert.strictEqual(store.MIN_OPACITY, 0.85);
+  assert.strictEqual(store.MAX_OPACITY, 1);
+  assert.ok(
+    store.DEFAULTS.opacity >= store.MIN_OPACITY &&
+      store.DEFAULTS.opacity <= store.MAX_OPACITY,
+    "the default must itself be inside the clamp range"
+  );
 });
 
 test("normalizeState on garbage input returns the defaults", () => {

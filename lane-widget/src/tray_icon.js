@@ -10,6 +10,13 @@
 // two are the lavender-silver structural metal (#ad9dbd), matching the widget's
 // own palette. Never gold - gold is not this theme's metal.
 //
+// The taper is carried by WIDTH ALONE (12 / 9 / 6 px at 16, 24 / 17 / 12 at 32)
+// and every bar body is fully opaque. Bar 3 used to be drawn at body alpha 200
+// with alpha-110 end caps while bars 1 and 2 were body 255 / caps 140, which on
+// a dark taskbar read as a rendering artefact rather than a deliberate third
+// bar. All three bars now share body alpha 255 and cap alpha 140; the caps are
+// the only translucent pixels and they exist to soften the bar ends.
+//
 // Two sizes are supplied. Windows picks the 16px glyph for a standard-DPI
 // taskbar and the 32px one when the shell scales; supplying only 16 makes a
 // scaled tray look soft. Both are RGBA (colour type 6) so the corners stay
@@ -23,16 +30,16 @@
 // 16x16 RGBA PNG.
 const TRAY_ICON_16_DATA_URL =
   "data:image/png;base64," +
-  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAO0lEQVR42mNgGD5g" +
-  "mtvNnmluN/8TiXuob8DAg7Vz9/asnbv3Px7cQ1sDBkUY5K2du/cEGs6jnwFDFwAA" +
-  "n36UAUvXzZ0AAAAASUVORK5CYII=";
+  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAM0lEQVR42mNgGD5g" +
+  "mtvNnmluN/8TiXuob8DAg7Vz9/asnbv3Px7cQ1sDBm0Y9NDPgKELAO9UljE6Awkb" +
+  "AAAAAElFTkSuQmCC";
 
 // 32x32 RGBA PNG - the same mark at twice the scale.
 const TRAY_ICON_32_DATA_URL =
   "data:image/png;base64," +
-  "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAS0lEQVR42u3OOw0A" +
-  "IAwAUdQhByWd2SqhErpjATWwM5EQEj73ktsvBACDHKvkWNumhIHzBwBTF1NviwkD" +
-  "9w4App5MvUyWGHhvAPhOB1owWh/WBvy6AAAAAElFTkSuQmCC";
+  "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAARklEQVR42u3Suw0A" +
+  "IAwDUaZjOtd0GSEjMEimgZ4OISQ+9yT3VzglAIOSQyVH2zQRcH4A4FblVtviRMC9" +
+  "AcDkCUXAewHAdzqfLWOnCwX99gAAAABJRU5ErkJggg==";
 
 // Back-compat alias: the 16px glyph is the base image the tray is created from.
 const TRAY_ICON_DATA_URL = TRAY_ICON_16_DATA_URL;
