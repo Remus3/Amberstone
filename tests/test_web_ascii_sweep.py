@@ -412,7 +412,27 @@ _WEB = _REPO_ROOT / "web"
 # the operator to the retired Game-PC (ADR-011) and a deleted script; it names
 # the RC-LCUAgent task and tools/lcu_agent.py. Pinned behaviourally by
 # tests/test_legacy_index_retired_gamepc_rm462.py.
-_LIVE_HALF_DIGEST = "e4b4aee2cc7ea323a9eedfaabaa7ce7f3c131812cecbbf10c2c765c37b93fa70"
+# RE-CAPTURED at the Mission Control web-UI retirement (2026-09-20),
+# superseding the RM-462 capture immediately above. NOT the ordinary case: this
+# is a pure DELETION, the first one this pin has seen. `_web_sources()` returns
+# 167 rather than 171 - the four removed are web/mc/arm_confirm.js,
+# web/mc/index.html, web/mc/mc.css and web/mc/mc.js, the whole of the retired
+# page (web/mc/arm_confirm.test.mjs went with them but never counted here:
+# tools/web_ascii_sweep.py:42 `_LANGS` covers .js/.css/.html and not .mjs).
+# ATTRIBUTED, NOT INFERRED, and a deletion needs a different attribution move
+# than an edit does: substituting one pre-edit file back cannot work when the
+# file set itself changed, so the digest was instead recomputed from the HEAD
+# BLOBS of the 167 SURVIVING paths. That reproduces this value EXACTLY, which
+# proves the deletion is the whole change and that not one surviving web source
+# altered its live half. Run it that way again next time a path leaves the set.
+#
+# One consequence worth stating rather than discovering later: the lane-label
+# roster this digest used to co-observe lived in web/mc/mc.js and is gone, so
+# tests/test_mc_lane_roster_contract.py was deleted with it. The lane roster is
+# still pinned where it is authoritative - ops/loop/lanes.py and
+# ops/loop/lane_launcher.py - but there is no longer a third, rendered copy to
+# hold them to, because there is no longer a renderer.
+_LIVE_HALF_DIGEST = "4e3f9f08c37db348b3fcacadfa0628a9d844d20f479069a2a8bae4304c4f1161"
 
 
 def _web_sources() -> list[Path]:

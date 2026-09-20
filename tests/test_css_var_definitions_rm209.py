@@ -132,7 +132,10 @@ def test_guard_corpus_is_populated():
         "web/css/panels/base.css",
         "web/css/panels/champ_benchmarks.css",
         "web/css/panels/build_order.css",
-        "web/mc/mc.css",
+        # web/mc/mc.css is deliberately absent: the Mission Control web UI was
+        # retired and web/mc/ no longer exists. Removed from the must-list
+        # rather than left to fail, and the `len(rels) > 100` floor above is
+        # what still catches a corpus that collapses for any other reason.
         "web/js/main.js",
     ):
         assert must in rels, f"guard corpus missing {must}"
