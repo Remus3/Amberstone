@@ -183,21 +183,25 @@ class BlockSelectionMathTests(unittest.TestCase):
         self.assertGreater(checked, 60, "expected many single-int entries")
 
     def test_one_past_end_clamps_to_last_damage_block_not_index_error(self):
-        """The known one-past-end indices (idx == len(damage_blocks)) must
-        resolve to the LAST damage block - the documented clamp-to-last
-        convention (numerically the Total/Max/component roll-up). Asserts
+        """A one-past-end index (idx == len(damage_blocks)) must resolve to
+        the LAST damage block - the clamp-to-last runtime convention. Asserts
         the load-bearing invariant: the pick equals ``_evaluate_block`` of
         the last damage block, never raises IndexError, and never silently
-        falls back to block 0. (The block's *name* is intentionally not
-        asserted - sum-list components like Malphite W [2,3] are correctly
-        named per-component, not 'Total'.)"""
+        falls back to block 0.
+
+        F2 (2026-09-21): this used to harvest its one-past-end cases FROM
+        the registry (~16 of them), i.e. it enshrined registry entries that
+        only worked through the clamp. Those were renumbered to damage
+        ordinals and ``test_block_index_damage_ordinal_f2`` now asserts the
+        registry has NONE, so the clamp is exercised here with a synthetic
+        one-past-end index on every mapped form instead."""
         ctx = _ctx()
         found = 0
         for champ, keymap in self.fmap_all.items():
             if champ not in self.snap.champions:
                 continue
             fmap, _ = get_form_index_for(champ)
-            for k, raw_v in keymap.items():
+            for k in keymap:
                 base_k = k[0] if (len(k) == 2 and k[1] in "234") else k
                 form, _forms = _resolved_form(self.snap, fmap, champ, base_k)
                 if form is None:
@@ -205,9 +209,7 @@ class BlockSelectionMathTests(unittest.TestCase):
                 dmg = _damage_blocks(form)
                 if not dmg:
                     continue
-                for iv in _flatten_idx_values(raw_v):
-                    if iv != len(dmg):  # exactly one-past-end
-                        continue
+                for iv in (len(dmg),):  # exactly one-past-end
                     found += 1
                     # Must equal evaluating the last block, not raise,
                     # not block 0.
@@ -227,7 +229,7 @@ class BlockSelectionMathTests(unittest.TestCase):
                                 got, exp_b0, places=6,
                                 msg=f"{champ} {k}: clamp fell back to block 0",
                             )
-        self.assertGreaterEqual(found, 10, "expected the documented ~16 clamp cases")
+        self.assertGreater(found, 150, "expected every mapped form exercised")
 
     def test_unmapped_champion_defaults_to_first_damage_block(self):
         """An UNMAPPED champion has an empty block-index map -> the engine

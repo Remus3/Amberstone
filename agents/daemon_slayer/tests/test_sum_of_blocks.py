@@ -21,7 +21,8 @@ Engine surface:
 
 Seed entries (4):
   * Camille W=[0, 1]      - Tactical Sweep base + Outer Cone Bonus
-  * Malphite W=[2, 3]     - active cast + first empowered AA
+  * Malphite W=[0, 1]     - first empowered AA + active cast (F2 2026-09-21:
+                            was the raw-list [2, 3], which clamped to [1, 1])
   * Heimerdinger W=[0,1,1,1,1] - Initial + 4x Subsequent rockets
   * Katarina R=[1, 3]     - full Death Lotus single-target totals
 
@@ -209,14 +210,17 @@ class RegistrySeedEntriesTests(unittest.TestCase):
     def test_camille_W_is_two_block_sum(self) -> None:
         m, src = get_block_index_for("Camille")
         self.assertEqual(src, "champion")
-        # Pre-s207 Q=2 still present (s195); W=[0,1] new.
-        self.assertEqual(m.get("Q"), 2)
+        # Pre-s207 Q still present (s195; F2 renumbered raw 2 -> ordinal 1);
+        # W=[0,1] new.
+        self.assertEqual(m.get("Q"), 1)
         self.assertEqual(m.get("W"), [0, 1])
 
     def test_malphite_W_is_two_block_sum(self) -> None:
         m, src = get_block_index_for("Malphite")
         self.assertEqual(src, "champion")
-        self.assertEqual(m.get("W"), [2, 3])
+        # F2 (2026-09-21): damage ordinals. The old raw-list [2, 3] clamped
+        # to [1, 1] - the cone block twice, the empowered-AA block never.
+        self.assertEqual(m.get("W"), [0, 1])
 
     def test_heimerdinger_W_is_initial_plus_four_subsequent(self) -> None:
         m, src = get_block_index_for("Heimerdinger")
@@ -306,18 +310,21 @@ class AbilityDpsSumOfBlocksTests(unittest.TestCase):
             places=4,
         )
 
-    def test_malphite_W_sum_exceeds_block_2_alone(self) -> None:
+    def test_malphite_W_sum_exceeds_block_0_alone(self) -> None:
         s_sum = self._spell("Malphite", "W")
-        s_forced = self._spell_forced("Malphite", "W", 2)
+        s_forced = self._spell_forced("Malphite", "W", 0)
         self.assertGreater(s_sum.raw_damage_per_cast, s_forced.raw_damage_per_cast)
 
     def test_malphite_W_sum_matches_explicit_arithmetic(self) -> None:
+        # F2 (2026-09-21): damage ordinals 0 + 1. The pre-F2 forced 2 / 3
+        # both clamped to ordinal 1, which is why the old version of this
+        # test passed against a double-counted sum.
         s_sum = self._spell("Malphite", "W")
-        s_block2 = self._spell_forced("Malphite", "W", 2)
-        s_block3 = self._spell_forced("Malphite", "W", 3)
+        s_block0 = self._spell_forced("Malphite", "W", 0)
+        s_block1 = self._spell_forced("Malphite", "W", 1)
         self.assertAlmostEqual(
             s_sum.raw_damage_per_cast,
-            s_block2.raw_damage_per_cast + s_block3.raw_damage_per_cast,
+            s_block0.raw_damage_per_cast + s_block1.raw_damage_per_cast,
             places=4,
         )
 
@@ -410,9 +417,10 @@ class BackwardCompatIntEntriesTests(unittest.TestCase):
         self.assertEqual(m.get("E"), {"default": 1, "target_no_setup": 0})
 
     def test_camille_Q_still_int_alongside_new_W_list(self) -> None:
-        # Q=2 (s195) preserved as int; W=[0,1] (s207) added as list.
+        # Q (s195) preserved as int; W=[0,1] (s207) added as list. F2
+        # (2026-09-21) renumbered Q from raw-list 2 to damage-ordinal 1.
         m, _ = get_block_index_for("Camille")
-        self.assertEqual(m.get("Q"), 2)
+        self.assertEqual(m.get("Q"), 1)
         self.assertIsInstance(m.get("Q"), int)
         self.assertIsInstance(m.get("W"), list)
 
