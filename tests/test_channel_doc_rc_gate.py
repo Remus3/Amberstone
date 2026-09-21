@@ -59,8 +59,9 @@ def _sibling_roots() -> list[Path]:
 
     Same per-host config the cross-repo inbox poller reads. It is gitignored,
     so a fresh clone and CI resolve an EMPTY list here and the mirror arm below
-    reports an empty parameter set rather than passing. That is the honest
-    shape: a skip that says no carrier was checked. A linked worktree is NOT in
+    spells that as ONE explicit named skip (pytest.ini fails an empty parameter
+    set at collect). That is the honest shape: a skip that says no carrier was
+    checked. A linked worktree is NOT in
     that set (RM-433): it reads the main working tree's copy. A config that
     EXISTS but names zero repos is an assertion failure, never an empty set.
     """
@@ -224,7 +225,23 @@ def test_channel_doc_grammar_table_matches_rc_gate6():
         )
 
 
-@pytest.mark.parametrize("root", _sibling_roots(), ids=lambda p: p.name)
+# A host with no sibling config (CI) has ZERO roots. pytest.ini sets
+# empty_parameter_set_mark = fail_at_collect, so the no-carrier state is spelled
+# as ONE explicit skip rather than an empty parameter set.
+_ROOT_PARAMS = _sibling_roots() or [
+    pytest.param(
+        None,
+        id="no-carrier-configured",
+        marks=pytest.mark.skip(
+            reason="no sibling carrier tree is configured on this host"
+        ),
+    )
+]
+
+
+@pytest.mark.parametrize(
+    "root", _ROOT_PARAMS, ids=lambda p: p.name if p is not None else "none"
+)
 def test_channel_doc_matches_the_sibling_copies_when_present(root):
     """Byte identity with a carrier that has already vendored THIS version.
 
