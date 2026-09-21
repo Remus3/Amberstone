@@ -178,7 +178,10 @@ class BucketSelectionPropertyTests(unittest.TestCase):
     def test_divergence_is_real_and_the_counts_are_what_was_filed(self):
         # Guards the sweep above against vacuity: if every lean bucket equalled
         # balanced, the sweep would pass while proving nothing.
-        expected_counts = {"sr": 71, "aram": 71, "arena": 67}
+        # Re-measured on the 16.18.1 Lane B tables (2026-09-20): arena 67 -> 64
+        # after the regen (Arena mirror stat moves + heal/shield power re-measure);
+        # sr / aram unchanged at 71.
+        expected_counts = {"sr": 71, "aram": 71, "arena": 64}
         for _game_mode, stem in MODE_STEMS:
             table = _table(stem)
             diverging = sum(
