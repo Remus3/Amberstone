@@ -45,6 +45,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/aram-balance` | aram_balance |
 | `/api/archetype-nudge` | archetype |
 | `/api/ban-suggest` | ban_suggest |
+| `/api/branch-review` / `/api/branch-review/runs` | coach |
 | `/api/cc-blended-ehp-threat` | cc_blended_ehp_threat |
 | `/api/cc-conditional-pressure` | cc_conditional_pressure |
 | `/api/cc-pairing` | cc_pairing |
@@ -60,6 +61,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/damage-mix` | damage_mix |
 | `/api/dictionary/{augments,champion-tags,items,runes}` | dictionary |
 | `/api/draft-elo` | draft_elo |
+| `/api/draft-score` | draft_score |
 | `/api/ds-combo` | ds_combo |
 | `/api/ds-knobs` | ds_knobs |
 | `/api/ds-matchup` | ds_matchup |
@@ -78,13 +80,17 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/mains` / `/api/top8` | lobby_aux |
 | `/api/moon-sync-status` | moon_sync |
 | `/api/op-score-curve` | op_score |
+| `/api/ops/drift-strip` / `/api/ops/gated-queue` / `/api/ops/seam-map` | ops_panels |
+| `/api/patch-impact` | patch_impact |
 | `/api/peel-priority` | peel_priority |
 | `/api/perf-curve` | perf_curve |
 | `/api/personal-build` / `/api/personal-context` / `/api/personal-vs` | personal_* |
 | `/api/player-profile` / `/api/player-snapshot` | player_* |
+| `/api/playstyle-labels` | playstyle_labels |
 | `/api/post-game-rubric` / `/api/post-game-wpa` | post_game_* |
 | `/api/rank-tier-bench` / `/api/role-bracket-bench` | bench_rank_tier / bench_role_bracket |
 | `/api/replay/events` | replay_events |
+| `/api/session-hygiene` | session_hygiene |
 | `/api/snowball-elasticity` | snowball_elasticity |
 | `/api/spend/gates` | coach |
 | `/api/spike-curve` / `/api/spike-markers` | spike_curve / spike_markers |
@@ -93,7 +99,8 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/ward-heat` | ward_heat |
 
 Static assets (`routes_static`): `/`, `/css/`, `/js/`, `/data/`, `/icons/*`,
-`/agent/`, `/mock/`, `/manifest.json`, `/icon.svg`.
+`/agent/`, `/mock/`, `/manifest.json`, `/icon.svg`, `/ops.html` (the
+between-game ops panels page, which reads the three `/api/ops/*` routes).
 
 ---
 
