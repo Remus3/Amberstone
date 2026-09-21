@@ -26,6 +26,11 @@ Usage:
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --puuid X      # override operator PUUID
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --dry-run      # list IDs only, no writes
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --no-timeline  # skip timeline (faster)
+  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts\\rewind_catchup.py --retry-only   # drain 429-parked matches only
+
+A Riot 429 is never recorded as "no data": a match whose detail or timeline
+stays rate-limited is parked in the ``fetch_retry`` table and re-fetched by
+every later run (see drain_retry_queue).
 """
 
 from __future__ import annotations
@@ -62,6 +67,113 @@ REGION_REGIONAL = "americas"  # Match-V5 lives on the regional cluster
 # Cold-start should not happen (DB has 2846 rows); guardrail only.
 COLD_START_DAYS = 30
 COLD_START_SECS = COLD_START_DAYS * 86400
+
+# --- 429 handling ------------------------------------------------------
+#
+# Every Match-V5 helper returns a bare None for BOTH "Riot has no such
+# resource" (404/403 - permanent) and "Riot rate-limited us" (429 - ask
+# again later). Reading that None as "no data" wrote a 429 into the DB as
+# has_timeline=0 for good, because nothing revisits a written match. The
+# fix reads riot_api.track_outcomes().rate_limited to tell them apart,
+# retries a 429 a bounded number of times in-call, and if it persists
+# parks the match in the ``fetch_retry`` table, which drain_retry_queue()
+# works off on later runs (bounded again, by MAX_RETRY_RUNS).
+#
+# Event-mode matches (ARAM Mayhem, queue 2400 / gameMode KIWI) have NO
+# Match-V5 timeline: Riot answers 403/404, which is FETCH_ABSENT, so their
+# has_timeline=0 stays - it is the correct, permanent answer.
+
+FETCH_OK = "ok"
+FETCH_ABSENT = "absent"
+FETCH_RATE_LIMITED = "rate_limited"
+
+# Seconds to wait before each in-call re-attempt after a 429. The bucket in
+# core.riot_api already enforces the Retry-After cooldown; these waits keep
+# the next attempt from spending itself inside that same cooldown.
+DEFAULT_BACKOFF_S: tuple[float, ...] = (5.0, 20.0)
+
+# How many catchup runs may see a parked match rate-limited before it is
+# abandoned (logged, removed from the queue, has_timeline left at 0).
+MAX_RETRY_RUNS = 5
+
+# Queues / modes whose Match-V5 timeline legitimately does not exist. Used
+# by the backfill to avoid re-queueing rows whose has_timeline=0 is correct.
+EVENT_MODE_NO_TIMELINE_QUEUES = frozenset({2400})
+EVENT_MODE_NO_TIMELINE_GAME_MODES = frozenset({"KIWI"})
+
+RETRY_TABLE_SQL = """
+    CREATE TABLE IF NOT EXISTS fetch_retry (
+        match_id        TEXT PRIMARY KEY,
+        kind            TEXT NOT NULL,     -- 'timeline' | 'match'
+        reason          TEXT,
+        attempts        INTEGER NOT NULL DEFAULT 0,
+        enqueued_at     TEXT,
+        last_attempt_at TEXT
+    )
+"""
+
+
+class PaginationRateLimited(RuntimeError):
+    """A match-id page stayed rate-limited after the bounded retries.
+
+    Raised instead of treating the page as the end of the window: ids come
+    newest-first, so hydrating what was collected would advance the DB's
+    newest ``game_creation_ts`` past the older, never-listed matches, and
+    the next run (which starts its window there) would never see them.
+    """
+
+    def __init__(self, collected: list[str]):
+        super().__init__(f"match-id pagination rate-limited after "
+                         f"{len(collected)} new id(s)")
+        self.collected = collected
+
+
+def _now_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def fetch_with_rate_limit_retry(
+    call,
+    *,
+    backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S,
+    sleep=time.sleep,
+):
+    """Run ``call()`` (a Riot helper returning data-or-None) with 429 retry.
+
+    Returns ``(result, status)``; status is FETCH_OK, FETCH_ABSENT (None for
+    any reason other than a rate limit - permanent) or FETCH_RATE_LIMITED
+    (still throttled after ``len(backoff_s) + 1`` attempts).
+    """
+    attempts = len(backoff_s) + 1
+    for i in range(attempts):
+        with riot_api.track_outcomes() as scope:
+            result = call()
+        if result is not None:
+            return result, FETCH_OK
+        if not scope.rate_limited:
+            return None, FETCH_ABSENT
+        if i < attempts - 1:
+            sleep(backoff_s[i])
+    return None, FETCH_RATE_LIMITED
+
+
+def ensure_retry_table(conn: sqlite3.Connection) -> None:
+    conn.execute(RETRY_TABLE_SQL)
+
+
+def enqueue_retry(
+    conn: sqlite3.Connection, match_id: str, kind: str, reason: str,
+) -> None:
+    """Park ``match_id`` for a later re-fetch. Idempotent (keeps an existing
+    entry and its attempt count). Caller commits."""
+    if kind not in ("timeline", "match"):
+        raise ValueError(f"unknown retry kind: {kind!r}")
+    ensure_retry_table(conn)
+    conn.execute(
+        "INSERT OR IGNORE INTO fetch_retry "
+        "(match_id, kind, reason, attempts, enqueued_at) VALUES (?,?,?,0,?)",
+        (match_id, kind, reason, _now_iso()),
+    )
 
 
 # --- DB helpers -------------------------------------------------------
@@ -305,16 +417,141 @@ def write_match(
     insert_rows(conn, "teams", team_rows)
 
     if timeline:
-        tl_info = timeline.get("info", {}) or {}
-        frames = tl_info.get("frames", []) or []
-        frame_rows: list[dict] = []
-        event_rows: list[dict] = []
-        for frame in frames:
-            frame_rows.extend(parse_frame(frame, match_id))
-            for ev in (frame.get("events") or []):
-                event_rows.append(parse_event(ev, match_id))
-        insert_rows(conn, "timeline_frames", frame_rows)
-        insert_rows(conn, "timeline_events", event_rows)
+        _insert_timeline_rows(conn, match_id, timeline)
+
+
+def _insert_timeline_rows(
+    conn: sqlite3.Connection, match_id: str, timeline: dict,
+) -> None:
+    tl_info = timeline.get("info", {}) or {}
+    frames = tl_info.get("frames", []) or []
+    frame_rows: list[dict] = []
+    event_rows: list[dict] = []
+    for frame in frames:
+        frame_rows.extend(parse_frame(frame, match_id))
+        for ev in (frame.get("events") or []):
+            event_rows.append(parse_event(ev, match_id))
+    insert_rows(conn, "timeline_frames", frame_rows)
+    insert_rows(conn, "timeline_events", event_rows)
+
+
+def apply_timeline(
+    conn: sqlite3.Connection, match_id: str, timeline: dict,
+) -> None:
+    """Attach a late-fetched timeline to an already-written match.
+
+    REPLACES any frame/event rows for the match (the two tables have no
+    natural unique key, so INSERT OR IGNORE would append a second copy) and
+    flips has_timeline to 1. Only call with a timeline actually in hand - a
+    failed fetch must never delete what is there. Caller commits.
+    """
+    conn.execute("DELETE FROM timeline_frames WHERE match_id = ?", (match_id,))
+    conn.execute("DELETE FROM timeline_events WHERE match_id = ?", (match_id,))
+    _insert_timeline_rows(conn, match_id, timeline)
+    conn.execute("UPDATE matches SET has_timeline = 1 WHERE match_id = ?",
+                 (match_id,))
+
+
+def record_hydrated(
+    conn: sqlite3.Connection,
+    match_id: str,
+    detail: dict,
+    timeline: dict | None,
+    timeline_status: str,
+) -> None:
+    """write_match, plus parking the match for a timeline re-fetch when the
+    timeline was rate-limited (instead of leaving has_timeline=0 as if Riot
+    had said "no timeline"). Caller commits, so both land in one txn."""
+    write_match(conn, match_id, detail, timeline)
+    if timeline is None and timeline_status == FETCH_RATE_LIMITED:
+        enqueue_retry(conn, match_id, "timeline", "timeline 429")
+
+
+def drain_retry_queue(
+    conn: sqlite3.Connection,
+    *,
+    max_runs: int = MAX_RETRY_RUNS,
+    limit: int = 0,
+    backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S,
+    sleep=time.sleep,
+) -> dict[str, int]:
+    """Re-fetch every parked match. Commits per match.
+
+    Per entry: success -> write / attach timeline, dequeue ("recovered");
+    404/403 -> dequeue, has_timeline stays 0 ("permanent" - the event-mode
+    case); still 429 -> attempts += 1 and stop draining this run, because
+    the bucket is hot ("deferred"), or dequeue once attempts reaches
+    ``max_runs`` ("abandoned").
+    """
+    ensure_retry_table(conn)
+    conn.commit()
+    counts = {"recovered": 0, "permanent": 0, "deferred": 0, "abandoned": 0}
+    sql = "SELECT match_id, kind, attempts FROM fetch_retry ORDER BY enqueued_at, match_id"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+    rows = conn.execute(sql).fetchall()
+    for match_id, kind, attempts in rows:
+        if kind == "timeline" and conn.execute(
+                "SELECT 1 FROM matches WHERE match_id = ?", (match_id,)
+        ).fetchone() is None:
+            kind = "match"
+
+        rate_limited = False
+        if kind == "match":
+            detail, d_status = fetch_with_rate_limit_retry(
+                lambda m=match_id: riot_api.get_match(m, region=REGION_REGIONAL),
+                backoff_s=backoff_s, sleep=sleep)
+            if d_status == FETCH_OK:
+                timeline, t_status = fetch_with_rate_limit_retry(
+                    lambda m=match_id: riot_api.get_match_timeline(
+                        m, region=REGION_REGIONAL),
+                    backoff_s=backoff_s, sleep=sleep)
+                write_match(conn, match_id, detail, timeline)
+                if t_status == FETCH_RATE_LIMITED:
+                    # Detail landed; only the timeline is still owed.
+                    conn.execute(
+                        "UPDATE fetch_retry SET kind='timeline', "
+                        "attempts=attempts+1, last_attempt_at=? WHERE match_id=?",
+                        (_now_iso(), match_id))
+                    conn.commit()
+                    counts["deferred"] += 1
+                    break
+                outcome = "recovered"
+            elif d_status == FETCH_ABSENT:
+                outcome = "permanent"
+            else:
+                rate_limited = True
+        else:
+            timeline, t_status = fetch_with_rate_limit_retry(
+                lambda m=match_id: riot_api.get_match_timeline(
+                    m, region=REGION_REGIONAL),
+                backoff_s=backoff_s, sleep=sleep)
+            if t_status == FETCH_OK:
+                apply_timeline(conn, match_id, timeline)
+                outcome = "recovered"
+            elif t_status == FETCH_ABSENT:
+                outcome = "permanent"
+            else:
+                rate_limited = True
+
+        if rate_limited:
+            if attempts + 1 >= max_runs:
+                conn.execute("DELETE FROM fetch_retry WHERE match_id=?", (match_id,))
+                _log.warning("rewind_catchup: %s still rate-limited after %d runs; "
+                             "abandoned (has_timeline stays 0)", match_id, attempts + 1)
+                counts["abandoned"] += 1
+            else:
+                conn.execute(
+                    "UPDATE fetch_retry SET attempts=attempts+1, last_attempt_at=? "
+                    "WHERE match_id=?", (_now_iso(), match_id))
+                counts["deferred"] += 1
+            conn.commit()
+            break
+
+        conn.execute("DELETE FROM fetch_retry WHERE match_id=?", (match_id,))
+        conn.commit()
+        counts[outcome] += 1
+    return counts
 
 
 # --- Catch-up loop ----------------------------------------------------
@@ -327,22 +564,34 @@ def collect_new_match_ids(
     page_size: int = 100,
     max_pages: int = 100,
     limit: int = 0,
+    backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S,
+    sleep=time.sleep,
 ) -> list[str]:
     """Walk Match-V5 pages forward from start_time_unix_s until we see an
     empty page or hit max_pages. Returns NEW match ids only.
+
+    Raises PaginationRateLimited when a page stays rate-limited after the
+    bounded retries - see that class for why this must not end the window.
     """
     new_ids: list[str] = []
     for page in range(max_pages):
         start = page * page_size
-        ids = riot_api.get_recent_matches(
-            puuid,
-            count=page_size,
-            region=REGION_REGIONAL,
-            start=start,
-            start_time_unix_s=start_time_unix_s,
+        ids, status = fetch_with_rate_limit_retry(
+            lambda s=start: riot_api.get_recent_matches(
+                puuid,
+                count=page_size,
+                region=REGION_REGIONAL,
+                start=s,
+                start_time_unix_s=start_time_unix_s,
+            ),
+            backoff_s=backoff_s, sleep=sleep,
         )
+        if status == FETCH_RATE_LIMITED:
+            print(f"    page {page}: still rate-limited after retries - "
+                  f"aborting so the window does not skip older matches")
+            raise PaginationRateLimited(new_ids)
         if ids is None:
-            print(f"    page {page}: API call returned None (rate-limited or key issue)")
+            print(f"    page {page}: API call returned None (key issue or not found)")
             break
         if not ids:
             print(f"    page {page}: empty - end of window")
@@ -361,12 +610,25 @@ def collect_new_match_ids(
     return new_ids
 
 
-def hydrate_match(match_id: str, fetch_timeline: bool) -> tuple[dict | None, dict | None]:
-    detail = riot_api.get_match(match_id, region=REGION_REGIONAL)
-    timeline = None
+def hydrate_match(
+    match_id: str,
+    fetch_timeline: bool,
+    *,
+    backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S,
+    sleep=time.sleep,
+) -> tuple[dict | None, dict | None, str, str]:
+    """Fetch detail (+ timeline). Returns ``(detail, timeline, detail_status,
+    timeline_status)``; a skipped timeline (``fetch_timeline=False`` or no
+    detail) reports FETCH_ABSENT, which never enqueues a retry."""
+    detail, d_status = fetch_with_rate_limit_retry(
+        lambda: riot_api.get_match(match_id, region=REGION_REGIONAL),
+        backoff_s=backoff_s, sleep=sleep)
+    timeline, t_status = None, FETCH_ABSENT
     if detail is not None and fetch_timeline:
-        timeline = riot_api.get_match_timeline(match_id, region=REGION_REGIONAL)
-    return detail, timeline
+        timeline, t_status = fetch_with_rate_limit_retry(
+            lambda: riot_api.get_match_timeline(match_id, region=REGION_REGIONAL),
+            backoff_s=backoff_s, sleep=sleep)
+    return detail, timeline, d_status, t_status
 
 
 def main() -> int:
@@ -383,6 +645,9 @@ def main() -> int:
                         help="Skip the timeline fetch for each match")
     parser.add_argument("--max-pages", type=int, default=100,
                         help="Cap on Riot pagination depth (each page = 100 ids)")
+    parser.add_argument("--retry-only", action="store_true",
+                        help="Only drain the fetch_retry queue (429-parked "
+                             "matches); skip the new-match walk")
     args = parser.parse_args()
 
     if not riot_api.is_configured():
@@ -414,6 +679,16 @@ def main() -> int:
         pass
     save_state(state)
 
+    if args.retry_only:
+        if args.dry_run:
+            ensure_retry_table(conn)
+            pending = conn.execute(
+                "SELECT kind, COUNT(*) FROM fetch_retry GROUP BY kind").fetchall()
+            print(f"fetch_retry pending: {dict(pending) or {}}")
+            conn.close()
+            return 0
+        return _drain_and_report(conn)
+
     newest_ms = newest_creation_ts(conn)
     if newest_ms <= 0:
         start_unix_s = int(time.time()) - COLD_START_SECS
@@ -426,13 +701,22 @@ def main() -> int:
     print(f"Already in DB: {len(existing):,} matches")
 
     print("\nFetching new match ids...")
-    new_ids = collect_new_match_ids(
-        puuid, start_unix_s, existing,
-        max_pages=args.max_pages, limit=args.limit,
-    )
+    try:
+        new_ids = collect_new_match_ids(
+            puuid, start_unix_s, existing,
+            max_pages=args.max_pages, limit=args.limit,
+        )
+    except PaginationRateLimited as exc:
+        print(f"Riot rate-limited the match-id walk ({exc}); nothing hydrated "
+              f"so the next run's window still covers every unlisted match.")
+        conn.close()
+        return 3
     if not new_ids:
         print("No new matches.  DB is up to date.")
-        return 0
+        if args.dry_run:
+            conn.close()
+            return 0
+        return _drain_and_report(conn)
 
     print(f"\n{len(new_ids)} match(es) to hydrate")
     if args.dry_run:
@@ -445,14 +729,26 @@ def main() -> int:
     done = errs = 0
     t0 = time.time()
     for i, mid in enumerate(new_ids, 1):
-        detail, timeline = hydrate_match(mid, not args.no_timeline)
+        detail, timeline, d_status, t_status = hydrate_match(
+            mid, not args.no_timeline)
         if detail is None:
             errs += 1
-            print(f"  [{i}/{len(new_ids)}] {mid}: detail fetch failed")
+            if d_status == FETCH_RATE_LIMITED:
+                # Park it: newer matches written this run advance the window
+                # past it, so only the retry queue can bring it back.
+                enqueue_retry(conn, mid, "match", "detail 429")
+                conn.commit()
+                print(f"  [{i}/{len(new_ids)}] {mid}: detail rate-limited "
+                      f"- parked in fetch_retry")
+            else:
+                print(f"  [{i}/{len(new_ids)}] {mid}: detail fetch failed")
             continue
         try:
-            write_match(conn, mid, detail, timeline)
+            record_hydrated(conn, mid, detail, timeline, t_status)
             conn.commit()
+            if t_status == FETCH_RATE_LIMITED:
+                print(f"  [{i}/{len(new_ids)}] {mid}: timeline rate-limited "
+                      f"- parked in fetch_retry")
             done += 1
             if done % 5 == 0 or done == 1:
                 elapsed = time.time() - t0
@@ -481,8 +777,23 @@ def main() -> int:
         f"  newest in DB:    {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime((new_newest or 0)//1000))} UTC\n"
         f"  riot bucket:     {bucket}"
     )
+    drain_rc = _drain_and_report(conn)
+    return 0 if errs == 0 and drain_rc == 0 else 1
+
+
+def _drain_and_report(conn: sqlite3.Connection) -> int:
+    """Drain the 429 retry queue, print the tally, close ``conn``."""
+    try:
+        counts = drain_retry_queue(conn)
+    except sqlite3.Error as e:
+        conn.rollback()
+        conn.close()
+        print(f"fetch_retry drain failed: {e}")
+        return 1
+    pending = conn.execute("SELECT COUNT(*) FROM fetch_retry").fetchone()[0]
     conn.close()
-    return 0 if errs == 0 else 1
+    print(f"fetch_retry drain: {counts}  (still pending: {pending})")
+    return 0
 
 
 if __name__ == "__main__":
