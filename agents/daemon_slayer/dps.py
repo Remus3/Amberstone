@@ -996,6 +996,15 @@ def compute_dps(
     )
     item_effects = collect_effects(resolved.item_ids, dedupe_ctx)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
+    # Arena augment crit damage (Aim for the Head: flat bonus + converted
+    # excess crit chance), resolved by build_champion into stats["crit_damage"]
+    # in the same bonus-fraction unit as ItemEffect.crit_damage_bonus. The key
+    # exists only when such an augment is taken -> byte-identical otherwise.
+    # Added BEFORE the RM-46 block so a champion whose crits deal no extra
+    # damage (Ashe, replaces_item_crit_damage) discards it like item crit dmg.
+    augment_crit_damage = float(stats.get("crit_damage", 0.0))
+    if augment_crit_damage:
+        crit_bonus += augment_crit_damage
     # A-12 / RM-46 (2026-07-25): per-champion crit conversion. DEFAULT-OFF, so
     # the registry module is not even imported on the default path. When ON, an
     # unregistered champion (172 of 173) still resolves the universal factor
@@ -1192,6 +1201,31 @@ def compute_dps(
     else:
         stats_for_rotation = stats
     crit_chance_ctx = crit_total
+    # Aim for the Head: the augment's crit ceiling binds the ITEM-EFFECT crit
+    # too (Yun Tal Wildarrows). build_champion already capped + converted the
+    # stat-block crit, so only the effect-channel excess is converted here.
+    # Guarded on a taken augment list AND crit_from_effects > 0, so every
+    # other build is byte-identical.
+    augment_crit_note = ""
+    if augments and crit_from_effects > 0:
+        from .augments import crit_ceiling_rule
+
+        _ceiling_rule = crit_ceiling_rule(augments, snapshot)
+        if _ceiling_rule is not None:
+            _ceiling, _ratio = _ceiling_rule
+            _effect_excess = max(0.0, raw_crit + crit_from_effects - _ceiling)
+            if _effect_excess > 0:
+                crit_bonus += _ratio * _effect_excess
+                crit_total = min(crit_total, _ceiling)
+                if stats_for_rotation is stats:
+                    stats_for_rotation = dict(stats)
+                stats_for_rotation["crit"] = crit_total
+                crit_chance_ctx = crit_total
+                augment_crit_note = (
+                    f"Aim for the Head: item-effect crit capped at "
+                    f"{_ceiling:.2f}, excess x{_ratio:.2f} -> "
+                    f"+{_ratio * _effect_excess:.4f} crit damage"
+                )
     # R212 (2026-07-27): per-champion CRIT CHANCE / CRIT DAMAGE MULTIPLIER.
     # DEFAULT-OFF, so the registry module is not even imported on the default
     # path. Resolved HERE (not next to the RM-46 block, which runs before the
@@ -1553,6 +1587,10 @@ def compute_dps(
     # A-12 / RM-46: empty string on the default path -> no note, byte-identical.
     if crit_conversion_note:
         notes.append(crit_conversion_note)
+
+    # Aim for the Head effect-channel conversion: empty unless it fired.
+    if augment_crit_note:
+        notes.append(augment_crit_note)
 
     # R212: same contract - empty string on the default path, so no note.
     if crit_chance_note:
