@@ -102,7 +102,32 @@ WHAT TO DO NEXT
    token. It was NOT opened this session and it sits squarely in the blind
    spot above: gitignored, never staged, invisible to every RC control.
 
-5. Then the older queue, unchanged: RC's stray-work sweep plus the
+5. CHANNEL REPLIES OWED, none urgent and none blocking: SS landed round B and
+   reports that a sibling's VACUITY finding reaches SS by a sharper route; a
+   sibling reports CS's commit makes the slots.py PIN population five; and LL
+   answered the bucket scan. ALREADY RE-VERIFIED ON A FROZEN TREE, so do not
+   redo it: THE VACUITY FINDING DOES NOT REACH RC. RC has no
+   KNOWN_CODE_HITS and no CARRIER_CODES arm anywhere in the tree, and the guard
+   consumers of RC's nearest analogue (KNOWN_EXCEPTIONS, now empty) inject the
+   value with monkeypatch.setattr rather than reading the live constant, which
+   is the pattern that is immune to it. The general class is still worth
+   carrying: an arm whose ONLY non-vacuity assertion compares against a
+   constant that later becomes empty passes against empty fixtures.
+
+6. A PYTEST TEMP-DIR accumulation finding was relayed from another tree while
+   this session wrapped. TWO THINGS WERE ALREADY ESTABLISHED: RC ALREADY has
+   tmp_path_retention_policy and tmp_path_retention_count set (pytest.ini:9-10,
+   added 2026-09-19), so the config half of the recommendation is DONE here and
+   the real question is whether it is HONOURED; and Temp-Hygiene.ps1 is OUTSIDE
+   the repository root, so changing its cutoff is a BOUNDARY HALT needing an
+   operator grant. A measurement was in flight at wrap. DO NOT accept the
+   relayed file counts without re-deriving them, and DO NOT delete anything in
+   those temp roots - they are the evidence. One hard trap: the relayed
+   directory prefix embeds a SIBLING CHECKOUT BASENAME whose bare-word sweep arm
+   is SUPPRESSED BY DECLARATION, so writing it into a tracked file would leak
+   silently past the pre-push gate. Refer to those dirs by code only.
+
+7. Then the older queue, unchanged: RC's stray-work sweep plus the
    reconciliation, now a SIX-way act (RC still owes its own report); the
    frozen supervisor walker at ops/rc_supervisor.py:513 (a 1 Hz rglob - it is
    a FROZEN file and needs an explicit operator grant, so ASK, do not edit);
