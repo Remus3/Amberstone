@@ -61,15 +61,28 @@ def _detail() -> dict:
     }}
 
 
+_EV = {"type": "ITEM_PURCHASED", "timestamp": 5, "participantId": 1,
+       "itemId": 2003}
+
+
 def _timeline() -> dict:
+    """3 frames x 10 participants = 30 frame rows; 4 event rows, TWO of
+    which are identical in every column (a potion bought twice in the same
+    tick). Measured 2026-09-20: 2952 clean matches in the production DB
+    carry such legitimately identical event rows, so identity alone never
+    proves a duplicate write."""
     return {"info": {"frames": [
         {"timestamp": t,
          "participantFrames": {str(i): {"participantId": i, "totalGold": t + i}
                                for i in range(1, 11)},
-         "events": [{"type": "ITEM_PURCHASED", "timestamp": t + 5,
-                     "participantId": 1, "itemId": 1055}]}
+         "events": ([dict(_EV), dict(_EV)] if t == 0 else
+                    [{"type": "ITEM_PURCHASED", "timestamp": t + 5,
+                      "participantId": 1, "itemId": 1055}])}
         for t in (0, 60000, 120000)
     ]}}
+
+
+EV_PER_TIMELINE = 4
 
 
 class _DbCase(unittest.TestCase):
@@ -134,14 +147,14 @@ class WriteMatchIdempotencyTests(_DbCase):
         self.write(_timeline())
         self.assertEqual(self.has_timeline(), 1)
         self.assertEqual(self.count("timeline_frames"), 30)
-        self.assertEqual(self.count("timeline_events"), 3)
+        self.assertEqual(self.count("timeline_events"), EV_PER_TIMELINE)
         self.assertEqual(self.count("participants"), 10)
 
     def test_rewrite_of_complete_match_changes_nothing(self):
         self.write(_timeline())
         self.write(_timeline())
         self.assertEqual(self.count("timeline_frames"), 30)
-        self.assertEqual(self.count("timeline_events"), 3)
+        self.assertEqual(self.count("timeline_events"), EV_PER_TIMELINE)
         self.assertEqual(self.count("teams"), 2)
 
 
@@ -218,7 +231,10 @@ class DedupScriptTests(_DbCase):
         r = report[0]
         self.assertEqual(r["participants"], (30, 10))
         self.assertEqual(r["teams"], (6, 2))
-        self.assertTrue(r["timeline_duplicated"])
+        # First write had no timeline; the 2 later copies each added one.
+        # events = (rows, rows after copy-aware dedup)
+        self.assertEqual(r["frames"], (60, 30))
+        self.assertEqual(r["events"], (8, 4))
 
     def test_dry_run_is_default_and_writes_nothing(self):
         self._seed_polluted("NA1_DUP", 3, has_timeline=1)
@@ -226,14 +242,100 @@ class DedupScriptTests(_DbCase):
         self.assertEqual(dd.main(["--db", str(self.db_path)]), 0)
         self.assertEqual(self.db_path.read_bytes(), before)
 
+    def test_scan_reports_frame_and_event_distinct_counts(self):
+        self._seed_polluted("NA1_DUP", 3, has_timeline=1)
+        c = self.conn()
+        r = dd.scan(c)[0]
+        c.close()
+        self.assertEqual(r["frames"], (90, 30))
+        self.assertEqual(r["events"], (12, 4))
+
+    def test_clean_match_with_identical_events_is_not_touched(self):
+        self.write(_timeline())
+        c = self.conn()
+        report = dd.scan(c)
+        c.close()
+        self.assertEqual(report, [])
+        dd.main(["--db", str(self.db_path), "--apply"])
+        self.assertEqual(self.count("timeline_events"), EV_PER_TIMELINE)
+
+    def _seed_frames_only_dup(self, mid: str, frame_copies: int,
+                              extra_event_copies: int = 0) -> None:
+        """Production shape (measured 2026-09-20): participants and frames
+        copied, events present once (their extra copies already gone)."""
+        c = self.conn()
+        rc.write_match(c, mid, _detail(), _timeline())
+        info = _detail()["info"]
+        frames = [row for f in _timeline()["info"]["frames"]
+                  for row in rs.parse_frame(f, mid)]
+        events = [rs.parse_event(ev, mid) for f in _timeline()["info"]["frames"]
+                  for ev in f["events"]]
+        for _ in range(frame_copies - 1):
+            rs.insert_rows(c, "participants",
+                           [rs.parse_participant(p, mid) for p in info["participants"]])
+            rs.insert_rows(c, "timeline_frames", frames)
+        for _ in range(extra_event_copies):
+            rs.insert_rows(c, "timeline_events", events)
+        c.commit()
+        c.close()
+
+    def test_frames_duplicated_events_single_copy_events_untouched(self):
+        self._seed_frames_only_dup("NA1_DUP", 6)
+        c = self.conn()
+        r = dd.scan(c)[0]
+        c.close()
+        self.assertEqual(r["events"], (EV_PER_TIMELINE, EV_PER_TIMELINE))
+        self.assertFalse(r["events_skipped"])
+        dd.main(["--db", str(self.db_path), "--apply"])
+        self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 30)
+        self.assertEqual(self.count("timeline_events", "NA1_DUP"), EV_PER_TIMELINE)
+        self.assertEqual(self.count("participants", "NA1_DUP"), 10)
+
+    def test_ambiguous_event_copy_count_is_skipped_not_guessed(self):
+        # frames 3 copies, events 2 copies: gcd 2 != 3.
+        self._seed_frames_only_dup("NA1_DUP", 3, extra_event_copies=1)
+        c = self.conn()
+        r = dd.scan(c)[0]
+        c.close()
+        self.assertTrue(r["events_skipped"])
+        dd.main(["--db", str(self.db_path), "--apply"])
+        self.assertEqual(self.count("timeline_events", "NA1_DUP"),
+                         2 * EV_PER_TIMELINE)
+        self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 30)
+
+    def test_polluted_match_keeps_legit_identical_events(self):
+        # Blind exact-row dedup would collapse the potion pair to 1 -> 3.
+        self._seed_polluted("NA1_DUP", 3, has_timeline=1)
+        dd.main(["--db", str(self.db_path), "--apply"])
+        c = self.conn()
+        n = c.execute("SELECT COUNT(*) FROM timeline_events WHERE match_id='NA1_DUP' "
+                      "AND item_id=2003").fetchone()[0]
+        c.close()
+        self.assertEqual(n, 2)
+
+    def test_apply_dedups_timeline_rows_even_if_refetch_never_succeeds(self):
+        # Readers (routes_replay_events, post_game_score) read every event
+        # row with no DISTINCT, so the DB must be right without the refetch.
+        self._seed_polluted("NA1_DUP", 3, has_timeline=0)
+        self.assertEqual(dd.main(["--db", str(self.db_path), "--apply"]), 0)
+        self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 30)
+        self.assertEqual(self.count("timeline_events", "NA1_DUP"), EV_PER_TIMELINE)
+        c = self.conn()
+        with mock.patch.object(RA, "get_match_timeline",
+                               lambda *a, **k: (RA._record_outcome("404"), None)[1]):
+            counts = rc.drain_retry_queue(c, backoff_s=(), sleep=NO_SLEEP)
+        c.close()
+        self.assertEqual(counts["permanent"], 1)
+        self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 30)
+        self.assertEqual(self.count("timeline_events", "NA1_DUP"), EV_PER_TIMELINE)
+
     def test_apply_dedups_and_queues_timeline_refetch(self):
         self._seed_polluted("NA1_DUP", 3, has_timeline=1)
         self.assertEqual(dd.main(["--db", str(self.db_path), "--apply"]), 0)
         self.assertEqual(self.count("participants", "NA1_DUP"), 10)
         self.assertEqual(self.count("teams", "NA1_DUP"), 2)
-        # Frames are NOT deleted by the dedup; the queued re-fetch replaces
-        # them only on success.
-        self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 90)
+        self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 30)
+        self.assertEqual(self.count("timeline_events", "NA1_DUP"), EV_PER_TIMELINE)
         c = self.conn()
         q = c.execute("SELECT match_id, kind FROM fetch_retry").fetchall()
         with mock.patch.object(RA, "get_match_timeline",
@@ -242,7 +344,7 @@ class DedupScriptTests(_DbCase):
         c.close()
         self.assertEqual(q, [("NA1_DUP", "timeline")])
         self.assertEqual(self.count("timeline_frames", "NA1_DUP"), 30)
-        self.assertEqual(self.count("timeline_events", "NA1_DUP"), 3)
+        self.assertEqual(self.count("timeline_events", "NA1_DUP"), EV_PER_TIMELINE)
         self.assertEqual(self.has_timeline("NA1_DUP"), 1)
 
     def test_apply_is_idempotent(self):
