@@ -71,6 +71,19 @@ def _upstream_rows(bundle: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))["data"]
 
 
+# MEASURED 2026-09-20: DDragon shipped the 60 Jade_ CHAMPION rows only at
+# 16.15.1 (233 rows); 16.16.1 .. 16.18.1 carry 173 and zero Jade_ rows, while
+# the 162-item throwback band is still present at 16.18.1. The champion-side
+# source pins therefore read the last bundle that carries the rows; the
+# canary below pins the current absence so their return goes red.
+_JADE_CHAMPION_PATCH = "16.15.1"
+
+
+def _upstream_rows_at(patch: str, bundle: str) -> dict:
+    path = _ROOT / "data" / "meta_build" / "ddragon" / patch / bundle
+    return json.loads(path.read_text(encoding="utf-8"))["data"]
+
+
 def _live_rows() -> dict:
     return json.loads(_LIVE.read_text(encoding="utf-8"))["data"]
 
@@ -84,8 +97,15 @@ class TestUpstreamIsTheSource:
     """Source-read pins against the FAITHFUL upstream bundle: prove the input
     the filter is filtering, and prove the filtered view is filtered."""
 
-    def test_upstream_ships_both_the_base_and_the_variant_row(self):
+    def test_current_upstream_champion_bundle_has_no_variant_rows(self):
+        # Canary for the pin below: the partition is harmless on the current
+        # bundle (it drops nothing), and a Jade_ return makes this go red.
         rows = _upstream_rows("champion.json")
+        assert [k for k in rows if k.startswith("Jade_")] == []
+        assert canonical_champions(rows) == rows
+
+    def test_upstream_ships_both_the_base_and_the_variant_row(self):
+        rows = _upstream_rows_at(_JADE_CHAMPION_PATCH, "champion.json")
         assert "Ahri" in rows, "canonical Ahri missing from the upstream bundle"
         assert "Jade_Ahri" in rows, (
             "Jade_Ahri missing upstream - if DDragon dropped the throwback rows "
@@ -110,7 +130,7 @@ class TestUpstreamIsTheSource:
         assert [i for i in rows if is_mode_variant_item(i)] == []
 
     def test_variant_row_is_not_an_alias_of_the_base_row(self):
-        rows = _upstream_rows("champion.json")
+        rows = _upstream_rows_at(_JADE_CHAMPION_PATCH, "champion.json")
         base, variant = rows["Ahri"], rows["Jade_Ahri"]
         assert variant["name"] == base["name"], "variant should share the display name"
         assert int(variant["key"]) == int(base["key"]) + VARIANT_CHAMPION_KEY_FLOOR
@@ -120,7 +140,7 @@ class TestUpstreamIsTheSource:
         )
 
     def test_every_variant_key_sits_above_the_floor_and_no_base_key_does(self):
-        rows = _upstream_rows("champion.json")
+        rows = _upstream_rows_at(_JADE_CHAMPION_PATCH, "champion.json")
         variant_keys = [int(v["key"]) for k, v in rows.items() if k.startswith("Jade_")]
         base_keys = [int(v["key"]) for k, v in rows.items() if not k.startswith("Jade_")]
         assert variant_keys, "no Jade_ rows found in the mirror"
@@ -170,7 +190,7 @@ class TestPredicates:
         assert is_mode_variant_item("boots") is False
 
     def test_canonical_champions_drops_only_the_variants(self):
-        rows = _upstream_rows("champion.json")
+        rows = _upstream_rows_at(_JADE_CHAMPION_PATCH, "champion.json")
         kept = canonical_champions(rows)
         assert len(kept) == len(rows) - 60
         assert "Ahri" in kept and "Jade_Ahri" not in kept
