@@ -169,6 +169,10 @@ def _skeleton_entry(slot: dict, blank_names: bool = False) -> dict:
         "w_l_streak_7":      [0, 0],
         "mains":             [],
         "win_rate_recent":   0.0,
+        # "" or "rate_limited". Set by the fan-out when Riot throttled this
+        # player's lookups, so the panel can say "rate limited - retrying"
+        # instead of painting the throttle as missing data.
+        "riot_status":       "",
     }
 
 
@@ -185,58 +189,104 @@ _RECENT_MATCH_DEPTH = 20
 # wall clock is the cheap guard).
 _FANOUT_DEADLINE_S = 180.0
 
+# Rate-limit retry: how many extra passes the worker makes over entries Riot
+# throttled, and the floor/ceiling on each wait between passes. The wait
+# follows the bucket's own 429 cooldown (Riot's Retry-After), floored so a
+# zero cooldown cannot spin and capped so one long Retry-After cannot eat the
+# whole champ-select window in a single sleep.
+_RATE_LIMIT_RETRIES = 3
+_RATE_LIMIT_WAIT_MIN_S = 2.0
+_RATE_LIMIT_WAIT_MAX_S = 30.0
 
-def _enrich_priority_1(entry: dict, locked_champion_id: Optional[int]) -> None:
+# Indirection so tests can skip the real wait.
+_sleep = time.sleep
+
+_RATE_LIMITED = "rate_limited"
+
+
+def _team_of(entry: dict) -> str:
+    return "allies" if int(entry.get("team_id") or 0) != 200 else "enemies"
+
+
+def _note_rate_limited(team: str, puuid: str, tier: str, scope: Any) -> None:
+    """Mark the entry and log the raw detail (outcomes) to the RC log only.
+    The panel shows a friendly message; the raw outcome never reaches it."""
+    log.info("team-context %s: Riot API rate limited (outcomes=%s)",
+             tier, ",".join(scope.outcomes))
+    _update_entry(team, puuid, riot_status=_RATE_LIMITED)
+
+
+def _enrich_priority_1(entry: dict, locked_champion_id: Optional[int]) -> bool:
     """Priority-1 fan-out for one entry: mastery + rank.
 
     Both calls are TTL-cached (5 min) so re-firing the same lobby twice
     is free. Each result mutates the live cache via `_update_entry`.
+
+    Returns True when Riot rate-limited any of the calls (the entry is then
+    marked `riot_status="rate_limited"` for the worker to retry).
     """
     from core import riot_api
 
     puuid = entry.get("puuid") or ""
     if not puuid:
-        return
-    team = "allies" if int(entry.get("team_id") or 0) != 200 else "enemies"
+        return False
+    team = _team_of(entry)
 
-    # League-V4 rank. Empty list = unranked; we still want to flag the
-    # entry as "looked up" so the skeleton "-" is replaced with the
-    # actual rank string ("UNRANKED" sentinel left blank for now;
-    # render shows skel placeholder when rank == "").
-    entries = riot_api.get_summoner_rank(puuid)
-    if entries is not None:
-        solo = riot_api.pick_solo_rank(entries)
-        rank_str = riot_api.format_rank_entry(solo) if solo else ""
-        _update_entry(team, puuid, rank=rank_str)
+    with riot_api.track_outcomes() as scope:
+        # League-V4 rank. Empty list = unranked; we still want to flag the
+        # entry as "looked up" so the skeleton "-" is replaced with the
+        # actual rank string ("UNRANKED" sentinel left blank for now;
+        # render shows skel placeholder when rank == "").
+        entries = riot_api.get_summoner_rank(puuid)
+        if entries is not None:
+            solo = riot_api.pick_solo_rank(entries)
+            rank_str = riot_api.format_rank_entry(solo) if solo else ""
+            _update_entry(team, puuid, rank=rank_str)
 
-    # Champion-Mastery-V4 on the locked champion. Skipped when the
-    # player hasn't locked yet (championId 0).
-    if locked_champion_id and locked_champion_id > 0:
-        m = riot_api.get_champion_mastery(puuid, locked_champion_id)
-        if isinstance(m, dict):
-            mastery_pts = int(m.get("championPoints") or 0)
-            _update_entry(team, puuid, mastery_on_locked=mastery_pts)
+        # Champion-Mastery-V4 on the locked champion. Skipped when the
+        # player hasn't locked yet (championId 0).
+        if locked_champion_id and locked_champion_id > 0:
+            m = riot_api.get_champion_mastery(puuid, locked_champion_id)
+            if isinstance(m, dict):
+                mastery_pts = int(m.get("championPoints") or 0)
+                _update_entry(team, puuid, mastery_on_locked=mastery_pts)
+
+    if scope.rate_limited:
+        _note_rate_limited(team, puuid, "priority-1", scope)
+        return True
+    return False
 
 
-def _enrich_priority_2(entry: dict) -> None:
-    """Priority-2 fan-out: recent-matches -> mains / winrate / W/L streak."""
+def _enrich_priority_2(entry: dict) -> bool:
+    """Priority-2 fan-out: recent-matches -> mains / winrate / W/L streak.
+
+    Returns True when Riot rate-limited any of the calls. A throttled
+    match-id list or a throttled match detail inside `summarize_recent` both
+    count: either way the summary is incomplete, not "no games".
+    """
     from core import riot_api
 
     puuid = entry.get("puuid") or ""
     if not puuid:
-        return
-    team = "allies" if int(entry.get("team_id") or 0) != 200 else "enemies"
+        return False
+    team = _team_of(entry)
 
-    match_ids = riot_api.get_recent_matches(puuid, count=_RECENT_MATCH_DEPTH)
-    if not match_ids:
-        return
-    summary = riot_api.summarize_recent(puuid, match_ids)
-    _update_entry(
-        team, puuid,
-        mains=summary.get("mains") or [],
-        win_rate_recent=float(summary.get("win_rate_recent") or 0.0),
-        w_l_streak_7=summary.get("w_l_streak_7") or [0, 0],
-    )
+    with riot_api.track_outcomes() as scope:
+        match_ids = riot_api.get_recent_matches(puuid, count=_RECENT_MATCH_DEPTH)
+        summary = None
+        if match_ids:
+            summary = riot_api.summarize_recent(puuid, match_ids)
+    if summary is not None:
+        _update_entry(
+            team, puuid,
+            mains=summary.get("mains") or [],
+            win_rate_recent=float(summary.get("win_rate_recent") or 0.0),
+            w_l_streak_7=summary.get("w_l_streak_7") or [0, 0],
+        )
+    if scope.rate_limited:
+        _note_rate_limited(team, puuid, "priority-2", scope)
+        return True
+    return False
 
 
 # Map the locked-champion name (LCU payload key) -> numeric ID. The LCU
@@ -293,15 +343,71 @@ def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
     log.info("team-context fan-out start: queue=%d roster=%d",
              queue_id, len(everyone))
 
+    throttled = _run_pass(everyone, deadline)
+    if throttled is None:
+        return
+
+    # Rate-limit retry. An entry Riot throttled is NOT "no data", so it gets
+    # re-asked once the bucket's 429 cooldown has run out, a bounded number
+    # of times and never past the deadline. The panel reads "rate limited -
+    # retrying" while this runs (partial=True) and the entry keeps its mark
+    # if every retry is throttled too.
+    for attempt in range(_RATE_LIMIT_RETRIES):
+        if not throttled:
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            log.warning("team-context fan-out rate-limit retry hit deadline")
+            break
+        _sleep(min(remaining, _rate_limit_wait_s()))
+        log.info("team-context fan-out rate-limit retry %d/%d: %d entries",
+                 attempt + 1, _RATE_LIMIT_RETRIES, len(throttled))
+        retry = _run_pass(throttled, deadline, retrying=True)
+        if retry is None:
+            break
+        throttled = retry
+
+    _mark_complete()
+    log.info("team-context fan-out done: queue=%d", queue_id)
+
+
+def _rate_limit_wait_s() -> float:
+    """Seconds to wait before re-asking Riot: the live 429 cooldown, clamped."""
+    cooldown = 0.0
+    try:
+        from core import riot_api
+        snap = riot_api.bucket_snapshot()
+        cooldown = float(snap.get("cooldown_remaining_s") or 0.0)
+        # A full LONG bucket (100/120s) carries no cooldown - it drains by
+        # age - so the floor alone would burn every retry in seconds against
+        # a bucket that cannot admit. Wait the ceiling instead.
+        if int(snap.get("long_used") or 0) >= int(snap.get("long_cap") or 1):
+            cooldown = _RATE_LIMIT_WAIT_MAX_S
+    except Exception:    # noqa: BLE001 - a wait estimate must not kill the worker
+        cooldown = 0.0
+    return max(_RATE_LIMIT_WAIT_MIN_S, min(_RATE_LIMIT_WAIT_MAX_S, cooldown))
+
+
+def _run_pass(entries: list, deadline: float,
+              retrying: bool = False) -> Optional[list]:
+    """Priority-1 over every entry, then priority-2 over every entry.
+
+    Returns the entries Riot rate-limited (retry candidates), or None when
+    priority-1 hit the deadline (the worker then exits without completing,
+    the pre-existing behaviour). An entry that comes back clean has its
+    `riot_status` mark cleared.
+    """
+    p1_throttled: set = set()
     # Priority-1 - mastery + rank for every entry. Tight loop, no pacing
     # - short bucket (20/s) handles 20 calls in ~1s.
-    for entry in everyone:
+    for entry in entries:
         if time.monotonic() >= deadline:
             log.warning("team-context fan-out priority-1 hit deadline")
-            return
+            return None
         try:
             cid = _champ_name_to_id(entry.get("locked_champion") or "")
-            _enrich_priority_1(entry, cid)
+            if _enrich_priority_1(entry, cid):
+                p1_throttled.add(id(entry))
         except Exception as exc:    # noqa: BLE001 - must not kill the worker
             log.warning("team-context priority-1 entry failed: %s", exc)
 
@@ -309,17 +415,27 @@ def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
     # (each player = 1 list call + <=20 match-detail calls); the long
     # bucket (100/120s) gates this naturally so we don't have to add
     # explicit sleeps.
-    for entry in everyone:
+    throttled: list = []
+    for entry in entries:
         if time.monotonic() >= deadline:
             log.warning("team-context fan-out priority-2 hit deadline")
             break
+        hit = id(entry) in p1_throttled
         try:
-            _enrich_priority_2(entry)
+            if _enrich_priority_2(entry):
+                hit = True
         except Exception as exc:    # noqa: BLE001
             log.warning("team-context priority-2 entry failed: %s", exc)
-
-    _mark_complete()
-    log.info("team-context fan-out done: queue=%d", queue_id)
+        if hit:
+            throttled.append(entry)
+        elif retrying:
+            # Only a retry can clear a mark; a first pass has nothing to
+            # clear, and skipping the write keeps refreshed_at (the panel's
+            # repaint signature) from moving for no change.
+            puuid = entry.get("puuid") or ""
+            if puuid:
+                _update_entry(_team_of(entry), puuid, riot_status="")
+    return throttled
 
 
 def _default_dispatch_fanout(allies: list, enemies: list, queue_id: int) -> None:

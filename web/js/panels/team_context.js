@@ -36,6 +36,21 @@ function _escAttr(s) {
     .replace(/"/g, "&quot;");
 }
 
+// Friendly rate-limit copy. The backend marks an entry
+// riot_status === "rate_limited" when Riot throttled its lookups
+// (dashboard/routes_team_context.py); the fan-out retries while
+// payload.partial is true, then gives up and keeps the mark.
+const RL_RETRYING = "Riot API rate limited - retrying";
+const RL_GAVE_UP = "Riot API rate limited - some data unavailable";
+
+function _isRateLimited(entry) {
+  return !!entry && entry.riot_status === "rate_limited";
+}
+
+function _anyRateLimited(entries) {
+  return Array.isArray(entries) && entries.some(_isRateLimited);
+}
+
 function _champImg(name) {
   if (!name) return "";
   const ver = CHAMPS.version || "latest";
@@ -73,6 +88,13 @@ function _renderSlot(entry, blankNames) {
     const rank = document.createElement("span");
     rank.className = "tc-slot-rank";
     rank.textContent = entry.rank;
+    head.appendChild(rank);
+  } else if (_isRateLimited(entry)) {
+    // Riot throttled this player's lookups: the dash would read as "no rank".
+    const rank = document.createElement("span");
+    rank.className = "tc-slot-rank tc-slot-rl";
+    rank.textContent = "rate limited";
+    rank.title = "Riot API rate limited for this player";
     head.appendChild(rank);
   } else {
     const rank = document.createElement("span");
@@ -164,7 +186,10 @@ function renderTeamContext(state) {
     block.hidden = false;
     block.dataset.sig = "";   // force re-render when payload lands
     const status = document.getElementById("tc-status");
-    if (status) status.textContent = "waiting for enrichment...";
+    if (status) {
+      status.textContent = "waiting for enrichment...";
+      status.classList.remove("tc-status-rl");
+    }
     const allies = document.getElementById("tc-allies");
     const enemies = document.getElementById("tc-enemies");
     if (allies && !allies._waitingPainted) {
@@ -202,8 +227,17 @@ function renderTeamContext(state) {
   const status = document.getElementById("tc-status");
   if (status) {
     const bits = [];
-    if (tc.partial) bits.push("partial");
-    else            bits.push("ready");
+    // A Riot rate limit is NOT missing data: say so instead of letting the
+    // throttled rows read as empty. Raw status stays in the RC log.
+    const throttled = _anyRateLimited(tc.allies) || _anyRateLimited(tc.enemies);
+    if (throttled) {
+      bits.push(tc.partial ? RL_RETRYING : RL_GAVE_UP);
+      status.classList.add("tc-status-rl");
+    } else {
+      status.classList.remove("tc-status-rl");
+      if (tc.partial) bits.push("partial");
+      else            bits.push("ready");
+    }
     if (blankNames) bits.push("ranked · names hidden");
     if (tc.queue_id) bits.push("queue " + tc.queue_id);
     status.textContent = bits.join(" · ");

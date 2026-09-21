@@ -36,6 +36,12 @@
   color: var(--text-faint);
   font-style: italic;
 }
+/* Warn tone, but kept italic + medium weight so the transient state stays
+ * below the TEAM CONTEXT label in the hierarchy (UI audit 2026-09-20). */
+.tc-status.tc-status-rl {
+  color: var(--signal-warn);
+  font-weight: 500;
+}
 
 .tc-teams {
   display: grid;
@@ -117,6 +123,14 @@
   color: var(--signal-gold);
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+/* Riot API rate limit on this player - distinct from the dashed "-" skeleton
+ * so a throttle never reads as "no rank". Warn tone, not bad: it is
+ * transient and the fan-out retries it. */
+.tc-slot-rank.tc-slot-rl {
+  color: var(--signal-warn);
+  font-weight: 600;
+  letter-spacing: 0;
 }
 .tc-slot-sub {
   display: flex;
