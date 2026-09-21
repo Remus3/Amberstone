@@ -1534,6 +1534,21 @@ COMMIT_CLAIM_TRUE_POSITIVES = [
     # A third-party subject elsewhere does not launder the speaker's own claim.
     "The build agent committed the tables, and I committed the docs.",
     "According to the plan, I committed the fix.",
+    # Adversarial round (merger refutation of e187ce312). In this repo the
+    # MERGER is the speaking main session, so it is never a third party.
+    "Merger committed and pushed.",
+    "The merger committed and pushed e187ce312.",
+    "The merger has committed the slice.",
+    "As the merger, I merged and the merger committed it.",
+    "The verifier committed nothing, so the merger committed the fix.",
+    # An adjective does not launder a sentence that asserts LANDED state.
+    "THE COMMITTED FIX IS IN MAIN.",
+    "The committed fix is live.",
+    "A committed fix now sits on main.",
+    "This committed change is on main.",
+    "Its committed tree is what I pushed.",
+    # Any first-person git ACTION vetoes the third-party exemption.
+    "They committed it and I pushed.",
 ]
 
 

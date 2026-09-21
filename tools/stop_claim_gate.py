@@ -226,15 +226,33 @@ CLAIM_FIRST_PERSON_PUSHED = re.compile(
 # (2) THIRD-PARTY SUBJECT - an agent-shaped noun or third-person pronoun as the
 #     immediate subject, optionally through an auxiliary or adverb. "session" is
 #     deliberately NOT in the set: "this session committed" is the speaker.
+#     Nor are "merger" and "operator" (removed after an adversarial refutation
+#     of the first cut, 2026-09-20): in this repo the MERGER is the speaking
+#     main session, and the operator never runs commands, so neither is a
+#     third party whose commit the speaker is merely reporting.
+#
+# Refinements from that same refutation:
+#   - the adjectival exemption is refused when the sentence asserts LANDED
+#     state ("the committed fix is in main") - that is a claim about what
+#     happened, whatever part of speech carries it;
+#   - the first-person veto keys on ANY first-person git ACTION (committed,
+#     pushed, merged, landed, ...), so "They committed it and I pushed" flags.
+#     It keys on git verbs only: "I checked the committed tables" stays exempt.
 CLAIM_FIRST_PERSON_COMMITTED = re.compile(
     r"\b(?:I|we)\s+(?:have\s+|has\s+|had\s+|just\s+|already\s+|then\s+|also\s+|"
-    r"finally\s+|since\s+|therefore\s+)*commit(?:ted)?\b", re.I)
+    r"finally\s+|since\s+|therefore\s+)*"
+    r"(?:commit(?:ted)?|push(?:ed)?|merged?|land(?:ed)?|cherry-?picked|"
+    r"rebased|amended|shipped)\b", re.I)
+CLAIM_COMMIT_LANDED_STATE = re.compile(
+    r"\b(?:is|are|was|were|now|went)\s+live\b"
+    r"|\b(?:in|on|into|onto)\s+(?:main|master|origin)\b"
+    r"|\blanded\b|\bsits?\s+on\b|\bpushed\b|\bmerged\b|\bshipped\b", re.I)
 CLAIM_COMMIT_DETERMINER_LEAD = re.compile(
     r"\b(?:the|a|an|this|that|these|those|its|their|his|her)\s+$", re.I)
 CLAIM_COMMIT_ADJECTIVE_TAIL = re.compile(
     r"\s+(?!(?:and|or|to|by|in|on|at|as)\b)[A-Za-z]", re.I)
 CLAIM_COMMIT_THIRD_PARTY_LEAD = re.compile(
-    r"\b(?:agents?|subagents?|slices?|workers?|verifier|merger|lanes?|operator|"
+    r"\b(?:agents?|subagents?|slices?|workers?|verifier|lanes?|"
     r"sibling|they|he|she)\s+(?:(?:has|had|have|already|just|then|also|"
     r"finally)\s+)*$", re.I)
 CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.I)
@@ -595,13 +613,15 @@ def audit(ev):
     def _commit_speaker_claim(sentence):
         """True when some CLAIM_COMMIT match is plausibly the SPEAKER's own
         commit - i.e. not adjectival and not a third-party subject's. A
-        first-person commit anywhere in the sentence always counts."""
+        first-person git action anywhere in the sentence always counts, and
+        an adjective never exempts a sentence asserting landed state."""
         if CLAIM_FIRST_PERSON_COMMITTED.search(sentence):
             return True
+        landed = bool(CLAIM_COMMIT_LANDED_STATE.search(sentence))
         for match in CLAIM_COMMIT.finditer(sentence):
             lead = sentence[:match.start()]
             tail = sentence[match.end():]
-            if (match.group(0).lower() == "committed"
+            if (not landed and match.group(0).lower() == "committed"
                     and CLAIM_COMMIT_DETERMINER_LEAD.search(lead)
                     and CLAIM_COMMIT_ADJECTIVE_TAIL.match(tail)):
                 continue
