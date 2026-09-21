@@ -4,7 +4,7 @@ AMBERSTONE (RC) - NEXT SESSION CONTINUATION
 ONE FILE. Repo root. OVERWRITTEN every /done - never appended, never
 dated-suffixed, never a second copy. The Desktop shortcut RC-NEXT-SESSION.lnk
 points here. This file is TRACKED, so each hand-off is versioned and diffable.
-Written 2026-09-20.
+Written 2026-09-20 (session 2026-09-20b).
 
 
 THE PROMPT
@@ -19,12 +19,11 @@ READ THESE FIRST, IN THIS ORDER:
    those was closed with evidence; re-pitching one is the standing failure.
 2. MEMORY.md plus the INDEX_* files it points at.
 3. WAKEUP_NOTES.md (last 3 sessions at full fidelity), docs/LEDGER.md
-   (newest-first, per-item; this session is 1432 through 1438), ROADMAP.md NOW.
+   (newest-first; this session is 1439 through 1444), ROADMAP.md NOW.
 4. docs/ARCHITECTURE.md for the module map.
 5. git log --oneline -20. Trust it over any list below.
 6. moon_sync_inbox/. A note that arrived while a session was open is invisible
    to that session, so session start is the only moment this gets read.
-   ROUND B IS IN FLIGHT - see WHAT TO DO NEXT item 1.
 7. python tools/perseus_recall.py "<your task in your own words>" BEFORE
    starting any non-trivial item. If a settled or ledger hit says the work is
    CLOSED, REFUTED or already shipped, stop and report that instead of
@@ -42,194 +41,73 @@ STATE AS OF THIS HANDOFF
 ------------------------
 
     branch        main, clean
-    origin/main   f4a742fd9 - everything below is PUSHED, nothing is local-only
-    suite         24316 passed / 0 failed / 106 skipped / 1 xfailed /
-                  3 xpassed / 5066 subtests in 1:46:08, EXIT=0, measured on a
-                  clean frozen tree at f4a742fd9
-    CI            the `ci` workflow completed SUCCESS on 13ac06f0b, which
-                  contains EVERY code-bearing commit of this session. The
-                  commits after it are doc-only and ci.yml:10-13 path-filters
-                  docs-only pushes BY DESIGN, so no `ci` run on the tip is the
-                  CONFIGURED behaviour, not a gap. docs-guards green on the tip.
-    channel       docs/CHANNEL.md is at CHANNEL_VERSION 2 with a roster of SIX.
-                  SS (Substrate) joined. RC voted YES and AUTHORED the v2:
-                  25425 bytes, LF-normalised digest
-                  fc22e86eebe93bb247a91f44835257a3fe717a287c4a3184a8e7a7b9a463fb9c
-    suite counts  NOT recited beyond the measured run above. Re-measure with
-                  pytest tests --collect-only -q and
-                  pytest agents/daemon_slayer --collect-only -q, both from the
-                  repo root, never `pytest .`
+    origin/main   see git log - this session pushed through ec5a18279 plus a
+                  docs commit; VERIFY with `git fetch` and
+                  `git log --oneline origin/main..HEAD` rather than trusting
+                  this line. Do not quote a sha from a hand-off as current.
+    suite         measure it. `pytest tests --collect-only -q` and
+                  `pytest agents/daemon_slayer --collect-only -q`, both from
+                  the repo root, never `pytest .`. The last full dual suite
+                  observed in CI was 34989 passed / 275 skipped / 18716
+                  subtests in 919 s, with ONE failure that is fixed.
+    round B       LANDED on RC and PUSHED. All carriers confirmed df0a7a40.
 
 
-WHAT THIS SESSION DELIVERED - 16 commits, LEDGER 1432 to 1438
--------------------------------------------------------------
+WHAT THIS SESSION DELIVERED - LEDGER 1439 to 1444
+--------------------------------------------------
 
-- NOW-1 CLOSED. The Mission Control WEB UI was removed and the CONTROL PLANE
-  was kept (7a6887359), after the gap analysis was produced FIRST at
-  docs/specs/mission_control_removal_gap_analysis.md. Deleted: the whole
-  web/mc/ tree plus three panel tests; mc/handler.py lost _serve_static,
-  WEB_DIR and its content-type table, so there is no document root and an
-  unmatched GET is a JSON 404. Kept: the :8895 listener, the bearer perimeter,
-  mission_control.py, the RC-MissionControl task, GET /api/loop-status and all
-  nine POST /api/loop-control actions.
-- The arm-then-confirm gate for the dangerous verbs had lived in the PAGE'S
-  JAVASCRIPT, so deleting the page would have left three irreversible verbs one
-  unguarded POST away. Re-implemented SERVER-side in dashboard/_arm_confirm.py,
-  enforced by routes_loop_control.route_action, HTTP 409 arm_required when
-  unarmed. Then three spent-arm reuse holes closed (acd40a4b6) under ONE ARM IS
-  ONE INTENT. THE ARM WINDOW IS 60 s, NOT 3 s, env-overridable via
-  RC_MC_ARM_WINDOW_S - which was read at IMPORT time originally and therefore
-  INERT for a running server; that was itself one of the three holes.
-- NOW-2 CLOSED (4b62b966c). The false comment in
-  tests/test_rc_shell_node_suite_rm342.py is corrected. The measured fact
-  stands: on node v24.15.0 `node --test` SILENTLY PASSES on a nonexistent path,
-  printing a clean tally and exiting 0.
-- NOW-3 CLOSED (b5d11367f), AND ITS FILED PREMISE WAS REFUTED. See the
-  RETRACTIONS block below - this matters more than the guard.
-- Sibling-name sweep: per-slot DECLARED narrowing (93b5af910) so a participant
-  whose code is an ordinary English word does not drown the sweep in prose
-  hits. Its drive-path and github-URL arms stay ARMED; only its BARE-WORD arm
-  is suppressed, and by DECLARATION. CI sweep ceilings 20 -> 65 min with a
-  step-level 45 (38067d87a), because a sweep KILLED BY A TIMEOUT reads as a
-  flaky guard and the natural remedy for a flaky guard is to weaken it.
-- Lane widget residuals pinned by tests rather than notes (68baddc91):
-  attribution renders the participant CODE and never a directory basename, tab
-  growth, absent-reports tolerance. Drag floor moved off a hard-coded 240px
-  onto the panel CONTENT width (e3d1f9727).
-- An importorskip on a FIRST-PARTY module replaced with a plain import
-  (17421f4a3). On your own code that idiom converts a real breakage into a
-  GREEN SKIP; it is for optional third-party deps only.
-- Doc-truth pass: an unguarded lane-widget suite count removed from ROADMAP
-  (0dcb7034f); stale sha256 digests in prose replaced by a POINTER to the pin
-  (c2d64d4fa) - CITE THE PIN, the SHARED_SHA256 symbol in
-  tests/test_loop_concurrency.py, NEVER the digest value, and cite it by SYMBOL
-  rather than by line: the widely-recited :474 had already drifted to :480
-  (parametrised :542 to :548) by this wrap, which is the same failure one level
-  down; the RM-283 disposition reconciled with its BACKLOG body (13ac06f0b);
-  a FOREIGN path in backticked path:line form fixed at source rather than by
-  widening the citation guard (f4a742fd9); the hand-off consolidated onto this
-  one file (f195cd6bb).
-- Channel: CHANNEL.md v2 authored (6ad1531e2) and the triage roll-up for the
-  six-way round (fd0d56084). Five notes delivered six-way, EVERY destination
-  RE-HASHED after the write. RC's dead slot lock (pid 21600, RC's own) was
-  reaped; bucket empty.
-- A sibling REAL NAME was found and removed from tools/headless-repo.md, where
-  it sat SPLIT ACROSS A LINE WRAP - a form no whole-token search can see.
-
-
-RETRACTIONS AND FINDINGS - carry these, they are the expensive part
--------------------------------------------------------------------
-
-1. NOW-3'S FILED PREMISE WAS REFUTED. LEDGER 1430 filed that .css and .html
-   were "guarded only by the staged-line precommit hook, not by any test".
-   FALSE, and false since 7f52972c7 (2026-09-06). Proven by PLANTING the
-   defect, not by reading the guard: a probe .css carrying U+2014 and U+2713
-   was staged outside web/ and BOTH
-   tests/test_ascii_source_sweep.py::test_no_net_new_non_ascii_in_tracked_source
-   and tests/test_smart_quote_hygiene.py::test_no_smart_quotes_in_authored_source
-   went red. DO NOT RESTORE THAT WORDING. The real gaps were three and smaller:
-   no ADR-015 walker consumer for those extensions, no PER-EXTENSION floor
-   (test_the_sweep_selects_something asserts > 500 across 14 patterns, which
-   *.py alone satisfies, so dropping the two patterns would have stayed GREEN),
-   and ratchet-versus-flat-ban. A filed gap is a HYPOTHESIS about a guard, and
-   the cheapest test is to plant the defect and watch what goes red.
-
-2. THE CHANNEL CARRIER-SET ANOMALY IS CLOSED. LL DOES carry the document, at
-   third_party/rc_channel/docs/CHANNEL.md. The reason three repos all missed it
-   is that RC's mirror, RSC's census and LW's instrument each test ONLY
-   <root>/docs/CHANNEL.md - three independently written root maps with ONE
-   shared blind spot, which is exactly why their agreement proved nothing. True
-   carrier count is FIVE; the circulating counts 3, 4 and 5 all reconcile once
-   scope is stated. The WAKEUP_NOTES 2026-09-19b claim that LL has no
-   docs/CHANNEL.md is SUPERSEDED - do not propagate it.
-
-3. RC ISSUED THREE SELF-CORRECTIONS ON THE CHANNEL, in RC's own name, because a
-   wrong claim RC sent is RC's to withdraw: RC's liveness hypothesis about
-   RSC's tool was REFUTED; "RC has no grammar-table arm" is FALSE of the
-   repository; and RC published an anomaly as unexplained when one filename
-   search would have closed it.
-
-4. DO NOT PROPAGATE "RC's sweep leaves the sixth participant unswept". FALSE,
-   measured directly twice: load_config() returns 5 names, the sixth
-   participant is slot 4, and build_needles gives it the drive-path and
-   github-URL shapes. Narrowing by declaration is not absence.
+- ROUND B landed: ops/loop/winmutex.py 6190 -> 6184, df0a7a40, bytes and pin
+  in ONE commit (3ca8be8ce). RC holds NO code pin, so RC's half was a single
+  digest move.
+- RC's share of the shared git-install-root scratch bucket scanned for
+  CONTENT. Zero credential-class, PII NOT zero. Full report at
+  docs/specs/2026-09-20-shared-git-root-bucket-rc-share-scan.md.
+- RM-477 FIXED by windowing (2cfcbaada). --tree completes.
+- RC's first credential detection of any kind (65788dc5b).
+- RM-478: the stop gate could not tell an assertion from a report (ec5a18279).
+- Mission Control CLOSED by operator decision: verbs stay, headless, nothing
+  further deleted. Do NOT re-open as a removal proposal.
 
 
 WHAT TO DO NEXT
 ---------------
 
-1. ROUND B IS IN FLIGHT ON THE CHANNEL AND LANDS 09:22. RC OWES IT A RESPONSE -
-   read moon_sync_inbox/ at session start, before anything else.
-   THE SUBJECT IS A CARRIER-CODE DEFECT AT winmutex.py:118. ops/loop/winmutex.py
-   is a CROSS-REPOSITORY BYTE-PINNED artifact (SHARED_SHA256 in
-   tests/test_loop_concurrency.py - find it by SYMBOL, not by the recited line
-   :474, which had already drifted to :480 by this wrap). Therefore:
-   - Any RC-side edit to it is a JOINT act and a BOUNDARY HALT. Halt and ping
-     the operator BEFORE touching it. There is NO TIMEOUT; RC waits.
-   - NEVER regenerate the digest from local disk. Both trees hashing equal IS
-     the acceptance; a note claiming it is not.
-   - Copy a sibling's file with a BYTE-level copy, never write_text - that
-     turns LF into CRLF on Windows and the pin is on bytes.
-   - A push whose DIFF touches slots.py, winmutex.py or docs/CHANNEL.md HALTS.
-     The gate is on DIFF CONTENT, not on destination.
+1. RELOCATION PASS IS DUE AND IS THE MOST PRESSING ITEM. ROADMAP.md and
+   CLAUDE.md are BOTH at 89.7 percent of budget, at the warn line. This was
+   deliberately NOT started at the end of this session rather than half-done.
+   THE METHOD THAT HAS WORKED EIGHT TIMES: type each block into
+   docs/ROADMAP_HISTORY.md FIRST, then use that text as the old_string that
+   removes it from ROADMAP.md - verbatim is then PROVEN by the edit
+   succeeding, not asserted. CARRY THE TRAP: a line whose first clause says
+   SHIPPED is not necessarily a closed row, and these rows are single enormous
+   lines carrying several independent fences, so truncating one mid-line
+   silently drops a fence. Read the WHOLE line. Enumerate the RM id set before
+   and after and diff it; it must be EMPTY.
 
-2. THE MISSION CONTROL CONTROL-VERB DECISION IS STILL OPEN AND IS
-   OPERATOR-SHAPED. The VIEW is gone; the nine POST /api/loop-control verbs
-   remain, bearer-authed on :8895 under the RC-MissionControl task. The
-   question is whether to port them to the lane widget, retire them, or keep MC
-   headless for them. Read
-   docs/specs/mission_control_removal_gap_analysis.md first. Bring a
-   recommendation with surface-by-surface evidence; do NOT pick silently and
-   DELETE NOTHING FURTHER until it is answered. Touch no sibling repo.
+2. THE PERIODIC NON-STAGED CREDENTIAL SCANNER. The credential arm shipped this
+   session closes the AGENT-WRITE population only. It would NOT have caught a
+   single one of RC's 29 files in the shared bucket, because those were
+   written by ad-hoc shell redirects, not by an editor tool. Stated plainly in
+   the commit and the ledger rather than left to be discovered. The control
+   that would actually close it is a scanner over a NON-STAGED population -
+   the working tree including ignored files, plus the known scratch roots -
+   and it cannot be a pytest arm in a repo, because a guard whose corpus comes
+   from `git ls-files` cannot see a path git does not track.
 
-3. RM-477 - tools/sibling_name_sweep.py --tree DIES WITH MemoryError. FILED
-   2026-09-20, NOT FIXED.
-   ROOT CAUSE is arithmetic, not a guess: _strip_continuations (:795-815) and
-   _collapse (:818-838) each build a per-CHARACTER Python list - one 1-char str
-   plus one distinct int per byte - and build_views (:840) runs that THREE
-   times per blob, while collect_tree_blobs (:1233) reads WHOLE FILES (:1241).
-   The tree holds docs/history_notes.md at 5,733,852 bytes and docs/LEDGER.md
-   at 5,291,650 bytes, both plain text, both growing EVERY session - including
-   this one, so the problem is strictly worse now than when it was filed.
-   SEVERITY IS BOUNDED AND THE BOUND IS THE POINT: the ARMED pre-push gate is
-   NOT AFFECTED. --pre-push parses `diff --git` hunks (:1205) with a base_line
-   offset rather than whole blobs, and --scan-file is fine too. It is the TREE
-   AUDIT that is broken.
-   WHY IT MATTERS ANYWAY: RC's standing claim is "ARMED with a MEASURED escape
-   rate above zero", and the five real escapes were found by TREE-scope
-   auditing. That measurement cannot currently be repeated.
-   THE TRAP IN THE OBVIOUS FIX: excluding the two big docs would blind the
-   audit to precisely the two files most likely to QUOTE a sibling. The fix is
-   STREAMING or CHUNKING, never exclusion. Write the failing test FIRST.
-   RULED OUT: the 67 MB laning_scenarios JSONs are LFS, so git's blob is 133
-   bytes and they were never the trigger.
+3. precommit_gate.py STILL evaluates zero credential patterns.
+   tools/credential_patterns.py was deliberately written standalone and
+   importable so that arm is a small follow-up.
 
-4. ROADMAP.md RELOCATION PASS - DONE 2026-09-20, the eighth pass. CLOSED, do
-   not re-open. drift_guard.py reports ZERO breaches. ROADMAP.md went 80835 ->
-   71589 bytes, 99 percent -> 87 percent of the 81920-byte budget, so there is
-   about 2.1 KB of headroom under the 90 percent warn line. Nineteen fragments
-   of SHIPPED / CLOSED narrative and BLOCKED-row measurement evidence moved
-   VERBATIM into a new `## 2026-09-20b` block in docs/ROADMAP_HISTORY.md
-   (which carries no budget of its own), each surviving ROADMAP row keeping its
-   verdict, its residual and a pointer. NO open work moved and NO RM id was
-   dropped: the id set was enumerated before and after and the diff is EMPTY.
-   THE METHOD HELD - each block was typed into docs/ROADMAP_HISTORY.md FIRST
-   and then used as the old_string that removed it from ROADMAP.md, so verbatim
-   is PROVEN by the edit succeeding, not asserted.
-   CARRY THE TRAP FORWARD, it is durable and not specific to this pass: a line
-   whose first clause says SHIPPED is not necessarily a closed row, and these
-   rows are single enormous lines carrying several independent fences, so
-   truncating one mid-line silently drops a fence. Read the WHOLE line.
-   The budget will need this again; it is a recurring pass, not a one-off.
+4. ops/local_paths.json - RC's own .gitignore annotates it as holding a bearer
+   token. It was NOT opened this session and it sits squarely in the blind
+   spot above: gitignored, never staged, invisible to every RC control.
 
-5. Then the older queue, unchanged and still in order: RC's stray-work sweep
-   plus the reconciliation, now a SIX-way act (RC still owes its own report);
-   the frozen supervisor walker at ops/rc_supervisor.py:513 (a 1 Hz rglob over
-   agents/ that post-filters agents/daemon_slayer, about 1,220 ops/s in the
-   supervisor pid - it is a FROZEN file and needs an explicit operator grant,
-   so ASK, do not edit); RM-475; and the ROADMAP-vs-LEDGER drift guard gap.
-   RM-239 / RM-242 are an OPERATOR call and NOT YET CONFIRMED - do NOT start
-   them.
+5. Then the older queue, unchanged: RC's stray-work sweep plus the
+   reconciliation, now a SIX-way act (RC still owes its own report); the
+   frozen supervisor walker at ops/rc_supervisor.py:513 (a 1 Hz rglob - it is
+   a FROZEN file and needs an explicit operator grant, so ASK, do not edit);
+   RM-475; and the ROADMAP-vs-LEDGER drift guard gap. RM-239 / RM-242 are an
+   OPERATOR call and NOT YET CONFIRMED - do NOT start them.
 
 
 HARD BOUNDARY - BINDS THIS SESSION AND EVERY SESSION, ATTENDED INCLUDED
@@ -240,51 +118,55 @@ any write, delete or lock acquisition outside the repository root; before any
 edit to a cross-repository byte-pinned or grammar-pinned artifact
 (ops/loop/slots.py, ops/loop/winmutex.py, docs/CHANNEL.md); and before any PUSH
 WHOSE DIFF touches one of those or trips the sibling-name sweep. The gate is on
-DIFF CONTENT, not on destination. An ordinary push that passes the suites and
-the sweep does not halt. There is NO TIMEOUT: RC halts and WAITS.
+DIFF CONTENT, not on destination. There is NO TIMEOUT: RC halts and WAITS.
 
-NEVER write into a sibling checkout. NEVER put a sibling's real name or local
-path in a tracked file - CODES ONLY (CS, LL, LW, RSC, SS). The repo is PUBLIC.
-The sweep at tools/sibling_name_sweep.py is ARMED in .githooks/pre-push, but
-the honest claim is "armed with a measured escape rate above zero", never
-"sibling names cannot leak". Five real escapes were found in RC's own tree and
-all five had already been published. KNOWN_EXCEPTIONS is {} - there is no
-declared exception left; do not write one back in.
+ONE STANDING CARVE-OUT, operator-granted 2026-09-20, and it is NARROW:
+delivering a channel REPLY into a sibling's moon_sync_inbox/ is PRE-AUTHORISED
+and does NOT halt. Operator's words: "yes always deliver a reply". It covers
+that surface and nothing else. Deliver, then RE-HASH every destination and
+publish the reached-count - an outbound note sitting in your own outbox is not
+delivery, and only the recipient's copy proves it.
+
+NEVER write into a sibling checkout beyond that inbox. NEVER put a sibling's
+real name or local path in a tracked file - CODES ONLY (CS, LL, LW, RSC, SS).
+The repo is PUBLIC. The sweep at tools/sibling_name_sweep.py is ARMED in
+.githooks/pre-push, but the honest claim is "armed with a measured escape rate
+above zero", never "sibling names cannot leak". KNOWN_EXCEPTIONS is {} - do not
+write one back in.
 
 
 TRAPS WORTH CARRYING
 --------------------
 
-- `cmd | tail; echo $?` RETURNS TAIL'S STATUS, NOT THE COMMAND'S. This cost
-  real time twice in one session: it masked a CRASHED sibling sweep as a clean
-  exit 0 with a Python traceback scrolled past, and separately a wrapper exit
-  masked a KILLED pytest run. Use PIPESTATUS, or capture to a file and read the
-  producer's own status. A background-task notification reports the WRAPPING
-  shell's exit, not the producer's.
-- A LIVE FULL-SUITE RUN CAN LOOK DEAD ON THIS BOX AND IS NOT. Buffered output
-  plus Git-Bash `ps -p` failing to resolve Windows PIDs made a healthy run at
-  17 percent look stalled, and a redundant relaunch was killed over it. Neither
-  signal is evidence of death. Check the result FILE and the process via
-  Windows-native means before concluding anything.
-- An importorskip on a FIRST-PARTY module is a guard disarmed by its own import
-  line. A skip is not a pass.
-- A filed count is a HYPOTHESIS. Every filed count that has been re-derived was
-  wrong. Do not quote a doc's test count; measure it. This session's own
-  hand-off list named 15 commits and git log showed 16.
-- Agreement between two agents is not evidence, and neither is agreement
-  between two INSTRUMENTS - the carrier-set anomaly survived three independent
-  repos because all three root maps shared one blind spot.
-- An empty grep is a claim about your PATTERN, not about the codebase. A
-  sibling name SPLIT ACROSS A LINE WRAP is invisible to every whole-token
-  search; one was found in tracked prose this session.
-- rglob NEVER prunes, and post-filter walkers are a FAMILY, not an instance.
-- write_text turns LF into CRLF on Windows and read_text hides it, so byte
-  counts lie.
-- Proving your change happened is not proving it matters. Diff the consumer's
-  artifact.
+- A FACT ABOUT THE OBJECT STORE IS NOT A FACT ABOUT THE CHECKOUT. This repo
+  carried, in three docs, the claim that the 67 MB laning_scenarios JSONs were
+  "ruled out because they are LFS, so git's blob is 133 bytes". The LFS half
+  is true and the conclusion does not follow: the tree sweep reads the WORKING
+  TREE, so a smudged file is read at its full 66,961,895 bytes. Those seven
+  files were the dominant term all along.
+- A DELIVERED FILE WHOSE NAME MATCHES IS NOT THE THING YOU WANT. The inbox
+  carries winmutex.py.from-lw, which is the 2026-07-26 original with the
+  PRE-ROTATION mutex name values. Applying it by filename would have silently
+  de-serialized the fleet. Build shared bytes from your OWN disk and use the
+  published digest only as a value to CHECK against.
+- A MUTATION CONTROL WHOSE MUTANT DOES NOT PARSE PROVES NOTHING. It exits
+  non-zero for the wrong reason. Compile the mutated source before running it.
+- A COUNT THAT AGREES WITH A PRIOR COUNT IS NOT CORROBORATION. Two marker
+  families each returned 18 files this session whose sets overlapped in only 6.
+- SHARED CONVENTIONS ARE NOT IDENTITY. Using CLAUDE.md / ROADMAP.md / LEDGER as
+  attribution markers over-counted 5.7x and attributed a SIBLING's
+  credential-bearing file to RC.
+- A CITATION GUARD CANNOT TELL UNTRACKED FROM ABSENT. Citing a gitignored file
+  in backticked path:line form reads as a broken citation. Fix it at the SOURCE
+  DOC, never by widening _KNOWN_BROKEN.
+- `cmd | tail; echo $?` RETURNS TAIL'S STATUS. Use PIPESTATUS, or capture to a
+  file and read the producer's own status.
+- A filed count is a HYPOTHESIS. Every filed count re-derived has been wrong.
+- Agreement between two instruments is not evidence when they share a blind
+  spot.
+- rglob NEVER prunes. write_text turns LF into CRLF on Windows.
 - Never Stop-Process (hangs the MCP pipe). Use taskkill /F /PID.
-- Never `pytest .` - it once deleted the live supervisor lock. Run
-  `pytest tests` and `pytest agents/daemon_slayer` from the repo root.
+- Never `pytest .` - it once deleted the live supervisor lock.
 
 
 HOUSE RULES
@@ -299,6 +181,7 @@ before any restart. Atomic writes only. TDD: the failing test comes first.
 Orchestrated, multi-agent, self-adjudicating and self-adversarial is the
 DEFAULT shape, not an escalation - the main window is the OPERATOR'S surface,
 so the work happens in subagents and the main thread holds the plan, the merge,
-the gate and the report.
+the gate and the report. A subagent's measurement is not YOURS: re-run what you
+print, or attribute it.
 
 End the session with /done, which overwrites this file.
