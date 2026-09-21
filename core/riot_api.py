@@ -19,6 +19,9 @@ timeline review.
 Soft-fail invariants:
   - Missing API key file -> log WARNING once, every fn returns None.
   - Network/HTTP error -> log WARNING, return None.
+  - The None is AMBIGUOUS by contract (404 and 429 look the same). A caller
+    that must tell "rate limited, retry" from "no such data" wraps its calls
+    in `with track_outcomes() as scope:` and reads `scope.rate_limited`.
   - Cache layer is the source of truth for repeat lookups; this module
     is a fetch-and-store wrapper.
   - A 404/403 from an IMMUTABLE-cached endpoint is CACHED AS A NEGATIVE, for
@@ -341,9 +344,101 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
                 exc.close()
 
 
+# -- outcome tracking (why a helper returned None) -------------------------
+
+# Outcomes that mean "Riot is throttling us - the resource may well exist, ask
+# again later". `429` is Riot's own answer; `rate_limited` is the local bucket
+# refusing to send (usually because a 429 cooldown is still running).
+RATE_LIMIT_OUTCOMES = frozenset({"429", "rate_limited"})
+
+_OUTCOME_TLS = threading.local()
+
+
+class OutcomeScope:
+    """Records the `_call_ex` outcome of every Riot call made in its scope.
+
+    WHY THIS EXISTS. Every public helper returns a bare None for BOTH "Riot has
+    no such resource" and "Riot rate-limited us", so a consumer rendered a 429
+    as missing data (champ-select TEAM CONTEXT painted an empty skeleton;
+    `/api/scouting` shaped it as "Unranked" and cached that for 5 minutes).
+
+    WHY THIS SHAPE, and not a result type or a changed return value: the None
+    contract has callers across dashboard/, lib/, scripts/ and tools/, and
+    changing it would touch every one of them for a distinction most do not
+    need. A module-global `last_error` would be wrong under the concurrent
+    callers this module has (the team-context fan-out thread, the party-mains
+    refresh thread, request handlers). A THREAD-LOCAL scope is additive: only
+    a caller that opens one pays anything, a fresh scope can never read a
+    stale outcome from an earlier call, and a mocked helper that never reaches
+    `_call_ex` simply records nothing. Cache hits record nothing either - they
+    are not a statement about the wire.
+    """
+
+    __slots__ = ("outcomes",)
+
+    def __init__(self) -> None:
+        self.outcomes: list[str] = []
+
+    @property
+    def last(self) -> Optional[str]:
+        return self.outcomes[-1] if self.outcomes else None
+
+    @property
+    def rate_limited(self) -> bool:
+        """True if ANY call in the scope was throttled (429 or local bucket)."""
+        return any(o in RATE_LIMIT_OUTCOMES for o in self.outcomes)
+
+
+@contextlib.contextmanager
+def track_outcomes():
+    """Context manager yielding an `OutcomeScope` for calls on THIS thread.
+
+    Scopes nest: an inner scope's outcomes are recorded in every enclosing
+    scope too.
+    """
+    stack = getattr(_OUTCOME_TLS, "stack", None)
+    if stack is None:
+        stack = []
+        _OUTCOME_TLS.stack = stack
+    scope = OutcomeScope()
+    stack.append(scope)
+    try:
+        yield scope
+    finally:
+        # Remove by identity, not pop(): robust even if a caller exits scopes
+        # out of order.
+        for i in range(len(stack) - 1, -1, -1):
+            if stack[i] is scope:
+                del stack[i]
+                break
+
+
+def _record_outcome(outcome: str) -> None:
+    stack = getattr(_OUTCOME_TLS, "stack", None)
+    if stack:
+        for scope in stack:
+            scope.outcomes.append(outcome)
+
+
 # -- shared call wrapper -------------------------------------------------
 
 def _call_ex(
+    endpoint_label: str,
+    url: str,
+    rate_limit_timeout_s: float = 5.0,
+) -> tuple[Optional[dict], str]:
+    """Rate-limited HTTPS GET returning `(parsed_json_or_None, outcome)`.
+
+    Thin recorder over `_call_ex_inner`: every outcome is also published to
+    any open `track_outcomes()` scope on this thread, which is how a caller of
+    a None-returning public helper learns WHY it got None.
+    """
+    data, outcome = _call_ex_inner(endpoint_label, url, rate_limit_timeout_s)
+    _record_outcome(outcome)
+    return data, outcome
+
+
+def _call_ex_inner(
     endpoint_label: str,
     url: str,
     rate_limit_timeout_s: float = 5.0,
@@ -1007,7 +1102,10 @@ def is_configured() -> bool:
 
 
 __all__ = [
+    "RATE_LIMIT_OUTCOMES",
     "DualBucket",
+    "OutcomeScope",
+    "track_outcomes",
     "bucket_snapshot",
     "format_rank_entry",
     "get_account_by_riot_id",
