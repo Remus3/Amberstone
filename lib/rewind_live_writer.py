@@ -31,8 +31,13 @@ Design contract (item 119, frozen-file grant headless-upgrade run):
       - PUUID file missing / malformed -> abort
       - Match-V5 ``get_recent_matches`` returns None or empty -> 1
         retry after ``retry_after_s`` (default 60s), then abandon
+        (a 429 there instead reschedules, up to MAX_ID_RATE_LIMIT_RETRIES)
       - ``get_match`` returns None (404 / 403 / network / event mode
         like ARAM Mayhem queue 2400) -> abort silently
+      - ``get_match`` / ``get_match_timeline`` rate-limited (429) after
+        the in-thread bounded retry -> the match is parked in the
+        ``fetch_retry`` table for the catchup drain, never recorded as a
+        permanent has_timeline=0 (2026-09-20 fix)
       - Match already present in DB (operator played 2 games + cron
         ran between) -> skip
       - Very short game (gameDuration < ``MIN_DURATION_S`` = 180) ->
@@ -89,6 +94,11 @@ MIN_DURATION_S = 180
 # Default schedule (seconds).
 DEFAULT_DELAY_S = 90.0
 DEFAULT_RETRY_AFTER_S = 60.0
+
+# A 429 on the match-id fetch gets its OWN retry budget (rescheduled Timers,
+# ``retry_after_s`` apart), separate from the single "not indexed yet /
+# event mode" retry - a throttle says nothing about whether the match exists.
+MAX_ID_RATE_LIMIT_RETRIES = 3
 
 # Serializes DB writes across concurrent Timers (operator playing 2 games
 # back-to-back inside the retry window). Match-V5 calls are already
@@ -171,19 +181,28 @@ def _do_live_fetch_and_insert(
     *,
     is_retry: bool = False,
     retry_after_s: float = DEFAULT_RETRY_AFTER_S,
+    rate_limit_attempt: int = 0,
+    backoff_s: tuple[float, ...] | None = None,
+    sleep: Any = None,
 ) -> dict[str, Any]:
     """Fetch the most recent Match-V5 detail + timeline and write to DB.
 
     Returns a status dict for test assertions:
       ``status`` one of: ``no_puuid``, ``no_api_key``, ``no_id``,
         ``already_present``, ``no_detail``, ``short_game``, ``ok``,
-        ``error``, ``retry_scheduled``.
+        ``error``, ``retry_scheduled``, ``rate_limited_retry_scheduled``,
+        ``rate_limited``, ``detail_rate_limited``.
       ``match_id``: present when an id was resolved.
       ``duration_s``: present when detail was fetched.
+      ``timeline_status``: on ``ok`` - FETCH_OK / FETCH_ABSENT /
+        FETCH_RATE_LIMITED (the last means the match is parked in
+        ``fetch_retry`` for the catchup to finish, NOT a permanent 0).
 
-    Never raises. The 1-shot retry path is the only branch that
-    schedules another Timer; the second attempt receives is_retry=True
-    so it cannot recursively schedule a third.
+    Never raises. Two bounded rescheduling budgets: the 1-shot "empty id
+    list" retry (is_retry) and, separately, up to MAX_ID_RATE_LIMIT_RETRIES
+    reschedules when the id fetch was rate-limited (rate_limit_attempt).
+    Detail/timeline 429s get an in-thread bounded retry and are then parked
+    in the ``fetch_retry`` table rather than recorded as absent.
     """
     puuid = _resolve_latest_puuid()
     if puuid is None:
@@ -193,7 +212,7 @@ def _do_live_fetch_and_insert(
     # RC process boot (the module is loaded on-demand from on_game_end).
     try:
         from core import riot_api
-        from scripts.rewind_catchup import write_match
+        from scripts import rewind_catchup as rc
     except ImportError as exc:
         _log.debug("rewind_live_writer import error: %s", exc)
         return {"status": "error", "cause": "import"}
@@ -201,12 +220,42 @@ def _do_live_fetch_and_insert(
     if not riot_api.is_configured():
         return {"status": "no_api_key"}
 
+    fetch_kw: dict[str, Any] = {}
+    if backoff_s is not None:
+        fetch_kw["backoff_s"] = backoff_s
+    if sleep is not None:
+        fetch_kw["sleep"] = sleep
+
     # Fetch the 1 most-recent match id for the operator.
-    ids = riot_api.get_recent_matches(
-        puuid,
-        count=1,
-        region=REGION_REGIONAL,
-    )
+    with riot_api.track_outcomes() as id_scope:
+        ids = riot_api.get_recent_matches(
+            puuid,
+            count=1,
+            region=REGION_REGIONAL,
+        )
+    if not ids and id_scope.rate_limited:
+        # Throttled, not "not indexed yet": its own bounded budget, and it
+        # does not consume the event-mode retry below.
+        if rate_limit_attempt >= MAX_ID_RATE_LIMIT_RETRIES:
+            _log.info("rewind_live_writer: match-id fetch still rate-limited "
+                      "after %d retries; the catchup cron will pick it up",
+                      rate_limit_attempt)
+            return {"status": "rate_limited"}
+        try:
+            t = threading.Timer(
+                retry_after_s,
+                _do_live_fetch_and_insert,
+                kwargs={
+                    "is_retry": is_retry,
+                    "retry_after_s": retry_after_s,
+                    "rate_limit_attempt": rate_limit_attempt + 1,
+                },
+            )
+            t.daemon = True
+            t.start()
+        except RuntimeError as exc:
+            _log.debug("rewind_live_writer retry-schedule error: %s", exc)
+        return {"status": "rate_limited_retry_scheduled"}
     if not ids:
         # Likely Match-V5 hasn't seen the just-ended game yet; schedule
         # a single retry. Event modes (ARAM Mayhem queue 2400) also
@@ -217,7 +266,11 @@ def _do_live_fetch_and_insert(
                 t = threading.Timer(
                     retry_after_s,
                     _do_live_fetch_and_insert,
-                    kwargs={"is_retry": True, "retry_after_s": retry_after_s},
+                    kwargs={
+                        "is_retry": True,
+                        "retry_after_s": retry_after_s,
+                        "rate_limit_attempt": rate_limit_attempt,
+                    },
                 )
                 t.daemon = True
                 t.start()
@@ -248,7 +301,23 @@ def _do_live_fetch_and_insert(
             pass
 
     # Fetch detail.
-    detail = riot_api.get_match(match_id, region=REGION_REGIONAL)
+    detail, d_status = rc.fetch_with_rate_limit_retry(
+        lambda: riot_api.get_match(match_id, region=REGION_REGIONAL),
+        **fetch_kw)
+    if detail is None and d_status == rc.FETCH_RATE_LIMITED:
+        # Park the whole match: a later live write for a newer game would
+        # otherwise move the catchup window past this one for good.
+        with _WRITE_LOCK:
+            try:
+                conn = _open_db()
+                try:
+                    rc.enqueue_retry(conn, match_id, "match", "live detail 429")
+                    conn.commit()
+                finally:
+                    conn.close()
+            except (sqlite3.Error, OSError) as exc:
+                _log.debug("rewind_live_writer enqueue error: %s", exc)
+        return {"status": "detail_rate_limited", "match_id": match_id}
     if detail is None:
         # 404 / 403 / network / event-mode-key-policy. Silent.
         return {"status": "no_detail", "match_id": match_id}
@@ -268,9 +337,13 @@ def _do_live_fetch_and_insert(
             "duration_s": duration_s,
         }
 
-    # Fetch timeline (may legitimately be None for event modes; the
-    # cron's write_match handles None timeline by setting has_timeline=0).
-    timeline = riot_api.get_match_timeline(match_id, region=REGION_REGIONAL)
+    # Fetch timeline. A 404/403 (event modes such as ARAM Mayhem) is a
+    # permanent has_timeline=0; a persistent 429 writes has_timeline=0 AND
+    # parks the match in fetch_retry (record_hydrated), so the catchup
+    # finishes it instead of the 0 standing forever.
+    timeline, t_status = rc.fetch_with_rate_limit_retry(
+        lambda: riot_api.get_match_timeline(match_id, region=REGION_REGIONAL),
+        **fetch_kw)
 
     # Write under the lock.
     with _WRITE_LOCK:
@@ -284,7 +357,7 @@ def _do_live_fetch_and_insert(
                 "match_id": match_id,
             }
         try:
-            write_match(conn, match_id, detail, timeline)
+            rc.record_hydrated(conn, match_id, detail, timeline, t_status)
             conn.commit()
         except sqlite3.Error as exc:
             _log.debug("rewind_live_writer write error: %s", exc)
@@ -314,14 +387,16 @@ def _do_live_fetch_and_insert(
                 pass
 
     _log.info(
-        "rewind_live_writer wrote %s (duration=%ds, has_timeline=%d)",
-        match_id, duration_s, 1 if timeline else 0,
+        "rewind_live_writer wrote %s (duration=%ds, has_timeline=%d, "
+        "timeline=%s)",
+        match_id, duration_s, 1 if timeline else 0, t_status,
     )
     return {
         "status": "ok",
         "match_id": match_id,
         "duration_s": duration_s,
         "has_timeline": bool(timeline),
+        "timeline_status": t_status,
     }
 
 
