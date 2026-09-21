@@ -1075,7 +1075,8 @@ def write_report(
         except (OSError, ValueError, AttributeError, KeyError):
             merged = dict(report)
     tmp = out.with_suffix(".tmp")
-    tmp.write_text(json.dumps(merged, indent=1), encoding="utf-8")
+    # newline="\n": write_text translates LF to CRLF on Windows otherwise.
+    tmp.write_text(json.dumps(merged, indent=1), encoding="utf-8", newline="\n")
     tmp.replace(out)
     return out
 
