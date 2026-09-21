@@ -529,7 +529,7 @@
         "stamp_field": "patch"
       },
       "build_orders_aram.json": {
-        "body_md5": "a8281ebf",
+        "body_md5": "e65373bf",
         "declared_patch": "16.18.1",
         "stamp_field": "version"
       },
