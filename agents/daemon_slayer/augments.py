@@ -126,6 +126,8 @@ def _v(aug: Augment, key: str, idx: int = 0, default: float = 0.0) -> float:
 #   ratio anchor) - overlay can't honestly capture uptime/triggered grants.
 # * **Ratio / tradeoff** augments (Chauffeur immobility, DrawYourSword
 #   melee-conversion) - mechanic cost not modeled.
+AIM_FOR_THE_HEAD = "AimForTheHead"
+
 _AUGMENT_STAT_OVERLAYS: dict[str, callable] = {
     # Silver: +20 AD, +10 ability haste, +10 lethality. (Lethality not yet a
     # canonical stat key - silently dropped; AD overlay is what matters.)
@@ -178,7 +180,153 @@ _AUGMENT_STAT_OVERLAYS: dict[str, callable] = {
     "LegDay": lambda a: {
         "ms": _v(a, "MovementSpeed"),
     },
+    # Gold (id 336): "Gain 25% Critical Strike Chance and 25% Critical Strike
+    # Damage" - the flat half of Aim for the Head. The cap + excess conversion
+    # half is NOT an additive overlay; it runs in apply_augment_conversions
+    # once the build's raw (uncapped) crit chance is known. ``crit_damage`` is
+    # a bonus crit-damage FRACTION added to dps.DEFAULT_CRIT_BONUS, the same
+    # unit as ItemEffect.crit_damage_bonus (Infinity Edge +0.30).
+    AIM_FOR_THE_HEAD: lambda a: {
+        "crit": _v(a, "CritChanceBonus"),
+        "crit_damage": _v(a, "CritDamageBonus"),
+    },
 }
+
+
+# --- Conversion augments -----------------------------------------------------
+#
+# Augments whose effect depends on the FINISHED build (a cap on a stat, or one
+# stat converted into another) cannot be an additive overlay. They run after
+# the overlay merge in engine.build_champion via apply_augment_conversions.
+# Mechanics re-implemented from the augment's own game text + dataValues in
+# the cdragon arena dump (data/daemon_slayer/<patch>/arena_augments.json);
+# index 0 of each dataValues array, the same convention as _v() above.
+#
+# * AimForTheHead (id 336, Gold) - desc: "Your Critical Strike Chance is
+#   capped at @CritChanceCeiling*100@%. Convert @CritChanceToDamageRatio*100@%
+#   of Critical Strike Chance above @CritChanceCeiling*100@% into Critical
+#   Strike Damage." 16.18.1: ceiling 0.5, ratio 0.4. The excess is measured
+#   on the RAW sum (items + augments, before League's 100% clamp), because the
+#   text converts chance "above" the ceiling and does not stop at 100%.
+# * TapDancer (id 81, Prismatic) - desc: "Your Attacks grant you @MSPerHit@
+#   Move Speed On-Hit. Gain Attack Speed equal to @MSToASConversion*10000@% of
+#   your Move Speed." 16.18.1: 6 MS per hit, conversion 0.001 (the tooltip
+#   calc MSToASConversionCalc = MSToASConversion x stat 7 (move speed),
+#   displayed as a percent: 400 MS -> +40% bonus attack speed). The text
+#   names NO stack cap and no duration, so stacks are a caller input with an
+#   assumed default; the only ceiling is League's 2.5 attack-speed cap.
+TAP_DANCER = "TapDancer"
+
+# Assumed on-hit stacks for Tap Dancer when the caller supplies none: a
+# sustained-fight mid-point (about 10 autos into an Arena round fight).
+# Operator-tunable, mirroring dps._ASSUMED_TAKEDOWN_STACKS doctrine.
+ASSUMED_TAP_DANCER_STACKS = 10
+
+
+def soft_capped_move_speed(raw_ms: float) -> float:
+    """League's move-speed soft caps (the value the game calls "your Move
+    Speed"): x0.5 below 220, x0.8 above 415, x0.5 above 490. Continuous at
+    every breakpoint (415 -> 415, 490 -> 475)."""
+    if raw_ms > 490.0:
+        return raw_ms * 0.5 + 230.0
+    if raw_ms > 415.0:
+        return raw_ms * 0.8 + 83.0
+    if raw_ms < 220.0:
+        return raw_ms * 0.5 + 110.0
+    return raw_ms
+
+
+def resolve_augment(entry, snapshot: "DataSnapshot") -> Augment | None:
+    """Resolve one augment reference (Augment / record / id / apiName / name)
+    to an :class:`Augment`, or None when the snapshot does not know it."""
+    if isinstance(entry, Augment):
+        return entry
+    if isinstance(entry, dict):
+        return Augment.from_record(entry)
+    if isinstance(entry, (int, str)):
+        try:
+            return Augment.from_record(snapshot.arena_augment(entry))
+        except (KeyError, AttributeError):
+            return None
+    return None
+
+
+def _resolved_by_api(augments, snapshot) -> dict[str, Augment]:
+    out: dict[str, Augment] = {}
+    for entry in augments or ():
+        aug = resolve_augment(entry, snapshot)
+        if aug is not None and aug.api_name not in out:
+            out[aug.api_name] = aug
+    return out
+
+
+def crit_ceiling_rule(
+    augments, snapshot: "DataSnapshot"
+) -> tuple[float, float] | None:
+    """``(ceiling, excess_to_damage_ratio)`` when Aim for the Head is taken,
+    else None. compute_dps uses it to cap the ITEM-EFFECT crit it adds on top
+    of the stat block (Yun Tal Wildarrows) and convert that excess too."""
+    aug = _resolved_by_api(augments, snapshot).get(AIM_FOR_THE_HEAD)
+    if aug is None:
+        return None
+    return _v(aug, "CritChanceCeiling"), _v(aug, "CritChanceToDamageRatio")
+
+
+def has_conversion_augment(augments, snapshot: "DataSnapshot") -> bool:
+    by_api = _resolved_by_api(augments, snapshot)
+    return AIM_FOR_THE_HEAD in by_api or TAP_DANCER in by_api
+
+
+def apply_augment_conversions(
+    final: dict[str, float],
+    base_as: float,
+    raw_crit: float,
+    augments,
+    snapshot: "DataSnapshot",
+    augment_stacks: dict | None = None,
+    attack_speed_cap: float = 2.5,
+) -> list[str]:
+    """Apply cap / conversion augments to the finished stat block IN PLACE.
+
+    ``raw_crit`` is the build's crit chance BEFORE any clamp (items plus
+    additive augment overlays). ``base_as`` is the champion's level-1 base
+    attack speed, the multiplicand the engine uses for every bonus-AS
+    fraction. Returns human-readable notes. A build with neither augment is
+    untouched and returns [].
+    """
+    by_api = _resolved_by_api(augments, snapshot)
+    notes: list[str] = []
+
+    aim = by_api.get(AIM_FOR_THE_HEAD)
+    if aim is not None:
+        ceiling = _v(aim, "CritChanceCeiling")
+        ratio = _v(aim, "CritChanceToDamageRatio")
+        excess = max(0.0, raw_crit - ceiling)
+        final["crit"] = min(final.get("crit", 0.0), ceiling)
+        if excess > 0:
+            final["crit_damage"] = final.get("crit_damage", 0.0) + ratio * excess
+        notes.append(
+            f"Aim for the Head: crit chance capped at {ceiling:.2f} "
+            f"(raw {raw_crit:.4f}), excess x{ratio:.2f} -> "
+            f"+{ratio * excess:.4f} crit damage"
+        )
+
+    tap = by_api.get(TAP_DANCER)
+    if tap is not None:
+        stacks = ASSUMED_TAP_DANCER_STACKS
+        if augment_stacks and TAP_DANCER in augment_stacks:
+            stacks = max(0.0, float(augment_stacks[TAP_DANCER]))
+        ms = final.get("ms", 0.0) + _v(tap, "MSPerHit") * stacks
+        final["ms"] = ms
+        bonus_as = _v(tap, "MSToASConversion") * soft_capped_move_speed(ms)
+        final["as"] = min(
+            attack_speed_cap, final.get("as", 0.0) + base_as * bonus_as
+        )
+        notes.append(
+            f"Tap Dancer: {stacks:g} on-hit stack(s) -> {ms:.1f} MS, "
+            f"+{bonus_as:.4f} bonus AS from move speed"
+        )
+    return notes
 
 
 def compute_augment_stats(
