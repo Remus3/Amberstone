@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.283.0 (2026-09-21) - RM-480 ability override registry lifted to ratios.
+- feat: ``_ability_base_overrides.AbilityBaseOverride`` gains ``field``
+  (last, default ``"base"``): an entry may now correct a per-rank RATIO
+  field (any ratio key the RM-81 detector measures); an unknown field
+  raises at import. Guarding is all-or-nothing per form (one stale-guard
+  miss skips the whole form); single-entry rows behave as before.
+- data: seven champions from the 16.18.1 ratio-aware staleness sweep,
+  per-rank values wiki-MEASURED (rendered wiki lists, 2026-09-21): Poppy Q
+  bonus AD 100 -> 75 / 200 -> 150 and max-HP 9 -> 7..9 / 18 -> 14..18;
+  Qiyana Q base 60..180 -> 80..200, reduced 45..135 -> 60..150; Thresh E
+  base 75..255 -> 65..245 and AP 70 -> 60; Kennen R bolt 40,75,110 ->
+  40,80,120 AP 22.5 -> 25 and total 300,562.5,825 -> 300,600,900 AP
+  168.75 -> 187.5; ChoGath E base 20..100 -> 30..110, total 60..300 ->
+  90..330; Cassiopeia E bonus 20..100 -> 20..120 AP 55 -> 45; LeBlanc R
+  Mimic: Distortion (damage block 3) 150,300,450 -> 150,315,480 AP 75 ->
+  90 - block 3 is NOT read by the default block_strategy, so the LeBlanc
+  entry does not move default scoring.
+- tools: ds_wiki_staleness_check annotates base and ratio rows an
+  override moves with ``override_effective`` / ``resolved_by_override``
+  plus top-level ``_override_resolved``; ``--annotate-only`` re-annotates
+  the committed report offline. ``stale_champions`` is unchanged.
+Flag ``apply_ability_base_overrides`` stays DEFAULT-OFF, so every shipped
+table and default route response is byte-identical (build tables
+re-stamped only).
+
 1.282.0 (2026-09-21) - five-slice integration batch on patch 16.18.1.
 - fix: champion_block_index values are damage-block ordinals; 18
   clamp-reliant entries renumbered; Malphite W sums both damage blocks
