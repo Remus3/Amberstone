@@ -9,10 +9,11 @@ via 6676 AND 667666; the greedy build can then pick the same item twice.
 Fix: ``_filter_candidates`` keeps only the CANONICAL (shortest) id per item
 name. A strictly-longer same-name id is a DDragon alias and is dropped.
 Same-length collisions (Kalista's Black Spear 3599/3600, the jungle-pet tiers
-1101-1107 that share a display name) are NOT aliases and are left untouched, so
-the pass is byte-identical off SR (ARAM/Arena/Brawl have only the same-length
-Kalista collision - the alias namespaces are map-filtered to a single survivor
-there).
+1101-1107 that share a display name) are NOT aliases and are left untouched.
+The pass is NOT SR-only: at 16.18.1 DDragon marks both ids of many pairs legal
+off SR too (3084 AND 223084 Heartsteel are both maps["12"]=True), and this pass
+is what reduces each ARAM / Arena pair to one survivor. The OWNED-vs-candidate
+half of the same gap is pinned in test_owned_alias_name_dedup_s1_1.py.
 """
 
 import collections
@@ -73,9 +74,9 @@ class PoolAliasDedupTests(unittest.TestCase):
         self.assertEqual(dups, [], f"duplicate item names in Jhin SR reco: {dups}")
 
     def test_aram_pool_unchanged_control(self) -> None:
-        """Control: ARAM has no strictly-longer alias collision (the alias
-        namespaces map-filter to a single survivor), so the pool is already
-        clean and stays byte-identical."""
+        """ARAM pool carries no strictly-longer alias after the dedup. The raw
+        ARAM pool DOES hold alias pairs (3084 + 223084 are both ARAM-legal in
+        DDragon 16.18.1); the shortest-id pass is what leaves one survivor."""
         byname = _pool_by_name(self.snap, "ARAM")
         offenders = {
             name: sorted(ids, key=lambda x: (len(x), x))
