@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
 from ._passive_as_lock_overrides import as_lock_entry
-from .augments import compute_augment_stats
+from .augments import (
+    apply_augment_conversions,
+    compute_augment_stats,
+    has_conversion_augment,
+)
 from .data_loader import DataSnapshot, canonical_mode
 from .effects import ITEM_EFFECTS
 from .stats import (
@@ -293,8 +297,14 @@ def build_champion(
     mode: str = "SR",
     augments: Optional[Iterable[str | int]] = None,
     apply_mode_modifiers: bool = False,
+    augment_stacks: Optional[dict] = None,
 ) -> ResolvedStats:
     """Resolve a champion's stats at ``level`` with the given items equipped.
+
+    ``augment_stacks`` (appended at the END): optional ``{apiName: stacks}``
+    for stacking conversion augments (Tap Dancer on-hit move speed). Omitted
+    -> ``augments.ASSUMED_TAP_DANCER_STACKS``. Ignored for any augment not in
+    ``augments`` - it never grants an augment by itself.
 
     Unknown item IDs raise ``KeyError`` from ``DataSnapshot.item``. Pass an
     explicit empty list (or omit) for naked stats.
@@ -453,16 +463,39 @@ def build_champion(
             final["crit"] = 1.0
         if final.get("as", 0.0) > ATTACK_SPEED_CAP:
             final["as"] = ATTACK_SPEED_CAP
+    # Cap / conversion augments (Aim for the Head, Tap Dancer) read the
+    # FINISHED build, so they run after the additive overlay. Guarded on a
+    # non-empty augment list, so every augment-free build is byte-identical;
+    # a list with neither conversion augment is untouched by the helper.
+    conversion_notes: list[str] = []
+    has_conversion = False
+    if aug_list:
+        has_conversion = has_conversion_augment(aug_list, snapshot)
+        if has_conversion:
+            # Raw crit BEFORE League's 100% clamp: the same (base + flat) x
+            # (1 + pct) _combine_items computes, plus the additive overlay.
+            raw_crit = (
+                scaled.get("crit", 0.0) + item_totals.get("crit_flat", 0.0)
+            ) * (1 + item_totals.get("crit_pct", 0.0)) + augment_overlay.get("crit", 0.0)
+            conversion_notes = apply_augment_conversions(
+                final,
+                raw_base.get("as", 0.0),
+                raw_crit,
+                aug_list,
+                snapshot,
+                augment_stacks=augment_stacks,
+                attack_speed_cap=ATTACK_SPEED_CAP,
+            )
     final, mode_notes = _apply_mode_modifiers(final, raw_base, mode, champ)
 
-    notes: list[str] = list(mode_notes)
+    notes: list[str] = list(mode_notes) + conversion_notes
     if mode_addends:
         notes.append(
             f"mode={mode} stat-growth addends applied: {sorted(mode_addends)}"
         )
     if mode not in ("SR", "ARAM"):
         notes.append(f"mode={mode} - modifier table not plugged in for this mode")
-    if aug_list and not augment_overlay:
+    if aug_list and not augment_overlay and not has_conversion:
         notes.append(f"augments={list(aug_list)} - none in stat-overlay registry yet")
 
     return ResolvedStats(
