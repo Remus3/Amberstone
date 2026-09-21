@@ -184,3 +184,84 @@ def test_engine_effective_annotation_flags_uncorrected_ratio(monkeypatch):
     assert ad["engine_stale"] is True
     hp = rows["ratio:Physical Damage:target_max_hp_pct"]
     assert hp["engine_stale"] is False
+
+
+# --------------------------------------------------------------- RM-480 overrides
+
+
+def _thresh_report():
+    return {
+        "_patch": "16.18.1",
+        "stale_champions": ["Thresh", "Zed"],
+        "findings": [
+            {"champion": "Thresh", "ability": "E", "name": "Flay",
+             "field": "base:Magic Damage", "meraki": [75.0, 255.0], "wiki": [65.0, 245.0]},
+            {"champion": "Thresh", "ability": "E", "name": "Flay",
+             "field": "ratio:Magic Damage:ap_pct", "kind": "ratio",
+             "meraki": [70.0, 70.0], "wiki": [60.0, 60.0]},
+            {"champion": "Zed", "ability": "Q", "name": "x", "field": "cooldown",
+             "meraki": [6.0, 4.0], "wiki": [6.0, 5.0]},
+            {"champion": "Zed", "ability": "Q", "name": "x",
+             "field": "base:Physical Damage", "meraki": [1.0, 2.0], "wiki": [3.0, 4.0]},
+        ],
+    }
+
+
+def test_override_annotation_marks_base_and_ratio_rows_resolved():
+    def lookup(champ, slot, attr, key):
+        if champ != "Thresh":
+            return None
+        return (60.0, 60.0) if key == "ap_pct" else (65.0, 245.0)
+
+    report = _thresh_report()
+    M.annotate_override_resolution(report, lookup)
+    rows = {(r["champion"], r["field"]): r for r in report["findings"]}
+    base = rows[("Thresh", "base:Magic Damage")]
+    ratio = rows[("Thresh", "ratio:Magic Damage:ap_pct")]
+    assert base["resolved_by_override"] is True
+    assert base["override_effective"] == [65.0, 245.0]
+    assert ratio["resolved_by_override"] is True
+    assert ratio["override_effective"] == [60.0, 60.0]
+    # No override for Zed -> no annotation at all; cooldown rows never annotated.
+    assert "resolved_by_override" not in rows[("Zed", "base:Physical Damage")]
+    assert "resolved_by_override" not in rows[("Zed", "cooldown")]
+    assert report["_override_resolved"] == 2
+    # stale_champions is NOT pruned: the default engine still uses stale values.
+    assert report["stale_champions"] == ["Thresh", "Zed"]
+
+
+def test_override_that_misses_the_wiki_is_not_resolved():
+    report = _thresh_report()
+    M.annotate_override_resolution(
+        report, lambda c, s, a, k: (61.0, 61.0) if c == "Thresh" and k == "ap_pct" else None
+    )
+    ratio = [r for r in report["findings"] if r["field"] == "ratio:Magic Damage:ap_pct"][0]
+    assert ratio["resolved_by_override"] is False
+    assert report["_override_resolved"] == 0
+
+
+def test_real_override_lookup_resolves_thresh_e():
+    """End to end against the committed 16.18.1 data and the real registry."""
+    lookup = M._override_lookup("16.18.1")
+    assert lookup is not None
+    assert lookup("Thresh", "E", "Magic Damage", "ap_pct") == (60.0, 60.0)
+    assert lookup("Thresh", "E", "Magic Damage", "base") == (65.0, 245.0)
+    # Untouched by any override -> None.
+    assert lookup("Zed", "Q", "Physical Damage", "base") is None
+    assert lookup("Cassiopeia", "E", "Total Enhanced Damage", "base") is None
+
+
+def test_committed_report_carries_override_resolution():
+    import json
+
+    path = Path(__file__).resolve().parents[1] / "data" / "daemon_slayer" / "16.18.1" / "ability_staleness.json"
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert report["_override_resolved"] >= 18
+    resolved = {r["champion"] for r in report["findings"] if r.get("resolved_by_override")}
+    assert {"Poppy", "Qiyana", "Thresh", "Kennen", "Chogath", "Cassiopeia", "Leblanc"} <= resolved
+    # Malzahar W: corrected head 12..20 sits below its per-level tail, so the
+    # base endpoint must be cut where the UNOVERRIDDEN series cuts.
+    assert "Malzahar" in resolved
+    # stale_champions is still derived from findings, overrides notwithstanding.
+    assert report["stale_champions"] == sorted({f["champion"] for f in report["findings"]})
+    assert "Poppy" in report["stale_champions"]

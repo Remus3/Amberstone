@@ -46,7 +46,7 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 
 **Filed 2026-09-21 by the 2026-09-20c validation swarm (LEDGER 1452), after ENGINE 1.281.0 / 1.282.0 (LEDGER 1450 / 1451):**
 - **[!] RM-479: `/stats` does not parse `augment_stacks`** - recorded as known-unreachable in `tests/test_ds_parity_map.py`. Wire the transport (check the flag AND the transport, per the route-seam fence) or keep it as named debt. Tier-2.
-- **[!] RM-480: RM-81 ratio overrides for 7 HIGH stale-ability champions** - Poppy Q, Qiyana Q, Thresh E, Kennen R, ChoGath E, Cassiopeia E, LeBlanc R. The 1.282.0 detector now sees ratio-only drift (97 -> 112 stale), but `_ability_base_overrides.py` supports BASE only; needs a schema lift. Tier-2.
+- **[x] RM-480: RM-81 ratio overrides for 7 HIGH stale-ability champions** - SHIPPED in ENGINE 1.283.0 (DEFAULT-OFF behind `apply_ability_base_overrides`): `AbilityBaseOverride.field` lifts the registry to per-rank ratio fields; Poppy Q, Qiyana Q, Thresh E, Kennen R, ChoGath E, Cassiopeia E, LeBlanc R seeded with wiki-measured per-rank values; the staleness report now marks `resolved_by_override`. Left open: Qiyana Q form 1 (Elemental Wrath), the other five LeBlanc R blocks, Kennen R cooldown, and the stale Naafiri R entry (wiki now 125..275).
 - **[!] RM-481: build-table and pickban generators write CRLF** - the staleness tool was fixed to LF; the generators still emit CRLF. Tier-1.
 - **[!] RM-482: ARAM Mayhem augment VALUES have no public source** - the augment choice is Haiku-on-names only. Research row; do not invent numbers.
 - **[!] RM-483: locked / forced-item slots for items not yet owned** (build planner). Low value.
