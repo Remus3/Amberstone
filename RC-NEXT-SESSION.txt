@@ -4,225 +4,105 @@ AMBERSTONE (RC) - NEXT SESSION CONTINUATION
 ONE FILE. Repo root. OVERWRITTEN every /done - never appended, never
 dated-suffixed, never a second copy. The Desktop shortcut RC-NEXT-SESSION.lnk
 points here. This file is TRACKED, so each hand-off is versioned and diffable.
-Written 2026-09-20 (session 2026-09-20b).
+Written 2026-09-21 (session 2026-09-20c).
 
 
-THE PROMPT
-----------
+NEXT SESSION
+------------
 
 Continue work on Amberstone, the live League / TFT coaching dashboard at
 C:\Riot Commander. 1-PC on Legion (ADR-011). The repo is PUBLIC.
 
-READ THESE FIRST, IN THIS ORDER:
-
-1. CLAUDE.md. Treat "### Settled - do not re-litigate" as binding. Each of
-   those was closed with evidence; re-pitching one is the standing failure.
-2. MEMORY.md plus the INDEX_* files it points at.
-3. WAKEUP_NOTES.md (last 3 sessions at full fidelity), docs/LEDGER.md
-   (newest-first; this session is 1439 through 1444), ROADMAP.md NOW.
-4. docs/ARCHITECTURE.md for the module map.
-5. git log --oneline -20. Trust it over any list below.
-6. moon_sync_inbox/. A note that arrived while a session was open is invisible
-   to that session, so session start is the only moment this gets read.
-7. python tools/perseus_recall.py "<your task in your own words>" BEFORE
-   starting any non-trivial item. If a settled or ledger hit says the work is
-   CLOSED, REFUTED or already shipped, stop and report that instead of
-   building. Recall through that tool, never the raw MCP call.
-
-A FRESH CLONE HAS NO GATES. core.hooksPath is LOCAL config and is not cloned,
-and .mcp.json plus the Perseus vault are gitignored. First actions:
-
-    python scripts/install_hooks.py
-    perseus-vault connect --client claude-code --hooks
-    python tools/perseus_sync.py --verify
+Read first, in order: CLAUDE.md (### Settled is binding), MEMORY.md plus the
+INDEX_* files (INDEX_ds.md for this task), WAKEUP_NOTES.md (last 3 sessions),
+docs/LEDGER.md (this session is 1445 through 1452), ROADMAP.md NOW,
+git log --oneline -20 (trust it over any list here), moon_sync_inbox/.
+Then: python tools/perseus_recall.py "<the task in your own words>".
 
 
-STATE AS OF THIS HANDOFF
-------------------------
+TASK
+----
 
-    branch        main, clean
-    origin/main   see git log - this session pushed through ec5a18279 plus a
-                  docs commit; VERIFY with `git fetch` and
-                  `git log --oneline origin/main..HEAD` rather than trusting
-                  this line. Do not quote a sha from a hand-off as current.
-    suite         measure it. `pytest tests --collect-only -q` and
-                  `pytest agents/daemon_slayer --collect-only -q`, both from
-                  the repo root, never `pytest .`. The last full dual suite
-                  observed in CI was 34989 passed / 275 skipped / 18716
-                  subtests in 919 s, with ONE failure that is fixed.
-    round B       LANDED on RC and PUSHED. All carriers confirmed df0a7a40.
+RM-480: the RM-81 RATIO-OVERRIDE SCHEMA LIFT for the 7 HIGH stale-ability
+champions - Poppy Q, Qiyana Q, Thresh E, Kennen R, ChoGath E, Cassiopeia E,
+LeBlanc R.
 
-
-WHAT THIS SESSION DELIVERED - LEDGER 1439 to 1444
---------------------------------------------------
-
-- ROUND B landed: ops/loop/winmutex.py 6190 -> 6184, df0a7a40, bytes and pin
-  in ONE commit (3ca8be8ce). RC holds NO code pin, so RC's half was a single
-  digest move.
-- RC's share of the shared git-install-root scratch bucket scanned for
-  CONTENT. Zero credential-class, PII NOT zero. Full report at
-  docs/specs/2026-09-20-shared-git-root-bucket-rc-share-scan.md.
-- RM-477 FIXED by windowing (2cfcbaada). --tree completes.
-- RC's first credential detection of any kind (65788dc5b).
-- RM-478: the stop gate could not tell an assertion from a report (ec5a18279).
-- Mission Control CLOSED by operator decision: verbs stay, headless, nothing
-  further deleted. Do NOT re-open as a removal proposal.
+Why this one: ENGINE 1.282.0 widened the RM-81 detector to ratio-only drift
+(97 -> 112 stale), so these seven are MEASURED wrong numbers flowing into live
+DS scoring today, and the only blocker is a known, bounded schema gap
+(_ability_base_overrides.py can express a BASE override, not a RATIO). The
+runner-up, RM-479 (augment_stacks on /stats), is transport plumbing for a
+route already recorded as known-unreachable in tests/test_ds_parity_map.py -
+real but lower value.
 
 
-WHAT TO DO NEXT
----------------
+CONTEXT
+-------
 
-1. RELOCATION PASS IS DUE AND IS THE MOST PRESSING ITEM. ROADMAP.md and
-   CLAUDE.md are BOTH at 89.7 percent of budget, at the warn line. This was
-   deliberately NOT started at the end of this session rather than half-done.
-   THE METHOD THAT HAS WORKED EIGHT TIMES: type each block into
-   docs/ROADMAP_HISTORY.md FIRST, then use that text as the old_string that
-   removes it from ROADMAP.md - verbatim is then PROVEN by the edit
-   succeeding, not asserted. CARRY THE TRAP: a line whose first clause says
-   SHIPPED is not necessarily a closed row, and these rows are single enormous
-   lines carrying several independent fences, so truncating one mid-line
-   silently drops a fence. Read the WHOLE line. Enumerate the RM id set before
-   and after and diff it; it must be EMPTY.
-
-2. THE PERIODIC NON-STAGED CREDENTIAL SCANNER. The credential arm shipped this
-   session closes the AGENT-WRITE population only. It would NOT have caught a
-   single one of RC's 29 files in the shared bucket, because those were
-   written by ad-hoc shell redirects, not by an editor tool. Stated plainly in
-   the commit and the ledger rather than left to be discovered. The control
-   that would actually close it is a scanner over a NON-STAGED population -
-   the working tree including ignored files, plus the known scratch roots -
-   and it cannot be a pytest arm in a repo, because a guard whose corpus comes
-   from `git ls-files` cannot see a path git does not track.
-
-3. precommit_gate.py STILL evaluates zero credential patterns.
-   tools/credential_patterns.py was deliberately written standalone and
-   importable so that arm is a small follow-up.
-
-4. ops/local_paths.json - RC's own .gitignore annotates it as holding a bearer
-   token. It was NOT opened this session and it sits squarely in the blind
-   spot above: gitignored, never staged, invisible to every RC control.
-
-5. CHANNEL REPLIES OWED, none urgent and none blocking: SS landed round B and
-   reports that a sibling's VACUITY finding reaches SS by a sharper route; a
-   sibling reports CS's commit makes the slots.py PIN population five; and LL
-   answered the bucket scan. ALREADY RE-VERIFIED ON A FROZEN TREE, so do not
-   redo it: THE VACUITY FINDING DOES NOT REACH RC. RC has no
-   KNOWN_CODE_HITS and no CARRIER_CODES arm anywhere in the tree, and the guard
-   consumers of RC's nearest analogue (KNOWN_EXCEPTIONS, now empty) inject the
-   value with monkeypatch.setattr rather than reading the live constant, which
-   is the pattern that is immune to it. The general class is still worth
-   carrying: an arm whose ONLY non-vacuity assertion compares against a
-   constant that later becomes empty passes against empty fixtures.
-
-6. A PYTEST TEMP-DIR accumulation finding was relayed from another tree while
-   this session wrapped. TWO THINGS WERE ALREADY ESTABLISHED: RC ALREADY has
-   tmp_path_retention_policy and tmp_path_retention_count set (pytest.ini:9-10,
-   added 2026-09-19), so the config half of the recommendation is DONE here and
-   the real question is whether it is HONOURED; and Temp-Hygiene.ps1 is OUTSIDE
-   the repository root, so changing its cutoff is a BOUNDARY HALT needing an
-   operator grant. RESOLVED AT WRAP AND CLOSED - DO NOT RE-INVESTIGATE. The
-   finding was REAL and is ALREADY FIXED, by another session, at 20:00:12 on
-   2026-09-20. Verified independently here from the live script and its log,
-   not from the other session's word: the cutoff is now PytestCutoffHours = 3
-   and the rule covers BOTH the per-user parent and the top-level
-   sibling-prefixed roots. The log is unambiguous - 04:45, 08:45, 12:45 and
-   16:45 each reported "removed 0 stale run dirs", and the first run after the
-   fix, at 20:04:47, reported "removed 25 stale run dirs (kept 16 newer than
-   3h, 6 failed)". RC needed no change: pytest.ini already carried the
-   retention settings. TWO TRAPS FROM THIS, both durable. FIRST, TWO FILES OF
-   THAT NAME EXIST ON THIS MACHINE AND ONLY ONE IS LIVE - a stale copy sits in
-   a dated backup directory, and grepping THAT one returns NOTHING for the
-   pytest rule, which would have produced a confident wrong verdict. Resolve
-   the scheduled task's actual -File argument to find the live one; never audit
-   a file because its NAME matches. SECOND, the relayed file counts could not be
-   reproduced because the root was being cleaned WHILE it was measured, so any
-   total spanning that window describes two different worlds. A residual worth
-   one glance someday, not a defect: that run reported 6 dirs it failed to
-   remove, presumably read-only or locked. DO NOT delete anything in those
-   directory prefix embeds a SIBLING CHECKOUT BASENAME whose bare-word sweep arm
-   is SUPPRESSED BY DECLARATION, so writing it into a tracked file would leak
-   silently past the pre-push gate. Refer to those dirs by code only.
-
-7. Then the older queue, unchanged: RC's stray-work sweep plus the
-   reconciliation, now a SIX-way act (RC still owes its own report); the
-   frozen supervisor walker at ops/rc_supervisor.py:513 (a 1 Hz rglob - it is
-   a FROZEN file and needs an explicit operator grant, so ASK, do not edit);
-   RM-475; and the ROADMAP-vs-LEDGER drift guard gap. RM-239 / RM-242 are an
-   OPERATOR call and NOT YET CONFIRMED - do NOT start them.
+- ENGINE 1.282.0 / patch 16.18.1. Live DS truth = data/daemon_slayer/current.txt
+  + agents/daemon_slayer/__init__.py + /health on :8860. Verify, do not quote.
+- The 1.282.0 integration (7fbe7aead) had its verifier gate PENDING at wrap.
+  Confirm it landed on main and CI is green before building on it.
+- Per-version DS changelog: agents/daemon_slayer/CHANGELOG.md (1.281.0 and
+  1.282.0 entries). docs/DAEMON_SLAYER.md carries NO changelog by design.
+- ROADMAP.md is now ~92 percent of its 80 KB budget (tests/test_doc_size_budget.py).
+  A relocation pass to docs/ROADMAP_HISTORY.md is DUE; if this task's rows
+  push it over, relocate FIRST using the verbatim method (type the block into
+  ROADMAP_HISTORY.md, then use that text as the old_string that removes it).
 
 
-HARD BOUNDARY - BINDS THIS SESSION AND EVERY SESSION, ATTENDED INCLUDED
------------------------------------------------------------------------
+ACCEPTANCE
+----------
 
-HALT AND PING THE OPERATOR BEFORE ANY BYTE LEAVES THE TREE. That means before
-any write, delete or lock acquisition outside the repository root; before any
-edit to a cross-repository byte-pinned or grammar-pinned artifact
-(ops/loop/slots.py, ops/loop/winmutex.py, docs/CHANNEL.md); and before any PUSH
-WHOSE DIFF touches one of those or trips the sibling-name sweep. The gate is on
-DIFF CONTENT, not on destination. There is NO TIMEOUT: RC halts and WAITS.
-
-ONE STANDING CARVE-OUT, operator-granted 2026-09-20, and it is NARROW:
-delivering a channel REPLY into a sibling's moon_sync_inbox/ is PRE-AUTHORISED
-and does NOT halt. Operator's words: "yes always deliver a reply". It covers
-that surface and nothing else. Deliver, then RE-HASH every destination and
-publish the reached-count - an outbound note sitting in your own outbox is not
-delivery, and only the recipient's copy proves it.
-
-NEVER write into a sibling checkout beyond that inbox. NEVER put a sibling's
-real name or local path in a tracked file - CODES ONLY (CS, LL, LW, RSC, SS).
-The repo is PUBLIC. The sweep at tools/sibling_name_sweep.py is ARMED in
-.githooks/pre-push, but the honest claim is "armed with a measured escape rate
-above zero", never "sibling names cannot leak". KNOWN_EXCEPTIONS is {} - do not
-write one back in.
+1. Schema lift: the override registry can express a per-rank RATIO (and keep
+   BASE working); a failing test is written FIRST for at least one champion.
+2. All 7 HIGH rows carry a ratio override sourced from the extract's own
+   numbers, one test per champion (per-champion validation, not one generic
+   shape), and the RM-81 detector no longer flags them.
+3. Grep for sibling cases (other HIGH-adjacent rows, other overrides reading
+   the same field) and either cover them or name why not.
+4. ENGINE_VERSION bump, full dual suite from the repo root (pytest
+   agents/daemon_slayer + pytest tests, never pytest .), DS :8860 restarted,
+   /health shows the new version, verifier subagent gate before "done".
+5. drift_guard.py <old version> clean; LEDGER entry; RM-480 flipped.
 
 
-TRAPS WORTH CARRYING
---------------------
-
-- A FACT ABOUT THE OBJECT STORE IS NOT A FACT ABOUT THE CHECKOUT. This repo
-  carried, in three docs, the claim that the 67 MB laning_scenarios JSONs were
-  "ruled out because they are LFS, so git's blob is 133 bytes". The LFS half
-  is true and the conclusion does not follow: the tree sweep reads the WORKING
-  TREE, so a smudged file is read at its full 66,961,895 bytes. Those seven
-  files were the dominant term all along.
-- A DELIVERED FILE WHOSE NAME MATCHES IS NOT THE THING YOU WANT. The inbox
-  carries winmutex.py.from-lw, which is the 2026-07-26 original with the
-  PRE-ROTATION mutex name values. Applying it by filename would have silently
-  de-serialized the fleet. Build shared bytes from your OWN disk and use the
-  published digest only as a value to CHECK against.
-- A MUTATION CONTROL WHOSE MUTANT DOES NOT PARSE PROVES NOTHING. It exits
-  non-zero for the wrong reason. Compile the mutated source before running it.
-- A COUNT THAT AGREES WITH A PRIOR COUNT IS NOT CORROBORATION. Two marker
-  families each returned 18 files this session whose sets overlapped in only 6.
-- SHARED CONVENTIONS ARE NOT IDENTITY. Using CLAUDE.md / ROADMAP.md / LEDGER as
-  attribution markers over-counted 5.7x and attributed a SIBLING's
-  credential-bearing file to RC.
-- A CITATION GUARD CANNOT TELL UNTRACKED FROM ABSENT. Citing a gitignored file
-  in backticked path:line form reads as a broken citation. Fix it at the SOURCE
-  DOC, never by widening _KNOWN_BROKEN.
-- `cmd | tail; echo $?` RETURNS TAIL'S STATUS. Use PIPESTATUS, or capture to a
-  file and read the producer's own status.
-- A filed count is a HYPOTHESIS. Every filed count re-derived has been wrong.
-- Agreement between two instruments is not evidence when they share a blind
-  spot.
-- rglob NEVER prunes. write_text turns LF into CRLF on Windows.
-- Never Stop-Process (hangs the MCP pipe). Use taskkill /F /PID.
-- Never `pytest .` - it once deleted the live supervisor lock.
-
-
-HOUSE RULES
+DO NOT REDO
 -----------
 
-7-bit ASCII in every authored file: no em-dashes, no en-dashes, no smart
-quotes, anywhere, ever. Files go through Read / Edit / Write / Grep / Glob and
-NEVER through a Bash heredoc, sed -i or redirection - stop_claim_gate reads a
-Bash-mediated write as an unbacked claim even when the change is real. Never
-add a Co-Authored-By trailer and never file its absence as a defect. py_compile
-before any restart. Atomic writes only. TDD: the failing test comes first.
-Orchestrated, multi-agent, self-adjudicating and self-adversarial is the
-DEFAULT shape, not an escalation - the main window is the OPERATOR'S surface,
-so the work happens in subagents and the main thread holds the plan, the merge,
-the gate and the report. A subagent's measurement is not YOURS: re-run what you
-print, or attribute it.
+- The 16.18.1 patch bump, the lolmath extractor fixes, Ultra Hydra 226668 ARAM
+  exclusion, cherry_augments refetch, Brawl-pool canary (LEDGER 1450).
+- F2 block-index ordinals, F3 Arena Stormrazor/RFC, S1-1 alias dedup, the
+  RM-81 ratio-drift detector itself (LEDGER 1451).
+- The rewind DB dedup/backfill - already run live and recovered (LEDGER 1449).
+  The event-id gap from an earlier unrecorded cleanup is UNRECOVERABLE; do not
+  chase it.
+- Riot 429 reason plumbing (LEDGER 1447) and stop_claim_gate check 6 (LEDGER
+  1448). Their residues are ACCEPTED and recorded in-tool.
+- Fiddlesticks Q (RM-485) is NOTE ONLY - the conditional-target-state arc is
+  operator-CLOSED. Ability haste is measured INERT - do not spec it again.
+- No task chips, ever (operator ruling): do it now, ROADMAP it, or carry it here.
 
-End the session with /done, which overwrites this file.
+
+START WITH
+----------
+
+    git fetch && git log --oneline origin/main -10
+    curl -s http://127.0.0.1:8860/health
+    python tools/perseus_recall.py "RM-81 ratio override schema lift stale ability"
+    grep -n "def \|OVERRIDES" agents/daemon_slayer/_ability_base_overrides.py
+
+Then spec the schema lift in a Plan subagent BEFORE any code, verified against
+the cited file:line ground truth.
+
+
+HARD BOUNDARY - BINDS EVERY SESSION, ATTENDED INCLUDED
+------------------------------------------------------
+
+HALT AND PING THE OPERATOR BEFORE ANY BYTE LEAVES THE TREE: any write, delete
+or lock outside the repository root; any edit to ops/loop/slots.py,
+ops/loop/winmutex.py or docs/CHANNEL.md; any PUSH whose DIFF touches those or
+trips the sibling-name sweep. NO TIMEOUT - halt and wait. ONE narrow carve-out:
+delivering a channel REPLY into a sibling's moon_sync_inbox/ is pre-authorised;
+deliver, then re-hash every destination and publish the reached-count.
+Never put a sibling's real name or path in a tracked file - codes only.
