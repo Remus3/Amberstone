@@ -432,7 +432,17 @@ _WEB = _REPO_ROOT / "web"
 # still pinned where it is authoritative - ops/loop/lanes.py and
 # ops/loop/lane_launcher.py - but there is no longer a third, rendered copy to
 # hold them to, because there is no longer a renderer.
-_LIVE_HALF_DIGEST = "4e3f9f08c37db348b3fcacadfa0628a9d844d20f479069a2a8bae4304c4f1161"
+#
+# RE-CAPTURED at the 16.15.1 -> 16.18.1 DS patch refresh (2026-09-21). Ordinary
+# case, no tokeniser change, but TWO sources of LIVE edits, both attributed by
+# substitution rather than inferred: recomputing the digest with the pre-change
+# blobs (commit 6ef3ca33e) of exactly three files - web/js/lib/items_index.js
+# (this refresh: DDRAGON_FALLBACK_VERSION 16.15.1 -> 16.18.1) and
+# web/js/panels/team_context.js + web/css/panels/team_context.css (a main-branch
+# commit landed after 6ef3ca33e WITHOUT re-capturing, so this guard was already
+# red on main) - reproduces the superseded 4e3f9f08... value EXACTLY over all
+# 167 sources, so those three files are the whole change.
+_LIVE_HALF_DIGEST = "eeb2c6c9fd5f11727df4f1674e09e73249fee8104f3c68e64e1155b041ea4ebe"
 
 
 def _web_sources() -> list[Path]:
