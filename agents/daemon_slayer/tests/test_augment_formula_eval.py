@@ -307,8 +307,9 @@ class RealAugmentValuePinTests(unittest.TestCase):
 
     def test_serve_beyond_death_calc_multiplier(self) -> None:
         # ServeBeyondDeath: {85d7d7f0} = NamedDataValue(TicksBeforeDeath=10)
-        # * NumberCalculationPart(0.25). dataValues[TicksBeforeDeath][0]=10.
-        # 10 * 0.25 = 2.5.
+        # * NumberCalculationPart(0.25). dataValues[TicksBeforeDeath][0]=16
+        # in the 16.18.1 cdragon arena_augments data (it was 10 through
+        # 16.15.1, giving 2.5). 16 * 0.25 = 4.0.
         rec = self.snap.arena_augment("ServeBeyondDeath")
         aug = Augment.from_record(rec)
         # Riot ships this calc under a hash-name key.
@@ -317,7 +318,7 @@ class RealAugmentValuePinTests(unittest.TestCase):
         self.assertTrue(aug.calculations)
         first_key = next(iter(aug.calculations))
         self.assertAlmostEqual(
-            evaluate_named_calculation(aug, first_key, StatContext()), 2.5
+            evaluate_named_calculation(aug, first_key, StatContext()), 4.0
         )
 
     def test_undying_guard_total_damage_base_only(self) -> None:

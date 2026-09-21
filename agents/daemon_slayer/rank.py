@@ -258,8 +258,14 @@ _SR_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
 # mega-items (6000g, 223xxx mirror namespace) - deny unconditionally on ARAM
 # (every scorer), like the SR-exclude + Ornn-masterwork gates. Modes other than
 # ARAM use the DDragon maps flag directly (no-op there).
+#
+# 2026-09-20 (16.18.1 refresh): the wiki item pages show BOTH entries are ARAM:
+# Mayhem AUGMENT REWARDS ("Obtained from the ... augment"), not shop purchases,
+# which is the real reason the map-12 flag must not admit them. Structural guard
+# for the next one: tests/test_aram_mega_item_exclusion_1618.py.
 _ARAM_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
-    "223069",  # Void Immolation - Arena prismatic mega-item (6000g, map 30)
+    "223069",  # Void Immolation - 6000g, Mayhem "Quest: Icathia's Fall" reward
+    "226668",  # Ultra Hydra - 6000g, maps {12} only, Mayhem "Ultra Hydra" augment reward (NEW 16.17.1)
 })
 
 

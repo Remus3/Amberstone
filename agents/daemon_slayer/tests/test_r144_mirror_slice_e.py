@@ -128,6 +128,23 @@ class CatalogParityTests(unittest.TestCase):
                 self.assertAlmostEqual(pinned, self.derived[iid], places=6)
 
 
+class NewAt16181Tests(unittest.TestCase):
+    """16.18.1 added 226668 Ultra Hydra, a 22-prefixed id with NO 6668 base.
+
+    Measured: absent from both the 16.15.1 DS snapshot and the 16.15.1
+    meta_build catalog; at 16.18.1 it states 25 Ability Haste in its stats
+    block, is purchasable and is enabled on map 12 only. The parity backbone
+    above caught it as a silent-0.0 gap; this pins the registered magnitude
+    so a later edit cannot drop it without naming it.
+    """
+
+    def test_ultra_hydra_is_registered_at_its_stated_haste(self) -> None:
+        derived = _derive_ah(_catalog())
+        self.assertAlmostEqual(derived["226668"], 25.0, places=6)
+        self.assertAlmostEqual(item_ability_haste("226668"), 25.0, places=6)
+        self.assertNotIn("6668", _ITEM_ABILITY_HASTE)
+
+
 class ResolverMirrorCoverageTests(unittest.TestCase):
     """Every id name_to_id can return is covered, or provably AH-free."""
 

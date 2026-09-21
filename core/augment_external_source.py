@@ -678,7 +678,11 @@ def _refresh_meta(
 
     if path and path.exists() and not force:
         snap = read_json_dict(path)
-        if snap.get("augments"):
+        # The file must be stamped for the patch it serves. A copy carried
+        # forward from an older patch dir (a 16.10.1 stamp sat in every dir up
+        # to 16.18.1, found 2026-09-20) is refetched; if that fetch fails, the
+        # degraded path below still serves the newest cached copy.
+        if snap.get("augments") and snap.get("rc_patch") == patch:
             if gate is not None:
                 gate.record_success()
             return _table_from_meta_snapshot(snap), False

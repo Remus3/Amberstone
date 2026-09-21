@@ -83,7 +83,15 @@ GOLDEN_WEIGHTED_DPS = {
     (APHELIOS, (BERSERKERS, RUNAANS)): 137.00664526171875,
 }
 
+# The goldens above are pre-seam engine output on the data of their day, and
+# DDragon 16.18.1 moved every build in the table (Berserker's 3006 AS 0.25 ->
+# 0.30, Runaan's 3085 MS, Ashe/Aphelios base spellblock). They pin ENGINE
+# byte-identity, not patch data, so the golden comparison runs on the pinned
+# 16.15.1 snapshot (re-measured 2026-09-20: all eight reproduce exactly).
+_GOLDEN_PATCH = "16.15.1"
+
 _SNAP = None
+_GOLDEN_SNAP = None
 
 
 def _snap() -> DataSnapshot:
@@ -93,9 +101,16 @@ def _snap() -> DataSnapshot:
     return _SNAP
 
 
-def _dps(champion: str, build, **kwargs):
+def _golden_snap() -> DataSnapshot:
+    global _GOLDEN_SNAP
+    if _GOLDEN_SNAP is None:
+        _GOLDEN_SNAP = DataSnapshot.load(patch=_GOLDEN_PATCH)
+    return _GOLDEN_SNAP
+
+
+def _dps(champion: str, build, snap=None, **kwargs):
     return compute_dps(
-        _snap(),
+        snap if snap is not None else _snap(),
         champion_id=champion,
         level=GATE_LEVEL,
         item_ids=list(build),
@@ -178,7 +193,10 @@ class TestDefaultOffByteIdentity(unittest.TestCase):
     def test_omitted_flag_matches_pre_seam_goldens(self):
         for (champ, build), golden in GOLDEN_WEIGHTED_DPS.items():
             with self.subTest(champion=champ, build=build):
-                self.assertEqual(_dps(champ, build).weighted_dps, golden)
+                self.assertEqual(
+                    _dps(champ, build, snap=_golden_snap()).weighted_dps,
+                    golden,
+                )
 
     def test_explicit_false_matches_omitted(self):
         for champ, build in GOLDEN_WEIGHTED_DPS:

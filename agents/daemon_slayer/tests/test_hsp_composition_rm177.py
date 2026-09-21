@@ -94,11 +94,13 @@ class UnchangedCasesTests(unittest.TestCase):
         self.assertAlmostEqual(r.amp_multiplier, 1.30, places=9)
 
     def test_mode_mirror_magnitudes_are_not_normalized(self) -> None:
-        # Arena Redemption is 12 pct against SR's 10 - stripping the mirror
-        # prefix would silently serve the SR line to an Arena build.
-        sr = compute_hps(self.snap, "Soraka", level=13, item_ids=[REDEMPTION])
-        arena = compute_hps(self.snap, "Soraka", level=13, item_ids=["223107"])
-        self.assertAlmostEqual(sr.amp_multiplier, 1.10, places=9)
+        # Arena Dawncore is 12 pct against SR's 16 - stripping the mirror
+        # prefix would silently serve the SR line to an Arena build. (Re-seeded
+        # from Arena Redemption, which 16.18.1 flattened to SR's 10 pct, so it
+        # can no longer tell a stripped prefix from a correct lookup.)
+        sr = compute_hps(self.snap, "Soraka", level=13, item_ids=["6621"])
+        arena = compute_hps(self.snap, "Soraka", level=13, item_ids=["226621"])
+        self.assertAlmostEqual(sr.amp_multiplier, 1.16, places=9)
         self.assertAlmostEqual(arena.amp_multiplier, 1.12, places=9)
 
 

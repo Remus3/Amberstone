@@ -38,7 +38,10 @@ class RegistryShapeTests(unittest.TestCase):
         # only re-valued Arena mirror ids, never added/removed entries). If a
         # patch refresh changes the count, rebaseline this + the DDragon-sync
         # guard (tests/test_item_ability_haste_ddragon_sync.py) in one commit.
-        self.assertEqual(len(_ITEM_ABILITY_HASTE), 220)
+        # 16.18.1: 220 -> 221, the one NEW entry is 226668 Ultra Hydra (25 AH on
+        # its DDragon <stats> line; added in DDragon 16.17.1).
+        self.assertEqual(len(_ITEM_ABILITY_HASTE), 221)
+        self.assertIn("226668", _ITEM_ABILITY_HASTE)
 
     def test_every_entry_is_positive_float(self) -> None:
         for iid, ah in _ITEM_ABILITY_HASTE.items():

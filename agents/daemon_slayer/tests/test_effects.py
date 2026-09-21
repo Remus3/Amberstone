@@ -126,6 +126,8 @@ class KrakenSlayerProcTests(unittest.TestCase):
 
 
 class StormrazorMagicProcTests(unittest.TestCase):
+    # Stormrazor is DDragon id 3095 since 16.17.1 (3097 is absent from the
+    # 16.18.1 snapshot); see test_stormrazor_id_move_1618.py.
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
@@ -138,9 +140,9 @@ class StormrazorMagicProcTests(unittest.TestCase):
         # attack portion is symmetric - full vs halved respectively).
         # We verify the proc contribution itself by comparing two cases that
         # only differ in target MR.
-        no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3097"])
+        no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3095"])
         with_mr = compute_dps(
-            self.snap, "Aatrox", level=11, item_ids=["3097"], target_mr=100.0
+            self.snap, "Aatrox", level=11, item_ids=["3095"], target_mr=100.0
         )
         # Auto-attack portion is identical (target_armor=0 in both); only the
         # Stormrazor proc differs. Delta should equal procs * 120 * (1.0 - 0.5).
@@ -155,14 +157,14 @@ class StormrazorMagicProcTests(unittest.TestCase):
         # builds and naked builds should still include the full proc contribution.
         naked_armored = compute_dps(self.snap, "Aatrox", level=11, target_armor=100.0)
         sr_armored = compute_dps(
-            self.snap, "Aatrox", level=11, item_ids=["3097"], target_armor=100.0
+            self.snap, "Aatrox", level=11, item_ids=["3095"], target_armor=100.0
         )
         # The DPS gain over naked includes the magic proc (full damage, since
         # target MR=0) plus the auto-attack stat bumps. Both should be positive.
         self.assertGreater(sr_armored.weighted_dps, naked_armored.weighted_dps)
 
     def test_stormrazor_note_surfaces(self) -> None:
-        r = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3097"])
+        r = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3095"])
         self.assertTrue(any("Stormrazor" in n for n in r.notes))
 
 
@@ -226,7 +228,8 @@ class EffectAggregationTests(unittest.TestCase):
 
     def test_three_effect_items_all_fire_in_notes(self) -> None:
         r = compute_dps(
-            self.snap, "Aatrox", level=11, item_ids=["3031", "3097", "6672"],
+            # Stormrazor is 3095 since 16.17.1 (3097 absent at 16.18.1).
+            self.snap, "Aatrox", level=11, item_ids=["3031", "3095", "6672"],
         )
         joined = " ".join(r.notes)
         self.assertIn("Infinity Edge", joined)

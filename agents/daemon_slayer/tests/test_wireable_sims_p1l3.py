@@ -237,25 +237,27 @@ class TargetArmorDerivation(_SnapBase):
 
 class TargetMrProcDerivation(_SnapBase):
     def test_stormrazor_magic_proc_uses_mr_not_armor(self) -> None:
-        # Stormrazor 3097: constant-damage every_n_seconds MAGIC proc.
+        # Stormrazor 3095 (DDragon id since 16.17.1; it was 3097 through
+        # 16.15.1 and 3097 is absent at 16.18.1): constant-damage
+        # every_n_seconds MAGIC proc.
         # Naked AA is physical (target_armor); the proc is magic
         # (target_mr). With target_armor=0 the AA piece is invariant, so
         # the ENTIRE delta between two MR values is the proc scaled by the
         # MR armor-factor. Derive the per-second proc value and assert the
         # MR-100 vs MR-0 delta equals proc_per_sec*(1 - 0.5) exactly.
-        sid = "3097"
+        sid = "3095"
         e = ITEM_EFFECTS.get(sid)
         # ITEM_EFFECTS is a TRACKED python registry, so both of these are
         # decidable at author time (MEASURED 2026-07-27: 3097 present with 1
         # constant-damage periodic). A registry change that drops the item or
         # converts its proc to stat-scaling must surface as a failure so the
         # target_mr derivation below gets re-derived, not silently retired.
-        self.assertIsNotNone(e, "Stormrazor 3097 dropped out of ITEM_EFFECTS")
+        self.assertIsNotNone(e, "Stormrazor 3095 dropped out of ITEM_EFFECTS")
         proc = next((p for p in e.periodics
                      if p.every_n_seconds > 0
                      and not callable(p.bonus_damage)), None)
         self.assertIsNotNone(
-            proc, "Stormrazor 3097 no longer registers a constant-damage periodic"
+            proc, "Stormrazor 3095 no longer registers a constant-damage periodic"
         )
         no_mr = compute_dps(self.snap, "Aatrox", level=11,
                             item_ids=[sid], target_mr=0.0,

@@ -564,13 +564,13 @@
         "stamp_field": "version"
       },
       "champions.json": {
-        "body_md5": "6d86cbf7",
+        "body_md5": "8763e2a1",
         "declared_patch": "16.18.1",
         "stamp_field": "version"
       },
       "cherry_augments.json": {
-        "body_md5": "3b34505a",
-        "declared_patch": "16.10.1",
+        "body_md5": "d95aa653",
+        "declared_patch": "16.18.1",
         "stamp_field": "rc_patch"
       },
       "enchanter_items.json": {
@@ -616,33 +616,6 @@
     }
   },
   "generated_from_current_txt": "16.18.1",
-  "known_stamp_lag": {
-    "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved"
-  },
-  "known_static_body": {
-    "cdragon_spell_stats.json": [
-      "pending-vintage",
-      "tools/daemon_slayer_cdragon_spell_extract.py"
-    ],
-    "cherry_augments.json": [
-      "upstream-static",
-      "none"
-    ],
-    "enchanter_items.json": [
-      "authored",
-      "none"
-    ],
-    "scenarios.json": [
-      "pending-vintage",
-      "tools/daemon_slayer_extract.py"
-    ],
-    "wiki_ability_stats.json": [
-      "pending-vintage",
-      "tools/daemon_slayer_wiki_ability_extract.py"
-    ],
-    "wiki_stats.json": [
-      "pending-vintage",
-      "tools/daemon_slayer_wiki_stats_extract.py"
-    ]
-  }
+  "known_stamp_lag": {},
+  "known_static_body": {}
 }
