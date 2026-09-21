@@ -1298,7 +1298,12 @@
    "wiki": [
     75.0,
     175.0
-   ]
+   ],
+   "override_effective": [
+    75.0,
+    175.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Akshan",
@@ -1587,7 +1592,12 @@
      42.3529,
      45.0
     ]
-   }
+   },
+   "override_effective": [
+    50.0,
+    110.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Azir",
@@ -2159,7 +2169,12 @@
    "wiki": [
     20.0,
     120.0
-   ]
+   ],
+   "override_effective": [
+    20.0,
+    120.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Cassiopeia",
@@ -2214,7 +2229,12 @@
     55.0,
     55.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    45.0,
+    45.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Cassiopeia",
@@ -2262,7 +2282,12 @@
    "wiki": [
     30.0,
     110.0
-   ]
+   ],
+   "override_effective": [
+    30.0,
+    110.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Chogath",
@@ -2276,7 +2301,12 @@
    "wiki": [
     90.0,
     330.0
-   ]
+   ],
+   "override_effective": [
+    90.0,
+    330.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Corki",
@@ -3318,7 +3348,12 @@
    "wiki": [
     50.0,
     150.0
-   ]
+   ],
+   "override_effective": [
+    50.0,
+    150.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Hwei",
@@ -3836,7 +3871,12 @@
    "wiki": [
     40.0,
     120.0
-   ]
+   ],
+   "override_effective": [
+    40.0,
+    120.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Kennen",
@@ -3850,7 +3890,12 @@
    "wiki": [
     300.0,
     900.0
-   ]
+   ],
+   "override_effective": [
+    300.0,
+    900.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Kennen",
@@ -3870,7 +3915,12 @@
     22.5,
     22.5
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    25.0,
+    25.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Kennen",
@@ -3890,7 +3940,12 @@
     168.75,
     168.75
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    187.5,
+    187.5
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Khazix",
@@ -4060,7 +4115,12 @@
    "wiki": [
     150.0,
     480.0
-   ]
+   ],
+   "override_effective": [
+    150.0,
+    480.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Leblanc",
@@ -4108,7 +4168,12 @@
     75.0,
     75.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    90.0,
+    90.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "LeeSin",
@@ -4363,7 +4428,12 @@
      61.0,
      64.5
     ]
-   }
+   },
+   "override_effective": [
+    12.0,
+    20.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Maokai",
@@ -4624,7 +4694,12 @@
      42.3529,
      45.0
     ]
-   }
+   },
+   "override_effective": [
+    80.0,
+    220.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Mordekaiser",
@@ -4878,7 +4953,12 @@
    "wiki": [
     125.0,
     275.0
-   ]
+   ],
+   "override_effective": [
+    150.0,
+    300.0
+   ],
+   "resolved_by_override": false
   },
   {
    "champion": "Naafiri",
@@ -5282,7 +5362,12 @@
     100.0,
     100.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    75.0,
+    75.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Poppy",
@@ -5302,7 +5387,12 @@
     9.0,
     9.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    7.0,
+    9.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Poppy",
@@ -5322,7 +5412,12 @@
     200.0,
     200.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    150.0,
+    150.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Poppy",
@@ -5342,7 +5437,12 @@
     18.0,
     18.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    14.0,
+    18.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Qiyana",
@@ -5356,7 +5456,12 @@
    "wiki": [
     80.0,
     200.0
-   ]
+   ],
+   "override_effective": [
+    80.0,
+    200.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Qiyana",
@@ -5370,7 +5475,12 @@
    "wiki": [
     60.0,
     150.0
-   ]
+   ],
+   "override_effective": [
+    60.0,
+    150.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Quinn",
@@ -6570,7 +6680,12 @@
    "wiki": [
     65.0,
     245.0
-   ]
+   ],
+   "override_effective": [
+    65.0,
+    245.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Thresh",
@@ -6590,7 +6705,12 @@
     70.0,
     70.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    60.0,
+    60.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Tristana",
@@ -7858,5 +7978,6 @@
     400.0
    ]
   }
- ]
+ ],
+ "_override_resolved": 23
 }

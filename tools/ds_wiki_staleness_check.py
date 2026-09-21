@@ -947,7 +947,7 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
         _annotate_engine_ratios(findings, _engine_ratio_lookup(patch))
 
     stale = sorted({f["champion"] for f in findings})
-    return {
+    report = {
         "_patch": patch,
         "_generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "_meraki_content_patch": doc.get("meraki_content_patch"),
@@ -972,6 +972,29 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
         "skipped_labels": skipped_labels,
         "findings": findings,
     }
+    if findings:
+        annotate_override_resolution(report, _override_lookup(patch))
+    return report
+
+
+def reannotate_report(patch: str) -> Path:
+    """Offline RM-480 pass: re-annotate the COMMITTED report, no wiki fetch.
+
+    Reads ``ability_staleness.json``, recomputes ``override_effective`` /
+    ``resolved_by_override`` / ``_override_resolved`` against the current
+    registry, and writes it back atomically (LF). Findings, wiki values and
+    ``stale_champions`` are carried through verbatim.
+    """
+    out = DATA_DIR / patch / REPORT_NAME
+    report = json.loads(out.read_text(encoding="utf-8"))
+    for row in report.get("findings") or []:
+        row.pop("override_effective", None)
+        row.pop("resolved_by_override", None)
+    annotate_override_resolution(report, _override_lookup(patch))
+    tmp = out.with_suffix(".tmp")
+    tmp.write_text(json.dumps(report, indent=1), encoding="utf-8", newline="\n")
+    tmp.replace(out)
+    return out
 
 
 def _count_ratio_rows(findings: Iterable[dict[str, Any]]) -> int:
@@ -1026,6 +1049,84 @@ def _annotate_engine_ratios(findings: list[dict[str, Any]], lookup) -> None:
         row["engine_stale"] = _differs(tuple(eff), tuple(row["wiki"]))
 
 
+def _override_lookup(patch: str):
+    """``(champ, slot, attr, key) -> endpoints | None`` for OVERRIDDEN fields.
+
+    RM-480. Loads the snapshot twice - shipped defaults, and with the
+    DEFAULT-OFF ``apply_ability_base_overrides=True`` - and answers only where
+    the two DIFFER, i.e. where a registry entry actually moved the field. That
+    keeps the annotation to rows an override touched. ``base`` endpoints go
+    through ``rank_series`` so a concatenated per-level tail cannot pose as the
+    max-rank value (same rule as ``meraki_endpoints``). Best-effort: any load
+    failure returns None and rows go un-annotated.
+    """
+    try:
+        root = SCRIPT_DIR.parent
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from agents.daemon_slayer.abilities import AbilitiesSnapshot
+
+        off = AbilitiesSnapshot.load(patch)
+        on = AbilitiesSnapshot.load(patch, apply_ability_base_overrides=True)
+    except Exception:  # noqa: BLE001 - annotation is best-effort by contract
+        return None
+
+    def _first(snap, champ: str, slot: str, attr: str):
+        forms = (snap.champions.get(champ) or {}).get(slot) or ()
+        if not forms:
+            return None
+        for blk in forms[0].damage_blocks:
+            if blk.attribute == attr:
+                return blk
+        return None
+
+    def lookup(champ: str, slot: str, attr: str, key: str):
+        b_on = _first(on, champ, slot, attr)
+        b_off = _first(off, champ, slot, attr)
+        if b_on is None or b_off is None:
+            return None
+        v_on = getattr(b_on, key, None)
+        if not v_on or v_on == getattr(b_off, key, None):
+            return None
+        vals = [float(v) for v in v_on]
+        if key == "base":
+            # Cut where the UNOVERRIDDEN series cuts: a corrected head can end
+            # below the per-level tail's first value (Malzahar W 12..20, tail
+            # from 22.5), which hides the drop ``rank_series`` looks for.
+            kept, _ = rank_series([float(v) for v in getattr(b_off, key)])
+            vals = vals[: len(kept)]
+        return (vals[0], vals[-1])
+
+    return lookup
+
+
+def annotate_override_resolution(report: dict[str, Any], lookup) -> None:
+    """Attach ``override_effective`` + ``resolved_by_override`` to base/ratio rows.
+
+    Only rows an override actually moved are annotated. ``_override_resolved``
+    counts rows whose override value matches the wiki. ``stale_champions`` is
+    deliberately NOT pruned: the registry is DEFAULT-OFF, so the shipped engine
+    still reads the stale value, and the client's ABSENT / STALE / CURRENT
+    badge (``core/daemon_slayer_client.py``) must keep saying so.
+    """
+    resolved = 0
+    for row in report.get("findings") or []:
+        field_ = str(row.get("field") or "")
+        if field_.startswith("base:"):
+            attr, key = field_[len("base:"):], "base"
+        elif field_.startswith("ratio:"):
+            _, attr, key = field_.split(":", 2)
+        else:
+            continue
+        eff = lookup(row["champion"], row["ability"], attr, key) if lookup else None
+        if eff is None:
+            continue
+        row["override_effective"] = list(eff)
+        row["resolved_by_override"] = not _differs(tuple(eff), tuple(row["wiki"]))
+        resolved += row["resolved_by_override"]
+    report["_override_resolved"] = resolved
+
+
 def _skipped_champions(*rows: Iterable[dict[str, Any]]) -> list[str]:
     out: set[str] = set()
     for group in rows:
@@ -1068,6 +1169,9 @@ def write_report(
             merged["_skipped_pages"] = len(merged["skipped_pages"])
             merged["_skipped_labels"] = len(merged["skipped_labels"])
             merged["_ratio_findings"] = _count_ratio_rows(merged["findings"])
+            merged["_override_resolved"] = sum(
+                1 for f in merged["findings"] if f.get("resolved_by_override")
+            )
             merged["skipped_champions"] = _skipped_champions(
                 merged["skipped_pages"], merged["skipped_labels"]
             )
@@ -1101,6 +1205,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     mode.add_argument(
         "--recent", action="store_true", help="only champions edited on the wiki"
     )
+    mode.add_argument(
+        "--annotate-only",
+        action="store_true",
+        help="offline: re-annotate the committed report's override resolution",
+    )
     ap.add_argument("--patch", default=None)
     ap.add_argument("--days", type=int, default=7)
     ap.add_argument("--write", action="store_true", help="write the report JSON")
@@ -1108,6 +1217,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     args = ap.parse_args(argv)
 
     patch = args.patch or _current_patch()
+    if args.annotate_only:
+        print(f"re-annotated {reannotate_report(patch)}")
+        return 0
     champions = None
     if args.recent:
         champions = champions_from_titles(fetch_recent_titles(days=args.days))

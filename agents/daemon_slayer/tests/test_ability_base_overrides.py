@@ -120,21 +120,24 @@ def snap_on() -> AbilitiesSnapshot:
     )
 
 
-def test_registry_covers_exactly_the_six_documented_champions() -> None:
-    assert {k[0] for k in _ABILITY_BASE_OVERRIDES} == {
-        "Mordekaiser",
-        "Naafiri",
-        "Heimerdinger",
-        "Azir",
-        "Malzahar",
-        "Ahri",
-    }
-    assert len(_ABILITY_BASE_OVERRIDES) == 6
-    for entries in _ABILITY_BASE_OVERRIDES.values():
+_RM81_SIX = {"Mordekaiser", "Naafiri", "Heimerdinger", "Azir", "Malzahar", "Ahri"}
+# RM-480: the seven HIGH stale-ability rows of the 16.18.1 ratio-aware sweep.
+_RM480_SEVEN = {"Poppy", "Qiyana", "Thresh", "Kennen", "Chogath", "Cassiopeia", "Leblanc"}
+
+
+def test_registry_covers_exactly_the_documented_champions() -> None:
+    assert {k[0] for k in _ABILITY_BASE_OVERRIDES} == _RM81_SIX | _RM480_SEVEN
+    assert len(_ABILITY_BASE_OVERRIDES) == 13
+    for (cid, _key, _form), entries in _ABILITY_BASE_OVERRIDES.items():
         for entry in entries:
             assert isinstance(entry, AbilityBaseOverride)
-            # Every override must cite its DS_ABILITY_SHAPING_NOTES.md line.
-            assert "DS_ABILITY_SHAPING_NOTES.md:" in entry.source
+            if cid in _RM81_SIX:
+                # The RM-81 six cite their DS_ABILITY_SHAPING_NOTES.md line.
+                assert "DS_ABILITY_SHAPING_NOTES.md:" in entry.source
+                assert entry.field == "base"
+            else:
+                # The RM-480 seven cite the staleness report they came from.
+                assert "ability_staleness.json" in entry.source
 
 
 def test_stale_values_are_still_on_disk_verbatim() -> None:
@@ -285,3 +288,204 @@ def test_override_is_skipped_when_the_extract_is_already_correct(
     form = snap_on.get_ability("Ahri", "R", 0)
     again = apply_base_overrides("Ahri", "R", form)
     assert again is form
+
+
+# --------------------------------------------------------------------------
+# RM-480 - the registry now overrides per-rank RATIO fields as well as base.
+#
+# (champion, key, form_index, block attribute, field, stale on disk, corrected)
+# Stale = data/daemon_slayer/16.18.1/champion_abilities.json verbatim.
+# Corrected = the per-rank lists RENDERED by wiki.leagueoflegends.com on
+# 2026-09-21 (read-only fetch), which agree with the wiki column of
+# data/daemon_slayer/16.18.1/ability_staleness.json at both endpoints.
+_RM480: tuple[tuple[str, str, int, str, str, tuple, tuple], ...] = (
+    ("Poppy", "Q", 0, "Physical Damage", "bonus_ad_pct",
+     (100.0,) * 5, (75.0,) * 5),
+    ("Poppy", "Q", 0, "Physical Damage", "target_max_hp_pct",
+     (9.0,) * 5, (7.0, 7.5, 8.0, 8.5, 9.0)),
+    ("Poppy", "Q", 0, "Total Physical Damage", "bonus_ad_pct",
+     (200.0,) * 5, (150.0,) * 5),
+    ("Poppy", "Q", 0, "Total Physical Damage", "target_max_hp_pct",
+     (18.0,) * 5, (14.0, 15.0, 16.0, 17.0, 18.0)),
+    ("Qiyana", "Q", 0, "Physical Damage", "base",
+     (60.0, 90.0, 120.0, 150.0, 180.0), (80.0, 110.0, 140.0, 170.0, 200.0)),
+    ("Qiyana", "Q", 0, "Reduced Damage", "base",
+     (45.0, 67.5, 90.0, 112.5, 135.0), (60.0, 82.5, 105.0, 127.5, 150.0)),
+    ("Thresh", "E", 0, "Magic Damage", "ap_pct",
+     (70.0,) * 5, (60.0,) * 5),
+    ("Thresh", "E", 0, "Magic Damage", "base",
+     (75.0, 120.0, 165.0, 210.0, 255.0), (65.0, 110.0, 155.0, 200.0, 245.0)),
+    ("Kennen", "R", 0, "Magic Damage Per Bolt", "ap_pct",
+     (22.5,) * 3, (25.0,) * 3),
+    ("Kennen", "R", 0, "Magic Damage Per Bolt", "base",
+     (40.0, 75.0, 110.0), (40.0, 80.0, 120.0)),
+    ("Kennen", "R", 0, "Total Single-Target Damage", "ap_pct",
+     (168.75,) * 3, (187.5,) * 3),
+    ("Kennen", "R", 0, "Total Single-Target Damage", "base",
+     (300.0, 562.5, 825.0), (300.0, 600.0, 900.0)),
+    ("Chogath", "E", 0, "Magic Damage", "base",
+     (20.0, 40.0, 60.0, 80.0, 100.0), (30.0, 50.0, 70.0, 90.0, 110.0)),
+    ("Chogath", "E", 0, "Total Magic Damage", "base",
+     (60.0, 120.0, 180.0, 240.0, 300.0), (90.0, 150.0, 210.0, 270.0, 330.0)),
+    ("Cassiopeia", "E", 0, "Bonus Magic Damage", "ap_pct",
+     (55.0,) * 5, (45.0,) * 5),
+    ("Cassiopeia", "E", 0, "Bonus Magic Damage", "base",
+     (20.0, 40.0, 60.0, 80.0, 100.0), (20.0, 45.0, 70.0, 95.0, 120.0)),
+    ("Leblanc", "R", 0, "Magic Damage", "ap_pct",
+     (75.0,) * 3, (90.0,) * 3),
+    ("Leblanc", "R", 0, "Magic Damage", "base",
+     (150.0, 300.0, 450.0), (150.0, 315.0, 480.0)),
+)
+
+
+def _block(form, attribute: str):
+    for block in form.damage_blocks:
+        if block.attribute == attribute:
+            return block
+    raise AssertionError(f"no block {attribute!r} on {form.key}")
+
+
+def _close(got, want) -> bool:
+    return got is not None and len(got) >= len(want) and all(
+        abs(got[i] - w) <= _TOL for i, w in enumerate(want)
+    )
+
+
+def test_poppy_q_ratio_override_applies_with_flag_on(snap_on: AbilitiesSnapshot) -> None:
+    """The first RM-480 red: a RATIO field (not base) is corrected."""
+    blk = _block(snap_on.get_ability("Poppy", "Q", 0), "Physical Damage")
+    assert _close(blk.bonus_ad_pct, (75.0,) * 5)
+    assert _close(blk.target_max_hp_pct, (7.0, 7.5, 8.0, 8.5, 9.0))
+    # Base 30..130 is current on the wiki and must NOT move.
+    assert _close(blk.base, (30.0, 55.0, 80.0, 105.0, 130.0))
+
+
+@pytest.mark.parametrize(
+    "cid", ["Poppy", "Qiyana", "Thresh", "Kennen", "Chogath", "Cassiopeia", "Leblanc"]
+)
+def test_rm480_stale_guard_on_disk_and_corrected_with_flag_on(
+    cid: str, snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
+) -> None:
+    path = _DATA_ROOT / _patch() / "champion_abilities.json"
+    data = json.loads(path.read_text(encoding="utf-8"))["data"]
+    rows = [r for r in _RM480 if r[0] == cid]
+    assert rows
+    for _c, key, fi, attr, fld, stale, corrected in rows:
+        disk = [b for b in data[cid][key][fi]["damage_blocks"] if b.get("attribute") == attr]
+        assert disk and _close(disk[0].get(fld), stale), f"{cid} {key} {attr} {fld} on disk"
+        off = getattr(_block(snap_off.get_ability(cid, key, fi), attr), fld)
+        assert _close(off, stale), f"{cid} {key} {attr} {fld} moved with flag OFF"
+        on = getattr(_block(snap_on.get_ability(cid, key, fi), attr), fld)
+        assert _close(on, corrected), f"{cid} {key} {attr} {fld} not corrected"
+        assert len(on) == len(off)
+
+
+def test_leblanc_r_override_lands_on_block_three_only(
+    snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
+) -> None:
+    """LeBlanc R Magic Damage (Mimic: Distortion) is damage block index 3; the
+    default block_strategy reads block 0 (Orb), which this slice leaves alone."""
+    off = snap_off.get_ability("Leblanc", "R", 0).damage_blocks
+    on = snap_on.get_ability("Leblanc", "R", 0).damage_blocks
+    assert on[3].attribute == "Magic Damage"
+    assert _close(on[3].ap_pct, (90.0,) * 3)
+    for i in (0, 1, 2, 4, 5, 6):
+        assert on[i] == off[i]
+
+
+def test_qiyana_q_empowered_form_is_not_touched(
+    snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
+) -> None:
+    assert snap_off.get_ability("Qiyana", "Q", 1) == snap_on.get_ability("Qiyana", "Q", 1)
+
+
+def test_rm81_six_output_unchanged_by_the_ratio_lift(snap_on: AbilitiesSnapshot) -> None:
+    """Every non-base field of the six original rows is untouched by the lift."""
+    for cid, key, fi, attr, _stale, _corrected in _EXPECTED:
+        on = _block(snap_on.get_ability(cid, key, fi), attr)
+        raw = AbilitiesSnapshot.load(data_root=_DATA_ROOT).get_ability(cid, key, fi)
+        off = _block(raw, attr)
+        from dataclasses import replace
+
+        assert replace(on, base=off.base) == off
+
+
+# ---- synthetic unit tests of apply_base_overrides --------------------------
+
+def _fake_form():
+    from agents.daemon_slayer.abilities import DamageBlock
+
+    blk = DamageBlock(
+        attribute="Magic Damage",
+        attribute_kind="damage",
+        base=(10.0, 20.0, 30.0),
+        ap_pct=(50.0, 50.0, 50.0),
+    )
+    other = DamageBlock(
+        attribute="Other Damage",
+        attribute_kind="damage",
+        base=(1.0, 2.0, 3.0),
+        ap_pct=(10.0, 10.0, 10.0),
+    )
+    form = AbilitiesSnapshot.load(data_root=_DATA_ROOT).get_ability("Ahri", "R", 0)
+    from dataclasses import replace
+
+    return replace(form, damage_blocks=(blk, other))
+
+
+def _entry(attr, fld, stale, corrected):
+    return AbilityBaseOverride(
+        attribute=attr, stale=stale, corrected=corrected,
+        source="synthetic ability_staleness.json", note="test", field=fld,
+    )
+
+
+def test_mixed_base_and_ratio_on_one_block(monkeypatch) -> None:
+    from agents.daemon_slayer import _ability_base_overrides as mod
+
+    form = _fake_form()
+    monkeypatch.setitem(mod._ABILITY_BASE_OVERRIDES, ("Ahri", "R", form.form_index), (
+        _entry("Magic Damage", "base", (10.0, 20.0, 30.0), (11.0, 22.0, 33.0)),
+        _entry("Magic Damage", "ap_pct", (50.0,) * 3, (60.0,) * 3),
+    ))
+    out = apply_base_overrides("Ahri", "R", form)
+    assert out.damage_blocks[0].base == (11.0, 22.0, 33.0)
+    assert out.damage_blocks[0].ap_pct == (60.0,) * 3
+    assert out.damage_blocks[1] == form.damage_blocks[1]
+
+
+def test_partial_mismatch_skips_the_whole_form(monkeypatch) -> None:
+    from agents.daemon_slayer import _ability_base_overrides as mod
+
+    form = _fake_form()
+    monkeypatch.setitem(mod._ABILITY_BASE_OVERRIDES, ("Ahri", "R", form.form_index), (
+        _entry("Magic Damage", "base", (10.0, 20.0, 30.0), (11.0, 22.0, 33.0)),
+        # Stale guard does NOT match what is loaded (50 on disk).
+        _entry("Other Damage", "ap_pct", (99.0,) * 3, (12.0,) * 3),
+    ))
+    assert apply_base_overrides("Ahri", "R", form) is form
+
+
+def test_unknown_field_raises() -> None:
+    with pytest.raises(ValueError):
+        _entry("Magic Damage", "not_a_field", (1.0,), (2.0,))
+    with pytest.raises(ValueError):
+        # A real DamageBlock field that is not a ratio key the detector knows.
+        _entry("Magic Damage", "raw_modifiers", (1.0,), (2.0,))
+
+
+def test_allowed_fields_match_the_detector_ratio_keys() -> None:
+    import dataclasses
+    import sys
+
+    from agents.daemon_slayer import _ability_base_overrides as mod
+    from agents.daemon_slayer.abilities import DamageBlock
+
+    tools = _REPO_ROOT / "tools"
+    if str(tools) not in sys.path:
+        sys.path.insert(0, str(tools))
+    import ds_wiki_staleness_check as det
+
+    assert set(mod._ALLOWED_FIELDS) == {"base", *det._RATIO_KEYS}
+    real = {f.name for f in dataclasses.fields(DamageBlock)}
+    assert set(mod._ALLOWED_FIELDS) <= real
