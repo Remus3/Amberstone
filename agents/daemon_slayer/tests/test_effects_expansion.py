@@ -6395,7 +6395,9 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
         e = ITEM_EFFECTS["223095"]
         self.assertFalse(e.defensive_only)
         self.assertEqual(len(e.periodics), 1)
-        self.assertEqual(e.periodics[0].name, "Stormraider")
+        # F3: Energized Bolt per the item's own DDragon line (was the
+        # stale "Stormraider" physical proc).
+        self.assertEqual(e.periodics[0].name, "Energized Bolt")
 
     def test_223185_guardians_dirk_lethality(self) -> None:
         e = ITEM_EFFECTS["223185"]
