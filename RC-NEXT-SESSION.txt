@@ -120,9 +120,25 @@ WHAT TO DO NEXT
    added 2026-09-19), so the config half of the recommendation is DONE here and
    the real question is whether it is HONOURED; and Temp-Hygiene.ps1 is OUTSIDE
    the repository root, so changing its cutoff is a BOUNDARY HALT needing an
-   operator grant. A measurement was in flight at wrap. DO NOT accept the
-   relayed file counts without re-deriving them, and DO NOT delete anything in
-   those temp roots - they are the evidence. One hard trap: the relayed
+   operator grant. RESOLVED AT WRAP AND CLOSED - DO NOT RE-INVESTIGATE. The
+   finding was REAL and is ALREADY FIXED, by another session, at 20:00:12 on
+   2026-09-20. Verified independently here from the live script and its log,
+   not from the other session's word: the cutoff is now PytestCutoffHours = 3
+   and the rule covers BOTH the per-user parent and the top-level
+   sibling-prefixed roots. The log is unambiguous - 04:45, 08:45, 12:45 and
+   16:45 each reported "removed 0 stale run dirs", and the first run after the
+   fix, at 20:04:47, reported "removed 25 stale run dirs (kept 16 newer than
+   3h, 6 failed)". RC needed no change: pytest.ini already carried the
+   retention settings. TWO TRAPS FROM THIS, both durable. FIRST, TWO FILES OF
+   THAT NAME EXIST ON THIS MACHINE AND ONLY ONE IS LIVE - a stale copy sits in
+   a dated backup directory, and grepping THAT one returns NOTHING for the
+   pytest rule, which would have produced a confident wrong verdict. Resolve
+   the scheduled task's actual -File argument to find the live one; never audit
+   a file because its NAME matches. SECOND, the relayed file counts could not be
+   reproduced because the root was being cleaned WHILE it was measured, so any
+   total spanning that window describes two different worlds. A residual worth
+   one glance someday, not a defect: that run reported 6 dirs it failed to
+   remove, presumably read-only or locked. DO NOT delete anything in those
    directory prefix embeds a SIBLING CHECKOUT BASENAME whose bare-word sweep arm
    is SUPPRESSED BY DECLARATION, so writing it into a tracked file would leak
    silently past the pre-push gate. Refer to those dirs by code only.
