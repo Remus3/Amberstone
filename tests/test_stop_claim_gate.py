@@ -1434,3 +1434,83 @@ def test_the_armed_block_message_names_a_remedy_that_actually_works(tmp_path):
     assert "backtick" in proc.stderr.lower(), (
         "the emit must name the remedy that does work - a backticked figure is "
         f"deleted by strip_prose_noise before any check; stderr was: {proc.stderr}")
+
+
+# ---------------------------------------------------------------------------
+# RM-478 - first-person assertion versus ATTRIBUTED / EVALUATED speech.
+#
+# These are written in two halves ON PURPOSE, and the order is the point. The
+# half below is the REGRESSION FLOOR: it was authored and observed GREEN against
+# the UNMODIFIED predicate, before one character of `audit` changed. A guard
+# narrowing is only safe if the true positives are pinned first - the failure
+# mode of "fixing" a guard is that a real unbacked claim stops being caught and
+# nobody notices for months. Every sentence here is a first-person assertion of
+# a completed upload with no `git push` anywhere in the session, and every one
+# of them MUST keep flagging.
+# ---------------------------------------------------------------------------
+PUSH_CLAIM_TRUE_POSITIVES = [
+    # The plainest shapes - these are what the check exists for.
+    "I pushed the fix.",
+    "Pushed to main.",
+    "Everything is pushed now.",
+    "Changes have been pushed.",
+    "We pushed the branch.",
+    "Committed and pushed.",
+    "All four commits are pushed.",
+    # A source noun in the sentence is NOT attribution on its own. The session
+    # wrote the hand-off; the push claim inside it is still the session's own.
+    "The hand-off is written and everything is pushed.",
+    "Wrote the hand-off (tree clean, everything pushed).",
+    "I updated the ledger and everything is pushed.",
+    # An attribution marker that does not govern the claim must not launder it.
+    "According to the plan, I pushed the fix.",
+    "The hand-off says the tests pass, and I pushed the fix.",
+    "I read the note and pushed the fix.",
+]
+
+
+@pytest.mark.parametrize("sentence", PUSH_CLAIM_TRUE_POSITIVES)
+def test_a_first_person_push_claim_is_still_flagged(tmp_path, sentence):
+    """The regression floor. Pinned BEFORE the false-positive narrowing."""
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "push_claim_without_push" in _checks(report), sentence
+
+
+# ---------------------------------------------------------------------------
+# The false-positive class, measured 2026-09-20 on a real session
+# (`ops/runtime/stop_claim_report.json`, 2 findings, both this class).
+#
+# `CLAIM_PUSH` is a bare `\bpushed\b`, so it cannot tell the speaker's OWN
+# assertion of a completed upload from ATTRIBUTED or EVALUATED speech - relaying
+# what a hand-off DOCUMENT asserts, or describing someone else's claim in order
+# to disclaim it. `_negated` does not help with the second: the negation attaches
+# to the CONFIRMATION ("I have not independently confirmed"), not to the verb the
+# pattern keys on, so it is nowhere near the 40-char governing window.
+#
+# Both flagged sentences were scrupulous reporting - one of them was the session
+# CORRECTING its own earlier over-claim - which is the behaviour the repo wants
+# and the behaviour this gate was punishing.
+# ---------------------------------------------------------------------------
+PUSH_CLAIM_FALSE_POSITIVES = [
+    # VERBATIM from the 2026-09-20 report, pre-strip (the backticked spans are
+    # deleted by strip_prose_noise, which is how the attribution FILENAME
+    # vanishes and only the noun "hand-off" survives to carry the relay).
+    "- `RC-NEXT-SESSION.txt` hand-off (tree clean, `origin/main` at "
+    "`998e61b21`, everything pushed)",
+    "The hand-off's claim that everything is pushed is consistent with what I "
+    "measured, but I have not independently confirmed the remote.",
+    # The CLASS, not the two literals. An allowlist of the two sentences above
+    # would leave the next session to rediscover this with different wording.
+    "According to the hand-off, everything is pushed.",
+    "The note says the branch is pushed.",
+    "Per the wakeup notes, the branch is pushed.",
+    "RSC's claim that the fix is pushed is unverified.",
+    "- session notes (suite green, changes pushed)",
+]
+
+
+@pytest.mark.parametrize("sentence", PUSH_CLAIM_FALSE_POSITIVES)
+def test_attributed_speech_is_not_a_first_person_push_claim(tmp_path, sentence):
+    """Relaying or evaluating someone else's claim is not making one."""
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "push_claim_without_push" not in _checks(report), sentence
