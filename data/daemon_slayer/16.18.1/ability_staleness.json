@@ -1,6 +1,6 @@
 {
  "_patch": "16.18.1",
- "_generated_at": "2026-09-21T03:03:51Z",
+ "_generated_at": "2026-09-21T09:28:28Z",
  "_meraki_content_patch": "25.15",
  "_source": "wiki.leagueoflegends.com Template:Data <Champion>/<Ability>",
  "_note": "RM-81 staleness report. A row means the STORED Meraki value and the LIVE wiki value disagree at the first/last rank endpoint for the same labelled quantity. Conservative: unmatched damage labels are skipped, so this UNDER-reports. Absence of a champion is not proof of currency - if it was skipped rather than compared it is named in skipped_champions, so a shrinking stale set can be read as convergence or as lost coverage without a live wiki fetch (RM-216).",
@@ -8,23 +8,30 @@
  "_pages_fetched": 859,
  "_skipped_pages": 1,
  "_skipped_labels": 72,
+ "_ratio_findings": 167,
  "stale_champions": [
   "Aatrox",
   "Ahri",
   "Akshan",
+  "Ambessa",
   "Anivia",
   "Annie",
+  "Ashe",
   "AurelionSol",
   "Azir",
   "Belveth",
   "Blitzcrank",
   "Brand",
   "Braum",
+  "Briar",
   "Camille",
   "Cassiopeia",
   "Chogath",
   "Corki",
+  "DrMundo",
   "Draven",
+  "Ekko",
+  "Ezreal",
   "Fizz",
   "Galio",
   "Gangplank",
@@ -36,15 +43,18 @@
   "Heimerdinger",
   "Hwei",
   "Irelia",
+  "Jax",
   "Jayce",
   "Jhin",
   "Jinx",
   "Kaisa",
+  "Kalista",
   "Kassadin",
   "Kayle",
   "Kayn",
   "Kennen",
   "Khazix",
+  "KogMaw",
   "Leblanc",
   "LeeSin",
   "Lissandra",
@@ -55,6 +65,7 @@
   "Malzahar",
   "Maokai",
   "Mel",
+  "MissFortune",
   "MonkeyKing",
   "Mordekaiser",
   "Morgana",
@@ -67,10 +78,14 @@
   "Nunu",
   "Olaf",
   "Orianna",
+  "Poppy",
   "Qiyana",
+  "Quinn",
   "RekSai",
   "Rell",
+  "Riven",
   "Rumble",
+  "Ryze",
   "Samira",
   "Sejuani",
   "Senna",
@@ -78,6 +93,7 @@
   "Shaco",
   "Shyvana",
   "Sion",
+  "Sivir",
   "Skarner",
   "Smolder",
   "Swain",
@@ -1099,6 +1115,66 @@
    ]
   },
   {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "field": "ratio:First Sweetspot Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    102.0,
+    153.0
+   ],
+   "wiki": [
+    105.0,
+    157.5
+   ],
+   "engine_effective": [
+    102.0,
+    153.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "field": "ratio:Second Sweetspot Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    127.5,
+    191.25
+   ],
+   "wiki": [
+    131.25,
+    196.875
+   ],
+   "engine_effective": [
+    127.5,
+    191.25
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "field": "ratio:Third Sweetspot Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    153.0,
+    229.5
+   ],
+   "wiki": [
+    157.5,
+    236.25
+   ],
+   "engine_effective": [
+    153.0,
+    229.5
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Ahri",
    "ability": "Q",
    "name": "Orb of Deception",
@@ -1171,6 +1247,47 @@
   },
   {
    "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "field": "ratio:Subsequent Flame Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    12.0,
+    12.0
+   ],
+   "wiki": [
+    16.0,
+    16.0
+   ],
+   "wiki_label": "Subsequent Magic Damage",
+   "engine_effective": [
+    12.0,
+    12.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "field": "ratio:Total Single-Target Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    64.0,
+    64.0
+   ],
+   "wiki": [
+    72.0,
+    72.0
+   ],
+   "engine_effective": [
+    64.0,
+    64.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Ahri",
    "ability": "R",
    "name": "Spirit Rush",
    "field": "base:Magic Damage",
@@ -1224,6 +1341,66 @@
     90.0,
     330.0
    ]
+  },
+  {
+   "champion": "Akshan",
+   "ability": "E",
+   "name": "Heroic Swing",
+   "field": "ratio:Physical Damage per Shot:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    15.0,
+    15.0
+   ],
+   "wiki": [
+    25.0,
+    25.0
+   ],
+   "engine_effective": [
+    25.0,
+    25.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Ambessa",
+   "ability": "E",
+   "name": "Lacerate",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    60.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    40.0,
+    60.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Ambessa",
+   "ability": "E",
+   "name": "Lacerate",
+   "field": "ratio:Total Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    120.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    80.0,
+    120.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Anivia",
@@ -1310,6 +1487,26 @@
    ]
   },
   {
+   "champion": "Ashe",
+   "ability": "W",
+   "name": "Volley",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    110.0,
+    110.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "AurelionSol",
    "ability": "W",
    "name": "Astral Flight",
@@ -1336,6 +1533,26 @@
     75.0,
     155.0
    ]
+  },
+  {
+   "champion": "Azir",
+   "ability": "Q",
+   "name": "Conquering Sands",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    35.0,
+    35.0
+   ],
+   "wiki": [
+    35.0,
+    55.0
+   ],
+   "engine_effective": [
+    35.0,
+    55.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Azir",
@@ -1374,6 +1591,26 @@
   },
   {
    "champion": "Azir",
+   "ability": "W",
+   "name": "Arise!",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    65.0
+   ],
+   "wiki": [
+    35.0,
+    65.0
+   ],
+   "engine_effective": [
+    45.0,
+    65.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Azir",
    "ability": "E",
    "name": "Shifting Sands",
    "field": "base:Magic Damage",
@@ -1385,6 +1622,26 @@
     70.0,
     230.0
    ]
+  },
+  {
+   "champion": "Azir",
+   "ability": "E",
+   "name": "Shifting Sands",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Belveth",
@@ -1416,6 +1673,26 @@
   },
   {
    "champion": "Belveth",
+   "ability": "Q",
+   "name": "Void Surge",
+   "field": "ratio:Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    105.0,
+    105.0
+   ],
+   "engine_effective": [
+    105.0,
+    105.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Belveth",
    "ability": "W",
    "name": "Above and Below",
    "field": "base:Magic Damage",
@@ -1427,6 +1704,26 @@
     80.0,
     320.0
    ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "W",
+   "name": "Above and Below",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    125.0,
+    125.0
+   ],
+   "wiki": [
+    150.0,
+    150.0
+   ],
+   "engine_effective": [
+    150.0,
+    150.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Belveth",
@@ -1472,6 +1769,46 @@
   },
   {
    "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "ratio:Minimum Physical Damage per hit:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    8.0,
+    8.0
+   ],
+   "wiki": [
+    12.0,
+    12.0
+   ],
+   "engine_effective": [
+    8.0,
+    8.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "ratio:Maximum Physical Damage per hit:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    32.0,
+    32.0
+   ],
+   "wiki": [
+    24.0,
+    24.0
+   ],
+   "engine_effective": [
+    32.0,
+    32.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Belveth",
    "ability": "R",
    "name": "Endless Banquet",
    "field": "base:Bonus True Damage",
@@ -1483,6 +1820,66 @@
     2.0,
     6.0
    ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "R",
+   "name": "Endless Banquet",
+   "field": "ratio:Bonus True Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    12.0,
+    12.0
+   ],
+   "wiki": [
+    3.0,
+    3.0
+   ],
+   "engine_effective": [
+    12.0,
+    12.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Belveth",
+   "ability": "R",
+   "name": "Endless Banquet",
+   "field": "ratio:True Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    150.0,
+    150.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Belveth",
+   "ability": "R",
+   "name": "Endless Banquet",
+   "field": "ratio:True Damage:target_missing_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    25.0,
+    25.0
+   ],
+   "wiki": [
+    20.0,
+    20.0
+   ],
+   "engine_effective": [
+    25.0,
+    25.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Blitzcrank",
@@ -1500,6 +1897,46 @@
   },
   {
    "champion": "Brand",
+   "ability": "W",
+   "name": "Pillar of Flame",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Brand",
+   "ability": "W",
+   "name": "Pillar of Flame",
+   "field": "ratio:Increased Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    75.0,
+    75.0
+   ],
+   "wiki": [
+    87.5,
+    87.5
+   ],
+   "engine_effective": [
+    75.0,
+    75.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Brand",
    "ability": "R",
    "name": "Pyroclasm",
    "field": "cooldown",
@@ -1511,6 +1948,46 @@
     100.0,
     80.0
    ]
+  },
+  {
+   "champion": "Brand",
+   "ability": "R",
+   "name": "Pyroclasm",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    25.0,
+    25.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    25.0,
+    25.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Brand",
+   "ability": "R",
+   "name": "Pyroclasm",
+   "field": "ratio:Total Single-Target Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    75.0,
+    75.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    75.0,
+    75.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Braum",
@@ -1553,6 +2030,26 @@
     150.0,
     350.0
    ]
+  },
+  {
+   "champion": "Briar",
+   "ability": "R",
+   "name": "Certain Death",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    120.0,
+    120.0
+   ],
+   "wiki": [
+    130.0,
+    130.0
+   ],
+   "engine_effective": [
+    120.0,
+    120.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Camille",
@@ -1612,6 +2109,46 @@
   },
   {
    "champion": "Cassiopeia",
+   "ability": "Q",
+   "name": "Noxious Blast",
+   "field": "ratio:Total Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    65.0,
+    65.0
+   ],
+   "wiki": [
+    75.0,
+    75.0
+   ],
+   "engine_effective": [
+    65.0,
+    65.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "Q",
+   "name": "Noxious Blast",
+   "field": "ratio:Magic Damage Per Tick:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    9.29,
+    9.29
+   ],
+   "wiki": [
+    10.714285714285714,
+    10.714285714285714
+   ],
+   "engine_effective": [
+    9.29,
+    9.29
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Cassiopeia",
    "ability": "E",
    "name": "Twin Fang",
    "field": "base:Bonus Magic Damage",
@@ -1661,6 +2198,26 @@
   },
   {
    "champion": "Cassiopeia",
+   "ability": "E",
+   "name": "Twin Fang",
+   "field": "ratio:Bonus Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    55.0,
+    55.0
+   ],
+   "wiki": [
+    45.0,
+    45.0
+   ],
+   "engine_effective": [
+    55.0,
+    55.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Cassiopeia",
    "ability": "R",
    "name": "Petrifying Gaze",
    "field": "base:Magic Damage",
@@ -1672,6 +2229,26 @@
     125.0,
     325.0
    ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "R",
+   "name": "Petrifying Gaze",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    50.0,
+    50.0
+   ],
+   "wiki": [
+    75.0,
+    75.0
+   ],
+   "engine_effective": [
+    75.0,
+    75.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Chogath",
@@ -1717,6 +2294,26 @@
   },
   {
    "champion": "Corki",
+   "ability": "Q",
+   "name": "Phosphorus Bomb",
+   "field": "ratio:Magic Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    130.0,
+    130.0
+   ],
+   "wiki": [
+    125.0,
+    125.0
+   ],
+   "engine_effective": [
+    125.0,
+    125.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Corki",
    "ability": "W",
    "name": "Valkyrie",
    "field": "base:Magic Damage Per Tick",
@@ -1742,6 +2339,46 @@
     150.0,
     450.0
    ]
+  },
+  {
+   "champion": "DrMundo",
+   "ability": "E",
+   "name": "Blunt Force Trauma",
+   "field": "ratio:Minimum Bonus Physical Damage:caster_bonus_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    7.0,
+    7.0
+   ],
+   "wiki": [
+    5.0,
+    5.0
+   ],
+   "engine_effective": [
+    7.0,
+    7.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "DrMundo",
+   "ability": "E",
+   "name": "Blunt Force Trauma",
+   "field": "ratio:Maximum Bonus Physical Damage:caster_bonus_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    9.8,
+    9.8
+   ],
+   "wiki": [
+    7.0,
+    7.0
+   ],
+   "engine_effective": [
+    9.8,
+    9.8
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Draven",
@@ -1814,6 +2451,146 @@
    ]
   },
   {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "field": "ratio:Minimum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    44.0,
+    60.0
+   ],
+   "wiki": [
+    55.0,
+    75.0
+   ],
+   "engine_effective": [
+    44.0,
+    60.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "field": "ratio:Minimum Total Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    88.0,
+    120.0
+   ],
+   "wiki": [
+    110.0,
+    150.0
+   ],
+   "engine_effective": [
+    88.0,
+    120.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Ekko",
+   "ability": "Q",
+   "name": "Timewinder",
+   "field": "ratio:Total Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    90.0,
+    90.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Ezreal",
+   "ability": "Q",
+   "name": "Mystic Shot",
+   "field": "ratio:Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    15.0,
+    15.0
+   ],
+   "wiki": [
+    40.0,
+    40.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Ezreal",
+   "ability": "W",
+   "name": "Essence Flux",
+   "field": "ratio:Bonus Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    90.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Ezreal",
+   "ability": "E",
+   "name": "Arcane Shift",
+   "field": "ratio:Magic Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    50.0,
+    50.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Ezreal",
+   "ability": "R",
+   "name": "Trueshot Barrage",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    90.0,
+    90.0
+   ],
+   "wiki": [
+    110.0,
+    110.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Fizz",
    "ability": "R",
    "name": "Chum the Waters",
@@ -1870,6 +2647,66 @@
    ]
   },
   {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "ratio:Guppy Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "ratio:Chomper Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    75.0,
+    75.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "ratio:Gigalodon Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    120.0,
+    120.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    120.0,
+    120.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Galio",
    "ability": "E",
    "name": "Justice Punch",
@@ -1884,6 +2721,26 @@
    ]
   },
   {
+   "champion": "Galio",
+   "ability": "E",
+   "name": "Justice Punch",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    90.0,
+    90.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Gangplank",
    "ability": "E",
    "name": "Powder Keg",
@@ -1896,6 +2753,46 @@
     75.0,
     155.0
    ]
+  },
+  {
+   "champion": "Garen",
+   "ability": "E",
+   "name": "Judgment",
+   "field": "ratio:Physical Damage Per Spin:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    36.0,
+    48.0
+   ],
+   "wiki": [
+    40.0,
+    52.0
+   ],
+   "engine_effective": [
+    36.0,
+    48.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Garen",
+   "ability": "E",
+   "name": "Judgment",
+   "field": "ratio:Increased Damage Per Spin:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    60.0
+   ],
+   "wiki": [
+    50.0,
+    65.0
+   ],
+   "engine_effective": [
+    45.0,
+    60.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Garen",
@@ -1952,6 +2849,46 @@
     130.0,
     410.0
    ]
+  },
+  {
+   "champion": "Graves",
+   "ability": "Q",
+   "name": "End of the Line",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    55.0,
+    55.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Graves",
+   "ability": "Q",
+   "name": "End of the Line",
+   "field": "ratio:Total Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    120.0,
+    220.0
+   ],
+   "wiki": [
+    100.0,
+    160.0
+   ],
+   "engine_effective": [
+    120.0,
+    220.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Gwen",
@@ -2039,6 +2976,126 @@
   },
   {
    "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "ratio:Damage per Snip:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    2.0,
+    2.0
+   ],
+   "wiki": [
+    5.0,
+    5.0
+   ],
+   "engine_effective": [
+    2.0,
+    2.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "ratio:Center Damage per Snip:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    2.0,
+    2.0
+   ],
+   "wiki": [
+    5.0,
+    5.0
+   ],
+   "engine_effective": [
+    2.0,
+    2.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "ratio:Minimum Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    37.0,
+    37.0
+   ],
+   "wiki": [
+    40.0,
+    40.0
+   ],
+   "engine_effective": [
+    37.0,
+    37.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "ratio:Minimum Center Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    37.0,
+    37.0
+   ],
+   "wiki": [
+    40.0,
+    40.0
+   ],
+   "engine_effective": [
+    37.0,
+    37.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "ratio:Maximum Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    45.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    45.0,
+    45.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "ratio:Maximum Center Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    45.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    45.0,
+    45.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
    "ability": "W",
    "name": "Hallowed Mist",
    "field": "cooldown",
@@ -2122,6 +3179,86 @@
    ]
   },
   {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "ratio:Magic Damage per Needle:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    8.0,
+    8.0
+   ],
+   "wiki": [
+    10.0,
+    10.0
+   ],
+   "engine_effective": [
+    8.0,
+    8.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "ratio:Second Cast Total Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    24.0,
+    24.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    24.0,
+    24.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "ratio:Third Cast Total Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "ratio:Maximum Total Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    72.0,
+    72.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    72.0,
+    72.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Hecarim",
    "ability": "Q",
    "name": "Rampage",
@@ -2148,6 +3285,26 @@
     80.0,
     240.0
    ]
+  },
+  {
+   "champion": "Hecarim",
+   "ability": "W",
+   "name": "Spirit of Dread",
+   "field": "ratio:Total Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Heimerdinger",
@@ -2193,6 +3350,66 @@
   },
   {
    "champion": "Irelia",
+   "ability": "Q",
+   "name": "Bladesurge",
+   "field": "ratio:Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Irelia",
+   "ability": "W",
+   "name": "Defiant Dance",
+   "field": "ratio:Minimum Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Irelia",
+   "ability": "W",
+   "name": "Defiant Dance",
+   "field": "ratio:Maximum Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    120.0,
+    120.0
+   ],
+   "wiki": [
+    150.0,
+    150.0
+   ],
+   "engine_effective": [
+    120.0,
+    120.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Irelia",
    "ability": "E",
    "name": "Flawless Duet",
    "field": "cooldown",
@@ -2204,6 +3421,86 @@
     16.0,
     10.0
    ]
+  },
+  {
+   "champion": "Irelia",
+   "ability": "E",
+   "name": "Flawless Duet",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Irelia",
+   "ability": "R",
+   "name": "Vanguard's Edge",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Jax",
+   "ability": "E",
+   "name": "Counter Strike",
+   "field": "ratio:Minimum Magic Damage:target_max_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    3.5,
+    3.5
+   ],
+   "wiki": [
+    4.0,
+    4.0
+   ],
+   "engine_effective": [
+    3.5,
+    3.5
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Jax",
+   "ability": "E",
+   "name": "Counter Strike",
+   "field": "ratio:Maximum Magic Damage:target_max_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    7.0,
+    7.0
+   ],
+   "wiki": [
+    8.0,
+    8.0
+   ],
+   "engine_effective": [
+    7.0,
+    7.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Jayce",
@@ -2262,6 +3559,86 @@
    ]
   },
   {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "field": "ratio:Maximum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    155.0,
+    155.0
+   ],
+   "wiki": [
+    120.0,
+    120.0
+   ],
+   "engine_effective": [
+    155.0,
+    155.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "field": "ratio:Minimum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    15.5,
+    15.5
+   ],
+   "wiki": [
+    12.0,
+    12.0
+   ],
+   "engine_effective": [
+    15.5,
+    15.5
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "field": "ratio:Maximum Secondary Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    124.0,
+    124.0
+   ],
+   "wiki": [
+    96.0,
+    96.0
+   ],
+   "engine_effective": [
+    124.0,
+    124.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "field": "ratio:Minimum Secondary Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    12.4,
+    12.4
+   ],
+   "wiki": [
+    9.600000000000001,
+    9.600000000000001
+   ],
+   "engine_effective": [
+    12.4,
+    12.4
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Kaisa",
    "ability": "W",
    "name": "Void Seeker",
@@ -2290,6 +3667,26 @@
    ]
   },
   {
+   "champion": "Kalista",
+   "ability": "E",
+   "name": "Rend",
+   "field": "ratio:Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    20.0,
+    20.0
+   ],
+   "wiki": [
+    65.0,
+    65.0
+   ],
+   "engine_effective": [
+    20.0,
+    20.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Kassadin",
    "ability": "Q",
    "name": "Null Sphere",
@@ -2302,6 +3699,46 @@
     9.0,
     7.0
    ]
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "Q",
+   "name": "Null Sphere",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "E",
+   "name": "Force Pulse",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    65.0,
+    65.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Kassadin",
@@ -2416,6 +3853,66 @@
    ]
   },
   {
+   "champion": "Kennen",
+   "ability": "R",
+   "name": "Slicing Maelstrom",
+   "field": "ratio:Magic Damage Per Bolt:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    22.5,
+    22.5
+   ],
+   "wiki": [
+    25.0,
+    25.0
+   ],
+   "engine_effective": [
+    22.5,
+    22.5
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Kennen",
+   "ability": "R",
+   "name": "Slicing Maelstrom",
+   "field": "ratio:Total Single-Target Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    168.75,
+    168.75
+   ],
+   "wiki": [
+    187.5,
+    187.5
+   ],
+   "engine_effective": [
+    168.75,
+    168.75
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Khazix",
+   "ability": "Q",
+   "name": "Taste Their Fear",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    110.0,
+    110.0
+   ],
+   "wiki": [
+    105.0,
+    105.0
+   ],
+   "engine_effective": [
+    110.0,
+    110.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Khazix",
    "ability": "W",
    "name": "Void Spike",
@@ -2428,6 +3925,86 @@
     75.0,
     195.0
    ]
+  },
+  {
+   "champion": "KogMaw",
+   "ability": "Q",
+   "name": "Caustic Spittle",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "KogMaw",
+   "ability": "R",
+   "name": "Living Artillery",
+   "field": "ratio:Minimum Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    35.0,
+    35.0
+   ],
+   "wiki": [
+    35.0,
+    45.0
+   ],
+   "engine_effective": [
+    35.0,
+    35.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "KogMaw",
+   "ability": "R",
+   "name": "Living Artillery",
+   "field": "ratio:Maximum Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    70.0,
+    90.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "W",
+   "name": "Distortion",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Leblanc",
@@ -2514,6 +4091,26 @@
    ]
   },
   {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    75.0,
+    75.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    75.0,
+    75.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "LeeSin",
    "ability": "Q",
    "name": "Sonic Wave",
@@ -2526,6 +4123,46 @@
     60.0,
     180.0
    ]
+  },
+  {
+   "champion": "LeeSin",
+   "ability": "Q",
+   "name": "Sonic Wave",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    115.0,
+    115.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    115.0,
+    115.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "LeeSin",
+   "ability": "E",
+   "name": "Tempest",
+   "field": "ratio:Magic Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Lissandra",
@@ -2554,6 +4191,26 @@
     80.0,
     220.0
    ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "Q",
+   "name": "Piercing Light",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    120.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Lucian",
@@ -2610,6 +4267,26 @@
     10.0,
     10.0
    ]
+  },
+  {
+   "champion": "Lux",
+   "ability": "Q",
+   "name": "Light Binding",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    65.0,
+    65.0
+   ],
+   "wiki": [
+    75.0,
+    75.0
+   ],
+   "engine_effective": [
+    75.0,
+    75.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Lux",
@@ -2703,6 +4380,26 @@
    ]
   },
   {
+   "champion": "Maokai",
+   "ability": "Q",
+   "name": "Bramble Smash",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    50.0,
+    50.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Mel",
    "ability": "Q",
    "name": "Radiant Volley",
@@ -2715,6 +4412,26 @@
     85.0,
     277.0
    ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "Q",
+   "name": "Radiant Volley",
+   "field": "ratio:Total Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    51.0,
+    85.0
+   ],
+   "wiki": [
+    80.0,
+    100.0
+   ],
+   "engine_effective": [
+    51.0,
+    85.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Mel",
@@ -2774,6 +4491,26 @@
   },
   {
    "champion": "Mel",
+   "ability": "E",
+   "name": "Solar Snare",
+   "field": "ratio:Orb Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Mel",
    "ability": "R",
    "name": "Golden Eclipse",
    "field": "base:Magic Damage",
@@ -2785,6 +4522,46 @@
     125.0,
     275.0
    ]
+  },
+  {
+   "champion": "MissFortune",
+   "ability": "R",
+   "name": "Bullet Time",
+   "field": "ratio:Maximum Total Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    1050.0,
+    1350.0
+   ],
+   "wiki": [
+    840.0,
+    1080.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "MonkeyKing",
+   "ability": "Q",
+   "name": "Crushing Blow",
+   "field": "ratio:Bonus Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    55.0,
+    55.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    55.0,
+    55.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "MonkeyKing",
@@ -2878,6 +4655,26 @@
    ]
   },
   {
+   "champion": "Mordekaiser",
+   "ability": "E",
+   "name": "Death's Grasp",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    45.0,
+    45.0
+   ],
+   "engine_effective": [
+    45.0,
+    45.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Morgana",
    "ability": "W",
    "name": "Tormented Shadow",
@@ -2932,6 +4729,86 @@
     180.0,
     700.0
    ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "ratio:Minimum Damage Per Tick:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    8.5,
+    8.5
+   ],
+   "wiki": [
+    10.0,
+    10.0
+   ],
+   "engine_effective": [
+    8.5,
+    8.5
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "ratio:Maximum Damage Per Tick:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    22.95,
+    22.95
+   ],
+   "wiki": [
+    20.0,
+    20.0
+   ],
+   "engine_effective": [
+    22.95,
+    22.95
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "ratio:Minimum Total Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    85.0,
+    85.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    85.0,
+    85.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "ratio:Maximum Total Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    229.5,
+    229.5
+   ],
+   "wiki": [
+    200.0,
+    200.0
+   ],
+   "engine_effective": [
+    229.5,
+    229.5
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Naafiri",
@@ -3002,6 +4879,46 @@
     125.0,
     275.0
    ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "R",
+   "name": "Hounds' Pursuit",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    120.0,
+    120.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    120.0,
+    120.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Nami",
+   "ability": "W",
+   "name": "Ebb and Flow",
+   "field": "ratio:Minimum Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Nami",
@@ -3088,6 +5005,46 @@
    ]
   },
   {
+   "champion": "Nilah",
+   "ability": "Q",
+   "name": "Formless Blade",
+   "field": "ratio:Minimum Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    90.0,
+    110.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    90.0,
+    110.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Nilah",
+   "ability": "Q",
+   "name": "Formless Blade",
+   "field": "ratio:Maximum Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    180.0,
+    220.0
+   ],
+   "wiki": [
+    191.0,
+    191.0
+   ],
+   "engine_effective": [
+    180.0,
+    220.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Nocturne",
    "ability": "Q",
    "name": "Duskbringer",
@@ -3172,6 +5129,46 @@
    ]
   },
   {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "field": "ratio:Magic Damage Per Hit:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    15.0,
+    15.0
+   ],
+   "wiki": [
+    12.0,
+    12.0
+   ],
+   "engine_effective": [
+    15.0,
+    15.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "field": "ratio:Total Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    45.0
+   ],
+   "wiki": [
+    36.0,
+    36.0
+   ],
+   "engine_effective": [
+    45.0,
+    45.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Olaf",
    "ability": "Q",
    "name": "Undertow",
@@ -3215,6 +5212,26 @@
   },
   {
    "champion": "Orianna",
+   "ability": "W",
+   "name": "Command: Dissonance",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Orianna",
    "ability": "R",
    "name": "Command: Shockwave",
    "field": "base:Magic Damage",
@@ -3226,6 +5243,106 @@
     225.0,
     475.0
    ]
+  },
+  {
+   "champion": "Orianna",
+   "ability": "R",
+   "name": "Command: Shockwave",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    95.0,
+    95.0
+   ],
+   "wiki": [
+    110.0,
+    110.0
+   ],
+   "engine_effective": [
+    110.0,
+    110.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Poppy",
+   "ability": "Q",
+   "name": "Hammer Shock",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    75.0,
+    75.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Poppy",
+   "ability": "Q",
+   "name": "Hammer Shock",
+   "field": "ratio:Physical Damage:target_max_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    9.0,
+    9.0
+   ],
+   "wiki": [
+    7.0,
+    9.0
+   ],
+   "engine_effective": [
+    9.0,
+    9.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Poppy",
+   "ability": "Q",
+   "name": "Hammer Shock",
+   "field": "ratio:Total Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    200.0,
+    200.0
+   ],
+   "wiki": [
+    150.0,
+    150.0
+   ],
+   "engine_effective": [
+    200.0,
+    200.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Poppy",
+   "ability": "Q",
+   "name": "Hammer Shock",
+   "field": "ratio:Total Physical Damage:target_max_hp_pct",
+   "kind": "ratio",
+   "meraki": [
+    18.0,
+    18.0
+   ],
+   "wiki": [
+    14.0,
+    18.0
+   ],
+   "engine_effective": [
+    18.0,
+    18.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Qiyana",
@@ -3256,6 +5373,26 @@
    ]
   },
   {
+   "champion": "Quinn",
+   "ability": "Q",
+   "name": "Blinding Assault",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    120.0
+   ],
+   "wiki": [
+    80.0,
+    100.0
+   ],
+   "engine_effective": [
+    80.0,
+    100.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "RekSai",
    "ability": "E",
    "name": "Furious Bite",
@@ -3282,6 +5419,46 @@
     84.0,
     204.0
    ]
+  },
+  {
+   "champion": "RekSai",
+   "ability": "E",
+   "name": "Furious Bite",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    64.0,
+    64.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    64.0,
+    64.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "RekSai",
+   "ability": "E",
+   "name": "Furious Bite",
+   "field": "ratio:True Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    72.0,
+    72.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Rell",
@@ -3312,6 +5489,46 @@
    ]
   },
   {
+   "champion": "Riven",
+   "ability": "Q",
+   "name": "Broken Wings",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    65.0,
+    85.0
+   ],
+   "wiki": [
+    60.0,
+    80.0
+   ],
+   "engine_effective": [
+    65.0,
+    85.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Riven",
+   "ability": "Q",
+   "name": "Broken Wings",
+   "field": "ratio:Total Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    195.0,
+    255.0
+   ],
+   "wiki": [
+    180.0,
+    240.0
+   ],
+   "engine_effective": [
+    195.0,
+    255.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Rumble",
    "ability": "R",
    "name": "The Equalizer",
@@ -3326,6 +5543,46 @@
    ]
   },
   {
+   "champion": "Ryze",
+   "ability": "W",
+   "name": "Rune Prison",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Ryze",
+   "ability": "W",
+   "name": "Rune Prison",
+   "field": "ratio:Magic Damage:caster_bonus_mp_pct",
+   "kind": "ratio",
+   "meraki": [
+    4.0,
+    4.0
+   ],
+   "wiki": [
+    3.0,
+    3.0
+   ],
+   "engine_effective": [
+    4.0,
+    4.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Samira",
    "ability": "Q",
    "name": "Flair",
@@ -3338,6 +5595,26 @@
     0.0,
     20.0
    ]
+  },
+  {
+   "champion": "Samira",
+   "ability": "Q",
+   "name": "Flair",
+   "field": "ratio:Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    95.0,
+    125.0
+   ],
+   "wiki": [
+    110.0,
+    110.0
+   ],
+   "engine_effective": [
+    110.0,
+    110.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Samira",
@@ -3368,6 +5645,46 @@
    ]
   },
   {
+   "champion": "Samira",
+   "ability": "R",
+   "name": "Inferno Trigger",
+   "field": "ratio:Physical Damage Per Shot:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    45.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    45.0,
+    45.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Samira",
+   "ability": "R",
+   "name": "Inferno Trigger",
+   "field": "ratio:Total Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    450.0,
+    450.0
+   ],
+   "wiki": [
+    300.0,
+    300.0
+   ],
+   "engine_effective": [
+    450.0,
+    450.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Sejuani",
    "ability": "Q",
    "name": "Arctic Assault",
@@ -3380,6 +5697,86 @@
     18.0,
     12.0
    ]
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "Q",
+   "name": "Arctic Assault",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    75.0,
+    75.0
+   ],
+   "engine_effective": [
+    75.0,
+    75.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "W",
+   "name": "Winter's Wrath",
+   "field": "ratio:Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    20.0,
+    20.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    20.0,
+    20.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "W",
+   "name": "Winter's Wrath",
+   "field": "ratio:Total Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "E",
+   "name": "Permafrost",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Sejuani",
@@ -3411,6 +5808,26 @@
   },
   {
    "champion": "Senna",
+   "ability": "Q",
+   "name": "Piercing Darkness",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Senna",
    "ability": "W",
    "name": "Last Embrace",
    "field": "base:Physical Damage",
@@ -3422,6 +5839,46 @@
     70.0,
     230.0
    ]
+  },
+  {
+   "champion": "Senna",
+   "ability": "W",
+   "name": "Last Embrace",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Seraphine",
+   "ability": "Q",
+   "name": "High Note",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    50.0,
+    50.0
+   ],
+   "wiki": [
+    40.0,
+    40.0
+   ],
+   "engine_effective": [
+    50.0,
+    50.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Seraphine",
@@ -3450,6 +5907,26 @@
     13.0,
     11.0
    ]
+  },
+  {
+   "champion": "Shaco",
+   "ability": "Q",
+   "name": "Deceive",
+   "field": "ratio:Bonus Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    65.0,
+    65.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Shyvana",
@@ -3501,6 +5978,106 @@
    ]
   },
   {
+   "champion": "Sion",
+   "ability": "R",
+   "name": "Unstoppable Onslaught",
+   "field": "ratio:Minimum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Sion",
+   "ability": "R",
+   "name": "Unstoppable Onslaught",
+   "field": "ratio:Maximum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    120.0,
+    120.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Sivir",
+   "ability": "Q",
+   "name": "Boomerang Blade",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Sivir",
+   "ability": "Q",
+   "name": "Boomerang Blade",
+   "field": "ratio:Minimum Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    40.0,
+    40.0
+   ],
+   "wiki": [
+    28.0,
+    28.0
+   ],
+   "engine_effective": [
+    40.0,
+    40.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Sivir",
+   "ability": "Q",
+   "name": "Boomerang Blade",
+   "field": "ratio:Total Maximum Champion Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    200.0,
+    200.0
+   ],
+   "wiki": [
+    140.0,
+    140.0
+   ],
+   "engine_effective": [
+    200.0,
+    200.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Skarner",
    "ability": "Q",
    "name": "Shattered Earth",
@@ -3515,6 +6092,46 @@
    ]
   },
   {
+   "champion": "Skarner",
+   "ability": "Q",
+   "name": "Shattered Earth",
+   "field": "ratio:Bonus Physical Damage per Hit:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Skarner",
+   "ability": "Q",
+   "name": "Shattered Earth",
+   "field": "ratio:Total Bonus Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    240.0,
+    240.0
+   ],
+   "wiki": [
+    270.0,
+    270.0
+   ],
+   "engine_effective": [
+    240.0,
+    240.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Smolder",
    "ability": "Q",
    "name": "Super Scorcher Breath",
@@ -3527,6 +6144,46 @@
     60.0,
     100.0
    ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "W",
+   "name": "Achooo!",
+   "field": "ratio:Explosion Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    65.0,
+    65.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    65.0,
+    65.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Smolder",
+   "ability": "W",
+   "name": "Achooo!",
+   "field": "ratio:Total Physical Damage On Champion Hit:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    125.0,
+    125.0
+   ],
+   "wiki": [
+    110.0,
+    110.0
+   ],
+   "engine_effective": [
+    125.0,
+    125.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Smolder",
@@ -3557,6 +6214,46 @@
    ]
   },
   {
+   "champion": "Smolder",
+   "ability": "R",
+   "name": "MMOOOMMMM!",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    110.0,
+    110.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    110.0,
+    110.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Smolder",
+   "ability": "R",
+   "name": "MMOOOMMMM!",
+   "field": "ratio:Increased Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    165.0,
+    165.0
+   ],
+   "wiki": [
+    150.0,
+    150.0
+   ],
+   "engine_effective": [
+    165.0,
+    165.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Swain",
    "ability": "E",
    "name": "Nevermove",
@@ -3571,6 +6268,26 @@
    ]
   },
   {
+   "champion": "Swain",
+   "ability": "R",
+   "name": "Demonic Ascension",
+   "field": "ratio:Magic Damage per Tick:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    2.5,
+    2.5
+   ],
+   "wiki": [
+    2.0,
+    2.0
+   ],
+   "engine_effective": [
+    2.5,
+    2.5
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Syndra",
    "ability": "Q",
    "name": "Dark Sphere",
@@ -3583,6 +6300,26 @@
     90.0,
     230.0
    ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "Q",
+   "name": "Dark Sphere",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Syndra",
@@ -3625,6 +6362,26 @@
     78.4,
     212.8
    ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "field": "ratio:Total Mixed Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    74.2,
+    77.0
+   ],
+   "wiki": [
+    74.20000000000002,
+    76.60000000000001
+   ],
+   "engine_effective": [
+    74.2,
+    77.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Syndra",
@@ -3816,6 +6573,26 @@
    ]
   },
   {
+   "champion": "Thresh",
+   "ability": "E",
+   "name": "Flay",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    70.0,
+    70.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": true
+  },
+  {
    "champion": "Tristana",
    "ability": "E",
    "name": "Explosive Charge",
@@ -3828,6 +6605,86 @@
     60.0,
     160.0
    ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "field": "ratio:Minimum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    140.0
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    100.0,
+    140.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "field": "ratio:Bonus Damage Per Stack:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    25.0,
+    35.0
+   ],
+   "wiki": [
+    20.0,
+    20.0
+   ],
+   "engine_effective": [
+    25.0,
+    35.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "field": "ratio:Full Stack Bonus Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    140.0
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    100.0,
+    140.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "field": "ratio:Full Stack Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    200.0,
+    280.0
+   ],
+   "wiki": [
+    160.0,
+    160.0
+   ],
+   "engine_effective": [
+    200.0,
+    280.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Trundle",
@@ -3858,6 +6715,26 @@
    ]
   },
   {
+   "champion": "Tryndamere",
+   "ability": "E",
+   "name": "Spinning Slash",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    130.0,
+    130.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Udyr",
    "ability": "Q",
    "name": "Wilding Claw",
@@ -3870,6 +6747,26 @@
     6.0,
     36.0
    ]
+  },
+  {
+   "champion": "Udyr",
+   "ability": "Q",
+   "name": "Wilding Claw",
+   "field": "ratio:Bonus Physical Damage On-Hit:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    25.0,
+    25.0
+   ],
+   "wiki": [
+    20.0,
+    20.0
+   ],
+   "engine_effective": [
+    25.0,
+    25.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Varus",
@@ -3929,6 +6826,86 @@
   },
   {
    "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "ratio:Minimum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    86.67,
+    113.33
+   ],
+   "wiki": [
+    80.0,
+    80.0
+   ],
+   "engine_effective": [
+    86.67,
+    113.33
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "ratio:Maximum Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    130.0,
+    170.0
+   ],
+   "wiki": [
+    120.0,
+    120.0
+   ],
+   "engine_effective": [
+    130.0,
+    170.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "ratio:Minimum Reduced Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    28.6,
+    37.4
+   ],
+   "wiki": [
+    26.400000000000002,
+    26.400000000000002
+   ],
+   "engine_effective": [
+    28.6,
+    37.4
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "ratio:Maximum Reduced Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    42.9,
+    56.1
+   ],
+   "wiki": [
+    39.6,
+    39.6
+   ],
+   "engine_effective": [
+    42.9,
+    56.1
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Varus",
    "ability": "W",
    "name": "Blighted Quiver",
    "field": "base:Bonus Magic Damage",
@@ -3940,6 +6917,26 @@
     4.0,
     40.0
    ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "W",
+   "name": "Blighted Quiver",
+   "field": "ratio:Bonus Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    35.0,
+    35.0
+   ],
+   "wiki": [
+    25.0,
+    25.0
+   ],
+   "engine_effective": [
+    35.0,
+    35.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Varus",
@@ -3956,6 +6953,26 @@
    ]
   },
   {
+   "champion": "Varus",
+   "ability": "E",
+   "name": "Hail of Arrows",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    90.0,
+    90.0
+   ],
+   "engine_effective": [
+    90.0,
+    90.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Vayne",
    "ability": "W",
    "name": "Silver Bolts",
@@ -3968,6 +6985,26 @@
     40.0,
     100.0
    ]
+  },
+  {
+   "champion": "Veigar",
+   "ability": "W",
+   "name": "Dark Matter",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    100.0
+   ],
+   "wiki": [
+    70.0,
+    110.0
+   ],
+   "engine_effective": [
+    70.0,
+    110.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Veigar",
@@ -4069,6 +7106,46 @@
   },
   {
    "champion": "Volibear",
+   "ability": "Q",
+   "name": "Thundering Smash",
+   "field": "ratio:Bonus Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    120.0,
+    120.0
+   ],
+   "wiki": [
+    160.0,
+    160.0
+   ],
+   "engine_effective": [
+    120.0,
+    120.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Volibear",
+   "ability": "W",
+   "name": "Frenzied Maul",
+   "field": "ratio:Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    110.0,
+    110.0
+   ],
+   "engine_effective": [
+    110.0,
+    110.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Volibear",
    "ability": "E",
    "name": "Sky Splitter",
    "field": "cooldown",
@@ -4080,6 +7157,26 @@
     16.0,
     16.0
    ]
+  },
+  {
+   "champion": "Volibear",
+   "ability": "E",
+   "name": "Sky Splitter",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    80.0,
+    80.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Xayah",
@@ -4108,6 +7205,26 @@
     50.0,
     110.0
    ]
+  },
+  {
+   "champion": "Xayah",
+   "ability": "E",
+   "name": "Bladecaller",
+   "field": "ratio:Physical Damage Per Feather:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    40.0,
+    40.0
+   ],
+   "engine_effective": [
+    60.0,
+    60.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Xerath",
@@ -4152,6 +7269,26 @@
    ]
   },
   {
+   "champion": "XinZhao",
+   "ability": "E",
+   "name": "Audacious Charge",
+   "field": "ratio:Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    60.0,
+    60.0
+   ],
+   "wiki": [
+    120.0,
+    120.0
+   ],
+   "engine_effective": [
+    120.0,
+    120.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Yone",
    "ability": "Q",
    "name": "Mortal Steel",
@@ -4164,6 +7301,26 @@
     25.0,
     125.0
    ]
+  },
+  {
+   "champion": "Yone",
+   "ability": "Q",
+   "name": "Mortal Steel",
+   "field": "ratio:Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    105.0,
+    105.0
+   ],
+   "wiki": [
+    110.0,
+    110.0
+   ],
+   "engine_effective": [
+    110.0,
+    110.0
+   ],
+   "engine_stale": false
   },
   {
    "champion": "Yunara",
@@ -4206,6 +7363,46 @@
     33.0,
     129.0
    ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "field": "ratio:Linger Magic Damage per Tick:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    6.25,
+    6.25
+   ],
+   "wiki": [
+    7.5,
+    7.5
+   ],
+   "engine_effective": [
+    6.25,
+    6.25
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "field": "ratio:Total Expanded Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    25.0,
+    25.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    25.0,
+    25.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Yunara",
@@ -4306,6 +7503,26 @@
    ]
   },
   {
+   "champion": "Zed",
+   "ability": "E",
+   "name": "Shadow Slash",
+   "field": "ratio:Physical Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    80.0,
+    80.0
+   ],
+   "wiki": [
+    70.0,
+    70.0
+   ],
+   "engine_effective": [
+    70.0,
+    70.0
+   ],
+   "engine_stale": false
+  },
+  {
    "champion": "Zeri",
    "ability": "Q",
    "name": "Burst Fire",
@@ -4335,6 +7552,86 @@
   },
   {
    "champion": "Zeri",
+   "ability": "Q",
+   "name": "Burst Fire",
+   "field": "ratio:Total Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    104.0,
+    120.0
+   ],
+   "wiki": [
+    102.0,
+    110.0
+   ],
+   "engine_effective": [
+    104.0,
+    120.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Zeri",
+   "ability": "Q",
+   "name": "Burst Fire",
+   "field": "ratio:Physical Damage per Hit:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    14.86,
+    17.14
+   ],
+   "wiki": [
+    14.571428571428571,
+    15.714285714285714
+   ],
+   "engine_effective": [
+    14.86,
+    17.14
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Zeri",
+   "ability": "W",
+   "name": "Ultrashock Laser",
+   "field": "ratio:Physical Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    25.0,
+    25.0
+   ],
+   "wiki": [
+    50.0,
+    50.0
+   ],
+   "engine_effective": [
+    50.0,
+    50.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Zeri",
+   "ability": "W",
+   "name": "Ultrashock Laser",
+   "field": "ratio:Physical Damage:total_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    130.0,
+    130.0
+   ],
+   "wiki": [
+    100.0,
+    100.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": false
+  },
+  {
+   "champion": "Zeri",
    "ability": "E",
    "name": "Spark Surge",
    "field": "cooldown",
@@ -4360,6 +7657,26 @@
     150.0,
     350.0
    ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "R",
+   "name": "Lightning Crash",
+   "field": "ratio:Magic Damage:bonus_ad_pct",
+   "kind": "ratio",
+   "meraki": [
+    100.0,
+    100.0
+   ],
+   "wiki": [
+    60.0,
+    60.0
+   ],
+   "engine_effective": [
+    100.0,
+    100.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Zoe",
@@ -4458,6 +7775,46 @@
     45.0,
     165.0
    ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "W",
+   "name": "Spell Thief",
+   "field": "ratio:Magic Damage Per Bolt:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    15.0,
+    15.0
+   ],
+   "wiki": [
+    10.0,
+    10.0
+   ],
+   "engine_effective": [
+    15.0,
+    15.0
+   ],
+   "engine_stale": true
+  },
+  {
+   "champion": "Zoe",
+   "ability": "W",
+   "name": "Spell Thief",
+   "field": "ratio:Total Magic Damage:ap_pct",
+   "kind": "ratio",
+   "meraki": [
+    45.0,
+    45.0
+   ],
+   "wiki": [
+    30.0,
+    30.0
+   ],
+   "engine_effective": [
+    45.0,
+    45.0
+   ],
+   "engine_stale": true
   },
   {
    "champion": "Zoe",

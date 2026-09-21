@@ -102,6 +102,11 @@ _UNREACHABLE_OK: dict[str, set[str]] = {
     '/rank-mage':          {'kit_conversion_strength'},
     '/rank-onhit':         {'phase'},
     '/rank-tank':          {'kit_conversion_strength'},
+    # ``augment_stacks`` (ENGINE 1.282.0, Arena conversion augments Aim for the
+    # Head / Tap Dancer) is a build_champion kwarg with default 10. /stats
+    # forwards ``augments`` but not the stack count, so a caller gets the
+    # default. NEW debt from the 1.282.0 integration, not an exemption.
+    '/stats':              {'augment_stacks'},
     '/v2/fight-report':    {'caster_hp_pct', 'game_time_s', 'recharge_window_s'},
     '/v2/matchup':         {'sequence_a', 'sequence_b'},
 }

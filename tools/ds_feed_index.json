@@ -519,7 +519,7 @@
     },
     "16.18.1": {
       "ability_staleness.json": {
-        "body_md5": "5700de9e",
+        "body_md5": "10f3142c",
         "declared_patch": "16.18.1",
         "stamp_field": "_patch"
       },
@@ -534,7 +534,7 @@
         "stamp_field": "version"
       },
       "build_orders_arena.json": {
-        "body_md5": "db78b6ec",
+        "body_md5": "7b46c3dd",
         "declared_patch": "16.18.1",
         "stamp_field": "version"
       },
@@ -594,7 +594,7 @@
         "stamp_field": "ddragon_version"
       },
       "pickban_targets.json": {
-        "body_md5": "3b48c892",
+        "body_md5": "8bbca275",
         "declared_patch": "16.18.1",
         "stamp_field": "patch"
       },
