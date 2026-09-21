@@ -141,7 +141,9 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Aurora"], {"Q": 2})
         # Bel'Veth gained R=1 in s224 (recast nuke; corrects s223's
         # over-conservative no-entry call). E=2 is the s174-era entry.
-        self.assertEqual(champions["Belveth"], {"E": 2, "R": 1})
+        # F2 (2026-09-21): damage-ordinal renumber - see
+        # test_block_index_damage_ordinal_f2.py for the 18-entry map.
+        self.assertEqual(champions["Belveth"], {"E": 1, "R": 1})
         self.assertEqual(champions["Karma"], {"W": 1})
         self.assertEqual(champions["Vex"], {"R": 2})
         # Phase 5.9.5 (s192) - Akali R + R2 token-variant override
@@ -190,10 +192,10 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Velkoz"], {"W": 2, "R": 1})
         # New champions added in s195 (Morgana extended in s196 with R=1 - asserted below):
         # Camille W=[0,1] added in s207 sum-of-blocks seed - full shape:
-        self.assertEqual(champions["Camille"], {"Q": 2, "W": [0, 1]})
-        self.assertEqual(champions["Ekko"], {"Q": 3})
+        self.assertEqual(champions["Camille"], {"Q": 1, "W": [0, 1]})
+        self.assertEqual(champions["Ekko"], {"Q": 2})
         self.assertEqual(champions["Kaisa"], {"Q": 2})
-        self.assertEqual(champions["Lulu"], {"Q": 3})
+        self.assertEqual(champions["Lulu"], {"Q": 2})
         self.assertEqual(champions["Sivir"], {"Q": 2})
         # Talon extended in s199 with Q=1 - full shape asserted below
         # Varus gained W=2 in s225 (3-stack Blight detonation; engine
@@ -228,7 +230,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Draven"], {"R": 1})
         self.assertEqual(champions["Gragas"], {"Q": 1})
         # Karthus extended in s199 with E=2 (Defile per-second tick)
-        self.assertEqual(champions["Karthus"], {"Q": 1, "E": 2})
+        self.assertEqual(champions["Karthus"], {"Q": 1, "E": 1})
         self.assertEqual(champions["Khazix"], {"Q": 1})
         # s231 Phase 5.9.31 - KogMaw R converted to a target_full_hp
         # execute conditional (Living Artillery block 1 = 2.0x block 0
@@ -238,7 +240,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Lillia extended in s200 with Q=1 (Q + Dream Dust AA combo)
         self.assertEqual(champions["Lillia"], {"W": 1, "Q": 1})
         # Nautilus extended in s199 with R=2 (Depth Charge primary hit)
-        self.assertEqual(champions["Nautilus"], {"E": 2, "R": 2})
+        self.assertEqual(champions["Nautilus"], {"E": 2, "R": 1})
         self.assertEqual(champions["Pantheon"], {"Q": 1})
         # Riven extended in s204 with R=1 (+ form_index seed) - full shape asserted in Phase 5.9.17 block
         self.assertEqual(champions["Sett"], {"Q": 1})
@@ -247,15 +249,15 @@ class RegistryShapeTests(unittest.TestCase):
         # Phase 5.9.10 (s197) - assassin/fighter resource amps + utility totals
         # 20 entries across 18 new champions (registry 49 -> 67):
         # Aatrox extended in s199 with Q=1 (Q1 sweet-spot)
-        self.assertEqual(champions["Aatrox"], {"W": 3, "Q": 1})
-        self.assertEqual(champions["Briar"], {"E": 4})
+        self.assertEqual(champions["Aatrox"], {"W": 1, "Q": 1})
+        self.assertEqual(champions["Briar"], {"E": 3})
         self.assertEqual(champions["Darius"], {"R": 2})
         # Hwei extended in s205 with W=1 (Stirring Lights Maximum 3-light total) - full shape asserted in Phase 5.9.18 block
         self.assertEqual(champions["Kassadin"], {"R": 3})
         self.assertEqual(champions["Leblanc"], {"Q": 1, "E": 1})
         self.assertEqual(champions["Lucian"], {"R": 1})
         self.assertEqual(champions["MasterYi"], {"Q": 2})
-        self.assertEqual(champions["Mel"], {"Q": 3, "R": 2})
+        self.assertEqual(champions["Mel"], {"Q": 1, "R": 1})
         self.assertEqual(champions["MonkeyKing"], {"R": 1})
         self.assertEqual(champions["Naafiri"], {"Q": 2, "E": 1})
         # Nilah extended in s200 with Q=1 (Formless Blade max-stack empowered)
@@ -266,7 +268,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Renekton extended in s202 with R=1 - asserted below
         # Rumble extended in s202 with Q=2 + R=2 - asserted below
         # Sion R=1 extends prior {"Q": 2} from s197 (added s198)
-        self.assertEqual(champions["Sion"], {"Q": 2, "R": 1})
+        self.assertEqual(champions["Sion"], {"Q": 1, "R": 1})
         # Smolder extended in s202 with Q=1 + R=1 - asserted below
         # Phase 5.9.11 (s198) - bruiser/jungler/utility/marksman expansion
         # 20 entries across 17 new champions + 2 key extensions
@@ -278,10 +280,10 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Nami"], {"E": 1})
         # Nasus extended in s202 with R=1 - asserted below
         self.assertEqual(champions["Neeko"], {"Q": 2})
-        self.assertEqual(champions["Ornn"], {"R": 2})
+        self.assertEqual(champions["Ornn"], {"R": 1})
         # Sejuani extended in s199 with R=1 (Glacial Prison direct stun)
         self.assertEqual(champions["Sejuani"], {"W": 2, "R": 1})
-        self.assertEqual(champions["Sylas"], {"Q": 3})
+        self.assertEqual(champions["Sylas"], {"Q": 2})
         self.assertEqual(champions["Twitch"], {"E": 3})
         # Udyr extended in s199 with Q=1 (Wilding Claw Awakened 2-AA)
         self.assertEqual(champions["Udyr"], {"R": 1, "Q": 1})
@@ -292,7 +294,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Zac extended in s199 with Q=1 (Stretching Strikes 2-arm total)
         self.assertEqual(champions["Zac"], {"R": 2, "Q": 1})
         # Phase 5.9.12 (s199) - new champions:
-        self.assertEqual(champions["Ashe"], {"Q": 2})
+        self.assertEqual(champions["Ashe"], {"Q": 1})
         # Shaco extended in s205 with W=1 (Box vs Feared target Increased Damage) - full shape asserted in Phase 5.9.18 block
         # Phase 5.9.13 (s200) - Ambessa new champion (3 entries Drain amp +
         # Lacerate total); Anivia/Lillia/Nilah/Poppy extended above with
@@ -303,7 +305,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Shen"], {"Q": 1})
         self.assertEqual(champions["Swain"], {"Q": 2})
         # Talon extended in s199 with Q=1 (Noxian Diplomacy champion crit)
-        self.assertEqual(champions["Talon"], {"W": 2, "R": 2, "Q": 1})
+        self.assertEqual(champions["Talon"], {"W": 2, "R": 1, "Q": 1})
         self.assertEqual(champions["Tristana"], {"E": 4})
         self.assertEqual(champions["Xayah"], {"Q": 1})
         # Phase 5.9.14 (s201) - 17 entries across 14 new champions:
@@ -376,7 +378,7 @@ class RegistryShapeTests(unittest.TestCase):
         # block 0 with only unparsed soul scaling).
         self.assertEqual(champions["Blitzcrank"], {"R": 1})
         # Diana extended in s203 with R=2 - full shape:
-        self.assertEqual(champions["Diana"], {"W": 2, "R": 2})
+        self.assertEqual(champions["Diana"], {"W": 1, "R": 2})
         # Gwen extended in s204 with Q=6 - full shape asserted in Phase 5.9.17 block
         # Jax extended in s203 with R=1 - full shape:
         self.assertEqual(champions["Jax"], {"E": 1, "R": 1})
@@ -472,7 +474,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Shaco extended with W=1 - full shape (E=2 from s196 retained).
         # Block 1 'Increased Damage' = 2.5x block 0 base + 1.5x AP (Jack in
         # the Box hits already-Feared target - canonical Shaco setup).
-        self.assertEqual(champions["Shaco"], {"E": 2, "W": 1})
+        self.assertEqual(champions["Shaco"], {"E": 1, "W": 1})
 
     def test_every_value_is_int_list_or_conditional(self) -> None:
         # Phase 5.9.20 (s207) widened int -> int | list[int] (sum-of-
@@ -1341,7 +1343,7 @@ class Phase598ExpansionTests(unittest.TestCase):
     def test_lulu_Q_routes_to_block_3(self) -> None:
         """Lulu Q block 3 'Total Magic Damage' = Glitterlance both passes
         hitting same target (main + slow-target reduced second pass)."""
-        self._delta_check("Lulu", "Q", 3)
+        self._delta_check("Lulu", "Q", 2)  # F2 damage-ordinal (was raw 3)
 
     def test_sivir_Q_routes_to_block_2(self) -> None:
         """Sivir Q block 2 'Total Maximum Champion Damage' = Boomerang Blade
@@ -1355,7 +1357,7 @@ class Phase598ExpansionTests(unittest.TestCase):
     def test_talon_R_routes_to_block_2(self) -> None:
         """Talon R block 2 'Total Physical Damage' = Shadow Assault initial
         ring + unstealth re-engage hit."""
-        self._delta_check("Talon", "R", 2)
+        self._delta_check("Talon", "R", 1)  # F2 damage-ordinal (was raw 2)
 
     def test_velkoz_W_routes_to_block_2(self) -> None:
         """Vel'Koz W block 2 'Total Magic Damage' = Void Rift initial hit
@@ -1365,7 +1367,7 @@ class Phase598ExpansionTests(unittest.TestCase):
     def test_ekko_Q_routes_to_block_3(self) -> None:
         """Ekko Q block 3 'Total Magic Damage' = Timewinder out + return,
         both passes on same target."""
-        self._delta_check("Ekko", "Q", 3)
+        self._delta_check("Ekko", "Q", 2)  # F2 damage-ordinal (was raw 3)
 
     # Fully-charged amps (pattern B)
     def test_varus_Q_routes_to_block_1(self) -> None:
@@ -1387,7 +1389,7 @@ class Phase598ExpansionTests(unittest.TestCase):
     def test_camille_Q_routes_to_block_2(self) -> None:
         """Camille Q block 2 'Increased Mixed Damage' = Precision Protocol
         2nd cast (2x block 0)."""
-        self._delta_check("Camille", "Q", 2)
+        self._delta_check("Camille", "Q", 1)  # F2 damage-ordinal (was raw 2)
 
     # Target-state conditional (pattern D) - s229 converted to a dict
     def test_morgana_W_routes_to_block_3(self) -> None:
@@ -1427,7 +1429,7 @@ class Phase598ExpansionTests(unittest.TestCase):
             self.snap, "Talon", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 2, "R": 2, "Q": 1})
+        self.assertEqual(r.block_index_resolved, {"W": 2, "R": 1, "Q": 1})
         self.assertEqual(r.block_index_source, "champion")
 
     def test_ahri_both_keys_in_resolved(self) -> None:
@@ -1785,7 +1787,7 @@ class Phase599_10ExpansionTests(unittest.TestCase):
     def test_aatrox_W_routes_to_block_3(self) -> None:
         """Aatrox W block 3 'Total Damage' = Infernal Chains landed +
         pull-back trigger total (2x block 0)."""
-        self._delta_check("Aatrox", "W", 3)
+        self._delta_check("Aatrox", "W", 1)  # F2 damage-ordinal (was raw 3)
 
     def test_hwei_R_routes_to_block_3(self) -> None:
         """Hwei R block 3 'Maximum Total Damage' = Spiraling Despair full
@@ -1810,12 +1812,12 @@ class Phase599_10ExpansionTests(unittest.TestCase):
     def test_mel_Q_routes_to_block_3(self) -> None:
         """Mel Q block 3 'Total Damage' = Radiant Volley 6-projectile
         total on same target (~10x block 0)."""
-        self._delta_check("Mel", "Q", 3)
+        self._delta_check("Mel", "Q", 1)  # F2 damage-ordinal (was raw 3)
 
     def test_mel_R_routes_to_block_2(self) -> None:
         """Mel R block 2 'Total Damage' = Golden Eclipse initial + mark
         detonation (~10x initial tick)."""
-        self._delta_check("Mel", "R", 2)
+        self._delta_check("Mel", "R", 1)  # F2 damage-ordinal (was raw 2)
 
     def test_monkeyking_R_routes_to_block_1(self) -> None:
         """Wukong R block 1 'Total Damage' = Cyclone full 4-second spin
@@ -1851,12 +1853,13 @@ class Phase599_10ExpansionTests(unittest.TestCase):
     def test_sion_Q_routes_to_block_2(self) -> None:
         """Sion Q block 2 'Maximum Damage' = Decimating Smash fully-charged
         2-second wind-up (2.92x block 1 minimum)."""
-        self._delta_check("Sion", "Q", 2)
+        self._delta_check("Sion", "Q", 1)  # F2 damage-ordinal (was raw 2)
 
     def test_briar_E_routes_to_block_4(self) -> None:
         """Briar E block 4 'Maximum Headbutt Total Damage' = max-charge
         Chilling Scream scream-tick + headbutt collision (2.4x block 2)."""
-        self._delta_check("Briar", "E", 4)
+        # F2 damage-ordinal 3 = "Total Magic Damage" (raw 4 clamped here).
+        self._delta_check("Briar", "E", 3)
 
     # Pattern C: resource-state amps (3 entries)
     def test_renekton_Q_routes_to_block_1(self) -> None:
@@ -1912,7 +1915,7 @@ class Phase599_10ExpansionTests(unittest.TestCase):
             self.snap, "Mel", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 3, "R": 2})
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "R": 1})
         self.assertEqual(r.block_index_source, "champion")
 
     def test_naafiri_both_keys_in_resolved(self) -> None:
@@ -2060,7 +2063,7 @@ class Phase599_11ExpansionTests(unittest.TestCase):
     def test_sylas_Q_routes_to_block_3(self) -> None:
         """Sylas Q block 3 'Total Magic Damage' = Chain Lash initial +
         delayed pulse on chained target (3.33x block 0)."""
-        self._delta_check("Sylas", "Q", 3)
+        self._delta_check("Sylas", "Q", 2)  # F2 damage-ordinal (was raw 3)
 
     def test_xinzhao_Q_routes_to_block_1(self) -> None:
         """Xin Zhao Q block 1 'Total Bonus Physical Damage' = Three
@@ -2110,7 +2113,7 @@ class Phase599_11ExpansionTests(unittest.TestCase):
     def test_ornn_R_routes_to_block_2(self) -> None:
         """Ornn R block 2 'Total Magic Damage' = Call of the Forge God
         initial ram + 2nd ram pass (2x block 0)."""
-        self._delta_check("Ornn", "R", 2)
+        self._delta_check("Ornn", "R", 1)  # F2 damage-ordinal (was raw 2)
 
     def test_twitch_E_routes_to_block_3(self) -> None:
         """Twitch E block 3 'Maximum Mixed Damage' = Contaminate at 6
@@ -2176,7 +2179,7 @@ class Phase599_11ExpansionTests(unittest.TestCase):
             self.snap, "Sion", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 2, "R": 1})
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "R": 1})
         self.assertEqual(r.block_index_source, "champion")
 
     def test_vladimir_both_keys_in_resolved(self) -> None:
@@ -2245,7 +2248,7 @@ class Phase599_11ExpansionTests(unittest.TestCase):
             self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
             target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved.get("W"), 3)
+        self.assertEqual(r.block_index_resolved.get("W"), 1)
 
     def test_pre_s198_camille_unchanged(self) -> None:
         """Backward-compat: s195 Camille Q=2 entry preserved after s198.
@@ -2256,7 +2259,7 @@ class Phase599_11ExpansionTests(unittest.TestCase):
             self.snap, "Camille", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved.get("Q"), 2)
+        self.assertEqual(r.block_index_resolved.get("Q"), 1)
         # s207 W=[0,1] also resolved (Phase 5.9.20 sum-of-blocks).
         self.assertEqual(r.block_index_resolved.get("W"), [0, 1])
 
@@ -2327,7 +2330,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
     def test_ashe_Q_routes_to_block_2(self) -> None:
         """Ashe Q block 2 'Total Damage Per Flurry' = all 5 enhanced AAs
         from Ranger's Focus on same target (5x block 1)."""
-        self._delta_check("Ashe", "Q", 2)
+        self._delta_check("Ashe", "Q", 1)  # F2 damage-ordinal (was raw 2)
 
     def test_nunu_E_routes_to_block_1(self) -> None:
         """Nunu E block 1 'Total Magic Damage' = Snowball Barrage 3-snowball
@@ -2377,7 +2380,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
     def test_shaco_E_routes_to_block_2(self) -> None:
         """Shaco E block 2 'Increased Damage' = Two-Shiv Poison backstab
         amp from behind target (1.5x block 1)."""
-        self._delta_check("Shaco", "E", 2)
+        self._delta_check("Shaco", "E", 1)  # F2 damage-ordinal (was raw 2)
 
     def test_talon_Q_routes_to_block_1(self) -> None:
         """Talon Q block 1 'Critical Physical Damage' = Noxian Diplomacy
@@ -2399,7 +2402,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
     def test_karthus_E_routes_to_block_2(self) -> None:
         """Karthus E block 2 'Damage Per Second' = Defile per-second
         commit (4x per-tick block 1)."""
-        self._delta_check("Karthus", "E", 2)
+        self._delta_check("Karthus", "E", 1)  # F2 damage-ordinal (was raw 2)
 
     # Pattern E: direct-hit primary target (2 entries)
     def test_sejuani_R_routes_to_block_1(self) -> None:
@@ -2410,7 +2413,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
     def test_nautilus_R_routes_to_block_2(self) -> None:
         """Nautilus R block 2 'Increased Damage' = Depth Charge primary-
         target hit (~2x block 0 = AoE bystander)."""
-        self._delta_check("Nautilus", "R", 2)
+        self._delta_check("Nautilus", "R", 1)  # F2 damage-ordinal (was raw 2)
 
     # Pattern F: execute amp (1 entry)
     def test_fiddlesticks_W_routes_to_block_3(self) -> None:
@@ -2426,7 +2429,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
             self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
             target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 3, "Q": 1})
+        self.assertEqual(r.block_index_resolved, {"W": 1, "Q": 1})
         self.assertEqual(r.block_index_source, "champion")
 
     def test_karthus_both_keys_in_resolved(self) -> None:
@@ -2436,7 +2439,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
             self.snap, "Karthus", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 1, "E": 2})
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "E": 1})
         self.assertEqual(r.block_index_source, "champion")
 
     def test_nautilus_both_keys_in_resolved(self) -> None:
@@ -2446,7 +2449,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
             self.snap, "Nautilus", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"E": 2, "R": 2})
+        self.assertEqual(r.block_index_resolved, {"E": 2, "R": 1})
 
     def test_samira_both_keys_in_resolved(self) -> None:
         """Samira R=1 (s193) + W=1 (s199) - both keys must appear in
@@ -2464,7 +2467,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
             self.snap, "Talon", level=11, target_armor=80, target_mr=30,
             target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 2, "R": 2, "Q": 1})
+        self.assertEqual(r.block_index_resolved, {"W": 2, "R": 1, "Q": 1})
 
     def test_udyr_both_keys_in_resolved(self) -> None:
         """Udyr R=1 (s198) + Q=1 (s199) - both keys must appear in
@@ -2542,7 +2545,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
             self.snap, "Sylas", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 3})
+        self.assertEqual(r.block_index_resolved, {"Q": 2})
 
     def test_pre_s199_akali_unchanged(self) -> None:
         """Backward-compat: s192+s196 Akali entry preserved after s199.
@@ -2762,7 +2765,7 @@ class Phase599_13ExpansionTests(unittest.TestCase):
             self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
             target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 3, "Q": 1})
+        self.assertEqual(r.block_index_resolved, {"W": 1, "Q": 1})
 
     def test_pre_s200_shen_unchanged(self) -> None:
         """Backward-compat: s199 Shen Q=1 (filtered idx for Total Magic
@@ -3023,7 +3026,7 @@ class Phase599_14ExpansionTests(unittest.TestCase):
             self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
             target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 3, "Q": 1})
+        self.assertEqual(r.block_index_resolved, {"W": 1, "Q": 1})
 
 
 # --- Phase 5.9.15 (s202): block_index expansion 18 entries / 6 new champs --
@@ -3521,7 +3524,7 @@ class Phase599_16ExpansionTests(unittest.TestCase):
             self.snap, "Diana", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 2, "R": 2})
+        self.assertEqual(r.block_index_resolved, {"W": 1, "R": 2})
 
     def test_jax_both_keys_in_resolved(self) -> None:
         """Jax E=1 (s198) + R=1 (s203) - both keys must appear."""
@@ -4215,7 +4218,7 @@ class Phase599_18ExpansionTests(unittest.TestCase):
             self.snap, "Shaco", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"E": 2, "W": 1})
+        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
 
     # Math-level sanity
     def test_qiyana_Q_form1_block2_is_1_6x_block0(self) -> None:
