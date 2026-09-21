@@ -1,0 +1,3240 @@
+{
+  "schema": 1,
+  "source": "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments.json",
+  "rc_patch": "16.10.1",
+  "fetched_at": "2026-05-18T03:58:33.339013+00:00",
+  "count": 554,
+  "augments": {
+    "1205": {
+      "name": "ADAPt",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ADAPt_small.png"
+    },
+    "1141": {
+      "name": "All For You",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/AllForYou_small.png"
+    },
+    "1002": {
+      "name": "Apex Inventor",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ApexInventor_small.png"
+    },
+    "1004": {
+      "name": "Back To Basics",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BackToBasics_small.png"
+    },
+    "1180": {
+      "name": "Big Brain",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BigBrain_small.png"
+    },
+    "1006": {
+      "name": "Blade Waltz",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BladeWaltz_small.png"
+    },
+    "1007": {
+      "name": "Blunt Force",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BluntForce_small.png"
+    },
+    "1103": {
+      "name": "Bread And Butter",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BreadAndButter_small.png"
+    },
+    "1151": {
+      "name": "Bread and Cheese",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BreadAndCheese_small.png"
+    },
+    "1150": {
+      "name": "Bread And Jam",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BreadAndJam_small.png"
+    },
+    "1009": {
+      "name": "Buff Buddies",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BuffBuddies_small.png"
+    },
+    "1011": {
+      "name": "Can't Touch This",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CantTouchThis_small.png"
+    },
+    "1013": {
+      "name": "Celestial Body",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CelestialBody_small.png"
+    },
+    "1397": {
+      "name": "Cerberus",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Cerberus_Small.png"
+    },
+    "1015": {
+      "name": "Circle of Death",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CircleOfDeath_small.png"
+    },
+    "1310": {
+      "name": "Clown College",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ClownCollege_small.png"
+    },
+    "1018": {
+      "name": "Courage of the Colossus",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CourageOfTheColossus_small.png"
+    },
+    "1418": {
+      "name": "Crack Open That Egg",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/CrackOpenThatEgg_small.png"
+    },
+    "1118": {
+      "name": "Critical Healing",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CriticalHealing_small.png"
+    },
+    "1323": {
+      "name": "Cruelty",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Cruelty_small.png"
+    },
+    "1019": {
+      "name": "Dashing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Dashing_small.png"
+    },
+    "1020": {
+      "name": "Dawnbringer's Resolve",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DawnbringersResolve_small.png"
+    },
+    "1022": {
+      "name": "Deft",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Deft_small.png"
+    },
+    "1023": {
+      "name": "Demon's Dance",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DemonsDance_small.png"
+    },
+    "1025": {
+      "name": "Dive Bomber",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DiveBomber_small.png"
+    },
+    "1301": {
+      "name": "Divine Intervention",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlowActingPainkillers_small.png"
+    },
+    "1026": {
+      "name": "Don't Blink",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DontBlink_small.png"
+    },
+    "2010": {
+      "name": "Double Tap",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/DoubleTap_small.png"
+    },
+    "1134": {
+      "name": "Draw Your Sword",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DrawYourSword_small.png"
+    },
+    "2006": {
+      "name": "Dropkick",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Dropkick_small.png"
+    },
+    "1225": {
+      "name": "Dual Wield",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DualWield_small.png"
+    },
+    "1027": {
+      "name": "Earthwake",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Earthwake_small.png"
+    },
+    "2004": {
+      "name": "Empowered By The Faithful",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/EmpoweredByTheFaithful_small.png"
+    },
+    "1028": {
+      "name": "Erosion",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Erosion_small.png"
+    },
+    "1029": {
+      "name": "Ethereal Weapon",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/EtherealWeapon_small.png"
+    },
+    "1030": {
+      "name": "Eureka",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Eureka_small.png"
+    },
+    "1032": {
+      "name": "Executioner",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SpiritualPurification_small.png"
+    },
+    "1220": {
+      "name": "Fan The Hammer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FanTheHammer_small.png"
+    },
+    "1035": {
+      "name": "Feel the Burn",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FeelTheBurn_small.png"
+    },
+    "1194": {
+      "name": "Fey Magic",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FeyMagic_small.png"
+    },
+    "1036": {
+      "name": "Firebrand",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Firebrand_small.png"
+    },
+    "1308": {
+      "name": "FireFox",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Firfox_small.png"
+    },
+    "1037": {
+      "name": "First-Aid Kit",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FirstAidKit_small.png"
+    },
+    "1187": {
+      "name": "Flashbang",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Flashbang_small.png"
+    },
+    "1116": {
+      "name": "Flashy",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Flashy_small.png"
+    },
+    "1038": {
+      "name": "From Beginning To End",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FromBeginningToEnd_small.png"
+    },
+    "1039": {
+      "name": "Frost Wraith",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FrostWraith_small.png"
+    },
+    "1322": {
+      "name": "Get Excited!",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/GetExcited_small.png"
+    },
+    "1195": {
+      "name": "Giant Slayer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GiantSlayer_small.png"
+    },
+    "1041": {
+      "name": "Goliath",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Goliath_small.png"
+    },
+    "1138": {
+      "name": "Goredrink",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GoreDrink_small.png"
+    },
+    "1042": {
+      "name": "Guilty Pleasure",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GuiltyPleasure_small.png"
+    },
+    "1181": {
+      "name": "Heavy Hitter",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/HeavyHitter_small.png"
+    },
+    "1198": {
+      "name": "Holy Fire",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/HolyFire_small.png"
+    },
+    "1105": {
+      "name": "Homeguard",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Homeguard_small.png"
+    },
+    "1044": {
+      "name": "Ice Cold",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/IceCold_small.png"
+    },
+    "1149": {
+      "name": "Impassable",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Impassable_small.png"
+    },
+    "1045": {
+      "name": "Infernal Conduit",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/InfernalConduit_small.png"
+    },
+    "1046": {
+      "name": "Infernal Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/InfernalSoul_small.png"
+    },
+    "2005": {
+      "name": "Triggered Inferno",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MadScientist_small.png"
+    },
+    "1047": {
+      "name": "It's Critical",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ItsCritical_small.png"
+    },
+    "1211": {
+      "name": "It's Killing Time",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ItsKillingTime_small.png"
+    },
+    "1048": {
+      "name": "Jeweled Gauntlet",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/JeweledGauntlet_small.png"
+    },
+    "2016": {
+      "name": "Juiced",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Juiced_small.png"
+    },
+    "1050": {
+      "name": "Keystone Conjurer",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/KeystoneConjurer_small.png"
+    },
+    "1305": {
+      "name": "Leg Day",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LegDay_small.png"
+    },
+    "1051": {
+      "name": "Light 'Em Up!",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LightEmUp_small.png"
+    },
+    "1052": {
+      "name": "Lightning Strikes",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LightningStrikes_small.png"
+    },
+    "2007": {
+      "name": "Devil on Your Shoulder",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/LittleDevil_small.png"
+    },
+    "1053": {
+      "name": "Mad Scientist",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MadScientist_small.png"
+    },
+    "1133": {
+      "name": "Magic Missile",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/Kiwi/MagicMissile_small.png"
+    },
+    "1129": {
+      "name": "Marksmage",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Marksmage_small.png"
+    },
+    "1054": {
+      "name": "Master of Duality",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MasterOfDuality_small.png"
+    },
+    "1056": {
+      "name": "Mind to Matter",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MindToMatter_small.png"
+    },
+    "1104": {
+      "name": "Minionmancer",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Minionmancer_small.png"
+    },
+    "1424": {
+      "name": "???",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/MissingPing_small.png"
+    },
+    "1057": {
+      "name": "Mountain Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MountainSoul_small.png"
+    },
+    "1058": {
+      "name": "Mystic Punch",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MysticPunch_small.png"
+    },
+    "1060": {
+      "name": "Ocean Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OceanSoul_small.png"
+    },
+    "1061": {
+      "name": "Ok Boomerang",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OKBoomerang_small.png"
+    },
+    "1062": {
+      "name": "Omni Soul",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OmniSoul_small.png"
+    },
+    "1208": {
+      "name": "Orbital Laser",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OrbitalLaser_small.png"
+    },
+    "1063": {
+      "name": "Outlaw's Grit",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OutlawsGrit_small.png"
+    },
+    "1311": {
+      "name": "Overflow",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Overflow_small.png"
+    },
+    "12317": {
+      "name": "Pandora's Box",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Pandoras_Box_Small.png"
+    },
+    "1064": {
+      "name": "Perseverance",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Perseverance_small.png"
+    },
+    "1390": {
+      "name": "Phenomenal Evil",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/ARAM_PhenomenalEvil_small.png"
+    },
+    "2003": {
+      "name": "Bounce of the Poro King",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/PoroKing_small.png"
+    },
+    "1409": {
+      "name": "Poro Blaster",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/PoroBlast_small.png"
+    },
+    "1324": {
+      "name": "Protein Shake",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/ProteinShake_small.png"
+    },
+    "2018": {
+      "name": "Purist - Caster",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/PuristCaster_small.png"
+    },
+    "1066": {
+      "name": "Quantum Computing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/QuantumComputing_small.png"
+    },
+    "1152": {
+      "name": "Quest: Steel Your Heart",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_SteelYourHeart_small.png"
+    },
+    "1154": {
+      "name": "Quest: Urf's Champion",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Quest_UrfsChampion_small.png"
+    },
+    "1361": {
+      "name": "Quest: Icathia's Fall",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Quest_VoidImmolation_small.png"
+    },
+    "1156": {
+      "name": "Quest: Wooglet's Witchcap",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_WoogletsWitchcap_small.png"
+    },
+    "1067": {
+      "name": "Rabble Rousing",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/RabbleRousing_small.png"
+    },
+    "1313": {
+      "name": "Cheating",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Cheating_small.png"
+    },
+    "1068": {
+      "name": "Recursion",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Recursion_small.png"
+    },
+    "1069": {
+      "name": "Repulsor",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Repulsor_small.png"
+    },
+    "1070": {
+      "name": "Restless Restoration",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/RestlessRestoration_small.png"
+    },
+    "1170": {
+      "name": "Scoped Weapons",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ScopedWeapons_small.png"
+    },
+    "1071": {
+      "name": "Scopier Weapons",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ScopierWeapons_small.png"
+    },
+    "1115": {
+      "name": "Scopiest Weapons",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ScopiestWeapons_small.png"
+    },
+    "1072": {
+      "name": "Searing Dawn",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SearingDawn_small.png"
+    },
+    "1108": {
+      "name": "Self Destruct",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/Maps/Particles/Kiwi/SelfDestruct_small.MAYHEM_New_Augments.png"
+    },
+    "1073": {
+      "name": "Shadow Runner",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ShadowRunner_small.png"
+    },
+    "1074": {
+      "name": "Shrink Ray",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ShrinkRay_small.png"
+    },
+    "1113": {
+      "name": "Skilled Sniper",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SkilledSniper_small.png"
+    },
+    "1136": {
+      "name": "Slap Around",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlapAround_small.png"
+    },
+    "1250": {
+      "name": "Slow And Steady",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlowAndSteady_small.png"
+    },
+    "1075": {
+      "name": "Slow Cooker",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlowCooker_small.png"
+    },
+    "1076": {
+      "name": "Sonic Boom",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SonicBoom_small.png"
+    },
+    "1077": {
+      "name": "Soul Siphon",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SoulSiphon_small.png"
+    },
+    "1405": {
+      "name": "Speed Demon",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SpeedDemon_small.png"
+    },
+    "1135": {
+      "name": "Spellwake",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SpellWake_small.png"
+    },
+    "1214": {
+      "name": "Spin To Win",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SpinToWin_small.png"
+    },
+    "1345": {
+      "name": "Spiritual Purification",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SpiritualPurification_small.png"
+    },
+    "1204": {
+      "name": "Stackosaurus Rex",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/StackosaurusRex_small.png"
+    },
+    "1404": {
+      "name": "Stats!",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Stats_small.png"
+    },
+    "1403": {
+      "name": "Stats on Stats!",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/StatsOnStats_small.png"
+    },
+    "1402": {
+      "name": "Stats on Stats on Stats!",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/StatsOnStatsOnStats_small.png"
+    },
+    "1413": {
+      "name": "Stuck In Here With Me",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/StuckInHereWithMe_small.png"
+    },
+    "1079": {
+      "name": "Symphony of War",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SymphonyOfWar_small.png"
+    },
+    "1353": {
+      "name": "Tank Engine",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Tank_Engine_Small.png"
+    },
+    "1080": {
+      "name": "Tank It Or Leave It",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TankItOrLeaveIt_small.png"
+    },
+    "1081": {
+      "name": "Tap Dancer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TapDancer_small.png"
+    },
+    "1082": {
+      "name": "The Brutalizer",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/TheBrutalizer_small.png"
+    },
+    "1084": {
+      "name": "Thread the Needle",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ThreadTheNeedle_small.png"
+    },
+    "1085": {
+      "name": "Tormentor",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Tormentor_small.png"
+    },
+    "1243": {
+      "name": "Transmute: Chaos",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TransmuteChaos_small.png"
+    },
+    "1237": {
+      "name": "Transmute: Gold",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TransmuteGold_small.png"
+    },
+    "1238": {
+      "name": "Transmute: Prismatic",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TransmutePrismatic_small.png"
+    },
+    "1086": {
+      "name": "Trueshot Prodigy",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TrueshotProdigy_small.png"
+    },
+    "1107": {
+      "name": "Twice Thrice",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TwiceThrice_small.png"
+    },
+    "1087": {
+      "name": "Typhoon",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Typhoon_small.png"
+    },
+    "1088": {
+      "name": "Ultimate Revolution",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/UltimateRevolution_small.png"
+    },
+    "1112": {
+      "name": "Ultimate Unstoppable",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/UltimateUnstoppable_small.png"
+    },
+    "1320": {
+      "name": "Upgrade Collector",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeCollector_small.png"
+    },
+    "1317": {
+      "name": "Upgrade Cutlass",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeCutlass_small.png"
+    },
+    "1338": {
+      "name": "Upgrade Hubris",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeHubris_small.png"
+    },
+    "1336": {
+      "name": "Upgrade Infinity Edge",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeIE_small.png"
+    },
+    "1319": {
+      "name": "Upgrade Immolate",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeImmolate_small.png"
+    },
+    "1996": {
+      "name": "Upgrade Sheen",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeSheen_small.png"
+    },
+    "1318": {
+      "name": "Upgrade Zhonya's",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeZH_small.png"
+    },
+    "2002": {
+      "name": "Void Rift",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/VoidRift_small.png"
+    },
+    "1092": {
+      "name": "Vulnerability",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Vulnerability_small.png"
+    },
+    "2001": {
+      "name": "Heads Up Cupcake!",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/WatchOutGrapefruit_small.png"
+    },
+    "2008": {
+      "name": "Weighted Popoffs",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/WeightedPopoffs_small.png"
+    },
+    "1095": {
+      "name": "Windspeaker's Blessing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WindspeakersBlessing_small.png"
+    },
+    "1097": {
+      "name": "Witchful Thinking",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WitchfulThinking_small.png"
+    },
+    "1098": {
+      "name": "With Haste",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WithHaste_small.png"
+    },
+    "2009": {
+      "name": "Zealot",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Zealot_small.png"
+    },
+    "1206": {
+      "name": "escAPADe",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Escapade_small.png"
+    },
+    "1327": {
+      "name": "Adamant",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Adamant_small.png"
+    },
+    "1372": {
+      "name": "I'm a Baby Kitty Where is Mama",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/BabyKitty_small.png"
+    },
+    "387": {
+      "name": "Big Dragon Energy",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FromBeginningToEnd_small.png"
+    },
+    "1329": {
+      "name": "Biggest Snowball Ever",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/BiggestSnowballEver_small.png"
+    },
+    "388": {
+      "name": "Chroma Flux",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Chroma_Flux_Small.png"
+    },
+    "377": {
+      "name": "Combination Fried Rice",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Combination_Fried_Rice_Small.png"
+    },
+    "2024": {
+      "name": "Crit 'n Cast",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/CritnCast_small.png"
+    },
+    "1356": {
+      "name": "Critical Missile",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/CriticalMissile_small.png"
+    },
+    "1328": {
+      "name": "Critical Rhythm",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/CriticalRhythm_small.png"
+    },
+    "383": {
+      "name": "Demonic Clasp",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Demonic_Clasp_small.png"
+    },
+    "1384": {
+      "name": "Donation",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Donation_small.png"
+    },
+    "1414": {
+      "name": "Droppybara",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OrbitalLaser_small.png"
+    },
+    "1331": {
+      "name": "Empyrean Promise",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/EmpyreamPromise_small.png"
+    },
+    "1333": {
+      "name": "Escape Plan",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/EscapePlan_small.png"
+    },
+    "1344": {
+      "name": "Final Form",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/FinalForm_small.png"
+    },
+    "1348": {
+      "name": "Flash 2",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Flash2_small.png"
+    },
+    "1321": {
+      "name": "Gash",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/DarksteelTalons_small.png"
+    },
+    "1325": {
+      "name": "Glass Cannon",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/GlassCannon_small.png"
+    },
+    "1392": {
+      "name": "Holy Snowball",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/GoldenSnowball_small.png"
+    },
+    "1335": {
+      "name": "Goldrend",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Goldrend_small.png"
+    },
+    "1406": {
+      "name": "Grandma's Chili Oil",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/GrandmasChiliOil_small.png"
+    },
+    "1401": {
+      "name": "Growth Spurt",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/GrowthSpurt_small.png"
+    },
+    "1389": {
+      "name": "Hand of Baron",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/HandofBaron_small.png"
+    },
+    "1341": {
+      "name": "Hat on a Hat",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/HatonaHat_small.png"
+    },
+    "1416": {
+      "name": "Hextech Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/InfernalSoul_small.png"
+    },
+    "1388": {
+      "name": "Infinite Recursion",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/InfiniteRecursion_small.png"
+    },
+    "2026": {
+      "name": "Kill Secured",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/KillSecure_small.png"
+    },
+    "1337": {
+      "name": "King Me",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/KingMe_small.png"
+    },
+    "1339": {
+      "name": "Laser Heal",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/LaseHeal_small.png"
+    },
+    "380": {
+      "name": "Mercy",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Mercy_Small.png"
+    },
+    "1314": {
+      "name": "Mighty Shield",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/MightyShield_small.png"
+    },
+    "1326": {
+      "name": "Nightstalking",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Nightstalking_small.png"
+    },
+    "1332": {
+      "name": "Ominous Pact",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WisdomOfAges_small.png"
+    },
+    "1358": {
+      "name": "Pinball",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/PinballSnowball_small.png"
+    },
+    "1347": {
+      "name": "Poltergeist",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Poltergeist_small.png"
+    },
+    "1421": {
+      "name": "Prom Queen",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/PromQueen_small.png"
+    },
+    "1343": {
+      "name": "Sneakerhead",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Sneakerhead_small.png"
+    },
+    "391": {
+      "name": "Rags to Riches",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Rags_to_Riches_small.png"
+    },
+    "1330": {
+      "name": "ReEnergize",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/MobiusCoil_small.png"
+    },
+    "1391": {
+      "name": "Red Envelopes",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/RedEnvelopes_small.png"
+    },
+    "374": {
+      "name": "Rice and Chicken",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Rice_And_Chicken_Small.png"
+    },
+    "375": {
+      "name": "Rice and Fish",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Rice_And_Fish_Small.png"
+    },
+    "376": {
+      "name": "Rice and Pork",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Rice_And_Pork_Small.png"
+    },
+    "381": {
+      "name": "Scavenger",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Scavenger_small.png"
+    },
+    "1373": {
+      "name": "Shrink Engine",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/ShrinkEngine_small.png"
+    },
+    "1342": {
+      "name": "Snowball Roulette",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SnowballUpgrade_small.png"
+    },
+    "1334": {
+      "name": "Snowball Upgrade",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SnowballUpgrade_small.png"
+    },
+    "1420": {
+      "name": "Sonata",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Sonata_small.png"
+    },
+    "1375": {
+      "name": "Soul Eater",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SoulEater_small.png"
+    },
+    "384": {
+      "name": "Spellcraft",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Spell_Craft_small.png"
+    },
+    "1315": {
+      "name": "Swift and Safe",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/SwiftandSafe_small.png"
+    },
+    "1400": {
+      "name": "Final City Transit",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Nightstalking_small.png"
+    },
+    "378": {
+      "name": "Transmute: Silver",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Transmute_Silver_Small.png"
+    },
+    "389": {
+      "name": "Trash To Treasure",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Trash_Treasure_small.png"
+    },
+    "1415": {
+      "name": "Twin Fire",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/TwinFire_small.png"
+    },
+    "1349": {
+      "name": "Ultimate Awakening",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/ZeroHour_small.png"
+    },
+    "390": {
+      "name": "Unstable Transmutation",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/UnstableTransmutation_small.png"
+    },
+    "1340": {
+      "name": "Upgrade Mikael's Blessing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeMikaelsBlessing_small.png"
+    },
+    "1379": {
+      "name": "Upgrade Sword of Blossoming Dawn",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeMikaelsBlessing_small.png"
+    },
+    "1411": {
+      "name": "Upgrade Thornmail",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/UpgradeCollector_small.png"
+    },
+    "1346": {
+      "name": "Vampirism",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Vampired_small.png"
+    },
+    "1034": {
+      "name": "Veil of Warding",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/Poltergeist_small.png"
+    },
+    "379": {
+      "name": "Wild Fire",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Wild_Fire_Small.png"
+    },
+    "1316": {
+      "name": "Wind Beneath Blade",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/WindBeneathBlade_small.png"
+    },
+    "1386": {
+      "name": "Spin Me Right Round",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Kiwi/Augments/Icons/YouSpinMeRightRound_small.png"
+    },
+    "205": {
+      "name": "ADAPt",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ADAPt_small.png"
+    },
+    "1": {
+      "name": "Accelerating Sorcery",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/AcceleratingSorcery_small.png"
+    },
+    "336": {
+      "name": "Aim for the Head",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Aim_For_The_Head_Small.png"
+    },
+    "141": {
+      "name": "All For You",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/AllForYou_small.png"
+    },
+    "309": {
+      "name": "And My Axe!",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/AndMyAxe_small.png"
+    },
+    "2": {
+      "name": "Apex Inventor",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ApexInventor_small.png"
+    },
+    "404": {
+      "name": "404 Augment Not Found",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Augment404_small.png"
+    },
+    "405": {
+      "name": "Augment 405",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Augment405_small.png"
+    },
+    "322": {
+      "name": "Augmented Power",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Augmented_Power_Small.png"
+    },
+    "4": {
+      "name": "Back To Basics",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BackToBasics_small.png"
+    },
+    "5": {
+      "name": "Banner of Command",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BannerOfCommand_small.png"
+    },
+    "180": {
+      "name": "Big Brain",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BigBrain_small.png"
+    },
+    "6": {
+      "name": "Blade Waltz",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BladeWaltz_small.png"
+    },
+    "200": {
+      "name": "Blood Brother",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BloodBrother_small.png"
+    },
+    "332": {
+      "name": "Blood Mage",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CenterOfTheUniverse_small.png"
+    },
+    "7": {
+      "name": "Blunt Force",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BluntForce_small.png"
+    },
+    "321": {
+      "name": "Bodyguard",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Bodyguard_Small.png"
+    },
+    "324": {
+      "name": "Bravest of the Brave",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BravestoftheBrave_Small.png"
+    },
+    "103": {
+      "name": "Bread And Butter",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BreadAndButter_small.png"
+    },
+    "151": {
+      "name": "Bread And Cheese",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BreadAndCheese_small.png"
+    },
+    "150": {
+      "name": "Bread And Jam",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BreadAndJam_small.png"
+    },
+    "346": {
+      "name": "Bread Sandwich",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Bread_Sandwhich_Small.png"
+    },
+    "8": {
+      "name": "Buckle Up",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BuckleUp_small.png"
+    },
+    "9": {
+      "name": "Buff Buddies",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BuffBuddies_small.png"
+    },
+    "230": {
+      "name": "Bullet Heaven",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BulletHeaven_small.png"
+    },
+    "320": {
+      "name": "Calculated Risk",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Calculated_Risk_Small.png"
+    },
+    "10": {
+      "name": "Cannon Fodder",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CannonFodder_small.png"
+    },
+    "11": {
+      "name": "Can't Touch This",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CantTouchThis_small.png"
+    },
+    "12": {
+      "name": "Castle",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Castle_small.png"
+    },
+    "13": {
+      "name": "Celestial Body",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CelestialBody_small.png"
+    },
+    "193": {
+      "name": "Center of the Universe",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CenterOfTheUniverse_small.png"
+    },
+    "323": {
+      "name": "Cerberus",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Cerberus_Small.png"
+    },
+    "166": {
+      "name": "Chain Lightning",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ChainLightning_small.png"
+    },
+    "14": {
+      "name": "Chauffeur",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Chauffeur_small.png"
+    },
+    "15": {
+      "name": "Circle of Death",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CircleOfDeath_small.png"
+    },
+    "110": {
+      "name": "Clothesline",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Clothesline_small.png"
+    },
+    "310": {
+      "name": "Clown College",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ClownCollege_small.png"
+    },
+    "16": {
+      "name": "Combo Master",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ComboMaster_small.png"
+    },
+    "17": {
+      "name": "Contract Killer",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ContractKiller_small.png"
+    },
+    "18": {
+      "name": "Courage of the Colossus",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CourageOfTheColossus_small.png"
+    },
+    "341": {
+      "name": "Gain an Augment slot",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Crafting_Slot_small.png"
+    },
+    "340": {
+      "name": "Gain a Prismatic Stat Anvil",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Crafting_PrisStatAnvil_small.png"
+    },
+    "342": {
+      "name": "Level Augments",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Crafting_SellAug_small.png"
+    },
+    "118": {
+      "name": "Critical Healing",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CriticalHealing_small.png"
+    },
+    "215": {
+      "name": "Dark Blessing",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DarkBlessing_small.png"
+    },
+    "19": {
+      "name": "Dashing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Dashing_small.png"
+    },
+    "20": {
+      "name": "Dawnbringer's Resolve",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DawnbringersResolve_small.png"
+    },
+    "217": {
+      "name": "Deathtouch",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Deathtouch_small.png"
+    },
+    "21": {
+      "name": "Defensive Maneuvers",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DefensiveManeuvers_small.png"
+    },
+    "22": {
+      "name": "Deft",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Deft_small.png"
+    },
+    "171": {
+      "name": "Dematerialize",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Dematerialize_small.png"
+    },
+    "23": {
+      "name": "Demon's Dance",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DemonsDance_small.png"
+    },
+    "218": {
+      "name": "Desecrator",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Desecrator_small.png"
+    },
+    "330": {
+      "name": "Despoil",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Desecrator_small.png"
+    },
+    "24": {
+      "name": "Die Another Day",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DieAnotherDay_small.png"
+    },
+    "25": {
+      "name": "Dive Bomber",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DiveBomber_small.png"
+    },
+    "301": {
+      "name": "Divine Intervention",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlowActingPainkillers_small.png"
+    },
+    "26": {
+      "name": "Don't Blink",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DontBlink_small.png"
+    },
+    "102": {
+      "name": "Don't Chase",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DontChase_small.png"
+    },
+    "219": {
+      "name": "Doomsayer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Doomsayer_small.png"
+    },
+    "134": {
+      "name": "Draw Your Sword",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DrawYourSword_small.png"
+    },
+    "216": {
+      "name": "Dreadbringer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Plaguebearer_small.png"
+    },
+    "225": {
+      "name": "Dual Wield",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DualWield_small.png"
+    },
+    "27": {
+      "name": "Earthwake",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Earthwake_small.png"
+    },
+    "344": {
+      "name": "Energetic",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Energetic_Small.png"
+    },
+    "315": {
+      "name": "Energetic Caster",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/EtherealWeapon_small.png"
+    },
+    "28": {
+      "name": "Erosion",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Erosion_small.png"
+    },
+    "328": {
+      "name": "Infernal Chains",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/QuantumComputing_small.png"
+    },
+    "29": {
+      "name": "Ethereal Weapon",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/EtherealWeapon_small.png"
+    },
+    "30": {
+      "name": "Eureka",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Eureka_small.png"
+    },
+    "31": {
+      "name": "Evocation",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Evocation_small.png"
+    },
+    "32": {
+      "name": "Executioner",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Executioner_small.png"
+    },
+    "33": {
+      "name": "Extendo-Arm",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ExtendoArm_small.png"
+    },
+    "34": {
+      "name": "Fallen Aegis",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FallenAegis_small.png"
+    },
+    "220": {
+      "name": "Fan the Hammer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FanTheHammer_small.png"
+    },
+    "35": {
+      "name": "Feel the Burn",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FeelTheBurn_small.png"
+    },
+    "194": {
+      "name": "Fey Magic",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FeyMagic_small.png"
+    },
+    "229": {
+      "name": "Fire Sale",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FireSale_small.png"
+    },
+    "36": {
+      "name": "Firebrand",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Firebrand_small.png"
+    },
+    "308": {
+      "name": "Firefox",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Firfox_small.png"
+    },
+    "37": {
+      "name": "First-Aid Kit",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FirstAidKit_small.png"
+    },
+    "187": {
+      "name": "Flashbang",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Flashbang_small.png"
+    },
+    "116": {
+      "name": "Flashy",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Flashy_small.png"
+    },
+    "38": {
+      "name": "From Beginning to End",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FromBeginningToEnd_small.png"
+    },
+    "39": {
+      "name": "Frost Wraith",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FrostWraith_small.png"
+    },
+    "40": {
+      "name": "Frozen Foundations",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FrozenFoundations_small.png"
+    },
+    "222": {
+      "name": "Fruits of Your Labor",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Fruitarian_small.png"
+    },
+    "213": {
+      "name": "Fully Automated",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/FullyAutomated_small.png"
+    },
+    "355": {
+      "name": "Gain Stat Anvil",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Gain_Stat_Anvil_Small.png"
+    },
+    "234": {
+      "name": "Gamba Anvil",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ThiefsGloves_small.png"
+    },
+    "195": {
+      "name": "Giant Slayer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GiantSlayer_small.png"
+    },
+    "366": {
+      "name": "Abstain From Power",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Power_Small.Arena_2026_S2.png"
+    },
+    "367": {
+      "name": "Abstain From Risk",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Risk_Small.Arena_2026_S2.png"
+    },
+    "365": {
+      "name": "Abstain From Wealth",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Wealth_Small.Arena_2026_S2.png"
+    },
+    "372": {
+      "name": "Compulsion For Power",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Power_Small.Arena_2026_S2.png"
+    },
+    "373": {
+      "name": "Compulsion For Risk",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Risk_Small.Arena_2026_S2.png"
+    },
+    "371": {
+      "name": "Compulsion For Wealth",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Wealth_Small.Arena_2026_S2.png"
+    },
+    "369": {
+      "name": "Craving For Power",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Power_Small.Arena_2026_S2.png"
+    },
+    "370": {
+      "name": "Craving For Risk",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Risk_Small.Arena_2026_S2.png"
+    },
+    "368": {
+      "name": "Craving For Wealth",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Wealth_Large.Arena_2026_S2.png"
+    },
+    "359": {
+      "name": "Lamb's Respite",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Lamb_Small.Arena_2026_S2.png"
+    },
+    "303": {
+      "name": "Sacrifice: For Gold",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GoHSacrificeFor_small.png"
+    },
+    "304": {
+      "name": "Sacrifice: For Prismatic",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GoHSacrificeFor_small.png"
+    },
+    "302": {
+      "name": "Sacrifice: For Silver",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GoHSacrificeFor_small.png"
+    },
+    "358": {
+      "name": "Wolf's Frenzy",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Wolf_Small.Arena_2026_S2.png"
+    },
+    "41": {
+      "name": "Goliath",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Goliath_small.png"
+    },
+    "138": {
+      "name": "Goredrink",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GoreDrink_small.png"
+    },
+    "316": {
+      "name": "Grevious Venom",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Grevious_Venmon_Small.png"
+    },
+    "42": {
+      "name": "Guilty Pleasure",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/GuiltyPleasure_small.png"
+    },
+    "334": {
+      "name": "Hallucinate",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/BulletHeaven_small.png"
+    },
+    "241": {
+      "name": "Hat Trick",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/HatTrick_small.png"
+    },
+    "181": {
+      "name": "Heavy Hitter",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/HeavyHitter_small.png"
+    },
+    "338": {
+      "name": "Hive Mind",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Hive_Mind_Small.png"
+    },
+    "207": {
+      "name": "Hold Very Still",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/HoldVeryStill_small.png"
+    },
+    "198": {
+      "name": "Holy Fire",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/HolyFire_small.png"
+    },
+    "105": {
+      "name": "Homeguard",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Homeguard_small.png"
+    },
+    "357": {
+      "name": "Hybrid",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Hybrid_Small.png"
+    },
+    "44": {
+      "name": "Ice Cold",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/IceCold_small.png"
+    },
+    "149": {
+      "name": "Impassable",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Impassable_small.png"
+    },
+    "45": {
+      "name": "Infernal Conduit",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/InfernalConduit_small.png"
+    },
+    "46": {
+      "name": "Infernal Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/InfernalSoul_small.png"
+    },
+    "47": {
+      "name": "It's Critical",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ItsCritical_small.png"
+    },
+    "211": {
+      "name": "It's Killing Time",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ItsKillingTime_small.png"
+    },
+    "48": {
+      "name": "Jeweled Gauntlet",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/JeweledGauntlet_small.png"
+    },
+    "49": {
+      "name": "Juice Box",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/JuiceBox_small.png"
+    },
+    "242": {
+      "name": "Juice Press",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/JuicePress_small.png"
+    },
+    "50": {
+      "name": "Keystone Conjurer",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/KeystoneConjurer_small.png"
+    },
+    "174": {
+      "name": "Laser Eyes",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LaserEyes_small.png"
+    },
+    "305": {
+      "name": "Leg Day",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LegDay_small.png"
+    },
+    "231": {
+      "name": "Light Warden",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LightWarden_small.png"
+    },
+    "51": {
+      "name": "Light 'em Up!",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LightEmUp_small.png"
+    },
+    "52": {
+      "name": "Lightning Strikes",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/LightningStrikes_small.png"
+    },
+    "53": {
+      "name": "Mad Scientist",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MadScientist_small.png"
+    },
+    "133": {
+      "name": "Magic Missile",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MagicMissile_small.png"
+    },
+    "345": {
+      "name": "Magical Girl",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Magic_Girl_Small.png"
+    },
+    "129": {
+      "name": "Marksmage",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Marksmage_small.png"
+    },
+    "54": {
+      "name": "Master of Duality",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MasterOfDuality_small.png"
+    },
+    "55": {
+      "name": "Midnight Express",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MidnightExpress_small.png"
+    },
+    "56": {
+      "name": "Mind to Matter",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MindToMatter_small.png"
+    },
+    "104": {
+      "name": "Minionmancer",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Minionmancer_small.png"
+    },
+    "172": {
+      "name": "Mirror Image",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MirrorImage_small.png"
+    },
+    "57": {
+      "name": "Mountain Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MountainSoul_small.png"
+    },
+    "331": {
+      "name": "Multitool",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Multitool_Small.png"
+    },
+    "58": {
+      "name": "Mystic Punch",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/MysticPunch_small.png"
+    },
+    "59": {
+      "name": "Mythical",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Mythical_small.png"
+    },
+    "329": {
+      "name": "Necromancer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WindspeakersBlessing_small.png"
+    },
+    "177": {
+      "name": "Nesting Doll",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Nesting_Doll_small.png"
+    },
+    "43": {
+      "name": "Now You See Me",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/NowYouSeeMe_small.png"
+    },
+    "3": {
+      "name": "Null Augment",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/CantTouchThis_small.png"
+    },
+    "251": {
+      "name": "Numb to Pain",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/NumbToPain_small.png"
+    },
+    "109": {
+      "name": "Oathsworn",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Oathsworn_small.png"
+    },
+    "60": {
+      "name": "Ocean Soul",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OceanSoul_small.png"
+    },
+    "61": {
+      "name": "OK Boomerang",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OKBoomerang_small.png"
+    },
+    "62": {
+      "name": "Omni Soul",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OmniSoul_small.png"
+    },
+    "208": {
+      "name": "Orbital Laser",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OrbitalLaser_small.png"
+    },
+    "63": {
+      "name": "Outlaw's Grit",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/OutlawsGrit_small.png"
+    },
+    "311": {
+      "name": "Overflow",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Overflow_small.png"
+    },
+    "317": {
+      "name": "Pandora's Box",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Pandoras_Box_Small.png"
+    },
+    "335": {
+      "name": "Panic Room",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Panic_Room_Small.png"
+    },
+    "240": {
+      "name": "Parasitic Mutation",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ParasiticMutation_small.png"
+    },
+    "175": {
+      "name": "Parasitic Relationship",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ParasiticRelationship_small.png"
+    },
+    "306": {
+      "name": "Parry",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DontBlink_small.png"
+    },
+    "64": {
+      "name": "Perseverance",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Perseverance_small.png"
+    },
+    "65": {
+      "name": "Phenomenal Evil",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/PhenomenalEvil_small.png"
+    },
+    "224": {
+      "name": "Prismatic Egg",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_PrismaticEgg_small.png"
+    },
+    "66": {
+      "name": "Quantum Computing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/QuantumComputing_small.png"
+    },
+    "192": {
+      "name": "Quest: Angel of Retribution",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_AngelOfRetribution_small.png"
+    },
+    "318": {
+      "name": "Quest: Mad Hatter",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Mad_Hatter_Small.png"
+    },
+    "333": {
+      "name": "Quest: Rite Of The Forge God",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_Rite_of_the_Forge_God_Small.png"
+    },
+    "152": {
+      "name": "Quest: Steel Your Heart",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_SteelYourHeart_small.png"
+    },
+    "319": {
+      "name": "Quest: Three Sacred Treasures",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ThreeSacredTreasures_Small.png"
+    },
+    "154": {
+      "name": "Quest: Urf's Champion",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_UrfsChampion_small.png"
+    },
+    "156": {
+      "name": "Quest: Wooglet's Witchcap",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Quest_WoogletsWitchcap_small.png"
+    },
+    "67": {
+      "name": "Rabble Rousing",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/RabbleRousing_small.png"
+    },
+    "125": {
+      "name": "Raid Boss",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/RaidBoss_small.png"
+    },
+    "68": {
+      "name": "Recursion",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Recursion_small.png"
+    },
+    "364": {
+      "name": "Replace Augment",
+      "rarity": "kEventChoice",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Replace_Augment_Small.png"
+    },
+    "69": {
+      "name": "Repulsor",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Repulsor_small.png"
+    },
+    "165": {
+      "name": "Restart",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Restart_small.png"
+    },
+    "70": {
+      "name": "Restless Restoration",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/RestlessRestoration_small.png"
+    },
+    "343": {
+      "name": "Righteous Fury",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Righteous_Fury_Small.png"
+    },
+    "170": {
+      "name": "Scoped Weapons",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ScopedWeapons_small.png"
+    },
+    "71": {
+      "name": "Scopier Weapons",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ScopierWeapons_small.png"
+    },
+    "115": {
+      "name": "Scopiest Weapons",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ScopiestWeapons_small.png"
+    },
+    "72": {
+      "name": "Searing Dawn",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SearingDawn_small.png"
+    },
+    "108": {
+      "name": "Self Destruct",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SelfDestruct_small.png"
+    },
+    "120": {
+      "name": "Serve Beyond Death",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ServeBeyondDeath_small.png"
+    },
+    "73": {
+      "name": "Shadow Runner",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ShadowRunner_small.png"
+    },
+    "74": {
+      "name": "Shrink Ray",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ShrinkRay_small.png"
+    },
+    "356": {
+      "name": "Silver Spoon",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Silver_Spoon_Small.png"
+    },
+    "113": {
+      "name": "Skilled Sniper",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SkilledSniper_small.png"
+    },
+    "136": {
+      "name": "Slap Around",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlapAround_small.png"
+    },
+    "307": {
+      "name": "Sleep Dart",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ComboMaster_small.png"
+    },
+    "232": {
+      "name": "Slime Time",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlimeTime_small.png"
+    },
+    "250": {
+      "name": "Slow and Steady",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlowAndSteady_small.png"
+    },
+    "75": {
+      "name": "Slow Cooker",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SlowCooker_small.png"
+    },
+    "176": {
+      "name": "Snowball Fight!",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SnowballFight_small.png"
+    },
+    "76": {
+      "name": "Sonic Boom",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SonicBoom_small.png"
+    },
+    "77": {
+      "name": "Soul Siphon",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SoulSiphon_small.png"
+    },
+    "135": {
+      "name": "Spellwake",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SpellWake_small.png"
+    },
+    "214": {
+      "name": "Spin To Win",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SpinToWin_small.png"
+    },
+    "326": {
+      "name": "Spirit Infusion",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Spirit_Infusion_Small.png"
+    },
+    "78": {
+      "name": "Spirit Link",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SpiritLink_small.png"
+    },
+    "204": {
+      "name": "Stackosaurus Rex",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/StackosaurusRex_small.png"
+    },
+    "226": {
+      "name": "Stats!",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Stats_small.png"
+    },
+    "227": {
+      "name": "Stats on Stats!",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/StatsOnStats_small.png"
+    },
+    "228": {
+      "name": "Stats on Stats on Stats!",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/StatsOnStatsOnStats_small.png"
+    },
+    "223": {
+      "name": "Summoner Revolution",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SummonerRevolution_small.png"
+    },
+    "123": {
+      "name": "Summoner's Roulette",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SummonersRoulette_small.png"
+    },
+    "239": {
+      "name": "Symbiotic Mutation",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SymbioticMutation_small.png"
+    },
+    "79": {
+      "name": "Symphony of War",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/SymphonyOfWar_small.png"
+    },
+    "313": {
+      "name": "Tank Engine",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Tank_Engine_Small.png"
+    },
+    "80": {
+      "name": "Tank It Or Leave It",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TankItOrLeaveIt_small.png"
+    },
+    "81": {
+      "name": "Tap Dancer",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TapDancer_small.png"
+    },
+    "82": {
+      "name": "The Brutalizer",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TheBrutalizer_small.png"
+    },
+    "83": {
+      "name": "Thief's Gloves",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ThiefsGloves_small.png"
+    },
+    "84": {
+      "name": "Thread the Needle",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ThreadTheNeedle_small.png"
+    },
+    "85": {
+      "name": "Tormentor",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Tormentor_small.png"
+    },
+    "221": {
+      "name": "Trailblazer",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Trailblazer_small.png"
+    },
+    "243": {
+      "name": "Transmute: Chaos",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TransmuteChaos_small.png"
+    },
+    "237": {
+      "name": "Transmute: Gold",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TransmuteGold_small.png"
+    },
+    "238": {
+      "name": "Transmute: Prismatic",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TransmutePrismatic_small.png"
+    },
+    "236": {
+      "name": "Trickster Demon",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TricksterDemon_small.png"
+    },
+    "86": {
+      "name": "Trueshot Prodigy",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TrueshotProdigy_small.png"
+    },
+    "107": {
+      "name": "Twice Thrice",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/TwiceThrice_small.png"
+    },
+    "87": {
+      "name": "Typhoon",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Typhoon_small.png"
+    },
+    "88": {
+      "name": "Ultimate Revolution",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/UltimateRevolution_small.png"
+    },
+    "233": {
+      "name": "Ultimate Roulette",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/UltimateRevolution_small.png"
+    },
+    "112": {
+      "name": "Ultimate Unstoppable",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/UltimateUnstoppable_small.png"
+    },
+    "327": {
+      "name": "Undying Guard",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/DawnbringersResolve_small.png"
+    },
+    "314": {
+      "name": "Unshackled",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Unshackled_Small.png"
+    },
+    "89": {
+      "name": "Vanish",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Vanish_small.png"
+    },
+    "90": {
+      "name": "Vengeance",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Vengeance_small.png"
+    },
+    "91": {
+      "name": "Virtuous Cycle",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/VirtuousCycle_small.png"
+    },
+    "92": {
+      "name": "Vulnerability",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Vulnerability_small.png"
+    },
+    "93": {
+      "name": "Warmup Routine",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WarmupRoutine_small.png"
+    },
+    "312": {
+      "name": "We'll Be Right Back",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WellBeRightBack_small.png"
+    },
+    "94": {
+      "name": "Willing Sacrifice",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WillingSacrifice_small.png"
+    },
+    "95": {
+      "name": "Windspeaker's Blessing",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WindspeakersBlessing_small.png"
+    },
+    "96": {
+      "name": "Wisdom of Ages",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WisdomOfAges_small.png"
+    },
+    "97": {
+      "name": "Witchful Thinking",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WitchfulThinking_small.png"
+    },
+    "98": {
+      "name": "With Haste",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/WithHaste_small.png"
+    },
+    "99": {
+      "name": "Zhonya's Epiphany",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/ZhonyasEpiphany_small.png"
+    },
+    "206": {
+      "name": "escAPADe",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Cherry/Augments/Icons/Escapade_small.png"
+    },
+    "33113": {
+      "name": "Full Build! +25 Gold",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/GainGold_Large.png"
+    },
+    "33114": {
+      "name": "Full Build! Heal 25%",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/HealthRegeneration_Large.png"
+    },
+    "33313": {
+      "name": "Armor Up",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/ArmorUp_Large.png"
+    },
+    "33315": {
+      "name": "Bite Sized",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/BiteSized_Large.png"
+    },
+    "33308": {
+      "name": "Bullet-Mania",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/BulletMania_Large.png"
+    },
+    "33309": {
+      "name": "Card Collector",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/CardCollector_Large.png"
+    },
+    "33317": {
+      "name": "Celebration!",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/Celebration_Large.png"
+    },
+    "33305": {
+      "name": "Circle of Stats",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/CircleofStats_Large.png"
+    },
+    "33301": {
+      "name": "Critical Expansion",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/CriticalExpansion_Large.png"
+    },
+    "-1": {
+      "name": "OwO Blaster",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9180_UwUBlaster.png"
+    },
+    "33318": {
+      "name": "Ebb And Flow",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/EbbandFlow_Large.png"
+    },
+    "33314": {
+      "name": "Elite Bomber",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/EliteBomber_Large.png"
+    },
+    "33307": {
+      "name": "Glass Cannon",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/GlassCannon_Large.png"
+    },
+    "33304": {
+      "name": "Juggernaut",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/Juggernaut_Large.png"
+    },
+    "33316": {
+      "name": "Larger Than Life",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/LargerThanLife_Large.png"
+    },
+    "33306": {
+      "name": "Cross Country",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/LongRoad_Large.png"
+    },
+    "33319": {
+      "name": "Mission Critical",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/NoCrit_Large.png"
+    },
+    "33310": {
+      "name": "Pick-Me-Up",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/PickmeUp_Large.png"
+    },
+    "33303": {
+      "name": "Spray and Pray",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/SprayandPray_Large.png"
+    },
+    "33302": {
+      "name": "Uptime Upgrade",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/TimeNotDamage_Large.png"
+    },
+    "33312": {
+      "name": "Ultimate Speed-Up",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/UltimateHaste_Large.png"
+    },
+    "33311": {
+      "name": "Experienced Fighter",
+      "rarity": "kGold",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Blessing_Augment/XPFanatic_Large.png"
+    },
+    "33101": {
+      "name": "Ability Haste",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Cooldown_Small.png"
+    },
+    "33102": {
+      "name": "Area Size",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/AoESize_Small.png"
+    },
+    "33103": {
+      "name": "Armor",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Armor_Small.png"
+    },
+    "33104": {
+      "name": "Critical Chance",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/CritChance_Small.png"
+    },
+    "33105": {
+      "name": "Damage",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Damage_Small.png"
+    },
+    "33106": {
+      "name": "Duration",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Duration_Small.png"
+    },
+    "33107": {
+      "name": "EXP",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Exp_Small.png"
+    },
+    "33108": {
+      "name": "Health Regeneration",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/HealthRegeneration_Small.png"
+    },
+    "33109": {
+      "name": "Max Health",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/MaxHealth_Small.png"
+    },
+    "33110": {
+      "name": "Movement Speed",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/MoveSpeed_Small.png"
+    },
+    "33111": {
+      "name": "Pickup Radius",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/PickupRange_Small.png"
+    },
+    "33112": {
+      "name": "Projectile Count",
+      "rarity": "kBronze",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/ProjectileCount_Small.png"
+    },
+    "33201": {
+      "name": "Guiding Hex",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9307_Aurora_Weapon.png"
+    },
+    "33401": {
+      "name": "Hopped-Up Hex",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9307_Aurora_Weapon.png"
+    },
+    "33202": {
+      "name": "Pillory Swipe",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9303_Briar_Weapon.png"
+    },
+    "33402": {
+      "name": "Savage Slice",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9303_Briar_Weapon.png"
+    },
+    "33203": {
+      "name": "Tentacle Slam",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9305_Illaoi_Weapon.png"
+    },
+    "33403": {
+      "name": "Grizzly Smash",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9305_Illaoi_Weapon.png"
+    },
+    "33204": {
+      "name": "Meow Meow",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9300_Jinx_Weapon.png"
+    },
+    "33404": {
+      "name": "Battle Cat Barrage",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9300_Jinx_Weapon.png"
+    },
+    "33205": {
+      "name": "Shield Slam",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9301_Leona_Weapon.png"
+    },
+    "33405": {
+      "name": "Light of the Lion",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9301_Leona_Weapon.png"
+    },
+    "33206": {
+      "name": "Bunny Hop",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9308_Riven_Weapon.png"
+    },
+    "33406": {
+      "name": "Carrot Crash",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/Items/Icons2D/AutoAtlas/SmallIcons/Strawberry/9308_Riven_Weapon.png"
+    },
+    "33207": {
+      "name": "Sound Wave",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9302_Seraphine_Weapon.png"
+    },
+    "33407": {
+      "name": "Anima Echo",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9302_Seraphine_Weapon.png"
+    },
+    "33208": {
+      "name": "Winged Dagger",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9306_Xayah_Weapon.png"
+    },
+    "33408": {
+      "name": "Lover's Ricochet",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9306_Xayah_Weapon.png"
+    },
+    "33209": {
+      "name": "Steel Tempest",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9304_Yasuo_Weapon.png"
+    },
+    "33409": {
+      "name": "Wandering Storms",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9304_Yasuo_Weapon.png"
+    },
+    "33210": {
+      "name": "Blade-o-rang",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9183_Boomerang.png"
+    },
+    "33410": {
+      "name": "Quad-o-rang",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9183_Boomerang.png"
+    },
+    "33211": {
+      "name": "Vortex Glove",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9181_NeonLotus.png"
+    },
+    "33411": {
+      "name": "Tempest's Gauntlet",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9181_NeonLotus.png"
+    },
+    "33212": {
+      "name": "Gatling Bunny-Guns",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9176_GatlingGun.png"
+    },
+    "33412": {
+      "name": "Double Bun-Bun Barrage",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9176_GatlingGun.png"
+    },
+    "33213": {
+      "name": "Lioness's Lament",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9175_CrescentStrike.png"
+    },
+    "33413": {
+      "name": "Enveloping Light",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9175_CrescentStrike.png"
+    },
+    "33214": {
+      "name": "Anti-Shark Sea Mine",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9185_FireBomb.png"
+    },
+    "33414": {
+      "name": "Neverending Mobstomper",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9185_FireBomb.png"
+    },
+    "33215": {
+      "name": "Searing Shortbow",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9177_FireStrike.png"
+    },
+    "33415": {
+      "name": "Evolved Embershot",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9177_FireStrike.png"
+    },
+    "33216": {
+      "name": "Iceblast Armor",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9193_FrostNova.png"
+    },
+    "33416": {
+      "name": "Deep Freeze",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9193_FrostNova.png"
+    },
+    "33217": {
+      "name": "Radiant Field",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9173_HollowRadiance.png"
+    },
+    "33417": {
+      "name": "Explosive Embrace",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9173_HollowRadiance.png"
+    },
+    "33218": {
+      "name": "Cyclonic Slicers",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9171_HolyBauble.png"
+    },
+    "33418": {
+      "name": "Unceasing Cyclone",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9171_HolyBauble.png"
+    },
+    "33219": {
+      "name": "Ani-Mines",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9188_Mine.png"
+    },
+    "33419": {
+      "name": "Jinx's Tri-Namite",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9188_Mine.png"
+    },
+    "33220": {
+      "name": "The Annihilator",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9178_DropTheHammer.png"
+    },
+    "33420": {
+      "name": "Animapocalypse",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9178_DropTheHammer.png"
+    },
+    "33221": {
+      "name": "Battle Bunny Crossbow",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9179_FanOfKnives.png"
+    },
+    "33421": {
+      "name": "Bunny Prime Ballista",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9179_FanOfKnives.png"
+    },
+    "33222": {
+      "name": "Paw Print Poisoner",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9192_PoisonTrail.png"
+    },
+    "33422": {
+      "name": "Bearfoot Chem-Dispenser",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9192_PoisonTrail.png"
+    },
+    "33223": {
+      "name": "UwU Blaster",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9180_UwUBlaster.png"
+    },
+    "33224": {
+      "name": "Echoing Batblades",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9190_ScatterArrows.png"
+    },
+    "33423": {
+      "name": "Vayne's Chromablades",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9190_ScatterArrows.png"
+    },
+    "33225": {
+      "name": "Bunny Mega-Blast",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9184_StarStrike.png"
+    },
+    "33424": {
+      "name": "Rapid Rabbit Raindown",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9184_StarStrike.png"
+    },
+    "33226": {
+      "name": "Statikk Sword",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9174_StatikkShiv.png"
+    },
+    "33425": {
+      "name": "Prumbis's Electrocarver",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9174_StatikkShiv.png"
+    },
+    "33227": {
+      "name": "T.I.B.B.E.R.S",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9187_Tibbers.png"
+    },
+    "33426": {
+      "name": "T.I.B.B.E.R.S (B.E.E.G Edition)",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9187_Tibbers.png"
+    },
+    "33228": {
+      "name": "Final City Transit",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9189_Train.png"
+    },
+    "33427": {
+      "name": "FC Limited Express",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9189_Train.png"
+    },
+    "33229": {
+      "name": "YuumiBot",
+      "rarity": "kSilver",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9172_TwinShadows.png"
+    },
+    "33428": {
+      "name": "YuumiBot_Final_FINAL",
+      "rarity": "kPrismatic",
+      "icon": "/lol-game-data/assets/ASSETS/UX/Strawberry/UpgradeSelection/Icons/Weapon/9172_TwinShadows.png"
+    }
+  },
+  "name_index": {
+    "adapt": 1205,
+    "allforyou": 1141,
+    "apexinventor": 1002,
+    "backtobasics": 1004,
+    "bigbrain": 1180,
+    "bladewaltz": 1006,
+    "bluntforce": 1007,
+    "breadandbutter": 1103,
+    "breadandcheese": 1151,
+    "breadandjam": 1150,
+    "buffbuddies": 1009,
+    "canttouchthis": 1011,
+    "celestialbody": 1013,
+    "cerberus": 1397,
+    "circleofdeath": 1015,
+    "clowncollege": 1310,
+    "courageofthecolossus": 1018,
+    "crackopenthategg": 1418,
+    "criticalhealing": 1118,
+    "cruelty": 1323,
+    "dashing": 1019,
+    "dawnbringersresolve": 1020,
+    "deft": 1022,
+    "demonsdance": 1023,
+    "divebomber": 1025,
+    "divineintervention": 1301,
+    "dontblink": 1026,
+    "doubletap": 2010,
+    "drawyoursword": 1134,
+    "dropkick": 2006,
+    "dualwield": 1225,
+    "earthwake": 1027,
+    "empoweredbythefaithful": 2004,
+    "erosion": 1028,
+    "etherealweapon": 1029,
+    "eureka": 1030,
+    "executioner": 1032,
+    "fanthehammer": 1220,
+    "feeltheburn": 1035,
+    "feymagic": 1194,
+    "firebrand": 1036,
+    "firefox": 1308,
+    "firstaidkit": 1037,
+    "flashbang": 1187,
+    "flashy": 1116,
+    "frombeginningtoend": 1038,
+    "frostwraith": 1039,
+    "getexcited": 1322,
+    "giantslayer": 1195,
+    "goliath": 1041,
+    "goredrink": 1138,
+    "guiltypleasure": 1042,
+    "heavyhitter": 1181,
+    "holyfire": 1198,
+    "homeguard": 1105,
+    "icecold": 1044,
+    "impassable": 1149,
+    "infernalconduit": 1045,
+    "infernalsoul": 1046,
+    "triggeredinferno": 2005,
+    "itscritical": 1047,
+    "itskillingtime": 1211,
+    "jeweledgauntlet": 1048,
+    "juiced": 2016,
+    "keystoneconjurer": 1050,
+    "legday": 1305,
+    "lightemup": 1051,
+    "lightningstrikes": 1052,
+    "devilonyourshoulder": 2007,
+    "madscientist": 1053,
+    "magicmissile": 1133,
+    "marksmage": 1129,
+    "masterofduality": 1054,
+    "mindtomatter": 1056,
+    "minionmancer": 1104,
+    "": 1424,
+    "mountainsoul": 1057,
+    "mysticpunch": 1058,
+    "oceansoul": 1060,
+    "okboomerang": 1061,
+    "omnisoul": 1062,
+    "orbitallaser": 1208,
+    "outlawsgrit": 1063,
+    "overflow": 1311,
+    "pandorasbox": 12317,
+    "perseverance": 1064,
+    "phenomenalevil": 1390,
+    "bounceoftheporoking": 2003,
+    "poroblaster": 1409,
+    "proteinshake": 1324,
+    "puristcaster": 2018,
+    "quantumcomputing": 1066,
+    "queststeelyourheart": 1152,
+    "questurfschampion": 1154,
+    "questicathiasfall": 1361,
+    "questwoogletswitchcap": 1156,
+    "rabblerousing": 1067,
+    "cheating": 1313,
+    "recursion": 1068,
+    "repulsor": 1069,
+    "restlessrestoration": 1070,
+    "scopedweapons": 1170,
+    "scopierweapons": 1071,
+    "scopiestweapons": 1115,
+    "searingdawn": 1072,
+    "selfdestruct": 1108,
+    "shadowrunner": 1073,
+    "shrinkray": 1074,
+    "skilledsniper": 1113,
+    "slaparound": 1136,
+    "slowandsteady": 1250,
+    "slowcooker": 1075,
+    "sonicboom": 1076,
+    "soulsiphon": 1077,
+    "speeddemon": 1405,
+    "spellwake": 1135,
+    "spintowin": 1214,
+    "spiritualpurification": 1345,
+    "stackosaurusrex": 1204,
+    "stats": 1404,
+    "statsonstats": 1403,
+    "statsonstatsonstats": 1402,
+    "stuckinherewithme": 1413,
+    "symphonyofwar": 1079,
+    "tankengine": 1353,
+    "tankitorleaveit": 1080,
+    "tapdancer": 1081,
+    "thebrutalizer": 1082,
+    "threadtheneedle": 1084,
+    "tormentor": 1085,
+    "transmutechaos": 1243,
+    "transmutegold": 1237,
+    "transmuteprismatic": 1238,
+    "trueshotprodigy": 1086,
+    "twicethrice": 1107,
+    "typhoon": 1087,
+    "ultimaterevolution": 1088,
+    "ultimateunstoppable": 1112,
+    "upgradecollector": 1320,
+    "upgradecutlass": 1317,
+    "upgradehubris": 1338,
+    "upgradeinfinityedge": 1336,
+    "upgradeimmolate": 1319,
+    "upgradesheen": 1996,
+    "upgradezhonyas": 1318,
+    "voidrift": 2002,
+    "vulnerability": 1092,
+    "headsupcupcake": 2001,
+    "weightedpopoffs": 2008,
+    "windspeakersblessing": 1095,
+    "witchfulthinking": 1097,
+    "withhaste": 1098,
+    "zealot": 2009,
+    "escapade": 1206,
+    "adamant": 1327,
+    "imababykittywhereismama": 1372,
+    "bigdragonenergy": 387,
+    "biggestsnowballever": 1329,
+    "chromaflux": 388,
+    "combinationfriedrice": 377,
+    "critncast": 2024,
+    "criticalmissile": 1356,
+    "criticalrhythm": 1328,
+    "demonicclasp": 383,
+    "donation": 1384,
+    "droppybara": 1414,
+    "empyreanpromise": 1331,
+    "escapeplan": 1333,
+    "finalform": 1344,
+    "flash2": 1348,
+    "gash": 1321,
+    "glasscannon": 1325,
+    "holysnowball": 1392,
+    "goldrend": 1335,
+    "grandmaschilioil": 1406,
+    "growthspurt": 1401,
+    "handofbaron": 1389,
+    "hatonahat": 1341,
+    "hextechsoul": 1416,
+    "infiniterecursion": 1388,
+    "killsecured": 2026,
+    "kingme": 1337,
+    "laserheal": 1339,
+    "mercy": 380,
+    "mightyshield": 1314,
+    "nightstalking": 1326,
+    "ominouspact": 1332,
+    "pinball": 1358,
+    "poltergeist": 1347,
+    "promqueen": 1421,
+    "sneakerhead": 1343,
+    "ragstoriches": 391,
+    "reenergize": 1330,
+    "redenvelopes": 1391,
+    "riceandchicken": 374,
+    "riceandfish": 375,
+    "riceandpork": 376,
+    "scavenger": 381,
+    "shrinkengine": 1373,
+    "snowballroulette": 1342,
+    "snowballupgrade": 1334,
+    "sonata": 1420,
+    "souleater": 1375,
+    "spellcraft": 384,
+    "swiftandsafe": 1315,
+    "finalcitytransit": 1400,
+    "transmutesilver": 378,
+    "trashtotreasure": 389,
+    "twinfire": 1415,
+    "ultimateawakening": 1349,
+    "unstabletransmutation": 390,
+    "upgrademikaelsblessing": 1340,
+    "upgradeswordofblossomingdawn": 1379,
+    "upgradethornmail": 1411,
+    "vampirism": 1346,
+    "veilofwarding": 1034,
+    "wildfire": 379,
+    "windbeneathblade": 1316,
+    "spinmerightround": 1386,
+    "acceleratingsorcery": 1,
+    "aimforthehead": 336,
+    "andmyaxe": 309,
+    "404augmentnotfound": 404,
+    "augment405": 405,
+    "augmentedpower": 322,
+    "bannerofcommand": 5,
+    "bloodbrother": 200,
+    "bloodmage": 332,
+    "bodyguard": 321,
+    "bravestofthebrave": 324,
+    "breadsandwich": 346,
+    "buckleup": 8,
+    "bulletheaven": 230,
+    "calculatedrisk": 320,
+    "cannonfodder": 10,
+    "castle": 12,
+    "centeroftheuniverse": 193,
+    "chainlightning": 166,
+    "chauffeur": 14,
+    "clothesline": 110,
+    "combomaster": 16,
+    "contractkiller": 17,
+    "gainanaugmentslot": 341,
+    "gainaprismaticstatanvil": 340,
+    "levelaugments": 342,
+    "darkblessing": 215,
+    "deathtouch": 217,
+    "defensivemaneuvers": 21,
+    "dematerialize": 171,
+    "desecrator": 218,
+    "despoil": 330,
+    "dieanotherday": 24,
+    "dontchase": 102,
+    "doomsayer": 219,
+    "dreadbringer": 216,
+    "energetic": 344,
+    "energeticcaster": 315,
+    "infernalchains": 328,
+    "evocation": 31,
+    "extendoarm": 33,
+    "fallenaegis": 34,
+    "firesale": 229,
+    "frozenfoundations": 40,
+    "fruitsofyourlabor": 222,
+    "fullyautomated": 213,
+    "gainstatanvil": 355,
+    "gambaanvil": 234,
+    "abstainfrompower": 366,
+    "abstainfromrisk": 367,
+    "abstainfromwealth": 365,
+    "compulsionforpower": 372,
+    "compulsionforrisk": 373,
+    "compulsionforwealth": 371,
+    "cravingforpower": 369,
+    "cravingforrisk": 370,
+    "cravingforwealth": 368,
+    "lambsrespite": 359,
+    "sacrificeforgold": 303,
+    "sacrificeforprismatic": 304,
+    "sacrificeforsilver": 302,
+    "wolfsfrenzy": 358,
+    "greviousvenom": 316,
+    "hallucinate": 334,
+    "hattrick": 241,
+    "hivemind": 338,
+    "holdverystill": 207,
+    "hybrid": 357,
+    "juicebox": 49,
+    "juicepress": 242,
+    "lasereyes": 174,
+    "lightwarden": 231,
+    "magicalgirl": 345,
+    "midnightexpress": 55,
+    "mirrorimage": 172,
+    "multitool": 331,
+    "mythical": 59,
+    "necromancer": 329,
+    "nestingdoll": 177,
+    "nowyouseeme": 43,
+    "nullaugment": 3,
+    "numbtopain": 251,
+    "oathsworn": 109,
+    "panicroom": 335,
+    "parasiticmutation": 240,
+    "parasiticrelationship": 175,
+    "parry": 306,
+    "prismaticegg": 224,
+    "questangelofretribution": 192,
+    "questmadhatter": 318,
+    "questriteoftheforgegod": 333,
+    "questthreesacredtreasures": 319,
+    "raidboss": 125,
+    "replaceaugment": 364,
+    "restart": 165,
+    "righteousfury": 343,
+    "servebeyonddeath": 120,
+    "silverspoon": 356,
+    "sleepdart": 307,
+    "slimetime": 232,
+    "snowballfight": 176,
+    "spiritinfusion": 326,
+    "spiritlink": 78,
+    "summonerrevolution": 223,
+    "summonersroulette": 123,
+    "symbioticmutation": 239,
+    "thiefsgloves": 83,
+    "trailblazer": 221,
+    "tricksterdemon": 236,
+    "ultimateroulette": 233,
+    "undyingguard": 327,
+    "unshackled": 314,
+    "vanish": 89,
+    "vengeance": 90,
+    "virtuouscycle": 91,
+    "warmuproutine": 93,
+    "wellberightback": 312,
+    "willingsacrifice": 94,
+    "wisdomofages": 96,
+    "zhonyasepiphany": 99,
+    "fullbuild25gold": 33113,
+    "fullbuildheal25": 33114,
+    "armorup": 33313,
+    "bitesized": 33315,
+    "bulletmania": 33308,
+    "cardcollector": 33309,
+    "celebration": 33317,
+    "circleofstats": 33305,
+    "criticalexpansion": 33301,
+    "deathandtaxes": -1,
+    "sizescrambler": -1,
+    "ebbandflow": 33318,
+    "elitebomber": 33314,
+    "regenerativetissue": -1,
+    "gatheringspeed": -1,
+    "hoarder": -1,
+    "juggernaut": 33304,
+    "largerthanlife": 33316,
+    "longrange": -1,
+    "crosscountry": 33306,
+    "metabolicoverdrive": -1,
+    "missioncritical": 33319,
+    "pickmeup": 33310,
+    "pointblank": -1,
+    "immobileimmolation": -1,
+    "rammingrunner": -1,
+    "sprayandpray": 33303,
+    "pescatarian": -1,
+    "uptimeupgrade": 33302,
+    "ultimatespeedup": 33312,
+    "experiencedfighter": 33311,
+    "emotionalsupportpet": -1,
+    "abilityhaste": 33101,
+    "areasize": 33102,
+    "armor": 33103,
+    "criticalchance": 33104,
+    "damage": 33105,
+    "duration": 33106,
+    "exp": 33107,
+    "healthregeneration": 33108,
+    "maxhealth": 33109,
+    "movementspeed": 33110,
+    "pickupradius": 33111,
+    "projectilecount": 33112,
+    "guidinghex": 33201,
+    "hoppeduphex": 33401,
+    "pilloryswipe": 33202,
+    "savageslice": 33402,
+    "tentacleslam": 33203,
+    "grizzlysmash": 33403,
+    "meowmeow": 33204,
+    "battlecatbarrage": 33404,
+    "shieldslam": 33205,
+    "lightofthelion": 33405,
+    "bunnyhop": 33206,
+    "carrotcrash": 33406,
+    "soundwave": 33207,
+    "animaecho": 33407,
+    "wingeddagger": 33208,
+    "loversricochet": 33408,
+    "steeltempest": 33209,
+    "wanderingstorms": 33409,
+    "bladeorang": 33210,
+    "quadorang": 33410,
+    "vortexglove": 33211,
+    "tempestsgauntlet": 33411,
+    "gatlingbunnyguns": 33212,
+    "doublebunbunbarrage": 33412,
+    "lionessslament": 33213,
+    "envelopinglight": 33413,
+    "antisharkseamine": 33214,
+    "neverendingmobstomper": 33414,
+    "searingshortbow": 33215,
+    "evolvedembershot": 33415,
+    "iceblastarmor": 33216,
+    "deepfreeze": 33416,
+    "radiantfield": 33217,
+    "explosiveembrace": 33417,
+    "cyclonicslicers": 33218,
+    "unceasingcyclone": 33418,
+    "animines": 33219,
+    "jinxstrinamite": 33419,
+    "theannihilator": 33220,
+    "animapocalypse": 33420,
+    "battlebunnycrossbow": 33221,
+    "bunnyprimeballista": 33421,
+    "pawprintpoisoner": 33222,
+    "bearfootchemdispenser": 33422,
+    "uwublaster": 33223,
+    "owoblaster": -1,
+    "echoingbatblades": 33224,
+    "vayneschromablades": 33423,
+    "bunnymegablast": 33225,
+    "rapidrabbitraindown": 33424,
+    "statikksword": 33226,
+    "prumbisselectrocarver": 33425,
+    "tibbers": 33227,
+    "tibbersbeegedition": 33426,
+    "fclimitedexpress": 33427,
+    "yuumibot": 33229,
+    "yuumibotfinalfinal": 33428,
+    "gohlamb": 359,
+    "craftingprisstatanvil": 340,
+    "craftingsellaugment": 342,
+    "gohcravingforpower": 369,
+    "gohcompulsionforpower": 372,
+    "grievousvenom": 316,
+    "gohcravingforwealth": 368,
+    "augment404": 404,
+    "gohcompulsionforrisk": 373,
+    "craftingaugmentslot": 341,
+    "gohabstainfromrisk": 367,
+    "gohabstainfromwealth": 365,
+    "gohcravingforrisk": 370,
+    "gohcompulsionforwealth": 371,
+    "gohsacrificeforgold": 303,
+    "gohwolf": 358,
+    "gohabstainfrompower": 366,
+    "gohsacrificeforsilver": 302,
+    "gohsacrificeforprismatic": 304
+  }
+}

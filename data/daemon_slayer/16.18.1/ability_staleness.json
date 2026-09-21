@@ -1,0 +1,4505 @@
+{
+ "_patch": "16.18.1",
+ "_generated_at": "2026-09-21T03:03:51Z",
+ "_meraki_content_patch": "25.15",
+ "_source": "wiki.leagueoflegends.com Template:Data <Champion>/<Ability>",
+ "_note": "RM-81 staleness report. A row means the STORED Meraki value and the LIVE wiki value disagree at the first/last rank endpoint for the same labelled quantity. Conservative: unmatched damage labels are skipped, so this UNDER-reports. Absence of a champion is not proof of currency - if it was skipped rather than compared it is named in skipped_champions, so a shrinking stale set can be read as convergence or as lost coverage without a live wiki fetch (RM-216).",
+ "_checked_champions": 171,
+ "_pages_fetched": 859,
+ "_skipped_pages": 1,
+ "_skipped_labels": 72,
+ "stale_champions": [
+  "Aatrox",
+  "Ahri",
+  "Akshan",
+  "Anivia",
+  "Annie",
+  "AurelionSol",
+  "Azir",
+  "Belveth",
+  "Blitzcrank",
+  "Brand",
+  "Braum",
+  "Camille",
+  "Cassiopeia",
+  "Chogath",
+  "Corki",
+  "Draven",
+  "Fizz",
+  "Galio",
+  "Gangplank",
+  "Garen",
+  "Gnar",
+  "Graves",
+  "Gwen",
+  "Hecarim",
+  "Heimerdinger",
+  "Hwei",
+  "Irelia",
+  "Jayce",
+  "Jhin",
+  "Jinx",
+  "Kaisa",
+  "Kassadin",
+  "Kayle",
+  "Kayn",
+  "Kennen",
+  "Khazix",
+  "Leblanc",
+  "LeeSin",
+  "Lissandra",
+  "Lucian",
+  "Lulu",
+  "Lux",
+  "Malphite",
+  "Malzahar",
+  "Maokai",
+  "Mel",
+  "MonkeyKing",
+  "Mordekaiser",
+  "Morgana",
+  "Naafiri",
+  "Nami",
+  "Nasus",
+  "Nautilus",
+  "Nilah",
+  "Nocturne",
+  "Nunu",
+  "Olaf",
+  "Orianna",
+  "Qiyana",
+  "RekSai",
+  "Rell",
+  "Rumble",
+  "Samira",
+  "Sejuani",
+  "Senna",
+  "Seraphine",
+  "Shaco",
+  "Shyvana",
+  "Sion",
+  "Skarner",
+  "Smolder",
+  "Swain",
+  "Syndra",
+  "TahmKench",
+  "Taliyah",
+  "Thresh",
+  "Tristana",
+  "Trundle",
+  "Tryndamere",
+  "Udyr",
+  "Varus",
+  "Vayne",
+  "Veigar",
+  "Velkoz",
+  "Vex",
+  "Volibear",
+  "Xayah",
+  "Xerath",
+  "XinZhao",
+  "Yone",
+  "Yunara",
+  "Yuumi",
+  "Zac",
+  "Zed",
+  "Zeri",
+  "Zoe",
+  "Zyra"
+ ],
+ "skipped_champions": [
+  "Aphelios",
+  "AurelionSol",
+  "Briar",
+  "Ekko",
+  "Ezreal",
+  "Fiddlesticks",
+  "Fizz",
+  "Gwen",
+  "Ivern",
+  "Jax",
+  "Jhin",
+  "Jinx",
+  "Kalista",
+  "Karthus",
+  "Khazix",
+  "Kindred",
+  "Kled",
+  "Lucian",
+  "Malphite",
+  "Maokai",
+  "Mel",
+  "Naafiri",
+  "Nami",
+  "Nautilus",
+  "Neeko",
+  "Nunu",
+  "Renekton",
+  "Rengar",
+  "Rumble",
+  "Seraphine",
+  "Shen",
+  "Singed",
+  "Smolder",
+  "Syndra",
+  "Tristana",
+  "Tryndamere",
+  "Viego",
+  "XinZhao",
+  "Yunara",
+  "Yuumi",
+  "Zac",
+  "Zeri"
+ ],
+ "skipped_pages": [
+  {
+   "champion": "Renekton",
+   "ability": "E",
+   "name": "Slice",
+   "reason": "no live wiki page for this ability name",
+   "tried": [
+    "Renekton"
+   ]
+  }
+ ],
+ "skipped_labels": [
+  {
+   "champion": "Aphelios",
+   "ability": "P",
+   "name": "The Hitman and the Seer",
+   "label": "Bonus Attack Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "Q",
+   "name": "Breath of Light",
+   "label": "Reduced Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Secondary Magic Damage per Second",
+    "Secondary Target Damage per Tick",
+    "{{tt|Secondary Target Total Maximum Damage|Ranks 1-4}}",
+    "{{tt|Total Maximum Magic Damage|Ranks 1-4}}"
+   ]
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "Q",
+   "name": "Breath of Light",
+   "label": "Total Maximum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Magic Damage",
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Secondary Magic Damage per Second",
+    "Secondary Target Damage per Tick",
+    "{{tt|Secondary Target Total Maximum Damage|Ranks 1-4}}",
+    "{{tt|Total Maximum Magic Damage|Ranks 1-4}}"
+   ]
+  },
+  {
+   "champion": "Briar",
+   "ability": "Q",
+   "name": "Head Rush",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Resistances Reduction"
+   ]
+  },
+  {
+   "champion": "Ekko",
+   "ability": "Q",
+   "name": "Timewinder",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Magic Damage",
+    "Return Magic Damage",
+    "Slow",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ezreal",
+   "ability": "R",
+   "name": "Trueshot Barrage",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Modified Damage"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Damage per Instance",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion",
+    "Damage per second",
+    "Total Heal per Minion",
+    "Total Heal per Monster"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Last Tick of Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion",
+    "Damage per second",
+    "Total Heal per Minion",
+    "Total Heal per Monster"
+   ]
+  },
+  {
+   "champion": "Fiddlesticks",
+   "ability": "W",
+   "name": "Bountiful Harvest",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Champion Heal Portion",
+    "Damage per second",
+    "Total Heal per Minion",
+    "Total Heal per Monster"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Passive Magic Damage per Tick",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Magic Damage per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Passive Magic Damage per Tick",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Passive Magic Damage per Tick",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "W",
+   "name": "Seastone Trident",
+   "label": "Bonus Magic Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Active Magic Damage",
+    "Active On-Hit Magic Damage",
+    "Passive Magic Damage per Tick",
+    "Total Passive Magic Damage"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "E",
+   "name": "Skip 'n Slash",
+   "label": "Bonus Magic Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Attack Speed",
+    "Cooldown Refund"
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "label": "Damage with A Thousand Cuts",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Damage with {{ai|A Thousand Cuts|Gwen}}",
+    "Magic Damage per Needle",
+    "Maximum Total Damage",
+    "Second Cast Total Damage",
+    "Slow",
+    "Subsequent Slow",
+    "Third Cast Total Damage"
+   ]
+  },
+  {
+   "champion": "Ivern",
+   "ability": "W",
+   "name": "Brushmaker",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage",
+    "Ally Additional Magic Damage"
+   ]
+  },
+  {
+   "champion": "Ivern",
+   "ability": "W",
+   "name": "Brushmaker",
+   "label": "Ally Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage",
+    "Ally Additional Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jax",
+   "ability": "W",
+   "name": "Empower",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jax",
+   "ability": "R",
+   "name": "Grandmaster-at-Arms",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Magic Damage",
+    "Bonus Armor",
+    "Bonus Armor per Champion Hit",
+    "Bonus Magic Resistance",
+    "Bonus Magic Resistance per Champion Hit",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "Q",
+   "name": "Dancing Grenade",
+   "label": "Bonus Damage per Target Death",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "Q",
+   "name": "Dancing Grenade",
+   "label": "Maximum Final Bounce Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "label": "Minimum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "label": "Maximum Secondary Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "label": "Minimum Secondary Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kalista",
+   "ability": "E",
+   "name": "Rend",
+   "label": "Damage per Additional Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Damage per Additional Stack",
+    "Physical Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Karthus",
+   "ability": "Q",
+   "name": "Lay Waste",
+   "label": "Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Isolated Enhanced Damage",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Khazix",
+   "ability": "Q",
+   "name": "Taste Their Fear",
+   "label": "Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Isolated Target Physical Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kindred",
+   "ability": "E",
+   "name": "Mounting Dread",
+   "label": "Enhanced damage below threshold",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage"
+   ]
+  },
+  {
+   "champion": "Kled",
+   "ability": "W",
+   "name": "Violent Tendencies",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage",
+    "Structure Additional Damage"
+   ]
+  },
+  {
+   "champion": "Kled",
+   "ability": "W",
+   "name": "Violent Tendencies",
+   "label": "Structure Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage",
+    "Structure Additional Damage"
+   ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "R",
+   "name": "The Culling",
+   "label": "Additional Damage per 20% Crit Chance",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Shot"
+   ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "R",
+   "name": "The Culling",
+   "label": "Total Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage Per Shot"
+   ]
+  },
+  {
+   "champion": "Malphite",
+   "ability": "W",
+   "name": "Thunderclap",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Maokai",
+   "ability": "E",
+   "name": "Sapling Toss",
+   "label": "Total Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage per Instance",
+    "Minion Damage",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Maokai",
+   "ability": "E",
+   "name": "Sapling Toss",
+   "label": "Enhanced Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Magic Damage per Instance",
+    "Minion Damage",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "Q",
+   "name": "Radiant Volley",
+   "label": "Magic Damage per Explosion",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Initial Explosion Magic Damage",
+    "Magic Damage per Subsequent Explosion",
+    "Number of Bolts",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "R",
+   "name": "Hounds' Pursuit",
+   "label": "Physical Damage per Packmate",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage",
+    "Shield"
+   ]
+  },
+  {
+   "champion": "Nami",
+   "ability": "W",
+   "name": "Ebb and Flow",
+   "label": "Minimum Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal",
+    "Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nautilus",
+   "ability": "W",
+   "name": "Titan's Wrath",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Instance",
+    "Shield Strength",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Neeko",
+   "ability": "Q",
+   "name": "Blooming Burst",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus Monster Damage",
+    "Initial Magic Damage",
+    "Subsequent Magic Damage",
+    "Total Maximum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "W",
+   "name": "Biggest Snowball Ever!",
+   "label": "Minimum Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Magic Damage",
+    "Maximum Minion/Monster Roll Damage",
+    "Minimum Magic Damage",
+    "Minimum Minion/Monster Roll Damage"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "W",
+   "name": "Biggest Snowball Ever!",
+   "label": "Maximum Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Magic Damage",
+    "Maximum Minion/Monster Roll Damage",
+    "Minimum Magic Damage",
+    "Minimum Minion/Monster Roll Damage"
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "R",
+   "name": "Absolute Zero",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Magic Damage",
+    "Shield Strength"
+   ]
+  },
+  {
+   "champion": "Rengar",
+   "ability": "Q",
+   "name": "Savagery",
+   "label": "Bonus Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Additional Physical Damage"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Enhanced Damage per Second",
+    "Enhanced Damage per Tick",
+    "Enhanced Minion Damage per Second",
+    "Enhanced Minion Damage per Tick",
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Maximum Enhanced Damage",
+    "Maximum Enhanced Minion Damage",
+    "Maximum Magic Damage",
+    "Maximum Minion Damage",
+    "Minimum Enhanced Damage",
+    "Minimum Enhanced Minion Damage",
+    "Minimum Magic Damage",
+    "Minimum Minion Damage",
+    "Minion Damage per Second",
+    "Minion Damage per Tick"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Enhanced Damage per Second",
+    "Enhanced Damage per Tick",
+    "Enhanced Minion Damage per Second",
+    "Enhanced Minion Damage per Tick",
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Maximum Enhanced Damage",
+    "Maximum Enhanced Minion Damage",
+    "Maximum Magic Damage",
+    "Maximum Minion Damage",
+    "Minimum Enhanced Damage",
+    "Minimum Enhanced Minion Damage",
+    "Minimum Magic Damage",
+    "Minimum Minion Damage",
+    "Minion Damage per Second",
+    "Minion Damage per Tick"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Total Enhanced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Enhanced Damage per Second",
+    "Enhanced Damage per Tick",
+    "Enhanced Minion Damage per Second",
+    "Enhanced Minion Damage per Tick",
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Maximum Enhanced Damage",
+    "Maximum Enhanced Minion Damage",
+    "Maximum Magic Damage",
+    "Maximum Minion Damage",
+    "Minimum Enhanced Damage",
+    "Minimum Enhanced Minion Damage",
+    "Minimum Magic Damage",
+    "Minimum Minion Damage",
+    "Minion Damage per Second",
+    "Minion Damage per Tick"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "Q",
+   "name": "Flamespitter",
+   "label": "Enhanced Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Enhanced Damage per Second",
+    "Enhanced Damage per Tick",
+    "Enhanced Minion Damage per Second",
+    "Enhanced Minion Damage per Tick",
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Maximum Enhanced Damage",
+    "Maximum Enhanced Minion Damage",
+    "Maximum Magic Damage",
+    "Maximum Minion Damage",
+    "Minimum Enhanced Damage",
+    "Minimum Enhanced Minion Damage",
+    "Minimum Magic Damage",
+    "Minimum Minion Damage",
+    "Minion Damage per Second",
+    "Minion Damage per Tick"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "R",
+   "name": "The Equalizer",
+   "label": "Magic Damage Per Tick",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Maximum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "R",
+   "name": "The Equalizer",
+   "label": "Minimum Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Maximum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Seraphine",
+   "ability": "Q",
+   "name": "High Note",
+   "label": "Maximum Champion Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Maximum Enhanced Damage"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Increased Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Shen",
+   "ability": "Q",
+   "name": "Twilight Assault",
+   "label": "Total Increased Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Maximum Monster Damage",
+    "Slow"
+   ]
+  },
+  {
+   "champion": "Singed",
+   "ability": "Q",
+   "name": "Poison Trail",
+   "label": "Total Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage per Second",
+    "Magic Damage per Tick",
+    "Minimum Magic Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "label": "Maximum Damage with Infinity Edge",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "label": "Maximum Physical Damage with Infinity Edge",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "label": "Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Bonus True Damage",
+    "Magic Damage",
+    "Total Mixed Damage"
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "label": "Bonus Damage Per Stack",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "label": "Full Stack Bonus Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "label": "Full Stack Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage",
+    "Minimum Physical Damage"
+   ]
+  },
+  {
+   "champion": "Tryndamere",
+   "ability": "Q",
+   "name": "Bloodlust",
+   "label": "Bonus Attack Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Heal Per 1 Fury",
+    "Maximum Bonus Attack Damage",
+    "Maximum Heal",
+    "Minimum Heal"
+   ]
+  },
+  {
+   "champion": "Viego",
+   "ability": "Q",
+   "name": "Blade of the Ruined King",
+   "label": "Minimum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Bonus Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "Viego",
+   "ability": "Q",
+   "name": "Blade of the Ruined King",
+   "label": "Maximum Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Minimum Bonus Damage",
+    "Physical Damage"
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "W",
+   "name": "Wind Becomes Lightning",
+   "label": "Slash Physical Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Physical Damage per Slash",
+    "Slash Total Physical Damage",
+    "Thrust Physical Damage",
+    "Total Physical Damage"
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "R",
+   "name": "Transcend One's Self",
+   "label": "Arc of Ruin Base Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": []
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "Q",
+   "name": "Prowling Projectile",
+   "label": "Bonus Magic Damage On-Hit",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Enhanced Slow",
+    "Increased Damage",
+    "Magic Damage",
+    "Maximum Bonus Magic Damage On-Hit",
+    "Minimum Bonus Magic Damage On-Hit"
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "R",
+   "name": "Let's Bounce!",
+   "label": "Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Hit",
+    "Reduced Damage Per Hit",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "R",
+   "name": "Let's Bounce!",
+   "label": "Reduced Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "Magic Damage Per Hit",
+    "Reduced Damage Per Hit",
+    "Total Magic Damage"
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "E",
+   "name": "Spark Surge",
+   "label": "Burst Fire Bonus Magic Damage",
+   "reason": "label absent from live wiki page",
+   "wiki_labels": [
+    "{{ai|Burst Fire|Zeri}} Bonus Magic Damage",
+    "{{ai|Burst Fire|Zeri}} Secondary Target Damage"
+   ]
+  }
+ ],
+ "findings": [
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "field": "base:First Sweetspot Damage",
+   "meraki": [
+    17.0,
+    119.0
+   ],
+   "wiki": [
+    17.5,
+    122.5
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "field": "base:Second Sweetspot Damage",
+   "meraki": [
+    21.25,
+    148.75
+   ],
+   "wiki": [
+    21.875,
+    153.125
+   ]
+  },
+  {
+   "champion": "Aatrox",
+   "ability": "Q",
+   "name": "The Darkin Blade",
+   "field": "base:Third Sweetspot Damage",
+   "meraki": [
+    25.5,
+    178.5
+   ],
+   "wiki": [
+    26.25,
+    183.75
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "Q",
+   "name": "Orb of Deception",
+   "field": "base:Damage Per Pass",
+   "meraki": [
+    40.0,
+    140.0
+   ],
+   "wiki": [
+    35.0,
+    135.0
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "Q",
+   "name": "Orb of Deception",
+   "field": "base:Total Mixed Damage",
+   "meraki": [
+    80.0,
+    280.0
+   ],
+   "wiki": [
+    70.0,
+    270.0
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "field": "cooldown",
+   "meraki": [
+    10.0,
+    6.0
+   ],
+   "wiki": [
+    9.0,
+    5.0
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "field": "base:Subsequent Flame Magic Damage",
+   "meraki": [
+    12.0,
+    36.0
+   ],
+   "wiki": [
+    16.0,
+    48.0
+   ],
+   "wiki_label": "Subsequent Magic Damage"
+  },
+  {
+   "champion": "Ahri",
+   "ability": "W",
+   "name": "Fox-Fire",
+   "field": "base:Total Single-Target Damage",
+   "meraki": [
+    64.0,
+    192.0
+   ],
+   "wiki": [
+    72.0,
+    216.0
+   ]
+  },
+  {
+   "champion": "Ahri",
+   "ability": "R",
+   "name": "Spirit Rush",
+   "field": "base:Magic Damage",
+   "meraki": [
+    60.0,
+    120.0
+   ],
+   "wiki": [
+    75.0,
+    175.0
+   ]
+  },
+  {
+   "champion": "Akshan",
+   "ability": "Q",
+   "name": "Avengerang",
+   "field": "cooldown",
+   "meraki": [
+    8.0,
+    5.0
+   ],
+   "wiki": [
+    9.0,
+    5.0
+   ]
+  },
+  {
+   "champion": "Akshan",
+   "ability": "Q",
+   "name": "Avengerang",
+   "field": "base:Physical Damage",
+   "meraki": [
+    5.0,
+    85.0
+   ],
+   "wiki": [
+    45.0,
+    165.0
+   ]
+  },
+  {
+   "champion": "Akshan",
+   "ability": "Q",
+   "name": "Avengerang",
+   "field": "base:Total Physical Damage",
+   "meraki": [
+    10.0,
+    170.0
+   ],
+   "wiki": [
+    90.0,
+    330.0
+   ]
+  },
+  {
+   "champion": "Anivia",
+   "ability": "Q",
+   "name": "Flash Frost",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    8.0
+   ],
+   "wiki": [
+    11.0,
+    7.0
+   ]
+  },
+  {
+   "champion": "Anivia",
+   "ability": "E",
+   "name": "Frostbite",
+   "field": "base:Magic Damage",
+   "meraki": [
+    50.0,
+    150.0
+   ],
+   "wiki": [
+    55.0,
+    155.0
+   ]
+  },
+  {
+   "champion": "Anivia",
+   "ability": "E",
+   "name": "Frostbite",
+   "field": "base:Enhanced Damage",
+   "meraki": [
+    100.0,
+    300.0
+   ],
+   "wiki": [
+    110.0,
+    310.0
+   ]
+  },
+  {
+   "champion": "Annie",
+   "ability": "Q",
+   "name": "Disintegrate",
+   "field": "base:Magic Damage",
+   "meraki": [
+    80.0,
+    240.0
+   ],
+   "wiki": [
+    80.0,
+    260.0
+   ]
+  },
+  {
+   "champion": "Annie",
+   "ability": "W",
+   "name": "Incinerate",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    250.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Annie",
+   "ability": "E",
+   "name": "Molten Shield",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    10.0
+   ],
+   "wiki": [
+    10.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "AurelionSol",
+   "ability": "W",
+   "name": "Astral Flight",
+   "field": "cooldown",
+   "meraki": [
+    22.0,
+    16.0
+   ],
+   "wiki": [
+    22.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Azir",
+   "ability": "Q",
+   "name": "Conquering Sands",
+   "field": "base:Magic Damage",
+   "meraki": [
+    60.0,
+    140.0
+   ],
+   "wiki": [
+    75.0,
+    155.0
+   ]
+  },
+  {
+   "champion": "Azir",
+   "ability": "W",
+   "name": "Arise!",
+   "field": "base:Magic Damage",
+   "meraki": [
+    50.0,
+    120.58823529411765
+   ],
+   "wiki": [
+    50.0,
+    110.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     13.2353,
+     15.8824,
+     18.5294,
+     21.1765,
+     23.8235,
+     26.4706,
+     29.1176,
+     31.7647,
+     34.4118,
+     37.0588,
+     39.7059,
+     42.3529,
+     45.0
+    ]
+   }
+  },
+  {
+   "champion": "Azir",
+   "ability": "E",
+   "name": "Shifting Sands",
+   "field": "base:Magic Damage",
+   "meraki": [
+    60.0,
+    220.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "Q",
+   "name": "Void Surge",
+   "field": "cooldown",
+   "meraki": [
+    1.0,
+    1.0
+   ],
+   "wiki": [
+    4.0,
+    1.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "Q",
+   "name": "Void Surge",
+   "field": "base:Physical Damage",
+   "meraki": [
+    0.0,
+    20.0
+   ],
+   "wiki": [
+    12.0,
+    20.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "W",
+   "name": "Above and Below",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    230.0
+   ],
+   "wiki": [
+    80.0,
+    320.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "cooldown",
+   "meraki": [
+    20.0,
+    16.0
+   ],
+   "wiki": [
+    24.0,
+    12.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "base:Minimum Physical Damage per hit",
+   "meraki": [
+    6.0,
+    10.0
+   ],
+   "wiki": [
+    10.0,
+    18.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "E",
+   "name": "Royal Maelstrom",
+   "field": "base:Maximum Physical Damage per hit",
+   "meraki": [
+    24.0,
+    40.0
+   ],
+   "wiki": [
+    20.0,
+    36.0
+   ]
+  },
+  {
+   "champion": "Belveth",
+   "ability": "R",
+   "name": "Endless Banquet",
+   "field": "base:Bonus True Damage",
+   "meraki": [
+    6.0,
+    10.0
+   ],
+   "wiki": [
+    2.0,
+    6.0
+   ]
+  },
+  {
+   "champion": "Blitzcrank",
+   "ability": "E",
+   "name": "Power Fist",
+   "field": "cooldown",
+   "meraki": [
+    9.0,
+    5.0
+   ],
+   "wiki": [
+    7.0,
+    5.0
+   ]
+  },
+  {
+   "champion": "Brand",
+   "ability": "R",
+   "name": "Pyroclasm",
+   "field": "cooldown",
+   "meraki": [
+    110.0,
+    90.0
+   ],
+   "wiki": [
+    100.0,
+    80.0
+   ]
+  },
+  {
+   "champion": "Braum",
+   "ability": "Q",
+   "name": "Winter's Bite",
+   "field": "base:Magic Damage",
+   "meraki": [
+    75.0,
+    275.0
+   ],
+   "wiki": [
+    75.0,
+    255.0
+   ]
+  },
+  {
+   "champion": "Braum",
+   "ability": "R",
+   "name": "Glacial Fissure",
+   "field": "cooldown",
+   "meraki": [
+    120.0,
+    80.0
+   ],
+   "wiki": [
+    130.0,
+    100.0
+   ]
+  },
+  {
+   "champion": "Braum",
+   "ability": "R",
+   "name": "Glacial Fissure",
+   "field": "base:Magic Damage",
+   "meraki": [
+    150.0,
+    450.0
+   ],
+   "wiki": [
+    150.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Camille",
+   "ability": "W",
+   "name": "Tactical Sweep",
+   "field": "cooldown",
+   "meraki": [
+    17.0,
+    11.0
+   ],
+   "wiki": [
+    12.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Camille",
+   "ability": "W",
+   "name": "Tactical Sweep",
+   "field": "base:Physical Damage",
+   "meraki": [
+    50.0,
+    150.0
+   ],
+   "wiki": [
+    60.0,
+    160.0
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "Q",
+   "name": "Noxious Blast",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    75.0,
+    215.0
+   ],
+   "wiki": [
+    65.0,
+    205.0
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "Q",
+   "name": "Noxious Blast",
+   "field": "base:Magic Damage Per Tick",
+   "meraki": [
+    10.71,
+    30.71
+   ],
+   "wiki": [
+    9.285714285714286,
+    29.285714285714285
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "E",
+   "name": "Twin Fang",
+   "field": "base:Bonus Magic Damage",
+   "meraki": [
+    20.0,
+    100.0
+   ],
+   "wiki": [
+    20.0,
+    120.0
+   ]
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "E",
+   "name": "Twin Fang",
+   "field": "base:Total Enhanced Damage",
+   "meraki": [
+    72.0,
+    168.0
+   ],
+   "wiki": [
+    20.0,
+    120.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     72.0,
+     76.0,
+     80.0,
+     84.0,
+     88.0,
+     92.0,
+     96.0,
+     100.0,
+     104.0,
+     108.0,
+     112.0,
+     116.0,
+     120.0
+    ]
+   }
+  },
+  {
+   "champion": "Cassiopeia",
+   "ability": "R",
+   "name": "Petrifying Gaze",
+   "field": "base:Magic Damage",
+   "meraki": [
+    150.0,
+    350.0
+   ],
+   "wiki": [
+    125.0,
+    325.0
+   ]
+  },
+  {
+   "champion": "Chogath",
+   "ability": "E",
+   "name": "Vorpal Spikes",
+   "field": "base:Magic Damage",
+   "meraki": [
+    20.0,
+    100.0
+   ],
+   "wiki": [
+    30.0,
+    110.0
+   ]
+  },
+  {
+   "champion": "Chogath",
+   "ability": "E",
+   "name": "Vorpal Spikes",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    60.0,
+    300.0
+   ],
+   "wiki": [
+    90.0,
+    330.0
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "Q",
+   "name": "Phosphorus Bomb",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    250.0
+   ],
+   "wiki": [
+    60.0,
+    240.0
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "W",
+   "name": "Valkyrie",
+   "field": "base:Magic Damage Per Tick",
+   "meraki": [
+    40.0,
+    100.0
+   ],
+   "wiki": [
+    30.0,
+    90.0
+   ]
+  },
+  {
+   "champion": "Corki",
+   "ability": "W",
+   "name": "Valkyrie",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    200.0,
+    500.0
+   ],
+   "wiki": [
+    150.0,
+    450.0
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "E",
+   "name": "Stand Aside",
+   "field": "cooldown",
+   "meraki": [
+    18.0,
+    14.0
+   ],
+   "wiki": [
+    16.0,
+    12.0
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "field": "base:Physical Damage",
+   "meraki": [
+    175.0,
+    375.0
+   ],
+   "wiki": [
+    200.0,
+    400.0
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "field": "base:Total Physical Damage",
+   "meraki": [
+    350.0,
+    750.0
+   ],
+   "wiki": [
+    400.0,
+    800.0
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "field": "base:Minimum Physical Damage",
+   "meraki": [
+    70.0,
+    150.0
+   ],
+   "wiki": [
+    100.0,
+    200.0
+   ]
+  },
+  {
+   "champion": "Draven",
+   "ability": "R",
+   "name": "Whirling Death",
+   "field": "base:Minimum Total Damage",
+   "meraki": [
+    140.0,
+    300.0
+   ],
+   "wiki": [
+    200.0,
+    400.0
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "cooldown",
+   "meraki": [
+    100.0,
+    70.0
+   ],
+   "wiki": [
+    120.0,
+    80.0
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "base:Guppy Damage",
+   "meraki": [
+    150.0,
+    350.0
+   ],
+   "wiki": [
+    180.0,
+    420.0
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "base:Chomper Damage",
+   "meraki": [
+    225.0,
+    425.0
+   ],
+   "wiki": [
+    225.0,
+    525.0
+   ]
+  },
+  {
+   "champion": "Fizz",
+   "ability": "R",
+   "name": "Chum the Waters",
+   "field": "base:Gigalodon Damage",
+   "meraki": [
+    300.0,
+    500.0
+   ],
+   "wiki": [
+    270.0,
+    630.0
+   ]
+  },
+  {
+   "champion": "Galio",
+   "ability": "E",
+   "name": "Justice Punch",
+   "field": "base:Magic Damage",
+   "meraki": [
+    90.0,
+    250.0
+   ],
+   "wiki": [
+    100.0,
+    240.0
+   ]
+  },
+  {
+   "champion": "Gangplank",
+   "ability": "E",
+   "name": "Powder Keg",
+   "field": "base:Bonus Champion Damage",
+   "meraki": [
+    75.0,
+    195.0
+   ],
+   "wiki": [
+    75.0,
+    155.0
+   ]
+  },
+  {
+   "champion": "Garen",
+   "ability": "R",
+   "name": "Demacian Justice",
+   "field": "base:True Damage",
+   "meraki": [
+    150.0,
+    350.0
+   ],
+   "wiki": [
+    125.0,
+    275.0
+   ]
+  },
+  {
+   "champion": "Gnar",
+   "ability": "Q",
+   "name": "Boomerang Throw",
+   "field": "cooldown",
+   "meraki": [
+    20.0,
+    10.0
+   ],
+   "wiki": [
+    16.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Graves",
+   "ability": "Q",
+   "name": "End of the Line",
+   "field": "base:Physical Damage",
+   "meraki": [
+    45.0,
+    125.0
+   ],
+   "wiki": [
+    50.0,
+    150.0
+   ]
+  },
+  {
+   "champion": "Graves",
+   "ability": "Q",
+   "name": "End of the Line",
+   "field": "base:Total Physical Damage",
+   "meraki": [
+    130.0,
+    350.0
+   ],
+   "wiki": [
+    130.0,
+    410.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "base:Damage per Snip",
+   "meraki": [
+    10.0,
+    30.0
+   ],
+   "wiki": [
+    10.0,
+    26.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "base:Center Damage per Snip",
+   "meraki": [
+    10.0,
+    30.0
+   ],
+   "wiki": [
+    10.0,
+    26.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "base:Minimum Damage",
+   "meraki": [
+    70.0,
+    190.0
+   ],
+   "wiki": [
+    70.0,
+    186.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "base:Minimum Center Damage",
+   "meraki": [
+    70.0,
+    190.0
+   ],
+   "wiki": [
+    70.0,
+    186.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "base:Maximum Damage",
+   "meraki": [
+    110.0,
+    310.0
+   ],
+   "wiki": [
+    110.0,
+    290.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "Q",
+   "name": "Snip Snip!",
+   "field": "base:Maximum Center Damage",
+   "meraki": [
+    110.0,
+    310.0
+   ],
+   "wiki": [
+    110.0,
+    290.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "W",
+   "name": "Hallowed Mist",
+   "field": "cooldown",
+   "meraki": [
+    24.0,
+    18.0
+   ],
+   "wiki": [
+    22.0,
+    18.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "E",
+   "name": "Skip 'n Slash",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    8.0
+   ],
+   "wiki": [
+    13.0,
+    11.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "base:Magic Damage per Needle",
+   "meraki": [
+    30.0,
+    90.0
+   ],
+   "wiki": [
+    30.0,
+    70.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "base:Second Cast Total Damage",
+   "meraki": [
+    90.0,
+    270.0
+   ],
+   "wiki": [
+    90.0,
+    210.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "base:Third Cast Total Damage",
+   "meraki": [
+    150.0,
+    450.0
+   ],
+   "wiki": [
+    150.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Gwen",
+   "ability": "R",
+   "name": "Needlework",
+   "field": "base:Maximum Total Damage",
+   "meraki": [
+    270.0,
+    810.0
+   ],
+   "wiki": [
+    270.0,
+    630.0
+   ]
+  },
+  {
+   "champion": "Hecarim",
+   "ability": "Q",
+   "name": "Rampage",
+   "field": "base:Physical Damage",
+   "meraki": [
+    60.0,
+    160.0
+   ],
+   "wiki": [
+    60.0,
+    180.0
+   ]
+  },
+  {
+   "champion": "Hecarim",
+   "ability": "W",
+   "name": "Spirit of Dread",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    100.0,
+    300.0
+   ],
+   "wiki": [
+    80.0,
+    240.0
+   ]
+  },
+  {
+   "champion": "Heimerdinger",
+   "ability": "W",
+   "name": "Hextech Micro-Rockets",
+   "field": "base:Initial Rocket Magic Damage",
+   "meraki": [
+    40.0,
+    140.0
+   ],
+   "wiki": [
+    50.0,
+    150.0
+   ]
+  },
+  {
+   "champion": "Hwei",
+   "ability": "E",
+   "name": "Subject: Torment",
+   "field": "cooldown",
+   "meraki": [
+    13.0,
+    11.0
+   ],
+   "wiki": [
+    12.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Hwei",
+   "ability": "R",
+   "name": "Spiraling Despair",
+   "field": "cooldown",
+   "meraki": [
+    140.0,
+    80.0
+   ],
+   "wiki": [
+    120.0,
+    80.0
+   ]
+  },
+  {
+   "champion": "Irelia",
+   "ability": "E",
+   "name": "Flawless Duet",
+   "field": "cooldown",
+   "meraki": [
+    16.0,
+    12.0
+   ],
+   "wiki": [
+    16.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Jayce",
+   "ability": "Q",
+   "name": "To the Skies!",
+   "field": "base:Physical Damage",
+   "meraki": [
+    60.0,
+    285.0
+   ],
+   "wiki": [
+    60.0,
+    310.0
+   ]
+  },
+  {
+   "champion": "Jhin",
+   "ability": "W",
+   "name": "Deadly Flourish",
+   "field": "base:Physical Damage",
+   "meraki": [
+    60.0,
+    200.0
+   ],
+   "wiki": [
+    70.0,
+    210.0
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "E",
+   "name": "Flame Chompers!",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    270.0
+   ],
+   "wiki": [
+    90.0,
+    290.0
+   ]
+  },
+  {
+   "champion": "Jinx",
+   "ability": "R",
+   "name": "Super Mega Death Rocket!",
+   "field": "base:Maximum Physical Damage",
+   "meraki": [
+    300.0,
+    600.0
+   ],
+   "wiki": [
+    200.0,
+    500.0
+   ]
+  },
+  {
+   "champion": "Kaisa",
+   "ability": "W",
+   "name": "Void Seeker",
+   "field": "cooldown",
+   "meraki": [
+    22.0,
+    14.0
+   ],
+   "wiki": [
+    20.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Kaisa",
+   "ability": "R",
+   "name": "Killer Instinct",
+   "field": "cooldown",
+   "meraki": [
+    120.0,
+    60.0
+   ],
+   "wiki": [
+    130.0,
+    70.0
+   ]
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "Q",
+   "name": "Null Sphere",
+   "field": "cooldown",
+   "meraki": [
+    10.0,
+    8.0
+   ],
+   "wiki": [
+    9.0,
+    7.0
+   ]
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "R",
+   "name": "Riftwalk",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    110.0
+   ],
+   "wiki": [
+    80.0,
+    110.0
+   ]
+  },
+  {
+   "champion": "Kassadin",
+   "ability": "R",
+   "name": "Riftwalk",
+   "field": "base:Maximum Magic Damage",
+   "meraki": [
+    210.0,
+    330.0
+   ],
+   "wiki": [
+    220.0,
+    330.0
+   ]
+  },
+  {
+   "champion": "Kayle",
+   "ability": "Q",
+   "name": "Radiant Blast",
+   "field": "base:Magic Damage",
+   "meraki": [
+    60.0,
+    220.0
+   ],
+   "wiki": [
+    60.0,
+    180.0
+   ]
+  },
+  {
+   "champion": "Kayn",
+   "ability": "Q",
+   "name": "Reaping Slash",
+   "field": "base:Physical Damage",
+   "meraki": [
+    75.0,
+    175.0
+   ],
+   "wiki": [
+    75.0,
+    195.0
+   ]
+  },
+  {
+   "champion": "Kayn",
+   "ability": "Q",
+   "name": "Reaping Slash",
+   "field": "base:Total Physical Damage",
+   "meraki": [
+    150.0,
+    350.0
+   ],
+   "wiki": [
+    150.0,
+    390.0
+   ]
+  },
+  {
+   "champion": "Kennen",
+   "ability": "R",
+   "name": "Slicing Maelstrom",
+   "field": "cooldown",
+   "meraki": [
+    120.0,
+    80.0
+   ],
+   "wiki": [
+    120.0,
+    120.0
+   ]
+  },
+  {
+   "champion": "Kennen",
+   "ability": "R",
+   "name": "Slicing Maelstrom",
+   "field": "base:Magic Damage Per Bolt",
+   "meraki": [
+    40.0,
+    110.0
+   ],
+   "wiki": [
+    40.0,
+    120.0
+   ]
+  },
+  {
+   "champion": "Kennen",
+   "ability": "R",
+   "name": "Slicing Maelstrom",
+   "field": "base:Total Single-Target Damage",
+   "meraki": [
+    300.0,
+    825.0
+   ],
+   "wiki": [
+    300.0,
+    900.0
+   ]
+  },
+  {
+   "champion": "Khazix",
+   "ability": "W",
+   "name": "Void Spike",
+   "field": "base:Physical Damage",
+   "meraki": [
+    85.0,
+    205.0
+   ],
+   "wiki": [
+    75.0,
+    195.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Orb Magic Damage",
+   "meraki": [
+    70.0,
+    210.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Mark Magic Damage",
+   "meraki": [
+    140.0,
+    420.0
+   ],
+   "wiki": [
+    140.0,
+    460.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    210.0,
+    630.0
+   ],
+   "wiki": [
+    210.0,
+    690.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Magic Damage",
+   "meraki": [
+    150.0,
+    450.0
+   ],
+   "wiki": [
+    150.0,
+    480.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Application Magic Damage",
+   "meraki": [
+    70.0,
+    210.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Leblanc",
+   "ability": "R",
+   "name": "Mimic",
+   "field": "base:Fracture Magic Damage",
+   "meraki": [
+    140.0,
+    420.0
+   ],
+   "wiki": [
+    140.0,
+    460.0
+   ]
+  },
+  {
+   "champion": "LeeSin",
+   "ability": "Q",
+   "name": "Sonic Wave",
+   "field": "base:Physical Damage",
+   "meraki": [
+    55.0,
+    155.0
+   ],
+   "wiki": [
+    60.0,
+    180.0
+   ]
+  },
+  {
+   "champion": "Lissandra",
+   "ability": "Q",
+   "name": "Ice Shard",
+   "field": "cooldown",
+   "meraki": [
+    8.0,
+    4.0
+   ],
+   "wiki": [
+    7.0,
+    3.0
+   ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "Q",
+   "name": "Piercing Light",
+   "field": "base:Physical Damage",
+   "meraki": [
+    85.0,
+    205.0
+   ],
+   "wiki": [
+    80.0,
+    220.0
+   ]
+  },
+  {
+   "champion": "Lucian",
+   "ability": "E",
+   "name": "Relentless Pursuit",
+   "field": "cooldown",
+   "meraki": [
+    18.0,
+    14.0
+   ],
+   "wiki": [
+    16.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Lulu",
+   "ability": "E",
+   "name": "Help, Pix!",
+   "field": "cooldown",
+   "meraki": [
+    8.0,
+    8.0
+   ],
+   "wiki": [
+    10.0,
+    8.0
+   ]
+  },
+  {
+   "champion": "Lulu",
+   "ability": "E",
+   "name": "Help, Pix!",
+   "field": "base:Magic Damage",
+   "meraki": [
+    80.0,
+    240.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Lux",
+   "ability": "Q",
+   "name": "Light Binding",
+   "field": "cooldown",
+   "meraki": [
+    11.0,
+    9.0
+   ],
+   "wiki": [
+    10.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Lux",
+   "ability": "W",
+   "name": "Prismatic Barrier",
+   "field": "cooldown",
+   "meraki": [
+    14.0,
+    10.0
+   ],
+   "wiki": [
+    12.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Malphite",
+   "ability": "E",
+   "name": "Ground Slam",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    230.0
+   ],
+   "wiki": [
+    60.0,
+    200.0
+   ]
+  },
+  {
+   "champion": "Malphite",
+   "ability": "R",
+   "name": "Unstoppable Force",
+   "field": "cooldown",
+   "meraki": [
+    130.0,
+    80.0
+   ],
+   "wiki": [
+    130.0,
+    100.0
+   ]
+  },
+  {
+   "champion": "Malzahar",
+   "ability": "W",
+   "name": "Void Swarm",
+   "field": "base:Magic Damage",
+   "meraki": [
+    17.0,
+    39.0
+   ],
+   "wiki": [
+    12.0,
+    20.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     22.5,
+     26.0,
+     29.5,
+     33.0,
+     36.5,
+     40.0,
+     43.5,
+     47.0,
+     50.5,
+     54.0,
+     57.5,
+     61.0,
+     64.5
+    ]
+   }
+  },
+  {
+   "champion": "Maokai",
+   "ability": "Q",
+   "name": "Bramble Smash",
+   "field": "base:Magic Damage",
+   "meraki": [
+    65.0,
+    245.0
+   ],
+   "wiki": [
+    75.0,
+    255.0
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "Q",
+   "name": "Radiant Volley",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    78.0,
+    230.0
+   ],
+   "wiki": [
+    85.0,
+    277.0
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "W",
+   "name": "Rebuttal",
+   "field": "cooldown",
+   "meraki": [
+    35.0,
+    23.0
+   ],
+   "wiki": [
+    38.0,
+    26.0
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "E",
+   "name": "Solar Snare",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    10.0
+   ],
+   "wiki": [
+    11.0,
+    9.0
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "E",
+   "name": "Solar Snare",
+   "field": "base:Field Magic Damage per Tick",
+   "meraki": [
+    2.0,
+    10.0
+   ],
+   "wiki": [
+    2.0,
+    8.0
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "E",
+   "name": "Solar Snare",
+   "field": "base:Field Magic Damage per Second",
+   "meraki": [
+    16.0,
+    80.0
+   ],
+   "wiki": [
+    16.0,
+    64.0
+   ]
+  },
+  {
+   "champion": "Mel",
+   "ability": "R",
+   "name": "Golden Eclipse",
+   "field": "base:Magic Damage",
+   "meraki": [
+    100.0,
+    200.0
+   ],
+   "wiki": [
+    125.0,
+    275.0
+   ]
+  },
+  {
+   "champion": "MonkeyKing",
+   "ability": "W",
+   "name": "Warrior Trickster",
+   "field": "cooldown",
+   "meraki": [
+    20.0,
+    16.0
+   ],
+   "wiki": [
+    22.0,
+    18.0
+   ]
+  },
+  {
+   "champion": "MonkeyKing",
+   "ability": "E",
+   "name": "Nimbus Strike",
+   "field": "base:Magic Damage",
+   "meraki": [
+    80.0,
+    200.0
+   ],
+   "wiki": [
+    80.0,
+    240.0
+   ]
+  },
+  {
+   "champion": "Mordekaiser",
+   "ability": "Q",
+   "name": "Obliterate",
+   "field": "base:Magic Damage",
+   "meraki": [
+    80.0,
+    230.58823529411765
+   ],
+   "wiki": [
+    80.0,
+    220.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     13.2353,
+     15.8824,
+     18.5294,
+     21.1765,
+     23.8235,
+     26.4706,
+     29.1176,
+     31.7647,
+     34.4118,
+     37.0588,
+     39.7059,
+     42.3529,
+     45.0
+    ]
+   }
+  },
+  {
+   "champion": "Mordekaiser",
+   "ability": "E",
+   "name": "Death's Grasp",
+   "field": "cooldown",
+   "meraki": [
+    18.0,
+    10.0
+   ],
+   "wiki": [
+    16.0,
+    8.0
+   ]
+  },
+  {
+   "champion": "Mordekaiser",
+   "ability": "E",
+   "name": "Death's Grasp",
+   "field": "base:Magic Damage",
+   "meraki": [
+    60.0,
+    120.0
+   ],
+   "wiki": [
+    60.0,
+    140.0
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "base:Minimum Damage Per Tick",
+   "meraki": [
+    6.0,
+    28.0
+   ],
+   "wiki": [
+    9.0,
+    35.0
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "base:Maximum Damage Per Tick",
+   "meraki": [
+    16.2,
+    75.6
+   ],
+   "wiki": [
+    18.0,
+    70.0
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "base:Minimum Total Damage",
+   "meraki": [
+    60.0,
+    280.0
+   ],
+   "wiki": [
+    90.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Morgana",
+   "ability": "W",
+   "name": "Tormented Shadow",
+   "field": "base:Maximum Total Damage",
+   "meraki": [
+    162.0,
+    756.0
+   ],
+   "wiki": [
+    180.0,
+    700.0
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "field": "base:Minimum Bonus Physical Damage",
+   "meraki": [
+    30.0,
+    90.0
+   ],
+   "wiki": [
+    30.0,
+    80.0
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "field": "base:Maximum Bonus Physical Damage",
+   "meraki": [
+    60.0,
+    180.0
+   ],
+   "wiki": [
+    60.0,
+    160.0
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "field": "base:Minimum Total Physical Damage",
+   "meraki": [
+    100.0,
+    280.0
+   ],
+   "wiki": [
+    100.0,
+    270.0
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "Q",
+   "name": "Darkin Daggers",
+   "field": "base:Maximum Total Physical Damage",
+   "meraki": [
+    130.0,
+    370.0
+   ],
+   "wiki": [
+    130.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Naafiri",
+   "ability": "R",
+   "name": "Hounds' Pursuit",
+   "field": "base:Physical Damage",
+   "meraki": [
+    150.0,
+    350.0
+   ],
+   "wiki": [
+    125.0,
+    275.0
+   ]
+  },
+  {
+   "champion": "Nami",
+   "ability": "E",
+   "name": "Tidecaller's Blessing",
+   "field": "base:Bonus Magic Damage Per Hit",
+   "meraki": [
+    20.0,
+    60.0
+   ],
+   "wiki": [
+    20.0,
+    80.0
+   ]
+  },
+  {
+   "champion": "Nami",
+   "ability": "E",
+   "name": "Tidecaller's Blessing",
+   "field": "base:Total Bonus Magic Damage",
+   "meraki": [
+    60.0,
+    180.0
+   ],
+   "wiki": [
+    60.0,
+    240.0
+   ]
+  },
+  {
+   "champion": "Nasus",
+   "ability": "Q",
+   "name": "Siphoning Strike",
+   "field": "base:Bonus Physical Damage",
+   "meraki": [
+    35.0,
+    115.0
+   ],
+   "wiki": [
+    40.0,
+    120.0
+   ]
+  },
+  {
+   "champion": "Nautilus",
+   "ability": "Q",
+   "name": "Dredge Line",
+   "field": "base:Magic Damage",
+   "meraki": [
+    85.0,
+    265.0
+   ],
+   "wiki": [
+    85.0,
+    245.0
+   ]
+  },
+  {
+   "champion": "Nilah",
+   "ability": "Q",
+   "name": "Formless Blade",
+   "field": "base:Minimum Physical Damage",
+   "meraki": [
+    5.0,
+    25.0
+   ],
+   "wiki": [
+    0.0,
+    40.0
+   ]
+  },
+  {
+   "champion": "Nilah",
+   "ability": "Q",
+   "name": "Formless Blade",
+   "field": "base:Maximum Physical Damage",
+   "meraki": [
+    10.0,
+    50.0
+   ],
+   "wiki": [
+    0.0,
+    76.39999999999999
+   ]
+  },
+  {
+   "champion": "Nocturne",
+   "ability": "Q",
+   "name": "Duskbringer",
+   "field": "base:Physical damage",
+   "meraki": [
+    65.0,
+    245.0
+   ],
+   "wiki": [
+    65.0,
+    225.0
+   ]
+  },
+  {
+   "champion": "Nocturne",
+   "ability": "Q",
+   "name": "Duskbringer",
+   "field": "base:Bonus Attack Damage",
+   "meraki": [
+    20.0,
+    60.0
+   ],
+   "wiki": [
+    15.0,
+    55.0
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "Q",
+   "name": "Consume",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    8.0
+   ],
+   "wiki": [
+    13.0,
+    9.0
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "field": "base:Magic Damage Per Hit",
+   "meraki": [
+    16.0,
+    48.0
+   ],
+   "wiki": [
+    15.0,
+    45.0
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    48.0,
+    144.0
+   ],
+   "wiki": [
+    45.0,
+    135.0
+   ]
+  },
+  {
+   "champion": "Nunu",
+   "ability": "E",
+   "name": "Snowball Barrage",
+   "field": "base:Maximum Total Magic Damage",
+   "meraki": [
+    144.0,
+    432.0
+   ],
+   "wiki": [
+    135.0,
+    405.0
+   ]
+  },
+  {
+   "champion": "Olaf",
+   "ability": "Q",
+   "name": "Undertow",
+   "field": "base:Physical Damage",
+   "meraki": [
+    60.0,
+    260.0
+   ],
+   "wiki": [
+    70.0,
+    270.0
+   ]
+  },
+  {
+   "champion": "Orianna",
+   "ability": "Q",
+   "name": "Command: Attack",
+   "field": "cooldown",
+   "meraki": [
+    6.0,
+    3.0
+   ],
+   "wiki": [
+    7.0,
+    3.0
+   ]
+  },
+  {
+   "champion": "Orianna",
+   "ability": "W",
+   "name": "Command: Dissonance",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    270.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Orianna",
+   "ability": "R",
+   "name": "Command: Shockwave",
+   "field": "base:Magic Damage",
+   "meraki": [
+    250.0,
+    550.0
+   ],
+   "wiki": [
+    225.0,
+    475.0
+   ]
+  },
+  {
+   "champion": "Qiyana",
+   "ability": "Q",
+   "name": "Edge of Ixtal",
+   "field": "base:Physical Damage",
+   "meraki": [
+    60.0,
+    180.0
+   ],
+   "wiki": [
+    80.0,
+    200.0
+   ]
+  },
+  {
+   "champion": "Qiyana",
+   "ability": "Q",
+   "name": "Edge of Ixtal",
+   "field": "base:Reduced Damage",
+   "meraki": [
+    45.0,
+    135.0
+   ],
+   "wiki": [
+    60.0,
+    150.0
+   ]
+  },
+  {
+   "champion": "RekSai",
+   "ability": "E",
+   "name": "Furious Bite",
+   "field": "base:Physical Damage",
+   "meraki": [
+    80.0,
+    192.0
+   ],
+   "wiki": [
+    70.0,
+    170.0
+   ]
+  },
+  {
+   "champion": "RekSai",
+   "ability": "E",
+   "name": "Furious Bite",
+   "field": "base:True Damage",
+   "meraki": [
+    100.0,
+    240.0
+   ],
+   "wiki": [
+    84.0,
+    204.0
+   ]
+  },
+  {
+   "champion": "Rell",
+   "ability": "R",
+   "name": "Magnet Storm",
+   "field": "base:Magic Damage Per Tick",
+   "meraki": [
+    15.0,
+    35.0
+   ],
+   "wiki": [
+    18.75,
+    43.75
+   ]
+  },
+  {
+   "champion": "Rell",
+   "ability": "R",
+   "name": "Magnet Storm",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    120.0,
+    280.0
+   ],
+   "wiki": [
+    150.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Rumble",
+   "ability": "R",
+   "name": "The Equalizer",
+   "field": "base:Maximum Magic Damage",
+   "meraki": [
+    700.0,
+    1400.0
+   ],
+   "wiki": [
+    600.0,
+    1400.0
+   ]
+  },
+  {
+   "champion": "Samira",
+   "ability": "Q",
+   "name": "Flair",
+   "field": "base:Physical Damage",
+   "meraki": [
+    5.0,
+    25.0
+   ],
+   "wiki": [
+    0.0,
+    20.0
+   ]
+  },
+  {
+   "champion": "Samira",
+   "ability": "R",
+   "name": "Inferno Trigger",
+   "field": "base:Physical Damage Per Shot",
+   "meraki": [
+    5.0,
+    25.0
+   ],
+   "wiki": [
+    20.0,
+    60.0
+   ]
+  },
+  {
+   "champion": "Samira",
+   "ability": "R",
+   "name": "Inferno Trigger",
+   "field": "base:Total Physical Damage",
+   "meraki": [
+    50.0,
+    250.0
+   ],
+   "wiki": [
+    200.0,
+    600.0
+   ]
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "Q",
+   "name": "Arctic Assault",
+   "field": "cooldown",
+   "meraki": [
+    19.0,
+    13.0
+   ],
+   "wiki": [
+    18.0,
+    12.0
+   ]
+  },
+  {
+   "champion": "Sejuani",
+   "ability": "R",
+   "name": "Glacial Prison",
+   "field": "cooldown",
+   "meraki": [
+    130.0,
+    90.0
+   ],
+   "wiki": [
+    120.0,
+    90.0
+   ]
+  },
+  {
+   "champion": "Senna",
+   "ability": "Q",
+   "name": "Piercing Darkness",
+   "field": "base:Physical Damage",
+   "meraki": [
+    30.0,
+    150.0
+   ],
+   "wiki": [
+    30.0,
+    130.0
+   ]
+  },
+  {
+   "champion": "Senna",
+   "ability": "W",
+   "name": "Last Embrace",
+   "field": "base:Physical Damage",
+   "meraki": [
+    70.0,
+    250.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Seraphine",
+   "ability": "E",
+   "name": "Beat Drop",
+   "field": "cooldown",
+   "meraki": [
+    11.0,
+    9.0
+   ],
+   "wiki": [
+    11.0,
+    11.0
+   ]
+  },
+  {
+   "champion": "Shaco",
+   "ability": "Q",
+   "name": "Deceive",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    10.0
+   ],
+   "wiki": [
+    13.0,
+    11.0
+   ]
+  },
+  {
+   "champion": "Shyvana",
+   "ability": "E",
+   "name": "Flame Breath",
+   "field": "base:Increased Damage",
+   "meraki": [
+    160.0,
+    334.11764705882354
+   ],
+   "wiki": [
+    85.0,
+    245.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     92.6471,
+     96.1765,
+     99.7059,
+     103.2353,
+     106.7647,
+     110.2941,
+     113.8235,
+     117.3529,
+     120.8824,
+     124.4118,
+     127.9412,
+     131.4706,
+     135.0
+    ]
+   }
+  },
+  {
+   "champion": "Sion",
+   "ability": "Q",
+   "name": "Decimating Smash",
+   "field": "base:Minimum Physical Damage",
+   "meraki": [
+    40.0,
+    120.0
+   ],
+   "wiki": [
+    30.0,
+    90.0
+   ]
+  },
+  {
+   "champion": "Skarner",
+   "ability": "Q",
+   "name": "Shattered Earth",
+   "field": "cooldown",
+   "meraki": [
+    13.0,
+    7.0
+   ],
+   "wiki": [
+    8.0,
+    3.0
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "Q",
+   "name": "Super Scorcher Breath",
+   "field": "base:Physical Damage",
+   "meraki": [
+    65.0,
+    125.0
+   ],
+   "wiki": [
+    60.0,
+    100.0
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "R",
+   "name": "MMOOOMMMM!",
+   "field": "base:Physical Damage",
+   "meraki": [
+    200.0,
+    400.0
+   ],
+   "wiki": [
+    150.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Smolder",
+   "ability": "R",
+   "name": "MMOOOMMMM!",
+   "field": "base:Increased Physical Damage",
+   "meraki": [
+    300.0,
+    600.0
+   ],
+   "wiki": [
+    225.0,
+    525.0
+   ]
+  },
+  {
+   "champion": "Swain",
+   "ability": "E",
+   "name": "Nevermove",
+   "field": "base:Magic Damage",
+   "meraki": [
+    80.0,
+    240.0
+   ],
+   "wiki": [
+    90.0,
+    250.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "Q",
+   "name": "Dark Sphere",
+   "field": "base:Magic Damage",
+   "meraki": [
+    75.0,
+    215.0
+   ],
+   "wiki": [
+    90.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    8.0
+   ],
+   "wiki": [
+    13.0,
+    9.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "field": "base:Magic Damage",
+   "meraki": [
+    70.0,
+    210.0
+   ],
+   "wiki": [
+    70.0,
+    190.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "W",
+   "name": "Force of Will",
+   "field": "base:Total Mixed Damage",
+   "meraki": [
+    78.4,
+    235.2
+   ],
+   "wiki": [
+    78.4,
+    212.8
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "E",
+   "name": "Scatter the Weak",
+   "field": "cooldown",
+   "meraki": [
+    17.0,
+    17.0
+   ],
+   "wiki": [
+    15.0,
+    15.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "R",
+   "name": "Unleashed Power",
+   "field": "base:Magic Damage per Sphere",
+   "meraki": [
+    90.0,
+    170.0
+   ],
+   "wiki": [
+    80.0,
+    160.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "R",
+   "name": "Unleashed Power",
+   "field": "base:Minimum Magic Damage",
+   "meraki": [
+    270.0,
+    510.0
+   ],
+   "wiki": [
+    240.0,
+    480.0
+   ]
+  },
+  {
+   "champion": "Syndra",
+   "ability": "R",
+   "name": "Unleashed Power",
+   "field": "base:Maximum Magic Damage",
+   "meraki": [
+    630.0,
+    1190.0
+   ],
+   "wiki": [
+    560.0,
+    1120.0
+   ]
+  },
+  {
+   "champion": "TahmKench",
+   "ability": "Q",
+   "name": "Tongue Lash",
+   "field": "base:Magic Damage",
+   "meraki": [
+    81.0,
+    270.88235294117646
+   ],
+   "wiki": [
+    75.0,
+    255.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     18.3529,
+     20.8235,
+     23.2941,
+     25.7647,
+     28.2353,
+     30.7059,
+     33.1765,
+     35.6471,
+     38.1176,
+     40.5882,
+     43.0588,
+     45.5294,
+     48.0
+    ]
+   }
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "field": "base:Magic Damage",
+   "meraki": [
+    56.0,
+    130.0
+   ],
+   "wiki": [
+    55.0,
+    125.0
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "field": "base:Reduced Damage",
+   "meraki": [
+    22.4,
+    52.0
+   ],
+   "wiki": [
+    22.0,
+    50.0
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    145.6,
+    338.0
+   ],
+   "wiki": [
+    143.0,
+    325.0
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "Q",
+   "name": "Threaded Volley",
+   "field": "base:Empowered Damage",
+   "meraki": [
+    100.8,
+    234.0
+   ],
+   "wiki": [
+    99.0,
+    225.0
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "E",
+   "name": "Unraveled Earth",
+   "field": "base:Detonation Magic Damage",
+   "meraki": [
+    25.0,
+    105.0
+   ],
+   "wiki": [
+    25.0,
+    85.0
+   ]
+  },
+  {
+   "champion": "Taliyah",
+   "ability": "E",
+   "name": "Unraveled Earth",
+   "field": "base:Total Maximum Detonation Damage",
+   "meraki": [
+    62.5,
+    262.5
+   ],
+   "wiki": [
+    62.5,
+    212.5
+   ]
+  },
+  {
+   "champion": "Thresh",
+   "ability": "E",
+   "name": "Flay",
+   "field": "base:Magic Damage",
+   "meraki": [
+    75.0,
+    255.0
+   ],
+   "wiki": [
+    65.0,
+    245.0
+   ]
+  },
+  {
+   "champion": "Tristana",
+   "ability": "E",
+   "name": "Explosive Charge",
+   "field": "base:Minimum Physical Damage",
+   "meraki": [
+    60.0,
+    100.0
+   ],
+   "wiki": [
+    60.0,
+    160.0
+   ]
+  },
+  {
+   "champion": "Trundle",
+   "ability": "W",
+   "name": "Frozen Domain",
+   "field": "cooldown",
+   "meraki": [
+    16.0,
+    12.0
+   ],
+   "wiki": [
+    18.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Tryndamere",
+   "ability": "E",
+   "name": "Spinning Slash",
+   "field": "base:Physical Damage",
+   "meraki": [
+    75.0,
+    195.0
+   ],
+   "wiki": [
+    80.0,
+    240.0
+   ]
+  },
+  {
+   "champion": "Udyr",
+   "ability": "Q",
+   "name": "Wilding Claw",
+   "field": "base:Bonus Physical Damage On-Hit",
+   "meraki": [
+    5.0,
+    35.0
+   ],
+   "wiki": [
+    6.0,
+    36.0
+   ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "base:Minimum Physical Damage",
+   "meraki": [
+    60.0,
+    246.67
+   ],
+   "wiki": [
+    53.333333333333336,
+    240.0
+   ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "base:Maximum Physical Damage",
+   "meraki": [
+    90.0,
+    370.0
+   ],
+   "wiki": [
+    80.0,
+    360.0
+   ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "base:Minimum Reduced Damage",
+   "meraki": [
+    19.8,
+    81.4
+   ],
+   "wiki": [
+    17.6,
+    79.2
+   ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "Q",
+   "name": "Piercing Arrow",
+   "field": "base:Maximum Reduced Damage",
+   "meraki": [
+    29.7,
+    122.1
+   ],
+   "wiki": [
+    26.400000000000002,
+    118.80000000000001
+   ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "W",
+   "name": "Blighted Quiver",
+   "field": "base:Bonus Magic Damage",
+   "meraki": [
+    6.0,
+    30.0
+   ],
+   "wiki": [
+    4.0,
+    40.0
+   ]
+  },
+  {
+   "champion": "Varus",
+   "ability": "E",
+   "name": "Hail of Arrows",
+   "field": "base:Physical Damage",
+   "meraki": [
+    60.0,
+    220.0
+   ],
+   "wiki": [
+    60.0,
+    180.0
+   ]
+  },
+  {
+   "champion": "Vayne",
+   "ability": "W",
+   "name": "Silver Bolts",
+   "field": "base:Minimum Bonus Damage",
+   "meraki": [
+    50.0,
+    110.0
+   ],
+   "wiki": [
+    40.0,
+    100.0
+   ]
+  },
+  {
+   "champion": "Veigar",
+   "ability": "R",
+   "name": "Primordial Burst",
+   "field": "cooldown",
+   "meraki": [
+    100.0,
+    60.0
+   ],
+   "wiki": [
+    120.0,
+    60.0
+   ]
+  },
+  {
+   "champion": "Velkoz",
+   "ability": "E",
+   "name": "Tectonic Disruption",
+   "field": "cooldown",
+   "meraki": [
+    14.0,
+    12.0
+   ],
+   "wiki": [
+    12.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Velkoz",
+   "ability": "R",
+   "name": "Life Form Disintegration Ray",
+   "field": "base:Damage Per Tick",
+   "meraki": [
+    34.62,
+    61.54
+   ],
+   "wiki": [
+    34.61538461538461,
+    71.15384615384615
+   ]
+  },
+  {
+   "champion": "Velkoz",
+   "ability": "R",
+   "name": "Life Form Disintegration Ray",
+   "field": "base:Maximum Damage",
+   "meraki": [
+    450.0,
+    800.0
+   ],
+   "wiki": [
+    450.0,
+    925.0
+   ]
+  },
+  {
+   "champion": "Vex",
+   "ability": "E",
+   "name": "Looming Darkness",
+   "field": "cooldown",
+   "meraki": [
+    13.0,
+    13.0
+   ],
+   "wiki": [
+    12.0,
+    12.0
+   ]
+  },
+  {
+   "champion": "Volibear",
+   "ability": "Q",
+   "name": "Thundering Smash",
+   "field": "cooldown",
+   "meraki": [
+    14.0,
+    10.0
+   ],
+   "wiki": [
+    12.0,
+    10.0
+   ]
+  },
+  {
+   "champion": "Volibear",
+   "ability": "Q",
+   "name": "Thundering Smash",
+   "field": "base:Bonus Physical Damage",
+   "meraki": [
+    10.0,
+    90.0
+   ],
+   "wiki": [
+    10.0,
+    50.0
+   ]
+  },
+  {
+   "champion": "Volibear",
+   "ability": "E",
+   "name": "Sky Splitter",
+   "field": "cooldown",
+   "meraki": [
+    14.0,
+    14.0
+   ],
+   "wiki": [
+    16.0,
+    16.0
+   ]
+  },
+  {
+   "champion": "Xayah",
+   "ability": "W",
+   "name": "Deadly Plumage",
+   "field": "cooldown",
+   "meraki": [
+    20.0,
+    16.0
+   ],
+   "wiki": [
+    18.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Xayah",
+   "ability": "E",
+   "name": "Bladecaller",
+   "field": "base:Physical Damage Per Feather",
+   "meraki": [
+    55.0,
+    95.0
+   ],
+   "wiki": [
+    50.0,
+    110.0
+   ]
+  },
+  {
+   "champion": "Xerath",
+   "ability": "Q",
+   "name": "Arcanopulse",
+   "field": "base:Magic Damage",
+   "meraki": [
+    75.0,
+    235.0
+   ],
+   "wiki": [
+    70.0,
+    230.0
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "Q",
+   "name": "Three Talon Strike",
+   "field": "base:Bonus Physical Damage",
+   "meraki": [
+    20.0,
+    80.0
+   ],
+   "wiki": [
+    15.0,
+    75.0
+   ]
+  },
+  {
+   "champion": "XinZhao",
+   "ability": "Q",
+   "name": "Three Talon Strike",
+   "field": "base:Total Bonus Physical Damage",
+   "meraki": [
+    60.0,
+    240.0
+   ],
+   "wiki": [
+    45.0,
+    225.0
+   ]
+  },
+  {
+   "champion": "Yone",
+   "ability": "Q",
+   "name": "Mortal Steel",
+   "field": "base:Physical Damage",
+   "meraki": [
+    20.0,
+    120.0
+   ],
+   "wiki": [
+    25.0,
+    125.0
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "field": "base:Initial Magic Damage",
+   "meraki": [
+    5.0,
+    105.0
+   ],
+   "wiki": [
+    55.0,
+    215.0
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "field": "base:Linger Magic Damage per Tick",
+   "meraki": [
+    1.25,
+    16.25
+   ],
+   "wiki": [
+    8.25,
+    32.25
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "W",
+   "name": "Arc of Judgment",
+   "field": "base:Total Expanded Damage",
+   "meraki": [
+    5.0,
+    65.0
+   ],
+   "wiki": [
+    33.0,
+    129.0
+   ]
+  },
+  {
+   "champion": "Yunara",
+   "ability": "E",
+   "name": "Kanmei's Steps",
+   "field": "cooldown",
+   "meraki": [
+    7.5,
+    7.5
+   ],
+   "wiki": [
+    9.0,
+    9.0
+   ]
+  },
+  {
+   "champion": "Yuumi",
+   "ability": "Q",
+   "name": "Prowling Projectile",
+   "field": "base:Increased Damage",
+   "meraki": [
+    80.0,
+    380.0
+   ],
+   "wiki": [
+    80.0,
+    355.0
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "Q",
+   "name": "Stretching Strikes",
+   "field": "base:Magic Damage",
+   "meraki": [
+    40.0,
+    100.0
+   ],
+   "wiki": [
+    60.0,
+    180.0
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "Q",
+   "name": "Stretching Strikes",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    80.0,
+    200.0
+   ],
+   "wiki": [
+    120.0,
+    360.0
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "E",
+   "name": "Elastic Slingshot",
+   "field": "cooldown",
+   "meraki": [
+    22.0,
+    10.0
+   ],
+   "wiki": [
+    21.0,
+    9.0
+   ]
+  },
+  {
+   "champion": "Zac",
+   "ability": "R",
+   "name": "Let's Bounce!",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    350.0,
+    700.0
+   ],
+   "wiki": [
+    300.0,
+    650.0
+   ]
+  },
+  {
+   "champion": "Zed",
+   "ability": "E",
+   "name": "Shadow Slash",
+   "field": "base:Physical Damage",
+   "meraki": [
+    70.0,
+    170.0
+   ],
+   "wiki": [
+    70.0,
+    160.0
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "Q",
+   "name": "Burst Fire",
+   "field": "base:Total Physical Damage",
+   "meraki": [
+    15.0,
+    23.0
+   ],
+   "wiki": [
+    22.0,
+    38.0
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "Q",
+   "name": "Burst Fire",
+   "field": "base:Physical Damage per Hit",
+   "meraki": [
+    2.14,
+    3.29
+   ],
+   "wiki": [
+    3.142857142857143,
+    5.428571428571429
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "E",
+   "name": "Spark Surge",
+   "field": "cooldown",
+   "meraki": [
+    22.0,
+    18.0
+   ],
+   "wiki": [
+    24.0,
+    18.0
+   ]
+  },
+  {
+   "champion": "Zeri",
+   "ability": "R",
+   "name": "Lightning Crash",
+   "field": "base:Magic Damage",
+   "meraki": [
+    200.0,
+    400.0
+   ],
+   "wiki": [
+    150.0,
+    350.0
+   ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "Q",
+   "name": "Paddle Star!",
+   "field": "base:Minimum Magic Damage",
+   "meraki": [
+    52.0,
+    183.2941176470588
+   ],
+   "wiki": [
+    50.0,
+    170.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     16.1176,
+     18.9412,
+     21.7647,
+     24.5882,
+     27.4118,
+     30.2353,
+     33.0588,
+     35.8824,
+     38.7059,
+     41.5294,
+     44.3529,
+     47.1765,
+     50.0
+    ]
+   }
+  },
+  {
+   "champion": "Zoe",
+   "ability": "Q",
+   "name": "Paddle Star!",
+   "field": "base:Maximum Magic Damage",
+   "meraki": [
+    130.0,
+    458.2352941176471
+   ],
+   "wiki": [
+    125.0,
+    425.0
+   ],
+   "SHAPE_SUSPECT": {
+    "reason": "concatenated_per_level_tail",
+    "kept_ranks": 5,
+    "stored_len": 18,
+    "cooldown_ranks": 5,
+    "dropped_tail": [
+     40.2941,
+     47.3529,
+     54.4118,
+     61.4706,
+     68.5294,
+     75.5882,
+     82.6471,
+     89.7059,
+     96.7647,
+     103.8235,
+     110.8824,
+     117.9412,
+     125.0
+    ]
+   }
+  },
+  {
+   "champion": "Zoe",
+   "ability": "W",
+   "name": "Spell Thief",
+   "field": "base:Magic Damage Per Bolt",
+   "meraki": [
+    20.0,
+    60.0
+   ],
+   "wiki": [
+    15.0,
+    55.0
+   ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "W",
+   "name": "Spell Thief",
+   "field": "base:Total Magic Damage",
+   "meraki": [
+    60.0,
+    180.0
+   ],
+   "wiki": [
+    45.0,
+    165.0
+   ]
+  },
+  {
+   "champion": "Zoe",
+   "ability": "E",
+   "name": "Sleepy Trouble Bubble",
+   "field": "cooldown",
+   "meraki": [
+    16.0,
+    12.0
+   ],
+   "wiki": [
+    18.0,
+    14.0
+   ]
+  },
+  {
+   "champion": "Zyra",
+   "ability": "E",
+   "name": "Grasping Roots",
+   "field": "cooldown",
+   "meraki": [
+    12.0,
+    12.0
+   ],
+   "wiki": [
+    11.0,
+    11.0
+   ]
+  },
+  {
+   "champion": "Zyra",
+   "ability": "R",
+   "name": "Stranglethorns",
+   "field": "base:Magic Damage",
+   "meraki": [
+    180.0,
+    350.0
+   ],
+   "wiki": [
+    200.0,
+    400.0
+   ]
+  }
+ ]
+}
