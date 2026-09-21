@@ -72,6 +72,15 @@ scorer that never reads ability data on their axis (unreachable by
 construction) and 26 are reachable but move no order
 (``DS_ABILITY_SHAPING_NOTES.md:466-471``). Adding them would be authored risk
 with zero measured output effect.
+
+RM-480 RATIO LIFT (ENGINE 1.283.0). The 16.18.1 ratio-aware re-sweep of the
+RM-81 detector surfaced drift that lives in the RATIO terms (Poppy Q's 100 ->
+75 pct bonus AD moves no base at all), so an entry now names the ``field`` it
+corrects: ``base`` (the default, so the six rows above are unchanged) or any
+ratio key the detector measures (``_ALLOWED_FIELDS``). Seven champions were
+added from ``data/daemon_slayer/16.18.1/ability_staleness.json`` - their
+interior ranks are wiki-MEASURED, not ramp-inferred (see the block comment on
+those entries). Guarding became all-or-nothing per form. Still DEFAULT-OFF.
 """
 from __future__ import annotations
 
@@ -99,15 +108,42 @@ def _ramp(low: float, high: float, count: int) -> tuple[float, ...]:
     return tuple(round(low + (high - low) * i / span, 6) for i in range(count))
 
 
+# RM-480: the per-rank fields an entry may override. ``base`` plus every ratio
+# key the RM-81 staleness detector can measure
+# (``tools/ds_wiki_staleness_check._RATIO_KEYS``; a DS test pins the two sets
+# equal, and pins each name to a real ``DamageBlock`` field). Anything else is
+# refused at construction, i.e. at import of this module.
+_ALLOWED_FIELDS: tuple[str, ...] = (
+    "base",
+    "ap_pct",
+    "total_ad_pct",
+    "bonus_ad_pct",
+    "target_max_hp_pct",
+    "target_missing_hp_pct",
+    "target_current_hp_pct",
+    "target_bonus_hp_pct",
+    "caster_max_hp_pct",
+    "caster_bonus_hp_pct",
+    "bonus_armor_pct",
+    "bonus_mr_pct",
+    "caster_max_mp_pct",
+    "caster_bonus_mp_pct",
+)
+
+
 @dataclass(frozen=True)
 class AbilityBaseOverride:
-    """One corrected per-rank ``base`` series for one named damage block.
+    """One corrected per-rank series for one field of one named damage block.
 
     ``attribute`` selects the block by its ``DamageBlock.attribute`` string
-    (never by position - a Meraki re-extract can reorder blocks). ``stale`` is
-    the series currently on disk and acts as the apply-guard; ``corrected`` is
-    the wiki-true series. ``source`` MUST cite the ``DS_ABILITY_SHAPING_NOTES``
-    line the numbers came from.
+    (never by position - a Meraki re-extract can reorder blocks; with a
+    duplicated attribute the FIRST block wins, the same rule the staleness
+    detector uses). ``field`` names the ``DamageBlock`` field corrected -
+    ``base`` (the original A-03 shape) or, since RM-480, a per-rank ratio key.
+    ``stale`` is the series currently on disk and acts as the apply-guard;
+    ``corrected`` is the wiki-true series. ``source`` MUST cite where the
+    numbers came from (the ``DS_ABILITY_SHAPING_NOTES`` line for the A-03 six,
+    ``ability_staleness.json`` for the RM-480 seven).
     """
 
     attribute: str
@@ -115,7 +151,22 @@ class AbilityBaseOverride:
     corrected: tuple[float, ...]
     source: str
     note: str
+    field: str = "base"
 
+    def __post_init__(self) -> None:
+        if self.field not in _ALLOWED_FIELDS:
+            raise ValueError(
+                f"AbilityBaseOverride field {self.field!r} is not one of "
+                f"{_ALLOWED_FIELDS}"
+            )
+        if not self.stale or len(self.stale) != len(self.corrected):
+            raise ValueError(
+                f"AbilityBaseOverride {self.attribute!r}.{self.field}: stale and "
+                "corrected must be non-empty and the same length"
+            )
+
+
+_RM480_SRC = "data/daemon_slayer/16.18.1/ability_staleness.json"
 
 # (champion_id, key, form_index) -> the block overrides for that form.
 #
@@ -207,7 +258,190 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             note="Spirit Rush: base 60 : 120 -> 75 : 175 (3 ranks); 45.8 pct drift, moves ranked item 37",
         ),
     ),
+    # ---------------------------------------------------------------- RM-480
+    # The seven HIGH rows of the 16.18.1 ratio-aware RM-81 sweep. ``stale`` is
+    # ``data/daemon_slayer/16.18.1/champion_abilities.json`` verbatim; the
+    # endpoints of ``corrected`` are the ``wiki`` column of
+    # ``ability_staleness.json``, and EVERY interior rank is WIKI-MEASURED: the
+    # per-rank lists below are the ones wiki.leagueoflegends.com rendered on
+    # 2026-09-21 (read-only fetch), not a ramp computed here. They do equal the
+    # ``{{ap|X to Y}}`` linear ramp of the cached wikitext in
+    # ``wiki_ability_stats.json``, which is corroboration, not the source.
+    ("Poppy", "Q", 0): (
+        AbilityBaseOverride(
+            attribute="Physical Damage",
+            field="bonus_ad_pct",
+            stale=(100.0,) * 5,
+            corrected=(75.0,) * 5,
+            source=_RM480_SRC + " (ratio:Physical Damage:bonus_ad_pct)",
+            note="Hammer Shock: 100 -> 75 pct bonus AD, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Physical Damage",
+            field="target_max_hp_pct",
+            stale=(9.0,) * 5,
+            corrected=(7.0, 7.5, 8.0, 8.5, 9.0),
+            source=_RM480_SRC + " (ratio:Physical Damage:target_max_hp_pct)",
+            note="Hammer Shock: flat 9 -> 7/7.5/8/8.5/9 pct max HP, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Physical Damage",
+            field="bonus_ad_pct",
+            stale=(200.0,) * 5,
+            corrected=(150.0,) * 5,
+            source=_RM480_SRC + " (ratio:Total Physical Damage:bonus_ad_pct)",
+            note="Hammer Shock total (two hits): 200 -> 150 pct bonus AD, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Physical Damage",
+            field="target_max_hp_pct",
+            stale=(18.0,) * 5,
+            corrected=(14.0, 15.0, 16.0, 17.0, 18.0),
+            source=_RM480_SRC + " (ratio:Total Physical Damage:target_max_hp_pct)",
+            note="Hammer Shock total: flat 18 -> 14/15/16/17/18 pct max HP, wiki-measured",
+        ),
+    ),
+    # Form 0 (Edge of Ixtal) only. Form 1 (Elemental Wrath) carries the same
+    # stale Physical/Reduced blocks plus Increased/Subsequent blocks the report
+    # has no row for - deliberately left for a follow-up, not guessed at here.
+    ("Qiyana", "Q", 0): (
+        AbilityBaseOverride(
+            attribute="Physical Damage",
+            stale=(60.0, 90.0, 120.0, 150.0, 180.0),
+            corrected=(80.0, 110.0, 140.0, 170.0, 200.0),
+            source=_RM480_SRC + " (base:Physical Damage)",
+            note="Edge of Ixtal: base 60 : 180 -> 80 : 200, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Reduced Damage",
+            stale=(45.0, 67.5, 90.0, 112.5, 135.0),
+            corrected=(60.0, 82.5, 105.0, 127.5, 150.0),
+            source=_RM480_SRC + " (base:Reduced Damage)",
+            note="Edge of Ixtal reduced: base 45 : 135 -> 60 : 150, wiki-measured",
+        ),
+    ),
+    ("Thresh", "E", 0): (
+        AbilityBaseOverride(
+            attribute="Magic Damage",
+            stale=(75.0, 120.0, 165.0, 210.0, 255.0),
+            corrected=(65.0, 110.0, 155.0, 200.0, 245.0),
+            source=_RM480_SRC + " (base:Magic Damage)",
+            note="Flay: base 75 : 255 -> 65 : 245 (V26.17), wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Magic Damage",
+            field="ap_pct",
+            stale=(70.0,) * 5,
+            corrected=(60.0,) * 5,
+            source=_RM480_SRC + " (ratio:Magic Damage:ap_pct)",
+            note="Flay: 70 -> 60 pct AP (V26.17), wiki-measured",
+        ),
+    ),
+    # The report's Kennen R cooldown row ([120, 120]) is out of scope here.
+    ("Kennen", "R", 0): (
+        AbilityBaseOverride(
+            attribute="Magic Damage Per Bolt",
+            stale=(40.0, 75.0, 110.0),
+            corrected=(40.0, 80.0, 120.0),
+            source=_RM480_SRC + " (base:Magic Damage Per Bolt)",
+            note="Slicing Maelstrom bolt: base 40 : 110 -> 40 : 120, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Magic Damage Per Bolt",
+            field="ap_pct",
+            stale=(22.5,) * 3,
+            corrected=(25.0,) * 3,
+            source=_RM480_SRC + " (ratio:Magic Damage Per Bolt:ap_pct)",
+            note="Slicing Maelstrom bolt: 22.5 -> 25 pct AP, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Single-Target Damage",
+            stale=(300.0, 562.5, 825.0),
+            corrected=(300.0, 600.0, 900.0),
+            source=_RM480_SRC + " (base:Total Single-Target Damage)",
+            note="Slicing Maelstrom total (7.5 bolts): base 300 : 825 -> 300 : 900, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Single-Target Damage",
+            field="ap_pct",
+            stale=(168.75,) * 3,
+            corrected=(187.5,) * 3,
+            source=_RM480_SRC + " (ratio:Total Single-Target Damage:ap_pct)",
+            note="Slicing Maelstrom total: 168.75 -> 187.5 pct AP, wiki-measured",
+        ),
+    ),
+    ("Chogath", "E", 0): (
+        AbilityBaseOverride(
+            attribute="Magic Damage",
+            stale=(20.0, 40.0, 60.0, 80.0, 100.0),
+            corrected=(30.0, 50.0, 70.0, 90.0, 110.0),
+            source=_RM480_SRC + " (base:Magic Damage)",
+            note="Vorpal Spikes: base 20 : 100 -> 30 : 110, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Magic Damage",
+            stale=(60.0, 120.0, 180.0, 240.0, 300.0),
+            corrected=(90.0, 150.0, 210.0, 270.0, 330.0),
+            source=_RM480_SRC + " (base:Total Magic Damage)",
+            note="Vorpal Spikes total: base 60 : 300 -> 90 : 330, wiki-measured",
+        ),
+    ),
+    # Bonus Magic Damage block only. The report's Total Enhanced Damage row
+    # carries the BONUS series as its wiki column (a detector label collision),
+    # so it is NOT a trustworthy target and that block is left alone.
+    ("Cassiopeia", "E", 0): (
+        AbilityBaseOverride(
+            attribute="Bonus Magic Damage",
+            stale=(20.0, 40.0, 60.0, 80.0, 100.0),
+            corrected=(20.0, 45.0, 70.0, 95.0, 120.0),
+            source=_RM480_SRC + " (base:Bonus Magic Damage)",
+            note="Twin Fang bonus: base 20 : 100 -> 20 : 120, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Bonus Magic Damage",
+            field="ap_pct",
+            stale=(55.0,) * 5,
+            corrected=(45.0,) * 5,
+            source=_RM480_SRC + " (ratio:Bonus Magic Damage:ap_pct)",
+            note="Twin Fang bonus: 55 -> 45 pct AP, wiki-measured",
+        ),
+    ),
+    # Mimic: Distortion is damage block index 3. The default
+    # ``block_strategy="first"`` reads block 0 (Orb Magic Damage), so this entry
+    # does NOT move default scoring. The report's other five LeBlanc R base rows
+    # (Orb / Mark / Total / Application / Fracture) are out of scope here.
+    ("Leblanc", "R", 0): (
+        AbilityBaseOverride(
+            attribute="Magic Damage",
+            stale=(150.0, 300.0, 450.0),
+            corrected=(150.0, 315.0, 480.0),
+            source=_RM480_SRC + " (base:Magic Damage)",
+            note="Mimic: Distortion: base 150 : 450 -> 150 : 480, wiki-measured; block 3, not read by default scoring",
+        ),
+        AbilityBaseOverride(
+            attribute="Magic Damage",
+            field="ap_pct",
+            stale=(75.0,) * 3,
+            corrected=(90.0,) * 3,
+            source=_RM480_SRC + " (ratio:Magic Damage:ap_pct)",
+            note="Mimic: Distortion: 75 -> 90 pct AP, wiki-measured; block 3, not read by default scoring",
+        ),
+    ),
 }
+
+
+def _validate_registry() -> None:
+    """Refuse an ambiguous registry at import: one (attribute, field) per form."""
+    for ident, entries in _ABILITY_BASE_OVERRIDES.items():
+        seen: set[tuple[str, str]] = set()
+        for entry in entries:
+            pair = (entry.attribute, entry.field)
+            if pair in seen:
+                raise ValueError(f"duplicate override {pair} for {ident}")
+            seen.add(pair)
+
+
+_validate_registry()
 
 
 def _matches(base: tuple[float, ...] | None, want: tuple[float, ...]) -> bool:
@@ -218,45 +452,52 @@ def _matches(base: tuple[float, ...] | None, want: tuple[float, ...]) -> bool:
 
 
 def apply_base_overrides(cid: str, key: str, form):
-    """Return ``form`` with its registered stale ``base`` heads corrected.
+    """Return ``form`` with its registered stale per-rank fields corrected.
 
-    Returns the SAME object when ``(cid, key, form.form_index)`` is not
-    registered, when the named block is absent, or when the block no longer
-    matches the entry's ``stale`` series (the anti-double-correction guard -
-    logged at WARNING, because it means either the extract or the CDragon
-    sidecar has moved and the entry needs re-verifying against the wiki).
+    Each entry corrects ``entry.field`` (``base`` or, since RM-480, a ratio
+    key) on the first block whose ``attribute`` matches.
 
-    Only the leading ``len(corrected)`` elements are replaced; any trailing
-    elements (the concatenated per-level tail three of the six carry) are kept
-    verbatim, so the array length is invariant.
+    ALL-OR-NOTHING per form. Every entry is guarded first; if ANY entry's block
+    is absent or no longer matches its ``stale`` series (the
+    anti-double-correction guard), the WHOLE form is returned untouched and a
+    WARNING is logged - a half-applied correction (say a new ratio on an old
+    base) would be a number neither source ever published. For the A-03
+    single-entry rows this is exactly the old behaviour.
+
+    Returns the SAME object when nothing applies. Only the leading
+    ``len(corrected)`` elements are replaced; any trailing elements (the
+    concatenated per-level tail three of the six carry) are kept verbatim, so
+    the array length is invariant.
     """
     entries = _ABILITY_BASE_OVERRIDES.get((cid, key, form.form_index))
     if not entries:
         return form
     blocks = list(form.damage_blocks)
-    changed = False
+    plan: list[tuple[int, AbilityBaseOverride]] = []
     for entry in entries:
-        for i, block in enumerate(blocks):
-            if block.attribute != entry.attribute:
-                continue
-            if not _matches(block.base, entry.stale):
-                _LOG.warning(
-                    "RM-81 base override for %s %s %r no longer matches the "
-                    "extract (on disk %r, expected stale %r) - SKIPPED. "
-                    "Re-verify the entry against %s.",
-                    cid,
-                    key,
-                    entry.attribute,
-                    None if block.base is None else block.base[: len(entry.stale)],
-                    entry.stale,
-                    entry.source,
-                )
-                break
-            assert block.base is not None  # guaranteed by _matches
-            new_base = entry.corrected + tuple(block.base[len(entry.corrected):])
-            blocks[i] = replace(block, base=new_base)
-            changed = True
-            break
-    if not changed:
-        return form
+        idx = next(
+            (i for i, b in enumerate(blocks) if b.attribute == entry.attribute),
+            None,
+        )
+        current = None if idx is None else getattr(blocks[idx], entry.field)
+        if idx is None or not _matches(current, entry.stale):
+            _LOG.warning(
+                "RM-81 override for %s %s %r.%s no longer matches the extract "
+                "(on disk %r, expected stale %r) - whole form SKIPPED. "
+                "Re-verify the entry against %s.",
+                cid,
+                key,
+                entry.attribute,
+                entry.field,
+                None if current is None else tuple(current[: len(entry.stale)]),
+                entry.stale,
+                entry.source,
+            )
+            return form
+        plan.append((idx, entry))
+    for idx, entry in plan:
+        block = blocks[idx]
+        current = getattr(block, entry.field)
+        new_vals = entry.corrected + tuple(current[len(entry.corrected):])
+        blocks[idx] = replace(block, **{entry.field: new_vals})
     return replace(form, damage_blocks=tuple(blocks))
