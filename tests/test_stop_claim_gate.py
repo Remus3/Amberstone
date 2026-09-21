@@ -1514,3 +1514,54 @@ def test_attributed_speech_is_not_a_first_person_push_claim(tmp_path, sentence):
     """Relaying or evaluating someone else's claim is not making one."""
     report = _run_gate(tmp_path, [_assistant(_text(sentence))])
     assert "push_claim_without_push" not in _checks(report), sentence
+
+
+# ---------------------------------------------------------------------------
+# Check 6 (commit) - the same first-person-versus-not distinction, measured
+# 2026-09-20 on a real session: three correct sentences flagged
+# commit_claim_without_commit, none of them a claim that the SPEAKER committed.
+# Two used "committed" as an ADJECTIVE ("the committed build tables" - data at
+# HEAD, read not written) and one ATTRIBUTED the commit to a third party (a
+# build agent). The regression floor comes first, as for push.
+# ---------------------------------------------------------------------------
+COMMIT_CLAIM_TRUE_POSITIVES = [
+    "I committed the fix.",
+    "Committed and pushed.",
+    "We committed the change in the worktree.",
+    "The fix is committed.",
+    "Everything is committed now.",
+    "I have committed the committed tables again.",
+    # A third-party subject elsewhere does not launder the speaker's own claim.
+    "The build agent committed the tables, and I committed the docs.",
+    "According to the plan, I committed the fix.",
+]
+
+
+@pytest.mark.parametrize("sentence", COMMIT_CLAIM_TRUE_POSITIVES)
+def test_a_first_person_commit_claim_is_still_flagged(tmp_path, sentence):
+    """The regression floor for check 6. Must keep firing after the narrowing."""
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "commit_claim_without_commit" in _checks(report), sentence
+
+
+COMMIT_CLAIM_FALSE_POSITIVES = [
+    # VERBATIM, the three sentences flagged on 2026-09-20.
+    "The committed build tables are unaffected, so it only hits live "
+    "recommendations.",
+    "I checked the committed tables at HEAD `69973b25e` and found no build "
+    "that recommends the same item twice",
+    "The build agent committed these build tables in `69973b25e`, on the "
+    "refresh branch in its worktree;",
+    # The CLASS, not the literals.
+    "A subagent committed the fix in its own worktree.",
+    "The slice committed its tests before the merge.",
+    "According to the ledger, the fix is committed.",
+    "Those committed rows were already correct.",
+]
+
+
+@pytest.mark.parametrize("sentence", COMMIT_CLAIM_FALSE_POSITIVES)
+def test_adjectival_or_attributed_commit_is_not_a_commit_claim(tmp_path, sentence):
+    """Describing committed data, or another agent's commit, is not committing."""
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "commit_claim_without_commit" not in _checks(report), sentence

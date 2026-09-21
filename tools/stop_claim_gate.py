@@ -209,6 +209,34 @@ CLAIM_OWN_ACTION = re.compile(
 CLAIM_FIRST_PERSON_PUSHED = re.compile(
     r"\b(?:I|we)\s+(?:have\s+|has\s+|had\s+|just\s+|already\s+|then\s+|also\s+|"
     r"finally\s+|since\s+|therefore\s+)*push(?:ed)?\b", re.I)
+# Check 6 (commit) carries the same blindness as check 9, measured 2026-09-20:
+# three correct sentences from one session flagged commit_claim_without_commit
+# while none claimed the SPEAKER committed anything -
+#   "The committed build tables are unaffected, ..."        (adjective)
+#   "I checked the committed tables at HEAD ..."            (adjective, a READ)
+#   "The build agent committed these build tables in ..."   (third party)
+# CLAIM_ATTRIBUTION does not reach any of them: it models REPORTING relations,
+# and has no vocabulary for an agent as the grammatical subject. So two narrow
+# per-match exemptions, both vetoed by a first-person commit anywhere in the
+# sentence, so "The build agent committed X, and I committed Y" still flags:
+#
+# (1) ADJECTIVAL - a determiner immediately before "committed" and a following
+#     word that is not a coordinator ("the committed tables"). "committed and
+#     pushed" keeps flagging because "and" is refused as the following word.
+# (2) THIRD-PARTY SUBJECT - an agent-shaped noun or third-person pronoun as the
+#     immediate subject, optionally through an auxiliary or adverb. "session" is
+#     deliberately NOT in the set: "this session committed" is the speaker.
+CLAIM_FIRST_PERSON_COMMITTED = re.compile(
+    r"\b(?:I|we)\s+(?:have\s+|has\s+|had\s+|just\s+|already\s+|then\s+|also\s+|"
+    r"finally\s+|since\s+|therefore\s+)*commit(?:ted)?\b", re.I)
+CLAIM_COMMIT_DETERMINER_LEAD = re.compile(
+    r"\b(?:the|a|an|this|that|these|those|its|their|his|her)\s+$", re.I)
+CLAIM_COMMIT_ADJECTIVE_TAIL = re.compile(
+    r"\s+(?!(?:and|or|to|by|in|on|at|as)\b)[A-Za-z]", re.I)
+CLAIM_COMMIT_THIRD_PARTY_LEAD = re.compile(
+    r"\b(?:agents?|subagents?|slices?|workers?|verifier|merger|lanes?|operator|"
+    r"sibling|they|he|she)\s+(?:(?:has|had|have|already|just|then|also|"
+    r"finally)\s+)*$", re.I)
 CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.I)
 
 # Evidence patterns.
@@ -541,23 +569,46 @@ def audit(ev):
             return False
         return bool(CLAIM_NEGATION.search(sentence[max(0, match.start() - 40):match.start()]))
 
-    def _attributed(sentence, claim_re):
+    def _attributed(sentence, claim_re, first_person=CLAIM_FIRST_PERSON_PUSHED):
         """True when the claim is ATTRIBUTED speech, not the speaker's own.
 
-        See CLAIM_ATTRIBUTION. Scoped to check 9 (push) alone - the shape was
-        measured there and nowhere else, and widening a suppression to a check
+        See CLAIM_ATTRIBUTION. Scoped to check 9 (push) and check 6 (commit),
+        each on MEASURED false positives: push first, then commit on 2026-09-20
+        when three correct sentences from one session (two adjectival "the
+        committed <noun>", one a build agent's commit) were flagged. It is still
+        NOT applied to any other check - widening a suppression to a check
         whose false positives have not been observed is how a guard goes quiet.
+        `first_person` is the per-check veto: a first-person completed action
+        of the check's own verb anywhere in the sentence keeps it a claim.
         """
         match = claim_re.search(sentence)
         if not match:
             return False
-        if CLAIM_FIRST_PERSON_PUSHED.search(sentence):
+        if first_person.search(sentence):
             return False
         lead = sentence[:match.start()]
         if CLAIM_ATTRIBUTION.search(lead):
             return True
         return bool(CLAIM_RELAY_HEAD.search(lead)
                     and not CLAIM_OWN_ACTION.search(lead))
+
+    def _commit_speaker_claim(sentence):
+        """True when some CLAIM_COMMIT match is plausibly the SPEAKER's own
+        commit - i.e. not adjectival and not a third-party subject's. A
+        first-person commit anywhere in the sentence always counts."""
+        if CLAIM_FIRST_PERSON_COMMITTED.search(sentence):
+            return True
+        for match in CLAIM_COMMIT.finditer(sentence):
+            lead = sentence[:match.start()]
+            tail = sentence[match.end():]
+            if (match.group(0).lower() == "committed"
+                    and CLAIM_COMMIT_DETERMINER_LEAD.search(lead)
+                    and CLAIM_COMMIT_ADJECTIVE_TAIL.match(tail)):
+                continue
+            if CLAIM_COMMIT_THIRD_PARTY_LEAD.search(lead):
+                continue
+            return True
+        return False
 
     def flag(check, quote, claimed="", observed=""):
         findings.append({"check": check, "quote": quote[:300],
@@ -645,7 +696,10 @@ def audit(ev):
         if CLAIM_CI.search(sentence) and not probed_ci:
             flag("ci_claim_without_probe", sentence)                       # 4
         if (CLAIM_COMMIT.search(sentence) and not did_commit
-                and not _negated(sentence, CLAIM_COMMIT)):
+                and not _negated(sentence, CLAIM_COMMIT)
+                and _commit_speaker_claim(sentence)
+                and not _attributed(sentence, CLAIM_COMMIT,
+                                    CLAIM_FIRST_PERSON_COMMITTED)):
             flag("commit_claim_without_commit", sentence)                  # 6
         if (CLAIM_PUSH.search(sentence) and not did_push
                 and not _negated(sentence, CLAIM_PUSH)
