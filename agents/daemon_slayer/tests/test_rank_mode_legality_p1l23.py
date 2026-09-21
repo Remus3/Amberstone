@@ -52,6 +52,48 @@ from agents.daemon_slayer.rank import (
 # then derived purely from the snapshot ``maps`` field for the id.
 _LIVE_MODE_MAP = {"SR": "11", "ARAM": "12", "ARENA": "30", "BRAWL": "35"}
 
+# DDragon 16.18.1 DROPPED map keys "21", "33" and "35" (Brawl) from every
+# item's ``maps`` dict, so at 16.18.1 the map-35 pool is empty by DATA, not by
+# a filter bug. The Brawl-pool assertions below are engine-invariant tests of
+# the map filter; they need a catalog that still flags map 35, so they are
+# pinned to the last snapshot that does.
+_BRAWL_MAP35_PATCH = "16.15.1"
+
+
+def _snap_for(mode: str, snap: DataSnapshot, brawl_snap: DataSnapshot) -> DataSnapshot:
+    """BRAWL reads the map-35-carrying snapshot; every other mode the current one.
+
+    Without this, every BRAWL assertion over the current snapshot is VACUOUS at
+    16.18.1 (an empty pool trivially has no offenders and contains nothing).
+    """
+    return brawl_snap if mode == "BRAWL" else snap
+
+
+class BrawlMapDroppedCanaryTests(unittest.TestCase):
+    """Pins the 16.18.1 DATA fact the BRAWL pins above rest on.
+
+    MEASURED 2026-09-20: DDragon map.json itself dropped maps 21 / 33 / 35 at
+    16.17.1, and no item flags map 35 any more, so mode=BRAWL yields an EMPTY
+    pool on the current snapshot. Operationally inert (core.game_snapshot routes
+    Riot Brawl to MODE_UNSUPPORTED and coaches/brawl_coach.py always asks DS for
+    SR), but it is a known regression of the BRAWL mode, not hidden: if Riot
+    restores map 35 this goes red and the _BRAWL_MAP35_PATCH pins should move
+    back to the current snapshot.
+    """
+
+    def test_current_snapshot_has_no_map35_items_and_an_empty_brawl_pool(self) -> None:
+        snap = DataSnapshot.load()
+        flagged = [i for i, r in snap.items.items() if (r.get("maps") or {}).get("35")]
+        self.assertEqual(flagged, [])
+        self.assertEqual(
+            _filter_candidates(snap, "BRAWL", set(), None, False, None), []
+        )
+        # ... while the pinned snapshot still exercises the filter for real.
+        pinned = DataSnapshot.load(patch=_BRAWL_MAP35_PATCH)
+        self.assertGreater(
+            len(_filter_candidates(pinned, "BRAWL", set(), None, False, None)), 50
+        )
+
 
 def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[str]:
     """Expected terminal pool for a map id, computed from source fields.
@@ -152,15 +194,18 @@ class ModeLegalityMatrixTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
+        cls.brawl_snap = DataSnapshot.load(patch=_BRAWL_MAP35_PATCH)
 
     def test_pool_equals_source_field_derived_set_every_mode(self) -> None:
         for mode, map_id in _LIVE_MODE_MAP.items():
-            expected = _source_legal_purchasable_terminal(self.snap, map_id)
+            snap = _snap_for(mode, self.snap, self.brawl_snap)
+            expected = _source_legal_purchasable_terminal(snap, map_id)
             actual = {
                 i for i, _ in _filter_candidates(
-                    self.snap, mode, set(), None, False, None
+                    snap, mode, set(), None, False, None
                 )
             }
+            self.assertTrue(actual, f"mode={mode}: empty pool makes this vacuous")
             # No legal item filtered out (false-negative = silently
             # missing recommendations).
             missing = expected - actual
@@ -185,8 +230,9 @@ class ModeLegalityMatrixTests(unittest.TestCase):
         # every purchasable item (no map filter); post-fix every item in
         # the pool must be maps['35']-legal per its own source record.
         pool = _filter_candidates(
-            self.snap, "BRAWL", set(), None, False, None
+            self.brawl_snap, "BRAWL", set(), None, False, None
         )
+        self.assertTrue(pool, "empty Brawl pool makes this assertion vacuous")
         offenders = [
             (i, r.get("name"))
             for i, r in pool
@@ -224,11 +270,16 @@ class ModeLegalityMatrixTests(unittest.TestCase):
             arena_only, "snapshot has no Arena-only terminal item to test"
         )
         for mode in ("SR", "ARAM", "BRAWL"):
+            # The arena-only item is chosen from the CURRENT snapshot; for BRAWL
+            # it is checked against the map-35 pool, where it must also be absent
+            # (it is a map-30-only id in both snapshots when present).
+            snap = _snap_for(mode, self.snap, self.brawl_snap)
             ids = {
                 i for i, _ in _filter_candidates(
-                    self.snap, mode, set(), None, False, None
+                    snap, mode, set(), None, False, None
                 )
             }
+            self.assertTrue(ids, f"mode={mode}: empty pool makes this vacuous")
             self.assertNotIn(
                 arena_only, ids,
                 f"Arena-only item {arena_only} leaked into the {mode} pool",
@@ -252,6 +303,7 @@ class KnownExceptionScopingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
+        cls.brawl_snap = DataSnapshot.load(patch=_BRAWL_MAP35_PATCH)
 
     def test_arcane_sweeper_3348_excluded_by_purchasable_every_mode(self) -> None:
         rec = self.snap.item("3348")
@@ -266,9 +318,11 @@ class KnownExceptionScopingTests(unittest.TestCase):
         for mode in _LIVE_MODE_MAP:
             ids = {
                 i for i, _ in _filter_candidates(
-                    self.snap, mode, set(), None, True, None  # incl components
+                    _snap_for(mode, self.snap, self.brawl_snap),
+                    mode, set(), None, True, None,  # incl components
                 )
             }
+            self.assertTrue(ids, f"mode={mode}: empty pool makes this vacuous")
             self.assertNotIn(
                 "3348", ids,
                 f"Arcane Sweeper (non-purchasable) leaked into {mode} pool",
@@ -339,12 +393,15 @@ class KnownExceptionScopingTests(unittest.TestCase):
         }
         brawl_ids = {
             i for i, _ in _filter_candidates(
-                self.snap, "BRAWL", set(), None, False, None
+                self.brawl_snap, "BRAWL", set(), None, False, None
             )
         }
+        self.assertTrue(brawl_ids, "empty Brawl pool makes this vacuous")
         for mid in mirror_ids:
             rec = self.snap.items[mid]
             mp = rec.get("maps") or {}
+            # map-35 truth for the BRAWL check comes from the pinned snapshot.
+            mp35 = (self.brawl_snap.items.get(mid, {}).get("maps") or {}).get("35")
             self.assertIn(
                 mid, arena_ids,
                 f"22-mirror {mid} missing from Arena pool",
@@ -354,7 +411,7 @@ class KnownExceptionScopingTests(unittest.TestCase):
                 self.assertNotIn(
                     mid, sr_ids, f"22-mirror {mid} leaked into SR pool"
                 )
-            if not mp.get("35"):
+            if not mp35:
                 self.assertNotIn(
                     mid, brawl_ids,
                     f"22-mirror {mid} leaked into Brawl pool",
@@ -369,6 +426,7 @@ class PoolDeterminismCompletenessTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
+        cls.brawl_snap = DataSnapshot.load(patch=_BRAWL_MAP35_PATCH)
 
     def test_pool_is_deterministic_per_mode(self) -> None:
         for mode in _LIVE_MODE_MAP:
@@ -393,8 +451,11 @@ class PoolDeterminismCompletenessTests(unittest.TestCase):
 
     def test_pool_non_empty_for_every_live_mode(self) -> None:
         for mode in _LIVE_MODE_MAP:
+            # BRAWL reads the map-35-carrying snapshot (see _BRAWL_MAP35_PATCH);
+            # SR / ARAM / ARENA stay on the current patch.
+            snap = self.brawl_snap if mode == "BRAWL" else self.snap
             ids = [i for i, _ in _filter_candidates(
-                self.snap, mode, set(), None, False, None)]
+                snap, mode, set(), None, False, None)]
             self.assertGreater(
                 len(ids), 0,
                 f"mode={mode} pool is EMPTY - would silently yield no "
@@ -436,14 +497,15 @@ class PoolDeterminismCompletenessTests(unittest.TestCase):
     def test_rank_items_brawl_pool_is_map35_constrained_end_to_end(self) -> None:
         # End-to-end through rank_items: every ranked Brawl item must be
         # map-35 legal per its own source record (proves the fix reaches
-        # the public API, not just _filter_candidates).
+        # the public API, not just _filter_candidates). Pinned to the
+        # map-35-carrying snapshot (see _BRAWL_MAP35_PATCH).
         r = rank_items(
-            self.snap, "Aatrox", level=11, mode="BRAWL",
+            self.brawl_snap, "Aatrox", level=11, mode="BRAWL",
             target_armor=80, top_n=50,
         )
         self.assertGreater(len(r.ranked), 0)
         for ri in r.ranked:
-            rec = self.snap.items.get(ri.item_id, {})
+            rec = self.brawl_snap.items.get(ri.item_id, {})
             self.assertTrue(
                 (rec.get("maps") or {}).get("35"),
                 f"ranked Brawl item {ri.item_id} ({ri.item_name}) is "

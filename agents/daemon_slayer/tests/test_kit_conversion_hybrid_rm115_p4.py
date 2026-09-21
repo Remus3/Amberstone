@@ -144,14 +144,31 @@ class KitConversionHybridTests(unittest.TestCase):
         self.assertLess(seen[0], seen[-1], f"no movement across the sweep: {seen}")
 
     def test_stridebreaker_is_not_an_anchor(self) -> None:
-        """Guard the documented negative (kit_conversion.py:54-58)."""
-        off = _rank(self.snap, "Olaf")
-        on = _rank(self.snap, "Olaf", kit_conversion_strength=1.0)
+        """Guard the documented negative (kit_conversion.py:54-58).
+
+        The exact #34 -> #34 identity was measured on 16.15.1 data, so that
+        half is pinned there. At 16.18.1 the OFF ranking moved (Stridebreaker
+        sits at #31 off, because neighbours' DDragon stats changed, e.g. Black
+        Cleaver 3071 AD 40 -> 45 in the seed build) and the gate then pushes it
+        DOWN to #34, the ordinary AS-exposure direction. The documented
+        negative is that it can never RISE, so that is asserted on the current
+        snapshot.
+        """
+        pinned = DataSnapshot.load(patch="16.15.1")
+        off = _rank(pinned, "Olaf")
+        on = _rank(pinned, "Olaf", kit_conversion_strength=1.0)
         self.assertEqual(
             off.index(_STRIDEBREAKER), on.index(_STRIDEBREAKER),
             "Stridebreaker is recorded as unreachable at any setting; if it "
             "moved, the objective-coverage note needs revisiting rather than "
             "this assertion being relaxed",
+        )
+        cur_off = _rank(self.snap, "Olaf")
+        cur_on = _rank(self.snap, "Olaf", kit_conversion_strength=1.0)
+        self.assertGreaterEqual(
+            cur_on.index(_STRIDEBREAKER), cur_off.index(_STRIDEBREAKER),
+            "Stridebreaker must not RISE under the gate; if it did, the "
+            "objective-coverage note needs revisiting",
         )
 
     # ------------------------------------------- why the objective is blended

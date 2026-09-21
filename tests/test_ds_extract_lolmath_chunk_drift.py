@@ -88,6 +88,58 @@ def test_unknown_dotted_value_refs_still_collapse_to_null():
     assert parsed == {"a": None, "b": 1}
 
 
+# --- (3) roles: pick the CLASS-LIST factory, not the first Aatrox: object ------
+
+_KNOWN_CLASSES = {"FIGHTER", "TANK", "MAGE", "ASSASSIN", "MARKSMAN", "SUPPORT"}
+
+
+def _factory(num: int, body: str) -> str:
+    return "," + str(num) + ",(e,a,t)=>{a.exports=" + body + "}"
+
+
+def test_roles_skip_a_string_valued_aatrox_factory():
+    # 16.18.1 ships a {Aatrox:"General",...} survivability-label object AHEAD
+    # of the class lists; the old "first factory with Aatrox:" rule picked it
+    # and roles became a bare string.
+    chunk = (
+        _factory(26080, '{Aatrox:"General",Ahri:"General"}')
+        + _factory(170996, '{Aatrox:["FIGHTER"],Ahri:["MAGE","ASSASSIN"]}')
+        + _factory(265481, '{Aatrox:"top",Ahri:"mid"}')
+    )
+    assert dse._extract_roles(chunk) == {
+        "Aatrox": ["FIGHTER"], "Ahri": ["MAGE", "ASSASSIN"],
+    }
+
+
+def test_roles_raise_when_no_class_list_factory_exists():
+    chunk = _factory(1, '{Aatrox:"General",Ahri:"Squishy"}')
+    with pytest.raises(RuntimeError, match="roles"):
+        dse._extract_roles(chunk)
+
+
+def test_current_snapshot_roles_are_class_token_lists():
+    # Data guard on the COMMITTED current snapshot: a string here is iterated
+    # character-by-character by core/build_planner/champ_kit_data.py.
+    import json
+
+    patch = (ROOT / "data" / "daemon_slayer" / "current.txt").read_text(
+        encoding="utf-8").strip()
+    champs = json.loads(
+        (ROOT / "data" / "daemon_slayer" / patch / "champions.json").read_text(
+            encoding="utf-8"))["data"]
+    assert len(champs) >= 170
+    bad = {
+        cid: (rec.get("lolmath") or {}).get("roles")
+        for cid, rec in champs.items()
+        if not (
+            isinstance((rec.get("lolmath") or {}).get("roles"), list)
+            and (rec["lolmath"]["roles"])
+            and set(rec["lolmath"]["roles"]) <= _KNOWN_CLASSES
+        )
+    }
+    assert bad == {}, f"{len(bad)} champions carry non-class roles: {dict(list(bad.items())[:5])}"
+
+
 # --- silent partial output is now loud ----------------------------------------
 
 def _lolmath(cooldowns, scenarios, lanes):

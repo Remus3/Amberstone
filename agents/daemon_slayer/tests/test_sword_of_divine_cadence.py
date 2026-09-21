@@ -86,6 +86,18 @@ def _ddragon_items() -> dict:
     return body["data"]
 
 
+# DDragon 16.18.1 DROPPED map keys "21" (Nexus Blitz), "33" and "35" (Brawl) from
+# every item's ``maps`` dict. The map-21 / map-35 legality facts below are pinned to
+# the last snapshot whose feed still carries those keys; the map 11 / 12 / 30 facts
+# keep reading the CURRENT feed.
+_MAP_21_35_PATCH = "16.15.1"
+
+
+def _ddragon_items_at(patch: str) -> dict:
+    body = json.loads((_DATA_ROOT / patch / "items.json").read_text(encoding="utf-8"))
+    return body["data"]
+
+
 def _plain_description(item_id: str) -> str:
     return re.sub(r"<[^>]+>", " ", str(_ddragon_items()[item_id].get("description") or ""))
 
@@ -256,9 +268,12 @@ class MapLegalityTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.maps = _ddragon_items()[_SOTD]["maps"]
+        # Maps 21 / 35 are absent from the 16.18.1 feed; read them from the
+        # pinned snapshot that still flags them (see _MAP_21_35_PATCH).
+        self.maps_21_35 = _ddragon_items_at(_MAP_21_35_PATCH)[_SOTD]["maps"]
 
     def test_legal_on_nexus_blitz(self) -> None:
-        self.assertTrue(self.maps[_MAP_NEXUS_BLITZ])
+        self.assertTrue(self.maps_21_35[_MAP_NEXUS_BLITZ])
 
     def test_not_legal_on_summoners_rift(self) -> None:
         self.assertFalse(self.maps[_MAP_SR])
@@ -269,12 +284,13 @@ class MapLegalityTests(unittest.TestCase):
 
     def test_not_legal_on_arena_or_brawl(self) -> None:
         self.assertFalse(self.maps[_MAP_ARENA])
-        self.assertFalse(self.maps[_MAP_BRAWL])
+        self.assertFalse(self.maps_21_35[_MAP_BRAWL])
 
     def test_map_21_is_nexus_blitz_not_the_howling_abyss(self) -> None:
         # Anchors the id reading itself: an ARAM-only staple is map 12 and a
-        # Rift staple is map 11, so 21 can be neither.
-        items = _ddragon_items()
+        # Rift staple is map 11, so 21 can be neither. Pinned to the snapshot
+        # whose feed still carries map 21 (DDragon 16.18.1 dropped 21/33/35).
+        items = _ddragon_items_at(_MAP_21_35_PATCH)
         self.assertTrue(items["3031"]["maps"][_MAP_SR])       # Infinity Edge, SR
         self.assertTrue(items["3031"]["maps"][_MAP_ARAM])     # ... and ARAM
         self.assertTrue(items["3005"]["maps"][_MAP_NEXUS_BLITZ])   # Ghostcrawlers

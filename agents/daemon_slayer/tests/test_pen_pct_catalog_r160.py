@@ -35,10 +35,10 @@ and ``6694`` stay 0.35).
 DDragon 16.17.1 then moved ``226694`` alone to 45 percent (``223036`` held at
 40, both SR twins held at 35), and the registry carried it: ``226694`` now
 credits 0.45. Doctrine B is unchanged - the row still takes its OWN stated
-Arena value, that value simply moved. Because the DS per-patch snapshot stays
-PINNED at 16.15.1, the live and pinned catalogs now state different numbers
-for this id; that divergence is recorded in ``_PINNED_CARRY_FORWARD`` and the
-magnitude-parity assertions skip in any tree that lacks the live catalog. The inheritance-side guard in
+Arena value, that value simply moved. While the DS per-patch snapshot stayed
+PINNED at 16.15.1 the live and pinned catalogs stated different numbers for
+this id, recorded in ``_PINNED_CARRY_FORWARD``; the 16.18.1 snapshot bump
+realigned them and that entry was pruned. The inheritance-side guard in
 ``test_effects_expansion`` was inverted in the same slice and is now
 ``test_arena_serylda_armor_pen_diverges_from_sr``.
 
@@ -89,10 +89,11 @@ _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
 # Is the LIVE DDragon catalog present? ``data/meta/ddragon_items.json`` tracks
 # live DDragon; the per-patch snapshot under ``data/daemon_slayer/<patch>/``
-# is PINNED (16.15.1 today) and the registry deliberately runs AHEAD of it.
-# RM-190 carried item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1
-# mirror while leaving the DS snapshot pinned, and 16.17.1 carried 226694
-# ``armor_pen_pct`` 0.40 -> 0.45 the same way. So a magnitude-parity assertion
+# is PINNED and the registry may deliberately run AHEAD of it. RM-190 carried
+# item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1 mirror while the
+# DS snapshot stayed at 16.15.1, and 16.17.1 carried 226694 ``armor_pen_pct``
+# 0.40 -> 0.45 the same way; the 16.18.1 snapshot bump caught both up, so
+# today the layouts agree. So a magnitude-parity assertion
 # is only meaningful against the LIVE catalog. Comparing the registry against
 # the pinned snapshot instead measures it against a catalog it no longer
 # describes and manufactures a FALSE failure. The swept SET is stable across
@@ -149,11 +150,13 @@ _INERT_DELISTED = ("6632", "226632")
 # forward (a1 posture: carry the magnitude, do not bump the snapshot).
 # Keyed by regex source -> {item_id: (live_stated, pinned_stated)}.
 # ITEM_EFFECTS credits the LIVE value in every case.
-_PINNED_CARRY_FORWARD = {
-    # 16.17.1 moved Serylda's Grudge Arena armor pen 40 -> 45 while leaving
-    # the SR twin 6694 at 35. Snapshot 16.15.1 still states 40.
-    _PCT_ARMOR_ATTENTION_RE.pattern: {"226694": ("45", "40")},
-}
+#
+# EMPTY since the 16.15.1 -> 16.18.1 snapshot bump. The one entry it carried
+# (16.17.1 moved Serylda's Grudge Arena 226694 armor pen 40 -> 45 while the
+# snapshot stayed at 16.15.1) went STALE: the 16.18.1 snapshot itself states
+# 45, so both layouts agree and the entry was pruned rather than the guard
+# weakened. A future carry-forward re-adds its pattern key here.
+_PINNED_CARRY_FORWARD: dict = {}
 
 
 def _catalog() -> dict:

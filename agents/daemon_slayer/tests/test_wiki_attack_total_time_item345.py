@@ -25,7 +25,7 @@ null / absent):
 * Jhin AA     attack_total_time=1.6     (cast 0.25)
 * Draven AA   attack_total_time=1.473   (cast 0.23)
 * Aatrox AA   attack_total_time=1.52    (cast 0.30)
-* Belveth AA  attack_total_time=1.01    (cast 0.25)
+* Belveth AA  attack_total_time=1.01    (cast 0.25; 16.18.1: 1.493 / 0.22)
 * Jinx AA     attack_total_time=1.6     (cast 0.27)
 * Azir AA     attack_total_time=1.6     (cast 0.25)
 
@@ -102,7 +102,11 @@ _SEEDS: dict[str, float] = {
     "Jhin": 1.6,
     "Draven": 1.473,
     "Aatrox": 1.52,
-    "Belveth": 1.01,
+    # 16.18.1 re-extract: 1.01 -> 1.493, cast 0.25 -> 0.22, both sourced from
+    # the CDragon character bin (src 'cdragon' in both patches). Base AS is
+    # 0.67 in BOTH patches, so this is not an AS change: 1.493 = 1/0.67, i.e.
+    # the 16.18 bin's attack timing now reads the plain 1/AS cycle.
+    "Belveth": 1.493,
     "Jinx": 1.6,
     "Azir": 1.6,
 }
@@ -165,7 +169,9 @@ def test_reads_wiki_stats_source(snap: DataSnapshot) -> None:
 def test_champ_keyed(snap: DataSnapshot) -> None:
     # wiki_attack_total_time takes only a champ (no slot) - it is the basic
     # attack cycle, a per-champ axis.
-    assert snap.wiki_attack_total_time("Belveth") == pytest.approx(1.01, abs=1e-4)
+    assert snap.wiki_attack_total_time("Belveth") == pytest.approx(
+        _SEEDS["Belveth"], abs=1e-4
+    )
 
 
 # ---------------------------------------------------------------------------

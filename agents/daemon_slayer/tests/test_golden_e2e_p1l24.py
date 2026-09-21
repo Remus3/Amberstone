@@ -125,10 +125,11 @@ class GoldenCompositionTests(unittest.TestCase):
         crit = 0.25 + 0.25
         # Crit bonus: engine default 0.75 + IE's +0.30.
         crit_bonus = DEFAULT_CRIT_BONUS + 0.30
-        # AS: base 0.681, +4%/level bonus, items PD .65 + Berserker .25.
+        # AS: base 0.681, +4%/level bonus, items PD .65 + Berserker .30
+        # (Berserker's is .30 at DDragon 16.18.1; it was .25 through 16.15.1).
         base_as = st["attackspeed"]
         lvl_bonus = (st["attackspeedperlevel"] / 100.0) * (lvl - 1)
-        item_as = 0.65 + 0.25
+        item_as = 0.65 + 0.30
         as_val = base_as * (1.0 + lvl_bonus + item_as)
         self.assertLess(as_val, 2.5, "scenario must stay under the AS cap")
 

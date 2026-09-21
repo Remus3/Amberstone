@@ -54,8 +54,11 @@ class HelperPredicateTests(unittest.TestCase):
 
     def test_is_consumable_passes_real_items(self) -> None:
         # Infinity Edge, Stormrazor - full items, never flagged consumable.
-        for iid in ("3031", "3097"):
+        # Stormrazor is 3095 since 16.17.1 (3097 absent at 16.18.1, which
+        # made the lookup below an empty dict and the check vacuous).
+        for iid in ("3031", "3095"):
             rec = self.snap.items.get(iid) or {}
+            self.assertTrue(rec, f"item {iid} missing from snapshot")
             self.assertFalse(_is_consumable(rec))
 
 
@@ -138,7 +141,8 @@ class BeamSearchConstraintTests(unittest.TestCase):
             self.assertEqual(len(build.item_ids), 4)
 
     def test_full_seed_returns_baseline_only_no_search(self) -> None:
-        full = ["3031", "3072", "3006", "3097", "6673", "3508"]
+        # Stormrazor is 3095 since 16.17.1 (3097 absent at 16.18.1).
+        full = ["3031", "3072", "3006", "3095", "6673", "3508"]
         r = beam_search_build(
             self.snap, "Aatrox", level=11, mode="SR", target_armor=80,
             current_item_ids=full,

@@ -130,10 +130,17 @@ _RAVENOUS_HYDRA = "3074"
 _SNAP = None
 
 
+# The measured route numbers (CritWeightedVampMeasuredTests) were captured on
+# 16.15.1 data; DDragon 16.18.1 moved Jinx base spellblock 30 -> 33 and
+# spellblockperlevel 1.3 -> 1.1, which moves blended_ehp. This file tests the
+# seam wiring, not the patch data, so it pins the snapshot it was measured on.
+_PINNED_PATCH = "16.15.1"
+
+
 def _snap() -> DataSnapshot:
     global _SNAP
     if _SNAP is None:
-        _SNAP = DataSnapshot.load()
+        _SNAP = DataSnapshot.load(patch=_PINNED_PATCH)
     return _SNAP
 
 
@@ -179,7 +186,16 @@ def _engine(champion: str, items: tuple[str, ...], **kwargs):
 class _Base(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        # Restore whatever the process-wide cache held, so the pinned
+        # 16.15.1 snapshot never leaks into a later test module.
+        cls._prior_snap = server._CACHE._snap
         server._CACHE.set(_snap())
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # Before the pin this module left the CURRENT snapshot in the cache;
+        # keep that post-condition when nothing was cached beforehand.
+        server._CACHE.set(cls._prior_snap or DataSnapshot.load())
 
 
 class EngineSeamOwnershipTests(_Base):

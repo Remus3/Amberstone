@@ -3558,8 +3558,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226668": ItemEffect(
         item_id="226668",
         name="Ultra Hydra",
-        # NET-NEW in DDragon 16.17.1 (absent from 16.16.1 entirely): an
-        # Arena-only 6000g standalone (no from/into, maps {"12": True}).
+        # NET-NEW in DDragon 16.17.1 (absent from 16.16.1 entirely): a 6000g
+        # standalone (no from/into, maps {"12": True} only). CORRECTED
+        # 2026-09-20: NOT Arena - the wiki page says ARAM: Mayhem, obtained
+        # from the "Ultra Hydra" augment, so it is excluded from the ARAM
+        # shop pool (rank._ARAM_EXCLUDED_ITEM_IDS).
         # <stats> block: 200 AD / 25 Ability Haste / 25 Lethality / 1000 HP
         # / 15% Omnivamp.
         #
@@ -3580,7 +3583,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # until a real magnitude source exists - start tight, widen on
         # evidence. Omnivamp likewise deferred: _item_omnivamp.py sources its
         # fractions from items_meraki.json, which does not carry this id.
-        note="Ultra Hydra (226668, NEW at 16.17.1, DDragon maps {12: true} only): 25 lethality credited; cleave active unmodelled (no DDragon/Meraki magnitude). In the DS snapshot from 16.18.1 on, so it is a map-12 build candidate there; absent from 16.15.1.",
+        note="Ultra Hydra (226668, NEW at 16.17.1, DDragon maps {12: true} only): an ARAM Mayhem augment reward, not a shop item, so rank._ARAM_EXCLUDED_ITEM_IDS keeps it out of the ARAM candidate pool. 25 lethality credited for a live inventory; cleave passive/active unmodelled (no DDragon/Meraki magnitude).",
     ),
     "226672": ItemEffect(
         item_id="226672",
