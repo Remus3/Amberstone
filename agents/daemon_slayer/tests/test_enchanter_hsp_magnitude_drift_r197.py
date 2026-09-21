@@ -18,8 +18,10 @@ goes RED with the id and both values named, instead of rotting.
 R161 doctrine B - a mirror credits its OWN data line
 ----------------------------------------------------
 Arena (``22<base>``) and SR/ARAM (``32<base>``) mirrors are separate DDragon
-entries with independently balanced stat lines. Redemption is 10 / 12 / 10,
-Mikael's is 12 / 12 / 15, Dawncore is 16 / 12 / 20 across base / arena / aram.
+entries with independently balanced stat lines. At 16.15.1 Redemption is
+10 / 12 / 10, Mikael's is 12 / 12 / 15, Dawncore is 16 / 12 / 20 across
+base / arena / aram; 16.18.1 flattened Redemption, Ardent Censer and Staff of
+Flowing Water to 10 / 10 / 10, so the doctrine fixture is pinned to 16.15.1.
 The mirror-asymmetry test below asserts each mirror matches ITS OWN entry and
 proves the check is load-bearing by requiring genuine asymmetry to be present -
 so it cannot go green by finding all three ids equal.
@@ -224,12 +226,29 @@ def load_ddragon_items(patch: Optional[str] = None) -> Dict[str, Dict]:
 
 # Base / arena / aram printed percents that MUST stay asymmetric for the
 # mirror-doctrine test to be load-bearing. Measured from the shipped snapshot.
+#
+# PINNED to the 16.15.1 snapshot (patch-drift 16.15.1 -> 16.18.1): DDragon
+# 16.18.1 moved the Arena Heal and Shield Power line of Redemption (223107),
+# Ardent Censer (223504) and Staff of Flowing Water (226616) from 12 / 12 / 14
+# down to 10, making those three triples SYMMETRIC with their SR twins. At
+# 16.18.1 only 3222 and 6621 remain asymmetric - two, below the three this
+# guard needs to be load-bearing. The doctrine fixture therefore reads the
+# 16.15.1 snapshot (which still ships in data/daemon_slayer/16.15.1/ with its
+# own enchanter_items.json and items.json), where five triples are asymmetric.
+# The current-patch per-row derivation above still runs at current.txt, and
+# CurrentPatchAsymmetryTests below pins which triples are asymmetric LIVE.
+DOCTRINE_FIXTURE_PATCH = "16.15.1"
 EXPECTED_ASYMMETRIC_TRIPLES: Tuple[Tuple[str, str, float, float, float], ...] = (
     ("3107", "Redemption", 10.0, 12.0, 10.0),
     ("3222", "Mikael's Blessing", 12.0, 12.0, 15.0),
     ("6621", "Dawncore", 16.0, 12.0, 20.0),
 )
 MIN_ASYMMETRIC_TRIPLES = 3
+
+# Measured at 16.18.1: the triples that are still asymmetric at the live patch,
+# and the three that 16.18.1 flattened to 10 / 10 / 10.
+LIVE_ASYMMETRIC_BASES = ("3222", "6621")
+LIVE_FLATTENED_BASES = ("3107", "3504", "6616")
 
 
 class PrintedHspExtractorTests(unittest.TestCase):
@@ -336,11 +355,15 @@ class CuratedMagnitudeDerivedFromDdragonTests(unittest.TestCase):
 
 
 class MirrorAsymmetryDoctrineTests(unittest.TestCase):
-    """Requirement 3 - R161 doctrine B: a mirror credits its OWN data line."""
+    """Requirement 3 - R161 doctrine B: a mirror credits its OWN data line.
+
+    Runs against the pinned DOCTRINE_FIXTURE_PATCH snapshot, which still carries
+    enough genuinely asymmetric triples for the check to be load-bearing.
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.patch = current_patch()
+        cls.patch = DOCTRINE_FIXTURE_PATCH
         cls.curated = load_curated_items(cls.patch)
         cls.ddragon = load_ddragon_items(cls.patch)
 
@@ -391,6 +414,47 @@ class MirrorAsymmetryDoctrineTests(unittest.TestCase):
             f"only {len(asymmetric)} asymmetric mirror triples found ({asymmetric}) - "
             f"below the {MIN_ASYMMETRIC_TRIPLES} needed for this guard to be load-bearing",
         )
+
+
+class CurrentPatchAsymmetryTests(unittest.TestCase):
+    """The live patch: which triples are asymmetric is pinned, not assumed."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.patch = current_patch()
+        cls.curated = load_curated_items(cls.patch)
+        cls.ddragon = load_ddragon_items(cls.patch)
+
+    def test_live_asymmetric_set_is_exactly_the_measured_set(self) -> None:
+        asymmetric = [
+            base
+            for base in base_ids(self.curated)
+            if triple_is_asymmetric(triple_rows(base, self.curated, self.ddragon))
+        ]
+        self.assertEqual(asymmetric, list(LIVE_ASYMMETRIC_BASES))
+
+    def test_live_mirrors_still_match_their_own_line(self) -> None:
+        # Every live asymmetric mirror is credited its OWN printed line and never
+        # the base line - doctrine B, exercised at the current patch.
+        for base in LIVE_ASYMMETRIC_BASES:
+            rows = triple_rows(base, self.curated, self.ddragon)
+            base_printed = rows[0][3]
+            for label, iid, curated_value, printed in rows[1:]:
+                with self.subTest(base=base, label=label, item_id=iid):
+                    self.assertAlmostEqual(curated_value, printed / 100.0, places=9)
+                    if printed != base_printed:
+                        self.assertNotAlmostEqual(
+                            curated_value, base_printed / 100.0, places=9
+                        )
+
+    def test_flattened_triples_are_symmetric_and_curated_at_their_line(self) -> None:
+        for base in LIVE_FLATTENED_BASES:
+            with self.subTest(base=base):
+                rows = triple_rows(base, self.curated, self.ddragon)
+                self.assertEqual([r[0] for r in rows], ["base", "arena", "aram"])
+                self.assertFalse(triple_is_asymmetric(rows))
+                for _label, _iid, curated_value, printed in rows:
+                    self.assertAlmostEqual(curated_value, printed / 100.0, places=9)
 
 
 class CuratedPopulationTests(unittest.TestCase):
@@ -485,13 +549,14 @@ class GuardSelfTests(unittest.TestCase):
         self.assertIn("999999", str(ctx.exception))
 
     def test_a_mirror_credited_from_the_base_line_goes_red(self) -> None:
-        # Arena Redemption prints 12%; retyping the SR 10% onto it is exactly the
-        # R161 doctrine B violation this suite exists to catch.
-        row = deepcopy(self.curated["223107"])
-        row["heal_shield_amp_pct"] = curated_pct(self.curated["3107"])
+        # Arena Dawncore prints 12% against the SR 16%; retyping the SR value onto
+        # it is exactly the R161 doctrine B violation this suite exists to catch.
+        # (Re-seeded from Arena Redemption, which 16.18.1 flattened to 10 / 10.)
+        row = deepcopy(self.curated["226621"])
+        row["heal_shield_amp_pct"] = curated_pct(self.curated["6621"])
         with self.assertRaises(AssertionError) as ctx:
-            assert_row_matches_ddragon("223107", row, self.ddragon["223107"])
-        self.assertIn("223107", str(ctx.exception))
+            assert_row_matches_ddragon("226621", row, self.ddragon["226621"])
+        self.assertIn("226621", str(ctx.exception))
         self.assertIn("12%", str(ctx.exception))
 
     def test_the_chain_only_escape_does_not_swallow_a_printed_drift(self) -> None:

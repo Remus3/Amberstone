@@ -6564,8 +6564,12 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
     # -- stats-only active items -------------------------------------------
 
     def test_stats_only_active_3xxx_2xxx(self) -> None:
-        # 2508 Fated Ashes promoted to active periodic in batch 51
-        for iid in ["3172", "3177", "3184", "3095", "3144",
+        # 2508 Fated Ashes promoted to active periodic in batch 51.
+        # 3095 left this list at the 16.18.1 refresh: it was "Deprecated
+        # item" through 16.15.1 and is Stormrazor from 16.17.1, so it now
+        # carries the Energized Bolt periodic (pinned by
+        # test_stormrazor_id_move_1618.py).
+        for iid in ["3172", "3177", "3184", "3144",
                     "221038", "223006"]:
             with self.subTest(iid=iid):
                 e = ITEM_EFFECTS.get(iid)

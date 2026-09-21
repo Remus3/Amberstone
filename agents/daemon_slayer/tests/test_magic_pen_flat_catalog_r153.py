@@ -72,10 +72,11 @@ _PATCH_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
 # Is the LIVE DDragon catalog present? ``data/meta/ddragon_items.json`` tracks
 # live DDragon; the per-patch snapshot under ``data/daemon_slayer/<patch>/``
-# is PINNED (16.15.1 today) and the registry deliberately runs AHEAD of it.
-# RM-190 carried item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1
-# mirror while leaving the DS snapshot pinned, and 16.17.1 carried 226694
-# ``armor_pen_pct`` 0.40 -> 0.45 the same way. So a magnitude-parity assertion
+# is PINNED and the registry may deliberately run AHEAD of it. RM-190 carried
+# item 3175 ``magic_pen_flat`` 18 -> 20 out of the 16.16.1 mirror while the
+# DS snapshot stayed at 16.15.1, and 16.17.1 carried 226694 ``armor_pen_pct``
+# 0.40 -> 0.45 the same way; the 16.18.1 snapshot bump caught both up, so
+# today the layouts agree. So a magnitude-parity assertion
 # is only meaningful against the LIVE catalog. Comparing the registry against
 # the pinned snapshot instead measures it against a catalog it no longer
 # describes and manufactures a FALSE failure. The swept SET is stable across
@@ -111,11 +112,13 @@ _FLAT_MAGIC_PEN_RE = re.compile(
 # item_id -> (live stated, pinned stated). FLAT, not keyed by regex source the
 # way R160's twin is: this module sweeps exactly ONE pattern, so a per-pattern
 # key would be a constant lookup dressed up as a dimension.
-_PINNED_CARRY_FORWARD = {
-    # RM-190 carried 3175 Spellslinger's Shoes 18 -> 20 out of the 16.16.1
-    # mirror while leaving the snapshot at 16.15.1, which still states 18.
-    "3175": ("20", "18"),
-}
+#
+# EMPTY since the 16.15.1 -> 16.18.1 snapshot bump. The one entry it carried,
+# RM-190's "3175": ("20", "18") (Spellslinger's Shoes carried 18 -> 20 out of
+# the 16.16.1 mirror while the snapshot stayed at 16.15.1), went STALE: the
+# 16.18.1 snapshot itself states 20, so both layouts agree and the entry was
+# pruned rather than the guard weakened. A future carry-forward re-adds here.
+_PINNED_CARRY_FORWARD: dict = {}
 
 
 def _catalog() -> dict:
@@ -314,13 +317,19 @@ class R153FlatMagicPenCatalogSweepTests(unittest.TestCase):
 
     def test_layout_detector_reports_a_vanished_divergence(self) -> None:
         # The other direction, which is the half a plain "no new drift" check
-        # misses: realign 3175 and the documented carry-forward must stop
-        # being reported, so a stale allowlist entry surviving a snapshot bump
-        # fails the assertion above instead of passing quietly.
+        # misses: a divergence that is realigned must stop being reported, so
+        # a stale allowlist entry surviving a snapshot bump fails the
+        # assertion above instead of passing quietly. Driven synthetically
+        # (the 3175 carry-forward it used to ride realigned for real at
+        # 16.18.1): diverge 3175, prove it is reported, realign, prove it is not.
         live, pinned = self._both_layouts()
-        realigned = dict(live)
-        realigned["3175"] = pinned["3175"]
-        self.assertNotIn("3175", _layout_divergences(realigned, pinned))
+        self.assertIn("3175", pinned)
+        diverged = dict(pinned)
+        diverged["3175"] = str(int(pinned["3175"]) - 2)
+        self.assertIn("3175", _layout_divergences(live, diverged))
+        realigned = dict(diverged)
+        realigned["3175"] = live["3175"]
+        self.assertNotIn("3175", _layout_divergences(live, realigned))
 
     def test_placeholder_stat_item_is_not_swept(self) -> None:
         # 443064 Talisman of Ascension renders every stat line as a

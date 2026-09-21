@@ -113,7 +113,8 @@ class RankItemsTests(unittest.TestCase):
         # IE / BT / Stormrazor are the expected top tier in 16.9.1 stat-only math.
         top_ids = {ri.item_id for ri in r.ranked[:5]}
         # At least one of the standard DPS finishers should land top-5.
-        self.assertTrue(top_ids & {"3031", "3072", "3097", "6673"})
+        # Stormrazor is 3095 since 16.17.1 (3097 absent at 16.18.1).
+        self.assertTrue(top_ids & {"3031", "3072", "3095", "6673"})
 
     def test_baseline_dps_matches_compute_dps_no_items(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
@@ -158,7 +159,8 @@ class RankItemsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             rank_items(
                 self.snap, "Aatrox", level=11,
-                current_item_ids=["3031", "3072", "3006", "3097", "6673", "3508"],
+                # Stormrazor is 3095 since 16.17.1 (3097 absent at 16.18.1).
+                current_item_ids=["3031", "3072", "3006", "3095", "6673", "3508"],
             )
 
     def test_yunara_aram_zero_mult_zeros_all_deltas(self) -> None:
