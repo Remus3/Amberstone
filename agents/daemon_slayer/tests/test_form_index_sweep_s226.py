@@ -156,7 +156,8 @@ class BackwardCompatS226Tests(unittest.TestCase):
         self.assertEqual(get_block_index_for("Varus")[0], {"Q": 1, "W": 2})
 
     def test_s224_belveth_block_index_intact(self) -> None:
-        self.assertEqual(get_block_index_for("Belveth")[0], {"E": 2, "R": 1})
+        # F2 (2026-09-21): E renumbered raw-list 2 -> damage-ordinal 1.
+        self.assertEqual(get_block_index_for("Belveth")[0], {"E": 1, "R": 1})
 
     def test_form_index_champion_count(self) -> None:
         import json
