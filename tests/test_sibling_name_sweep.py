@@ -1015,7 +1015,10 @@ def test_non_push_modes_still_pass_when_degraded(monkeypatch, tmp_path: Path, ca
         stats.files = 1
         return [sweep.Blob("TREE", "some/tracked/file.py", "T", "an ordinary line\n")]
 
-    monkeypatch.setattr(sweep, "collect_tree_blobs", _fake_tree)
+    # RM-477 renamed the seam `main` walks: the tree arm is a lazy iterator now,
+    # so patching the eager wrapper would leave this test passing while proving
+    # nothing about the code path that actually runs.
+    monkeypatch.setattr(sweep, "iter_tree_blobs", _fake_tree)
     assert sweep.main(["--tree", "--config-root", str(root)]) == sweep.EXIT_CLEAN
     assert "DEGRADED" in capsys.readouterr().err
 
@@ -1528,3 +1531,377 @@ def test_the_example_template_documents_the_narrowing_key():
     assert "narrowed_names" in blob
     assert "_narrowed_names_doc" in blob
     assert isinstance(blob["narrowed_names"], list) and blob["narrowed_names"]
+
+
+# --------------------------------------------------------------------------
+# RM-477 - the TREE arm must not die of MemoryError, and the cure must not be
+# a silently weaker gate.
+#
+# THE DEFECT. `build_views` normalises a blob by building a per-CHARACTER
+# Python list: one 1-char `str` plus one distinct `int` per byte, twice over
+# (text + index map), and it does that THREE times per blob. Measured on this
+# machine at 76x the blob's byte count at peak. `collect_tree_blobs` then reads
+# WHOLE working-tree files, and this tree carries several multi-megabyte ones.
+#
+# THE TRAP IN THE OBVIOUS CURE. Skipping a big file would blind the audit to
+# precisely the files most likely to QUOTE a sibling, so the fix is chunking
+# and the risk moves to DETECTION PARITY: a chunked scan that loses a match
+# spanning a chunk boundary is a gate that reports clean for the wrong reason.
+# Every test below exists to pin that, and the boundary cases are planted
+# DELIBERATELY at the seam rather than left to chance.
+# --------------------------------------------------------------------------
+_RM477_NAME = "Zephyr Quarry"
+_RM477_CODE = "ZQX"
+
+
+@pytest.fixture()
+def rm477_cfg():
+    """ONE synthetic slot. The pattern count drives the runtime of every test
+    in this block, and one name is enough to prove a boundary property."""
+    return sweep.config_from_parts(
+        [_D + _RM477_NAME], {_RM477_CODE: _D + _RM477_NAME}
+    )
+
+
+@pytest.fixture()
+def rm477_needles(rm477_cfg):
+    return sweep.build_needles(rm477_cfg)
+
+
+def _filler(n: int) -> str:
+    """Line-structured ASCII filler of EXACTLY n characters, always ending on a
+    space so a needle appended to it keeps a clean left word boundary."""
+    unit = "alpha bravo charlie delta echo foxtrot golf hotel india juliet\n"
+    if n <= 0:
+        return ""
+    body = (unit * (n // len(unit) + 1))[: n - 1]
+    return body + " "
+
+
+def _scan(needles, cfg, text, path="probe.txt"):
+    return sweep.scan_text(
+        needles, cfg.codes, text, path=path, source="TEST", status="A"
+    )
+
+
+def _shape_of(findings):
+    """Comparable, order-insensitive projection of a finding list. Offsets and
+    line numbers are INCLUDED on purpose: a chunked scan that finds the right
+    needle but reports it at the wrong line has still broken `--explain`."""
+    return sorted(
+        (f.slot, f.shape, f.view, f.path, f.line, f.status, f.severity, f.literal, f.offset)
+        for f in findings
+    )
+
+
+def test_scan_text_memory_is_bounded_not_proportional_to_blob_size(
+    rm477_cfg, rm477_needles
+):
+    """THE RM-477 REGRESSION.
+
+    The assertion is deliberately about the SHAPE of the memory curve, not
+    about an absolute byte count: an absolute cap rots the moment the pattern
+    set or the interpreter changes, whereas "peak does not grow with the blob"
+    is the actual property a streaming scan has and a whole-blob scan does not.
+    The blob is SYNTHETIC for the same reason - pinning this to the real
+    `docs/history_notes.md` byte count would make the test rot every session.
+    """
+    import tracemalloc
+
+    small = _filler(1 << 20)
+    large = _filler(1 << 22)
+
+    def peak_for(text):
+        tracemalloc.start()
+        base = tracemalloc.get_traced_memory()[0]
+        try:
+            _scan(rm477_needles, rm477_cfg, text)
+            return tracemalloc.get_traced_memory()[1] - base
+        finally:
+            tracemalloc.stop()
+
+    peak_small = peak_for(small)
+    peak_large = peak_for(large)
+    assert peak_small > 0
+    # 4x the bytes must not cost anything like 4x the memory.
+    assert peak_large < peak_small * 1.75, (
+        f"peak scales with blob size: {peak_small} -> {peak_large} bytes for a "
+        "4x larger blob. The per-character list-of-int normalisation is still "
+        "running over the whole blob."
+    )
+    assert peak_large < 200_000_000, peak_large
+
+
+@pytest.mark.parametrize("delta", [-9, -5, -1, 0, 1, 5, 9])
+def test_a_needle_straddling_a_chunk_boundary_is_still_found(
+    monkeypatch, rm477_cfg, rm477_needles, delta
+):
+    """The single most likely way to ship a silently weakened gate.
+
+    The needle is planted so that it sits ACROSS the seam between two chunk
+    cores. `raising=True` is the default and is load-bearing here: before the
+    fix there are no chunk constants at all, so this test fails loudly rather
+    than passing vacuously against a whole-blob scan.
+    """
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 4096)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 1024)
+    step = 4096
+    start = step + delta - len(_RM477_NAME) // 2
+    text = _filler(start) + _RM477_NAME + " " + _filler(3000)
+    assert text.index(_RM477_NAME) == start
+    found = _scan(rm477_needles, rm477_cfg, text)
+    assert len(found) == 1, f"delta={delta} produced {len(found)} finding(s)"
+    assert found[0].offset == start
+
+
+@pytest.mark.parametrize("delta", [-3, 0, 3])
+def test_the_split_form_control_straddling_a_chunk_boundary_is_still_found(
+    monkeypatch, rm477_cfg, rm477_needles, delta
+):
+    """P4, the load-bearing positive control, re-planted ON the seam.
+
+    A name broken across a wrapped comment line is invisible to any contiguous
+    search; it is caught only by the TIGHT view, which is built by exactly the
+    normalisation the fix rewrites. Chunking that normalisation without carrying
+    the wrap across the seam loses this shape and nothing else, which is why it
+    gets its own test.
+    """
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 4096)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 1024)
+    head, tail = "Zeph", "yrQuarry"
+    split = head + "\n# " + tail + " "
+    start = 4096 + delta - len(head)
+    text = _filler(start) + split + _filler(3000)
+    assert text.index(split) == start
+    found = _scan(rm477_needles, rm477_cfg, text)
+    assert [f.view for f in found] == [sweep.VIEW_TIGHT], (
+        f"delta={delta}: the split form was lost across the chunk seam"
+    )
+    assert found[0].offset == start
+
+
+def _parity_corpus() -> str:
+    """Every shape the needle arm knows, spread across many chunk cores, plus
+    prose that must NOT match. Built at run time from the synthetic name."""
+    parts = [_filler(700)]
+    parts.append("see " + _D + _RM477_NAME + "\\ops\\loop for the root\n")
+    parts.append(_filler(700))
+    parts.append("repo at github.com/some-owner/" + _RM477_NAME.replace(" ", "-") + "\n")
+    parts.append(_filler(700))
+    parts.append("the " + _RM477_NAME + " checkout, code " + _RM477_CODE + "\n")
+    parts.append(_filler(700))
+    parts.append("# Zeph\n#   yrQuarry wrapped across a comment line\n")
+    parts.append(_filler(700))
+    parts.append(_RM477_NAME.replace(" ", "_") + " underscore spelling\n")
+    parts.append(_filler(700))
+    parts.append(_RM477_NAME.replace(" ", "%20") + " percent spelling\n")
+    parts.append(_filler(700))
+    parts.append("a zephyrquarrying word that must not match\n")
+    parts.append(_filler(700))
+    return "".join(parts)
+
+
+def test_chunked_and_whole_blob_scans_return_identical_findings(
+    monkeypatch, rm477_cfg, rm477_needles
+):
+    """PARITY, in both directions.
+
+    Chunking can lose a match at a seam, and it can equally INVENT one: every
+    needle pattern carries a `(?<![A-Za-z0-9])` left edge, and that lookbehind
+    succeeds trivially at offset 0 of any string - so a chunk that begins in the
+    middle of a word would manufacture a hit that the whole-blob scan correctly
+    rejects. An equality assertion catches both; a "chunked finds at least as
+    much" assertion would catch only the first.
+    """
+    corpus = _parity_corpus()
+    assert len(corpus) > 5000
+
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 1 << 30)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 1 << 15)
+    whole = _shape_of(_scan(rm477_needles, rm477_cfg, corpus))
+    assert whole, "parity corpus is vacuous - it matched nothing at all"
+
+    for step in (128, 257, 1024):
+        monkeypatch.setattr(sweep, "CHUNK_STEP", step)
+        monkeypatch.setattr(sweep, "CHUNK_GUARD", 4096)
+        assert _shape_of(_scan(rm477_needles, rm477_cfg, corpus)) == whole, (
+            f"CHUNK_STEP={step} disagrees with the whole-blob scan"
+        )
+
+
+def test_parity_holds_on_a_blob_with_no_newlines_at_all(monkeypatch, tmp_path: Path):
+    """The case the line-structured corpus cannot reach.
+
+    This tree carries multi-megabyte SINGLE-LINE JSON, so every window after the
+    first begins MID-LINE: the bounded snap-back finds no newline to align to,
+    and `_strip_continuations` then sees each window as one giant line whose
+    leading run it is entitled to strip - and JSON is full of the
+    continuation-prefix characters `#/*>-`. If window placement can move a
+    finding, it moves it here.
+
+    SIX slots, not six plants of one name, because findings collapse per
+    (path, line, slot) and a newline-free blob is entirely line 1 - one name
+    would merge into a single row and the parity claim would rest on it.
+    """
+    names = ["Zephyr Quarry", "Marble Trench", "Quicksilt", "Flarnwick"]
+    cfg = sweep.config_from_parts(
+        [_D + n for n in names],
+        {"ZQX": _D + names[0], "MTX": _D + names[1],
+         "QSX": _D + names[2], "FLX": _D + names[3]},
+    )
+    needles = sweep.build_needles(cfg)
+    unit = '{"a":-1,"b":"x/y","c":"*-#>","d":[1,2,3]},'
+    plants = [
+        _D + names[0] + "\\ops",
+        "github.com/some-owner/" + names[1].replace(" ", "-"),
+        names[2] + " (QSX)",
+        names[3].replace(" ", "_"),
+    ]
+    block = (unit * 400)[:12000]
+    text = "".join(block + " " + p + " " for p in plants) + block
+    assert "\n" not in text
+
+    def run():
+        return _shape_of(
+            sweep.scan_text(needles, cfg.codes, text, path="j.json", source="TREE")
+        )
+
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 1 << 30)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 1 << 15)
+    whole = run()
+    assert len(whole) == len(plants), whole
+
+    for step in (1024, 4096):
+        monkeypatch.setattr(sweep, "CHUNK_STEP", step)
+        monkeypatch.setattr(sweep, "CHUNK_GUARD", 2048)
+        assert len(list(sweep._scan_windows(text))) > 1
+        assert run() == whole, f"CHUNK_STEP={step} moved a finding on a one-line blob"
+
+
+def test_chunking_preserves_the_resolution_severity_near_a_seam(
+    monkeypatch, rm477_cfg, rm477_needles
+):
+    """A code sitting within CODE_WINDOW of a name escalates SEV_NAME to
+    SEV_RESOLUTION. That window is measured in the VIEW text, so a chunk edge
+    cutting through it silently DOWNGRADES a resolution hit to a bare name hit -
+    a real loss of signal that no count-based assertion would notice."""
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 2048)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 1024)
+    payload = _RM477_NAME + " (" + _RM477_CODE + ") "
+    start = 2048 - len(_RM477_NAME) // 2
+    text = _filler(start) + payload + _filler(2000)
+    found = _scan(rm477_needles, rm477_cfg, text)
+    assert found, "the seam swallowed the needle outright"
+    assert found[0].severity == sweep.SEV_RESOLUTION
+
+
+def test_the_pre_push_diff_arm_is_byte_for_byte_unchanged_by_chunking(
+    monkeypatch, rm477_cfg
+):
+    """CONSTRAINT: `--pre-push` is the ARMED gate and must not move.
+
+    Its blobs come from `_parse_diff`, which carries a per-hunk `base_line`
+    offset, so a line-number regression here would be invisible in the tree arm
+    and fatal in the hook. The comparison runs the SAME diff through a
+    single-chunk and a many-chunk configuration.
+    """
+    added = [
+        "diff --git a/notes.md b/notes.md",
+        "@@ -1,2 +40,6 @@",
+        "+ordinary prose that matches nothing",
+        "+path " + _D + _RM477_NAME + "\\ops",
+        "+the " + _RM477_NAME + " checkout " + _RM477_CODE,
+        "+trailing line",
+    ]
+    diff = "\n".join(added)
+
+    def run():
+        stats = sweep.ScanStats()
+        blobs = sweep._parse_diff(diff, stats)
+        return _shape_of(sweep._run_scan(rm477_cfg, blobs, stats))
+
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 1 << 30)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 1 << 15)
+    whole = run()
+    assert whole, "the pre-push control diff matched nothing"
+    assert any(f[4] >= 40 for f in whole), "base_line offset was dropped"
+
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 16)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 4096)
+    assert run() == whole
+
+
+def test_a_match_wider_than_the_guard_is_a_loud_fault_not_a_silent_miss(
+    monkeypatch, rm477_cfg, rm477_needles
+):
+    """The residual risk of any overlap window, stated rather than hidden.
+
+    A match whose ORIGINAL span exceeds the guard can fall between two windows.
+    That cannot be made impossible - the URL shape's owner segment is unbounded
+    - so it is made LOUD. A gate that quietly stops seeing a shape is the exact
+    failure mode this whole file exists to prevent.
+    """
+    monkeypatch.setattr(sweep, "CHUNK_STEP", 512)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", 8)
+    text = _filler(600) + _RM477_NAME + " " + _filler(600)
+    with pytest.raises(sweep.ChunkGuardExceeded):
+        _scan(rm477_needles, rm477_cfg, text)
+
+
+@pytest.mark.parametrize("n", [0, 1, 5, 100, 4095, 4096, 4097, 10000, 40000])
+@pytest.mark.parametrize("step,guard", [(7, 3), (4096, 1024), (1 << 20, 1 << 15)])
+def test_scan_windows_cores_tile_the_blob_exactly(monkeypatch, n, step, guard):
+    """The invariant every parity claim rests on, pinned directly.
+
+    If the cores leave a gap, a needle in that gap is never reported and the
+    gate is silently weaker. If they OVERLAP, the same needle is reported twice
+    and the seam becomes visible in the output. Neither shows up as an
+    exception, so neither would be caught by any test that only looks at
+    findings - hence a structural assertion over the window layout itself,
+    including the awkward sizes either side of a boundary.
+    """
+    monkeypatch.setattr(sweep, "CHUNK_STEP", step)
+    monkeypatch.setattr(sweep, "CHUNK_GUARD", guard)
+    text = ("ab\ncd\n" * (n // 6 + 1))[:n]
+    windows = list(sweep._scan_windows(text))
+    assert windows, "a blob of any size yields at least one window"
+    cores = [(core_start, core_end) for _, _, core_start, core_end, _ in windows]
+    assert cores[0][0] == 0
+    assert cores[-1][1] == len(text)
+    for i in range(1, len(cores)):
+        assert cores[i][0] == cores[i - 1][1], f"gap or overlap at window {i}"
+    for start, chunk, core_start, core_end, at_start in windows:
+        assert start <= core_start, "a window must not begin after its own core"
+        assert start + len(chunk) >= core_end, "a window must contain its core"
+        assert at_start == (start == 0)
+        assert chunk == text[start : start + len(chunk)]
+
+
+def test_the_tree_arm_streams_instead_of_materialising_every_file(tmp_path: Path):
+    """The second half of the defect: `collect_tree_blobs` held every tracked
+    file's decoded text in one list. The eager helper is KEPT (callers and tests
+    use it) but `main` must walk a lazy one, or the peak is the whole tree no
+    matter how small each scan window is."""
+    import inspect
+
+    assert inspect.isgeneratorfunction(sweep._tree_blob_stream)
+    stats_a = sweep.ScanStats()
+    stats_b = sweep.ScanStats()
+    lazy = sweep.iter_tree_blobs(REPO_ROOT, stats_a)
+    assert not isinstance(lazy, list), "iter_tree_blobs materialised its output"
+    assert stats_a.files > 0, "file count must be known BEFORE the walk runs"
+    eager = sweep.collect_tree_blobs(REPO_ROOT, stats_b)
+    assert isinstance(eager, list)
+    assert stats_a.files == stats_b.files
+
+    src = inspect.getsource(sweep.main)
+    assert "iter_tree_blobs(" in src, "main still materialises the whole tree"
+
+
+def test_the_tree_arm_reports_a_vacuous_index_before_it_walks(monkeypatch, tmp_path: Path):
+    """ADR-015: an empty enumeration must never reach the scanner as a clean
+    verdict. The check has to stay EAGER - deferred into a generator body it
+    would raise outside `main`'s fault handler and surface as a crash."""
+    monkeypatch.setattr(sweep, "_git", lambda root, args: "")
+    with pytest.raises(sweep.GitFault):
+        sweep.iter_tree_blobs(tmp_path, sweep.ScanStats())

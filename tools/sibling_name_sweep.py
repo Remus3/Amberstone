@@ -133,6 +133,36 @@ VARIANT_FAMILIES = ("SPACED", "HYPHEN", "UNDER", "CONCAT", "PCT20")
 # pair is treated as PUBLISHING THE RESOLUTION rather than merely a name.
 CODE_WINDOW = 80
 
+# RM-477. How much of a blob is normalised at a time, and how much REAL context
+# every window carries on each side of the region it is allowed to report from.
+#
+# The normalisation in `build_views` costs roughly 76x the blob's byte count at
+# peak (measured on Legion 2026-09-20: 5,732,641 characters -> 434 MB), because
+# it materialises one 1-char `str` and one distinct `int` PER CHARACTER, three
+# times over. That is survivable for a diff hunk and fatal for a tree walk, and
+# the tree walk is the arm that produced RC's five measured escapes.
+#
+# The cure is windowing, NEVER exclusion: a size cap that skips a file would
+# blind the audit to precisely the files most likely to QUOTE a counterparty.
+# CHUNK_GUARD is the overlap, and it is the only thing standing between a
+# chunked scan and a silently weaker gate - see `_scan_windows`.
+CHUNK_STEP = 1 << 20
+CHUNK_GUARD = 1 << 15
+
+
+class ChunkGuardExceeded(RuntimeError):
+    """A single match spanned more ORIGINAL characters than CHUNK_GUARD.
+
+    Raised rather than swallowed. A match wider than the overlap can fall
+    between two windows, and a gate that quietly stops seeing a shape is the
+    exact failure this whole tool exists to prevent - so the residual risk of
+    the overlap is made LOUD and fail-closed instead of being hidden behind a
+    comment claiming it cannot happen. It can: the URL shape's owner segment
+    (`[A-Za-z0-9_.\\-]+`) is unbounded, so no static bound on match width
+    exists. CHUNK_GUARD is sized so that reaching this is pathological.
+    """
+
+
 # U+FFFD, written as an escape on purpose: this file is 7-bit ASCII by repo rule.
 _REPLACEMENT = chr(0xFFFD)
 
@@ -786,13 +816,22 @@ def assert_non_vacuous(needles: Sequence) -> None:
 _CONT_PREFIX = "#/*>-"
 
 
-def _strip_continuations(text: str):
+def _strip_continuations(text: str, at_blob_start: bool = True):
     """Drop leading whitespace plus a comment-continuation prefix run from every
-    line after the first. Returns (text, index map back into the original)."""
+    line after the first. Returns (text, index map back into the original).
+
+    ``at_blob_start`` exists for RM-477 windowing and is load-bearing. The
+    "first line" carve-out is an assertion about the BLOB, not about the string
+    this function happens to be handed: a window that starts at line 40 must
+    strip line 40's continuation prefix, because the whole-blob view does. Left
+    hard-coded to True, every window would preserve its own opening prefix and
+    the tight view would lose exactly the wrapped-comment split form it exists
+    to catch - at one seam per megabyte, invisibly.
+    """
     chars: list = []
     idxs: list = []
     pos = 0
-    first = True
+    first = at_blob_start
     for line in text.splitlines(keepends=True):
         start = pos
         pos += len(line)
@@ -836,14 +875,62 @@ def _collapse(text: str, idxs: Sequence[int], drop_all: bool):
     return "".join(out), oidx
 
 
-def build_views(text: str) -> dict:
-    stripped, idxs = _strip_continuations(text)
+def build_views(text: str, at_blob_start: bool = True) -> dict:
+    """Normalise ONE window. Indices map back into the string passed in, not
+    into the enclosing blob - `scan_text` adds the window offset."""
+    stripped, idxs = _strip_continuations(text, at_blob_start=at_blob_start)
     space_text, space_idx = _collapse(stripped, idxs, drop_all=False)
     tight_text, tight_idx = _collapse(stripped, idxs, drop_all=True)
     return {
         VIEW_SPACE: (space_text, space_idx),
         VIEW_TIGHT: (tight_text, tight_idx),
     }
+
+
+def _scan_windows(text: str):
+    """Yield ``(start, window_text, core_start, core_end, at_blob_start)``.
+
+    THE CORES TILE THE BLOB EXACTLY and a finding is kept only when its
+    ORIGINAL start falls inside the window's own core, so every offset in the
+    blob belongs to exactly one window. That is what makes a windowed scan
+    return the same finding SET as a whole-blob scan rather than a superset
+    with a duplicate at every seam.
+
+    Each window then carries ``CHUNK_GUARD`` characters of REAL text on both
+    sides of its core, and both sides are load-bearing for a different reason:
+
+    * LEFT. Every needle pattern opens with a ``(?<![A-Za-z0-9])`` lookbehind,
+      and a lookbehind at offset 0 of a string succeeds trivially. A window that
+      began at its own core would manufacture a hit in the middle of a word -
+      chunking can INVENT a finding as easily as it can lose one.
+    * RIGHT. A match, plus the ``CODE_WINDOW`` of context that decides whether
+      it is a NAME or a RESOLUTION, has to fit inside the window that reports
+      it. Without the right guard a name near a seam silently DOWNGRADES.
+
+    The start is snapped BACK to a line boundary when one is within reach,
+    because `_strip_continuations` treats the first line of what it is given
+    specially. The snap is BOUNDED rather than unconditional on purpose: this
+    tree carries multi-megabyte single-line JSON, and an unbounded search for a
+    preceding newline would walk back to offset 0 on every window and restore
+    the whole-blob memory profile this function exists to remove.
+    """
+    n = len(text)
+    step = max(1, int(CHUNK_STEP))
+    guard = max(1, int(CHUNK_GUARD))
+    if n <= step + guard:
+        yield 0, text, 0, n, True
+        return
+    core = 0
+    while core < n:
+        core_end = min(n, core + step)
+        start = max(0, core - guard)
+        if start > 0:
+            nl = text.rfind("\n", max(0, start - guard), start)
+            if nl >= 0:
+                start = nl + 1
+        end = min(n, core_end + guard)
+        yield start, text[start:end], core, core_end, start == 0
+        core = core_end
 
 
 def _line_of(text: str, offset: int, base_line: int) -> int:
@@ -911,54 +998,111 @@ def scan_text(
     status: str = "M",
     base_line: int = 1,
 ) -> list:
-    """Run the NEEDLE arm over one blob. Never matches a code on its own."""
+    """Run the NEEDLE arm over one blob. Never matches a code on its own.
+
+    RM-477: the blob is walked in OVERLAPPING WINDOWS (`_scan_windows`) so peak
+    memory is a function of CHUNK_STEP and not of the blob. Nothing is skipped -
+    the cores tile the blob exactly - and the per-line collapse below is
+    unchanged, so `--pre-push` and `--scan-file` see identical findings.
+
+    Two things in here are ordered so that the window layout cannot leak into
+    the RESULT, which is the whole parity claim:
+
+    * A match is kept only when its ORIGINAL start lies in the reporting
+      window's core, so each offset is considered exactly once.
+    * The per-line winner is chosen by a TOTAL, order-INDEPENDENT key rather
+      than by "whoever was seen first". A blob whose line is longer than one
+      window is visited shape-major inside a window and window-major across
+      them, so a first-wins tie-break would pick a different shape label
+      depending on CHUNK_STEP. That is a difference nothing would have caught.
+    """
     if not text or not needles:
         return []
-    views = build_views(text)
     code_res = [
         re.compile(_LEFT_EDGE + re.escape(c) + _RIGHT_EDGE) for c in codes if c
     ]
+    guard = max(1, int(CHUNK_GUARD))
+    windowed = len(text) > max(1, int(CHUNK_STEP)) + guard
     best: dict = {}
-    for needle in needles:
-        for shape in needle.patterns:
-            view_text, view_idx = views[shape.view]
-            for m in shape.regex.finditer(view_text):
-                if m.start() >= len(view_idx):
-                    continue
-                orig_start = view_idx[m.start()]
-                end_i = min(m.end(), len(view_idx)) - 1
-                orig_end = view_idx[end_i] + 1 if end_i >= 0 else orig_start
-                if shape.view == VIEW_TIGHT and not _edges_clear(
-                    text, orig_start, orig_end
-                ):
-                    continue
-                severity = SEV_NAME
-                if code_res:
-                    lo = max(0, m.start() - CODE_WINDOW)
-                    hi = min(len(view_text), m.end() + CODE_WINDOW)
-                    window = view_text[lo:hi]
-                    if any(cre.search(window) for cre in code_res):
-                        severity = SEV_RESOLUTION
-                finding = Finding(
-                    slot=needle.slot,
-                    shape=shape.shape,
-                    view=shape.view,
-                    source=source,
-                    path=path,
-                    line=_line_of(text, orig_start, base_line),
-                    status=status,
-                    severity=severity,
-                    literal=text[orig_start:orig_end],
-                    offset=orig_start,
-                )
-                key = (path, source, finding.line, needle.slot)
-                prior = best.get(key)
-                if prior is None or (
-                    _rank(shape.shape),
-                    finding.severity == SEV_RESOLUTION,
-                ) > (_rank(prior.shape), prior.severity == SEV_RESOLUTION):
-                    best[key] = finding
-    return sorted(best.values(), key=lambda f: (f.path, f.line, f.slot))
+    prev_start = 0
+    nl_before = 0
+    for chunk_start, chunk_text, core_start, core_end, at_start in _scan_windows(text):
+        # Newlines before this window, carried forward rather than recounted
+        # from offset 0 - the fallback keeps it correct if a bounded snap-back
+        # ever walks a window start behind its predecessor.
+        if chunk_start >= prev_start:
+            nl_before += text.count("\n", prev_start, chunk_start)
+        else:
+            nl_before = text.count("\n", 0, chunk_start)
+        prev_start = chunk_start
+        # Drop the PREVIOUS window before building the next one, and drop the
+        # UNPACKED views with it. Plain rebinding holds both generations alive
+        # across the `build_views` call and doubles the peak - measured twice:
+        # a 1.88x memory curve from the dict alone, and 131 MB where 76 was
+        # expected because `view_text` / `view_idx` outlive the loop that
+        # unpacked them. Clearing the dict without clearing those names fixes
+        # half of it and looks like a fix.
+        views = view_text = view_idx = None
+        views = build_views(chunk_text, at_blob_start=at_start)
+        for needle in needles:
+            for ordinal, shape in enumerate(needle.patterns):
+                view_text, view_idx = views[shape.view]
+                for m in shape.regex.finditer(view_text):
+                    if m.start() >= len(view_idx):
+                        continue
+                    local_start = view_idx[m.start()]
+                    end_i = min(m.end(), len(view_idx)) - 1
+                    local_end = view_idx[end_i] + 1 if end_i >= 0 else local_start
+                    orig_start = chunk_start + local_start
+                    orig_end = chunk_start + local_end
+                    if not (core_start <= orig_start < core_end):
+                        continue
+                    if windowed and orig_end - orig_start > guard:
+                        raise ChunkGuardExceeded(
+                            f"{path}: a match spans {orig_end - orig_start} "
+                            f"characters, wider than CHUNK_GUARD={guard}. A "
+                            "match wider than the overlap can fall between two "
+                            "windows, so this halts rather than reporting a "
+                            "clean scan it cannot justify. Raise CHUNK_GUARD."
+                        )
+                    if shape.view == VIEW_TIGHT and not _edges_clear(
+                        text, orig_start, orig_end
+                    ):
+                        continue
+                    severity = SEV_NAME
+                    if code_res:
+                        lo = max(0, m.start() - CODE_WINDOW)
+                        hi = min(len(view_text), m.end() + CODE_WINDOW)
+                        window = view_text[lo:hi]
+                        if any(cre.search(window) for cre in code_res):
+                            severity = SEV_RESOLUTION
+                    finding = Finding(
+                        slot=needle.slot,
+                        shape=shape.shape,
+                        view=shape.view,
+                        source=source,
+                        path=path,
+                        line=base_line
+                        + nl_before
+                        + chunk_text.count("\n", 0, local_start),
+                        status=status,
+                        severity=severity,
+                        literal=text[orig_start:orig_end],
+                        offset=orig_start,
+                    )
+                    rankkey = (
+                        _rank(shape.shape),
+                        severity == SEV_RESOLUTION,
+                        -ordinal,
+                        -orig_start,
+                    )
+                    key = (path, source, finding.line, needle.slot)
+                    prior = best.get(key)
+                    if prior is None or rankkey > prior[0]:
+                        best[key] = (rankkey, finding)
+    return sorted(
+        (f for _, f in best.values()), key=lambda f: (f.path, f.line, f.slot)
+    )
 
 
 def _trim(segment: str) -> str:
@@ -1230,13 +1374,16 @@ def _parse_diff(out: str, stats: ScanStats):
     return blobs
 
 
-def collect_tree_blobs(root: Path, stats: ScanStats):
-    """Tree-wide arm. git index first (ADR-015), never a fresh rglob."""
-    out = _git(root, ["ls-files", "-z"])
-    rels = [p for p in out.split("\0") if p.strip()]
-    if not rels:
-        raise GitFault("git ls-files returned nothing - a vacuous tree walk")
-    blobs: list = []
+def _tree_blob_stream(root: Path, rels: Sequence[str], stats: ScanStats):
+    """One file's text live at a time. RM-477's second half.
+
+    Windowing `scan_text` bounds the cost of scanning ONE blob; it does nothing
+    about holding every blob at once. This tree's tracked files decode to about
+    640 MB of text - including several multi-megabyte LFS payloads, which are
+    SMUDGED in the working copy and so are read at full size here no matter what
+    the 133-byte pointer in the object store says. Materialising that list made
+    the peak the whole tree before the first window was ever built.
+    """
     for rel in rels:
         target = root / rel
         try:
@@ -1247,16 +1394,38 @@ def collect_tree_blobs(root: Path, stats: ScanStats):
         if b"\0" in raw[:8192]:
             stats.binary_blobs += 1
             stats.unscanned_bytes += len(raw)
-            blobs.append(Blob("PATH", rel, "T", rel))
+            yield Blob("PATH", rel, "T", rel)
             continue
         text = raw.decode("utf-8", errors="replace")
+        del raw
         stats.decode_failures += text.count(_REPLACEMENT)
         if text.startswith("version https://git-lfs.github.com/spec/"):
             stats.lfs_pointers += 1
-        blobs.append(Blob("TREE", rel, "T", text))
-        blobs.append(Blob("PATH", rel, "T", rel))
+        yield Blob("TREE", rel, "T", text)
+        yield Blob("PATH", rel, "T", rel)
+
+
+def iter_tree_blobs(root: Path, stats: ScanStats):
+    """Tree-wide arm. git index first (ADR-015), never a fresh rglob.
+
+    The index read and the ADR-015 non-vacuity check are EAGER while the file
+    walk is lazy. Folded into the generator body, that check would not run until
+    the first `next()` - which happens inside `_run_scan`, outside `main`'s
+    fault handler - and a vacuous tree walk would surface as a traceback rather
+    than as the FAULT verdict the ADR requires.
+    """
+    out = _git(root, ["ls-files", "-z"])
+    rels = [p for p in out.split("\0") if p.strip()]
+    if not rels:
+        raise GitFault("git ls-files returned nothing - a vacuous tree walk")
     stats.files = len(rels)
-    return blobs
+    return _tree_blob_stream(root, rels, stats)
+
+
+def collect_tree_blobs(root: Path, stats: ScanStats):
+    """Eager wrapper, kept for callers that genuinely want the list. Every
+    scanning caller should take `iter_tree_blobs` instead."""
+    return list(iter_tree_blobs(root, stats))
 
 
 # ---------------------------------------------------------------------------
@@ -1498,8 +1667,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             stats.diff_nonempty = bool(raw)
             blobs = [Blob("FILE", target.name, "A", text)]
         elif args.tree:
-            blobs = collect_tree_blobs(REPO_ROOT, stats)
-            stats.diff_nonempty = bool(blobs)
+            # Lazy on purpose (RM-477): `bool()` on a generator proves nothing,
+            # so the non-vacuity claim rests on the eager ls-files check inside
+            # `iter_tree_blobs`, which has already raised if the index is empty.
+            blobs = iter_tree_blobs(REPO_ROOT, stats)
+            stats.diff_nonempty = True
         else:
             remote_name = (args.pre_push or ["origin"])[0] or "origin"
             ref_lines = [ln for ln in sys.stdin.read().splitlines() if ln.strip()]
@@ -1512,7 +1684,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _emit(f"[sibling-sweep] FAULT - {exc}")
         return EXIT_FAULT
 
-    findings = _run_scan(cfg, blobs, stats)
+    # The tree arm's blob source is now a GENERATOR, so its faults surface HERE
+    # rather than above; `ChunkGuardExceeded` joins them because a scan that
+    # cannot justify its own coverage must fail closed, never report clean.
+    try:
+        findings = _run_scan(cfg, blobs, stats)
+    except ChunkGuardExceeded as exc:
+        _emit(f"[sibling-sweep] FAULT - {exc}")
+        return EXIT_FAULT
+    except GitFault as exc:
+        _emit(f"[sibling-sweep] FAULT - {exc}")
+        return EXIT_FAULT
+    except OSError as exc:
+        _emit(f"[sibling-sweep] FAULT - {exc}")
+        return EXIT_FAULT
 
     # Anti-vacuity: a non-empty diff that scanned zero bytes is a broken guard,
     # not a clean push.
