@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.282.0 (2026-09-21) - five-slice integration batch on patch 16.18.1.
+- fix: champion_block_index values are damage-block ordinals; 18
+  clamp-reliant entries renumbered; Malphite W sums both damage blocks
+  (was one twice); Briar E explicitly Total; out-of-range clamp now logs
+  a warning; guard test added. (F2)
+- fix: Arena Stormrazor 223095 is Energized Bolt 100 magic every 2s
+  (twice-as-fast Arena charge; was a stale 0.75 bonus-AD physical proc
+  every 30s); Arena Rapid Firecannon 223094 Sharpshooter 40 -> 200 magic
+  per its own DDragon line (doctrine B). (F3)
+- fix: ranked pool and beam search drop any item sharing a name with an
+  owned item, so an owned item is never re-offered under an alias id
+  (ARAM 3084->223084, SR 6676->667666, SR 3146->663146). (S1-1)
+- tools: RM-81 staleness detector flags ratio-only drift; 16.18.1 sweep
+  97 -> 112 stale champions (e.g. Poppy Q bonus AD 100 -> 75).
+- feat: Arena conversion augments Aim for the Head and Tap Dancer
+  (build_champion augment_stacks, default 10); augment-free builds
+  byte-identical.
+Build tables regenerated at this version.
+
 1.281.0 (2026-09-21) - DS patch refresh 16.15.1 -> 16.18.1 registry
 changes. Output-moving, data-following: (1) Stormrazor moved DDragon id
 3097 -> 3095 at 16.17.1; 3095 now carries the same Energized Bolt proc
