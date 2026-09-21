@@ -635,9 +635,11 @@ def plan_build_order(
     # mode-mirror / alias forms), so a raw compare let the same item take two
     # slots - the shipped 16.14.1 SR table had Viego on 3004 + 323004 (both
     # Manamune) and Samira on 6676 + 667666 (both The Collector), i.e. real
-    # FIVE-item builds. The engine's own owned-id skip compares raw ids too, so
-    # the alias is offered as a fresh candidate and the planner must be the one
-    # to reject it. See core/build_planner/kit_synergy.canonical_item_id.
+    # FIVE-item builds. The engine's owned skip compared raw ids too, so the
+    # alias was offered as a fresh candidate; since S1-1 (2026-09-21)
+    # rank._filter_candidates also drops a candidate whose NAME matches an owned
+    # item, and this canonical-id check stays as defense in depth.
+    # See core/build_planner/kit_synergy.canonical_item_id.
     picked_ids: set[str] = {_canonical_id(i) for i in owned}
 
     # 2026-05-23 (item 164b): boots-slot pre-determination. Boots get

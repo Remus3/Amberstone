@@ -839,9 +839,27 @@ def _filter_candidates(
     # id per item name; a strictly-longer same-name id is a DDragon alias and is
     # dropped. Same-length collisions (Kalista's Black Spear 3599/3600, the
     # jungle-pet tiers 1101-1107 that share a display name) are NOT aliases and
-    # are left untouched, so this pass is byte-identical off SR (ARAM/Arena/Brawl
-    # have only the same-length collision - the alias namespaces map-filter to a
-    # single survivor there).
+    # are left untouched by THIS pass. It is NOT SR-only: measured at 16.18.1,
+    # DDragon marks both ids of many pairs legal off SR too (3084 AND 223084
+    # Heartsteel both carry maps["12"]=True, so ARAM holds dozens of alias pairs;
+    # Arena holds the 22xxxx / 44xxxx mirrors) - this pass is what reduces each
+    # of those to one survivor.
+    #
+    # Owned-name dedup (S1-1, 2026-09-21): the pass above only dedups among
+    # CANDIDATES. An owned id was already dropped by the raw-id ``current_ids``
+    # skip at the top of the loop, so its same-name alias had no canonical
+    # sibling left to lose to and was re-recommended (ARAM owning 3084 ->
+    # 223084 Heartsteel; SR owning 6676 -> 667666 The Collector, 3146 ->
+    # 663146 Hextech Gunblade). Drop every candidate whose NAME matches an owned
+    # item, in either direction (owning the alias also blocks the canonical id).
+    # This extends the already-equipped skip from id to name; it applies to
+    # forced (inject) ids too, since a forced id already respects that skip.
+    owned_names = {
+        (snapshot.items.get(str(i)) or {}).get("name") for i in current_ids
+    }
+    owned_names.discard(None)
+    if owned_names:
+        out = [(i, r) for i, r in out if r.get("name") not in owned_names]
     min_id_len: dict[str, int] = {}
     for item_id, rec in out:
         name = rec.get("name")
