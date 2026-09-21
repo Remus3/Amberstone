@@ -21,6 +21,18 @@ CommunityDragon nor touches the ``prefer_cdragon_ratios`` cutover - which is
 default-ON and live (``abilities.py`` ``load(prefer_cdragon_ratios=True)`` since
 item 320 / ENGINE 1.119.0), NOT default-off as this file previously claimed.
 
+RATIO ARM (added at 16.18.1). The CDragon drift report sees ratios only where
+the live-ratio matcher pairs blocks, and that matcher deliberately declines
+ambiguous pairings, so a ratio-only change could reach neither report: Poppy Q
+``100% -> 75% bonus AD`` at 16.18.1 left base and cooldown untouched and was
+reported current. Each label's ``{{as|(+ X% <phrase>)}}`` terms are now read
+too (exact phrase table, see ``_RATIO_PHRASES``) and emitted as
+``ratio:<label>:<key>`` rows with ``kind: "ratio"``. Each ratio row is also
+annotated with the ENGINE's effective value (``engine_effective``,
+``engine_stale``), because the engine may already re-source that ratio from
+CDragon - a row with ``engine_stale: false`` is stale storage the engine does
+not actually use.
+
 TWO MODES, because they answer different questions
 --------------------------------------------------
 ``--recent`` (cheap, 1 API call, meant for a daily task) reads
@@ -378,6 +390,104 @@ def parse_leveling_bases(wikitext: str) -> dict[str, tuple[float, float]]:
     return out
 
 
+# Ratio phrases (RM-81 ratio arm). EXACT normalised phrase -> stored ratio key,
+# so an unrecognised phrase - including every "per 100 <Champion>'s bonus
+# health" unit and every champion-named phrase - is ignored rather than
+# guessed at. Normalisation lowercases, drops bold markup and a leading "the".
+_RATIO_PHRASES: dict[str, str] = {
+    "ap": "ap_pct",
+    "ad": "total_ad_pct",
+    "bonus ad": "bonus_ad_pct",
+    "of target's maximum health": "target_max_hp_pct",
+    "of target's missing health": "target_missing_hp_pct",
+    "of target's current health": "target_current_hp_pct",
+    "of target's bonus health": "target_bonus_hp_pct",
+    "maximum health": "caster_max_hp_pct",
+    "bonus health": "caster_bonus_hp_pct",
+    "bonus armor": "bonus_armor_pct",
+    "bonus magic resistance": "bonus_mr_pct",
+    "maximum mana": "caster_max_mp_pct",
+    "bonus mana": "caster_bonus_mp_pct",
+}
+_RATIO_KEYS: tuple[str, ...] = tuple(dict.fromkeys(_RATIO_PHRASES.values()))
+_AS_OPEN_RE = re.compile(r"\{\{\s*as\s*\|", re.IGNORECASE)
+_RATIO_TERM_RE = re.compile(r"^\(?\s*\+\s*(?P<num>.+?)\s*%\s*(?P<phrase>[^%]*?)\s*\)?$")
+
+
+def _as_bodies(text: str) -> list[str]:
+    """Every top-level ``{{as|...}}`` body in ``text``, brace-balanced."""
+    out: list[str] = []
+    pos = 0
+    while True:
+        m = _AS_OPEN_RE.search(text, pos)
+        if not m:
+            return out
+        i = m.end()
+        depth = 1
+        while i < len(text) and depth:
+            if text.startswith("{{", i):
+                depth += 1
+                i += 2
+            elif text.startswith("}}", i):
+                depth -= 1
+                i += 2
+            else:
+                i += 1
+        if depth:
+            return out
+        out.append(text[m.end(): i - 2])
+        pos = i
+
+
+def _ratio_term(body: str) -> Optional[tuple[str, tuple[float, float]]]:
+    """``(+ 75% '''bonus''' AD)`` -> ("bonus_ad_pct", (75, 75)), or None."""
+    m = _RATIO_TERM_RE.match((body or "").strip())
+    if not m:
+        return None
+    phrase = _flatten_label(m.group("phrase").replace("'''", "").replace("''", ""))
+    phrase = re.sub(r"^the\s+", "", phrase.lower()).replace("the target's", "target's")
+    key = _RATIO_PHRASES.get(phrase)
+    if key is None:
+        return None
+    num = m.group("num").strip()
+    pts = parse_endpoints(num) if "{{" in num else _ap_endpoints(num)
+    return None if pts is None else (key, pts)
+
+
+def parse_leveling_ratios(wikitext: str) -> dict[str, dict[str, tuple[float, float]]]:
+    """Map each labelled damage line to its RATIO endpoints, keyed like storage.
+
+    The base reader cuts each line at its first ``{{as|`` wrapper, which is
+    exactly where the scaling terms live, so before this a ratio-only change
+    (Poppy Q ``100% -> 75% bonus AD`` at 16.18.1) produced no row at all.
+
+    Conservative on purpose: only phrases in ``_RATIO_PHRASES`` are read, and a
+    key that appears TWICE on one label is dropped as ambiguous rather than
+    choosing one of the two terms.
+    """
+    out: dict[str, dict[str, tuple[float, float]]] = {}
+    for block in _st_blocks(wikitext):
+        parts = _top_level_parts(block)
+        for i in range(0, len(parts) - 1, 2):
+            label = _flatten_label(parts[i])
+            if not label or label in out:
+                continue
+            seen: dict[str, tuple[float, float]] = {}
+            dup: set[str] = set()
+            for body in _as_bodies(parts[i + 1]):
+                term = _ratio_term(body)
+                if term is None:
+                    continue
+                key, pts = term
+                if key in seen:
+                    dup.add(key)
+                seen[key] = pts
+            for key in dup:
+                seen.pop(key, None)
+            out[label] = seen
+    return out
+
+
 def _top_level_parts(body: str) -> list[str]:
     """Split an ``{{st|}}`` body on its OWN pipes, ignoring nested templates.
 
@@ -494,10 +604,18 @@ def meraki_endpoints(entry: dict[str, Any]) -> dict[str, Any]:
 
     bases: dict[str, tuple[float, float]] = {}
     suspect: dict[str, dict[str, Any]] = {}
+    ratios: dict[str, dict[str, tuple[float, float]]] = {}
     for blk in entry.get("damage_blocks") or []:
         if not isinstance(blk, dict):
             continue
         attr = blk.get("attribute")
+        if attr and str(attr) not in ratios:
+            r = {}
+            for key in _RATIO_KEYS:
+                rv = _floats(blk.get(key))
+                if rv is not None:
+                    r[key] = (rv[0], rv[-1])
+            ratios[str(attr)] = r
         vals = _floats(blk.get("base"))
         if not attr or vals is None:
             continue
@@ -508,7 +626,12 @@ def meraki_endpoints(entry: dict[str, Any]) -> dict[str, Any]:
         bases[attr] = (kept[0], kept[-1])
         if marker:
             suspect[attr] = marker
-    return {"cooldown": _ends(cooldown), "bases": bases, "shape_suspect": suspect}
+    return {
+        "cooldown": _ends(cooldown),
+        "bases": bases,
+        "shape_suspect": suspect,
+        "ratios": ratios,
+    }
 
 
 def _differs(a: tuple[float, float], b: tuple[float, float]) -> bool:
@@ -589,6 +712,36 @@ def compare_ability(
                 row["wiki_label"] = alias
             if attr in suspect:
                 row["SHAPE_SUSPECT"] = suspect[attr]
+            findings.append(row)
+
+    # RM-81 ratio arm. Compared only where BOTH sides carry the same ratio key
+    # for the same label; a ratio present on one side only is a representation
+    # gap, not a measured disagreement. Missing labels were already recorded by
+    # the base loop above, so they are not recorded twice here.
+    wiki_ratios = parse_leveling_ratios(wikitext)
+    for attr, stored in (mine.get("ratios") or {}).items():
+        label = attr
+        live = wiki_ratios.get(attr)
+        if live is None:
+            label = _LABEL_ALIASES.get((champion, attr)) or ""
+            live = wiki_ratios.get(label) if label else None
+        if not live:
+            continue
+        for key, pts in stored.items():
+            wv = live.get(key)
+            if wv is None or not _differs(pts, wv):
+                continue
+            row = {
+                "champion": champion,
+                "ability": slot,
+                "name": entry.get("name"),
+                "field": "ratio:" + attr + ":" + key,
+                "kind": "ratio",
+                "meraki": list(pts),
+                "wiki": list(wv),
+            }
+            if label != attr:
+                row["wiki_label"] = label
             findings.append(row)
     return findings
 
@@ -790,6 +943,9 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
             )
         )
 
+    if _count_ratio_rows(findings):
+        _annotate_engine_ratios(findings, _engine_ratio_lookup(patch))
+
     stale = sorted({f["champion"] for f in findings})
     return {
         "_patch": patch,
@@ -809,12 +965,65 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
         "_pages_fetched": len(pages),
         "_skipped_pages": len(skipped_pages),
         "_skipped_labels": len(skipped_labels),
+        "_ratio_findings": _count_ratio_rows(findings),
         "stale_champions": stale,
         "skipped_champions": _skipped_champions(skipped_pages, skipped_labels),
         "skipped_pages": skipped_pages,
         "skipped_labels": skipped_labels,
         "findings": findings,
     }
+
+
+def _count_ratio_rows(findings: Iterable[dict[str, Any]]) -> int:
+    return sum(1 for f in findings or [] if f.get("kind") == "ratio")
+
+
+def _engine_ratio_lookup(patch: str):
+    """``(champ, slot, attr, key) -> endpoints | None`` over the ENGINE's view.
+
+    A ratio row compares the STORED Meraki value, but the engine loads with
+    ``prefer_cdragon_ratios=True`` and may already re-source that ratio from
+    CommunityDragon - in which case the row is stale DATA the engine does not
+    actually use. Loading the snapshot with its shipped defaults answers that
+    per row. Any failure returns None and the rows go un-annotated rather than
+    aborting a sweep whose primary output does not depend on the engine.
+    """
+    try:
+        root = SCRIPT_DIR.parent
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from agents.daemon_slayer.abilities import AbilitiesSnapshot
+
+        snap = AbilitiesSnapshot.load(patch)
+    except Exception:  # noqa: BLE001 - annotation is best-effort by contract
+        return None
+
+    def lookup(champ: str, slot: str, attr: str, key: str):
+        forms = (snap.champions.get(champ) or {}).get(slot) or ()
+        if not forms:
+            return None
+        for blk in forms[0].damage_blocks:
+            if blk.attribute == attr:
+                vals = getattr(blk, key, None)
+                return (float(vals[0]), float(vals[-1])) if vals else None
+        return None
+
+    return lookup
+
+
+def _annotate_engine_ratios(findings: list[dict[str, Any]], lookup) -> None:
+    """Attach ``engine_effective`` + ``engine_stale`` to each ratio row."""
+    if lookup is None:
+        return
+    for row in findings:
+        if row.get("kind") != "ratio":
+            continue
+        _, attr, key = row["field"].split(":", 2)
+        eff = lookup(row["champion"], row["ability"], attr, key)
+        if eff is None:
+            continue
+        row["engine_effective"] = list(eff)
+        row["engine_stale"] = _differs(tuple(eff), tuple(row["wiki"]))
 
 
 def _skipped_champions(*rows: Iterable[dict[str, Any]]) -> list[str]:
@@ -858,6 +1067,7 @@ def write_report(
                 merged[key] = carried + list(report.get(key) or [])
             merged["_skipped_pages"] = len(merged["skipped_pages"])
             merged["_skipped_labels"] = len(merged["skipped_labels"])
+            merged["_ratio_findings"] = _count_ratio_rows(merged["findings"])
             merged["skipped_champions"] = _skipped_champions(
                 merged["skipped_pages"], merged["skipped_labels"]
             )
@@ -919,6 +1129,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             f"pages={report['_pages_fetched']} "
             f"stale={len(report['stale_champions'])} "
             f"findings={len(report['findings'])} "
+            f"ratio_findings={report.get('_ratio_findings', 0)} "
             f"skipped_pages={report.get('_skipped_pages', 0)} "
             f"skipped_labels={report.get('_skipped_labels', 0)}"
         )
