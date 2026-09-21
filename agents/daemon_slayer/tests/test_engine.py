@@ -38,17 +38,19 @@ class BuildChampionTests(unittest.TestCase):
         self.assertEqual(r.gold_spent, bt_gold)
 
     def test_berserkers_stacks_attack_speed_pct_on_base(self) -> None:
-        # Berserker's (3006): +25% AS, +45 MS
-        # Aatrox lvl 1 base AS = 0.651 -> +25% bonus -> 0.651 * 1.25 = 0.81375
+        # Berserker's (3006): +30% AS, +45 MS (DDragon 16.18.1; was +25%
+        # through 16.15.1).
+        # Aatrox lvl 1 base AS = 0.651 -> +30% bonus -> 0.651 * 1.30 = 0.8463
         r = build_champion(self.snap, "Aatrox", level=1, item_ids=["3006"])
-        self.assertAlmostEqual(r.stats["as"], 0.651 * 1.25, places=3)
+        self.assertAlmostEqual(r.stats["as"], 0.651 * 1.30, places=3)
         # MS = base 345 + flat 45 = 390 (no pct)
         self.assertEqual(r.stats["ms"], 390)
 
     def test_berserkers_at_lvl_18_combines_per_level_and_item_bonus(self) -> None:
-        # AS = base * (1 + bonus_levels + bonus_items) = 0.651 * (1 + 2.5/100*17 + 0.25)
+        # AS = base * (1 + bonus_levels + bonus_items) = 0.651 * (1 + 2.5/100*17 + 0.30)
+        # Berserker's AS is 0.30 at DDragon 16.18.1 (was 0.25 through 16.15.1).
         r = build_champion(self.snap, "Aatrox", level=18, item_ids=["3006"])
-        expected = 0.651 * (1 + 0.025 * 17 + 0.25)
+        expected = 0.651 * (1 + 0.025 * 17 + 0.30)
         self.assertAlmostEqual(r.stats["as"], expected, places=3)
 
     def test_infinity_edge_crit_caps_at_100pct(self) -> None:

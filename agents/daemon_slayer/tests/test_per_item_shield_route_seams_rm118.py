@@ -147,10 +147,15 @@ _PROBES: dict[str, tuple[str, tuple[str, ...]]] = {
 # The MEASURED off/on ``blended_ehp`` pair per seam. These are the ON-path
 # movement proofs: a wire that parsed a key and dropped it before the engine
 # call would leave every ON value equal to its OFF twin.
+# Re-measured at 16.18.1 (patch drift from 16.15.1, DDragon stat moves only, no
+# registry change): Black Cleaver 3071 AD 40 -> 45 raises Eclipse's bonus-AD
+# shield ON value (16.15.1 read 4670.6529041447375); Chainlaced Crushers 3173
+# MR 30 -> 25 lowers both halves of its pair (16.15.1 read 5923.776993750001 /
+# 6113.777596691178). The other three pairs are byte-identical across patches.
 _MEASURED: dict[str, tuple[float, float]] = {
     _KAENIC: (6560.949098552632, 7002.336717677632),
-    _ECLIPSE: (4299.715930460527, 4670.6529041447375),
-    _CHAINLACED: (5923.776993750001, 6113.777596691178),
+    _ECLIPSE: (4299.715930460527, 4674.362273881579),
+    _CHAINLACED: (5863.31949375, 6048.055390808824),
     _SERAPHS: (3601.8210250000006, 4279.22489125),
     _FIMBUL: (5328.295964243422, 5729.085216995396),
 }

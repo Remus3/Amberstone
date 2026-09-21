@@ -387,6 +387,39 @@ def _extract_obj_factory(chunk: str, marker: str) -> dict:
     raise RuntimeError(f"no obj-literal factory body containing marker {marker!r}")
 
 
+_ROLE_CLASSES = frozenset({"FIGHTER", "TANK", "MAGE", "ASSASSIN", "MARKSMAN", "SUPPORT"})
+
+
+def _extract_roles(chunk: str) -> dict:
+    """Return lolmath's champion -> class-token-list table.
+
+    Several Turbopack factories start ``{Aatrox:...``; 16.18.1 ships a
+    ``{Aatrox:"General",...}`` survivability-label object AHEAD of the class
+    lists, so "first factory with Aatrox:" silently yielded strings. Pick the
+    factory whose every value is a non-empty list of known class tokens.
+    """
+    for m in re.finditer(r"\d+,\(([a-z],?)+\)=>\{a\.exports=", chunk):
+        body_start = m.end()
+        if chunk[body_start] != "{":
+            continue
+        end = _walk_balanced(chunk, body_start)
+        if end < 0:
+            continue
+        body = chunk[body_start:end + 1]
+        if "Aatrox:" not in body[:200]:
+            continue
+        try:
+            parsed = json5.loads(body)
+        except Exception:  # noqa: BLE001 - not a plain literal, try the next
+            continue
+        if isinstance(parsed, dict) and parsed and all(
+            isinstance(v, list) and v and set(v) <= _ROLE_CLASSES
+            for v in parsed.values()
+        ):
+            return parsed
+    raise RuntimeError("no lolmath roles factory with class-token lists found")
+
+
 def _extract_use_strict_factory_body(chunk: str) -> str:
     """Return the body text of the giant ``e=>{"use strict"; ...}`` factory."""
     m = re.search(r'e=>\{"use strict";', chunk)
@@ -605,7 +638,7 @@ class LolmathExtract:
 
 def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
     cooldowns = _extract_json_parse_string(chunk, COOLDOWN_PAYLOAD_ANCHOR)
-    roles = _extract_obj_factory(chunk, "Aatrox:")
+    roles = _extract_roles(chunk)
     body = _extract_use_strict_factory_body(chunk)
     bindings = _walk_top_level_bindings(body)
     log.info("use-strict factory: %d top-level bindings", len(bindings))

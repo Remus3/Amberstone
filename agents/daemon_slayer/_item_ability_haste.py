@@ -210,6 +210,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "226662":  15.0,  # Iceborn Gauntlet (16.12.1: Arena mirror 10->15)
     "226664":  10.0,  # Hollow Radiance
     "226667":  10.0,  # Radiant Virtue
+    "226668":  25.0,  # Ultra Hydra (NEW at 16.17.1, in DS snapshot from 16.18.1; map 12 only, ARAM Mayhem augment reward, no 6668 base id)
     "226691":  15.0,  # Duskblade of Draktharr
     "226692":  15.0,  # Eclipse (16.13.1 Arena mirror re-valued 10->15 to match base 6692; caught 16.14.1)
     "226693":  15.0,  # Prowler's Claw

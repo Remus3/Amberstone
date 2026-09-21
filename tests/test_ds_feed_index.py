@@ -126,7 +126,16 @@ def test_live_dir_stamps_match_their_directory():
 def test_known_stamp_lag_entries_are_still_lagging():
     """A fixed feed must not sit in the exception list forever."""
     live = _live_patch()
-    assert _INDEX["known_stamp_lag"], "exception list vanished"
+    assert isinstance(_INDEX.get("known_stamp_lag"), dict), "exception list vanished"
+    # An EMPTY list is legitimate (2026-09-20: the last row, cherry_augments,
+    # was refetched at 16.18.1) - but only if nothing in the live dir actually
+    # lags. Assert that directly so emptiness cannot hide a lagging feed.
+    lagging = sorted(
+        f for f, row in _INDEX["dirs"][live].items()
+        if row.get("stamp_field") and row.get("declared_patch") not in (None, live)
+        and f not in _INDEX["known_stamp_lag"]
+    )
+    assert not lagging, f"{live} feeds declare an older patch unexempted: {lagging}"
     for feed in _INDEX["known_stamp_lag"]:
         row = _INDEX["dirs"][live][feed]
         assert row["stamp_field"] is not None, f"{feed} lost its stamp"
@@ -251,11 +260,42 @@ def _manifest_outputs(patch: str) -> set[str]:
     }
 
 
+# 2026-09-20 (DS refresh 16.15.1 -> 16.18.1): every former exempt feed was
+# genuinely re-generated at 16.18.1 (fresh extracts, a refetched augment
+# catalogue, re-measured enchanter rows), so the live registry is correctly
+# EMPTY. An empty registry would make every hygiene test below vacuous, so when
+# it is empty they run against the last pair on which the exemptions were
+# established instead: the frozen rows below over 16.14.1 -> 16.15.1. That
+# keeps the verdict pipeline, the vintage reader and the generator scans
+# exercised against real bytes. The live dir is still covered by the RM-213
+# offender assertion, which runs on the real (empty) registry.
+_HISTORICAL_PAIR = ("16.14.1", "16.15.1")
+_HISTORICAL_STATIC_BODY: dict[str, tuple[str, str]] = {
+    "cherry_augments.json": ("upstream-static", "none"),
+    "enchanter_items.json": ("authored", "none"),
+    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
+    "wiki_ability_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_wiki_ability_extract.py"),
+    "wiki_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
+    "cdragon_spell_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
+}
+
+
+def _registry() -> dict[str, tuple[str, str]]:
+    return dict(fi.KNOWN_STATIC_BODY) or dict(_HISTORICAL_STATIC_BODY)
+
+
+def _pair() -> tuple[str, str]:
+    return _two_most_recent() if fi.KNOWN_STATIC_BODY else _HISTORICAL_PAIR
+
+
 def _of_kind(kind: str) -> dict[str, str]:
     """Registry rows of one kind, as ``{feed: remedy}``."""
     return {
         feed: remedy
-        for feed, (this_kind, remedy) in fi.KNOWN_STATIC_BODY.items()
+        for feed, (this_kind, remedy) in _registry().items()
         if this_kind == kind
     }
 
@@ -428,7 +468,7 @@ def test_upstream_static_exemptions_have_a_genuinely_frozen_vintage():
       * a stamp present in both and DIFFERENT. The vintage moved, so a real
         re-run happened; the feed is refreshed, not static.
     """
-    prev, live = _two_most_recent()
+    prev, live = _pair()
     upstream = _of_kind("upstream-static")
     assert upstream, (
         "no 'upstream-static' rows left in KNOWN_STATIC_BODY, so this "
@@ -460,8 +500,8 @@ def test_static_body_exemptions_are_still_static():
     exception list and make each row prove the condition it claims, so a fixed
     feed cannot sit in the list forever.
     """
-    prev, live = _two_most_recent()
-    for feed in fi.KNOWN_STATIC_BODY:
+    prev, live = _pair()
+    for feed in _registry():
         for patch in (prev, live):
             assert (_DATA / patch / feed).is_file(), (
                 f"{feed} is exempted but absent from {patch}"
@@ -474,7 +514,7 @@ def test_static_body_exemptions_are_still_static():
 
 def test_static_body_exemption_kinds_are_from_the_closed_set():
     """No inventing a fourth category to make an awkward row fit."""
-    for feed, (kind, _remedy) in fi.KNOWN_STATIC_BODY.items():
+    for feed, (kind, _remedy) in _registry().items():
         assert kind in _KINDS, f"{feed} declares unknown kind {kind!r}"
 
 
@@ -511,7 +551,7 @@ def test_pending_vintage_exemptions_name_a_generator_that_still_lacks_a_vintage(
     full scan. The split is asserted below so it cannot quietly swallow the
     whole population.
     """
-    _prev, live = _two_most_recent()
+    _prev, live = _pair()
     outputs = _manifest_outputs(live)
     scanned: list[str] = []
 
@@ -555,7 +595,7 @@ def test_authored_and_upstream_static_entries_carry_no_remedy():
     is a category error. A pending-vintage feed is defined by having a pending
     fix, so "none" on one is an empty promise.
     """
-    for feed, (kind, remedy) in fi.KNOWN_STATIC_BODY.items():
+    for feed, (kind, remedy) in _registry().items():
         if kind in ("authored", "upstream-static"):
             assert remedy == "none", (
                 f"{feed} is {kind} but names remedy {remedy!r}"
@@ -595,11 +635,13 @@ def test_static_body_registry_and_index_population_are_non_empty():
     live dir's feed rows. Empty either one and all of them pass while proving
     nothing, which is precisely how an exemption list rots into decoration.
     """
-    assert len(fi.KNOWN_STATIC_BODY) >= 5, (
-        f"registry collapsed to {len(fi.KNOWN_STATIC_BODY)} entries - the "
+    assert len(_registry()) >= 5, (
+        f"registry collapsed to {len(_registry())} entries - the "
         "hygiene tests above are now near-vacuous"
     )
     assert _pending(), "no pending-vintage rows left, so the generator scan is vacuous"
+    for patch in _pair():
+        assert patch in _INDEX["dirs"], f"hygiene pair dir {patch} not indexed"
 
     live = _two_most_recent()[1]
     assert len(_INDEX["dirs"][live]) >= 15, (
@@ -798,10 +840,10 @@ def test_exempt_feeds_still_classify_as_unrefreshed():
     exercises the no-stamp branch. Assert only the union and either branch could
     rot away unnoticed.
     """
-    prev, live = _two_most_recent()
+    prev, live = _pair()
     verdicts = _refresh_verdicts(prev, live)
 
-    exempt = sorted(fi.KNOWN_STATIC_BODY)
+    exempt = sorted(_registry())
     assert len(exempt) >= 5, (
         f"only {len(exempt)} exempt feeds - this control is near-vacuous"
     )

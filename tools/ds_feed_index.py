@@ -59,12 +59,19 @@ _STAMP = (
 )
 _STRIP = frozenset(_WALL_CLOCK + _PROSE + _STAMP)
 
-# Measured facts (2026-07-19), each verified against the 16.14.1 dir on disk.
-KNOWN_STAMP_LAG = {
-    "cherry_augments.json":
-        "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged "
-        "since 16.10.1; authored feed, body has not moved",
-}
+# Measured facts, each verified against the live dir on disk.
+#
+# EMPTY since 2026-09-20 (DS refresh 16.15.1 -> 16.18.1). Its last row,
+# cherry_augments.json "declares rc_patch 16.10.1 ... body has not moved", was
+# a copy-forward, NOT an upstream fact: the CDragon cherry-augments feed HAD
+# moved (90 augments added, 92 removed by 16.18.1), but
+# core/augment_external_source._refresh_meta only fetched when the file was
+# ABSENT and every refresh copied the old file into the new dir, so the fetch
+# never ran. The fetch now also re-runs when the file's rc_patch differs from
+# its dir (tests/test_cherry_augments_patch_stamp.py), and 16.18.1 was
+# refetched. The 16.10.1 .. 16.15.1 copies still declare 16.10.1; that is
+# historical-dir lag, which this list does not track.
+KNOWN_STAMP_LAG: dict[str, str] = {}
 # mayhem_augment_stats.json was dropped 2026-09-07: the six snapshots were
 # untracked and purged from history ahead of the public flip (a vendor's dataset
 # this repo has no right to redistribute - the Share package's own licence had
@@ -114,50 +121,19 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     #   kind in {"authored", "upstream-static", "pending-vintage"}
     #   remedy: "none" for authored / upstream-static, else the repo-relative
     #           generator path that must start emitting a vintage key.
-
-    # Arena augment set fetched once at 16.10.1 and carried forward since.
-    # fetched_at is frozen at 2026-05-18T03:58:33 in BOTH dirs, which is
-    # consistent rather than suspicious: there is no newer upstream to fetch,
-    # which is the same root cause that already puts it in KNOWN_STAMP_LAG.
-    "cherry_augments.json": ("upstream-static", "none"),
-
-    # mayhem_augment_stats.json was dropped here too on 2026-09-07, for the
-    # reason recorded above KNOWN_STAMP_LAG: it is no longer a shipped feed.
-
-    # AUTHORED curation, verified this session: there is NO generator for it
-    # anywhere. A grep of tools/ for the filename returns only this module's
-    # own prose and the generated index sidecar, and every other reference in
-    # the repo READS it (agents/daemon_slayer/hps.py:181 loads the snapshot;
-    # the enchanter tests read the same path). It is 34 hand-curated rows, so
-    # an unchanged body between patches is its normal, correct state and it can
-    # never acquire a vintage stamp.
-    "enchanter_items.json": ("authored", "none"),
-
-    # Genuinely INNOCENT but unprovable from its own body, which carries no
-    # vintage key at all. Verified this session: it is named in the 16.15.1
-    # manifest "outputs", its mtime (2026-07-30T18:24:22) matches that
-    # manifest's extracted_at to the second, and BOTH manifests record the
-    # identical sources.lolmath_scenarios_chunk (370vfc_ounngn.js, 734373
-    # bytes), so the upstream SPA bundle did not rebuild between extracts and a
-    # byte-identical body is the CORRECT extract result. The remedy is a
-    # vintage stamp in the extractor, not a regen: the extractor writes this
-    # file only as part of a whole-snapshot run, never in isolation.
-    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
-
-    # The two feeds named in point (a) of this module's docstring: the
-    # sanctioned patch-refresh ritual sed-flips _patch on them while the body
-    # is copied forward, so a still body is expected. Neither payload carries a
-    # vintage key, so a real re-run cannot be told from a relabel - which is
-    # precisely the gap the remedy closes.
-    "wiki_ability_stats.json":
-        ("pending-vintage", "tools/daemon_slayer_wiki_ability_extract.py"),
-    "wiki_stats.json":
-        ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
-
-    # CDragon per-spell stat sidecar. Body carries no vintage key, so the same
-    # relabel-vs-refresh ambiguity applies.
-    "cdragon_spell_stats.json":
-        ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
+    #
+    # EMPTY since 2026-09-20: every former row genuinely re-generated at
+    # 16.18.1, so none of them has a static body against 16.15.1 any more -
+    # scenarios / wiki_stats / wiki_ability_stats / cdragon_spell_stats were
+    # FRESH extracts (not copy-forwards), cherry_augments.json was refetched
+    # (its old "upstream-static, no newer upstream" reading was wrong - see
+    # KNOWN_STAMP_LAG above), and enchanter_items.json had three Arena
+    # heal-and-shield-power rows re-measured from DDragon 16.18.1. The former
+    # rows, and the pending-vintage REMEDIES they carried (no extractor above
+    # stamps a vintage key yet), are frozen in tests/test_ds_feed_index.py as
+    # _HISTORICAL_STATIC_BODY, which keeps the hygiene group exercised on the
+    # 16.14.1 -> 16.15.1 pair. Re-add a row here the next time a feed is
+    # legitimately carried forward unchanged.
 }
 
 

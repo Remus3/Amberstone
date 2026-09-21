@@ -266,13 +266,15 @@ class ArenaMirrorIsDoctrineBAbsentTests(unittest.TestCase):
     def test_only_two_terminus_ids_exist_in_the_item_index(self) -> None:
         ids = sorted(k for k in _snap().items if k.endswith("3302"))
         self.assertEqual(ids, ["223302", "3302"])
-        # Map coverage: the SR row serves SR (11) + ARAM (12) + Brawl (35);
-        # map 21 (Nexus Blitz) is not wired. 223302 is Arena-only (30).
-        # 16.15.1 added map 453, the throwback mode, to 265 of the 706 canonical
-        # items - a real upstream flag on the LIVE row, not a mirror. RC does not
-        # model 453, so it is inert here; the pin records it rather than hides it.
+        # Map coverage: the SR row serves SR (11) + ARAM (12). 223302 is
+        # Arena-only (30). 16.15.1 added map 453, the throwback mode, to 265 of
+        # the 706 canonical items - a real upstream flag on the LIVE row, not a
+        # mirror. RC does not model 453, so it is inert here; the pin records it
+        # rather than hides it. 16.18.1 DROPPED map keys 21 (Nexus Blitz) and 35
+        # (Brawl) from every DDragon item (measured: 16.15.1 read
+        # {11, 12, 21, 35, 453} for 3302), so they are gone from this pin too.
         sr_maps = {m for m, on in (_snap().items["3302"].get("maps") or {}).items() if on}
-        self.assertEqual(sr_maps, {"11", "12", "21", "35", "453"})
+        self.assertEqual(sr_maps, {"11", "12", "453"})
         arena_maps = {
             m for m, on in (_snap().items["223302"].get("maps") or {}).items() if on
         }

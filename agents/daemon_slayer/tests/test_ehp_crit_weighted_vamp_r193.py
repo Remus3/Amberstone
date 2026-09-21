@@ -48,12 +48,18 @@ _AATROX_OFF_HEAL_LIFESTEAL = 148.33523250000002
 # 1 + min(0.75, 1.0) * 1.05
 _JINX_CRIT_FACTOR = 1.7875
 
+# The baselines above were measured on 16.15.1 data. DDragon 16.18.1 moved
+# Berserker's Greaves (3006) AS 0.25 -> 0.30, which moves the Jinx heal pool.
+# This file tests the SEAM (byte-identical OFF path, exact crit factor ON), not
+# the patch data, so it pins the snapshot the baselines were measured on.
+_PINNED_PATCH = "16.15.1"
+
 
 class OffPathByteIdenticalTests(unittest.TestCase):
     """Flag absent -> the pre-seam measured numbers, exactly."""
 
     def setUp(self):
-        self.snap = DataSnapshot.load()
+        self.snap = DataSnapshot.load(patch=_PINNED_PATCH)
 
     def test_jinx_off_matches_measured_head_baseline(self):
         r = compute_ehp(self.snap, "Jinx", 16, item_ids=_JINX_ITEMS, mode="SR")
@@ -80,7 +86,7 @@ class ArmedCritBuildTests(unittest.TestCase):
     """Armed on a crit build -> exactly the crit factor, sustain-only."""
 
     def setUp(self):
-        self.snap = DataSnapshot.load()
+        self.snap = DataSnapshot.load(patch=_PINNED_PATCH)
         self.off = compute_ehp(
             self.snap, "Jinx", 16, item_ids=_JINX_ITEMS, mode="SR",
         )
@@ -115,7 +121,7 @@ class ArmedZeroCritNoOpTests(unittest.TestCase):
     """Armed on a zero-crit build -> byte-identical to OFF."""
 
     def setUp(self):
-        self.snap = DataSnapshot.load()
+        self.snap = DataSnapshot.load(patch=_PINNED_PATCH)
 
     def test_aatrox_armed_is_byte_identical_no_op(self):
         off = compute_ehp(self.snap, "Aatrox", 13, item_ids=_AATROX_ITEMS, mode="SR")

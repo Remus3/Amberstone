@@ -73,7 +73,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 10,
           "shielding": 0
@@ -187,7 +189,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -300,7 +305,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -414,7 +421,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 2
@@ -528,7 +538,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -642,7 +655,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 8,
           "shielding": 0
@@ -756,7 +772,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -869,7 +888,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -983,7 +1004,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 2
@@ -1096,7 +1120,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 3
@@ -1210,7 +1236,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -1323,7 +1352,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -1437,7 +1468,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -1551,7 +1585,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 2
@@ -1665,7 +1702,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -1778,7 +1818,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 5,
           "shielding": 0
@@ -1892,7 +1934,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 2
@@ -2006,7 +2051,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -2120,7 +2168,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -2234,7 +2285,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -2347,7 +2401,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -2461,7 +2517,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 5,
           "shielding": 4
@@ -2574,7 +2633,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -2688,7 +2749,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -2802,7 +2866,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -2916,7 +2983,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 0
@@ -3030,7 +3100,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 6
@@ -3143,7 +3216,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -3257,7 +3332,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 10,
           "shielding": 0
@@ -3371,7 +3449,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 2
@@ -3485,7 +3566,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -3599,7 +3683,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -3713,7 +3800,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -3827,7 +3917,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -3941,7 +4034,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 8,
           "shielding": 0
@@ -4055,7 +4151,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -4169,7 +4268,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -4282,7 +4384,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -4396,7 +4500,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 2
@@ -4510,7 +4617,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -4624,7 +4734,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -4737,7 +4850,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -4850,7 +4965,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -4964,7 +5081,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 5,
           "shielding": 0
@@ -5078,7 +5198,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -5192,7 +5315,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 1
@@ -5306,7 +5432,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 8,
           "shielding": 0
@@ -5420,7 +5549,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 9,
           "shielding": 0
@@ -5534,7 +5666,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 8
@@ -5648,7 +5783,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 8
@@ -5762,7 +5900,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 5,
           "shielding": 5
@@ -5875,7 +6016,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -5989,7 +6132,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "FIGHTER",
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -6103,7 +6249,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -6216,7 +6365,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -6330,7 +6481,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 2
@@ -6443,7 +6597,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -6557,7 +6713,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 10
@@ -6670,7 +6829,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -6784,7 +6945,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -6898,7 +7062,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -7012,7 +7179,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -7126,7 +7296,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 0
@@ -7239,7 +7412,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -7352,7 +7527,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -7465,7 +7642,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -7570,7 +7749,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -7684,7 +7865,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -7798,7 +7982,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 5
@@ -7912,7 +8099,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -8026,7 +8216,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 6
@@ -8140,7 +8333,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -8254,7 +8450,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -8367,7 +8566,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -8481,7 +8682,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -8595,7 +8799,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -8709,7 +8916,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 8
@@ -8823,7 +9033,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 6
@@ -8937,7 +9150,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -9050,7 +9266,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -9164,7 +9382,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -9278,7 +9499,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -9392,7 +9616,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -9506,7 +9733,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 8
@@ -9620,7 +9850,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -9734,7 +9967,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -9848,7 +10084,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 1
@@ -9962,7 +10201,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -10076,7 +10318,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -10190,7 +10435,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -10304,7 +10552,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 0
@@ -10418,7 +10669,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 6
@@ -10532,7 +10786,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 1
@@ -10646,7 +10903,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -10760,7 +11020,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 0
@@ -10874,7 +11137,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -10988,7 +11254,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 1
@@ -11102,7 +11371,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 8,
           "shielding": 6
@@ -11216,7 +11488,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 5
@@ -11329,7 +11604,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -11443,7 +11720,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 0
@@ -11557,7 +11837,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 1
@@ -11671,7 +11954,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "SUPPORT",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -11784,7 +12070,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -11898,7 +12186,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -12011,7 +12302,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 3
@@ -12124,7 +12417,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -12238,7 +12533,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -12352,7 +12650,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -12466,7 +12767,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 4
@@ -12580,7 +12884,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -12694,7 +13001,10 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -12808,7 +13118,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 8
@@ -12922,7 +13235,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 5
@@ -13035,7 +13351,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -13149,7 +13467,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 4
@@ -13262,7 +13583,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -13376,7 +13699,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 1
@@ -13490,7 +13816,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 2
@@ -13604,7 +13933,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 5
@@ -13717,7 +14049,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -13830,7 +14164,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 3
@@ -13944,7 +14280,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -14058,7 +14397,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -14172,7 +14514,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 6
@@ -14285,7 +14630,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -14399,7 +14746,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 6
@@ -14513,7 +14863,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -14627,7 +14980,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 5,
           "shielding": 4
@@ -14741,7 +15097,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 10,
           "shielding": 0
@@ -14855,7 +15214,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 9,
           "shielding": 0
@@ -14969,7 +15331,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -15082,7 +15447,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -15196,7 +15563,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 6
@@ -15310,7 +15680,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -15423,7 +15796,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -15537,7 +15912,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "TANK"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 1
@@ -15651,7 +16029,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -15765,7 +16146,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 1
@@ -15879,7 +16263,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -15993,7 +16380,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -16107,7 +16497,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -16221,7 +16614,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -16335,7 +16731,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -16449,7 +16848,10 @@
             6
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 4
@@ -16563,7 +16965,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 4
@@ -16677,7 +17082,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MARKSMAN",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -16791,7 +17199,10 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -16904,7 +17315,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -17018,7 +17431,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -17131,7 +17547,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 2
@@ -17245,7 +17663,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 3,
           "shielding": 2
@@ -17359,7 +17780,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 8,
           "shielding": 0
@@ -17472,7 +17896,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 3
@@ -17586,7 +18012,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 9,
           "shielding": 0
@@ -17700,7 +18129,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 1
@@ -17814,7 +18246,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 6,
           "shielding": 0
@@ -17927,7 +18362,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -18041,7 +18478,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -18155,7 +18595,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 4,
           "shielding": 0
@@ -18269,7 +18712,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 4
@@ -18383,7 +18829,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 4
@@ -18497,7 +18946,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER",
+          "TANK"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -18610,7 +19062,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -18724,7 +19178,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 10,
           "shielding": 1
@@ -18837,7 +19294,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 0
@@ -18951,7 +19410,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "TANK",
+          "FIGHTER"
+        ],
         "ratings": {
           "healing": 7,
           "shielding": 0
@@ -19064,7 +19526,9 @@
             null
           ]
         },
-        "roles": "Squishy",
+        "roles": [
+          "ASSASSIN"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -19177,7 +19641,9 @@
             null
           ]
         },
-        "roles": "Tanky",
+        "roles": [
+          "MARKSMAN"
+        ],
         "ratings": {
           "healing": 2,
           "shielding": 1
@@ -19290,7 +19756,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -19404,7 +19872,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "SUPPORT",
+          "MAGE"
+        ],
         "ratings": {
           "healing": 1,
           "shielding": 0
@@ -19517,7 +19988,9 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0
@@ -19631,7 +20104,10 @@
             null
           ]
         },
-        "roles": "General",
+        "roles": [
+          "MAGE",
+          "SUPPORT"
+        ],
         "ratings": {
           "healing": 0,
           "shielding": 0

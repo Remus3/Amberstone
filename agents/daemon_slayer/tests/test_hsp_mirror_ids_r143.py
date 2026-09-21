@@ -6,8 +6,8 @@ Two defects this file locks down:
    ids (``32xxxx`` for mode="sr", ``22xxxx`` for mode="arena"), which were
    absent from ``enchanter_items.json`` - so ``sum_wielder_hsp_pct`` silently
    contributed 0.0 for every real enchanter item in a live inventory.
-   The mirrors are NOT numerically identical to the SR line (Arena Redemption
-   is 12% vs SR 10%; ARAM Mikael's is 15% vs SR 12%), so this is an explicit
+   The mirrors are NOT numerically identical to the SR line (Arena Dawncore
+   is 12% vs SR 16%; ARAM Mikael's is 15% vs SR 12%), so this is an explicit
    per-id truth table parsed from ``items.json``, never a prefix strip.
 
 2. Moonstone Renewer (6617) carries ``heal_shield_amp_pct`` 0.30 which is NOT a
@@ -27,17 +27,19 @@ from agents.daemon_slayer.hps import (
 )
 
 # (bare_id, name, sr_pct, mirror32_pct, mirror22_pct)
-# Measured from data/daemon_slayer/16.14.1/items.json via the
-# "<attention>N%</attention> Heal and Shield Power" stat line.
+# Measured from data/daemon_slayer/16.18.1/items.json via the
+# "<attention>N%</attention> Heal and Shield Power" stat line. 16.18.1 moved
+# the Arena lines of Redemption / Ardent Censer / Staff of Flowing Water from
+# 12 / 12 / 14 down to 10 (symmetric with SR); 16.15.1 still reads 12 / 12 / 14.
 TRUTH: tuple[tuple[str, str, float, float, float], ...] = (
     ("2526", "Whispering Circlet", 0.08, 0.08, 0.08),
-    ("3107", "Redemption", 0.10, 0.10, 0.12),
+    ("3107", "Redemption", 0.10, 0.10, 0.10),
     ("3109", "Knight's Vow", 0.0, 0.0, 0.0),
     ("3190", "Locket of the Iron Solari", 0.0, 0.0, 0.0),
     ("3222", "Mikael's Blessing", 0.12, 0.15, 0.12),
-    ("3504", "Ardent Censer", 0.10, 0.10, 0.12),
+    ("3504", "Ardent Censer", 0.10, 0.10, 0.10),
     ("4005", "Imperial Mandate", 0.0, 0.0, 0.0),
-    ("6616", "Staff of Flowing Water", 0.10, 0.10, 0.14),
+    ("6616", "Staff of Flowing Water", 0.10, 0.10, 0.10),
     ("6620", "Echoes of Helia", 0.0, 0.0, 0.0),
     ("6621", "Dawncore", 0.16, 0.20, 0.12),
 )
@@ -80,9 +82,9 @@ class MirrorIdCoverageTests(unittest.TestCase):
 
     def test_mixed_arena_inventory_sums_additively(self) -> None:
         # Arena enchanter shell: Redemption + Staff + Mikael's + Moonstone.
-        # 0.12 + 0.14 + 0.12 + 0.0 (chain-only) = 0.38
+        # 0.10 + 0.10 + 0.12 + 0.0 (chain-only) = 0.32 at 16.18.1
         inv = ["223107", "226616", "223222", "226617"]
-        self.assertAlmostEqual(sum_wielder_hsp_pct(inv), 0.38, places=6)
+        self.assertAlmostEqual(sum_wielder_hsp_pct(inv), 0.32, places=6)
 
     def test_mixed_aram_inventory_sums_additively(self) -> None:
         # 0.15 (Mikael's) + 0.20 (Dawncore) + 0.10 (Ardent) = 0.45
@@ -92,7 +94,7 @@ class MirrorIdCoverageTests(unittest.TestCase):
     def test_unknown_id_fails_soft_to_zero(self) -> None:
         self.assertAlmostEqual(sum_wielder_hsp_pct(["9999999"]), 0.0, places=6)
         self.assertAlmostEqual(
-            sum_wielder_hsp_pct(["9999999", "223107"]), 0.12, places=6
+            sum_wielder_hsp_pct(["9999999", "226621"]), 0.12, places=6
         )
         self.assertAlmostEqual(sum_wielder_hsp_pct([]), 0.0, places=6)
         self.assertAlmostEqual(sum_wielder_hsp_pct(None), 0.0, places=6)
