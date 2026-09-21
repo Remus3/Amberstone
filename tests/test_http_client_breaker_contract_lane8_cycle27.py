@@ -130,6 +130,7 @@ from __future__ import annotations
 import http.client
 import io
 import json
+import math
 import tempfile
 import threading
 import time
@@ -412,9 +413,31 @@ class BreakerCharacterizationTests(_BreakerTestBase):
         `opened_at + BREAKER_COOLDOWN_SEC` the comparison is `< COOLDOWN` and
         therefore false, so the boundary admits rather than rejects.
         Deliberately calls ONCE: under the one-probe contract this caller IS
-        the probe, which is why it survives the fix unchanged."""
+        the probe, which is why it survives the fix unchanged.
+
+        FLOAT DISCIPLINE (nightly run 35615237248 went red here). The old
+        body used `opened_at = time.monotonic()` and `boundary = opened_at +
+        COOLDOWN`, but `fl(a + 60) - a` is NOT 60 for every double `a`: when
+        `a` carries low-order bits finer than the ulp of `a + 60`, the sum
+        rounds down and `_check_breaker` computes elapsed = 59.9999999995,
+        which is `< COOLDOWN` and raises "0s remaining". Measured miss rate
+        is ~5 percent for `a` in 60-1000 s (a freshly booted CI runner's
+        CLOCK_MONOTONIC), ~0.5 percent at 1e3-1e4, ~0.04 percent at 1e4-1e5.
+        The production comparison is right; the test never reached the exact
+        boundary it claimed to. So `opened_at` is pinned to a WHOLE second on
+        the real timeline, where `a + 60` is exact, and that precondition is
+        asserted rather than assumed. The just-before side is pinned too, so
+        a `<` -> `<=` flip in production is caught from both directions."""
         st = self._open_breaker_seconds_ago(0.0)
+        with st.lock:
+            st.opened_at = float(int(st.opened_at))
         boundary = st.opened_at + BREAKER_COOLDOWN_SEC
+        self.assertEqual(
+            boundary - st.opened_at, BREAKER_COOLDOWN_SEC,
+            "precondition: the boundary must be exactly representable",
+        )
+        with self.assertRaises(CircuitOpen):
+            self.client._check_breaker(HOST, math.nextafter(boundary, 0.0))
         self.assertIsNone(self.client._check_breaker(HOST, boundary))
 
     def test_breaker_state_is_per_hostname(self):
