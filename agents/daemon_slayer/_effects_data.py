@@ -4417,13 +4417,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Rapid Firecannon",
         periodics=(PeriodicProc(
             name="Sharpshooter",
-            # Mirrors SR 3094 - Meraki 40 bonus magic on-hit when fully
-            # Energized (was 120).
-            bonus_damage=40.0,
+            # F3 sibling (doctrine B): own DDragon 223094 line (16.15.1
+            # AND 16.18.1) states "Your Energized Attack applies 200 bonus
+            # magic damage" vs SR 3094's 40. The prior 40 was inherited
+            # from the SR Meraki audit (Meraki has no 223094 entry). No
+            # faster charge is stated, so the SR 3s cadence stays.
+            bonus_damage=200.0,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
         ),),
-        note="Rapid Firecannon (Arena 223094): same as SR 3094 - Sharpshooter +40 magic every ~3s",
+        note="Rapid Firecannon (Arena 223094): Sharpshooter +200 bonus magic every ~3s per the Arena DDragon line (SR 3094 carries 40)",
     ),
     "223100": ItemEffect(
         item_id="223100",
@@ -5425,13 +5428,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223095": ItemEffect(
         item_id="223095",
         name="Stormrazor",
+        # F3 (16.18.1 validation): was a "Stormraider" 0.75 * bonus AD
+        # PHYSICAL proc every 30s - a mechanic the item no longer has.
+        # Own DDragon 223095 line (16.15.1 AND 16.18.1): Energized "Bolt"
+        # applies bonus MAGIC damage, and "Energized stacks twice as fast
+        # in Arena". DDragon states no Bolt magnitude (RM-323 class), so
+        # the magnitude rides SR twin 3095 (Meraki 100) while the cadence
+        # is the Arena-stated one: SR 4.0s halved (doctrine B).
         periodics=(PeriodicProc(
-            name="Stormraider",
-            bonus_damage=lambda c: 0.75 * c.bonus_ad,
-            damage_type=PHYSICAL,
-            every_n_seconds=30.0,
+            name="Energized Bolt",
+            bonus_damage=100.0,
+            damage_type=MAGICAL,
+            every_n_seconds=2.0,
         ),),
-        note="Stormrazor (Arena 223095): Stormraider guaranteed-crit bonus (~75% bonus AD extra) every 30s; 25% crit + 50 AD + 20% AS",
+        note="Stormrazor (Arena 223095): 50 AD + 25% AS + 25% crit (DDragon 16.18.1); Energized Bolt +100 bonus magic dmg (SR 3095 magnitude) every ~2s - Energized stacks twice as fast in Arena",
     ),
     "223185": ItemEffect(
         item_id="223185",

@@ -73,10 +73,12 @@ class RapidFirecannonSharpshooterTests(unittest.TestCase):
         ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11)
         self.assertEqual(proc.resolve_damage(ctx), 40.0)
 
-    def test_arena_223094_sharpshooter_is_40(self) -> None:
+    def test_arena_223094_sharpshooter_is_200(self) -> None:
+        # F3 sibling (doctrine B): Meraki has no 223094 entry, so the old
+        # 40 was an SR inheritance; the Arena DDragon line states 200.
         proc = _proc("223094")
         ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11)
-        self.assertEqual(proc.resolve_damage(ctx), 40.0)
+        self.assertEqual(proc.resolve_damage(ctx), 200.0)
 
 
 class RunaansWindsFuryTests(unittest.TestCase):
