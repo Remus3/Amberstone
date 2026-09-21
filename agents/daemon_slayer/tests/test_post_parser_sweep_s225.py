@@ -117,7 +117,8 @@ class BackwardCompatS225Tests(unittest.TestCase):
         reset_block_index_cache()
 
     def test_s224_entries_unchanged(self) -> None:
-        self.assertEqual(get_block_index_for("Belveth")[0], {"E": 2, "R": 1})
+        # F2 (2026-09-21): E renumbered raw-list 2 -> damage-ordinal 1.
+        self.assertEqual(get_block_index_for("Belveth")[0], {"E": 1, "R": 1})
         # s228 Phase 5.9.28 converted Kindred E to a conditional dict
         # (default=1 = the s223 execute block; Part-1 resolves to default).
         self.assertEqual(

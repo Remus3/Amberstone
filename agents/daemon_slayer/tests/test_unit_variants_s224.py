@@ -156,7 +156,7 @@ class BelvethREntryTests(unittest.TestCase):
     def test_registry_shape(self) -> None:
         m, src = get_block_index_for("Belveth")
         self.assertEqual(src, "champion")
-        self.assertEqual(m.get("E"), 2)   # s174-era preserved
+        self.assertEqual(m.get("E"), 1)   # s174-era; F2 damage-ordinal (raw 2)
         self.assertEqual(m.get("R"), 1)   # s224 new
 
     def _r(self, *, forced=None):
@@ -221,7 +221,8 @@ class BackwardCompatS224Tests(unittest.TestCase):
             (_DS_DIR / "champion_block_index.json").read_text(encoding="utf-8")
         )
         self.assertEqual(len(reg["champions"]), 125)
-        self.assertEqual(reg["champions"]["Belveth"], {"E": 2, "R": 1})
+        # F2 (2026-09-21): E renumbered raw-list 2 -> damage-ordinal 1.
+        self.assertEqual(reg["champions"]["Belveth"], {"E": 1, "R": 1})
 
 
 class EngineVersionS224Tests(unittest.TestCase):
