@@ -195,6 +195,30 @@ def open_db() -> sqlite3.Connection:
     return conn
 
 
+def open_db_readonly(db_path: Path | None = None) -> sqlite3.Connection:
+    """Read-only connection (URI mode=ro) for --dry-run paths: no PRAGMA
+    writes, no table creation, no journal-mode change."""
+    path = Path(db_path or DB_PATH)
+    return sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+
+
+def pending_retry_counts(db_path: Path | None = None) -> dict[str, int]:
+    """Read-only tally of the fetch_retry queue by kind; a missing DB or a
+    missing table is an empty queue, never a reason to create one."""
+    path = Path(db_path or DB_PATH)
+    if not path.exists():
+        return {}
+    conn = open_db_readonly(path)
+    try:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
+                        "AND name='fetch_retry'").fetchone() is None:
+            return {}
+        return dict(conn.execute(
+            "SELECT kind, COUNT(*) FROM fetch_retry GROUP BY kind").fetchall())
+    finally:
+        conn.close()
+
+
 def existing_match_ids(conn: sqlite3.Connection) -> set[str]:
     return {row[0] for row in conn.execute("SELECT match_id FROM matches")}
 
@@ -425,7 +449,7 @@ def write_match(
                 apply_timeline(conn, match_id, timeline)
         return
 
-    part_rows =[parse_participant(p, match_id) for p in participants]
+    part_rows = [parse_participant(p, match_id) for p in participants]
     insert_rows(conn, "participants", part_rows)
     team_rows = [parse_team(t, match_id) for t in (info.get("teams") or [])]
     insert_rows(conn, "teams", team_rows)
@@ -645,7 +669,7 @@ def hydrate_match(
     return detail, timeline, d_status, t_status
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.strip())
     parser.add_argument("--limit", type=int, default=0,
                         help="Cap number of NEW matches hydrated this run (0 = unlimited)")
@@ -662,14 +686,21 @@ def main() -> int:
     parser.add_argument("--retry-only", action="store_true",
                         help="Only drain the fetch_retry queue (429-parked "
                              "matches); skip the new-match walk")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    if args.retry_only and args.dry_run:
+        # Needs no API key and must not touch the DB (read-only open; a
+        # missing fetch_retry table reads as an empty queue).
+        print(f"fetch_retry pending: {pending_retry_counts(DB_PATH)}")
+        return 0
 
     if not riot_api.is_configured():
         print("ERROR: Riot API key not configured. "
               "Place RGAPI-... in 'API-Key-Riot.txt' at project root.")
         return 2
 
-    conn = open_db()
+    # --dry-run never writes: DB opened read-only, state sentinel not saved.
+    conn = open_db_readonly() if args.dry_run else open_db()
     state = load_state()
     puuid = resolve_current_puuid(
         conn,
@@ -691,16 +722,10 @@ def main() -> int:
             state["stale_puuid"] = legacy
     except SystemExit:
         pass
-    save_state(state)
+    if not args.dry_run:
+        save_state(state)
 
     if args.retry_only:
-        if args.dry_run:
-            ensure_retry_table(conn)
-            pending = conn.execute(
-                "SELECT kind, COUNT(*) FROM fetch_retry GROUP BY kind").fetchall()
-            print(f"fetch_retry pending: {dict(pending) or {}}")
-            conn.close()
-            return 0
         return _drain_and_report(conn)
 
     newest_ms = newest_creation_ts(conn)
@@ -738,6 +763,7 @@ def main() -> int:
             print(f"  {mid}")
         if len(new_ids) > 20:
             print(f"  ... and {len(new_ids) - 20} more")
+        conn.close()
         return 0
 
     done = errs = 0
