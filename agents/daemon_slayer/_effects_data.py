@@ -3580,7 +3580,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # until a real magnitude source exists - start tight, widen on
         # evidence. Omnivamp likewise deferred: _item_omnivamp.py sources its
         # fractions from items_meraki.json, which does not carry this id.
-        note="Ultra Hydra (Arena 226668, NEW at 16.17.1): 25 lethality credited; cleave active unmodelled (no DDragon/Meraki magnitude). Not yet a build candidate - absent from the pinned 16.15.1 DS snapshot, so it scores only when handed in a live inventory.",
+        note="Ultra Hydra (226668, NEW at 16.17.1, DDragon maps {12: true} only): 25 lethality credited; cleave active unmodelled (no DDragon/Meraki magnitude). In the DS snapshot from 16.18.1 on, so it is a map-12 build candidate there; absent from 16.15.1.",
     ),
     "226672": ItemEffect(
         item_id="226672",
@@ -5820,7 +5820,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3095": ItemEffect(
         item_id="3095",
         name="Stormrazor",
-        note="Stormrazor (3095): 50 AD + 20% AS + 25% crit (deprecated DDragon entry; Stormraider proc not modeled)",
+        # DDragon MOVED Stormrazor 3097 -> 3095 at 16.17.1 (3097 is gone at
+        # 16.18.1; at 16.15.1 3095 was a mapless "Deprecated item" and never
+        # a candidate). Same Energized Bolt as the 3097 row, whose magnitude
+        # is Meraki-sourced - Meraki (frozen 25.15) still keys it 3097.
+        # Kept identical to 3097 by test_stormrazor_id_move_1618.
+        periodics=(PeriodicProc(
+            name="Energized Bolt",
+            bonus_damage=100.0,
+            damage_type=MAGICAL,
+            every_n_seconds=4.0,
+        ),),
+        note="Stormrazor (3095, live id since 16.17.1): 50 AD + 25% AS + 25% crit (DDragon 16.18.1); Energized Bolt +100 bonus magic dmg every ~4s, mirrored from 3097",
     ),
     "3144": ItemEffect(
         item_id="3144",

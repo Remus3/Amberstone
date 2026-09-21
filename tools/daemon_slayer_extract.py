@@ -44,7 +44,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -202,6 +202,16 @@ def discover_chunks(scenario_override: str | None = None,
         if d_score > 0 and (data_best is None or d_score > data_best[0]):
             data_best = (d_score, url, relpath)
 
+    # 16.18.1: the ARAM table moved into a LAZILY loaded chunk the root HTML
+    # never names. Only when the root set misses it, walk the chunk graph.
+    if data_best is None and not data_override:
+        roots = ["https://lolmath.net/_next/static/chunks/" + r for r in chunks]
+        anchors = tuple(a for _, a in _DATA_BLOCKS)
+        for url in _crawl_lazy_chunks(roots, anchors):
+            d_score = _CHUNK_BODIES[url].count(DATA_CHUNK_ANCHOR)
+            if d_score > 0 and (data_best is None or d_score > data_best[0]):
+                data_best = (d_score, url, url.rsplit("/", 1)[-1])
+
     if scenario_override:
         s_url = scenario_override
         fetch_chunk(s_url)
@@ -229,6 +239,71 @@ def discover_chunks(scenario_override: str | None = None,
                  relpath, len(_CHUNK_BODIES[d_url]), score, DATA_CHUNK_ANCHOR)
 
     return s_url, d_url
+
+
+_CHUNK_BASE_URL = "https://lolmath.net/_next/static/chunks/"
+# Two reference shapes seen in the Turbopack chunks: a worker manifest lists
+# ``"static/chunks/<id>.js"`` and a loader call passes a bare ``"<id>.js"``.
+_CHUNK_REF_RES = (
+    re.compile(r"static/chunks/([A-Za-z0-9_\-.]+\.js)"),
+    re.compile(r"\"([A-Za-z0-9_\-]{8,20}\.js)\""),
+)
+LAZY_CHUNK_CRAWL_MAX = 400
+LAZY_CHUNK_CRAWL_DEPTH = 3
+
+
+def _referenced_chunks(body: str) -> list[str]:
+    """Return every chunk filename a chunk body references, sorted."""
+    refs: set[str] = set()
+    for rx in _CHUNK_REF_RES:
+        refs.update(rx.findall(body))
+    return sorted(refs)
+
+
+def _crawl_lazy_chunks(root_urls: list[str], anchors: tuple[str, ...]) -> list[str]:
+    """Breadth-first walk of the chunk graph below ``root_urls``.
+
+    Fetches (into ``_CHUNK_BODIES``) the chunks the roots reference, then the
+    chunks those reference, up to ``LAZY_CHUNK_CRAWL_DEPTH`` hops and
+    ``LAZY_CHUNK_CRAWL_MAX`` fetches, stopping as soon as every anchor in
+    ``anchors`` appears in some cached body. Returns the URLs fetched by the
+    crawl, in order. A chunk that fails to fetch is logged and skipped.
+    """
+    def _all_present() -> bool:
+        return all(any(a in b for b in _CHUNK_BODIES.values()) for a in anchors)
+
+    seen = set(root_urls)
+    frontier = list(root_urls)
+    fetched: list[str] = []
+    for _depth in range(LAZY_CHUNK_CRAWL_DEPTH):
+        nxt: list[str] = []
+        for parent in frontier:
+            body = _CHUNK_BODIES.get(parent)
+            if body is None:
+                continue
+            for ref in _referenced_chunks(body):
+                url = _CHUNK_BASE_URL + ref
+                if url in seen:
+                    continue
+                seen.add(url)
+                if len(fetched) >= LAZY_CHUNK_CRAWL_MAX:
+                    log.warning("lazy chunk crawl hit the %d-fetch cap", LAZY_CHUNK_CRAWL_MAX)
+                    return fetched
+                try:
+                    child = fetch_chunk(url)
+                except Exception as e:
+                    log.warning("  lazy chunk fetch failed %s: %s", ref, e)
+                    continue
+                fetched.append(url)
+                nxt.append(url)
+                if any(a in child for a in anchors) and _all_present():
+                    log.info("lazy chunk crawl: all of %r present after %d fetches",
+                             anchors, len(fetched))
+                    return fetched
+        frontier = nxt
+        if not frontier:
+            break
+    return fetched
 
 
 # --- Module slicing within the Turbopack chunk --------------------------------
@@ -386,17 +461,23 @@ def _walk_top_level_bindings(body: str) -> list[TopLevelBinding]:
 
 # Substitution table: convert lolmath JS-isms into JSON5-parseable form.
 _SUBS_PRECOMPILED = [
-    # Enum constants of the form `<X>.<Y>.<Z>` -> leaf as a string literal.
-    (re.compile(r"\bA\.ChampionKey\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    (re.compile(r"\bk\.DamageType\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    (re.compile(r"\bk\.TargetType\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    (re.compile(r"\bk\.UsageType\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    (re.compile(r"\bw\.LanePosition\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    (re.compile(r"\bI\.GameModes\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    (re.compile(r"\bH\.MapId\.([A-Za-z_$][\w$]*)"), r'"\1"'),
+    # Enum constants of the form `<alias>.<Enum>.<leaf>` -> leaf as a string
+    # literal. The ALIAS is a minifier-assigned identifier and re-rolls on a
+    # lolmath redeploy (16.18.1: A.ChampionKey -> x.ChampionKey,
+    # k.DamageType -> I.DamageType, w.LanePosition -> A.LanePosition), so
+    # match ANY alias and key on the enum name. Pinning the letter made every
+    # enum fall through to the dotted-ref -> null rule below and silently
+    # emptied scenarios + lane_positions.
+    (re.compile(
+        r"(?<![\w$.])[A-Za-z_$][\w$]*\."
+        r"(?:ChampionKey|DamageType|TargetType|UsageType|LanePosition|GameModes|MapId)"
+        r"\.([A-Za-z_$][\w$]*)"
+    ), r'"\1"'),
     # Cooldown helper calls - minified per champion (different letter each time):
     # `<id>("P")`, `<id>("Q")`, etc. Replace with null; cooldown table is sourced separately.
-    (re.compile(r'\b[A-Za-z_$][\w$]*\("[PQWER]"\)'), "null"),
+    # Lookbehind, not `\b`: a `$`-led name (16.18.1 Ashe: `$("P")`) has no
+    # word boundary before it, and missing it drops the whole champion.
+    (re.compile(r'(?<![\w$])[A-Za-z_$][\w$]*\("[PQWER]"\)'), "null"),
     # Computed keys like `[j.calibrumBasic]:` or `[ny.ZaahenAbilities.Q2]:`
     # -> keep the trailing leaf segment as a quoted string key.
     (re.compile(r"\[[A-Za-z_$][\w$.]*\.([A-Za-z_$][\w$]*)\]\s*:"), r'"\1":'),
@@ -518,6 +599,8 @@ class LolmathExtract:
     skill_orders: dict[str, list[str]]                # DDragon-id -> ["Q","E","W",...]
     data_chunk_url: str
     data_chunk_bytes: int
+    # block -> chunk URL; the three blocks live in different chunks since 16.18.1.
+    data_block_sources: dict[str, str] = field(default_factory=dict)
 
 
 def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
@@ -629,6 +712,82 @@ def extract_data_chunk(chunk: str, chunk_url: str) -> dict[str, Any]:
         "skill_orders": skills,
         "data_chunk_url": chunk_url,
         "data_chunk_bytes": len(chunk),
+    }
+
+
+def check_lolmath_coverage(lolmath: LolmathExtract) -> list[str]:
+    """Make a partial scenarios-chunk parse loud instead of silent.
+
+    Raises when the scenario or lane table is EMPTY (the 16.18.1 enum-alias
+    re-roll produced exactly that with no exception). Otherwise returns, and
+    logs, the DDragon ids that have a cooldown row but no scenario - a
+    single-champion parse miss (16.18.1 Ashe) that would otherwise just
+    shrink scenarios.json by one.
+    """
+    if not lolmath.scenarios:
+        raise RuntimeError("lolmath extract produced 0 scenarios - parser drift")
+    if not lolmath.lane_positions:
+        raise RuntimeError("lolmath extract produced 0 lane positions - parser drift")
+    ids = set(lolmath.cooldowns)
+    covered = {_championkey_to_ddragon_id(ck, ids) for ck in lolmath.scenarios}
+    missing = sorted(ids - covered)
+    if missing:
+        log.warning("lolmath: %d champion(s) have no scenario: %s", len(missing), missing)
+    return missing
+
+
+_DATA_BLOCKS = (
+    ("aram_modifiers", ARAM_MODIFIERS_ANCHOR),
+    ("damage_distribution", DAMAGE_DISTRIBUTION_ANCHOR),
+    ("skill_orders", SKILL_ORDER_ANCHOR),
+)
+
+
+def extract_data_blocks(bodies: dict[str, str], preferred: str) -> dict[str, Any]:
+    """Pull the three Phase 1.5 datasets from WHICHEVER fetched chunk holds each.
+
+    Until 16.15.1 all three lived in one "data chunk"; at 16.18.1 lolmath split
+    them across three chunks (ARAM table in a lazily loaded chunk, damage
+    distribution in the scenarios chunk, skill orders in a third). Each block
+    is searched in ``preferred`` first, then in every other body in URL order,
+    so the single-chunk layout resolves exactly as before. Returns the
+    ``extract_data_chunk`` keys plus ``block_sources`` (block -> chunk URL);
+    ``data_chunk_url`` stays the chunk that holds the ARAM table. Raises
+    ``RuntimeError`` naming any block no body carries.
+    """
+    order = ([preferred] if preferred in bodies else []) + sorted(
+        u for u in bodies if u != preferred
+    )
+    found: dict[str, dict] = {}
+    sources: dict[str, str] = {}
+    for key, anchor in _DATA_BLOCKS:
+        for url in order:
+            try:
+                payload = _extract_json_parse_string(bodies[url], anchor)
+            except RuntimeError:
+                continue
+            if isinstance(payload, dict):
+                found[key] = payload
+                sources[key] = url
+                break
+    missing = [key for key, _ in _DATA_BLOCKS if key not in found]
+    if missing:
+        raise RuntimeError(
+            f"lolmath data blocks not found in any fetched chunk: {missing}"
+        )
+    log.info(
+        "data blocks extract: aram=%d damage=%d skills=%d sources=%s",
+        len(found["aram_modifiers"]), len(found["damage_distribution"]),
+        len(found["skill_orders"]), sources,
+    )
+    aram_url = sources["aram_modifiers"]
+    return {
+        "aram_modifiers": found["aram_modifiers"],
+        "damage_distribution": found["damage_distribution"],
+        "skill_orders": found["skill_orders"],
+        "data_chunk_url": aram_url,
+        "data_chunk_bytes": len(bodies[aram_url]),
+        "block_sources": sources,
     }
 
 
@@ -1075,6 +1234,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "lolmath_scenarios_chunk_bytes": lolmath.chunk_bytes,
             "lolmath_data_chunk": lolmath.data_chunk_url,
             "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
+            "lolmath_data_blocks": dict(lolmath.data_block_sources),
             "meraki_perlevel": f"{MERAKI_BASE}/<champion>.json",
             "meraki_items": MERAKI_ITEMS_URL,
         },
@@ -1146,14 +1306,16 @@ def main() -> int:
 
     scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
     scen_chunk = fetch_chunk(scen_url)
-    data_chunk = fetch_chunk(data_url)
+    fetch_chunk(data_url)
     lolmath = extract_from_chunk(scen_chunk, scen_url)
-    data_extract = extract_data_chunk(data_chunk, data_url)
+    check_lolmath_coverage(lolmath)
+    data_extract = extract_data_blocks(_CHUNK_BODIES, preferred=data_url)
     lolmath.aram_modifiers = data_extract["aram_modifiers"]
     lolmath.damage_distribution = data_extract["damage_distribution"]
     lolmath.skill_orders = data_extract["skill_orders"]
     lolmath.data_chunk_url = data_extract["data_chunk_url"]
     lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
+    lolmath.data_block_sources = data_extract["block_sources"]
 
     perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
     arena_augments = fetch_arena_augments()
