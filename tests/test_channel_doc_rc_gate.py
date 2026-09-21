@@ -227,16 +227,10 @@ def test_channel_doc_grammar_table_matches_rc_gate6():
 
 # A host with no sibling config (CI) has ZERO roots. pytest.ini sets
 # empty_parameter_set_mark = fail_at_collect, so the no-carrier state is spelled
-# as ONE explicit skip rather than an empty parameter set.
-_ROOT_PARAMS = _sibling_roots() or [
-    pytest.param(
-        None,
-        id="no-carrier-configured",
-        marks=pytest.mark.skip(
-            reason="no sibling carrier tree is configured on this host"
-        ),
-    )
-]
+# as ONE None parameter that falls into the body's existing machine-local
+# carrier skip, rather than an empty parameter set. An unconditional
+# pytest.mark.skip here is refused by tests/test_skip_condition_hygiene.py.
+_ROOT_PARAMS = _sibling_roots() or [None]
 
 
 @pytest.mark.parametrize(
@@ -261,7 +255,8 @@ def test_channel_doc_matches_the_sibling_copies_when_present(root):
     adopted = _adopted_carrier_docs()
     if root not in adopted:
         pytest.skip(
-            f"carrier {root.name} is not among the {len(adopted)} carrier "
+            f"carrier {root.name if root is not None else '(none configured)'} "
+            f"is not among the {len(adopted)} carrier "
             "tree(s) this machine's gitignored config names that have vendored "
             "the doc - the trees are machine-local and each sibling owns its "
             "own adoption, so neither half is RC's to make true"
