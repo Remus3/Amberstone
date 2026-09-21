@@ -311,7 +311,7 @@ named file. Hook-by-hook, from `.claude/settings.json` (itself gitignored):
 
 | event | command | POPULATION |
 |---|---|---|
-| PreToolUse `Bash(git commit:*)` | `precommit_gate.py` (`settings.json:44`) | **staged set.** `precommit_gate.py:94` `git diff --cached`, added lines only (`:116-118`). Working tree never read. |
+| PreToolUse `Bash(git commit:*)` | `precommit_gate.py` (`:44`) | **staged set.** `precommit_gate.py:94` `git diff --cached`, added lines only (`:116-118`). Working tree never read. |
 | PreToolUse `PowerShell` | `precommit_gate.py` (`:54`) | same; no-ops unless a commit (`:479-480`) |
 | PreToolUse `Scrape\|read_clipboard` | `text_first_guard.py` (`:64`) | **no files at all** - a tool-name deny set (`:25-28`) |
 | PostToolUse `Edit\|Write` | `pytest_guard.py` (`:28`) | **the one file just edited** (`:39-46`); py_compile only |
@@ -565,7 +565,8 @@ accidental coverage is not coverage and cannot be regression-tested as such.
 **D2. No control sees an uncommitted file. SEVERITY: HIGH, and it is the one
 CS says matters most.**
 *Fix, highest value for least work:* add the same credential arm to
-`tools/edit_lint_check.py` (`.claude/settings.json:32`, PostToolUse
+`tools/edit_lint_check.py` (registered at `:32` of the gitignored Claude
+settings file named above, PostToolUse
 `Edit|Write`). It is **the only existing RC hook whose population includes
 untracked paths** - it already reads the file just written and already scans
 content for glyphs. A credential arm there covers agent-written scratch inside
