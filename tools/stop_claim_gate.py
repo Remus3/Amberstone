@@ -238,6 +238,9 @@ CLAIM_FIRST_PERSON_PUSHED = re.compile(
 #   - the first-person veto keys on ANY first-person git ACTION (committed,
 #     pushed, merged, landed, ...), so "They committed it and I pushed" flags.
 #     It keys on git verbs only: "I checked the committed tables" stays exempt.
+# ACCEPTED RESIDUE (round 3, 2026-09-20): open-ended adjectival forms ("Its
+# committed state is green", "That committed work is done") and pure
+# third-party sentences with no first-person clause are exempt BY DESIGN.
 CLAIM_FIRST_PERSON_COMMITTED = re.compile(
     r"\b(?:I|we)\s+(?:have\s+|has\s+|had\s+|just\s+|already\s+|then\s+|also\s+|"
     r"finally\s+|since\s+|therefore\s+)*"
@@ -563,16 +566,9 @@ def collect_evidence(rows):
     return ev
 
 
-def _sentences(texts):
-    for text in texts:
-        for part in _SENTENCE.split(text):
-            part = part.strip()
-            if part:
-                yield part
-
-
 def _sentences_with_line(texts):
-    """Same sentences as `_sentences`, each paired with its enclosing LINE.
+    """Split each text into lines, then each line into sentences on `_SENTENCE`,
+    yielding every non-empty sentence paired with its enclosing LINE.
 
     Check 6 needs the line: the splitter breaks on ";", so a first-person git
     action in the next clause ("The agent committed X; I landed it") would
