@@ -367,7 +367,7 @@ def write_match(
     parts = game_version.split(".")
     patch = f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else game_version
 
-    conn.execute("""
+    cur = conn.execute("""
         INSERT OR IGNORE INTO matches
         (match_id, platform, queue_id, game_mode, game_type, map_id,
          game_version, patch, game_duration_s, game_creation_ts,
@@ -411,7 +411,21 @@ def write_match(
         time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     ))
 
-    part_rows = [parse_participant(p, match_id) for p in participants]
+    if cur.rowcount == 0:
+        # The match row already existed. The child tables have no natural
+        # unique key, so inserting again APPENDS a full copy - which is how
+        # three matches reached 11-12 copies (concurrent live-writer Timers
+        # all passing the pre-lock presence probe). Only attach a timeline
+        # the existing row lacks; never re-insert participants / teams.
+        if timeline:
+            row = conn.execute(
+                "SELECT has_timeline FROM matches WHERE match_id = ?",
+                (match_id,)).fetchone()
+            if row is not None and not row[0]:
+                apply_timeline(conn, match_id, timeline)
+        return
+
+    part_rows =[parse_participant(p, match_id) for p in participants]
     insert_rows(conn, "participants", part_rows)
     team_rows = [parse_team(t, match_id) for t in (info.get("teams") or [])]
     insert_rows(conn, "teams", team_rows)
