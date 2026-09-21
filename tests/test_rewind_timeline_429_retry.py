@@ -233,6 +233,33 @@ class CatchupPaginationTests(unittest.TestCase):
                 rc.collect_new_match_ids("p", 0, set(), sleep=NO_SLEEP), [])
 
 
+class CatchupRetryOnlyDryRunTests(_DbCase):
+    def test_retry_only_dry_run_leaves_db_bytes_unchanged(self):
+        before = self.db_path.read_bytes()
+        with mock.patch.object(RA, "is_configured", lambda: True):
+            self.assertEqual(rc.main(["--retry-only", "--dry-run"]), 0)
+        self.assertEqual(self.db_path.read_bytes(), before)
+        tables = {r[0] for r in self.q(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertNotIn("fetch_retry", tables)
+
+    def test_plain_dry_run_leaves_db_and_state_unchanged(self):
+        before = self.db_path.read_bytes()
+        state = self.tmp / "state.json"
+        with mock.patch.object(RA, "is_configured", lambda: True), \
+             mock.patch.object(RA, "get_recent_matches", _returns(["NA1_NEW"])):
+            self.assertEqual(rc.main(["--dry-run", "--puuid", "P"]), 0)
+        self.assertEqual(self.db_path.read_bytes(), before)
+        self.assertFalse(state.exists())
+
+    def test_retry_only_dry_run_reports_pending(self):
+        c = self.conn()
+        rc.enqueue_retry(c, "NA1_1", "timeline", "t")
+        c.commit()
+        c.close()
+        self.assertEqual(rc.pending_retry_counts(self.db_path), {"timeline": 1})
+
+
 class CatchupDrainTests(_DbCase):
     def _seed_written_without_timeline(self, mid: str = "NA1_1",
                                        stale_frames: int = 0) -> None:
