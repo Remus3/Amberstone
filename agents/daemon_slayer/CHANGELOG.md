@@ -1331,6 +1331,16 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.281.0 (2026-09-21) - DS patch refresh 16.15.1 -> 16.18.1 registry
+changes. Output-moving, data-following: (1) Stormrazor moved DDragon id
+3097 -> 3095 at 16.17.1; 3095 now carries the same Energized Bolt proc
+(100 magic / ~4s) as 3097, which stays for the 16.15.1 snapshot. (2) Ultra
+Hydra 226668 (NEW 16.17.1, maps {12} only, an ARAM Mayhem augment reward)
+gains a 25 ability-haste row and is added to rank._ARAM_EXCLUDED_ITEM_IDS
+beside 223069. (3) 16.18.1 enchanter_items Arena heal-and-shield-power
+rows re-measured from DDragon: 223107 / 223504 0.12 -> 0.10, 226616 0.14 ->
+0.10. Build tables regenerated at this version.
+
 1.280.0 (2026-09-03) - RM-329 / RM-330 / RM-331 / RM-332 / RM-333 /
 RM-334 batch. TWO behaviour changes. (1) RM-331: an Arena augment passed
 by DISPLAY name scored byte-identically to passing none, because
