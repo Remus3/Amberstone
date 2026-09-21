@@ -288,7 +288,7 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
         amp (not a health-pct), so no entry is warranted."""
         self.assertEqual(get_block_index_for("Kayle")[0], {})
         bel, _ = get_block_index_for("Belveth")
-        self.assertEqual(bel.get("E"), 2)   # s174-era, preserved
+        self.assertEqual(bel.get("E"), 1)   # s174-era; F2 damage-ordinal (raw 2)
         self.assertEqual(bel.get("R"), 1)   # s224 correction
 
     def test_prior_entries_unchanged(self) -> None:

@@ -206,7 +206,8 @@ class BackwardCompatS227Tests(unittest.TestCase):
 
     def test_s225_s224_block_index_intact(self) -> None:
         self.assertEqual(get_block_index_for("Varus")[0], {"Q": 1, "W": 2})
-        self.assertEqual(get_block_index_for("Belveth")[0], {"E": 2, "R": 1})
+        # F2 (2026-09-21): E renumbered raw-list 2 -> damage-ordinal 1.
+        self.assertEqual(get_block_index_for("Belveth")[0], {"E": 1, "R": 1})
 
     def test_fiddlesticks_carries_all_three_registries(self) -> None:
         """Fiddlesticks now exercises max_priority (W-E-Q, s227) +
