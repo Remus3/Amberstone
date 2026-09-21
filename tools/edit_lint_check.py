@@ -1,12 +1,26 @@
-"""PostToolUse hook: ruff check + em-dash / smart-quote grep on Edit|Write targets.
+"""PostToolUse hook: ruff + glyph + CREDENTIAL scan on Edit|Write targets.
 
 Reads $CLAUDE_FILE_PATHS (space-separated) and runs:
   1. $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m ruff check --fix <python files>  (auto-fix when possible)
   2. byte scan for U+2014 / U+2013 / U+201C / U+201D / U+2018 / U+2019
+  3. credential-shape scan (tools/credential_patterns.py)
 
-Hook output is shown to the model. Stay terse. Exit 0 always (advisory, non-blocking)
-so the operator's flow is never stopped by hook noise; Claude reads the warning
-in tool output and can self-correct on the next edit.
+Hook output is shown to the model. Stay terse. Arms 1 and 2 are advisory and
+exit 0 so the operator's flow is never stopped by hook noise; Claude reads the
+warning in tool output and self-corrects on the next edit.
+
+ARM 3 IS DIFFERENT AND EXITS 2. This hook is the ONLY RC control whose
+population includes UNTRACKED files - measured in
+`docs/specs/2026-09-20-shared-git-root-bucket-rc-share-scan.md` Q3, which found
+that a credential in a file that is not staged, not in a push range and not in
+the git index is invisible to 100 per cent of RC's other controls. A
+credential-shaped literal is not hook noise, so it is surfaced loudly rather
+than folded into the advisory stream. The write has already happened by the
+time a PostToolUse hook runs; exit 2 surfaces the finding to the model, it does
+not roll anything back.
+
+NO MATCHED VALUE IS EVER PRINTED, LOGGED OR WRITTEN. Arm 3 reports file, line
+and pattern CLASS. See the contract at the head of tools/credential_patterns.py.
 """
 
 from __future__ import annotations
@@ -15,6 +29,12 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+try:
+    from tools import credential_patterns
+except ImportError:  # hook runs as a bare script, so sys.path[0] is tools/
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import credential_patterns
 
 # Hooks run under windowless pythonw.exe; a console-subsystem child (the `py`
 # launcher + ruff) would otherwise get a fresh console allocated - an on-screen
@@ -95,7 +115,39 @@ def main() -> int:
         sys.stderr.write("\n".join(flagged) + "\n")
         sys.stderr.write("Fix: tools/strip_em_dashes.py + tools/strip_smart_quotes.py\n")
 
-    return 0
+    # Arm 3: credential shapes. The scan is wrapped so a bug in the arm cannot
+    # crash the write path - but the EMIT below sits OUTSIDE that guard, so a
+    # genuine finding can never be swallowed by the same except that catches
+    # this module's own faults.
+    cred_flagged: list[str] = []
+    cred_faults: list[str] = []
+    for p in paths:
+        try:
+            findings = credential_patterns.scan_file(p)
+            if findings:
+                cred_flagged.extend(
+                    credential_patterns.format_findings(str(p), findings)
+                )
+            elif credential_patterns.was_truncated(p):
+                cred_faults.append(f"  {p}: larger than the scan budget, head only")
+        except Exception as exc:  # noqa: BLE001 - fail-safe: never break a write
+            # Type name only. Exception text can carry file content.
+            cred_faults.append(f"  {p}: credential scan skipped ({type(exc).__name__})")
+
+    if cred_flagged:
+        sys.stderr.write("CREDENTIAL SHAPE FOUND - DO NOT COMMIT; ROTATE IF REAL:\n")
+        sys.stderr.write("\n".join(cred_flagged) + "\n")
+        sys.stderr.write(
+            "No value is printed, by design - open the file:line yourself.\n"
+            "Exempt a deliberate fixture line with: "
+            + credential_patterns.PRAGMA
+            + "\n"
+        )
+    if cred_faults:
+        sys.stderr.write("[edit_lint_check] credential arm, non-blocking notes:\n")
+        sys.stderr.write("\n".join(cred_faults) + "\n")
+
+    return 2 if cred_flagged else 0
 
 
 if __name__ == "__main__":
