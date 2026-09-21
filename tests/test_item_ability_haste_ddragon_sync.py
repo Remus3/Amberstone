@@ -25,6 +25,7 @@ ASCII only (CLAUDE.md hard rule).
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import ops.audit.item_ah_drift_check as ahc
@@ -73,3 +74,87 @@ def test_drift_check_default_tracks_current_patch() -> None:
         f"drift-check default {resolved} does not track current.txt patch {patch}"
     )
     assert resolved.exists(), f"resolved default item.json missing: {resolved}"
+
+
+# ---------------------------------------------------------------------------
+# Ornn masterwork coverage (the <ornnBonus> blind spot).
+#
+# The original parse only matched "<attention>N</attention> Ability Haste", so
+# an Ornn masterwork whose AH sits in "<ornnBonus>N</ornnBonus> Ability Haste"
+# (e.g. Wooglet's Witchcap 228002, 20 AH at 16.15.1) was SILENTLY SKIPPED and
+# the IN SYNC verdict said nothing about it. Masterworks are excluded from
+# recommendations by design (agents/daemon_slayer/rank.py _is_ornn_masterwork)
+# and must NOT gain registry rows - so the checker classifies them explicitly
+# as excluded-by-design instead of dropping them on the floor.
+# ---------------------------------------------------------------------------
+
+_ORNN_DESC = (
+    "<mainText><stats><ornnBonus>300</ornnBonus> Ability Power<br>"
+    "<ornnBonus>50</ornnBonus> Armor<br><ornnBonus>20</ornnBonus> Ability Haste"
+    "</stats></mainText>"
+)
+_BUY_DESC = (
+    "<mainText><stats><attention>45</attention> Ability Power<br>"
+    "<attention>15</attention> Ability Haste</stats></mainText>"
+)
+# An AH line in a tag neither arm knows: must surface as UNPARSED, not vanish.
+_ODD_DESC = "<mainText><stats><rarityMythic>9</rarityMythic> Ability Haste</stats></mainText>"
+
+
+def _fixture(tmp_path: Path, rows: dict[str, str]) -> Path:
+    blob = {
+        "version": "0.0.0",
+        "data": {i: {"name": f"item{i}", "description": d} for i, d in rows.items()},
+    }
+    p = tmp_path / "item.json"
+    p.write_text(json.dumps(blob), encoding="utf-8")
+    return p
+
+
+def test_ornn_bonus_ah_is_detected_and_classified_excluded(tmp_path: Path) -> None:
+    p = _fixture(tmp_path, {"228002": _ORNN_DESC, "3100": _BUY_DESC})
+    cls = ahc.classify_ddragon(p)
+    assert cls.ornn_excluded == {"228002": 20.0}
+    assert cls.buyable == {"3100": 15.0}
+    assert cls.unparsed == []
+    # derive_from_ddragon stays the BUYABLE set the registry is diffed against,
+    # so a masterwork never reads as a missing registry row.
+    assert ahc.derive_from_ddragon(p) == {"3100": 15.0}
+
+
+def test_unknown_tag_ah_line_surfaces_as_unparsed(tmp_path: Path) -> None:
+    p = _fixture(tmp_path, {"9999": _ODD_DESC})
+    cls = ahc.classify_ddragon(p)
+    assert cls.unparsed == ["9999"]
+    assert cls.buyable == {} and cls.ornn_excluded == {}
+
+
+def test_main_reports_ornn_excluded_by_design(tmp_path: Path, monkeypatch, capsys) -> None:
+    p = _fixture(tmp_path, {"228002": _ORNN_DESC})
+    monkeypatch.setattr(ahc, "_load_pin", lambda: {})
+    monkeypatch.setattr("sys.argv", ["item_ah_drift_check.py", str(p)])
+    rc = ahc.main()
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "EXCLUDED BY DESIGN" in out and "228002" in out
+
+
+def test_main_fails_on_unparsed_ah_line(tmp_path: Path, monkeypatch, capsys) -> None:
+    p = _fixture(tmp_path, {"9999": _ODD_DESC})
+    monkeypatch.setattr(ahc, "_load_pin", lambda: {})
+    monkeypatch.setattr("sys.argv", ["item_ah_drift_check.py", str(p)])
+    assert ahc.main() == 1
+    assert "UNPARSED" in capsys.readouterr().out
+
+
+def test_live_catalog_every_ah_line_is_classified() -> None:
+    # Coverage honesty on the live patch: no AH line in any <stats> block may
+    # fall through both arms, and no masterwork may carry a registry row.
+    item_json = _REPO_ROOT / "data" / "meta_build" / "ddragon" / _current_patch() / "item.json"
+    cls = ahc.classify_ddragon(item_json)
+    assert cls.unparsed == [], f"AH lines neither arm parses: {cls.unparsed}"
+    assert not set(cls.ornn_excluded) & set(_ITEM_ABILITY_HASTE), (
+        "an Ornn masterwork gained a registry row; masterworks are excluded by design"
+    )
+    # Anchor against vacuity: the live catalog does carry masterwork AH today.
+    assert cls.ornn_excluded, "expected at least one <ornnBonus> AH masterwork"

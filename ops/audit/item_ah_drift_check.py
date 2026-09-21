@@ -7,7 +7,25 @@ current.txt) using the documented parse (`<attention>N</attention> Ability
 Haste` inside the leading `<stats>` block) and diffs it against the engine
 pin, so drift surfaces as a concrete add/remove/change list.
 
-Read-only. Exit 0 = in sync, exit 1 = drift found (prints the diff).
+Coverage is classified, never silently skipped. Every AH line in a `<stats>`
+block lands in exactly one bucket:
+
+  * buyable        - `<attention>N</attention> Ability Haste` on a non-Ornn
+                     item; this is the set diffed against the pin.
+  * ornn_excluded  - an Ornn masterwork (any `<ornnBonus>` tag in its
+                     description, the same marker as
+                     agents/daemon_slayer/rank.py `_is_ornn_masterwork`),
+                     whose AH usually sits in `<ornnBonus>N</ornnBonus>`.
+                     Masterworks are never purchasable, are excluded from
+                     recommendations, and must NOT gain registry rows; they
+                     are reported as EXCLUDED BY DESIGN. (The pre-fix parse
+                     matched `<attention>` only, so these were invisible and
+                     the IN SYNC verdict was blind to them.)
+  * unparsed       - an AH line neither arm understands (a new tag shape);
+                     this FAILS the check so a future format cannot hide.
+
+Read-only. Exit 0 = in sync, exit 1 = drift or unparsed AH lines (prints the
+diff).
 
     python ops/audit/item_ah_drift_check.py [<ddragon item.json path>]
 """
@@ -17,6 +35,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -37,21 +56,53 @@ def _default_item_json() -> Path:
 
 _STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.S)
 _AH = re.compile(r"<attention>([0-9.]+)</attention>\s*Ability Haste")
+_AH_ORNN = re.compile(r"<(?:ornnBonus|attention)>([0-9.]+)</(?:ornnBonus|attention)>\s*Ability Haste")
+_AH_ANY = re.compile(r"Ability Haste")
+_ORNN_MARKER = "<ornnBonus>"
 
 
-def derive_from_ddragon(item_json: Path) -> dict[str, float]:
-    """Parse flat AH from the leading <stats> block of each DDragon item."""
+@dataclass
+class AhClassification:
+    buyable: dict[str, float] = field(default_factory=dict)
+    ornn_excluded: dict[str, float] = field(default_factory=dict)
+    unparsed: list[str] = field(default_factory=list)
+
+
+def classify_ddragon(item_json: Path) -> AhClassification:
+    """Bucket every AH-bearing <stats> block: buyable / ornn_excluded / unparsed."""
     blob = json.loads(item_json.read_text(encoding="utf-8"))
-    out: dict[str, float] = {}
+    out = AhClassification()
     for iid, it in blob["data"].items():
         desc = it.get("description", "") or ""
         m = _STATS_BLOCK.search(desc)
-        if not m:
+        if not m or not _AH_ANY.search(m.group(1)):
             continue
-        ah = _AH.search(m.group(1))
-        if ah:
-            out[iid] = float(ah.group(1))
+        block = m.group(1)
+        if _ORNN_MARKER in desc:
+            ah = _AH_ORNN.search(block)
+            if ah:
+                out.ornn_excluded[iid] = float(ah.group(1))
+                continue
+        else:
+            ah = _AH.search(block)
+            if ah:
+                out.buyable[iid] = float(ah.group(1))
+                continue
+        out.unparsed.append(iid)
+    out.unparsed.sort(key=int)
     return out
+
+
+def derive_from_ddragon(item_json: Path) -> dict[str, float]:
+    """Flat AH of every BUYABLE (non-Ornn) item - the set the pin is diffed against."""
+    return classify_ddragon(item_json).buyable
+
+
+def _load_pin() -> dict[str, float]:
+    sys.path.insert(0, str(ROOT / "agents" / "daemon_slayer"))
+    from _item_ability_haste import _ITEM_ABILITY_HASTE  # type: ignore
+
+    return dict(_ITEM_ABILITY_HASTE)
 
 
 def main() -> int:
@@ -60,10 +111,9 @@ def main() -> int:
         print(f"NO DDragon item.json at {item_json}", file=sys.stderr)
         return 2
 
-    sys.path.insert(0, str(ROOT / "agents" / "daemon_slayer"))
-    from _item_ability_haste import _ITEM_ABILITY_HASTE as pinned  # type: ignore
-
-    derived = derive_from_ddragon(item_json)
+    pinned = _load_pin()
+    cls = classify_ddragon(item_json)
+    derived = cls.buyable
     blob = json.loads(item_json.read_text(encoding="utf-8"))
     names = {k: v.get("name", "?") for k, v in blob["data"].items()}
 
@@ -76,8 +126,10 @@ def main() -> int:
         (i for i in pinned_ids & derived_ids if pinned[i] != derived[i]), key=int
     )
 
-    print(f"DDragon {blob.get('version')}: {len(derived)} AH items "
-          f"| engine pin: {len(pinned)} items")
+    print(f"DDragon {blob.get('version')}: {len(derived)} buyable AH items "
+          f"| engine pin: {len(pinned)} items "
+          f"| Ornn masterwork AH items excluded by design: {len(cls.ornn_excluded)} "
+          f"| unparsed AH lines: {len(cls.unparsed)}")
     print(f"added={len(added)} removed={len(removed)} changed={len(changed)}")
 
     if added:
@@ -92,9 +144,19 @@ def main() -> int:
         print("\n-- CHANGED (value drift) --")
         for i in changed:
             print(f"  {i:>7} {names.get(i,'?'):32} pin={pinned[i]} -> DDragon={derived[i]}")
+    if cls.ornn_excluded:
+        print("\n-- EXCLUDED BY DESIGN (Ornn masterwork, never purchasable; no registry row) --")
+        for i in sorted(cls.ornn_excluded, key=int):
+            print(f"  {i:>7} {names.get(i,'?'):32} DDragon={cls.ornn_excluded[i]}")
+    if cls.unparsed:
+        print("\n-- UNPARSED (Ability Haste line neither arm understands) --")
+        for i in cls.unparsed:
+            print(f"  {i:>7} {names.get(i,'?')}")
 
-    drift = bool(added or removed or changed)
-    print("\nRESULT:", "DRIFT" if drift else "IN SYNC")
+    drift = bool(added or removed or changed or cls.unparsed)
+    print("\nRESULT:", "DRIFT" if drift else "IN SYNC",
+          f"({len(derived_ids & pinned_ids)}/{len(pinned)} buyable, "
+          f"{len(cls.ornn_excluded)} Ornn excluded by design)")
     return 1 if drift else 0
 
 
