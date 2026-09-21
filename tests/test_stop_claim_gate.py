@@ -1549,6 +1549,16 @@ COMMIT_CLAIM_TRUE_POSITIVES = [
     "Its committed tree is what I pushed.",
     # Any first-person git ACTION vetoes the third-party exemption.
     "They committed it and I pushed.",
+    # Round 2 of the refutation. A ";" splits a sentence, so the veto must see
+    # the whole LINE, not just the clause that holds "committed".
+    "The agent committed `fd75bd33e`; I landed it.",
+    "The slice committed; merged by me.",
+    # Landed-state tails the first cut missed. "at HEAD" is a READ locator and
+    # stays exempt (fixture 2); "in/into HEAD" is a landed claim.
+    "The committed fix is now deployed.",
+    "Those committed changes are in production.",
+    "The committed fix sits in HEAD.",
+    "The committed tree now matches origin.",
 ]
 
 
