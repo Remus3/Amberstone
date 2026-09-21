@@ -107,14 +107,24 @@ def build_party_mains(members, *, region: str = _DEFAULT_REGION) -> list:
 
 
 def _refresh(members, key, region) -> None:
+    rate_limited = False
     try:
-        data = build_party_mains(members, region=region)
+        from core import riot_api
+        with riot_api.track_outcomes() as scope:
+            data = build_party_mains(members, region=region)
+        rate_limited = scope.rate_limited
     except Exception as exc:  # noqa: BLE001
         log.warning("party_mains refresh failed: %s", exc)
         data = []
+    if rate_limited:
+        # A throttled member was DROPPED, not absent. Holding the partial
+        # result for the full 5-min TTL would hide that member's card for 5
+        # minutes; retry on the short cadence instead.
+        log.info("party_mains: Riot API rate limited (outcomes=%s)",
+                 ",".join(scope.outcomes))
     with _lock:
         _cache.update(key=key, data=data, fetched_at=time.time(),
-                      ttl=_TTL_S if data else _EMPTY_RETRY_S)
+                      ttl=_TTL_S if (data and not rate_limited) else _EMPTY_RETRY_S)
         _refreshing.discard(key)
 
 

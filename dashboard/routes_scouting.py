@@ -110,6 +110,16 @@ def _unranked(puuid: str, *, error: bool = False) -> dict:
     return out
 
 
+def _rate_limited(puuid: str) -> dict:
+    """Per-player dict for a Riot rate limit. Same keys as `_unranked` plus
+    `rate_limited: True`; `display` is a friendly message, never the raw
+    status. Deliberately NOT cached, so the next poll re-asks Riot."""
+    out = _unranked(puuid)
+    out["rate_limited"] = True
+    out["display"] = "Rate limited - retrying"
+    return out
+
+
 def _shape_rank(puuid: str, entries: Any) -> dict:
     """Shape a League-V4 entry list into a per-player scouting dict.
 
@@ -165,7 +175,15 @@ def _scout_one(puuid: str, now: float) -> dict:
         out["cached"] = True
         return out
     try:
-        entries = riot_api.get_summoner_rank(puuid)
+        with riot_api.track_outcomes() as scope:
+            entries = riot_api.get_summoner_rank(puuid)
+        if entries is None and scope.rate_limited:
+            # A throttle is not an answer about the player. Shaping it as
+            # "Unranked" fabricated a rank, and caching it pinned the
+            # fabrication for _RANK_TTL_S. Raw outcome goes to the log only.
+            log.info("api/scouting: Riot API rate limited (outcomes=%s)",
+                     ",".join(scope.outcomes))
+            return _rate_limited(puuid)
         shaped = _shape_rank(puuid, entries)
     except Exception as exc:  # noqa: BLE001 - one bad player must not break batch
         log.warning("api/scouting: rank resolve failed for a player: %s", exc)
