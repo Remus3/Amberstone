@@ -82,7 +82,10 @@ def test_live_log_anchor_is_the_repo_runtime_path():
 
 
 def test_pytest_resolves_the_hook_log_away_from_the_live_log():
-    assert os.environ.get("RC_HOOK_LOG"), "RC_HOOK_LOG is not set under pytest"
+    # Read to a local first: asserting on `os.environ.get(...)` directly makes
+    # pytest render the whole environment on failure.
+    hook_log = os.environ.get("RC_HOOK_LOG")
+    assert hook_log, "RC_HOOK_LOG is not set under pytest"
     assert rc_facts.invocation_log_path().resolve() != _LIVE
 
 
