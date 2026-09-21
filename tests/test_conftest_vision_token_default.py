@@ -114,12 +114,19 @@ def test_import_time_decision_matches_this_tree():
     """
     applied = rc_conftest._VISION_TOKEN_DEFAULT_APPLIED
     file_present = rc_conftest._VISION_TOKEN_CONFIG_PATH.exists()
+    # Reduce to a bool BEFORE asserting: `assert os.environ.get(...) == X`
+    # makes pytest explain `os.environ` and print the whole environment, and
+    # even a bare `assert token == X` would print the operator's real token.
+    env_is_test_default = (
+        os.environ.get("RC_VISION_TOKEN") == rc_conftest._VISION_TOKEN_TEST_DEFAULT)
     if file_present:
         assert applied is False
-        assert os.environ.get("RC_VISION_TOKEN") != rc_conftest._VISION_TOKEN_TEST_DEFAULT
+        assert not env_is_test_default, (
+            "RC_VISION_TOKEN equals the test default in a checkout that has a real token file")
     if applied:
         assert not file_present
-        assert os.environ.get("RC_VISION_TOKEN") == rc_conftest._VISION_TOKEN_TEST_DEFAULT
+        assert env_is_test_default, (
+            "conftest reported the test default applied but RC_VISION_TOKEN does not carry it")
 
 
 def test_resolver_imports_in_this_tree():

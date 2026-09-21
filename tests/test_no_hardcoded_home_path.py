@@ -404,7 +404,10 @@ class TestTheParameterisedFormsActuallyResolve:
     def test_localappdata_is_set(self):
         if os.name != "nt":
             return
-        assert os.environ.get("LOCALAPPDATA"), (
+        # Read to a local first: asserting on `os.environ.get(...)` directly
+        # makes pytest render the whole environment on failure.
+        localappdata = os.environ.get("LOCALAPPDATA")
+        assert localappdata, (
             "LOCALAPPDATA is unset, so every %LOCALAPPDATA% hook command, .cmd "
             "wrapper and scheduled-task action would expand to a bare relative "
             "path and silently fail"

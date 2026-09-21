@@ -186,7 +186,9 @@ class TestPoolDefaultPremise(unittest.TestCase):
     def test_unset_env_pools_so_default_off_prose_would_be_false(self):
         env = {k: v for k, v in os.environ.items() if k != FLAG}
         with mock.patch.dict(os.environ, env, clear=True):
-            self.assertNotIn(FLAG, os.environ)
+            # Not assertNotIn(FLAG, os.environ): its failure message renders
+            # the whole environment, secrets included.
+            self.assertFalse(FLAG in os.environ, msg=f"{FLAG} still set inside the cleared env")
             self.assertTrue(
                 lcu_pool.pool_enabled(),
                 "premise broken: an unset env no longer pools, so this guard's "
