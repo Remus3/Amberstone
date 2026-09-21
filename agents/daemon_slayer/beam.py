@@ -366,9 +366,17 @@ def beam_search_build(
         next_beams: list[tuple[tuple[str, ...], float, int]] = []
         for items, _dps, gold in beams:
             cur_set = set(items)
+            # S1-1 (2026-09-21): skip by item NAME as well as raw id. The pool
+            # is name-deduped, but a SEEDED alias (current_item_ids=[667666])
+            # is not in it, so its canonical twin 6676 passed the raw-id skip
+            # and the build held The Collector twice.
+            cur_names = {
+                (snapshot.items.get(i) or {}).get("name") for i in items
+            }
+            cur_names.discard(None)
             beam_has_boots = boots_unique and _seed_has_boots(snapshot, items)
             for iid, rec, item_gold, item_is_boots in pool:
-                if iid in cur_set:
+                if iid in cur_set or rec.get("name") in cur_names:
                     continue
                 if boots_unique and beam_has_boots and item_is_boots:
                     continue
