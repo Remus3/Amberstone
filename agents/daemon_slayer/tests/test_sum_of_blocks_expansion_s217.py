@@ -197,7 +197,8 @@ class Phase599_22BackwardCompatTests(unittest.TestCase):
 
     def test_malphite_W_unchanged_from_s207(self) -> None:
         m, _ = get_block_index_for("Malphite")
-        self.assertEqual(m.get("W"), [2, 3])
+        # F2 (2026-09-21): damage-ordinal renumber; raw [2, 3] clamped to [1, 1].
+        self.assertEqual(m.get("W"), [0, 1])
 
     def test_heimerdinger_W_unchanged_from_s207(self) -> None:
         m, _ = get_block_index_for("Heimerdinger")

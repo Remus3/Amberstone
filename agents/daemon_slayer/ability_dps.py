@@ -105,6 +105,7 @@ scorer ships, the data is already on the result.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import threading
 from dataclasses import dataclass, field, replace
@@ -422,6 +423,39 @@ def _evaluate_block(
     return total
 
 
+_LOG = logging.getLogger(__name__)
+
+# F2 (2026-09-21): the "indexed" clamp used to be SILENT, which let 18
+# champion_block_index.json entries authored against the UNFILTERED Meraki
+# block list ride the clamp for months (2 of them onto the wrong block).
+# The clamp stays - a caller-supplied HTTP override or a future re-extract
+# that drops a block must not 500 a ranking route - but it now logs a
+# WARNING, deduplicated per (index, damage-block labels) so a ranking loop
+# that evaluates the same spell thousands of times logs it once. The
+# registry itself is guarded in-range by
+# tests/test_block_index_damage_ordinal_f2.py, so a clamp is never a
+# registry-authored outcome.
+_CLAMP_WARNED: set[tuple[int, tuple[str, ...]]] = set()
+_CLAMP_WARNED_LOCK = threading.Lock()
+
+
+def _warn_block_index_clamp(
+    raw_idx: int, damage_blocks: tuple[DamageBlock, ...],
+) -> None:
+    labels = tuple(str(b.attribute) for b in damage_blocks)
+    sig = (raw_idx, labels)
+    with _CLAMP_WARNED_LOCK:
+        if sig in _CLAMP_WARNED:
+            return
+        _CLAMP_WARNED.add(sig)
+    _LOG.warning(
+        "block_index %d out of range for %d damage blocks %r - clamped; "
+        "block_index is an ordinal into the attribute_kind=='damage' blocks "
+        "only",
+        raw_idx, len(damage_blocks), list(labels),
+    )
+
+
 def _select_blocks(
     blocks: tuple[DamageBlock, ...],
     rank: int,
@@ -434,9 +468,11 @@ def _select_blocks(
     ``block_index`` is consulted only when ``strategy == "indexed"`` (added
     in Phase 5.9, s191). For ``"first"`` it is ignored (block 0 always
     used); for ``"max"`` / ``"sum"`` it is also ignored (all blocks
-    aggregated). Out-of-range indexes clamp to the last available damage
-    block, preserving forward-compat with future patches that may add
-    extra blocks to existing forms.
+    aggregated). ``block_index`` is an ORDINAL into the damage-only blocks
+    (``attribute_kind == "damage"``), NOT an index into the raw Meraki block
+    list. Out-of-range indexes clamp to the last available damage block
+    (negative to the first) and log a deduplicated WARNING (F2, 2026-09-21) -
+    a clamp is a defect signal, never a registry-authored outcome.
 
     Phase 5.9.20 (s207, 2026-05-14): ``block_index`` may now be an int OR
     a sequence of ints. When a sequence is supplied under ``"indexed"``
@@ -482,6 +518,8 @@ def _select_blocks(
         total = 0.0
         for raw_idx in indices:
             idx = raw_idx
+            if idx < 0 or idx >= len(damage_blocks):
+                _warn_block_index_clamp(raw_idx, damage_blocks)
             if idx < 0:
                 idx = 0
             if idx >= len(damage_blocks):
