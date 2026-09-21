@@ -257,8 +257,12 @@ def scan_tree():
     """
     cfg = sweep.load_config(root=REPO_ROOT)
     stats = sweep.ScanStats()
-    blobs = sweep.collect_tree_blobs(REPO_ROOT, stats)
-    stats.diff_nonempty = bool(blobs)
+    # RM-477: LAZY. The eager list held every tracked file's decoded text at
+    # once, which is the whole tree's bytes before a single scan window is
+    # built. `iter_tree_blobs` has already raised on an empty index, so
+    # non-emptiness is established rather than inferred from `bool()`.
+    blobs = sweep.iter_tree_blobs(REPO_ROOT, stats)
+    stats.diff_nonempty = True
     findings = sweep._run_scan(cfg, blobs, stats)
     return cfg, stats, findings
 
