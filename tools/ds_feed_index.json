@@ -516,9 +516,106 @@
         "declared_patch": "16.15.1",
         "stamp_field": "_patch"
       }
+    },
+    "16.18.1": {
+      "ability_staleness.json": {
+        "body_md5": "5700de9e",
+        "declared_patch": "16.18.1",
+        "stamp_field": "_patch"
+      },
+      "arena_augments.json": {
+        "body_md5": "2f90ebc3",
+        "declared_patch": "16.18.1",
+        "stamp_field": "patch"
+      },
+      "build_orders_aram.json": {
+        "body_md5": "a8281ebf",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "db78b6ec",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "9f628535",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "8d3d40de",
+        "declared_patch": "16.18.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "91a5badb",
+        "declared_patch": "16.18.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "1816720c",
+        "declared_patch": "16.18.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "6d86cbf7",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "3b34505a",
+        "declared_patch": "16.10.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "d94845dd",
+        "declared_patch": "16.18.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "78391464",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": "16.18.1",
+        "stamp_field": "patch"
+      },
+      "manifest.json": {
+        "body_md5": "dfae2c37",
+        "declared_patch": "16.18.1",
+        "stamp_field": "ddragon_version"
+      },
+      "pickban_targets.json": {
+        "body_md5": "3b48c892",
+        "declared_patch": "16.18.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "877c4bf8",
+        "declared_patch": "16.18.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "c261dc8e",
+        "declared_patch": "16.18.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "2cb4f5f5",
+        "declared_patch": "16.18.1",
+        "stamp_field": "_patch"
+      }
     }
   },
-  "generated_from_current_txt": "16.15.1",
+  "generated_from_current_txt": "16.18.1",
   "known_stamp_lag": {
     "cherry_augments.json": "declares rc_patch 16.10.1 - Arena augment set copied forward unchanged since 16.10.1; authored feed, body has not moved"
   },
