@@ -43,9 +43,12 @@ players bought it in many games. This project takes the other route.
   second, effective HP, ability burst, healing throughput - and the LLM coaching
   agent reasons *over that output* rather than guessing. An item suggestion
   reflects your actual matchup, not a tier list.
-- **No win-rate scraping.** Nothing here aggregates other players' win rates.
-  Recommendations come from computed quantities, which is also why the engine
-  can answer for matchups too rare to have a sample size.
+- **No win-rate scraping for builds.** Item and build recommendations never
+  come from other players' win rates. They come from computed quantities,
+  which is also why the engine can answer for matchups too rare to have a
+  sample size. Two narrow features do read published statistics - a
+  bot-lane duo-synergy grid and ARAM Mayhem augment priors - and both are
+  credited below.
 - **Your own history, not a tracker's.** Matches land in a local SQLite archive
   with full timeline data, so champion select reads history you own.
 - **Offline at request time.** The engine makes no network calls and has no
@@ -108,7 +111,7 @@ health swings.
 | :8889 | Vision server |
 | :8890 | Agents supervisor (proxied by the dashboard) |
 | :8891 | Agents WS relay |
-| :8895 | Mission Control (separate process, JSON API only - the web UI was removed 2026-09-20) |
+| :8895 | Mission Control (separate process, JSON API only, no web page) |
 | :8860 | Daemon Slayer build engine |
 | :8861 | Daemon Slayer match-history MCP server |
 | :2999 | Riot Live Client API (the game client's own feed) |
@@ -179,8 +182,8 @@ only be settled while a match is running, so those items are tracked apart in
 [`docs/LIVE_GAME_GATED_SYNC.md`](./docs/LIVE_GAME_GATED_SYNC.md) rather than
 closed on synthetic evidence.
 
-**Deliberately not being built.** No win-rate scraping and no machine-learned win
-predictor - the engine exists so neither is needed. No replay packet parsing as a
+**Deliberately not being built.** No win-rate-driven build advice and no
+machine-learned win predictor - the engine exists so neither is needed. No replay packet parsing as a
 shipping feature, since the format is re-obfuscated each patch. No replacement
 for the in-game HUD: the Live Client API exposes no cooldowns, buffs, wards or
 XP, so the overlay augments the HUD and cannot stand in for it. No hosted
@@ -220,6 +223,12 @@ Game data comes from these public sources:
   data does not describe
 - **Riot APIs** - Match-V5 for match history, and the Live Client API the game
   client serves locally during a match
+- **lolmath** - the data chunk the ARAM balance modifiers are extracted from
+- **101.qq.com** - duo-synergy win-rate rows for the bot-lane pairing grid
+- **An external augment-statistics endpoint** - ARAM Mayhem augment priors,
+  fetched on demand and not cached in the repository
+
+Each source keeps its own terms; [`NOTICE`](./NOTICE) records them one by one.
 
 ---
 
