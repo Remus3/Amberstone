@@ -1,12 +1,10 @@
-deep-dive unnamed research page by page for lift: https://github.com/UrSunBro01/lol-scouting-replay-kit
-
 AMBERSTONE (RC) - NEXT SESSION CONTINUATION
 -------------------------------------------
 
 ONE FILE. Repo root. OVERWRITTEN every /done - never appended, never
 dated-suffixed, never a second copy. The Desktop shortcut RC-NEXT-SESSION.lnk
 points here. This file is TRACKED, so each hand-off is versioned and diffable.
-Written 2026-09-21 (session 2026-09-20c).
+Written 2026-09-21 (session 2026-09-21a).
 
 
 NEXT SESSION
@@ -17,85 +15,97 @@ C:\Riot Commander. 1-PC on Legion (ADR-011). The repo is PUBLIC.
 
 Read first, in order: CLAUDE.md (### Settled is binding), MEMORY.md plus the
 INDEX_* files (INDEX_ds.md for this task), WAKEUP_NOTES.md (last 3 sessions),
-docs/LEDGER.md (this session is 1445 through 1452), ROADMAP.md NOW,
+docs/LEDGER.md (this session is 1453 and 1454), ROADMAP.md NOW,
 git log --oneline -20 (trust it over any list here), moon_sync_inbox/.
 Then: python tools/perseus_recall.py "<the task in your own words>".
+
+
+FIRST: CI
+---------
+
+77dff441a fixed a CI collect error introduced by d1d4bb089 (the new
+empty_parameter_set_mark = fail_at_collect met an empty sibling-config
+parametrize on CI). Confirm the push `ci` run for 77dff441a (or later) is
+GREEN before building anything. If red, fix forward first; collect with the
+sibling config ABSENT (memory reference_collect_count_is_a_host_fact).
 
 
 TASK
 ----
 
-RM-480: the RM-81 RATIO-OVERRIDE SCHEMA LIFT for the 7 HIGH stale-ability
-champions - Poppy Q, Qiyana Q, Thresh E, Kennen R, ChoGath E, Cassiopeia E,
-LeBlanc R.
+RM-480 FOLLOW-UP: decide and, if justified, execute the DEFAULT-FLIP of
+`apply_ability_base_overrides` so the 1.283.0 ratio + base overrides actually
+reach live DS scoring. Today the flag is DEFAULT-OFF (abilities.py ~:1289) and
+parsed only by /ability-dps, /rank-mage, /burst, /rank-assassin - NOT
+/rank-tank, and Poppy / Thresh / ChoGath are tanks. So RM-480 shipped the
+corrected numbers but NO default output moves.
 
-Why this one: ENGINE 1.282.0 widened the RM-81 detector to ratio-only drift
-(97 -> 112 stale), so these seven are MEASURED wrong numbers flowing into live
-DS scoring today, and the only blocker is a known, bounded schema gap
-(_ability_base_overrides.py can express a BASE override, not a RATIO). The
-runner-up, RM-479 (augment_stacks on /stats), is transport plumbing for a
-route already recorded as known-unreachable in tests/test_ds_parity_map.py -
-real but lower value.
+Scope to measure before flipping (adjudicate, do not assume):
+- Every consumer that loads abilities with the flag OFF (ability_dps.py
+  ~:1158, burst.py ~:658, ability_hps.py ~:848, self_shred.py ~:324,
+  data_loader.py ~:527) and whether a flip must reach them or the /rank-tank
+  transport (a DS route seam has THREE gates - flag, transport, parse; memory
+  reference_ds_route_seam_transport_vs_flag).
+- The six pre-existing base overrides ride the same flag. Naafiri R's entry is
+  itself STALE (wiki now 125..275, spell renamed) - fix or drop it BEFORE any
+  flip, or the flip ships a wrong number.
+- Build-order precompute tables would change on a flip: regenerate with
+  --champions all, diff the consumer artifact, and state which champions move
+  (memory feedback_verified_claim_vs_measured_downstream).
+- A default flip weakens tests that assumed OFF (memory
+  feedback_default_flip_weakens_tests).
+Runner-up if the flip is refuted: RM-479 (augment_stacks on /stats).
 
 
 CONTEXT
 -------
 
-- ENGINE 1.282.0 / patch 16.18.1. Live DS truth = data/daemon_slayer/current.txt
-  + agents/daemon_slayer/__init__.py + /health on :8860. Verify, do not quote.
-- The 1.282.0 integration (7fbe7aead) had its verifier gate PENDING at wrap.
-  Confirm it landed on main and CI is green before building on it.
-- Per-version DS changelog: agents/daemon_slayer/CHANGELOG.md (1.281.0 and
-  1.282.0 entries). docs/DAEMON_SLAYER.md carries NO changelog by design.
-- ROADMAP.md is now ~92 percent of its 80 KB budget (tests/test_doc_size_budget.py).
-  A relocation pass to docs/ROADMAP_HISTORY.md is DUE; if this task's rows
-  push it over, relocate FIRST using the verbatim method (type the block into
-  ROADMAP_HISTORY.md, then use that text as the old_string that removes it).
+- ENGINE 1.283.0 / patch 16.18.1 live on :8860 (verified this session). Verify,
+  do not quote: data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py
+  + /health.
+- agents/daemon_slayer/_ability_base_overrides.py: AbilityBaseOverride.field
+  (base or one of 13 ratio keys), all-or-nothing per form.
+- tools/ds_wiki_staleness_check.py --annotate-only; ability_staleness.json rows
+  carry resolved_by_override; _override_resolved = 23; stale_champions stays 112
+  ON PURPOSE (core/daemon_slayer_client.py ~:2302 derives ABSENT/STALE/CURRENT).
+- Still-stale, named not fixed: Qiyana Q form 1, LeBlanc R other blocks + W
+  (and its override hits block 3 while the engine reads block 0), Kennen R
+  cooldown (wiki value is a parse error), 118 other engine-stale ratio rows
+  (Belveth R and Kalista E look like wiki parse errors).
+- ROADMAP.md is ~92 percent of its 80 KB budget; relocate to
+  docs/ROADMAP_HISTORY.md verbatim FIRST if new rows push it over.
+- Inbox: SS 1900 and SS 1930 arrived after the wrap and are UNREAD. SS 1930
+  answers RC's 1030 note (a subscript is SAFE; the leak axis is the attribute;
+  SS's own empty-parametrize route is OPEN). Read, reply if owed (pre-authorised
+  inbox delivery, re-hash every destination), then --mark-inbox-seen. RC's 1030
+  note was delivered to MAIN via the path in MAIN's README, which is not in
+  ops/moon_sync_repos.json - consider recording it there.
 
 
 ACCEPTANCE
 ----------
 
-1. Schema lift: the override registry can express a per-rank RATIO (and keep
-   BASE working); a failing test is written FIRST for at least one champion.
-2. All 7 HIGH rows carry a ratio override sourced from the extract's own
-   numbers, one test per champion (per-champion validation, not one generic
-   shape), and the RM-81 detector no longer flags them.
-3. Grep for sibling cases (other HIGH-adjacent rows, other overrides reading
-   the same field) and either cover them or name why not.
-4. ENGINE_VERSION bump, full dual suite from the repo root (pytest
-   agents/daemon_slayer + pytest tests, never pytest .), DS :8860 restarted,
-   /health shows the new version, verifier subagent gate before "done".
-5. drift_guard.py <old version> clean; LEDGER entry; RM-480 flipped.
+1. A written go / no-go on the default flip with the measured blast radius.
+2. If GO: Naafiri R corrected first; flip with a failing test first; every
+   consumer that must see it proven to see it (transport + parse, not just the
+   flag); precompute regenerated and the moved champions named; ENGINE bump,
+   full dual suite from the repo root, :8860 bounced, verifier gate.
+3. If NO-GO: the reason recorded in ROADMAP and LEDGER; move to RM-479.
+4. drift_guard clean; LEDGER entry; CI green.
 
 
 DO NOT REDO
 -----------
 
-- The 16.18.1 patch bump, the lolmath extractor fixes, Ultra Hydra 226668 ARAM
-  exclusion, cherry_augments refetch, Brawl-pool canary (LEDGER 1450).
-- F2 block-index ordinals, F3 Arena Stormrazor/RFC, S1-1 alias dedup, the
-  RM-81 ratio-drift detector itself (LEDGER 1451).
-- The rewind DB dedup/backfill - already run live and recovered (LEDGER 1449).
-  The event-id gap from an earlier unrecorded cleanup is UNRECOVERABLE; do not
-  chase it.
-- Riot 429 reason plumbing (LEDGER 1447) and stop_claim_gate check 6 (LEDGER
-  1448). Their residues are ACCEPTED and recorded in-tool.
-- Fiddlesticks Q (RM-485) is NOTE ONLY - the conditional-target-state arc is
-  operator-CLOSED. Ability haste is measured INERT - do not spec it again.
-- No task chips, ever (operator ruling): do it now, ROADMAP it, or carry it here.
-
-
-START WITH
-----------
-
-    git fetch && git log --oneline origin/main -10
-    curl -s http://127.0.0.1:8860/health
-    python tools/perseus_recall.py "RM-81 ratio override schema lift stale ability"
-    grep -n "def \|OVERRIDES" agents/daemon_slayer/_ability_base_overrides.py
-
-Then spec the schema lift in a Plan subagent BEFORE any code, verified against
-the cited file:line ground truth.
+- RM-480 itself (49c665b5c, LEDGER 1453): the schema lift, the 18 entries, the
+  detector annotations. Shipped and live.
+- The breaker boundary flake (19ede4154), the environ-leak asserts + guard and
+  the pytest.ini empty-parameter mark (d1d4bb089), the CI collect fix
+  (77dff441a) - LEDGER 1454.
+- The lol-scouting-replay-kit research: REFERENCE-ONLY, closed (LEDGER 1453).
+- Everything in LEDGER 1445-1452. Fiddlesticks Q is note only; ability haste is
+  measured INERT; the conditional-target-state arc is operator-CLOSED.
+- No task chips, ever: do it now, ROADMAP it, or carry it here.
 
 
 HARD BOUNDARY - BINDS EVERY SESSION, ATTENDED INCLUDED
