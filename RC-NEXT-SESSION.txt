@@ -1,120 +1,62 @@
-AMBERSTONE (RC) - NEXT SESSION CONTINUATION
--------------------------------------------
-
-ONE FILE. Repo root. OVERWRITTEN every /done - never appended, never
-dated-suffixed, never a second copy. The Desktop shortcut RC-NEXT-SESSION.lnk
-points here. This file is TRACKED, so each hand-off is versioned and diffable.
-Written 2026-09-21 (session 2026-09-21a).
-
-
 NEXT SESSION
 ------------
+Task: RM-486 - find out why `pytest tests` exits 127 mid-run on Legion. It BLOCKS the
+merge of PR #1 (https://github.com/Remus3/Amberstone/pull/1), which is open, pushed and
+fully verified apart from that one gate.
 
-Continue work on Amberstone, the live League / TFT coaching dashboard at
-C:\Riot Commander. 1-PC on Legion (ADR-011). The repo is PUBLIC.
+Context:
+  - Branch `fix/weekly-routines`, tip `8e1ab5566`. Four commits: `fb05d3488` (S1-S6),
+    `ba4bb74be` (S7), `6044a9ee1` (S8, FROZEN `app/_game_lifecycle.py`, operator-approved
+    in chat 2026-09-29), `8e1ab5566` (citation repoint). `main` is UNTOUCHED.
+  - The symptom: exit 127, NO traceback, NO pytest summary line, no abort sentinel in
+    `tests/conftest.py`, memory healthy at 58 percent. Three runs died at DIFFERENT points
+    (60 percent, 32 percent, 25 percent).
+  - REFUTED, do not re-pitch: "the live tree is hostile to a long run". The third run was
+    in an isolated git worktree at `.claude/worktrees/suite-verify` and died the same way.
+  - `agents/daemon_slayer` is GREEN on the final tree: 10933 passed, 13669 subtests,
+    exit 0, 147.84s. The problem is confined to `tests/`.
+  - NOT established whether the 127 pre-dates this branch. Cheapest discriminator first:
+    `pytest tests` at `main` versus at `8e1ab5566`.
+  - Then get the abort point NAMED. `-q` gives dots only, which is why three runs taught
+    us almost nothing. Try `-v` and keep the tail, or `-p no:randomly`, or bisect by
+    subdirectory. 127 with no Python traceback smells like the process being killed rather
+    than a test failing - check whether anything on the box kills long `python.exe` runs
+    (`ops/launch_new_system.bat:17-18` taskkills `pythonw.exe` and a windowtitle-filtered
+    `python.exe`).
+  - Historical baseline: the operator measured `pytest tests` completing at
+    21890 passed / 102 skipped / 4938 subtests in 1:12:22 on 2026-09-11, so it used to run.
 
-Read first, in order: CLAUDE.md (### Settled is binding), MEMORY.md plus the
-INDEX_* files (INDEX_ds.md for this task), WAKEUP_NOTES.md (last 3 sessions),
-docs/LEDGER.md (this session is 1453 and 1454), ROADMAP.md NOW,
-git log --oneline -20 (trust it over any list here), moon_sync_inbox/.
-Then: python tools/perseus_recall.py "<the task in your own words>".
+Acceptance:
+  - Either `pytest tests` completes locally and PR #1's CI is green, then merge to main and
+    flip LEDGER 1455 from OPEN-PR to DONE; or the 127 is root-caused as a box/harness limit
+    rather than a suite defect, documented, and the merge proceeds on CI's verdict alone.
 
+Do NOT redo (all shipped or settled this session):
+  - The auth diagnosis. Root cause CONFIRMED IN PRODUCTION: `ANTHROPIC_API_KEY` is
+    machine-wide, the supervisor inherits it, `agents/_supervisor_ephemeral.py` passed no
+    `env=`, the spawned `claude -p` got an org-scoped key and died 400 "not scoped to a
+    workspace". Fixed. The stuck task `t-f65ba5e9c492` dispatched live and failed with that
+    exact error, so this is measured, not inferred.
+  - The OAuth login. Operator re-logged in on Legion; verified `PONG` from
+    `env -u ANTHROPIC_API_KEY claude -p ... --model claude-sonnet-4-6`.
+  - The key rotation. Machine env holds the new key; `API-Key-Claude.txt` is DELETED and is
+    not coming back. Machine env is the single source. Do not recreate that file - five
+    consumers used to prefer it and a stale copy would silently beat a rotated env var.
+  - The five slice verifications. Four adversarial verifier passes, every fix
+    mutation-killed. The six slice test files measure 87 passed.
+  - `RC-WeeklyHygiene` being Disabled. That is DELIBERATE, not a fault - disabled
+    2026-09-11 with `RC-CIWatchdog` and `RC-InboxResponder` when the operator STOPped the
+    headless loop. `ops/loop/control/STOP` is still on disk. Re-arming means clearing STOP
+    AND re-enabling those three deliberately.
+  - `RC-RewindCatchup` looking 16 weeks dead. It is HEALTHY - no-op weeks. The stale
+    `last_run_at` was a reporting defect (now fixed), and it already fooled two readers.
 
-FIRST: CI
----------
+Known-incomplete, named not hidden:
+  - `Microsoft-Windows-TaskScheduler/Operational` is DISABLED on this box, so there is still
+    no per-run history for any of the 26 RC tasks. Enabling it is a machine setting and was
+    never approved; `tools/rc_facts.py` staleness checks are the compensating control.
+  - The running suite result covers `6044a9ee1`, not `8e1ab5566`. That delta is docstring
+    prose in three test files; those files plus `test_citation_drift_guard_rm171.py` were
+    run directly (78 passed, 216 subtests).
 
-77dff441a fixed a CI collect error introduced by d1d4bb089 (the new
-empty_parameter_set_mark = fail_at_collect met an empty sibling-config
-parametrize on CI). Confirm the push `ci` run for 77dff441a (or later) is
-GREEN before building anything. If red, fix forward first; collect with the
-sibling config ABSENT (memory reference_collect_count_is_a_host_fact).
-
-
-TASK
-----
-
-RM-480 FOLLOW-UP: decide and, if justified, execute the DEFAULT-FLIP of
-`apply_ability_base_overrides` so the 1.283.0 ratio + base overrides actually
-reach live DS scoring. Today the flag is DEFAULT-OFF (abilities.py ~:1289) and
-parsed only by /ability-dps, /rank-mage, /burst, /rank-assassin - NOT
-/rank-tank, and Poppy / Thresh / ChoGath are tanks. So RM-480 shipped the
-corrected numbers but NO default output moves.
-
-Scope to measure before flipping (adjudicate, do not assume):
-- Every consumer that loads abilities with the flag OFF (ability_dps.py
-  ~:1158, burst.py ~:658, ability_hps.py ~:848, self_shred.py ~:324,
-  data_loader.py ~:527) and whether a flip must reach them or the /rank-tank
-  transport (a DS route seam has THREE gates - flag, transport, parse; memory
-  reference_ds_route_seam_transport_vs_flag).
-- The six pre-existing base overrides ride the same flag. Naafiri R's entry is
-  itself STALE (wiki now 125..275, spell renamed) - fix or drop it BEFORE any
-  flip, or the flip ships a wrong number.
-- Build-order precompute tables would change on a flip: regenerate with
-  --champions all, diff the consumer artifact, and state which champions move
-  (memory feedback_verified_claim_vs_measured_downstream).
-- A default flip weakens tests that assumed OFF (memory
-  feedback_default_flip_weakens_tests).
-Runner-up if the flip is refuted: RM-479 (augment_stacks on /stats).
-
-
-CONTEXT
--------
-
-- ENGINE 1.283.0 / patch 16.18.1 live on :8860 (verified this session). Verify,
-  do not quote: data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py
-  + /health.
-- agents/daemon_slayer/_ability_base_overrides.py: AbilityBaseOverride.field
-  (base or one of 13 ratio keys), all-or-nothing per form.
-- tools/ds_wiki_staleness_check.py --annotate-only; ability_staleness.json rows
-  carry resolved_by_override; _override_resolved = 23; stale_champions stays 112
-  ON PURPOSE (core/daemon_slayer_client.py ~:2302 derives ABSENT/STALE/CURRENT).
-- Still-stale, named not fixed: Qiyana Q form 1, LeBlanc R other blocks + W
-  (and its override hits block 3 while the engine reads block 0), Kennen R
-  cooldown (wiki value is a parse error), 118 other engine-stale ratio rows
-  (Belveth R and Kalista E look like wiki parse errors).
-- ROADMAP.md is ~92 percent of its 80 KB budget; relocate to
-  docs/ROADMAP_HISTORY.md verbatim FIRST if new rows push it over.
-- Inbox: SS 1900 and SS 1930 arrived after the wrap and are UNREAD. SS 1930
-  answers RC's 1030 note (a subscript is SAFE; the leak axis is the attribute;
-  SS's own empty-parametrize route is OPEN). Read, reply if owed (pre-authorised
-  inbox delivery, re-hash every destination), then --mark-inbox-seen. RC's 1030
-  note was delivered to MAIN via the path in MAIN's README, which is not in
-  ops/moon_sync_repos.json - consider recording it there.
-
-
-ACCEPTANCE
-----------
-
-1. A written go / no-go on the default flip with the measured blast radius.
-2. If GO: Naafiri R corrected first; flip with a failing test first; every
-   consumer that must see it proven to see it (transport + parse, not just the
-   flag); precompute regenerated and the moved champions named; ENGINE bump,
-   full dual suite from the repo root, :8860 bounced, verifier gate.
-3. If NO-GO: the reason recorded in ROADMAP and LEDGER; move to RM-479.
-4. drift_guard clean; LEDGER entry; CI green.
-
-
-DO NOT REDO
------------
-
-- RM-480 itself (49c665b5c, LEDGER 1453): the schema lift, the 18 entries, the
-  detector annotations. Shipped and live.
-- The breaker boundary flake (19ede4154), the environ-leak asserts + guard and
-  the pytest.ini empty-parameter mark (d1d4bb089), the CI collect fix
-  (77dff441a) - LEDGER 1454.
-- The lol-scouting-replay-kit research: REFERENCE-ONLY, closed (LEDGER 1453).
-- Everything in LEDGER 1445-1452. Fiddlesticks Q is note only; ability haste is
-  measured INERT; the conditional-target-state arc is operator-CLOSED.
-- No task chips, ever: do it now, ROADMAP it, or carry it here.
-
-
-HARD BOUNDARY - BINDS EVERY SESSION, ATTENDED INCLUDED
-------------------------------------------------------
-
-HALT AND PING THE OPERATOR BEFORE ANY BYTE LEAVES THE TREE: any write, delete
-or lock outside the repository root; any edit to ops/loop/slots.py,
-ops/loop/winmutex.py or docs/CHANNEL.md; any PUSH whose DIFF touches those or
-trips the sibling-name sweep. NO TIMEOUT - halt and wait. ONE narrow carve-out:
-delivering a channel REPLY into a sibling's moon_sync_inbox/ is pre-authorised;
-deliver, then re-hash every destination and publish the reached-count.
-Never put a sibling's real name or path in a tracked file - codes only.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
