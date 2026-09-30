@@ -13,7 +13,7 @@ pure staticmethod.
 CORRECTED PREMISE (recorded so the fix is not oversold):
 
 (1) This was never a crash of the poll cycle. The only production caller,
-    ``app/_game_lifecycle.py:465-467``, wraps the call::
+    ``app/_game_lifecycle.py:475-477``, wraps the call::
 
         try:
             app.data["win_pct"] = StateAuthority.calc_win_pct(state); changed = True
