@@ -182,11 +182,19 @@ def _serve_champ_select_coach_post(h, payload) -> None:
     # Dashboard POSTs whenever picks change (debounced).
     # Body: {is_aram, queue_id, my_champion, my_team, their_team, bench}
     try:
+        from coaches._base_coach import read_api_key
         from coaches.champ_select_coach import coach_pick
-        api_key = ""
-        _key_path = APP_DIR / "API-Key-Claude.txt"
-        if _key_path.exists():
-            api_key = _key_path.read_text(encoding="utf-8").strip()
+        # 2026-09-29: this route used to read API-Key-Claude.txt and NOTHING
+        # else, so once the operator rotated the key into ANTHROPIC_API_KEY
+        # and deleted the file it passed "" to coach_pick and champ-select
+        # coaching went silently off with a valid key in the environment.
+        # Delegating to the shared reader gives the whole process ONE order
+        # (env first, file fallback) instead of a seventh local variant;
+        # dashboard/_screen_read.py:89 already imports this same helper, so
+        # no new package edge. read_api_key never raises, so the route keeps
+        # its fail-soft posture - "" reaches coach_pick's own missing-key
+        # guard and answers 200 with "(API key missing - coach disabled)".
+        api_key = read_api_key(APP_DIR)
         result = coach_pick(payload or {}, api_key)
         # Do-not-flip-blind shadow: record the deterministic pick-advisor
         # alongside the live Haiku advice so the precompute path can be

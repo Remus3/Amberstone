@@ -11,6 +11,7 @@ Architecture:
   TftOverlay          - 3 tkinter windows (reused)
 """
 
+import os
 import sys
 import logging
 import threading
@@ -36,12 +37,29 @@ except Exception as _e:  # noqa: BLE001
 
 
 def _read_api_key(app_dir: Path) -> str:
-    for p in [app_dir / "API-Key-Claude.txt"]:
-        if p.exists():
+    """ENVIRONMENT first, API-Key-Claude.txt as fallback.
+
+    Order flipped 2026-09-29 to match main.py:46 and
+    coaches/_base_coach.py read_api_key: a leftover key file holding a
+    revoked key must never beat the env var a rotation updates. Pinned by
+    tests/test_api_key_load_order.py.
+
+    The read is now guarded. It was bare, so a non-UTF8 key file raised
+    UnicodeDecodeError straight out of Coach.__init__ instead of degrading
+    to coach-off like every sibling reader.
+    """
+    env = os.environ.get("ANTHROPIC_API_KEY", "")
+    if env.strip().startswith("sk-ant-"):
+        return env.strip()
+    p = app_dir / "API-Key-Claude.txt"
+    if p.exists():
+        try:
             k = p.read_text(encoding="utf-8").strip()
             if k.startswith("sk-ant-"):
                 return k
-    return __import__("os").environ.get("ANTHROPIC_API_KEY", "")
+        except (OSError, UnicodeDecodeError):
+            pass
+    return env
 
 
 class Coach:
