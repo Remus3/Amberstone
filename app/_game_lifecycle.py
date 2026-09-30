@@ -313,6 +313,16 @@ class GameLifecycleManager:
             app.scheduler.schedule(1500, self._drain_tft_q)
 
     def _try_read_api_key(self) -> str:
+        """ENVIRONMENT first, API-Key-Claude.txt as fallback.
+
+        Order flipped 2026-09-29 to match main.py:46 and
+        coaches/_base_coach.py read_api_key - a leftover key file holding a
+        revoked key must never beat the env var a rotation updates. Pinned
+        by tests/test_api_key_load_order.py.
+        """
+        env = os.environ.get("ANTHROPIC_API_KEY", "")
+        if env.strip().startswith("sk-ant-"):
+            return env.strip()
         try:
             p = SCRIPT_DIR / "API-Key-Claude.txt"
             if p.exists():
@@ -324,7 +334,7 @@ class GameLifecycleManager:
             # startswith() cannot raise on a str. Falls through to the env var,
             # and an absent key degrades to coach-off (project_sr_api_key_file).
             pass
-        return os.environ.get("ANTHROPIC_API_KEY", "")
+        return env
 
     # -- State processing -----------------------------------------------------
 
