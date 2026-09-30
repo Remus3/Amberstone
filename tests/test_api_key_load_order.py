@@ -142,9 +142,14 @@ def _load_game_lifecycle(app_dir: Path, monkeypatch) -> str:
 
     The instance is built with `object.__new__` on purpose - `__init__` wants a
     live OverlayApp, and the method under test never touches `self`. The public
-    `try_read_api_key` passthrough is called rather than the private method so
-    the real caller path (app/__init__.py -> passthrough -> private) is the one
-    under test.
+    `try_read_api_key` passthrough is called rather than the private method, so
+    the passthrough -> private hop is genuinely exercised.
+
+    Stated precisely, because the obvious stronger claim is not supported: the
+    `app/__init__.py:221-222` wrapper above the passthrough is NOT covered here.
+    Stubbing `app.OverlayApp._try_read_api_key` leaves this file fully green, so
+    that outermost hop rests on inspection of a one-line delegation, not on a
+    test. Do not read this adapter as pinning the whole chain.
     """
     from app import _game_lifecycle as glc
 
