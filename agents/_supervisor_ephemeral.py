@@ -11,6 +11,7 @@ calls here (stdlib module singletons).
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -47,6 +48,93 @@ class EphemeralSpawnFailed(RuntimeError):
 
 
 TASK_LOG_MAX_AGE_DAYS = 7
+
+
+# Env vars removed from the ephemeral spawn's environment (2026-09-29).
+#
+# MEASURED: ANTHROPIC_API_KEY is set MACHINE-WIDE on Legion. The
+# RC-Phase3-Supervisor task runs `pythonw -m agents.supervisor` and inherits
+# it; the spawn below used to call subprocess.run() with no env= argument, so
+# on Windows the `claude` child inherited the parent's whole environment block
+# and picked the key up too. That key is ORG-scoped, not workspace-scoped, and
+# the CLI treats it as an auth source that TAKES PRECEDENCE over this box's
+# Claude subscription login. Result: every Agent-6 dispatch from 2026-08-02
+# onward died exit 1 (last success 2026-07-27, 7 consecutive weekly failures).
+#
+# Each entry is a variable the CLI honours as an auth/endpoint override, so
+# leaving any of them in place would re-create the same precedence bug:
+#   ANTHROPIC_API_KEY    - the measured culprit; org-scoped key.
+#   ANTHROPIC_AUTH_TOKEN - the bearer-token equivalent of the same override.
+#   ANTHROPIC_BASE_URL   - redirects the CLI at a gateway/proxy that expects
+#                          its own credential, which the subscription login
+#                          cannot satisfy.
+# They are REMOVED, never set to "": an empty string still reads as "a key is
+# configured" on some code paths, and subprocess on Windows rejects None.
+#
+# SCOPE: the spawn only. os.environ is never mutated and the machine-wide
+# variable is never touched - RC's coaches legitimately use ANTHROPIC_API_KEY
+# for direct Anthropic API calls and must keep seeing it.
+_SPAWN_ENV_STRIP = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
+
+
+def _build_spawn_env() -> dict[str, str]:
+    """Return a copy of os.environ with the auth-override vars removed.
+
+    Compared case-insensitively: os.environ is case-insensitive on Windows
+    but not on POSIX, and the CLI reads the names either way.
+    """
+    strip = {name.upper() for name in _SPAWN_ENV_STRIP}
+    return {
+        str(k): str(v)
+        for k, v in os.environ.items()
+        if v is not None and str(k).upper() not in strip
+    }
+
+
+# Auth failure signatures, matched against the child's combined output.
+#
+# Without this a dead spawn yields a bare "claude exit 1" and the next person
+# spends a session rediscovering the cause - which is exactly what happened
+# over seven weekly failures. The needle is a fixed substring and the emitted
+# cause is a CONSTANT string, so nothing derived from child output is ever
+# interpolated into the message; the existing _redact_secrets calls on the
+# real stdout/stderr are left exactly as they were.
+_AUTH_FAILURE_SIGNATURES: tuple[tuple[str, str], ...] = (
+    (
+        "not scoped to a workspace",
+        "the spawn presented an org-scoped API key where a workspace-scoped "
+        "credential was required - an ANTHROPIC_* auth override reached the "
+        "`claude` child instead of this host's subscription login",
+    ),
+    (
+        "connectors are disabled because anthropic_api_key",
+        "an ANTHROPIC_* auth source is overriding the Claude subscription "
+        "login inside the spawned CLI - it must be stripped from the spawn "
+        "environment",
+    ),
+    (
+        "oauth session expired",
+        "the Claude subscription OAuth session on this host is expired and "
+        "could not be refreshed - the spawn environment is correct but there "
+        "is no usable subscription credential; re-login with the `claude` CLI "
+        "interactively on this machine",
+    ),
+)
+
+
+def _classify_auth_failure(*streams: str) -> str | None:
+    """Name the auth cause behind a failed spawn, or None if it is not one.
+
+    Takes the child's raw stdout/stderr and returns one of the constant
+    strings above. The child text itself is never returned or embedded.
+    """
+    haystack = " ".join(s for s in streams if isinstance(s, str)).lower()
+    if not haystack:
+        return None
+    for needle, cause in _AUTH_FAILURE_SIGNATURES:
+        if needle in haystack:
+            return cause
+    return None
 
 
 def prune_task_logs(log_root: Path = LOG_ROOT,
@@ -166,6 +254,12 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     other exit code we raise ``EphemeralSpawnFailed`` which the dispatch
     loop translates into ``Scheduler.fail()``.
 
+    The child runs with an EXPLICIT environment (``_build_spawn_env``): the
+    supervisor's own, minus the ANTHROPIC_* auth overrides, so the spawn
+    rides this host's Claude subscription login rather than the machine-wide
+    org-scoped API key. A failure carrying a known auth signature is named
+    in the log and in the exception text (``_classify_auth_failure``).
+
     Payload overrides:
       - ``spawn_budget_usd``: float dollar cap (default 2.0)
       - ``spawn_timeout_sec``: int seconds (default 900)
@@ -247,12 +341,19 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     if sys.platform.startswith("win"):
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
+    # Explicit env for the child: everything the supervisor has, minus the
+    # ANTHROPIC_* auth overrides (see _SPAWN_ENV_STRIP). Built fresh per
+    # spawn and never written back, so the supervisor's own os.environ - and
+    # therefore the coaching path's direct Anthropic API access - is untouched.
+    spawn_env = _build_spawn_env()
+
     t0 = time.time()
     try:
         proc = subprocess.run(
             cmd,
             input=user_prompt,
             cwd=str(_PROJECT_ROOT),
+            env=spawn_env,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -273,14 +374,25 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     # Mirror the full exchange into a per-task log file so the report can
     # be inspected without tail-chasing the rolling agent log.
     # AUDIT 2026-04-28 (P-audit4-m03): redact secret-shaped strings before
-    # write. The supervisor injects ANTHROPIC_API_KEY into the spawn env;
-    # an agent that introspects os.environ (or a traceback that exposes
-    # KeyError on the var) would otherwise leak the key into a file on
-    # disk readable by anyone with shell access.
+    # write. An agent that introspects its environment (or a traceback that
+    # exposes a key name) would otherwise leak a secret into a file on disk
+    # readable by anyone with shell access.
+    # 2026-09-29: ANTHROPIC_API_KEY no longer reaches the spawn env
+    # (_SPAWN_ENV_STRIP), but this redaction is NOT thereby obsolete and must
+    # not be weakened - the child can still surface a key by reading
+    # API-Key-Claude.txt, a .env, or any other credential in the tree.
+    # Name the auth cause (if any) from the RAW child output. Only the
+    # constant cause string is kept; the child text is not carried over.
+    auth_cause = None
+    if proc.returncode != 0:
+        auth_cause = _classify_auth_failure(proc.stdout, proc.stderr)
+    auth_line = f"auth_cause: {auth_cause}\n" if auth_cause else ""
+
     try:
         per_task_log.write_text(
             f"=== task {task_id} agent{agent} op={op} ===\n"
             f"cmd-length: {sum(len(a) for a in cmd)} chars\n"
+            f"{auth_line}"
             f"model: {model}\n"
             f"budget_usd: {budget:.2f}\n"
             f"timeout_sec: {timeout}\n"
@@ -299,6 +411,13 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
                 f"{_iso_now()} FAIL agent={agent} task={task_id} exit={proc.returncode} "
                 f"stderr={_redact_secrets(proc.stderr[:200])!r}\n"
             )
+            if auth_cause:
+                f.write(
+                    f"{_iso_now()} AUTH-CAUSE agent={agent} task={task_id} "
+                    f"{auth_cause}\n"
+                )
+        if auth_cause:
+            log.error("ephemeral spawn auth failure (task %s): %s", task_id, auth_cause)
         if agent == "6":
             _write_agent6_failure_stub(task_id, op, payload, proc.returncode, per_task_log, stamp)
         # The exception text becomes Scheduler.fail(error=str(e)) -> the
@@ -307,9 +426,13 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
         # fragment (same threat the per-task log redaction guards), so
         # redact the embedded stderr here too - never leak it raw to the
         # dashboard (CLAUDE.md Error-Handling rule).
+        # The AUTH-CAUSE suffix is appended, not substituted, so the message
+        # PREFIX shape ("claude exit N for task T: ...") is preserved for the
+        # dispatcher and for the existing callers that assert on it.
+        suffix = f" | AUTH-CAUSE: {auth_cause}" if auth_cause else ""
         raise EphemeralSpawnFailed(
             f"claude exit {proc.returncode} for task {task_id}: "
-            f"{_redact_secrets(proc.stderr.strip()[:400])}"
+            f"{_redact_secrets(proc.stderr.strip()[:400])}{suffix}"
         )
 
     # Parse the JSON envelope. Fall back to raw stdout if parse fails -
