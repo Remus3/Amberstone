@@ -10,7 +10,9 @@ the file. Seven consumers read the key and they did NOT agree on precedence:
   * `coaches/_base_coach.py`          FILE first                (flipped here)
   * `agents/agent7_context/warm_session.py`  FILE first         (flipped here)
   * `coaches/tft_pbe_coach.py`        FILE first                (flipped here)
-  * `app/_game_lifecycle.py:315`      FILE first  (FROZEN - see the report)
+  * `app/_game_lifecycle.py:315`      FILE first  (FROZEN - flipped 2026-09-29
+                                      under an explicit, edit-scoped operator
+                                      approval; it was the last file-first read)
   * `dashboard/routes_coach.py:185`   FILE ONLY - a LIVE BUG
 
 TWO DEFECTS, and they are different in kind:
@@ -131,11 +133,32 @@ def _load_routes_coach(app_dir: Path, monkeypatch) -> str:
     return seen["api_key"]
 
 
+def _load_game_lifecycle(app_dir: Path, monkeypatch) -> str:
+    """Drive GameLifecycleManager.try_read_api_key with its file root moved.
+
+    This consumer differs from the other three: it takes NO app_dir argument,
+    so the file half cannot be redirected by a parameter. It resolves the key
+    file against the module-level `SCRIPT_DIR`, which is what gets patched.
+
+    The instance is built with `object.__new__` on purpose - `__init__` wants a
+    live OverlayApp, and the method under test never touches `self`. The public
+    `try_read_api_key` passthrough is called rather than the private method so
+    the real caller path (app/__init__.py -> passthrough -> private) is the one
+    under test.
+    """
+    from app import _game_lifecycle as glc
+
+    monkeypatch.setattr(glc, "SCRIPT_DIR", app_dir)
+    mgr = object.__new__(glc.GameLifecycleManager)
+    return mgr.try_read_api_key()
+
+
 CONSUMERS = [
     pytest.param(_load_base_coach, id="coaches._base_coach.read_api_key"),
     pytest.param(_load_warm_session, id="agent7.warm_session._load_api_key"),
     pytest.param(_load_tft_pbe, id="coaches.tft_pbe_coach._read_api_key"),
     pytest.param(_load_routes_coach, id="dashboard.routes_coach"),
+    pytest.param(_load_game_lifecycle, id="app._game_lifecycle.try_read_api_key"),
 ]
 
 assert CONSUMERS, "empty consumer set - this file would pass proving nothing"
