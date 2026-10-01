@@ -36,9 +36,10 @@ Also carry, because it changes what counts as evidence:
   - A sweep run with NO `[sibling-sweep] clean: <N> bytes` line has returned NO verdict.
     An earlier `timeout 600 ... | tail` run exited 0 from `tail` while `timeout` killed
     the scan mid-run. Never pipe the sweep through anything that masks its exit code.
-  - A full `--tree` run was started at wrap and had not finished. If you want the
-    whole-tree verdict, re-run `python tools/sibling_name_sweep.py --tree` and READ the
-    clean line. It scans the smudged checkout (~633 MB), so give it time.
+  - The full `--tree` run COMPLETED at wrap and is CLEAN: 650,644,164 bytes over 4968
+    files, exit 0. Its own stated blind spot: 482 binary/LFS blobs were not
+    content-scanned. So the working tree is clean for text, which corroborates the
+    per-file result above - do not re-run it to re-establish this.
 
 Do NOT redo (shipped 2026-09-30b):
   - PR #1 is MERGED as `eed3f8849`. LEDGER 1455 is flipped to DONE.
