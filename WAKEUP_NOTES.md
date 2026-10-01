@@ -56,9 +56,15 @@ NEGATIVE kept so nobody re-opens it: RC forces `eol=lf` for every text class, so
 two-digest trap does not reach RC.
 
 **The baseline earned its cost, and it caught my own mistake.** Full dual suite first: DS `10933
-passed`; RC `4 failed, 24711 passed` in 1:46:58. **THREE of those four were an artefact of my own
-orchestration** - a slice wrote a live file DURING the run, so the suite straddled an edit; on a
-quiescent tree those are green. Freeze the tree or do not cite the number. Post-merge was
+passed`; RC `4 failed, 24711 passed` in 1:46:58. **I attributed THREE of those four to my own
+orchestration - a straddled tree - and that was WRONG.** A slice did write a live file during the
+baseline, and the three do pass in isolation (`121 passed`), both true; the conclusion did not
+follow. A second full run on the FINAL tree, quiescent and single-process, reproduced the same
+three: `4 failed, 24727 passed` in 1:42:33. **They are FULL-SUITE-ONLY failures - cross-test
+pollution, reproducible, and PRE-EXISTING at HEAD.** Passing in isolation is what a pollution looks
+like; it is not evidence of a straddle. Root cause OPEN, two hypotheses already eliminated (no
+warn-once guard in the subject; the noisy-logger override never touches `rc.*`), and CI is GREEN on
+the same commit, so it does not reproduce on the runner. Filed as ROADMAP NOW-6. Post-merge was
 tier-scoped per R5 (Tier-0 docs, Tier-1 tooling, no engine): affected modules `77 passed`, doc and
 hygiene guards `128 passed / 2 skipped / 216 subtests`, ruff and `py_compile` clean.
 
