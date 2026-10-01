@@ -63,6 +63,16 @@ is guarded only at the helper). Also noted: `RM-486` is used TWICE in ROADMAP.md
 suite-127 row and a Void Immolation row - so every citation of it is ambiguous until one
 is renumbered.
 
+Known CI flake, characterised - do NOT re-diagnose it from scratch:
+`tests/snapshot_panels/test_home_companion_view.py::test_home_companion_reflows_single_column`
+("hero overlaps the Tonight's Pick card") went red once on main, then passed on a
+`--failed` rerun of the SAME sha, and passes locally 6/6. Same web/ bytes were green on
+the PR run, so it is nondeterministic, not a regression. It is a live Playwright
+getBoundingClientRect measurement - font-load / layout-timing shape. It was deliberately
+NOT loosened; the assertion is real geometry and the race is still unfound.
+
+main CI is GREEN as of the rerun of run 36800429907.
+
 Not touched, still waiting: the moon_sync_inbox unread notes.
 
 Acceptance: a decision recorded for the six lane refs, and `git worktree list` plus
