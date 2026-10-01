@@ -81,6 +81,36 @@ def _task_log(task_id: str) -> Path:
     return LOG_ROOT / f"task-{task_id}.log"
 
 
+# `tests/test_no_environ_in_assert_operands.py` forbids an assertion operand
+# that would render the whole process environment - keys AND values, so every
+# secret on the box - into a failure message. The two helpers below do the
+# comparison here and hand back key NAMES only, so the assertions stay just as
+# strong while staying safe to fail in a public CI log.
+
+def _environ_key_drift(baseline: dict[str, str]) -> list[str]:
+    """Names of keys whose presence or value differs from ``baseline``."""
+    now = dict(os.environ)
+    return sorted(k for k in set(baseline) | set(now)
+                  if baseline.get(k) != now.get(k))
+
+
+def _spawn_env_key_diff(
+    spawn_env: dict[str, str], stripped: set[str],
+) -> tuple[list[str], list[str]]:
+    """``(dropped, leaked)`` key names for a spawn env against the parent.
+
+    ``dropped`` are inheritable parent keys missing from the spawn env.
+    ``leaked`` are keys the spawn env carries that the parent would not pass
+    through - a stripped auth override that survived, or a key the spawn
+    invented. Both empty is exactly ``set(spawn_env) == inheritable``, so this
+    pair is as strong as the set equality it replaced.
+    """
+    inheritable = {k for k in os.environ if k.upper() not in stripped}
+    dropped = sorted(inheritable - set(spawn_env))
+    leaked = sorted(set(spawn_env) - inheritable)
+    return dropped, leaked
+
+
 # --------------------------------------------------------------------------
 # env construction
 # --------------------------------------------------------------------------
@@ -111,11 +141,13 @@ def test_spawn_env_omits_auth_token_and_base_url(monkeypatch: pytest.MonkeyPatch
 def test_parent_environ_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     """The supervisor's own env keeps the key - RC coaches still need it."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-testkeytestkeytestkey0002")
-    before = dict(os.environ)
+    baseline = dict(os.environ)
     rec = _Recorder()
     _run(rec, "t-authenv-parent")
-    assert os.environ.get("ANTHROPIC_API_KEY") == "sk-ant-testkeytestkeytestkey0002"
-    assert dict(os.environ) == before
+    key_after = os.environ.get("ANTHROPIC_API_KEY")
+    assert key_after == "sk-ant-testkeytestkeytestkey0002"
+    drifted = _environ_key_drift(baseline)
+    assert not drifted, f"the spawn mutated parent environment keys: {drifted}"
 
 
 def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -127,8 +159,9 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     env = rec.kwargs["env"]
     assert env.get("RC_AUTHENV_PROBE") == "kept-value"
     stripped = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"}
-    expected = {k for k in os.environ if k.upper() not in stripped}
-    assert set(env) == expected
+    dropped, leaked = _spawn_env_key_diff(env, stripped)
+    assert not dropped, f"inheritable parent keys missing from the spawn env: {dropped}"
+    assert not leaked, f"auth overrides survived into the spawn env: {leaked}"
 
 
 def test_spawn_env_has_no_none_values(monkeypatch: pytest.MonkeyPatch) -> None:
