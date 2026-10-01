@@ -1,6 +1,18 @@
 NEXT SESSION
 ------------
-Task: ONE red test, and it is a tripwire that must not be silently re-pinned.
+TWO open reds, both filed, neither caused by the last session.
+
+Task A (NOW-6): three FULL-SUITE-ONLY failures in
+tests/test_rm413_wal_pragma_result_checked.py - cross-test pollution,
+reproducible on a quiescent single-process tree, pre-existing, and CI-GREEN on
+the same commit. The file alone is 121 passed. Root cause OPEN; two hypotheses
+are already eliminated and must not be re-run (no warn-once guard in the
+subject; the noisy-logger override never touches rc.*). caplog sees ZERO
+warnings where one is expected, so hunt the CAPTURE side - a handler or
+propagate mutation left by an earlier test. Cheapest probe: run that file after
+progressively larger prefixes of the suite to find the polluter.
+
+Task B (NOW-5): ONE red test, and it is a tripwire that must not be silently re-pinned.
 ROADMAP NOW-5. tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin
 fails because the Claude CLI moved to 2.1.285 while PINNED_CLI (that file, :34)
 says 2.1.251.
@@ -42,9 +54,13 @@ Carry, both measured this session:
 - A CITATION THAT RESOLVES IS NOT A CITATION THAT IS RIGHT. Three stale cites in
   CLAUDE.md all resolved and pointed at unrelated text; a fourth in the same
   paragraph was correct, so sampling one would have passed the paragraph.
-- A SUITE RUN THAT STRADDLES AN EDIT REPORTS A TREE THAT NO LONGER EXISTS. Three
-  of four baseline failures were a slice writing a live file mid-run; they are
-  green on a quiescent tree. Freeze the tree or do not cite the number.
+- PASSING IN ISOLATION IS WHAT A POLLUTION LOOKS LIKE - IT IS NOT EVIDENCE OF A
+  STRADDLED TREE. I attributed three failures to a slice writing a live file
+  mid-run, because it did write one and because they pass in isolation. Both
+  true, conclusion wrong: a second full run on a quiescent single-process tree
+  reproduced all three. They are full-suite-only and pre-existing. See NOW-6.
+  The commit message of 09c55bc0e carries the superseded claim; LEDGER 1457 is
+  the authority.
 - The glyph check in .claude/commands/headless-upgrade.md was a FALSE CLEAN:
   grep -P exits 2 ("-P supports only unibyte and UTF-8 locales") and scans
   nothing. Replaced with LC_ALL=C grep -n '[^ -~]'. That file is gitignored, so
