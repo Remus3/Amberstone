@@ -36,8 +36,11 @@ BACKLOG / RC-NEXT-SESSION / CLAUDE / WAKEUP_NOTES / CONCURRENT_HEADLESS_CONTRACT
 `ops/loop/slots.py` / `tests/test_loop_concurrency.py` plus one commit message. **Nothing was
 pushed, no bypass used, `origin/lane/*` unchanged.** The pre-push arm scans the DELTA and each
 lane was 528-674 commits behind, so it re-read the whole history since that lane last pushed.
-**Whether those are live HEAD bytes or historical versions was NOT settled - the `--tree` arm was
-still running at wrap. Do not assume either answer.** **And CI cannot settle it:
+**SETTLED: they are HISTORICAL.** All 8 flagged paths scan clean at HEAD via `--scan-file`, and
+the `--tree` arm finished CLEAN (650,644,164 bytes / 4968 files / exit 0; 482 binary-LFS blobs
+not content-scanned, its stated blind spot). Also measured: all 675 lane-delta commits are
+already ancestors of origin/main, so the push would send ZERO new objects - the sweep's delta is
+per-REF, not per-repo. **Not acted on; no bypass used; the call is the operator's.** **And CI cannot settle it:
 `sibling-sweep-tree` passed green on the same push, because the sweep loads its names from
 gitignored per-host `ops/moon_sync_repos.json` and CI has no such file - CI's sweep is armed with
 NOTHING. Never cite that green as evidence about sibling names.**
