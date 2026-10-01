@@ -134,7 +134,7 @@ Retiring a Haiku call site is only "done" when the precomputed path produces a v
 - No em-dash, no en-dash, no smart quotes anywhere in authored text (.py / .md / .ps1 / .css / .js / commit messages / chat output).
 - Use ` - ` (spaced hyphen) for a clause break, `-` otherwise.
 - The `"-"` no-data sentinel in dashboard rendering is OPERATOR-APPROVED and stays.
-- Pytest_guard catches Python; check `.md`/`.css`/`.js` by `grep -P "[\xE2\x80\x93\xE2\x80\x94\xE2\x80\x98\xE2\x80\x99\xE2\x80\x9C\xE2\x80\x9D]"` before commit when in doubt.
+- Pytest_guard catches Python; check `.md`/`.css`/`.js` by `LC_ALL=C grep -n '[^ -~]' <file>` before commit when in doubt. Exit 0 plus the offending lines means DIRTY, exit 1 means clean - both directions measured 2026-09-30. **The command this line carried until then was `grep -P` over a `\xE2...` byte class, and it is a FALSE CLEAN: measured, it exits 2 with "grep: -P supports only unibyte and UTF-8 locales" and scans NOTHING, which a reader checking for no output scores as clean.** Never score a glyph check on empty output alone - check the exit code, and keep a dirty positive control.
 
 ### 7. Multi-agent dispatch rules
 

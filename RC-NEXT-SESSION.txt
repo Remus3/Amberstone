@@ -63,8 +63,11 @@ Carry, both measured this session:
   the authority.
 - The glyph check in .claude/commands/headless-upgrade.md was a FALSE CLEAN:
   grep -P exits 2 ("-P supports only unibyte and UTF-8 locales") and scans
-  nothing. Replaced with LC_ALL=C grep -n '[^ -~]'. That file is gitignored, so
-  the fix is NOT in any commit - it lives only on this box.
+  nothing. Replaced with LC_ALL=C grep -n '[^ -~]'. I first wrote that the fix
+  lived only on this box because that file is gitignored - WRONG, and the drift
+  guard caught it: tools/headless-upgrade.md is a TRACKED mirror, pinned by the
+  guard's mirror-parity check, so the fix does ship. A gitignored file can still
+  have a tracked twin; check before claiming a change cannot be committed.
 
 Open rows filed, not built: RM-490 (stop_claim_gate blind to INTERNALERROR),
 RM-491 (hand-run sweep arm cannot see an untracked file), RM-492 (no history
