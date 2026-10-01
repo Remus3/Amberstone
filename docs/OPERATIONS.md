@@ -235,7 +235,7 @@ first resort.
 | `RC-RoflDedupe` | Daily 05:30 | Administrator | `tools/rofl_dedupe.py --apply` - de-duplicates the `.rofl` archive downstream of the 15-min `RC-RoflArchive` pull. Daily is correct: the archiver can pull the same game more than once across its 15-min ticks, and de-duping once after the day's pulls is cheaper than per-tick |
 | `RC-ReplayRosterPull` | Hourly | Administrator / HIGHEST | TRACKED PLAYERS' ranked replays into the role-partitioned corpus: `tools/replay_roster_pull.py --quiet --log-file logs/replay_roster.log`. Roster: `data/replay_roster.json`. **Cadence is not cosmetic** - `/replays` holds only the 5 most recent retained games per account and has NO fetch-by-match-id route, so a game nobody pulls during its residency is lost permanently (measured twice on 2026-07-26: two specifically requested matches had already rotated out). Five games is the whole window, so hourly leaves roughly a 2.5x margin over a fast laddering session. Log: `logs/replay_roster.log` (pythonw discards stdout, so `--log-file` is mandatory here) |
 | `RC-ReplayChainWatch` | Every 15 min | Administrator / HIGHEST | Session-independent watchdog for the replay ingest chain (`tools/replay_chain_watch.py`). Re-enables `RC-ReplayRosterPull` and runs the event-pattern miner ONCE the long ingests (`timeline_ingest`, `build_rank_baselines`) have finished. **Exists because those follow-ups used to be held in a chat session:** if the session ended first, the roster task stayed Disabled and games rotated out of the 5-wide `/replays` window permanently, which is unrecoverable (no fetch-by-match-id route). Idempotent - no-ops while any ingest is running, never re-enables an already-enabled task, and mines only when the corpus grew. `--status` reports without changing anything |
-| `RC-WeeklyHygiene` | Weekly Sunday 04:17 | Administrator; State `Disabled` (measured 2026-09-20; last ran 2026-09-06) | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`) |
+| `RC-WeeklyHygiene` | Weekly Sunday 04:17 | Administrator; State `Disabled` (measured 2026-09-20; last ran 2026-09-06) | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`). **The `Disabled` state is INTENT, not a defect** - see "Why three headless-claude tasks are Disabled" just below this table for the reason and the re-arm precondition |
 | `RC-InboxResponder` | Every 5 min (`-Once` + 5-min indefinite repeat), S4U | Installing account / Highest | **Install-on-demand, NOT registered by default, and registered DISARMED.** Runs `pythonw.exe tools/inbox_responder_runner.py --cycle` to answer cross-repo inbox notes (install / probe / remove: `ops/install_RC_InboxResponder.ps1`). Registering it arms NOTHING - the runner answers only while the operator's hand-written `ops\runtime\inbox_responder_agreement.json` is present and valid; with no record every tick terminates `disarmed/no_agreement`, which is exactly how you prove the task fires. Kill switch is the flag `ops\runtime\INBOX_RESPONDER_STOP` (checked at the first gate AND again just before delivery, so a late STOP holds a finished draft), never `Disable-ScheduledTask` - that is maintenance-off only. One-shot dry run: write `ops\runtime\INBOX_RESPONDER_DRY` holding the scratch dir path; the runner consumes the flag before the cycle, so it beats a live agreement for that one tick and cannot repeat |
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
@@ -244,6 +244,27 @@ first resort.
 | `RC-ClaudeQuotaWatch` | Every 2h | Administrator / HIGHEST | Operator utility: `pythonw C:\Riot Commander\tools\claude_quota_watch.py` (MOVED into the repo 2026-08-01 from `C:\Users\Administrator\`, and the task repointed, because out-of-repo means unguardable - it was the measured console flash and no test here could see it) reads acct A's weekly `unified7d` from teamclaude and fires ONE Windows toast (per weekly window) at >=90% telling the operator to switch the Claude GUI login from the primary account to the failover one. Both identities are read from the environment (`RC_CLAUDE_ACCT_A` / `RC_CLAUDE_ACCT_B`); unset, the watcher no-ops. Needed because the MSIX desktop GUI bypasses the proxy, so failover there is a MANUAL account switch. State: `~\.config\claude_quota_watch_state.json` |
 
 | `RiotCommander` | At logon | Administrator / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `C:\Riot Commander`. It carries a logon trigger, and while it was ENABLED that trigger started an unmanaged SECOND RC process on every logon which raced `RC-Supervisor` for `:8888` and lost - which is why it stayed invisible: it failed, RC worked, nothing surfaced. **Live re-probe 2026-09-15: `State=Disabled`, `NextRunTime` empty, `LastRunTime` 2026-09-06 19:50:50, `LastTaskResult=1` - so the trigger no longer fires and it starts nothing today.** (The superseded 2026-08-08 probe read `State=Ready`, LastRun 2026-08-05; the present-tense "starts a second process" wording belonged to that reading and was false by the time this row was next edited.) NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
+
+**Why three headless-claude tasks are Disabled - this is INTENT, not a defect.**
+`RC-CIWatchdog`, `RC-WeeklyHygiene` and `RC-InboxResponder` were all disabled by
+the operator on 2026-09-11, in the same wrap that stopped the headless loop
+(recorded at `docs/history_notes.md:1032-1035`). Do NOT re-diagnose a `Disabled`
+state on any of the three as a fault, and do not re-enable one as a "fix". The
+loop itself was halted by `ops/loop/control/STOP`, written 2026-09-11 17:32:14
+and still on disk, reading `operator 2026-09-11 17:32 - finish cycle 8, then
+disarm for /done. No cycle 9.`
+
+The re-arm precondition, quoted as recorded: "The STOP file is still on disk, so
+a re-arm has to clear it deliberately. [...] Re-arming the loop means clearing
+STOP **and** re-enabling those three deliberately." Both halves are required -
+clearing STOP alone leaves the three tasks Disabled, and re-enabling the tasks
+alone leaves STOP in force. Note that for `RC-InboxResponder` even re-enabling
+the task still arms nothing on its own: its own row above is authoritative there
+(the hand-written agreement record is the arming gate, and a missing record makes
+every tick terminate `disarmed/no_agreement`).
+
+Re-probed live 2026-09-30: `ops/loop/control/STOP` present with the content
+quoted above, and `Get-ScheduledTask` reports State `Disabled` for all three.
 
 Live task count is **27**: 26 `RC-*` plus the bare `RiotCommander` above.
 `RC-InboxResponder` is install-on-demand and used to be excluded from this
@@ -761,5 +782,5 @@ python -c "import json;print(json.load(open('ops/runtime/stop_claim_report.json'
 | `ops/runtime/stop_claim_report.json` | Last Stop-hook claim audit (RM-136, armed) |
 | `ops/runtime/stop_claim_history.jsonl` | Rolling one-line-per-audit history (newest 500) |
 | `data/{aram,arena,brawl,tft}_coaching_data.json` | Current game state per mode |
-| `logs/YYYY-MM-DD.log` | Daily log (30-day retention) |
+| `logs/YYYY-MM-DD.log` | Daily log. **Binding retention is 14 days, not 30.** Two reapers disagree and the stricter one wins: `core/log_retention.py:67` sets `_DEFAULT_MAX_AGE_DAYS = 14`, `main.py:158` starts it with that default, and it sweeps HOURLY (plus a 100 MB total cap, `_DEFAULT_MAX_TOTAL_MB`). `core/log_setup.py:37` still says `_RETENTION_DAYS = 30`, but that purge runs only inside `setup()` (boot), so on a long-lived RC the hourly 14-day sweep always deletes a file first and the 30 never takes effect. **The 30 is STALE as a statement of effective retention; treat 14 as authoritative.** `main.py:155-156` says the same thing in prose. `core/log_setup.py` is a FROZEN file, so the stale constant is recorded here rather than edited there |
 | `config/vision_token.txt` | Vision server auth token |

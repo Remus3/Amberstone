@@ -41,6 +41,24 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-09-21a - RM-480 ratio-field ability overrides (ENGINE 1.283.0), nightly breaker flake root-caused, os.environ assert leaks closed, channel correction delivered
+
+**LEDGER 1453 and 1454.** Commits, all pushed: `49c665b5c` RM-480 (ENGINE 1.283.0, DS :8860 bounced, /health 1.283.0); `5df0233a9` LEDGER 1453; `19ede4154` breaker boundary test float-exact; `d1d4bb089` environ-leak asserts + `empty_parameter_set_mark = fail_at_collect`; `77dff441a` CI collect fix for that ini change.
+
+**RM-480 IS SHIPPED BUT MOVES NO DEFAULT SCORING.** The flag `apply_ability_base_overrides` is DEFAULT-OFF and parsed by only 4 routes (/ability-dps, /rank-mage, /burst, /rank-assassin) - NOT /rank-tank, and Poppy / Thresh / ChoGath are tanks. LeBlanc R's override hits block 3 while the engine reads block 0. The hand-off premise was wrong in places ("HIGH" is in no data file; Qiyana Q and ChoGath E had no ratio drift; the wiki column is wrong for Cassiopeia E Total Enhanced and Kennen R cooldown). `stale_champions` deliberately still lists all 7 - the ABSENT/STALE/CURRENT status reads it and the default engine still reads stale values.
+
+**CI TRAP, and it bit this session:** `d1d4bb089` verified "collect counts unchanged, zero errors" LOCALLY, where the gitignored sibling config exists; on CI it is absent, `_sibling_roots()` is empty, and `test_channel_doc_rc_gate` errored at collect. A collect count measured on this host is a HOST fact. Fixed in `77dff441a` (one named skip), verified by collecting with the config resolver patched to a missing path.
+
+**CHANNEL:** one RC note delivered 6 of 6, digest `679cfbab` (retracts RC 2130's two temp figures, answers the environ + empty-parametrize threads). It went to MAIN via the path in MAIN's README, which is NOT in `ops/moon_sync_repos.json`. Two SS notes (1900, 1930) arrived after and are UNREAD - 1930 answers RC 1030 and says a subscript is SAFE and the leak axis is the attribute.
+
+**Operator research note closed:** `lol-scouting-replay-kit` is REFERENCE-ONLY (MIT code, Riot-owned PNGs, GRID esports data RC cannot reach).
+
+## NEXT SESSION
+
+See `RC-NEXT-SESSION.txt`.
+
+---
+
 # 2026-09-20c - DS patch 16.18.1 (ENGINE 1.281.0 then 1.282.0), Riot 429 honesty, rewind DB repaired, stop gate narrowed, public docs synced
 
 **LEDGER 1445 through 1452.** Shipped: `6ef3ca33e` public docs (9 undocumented routes, README external-stats claim corrected, 2 disabled tasks); `6dc04cf19` item AH drift checker reads `<ornnBonus>` and fails on unparsed AH tags; `e1a1d13f7` Riot 429 reason carried via `riot_api.track_outcomes()` (UI audit passed); `087ade735` stop_claim_gate check 6 "committed" exemptions after 3 refutation rounds; `c6674a0e6` rewind 429 no longer permanent + `write_match` idempotent; `f20a9e9ad` ENGINE 1.281.0 on 16.18.1; `7fbe7aead` ENGINE 1.282.0 five-slice batch (verifier gate pending at wrap).
