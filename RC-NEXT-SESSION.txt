@@ -68,6 +68,14 @@ Carry, both measured this session:
   guard caught it: tools/headless-upgrade.md is a TRACKED mirror, pinned by the
   guard's mirror-parity check, so the fix does ship. A gitignored file can still
   have a tracked twin; check before claiming a change cannot be committed.
+- WILL BITE YOUR NEXT /done: the claim gate loses the SECOND terminal summary of
+  a backgrounded run (RM-498, root-caused to stop_claim_gate.py:561-564 setting
+  deferred = None after the first attach). So running BOTH suites in ONE
+  background job credits only the first count, and an ACCURATE report of the
+  second is flagged count_mismatch forever - a withdrawal never clears it.
+  WORKAROUND until RM-498 lands: launch each suite as its OWN background job, or
+  backtick the count when you report it. Do NOT fix the gate in the same session
+  it is blocking you.
 
 Open rows filed, not built: RM-490 (stop_claim_gate blind to INTERNALERROR),
 RM-491 (hand-run sweep arm cannot see an untracked file), RM-492 (no history
