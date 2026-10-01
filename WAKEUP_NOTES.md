@@ -82,7 +82,10 @@ sibling checkouts" while config carries FIVE sibling codes and `docs/CHANNEL.md`
 be carriers-versus-participants rather than an error. Also left alone: one pre-existing non-ASCII
 byte in `BACKLOG.md`, since the smart-quote sweep is a separate operator-gated pass. And the
 `grep -P` glyph check in `.claude/commands/headless-upgrade.md` was a FALSE CLEAN (exit 2, scans
-nothing) and is fixed - but that file is gitignored, so the fix exists only on this box.
+nothing) and is fixed. **A first draft of this note said the fix "exists only on this box" because
+that file is gitignored - WRONG: `tools/headless-upgrade.md` is a TRACKED mirror of it, pinned by
+the drift guard's mirror-parity check, so the fix does ship.** The guard caught the divergence at
+the /done gate, which is exactly what it is for.
 
 ---
 
