@@ -41,6 +41,7 @@ import logging
 import sqlite3
 import sys
 import time
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # Make `core` importable when run as a script.
@@ -60,6 +61,12 @@ _log = logging.getLogger("rc.scripts.rewind_catchup")
 
 DB_PATH = ROOT / "data" / "rewind_history.db"
 STATE_PATH = ROOT / "data" / "rewind_catchup.state.json"
+
+# Resolved from __file__, never from cwd: the weekly scheduled task starts
+# this script with an unspecified working directory.
+LOG_PATH = ROOT / "logs" / "rewind_catchup.log"
+LOG_MAX_BYTES = 1_000_000
+LOG_BACKUP_COUNT = 3
 
 REGION_REGIONAL = "americas"  # Match-V5 lives on the regional cluster
 
@@ -113,6 +120,73 @@ RETRY_TABLE_SQL = """
 """
 
 
+# --- Run outcomes -----------------------------------------------------
+#
+# The weekly task runs this script under pythonw.exe with no redirection, so
+# every print() below goes nowhere. Until RM-4xx the ONLY durable trace a run
+# left was the state sentinel, and that sentinel only recorded a run that
+# HYDRATED something: a healthy "nothing new" run and a task that never fired
+# left byte-identical evidence (a 16-week-stale last_run_at under a weekly
+# mtime), which is what made a live, working task get declared dead.
+#
+# Every terminating path now records one of these, so a reader can always
+# tell "ran, nothing to do" from "did not run". The pre-existing fields
+# (last_run_done / last_run_errors / newest_creation_ts_ms) are UNCHANGED and
+# still written only by the hydrate path - these are additive.
+
+RUN_NO_API_KEY = "no_api_key"
+RUN_RETRY_ONLY = "retry_only"
+RUN_PAGINATION_RATE_LIMITED = "pagination_rate_limited"
+RUN_API_FAILURE = "api_failure"
+RUN_NO_NEW_MATCHES = "no_new_matches"
+RUN_HYDRATED = "hydrated"
+
+
+def setup_file_logging() -> None:
+    """Attach a size-bounded file handler so a pythonw run leaves a trace.
+
+    Never raises: a read-only or missing logs/ directory must degrade the
+    diagnostics, never kill the catch-up itself.
+    """
+    try:
+        path = Path(LOG_PATH)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        for existing in _log.handlers:
+            if getattr(existing, "baseFilename", None) == str(path.resolve()):
+                return
+        handler = RotatingFileHandler(
+            str(path), maxBytes=LOG_MAX_BYTES,
+            backupCount=LOG_BACKUP_COUNT, encoding="utf-8")
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(message)s"))
+        _log.addHandler(handler)
+        _log.setLevel(logging.INFO)
+        # The messages here are the run's own record; a root handler
+        # elsewhere in the import chain must not double-file them.
+        _log.propagate = False
+    except Exception as exc:  # noqa: BLE001 - diagnostics must never abort work
+        print(f"  (logging unavailable: {exc})")
+
+
+class PaginationApiFailure(RuntimeError):
+    """A match-id page came back None for a reason that is NOT a rate limit.
+
+    ``get_recent_matches`` returns an EMPTY LIST for a 200 carrying no ids
+    (core/riot_api.py:799-806) and a bare None only for no_key / 401 / 403 /
+    404 / 5xx / transport / parse failure. So None is never a statement that
+    the window is empty - it is always a failed call, and the old code's
+    ``break`` collapsed the two, then exited 0 through the no-op path. An
+    expired Riot key would have read green forever.
+    """
+
+    def __init__(self, collected: list[str], outcome: str):
+        super().__init__(
+            f"match-id pagination failed ({outcome or 'unknown'}) after "
+            f"{len(collected)} new id(s)")
+        self.collected = collected
+        self.outcome = outcome or "unknown"
+
+
 class PaginationRateLimited(RuntimeError):
     """A match-id page stayed rate-limited after the bounded retries.
 
@@ -137,17 +211,28 @@ def fetch_with_rate_limit_retry(
     *,
     backoff_s: tuple[float, ...] = DEFAULT_BACKOFF_S,
     sleep=time.sleep,
+    outcomes_out: list[str] | None = None,
 ):
     """Run ``call()`` (a Riot helper returning data-or-None) with 429 retry.
 
     Returns ``(result, status)``; status is FETCH_OK, FETCH_ABSENT (None for
     any reason other than a rate limit - permanent) or FETCH_RATE_LIMITED
     (still throttled after ``len(backoff_s) + 1`` attempts).
+
+    ``outcomes_out``, when given, is extended with the raw ``track_outcomes``
+    labels of the final attempt (``forbidden`` / ``error`` / ``not_found`` /
+    ``no_key`` / ...). FETCH_ABSENT deliberately stays one status - callers
+    that only need data-or-not are unaffected - but a caller that must tell a
+    404 from a dead key can now read WHY. The 2-tuple return is unchanged so
+    the other call sites need no edit.
     """
     attempts = len(backoff_s) + 1
     for i in range(attempts):
         with riot_api.track_outcomes() as scope:
             result = call()
+        if outcomes_out is not None:
+            outcomes_out.clear()
+            outcomes_out.extend(scope.outcomes)
         if result is not None:
             return result, FETCH_OK
         if not scope.rate_limited:
@@ -352,9 +437,50 @@ def load_state() -> dict:
 
 
 def save_state(state: dict) -> None:
-    tmp = STATE_PATH.with_suffix(".tmp")
+    target = Path(STATE_PATH)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    tmp.replace(STATE_PATH)
+    tmp.replace(target)
+
+
+def record_run(
+    state: dict,
+    outcome: str,
+    rc_code: int,
+    *,
+    dry_run: bool = False,
+    error: str = "",
+) -> None:
+    """Stamp the run fields and persist, atomically. Called on EVERY
+    terminating path, so a reader can distinguish "ran, nothing to do" from
+    "did not run at all".
+
+    ``--dry-run`` is a no-op here by contract: that flag promises no writes.
+
+    Only adds fields. ``last_run_done`` / ``last_run_errors`` /
+    ``newest_creation_ts_ms`` keep exactly the meaning they have today and
+    are still set only where they were before, so anything already reading
+    them is unaffected.
+    """
+    if dry_run:
+        return
+    state["last_run_at"] = _now_iso()
+    state["last_run_outcome"] = outcome
+    state["last_run_rc"] = int(rc_code)
+    if error:
+        state["last_run_error"] = error
+    else:
+        state.pop("last_run_error", None)
+    try:
+        save_state(state)
+    except OSError as exc:
+        # The run itself already happened; losing the receipt must not turn
+        # a successful catch-up into a failed one.
+        _log.error("could not persist run state: %s", exc)
+        print(f"  (state sentinel write failed: {exc})")
+    _log.info("run finished: outcome=%s rc=%s%s",
+              outcome, rc_code, f" error={error}" if error else "")
 
 
 # --- Riot API -> DB writer ---------------------------------------------
@@ -612,6 +738,7 @@ def collect_new_match_ids(
     bounded retries - see that class for why this must not end the window.
     """
     new_ids: list[str] = []
+    outcomes: list[str] = []
     for page in range(max_pages):
         start = page * page_size
         ids, status = fetch_with_rate_limit_retry(
@@ -622,15 +749,22 @@ def collect_new_match_ids(
                 start=s,
                 start_time_unix_s=start_time_unix_s,
             ),
-            backoff_s=backoff_s, sleep=sleep,
+            backoff_s=backoff_s, sleep=sleep, outcomes_out=outcomes,
         )
         if status == FETCH_RATE_LIMITED:
             print(f"    page {page}: still rate-limited after retries - "
                   f"aborting so the window does not skip older matches")
+            _log.warning("pagination rate-limited at page %d", page)
             raise PaginationRateLimited(new_ids)
         if ids is None:
-            print(f"    page {page}: API call returned None (key issue or not found)")
-            break
+            # NOT an empty window - see PaginationApiFailure. An empty window
+            # is an empty LIST and lands on the `not ids` branch below.
+            outcome = outcomes[-1] if outcomes else ""
+            print(f"    page {page}: API call FAILED ({outcome or 'unknown'}) "
+                  f"- this is not an empty window")
+            _log.error("pagination failed at page %d: outcome=%s",
+                       page, outcome or "unknown")
+            raise PaginationApiFailure(new_ids, outcome)
         if not ids:
             print(f"    page {page}: empty - end of window")
             break
@@ -688,6 +822,9 @@ def main(argv: list[str] | None = None) -> int:
                              "matches); skip the new-match walk")
     args = parser.parse_args(argv)
 
+    setup_file_logging()
+    _log.info("run start: argv=%s", argv if argv is not None else sys.argv[1:])
+
     if args.retry_only and args.dry_run:
         # Needs no API key and must not touch the DB (read-only open; a
         # missing fetch_retry table reads as an empty queue).
@@ -697,6 +834,11 @@ def main(argv: list[str] | None = None) -> int:
     if not riot_api.is_configured():
         print("ERROR: Riot API key not configured. "
               "Place RGAPI-... in 'API-Key-Riot.txt' at project root.")
+        _log.error("Riot API key not configured")
+        # is_configured() only checks the key file's SHAPE, never its
+        # liveness (core/riot_api.py:1099-1101), so a dead-but-well-formed
+        # key sails past here and is caught by PaginationApiFailure instead.
+        record_run(load_state(), RUN_NO_API_KEY, 2, dry_run=args.dry_run)
         return 2
 
     # --dry-run never writes: DB opened read-only, state sentinel not saved.
@@ -726,7 +868,9 @@ def main(argv: list[str] | None = None) -> int:
         save_state(state)
 
     if args.retry_only:
-        return _drain_and_report(conn)
+        drain_rc = _drain_and_report(conn)
+        record_run(state, RUN_RETRY_ONLY, drain_rc, dry_run=args.dry_run)
+        return drain_rc
 
     newest_ms = newest_creation_ts(conn)
     if newest_ms <= 0:
@@ -744,18 +888,33 @@ def main(argv: list[str] | None = None) -> int:
         new_ids = collect_new_match_ids(
             puuid, start_unix_s, existing,
             max_pages=args.max_pages, limit=args.limit,
+            # Read at CALL time, not bound as a def-time default, so the
+            # backoff stays overridable.
+            backoff_s=DEFAULT_BACKOFF_S, sleep=time.sleep,
         )
     except PaginationRateLimited as exc:
         print(f"Riot rate-limited the match-id walk ({exc}); nothing hydrated "
               f"so the next run's window still covers every unlisted match.")
         conn.close()
+        record_run(state, RUN_PAGINATION_RATE_LIMITED, 3,
+                   dry_run=args.dry_run)
         return 3
+    except PaginationApiFailure as exc:
+        print(f"Riot API FAILURE during the match-id walk ({exc}). This is "
+              f"NOT 'up to date' - treat it as a dead key / dead route until "
+              f"a later run pages cleanly.")
+        conn.close()
+        record_run(state, RUN_API_FAILURE, 4, dry_run=args.dry_run,
+                   error=exc.outcome)
+        return 4
     if not new_ids:
         print("No new matches.  DB is up to date.")
         if args.dry_run:
             conn.close()
             return 0
-        return _drain_and_report(conn)
+        drain_rc = _drain_and_report(conn)
+        record_run(state, RUN_NO_NEW_MATCHES, drain_rc, dry_run=args.dry_run)
+        return drain_rc
 
     print(f"\n{len(new_ids)} match(es) to hydrate")
     if args.dry_run:
@@ -810,6 +969,8 @@ def main(argv: list[str] | None = None) -> int:
     save_state(state)
 
     bucket = riot_api.bucket_snapshot()
+    _log.info("hydrated=%d errors=%d newest_creation_ts_ms=%s",
+              done, errs, new_newest)
     print(
         f"\n=== Done in {(time.time() - t0)/60:.1f} min ===\n"
         f"  hydrated:        {done}\n"
@@ -818,7 +979,13 @@ def main(argv: list[str] | None = None) -> int:
         f"  riot bucket:     {bucket}"
     )
     drain_rc = _drain_and_report(conn)
-    return 0 if errs == 0 and drain_rc == 0 else 1
+    final_rc = 0 if errs == 0 and drain_rc == 0 else 1
+    # Re-stamp after the drain so last_run_rc matches what the caller sees.
+    # The checkpoint save_state above still stands on its own if the drain
+    # dies, which is why both writes exist.
+    record_run(state, RUN_HYDRATED, final_rc, dry_run=args.dry_run,
+               error="hydrate_errors" if errs else "")
+    return final_rc
 
 
 def _drain_and_report(conn: sqlite3.Connection) -> int:

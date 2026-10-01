@@ -30,6 +30,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -117,28 +118,536 @@ def _port_listening(port: int, host: str = "127.0.0.1", attempts: int = 3) -> bo
     return False
 
 
-def _legion_tasks() -> list[dict]:
-    """Return [{name, state, last_result}, ...] for RC-* tasks via PowerShell."""
-    cmd = (
-        "Get-ScheduledTask | Where-Object TaskName -like 'RC-*' | "
-        "ForEach-Object { $i = Get-ScheduledTaskInfo $_; "
-        "@{ name = $_.TaskName; state = [string]$_.State; "
-        "last_result = $i.LastTaskResult } } | ConvertTo-Json -Compress"
-    )
+# The projection used to be name / state / last_result and deliberately
+# dropped LastRunTime, so no staleness question could even be asked: a task
+# that last succeeded in June read exactly like one that succeeded an hour
+# ago. LastRunTime answers "how long has this RUNNING instance been running"
+# and "how long since it last ran at all"; NextRunTime says whether the
+# scheduler still intends to fire it; the trigger class names are what tell a
+# DISARMED periodic task apart from a service parked off on purpose.
+#
+# Every value goes through $( ... ), not `if ... else` as a bare hashtable
+# value: the subexpression form parses on every PowerShell this box has, and a
+# null DateTime (a task that has never run) would otherwise throw on
+# .ToString(). Round-trip 'o' format, so the Python side never has to guess a
+# locale.
+TASK_PROBE_PS = (
+    "Get-ScheduledTask | Where-Object TaskName -like 'RC-*' | "
+    "ForEach-Object { $i = Get-ScheduledTaskInfo $_; "
+    "@{ name = $_.TaskName; state = [string]$_.State; "
+    "last_result = $i.LastTaskResult; "
+    "last_run = $(if ($i.LastRunTime) { $i.LastRunTime.ToString('o') }); "
+    "next_run = $(if ($i.NextRunTime) { $i.NextRunTime.ToString('o') }); "
+    "triggers = (($_.Triggers | ForEach-Object { $_.CimClass.CimClassName }) -join ';') "
+    "} } | ConvertTo-Json -Compress"
+)
+
+
+def _legion_tasks() -> list[dict] | None:
+    """RC-* scheduled tasks via PowerShell, or None when the probe FAILED.
+
+    THE RETURN TYPE IS THE FIX. This used to return [] for a timeout, a
+    non-zero exit, empty stdout and unparseable JSON alike, and main() gated
+    the whole emitting block on `if tasks:` - so a broken probe printed
+    nothing and read identical to "every task healthy". The one mechanism in
+    this repo that alerts on task health failed silently.
+
+    None now means "could not measure" and [] means "measured, and Legion
+    reports no RC-* tasks". Both are anomalies, and `task_health_lines`
+    prints a different line for each, because they have different causes.
+    """
     try:
         p = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", cmd],
-            capture_output=True, timeout=4.0, text=True,
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", TASK_PROBE_PS],
+            capture_output=True, timeout=8.0, text=True,
             encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
         )
         if p.returncode != 0 or not p.stdout.strip():
-            return []
+            return None
         data = json.loads(p.stdout)
         if isinstance(data, dict):
             data = [data]
-        return data
+        if not isinstance(data, list):
+            return None
+        return [row for row in data if isinstance(row, dict)]
     except Exception:  # noqa: BLE001
-        return []
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Scheduled-task health
+#
+# FOUR MEASURED BLIND SPOTS, all closed here. Read the classification table
+# before changing a constant: three of the four codes below look like success
+# and are not.
+#
+#   267009 = 0x00041301 SCHED_S_TASK_RUNNING. "Still running, no completed
+#     result" - NOT success. The old whitelist accepted it unconditionally, so
+#     a periodic task wedged for days reported clean. It is benign ONLY for a
+#     long-lived service, where running IS the healthy state.
+#   267011 = 0x00041303 SCHED_S_TASK_HAS_NOT_RUN. Nothing has happened yet.
+#   267014 = 0x00041306 SCHED_S_TASK_TERMINATED, the shutdown-terminated code
+#     the in-process VisionServer popen exit produces. Expected here.
+#   2147946720 = 0x800710E0, Win32 4320, "the operator or administrator has
+#     refused the request". This is the ExecutionTimeLimit-kill signature and
+#     is a FAILURE. The ONE suppression kept is a currently-Running singleton
+#     daemon, where Task Scheduler is correctly refusing a DUPLICATE launch
+#     while the boot instance is alive - state==Running is what proves that
+#     reading, so a NOT-running task carrying this code is a real kill.
+
+TASK_RESULT_SUCCESS = 0
+TASK_RESULT_RUNNING = 267009
+TASK_RESULT_NOT_RUN = 267011
+TASK_RESULT_TERMINATED = 267014
+TASK_RESULT_TIMEOUT_KILL = 2147946720
+
+VERDICT_OK = "OK"
+VERDICT_STUCK = "STUCK"
+VERDICT_FAILURE = "FAILURE"
+VERDICT_UNKNOWN = "UNKNOWN"
+
+# Tasks that are SUPPOSED to sit in SCHED_S_TASK_RUNNING forever. Measured on
+# Legion 2026-09-29: every one of these is a persistent service, so RUNNING is
+# the correct state and flagging it would train the operator to skip the
+# banner. Everything NOT in this set is treated as periodic - a task that
+# starts, finishes and reports a real result.
+LONG_LIVED_SERVICE_TASKS = frozenset({
+    "RC-DaemonSlayer",
+    "RC-DS-MatchDB-MCP",
+    "RC-HotkeyListener",
+    "RC-LCUAgent",
+    "RC-LiveClientRelay",
+    "RC-LiveFlipWatcher",
+    "RC-MissionControl",
+    "RC-MoonSyncPoller",
+    "RC-Phase3-Supervisor",
+    "RC-Supervisor",
+})
+
+# A service whose RUNNING instance started this long ago is wedged, not
+# serving. Deliberately generous: this box has seen multi-week uptime, and a
+# threshold that fires on ordinary uptime is a threshold that gets ignored.
+SERVICE_RUNNING_IMPLAUSIBLE_S = 60 * 86400.0
+
+_WEEK_S = 7 * 86400.0
+
+ARTIFACT_FRESH = "FRESH"
+ARTIFACT_STALE = "STALE"
+ARTIFACT_UNKNOWN = "UNKNOWN"
+
+ARTIFACT_JSON_FIELD = "json_field"
+ARTIFACT_JSONL_NEWEST_MATCH = "jsonl_newest_match"
+ARTIFACT_NEWEST_GLOB = "newest_glob"
+
+
+class ArtifactSignal:
+    """How to ask "did this task actually PRODUCE anything recently".
+
+    A result code says the process exited; it does not say the work landed.
+    Each weekly task here has one measured output whose advance is the real
+    evidence. Adding a task means adding a row to TASK_ARTIFACTS, never an
+    inline conditional in the banner builder.
+
+    DELIBERATELY NOT A @dataclass. tests/test_rc_facts_cli_dispatch.py execs
+    this module's source into a synthetic namespace that is not registered in
+    sys.modules, and on Python 3.14 dataclasses resolves annotations through
+    `sys.modules[cls.__module__].__dict__` - which is None there, so the
+    decorator raises at class-creation time and takes every arm of that file
+    down with it. A plain class has no such dependency.
+    """
+
+    __slots__ = ("field", "interval_s", "kind", "match_field", "match_value", "path")
+
+    def __init__(
+        self,
+        kind: str,
+        path: str,
+        field: str | None = None,
+        interval_s: float = _WEEK_S,
+        match_field: str | None = None,
+        match_value: str | None = None,
+    ) -> None:
+        self.kind = kind
+        self.path = path
+        self.field = field
+        self.interval_s = interval_s
+        self.match_field = match_field
+        self.match_value = match_value
+
+    def __repr__(self) -> str:
+        return f"ArtifactSignal(kind={self.kind!r}, path={self.path!r})"
+
+    @property
+    def stale_after_s(self) -> float:
+        """Two scheduled intervals. One missed run is a blip - a reboot, a
+        machine that was off - and firing on it would make the banner noise.
+        Two consecutive misses is a pattern."""
+        return 2.0 * self.interval_s
+
+
+# Signals MEASURED against the live artifacts on 2026-09-29. Paths are
+# repo-relative and resolved against the root passed in, so a test drives
+# tmp_path and never the live tree.
+TASK_ARTIFACTS: dict[str, ArtifactSignal] = {
+    "RC-PostmortemAnalyze": ArtifactSignal(
+        kind=ARTIFACT_JSON_FIELD,
+        path="data/coaching/death_patterns.json",
+        field="generated_at",
+    ),
+    "RC-Phase3-PeriodicAudit": ArtifactSignal(
+        kind=ARTIFACT_JSONL_NEWEST_MATCH,
+        path="agents/state/task_queue.jsonl",
+        field="ts",
+        match_field="task.op",
+        match_value="agent6-full-audit-pass",
+    ),
+    "RC-RewindCatchup": ArtifactSignal(
+        kind=ARTIFACT_JSON_FIELD,
+        path="data/rewind_catchup.state.json",
+        # READ DEFENSIVELY. When this was written another slice was changing
+        # when last_run_at gets written at all, so a missing or unparseable
+        # value must report UNKNOWN and say so - never crash, and never be
+        # mistaken for fresh.
+        field="last_run_at",
+    ),
+    "RC-WeeklyHygiene": ArtifactSignal(
+        kind=ARTIFACT_NEWEST_GLOB,
+        path="logs/weekly_hygiene_*.log",
+    ),
+}
+
+# .ToString('o') emits SEVEN fractional digits; datetime.fromisoformat wants at
+# most six. Trimming beats a try/except that silently reports UNKNOWN for every
+# timestamp the probe itself produced.
+_FRACTION_TRIM_RE = re.compile(r"(\.\d{6})\d+")
+_NUMERIC_RE = re.compile(r"^-?\d+(\.\d+)?$")
+
+
+def _parse_ts(value) -> float | None:
+    """Epoch seconds from an ISO-8601 string, an epoch number, or None.
+
+    A bare year like "2026" is NOT read as an epoch: the numeric branch only
+    accepts values past 1973, which is why the magnitude check is here rather
+    than a plain float().
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str):
+        return None
+    s = value.strip()
+    if not s:
+        return None
+    if _NUMERIC_RE.match(s):
+        try:
+            num = float(s)
+        except ValueError:
+            return None
+        return num if num > 1e8 else None
+    s = _FRACTION_TRIM_RE.sub(r"\1", s)
+    if s.endswith(("Z", "z")):
+        s = s[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    try:
+        # A naive value is interpreted as local time, which is what Task
+        # Scheduler and the repo's own writers emit when they omit an offset.
+        return dt.timestamp()
+    except (OSError, OverflowError, ValueError):
+        return None
+
+
+def _as_int(value) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip(), 0)
+        except ValueError:
+            return None
+    return None
+
+
+def _dotted_get(rec: dict, dotted: str | None):
+    """`rec["task"]["op"]` from "task.op". Missing at any level is None."""
+    if not dotted:
+        return None
+    cur = rec
+    for part in dotted.split("."):
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(part)
+    return cur
+
+
+def _age_phrase(age_s: float | None) -> str:
+    if age_s is None:
+        return "age UNKNOWN"
+    return f"{age_s / 86400.0:.1f}d ago"
+
+
+def _artifact_timestamp(signal: ArtifactSignal, root: Path) -> tuple[float | None, str]:
+    """(epoch seconds, human detail). A None timestamp means UNKNOWN, and the
+    detail then says WHICH of absent / unreadable / field-missing it was."""
+    if signal.kind == ARTIFACT_NEWEST_GLOB:
+        files = [q for q in root.glob(signal.path) if q.is_file()]
+        if not files:
+            return None, f"{signal.path}: no file"
+        newest = None
+        for q in files:
+            try:
+                mtime = q.stat().st_mtime
+            except OSError:
+                continue
+            if newest is None or mtime > newest:
+                newest = mtime
+        if newest is None:
+            return None, f"{signal.path}: no readable file"
+        return newest, signal.path
+
+    target = root / signal.path
+    if not target.is_file():
+        return None, f"{signal.path}: absent"
+
+    if signal.kind == ARTIFACT_JSON_FIELD:
+        try:
+            data = json.loads(target.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            return None, f"{signal.path}: unreadable ({type(exc).__name__})"
+        if not isinstance(data, dict):
+            return None, f"{signal.path}: not a JSON object"
+        ts = _parse_ts(data.get(signal.field))
+        if ts is None:
+            return None, f"{signal.path}: {signal.field} missing or unparseable"
+        return ts, f"{signal.path}:{signal.field}"
+
+    if signal.kind == ARTIFACT_JSONL_NEWEST_MATCH:
+        newest = None
+        try:
+            with target.open("r", encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except ValueError:
+                        continue  # one corrupt line must not blind the whole signal
+                    if not isinstance(rec, dict):
+                        continue
+                    if _dotted_get(rec, signal.match_field) != signal.match_value:
+                        continue
+                    ts = _parse_ts(rec.get(signal.field))
+                    if ts is not None and (newest is None or ts > newest):
+                        newest = ts
+        except OSError as exc:
+            return None, f"{signal.path}: unreadable ({type(exc).__name__})"
+        if newest is None:
+            return None, (
+                f"{signal.path}: no record with "
+                f"{signal.match_field}=={signal.match_value}"
+            )
+        return newest, f"{signal.path}:{signal.match_value}"
+
+    return None, f"{signal.path}: unknown signal kind {signal.kind}"
+
+
+def artifact_status(
+    signal: ArtifactSignal, root, now: float | None = None
+) -> tuple[str, float | None, str]:
+    """(FRESH | STALE | UNKNOWN, age in seconds or None, detail).
+
+    NEVER RAISES. This runs inside a SessionStart hook, and a hook that throws
+    costs the operator the entire banner - including the anomalies it was
+    printing correctly.
+    """
+    now = time.time() if now is None else float(now)
+    root = Path(root)
+    try:
+        ts, detail = _artifact_timestamp(signal, root)
+    except Exception as exc:  # noqa: BLE001 - see docstring
+        return ARTIFACT_UNKNOWN, None, f"{signal.path}: read failed ({type(exc).__name__})"
+    if ts is None:
+        return ARTIFACT_UNKNOWN, None, detail
+    age = now - ts
+    if age > signal.stale_after_s:
+        return ARTIFACT_STALE, age, detail
+    return ARTIFACT_FRESH, age, detail
+
+
+def classify_task_result(
+    name: str,
+    state,
+    last_result,
+    *,
+    ds_alive: bool = False,
+    last_run_age_s: float | None = None,
+) -> tuple[str, str]:
+    """(verdict, detail) for one task's LastTaskResult. See the code table above."""
+    code = _as_int(last_result)
+    if code is None:
+        return VERDICT_UNKNOWN, "no last_result reported"
+
+    running_now = str(state) in ("Running", "4")
+    is_service = name in LONG_LIVED_SERVICE_TASKS
+
+    if code == TASK_RESULT_SUCCESS:
+        return VERDICT_OK, "success"
+    if code == TASK_RESULT_NOT_RUN:
+        return VERDICT_OK, "has not run yet"
+    if code == TASK_RESULT_TERMINATED:
+        return VERDICT_OK, "shutdown-terminated (expected)"
+
+    if code == TASK_RESULT_RUNNING:
+        if is_service:
+            if (
+                last_run_age_s is not None
+                and last_run_age_s > SERVICE_RUNNING_IMPLAUSIBLE_S
+            ):
+                return VERDICT_STUCK, (
+                    f"service RUNNING since {_age_phrase(last_run_age_s)} - "
+                    "implausibly long, probably wedged"
+                )
+            return VERDICT_OK, "long-lived service, RUNNING is the healthy state"
+        return VERDICT_STUCK, (
+            "periodic task is still RUNNING - it started and never finished "
+            f"(last run {_age_phrase(last_run_age_s)})"
+        )
+
+    if code == TASK_RESULT_TIMEOUT_KILL:
+        if running_now and is_service:
+            return VERDICT_OK, "duplicate launch refused while the daemon is up"
+        return VERDICT_FAILURE, (
+            "0x800710E0 (Win32 4320, request refused) - ExecutionTimeLimit kill"
+        )
+
+    if name == "RC-DaemonSlayer" and code == 1 and ds_alive:
+        return VERDICT_OK, "exit 1 but /api/health/all confirms DS alive"
+    if name == "RC-CostHealthWatchdog" and code == 1:
+        return VERDICT_OK, "exit 1 on a detected cost/health breach, by design"
+
+    return VERDICT_FAILURE, f"last_result={code}"
+
+
+def _is_periodic_task(name: str, triggers) -> bool:
+    """True when this task is supposed to fire on a schedule.
+
+    Trigger class names are the authority (MSFT_TaskWeeklyTrigger and
+    friends). When the projection comes back empty - an older probe, a task
+    whose triggers could not be read - a name in TASK_ARTIFACTS is
+    known-periodic regardless, so the fallback never loses one of the four.
+    """
+    if isinstance(triggers, str):
+        text = triggers
+    elif isinstance(triggers, (list, tuple)):
+        text = ";".join(str(t) for t in triggers)
+    else:
+        text = ""
+    low = text.lower()
+    if "weekly" in low or "daily" in low or "monthly" in low:
+        return True
+    if low.strip():
+        return False
+    return name in TASK_ARTIFACTS
+
+
+def task_health_lines(
+    tasks: list[dict] | None,
+    *,
+    root,
+    now: float | None = None,
+    ds_alive: bool = False,
+) -> tuple[list[str], list[str]]:
+    """(banner lines, anomaly lines) for the scheduled-task block.
+
+    ANOMALIES ONLY. This prints at every session start, so a healthy-task roll
+    call is exactly the noise that gets the block skipped. A clean run is one
+    summary line and nothing else.
+    """
+    now = time.time() if now is None else float(now)
+    root = Path(root)
+
+    if tasks is None:
+        return (
+            ["- Scheduled tasks: PROBE FAILED - task health UNMEASURED"],
+            ["Legion: scheduled-task PROBE FAILED - task health UNMEASURED "
+             "(no data from Get-ScheduledTask; this is NOT 'all healthy')"],
+        )
+
+    rows = [t for t in tasks if isinstance(t, dict)]
+    if not rows:
+        return (
+            ["- Scheduled tasks: 0 RC-* tasks returned - probe ran, found nothing"],
+            ["Legion: scheduled-task probe returned 0 RC-* tasks "
+             "(the probe worked; the tasks are gone)"],
+        )
+
+    detail_lines: list[str] = []
+    anomalies: list[str] = []
+    seen: set[str] = set()
+
+    for t in rows:
+        name = str(t.get("name") or "?")
+        seen.add(name)
+        state = t.get("state")
+        state_s = str(state)
+        ts = _parse_ts(t.get("last_run"))
+        last_run_age = None if ts is None else now - ts
+
+        if state_s == "Disabled":
+            # NOT suppressed any more. A Disabled task used to vanish from the
+            # banner entirely, which is how RC-WeeklyHygiene sat off for weeks
+            # with missed runs and never once appeared. Its stale last_result
+            # really is history rather than current health, so the code is not
+            # graded - but the DISARM itself is the finding.
+            if _is_periodic_task(name, t.get("triggers")):
+                since = _age_phrase(last_run_age)
+                detail_lines.append(
+                    f"  - {name}: DISARMED - Disabled with a periodic trigger, "
+                    f"last run {since}"
+                )
+                anomalies.append(
+                    f"Legion: scheduled task {name} DISARMED (Disabled but has a "
+                    f"periodic trigger; last run {since})"
+                )
+            continue
+
+        verdict, detail = classify_task_result(
+            name, state, t.get("last_result"),
+            ds_alive=ds_alive, last_run_age_s=last_run_age,
+        )
+        if verdict == VERDICT_OK:
+            continue
+        detail_lines.append(f"  - {name}: {verdict} state={state_s} - {detail}")
+        anomalies.append(f"Legion: scheduled task {name} {verdict} - {detail}")
+
+    for tname in sorted(TASK_ARTIFACTS):
+        if tname not in seen:
+            detail_lines.append(f"  - {tname}: NOT REGISTERED in Task Scheduler")
+            anomalies.append(
+                f"Legion: weekly task {tname} not registered in Task Scheduler"
+            )
+            continue
+        status, age, detail = artifact_status(TASK_ARTIFACTS[tname], root, now)
+        if status == ARTIFACT_FRESH:
+            continue
+        phrase = _age_phrase(age)
+        detail_lines.append(f"  - {tname}: artifact {status} - {detail} ({phrase})")
+        anomalies.append(
+            f"Legion: {tname} artifact {status} - {detail} ({phrase})"
+        )
+
+    head = f"- Scheduled tasks ({len(rows)} RC-*): {len(anomalies)} anomaly(s)"
+    if not anomalies:
+        return [head], []
+    return [head] + detail_lines, anomalies
 
 
 def _last_boot_iso() -> str | None:
@@ -225,41 +734,15 @@ def main(session: str | None = None) -> int:
     ds_health = health_all.get("daemon_slayer") or {}
     ds_alive = bool(ds_health.get("alive"))
 
-    # Scheduled tasks
-    tasks = _legion_tasks()
-    if tasks:
-        running = [t for t in tasks if str(t.get("state")) in ("Running", "4", "Ready")]
-        out.append(f"- Scheduled tasks ({len(tasks)} RC-*):")
-        for t in tasks:
-            n = t.get("name")
-            s = t.get("state")
-            r = t.get("last_result")
-            # 267014 = shutdown-terminated (VisionServer in-process popen exit) - expected
-            # RC-DaemonSlayer result=1: suppress if /api/health/all confirms ds alive
-            # 2147946720 = 0x800710E0 "operator/admin refused the request": for an
-            #   IgnoreNew singleton daemon (e.g. RC-Phase3-Supervisor) this is Task
-            #   Scheduler correctly refusing a duplicate launch while the boot
-            #   instance is still alive. state==Running proves the daemon is up, so
-            #   the refused-duplicate code is benign, not a failure.
-            running_now = str(s) in ("Running", "4")
-            # RC-CostHealthWatchdog returns exit 1 BY DESIGN when it detects a
-            # cost/health breach (tools/cost_health_watchdog.py: "return 1 if
-            # breached else 0"). That is the watchdog doing its job, not a
-            # failure - it fires whenever today's spend exceeds the trailing
-            # baseline (i.e. after any coaching game). Suppress the "probably
-            # failing" anomaly; the breach detail is in logs/cost_health_watchdog.log.
-            # A Disabled task is not running, so its stale last_result is a
-            # historical code, not a current-health signal - never flag it as
-            # "probably failing" (e.g. RC-LiveFlipWatcher, intentionally off).
-            suppress = (n == "RC-DaemonSlayer" and r == 1 and ds_alive) or (
-                r == 2147946720 and running_now
-            ) or (n == "RC-CostHealthWatchdog" and r == 1) or (str(s) == "Disabled")
-            mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ! result={r}"
-            out.append(f"  - {n}: state={s}{mark}")
-            if r not in (0, 267009, 267011, 267014, None) and not suppress:
-                anomalies.append(
-                    f"Legion: scheduled task {n} last_result={r} (probably failing)"
-                )
+    # Scheduled tasks. All grading lives in task_health_lines: anomalies only,
+    # a failed probe is loud, a Disabled periodic task surfaces as DISARMED,
+    # and each weekly task is checked against the artifact it is supposed to
+    # advance rather than only against its exit code.
+    task_lines, task_anomalies = task_health_lines(
+        _legion_tasks(), root=_APP, now=time.time(), ds_alive=ds_alive
+    )
+    out.extend(task_lines)
+    anomalies.extend(task_anomalies)
 
     # Last boot
     lb = _last_boot_iso()

@@ -54,10 +54,27 @@ def _usable_key(k: str) -> bool:
     )
 
 
-def _load_api_key() -> str:
+def _load_api_key(app_dir: Path | None = None) -> str:
     """Mirror coaches/_base_coach.py read_api_key so warm session finds
-    the same key the coaches use."""
-    p = Path(__file__).resolve().parent.parent.parent / "API-Key-Claude.txt"
+    the same key the coaches use: ENVIRONMENT first, key FILE as fallback.
+
+    Order flipped 2026-09-29 alongside read_api_key - a leftover
+    API-Key-Claude.txt holding a revoked key must never beat the env var a
+    rotation actually updates. Pinned by tests/test_api_key_load_order.py.
+
+    `_usable_key` is applied to BOTH sources, not just the file. Validating
+    the env value is precisely what keeps the file reachable when the
+    variable is mis-set, and the SDK caches its client on first use, so a
+    header-hostile value taken from either source poisons the whole
+    session. `app_dir` exists so a test can point the file half somewhere
+    other than the real repo root; production callers pass nothing.
+    """
+    env = os.environ.get("ANTHROPIC_API_KEY", "")
+    if _usable_key(env):
+        return env
+    if app_dir is None:
+        app_dir = Path(__file__).resolve().parent.parent.parent
+    p = app_dir / "API-Key-Claude.txt"
     if p.exists():
         try:
             k = p.read_text(encoding="utf-8").strip()
@@ -65,9 +82,9 @@ def _load_api_key() -> str:
                 return k
             logger.warning("API-Key-Claude.txt is present but unusable "
                            "(non-ASCII, whitespace, or wrong prefix)")
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             pass
-    return os.environ.get("ANTHROPIC_API_KEY", "")
+    return env
 
 
 def _load_charter() -> str:
