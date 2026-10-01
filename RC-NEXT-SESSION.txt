@@ -1,62 +1,70 @@
 NEXT SESSION
 ------------
-Task: RM-486 - find out why `pytest tests` exits 127 mid-run on Legion. It BLOCKS the
-merge of PR #1 (https://github.com/Remus3/Amberstone/pull/1), which is open, pushed and
-fully verified apart from that one gate.
+Task: decide the six `lane/*` ref pushes. They are the ONLY thing left unfinished from
+the 2026-09-30b tidy-up. All six are fast-forwarded to main LOCALLY and all six pushes
+are HALTED by `tools/sibling_name_sweep.py`. Nothing was pushed, no bypass was used,
+`origin/lane/*` are untouched.
 
-Context:
-  - Branch `fix/weekly-routines`, tip `8e1ab5566`. Four commits: `fb05d3488` (S1-S6),
-    `ba4bb74be` (S7), `6044a9ee1` (S8, FROZEN `app/_game_lifecycle.py`, operator-approved
-    in chat 2026-09-29), `8e1ab5566` (citation repoint). `main` is UNTOUCHED.
-  - The symptom: exit 127, NO traceback, NO pytest summary line, no abort sentinel in
-    `tests/conftest.py`, memory healthy at 58 percent. Three runs died at DIFFERENT points
-    (60 percent, 32 percent, 25 percent).
-  - REFUTED, do not re-pitch: "the live tree is hostile to a long run". The third run was
-    in an isolated git worktree at `.claude/worktrees/suite-verify` and died the same way.
-  - `agents/daemon_slayer` is GREEN on the final tree: 10933 passed, 13669 subtests,
-    exit 0, 147.84s. The problem is confined to `tests/`.
-  - NOT established whether the 127 pre-dates this branch. Cheapest discriminator first:
-    `pytest tests` at `main` versus at `8e1ab5566`.
-  - Then get the abort point NAMED. `-q` gives dots only, which is why three runs taught
-    us almost nothing. Try `-v` and keep the tail, or `-p no:randomly`, or bisect by
-    subdirectory. 127 with no Python traceback smells like the process being killed rather
-    than a test failing - check whether anything on the box kills long `python.exe` runs
-    (`ops/launch_new_system.bat:17-18` taskkills `pythonw.exe` and a windowtitle-filtered
-    `python.exe`).
-  - Historical baseline: the operator measured `pytest tests` completing at
-    21890 passed / 102 skipped / 4938 subtests in 1:12:22 on 2026-09-11, so it used to run.
+What is already established - do NOT re-derive it:
+  - The 10 findings (3 RESOLUTION, 2 STRUCTURAL, 5 NAME) are HISTORICAL, not live.
+    Every one of the 8 flagged paths scans CLEAN at current HEAD, checked one at a
+    time with `sibling_name_sweep.py --scan-file <path>`: BACKLOG.md,
+    RC-NEXT-SESSION.txt, CLAUDE.md, WAKEUP_NOTES.md,
+    docs/CONCURRENT_HEADLESS_CONTRACT.md, docs/LEDGER.md, ops/loop/slots.py,
+    tests/test_loop_concurrency.py. The findings live in older versions of those paths
+    inside the stale delta, plus one commit message.
+  - The pre-push arm scans the DELTA against the REMOTE REF, and each lane is 528-674
+    commits behind its own origin ref, so it re-reads the whole history since that lane
+    last pushed - 2906 files, 35.6 MB, 674 commit messages.
+  - MEASURED: `main == origin/main`, and the lane delta is 675 commits all of which are
+    already ancestors of origin/main. So the push would transfer ZERO new objects to
+    GitHub - every blob is already server-side and already public. The sweep's model is
+    per-ref, not per-repo, which is why it objects to bytes the remote already has.
 
-Acceptance:
-  - Either `pytest tests` completes locally and PR #1's CI is green, then merge to main and
-    flip LEDGER 1455 from OPEN-PR to DONE; or the 127 is root-caused as a box/harness limit
-    rather than a suite defect, documented, and the merge proceeds on CI's verdict alone.
+The actual decision, which is the OPERATOR'S and was deliberately left open:
+  (a) bypass once with RC_SIBLING_SWEEP_BYPASS=1 (it proceeds and appends the full
+      would-have-halted report to ops/runtime/sibling_sweep_bypass.log), or
+  (b) delete the six stale origin/lane/* refs and let the lanes recreate them, or
+  (c) leave them stale - they are scratch infrastructure and nothing reads them.
+Do not pick one on your own; the standing rule is that RC halts and waits.
 
-Do NOT redo (all shipped or settled this session):
-  - The auth diagnosis. Root cause CONFIRMED IN PRODUCTION: `ANTHROPIC_API_KEY` is
-    machine-wide, the supervisor inherits it, `agents/_supervisor_ephemeral.py` passed no
-    `env=`, the spawned `claude -p` got an org-scoped key and died 400 "not scoped to a
-    workspace". Fixed. The stuck task `t-f65ba5e9c492` dispatched live and failed with that
-    exact error, so this is measured, not inferred.
-  - The OAuth login. Operator re-logged in on Legion; verified `PONG` from
-    `env -u ANTHROPIC_API_KEY claude -p ... --model claude-sonnet-4-6`.
-  - The key rotation. Machine env holds the new key; `API-Key-Claude.txt` is DELETED and is
-    not coming back. Machine env is the single source. Do not recreate that file - five
-    consumers used to prefer it and a stale copy would silently beat a rotated env var.
-  - The five slice verifications. Four adversarial verifier passes, every fix
-    mutation-killed. The six slice test files measure 87 passed.
-  - `RC-WeeklyHygiene` being Disabled. That is DELIBERATE, not a fault - disabled
-    2026-09-11 with `RC-CIWatchdog` and `RC-InboxResponder` when the operator STOPped the
-    headless loop. `ops/loop/control/STOP` is still on disk. Re-arming means clearing STOP
-    AND re-enabling those three deliberately.
-  - `RC-RewindCatchup` looking 16 weeks dead. It is HEALTHY - no-op weeks. The stale
-    `last_run_at` was a reporting defect (now fixed), and it already fooled two readers.
+Also carry, because it changes what counts as evidence:
+  - CI's `sibling-sweep-tree` CANNOT see any of this. It loads its name slots from
+    gitignored per-host `ops/moon_sync_repos.json`; CI has no such file, so it runs
+    MODE_DEGRADED, armed with nothing, and passes vacuously. It passed green on the
+    same push whose local arm halted. Never cite that check as sibling-name coverage.
+  - A sweep run with NO `[sibling-sweep] clean: <N> bytes` line has returned NO verdict.
+    An earlier `timeout 600 ... | tail` run exited 0 from `tail` while `timeout` killed
+    the scan mid-run. Never pipe the sweep through anything that masks its exit code.
+  - A full `--tree` run was started at wrap and had not finished. If you want the
+    whole-tree verdict, re-run `python tools/sibling_name_sweep.py --tree` and READ the
+    clean line. It scans the smudged checkout (~633 MB), so give it time.
 
-Known-incomplete, named not hidden:
-  - `Microsoft-Windows-TaskScheduler/Operational` is DISABLED on this box, so there is still
-    no per-run history for any of the 26 RC tasks. Enabling it is a machine setting and was
-    never approved; `tools/rc_facts.py` staleness checks are the compensating control.
-  - The running suite result covers `6044a9ee1`, not `8e1ab5566`. That delta is docstring
-    prose in three test files; those files plus `test_citation_drift_guard_rm171.py` were
-    run directly (78 passed, 216 subtests).
+Do NOT redo (shipped 2026-09-30b):
+  - PR #1 is MERGED as `eed3f8849`. LEDGER 1455 is flipped to DONE.
+  - The secret-exposure fix `72b973780`. Three assertions in
+    tests/test_supervisor_ephemeral_auth_env.py would have printed every env key AND
+    value into the public CI log. Fixed with helpers returning key names only, all four
+    arms probed.
+  - ddragon mirror 16.18.1 -> 16.19.1, commit `199fe7d40`.
+  - Estate cleanup: 50 worktrees removed, 53 branches deleted, fix/weekly-routines gone
+    local and remote, orphan ref refs/remotes/local/main dropped. Use `git cherry`, not
+    `git diff`, if you ever re-audit whether a stale branch held unique work.
+  - RM-486 is ANSWERED as far as blame goes: CI runs the same dual suite clean (35456
+    passed, ~20 min), so the local exit-127 is a Legion harness fault, not a suite
+    defect. The ROOT CAUSE is still open, and the unrun discriminator is `pytest tests`
+    at a pre-branch commit. Do not re-run `pytest tests` here expecting a verdict; a run
+    this session was abandoned at 16 percent after ~50 minutes.
+
+Open and filed this session: RM-488 (the lane/sweep question above), RM-489 (nine
+tracked data/meta_build/ddragon/<patch>/ dirs vs a current+previous retention claim that
+is guarded only at the helper). Also noted: `RM-486` is used TWICE in ROADMAP.md - the
+suite-127 row and a Void Immolation row - so every citation of it is ambiguous until one
+is renumbered.
+
+Not touched, still waiting: the moon_sync_inbox unread notes.
+
+Acceptance: a decision recorded for the six lane refs, and `git worktree list` plus
+`git branch -a` showing only main, the six lane branches, and whatever the session opens.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
