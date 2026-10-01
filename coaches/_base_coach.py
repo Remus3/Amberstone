@@ -46,7 +46,22 @@ _SLOW_TICK_MS = 150.0
 # ==============================================================================
 
 def read_api_key(app_dir: Path = _APP_DIR) -> str:
-    """Load Anthropic API key from file or environment."""
+    """Load the Anthropic API key - ENVIRONMENT first, key FILE as fallback.
+
+    Order flipped 2026-09-29 to match main.py:46. It used to read the file
+    first, which is a stale-wins trap: the env var is what a rotation
+    updates, so a leftover API-Key-Claude.txt holding a revoked key would
+    silently beat the live one and the rotation would LOOK successful while
+    every coach kept presenting the dead credential. Pinned by
+    tests/test_api_key_load_order.py.
+
+    "env first" means first VALID, not first PRESENT - a junk env value
+    still falls through to the file, so a mis-set variable degrades rather
+    than hard-failing. Never raises; "" means degrade to no coaching.
+    """
+    env = os.environ.get("ANTHROPIC_API_KEY", "")
+    if env.strip().startswith("sk-ant-"):
+        return env.strip()
     p = app_dir / "API-Key-Claude.txt"
     if p.exists():
         try:
@@ -55,10 +70,10 @@ def read_api_key(app_dir: Path = _APP_DIR) -> str:
                 return k
         # read_text is the only raising statement: OSError (perms / lock) or
         # UnicodeDecodeError (non-UTF8 key file). str.strip / str.startswith
-        # cannot raise. Falls through to the env-var lookup either way.
+        # cannot raise. Falls through to the env-var value either way.
         except (OSError, UnicodeDecodeError):
             pass
-    return os.environ.get("ANTHROPIC_API_KEY", "")
+    return env
 
 
 def load_json(path: Path) -> dict:

@@ -5,6 +5,9 @@ Responsibilities (S7, S11.7):
   * In-memory priority queue of :class:`QueueTask`.
   * Append-only JSONL persistence of every status transition.
   * Recovery on startup: replay the JSONL and reconstruct in-memory state.
+  * Tail-reload: ``refresh()`` picks up records appended by ANOTHER
+    process (e.g. the weekly ``ops/phase3_file_audit.py`` cron shim) so a
+    long-lived supervisor does not need a restart to see them.
   * Gate policy:
       - Hard gates (categories 1, 7, 8) -> ``needs_explicit_approval``.
         Caller (supervisor UI) must approve before the task becomes dispatchable.
@@ -26,7 +29,7 @@ import sys
 import threading
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -158,6 +161,13 @@ class TaskStatus:
     DEAD_LETTER = "dead_letter"
 
 
+_TERMINAL_STATUSES = frozenset({
+    TaskStatus.COMPLETED,
+    TaskStatus.DEAD_LETTER,
+    TaskStatus.FAILED,
+})
+
+
 @dataclass
 class QueueTask:
     id: str
@@ -210,6 +220,13 @@ class Scheduler:
         self._compact_threshold_bytes = int(compact_threshold_bytes)
         self._compact_stop = threading.Event()
         self._compact_thread: threading.Thread | None = None
+        # Tail-reload bookkeeping. ``_log_offset`` is the byte position up
+        # to which the queue log has been consumed - always the end of the
+        # last COMPLETE line, never mid-record. ``_log_identity`` is the
+        # (st_dev, st_ino) pair of the file we read, so a replaced file is
+        # detected even when its size happens to match.
+        self._log_offset: int = 0
+        self._log_identity: tuple[int, int] | None = None
         self._load()
         if self._compact_interval_s > 0:
             self._start_compactor()
@@ -308,7 +325,8 @@ class Scheduler:
                                 rec = json.loads(line)
                             except json.JSONDecodeError:
                                 continue
-                            tid = (rec.get("task") or {}).get("id")
+                            task_dict = self._task_dict_from_record(rec)
+                            tid = task_dict.get("id") if task_dict else None
                             if not tid:
                                 continue
                             if tid in latest:
@@ -323,6 +341,18 @@ class Scheduler:
                         f.truncate()
                         f.write(new_content)
                         f.flush()
+                        # Invalidate the tail bookkeeping: every record
+                        # just moved to a new byte position. _log_offset
+                        # is only advanced by refresh(), so it routinely
+                        # lags the end of the file, and a record appended
+                        # since the last tick can land BELOW the stale
+                        # offset in the rewritten file - silently skipped,
+                        # never dispatched. Forcing the next refresh() down
+                        # the full-reload path re-reads the compacted file
+                        # instead, which reproduces identical in-memory
+                        # state because compaction is latest-wins.
+                        self._log_offset = 0
+                        self._log_identity = None
                         logger.info(
                             "task_queue.jsonl compact: %d -> %d lines",
                             non_empty, len(latest),
@@ -369,44 +399,323 @@ class Scheduler:
             self._compact_thread.join(timeout=3)
             self._compact_thread = None
 
-    def _load(self) -> None:
-        if not self._queue_log.exists():
-            return
-        loaded = 0
-        corrupt = 0
-        with self._queue_log.open("r", encoding="utf-8") as f:
-            for lineno, line in enumerate(f, start=1):
-                line = line.strip()
+    def _stat_identity(self) -> tuple[int, int] | None:
+        """(st_dev, st_ino) of the queue log, or None when unreadable.
+
+        Used to notice that the file we are tailing was REPLACED rather
+        than appended to. ``st_ino`` can be 0 on exotic Windows volumes;
+        the size check in :meth:`refresh` is the independent backstop.
+        """
+        try:
+            st = self._queue_log.stat()
+        except OSError:
+            return None
+        return (st.st_dev, st.st_ino)
+
+    @staticmethod
+    def _task_dict_from_record(rec: Any) -> dict[str, Any] | None:
+        """Pull the task envelope out of one decoded JSONL record.
+
+        Returns None when the record is not the shape this scheduler
+        writes. ``json.loads`` returns a list, a string or a number quite
+        happily for a syntactically valid line, and a SECOND process
+        appending to this log is under no obligation to match our schema
+        - so the shape is checked, never assumed. Every reader of the log
+        goes through here so the checks cannot drift apart again.
+        """
+        if not isinstance(rec, dict):
+            return None
+        task = rec.get("task")
+        if not isinstance(task, dict):
+            return None
+        return task
+
+    @staticmethod
+    def _validate_task_dict(task_dict: dict[str, Any]) -> bool:
+        """Reject a record that would poison the dispatch heap.
+
+        Heap entries are ``(priority, counter, task_id)`` and the counter
+        never ties, so ``priority`` is the only field whose type can make
+        a later push or pop raise. A record carrying ``"priority": "90"``
+        loads fine and then blows up with ``'<' not supported between
+        instances of 'str' and 'int'`` the moment it meets an int-priority
+        entry - which is a crash on the dispatch tick, not at the record
+        that caused it. Cheaper to refuse the record.
+        """
+        prio = task_dict.get("priority")
+        if isinstance(prio, bool) or not isinstance(prio, (int, float)):
+            logger.error(
+                "task_queue.jsonl record %r has non-numeric priority %r - skipped",
+                task_dict.get("id"), prio,
+            )
+            return False
+        return True
+
+    @staticmethod
+    def _task_from_dict(task_dict: dict[str, Any]) -> QueueTask | None:
+        """Construct a QueueTask, tolerating fields this build lacks.
+
+        Returns None (having logged) instead of raising when the record
+        carries an unknown field - a record written by a NEWER build is
+        a routine multi-process outcome, not a crash. Shared by the tail
+        path and by ``_load()``: guarding only one of them meant an
+        unknown field was tolerated until the first compaction and then
+        raised TypeError on every dispatch tick, because a shrunk log
+        routes ``refresh()`` into ``_load()``.
+        """
+        if not Scheduler._validate_task_dict(task_dict):
+            return None
+        try:
+            return QueueTask(**task_dict)
+        except TypeError as exc:
+            logger.error(
+                "task_queue.jsonl record %r is not constructible (%s) - skipped",
+                task_dict.get("id"), exc,
+            )
+            return None
+
+    @staticmethod
+    def _complete_lines(raw: bytes) -> tuple[list[bytes], int]:
+        """Split *raw* into COMPLETE newline-terminated lines.
+
+        Returns ``(lines, consumed_bytes)``. A trailing fragment with no
+        terminating newline is another process mid-append: it is neither
+        returned nor counted as consumed, so the caller leaves its byte
+        offset in front of it and picks the record up on a later tick
+        once the writer has finished it.
+        """
+        end = raw.rfind(b"\n")
+        if end < 0:
+            return ([], 0)
+        consumed = end + 1
+        return (raw[:consumed].split(b"\n")[:-1], consumed)
+
+    def _apply_task_record(self, task_dict: dict[str, Any]) -> bool:
+        """Fold one on-disk task envelope into in-memory state.
+
+        Latest-wins, matching :meth:`_load`. An already-known task is
+        mutated IN PLACE rather than replaced, so a caller holding the
+        object returned by :meth:`next_ready` keeps seeing live state.
+
+        Heap pushes are deliberately conservative in the safe direction:
+        a task is pushed when it is new-and-non-terminal, or when it has
+        just become READY. That can leave a duplicate heap entry for one
+        task, which :meth:`next_ready` already tolerates (it re-checks
+        ``status`` after each pop), whereas a missed push would strand a
+        dispatchable task forever.
+
+        Returns True when the record was applied.
+        """
+        tid = task_dict.get("id")
+        if not tid:
+            return False
+        # Checked before BOTH branches: the in-place update below would
+        # otherwise setattr a bad priority onto a task already known to
+        # be good, and poison the heap on its next push.
+        if not self._validate_task_dict(task_dict):
+            return False
+        existing = self._tasks.get(tid)
+        if existing is None:
+            fresh = self._task_from_dict(task_dict)
+            if fresh is None:
+                return False
+            self._tasks[tid] = fresh
+            if fresh.status not in _TERMINAL_STATUSES:
+                heapq.heappush(self._heap, (fresh.priority, next(self._counter), tid))
+            return True
+
+        was_ready = existing.status == TaskStatus.READY
+        known = {f.name for f in fields(existing)}
+        for key, value in task_dict.items():
+            if key in known:
+                setattr(existing, key, value)
+        if existing.status == TaskStatus.READY and not was_ready:
+            heapq.heappush(
+                self._heap, (existing.priority, next(self._counter), tid),
+            )
+        return True
+
+    def refresh(self) -> int:
+        """Pick up queue-log records appended by ANOTHER process.
+
+        The scheduler is the single writer *within* a process, but the
+        weekly cron shim ``ops/phase3_file_audit.py`` and the ops helper
+        scripts run standalone and append straight to the same JSONL.
+        Before this existed, a long-lived supervisor's in-memory queue
+        never saw those tasks and they could not dispatch until the whole
+        stack restarted (measured: t-f65ba5e9c492, filed 2026-09-27,
+        still ``ready`` days later).
+
+        Cheap by design - the common case is one ``stat()`` and nothing
+        else, so it is safe to call on every dispatch tick:
+
+          * file grew  -> read ONLY the new bytes and fold them in.
+          * file shrank or was replaced (compaction) -> full ``_load()``.
+          * unchanged  -> no read at all.
+
+        Never raises. A read error (on Windows the writer may hold the
+        file) leaves the offset and in-memory state exactly as they were
+        and is retried on the next tick.
+
+        Returns the number of records applied - 0 when there was nothing
+        to do or the read failed.
+        """
+        with self._lock:
+            try:
+                st = self._queue_log.stat()
+            except OSError:
+                # No log yet, or it vanished. Keep what we have.
+                return 0
+            identity = (st.st_dev, st.st_ino)
+            replaced = (
+                self._log_identity is not None and identity != self._log_identity
+            )
+            if self._log_identity is None or replaced or st.st_size < self._log_offset:
+                # Adopted a newly created log, or the file was rewritten
+                # smaller / swapped out underneath us. A tail read would
+                # be meaningless, so rebuild from scratch.
+                logger.info(
+                    "task_queue.jsonl full reload (offset=%d size=%d replaced=%s)",
+                    self._log_offset, st.st_size, replaced,
+                )
+                self._load()
+                return len(self._tasks)
+            if st.st_size == self._log_offset:
+                return 0
+            # Read one byte BEFORE the offset as a continuity probe. A
+            # rewrite-in-place by another process (a compaction) moves
+            # records to lower byte positions; when the rewritten file is
+            # still larger than our consumed prefix the shrink check above
+            # does not fire, and a plain tail read would start PAST a
+            # record we never applied. Skipping a record is the one
+            # outcome this bookkeeping must never produce - re-reading is
+            # free by comparison - so if the offset no longer sits just
+            # after a newline, the offset belongs to a file that is gone.
+            probe = 1 if self._log_offset > 0 else 0
+            try:
+                with self._queue_log.open("rb") as f:
+                    f.seek(self._log_offset - probe)
+                    raw = f.read()
+            except OSError as exc:
+                logger.warning(
+                    "task_queue.jsonl tail read failed (%s) - retrying next tick", exc,
+                )
+                return 0
+            if probe:
+                boundary, raw = raw[:1], raw[1:]
+                if boundary != b"\n":
+                    logger.info(
+                        "task_queue.jsonl rewritten in place (offset=%d size=%d) "
+                        "- full reload rather than a tail read",
+                        self._log_offset, st.st_size,
+                    )
+                    self._load()
+                    return len(self._tasks)
+            lines, consumed = self._complete_lines(raw)
+            if not lines:
+                return 0
+            applied = 0
+            for bline in lines:
+                line = bline.decode("utf-8", errors="replace").strip()
                 if not line:
                     continue
                 try:
                     rec = json.loads(line)
                 except json.JSONDecodeError as e:
-                    # AUDIT P-audit3-m04 (2026-04-22): surface corruption
-                    # loudly instead of silently dropping the line. The
-                    # queue log is the scheduler's system of record.
                     logger.error(
-                        "task_queue.jsonl line %d corrupt (%s): %r",
-                        lineno, e, line[:120],
+                        "task_queue.jsonl tail record corrupt (%s): %r", e, line[:120],
                     )
-                    corrupt += 1
                     continue
-                t = rec.get("task") or {}
-                if not t.get("id"):
+                task_dict = self._task_dict_from_record(rec)
+                if task_dict is None:
+                    logger.error(
+                        "task_queue.jsonl tail record has no task object: %r",
+                        line[:120],
+                    )
                     continue
-                self._tasks[t["id"]] = QueueTask(**t)
-                loaded += 1
+                if self._apply_task_record(task_dict):
+                    applied += 1
+            # Advance past every byte we looked at, corrupt lines included
+            # - re-reading them would just re-log the same error forever.
+            self._log_offset += consumed
+            if applied:
+                logger.info(
+                    "task_queue.jsonl tail: applied %d externally written record(s)",
+                    applied,
+                )
+            return applied
+
+    def _load(self) -> None:
+        if not self._queue_log.exists():
+            return
+        try:
+            raw = self._queue_log.read_bytes()
+        except OSError as exc:
+            logger.warning("task_queue.jsonl read failed on load: %s", exc)
+            return
+
+        # Full rebuild: _load() is both the cold-start path and the
+        # fallback refresh() takes when the log was compacted or
+        # replaced, so stale in-memory rows must not survive it.
+        self._tasks.clear()
+        self._heap.clear()
+
+        # A trailing fragment with no newline is another process
+        # mid-append; leave the offset in front of it (refresh() will
+        # consume it once it is terminated) rather than parsing half a
+        # record at boot.
+        lines, consumed = self._complete_lines(raw)
+        self._log_offset = consumed
+        self._log_identity = self._stat_identity()
+
+        loaded = 0
+        corrupt = 0
+        skipped = 0
+        for lineno, bline in enumerate(lines, start=1):
+            line = bline.decode("utf-8", errors="replace").strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError as e:
+                # AUDIT P-audit3-m04 (2026-04-22): surface corruption
+                # loudly instead of silently dropping the line. The
+                # queue log is the scheduler's system of record.
+                logger.error(
+                    "task_queue.jsonl line %d corrupt (%s): %r",
+                    lineno, e, line[:120],
+                )
+                corrupt += 1
+                continue
+            t = self._task_dict_from_record(rec)
+            if t is None or not t.get("id"):
+                continue
+            # Guarded exactly like the tail path: this is a full reload,
+            # which refresh() runs on the live dispatch tick after a
+            # compaction, so one unconstructible record must not become a
+            # TypeError out of next_ready().
+            task = self._task_from_dict(t)
+            if task is None:
+                skipped += 1
+                continue
+            self._tasks[t["id"]] = task
+            loaded += 1
         if corrupt:
             logger.error(
                 "task_queue.jsonl: %d corrupt line(s) dropped on load - "
                 "consider filing an audit-queue-corruption task",
                 corrupt,
             )
+        if skipped:
+            logger.error(
+                "task_queue.jsonl: %d record(s) dropped on load as unusable "
+                "(unknown field, or a priority the heap cannot order)",
+                skipped,
+            )
 
         # Rebuild heap from non-terminal tasks.
-        terminal = {TaskStatus.COMPLETED, TaskStatus.DEAD_LETTER, TaskStatus.FAILED}
         for tid, task in self._tasks.items():
-            if task.status in terminal:
+            if task.status in _TERMINAL_STATUSES:
                 continue
             heapq.heappush(self._heap, (task.priority, next(self._counter), tid))
 
@@ -606,8 +915,8 @@ class Scheduler:
                         rec = json.loads(line)
                     except json.JSONDecodeError:
                         continue
-                    t = rec.get("task") or {}
-                    if t.get("id") == task_id:
+                    t = self._task_dict_from_record(rec)
+                    if t is not None and t.get("id") == task_id:
                         s = t.get("status")
                         if s:
                             latest = s
@@ -626,8 +935,14 @@ class Scheduler:
         marking a candidate in-progress, re-reads its latest status from
         task_queue.jsonl so that a concurrent Scheduler instance that already
         wrote a terminal event does not get re-dispatched by a stale heap.
+
+        Cross-process INTAKE: ``refresh()`` runs first so a task appended
+        to task_queue.jsonl by a separate process (the weekly cron shim)
+        is dispatchable without restarting the supervisor. It is a bare
+        ``stat()`` when nothing changed, and it never raises.
         """
         with self._lock:
+            self.refresh()
             requeue: list[tuple[int, int, str]] = []
             picked: QueueTask | None = None
             while self._heap:
@@ -720,7 +1035,9 @@ class Scheduler:
                         rec = json.loads(line)
                     except json.JSONDecodeError:
                         continue
-                    t = rec.get("task") or {}
+                    t = self._task_dict_from_record(rec)
+                    if t is None:
+                        continue
                     events.append({
                         "ts": rec.get("ts"),
                         "event": rec.get("event"),
