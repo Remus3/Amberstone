@@ -1,5 +1,78 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-01 - size-budget relocation pass (the tenth), 7 rows
+
+`python tools/drift_guard.py` exited 1 with `BREACH [doc-budget] ROADMAP.md at
+94% of its 81920-byte budget` - 76727 bytes, past the 90 percent WARN line. The
+seven rows below move here VERBATIM, byte for byte as they stood at `4554d847b`.
+Every one of them is `[OK]` / `[x]` - already CLOSED - and `ROADMAP.md` keeps a
+one-line stub naming this block in each place.
+
+**Selection rule, the same one every earlier pass used:** only CLOSED rows
+moved. The two `[OPEN]` rows filed on 2026-10-01 (NOW-5 the CLI version pin,
+NOW-6 the three full-suite-only WAL failures) did NOT move, and neither did any
+PARTIAL row whose open half still names work. **No RM id was deleted** and no
+open tail was dropped - RM-480's "left open" list and the NOW-5 channel row's
+ROUND B tail both survive on their stubs.
+
+**Fences were NOT relocated.** Several of these rows carry explicit
+do-not-re-pitch / do-not-restore-this-wording warnings, which exist because the
+mistake recurred. Each stub still carries its fence inline, even though that
+costs bytes, because a relocation that drops a fence is a regression and not a
+saving.
+
+**Verbatim was checked the strong way rather than asserted:** each row below was
+typed into THIS file first and then used as the `old_string` of the Edit that
+removed it from `ROADMAP.md`, so the removal could only have succeeded on an
+exact byte match.
+
+### Lane widget gate (closed 2026-09-19)
+
+- **[OK] LANE WIDGET GATE CLOSED 2026-09-19 - row relocated VERBATIM 2026-09-20 to `docs/ROADMAP_HISTORY.md` (`## 2026-09-20` block)** for the size budget. Full detail LEDGER 1431; the ship itself is LEDGER 1430 / `ed759ef4a`. The audit found EIGHT classes of real defect and all eight are fixed and re-verified ON SCREEN. **Do NOT re-run this audit and do NOT re-derive the design**, and do NOT recite a lane-widget suite count from any doc - nothing guards it and the last recited figure rotted within a day; measure it with `npm test` from `lane-widget/`. The four non-blocking residuals and the launch command ride in the archived block.
+
+### NOW-1 (Mission Control web UI removal) - second-generation stub
+
+- **[OK] NOW-1: MISSION CONTROL WEB UI REMOVED 2026-09-20 - the VIEW went, the CONTROL PLANE STAYED; row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-20b` block)** (LEDGER 1430 / 1436; `acd40a4b6`; gap analysis `docs/specs/mission_control_removal_gap_analysis.md`). `web/mc/` plus three test files DELETED; the `:8895` listener, the bearer perimeter, `mission_control.py`, `RC-MissionControl`, `GET /api/loop-status` and all nine `POST /api/loop-control` actions KEPT. **Fences inline because they are repeatedly mis-stated:** the page's arm-then-confirm gate was re-implemented SERVER-side (`dashboard/_arm_confirm.py`, enforced by `dashboard/routes_loop_control.route_action`; an unarmed `fire_lane` / `queue_intent` / `interrupt` gets HTTP 409 `arm_required`); **ONE ARM IS ONE INTENT**; the window is 60 s via `RC_MC_ARM_WINDOW_S` read PER CALL - the original IMPORT-time read made it INERT for an already-running server and was one of three closed reuse holes (`tests/test_arm_confirm_server_gate.py:544`). **CLOSED 2026-09-20 BY OPERATOR DECISION: the nine control verbs STAY, MC stays HEADLESS, and NOTHING FURTHER IS DELETED.** The operator's words were that MC "can stay as it is if it is not messing with anything" and will go unused unless needed, so removal is not wanted. **The condition was MEASURED before the row was closed, not assumed:** `RC-MissionControl` State=Running, the `:8895` listener alive on one `pythonw` pid at a **1.9 MB working set and 0.4 s total CPU**, which is not a tree that is messing with anything. **Do NOT re-open this as a removal proposal and do NOT re-pitch porting the verbs to the lane widget** - it was offered as one of three options and declined. Residual worth a glance and NOT a blocker: the task's `LastTaskResult` is `2147946720` (`0x800710E0`, Win32 4320), which carries no system message string here; the task is Running and serving, so this was recorded rather than chased.
+
+### NOW-2 (`node --test` silently passes on a nonexistent path)
+
+- **[OK] NOW-2: CLOSED 2026-09-20** (`4b62b966c`; LEDGER 1432). The measured fact stands: on node v24.15.0 **`node --test` SILENTLY PASSES ON A NONEXISTENT PATH** - `pass 12 / fail 0`, exit 0. The `tests/test_rc_shell_node_suite_rm342.py` comment claiming "a phantom name makes node error" was FALSE and is corrected in place. **This is why the two covers-the-dir guards are LOAD-BEARING:** a typo in `scripts.test` stops running a whole file with every signal green. Do not restore the old wording.
+
+### NOW-3 (ASCII hygiene over `.css` / `.html`)
+
+- **[OK] NOW-3: ASCII HYGIENE OVER `.css` / `.html` - DONE 2026-09-20 (`b5d11367f`; LEDGER 1433). Row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-20` block)** for the size budget. **THE ONE FENCE, restated inline because a later session would otherwise re-file the refuted row: the filed claim "guarded only by the staged-line precommit hook, not by any test" is FALSE, and false since `7f52972c7` (2026-09-06).** It was measured false by PLANTING the defect - a probe `.css` carrying U+2014 and U+2713, staged outside `web/`, turned BOTH `test_no_net_new_non_ascii_in_tracked_source` and `test_no_smart_quotes_in_authored_source` red. **Do not restore that wording.** What actually landed (no ADR-015 walker consumer for those extensions, no per-extension floor, ratchet-vs-flat-ban) is in the archived block and in `tests/test_css_html_ascii_hygiene.py`.
+
+### The three small lanes also closed 2026-09-20
+
+- **[OK] ALSO CLOSED 2026-09-20 - three small lanes (LEDGER 1434 / 1435 / 1437), row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-20` block).** Two fences stay inline: **do NOT propagate "RC's sweep leaves the sixth participant unswept" - measured FALSE twice** (its drive-path and github-URL arms are ARMED; only the bare-word arm is suppressed, BY DECLARATION); and **CITE THE PIN - `SHARED_SHA256` in `tests/test_loop_concurrency.py` - NEVER THE DIGEST VALUE**. Cite it by SYMBOL, not by line: the recited `:474` had already drifted to `:480` (parametrised `:542` to `:548`) by the time this row was written, which is the same failure one level down.
+
+### NOW-5, the CHANNEL row (distinct from the 2026-10-01 `[OPEN]` NOW-5)
+
+- **[OK] NOW-5: THE CHANNEL IS A ROSTER OF SIX AT CHANNEL_VERSION 2 AND THE CARRIER-SET ANOMALY IS CLOSED 2026-09-20; row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-20b` block)** (`6ad1531e2` + `fd0d56084`; LEDGER 1438). Substrate joined as the sixth participant, code **`SS`**; RC authored the v2 (25425 bytes; its LF-normalised digest rides in the archived block). **Fences inline: `LL` DOES carry the document, at `third_party/rc_channel/docs/CHANNEL.md` - do NOT restore the "LL has no `docs/CHANNEL.md`" premise** (the archived `WAKEUP_NOTES.md` 2026-09-19b block carries it and is SUPERSEDED); three independently written root maps each tested ONLY `<root>/docs/CHANNEL.md`, one shared blind spot, which is why their agreement proved nothing; **true carrier count is FIVE** and counts 3 / 4 / 5 all reconcile by scope. **OPEN TAIL: ROUND B** - a carrier-code defect at `winmutex.py:118` is in flight on the channel, and `ops/loop/winmutex.py` is a cross-repository BYTE-PINNED artifact, so any RC-side edit is a JOINT act and a boundary HALT; do not touch it unilaterally.
+
+### RM-01 - the BUILT / SHIPPED half only (the row itself stays OPEN in `ROADMAP.md`)
+
+Only the already-landed narrative moved. RM-01's live-gated NEXT (calibrate the
+`augment_card_*` / `minimap_fog` rects, then a validated OCR-only flip) and both
+of its fences - "do NOT flip blind" and the retired competitor-lift rotation -
+stayed on the row.
+
+- The client-side CV vision tier + confidence-weighted Live-Client/CV fusion (`docs/NO_LLM_PRECOMPUTE_PLAN.md`, the "bigger SECOND program") has its persistence + fusion substrate BUILT and ALL DORMANT - the icon dhash atlas (227 icons), the OCR region-map atlas (25 regions) and `core/vision_fusion.py`; the module/artefact enumeration is relocated 2026-09-02 to `docs/ROADMAP_HISTORY.md`. `fuse_reads` is WIRED SHADOW-FIRST (2026-07-17, LEDGER 914 S6, `b2952b96`) - the ARAM/Arena vision tick appends a per-tick record to `data/fusion_shadow.jsonl` at the `GameVisionReader.read_tiered` chokepoint, coach output byte-identical.
+
+### Two already-closed blocks from `## NEXT` (reported explicitly, since NEXT was out of the pass's default scope)
+
+Both are unambiguously CLOSED - one says "ALL CLOSED" in its own heading, the
+other says "the row is CLOSED". Their ids and their fences stay on the stubs in
+`ROADMAP.md`; only the surrounding wording moved.
+
+- `### DS defensive-half sweep GAP specs (R132, 2026-07-19) - ALL CLOSED, fences RELOCATED`
+- ALL CLOSED: **R134 CLOSED-REFUTED**, **R135 CLOSED-INERT**, **RM-99 / RM-99b / RM-101 / RM-102 / RM-103 / RM-104 / RM-105 / RM-108 / RM-114**. Read their verdicts in `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block; this fence paragraph archived verbatim in the 2026-09-07e block) before touching the DS scorer/item surface - RM-99's coefficient is 10 percent, NOT 8; RM-102 / RM-104 are PLURAL Arena mirrors.
+- > **NEXT-5 TRIAGE (2026-08-02) relocated VERBATIM to `docs/ROADMAP_HISTORY.md`**; its two durable conclusions survive as the rows themselves (RM-122 operator-present ONLY; RM-118 seam debt + the RM-35..RM-48 GAPs as the headless-actionable pair). Pointer text archived in the 2026-09-07e block.
+
+### RM-480 (RM-81 ratio overrides, shipped in ENGINE 1.283.0)
+
+- **[x] RM-480: RM-81 ratio overrides for 7 HIGH stale-ability champions** - SHIPPED in ENGINE 1.283.0 (DEFAULT-OFF behind `apply_ability_base_overrides`): `AbilityBaseOverride.field` lifts the registry to per-rank ratio fields; Poppy Q, Qiyana Q, Thresh E, Kennen R, ChoGath E, Cassiopeia E, LeBlanc R seeded with wiki-measured per-rank values; the staleness report now marks `resolved_by_override`. Left open: Qiyana Q form 1 (Elemental Wrath), the other five LeBlanc R blocks, Kennen R cooldown, and the stale Naafiri R entry (wiki now 125..275).
+
 ## 2026-09-21 - size-budget relocation pass (the ninth), 2 rows
 
 `python tools/drift_guard.py` reported `ROADMAP.md` at 92 percent of its
