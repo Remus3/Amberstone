@@ -76,7 +76,19 @@ a .pyc), RM-494 (Settled block is search-narrowing prose), RM-495 and RM-497 are
 REFUTED-and-kept so nobody re-files them, RM-496 (sweep for self-tests that
 re-implement rather than call their subject).
 
-NEEDS YOUR CALL: CLAUDE.md says the channel is "RC plus two sibling checkouts",
+NEEDS YOUR CALL (1): CLAUDE.md sits at 91 percent of its 61440-byte budget and
+drift_guard.py exits 1 on it every run. It is NOT a CI failure - CI never invokes
+drift_guard.py, and the hard gate tests/test_doc_size_budget.py passes at 91
+percent. A slice sized all 22 bullets in the Settled section: exactly ONE is a
+safe mechanical move, at 144 bytes, against the ~2000 needed. Every larger bullet
+is a carve-out, a recorded falsification or an explicit prohibition, and that
+section exists to be read every session. So the saving has to come from demoting
+specific fences to an ADR or a memory file, which is your call, not a mechanical
+relocation. Three candidate blocks, all long prose with a natural home elsewhere:
+"Third-party lift: license gate", "Session Default", "Execution Efficiency".
+Do NOT let a later session "fix" this by deleting fences.
+
+NEEDS YOUR CALL (2): CLAUDE.md says the channel is "RC plus two sibling checkouts",
 but ops/moon_sync_repos.json carries FIVE sibling participant codes and
 docs/CHANNEL.md says the roster is six. That may be carriers-versus-participants
 rather than an error, so it was flagged and NOT rewritten.
