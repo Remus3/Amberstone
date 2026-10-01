@@ -21,6 +21,30 @@ each of them:
      now returns None for "could not measure" and [] for "measured, no
      RC-* tasks", and both are loud.
 
+Three further defects, measured 2026-09-30 and pinned at the bottom of this
+file:
+
+  5. ONE TASK PRODUCED TWO ANOMALIES. The state loop reported a Disabled task
+     as DISARMED and then the artifact loop reported the SAME task again as
+     artifact UNKNOWN/STALE. The stale artifact is a symptom of the disarm,
+     not an independent finding, so the artifact arm now skips any task whose
+     root cause the state loop already named.
+  6. THE WINDOW COLLIDED WITH THE LOG REAPER, so STALE was unreachable. The
+     RC-WeeklyHygiene signal is logs/weekly_hygiene_*.log, and
+     core/log_retention.py deletes logs/*.log* at 14 days - exactly the
+     two-interval stale window. The evidence was gone on the same day it
+     would first have fired, so the signal could only read FRESH or UNKNOWN.
+     The log-backed window is now strictly shorter than retention, and the
+     STRICT INEQUALITY is guarded, not just patched.
+  7. DELIBERATE DISARMS READ AS ANOMALIES. The three headless-claude tasks the
+     operator disabled on 2026-09-11 reported as faults at every session
+     start. They are now ACKNOWLEDGED: still printed, still visible, with the
+     re-arm precondition attached, but not counted as anomalies. The
+     acknowledgement covers the DISARM only - re-enabled and failing, or
+     re-enabled and producing nothing, still reports. For RC-InboxResponder
+     the polarity is INVERTED: CLAUDE.md requires it to stay disarmed, so
+     finding it ENABLED is the anomaly.
+
 Also pinned: 2147946720 (0x800710E0, Win32 4320 "the operator or
 administrator has refused the request") is the signature of an
 ExecutionTimeLimit kill and is a FAILURE. The ONE narrow suppression kept
@@ -37,6 +61,7 @@ All authored content here is 7-bit ASCII.
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -186,13 +211,16 @@ def test_missing_last_result_is_unknown_not_ok():
 
 
 def test_disabled_weekly_task_surfaces_as_disarmed(tmp_path):
-    rows = [_row("RC-WeeklyHygiene", state="Disabled", last_result=0,
+    """An UNACKNOWLEDGED disarm is still an anomaly. RC-WeeklyHygiene cannot
+    carry this case any more - it is on the acknowledged roster - so the
+    generic arm is pinned with a periodic task that is not."""
+    rows = [_row("RC-RewindCatchup", state="Disabled", last_result=0,
                  triggers="MSFT_TaskWeeklyTrigger")]
     lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=time.time())
     blob = "\n".join(lines + anomalies)
     assert "DISARMED" in blob
-    assert "RC-WeeklyHygiene" in blob
-    assert any("DISARMED" in a and "RC-WeeklyHygiene" in a for a in anomalies)
+    assert "RC-RewindCatchup" in blob
+    assert any("DISARMED" in a and "RC-RewindCatchup" in a for a in anomalies)
 
 
 def test_disabled_task_with_only_a_logon_trigger_is_not_disarmed(tmp_path):
@@ -351,10 +379,72 @@ def test_weekly_hygiene_signal_uses_the_newest_log_file(tmp_path):
     assert age < 3 * _DAY
 
 
-def test_stale_threshold_is_two_scheduled_intervals():
-    for sig in rc_facts.TASK_ARTIFACTS.values():
-        assert sig.stale_after_s == 2.0 * sig.interval_s
-        assert sig.interval_s == _WEEK
+def test_stale_threshold_is_two_intervals_unless_a_reaper_forces_it_shorter():
+    assert rc_facts.TASK_ARTIFACTS, "an empty signal table would make this vacuous"
+    for name, sig in rc_facts.TASK_ARTIFACTS.items():
+        assert sig.interval_s == _WEEK, name
+        if _is_log_backed(sig):
+            # Two intervals is 14d, which is EXACTLY the log reaper's cutoff,
+            # so the two-interval default makes STALE unreachable here.
+            assert sig.stale_after_s < 2.0 * sig.interval_s, name
+        else:
+            assert sig.stale_after_s == 2.0 * sig.interval_s, name
+
+
+# ------------------------------------- defect 2: the window-collision invariant
+
+
+def _is_log_backed(sig) -> bool:
+    return sig.kind == rc_facts.ARTIFACT_NEWEST_GLOB and sig.path.startswith("logs/")
+
+
+def test_rc_facts_mirrors_the_live_log_retention_default():
+    """rc_facts carries its own copy of the reaper cutoff so the SessionStart
+    hook stays import-light. This pins the copy to the real value."""
+    from core import log_retention
+
+    assert rc_facts.LOG_RETENTION_MAX_AGE_S == (
+        log_retention._DEFAULT_MAX_AGE_DAYS * 86400.0
+    )
+
+
+def test_log_backed_artifact_window_is_strictly_under_log_retention():
+    """THE REAL DEFECT-2 BUG, guarded rather than only patched.
+
+    core/log_retention.py deletes logs/*.log* older than 14 days. If a
+    log-backed signal's stale window is also 14 days the file is gone before
+    it can ever read STALE, so the detector can only report FRESH or UNKNOWN.
+    Strictly-less is the invariant; this test FAILS the moment the two windows
+    are made equal again.
+    """
+    log_backed = {n: s for n, s in rc_facts.TASK_ARTIFACTS.items() if _is_log_backed(s)}
+    assert log_backed, "no log-backed signal found - this guard would be vacuous"
+    for name, sig in log_backed.items():
+        assert sig.stale_after_s < rc_facts.LOG_RETENTION_MAX_AGE_S, (
+            f"{name}: stale window {sig.stale_after_s}s is not strictly under the "
+            f"{rc_facts.LOG_RETENTION_MAX_AGE_S}s log retention - STALE is unreachable"
+        )
+
+
+def test_weekly_hygiene_stale_is_reachable_before_the_reaper_deletes_the_log(tmp_path):
+    """Behavioural proof, not just an arithmetic one: a log aged into the band
+    between the detector window and the reaper cutoff really reads STALE."""
+    sig = rc_facts.TASK_ARTIFACTS["RC-WeeklyHygiene"]
+    now = time.time()
+    logs = tmp_path / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    f = logs / "weekly_hygiene_2026-09-01.log"
+    f.write_text("x", encoding="utf-8")
+
+    age = (sig.stale_after_s + rc_facts.LOG_RETENTION_MAX_AGE_S) / 2.0
+    assert sig.stale_after_s < age < rc_facts.LOG_RETENTION_MAX_AGE_S, (
+        "the reachable band is empty - the windows collided again"
+    )
+    os.utime(f, (now - age, now - age))
+
+    status, got_age, _detail = rc_facts.artifact_status(sig, tmp_path, now)
+    assert status == rc_facts.ARTIFACT_STALE
+    assert got_age is not None and got_age > sig.stale_after_s
 
 
 # ------------------------------------------------------------- banner shape
@@ -483,3 +573,174 @@ def test_main_emits_the_probe_failure_anomaly(monkeypatch, tmp_path):
     text = buf.getvalue()
     assert "PROBE FAILED" in text
     assert "! Anomalies" in text
+
+
+# -------------------------------------------- defect 1: one task, one anomaly
+
+
+def test_a_disarmed_task_reports_one_anomaly_not_two(tmp_path):
+    """The state loop and the artifact loop used to BOTH fire for the same
+    task: once DISARMED, once "artifact UNKNOWN/STALE". One task with one root
+    cause gets one anomaly - the disarm, which is why the artifact is stale.
+    """
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    _write_json(tmp_path / "data" / "rewind_catchup.state.json",
+                {"last_run_at": _iso(now, 90 * _DAY)})
+    rows = [r for r in _all_weekly_rows(now) if r["name"] != "RC-RewindCatchup"]
+    rows.append(_row("RC-RewindCatchup", state="Disabled", last_result=0,
+                     triggers="MSFT_TaskWeeklyTrigger"))
+
+    _lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-RewindCatchup" in a]
+    assert len(mine) == 1, mine
+    assert "DISARMED" in mine[0]
+    assert "artifact" not in mine[0].lower()
+
+
+def test_an_acknowledged_disarm_does_not_fire_a_second_artifact_anomaly(tmp_path):
+    """Same collision, reached through the acknowledged path. The artifact arm
+    must not turn an acknowledged, non-anomalous disarm back into an anomaly.
+    """
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    # Delete the hygiene log so the artifact arm WOULD report UNKNOWN.
+    for p in (tmp_path / "logs").glob("weekly_hygiene_*.log"):
+        p.unlink()
+    rows = [r for r in _all_weekly_rows(now) if r["name"] != "RC-WeeklyHygiene"]
+    rows.append(_row("RC-WeeklyHygiene", state="Disabled", last_result=0,
+                     triggers="MSFT_TaskWeeklyTrigger"))
+
+    _lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    assert [a for a in anomalies if "RC-WeeklyHygiene" in a] == [], anomalies
+
+
+# ------------------------------------- defect 3: acknowledged, still VISIBLE
+
+
+def test_acknowledged_disarm_roster_matches_the_2026_09_11_operator_stop():
+    """docs/history_notes.md: "Three headless-claude scheduled tasks were
+    disabled in the same wrap: RC-CIWatchdog, RC-WeeklyHygiene,
+    RC-InboxResponder." Exactly those three, no silent fourth.
+    """
+    assert set(rc_facts.ACKNOWLEDGED_DISARMS) == {
+        "RC-CIWatchdog",
+        "RC-WeeklyHygiene",
+        "RC-InboxResponder",
+    }
+    for name, why in rc_facts.ACKNOWLEDGED_DISARMS.items():
+        assert why.strip(), name
+        assert "2026-09-11" in why, name
+    assert rc_facts.DISARM_REQUIRED_TASKS == frozenset({"RC-InboxResponder"})
+
+
+def test_an_acknowledged_disarm_is_visible_but_not_an_anomaly(tmp_path):
+    rows = [_row("RC-CIWatchdog", state="Disabled", last_result=0,
+                 triggers="MSFT_TaskDailyTrigger")]
+    lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=time.time())
+    assert [a for a in anomalies if "RC-CIWatchdog" in a] == [], anomalies
+    mine = [ln for ln in lines if "RC-CIWatchdog" in ln]
+    assert len(mine) == 1, lines
+    assert "ACKNOWLEDGED" in mine[0]
+    assert "2026-09-11" in mine[0]
+
+
+def test_an_acknowledged_disarm_stays_visible_on_an_otherwise_clean_run(tmp_path):
+    """NOT suppression. A clean run normally prints one summary line; an
+    acknowledged disarm must still earn a line of its own below it.
+    """
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    rows = [r for r in _all_weekly_rows(now) if r["name"] != "RC-WeeklyHygiene"]
+    rows.append(_row("RC-WeeklyHygiene", state="Disabled", last_result=0,
+                     triggers="MSFT_TaskWeeklyTrigger"))
+
+    lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    assert anomalies == []
+    assert len(lines) >= 2, lines
+    assert any("RC-WeeklyHygiene" in ln and "ACKNOWLEDGED" in ln for ln in lines)
+    assert "acknowledged" in lines[0]
+
+
+def test_an_acknowledged_task_re_enabled_and_failing_still_reports_failure(tmp_path):
+    """The acknowledgement covers the DISARM, nothing else. Re-armed and
+    failing is a different failure and must not be masked.
+    """
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    rows = [r for r in _all_weekly_rows(now) if r["name"] != "RC-WeeklyHygiene"]
+    rows.append(_row("RC-WeeklyHygiene", state="Ready", last_result=2147946720,
+                     last_run=_iso(now, _DAY), triggers="MSFT_TaskWeeklyTrigger"))
+
+    _lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-WeeklyHygiene" in a]
+    assert len(mine) == 1, anomalies
+    assert "FAILURE" in mine[0]
+    assert "ACKNOWLEDGED" not in mine[0]
+
+
+def test_an_acknowledged_task_re_enabled_with_a_stale_artifact_still_reports_it(tmp_path):
+    """The other masking shape: re-armed, exit 0, producing nothing."""
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    for p in (tmp_path / "logs").glob("weekly_hygiene_*.log"):
+        p.unlink()
+    rows = _all_weekly_rows(now)
+
+    _lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    assert any("RC-WeeklyHygiene" in a and "artifact" in a for a in anomalies), anomalies
+
+
+def test_inbox_responder_found_enabled_is_the_anomaly(tmp_path):
+    """INVERTED. CLAUDE.md: RC-InboxResponder stays DISARMED until an expiring
+    agreement record arms it, so ENABLED is the finding.
+    """
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    rows = _all_weekly_rows(now) + [
+        _row("RC-InboxResponder", state="Ready", last_result=0,
+             last_run=_iso(now, _DAY), triggers="MSFT_TaskDailyTrigger"),
+    ]
+    _lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-InboxResponder" in a]
+    assert len(mine) == 1, anomalies
+    assert "ENABLED" in mine[0]
+    assert "DISARMED" in mine[0]
+
+
+def test_inbox_responder_disabled_is_the_required_state_not_an_anomaly(tmp_path):
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    rows = _all_weekly_rows(now) + [
+        _row("RC-InboxResponder", state="Disabled", last_result=0,
+             triggers="MSFT_TaskDailyTrigger"),
+    ]
+    lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    assert [a for a in anomalies if "RC-InboxResponder" in a] == [], anomalies
+    assert any("RC-InboxResponder" in ln for ln in lines)
+
+
+def test_inbox_responder_running_counts_as_enabled_for_the_inversion(tmp_path):
+    """Any non-Disabled state is armed, not just Ready."""
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    rows = _all_weekly_rows(now) + [
+        _row("RC-InboxResponder", state="Running",
+             last_result=rc_facts.TASK_RESULT_RUNNING,
+             last_run=_iso(now, _DAY), triggers="MSFT_TaskDailyTrigger"),
+    ]
+    _lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=now)
+    assert any("RC-InboxResponder" in a and "ENABLED" in a for a in anomalies), anomalies
+
+
+def test_acknowledged_lines_are_ascii(tmp_path):
+    rows = [
+        _row("RC-CIWatchdog", state="Disabled", last_result=0,
+             triggers="MSFT_TaskDailyTrigger"),
+        _row("RC-InboxResponder", state="Ready", last_result=0,
+             triggers="MSFT_TaskDailyTrigger"),
+    ]
+    lines, anomalies = rc_facts.task_health_lines(rows, root=tmp_path, now=time.time())
+    for s in lines + anomalies:
+        assert s.isascii(), s
+        assert chr(0x2014) not in s and chr(0x2013) not in s
