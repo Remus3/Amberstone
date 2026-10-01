@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "version": "16.18.1",
+  "version": "16.19.1",
   "basic": {
     "name": "",
     "rune": {
@@ -20115,16 +20115,14 @@
         "30": false,
         "453": true
       },
-      "stats": {
-        "FlatHPPoolMod": 30
-      },
+      "stats": {},
       "effect": {
         "Effect1Amount": "3"
       }
     },
     "3866": {
       "name": "Runic Compass",
-      "description": "<mainText><stats><attention>100</attention> Health<br><attention>50%</attention> Base Health Regen<br><attention>50%</attention> Base Mana Regen<br><attention>5</attention> Gold Per 10 Seconds</stats><br><br><passive>Support Quest</passive><br>Earn <keywordMajor>0</keywordMajor> gold from this item to transform it into <rarityGeneric>Bounty of Worlds</rarityGeneric>. <br><br><passive>Shared Riches</passive> (0s, max 0 charges)<br>While near an ally champion, damage enemy champions or kill minions to gain gold.<active>Active</active> (3 charges)<br>Places an <keyword>Invisible</keyword> Stealth Ward that grants vision.</mainText>",
+      "description": "<mainText><stats><attention>60</attention> Health<br><attention>75%</attention> Base Health Regen<br><attention>50%</attention> Base Mana Regen<br><attention>5</attention> Gold Per 10 Seconds</stats><br><br><passive>Support Quest</passive><br>Earn <keywordMajor>0</keywordMajor> gold from this item to transform it into <rarityGeneric>Bounty of Worlds</rarityGeneric>. <br><br><passive>Shared Riches</passive> (0s, max 0 charges)<br>While near an ally champion, damage enemy champions or kill minions to gain gold.<active>Active</active> (3 charges)<br>Places an <keyword>Invisible</keyword> Stealth Ward that grants vision.</mainText>",
       "colloq": "",
       "plaintext": "",
       "specialRecipe": 3865,
@@ -20159,7 +20157,7 @@
         "453": true
       },
       "stats": {
-        "FlatHPPoolMod": 100
+        "FlatHPPoolMod": 60
       },
       "effect": {
         "Effect1Amount": "5"
@@ -26711,7 +26709,7 @@
         "full": "8001.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 0,
         "w": 48,
         "h": 48
@@ -26753,7 +26751,7 @@
         "full": "8010.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 0,
         "w": 48,
         "h": 48
@@ -26796,7 +26794,7 @@
         "full": "8020.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 0,
         "w": 48,
         "h": 48
@@ -26836,8 +26834,8 @@
         "full": "9168.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 384,
-        "y": 0,
+        "x": 0,
+        "y": 48,
         "w": 48,
         "h": 48
       },
@@ -26866,8 +26864,8 @@
         "full": "9171.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 432,
-        "y": 0,
+        "x": 48,
+        "y": 48,
         "w": 48,
         "h": 48
       },
@@ -26896,7 +26894,7 @@
         "full": "9172.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 0,
+        "x": 96,
         "y": 48,
         "w": 48,
         "h": 48
@@ -26926,7 +26924,7 @@
         "full": "9173.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 48,
+        "x": 144,
         "y": 48,
         "w": 48,
         "h": 48
@@ -26956,7 +26954,7 @@
         "full": "9174.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 96,
+        "x": 192,
         "y": 48,
         "w": 48,
         "h": 48
@@ -26986,7 +26984,7 @@
         "full": "9175.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 144,
+        "x": 240,
         "y": 48,
         "w": 48,
         "h": 48
@@ -27016,7 +27014,7 @@
         "full": "9176.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 192,
+        "x": 288,
         "y": 48,
         "w": 48,
         "h": 48
@@ -27046,7 +27044,7 @@
         "full": "9177.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 48,
         "w": 48,
         "h": 48
@@ -27076,7 +27074,7 @@
         "full": "9178.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 48,
         "w": 48,
         "h": 48
@@ -27106,7 +27104,7 @@
         "full": "9179.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 48,
         "w": 48,
         "h": 48
@@ -27136,8 +27134,8 @@
         "full": "9180.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 384,
-        "y": 48,
+        "x": 0,
+        "y": 96,
         "w": 48,
         "h": 48
       },
@@ -27166,8 +27164,8 @@
         "full": "9181.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 432,
-        "y": 48,
+        "x": 48,
+        "y": 96,
         "w": 48,
         "h": 48
       },
@@ -27196,7 +27194,7 @@
         "full": "9183.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 0,
+        "x": 96,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27226,7 +27224,7 @@
         "full": "9184.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 48,
+        "x": 144,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27256,7 +27254,7 @@
         "full": "9185.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 96,
+        "x": 192,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27286,7 +27284,7 @@
         "full": "9187.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 144,
+        "x": 240,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27316,7 +27314,7 @@
         "full": "9188.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 192,
+        "x": 288,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27346,7 +27344,7 @@
         "full": "9189.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27376,7 +27374,7 @@
         "full": "9190.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27406,7 +27404,7 @@
         "full": "9192.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 96,
         "w": 48,
         "h": 48
@@ -27436,8 +27434,8 @@
         "full": "9193.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 384,
-        "y": 96,
+        "x": 0,
+        "y": 144,
         "w": 48,
         "h": 48
       },
@@ -27467,8 +27465,8 @@
         "full": "9271.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 432,
-        "y": 96,
+        "x": 48,
+        "y": 144,
         "w": 48,
         "h": 48
       },
@@ -27498,7 +27496,7 @@
         "full": "9272.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 0,
+        "x": 96,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27529,7 +27527,7 @@
         "full": "9273.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 48,
+        "x": 144,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27560,7 +27558,7 @@
         "full": "9274.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 96,
+        "x": 192,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27591,7 +27589,7 @@
         "full": "9275.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 144,
+        "x": 240,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27622,7 +27620,7 @@
         "full": "9276.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 192,
+        "x": 288,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27653,7 +27651,7 @@
         "full": "9277.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27684,7 +27682,7 @@
         "full": "9278.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27715,7 +27713,7 @@
         "full": "9279.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 144,
         "w": 48,
         "h": 48
@@ -27746,8 +27744,8 @@
         "full": "9280.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 384,
-        "y": 144,
+        "x": 0,
+        "y": 192,
         "w": 48,
         "h": 48
       },
@@ -27777,8 +27775,8 @@
         "full": "9281.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 432,
-        "y": 144,
+        "x": 48,
+        "y": 192,
         "w": 48,
         "h": 48
       },
@@ -27808,7 +27806,7 @@
         "full": "9283.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 0,
+        "x": 96,
         "y": 192,
         "w": 48,
         "h": 48
@@ -27839,7 +27837,7 @@
         "full": "9284.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 48,
+        "x": 144,
         "y": 192,
         "w": 48,
         "h": 48
@@ -27870,7 +27868,7 @@
         "full": "9285.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 96,
+        "x": 192,
         "y": 192,
         "w": 48,
         "h": 48
@@ -27901,7 +27899,7 @@
         "full": "9287.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 144,
+        "x": 240,
         "y": 192,
         "w": 48,
         "h": 48
@@ -27932,7 +27930,7 @@
         "full": "9288.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 192,
+        "x": 288,
         "y": 192,
         "w": 48,
         "h": 48
@@ -27963,7 +27961,7 @@
         "full": "9289.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 192,
         "w": 48,
         "h": 48
@@ -27994,7 +27992,7 @@
         "full": "9290.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 192,
         "w": 48,
         "h": 48
@@ -28025,7 +28023,7 @@
         "full": "9292.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 192,
         "w": 48,
         "h": 48
@@ -28056,8 +28054,8 @@
         "full": "9293.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 384,
-        "y": 192,
+        "x": 0,
+        "y": 240,
         "w": 48,
         "h": 48
       },
@@ -28086,8 +28084,8 @@
         "full": "9300.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 432,
-        "y": 192,
+        "x": 48,
+        "y": 240,
         "w": 48,
         "h": 48
       },
@@ -28116,7 +28114,7 @@
         "full": "9301.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 0,
+        "x": 96,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28146,7 +28144,7 @@
         "full": "9302.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 48,
+        "x": 144,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28176,7 +28174,7 @@
         "full": "9303.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 96,
+        "x": 192,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28206,7 +28204,7 @@
         "full": "9304.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 144,
+        "x": 240,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28236,7 +28234,7 @@
         "full": "9305.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 192,
+        "x": 288,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28266,7 +28264,7 @@
         "full": "9306.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28296,7 +28294,7 @@
         "full": "9307.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28326,7 +28324,7 @@
         "full": "9308.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 240,
         "w": 48,
         "h": 48
@@ -28357,8 +28355,8 @@
         "full": "9400.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 384,
-        "y": 240,
+        "x": 0,
+        "y": 288,
         "w": 48,
         "h": 48
       },
@@ -28388,8 +28386,8 @@
         "full": "9401.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 432,
-        "y": 240,
+        "x": 48,
+        "y": 288,
         "w": 48,
         "h": 48
       },
@@ -28419,7 +28417,7 @@
         "full": "9402.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 0,
+        "x": 96,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28450,7 +28448,7 @@
         "full": "9403.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 48,
+        "x": 144,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28481,7 +28479,7 @@
         "full": "9404.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 96,
+        "x": 192,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28512,7 +28510,7 @@
         "full": "9405.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 144,
+        "x": 240,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28543,7 +28541,7 @@
         "full": "9406.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 192,
+        "x": 288,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28574,7 +28572,7 @@
         "full": "9407.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 240,
+        "x": 336,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28605,7 +28603,7 @@
         "full": "9408.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 288,
+        "x": 384,
         "y": 288,
         "w": 48,
         "h": 48
@@ -28635,7 +28633,7 @@
         "full": "994403.png",
         "sprite": "item8.png",
         "group": "item",
-        "x": 336,
+        "x": 432,
         "y": 288,
         "w": 48,
         "h": 48
@@ -29640,6 +29638,10 @@
       "MaxGroupOwnable": "1"
     },
     {
+      "id": "3074",
+      "MaxGroupOwnable": "1"
+    },
+    {
       "id": "3075",
       "MaxGroupOwnable": "1"
     },
@@ -29869,6 +29871,10 @@
     },
     {
       "id": "3742",
+      "MaxGroupOwnable": "1"
+    },
+    {
+      "id": "3748",
       "MaxGroupOwnable": "1"
     },
     {
@@ -30105,6 +30111,10 @@
     },
     {
       "id": "6697",
+      "MaxGroupOwnable": "1"
+    },
+    {
+      "id": "6698",
       "MaxGroupOwnable": "1"
     },
     {
