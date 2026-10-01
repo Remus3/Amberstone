@@ -1,81 +1,65 @@
 NEXT SESSION
 ------------
-Task: decide the six `lane/*` ref pushes. They are the ONLY thing left unfinished from
-the 2026-09-30b tidy-up. All six are fast-forwarded to main LOCALLY and all six pushes
-are HALTED by `tools/sibling_name_sweep.py`. Nothing was pushed, no bypass was used,
-`origin/lane/*` are untouched.
+Task: ONE red test, and it is a tripwire that must not be silently re-pinned.
+ROADMAP NOW-5. tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin
+fails because the Claude CLI moved to 2.1.285 while PINNED_CLI (that file, :34)
+says 2.1.251.
 
-What is already established - do NOT re-derive it:
-  - The 10 findings (3 RESOLUTION, 2 STRUCTURAL, 5 NAME) are HISTORICAL, not live.
-    Every one of the 8 flagged paths scans CLEAN at current HEAD, checked one at a
-    time with `sibling_name_sweep.py --scan-file <path>`: BACKLOG.md,
-    RC-NEXT-SESSION.txt, CLAUDE.md, WAKEUP_NOTES.md,
-    docs/CONCURRENT_HEADLESS_CONTRACT.md, docs/LEDGER.md, ops/loop/slots.py,
-    tests/test_loop_concurrency.py. The findings live in older versions of those paths
-    inside the stale delta, plus one commit message.
-  - The pre-push arm scans the DELTA against the REMOTE REF, and each lane is 528-674
-    commits behind its own origin ref, so it re-reads the whole history since that lane
-    last pushed - 2906 files, 35.6 MB, 674 commit messages.
-  - MEASURED: `main == origin/main`, and the lane delta is 675 commits all of which are
-    already ancestors of origin/main. So the push would transfer ZERO new objects to
-    GitHub - every blob is already server-side and already public. The sweep's model is
-    per-ref, not per-repo, which is why it objects to bytes the remote already has.
+DO NOT just bump the constant. --append-subagent-system-prompt is UNDOCUMENTED,
+so the test's own failure message IS the acceptance and it is a NEGATIVE
+CONTROL: spawn a subagent with a secret codeword in the appended prompt, then
+run the SAME prompt WITHOUT the flag and confirm the codeword does NOT appear.
+Update PINNED_CLI only after that passes. Bumping it blind converts a live
+wire-check into a constant that proves nothing, which is the failure the file's
+own header describes.
 
-The actual decision, which is the OPERATOR'S and was deliberately left open:
-  (a) bypass once with RC_SIBLING_SWEEP_BYPASS=1 (it proceeds and appends the full
-      would-have-halted report to ops/runtime/sibling_sweep_bypass.log), or
-  (b) delete the six stale origin/lane/* refs and let the lanes recreate them, or
-  (c) leave them stale - they are scratch infrastructure and nothing reads them.
-Do not pick one on your own; the standing rule is that RC halts and waits.
+It is MACHINE-LOCAL, not a CI red: that test skips when neither claude.cmd nor
+claude is on PATH (:76-78), so a runner skips it and CI stays green. Do not
+chase a CI failure for this.
 
-Also carry, because it changes what counts as evidence:
-  - CI's `sibling-sweep-tree` CANNOT see any of this. It loads its name slots from
-    gitignored per-host `ops/moon_sync_repos.json`; CI has no such file, so it runs
-    MODE_DEGRADED, armed with nothing, and passes vacuously. It passed green on the
-    same push whose local arm halted. Never cite that check as sibling-name coverage.
-  - A sweep run with NO `[sibling-sweep] clean: <N> bytes` line has returned NO verdict.
-    An earlier `timeout 600 ... | tail` run exited 0 from `tail` while `timeout` killed
-    the scan mid-run. Never pipe the sweep through anything that masks its exit code.
-  - The full `--tree` run COMPLETED at wrap and is CLEAN: 650,644,164 bytes over 4968
-    files, exit 0. Its own stated blind spot: 482 binary/LFS blobs were not
-    content-scanned. So the working tree is clean for text, which corroborates the
-    per-file result above - do not re-run it to re-establish this.
+Established, do NOT re-derive:
+- The six lane/* refs are GONE from origin, by operator decision, with NO
+  bypass. A delete push does not trip the sweep (all-zero local sha returns
+  None by design). All six SHAs were already ancestors of origin/main, so
+  nothing was orphaned. origin now carries exactly one head: main.
+- All three session-start anomalies are CLOSED. rc_facts.py now prints
+  "0 anomaly(s), 3 acknowledged disarm(s)". The three disarmed tasks are a
+  DELIBERATE operator decision of 2026-09-11 (docs/history_notes.md:1033-1035),
+  NOT a fault. Nothing was re-armed and re-arming needs BOTH halves:
+  Enable-ScheduledTask AND clearing ops/loop/control/STOP. RC-InboxResponder
+  must stay disarmed - the detector now INVERTS that check, so finding it
+  ENABLED is the anomaly.
+- data/rewind_catchup.state.json last_run_at was backfilled to 2026-09-27T09:00:00Z
+  (UTC - the 04:00 local reading was wrong). It is GITIGNORED, so it shows in no
+  diff; evidence is content plus mtime.
+- CLAUDE.md's two sweep/digest paragraphs now cite by SYMBOL, not by line,
+  because three line cites had drifted while still RESOLVING. Do not "helpfully"
+  put line numbers back.
+- Channel drained: 386 notes seen. Two RC notes delivered, each 5 of 5 reached,
+  destinations re-hashed digest-equal.
 
-Do NOT redo (shipped 2026-09-30b):
-  - PR #1 is MERGED as `eed3f8849`. LEDGER 1455 is flipped to DONE.
-  - The secret-exposure fix `72b973780`. Three assertions in
-    tests/test_supervisor_ephemeral_auth_env.py would have printed every env key AND
-    value into the public CI log. Fixed with helpers returning key names only, all four
-    arms probed.
-  - ddragon mirror 16.18.1 -> 16.19.1, commit `199fe7d40`.
-  - Estate cleanup: 50 worktrees removed, 53 branches deleted, fix/weekly-routines gone
-    local and remote, orphan ref refs/remotes/local/main dropped. Use `git cherry`, not
-    `git diff`, if you ever re-audit whether a stale branch held unique work.
-  - RM-486 is ANSWERED as far as blame goes: CI runs the same dual suite clean (35456
-    passed, ~20 min), so the local exit-127 is a Legion harness fault, not a suite
-    defect. The ROOT CAUSE is still open, and the unrun discriminator is `pytest tests`
-    at a pre-branch commit. Do not re-run `pytest tests` here expecting a verdict; a run
-    this session was abandoned at 16 percent after ~50 minutes.
+Carry, both measured this session:
+- A CITATION THAT RESOLVES IS NOT A CITATION THAT IS RIGHT. Three stale cites in
+  CLAUDE.md all resolved and pointed at unrelated text; a fourth in the same
+  paragraph was correct, so sampling one would have passed the paragraph.
+- A SUITE RUN THAT STRADDLES AN EDIT REPORTS A TREE THAT NO LONGER EXISTS. Three
+  of four baseline failures were a slice writing a live file mid-run; they are
+  green on a quiescent tree. Freeze the tree or do not cite the number.
+- The glyph check in .claude/commands/headless-upgrade.md was a FALSE CLEAN:
+  grep -P exits 2 ("-P supports only unibyte and UTF-8 locales") and scans
+  nothing. Replaced with LC_ALL=C grep -n '[^ -~]'. That file is gitignored, so
+  the fix is NOT in any commit - it lives only on this box.
 
-Open and filed this session: RM-488 (the lane/sweep question above), RM-489 (nine
-tracked data/meta_build/ddragon/<patch>/ dirs vs a current+previous retention claim that
-is guarded only at the helper). Also noted: `RM-486` is used TWICE in ROADMAP.md - the
-suite-127 row and a Void Immolation row - so every citation of it is ambiguous until one
-is renumbered.
+Open rows filed, not built: RM-490 (stop_claim_gate blind to INTERNALERROR),
+RM-491 (hand-run sweep arm cannot see an untracked file), RM-492 (no history
+secret scan on a PUBLIC repo), RM-493 (freeze witness is a git witness, blind to
+a .pyc), RM-494 (Settled block is search-narrowing prose), RM-495 and RM-497 are
+REFUTED-and-kept so nobody re-files them, RM-496 (sweep for self-tests that
+re-implement rather than call their subject).
 
-Known CI flake, characterised - do NOT re-diagnose it from scratch:
-`tests/snapshot_panels/test_home_companion_view.py::test_home_companion_reflows_single_column`
-("hero overlaps the Tonight's Pick card") went red once on main, then passed on a
-`--failed` rerun of the SAME sha, and passes locally 6/6. Same web/ bytes were green on
-the PR run, so it is nondeterministic, not a regression. It is a live Playwright
-getBoundingClientRect measurement - font-load / layout-timing shape. It was deliberately
-NOT loosened; the assertion is real geometry and the race is still unfound.
-
-main CI is GREEN as of the rerun of run 36800429907.
-
-Not touched, still waiting: the moon_sync_inbox unread notes.
-
-Acceptance: a decision recorded for the six lane refs, and `git worktree list` plus
-`git branch -a` showing only main, the six lane branches, and whatever the session opens.
+NEEDS YOUR CALL: CLAUDE.md says the channel is "RC plus two sibling checkouts",
+but ops/moon_sync_repos.json carries FIVE sibling participant codes and
+docs/CHANNEL.md says the roster is six. That may be carriers-versus-participants
+rather than an error, so it was flagged and NOT rewritten.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

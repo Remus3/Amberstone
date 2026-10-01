@@ -231,6 +231,26 @@ SERVICE_RUNNING_IMPLAUSIBLE_S = 60 * 86400.0
 
 _WEEK_S = 7 * 86400.0
 
+# RC's own log reaper deletes logs/*.log* older than this. MIRRORED, not
+# imported: rc_facts runs inside a SessionStart hook and must stay import-light
+# (core/log_retention pulls asyncio + threading and starts nothing useful here),
+# and tests/test_rc_facts_cli_dispatch.py execs this module's source into a
+# synthetic namespace where a package-relative import is fragile. The mirror is
+# pinned to the real value by
+# tests/test_rc_facts_task_health.py::test_rc_facts_mirrors_the_live_log_retention_default,
+# so it cannot drift silently.
+# Source: core/log_retention.py _DEFAULT_MAX_AGE_DAYS = 14, glob "*.log*".
+LOG_RETENTION_MAX_AGE_DAYS = 14
+LOG_RETENTION_MAX_AGE_S = LOG_RETENTION_MAX_AGE_DAYS * 86400.0
+
+# A log-backed signal cannot use the two-interval default: 2 * 7d is EXACTLY
+# the reaper cutoff, so the file is deleted on the same day it would first read
+# STALE and the detector can only ever report FRESH or UNKNOWN. 10d is one
+# missed weekly run plus three days of grace, and is strictly inside retention.
+# The strict inequality is the real invariant and is guarded by
+# test_log_backed_artifact_window_is_strictly_under_log_retention.
+LOG_BACKED_STALE_AFTER_S = 10 * 86400.0
+
 ARTIFACT_FRESH = "FRESH"
 ARTIFACT_STALE = "STALE"
 ARTIFACT_UNKNOWN = "UNKNOWN"
@@ -256,7 +276,15 @@ class ArtifactSignal:
     down with it. A plain class has no such dependency.
     """
 
-    __slots__ = ("field", "interval_s", "kind", "match_field", "match_value", "path")
+    __slots__ = (
+        "field",
+        "interval_s",
+        "kind",
+        "match_field",
+        "match_value",
+        "path",
+        "stale_after_override_s",
+    )
 
     def __init__(
         self,
@@ -266,6 +294,7 @@ class ArtifactSignal:
         interval_s: float = _WEEK_S,
         match_field: str | None = None,
         match_value: str | None = None,
+        stale_after_override_s: float | None = None,
     ) -> None:
         self.kind = kind
         self.path = path
@@ -273,6 +302,7 @@ class ArtifactSignal:
         self.interval_s = interval_s
         self.match_field = match_field
         self.match_value = match_value
+        self.stale_after_override_s = stale_after_override_s
 
     def __repr__(self) -> str:
         return f"ArtifactSignal(kind={self.kind!r}, path={self.path!r})"
@@ -281,7 +311,16 @@ class ArtifactSignal:
     def stale_after_s(self) -> float:
         """Two scheduled intervals. One missed run is a blip - a reboot, a
         machine that was off - and firing on it would make the banner noise.
-        Two consecutive misses is a pattern."""
+        Two consecutive misses is a pattern.
+
+        OVERRIDABLE because the default is not always REACHABLE. When the
+        artifact is itself a file some other sweeper deletes, a window at or
+        past that sweeper's cutoff can never fire - the evidence is gone first.
+        Such a signal passes an explicit shorter window; see
+        LOG_BACKED_STALE_AFTER_S.
+        """
+        if self.stale_after_override_s is not None:
+            return float(self.stale_after_override_s)
         return 2.0 * self.interval_s
 
 
@@ -313,8 +352,58 @@ TASK_ARTIFACTS: dict[str, ArtifactSignal] = {
     "RC-WeeklyHygiene": ArtifactSignal(
         kind=ARTIFACT_NEWEST_GLOB,
         path="logs/weekly_hygiene_*.log",
+        # WINDOW COLLISION, measured 2026-09-30. tools/weekly_hygiene_run.ps1
+        # Tee-Objects this log, so a writer really does exist - but
+        # core/log_retention.py deletes logs/*.log* at 14 days, which is
+        # EXACTLY 2 * _WEEK_S. With equal windows this signal could only ever
+        # read FRESH or UNKNOWN and STALE was unreachable.
+        stale_after_override_s=LOG_BACKED_STALE_AFTER_S,
     ),
 }
+
+# ACKNOWLEDGED DISARMS. Three headless-claude tasks the operator disabled in
+# the 2026-09-11 wrap when the headless loop was stopped. They are NOT
+# suppressed: each still prints a line, marked ACKNOWLEDGED, so the disarm and
+# its re-arm precondition stay in front of the operator at every session start.
+# They are simply not counted as anomalies, because a deliberate state is not a
+# fault and three permanent anomalies train the operator to skip the block.
+#
+# WHY CODE AND NOT A CONFIG FILE. This is not a per-machine tunable; it is a
+# record of one dated operator decision with a named re-arm precondition, and
+# the citation belongs next to the names in a reviewable diff. A config file
+# would be worse three ways: rc_facts runs as a SessionStart hook, so a missing
+# or corrupt file would have to fail open, and either direction of failing open
+# is wrong (silently re-reporting, or silently suppressing); an untracked or
+# gitignored config escapes code review entirely; and the acknowledgement is
+# coupled to repo state (ops/loop/control/STOP) rather than to the machine, so
+# it should travel with the repo. Re-arming the loop edits this dict in the
+# same commit that clears STOP and re-enables the tasks.
+#
+# Evidence: docs/history_notes.md 2026-09-11 - "Three headless-claude scheduled
+# tasks were disabled in the same wrap: RC-CIWatchdog, RC-WeeklyHygiene,
+# RC-InboxResponder. Re-arming the loop means clearing STOP and re-enabling
+# those three deliberately."
+ACKNOWLEDGED_DISARMS: dict[str, str] = {
+    "RC-CIWatchdog": (
+        "operator 2026-09-11 - headless loop stopped (ops/loop/control/STOP); "
+        "re-arm means clearing STOP and re-enabling deliberately"
+    ),
+    "RC-WeeklyHygiene": (
+        "operator 2026-09-11 - headless loop stopped (ops/loop/control/STOP); "
+        "re-arm means clearing STOP and re-enabling deliberately"
+    ),
+    "RC-InboxResponder": (
+        "operator 2026-09-11 - headless loop stopped; CLAUDE.md requires it to "
+        "stay DISARMED until an expiring agreement record arms it"
+    ),
+}
+
+# INVERTED POLARITY. For these, DISARMED is the REQUIRED state and finding them
+# ENABLED is the anomaly. CLAUDE.md: "RC-InboxResponder stays DISARMED until an
+# expiring agreement record arms it, and an unattended loop must never arm
+# another repo." No such record exists in-repo, so an armed responder is a
+# finding no matter how healthy its result code looks.
+DISARM_REQUIRED_TASKS: frozenset[str] = frozenset({"RC-InboxResponder"})
 
 # .ToString('o') emits SEVEN fractional digits; datetime.fromisoformat wants at
 # most six. Trimming beats a try/except that silently reports UNKNOWN for every
@@ -589,9 +678,17 @@ def task_health_lines(
              "(the probe worked; the tasks are gone)"],
         )
 
+    ack_lines: list[str] = []
     detail_lines: list[str] = []
     anomalies: list[str] = []
     seen: set[str] = set()
+    # Names whose ROOT CAUSE has already been reported by the state loop. The
+    # artifact loop below must not fire a SECOND anomaly for the same task: a
+    # task that is Disabled, or armed when it must not be, or failing outright,
+    # produces no artifact BECAUSE of that - the stale artifact is the symptom,
+    # not an independent finding. RC-WeeklyHygiene used to appear twice at every
+    # session start for exactly this reason.
+    root_caused: set[str] = set()
 
     for t in rows:
         name = str(t.get("name") or "?")
@@ -600,15 +697,46 @@ def task_health_lines(
         state_s = str(state)
         ts = _parse_ts(t.get("last_run"))
         last_run_age = None if ts is None else now - ts
+        disabled = state_s == "Disabled"
+        since = _age_phrase(last_run_age)
 
-        if state_s == "Disabled":
-            # NOT suppressed any more. A Disabled task used to vanish from the
-            # banner entirely, which is how RC-WeeklyHygiene sat off for weeks
-            # with missed runs and never once appeared. Its stale last_result
-            # really is history rather than current health, so the code is not
-            # graded - but the DISARM itself is the finding.
-            if _is_periodic_task(name, t.get("triggers")):
-                since = _age_phrase(last_run_age)
+        if name in DISARM_REQUIRED_TASKS:
+            # Polarity inverted: Disabled is correct, armed is the finding.
+            if disabled:
+                ack_lines.append(
+                    f"  - {name}: DISARMED (REQUIRED) - "
+                    f"{ACKNOWLEDGED_DISARMS.get(name, 'must stay disabled')}"
+                )
+                root_caused.add(name)
+                continue
+            code = _as_int(t.get("last_result"))
+            anomalies.append(
+                f"Legion: scheduled task {name} ENABLED but must stay DISARMED "
+                f"until an expiring agreement record arms it "
+                f"(state={state_s}, last_result={code}, last run {since})"
+            )
+            detail_lines.append(
+                f"  - {name}: ENABLED but must stay DISARMED state={state_s} - "
+                f"last_result={code}, last run {since}"
+            )
+            root_caused.add(name)
+            continue
+
+        if disabled:
+            # NOT suppressed. A Disabled task used to vanish from the banner
+            # entirely, which is how RC-WeeklyHygiene sat off for weeks with
+            # missed runs and never once appeared. Its stale last_result really
+            # is history rather than current health, so the code is not graded -
+            # but the DISARM itself is the finding, UNLESS the operator already
+            # acknowledged it, in which case it still prints and is not an
+            # anomaly.
+            if name in ACKNOWLEDGED_DISARMS:
+                ack_lines.append(
+                    f"  - {name}: DISARMED (ACKNOWLEDGED) - "
+                    f"{ACKNOWLEDGED_DISARMS[name]}; last run {since}"
+                )
+                root_caused.add(name)
+            elif _is_periodic_task(name, t.get("triggers")):
                 detail_lines.append(
                     f"  - {name}: DISARMED - Disabled with a periodic trigger, "
                     f"last run {since}"
@@ -617,8 +745,12 @@ def task_health_lines(
                     f"Legion: scheduled task {name} DISARMED (Disabled but has a "
                     f"periodic trigger; last run {since})"
                 )
+                root_caused.add(name)
             continue
 
+        # ARMED. An acknowledged disarm acknowledges the DISARM and nothing
+        # else, so a re-enabled task is graded exactly like any other - a
+        # nonzero LastTaskResult or a stale artifact still reports.
         verdict, detail = classify_task_result(
             name, state, t.get("last_result"),
             ds_alive=ds_alive, last_run_age_s=last_run_age,
@@ -627,6 +759,7 @@ def task_health_lines(
             continue
         detail_lines.append(f"  - {name}: {verdict} state={state_s} - {detail}")
         anomalies.append(f"Legion: scheduled task {name} {verdict} - {detail}")
+        root_caused.add(name)
 
     for tname in sorted(TASK_ARTIFACTS):
         if tname not in seen:
@@ -634,6 +767,8 @@ def task_health_lines(
             anomalies.append(
                 f"Legion: weekly task {tname} not registered in Task Scheduler"
             )
+            continue
+        if tname in root_caused:
             continue
         status, age, detail = artifact_status(TASK_ARTIFACTS[tname], root, now)
         if status == ARTIFACT_FRESH:
@@ -645,9 +780,13 @@ def task_health_lines(
         )
 
     head = f"- Scheduled tasks ({len(rows)} RC-*): {len(anomalies)} anomaly(s)"
-    if not anomalies:
+    if ack_lines:
+        head += f", {len(ack_lines)} acknowledged disarm(s)"
+    if not anomalies and not ack_lines:
         return [head], []
-    return [head] + detail_lines, anomalies
+    # Acknowledged lines print FIRST and print even on a clean run: the whole
+    # point is that a deliberate disarm stays visible without being an alarm.
+    return [head] + ack_lines + detail_lines, anomalies
 
 
 def _last_boot_iso() -> str | None:
