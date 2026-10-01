@@ -8,7 +8,7 @@ and ALSO ``[]`` for a KNOWN champion whose every curated item is already owned
 or exclusion-redundant (:373-380). ``get_purchase_advice`` (:602-604) then
 labels BOTH "Unknown champion"; its "BUILD COMPLETE" branch (:615-616) is dead
 whenever ``current_items`` is passed. The frozen caller
-``app/_game_lifecycle.py:472-478`` always passes ``current_items`` and renders
+``app/_game_lifecycle.py:482-488`` always passes ``current_items`` and renders
 ``adv["display"]`` straight into ``app.data["reset_item"]``, so a full-build
 Jinx - one of the six curated champions - read "Unknown champion" on screen.
 
