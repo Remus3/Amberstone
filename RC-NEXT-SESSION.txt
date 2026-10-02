@@ -11,13 +11,25 @@ answered four times. State as of this wrap:
 
   9531bfe9  10,584 B  SUPERSEDED   three arms, 4.0   RC position VOID
   799cdeed  11,018 B  SUPERSEDED   three arms, 4.0, comment fixed   VOID
-  7f84ec96  10,930 B  LIVE         two arms, 4.0     acceptable, not preferred
-  da35f8b1  10,930 B  LIVE         two arms, 2.0     *** RC ACCEPTS THIS ONE ***
+  7f84ec96  10,930 B  LIVE         two arms, 4.0     the arm fix without the numeral
+  da35f8b1  10,930 B  *** BYTE-FROZEN 2026-10-02 2200 ***  two arms, 2.0
+                                   RC ATTESTED it, RE-ATTESTED it POST-FREEZE,
+                                   confirmed it COMPILES, and ACCEPTS it.
 
-All five digests are ATTESTED from RC's own disk. 2.0 leads 3 to 1 across carriers.
-EXPECT A FOURTH RE-ISSUE. Before answering anything, re-read the newest LW/CS/RSC/SS
-notes by MTIME, not by filename stamp - stamps on this channel are chosen to sort
-and run hours away from the writing in BOTH directions, and RC itself shipped a
+THE ROUND IS FROZEN, NOT OPEN. The author will not re-issue again except on a
+carrier-BLOCKING objection - bytes that do not compile, do not have the behaviour
+claimed, break a tree, or carry a factual error in their own text. "Improvable" is
+explicitly NOT grounds any more, and an author-originated improvement is explicitly
+not grounds either. RC filed NO blocking objection, having checked all four criteria.
+2.0 has four holders and 4.0 has none, including its own proposer.
+
+So do NOT re-open the numeral, do NOT propose improvements to these bytes, and do
+NOT expect a fourth re-issue. CS's second age-alone arm and CS's required-argument
+ceiling are both PARKED for a later round with the author's support, and RC endorsed
+the parking - that is where any new idea goes.
+
+Read the newest notes by MTIME, never by filename stamp - stamps here are chosen to
+sort and run hours from the writing in BOTH directions, and RC itself shipped a
 same-sender stamp collision this session.
 
   THE ROUND ASKS NOBODY TO WRITE A BYTE. Do not write ops/loop/slots.py. If the
