@@ -92,6 +92,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 ROADMAP = "ROADMAP.md"
 BACKLOG = "BACKLOG.md"
+LEDGER = "docs/LEDGER.md"
 
 #: Live-doc floors for the anti-vacuity arms. Deliberately far below the real
 #: figures (measured in the low hundreds on both docs when this landed) so an
@@ -99,6 +100,13 @@ BACKLOG = "BACKLOG.md"
 #: matching does.
 _MIN_IDS = 40
 _MIN_MARKERS = 20
+
+#: Live floor for the LEDGER anti-vacuity arm. 88 ids carried a bound
+#: disposition and 86 parsed as closed when this landed (2026-10-02); 30 leaves
+#: a wide margin for an archive relocation while still reddening on a parser
+#: that quietly stops matching. The ledger is append-only, so this floor can
+#: only ever get easier to clear.
+_MIN_LEDGER_CLOSURES = 30
 
 
 class RoadmapMarkerBinding(unittest.TestCase):
@@ -338,6 +346,211 @@ class LiveDocsAgreeOnDisposition(unittest.TestCase):
             f"{BACKLOG}:{body.line} now says RM-251 is {body.marker}. If that is "
             f"correct, reconcile the RM-251 pointer in {ROADMAP} in the same "
             "commit - do not leave it reading OPEN.",
+        )
+
+
+class LedgerClosureReading(unittest.TestCase):
+    """How a LEDGER closure record is told from a LEDGER mention.
+
+    Synthetic text only - the live arms are below. Every shape here was taken
+    off the real file during the 2026-10-02 measurement, then re-expressed in
+    the reserved `RM-9xx` band.
+    """
+
+    def test_a_closure_marker_makes_an_id_closed(self) -> None:
+        text = "1426. DONE **2026-09-18** - **RM-920 - CLOSED BY REFUSAL.** Done."
+        self.assertEqual("CLOSED", reg.ledger_closed_ids(text)[920].marker)
+
+    def test_a_bare_mention_is_not_a_closure(self) -> None:
+        """PRESENCE IS NOT A DISPOSITION - the dominant over-read.
+
+        Measured live: 49 of the 52 ids carrying a bare OPEN in ROADMAP.md
+        appear somewhere in LEDGER, and essentially none are drift. A
+        presence-means-done rule reports all 49.
+        """
+        text = "1426. DONE **2026-09-18** - the hand-off named RM-920 as fallback."
+        self.assertNotIn(920, reg.ledger_closed_ids(text))
+
+    def test_an_entry_quoting_a_rows_filed_OPEN_state_does_not_read_as_closed(
+        self,
+    ) -> None:
+        """The `RM-217` shape: the entry that REFUTES a row quotes it first.
+
+        `RM-217 OPEN** (filed 2026-08-15) whose ACCEPTANCE prescribed ...` sits
+        in the very entry that closed it. The `OPEN` is a quotation of history,
+        not a live disposition, and nothing in the text distinguishes the two -
+        which is exactly why it disqualifies instead of being out-voted.
+        """
+        text = (
+            "1427. DONE **2026-09-12** - **RM-920 OPEN** (filed 2026-08-15) whose "
+            "ACCEPTANCE prescribed a marker. REFUTED. Also **RM-921 CLOSED**."
+        )
+        self.assertNotIn(920, reg.ledger_closed_ids(text))
+        self.assertEqual("CLOSED", reg.ledger_closed_ids(text)[921].marker)
+
+    def test_a_closure_marker_elsewhere_does_not_out_vote_the_quoted_open(
+        self,
+    ) -> None:
+        """The disqualifier is file-wide, not per-entry. Uncertain reads as open."""
+        text = "1. DONE - **RM-920 CLOSED**\n2. DONE - RM-920 OPEN** when filed"
+        self.assertNotIn(920, reg.ledger_closed_ids(text))
+
+    def test_a_PARTIAL_record_is_not_a_finished_record(self) -> None:
+        text = "1426. DONE - **RM-920 PARTIAL - 1 of 5 closed; RM-921 SHIPPED**"
+        self.assertNotIn(920, reg.ledger_closed_ids(text))
+        self.assertIn(921, reg.ledger_closed_ids(text))
+
+    def test_ledger_carries_no_row_bodies_so_the_row_rule_is_the_wrong_one(
+        self,
+    ) -> None:
+        """Measured 2026-10-02: zero `- **RM-NN` openers in the live file.
+
+        This pins WHY `ledger_closed_ids` uses the run rule. If LEDGER ever
+        grows declarative row bodies, this fails and the choice gets re-made
+        deliberately instead of silently staying wrong.
+        """
+        self.assertEqual(
+            {},
+            reg.backlog_row_dispositions(reg.read(REPO_ROOT / LEDGER)),
+            f"{LEDGER} now carries `- **RM-NN` row openers. Re-decide which "
+            "parser ledger_closed_ids should use.",
+        )
+
+
+class LedgerDriftSyntheticControl(unittest.TestCase):
+    """Constructed drifted pairs ARE detected - so the live arms can fire."""
+
+    def test_a_backlog_row_still_open_over_a_ledger_closure_is_reported(self) -> None:
+        drifted = reg.backlog_ledger_drift(
+            "- **RM-920 OPEN (filed 2026-09-17, LANE 7, Tier-1)** - a tail.",
+            "1426. DONE - **RM-920 - CLOSED BY REFUSAL (`a6af3a3e5`).** Done.",
+        )
+        self.assertEqual([920], [row.rm_id for row in drifted])
+        self.assertEqual("BACKLOG.md", drifted[0].doc)
+
+    def test_a_roadmap_bare_open_over_a_ledger_closure_is_reported(self) -> None:
+        drifted = reg.roadmap_ledger_drift(
+            "- [!] **RM-920 OPEN** - a tail.",
+            "1426. DONE - **RM-920 SHIPPED 2026-09-08.**",
+        )
+        self.assertEqual([920], [row.rm_id for row in drifted])
+
+    def test_a_roadmap_row_that_already_names_the_closure_is_not_drift(self) -> None:
+        self.assertEqual(
+            (),
+            reg.roadmap_ledger_drift(
+                "- **RM-920 SHIPPED; RM-921 OPEN**",
+                "1426. DONE - **RM-920 SHIPPED 2026-09-08.**",
+            ),
+        )
+
+    def test_the_half_closed_control_survives_the_ledger_arm_too(self) -> None:
+        """`RM-281 HALF-CLOSED + RM-283 OPEN` - the RM-403 control, re-run here.
+
+        RM-283 is the id whose quoted OPEN produced one of the two measured
+        reverse-direction false positives, so this shape has to stay clean in
+        the new arm as well as the old one.
+        """
+        self.assertEqual(
+            (),
+            reg.roadmap_ledger_drift(
+                "- **RM-920 HALF-CLOSED + RM-921 OPEN**",
+                "1426. DONE - **RM-921 CLOSED** ... quoting `RM-921 OPEN`, where "
+                "the OPEN belongs to RM-921.",
+            ),
+        )
+
+    def test_the_failure_message_cites_both_files_and_both_lines(self) -> None:
+        message = reg.describe_ledger_drift(
+            reg.backlog_ledger_drift(
+                "- **RM-920 OPEN** - a tail.",
+                "head\n1426. DONE - **RM-920 CLOSED.**",
+            )
+        )
+        for needle in ("RM-920", f"{BACKLOG}:1", f"{LEDGER}:2", "append-only"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, message)
+
+
+class LedgerParserFindsRealContent(unittest.TestCase):
+    """ANTI-VACUITY for the live LEDGER arms. See the module docstring."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.closed = reg.ledger_closed_ids(reg.read(REPO_ROOT / LEDGER))
+
+    def test_the_parser_finds_many_closure_records_in_the_live_ledger(self) -> None:
+        self.assertGreaterEqual(
+            len(self.closed),
+            _MIN_LEDGER_CLOSURES,
+            f"only {len(self.closed)} ids parsed as closed out of {LEDGER}. "
+            "Either the parser stopped matching - in which case both live "
+            "arms below are vacuous - or the ledger was gutted.",
+        )
+
+    def test_the_live_ledger_closures_are_not_all_one_marker(self) -> None:
+        markers = {d.marker for d in self.closed.values()}
+        self.assertTrue(
+            markers <= reg.BACKLOG_CLOSED_MARKERS and len(markers) >= 2,
+            f"{LEDGER} parsed closure markers {sorted(markers)}; a live RC "
+            "ledger carries more than one closure verb, so a single-verb read "
+            "means the vocabulary regex is half broken.",
+        )
+
+
+class LiveDocsAgreeWithTheLedger(unittest.TestCase):
+    """The invariants themselves, against the live tree.
+
+    MEASURED 2026-10-02 before these landed, each corroborated TWICE because a
+    doc agreeing with a doc is not evidence:
+
+    * `RM-472` - `BACKLOG.md` said OPEN; LEDGER 1426 says CLOSED BY REFUSAL,
+      and the refusal is in the source it names
+      (`tests/test_skip_condition_hygiene.py` carries `_UNANALYSABLE_SHAPES`
+      and `test_rm472_comprehension_and_lambda_laundered_reads_earn_no_
+      capability`), with both cited commits resolving.
+    * `RM-210` - `BACKLOG.md` said OPEN; LEDGER 1270 AND
+      `docs/ROADMAP_HISTORY.md` both say CLOSED. The source probe split the
+      row: acceptance (b) is MET (`docs/DAEMON_SLAYER.md` deleted the test-count
+      recital and names RM-210 as the reason), acceptance (a) was NOT
+      (`docs/ARCHITECTURE.md` still called the banner "drift-guarded" for
+      counts no guard pins, unchanged since 2026-07-17 - before the row was
+      even filed). The closure records over-claimed; the row's OPEN was the
+      honest half. Acceptance (a) was then performed, which is why the row is
+      closed today rather than silenced.
+
+    The ROADMAP arm measured ZERO drift at the same moment and is kept because
+    it is the same predicate on a different disposition map - no speculative
+    code, and `LedgerDriftSyntheticControl` proves it can still fire.
+
+    THE REVERSE DIRECTION IS DELIBERATELY NOT BUILT. A check for "LEDGER says
+    OPEN while the doc says closed" returns exactly two candidates on this
+    tree, `RM-217` and `RM-283`, and BOTH are LEDGER quoting history inside the
+    entry that closed the row. There is no live instance, only false ones.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        ledger_text = reg.read(REPO_ROOT / LEDGER)
+        cls.roadmap_drift = reg.roadmap_ledger_drift(
+            reg.read(REPO_ROOT / ROADMAP), ledger_text
+        )
+        cls.backlog_drift = reg.backlog_ledger_drift(
+            reg.read(REPO_ROOT / BACKLOG), ledger_text
+        )
+
+    def test_no_roadmap_row_says_open_over_a_ledger_closure_record(self) -> None:
+        self.assertEqual(
+            (),
+            self.roadmap_drift,
+            "\n" + reg.describe_ledger_drift(self.roadmap_drift),
+        )
+
+    def test_no_backlog_row_body_says_open_over_a_ledger_closure_record(self) -> None:
+        self.assertEqual(
+            (),
+            self.backlog_drift,
+            "\n" + reg.describe_ledger_drift(self.backlog_drift),
         )
 
 
