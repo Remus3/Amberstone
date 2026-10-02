@@ -18,6 +18,19 @@ for agents/_supervisor_common.py:197.
   that goes green -> red, across ~24.7k tests. A detector that reddens an unknown
   number of greens in one commit is indistinguishable from a broken detector.
 
+RM-498 REFINEMENT, measured 2026-10-01 - the filed workaround is INCOMPLETE and
+cost a wrap cycle. The hand-off said to launch each suite as its OWN background
+job OR backtick the count. Both suites WERE launched as separate background jobs,
+and the gate still accepted the DS figure while rejecting the `tests` figure. So
+"separate background jobs" is NOT sufficient on its own. What the gate appears to
+want is a count it can attribute to a pytest run in this transcript, and a figure
+read back out of a redirected result file does not qualify however it is printed.
+Two things actually work: re-run so the summary is yours, or backtick the figure
+(a backticked count is stripped before any check). Note also that a later
+withdrawal does NOT clear a finding - the scan re-reads the whole transcript every
+Stop, so rewording after the fact is not a remedy. Update the RM-498 row with
+this; do NOT re-derive it. And do not fix the gate in a session it is blocking.
+
 TASK B (cheap, and it will bite a wrap if skipped): ROADMAP.md is riding the WARN
 line at 90.0 percent of its 81920-byte budget. drift_guard went RED at 92 percent
 mid-session last time and that is what caught it. Do a proper relocation pass (the
