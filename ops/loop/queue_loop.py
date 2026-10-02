@@ -118,9 +118,11 @@ is written by the WORKER when it finds no eligible row, which is how a queue
 that empties at cycle four stops instead of firing eight no-op workers. The
 check runs before cycle 1 because a driver that only checks between cycles
 fires one unwanted worker on every start - against this lane that means one
-unwanted RM row executed and committed. Note that `control/STOP` EXISTS on
-Legion right now (content: "operator halt via LW session 2026-07-28"), so a
-bare `python ops/loop/queue_loop.py` today correctly runs zero cycles, names
+unwanted RM row executed and committed. Note that `control/STOP` may EXIST on
+Legion (read the file for its current reason - this prose used to recite the
+content and was found two generations stale on 2026-10-02, which is why it no
+longer quotes it: a comment asserting live machine state cannot stay true), in
+which case a bare `python ops/loop/queue_loop.py` correctly runs zero cycles, names
 WHICH sentinel stopped it and where that file lives, and exits
 EXIT_STOP_SENTINEL so no launcher can print a success banner over a no-op;
 clear it deliberately, do not special-case it here.
