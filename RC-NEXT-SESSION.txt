@@ -26,6 +26,13 @@ for agents/_supervisor_common.py:197.
   that goes green -> red, across ~24.7k tests. A detector that reddens an unknown
   number of greens in one commit is indistinguishable from a broken detector.
 
+RM-498, READ THIS BEFORE QUOTING ANY SUITE COUNT. The practical rule for your wrap:
+BACKTICK every suite count you did not produce inside a single foreground tool
+call. For the full suite that is the ONLY available remedy - the foreground route
+needs the pytest invocation and its summary in one call, and the Bash tool caps at
+600s while pytest tests takes ~83 minutes. Three background runs were tried this
+session and NONE was credited.
+
 RM-498 REFINEMENT, measured 2026-10-01 - the filed workaround is INCOMPLETE and
 cost a wrap cycle. The hand-off said to launch each suite as its OWN background
 job OR backtick the count. Both suites WERE launched as separate background jobs,
