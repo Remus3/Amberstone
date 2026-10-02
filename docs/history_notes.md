@@ -41,6 +41,50 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-09-30 - weekly scheduled routines repaired (PR #1, NOT merged), and the tests/ suite cannot complete locally
+
+**Branch `fix/weekly-routines` pushed, PR #1 OPEN, NOT merged.** Four commits: `fb05d3488`
+S1-S6, `ba4bb74be` S7, `6044a9ee1` S8 (FROZEN file, operator-approved in chat), `8e1ab5566`
+citation repoint. Merge to main deliberately deferred - see the blocker below.
+
+**What was actually wrong.** The weekly Agent-6 audit (`RC-Phase3-PeriodicAudit`) had failed 7
+consecutive times since 2026-08-02, last success 2026-07-27, with `LastTaskResult 0` every
+time. Two real faults: (a) `ANTHROPIC_API_KEY` is machine-wide, the supervisor inherits it,
+`agents/_supervisor_ephemeral.py` `subprocess.run` passed no `env=`, so the spawned `claude -p`
+used an org-scoped key and died 400 "not scoped to a workspace" - the CLI itself warns the key
+outranks the claude.ai login; (b) `agents/agent1_lead/scheduler.py` read its queue ONCE at
+construction, so a cron-filed task could not dispatch until a restart. Both fixed. Operator
+re-logged in on Legion, verified `PONG` with the key stripped.
+
+**Four reporting defects hid it for 7 weeks** and are all fixed: `tools/rc_facts.py` read
+`267009` (SCHED_S_TASK_RUNNING) as success, suppressed Disabled tasks, never checked artifact
+staleness; `ops/phase3_file_audit.py` ran under pythonw with no redirection so its filed/skip
+decision went nowhere; `scripts/rewind_catchup.py` wrote `last_run_at` only on the hydrate path
+(a healthy no-op week read 16 weeks dead - it fooled a reviewer AND me) and exited 0 on an API
+403; `ops/run_postmortem_with_restart.ps1` had a WaitForExit-before-ReadToEnd pipe deadlock.
+
+**Key precedence trap, found because the operator's rotation half-landed.** Seven consumers
+disagreed on env-vs-file; five preferred the file, so rotating the env var left them on the
+revoked key. `API-Key-Claude.txt` is now DELETED, machine env is the single source, and all
+five are env-first. `dashboard/routes_coach.py` was a LIVE bug (file-only, no env path - it was
+passing `api_key=""`). Deliberately NOT unified behind a shared helper: `app/_game_lifecycle.py`
+is frozen and could never join, so a helper would guarantee a permanent 1-of-5 divergence while
+advertising convergence.
+
+**THE BLOCKER, and it is the top next-session item.** `pytest tests` CANNOT COMPLETE on this
+box: exit **127**, no traceback, no summary, three runs aborting at DIFFERENT points (60%, 32%,
+25%), in BOTH the live tree AND an isolated worktree. My "the live tree is hostile" theory was
+REFUTED by the worktree run - do not re-pitch it. `agents/daemon_slayer` is green on the final
+tree (`10933` passed, `13669` subtests, exit 0, 147.84s). It is NOT established whether the 127
+pre-dates this branch; the cheap discriminator is to run `pytest tests` at `main` vs at
+`8e1ab5566`. Do NOT merge PR #1 until CI's ubuntu runner gives a real full-suite verdict.
+
+**Do NOT redo:** the auth diagnosis (confirmed in production - the stuck task dispatched and
+failed with the exact 400), the OAuth login (done, PONG), the key rotation (done, file deleted),
+or the 5 slice verifications (4 adversarial passes, every fix mutation-killed).
+
+---
+
 # 2026-09-21a - RM-480 ratio-field ability overrides (ENGINE 1.283.0), nightly breaker flake root-caused, os.environ assert leaks closed, channel correction delivered
 
 **LEDGER 1453 and 1454.** Commits, all pushed: `49c665b5c` RM-480 (ENGINE 1.283.0, DS :8860 bounced, /health 1.283.0); `5df0233a9` LEDGER 1453; `19ede4154` breaker boundary test float-exact; `d1d4bb089` environ-leak asserts + `empty_parameter_set_mark = fail_at_collect`; `77dff441a` CI collect fix for that ini change.

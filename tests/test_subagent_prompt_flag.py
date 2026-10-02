@@ -31,7 +31,26 @@ CONFIG = ROOT / "ops" / "loop" / "config.json"
 # upgraded 2.1.220 -> 2.1.251. Canary + negative control BOTH passed: a codeword
 # placed only in --append-subagent-system-prompt reached a spawned subagent, and
 # the same prompt without the flag did not carry it. Re-measure on any change.
-PINNED_CLI = "2.1.251"
+#
+# RE-MEASURED 2026-10-01 on 2.1.285 (NOW-5). THREE controls, all passing, which
+# is one more than the 2026-09-01 round ran:
+#   1. CANARY: a codeword placed only in --append-subagent-system-prompt came
+#      back inside a spawned subagent's own hand-back body. Proven to be a REAL
+#      spawn by a stream-json run showing a single `Agent` tool_use and the
+#      subagent reporting `tool_uses: 0` - so the codeword came from its system
+#      prompt, not from a file read or a parent relay.
+#   2. NEGATIVE CONTROL: the byte-identical invocation WITHOUT the flag returned
+#      NO-CANARY and the codeword appears zero times in the transcript.
+#   3. TOP-LEVEL LEAK CONTROL (new this round): flag present, NO spawn, top
+#      level asked to read its OWN system prompt -> NO-CANARY. This closes the
+#      ambiguity the header warns about, where a canary could be satisfied by
+#      the parent reading its own prompt rather than by propagation.
+# Still UNDOCUMENTED on 2.1.285: a `subagent` grep of `claude --help` returns
+# only `--forward-subagent-text`, and the binary still accepts the flag (exit 0,
+# against exit 1 for a genuinely unknown option). Re-measure on any change - do
+# NOT bump this constant without re-running all three controls, because a bump
+# alone converts a live wire-check into a constant that proves nothing.
+PINNED_CLI = "2.1.285"
 FLAG = "--append-subagent-system-prompt"
 
 
