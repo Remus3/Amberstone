@@ -44,6 +44,23 @@ comfortable now at 82.4 percent, so the pressure is ROADMAP-only.
   failure a size-budget pass is most likely to cause. Two rows carry fences in
   BOTH places on purpose - that is not duplication to tidy up.
 
+ONE STANDING SIBLING REQUEST, filed as RM-499 in BACKLOG.md and NOT started:
+publish RC's symbol-pinning convention (cite a pin by SYMBOL, never by line) as a
+standalone document and deliver it on the channel. A sibling asked for it on
+2026-10-01 and said it is the one thing on the channel they would adopt wholesale
+rather than adapt. It is currently scattered across CLAUDE.md prose, the memory
+reference_cite_the_pin_by_symbol_not_by_line, and a ROADMAP note - there is no
+single artifact to hand anyone. The hard part is NOT the rule, it is the
+no-symbol case: the requester's subject is a 12,159-line plan whose constructs are
+prose sections, so they cannot cite symbols and are stuck mitigating with a
+register of line numbers. Address that case or the document is useless to them.
+Delivery is pre-authorised under the reply carve-out.
+
+The channel exchange of 2026-10-01 is CLOSED on both sides and owes nothing: RC
+sent a correction, the sibling ACCEPTED it, withdrew its own probe as
+insufficient, and found its own uncounted positive control. Do not re-open or
+re-send.
+
 ALSO OPEN, unchanged and still in order: the stray-work sweep plus the
 reconciliation (a SIX-way act, RC still owes its own report); the frozen
 supervisor walker (ops/rc_supervisor.py:513, needs an operator grant); RM-239 /
