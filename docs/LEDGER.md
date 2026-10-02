@@ -6,9 +6,35 @@
 >
 > Measured across `docs/history_notes.md` + `docs/LEDGER.md` + `docs/ROADMAP_HISTORY.md`:
 > 387 of 1148 distinct 8-hex citations (34 percent) fail `git rev-parse --verify`.
-> They are NOT scattered rot and NOT a history rewrite - a rewrite would be 100 percent
-> before a cutoff and 0 percent after. The real distribution is a steady rate that
-> stops dead:
+>
+> > **CORRECTED 2026-10-02 - THE CAUSE BELOW IS WRONG FOR MOST OF THEM, AND THE
+> > DISPROOF THAT RULED OUT A REWRITE WAS INVALID.** The sentence this block carried
+> > until today - "They are NOT scattered rot and NOT a history rewrite - a rewrite
+> > would be 100 percent before a cutoff and 0 percent after" - is struck, not
+> > deleted, because the reasoning is the instructive part. **That premise is false
+> > for a PARTIAL rewrite.** RC ran `filter-repo` on 2026-06-21 over
+> > 2026-06-08 .. 2026-06-21 only, leaving 1829 ancestor commits at identity, so the
+> > damage was always going to look like a bounded band rather than a clean cutoff -
+> > and at this block's MONTH binning a 13-day band is indistinguishable from the
+> > "steady rate that stops dead" it reports below. The test could not discriminate
+> > the two causes, and it was run on 2026-07-18, a month AFTER the rewrite it ruled
+> > out. Re-measured over these same three files with the pattern
+> > `(?<![0-9a-zA-Z])([0-9a-f]{8})(?![0-9a-zA-Z])` (population is a function of the
+> > pattern): **1987 distinct citations, 454 unresolvable, of which 344 are present as
+> > OLD shas in RC's own `.git/filter-repo/commit-map` and 110 are not.** All 344 map
+> > to a live commit; none map to forty zeros. So the rewrite explains 76 percent of
+> > them and the cherry-pick cause below explains at most the remaining 110.
+> >
+> > The cherry-pick mechanism is still REAL and still worth reading - but it was never
+> > measured. It is prose, with no probe behind it, and of the 110 it could still
+> > explain, only 19 sit within 60 characters of `slice` / `worktree` / `agent`.
+> >
+> > **The discriminator is SS's, circulated on the cross-repo channel 2026-10-01:** an
+> > empty `git rev-parse` proves UNRESOLVABILITY and never says WHY, because a
+> > fabricated sha and a sha destroyed by a rewrite both come back empty.
+> > `grep -i "^<sha>" .git/filter-repo/commit-map` is the missing half.
+>
+> The distribution this block originally reported, kept as written:
 >
 > | month | resolvable | missing | miss rate |
 > |---|---|---|---|
@@ -21,8 +47,20 @@
 > commit inside their own worktree, and the merger cherry-picked the result. Entries
 > then cited BOTH hashes - e.g. "merge `91b6b847` (slice `03927664`, worktree agent)".
 > The merge hash entered `main` and resolves; the slice hash never did and never will.
-> `git rev-list --all` equals `HEAD` (3645), so the slice objects are not hiding on
-> another ref or in the reflog - they are gone.
+>
+> > **CORRECTED 2026-10-02 - THIS BLOCK'S OWN WORKED EXAMPLE IS WRONG IN BOTH HALVES,
+> > WHICH IS THE CHEAPEST WAY TO SEE THE PROBLEM.** Of the two hashes it cites:
+> > `91b6b847`, presented as the merge hash that "entered `main` and resolves", **does
+> > NOT resolve** - and it is in the commit-map, remapping to `66da8141d9df...`.
+> > `03927664`, presented as the slice hash that "never did and never will", **is in
+> > the map too**, remapping to `6e947ef55565...`. A rewrite moves merge commits and
+> > slice commits alike, so the merge-versus-slice framing cannot be what separates
+> > resolvable from unresolvable here.
+> >
+> > The `git rev-list --all` claim is also stale: it asserted `--all` equals `HEAD` at
+> > 3645. Measured 2026-10-02, `HEAD` is 5594 and `--all` is 10178. The gap is mostly
+> > worktree branches, and "the slice objects are not hiding on another ref" no longer
+> > follows from it.
 >
 > **The work still landed.** A dead slice hash does not mean the change is missing; it
 > means that entry cited the pre-cherry-pick hash. Verify by the MERGE hash, the file,
@@ -31,11 +69,30 @@
 > **Already fixed going forward:** 0 of 537 citations dated 2026-07 are unresolvable, so
 > the convention corrected itself. No process change is needed.
 >
-> **Deliberately NOT repaired in place.** The correct hashes are unrecoverable, and
-> rewriting 387 historical citations would violate the append-only rule these files run
-> on. This note is additive. It exists because the defect has already cost real work:
-> a 2026-07-18 audit spent a full agent trying to resolve `541cd9d3` to disambiguate a
-> live-gated row, and that hash is simply gone.
+> **NOT repaired in place, and the REASON has changed.** Until 2026-10-02 this block
+> said the correct hashes "are unrecoverable". **That is false for 344 of the 454.**
+> The remaining reason to leave them is the append-only rule these files run on, which
+> is a policy choice and not a technical limit - so the repair is now a tracked,
+> gated item (RM-501) rather than an impossibility.
+>
+> > **AND THE ONE HASH THIS BLOCK NAMES AS THE COST OF THE DEFECT IS RECOVERABLE.** It
+> > records that a 2026-07-18 audit "spent a full agent trying to resolve `541cd9d3`
+> > to disambiguate a live-gated row, and that hash is simply gone." It is not gone.
+> > `541cd9d3` remaps to `a685a530bd23...` in `.git/filter-repo/commit-map`, which was
+> > already on disk, dated 2026-06-21, when that agent was spent. One lookup.
+> >
+> > **RC also already built the instrument and never applied it.**
+> > `tools/rewrite_sha_citations.py` (added 2026-09-07 with
+> > `tests/test_rewrite_sha_citations.py`) is exactly this discriminator plus the
+> > repair, and its own docstring states the dropped-versus-remapped distinction. It
+> > defaults to dry-run and `--apply` has never been run against this file. That is
+> > provable in effect rather than in principle: the 344 repairable citations are
+> > still here.
+>
+> So the operational advice stands unchanged and is the part to act on: **a dead hash
+> does not mean the change is missing. Verify by the MERGE hash, the file, or the test
+> - and if you need the hash itself, look it up in the commit-map before concluding it
+> is gone.**
 
 
 Append-only, newest-first per-item completion record. Relocated verbatim from the CLAUDE.md "Active priorities" section on 2026-06-02 to keep CLAUDE.md out of the per-turn auto-load budget (it was 661KB / ~165K tokens). Do not rewrite history - append each new item at the TOP of the body below (newest-first, directly under the --- rule), matching the existing entry format.
