@@ -370,6 +370,165 @@ def describe_drift(drifted: tuple[DispositionDrift, ...]) -> str:
     return "\n".join(lines)
 
 
+#: The append-only per-item completion record. A third disposition surface, and
+#: the one `disposition_drift` above cannot see.
+LEDGER_DOC = "docs/LEDGER.md"
+
+#: A LEDGER marker that forbids reading the id as finished. See
+#: `ledger_closed_ids` - this set is the entire defence against the false
+#: positives measured below, and shrinking it re-opens them.
+_LEDGER_DISQUALIFIERS = frozenset({"OPEN", "PARTIAL"})
+
+
+@dataclass(frozen=True)
+class LedgerDrift:
+    """A row a doc still calls OPEN while `docs/LEDGER.md` records it finished."""
+
+    rm_id: int
+    doc: str
+    doc_line: int
+    doc_marker: str
+    doc_excerpt: str
+    ledger: Disposition
+
+
+def ledger_closed_ids(ledger_text: str) -> dict[int, Disposition]:
+    """Ids `docs/LEDGER.md` records as FINISHED, read conservatively.
+
+    WHICH PARSER, AND WHY NOT THE OTHER ONE
+    ----------------------------------------
+    LEDGER is NARRATIVE, not a list of declarative rows: it carries ZERO
+    `- **RM-NN` row openers (measured 2026-10-02 - `backlog_row_dispositions`
+    returns an empty mapping on the whole file), so the row-leading rule has
+    nothing to bind and the generic run rule in `roadmap_dispositions` is the
+    only one that applies. One entry is one very long line, which the run rule
+    already handles: a marker still reaches only across delimiter text, so it
+    cannot wander the length of an entry.
+
+    PRESENCE IS NOT A DISPOSITION, AND NEITHER IS AN `OPEN`
+    -------------------------------------------------------
+    An entry's presence is often read as "this item is done", and for the
+    entry's own subject it is. But an entry MENTIONS ids it did not close -
+    fallback work it considered, a row it re-filed, a control line it quotes
+    verbatim - so presence alone over-reports badly: measured on this tree, 49
+    of the 52 ids carrying a bare `OPEN` in `ROADMAP.md` appear somewhere in
+    LEDGER, and essentially none of them are drift.
+
+    An `OPEN` marker is just as unsafe, which is why it DISQUALIFIES rather
+    than merely failing to qualify. Both measured false positives have this
+    shape:
+
+    * `RM-217` - the entry that REFUTES the row quotes its filed state first,
+      `RM-217 OPEN** (filed 2026-08-15) whose ACCEPTANCE prescribed ...`, and
+      only later says "RM-217 closure". A reverse-direction check reads that
+      `OPEN` as live and reports `ROADMAP.md`'s correct `REFUTED` as drift.
+    * `RM-283` - the RM-403 entry quotes its own negative control verbatim,
+      ``RM-283 OPEN`, where the OPEN belongs to RM-283``. The row closed by
+      removal on 2026-09-20; the quotation did not.
+
+    So an id that shows an `OPEN` or `PARTIAL` anywhere in LEDGER is NOT read
+    as closed, rather than being out-voted by a closure marker elsewhere in the
+    file. Uncertain reads as NOT CLOSED - the inverse of the asymmetry
+    `classify` takes, for the inverse reason: there a miss costs a duplicate
+    id, here a false positive is a MUST-FIX raised against a row that is
+    correctly open, and that is the cost that gets a guard deleted.
+
+    `FILED` is deliberately NOT a disqualifier: no measured candidate needed it
+    and it only costs recall. Add one on evidence, never on speculation.
+    """
+    closed: dict[int, Disposition] = {}
+    for rm_id, marks in roadmap_dispositions(ledger_text).items():
+        if {d.marker for d in marks} & _LEDGER_DISQUALIFIERS:
+            continue
+        finished = [d for d in marks if d.marker in BACKLOG_CLOSED_MARKERS]
+        if finished:
+            closed[rm_id] = finished[0]
+    return closed
+
+
+def roadmap_ledger_drift(
+    roadmap_text: str, ledger_text: str
+) -> tuple[LedgerDrift, ...]:
+    """Every id `ROADMAP.md` calls a bare OPEN that LEDGER records as finished.
+
+    Same "bare" rule as `disposition_drift`: a ROADMAP row that already names
+    the closure has told the reader the truth and is not drift.
+    """
+    drifted: list[LedgerDrift] = []
+    closed = ledger_closed_ids(ledger_text)
+    for rm_id, marks in sorted(roadmap_dispositions(roadmap_text).items()):
+        markers = {d.marker for d in marks}
+        if "OPEN" not in markers or markers & BARE_OPEN_CANCELLERS:
+            continue
+        entry = closed.get(rm_id)
+        if entry is None:
+            continue
+        opens = [d for d in marks if d.marker == "OPEN"]
+        drifted.append(
+            LedgerDrift(
+                rm_id=rm_id,
+                doc="ROADMAP.md",
+                doc_line=opens[0].line,
+                doc_marker="OPEN",
+                doc_excerpt=opens[0].excerpt,
+                ledger=entry,
+            )
+        )
+    return tuple(drifted)
+
+
+def backlog_ledger_drift(
+    backlog_text: str, ledger_text: str
+) -> tuple[LedgerDrift, ...]:
+    """Every `BACKLOG.md` row body still OPEN that LEDGER records as finished.
+
+    The row-leading rule applies here, exactly as in `disposition_drift`: this
+    reads the body's own declared disposition, not a word from its prose.
+    """
+    drifted: list[LedgerDrift] = []
+    closed = ledger_closed_ids(ledger_text)
+    for rm_id, body in sorted(backlog_row_dispositions(backlog_text).items()):
+        if body.marker != "OPEN":
+            continue
+        entry = closed.get(rm_id)
+        if entry is None:
+            continue
+        drifted.append(
+            LedgerDrift(
+                rm_id=rm_id,
+                doc="BACKLOG.md",
+                doc_line=body.line,
+                doc_marker=body.marker,
+                doc_excerpt=body.excerpt,
+                ledger=entry,
+            )
+        )
+    return tuple(drifted)
+
+
+def describe_ledger_drift(drifted: tuple[LedgerDrift, ...]) -> str:
+    """A failure message naming the two lines a reader has to reconcile."""
+    if not drifted:
+        return "No disposition drift against docs/LEDGER.md."
+    lines = [
+        f"{len(drifted)} RM row(s) read OPEN over a {LEDGER_DOC} closure record:"
+    ]
+    for row in drifted:
+        lines.append(
+            f"  RM-{row.rm_id}: {row.doc}:{row.doc_line} says {row.doc_marker}"
+            f"  |  {LEDGER_DOC}:{row.ledger.line} says {row.ledger.marker}"
+        )
+        lines.append(f"      {row.doc}:{row.doc_line}  {row.doc_excerpt}")
+        lines.append(f"      {LEDGER_DOC}:{row.ledger.line}  {row.ledger.excerpt}")
+    lines.append(
+        "LEDGER is append-only, so the repair is NEVER to edit the ledger "
+        "entry. Either reconcile the row's disposition, or - if the entry "
+        "over-claimed - probe the acceptance at its source and say so in the "
+        "row. Do not silence this guard."
+    )
+    return "\n".join(lines)
+
+
 def scan_paths(root: Path) -> tuple[Path, ...]:
     """Every doc the collision check reads."""
     paths = [root / name for name in ACCEPTANCE_DOCS + ARCHIVE_DOCS]
