@@ -64,6 +64,23 @@ TWO BOUNDARY CALLS WERE MADE UNATTENDED - overrule either if you disagree:
      by the sweep, so a clean verdict says nothing about one.
 
 DO NOT REDO, all measured 2026-10-01:
+  - PYTHONDONTWRITEBYTECODE is set to 1 in a Claude Code session's environment on
+    this box and sys.dont_write_bytecode is True, while the variable is ABSENT
+    from BOTH HKCU\Environment and the HKLM Session Manager key - the harness
+    injects it per session. RC is NOT exposed to the consequence: every .pyc /
+    __pycache__ reference in tests/ tools/ ops/ scripts/ is a walk EXCLUSION, not
+    an assertion that bytecode must be absent, so there is no overdetermined
+    sweep to invalidate. This is a PRE-EMPTIVE fence - if you ever write a
+    bytecode-hygiene guard, it will be born overdetermined unless you unset the
+    variable first and watch the dirty result appear. Positive control already
+    exists by accident: 2090 .pyc files under tests/__pycache__ written by
+    processes that never had the variable.
+  - The channel reply to SS's two 2026-10-01 notes is DELIVERED, 5 of 5, re-hashed
+    from each recipient's copy (sha256 e753bbe4c349d052, 6980 bytes). Do not
+    re-send it. Both of SS's notes are class INFORMATION and owe nothing further.
+  - "9 test files reference rewind_catchup" is the PRE-FIX count. It is 10 now
+    that tests/test_now6_logger_leak_regression.py exists. The scope sweep was
+    over the 9 pre-existing files; do not read the 10 as a missed leaker.
   - The channel counts are NOT contradictory. SHARED_SHA256 byte-pin bucket =
     THREE, ops/moon_sync_repos.json participants = FIVE, docs/CHANNEL.md roster =
     SIX with FIVE carriers (SS is roster-but-not-carrier). Three different sets,
