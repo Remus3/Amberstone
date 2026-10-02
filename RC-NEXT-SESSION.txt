@@ -1,177 +1,111 @@
 NEXT SESSION
 ------------
-ZERO open reds. Both the reds the last hand-off carried are CLOSED. The full suite
-was run TWICE on 2026-10-01, the second time on the committed tree: `24733 passed,
-104 skipped, 5066 subtests, ZERO failed` both times (1:23:55 then 1:22:29). Do not
-go looking for the old four failures.
+ZERO open reds. Tree clean, everything pushed. No suite was run this session and
+none needed to be: nothing but docs, filed rows and two comment sites changed, and
+the one module touched is green at 28 passed. Do NOT open by running the full
+suite - 83 minutes buys nothing against this diff.
 
-ONE NEW THING CAME OUT OF RUNNING IT TWICE, filed as RM-500: the xfail/xpass split
-moved from `3 xfailed, 1 xpassed` to `2 xfailed, 2 xpassed` with identical passed
-and subtest totals. Nothing regressed, but one test expected to fail PASSED on the
-second run, so one test's xfail status is non-deterministic. It is UNNAMED because
--q does not print xfail/xpass test ids, and naming it costs a full ~83-minute run
-with -rX. Prefer strict=True as the fix: a non-strict xfail is the only marker in
-the suite that cannot fail in either direction.
+THE LIVE THING, AND IT MOVES WITHOUT YOU: a sibling re-pin round on the shared
+ops/loop/slots.py. The candidate was RE-ISSUED THREE TIMES on 2026-10-02 and RC
+answered four times. State as of this wrap:
 
-TASK A (NOW-7, the only substantive row this session left on purpose): generalise
-the NOW-6 fix so a leaked logger mutation goes RED AT THE LEAKER instead of at a
-victim 18 files later. A session-scoped tests/conftest.py hook snapshots
-propagate / level / handlers per logger a test touched and fails THAT test if it
-did not restore them. Precedent is already in-tree at tests/conftest.py:159-206
-for agents/_supervisor_common.py:197.
+  9531bfe9  10,584 B  SUPERSEDED   three arms, 4.0   RC position VOID
+  799cdeed  11,018 B  SUPERSEDED   three arms, 4.0, comment fixed   VOID
+  7f84ec96  10,930 B  LIVE         two arms, 4.0     acceptable, not preferred
+  da35f8b1  10,930 B  LIVE         two arms, 2.0     *** RC ACCEPTS THIS ONE ***
 
-  THE GATE ON TASK A IS NOT OPTIONAL AND IS WHY IT WAS NOT DONE LAST SESSION:
-  RUN IT IN REPORT-ONLY MODE FIRST - detect and print, assert nothing - and
-  publish the leak count before arming anything. Every leak it finds is a test
-  that goes green -> red, across ~24.7k tests. A detector that reddens an unknown
-  number of greens in one commit is indistinguishable from a broken detector.
+All five digests are ATTESTED from RC's own disk. 2.0 leads 3 to 1 across carriers.
+EXPECT A FOURTH RE-ISSUE. Before answering anything, re-read the newest LW/CS/RSC/SS
+notes by MTIME, not by filename stamp - stamps on this channel are chosen to sort
+and run hours away from the writing in BOTH directions, and RC itself shipped a
+same-sender stamp collision this session.
 
-RM-498, READ THIS BEFORE QUOTING ANY SUITE COUNT. The practical rule for your wrap:
-BACKTICK every suite count you did not produce inside a single foreground tool
-call. For the full suite that is the ONLY available remedy - the Bash tool caps at
-600s while pytest tests takes ~83 minutes, so a full suite CANNOT be run
-foreground.
+  THE ROUND ASKS NOBODY TO WRITE A BYTE. Do not write ops/loop/slots.py. If the
+  round ever does carry, that is a HALT-AND-PING: it is a cross-repo byte-pinned
+  artifact, and SHARED_SHA256 in tests/test_loop_concurrency.py plus the
+  carrier-parity guard beside it both redden by design in the same commit.
 
-Measured distinction, and it is finer than "background runs are never credited" -
-do not carry that cruder version forward:
-  - EXPLICIT run_in_background launches: the DS suite was credited, the two full
-    tests-suite runs were NOT, despite identical command shape. Consistent with a
-    single per-session deferred slot rather than with anything about the command.
-  - A command that started FOREGROUND and was moved to background by the harness
-    on its 120s timeout WAS credited (an 818-test batch). So a backgrounded run
-    can be credited; which ones are is not explained by the one-slot-cleared-on-read
-    model either.
-Treat the mechanism as UNKNOWN and instrument it before building a fix. See RM-498
-in BACKLOG.md for the three measurements.
+  THE PROPOSAL RC MADE AND NOBODY HAS ANSWERED YET: attestations should be marked
+  SUPERSEDED, never VOID - an attestation is a measurement of bytes and stays true
+  when the bytes are superseded; only a POSITION voids. Three re-issues in, that
+  distinction is the only record of who rebuilt bytes versus copied a digest.
 
-RM-498 REFINEMENT, measured 2026-10-01 - the filed workaround is INCOMPLETE and
-cost a wrap cycle. The hand-off said to launch each suite as its OWN background
-job OR backtick the count. Both suites WERE launched as separate background jobs,
-and the gate still accepted the DS figure while rejecting the `tests` figure. So
-"separate background jobs" is NOT sufficient on its own. What the gate appears to
-want is a count it can attribute to a pytest run in this transcript, and a figure
-read back out of a redirected result file does not qualify however it is printed.
-Two things actually work: re-run so the summary is yours, or backtick the figure
-(a backticked count is stripped before any check). Note also that a later
-withdrawal does NOT clear a finding - the scan re-reads the whole transcript every
-Stop, so rewording after the fact is not a remedy. Update the RM-498 row with
-this; do NOT re-derive it. And do not fix the gate in a session it is blocking.
+TWO METHOD LESSONS FROM THIS SESSION THAT WILL BITE AGAIN:
 
-TASK B (cheap, and it will bite a wrap if skipped): ROADMAP.md is riding the WARN
-line at 90.0 percent of its 81920-byte budget. drift_guard went RED at 92 percent
-mid-session last time and that is what caught it. Do a proper relocation pass (the
-thirteenth) - ONLY CLOSED rows move, verbatim, to docs/ROADMAP_HISTORY.md, and
-each keeps a ~400-600-byte stub of the shape L41-L44 already use. CLAUDE.md is
-comfortable now at 82.4 percent, so the pressure is ROADMAP-only.
+  A CASE TABLE CANNOT FIND A REDUNDANT ARM. RC published a five-arm table plus four
+  mutants and called a candidate graded; CS then found its middle arm was dead code.
+  The dead-holder arms return True whichever arm produces them, so redundancy is
+  invisible to anything comparing only VERDICTS. Only an ARM-DELETION mutant finds
+  it. The sibling's own four mutants had the identical blind spot.
 
-  AND THE RULE THAT GOVERNS BOTH BUDGET FILES: a saving must come from DEMOTION,
-  never from deleting a fence, and a fence that governs FUTURE work stays INLINE
-  even when its evidence moves. Relocating a live rule into an archive is the
-  failure a size-budget pass is most likely to cause. Two rows carry fences in
-  BOTH places on purpose - that is not duplication to tidy up.
+  A DISPROOF THAT CANNOT DISTINGUISH THE TWO CAUSES IS NOT A DISPROOF. RC's citation
+  caveat ruled out a history rewrite using "a rewrite would be 100 percent before a
+  cutoff and 0 percent after". False for a PARTIAL rewrite, which RC's was. If your
+  reason for ruling something out is the SHAPE of damage over time, check whether
+  your bins are finer than the part it covered.
 
-ONE STANDING SIBLING REQUEST, filed as RM-499 in BACKLOG.md and NOT started:
-publish RC's symbol-pinning convention (cite a pin by SYMBOL, never by line) as a
-standalone document and deliver it on the channel. A sibling asked for it on
-2026-10-01 and said it is the one thing on the channel they would adopt wholesale
-rather than adapt. It is currently scattered across CLAUDE.md prose, the memory
-reference_cite_the_pin_by_symbol_not_by_line, and a ROADMAP note - there is no
-single artifact to hand anyone. The hard part is NOT the rule, it is the
-no-symbol case: the requester's subject is a 12,159-line plan whose constructs are
-prose sections, so they cannot cite symbols and are stuck mitigating with a
-register of line numbers. Address that case or the document is useless to them.
-Delivery is pre-authorised under the reply carve-out.
+OPEN ROWS FILED THIS SESSION, newest first, none started:
 
-The channel exchange of 2026-10-01 is CLOSED on both sides and owes nothing: RC
-sent a correction, the sibling ACCEPTED it, withdrew its own probe as
-insufficient, and found its own uncounted positive control. Do not re-open or
-re-send.
+  RM-507  RC's channel corpus is git-backed NOWHERE. moon_sync_inbox is gitignored
+          (.gitignore:201, git ls-files returns ZERO) in RC and in at least one
+          other carrier. 391 inbound + 141 outbound exist only as disk copies in
+          gitignored dirs across six machines; a git clean -xfd anywhere destroys
+          that tree's share silently. Read-and-unanswered is 273 of 391 by a
+          published rule, debt 217 - and 273 is an UPPER BOUND, do not quote it as
+          the debt. ACCEPTANCE IS NOT "answer 217 notes": decide whether to track
+          replies at all, or declare that silence is not dissent.
+  RM-506  control/STOP is a cycle-level brake, NOT a durable disarm -
+          loop_controller.py:1055-1056 deletes it at startup. CLAUDE.md and
+          tools/rc_facts.py both treat its presence as the record that the loop is
+          stopped. Do NOT simply stop unlinking it; the unlink exists so a
+          self-restart is not blocked by its own prior halt.
+  RM-505  Satisfying a recipient's LICENCE gate and their NAME sweep are in direct
+          conflict for a document RC wants vendored. Do NOT "fix" it by removing
+          the licence statement - that was the original defect.
+  RM-504  At least FIVE RC slot leaks, three invisible to every log RC keeps.
+          reap() is LAZY (only on the saturated branch), nothing audits the bucket,
+          and a log-based pairing audit structurally cannot see this class.
+          Includes: preserve a TRACKED corpus whenever a hold figure is published.
+  RM-503  RC's only guard on the age arm is green in three different states and
+          discriminates none. Add an arm-A test pinned BETWEEN stale_after and any
+          ceiling, asserting the pid_alive CALL COUNT, not just the verdict.
+  RM-502  is_stale has a SECOND age-only path (the `if not rec:` mtime fallback,
+          reachable via OSError, and it ignores the injected `now`). Liveness-free
+          BY ACCIDENT of which errors occur, not a reachable defect - no route was
+          found by which a live holder's good lockfile fails to read. NOT
+          unilaterally fixable; three carriers have now confirmed it independently.
+  RM-501  GATED. 344 mechanically repairable commit citations.
+          tools/rewrite_sha_citations.py has existed since 2026-09-07, dry-run
+          default, never applied. The SHAPE of the repair is the decision, not the
+          mechanics - it edits append-only history. Record a decision with its
+          reason FIRST.
 
-ALSO OPEN, unchanged and still in order: the stray-work sweep plus the
-reconciliation (a SIX-way act, RC still owes its own report); the frozen
-supervisor walker (ops/rc_supervisor.py:513, needs an operator grant); RM-239 /
-RM-242 which are an OPERATOR call and NOT YET CONFIRMED - do NOT start them;
-RM-475; and the ROADMAP-vs-LEDGER drift guard gap.
+DO NOT REDO, all measured 2026-10-02:
+  - RC's 5,401 s hold figure is a FLOOR, not a maximum. Re-derived exactly (44
+    acquires / 43 releases / 43 pairs / worst 5,401 s / mean 2,593 s / zero above
+    16,200 s) but the corpus holds SIX run_ids while RC knows of at least NINE -
+    12323c3b, 356f2f86 and a22618e2 each occur ZERO times in it. RC has told the
+    channel to record its contribution as "unknown, floor 5,401 s".
+  - The two leaked locks are CLEARED and the bucket was 3-to-1 after. STOP was
+    HONOURED; the controller has NOT run since 2026-09-11. The acquires came from
+    an UNTRACKED direct slots.hold() caller and could not be identified - no log,
+    no scheduled task, no shell history, worktrees since removed. Do not re-chase
+    the identification without a new lead.
+  - The duplicate LEDGER 1457 is renumbered AND reordered. Order is 1459, 1458,
+    1457, 1456. Do not file it again.
+  - A narrowed `pytest tests -k` over doc terms reports 1 error at
+    tests/test_inbox_responder_runner.py:306. KNOWN ARTIFACT, re-confirmed: the
+    module unfiltered is 79 passed. An ablation's test selection is part of the
+    ablation.
+  - RSC's hold corpus is NOT tracked, and neither is RC's. There is no
+    tracked-corpus counterexample on this channel. Do not repeat the compliment.
 
-TWO BOUNDARY CALLS WERE MADE UNATTENDED - overrule either if you disagree:
-  1. memory/ writes PROCEED despite the dir sitting outside the repo root.
-     A literal reading of "halt before any byte leaves the tree" would make the
-     standing drift-guard-every-wrap rule unfollowable. memory/ is RC-scoped,
-     operator-established, read by RC's own tools/drift_guard.py, and cannot
-     reach a sibling.
-  2. The push did NOT halt. The diff touched no byte-pinned artifact, the sibling
-     sweep was clean on every changed file, and the one bare channel code added
-     is already published by design in the TRACKED docs/CHANNEL.md roster. The
-     secret is the NAMES, not the codes, and no name was written. That last part
-     was adjudicated MANUALLY on purpose, because a bare code is never DETECTED
-     by the sweep, so a clean verdict says nothing about one.
-
-DO NOT REDO, all measured 2026-10-01:
-  - PYTHONDONTWRITEBYTECODE is set to 1 in a Claude Code session's environment on
-    this box and sys.dont_write_bytecode is True, while the variable is ABSENT
-    from BOTH HKCU\Environment and the HKLM Session Manager key - the harness
-    injects it per session. RC is NOT exposed to the consequence: every .pyc /
-    __pycache__ reference in tests/ tools/ ops/ scripts/ is a walk EXCLUSION, not
-    an assertion that bytecode must be absent, so there is no overdetermined
-    sweep to invalidate. This is a PRE-EMPTIVE fence - if you ever write a
-    bytecode-hygiene guard, it will be born overdetermined unless you unset the
-    variable first and watch the dirty result appear. Positive control already
-    exists by accident: 2090 .pyc files under tests/__pycache__ written by
-    processes that never had the variable.
-  - The channel reply to SS's two 2026-10-01 notes is DELIVERED, 5 of 5, re-hashed
-    from each recipient's copy (sha256 e753bbe4c349d052, 6980 bytes). Do not
-    re-send it. Both of SS's notes are class INFORMATION and owe nothing further.
-  - A NARROWED -k DOC SLICE CAN MANUFACTURE A FAKE ERROR, measured twice. Running
-    pytest tests -k "...ascii..." without also matching ledger/roadmap/backlog/link
-    selects tests/test_inbox_responder_mutants.py::test_this_file_is_seven_bit_ascii
-    while DESELECTING the tests that drive the responder arms. Its module-scoped
-    autouse fixture then fires its own anti-vacuity positive control at teardown:
-    "no tmp responder log was written - the arms did not drive"
-    (tests/test_inbox_responder_runner.py:306). That is the guard working, NOT a
-    regression - the module is 79 passed on its own and the unfiltered suite is
-    clean. The general form, and it is SS's finding: AN ABLATION'S TEST SELECTION
-    IS PART OF THE ABLATION. If you narrow a -k, re-check that you did not
-    deselect the case that makes the remaining ones meaningful.
-  - "9 test files reference rewind_catchup" is the PRE-FIX count. It is 10 now
-    that tests/test_now6_logger_leak_regression.py exists. The scope sweep was
-    over the 9 pre-existing files; do not read the 10 as a missed leaker.
-  - The channel counts are NOT contradictory. SHARED_SHA256 byte-pin bucket =
-    THREE, ops/moon_sync_repos.json participants = FIVE, docs/CHANNEL.md roster =
-    SIX with FIVE carriers (SS is roster-but-not-carrier). Three different sets,
-    all correct. CHANNEL.md warns in its own text never to write a carrier count
-    as a roster count. Only a LABEL was wrong and it is fixed. Do NOT reconcile
-    these three numbers to each other.
-  - tools/sibling_name_sweep.py was CHECKED against the SS "which bucket absorbs
-    YOUR failures" lesson and PASSED on every axis (EXIT_FAULT never collapsed
-    into EXIT_CLEAN, per-slot assert_non_vacuous, eager GitFault on a vacuous
-    tree walk, unscanned_bytes and decode_failures printed, windowing guarded
-    byte-for-byte). Do not re-audit it for this reason.
-  - agents/agent2_backend/ws_server.py:66 propagate = False is UNREACHABLE from
-    the suite - no test file references ws_server. Not a latent leak.
-  - Of the 9 test files referencing rewind_catchup, exactly ONE leaked. The other
-    8 were paired with the subject individually and were clean.
-  - 49 memory files carry non-ASCII bytes. That is the pending operator-gated
-    smart-quote sweep CLAUDE.md already lists, not a regression.
-  - reference_claude_p_readonly_spawn_shape is deliberately still pinned at
-    2.1.251. --restricted / --bare were NOT re-measured. Do not "tidy" it to
-    2.1.285 without running that experiment.
-
-CARRY, and the first one earned its capitals three times in one session:
-  A COUNT OUT OF AN EXTRACTION STEP IS A HYPOTHESIS ABOUT THE EXTRACTOR until the
-  row prints its evidence beside the verdict. Verifying that 42 demoted fence
-  sentences survived reported 1 loss, then 18, then 34 - all three were checker
-  bugs, all three printed under a bucket named MISSING, and the truth was 42 of
-  42 PRESENT. Ask which single bucket a bug in your own extraction lands in, and
-  whether it is named after YOUR failure or the SUBJECT'S.
-
-  PASSING IN ISOLATION IS WHAT A POLLUTION LOOKS LIKE, never evidence against
-  one. And a backgrounded suite that straddles your own doc edits is not evidence
-  about the tree you are about to push - re-run the part that reads what you
-  touched.
-
-  Derive candidates from the FAILING SUBJECT, not from the symptom's vocabulary.
-  The logging-token grep returned 10 files and all 10 were clean, because the
-  polluter contained no logging token at all.
+PROCESS, and it is the operator's standing directive rather than a suggestion:
+ADJUDICATE, DO NOT GATE. RC gated once this session - asking about clearing the
+leaked locks - and the operator then chose a WIDER scope than either option offered.
+Emit the session checklist inline at start, at every 4 completed items, at any
+status request, and at /done pre-flight. Caveman-ultra in chat; the main window is
+the operator's.
 
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-git log + ROADMAP.md.
+git log + ROADMAP.md, then read moon_sync_inbox BY MTIME.

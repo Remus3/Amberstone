@@ -41,6 +41,47 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-09-30b - PR #1 MERGED, branch and worktree estate cleared, ddragon 16.19.1 landed, lane pushes HALTED by the sibling sweep
+
+**PR #1 is MERGED** as `eed3f8849`. CI was the gate, per the hand-off's own acceptance clause.
+It was RED first, and NOT flaky: `test_no_test_asserts_against_the_whole_environment` caught
+three assertions `fix/weekly-routines` added at `tests/test_supervisor_ephemeral_auth_env.py`
+117/118/131 that would have printed every env KEY AND VALUE into the public CI log on failure.
+Fixed in `72b973780` with helpers that return key NAMES only. **Note the shape: item 1454 added
+that guard and fixed five hits; item 1455 then added three more in a new file.** My first helper
+was weaker than the set equality it replaced (missed invented keys) - caught before commit.
+Then green: **35456 passed, 282 skipped, 18723 subtests, 20m35s.**
+
+**RM-486 is ANSWERED, not fixed.** CI ran the same dual suite clean twice, so the suite is sound
+and the local exit-127 is a Legion harness fault. A local run was abandoned at 16 percent after
+~50 minutes. Root cause still OPEN - do not re-run `pytest tests` here expecting a verdict.
+
+**Estate:** 50 agent worktrees removed, 53 branches deleted, `fix/weekly-routines` gone local and
+remote, orphan ref `refs/remotes/local/main` dropped. 19 branches looked unmerged; `git cherry`
+proved every commit patch-equivalent upstream. **`git diff main..<branch>` is the wrong instrument
+on a stale branch** - it reports main's content missing from THEM. Use `git cherry`.
+
+**ddragon 16.18.1 -> 16.19.1** committed (`199fe7d40`) from the uncommitted `RC-PatchRefresh`
+output. Pre-existing and NOT fixed: `test_meta_build_cache_retention.py` says current+previous,
+but nine patch dirs are tracked - it guards the helper, not the tree.
+
+**LANE PUSHES HALTED AND STAYED HALTED.** The six `lane/*` refs were fast-forwarded to main
+locally; all six pushes were refused by `tools/sibling_name_sweep.py` - 10 findings across
+BACKLOG / RC-NEXT-SESSION / CLAUDE / WAKEUP_NOTES / CONCURRENT_HEADLESS_CONTRACT / LEDGER /
+`ops/loop/slots.py` / `tests/test_loop_concurrency.py` plus one commit message. **Nothing was
+pushed, no bypass used, `origin/lane/*` unchanged.** The pre-push arm scans the DELTA and each
+lane was 528-674 commits behind, so it re-read the whole history since that lane last pushed.
+**SETTLED: they are HISTORICAL.** All 8 flagged paths scan clean at HEAD via `--scan-file`, and
+the `--tree` arm finished CLEAN (650,644,164 bytes / 4968 files / exit 0; 482 binary-LFS blobs
+not content-scanned, its stated blind spot). Also measured: all 675 lane-delta commits are
+already ancestors of origin/main, so the push would send ZERO new objects - the sweep's delta is
+per-REF, not per-repo. **Not acted on; no bypass used; the call is the operator's.** **And CI cannot settle it:
+`sibling-sweep-tree` passed green on the same push, because the sweep loads its names from
+gitignored per-host `ops/moon_sync_repos.json` and CI has no such file - CI's sweep is armed with
+NOTHING. Never cite that green as evidence about sibling names.**
+
+---
+
 # 2026-09-30 - weekly scheduled routines repaired (PR #1, NOT merged), and the tests/ suite cannot complete locally
 
 **Branch `fix/weekly-routines` pushed, PR #1 OPEN, NOT merged.** Four commits: `fb05d3488`
