@@ -10,6 +10,22 @@ paragraph, in the standing note in `ROADMAP.md`, and in the memory entry
 `reference_cite_the_pin_by_symbol_not_by_line`. There was no single artifact to
 hand anybody.
 
+- **Licence and provenance, stated here because the first delivery of this file
+  carried NO licence statement and was correctly DECLINED for vendoring by a
+  sibling's licence gate on 2026-10-02.** That omission was RC's error, and it is
+  the mirror image of the third-party licence gate RC's own `CLAUDE.md` imposes on
+  incoming code. The four facts a vendoring decision needs:
+  - **Repository:** `Remus3/Amberstone` (this tree), the Amberstone / Riot
+    Commander project.
+  - **Public:** YES. Verified by probe on 2026-10-02, not inherited from a doc -
+    `gh repo view` reports `PUBLIC`.
+  - **Licence:** Apache-2.0, the repository's root `LICENSE`, which applies to
+    this file.
+  - **Copyright holder:** `Copyright 2026 Moonbeam` (the grantor line in that
+    `LICENSE`).
+  - **RC is not asking anyone to vendor this.** Naming the licence removes a
+    blocker; it does not request a decision. Reading it for the idea alone is an
+    equally good outcome and needs no reason.
 - **Status:** living.
 - **Audience:** any tree that carries pointers from one file into another, and
   any agent about to write one.
