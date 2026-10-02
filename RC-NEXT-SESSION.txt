@@ -1,104 +1,93 @@
 NEXT SESSION
 ------------
-TWO open reds, both filed, neither caused by the last session.
+ZERO open reds. Both the reds the last hand-off carried are CLOSED, and the full
+suite is `24733 passed, 104 skipped, 3 xfailed, 1 xpassed, 5066 subtests, ZERO
+failed` in 1:23:55 (commit 3db5f6be5 plus the wrap commit). Do not go looking for
+them.
 
-Task A (NOW-6): three FULL-SUITE-ONLY failures in
-tests/test_rm413_wal_pragma_result_checked.py - cross-test pollution,
-reproducible on a quiescent single-process tree, pre-existing, and CI-GREEN on
-the same commit. The file alone is 121 passed. Root cause OPEN; two hypotheses
-are already eliminated and must not be re-run (no warn-once guard in the
-subject; the noisy-logger override never touches rc.*). caplog sees ZERO
-warnings where one is expected, so hunt the CAPTURE side - a handler or
-propagate mutation left by an earlier test. Cheapest probe: run that file after
-progressively larger prefixes of the suite to find the polluter.
+TASK A (NOW-7, the only substantive row this session left on purpose): generalise
+the NOW-6 fix so a leaked logger mutation goes RED AT THE LEAKER instead of at a
+victim 18 files later. A session-scoped tests/conftest.py hook snapshots
+propagate / level / handlers per logger a test touched and fails THAT test if it
+did not restore them. Precedent is already in-tree at tests/conftest.py:159-206
+for agents/_supervisor_common.py:197.
 
-Task B (NOW-5): ONE red test, and it is a tripwire that must not be silently re-pinned.
-ROADMAP NOW-5. tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin
-fails because the Claude CLI moved to 2.1.285 while PINNED_CLI (that file, :34)
-says 2.1.251.
+  THE GATE ON TASK A IS NOT OPTIONAL AND IS WHY IT WAS NOT DONE LAST SESSION:
+  RUN IT IN REPORT-ONLY MODE FIRST - detect and print, assert nothing - and
+  publish the leak count before arming anything. Every leak it finds is a test
+  that goes green -> red, across ~24.7k tests. A detector that reddens an unknown
+  number of greens in one commit is indistinguishable from a broken detector.
 
-DO NOT just bump the constant. --append-subagent-system-prompt is UNDOCUMENTED,
-so the test's own failure message IS the acceptance and it is a NEGATIVE
-CONTROL: spawn a subagent with a secret codeword in the appended prompt, then
-run the SAME prompt WITHOUT the flag and confirm the codeword does NOT appear.
-Update PINNED_CLI only after that passes. Bumping it blind converts a live
-wire-check into a constant that proves nothing, which is the failure the file's
-own header describes.
+TASK B (cheap, and it will bite a wrap if skipped): ROADMAP.md is riding the WARN
+line at 90.0 percent of its 81920-byte budget. drift_guard went RED at 92 percent
+mid-session last time and that is what caught it. Do a proper relocation pass (the
+thirteenth) - ONLY CLOSED rows move, verbatim, to docs/ROADMAP_HISTORY.md, and
+each keeps a ~400-600-byte stub of the shape L41-L44 already use. CLAUDE.md is
+comfortable now at 82.4 percent, so the pressure is ROADMAP-only.
 
-It is MACHINE-LOCAL, not a CI red: that test skips when neither claude.cmd nor
-claude is on PATH (:76-78), so a runner skips it and CI stays green. Do not
-chase a CI failure for this.
+  AND THE RULE THAT GOVERNS BOTH BUDGET FILES: a saving must come from DEMOTION,
+  never from deleting a fence, and a fence that governs FUTURE work stays INLINE
+  even when its evidence moves. Relocating a live rule into an archive is the
+  failure a size-budget pass is most likely to cause. Two rows carry fences in
+  BOTH places on purpose - that is not duplication to tidy up.
 
-Established, do NOT re-derive:
-- The six lane/* refs are GONE from origin, by operator decision, with NO
-  bypass. A delete push does not trip the sweep (all-zero local sha returns
-  None by design). All six SHAs were already ancestors of origin/main, so
-  nothing was orphaned. origin now carries exactly one head: main.
-- All three session-start anomalies are CLOSED. rc_facts.py now prints
-  "0 anomaly(s), 3 acknowledged disarm(s)". The three disarmed tasks are a
-  DELIBERATE operator decision of 2026-09-11 (docs/history_notes.md:1033-1035),
-  NOT a fault. Nothing was re-armed and re-arming needs BOTH halves:
-  Enable-ScheduledTask AND clearing ops/loop/control/STOP. RC-InboxResponder
-  must stay disarmed - the detector now INVERTS that check, so finding it
-  ENABLED is the anomaly.
-- data/rewind_catchup.state.json last_run_at was backfilled to 2026-09-27T09:00:00Z
-  (UTC - the 04:00 local reading was wrong). It is GITIGNORED, so it shows in no
-  diff; evidence is content plus mtime.
-- CLAUDE.md's two sweep/digest paragraphs now cite by SYMBOL, not by line,
-  because three line cites had drifted while still RESOLVING. Do not "helpfully"
-  put line numbers back.
-- Channel drained: 386 notes seen. Two RC notes delivered, each 5 of 5 reached,
-  destinations re-hashed digest-equal.
+ALSO OPEN, unchanged and still in order: the stray-work sweep plus the
+reconciliation (a SIX-way act, RC still owes its own report); the frozen
+supervisor walker (ops/rc_supervisor.py:513, needs an operator grant); RM-239 /
+RM-242 which are an OPERATOR call and NOT YET CONFIRMED - do NOT start them;
+RM-475; and the ROADMAP-vs-LEDGER drift guard gap.
 
-Carry, both measured this session:
-- A CITATION THAT RESOLVES IS NOT A CITATION THAT IS RIGHT. Three stale cites in
-  CLAUDE.md all resolved and pointed at unrelated text; a fourth in the same
-  paragraph was correct, so sampling one would have passed the paragraph.
-- PASSING IN ISOLATION IS WHAT A POLLUTION LOOKS LIKE - IT IS NOT EVIDENCE OF A
-  STRADDLED TREE. I attributed three failures to a slice writing a live file
-  mid-run, because it did write one and because they pass in isolation. Both
-  true, conclusion wrong: a second full run on a quiescent single-process tree
-  reproduced all three. They are full-suite-only and pre-existing. See NOW-6.
-  The commit message of 09c55bc0e carries the superseded claim; LEDGER 1457 is
-  the authority.
-- The glyph check in .claude/commands/headless-upgrade.md was a FALSE CLEAN:
-  grep -P exits 2 ("-P supports only unibyte and UTF-8 locales") and scans
-  nothing. Replaced with LC_ALL=C grep -n '[^ -~]'. I first wrote that the fix
-  lived only on this box because that file is gitignored - WRONG, and the drift
-  guard caught it: tools/headless-upgrade.md is a TRACKED mirror, pinned by the
-  guard's mirror-parity check, so the fix does ship. A gitignored file can still
-  have a tracked twin; check before claiming a change cannot be committed.
-- WILL BITE YOUR NEXT /done: the claim gate loses the SECOND terminal summary of
-  a backgrounded run (RM-498, root-caused to stop_claim_gate.py:561-564 setting
-  deferred = None after the first attach). So running BOTH suites in ONE
-  background job credits only the first count, and an ACCURATE report of the
-  second is flagged count_mismatch forever - a withdrawal never clears it.
-  WORKAROUND until RM-498 lands: launch each suite as its OWN background job, or
-  backtick the count when you report it. Do NOT fix the gate in the same session
-  it is blocking you.
+TWO BOUNDARY CALLS WERE MADE UNATTENDED - overrule either if you disagree:
+  1. memory/ writes PROCEED despite the dir sitting outside the repo root.
+     A literal reading of "halt before any byte leaves the tree" would make the
+     standing drift-guard-every-wrap rule unfollowable. memory/ is RC-scoped,
+     operator-established, read by RC's own tools/drift_guard.py, and cannot
+     reach a sibling.
+  2. The push did NOT halt. The diff touched no byte-pinned artifact, the sibling
+     sweep was clean on every changed file, and the one bare channel code added
+     is already published by design in the TRACKED docs/CHANNEL.md roster. The
+     secret is the NAMES, not the codes, and no name was written. That last part
+     was adjudicated MANUALLY on purpose, because a bare code is never DETECTED
+     by the sweep, so a clean verdict says nothing about one.
 
-Open rows filed, not built: RM-490 (stop_claim_gate blind to INTERNALERROR),
-RM-491 (hand-run sweep arm cannot see an untracked file), RM-492 (no history
-secret scan on a PUBLIC repo), RM-493 (freeze witness is a git witness, blind to
-a .pyc), RM-494 (Settled block is search-narrowing prose), RM-495 and RM-497 are
-REFUTED-and-kept so nobody re-files them, RM-496 (sweep for self-tests that
-re-implement rather than call their subject).
+DO NOT REDO, all measured 2026-10-01:
+  - The channel counts are NOT contradictory. SHARED_SHA256 byte-pin bucket =
+    THREE, ops/moon_sync_repos.json participants = FIVE, docs/CHANNEL.md roster =
+    SIX with FIVE carriers (SS is roster-but-not-carrier). Three different sets,
+    all correct. CHANNEL.md warns in its own text never to write a carrier count
+    as a roster count. Only a LABEL was wrong and it is fixed. Do NOT reconcile
+    these three numbers to each other.
+  - tools/sibling_name_sweep.py was CHECKED against the SS "which bucket absorbs
+    YOUR failures" lesson and PASSED on every axis (EXIT_FAULT never collapsed
+    into EXIT_CLEAN, per-slot assert_non_vacuous, eager GitFault on a vacuous
+    tree walk, unscanned_bytes and decode_failures printed, windowing guarded
+    byte-for-byte). Do not re-audit it for this reason.
+  - agents/agent2_backend/ws_server.py:66 propagate = False is UNREACHABLE from
+    the suite - no test file references ws_server. Not a latent leak.
+  - Of the 9 test files referencing rewind_catchup, exactly ONE leaked. The other
+    8 were paired with the subject individually and were clean.
+  - 49 memory files carry non-ASCII bytes. That is the pending operator-gated
+    smart-quote sweep CLAUDE.md already lists, not a regression.
+  - reference_claude_p_readonly_spawn_shape is deliberately still pinned at
+    2.1.251. --restricted / --bare were NOT re-measured. Do not "tidy" it to
+    2.1.285 without running that experiment.
 
-NEEDS YOUR CALL (1): CLAUDE.md sits at 91 percent of its 61440-byte budget and
-drift_guard.py exits 1 on it every run. It is NOT a CI failure - CI never invokes
-drift_guard.py, and the hard gate tests/test_doc_size_budget.py passes at 91
-percent. A slice sized all 22 bullets in the Settled section: exactly ONE is a
-safe mechanical move, at 144 bytes, against the ~2000 needed. Every larger bullet
-is a carve-out, a recorded falsification or an explicit prohibition, and that
-section exists to be read every session. So the saving has to come from demoting
-specific fences to an ADR or a memory file, which is your call, not a mechanical
-relocation. Three candidate blocks, all long prose with a natural home elsewhere:
-"Third-party lift: license gate", "Session Default", "Execution Efficiency".
-Do NOT let a later session "fix" this by deleting fences.
+CARRY, and the first one earned its capitals three times in one session:
+  A COUNT OUT OF AN EXTRACTION STEP IS A HYPOTHESIS ABOUT THE EXTRACTOR until the
+  row prints its evidence beside the verdict. Verifying that 42 demoted fence
+  sentences survived reported 1 loss, then 18, then 34 - all three were checker
+  bugs, all three printed under a bucket named MISSING, and the truth was 42 of
+  42 PRESENT. Ask which single bucket a bug in your own extraction lands in, and
+  whether it is named after YOUR failure or the SUBJECT'S.
 
-NEEDS YOUR CALL (2): CLAUDE.md says the channel is "RC plus two sibling checkouts",
-but ops/moon_sync_repos.json carries FIVE sibling participant codes and
-docs/CHANNEL.md says the roster is six. That may be carriers-versus-participants
-rather than an error, so it was flagged and NOT rewritten.
+  PASSING IN ISOLATION IS WHAT A POLLUTION LOOKS LIKE, never evidence against
+  one. And a backgrounded suite that straddles your own doc edits is not evidence
+  about the tree you are about to push - re-run the part that reads what you
+  touched.
 
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
+  Derive candidates from the FAILING SUBJECT, not from the symptom's vocabulary.
+  The logging-token grep returned 10 files and all 10 were clean, because the
+  polluter contained no logging token at all.
+
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
+git log + ROADMAP.md.
