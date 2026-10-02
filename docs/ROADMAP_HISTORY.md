@@ -3619,3 +3619,107 @@ replaces it is the merged `RM-347 / RM-350 .. RM-357 / RM-359` line.
 ## RM-410 - relocated from ROADMAP.md 2026-09-14 (shipped, LEDGER 1396; the RM-411 fence also lives on the RM-411 row in BACKLOG.md)
 
 - **RM-410 SHIPPED 2026-09-11** (`7ff5fc853`; LEDGER 1396; plan row R229) - the direct byte / atomicity test for `lib/ddragon/fetch._atomic_write_json`; its "no test calls that writer" premise was REFUTED before any code was written. **RM-411 FILED to `BACKLOG.md`** - 7 test call sites patch a destructive stdlib primitive process-wide; the `-n 8` reason for it is refuted, do not re-file it.
+
+
+## 2026-10-01 - NOW-6 (the full-suite-only logger pollution) ROOT-CAUSED and closed, 1 row
+
+**ROOT CAUSE.** `scripts/rewind_catchup.py:166` `setup_file_logging()` sets
+`propagate = False` on the module logger `rc.scripts.rewind_catchup` (`:60`),
+raises its level to INFO (`:163`) and attaches a `RotatingFileHandler` (`:162`).
+`main()` calls it unconditionally at `:825`. `tests/test_rewind_timeline_429_retry.py::_DbCase`
+restored its three `mock.patch` objects in `tearDown` and nothing else, so every
+test in that file calling `rc.main()` left the mutation in place for the rest of
+the process. `caplog`'s handler sits on the ROOT logger, so with propagation cut
+at the EMITTING logger `caplog.records` is empty even though the subject warns
+unconditionally at `:273-277`. The three failures therefore landed in
+`tests/test_rm413_wal_pragma_result_checked.py`, a file that never touches
+logging - **the defect belonged to the leaker and surfaced on the victim.**
+
+**MINIMAL REPRODUCTION, 2 elements, 3.0s** (measured in the main session, not
+inherited): `pytest "tests/test_rewind_timeline_429_retry.py::CatchupRetryOnlyDryRunTests::test_retry_only_dry_run_leaves_db_bytes_unchanged" tests/test_rm413_wal_pragma_result_checked.py`
+gave `3 failed, 119 passed`; the subject file alone gave `121 passed`. Ordering is
+deterministic alphabetical (pytest 9.0.3, no `pytest-randomly`); the polluter is
+file #866 in collection order and the subject #884, which is why a full run
+reproduced and an isolated run never could.
+
+**FIX.** `_DbCase.setUp` now snapshots `propagate`, `level` and the handler list
+and `tearDown` restores them, closing added handlers; `rc.LOG_PATH` is also
+patched into tmp so the handler cannot touch the live `logs/` tree. This is the
+idiom `tests/test_rewind_catchup_noop_state.py:88-104` already used, which is
+exactly why that sibling file never polluted.
+
+**SCOPE MEASURED, NOT REASONED.** All 9 test files referencing `rewind_catchup`
+were paired with the subject individually: exactly ONE leaked
+(`test_rewind_timeline_429_retry`), the other 8 were clean. The only other
+production `propagate = False` in the tree is
+`agents/agent2_backend/ws_server.py:66` in `_build_logger`, reached only from
+`WSServer.__init__` (`:77-78`); NO test file references `ws_server`, so that
+sibling is unreachable from the suite rather than latent. A third `_build_logger`
+(`agents/_supervisor_common.py:197`) was ALREADY guarded at
+`tests/conftest.py:159-206`, which is the precedent for this class.
+
+**REGRESSION PIN:** `tests/test_now6_logger_leak_regression.py`, two tests,
+pinned at the LEAKER rather than the victim. **Proven non-vacuous by mutation:**
+with the fix stashed, BOTH tests go red (`2 failed in 5.06s`); restored
+byte-identical afterwards and `2 passed`.
+
+**THE SWEEP WAS CHECKED AGAINST THE SAME LESSON AND PASSED - do NOT re-audit it
+(NOW-7 points here).** The 2026-10-01 inbox note from SS (finding 1) argues that
+the most dangerous row an instrument prints is a bucket that absorbs the
+instrument's OWN extraction failures while being named after the SUBJECT's
+property. NOW-6 is the pure case of it. `tools/sibling_name_sweep.py` was then
+checked for the same shape and is ALREADY hardened on every axis: `EXIT_FAULT = 3`
+is never collapsed into `EXIT_CLEAN` and the docstring at `:44-46` says so in
+those words ("the gate fired" and "the gate could not run" are different);
+`assert_non_vacuous` is PER-SLOT, not merely global, and requires every needle to
+carry a DRIVE shape and a URL shape with BARE additionally required when the slot
+is not narrowed; `iter_tree_blobs` raises `GitFault` EAGERLY on a vacuous tree
+walk specifically so it surfaces as FAULT rather than as a traceback outside the
+fault handler; `unscanned_bytes` and `decode_failures` are counted and PRINTED
+rather than absorbed into clean; and windowing is guarded byte-for-byte by
+`tests/test_sibling_name_sweep.py` (`test_the_pre_push_diff_arm_is_byte_for_byte_unchanged_by_chunking`,
+plus a core-coverage assertion that the last window reaches `len(text)`).
+
+**AND THE LESSON BIT THE VERIFICATION OF THIS VERY SESSION, THREE TIMES.** The
+independent check that slice C had preserved all 42 fence sentences first reported
+1 missing, then 18 "true losses", then 34 - and every one of them was a defect in
+the CHECKER, not in the subject: a `(?<=[.!?])` lookbehind cannot fire on a
+sentence ending `.**`, an 8-word shingle cannot span a point where a heading was
+inserted, and a half-split heuristic over `range(2, N-1)` cannot decompose a
+junction whose far half is one word. Each wrong count was printed by a bucket
+named MISSING - named after the subject's property. The correct splitter returned
+**42 of 42 present**, matching the slice's own figure. **A count from an
+extraction step is a hypothesis about the extractor until the row shows its
+evidence beside the verdict.**
+
+## 2026-10-01 - NOW-5 (the CLI version pin) closed and relocated, the eleventh pass, 1 row
+
+The `## 2026-10-01` block above recorded that the two `[OPEN]` rows filed that day
+were NOT moved, because only CLOSED rows move. **NOW-5 closed later the same day**
+and therefore qualifies under that same unchanged selection rule. `ROADMAP.md`
+keeps the closure, the measured evidence and the forward-governing fence inline,
+and points here for the original filing.
+
+**The fence is deliberately carried in BOTH places.** It is not a historical note:
+"DO NOT just bump the constant" governs the NEXT CLI upgrade, so a reader who only
+ever loads `ROADMAP.md` must still meet it. Relocating it here alone would have
+demoted a live rule into an archive, which is the failure the size-budget passes
+exist to avoid.
+
+The row VERBATIM as it stood before the closure was written:
+
+**ORIGINAL ROW: ONE RED TEST ON THIS BOX - the Claude CLI moved and `tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin` is a DELIBERATE tripwire that must NOT be silently re-pinned. MEASURED 2026-09-30:** installed CLI is `2.1.285 (Claude Code)`, `PINNED_CLI` at `tests/test_subagent_prompt_flag.py:34` is `2.1.251`. **This is machine-local and NOT a CI red, and the mechanism is in the test itself:** `:76-78` skips when neither `claude.cmd` nor `claude` is on PATH, so a runner without the CLI skips it and CI stays green while this box fails. Nothing in the 2026-09-30 session touched this test or its subject - verified by name against that session's diff. **DO NOT just bump the constant.** The flag `--append-subagent-system-prompt` is UNDOCUMENTED, so the test's own failure message sets the acceptance and it is a NEGATIVE CONTROL, not a smoke test: spawn a subagent with a secret codeword in the appended prompt, then run the SAME prompt WITHOUT the flag and confirm the codeword does NOT appear. Only then update `PINNED_CLI`. Bumping it without that canary converts a live wire-check into a constant that proves nothing, which is the exact failure the file's own header describes ("the wire becomes inert - the constant survives but nothing passes it"). Related standing rule: hook and CLI findings are VERSION-SPECIFIC and expire - re-measure, never inherit.
+
+**CLOSURE, 2026-10-01:** re-pinned to `2.1.285`. Three controls, one more than the
+2026-09-01 round ran: canary (codeword returned inside a spawned subagent's own
+hand-back, proven a real spawn by a stream-json run showing one `Agent` tool_use
+with the subagent reporting `tool_uses: 0`); negative control (byte-identical
+invocation without the flag returned `NO-CANARY`, codeword count zero); and a NEW
+top-level leak control (flag present, NO spawn, top level reading its OWN system
+prompt returned `NO-CANARY`), which closes the ambiguity where a canary could be
+satisfied by the parent reading its own prompt rather than by propagation. Flag
+still UNDOCUMENTED on 2.1.285 - a `subagent` grep of `claude --help` returns only
+`--forward-subagent-text` - and still accepted (exit 0, against exit 1 for a
+genuinely unknown option). `tests/test_subagent_prompt_flag.py` is `6 passed`.
+`reference_claude_p_readonly_spawn_shape` stays pinned at 2.1.251 because
+`--restricted` / `--bare` were NOT re-measured in this round.
