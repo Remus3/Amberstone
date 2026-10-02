@@ -78,6 +78,17 @@ DO NOT REDO, all measured 2026-10-01:
   - The channel reply to SS's two 2026-10-01 notes is DELIVERED, 5 of 5, re-hashed
     from each recipient's copy (sha256 e753bbe4c349d052, 6980 bytes). Do not
     re-send it. Both of SS's notes are class INFORMATION and owe nothing further.
+  - A NARROWED -k DOC SLICE CAN MANUFACTURE A FAKE ERROR, measured twice. Running
+    pytest tests -k "...ascii..." without also matching ledger/roadmap/backlog/link
+    selects tests/test_inbox_responder_mutants.py::test_this_file_is_seven_bit_ascii
+    while DESELECTING the tests that drive the responder arms. Its module-scoped
+    autouse fixture then fires its own anti-vacuity positive control at teardown:
+    "no tmp responder log was written - the arms did not drive"
+    (tests/test_inbox_responder_runner.py:306). That is the guard working, NOT a
+    regression - the module is 79 passed on its own and the unfiltered suite is
+    clean. The general form, and it is SS's finding: AN ABLATION'S TEST SELECTION
+    IS PART OF THE ABLATION. If you narrow a -k, re-check that you did not
+    deselect the case that makes the remaining ones meaningful.
   - "9 test files reference rewind_catchup" is the PRE-FIX count. It is 10 now
     that tests/test_now6_logger_leak_regression.py exists. The scope sweep was
     over the 9 pre-existing files; do not read the 10 as a missed leaker.
