@@ -336,8 +336,10 @@ def test_mutex_names_are_the_shared_contract():
     broken build - the mutual exclusion silently absent.
 
     RC verified the precondition on its own box before copying: no live
-    loop_controller (the RUNNING.lock pid was dead), and an empty
-    C:\\ProgramData\\shared-loop\\slots.
+    loop_controller (the RUNNING.lock pid was dead), and an empty shared slot
+    bucket - whose real path is `slots.DEFAULT_ROOT`, NOT the
+    `ProgramData\\shared-loop\\slots` this docstring claimed until 2026-10-02.
+    That path has never existed on this box; cite the symbol, not a path.
     """
     assert winmutex.GEMINI_MUTEX == "Global\\MX-7C41A9E2"
     assert winmutex.GPU_MUTEX == "Global\\MX-2E58D3B6"
@@ -590,8 +592,11 @@ def test_shared_module_matches_the_pinned_cross_repo_digest(name: str):
 #
 # A byte-digest pin structurally cannot cover this one. max_concurrent_lanes is
 # the TOTAL number of concurrent executor calls allowed on this box across BOTH
-# repos, enforced by slots.py against the single shared root
-# C:\ProgramData\shared-loop\slots. Each repo reads its OWN config, so if the two
+# repos, enforced by slots.py against the single shared root named by
+# slots.DEFAULT_ROOT. (This comment cited a literal
+# C:\ProgramData\shared-loop\slots until 2026-10-02; that path has never existed
+# on this box, and a stale path in a comment reads as authoritative to the next
+# auditor. Cite the symbol.) Each repo reads its OWN config, so if the two
 # values disagree the governor silently permits max(rc, lw) holders - RC's
 # config.json calls that "theater" in its own note. Nothing asserted it.
 

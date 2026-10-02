@@ -1,6 +1,6 @@
 """NOW-7 step 1: REPORT-ONLY census of tests that leak logger state.
 
-WHAT THIS IS FOR. NOW-6 (LEDGER 1457) was a test that called production code
+WHAT THIS IS FOR. NOW-6 (LEDGER 1458) was a test that called production code
 which set ``propagate = False`` on a module logger and never restored it. That
 blinded ``caplog`` for the rest of the process, and three tests failed in a
 DIFFERENT file - one that never touches logging. The failure landed on the
