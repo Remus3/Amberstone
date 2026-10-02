@@ -2,7 +2,145 @@
 
 
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-09-30, the lane-refs / anomalies / channel-drain wrap (relocated `2026-09-21a` via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1038" - read off the tool's own output, never off a recollection; newest 3 = `2026-09-30c` this wrap, `2026-09-30b` the repo tidy-up, `2026-09-30` the weekly-routines repair). The prior relocation was 2026-10-01, the repo tidy-up wrap (relocated `2026-09-20c` and `2026-09-20b` via `scripts/wakeup_prune.py --keep 3`, which reported "moving 2 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1037" - read off the tool's own output, never off a recollection; newest 3 = `2026-09-30b` this wrap, `2026-09-30` the weekly-routines repair, `2026-09-21a` the RM-480 wrap). The prior relocation was 2026-09-21, the 16.18.1 / ENGINE 1.282.0 wrap (relocated `2026-09-19d` the lane-widget audit via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1034" - read off the tool's own output; newest 3 = `2026-09-20c` this wrap, `2026-09-20b`, `2026-09-20`). The prior relocation was 2026-09-20, the ROUND B / bucket-scan / RM-477 wrap (relocated `2026-09-19c` the lane widget ship, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1033" - both figures read off the tool's own output, never off a recollection; newest 3 = `2026-09-20b` this wrap, `2026-09-20` the NOW-block drain, `2026-09-19d` the lane-widget audit). **One claim in the `2026-09-20` block below is SUPERSEDED and is called out here so it is not inherited: it says the 67 MB `laning_scenarios` JSONs "were ruled out: LFS, blob is 133 bytes". REFUTED 2026-09-20 - `collect_tree_blobs` reads the WORKING TREE, so a smudged LFS file is scanned at its full 66,961,895 bytes and those seven files were the dominant term; see the `2026-09-20b` block.** The prior relocation was 2026-09-20, the NOW-block drain wrap (relocated `2026-09-19b` the idle filesystem walker, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1032" - those two figures are read off the tool's own output, never off a recollection; newest 3 = `2026-09-20` this wrap, `2026-09-19d` the lane-widget audit, `2026-09-19c` the lane widget ship). **One superseded claim rides in the relocated block and is called out here so a reader of the archive does not inherit it: `2026-09-19b` says LL has NO `docs/CHANNEL.md`. FALSE - LL carries it at `third_party/rc_channel/docs/CHANNEL.md`; see the 2026-09-20 block.** The prior relocation was 2026-09-19, the lane-widget UI fixture audit + live acceptance wrap (relocated `2026-09-19` the RM-239 / RM-242 QA pass, VERBATIM - moved with the Edit tool because Bash writes to tracked files are banned, and the verbatim property was checked the strong way rather than asserted: the SAME text was typed into `docs/history_notes.md` and then used as the `old_string` that removed it from here, so the removal could only have succeeded on an exact byte match, and it was then re-confirmed by diffing the archived block against `git show HEAD:WAKEUP_NOTES.md`. **`scripts/wakeup_prune.py` was NOT run this pass, so NO tool-reported move count is quoted here** - do not read one into this note; newest 3 = `2026-09-19d` this wrap, `2026-09-19c` the lane widget ship, `2026-09-19b` the idle filesystem walker). The prior relocation was 2026-09-18, the laned orchestrated loop wave 7 wrap (relocated `2026-09-17b` the wave 4 block, via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1027"; newest 3 = `2026-09-18b` this wave, `2026-09-18` wave 6, `2026-09-17c` wave 5). **THIS WAS THE FIRST REAL PRUNE AFTER THE RM-276 FIX, and the insertion-only property was verified on the REAL archive rather than inherited from the slice's scratch-copy measurement: exactly ONE difflib opcode, kind `insert`, 21 lines inserted, ZERO deleted, at old line 41, with `new == old[:41] + inserted + old[41:]` reconstructing exactly.** That matters because the pre-fix pruner would have deleted 1335 lines of ordering from this archive on this very run - see the wave 7 block below. The prior relocation was 2026-09-17, the laned orchestrated loop wave 4 doc-sync (relocated `2026-09-16b` the laned-loop wrap, VERBATIM - moved with the Edit tool because Bash writes to tracked files are banned, then byte-compared equal to the output of `scripts/wakeup_prune.py --keep 3` run on scratch copies of both files, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 970"; newest 3 = `2026-09-17b` this wave, `2026-09-17` wave 3, `2026-09-16c` waves 1-2). The pass before this one, on 2026-09-17, was the laned orchestrated loop wave 3 doc-sync (relocated `2026-09-16` the acknowledge-path wrap, VERBATIM via the Edit tool, byte-compared equal to `scripts/wakeup_prune.py --keep 3` output on scratch copies, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 969"; newest 3 = `2026-09-17` that wave, `2026-09-16c` waves 1-2, `2026-09-16b` the laned-loop wrap). The pass before that, on 2026-09-16, was the laned orchestrated loop wave 1 doc-sync (relocated `2026-09-15` the moon-sync merge, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 968"; newest 3 = `2026-09-16c` this wave, `2026-09-16b` the laned-loop wrap, `2026-09-16` the acknowledge-path wrap). The pass before this one, on 2026-09-16, was the laned-loop doc wrap (relocated `2026-09-14` the public surface refresh, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 966"; newest 3 = `2026-09-16b` this wrap, `2026-09-16` the acknowledge-path wrap, `2026-09-15` the moon-sync merge). The pass before this one, on 2026-09-15, was the moon-sync five-slice merge wrap (relocated `2026-09-12e` the discovery-axis + inter-scorer lane and `2026-09-12d` the fleet tooling-tier lane, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 2 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 964" - read those counts off the tool's own output, never off a recollection; newest 3 = `2026-09-15` this wrap, `2026-09-14` the public surface refresh, `2026-09-12f` the calibration lane). The pass before this one, on 2026-09-12, relocated `2026-09-12c` the SESSION WRAP doc-sync and reported "moving 1 session(s)" / "archive now has 962". The pass before that relocated `2026-09-12b` the five-slice merge and `2026-09-12a` RM-412 C1 OSS extraction, and reported "moving 2 session(s)" / "archive now has 961". The pass before that relocated `2026-09-11d`, the one before that `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired. The 2026-09-16 RELOCATION DUE note that sat here is DISCHARGED and deleted by the 2026-09-16b prune above.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-10-01, the two-reds-closed / CLAUDE.md-demotion wrap (relocated `2026-09-30` the weekly-routines repair via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1039" - read off the tool's own output, never off a recollection; newest 3 = `2026-10-01` this wrap, `2026-09-30c` the lane-refs / anomalies / channel-drain wrap, `2026-09-30b` the repo tidy-up). The prior relocation was 2026-09-30, the lane-refs / anomalies / channel-drain wrap (relocated `2026-09-21a` via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1038" - read off the tool's own output, never off a recollection; newest 3 = `2026-09-30c` this wrap, `2026-09-30b` the repo tidy-up, `2026-09-30` the weekly-routines repair). The prior relocation was 2026-10-01, the repo tidy-up wrap (relocated `2026-09-20c` and `2026-09-20b` via `scripts/wakeup_prune.py --keep 3`, which reported "moving 2 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1037" - read off the tool's own output, never off a recollection; newest 3 = `2026-09-30b` this wrap, `2026-09-30` the weekly-routines repair, `2026-09-21a` the RM-480 wrap). The prior relocation was 2026-09-21, the 16.18.1 / ENGINE 1.282.0 wrap (relocated `2026-09-19d` the lane-widget audit via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1034" - read off the tool's own output; newest 3 = `2026-09-20c` this wrap, `2026-09-20b`, `2026-09-20`). The prior relocation was 2026-09-20, the ROUND B / bucket-scan / RM-477 wrap (relocated `2026-09-19c` the lane widget ship, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1033" - both figures read off the tool's own output, never off a recollection; newest 3 = `2026-09-20b` this wrap, `2026-09-20` the NOW-block drain, `2026-09-19d` the lane-widget audit). **One claim in the `2026-09-20` block below is SUPERSEDED and is called out here so it is not inherited: it says the 67 MB `laning_scenarios` JSONs "were ruled out: LFS, blob is 133 bytes". REFUTED 2026-09-20 - `collect_tree_blobs` reads the WORKING TREE, so a smudged LFS file is scanned at its full 66,961,895 bytes and those seven files were the dominant term; see the `2026-09-20b` block.** The prior relocation was 2026-09-20, the NOW-block drain wrap (relocated `2026-09-19b` the idle filesystem walker, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1032" - those two figures are read off the tool's own output, never off a recollection; newest 3 = `2026-09-20` this wrap, `2026-09-19d` the lane-widget audit, `2026-09-19c` the lane widget ship). **One superseded claim rides in the relocated block and is called out here so a reader of the archive does not inherit it: `2026-09-19b` says LL has NO `docs/CHANNEL.md`. FALSE - LL carries it at `third_party/rc_channel/docs/CHANNEL.md`; see the 2026-09-20 block.** The prior relocation was 2026-09-19, the lane-widget UI fixture audit + live acceptance wrap (relocated `2026-09-19` the RM-239 / RM-242 QA pass, VERBATIM - moved with the Edit tool because Bash writes to tracked files are banned, and the verbatim property was checked the strong way rather than asserted: the SAME text was typed into `docs/history_notes.md` and then used as the `old_string` that removed it from here, so the removal could only have succeeded on an exact byte match, and it was then re-confirmed by diffing the archived block against `git show HEAD:WAKEUP_NOTES.md`. **`scripts/wakeup_prune.py` was NOT run this pass, so NO tool-reported move count is quoted here** - do not read one into this note; newest 3 = `2026-09-19d` this wrap, `2026-09-19c` the lane widget ship, `2026-09-19b` the idle filesystem walker). The prior relocation was 2026-09-18, the laned orchestrated loop wave 7 wrap (relocated `2026-09-17b` the wave 4 block, via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 1027"; newest 3 = `2026-09-18b` this wave, `2026-09-18` wave 6, `2026-09-17c` wave 5). **THIS WAS THE FIRST REAL PRUNE AFTER THE RM-276 FIX, and the insertion-only property was verified on the REAL archive rather than inherited from the slice's scratch-copy measurement: exactly ONE difflib opcode, kind `insert`, 21 lines inserted, ZERO deleted, at old line 41, with `new == old[:41] + inserted + old[41:]` reconstructing exactly.** That matters because the pre-fix pruner would have deleted 1335 lines of ordering from this archive on this very run - see the wave 7 block below. The prior relocation was 2026-09-17, the laned orchestrated loop wave 4 doc-sync (relocated `2026-09-16b` the laned-loop wrap, VERBATIM - moved with the Edit tool because Bash writes to tracked files are banned, then byte-compared equal to the output of `scripts/wakeup_prune.py --keep 3` run on scratch copies of both files, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 970"; newest 3 = `2026-09-17b` this wave, `2026-09-17` wave 3, `2026-09-16c` waves 1-2). The pass before this one, on 2026-09-17, was the laned orchestrated loop wave 3 doc-sync (relocated `2026-09-16` the acknowledge-path wrap, VERBATIM via the Edit tool, byte-compared equal to `scripts/wakeup_prune.py --keep 3` output on scratch copies, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 969"; newest 3 = `2026-09-17` that wave, `2026-09-16c` waves 1-2, `2026-09-16b` the laned-loop wrap). The pass before that, on 2026-09-16, was the laned orchestrated loop wave 1 doc-sync (relocated `2026-09-15` the moon-sync merge, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 968"; newest 3 = `2026-09-16c` this wave, `2026-09-16b` the laned-loop wrap, `2026-09-16` the acknowledge-path wrap). The pass before this one, on 2026-09-16, was the laned-loop doc wrap (relocated `2026-09-14` the public surface refresh, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 1 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 966"; newest 3 = `2026-09-16b` this wrap, `2026-09-16` the acknowledge-path wrap, `2026-09-15` the moon-sync merge). The pass before this one, on 2026-09-15, was the moon-sync five-slice merge wrap (relocated `2026-09-12e` the discovery-axis + inter-scorer lane and `2026-09-12d` the fleet tooling-tier lane, VERBATIM via `scripts/wakeup_prune.py --keep 3`, which reported "moving 2 session(s)" and "WAKEUP_NOTES now has 3 session(s); archive now has 964" - read those counts off the tool's own output, never off a recollection; newest 3 = `2026-09-15` this wrap, `2026-09-14` the public surface refresh, `2026-09-12f` the calibration lane). The pass before this one, on 2026-09-12, relocated `2026-09-12c` the SESSION WRAP doc-sync and reported "moving 1 session(s)" / "archive now has 962". The pass before that relocated `2026-09-12b` the five-slice merge and `2026-09-12a` RM-412 C1 OSS extraction, and reported "moving 2 session(s)" / "archive now has 961". The pass before that relocated `2026-09-11d`, the one before that `2026-09-11c`, and the one before that `2026-09-11b` and `2026-09-11a`, the same way. The 2026-09-11k RELOCATION DUE note that sat here is DISCHARGED and deleted - the file is back at keep-3. The letter suffixes are PER FILE and have diverged from `docs/LEDGER.md` - RM-385 is `c` there and `d` here; do not reconcile them. NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`4a707962`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired. The 2026-09-16 RELOCATION DUE note that sat here is DISCHARGED and deleted by the 2026-09-16b prune above.
+
+---
+
+# 2026-10-01 - BOTH open reds CLOSED: NOW-6 root-caused to a leaked logger mutation, NOW-5 re-pinned behind three controls, and the CLAUDE.md auto-load budget cut from 91 percent to 82 by demotion
+
+**Both reds the hand-off named are closed, and neither needed the 100-minute bisection it
+feared.** Headless, operator away, orchestrated: three slices out at once, main window held
+the plan, the merge and the gate.
+
+**NOW-6 was CROSS-TEST LOGGER POLLUTION, and the defect belonged to the LEAKER while
+surfacing on the VICTIM.** `scripts/rewind_catchup.py:166` `setup_file_logging()` sets
+`propagate = False` on `rc.scripts.rewind_catchup`, raises its level and attaches a
+`RotatingFileHandler`; `main()` calls it unconditionally.
+`tests/test_rewind_timeline_429_retry.py::_DbCase.tearDown` restored its three `mock.patch`
+objects and nothing else, so the mutation outlived the test. `caplog`'s handler sits on the
+ROOT logger, so cutting propagation at the EMITTING logger made `caplog.records` empty and
+three tests failed in `tests/test_rm413_wal_pragma_result_checked.py` - **a file that never
+touches logging.** The hand-off's "caplog sees ZERO warnings, hunt the CAPTURE side" was
+correct and is what found it.
+
+**THE SEARCH METHOD IS THE REUSABLE PART, because the obvious one FAILED.** A grep of
+`tests/` for logging tokens (`propagate`, `basicConfig`, `setLevel`, `logging.disable`, ...)
+returned 10 files, and all 10 ran CLEAN with the subject - **because the polluter contains
+no logging token at all; it only calls `main()`.** What worked: enumerate the files that
+import the same SUBJECT MODULE, then pair each one with the victim individually. Nine short
+runs, under 12s each, against a full suite that takes 1:42:33. **Derive candidates from the
+FAILING SUBJECT, not from the symptom's vocabulary.**
+
+**SCOPE MEASURED RATHER THAN REASONED.** All 9 test files referencing `rewind_catchup` were
+paired with the subject one at a time: exactly ONE leaked, the other 8 clean. The only other
+production `propagate = False` in the tree, `agents/agent2_backend/ws_server.py:66`, is
+reached only from `WSServer.__init__` and **no test file references `ws_server` at all**, so
+it is unreachable rather than latent. A third such logger
+(`agents/_supervisor_common.py:197`) was ALREADY guarded at `tests/conftest.py:159-206` -
+that is the in-tree precedent for the class fix.
+
+**The regression pin is placed at the LEAKER, not the victim, and is PROVEN NON-VACUOUS.**
+`tests/test_now6_logger_leak_regression.py`, two tests. With the fix stashed BOTH go red
+(`2 failed in 5.06s`); the file was then restored and verified byte-identical against a
+scratchpad backup, and the pair went green. **A guard nobody has watched fail is not a
+guard** - this one was watched.
+
+**NOW-5: `PINNED_CLI` 2.1.251 -> 2.1.285, and the acceptance was MET, not bypassed.** Three
+controls, one more than the 2026-09-01 round ran: canary (codeword returned inside a spawned
+subagent's own hand-back, proven a REAL spawn by a stream-json run showing one `Agent`
+tool_use with the subagent reporting `tool_uses: 0`); negative control (same invocation
+without the flag, `NO-CANARY`, codeword count zero); and a **NEW top-level leak control**
+(flag present, NO spawn, top level reading its OWN system prompt -> `NO-CANARY`), which
+closes the gap where a canary could be satisfied by the parent rather than by propagation.
+Version and `--help` were re-probed in the main session rather than inherited: still
+`2.1.285`, flag still absent from `--help` (only `--forward-subagent-text` matches a
+`subagent` grep), still accepted (exit 0 against exit 1 for a genuinely unknown option).
+`reference_claude_p_readonly_spawn_shape` was deliberately LEFT at 2.1.251 because
+`--restricted` / `--bare` were not re-measured - **a pin is only as good as the experiment
+behind it.**
+
+**CLAUDE.md 55,960 -> 50,652 bytes (91.1 -> 82.4 percent) ENTIRELY BY DEMOTION.** The
+7,514-byte HEADLESS-LOOPING paragraph became a 2,080-byte short form carrying only the rules
+a session needs every turn; the long form, the blind spots and the superseded readings moved
+VERBATIM to the new `docs/SIBLING_SWEEP_AND_BOUNDARY.md`. **42 of 42 sentences preserved,
+verified independently in the main session, not inherited from the slice.**
+
+**AND THAT VERIFICATION IS THE SESSION'S BEST LESSON, because it was WRONG THREE TIMES
+FIRST.** It reported 1 missing, then 18 "true losses", then 34 - and every single one was a
+defect in the CHECKER: a `(?<=[.!?])` lookbehind cannot fire on a sentence ending `.**`; an
+8-word shingle cannot span a point where a heading was inserted; a half-split heuristic over
+`range(2, N-1)` cannot decompose a junction whose far half is one word. Every wrong count
+printed under a bucket named `MISSING` - **named after the SUBJECT's property while
+absorbing the checker's own failures.** The correct splitter returned 42 of 42, matching the
+slice exactly. Had the first number been believed, a correct slice would have been sent back
+for a loss that never happened. This is finding 1 of the 2026-10-01 SS channel note,
+reproduced three times inside one session, and it is now memory
+`feedback_your_failure_bucket_vs_the_subjects`.
+
+**THE CHANNEL "CONTRADICTION" THE HAND-OFF FLAGGED IS NOT ONE - three different sets, all
+correct.** `SHARED_SHA256` byte-pin bucket = THREE (RC + two carriers, Sibling-C archived);
+`ops/moon_sync_repos.json` `participants` = FIVE (the non-RC address list);
+`docs/CHANNEL.md` roster = SIX with a carrier set of FIVE (SS is roster-but-not-carrier, and
+CHANNEL.md warns in its own text at the roster section never to write a carrier count as a
+roster count). CLAUDE.md's "two sibling checkouts" sentence sits immediately after the
+`SHARED_SHA256` sentence and describes the BYTE-PIN bucket. **The real defect was a LABEL,
+not a count:** it said bare "Participants", which in CHANNEL.md's vocabulary means the six.
+Relabelled; counts untouched. **Do not "fix" any of these three numbers to match another.**
+
+**RC's own sibling sweep was CHECKED against the SS lesson and PASSED - do not re-audit it
+for this.** `EXIT_FAULT = 3` is never collapsed into `EXIT_CLEAN` and the docstring says so
+in those words; `assert_non_vacuous` is PER-SLOT and requires DRIVE + URL shapes per needle;
+`iter_tree_blobs` raises `GitFault` EAGERLY on a vacuous tree walk so it surfaces as FAULT
+rather than as a traceback outside the fault handler; `unscanned_bytes` and
+`decode_failures` are printed rather than absorbed; windowing is guarded byte-for-byte.
+
+**Budget bookkeeping, because closing two rows while filing a third moved it twice.**
+ROADMAP went 73,325 (89.5 percent) -> 92.5 percent -> back to 73,720 (90.0 percent) by
+relocating both closures VERBATIM to `docs/ROADMAP_HISTORY.md` (an eleventh and a twelfth
+pass) and compressing the inline stubs to the ~400-600-byte shape L41-L44 already use.
+**`drift_guard` was RED at 92 percent mid-session and is clean at the end** - it is the
+thing that caught it, which is the argument for running it before the wrap and not after.
+**ROADMAP is still riding the WARN line at 90.0 percent and wants a proper relocation pass
+next session.**
+
+**Fences carried in BOTH places ON PURPOSE, which is not duplication.** The NOW-5 "DO NOT
+just bump the constant" clause and the NOW-6 "PASSING IN ISOLATION IS WHAT A POLLUTION LOOKS
+LIKE" clause stayed inline in ROADMAP while their evidence moved to history, because both
+govern FUTURE work. Relocating a live rule into an archive is the failure mode a
+size-budget pass is most likely to cause.
+
+**Boundary calls made without the operator, both flagged for overrule.** (1) The `memory/`
+directory sits OUTSIDE the repo root, so a literal reading of "halt before any byte leaves
+the tree" would block the standing drift-guard-every-wrap rule; resolved to PROCEED, because
+memory is RC-scoped, operator-established, read by RC's own `tools/drift_guard.py` and
+cannot reach a sibling. (2) The push half does NOT halt: the diff touches no byte-pinned
+artifact, the sweep is clean on every changed file, and the one bare channel code added
+(`SS`) is already published by design in the TRACKED `docs/CHANNEL.md` roster - **the secret
+is the NAMES, not the codes, and no name was written.** That adjudication was manual on
+purpose, because a bare code is never DETECTED by the sweep, so its clean verdict says
+nothing about one.
+
+**Measured aside worth not re-discovering: 49 memory files carry non-ASCII bytes.** That is
+the retroactive smart-quote sweep CLAUDE.md already lists as pending and operator-gated, not
+a regression. Both memories written this session are ASCII-clean.
+
+**SUITES, both read off their own result files rather than off a subagent's report, and
+launched as SEPARATE background jobs because of the RM-498 claim-gate trap.** DS:
+`10933 passed, 13670 subtests passed in 128.05s`. RC `tests`:
+**`24733 passed, 104 skipped, 3 xfailed, 1 xpassed, 5066 subtests passed in 1:23:55` - ZERO
+failed**, against the `4 failed` the hand-off handed over. Note the run was 1:23:55 where the
+2026-09-30 baseline was 1:42:33.
+
+**AND THE FULL RUN STRADDLED THIS SESSION'S OWN DOC EDITS, so it was NOT accepted on its
+own.** ROADMAP, WAKEUP_NOTES and `docs/ROADMAP_HISTORY.md` were all edited after the suite
+launched, and several guards assert on the SIZE and CONTENT of exactly those files - so that
+run describes a tree that no longer existed by the time it finished. Re-verified on the
+FROZEN tree afterwards: the 17 doc / guard / pin / changed-subject files gave
+`514 passed, 230 subtests`, and the broad slice
+`-k "doc or docs or ascii or markdown or md_ or link or ledger or roadmap or wakeup or em_dash"`
+gave `1072 passed, 86 skipped, 81 subtests`. **A backgrounded suite that overlaps a docs edit
+is not evidence about the tree you are about to push** - re-run the part that reads what you
+touched.
 
 ---
 
@@ -127,47 +265,3 @@ per-REF, not per-repo. **Not acted on; no bypass used; the call is the operator'
 `sibling-sweep-tree` passed green on the same push, because the sweep loads its names from
 gitignored per-host `ops/moon_sync_repos.json` and CI has no such file - CI's sweep is armed with
 NOTHING. Never cite that green as evidence about sibling names.**
-
----
-
-# 2026-09-30 - weekly scheduled routines repaired (PR #1, NOT merged), and the tests/ suite cannot complete locally
-
-**Branch `fix/weekly-routines` pushed, PR #1 OPEN, NOT merged.** Four commits: `fb05d3488`
-S1-S6, `ba4bb74be` S7, `6044a9ee1` S8 (FROZEN file, operator-approved in chat), `8e1ab5566`
-citation repoint. Merge to main deliberately deferred - see the blocker below.
-
-**What was actually wrong.** The weekly Agent-6 audit (`RC-Phase3-PeriodicAudit`) had failed 7
-consecutive times since 2026-08-02, last success 2026-07-27, with `LastTaskResult 0` every
-time. Two real faults: (a) `ANTHROPIC_API_KEY` is machine-wide, the supervisor inherits it,
-`agents/_supervisor_ephemeral.py` `subprocess.run` passed no `env=`, so the spawned `claude -p`
-used an org-scoped key and died 400 "not scoped to a workspace" - the CLI itself warns the key
-outranks the claude.ai login; (b) `agents/agent1_lead/scheduler.py` read its queue ONCE at
-construction, so a cron-filed task could not dispatch until a restart. Both fixed. Operator
-re-logged in on Legion, verified `PONG` with the key stripped.
-
-**Four reporting defects hid it for 7 weeks** and are all fixed: `tools/rc_facts.py` read
-`267009` (SCHED_S_TASK_RUNNING) as success, suppressed Disabled tasks, never checked artifact
-staleness; `ops/phase3_file_audit.py` ran under pythonw with no redirection so its filed/skip
-decision went nowhere; `scripts/rewind_catchup.py` wrote `last_run_at` only on the hydrate path
-(a healthy no-op week read 16 weeks dead - it fooled a reviewer AND me) and exited 0 on an API
-403; `ops/run_postmortem_with_restart.ps1` had a WaitForExit-before-ReadToEnd pipe deadlock.
-
-**Key precedence trap, found because the operator's rotation half-landed.** Seven consumers
-disagreed on env-vs-file; five preferred the file, so rotating the env var left them on the
-revoked key. `API-Key-Claude.txt` is now DELETED, machine env is the single source, and all
-five are env-first. `dashboard/routes_coach.py` was a LIVE bug (file-only, no env path - it was
-passing `api_key=""`). Deliberately NOT unified behind a shared helper: `app/_game_lifecycle.py`
-is frozen and could never join, so a helper would guarantee a permanent 1-of-5 divergence while
-advertising convergence.
-
-**THE BLOCKER, and it is the top next-session item.** `pytest tests` CANNOT COMPLETE on this
-box: exit **127**, no traceback, no summary, three runs aborting at DIFFERENT points (60%, 32%,
-25%), in BOTH the live tree AND an isolated worktree. My "the live tree is hostile" theory was
-REFUTED by the worktree run - do not re-pitch it. `agents/daemon_slayer` is green on the final
-tree (`10933` passed, `13669` subtests, exit 0, 147.84s). It is NOT established whether the 127
-pre-dates this branch; the cheap discriminator is to run `pytest tests` at `main` vs at
-`8e1ab5566`. Do NOT merge PR #1 until CI's ubuntu runner gives a real full-suite verdict.
-
-**Do NOT redo:** the auth diagnosis (confirmed in production - the stuck task dispatched and
-failed with the exact 400), the OAuth login (done, PONG), the key rotation (done, file deleted),
-or the 5 slice verifications (4 adversarial passes, every fix mutation-killed).

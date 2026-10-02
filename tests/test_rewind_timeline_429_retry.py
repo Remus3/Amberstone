@@ -115,11 +115,35 @@ class _DbCase(unittest.TestCase):
             mock.patch.object(rc, "STATE_PATH", self.tmp / "state.json"),
             mock.patch.object(rc, "DB_PATH", self.db_path),
             mock.patch.object(rlw, "DB_PATH", self.db_path),
+            # Keep setup_file_logging's RotatingFileHandler out of the real
+            # logs/ tree. mock.patch.object raises if LOG_PATH is ever renamed
+            # away, which is deliberate: these tests must go RED rather than
+            # quietly start writing the live log.
+            mock.patch.object(rc, "LOG_PATH", self.tmp / "rewind_catchup.log"),
         ]
         for p in self._patches:
             p.start()
+        # NOW-6. Any test here that calls rc.main() reaches
+        # setup_file_logging(), which mutates the MODULE logger
+        # rc.scripts.rewind_catchup in three ways that OUTLIVE the test:
+        # propagate=False, setLevel(INFO) and an added RotatingFileHandler.
+        # Cutting propagate at the emitting logger makes caplog blind - its
+        # handler sits on the ROOT logger - so the leak surfaced as three
+        # failures in tests/test_rm413_wal_pragma_result_checked.py, a file
+        # that is not even in this module. Snapshot and restore here, which is
+        # the same idiom tests/test_rewind_catchup_noop_state.py already uses
+        # and the reason that sibling file never polluted.
+        self._prior_handlers = list(rc._log.handlers)
+        self._prior_propagate = rc._log.propagate
+        self._prior_level = rc._log.level
 
     def tearDown(self):
+        for handler in list(rc._log.handlers):
+            if handler not in self._prior_handlers:
+                rc._log.removeHandler(handler)
+                handler.close()
+        rc._log.propagate = self._prior_propagate
+        rc._log.setLevel(self._prior_level)
         for p in reversed(self._patches):
             p.stop()
         self._tmp.cleanup()
