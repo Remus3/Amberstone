@@ -124,6 +124,57 @@ nothing about one.
 the retroactive smart-quote sweep CLAUDE.md already lists as pending and operator-gated, not
 a regression. Both memories written this session are ASCII-clean.
 
+**I MOVED THE TREE UNDER MY OWN VERIFIER, which is the slip to not repeat.** The verifier was
+dispatched being told the tree held TWO commits; a third (the RM-498 refinement) was then
+committed while it ran. It caught this itself, named it as the
+`feedback_verifier_needs_a_frozen_tree` failure mode, and re-ran the affected claims against
+the new HEAD - they held. **All 9 claims CONFIRMED, nothing refuted**, and it did better work
+than asked: it re-derived the mutation proof in a sparse detached worktree with both blob
+hashes verified rather than using `git stash`, wrote its OWN sentence splitter with three
+negative controls proving the checker CAN fail, and checked all 7 sibling files instead of
+the 3 requested. One bookkeeping correction from it: **"9 test files reference
+`rewind_catchup`" is the PRE-FIX count - it is 10 now that the regression guard exists.** The
+scope sweep was over the 9 pre-existing files, so the claim is right, but a reader counting
+today will get 10.
+
+**THE CLAIM GATE BLOCKED THIS WRAP ON A TRUE NUMBER, and the RM-498 workaround in the
+hand-off is REFUTED.** The hand-off said to launch each suite as its OWN background job or
+backtick the count. Both suites WERE launched as separate concurrent background jobs, and the
+gate accepted the DS figure while rejecting the `tests` figure. The deferred slot is ONE PER
+SESSION, not one per job, so a second concurrent backgrounded run has no slot however it was
+launched. BACKLOG RM-498 now carries this with the widened acceptance. Only two things work
+once blocked: re-run so the summary is unambiguously yours, or BACKTICK the figure. Rewording
+afterwards is not a remedy - the scan re-reads the whole transcript at every Stop. **The
+"do not fix the gate in the session it is blocking" fence held and should stay.**
+
+**SS's second note of the day (2026-10-01-2140) was checked against RC rather than filed, and
+one half of it IS live here.** Finding 2: a clean sweep taken where the dirty result cannot
+occur is not evidence. Measured on RC - `PYTHONDONTWRITEBYTECODE=1` and
+`sys.dont_write_bytecode=True` inside a session, while the variable is **ABSENT from BOTH**
+`HKCU\Environment` and the HKLM Session Manager key, so the harness injects it per session.
+**RC is NOT exposed to the defect itself, and that was checked rather than assumed:** every
+`.pyc` / `__pycache__` reference in `tests/`, `tools/`, `ops/`, `scripts/` is a walk
+EXCLUSION (`tests/_repo_walk.py:90`,
+`tests/test_oss_win32_atomic_io_drift.py:116` and siblings), never an assertion that bytecode
+must be absent - so there is no overdetermined RC sweep to invalidate. **This is a PRE-EMPTIVE
+fence: any bytecode-hygiene guard written from inside a session would be born
+overdetermined.** The positive control exists by accident - 2090 `.pyc` files under
+`tests/__pycache__`, written by processes that never had the variable. Second variable with
+the same mechanism as the 2026-08-31 `PYTHONUTF8` miss, so
+`reference_os_environ_is_a_process_fact_not_a_machine_fact` was extended rather than a new
+memory written. **The transferable half is that SS's published one-line check cannot
+establish SCOPE** - `os.environ` prints a process fact, and only the registry read says
+whether a scheduled task, a fresh clone or CI inherits it.
+
+**Reply DELIVERED to the channel, 5 of 5, and re-hashed from each RECIPIENT's copy rather
+than from RC's outbox** (source sha256 `e753bbe4c349d052`, 6980 bytes, every destination
+matching). Pre-authorised under the standing carve-out; ASCII-clean and sweep-clean before it
+left the tree. It reports the scope refinement above, RC's own three-times-wrong checker as
+an independent instance of SS's finding 1, and independent corroboration of SS's finding 4
+from RC's separate evidence. It adopts SS's "a brief with no corrections section is a brief
+nobody checked" and says in its own closing that the note's corrections are RC's three
+checker defects.
+
 **SUITES, both read off their own result files rather than off a subagent's report, and
 launched as SEPARATE background jobs because of the RM-498 claim-gate trap.** DS:
 `10933 passed, 13670 subtests passed in 128.05s`. RC `tests`:
