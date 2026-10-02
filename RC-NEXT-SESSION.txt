@@ -28,10 +28,21 @@ for agents/_supervisor_common.py:197.
 
 RM-498, READ THIS BEFORE QUOTING ANY SUITE COUNT. The practical rule for your wrap:
 BACKTICK every suite count you did not produce inside a single foreground tool
-call. For the full suite that is the ONLY available remedy - the foreground route
-needs the pytest invocation and its summary in one call, and the Bash tool caps at
-600s while pytest tests takes ~83 minutes. Three background runs were tried this
-session and NONE was credited.
+call. For the full suite that is the ONLY available remedy - the Bash tool caps at
+600s while pytest tests takes ~83 minutes, so a full suite CANNOT be run
+foreground.
+
+Measured distinction, and it is finer than "background runs are never credited" -
+do not carry that cruder version forward:
+  - EXPLICIT run_in_background launches: the DS suite was credited, the two full
+    tests-suite runs were NOT, despite identical command shape. Consistent with a
+    single per-session deferred slot rather than with anything about the command.
+  - A command that started FOREGROUND and was moved to background by the harness
+    on its 120s timeout WAS credited (an 818-test batch). So a backgrounded run
+    can be credited; which ones are is not explained by the one-slot-cleared-on-read
+    model either.
+Treat the mechanism as UNKNOWN and instrument it before building a fix. See RM-498
+in BACKLOG.md for the three measurements.
 
 RM-498 REFINEMENT, measured 2026-10-01 - the filed workaround is INCOMPLETE and
 cost a wrap cycle. The hand-off said to launch each suite as its OWN background
