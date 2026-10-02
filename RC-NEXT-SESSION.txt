@@ -1,9 +1,17 @@
 NEXT SESSION
 ------------
-ZERO open reds. Both the reds the last hand-off carried are CLOSED, and the full
-suite is `24733 passed, 104 skipped, 3 xfailed, 1 xpassed, 5066 subtests, ZERO
-failed` in 1:23:55 (commit 3db5f6be5 plus the wrap commit). Do not go looking for
-them.
+ZERO open reds. Both the reds the last hand-off carried are CLOSED. The full suite
+was run TWICE on 2026-10-01, the second time on the committed tree: `24733 passed,
+104 skipped, 5066 subtests, ZERO failed` both times (1:23:55 then 1:22:29). Do not
+go looking for the old four failures.
+
+ONE NEW THING CAME OUT OF RUNNING IT TWICE, filed as RM-500: the xfail/xpass split
+moved from `3 xfailed, 1 xpassed` to `2 xfailed, 2 xpassed` with identical passed
+and subtest totals. Nothing regressed, but one test expected to fail PASSED on the
+second run, so one test's xfail status is non-deterministic. It is UNNAMED because
+-q does not print xfail/xpass test ids, and naming it costs a full ~83-minute run
+with -rX. Prefer strict=True as the fix: a non-strict xfail is the only marker in
+the suite that cannot fail in either direction.
 
 TASK A (NOW-7, the only substantive row this session left on purpose): generalise
 the NOW-6 fix so a leaked logger mutation goes RED AT THE LEAKER instead of at a
