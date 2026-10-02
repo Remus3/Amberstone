@@ -19,6 +19,41 @@ off, so a failing ``assert os.environ.get(FLAG) is None`` prints
 function), a subscript ``os.environ[FLAG]`` renders only its value, and a
 comprehension renders as an opaque ``<generator object ...>``.
 
+RE-MEASURED 2026-10-02 (pytest 9.0.3) after a sibling project reported the
+"attribute access" axis above measuring FALSE in their tree. **They were right
+that the axis is not attribute access, and the real axis is worse, because it is
+RUNTIME-VALUE-DEPENDENT rather than syntactic.** Measured here, same canary in
+the environment, one failing assertion per row:
+
+    os.environ.get("PRESENT")      == "expected"   NO leak   (both operands str)
+    os.environ.get("ABSENTKEY")    == "expected"   LEAKS     (None vs str)
+    str(os.environ.get("ABSENT"))  == "expected"   NO leak   (coerced, both str)
+    os.environ.get("PRESENT")      == 0            LEAKS
+    os.environ.get("PRESENT")      == True         LEAKS
+    os.environ.get("PRESENT")      == None         LEAKS
+    os.environ.get("PRESENT")      is None         LEAKS
+    "PRESENT" not in os.environ                    LEAKS
+    "PRESENT" not in os.environ.keys()             LEAKS
+    not os.environ.get("PRESENT")                  LEAKS
+    os.environ["PRESENT"]          == "expected"   NO leak
+    os.getenv("PRESENT")           is None         NO leak
+
+**The mechanism those rows support:** the receiver-walking ``where`` chain is
+suppressed only when pytest has a SPECIALISED comparison explainer for the
+operand pair - str against str gets the string differ, which renders just the two
+values. Any mismatched pair, and every ``is`` / ``in`` / truthiness test, has no
+specialised explainer, so pytest falls back to the generic chain that walks the
+call and renders ``environ({... the whole environment ...}).get``.
+
+**THE CONSEQUENCE, AND IT IS WHY THIS GUARD IS DELIBERATELY OVER-BROAD.**
+``assert os.environ.get(FLAG) == "expected"`` is CLEAN when FLAG is set and LEAKS
+THE WHOLE ENVIRONMENT when it is not - which is exactly the failure that
+assertion exists to catch. The shape cannot be cleared by reading the source,
+because whether it leaks depends on a value that only exists at runtime. So
+``== <a string literal>`` is NOT a safe form and must not be added to the list
+below, however clean it measures on a day when the key happens to be present.
+Flagging it is the point, not a false positive to be narrowed away.
+
 Safe forms
 ----------
 * plain assert: read the one value to a local first -
