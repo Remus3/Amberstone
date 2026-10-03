@@ -316,8 +316,74 @@ def _ambient_keys(surfaces: dict, roots: dict) -> frozenset:
     return frozenset(k for k in keys if k in surfaces)
 
 
+# The EXACT runtime keys whose digest is exempt at the daemon's root. Pinned by
+# equality, not by membership, so adding a key to `_RESPONDER_RUNTIME_KEYS`
+# fails here instead of widening the exemption silently.
+_PINNED_RUNTIME_KEYS = ("metrics", "responder_log", "answered", "held", "outbox",
+                        "deliveries", "attempts", "export_cache")
+
+
+def _assert_runtime_keys_pinned(keys: tuple) -> None:
+    assert tuple(keys) == _PINNED_RUNTIME_KEYS, (
+        f"the digest-exempt runtime key set drifted: {tuple(keys)} != {_PINNED_RUNTIME_KEYS}")
+
+
+_VERBATIM_UNC = "\\\\?\\UNC\\"
+_VERBATIM = "\\\\?\\"
+
+
+def _strip_verbatim(s: str) -> str:
+    if s.startswith(_VERBATIM_UNC):
+        return "\\\\" + s[len(_VERBATIM_UNC):]
+    if s.startswith(_VERBATIM):
+        return s[len(_VERBATIM):]
+    return s
+
+
+_GET_LONG = None
+
+
+def _long_path(s: str) -> str:
+    """Expand 8.3 short components via GetLongPathNameW. The path may not exist
+    yet (a create), so expand the deepest EXISTING ancestor and re-append the
+    rest. Any failure returns the input unchanged."""
+    global _GET_LONG
+    if os.name != "nt":
+        return s
+    try:
+        if _GET_LONG is None:
+            import ctypes
+            from ctypes import wintypes
+            fn = ctypes.WinDLL("kernel32", use_last_error=True).GetLongPathNameW
+            fn.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+            fn.restype = wintypes.DWORD
+            _GET_LONG = (ctypes, fn)
+        ctypes, fn = _GET_LONG
+        tail: list = []
+        cur = s
+        for _ in range(256):
+            buf = ctypes.create_unicode_buffer(1024)
+            n = fn(cur, buf, 1024)
+            if 0 < n < 1024:
+                return os.path.join(buf.value, *reversed(tail)) if tail else buf.value
+            parent, name = os.path.split(cur)
+            if not name or parent == cur:
+                return s
+            tail.append(name)
+            cur = parent
+    except (OSError, AttributeError, ValueError):
+        return s
+    return s
+
+
 def _norm_path(p) -> str:
-    return os.path.normcase(os.path.abspath(os.fsdecode(os.fspath(p))))
+    s = _strip_verbatim(os.fsdecode(os.fspath(p)))
+    s = _long_path(os.path.abspath(s))
+    try:
+        s = os.path.realpath(s)
+    except (OSError, ValueError):
+        pass
+    return os.path.normcase(_strip_verbatim(s))
 
 
 class _SurfaceWriteAuditor:
@@ -329,7 +395,9 @@ class _SurfaceWriteAuditor:
     attributable to the code under test, never to the armed responder or to a
     sibling repo's process. `ctypes.call_function` is included because
     `rc_facts._append_atomic` appends through `CreateFileW` on Windows, which
-    raises no `open` event.
+    raises no `open` event; `_winapi.CreateFile` likewise raises its own event.
+    Paths are compared after `_norm_path`, so an 8.3 short name or a verbatim
+    `\\\\?\\` prefix reaches the same key as the long form.
     """
 
     _ALL_ARGS = frozenset({
@@ -339,13 +407,23 @@ class _SurfaceWriteAuditor:
     })
     _DST_ONLY = frozenset({"os.link", "os.symlink", "shutil.copyfile", "shutil.copytree"})
     _WRITE_FLAGS = (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC)
+    # GENERIC_WRITE, GENERIC_ALL, DELETE, FILE_WRITE_DATA, FILE_APPEND_DATA,
+    # FILE_WRITE_ATTRIBUTES, FILE_WRITE_EA.
+    _WIN_WRITE_ACCESS = (0x40000000 | 0x10000000 | 0x00010000 | 0x0002 | 0x0004
+                         | 0x0100 | 0x0010)
 
     def __init__(self) -> None:
         self.watches: list = []
         self._busy = False
 
     def watch(self, surfaces: dict) -> dict:
-        w = {"prefixes": {k: _norm_path(v) for k, v in surfaces.items()}, "hits": []}
+        # `_norm_path` itself calls GetLongPathNameW through ctypes; hold the
+        # reentrancy flag so those calls are never recorded as writes.
+        was, self._busy = self._busy, True
+        try:
+            w = {"prefixes": {k: _norm_path(v) for k, v in surfaces.items()}, "hits": []}
+        finally:
+            self._busy = was
         self.watches.append(w)
         return w
 
@@ -363,6 +441,15 @@ class _SurfaceWriteAuditor:
             if isinstance(mode, str) and any(c in mode for c in "wxa+"):
                 writes = True
             return [path] if writes else []
+        if event == "_winapi.CreateFile":
+            # args: (file_name, desired_access, share_mode, creation_disposition,
+            # flags_and_attributes). Write-shaped access, or any disposition
+            # that can create or truncate (CREATE_NEW 1, CREATE_ALWAYS 2,
+            # OPEN_ALWAYS 4, TRUNCATE_EXISTING 5).
+            name, access, _share, disp = (tuple(args) + (None,) * 4)[:4]
+            access = access if isinstance(access, int) else 0
+            writes = bool(access & cls._WIN_WRITE_ACCESS) or disp in (1, 2, 4, 5)
+            return [name] if writes else []
         if event in cls._DST_ONLY:
             return list(args[1:2])
         if event == "ctypes.call_function":
@@ -438,19 +525,31 @@ def _assert_auditor_sees_a_write(tmp_dir: Path) -> None:
     assert w["hits"], "the surface write auditor recorded nothing for a known write"
 
 
+def _selection_drives_an_arm(items, module) -> bool:
+    """Does the collected selection contain an arm of `module` that drives the
+    runner through the `world` fixture (and so must write a tmp responder log)?"""
+    return any(getattr(i, "module", None) is module
+               and "world" in getattr(i, "fixturenames", ()) for i in items)
+
+
 @pytest.fixture(scope="module", autouse=True)
-def _live_surfaces_unchanged(tmp_path_factory):
+def _live_surfaces_unchanged(request, tmp_path_factory):
     roots = _live_roots()
     surfaces = _live_surface_map(roots)
     # Vacuity control: a map that resolved no real sibling inbox is not proof
     # that none was touched, so say which half is being guarded.
     present = sorted(k for k, v in surfaces.items() if Path(v).exists())
+    # The digest exclusion must not be able to widen silently: EXACTLY the
+    # pinned responder runtime keys at the daemon's own root, plus sibling
+    # inboxes. Never the agreement, which only the operator writes.
+    _assert_runtime_keys_pinned(_RESPONDER_RUNTIME_KEYS)
     ambient = _ambient_keys(surfaces, roots)
-    # The digest exclusion must not be able to widen silently: only responder
-    # runtime keys at the daemon's own root, and sibling inboxes. Never the
-    # agreement, which only the operator writes.
-    assert all(k.split(":", 1)[1] in _RESPONDER_RUNTIME_KEYS or ":sibling:" in k
-               for k in ambient), f"the ambient set drifted: {sorted(ambient)}"
+    daemon = _daemon_label(roots)
+    expected = {f"{daemon}:{k}" for k in _PINNED_RUNTIME_KEYS if f"{daemon}:{k}" in surfaces}
+    expected |= {k for k in surfaces if ":sibling:" in k}
+    assert ambient == frozenset(expected), (
+        f"the ambient set drifted: {sorted(ambient)} != {sorted(expected)}")
+    drives = _selection_drives_an_arm(request.session.items, request.module)
     assert not any(k.endswith(":agreement") for k in ambient), sorted(ambient)
     guard = _LiveSurfaceGuard(surfaces, ambient)
     assert guard.digested, (
@@ -469,6 +568,15 @@ def _live_surfaces_unchanged(tmp_path_factory):
     # comparison above passed because nothing ran at all. Asserted on the
     # evidence `_observe_tmp_logs` recorded while the files still existed, not
     # on `Path.exists()` here - see the note at `_TMP_LOGS_SEEN`.
+    #
+    # Enforced whenever the selection contains ANY `world`-driven arm of this
+    # module - so a full run, and any -k slice that should drive, stays exactly
+    # as strict as before. Only a selection with NO such arm (e.g. -k on the
+    # guard's own planted tests) has nothing to prove here; it returns rather
+    # than skips because a skip raised in a module fixture's TEARDOWN is
+    # reported by pytest as an error, which is the symptom being removed.
+    if not drives:
+        return
     assert _TMP_LOGS, "no tmp responder log was written - the arms did not drive"
     assert _TMP_LOGS_SEEN, (
         "no tmp responder log was ever observed on disk - every recorded path was "
@@ -558,6 +666,94 @@ def test_live_surface_guard_digest_half_still_catches_an_out_of_process_write(tm
         problems = guard.finish()
     assert len(problems) == 1 and "digest" in problems[0], problems
     assert "main:agreement" in problems[0], problems
+
+
+def test_ambient_runtime_key_pin_rejects_a_planted_extra_key():
+    """Growing `_RESPONDER_RUNTIME_KEYS` must not widen the digest exemption
+    silently: the pin is EXACT equality, so one extra key fails it."""
+    _assert_runtime_keys_pinned(_RESPONDER_RUNTIME_KEYS)
+    with pytest.raises(AssertionError):
+        _assert_runtime_keys_pinned(_RESPONDER_RUNTIME_KEYS + ("agreement",))
+    with pytest.raises(AssertionError):
+        _assert_runtime_keys_pinned(_RESPONDER_RUNTIME_KEYS[:-1])
+
+
+def _short_path(p: Path) -> str:
+    import ctypes
+    from ctypes import wintypes
+    fn = ctypes.WinDLL("kernel32", use_last_error=True).GetShortPathNameW
+    fn.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+    fn.restype = wintypes.DWORD
+    buf = ctypes.create_unicode_buffer(1024)
+    n = fn(str(p), buf, 1024)
+    return buf.value if 0 < n < 1024 else str(p)
+
+
+def _audit_hits_for_write(surface: Path, written_via: str) -> list:
+    w = _SURFACE_AUDITOR.watch({"main:sibling:ZZ": surface})
+    try:
+        with open(written_via, "w", encoding="ascii") as fh:
+            fh.write("x")
+    finally:
+        _SURFACE_AUDITOR.unwatch(w)
+    return w["hits"]
+
+
+@pytest.mark.skipif(os.name != "nt", reason="8.3 short names are a Windows filesystem form")
+def test_surface_auditor_matches_a_write_through_an_8dot3_short_name(tmp_path):
+    inbox = tmp_path / "Sibling Long Name Inbox" / "moon_sync_inbox"
+    inbox.mkdir(parents=True)
+    short_dir = _short_path(inbox.parent)
+    if os.path.normcase(short_dir) == os.path.normcase(str(inbox.parent)):
+        pytest.skip("8.3 name generation is disabled on this volume")
+    via = os.path.join(short_dir, "moon_sync_inbox", "g.txt")
+    assert "~" in via, via
+    assert _audit_hits_for_write(inbox, via), f"no hit for a short-name write {via}"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="the \\\\?\\ prefix is a Windows path form")
+def test_surface_auditor_matches_a_write_through_a_verbatim_prefix(tmp_path):
+    inbox = tmp_path / "Sibling ZZ" / "moon_sync_inbox"
+    inbox.mkdir(parents=True)
+    via = "\\\\?\\" + os.path.abspath(str(inbox / "g.txt"))
+    assert _audit_hits_for_write(inbox, via), f"no hit for a verbatim-prefix write {via}"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="_winapi exists on Windows only")
+def test_surface_auditor_sees_winapi_createfile(tmp_path):
+    import _winapi
+    inbox = tmp_path / "Sibling ZZ" / "moon_sync_inbox"
+    inbox.mkdir(parents=True)
+    w = _SURFACE_AUDITOR.watch({"main:sibling:ZZ": inbox})
+    try:
+        h = _winapi.CreateFile(str(inbox / "g.txt"), _winapi.GENERIC_WRITE, 0, 0, 2, 0, 0)
+        _winapi.CloseHandle(h)
+    finally:
+        _SURFACE_AUDITOR.unwatch(w)
+    assert [e for _k, e, _p in w["hits"]] == ["_winapi.CreateFile"], w["hits"]
+
+
+def test_surface_auditor_ignores_a_read_only_winapi_createfile():
+    """A read-shaped CreateFile (GENERIC_READ, OPEN_EXISTING) is not a write."""
+    assert _SurfaceWriteAuditor._targets(
+        "_winapi.CreateFile", ("C:\\x\\g.txt", 0x80000000, 0, 3, 0)) == []
+    assert _SurfaceWriteAuditor._targets(
+        "_winapi.CreateFile", ("C:\\x\\g.txt", 0x80000000, 0, 2, 0)) == ["C:\\x\\g.txt"]
+
+
+class _FakeItem:
+    def __init__(self, module, fixturenames):
+        self.module = module
+        self.fixturenames = fixturenames
+
+
+def test_tmp_log_control_is_enforced_only_when_the_selection_drives_an_arm():
+    here, other = object(), object()
+    drives = [_FakeItem(here, ["tmp_path"]), _FakeItem(here, ["world", "tmp_path"])]
+    assert _selection_drives_an_arm(drives, here) is True
+    guard_only = [_FakeItem(here, ["tmp_path"]), _FakeItem(other, ["world"])]
+    assert _selection_drives_an_arm(guard_only, here) is False
+    assert _selection_drives_an_arm([], here) is False
 
 
 # The first bytes of every row `rc_facts.record_invocation` writes: `json.dumps`
