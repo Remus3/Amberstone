@@ -313,13 +313,44 @@ def write_escalation(run_id: int, head_sha: str, reason: str, detail: str = "",
 ROUTE_REFUSED_MARK = "HEADLESS_ROUTE_REFUSED:"
 
 
-def _headless_env():
-    """`ops/loop/headless_env.py`. Imported lazily so this module stays import-safe."""
+def _fleet_route():
+    """`ops/loop/fleet_route.py`. Imported lazily so this module stays import-safe."""
     root = str(Path(__file__).resolve().parent.parent)
     if root not in sys.path:
         sys.path.insert(0, root)
-    from ops.loop import headless_env
-    return headless_env
+    from ops.loop import fleet_route
+    return fleet_route
+
+
+def _claude_fix_via_kit(argv: list[str], cwd: Path, timeout: int) -> tuple[int, str]:
+    """The `claude_fix` step, started ONLY through the fleet kit (FLEET-KIT-v1).
+
+    The plan's argv stays the readable contract the dry run prints; here its
+    task text and its RC-specific flags are handed to the kit, which owns the
+    proxy route, budget, model, lean flags, child env and hidden console. The
+    kit sets `--output-format json` itself, so that pair is dropped from the
+    extras. writes_code=True: the fix commits on its branch. bare=False: the
+    commit floors live in hooks (precommit_gate PreToolUse, .githooks).
+    Returns (rc, stdout+stderr) like `_run`; a refusal returns the route mark
+    and starts nothing.
+    """
+    fr = _fleet_route()
+    prompt = argv[2]
+    extra = list(argv[3:])
+    if "--output-format" in extra:
+        i = extra.index("--output-format")
+        del extra[i:i + 2]
+    try:
+        _line, proc = fr.spawn(prompt, caller="ci_watchdog", note="ci-fix",
+                               writes_code=True, bare=False, extra=extra,
+                               cwd=cwd, timeout=timeout)
+    except fr.RouteRefused as exc:
+        return 1, f"{ROUTE_REFUSED_MARK} {exc}"
+    except (OSError, subprocess.SubprocessError) as exc:
+        return 1, f"{type(exc).__name__}: {exc}"
+    if proc is None:
+        return 1, "fleet kit returned no process"
+    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
 def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120,
@@ -405,16 +436,11 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
             cmd = list(argv)
             if cmd and cmd[0] == "gh":
                 cmd[0] = _gh()
-            env = None
             if label == "claude_fix":
-                # Headless account routing (operator contract 2026-10-02):
-                # proxy-routed child env, or no spawn at all.
-                he = _headless_env()
-                try:
-                    env = he.headless_child_env(caller="ci_watchdog")
-                except he.HeadlessRouteRefused as exc:
-                    return 1, f"{ROUTE_REFUSED_MARK} {exc}"
-            return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120), env=env)
+                # FLEET-KIT-v1: the only path that starts `claude`. Fails closed
+                # (route refused -> no spawn, never a direct claude).
+                return _claude_fix_via_kit(cmd, Path(wt), _STEP_TIMEOUTS.get(label, 120))
+            return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
 
     # 1. sync the dedicated worktree onto a fresh ci-fix/<id> branch off main
     for label in ("fetch", "reset", "branch"):

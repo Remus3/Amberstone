@@ -106,17 +106,19 @@ adjudicator = _load("rc_loop_adjudicator_route_test", "ops/loop/adjudicator.py")
 _ADJ_CFG = {"claude_adjudicator": {"cmd": "claude.cmd", "model": "opus"}}
 
 
+def _done(stdout='{"result": "ok"}', rc=0, stderr=""):
+    return CompletedProcess(args=["claude"], returncode=rc, stdout=stdout, stderr=stderr)
+
+
 def test_adjudicator_refuses_without_route(refused, tmp_path):
-    with mock.patch.object(adjudicator.subprocess, "run",
-                           side_effect=AssertionError("spawned with no route")):
+    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")):
         adj = adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path)
         assert adj.ask("b", "i") is None
     assert "unset" in adj.last_stderr
 
 
 def test_adjudicator_child_env_carries_route(routed, tmp_path):
-    with mock.patch.object(adjudicator.subprocess, "run",
-                           return_value=mock.Mock(stdout="ok")) as run:
+    with mock.patch("subprocess.run", return_value=_done()) as run:
         assert adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path).ask("b", "i") == "ok"
     assert run.call_args.kwargs["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
 
@@ -141,7 +143,8 @@ def test_ci_watchdog_refuses_claude_fix_without_route(refused, tmp_path, monkeyp
     calls = []
     monkeypatch.setattr(cw, "_run", _fake_run_factory(calls))
     monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
-    res = cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
+    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")):
+        res = cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
     assert res["action"] == "error" and res["stage"] == "claude_fix_route"
     assert not any(c[0] and c[0][0] == "claude" for c in calls)
 
@@ -150,11 +153,17 @@ def test_ci_watchdog_claude_fix_env_carries_route(routed, tmp_path, monkeypatch)
     calls = []
     monkeypatch.setattr(cw, "_run", _fake_run_factory(calls))
     monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
-    cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
-    claude = [env for cmd, env in calls if cmd and cmd[0] == "claude"]
-    assert claude and claude[0]["ANTHROPIC_BASE_URL"] == FAKE_URL
-    # every non-claude step keeps the inherited env (env=None)
-    assert all(env is None for cmd, env in calls if cmd and cmd[0] != "claude")
+    with mock.patch("subprocess.run", return_value=_done('{"result": "fixed"}')) as run:
+        cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
+    assert run.call_count == 1, "exactly one process: the kit's claude_fix run"
+    kw = run.call_args.kwargs
+    assert kw["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
+    # the child runs in the throwaway worktree, not in the kit's root
+    assert kw["cwd"] == str(tmp_path)
+    # no claude step went through the generic git/gh runner, and every
+    # git/gh step keeps the inherited env
+    assert not any(c[0] and c[0][0] == "claude" for c in calls)
+    assert all(env is None for _cmd, env in calls)
 
 
 # ---------------------------------------------------------------------------
@@ -214,3 +223,76 @@ def test_responder_child_env_carries_route(routed, tmp_path, monkeypatch):
     irs.real_spawner(req)
     assert seen["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
     assert "ANTHROPIC_BASE_URL" not in req.env
+
+
+# ---------------------------------------------------------------------------
+# FLEET-KIT-v1: every routed path provably calls the kit's spawn
+#
+# `fleet_route._kit_spawn` replaces `fleet_headless.spawn` with a recorder, so
+# these prove the CALL (code RC, the per-path writes_code / bare / note, the
+# RC flags as extras, stdin for the body) without starting anything. The kit's
+# own behaviour is the kit's business; tests/test_fleet_route.py covers the
+# adapter around it.
+# ---------------------------------------------------------------------------
+
+from ops.loop import fleet_route  # noqa: E402
+
+
+@pytest.fixture
+def kit_calls(routed, monkeypatch):
+    calls = []
+
+    def _fake(root, code, prompt, **kw):
+        calls.append({"root": root, "code": code, "prompt": prompt, **kw})
+        proc = kw["run"](["claude-fake.exe", "-p", prompt], cwd=str(root), env={},
+                         capture_output=True, text=True, timeout=kw["timeout"],
+                         creationflags=0)
+        return {"rc": proc.returncode, "result": None, "model": "sonnet"}
+
+    monkeypatch.setattr(fleet_route, "_kit_spawn", _fake)
+    return calls
+
+
+def test_kit_call_adjudicator(kit_calls, tmp_path):
+    with mock.patch("subprocess.run", return_value=_done('{"result": "go"}')) as run:
+        assert adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path).ask("BODY", "INST") == "go"
+    (c,) = kit_calls
+    assert c["code"] == "RC" and c["prompt"] == "INST"
+    assert c["writes_code"] is False and c["bare"] is False
+    assert list(c["extra"]) == ["--permission-mode", "plan"]
+    assert run.call_args.kwargs["input"] == "BODY"
+
+
+def test_kit_call_ci_watchdog(kit_calls, tmp_path, monkeypatch):
+    monkeypatch.setattr(cw, "_run", _fake_run_factory([]))
+    monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
+    with mock.patch("subprocess.run", return_value=_done()):
+        cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
+    (c,) = kit_calls
+    assert c["code"] == "RC" and c["writes_code"] is True and c["bare"] is False
+    extra = list(c["extra"])
+    assert "--append-system-prompt-file" in extra and "--allowedTools" in extra
+    assert "--output-format" not in extra, "the kit owns --output-format"
+    assert "--dangerously-skip-permissions" not in extra
+
+
+def test_kit_call_supervisor_ephemeral(kit_calls):
+    from agents.supervisor import spawn_ephemeral_llm
+    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+         mock.patch("subprocess.run", return_value=_done('{"result":"x"}')) as run:
+        spawn_ephemeral_llm("6", "t-kit-call", "demo", {})
+    (c,) = kit_calls
+    assert c["code"] == "RC" and c["bare"] is False
+    assert c["writes_code"] is True, "agent 6 runs opus, i.e. writes code"
+    assert "--max-budget-usd" in list(c["extra"])
+    assert "--model" not in list(c["extra"]), "the kit owns the model pick"
+    assert "t-kit-call" in run.call_args.kwargs["input"]
+
+
+def test_kit_call_supervisor_non_opus_agent_does_not_write_code(kit_calls):
+    from agents.supervisor import spawn_ephemeral_llm
+    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
+         mock.patch("subprocess.run", return_value=_done('{"result":"x"}')):
+        spawn_ephemeral_llm("7", "t-kit-call-7", "demo", {})
+    (c,) = kit_calls
+    assert c["writes_code"] is False

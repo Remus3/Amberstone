@@ -34,15 +34,26 @@ make engine/code changes and do NOT run /sync-all-md.
 
 $tools = "Edit,Read,Write,Bash,Grep,Glob,TaskCreate,TaskUpdate,TaskList"
 
-Write-Host "[weekly_hygiene] $stamp start (model=$Model)"
-# Headless account routing (operator contract 2026-10-02): proxy-routed child
-# env for THIS process only, or exit 3 with no spawn. See the gate file.
-. (Join-Path $repo "ops\loop\headless_route.ps1")
-Assert-HeadlessRoute -Caller "weekly_hygiene" -Log $log
-$out = & claude -p $prompt --model $Model --allowedTools $tools --dangerously-skip-permissions *>&1 |
+# FLEET-KIT-v1 (MAIN order 2026-10-03): the run starts ONLY through the fleet
+# kit, via ops/loop/fleet_route.py, which fails closed through
+# ops/loop/headless_env.py (exit 3, nothing started) and owns the proxy route,
+# run budget, model pick (sonnet: this pass writes docs, never code - so
+# -Model is no longer passed to the CLI), lean flags and hidden console.
+$pyC = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
+if (-not (Test-Path $pyC)) { $pyC = "python" }
+$route = Join-Path $repo "ops\loop\fleet_route.py"
+$promptFile = Join-Path $env:TEMP "rc_weekly_hygiene_prompt.txt"
+[System.IO.File]::WriteAllText($promptFile, $prompt, [System.Text.Encoding]::ASCII)
+
+Write-Host "[weekly_hygiene] $stamp start (requested model=$Model; the fleet kit picks)"
+$out = & $pyC $route --caller "weekly_hygiene" --note "weekly-hygiene" --timeout 7200 --prompt-file $promptFile -- --allowedTools $tools --dangerously-skip-permissions *>&1 |
     Tee-Object -FilePath $log
 $code = $LASTEXITCODE
 Write-Host "[weekly_hygiene] exit=$code log=$log"
+if ($code -eq 3) {
+    Write-Host "[weekly_hygiene] headless route refused - spawn skipped, see logs\headless_route.log"
+    exit 3
+}
 
 # A weekly maintenance pass that fails ONLY because the Anthropic account hit a
 # transient billing / availability limit (credit exhausted, rate limit, 429 /

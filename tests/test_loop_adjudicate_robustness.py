@@ -14,6 +14,7 @@ the part that still runs.
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 from pathlib import Path
 from unittest import mock
 
@@ -32,6 +33,12 @@ def lc():
 
 def _cfg():
     return {"claude_adjudicator": {"cmd": "claude.cmd", "model": "opus"}}
+
+
+def _cp(stdout="", rc=0, stderr=""):
+    """A finished child as the fleet kit's run seam returns it (FLEET-KIT-v1)."""
+    return subprocess.CompletedProcess(args=["claude"], returncode=rc, stdout=stdout,
+                                       stderr=stderr)
 
 
 def test_a_raised_error_is_the_none_sentinel_not_empty_string(lc, tmp_path):
@@ -55,21 +62,20 @@ def test_a_completed_but_empty_call_is_also_none(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
-            mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="  \n")):
+            mock.patch.object(lc.subprocess, "run", return_value=_cp("  \n")):
         assert lc.adjudicate("body", "inst") is None
 
 
 def test_stderr_is_logged_when_the_call_comes_back_empty(lc, tmp_path):
     """A silent empty answer is the hardest failure to diagnose after the fact,
     so the decoded stderr must reach the controller log."""
-    (tmp_path / "_claude_err.txt").write_text(
-        "Error: something specific went wrong\n", encoding="utf-8")
     lines = []
     with mock.patch.object(lc, "CFG", _cfg()), \
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lines.append), \
-            mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="")):
+            mock.patch.object(lc.subprocess, "run", return_value=_cp(
+                "", rc=1, stderr="Error: something specific went wrong\n")):
         assert lc.adjudicate("body", "inst") is None
     assert any("something specific" in ln for ln in lines)
 
@@ -98,7 +104,7 @@ def test_adjudicate_is_robust_to_an_empty_cfg(lc, tmp_path):
             mock.patch.object(lc, "CTL", tmp_path), \
             mock.patch.object(lc, "_ADJ_STATE", {"active": "", "usd": {}}), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
-            mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="ok")):
+            mock.patch.object(lc.subprocess, "run", return_value=_cp("ok")):
         assert lc.adjudicate("body", "inst") == "ok"
 
 
