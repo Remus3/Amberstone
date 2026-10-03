@@ -313,11 +313,20 @@ def test_powershell_gate_calls_the_python_helper_and_scopes_to_process():
 
 def test_no_tracked_source_sets_anthropic_base_url_persistently():
     offenders = []
+    this_file = Path(__file__).resolve()
+    scanned = 0
     for path in _repo_walk.repo_files(REPO, ("*.py", "*.ps1", "*.bat", "*.cmd")):
+        # This guard names its own needles, so it must not scan itself. It was
+        # green before its first commit only because the walk is TRACKED-ONLY
+        # and the file was untracked - the self-match landed with the commit.
+        if path.resolve() == this_file:
+            continue
+        scanned += 1
         text = path.read_text(encoding="utf-8", errors="replace")
         if re.search(r"setx\s+ANTHROPIC_BASE_URL|SetEnvironmentVariable\(\s*['\"]ANTHROPIC_BASE_URL",
                      text, re.IGNORECASE):
             offenders.append(_repo_walk.relative_posix(path, REPO))
         if "auto-fallback" in text and "teamclaude" in text:
             offenders.append(_repo_walk.relative_posix(path, REPO))
+    assert scanned, "empty enumeration would pass vacuously"
     assert not offenders
