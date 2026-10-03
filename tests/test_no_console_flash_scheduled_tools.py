@@ -62,7 +62,9 @@ SCHEDULED_SPAWNERS = (
     "ops/loop/claude_stub.py",
     "ops/loop/loop_controller.py",
     "ops/loop/executor.py",
-    "ops/loop/adjudicator.py",
+    # ops/loop/adjudicator.py dropped 2026-10-03: since merge fcc53a232 it spawns
+    # only through ops/loop/fleet_route.spawn (the kit's own _run, which carries
+    # the kit's no-window flag); it holds no direct subprocess call any more.
     # 2026-08-01: the perseus tools spawn perseus-vault.exe, which is a
     # CONSOLE-subsystem binary (PE Subsystem=3 - measured, not assumed), so a
     # parent with no console of its own gets a window allocated for the child.
