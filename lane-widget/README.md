@@ -26,6 +26,9 @@ recursion, no directory walk, no `rglob`:
   row's `Sync:` line, e.g. `Sync: Appending Ledger [35m/42m][25/120]`. An
   absent, unparseable or stale file (older than 2x the tree's tick) renders
   `Sync: no signal [<age>]`, never the numbers it still carries.
+- The account proxy's **state file**, if the gitignored roster's optional
+  `accounts` key names one: ONE stat (its mtime is the freshness signal) plus
+  ONE read per slow tick, never written. It feeds the ACCOUNTS strip.
 - One **machine-wide process snapshot**, taken once per slow tick and reused
   for every repository, to count the descendants of each live lock pid.
 
@@ -38,6 +41,21 @@ controller together - `Lane: <name> 12m`, `Lane: free`,
 `Lane: STALE (reclaimable)`) and ONE `Sync:` line. The per-repo tabs keep the
 lane / controller cards. Display names and order come from the optional
 `roster` key of the gitignored roster file (see the tracked example).
+
+Above the rows sits ONE **ACCOUNTS strip** (`src/accounts.js`): one line per
+proxy account, labelled by ROLE from the roster's `accounts.roles`, never by
+email or uuid:
+
+```
+Headless     5h 23% (resets 2h10m)   7d 7% (resets 3d4h)   allowed
+Interactive  no data - not signed in to the proxy
+```
+
+Percent is round(fraction x 100); resets read m under 120m, then h with m,
+then d+h. A status other than `allowed` is alarm-styled. A state file older
+than 2x the probe interval, absent or unparseable renders
+`Accounts: no signal [<age>]`. Identifiers are used only to match an entry to
+its role and are dropped before the model leaves `src/accounts.js`.
 
 Liveness is decided by a **pid probe plus a start-time stranger guard**, never
 by file existence. A lock file whose pid is dead renders as stale
