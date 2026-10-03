@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Union
 
+from ops.loop import headless_env
 from tools import inbox_responder_procs as procs
 
 from tools.inbox_responder_prompt import PROPOSAL_SCHEMA, SYSTEM_PROMPT
@@ -244,11 +245,31 @@ def build_request(
 
 
 def real_spawner(req: SpawnRequest) -> SpawnResult:
-    """Hand the request to the process seam. The only spawner that is real."""
+    """Hand the request to the process seam. The only spawner that is real.
+
+    Headless account routing (operator contract 2026-10-02): the child env gets
+    `ANTHROPIC_BASE_URL` from `ops/loop/headless_env.py` at THIS moment, or the
+    spawn does not happen. A refusal is returned as `exc=HeadlessRouteRefused`,
+    which `spawn_ok` files as a spawn failure (never `exhausted`), and no
+    process is created - there is no direct fallback.
+    """
+    try:
+        env = headless_env.headless_child_env(req.env, caller="inbox_responder")
+    except headless_env.HeadlessRouteRefused as exc:
+        return SpawnResult(
+            exit_code=None,
+            stdout=b"",
+            stderr=str(exc).encode("ascii", "replace"),
+            exc="HeadlessRouteRefused",
+            wall_ms=0,
+            timed_out=False,
+            survived_kill=False,
+            kill_skipped=False,
+        )
     res = procs.popen_capture(
         req.argv,
         cwd=req.cwd,
-        env=req.env,
+        env=env,
         stdin_bytes=req.stdin_bytes,
         timeout_s=req.timeout_s,
         kill_budget=req.kill_budget,

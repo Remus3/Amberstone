@@ -32,6 +32,12 @@ $env:ANTHROPIC_API_KEY = $null
 $env:CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS = "2400000"
 
 $claude = (Get-Command claude -ErrorAction Stop).Source
+
+# Headless account routing (operator contract 2026-10-02): proxy-routed child
+# env for THIS process only, or exit 3 with no spawn. See headless_route.ps1.
+. (Join-Path $PSScriptRoot "headless_route.ps1")
+Assert-HeadlessRoute -Caller "run_lane" -Log $Log
+
 Set-Location $Cwd
 
 # Model id comes from ops/loop/config.json (executor_model) so the lanes track
