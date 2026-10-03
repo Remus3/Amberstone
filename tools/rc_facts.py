@@ -125,6 +125,9 @@ def _port_listening(port: int, host: str = "127.0.0.1", attempts: int = 3) -> bo
 # and "how long since it last ran at all"; NextRunTime says whether the
 # scheduler still intends to fire it; the trigger class names are what tell a
 # DISARMED periodic task apart from a service parked off on purpose.
+# time_limit (Settings.ExecutionTimeLimit) and repetition (each trigger's
+# Repetition.Interval, ';'-joined, empty for an unrepeated trigger) are raw
+# ISO-8601 durations; they size the per-task running grace below.
 #
 # Every value goes through $( ... ), not `if ... else` as a bare hashtable
 # value: the subexpression form parses on every PowerShell this box has, and a
@@ -138,7 +141,9 @@ TASK_PROBE_PS = (
     "last_result = $i.LastTaskResult; "
     "last_run = $(if ($i.LastRunTime) { $i.LastRunTime.ToString('o') }); "
     "next_run = $(if ($i.NextRunTime) { $i.NextRunTime.ToString('o') }); "
-    "triggers = (($_.Triggers | ForEach-Object { $_.CimClass.CimClassName }) -join ';') "
+    "triggers = (($_.Triggers | ForEach-Object { $_.CimClass.CimClassName }) -join ';'); "
+    "time_limit = [string]$_.Settings.ExecutionTimeLimit; "
+    "repetition = (($_.Triggers | ForEach-Object { $_.Repetition.Interval }) -join ';') "
     "} } | ConvertTo-Json -Compress"
 )
 
@@ -235,11 +240,58 @@ SERVICE_RUNNING_IMPLAUSIBLE_S = 60 * 86400.0
 # ~07:13 and exited 0, yet a probe inside that window read 267009 as STUCK.
 # Two hours clears that run 15x over and also exceeds the PT45M
 # ExecutionTimeLimit it is registered with. An unknown start time stays STUCK.
-# For a task whose ExecutionTimeLimit is <= this grace, a hang now surfaces as
-# the scheduler's timeout-kill FAILURE (0x800710E0) rather than as STUCK; a
-# per-task grace of min(limit, interval) would be tighter (follow-up, needs the
-# limit and interval in the probe projection).
+# This is now the CAP, not the grace: periodic_running_grace_s() narrows it to
+# min(ExecutionTimeLimit, repetition interval, cap), using each bound only when
+# the probe reported it. The flat 2h hid a hung RC-ReplayChainWatch (PT15M
+# repetition, PT2H limit, measured 2026-10-03) for ~7 missed runs.
 PERIODIC_RUNNING_GRACE_S = 2 * 3600.0
+
+_ISO_DURATION_RE = re.compile(
+    r"^P(?:(\d+(?:\.\d+)?)W)?(?:(\d+(?:\.\d+)?)D)?"
+    r"(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$"
+)
+
+
+def _parse_iso_duration_s(value) -> float | None:
+    """Seconds for an ISO-8601 duration like PT2H / PT15M / P1D, else None.
+
+    None covers missing, empty, unparseable AND zero: Task Scheduler writes
+    PT0S for "no limit", so a zero must read as unknown, never as a zero-length
+    grace that would flag every run.
+    """
+    if not isinstance(value, str):
+        return None
+    text = value.strip().upper()
+    m = _ISO_DURATION_RE.match(text)
+    if not m or text in ("P", "PT") or text.endswith("T"):
+        return None
+    weeks, days, hours, minutes, seconds = (float(g) if g else 0.0 for g in m.groups())
+    total = (((weeks * 7 + days) * 24 + hours) * 60 + minutes) * 60 + seconds
+    return total if total > 0 else None
+
+
+def _min_duration_s(value) -> float | None:
+    """Tightest known duration in a ';'-joined string or list, else None."""
+    if isinstance(value, str):
+        parts = value.split(";")
+    elif isinstance(value, (list, tuple)):
+        parts = list(value)
+    else:
+        return None
+    known = [s for s in (_parse_iso_duration_s(p) for p in parts) if s is not None]
+    return min(known) if known else None
+
+
+def periodic_running_grace_s(
+    time_limit_s: float | None = None,
+    repetition_s: float | None = None,
+) -> float:
+    """min(ExecutionTimeLimit, repetition interval, cap) over the known bounds."""
+    bounds = [PERIODIC_RUNNING_GRACE_S]
+    for b in (time_limit_s, repetition_s):
+        if b is not None and b > 0:
+            bounds.append(float(b))
+    return min(bounds)
 
 _WEEK_S = 7 * 86400.0
 
@@ -633,6 +685,8 @@ def classify_task_result(
     *,
     ds_alive: bool = False,
     last_run_age_s: float | None = None,
+    time_limit_s: float | None = None,
+    repetition_s: float | None = None,
 ) -> tuple[str, str]:
     """(verdict, detail) for one task's LastTaskResult. See the code table above."""
     code = _as_int(last_result)
@@ -661,13 +715,14 @@ def classify_task_result(
                 )
             return VERDICT_OK, "long-lived service, RUNNING is the healthy state"
         # A negative age (clock skew, future LastRunTime) is not "recent".
-        if last_run_age_s is not None and 0.0 <= last_run_age_s <= PERIODIC_RUNNING_GRACE_S:
+        grace = periodic_running_grace_s(time_limit_s, repetition_s)
+        if last_run_age_s is not None and 0.0 <= last_run_age_s <= grace:
             return VERDICT_OK, (
                 f"periodic task running now (started {_age_phrase(last_run_age_s)})"
             )
         return VERDICT_STUCK, (
             "periodic task is still RUNNING - it started and never finished "
-            f"(last run {_age_phrase(last_run_age_s)})"
+            f"(last run {_age_phrase(last_run_age_s)}, grace {grace / 60.0:.0f}m)"
         )
 
     if code == TASK_RESULT_TIMEOUT_KILL:
@@ -822,6 +877,8 @@ def task_health_lines(
         verdict, detail = classify_task_result(
             name, state, t.get("last_result"),
             ds_alive=ds_alive, last_run_age_s=last_run_age,
+            time_limit_s=_parse_iso_duration_s(t.get("time_limit")),
+            repetition_s=_min_duration_s(t.get("repetition")),
         )
         if verdict == VERDICT_OK:
             continue
