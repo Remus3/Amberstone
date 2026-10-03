@@ -1,123 +1,21 @@
 NEXT SESSION
 ------------
-ZERO open reds. Tree clean, everything pushed. No suite was run this session and
-none needed to be: nothing but docs, filed rows and two comment sites changed, and
-the one module touched is green at 28 passed. Do NOT open by running the full
-suite - 83 minutes buys nothing against this diff.
-
-THE LIVE THING, AND IT MOVES WITHOUT YOU: a sibling re-pin round on the shared
-ops/loop/slots.py. The candidate was RE-ISSUED THREE TIMES on 2026-10-02 and RC
-answered four times. State as of this wrap:
-
-  9531bfe9  10,584 B  SUPERSEDED   three arms, 4.0   RC position VOID
-  799cdeed  11,018 B  SUPERSEDED   three arms, 4.0, comment fixed   VOID
-  7f84ec96  10,930 B  LIVE         two arms, 4.0     the arm fix without the numeral
-  da35f8b1  10,930 B  *** BYTE-FROZEN 2026-10-02 2200 ***  two arms, 2.0
-                                   RC ATTESTED it, RE-ATTESTED it POST-FREEZE,
-                                   confirmed it COMPILES, and ACCEPTS it.
-
-THE ROUND IS FROZEN, NOT OPEN. The author will not re-issue again except on a
-carrier-BLOCKING objection - bytes that do not compile, do not have the behaviour
-claimed, break a tree, or carry a factual error in their own text. "Improvable" is
-explicitly NOT grounds any more, and an author-originated improvement is explicitly
-not grounds either. RC filed NO blocking objection, having checked all four criteria.
-2.0 has four holders and 4.0 has none, including its own proposer.
-
-So do NOT re-open the numeral, do NOT propose improvements to these bytes, and do
-NOT expect a fourth re-issue. CS's second age-alone arm and CS's required-argument
-ceiling are both PARKED for a later round with the author's support, and RC endorsed
-the parking - that is where any new idea goes.
-
-Read the newest notes by MTIME, never by filename stamp - stamps here are chosen to
-sort and run hours from the writing in BOTH directions, and RC itself shipped a
-same-sender stamp collision this session.
-
-  THE ROUND ASKS NOBODY TO WRITE A BYTE. Do not write ops/loop/slots.py. If the
-  round ever does carry, that is a HALT-AND-PING: it is a cross-repo byte-pinned
-  artifact, and SHARED_SHA256 in tests/test_loop_concurrency.py plus the
-  carrier-parity guard beside it both redden by design in the same commit.
-
-  THE PROPOSAL RC MADE AND NOBODY HAS ANSWERED YET: attestations should be marked
-  SUPERSEDED, never VOID - an attestation is a measurement of bytes and stays true
-  when the bytes are superseded; only a POSITION voids. Three re-issues in, that
-  distinction is the only record of who rebuilt bytes versus copied a digest.
-
-TWO METHOD LESSONS FROM THIS SESSION THAT WILL BITE AGAIN:
-
-  A CASE TABLE CANNOT FIND A REDUNDANT ARM. RC published a five-arm table plus four
-  mutants and called a candidate graded; CS then found its middle arm was dead code.
-  The dead-holder arms return True whichever arm produces them, so redundancy is
-  invisible to anything comparing only VERDICTS. Only an ARM-DELETION mutant finds
-  it. The sibling's own four mutants had the identical blind spot.
-
-  A DISPROOF THAT CANNOT DISTINGUISH THE TWO CAUSES IS NOT A DISPROOF. RC's citation
-  caveat ruled out a history rewrite using "a rewrite would be 100 percent before a
-  cutoff and 0 percent after". False for a PARTIAL rewrite, which RC's was. If your
-  reason for ruling something out is the SHAPE of damage over time, check whether
-  your bins are finer than the part it covered.
-
-OPEN ROWS FILED THIS SESSION, newest first, none started:
-
-  RM-507  RC's channel corpus is git-backed NOWHERE. moon_sync_inbox is gitignored
-          (.gitignore:201, git ls-files returns ZERO) in RC and in at least one
-          other carrier. 391 inbound + 141 outbound exist only as disk copies in
-          gitignored dirs across six machines; a git clean -xfd anywhere destroys
-          that tree's share silently. Read-and-unanswered is 273 of 391 by a
-          published rule, debt 217 - and 273 is an UPPER BOUND, do not quote it as
-          the debt. ACCEPTANCE IS NOT "answer 217 notes": decide whether to track
-          replies at all, or declare that silence is not dissent.
-  RM-506  control/STOP is a cycle-level brake, NOT a durable disarm -
-          loop_controller.py:1055-1056 deletes it at startup. CLAUDE.md and
-          tools/rc_facts.py both treat its presence as the record that the loop is
-          stopped. Do NOT simply stop unlinking it; the unlink exists so a
-          self-restart is not blocked by its own prior halt.
-  RM-505  Satisfying a recipient's LICENCE gate and their NAME sweep are in direct
-          conflict for a document RC wants vendored. Do NOT "fix" it by removing
-          the licence statement - that was the original defect.
-  RM-504  At least FIVE RC slot leaks, three invisible to every log RC keeps.
-          reap() is LAZY (only on the saturated branch), nothing audits the bucket,
-          and a log-based pairing audit structurally cannot see this class.
-          Includes: preserve a TRACKED corpus whenever a hold figure is published.
-  RM-503  RC's only guard on the age arm is green in three different states and
-          discriminates none. Add an arm-A test pinned BETWEEN stale_after and any
-          ceiling, asserting the pid_alive CALL COUNT, not just the verdict.
-  RM-502  is_stale has a SECOND age-only path (the `if not rec:` mtime fallback,
-          reachable via OSError, and it ignores the injected `now`). Liveness-free
-          BY ACCIDENT of which errors occur, not a reachable defect - no route was
-          found by which a live holder's good lockfile fails to read. NOT
-          unilaterally fixable; three carriers have now confirmed it independently.
-  RM-501  GATED. 344 mechanically repairable commit citations.
-          tools/rewrite_sha_citations.py has existed since 2026-09-07, dry-run
-          default, never applied. The SHAPE of the repair is the decision, not the
-          mechanics - it edits append-only history. Record a decision with its
-          reason FIRST.
-
-DO NOT REDO, all measured 2026-10-02:
-  - RC's 5,401 s hold figure is a FLOOR, not a maximum. Re-derived exactly (44
-    acquires / 43 releases / 43 pairs / worst 5,401 s / mean 2,593 s / zero above
-    16,200 s) but the corpus holds SIX run_ids while RC knows of at least NINE -
-    12323c3b, 356f2f86 and a22618e2 each occur ZERO times in it. RC has told the
-    channel to record its contribution as "unknown, floor 5,401 s".
-  - The two leaked locks are CLEARED and the bucket was 3-to-1 after. STOP was
-    HONOURED; the controller has NOT run since 2026-09-11. The acquires came from
-    an UNTRACKED direct slots.hold() caller and could not be identified - no log,
-    no scheduled task, no shell history, worktrees since removed. Do not re-chase
-    the identification without a new lead.
-  - The duplicate LEDGER 1457 is renumbered AND reordered. Order is 1459, 1458,
-    1457, 1456. Do not file it again.
-  - A narrowed `pytest tests -k` over doc terms reports 1 error at
-    tests/test_inbox_responder_runner.py:306. KNOWN ARTIFACT, re-confirmed: the
-    module unfiltered is 79 passed. An ablation's test selection is part of the
-    ablation.
-  - RSC's hold corpus is NOT tracked, and neither is RC's. There is no
-    tracked-corpus counterexample on this channel. Do not repeat the compliment.
-
-PROCESS, and it is the operator's standing directive rather than a suggestion:
-ADJUDICATE, DO NOT GATE. RC gated once this session - asking about clearing the
-leaked locks - and the operator then chose a WIDER scope than either option offered.
-Emit the session checklist inline at start, at every 4 completed items, at any
-status request, and at /done pre-flight. Caveman-ultra in chat; the main window is
-the operator's.
-
-Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES +
-git log + ROADMAP.md, then read moon_sync_inbox BY MTIME.
+Task: rule on and fix the intermittent tests/test_inbox_responder_mutants.py
+teardown trip now that RC-InboxResponder is ARMED (every 5 min). Its guard
+assumes live responder surfaces and sibling inboxes stay still during a run;
+an armed responder and active siblings move them. Pick one: (a) exclude the
+live surfaces from that guard with a test proving the sibling-inbox
+protection still bites, or (b) pause the responder (responder-scoped stop
+file) for the duration of that test. Do NOT simply weaken the guard.
+Context: tools/inbox_responder_runner.py, tests/test_inbox_responder_runner.py
+(teardown assertion near :306), ops/runtime/inbox_responder_agreement.json
+(expires 2026-11-01), ops/loop/headless_env.py (LEDGER 1460). Check the
+responder log + schtasks /Query /TN RC-InboxResponder first.
+Acceptance: test_inbox_responder_mutants.py green 5/5 consecutive runs with
+the responder enabled; guard still fails on a planted sibling-inbox write.
+Also open: C4 slots.py candidate 290cbf80 - vendoring and moving
+SHARED_SHA256 is a joint act; wait for the carriers' round to close.
+Do NOT redo: headless proxy routing (7e6773fec), responder arming + 296-note
+seed, MAIN grant in CLAUDE.md (4e7ec9d69), headless_env guard fix
+(0dcdf4ad0). Do not hand-answer inbox notes the responder owns.
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
