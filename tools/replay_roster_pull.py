@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core import riot_api                                        # noqa: E402
 from core import replay_roster as rr                             # noqa: E402
+from core.riot_retry import fetch_unthrottled                    # noqa: E402
 from core.rofl_archive import (download_replays, extract_archive,  # noqa: E402
                                record_pull_observation)
 
@@ -68,10 +69,14 @@ def _queue_lookup(match_id):
     """
     _pace()
     try:
-        blob = riot_api.get_match(match_id)
+        # RM-484: retry a throttle - a rejected-on-429 replay can rotate out
+        # of the 5-wide window before the next run and is then lost for good.
+        blob, throttled = fetch_unthrottled(lambda: riot_api.get_match(match_id))
     except Exception as exc:                       # noqa: BLE001 - report, never abort the roster
         log.warning("queue lookup failed for %s: %s", match_id, exc)
         return None
+    if throttled:
+        log.warning("queue lookup for %s still rate limited - rejected", match_id)
     if not isinstance(blob, dict):
         return None
     return (blob.get("info") or {}).get("queueId")
@@ -80,13 +85,23 @@ def _queue_lookup(match_id):
 def _pull_one(entry, root, queues, dry_run, extract):
     pdir = rr.player_dir(root, entry.role, entry.name, entry.tag)
     _pace()
-    acct = riot_api.get_account_by_riot_id(entry.name, entry.tag)
+    acct, throttled = fetch_unthrottled(
+        lambda: riot_api.get_account_by_riot_id(entry.name, entry.tag))
     if not acct or not acct.get("puuid"):
-        print(f"{entry.role:7} {entry.riot_id:24} ACCOUNT LOOKUP FAILED")
+        why = " (RATE LIMITED)" if throttled else ""
+        print(f"{entry.role:7} {entry.riot_id:24} ACCOUNT LOOKUP FAILED{why}")
         return 1
 
     _pace()
-    urls = riot_api.get_replay_urls(acct["puuid"]) or []
+    urls, throttled = fetch_unthrottled(
+        lambda: riot_api.get_replay_urls(acct["puuid"]))
+    if throttled:
+        # RM-484: the old `or []` recorded a throttled listing as an EMPTY
+        # window in the rotation log, which reads as "every game rotated out".
+        print(f"{entry.role:7} {entry.riot_id:24} /replays RATE LIMITED - "
+              f"skipped, nothing recorded")
+        return 1
+    urls = urls or []
     plan = rr.plan_pull(urls, _queue_lookup, queues=queues, archive_dir=pdir)
 
     head = (f"{entry.role:7} {entry.riot_id:24} listed={len(urls)} "
