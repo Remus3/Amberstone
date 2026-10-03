@@ -399,11 +399,49 @@ ACKNOWLEDGED_DISARMS: dict[str, str] = {
 }
 
 # INVERTED POLARITY. For these, DISARMED is the REQUIRED state and finding them
-# ENABLED is the anomaly. CLAUDE.md: "RC-InboxResponder stays DISARMED until an
-# expiring agreement record arms it, and an unattended loop must never arm
-# another repo." No such record exists in-repo, so an armed responder is a
-# finding no matter how healthy its result code looks.
+# ENABLED is the anomaly UNLESS a valid, unexpired agreement record arms it.
+# CLAUDE.md: "RC-InboxResponder stays DISARMED until an expiring agreement
+# record arms it, and an unattended loop must never arm another repo." The
+# record is ops/runtime/inbox_responder_agreement.json, and it is judged by the
+# RUNNER's own validator (inbox_agreement_state below) - never a second parser.
+# Missing, expired, malformed, or a validator that raises: still the anomaly.
 DISARM_REQUIRED_TASKS: frozenset[str] = frozenset({"RC-InboxResponder"})
+
+
+def _inbox_participants(root) -> dict:
+    """The runner's participants map, via the runner's own loader."""
+    if str(_ROOT) not in sys.path:
+        sys.path.insert(0, str(_ROOT))
+    from tools.inbox_responder_runner import load_participants
+
+    participants, _dropped = load_participants(Path(root))
+    return participants
+
+
+def inbox_agreement_state(root, now: float) -> tuple[bool, str]:
+    """(armed, detail) for the inbox-responder agreement record. FAILS CLOSED.
+
+    Delegates to tools/inbox_responder_runner.load_agreement, the exact gate
+    the runner applies each tick, so this banner and the runner cannot disagree
+    about whether the responder is armed. `armed` is True only when that gate
+    returns a record; `detail` is then "expires <iso>", otherwise the runner's
+    own refusal detail (no_agreement / expired / malformed:<field>).
+    """
+    try:
+        if str(_ROOT) not in sys.path:
+            sys.path.insert(0, str(_ROOT))
+        from tools.inbox_responder_runner import load_agreement
+
+        participants = _inbox_participants(root)
+        # The runner compares against naive local datetime.now(); match it.
+        record, detail = load_agreement(
+            Path(root), participants, now=datetime.fromtimestamp(now)
+        )
+    except Exception as exc:  # noqa: BLE001 - fail closed, never crash the banner
+        return False, f"agreement check failed ({type(exc).__name__})"
+    if record is None:
+        return False, detail or "refused"
+    return True, f"expires {record.get('expires')}"
 
 # .ToString('o') emits SEVEN fractional digits; datetime.fromisoformat wants at
 # most six. Trimming beats a try/except that silently reports UNKNOWN for every
@@ -710,14 +748,22 @@ def task_health_lines(
                 root_caused.add(name)
                 continue
             code = _as_int(t.get("last_result"))
+            armed, why = inbox_agreement_state(root, now)
+            if armed:
+                ack_lines.append(
+                    f"  - {name}: ARMED by agreement, {why} "
+                    f"(state={state_s}, last_result={code}, last run {since})"
+                )
+                root_caused.add(name)
+                continue
             anomalies.append(
                 f"Legion: scheduled task {name} ENABLED but must stay DISARMED "
-                f"until an expiring agreement record arms it "
+                f"until an expiring agreement record arms it - agreement {why} "
                 f"(state={state_s}, last_result={code}, last run {since})"
             )
             detail_lines.append(
                 f"  - {name}: ENABLED but must stay DISARMED state={state_s} - "
-                f"last_result={code}, last run {since}"
+                f"agreement {why}, last_result={code}, last run {since}"
             )
             root_caused.add(name)
             continue
@@ -780,8 +826,11 @@ def task_health_lines(
         )
 
     head = f"- Scheduled tasks ({len(rows)} RC-*): {len(anomalies)} anomaly(s)"
-    if ack_lines:
-        head += f", {len(ack_lines)} acknowledged disarm(s)"
+    n_armed = sum(1 for ln in ack_lines if ": ARMED by agreement" in ln)
+    if len(ack_lines) - n_armed:
+        head += f", {len(ack_lines) - n_armed} acknowledged disarm(s)"
+    if n_armed:
+        head += f", {n_armed} armed by agreement"
     if not anomalies and not ack_lines:
         return [head], []
     # Acknowledged lines print FIRST and print even on a clean run: the whole
