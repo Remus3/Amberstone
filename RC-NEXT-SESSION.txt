@@ -1,20 +1,18 @@
 NEXT SESSION
 ------------
-Task: make the rc_facts periodic-running grace per-task instead of a flat 2h:
-grace = min(ExecutionTimeLimit, repetition interval, 2h), so a hung
-RC-ReplayChainWatch (15m interval, PT2H limit) is flagged STUCK after ~15m
-instead of hiding ~7 missed runs until the timeout kill.
-Context: tools/rc_facts.py PERIODIC_RUNNING_GRACE_S + classify_task_result
-267009 branch; the schtasks probe projection (~:139) must carry the limit and
-interval; tests/test_rc_facts_task_health.py. LEDGER 1462 has the measured
-per-task table (verifier). Run `python tools/rc_facts.py` before and after.
-Acceptance: TDD - a 15m-interval task running 20m is STUCK, a 1h task 8m in is
-OK, unknown limit/interval falls back to the 2h flat grace, negative age stays
-STUCK; rc_facts suites green; verifier CONFIRM.
+Task: pick the next non-gated item from ROADMAP.md NOW block (recall first:
+python tools/perseus_recall.py "<item>"). No carried RC-owned task is open.
+State at hand-off: rc_facts per-task running grace landed (c84d30b0c, LEDGER
+1463); live banner 0 task anomalies; RC-InboxResponder ARMED by agreement
+(expires 2026-11-01).
+Watch: rc_facts now flags a periodic run that outlives its repetition interval
+as STUCK (by design). If RC-InboxResponder trips it repeatedly, that is a real
+overlap - investigate runtime, do not widen the grace.
 Also open: C4 slots.py candidate 290cbf80 - joint act, RSC holds under its halt
-clause (b) pending a MAIN ruling; do NOT vendor or move SHARED_SHA256 until the
-carriers' round closes.
-Do NOT redo: responder live-surface guard (9b3cbe805, 3f6679d2a), rc_facts
-agreement-armed + STOP flag (d053a573f, dcd530808), periodic-running grace
-(d2b739dda). Do not hand-answer inbox notes the responder owns.
+clause (b) pending a MAIN ruling (LW 0800 note asked MAIN); do NOT vendor or
+move SHARED_SHA256 until the carriers' round closes.
+Do NOT redo: rc_facts per-task grace (c84d30b0c), periodic-running grace
+(d2b739dda), agreement-armed + STOP flag (d053a573f, dcd530808), responder
+live-surface guard (9b3cbe805, 3f6679d2a). Do not hand-answer inbox notes the
+responder owns.
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
