@@ -203,6 +203,125 @@ def test_service_running_implausibly_long_is_an_anomaly():
     assert "RUNNING" in detail
 
 
+# ------------------------------------------------- per-task running grace
+#
+# The flat 2h grace hid a hung RC-ReplayChainWatch (PT15M repetition, PT2H
+# ExecutionTimeLimit, measured live 2026-10-03) for ~7 missed runs. The grace
+# is now min(ExecutionTimeLimit, repetition interval, 2h), each only when known.
+
+_MIN = 60.0
+
+
+def test_powershell_projection_carries_time_limit_and_repetition():
+    cmd = rc_facts.TASK_PROBE_PS
+    assert "ExecutionTimeLimit" in cmd
+    assert "Repetition.Interval" in cmd
+
+
+def test_fifteen_minute_interval_task_running_twenty_minutes_is_stuck():
+    verdict, _detail = rc_facts.classify_task_result(
+        "RC-ReplayChainWatch", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=20 * _MIN,
+        time_limit_s=2 * 3600.0, repetition_s=15 * _MIN,
+    )
+    assert verdict == rc_facts.VERDICT_STUCK
+
+
+def test_hourly_task_eight_minutes_in_is_not_stuck():
+    verdict, _detail = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=8 * _MIN,
+        time_limit_s=45 * _MIN, repetition_s=60 * _MIN,
+    )
+    assert verdict == rc_facts.VERDICT_OK
+
+
+def test_unknown_limit_and_interval_fall_back_to_the_flat_grace():
+    ok, _d = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=90 * _MIN, time_limit_s=None, repetition_s=None,
+    )
+    assert ok == rc_facts.VERDICT_OK
+    bad, _d2 = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=130 * _MIN, time_limit_s=None, repetition_s=None,
+    )
+    assert bad == rc_facts.VERDICT_STUCK
+
+
+def test_negative_age_stays_stuck_even_with_a_per_task_grace():
+    verdict, _detail = rc_facts.classify_task_result(
+        "RC-ReplayChainWatch", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=-60.0, time_limit_s=2 * 3600.0, repetition_s=15 * _MIN,
+    )
+    assert verdict == rc_facts.VERDICT_STUCK
+
+
+def test_grace_uses_whichever_bound_is_known_capped_at_two_hours():
+    cap = rc_facts.PERIODIC_RUNNING_GRACE_S
+    g = rc_facts.periodic_running_grace_s
+    assert g(None, None) == cap
+    assert g(10 * _MIN, None) == 10 * _MIN
+    assert g(None, 15 * _MIN) == 15 * _MIN
+    assert g(72 * 3600.0, None) == cap
+    assert g(None, 24 * 3600.0) == cap
+    assert g(45 * _MIN, 60 * _MIN) == 45 * _MIN
+    # Only the limit known: a PT10M task 12 minutes in is wedged.
+    verdict, _d = rc_facts.classify_task_result(
+        "RC-UpstreamDriftCheck", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=12 * _MIN, time_limit_s=10 * _MIN,
+    )
+    assert verdict == rc_facts.VERDICT_STUCK
+    # Only the interval known: a PT2M task 3 minutes in is wedged.
+    verdict2, _d2 = rc_facts.classify_task_result(
+        "RC-CIWatchdog", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=3 * _MIN, repetition_s=2 * _MIN,
+    )
+    assert verdict2 == rc_facts.VERDICT_STUCK
+
+
+def test_iso_duration_parser():
+    p = rc_facts._parse_iso_duration_s
+    assert p("PT2H") == 7200.0
+    assert p("PT15M") == 900.0
+    assert p("PT45S") == 45.0
+    assert p("P1D") == 86400.0
+    assert p("P1DT2H30M") == 86400.0 + 2 * 3600.0 + 30 * 60.0
+    assert p("PT72H") == 72 * 3600.0
+    # PT0S is Task Scheduler's "unlimited", not a zero-length grace.
+    for unknown in ("PT0S", "", None, "garbage", "PT", "P", "15M", "PTxH", 900, "PT-5M"):
+        assert p(unknown) is None, unknown
+
+
+def test_repetition_projection_takes_the_tightest_known_interval():
+    # Multiple triggers join with ';' and an unrepeated trigger is empty.
+    p = rc_facts._min_duration_s
+    assert p(";PT15M") == 900.0
+    assert p("PT1H;PT15M") == 900.0
+    assert p(["PT2M", ""]) == 120.0
+    assert p("") is None
+    assert p(None) is None
+    assert p("PT0S;") is None
+
+
+def test_task_health_lines_applies_the_per_task_grace(tmp_path):
+    now = time.time()
+    row = _row(
+        "RC-ReplayChainWatch", state="Running",
+        last_result=rc_facts.TASK_RESULT_RUNNING,
+        last_run=_iso(now, 20 * _MIN), triggers="MSFT_TaskTimeTrigger",
+    )
+    row["time_limit"] = "PT2H"
+    row["repetition"] = "PT15M"
+    _banner, anomalies = rc_facts.task_health_lines([row], root=tmp_path, now=now)
+    assert any("RC-ReplayChainWatch STUCK" in a for a in anomalies), anomalies
+
+    # Same row, fresh run: no anomaly for this task.
+    row["last_run"] = _iso(now, 5 * _MIN)
+    _banner, anomalies = rc_facts.task_health_lines([row], root=tmp_path, now=now)
+    assert not any("RC-ReplayChainWatch" in a for a in anomalies), anomalies
+
+
 def test_timeout_kill_code_is_a_failure():
     verdict, detail = rc_facts.classify_task_result(
         "RC-RewindCatchup", "Ready", 2147946720
