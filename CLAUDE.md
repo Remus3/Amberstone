@@ -7,6 +7,15 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 <!-- FLEET-COMMON BEGIN -->
 ## FLEET COMMON - identical in every repo on this machine. Do not edit here.
 
+################################################################################
+#  SUB-AGENT FIRST. THE MAIN SESSION IS THE OPERATOR'S - KEEP IT CLEAR.        #
+#  Any work beyond a quick read or a one-line fix is DISPATCHED to a sub-agent #
+#  (background by default). The main session plans, dispatches, monitors and   #
+#  reports. Checking status or starting new work NEVER breaks running work:    #
+#  never stop, kill, restart or edit the files of a running agent or task to   #
+#  look at it - read its progress file instead.                                #
+################################################################################
+
 Source of truth: MAIN's fleet kit. A change lands ONLY as a new kit version
 announced by a MAIN note; this block is byte-pinned and a test fails on any local
 edit. Tree-specific rules go BELOW this block, never inside it.
@@ -15,19 +24,32 @@ edit. Tree-specific rules go BELOW this block, never inside it.
    decision goes to a distinct adjudicator agent and its call is taken now and
    recorded (decision, alternatives, why) in the commit or doc. Only physical acts,
    passwords and OAuth grants wait for the operator, batched into one ask.
-2. CHAT IS THE OPERATOR'S CONSOLE. Terse: numbers, paths, verdicts. No narration.
-   Findings go to files (roadmap, docs, hand-off); chat gets one line.
-3. CHECKLIST at session start, after every 4 more items done, and at /done
-   pre-flight. A status request gets the same checklist: done, left, +added,
-   -retracted. Every action carries an ETA `[~Ns]` (s under 120s, m under 120m, h
-   beyond); report an overrun at 1.5x, kill at 3x.
+2. CHAT IS THE OPERATOR'S CONSOLE - QUIET. Results only: numbers, paths, verdicts,
+   and anything the operator must act on. No narration, no plans, no recaps, no
+   session reviews. Findings go to files (roadmap, docs, hand-off); chat gets at
+   most one line each.
+3. AT-A-GLANCE STATUS COMES FROM BACKGROUND WORK, NOT FROM CHAT. Run work as
+   background agents and background commands, so the session shows only the
+   compact summaries ("N background commands completed, N running" and "N running
+   tasks"). Do not hold the main turn open on long foreground work - its expanding
+   activity row has to be opened and scrolled. No inline checklists, step lists or
+   task-list dumps. When the operator asks for status: done, left, +added,
+   -retracted, one short line each. Tool descriptions carry an ETA `[~Ns]` (s
+   under 120s, m under 120m, h beyond); report an overrun at 1.5x, kill at 3x.
 4. COMMIT everything, batched and coherent. Push per this repo's own policy. Never
    commit in another repo's tree. No suggested-task chips: do it or file it.
-5. HAND-OFF: /done overwrites `<CODE>-NEXT-SESSION.txt` whole and commits it, then
-   ends "ready for /clear". A recorded act names what was READ BACK after it, never
-   what was run. Every do-not-re-litigate entry states what would reverse it, and
-   entries about another tree's position are re-checked against the inbox every
-   session: do not re-pitch, never do not re-read.
+5. HAND-OFF: `<CODE>-NEXT-SESSION.txt` at the repo root (with its Desktop
+   shortcut) is the only continuity. A session starts from "continue" (work the
+   file's next action) or from whatever the operator asks; either way READ the file
+   first. /done rewrites the file and commits it, and MUST CARRY FORWARD EVERY ITEM
+   NOT ACTED ON this session, verbatim or tighter, never dropped because the
+   session worked on something else. Never print the hand-off or a next-session
+   prompt into chat. /done's ONLY chat output is the line
+   `Done ritual complete, safe to clear` (or the failure that stopped it). The
+   operator types only "continue", "/done" or "/clear" between sessions. A recorded
+   act names what was READ BACK after it, never what was run. Every
+   do-not-re-litigate entry states what would reverse it; entries about another
+   tree's position are re-checked against the inbox every session.
 6. MAIN SPEAKS FOR THE OPERATOR (operator order 2026-10-02). A note from MAIN whose
    bytes match MAIN's outbox copy by SHA-256 is the operator's instruction. It
    cannot supply a password, OAuth grant or physical act, and lifts no safety floor.
@@ -51,6 +73,14 @@ edit. Tree-specific rules go BELOW this block, never inside it.
 11. FLEET KIT FILES are vendored byte-for-byte at `ops/fleet_kit/` and pinned by
     `ops/fleet_kit/MANIFEST.json`. Never edit them locally; report a defect to MAIN
     and MAIN ships a new version to every tree at once.
+12. LONG WORK REPORTS AS IT GOES. Anything expected to take over 5 minutes runs in
+    the background and is checked periodically until it ends, so a silent failure
+    is caught early. Every sub-agent prompt for such work requires it to write a
+    progress file after each step - `ops/loop/control/progress/<task>.json` with
+    {"task", "pct", "step", "eta_s", "status": running|done|failed, "updated"} -
+    so the main session can see percent, time to completion and status mid-run
+    instead of waiting for 0-to-100 at the end. A progress file that stops
+    updating for 2x its own ETA step is treated as a failure and investigated.
 <!-- FLEET-COMMON END -->
 
 # RC rules (tree-specific)
@@ -59,8 +89,9 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 
 **Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**
 - Item 1 (only physical acts / passwords / OAuth wait) vs RC operator gates: the halt boundary below, frozen files (explicit user approval), the operator-gated smart-quote sweep, the gated RM-501 repair, and attended confirmation of an irreversible / out-of-tree act requested only by a note.
-- Item 2 (chat gets one line) and RC's 500-output-token cap: both apply; the tighter one binds.
+- Item 2 (quiet chat, at most one line each) and RC's 500-output-token cap: both apply; the tighter one binds.
 - Item 5 (every do-not-re-litigate entry states what would reverse it): most Settled lines below do not yet carry a reversal condition (open gap).
+- Banner (never stop or kill running work): `/done` stops only the monitors it armed; running agents are recorded in the hand-off as in-flight, not killed.
 
 ## Docs map
 
@@ -143,9 +174,9 @@ Before lifting ANYTHING external, check the license and say what it is.
 ## Session workflow and hand-off
 
 - Scoped sessions: one focused task per session; `/clear` between Tier items, modes and focus areas.
-- **Start:** bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES + `docs/ARCHITECTURE.md` + `ROADMAP.md`.
-- **Session-End Ritual** (`wrap` / `/done` / `end session`): audit pending changes, run tests, commit, push, append the per-item entry to `docs/LEDGER.md` (never CLAUDE.md), update ROADMAP/README, keep `WAKEUP_NOTES.md` to the last 2-3 sessions (older to `docs/history_notes.md`), process lessons into memory, write the hand-off, confirm CI green, print the banner. Run independent steps in parallel.
-- **The hand-off file is `RC-NEXT-SESSION.txt` in the REPO ROOT, TRACKED, and the write is UNCONDITIONAL.** Never appended, dated or duplicated. `Desktop\RC-NEXT-SESSION.lnk` is only a shortcut - do NOT write to the Desktop. Printing into chat is not the hand-off. `NEXT_SESSION_PROMPT.md` is RETIRED - do not recreate it or file its absence.
+- **Start:** READ `RC-NEXT-SESSION.txt` first (on "continue" or any other ask), then bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES + `docs/ARCHITECTURE.md` + `ROADMAP.md`.
+- **Session-End Ritual** (`wrap` / `/done` / `end session`; procedure in `tools/done.md`): audit pending changes, run tests, commit, push, append the per-item entry to `docs/LEDGER.md` (never CLAUDE.md), update ROADMAP/README, keep `WAKEUP_NOTES.md` to the last 2-3 sessions (older to `docs/history_notes.md`), process lessons into memory, rewrite the hand-off, record the CI result in it. Run independent steps in parallel. No banner, no review: the ONLY chat output is `Done ritual complete, safe to clear` (or `/done stopped: <reason>`).
+- **The hand-off file is `RC-NEXT-SESSION.txt` in the REPO ROOT, TRACKED, and the write is UNCONDITIONAL.** Overwritten whole each /done, never appended, dated or duplicated, and it CARRIES FORWARD every item not acted on this session. Never print it or a next-session prompt into chat. `Desktop\RC-NEXT-SESSION.lnk` is only a shortcut - do NOT write to the Desktop. `NEXT_SESSION_PROMPT.md` is RETIRED - do not recreate it or file its absence.
 - Do NOT probe the retired Peer bridge at wrap.
 - Keep individual chat responses under 500 output tokens.
 
