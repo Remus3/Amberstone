@@ -173,7 +173,7 @@ test("run id and age render on the card", () => {
   assert.equal(card.label, "RC lane");
   assert.ok(card.meta.includes("age 1m"), `meta was ${card.meta}`);
   assert.ok(card.meta.includes("kids 4"), `meta was ${card.meta}`);
-  assert.ok(card.meta.includes("log 3s"), `meta was ${card.meta}`);
+  assert.ok(!card.meta.includes("log"), `meta was ${card.meta}`);
 });
 
 test("a missing run id or age renders the no-data sentinel, not blank", () => {
@@ -183,7 +183,7 @@ test("a missing run id or age renders the no-data sentinel, not blank", () => {
   );
   const card = view.cards[0];
   assert.equal(card.runId, w.NO_DATA);
-  assert.equal(card.meta, "age - - kids 0 - log -");
+  assert.equal(card.meta, "age - - kids 0");
 });
 
 test("formatAge buckets seconds and rejects junk", () => {
@@ -210,16 +210,22 @@ test("stalled leads the meta line so truncation cannot eat the alarm", () => {
   // operationally important token on the card, so it must occupy the position
   // that survives truncation - the front.
   const meta = w.metaFor(row({ stalled: true, ageS: 42, children: 3, logAgeS: 12 }));
-  assert.equal(meta, "stalled - age 42s - kids 3 - log 12s");
+  assert.equal(meta, "stalled - age 42s - kids 3");
   assert.equal(meta.indexOf("stalled"), 0);
   assert.ok(meta.indexOf("stalled") < meta.indexOf("age"));
-  assert.ok(meta.indexOf("stalled") < meta.indexOf("log"));
 
   // A healthy row carries no alarm token at all, and is otherwise unchanged.
   assert.equal(
     w.metaFor(row({ stalled: false, ageS: 42, children: 3, logAgeS: 12 })),
-    "age 42s - kids 3 - log 12s"
+    "age 42s - kids 3"
   );
+});
+
+test("the log age is never printed - age does that job (operator order)", () => {
+  // The stall alarm still uses log age upstream; only the NUMBER is gone.
+  for (const r of [row({ logAgeS: 12 }), row({ logAgeS: 86400 * 3, stalled: true })]) {
+    assert.ok(!/\blog\b/.test(w.metaFor(r)), w.metaFor(r));
+  }
 });
 
 // ------------------------------------------------------------------ tabs ----
@@ -1593,4 +1599,222 @@ test("wantsNativeTextMenu never throws on junk", () => {
     assert.doesNotThrow(() => w.wantsNativeTextMenu(junk));
     assert.equal(w.wantsNativeTextMenu(junk), false);
   }
+});
+
+// ================================================ ALL tab: one row per repo ==
+// Operator order 2026-10-03: the ALL tab is EXACTLY one row per repo in fixed
+// roster order, each row a display name, ONE combined Lane line and ONE Sync
+// line. These fixtures go end to end through the REAL model (src/model.js) so
+// the Sync text asserted here is the text the panel paints. Codes are invented
+// placeholders and display names are placeholders - the real ones live only in
+// the gitignored per-host roster.
+
+const { buildModel } = require("../src/model.js");
+
+const T0 = Date.parse("2026-10-03T12:00:00Z") / 1000;
+const isoT = (s) => new Date(s * 1000).toISOString();
+
+function statusText(over) {
+  return JSON.stringify(Object.assign({
+    schema: 1, code: "AAA", updated: isoT(T0 - 5), state: "running",
+    task: "Running Session", task_started: isoT(T0 - 60), task_eta_s: null,
+    next_tick: null, runs_in_window: 0, runs_cap: 120, window_s: 86400,
+    cap_frees_at: null,
+  }, over || {}));
+}
+
+const FREE_LOCK = { state: "FREE", payload: null, pid: 0 };
+
+function repoIn(over) {
+  return Object.assign({
+    code: "AAA", root: "C:\\fake-a", isSelf: false, display: "Placeholder A",
+    order: null, attendedOnly: false, tickS: 300, noLane: false,
+    lane: FREE_LOCK, ctrl: FREE_LOCK, children: 0, logs: [], statusText: null,
+  }, over || {});
+}
+
+function allView(repos, opts) {
+  return w.buildView(buildModel({ repos, now: T0 }), Object.assign({ activeTab: "ALL" }, opts || {}));
+}
+
+function oneSync(status) {
+  return allView([repoIn({ statusText: statusText(status) })]).rows[0].syncText;
+}
+
+test("operator line 1 renders verbatim on the ALL row", () => {
+  assert.equal(
+    oneSync({ task: "Appending Ledger", task_started: isoT(T0 - (35 * 60 + 20)), task_eta_s: 42 * 60, runs_in_window: 25 }),
+    "Sync: Appending Ledger [35m/42m][25/120]"
+  );
+});
+
+test("operator line 2 renders verbatim on the ALL row", () => {
+  assert.equal(
+    oneSync({ task: "Running a Command", task_started: isoT(T0 - 90), task_eta_s: 180, runs_in_window: 12 }),
+    "Sync: Running a Command [1m/3m][12/120]"
+  );
+});
+
+test("operator line 3 renders verbatim on the ALL row", () => {
+  const started = T0 - (4 * 60 + 10);
+  assert.equal(
+    oneSync({ state: "idle", task: "Idle", task_started: isoT(started), next_tick: isoT(started + 300), runs_in_window: 110 }),
+    "Sync: Idle [4m/5m][110/120]"
+  );
+});
+
+test("operator line 4 renders verbatim on the ALL row", () => {
+  assert.equal(
+    oneSync({ state: "limit", task: "Turn Limit Reached", cap_frees_at: isoT(T0 + 4 * 3600 - 900), runs_in_window: 120 }),
+    "Sync: Turn Limit Reached [4HR][120/120]"
+  );
+});
+
+test("an unknown ETA renders ? on the ALL row", () => {
+  assert.equal(
+    oneSync({ task: "Appending Ledger", task_started: isoT(T0 - 35 * 60), task_eta_s: null, runs_in_window: 25 }),
+    "Sync: Appending Ledger [35m/?][25/120]"
+  );
+});
+
+test("an absent or stale status renders no signal on the ALL row, never numbers", () => {
+  assert.equal(allView([repoIn({ statusText: null })]).rows[0].syncText, "Sync: no signal [?]");
+  assert.equal(
+    oneSync({ updated: isoT(T0 - 1200), task: "Appending Ledger", task_eta_s: 2520, runs_in_window: 25 }),
+    "Sync: no signal [20m]"
+  );
+});
+
+test("the attended-only row renders Sync: attended only and Lane: none", () => {
+  const r = allView([repoIn({ code: "ZZZ", root: null, noLane: true, attendedOnly: true, statusText: statusText() })]).rows[0];
+  assert.equal(r.syncText, "Sync: attended only");
+  assert.equal(r.laneText, "Lane: none");
+  assert.equal(r.stateText, "attended");
+});
+
+test("the ALL tab renders exactly seven rows in roster order, a missing repo included", () => {
+  // Handed over shuffled; one repo (EEE) has no checkout on this host at all.
+  const spec = [["CCC", 3], ["RC", 2], ["ZZZ", 0], ["FFF", 6], ["AAA", 1], ["EEE", 5], ["DDD", 4]];
+  const repos = spec.map(([code, order]) => repoIn({
+    code, order, display: "Display " + code,
+    root: code === "ZZZ" || code === "EEE" ? null : "C:\\fake-" + code,
+    noLane: code === "ZZZ" || code === "EEE",
+    attendedOnly: code === "ZZZ",
+  }));
+  const view = allView(repos);
+  assert.equal(view.layout, "rows");
+  assert.equal(view.rows.length, 7);
+  assert.deepEqual(
+    view.rows.map((r) => r.label),
+    ["ZZZ", "AAA", "RC", "CCC", "DDD", "EEE", "FFF"].map((c) => "Display " + c)
+  );
+  const missing = view.rows[5];
+  assert.equal(missing.laneText, "Lane: none");
+  assert.equal(missing.syncText, "Sync: no signal [?]");
+});
+
+test("showFree does not drop a repo from the ALL tab - every repo keeps its row", () => {
+  const view = allView([repoIn(), repoIn({ code: "BBB", root: "C:\\fake-b" })], { showFree: false });
+  assert.equal(view.rows.length, 2);
+});
+
+test("the Lane line combines lane and controller into one element", () => {
+  const lane = (l, c, extra) => allView([repoIn(Object.assign({ lane: l, ctrl: c }, extra || {}))]).rows[0];
+  const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 720 } };
+  const runCtrl = { state: "RUNNING", pid: 6, payload: { pid: 6, ts: T0 - 900 } };
+  const deadLane = { state: "RECLAIMABLE", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 99 } };
+  const deadCtrl = { state: "RECLAIMABLE", pid: 6, payload: { pid: 6, ts: T0 - 99 } };
+
+  assert.equal(lane(runLane, runCtrl).laneText, "Lane: queue 12m");
+  assert.equal(lane(runLane, runCtrl).stateText, "running");
+  assert.equal(lane(runLane, runCtrl, { children: 3 }).laneText, "Lane: queue 12m - kids 3");
+  assert.equal(lane(FREE_LOCK, FREE_LOCK).laneText, "Lane: free");
+  assert.equal(lane(FREE_LOCK, FREE_LOCK).stateText, "idle");
+  assert.equal(lane(deadLane, FREE_LOCK).laneText, "Lane: STALE (reclaimable)");
+  assert.equal(lane(FREE_LOCK, deadCtrl).laneText, "Lane: STALE (reclaimable)");
+  assert.equal(lane(deadLane, runCtrl).stateText, "stale");
+  assert.equal(lane(FREE_LOCK, runCtrl).laneText, "Lane: controller 15m");
+  assert.equal(lane(FREE_LOCK, runCtrl).stateText, "running");
+});
+
+test("a stalled lane says so in the state word, which never clips", () => {
+  const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 60 } };
+  const r = allView([repoIn({ lane: runLane, logs: [{ lane: "queue", ageS: 900, stalled: true }] })]).rows[0];
+  assert.equal(r.stateText, "stalled");
+  assert.equal(r.laneText, "Lane: queue 1m");
+});
+
+test("lane age uses the same m-then-HR rule as the Sync line", () => {
+  const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 3 * 3600 } };
+  assert.equal(allView([repoIn({ lane: runLane })]).rows[0].laneText, "Lane: queue 3HR");
+});
+
+test("no ALL row prints a log age, a run id or a separate controller item", () => {
+  const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", run_id: "abc123", ts: T0 - 60 } };
+  const r = allView([repoIn({ lane: runLane, logs: [{ lane: "queue", ageS: 86400 * 2, stalled: false }] })]).rows[0];
+  const all = [r.label, r.stateText, r.laneText, r.syncText].join(" | ");
+  assert.ok(!/\blog\b/.test(all), all);
+  assert.ok(!all.includes("abc123"), all);
+  assert.ok(!/controller/.test(all), all);
+});
+
+test("every rendered ALL-row string is printable ASCII", () => {
+  const r = allView([repoIn({ statusText: statusText({ task: "Caf\u00e9 \u2014 build" }) })]).rows[0];
+  for (const s of [r.laneText, r.syncText, r.syncTask, r.syncTail, r.stateText]) {
+    assert.match(s, /^[\x20-\x7e]*$/, s);
+  }
+});
+
+test("a per-repo tab still renders the lane/controller cards", () => {
+  const view = allView([repoIn()], { activeTab: "AAA" });
+  assert.equal(view.layout, "cards");
+  assert.ok(view.cards.some((c) => c.label === "AAA lane"));
+});
+
+test("with repo rows the tab strip follows roster order, not state order", () => {
+  const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 60 } };
+  const view = allView([
+    repoIn({ code: "RC", order: 2 }),
+    repoIn({ code: "BBB", order: 1, lane: runLane }),
+    repoIn({ code: "ZZZ", order: 0, root: null, noLane: true, attendedOnly: true }),
+  ]);
+  // ZZZ has no lane to show, so it gets an ALL row but no tab of its own.
+  assert.deepEqual(view.tabs.map((t) => t.id), ["ALL", "BBB", "RC"]);
+});
+
+test("a repo row going stale is announced by its display name", () => {
+  const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 60 } };
+  const deadLane = { state: "RECLAIMABLE", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 60 } };
+  const before = allView([repoIn({ lane: runLane })]);
+  const after = allView([repoIn({ lane: deadLane })]);
+  assert.equal(w.statusMessageFor(before, after), "Placeholder A went stale");
+  assert.equal(w.statusMessageFor(after, after), null);
+});
+
+test("renderCards paints one row element per repo with the Sync line split task/tail", () => {
+  const doc = makeDoc();
+  const root = makeNode(doc, "section");
+  const view = allView([
+    repoIn({ statusText: statusText({ task: "Appending Ledger", task_started: isoT(T0 - (35 * 60 + 20)), task_eta_s: 2520, runs_in_window: 25 }) }),
+    repoIn({ code: "BBB", root: "C:\\fake-b", display: "Placeholder B" }),
+  ]);
+  w.renderCards(doc, root, view);
+  assert.equal(root.childNodes.length, 2);
+  assert.ok(root.classList.contains("is-rows"));
+  const first = root.childNodes[0];
+  assert.ok(first.classList.contains("repo-row"));
+  const sync = first.childNodes.filter((n) => n.classList.contains("row-sync"))[0];
+  assert.equal(sync.textContent, "Sync: Appending Ledger [35m/42m][25/120]");
+  assert.equal(sync.childNodes[1].textContent, " [35m/42m][25/120]", "the numbers live in their own non-shrinking span");
+  const laneLine = first.childNodes.filter((n) => n.classList.contains("row-lane"))[0];
+  assert.equal(laneLine.textContent, "Lane: free");
+});
+
+test("switching back to a per-repo tab drops the rows class from the region", () => {
+  const doc = makeDoc();
+  const root = makeNode(doc, "section");
+  w.renderCards(doc, root, allView([repoIn()]));
+  assert.ok(root.classList.contains("is-rows"));
+  w.renderCards(doc, root, allView([repoIn()], { activeTab: "AAA" }));
+  assert.equal(root.classList.contains("is-rows"), false);
 });

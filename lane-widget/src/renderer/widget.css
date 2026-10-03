@@ -504,6 +504,69 @@ input {
 .card.state-idle .card-state { color: var(--dim); }
 .card.state-idle .state-rule { background: var(--faint); }
 
+/* A running lane whose log has gone quiet. The state WORD says "stalled";
+   the warn tint is the redundant encoding on top of it. */
+.card.state-stalled .card-state { color: var(--warn); }
+.card.state-stalled .state-rule { background: var(--warn); }
+
+/* ------------------------------------------------- ALL tab: repo rows -- */
+
+/* ONE full-width row per repo, in roster order. The track's FLOOR is exactly
+   the two-card grid's width (2 x 172px + the 10px gap), so switching between
+   the ALL tab and a per-repo tab never narrows the panel. Above that floor it
+   takes the width the tab strip already gave the panel (1fr), which is not a
+   viewport length and so re-enters no window-size loop; it only stops the
+   rows ending short of the summary rule beneath them. */
+.cards.is-rows {
+  grid-template-columns: minmax(354px, 1fr);
+  gap: 8px;
+}
+
+/* A row drops the card's 108px floor: seven rows have to fit a 1080p work
+   area with room to spare, and a row's content is three short lines. */
+.card.repo-row {
+  min-height: 0;
+  gap: 3px;
+  padding: 8px 12px 0;
+}
+
+/* The combined Lane element - the row's primary value, so it is the larger,
+   brighter line. --text on --surface = 14.61:1 */
+.row-lane {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The Sync line. Two spans: the task name may ellipsize, the bracketed
+   numbers never do, so a long task can not clip the counts the operator reads
+   it for. --text on --surface = 14.61:1 */
+.row-sync {
+  display: flex;
+  min-width: 0;
+  margin-bottom: 9px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.sync-task {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* pre keeps the single leading space, so the concatenated text is the
+   operator's line verbatim with no CSS gap faking the separator. */
+.sync-tail {
+  flex: 0 0 auto;
+  white-space: pre;
+}
+
 /* Placeholder: identical geometry, quieter paint. No reflow when real rows
    replace it - only text and class change. */
 .card.is-placeholder {

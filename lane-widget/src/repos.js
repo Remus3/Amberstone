@@ -13,7 +13,10 @@
  * comment says "The leaf name is NEVER used".
  *
  * Schema, from tracked ops/moon_sync_repos.example.json:
- *   { repos: ["<abs path>", ...], participants: { "<CODE>": "<abs path>" } }
+ *   { repos: ["<abs path>", ...], participants: { "<CODE>": "<abs path>" },
+ *     roster: { "<CODE>": { display, order, tick_s, attended_only } } }
+ * `roster` is optional and additive - `participants` keeps its code->path
+ * string shape because the inbox responder reads it too.
  * RC_MOON_SYNC_REPOS (os.pathsep separated) OVERRIDES the file -
  * tools/moon_sync_poller.py:158-165.
  */
@@ -112,14 +115,76 @@ function codeFor(root, participants, index) {
   return index === 0 ? SELF_CODE : `REPO-${index + 1}`;
 }
 
+// A display name is operator config rendered as a row title. Capped so one
+// config typo cannot push the row past the panel width.
+const MAX_DISPLAY_CHARS = 32;
+
 /**
- * resolveRepos({ rcRoot, env, readFile }) -> [ { code, root, isSelf } ]
+ * { CODE -> { display, order, tickS, attendedOnly } } from the optional
+ * "roster" key. Every field is optional and every junk shape is ignored.
+ *
+ *   roster: { "<CODE>": { "display": "<name>", "order": <n>,
+ *                         "tick_s": <seconds>, "attended_only": true } }
+ *
+ * Display names are sibling NAMES, so they live only in the gitignored file.
+ */
+function rosterOf(blob) {
+  const map = new Map();
+  if (!isObject(blob) || !isObject(blob.roster)) return map;
+  for (const [code, rec] of Object.entries(blob.roster)) {
+    if (typeof code !== "string" || code.trim() === "" || !isObject(rec)) continue;
+    const display = typeof rec.display === "string" ? rec.display.trim().slice(0, MAX_DISPLAY_CHARS).trim() : "";
+    const order = typeof rec.order === "number" && Number.isFinite(rec.order) ? rec.order : null;
+    const tick = typeof rec.tick_s === "number" && Number.isFinite(rec.tick_s) && rec.tick_s > 0
+      ? rec.tick_s
+      : null;
+    map.set(code, {
+      display: display === "" ? null : display,
+      order,
+      tickS: tick,
+      attendedOnly: rec.attended_only === true,
+    });
+  }
+  return map;
+}
+
+/** { CODE -> raw path } - the inverse view of participantsOf. */
+function participantPaths(blob) {
+  const map = new Map();
+  if (!isObject(blob) || !isObject(blob.participants)) return map;
+  for (const [code, path] of Object.entries(blob.participants)) {
+    if (typeof path !== "string" || path.trim() === "") continue;
+    map.set(code, path.trim());
+  }
+  return map;
+}
+
+function decorate(entry, roster) {
+  const rec = roster.get(entry.code) || null;
+  return Object.assign(entry, {
+    display: rec && rec.display ? rec.display : entry.code,
+    order: rec ? rec.order : null,
+    attendedOnly: rec ? rec.attendedOnly : false,
+    tickS: rec ? rec.tickS : null,
+    noLane: typeof entry.root !== "string",
+  });
+}
+
+/**
+ * resolveRepos({ rcRoot, env, readFile })
+ *   -> [ { code, root, isSelf, display, order, attendedOnly, tickS, noLane } ]
  *
  * readFile: (absPath) => string | null   (null on any error - fail soft)
  *
  * RC is ALWAYS index 0. A missing or corrupt config yields RC only, which is
  * the CORRECT fresh-clone answer and not an error. Total: every junk shape
  * returns at least the RC row rather than throwing.
+ *
+ * A code named in "roster" but absent from the polled roots is APPENDED, so
+ * the ALL tab can give every rostered repo a row: at its participants path if
+ * it has one, otherwise root-less (root null, noLane true - nothing is read).
+ * Display order is NOT applied here; model.js sorts its per-repo rows by
+ * `order`, which keeps RC-at-index-0 true for every existing caller.
  */
 function resolveRepos(opts) {
   const o = isObject(opts) ? opts : {};
@@ -147,7 +212,20 @@ function resolveRepos(opts) {
     seen.add(key);
     out.push({ code: codeFor(root, participants, out.length), root, isSelf: false });
   }
-  return out;
+
+  const roster = rosterOf(blob);
+  const paths = participantPaths(blob);
+  const codes = new Set(out.map((r) => r.code));
+  for (const code of roster.keys()) {
+    if (codes.has(code)) continue;
+    codes.add(code);
+    const path = paths.get(code);
+    const key = typeof path === "string" ? normRoot(path) : null;
+    const root = key !== null && !seen.has(key) ? path : null;
+    if (key !== null) seen.add(key);
+    out.push({ code, root, isSelf: false });
+  }
+  return out.map((entry) => decorate(entry, roster));
 }
 
 module.exports = {

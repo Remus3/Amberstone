@@ -10,8 +10,12 @@
 //                   controller lock - and nothing else. No listing, no stat,
 //                   no snapshot.
 //   SLOW (10000 ms) ONE non-recursive listing of <root>/ops/loop/reports per
-//                   repo, plus ONE machine-wide process snapshot that every
-//                   repo reuses.
+//                   repo, ONE read of <root>/ops/loop/control/inbox_status.json
+//                   per repo (skipped for an attended-only tree), plus ONE
+//                   machine-wide process snapshot that every repo reuses.
+//
+// A root-less roster row (a rostered repo with no checkout on this host) is
+// read on NEITHER cadence; it still gets its ALL-tab row from the model.
 //
 // There is NO recursive walk on any timer, ever. An idle recursive walker in
 // this repo was measured at tens of thousands of metadata operations per second
@@ -35,6 +39,16 @@ const DEFAULT_FAST_MS = 2000;
 const DEFAULT_SLOW_MS = 10000;
 const DEFAULT_STALL_AFTER_S = 600;
 const REPORTS_REL = ["ops", "loop", "reports"];
+// Each tree's inbox responder status (schema 1). READ once per repo per SLOW
+// tick - the status changes on a minute scale, and keeping it off the fast
+// tick keeps that tick's "exactly 2 lock reads per repo" bound intact.
+// Mirrors src/inbox_status.js STATUS_REL.
+const STATUS_REL = ["ops", "loop", "control", "inbox_status.json"];
+
+/** A repo the poller can actually read from - root-less roster rows are not. */
+function hasRoot(r) {
+  return !!r && typeof r.root === "string" && r.root !== "";
+}
 
 // PowerShell one-liner for the machine-wide snapshot. ONE spawn per slow tick,
 // reused by every repo.
@@ -251,6 +265,7 @@ function createPoller(opts) {
   let snapshotStart = null; // Map<pid, startMs>
   let lockByRoot = new Map(); // root -> { lane, ctrl }
   let logsByRoot = new Map(); // root -> newestPerLane rows
+  let statusByRoot = new Map(); // root -> raw inbox_status.json text, or null
   let childrenByPid = new Map(); // pid -> descendant count
   let lastModelValue = emptyModel(now());
 
@@ -392,14 +407,21 @@ function createPoller(opts) {
       const locks = lockByRoot.get(r.root) || {};
       const lane = locks.lane || { state: "FREE", payload: null, pid: 0 };
       const ctrl = locks.ctrl || { state: "FREE", payload: null, pid: 0 };
+      const status = hasRoot(r) ? statusByRoot.get(r.root) : null;
       built.push({
         code: r.code,
         root: r.root,
         isSelf: !!r.isSelf,
+        display: r.display,
+        order: r.order,
+        attendedOnly: r.attendedOnly === true,
+        tickS: r.tickS,
+        noLane: r.noLane === true,
         lane: lane,
         ctrl: ctrl,
         children: childrenByPid.get(lane.pid) || 0,
         logs: logsByRoot.get(r.root) || [],
+        statusText: typeof status === "string" ? status : null,
       });
     }
     let model = null;
@@ -440,6 +462,7 @@ function createPoller(opts) {
       const ts = now();
       const next = new Map();
       for (const r of repoList()) {
+        if (!hasRoot(r)) continue; // a root-less roster row has nothing to read
         const laneText = await guard(
           () => io.readFile(path.join.apply(path, [r.root].concat(laneRel))),
           null,
@@ -493,7 +516,20 @@ function createPoller(opts) {
       }
 
       const nextLogs = new Map();
+      const nextStatus = new Map();
       for (const r of repoList()) {
+        if (!hasRoot(r)) continue; // a root-less roster row has nothing to read
+        // ONE read of the tree's status file. An attended-only tree publishes
+        // none, so it is not read at all. Absent / unreadable / thrown -> null,
+        // which renders "no signal" - never the previous tick's numbers.
+        if (r.attendedOnly !== true) {
+          const text = await guard(
+            () => io.readFile(path.join.apply(path, [r.root].concat(STATUS_REL))),
+            null,
+            "read inbox status"
+          );
+          nextStatus.set(r.root, typeof text === "string" ? text : null);
+        }
         const dir = path.join.apply(path, [r.root].concat(REPORTS_REL));
         const listed = await guard(() => io.listDir(dir), [], "list reports");
         const entries = [];
@@ -516,6 +552,7 @@ function createPoller(opts) {
         nextLogs.set(r.root, Array.isArray(newest) ? newest : []);
       }
       logsByRoot = nextLogs;
+      statusByRoot = nextStatus;
 
       // Descendant counts for every pid we are currently tracking - one pass
       // over the single snapshot, no per-repo process work.
@@ -620,6 +657,7 @@ module.exports = {
   DEFAULT_FAST_MS,
   DEFAULT_SLOW_MS,
   REPORTS_REL,
+  STATUS_REL,
   SNAPSHOT_ARGS,
   creationToMs,
   normalizeSnapshotRows,

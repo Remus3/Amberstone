@@ -22,7 +22,9 @@
 // Model shape consumed here is the real one from src/model.js:99-113, not a
 // paraphrase: { key, repoCode, kind, label, state, lane, runId, ageS, children,
 // logAgeS, stalled, worktreeTail } with summary
-// { repos, running, reclaimable, free, children, stalled }.
+// { repos, running, reclaimable, free, children, stalled }, plus repoRows -
+// ONE roster-ordered row per repo that the ALL tab paints (see makeRepoRow in
+// src/model.js). logAgeS is consumed upstream for `stalled` but never printed.
 
 "use strict";
 
@@ -33,6 +35,11 @@ var STATE_RECLAIMABLE = "RECLAIMABLE";
 
 var TAB_ALL = "ALL";
 var TAB_ALL_LABEL = "All";
+
+// The card region paints one of two layouts: the per-repo lane/controller
+// CARDS, or the ALL tab's one-row-per-repo ROWS.
+var LAYOUT_CARDS = "cards";
+var LAYOUT_ROWS = "rows";
 
 // RC is always roster index 0 (src/repos.js contract, src/model.js:138).
 var RC_CODE = "RC";
@@ -143,8 +150,110 @@ function metaFor(row) {
   if (r.stalled === true) parts.push("stalled");
   parts.push("age " + formatAge(r.ageS));
   parts.push("kids " + formatCount(r.children));
-  parts.push("log " + formatAge(r.logAgeS));
+  // The log age is deliberately NOT printed (operator order 2026-10-03): age
+  // does the same job on screen. Log age still drives `stalled` upstream.
   return parts.join(" - ");
+}
+
+// ------------------------------------------------- ALL tab: repo rows ------
+// One row per repo, in fixed roster order (src/model.js repoRows). Each row is
+// a display name, a state word, ONE combined Lane line (a headless lane cannot
+// run without its controller, so they are one element) and ONE Sync line from
+// that tree's ops/loop/control/inbox_status.json.
+
+/**
+ * Elapsed span, floored: "<n>m" under 120 minutes, then "<n>HR". The same rule
+ * the Sync line uses (src/inbox_status.js formatSpan), so one row never mixes
+ * "2h" with "4HR". Absent, negative or non-finite -> null (caller omits it).
+ */
+function formatSpan(seconds) {
+  var s = finiteOrNull(seconds);
+  if (s === null || s < 0) return null;
+  var minutes = Math.floor(s / 60);
+  if (minutes < 120) return minutes + "m";
+  return Math.floor(s / 3600) + "HR";
+}
+
+function asciiOnly(text) {
+  return String(text).replace(/[^\x20-\x7e]/g, "");
+}
+
+/**
+ * The combined Lane element and the row's state word.
+ *
+ *   lane RUNNING                 Lane: <name> <age>[ - kids N]   running|stalled
+ *   lane or controller stale     Lane: STALE (reclaimable)       stale
+ *   controller up, lane free     Lane: controller <age>          running
+ *   both free                    Lane: free                      idle
+ *   no checkout on this host     Lane: none                      attended|no lane
+ */
+function laneFor(repoRow) {
+  var r = isObject(repoRow) ? repoRow : {};
+  if (r.noLane === true) {
+    return {
+      text: "Lane: none",
+      stateKey: "idle",
+      stateText: r.attendedOnly === true ? "attended" : "no lane",
+    };
+  }
+  var lane = r.laneState;
+  var ctrl = r.ctrlState;
+  var kids = finiteOrNull(r.children);
+  var kidsText = kids !== null && kids > 0 ? " - kids " + Math.round(kids) : "";
+  if (lane === STATE_RUNNING) {
+    var age = formatSpan(r.ageS);
+    var name = asciiOnly(stringOrNull(r.lane) || "lane");
+    var stalled = r.stalled === true;
+    return {
+      text: "Lane: " + name + (age === null ? "" : " " + age) + kidsText,
+      stateKey: stalled ? "stalled" : "running",
+      stateText: stalled ? "stalled" : "running",
+    };
+  }
+  if (lane === STATE_RECLAIMABLE || (lane === STATE_FREE && ctrl === STATE_RECLAIMABLE)) {
+    return { text: "Lane: STALE (reclaimable)", stateKey: "stale", stateText: "stale" };
+  }
+  if (lane === STATE_FREE && ctrl === STATE_RUNNING) {
+    var cage = formatSpan(r.ctrlAgeS);
+    return {
+      text: "Lane: controller" + (cage === null ? "" : " " + cage),
+      stateKey: "running",
+      stateText: "running",
+    };
+  }
+  if (lane === STATE_FREE && (ctrl === STATE_FREE || ctrl === undefined || ctrl === null)) {
+    return { text: "Lane: free", stateKey: "idle", stateText: "idle" };
+  }
+  return { text: "Lane: unreadable", stateKey: "unreadable", stateText: "unreadable" };
+}
+
+/** One ALL-tab row description. The Sync line is split task / tail so the
+ *  shim can ellipsize the task and never the numbers. */
+function repoRowFor(repoRow, index) {
+  var r = isObject(repoRow) ? repoRow : {};
+  var sync = isObject(r.sync) ? r.sync : {};
+  var task = stringOrNull(sync.task) || "no signal";
+  var tail = typeof sync.tail === "string" ? sync.tail : "[?]";
+  var syncTask = asciiOnly("Sync: " + task);
+  var syncTail = tail === "" ? "" : asciiOnly(" " + tail);
+  var lane = laneFor(r);
+  var code = stringOrNull(r.repoCode) || NO_DATA;
+  return {
+    key: stringOrNull(r.key) || "repo-" + index,
+    placeholder: false,
+    stateKey: lane.stateKey,
+    stateText: lane.stateText,
+    label: stringOrNull(r.display) || code,
+    laneText: lane.text,
+    syncTask: syncTask,
+    syncTail: syncTail,
+    syncText: syncTask + syncTail,
+  };
+}
+
+function buildRepoRows(repoRows) {
+  var list = Array.isArray(repoRows) ? repoRows.filter(isObject) : [];
+  return list.map(repoRowFor);
 }
 
 /**
@@ -163,7 +272,20 @@ function buildTabs(model) {
     seen[code] = true;
     codes.push(code);
   }
-  if (seen[RC_CODE] === true) {
+  var roster = Array.isArray(m.repoRows) ? m.repoRows.filter(isObject) : [];
+  if (roster.length > 0) {
+    // With repo rows the strip follows ROSTER order, the same order the ALL
+    // tab paints. A repo with no lane rows (no checkout) gets no tab.
+    var ordered = [];
+    var placed = Object.create(null);
+    for (var k = 0; k < roster.length; k += 1) {
+      var rc = stringOrNull(roster[k].repoCode);
+      if (rc === null || seen[rc] !== true || placed[rc] === true) continue;
+      placed[rc] = true;
+      ordered.push(rc);
+    }
+    codes = ordered.concat(codes.filter(function (c) { return placed[c] !== true; }));
+  } else if (seen[RC_CODE] === true) {
     codes = [RC_CODE].concat(codes.filter(function (c) { return c !== RC_CODE; }));
   }
   var tabs = [{ id: TAB_ALL, label: TAB_ALL_LABEL }];
@@ -305,12 +427,33 @@ function buildView(model, opts) {
   var m = isObject(model) ? model : {};
   var o = isObject(opts) ? opts : {};
   var rows = Array.isArray(m.rows) ? m.rows.filter(isObject) : [];
-  var tabs = buildTabs({ rows: rows });
+  var repoRows = Array.isArray(m.repoRows) ? m.repoRows.filter(isObject) : [];
+  var tabs = buildTabs({ rows: rows, repoRows: repoRows });
   var activeTab = resolveActiveTab(tabs, o.activeTab);
+
+  // ALL tab with a roster: one row per repo, every repo, whatever showFree
+  // says - "a repo with no live lane still gets its row".
+  if (activeTab === TAB_ALL && repoRows.length > 0) {
+    var painted = buildRepoRows(repoRows);
+    return {
+      tabs: tabs,
+      activeTab: activeTab,
+      layout: LAYOUT_ROWS,
+      rows: painted,
+      cards: [],
+      summary: buildSummary(m.summary),
+      rowCount: painted.length,
+      slots: painted.length,
+      empty: false,
+    };
+  }
+
   var shown = visibleRows(rows, { activeTab: activeTab, showFree: o.showFree !== false });
   return {
     tabs: tabs,
     activeTab: activeTab,
+    layout: LAYOUT_CARDS,
+    rows: [],
     cards: buildCards(shown),
     summary: buildSummary(m.summary),
     rowCount: shown.length,
@@ -344,8 +487,13 @@ function statusMessageFor(prevView, nextView) {
   var next = isObject(nextView) ? nextView : null;
   if (prev === null || next === null) return null;
 
-  var prevCards = Array.isArray(prev.cards) ? prev.cards : [];
-  var nextCards = Array.isArray(next.cards) ? next.cards : [];
+  // Cards and ALL-tab rows carry the same key / stateText / label triple, so
+  // one diff covers both layouts. Their keys never collide ("RC:lane" versus
+  // "repo:RC"), so a tab switch between layouts is silent, as it should be.
+  var prevCards = (Array.isArray(prev.cards) ? prev.cards : [])
+    .concat(Array.isArray(prev.rows) ? prev.rows : []);
+  var nextCards = (Array.isArray(next.cards) ? next.cards : [])
+    .concat(Array.isArray(next.rows) ? next.rows : []);
 
   var before = Object.create(null);
   for (var i = 0; i < prevCards.length; i += 1) {
@@ -515,7 +663,33 @@ function renderCards(doc, root, view) {
   // operator back to the top of the list on every 2000ms repaint.
   var scrollTop = typeof root.scrollTop === "number" ? root.scrollTop : 0;
   root.textContent = "";
-  view.cards.forEach(function (card) {
+  var asRows = view.layout === LAYOUT_ROWS;
+  if (root.classList) root.classList.toggle("is-rows", asRows);
+  if (asRows) {
+    (Array.isArray(view.rows) ? view.rows : []).forEach(function (row) {
+      var line = el(doc, "div", "card repo-row state-" + row.stateKey);
+
+      var head = el(doc, "div", "card-top");
+      head.appendChild(el(doc, "span", "card-label", row.label));
+      head.appendChild(el(doc, "span", "card-state", row.stateText));
+      line.appendChild(head);
+
+      line.appendChild(el(doc, "div", "row-lane", row.laneText));
+
+      // Two spans so CSS can ellipsize the task and never the numbers; their
+      // concatenated text IS the operator's line, verbatim.
+      var sync = el(doc, "div", "row-sync");
+      sync.appendChild(el(doc, "span", "sync-task", row.syncTask));
+      sync.appendChild(el(doc, "span", "sync-tail", row.syncTail));
+      line.appendChild(sync);
+
+      line.appendChild(el(doc, "div", "state-rule"));
+      root.appendChild(line);
+    });
+    if (scrollTop > 0) root.scrollTop = scrollTop;
+    return;
+  }
+  (Array.isArray(view.cards) ? view.cards : []).forEach(function (card) {
     var box = el(doc, "div", "card state-" + card.stateKey);
     if (card.placeholder) box.classList.add("is-placeholder");
     if (card.wide) box.classList.add("is-wide");
@@ -935,6 +1109,12 @@ if (typeof module !== "undefined" && module.exports) {
     formatAge: formatAge,
     formatCount: formatCount,
     metaFor: metaFor,
+    LAYOUT_CARDS: LAYOUT_CARDS,
+    LAYOUT_ROWS: LAYOUT_ROWS,
+    formatSpan: formatSpan,
+    laneFor: laneFor,
+    repoRowFor: repoRowFor,
+    buildRepoRows: buildRepoRows,
     buildTabs: buildTabs,
     resolveActiveTab: resolveActiveTab,
     visibleRows: visibleRows,

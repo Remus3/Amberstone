@@ -10,6 +10,12 @@
   "participants": {
     "AAA": "C:\\Example Sibling"
   },
+  "_roster_doc": "roster is read ONLY by the lane widget (lane-widget/src/repos.js). It maps a CODE to how that repo's row renders on the widget's ALL tab: display is the row title, order is its position top to bottom (ascending), tick_s is that tree's responder tick interval in seconds (its inbox_status.json is shown as no signal once older than 2x this; default 300), and attended_only marks a tree with no lane and no responder, whose row reads Sync: attended only and reads no file. Every field is optional. A code listed here but absent from repos is still given a row: polled at its participants path if it has one, otherwise shown with no lane. participants keeps its code-to-path string shape because the inbox responder reads it. Display names are sibling NAMES, so the real ones live only in the gitignored ops/moon_sync_repos.json; the values below are placeholders.",
+  "roster": {
+    "ZZZ": { "display": "Example Supervisor", "order": 0, "attended_only": true },
+    "AAA": { "display": "Example Sibling", "order": 1, "tick_s": 300 },
+    "RC": { "display": "This Repo", "order": 2 }
+  },
   "narrowed_names": [
     "Example Sibling"
   ]
