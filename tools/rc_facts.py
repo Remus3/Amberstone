@@ -421,17 +421,22 @@ def _inbox_participants(root) -> dict:
 def inbox_agreement_state(root, now: float) -> tuple[bool, str]:
     """(armed, detail) for the inbox-responder agreement record. FAILS CLOSED.
 
-    Delegates to tools/inbox_responder_runner.load_agreement, the exact gate
-    the runner applies each tick, so this banner and the runner cannot disagree
-    about whether the responder is armed. `armed` is True only when that gate
-    returns a record; `detail` is then "expires <iso>", otherwise the runner's
-    own refusal detail (no_agreement / expired / malformed:<field>).
+    Mirrors the runner's two arming gates in the runner's order: the operator
+    STOP flag (`is_stopped`, GATE:stop-pre) first, then
+    tools/inbox_responder_runner.load_agreement. Both are the runner's own
+    functions, so there is no second parser. `armed` is True only when the
+    flag is absent and that gate returns a record; `detail` is then
+    "expires <iso>", otherwise "stop_flag" or the runner's own refusal detail
+    (no_agreement / expired / malformed:<field>). The runner's open-window
+    check is scheduling, not arming, and is deliberately not mirrored.
     """
     try:
         if str(_ROOT) not in sys.path:
             sys.path.insert(0, str(_ROOT))
-        from tools.inbox_responder_runner import load_agreement
+        from tools.inbox_responder_runner import is_stopped, load_agreement
 
+        if is_stopped(Path(root)):
+            return False, "stop_flag"
         participants = _inbox_participants(root)
         # The runner compares against naive local datetime.now(); match it.
         record, detail = load_agreement(
