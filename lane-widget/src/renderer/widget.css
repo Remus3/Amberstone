@@ -567,6 +567,39 @@ input {
   white-space: pre;
 }
 
+/* --------------------------------------------- ALL tab: ACCOUNTS strip -- */
+
+/* ONE strip above the repo rows, one line per account (MAIN 0925 addendum).
+   Monospace + pre so the role column lines up exactly as the text is built;
+   an over-wide line ellipsizes rather than widening the panel.
+   --text on --surface = 14.61:1 */
+.accounts-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.accounts-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A non-"allowed" status, or no signal: the alarm style. The words carry the
+   meaning; the tint is redundant encoding on top of them. */
+.accounts-line.is-alarm {
+  color: var(--bad);
+  font-weight: 600;
+}
+
 /* Placeholder: identical geometry, quieter paint. No reflow when real rows
    replace it - only text and class change. */
 .card.is-placeholder {

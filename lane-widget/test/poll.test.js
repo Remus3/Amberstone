@@ -665,3 +665,100 @@ test("a throwing status read still produces a model", async () => {
   assert.ok(m && Array.isArray(m.rows));
   assert.strictEqual(captured[captured.length - 1].find((r) => r.code === "RC").statusText, null);
 });
+
+// --- accounts: the proxy state file, slow tick only, read-only -------------
+
+const STATE_FILE = "C:\\fake-profile\\proxy.state.json";
+
+function accountsDeps(captured, accountsCfg) {
+  return fakeDeps({
+    repos: {
+      resolveRepos: () => [{ code: "RC", root: ROOT_A, isSelf: true }],
+      resolveAccounts: () => accountsCfg,
+    },
+    model: {
+      buildModel(input) {
+        captured.push(input);
+        return { rows: [], repoRows: [], summary: {}, updatedAt: input.now };
+      },
+    },
+  });
+}
+
+const ACCOUNTS_CFG = { stateFile: STATE_FILE, probeS: 300, roles: [{ account_uuid: "u", role: "Headless" }] };
+
+test("the slow tick reads the proxy state file once (one stat + one read) and hands it to buildModel", async () => {
+  const io = fakeIo({
+    readFile(p) {
+      io.calls.readFile.push(p);
+      return p === STATE_FILE ? "{\"quota\":[]}" : null;
+    },
+    statFile(p) {
+      io.calls.statFile.push(p);
+      return { mtimeMs: p === STATE_FILE ? 1699999990000 : 1000 };
+    },
+  });
+  const captured = [];
+  const p = mkPoller(io, accountsDeps(captured, ACCOUNTS_CFG));
+  await p.tickSlow();
+  assert.strictEqual(io.calls.readFile.filter((f) => f === STATE_FILE).length, 1);
+  assert.strictEqual(io.calls.statFile.filter((f) => f === STATE_FILE).length, 1);
+  const last = captured[captured.length - 1];
+  assert.deepEqual(last.accounts, {
+    text: "{\"quota\":[]}", mtimeMs: 1699999990000, probeS: 300, roles: ACCOUNTS_CFG.roles,
+  });
+});
+
+test("the fast tick never touches the proxy state file but keeps the last slow reading", async () => {
+  const io = fakeIo({
+    readFile(p) {
+      io.calls.readFile.push(p);
+      return p === STATE_FILE ? "{}" : null;
+    },
+  });
+  const captured = [];
+  const p = mkPoller(io, accountsDeps(captured, ACCOUNTS_CFG));
+  await p.tickSlow();
+  const before = io.calls.readFile.length;
+  await p.tickFast();
+  const fastReads = io.calls.readFile.slice(before);
+  assert.strictEqual(fastReads.filter((f) => f === STATE_FILE).length, 0);
+  assert.strictEqual(fastReads.length, 2, "fast tick bound: 2 lock reads per repo, nothing else");
+  assert.strictEqual(captured[captured.length - 1].accounts.text, "{}");
+});
+
+test("no accounts config: the state file is never read and buildModel gets accounts null", async () => {
+  const io = fakeIo();
+  const captured = [];
+  const p = mkPoller(io, accountsDeps(captured, null));
+  await p.tickSlow();
+  assert.strictEqual(captured[captured.length - 1].accounts, null);
+  assert.ok(io.calls.readFile.every((f) => f.indexOf("proxy.state") === -1));
+});
+
+test("a vanished or throwing state file reaches the model as null text, never the old value", async () => {
+  let mode = "ok";
+  const io = fakeIo({
+    readFile(p) {
+      io.calls.readFile.push(p);
+      if (p !== STATE_FILE) return null;
+      if (mode === "throw") throw new Error("EBUSY");
+      return mode === "ok" ? "{\"quota\":[]}" : null;
+    },
+    statFile(p) {
+      if (p === STATE_FILE && mode !== "ok") throw new Error("ENOENT");
+      return { mtimeMs: 1000 };
+    },
+  });
+  const captured = [];
+  const p = mkPoller(io, accountsDeps(captured, ACCOUNTS_CFG));
+  await p.tickSlow();
+  mode = "gone";
+  await p.tickSlow();
+  assert.strictEqual(captured[captured.length - 1].accounts.text, null);
+  assert.strictEqual(captured[captured.length - 1].accounts.mtimeMs, null);
+  mode = "throw";
+  const m = await p.tickSlow();
+  assert.ok(m && Array.isArray(m.rows));
+  assert.strictEqual(captured[captured.length - 1].accounts.text, null);
+});

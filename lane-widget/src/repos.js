@@ -228,7 +228,42 @@ function resolveRepos(opts) {
   return out.map((entry) => decorate(entry, roster));
 }
 
+const DEFAULT_PROBE_S = 300;
+
+/**
+ * resolveAccounts({ rcRoot, env, readFile })
+ *   -> { stateFile, probeS, roles: [ { account_uuid, role } ] } | null
+ *
+ * The optional, additive "accounts" key of the same gitignored roster file,
+ * read by the ACCOUNTS strip (src/accounts.js):
+ *
+ *   accounts: { "state_file": "<abs path to the proxy's state file>",
+ *               "probe_s": <the proxy's quota probe interval, seconds>,
+ *               "roles": [ { "account_uuid": "<id>", "role": "Headless" } ] }
+ *
+ * The path and the account ids are host config and identifiers, so they live
+ * ONLY in the gitignored file; nothing here ever renders them. null (strip
+ * off) when the key or its state_file is absent - a fresh clone has neither.
+ */
+function resolveAccounts(opts) {
+  const o = isObject(opts) ? opts : {};
+  const rcRoot = typeof o.rcRoot === "string" ? o.rcRoot : "";
+  const blob = readJson(o.readFile, joinPath(rcRoot, ...REPO_CONFIG_REL));
+  const acc = isObject(blob) && isObject(blob.accounts) ? blob.accounts : null;
+  if (acc === null) return null;
+  const stateFile = typeof acc.state_file === "string" ? acc.state_file.trim() : "";
+  if (stateFile === "") return null;
+  const probe = acc.probe_s;
+  const probeS = typeof probe === "number" && Number.isFinite(probe) && probe > 0 ? probe : DEFAULT_PROBE_S;
+  const roles = (Array.isArray(acc.roles) ? acc.roles : [])
+    .filter((r) => isObject(r) && typeof r.account_uuid === "string" && r.account_uuid.trim() !== "" &&
+      typeof r.role === "string" && r.role.trim() !== "")
+    .map((r) => ({ account_uuid: r.account_uuid.trim(), role: r.role.trim() }));
+  return { stateFile, probeS, roles };
+}
+
 module.exports = {
+  resolveAccounts,
   REPO_CONFIG_REL,
   PATH_DELIM,
   SELF_CODE,

@@ -16,6 +16,15 @@
     "AAA": { "display": "Example Sibling", "order": 1, "tick_s": 300 },
     "RC": { "display": "This Repo", "order": 2 }
   },
+  "_accounts_doc": "accounts is read ONLY by the lane widget's ACCOUNTS strip (lane-widget/src/repos.js resolveAccounts, lane-widget/src/accounts.js). state_file is the absolute path of the account proxy's state file (the JSON whose quota array carries unified5h / unified7d utilization, resets and status per account), read once per slow tick and never written. probe_s is the proxy's quota probe interval in seconds; the strip reads Accounts: no signal once the file is older than 2x this (default 300). roles lists, in strip order top to bottom, which account plays which role: account_uuid is matched against the accountUuid of each quota entry, and role is the ONLY label ever rendered. Emails, uuids and the path are identifiers and host config, so the real values live only in the gitignored ops/moon_sync_repos.json; the values below are placeholders. Absent key or absent state_file = no strip.",
+  "accounts": {
+    "state_file": "C:\\Users\\Example\\.config\\example-proxy.state.json",
+    "probe_s": 300,
+    "roles": [
+      { "account_uuid": "00000000-0000-0000-0000-000000000002", "role": "Headless" },
+      { "account_uuid": "00000000-0000-0000-0000-000000000001", "role": "Interactive" }
+    ]
+  },
   "narrowed_names": [
     "Example Sibling"
   ]

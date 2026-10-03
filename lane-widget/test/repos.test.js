@@ -404,3 +404,55 @@ test("a display name is trimmed and capped so one config typo cannot blow the ro
   });
   assert.equal(out[0].display.length, 32);
 });
+
+// ------------------------------------------------------------- accounts ----
+// The optional, additive "accounts" key: where the proxy's state file is and
+// which account plays which ROLE. Paths and account ids are host config, so the
+// real ones live only in the gitignored file; these are placeholders.
+
+const { resolveAccounts } = require("../src/repos.js");
+
+test("no accounts key means the strip is off (null), never an error", () => {
+  assert.equal(resolveAccounts({ rcRoot: RC, env: {}, readFile: () => null }), null);
+  assert.equal(resolveAccounts({ rcRoot: RC, env: {}, readFile: cfgReader({ repos: [] }) }), null);
+  assert.equal(resolveAccounts(null), null);
+});
+
+test("accounts state_file, probe_s and roles are read in roster order", () => {
+  const got = resolveAccounts({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({
+      accounts: {
+        state_file: "C:\\fake-profile\\proxy.state.json",
+        probe_s: 120,
+        roles: [
+          { account_uuid: "placeholder-uuid-2", role: "Headless" },
+          { account_uuid: "placeholder-uuid-1", role: "Interactive" },
+        ],
+      },
+    }),
+  });
+  assert.deepEqual(got, {
+    stateFile: "C:\\fake-profile\\proxy.state.json",
+    probeS: 120,
+    roles: [
+      { account_uuid: "placeholder-uuid-2", role: "Headless" },
+      { account_uuid: "placeholder-uuid-1", role: "Interactive" },
+    ],
+  });
+});
+
+test("junk accounts config degrades: no state_file is off, junk roles and probe are dropped", () => {
+  const read = (accounts) => resolveAccounts({ rcRoot: RC, env: {}, readFile: cfgReader({ accounts }) });
+  assert.equal(read({ roles: [] }), null);
+  assert.equal(read({ state_file: 5 }), null);
+  assert.equal(read("x"), null);
+  const got = read({
+    state_file: "C:\\fake\\s.json",
+    probe_s: -3,
+    roles: [null, 5, { role: "X" }, { account_uuid: "u", role: 7 }, { account_uuid: "u2", role: "Ok" }],
+  });
+  assert.equal(got.probeS, 300);
+  assert.deepEqual(got.roles, [{ account_uuid: "u2", role: "Ok" }]);
+});
