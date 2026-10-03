@@ -69,7 +69,14 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-513** (2026-10-03, moved at the session 2026-10-03d wrap).
+  Next free id = **RM-516** (2026-10-03, moved at the ROADMAP duplicate-id renumber).
+  **THREE ids were allocated 2026-10-03 by the duplicate-id renumber, all OPEN under ROADMAP NOW:**
+  the SECOND row of each duplicated pair was renumbered (no citation anywhere named it by id;
+  the first rows are the ones LEDGER / tests / code cite): RM-513 (was the second RM-486,
+  Void Immolation 223069 Arena build share), RM-514 (was the second RM-487, silent upstream
+  drift consumption), RM-515 (was the second RM-488, Python dependency currency). None takes
+  a roster checkbox and none changes the Summary count.
+  Prior pin, kept for the audit trail: Next free id was **RM-513** (2026-10-03, moved at the session 2026-10-03d wrap).
   **THREE ids were allocated 2026-10-03 by the 2026-10-03d wrap, all OPEN under ROADMAP NOW:**
   RM-510 (timeline_ingest exits 0 on rate_limited), RM-511 (stale model pins), RM-512
   (RIOT_API_KEY precedence, operator call). The pin had drifted: it read RM-476 while
