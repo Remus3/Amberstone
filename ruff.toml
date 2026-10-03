@@ -49,6 +49,10 @@ exclude = [
 
 [lint.per-file-ignores]
 "ops/*.py" = ["B"]          # ops scripts are procedural, bugbear too strict
+# FLEET-KIT: vendored byte-for-byte from MAIN and hash-pinned by
+# ops/fleet_kit/MANIFEST.json - every selected family is ignored so no lint
+# finding (and no `ruff --fix`) can ever ask for an edit to pinned bytes.
+"ops/fleet_kit/**" = ["E", "F", "I", "UP", "B", "BLE"]
 "scripts/*.py" = ["B", "I"] # one-off scripts, ignore import order
 "*/__init__.py" = ["F401"]  # __init__.py re-exports are expected
 # DS engine + its curated tools are a fail-soft external compute package; the
