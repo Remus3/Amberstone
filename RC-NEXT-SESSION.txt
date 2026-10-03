@@ -1,11 +1,18 @@
 NEXT SESSION
 ------------
-Next action: collect the NOW-7 measurement from worktree
-.claude/worktrees/agent-a5e62b1518fcb3dcd. Uncommitted there: tests/conftest.py,
-tests/_logger_leak_report.py, tests/test_now7_logger_leak_detector.py. A full-suite
-run (pid 22872) started ~09:25; leak reports land in ops/runtime/logger_leak_report/
-INSIDE that worktree. Do NOT delete the worktree. Write the measurement up as
-docs/NOW7_LOGGER_LEAK_MEASUREMENT.md, run a verifier, then commit the detector + doc.
+Next action: NOW-7 arming. The report-only measurement pass is DONE and merged
+(663abfe18, LEDGER 1468, docs/NOW7_LOGGER_LEAK_MEASUREMENT.md). Gate NOT armed.
+Fix the 2 level-only leaks - rc.tracker set DEBUG at
+tests/test_performance_tracker_lane8_cycle23.py:380, rc.tft.live at
+tests/test_tft_live_analysis_lane8_cycle43.py:320 - plus the 3 arming
+prerequisites in the detector (tests/_logger_leak_report.py, tests/conftest.py):
+treat class/module-scope restore as clean; drop loggers created at import with a
+non-default level; do not inherit the detector env var into child pytests. THEN
+arm the gate. test_p2w2_ds_f.py class-scoped set/restore is NOT a leak.
+
+Worktree cleanup: remove merged agent worktrees under .claude/worktrees/ (all six
+slices merged, incl. agent-a5e62b1518fcb3dcd = NOW-7 in 663abfe18) - confirm each
+branch is an ancestor of main first.
 
 Carried forward (not acted on yet):
 - RM-510: timeline_ingest exits 0 when rows end rate_limited (RM-484 residual).
@@ -34,17 +41,19 @@ Carried forward (not acted on yet):
 Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Recall first
 (python tools/perseus_recall.py "<item>") before starting any ROADMAP row.
 
-Acceptance: NOW-7 detector + measurement doc committed after a verifier pass;
-worktree cleaned only after its contents are on main.
+Acceptance: the 2 leaks fixed, the 3 prerequisites in the detector, a re-run in
+report-only mode shows 0 leaks, verifier pass, then the gate armed (a planted leak
+goes RED at the leaker).
 
 Do NOT redo: RM-481 (merge a28fab20b), RM-484 (merge 93c508dbc), RM-487 first row
 (merge 38e324616), FLEET-KIT v3 adoption (merges 869f1b100 + 51ab14da7, reply to
-MAIN delivered 1134), rc_facts per-task grace (c84d30b0c), periodic-running grace
+MAIN delivered 1134), NOW-7 measurement pass (663abfe18), rc_facts per-task grace (c84d30b0c), periodic-running grace
 (d2b739dda), agreement-armed + STOP flag (d053a573f, dcd530808), responder
 live-surface guard (9b3cbe805, 3f6679d2a).
 
-Status: pushed ec2f85798..51ab14da7; local gate: 72 doc-guard modules 2023 passed
-3 skipped; drift_guard 0 breaches; CI run 37137310162 pending at write time;
-wrap docs commit local (merger pushes). LEDGER 1464-1467.
+Status: pushed ec2f85798..51ab14da7; merged HEAD 663abfe18 + the wrap commits on
+top, push by merger; local gate: 72 doc-guard modules 2023 passed 3 skipped;
+drift_guard 0 breaches; CI run 37137310162 result filled by merger.
+LEDGER 1464-1468.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
