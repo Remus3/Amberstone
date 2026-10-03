@@ -815,6 +815,24 @@ def test_inbox_responder_enabled_with_valid_agreement_is_armed_not_anomaly(tmp_p
     assert f"expires {rec['expires']}" in mine[0]
 
 
+def test_inbox_responder_stop_flag_is_never_reported_armed(tmp_path, monkeypatch):
+    # The runner checks its STOP flag BEFORE the agreement (GATE:stop-pre), so
+    # a valid agreement plus the flag is a responder that refuses every tick.
+    from tools import inbox_responder_runner as runner
+
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    _participants(monkeypatch)
+    _write_agreement(tmp_path, _valid_agreement(now))
+    (tmp_path / "ops" / "runtime" / runner.STOP_FLAG_NAME).write_text("stop", encoding="utf-8")
+
+    armed, detail = rc_facts.inbox_agreement_state(tmp_path, now)
+    assert armed is False
+    assert "stop" in detail.lower()
+    lines, _anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    assert not any("ARMED by agreement" in ln for ln in lines), lines
+
+
 def test_inbox_responder_enabled_with_expired_agreement_is_anomaly(tmp_path, monkeypatch):
     now = time.time()
     _fresh_world(tmp_path, now)
