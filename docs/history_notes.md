@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-03 - headless spawns routed through the operator's second-account proxy (fail closed), RC-InboxResponder ARMED, MAIN grant recorded
+
+- **Operator instruction, confirmed in chat 2026-10-02 (items 1-4).** Commits: `7e6773fec` (every headless `claude` spawn routes through `ops/loop/headless_env.py` + `ops/loop/headless_route.ps1`; registry-first read of the user-scope proxy var, child-only `ANTHROPIC_BASE_URL`, refuses on unset / non-loopback / port refused; LEDGER 1460), `4e7ec9d69` (CLAUDE.md: MAIN-speaks-for-the-operator grant quoted verbatim + responder ARMED line), `0dcdf4ad0` (headless_env guard no longer scans its own needles). CI `ci` run 37094568695 green on `0dcdf4ad0`.
+- **Proof spawn** `claude -p "reply ok"` through the real helper answered `ok`; proxy activity log named the second account. Email and URL are deliberately NOT in any tracked file.
+- **RC-InboxResponder ENABLED**, every 5 min, agreement record (gitignored) expires 2026-11-01, hop budget 32. The 296 notes attended sessions had already handled were seeded as answered via `record_responded` BEFORE enabling, so it only answers new notes. No halt was cleared; `ops/loop/control/STOP` left in place; CI watchdog + weekly hygiene stay disabled.
+- **Report to MAIN delivered** (`C:\Main\moon_sync_inbox`, sha256 `27c6670b...`). Replies also delivered to CS / SS / LW / RSC / LL this session (re-hashed, all reached).
+- **OPEN, held for a ruling:** (1) `tests/test_inbox_responder_mutants.py` now trips INTERMITTENTLY - its teardown guard assumes live responder surfaces + sibling inboxes stay still, and an armed responder moves them. Guard NOT weakened. Choose: exclude live surfaces, or pause the responder for that test. (2) C4 `slots.py` candidate `290cbf80` attested by RC; vendoring + moving `SHARED_SHA256` is a joint act, held.
+- **Do NOT redo:** the routing, the arming, the seed, or the MAIN grant. Do not hand-answer inbox notes the responder now owns - check `ops/runtime/inbox_responder_answered.json` first.
+- **Known gap (non-blocking):** `headless_child_env` strips only `ANTHROPIC_BASE_URL`; inherited `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` still pass to executor / adjudicator / watchdog children (unchanged from before).
+
+---
+
 # 2026-10-02b - a sibling re-pin round answered FOUR times as its candidate was re-issued THREE times, RC's own citation fence REFUTED by RC's own commit-map, two leaked slot locks on REUSED pids, and six RC claims withdrawn before or after delivery
 
 **THE SESSION'S SHAPE: almost everything of value came from being refuted, including by RC.** Six RC positions or claims were withdrawn, four of them before anything was delivered and two after. The adversarial gate ran BEFORE the first delivery and caught **six defects in a note that was ready to send**. Read that as the method working, not as a bad session.
