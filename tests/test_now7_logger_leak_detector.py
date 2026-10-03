@@ -157,20 +157,64 @@ def test_flag_parsing():
 
 def test_classify_process_outer_worker_and_nested():
     # Fake stamp maps (never os.environ); verdicts read into locals first.
+    # Fake process tree: 100 -> {200, 300 -> 400}.
+    tree = {200: 100, 300: 100, 400: 300}
+
+    def anc(a, pid):
+        p = tree.get(int(pid))
+        while p is not None:
+            if p == int(a):
+                return True
+            p = tree.get(p)
+        return False
+
     stamps = {}
-    first = llr.classify_process(stamps, 100)
+    first = llr.classify_process(stamps, 100, anc)
     outer_pid = stamps[llr.ENV_OUTER]
-    again = llr.classify_process(stamps, 100)
+    again = llr.classify_process(stamps, 100, anc)
     # a child pytest of the outer run inherits the stamp -> nested, inert
-    child = llr.classify_process(dict(stamps), 200)
+    child = llr.classify_process(dict(stamps), 200, anc)
     # an xdist worker of the outer run stamps itself and stays active ...
     worker_stamps = dict(stamps, PYTEST_XDIST_WORKER="gw0")
-    worker = llr.classify_process(worker_stamps, 300)
+    worker = llr.classify_process(worker_stamps, 300, anc)
     worker_pid = worker_stamps[llr.ENV_WORKER]
     # ... and a child pytest spawned by a test on that worker is nested
-    worker_child = llr.classify_process(dict(worker_stamps), 400)
+    worker_child = llr.classify_process(dict(worker_stamps), 400, anc)
     assert (first, outer_pid, again, child) == (True, "100", True, False)
     assert (worker, worker_pid, worker_child) == (True, "300", False)
+
+
+def _dead_pid():
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    proc = subprocess.Popen([sys.executable, "-c", "pass"], creationflags=flags)
+    proc.wait(timeout=60)
+    return proc.pid
+
+
+def test_inherited_stale_outer_pid_does_not_disable_the_gate():
+    # NOW-7 residual: a stamp inherited from a parent SHELL (a dead pid, or a
+    # live pid that is not an ancestor of this process) used to classify the
+    # run as nested -> the armed gate went silently inert. It must be ignored.
+    stale = str(_dead_pid())
+    env = {llr.ENV_OUTER: stale}
+    verdict = llr.classify_process(env, os.getpid())
+    restamped = env[llr.ENV_OUTER]
+    assert (verdict, restamped) == (True, str(os.getpid()))
+
+
+def test_genuine_ancestor_outer_pid_still_marks_a_nested_run():
+    # The parent of this process is a live ancestor: a child pytest that sees
+    # its stamp is genuinely nested and stays inert.
+    parent = str(os.getppid())
+    env = {llr.ENV_OUTER: parent}
+    verdict = llr.classify_process(env, os.getpid())
+    assert (verdict, env[llr.ENV_OUTER]) == (False, parent)
+
+
+def test_is_live_ancestor_real_process_tree():
+    assert llr.is_live_ancestor(os.getppid(), os.getpid()) is True
+    assert llr.is_live_ancestor(_dead_pid(), os.getpid()) is False
+    assert llr.is_live_ancestor("not-a-pid", os.getpid()) is False
 
 
 def test_this_run_is_classified_as_outer():
@@ -365,8 +409,24 @@ def test_armed_gate_reds_the_leaker_and_keeps_scoped_restores_green(tmp_path):
 
 def test_gate_is_inert_in_a_nested_child_pytest(tmp_path):
     proj = _gate_project(tmp_path)
-    # a foreign outer stamp makes the child classify itself as nested
-    env = _child_env(tmp_path / "report", **{llr.ENV_OUTER: "1"})
+    # THIS process is a live ancestor of the child, so its stamp makes the
+    # child classify itself as nested - and it says so in a visible banner.
+    env = _child_env(tmp_path / "report", **{llr.ENV_OUTER: str(os.getpid())})
     proc, cases = _junit_errors(proj, env)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert all(v == [] for v in cases.values()), cases
+    assert "logger-leak gate INERT" in proc.stdout, proc.stdout
+
+
+def test_gate_still_gates_with_an_inherited_stale_outer_pid(tmp_path):
+    # A stamp left in the shell by an earlier run (dead pid) must NOT make the
+    # child inert: the leaker still goes RED, and a banner names the stale pid.
+    proj = _gate_project(tmp_path)
+    stale = str(_dead_pid())
+    env = _child_env(tmp_path / "report", **{llr.ENV_OUTER: stale})
+    proc, cases = _junit_errors(proj, env)
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 1, out
+    assert len(cases["test_a_leaker"]) == 1, out
+    assert "now7.gate.leaker.level" in cases["test_a_leaker"][0]
+    assert f"ignored stale {llr.ENV_OUTER}={stale}" in proc.stdout, proc.stdout
