@@ -50,6 +50,7 @@ from core import corpus_hygiene as ch                         # noqa: E402
 from core import event_patterns as ep                         # noqa: E402
 from core import riot_api                                     # noqa: E402
 from core.polled_json import atomic_write_text                # noqa: E402
+from core.riot_retry import fetch_unthrottled                 # noqa: E402
 
 PLATFORM = "na1"
 REGION = "americas"
@@ -73,9 +74,19 @@ def _pace():
     _last = time.monotonic()
 
 
+# RM-484: calls that stayed rate limited after every retry. main() reads the
+# delta per cohort so a throttled cohort is never written as a thin (or empty)
+# sample over a good stored one.
+_throttled = {"n": 0}
+
+
 def _call(label, url, timeout=30.0):
     _pace()
-    return riot_api._call(label, url, rate_limit_timeout_s=timeout)
+    blob, throttled = fetch_unthrottled(
+        lambda: riot_api._call(label, url, rate_limit_timeout_s=timeout))
+    if throttled:
+        _throttled["n"] += 1
+    return blob
 
 
 def cohorts(tiers) -> list:
@@ -181,6 +192,7 @@ def main(argv=None) -> int:
             print(f"  {name}: no accounts resolved - SKIPPED", flush=True)
             out["skipped"].append(name)
             continue
+        throttled_before = _throttled["n"]
         wanted, seen = [], set()
         for pu in puuids:
             for mid in match_ids(pu, args.matches_per_account):
@@ -190,7 +202,10 @@ def main(argv=None) -> int:
         rows, kept, dropped, failed = [], 0, 0, 0
         for mid in wanted:
             _pace()
-            match = riot_api.get_match(mid)
+            match, throttled = fetch_unthrottled(
+                lambda m=mid: riot_api.get_match(m))
+            if throttled:
+                _throttled["n"] += 1
             if not match:
                 failed += 1
                 continue
@@ -203,6 +218,14 @@ def main(argv=None) -> int:
                 metrics = cb.participant_metrics(p)
                 if role and metrics:
                     rows.append((role, metrics))
+        throttled = _throttled["n"] - throttled_before
+        if throttled and not kept:
+            # RM-484: a cohort that sampled nothing BECAUSE it was throttled
+            # is unknown, not empty - keep whatever is stored and fail loud.
+            print(f"  {name}: RATE LIMITED ({throttled} calls), nothing kept - "
+                  f"SKIPPED, stored cohort left untouched", flush=True)
+            out["skipped"].append(name)
+            continue
         # Params live per-cohort because a merged file can hold cohorts from
         # runs sampled at different depths; the top-level pair only ever
         # describes the run that wrote it.
@@ -211,9 +234,11 @@ def main(argv=None) -> int:
             "accounts_per_cohort": args.accounts_per_cohort,
             "matches_per_account": args.matches_per_account,
             "matches": kept, "dropped": dropped, "failed": failed,
+            "rate_limited_calls": throttled,
             "player_rows": len(rows), "roles": cb.build(rows)}
         print(f"  {name}: matches={kept} dropped={dropped} failed={failed} "
-              f"rows={len(rows)} elapsed={time.time() - t0:.0f}s", flush=True)
+              f"rate_limited={throttled} rows={len(rows)} "
+              f"elapsed={time.time() - t0:.0f}s", flush=True)
 
     # TRACKED output: atomic LF bytes, never write_text (RM-441).
     atomic_write_text(dest, json.dumps(out, indent=2))

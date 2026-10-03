@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core import replay_roster as rr                            # noqa: E402
 from core import riot_api                                       # noqa: E402
+from core.riot_retry import fetch_unthrottled                   # noqa: E402
 
 log = logging.getLogger("timeline_ingest")
 
@@ -79,7 +80,13 @@ def match_ids_for(puuid: str, want: int, queue: int = 420) -> list:
         url = (f"https://{REGION}.api.riotgames.com/lol/match/v5/matches/"
                f"by-puuid/{puuid}/ids?queue={queue}&start={start}&count={count}")
         _pace()
-        page = riot_api._call("match_v5_ids", url, rate_limit_timeout_s=30.0)
+        # RM-484: a throttled page is NOT the end of the history - retry it.
+        page, throttled = fetch_unthrottled(
+            lambda u=url: riot_api._call("match_v5_ids", u,
+                                         rate_limit_timeout_s=30.0))
+        if throttled:
+            log.warning("ids page rate limited for %s at start=%d - "
+                        "history truncated for this run", puuid[:12], start)
         if not page:
             break
         out.extend(page)
@@ -89,22 +96,51 @@ def match_ids_for(puuid: str, want: int, queue: int = 420) -> list:
     return out[:want]
 
 
-def ingest_match(match_id: str, dest_dir: Path) -> str:
+def _stored_partial_match(dest: Path):
+    """The match half of an on-disk file whose timeline is null, else None."""
+    try:
+        blob = json.loads(dest.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if isinstance(blob, dict) and blob.get("match") and not blob.get("timeline"):
+        return blob["match"]
+    return None
+
+
+def ingest_match(match_id: str, dest_dir: Path, retry_partial: bool = False) -> str:
     """Fetch match + timeline into one file. Returns a status string.
 
     Statuses: 'have' (already on disk, no call), 'ok', 'partial' (match but no
-    timeline), 'fail'. A partial is written so the match half is not lost, and
-    is reported so it can be retried rather than silently counted as done.
+    timeline), 'fail', 'rate_limited'. A partial is written so the match half
+    is not lost, and is reported so it can be retried rather than silently
+    counted as done.
+
+    RM-484: a THROTTLED call is 'rate_limited' and writes nothing. The old code
+    wrote a throttled timeline as a partial, and because an existing file is
+    'have', that partial was never fetched again. `retry_partial` re-fetches
+    the timeline for such files already on disk (the backfill), reusing their
+    stored match half.
     """
     dest = dest_dir / f"{match_id}.json"
+    match = None
     if dest.exists():
-        return "have"
+        if not retry_partial:
+            return "have"
+        match = _stored_partial_match(dest)
+        if match is None:
+            return "have"
+    if match is None:
+        _pace()
+        match, throttled = fetch_unthrottled(lambda: riot_api.get_match(match_id))
+        if throttled:
+            return "rate_limited"
+        if not match:
+            return "fail"
     _pace()
-    match = riot_api.get_match(match_id)
-    if not match:
-        return "fail"
-    _pace()
-    timeline = riot_api.get_match_timeline(match_id)
+    timeline, throttled = fetch_unthrottled(
+        lambda: riot_api.get_match_timeline(match_id))
+    if throttled:
+        return "rate_limited"
     payload = {"match": match, "timeline": timeline}
     tmp = dest.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
@@ -140,6 +176,10 @@ def main(argv=None) -> int:
     ap.add_argument("--limit", type=int, help="stop after N distinct matches")
     ap.add_argument("--wait-for-idle", action="store_true",
                     help="block until no sibling RC ingest is running")
+    ap.add_argument("--retry-partial", action="store_true",
+                    help="re-fetch the timeline of on-disk files whose "
+                         "timeline is null (RM-484 backfill: older runs wrote "
+                         "a rate-limited timeline as a permanent partial)")
     ap.add_argument("--log-file")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
@@ -187,10 +227,12 @@ def main(argv=None) -> int:
     seen_ids = set()
     for i, (riot_id, name, tag) in enumerate(ids, 1):
         _pace()
-        acct = riot_api.get_account_by_riot_id(name, tag)
+        acct, throttled = fetch_unthrottled(
+            lambda n=name, t=tag: riot_api.get_account_by_riot_id(n, t))
         if not acct or not acct.get("puuid"):
             failed_acct += 1
-            print(f"  ACCOUNT LOOKUP FAILED {riot_id}", flush=True)
+            why = " (rate limited)" if throttled else ""
+            print(f"  ACCOUNT LOOKUP FAILED {riot_id}{why}", flush=True)
             continue
         resolved += 1
         got = match_ids_for(acct["puuid"], args.per_account, args.queue)
@@ -203,13 +245,22 @@ def main(argv=None) -> int:
     print(f"accounts resolved={resolved} failed={failed_acct} "
           f"distinct matches={len(wanted)}", flush=True)
 
+    if args.retry_partial:
+        # The backfill covers every file on disk, not only this run's ids;
+        # ingest_match leaves a complete file as 'have' without a call.
+        on_disk = [p.stem for p in dest.glob("*.json") if p.stem not in seen_ids]
+        seen_ids.update(on_disk)
+        wanted.extend(on_disk)
+        print(f"retry-partial: {len(on_disk)} more on-disk files considered",
+              flush=True)
+
     if args.limit:
         wanted = wanted[:args.limit]
         print(f"limited to {len(wanted)}", flush=True)
 
-    tally = {"ok": 0, "have": 0, "partial": 0, "fail": 0}
+    tally = {"ok": 0, "have": 0, "partial": 0, "fail": 0, "rate_limited": 0}
     for i, mid in enumerate(sorted(wanted), 1):
-        tally[ingest_match(mid, dest)] += 1
+        tally[ingest_match(mid, dest, retry_partial=args.retry_partial)] += 1
         if i % 50 == 0:
             print(f"  matches {i}/{len(wanted)} {tally} "
                   f"elapsed={time.time() - t0:.0f}s", flush=True)

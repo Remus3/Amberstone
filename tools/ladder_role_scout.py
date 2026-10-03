@@ -29,6 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core import riot_api                                     # noqa: E402
+from core.riot_retry import fetch_unthrottled                 # noqa: E402
 from core.replay_roster import ROLES                           # noqa: E402
 
 log = logging.getLogger("ladder_role_scout")
@@ -60,24 +61,38 @@ _last_call_at = 0.0
 _failures = collections.Counter()
 
 
-def _paced(endpoint: str, url: str):
+def _pace() -> None:
     global _last_call_at
     gap = time.monotonic() - _last_call_at
     if gap < _MIN_INTERVAL_S:
         time.sleep(_MIN_INTERVAL_S - gap)
     _last_call_at = time.monotonic()
-    blob = riot_api._call(endpoint, url, rate_limit_timeout_s=30.0)
+
+
+def _paced(endpoint: str, url: str):
+    _pace()
+    # RM-484: retry a throttle rather than count it as a failure on the
+    # first 429; only a persistent throttle (or a real error) is a failure.
+    blob, throttled = fetch_unthrottled(
+        lambda: riot_api._call(endpoint, url, rate_limit_timeout_s=30.0))
     if blob is None:
-        _failures[endpoint] += 1
+        _failures[endpoint + (":rate_limited" if throttled else "")] += 1
     return blob
 
 
-def _ladder(tier: str) -> list:
-    """Challenger / grandmaster entries, newest snapshot."""
+def _ladder(tier: str):
+    """Challenger / grandmaster entries, newest snapshot - or None on failure.
+
+    RM-484: None is NOT an empty ladder. The old `(blob or {})` turned a
+    throttled call into "0 entries" and main() then overwrote the role file
+    with an empty one.
+    """
     url = (f"https://{PLATFORM}.api.riotgames.com/lol/league/v4/"
            f"{tier}leagues/by-queue/RANKED_SOLO_5x5")
     blob = _paced("league_v4", url)
-    return list((blob or {}).get("entries") or [])
+    if blob is None:
+        return None
+    return list(blob.get("entries") or [])
 
 
 def _recent_ranked_ids(puuid: str, count: int):
@@ -117,6 +132,10 @@ def main(argv=None) -> int:
     entries = []
     for tier in args.tiers.split(","):
         rows = _ladder(tier.strip())
+        if rows is None:
+            print(f"ABORT {tier.strip()}: ladder call failed "
+                  f"({dict(_failures)}) - {args.out} left untouched", flush=True)
+            return 1
         print(f"{tier.strip()}: {len(rows)} entries", flush=True)
         entries.extend(rows)
     lp = {e["puuid"]: int(e.get("leaguePoints") or 0) for e in entries}
@@ -150,11 +169,8 @@ def main(argv=None) -> int:
     names = {}
     match_failures = 0
     for i, mid in enumerate(sorted(wanted), 1):
-        gap = time.monotonic() - _last_call_at
-        if gap < _MIN_INTERVAL_S:
-            time.sleep(_MIN_INTERVAL_S - gap)
-        globals()["_last_call_at"] = time.monotonic()
-        blob = riot_api.get_match(mid)
+        _pace()
+        blob, _throttled = fetch_unthrottled(lambda m=mid: riot_api.get_match(m))
         if not blob:
             match_failures += 1
             continue
