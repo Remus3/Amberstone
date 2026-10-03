@@ -30,6 +30,9 @@ if (-not (Test-Path $pyC)) { $pyC = "python" }
 
 $tools = "Edit,Read,Write,Bash,Grep,Glob,Agent,TaskCreate,TaskUpdate,TaskList"
 
+# Headless account routing (operator contract 2026-10-02). See the gate file.
+. (Join-Path $repo "ops\loop\headless_route.ps1")
+
 for ($i = 1; $i -le $MaxAttempts; $i++) {
     if ($i -eq 1) {
         $p = $Prompt
@@ -44,6 +47,9 @@ for ($i = 1; $i -le $MaxAttempts; $i++) {
     }
 
     Write-Host "[headless_run] attempt $i/$MaxAttempts"
+    # Re-checked EVERY attempt: deleting the var stops the retry loop too, and a
+    # downed proxy exits 3 here instead of retrying another way.
+    Assert-HeadlessRoute -Caller "headless_run"
     & claude -p $p --allowedTools $tools --dangerously-skip-permissions
     $code = $LASTEXITCODE
 

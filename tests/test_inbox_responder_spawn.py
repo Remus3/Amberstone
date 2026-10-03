@@ -636,7 +636,13 @@ def test_real_spawner_routes_through_the_process_seam(tmp_path, cfg, popen_recor
     assert rec.argv[1:] == spawn.CLAUDE_ARGV_TAIL(cfg)
     assert rec.kwargs["creationflags"] == procs.CREATION_FLAGS
     assert rec.kwargs["cwd"] == str(cwd)
-    assert rec.kwargs["env"] == {"PATH": "C:\\bin"}
+    # The request env plus exactly one key: the proxy route `ops/loop/
+    # headless_env.py` resolved at spawn time (conftest fake here; operator
+    # headless-routing contract 2026-10-02). The request itself is untouched.
+    from ops.loop import headless_env
+    assert rec.kwargs["env"] == {"PATH": "C:\\bin",
+                                 "ANTHROPIC_BASE_URL": headless_env.resolve_base_url()}
+    assert req.env == {"PATH": "C:\\bin"}
     assert "ANTHROPIC_API_KEY" not in rec.kwargs["env"]
     assert rec.communicate_kwargs["input"] == b"ENVELOPE"
     assert rec.communicate_kwargs["timeout"] == cfg.spawn_timeout_s

@@ -310,7 +310,20 @@ def write_escalation(run_id: int, head_sha: str, reason: str, detail: str = "",
 
 # --- I/O wiring ---------------------------------------------------------
 
-def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120) -> tuple[int, str]:
+ROUTE_REFUSED_MARK = "HEADLESS_ROUTE_REFUSED:"
+
+
+def _headless_env():
+    """`ops/loop/headless_env.py`. Imported lazily so this module stays import-safe."""
+    root = str(Path(__file__).resolve().parent.parent)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from ops.loop import headless_env
+    return headless_env
+
+
+def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120,
+         env: dict | None = None) -> tuple[int, str]:
     """Run a command, return (returncode, combined stdout+stderr). Never raises."""
     # CREATE_NO_WINDOW: this runs under a pythonw.exe-hosted scheduled task every
     # 2 min; without it each git/gh child allocates a console that flashes onscreen.
@@ -318,7 +331,7 @@ def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120) -> tuple[i
     try:
         p = subprocess.run(
             cmd, cwd=str(cwd) if cwd else None, capture_output=True,
-            text=True, timeout=timeout, creationflags=no_window,
+            text=True, timeout=timeout, creationflags=no_window, env=env,
         )
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.SubprocessError) as exc:
@@ -392,7 +405,16 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
             cmd = list(argv)
             if cmd and cmd[0] == "gh":
                 cmd[0] = _gh()
-            return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
+            env = None
+            if label == "claude_fix":
+                # Headless account routing (operator contract 2026-10-02):
+                # proxy-routed child env, or no spawn at all.
+                he = _headless_env()
+                try:
+                    env = he.headless_child_env(caller="ci_watchdog")
+                except he.HeadlessRouteRefused as exc:
+                    return 1, f"{ROUTE_REFUSED_MARK} {exc}"
+            return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120), env=env)
 
     # 1. sync the dedicated worktree onto a fresh ci-fix/<id> branch off main
     for label in ("fetch", "reset", "branch"):
@@ -407,6 +429,9 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
 
     # 3. tool-restricted headless fix; an ESCALATE: line short-circuits cleanly
     _, fix_out = runner("claude_fix", steps["claude_fix"])
+    if (fix_out or "").startswith(ROUTE_REFUSED_MARK):
+        return {"action": "error", "stage": "claude_fix_route",
+                "detail": (fix_out or "")[:2000]}
     if "ESCALATE:" in (fix_out or ""):
         return {"action": "escalate", "reason": _first_escalate_line(fix_out),
                 "detail": (fix_out or "")[:2000]}

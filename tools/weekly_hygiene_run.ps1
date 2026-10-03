@@ -35,6 +35,10 @@ make engine/code changes and do NOT run /sync-all-md.
 $tools = "Edit,Read,Write,Bash,Grep,Glob,TaskCreate,TaskUpdate,TaskList"
 
 Write-Host "[weekly_hygiene] $stamp start (model=$Model)"
+# Headless account routing (operator contract 2026-10-02): proxy-routed child
+# env for THIS process only, or exit 3 with no spawn. See the gate file.
+. (Join-Path $repo "ops\loop\headless_route.ps1")
+Assert-HeadlessRoute -Caller "weekly_hygiene" -Log $log
 $out = & claude -p $prompt --model $Model --allowedTools $tools --dangerously-skip-permissions *>&1 |
     Tee-Object -FilePath $log
 $code = $LASTEXITCODE
