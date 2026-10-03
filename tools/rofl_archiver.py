@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core import riot_api  # noqa: E402
 from core import rofl_archive  # noqa: E402
+from core.riot_retry import fetch_unthrottled  # noqa: E402
 
 _LOCKFILE = Path(r"C:\Riot Games\League of Legends\lockfile")
 _DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
@@ -149,19 +150,28 @@ def _api_pull(accounts, archive, index) -> int:
     failures = 0
     for name, tag in accounts:
         riot_id = f"{name}#{tag}"
-        account = riot_api.get_account_by_riot_id(name, tag)
+        # RM-484: one attempt only (see "back off" above), but say WHY a None
+        # came back - a 429 is not a key problem and not an entitlement one.
+        account, throttled = fetch_unthrottled(
+            lambda n=name, t=tag: riot_api.get_account_by_riot_id(n, t),
+            attempts=1)
         puuid = (account or {}).get("puuid")
         if not puuid:
             # No key, an unentitled key, or a transient error. On a 15-minute
             # schedule this is routine - report it, never fail the run.
+            why = ("Riot API rate limited - next run retries" if throttled
+                   else "is API-Key-Riot.txt the PRODUCT key?")
             print(f"api pull SKIPPED for {riot_id} - could not resolve a PUUID "
-                  f"(is API-Key-Riot.txt the PRODUCT key?)")
+                  f"({why})")
             continue
 
-        urls = riot_api.get_replay_urls(puuid)
+        urls, throttled = fetch_unthrottled(
+            lambda p=puuid: riot_api.get_replay_urls(p), attempts=1)
         if urls is None:
+            why = ("Riot API rate limited - next run retries" if throttled
+                   else "the dev key is not entitled to this route")
             print(f"api pull SKIPPED for {riot_id} - /replays returned nothing "
-                  f"(the dev key is not entitled to this route)")
+                  f"({why})")
             continue
 
         ids = [rofl_archive.match_id_from_replay_url(u) for u in urls]
