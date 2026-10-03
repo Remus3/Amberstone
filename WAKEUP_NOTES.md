@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-10-03e - NOW-7 gate armed; FLEET-KIT v4 adopted; routed spawns on kit _run; DS rm115 deadline flake fixed
+
+- **Merges (all pushed, c5739fbe0..251457ad7):** NOW-7 gate (`4c61fb0eb`), FLEET-KIT v4 (`c8341e619`), routed spawns via kit `_run` (`fcc53a232`), DS rm115 60 s deadline (`251457ad7`). LEDGER 1469-1472. Each verifier MERGE-OK.
+- **CI RED on 251457ad7 (run 37150006655):** 4 new tree-kill tests fail on ubuntu + 2 pre-existing (adjudicator console-flash stale entry, p2w2_ds_h `_FakeProc.args`). Fix-forward slice in flight at wrap.
+- **Reply to MAIN 1204 + 1327** delivered 1411, 1/1. MAIN 0915/0925 lane widget landed by another attended session (`e1591f1f5`, `c88efdf13`), which sends that answer; RC review = no change needed.
+- **Do NOT redo:** NOW-7 arming, v4 vendoring, the five routed paths, the rm115 deadline.
+
+---
+
 # 2026-10-03d - RM-481 / RM-484 / RM-487 shipped; FLEET-KIT v3 adopted; NOW-7 measurement merged
 
 - **Commits (all merged + pushed, ec2f85798..51ab14da7):** RM-481 LF generators (`5e9fdb250`, merge `a28fab20b`), RM-484 Riot 429 vs absence in five offline tools via `core/riot_retry.py` (`14ae0ea6e`, merge `93c508dbc`), RM-487 env-first credential reads (`22a9aae35`, merge `38e324616`), FLEET-KIT v3 (`79aae2efb`, `95e94058e`, `47d4cf506`; merges `869f1b100` + `51ab14da7`). LEDGER 1464-1467.
@@ -23,13 +32,3 @@
 - grace = min(ExecutionTimeLimit, shortest repetition interval, 2h); unknown -> flat 2h; negative age STUCK. RC-ReplayChainWatch now flagged after 15m, not 2h. Verifier CONFIRM; rc_facts 107 passed; live banner 0 task anomalies.
 - Accepted risk: a run outliving its interval reads STUCK (RC-InboxResponder past 5m). Real overlap signal.
 - **Not touched:** inbox (32 unread, responder-owned); C4 `slots.py` 290cbf80 still a joint act held by RSC halt clause (b) pending MAIN.
-
----
-
-# 2026-10-03b - responder live-surface guard fixed by attribution; rc_facts false anomalies (armed responder, periodic-running) cleared
-
-- **Commits:** `9b3cbe805` + `3f6679d2a` (responder suite guard), `d053a573f` + `dcd530808` (rc_facts agreement-armed + STOP flag), `d2b739dda` (rc_facts periodic-running grace). LEDGER 1461 + 1462.
-- **Guard (a):** lives in `tests/test_inbox_responder_runner.py` `_live_surfaces_unchanged`, not the mutants file. Root cause: exemption covered only `worktree:` keys; the armed responder runs from the MAIN checkout. Now a `sys.addaudithook` auditor attributes writes to the pytest process; digest kept on non-ambient surfaces; exempt set equality-pinned. Gap: a test-SPAWNED subprocess writing an ambient surface is not caught. Mutants+runner 362 passed; two verifier CONFIRMs.
-- **rc_facts:** armed responder now reads "ARMED by agreement" via the runner's own `is_stopped` + `load_agreement` (verifier REFUTED the first cut for ignoring STOP; fixed). Periodic task running < 2h is OK, not STUCK (RC-ReplayRosterPull false alarm; nothing killed). Banner now 0 task anomalies.
-- **Open follow-up:** per-task running grace min(ExecutionTimeLimit, interval) - RC-ReplayChainWatch (15m/PT2H) can hide ~7 missed runs under the flat 2h.
-- **Do NOT redo:** any of the above. C4 `slots.py` 290cbf80 re-pin still a JOINT act - RSC holds under its halt clause (b); LW asked MAIN for one ruling. Not RC's to land.

@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-03b - responder live-surface guard fixed by attribution; rc_facts false anomalies (armed responder, periodic-running) cleared
+
+- **Commits:** `9b3cbe805` + `3f6679d2a` (responder suite guard), `d053a573f` + `dcd530808` (rc_facts agreement-armed + STOP flag), `d2b739dda` (rc_facts periodic-running grace). LEDGER 1461 + 1462.
+- **Guard (a):** lives in `tests/test_inbox_responder_runner.py` `_live_surfaces_unchanged`, not the mutants file. Root cause: exemption covered only `worktree:` keys; the armed responder runs from the MAIN checkout. Now a `sys.addaudithook` auditor attributes writes to the pytest process; digest kept on non-ambient surfaces; exempt set equality-pinned. Gap: a test-SPAWNED subprocess writing an ambient surface is not caught. Mutants+runner 362 passed; two verifier CONFIRMs.
+- **rc_facts:** armed responder now reads "ARMED by agreement" via the runner's own `is_stopped` + `load_agreement` (verifier REFUTED the first cut for ignoring STOP; fixed). Periodic task running < 2h is OK, not STUCK (RC-ReplayRosterPull false alarm; nothing killed). Banner now 0 task anomalies.
+- **Open follow-up:** per-task running grace min(ExecutionTimeLimit, interval) - RC-ReplayChainWatch (15m/PT2H) can hide ~7 missed runs under the flat 2h.
+- **Do NOT redo:** any of the above. C4 `slots.py` 290cbf80 re-pin still a JOINT act - RSC holds under its halt clause (b); LW asked MAIN for one ruling. Not RC's to land.
+
+---
+
 # 2026-10-03 - headless spawns routed through the operator's second-account proxy (fail closed), RC-InboxResponder ARMED, MAIN grant recorded
 
 - **Operator instruction, confirmed in chat 2026-10-02 (items 1-4).** Commits: `7e6773fec` (every headless `claude` spawn routes through `ops/loop/headless_env.py` + `ops/loop/headless_route.ps1`; registry-first read of the user-scope proxy var, child-only `ANTHROPIC_BASE_URL`, refuses on unset / non-loopback / port refused; LEDGER 1460), `4e7ec9d69` (CLAUDE.md: MAIN-speaks-for-the-operator grant quoted verbatim + responder ARMED line), `0dcdf4ad0` (headless_env guard no longer scans its own needles). CI `ci` run 37094568695 green on `0dcdf4ad0`.
