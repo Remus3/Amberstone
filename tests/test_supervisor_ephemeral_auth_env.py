@@ -135,7 +135,12 @@ def test_spawn_env_omits_auth_token_and_base_url(monkeypatch: pytest.MonkeyPatch
     _run(rec, "t-authenv-strip2")
     env = rec.kwargs["env"]
     assert "ANTHROPIC_AUTH_TOKEN" not in env
-    assert "ANTHROPIC_BASE_URL" not in env
+    # The INHERITED base URL never reaches the child. Since the 2026-10-02
+    # headless-routing contract the child carries exactly one: the proxy URL
+    # `ops/loop/headless_env.py` resolved (the conftest fake here).
+    assert env.get("ANTHROPIC_BASE_URL") != "https://example.invalid/v1"
+    from ops.loop import headless_env
+    assert env.get("ANTHROPIC_BASE_URL") == headless_env.resolve_base_url()
 
 
 def test_parent_environ_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -161,7 +166,9 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     stripped = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"}
     dropped, leaked = _spawn_env_key_diff(env, stripped)
     assert not dropped, f"inheritable parent keys missing from the spawn env: {dropped}"
-    assert not leaked, f"auth overrides survived into the spawn env: {leaked}"
+    # The one key the spawn adds is the routed proxy URL (headless-routing
+    # contract 2026-10-02); anything else would be a leaked override.
+    assert leaked == ["ANTHROPIC_BASE_URL"], f"auth overrides survived into the spawn env: {leaked}"
 
 
 def test_spawn_env_has_no_none_values(monkeypatch: pytest.MonkeyPatch) -> None:

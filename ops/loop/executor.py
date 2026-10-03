@@ -37,6 +37,30 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+
+def _headless_env_module():
+    """`ops/loop/headless_env.py`, by package import or by file path.
+
+    The launcher loads this module BY PATH with no repo root on sys.path, so a
+    plain import can fail there; the fallback binds the sibling file under one
+    private name shared with adjudicator.py. Resolved per call so a test's
+    monkeypatch of the package module is the one used.
+    """
+    try:
+        from ops.loop import headless_env as mod
+        return mod
+    except ModuleNotFoundError:
+        import importlib.util
+        name = "rc_ops_loop_headless_env"
+        if name not in sys.modules:
+            spec = importlib.util.spec_from_file_location(
+                name, Path(__file__).resolve().parent / "headless_env.py")
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[name] = mod
+            spec.loader.exec_module(mod)
+        return sys.modules[name]
+
+
 # RM-137 (CCR-146). Appended to the system prompt of EVERY subagent a headless
 # cycle spawns via --append-subagent-system-prompt, which is something no hook
 # can do. The flag is UNDOCUMENTED (absent from `claude --help` on the pinned CLI
@@ -1379,11 +1403,23 @@ class SdkExecutor:
         argv = self.build_argv(cycle)
         prompt = sdk_prompt(cycle, body, src)
         timeout = float(self.cfg.get("cycle_deadline_sec", 5400))
+        # Headless account routing (operator contract 2026-10-02): the child
+        # rides the local proxy named by the user env store, or it does not
+        # start. Refused is a failed cycle, never a direct `claude`.
+        _he = _headless_env_module()
+        try:
+            child_env = _he.headless_child_env(caller="loop_executor")
+        except _he.HeadlessRouteRefused as exc:
+            self.log(f"cycle {cycle}: sdk spawn refused - {exc}")
+            stamped = stamp_deviations("", self.deviations)
+            return DoneRecord(cycle=cycle, error=f"headless route refused: {exc.reason}",
+                              summary=stamped, raw=deviation_only_raw(stamped))
         self.log(f"cycle {cycle}: sdk executor starting ({len(body)} chars, timeout {timeout:.0f}s)")
 
         proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, text=True, encoding="utf-8",
                                 errors="replace", cwd=str(self.cfg.get("repo_root", ".")),
+                                env=child_env,
                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                                 **_spawn_group_kwargs())
         try:

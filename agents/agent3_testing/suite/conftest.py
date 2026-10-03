@@ -43,3 +43,16 @@ def _isolate_asyncio_running_loop():
     _clear_running_loop()
     yield
     _clear_running_loop()
+
+
+@pytest.fixture(autouse=True)
+def _fake_headless_route(monkeypatch, tmp_path_factory):
+    """Fake open proxy route for the ephemeral-spawn stubs (operator contract
+    2026-10-02; mirrors `fake_headless_route` in tests/conftest.py). Never the
+    live URL, never a real probe or registry read."""
+    from ops.loop import headless_env
+    monkeypatch.setattr(headless_env, "_read_user_var", lambda name: "http://127.0.0.1:65530")
+    monkeypatch.setattr(headless_env, "_probe", lambda host, port, timeout: None)
+    monkeypatch.setattr(headless_env, "REFUSAL_LOG",
+                        tmp_path_factory.getbasetemp() / "headless_route.log")
+    yield

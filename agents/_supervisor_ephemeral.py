@@ -346,6 +346,19 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     # spawn and never written back, so the supervisor's own os.environ - and
     # therefore the coaching path's direct Anthropic API access - is untouched.
     spawn_env = _build_spawn_env()
+    # Headless account routing (operator contract 2026-10-02). The INHERITED
+    # ANTHROPIC_BASE_URL was stripped above; the ONLY value the child may carry
+    # is the one `ops/loop/headless_env.py` reads from the user env store at
+    # this moment. Refused -> no spawn, never a direct `claude`.
+    from ops.loop import headless_env
+    try:
+        spawn_env = headless_env.headless_child_env(spawn_env, caller="supervisor_ephemeral")
+    except headless_env.HeadlessRouteRefused as e:
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(f"{_iso_now()} REFUSED agent={agent} task={task_id} reason={e.reason}\n")
+        raise EphemeralSpawnFailed(
+            f"headless route refused for task {task_id}: {e.reason}"
+        ) from e
 
     t0 = time.time()
     try:

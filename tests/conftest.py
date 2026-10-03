@@ -401,6 +401,31 @@ def redirect_shadow_paths_to_tmp(monkeypatch, tmp_path):
 # loop_controller are already driven with an explicit path= or per-test
 # monkeypatch by every caller.) monkeypatch restores the real globals after
 # each test. Mirrors the SHADOW_PATH precedent (item 386) + the loop_controller
+# Headless account routing (operator contract 2026-10-02). Every headless
+# `claude` spawn path now asks `ops/loop/headless_env.py` for a proxy route and
+# REFUSES without one. Tests drive those paths with stub binaries, so this net
+# installs a FAKE open route (never the live URL, never a real probe or registry
+# read) and points the refusal log at tmp. `tests/test_headless_env.py` and
+# `tests/test_headless_route_spawn_paths.py` override it explicitly to prove the
+# fail-closed half.
+_FAKE_HEADLESS_URL = "http://127.0.0.1:65530"
+
+
+@pytest.fixture(autouse=True)
+def fake_headless_route(monkeypatch, _live_state_base):
+    try:
+        from ops.loop import headless_env
+    except Exception:  # noqa: BLE001 - conftest stays dependency-free
+        yield
+        return
+    monkeypatch.setattr(headless_env, "_read_user_var", lambda name: _FAKE_HEADLESS_URL)
+    monkeypatch.setattr(headless_env, "_probe", lambda host, port, timeout: None)
+    # Session-shared dir (see `_live_state_base`): content-asserting tests
+    # point REFUSAL_LOG at their own tmp_path.
+    monkeypatch.setattr(headless_env, "REFUSAL_LOG", _live_state_base / "headless_route.log")
+    yield
+
+
 # CTL redirect (test_p2w4_hw2_b, OPEN2).
 _PROD_WRITE_GLOBALS = (
     ("core.coach_trace", "_TRACE_FILE", "coach_trace.jsonl"),

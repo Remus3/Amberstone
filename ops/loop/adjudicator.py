@@ -56,6 +56,27 @@ except ModuleNotFoundError:
             ) from _exc
         _atomic_write_bytes = _pj.atomic_write_bytes
 
+
+def _headless_env_module():
+    """`ops/loop/headless_env.py`, by package import or by file path.
+
+    Same two-step bind as core/polled_json above, and the same private module
+    name as executor.py so both siblings share one object. Resolved per call so
+    a test's monkeypatch of the package module is the one used.
+    """
+    try:
+        from ops.loop import headless_env as mod
+        return mod
+    except ModuleNotFoundError:
+        name = "rc_ops_loop_headless_env"
+        if name not in sys.modules:
+            spec = importlib.util.spec_from_file_location(
+                name, Path(__file__).resolve().parent / "headless_env.py")
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[name] = mod
+            spec.loader.exec_module(mod)
+        return sys.modules[name]
+
 # The Claude CLI shim really does live under an account-specific home, so there
 # is no repo-relative answer for it (tests/test_loop_module_root_resolution.py
 # records why this is deliberately outside that guard's scope). Resolve it under
@@ -168,9 +189,19 @@ class ClaudeAdjudicator:
               f"Get-Content -Raw '{infile}' | "
               f"& '{cmd}' -p '{inst}' --model '{model}' --permission-mode plan "
               f"--output-format text 2>'{errfile}' | Out-String")
+        # Headless account routing (operator contract 2026-10-02): the child
+        # rides the local proxy, or there is no call at all - an empty answer,
+        # which the controller already treats as "no adjudication this time".
+        _he = _headless_env_module()
+        try:
+            child_env = _he.headless_child_env(caller="loop_adjudicator")
+        except _he.HeadlessRouteRefused as exc:
+            self.last_stderr = str(exc)
+            self.log(f"claude adjudicator ({model}) spawn refused: {exc}")
+            return None
         try:
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
-                               capture_output=True, text=True, timeout=timeout,
+                               capture_output=True, text=True, timeout=timeout, env=child_env,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             out = (r.stdout or "").strip()
         except Exception as e:  # noqa: BLE001
