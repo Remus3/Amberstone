@@ -17,6 +17,10 @@ MODES (environment):
   - ``RC_LOGGER_LEAK_GATE=0``   -> disarmed for one run (no rows, no failures).
   - a NESTED pytest (a child pytest spawned by a test of an outer run, which
     inherits the outer env) is inert in every mode - see ``classify_process``.
+    "Nested" means the stamped outer pid is a LIVE ANCESTOR of this process;
+    a stamp inherited from a parent shell (stale pid) is ignored and the gate
+    stays active. Whenever the gate is inert, or a stamp was ignored, a
+    banner line is printed in the terminal summary (``pytest_terminal_summary``).
     Children that plant leaks on purpose (test_now6_logger_leak_regression)
     would otherwise go red inside the child.
 
@@ -93,16 +97,53 @@ def gate_armed(environ=None) -> bool:
     return str(environ.get(ENV_GATE, "")).strip() != "0"
 
 
-def classify_process(environ, pid) -> bool:
+_NOTES = []  # banner lines for the terminal summary (stale stamps, inert reasons)
+
+
+def is_live_ancestor(candidate, pid) -> bool:
+    """True when ``candidate`` is a LIVE process on ``pid``'s parent chain.
+
+    psutil's ``Process.parent()`` checks create_time, so a recycled pid is not
+    mistaken for an ancestor. Any error (bad pid, psutil missing, access
+    denied) answers False: an unverifiable stamp must never disarm the gate.
+    """
+    try:
+        import psutil
+
+        want = int(candidate)
+        proc = psutil.Process(int(pid))
+        for _ in range(256):  # bounded walk
+            proc = proc.parent()
+            if proc is None:
+                return False
+            if proc.pid == want:
+                return True
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
+def classify_process(environ, pid, is_ancestor=None, notes=None) -> bool:
     """True when this process is the OUTER run (or one of its xdist workers).
 
     The first process to load the detector stamps its pid into the env, which
     every child inherits. An xdist worker (PYTEST_XDIST_WORKER set, no worker
-    stamp yet) stamps itself and stays active. Anything else that sees a
-    foreign stamp is a nested pytest and is inert. Mutates ``environ``.
+    stamp yet) stamps itself and stays active. A process that sees a foreign
+    stamp held by a live ANCESTOR is a nested pytest and is inert. A stamp
+    that is NOT a live ancestor (inherited from a parent shell by an earlier
+    run - NOW-7 residual) is stale: it is replaced, appended to ``notes`` (the
+    module passes ``_NOTES``, printed by the end-of-run banner), and the gate
+    stays active. Mutates ``environ`` and ``notes``.
     """
+    is_ancestor = is_live_ancestor if is_ancestor is None else is_ancestor
+    notes = [] if notes is None else notes
     me = str(pid)
     outer = environ.get(ENV_OUTER)
+    if outer and outer != me and not is_ancestor(outer, pid):
+        notes.append(f"ignored stale {ENV_OUTER}={outer} (not a live ancestor of pid {me}); "
+                      "gate active")
+        environ.pop(ENV_WORKER, None)
+        outer = None
     if not outer:
         environ[ENV_OUTER] = me
         return True
@@ -111,13 +152,30 @@ def classify_process(environ, pid) -> bool:
     worker = environ.get(ENV_WORKER)
     if worker == me:
         return True
+    if worker and not is_ancestor(worker, pid):
+        notes.append(f"ignored stale {ENV_WORKER}={worker} (not a live ancestor of pid {me})")
+        environ.pop(ENV_WORKER, None)
+        worker = None
     if environ.get("PYTEST_XDIST_WORKER") and not worker:
         environ[ENV_WORKER] = me
         return True
     return False
 
 
-_IS_OUTER = classify_process(os.environ, os.getpid())
+def inert_reason(environ=None):
+    """Why the gate is not failing leakers in this process, or None."""
+    environ = os.environ if environ is None else environ
+    if not _IS_OUTER:
+        return (f"nested pytest ({ENV_OUTER}={environ.get(ENV_OUTER)} is a live ancestor); "
+                "leaks are not checked in this process")
+    if is_enabled(environ):
+        return f"report-only mode ({ENV_FLAG}=1); leaks are recorded, not failed"
+    if not gate_armed(environ):
+        return f"disarmed ({ENV_GATE}=0)"
+    return None
+
+
+_IS_OUTER = classify_process(os.environ, os.getpid(), notes=_NOTES)
 
 
 def report_path(environ=None) -> Path:
@@ -437,3 +495,17 @@ def pytest_runtest_teardown(item, nextitem):
     if leaks and gate_armed():
         pytest.fail(format_failure(leaks), pytrace=False)
     return result
+
+
+def pytest_terminal_summary(terminalreporter):
+    """Visible banner: the gate never runs inert (or ignores a stamp) silently."""
+    try:
+        lines = list(_NOTES)
+        reason = inert_reason()
+        if reason:
+            lines.append(f"NOW-7 logger-leak gate INERT: {reason}")
+        for line in lines:
+            text = line if line.startswith("NOW-7") else f"NOW-7 logger-leak gate: {line}"
+            terminalreporter.write_line(text, yellow=True, bold=True)
+    except Exception:  # noqa: BLE001 - a banner must never fail the run
+        pass
