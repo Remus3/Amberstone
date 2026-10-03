@@ -69,7 +69,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-476** (2026-09-18, moved at the laned orchestrated loop wave 7 merge).
+  Next free id = **RM-513** (2026-10-03, moved at the session 2026-10-03d wrap).
+  **THREE ids were allocated 2026-10-03 by the 2026-10-03d wrap, all OPEN under ROADMAP NOW:**
+  RM-510 (timeline_ingest exits 0 on rate_limited), RM-511 (stale model pins), RM-512
+  (RIOT_API_KEY precedence, operator call). The pin had drifted: it read RM-476 while
+  BACKLOG already held ids up to RM-509, so it jumped past them. None takes a roster
+  checkbox and none changes the Summary count.
+  Prior pin, kept for the audit trail: Next free id was **RM-476** (2026-09-18, moved at the laned orchestrated loop wave 7 merge).
   **ONE id was allocated 2026-09-18 by the wave 7 merge, and THE PIN MOVED BY ONE.** RM-475 is
   OPEN under BACKLOG "Reliability / hardening": `scripts/wakeup_prune.py` keep/move accounting
   counts zero-heading BLOCKS as sessions in FILE ORDER, so `--keep 3` over a file containing one

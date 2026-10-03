@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-03d - RM-481 / RM-484 / RM-487 shipped; FLEET-KIT v3 adopted; NOW-7 measurement in flight
+
+- **Commits (all merged + pushed, ec2f85798..51ab14da7):** RM-481 LF generators (`5e9fdb250`, merge `a28fab20b`), RM-484 Riot 429 vs absence in five offline tools via `core/riot_retry.py` (`14ae0ea6e`, merge `93c508dbc`), RM-487 env-first credential reads (`22a9aae35`, merge `38e324616`), FLEET-KIT v3 (`79aae2efb`, `95e94058e`, `47d4cf506`; merges `869f1b100` + `51ab14da7`). LEDGER 1464-1467.
+- **FLEET-KIT v3:** operator order in chat + MAIN 0955/1014/1016. Kit vendored at `ops/fleet_kit/`, CLAUDE.md 52947 -> 31487 bytes (history in `docs/claude-md-history.md`), /done quiet, 5 spawn paths via `ops/loop/fleet_route.py`; responder/executor/run_lane stay on the headless_env gate. Reply to MAIN delivered 1134, 1/1 reached. 11 kit gaps await v4.
+- **Filed:** RM-510 timeline_ingest exit 0 on rate_limited; RM-511 stale model pins; RM-512 RIOT_API_KEY precedence (operator call). Pin moved to RM-513 (was stale at RM-476).
+- **In flight:** NOW-7 logger-leak detector in worktree `.claude/worktrees/agent-a5e62b1518fcb3dcd` (uncommitted; full-suite pid 22872). Do NOT delete that worktree.
+- **Not acted on (needs operator in chat):** MAIN 0915 lane-widget redesign, 0925 ACCOUNTS strip. C4 `slots.py` 290cbf80 still held (joint act).
+- **Do NOT redo:** RM-481 / RM-484 / RM-487 (first row) / FLEET-KIT v3 adoption.
+
+---
+
 # 2026-10-03c - rc_facts per-task running grace (operator away, unattended continue)
 
 - **Commit:** `c84d30b0c` (worktree slice, ff to main). LEDGER 1463.
@@ -22,15 +33,3 @@
 - **rc_facts:** armed responder now reads "ARMED by agreement" via the runner's own `is_stopped` + `load_agreement` (verifier REFUTED the first cut for ignoring STOP; fixed). Periodic task running < 2h is OK, not STUCK (RC-ReplayRosterPull false alarm; nothing killed). Banner now 0 task anomalies.
 - **Open follow-up:** per-task running grace min(ExecutionTimeLimit, interval) - RC-ReplayChainWatch (15m/PT2H) can hide ~7 missed runs under the flat 2h.
 - **Do NOT redo:** any of the above. C4 `slots.py` 290cbf80 re-pin still a JOINT act - RSC holds under its halt clause (b); LW asked MAIN for one ruling. Not RC's to land.
-
----
-
-# 2026-10-03 - headless spawns routed through the operator's second-account proxy (fail closed), RC-InboxResponder ARMED, MAIN grant recorded
-
-- **Operator instruction, confirmed in chat 2026-10-02 (items 1-4).** Commits: `7e6773fec` (every headless `claude` spawn routes through `ops/loop/headless_env.py` + `ops/loop/headless_route.ps1`; registry-first read of the user-scope proxy var, child-only `ANTHROPIC_BASE_URL`, refuses on unset / non-loopback / port refused; LEDGER 1460), `4e7ec9d69` (CLAUDE.md: MAIN-speaks-for-the-operator grant quoted verbatim + responder ARMED line), `0dcdf4ad0` (headless_env guard no longer scans its own needles). CI `ci` run 37094568695 green on `0dcdf4ad0`.
-- **Proof spawn** `claude -p "reply ok"` through the real helper answered `ok`; proxy activity log named the second account. Email and URL are deliberately NOT in any tracked file.
-- **RC-InboxResponder ENABLED**, every 5 min, agreement record (gitignored) expires 2026-11-01, hop budget 32. The 296 notes attended sessions had already handled were seeded as answered via `record_responded` BEFORE enabling, so it only answers new notes. No halt was cleared; `ops/loop/control/STOP` left in place; CI watchdog + weekly hygiene stay disabled.
-- **Report to MAIN delivered** (`C:\Main\moon_sync_inbox`, sha256 `27c6670b...`). Replies also delivered to CS / SS / LW / RSC / LL this session (re-hashed, all reached).
-- **OPEN, held for a ruling:** (1) `tests/test_inbox_responder_mutants.py` now trips INTERMITTENTLY - its teardown guard assumes live responder surfaces + sibling inboxes stay still, and an armed responder moves them. Guard NOT weakened. Choose: exclude live surfaces, or pause the responder for that test. (2) C4 `slots.py` candidate `290cbf80` attested by RC; vendoring + moving `SHARED_SHA256` is a joint act, held.
-- **Do NOT redo:** the routing, the arming, the seed, or the MAIN grant. Do not hand-answer inbox notes the responder now owns - check `ops/runtime/inbox_responder_answered.json` first.
-- **Known gap (non-blocking):** `headless_child_env` strips only `ANTHROPIC_BASE_URL`; inherited `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` still pass to executor / adjudicator / watchdog children (unchanged from before).
