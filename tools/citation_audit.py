@@ -312,6 +312,9 @@ _HISTORY_FILES = frozenset(
     {
         "docs/LEDGER.md",
         "docs/history_notes.md",
+        # Verbatim pre-condense CLAUDE.md snapshot (FLEET-KIT-v1, 2026-10-03):
+        # append-only, so its stale citations are correct history.
+        "docs/claude-md-history.md",
         "docs/ROADMAP_HISTORY.md",
         "docs/ORCHESTRATION_PLAN_HISTORY.md",
         "docs/ORCHESTRATION_FINDINGS_ARCHIVE.md",

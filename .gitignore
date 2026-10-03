@@ -331,6 +331,12 @@ gemini_io/
 # runtime scratch (control/ state dir, *.log) is local-only.
 ops/loop/control/
 ops/loop/*.log
+# FLEET-KIT-v1 runtime files (ops/fleet_kit/fleet_headless.py STATUS_REL /
+# BUDGET_REL / USAGE_REL). Already covered by the dir rule above; named
+# explicitly per the kit order so a narrowing of that rule cannot track them.
+ops/loop/control/inbox_status.json
+ops/loop/control/headless_budget.json
+ops/loop/control/headless_usage.jsonl
 
 # Transient verify/test scratch dropped at repo root by DS item runs
 # (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.
