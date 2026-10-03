@@ -44,12 +44,15 @@ import pytest
 # NOW-7 logger-leak GATE, ARMED: a test that leaves logging state changed gets
 # a teardown error naming the leaker. Importing the hook names registers them
 # on this conftest. RC_LOGGER_LEAK_REPORT=1 = report-only (rows, no failures);
-# RC_LOGGER_LEAK_GATE=0 disarms one run; nested child pytests are inert.
+# RC_LOGGER_LEAK_GATE=0 disarms one run; nested child pytests (outer pid a live
+# ancestor) are inert, a stale inherited stamp is ignored, and any inert run
+# prints a banner in the terminal summary.
 # See tests/_logger_leak_report.py.
 from tests._logger_leak_report import (  # noqa: F401,E402
     pytest_runtest_call,
     pytest_runtest_setup,
     pytest_runtest_teardown,
+    pytest_terminal_summary,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
