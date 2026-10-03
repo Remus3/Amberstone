@@ -252,6 +252,9 @@ def test_ephemeral_failure_message_redacts_stderr(tmp_path: Path) -> None:
     secret = "sk-ant-DEADBEEF_0123456789abcdefGHIJKL"
 
     class _FakeProc:
+        # Mirrors subprocess.CompletedProcess: the per-task log reads
+        # proc.args for its cmd-length line (since 47d4cf506, fleet kit).
+        args = ["claude", "-p"]
         returncode = 1
         stdout = ""
         stderr = f"Traceback ... ANTHROPIC_API_KEY={secret} ... boom"
