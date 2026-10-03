@@ -15,6 +15,11 @@ the file. Seven consumers read the key and they did NOT agree on precedence:
                                       approval; it was the last file-first read)
   * `dashboard/routes_coach.py:185`   FILE ONLY - a LIVE BUG
 
+RM-487 sibling sweep (2026-10-03) added two more:
+  * `performance_tracker.py` save_rating   FILE ONLY (now read_api_key)
+  * `vision_server/_config.py` _load_key   FILE first over three paths,
+                                           env LAST, unguarded decode
+
 TWO DEFECTS, and they are different in kind:
 
 1. `routes_coach` had no env path AT ALL, so with the file deleted it passed
@@ -158,8 +163,57 @@ def _load_game_lifecycle(app_dir: Path, monkeypatch) -> str:
     return mgr.try_read_api_key()
 
 
+def _load_performance_tracker(app_dir: Path, monkeypatch) -> str:
+    """Drive performance_tracker.save_rating and capture the key it hands on.
+
+    RM-487 (2026-10-03): the experimental-build hook read API-Key-Claude.txt
+    inline and NOTHING else - the same file-only shape ba4bb74be fixed in
+    routes_coach - so with the file deleted it passed "" to record_result.
+    The read is inline in save_rating, so the only honest probe is to run
+    it with `script_dir=app_dir` and capture what reached record_result.
+    """
+    import coaches.experimental_builder as eb
+    import performance_tracker as pt
+
+    seen: dict[str, str] = {}
+
+    def _capture(champion, grade, gs, api_key):
+        seen["api_key"] = api_key
+        return {}
+
+    monkeypatch.setattr(eb, "consume_active", lambda: {"champion": "Ahri"})
+    monkeypatch.setattr(eb, "record_result", _capture)
+    # Same isolation as tests/test_performance_tracker_lane8_cycle23.py:
+    # no match DB, so nothing reaches the live data/ tree.
+    monkeypatch.setattr(pt, "_match_db", None)
+    pt.save_rating(str(app_dir), "Ahri", {
+        "game_mode": "CLASSIC", "game_seconds": 1200,
+        "cs_per_min": 6.0, "deaths": 3, "kills": 5,
+        "assists": 7, "gold": 12000, "kda": "5/3/7",
+    }, 10)
+    assert "api_key" in seen, "record_result was never reached"
+    return seen["api_key"]
+
+
+def _load_vision_server(app_dir: Path, monkeypatch) -> str:
+    """vision_server._config._load_key with its file roots moved to tmp.
+
+    RM-487: this reader had an env fallback but read it LAST, after three
+    files (repo root, ~/, ~/Desktop) - the stale-wins order ba4bb74be
+    flipped everywhere else - and an unguarded read_text, so a non-UTF8
+    key file raised at IMPORT time and took the :8889 server down with it.
+    `home` points at an empty dir so the real ~/ and ~/Desktop are never
+    read.
+    """
+    from vision_server import _config
+    return _config._load_key(app_dir, home=app_dir / "_no_home")
+
+
 CONSUMERS = [
     pytest.param(_load_base_coach, id="coaches._base_coach.read_api_key"),
+    pytest.param(_load_performance_tracker,
+                 id="performance_tracker.save_rating"),
+    pytest.param(_load_vision_server, id="vision_server._config._load_key"),
     pytest.param(_load_warm_session, id="agent7.warm_session._load_api_key"),
     pytest.param(_load_tft_pbe, id="coaches.tft_pbe_coach._read_api_key"),
     pytest.param(_load_routes_coach, id="dashboard.routes_coach"),
@@ -222,6 +276,32 @@ def test_unreadable_key_file_degrades_instead_of_raising(load, tmp_path,
     monkeypatch.delenv(ENV_VAR, raising=False)
     (tmp_path / "API-Key-Claude.txt").write_bytes(b"\xff\xfe\x00bad")
     assert load(tmp_path, monkeypatch) == ""
+
+
+def test_vision_server_env_beats_a_stale_key_in_the_home_dir(tmp_path,
+                                                             monkeypatch):
+    """The two legacy HOME locations are the same stale-wins hole.
+
+    The parametrized tests only exercise the repo-root file; ~/ and
+    ~/Desktop were also read before env, so a forgotten copy there would
+    beat a rotated env var just as well.
+    """
+    from vision_server import _config
+    home = tmp_path / "home"
+    (home / "Desktop").mkdir(parents=True)
+    (home / "Desktop" / "API-Key-Claude.txt").write_text(FILE_KEY,
+                                                         encoding="utf-8")
+    monkeypatch.setenv(ENV_VAR, ENV_KEY)
+    assert _config._load_key(tmp_path, home=home) == ENV_KEY
+    monkeypatch.delenv(ENV_VAR)
+    assert _config._load_key(tmp_path, home=home) == FILE_KEY
+
+
+def test_performance_tracker_reads_the_environment(tmp_path, monkeypatch):
+    """RM-487 regression - FAILED before the fix (file-only read)."""
+    monkeypatch.setenv(ENV_VAR, ENV_KEY)
+    assert not (tmp_path / "API-Key-Claude.txt").exists()
+    assert _load_performance_tracker(tmp_path, monkeypatch) == ENV_KEY
 
 
 # ---------------------------------------------------------------------------
