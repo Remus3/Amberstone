@@ -12,7 +12,9 @@
 //   SLOW (10000 ms) ONE non-recursive listing of <root>/ops/loop/reports per
 //                   repo, ONE read of <root>/ops/loop/control/inbox_status.json
 //                   per repo (skipped for an attended-only tree), plus ONE
-//                   machine-wide process snapshot that every repo reuses.
+//                   machine-wide process snapshot that every repo reuses,
+//                   plus ONE stat + ONE read of the proxy's state file for the
+//                   ACCOUNTS strip (only when the roster configures one).
 //
 // A root-less roster row (a rostered repo with no checkout on this host) is
 // read on NEITHER cadence; it still gets its ALL-tab row from the model.
@@ -266,6 +268,8 @@ function createPoller(opts) {
   let lockByRoot = new Map(); // root -> { lane, ctrl }
   let logsByRoot = new Map(); // root -> newestPerLane rows
   let statusByRoot = new Map(); // root -> raw inbox_status.json text, or null
+  let accountsCfg; // undefined = not resolved yet; null = no accounts config
+  let accountsReading = { text: null, mtimeMs: null }; // last SLOW-tick read
   let childrenByPid = new Map(); // pid -> descendant count
   let lastModelValue = emptyModel(now());
 
@@ -327,6 +331,38 @@ function createPoller(opts) {
       repos = [{ code: "RC", root: rcRoot, isSelf: true }];
     }
     return repos;
+  }
+
+  // The ACCOUNTS strip config ({ stateFile, probeS, roles } or null), resolved
+  // once from the same gitignored roster file - it does not change under us.
+  function accountsConfig() {
+    if (accountsCfg !== undefined) {
+      return accountsCfg;
+    }
+    accountsCfg = null;
+    const d = deps();
+    if (!d || !d.repos || typeof d.repos.resolveAccounts !== "function") {
+      return accountsCfg;
+    }
+    try {
+      const got = d.repos.resolveAccounts({
+        rcRoot: rcRoot,
+        env: env,
+        readFile: (p) => {
+          try {
+            const v = io.readFile(p);
+            return typeof v === "string" ? v : null;
+          } catch (_e) {
+            return null;
+          }
+        },
+      });
+      accountsCfg = got && typeof got === "object" && typeof got.stateFile === "string" ? got : null;
+    } catch (e) {
+      log("lane-widget: accounts config resolve failed: " + (e && e.message));
+      accountsCfg = null;
+    }
+    return accountsCfg;
   }
 
   // Liveness: an injected probe wins, then the machine snapshot, then a native
@@ -427,7 +463,17 @@ function createPoller(opts) {
     let model = null;
     if (d && d.model && typeof d.model.buildModel === "function") {
       try {
-        model = d.model.buildModel({ repos: built, now: ts });
+        const acc = accountsConfig();
+        model = d.model.buildModel({
+          repos: built,
+          now: ts,
+          accounts: acc === null ? null : {
+            text: accountsReading.text,
+            mtimeMs: accountsReading.mtimeMs,
+            probeS: acc.probeS,
+            roles: acc.roles,
+          },
+        });
       } catch (e) {
         log("lane-widget: buildModel failed: " + (e && e.message));
         model = null;
@@ -553,6 +599,21 @@ function createPoller(opts) {
       }
       logsByRoot = nextLogs;
       statusByRoot = nextStatus;
+
+      // The proxy's state file for the ACCOUNTS strip: ONE stat (its mtime is
+      // the freshness signal) plus ONE read, slow tick only, never written.
+      // Absent / unreadable / thrown -> nulls, which render "no signal" -
+      // never the previous tick's numbers.
+      const acc = accountsConfig();
+      if (acc !== null) {
+        const st = await guard(() => io.statFile(acc.stateFile), null, "stat accounts state");
+        const text = await guard(() => io.readFile(acc.stateFile), null, "read accounts state");
+        const mtimeMs = st && isFinite(st.mtimeMs) ? Number(st.mtimeMs) : null;
+        accountsReading = {
+          text: typeof text === "string" ? text : null,
+          mtimeMs: typeof text === "string" ? mtimeMs : null,
+        };
+      }
 
       // Descendant counts for every pid we are currently tracking - one pass
       // over the single snapshot, no per-repo process work.

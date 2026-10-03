@@ -257,6 +257,24 @@ function buildRepoRows(repoRows) {
 }
 
 /**
+ * The ACCOUNTS strip lines (MAIN 0925 addendum), painted ABOVE the repo rows
+ * on the ALL tab. The model already carries rendered, identifier-free text
+ * (src/accounts.js); this only keeps it ASCII and drops junk. No accounts on
+ * the model (no config on this host) -> no strip.
+ */
+function buildAccounts(accounts) {
+  var a = isObject(accounts) ? accounts : null;
+  if (a === null || !Array.isArray(a.lines)) return [];
+  var out = [];
+  for (var i = 0; i < a.lines.length; i += 1) {
+    var line = a.lines[i];
+    if (!isObject(line) || typeof line.text !== "string") continue;
+    out.push({ text: asciiOnly(line.text), alarm: line.alarm === true });
+  }
+  return out;
+}
+
+/**
  * Tab ids: "All" first, then RC, then every other repo CODE in first-appearance
  * order. RC is forced to the front because model.rows is sorted by STATE, so a
  * quiet RC can otherwise appear after a busy sibling.
@@ -439,6 +457,7 @@ function buildView(model, opts) {
       tabs: tabs,
       activeTab: activeTab,
       layout: LAYOUT_ROWS,
+      accounts: buildAccounts(m.accounts),
       rows: painted,
       cards: [],
       summary: buildSummary(m.summary),
@@ -453,6 +472,7 @@ function buildView(model, opts) {
     tabs: tabs,
     activeTab: activeTab,
     layout: LAYOUT_CARDS,
+    accounts: [],
     rows: [],
     cards: buildCards(shown),
     summary: buildSummary(m.summary),
@@ -666,6 +686,16 @@ function renderCards(doc, root, view) {
   var asRows = view.layout === LAYOUT_ROWS;
   if (root.classList) root.classList.toggle("is-rows", asRows);
   if (asRows) {
+    var accts = Array.isArray(view.accounts) ? view.accounts : [];
+    if (accts.length > 0) {
+      // ONE strip above the repo rows, one line per account. A line is
+      // whitespace-preserving so the role column lines up as rendered.
+      var strip = el(doc, "div", "accounts-strip");
+      accts.forEach(function (a) {
+        strip.appendChild(el(doc, "div", "accounts-line" + (a.alarm ? " is-alarm" : ""), a.text));
+      });
+      root.appendChild(strip);
+    }
     (Array.isArray(view.rows) ? view.rows : []).forEach(function (row) {
       var line = el(doc, "div", "card repo-row state-" + row.stateKey);
 
