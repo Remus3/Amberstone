@@ -25,8 +25,7 @@ independence comes from the producer not grading its own work, which is a
 prompt-level property, not a vendor-level one.
 """
 import importlib.util
-import os
-import subprocess
+import json
 import sys
 from pathlib import Path
 
@@ -57,36 +56,27 @@ except ModuleNotFoundError:
         _atomic_write_bytes = _pj.atomic_write_bytes
 
 
-def _headless_env_module():
-    """`ops/loop/headless_env.py`, by package import or by file path.
+def _fleet_route_module():
+    """`ops/loop/fleet_route.py`, by package import or by file path.
 
-    Same two-step bind as core/polled_json above, and the same private module
-    name as executor.py so both siblings share one object. Resolved per call so
-    a test's monkeypatch of the package module is the one used.
+    Same two-step bind as core/polled_json above. Resolved per call so a
+    test's monkeypatch of the package module is the one used.
     """
     try:
-        from ops.loop import headless_env as mod
+        from ops.loop import fleet_route as mod
         return mod
     except ModuleNotFoundError:
-        name = "rc_ops_loop_headless_env"
+        name = "rc_ops_loop_fleet_route"
         if name not in sys.modules:
             spec = importlib.util.spec_from_file_location(
-                name, Path(__file__).resolve().parent / "headless_env.py")
+                name, Path(__file__).resolve().parent / "fleet_route.py")
             mod = importlib.util.module_from_spec(spec)
             sys.modules[name] = mod
             spec.loader.exec_module(mod)
         return sys.modules[name]
 
-# The Claude CLI shim really does live under an account-specific home, so there
-# is no repo-relative answer for it (tests/test_loop_module_root_resolution.py
-# records why this is deliberately outside that guard's scope). Resolve it under
-# THIS account's roaming profile rather than baking one in: a command naming
-# another account's home silently does not run, and an adjudicator that does not
-# run reports nothing.
-DEFAULT_CLAUDE_CMD = str(
-    Path(os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming"))
-    / "npm" / "claude.cmd"
-)
+# The CLI binary is resolved by the fleet kit (`claude_exe`), not here: the
+# `cmd` key of the `claude_adjudicator` config block is no longer read.
 DEFAULT_CLAUDE_MODEL = "opus"
 DEFAULT_CLAUDE_TIMEOUT_SEC = 300
 
@@ -106,21 +96,29 @@ def _atomic_write(path, text):
     _atomic_write_bytes(Path(path), text.encode("utf-8"))
 
 
-def read_err(errfile):
-    """Decode a PowerShell-redirected stderr file.
+def _answer_of(stdout):
+    """`(answer, error)` from the kit's `--output-format json` stdout.
 
-    PS 5.1 `2>'file'` writes the error stream UTF-16 LE (Out-File default); a
-    utf-8 read mojibakes it, which once masked a real API error behind
-    NUL-interleaved node warnings for a nine-hour outage. Kept after the vendor
-    change because the redirect, and therefore the encoding trap, is identical
-    on the claude path.
+    The kit always asks for JSON. A result record flagged `is_error` is an
+    error, never an answer - returning its text would hand the controller an
+    API error as a directive. Stdout that is not a JSON object is passed
+    through as the answer, so a CLI that ignored the flag still answers.
+
+    (The PowerShell `2>file` UTF-16 decoder that lived here went with the
+    PowerShell wrapper: the kit captures stderr in-process as UTF-8.)
     """
+    text = (stdout or "").strip()
     try:
-        raw = Path(errfile).read_bytes()
-    except OSError:
-        return ""
-    enc = "utf-16" if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8"
-    return raw.decode(enc, errors="replace").strip()
+        body = json.loads(text)
+    except ValueError:
+        return text, ""
+    if not isinstance(body, dict):
+        return text, ""
+    result = body.get("result")
+    result = result.strip() if isinstance(result, str) else ""
+    if body.get("is_error"):
+        return "", result or "is_error"
+    return result, ""
 
 
 def err_summary(txt, cap=400):
@@ -175,40 +173,43 @@ class ClaudeAdjudicator:
         self.last_stderr = ""
 
     def ask(self, prompt_body, instruction):
+        # The body is still written to the control dir: it is the audit copy of
+        # what the brain was asked, read by the operator and the bridge.
         infile = self.ctl / "_claude_in.txt"
-        errfile = self.ctl / "_claude_err.txt"
         self.awrite(infile, prompt_body)
         blk = self.cfg.get("claude_adjudicator") or {}
-        cmd = blk.get("cmd") or DEFAULT_CLAUDE_CMD
+        # FLEET-KIT-v1: the kit picks the model (sonnet - this call writes no
+        # code), so the configured model only prices the workload signal.
         model = blk.get("model") or DEFAULT_CLAUDE_MODEL
         timeout = int(blk.get("timeout_sec") or DEFAULT_CLAUDE_TIMEOUT_SEC)
-        inst = instruction.replace("'", "''")
         self.last_stderr = ""
         out = ""
-        ps = ("$ErrorActionPreference='Continue';"
-              f"Get-Content -Raw '{infile}' | "
-              f"& '{cmd}' -p '{inst}' --model '{model}' --permission-mode plan "
-              f"--output-format text 2>'{errfile}' | Out-String")
-        # Headless account routing (operator contract 2026-10-02): the child
-        # rides the local proxy, or there is no call at all - an empty answer,
-        # which the controller already treats as "no adjudication this time".
-        _he = _headless_env_module()
+        err = ""
+        # FLEET-KIT-v1 (MAIN order 2026-10-03): the ONLY path that starts
+        # `claude`. It fails closed - a refused route is no call at all, an
+        # empty answer the controller already treats as "no adjudication this
+        # time". Read-only: `--permission-mode plan`. The body rides stdin, never
+        # the command line. bare=False: the director needs CLAUDE.md
+        # auto-discovery, which --bare turns off.
+        fr = _fleet_route_module()
         try:
-            child_env = _he.headless_child_env(caller="loop_adjudicator")
-        except _he.HeadlessRouteRefused as exc:
+            line, proc = fr.spawn(instruction, caller="loop_adjudicator", note="adjudicate",
+                                  writes_code=False, bare=False,
+                                  extra=["--permission-mode", "plan"],
+                                  stdin=prompt_body, timeout=timeout)
+        except fr.RouteRefused as exc:
             self.last_stderr = str(exc)
             self.log(f"claude adjudicator ({model}) spawn refused: {exc}")
             return None
-        try:
-            r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
-                               capture_output=True, text=True, timeout=timeout, env=child_env,
-                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            out = (r.stdout or "").strip()
         except Exception as e:  # noqa: BLE001
-            out = ""
+            line, proc = {}, None
             self.log(f"claude adjudicator ({model}) error: {e}")
+        if proc is not None:
+            out, err = _answer_of(proc.stdout or "")
+            err = err or (proc.stderr or "")
+        model = line.get("model") or model
         if not out:
-            err = err_summary(read_err(errfile))
+            err = err_summary(err.strip())
             if err:
                 self.last_stderr = err
                 self.log(f"claude adjudicator ({model}) empty stdout; stderr: {err}")

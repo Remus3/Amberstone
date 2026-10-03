@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import itertools
 import logging
 import os
 import sys
@@ -409,6 +410,7 @@ def redirect_shadow_paths_to_tmp(monkeypatch, tmp_path):
 # `tests/test_headless_route_spawn_paths.py` override it explicitly to prove the
 # fail-closed half.
 _FAKE_HEADLESS_URL = "http://127.0.0.1:65530"
+_FLEET_ROOT_SEQ = itertools.count()
 
 
 @pytest.fixture(autouse=True)
@@ -423,6 +425,21 @@ def fake_headless_route(monkeypatch, _live_state_base):
     # Session-shared dir (see `_live_state_base`): content-asserting tests
     # point REFUSAL_LOG at their own tmp_path.
     monkeypatch.setattr(headless_env, "REFUSAL_LOG", _live_state_base / "headless_route.log")
+    # FLEET-KIT-v1: routed spawns go through ops/loop/fleet_route.py into the
+    # vendored kit, which writes its budget / status / usage files under its
+    # root. Point that root at tmp so no test writes the live
+    # ops/loop/control/, and give the kit a fake exe so no PATH lookup decides
+    # a test. The process seam (subprocess.run) stays each test's own stub.
+    try:
+        from ops.loop import fleet_route
+    except Exception:  # noqa: BLE001 - conftest stays dependency-free
+        yield
+        return
+    # One fresh root per test (created lazily by the kit's own writes), so the
+    # kit's 120-runs-per-24h budget can never carry from one test to the next.
+    kit_root = _live_state_base / "fleet_kit_root" / str(next(_FLEET_ROOT_SEQ))
+    monkeypatch.setattr(fleet_route, "ROOT", kit_root)
+    monkeypatch.setattr(fleet_route, "_exe_source", lambda: "claude-fake.exe")
     yield
 
 
