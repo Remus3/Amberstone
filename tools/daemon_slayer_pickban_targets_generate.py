@@ -332,7 +332,8 @@ def atomic_write(payload: dict, out_path: Path) -> None:
         prefix=f".{out_path.stem}.", suffix=".tmp", dir=str(out_path.parent),
     )
     try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+        # newline="\n": text mode writes CRLF on Windows otherwise (RM-481).
+        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as f:
             f.write(_serialize(payload))
         os.replace(tmp_path, str(out_path))
     except Exception:
