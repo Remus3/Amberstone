@@ -167,8 +167,12 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     # FLEET-KIT-v1: the strip moved into the fleet kit, which ALSO removes every
     # CLAUDE_CODE_USE_* key (provider switches) and any ANTHROPIC_*BASE_URL.
     # That is the kit's policy, so those keys count as stripped here too.
+    # FLEET-KIT-v4 (defect 7): the kit's KEEP_EXACT keys (the PowerShell tool
+    # switch) are NOT stripped - they pass through like any other parent key.
+    from ops.loop import fleet_route
+    keep = {k.upper() for k in fleet_route.kit().KEEP_EXACT}
     stripped |= {k.upper() for k in os.environ
-                 if k.upper().startswith("CLAUDE_CODE_USE_")
+                 if (k.upper().startswith("CLAUDE_CODE_USE_") and k.upper() not in keep)
                  or (k.upper().startswith("ANTHROPIC_") and k.upper().endswith("BASE_URL"))}
     dropped, leaked = _spawn_env_key_diff(env, stripped)
     assert not dropped, f"inheritable parent keys missing from the spawn env: {dropped}"

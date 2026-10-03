@@ -67,6 +67,12 @@ data/meta/ddragon_*.json          linguist-generated=true
 *.ps1   text eol=lf
 *.spec  text eol=lf
 
+# FLEET-KIT v4 ships LICENSE and NOTICE with NO extension, so no rule above
+# covers them; under core.autocrlf=true a fresh checkout would write them CRLF
+# and the kit's own conformance() (sha256 of the on-disk bytes against
+# MANIFEST.json) would fail. Every kit file is vendored byte-for-byte as LF.
+ops/fleet_kit/* text eol=lf
+
 # DELIBERATELY NOT PINNED, each for its own reason - do not "finish the job".
 # .bat / .cmd  Windows shell scripts. The 15 tracked .bat are ALREADY LF and
 #              work; the 12 .cmd are CRLF. Pinning either way churns live

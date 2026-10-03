@@ -18,12 +18,12 @@ every one of those additions is a named kit gap reported to MAIN, not a patch:
    caller may pass `stdin=`; it reaches the child through the kit's own `run`
    seam (`subprocess.run(..., input=...)`), which is how `claude -p "<task>"`
    reads piped context.
-3. CWD. The kit uses `root` both as the child's working directory and as the
-   home of its budget and status files. A caller whose child must run in a
-   throwaway worktree passes `cwd=`; the budget stays in RC's own root, so the
-   fleet cap counts every RC run in one place.
-4. A RAISED TIMEOUT leaves the kit's status file at "running". This module
-   writes "idle" back through the kit's own `write_status` before re-raising.
+3. CWD - CLOSED in FLEET-KIT-v4: passed through as the kit's own `cwd=`; the
+   budget stays in RC's own root, so the fleet cap counts every RC run in one
+   place.
+4. TIMEOUT - CLOSED in FLEET-KIT-v4: the kit records the timeout and resets
+   the status itself; this module only re-raises TimeoutExpired so RC callers
+   keep their contract.
 5. The raw `CompletedProcess` (stdout, stderr, returncode) is returned beside
    the kit's usage line, because RC callers judge stderr and the full JSON.
 
@@ -127,28 +127,40 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     seen = {}
 
     def _run(argv, **kw):
-        if cwd is not None:
-            kw["cwd"] = str(cwd)
         if stdin is not None:
             kw["input"] = stdin
         kw.setdefault("encoding", "utf-8")
         kw.setdefault("errors", "replace")
-        proc = subprocess.run(argv, **kw)  # noqa: PLW1510 - rc is judged by the caller
+        try:
+            proc = subprocess.run(argv, **kw)  # noqa: PLW1510 - rc is judged by the caller
+        except subprocess.TimeoutExpired as exc:
+            seen["timeout"] = exc
+            raise
         seen["proc"] = proc
         return proc
 
+    # FLEET-KIT-v4: the child's working directory is the kit's own `cwd=`
+    # parameter (budget, status and usage stay under root). The kit now catches
+    # a timeout itself, writes the usage line with error "timeout" and sets the
+    # status back to idle; RC callers keep their contract (TimeoutExpired is
+    # raised), so it is re-raised here after the kit has finished its record.
+    # `stdin=` stays on the `run` seam: RC's body rides stdin BESIDE a short argv
+    # instruction, which the kit's `stdin=True` (the whole prompt on stdin) does
+    # not express.
     do_spawn = _kit_spawn or k.spawn
     try:
         line = do_spawn(root, CODE, prompt, note=note, writes_code=writes_code, bare=bare,
                         rules_file=rules_file, timeout=timeout, extra=tuple(extra),
                         run=_run, url_source=lambda: url, connect=_connect,
-                        exe_source=_exe_source)
+                        exe_source=_exe_source, cwd=cwd)
     except k.Refused as exc:
         he._log_refusal(caller, "kit")
         raise RouteRefused("kit", str(exc)) from None
     except subprocess.TimeoutExpired:
         _idle(k, root)
         raise
+    if "timeout" in seen:
+        raise seen["timeout"]
     return line, seen.get("proc")
 
 
