@@ -8,8 +8,10 @@ checks its return - proves the helper works and says nothing about whether the
 runner calls it, which is the exact failure this build exists to close.
 
 Nothing here writes under `ops/runtime` or into any real sibling inbox. Every
-path is injected, and the module-scoped `_live_surfaces_unchanged` arm re-reads
-the live surfaces afterwards and fails if a byte moved.
+path is injected, and the module-scoped `_live_surfaces_unchanged` arm fails if
+THIS process wrote any live surface (in-process audit hook) or if a surface with
+no ambient writer moved a byte (digest) - see `_ambient_keys` for why the armed
+responder's own files and the sibling inboxes are audit-only.
 
 No test reaches `real_spawner`. `RC_RESPONDER_REAL_SPAWN` is deleted from the
 process environment by an autouse fixture, and every arm that passes
@@ -226,9 +228,9 @@ def _live_participant_inboxes(root: Path) -> dict:
             if isinstance(code, str) and isinstance(base, str)}
 
 
-def _live_surface_map() -> dict:
+def _live_surface_map(roots: dict | None = None) -> dict:
     surfaces = {}
-    for label, root in _live_roots().items():
+    for label, root in (roots if roots is not None else _live_roots()).items():
         rt = root / "ops" / "runtime"
         surfaces.update({
             f"{label}:metrics": rt / runner.METRICS_NAME,
@@ -276,29 +278,193 @@ def _live_surface_map() -> dict:
 # +477 EVERY time, from three different absolute offsets - a fixed-size
 # periodic record, which is what a live writer looks like and what a test
 # writing once does not.
-_DAEMON_WRITTEN_KEYS = frozenset({"worktree:metrics", "worktree:responder_log"})
+#
+# SUPERSEDED IN PART 2026-10-03, after `RC-InboxResponder` was ARMED (agreement
+# `ops/runtime/inbox_responder_agreement.json`, every 5 minutes, Start In = the
+# MAIN checkout). The 2026-09-11 measurement above was taken while the task was
+# DISARMED and only logged; armed, it also answers notes, so it moves the main
+# checkout's answered / held / outbox / deliveries / attempts / export_cache,
+# and it DELIVERS into sibling inboxes - which the sibling repos' own processes
+# move as well. And the old exclusion was keyed on the label `worktree:`, which
+# is the daemon's root only when the suite runs IN the main checkout: from a
+# worktree the daemon's files carry the `main:` label and were still
+# digest-guarded, so every fire landing inside a run tripped the teardown.
+#
+# The fix is ATTRIBUTION, not a smaller guard. Every live surface is now
+# watched by an in-process write auditor (`_SurfaceWriteAuditor`, a
+# `sys.addaudithook`), which sees exactly the writes made by THIS process - the
+# code under test - and nothing an out-of-process writer does. The byte-digest
+# comparison is kept on top for every surface that has NO ambient writer
+# (the agreement, and in a worktree that checkout's own runtime), because it
+# also catches a write from a subprocess the test spawns. Only the AMBIENT keys
+# below are dropped from the digest half; none is dropped from the audit half.
+# `test_live_surface_guard_*` plants writes and proves both halves still trip.
+_RESPONDER_RUNTIME_KEYS = ("metrics", "responder_log", "answered", "held", "outbox",
+                           "deliveries", "attempts", "export_cache")
+
+
+def _daemon_label(roots: dict) -> str:
+    """The label of the checkout the scheduled task runs in (its Start In)."""
+    return "main" if "main" in roots else "worktree"
+
+
+def _ambient_keys(surfaces: dict, roots: dict) -> frozenset:
+    """Surfaces an OUT-OF-PROCESS writer can move while this module runs."""
+    daemon = _daemon_label(roots)
+    keys = {f"{daemon}:{k}" for k in _RESPONDER_RUNTIME_KEYS}
+    keys |= {k for k in surfaces if ":sibling:" in k}
+    return frozenset(k for k in keys if k in surfaces)
+
+
+def _norm_path(p) -> str:
+    return os.path.normcase(os.path.abspath(os.fsdecode(os.fspath(p))))
+
+
+class _SurfaceWriteAuditor:
+    """Records every write-shaped audit event that lands on a watched surface.
+
+    A `sys.addaudithook` hook cannot be removed once installed, so it is
+    installed once and is inert (one truthiness test) while nothing is watched.
+    It sees only THIS process, which is the point: a write it records is
+    attributable to the code under test, never to the armed responder or to a
+    sibling repo's process. `ctypes.call_function` is included because
+    `rc_facts._append_atomic` appends through `CreateFileW` on Windows, which
+    raises no `open` event.
+    """
+
+    _ALL_ARGS = frozenset({
+        "os.mkdir", "os.rmdir", "os.remove", "os.unlink", "os.rename", "os.replace",
+        "os.truncate", "os.chmod", "os.utime", "shutil.move", "shutil.rmtree",
+        "ctypes.call_function",
+    })
+    _DST_ONLY = frozenset({"os.link", "os.symlink", "shutil.copyfile", "shutil.copytree"})
+    _WRITE_FLAGS = (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC)
+
+    def __init__(self) -> None:
+        self.watches: list = []
+        self._busy = False
+
+    def watch(self, surfaces: dict) -> dict:
+        w = {"prefixes": {k: _norm_path(v) for k, v in surfaces.items()}, "hits": []}
+        self.watches.append(w)
+        return w
+
+    def unwatch(self, w: dict) -> None:
+        if w in self.watches:
+            self.watches.remove(w)
+
+    @classmethod
+    def _targets(cls, event: str, args: tuple) -> list:
+        if event == "open":
+            path, mode, flags = (tuple(args) + (None, None, None))[:3]
+            if path is None or isinstance(path, int):
+                return []
+            writes = isinstance(flags, int) and bool(flags & cls._WRITE_FLAGS)
+            if isinstance(mode, str) and any(c in mode for c in "wxa+"):
+                writes = True
+            return [path] if writes else []
+        if event in cls._DST_ONLY:
+            return list(args[1:2])
+        if event == "ctypes.call_function":
+            inner = args[1] if len(args) > 1 and isinstance(args[1], tuple) else ()
+            return [a for a in inner if isinstance(a, str)]
+        if event in cls._ALL_ARGS:
+            return list(args)
+        return []
+
+    def __call__(self, event: str, args: tuple) -> None:
+        if not self.watches or self._busy:
+            return
+        self._busy = True
+        try:
+            for raw in self._targets(event, args):
+                if not isinstance(raw, (str, bytes, os.PathLike)):
+                    continue
+                try:
+                    norm = _norm_path(raw)
+                except (TypeError, ValueError, OSError):
+                    continue
+                for w in self.watches:
+                    for key, prefix in w["prefixes"].items():
+                        if norm == prefix or norm.startswith(prefix + os.sep):
+                            w["hits"].append((key, event, norm))
+        finally:
+            self._busy = False
+
+
+_SURFACE_AUDITOR = _SurfaceWriteAuditor()
+sys.addaudithook(_SURFACE_AUDITOR)
+
+
+class _LiveSurfaceGuard:
+    """Digest every NON-ambient surface, audit EVERY surface, report both."""
+
+    def __init__(self, surfaces: dict, ambient: frozenset) -> None:
+        self.surfaces = dict(surfaces)
+        self.ambient = frozenset(ambient)
+        self.digested = sorted(k for k in self.surfaces if k not in self.ambient)
+        self.before: dict = {}
+        self._watch = None
+
+    def start(self) -> None:
+        self.before = {k: _digest_path(Path(self.surfaces[k])) for k in self.digested}
+        self._watch = _SURFACE_AUDITOR.watch(self.surfaces)
+
+    def finish(self) -> list:
+        if self._watch is not None:
+            _SURFACE_AUDITOR.unwatch(self._watch)
+        hits = list(self._watch["hits"]) if self._watch is not None else []
+        problems = []
+        moved = sorted(k for k in self.digested
+                       if self.before.get(k) != _digest_path(Path(self.surfaces[k])))
+        if moved:
+            problems.append(f"live surfaces moved (digest): {moved}")
+        written = sorted({k for k, _e, _p in hits})
+        if written:
+            problems.append(f"live surfaces written by this process (audit): {written}; "
+                            f"first events: {hits[:5]}")
+        return problems
+
+
+def _assert_auditor_sees_a_write(tmp_dir: Path) -> None:
+    """Positive control: an inert hook would make every audit verdict clean."""
+    target = tmp_dir / "control_inbox"
+    target.mkdir(parents=True, exist_ok=True)
+    w = _SURFACE_AUDITOR.watch({"control": target})
+    try:
+        (target / "planted.md").write_text("x", encoding="ascii")
+    finally:
+        _SURFACE_AUDITOR.unwatch(w)
+    assert w["hits"], "the surface write auditor recorded nothing for a known write"
 
 
 @pytest.fixture(scope="module", autouse=True)
-def _live_surfaces_unchanged():
-    surfaces = _live_surface_map()
+def _live_surfaces_unchanged(tmp_path_factory):
+    roots = _live_roots()
+    surfaces = _live_surface_map(roots)
     # Vacuity control: a map that resolved no real sibling inbox is not proof
     # that none was touched, so say which half is being guarded.
     present = sorted(k for k, v in surfaces.items() if Path(v).exists())
-    # The exclusion must not be able to widen silently into the other keys.
-    assert set(_DAEMON_WRITTEN_KEYS) == {"worktree:metrics", "worktree:responder_log"}, (
-        f"the daemon-written exclusion set drifted: {sorted(_DAEMON_WRITTEN_KEYS)}")
-    guarded = sorted(k for k in surfaces if k not in _DAEMON_WRITTEN_KEYS)
-    assert guarded, (
-        "every live surface was excluded - the comparison below would then "
+    ambient = _ambient_keys(surfaces, roots)
+    # The digest exclusion must not be able to widen silently: only responder
+    # runtime keys at the daemon's own root, and sibling inboxes. Never the
+    # agreement, which only the operator writes.
+    assert all(k.split(":", 1)[1] in _RESPONDER_RUNTIME_KEYS or ":sibling:" in k
+               for k in ambient), f"the ambient set drifted: {sorted(ambient)}"
+    assert not any(k.endswith(":agreement") for k in ambient), sorted(ambient)
+    guard = _LiveSurfaceGuard(surfaces, ambient)
+    assert guard.digested, (
+        "every live surface was excluded from the digest half - it would then "
         f"pass for the wrong reason (surfaces: {sorted(surfaces)})")
-    before = {k: _digest_path(surfaces[k]) for k in guarded}
-    yield
-    after = {k: _digest_path(v) for k, v in _live_surface_map().items()}
-    changed = sorted(k for k in before if before[k] != after.get(k))
-    assert changed == [], (
-        f"live surfaces moved: {changed} (guarded: {guarded}; present: {present}; "
-        f"NOT guarded, daemon-written: {sorted(_DAEMON_WRITTEN_KEYS)})")
+    _assert_auditor_sees_a_write(tmp_path_factory.mktemp("surface_audit_control"))
+    guard.start()
+    try:
+        yield
+    finally:
+        problems = guard.finish()
+    assert problems == [], (
+        f"{problems} (digest-guarded: {guard.digested}; audit-guarded: all "
+        f"{len(surfaces)}; present: {present}; ambient, audit-only: {sorted(ambient)})")
     # Positive control: the module must have written SOME responder log, or the
     # comparison above passed because nothing ran at all. Asserted on the
     # evidence `_observe_tmp_logs` recorded while the files still existed, not
@@ -321,6 +487,77 @@ def _observe_tmp_logs(tmp_path):
     """
     yield
     _TMP_LOGS_SEEN.update(p for p in _TMP_LOGS if Path(p).exists())
+
+
+def _planted_surfaces(tmp_path: Path) -> tuple:
+    """A stand-in for the live map: a sibling inbox (ambient, audit-only) and an
+    agreement file (digest + audit), both under tmp so nothing live is touched."""
+    inbox = tmp_path / "Sibling ZZ" / "moon_sync_inbox"
+    inbox.mkdir(parents=True)
+    (inbox / "2026-10-03-0600-from-ZZ-existing.md").write_text("old\n", encoding="ascii")
+    agreement = tmp_path / "ops" / "runtime" / runner.AGREEMENT_NAME
+    agreement.parent.mkdir(parents=True)
+    agreement.write_text("{}\n", encoding="ascii")
+    surfaces = {"main:sibling:ZZ": inbox, "main:agreement": agreement}
+    roots = {"worktree": tmp_path / "wt", "main": tmp_path}
+    ambient = _ambient_keys(surfaces, roots)
+    assert ambient == frozenset({"main:sibling:ZZ"}), sorted(ambient)
+    return surfaces, ambient
+
+
+def test_live_surface_guard_trips_on_a_sibling_inbox_write_by_the_code_under_test(tmp_path):
+    """Mutation check for the attribution fix: the sibling inbox is AMBIENT (no
+    digest), yet a reply landed there by the runner's OWN delivery primitive in
+    this process must still fail the guard."""
+    surfaces, ambient = _planted_surfaces(tmp_path)
+    inbox = surfaces["main:sibling:ZZ"]
+    guard = _LiveSurfaceGuard(surfaces, ambient)
+    guard.start()
+    try:
+        tmp = inbox / "_planted.md.tmp"
+        tmp.write_bytes(b"planted reply\n")
+        runner.deliver_link(tmp, inbox / "2026-10-03-0601-from-RC-RESPONDER-re-000000000000.md")
+        tmp.unlink()
+    finally:
+        problems = guard.finish()
+    assert len(problems) == 1 and "audit" in problems[0], problems
+    assert "main:sibling:ZZ" in problems[0], problems
+
+
+def test_live_surface_guard_ignores_an_out_of_process_sibling_inbox_write(tmp_path):
+    """The trip this fixes: the armed responder (or a sibling repo) writing a
+    sibling inbox from ANOTHER process is not attributable to this module."""
+    surfaces, ambient = _planted_surfaces(tmp_path)
+    inbox = surfaces["main:sibling:ZZ"]
+    guard = _LiveSurfaceGuard(surfaces, ambient)
+    guard.start()
+    try:
+        subprocess.run([sys.executable, "-c",
+                        "import sys, pathlib; pathlib.Path(sys.argv[1]).write_text('x')",
+                        str(inbox / "2026-10-03-0602-from-ZZ-ambient.md")],
+                       check=True, timeout=60)
+    finally:
+        problems = guard.finish()
+    assert (inbox / "2026-10-03-0602-from-ZZ-ambient.md").exists()
+    assert problems == [], problems
+
+
+def test_live_surface_guard_digest_half_still_catches_an_out_of_process_write(tmp_path):
+    """A NON-ambient surface keeps its byte digest, so a subprocess spawned by a
+    test that rewrites it still trips the guard even though the audit hook
+    cannot see another process."""
+    surfaces, ambient = _planted_surfaces(tmp_path)
+    guard = _LiveSurfaceGuard(surfaces, ambient)
+    guard.start()
+    try:
+        subprocess.run([sys.executable, "-c",
+                        "import sys, pathlib; pathlib.Path(sys.argv[1]).write_text('{\"x\": 1}')",
+                        str(surfaces["main:agreement"])],
+                       check=True, timeout=60)
+    finally:
+        problems = guard.finish()
+    assert len(problems) == 1 and "digest" in problems[0], problems
+    assert "main:agreement" in problems[0], problems
 
 
 # The first bytes of every row `rc_facts.record_invocation` writes: `json.dumps`
