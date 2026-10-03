@@ -196,3 +196,114 @@ def test_cli_refusal_exits_3(rec, tmp_path, monkeypatch):
 
 def test_cli_usage_error(capsys):
     assert fleet_route.main(["--prompt", "x"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# MAIN 1327 item 1.1: the routed paths launch through the KIT's own process
+# launch (`fleet_headless._run`), so a timeout kills the whole process tree and
+# the kit's timeout status applies. tests/conftest.py points `_launch` at a
+# subprocess.run forwarder so caller-shape tests keep stubbing subprocess.run;
+# the tests below put the production default back and fake only Popen and the
+# taskkill call, so nothing real starts.
+# ---------------------------------------------------------------------------
+
+
+class _FakePopen:
+    """Just enough Popen for the kit's `_run`: a context manager whose
+    communicate either answers or times out once, then answers the reap."""
+
+    instances: list = []
+    hang = False
+
+    def __init__(self, argv, stdin=None, **kw):
+        self.argv, self.stdin_arg, self.kw = list(argv), stdin, kw
+        self.pid = 4242
+        self.returncode = None
+        self.killed = False
+        self.inputs = []
+        _FakePopen.instances.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def communicate(self, input=None, timeout=None):
+        self.inputs.append(input)
+        if self.hang and len(self.inputs) == 1:
+            raise subprocess.TimeoutExpired(self.argv, timeout)
+        self.returncode = -9 if self.killed else 0
+        return ('{"result": "ok"}', "")
+
+    def kill(self):
+        self.killed = True
+
+
+@pytest.fixture
+def kit_launch(monkeypatch):
+    """Production launcher (the kit's `_run`) with Popen and taskkill faked."""
+    monkeypatch.setattr(fleet_route, "_launch", None)
+    _FakePopen.instances = []
+    _FakePopen.hang = False
+    monkeypatch.setattr(subprocess, "Popen", _FakePopen)
+    taskkills = []
+
+    def _run(argv, **kw):
+        taskkills.append(list(argv))
+        return CompletedProcess(args=argv, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _run)
+    return taskkills
+
+
+def test_default_launcher_is_the_kits_own_run(kit_launch, tmp_path):
+    line, proc = fleet_route.spawn("TASK", caller="t", root=tmp_path)
+    (p,) = _FakePopen.instances
+    assert p.argv[:3] == ["claude-fake.exe", "-p", "TASK"]
+    # no body: the kit's launch closes stdin (DEVNULL), it is never inherited
+    assert p.stdin_arg == subprocess.DEVNULL and p.inputs == [None]
+    assert line["rc"] == 0 and proc.stdout == '{"result": "ok"}'
+    assert kit_launch == [], "no taskkill on a clean run"
+
+
+def test_body_rides_stdin_beside_the_argv_instruction(kit_launch, tmp_path):
+    fleet_route.spawn("INST", caller="t", stdin="BODY", root=tmp_path)
+    (p,) = _FakePopen.instances
+    assert p.argv[2] == "INST", "the short instruction stays on argv"
+    assert "BODY" not in p.argv
+    assert p.stdin_arg == subprocess.PIPE and p.inputs == ["BODY"]
+
+
+def test_timeout_kills_the_process_tree_through_the_kit(kit_launch, tmp_path):
+    _FakePopen.hang = True
+    with pytest.raises(subprocess.TimeoutExpired):
+        fleet_route.spawn("T", caller="t", note="n", timeout=1, root=tmp_path)
+    (p,) = _FakePopen.instances
+    (tk,) = kit_launch
+    assert tk[0].lower().endswith("taskkill.exe") or tk[0].lower().endswith("taskkill")
+    assert tk[1:] == ["/T", "/F", "/PID", "4242"], "the WHOLE tree, by pid"
+    assert p.killed is True
+    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
+    rec_line = json.loads(usage[-1])
+    assert rec_line["error"] == "timeout" and rec_line["rc"] is None
+    assert _status(tmp_path)["state"] == "idle"
+
+
+def test_rc_gate_refusal_reaches_no_popen(kit_launch, tmp_path, monkeypatch):
+    monkeypatch.setattr(he, "_read_user_var", lambda name: None)
+    monkeypatch.setattr(he, "REFUSAL_LOG", tmp_path / "r.log")
+    with pytest.raises(fleet_route.RouteRefused):
+        fleet_route.spawn("T", caller="t-unset", stdin="BODY", root=tmp_path)
+    assert _FakePopen.instances == [] and kit_launch == []
+    assert not (tmp_path / "ops/loop/control/headless_budget.json").exists()
+
+
+def test_kit_without_a_launcher_refuses_before_counting(kit_launch, tmp_path, monkeypatch):
+    k = fleet_route.kit()
+    monkeypatch.delattr(k, "_run")
+    with pytest.raises(fleet_route.RouteRefused) as ei:
+        fleet_route.spawn("T", caller="t", root=tmp_path)
+    assert ei.value.reason == "kit"
+    assert _FakePopen.instances == []
+    assert not (tmp_path / "ops/loop/control/headless_budget.json").exists()

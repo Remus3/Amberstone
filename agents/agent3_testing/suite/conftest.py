@@ -63,4 +63,10 @@ def _fake_headless_route(monkeypatch, tmp_path_factory):
     from ops.loop import fleet_route
     monkeypatch.setattr(fleet_route, "ROOT", tmp_path_factory.mktemp("fleet_kit_root"))
     monkeypatch.setattr(fleet_route, "_exe_source", lambda: "claude-fake.exe")
+    # MAIN 1327 item 1.1: production launches through the kit's own `_run`;
+    # the stubs here patch `subprocess.run`, so forward the launch to it at
+    # call time (mirrors tests/conftest.py).
+    import subprocess as _sp
+
+    monkeypatch.setattr(fleet_route, "_launch", lambda argv, **kw: _sp.run(argv, **kw))
     yield

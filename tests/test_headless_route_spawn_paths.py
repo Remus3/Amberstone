@@ -289,6 +289,75 @@ def test_kit_call_supervisor_ephemeral(kit_calls):
     assert "t-kit-call" in run.call_args.kwargs["input"]
 
 
+class _HangPopen:
+    """The kit's `_run` sees a child that never answers: communicate times out
+    once, then the reap after the tree kill returns."""
+
+    made: list = []
+
+    def __init__(self, argv, stdin=None, **kw):
+        self.argv, self.pid, self.returncode, self.n = list(argv), 777, None, 0
+        _HangPopen.made.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def communicate(self, input=None, timeout=None):
+        self.n += 1
+        if self.n == 1:
+            import subprocess as _sp
+            raise _sp.TimeoutExpired(self.argv, timeout)
+        self.returncode = 1
+        return ("", "")
+
+    def kill(self):
+        pass
+
+
+@pytest.fixture
+def kit_hang(routed, monkeypatch):
+    """REAL kit spawn + the kit's own `_run`; only Popen and taskkill faked."""
+    import subprocess as _sp
+    monkeypatch.setattr(fleet_route, "_launch", None)
+    _HangPopen.made = []
+    monkeypatch.setattr(_sp, "Popen", _HangPopen)
+    kills = []
+    monkeypatch.setattr(_sp, "run", lambda argv, **kw: kills.append(list(argv)) or
+                        CompletedProcess(args=argv, returncode=0, stdout="", stderr=""))
+    return kills
+
+
+def _assert_tree_killed(kills):
+    (p,) = _HangPopen.made
+    assert p.argv[1] == "-p", "started by the kit's argv builder"
+    tree = [k for k in kills if "/T" in k]
+    assert len(tree) == 1 and tree[0][-2:] == ["/PID", "777"]
+
+
+def test_adjudicator_timeout_kills_tree_via_kit(kit_hang, tmp_path):
+    assert adjudicator.ClaudeAdjudicator(_ADJ_CFG, tmp_path).ask("BODY", "INST") is None
+    _assert_tree_killed(kit_hang)
+
+
+def test_ci_watchdog_timeout_kills_tree_via_kit(kit_hang, tmp_path, monkeypatch):
+    monkeypatch.setattr(cw, "_run", _fake_run_factory([]))
+    monkeypatch.setattr(cw, "_write_context", lambda *a, **k: None)
+    cw.execute_dispatch(1, "h" * 12, arm=True, worktree=tmp_path)
+    _assert_tree_killed(kit_hang)
+
+
+def test_supervisor_ephemeral_timeout_kills_tree_via_kit(kit_hang):
+    from agents.supervisor import EphemeralSpawnFailed, spawn_ephemeral_llm
+    with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"):
+        with pytest.raises(EphemeralSpawnFailed) as ei:
+            spawn_ephemeral_llm("6", "t-kit-hang", "demo", {})
+    assert "timed out" in str(ei.value)
+    _assert_tree_killed(kit_hang)
+
+
 def test_kit_call_supervisor_non_opus_agent_does_not_write_code(kit_calls):
     from agents.supervisor import spawn_ephemeral_llm
     with mock.patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \

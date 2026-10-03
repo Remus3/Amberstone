@@ -13,17 +13,25 @@ every one of those additions is a named kit gap reported to MAIN, not a patch:
    names, and the kit's own `check_url` + probe then run on top of it. The
    kit's probe is pointed at `headless_env._probe`, so there is ONE probe
    implementation in RC and the suite's fakes cover both.
-2. STDIN. The kit passes the prompt on argv only. A multi-kilobyte body would
-   hit the Windows command-line ceiling and leak into process listings, so a
-   caller may pass `stdin=`; it reaches the child through the kit's own `run`
-   seam (`subprocess.run(..., input=...)`), which is how `claude -p "<task>"`
-   reads piped context.
+2. STDIN BESIDE ARGV - OPEN kit gap (MAIN 1327 item 1.1). RC's callers put a
+   short instruction on argv and a multi-kilobyte body on stdin (`claude -p
+   "<task>"` reading piped context). The kit's v4 `stdin=True` means the WHOLE
+   prompt on stdin with NO argv prompt; that is not proven byte-equivalent for
+   `claude -p` (how the CLI joins piped stdin with the argv prompt is
+   undocumented, and no live run is allowed to measure it), so RC keeps the
+   body-beside-argv shape. It reaches the child as `input=` through the `run`
+   seam into the KIT'S OWN launch, `fleet_headless._run`, so only the stdin
+   shape is RC's; the process launch, the DEVNULL default and the timeout
+   tree kill are the kit's. The kit exposes that launch only under a private
+   name; a kit without it is refused before a start is counted (no fallback
+   launch). Ask of MAIN: a public launch, or an argv-prompt-plus-stdin mode.
 3. CWD - CLOSED in FLEET-KIT-v4: passed through as the kit's own `cwd=`; the
    budget stays in RC's own root, so the fleet cap counts every RC run in one
    place.
-4. TIMEOUT - CLOSED in FLEET-KIT-v4: the kit records the timeout and resets
-   the status itself; this module only re-raises TimeoutExpired so RC callers
-   keep their contract.
+4. TIMEOUT - CLOSED in FLEET-KIT-v4: the child is started by the kit's own
+   `_run`, so a timeout kills the whole process tree (taskkill /T /F); the kit
+   records the timeout and resets the status itself; this module only
+   re-raises TimeoutExpired so RC callers keep their contract.
 5. The raw `CompletedProcess` (stdout, stderr, returncode) is returned beside
    the kit's usage line, because RC callers judge stderr and the full JSON.
 
@@ -105,6 +113,18 @@ def _exe_source():
 
 # Seams a test replaces. Production never rebinds them.
 _kit_spawn = None  # None -> kit().spawn
+# None -> the kit's own process launch, `fleet_headless._run`: stdin DEVNULL
+# unless a body is given, and a timeout kills the WHOLE process tree
+# (taskkill /T /F) before TimeoutExpired is re-raised into the kit, which then
+# records error "timeout" and resets the status. tests/conftest.py rebinds it to
+# a subprocess.run forwarder so caller-shape tests can keep stubbing run.
+_launch = None
+
+
+def _kit_launcher(k):
+    """The kit's launch function, or None when this kit version has none."""
+    fn = getattr(k, "_run", None)
+    return fn if callable(fn) else None
 
 
 def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False,
@@ -124,6 +144,13 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
 
     k = kit()
     root = Path(root) if root is not None else ROOT
+    launch = _launch or _kit_launcher(k)
+    if launch is None:
+        # Fail closed before the kit counts a start: without the kit's own
+        # launch there is no process-tree kill on timeout, and RC must not
+        # quietly fall back to a launch that leaves claude's children running.
+        he._log_refusal(caller, "kit")
+        raise RouteRefused("kit", "vendored kit has no _run launcher")
     seen = {}
 
     def _run(argv, **kw):
@@ -132,7 +159,7 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
         kw.setdefault("encoding", "utf-8")
         kw.setdefault("errors", "replace")
         try:
-            proc = subprocess.run(argv, **kw)  # noqa: PLW1510 - rc is judged by the caller
+            proc = launch(argv, **kw)
         except subprocess.TimeoutExpired as exc:
             seen["timeout"] = exc
             raise
@@ -140,13 +167,15 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
         return proc
 
     # FLEET-KIT-v4: the child's working directory is the kit's own `cwd=`
-    # parameter (budget, status and usage stay under root). The kit now catches
-    # a timeout itself, writes the usage line with error "timeout" and sets the
-    # status back to idle; RC callers keep their contract (TimeoutExpired is
-    # raised), so it is re-raised here after the kit has finished its record.
-    # `stdin=` stays on the `run` seam: RC's body rides stdin BESIDE a short argv
-    # instruction, which the kit's `stdin=True` (the whole prompt on stdin) does
-    # not express.
+    # parameter (budget, status and usage stay under root). The child is
+    # started by the kit's own launch (`_run`), so a timeout kills the whole
+    # process tree; the kit then catches it, writes the usage line with error
+    # "timeout" and sets the status back to idle. RC callers keep their
+    # contract (TimeoutExpired is raised), so it is re-raised here after the
+    # kit has finished its record. The `run` seam is still RC's for ONE thing:
+    # the body rides stdin BESIDE a short argv instruction (`input=` into the
+    # kit's own `_run`), which the kit's `stdin=True` (the whole prompt on
+    # stdin, no argv prompt) does not express - see the module docstring.
     do_spawn = _kit_spawn or k.spawn
     try:
         line = do_spawn(root, CODE, prompt, note=note, writes_code=writes_code, bare=bare,
