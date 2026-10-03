@@ -68,8 +68,32 @@ _SCALAR_KEYS = (
     "cc_blended_ehp",
 )
 
+# Per-call deadline for every live client call in this file. The client's
+# DEFAULT_TIMEOUT (0.5 s, core/daemon_slayer_client.py) is a live-coach budget,
+# not a test budget: under box load a /rank-tank top=300 call exceeds it,
+# _post_json swallows the timeout and returns None, and the test then crashed
+# on None (or, worse, compared two Nones). Precedent:
+# test_rm115_tail_seams_reach_the_client.py (_T = 60.0). An over-long deadline
+# only costs wall clock on a run that was going to fail anyway.
+_T = 60.0
+
+
+class EngineNeverAnsweredError(AssertionError):
+    """A live call returned NO BODY - a transport failure, not a verdict."""
+
 
 def _ids(rows) -> list[str]:
+    # NEVER let a None (or an empty ranking) reach an assertion: two Nones
+    # compare equal and would satisfy every "control holds" assertEqual.
+    if rows is None:
+        raise EngineNeverAnsweredError(
+            f"engine never answered: a live DS rank call returned None within "
+            f"{_T} s - transport failure at core/daemon_slayer_client.py "
+            f"_post_json, not a ranking result")
+    if not rows:
+        raise EngineNeverAnsweredError(
+            "engine answered with an EMPTY ranking - an empty-vs-empty "
+            "comparison would pass vacuously")
     return [r.item_id for r in rows]
 
 
@@ -78,6 +102,11 @@ def _rank_of(order: list[str], item_id: str):
 
 
 def _scalars(resp: dict) -> tuple:
+    if resp is None:
+        raise EngineNeverAnsweredError(
+            f"engine never answered: a live DS /ehp call returned None within "
+            f"{_T} s - transport failure at core/daemon_slayer_client.py "
+            f"_post_json, not an EHP result")
     return tuple(resp[k] for k in _SCALAR_KEYS)
 
 
@@ -97,8 +126,8 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
     # ------------------------------------------------------------ item lane
     def test_item_resist_grants_reorders_and_control_holds(self) -> None:
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Sion", **kw))
-        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_resist_grants=True))
+        off = _ids(dsc.rank_tank_for("Sion", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_resist_grants=True, timeout=_T))
         # Jak'Sho 6665 and Terminus 3302 are registry keys; Terminus scores 0.0
         # with the seam off, which is why it sits ~#115 and needs top=300.
         self.assertLess(_rank_of(on, "6665"), _rank_of(off, "6665"))
@@ -106,14 +135,14 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         # CONTROL: none of these five ids is in _ITEM_RESIST_GRANTS.
         ctl = dict(kw, only_item_ids=["3143", "3110", "3742", "3083", "3084"])
         self.assertEqual(
-            _ids(dsc.rank_tank_for("Sion", **ctl)),
-            _ids(dsc.rank_tank_for("Sion", **ctl, apply_item_resist_grants=True)),
+            _ids(dsc.rank_tank_for("Sion", **ctl, timeout=_T)),
+            _ids(dsc.rank_tank_for("Sion", **ctl, apply_item_resist_grants=True, timeout=_T)),
         )
 
     def test_item_bonus_hp_amp_takes_the_head_and_arena_mirror_is_excluded(self) -> None:
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Sion", **kw))
-        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_bonus_hp_amp=True))
+        off = _ids(dsc.rank_tank_for("Sion", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_bonus_hp_amp=True, timeout=_T))
         self.assertEqual(_rank_of(off, "3083"), 2)
         self.assertEqual(_rank_of(on, "3083"), 1, "Warmog's must take the head")
         # CONTROL: the Arena mirror 443083 was deliberately REMOVED from the
@@ -121,47 +150,47 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         # in the Arena pool, so this pins the removal rather than an absence.
         base = dict(champion="Sion", level=13, item_ids=["3068", "443083"], mode="ARENA")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**base)),
-            _scalars(dsc.ehp_for(**base, apply_item_bonus_hp_amp=True)),
+            _scalars(dsc.ehp_for(**base, timeout=_T)),
+            _scalars(dsc.ehp_for(**base, apply_item_bonus_hp_amp=True, timeout=_T)),
         )
 
     def test_item_mana_health_moves_and_a_champion_control_would_be_invalid(self) -> None:
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Sion", **kw))
-        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_mana_health=True))
+        off = _ids(dsc.rank_tank_for("Sion", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_mana_health=True, timeout=_T))
         self.assertLess(_rank_of(on, "3119"), _rank_of(off, "3119"))
         # CONTROL must be an ITEM-set control. A manaless champion is NOT valid:
         # item_mana_health_hp zeroes only on bonus_mana <= 0, and Winter's
         # Approach supplies its own mana, so even Garen moves.
         ctl = dict(kw, only_item_ids=["3143", "3110", "3742", "3083", "3084"])
         self.assertEqual(
-            _ids(dsc.rank_tank_for("Sion", **ctl)),
-            _ids(dsc.rank_tank_for("Sion", **ctl, apply_item_mana_health=True)),
+            _ids(dsc.rank_tank_for("Sion", **ctl, timeout=_T)),
+            _ids(dsc.rank_tank_for("Sion", **ctl, apply_item_mana_health=True, timeout=_T)),
         )
         garen = dict(champion="Garen", level=13, item_ids=["3068", "3119"], mode="SR")
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**garen)),
-            _scalars(dsc.ehp_for(**garen, apply_item_mana_health=True)),
+            _scalars(dsc.ehp_for(**garen, timeout=_T)),
+            _scalars(dsc.ehp_for(**garen, apply_item_mana_health=True, timeout=_T)),
             "a manaless champion still moves - do not use one as a control here",
         )
 
     def test_item_health_stacks_moves_and_is_level_gated(self) -> None:
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Sion", **kw))
-        on = _ids(dsc.rank_tank_for("Sion", **kw, assume_item_health_stacks=True))
+        off = _ids(dsc.rank_tank_for("Sion", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Sion", **kw, assume_item_health_stacks=True, timeout=_T))
         self.assertLess(_rank_of(on, "3084"), _rank_of(off, "3084"))
         # CONTROL: the SAME item at level 6, where the assumed-proc table is 0.
         # A level gate is a stronger control than a different item - it proves
         # the mechanism, not just the absence of a key.
         l6 = dict(champion="Sion", level=6, item_ids=["3068", "3084"], mode="SR")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**l6)),
-            _scalars(dsc.ehp_for(**l6, assume_item_health_stacks=True)),
+            _scalars(dsc.ehp_for(**l6, timeout=_T)),
+            _scalars(dsc.ehp_for(**l6, assume_item_health_stacks=True, timeout=_T)),
         )
         l13 = dict(l6, level=13)
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**l13)),
-            _scalars(dsc.ehp_for(**l13, assume_item_health_stacks=True)),
+            _scalars(dsc.ehp_for(**l13, timeout=_T)),
+            _scalars(dsc.ehp_for(**l13, assume_item_health_stacks=True, timeout=_T)),
         )
 
     def test_item_spell_shield_needs_enemies_and_an_unsaturated_comp(self) -> None:
@@ -169,23 +198,23 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         # at 1.0 and the 20 pct cut vanishes into the clamp (0/138 rows move).
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300,
                   enemies=["Leona"], score_by="cc_blended")
-        off = _ids(dsc.rank_tank_for("Sion", **kw))
-        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_spell_shield=True))
+        off = _ids(dsc.rank_tank_for("Sion", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Sion", **kw, apply_item_spell_shield=True, timeout=_T))
         self.assertLess(_rank_of(on, "3814"), _rank_of(off, "3814"))
         self.assertLess(_rank_of(on, "3102"), _rank_of(off, "3102"))
         # CONTROL (gate, not registry): with no enemies the consuming branch is
         # never entered, so the seam is inert even with Banshee's ranked.
         noenemy = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
         self.assertEqual(
-            _ids(dsc.rank_tank_for("Sion", **noenemy)),
-            _ids(dsc.rank_tank_for("Sion", **noenemy, apply_item_spell_shield=True)),
+            _ids(dsc.rank_tank_for("Sion", **noenemy, timeout=_T)),
+            _ids(dsc.rank_tank_for("Sion", **noenemy, apply_item_spell_shield=True, timeout=_T)),
         )
 
     # ------------------------------------------------------------ rune lane
     def test_rune_seams_ride_the_new_rune_ids_transport(self) -> None:
         base = dict(champion="Ornn", level=13,
                     item_ids=["3068", "3075", "3143"], mode="SR")
-        plain = _scalars(dsc.ehp_for(**base))
+        plain = _scalars(dsc.ehp_for(**base, timeout=_T))
         for seam, ids in (
             ("apply_rune_resist_grants", ["8439", "8429", "8242"]),
             ("apply_rune_health_grants", ["8437", "8451"]),
@@ -193,7 +222,7 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         ):
             with self.subTest(seam=seam):
                 got = _scalars(
-                    dsc.ehp_for(**base, rune_ids=ids, **{seam: True})
+                    dsc.ehp_for(**base, rune_ids=ids, **{seam: True}, timeout=_T)
                 )
                 self.assertNotEqual(plain, got, f"{seam} did not move")
                 # CONTROL: the flag ON with runes it cannot key. Stronger than
@@ -201,7 +230,7 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
                 other = ["8005", "8009", "9104", "8014"]  # Precision, offensive
                 self.assertEqual(
                     plain,
-                    _scalars(dsc.ehp_for(**base, rune_ids=other, **{seam: True})),
+                    _scalars(dsc.ehp_for(**base, rune_ids=other, **{seam: True}, timeout=_T)),
                     f"{seam} fired on runes outside its registry",
                 )
 
@@ -209,58 +238,58 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         noshield = dict(champion="Ornn", level=13,
                         item_ids=["3068", "3075", "3143"], mode="SR")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**noshield)),
+            _scalars(dsc.ehp_for(**noshield, timeout=_T)),
             _scalars(dsc.ehp_for(**noshield, rune_ids=["8453"],
-                                 apply_rune_hsp_amp=True)),
+                                 apply_rune_hsp_amp=True, timeout=_T)),
             "Revitalize amplifies shields; with no shield it must be inert",
         )
         # Sterak's Gage supplies the shield the seam amplifies.
         shielded = dict(noshield, item_ids=["3053", "3075", "3143"])
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**shielded)),
+            _scalars(dsc.ehp_for(**shielded, timeout=_T)),
             _scalars(dsc.ehp_for(**shielded, rune_ids=["8453"],
-                                 apply_rune_hsp_amp=True)),
+                                 apply_rune_hsp_amp=True, timeout=_T)),
         )
 
     # -------------------------------------------------- champion / passive lane
     def test_passive_resist_reorders_for_a_registry_champion(self) -> None:
         kw = dict(level=11, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Malphite", **kw))
-        on = _ids(dsc.rank_tank_for("Malphite", **kw, apply_passive_resist=True))
+        off = _ids(dsc.rank_tank_for("Malphite", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Malphite", **kw, apply_passive_resist=True, timeout=_T))
         self.assertNotEqual(off, on, "Malphite W is in _PASSIVE_RESIST_OVERRIDES")
         # CONTROL: Ornn is NOT in the 22-champion registry. (Ornn and Sion were
         # both suggested as movers during triage and both are absent - the real
         # movers are Malphite and Rammus.)
         self.assertEqual(
-            _ids(dsc.rank_tank_for("Ornn", **kw)),
-            _ids(dsc.rank_tank_for("Ornn", **kw, apply_passive_resist=True)),
+            _ids(dsc.rank_tank_for("Ornn", **kw, timeout=_T)),
+            _ids(dsc.rank_tank_for("Ornn", **kw, apply_passive_resist=True, timeout=_T)),
         )
 
     def test_passive_mitigation_reorders_only_for_per_type_dr(self) -> None:
         kw = dict(level=11, item_ids=["3068", "3075"], mode="SR", top=300)
         # Kassadin's P is MAGIC-only DR -> asymmetric -> genuinely reorders.
-        off = _ids(dsc.rank_tank_for("Kassadin", **kw))
-        on = _ids(dsc.rank_tank_for("Kassadin", **kw, apply_passive_mitigation=True))
+        off = _ids(dsc.rank_tank_for("Kassadin", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Kassadin", **kw, apply_passive_mitigation=True, timeout=_T))
         self.assertNotEqual(off, on)
         # CONTROL: Ornn is absent from the 5-champion registry.
         self.assertEqual(
-            _ids(dsc.rank_tank_for("Ornn", **kw)),
-            _ids(dsc.rank_tank_for("Ornn", **kw, apply_passive_mitigation=True)),
+            _ids(dsc.rank_tank_for("Ornn", **kw, timeout=_T)),
+            _ids(dsc.rank_tank_for("Ornn", **kw, apply_passive_mitigation=True, timeout=_T)),
         )
 
     def test_passive_revive_moves_the_scalar_and_cannot_reorder(self) -> None:
         base = dict(champion="Anivia", level=11,
                     item_ids=["3068", "3075"], mode="SR")
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**base)),
-            _scalars(dsc.ehp_for(**base, apply_passive_revive=True)),
+            _scalars(dsc.ehp_for(**base, timeout=_T)),
+            _scalars(dsc.ehp_for(**base, apply_passive_revive=True, timeout=_T)),
             "Anivia P is one of the two revive entries",
         )
         # CONTROL: Ornn - the registry holds only Anivia and Zac.
         ctl = dict(base, champion="Ornn")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**ctl)),
-            _scalars(dsc.ehp_for(**ctl, apply_passive_revive=True)),
+            _scalars(dsc.ehp_for(**ctl, timeout=_T)),
+            _scalars(dsc.ehp_for(**ctl, apply_passive_revive=True, timeout=_T)),
         )
 
     def test_build_tenacity_is_tri_state_and_reorders(self) -> None:
@@ -273,12 +302,12 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         """
         kw = dict(level=11, item_ids=["3068", "3075"], mode="SR", top=300,
                   enemies=["Leona", "Ashe"], score_by="cc_blended")
-        off = _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=False))
-        on = _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=True))
+        off = _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=False, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=True, timeout=_T))
         self.assertNotEqual(off, on)
         self.assertEqual(_rank_of(on, "3053"), 1, "Sterak's Gage must take the head")
         # Omitting the key must inherit the engine default (ON), NOT the False.
-        inherited = _ids(dsc.rank_tank_for("Ornn", **kw))
+        inherited = _ids(dsc.rank_tank_for("Ornn", **kw, timeout=_T))
         self.assertEqual(
             inherited, on,
             "omitting apply_build_tenacity must inherit the engine's default-ON; "
@@ -290,14 +319,14 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         kw = dict(level=11, item_ids=["3068", "3075"], mode="SR", top=300,
                   enemies=["Leona", "Ashe"], score_by="cc_blended")
         # Alone it is a uniform scale - scalar moves, order does not.
-        off = _ids(dsc.rank_tank_for("Garen", **kw, apply_build_tenacity=False))
+        off = _ids(dsc.rank_tank_for("Garen", **kw, apply_build_tenacity=False, timeout=_T))
         alone = _ids(dsc.rank_tank_for("Garen", **kw, apply_build_tenacity=False,
-                                       apply_champion_tenacity=True))
+                                       apply_champion_tenacity=True, timeout=_T))
         self.assertEqual(off, alone, "champion tenacity alone is a uniform scale")
         # With build tenacity credited too, tenacity becomes build-dependent.
-        both_off = _ids(dsc.rank_tank_for("Garen", **kw, apply_build_tenacity=True))
+        both_off = _ids(dsc.rank_tank_for("Garen", **kw, apply_build_tenacity=True, timeout=_T))
         both_on = _ids(dsc.rank_tank_for("Garen", **kw, apply_build_tenacity=True,
-                                         apply_champion_tenacity=True))
+                                         apply_champion_tenacity=True, timeout=_T))
         self.assertNotEqual(
             both_off, both_on,
             "tenacity stacks multiplicatively - a 'no reorder' verdict measured "
@@ -305,30 +334,30 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         )
         # CONTROL: Ornn is absent from the 3-champion tenacity registry.
         self.assertEqual(
-            _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=True)),
+            _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=True, timeout=_T)),
             _ids(dsc.rank_tank_for("Ornn", **kw, apply_build_tenacity=True,
-                                   apply_champion_tenacity=True)),
+                                   apply_champion_tenacity=True, timeout=_T)),
         )
 
     def test_survival_window_moves_the_scalar_and_cannot_reorder(self) -> None:
         base = dict(champion="Tryndamere", level=13,
                     item_ids=["3068", "3075", "3143"], mode="SR")
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**base)),
-            _scalars(dsc.ehp_for(**base, apply_survival_window=True)),
+            _scalars(dsc.ehp_for(**base, timeout=_T)),
+            _scalars(dsc.ehp_for(**base, apply_survival_window=True, timeout=_T)),
         )
         # CONTROL: Garen has no key in the 10-entry champion/ability registry.
         ctl = dict(base, champion="Garen")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**ctl)),
-            _scalars(dsc.ehp_for(**ctl, apply_survival_window=True)),
+            _scalars(dsc.ehp_for(**ctl, timeout=_T)),
+            _scalars(dsc.ehp_for(**ctl, apply_survival_window=True, timeout=_T)),
         )
 
     # ------------------------------------------------------- assume / mode lane
     def test_item_general_dr_reorders(self) -> None:
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Malphite", **kw))
-        on = _ids(dsc.rank_tank_for("Malphite", **kw, assume_item_general_dr=True))
+        off = _ids(dsc.rank_tank_for("Malphite", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Malphite", **kw, assume_item_general_dr=True, timeout=_T))
         self.assertLess(
             _rank_of(on, "664644"), _rank_of(off, "664644"),
             "Crown of the Shattered Queen is one of the two priced ids",
@@ -337,14 +366,14 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         ctl = dict(champion="Malphite", level=13,
                    item_ids=["3068", "3075", "3143"], mode="SR")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**ctl)),
-            _scalars(dsc.ehp_for(**ctl, assume_item_general_dr=True)),
+            _scalars(dsc.ehp_for(**ctl, timeout=_T)),
+            _scalars(dsc.ehp_for(**ctl, assume_item_general_dr=True, timeout=_T)),
         )
 
     def test_item_proc_heal_reorders(self) -> None:
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        off = _ids(dsc.rank_tank_for("Malphite", **kw))
-        on = _ids(dsc.rank_tank_for("Malphite", **kw, assume_item_proc_heal=True))
+        off = _ids(dsc.rank_tank_for("Malphite", **kw, timeout=_T))
+        on = _ids(dsc.rank_tank_for("Malphite", **kw, assume_item_proc_heal=True, timeout=_T))
         self.assertLess(
             _rank_of(on, "2502"), _rank_of(off, "2502"),
             "Unending Despair is the registry's only SR id",
@@ -352,36 +381,36 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         ctl = dict(champion="Malphite", level=13,
                    item_ids=["3068", "3075", "3143"], mode="SR")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**ctl)),
-            _scalars(dsc.ehp_for(**ctl, assume_item_proc_heal=True)),
+            _scalars(dsc.ehp_for(**ctl, timeout=_T)),
+            _scalars(dsc.ehp_for(**ctl, assume_item_proc_heal=True, timeout=_T)),
         )
 
     def test_champion_spell_shield_needs_enemies(self) -> None:
         base = dict(champion="Morgana", level=13, item_ids=["3068", "3075"],
                     mode="SR", enemies=["Leona", "Amumu", "Sett"])
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**base)),
-            _scalars(dsc.ehp_for(**base, apply_spell_shield=True)),
+            _scalars(dsc.ehp_for(**base, timeout=_T)),
+            _scalars(dsc.ehp_for(**base, apply_spell_shield=True, timeout=_T)),
             "Morgana E is one of the four spell-shield champions",
         )
         # CONTROL: Malphite is absent from _CHAMPION_SPELL_SHIELD_OVERRIDES.
         ctl = dict(base, champion="Malphite")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**ctl)),
-            _scalars(dsc.ehp_for(**ctl, apply_spell_shield=True)),
+            _scalars(dsc.ehp_for(**ctl, timeout=_T)),
+            _scalars(dsc.ehp_for(**ctl, apply_spell_shield=True, timeout=_T)),
         )
 
     def test_mode_modifiers_moves_on_urf_and_is_inert_on_aram_and_sr(self) -> None:
         urf = dict(champion="Aatrox", level=13, item_ids=["3068", "3075"], mode="URF")
         self.assertNotEqual(
-            _scalars(dsc.ehp_for(**urf)),
-            _scalars(dsc.ehp_for(**urf, apply_mode_modifiers=True)),
+            _scalars(dsc.ehp_for(**urf, timeout=_T)),
+            _scalars(dsc.ehp_for(**urf, apply_mode_modifiers=True, timeout=_T)),
         )
         # CONTROL 1: SR has no wiki sidecar entry at all.
         sr = dict(urf, mode="SR")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**sr)),
-            _scalars(dsc.ehp_for(**sr, apply_mode_modifiers=True)),
+            _scalars(dsc.ehp_for(**sr, timeout=_T)),
+            _scalars(dsc.ehp_for(**sr, apply_mode_modifiers=True, timeout=_T)),
         )
         # CONTROL 2 - the counter-intuitive one, recorded so it is not
         # re-derived: ARAM is INERT for this flag. The ARAM balance axes are
@@ -390,26 +419,26 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         # counting. An ARAM acceptance case here would look like a bug.
         aram = dict(urf, mode="ARAM")
         self.assertEqual(
-            _scalars(dsc.ehp_for(**aram)),
-            _scalars(dsc.ehp_for(**aram, apply_mode_modifiers=True)),
+            _scalars(dsc.ehp_for(**aram, timeout=_T)),
+            _scalars(dsc.ehp_for(**aram, apply_mode_modifiers=True, timeout=_T)),
         )
 
     def test_ad_axis_ability_damage_is_bruiser_only(self) -> None:
         kw = dict(level=13, item_ids=["3071", "3053"], mode="SR",
                   target_armor=100.0, target_mr=60.0,
                   target_max_hp=2500.0, target_bonus_hp=1200.0, top=300)
-        off = _ids(dsc.rank_bruiser_for("Garen", **kw))
+        off = _ids(dsc.rank_bruiser_for("Garen", **kw, timeout=_T))
         on = _ids(dsc.rank_bruiser_for("Garen", **kw,
-                                       apply_ad_axis_ability_damage=True))
+                                       apply_ad_axis_ability_damage=True, timeout=_T))
         self.assertNotEqual(off, on)
         # CONTROL: Warwick is ON the AD branch (so the gate admits him) but all
         # four of his per-spell rows normalise to MAGIC, which the credited set
         # {PHYSICAL, TRUE} excludes - the sum is exactly 0.0. A stronger control
         # than an AP champion, whose branch is never entered at all.
         self.assertEqual(
-            _ids(dsc.rank_bruiser_for("Warwick", **kw)),
+            _ids(dsc.rank_bruiser_for("Warwick", **kw, timeout=_T)),
             _ids(dsc.rank_bruiser_for("Warwick", **kw,
-                                      apply_ad_axis_ability_damage=True)),
+                                      apply_ad_axis_ability_damage=True, timeout=_T)),
         )
 
     # --------------------------------------------------------- the block default
@@ -420,7 +449,7 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
         call that sets none of them must reproduce the pre-wiring request.
         """
         kw = dict(level=13, item_ids=["3068", "3075"], mode="SR", top=300)
-        a = _ids(dsc.rank_tank_for("Sion", **kw))
+        a = _ids(dsc.rank_tank_for("Sion", **kw, timeout=_T))
         b = _ids(dsc.rank_tank_for(
             "Sion", **kw,
             apply_item_resist_grants=False,
@@ -440,7 +469,7 @@ class EhpFamilySeamsReachTheClientTests(unittest.TestCase):
             apply_rune_flat_mitigation=False,
             assume_item_general_dr=False,
             assume_item_health_stacks=False,
-            assume_item_proc_heal=False,
+            assume_item_proc_heal=False, timeout=_T,
         ))
         self.assertEqual(a, b, "an all-False call must be byte-identical")
 
