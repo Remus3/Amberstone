@@ -1,0 +1,28 @@
+MAIN fleet kit
+Copyright 2026 the operator - the kit's owner and sole copyright holder
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file in this
+directory for the full terms.
+
+SCOPE
+
+The license covers every file named in this kit's MANIFEST.json -
+FLEET-COMMON.md, fleet_headless.py, LICENSE and NOTICE - and MANIFEST.json
+itself, including the FLEET-COMMON block that each tree embeds byte-for-byte
+in its CLAUDE.md. FLEET-COMMON.md carries no header of its own because that
+block is byte-pinned; this NOTICE and LICENSE cover it.
+
+ORIGIN
+
+The kit is published by MAIN, the supervisor tree on this machine's note
+channel, as a delivery bundle beside a MAIN ORDER note naming the kit version
+and the SHA-256 of every file. A tree verifies each file against MAIN's outbox
+copy before vendoring it.
+
+CHANGES
+
+A tree vendors the kit unmodified at ops/fleet_kit/ and its conformance test
+fails on any local edit. A defect is reported to MAIN, which ships a new kit
+version to every tree at once. A tree whose own rules ask for a statement of
+changes may add its own notice under another name (for example NOTICE.md)
+beside these; the kit files stay byte-identical.
