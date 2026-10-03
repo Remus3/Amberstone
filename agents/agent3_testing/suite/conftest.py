@@ -55,4 +55,12 @@ def _fake_headless_route(monkeypatch, tmp_path_factory):
     monkeypatch.setattr(headless_env, "_probe", lambda host, port, timeout: None)
     monkeypatch.setattr(headless_env, "REFUSAL_LOG",
                         tmp_path_factory.getbasetemp() / "headless_route.log")
+    # FLEET-KIT-v1: the spawn goes through ops/loop/fleet_route.py into the
+    # vendored kit, which writes budget / status / usage under its root. A
+    # fresh tmp root per test keeps the live ops/loop/control/ untouched and
+    # the kit's run budget from carrying between tests; a fake exe keeps PATH
+    # out of the verdict.
+    from ops.loop import fleet_route
+    monkeypatch.setattr(fleet_route, "ROOT", tmp_path_factory.mktemp("fleet_kit_root"))
+    monkeypatch.setattr(fleet_route, "_exe_source", lambda: "claude-fake.exe")
     yield

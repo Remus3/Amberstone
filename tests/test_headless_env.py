@@ -239,14 +239,25 @@ def test_cli_runs_as_a_bare_script_with_the_var_unset(tmp_path):
 # ---------------------------------------------------------------------------
 
 # Python modules that start a headless `claude`. Each must route through
-# `headless_child_env`. Tests below drive each one with the var deleted.
-PY_SPAWN_SITES = {
-    "ops/loop/executor.py",
+# `headless_child_env` OR through `ops/loop/fleet_route.py` (FLEET-KIT-v1),
+# which asks `headless_env.resolve_base_url` first and fails closed on it.
+# tests/test_headless_route_spawn_paths.py drives each one with the var deleted.
+#
+# KIT_ROUTED: started only through the fleet kit.
+# LEGACY_ROUTED: still on headless_child_env, because FLEET-KIT-v1 cannot
+# express what they need (named kit gaps, reported to MAIN): the responder's
+# agreement-pinned model + measured argv tail, and the executor's --resume
+# continuity, operator-set effort and process-tree kill.
+KIT_ROUTED = {
     "ops/loop/adjudicator.py",
     "tools/ci_watchdog.py",
     "agents/_supervisor_ephemeral.py",
+}
+LEGACY_ROUTED = {
+    "ops/loop/executor.py",
     "tools/inbox_responder_spawn.py",
 }
+PY_SPAWN_SITES = KIT_ROUTED | LEGACY_ROUTED
 # Files that NAME the CLI without spawning it, each with its reason.
 PY_NON_SPAWN = {
     "agents/_supervisor_common.py": "defines the CLAUDE_CLI constant only",
@@ -271,7 +282,10 @@ def test_python_spawn_inventory_is_exhaustive():
         rel = _repo_walk.relative_posix(path, REPO)
         if rel.startswith("tests/") or "/tests/" in rel or "/suite/" in rel:
             continue
-        if rel in {"ops/loop/claude_stub.py", "ops/loop/headless_env.py"}:
+        # the stub, the gate itself, and the fleet route + vendored kit (the
+        # door every KIT_ROUTED site goes through, pinned by its own tests)
+        if rel in {"ops/loop/claude_stub.py", "ops/loop/headless_env.py",
+                   "ops/loop/fleet_route.py", "ops/fleet_kit/fleet_headless.py"}:
             continue
         if _PY_NAMES_CLI.search(path.read_text(encoding="utf-8", errors="replace")):
             found.add(rel)
@@ -280,9 +294,27 @@ def test_python_spawn_inventory_is_exhaustive():
     assert not unknown, f"new module names the claude CLI - route it or allowlist it: {unknown}"
 
 
-@pytest.mark.parametrize("rel", sorted(PY_SPAWN_SITES))
+@pytest.mark.parametrize("rel", sorted(LEGACY_ROUTED))
 def test_python_spawn_site_routes_through_helper(rel):
     assert "headless_child_env(" in (REPO / rel).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("rel", sorted(KIT_ROUTED))
+def test_kit_routed_site_goes_through_fleet_route_only(rel):
+    text = (REPO / rel).read_text(encoding="utf-8")
+    assert "fleet_route" in text and ".spawn(" in text
+    # one path, the kit's: no second env builder or direct process start left
+    assert "headless_child_env(" not in text
+    assert "CREATE_NO_WINDOW" not in text or rel == "tools/ci_watchdog.py", \
+        "the kit owns the hidden console for the claude spawn"
+
+
+def test_fleet_route_fails_closed_through_the_gate():
+    """LEDGER 1460 survives the kit: the URL the kit sees comes from
+    headless_env.resolve_base_url, and the kit's probe is RC's probe."""
+    text = (REPO / "ops" / "loop" / "fleet_route.py").read_text(encoding="utf-8")
+    assert "resolve_base_url(" in text
+    assert "._probe(" in text
 
 
 def test_every_powershell_claude_invocation_is_gated():
@@ -297,8 +329,21 @@ def test_every_powershell_claude_invocation_is_gated():
         first = _PS_INVOKES.search(text).start()
         assert "headless_route.ps1" in text, f"{rel} does not dot-source the gate"
         assert 0 <= gate < first, f"{rel} invokes claude before the gate"
-    assert set(hits) >= {"ops/loop/run_lane.ps1", "tools/headless_run.ps1",
-                         "tools/weekly_hygiene_run.ps1"}, hits
+    assert set(hits) >= {"ops/loop/run_lane.ps1"}, hits
+
+
+# FLEET-KIT-v1: these PowerShell runners start their run through the fleet
+# kit's CLI door, never `claude -p` directly. A refusal there is exit 3 with
+# nothing started, and the runner must stop on it rather than retry.
+PS_KIT_ROUTED = ("tools/headless_run.ps1", "tools/weekly_hygiene_run.ps1")
+
+
+@pytest.mark.parametrize("rel", PS_KIT_ROUTED)
+def test_powershell_runner_goes_through_the_fleet_route(rel):
+    text = (REPO / rel).read_text(encoding="utf-8")
+    assert not _PS_INVOKES.search(text), f"{rel} still invokes claude directly"
+    assert "fleet_route.py" in text
+    assert "$code -eq 3" in text and "exit 3" in text, f"{rel} does not stop on a refusal"
 
 
 def test_powershell_gate_calls_the_python_helper_and_scopes_to_process():

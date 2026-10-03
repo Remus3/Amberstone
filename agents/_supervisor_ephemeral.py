@@ -11,10 +11,8 @@ calls here (stdlib module singletons).
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -49,6 +47,10 @@ class EphemeralSpawnFailed(RuntimeError):
 
 TASK_LOG_MAX_AGE_DAYS = 7
 
+# The kit passes its prompt on argv; the real task prompt rides stdin, which
+# `claude -p "<this>"` reads as the context the instruction refers to.
+EPHEMERAL_ARGV_PROMPT = "Complete the task given on stdin, following your charter."
+
 
 # Env vars removed from the ephemeral spawn's environment (2026-09-29).
 #
@@ -74,21 +76,13 @@ TASK_LOG_MAX_AGE_DAYS = 7
 # SCOPE: the spawn only. os.environ is never mutated and the machine-wide
 # variable is never touched - RC's coaches legitimately use ANTHROPIC_API_KEY
 # for direct Anthropic API calls and must keep seeing it.
-_SPAWN_ENV_STRIP = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
-
-
-def _build_spawn_env() -> dict[str, str]:
-    """Return a copy of os.environ with the auth-override vars removed.
-
-    Compared case-insensitively: os.environ is case-insensitive on Windows
-    but not on POSIX, and the CLI reads the names either way.
-    """
-    strip = {name.upper() for name in _SPAWN_ENV_STRIP}
-    return {
-        str(k): str(v)
-        for k, v in os.environ.items()
-        if v is not None and str(k).upper() not in strip
-    }
+#
+# FLEET-KIT-v1 (MAIN order 2026-10-03): the strip now lives in the fleet kit
+# (`fleet_headless.child_env`, which removes all three plus the
+# CLAUDE_CODE_USE_* provider switches and sets the routed proxy URL). RC's own
+# copy (`_SPAWN_ENV_STRIP` / `_build_spawn_env`) was deleted with the move;
+# tests/test_supervisor_ephemeral_auth_env.py still pins the property on the
+# env the child actually receives.
 
 
 # Auth failure signatures, matched against the child's combined output.
@@ -309,24 +303,22 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     budget = float(payload.get("spawn_budget_usd", DEFAULT_SPAWN_BUDGET_USD))
     timeout = int(payload.get("spawn_timeout_sec", DEFAULT_SPAWN_TIMEOUT_SEC))
 
-    # Argument construction: on Windows, `shutil.which("claude")` resolves
-    # to `claude.CMD` (a batch wrapper around node). Batch scripts mangle
-    # quoted multi-line prompts on the command line - newlines and
-    # interleaved quotes silently get truncated. So we pipe the prompt
-    # via stdin and let claude's default --input-format=text consume it.
-    cmd: list[str] = [
-        claude_bin,
-        "--print",
-        "--model", model,
+    # Argument construction: the task prompt is multi-line and quote-heavy,
+    # so it rides stdin, never the command line. FLEET-KIT-v1: the kit owns
+    # `-p`, the model + effort pick, `--output-format json`,
+    # `--no-session-persistence` and the lean MCP/settings flags; RC adds only
+    # its own flags below. The kit picks opus when the work writes code and
+    # sonnet otherwise, so the per-agent model maps to writes_code (an opus
+    # agent is a code-writing agent) and the exact pin is no longer passed.
+    extra: list[str] = [
         "--dangerously-skip-permissions",
-        "--no-session-persistence",
-        "--output-format", "json",
         "--max-budget-usd", f"{budget:.2f}",
     ]
     if charter:
-        cmd.extend(["--append-system-prompt", charter])
+        extra.extend(["--append-system-prompt", charter])
     for extra_dir in payload.get("additional_dirs", []) or []:
-        cmd.extend(["--add-dir", str(extra_dir)])
+        extra.extend(["--add-dir", str(extra_dir)])
+    writes_code = "opus" in model.lower()
 
     stamp = _iso_now()
     with log_path.open("a", encoding="utf-8") as f:
@@ -336,45 +328,31 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             f"charter_bytes={len(charter)} prompt_bytes={len(user_prompt)}\n"
         )
 
-    # Spawn. CREATE_NO_WINDOW keeps pythonw.exe-hosted supervisor quiet.
-    creation_flags = 0
-    if sys.platform.startswith("win"):
-        creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-
-    # Explicit env for the child: everything the supervisor has, minus the
-    # ANTHROPIC_* auth overrides (see _SPAWN_ENV_STRIP). Built fresh per
-    # spawn and never written back, so the supervisor's own os.environ - and
-    # therefore the coaching path's direct Anthropic API access - is untouched.
-    spawn_env = _build_spawn_env()
-    # Headless account routing (operator contract 2026-10-02). The INHERITED
-    # ANTHROPIC_BASE_URL was stripped above; the ONLY value the child may carry
-    # is the one `ops/loop/headless_env.py` reads from the user env store at
-    # this moment. Refused -> no spawn, never a direct `claude`.
-    from ops.loop import headless_env
+    # Spawn - FLEET-KIT-v1 (MAIN order 2026-10-03): ONLY through the fleet
+    # kit, which owns the proxy route (fail closed via ops/loop/headless_env.py
+    # - refused means no spawn, never a direct `claude`), the auth-override
+    # strip, the run budget, the hidden console and the usage/status files.
+    # bare=False: the agents commit, and the commit floors live in hooks.
+    from ops.loop import fleet_route
+    t0 = time.time()
     try:
-        spawn_env = headless_env.headless_child_env(spawn_env, caller="supervisor_ephemeral")
-    except headless_env.HeadlessRouteRefused as e:
+        _line, proc = fleet_route.spawn(
+            EPHEMERAL_ARGV_PROMPT,
+            caller="supervisor_ephemeral",
+            note=f"agent{agent}-{op}",
+            writes_code=writes_code,
+            bare=False,
+            extra=extra,
+            stdin=user_prompt,
+            cwd=_PROJECT_ROOT,
+            timeout=timeout,
+        )
+    except fleet_route.RouteRefused as e:
         with log_path.open("a", encoding="utf-8") as f:
             f.write(f"{_iso_now()} REFUSED agent={agent} task={task_id} reason={e.reason}\n")
         raise EphemeralSpawnFailed(
             f"headless route refused for task {task_id}: {e.reason}"
         ) from e
-
-    t0 = time.time()
-    try:
-        proc = subprocess.run(
-            cmd,
-            input=user_prompt,
-            cwd=str(_PROJECT_ROOT),
-            env=spawn_env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            creationflags=creation_flags,
-            check=False,
-        )
     except subprocess.TimeoutExpired as e:
         with log_path.open("a", encoding="utf-8") as f:
             f.write(f"{_iso_now()} TIMEOUT agent={agent} task={task_id} after={timeout}s\n")
@@ -383,6 +361,8 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
         ) from e
 
     elapsed = time.time() - t0
+    if proc is None:
+        raise EphemeralSpawnFailed(f"fleet kit started no process for task {task_id}")
 
     # Mirror the full exchange into a per-task log file so the report can
     # be inspected without tail-chasing the rolling agent log.
@@ -404,7 +384,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     try:
         per_task_log.write_text(
             f"=== task {task_id} agent{agent} op={op} ===\n"
-            f"cmd-length: {sum(len(a) for a in cmd)} chars\n"
+            f"cmd-length: {sum(len(str(a)) for a in (proc.args or []))} chars\n"
             f"{auth_line}"
             f"model: {model}\n"
             f"budget_usd: {budget:.2f}\n"

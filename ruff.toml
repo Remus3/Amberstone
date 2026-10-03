@@ -81,6 +81,9 @@ exclude = [
 "tools/bridge_watcher_classify.py" = ["BLE001"]
 "tools/bridge_watcher_actions.py" = ["BLE001"]
 "tools/bridge_watcher_history.py" = ["BLE001"]
+# FLEET-KIT vendored byte-for-byte from MAIN and pinned by MANIFEST sha256 -
+# it may never be edited here, so no lint family may ask for an edit.
+"ops/fleet_kit/*.py" = ["E", "F", "I", "UP", "B", "BLE"]
 
 [lint.isort]
 known-first-party = [
