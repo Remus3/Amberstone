@@ -1,20 +1,30 @@
 NEXT SESSION
 ------------
-Next action: NOW-7 arming. The report-only measurement pass is DONE and merged
-(663abfe18, LEDGER 1468, docs/NOW7_LOGGER_LEAK_MEASUREMENT.md). Gate NOT armed.
-Fix the 2 level-only leaks - rc.tracker set DEBUG at
-tests/test_performance_tracker_lane8_cycle23.py:380, rc.tft.live at
-tests/test_tft_live_analysis_lane8_cycle43.py:320 - plus the 3 arming
-prerequisites in the detector (tests/_logger_leak_report.py, tests/conftest.py):
-treat class/module-scope restore as clean; drop loggers created at import with a
-non-default level; do not inherit the detector env var into child pytests. THEN
-arm the gate. test_p2w2_ds_f.py class-scoped set/restore is NOT a leak.
+Next action: make CI green. The ONLY red on main 04dbc4b93 (CI run 37154066209:
+1 failed, 35670 passed) is pre-existing tests/test_p2w2_ds_h.py::
+test_ephemeral_failure_message_redacts_stderr - AttributeError: '_FakeProc' has no
+attribute 'args' at agents/_supervisor_ephemeral.py:387. Root-cause first: did the
+fleet_route kit-launch change (fcc53a232) or earlier code start reading proc.args?
+Fix the fake or the reader, TDD, verifier, merge.
 
-Worktree cleanup: remove merged agent worktrees under .claude/worktrees/ (all six
-slices merged, incl. agent-a5e62b1518fcb3dcd = NOW-7 in 663abfe18) - confirm each
-branch is an ancestor of main first.
+Then: NOW-7 residual - the armed logger-leak gate is SILENTLY INERT when
+RC_LOGGER_LEAK_OUTER_PID is inherited from a parent shell (classify_process,
+tests/_logger_leak_report.py:104-117). Add an inert banner or a live-ancestor pid
+check, with a test that an inherited stale pid still gates.
 
 Carried forward (not acted on yet):
+- Kit gaps for MAIN v5 (reported in RC 1411 note except the POSIX one): public
+  launch function (RC depends on private _run); argv-instruction-plus-stdin-body
+  mode; POSIX _kill_tree kills only the direct child (no killpg) - report this one
+  to MAIN, it is not yet in any note. Responder / loop executor / run_lane still on
+  ops/loop/headless_env.py until kit flags fit (responder constant argv + kill
+  record; executor MCP servers vs --strict-mcp-config + two-part command; run_lane
+  no timeout vs kit 3600 s default + streamed log). ruff ignore for ops/fleet_kit is
+  removed, so a future kit lint finding fails RC ruff with no local fix allowed.
+- MAIN 1327 item 1.2 (0830 unattended MATCH) is the unattended responder's; not
+  answered by an attended session.
+- tests/test_no_console_flash_scheduled_tools.py does not check that every spawning
+  file is listed (adding a direct spawn back to adjudicator.py would go uncaught).
 - RM-510: timeline_ingest exits 0 when rows end rate_limited (RM-484 residual).
 - RM-511: stale model pins - ops/loop/config*.json claude_adjudicator.model/cmd,
   docs/ADJUDICATOR_SWAP.md:62-63, agents/_supervisor_common.py AGENT_MODELS agent7,
@@ -24,36 +34,48 @@ Carried forward (not acted on yet):
 - RM-481 residual: other text-mode writers still emit CRLF (DS extractors,
   tools/ds_cc_conditional_to_json.py:93).
 - Replay rotation logs 104 empty-window observations - separate cleanup, unfiled.
-- MAIN orders 0915 (lane-widget redesign) and 0925 (ACCOUNTS strip) NOT acted on -
-  need operator go-ahead in chat before starting.
-- Await FLEET-KIT v4 for the 11 kit gaps reported to MAIN.
-- tests/test_loop_concurrency.py slots.py pin is RED vs the sibling copy - joint
-  act. C4 slots.py candidate 290cbf80 still HELD (RSC halt clause (b), pending a
-  MAIN ruling). Do NOT vendor or move SHARED_SHA256 until the carriers' round closes.
+- tests/test_loop_concurrency.py slots.py pin is RED vs the sibling copy (locally;
+  skips on CI) - joint act. C4 slots.py candidate 290cbf80 still HELD (RSC halt
+  clause (b), pending a MAIN ruling). Do NOT vendor or move SHARED_SHA256 until the
+  carriers' round closes.
 - ROADMAP duplicate ids RM-486 / RM-487 / RM-488 (two rows each) need renumbering
   to fresh ids (next free id = RM-513, pin in docs/DS_SWEEP_TRACKER.md).
+- Worktrees: agent-a0a31cf1b05f41e28 and agent-a1bc4e611575b086e hold UNMERGED
+  commits (clean) - review before removing. Merged + clean, removable once
+  ancestor-checked: agent-aaf137deaa4eb92e5, agent-ab9ef7f95f5d5fb75,
+  agent-a5e62b1518fcb3dcd, and this session's agent-a1abf4cd77f67de5e,
+  agent-a97b46f6c5a6297a8, agent-a09603de9c2164f9b, agent-a36fdac29cf16d68d,
+  agent-a1f8ad47615c0665a (some locked by finished agents). Use git worktree
+  remove + git branch -d only.
+- Lane-widget low-severity review notes (sent to the other session, its call):
+  past reset shows "(resets 0m)" (src/accounts.js:316); freshness mtime-only
+  (:347,351); config cached until restart (src/poll.js). RSC inbox_status.json
+  reports state "limit" with 0/120 runs - RSC writer inconsistency.
 - Watch: rc_facts flags a periodic run that outlives its repetition interval as
   STUCK (by design). If RC-InboxResponder trips it repeatedly, that is a real
   overlap - investigate runtime, do not widen the grace.
 - Inbox has unread notes the responder owns - do not hand-answer them; check
   ops/runtime/inbox_responder_answered.json first.
+- Box load: many concurrent pytest runs from other sessions/trees; do not start a
+  full local suite while 2+ others run (OOM). CI is the full-suite gate.
 
-Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Recall first
-(python tools/perseus_recall.py "<item>") before starting any ROADMAP row.
+Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). RC pid 6916
+alive, last_reload_ok true. Recall first (python tools/perseus_recall.py "<item>")
+before starting any ROADMAP row.
 
-Acceptance: the 2 leaks fixed, the 3 prerequisites in the detector, a re-run in
-report-only mode shows 0 leaks, verifier pass, then the gate armed (a planted leak
-goes RED at the leaker).
+Acceptance: CI run on main shows 0 failed; NOW-7 inert-banner residual has a test
+that fails on the old code.
 
-Do NOT redo: RM-481 (merge a28fab20b), RM-484 (merge 93c508dbc), RM-487 first row
-(merge 38e324616), FLEET-KIT v3 adoption (merges 869f1b100 + 51ab14da7, reply to
-MAIN delivered 1134), NOW-7 measurement pass (663abfe18), rc_facts per-task grace (c84d30b0c), periodic-running grace
-(d2b739dda), agreement-armed + STOP flag (d053a573f, dcd530808), responder
-live-surface guard (9b3cbe805, 3f6679d2a).
+Do NOT redo: NOW-7 gate arming (4c61fb0eb), FLEET-KIT v4 adoption (c8341e619),
+routed spawns on kit _run (fcc53a232), CI tree-kill tests both platforms
+(04dbc4b93), DS rm115 60 s deadline (251457ad7), MAIN reply 1411 (1204 + 1327
+items 1.1/1.3, 1/1 reached), MAIN 0915/0925 lane widget (landed by another
+session, e1591f1f5 + c88efdf13, that session answers MAIN), RM-481, RM-484,
+RM-487 first row, FLEET-KIT v3, NOW-7 measurement (663abfe18).
 
-Status: pushed ec2f85798..51ab14da7; merged HEAD 663abfe18 + the wrap commits on
-top, push by merger; local gate: 72 doc-guard modules 2023 passed 3 skipped;
-drift_guard 0 breaches; CI run 37137310162 result filled by merger.
-LEDGER 1464-1468.
+Status: pushed c5739fbe0..04dbc4b93 (merges 4c61fb0eb, c8341e619, fcc53a232,
+251457ad7, wrap d459f813b, 04dbc4b93); local gate ruff clean, hygiene 14 passed,
+drift_guard 0 breaches; CI run 37154066209 RED 1 failed (pre-existing p2w2_ds_h)
+/ 35670 passed; RC healthy; LEDGER 1469-1472; WAKEUP pruned to 3.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
