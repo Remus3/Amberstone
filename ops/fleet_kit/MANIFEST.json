@@ -2,7 +2,9 @@
  "common_block_sha256": "5f3385eef377fa127a5d5e5741acd302bb5bf9fc13e92fdc610bf3f0630f0f54",
  "files": {
   "FLEET-COMMON.md": "5f3385eef377fa127a5d5e5741acd302bb5bf9fc13e92fdc610bf3f0630f0f54",
-  "fleet_headless.py": "c76c03c3ca830e157a78e00e0e97e25e8d1c88804b15d3aaa0580ce23851dbac"
+  "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "NOTICE": "9642ee05a624c33334c76a2f62c30d5370143bd7cb51e81f72c67b6d90d7ac07",
+  "fleet_headless.py": "2a538bdd2c43cd8721ba5052f7f4e0a82921853c405b114dd1845866b3d73c7f"
  },
- "version": 3
+ "version": 4
 }
