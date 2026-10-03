@@ -1,22 +1,123 @@
 # Amberstone - Agent Context
 
-Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 3 residual .after() files, all frozen app-core); Daemon Slayer (`:8860`) computes real DPS math per champion.
+Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC, ADR-011). RC is tkinter-free (asyncio AppLoop; 3 residual .after() files, all frozen app-core). Daemon Slayer (`:8860`) computes real DPS math per champion.
 
-> **Living docs (read at session start):** `docs/ARCHITECTURE.md` - `docs/OPERATIONS.md` - `ROADMAP.md` - `docs/API.md`
-> **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 706 items / 173 champs - ENGINE_VERSION 1.283.0 (patch 16.18.1) - Arena mirrors credit their OWN DDragon stat line, not the SR twin's (R161 doctrine B) - but MEASURED 2026-09-01 (RM-323): DDragon carries NO proc MAGNITUDE for the burst mirrors, SR twins included (the <stats> block is base stats only), so for those the row's own `note` is the authority and doctrine B is NOT a licence to zero a mirror out - rune offense registry carries an attack-speed column (Legend: Alacrity 9104) plus a distinct-item-stat census (Jack Of All Trades 8316, dps.py apply_rune_offense_grants, parsed by /dps + /hybrid + /rank-bruiser, DEFAULT-OFF, zero for AS-locked champions) - all 7 archetype scorers wired (Slice B on-hit AP ds.onhit) + Term A ally-granted EHP (ehp.py score_by=team_blended, parsed by /rank-tank only, DEFAULT-OFF) + canonical cast-rate keys (ult_rates.py apply_canonical_cast_rate_keys, DEFAULT-OFF and NO HTTP route parses it - RM-333) + RM-39/RM-43 AD-axis ability term (hybrid.py apply_ad_axis_ability_damage, parsed by /rank + /rank-bruiser, NOT /hybrid, DEFAULT-OFF; L2 1.223.0 credits PHYSICAL+TRUE, MIXED held, MAGIC permanently excluded) + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32 + survivability axes heal/shield/DR/resist-grant COMPLETE across both EHP scorers incl flat + rank-scaled-block + percent-of-resist + unlabeled-multi-stat-block + form-occupancy + per-stack-unbounded modes + revive/second-life EHP-numerator multiplier Anivia/Zac) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
-> **Architectural decisions:** [`docs/adr/README.md`](docs/adr/README.md) (indexed, 12 live ADRs + ADR-001 retired + ADR-004 superseded by ADR-012) - before re-litigating a past choice, check here first.
-> **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
+**This file is RULES ONLY.** The long form of every rule - history, incidents, measurements, reasoning, dated evidence - is `docs/claude-md-history.md` (verbatim pre-condense snapshot). Read it when a short line below is ambiguous; never edit the snapshot to fix a fact, fix the rule here.
+
+<!-- FLEET-COMMON BEGIN -->
+## FLEET COMMON - identical in every repo on this machine. Do not edit here.
+
+################################################################################
+#  SUB-AGENT FIRST. THE MAIN SESSION IS THE OPERATOR'S - KEEP IT CLEAR.        #
+#  Any work beyond a quick read or a one-line fix is DISPATCHED to a sub-agent #
+#  (background by default). The main session plans, dispatches, monitors and   #
+#  reports. Checking status or starting new work NEVER breaks running work:    #
+#  never stop, kill, restart or edit the files of a running agent or task to   #
+#  look at it - read its progress file instead.                                #
+################################################################################
+
+Source of truth: MAIN's fleet kit. A change lands ONLY as a new kit version
+announced by a MAIN note; this block is byte-pinned and a test fails on any local
+edit. Tree-specific rules go BELOW this block, never inside it.
+
+1. ACT, DON'T ASK. Operator acceptance of recommendations is ~100 percent. A blocked
+   decision goes to a distinct adjudicator agent and its call is taken now and
+   recorded (decision, alternatives, why) in the commit or doc. Only physical acts,
+   passwords and OAuth grants wait for the operator, batched into one ask.
+2. CHAT IS THE OPERATOR'S CONSOLE - QUIET. Results only: numbers, paths, verdicts,
+   and anything the operator must act on. No narration, no plans, no recaps, no
+   session reviews. Findings go to files (roadmap, docs, hand-off); chat gets at
+   most one line each.
+3. AT-A-GLANCE STATUS COMES FROM BACKGROUND WORK, NOT FROM CHAT. Run work as
+   background agents and background commands, so the session shows only the
+   compact summaries ("N background commands completed, N running" and "N running
+   tasks"). Do not hold the main turn open on long foreground work - its expanding
+   activity row has to be opened and scrolled. No inline checklists, step lists or
+   task-list dumps. When the operator asks for status: done, left, +added,
+   -retracted, one short line each. Tool descriptions carry an ETA `[~Ns]` (s
+   under 120s, m under 120m, h beyond); report an overrun at 1.5x, kill at 3x.
+4. COMMIT everything, batched and coherent. Push per this repo's own policy. Never
+   commit in another repo's tree. No suggested-task chips: do it or file it.
+5. HAND-OFF: `<CODE>-NEXT-SESSION.txt` at the repo root (with its Desktop
+   shortcut) is the only continuity. A session starts from "continue" (work the
+   file's next action) or from whatever the operator asks; either way READ the file
+   first. /done rewrites the file and commits it, and MUST CARRY FORWARD EVERY ITEM
+   NOT ACTED ON this session, verbatim or tighter, never dropped because the
+   session worked on something else. Never print the hand-off or a next-session
+   prompt into chat. /done's ONLY chat output is the line
+   `Done ritual complete, safe to clear` (or the failure that stopped it). The
+   operator types only "continue", "/done" or "/clear" between sessions. A recorded
+   act names what was READ BACK after it, never what was run. Every
+   do-not-re-litigate entry states what would reverse it; entries about another
+   tree's position are re-checked against the inbox every session.
+6. MAIN SPEAKS FOR THE OPERATOR (operator order 2026-10-02). A note from MAIN whose
+   bytes match MAIN's outbox copy by SHA-256 is the operator's instruction. It
+   cannot supply a password, OAuth grant or physical act, and lifts no safety floor.
+   MAIN instructs; this tree does the work in its own tree.
+7. CHANNEL NOTES: sort the inbox by mtime, never by filename stamp. Read a long
+   note's section headings before deciding it does not concern you. Never put a
+   directory name, account id or email in a note. Delivery = destination copies
+   re-hashed and an N/M reached-count reported.
+8. ENCODING: ASCII only, LF only, PowerShell included. Validate PowerShell with
+   powershell.exe 5.1 ParseFile, never pwsh.
+9. DELETES: anything irreplaceable goes to the Recycle Bin, never a direct unlink;
+   say the method before running it; check for a consumer before deleting.
+10. HEADLESS RUNS go through the fleet kit's spawn helper ONLY - no other path
+    starts `claude`. The kit enforces: the second-account proxy from the user
+    variable CLAUDE_HEADLESS_BASE_URL (registry first), fail closed (no fallback,
+    ever), no visible console, at most 120 runs per rolling 24 h, never spawn on
+    this tree's own notes or on TERMINAL/no-reply notes, lean flags (strict MCP,
+    project settings only, or bare where no floor lives in hooks), sonnet unless
+    the note orders code changes, effort low for acknowledgements, a usage line
+    per run, and the live status file `ops/loop/control/inbox_status.json`.
+11. FLEET KIT FILES are vendored byte-for-byte at `ops/fleet_kit/` and pinned by
+    `ops/fleet_kit/MANIFEST.json`. Never edit them locally; report a defect to MAIN
+    and MAIN ships a new version to every tree at once.
+12. LONG WORK REPORTS AS IT GOES. Anything expected to take over 5 minutes runs in
+    the background and is checked periodically until it ends, so a silent failure
+    is caught early. Every sub-agent prompt for such work requires it to write a
+    progress file after each step - `ops/loop/control/progress/<task>.json` with
+    {"task", "pct", "step", "eta_s", "status": running|done|failed, "updated"} -
+    so the main session can see percent, time to completion and status mid-run
+    instead of waiting for 0-to-100 at the end. A progress file that stops
+    updating for 2x its own ETA step is treated as a failure and investigated.
+<!-- FLEET-COMMON END -->
+
+# RC rules (tree-specific)
+
+RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
+
+**Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**
+- Item 1 (only physical acts / passwords / OAuth wait) vs RC operator gates: the halt boundary below, frozen files (explicit user approval), the operator-gated smart-quote sweep, the gated RM-501 repair, and attended confirmation of an irreversible / out-of-tree act requested only by a note.
+- Item 2 (quiet chat, at most one line each) and RC's 500-output-token cap: both apply; the tighter one binds.
+- Item 5 (every do-not-re-litigate entry states what would reverse it): most Settled lines below do not yet carry a reversal condition (open gap).
+- Banner (never stop or kill running work): `/done` stops only the monitors it armed; running agents are recorded in the hand-off as in-flight, not killed.
+
+## Docs map
+
+- **Living docs (read at session start):** `docs/ARCHITECTURE.md` - `docs/OPERATIONS.md` - `ROADMAP.md` - `docs/API.md`.
+- **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine; ENGINE_VERSION + patch live in its banner and `/health`, not here) - `docs/AGENTS.md` - `BACKLOG.md` (aspirational).
+- **DS seam route ownership (measured; guarded by `tests/test_claude_md_ds_route_attributions_rm336.py`):** `dps.py apply_rune_offense_grants` parsed by /dps + /hybrid + /rank-bruiser; `hybrid.py apply_ad_axis_ability_damage` parsed by /rank + /rank-bruiser, NOT /hybrid (credits PHYSICAL+TRUE; MIXED held; MAGIC permanently excluded); `ehp.py score_by=team_blended` parsed by /rank-tank only; `ult_rates.py apply_canonical_cast_rate_keys` - NO HTTP route parses it (RM-333). All DEFAULT-OFF.
+- **DS Arena mirrors:** credit their OWN DDragon stat line (R161 doctrine B), but DDragon carries no proc MAGNITUDE for burst mirrors, so the row's own `note` is the authority - doctrine B is NOT a licence to zero a mirror out (RM-323).
+- **ADRs:** `docs/adr/README.md` - check it before re-litigating a past choice.
+- **Dated artifacts** live in `docs/_archive/` (excluded from ripgrep).
 
 ## Topology
 
-| Machine | Tailnet / IP | LAN IP | Role |
-|---|---|---|---|
-| **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): runs League + Vanguard + RC + supervisor + vision server + dashboard + OBS. Relocated agents run local as ONLOGON tasks: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Tailscale node `legion-rc` / `100.70.22.55` is the ONLY canonical name for this box. **The Windows computer name is deliberately NOT recorded here - it is re-rolled from time to time, so any value written down goes stale** (this table has already carried two dead ones). Probe it live with `$env:COMPUTERNAME` on the rare occasion you need it, and never reconcile MagicDNS to it. Note `hostname` returns `LEGION-RC` (the DNS name, set separately), so it will NOT match the computer name and that is expected |
-| **Peer** | `peer-host` / `<peer-tailnet-ip>` | - | A separate machine running a separate private project. The RC<->Peer cross-Claude bridge was decommissioned 2026-06-24 (ADR-012), so this row is history, not topology |
+- Legion is the ONLY box (1-PC, ADR-011): League + Vanguard + RC + supervisor + vision + dashboard + OBS. Agents RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener run local as ONLOGON tasks.
+- Canonical name: Tailscale `legion-rc` / `100.70.22.55` (LAN `192.168.8.230`), tailnet `tailc150de.ts.net`. Prefer tailnet hostnames.
+- NEVER record the Windows computer name (it is re-rolled). Probe `$env:COMPUTERNAME` live; never reconcile MagicDNS to it. `hostname` returning `LEGION-RC` is expected to differ.
+- Peer machine row is history only (bridge decommissioned, ADR-012).
+- Vision in-process at `127.0.0.1:8889`. Game host is config: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) for Live Client `:2999` + LCU.
 
-**Cross-repo channel with the sibling projects.** Their names and local paths are per-host CONFIG, not repo content: they live in gitignored `ops/moon_sync_repos.json` (see `ops/moon_sync_repos.example.json`; `RC_MOON_SYNC_REPOS` overrides), and `tools/moon_sync_poller.py` plus `tests/test_loop_concurrency.py` both read them from there. **Two spelling traps survive the move and are worth keeping in mind:** a sibling checkout path may contain a REAL SPACE while its GitHub repo name uses a hyphen (a repo name cannot hold a space), so the two spellings differ ON PURPOSE and neither is a typo; and any such path MUST be quoted, because an unquoted `-File C:\Some Sibling\tools\x.ps1` reads as `-File C:\Some` plus a stray positional and fails silently. The channel itself: gitignored `moon_sync_inbox/` in EACH repo root - you WRITE into the sibling's, you READ your own. Both sessions independently invented a different channel on 2026-07-26 before finding this one; do not invent a third. `ops/loop/slots.py` + `ops/loop/winmutex.py` are BYTE-IDENTICAL-BY-CONTRACT across the participating repos, pinned by `SHARED_SHA256` in `tests/test_loop_concurrency.py`. Re-pinning is a JOINT act: never regenerate the digests from local disk - both trees hashing equal IS the acceptance, not a note claiming it. Copy the sibling's file with a BYTE-level copy, never `write_text` (it turns LF into CRLF on Windows and the pin is on bytes). **Byte-pin carriers since 2026-09-06 (this is the `SHARED_SHA256` bucket of three, NOT the six-repo channel roster that `docs/CHANNEL.md` calls participants): RC plus two sibling checkouts (Sibling-A and Sibling-B); a third, Sibling-C, is archived and its working copy deleted, so it will never re-sync and its digest must not be chased.** The newest participant vendors last - it has no pin to break until it has one. `docs/CHANNEL.md` is the third BYTE-IDENTICAL-BY-CONTRACT artifact, pinned on LF-NORMALISED bytes by `CHANNEL_PIN` in `tests/test_channel_doc_pin.py`; re-pin is a five-way act.
+## Cross-repo channel and byte pins
 
-Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-29, ADR-011). Prefer tailnet hostnames. Vision runs in-process at `127.0.0.1:8889`. The game host is config not code: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) is where every live reader finds Live Client `:2999` + LCU.
+- Sibling names/paths are per-host CONFIG only: gitignored `ops/moon_sync_repos.json` (template `ops/moon_sync_repos.example.json`; `RC_MOON_SYNC_REPOS` overrides). Never write a sibling name or path into a tracked file.
+- Spelling traps: a checkout path may hold a REAL SPACE where its GitHub name uses a hyphen (on purpose); always QUOTE such paths (`-File C:\Some Sibling\x.ps1` unquoted fails silently).
+- Channel = gitignored `moon_sync_inbox/` in each repo root: WRITE into the sibling's, READ your own. Do not invent another channel.
+- `ops/loop/slots.py` + `ops/loop/winmutex.py` are BYTE-IDENTICAL-BY-CONTRACT, pinned by `SHARED_SHA256` in `tests/test_loop_concurrency.py`. Re-pin is a JOINT act: never regenerate digests from local disk; copy the sibling's file BYTE-level, never `write_text`.
+- Pin carriers: RC + Sibling-A + Sibling-B. Sibling-C is archived - never chase its digest. The newest participant vendors last.
+- `docs/CHANNEL.md` is pinned on LF-normalised bytes by `CHANNEL_PIN` in `tests/test_channel_doc_pin.py`; re-pin is a five-way act.
 
 ## Paths
 
@@ -31,13 +132,14 @@ Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-2
 - **Always `py_compile` before restart.** Syntax errors crash silently under `pythonw.exe`.
 - **Atomic writes only:** `tmp.write_text(...); tmp.replace(target)`. Overlays poll mid-write.
 - **Never `Stop-Process`.** Hangs MCP pipe. Use `taskkill /F /PID`.
-- **Commit messages with special chars:** use `git commit -F <tmpfile>` (Write the file, ASCII-only) or a single-quoted here-string - never a double-quoted here-string or a piped string (BOM + ANSI-mangle risk, same root cause as the no-em-dash rule below). `tools/precommit_gate.py` (PreToolUse hook on `git commit` + PowerShell) is the backstop: it blocks banned glyphs + net-new ruff on staged lines.
-- **Never add a `Co-Authored-By: Claude` trailer, and never file its absence as a defect.** `.githooks/commit-msg:23-29` STRIPS it per operator policy 2026-06-03 (deletion, not rejection, which is why it reads as an authoring omission; evidence: `docs/history_notes.md` 2026-09-16). Audit it with an ANCHORED predicate and read the message TAIL: a bare `grep -ci 'Co-Authored-By'` matches prose ABOUT the trailer.
-- **Git hooks are the AUTHORITATIVE gate, and a fresh clone has NONE.** `core.hooksPath` is LOCAL config and is not cloned, so a new clone of this repo runs zero hooks until someone sets it - which defeats the tracked `.githooks/` dir entirely. **First action in any fresh clone: `python scripts/install_hooks.py`.** Claude PreToolUse hooks are defense in depth, NOT a substitute - but they do fire: **RE-MEASURED 2026-08-01 on CLI 2.1.220, SessionStart AND PreToolUse both fire under a headless `claude -p --permission-mode bypassPermissions`** (Bash provably run, both hooks recorded to a sentinel). This SUPERSEDES the 2026-07-26 "they do NOT survive headless" finding, which was confounded twice: it ran on CLI **2.1.205**, and its probe dir carries `hasTrustDialogAccepted: false` to this day. Hook findings are VERSION-SPECIFIC and expire - re-measure, never inherit. **Two confounds to eliminate before ever concluding a hook did not fire:** (1) a `settings.json` containing single-backslash Windows paths is INVALID JSON, so it never parses, no hook is registered, and nothing warns you - assert it parses before trusting a negative; (2) an untrusted workspace makes headless silently DISCARD `permissions.allow`, which presents almost identically to hooks not loading. The trust key in `~/.claude.json` is per path-STRING, so `C:\X`, `C:/X` and `C:/x` are three separate entries and headless reads the forward-slash one - each worktree path is its own key. Never treat a hook's PRESENCE as proof it fires; the only valid test is end-to-end (stage a banned glyph, attempt a real commit, assert HEAD unchanged). See memory `reference_git_hooks_authoritative_and_traps` for the ways a hook can be present and silently do nothing.
-- **Restart via `restart_trigger.txt`** (write any content; supervisor clears + restarts within ~5s).
-- **`SCRIPT_DIR` in `app/__init__.py` MUST be `Path(__file__).parent.parent`** (package layout).
+- **Commit messages:** `git commit -F <tmpfile>` (ASCII) or a single-quoted here-string; never double-quoted or piped. `tools/precommit_gate.py` blocks banned glyphs + net-new ruff.
+- **Never add a `Co-Authored-By: Claude` trailer, and never file its absence as a defect** (`.githooks/commit-msg` strips it, operator policy 2026-06-03). Audit with an ANCHORED predicate on the message tail.
+- **Git hooks are the AUTHORITATIVE gate; a fresh clone has NONE.** First action in a fresh clone: `python scripts/install_hooks.py`. Claude hooks are defense in depth only.
+- **Hook findings are version-specific and expire - re-measure, never inherit.** Before concluding a hook did not fire, rule out (1) invalid `settings.json` (single-backslash paths) and (2) an untrusted workspace (trust key is per path STRING). Presence is not proof; the only valid test is end-to-end (stage a banned glyph, commit, assert HEAD unchanged). Memory `reference_git_hooks_authoritative_and_traps`.
+- **Restart via `restart_trigger.txt`** (supervisor restarts within ~5s).
+- **`SCRIPT_DIR` in `app/__init__.py` MUST be `Path(__file__).parent.parent`.**
 - **State assumptions explicitly before coding.**
-- **No em-dashes or en-dashes - ever (7-bit ASCII authored content).** Hard rule across Legion / Peer, in *all* authored text: code, comments, docstrings, `.md`, writeups, commit messages, WAKEUP/ROADMAP/CLAUDE, chat output. Use ` - ` (spaced hyphen) for a clause break, `-` otherwise. Also avoid smart quotes (U+201C U+201D U+2018 U+2019) and en/em dashes (U+2013 U+2014); stay ASCII. **Why:** Windows PowerShell 5.1 `ParseFile` ANSI-decodes a no-BOM `.ps1`, turning a UTF-8 em-dash inside a double-quoted string into a U+201D smart-quote that the tokenizer treats as a string terminator -> cascading parse failure (2026-05-18 boot-script incident); also a standing operator style rule. **Retroactive purge done** (2026-05-18, `tools/strip_em_dashes.py` - reusable for drift checks): em+en dashes stripped repo-wide incl. the functional `"-"` no-data sentinel in code/JSON (operator-approved behavior change - empty dashboard cells render `-`). **NOT swept** (immutable history / non-source): `*.log` + rotated `*.log.N`, `docs/_archive/**` + dated artifacts, `.jsonl` ledgers, binaries, `.pyc`/`.git`. Smart quotes are rule-banned going forward but not yet retroactively swept (separate operator-gated pass).
+- **No em-dashes or en-dashes, no smart quotes - ever.** 7-bit ASCII in all authored text incl. chat. Use ` - `. (Why: PS 5.1 ANSI-decodes no-BOM `.ps1`.) Em/en purge done (`tools/strip_em_dashes.py`; the `"-"` no-data sentinel is operator-approved); smart-quote retro-sweep NOT done (operator-gated). Not swept: `*.log*`, `docs/_archive/**`, `.jsonl`, binaries.
 - **Frozen files** (do not modify without explicit user approval):
   `main.py`, `core/log_setup.py`, `core/moon_proxy.py`, `lcu/lcu_client.py`,
   `core/game_snapshot.py`, `ops/rc_dev_runtime.py`, `ops/rc_supervisor.py`,
@@ -47,296 +149,137 @@ Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-2
 
 ## Restart workflow
 
-```
-echo restart > restart_trigger.txt
-```
-Verify: read `ops/runtime/health.json`, confirm new `pid`, `alive=true`, `last_reload_ok=true`.
-Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`.
+`echo restart > restart_trigger.txt`, then read `ops/runtime/health.json`: new `pid`, `alive=true`, `last_reload_ok=true`. Fallback: `taskkill /F /PID <pid>` then `restart.bat`.
 
 ## Third-party lift: license gate
 
-Before lifting ANYTHING from an external repo, check the license and say what
-it is. Two traps, both hit on 2026-07-28:
-
-- **A repo can contradict itself.** One reviewed plugin ships an MIT `LICENSE`
-  file while its `package.json` says `"license": "UNLICENSED", "private": true`.
-  Another ships GPL-3 in `LICENSE` and `"ISC"` in `package.json`. A single
-  glance at either source alone gives the wrong answer.
-- **The person who cleared it may not own it.** A repo crediting prior authors
-  ("first version by X", a per-file "BY @Y" header) has multiple copyright
-  holders, so its current maintainer cannot unilaterally relicense it.
-  Operator clearance from ONE party is not clearance for the work.
-- **A LICENSE file can name NOBODY.** Measured 2026-08-01 (RM-127 Phase 3): one
-  reviewed repo ships an MIT `LICENSE` that is an unrendered template, reading
-  literally `Copyright (c) {{ year }} {{ organization }}`. It is a grant with no
-  grantor. This is not the contradiction case above - both files "agree on MIT"
-  and a grep for the SPDX id passes. **Read the copyright LINE, not just the
-  license name.** Same pass found a truncated MIT (warranty clause cut, which is
-  why the host reported NOASSERTION), a manifest with its license declaration
-  COMMENTED OUT while `LICENSE` looked clean, and a repo with a valid MIT whose
-  `NOTICE` named three adapted upstreams - clean license, still not vendor-safe.
-  **Also note BUSL-1.1**: source-available, not copyleft, DO-NOT-VENDOR anyway,
-  though its Additional Use Grant may permit running it internally.
-- **The WRAPPER does not clear the PAYLOAD.** (Evidence: `docs/history_notes.md` 2026-09-16.)
-  A top-level SPDX id describes the WRAPPER, not the embedded assets: before
-  recording ANY verdict, enumerate the third-party notices for MARKS, ICONS,
-  FONTS, SAMPLE DATA and COMMITTED BINARIES, each of which can carry its OWN
-  terms. RC is Apache-2.0 and PUBLIC, so what bites RC is publishing
-  NON-COMMERCIAL bytes under a permissive label - NC and SA assets cannot be
-  absorbed. **The trap is licence-family INDEPENDENT**, which is the part most
-  often missed: it bites a copyleft-outbound tree as a compatibility conflict
-  and a permissive-outbound tree as a mislabelling problem, so a tree reasoning
-  only about its OWN outbound licence checks for the wrong thing.
-- **A LICENCE audit and a BEHAVIOUR audit are DIFFERENT audits, and enumerating
-  EVERY TOP-LEVEL DIRECTORY is a precondition for both.** Same review: an audit
-  of one package walked its source directory of 117 files and passed, while a
-  wired-in network egress path sat in a separate top-level hooks directory of 98
-  files and was missed by two independent reviewers. An empty grep is a claim
-  about your PATTERN, not about the codebase. A tarball-vs-repository divergence
-  was real but NOT the cause - the missed file is byte-identical in both
-  (evidence: `docs/history_notes.md` 2026-09-16). Do NOT write "audit the tarball, not the repo" - that lesson is REFUTED.
-
-GPL/copyleft stays DO-NOT-VENDOR regardless of verbal clearance - vendoring it
-would relicense RC itself. The always-legal path is the one RC already uses:
-re-implement the mechanic in RC's own code from the observed behaviour.
-Techniques and protocol facts are not copyrightable; source is.
+Before lifting ANYTHING external, check the license and say what it is.
+- A repo can contradict itself (LICENSE vs `package.json`): read both.
+- Whoever cleared it may not own it (credited prior authors = multiple holders).
+- A LICENSE can name NOBODY (unrendered template): read the copyright LINE. Also watch truncated licenses, commented-out manifest declarations, and `NOTICE` files naming adapted upstreams.
+- BUSL-1.1 = DO-NOT-VENDOR.
+- The WRAPPER does not clear the PAYLOAD: enumerate marks, icons, fonts, sample data and committed binaries. RC is Apache-2.0 and PUBLIC, so NC / SA assets cannot be absorbed. The trap is licence-family INDEPENDENT.
+- A licence audit and a behaviour audit are DIFFERENT audits; enumerate EVERY top-level directory for both. An empty grep is a claim about your pattern. Do NOT write "audit the tarball, not the repo" (refuted).
+- GPL/copyleft stays DO-NOT-VENDOR regardless of verbal clearance. Always-legal path: re-implement from observed behaviour.
 
 ## Memory recall (Perseus Vault)
 
-Local semantic-recall store over RC's own institutional knowledge. Exists because
-the recurring failure is not ignorance, it is REDISCOVERY: redoing closed work,
-re-pitching a refuted idea, acting on a stale doc, or writing a finding into the
-wrong `.md`. Grep plus judgment does not catch those; paraphrase-tolerant recall does.
+- Local store at `~/.perseus-vault/`, MCP server `perseus-vault`. A fresh clone has NO wiring: `perseus-vault connect --client claude-code --hooks`, then sync.
+- **BEFORE any non-trivial item, recall first:** `python tools/perseus_recall.py "<task>"`. A `settled` / `ledger` hit saying CLOSED / REFUTED / shipped = stop and report.
+- Recall through that tool, not raw `perseus_vault_recall` (returns bodies twice).
+- Take a `key` from the listing and fetch that ONE entity when you need a body.
+- It is a MIRROR, never the source of truth: never fix a fact only in the vault. Re-sync after changing CLAUDE.md / `memory/*.md` / LEDGER / ROADMAP / BACKLOG: `python tools/perseus_sync.py`; coverage: `--verify`.
+- `status: healthy` is NOT proof recall works; only `embedded == active` is.
 
-- **Local, no cloud, no API key.** One binary + one SQLite file at
-  `~/.perseus-vault/`. Wired as MCP server `perseus-vault` in `.mcp.json`, so the
-  `mcp__perseus-vault__*` tools are available in-session.
-- **A fresh clone has NO wiring** - same trap as the git hooks. `.mcp.json`, the
-  `.claude/settings.json` hooks, and the vault itself are all LOCAL and gitignored;
-  only `tools/perseus_sync.py` is tracked. Re-wire with
-  `perseus-vault connect --client claude-code --hooks`, then run the sync.
-- **BEFORE starting any non-trivial item, recall first.** Use
-  `python tools/perseus_recall.py "<the task in your own words>"`. If a `settled`
-  or `ledger` hit says the work is CLOSED, REFUTED, or already shipped, stop and
-  report that instead of building. This is the whole point of the store.
-- **Recall through that tool, not the raw MCP call.** Raw
-  `perseus_vault_recall` returns each hit's full body TWICE; the projection
-  measured ~98 percent smaller for the same answer (evidence:
-  `docs/history_notes.md` 2026-09-16). A mandatory step
-  that costs 13k tokens is a step that gets skipped, which defeats the store.
-  Take a `key` from the listing and fetch that ONE entity when you need a body.
-- **It is a MIRROR, never the source of truth.** Source of truth stays CLAUDE.md,
-  the `memory/*.md` files, `docs/LEDGER.md`, `ROADMAP.md`, `BACKLOG.md`. Never
-  "fix" a fact only in the vault.
-- **Re-sync after changing any of those:** `python tools/perseus_sync.py`
-  (idempotent - category+key updates in place, never duplicates). Coverage check
-  only: `python tools/perseus_sync.py --verify`.
-- **`status: healthy` is NOT proof recall works.** Perseus reports
-  `semantic_recall: available` with zero warnings even when most rows have no
-  embedding, and recall then silently degrades to keyword. Only
-  `embedded == active` proves coverage - that is exactly what `--verify` asserts.
-  MEASURED 2026-07-28: a fresh ingest of 1197 entities left 91 embedded and still
-  reported healthy.
+## Session workflow and hand-off
 
-## Session workflow
-
-Scoped sessions - each focused task is one session.
-- **End:** commit + update `WAKEUP_NOTES.md` (keep last 2-3 sessions at full fidelity; archive older to `docs/history_notes.md`) + push.
-- **Start:** `/clear`, bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES + `docs/ARCHITECTURE.md` + `ROADMAP.md`.
-- `/clear` between Tier items, between coding/reviewing modes, between focus-area switches.
-
-## Session-End Ritual
-
-When user says 'wrap', '/done', or 'end session': run tests, commit with descriptive message, push, sync living docs (append the per-item ledger entry to `docs/LEDGER.md`, NOT CLAUDE.md), **write the next-session continuation prompt to `RC-NEXT-SESSION.txt` in the REPO ROOT**, and confirm CI green before declaring done.
-
-**`RC-NEXT-SESSION.txt` is the ONE hand-off file and the write is UNCONDITIONAL.** Repo root, TRACKED, OVERWRITTEN every `/done` - never appended, never dated-suffixed, never a second copy anywhere. `Desktop\RC-NEXT-SESSION.lnk` is only a shortcut to it; do NOT write to the Desktop (it moved off 2026-09-06). Printing the prompt into chat is not the hand-off - chat dies at `/clear`. This matches the convention every sibling uses (`<CODE>-NEXT-SESSION.txt` plus a Desktop `.lnk`). The old second file `NEXT_SESSION_PROMPT.md` is RETIRED to `docs/_archive/2026-09-07-NEXT_SESSION_PROMPT.md` (2026-09-20) - do not recreate it, and do not file its absence as a defect.
-
-## Output Constraints
-
-Keep individual responses under 500 output tokens to avoid API errors. Break long work into multiple turns or use file writes for verbose output.
-
-## Style Rules
-
-- No em-dashes anywhere (repo-wide hard rule, enforced).
-- Watch for em-dashes in PowerShell double-quoted strings - they cause mojibake parse failures.
+- Scoped sessions: one focused task per session; `/clear` between Tier items, modes and focus areas.
+- **Start:** READ `RC-NEXT-SESSION.txt` first (on "continue" or any other ask), then bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES + `docs/ARCHITECTURE.md` + `ROADMAP.md`.
+- **Session-End Ritual** (`wrap` / `/done` / `end session`; procedure in `tools/done.md`): audit pending changes, run tests, commit, push, append the per-item entry to `docs/LEDGER.md` (never CLAUDE.md), update ROADMAP/README, keep `WAKEUP_NOTES.md` to the last 2-3 sessions (older to `docs/history_notes.md`), process lessons into memory, rewrite the hand-off, record the CI result in it. Run independent steps in parallel. No banner, no review: the ONLY chat output is `Done ritual complete, safe to clear` (or `/done stopped: <reason>`).
+- **The hand-off file is `RC-NEXT-SESSION.txt` in the REPO ROOT, TRACKED, and the write is UNCONDITIONAL.** Overwritten whole each /done, never appended, dated or duplicated, and it CARRIES FORWARD every item not acted on this session. Never print it or a next-session prompt into chat. `Desktop\RC-NEXT-SESSION.lnk` is only a shortcut - do NOT write to the Desktop. `NEXT_SESSION_PROMPT.md` is RETIRED - do not recreate it or file its absence.
+- Do NOT probe the retired Peer bridge at wrap.
+- Keep individual chat responses under 500 output tokens.
 
 ## Execution Efficiency & Tooling Rules
 
-Operator-agreed 2026-06-13 to cut per-edit + audit wall-clock. Default to fast, direct, text-based tools; scale verification to blast radius. SCOPES "Testing Discipline" + "Verification Discipline" below (those apply at Tier-2). Memory: `feedback_execution_efficiency_rules`.
+These govern HOW a step runs; the SHAPE of work is set by "Session Default" below, which wins on conflict.
+- **R1** Files = Read / Edit / Write / Grep / Glob only. No Bash-mediated WRITES to tracked files (`tools/stop_claim_gate.py` reads them as unbacked claims); if you did, back the claim with `git show <sha> -- <path>`; never fabricate an Edit.
+- **R2** Runtime state via `curl -k https://127.0.0.1:8888/api/...` or `ops/runtime/health.json`; never screenshot to read a number.
+- **R3** Visual tools only for rendered-pixel / layout checks and live-game capture; the UI-audit ritual + game-monitor are the sanctioned visual uses.
+- **R4** Prefer built-in tools; shell = absolute paths, one compound command.
+- **Tiers:** Tier-0 cosmetic = Edit + `py_compile` (no suite, no restart). Tier-1 one module = `py_compile` + that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION` = full dual suite + DS `:8860` restart + Share mirror.
+- **R5** Classify every change into a tier; run only that tier. **R6** Run a suite ONCE; re-run only if edited since or the pipe glitched.
+- **R7** Adversarial verification is the DEFAULT: every substantive claim gets an independent verifier / refutation pass before "done" (Tier-0 exempt).
+- **R8** Never re-Read a file just Edited. **R9** Multi-agent is the default shape; substance decides, not file count. **R10** Batch independent reads. **R11** No screenshot ritual for backend / version / doc changes.
+- Hooks: PostToolUse `tools/pytest_guard.py` is py_compile-only (`RC_FULL_SUITE=1` for Tier-2); PreToolUse `tools/text_first_guard.py` denies screen-text readers (escape hatch `ops/runtime/allow_visual.flag`).
 
-> **PRECEDENCE (operator 2026-07-30):** these rules govern HOW a step is executed - which tool, how much verification. They do NOT govern the SHAPE of the work. Shape is set by "Session Default" below, and where the two disagree, Session Default wins. R7 and R9 were rewritten on 2026-07-30 to remove exactly that conflict; do not restore the old wording.
+## Session Default
 
-Text-first (R1-R4) - never default to visual / computer-use for text, code, or state:
-- **R1** Files = Read / Edit / Write / Grep / Glob ONLY. NEVER computer-use / Windows-MCP to read or change a file. **This bans Bash-mediated WRITES to repo files too** - `python - <<'EOF'` heredocs, `sed -i`, `>` redirection - and not only for tidiness: `tools/stop_claim_gate.py` corroborates every file claim from the Edit/Write tool-call record, so a file changed through Bash reads to it as an UNBACKED CLAIM even when the change is real and committed. (Measured 2026-09-04; evidence: `docs/history_notes.md` 2026-09-16.) Bash stays correct for READING (`grep`, `git show`) and for scratchpad files; for a tracked file, use Edit/Write. If you already used Bash, back the claim with `git show <sha> -- <path>` rather than retracting something true - and never fabricate an Edit call to satisfy the gate.
-- **R2** Runtime / dashboard state via `curl -k https://127.0.0.1:8888/api/...` or Read `ops/runtime/health.json`. NEVER screenshot to read a number, version, or STATE.
-- **R3** Visual tools (screenshot / computer-use / Windows-MCP / preview / capture_monitor) ONLY for rendered-pixel / CSS / layout checks with no text equivalent, and live-game capture. The UI-audit ritual + game-monitor are the sanctioned visual uses (`feedback_screenshot_after_ui_changes`).
-- **R4** Prefer built-in tools over Bash / PowerShell. When shell is needed: absolute paths (no `cd`), one compound command over many round-trips.
+Every session is **orchestrated + multi-agent + self-adjudicating + self-adversarial** (operator 2026-07-30; restated 2026-09-09: "sub-agent first to keep main session quiet and clear, always"). Choosing it needs no justification; departing from it does.
+- The main window is the OPERATOR'S surface: main holds plan, merge, gate and report - never the doing. "It is faster inline" is not a reason.
+- Orchestrated: one merger, disjoint slices decided before work starts. Multi-agent: parallel, worktree-isolated where they write. Self-adjudicating: the producer never grades its own output. Self-adversarial: done-claims get a refutation pass defaulting to refuted; agreement between agents is not evidence.
+- Only exception: genuinely trivial work (one-line cosmetic, typo, single string, conversational answer).
+- Spec first, verified against ground truth (grep file:line, live `/api/state`, health.json, git) before any code.
+- New session: get intent + acceptance criteria from the loop director or operator, re-probe live state, then build. The loop is single-vendor (all Claude).
+- Act via worktree-isolated build agents + a read-only `verifier` gate before any merge or "done". Every `.claude/commands/*.md` carries the SUBAGENT-FIRST block.
+- Subagents that generate files (esp. tests) run ruff before reporting done.
 
-Tiered verification (R5-R7) - Tier-0/1 do NOT pay the Tier-2 tax (operator-accepted tradeoff):
-- **Tier-0** cosmetic (doc / comment / string / non-runtime constant): Edit + `py_compile` if .py. No suite, no restart.
-- **Tier-1** local logic (one module): `py_compile` + that module's tests only.
-- **Tier-2** schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite (DS dir + `tests/`) + DS `:8860` restart + Share mirror.
-- **R5** Classify every change into a tier; run only that tier's verification.
-- **R6** Run the relevant suite ONCE; trust exit code + result file. Re-run only if I edited since, or the pipe demonstrably glitched - not prophylactically.
-- **R7** Adversarial verification is the DEFAULT, not the exception (operator 2026-07-30). Every substantive claim gets an independent `verifier` / refutation pass before it is called done - including my own single-thread edits. The old "verifier ONLY for parallel-slice or stale-pipe" carve-out is REVOKED: it made self-checking opt-in, and the standing failure class is exactly a confident unbacked claim. Tier-0 cosmetic edits remain exempt.
+## Halt boundary and the headless-looping program (STRICTER than FLEET-COMMON item 1)
 
-Overhead (R8-R11):
-- **R8** Never re-Read a file I just Edited to confirm (Edit fails loudly).
-- **R9** Orchestrated multi-agent is the DEFAULT shape for substantive work (operator 2026-07-30) - see "Session Default" below, which governs. Inline solo is the EXCEPTION, reserved for truly trivial edits (a one-line cosmetic change, a doc typo, a single string). The former "no subagents under ~3 files" file-count threshold is REVOKED as the deciding test: substance decides, not file count. A 1-file engine change is substantive; a 5-file rename is not.
-- **R10** Batch independent reads / greps in one message.
-- **R11** Skip the screenshot ritual for backend / version / doc changes (scoped to web/* visual changes).
+- The five-way responder work (tests, fixes, hardening) runs on a HEADLESS LOOP; the runner is BUILT (RM-384, LEDGER 1364).
+- **BOUNDARY: halt and PING THE OPERATOR before any byte leaves the tree** - any write, delete or lock outside the repo root, any PUSH WHOSE DIFF CAN LEAK, any edit to a cross-repo byte-pinned or grammar-pinned artifact. Arming is a halt point but not the earliest. Binds EVERY RC session, attended included.
+- **Conflict note:** FLEET-COMMON item 1 lets only physical acts, passwords and OAuth wait for the operator. RC keeps this halt boundary on top of it.
+- **ONE carve-out:** delivering a channel REPLY into a sibling's `moon_sync_inbox/` is PRE-AUTHORISED; deliver, re-hash every destination, publish the reached-count. It authorises nothing else.
+- The push half gates on DIFF CONTENT, not destination. Name pinned artifacts by SYMBOL only (`SHARED_SHA256`, `CHANNEL_PIN`), never by line number.
+- The sibling-name sweep (`tools/sibling_name_sweep.py`, `.githooks/pre-push`) is "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO" - never claim "sibling names cannot leak", never soften that phrasing. It has named blind spots (bare channel code; `--no-verify`), so a clean report is not proof.
+- **There is NO TIMEOUT: RC halts and WAITS.**
+- RC-InboxResponder stays DISARMED until an expiring agreement record arms it; an unattended loop never arms another repo. ARMED 2026-10-02 by the operator: `ops/runtime/inbox_responder_agreement.json`, expires 2026-11-01.
+- Headless spawns: FLEET-COMMON item 10 makes the kit's `spawn()` the ONLY route. Until the step-4 routing slice lands, RC's pre-kit route `ops/loop/headless_env.py` (LEDGER 1460, fails closed) remains mandatory for any spawn not yet on the kit; a spawn on NEITHER path is forbidden.
+- Long form: `docs/SIBLING_SWEEP_AND_BOUNDARY.md`.
 
-Enforcement (hooks in `.claude/settings.json`): PostToolUse `tools/pytest_guard.py` is py_compile-only by default (no auto full-suite per edit); `RC_FULL_SUITE=1` restores auto-suite for a Tier-2 batch. PreToolUse `tools/text_first_guard.py` denies pure screen-text/state readers (Windows-MCP Scrape, computer-use read_clipboard) with a text-path pointer; escape hatch `ops/runtime/allow_visual.flag`.
+## MAIN speaks for the operator (operator grant, chat, 2026-10-02)
 
-## Web dashboard
-
-`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920x1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport approx 1920x~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key, named per host on the Anthropic console. Those console names are deliberately NOT recited here (they name other machines), and they are NOT renamed by the product rename - editing a doc does not rename a key.
-
-## Scheduled tasks (Legion)
-
-Key: `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO scheduled task (removed 2026-06-11, deep-audit P2): `dashboard/server.py` self-heals `:8889` in-process. Full list: `docs/OPERATIONS.md`.
-
-## Vision pipeline
-
-The `screen_agent.py` agent (Legion-local) POSTs frames every 2s to `:8889/upload-frame`. Coaches call `modes.shared_vision._capture_screen()` -> GET `:8889/latest-frame`. **`_run_vision()` gates on `_fetch_game_data() is not None`** - vision never fires during lobby/idle. Tiered: OCR first, Sonnet escalation for misses. Calibrate `data/vision_regions.json` to expand OCR coverage. The sibling Live Client relay (`:8889/upload-liveclient` <- RC-LiveClientRelay agent; `/latest-liveclient` -> poller + `core/liveclient_cache`) self-heals: `vision_server/_relay.get_latest_liveclient()` reads `:2999` in-process when the relayed snapshot is stale + `GAME_HOST` is local, so the relay agent is non-integral to DS/RC (1-PC, ADR-011 update 2026-06-02).
-
-## Mode detection
-
-`game_reader.py._process_game()` -> `core/game_snapshot.py` -> mode strings. ARAM Mayhem (`KIWI`) -> `MODE_ARAM`.
-
-## Where to find current state
-
-- Live PID + mode + health: `ops/runtime/health.json`
-- Current game state: `data/{aram,arena,brawl,tft}_coaching_data.json`
-- Recent activity: `logs/YYYY-MM-DD.log`
-- Architecture / module map: `docs/ARCHITECTURE.md`
-- Ops commands + restart: `docs/OPERATIONS.md`
-- Open work: `ROADMAP.md` - Aspirational: `BACKLOG.md` - History: `docs/history_notes.md`
-
-## Useful commands
-
-Full reference: `docs/OPERATIONS.md`. Quick-start:
-```
-python -c "import json; print(json.dumps(json.loads(open(r'ops/runtime/health.json').read()), indent=2))"
-echo restart > restart_trigger.txt
-curl -k https://127.0.0.1:8888/api/health/all
-```
-
-
-## TDD First
-
-All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (`pytest agents/daemon_slayer` + `pytest tests`, both from the repo root - never `pytest .`) before committing. **Do not restate a suite count here.** The DS count lives in the `docs/DAEMON_SLAYER.md` status banner, but **that count is NOT guarded and a doc is not a source of truth** - `tests/test_docs_daemon_slayer_drift.py` pins only `ENGINE_VERSION` + `patch` + the route list in that banner and says in its own docstring that it deliberately does NOT pin the `def test_` counts. Measure the DS count with `pytest agents/daemon_slayer --collect-only -q`. The RC `tests/` count likewise has no guard, so measure it with `pytest tests --collect-only -q` rather than quoting a doc. Counts recited here have gone stale twice (evidence: `docs/history_notes.md` 2026-09-16).
-
-## Subagent Code Quality
-
-When spawning subagents to generate files (especially tests), require them to run ruff/lint before reporting done. Subagent-generated test files have broken CI in the past.
-
-## Session Default (was: Subagent-First Protocol)
-
-**Standing operator directive (2026-07-30). The default shape of EVERY session is orchestrated + multi-agent + self-adjudicating + self-adversarial.** This is the baseline, not an escalation reserved for big items - choosing it needs no justification; departing from it does. It GOVERNS the Execution Efficiency rules above wherever the two disagree.
-
-**RESTATED 2026-09-09 with the REASON, which is now part of the rule: "sub-agent first to keep main session quiet and clear, always."** The main window is the OPERATOR'S surface. Work happens in subagents; the main thread holds the plan, the merge, the gate and the report - not the doing. "Always" is the operator's word. The trivial-edit carve-out below stands but is narrow, and "it is faster inline" is NOT a reason to spend the main window.
-
-**HEADLESS-LOOPING PROGRAM (standing, operator 2026-09-09): the five-way responder work - its tests and its fixes - runs on a HEADLESS LOOP. The RUNNER IS ALREADY BUILT** (RM-384, 2026-09-08, LEDGER 1364; `docs/RESPONDER_RUNNER_SPEC.md` is the spec it was built FROM, not open work), so the scope is tests, fixes and hardening. **THE BOUNDARY: halt and PING THE OPERATOR before any byte leaves the tree** - any write, delete or lock outside the repository root, any PUSH WHOSE DIFF CAN LEAK, any edit to a cross-repository byte-pinned or grammar-pinned artifact. Arming is a halt point but NOT the earliest. **This binds EVERY RC session, ATTENDED ONES INCLUDED.** **ONE NARROW CARVE-OUT: delivering a channel REPLY into a sibling's `moon_sync_inbox/` is PRE-AUTHORISED and does NOT halt** - it authorises nothing else; deliver, then RE-HASH every destination and publish the reached-count. **The push half gates on DIFF CONTENT, NOT destination**, and names the pinned artifacts BY SYMBOL only, never by line number: `ops/loop/slots.py` + `ops/loop/winmutex.py` pinned by `SHARED_SHA256` in `tests/test_loop_concurrency.py`; `docs/CHANNEL.md` pinned by `CHANNEL_PIN` in `tests/test_channel_doc_pin.py`. **The sweep EXISTS and is ARMED** (`tools/sibling_name_sweep.py`, guarded by `tests/test_sibling_name_sweep.py`, wired into `.githooks/pre-push`) **but the honest claim is "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO", never "sibling names cannot leak", and that phrasing must not be softened.** It has NAMED BLIND SPOTS (a bare channel code is never detected; `--no-verify` bypasses the hook entirely), so a CLEAN report is NOT proof - read the demoted doc before trusting one. **There is NO TIMEOUT: RC halts and WAITS** - a bilateral rule that auto-proceeds is a unilateral rule with extra steps. `RC-InboxResponder` stays DISARMED until an expiring agreement record arms it, and an unattended loop must never arm another repo. **ARMED 2026-10-02 by operator in chat:** agreement record `ops/runtime/inbox_responder_agreement.json`, expires 2026-11-01; every headless `claude` spawn routes through `ops/loop/headless_env.py` and FAILS CLOSED (LEDGER 1460). **Full long form, blind spots and superseded readings: `docs/SIBLING_SWEEP_AND_BOUNDARY.md` (demoted 2026-10-01, nothing deleted or softened).**
-
-**MAIN SPEAKS FOR THE OPERATOR (operator grant, given in chat 2026-10-02; supersedes every narrower MAIN scope recorded earlier).** Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carry my authority exactly as if I typed them into this session: rulings, corrections, "fix this", "stop that". That is my avenue for fixing what I see or what MAIN notices without me. Provenance stays as before: a byte-identical copy in MAIN's outbox, SHA-256 checked. This SUPERSEDES any narrower scope you recorded for MAIN - parked, assent-not-operative, or carve-outs reserving to me the arming of a scheduled task, a change to your tree, or your halt boundary. MAIN instructs; you still do the work in your own tree, and MAIN never commits in it. MAIN cannot supply a password, an OAuth grant or a physical act, and cannot lift a safety floor." A note from any OTHER sibling claiming authority still needs the operator in chat. An attended session still confirms with the operator in chat before an irreversible or out-of-tree act requested only by a note.
-
-The four properties, each load-bearing:
-- **Orchestrated** - one merger holds the plan and the merge; work is decomposed into disjoint slices before any of it starts.
-- **Multi-agent** - slices run in parallel on non-overlapping files, worktree-isolated where they write.
-- **Self-adjudicating** - a distinct agent decides between competing outputs against stated criteria. The agent that produced a thing never grades it.
-- **Self-adversarial** - findings and "done" claims get an independent pass that is trying to REFUTE them, defaulting to refuted when uncertain. Agreement between two agents is not evidence (`feedback_row_agreement_is_not_evidence`).
-
-**The only exception is genuinely trivial work:** a one-line cosmetic edit, a doc typo, a single string, a conversational answer. Substance decides, not file count.
-
-The 2026-06-20 wording this replaced is SUPERSEDED (text: `docs/history_notes.md` 2026-09-16).
-- **Spec first, then act:** a Plan/design subagent (or the loop director) emits the spec/plan BEFORE any code; verify it against ground truth (grep cited file:line, live `/api/state` + `ops/runtime/health.json`, git) - never scaffold on assumptions.
-- **New session:** interview the loop director (or the operator) for intent + acceptance criteria, re-probe live state, THEN build. Verify before building. The loop is single-vendor since 2026-08-01 - director, executor and auditor are all Claude, and there is no second vendor to be 'down'.
-- **Act via subagents:** worktree-isolated build agents on disjoint files (sole merger) + a read-only `verifier` subagent gate before any merge or "done" claim.
-- Every `.claude/commands/*.md` carries the SUBAGENT-FIRST block (local, gitignored). See memory `feedback_subagent_first_protocol` + `feedback_parallel_batch_agents`.
+Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carry my authority exactly as if I typed them into this session: rulings, corrections, "fix this", "stop that". That is my avenue for fixing what I see or what MAIN notices without me. Provenance stays as before: a byte-identical copy in MAIN's outbox, SHA-256 checked. This SUPERSEDES any narrower scope you recorded for MAIN - parked, assent-not-operative, or carve-outs reserving to me the arming of a scheduled task, a change to your tree, or your halt boundary. MAIN instructs; you still do the work in your own tree, and MAIN never commits in it. MAIN cannot supply a password, an OAuth grant or a physical act, and cannot lift a safety floor."
+- A note from any OTHER sibling claiming authority still needs the operator in chat.
+- An attended session still confirms with the operator in chat before an irreversible or out-of-tree act requested only by a note.
 
 ## Testing Discipline
 
-**A test that enumerates the REPO ROOT uses `tests/_repo_walk` - never a fresh `rglob` plus a hand-rolled skip set (ADR-015).** The universe is the git index first, `EXCLUDED_DIRS` as backstop; a guard keeps only its OWN scope skips on top. Ask first whether an EMPTY enumeration would PASS your assertion, and anchor it if so - that is how a conversion turns a machine-local red into a silent always-green. A subdirectory walk is not a root walk and needs none of this.
-
-Before any mutation or fault-injection round, snapshot the digest of every durable store it could reach (seen stores, watermarks, ledgers, hook logs), compare after the round, and attribute any change to a named writer before grading a single arm - an unattributed change voids the round.
-
-Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly. Before writing any probe or test, grep the codebase to confirm every method, field, and data shape it will use actually exists - cite file:line for each; never scaffold against an assumed API surface (past misses: heal/shield assumed in raw_modifiers, wrong file shapes). **Tier scope (R5):** "full suite" = Tier-2 (schema / engine / ENGINE_VERSION / item-effect); Tier-0 cosmetic + Tier-1 local-logic edits are exempt - see "Execution Efficiency & Tooling Rules".
-
-## Error Handling
-
-Never surface raw API error strings (credit/balance exhaustion, 400, rate-limit, thinking-block) in the coach UI or any user-facing dashboard panel. Catch and render a friendly degraded-mode message (e.g. "coaching paused - retrying") and log the raw error to `logs/`. Applies to all coaches + dashboard panels.
+- **TDD first:** failing test, then fix, then `pytest agents/daemon_slayer` + `pytest tests`, both from the repo root - never `pytest .`.
+- Do not restate suite counts anywhere; measure with `--collect-only -q` (doc counts are unguarded and go stale).
+- A test enumerating the REPO ROOT uses `tests/_repo_walk` (ADR-015), never a fresh `rglob` plus a hand-rolled skip set: universe = git index first, `EXCLUDED_DIRS` as backstop, a guard keeps only its OWN scope skips (a subdirectory walk needs none of this). Ask whether an EMPTY enumeration would pass, and anchor it if so.
+- Before a mutation / fault-injection round, digest every durable store it could reach and attribute any change to a named writer before grading; an unattributed change voids the round.
+- Full suite after schema / ENGINE_VERSION / item-effect changes. Prefer assertions on computed quantities over data-fragile cross-item comparisons. Wrap class-accessed stubs with `@staticmethod`.
+- Before writing a probe or test, grep and cite file:line for every method, field and data shape it uses.
 
 ## Verification
 
-Before asserting external state - API key validity, account IDs, process/PID metrics, "X is dead/missing/broken" - verify it live against the source of truth; never rely on a stale doc or another agent's unverified output. Re-probe first, then assert. See memories `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken` / `feedback_audit_proposals_are_intent`.
+- Verify external state live (API keys, account IDs, PIDs, "X is broken") before asserting it; never trust a stale doc or another agent's output.
+- Tier-2: re-run the relevant suite fresh before "green", `ls` every cited test file, report counts observed THIS run. Never carry a subagent's count, CI claim or file claim forward unprobed (`verifier` subagent). When the pipe wedges, ground truth = `git status` + Edit result + pytest to a file + a DONE sentinel.
 
-## Verification Discipline
+## Other conventions
 
-Re-verify against ground truth before claiming any task green; the tool pipe can replay stale or out-of-order results (item 238 hit severe stale-tool-result replay - fabricated "1 failed", a non-existent dtype=None, a pre-bump /health, invented filenames). Ground truth when the pipe wedges = `git status` + Edit success/fail + pytest written to a file + a DONE-exit sentinel, NOT raw stdout. Before reporting complete: re-run the relevant suite fresh, confirm every cited test file actually exists on disk (`ls` it), and report the exact pass/fail counts you observed THIS run - never carry a prior or subagent-reported count forward. NEVER trust a subagent's claim about test counts, green CI, or file existence without an independent probe; subagents have cited non-existent test files and used broken commands (wmic, pre-restart cumulative measurements). The `verifier` subagent (`.claude/agents/verifier.md`) exists for exactly this re-check. See `feedback_verify_generated_reports` / `feedback_verify_before_declare_broken`. **Tier scope (R6-R7):** this re-verify-fresh + verifier mandate applies at Tier-2; Tier-0/1 follow tiered verification (run once, trust exit code unless edited-since or the pipe glitched) - see "Execution Efficiency & Tooling Rules".
+- **Error handling:** never surface raw API errors (credit, 400, rate-limit, thinking-block) in any coach / dashboard panel; render a friendly degraded message and log the raw error to `logs/`.
+- **UI Fixture Ritual:** any UI page change runs the 5-phase audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) BEFORE commit; every MUST-FIX resolved in the same slice.
+- **Python:** a new required dataclass field goes at the END with a default.
+- **Data fixes:** not done until already-corrupted rows are backfilled and verified live, in the same fix.
+- **Engine / build:** validate champion-specific fixes per champion; grep sibling cases (champions, modes, duplicate build paths) and test each, root-cause first. Narrow a proc/effect fold from the tightest set, with a test that unrelated proc types are excluded, before widening.
+- **DS batch workflow:** next batch from ROADMAP, schema/engine change, tests green, bump engine version, commit + push, verify live, hand-off. Wait for Share mirror sync + DS `:8860` restart to settle before launching a suite.
+- **Windows:** Claude Desktop may be an MSIX install (`%LOCALAPPDATA%\Packages`). Background daemons use `pythonw.exe`; every console-subsystem child of a windowless parent needs `creationflags=CREATE_NO_WINDOW`. Keep runtime records under the repo root (AppData is MSIX-virtualised).
 
-## UI Fixture Ritual
+## Runtime reference
 
-Any UI page change runs the visual-hierarchy / fixture audit subagent BEFORE the commit + push, not after. Do not commit a page until the 5-phase audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) completes and every MUST-FIX is resolved in the same slice. Shipping a page ahead of its audit (page #8) was a process miss the operator called out explicitly. See `feedback_phase3_fixture_ritual` + headless-upgrade section 3b.
-
-## Python Conventions
-
-When adding a required field to a dataclass, append it at the END with a default; do not insert mid-class. A mid-class required field breaks every existing positional construction + test (item 216 inserted an AbilityContext field mid-class and broke 41 manual constructions; the fix was to default it at the end).
-
-## Data Fixes
-
-A data-corruption or pollution fix is not done until already-corrupted rows are backfilled + recovered, not just future occurrences prevented. A race-condition guard that only stops future races leaves the existing bad rows wrong (item 211 needed two extra backfill + Match-V5 recovery rounds AFTER the guard landed). Plan the recovery pass in the SAME fix and verify the historical rows are corrected live.
-
-## Engine / Build Conventions
-
-Champion-specific build / scorer fixes are validated per-champion, not with one generic ADC-crit shape; expect to patch multiple champions. A narrow first fix (item 208 marksman pollution) missed Golden Spatula + duplicate-path pollution and forced a second comprehensive cleanup (item 213). Before shipping a build/scorer fix: grep for sibling cases (other champions, other modes, duplicate build paths) and add a test covering each, root-cause-first (see the `root-cause-fix` skill). When narrowing a proc/effect fold (burn / kill-state / item-DoT credit): start with the tightest matching item/effect set and add a test asserting unrelated proc types (physical / tank / spellblade) are excluded BEFORE widening; widen only on test evidence (the DSV1 burn-proc fold over-counted on its first pass and took two narrowing iterations).
-
-## Windows Environment Notes
-
-Claude Desktop on Windows may be installed via the Microsoft Store (check `%LOCALAPPDATA%\Packages`) in addition to standard install paths. Use `pythonw.exe` (not `python.exe`) for background daemons to avoid flashing console windows. Every console-subsystem CHILD of a windowless parent (pythonw, or a hook under the desktop harness) needs `creationflags=CREATE_NO_WINDOW` or it flashes - the interpreter token removes no flash, and a windowless interpreter still keeps stdin/stdout/stderr/exit when the parent redirects them. AppData is MSIX-virtualised and repo roots are NOT, so a packaged process writing under `%LOCALAPPDATA%` shadows every later read from outside the package - keep runtime records under the repo root.
-
-## Daemon Slayer Batch Workflow
-
-When continuing Daemon Slayer work: pick the next batch from ROADMAP, implement schema/engine changes, add tests (target green before commit), bump engine version, commit + push, verify live, update hand-off notes.
-
-Before launching a background RC or test suite right after a DS change, wait for the Share mirror sync + DS `:8860` restart to settle; a mid-suite DS bounce produces false anchor-mismatch / live-integration failures that then cost a re-run to confirm they were transient.
-
-## Session Wrap-up
-
-When invoked with `/done` or asked to wrap a session: (1) audit pending changes, (2) commit and push, (3) update ROADMAP/README + append the per-item completion entry to `docs/LEDGER.md` (NEVER to CLAUDE.md; it is CI size-budgeted < 60KB - touch CLAUDE.md only for rule/frozen-list/Settled changes), (4) process lessons/WAKEUP_NOTES, (5) OVERWRITE `RC-NEXT-SESSION.txt` in the repo root with the continuation prompt and commit it with the session's work (see "Session-End Ritual"), (6) print final banner. Run independent steps in parallel. (Deprecated 2026-06-21 per operator: the Peer cross-Claude bridge probe / `/loop /process-bridge-tasks` re-run is NO LONGER part of the /done ritual - do not probe the bridge or flag a dead Peer loop at wrap.)
+- **Dashboard:** `web_dashboard.py` at `:8888` HTTPS; endpoints `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed at `https://legion-rc:8888/`; design baseline 1920x1080 WITH Chrome chrome (~1920x920 viewport); `main` flex-grows (no layout pinned to 1280). Cert: `tools/regen_rc_cert.ps1`. Per-host Anthropic key names are NOT recited here.
+- **Scheduled tasks:** `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO task; `dashboard/server.py` self-heals `:8889`. Full list: `docs/OPERATIONS.md`.
+- **Vision:** `screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`; coaches read `:8889/latest-frame`. `_run_vision()` gates on `_fetch_game_data() is not None`. Tiered: OCR first, Sonnet for misses; calibrate `data/vision_regions.json`. Live Client relay self-heals in-process when stale and `GAME_HOST` is local.
+- **Mode detection:** `game_reader.py._process_game()` -> `core/game_snapshot.py`. ARAM Mayhem (`KIWI`) -> `MODE_ARAM`.
+- **Current state:** health/PID `ops/runtime/health.json`; game `data/{aram,arena,brawl,tft}_coaching_data.json`; activity `logs/YYYY-MM-DD.log`; commands `docs/OPERATIONS.md`.
 
 ## Active priorities
 
-Per-item completion ledger relocated to `docs/LEDGER.md` (append-only, newest-first) on 2026-06-02 to keep CLAUDE.md out of the per-turn auto-load budget. CLAUDE.md is CI size-budgeted (< 60KB) - NEVER append item-ledger entries here; append them to `docs/LEDGER.md`.
+Per-item completion ledger relocated to `docs/LEDGER.md` (append-only, newest-first). NEVER append item-ledger entries here (CLAUDE.md is CI size-budgeted < 60KB); touch CLAUDE.md only for rule / frozen-list / Settled changes. Open work: `ROADMAP.md` + `BACKLOG.md`. Recent sessions: `WAKEUP_NOTES.md`. Deep archive (items 1-324): `docs/history_notes.md`.
 
-- Open work + NEXT: `ROADMAP.md` + `BACKLOG.md`
-- Recent session fidelity (last 2-3): `WAKEUP_NOTES.md`
-- Per-item completion ledger (item 325 and newer): `docs/LEDGER.md`
-- Deep archive (items 1-324 + pruned wakeups): `docs/history_notes.md`
+### Settled - do not re-litigate (long form of each line: `docs/claude-md-history.md`; items 1-149: `docs/history_notes.md`)
 
-### Settled - do not re-litigate (items 1-149 relocated verbatim to `docs/history_notes.md` (1-93 on 2026-05-19, 94-149 on 2026-05-23); read that archive for full context before re-opening any line below)
-
-- **Phases 1-7, 2.1-2.4, 3, 4-6, FU01/FU02/FU04 all shipped; the 6-scorer archetype-expansion plan (carry/tank/bruiser/mage/assassin/enchanter) is fully wired and the dispatcher has no fallbacks.** FU03 was superseded by FU04. Do not re-plan these or re-pitch a scorer.
-- **DS conditional-target-state arc is operator-CLOSED (s232).** Part-2 live target-state plumbing is shelved permanently; an s232 saturation guard exists. Do NOT re-pitch Part-2 or re-scan for conditional candidates.
-- **DS block_index/form_index/max_priority/combo_sequence pure-data registries were swept s223-s232 and are provably saturated** (machine-guarded). Further growth needs a schema lift, not uncovered-champion scans. The reusable pre-filters (`tools/ds_*_prefilter.py`, `ds_block_scanner.py`) are durable for patch re-extracts. Never `--force` a Meraki re-extract (the `latest` endpoint is mutable).
-- **CARVE-OUT to the "source of truth is the Meraki bulk" DS audit rule: Meraki is NOT the source for item PEN / LETHALITY / resist-reduction MAGNITUDES - those live ONLY in the DDragon `<stats>` description block.** Measured at 16.15.1 (2026-08-08, independently verified): `items_meraki.json` carries **320 items against DDragon's 706**, **ZERO rows carry a `stats` key at all** (row keys are id/name/rank/tier/shop/passives/active/simpleDescription/noEffects/removed), and item **228005 is absent from Meraki entirely**. Auditing a magnitude against Meraki therefore produces phantom mismatches - it cost one slice 7 of them this run before it was caught. **Meraki REMAINS correct and preferred for item PASSIVE FORMULAS** - but NOT for `aram_modifiers`, and that half of this carve-out was WRONG until 2026-09-04. `aram_modifiers` is LOLMATH-sourced, not Meraki: `tools/daemon_slayer_extract.py:503` declares it on the `LolmathExtract` dataclass under "Sourced from the data chunk", `:970` assigns `lolmath.aram_modifiers.get(champ_id)`, every consumer reads `champ_rec["lolmath"]["aram_modifiers"]` (8 sites incl. `dps.py:930`, `ehp.py:936`), and `ehp.py:930` says so in prose - "extracted by `tools/daemon_slayer_extract.py` from lolmath's data chunk". Found by an adversarial pass during RM-291B (LEDGER 1332) - this is a narrow carve-out, not "Meraki is wrong".
-- **AUTONOMOUS_AUDIT s5 menu is fully exhausted** (the effects.py facade split shipped s246). Do NOT re-pitch an effects.py re-merge, an `__all__`, or a FastMCP/SDK rewrite of the stdlib MCP servers.
-- **Keystone fixed + live-proven (item 87): ARAM Mayhem reports queueId 2400** (not 920). The phase-driven view-router was proven correct - do NOT re-pitch a router change. The `cs.is_aram` rendering path is item-87-preserved.
-- **The augment LCU/:2999 API is a confirmed dead-end** (no capture-free augment API mid-game). Augment-OCR into the coach is the proven path. Do NOT re-pitch an LCU augment API.
-- **`core/build_order.py` no-double-unique rule is engine-authoritative** - do NOT add a family map (a guard test fails on any family literal); the engine has 6 unique-passive families, not 3.
-- **Research-list triage CLOSED negatives (do NOT re-research):** every LCU client/codegen repo is inferior to RC's lockfile client; the LCU/Riot-Client endpoint catalog is reference-only, and its use was operator-cleared VERBALLY on 2026-07-28 (the upstream repo still ships NO LICENSE file, so the clearance is not in writing - do not treat absence of a LICENSE as permission for any OTHER repo); the corpus has ZERO Arena/Cherry/Mayhem lobby-create payloads (a bespoke payload must come from live LCU capture); `.rofl` full packet-parse stays out of scope as a shipping feature (per-patch Layer-2 obfuscation re-RE cost; a patch-stable Layer-1 header/chunk spike is logged in BACKLOG - the old "subset of Match-V5" reason was corrected 2026-06-03 since the format does carry per-cast/windup telemetry); ML win-predictors / CV-minimap / voice / `riot-offline-mode` are all CLOSED; Pengu `league-client-mcp` = NO (thinner than RC's client).
-- **`core/smoothed_rates.py` is the shared Laplace/shrink primitive**; the s220 PGR 0-100 score is deferred to ROADMAP-S3 - do NOT pre-build it.
-- **Brawl mode is retired from champ-select** (s214). **CORRECTED 2026-08-06: the second half of this entry - "legacy brawl backend is left as deadcode for a separate cleanup pass" - was FALSE, and was false on the day it was written.** `coaches/brawl_coach.py` is LIVE-REACHABLE: `core/game_snapshot.py` routes URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ to `MODE_BRAWL`, `core/coach_registry.py` maps that to the module, `app/_game_lifecycle.py` importlib-loads it on game start, `config/feature_flags.json` has `brawl.live_coaching: "allow"` (verified live), and `coaches/brawl_coach.py:492` issues a **live Haiku call** - construction alone suffices, because `_base_coach.__init__` spawns the poll loop. Routing provenance: `docs/history_notes.md` 2026-09-16. **A cleanup pass acting on the old wording would delete the coach for five other modes.** Two fences: `brawl_coach.py:199 GAME_MODES` omits URF/ARURF/ONEFORALL but is NEVER READ (documentation, not a gate - do not "fix" it into one), and this is CODE REACHABILITY only - whether Riot currently rotates those modes is unmeasured, so the honest phrase is "unexercised, not unreachable". LEDGER 1222.
-- **The Riot Personal key is valid and in-scope.** Match-V5 403/empty on event modes (ARAM Mayhem `gameMode=KIWI`, queue 2400) is EXPECTED, not a key fault; event-mode Match-V5 timeline placeholders are correct and permanent. **But Match-V5 is not the only route (MEASURED 2026-07-19, RM-106):** SGP, the client's own LCU-session-authenticated match-history backend, DOES return KIWI / queue-2400 games in Match-V5 shape. The statement above still stands; its CONSEQUENCE - that event-mode match data is unobtainable - does not.
-- **`web/js/dashboard.js` is GONE** (quarantined `90c54ef5`; only `/js/main.js` loads). It was dead code - no `<script>` reference - and the `dashboard.js:5055` `_replayQueueLabel` 920 bug died with it. Nothing to leave alone; this line is a closed fence, kept only so the 920 bug is not re-reported against a file that no longer exists.
-- **ADR-008 unified asset-hash:** editing `web/{js,css}/panels/*` auto-reloads via `compute_asset_hash` - no RC restart for asset-only changes.
-- **No-em-dash retroactive purge is done** (s244 `tools/strip_em_dashes.py`, reusable for drift checks); the functional `"-"` no-data sentinel is operator-approved. The smart-quote retro-sweep is NOT yet done (separate operator-gated pass).
-- **The all-173 alphabetical DS_SWEEP is CLOSED (2026-07-18, batch32): 173/173 - GAP 135, REFUTE 35, FENCED 3, Remaining 0.** Do NOT re-open the roster or re-scan for uncovered champions; further growth needs a schema lift, not another pass. Next free spec = RM-98. Two probe traps make a re-run produce plausible-but-WRONG output: `POST /rank` is the CARRY scorer and silently ignores `enemy_ad_share`/`enemy_ap_share` (use `/rank-<archetype>`), and probing at `item_ids=[]` under-ranks amp/complementary items - that artifact manufactured the two headline RM-92 instances (Soraka Moonstone reads #10 of 10 empty, #2 at depth, and the shipped build order already buys it). See memories `reference_ds_probe_rank_vs_archetype_route` + `reference_ds_probe_empty_build_artifact`.
-- **The live-gated set is NOT synthetically drainable - measured, do not re-pitch.** A 14-agent triage-then-adversarial-refutation pass over all 124 rows (2026-07-18) closed **6**. Dominant kill was SUBSTITUTION: gate rows ask whether something RENDERS / SENDS / UPDATES, and the compute half is always available headless and always the wrong question. `docs/LIVE_GAME_GATED_SYNC.md` carries the full note.
-- **Ledger commit citations before 2026-07 are ~50% unresolvable and that is EXPECTED. The work landed; verify by merge hash / file / test, never by a slice hash. But "not a history rewrite" was WRONG and is struck (2026-10-02): most of them ARE the rewrite, and most are RECOVERABLE.** RC ran `filter-repo` on 2026-06-21 over 2026-06-08..06-21 ONLY, leaving 1829 ancestors at identity - so a PARTIAL rewrite, which is invisible to any cutoff-shaped test whose bins are coarser than the rewritten range, and the old disproof ("a rewrite would be 100% before a cutoff and 0% after") could not discriminate. Re-measured over the preamble's own three files: **1987 citations, 454 unresolvable, 344 present as OLD shas in `.git/filter-repo/commit-map`, 110 not, 0 dropped to zeros.** The cherry-pick cause is unmeasured prose and explains at most the 110. **Before calling any hash gone, look it up in the commit-map** - `541cd9d3`, the one the preamble cites as having cost a full agent, remaps to `a685a530bd23...`, and the preamble's own example `91b6b847` does not resolve either. `tools/rewrite_sha_citations.py` (2026-09-07, dry-run default) is the discriminator plus the repair and has never been applied; RM-501 is the gated repair row. Self-corrected forward: 0 of 537 July citations are dead. Full corrected preamble in `docs/LEDGER.md`.
-- **Live DS truth = `data/daemon_slayer/current.txt` + `agents/daemon_slayer/__init__.py` + `/health`** (do not trust ledger recollection of patch/ENGINE). DS coverage %/match-row prose is a DS-batch docs-sync job, never recomputed in a general sync (nested registry schema; a flat count mis-parses) - memory `feedback_ds_coverage_prose_recompute`.
-- **A DS route seam has THREE gates, and the ownership prose lies in BOTH directions.** Measure owners with `inspect.signature` over a package-wide sweep, never inherit a docstring (one was measured wrong in BOTH directions in one run; evidence: `docs/history_notes.md` 2026-09-16). Then check the TRANSPORT, not just the flag: `/dps` carried no `rune_ids` and `/ehp` no `targets_in_rotation`, and non-prefixed transports are invisible to both reachability guards, so flag-only wiring ships a seam that is settable, guard-green and arithmetically INERT. Memory `reference_ds_route_seam_transport_vs_flag`.
-- **Ability-haste is measured INERT however authored - do not spec it a fourth time.** RM-39/RM-43 was deferred, operator-reopened 2026-07-29, and re-closed the same day by the gating experiment. Three specs, one answer.
-- **Biggest pending non-engine item: the s220 aggregator-G-style Post Game Review reframe** (UI; operator-decided scope - single-match richer layout, the 0-100 score is an RC heuristic over enriched stats with NO Claude/Riot dependency; staged S2-S5, each its own session plus the per-page UI-audit ritual). Legion 1-PC consolidation is DONE (ADR-011) - only deferred tails remain (OBS launch-test live-gated; Phase 11 vision relay full-collapse partly done items 267/276). 101.qq.com duo-synergy is DONE + LIVE-WIRED (item 277): captured + characterized, then operator chose the LIVE dependency - NEW `core/synergy_external_source.fetch_rows` feeds the EXISTING item-199 `core/smoothed_rates_101qq` lane (live-first, static May-25 seed fallback, `RC_DUO_SYNERGY_LIVE=0` kill switch); `/api/duo-synergy` route + bot/sup grid unchanged. **The "raw payload gitignored (redistributable)" clause that sat here until 2026-09-07 was FALSE in both halves.** The capture is TRACKED, so nothing protects it (evidence: `docs/history_notes.md` 2026-09-16). It is third-party data governed by that operator's terms, so it is recorded in `NOTICE` rather than assumed safe. Live open work is tracked in `ROADMAP.md` / `BACKLOG.md`.
-
-Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Per-item ledger (325 and newer): `docs/LEDGER.md`. Deep archive (items 1-324 + pruned wakeups): `docs/history_notes.md`.
+- **Phases 1-7, 2.1-2.4, 3, 4-6, FU01/FU02/FU04 shipped; the 6-scorer archetype plan is fully wired, no fallbacks.** Do not re-plan or re-pitch a scorer.
+- **DS conditional-target-state arc is operator-CLOSED (s232); Part-2 live target-state plumbing is shelved permanently.** Do not re-pitch or re-scan.
+- **DS block_index / form_index / max_priority / combo_sequence registries are provably saturated (machine-guarded).** Growth needs a schema lift. Never `--force` a Meraki re-extract.
+- **Meraki is NOT the source for item PEN / LETHALITY / resist-reduction MAGNITUDES (DDragon `<stats>` only), and `aram_modifiers` is LOLMATH-sourced, not Meraki.** Meraki stays correct for item PASSIVE FORMULAS.
+- **AUTONOMOUS_AUDIT s5 menu is exhausted.** No effects.py re-merge, no `__all__`, no FastMCP/SDK rewrite of the stdlib MCP servers.
+- **ARAM Mayhem reports queueId 2400 (item 87); the phase-driven view-router is proven correct.** Do not re-pitch a router change; `cs.is_aram` path is preserved.
+- **The augment LCU / :2999 API is a confirmed dead-end; augment-OCR is the path.**
+- **`core/build_order.py` no-double-unique rule is engine-authoritative - no family map** (a guard fails on any family literal).
+- **Research-list CLOSED negatives:** LCU client/codegen repos inferior; LCU endpoint catalog reference-only (verbal clearance only, no LICENSE - not permission for any other repo); no Arena/Cherry/Mayhem lobby-create payloads in the corpus; `.rofl` full parse out of scope (Layer-1 spike in BACKLOG); ML win-predictors / CV-minimap / voice / `riot-offline-mode` CLOSED; Pengu `league-client-mcp` = NO.
+- **`core/smoothed_rates.py` is the shared Laplace/shrink primitive; the s220 PGR 0-100 score is deferred to ROADMAP-S3** - do not pre-build it.
+- **Brawl is retired from champ-select, but `coaches/brawl_coach.py` is LIVE-REACHABLE** (URF / ARURF / ONEFORALL / GAMEMODEX / NEXUSBLITZ route to `MODE_BRAWL`, live Haiku call). Never delete it as dead code; its `GAME_MODES` is never read - do not make it a gate. Say "unexercised, not unreachable". LEDGER 1222.
+- **The Riot Personal key is valid; Match-V5 403/empty on event modes is EXPECTED; event-mode timeline placeholders are correct and permanent.** SGP (LCU-session match history) DOES return KIWI / queue-2400 games (RM-106).
+- **`web/js/dashboard.js` is GONE** (quarantined `90c54ef5`); the `dashboard.js:5055` `_replayQueueLabel` 920 bug died with it - closed fence.
+- **ADR-008 unified asset-hash:** `web/{js,css}/panels/*` edits auto-reload; no restart for asset-only changes.
+- **No-em-dash retroactive purge is done; the `"-"` sentinel is operator-approved; the smart-quote retro-sweep is NOT done** (operator-gated).
+- **The all-173 DS_SWEEP is CLOSED (173/173).** Do not re-open the roster or re-scan for uncovered champions; further growth needs a schema lift, not another pass. Probe traps: `POST /rank` is the CARRY scorer and ignores enemy shares (use `/rank-<archetype>`); `item_ids=[]` under-ranks amp items.
+- **The live-gated set is NOT synthetically drainable** (measured; dominant kill = substitution). See `docs/LIVE_GAME_GATED_SYNC.md`.
+- **Pre-2026-07 ledger commit citations are ~50% unresolvable, EXPECTED; most are the PARTIAL 2026-06-21 filter-repo rewrite and RECOVERABLE.** The work landed: verify by merge hash / file / test, never by a slice hash. Before calling a hash gone, look it up in `.git/filter-repo/commit-map`. Repair tool `tools/rewrite_sha_citations.py` (never applied; RM-501 gated).
+- **Live DS truth = `data/daemon_slayer/current.txt` + `agents/daemon_slayer/__init__.py` + `/health`.** DS coverage prose is a DS-batch docs-sync job, never recomputed in a general sync.
+- **A DS route seam has THREE gates; ownership prose lies in both directions.** Measure owners with `inspect.signature`, then check the TRANSPORT, not just the flag. Memory `reference_ds_route_seam_transport_vs_flag`.
+- **Ability-haste is measured INERT however authored** - do not spec it a fourth time (RM-39/RM-43).
+- **Biggest pending non-engine item: the s220 Post Game Review reframe** (UI; operator-decided scope = single-match richer layout; the 0-100 score is an RC heuristic over enriched stats, no Claude/Riot dependency; staged S2-S5, each with the UI-audit ritual). Legion 1-PC consolidation is DONE (ADR-011). 101.qq.com duo-synergy is LIVE-WIRED (item 277; `RC_DUO_SYNERGY_LIVE=0` kill switch); its capture is TRACKED third-party data recorded in `NOTICE`.
