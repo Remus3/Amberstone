@@ -563,3 +563,105 @@ test("a present but UNPARSEABLE lock is not reported FREE", async () => {
     "a lock file that exists but does not parse must not read as FREE"
   );
 });
+
+// --- inbox status: one bounded read per tree, slow tick only ---------------
+// Each tree publishes ops/loop/control/inbox_status.json. The poller READS it
+// (never writes), once per repo per SLOW tick, and never on the fast tick, so
+// the fast tick's "exactly 2 lock reads per repo" bound is untouched.
+
+function rosterDeps(entries, captured) {
+  return fakeDeps({
+    repos: { resolveRepos: () => entries },
+    model: {
+      buildModel({ repos, now }) {
+        captured.push(repos);
+        return { rows: [], repoRows: [], summary: {}, updatedAt: now };
+      },
+    },
+  });
+}
+
+const STATUS_ENTRIES = () => [
+  { code: "RC", root: ROOT_A, isSelf: true, display: "RC", order: 2, attendedOnly: false, tickS: null, noLane: false },
+  { code: "BBB", root: ROOT_B, isSelf: false, display: "Placeholder B", order: 1, attendedOnly: false, tickS: 600, noLane: false },
+  { code: "ZZZ", root: null, isSelf: false, display: "Placeholder Z", order: 0, attendedOnly: true, tickS: null, noLane: true },
+];
+
+const isStatus = (p) => p.indexOf("inbox_status.json") !== -1;
+
+test("the slow tick reads ONE inbox_status.json per rooted tree and none for a root-less one", async () => {
+  const io = fakeIo();
+  const captured = [];
+  const p = mkPoller(io, rosterDeps(STATUS_ENTRIES(), captured));
+  await p.tickSlow();
+  const reads = io.calls.readFile.filter(isStatus);
+  assert.strictEqual(reads.length, 2, reads.join(","));
+  assert.ok(reads.every((f) => /ops[\\/]loop[\\/]control[\\/]inbox_status\.json$/.test(f)));
+  assert.ok(reads.some((f) => f.indexOf(ROOT_A) === 0));
+  assert.ok(reads.some((f) => f.indexOf(ROOT_B) === 0));
+});
+
+test("the fast tick never reads a status file and never touches a root-less tree", async () => {
+  const io = fakeIo();
+  const p = mkPoller(io, rosterDeps(STATUS_ENTRIES(), []));
+  await p.tickFast();
+  assert.strictEqual(io.calls.readFile.filter(isStatus).length, 0);
+  assert.strictEqual(io.calls.readFile.length, 4, "2 rooted repos x 2 lock files, nothing for ZZZ");
+});
+
+test("status text and roster fields reach buildModel; a missing file is null", async () => {
+  const body = JSON.stringify({ schema: 1, state: "idle" });
+  const io = fakeIo({
+    readFile(p) {
+      io.calls.readFile.push(p);
+      if (isStatus(p) && p.indexOf(ROOT_B) === 0) return body;
+      return null;
+    },
+  });
+  const captured = [];
+  const p = mkPoller(io, rosterDeps(STATUS_ENTRIES(), captured));
+  await p.tickSlow();
+  await p.tickFast();
+  const last = captured[captured.length - 1];
+  const by = Object.fromEntries(last.map((r) => [r.code, r]));
+  assert.strictEqual(by.BBB.statusText, body);
+  assert.strictEqual(by.RC.statusText, null);
+  assert.strictEqual(by.ZZZ.statusText, null);
+  assert.strictEqual(by.BBB.display, "Placeholder B");
+  assert.strictEqual(by.BBB.order, 1);
+  assert.strictEqual(by.BBB.tickS, 600);
+  assert.strictEqual(by.ZZZ.attendedOnly, true);
+  assert.strictEqual(by.ZZZ.noLane, true);
+});
+
+test("a status file that vanishes renders as missing, never as the last value", async () => {
+  let present = true;
+  const io = fakeIo({
+    readFile(p) {
+      io.calls.readFile.push(p);
+      if (isStatus(p)) return present ? "{\"schema\":1}" : null;
+      return null;
+    },
+  });
+  const captured = [];
+  const p = mkPoller(io, rosterDeps(STATUS_ENTRIES(), captured));
+  await p.tickSlow();
+  present = false;
+  await p.tickSlow();
+  const last = captured[captured.length - 1];
+  assert.strictEqual(last.find((r) => r.code === "RC").statusText, null);
+});
+
+test("a throwing status read still produces a model", async () => {
+  const io = fakeIo({
+    readFile(p) {
+      if (isStatus(p)) throw new Error("EBUSY");
+      return null;
+    },
+  });
+  const captured = [];
+  const p = mkPoller(io, rosterDeps(STATUS_ENTRIES(), captured));
+  const m = await p.tickSlow();
+  assert.ok(m && Array.isArray(m.rows));
+  assert.strictEqual(captured[captured.length - 1].find((r) => r.code === "RC").statusText, null);
+});

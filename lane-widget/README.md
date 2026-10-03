@@ -21,8 +21,23 @@ recursion, no directory walk, no `rglob`:
 - A **non-recursive listing** of `<root>/ops/loop/reports` for the log
   heartbeat. Only filenames and mtimes are used; the logs are legitimately
   mixed UTF-8 / UTF-16LE and are never decoded.
+- `<root>/ops/loop/control/inbox_status.json` - that tree's inbox responder
+  status (schema 1), read once per slow tick and never written. It feeds the
+  row's `Sync:` line, e.g. `Sync: Appending Ledger [35m/42m][25/120]`. An
+  absent, unparseable or stale file (older than 2x the tree's tick) renders
+  `Sync: no signal [<age>]`, never the numbers it still carries.
 - One **machine-wide process snapshot**, taken once per slow tick and reused
   for every repository, to count the descendants of each live lock pid.
+
+## The ALL tab
+
+One row per repository, in the fixed order the roster's `order` field gives,
+including a repository with no live lane or no checkout on this host. Each row
+is the display name, a state word, ONE combined `Lane:` line (lane and
+controller together - `Lane: <name> 12m`, `Lane: free`,
+`Lane: STALE (reclaimable)`) and ONE `Sync:` line. The per-repo tabs keep the
+lane / controller cards. Display names and order come from the optional
+`roster` key of the gitignored roster file (see the tracked example).
 
 Liveness is decided by a **pid probe plus a start-time stranger guard**, never
 by file existence. A lock file whose pid is dead renders as stale
@@ -35,7 +50,8 @@ running lanes.
 The roster itself comes from the per-host, gitignored `ops/moon_sync_repos.json`
 (schema in the tracked `ops/moon_sync_repos.example.json`), or from the
 `RC_MOON_SYNC_REPOS` environment override. Repositories are labelled by their
-short participant CODE only - never by a directory name. A missing or corrupt
+short participant CODE, or by a display name set in that same gitignored file -
+never by a directory name. A missing or corrupt
 roster file is the correct fresh-clone answer and yields RC alone, not an error.
 
 ## What it deliberately does NOT read
