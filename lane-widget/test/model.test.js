@@ -457,3 +457,146 @@ test("buildModel output is JSON-serialisable for the IPC push", () => {
   const m = buildModel({ repos: [repo({ lane: running(), children: 2 })], now: NOW });
   assert.deepEqual(JSON.parse(JSON.stringify(m)), m);
 });
+
+// ------------------------------------------------------------- repoRows
+// The ALL tab is ONE ROW PER REPO in fixed roster order. model.rows stays the
+// state-sorted lane/controller list the per-repo tabs render; repoRows is the
+// roster-ordered list the ALL tab renders. Codes here are placeholders.
+
+function isoAt(epochS) {
+  return new Date(epochS * 1000).toISOString();
+}
+
+function liveStatus(over) {
+  return JSON.stringify(Object.assign({
+    schema: 1, code: "AAA", updated: isoAt(NOW - 5), state: "running",
+    task: "Appending Ledger", task_started: isoAt(NOW - (35 * 60 + 20)),
+    task_eta_s: 42 * 60, next_tick: null, runs_in_window: 25, runs_cap: 120,
+    window_s: 86400, cap_frees_at: null,
+  }, over || {}));
+}
+
+// Seven repos handed over in a SHUFFLED order with root-less ones included,
+// so only the roster `order` can produce the expected sequence.
+function sevenRepos() {
+  const spec = [
+    ["CCC", 3], ["RC", 2], ["ZZZ", 0], ["FFF", 6], ["AAA", 1], ["EEE", 5], ["DDD", 4],
+  ];
+  return spec.map(([code, order]) => repo({
+    code,
+    isSelf: code === "RC",
+    root: code === "ZZZ" || code === "EEE" ? null : "C:\\fake-" + code,
+    noLane: code === "ZZZ" || code === "EEE",
+    attendedOnly: code === "ZZZ",
+    display: "Display " + code,
+    order,
+  }));
+}
+
+test("repoRows is exactly one row per repo, in roster order", () => {
+  const m = buildModel({ repos: sevenRepos(), now: NOW });
+  assert.equal(m.repoRows.length, 7);
+  assert.deepEqual(
+    m.repoRows.map((r) => r.repoCode),
+    ["ZZZ", "AAA", "RC", "CCC", "DDD", "EEE", "FFF"]
+  );
+});
+
+test("a repo with no checkout still gets its repo row, and no lane rows", () => {
+  const m = buildModel({ repos: sevenRepos(), now: NOW });
+  const e = m.repoRows.find((r) => r.repoCode === "EEE");
+  assert.ok(e);
+  assert.equal(e.noLane, true);
+  assert.equal(m.rows.some((r) => r.repoCode === "EEE"), false);
+  assert.equal(m.rows.some((r) => r.repoCode === "ZZZ"), false);
+});
+
+test("repoRows without any order keep roster index order", () => {
+  const m = buildModel({
+    repos: [repo({ code: "RC" }), repo({ code: "BBB" }), repo({ code: "AAA" })],
+    now: NOW,
+  });
+  assert.deepEqual(m.repoRows.map((r) => r.repoCode), ["RC", "BBB", "AAA"]);
+});
+
+test("an ordered repo sorts before an unordered one", () => {
+  const m = buildModel({
+    repos: [repo({ code: "RC" }), repo({ code: "BBB", order: 1 })],
+    now: NOW,
+  });
+  assert.deepEqual(m.repoRows.map((r) => r.repoCode), ["BBB", "RC"]);
+});
+
+test("a repo row folds the lane AND the controller into one record", () => {
+  const m = buildModel({
+    repos: [repo({
+      lane: running({ ts: NOW - 720 }),
+      ctrl: { state: "RUNNING", pid: 11, payload: { pid: 11, ts: NOW - 900 } },
+      children: 3,
+      logs: [{ lane: "queue", ageS: 9, stalled: true }],
+    })],
+    now: NOW,
+  });
+  const r = m.repoRows[0];
+  assert.equal(r.laneState, "RUNNING");
+  assert.equal(r.lane, "queue");
+  assert.equal(r.ageS, 720);
+  assert.equal(r.ctrlState, "RUNNING");
+  assert.equal(r.ctrlAgeS, 900);
+  assert.equal(r.children, 3);
+  assert.equal(r.stalled, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(r, "logAgeS"), false, "log age is not carried to the row");
+});
+
+test("a repo row carries display name, falling back to the code", () => {
+  const m = buildModel({
+    repos: [repo({ display: "Display RC" }), repo({ code: "BBB", root: "C:\\fake-b" })],
+    now: NOW,
+  });
+  assert.deepEqual(m.repoRows.map((r) => r.display), ["Display RC", "BBB"]);
+});
+
+test("a repo row carries the Sync parts from that tree's status text", () => {
+  const m = buildModel({ repos: [repo({ statusText: liveStatus() })], now: NOW });
+  assert.deepEqual(m.repoRows[0].sync, { task: "Appending Ledger", tail: "[35m/42m][25/120]" });
+});
+
+test("an absent status is no signal, and attended-only beats any file", () => {
+  const m = buildModel({
+    repos: [
+      repo({ statusText: null }),
+      repo({ code: "ZZZ", root: null, noLane: true, attendedOnly: true, statusText: liveStatus() }),
+    ],
+    now: NOW,
+  });
+  assert.deepEqual(m.repoRows[0].sync, { task: "no signal", tail: "[?]" });
+  assert.deepEqual(m.repoRows[1].sync, { task: "attended only", tail: "" });
+});
+
+test("a repo's own tick interval decides when its status goes stale", () => {
+  const text = liveStatus({ updated: isoAt(NOW - 700) });
+  const m = buildModel({
+    repos: [repo({ statusText: text, tickS: 300 }), repo({ code: "BBB", statusText: text, tickS: 600 })],
+    now: NOW,
+  });
+  assert.equal(m.repoRows[0].sync.task, "no signal");
+  assert.equal(m.repoRows[1].sync.task, "Appending Ledger");
+});
+
+test("NO repo row field ever contains a path separator", () => {
+  const m = buildModel({ repos: sevenRepos(), now: NOW });
+  for (const r of m.repoRows) {
+    for (const [k, v] of Object.entries(r)) {
+      if (typeof v === "string") assert.ok(!/[\\/]/.test(v), `${k}=${v}`);
+    }
+  }
+});
+
+test("repoRows is total on junk and JSON-serialisable", () => {
+  for (const arg of [null, undefined, {}, { repos: "x" }, { repos: [null, 5] }]) {
+    const m = buildModel(arg);
+    assert.deepEqual(m.repoRows, []);
+  }
+  const m = buildModel({ repos: sevenRepos(), now: NOW });
+  assert.deepEqual(JSON.parse(JSON.stringify(m)), m);
+});

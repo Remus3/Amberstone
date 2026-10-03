@@ -12,6 +12,13 @@ const { resolveRepos, REPO_CONFIG_REL, joinPath } = require("../src/repos.js");
 const RC = "C:\\Riot Commander";
 const CFG = joinPath(RC, ...REPO_CONFIG_REL);
 
+function rcEntry() {
+  return {
+    code: "RC", root: RC, isSelf: true,
+    display: "RC", order: null, attendedOnly: false, tickS: null, noLane: false,
+  };
+}
+
 function readerFor(map) {
   return (p) => (Object.prototype.hasOwnProperty.call(map, p) ? map[p] : null);
 }
@@ -19,7 +26,7 @@ function readerFor(map) {
 test("RC is always index 0 and marked isSelf", () => {
   const out = resolveRepos({ rcRoot: RC, env: {}, readFile: () => null });
   assert.equal(out.length, 1);
-  assert.deepEqual(out[0], { code: "RC", root: RC, isSelf: true });
+  assert.deepEqual(out[0], rcEntry());
 });
 
 test("a missing config file is the correct fresh-clone answer, not an error", () => {
@@ -280,5 +287,120 @@ test("zero roster entries still yields exactly the RC row", () => {
     env: {},
     readFile: readerFor({ [CFG]: cfg }),
   });
-  assert.deepEqual(out, [{ code: "RC", root: RC, isSelf: true }]);
+  assert.deepEqual(out, [rcEntry()]);
+});
+
+// ------------------------------------------------- roster display + order --
+// The "roster" key is the per-host display/order map the ALL tab renders by.
+// Display names are sibling names, so they live ONLY in the gitignored file;
+// every fixture here is an invented placeholder.
+
+function cfgReader(blob) {
+  return readerFor({ [CFG]: JSON.stringify(blob) });
+}
+
+test("an entry with no roster record defaults display to its code", () => {
+  const out = resolveRepos({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({ repos: ["C:\\fake-a"], participants: { AAA: "C:\\fake-a" } }),
+  });
+  assert.deepEqual(
+    out.map((r) => [r.code, r.display, r.order, r.attendedOnly, r.tickS, r.noLane]),
+    [["RC", "RC", null, false, null, false], ["AAA", "AAA", null, false, null, false]]
+  );
+});
+
+test("roster display, order, tick and attended flag land on the matching code", () => {
+  const out = resolveRepos({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({
+      repos: ["C:\\fake-a"],
+      participants: { AAA: "C:\\fake-a" },
+      roster: {
+        RC: { display: "Home Placeholder", order: 3 },
+        AAA: { display: "Sibling Placeholder", order: 2, tick_s: 600 },
+      },
+    }),
+  });
+  const byCode = Object.fromEntries(out.map((r) => [r.code, r]));
+  assert.equal(byCode.RC.display, "Home Placeholder");
+  assert.equal(byCode.RC.order, 3);
+  assert.equal(byCode.AAA.display, "Sibling Placeholder");
+  assert.equal(byCode.AAA.order, 2);
+  assert.equal(byCode.AAA.tickS, 600);
+});
+
+test("a roster code with no checkout is still listed, root-less and lane-less", () => {
+  const out = resolveRepos({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({
+      repos: [],
+      participants: {},
+      roster: { ZZZ: { display: "Supervisor Placeholder", order: 0, attended_only: true } },
+    }),
+  });
+  assert.deepEqual(out.map((r) => r.code), ["RC", "ZZZ"]);
+  const z = out[1];
+  assert.equal(z.root, null);
+  assert.equal(z.noLane, true);
+  assert.equal(z.attendedOnly, true);
+  assert.equal(z.isSelf, false);
+});
+
+test("a roster code whose participant path is not in repos is polled at that path", () => {
+  const out = resolveRepos({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({
+      repos: [],
+      participants: { BBB: "C:\\fake-b" },
+      roster: { BBB: { order: 1 } },
+    }),
+  });
+  assert.deepEqual(out.map((r) => [r.code, r.root, r.noLane]), [
+    ["RC", RC, false],
+    ["BBB", "C:\\fake-b", false],
+  ]);
+});
+
+test("a roster record never duplicates an already-listed code", () => {
+  const out = resolveRepos({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({
+      repos: ["C:\\fake-a"],
+      participants: { AAA: "C:\\fake-a" },
+      roster: { AAA: { order: 1 }, RC: { order: 0 } },
+    }),
+  });
+  assert.deepEqual(out.map((r) => r.code), ["RC", "AAA"]);
+});
+
+test("junk roster records and fields are ignored, never thrown on", () => {
+  for (const roster of [null, 5, "x", [], { AAA: 5 }, { AAA: null }, { "": {} },
+    { AAA: { display: 7, order: "first", tick_s: -1, attended_only: "yes" } }]) {
+    const out = resolveRepos({
+      rcRoot: RC,
+      env: {},
+      readFile: cfgReader({ repos: ["C:\\fake-a"], participants: { AAA: "C:\\fake-a" }, roster }),
+    });
+    const a = out.find((r) => r.code === "AAA");
+    assert.ok(a, JSON.stringify(roster));
+    assert.equal(a.display, "AAA");
+    assert.equal(a.order, null);
+    assert.equal(a.tickS, null);
+    assert.equal(a.attendedOnly, false);
+  }
+});
+
+test("a display name is trimmed and capped so one config typo cannot blow the row", () => {
+  const out = resolveRepos({
+    rcRoot: RC,
+    env: {},
+    readFile: cfgReader({ roster: { RC: { display: "  " + "x".repeat(80) + "  " } } }),
+  });
+  assert.equal(out[0].display.length, 32);
 });
