@@ -451,6 +451,14 @@ def fake_headless_route(monkeypatch, _live_state_base):
     kit_root = _live_state_base / "fleet_kit_root" / str(next(_FLEET_ROOT_SEQ))
     monkeypatch.setattr(fleet_route, "ROOT", kit_root)
     monkeypatch.setattr(fleet_route, "_exe_source", lambda: "claude-fake.exe")
+    # MAIN 1327 item 1.1: production launches through the kit's own `_run`
+    # (Popen + process-tree kill on timeout). Caller-shape tests stub
+    # `subprocess.run`, so the launch is forwarded to whatever `subprocess.run`
+    # is at CALL time. tests/test_fleet_route.py puts the production default
+    # (None -> the kit's `_run`) back to pin the tree kill.
+    import subprocess as _sp
+
+    monkeypatch.setattr(fleet_route, "_launch", lambda argv, **kw: _sp.run(argv, **kw))
     yield
 
 
