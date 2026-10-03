@@ -14,6 +14,7 @@
  */
 
 const locks = require("./locks.js");
+const inboxStatus = require("./inbox_status.js");
 
 const KIND_LANE = "lane";
 const KIND_CONTROLLER = "controller";
@@ -113,7 +114,46 @@ function makeRow(repoCode, kind, block, opts) {
 }
 
 /**
- * buildModel({ repos, now }) -> { rows, summary, updatedAt }
+ * ONE row per repo for the ALL tab: the lane and the controller folded into a
+ * single record (a headless lane cannot run without its controller), plus the
+ * tree's "Sync:" parts from its inbox_status.json text.
+ *
+ * Deliberately carries NO log age - the operator removed it from the row; the
+ * `stalled` flag (which is derived from log age upstream) is all that remains.
+ * No path field: display comes from the roster, never from a root.
+ */
+function makeRepoRow(code, repo, laneRow, ctrlRow, now) {
+  const order = finiteOrNull(repo.order);
+  const ctrlPayload = payloadOf(repo.ctrl);
+  const sync = inboxStatus.syncFor({
+    text: typeof repo.statusText === "string" ? repo.statusText : null,
+    now,
+    tickS: finiteOrNull(repo.tickS),
+    attendedOnly: repo.attendedOnly === true,
+  });
+  return {
+    key: `repo:${code}`,
+    repoCode: code,
+    display: stringOrNull(repo.display) || code,
+    order,
+    noLane: repo.noLane === true,
+    attendedOnly: repo.attendedOnly === true,
+    laneState: laneRow.state,
+    lane: laneRow.lane,
+    ageS: laneRow.ageS,
+    ctrlState: ctrlRow.state,
+    ctrlAgeS: locks.ageS(ctrlPayload, now),
+    children: laneRow.children,
+    stalled: laneRow.stalled,
+    sync: inboxStatus.syncParts(sync),
+  };
+}
+
+/**
+ * buildModel({ repos, now }) -> { rows, repoRows, summary, updatedAt }
+ *
+ * rows      lane + controller rows, STATE-sorted - the per-repo tabs.
+ * repoRows  one row per repo, ROSTER-ordered by `order` - the ALL tab.
  *
  * repos: [ { code, root, isSelf,
  *            lane: { state, payload, pid },   // from locks.classify
@@ -132,6 +172,7 @@ function buildModel(opts) {
   const repos = Array.isArray(o.repos) ? o.repos.filter(isObject) : [];
 
   const decorated = [];
+  const perRepo = [];
   repos.forEach((repo, index) => {
     // A repo with no code still renders - with a POSITIONAL placeholder, never
     // a basename derived from its root.
@@ -143,9 +184,26 @@ function buildModel(opts) {
     const ctrlRow = makeRow(code, KIND_CONTROLLER, repo.ctrl, {
       now, logs, children: countOrZero(repo.ctrlChildren),
     });
-    decorated.push({ row: laneRow, repoIndex: index, kindIndex: 0 });
-    decorated.push({ row: ctrlRow, repoIndex: index, kindIndex: 1 });
+    // A root-less roster entry has nothing to observe, so it contributes no
+    // lane/controller rows - only its one ALL-tab repo row below.
+    if (repo.noLane !== true) {
+      decorated.push({ row: laneRow, repoIndex: index, kindIndex: 0 });
+      decorated.push({ row: ctrlRow, repoIndex: index, kindIndex: 1 });
+    }
+    perRepo.push({ row: makeRepoRow(code, repo, laneRow, ctrlRow, now), index });
   });
+
+  // Roster order: a finite `order` first, ascending; then unordered repos;
+  // roster index breaks every tie, so the order is a property of this function.
+  perRepo.sort((a, b) => {
+    const oa = a.row.order;
+    const ob = b.row.order;
+    if (oa !== null && ob !== null && oa !== ob) return oa - ob;
+    if (oa !== null && ob === null) return -1;
+    if (oa === null && ob !== null) return 1;
+    return a.index - b.index;
+  });
+  const repoRows = perRepo.map((p) => p.row);
 
   // Decorate-sort-undecorate rather than relying on the engine's sort being
   // stable: the tie break is spelled out, so the order is a property of this
@@ -177,7 +235,7 @@ function buildModel(opts) {
     if (row.stalled) summary.stalled += 1;
   }
 
-  return { rows, summary, updatedAt: now };
+  return { rows, repoRows, summary, updatedAt: now };
 }
 
-module.exports = { KIND_LANE, KIND_CONTROLLER, worktreeTail, buildModel };
+module.exports = { KIND_LANE, KIND_CONTROLLER, worktreeTail, buildModel, makeRepoRow };
