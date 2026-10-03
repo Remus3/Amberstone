@@ -145,6 +145,19 @@ def test_timeout_leaves_status_idle_and_reraises(tmp_path, monkeypatch):
     assert _status(tmp_path)["state"] == "idle"
 
 
+def test_timeout_is_recorded_by_the_kit_before_the_reraise(tmp_path, monkeypatch):
+    """FLEET-KIT-v4 defect 5: the kit itself writes a usage line with rc null and
+    error "timeout"; RC still re-raises TimeoutExpired for its callers."""
+    r = _Rec(raise_exc=subprocess.TimeoutExpired("claude", 1))
+    monkeypatch.setattr(subprocess, "run", r)
+    with pytest.raises(subprocess.TimeoutExpired):
+        fleet_route.spawn("T", caller="t", note="n", root=tmp_path)
+    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
+    assert len(usage) == 1
+    rec_line = json.loads(usage[0])
+    assert rec_line["error"] == "timeout" and rec_line["rc"] is None
+
+
 def test_write_idle_names_the_next_tick(tmp_path, monkeypatch):
     monkeypatch.setattr(fleet_route, "ROOT", tmp_path)
     fleet_route.write_idle(300)
