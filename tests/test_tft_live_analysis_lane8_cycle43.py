@@ -317,11 +317,14 @@ class TftLiveAnalysisAuditTest(unittest.TestCase):
         h.setFormatter(logging.Formatter("%(message)s"))
         lg = logging.getLogger("rc.tft.live")
         lg.addHandler(h)
+        # NOW-7: the level is restored too, not just the handler.
+        saved_level = lg.level
         lg.setLevel(logging.DEBUG)
         try:
             obj._run_analysis(dict(_VS))
         finally:
             lg.removeHandler(h)
+            lg.setLevel(saved_level)
         self.assertTrue(records, "the failure path logged nothing at all")
         for r in records:
             self.assertNotIn(_KEY, r, "API key reached a log record")
