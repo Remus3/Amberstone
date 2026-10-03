@@ -1818,3 +1818,49 @@ test("switching back to a per-repo tab drops the rows class from the region", ()
   w.renderCards(doc, root, allView([repoIn()], { activeTab: "AAA" }));
   assert.equal(root.classList.contains("is-rows"), false);
 });
+
+// ======================================================== ACCOUNTS strip ====
+// MAIN 0925 addendum: ONE strip ABOVE the repo rows on the ALL tab, one line
+// per account labelled by role, a non-"allowed" status in the alarm style.
+
+function acctModel(repos, accounts) {
+  return Object.assign(buildModel({ repos, now: T0 }), { accounts });
+}
+
+const ACCT = {
+  nosignal: false,
+  lines: [
+    { text: "Headless     5h 23% (resets 2h10m)   7d 7% (resets 3d4h)   allowed", alarm: false },
+    { text: "Interactive  no data - not signed in to the proxy", alarm: false },
+  ],
+};
+
+test("the ALL view carries the accounts strip lines; a per-repo tab does not", () => {
+  const all = w.buildView(acctModel([repoIn()], ACCT), { activeTab: "ALL" });
+  assert.deepEqual(all.accounts, ACCT.lines);
+  const tab = w.buildView(acctModel([repoIn()], ACCT), { activeTab: "AAA" });
+  assert.deepEqual(tab.accounts, []);
+});
+
+test("no accounts on the model means no strip", () => {
+  assert.deepEqual(w.buildView(acctModel([repoIn()], null), { activeTab: "ALL" }).accounts, []);
+});
+
+test("renderCards paints the accounts strip FIRST, above the repo rows, alarm lines flagged", () => {
+  const doc = makeDoc();
+  const root = makeNode(doc, "section");
+  const acct = {
+    nosignal: false,
+    lines: [ACCT.lines[0], { text: "Interactive  5h 100% (resets 1h)   7d 9% (resets 2d)   rejected", alarm: true }],
+  };
+  const repos = [repoIn(), repoIn({ code: "BBB", root: "C:\\fake-b" })];
+  w.renderCards(doc, root, w.buildView(acctModel(repos, acct), { activeTab: "ALL" }));
+  assert.equal(root.childNodes.length, 3, "one strip + two repo rows");
+  const strip = root.childNodes[0];
+  assert.ok(strip.classList.contains("accounts-strip"));
+  assert.equal(strip.childNodes.length, 2);
+  assert.equal(strip.childNodes[0].textContent, ACCT.lines[0].text);
+  assert.equal(strip.childNodes[0].classList.contains("is-alarm"), false);
+  assert.ok(strip.childNodes[1].classList.contains("is-alarm"));
+  assert.ok(root.childNodes[1].classList.contains("repo-row"));
+});

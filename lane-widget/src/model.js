@@ -15,6 +15,7 @@
 
 const locks = require("./locks.js");
 const inboxStatus = require("./inbox_status.js");
+const accountsMod = require("./accounts.js");
 
 const KIND_LANE = "lane";
 const KIND_CONTROLLER = "controller";
@@ -150,10 +151,13 @@ function makeRepoRow(code, repo, laneRow, ctrlRow, now) {
 }
 
 /**
- * buildModel({ repos, now }) -> { rows, repoRows, summary, updatedAt }
+ * buildModel({ repos, now, accounts }) -> { rows, repoRows, summary, updatedAt, accounts }
  *
  * rows      lane + controller rows, STATE-sorted - the per-repo tabs.
  * repoRows  one row per repo, ROSTER-ordered by `order` - the ALL tab.
+ * accounts  the ACCOUNTS strip { nosignal, lines: [ { text, alarm } ] }, or
+ *           null when the input carries no `accounts` (no config on this
+ *           host). Input: { text, mtimeMs, probeS, roles } from poll.js.
  *
  * repos: [ { code, root, isSelf,
  *            lane: { state, payload, pid },   // from locks.classify
@@ -235,7 +239,14 @@ function buildModel(opts) {
     if (row.stalled) summary.stalled += 1;
   }
 
-  return { rows, repoRows, summary, updatedAt: now };
+  // The ACCOUNTS strip, as rendered lines only: src/accounts.js matches each
+  // quota entry to its role and drops every identifier before this point.
+  // null = no accounts config on this host (strip off).
+  const accounts = isObject(o.accounts)
+    ? accountsMod.accountsLines(accountsMod.accountsFor(Object.assign({}, o.accounts, { now })))
+    : null;
+
+  return { rows, repoRows, summary, updatedAt: now, accounts };
 }
 
 module.exports = { KIND_LANE, KIND_CONTROLLER, worktreeTail, buildModel, makeRepoRow };

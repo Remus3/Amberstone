@@ -600,3 +600,42 @@ test("repoRows is total on junk and JSON-serialisable", () => {
   const m = buildModel({ repos: sevenRepos(), now: NOW });
   assert.deepEqual(JSON.parse(JSON.stringify(m)), m);
 });
+
+// ------------------------------------------------------------- accounts ----
+// MAIN 0925 addendum: the ACCOUNTS strip rides on the model as rendered lines
+// only - no identifier ever enters the model, because the model crosses IPC.
+
+test("no accounts input leaves model.accounts null (strip off)", () => {
+  const m = buildModel({ repos: [], now: NOW });
+  assert.equal(m.accounts, null);
+});
+
+test("accounts input becomes rendered strip lines on the model, identifiers stripped", () => {
+  const uuid = "12345678-1234-4234-8234-123456789abc";
+  const email = "someone@example.invalid";
+  const text = JSON.stringify({
+    quota: [{
+      accountUuid: uuid,
+      name: email,
+      quota: {
+        unified5h: 0.23,
+        unified7d: 0.07,
+        unified5hReset: (NOW + 2 * 3600 + 600) * 1000,
+        unified7dReset: (NOW + 3 * 86400 + 4 * 3600) * 1000,
+        unifiedStatus: "allowed",
+      },
+    }],
+  });
+  const m = buildModel({
+    repos: [],
+    now: NOW,
+    accounts: { text, mtimeMs: NOW * 1000, probeS: 300, roles: [{ account_uuid: uuid, role: "Headless" }] },
+  });
+  assert.deepEqual(
+    m.accounts.lines.map((l) => l.text),
+    ["Headless     5h 23% (resets 2h10m)   7d 7% (resets 3d4h)   allowed"]
+  );
+  const blob = JSON.stringify(m);
+  assert.equal(blob.indexOf(uuid), -1);
+  assert.equal(blob.indexOf(email), -1);
+});
