@@ -236,6 +236,10 @@ def test_responder_child_env_carries_route(routed, tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 from ops.loop import fleet_route  # noqa: E402
+from tests import _kit_platform  # noqa: E402
+from tests._kit_platform import assert_kit_killed  # noqa: E402
+
+kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
 
 @pytest.fixture
@@ -297,6 +301,7 @@ class _HangPopen:
 
     def __init__(self, argv, stdin=None, **kw):
         self.argv, self.pid, self.returncode, self.n = list(argv), 777, None, 0
+        self.killed = False
         _HangPopen.made.append(self)
 
     def __enter__(self):
@@ -314,12 +319,14 @@ class _HangPopen:
         return ("", "")
 
     def kill(self):
-        pass
+        self.killed = True
 
 
 @pytest.fixture
-def kit_hang(routed, monkeypatch):
-    """REAL kit spawn + the kit's own `_run`; only Popen and taskkill faked."""
+def kit_hang(routed, kit_platform, monkeypatch):
+    """REAL kit spawn + the kit's own `_run`; only Popen and taskkill faked.
+    Runs once per kit kill branch (win32 taskkill /T, POSIX proc.kill) via
+    `kit_platform`, so the ubuntu CI and Legion both cover both branches."""
     import subprocess as _sp
     monkeypatch.setattr(fleet_route, "_launch", None)
     _HangPopen.made = []
@@ -327,14 +334,14 @@ def kit_hang(routed, monkeypatch):
     kills = []
     monkeypatch.setattr(_sp, "run", lambda argv, **kw: kills.append(list(argv)) or
                         CompletedProcess(args=argv, returncode=0, stdout="", stderr=""))
-    return kills
+    return kit_platform, kills
 
 
-def _assert_tree_killed(kills):
+def _assert_tree_killed(hang):
+    plat, kills = hang
     (p,) = _HangPopen.made
     assert p.argv[1] == "-p", "started by the kit's argv builder"
-    tree = [k for k in kills if "/T" in k]
-    assert len(tree) == 1 and tree[0][-2:] == ["/PID", "777"]
+    assert_kit_killed(plat, kills, p.killed, 777)
 
 
 def test_adjudicator_timeout_kills_tree_via_kit(kit_hang, tmp_path):
