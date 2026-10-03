@@ -22,6 +22,10 @@ import pytest
 
 from ops.loop import fleet_route
 from ops.loop import headless_env as he
+from tests import _kit_platform
+from tests._kit_platform import assert_kit_killed
+
+kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
 FAKE_URL = "http://127.0.0.1:65530"
 
@@ -275,15 +279,14 @@ def test_body_rides_stdin_beside_the_argv_instruction(kit_launch, tmp_path):
     assert p.stdin_arg == subprocess.PIPE and p.inputs == ["BODY"]
 
 
-def test_timeout_kills_the_process_tree_through_the_kit(kit_launch, tmp_path):
+# The kit's kill branches on sys.platform (taskkill /T on win32, proc.kill on
+# POSIX); `kit_platform` runs each timeout test once per branch on every host.
+def test_timeout_kills_the_process_tree_through_the_kit(kit_launch, kit_platform, tmp_path):
     _FakePopen.hang = True
     with pytest.raises(subprocess.TimeoutExpired):
         fleet_route.spawn("T", caller="t", note="n", timeout=1, root=tmp_path)
     (p,) = _FakePopen.instances
-    (tk,) = kit_launch
-    assert tk[0].lower().endswith("taskkill.exe") or tk[0].lower().endswith("taskkill")
-    assert tk[1:] == ["/T", "/F", "/PID", "4242"], "the WHOLE tree, by pid"
-    assert p.killed is True
+    assert_kit_killed(kit_platform, kit_launch, p.killed, 4242)
     usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
     rec_line = json.loads(usage[-1])
     assert rec_line["error"] == "timeout" and rec_line["rc"] is None
