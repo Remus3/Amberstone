@@ -6,14 +6,14 @@
 
 ---
 
-# 2026-10-03d - RM-481 / RM-484 / RM-487 shipped; FLEET-KIT v3 adopted; NOW-7 measurement in flight
+# 2026-10-03d - RM-481 / RM-484 / RM-487 shipped; FLEET-KIT v3 adopted; NOW-7 measurement merged
 
 - **Commits (all merged + pushed, ec2f85798..51ab14da7):** RM-481 LF generators (`5e9fdb250`, merge `a28fab20b`), RM-484 Riot 429 vs absence in five offline tools via `core/riot_retry.py` (`14ae0ea6e`, merge `93c508dbc`), RM-487 env-first credential reads (`22a9aae35`, merge `38e324616`), FLEET-KIT v3 (`79aae2efb`, `95e94058e`, `47d4cf506`; merges `869f1b100` + `51ab14da7`). LEDGER 1464-1467.
 - **FLEET-KIT v3:** operator order in chat + MAIN 0955/1014/1016. Kit vendored at `ops/fleet_kit/`, CLAUDE.md 52947 -> 31487 bytes (history in `docs/claude-md-history.md`), /done quiet, 5 spawn paths via `ops/loop/fleet_route.py`; responder/executor/run_lane stay on the headless_env gate. Reply to MAIN delivered 1134, 1/1 reached. 11 kit gaps await v4.
 - **Filed:** RM-510 timeline_ingest exit 0 on rate_limited; RM-511 stale model pins; RM-512 RIOT_API_KEY precedence (operator call). Pin moved to RM-513 (was stale at RM-476).
-- **In flight:** NOW-7 logger-leak detector in worktree `.claude/worktrees/agent-a5e62b1518fcb3dcd` (uncommitted; full-suite pid 22872). Do NOT delete that worktree.
+- **NOW-7 measurement MERGED** (`663abfe18`, slice `d6763fefd`, LEDGER 1468): 2 level-only leaks, 0 propagate/handler; gate NOT armed - next is fix 2 leaks + 3 arming prerequisites, then arm.
 - **Not acted on (needs operator in chat):** MAIN 0915 lane-widget redesign, 0925 ACCOUNTS strip. C4 `slots.py` 290cbf80 still held (joint act).
-- **Do NOT redo:** RM-481 / RM-484 / RM-487 (first row) / FLEET-KIT v3 adoption.
+- **Do NOT redo:** RM-481 / RM-484 / RM-487 (first row) / FLEET-KIT v3 adoption / NOW-7 measurement pass.
 
 ---
 
