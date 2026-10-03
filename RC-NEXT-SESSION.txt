@@ -1,21 +1,20 @@
 NEXT SESSION
 ------------
-Task: rule on and fix the intermittent tests/test_inbox_responder_mutants.py
-teardown trip now that RC-InboxResponder is ARMED (every 5 min). Its guard
-assumes live responder surfaces and sibling inboxes stay still during a run;
-an armed responder and active siblings move them. Pick one: (a) exclude the
-live surfaces from that guard with a test proving the sibling-inbox
-protection still bites, or (b) pause the responder (responder-scoped stop
-file) for the duration of that test. Do NOT simply weaken the guard.
-Context: tools/inbox_responder_runner.py, tests/test_inbox_responder_runner.py
-(teardown assertion near :306), ops/runtime/inbox_responder_agreement.json
-(expires 2026-11-01), ops/loop/headless_env.py (LEDGER 1460). Check the
-responder log + schtasks /Query /TN RC-InboxResponder first.
-Acceptance: test_inbox_responder_mutants.py green 5/5 consecutive runs with
-the responder enabled; guard still fails on a planted sibling-inbox write.
-Also open: C4 slots.py candidate 290cbf80 - vendoring and moving
-SHARED_SHA256 is a joint act; wait for the carriers' round to close.
-Do NOT redo: headless proxy routing (7e6773fec), responder arming + 296-note
-seed, MAIN grant in CLAUDE.md (4e7ec9d69), headless_env guard fix
-(0dcdf4ad0). Do not hand-answer inbox notes the responder owns.
+Task: make the rc_facts periodic-running grace per-task instead of a flat 2h:
+grace = min(ExecutionTimeLimit, repetition interval, 2h), so a hung
+RC-ReplayChainWatch (15m interval, PT2H limit) is flagged STUCK after ~15m
+instead of hiding ~7 missed runs until the timeout kill.
+Context: tools/rc_facts.py PERIODIC_RUNNING_GRACE_S + classify_task_result
+267009 branch; the schtasks probe projection (~:139) must carry the limit and
+interval; tests/test_rc_facts_task_health.py. LEDGER 1462 has the measured
+per-task table (verifier). Run `python tools/rc_facts.py` before and after.
+Acceptance: TDD - a 15m-interval task running 20m is STUCK, a 1h task 8m in is
+OK, unknown limit/interval falls back to the 2h flat grace, negative age stays
+STUCK; rc_facts suites green; verifier CONFIRM.
+Also open: C4 slots.py candidate 290cbf80 - joint act, RSC holds under its halt
+clause (b) pending a MAIN ruling; do NOT vendor or move SHARED_SHA256 until the
+carriers' round closes.
+Do NOT redo: responder live-surface guard (9b3cbe805, 3f6679d2a), rc_facts
+agreement-armed + STOP flag (d053a573f, dcd530808), periodic-running grace
+(d2b739dda). Do not hand-answer inbox notes the responder owns.
 Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
