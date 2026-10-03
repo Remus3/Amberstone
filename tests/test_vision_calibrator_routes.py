@@ -119,5 +119,62 @@ class NoBannedCodepointsTests(unittest.TestCase):
         self.assertFalse(hits, f"routes_vision_calibrator.py banned codepoints: {hits}")
 
 
+class VisionTokenSourceTests(unittest.TestCase):
+    """RM-487: _vision_token read config/vision_token.txt and NOTHING else.
+
+    Every other :8889 client resolves through core.vision_token (env
+    RC_VISION_TOKEN first, then the config file), so with the token supplied
+    only by env this route sent an empty X-RC-Token and the relay answered
+    401 - the calibrator showed "relay down" against a healthy relay.
+    """
+
+    def setUp(self):
+        import os
+
+        import core.vision_token as vt
+        self._vt = vt
+        self._saved_env = os.environ.get("RC_VISION_TOKEN")
+        self._saved_cfg = vt._CONFIG_PATH
+        self._saved_root = vc._ROOT
+        self._tmp = pathlib.Path(tempfile.mkdtemp(prefix="rc_vc_tok_"))
+        (self._tmp / "config").mkdir()
+        vt._CONFIG_PATH = self._tmp / "config" / "vision_token.txt"
+        vc._ROOT = self._tmp
+
+    def tearDown(self):
+        import os
+        import shutil
+        if self._saved_env is None:
+            os.environ.pop("RC_VISION_TOKEN", None)
+        else:
+            os.environ["RC_VISION_TOKEN"] = self._saved_env
+        self._vt._CONFIG_PATH = self._saved_cfg
+        vc._ROOT = self._saved_root
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_env_token_is_used_when_no_config_file(self):
+        import os
+        os.environ["RC_VISION_TOKEN"] = "envtok0000000000testonly00000000"
+        self.assertEqual(vc._vision_token(), "envtok0000000000testonly00000000")
+
+    def test_env_beats_config_file(self):
+        import os
+        os.environ["RC_VISION_TOKEN"] = "envtok0000000000testonly00000000"
+        self._vt._CONFIG_PATH.write_text("filetok\n", encoding="utf-8")
+        self.assertEqual(vc._vision_token(), "envtok0000000000testonly00000000")
+
+    def test_config_file_used_when_env_absent(self):
+        import os
+        os.environ.pop("RC_VISION_TOKEN", None)
+        self._vt._CONFIG_PATH.write_text("filetok\nsecond-line\n",
+                                         encoding="utf-8")
+        self.assertEqual(vc._vision_token(), "filetok")
+
+    def test_no_token_anywhere_degrades_to_empty(self):
+        import os
+        os.environ.pop("RC_VISION_TOKEN", None)
+        self.assertEqual(vc._vision_token(), "")
+
+
 if __name__ == "__main__":
     unittest.main()
