@@ -40,6 +40,11 @@ from unittest import mock
 
 import pytest
 
+# NOW-7 measurement pass: REPORT-ONLY logger-leak detector. Importing the hook
+# name registers it on this conftest. DEFAULT-OFF - inert unless
+# RC_LOGGER_LEAK_REPORT=1, and it asserts nothing. See tests/_logger_leak_report.py.
+from tests._logger_leak_report import pytest_runtest_protocol  # noqa: F401,E402
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # ===========================================================================
