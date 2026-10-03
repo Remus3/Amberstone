@@ -497,13 +497,18 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
         marker = _eb.consume_active()
         if marker and marker.get("champion") == champion:
             try:
-                api_key = (Path(script_dir) / "API-Key-Claude.txt").read_text(encoding="utf-8").strip()
-            # Narrowed 2026-07-19: read_text raises OSError (absent / locked
-            # key file) or UnicodeDecodeError (a ValueError subclass) on a
-            # non-UTF-8 file; Path() raises TypeError on a non-path script_dir.
-            # str.strip() cannot raise. Re-measured lane 8 cycle 23 against
-            # every raising case: the tuple covers all of them, including the
-            # ValueError from a NUL in script_dir that the list above omits.
+                # RM-487 (2026-10-03): this read API-Key-Claude.txt and
+                # NOTHING else - the file-only shape ba4bb74be fixed in
+                # dashboard/routes_coach.py - so with the key living only in
+                # ANTHROPIC_API_KEY it handed "" to record_result. The shared
+                # reader gives env first, file fallback, and swallows its own
+                # OSError / UnicodeDecodeError. Pinned by
+                # tests/test_api_key_load_order.py.
+                from coaches._base_coach import read_api_key
+                api_key = read_api_key(Path(script_dir))
+            # Path() raises TypeError on a non-path script_dir and ValueError
+            # on a NUL in it (lane 8 cycle 23); OSError kept for an exists()
+            # that cannot stat the directory.
             except (OSError, TypeError, ValueError): pass
             gs_for_record = {
                 "kda":         kda_str,

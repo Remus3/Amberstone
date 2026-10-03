@@ -395,6 +395,13 @@ class TestSecretIsNeverLogged(unittest.TestCase):
             eb.record_result = _boom
             saved_db = pt._match_db
             pt._match_db = None
+            # RM-487: the key read is now env-first, and ANTHROPIC_API_KEY is
+            # set machine-wide on Legion - left in place it would win, the
+            # fake file key would never be read, and the assertNotIn below
+            # would pass vacuously. Remove it so the file key is the one fed
+            # to record_result.
+            import os
+            saved_env = os.environ.pop("ANTHROPIC_API_KEY", None)
             try:
                 pt.save_rating(tmpdir, "Ahri", {
                     "game_mode": "CLASSIC", "game_seconds": 1200,
@@ -402,6 +409,8 @@ class TestSecretIsNeverLogged(unittest.TestCase):
                     "assists": 7, "gold": 12000, "kda": "5/3/7",
                 }, 10)
             finally:
+                if saved_env is not None:
+                    os.environ["ANTHROPIC_API_KEY"] = saved_env
                 pt._match_db = saved_db
                 eb.consume_active = saved_consume
                 eb.record_result = saved_record
