@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
 """Fleet kit - the ONLY path that starts a headless `claude` in any repo here.
 
 Vendored byte-for-byte into every repo at ops/fleet_kit/ and pinned by
@@ -7,23 +9,34 @@ ships a new kit version to every repo at once.
 What it enforces (FLEET-COMMON item 10):
 - the second-account proxy, read from the user variable CLAUDE_HEADLESS_BASE_URL
   (registry first, so deleting the variable stops even a long-lived process),
-- fail closed: unset / non-loopback / unreachable -> Refused, never a fallback,
-- at most RUNS_CAP runs started per rolling WINDOW_S,
-- never spawn on this repo's own notes, or on TERMINAL / no-reply notes,
-- lean flags (strict MCP + project settings, or --bare), sonnet unless the work
-  writes code, effort low for acknowledgements,
-- no visible console window,
-- one usage line per run, and the live status file the lane widget reads.
+- fail closed: unset / non-loopback / unpinned / unreachable -> Refused, never a
+  fallback; any --fallback-model or auto-fallback flag is refused at the door,
+- at most RUNS_CAP runs started per rolling WINDOW_S, counted under a lock; an
+  unreadable budget file refuses (fail closed) and is never reset,
+- never spawn on this repo's own notes, or on notes marked TERMINAL / no-reply
+  (marker LINES and whole name tokens only; ORDER / FIX / RULING never damped),
+- lean flags (strict MCP + project settings, or --bare - refused when the caller
+  says its floors live in hooks), sonnet unless the work writes code, effort low
+  for acknowledgements,
+- no visible console window, the claude executable never taken from the working
+  directory, and a timeout kills the whole process tree,
+- one usage line per run, and the live status file the lane widget reads, never
+  left reading "running" after the run ends however it ends.
+
+v4 adds OPTIONAL keyword parameters to spawn() (v3 behaviour when omitted):
+cwd, stdin, return_stderr, persist / session_id / resume, model, effort,
+setting_sources, floors_in_hooks, pin, log_path (streamed stream-json log),
+halt_file; plus write_progress() for ops/loop/control/progress/<task>.json.
 
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
+import contextlib
 import datetime as _dt
 import hashlib
 import json
 import os
 import re
-import shutil
 import socket
 import subprocess
 import sys
@@ -31,24 +44,47 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 3
+KIT_VERSION = 4
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
 STATUS_REL = Path("ops/loop/control/inbox_status.json")
 BUDGET_REL = Path("ops/loop/control/headless_budget.json")
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
+PROGRESS_REL = Path("ops/loop/control/progress")
 LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 PLACEHOLDER_KEY = "fleet-proxy-placeholder"
 STRIP_EXACT = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"}
 STRIP_PREFIX = ("CLAUDE_CODE_USE_",)
+KEEP_EXACT = {"CLAUDE_CODE_USE_POWERSHELL_TOOL"}
 ACK_MARKERS = ("INFORMATION", "ACK", "TERMINAL", "CORRECTION-ACCEPTED",
-               "POLL-ANSWER", "RECEIVED", "NO-REPLY")
-_SENDER = re.compile(r"-from-([A-Z]+)-")
+               "POLL-ANSWER", "RECEIVED", "NO-REPLY", "NOREPLY")
+NEVER_DAMP = ("ORDER", "FIX", "RULING")
+STATES = ("idle", "running", "limit", "halted", "backoff", "refused")
+PROGRESS_STATES = ("running", "done", "failed")
+EFFORTS = ("low", "medium", "high")
+SOURCES = ("user", "project", "local")
+DEFAULT_SOURCES = "project,local"
+ARGV_PROMPT_MAX = 30000
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+_SENDER = re.compile(r"(?:^|[-_])(?i:from)-([A-Z]+)-")
+_TITLE = re.compile(r"^#+\s*(?i:from)\s+([A-Z]+)\b(?:\s*-\s*([A-Z]+))?")
+_CLASS = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-([A-Za-z]+)")
+_MARK = r"(?:TERMINAL|NO[-_ ]?REPLY)"
+_MARKER_LINE = re.compile(r"^(?:CLASS\s+)?" + _MARK + r"(?:\s*[-.,:;/]?\s*" + _MARK +
+                          r")*\s*[.!]?$")
+_MODEL = re.compile(r"^(?:opus|sonnet|haiku|claude-[a-z0-9][a-z0-9.-]*)(?:\[1m\])?$")
+_TOKEN_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+_TASK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_EPOCH = _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone(_dt.timedelta(0)))
 
 
 class Refused(Exception):
     """A spawn the kit will not start. str() is the logged reason."""
+
+
+class BudgetUnreadable(Refused):
+    """The budget file exists but cannot be read or parsed: fail closed."""
 
 
 # ---------------------------------------------------------------- proxy URL
@@ -80,8 +116,24 @@ def base_url(registry=_registry_value, environ=None):
     return env.get(VAR) or None
 
 
-def check_url(url):
-    """Raise Refused unless url is plain http to a loopback host:port."""
+def _parse_pin(pin):
+    if isinstance(pin, (tuple, list)) and len(pin) == 2:
+        host, port = str(pin[0]), pin[1]
+    else:
+        host, _, port = str(pin).rpartition(":")
+    host = host.strip("[]")
+    try:
+        port = int(port)
+    except (TypeError, ValueError):
+        raise Refused("proxy pin has no valid port") from None
+    if host not in LOOPBACK or not 0 < port < 65536:
+        raise Refused("proxy pin is not a loopback host:port")
+    return host, port
+
+
+def check_url(url, pin=None):
+    """Raise Refused unless url is plain http to a loopback host:port - and,
+    when pin ("host:port" or (host, port)) is given, to exactly that one."""
     if not url:
         raise Refused(VAR + " is unset")
     if any(c in url for c in "@\\ \t\r\n"):
@@ -91,24 +143,33 @@ def check_url(url):
         raise Refused("proxy URL is not plain http")
     if parts.hostname not in LOOPBACK:
         raise Refused("proxy URL host is not loopback")
-    if not parts.port:
+    try:
+        port = parts.port
+    except ValueError:
+        raise Refused("proxy URL port is invalid") from None
+    if not port:
         raise Refused("proxy URL has no port")
-    return parts.hostname, parts.port
+    if pin is not None and (parts.hostname, port) != _parse_pin(pin):
+        raise Refused("proxy URL is not the pinned host:port")
+    return parts.hostname, port
 
 
 def probe(host, port, timeout=2.0, connect=socket.create_connection):
     try:
         connect((host, port), timeout=timeout).close()
     except OSError as exc:
-        raise Refused("proxy unreachable: %s" % exc.__class__.__name__)
+        raise Refused(f"proxy unreachable: {exc.__class__.__name__}") from None
 
 
 def child_env(url, bare=False, parent=None):
     """The child's environment: provider switches and credentials removed, the
-    proxy URL set. --bare reads no OAuth, so it gets a placeholder key that the
-    proxy replaces with the pinned account."""
+    proxy URL set. CLAUDE_CODE_USE_POWERSHELL_TOOL is a tool switch, not a
+    provider switch, and is kept. --bare reads no OAuth, so it gets a
+    placeholder key that the proxy replaces with the pinned account."""
     env = dict(os.environ if parent is None else parent)
     for k in list(env):
+        if k in KEEP_EXACT:
+            continue
         if k in STRIP_EXACT or k.startswith(STRIP_PREFIX) or (
                 k.startswith("ANTHROPIC_") and k.endswith("BASE_URL")):
             del env[k]
@@ -120,38 +181,132 @@ def child_env(url, bare=False, parent=None):
 
 # ---------------------------------------------------------------- note rules
 
-def note_sender(name):
-    m = _SENDER.search(name)
-    return m.group(1) if m else None
+def _base(name):
+    return Path(str(name or "")).name
 
 
-def should_skip(name, own_code, head=""):
-    """'self', 'terminal' or None. head = the note's first few hundred chars."""
-    if note_sender(name) == own_code:
-        return "self"
-    text = (name + " " + head).upper()
-    if "TERMINAL" in text or "NO-REPLY" in text or "NO REPLY" in text:
-        return "terminal"
+def _tokens(text):
+    return [t for t in re.split(r"[^A-Z0-9]+", text.upper()) if t]
+
+
+def _has_marker(tokens, marker):
+    joined = "-" + "-".join(tokens) + "-"
+    return "-" + marker + "-" in joined
+
+
+def _title(head):
+    for line in (head or "").splitlines():
+        if line.strip():
+            return _TITLE.match(line.strip())
     return None
 
 
-def pick_effort(name):
-    up = name.upper()
-    return "low" if any(m in up for m in ACK_MARKERS) else "medium"
+def note_sender(name, head=""):
+    """Sender code from the name (`...-from-XX-...` or `from-XX-...`), else from
+    the title line (`# From XX - ...`), else None."""
+    m = _SENDER.search(_base(name))
+    if m:
+        return m.group(1)
+    t = _title(head)
+    return t.group(1) if t else None
 
 
-def pick_model(writes_code):
+def note_class(name, head=""):
+    """The word after the sender (ORDER, FIX, ANSWER, ...), upper-cased, or None."""
+    m = _CLASS.search(_base(name))
+    if m:
+        return m.group(1).upper()
+    t = _title(head)
+    return t.group(2).upper() if t and t.group(2) else None
+
+
+def _never_damped(name, head):
+    cls = note_class(name, head)
+    t = _title(head)
+    title_cls = t.group(2).upper() if t and t.group(2) else None
+    return cls in NEVER_DAMP or title_cls in NEVER_DAMP
+
+
+def _marked_terminal(name, head):
+    tokens = _tokens(_base(name))
+    if "TERMINAL" in tokens or "NOREPLY" in tokens or _has_marker(tokens, "NO-REPLY"):
+        return True
+    for line in (head or "").splitlines():
+        text = line.strip().lstrip("#*>- \t").rstrip("* \t").upper()
+        if text and _MARKER_LINE.match(text):
+            return True
+    return False
+
+
+def should_skip(name, own_code, head=""):
+    """'self', 'terminal' or None. head = the note's first few hundred chars.
+    Terminal means a whole TERMINAL / NOREPLY / NO-REPLY token in the name or a
+    line that is only such a marker; a body sentence that mentions the rule is
+    not a marker. ORDER, FIX and RULING notes are never damped."""
+    if note_sender(name, head) == own_code:
+        return "self"
+    if _never_damped(name, head):
+        return None
+    return "terminal" if _marked_terminal(name, head) else None
+
+
+def pick_effort(name, effort=None):
+    """Explicit effort (low|medium|high) wins; else low for acknowledgement
+    tokens (whole tokens only - TRACK and BACKOFF are not ACK), medium otherwise,
+    and never low for ORDER / FIX / RULING."""
+    if effort is not None:
+        if effort not in EFFORTS:
+            raise Refused(f"effort {effort!r} not in {EFFORTS}")
+        return effort
+    if note_class(name) in NEVER_DAMP:
+        return "medium"
+    tokens = _tokens(_base(name))
+    return "low" if any(_has_marker(tokens, m) for m in ACK_MARKERS) else "medium"
+
+
+def pick_model(writes_code, model=None):
+    """Explicit model alias or exact id wins; else opus for code, sonnet otherwise."""
+    if model is not None:
+        if not isinstance(model, str) or not _MODEL.match(model):
+            raise Refused(f"model {model!r} is not an alias or a claude-* id")
+        return model
     return "opus" if writes_code else "sonnet"
 
 
 # ---------------------------------------------------------------- argv
 
-def claude_exe(which=shutil.which):
-    """The real claude executable. The npm shim claude.CMD would run under
-    cmd.exe; prefer the binary it wraps so no console host is involved."""
-    path = which("claude")
+def _norm(path):
+    return os.path.normcase(os.path.realpath(path))
+
+
+def _find_on_path(name, environ=None, cwd=None):
+    """Like shutil.which, but never answers from the working directory: empty,
+    relative and cwd-equal PATH entries are skipped."""
+    env = os.environ if environ is None else environ
+    here = _norm(cwd or Path.cwd())
+    exts = [""]
+    if sys.platform == "win32":
+        exts = [e for e in env.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if e]
+    for entry in env.get("PATH", "").split(os.pathsep):
+        d = entry.strip().strip('"')
+        if not d or not Path(d).is_absolute() or _norm(d) == here:
+            continue
+        for ext in exts:
+            p = Path(d) / (name + ext)
+            if p.is_file() and (sys.platform == "win32" or os.access(p, os.X_OK)):
+                return str(p)
+    return None
+
+
+def claude_exe(which=None, environ=None, cwd=None):
+    """The real claude executable, never one in the working directory. The npm
+    shim claude.CMD would run under cmd.exe; prefer the binary it wraps so no
+    console host is involved."""
+    path = which("claude") if which else _find_on_path("claude", environ, cwd)
     if not path:
-        raise Refused("claude not found on PATH")
+        raise Refused("claude not found on PATH (working directory excluded)")
+    if not Path(path).is_absolute() or _norm(Path(path).parent) == _norm(cwd or Path.cwd()):
+        raise Refused("claude resolved from the working directory")
     if path.lower().endswith(".cmd"):
         real = (Path(path).parent / "node_modules" / "@anthropic-ai" /
                 "claude-code" / "bin" / "claude.exe")
@@ -160,49 +315,160 @@ def claude_exe(which=shutil.which):
     return path
 
 
+def _check_sources(sources):
+    parts = [s.strip() for s in str(sources or "").split(",")]
+    if not parts or any(p not in SOURCES for p in parts) or len(set(parts)) != len(parts):
+        raise Refused(f"setting sources {sources!r} not a subset of {SOURCES}")
+    return ",".join(parts)
+
+
+def _flag(arg):
+    return str(arg).split("=", 1)[0].lower()
+
+
 def build_argv(exe, prompt, model, effort, bare=False, rules_file=None,
-               extra=()):
-    argv = [exe, "-p", prompt, "--output-format", "json",
-            "--no-session-persistence", "--model", model, "--effort", effort]
+               extra=(), stdin=False, persist=False, setting_sources=DEFAULT_SOURCES,
+               output_format="json", session_id=None, resume=None):
+    argv = [exe, "-p"]
+    if not stdin:
+        argv.append(prompt)
+    argv += ["--output-format", output_format]
+    if output_format == "stream-json":
+        argv.append("--verbose")
+    resuming = any(_flag(a) in ("--session-id", "--resume", "--continue") for a in extra)
+    if not (persist or session_id or resume or resuming):
+        argv.append("--no-session-persistence")
+    for flag, value in (("--session-id", session_id), ("--resume", resume)):
+        if value is not None:
+            if not _TOKEN_ID.match(str(value)):
+                raise Refused(f"{flag} value is not a plain id")
+            argv += [flag, str(value)]
+    argv += ["--model", model, "--effort", effort]
     if bare:
         argv.append("--bare")
         if rules_file:
             argv += ["--append-system-prompt-file", str(rules_file)]
     else:
-        argv += ["--strict-mcp-config", "--setting-sources", "project,local"]
+        argv += ["--strict-mcp-config", "--setting-sources", _check_sources(setting_sources)]
     return argv + list(extra)
+
+
+def check_door(bare=False, extra=(), floors_in_hooks=False):
+    """Refuse what must never reach the CLI: any fallback flag, ever; --bare
+    smuggled through extra (use bare=); --bare when floors live in hooks."""
+    flags = [_flag(a) for a in extra]
+    if any("fallback" in f for f in flags):
+        raise Refused("fallback flags are refused - fail closed, no fallback ever")
+    if "--bare" in flags:
+        raise Refused("--bare goes through bare=, not extra")
+    if bare and floors_in_hooks:
+        raise Refused("--bare refused: this tree's floors live in hooks, which --bare skips")
 
 
 # ---------------------------------------------------------------- budget
 
-class RunBudget(object):
-    """Runs started per rolling window, persisted as epoch seconds."""
+class RunBudget:
+    """Runs started per rolling window, persisted as epoch seconds. A missing
+    file is zero runs; a file that exists but cannot be read or parsed REFUSES
+    every start until a person repairs or removes it (fail closed). Starts are
+    counted under an exclusive lock file next to the budget file."""
 
-    def __init__(self, path, cap=RUNS_CAP, window=WINDOW_S, clock=time.time):
+    def __init__(self, path, cap=RUNS_CAP, window=WINDOW_S, clock=time.time,
+                 lock_wait=10.0, lock_stale=120.0):
         self.path, self.cap, self.window, self.clock = Path(path), cap, window, clock
+        self.lock_wait, self.lock_stale = lock_wait, lock_stale
 
     def _load(self):
         try:
-            starts = json.loads(self.path.read_text(encoding="utf-8"))["starts"]
-        except (OSError, ValueError, KeyError, TypeError):
-            starts = []
+            text = self.path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+        except OSError as exc:
+            raise BudgetUnreadable(f"budget file unreadable: {exc.__class__.__name__}") from None
+        try:
+            starts = json.loads(text)["starts"]
+        except (ValueError, KeyError, TypeError):
+            raise BudgetUnreadable("budget file corrupt - repair or remove it") from None
+        if not isinstance(starts, list):
+            raise BudgetUnreadable("budget file corrupt - repair or remove it")
         floor = self.clock() - self.window
-        return sorted(s for s in starts if isinstance(s, (int, float)) and s > floor)
+        return sorted(s for s in starts if isinstance(s, (int, float))
+                      and not isinstance(s, bool) and s > floor)
+
+    def readable(self):
+        try:
+            self._load()
+        except BudgetUnreadable:
+            return False
+        return True
 
     def used(self):
-        return len(self._load())
+        try:
+            return len(self._load())
+        except BudgetUnreadable:
+            return self.cap
 
     def can_start(self):
-        return self.used() < self.cap
+        try:
+            return len(self._load()) < self.cap
+        except BudgetUnreadable:
+            return False
 
     def frees_at(self):
         """Epoch when the count next drops, or None when nothing is counted."""
-        starts = self._load()
+        try:
+            starts = self._load()
+        except BudgetUnreadable:
+            return None
         return starts[0] + self.window if starts else None
 
+    @contextlib.contextmanager
+    def _lock(self):
+        lock = self.path.with_name(self.path.name + ".lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self.lock_wait
+        while True:
+            try:
+                fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                break
+            except FileExistsError:
+                with contextlib.suppress(OSError):
+                    if time.time() - lock.stat().st_mtime > self.lock_stale:
+                        lock.unlink()
+                        continue
+                if time.monotonic() >= deadline:
+                    raise Refused("budget lock busy") from None
+                time.sleep(0.05)
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+            yield
+        finally:
+            os.close(fd)
+            with contextlib.suppress(OSError):
+                lock.unlink()
+
+    def start(self):
+        """Count one start under the lock. True = counted; False = cap reached.
+        Raises Refused (BudgetUnreadable, or lock busy) - fail closed."""
+        with self._lock():
+            starts = self._load()
+            if len(starts) >= self.cap:
+                return False
+            _atomic_write(self.path, json.dumps({"starts": [*starts, self.clock()]}))
+            return True
+
+    def try_start(self):
+        try:
+            return self.start()
+        except Refused:
+            return False
+
     def record(self):
-        starts = self._load() + [self.clock()]
-        _atomic_write(self.path, json.dumps({"starts": starts}))
+        """v3 name: count a start unconditionally (still under the lock, and
+        still refusing on an unreadable file)."""
+        with self._lock():
+            starts = [*self._load(), self.clock()]
+            _atomic_write(self.path, json.dumps({"starts": starts}))
 
 
 # ---------------------------------------------------------------- status/usage
@@ -210,20 +476,24 @@ class RunBudget(object):
 def _atomic_write(path, text):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     tmp.write_text(text, encoding="ascii", newline="\n")
-    os.replace(str(tmp), str(path))
+    tmp.replace(path)
 
 
 def _iso(epoch):
     if not epoch or epoch <= 0:
         return None
-    return _dt.datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
+    try:
+        return _dt.datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
+    except (OSError, OverflowError, ValueError):
+        return (_EPOCH + _dt.timedelta(seconds=epoch)).isoformat(timespec="seconds")
 
 
 def write_status(root, code, state, task, task_started, budget, task_eta_s=None,
                  next_tick=None, clock=time.time):
-    """Schema 1 of ops/loop/control/inbox_status.json (MAIN 0915 section 1)."""
+    """Schema 1 of ops/loop/control/inbox_status.json (MAIN 0915 section 1).
+    state is one of STATES."""
     doc = {
         "schema": 1, "kit": KIT_VERSION, "code": code,
         "updated": _iso(clock()), "state": state, "task": task[:24],
@@ -236,8 +506,28 @@ def write_status(root, code, state, task, task_started, budget, task_eta_s=None,
     return doc
 
 
-def usage_line(result, code, note, model, effort, bare, rc, duration_s):
-    u = (result or {}).get("usage") or {}
+def _status_quietly(root, code, state, task, budget, started=None):
+    with contextlib.suppress(OSError):
+        write_status(root, code, state, task, started, budget)
+
+
+def write_progress(root, task, pct, step, eta_s, status, clock=time.time):
+    """FLEET-COMMON item 12: ops/loop/control/progress/<task>.json with
+    {task, pct, step, eta_s, status: running|done|failed, updated}."""
+    if not isinstance(task, str) or not _TASK.match(task):
+        raise ValueError(f"task name {task!r} must be a plain file stem")
+    if status not in PROGRESS_STATES:
+        raise ValueError(f"status {status!r} not in {PROGRESS_STATES}")
+    doc = {"task": task, "pct": max(0, min(100, int(pct))), "step": str(step)[:200],
+           "eta_s": None if eta_s is None else max(0, int(eta_s)),
+           "status": status, "updated": _iso(clock())}
+    _atomic_write(Path(root) / PROGRESS_REL / (task + ".json"), json.dumps(doc))
+    return doc
+
+
+def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None):
+    r = result if isinstance(result, dict) else {}
+    u = r.get("usage") if isinstance(r.get("usage"), dict) else {}
     return {
         "ts": _iso(time.time()), "kit": KIT_VERSION, "code": code, "note": note,
         "model": model, "effort": effort, "bare": bare, "rc": rc,
@@ -246,8 +536,9 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s):
         "cache_creation": u.get("cache_creation_input_tokens"),
         "cache_read": u.get("cache_read_input_tokens"),
         "output_tokens": u.get("output_tokens"),
-        "cost_usd": (result or {}).get("total_cost_usd"),
-        "num_turns": (result or {}).get("num_turns"),
+        "cost_usd": r.get("total_cost_usd"),
+        "num_turns": r.get("num_turns"),
+        "error": error,
     }
 
 
@@ -257,10 +548,41 @@ def sha256_file(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def verify_main(note_path, main_outbox):
-    """True when MAIN's outbox holds a byte-identical copy of this note."""
-    twin = Path(main_outbox) / Path(note_path).name
-    return twin.is_file() and sha256_file(twin) == sha256_file(note_path)
+def _git(top, *args, git=None):
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+    env["GIT_NO_REPLACE_OBJECTS"] = "1"
+    exe = git or _find_on_path("git")
+    if not exe:
+        raise OSError("git not found on PATH (working directory excluded)")
+    return subprocess.run([exe, "--no-replace-objects", "-C", str(top), *args],
+                          capture_output=True, check=True, timeout=60, env=env,
+                          creationflags=_NO_WINDOW).stdout
+
+
+def verify_main(note_path, main_outbox, rel=None, git=None):
+    """True only when MAIN's COMMITTED copy of this note is byte-identical:
+    the HEAD blob at <outbox>/<rel> (replace refs ignored) hashes to the note's
+    SHA-256 and MAIN's index names the same object. A working-tree copy alone
+    proves nothing (assume-unchanged, skip-worktree, restored mtimes). rel is
+    the path inside the outbox (default: the note's file name; a bundle file is
+    "<bundle dir>/<file>"). Any git error = False (fail closed)."""
+    note = Path(note_path)
+    rel = Path(rel) if rel else Path(note.name)
+    if not note.is_file() or rel.is_absolute() or ".." in rel.parts:
+        return False
+    try:
+        top = Path(_git(main_outbox, "rev-parse", "--show-toplevel", git=git)
+                   .decode("utf-8").strip())
+        path = (Path(main_outbox).resolve() / rel).relative_to(top.resolve()).as_posix()
+        blob = _git(top, "cat-file", "blob", "HEAD:" + path, git=git)
+        head_oid = _git(top, "rev-parse", "--verify", "HEAD:" + path, git=git).split()
+        staged = _git(top, "ls-files", "-s", "--", path, git=git).split()
+        want = sha256_file(note)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return False
+    if len(head_oid) != 1 or len(staged) < 2 or staged[1] != head_oid[0]:
+        return False
+    return hashlib.sha256(blob).hexdigest() == want
 
 
 # ---------------------------------------------------------------- conformance
@@ -283,15 +605,15 @@ def conformance(root):
         return ["kit manifest missing or unreadable"]
     problems = []
     if man.get("version") != KIT_VERSION:
-        problems.append("manifest v%s != kit v%s" % (man.get("version"), KIT_VERSION))
+        problems.append(f"manifest v{man.get('version')} != kit v{KIT_VERSION}")
     for name, want in sorted(man.get("files", {}).items()):
         f = kit / name
         if not f.is_file() or sha256_file(f) != want:
-            problems.append("kit file missing or edited: %s" % name)
+            problems.append(f"kit file missing or edited: {name}")
     try:
         text = (root / "CLAUDE.md").read_bytes().decode("ascii")
     except (OSError, UnicodeDecodeError):
-        return problems + ["CLAUDE.md missing or not ASCII"]
+        return [*problems, "CLAUDE.md missing or not ASCII"]
     i, j = text.find(BEGIN), text.find(END)
     if "\r\n" in text:
         problems.append("CLAUDE.md is CRLF; the fleet rule is LF")
@@ -305,38 +627,138 @@ def conformance(root):
 
 # ---------------------------------------------------------------- spawn
 
+def _kill_tree(proc):
+    if sys.platform == "win32":
+        sysroot = os.environ.get("SYSTEMROOT")
+        tk = str(Path(sysroot) / "System32" / "taskkill.exe") if sysroot else \
+            _find_on_path("taskkill")
+        if tk:
+            with contextlib.suppress(OSError, subprocess.SubprocessError):
+                subprocess.run([tk, "/T", "/F", "/PID", str(proc.pid)], capture_output=True,
+                               timeout=30, creationflags=_NO_WINDOW)
+    with contextlib.suppress(OSError):
+        proc.kill()
+
+
+def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, **kw):
+    """subprocess.run, except stdin defaults to DEVNULL and a timeout kills the
+    whole process tree (claude's own children included) before re-raising."""
+    if capture_output:
+        kw["stdout"] = kw["stderr"] = subprocess.PIPE
+    if input is not None:
+        stdin = subprocess.PIPE
+    elif stdin is None:
+        stdin = subprocess.DEVNULL
+    with subprocess.Popen(argv, stdin=stdin, **kw) as proc:
+        try:
+            out, err = proc.communicate(input, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            _kill_tree(proc)
+            with contextlib.suppress(subprocess.TimeoutExpired, OSError, ValueError):
+                proc.communicate(timeout=30)
+            raise
+    return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
+def _json_or_none(text):
+    try:
+        return json.loads(text) if text else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _result_from_log(log_path):
+    """The last {"type": "result"} event of a stream-json log, or None."""
+    found = None
+    with contextlib.suppress(OSError), Path(log_path).open(encoding="utf-8",
+                                                          errors="replace") as fh:
+        for line in fh:
+            ev = _json_or_none(line.strip())
+            if isinstance(ev, dict) and ev.get("type") == "result":
+                found = ev
+    return found
+
+
+def _finish(root, code, budget, line):
+    log = Path(root) / USAGE_REL
+    with contextlib.suppress(OSError):
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="ascii", newline="\n") as fh:
+            fh.write(json.dumps(line) + "\n")
+    _status_quietly(root, code, "idle", "Idle", budget, time.time())
+
+
 def spawn(root, code, prompt, note="", writes_code=False, bare=False,
-          rules_file=None, timeout=3600, extra=(), run=subprocess.run,
+          rules_file=None, timeout=3600, extra=(), run=None,
           url_source=base_url, connect=socket.create_connection,
-          exe_source=claude_exe):
-    """Start ONE headless run and wait for it. Returns the usage line (dict).
-    Raises Refused, before anything starts, when the fleet rules forbid it."""
+          exe_source=claude_exe, cwd=None, stdin=False, return_stderr=False,
+          persist=False, session_id=None, resume=None, model=None, effort=None,
+          setting_sources=DEFAULT_SOURCES, floors_in_hooks=False, pin=None,
+          log_path=None, halt_file=None):
+    """Start ONE headless run and wait for it. Returns the usage line (dict)
+    plus "result" (and "stderr" when return_stderr). Raises Refused, before
+    anything starts, when the fleet rules forbid it; the status file then reads
+    refused / halted / limit. A timeout returns a line with error "timeout" and
+    rc None after the process tree is killed. Budget, status and usage files
+    live under root; the child runs in cwd (default root)."""
     root = Path(root)
     budget = RunBudget(root / BUDGET_REL)
-    url = url_source()
-    host, port = check_url(url)
-    probe(host, port, connect=connect)
-    if not budget.can_start():
-        write_status(root, code, "limit", "Turn Limit Reached", None, budget)
-        raise Refused("run budget exhausted (%d/%d)" % (budget.used(), budget.cap))
-    model, effort = pick_model(writes_code), pick_effort(note)
-    argv = build_argv(exe_source(), prompt, model, effort, bare, rules_file, extra)
-    budget.record()
-    started = time.time()
-    write_status(root, code, "running", "Running Session", started, budget)
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
-    proc = run(argv, cwd=str(root), env=child_env(url, bare), capture_output=True,
-               text=True, timeout=timeout, creationflags=flags)
+    run = _run if run is None else run
+    if halt_file and Path(halt_file).exists():
+        _status_quietly(root, code, "halted", "Halted", budget)
+        raise Refused("halt file present")
     try:
-        result = json.loads(proc.stdout)
-    except (ValueError, TypeError):
-        result = None
-    line = usage_line(result, code, note, model, effort, bare, proc.returncode,
-                      time.time() - started)
-    log = root / USAGE_REL
-    log.parent.mkdir(parents=True, exist_ok=True)
-    with open(log, "a", encoding="ascii", newline="\n") as fh:
-        fh.write(json.dumps(line) + "\n")
-    write_status(root, code, "idle", "Idle", time.time(), budget)
-    line["result"] = (result or {}).get("result")
+        check_door(bare, extra, floors_in_hooks)
+        model, effort = pick_model(writes_code, model), pick_effort(note, effort)
+        if not stdin and len(prompt) > ARGV_PROMPT_MAX:
+            raise Refused(f"prompt over {ARGV_PROMPT_MAX} chars in argv - pass stdin=True")
+        url = url_source()
+        host, port = check_url(url, pin)
+        probe(host, port, connect=connect)
+        argv = build_argv(exe_source(), prompt, model, effort, bare, rules_file, extra,
+                          stdin=stdin, persist=persist, setting_sources=setting_sources,
+                          output_format="stream-json" if log_path else "json",
+                          session_id=session_id, resume=resume)
+        counted = budget.start()
+    except Refused:
+        _status_quietly(root, code, "refused", "Refused", budget)
+        raise
+    if not counted:
+        _status_quietly(root, code, "limit", "Turn Limit Reached", budget)
+        raise Refused(f"run budget exhausted ({budget.used()}/{budget.cap})")
+    started = time.time()
+    _status_quietly(root, code, "running", "Running Session", budget, started)
+    kw = {"cwd": str(Path(cwd) if cwd else root), "env": child_env(url, bare),
+          "text": True, "encoding": "utf-8", "errors": "replace", "timeout": timeout,
+          "creationflags": _NO_WINDOW}
+    if stdin:
+        kw["input"] = prompt
+    proc, error = None, None
+    try:
+        with contextlib.ExitStack() as stack:
+            if log_path:
+                Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+                kw["stdout"] = stack.enter_context(
+                    Path(log_path).open("w", encoding="utf-8", newline="\n"))
+                kw["stderr"] = subprocess.PIPE
+            else:
+                kw["capture_output"] = True
+            proc = run(argv, **kw)
+    except subprocess.TimeoutExpired:
+        error = "timeout"
+    except BaseException as exc:
+        _finish(root, code, budget, usage_line(None, code, note, model, effort, bare, None,
+                                               time.time() - started, type(exc).__name__))
+        raise
+    if log_path:
+        result = _result_from_log(log_path)
+    else:
+        result = _json_or_none(getattr(proc, "stdout", None))
+    rc = getattr(proc, "returncode", None) if proc is not None else None
+    line = usage_line(result, code, note, model, effort, bare, rc,
+                      time.time() - started, error)
+    _finish(root, code, budget, line)
+    line["result"] = result.get("result") if isinstance(result, dict) else None
+    if return_stderr:
+        line["stderr"] = getattr(proc, "stderr", None) if proc is not None else None
     return line
