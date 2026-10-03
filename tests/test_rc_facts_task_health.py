@@ -744,3 +744,147 @@ def test_acknowledged_lines_are_ascii(tmp_path):
     for s in lines + anomalies:
         assert s.isascii(), s
         assert chr(0x2014) not in s and chr(0x2013) not in s
+
+
+# ------------------------------------------- 8. armed BY an agreement record
+#
+# CLAUDE.md: "RC-InboxResponder stays DISARMED until an expiring agreement
+# record arms it". The operator armed it on 2026-10-02 via
+# ops/runtime/inbox_responder_agreement.json, and the inversion above ignored
+# that record, so every session start carried a FALSE anomaly. The check now
+# asks the RUNNER's own validator (tools/inbox_responder_runner.load_agreement)
+# - no second parser - and stays fail-closed: missing, expired or malformed
+# still reports ENABLED as the anomaly, and says why.
+
+_COUNTERPARTIES = ["AA", "BB"]
+
+
+def _valid_agreement(now: float, *, expires_in_s: float = 10 * _DAY) -> dict:
+    from tools import inbox_responder_runner as runner
+
+    def _naive(ts: float) -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(ts))
+
+    return {
+        "counterparties": list(_COUNTERPARTIES),
+        "note": "test arming",
+        "window_open": _naive(now - _DAY),
+        "window_close": _naive(now + expires_in_s),
+        "hop_budget": 8,
+        "grammar": runner.GRAMMAR_A5,
+        "expires": _naive(now + expires_in_s),
+        "model": runner.MODEL,
+        "contract_version": runner.CHANNEL_VERSION,
+    }
+
+
+def _write_agreement(root: Path, payload) -> Path:
+    p = root / "ops" / "runtime" / "inbox_responder_agreement.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    text = payload if isinstance(payload, str) else json.dumps(payload)
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+def _responder_rows(now: float) -> list[dict]:
+    return _all_weekly_rows(now) + [
+        _row("RC-InboxResponder", state="Ready", last_result=0,
+             last_run=_iso(now, 300), triggers="MSFT_TaskTimeTrigger"),
+    ]
+
+
+def _participants(monkeypatch):
+    monkeypatch.setattr(
+        rc_facts, "_inbox_participants",
+        lambda root: {c: Path(root) / c / "moon_sync_inbox" for c in _COUNTERPARTIES},
+    )
+
+
+def test_inbox_responder_enabled_with_valid_agreement_is_armed_not_anomaly(tmp_path, monkeypatch):
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    _participants(monkeypatch)
+    rec = _valid_agreement(now)
+    _write_agreement(tmp_path, rec)
+
+    lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    assert [a for a in anomalies if "RC-InboxResponder" in a] == [], anomalies
+    mine = [ln for ln in lines if "RC-InboxResponder" in ln]
+    assert len(mine) == 1, lines
+    assert "ARMED by agreement" in mine[0]
+    assert f"expires {rec['expires']}" in mine[0]
+
+
+def test_inbox_responder_enabled_with_expired_agreement_is_anomaly(tmp_path, monkeypatch):
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    _participants(monkeypatch)
+    rec = _valid_agreement(now - 30 * _DAY, expires_in_s=5 * _DAY)
+    _write_agreement(tmp_path, rec)
+
+    _lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-InboxResponder" in a]
+    assert len(mine) == 1, anomalies
+    assert "ENABLED" in mine[0] and "DISARMED" in mine[0]
+    assert "expired" in mine[0]
+
+
+def test_inbox_responder_enabled_with_missing_agreement_is_anomaly(tmp_path, monkeypatch):
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    _participants(monkeypatch)
+
+    _lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-InboxResponder" in a]
+    assert len(mine) == 1, anomalies
+    assert "ENABLED" in mine[0] and "DISARMED" in mine[0]
+    assert "no_agreement" in mine[0]
+
+
+def test_inbox_responder_enabled_with_malformed_agreement_is_anomaly(tmp_path, monkeypatch):
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    _participants(monkeypatch)
+    _write_agreement(tmp_path, "{not json")
+
+    _lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-InboxResponder" in a]
+    assert len(mine) == 1, anomalies
+    assert "malformed" in mine[0]
+
+
+def test_inbox_responder_agreement_naming_unknown_counterparty_is_anomaly(tmp_path, monkeypatch):
+    """Structurally valid JSON is not enough: the runner's own validator refuses
+    a counterparty the participants map does not carry, and so must this."""
+    now = time.time()
+    _fresh_world(tmp_path, now)
+    monkeypatch.setattr(rc_facts, "_inbox_participants", lambda root: {})
+    _write_agreement(tmp_path, _valid_agreement(now))
+
+    _lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-InboxResponder" in a]
+    assert len(mine) == 1, anomalies
+    assert "malformed:counterparties" in mine[0]
+
+
+def test_inbox_responder_agreement_check_crash_fails_closed(tmp_path, monkeypatch):
+    now = time.time()
+    _fresh_world(tmp_path, now)
+
+    def _boom(root):
+        raise RuntimeError("probe exploded")
+
+    monkeypatch.setattr(rc_facts, "_inbox_participants", _boom)
+    _write_agreement(tmp_path, _valid_agreement(now))
+
+    _lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
+    mine = [a for a in anomalies if "RC-InboxResponder" in a]
+    assert len(mine) == 1, anomalies
+    assert "ENABLED" in mine[0]
+
+
+def test_agreement_check_reuses_the_runner_validator():
+    """No second parser: rc_facts must route through the runner's load_agreement."""
+    src = Path(rc_facts.__file__).read_text(encoding="utf-8")
+    assert "load_agreement" in src
+    assert "window_close" not in src and "hop_budget" not in src
