@@ -47,16 +47,34 @@ _START_TIME  = time.time()
 
 
 # -- API key + Anthropic client ---------------------------------------------
-def _load_key() -> str:
-    for p in [Path(__file__).parent.parent / "API-Key-Claude.txt",
-              Path.home() / "API-Key-Claude.txt",
-              Path.home() / "Desktop" / "API-Key-Claude.txt"]:
-        if p.exists():
-            k = p.read_text(encoding="utf-8").strip()
-            if k.startswith("sk-ant-"):
-                log.info("Key from %s", p)
-                return k
-    return os.environ.get("ANTHROPIC_API_KEY", "")
+def _load_key(app_dir: Path | None = None, home: Path | None = None) -> str:
+    """ENVIRONMENT first, then API-Key-Claude.txt in three legacy places.
+
+    RM-487 (2026-10-03): this read the three files FIRST and the env var
+    LAST - the stale-wins order ba4bb74be flipped in every other consumer,
+    so a forgotten key file holding a revoked key beat a rotated env var.
+    The read_text was also unguarded, and this runs at IMPORT time, so a
+    non-UTF8 key file took the whole :8889 server down. "env first" means
+    first VALID (sk-ant- prefix), matching coaches/_base_coach.read_api_key.
+    Never raises. Pinned by tests/test_api_key_load_order.py.
+    """
+    env = os.environ.get("ANTHROPIC_API_KEY", "")
+    if env.strip().startswith("sk-ant-"):
+        return env.strip()
+    root = app_dir if app_dir is not None else Path(__file__).parent.parent
+    hdir = home if home is not None else Path.home()
+    for p in [root / "API-Key-Claude.txt",
+              hdir / "API-Key-Claude.txt",
+              hdir / "Desktop" / "API-Key-Claude.txt"]:
+        try:
+            if p.exists():
+                k = p.read_text(encoding="utf-8").strip()
+                if k.startswith("sk-ant-"):
+                    log.info("Key from %s", p)
+                    return k
+        except (OSError, UnicodeDecodeError):
+            continue
+    return env
 
 
 _API_KEY = _load_key()

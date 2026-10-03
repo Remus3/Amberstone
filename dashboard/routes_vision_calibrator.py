@@ -85,8 +85,19 @@ _COORD_MAX = 10000  # sanity ceiling - reject garbage coordinates
 
 
 def _vision_token() -> str:
+    """The :8889 token via the shared resolver, "" when none is configured.
+
+    RM-487 (2026-10-03): this used to read config/vision_token.txt and
+    NOTHING else (and the whole file, not its first line), so a token
+    supplied only through RC_VISION_TOKEN produced an empty X-RC-Token and
+    a 401 the calibrator rendered as "relay down". core.vision_token is
+    what every other :8889 client uses. It raises RuntimeError when no
+    token exists - including at IMPORT time - so both the import and the
+    call stay inside the fail-soft guard.
+    """
     try:
-        return (_ROOT / "config" / "vision_token.txt").read_text(encoding="utf-8").strip()
+        from core.vision_token import get_vision_token
+        return get_vision_token()
     except Exception:  # noqa: BLE001
         return ""
 
