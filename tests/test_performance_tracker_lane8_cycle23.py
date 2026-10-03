@@ -377,6 +377,9 @@ class TestSecretIsNeverLogged(unittest.TestCase):
             handler = _Capture()
             logger = logging.getLogger("rc.tracker")
             logger.addHandler(handler)
+            # NOW-7: restore the level in the finally below - this setLevel
+            # used to outlive the test (measured, docs/NOW7_LOGGER_LEAK_MEASUREMENT.md).
+            saved_level = logger.level
             logger.setLevel(logging.DEBUG)
 
             import coaches.experimental_builder as eb
@@ -415,6 +418,7 @@ class TestSecretIsNeverLogged(unittest.TestCase):
                 eb.consume_active = saved_consume
                 eb.record_result = saved_record
                 logger.removeHandler(handler)
+                logger.setLevel(saved_level)
 
             joined = " ".join(records)
             self.assertNotIn(

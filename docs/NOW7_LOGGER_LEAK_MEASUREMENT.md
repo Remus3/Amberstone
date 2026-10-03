@@ -81,3 +81,81 @@ NOT part of the in-process count above.
   enclosing class/module as clean (the 4 artefact rows), (b) exclude or
   separately bucket `created: true` rows (PIL import noise), (c) do not let the
   env var leak into child pytests, or give children their own bucket.
+
+## Arming (2026-10-03, second pass) - GATE ARMED
+
+### Fixes and prerequisites
+
+- The 2 real leaks are fixed. In `tests/test_performance_tracker_lane8_cycle23.py`
+  (`rc.tracker`) the level is saved before `setLevel(DEBUG)` and restored in
+  the existing finally. In `tests/test_tft_live_analysis_lane8_cycle43.py`
+  (`rc.tft.live`) it is restored next to `removeHandler`. Non-vacuous: the
+  HEAD copies of both files, run under the armed gate, go red at exactly those
+  two tests (`'NOTSET' -> 'DEBUG'` on each logger). The fixed files are green.
+- (a) Class/module scope: snapshots are taken around SETUP, CALL and
+  TEARDOWN. A change made in CALL that is still present after the test's own
+  teardown is that test's leak. A change made in SETUP or TEARDOWN (where
+  `setUpClass` and class/module-scoped fixtures run) is held PENDING, owned by
+  the test that made it. It is clean if restored by the end of the module.
+  Otherwise it is raised at the module's last test, naming the owner. The
+  `tests/test_p2w2_ds_f.py` pairs are now clean.
+- (b) Import-time configuration counts as baseline. Collection-time imports
+  are already in every pre-test snapshot. A module first imported DURING a
+  test is bracketed by a `sys.meta_path` watcher (installed only while a test
+  runs; the real loader is put back after exec), and its logger changes are
+  marked import-owned. Found while arming: `coaches/_base_coach.py`
+  `_silence_chatty_loggers()` sets `PIL.*` and `rc.lcu` to WARNING at import.
+  That is where the first pass's child-process rows came from, not a test
+  leak. Without the watcher, a narrow run that imports it lazily in a fixture
+  would have gone red.
+- (c) Nested runs: the first process to load the detector stamps
+  `RC_LOGGER_LEAK_OUTER_PID`. xdist workers stamp `RC_LOGGER_LEAK_WORKER_PID`
+  and stay active. Any other process that sees a foreign stamp (a child pytest
+  spawned by a test, e.g. `test_now6_logger_leak_regression.py`) is inert in
+  every mode.
+- pytest's own capture handlers (`_pytest.*`) are left out of snapshots.
+
+### Report-only re-run
+
+`RC_LOGGER_LEAK_REPORT=1 python -m pytest tests -q -n 6 --dist loadfile
+--timeout=300` (worktree root). This used xdist, NOT a serial run like the
+first pass: the first pass's 2h+ serial runtime made a serial re-run
+impractical. Result: **0 leak rows, 0 detector errors** (the report dir was
+never created). Suite: 4 failed, 24873 passed, 144 skipped, 1 xfailed,
+3 xpassed in 452s. One failure was this slice's own new test tripping
+`test_no_environ_in_assert_operands` (now fixed). The other 3 are listed below.
+
+### Armed run
+
+Modes: the default is ARMED (a leak becomes a teardown ERROR on the leaker,
+and the message names the logger, the attribute and before -> after).
+`RC_LOGGER_LEAK_REPORT=1` means report-only. `RC_LOGGER_LEAK_GATE=0` disarms
+the gate for one run.
+
+- `python -m pytest tests -q -n 6 --dist loadfile --timeout=300`: 3 failed,
+  24874 passed, 144 skipped, 1 xfailed, 3 xpassed in 456s. **Zero gate
+  errors.** The 3 failures also fail with the gate disarmed, and they are in
+  files this slice did not touch:
+  `test_no_console_flash_scheduled_tools.py[ops/loop/adjudicator.py]`,
+  `test_loop_concurrency.py[slots.py]` (sibling carrier digest drift), and
+  `test_p2w2_ds_h.py::test_ephemeral_failure_message_redacts_stderr`
+  (`_FakeProc` has no `args`).
+- `python -m pytest agents/daemon_slayer -q -n 6 --dist loadfile`: 10933
+  passed, exit 0. The gate is registered only by `tests/conftest.py`, so it
+  does not run in that suite.
+
+### Regression tests
+
+`tests/test_now7_logger_leak_detector.py` runs a child pytest with the gate
+armed and checks that:
+
+- it goes RED at a planted call-phase leaker;
+- it stays GREEN for caplog, a unittest `setUpClass`/`tearDownClass` pair, a
+  pytest class-scoped fixture pair, and a lazily imported module that sets
+  its own logger level;
+- a setup-phase fixture leak is raised at the module boundary, naming the
+  fixture's test;
+- the same project is inert when it runs as a nested child.
+
+There are also unit tests for import ownership, the import watcher, the
+`_pytest` handler exclusion, the mode flags and process classification.
