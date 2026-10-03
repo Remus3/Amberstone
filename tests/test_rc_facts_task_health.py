@@ -150,6 +150,48 @@ def test_running_code_on_periodic_task_is_an_anomaly():
     assert "never finished" in detail
 
 
+def test_periodic_task_caught_mid_run_is_not_stuck():
+    """A probe that lands inside an ordinary run is not a wedge.
+
+    Measured 2026-10-03: RC-ReplayRosterPull started 07:05:05, its log last
+    wrote 07:13:15 and it exited LastTaskResult=0 - but a banner probed inside
+    that ~8 minute window read 267009 and reported STUCK.
+    """
+    verdict, detail = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=8 * 60.0,
+    )
+    assert verdict == rc_facts.VERDICT_OK
+    assert "running now" in detail
+
+
+def test_periodic_task_running_past_the_grace_window_is_stuck():
+    verdict, _detail = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=rc_facts.PERIODIC_RUNNING_GRACE_S + 60.0,
+    )
+    assert verdict == rc_facts.VERDICT_STUCK
+
+
+def test_periodic_task_running_with_future_start_time_is_not_masked():
+    # Clock skew can put LastRunTime in the future. A negative age is not
+    # "recently started" - it must not buy the grace window.
+    verdict, _detail = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=-600.0,
+    )
+    assert verdict == rc_facts.VERDICT_STUCK
+
+
+def test_periodic_task_running_with_unknown_start_stays_stuck():
+    """No LastRunTime means no evidence it is a young run - stay loud."""
+    verdict, _detail = rc_facts.classify_task_result(
+        "RC-ReplayRosterPull", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=None,
+    )
+    assert verdict == rc_facts.VERDICT_STUCK
+
+
 def test_service_running_implausibly_long_is_an_anomaly():
     verdict, detail = rc_facts.classify_task_result(
         "RC-Supervisor",
