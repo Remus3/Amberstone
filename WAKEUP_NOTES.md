@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-03 - headless spawns routed through the operator's second-account proxy (fail closed), RC-InboxResponder ARMED, MAIN grant recorded
+
+- **Operator instruction, confirmed in chat 2026-10-02 (items 1-4).** Commits: `7e6773fec` (every headless `claude` spawn routes through `ops/loop/headless_env.py` + `ops/loop/headless_route.ps1`; registry-first read of the user-scope proxy var, child-only `ANTHROPIC_BASE_URL`, refuses on unset / non-loopback / port refused; LEDGER 1460), `4e7ec9d69` (CLAUDE.md: MAIN-speaks-for-the-operator grant quoted verbatim + responder ARMED line), `0dcdf4ad0` (headless_env guard no longer scans its own needles). CI `ci` run 37094568695 green on `0dcdf4ad0`.
+- **Proof spawn** `claude -p "reply ok"` through the real helper answered `ok`; proxy activity log named the second account. Email and URL are deliberately NOT in any tracked file.
+- **RC-InboxResponder ENABLED**, every 5 min, agreement record (gitignored) expires 2026-11-01, hop budget 32. The 296 notes attended sessions had already handled were seeded as answered via `record_responded` BEFORE enabling, so it only answers new notes. No halt was cleared; `ops/loop/control/STOP` left in place; CI watchdog + weekly hygiene stay disabled.
+- **Report to MAIN delivered** (`C:\Main\moon_sync_inbox`, sha256 `27c6670b...`). Replies also delivered to CS / SS / LW / RSC / LL this session (re-hashed, all reached).
+- **OPEN, held for a ruling:** (1) `tests/test_inbox_responder_mutants.py` now trips INTERMITTENTLY - its teardown guard assumes live responder surfaces + sibling inboxes stay still, and an armed responder moves them. Guard NOT weakened. Choose: exclude live surfaces, or pause the responder for that test. (2) C4 `slots.py` candidate `290cbf80` attested by RC; vendoring + moving `SHARED_SHA256` is a joint act, held.
+- **Do NOT redo:** the routing, the arming, the seed, or the MAIN grant. Do not hand-answer inbox notes the responder now owns - check `ops/runtime/inbox_responder_answered.json` first.
+- **Known gap (non-blocking):** `headless_child_env` strips only `ANTHROPIC_BASE_URL`; inherited `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` still pass to executor / adjudicator / watchdog children (unchanged from before).
+
+---
+
 # 2026-10-02b - a sibling re-pin round answered FOUR times as its candidate was re-issued THREE times, RC's own citation fence REFUTED by RC's own commit-map, two leaked slot locks on REUSED pids, and six RC claims withdrawn before or after delivery
 
 **THE SESSION'S SHAPE: almost everything of value came from being refuted, including by RC.** Six RC positions or claims were withdrawn, four of them before anything was delivered and two after. The adversarial gate ran BEFORE the first delivery and caught **six defects in a note that was ready to send**. Read that as the method working, not as a bad session.
@@ -220,86 +232,3 @@ FROZEN tree afterwards: the 17 doc / guard / pin / changed-subject files gave
 gave `1072 passed, 86 skipped, 81 subtests`. **A backgrounded suite that overlaps a docs edit
 is not evidence about the tree you are about to push** - re-run the part that reads what you
 touched.
-
----
-
-# 2026-09-30c - the six halted lane refs DELETED with no bypass, all three session-start anomalies closed at the source, 56-note channel drain, and a sibling corrected RC's published advice in 20 minutes
-
-**The lane refs are GONE from origin and NO bypass was used.** The operator chose deletion
-from the three options item 1456 framed. The deciding fact was measured BEFORE the ask, not
-after: a delete push does not trip the sweep at all - the pre-push range parser returns `None`
-on an all-zero local sha, and its own comment says treating that as an error "blocks every
-branch cleanup". Also measured first: all six `origin/lane/*` SHAs were ALREADY ancestors of
-`origin/main`, so deletion orphaned nothing. The sweep ran ARMED and returned `clean: 0 bytes`,
-which is the correct verdict for a deletion - and note that a 0-byte `clean:` line IS a verdict
-while NO `clean:` line is not. `origin` now carries exactly one head.
-
-**Three session-start anomalies, and only ONE was a real defect.** The `RC-WeeklyHygiene` disarm
-was a DELIBERATE operator decision of 2026-09-11 (`docs/history_notes.md:1033-1035`), so nothing
-was re-armed; the fix was to stop the detector reporting a decision as a fault. `rc_facts.py` now
-prints `0 anomaly(s), 3 acknowledged disarm(s)`, keeps the three VISIBLE rather than suppressing
-them, and INVERTS the check for `RC-InboxResponder` - finding it ENABLED is now the anomaly. The
-real defect was `rewind_catchup`'s `last_run_at`, whose fix landed in HEAD two days after the last
-run and so had never executed; the stale row was BACKFILLED per the standing data-fix rule.
-**My brief to that slice was WRONG and the slice refuted it** - I specified `04:00:00Z`, which
-appends `Z` to a LOCAL time; the field is UTC, so `09:00:00Z` is correct. The third line was a
-DETECTOR BUG twice over: the stale window equalled the log reaper's retention, so STALE was
-unreachable, and one task could fire two anomalies.
-
-**A CITATION THAT RESOLVES IS NOT A CITATION THAT IS RIGHT.** Three cites in CLAUDE.md were stale
-by 26, 97 and about 140 lines. All three still RESOLVED, which is why nobody caught them, and a
-FOURTH in the same paragraph was CORRECT - so a spot check of one would have passed the paragraph.
-Sampling does not work on this class. The first pass refreshed the numbers; that was the weaker
-fix, because `ROADMAP.md` already carried RC's own doctrine - cite the pin by SYMBOL, never by
-line - having recorded the same drift twice before. Both paragraphs now cite by symbol. **RC has
-NO gate on this and said so to the fleet as a negative rather than quietly shipping the instance.**
-
-**A sibling corrected RC's published advice within 20 minutes and it changed RC's code.** RC had
-offered its empty-parametrize close as an ini line plus a test reading the value back. SS replied
-that this proves the STRING IS PRESENT, not that the BEHAVIOUR HOLDS - and RC's own guard from
-item 1454 was exactly that weaker half. Now hardened with a real subprocess probe requiring a
-COLLECTION ERROR plus the negative control that overrides the mark to `skip` and requires a SKIP.
-Three ablations; the third was the slice's own and the best - flipping the REAL ini value reddens
-both the assertion and the probe while the control stays green, proving the probe is driven by the
-configured value and not a literal. Isolation is ASSERTED, not reasoned about. **And a third
-failure mode neither tree had named: an ambient `PYTEST_ADDOPTS` would decide BOTH arms while the
-pair still looked consistent** - the child env is stripped.
-
-**Channel: 386 notes seen. Two RC notes delivered, each REACHED 5 of 5, destinations re-hashed
-digest-equal, both swept before leaving the tree.** Eight findings triaged, filed as RM-490..RM-497.
-**TWO intake cites did not survive re-derivation and are filed as REFUTED rather than dropped** -
-and one of them got STRONGER in substance while its evidence collapsed. RM-497 is a measured
-NEGATIVE kept so nobody re-opens it: RC forces `eol=lf` for every text class, so the sibling's
-two-digest trap does not reach RC.
-
-**The baseline earned its cost, and it caught my own mistake.** Full dual suite first: DS `10933
-passed`; RC `4 failed, 24711 passed` in 1:46:58. **I attributed THREE of those four to my own
-orchestration - a straddled tree - and that was WRONG.** A slice did write a live file during the
-baseline, and the three do pass in isolation (`121 passed`), both true; the conclusion did not
-follow. A second full run on the FINAL tree, quiescent and single-process, reproduced the same
-three: `4 failed, 24727 passed` in 1:42:33. **They are FULL-SUITE-ONLY failures - cross-test
-pollution, reproducible, and PRE-EXISTING at HEAD.** Passing in isolation is what a pollution looks
-like; it is not evidence of a straddle. Root cause OPEN, two hypotheses already eliminated (no
-warn-once guard in the subject; the noisy-logger override never touches `rc.*`), and CI is GREEN on
-the same commit, so it does not reproduce on the runner. Filed as ROADMAP NOW-6. Post-merge was
-tier-scoped per R5 (Tier-0 docs, Tier-1 tooling, no engine): affected modules `77 passed`, doc and
-hygiene guards `128 passed / 2 skipped / 216 subtests`, ruff and `py_compile` clean.
-
-**ONE genuine red remains and is FILED, not papered over (ROADMAP NOW-5):** the Claude CLI moved
-to `2.1.285` from pinned `2.1.251`. Machine-local, not a CI red - the test skips when the CLI is
-off PATH. It must NOT be silently re-pinned; the flag is undocumented and the test demands a
-codeword negative control first, or the wire goes inert while the constant survives.
-
-**One correction of my own:** I read a `tasklist` filter returning nothing as the suite having
-died. Thirteen python processes were running and free RAM was 13.1 GB - the static output file was
-pytest block-buffering. The probe was the fault, not the suite.
-
-**PARKED for the operator, flagged not rewritten:** CLAUDE.md calls the channel "RC plus two
-sibling checkouts" while config carries FIVE sibling codes and `docs/CHANNEL.md` says six. That may
-be carriers-versus-participants rather than an error. Also left alone: one pre-existing non-ASCII
-byte in `BACKLOG.md`, since the smart-quote sweep is a separate operator-gated pass. And the
-`grep -P` glyph check in `.claude/commands/headless-upgrade.md` was a FALSE CLEAN (exit 2, scans
-nothing) and is fixed. **A first draft of this note said the fix "exists only on this box" because
-that file is gitignored - WRONG: `tools/headless-upgrade.md` is a TRACKED mirror of it, pinned by
-the drift guard's mirror-parity check, so the fix does ship.** The guard caught the divergence at
-the /done gate, which is exactly what it is for.
