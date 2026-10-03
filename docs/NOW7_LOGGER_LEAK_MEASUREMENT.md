@@ -112,7 +112,11 @@ NOT part of the in-process count above.
   `RC_LOGGER_LEAK_OUTER_PID`. xdist workers stamp `RC_LOGGER_LEAK_WORKER_PID`
   and stay active. Any other process that sees a foreign stamp (a child pytest
   spawned by a test, e.g. `test_now6_logger_leak_regression.py`) is inert in
-  every mode.
+  every mode. Residual closed 2026-10-03: a stamp counts only when it is a
+  LIVE ANCESTOR of the current process (`is_live_ancestor`, psutil parent
+  walk with create-time check); a stale stamp inherited from a parent shell
+  is ignored and the gate stays active. Every inert run, and every ignored
+  stamp, prints a banner line in the terminal summary.
 - pytest's own capture handlers (`_pytest.*`) are left out of snapshots.
 
 ### Report-only re-run
