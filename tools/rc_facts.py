@@ -229,6 +229,18 @@ LONG_LIVED_SERVICE_TASKS = frozenset({
 # threshold that fires on ordinary uptime is a threshold that gets ignored.
 SERVICE_RUNNING_IMPLAUSIBLE_S = 60 * 86400.0
 
+# A PERIODIC task observed RUNNING is only wedged once its run is older than
+# this. Without a grace window any banner probe that lands inside an ordinary
+# run reports STUCK: measured 2026-10-03, RC-ReplayRosterPull ran 07:05:05 ->
+# ~07:13 and exited 0, yet a probe inside that window read 267009 as STUCK.
+# Two hours clears that run 15x over and also exceeds the PT45M
+# ExecutionTimeLimit it is registered with. An unknown start time stays STUCK.
+# For a task whose ExecutionTimeLimit is <= this grace, a hang now surfaces as
+# the scheduler's timeout-kill FAILURE (0x800710E0) rather than as STUCK; a
+# per-task grace of min(limit, interval) would be tighter (follow-up, needs the
+# limit and interval in the probe projection).
+PERIODIC_RUNNING_GRACE_S = 2 * 3600.0
+
 _WEEK_S = 7 * 86400.0
 
 # RC's own log reaper deletes logs/*.log* older than this. MIRRORED, not
@@ -648,6 +660,11 @@ def classify_task_result(
                     "implausibly long, probably wedged"
                 )
             return VERDICT_OK, "long-lived service, RUNNING is the healthy state"
+        # A negative age (clock skew, future LastRunTime) is not "recent".
+        if last_run_age_s is not None and 0.0 <= last_run_age_s <= PERIODIC_RUNNING_GRACE_S:
+            return VERDICT_OK, (
+                f"periodic task running now (started {_age_phrase(last_run_age_s)})"
+            )
         return VERDICT_STUCK, (
             "periodic task is still RUNNING - it started and never finished "
             f"(last run {_age_phrase(last_run_age_s)})"
