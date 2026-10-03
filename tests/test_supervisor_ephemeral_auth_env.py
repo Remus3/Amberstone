@@ -164,6 +164,12 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     env = rec.kwargs["env"]
     assert env.get("RC_AUTHENV_PROBE") == "kept-value"
     stripped = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"}
+    # FLEET-KIT-v1: the strip moved into the fleet kit, which ALSO removes every
+    # CLAUDE_CODE_USE_* key (provider switches) and any ANTHROPIC_*BASE_URL.
+    # That is the kit's policy, so those keys count as stripped here too.
+    stripped |= {k.upper() for k in os.environ
+                 if k.upper().startswith("CLAUDE_CODE_USE_")
+                 or (k.upper().startswith("ANTHROPIC_") and k.upper().endswith("BASE_URL"))}
     dropped, leaked = _spawn_env_key_diff(env, stripped)
     assert not dropped, f"inheritable parent keys missing from the spawn env: {dropped}"
     # The one key the spawn adds is the routed proxy URL (headless-routing

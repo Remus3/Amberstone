@@ -46,7 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ops.loop import slots, winmutex
+from ops.loop import fleet_route, slots, winmutex
 from tools.inbox_responder import (
     Cycle,
     _sender_code,
@@ -374,6 +374,10 @@ BOUNCES_NAME = "inbox_responder_bounces.json"
 # the spawn-attempt cap: pending, unanswered, loud in every row via
 # `notes_held`, and cleared by deleting one entry.
 HELD_NOTES_NAME = "inbox_responder_held_notes.json"
+# FLEET-KIT-v1: notes the kit's `should_skip` says never to spawn on (own notes,
+# TERMINAL / no-reply), marked seen. Separate from the answered record on
+# purpose: nothing was replied to.
+SKIPPED_NAME = "inbox_responder_skipped.json"
 DELIVERIES_NAME = "inbox_responder_deliveries.jsonl"
 METRICS_NAME = "responder_metrics.jsonl"
 INVOCATIONS_NAME = "responder_invocations.jsonl"
@@ -915,6 +919,51 @@ def pick_note(names, attempts: Mapping[str, Any],
              if int(attempts.get(note_sha12(n), 0)) < MAX_SPAWN_ATTEMPTS
              and note_sha12(n) not in held]
     return names[0] if names else None
+
+
+def skipped_path(root) -> Path:
+    return _runtime(root) / SKIPPED_NAME
+
+
+def fleet_skip_reason(name: str) -> Optional[str]:
+    """The fleet kit's verdict on a note NAME: 'self', 'terminal' or None."""
+    return fleet_route.kit().should_skip(name, fleet_route.CODE, "")
+
+
+def _drop_fleet_skips(root, names, ts: str) -> list:
+    """`names` minus the notes the fleet kit says never to spawn on.
+
+    The verdict is a pure function of the name, so the filter needs no state
+    to be correct; the seen-record is written best-effort for the operator and
+    a write fault never costs the tick.
+    """
+    keep, seen = [], {}
+    for name in names:
+        reason = fleet_skip_reason(name)
+        if reason is None:
+            keep.append(name)
+        else:
+            seen[note_sha12(name)] = {"note": safe_name(name), "reason": reason, "ts": ts}
+    if seen:
+        path = skipped_path(root)
+        try:
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
+            fresh = {k: v for k, v in seen.items() if k not in data}
+            if fresh:
+                data.update(fresh)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_suffix(".json.tmp")
+                tmp.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="ascii",
+                               newline="\n")
+                tmp.replace(path)
+        except OSError:
+            pass
+    return keep
 
 
 def notes_at_cap(names, attempts: Mapping[str, Any]) -> int:
@@ -1710,6 +1759,16 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
         stage = "pending"
         codes = tuple(sorted(set(agreement["counterparties"]) & set(participants)))
         names = pending_notes(inbox, root, participants=codes)  # GATE:pending
+        if not names:
+            return _terminate(result, "empty", "none_pending")
+
+        # FLEET-KIT-v1 (MAIN order 2026-10-03): never spawn on this tree's own
+        # notes or on a TERMINAL / no-reply note. The kit's `should_skip` judges
+        # the NAME only here - the body is not opened before gate 6 judges the
+        # entry (RM-385: an entry may be a junction or worse). A skipped note
+        # is marked seen in its OWN record, never in the answered record,
+        # which means "replied to" (RM-386).
+        names = _drop_fleet_skips(root, names, result.ts)
         if not names:
             return _terminate(result, "empty", "none_pending")
 
@@ -2759,6 +2818,14 @@ def main(argv=None, *, run=run_once, spawner=None, export=None, singleton=None,
                          parent_env=parent_env, now=now,
                          measure_runner=default_measure_runner, export=export, slot_root=None,
                          config=config, dry=dry, log_root=log_root)
+
+            # FLEET-KIT-v1 step 5: between ticks the live status file says
+            # "Idle" and names the next tick. Live ticks only - a dry cycle
+            # describes a scratch world - and a status fault never costs the
+            # tick that wrote it.
+            if not dry:
+                with contextlib.suppress(Exception):
+                    fleet_route.write_idle(POLL_INTERVAL_S)
 
             failed = 0
             if reporting:
