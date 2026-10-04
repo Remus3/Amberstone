@@ -125,6 +125,8 @@ _Clean-room only: every row is re-implemented from OBSERVED BEHAVIOUR; nothing i
 
 - **RM-678 (Tier-1, UI audit) RM-608 surface** - render the estimated death recap as a panel line and a PGR section (`core/death_recap.format_line` / `read_rows` are ready); first confirm whether `build_state` runs in the same process as the liveclient_cache listener (an in-memory latest recap may never reach it - read the jsonl instead); label "estimated" everywhere.
 
+- **RM-679 (Tier-1) recording-track hardening residuals (RM-637..RM-641)** - (a) a `<video>` cannot send `X-RC-Token`, so if `RC_DASH_TOKEN` is ever set the review lane cannot play: decide short-lived signed URL vs cookie; (b) the recording route accepts UNC sidecar paths (a planted sidecar could make the dashboard contact a remote SMB host; needs local write) and an ADS-named sidecar path serves that stream - restrict to local drive paths without `:` after the drive; (c) a `\\?\GLOBALROOT` sidecar makes the summary 500 instead of has_video false; (d) a recording with `death_count > 0` but deaths before the recorder attached gets `death_reel.status = no_deaths` and retention holds it forever (fail-safe, mislabelled) - count only bookmarked deaths; (e) reconnect ownership re-verify can be fooled by an operator restart within 10 s of RC's own start.
+
 - **RM-668 (L-08, S) Data-feed watch per DS batch** - read-only checklist step (changelog high-water, HEAD the chunk URLs, per-block body hash via `tools/ds_feed_index.py`); not a poller. Cross-ref: fleet-ideas patch/spec watch.
 
 ---
