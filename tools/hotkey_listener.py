@@ -321,10 +321,14 @@ _SLOT_MOMENT_MARK = 5
 # (RM-638). Why K: every slot here is Ctrl+Shift+<key> and the hook OBSERVES,
 # never swallows, so League sees the chord too. League's DEFAULT Ctrl chords
 # are Ctrl+Q/W/E/R (level an ability), Ctrl+1..6 (emotes / mastery badge) and
-# Ctrl+F (FPS readout); K is none of those and League ships no Ctrl+Shift
-# default. M was rejected: Ctrl+Shift+M is a common chat-app mute toggle. RC
-# carries no League keybind data to check against (no input.ini parser in the
-# tree), so a player rebind onto Ctrl+Shift+K is the residual risk. This table
+# Ctrl+F (FPS readout); K is none of those in a normal match. NOT claimed:
+# that League has no Ctrl+Shift binds - the Practice Tool binds many
+# Ctrl+Shift / Shift chords, and Shift+K there spawns a drake, so a press in
+# the Practice Tool may ALSO trigger that (League still sees the chord; the
+# hook never swallows it). In a normal match K carries no default. M was
+# rejected: Ctrl+Shift+M is a common chat-app mute toggle. RC carries no
+# League keybind data to check against (no input.ini parser in the tree), so
+# a player rebind onto Ctrl+Shift+K is the residual risk. This table
 # is the source of truth; the decoder's vk->slot map is derived from it so the
 # two cannot drift.
 _HOTKEYS = (
