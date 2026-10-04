@@ -266,8 +266,7 @@ def _writer_keys(source: str):
 
 def test_reader_contract_matches_recorder_writer():
     src = ROOT / "core" / "obs_recorder.py"
-    if not src.exists():
-        pytest.skip("RM-637 recorder not merged yet; parity runs once it is")
+    assert src.exists(), "RM-637 recorder missing: the parity contract cannot be checked"
     keys, wall = _writer_keys(src.read_text(encoding="utf-8"))
     assert keys == vr.RECORDER_SIDECAR_KEYS
     assert wall == vr.RECORDER_WALL_KEYS
