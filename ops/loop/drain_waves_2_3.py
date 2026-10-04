@@ -37,6 +37,18 @@ global ops/loop/control/STOP belongs to the loop controller and is NOT read here
 Usage:
   pythonw ops/loop/drain_waves_2_3.py            # real run (background)
   python  ops/loop/drain_waves_2_3.py --dry-run  # print spawn argv, spawn nothing
+  pythonw ops/loop/drain_waves_2_3.py --waves 2 --only atomic,tail-roadmap
+                                                 # re-run just those slices
+  --waves 2|3|2,3 selects waves (default 2,3); --only <slice keys, comma-separated>
+  keeps only those slices (a wave left with none is skipped). With wave 2 and 3
+  both selected, wave 3 still runs only if wave 2's merger pushed; --waves 3
+  alone runs wave 3 unconditionally.
+
+Worktrees are created SERIALLY (one lock, before any run is spawned) and a
+`git worktree add` that fails on the "could not lock" class (.git/config,
+index.lock) is retried with short backoff, at most WT_ADD_TRIES times. A slice
+whose worktree setup still fails is recorded as status "not-run" in the result
+JSON and listed as NOT RUN in the merger prompt.
 Exit: 0 done, 1 failed, 2 halted (merger did not push / DRAIN_STOP), 3 refused.
 """
 from __future__ import annotations
@@ -70,7 +82,11 @@ BUILD_TIMEOUT_S = 7200
 VERIFY_TIMEOUT_S = 3600
 MERGE_TIMEOUT_S = 5400
 MAX_PARALLEL = 3
-RUNS_NEEDED = 10  # 3 build + 3 verify + 1 merge + 1 build + 1 verify + 1 merge
+RUNS_NEEDED = 10  # full plan: 3 build + 3 verify + 1 merge + 1 build + 1 verify + 1 merge
+WT_ADD_TRIES = 5
+WT_ADD_BACKOFF_S = (0.5, 1.0, 2.0, 4.0)
+_LOCK_MARKERS = ("could not lock", "index.lock", "unable to create",
+                 "unable to write upstream branch configuration")
 BG_WAIT_MS = "2400000"  # same ceiling as ops/loop/run_lane.ps1
 
 BUILD_EXTRA = ("--dangerously-skip-permissions",)
@@ -93,6 +109,8 @@ ETA_S = {"Wave2": BUILD_TIMEOUT_S // 2 + VERIFY_TIMEOUT_S // 2 + MERGE_TIMEOUT_S
 
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 _log_lock = threading.Lock()
+_wt_lock = threading.Lock()  # serializes `git worktree add` / branch creation
+_sleep = time.sleep  # seam for tests
 
 
 # ---------------------------------------------------------------- io helpers
@@ -228,10 +246,17 @@ def verify_prompt(tag: str, key: str) -> str:
         "RESULT_FILE": p["verify_result"]}) + "\n"
 
 
-def merge_prompt(tag: str) -> str:
+def merge_prompt(tag: str, not_run=()) -> str:
+    """`not_run`: (slice task, reason) pairs whose worktree setup failed."""
+    extra = ""
+    if not_run:
+        extra = ("NOT RUN (worktree setup failed; no build, no verdict, nothing to merge - "
+                 "list each in notes as not-run, do not drop or close its rows): "
+                 + "; ".join(f"{t}: {' '.join(str(r).replace('@@', '@ @').split())[:160]}"
+                             for t, r in not_run))
     return _fill(_prompt_file("drain_w23_merger.md"), {
         "TAG": tag, "MERGE_INPUT": DRAIN_DIR / f"{tag}-merge-input.json",
-        "EXTRA": "", "RESULT_FILE": DRAIN_DIR / f"{tag}.merge.json"}) + "\n"
+        "EXTRA": extra, "RESULT_FILE": DRAIN_DIR / f"{tag}.merge.json"}) + "\n"
 
 
 # ---------------------------------------------------------------- spawning
@@ -271,32 +296,75 @@ def _spawn(prompt: str, *, task: str, extra, cwd: Path, timeout: float) -> dict:
     return {"rc": line.get("rc"), "result": text, "error": line.get("error"), "stderr": stderr}
 
 
+def _is_lock_error(text: str) -> bool:
+    low = (text or "").lower()
+    return any(m in low for m in _LOCK_MARKERS)
+
+
 def _ensure_worktree(tag: str, key: str) -> Path:
+    """Create (or reuse) the slice worktree. Serialized across threads by
+    `_wt_lock`; a "could not lock" failure is retried with backoff. Branch
+    existence is re-probed every attempt: a failed `-b` add can leave the branch
+    ref behind (its upstream config write lost), so the retry attaches to it."""
     p = _paths(tag, key)
     wt, branch = p["worktree"], p["branch"]
-    if (wt / ".git").exists():
-        _say(f"reuse worktree {wt}")
-        return wt
-    WT_BASE.mkdir(parents=True, exist_ok=True)
-    exists = _git("rev-parse", "--verify", "--quiet", branch).returncode == 0
-    args = (["worktree", "add", str(wt), branch] if exists
-            else ["worktree", "add", "-b", branch, str(wt), "origin/main"])
-    r = _git(*args)
-    if r.returncode != 0 or not (wt / ".git").exists():
-        raise RuntimeError(f"worktree add failed for {branch}: {(r.stderr or r.stdout).strip()[:300]}")
-    return wt
+    with _wt_lock:
+        if (wt / ".git").exists():
+            _say(f"reuse worktree {wt}")
+            return wt
+        WT_BASE.mkdir(parents=True, exist_ok=True)
+        err, attempt = "", 0
+        for attempt in range(1, WT_ADD_TRIES + 1):
+            exists = _git("rev-parse", "--verify", "--quiet", branch).returncode == 0
+            args = (["worktree", "add", str(wt), branch] if exists
+                    else ["worktree", "add", "-b", branch, str(wt), "origin/main"])
+            r = _git(*args)
+            if r.returncode == 0 and (wt / ".git").exists():
+                return wt
+            err = (r.stderr or r.stdout or "").strip()
+            if not _is_lock_error(err) or attempt == WT_ADD_TRIES:
+                break
+            delay = WT_ADD_BACKOFF_S[min(attempt - 1, len(WT_ADD_BACKOFF_S) - 1)]
+            _say(f"worktree add {branch} attempt {attempt} hit a git lock; retry in {delay}s")
+            _sleep(delay)
+        raise RuntimeError(f"worktree add failed for {branch} after {attempt} attempt(s): "
+                           f"{err[:300]}")
 
 
-def _slice(tag: str, note: str, key: str, rows_file: str, base_sha: str) -> dict:
+def _new_entry(tag: str, key: str) -> dict:
     p = _paths(tag, key)
-    entry = {"key": key, "branch": p["branch"], "worktree": str(p["worktree"]),
-             "build": None, "verdict": None, "error": None}
-    try:
-        wt = _ensure_worktree(tag, key)
-    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
-        entry["error"] = f"worktree: {exc}"
-        _progress(p["build_task"], 0, entry["error"], None, "failed")
-        return entry
+    return {"key": key, "branch": p["branch"], "worktree": str(p["worktree"]),
+            "status": "pending", "build": None, "verdict": None, "error": None}
+
+
+def _setup_worktrees(tag: str, slices) -> dict:
+    """Create every slice worktree SERIALLY, before any run is spawned.
+    Returns {key: (Path, None) | (None, error)}."""
+    out = {}
+    for key, _rows in slices:
+        try:
+            out[key] = (_ensure_worktree(tag, key), None)
+        except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+            err = f"worktree: {exc}"
+            _say(f"{tag}-{key} NOT RUN: {err[:200]}")
+            _progress(_paths(tag, key)["build_task"], 0, err, None, "failed")
+            out[key] = (None, err)
+    return out
+
+
+def _slice(tag: str, note: str, key: str, rows_file: str, base_sha: str,
+           wt: Path | None = None) -> dict:
+    p = _paths(tag, key)
+    entry = _new_entry(tag, key)
+    if wt is None:
+        try:
+            wt = _ensure_worktree(tag, key)
+        except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+            entry["error"] = f"worktree: {exc}"
+            entry["status"] = "not-run"
+            _progress(p["build_task"], 0, entry["error"], None, "failed")
+            return entry
+    entry["status"] = "ran"
     _progress(p["build_task"], 0, "build run starting", BUILD_TIMEOUT_S, "running")
     b = _spawn(build_prompt(tag, note, key, rows_file, base_sha), task=p["build_task"],
                extra=BUILD_EXTRA, cwd=wt, timeout=BUILD_TIMEOUT_S)
@@ -328,17 +396,37 @@ def run_wave(wave: dict, state: dict) -> dict:
     _say(f"{tag}: base origin/main {base_sha}")
     _progress(TASK, lo + 2, f"{tag}: {len(wave['slices'])} build+verify runs from {base_sha[:9]}",
               ETA_S[tag], "running")
-    with cf.ThreadPoolExecutor(max_workers=min(MAX_PARALLEL, len(wave["slices"]))) as ex:
-        futs = [ex.submit(_slice, tag, wave["note"], key, rows, base_sha)
-                for key, rows in wave["slices"]]
-        entries = []
-        for fut in futs:
-            try:
-                entries.append(fut.result())
-            except Halted:
-                raise
-            except Exception as exc:  # noqa: BLE001 - one slice must not sink the wave record
-                entries.append({"key": "?", "error": f"{type(exc).__name__}: {exc}"})
+    setup = _setup_worktrees(tag, wave["slices"])
+    entries = []
+    runnable = []
+    for key, rows in wave["slices"]:
+        wt, err = setup[key]
+        if wt is None:
+            e = _new_entry(tag, key)
+            e["status"], e["error"] = "not-run", err
+            entries.append(e)
+        else:
+            runnable.append((key, rows, wt))
+    if runnable:
+        with cf.ThreadPoolExecutor(max_workers=min(MAX_PARALLEL, len(runnable))) as ex:
+            futs = [(key, ex.submit(_slice, tag, wave["note"], key, rows, base_sha, wt))
+                    for key, rows, wt in runnable]
+            for key, fut in futs:
+                try:
+                    entries.append(fut.result())
+                except Halted:
+                    raise
+                except Exception as exc:  # noqa: BLE001 - one slice must not sink the wave record
+                    e = _new_entry(tag, key)
+                    e["status"], e["error"] = "failed", f"{type(exc).__name__}: {exc}"
+                    entries.append(e)
+    order = {key: i for i, (key, _rows) in enumerate(wave["slices"])}
+    entries.sort(key=lambda e: order.get(e.get("key"), len(order)))
+    not_run = [(f"{tag}-{e['key']}", e.get("error")) for e in entries
+               if e.get("status") == "not-run"]
+    not_run_tasks = [t for t, _ in not_run]
+    summary = [{"key": e.get("key"), "status": e.get("status"), "error": e.get("error")}
+               for e in entries]
     for e in entries:
         if isinstance(e.get("build"), dict):
             for it in e["build"].get("items") or []:
@@ -349,22 +437,60 @@ def run_wave(wave: dict, state: dict) -> dict:
     if not any(isinstance(e.get("verdict"), dict) for e in entries):
         return {"merged": [], "dropped": [], "pushed": False, "main_sha": "",
                 "halted_reason": "no slice produced a verdict - merger not run",
-                "slices": entries}
+                "slices": summary, "not_run": not_run_tasks}
     dirty = _git("status", "--porcelain", "--untracked-files=no").stdout.strip()
     if dirty:
         return {"merged": [], "dropped": [], "pushed": False, "main_sha": "",
                 "halted_reason": "main tree has tracked changes - merger not run",
-                "slices": entries}
+                "slices": summary, "not_run": not_run_tasks}
     _progress(TASK, lo + (hi - lo) * 2 // 3, f"{tag}: merger run", MERGE_TIMEOUT_S, "running")
     _progress(f"{tag}-merge", 0, "merger run starting", MERGE_TIMEOUT_S, "running")
-    m = _spawn(merge_prompt(tag), task=f"{tag}-merge", extra=MERGE_EXTRA, cwd=ROOT,
+    m = _spawn(merge_prompt(tag, not_run), task=f"{tag}-merge", extra=MERGE_EXTRA, cwd=ROOT,
                timeout=MERGE_TIMEOUT_S)
     res = _read_result(DRAIN_DIR / f"{tag}.merge.json", m["result"])
     if not isinstance(res, dict):
         res = {"merged": [], "dropped": [], "pushed": False, "main_sha": "",
                "halted_reason": f"merger produced no result ({m['error'] or 'rc=' + str(m['rc'])})"}
-    res["slices"] = [{"key": e.get("key"), "error": e.get("error")} for e in entries]
+    res["slices"] = summary
+    res["not_run"] = not_run_tasks
     return res
+
+
+# ---------------------------------------------------------------- selection
+
+def select_waves(waves_arg: str | None, only_arg: str | None) -> list:
+    """Filter WAVES by --waves ("2", "3", "2,3") and --only (slice keys).
+    Waves left with no slice are dropped. Raises ValueError on a bad value."""
+    by_num = {w["tag"][len("Wave"):]: w for w in WAVES}
+    if waves_arg is None:
+        nums = list(by_num)
+    else:
+        nums = [n.strip() for n in waves_arg.split(",") if n.strip()]
+        if not nums or any(n not in by_num for n in nums):
+            raise ValueError(f"--waves must be from {sorted(by_num)} (comma-separated), "
+                             f"got {waves_arg!r}")
+    chosen = [w for n, w in by_num.items() if n in nums]  # WAVES order, never user order
+    keys = None
+    if only_arg is not None:
+        keys = [k.strip() for k in only_arg.split(",") if k.strip()]
+        known = {k for w in chosen for k, _ in w["slices"]}
+        bad = [k for k in keys if k not in known]
+        if not keys or bad:
+            raise ValueError(f"--only: unknown slice(s) {bad or only_arg!r} for the selected "
+                             f"waves; known: {sorted(known)}")
+    out = []
+    for w in chosen:
+        slices = tuple((k, r) for k, r in w["slices"] if keys is None or k in keys)
+        if slices:
+            out.append({**w, "slices": slices})
+    if not out:
+        raise ValueError("selection is empty")
+    return out
+
+
+def runs_needed(waves) -> int:
+    """Build + verify per slice, plus one merger per wave."""
+    return sum(2 * len(w["slices"]) + 1 for w in waves)
 
 
 # ---------------------------------------------------------------- lock
@@ -414,19 +540,22 @@ def _finish(state: dict, status: str, code: int) -> int:
     return code
 
 
-def run() -> int:
+def run(waves=None) -> int:
+    waves = list(WAVES) if waves is None else list(waves)
+    needed = runs_needed(waves)
     if not _take_lock():
         _say("another drain_waves_2_3 launcher holds the lock - exiting")
         return 3
     os.environ["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"] = BG_WAIT_MS  # this process + children only
     state = {"task": TASK, "started": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "waves": {},
              "merged_ids": [], "dropped_ids": [], "pushed": False, "main_sha": "",
-             "blocked_rows": [], "status": "running"}
+             "blocked_rows": [], "not_run": [], "status": "running",
+             "selection": {w["tag"]: [k for k, _ in w["slices"]] for w in waves}}
     try:
         k = _fleet_route().kit()
         used = k.RunBudget(ROOT / k.BUDGET_REL).used()
-        if used + RUNS_NEEDED > k.RUNS_CAP:
-            _say(f"run budget {used}/{k.RUNS_CAP} leaves no room for {RUNS_NEEDED} runs")
+        if used + needed > k.RUNS_CAP:
+            _say(f"run budget {used}/{k.RUNS_CAP} leaves no room for {needed} runs")
             state["error"] = "run budget"
             return _finish(state, "refused", 3)
         fr = _fleet_route()
@@ -436,9 +565,12 @@ def run() -> int:
         except he.HeadlessRouteRefused as exc:
             state["error"] = f"refused:{exc.reason}"
             return _finish(state, "refused", 3)
-        for wave in WAVES:
+        # Selected waves run in order; a later wave runs only if the earlier
+        # SELECTED wave pushed (so --waves 3 alone runs wave 3 unconditionally).
+        for wave in waves:
             res = run_wave(wave, state)
             state["waves"][wave["tag"]] = res
+            state["not_run"] += list(res.get("not_run") or [])
             state["merged_ids"] += list(res.get("merged") or [])
             state["dropped_ids"] += list(res.get("dropped") or [])
             state["pushed"] = bool(res.get("pushed"))
@@ -462,7 +594,7 @@ def run() -> int:
             pass
 
 
-def dry_run() -> int:
+def dry_run(waves=None) -> int:
     """Resolve the route and print the argv each run would use. Spawns nothing,
     counts no budget, creates no worktree, writes no progress file."""
     fr = _fleet_route()
@@ -483,10 +615,12 @@ def dry_run() -> int:
         return 3
     print("proxy: set, loopback, listening (URL not printed)")
     budget = k.RunBudget(ROOT / k.BUDGET_REL)
-    print(f"budget: {budget.used()}/{k.RUNS_CAP} used in window; this launcher needs {RUNS_NEEDED}")
+    waves = list(WAVES) if waves is None else list(waves)
+    print(f"budget: {budget.used()}/{k.RUNS_CAP} used in window; this launcher needs "
+          f"{runs_needed(waves)}")
     base_sha = _git("rev-parse", "origin/main").stdout.strip() or "<origin/main>"
     plan = []
-    for wave in WAVES:
+    for wave in waves:
         tag = wave["tag"]
         for key, rows in wave["slices"]:
             p = _paths(tag, key)
@@ -513,8 +647,17 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("--dry-run", action="store_true",
                     help="print the spawn argv each run would use; spawn nothing")
+    ap.add_argument("--waves", default=None, metavar="2|3|2,3",
+                    help="waves to run (default 2,3); wave 3 after wave 2 still needs "
+                         "wave 2's merger to push")
+    ap.add_argument("--only", default=None, metavar="KEYS",
+                    help="comma-separated slice keys to run, e.g. atomic,tail-roadmap")
     args = ap.parse_args(argv)
-    return dry_run() if args.dry_run else run()
+    try:
+        waves = select_waves(args.waves, args.only)
+    except ValueError as exc:
+        ap.error(str(exc))
+    return dry_run(waves) if args.dry_run else run(waves)
 
 
 if __name__ == "__main__":
