@@ -85,9 +85,9 @@ _FREE_R_KIT = KitRules(r_max=4, r_levels=(1, 6, 11, 16), free_r=1)
 SPECIAL_KITS = {
     # Four basic-like abilities, each 6 ranks, R rankable from level 1.
     "Udyr": KitRules(basic_max=6, r_max=6, r_is_basic=True),
-    # Transform ult: R rank 1 free at level 1, then 6/11/16; basics rank 6.
-    "Jayce": KitRules(basic_max=6, r_max=4, r_levels=(1, 6, 11, 16),
-                      free_r=1),
+    # Transform ult: R rank 1 free at level 1 and it NEVER ranks further;
+    # the points go to basics, which rank to 6 (3 x 6 = 18 points).
+    "Jayce": KitRules(basic_max=6, r_max=1, r_levels=(1,), free_r=1),
     "Elise": _FREE_R_KIT,
     "Nidalee": _FREE_R_KIT,
     "Karma": _FREE_R_KIT,
