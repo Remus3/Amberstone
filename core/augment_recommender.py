@@ -156,10 +156,18 @@ def _scan_own_history_checked(
     except sqlite3.Error as exc:
         return OwnHistory(mode=mode), f"cannot open {db_path}: {exc}"
     try:
+        # P2-5: a db file with no `matches` table yet (0 bytes, or created but
+        # not yet schema'd by MatchDB) is "no history yet", the same normal
+        # state as an absent file - NOT a failure. Reported as a failure it
+        # armed the backoff gate, so the first real game saved right after
+        # was invisible to the next read.
+        has_matches = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='matches'"
+        ).fetchone() is not None
         rows = conn.execute(
             "SELECT raw_data FROM matches "
             "WHERE raw_data LIKE '%lcu_match_detail%'"
-        ).fetchall()
+        ).fetchall() if has_matches else []
     except sqlite3.Error as exc:
         conn.close()
         return OwnHistory(mode=mode), f"query failed: {exc}"
