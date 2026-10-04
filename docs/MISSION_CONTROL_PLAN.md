@@ -518,13 +518,13 @@ Answers "are there other locations". Yes: roughly **67 GB** outside the repo.
 | Path | Files | Size | Lane-7 posture |
 |---|---|---|---|
 | `%LOCALAPPDATA%\Temp\claude\C--Sibling-A` | 3,376 | **35.5 GB** | SIBLING REPO scratch. Cross-repo act - propose, never auto-clean |
-| `%LOCALAPPDATA%\Temp\claude\C--Riot-Commander` | 152,231 | 9.5 GB | RC session scratch. Safe to prune BY AGE |
+| `%LOCALAPPDATA%\Temp\claude\C--Riot-Commander` | 152,231 | 9.5 GB | RC session scratch. NO age prune - superseded by the RM-149 ruling (2026-10-03, `tools/headless-repo.md` item 5): whole-session-dir removal only |
 | `%APPDATA%\Claude\vm_bundles` | 9 | 8.9 GB | Desktop-app runtime. Do not touch without app-version check |
 | `%USERPROFILE%\.cache` | 5,628 | 7.5 GB | Mixed tooling cache. Per-subdir adjudication |
 | `%USERPROFILE%\.claude\projects` | 6,707 | 1.9 GB | **EVIDENCE, NOT GARBAGE - see below** |
 | `%USERPROFILE%\.claude\plugins` | 116,872 | 1.5 GB | Plugin installs. Prune only unreferenced marketplaces |
 | `%APPDATA%\npm` | 1,830 | 0.9 GB | Global npm. Out of scope |
-| `%USERPROFILE%\.gemini` | 1,314 | 151 MB | Director state. Retain |
+| `%USERPROFILE%\.gemini` | 1,314 | 151 MB | Retired-vendor state. PURGEABLE (RM-149 ruling 2026-10-03), per-path adjudicated, Recycle Bin only |
 | `%USERPROFILE%\.perseus-vault` | 4 | 99 MB | Recall store. RETAIN - never prune |
 
 ### Carve-out that must be encoded before lane 7 runs
