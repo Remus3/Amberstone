@@ -1,5 +1,20 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-04 - Wave2-tail drain merge, 4 rows
+
+RM-193 / RM-194 / RM-195 / RM-198, RM-266 .. RM-269, RM-293 (a)+(c) and RM-317
+shipped (LEDGER 1623-1635). The four rows below move here VERBATIM as they stood
+after the Wave2-tail status edit (the pre-edit text is in git at `dd4062a2c`);
+`ROADMAP.md` keeps a one-line stub for each.
+
+- **RM-293 SHIPPED - (b) 2026-09-17 (LEDGER 1423), (a) and (c) 2026-10-04 (Wave2-tail drain, LEDGER 1635) (filed 2026-08-31, lane 8 c35; LANE 8 + LANE 7, Tier-1)** - three findings off the `lcu/snapshot_shape.py` audit (LEDGER 1301), none fixed in-slice: no negative caching on the per-summoner lookup, an unguarded `bytes.decode()` (now fixed, returns None), and an un-called re-export bypassing the module's coercion. Body in `BACKLOG.md`.
+
+- **RM-317 SHIPPED 2026-10-04 (Wave2-tail drain, LEDGER 1633; option (b), so no migration; filed 2026-08-30; LANE 8, Tier-1)** - `core/riot_api.py` cache keys `match:v5:<id>` and `match:v5:timeline:<id>` are prefix-ambiguous into a never-expiring table; NOT reachable today, filed because the fix is a migration of 18575 rows. Body in `BACKLOG.md`.
+
+- **RM-253 CLOSED + RM-266 / RM-267 / RM-268 / RM-269 SHIPPED 2026-10-04 (Wave2-tail drain, LEDGER 1627-1630; filed 2026-08-30, lane 8 cycle 25)** - the `vision_server/_relay.py` audit; the closed narrative and the full row are archived VERBATIM in the `## 2026-10-02` block - **READ IT before re-opening any of these ids.** Also records RM-270/RM-272 (c26) and RM-255 + RM-273..276 (c27, `lib/http/client.py` failing OPEN). Bodies in `BACKLOG.md`.
+
+- **RM-193 / RM-194 / RM-195 / RM-198 SHIPPED 2026-10-04 (Wave2-tail drain, LEDGER 1623-1626); RM-196 SHIPPED 2026-10-04 (Wave1); RM-199 CLOSED (LEDGER 1294, re-verified 2026-10-04); RM-192 ACCEPTANCE MET 2026-09-17; RM-197 / RM-200 / RM-201 / RM-202 CLOSED - the closed half is relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-09-20b` block), the full RM-192..RM-202 filing to the 2026-09-01 block** (filed 2026-08-14, lane-research refill, LEDGER 1245; bodies + acceptance in `BACKLOG.md`). LANE 4 (196) / LANE 7 (193-195) / LANE 8 (198/199), all Tier-1 except RM-195 Tier-0/1. Fences: **RM-192's artifact shipped under a LATER row and SUBSTITUTED the predicate - RM-192's literal clause would FALSE-RED on an unallocated gap id such as RM-232 and must NOT be restored**; RM-195 was PARTIAL at 2 of 4 and is now complete (the last two deleted, the other two pinned live, LEDGER 1625). Live next-free id: the guarded pin in `docs/DS_SWEEP_TRACKER.md`, deliberately not recited here. [2026-10-04 Wave1: RM-196 shipped - LEDGER 1480-1559]
+
 ## 2026-10-04 - Wave3 drain merge, 1 row
 
 RM-300 shipped (LEDGER 1620, `4d01d5ac6`). The row below moves here VERBATIM as
