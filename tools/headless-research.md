@@ -113,9 +113,9 @@ State what you measure; never assume a path works because it usually does.
 
 **Blocked:** `www.reddit.com/...json` returns **403** to curl, reconfirmed 2026-07-31. Per memory `reference_reddit_capture_transport_ladder` (measured 2026-07-30) reddit refuses EVERY default path in turn - `WebFetch` (harness-level refusal), the in-app browser pane (blocked by policy), curl on both `www.` and `old.` hosts (403, UA-independent), the `r.jina.ai` passthrough (403), and `apify/rag-web-browser` (0 scraped / 1 failed). **Do not re-walk that ladder.** The one thing that worked is the Apify actor `automation-lab/reddit-scraper` - `urls` array, `includeComments:false`, `outputFormat:"default"` (the schema REJECTS `"markdown"`); 26/26 posts, ~115s, metered under USD 0.05. Fetch results with `fields=title,permalink,selfText` or the payload is ~111KB.
 
-**Unknown until you probe:** browser-driven capture. `list_connected_browsers` returned `[]` on Legion on 2026-07-30 - no extension connected. Re-probe before planning any Chrome-driven teardown; if it is still empty, use Firecrawl or an Apify actor rather than burning the run on it.
+**Unknown until you probe:** browser-driven capture. `list_connected_browsers` returned `[]` on Legion on 2026-07-30 - no extension connected. Re-probe before planning any Chrome-driven teardown; if it is still empty, use WebFetch / WebSearch or an Apify actor rather than burning the run on it.
 
-**Tooling:** MCP tools (Apify, Firecrawl, Chrome DevTools, Playwright, nimble) are DEFERRED - load them with `ToolSearch` before calling, batching every tool you expect into ONE `select:` call. Research tool spend is NOT subject to the runtime cost budget (that governs RC's runtime, not one-off research). Bounds: lawful and authorized targets, non-destructive, no credential handling.
+**Tooling:** MCP tools (Apify, Chrome DevTools, Playwright, nimble) and the built-in WebFetch / WebSearch are DEFERRED - load them with `ToolSearch` before calling, batching every tool you expect into ONE `select:` call. Research tool spend is NOT subject to the runtime cost budget (that governs RC's runtime, not one-off research). Bounds: lawful and authorized targets, non-destructive, no credential handling.
 
 ### 7. Verification discipline for research
 

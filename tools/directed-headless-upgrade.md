@@ -198,7 +198,7 @@ precompute is worse than a Haiku call - do not flip blind (haiku stays as interi
 A "lift from competitor X" task is a TRUE teardown: name the actual mechanic + math/data + RC
 integration point. Prefer DEPTH (one heavyweight `general-purpose` agent per target) over breadth.
 Tooling allowance (NOT subject to section 4 runtime budget; load deferred MCP via ToolSearch first): Chrome
-DevTools MCP / Claude-in-Chrome (render live, evaluate_script, capture XHR), Firecrawl, nimble
+DevTools MCP / Claude-in-Chrome (render live, evaluate_script, capture XHR), nimble
 competitor-intel/positioning/deep-dive, Playwright MCP, Windows MCP / computer-use for a desktop app,
 WebFetch/WebSearch/deep-research. Run/parse competitor binaries in an isolated Legion workspace (a
 temp dir / disposable worktree); clean up artifacts. Illustrative not a whitelist; bounds = lawful +
