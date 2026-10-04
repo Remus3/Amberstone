@@ -201,6 +201,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/meta_crawl.py` | participant-graph crawler for event-mode champion stats |
 | `core/mia_reachability.py` | MIA reachability rings - SOLE zoi.mia producer (ZOI Wave 3, spec E-2) |
 | `core/mode_capabilities.py` | static per-mode capability truth table (fail-CLOSED) |
+| `core/moment_marks.py` | in-game "mark this moment" store + post-game attach (RM-638) |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
 | `core/next_buy_fallback.py` | static DS build-order fallback for the NEXT BUY feed |
 | `core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
@@ -285,7 +286,7 @@ These run LEGION-LOCAL as ONLOGON scheduled tasks post-1-PC. The 2-PC-era
 |---|---|---|
 | `lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
 | `liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; self-heals in-process when stale + host local (item 267) |
-| `hotkey_listener.py` | RUNNING (RC-HotkeyListener) | A/B tutoring-coach choice hotkeys (RegisterHotKey; anti-cheat-safe) |
+| `hotkey_listener.py` | RUNNING (RC-HotkeyListener) | In-game Ctrl+Shift hotkeys via a WH_KEYBOARD_LL low-level hook (observes, never swallows; RegisterHotKey was swallowed under League focus): 1/2 coach choice, A overlay ACTIVE, B panel cycle, K mark this moment (RM-638) |
 | `screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the in-process self-grab relay (1-PC, ADR-011). Now non-integral: the frame relay self-grabs in-process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
 | `phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
 | `keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
