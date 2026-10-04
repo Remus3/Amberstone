@@ -57,10 +57,16 @@ class HealthMonitor:
         with self._lock:
             ui_age = now - self._ts
 
-        # Worker liveness - prefer SrAramWorker; fall back to legacy timestamps
+        # Worker liveness - prefer SrAramWorker; fall back to legacy timestamps.
+        # RM-377: read through BaseCoachWorker.health_pulse(), the one seam,
+        # so the RM-198 lifecycle fields (stranded generations, crashes) reach
+        # this consumer instead of shipping inert beside a raw-attribute read.
+        # Frozen-file edit under the 2026-10-04 drain grant.
+        pulse: dict = {}
         if app._sr_aram_worker is not None:
-            w_pulse = app._sr_aram_worker.pulse_ts
-            w_last  = app._sr_aram_worker.last_success_ts
+            pulse = app._sr_aram_worker.health_pulse()
+            w_pulse = pulse.get("pulse_ts", 0.0)
+            w_last  = pulse.get("last_success_ts", 0.0)
         else:
             w_pulse = getattr(app, "_poll_worker_pulse_ts",       0.0)
             w_last  = getattr(app, "_poll_worker_last_success_ts", 0.0)
@@ -79,5 +85,8 @@ class HealthMonitor:
             "game_poll_worker_alive":     worker_age < 12.0,  # 4x 3s max backoff
             "game_poll_worker_age_s":     (round(worker_age, 1) if w_pulse else None),
             "game_poll_last_success_at":  (w_last or None),
+            "game_poll_worker_crash_count":         pulse.get("crash_count", 0),
+            "game_poll_worker_last_error":          pulse.get("last_error"),
+            "game_poll_worker_stranded_generations": pulse.get("stranded_generations", []),
             "overlay_visible":            app._overlay_visible,
         }
