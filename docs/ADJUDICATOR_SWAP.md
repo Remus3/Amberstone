@@ -59,8 +59,8 @@ this seam still runs the old path exactly.
 | `adjudicator` | `gemini` | active backend |
 | `adjudicator_fallback` | `claude` in the shipped config, empty in code | failover target |
 | `adjudicator_failover` | `true` | arm automatic failover |
-| `claude_adjudicator.cmd` | the npm `claude` shim | CLI to invoke |
-| `claude_adjudicator.model` | see config | model for director + auditor |
+| `claude_adjudicator.cmd` | removed (RM-511) | not read since FLEET-KIT-v1; the kit resolves the CLI binary |
+| `claude_adjudicator.model` | `claude-sonnet-5-5` | pricing fallback only; the kit picks the model (sonnet, writes_code=False) and its usage line's model wins |
 | `claude_adjudicator.timeout_sec` | see config | per-call timeout |
 | `claude_adjudicator.count_against_ceiling` | `false` | see above |
 

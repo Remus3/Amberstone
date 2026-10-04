@@ -12,7 +12,7 @@
 #   powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\tools\weekly_hygiene_run.ps1"
 
 param(
-    [string]$Model = "claude-sonnet-4-6"
+    [string]$Model = "claude-sonnet-5-5"
 )
 
 $ErrorActionPreference = "Continue"

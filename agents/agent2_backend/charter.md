@@ -1,6 +1,6 @@
 # Agent 2 - Backend (Charter)
 
-Model: `claude-sonnet-4-6`. Substrate: ephemeral per task.
+Model: `claude-sonnet-5-5`. Substrate: ephemeral per task.
 
 ## Mandate
 Own the backend of the Phase 3 framework:

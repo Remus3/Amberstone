@@ -60,7 +60,7 @@ def test_model_flag_is_unchanged_by_the_effort_branch(tmp_path: Path):
     assert argv_no_effort[argv_no_effort.index("--model") + 1] == "claude-opus-5"
 
 
-def test_shipped_config_carries_opus_5_at_effort_high():
+def test_shipped_config_carries_opus_5_5_at_effort_high():
     """Guards the SHIPPED config, so a later edit dropping either key is caught.
 
     Deliberately has no skip path: the file is tracked, so its absence is a
@@ -69,5 +69,5 @@ def test_shipped_config_carries_opus_5_at_effort_high():
     cfg_path = REPO_ROOT / "ops" / "loop" / "config.json"
     assert cfg_path.is_file(), f"missing tracked config: {cfg_path}"
     cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-    assert cfg.get("executor_model") == "claude-opus-5"
+    assert cfg.get("executor_model") == "claude-opus-5-5"
     assert cfg.get("executor_effort") == "high"
