@@ -60,6 +60,21 @@ def _safe_log(label: str) -> None:
     except Exception: pass
 
 
+def _log_rating_outcome(label: str, grade, report: dict) -> None:
+    """RM-259: log what the rating writer ACTUALLY did. save_rating /
+    save_tft_rating swallow their own file-write failure, so the grade alone
+    is not evidence the rating file was written; ``report`` is their
+    out-of-band outcome channel ({"rated", "file_written"})."""
+    if report.get("file_written"):
+        _log.info("%s rating saved: %s", label, grade)
+    elif report.get("rated"):
+        _log.warning("%s rating NOT saved: grade %s computed but the rating "
+                     "file write failed (see performance_tracker warning)",
+                     label, grade)
+    else:
+        _log.info("%s rating skipped: match not rated", label)
+
+
 class GameLifecycleManager:
     """
     Owns game start/end transitions, worker management, and state processing.
@@ -175,8 +190,9 @@ class GameLifecycleManager:
                         cp = SCRIPT_DIR / "data" / "tft_coaching_data.json"
                         tl = json.loads(lp.read_text(encoding="utf-8")) if lp.exists() else {}
                         tc = json.loads(cp.read_text(encoding="utf-8")) if cp.exists() else {}
-                        g, n = save_tft_rating(SCRIPT_DIR, tl, tc)
-                        if g: _log.info("TFT rating saved: %s", g)
+                        _rep: dict = {}
+                        g, n = save_tft_rating(SCRIPT_DIR, tl, tc, report=_rep)
+                        _log_rating_outcome("TFT", g, _rep)
                     elif app._game_state:
                         enriched = dict(app._game_state)
                         mn  = "ARAM" if app._aram_mode else "Arena" if app._arena_mode else "Brawl"
@@ -198,13 +214,15 @@ class GameLifecycleManager:
                                     enriched["arena_rank"]       = cd.get("rank", "?")
                             except Exception:
                                 pass
+                        _rep = {}
                         g, n = save_rating(
                             SCRIPT_DIR,
                             enriched.get("champion", ""),
                             enriched,
                             enriched.get("ally_kills_total", 1),
+                            report=_rep,
                         )
-                        if g: _log.info("%s rating saved: %s", mn, g)
+                        _log_rating_outcome(mn, g, _rep)
                 except Exception:
                     _safe_log("Special mode rating save error")
             if app._tft_coach:
@@ -227,13 +245,15 @@ class GameLifecycleManager:
             gm = app._game_state.get("game_mode", "CLASSIC")
             if gm not in EXCLUDED_MODES:
                 try:
-                    save_rating(
+                    _rep: dict = {}
+                    g, _n = save_rating(
                         SCRIPT_DIR,
                         app._game_state.get("champion", ""),
                         app._game_state,
                         app._game_state.get("ally_kills_total", 1),
+                        report=_rep,
                     )
-                    _log.info("Performance rating saved")
+                    _log_rating_outcome("Performance", g, _rep)
                 except Exception:
                     _safe_log("save_rating error")
         for f in ("action","immediate","next","fight_rule","wave",
