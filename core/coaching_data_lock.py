@@ -145,9 +145,9 @@ _dir_epoch = 0
 _MAX_EPISODES_LOGGED = 5
 
 # A bare cap re-creates the RM-199 condition it was added to avoid: after
-# five episodes a long-lived RC goes permanently silent again, and
-# `coaching_data_lock_stats()` has ZERO production callers, so the counters
-# are not a substitute channel.
+# five episodes a long-lived RC goes permanently silent again. The counters
+# are a polled channel since RM-282 (`/api/health/all` field
+# `coaching_data_lock`), but a counter is not an alarm, so the log stays.
 #
 # The floor is WALL-CLOCK, deliberately. An earlier revision re-opened
 # logging after a streak of N successful ACQUIRES, which measures the wrong
