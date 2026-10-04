@@ -24,7 +24,6 @@ import heapq
 import itertools
 import json
 import logging
-import os
 import sys
 import threading
 import time
@@ -33,6 +32,8 @@ from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+
+from core.polled_json import atomic_write_text
 
 # Platform-specific file-lock primitives. On Windows we use msvcrt, on
 # POSIX fcntl. Spec targets Windows but scripts run under WSL bash so we
@@ -192,10 +193,7 @@ def _iso_now() -> str:
 
 
 def _atomic_write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    atomic_write_text(path, text)
 
 
 class Scheduler:

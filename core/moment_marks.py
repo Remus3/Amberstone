@@ -30,6 +30,8 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from core.polled_json import atomic_write_text
+
 _log = logging.getLogger("rc.moment_marks")
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -180,13 +182,9 @@ def attach_for_game(game_id: Any, game_length_s: Any, ended_at: Any, *,
     pins = sorted((_pin(m) for m in picked),
                   key=lambda p: (p["game_time_s"], p["wall_ts"]))
     d = Path(out_dir) if out_dir is not None else attached_dir()
-    d.mkdir(parents=True, exist_ok=True)
     target = d / f"{gid}.json"
-    tmp = d / f"{gid}.json.{os.getpid()}.tmp"
     doc = {"game_id": gid, "attached_at": round(time.time(), 3), "pins": pins}
-    tmp.write_text(json.dumps(doc, ensure_ascii=True, indent=1) + "\n",
-                   encoding="ascii", newline="\n")
-    tmp.replace(target)
+    atomic_write_text(target, json.dumps(doc, ensure_ascii=True, indent=1) + "\n")
     _log.info("moment marks: attached %d pin(s) to game %s", len(pins), gid)
     return pins
 

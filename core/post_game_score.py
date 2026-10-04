@@ -57,6 +57,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from core.polled_json import atomic_write_text
+
 log = logging.getLogger("rc.post_game_score")
 
 # Feature vector size including the bias term. See module docstring.
@@ -264,13 +266,10 @@ def load_model(path: Path | None = None) -> WpaModel | None:
 
 
 def save_model(model: WpaModel, path: Path | None = None) -> Path:
-    """Write the model to disk. Atomic: write to ``.tmp`` then replace."""
+    """Write the model to disk atomically (shared ``core.polled_json`` writer)."""
     target = Path(path) if path is not None else _DEFAULT_MODEL_PATH
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        json.dump(model.to_json_dict(), f, indent=2, sort_keys=True)
-    tmp.replace(target)
+    atomic_write_text(
+        target, json.dumps(model.to_json_dict(), indent=2, sort_keys=True))
     return target
 
 

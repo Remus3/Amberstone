@@ -23,6 +23,8 @@ import re
 import time
 from pathlib import Path
 
+from core.polled_json import atomic_write_bytes, atomic_write_text
+
 log = logging.getLogger("rc.vision")
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -292,10 +294,7 @@ def save_profile(config_key, regions: dict, base) -> dict:
         PROFILES_DIR.mkdir(parents=True, exist_ok=True)
         payload = {"config_key": ck, "base": list(base), "regions": regions,
                    "saved_ts": None}
-        p = profile_path(ck)
-        tmp = p.with_name(p.name + ".tmp")
-        tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        tmp.replace(p)
+        atomic_write_text(profile_path(ck), json.dumps(payload, indent=2) + "\n")
         return {"ok": True, "count": len(regions), "config_key": ck}
     except Exception as exc:  # noqa: BLE001
         log.warning("profile save failed for %s: %s", ck, exc)
@@ -337,15 +336,13 @@ def save_reference_image(img, config_key=None, force: bool = False, state=None) 
     try:
         REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
         p = reference_path(ck, state)
-        tmp = p.with_name(p.name + ".tmp")
-        img.convert("RGB").save(tmp, format="JPEG", quality=92, optimize=True)
-        tmp.replace(p)
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="JPEG", quality=92, optimize=True)
+        atomic_write_bytes(p, buf.getvalue())
         meta = {"config_key": ck, "width": img.width, "height": img.height,
                 "ts": now, "state": state or "base"}
         mp = p.with_suffix(".json")
-        mtmp = mp.with_name(mp.name + ".tmp")
-        mtmp.write_text(json.dumps(meta), encoding="utf-8")
-        mtmp.replace(mp)
+        atomic_write_text(mp, json.dumps(meta))
         return True
     except Exception as exc:  # noqa: BLE001
         log.debug("reference save failed: %s", exc)

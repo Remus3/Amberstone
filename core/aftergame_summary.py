@@ -42,6 +42,8 @@ import sqlite3
 from pathlib import Path
 from typing import Optional, Any
 
+from core.polled_json import atomic_write_json
+
 _log = logging.getLogger("rc.aftergame_summary")
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -429,10 +431,7 @@ def write_to_client_coaching_data(summary: dict,
         # Client-mode payload - merge summary fields in
         current.update(summary)
         current["mode"] = current.get("mode") or "client"
-        tmp = target.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(current, indent=2, ensure_ascii=False),
-                       encoding="utf-8")
-        tmp.replace(target)
+        atomic_write_json(target, current, indent=2)
         return True
     except Exception as exc:  # noqa: BLE001
         # Fail-soft boundary (caller treats False as "not written") but the

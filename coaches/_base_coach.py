@@ -29,6 +29,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+from core.polled_json import atomic_write_text
+
 _log = logging.getLogger("rc.coaches.base")
 
 # Root directory (two levels up from coaches/)
@@ -87,16 +89,18 @@ def load_json(path: Path) -> dict:
 
 
 # Serializes same-process writers (coach thread + vision worker target the
-# same artifact and share one .tmp name; unserialized write_text calls can
-# interleave and corrupt the tmp before replace). Cross-process safety still
-# comes from the atomic replace itself.
+# same artifact). Each write now uses its own per-writer scratch file
+# (core.polled_json), so the lock only orders same-process publishes.
+# Cross-process safety comes from the atomic replace itself.
 _SAFE_WRITE_LOCK = threading.Lock()
 
 
 def safe_write(path: Path, data: dict) -> bool:
     """Atomic JSON write via .tmp -> replace. True only if the file landed.
 
-    Retries up to 3x on Windows WinError 5 (Defender/lock races).
+    Delegates to core.polled_json.atomic_write_text (per-writer scratch name,
+    fsync, bounded retry on Windows WinError 5 Defender/lock races, scratch
+    cleanup on failure).
 
     This function NEVER RAISES - every fault is logged and swallowed - so the
     return value is the only channel a caller has for telling a completed
@@ -106,42 +110,29 @@ def safe_write(path: Path, data: dict) -> bool:
     failed. Returning bool is additive: the 19 existing call sites that ignore
     the value keep their exact prior behaviour.
     """
-    tmp = path.with_suffix(".tmp")
+    # Pre-delegation contract (tests/test_tft_coach_lane8_cycle34.py): a
+    # missing parent directory is a FAILED write, not one to create. The
+    # shared helper mkdirs parents, so refuse before handing it the path.
+    if not Path(path).parent.is_dir():
+        _log.error("safe_write %s: parent directory missing", Path(path).name)
+        return False
     with _SAFE_WRITE_LOCK:
         try:
-            # RM-287: bytes, not write_text. On Windows Path.write_text
+            # RM-287: bytes, not Path.write_text. On Windows write_text
             # rewrites every LF as CRLF while read_text translates it back,
             # so the extra bytes are invisible to readers yet real on disk
             # (measured 2026-08-30: data/tft_coaching_data.json, 176 bytes,
             # 11 CRLF pairs). Any size cap, digest or byte-length compare
             # over a coaching artifact is then wrong by the line count.
-            # Encoding here makes the payload byte-identical on every
-            # platform. Do NOT "simplify" this back to write_text: an
-            # explicit newline="" would cover only this one call site and
-            # still leaves the encode implicit. Mirrors the same decision
-            # in core/polled_json.atomic_write_json, for the same reason.
-            # ensure_ascii is left at its default so the JSON text itself
-            # is unchanged - this fix moves line endings only.
-            tmp.write_bytes(json.dumps(data, indent=2).encode("utf-8"))
+            # atomic_write_text encodes UTF-8 bytes verbatim, so the payload
+            # is byte-identical on every platform. Do NOT "simplify" this
+            # back to write_text. ensure_ascii is left at its default so the
+            # JSON text itself is unchanged - this fix moves line endings only.
+            atomic_write_text(path, json.dumps(data, indent=2))
+            return True
         except Exception as exc:  # noqa: BLE001
-            _log.error("safe_write write %s: %s", path.name, exc)
+            _log.error("safe_write %s: %s", path.name, exc)
             return False
-        for attempt in range(3):
-            try:
-                tmp.replace(path)
-                return True
-            except PermissionError:
-                if attempt == 2:
-                    _log.warning("safe_write %s: gave up after 3 retries", path.name)
-                    # Path.unlink(missing_ok=True) raises only OSError.
-                    try: tmp.unlink(missing_ok=True)
-                    except OSError: pass
-                else:
-                    import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
-            except Exception as exc:  # noqa: BLE001
-                _log.error("safe_write %s: %s", path.name, exc)
-                return False
-        return False
 
 
 def mirror_live_stats(payload: dict, state: dict) -> None:

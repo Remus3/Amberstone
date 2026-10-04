@@ -58,6 +58,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core import vision_profiles as vp
+from core.polled_json import atomic_write_text
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -145,16 +146,7 @@ def save_regions(obj, path=None):
         return (False, err, 0)
     p = Path(path) if path is not None else REGIONS_PATH
     try:
-        tmp = p.with_name(p.name + ".tmp")
-        tmp.write_text(json.dumps(clean, indent=2) + "\n", encoding="utf-8")
-        for attempt in range(3):  # os.replace can flake WinError 5 under concurrent read
-            try:
-                tmp.replace(p)
-                break
-            except PermissionError:
-                if attempt == 2:
-                    raise
-                time.sleep(0.05)
+        atomic_write_text(p, json.dumps(clean, indent=2) + "\n")
         return (True, None, len(clean))
     except Exception as exc:  # noqa: BLE001
         log.warning("vision-regions save failed: %s", exc)

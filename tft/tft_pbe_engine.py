@@ -16,6 +16,8 @@ from pathlib import Path
 
 import anthropic
 
+from core.polled_json import atomic_write_text
+
 logger = logging.getLogger("rc.tft.pbe")
 
 TFT_PBE_SYSTEM_PROMPT = """\
@@ -544,9 +546,7 @@ class TftPbeCoachEngine:
         }
 
         try:
-            tmp = self._data_file.with_suffix(".tmp")
-            tmp.write_text(json.dumps(output, indent=2), encoding="utf-8")
-            tmp.replace(self._data_file)
+            atomic_write_text(self._data_file, json.dumps(output, indent=2))
             logger.debug("TFT PBE coaching data written (%d fields)", len(fields))
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to write TFT PBE coaching data: %s", exc)
@@ -556,9 +556,7 @@ class TftPbeCoachEngine:
         # polls this file, raw write_text could expose mid-write content.
         try:
             payload = json.dumps({"mode": "tft_pbe", "action": "ERROR", "risk": msg}, indent=2)
-            tmp = self._data_file.with_suffix(".tmp")
-            tmp.write_text(payload, encoding="utf-8")
-            tmp.replace(self._data_file)
+            atomic_write_text(self._data_file, payload)
         except Exception as exc:  # noqa: BLE001
             # RM-316: was a bare `pass`, so a failure to say "coaching paused"
             # left the previous round's advice on screen with no record why.

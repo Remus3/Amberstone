@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 from core import live_metrics
+from core.polled_json import atomic_write_text
 from ._profiles import CHAMPION_PROFILES, GENERIC_PROFILE, HAS_ROLE_PROFILES, get_role_profile
 from ._sr_prompt import (
     SR_SYSTEM_PROMPT, _load_sr_rune_rec, _load_sr_build_note, _load_lane_matchup_note,
@@ -115,9 +116,7 @@ class CoachIntegration:
             # corruption class) and clobber the RMW cycle.
             from core.coaching_data_lock import coaching_data_lock
             with coaching_data_lock():
-                tmp = self.data_file.with_suffix(".reset.tmp")
-                tmp.write_text(json.dumps(blank, indent=2), encoding="utf-8")
-                tmp.replace(self.data_file)
+                atomic_write_text(self.data_file, json.dumps(blank, indent=2))
         except Exception as _e:  # QUAL-002  # noqa: BLE001
             import logging as _lg; _lg.getLogger(__name__).debug("blank artifact write: %s", _e)
         logger.info("Coach state reset for new game")
@@ -710,9 +709,7 @@ class CoachIntegration:
                         log.append(f"[{ts}] {imm[:60]}{suffix}")
                         current["log"] = log[-12:]
 
-                    tmp = self.data_file.with_suffix(".tmp")
-                    tmp.write_text(json.dumps(current, indent=2), encoding="utf-8")
-                    tmp.replace(self.data_file)
+                    atomic_write_text(self.data_file, json.dumps(current, indent=2))
                 logger.debug("Wrote %d fields (cache=%s)", len(fields), cache_hit)
                 if update_ts:
                     try:
