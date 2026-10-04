@@ -601,6 +601,17 @@ def _serve_health_all(h) -> None:
         except Exception as e:  # noqa: BLE001
             log.warning("health/all rc fatal probe: %s: %s", type(e).__name__, e)
             rollup["rc_fatal"] = {"error": GENERIC_ERROR}
+        # RM-282: the coaching-data lock's degradation counters, read
+        # IN-PROCESS. Before this they reached a human only as a rate-floored
+        # WARNING in logs/, which nothing scrapes; this is the polled channel.
+        # Informational only - it does not move the status dot.
+        try:
+            from core.coaching_data_lock import coaching_data_lock_stats as _cdl
+            rollup["coaching_data_lock"] = _cdl()
+        except Exception as e:  # noqa: BLE001
+            log.warning("health/all coaching-data-lock probe: %s: %s",
+                        type(e).__name__, e)
+            rollup["coaching_data_lock"] = {"error": GENERIC_ERROR}
         rc_stale = False
         _upd = (rollup.get("rc") or {}).get("updated_at")
         if _upd:
