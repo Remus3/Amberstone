@@ -76,7 +76,18 @@ _SR_RIFT_HERALD_S = 840.0      # 14:00
 _SR_BARON_S = SR_BARON_FIRST_S
 _SR_PLATES_FALL_S = 840.0      # 14:00 (turret plating gone)
 _SR_ELDER_NOMINAL_S = 2100.0   # ~35:00 nominal late marker
+_SR_HERALD_DESPAWN_S = 1185.0  # 19:45 - Herald leaves the pit before Baron
 _INHIB_RESPAWN_S = 300.0       # 5:00 - inhibitor respawn after it falls
+
+# RM-305: epic monsters STAND in their pit until killed, unlike the plates
+# one-shot. tag -> despawn time (None = stays until taken). A take event
+# retires the row via _dynamic_epic_callouts (baron/elder respawn timers,
+# herald gone for the game).
+_PERSISTENT_UNTIL_S: dict[str, Optional[float]] = {
+    "herald": _SR_HERALD_DESPAWN_S,
+    "baron": None,
+    "elder": None,
+}
 
 # Epic-monster team-buff durations (seconds). Stable map constants, NOT balance
 # churn: Baron Nashor's "Hand of Baron" lasts 180s; Elder Dragon's "Aspect of the
@@ -312,6 +323,10 @@ def _dynamic_epic_callouts(objective_events: object,
         rows.append(_schedule_row(
             "baron", last_baron + SR_BARON_RESPAWN_S, game_time_s))
 
+    # RM-305: the Herald does not respawn; a take retires it for the game.
+    if _last_kill_t(objective_events, name="herald") is not None:
+        claimed.add("herald")
+
     return rows, claimed
 
 
@@ -324,7 +339,9 @@ def _objective_callouts(game_time_s: float,
     back to the static schedule. For cadence objectives (dragon) the static path
     returns the next spawn ETA, or an active callout (eta_s <= 0) within a short
     window after a spawn so a coach can say "drake UP now". One-shot objectives
-    (herald/baron/plates/elder) return their single ETA, or active once reached.
+    return their single ETA, or active once reached; plates then drop after
+    the active window, while the epic monsters in _PERSISTENT_UNTIL_S
+    (herald/baron/elder) stay active until a take or their despawn (RM-305).
     """
     out, claimed = _dynamic_epic_callouts(objective_events, game_time_s)
     # Window (seconds) after a spawn during which we still surface it as
@@ -362,6 +379,18 @@ def _objective_callouts(game_time_s: float,
             })
         else:
             eta = spawn_s - game_time_s
+            if tag in _PERSISTENT_UNTIL_S and eta <= 0:
+                # RM-305: up since spawn and still standing - no take event
+                # claimed it above. Stays active until its despawn (if any).
+                until = _PERSISTENT_UNTIL_S[tag]
+                if until is None or game_time_s < until:
+                    out.append({
+                        "tag": tag,
+                        "line": _active_line(tag, line),
+                        "eta_s": round(eta, 1),
+                        "kind": "objective",
+                    })
+                continue
             if -active_window <= eta <= 0:
                 out.append({
                     "tag": tag,
