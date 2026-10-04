@@ -1,23 +1,38 @@
 NEXT SESSION
 ------------
-Next action: main CI (run 37209062693 on 67f94e8f6) is RED on 5, down from 12:
+Next action: main CI was RED on 5 at 67f94e8f6 (run 37209062693):
 - 1 x tests/test_next_buy_lean_bucket.py::BucketSelectionPropertyTests::
   test_divergence_is_real_and_the_counts_are_what_was_filed [mode='arena'] (65 != filed
   count) - pre-existing; the only CI red not operator-held. Root-cause (DDragon 16.19.1
   pool drift vs a filed count?) and fix forward, re-deriving the count, never loosening.
 - 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests - operator said
   LEAVE these; do not fix.
+CI on this session's 9024fd2cd (run 37226809796): RED, the SAME 5 as above (4 RM-172
+subtests + 1 next_buy_lean_bucket arena) - nothing new from the C4 adoption.
 
-Shipped this session (do NOT redo): 89ce8df91 agent6 L-03 stub isolation (LEDGER 1661;
-note: the prior hand-off called that WIP another session's - it was committed before that
-line was read; tell any drain session that owned it to rebase); 67f94e8f6 rm415 re-pin to
-RM-308(b) None (LEDGER 1662); DS :8860 restarted -> /health 1.285.0 / 16.19.1; RC
-restarted (health alive + last_reload_ok). Main checkout is now level with origin/main
-(a6f3fa42a agent6 audit doc pushed too).
+Shipped this session (do NOT redo): 9024fd2cd adopt joint-round C4 ops/loop/slots.py
+(LW 700cd64), re-pin SHARED_SHA256 (LEDGER 1663). RC slots.py = 11426 bytes, sha256
+290cbf80ce6989e15ad778be9032503733c8820030bfa6a9b27439b29d70486e, re-hashed from RC disk,
+equal to LW. Operator approved in chat and told CS and SS to adopt directly - RC sends no
+note. tests/test_slots_is_stale_arms_rm503.py moved to the C4 live-holder rule (+2 cases).
+This SUPERSEDES the old "C4 candidate 290cbf80 HELD pending MAIN ruling" line (removed).
 
-Leftover: branch worktree-agent-a96714b6b15348886 (commit cherry-picked as 67f94e8f6;
-git cherry should show -, then git branch -D); progress file
-ops/loop/control/progress/rm415_fix.json (untracked, done).
+New open items (this session, not yet acted on):
+- tools/slot_bucket_audit.py OVER_STALE verdict text (~lines 21 and 115) says slots' own
+  reap arm would condemn the lock; under C4 a LIVE holder is kept until stale_after*2.0,
+  so the wording is now inaccurate (no test fails). Fix wording + add a test.
+- tools/stop_claim_gate.py commit_claim_without_commit false positive: a sibling repo code
+  as sentence subject ("LW committed ...") is not in the third-party-subject exemption set.
+  Fix with a test case in its test file.
+- Session-start anomalies, none acted on: slot bucket 1.lock UNREADABLE (0 bytes, mtime
+  ~29h at session start) - investigate owner; 68 unread moon_sync_inbox notes incl. MAIN
+  2026-10-03-1327 "FIX to RC v4 not adopted and 0830 unattended MATCH still owed" and the
+  MAIN FLEET-KIT v4 order. Read MAIN notes (sort by mtime, verify SHA-256 vs MAIN outbox)
+  and act on them.
+
+Leftover: branch worktree-agent-a96714b6b15348886 no longer resolves (git cherry: unknown
+commit) - treat as already deleted; progress file ops/loop/control/progress/rm415_fix.json
+(untracked, done).
 
 Operator setup list (physical / operator acts, batch into one ask):
 - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window capture
@@ -33,7 +48,7 @@ Decisions pending:
 - RM-660 needs an adjudicator (distinct agent, record decision/alternatives/why).
 - Frozen app/_game_lifecycle.py mid-game start fix needs explicit operator approval.
 
-Open bugs / rows added today:
+Open bugs / rows:
 - Unnumbered: Kled wiki extractor overwrite bug - file an RM row.
 - RM-595 DS percent-resist bug.
 - Y-01 needs 5 real game ends (live-gated; not synthetically drainable).
@@ -51,24 +66,25 @@ Open from the drain (2026-10-03/04 session):
   (table write-only), RM-27, RM-248, RM-486, RM-189, RM-167, RM-204, RM-12/RM-14 flips,
   RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-256 redo = RM-521, RM-297b
   (needs non-author adjudicator + CI), RM-519 (responder provenance on kit verify_main).
-- Joint acts, never solo: SHARED_SHA256 / CHANNEL_PIN re-pin, RM-502, RM-429, RM-430.
+- Joint acts, never solo: CHANNEL_PIN re-pin, RM-502, RM-429, RM-430 (SHARED_SHA256 re-pin
+  done this session as an operator-approved adoption; any FURTHER re-pin stays joint).
 - Kept worktrees/branches (git cherry shows +, review before -D): drain-wave2-atomic
   (4c97788b8 conflict-resolved on main), drain-wave2-tail-backlog (RM-272/282/432
   renumbered, RM-229 dropped), worktree-wf_0815ac54-8f2-4 (RM-239/242), -5 (RM-500),
   worktree-agent-a0a31cf1b05f41e28 (6a53008f4 superseded by kit v4), RM-256 / RM-297b
   branches, worktree-agent-a4cfeb79e86b5bf30 (launcher fix, merged as 7e32c2933).
-  Also this wrap's detached worktree C:/rc-worktrees/done-20261004 (safe to remove once
-  its commit is on origin).
+  Also the detached worktree C:/rc-worktrees/done-20261004 (safe to remove once its commit
+  is on origin).
 - stop_claim_gate false positives to file: negated "isn't pushed" flagged as a push claim;
   future-tense "I'll confirm CI" flagged as a CI claim; subagent-made commit sentence
-  without a named committer flagged.
+  without a named committer flagged (plus the sibling-code-subject case above).
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; another session already
   ingested -2 (RM-526..RM-594 filed, Y-05 shipped). Operator APPROVED Y-44 (frozen
   lcu_client.py) and Y-45 (phone push off-box) in chat 2026-10-03.
 
 Carried forward (not acted on):
-- Not done by the 2026-10-04 grace wrap and still not done: memory lessons from the drain,
-  python tools/perseus_sync.py.
+- Memory lessons from the drain, and python tools/perseus_sync.py (not done 2026-10-04,
+  still not done).
 - Kit gaps for MAIN v5: public launch function (RC uses private _run); argv-plus-stdin
   mode; POSIX _kill_tree; fleet_route has no effort knob. Responder / loop executor /
   run_lane still on ops/loop/headless_env.py. Watch inbox for MAIN v5 (MAIN 0020 order:
@@ -77,32 +93,34 @@ Carried forward (not acted on):
 - RM-512 was self-adjudicated in wave 1 (see LEDGER); operator may revisit.
 - RM-481 residual CRLF writers - check whether wave 1 RM-481/448 closed all.
 - Console-flash guard still hand-listed for hook scripts / task targets outside tree.
-- tests/test_loop_concurrency.py slots.py pin RED vs sibling locally; C4 candidate 290cbf80
-  HELD pending MAIN ruling. Do not vendor or move SHARED_SHA256.
 - Lane-widget notes (other session's call): "(resets 0m)", mtime-only freshness, config
   cache; RSC inbox_status "limit" at 0/120.
 - rc_facts STUCK flag on RC-InboxResponder = real overlap, do not widen grace.
-- Inbox: 67 unread; the responder owns them - check ops/runtime/inbox_responder_answered.json.
+- Inbox: unread notes; the responder owns routine ones - check
+  ops/runtime/inbox_responder_answered.json (MAIN orders above are this tree's to act on).
 - Box load: no local full suite while 2+ others run (OOM). CI is the full gate.
-- slot bucket 1.lock unreadable (0 bytes, ~18h old) flagged by rc_facts - investigate owner.
 - ROADMAP top open: EXTERNAL-LIFT INTAKE band 1 (bodies in BACKLOG.md "External-lift
   intake"), RM-486, RM-488/489, RM-479, RM-482.
 
 Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Drain launcher
 ops/loop/drain_waves_2_3.py (--waves/--only) is reusable; it halts when the main tree is
-dirty. Next free LEDGER id 1663. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin.
+dirty. Next free LEDGER id 1664. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin.
 
 Acceptance: CI green on main except the 4 operator-left RM-172 subtests.
 
 Do NOT redo (shipped, verifier-gated, pushed): wave 1 (78 rows, d1d078aab, LEDGER
 1480-1559), docs citation fix fc9b12431, launcher fix 7e32c2933, wave 2 tail-backlog +
 wave 3 ascii (3ef556865), wave 2 tail-roadmap (1e3e514c8, LEDGER 1623-1651), wave 2 atomic
-(89062445e, LEDGER 1654-1659), DS batch CI repair (3c6e55324, LEDGER 1660), plus this
-session's 89ce8df91 / 67f94e8f6 and the DS + RC restarts.
+(89062445e, LEDGER 1654-1659), DS batch CI repair (3c6e55324, LEDGER 1660), 89ce8df91 L-03
+(1661), 67f94e8f6 rm415 (1662), DS + RC restarts (2026-10-04b), and this session's
+9024fd2cd C4 slots adoption (1663).
 
-Status (2026-10-04b wrap): pushed 89ce8df91, 67f94e8f6, plus this docs/hand-off commit.
-Local gate: ruff clean, hygiene 14 passed, drift_guard 0 breaches. CI = RED 5 (above).
-RC health.json: pid 23768, alive true, last_reload_ok true. lcu phase None, mode client
-(not in game). No intent pending, no steers pending. Session file ~0.8 MB.
+Status (2026-10-04c wrap): pushed 9024fd2cd (by the main session) plus this docs/hand-off
+commit. Local gate: ruff clean, hygiene 14 passed, drift_guard 0 breaches. CI 9024fd2cd:
+RED, the SAME 5 as before (4 RM-172 subtests + 1 next_buy_lean_bucket arena) - nothing new from the C4 adoption. The docs/hand-off commit's own CI run is collected after this file is pushed, so
+it is not recorded here - check gh run list for it. RC health.json: pid 26056, alive true,
+last_reload_ok true. mode client, lcu phase None (not in game). No intent pending, no
+steers pending, no monitors armed, nothing in flight. Session file ~0.7 MB. WAKEUP_NOTES
+pruned to 3 (2026-10-03g moved to docs/history_notes.md).
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
