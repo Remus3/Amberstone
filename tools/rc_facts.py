@@ -1092,6 +1092,16 @@ def main(session: str | None = None) -> int:
     # alternative - subtracting the record at session start - delivers an EMPTY
     # block into a fresh context, which is the failure this whole design is
     # against.
+    # RM-504: the shared slot bucket is audited HERE, at every session start,
+    # because no loop log can see the leak class (the leaking callers never
+    # logged). Read-only; anomaly_lines() never raises.
+    try:
+        if str(_ROOT) not in sys.path:
+            sys.path.insert(0, str(_ROOT))
+        from tools import slot_bucket_audit as _sba
+        anomalies.extend(_sba.anomaly_lines())
+    except Exception as exc:  # noqa: BLE001 - a hook must never fail the session start
+        anomalies.append(f"slot bucket audit unavailable: {type(exc).__name__}")
     block, inbox_anomalies, inbox_keys = _inbox_section(_ROOT, session, subtract=False)
     anomalies.extend(inbox_anomalies)
     if block:
