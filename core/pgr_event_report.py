@@ -45,7 +45,9 @@ DEATH_SUBSETS = ("early_deaths", "solo_deaths", "shutdowns_given")
 # Criteria that describe a CHOICE rather than a cost. These are the win-side
 # view. Deliberately disjoint from the death criteria above.
 DECISION_CRITERIA = ("skill_order", "objective_participation",
-                     "kill_participation", "plate_share")
+                     "kill_participation", "plate_share",
+                     # RM-603: how long level-up points sat unspent.
+                     "skill_point_latency")
 
 # RM-611 (external reference E): version of the render() extractor. Bump it
 # whenever render()'s output for the same match + timeline changes;
