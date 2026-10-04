@@ -44,6 +44,21 @@ _LOCKFILE_PATHS = [
 _LOCKFILE_MISSING_REPEAT_S = 60.0
 
 
+def _parse_lockfile_fields(text: str) -> tuple:
+    """Return (port, password) from lockfile text or raise ValueError /
+    IndexError. RM-230: the port must be all digits in 1..65535 (int() alone
+    accepted "99999", "0", "-5", "+443") and the password must be non-blank
+    (a torn read otherwise yields a Basic header that authenticates
+    nothing). Mirrors game_reader/poller.py:_ensure_lcu (lane 8 cycle 14)."""
+    parts = text.strip().split(":")
+    port_s, pw = parts[2], parts[3]
+    if not port_s.isdigit() or not 0 < int(port_s) <= 65535:
+        raise ValueError(f"lockfile port out of range: {port_s!r}")
+    if not pw.strip():
+        raise ValueError("lockfile password field is empty")
+    return int(port_s), pw
+
+
 from lcu.lcu_pregame import LcuPregame as _PGMixin
 
 class LcuClient(_PGMixin):
@@ -84,9 +99,9 @@ class LcuClient(_PGMixin):
                 # fails), IndexError (split has < 4 parts), ValueError
                 # (port int() fails), UnicodeDecodeError (non-utf8).
                 try:
-                    parts = lf.read_text(encoding="utf-8").strip().split(":")
-                    self._port = int(parts[2])
-                    pw = parts[3]
+                    port, pw = _parse_lockfile_fields(
+                        lf.read_text(encoding="utf-8"))
+                    self._port = port
                     self._auth = base64.b64encode(f"riot:{pw}".encode()).decode()
                     self._lockfile_path = lf
                     try:
@@ -140,9 +155,7 @@ class LcuClient(_PGMixin):
             if lf == self._lockfile_path and mtime == self._lockfile_mtime:
                 return  # unchanged since last read - fast path, no re-parse
             try:
-                parts = lf.read_text(encoding="utf-8").strip().split(":")
-                port = int(parts[2])
-                pw = parts[3]
+                port, pw = _parse_lockfile_fields(lf.read_text(encoding="utf-8"))
             except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
                 _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
                 return
