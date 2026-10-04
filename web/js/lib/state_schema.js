@@ -183,6 +183,7 @@
  * @property {string} rc_version
  * @property {Array} why
  * @property {Object} coaching_data_lock
+ * @property {Object} liveclient_subresource_failures
  */
 
 /**
