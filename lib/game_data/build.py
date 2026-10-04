@@ -12,9 +12,9 @@ magnitudes):
 
 - champion base stats: ddragon, then wiki, then meraki;
 - ``ad_per_level`` / ``as_per_level``: as above, but a Data Dragon ZERO is a
-  known placeholder (measured 2026-10-04 on 16.19.1: 172 of 173 champions
-  publish ``attackdamageperlevel: 0`` while the wiki and Meraki carry the real
-  growth), so a ddragon 0 contradicted by another source is skipped, and a
+  known placeholder (measured 2026-10-04 on 16.19.1: all 173 champions
+  publish ``attackdamageperlevel: 0``; the wiki and Meraki carry non-zero
+  growth for 172 of them), so a ddragon 0 contradicted by another source is skipped, and a
   ddragon 0 nothing can contradict is kept with an "unresolved" caveat;
 - ``as_ratio``: wiki, then meraki (Data Dragon does not publish it);
 - item gold and flat stats: ddragon, then meraki.
