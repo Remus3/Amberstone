@@ -668,6 +668,31 @@ class RuneWriter:
         # select exit / champ change via _reset_spell_state. Port-safe: this
         # strictly REDUCES LCU GETs - it never adds a loop or speeds a poll.
         self._cached_lobby_mode: Optional[str] = None
+        # RM-297c: outer-retry circuit for a rune write that keeps failing.
+        # _last_applied_* records SUCCESS only, so a permanently rejected POST
+        # (403 page cap, 400 bad perk id) used to redo GET + N DELETEs + up to
+        # 3 POSTs (1.5 s of sleeps) every 1 s poll for the whole champ select.
+        self.last_write_error: Optional[str] = None
+        self._fail_key: Optional[tuple[str, str]] = None
+        self._fail_count = 0
+        self._next_attempt_at = 0.0
+
+    # RM-297c backoff geometry: 2, 4, 8, 16, 32 s between outer attempts, and
+    # after _FAIL_GIVE_UP consecutive failures no more attempts for that
+    # (champion, mode) until it changes or champ select ends.
+    _FAIL_BACKOFF_BASE_S = 2.0
+    _FAIL_BACKOFF_MAX_S = 32.0
+    _FAIL_GIVE_UP = 6
+    # Class-level defaults so instances built with __new__ (tests) work too.
+    last_write_error: Optional[str] = None
+    _fail_key: Optional[tuple[str, str]] = None
+    _fail_count = 0
+    _next_attempt_at = 0.0
+
+    def _reset_fail_state(self) -> None:
+        self._fail_key = None
+        self._fail_count = 0
+        self._next_attempt_at = 0.0
 
     def start(self) -> None:
         self._champ_id_map = build_champ_id_map()
@@ -754,6 +779,7 @@ class RuneWriter:
                 self._last_applied_champion = ""
                 self._last_applied_mode = ""
                 self._reset_spell_state()
+                self._reset_fail_state()
             return
 
         # INFO on the enter transition so the game-1-only silence bug
@@ -790,13 +816,40 @@ class RuneWriter:
                 mode == self._last_applied_mode):
             return
 
+        key = (champion_name, mode)
+        if key != self._fail_key:
+            self._reset_fail_state()
+        elif self._fail_count >= self._FAIL_GIVE_UP:
+            return  # circuit open for this pick; re-arms on change / exit
+        elif time.monotonic() < self._next_attempt_at:
+            return  # backing off
+
         _log.info("RuneWriter: champion=%s mode=%s - applying runes", champion_name, mode)
+        self.last_write_error = None
         success = self._apply_runes(champion_name, mode)
         if success:
             self._last_applied_champion = champion_name
             self._last_applied_mode = mode
+            self._reset_fail_state()
+            return
+        self._fail_key = key
+        self._fail_count += 1
+        delay = min(self._FAIL_BACKOFF_MAX_S,
+                    self._FAIL_BACKOFF_BASE_S * (2 ** (self._fail_count - 1)))
+        self._next_attempt_at = time.monotonic() + delay
+        why = self.last_write_error or "no rune recommendation or page payload"
+        if self._fail_count == 1:
+            # ONE warning per pick, with the reason - never a 1 Hz WARNING spin.
+            _log.warning("RuneWriter: rune write failed for %s/%s (%s) - "
+                         "backing off", champion_name, mode, why)
+        elif self._fail_count >= self._FAIL_GIVE_UP:
+            _log.warning("RuneWriter: giving up on %s/%s after %d failed "
+                         "attempts (%s)", champion_name, mode,
+                         self._fail_count, why)
         else:
-            _log.warning("RuneWriter: rune write failed for %s/%s", champion_name, mode)
+            _log.debug("RuneWriter: rune write failed for %s/%s (attempt %d, "
+                       "%s); next try in %.0fs", champion_name, mode,
+                       self._fail_count, why, delay)
 
     def _reset_spell_state(self) -> None:
         """Clear per-lock spell-push state (champ-select exit / champ change)."""
@@ -1162,6 +1215,7 @@ class RuneWriter:
         # 1.5s window when it's most likely transiently busy. Also: log
         # the final failure at WARNING so a sustained outage surfaces.
         last_exc: Exception | None = None
+        last_why: Optional[str] = None
         for attempt in range(self.MAX_RETRIES):
             try:
                 result = self._lcu._request("POST", "/lol-perks/v1/pages", data=payload)
@@ -1176,13 +1230,34 @@ class RuneWriter:
                     )
                     return True
                 else:
-                    _log.debug("POST page attempt %d failed: %s", attempt + 1, result)
+                    # RM-297c: ask the client WHY (status code / transport /
+                    # json); `last_exc` was always None because the client
+                    # returns None instead of raising.
+                    why = self._lcu_last_error() or (
+                        "no page id in response" if isinstance(result, dict)
+                        else "no response")
+                    last_why = why
+                    _log.debug("POST page attempt %d failed: %s", attempt + 1, why)
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
+                last_why = f"{type(exc).__name__}: {exc}"
                 _log.debug("_write_page POST attempt %d: %s", attempt + 1, exc)
             if attempt < self.MAX_RETRIES - 1:
                 time.sleep(0.5 * (2 ** attempt))
 
+        self.last_write_error = last_why or (str(last_exc) if last_exc else "unknown")
+        # Stays WARNING: tools/lcu_push_watcher.py parses this line. It is
+        # bounded now - the outer circuit in _poll caps attempts per pick.
         _log.warning("RuneWriter: gave up after %d attempts for [%s]: %s",
-                     self.MAX_RETRIES, name, last_exc)
+                     self.MAX_RETRIES, name, self.last_write_error)
         return False
+
+    def _lcu_last_error(self) -> Optional[str]:
+        getter = getattr(self._lcu, "last_request_error", None)
+        if not callable(getter):
+            return None
+        try:
+            err = getter()
+        except Exception:  # noqa: BLE001 - diagnostic only, never fatal
+            return None
+        return err if isinstance(err, str) else None
