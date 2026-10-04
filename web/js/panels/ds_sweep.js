@@ -35,7 +35,7 @@ const _DSW_TTL_MS = 5 * 60 * 1000;          // matches backend TTL
 const _SVG_HEIGHT = 44;
 const _PAD_TOP = 4;
 const _PAD_BOTTOM = 5;
-const _LINE_COLOR = "#5096ff";              // ally-blue, same tint family
+const _LINE_COLOR = "rgb(var(--data-ally))"; // Y-07 tier ally hue; style= only
 
 function _cacheKey(champion, axis, mode) {
   return `${champion || ""}|${axis || "armor"}|${(mode || "SR").toUpperCase()}`;
@@ -193,7 +193,7 @@ export function renderDsSweep(blockEl, payload) {
          role="img" aria-label="${tip}">
       <title>${tip}</title>
       <polyline class="dsw-line" points="${linePts}"
-                fill="none" stroke="${_LINE_COLOR}" stroke-width="1.5"
+                fill="none" style="stroke:${_LINE_COLOR}" stroke-width="1.5"
                 stroke-linejoin="round" stroke-linecap="round"></polyline>
     </svg>`;
 

@@ -66,11 +66,11 @@
 }
 
 .ward-heat-container .wh-row.wh-ally .wh-side {
-  color: #80b8ff;
+  color: rgb(var(--data-ally));
 }
 
 .ward-heat-container .wh-row.wh-enemy .wh-side {
-  color: #ff8080;
+  color: rgb(var(--data-enemy));
 }
 
 .ward-heat-container .wh-cell {

@@ -25,10 +25,14 @@ const _CURVE_SIG = Object.create(null); // mount-id -> last-rendered signature
 const _CURVE_TTL_MS = 5 * 60 * 1000;
 const _CURVE_TS = Object.create(null); // cacheKey -> Date.now() at write
 
-// Colors - blue for ally (our side), red for enemy. Matches the
-// established 'blue side / red side' tints used in cd_ledger.css.
-const _ALLY_COLOR = "#5096ff";
-const _ENEMY_COLOR = "#ff5050";
+// Colors - the Y-07 data-viz tier (web/css/tokens.css --data-*): ally and
+// enemy by PERSPECTIVE, never the good/bad status hues. These are CSS colour
+// strings carrying var(), so every use below goes through a style="stroke:..."
+// declaration, never stroke="...": var() inside an SVG presentation attribute
+// is not something the spec promises (it happened to resolve in the Chromium
+// read of 2026-10-04; style= is the path that does not depend on that).
+const _ALLY_COLOR = "rgb(var(--data-ally))";
+const _ENEMY_COLOR = "rgb(var(--data-enemy))";
 const _NOW_COLOR = "rgba(180, 180, 180, 0.75)";
 const _ITEM_TICK_COLOR = "rgba(120, 120, 120, 0.45)";
 
@@ -136,7 +140,7 @@ function _peakTriangle(peakMinute, curve, xFn, yFn, color) {
   const p1 = `${(x - 3).toFixed(1)},${(y - 7).toFixed(1)}`;
   const p2 = `${(x + 3).toFixed(1)},${(y - 7).toFixed(1)}`;
   const p3 = `${x.toFixed(1)},${(y - 2).toFixed(1)}`;
-  return `<polygon points="${p1} ${p2} ${p3}" fill="${color}" stroke="${color}" stroke-width="0.5"></polygon>`;
+  return `<polygon points="${p1} ${p2} ${p3}" style="fill:${color};stroke:${color}" stroke-width="0.5"></polygon>`;
 }
 
 // Phase-strength strip (R81 F1, competitor lift). A compact early/mid/late
@@ -288,10 +292,10 @@ export function renderSpikeCurve(parentEl, ally_curve, enemy_curve, peaks, now_m
       ${itemTicks}
       ${nowMarker}
       <polyline class="spk-enemy" points="${enemyPts}"
-                fill="none" stroke="${_ENEMY_COLOR}" stroke-width="1.5"
+                fill="none" style="stroke:${_ENEMY_COLOR}" stroke-width="1.5"
                 stroke-linejoin="round" stroke-linecap="round"></polyline>
       <polyline class="spk-ally" points="${allyPts}"
-                fill="none" stroke="${_ALLY_COLOR}" stroke-width="1.5"
+                fill="none" style="stroke:${_ALLY_COLOR}" stroke-width="1.5"
                 stroke-linejoin="round" stroke-linecap="round"></polyline>
       ${peakMarkers}
     </svg>
