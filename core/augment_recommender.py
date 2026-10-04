@@ -29,6 +29,7 @@ augment prompt as the primary signal (S5: parallel, not fallback).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sqlite3
@@ -217,27 +218,44 @@ def _scan_own_history_checked(
     ), None
 
 
-def _lcu_row_count(path: Path) -> int:
-    """Cheap freshness signal: how many rows carry an lcu_match_detail.
-    The main db file's (mtime,size) can lag under WAL and a small INSERT
-    may not change the page count, so the row count is the reliable cache
-    key - a newly-ingested game must invalidate the scan (S4 blend depends
-    on own-history growing)."""
+def _history_key(path: Path) -> tuple:
+    """RM-454: cache key = the database path plus a digest of EXACTLY the
+    rows the scan consumes (count + blake2b over each raw_data, length-
+    prefixed, in rowid order).
+
+    Content, not metadata, so it is exact by construction: any write that
+    changes what the scan would read moves the key, whatever it does to
+    mtime / size / row count, and it survives close and reopen (nothing
+    per-connection). The previous (mtime, size, row count) key served stale
+    history for same-count writes inside one mtime tick (measured 19/30).
+    REJECTED alternatives: a stat memo and a raw SQLite header token (both
+    refuted in RM-450), and PRAGMA data_version on a persistent read
+    connection - on Windows an open handle blocks unlink of the database
+    (WinError 32, measured), which would pin the live match_history.db.
+    The query text deliberately does not start with "SELECT raw_data" so it
+    never counts as a scan attempt in the RM-443 retry tests.
+    """
+    p = str(path)
     if not path.exists():
-        return -1
+        return (p, "absent")
     try:
         conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     except sqlite3.Error:
-        return -1
+        return (p, "unreadable")
     try:
-        return int(
-            conn.execute(
-                "SELECT COUNT(*) FROM matches "
-                "WHERE raw_data LIKE '%lcu_match_detail%'"
-            ).fetchone()[0]
-        )
+        h = hashlib.blake2b(digest_size=16)
+        n = 0
+        for (raw,) in conn.execute(
+            "SELECT CAST(raw_data AS BLOB) FROM matches "
+            "WHERE raw_data LIKE '%lcu_match_detail%' ORDER BY rowid"
+        ):
+            b = bytes(raw) if raw is not None else b""
+            h.update(len(b).to_bytes(8, "little"))
+            h.update(b)
+            n += 1
+        return (p, n, h.hexdigest())
     except sqlite3.Error:
-        return -1
+        return (p, "unreadable")
     finally:
         try:
             conn.close()
@@ -246,18 +264,17 @@ def _lcu_row_count(path: Path) -> int:
 
 
 def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) -> OwnHistory:
-    """Cached own-history scan. Re-scans only when the count of
-    augment-bearing rows (or db mtime/size) changes - augment history
-    grows post-game, never mid-pick, so this is safe to call per
-    augment-select tick."""
+    """Cached own-history scan. Re-scans only when the content key changes
+    (see _history_key) - the JSON parse of every row is the expensive half
+    and is skipped on a hit."""
     path = db_path or _DB_PATH
-    try:
-        stt = path.stat()
-        key = (stt.st_mtime, stt.st_size, _lcu_row_count(path))
-    except OSError:
-        key = (-1.0, -1, -1)
+    key = _history_key(path)
+    # An unreadable key says nothing about content, so it neither hits nor
+    # is stored (else a transient lock could pin whatever it was cached with).
+    keyed = key[1] != "unreadable"
     with _lock:
-        if _own_cache.get(mode) is not None and _own_cache_key.get(mode) == key:
+        if (keyed and _own_cache.get(mode) is not None
+                and _own_cache_key.get(mode) == key):
             return _own_cache[mode]
         gate = _own_gates.setdefault(mode, FailedLoadGate())
     if not gate.should_attempt():
@@ -270,9 +287,10 @@ def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) ->
             _log.warning("augment_recommender: %s", error)
         return hist
     gate.record_success()
-    with _lock:
-        _own_cache[mode] = hist
-        _own_cache_key[mode] = key
+    if keyed:
+        with _lock:
+            _own_cache[mode] = hist
+            _own_cache_key[mode] = key
     return hist
 
 

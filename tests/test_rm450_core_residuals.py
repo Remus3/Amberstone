@@ -328,21 +328,14 @@ def test_small_new_game_invalidates_every_time(journal, tmp_path):
         writer.close()
 
 
-# KNOWN GAP of the restored (pre-RM-450) cache key (mtime, size, row count):
-# a write that keeps the row count and the file size and lands inside one
-# mtime tick is served stale. MEASURED 2026-09-16 on Windows, 30 runs each:
-# same-process in-place UPDATE stale 19/30 (delete journal) and 14/30 (WAL);
-# delete + recreate with the same write history stale 13/30 and 6/30. A
-# separate-process writer was stale 0/30 (process start outlasts the tick).
-# Filed as a follow-up by the merger; non-strict xfail so the gap stays
-# visible without a flaky red, and flips to XPASS once it is closed.
-_SAME_COUNT_GAP = pytest.mark.xfail(
-    strict=False,
-    reason="RM-450 follow-up: (mtime, size, count) key misses same-count "
-           "writes inside one mtime tick")
+# Former KNOWN GAP of the (mtime, size, row count) key: a write that kept the
+# row count and file size inside one mtime tick was served stale (MEASURED
+# 2026-09-16, 30 runs: in-place UPDATE stale 19/30 delete / 14/30 WAL;
+# delete + recreate with the same write history 13/30 and 6/30). RM-454
+# replaced the key with a content digest (augment_recommender._history_key),
+# so these two are plain, strict tests now - no xfail.
 
 
-@_SAME_COUNT_GAP
 @pytest.mark.parametrize("journal", ["delete", "wal"])
 def test_in_place_update_invalidates(journal, tmp_path):
     """The live ingest (dashboard LCU stamp) UPDATEs an existing row, which
@@ -420,7 +413,6 @@ def test_db_deleted_and_recreated_with_more_games_invalidates(journal, tmp_path)
     assert ar.load_own_history("mayhem", db_path=db).games == {888: 2}
 
 
-@_SAME_COUNT_GAP
 @pytest.mark.parametrize("journal", ["delete", "wal"])
 def test_db_deleted_and_recreated_with_same_history_invalidates(journal, tmp_path):
     """X2 as the re-verifier wrote it: same write history, different content."""
