@@ -47,6 +47,12 @@ DEATH_SUBSETS = ("early_deaths", "solo_deaths", "shutdowns_given")
 DECISION_CRITERIA = ("skill_order", "objective_participation",
                      "kill_participation", "plate_share")
 
+# RM-611 (external reference E): version of the render() extractor. Bump it
+# whenever render()'s output for the same match + timeline changes;
+# tests/test_pgr_derive_golden_rm611.py fails until the bump lands with a
+# regenerated golden. render() is computed on demand and not stored.
+DERIVE_VERSION = 1
+
 PROMOTION_NOTE = ("observed, not validated - promotion to a coaching rule "
                   "requires a measured win-vs-loss rate difference across the "
                   "corpus (tools/mine_event_patterns.py)")

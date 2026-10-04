@@ -12,7 +12,8 @@ KEY DESIGN RULES:
   - ASYNC: runs in background thread, never blocks the overlay
 
 Database:  C:\\Riot Commander\\data\\postgame_stats.db
-Tables:    {mode}_matches, {mode}_player_stats, {mode}_item_events
+Tables:    {mode}_matches, {mode}_player_stats, {mode}_item_events,
+           raw_documents (RM-611: gzipped eog / match / timeline documents)
 Modes:     ARAM | SR | ARENA | BRAWL | TFT
 """
 
@@ -28,6 +29,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Optional
+
+from core import raw_documents as _raw_docs
 
 _log = logging.getLogger("rc.postgame")
 
@@ -280,12 +283,37 @@ def _ensure_schema() -> None:
                     stmt = stmt.strip()
                     if stmt:
                         conn.execute(stmt)
+            _raw_docs.ensure_schema(conn)
             conn.commit()
             _log.debug("postgame_stats DB schema OK (%s)", _DB_PATH)
         except Exception as exc:  # noqa: BLE001
             _log.error("postgame_stats schema error: %s", exc)
         finally:
             conn.close()
+
+
+def _save_raw_document(match_id, kind: str, doc) -> None:
+    """RM-611: retain one raw document the collector already fetched.
+
+    Best-effort and isolated: a failure here is logged and swallowed so it
+    can never cost the parsed capture it rides on. No network call.
+    """
+    match_id = str(match_id or "").strip()
+    if not match_id or not isinstance(doc, dict):
+        return
+    try:
+        with _db_lock:
+            conn = _get_conn()
+            try:
+                if _raw_docs.store(conn, match_id, kind, doc):
+                    _log.info("postgame: retained raw %s for match %s",
+                              kind, match_id)
+                conn.commit()
+            finally:
+                conn.close()
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("postgame: raw %s not retained for match %s: %s",
+                     kind, match_id, exc)
 
 
 # -- Stat extraction helpers ---------------------------------------------------
@@ -813,6 +841,7 @@ class PostgameCollector:
         if eog:
             self._publish_game_end_pin(eog, mode_hint=game_mode)
             _save_eog(eog, game_mode, _ITEM_MAP, _RUNE_MAP)
+            _save_raw_document(eog.get("gameId"), "eog", eog)
             # Best-effort: try to get item timeline from match history
             self._try_fetch_timeline(str(eog.get("gameId") or ""), game_mode)
             return True
@@ -919,6 +948,7 @@ class PostgameCollector:
                               adapted.get("gameId"))
                 raw_mode = adapted.get("gameMode") or game.get("gameMode") or game_mode
                 _save_eog(adapted, raw_mode, _ITEM_MAP, _RUNE_MAP)
+                _save_raw_document(game.get("gameId"), "match", game)
                 return True
         except Exception as exc:  # noqa: BLE001
             _log.debug("postgame history fallback failed: %s", exc)
@@ -948,6 +978,10 @@ class PostgameCollector:
             _log.warning("postgame timeline fetch failed: HTTP %s for %s",
                          status, path)
             return
+        # RM-611: retain the whole document BEFORE the ITEM_* filter below,
+        # which discards it whenever it holds no item events (the permanent
+        # case per RM-106a) - the kill/building events are still re-derivable.
+        _save_raw_document(game_id, "timeline", timeline)
 
         frames = timeline.get("frames")
         if not isinstance(frames, list):

@@ -63,6 +63,14 @@ log = logging.getLogger("rc.post_game_score")
 WPA_FEATURE_COUNT = 13
 WPA_MODEL_VERSION = 1
 
+# RM-611 (external reference E): version of the compute_match_wpa EXTRACTOR
+# (its output shape and arithmetic), distinct from WPA_MODEL_VERSION (the
+# persisted coefficient file). Bump it whenever compute_match_wpa's output
+# for the same input changes; tests/test_pgr_derive_golden_rm611.py fails
+# until the bump lands with a regenerated golden. The output is computed on
+# demand and not stored, so there are no stale rows to re-derive.
+DERIVE_VERSION = 1
+
 # Default location for the persisted coefficients.
 _DEFAULT_MODEL_PATH = Path("data") / "post_game_wpa_model.json"
 

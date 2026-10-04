@@ -1,0 +1,270 @@
+{
+ "_note": "RM-611 golden: synthetic name-scrubbed raw docs -> PGR extractor output, keyed by DERIVE_VERSION. Regenerate only together with a DERIVE_VERSION bump: python tests/test_pgr_derive_golden_rm611.py --regen",
+ "extractors": {
+  "pgr_event_report": {
+   "derive_version": 1,
+   "output": {
+    "2": {
+     "cohort": {
+      "ranked": [],
+      "role": "JUNGLE",
+      "unavailable": [
+       "assists",
+       "cc_seconds_per_min",
+       "cs_per_min",
+       "damage_taken_per_min",
+       "damage_to_champs_per_min",
+       "deaths",
+       "gold_per_min",
+       "heal_on_teammates_per_min",
+       "jungle_cs_per_min",
+       "kills",
+       "turret_damage_per_min",
+       "vision_score_per_min",
+       "wards_killed_per_min",
+       "wards_placed_per_min"
+      ]
+     },
+     "gold_profile": {
+      "final_diff": -2575,
+      "frames": 13,
+      "frames_behind": 13,
+      "max_deficit": -2575,
+      "recovered": false
+     },
+     "lines": [
+      {
+       "attributed_to": {
+        "decision": "item_purchased",
+        "gap_ms": 145000,
+        "item_id": 3006,
+        "t_ms": 400000
+       },
+       "criterion": "death_cost",
+       "detail": {
+        "assists": 0,
+        "killer": 6,
+        "shutdown": 450,
+        "x": 6000,
+        "y": 6000
+       },
+       "magnitude_gold": 724,
+       "t_ms": 545000,
+       "tags": [
+        "shutdowns_given",
+        "solo_deaths"
+       ],
+       "tier": "T2"
+      },
+      {
+       "attributed_to": {
+        "decision": "item_purchased",
+        "gap_ms": 165000,
+        "item_id": 1055,
+        "t_ms": 20000
+       },
+       "criterion": "death_cost",
+       "detail": {
+        "assists": 1,
+        "killer": 7,
+        "shutdown": 0,
+        "x": 5000,
+        "y": 5000
+       },
+       "magnitude_gold": 300,
+       "t_ms": 185000,
+       "tags": [
+        "early_deaths"
+       ],
+       "tier": "T2"
+      }
+     ],
+     "notes": [
+      "costs are measured gold (bounty plus shutdown), not a severity score"
+     ],
+     "participant_id": 2,
+     "role": "JUNGLE",
+     "view": "cost",
+     "win": false
+    },
+    "7": {
+     "cohort": {
+      "ranked": [],
+      "role": "JUNGLE",
+      "unavailable": [
+       "assists",
+       "cc_seconds_per_min",
+       "cs_per_min",
+       "damage_taken_per_min",
+       "damage_to_champs_per_min",
+       "deaths",
+       "gold_per_min",
+       "heal_on_teammates_per_min",
+       "jungle_cs_per_min",
+       "kills",
+       "turret_damage_per_min",
+       "vision_score_per_min",
+       "wards_killed_per_min",
+       "wards_placed_per_min"
+      ]
+     },
+     "gold_profile": {
+      "final_diff": 2575,
+      "frames": 13,
+      "frames_behind": 0,
+      "max_deficit": 175,
+      "recovered": false
+     },
+     "lines": [
+      {
+       "criterion": "kill_participation",
+       "detail": {
+        "participated": 1,
+        "team_kills": 2
+       },
+       "promotion": "observed, not validated - promotion to a coaching rule requires a measured win-vs-loss rate difference across the corpus (tools/mine_event_patterns.py)",
+       "t_ms": 0,
+       "tier": "T2",
+       "validated": false,
+       "value": 0.5
+      },
+      {
+       "criterion": "plate_share",
+       "detail": {
+        "plates": 0,
+        "team_plates": 0
+       },
+       "promotion": "observed, not validated - promotion to a coaching rule requires a measured win-vs-loss rate difference across the corpus (tools/mine_event_patterns.py)",
+       "t_ms": 0,
+       "tier": "T2",
+       "validated": false,
+       "value": 0.0
+      },
+      {
+       "criterion": "skill_order",
+       "detail": {
+        "order": [
+         2
+        ],
+        "signature": "2"
+       },
+       "promotion": "observed, not validated - promotion to a coaching rule requires a measured win-vs-loss rate difference across the corpus (tools/mine_event_patterns.py)",
+       "t_ms": 0,
+       "tier": "T2",
+       "validated": false,
+       "value": 0.0
+      }
+     ],
+     "notes": [
+      "observed, not validated - promotion to a coaching rule requires a measured win-vs-loss rate difference across the corpus (tools/mine_event_patterns.py)"
+     ],
+     "participant_id": 7,
+     "role": "JUNGLE",
+     "view": "decisions",
+     "win": true
+    }
+   }
+  },
+  "post_game_score": {
+   "derive_version": 1,
+   "output": {
+    "event_count": 5,
+    "events": [
+     {
+      "actor": 7,
+      "actor_team": 200,
+      "game_time": 185,
+      "prob_after": 0.4421,
+      "prob_before": 0.4421,
+      "subtype": null,
+      "type": "CHAMPION_KILL",
+      "victim": 2,
+      "wpa": 0.0
+     },
+     {
+      "actor": 9,
+      "actor_team": 200,
+      "game_time": 360,
+      "prob_after": 0.3983,
+      "prob_before": 0.3983,
+      "subtype": "FIRE_DRAGON",
+      "type": "ELITE_MONSTER_KILL",
+      "victim": null,
+      "wpa": 0.0
+     },
+     {
+      "actor": 6,
+      "actor_team": 200,
+      "game_time": 545,
+      "prob_after": 0.3561,
+      "prob_before": 0.3561,
+      "subtype": null,
+      "type": "CHAMPION_KILL",
+      "victim": 2,
+      "wpa": 0.0
+     },
+     {
+      "actor": 8,
+      "actor_team": 200,
+      "game_time": 610,
+      "prob_after": 0.3031,
+      "prob_before": 0.3424,
+      "subtype": "TOWER_BUILDING",
+      "type": "BUILDING_KILL",
+      "victim": null,
+      "wpa": -0.0393
+     },
+     {
+      "actor": 2,
+      "actor_team": 100,
+      "game_time": 700,
+      "prob_after": 0.2906,
+      "prob_before": 0.2906,
+      "subtype": null,
+      "type": "CHAMPION_KILL",
+      "victim": 9,
+      "wpa": 0.0
+     }
+    ],
+    "frame_count": 13,
+    "match_id": "SYN_611",
+    "ok": true,
+    "top_phases": [
+     {
+      "actor": 8,
+      "actor_team": 200,
+      "game_time": 610,
+      "prob_after": 0.3031,
+      "prob_before": 0.3424,
+      "subtype": "TOWER_BUILDING",
+      "type": "BUILDING_KILL",
+      "victim": null,
+      "wpa": -0.0393
+     },
+     {
+      "actor": 7,
+      "actor_team": 200,
+      "game_time": 185,
+      "prob_after": 0.4421,
+      "prob_before": 0.4421,
+      "subtype": null,
+      "type": "CHAMPION_KILL",
+      "victim": 2,
+      "wpa": 0.0
+     },
+     {
+      "actor": 9,
+      "actor_team": 200,
+      "game_time": 360,
+      "prob_after": 0.3983,
+      "prob_before": 0.3983,
+      "subtype": "FIRE_DRAGON",
+      "type": "ELITE_MONSTER_KILL",
+      "victim": null,
+      "wpa": 0.0
+     }
+    ]
+   }
+  }
+ }
+}
