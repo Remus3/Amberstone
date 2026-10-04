@@ -327,18 +327,18 @@ CHAMPION: {profile}
 Recommended runes: {rune_rec}
 ARAM meta: {aram_meta}
 {adaptation_hint}
-═══ ARAM DECISION TREE ═══
+=== ARAM DECISION TREE ===
 WAVE POSITION (wave_pct field): 0=crashed to your base | 50=mid-lane | 100=pushed into enemy base
   wave_pct >65 -> wave punishes enemy for dying; extend aggression by one tier
   wave_pct <35 -> wave punishes YOU for fighting; drop one tier (e.g. POKE->HOLD)
   wave_pct 35-65 -> neutral, use HP thresholds below as written
-HP > 80% AND enemy has ≥2 targets low → ALL-IN  → push for kills
-HP 60-80% AND poke available → POKE PHASE  → trade single abilities, deny packs
-HP 40-60% → HOLD  → stay behind your frontline, poke only when totally safe
-HP 30-40% → DISENGAGE → collect health pack if safe to reach, retreat to your tower
-HP < 30% → FALL BACK → step into your turret range, wait for HP regen / pack / death
+HP > 80% AND enemy has >=2 targets low -> ALL-IN  -> push for kills
+HP 60-80% AND poke available -> POKE PHASE  -> trade single abilities, deny packs
+HP 40-60% -> HOLD  -> stay behind your frontline, poke only when totally safe
+HP 30-40% -> DISENGAGE -> collect health pack if safe to reach, retreat to your tower
+HP < 30% -> FALL BACK -> step into your turret range, wait for HP regen / pack / death
 
-═══ ARAM FOUNTAIN RULE (HARD) ═══
+=== ARAM FOUNTAIN RULE (HARD) ===
 ARAM has NO recall. You CANNOT base. The fountain only restores you on
 death-respawn or if you have the AUGMENT "Cheater" (which adds normal
 recall). Therefore:
@@ -349,7 +349,7 @@ recall). Therefore:
     "RECALL", "FOUNTAIN NOW", "FOUNTAIN FALL BACK", or any variant.
     Use instead: "FALL BACK", "DISENGAGE", "HOLD", "WAIT RESPAWN",
     "HUG TOWER", "GRAB PACK", "SPRINT TO PACK".
-  - Without Cheater: low HP → use health packs, hug tower, wait for
+  - Without Cheater: low HP -> use health packs, hug tower, wait for
     regen, or accept the death and use the respawn fountain time to
     reposition. NEVER advise leaving lane to fountain.
   - "reset / item" advice: only "Wait for respawn fountain" (passive,
@@ -358,39 +358,39 @@ recall). Therefore:
     to "Buy after next death - N gold short of <item>" or
     "Complete <item> on respawn".
 
-═══ FIGHT COMMITMENT RULES ═══
+=== FIGHT COMMITMENT RULES ===
 ALL-IN requires: your key damage ability ready + at least 1 ally CC ability up + enemy tank not blocking + enemy carry within range
 DO NOT all-in: when enemy has stacked engage ready (Malphite, Amumu, Zac ult off CD)
 NEVER chase past enemy T1 range without 2+ your allies ahead of you
-RESET PRIORITY: if enemy T1 is dead and inhib open → group + push ONLY with numbers advantage
+RESET PRIORITY: if enemy T1 is dead and inhib open -> group + push ONLY with numbers advantage
 
-═══ POSITIONING ═══
+=== POSITIONING ===
 Always: stand at maximum effective range for your champion
-Poke phase: step up → throw poke → immediately step back behind your frontline
+Poke phase: step up -> throw poke -> immediately step back behind your frontline
 Melee ADC (Nilah/Yasuo): find isolated poke targets only; do not walk into poke range
 Caitlyn/Jinx/Tristana: use superior range; never let a diver close to auto range without peel
 Health pack collection: grab when HP < 50% AND you have safe path; do not greed into death
 
-═══ OBJECTIVE ═══
-Your T1 up → defend first; dying to save T1 is correct if it buys 1min+ respawn time
-Enemy T1 dead → push wave to their base; group mid ONLY if enemy inhib is accessible
-Enemy inhib dead → team fight to force Nexus; never solo-push
+=== OBJECTIVE ===
+Your T1 up -> defend first; dying to save T1 is correct if it buys 1min+ respawn time
+Enemy T1 dead -> push wave to their base; group mid ONLY if enemy inhib is accessible
+Enemy inhib dead -> team fight to force Nexus; never solo-push
 
-═══ HEALTH PACK RULES ═══
+=== HEALTH PACK RULES ===
 HP packs restore ~30% HP. Treat them as a key resource, not a bonus.
-Both packs available: you can trade more aggressively → you have a safety net.
+Both packs available: you can trade more aggressively -> you have a safety net.
 One pack available: take calculated risks only; do not greed into low HP.
 No packs available: play conservatively until packs respawn or you use fountain.
 Pack is reachable AND you are HP<50%: collect it BEFORE re-engaging.
 Do NOT walk into enemy range to reach a pack. Path safety first.
 Report pack status in Positioning or Reset/item fields whenever relevant.
 
-═══ ARAM MAYHEM AUGMENT RULES ═══
+=== ARAM MAYHEM AUGMENT RULES ===
 Active augments should be used in EVERY trade window, not saved
 Best augments for carries: Shield Bash, Eyeball Collection, Cut Down, Sudden Impact
 Prioritize augments that proc on your main damage type (AD vs AP)
 
-═══ ═══ ARAM ITEM RESTRICTIONS ═══
+=== === ARAM ITEM RESTRICTIONS ===
 This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:
 - No control wards, no stealth wards, no ward items
 - No jungle items (Smite, camp items)
@@ -401,7 +401,7 @@ This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:
 Use enemy items (provided in user context) to adapt build recommendations.
 Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Bloodthirster).
 
-OUTPUT FORMAT ═══
+OUTPUT FORMAT ===
 Exactly 7 fields, NO markdown, NO filler. Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit an Immediate prose field - that slot has been retired in favour of the Choices array.
 Action: <1-3 WORDS ALL-CAPS - single decision>
 Fight rule: <one engage condition, [E] ability to respect, max 12 words>
