@@ -83,6 +83,15 @@ def _collect_item_ids(node: object, found: set) -> None:
             found.add(text)
 
 
+def _illegal_ids(ids: set, items: dict, map_id: str) -> list:
+    """Ids in ``ids`` whose catalog entry is NOT legal on ``map_id``.
+
+    The single legality predicate: the guard below and its positive control
+    both call it, so the control cannot pass on a retyped copy (RM-496).
+    """
+    return sorted(i for i in ids if not (items[i].get("maps") or {}).get(map_id))
+
+
 @pytest.mark.parametrize(("family", "mode_key"), _TABLES, ids=_TABLE_IDS)
 def test_every_shipped_item_id_is_legal_on_its_map(family: str, mode_key: str) -> None:
     patch = bop.resolve_patch()
@@ -108,9 +117,7 @@ def test_every_shipped_item_id_is_legal_on_its_map(family: str, mode_key: str) -
     )
 
     map_id = MODE_MAP_ID[mode_key.upper()]
-    illegal = sorted(
-        i for i in ids if not (items[i].get("maps") or {}).get(map_id)
-    )
+    illegal = _illegal_ids(ids, items, map_id)
     assert not illegal, (
         f"{family} {mode_key}: {len(illegal)} item id(s) illegal on map "
         f"{map_id}: "
@@ -137,3 +144,24 @@ def test_arena_and_aram_actually_use_mirror_ids() -> None:
         "Arena table carries no 22-prefixed mirror ids at all - either the "
         "mirror remap regressed or the id namespace changed"
     )
+
+
+def test_legality_predicate_flags_a_planted_base_id() -> None:
+    """RM-496 positive control: plant an id the catalog marks illegal on the
+    Arena map into the REAL Arena id set and run the SAME predicate the guard
+    runs. The shape check above never exercised the predicate at all."""
+    patch = bop.resolve_patch()
+    items = _items_catalog(patch)
+    map_id = MODE_MAP_ID["ARENA"]
+    arena = _load_table("flat", "arena", patch)
+    ids: set = set()
+    _collect_item_ids(arena[_CONTENT_KEY], ids)
+    ids = {i for i in ids if i in items}
+    assert _illegal_ids(ids, items, map_id) == [], "baseline already illegal"
+    planted = next(
+        (i for i, row in sorted(items.items())
+         if isinstance(row, dict) and not (row.get("maps") or {}).get(map_id)),
+        None,
+    )
+    assert planted is not None, "catalog has no Arena-illegal id to plant"
+    assert _illegal_ids(ids | {planted}, items, map_id) == [planted]
