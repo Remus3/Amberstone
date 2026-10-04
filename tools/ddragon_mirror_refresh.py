@@ -32,7 +32,10 @@ Fail-loud on bundle JSON corruption. After a clean (non-dry) run, stale
 ``web/data/ddragon/<semver>/`` dirs beyond the retention set (current patch
 + one previous; ``--retain`` / ``--no-prune`` to adjust) are deleted -
 deep-audit item 396 retention; git-tracked bundle archives under
-data/meta_build/ are never pruned.
+data/meta_build/ are never pruned. RM-489: the "current + previous" count
+applies to the MIRROR only; the tracked archive keeps every patch because DS
+modules cite archived patches as verbatim ground truth
+(tests/test_ddragon_archive_retention_rm489.py).
 """
 from __future__ import annotations
 
