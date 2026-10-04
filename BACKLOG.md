@@ -117,6 +117,8 @@ _Clean-room only: every row is re-implemented from OBSERVED BEHAVIOUR; nothing i
 - **RM-673 (Tier-1, live-confirm first) objective `killer_team` likely "unknown" on live rows** - `dashboard/_liveclient.py` classifies the objective killer by matching `KillerName` against champion names, but the live API probably sends a player name there; if so every live objective row (grubs included) is team-unknown and the RM-601 grub line falls back to "Voidgrubs taken: N". Found during RM-601; confirm via LX-02 before changing.
 - **RM-674 (Tier-1) first-blood event-name mismatch** - `game_reader/snapshot_normalizer.py` checks `"FirstBloodKill"` while `coaches/arena_coach.py` consumes `"FirstBlood"`; one of them never matches. Probe a real payload (LX-02) and fix the wrong side. Found during RM-601.
 
+- **RM-675 (Tier-1) RM-610 residuals** - the WR anchor cannot see SQL-side `SUM(win)/COUNT(*)` rates; `coaches/adaptation_hint_session.py` and `coaches/adaptation_hint_temporal.py` divide by wins+losses but still count remakes (bodies pinned byte-for-byte by the test_round suite - re-pin deliberately); `core/riot_api.py` `summarize_recent` (lobby scouting) counts an unknown result as a loss. Each is listed in the guard's EXEMPT table with a reason.
+
 - **RM-668 (L-08, S) Data-feed watch per DS batch** - read-only checklist step (changelog high-water, HEAD the chunk URLs, per-block body hash via `tools/ds_feed_index.py`); not a poller. Cross-ref: fleet-ideas patch/spec watch.
 
 ---
