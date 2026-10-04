@@ -102,6 +102,24 @@ def test_legacy_corridor_districts_bucket_as_mid_not_river():
     assert river["level1_lane"] == "river"
 
 
+@pytest.mark.parametrize("pos,district,side", [
+    # Box-fraction (0.10, 0.66) inside sr.json jungle_bot_blue's poly
+    # [0..0.2]x[0.5..0.82]: left of the base-to-base corridor -> TOP side
+    # despite the id (Match-V5 y > x).
+    ((1480, 5032), "jungle_bot_blue", "top"),
+    # Box-fraction (0.90, 0.34) inside jungle_top_red's poly
+    # [0.8..1]x[0.18..0.5]: right of the corridor -> BOT side (y < x).
+    ((13320, 9768), "jungle_top_red", "bot"),
+    ((3800, 7900), "jungle_top_blue", "top"),
+    ((7800, 4000), "jungle_bot_red", "bot"),
+])
+def test_every_jungle_district_side_is_geometric_not_by_id(pos, district, side):
+    assert district_of(*_frac(pos), "sr") == district
+    assert ot._SIDE_BY_DISTRICT[district] == side
+    obs = ot.classify_game(_game("m1", jg_1=pos, jg_2=pos), JG)
+    assert obs["start_side"] == side
+
+
 def test_start_side_falls_back_to_two_minute_frame():
     # 1:00 frame in the mid square (no side) -> the 2:00 frame decides.
     obs = ot.classify_game(_game("m1", jg_1=MID_LANE, jg_2=BLUE_BOT_JG), JG)
