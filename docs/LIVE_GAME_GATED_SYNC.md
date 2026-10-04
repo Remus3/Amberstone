@@ -1488,6 +1488,9 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+- **LX-07** (RM-608, death recap) With `RC_DEATH_RECAP=1`, one real own death writes a row to
+  `data/coaching/death_recaps.jsonl` (champion names only); confirm the live VictimName / KillerName
+  forms (shared with LX-02 / RM-673); sanity-check the estimated split per mode (SR, ARAM / KIWI, Arena).
 - **LX-06** (RM-604, event channel) A real game's death, level-up, completed item and objective events
   (including `stolen` on a stolen objective) reach a live `/api/events` EventSource client; a
   reconnect resumes with Last-Event-ID across the real 600 s connection cap and across a dashboard
