@@ -314,15 +314,19 @@ class EvaluateContractTests(unittest.TestCase):
 # Characterization pin captured from _compute_uncached BEFORE the decision-
 # tree edit (laning_choices stubbed to [], no fog stamped). The post-edit
 # output with no macro rule firing must stay byte-identical.
+# RM-308(b) re-pin: this game state carries NO objective_events (no data), so
+# the drake row past its first-spawn window is silent instead of the old
+# 5:00-grid guess ("Drake spawns" at eta 40 over a drake standing since 300s);
+# the drake playbook row it anchored goes with it. Decision-tree rows unchanged.
 _PINNED_NO_RULE = {
     "callouts": [
-        {"eta_s": 40.0, "kind": "objective",
-         "line": "Drake spawns 5:00 - set up vision", "tag": "dragon"},
-        {"eta_s": 40.0, "kind": "playbook",
-         "line": "Drake: trade it for a lane - do not contest down",
-         "tag": "playbook_dragon"},
         {"eta_s": 280.0, "kind": "objective",
          "line": "Rift Herald 14:00 - ward river", "tag": "herald"},
+        {"eta_s": 280.0, "kind": "objective",
+         "line": "Plates fall 14:00 - shove for gold", "tag": "plates"},
+        {"eta_s": 280.0, "kind": "playbook",
+         "line": "Herald: give it, catch side waves - avoid the 50/50",
+         "tag": "playbook_herald"},
     ],
     "choices": [],
     "lead_projection": {

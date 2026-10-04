@@ -420,15 +420,21 @@ def liveclient_summary() -> dict:
         # events stream + EventTime (s) pattern as inhib_events above. KillerName is
         # a champion display name, so classify killer_team against the rosters built
         # above (enemy_team / ally_team) - macro_response keys on enemy kills.
-        # Isolated try so a malformed events block degrades to [] without dropping
-        # the rest of the summary.
-        objective_events: list = []
+        # Isolated try so a malformed events block degrades without dropping the
+        # rest of the summary. RM-308(b): [] means "events read, no takes";
+        # None means "no event data" (Events missing / not a list / parse
+        # failure) - core.event_callouts resolves the two differently, so a
+        # failed read must not masquerade as "nothing was taken".
+        objective_events: list | None = []
         try:
             _obj_names = {"DragonKill": "dragon", "BaronKill": "baron",
                           "HeraldKill": "herald"}
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
-            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
+            _raw_events = _as_dict(d.get("events")).get("Events")
+            if not isinstance(_raw_events, list):
+                objective_events = None
+            for ev in _as_list(_raw_events):
                 if not isinstance(ev, dict):
                     continue
                 obj = _obj_names.get(ev.get("EventName"))
@@ -457,7 +463,7 @@ def liveclient_summary() -> dict:
                         entry["dragon_type"] = dt
                 objective_events.append(entry)
         except Exception:  # noqa: BLE001
-            objective_events = []
+            objective_events = None
         out["objective_events"] = objective_events
         # R221: wave-clock anchor. Minion waves are the only fully deterministic
         # timer in the game, but nothing else in the frame reports one - allPlayers
