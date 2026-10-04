@@ -260,6 +260,30 @@ def reset_control_files(ctl=None):
         (base / f).unlink(missing_ok=True)
 
 
+def pre_hold_reap(max_slots, root=None):
+    """RM-504: reap stale locks on EVERY hold, not only on saturation.
+
+    `slots.reap()` runs inside `hold()` only when the bucket is FULL, so a stale
+    lock in a non-full bucket was never reclaimed (measured two-day lifetimes).
+    slots.py is a byte-identical cross-repo file, so the eager reap lives in the
+    CALLER. Every lock about to be condemned is logged with its FULL record
+    first, because deleting a leaked lock destroys the leak's only artifact.
+    Never raises: a failed audit must not cost a cycle."""
+    root = Path(root) if root is not None else slots.DEFAULT_ROOT
+    try:
+        for i in range(max_slots):
+            p = root / f"{i}.lock"
+            if p.exists() and slots.is_stale(p, slots.DEFAULT_STALE_AFTER):
+                try:
+                    raw = p.read_text(encoding="utf-8")[:300]
+                except OSError as exc:
+                    raw = f"<unreadable: {exc}>"
+                log(f"slots: pre-hold reap candidate {p.name} record={raw!r}")
+        slots.reap(root, max_slots, slots.DEFAULT_STALE_AFTER, log)
+    except Exception as exc:  # noqa: BLE001
+        log(f"slots: pre-hold reap skipped ({type(exc).__name__}: {exc})")
+
+
 def halt_if_disarmed(where):
     if disarm_path() is not None:
         log(f"durable DISARMED sentinel present ({where}) - not running")
@@ -1170,6 +1194,7 @@ def main():
         # cycle.txt, budget.json and the metering below.
         # Slot held ONLY around the executor call - never around git, the director
         # or the auditor, so a long merge in this repo cannot starve the other one.
+        pre_hold_reap(int(CFG.get("max_concurrent_lanes", 2)))
         with slots.hold(int(CFG.get("max_concurrent_lanes", 2)),
                         repo=str(ROOT), run_id=RUN_ID, cycle=cycle, log=log):
             rec = EXEC.run(cycle, body, src)
