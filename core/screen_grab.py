@@ -36,7 +36,8 @@ _NATIVE_JPEG_QUALITY = 92
 # thumbnail is <= BLANK_LUMA_RANGE_MAX. Downscaling first averages away codec
 # noise and costs a few ms. MEASURED 2026-10-04 (Y-03 slice): the twelve real
 # 2560x1440 League stills in data/vision_calib_reference (incl. the grey
-# self_dead death screen) score 107..166; uniform 0/16/128/255 frames JPEG'd
+# self_dead death screen) score 118..184 through luma_range below (re-measured
+# with this function's default resize filter); uniform 0/16/128/255 frames JPEG'd
 # at q85 (the self-grab encoding) at 1280x720 and 2560x1440 score 0. 16 (about
 # 6% of the 0-255 scale) sits far above codec noise and far below the lowest
 # real frame; re-measure if a legitimately flat in-game screen ever drops.
