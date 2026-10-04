@@ -17,7 +17,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/health` | RC process health (`ops/runtime/health.json` + `rc_version`) | `HealthResponse` |
 | `/api/health/all` | Consolidated rollup: RC + vision + DS + supervisor + cost | `HealthAllResponse` |
 | `/api/ui-version` | SHA-1 hash of static asset mtimes (dashboard hot-reload trigger) | `{"v": str}` |
-| `/api/asset-stamp` | Max mtime across `index.html`, `dashboard.css`, `main.js` | `{"mtime": float}` |
+| `/api/asset-stamp` | Max mtime across `dashboard._static.asset_fileset()` (`index.html` + `css/**/*.css` + `js/**/*.js`, the same set `/api/ui-version` hashes) | `{"mtime": float}` |
 | `/api/cost` | Cost tracker state + daily spend | - |
 | `/api/coach/trace` | Coach execution trace (last N calls) | - |
 | `/api/coach/state` | Coach active/disabled state per mode | - |

@@ -7,6 +7,7 @@ fingerprints css+js+html for cache-busting, and resolve paths under
 the icon directory while blocking traversal attempts.
 """
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -19,45 +20,57 @@ log = logging.getLogger("rc.web_dashboard")
 # every file. 2 s TTL - same window /api/ui-version uses.
 _ASSET_HASH_CACHE: dict = {"hash": "", "mtime": 0.0}
 
+# Y-11 (external reference L2): the ONE fileset behind every reload signal
+# (the ?v= rewrite, /api/ui-version and /api/asset-stamp). It is a glob of the
+# served trees, not a hand list: the hand lists that came before it missed the
+# stylesheets dashboard.css @imports from the css/ root (tokens.css,
+# themes.css, hextech.css), so a design-token edit never reloaded the browser
+# or the overlay. ADR-008 still holds; this only widens its key.
+_ASSET_TREES = (("css", ".css"), ("js", ".js"))
+# Pruned explicitly at directory level (os.walk; rglob never prunes). js/test
+# holds the node --test harness, which the page never loads. Dot-directories
+# are pruned too. tests/test_asset_fileset_y11.py pins this set.
+ASSET_PRUNE_DIRS = frozenset({"test", "node_modules", "__pycache__"})
+
+
+def asset_fileset(web_root: Path | None = None) -> list[tuple[str, Path]]:
+    """Every served dashboard asset as (relative posix path, absolute Path):
+    web/index.html + web/css/**/*.css + web/js/**/*.js, sorted by the
+    relative path. Missing trees contribute nothing (never raises on them)."""
+    root = Path(web_root) if web_root is not None else APP_DIR / "web"
+    out: list[tuple[str, Path]] = []
+    index = root / "index.html"
+    if index.is_file():
+        out.append(("index.html", index))
+    for sub, ext in _ASSET_TREES:
+        base = root / sub
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [d for d in dirnames
+                           if d not in ASSET_PRUNE_DIRS and not d.startswith(".")]
+            for name in filenames:
+                if name.endswith(ext):
+                    full = Path(dirpath) / name
+                    out.append((full.relative_to(root).as_posix(), full))
+    out.sort(key=lambda item: item[0])
+    return out
+
 
 def compute_asset_hash() -> str:
     """AUDIT 2026-04-28 (3.1): hash the css+js+html mtimes the dashboard
     serves out of web/. Cached for 2 s so repeated index requests don't
-    re-stat. The same files drive /api/ui-version so reload behaviour
-    stays consistent."""
+    re-stat. The same files drive /api/ui-version and /api/asset-stamp
+    (all three go through asset_fileset(), Y-11) so reload behaviour stays
+    consistent."""
     import hashlib as _hashlib
     now = time.time()
     if _ASSET_HASH_CACHE.get("hash") and (now - _ASSET_HASH_CACHE["mtime"]) < 2.0:
         return _ASSET_HASH_CACHE["hash"]
-    web_root = APP_DIR / "web"
     parts = []
-    # s171.8: include js/main.js so edits to the s133 ESM entrypoint
-    # also bust browser caches. Without this, view-router / handler
-    # changes are invisible until a hard-reload. Also walk the panels/
-    # subdirs so edits to per-panel ESM modules and per-panel CSS bust
-    # the cache too - they're loaded through main.js / dashboard.css
-    # imports, so without this any edit to a panel went unnoticed by
-    # browsers until manual cache-clear.
-    # HZ-D1: overlay-route assets live at the css/js roots (like
-    # dashboard.css / main.js), outside the panels/ walks below, so they
-    # are listed explicitly to keep ADR-008 cache-busting honest.
-    for rel in ("index.html", "css/dashboard.css", "css/overlay.css",
-                "js/main.js", "js/overlay_pulse.js"):
-        p = web_root / rel
+    for rel, p in asset_fileset():
         try:
             parts.append(f"{rel}:{int(p.stat().st_mtime)}")
         except OSError:
             parts.append(f"{rel}:0")
-    for subdir, exts in (("css/panels", (".css",)),
-                         ("js/panels", (".js",)),
-                         ("js/lib", (".js",))):
-        d = web_root / subdir
-        try:
-            for f in sorted(d.iterdir()):
-                if f.is_file() and f.suffix in exts:
-                    parts.append(f"{subdir}/{f.name}:{int(f.stat().st_mtime)}")
-        except OSError:
-            pass
     h = _hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:10]
     _ASSET_HASH_CACHE["hash"] = h
     _ASSET_HASH_CACHE["mtime"] = now
