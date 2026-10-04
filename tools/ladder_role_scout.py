@@ -15,6 +15,14 @@ limit never binds. So this job is inherently slow (~50 calls/min) and is meant
 to run in the background; it is not tunable by editing our limiter.
 
 Writes `data/ladder_role_mains.json`.
+
+EXIT CODES (RM-510, same contract as tools/timeline_ingest.py):
+    0   clean.
+    75  EX_TEMPFAIL - the role file WAS written, but at least one ids or match
+        call stayed rate limited after every retry and none failed hard; the
+        file is thinner than it should be, re-run later.
+    1   a ladder call failed (file left untouched) or an ids / match call
+        failed hard (not a throttle). Hard wins over tempfail.
 """
 from __future__ import annotations
 
@@ -59,6 +67,8 @@ REGION = "americas"
 _MIN_INTERVAL_S = 1.35
 _last_call_at = 0.0
 _failures = collections.Counter()
+# RM-510: sysexits.h EX_TEMPFAIL - "temporary failure, retry later".
+EX_TEMPFAIL = 75
 
 
 def _pace() -> None:
@@ -129,6 +139,7 @@ def main(argv=None) -> int:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     t0 = time.time()
+    _failures.clear()          # RM-510: per-run counts drive the exit code
     entries = []
     for tier in args.tiers.split(","):
         rows = _ladder(tier.strip())
@@ -168,11 +179,13 @@ def main(argv=None) -> int:
     roles = collections.defaultdict(collections.Counter)
     names = {}
     match_failures = 0
+    match_rate_limited = 0
     for i, mid in enumerate(sorted(wanted), 1):
         _pace()
-        blob, _throttled = fetch_unthrottled(lambda m=mid: riot_api.get_match(m))
+        blob, throttled = fetch_unthrottled(lambda m=mid: riot_api.get_match(m))
         if not blob:
             match_failures += 1
+            match_rate_limited += 1 if throttled else 0
             continue
         for p in blob["info"]["participants"]:
             pu = p.get("puuid")
@@ -227,6 +240,19 @@ def main(argv=None) -> int:
     tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
     tmp.replace(dest)
     print(f"wrote {dest}  elapsed={time.time() - t0:.0f}s", flush=True)
+
+    # RM-510: a written file is not a clean run. Ids failures live in
+    # _failures (keyed with ':rate_limited' when throttled); match failures
+    # are split by the local counter.
+    ids_rate_limited = _failures["match_v5_ids:rate_limited"]
+    hard = (match_failures - match_rate_limited) + _failures["match_v5_ids"]
+    if hard:
+        print(f"EXIT 1: {hard} ids/match calls failed hard", flush=True)
+        return 1
+    if match_rate_limited or ids_rate_limited:
+        print(f"EXIT {EX_TEMPFAIL}: rate limited ids={ids_rate_limited} "
+              f"matches={match_rate_limited} - re-run later", flush=True)
+        return EX_TEMPFAIL
     return 0
 
 

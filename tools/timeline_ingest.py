@@ -28,6 +28,14 @@ process is running.
 
 Output: `<corpus>/timelines/<match_id>.json` = {"match": ..., "timeline": ...}.
 Resumable: an existing file is skipped without a call.
+
+EXIT CODES (RM-510; see `exit_code()`):
+    0   clean - no row failed hard and nothing stayed rate limited. A
+        'partial' (Riot has no timeline for that match) is a fact, not a gap.
+    75  EX_TEMPFAIL (sysexits.h) - the run finished, but at least one match,
+        account lookup or ids page stayed rate limited after every retry, and
+        no row failed hard. Re-running later finishes the work (resumable).
+    1   at least one match row ended 'fail' (not a throttle). Hard wins.
 """
 from __future__ import annotations
 
@@ -52,6 +60,21 @@ REGION = "americas"
 # politeness, an unpaced sweep silently degrades to None-returning calls.
 _MIN_INTERVAL_S = 1.35
 _last_call_at = 0.0
+
+# RM-510: sysexits.h EX_TEMPFAIL - "temporary failure, retry later".
+EX_TEMPFAIL = 75
+# RM-510: ids pages that stayed rate limited (each truncates one account's
+# history for this run). main() resets it; exit_code() reads it.
+_ids_rate_limited = {"n": 0}
+
+
+def exit_code(tally: dict, other_rate_limited: int = 0) -> int:
+    """The RM-510 contract: 1 on any hard fail, else 75 on any throttle, else 0."""
+    if tally.get("fail"):
+        return 1
+    if tally.get("rate_limited") or other_rate_limited:
+        return EX_TEMPFAIL
+    return 0
 
 
 def _pace() -> None:
@@ -85,6 +108,7 @@ def match_ids_for(puuid: str, want: int, queue: int = 420) -> list:
             lambda u=url: riot_api._call("match_v5_ids", u,
                                          rate_limit_timeout_s=30.0))
         if throttled:
+            _ids_rate_limited["n"] += 1
             log.warning("ids page rate limited for %s at start=%d - "
                         "history truncated for this run", puuid[:12], start)
         if not page:
@@ -223,7 +247,8 @@ def main(argv=None) -> int:
     # Collect ids first, dedup globally. High-elo players share games heavily,
     # so the distinct count is far below accounts x per_account and every
     # duplicate saved is two calls not spent.
-    wanted, resolved, failed_acct = [], 0, 0
+    wanted, resolved, failed_acct, acct_rate_limited = [], 0, 0, 0
+    _ids_rate_limited["n"] = 0
     seen_ids = set()
     for i, (riot_id, name, tag) in enumerate(ids, 1):
         _pace()
@@ -231,6 +256,7 @@ def main(argv=None) -> int:
             lambda n=name, t=tag: riot_api.get_account_by_riot_id(n, t))
         if not acct or not acct.get("puuid"):
             failed_acct += 1
+            acct_rate_limited += 1 if throttled else 0
             why = " (rate limited)" if throttled else ""
             print(f"  ACCOUNT LOOKUP FAILED {riot_id}{why}", flush=True)
             continue
@@ -265,7 +291,14 @@ def main(argv=None) -> int:
             print(f"  matches {i}/{len(wanted)} {tally} "
                   f"elapsed={time.time() - t0:.0f}s", flush=True)
     print(f"DONE {tally} elapsed={time.time() - t0:.0f}s -> {dest}", flush=True)
-    return 0
+    other = acct_rate_limited + _ids_rate_limited["n"]
+    rc = exit_code(tally, other)
+    if rc:
+        print(f"EXIT {rc}: fail={tally['fail']} rate_limited={tally['rate_limited']} "
+              f"account_lookups_rate_limited={acct_rate_limited} "
+              f"ids_pages_rate_limited={_ids_rate_limited['n']} "
+              "(75 = re-run later; resumable)", flush=True)
+    return rc
 
 
 if __name__ == "__main__":
