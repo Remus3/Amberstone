@@ -293,6 +293,40 @@ def test_kit_call_supervisor_ephemeral(kit_calls):
     assert "t-kit-call" in run.call_args.kwargs["input"]
 
 
+# ops/loop/drain_waves_2_3.py - `_spawn`, the drain launcher's one claude door.
+# It loads fleet_route by path under its own module name; seeding that name
+# with the imported module puts the test fixtures' patches in its path.
+
+drain = _load("rc_drain_waves_route_test", "ops/loop/drain_waves_2_3.py")
+
+
+@pytest.fixture
+def drain_dirs(monkeypatch, tmp_path):
+    monkeypatch.setitem(sys.modules, "rc_ops_loop_fleet_route", fleet_route)
+    monkeypatch.setattr(drain, "DRAIN_DIR", tmp_path / "drain")
+    monkeypatch.setattr(drain, "STOP_FILE", tmp_path / "DRAIN_STOP")
+    monkeypatch.setattr(drain, "LOG", tmp_path / "drain.log")
+    return tmp_path
+
+
+def test_drain_refuses_without_route(refused, drain_dirs):
+    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")), \
+         mock.patch("subprocess.Popen", side_effect=AssertionError("spawned with no route")):
+        res = drain._spawn("P", task="t-refused", extra=(), cwd=drain_dirs, timeout=5)
+    assert res["rc"] is None and res["error"].startswith("refused:")
+
+
+def test_kit_call_drain_waves(kit_calls, drain_dirs):
+    with mock.patch("subprocess.run", return_value=_done('{"result":"x"}')):
+        res = drain._spawn("PROMPT", task="t-kit", extra=drain.VERIFY_EXTRA,
+                           cwd=drain_dirs, timeout=5)
+    (c,) = kit_calls
+    assert c["code"] == "RC" and c["writes_code"] is True and c["bare"] is False
+    assert list(c["extra"]) == list(drain.VERIFY_EXTRA)
+    assert res["rc"] == 0
+    assert (drain_dirs / "drain" / "t-kit.out.txt").is_file()
+
+
 class _HangPopen:
     """The kit's `_run` sees a child that never answers: communicate times out
     once, then the reap after the tree kill returns."""
