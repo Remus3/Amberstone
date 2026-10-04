@@ -3,6 +3,11 @@ cd /d "C:\Riot Commander"
 echo.
 echo === Phase 3 Hot-Reload Test: Direct Deploy ===
 echo.
+echo Signing the request (RM-160: unsigned requests fail at the auth phase)...
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops\rc_transactional_deploy.py --init-key
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops\rc_transactional_deploy.py ^
+  --sign "ops\runtime\deploy_requests\deploy-hot-reload-test-001.json"
+
 echo Running transactional deploy for tft_coach_engine.py...
 "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops\rc_transactional_deploy.py ^
   --request "ops\runtime\deploy_requests\deploy-hot-reload-test-001.json" ^
