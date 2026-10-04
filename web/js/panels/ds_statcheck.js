@@ -92,7 +92,10 @@ function setDsStatcheckScheduler(fn) {
   _schedule = typeof fn === "function" ? fn : null;
 }
 
-function _wireStrip(blockEl, champId) {
+// RM-196: the handler reads the champion from the strip's own data-champ at
+// FIRE time, never from a closure - the strip is rebuilt (and re-stamped)
+// whenever the locked champion changes, see renderDsStatcheck.
+function _wireStrip(blockEl) {
   const strip = blockEl.querySelector(".dss-strip");
   if (!strip || strip.dataset.wired === "1") return;
   strip.dataset.wired = "1";
@@ -101,6 +104,8 @@ function _wireStrip(blockEl, champId) {
   const onEdit = () => {
     if (_t) clearTimeout(_t);
     _t = setTimeout(() => {
+      const champId = _num(strip.dataset.champ);
+      if (!champId) return;
       const k = {};
       inputs.forEach((inp) => {
         const key = inp.dataset.knob;
@@ -239,10 +244,19 @@ export function renderDsStatcheck(blockEl, cs) {
     host = blockEl.querySelector(".dss-host");
   }
   const stripMount = host.querySelector(".dss-strip-mount");
-  if (stripMount.dataset.rendered !== "1") {
+  // RM-196: re-render + re-wire on a CHAMPION CHANGE, not only on first
+  // paint. The active-match mount only hides the block between games (it
+  // never renders a falsy champion), so a truthy-to-truthy swap is the
+  // normal path and the old once-per-mount gate kept the previous
+  // champion's strip, values and handler.
+  if (stripMount.dataset.rendered !== "1" ||
+      stripMount.dataset.champ !== String(champId)) {
     stripMount.innerHTML = _stripHtml(knobs);
     stripMount.dataset.rendered = "1";
-    _wireStrip(blockEl, champId);
+    stripMount.dataset.champ = String(champId);
+    const strip = stripMount.querySelector(".dss-strip");
+    if (strip) strip.dataset.champ = String(champId);
+    _wireStrip(blockEl);
   }
 
   const sig = champId + ":" + mode + ":" + JSON.stringify(knobs);
