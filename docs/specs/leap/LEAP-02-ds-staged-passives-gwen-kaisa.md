@@ -1,7 +1,7 @@
 # LEAP-02 - DS staged passive-damage entries: Gwen P + Kai'Sa P
 
 Status: SPEC (pre-implementation). Author pass: 2026-07-16.
-Target model: claude-opus-4-8, effort MAX (Tier-2 engine slice).
+Target model: claude-opus-5-5, effort MAX (Tier-2 engine slice).
 Estimated sessions: 1.
 
 ---

@@ -4,7 +4,7 @@ Status: SPEC (Fable-5 forward-leap portfolio, 2026-07-16). Tier-1 RC-side.
 Shadow-first: the fed signal is computed + shadow-logged + fully plumbed
 headless, but the on-screen SURVIVE chip stays DARK behind a default-OFF flag
 until the operator live-validates and flips it (a LIVE_GAME_GATED_SYNC row).
-One execution session, model claude-opus-4-8 effort high.
+One execution session, model claude-opus-5-5 effort high.
 
 ASCII only - use " - " for a clause break (repo hard rule). No em/en dashes.
 
@@ -374,7 +374,7 @@ per ADR-008). NO Tier-2 dual-suite / DS-restart tax.
 
 ## EST SESSIONS
 
-ONE session. Model claude-opus-4-8, effort high (Tier-1 logic + a formula with
+ONE session. Model claude-opus-5-5, effort high (Tier-1 logic + a formula with
 boundary tests; not a Tier-2 engine bump, but the estimator + AND-boundary +
 shadow-log wiring warrant high effort for a clean single pass).
 
