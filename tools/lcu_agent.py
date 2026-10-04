@@ -1748,6 +1748,21 @@ def _cmd_poll_loop():
         time.sleep(BENCH_CMD_FAST_INTERVAL if fast else CMD_INTERVAL)
 
 
+def _install_draft_log_sink() -> None:
+    """RM-609: persist each finalized champ-select draft (pick order is the
+    one draft datum Match-V5 lacks) into the sibling ``draft_log`` table of
+    data/rewind_history.db, the DB the post-game Match-V5 ingest writes
+    (lib/rewind_live_writer.py DB_PATH). Installed here, at agent start, and
+    NOT at import, so tests that import this module or call the pure shapers
+    never write a real DB."""
+    try:
+        from lcu import draft_log
+        draft_log.install_sink(draft_log.sqlite_sink(
+            Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"))
+    except Exception as exc:  # noqa: BLE001
+        log.warning(f"[draft-log] sink not installed: {exc}")
+
+
 def loop() -> None:
     log.info(f"lcu agent -> {LEGION} state={INTERVAL}s auto={AUTO_INTERVAL}s cmd={CMD_INTERVAL}s")
     # s219: restore persisted ingest state + one-shot crash-recovery for
@@ -1756,6 +1771,7 @@ def loop() -> None:
     # case once League comes online).
     _load_ingest_state()
     _recover_missed_ingest()
+    _install_draft_log_sink()
     for fn in (_state_push_loop, _auto_features_loop, _cmd_poll_loop):
         threading.Thread(target=fn, daemon=True, name=fn.__name__).start()
     while True:

@@ -33,6 +33,7 @@ from __future__ import annotations
 import time
 from typing import Callable
 
+from lcu import draft_log as _draft_log
 from lcu.champ_select_shape import shape_champ_select
 # RM-367: the single in-package answer to "does this gameflow body name a
 # phase". Owned by lcu_pregame (RM-347), which documents the rule; a near-copy
@@ -546,6 +547,9 @@ def shape_snapshot(request: Callable[..., tuple], config,
             gid = str(gdata.get("gameId") or "")
             if gid and gid != "0":
                 state["game_id"] = gid
+                # RM-609: a draft finalized while the champ-select session
+                # still carried no gameId is persisted under this one.
+                _draft_log.note_game_id(gid)
             # D6 (2026-07-04): observe the Arena/Cherry augment picker so a
             # force_scan can be bumped when it opens (seeds augment_shadow.jsonl
             # / anvil_shadow.jsonl). Gated to Arena queues - the endpoint 404s
