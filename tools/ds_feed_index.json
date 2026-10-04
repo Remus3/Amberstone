@@ -614,9 +614,122 @@
         "stamp_field": "_patch"
       }
     },
-    "16.19.1": {}
+    "16.19.1": {
+      "ability_staleness.json": {
+        "body_md5": "1ac5ff24",
+        "declared_patch": "16.19.1",
+        "stamp_field": "_patch"
+      },
+      "arena_augments.json": {
+        "body_md5": "e050f6c0",
+        "declared_patch": "16.19.1",
+        "stamp_field": "patch"
+      },
+      "build_orders_aram.json": {
+        "body_md5": "5527443d",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "build_orders_arena.json": {
+        "body_md5": "19c96bb7",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "build_orders_sr.json": {
+        "body_md5": "51ea8e2b",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "cdragon_ability_ratios.json": {
+        "body_md5": "807b95e6",
+        "declared_patch": "16.19.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_ratio_drift.json": {
+        "body_md5": "f876c32a",
+        "declared_patch": "16.19.1",
+        "stamp_field": "patch"
+      },
+      "cdragon_spell_stats.json": {
+        "body_md5": "1816720c",
+        "declared_patch": "16.19.1",
+        "stamp_field": "_patch"
+      },
+      "champion_abilities.json": {
+        "body_md5": "96da30d8",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "champions.json": {
+        "body_md5": "c9bd71f5",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "cherry_augments.json": {
+        "body_md5": "f65ba466",
+        "declared_patch": "16.19.1",
+        "stamp_field": "rc_patch"
+      },
+      "enchanter_items.json": {
+        "body_md5": "d94845dd",
+        "declared_patch": "16.19.1",
+        "stamp_field": "_meta.patch"
+      },
+      "items.json": {
+        "body_md5": "e2ad526d",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "items_meraki.json": {
+        "body_md5": "73446cf8",
+        "declared_patch": "16.19.1",
+        "stamp_field": "patch"
+      },
+      "manifest.json": {
+        "body_md5": "96d7d15b",
+        "declared_patch": "16.19.1",
+        "stamp_field": "ddragon_version"
+      },
+      "pickban_targets.json": {
+        "body_md5": "17f2dd02",
+        "declared_patch": "16.19.1",
+        "stamp_field": "patch"
+      },
+      "scenarios.json": {
+        "body_md5": "877c4bf8",
+        "declared_patch": "16.19.1",
+        "stamp_field": "version"
+      },
+      "wiki_ability_stats.json": {
+        "body_md5": "cded79f2",
+        "declared_patch": "16.19.1",
+        "stamp_field": "_patch"
+      },
+      "wiki_stats.json": {
+        "body_md5": "2cb4f5f5",
+        "declared_patch": "16.19.1",
+        "stamp_field": "_patch"
+      }
+    }
   },
   "generated_from_current_txt": "16.19.1",
   "known_stamp_lag": {},
-  "known_static_body": {}
+  "known_static_body": {
+    "cdragon_spell_stats.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_cdragon_spell_extract.py"
+    ],
+    "enchanter_items.json": [
+      "authored",
+      "none"
+    ],
+    "scenarios.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_extract.py"
+    ],
+    "wiki_stats.json": [
+      "pending-vintage",
+      "tools/daemon_slayer_wiki_stats_extract.py"
+    ]
+  }
 }
