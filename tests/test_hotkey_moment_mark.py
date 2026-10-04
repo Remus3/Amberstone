@@ -173,6 +173,59 @@ def test_mark_calls_the_rm637_replay_buffer_hook(fake_2999, tmp_path, monkeypatc
     assert seen == [mark]
 
 
+class _Bad(BaseHTTPRequestHandler):
+    """Fake :2999 failure shapes: 'garbage' body, 'http500', 'hang'."""
+    mode = "garbage"
+
+    def do_GET(self):  # noqa: N802
+        if type(self).mode == "hang":
+            import time as _t
+            _t.sleep(2.0)
+            return
+        if type(self).mode == "http500":
+            self.send_response(500)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        data = b"<html>loading</html>"
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_message(self, *a):
+        pass
+
+
+@pytest.mark.parametrize("mode", ["garbage", "http500", "hang"])
+def test_2999_failure_catch_covers_each_failure_shape(mode, tmp_path, caplog,
+                                                      monkeypatch):
+    """The :2999 fetch catch must own non-JSON bodies (ValueError), HTTP
+    errors (URLError family) and timeouts (OSError family). Narrowing it
+    lets these fall to the generic outer guard, which logs a different line
+    - so the specific ':2999 gamestats unavailable' message is asserted."""
+    import time as _t
+    monkeypatch.setattr(_Bad, "mode", mode)
+    srv = HTTPServer(("127.0.0.1", 0), _Bad)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    marks = tmp_path / "m.jsonl"
+    try:
+        t0 = _t.monotonic()
+        with caplog.at_level(logging.INFO, logger="rc.hotkey"):
+            mark = hk.handle_moment_mark(
+                base_url=f"http://127.0.0.1:{srv.server_address[1]}",
+                game_id_provider=lambda: "1", marks_file=marks, now=lambda: 5.0)
+        elapsed = _t.monotonic() - t0
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert mark is None and not marks.exists()
+    assert any(":2999 gamestats unavailable" in r.getMessage()
+               for r in caplog.records), [r.getMessage() for r in caplog.records]
+    assert elapsed < 1.9, f"press blocked {elapsed:.2f}s behind a hung :2999"
+
+
 def test_mark_timeout_is_short():
     # A press must not stall the dispatch worker behind a hung :2999.
     assert 0 < hk.MARK_HTTP_TIMEOUT <= 1.5
