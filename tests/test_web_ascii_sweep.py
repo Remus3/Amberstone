@@ -450,7 +450,14 @@ _WEB = _REPO_ROOT / "web"
 # web/css/overlay.css (RM-139 type tokens moved to :root:has(...)) reproduces
 # the superseded eeb2c6c9... value EXACTLY, so those two files are the whole
 # change.
-_LIVE_HALF_DIGEST = "a19bf784eb0dd2cda2e014d75f6595666aa5fc37af52350417188e7266de4438"
+#
+# Re-captured 2026-10-03 for two INTENDED live edits, attributed by swapping
+# both files back to 800d186bc (digest returns to eeb2c6c9...): RM-244 (e)
+# regenerated web/js/lib/state_schema.js, RM-240 added the X-RC-Token
+# header in web/js/panels/coach_decisions.js. Neither is a glyph change.
+# MERGED Wave1 (2026-10-03): both re-captures above landed together, so the
+# pin below is the digest of the merged tree (recomputed, not either slice's).
+_LIVE_HALF_DIGEST = "3cc269ba0a0c7b883edc4f70e2000c13bf8416aecd663b4fb01a23bc2e5b6892"
 
 
 def _web_sources() -> list[Path]:
