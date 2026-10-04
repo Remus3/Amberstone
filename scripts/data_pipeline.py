@@ -512,19 +512,33 @@ def cmd_runes(force: bool = False):
         return False
 
     rune_dest = META / "ddragon_runes.json"
+    # RM-445: the patch the runes file was fetched for. Without it an existing
+    # runes file was never refreshed, so runes stayed at whatever patch first
+    # wrote them. Absent sidecar = unknown vintage = refetch once.
+    rune_version_dest = META / "ddragon_runes_version.json"
     rune_url  = f"{DDRAGON_BASE}/cdn/{live}/data/en_US/runesReforged.json"
 
-    if not rune_dest.exists() or force:
+    rune_version = ""
+    if rune_version_dest.exists():
         try:
-            log.info("  Fetching runesReforged.json...")
+            rune_version = json.loads(
+                rune_version_dest.read_bytes().decode("utf-8")).get("version", "")
+        except (OSError, ValueError, AttributeError):
+            rune_version = ""
+
+    if not rune_dest.exists() or force or rune_version != live:
+        try:
+            log.info("  Fetching runesReforged.json for patch %s (had %s)...",
+                     live, rune_version or "unknown")
             data = _fetch_json(rune_url)
             _write_json(rune_dest, data)
+            _write_json(rune_version_dest, {"version": live})
             log.info("  OK: ddragon_runes.json (%d bytes)", rune_dest.stat().st_size)
         except Exception as e:  # noqa: BLE001
             log.error("  FAILED rune JSON: %s", e)
             return False
     else:
-        log.info("  ddragon_runes.json already exists - skipping JSON fetch")
+        log.info("  ddragon_runes.json already on patch %s - skipping JSON fetch", live)
         data = json.loads(rune_dest.read_text(encoding="utf-8"))
 
     rune_icon_dir = ICONS / "runes"
