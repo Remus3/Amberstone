@@ -559,5 +559,8 @@ class TftPbeCoachEngine:
             tmp = self._data_file.with_suffix(".tmp")
             tmp.write_text(payload, encoding="utf-8")
             tmp.replace(self._data_file)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            # RM-316: was a bare `pass`, so a failure to say "coaching paused"
+            # left the previous round's advice on screen with no record why.
+            # Stays fail-soft: this runs inside _run_safe's handler.
+            logger.warning("Failed to write TFT PBE status %r: %s", msg, exc)
