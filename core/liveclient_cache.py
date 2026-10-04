@@ -30,6 +30,8 @@ from typing import Any, Callable, Optional
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from core.math_core import freshness, observation_age
+
 _log = logging.getLogger("rc.liveclient_cache")
 
 _RELAY_URL = "http://127.0.0.1:8889/latest-liveclient"
@@ -84,20 +86,24 @@ class Snapshot:
         """
         if self.data is None:
             return 0.0
-        ts = _coerce_ts(self.ts)
-        if ts is None:
-            # Nothing enforces the `ts: float` annotation - a Snapshot built
-            # directly (not via _fetch_once) can carry any object, and a bare
-            # subtraction raised TypeError straight into the caller. age_s is
-            # read on every consumer's hot path, so it must be TOTAL: an
-            # untrustworthy timestamp reports stale, it does not raise.
+        # P1-5: the fail-closed rules live in the shared pure helper
+        # (core.math_core.observation_age) so every live-data read judges age
+        # the same way. Nothing enforces the `ts: float` annotation - a
+        # Snapshot built directly (not via _fetch_once) can carry any object -
+        # so the helper is TOTAL: an absent / malformed timestamp, or one from
+        # the future by more than clock jitter allows, returns None and is
+        # reported here as stale (_UNKNOWN_AGE_S), never raised.
+        age = observation_age(self.ts, now=time.time(), max_skew_s=_MAX_CLOCK_SKEW_S)
+        if age is None:
             return _UNKNOWN_AGE_S
-        age = time.time() - ts
-        if age < -_MAX_CLOCK_SKEW_S:
-            # Timestamp is from the future by more than clock jitter allows:
-            # the envelope is not trustworthy, so do not report it as fresh.
-            return _UNKNOWN_AGE_S
-        return max(0.0, age)
+        return age
+
+    def is_fresh(self, max_age_s: float) -> bool:
+        """True only when there is data and its age is known and within
+        ``max_age_s`` (core.math_core.freshness rules; fails closed)."""
+        if self.data is None:
+            return False
+        return freshness(self.ts, max_age_s, now=time.time(), max_skew_s=_MAX_CLOCK_SKEW_S).fresh
 
 
 _EMPTY = Snapshot()

@@ -189,6 +189,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/macro_context.py` | fog-only macro snapshot for the deterministic decision tree |
 | `core/macro_decision_tree.py` | ordered pure-rule registry for deterministic macro callouts |
 | `core/macro_response.py` | RC2-P5.7 deterministic lost-objective + stagnation response |
+| `core/math_core.py` | pure game-math core (resists, growth, display rounding, freshness) pinned by external goldens |
 | `core/meta_crawl.py` | participant-graph crawler for event-mode champion stats |
 | `core/mia_reachability.py` | MIA reachability rings - SOLE zoi.mia producer (ZOI Wave 3, spec E-2) |
 | `core/mode_capabilities.py` | static per-mode capability truth table (fail-CLOSED) |
