@@ -1488,6 +1488,10 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+- **LX-06** (RM-604, event channel) A real game's death, level-up, completed item and objective events
+  (including `stolen` on a stolen objective) reach a live `/api/events` EventSource client; a
+  reconnect resumes with Last-Event-ID across the real 600 s connection cap and across a dashboard
+  restart (expect a `gap`, then a re-read of /api/state).
 - **LX-05** (RM-607, item tape) One ARAM Mayhem (KIWI) game with `RC_ITEM_TAPE=1`: folded tape equals
   the final allPlayers inventories; combines match DDragon recipes; anvil / augment grants typed
   ITEM_GRANTED; rows land in timeline_events with `source='live_tape'` after the 180 s delay.
