@@ -105,6 +105,18 @@ def test_participant_id_is_resolved_by_riot_id_and_team_never_by_order(conn):
     assert [tuple(r) for r in rows] == [(1036, 7), (1037, None)]
 
 
+def test_persist_drops_events_from_an_earlier_game_segment(conn):
+    """Verifier probe: game A (segment 0) bought 1036, game B (segment 1)
+    bought 1055; persisting under B's match_id writes ONLY B's purchase."""
+    a = lit.TapeEvent(600.0, "TapeP1#TST", "ORDER", lit.EV_PURCHASED, 1036, 1, (), 0)
+    b = lit.TapeEvent(20.0, "TapeP1#TST", "ORDER", lit.EV_PURCHASED, 1055, 1, (), 1)
+    assert [r["item_id"] for r in store.build_rows("NA1_2", [a, b])] == [1055]
+    res = store.persist_tape(conn, "NA1_2", [a, b])
+    assert res["rows"] == 1
+    items = [r[0] for r in conn.execute("SELECT item_id FROM timeline_events")]
+    assert items == [1055]
+
+
 def test_match_v5_present_means_no_tape_write(conn):
     _v5_row(conn)
     res = store.persist_tape(conn, MID, [_ev(lit.EV_PURCHASED, 1036)])
