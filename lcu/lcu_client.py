@@ -175,13 +175,15 @@ class LcuClient(_PGMixin):
         body = json.dumps(data).encode() if data else None
         # RC2 E7 / P6.4 (L6, operator frozen-grant 2026-06-30): opt-in pooled
         # keep-alive reuse cuts the per-call LCU TCP+TLS handshake on the
-        # every-tick auto-accept path. DEFAULT-OFF (RC_LCU_POOL) so the urlopen
-        # path below stays byte-identical until the operator opts in. The pooled
-        # branch preserves _request's contract: 2xx -> parsed JSON ({} when the
-        # body is empty), non-2xx -> None (mirrors the urlopen HTTPError -> None
-        # so a 404 error body never leaks as a dict to callers), and a fail-soft
-        # pool None falls through to the per-call urlopen read. Lazy import keeps
-        # the frozen top-level import block untouched (same pattern as LIFT 5).
+        # every-tick auto-accept path. DEFAULT-ON since the E7 flip 2026-06-30
+        # (core/lcu_pool.pool_enabled() reads RC_LCU_POOL, default "1");
+        # RC_LCU_POOL=0 restores the byte-identical per-call urlopen path. The
+        # pooled branch preserves _request's contract: 2xx -> parsed JSON ({}
+        # when the body is empty), non-2xx -> None (mirrors the urlopen
+        # HTTPError -> None so a 404 error body never leaks as a dict to
+        # callers), and a fail-soft pool None falls through to the per-call
+        # urlopen read. Lazy import keeps the frozen top-level import block
+        # untouched (same pattern as LIFT 5).
         from core import lcu_pool
         if lcu_pool.pool_enabled():
             res = lcu_pool.get_shared_pool().request(
