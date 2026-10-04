@@ -817,12 +817,24 @@ def get_recent_matches(
     return data
 
 
+def _match_id_ok(match_id: str) -> bool:
+    """RM-317: `match:v5:<id>` and `match:v5:timeline:<id>` share a prefix in
+    the NEVER-expiring immutable cache, so an id carrying `:` (for example
+    `timeline:NA1_123`) could build the other endpoint's key. Riot match ids
+    are `<PLATFORM>_<gameId>` and never contain a colon, so refusing one
+    makes the collision unconstructible without migrating existing rows."""
+    if ":" in str(match_id):
+        log.warning("riot_api: refusing match_id containing ':' (%r)", str(match_id)[:40])
+        return False
+    return True
+
+
 def get_match(
     match_id: str,
     region: str = "americas",
 ) -> Optional[dict]:
     """Match-V5: full match detail. Immutable cache - match data never changes."""
-    if not match_id:
+    if not match_id or not _match_id_ok(match_id):
         return None
     cache_key = f"match:v5:{match_id}"
     return _cached_or_fetch("match_v5_detail", cache_key, lambda: (
@@ -836,7 +848,7 @@ def get_match_timeline(
     region: str = "americas",
 ) -> Optional[dict]:
     """Match-V5: per-event timeline. Immutable cache."""
-    if not match_id:
+    if not match_id or not _match_id_ok(match_id):
         return None
     cache_key = f"match:v5:timeline:{match_id}"
     return _cached_or_fetch("match_v5_timeline", cache_key, lambda: (
