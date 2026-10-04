@@ -19,7 +19,7 @@ print("Fetching team planner data...")
 try:
     raw = fetch("https://raw.communitydragon.org/pbe/plugins/rcp-be-lol-game-data/global/default/v1/tftchampions-teamplanner.json")
     # Save raw
-    (PROJECT / "data" / "meta" / "cdragon_teamplanner_pbe.json").write_text(raw, encoding="utf-8")
+    (PROJECT / "data" / "meta" / "cdragon_teamplanner_pbe.json").write_bytes(raw.encode("utf-8"))
     data = json.loads(raw)
     print(f"  Got {len(data) if isinstance(data,list) else 'dict'} entries")
     # Extract Set 17 champions
@@ -44,7 +44,7 @@ try:
         existing_file = PROJECT / "data" / "meta" / "tft_set17_champion_codes.json"
         existing = json.loads(existing_file.read_text()) if existing_file.exists() else {}
         merged = {**existing, **codes}
-        existing_file.write_text(json.dumps(merged, indent=2, sort_keys=True))
+        existing_file.write_bytes(json.dumps(merged, indent=2, sort_keys=True).encode("utf-8"))
         print(f"\nMerged {len(codes)} CDragon codes into {len(merged)} total")
     else:
         print("  No Set17 champions found - checking structure...")
@@ -60,7 +60,7 @@ except Exception as e:  # noqa: BLE001
 print("\nFetching TFT en_us data...")
 try:
     raw2 = fetch("https://raw.communitydragon.org/pbe/cdragon/tft/en_us.json")
-    (PROJECT / "data" / "meta" / "cdragon_tft_pbe.json").write_text(raw2, encoding="utf-8")
+    (PROJECT / "data" / "meta" / "cdragon_tft_pbe.json").write_bytes(raw2.encode("utf-8"))
     data2 = json.loads(raw2)
     print(f"  Keys: {list(data2.keys())[:15]}")
     # Look for champions

@@ -896,7 +896,7 @@ def _atomic_write(path: Path, obj: Any) -> None:
 
     os.close(fd)
     tmp_p = Path(tmp)
-    tmp_p.write_text(text, encoding="ascii")
+    tmp_p.write_bytes(text.encode("ascii"))
     tmp_p.replace(path)
 
 

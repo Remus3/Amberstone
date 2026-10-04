@@ -38,6 +38,32 @@ SWEPT_WRITERS = (
     "tools/unresolved_token_scan.py",
     "tools/upstream_drift_check.py",
     "tools/vision_atlas_validate.py",
+    # RM-481 residual sweep (2026-10-04): every remaining text-mode writer
+    # whose DEFAULT output is a tracked file.
+    "ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py",
+    "ops/audit/ds_perm_swarm/build_survivability_item_credit.py",
+    "ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py",
+    "ops/audit/ds_perm_swarm/build_survivability_item_credit_tank.py",
+    "ops/audit/ds_perm_swarm/dsp10_pass2_verify.py",
+    "ops/audit/ds_perm_swarm/live_flip_eyeball.py",
+    "ops/audit/ds_perm_swarm/rf4_verify.py",
+    "ops/audit/ds_perm_swarm/run_consolidate.py",
+    "ops/audit/ds_perm_swarm/run_harness.py",
+    "ops/audit/lolmath_ds_sweep/g7_comp_harness.py",
+    "ops/audit/p2w5_partition.py",
+    "ops/audit/p2w5h2_partition.py",
+    "scripts/discover_champion_codes.py",
+    "scripts/extract_champion_profiles.py",
+    "scripts/fetch_cdragon_pbe.py",
+    "scripts/probe_missing_codes.py",
+    "tools/champion_loadout_cleanup_pollution_item213.py",
+    "tools/champion_loadout_validate_meta.py",
+    "tools/hotfix_kaisa_aram_ashe_sr_item263.py",
+    "tools/hotfix_sibling_pollution_item269.py",
+    "tools/hotfix_thin_aram_adc_item275.py",
+    "tools/hotfix_thin_aram_pollution_item276.py",
+    "tools/hotfix_zaahen_loadout_item277.py",
+    "tools/regen_ranged_marksman_builds_item213.py",
 )
 
 _PAYLOAD = json.dumps({"a": 1, "b": [1, 2], "c": {"d": None}}, indent=2) + "\n"
