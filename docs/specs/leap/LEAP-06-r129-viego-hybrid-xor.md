@@ -200,7 +200,7 @@ else-branch -> auto-only, ability DPS dropped):
   EQ combo, not next-auto empowers).
 
 Ship-pattern precedent (the exact Tier-2 shape this session follows) -
-`docs/LEDGER.md` entry 515 (ENGINE 1.145.0 -> 1.146.0, commit `dc2eb0c3`): NEW
+`docs/LEDGER.md` entry 515 (ENGINE 1.145.0 -> 1.146.0, commit `7f698ce7`): NEW
 `assume_<x>: bool = False` seam, byte-identical off, RED-first test, engine bump
 quoted-literal-only across the DS source .py, Share re-synced SAME commit
 (--check green), DS :8893 taskkill + `schtasks /Run RC-DaemonSlayer` -> /health,

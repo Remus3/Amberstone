@@ -21,7 +21,7 @@ Design notes worth keeping:
 - The replacement is abbreviated to the SAME LENGTH as the text it replaces,
   so an 8-char citation stays 8 chars and the prose does not reflow.
 - Not every 7-40 char hex run is a SHA. The default pattern requires the run
-  to be delimited by a non-hex-word boundary, and `--require-backticks`
+  to be delimited by a non-word-character boundary, and `--require-backticks`
   narrows further to the repo's dominant `` `sha` `` citation style.
 - Dry run is the default. `--apply` is required to write.
 
@@ -29,18 +29,25 @@ Usage:
     python tools/rewrite_sha_citations.py --map .git/filter-repo/commit-map \\
         docs/LEDGER.md docs/ORCHESTRATION_PLAN.md
     python tools/rewrite_sha_citations.py --map <path> --apply <files...>
+
+Any run AFTER the rewrite itself (RM-501) must pass `--skip-resolvable .`,
+so a citation that already names a live commit is never remapped.
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 ZERO_SHA = "0" * 40
 # 7 is git's historical default abbreviation; 40 is a full sha.
-SHA_RE = re.compile(r"(?<![0-9a-fA-F])([0-9a-f]{7,40})(?![0-9a-fA-F])")
+# Boundary is ANY word character, not just hex (RM-501): with a hex-only
+# boundary "feedbac" inside "feedback_x" was a candidate citation.
+SHA_RE = re.compile(r"(?<![0-9A-Za-z_])([0-9a-f]{7,40})(?![0-9A-Za-z_])")
 BACKTICKED_SHA_RE = re.compile(r"(?<=`)([0-9a-f]{7,40})(?=`)")
 
 
@@ -92,9 +99,16 @@ class CommitMap:
         return ("ok", new)
 
 
-def rewrite_text(text: str, cmap: CommitMap, pattern: re.Pattern[str]):
-    """Return (new_text, stats, problems). Pure - does no IO."""
-    stats = {"ok": 0, "unknown": 0, "ambiguous": 0, "dropped": 0}
+def rewrite_text(text: str, cmap: CommitMap, pattern: re.Pattern[str],
+                 skip: Callable[[str], bool] | None = None):
+    """Return (new_text, stats, problems). Pure - does no IO.
+
+    ``skip(token)`` returning True leaves that token untouched and counts it
+    as "skipped". RM-501: run long after the rewrite, a doc mixes dead
+    pre-rewrite citations with live post-rewrite ones, and a live sha whose
+    prefix also matches an OLD key must never be remapped.
+    """
+    stats = {"ok": 0, "unknown": 0, "ambiguous": 0, "dropped": 0, "skipped": 0}
     problems: list[tuple[int, str, str]] = []
 
     # Precompute line numbers so a problem can be reported as file:line.
@@ -114,6 +128,9 @@ def rewrite_text(text: str, cmap: CommitMap, pattern: re.Pattern[str]):
 
     def sub(m: re.Match[str]) -> str:
         token = m.group(1)
+        if skip is not None and skip(token):
+            stats["skipped"] += 1
+            return token
         status, new = cmap.resolve(token)
         stats[status] += 1
         if status != "ok":
@@ -122,6 +139,21 @@ def rewrite_text(text: str, cmap: CommitMap, pattern: re.Pattern[str]):
         return new[: len(token)]
 
     return pattern.sub(sub, text), stats, problems
+
+
+def resolvable_in_repo(tokens: set[str], repo: Path) -> set[str]:
+    """Tokens that name a commit in ``repo`` right now (one batch call)."""
+    toks = sorted(tokens)
+    if not toks:
+        return set()
+    out = subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "--batch-check"],
+        input="".join(f"{t}^{{commit}}\n" for t in toks),
+        capture_output=True, text=True, check=True,
+    ).stdout.splitlines()
+    # One output line per input line; "missing" / "ambiguous" do not resolve.
+    return {t for t, line in zip(toks, out)
+            if not line.endswith("missing") and "ambiguous" not in line}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -135,12 +167,24 @@ def main(argv: list[str] | None = None) -> int:
                     help="only rewrite shas already wrapped in backticks")
     ap.add_argument("--max-problems", type=int, default=25,
                     help="how many unresolvable citations to print per file")
+    ap.add_argument("--skip-resolvable", type=Path, metavar="REPO",
+                    help="leave alone every token that already names a commit "
+                         "in REPO (use for any run after the rewrite itself)")
     args = ap.parse_args(argv)
 
     cmap = CommitMap.from_file(args.map)
     pattern = BACKTICKED_SHA_RE if args.require_backticks else SHA_RE
 
-    totals = {"ok": 0, "unknown": 0, "ambiguous": 0, "dropped": 0}
+    skip = None
+    if args.skip_resolvable is not None:
+        tokens: set[str] = set()
+        for path in args.files:
+            if path.exists():
+                tokens.update(pattern.findall(path.read_text(encoding="utf-8")))
+        live = resolvable_in_repo(tokens, args.skip_resolvable)
+        skip = live.__contains__
+
+    totals = {"ok": 0, "unknown": 0, "ambiguous": 0, "dropped": 0, "skipped": 0}
     changed_any = False
 
     for path in args.files:
@@ -148,14 +192,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"SKIP  {path} (does not exist)")
             continue
         original = path.read_text(encoding="utf-8")
-        updated, stats, problems = rewrite_text(original, cmap, pattern)
+        updated, stats, problems = rewrite_text(original, cmap, pattern, skip)
         for k in totals:
             totals[k] += stats[k]
 
         verb = "would remap" if not args.apply else "remapped"
         print(f"{path}: {verb} {stats['ok']}, "
               f"dropped {stats['dropped']}, unknown {stats['unknown']}, "
-              f"ambiguous {stats['ambiguous']}")
+              f"ambiguous {stats['ambiguous']}, skipped {stats['skipped']}")
         for line_no, token, status in problems[: args.max_problems]:
             print(f"  {path}:{line_no}: {token} -> {status.upper()}")
         if len(problems) > args.max_problems:
@@ -170,7 +214,8 @@ def main(argv: list[str] | None = None) -> int:
                 tmp.replace(path)
 
     print(f"\nTOTAL: remapped {totals['ok']}, dropped {totals['dropped']}, "
-          f"unknown {totals['unknown']}, ambiguous {totals['ambiguous']}")
+          f"unknown {totals['unknown']}, ambiguous {totals['ambiguous']}, "
+          f"skipped {totals['skipped']}")
     if not args.apply and changed_any:
         print("dry run - nothing written. Re-run with --apply.")
     # A dropped citation is a real, permanent loss and should be visible in
