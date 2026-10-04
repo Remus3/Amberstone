@@ -432,8 +432,10 @@ def liveclient_summary() -> dict:
         # failed read must not masquerade as "nothing was taken".
         objective_events: list | None = []
         try:
+            # RM-601: HordeKill is the voidgrub take (one event per grub);
+            # it sat unmodelled, so grub takes never reached a callout.
             _obj_names = {"DragonKill": "dragon", "BaronKill": "baron",
-                          "HeraldKill": "herald"}
+                          "HeraldKill": "herald", "HordeKill": "voidgrub"}
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
             _raw_events = _as_dict(d.get("events")).get("Events")
@@ -458,8 +460,11 @@ def liveclient_summary() -> dict:
                     killer_team = "ally"
                 else:
                     killer_team = "unknown"
+                # RM-601: the wire sends Stolen as the STRING "True"/"False";
+                # as_bool reads both forms, and a missing key is not a steal.
                 entry = {"name": obj, "killer_team": killer_team,
-                         "down_at_s": float(t)}
+                         "down_at_s": float(t),
+                         "stolen": as_bool(ev.get("Stolen"), False)}
                 # Elder discriminator for the epic-buff countdown
                 # (core.event_callouts.epic_buff_callouts). DragonKill carries a
                 # DragonType ("Fire"/"Earth".../"Elder"); surface it as an
