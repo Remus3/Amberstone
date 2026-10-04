@@ -360,6 +360,11 @@ EV_VACUOUS = re.compile(r"no tests ran|collected 0 items|^\s*INTERNALERROR>",
 # output lands later, when the output file is read by some unrelated command.
 EV_BACKGROUND = re.compile(r"running in background with ID|Output is being written to",
                            re.I)
+# RM-498: summary-bearing reads one backgrounded launch may be credited with.
+# Two, because the largest legitimate single job is the dual suite (DS then RC);
+# a bound, so one launch does not credit every summary-shaped line read for the
+# rest of the session.
+DEFERRED_SUMMARY_CAP = 2
 # Deliberately the TERMINAL-SUMMARY shape, not a bare "N passed". Crediting any
 # floating count is what poisoned the first armed gate; requiring the trailing
 # duration is what keeps this a widening of evidence and not of belief.
@@ -526,7 +531,13 @@ def collect_evidence(rows):
     """
     ev = {"texts": [], "bash": [], "edited": [], "runs": [], "ci_runs": []}
     pending = None
-    deferred = None
+    # RM-498: one OPEN entry per backgrounded launch, each with room for
+    # DEFERRED_SUMMARY_CAP summary-bearing reads. The old single per-session
+    # slot, cleared on the first read, credited one count and dropped the rest:
+    # a job running both suites, two concurrent jobs, and a later launch whose
+    # slot an earlier harness-backgrounded run had swallowed were all measured
+    # false positives on TRUE numbers.
+    deferred = []
     for row in rows:
         role = row.get("type")
         for block in _blocks(row):
@@ -562,14 +573,26 @@ def collect_evidence(rows):
                 if pending is not None:
                     pending["output"] = text
                     # A backgrounded run has not reported yet. Keep it open so
-                    # the summary can be attached when the output file is read.
-                    deferred = pending if EV_BACKGROUND.search(text) else deferred
+                    # its summaries can be attached when the output file is read.
+                    if EV_BACKGROUND.search(text):
+                        pending["_room"] = DEFERRED_SUMMARY_CAP
+                        deferred.append(pending)
                     pending = None
-                elif deferred is not None and EV_SUMMARY_LINE.search(text):
-                    # The deferred run finally speaking, through whatever command
-                    # happened to read its output file. Attach, do not free-float.
-                    deferred["output"] += "\n" + text
-                    deferred = None
+                elif deferred and EV_SUMMARY_LINE.search(text):
+                    # A deferred run finally speaking, through whatever command
+                    # happened to read its output file. Attach to the OLDEST open
+                    # launch with room left. Only the summary-shaped LINES are
+                    # attached, never the whole result, so a floating count read
+                    # alongside a real summary is not laundered into evidence.
+                    target = deferred[0]
+                    target["output"] += "\n" + "\n".join(
+                        line for line in text.splitlines()
+                        if EV_SUMMARY_LINE.search(line))
+                    target["_room"] -= 1
+                    if target["_room"] <= 0:
+                        deferred.pop(0)
+    for run in ev["runs"]:
+        run.pop("_room", None)
     return ev
 
 
