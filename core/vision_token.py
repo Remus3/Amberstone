@@ -71,15 +71,32 @@ _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "vision_token
 TokenSource = Literal["env", "config"]
 
 
+def _checked(tok: str, src: TokenSource) -> tuple[str, TokenSource]:
+    """RM-241: refuse a token that is not legal as a bearer header value.
+
+    ``env.strip()`` keeps INTERNAL newlines, and urllib refuses such a header
+    with an exception whose text carries the raw value - which every caller
+    that logs its exception then writes to ``logs/``. Rejecting at resolve
+    time fails loud once, at startup, and the message names only the source
+    and the offending character class, never the token.
+    """
+    if not all(0x21 <= ord(c) <= 0x7E for c in tok):
+        raise RuntimeError(
+            f"vision_token: the {src} token contains whitespace, control or "
+            "non-ASCII characters and cannot be sent as a header value. "
+            "Re-write it as a single printable-ASCII line.")
+    return tok, src
+
+
 def _resolve() -> tuple[str, TokenSource]:
     env = os.environ.get("RC_VISION_TOKEN")
     if env and env.strip():
-        return env.strip(), "env"
+        return _checked(env.strip(), "env")
     try:
         if _CONFIG_PATH.exists():
             first_line = _CONFIG_PATH.read_text(encoding="utf-8").splitlines()[0].strip()
             if first_line:
-                return first_line, "config"
+                return _checked(first_line, "config")
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
     except (OSError, UnicodeDecodeError):
         pass
