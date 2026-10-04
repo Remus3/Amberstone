@@ -177,9 +177,9 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 |---|---|---|---|---|
 | 1 | Trinket/vision-ready single-pulse cue | NEW | OPEN | no ward-ready cue; overlay_pulse.js glow only |
 | 2 | Dashboard stays w/ overlay active | P3.4 | SHIPPED | 183f1969; overlay_settings.js keepCompanion |
-| 3 | Ration motion/pulse to urgent | NEW | SHIPPED | overlay_priority.js:113 shouldPulse |
+| 3 | Ration motion/pulse to urgent | NEW | SHIPPED | overlay_priority.js:113 `shouldPulse` |
 | 4 | Minimap-anchored objective/camp timers | NEW | OPEN | am-pane-map glow only; no timer chips |
-| 5 | DPI/scaleFactor overlay sizing | P4.1 | SHIPPED | 4d5d54f0; overlay_state.js:306 normScaleFactor |
+| 5 | DPI/scaleFactor overlay sizing | P4.1 | SHIPPED | 4d5d54f0; overlay_state.js:356 `normScaleFactor` |
 | 6 | Fullscreen "go Borderless" hint | NEW | OPEN | comment only; no HWND/WS_POPUP read |
 | 7 | Tiered spike-crossed "do now" cue | NEW | GATED-LIVE | arbitration shipped; producer unwired |
 | 8 | Settings without hotkeys | P3.5/4.4 | SHIPPED | overlay_settings.js sendOverlayAction |
@@ -196,7 +196,7 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 19 | Champ-pool per-champ trend arrow | NEW | SHIPPED | main.js:1600 recent-vs-baseline arrow |
 | 20 | GPI single-match dot on radar | NEW | OPEN | longitudinal polygon only |
 | 21 | Last-session recap on lobby | NEW | OPEN | today-hero streak only |
-| 22 | Finish ready-check auto-accept | NEW | SHIPPED | E6 main.js:5344 _syncAutoAccept |
+| 22 | Finish ready-check auto-accept | NEW | SHIPPED | E6 main.js:5344 `_syncAutoAccept` |
 | 23 | Duo synergy at the lobby | NEW | OPEN | champ-select-only today |
 | 24 | Party/Top8 recent-form chips | NEW | OPEN | Top8 hue-highlight only |
 | 25 | Counter-picks vs live enemy comp | NEW | SHIPPED | E4 routes_pickban.py:1231 `_serve_counter_picks` |
@@ -218,7 +218,7 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 41 | Kill-clustering ribbon + death heatmap | NEW | OPEN | no kill_pos plot |
 | 42 | prefers-reduced-motion replacement | NEW | SHIPPED | tokens.css:169 (E8 19f8116f) |
 | 43 | Redundant status glyphs | NEW | SHIPPED | tokens.css:152 triangle glyphs (E8) |
-| 44 | Threshold status helper statusFor() | NEW | SHIPPED | status.js:43 (E8) |
+| 44 | Threshold status helper `statusFor()` | NEW | SHIPPED | status.js:43 (E8) |
 | 45 | Quiet-by-default motion sweep | NEW | OPEN | ~9 infinite loops live |
 | 46 | Two-tier design tokens | NEW | OPEN | --signal-good still literal |
 | 47 | Labeled grid + tonal elevation | NEW | OPEN | no surface/text-tier tokens |
@@ -237,7 +237,7 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 60 | SSE tick + build TTL ->0.5s (L4) | P6.3 | SHIPPED | e9b1a5d0 _STATE_CADENCE_S |
 | 61 | Pooled keep-alive LCU conn (L6) | GATED | GATED-LIVE | lcu_pool.py OFF; E7 |
 | 62 | Single CS reader on 1-PC (L3) | NEW | OPEN | research-only docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md:174 |
-| 63 | Min-interval guard + 1.5s :2999 floor | NEW | SHIPPED | lcu_pool.py:143 MinIntervalGuard |
+| 63 | Min-interval guard + 1.5s :2999 floor | NEW | SHIPPED | lcu_pool.py:198 `MinIntervalGuard` |
 | 64 | Port/CPU regression verify | P6.4/6.6 | SHIPPED | 92ca2279 footprint guard |
 | 65 | 11 flag-ready re-rank seams flip | FLIP | GATED-LIVE | =E2; live_flip_eyeball.py |
 | 66 | Wire DSP4-7 + antitank producers | GATED | GATED | live call-site wiring |
