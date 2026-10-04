@@ -16,8 +16,15 @@ contract::
         -> (payload: object, err: str | None)
 
 so this module holds no connection, no lockfile, no globals, and imports
-nothing beyond the stdlib - it is importable from the dashboard process
-without dragging in the agent's push loops.
+nothing beyond the stdlib (plus the stdlib-only ``lcu.draft_log``) - it is
+importable from the dashboard process without dragging in the agent's push
+loops.
+
+RM-609: every raw session fetched here is also handed to
+``lcu.draft_log.observe_session`` (the only place that sees the champ-select
+FINALIZATION transition with the full ``actions`` list), and a phase outside
+champ select drops any unpersisted draft. The recorder writes nothing unless
+a sink was installed (the LCU agent installs one), and it never raises.
 
 ``shape_champ_select`` returns a dict with these keys:
 
@@ -35,6 +42,8 @@ LCU round-trip is spent on a payload the caller would discard.
 from __future__ import annotations
 
 from typing import Callable
+
+from lcu import draft_log as _draft_log
 
 CHAMP_SELECT_PHASES = ("ChampSelect", "GameStart", "InProgress")
 
@@ -348,9 +357,11 @@ def shape_champ_select(
     See the module docstring for the return contract.
     """
     if phase not in CHAMP_SELECT_PHASES:
+        _draft_log.observe_phase(phase)
         return {}
 
     sess, _ = request("GET", "/lol-champ-select/v1/session")
+    _draft_log.observe_session(sess)
     # KNOWN-BUG diagnostic enrichment: did /lol-champ-select/v1/
     # session even return a dict for this mode? For KIWI / Mayhem
     # the open question is whether the agent ever sees a populated
