@@ -33,6 +33,8 @@ import threading
 from pathlib import Path
 from typing import Iterable, Optional
 
+from core.resolved_wr import resolution_select, resolved_wr, wr_pct
+
 _log = logging.getLogger("rc.champ_pool_recommender")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -121,11 +123,16 @@ def _open() -> Optional[sqlite3.Connection]:
 def _games_on_champ(c: sqlite3.Connection, puuid: str, champ_id: int) -> list[dict]:
     """All games the user played that champion. Returns rows with
     match_id, team_id, win, kills/deaths/assists. Enemy-team champions
-    surfaced in a sub-query is left to the caller (kept cheap)."""
+    surfaced in a sub-query is left to the caller (kept cheap).
+
+    RM-610: remake signals (game_duration_s, early surrender) ride along
+    when the schema has them so core.resolved_wr can drop remakes from the
+    WR denominator."""
+    extra = resolution_select(c, "m")
     return [dict(r) for r in c.execute(
-        """
+        f"""
         SELECT m.match_id, p.team_id,
-               t.win,
+               t.win{extra},
                COALESCE((SELECT GROUP_CONCAT(p2.champion_name)
                          FROM participants p2
                          WHERE p2.match_id = m.match_id
@@ -266,9 +273,10 @@ def recommend(my_pool: Iterable[str],
                           if _comp_overlap(g["enemy_comp_csv"], target_enemy) >= 2]
             sample_label = "vs comp" if len(comp_games) >= min_games else "vs any"
             sample = comp_games if sample_label == "vs comp" else games
-            wins = sum(1 for g in sample if g["win"])
-            played = len(sample)
-            win_pct = wins / played if played else 0.0
+            # RM-610: one resolved denominator (no remakes, no unknown
+            # results) shared with every personal-WR builder.
+            wins, played, _display = resolved_wr(sample)
+            win_pct = (wr_pct(wins, played, None) or 0.0) / 100.0
             kk, dd, aa, _ = _kda_for(c, puuid, cid)
             out.append({
                 "champion":  _id_to_name.get(cid, str(champ)),
