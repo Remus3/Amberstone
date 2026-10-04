@@ -351,6 +351,33 @@ def _opt_bool(body: dict, key: str, default: bool = False) -> bool:
     return default
 
 
+def _opt_augment_stacks(body: dict) -> Optional[dict]:
+    """RM-479: ``augment_stacks`` as ``{apiName: finite number}`` or None.
+
+    Absent / null -> None, which ``build_champion`` reads as the documented
+    default (byte-identical to pre-RM-479). Any other shape is a 400 rather
+    than a silent default, so a caller can never set it with no effect.
+    """
+    v = body.get("augment_stacks")
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise _ApiError(
+            400, f"augment_stacks: expected object, got {type(v).__name__}")
+    out: dict[str, float] = {}
+    for k, raw in v.items():
+        if isinstance(raw, bool):
+            raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
+        try:
+            f = float(raw)
+        except (TypeError, ValueError):
+            raise _ApiError(400, f"augment_stacks.{k}: expected number, got {raw!r}")
+        if not math.isfinite(f):
+            raise _ApiError(400, f"augment_stacks.{k}: must be a finite number, got {raw!r}")
+        out[str(k)] = f
+    return out
+
+
 def _opt_str(body: dict, key: str, default: Optional[str] = None) -> Optional[str]:
     v = body.get(key, default)
     if v is None:
@@ -439,10 +466,12 @@ def _route_stats(body: dict) -> dict:
     mode = _opt_str(body, "mode", "SR") or "SR"
     augments = _coerce_str_list(body.get("augments"), "augments")
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
+    augment_stacks = _opt_augment_stacks(body)
     try:
         resolved = build_champion(snap, champion_id=champion, level=level,
                                   item_ids=items, mode=mode, augments=augments,
-                                  apply_mode_modifiers=apply_mode_modifiers)
+                                  apply_mode_modifiers=apply_mode_modifiers,
+                                  augment_stacks=augment_stacks)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
