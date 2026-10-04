@@ -161,7 +161,11 @@ def test_lock_held_by_a_dead_pid_is_reaped(tmp_path: Path):
         assert s.name == "0.lock", "the dead holder's slot should be reused"
 
 
-def test_lock_older_than_stale_after_is_reaped(tmp_path: Path):
+def test_lock_far_past_stale_after_is_reaped_ceiling_case(tmp_path: Path):
+    """The x100 CEILING case (RM-503): green under the age arm today and under
+    any future hard ceiling alike, so it identifies no arm. The arm-A case - a
+    live holder between stale_after and any ceiling, with the pid_alive call
+    count asserted - lives in tests/test_slots_is_stale_arms_rm503.py."""
     old = tmp_path / "0.lock"
     old.write_text(json.dumps({"pid": os.getpid(), "ts": time.time() - 10_000}),
                    encoding="utf-8")
