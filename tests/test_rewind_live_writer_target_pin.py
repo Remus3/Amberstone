@@ -349,6 +349,18 @@ class DedupeAndCapTests(_PinBase):
         self.assertEqual(self.parked(), [(TARGET_ID, "match")],
                          "work dropped at the cap is parked for the catchup")
 
+    def test_non_thread_handles_hold_no_slot(self):
+        # CI regression 2026-10-04 (run 37183631213): tests that patch
+        # threading.Timer with a MagicMock left handles whose is_alive()
+        # returns a truthy Mock, so they held cap slots forever and every
+        # later schedule in the same process read staged_cap_reached. Only a
+        # real `True` from is_alive() is a live staged Timer.
+        for _ in range(rlw.MAX_STAGED_TIMERS):
+            rlw._track_timer_for_tests(mock.MagicMock())
+        rlw.schedule_live_insert(object(), delay_s=1.0)
+        self.assertTrue(_FakeTimer.created[-1].started,
+                        "a handle that is not a live Thread must not fill the cap")
+
     def test_finished_timers_free_their_slot(self):
         for _ in range(rlw.MAX_STAGED_TIMERS):
             t = _FakeTimer(1.0, lambda: None)
