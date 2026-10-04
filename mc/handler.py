@@ -32,6 +32,7 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler
 
+from core.log_scrub import scrub_log
 from mc import auth, routes
 
 log = logging.getLogger("rc.mc.handler")
@@ -63,8 +64,14 @@ class Handler(BaseHTTPRequestHandler):
         self._send(code, json.dumps(payload).encode("utf-8"), "application/json")
 
     def log_message(self, fmt: str, *args) -> None:
-        """Route access logs into RC logging instead of stderr."""
-        log.info("%s %s", self.address_string(), fmt % args)
+        """Route access logs into RC logging instead of stderr.
+
+        RM-321: overriding this drops the stdlib's control-character
+        escaping, and :8895 listens on the tailnet address at INFO, so the
+        message is scrubbed via core.log_scrub (never dashboard/ - mc/ is
+        deliberately decoupled from it).
+        """
+        log.info("%s %s", self.address_string(), scrub_log(fmt % args))
 
     # -- verbs -------------------------------------------------------
 

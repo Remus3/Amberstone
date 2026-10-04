@@ -13,6 +13,8 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote
 
+from core.log_scrub import scrub_log
+
 from ._config import (AUTH_HEADER, AUTH_TOKEN, SYNC_DIR, VISION_MODEL,
                       _START_TIME, api_key_present, log)
 from ._frame import get_latest_frame, handle_upload_frame
@@ -322,4 +324,6 @@ class Handler(BaseHTTPRequestHandler):
             pass  # client closed connection early - harmless
 
     def log_message(self, fmt: str, *a: object) -> None:
-        log.debug("HTTP " + fmt, *a)
+        # RM-321: an override loses the stdlib's control-character escaping;
+        # scrub the formatted record and name the peer.
+        log.debug("HTTP %s %s", self.address_string(), scrub_log(fmt % a))
