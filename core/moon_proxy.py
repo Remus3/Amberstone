@@ -41,21 +41,37 @@ class MoonProxy:
         self._available:  Optional[bool] = None
         self._last_check  = 0.0
         self._fail_count  = 0
+        self._refreshing  = False  # RM-289: a probe is in flight
 
     # -- Availability ----------------------------------------------------------
 
     def is_available(self) -> bool:
+        # RM-289: the /health probe (up to CONNECT_TTL = 5 s) runs OUTSIDE
+        # self._lock. One caller claims the refresh under the lock, probes
+        # unlocked, then publishes under the lock; callers arriving while
+        # a refresh is in flight are served the last known availability
+        # instead of serializing behind the probe.
         with self._lock:
             now = time.monotonic()
-            if self._available is None or (now - self._last_check) > CHECK_TTL:
-                self._last_check = now
-                self._available  = self._ping()
-                if self._available:
+            due = self._available is None or (now - self._last_check) > CHECK_TTL
+            if not due or self._refreshing:
+                return bool(self._available)
+            self._refreshing = True
+            self._last_check = now
+        ok = False
+        try:
+            ok = self._ping()
+        finally:
+            with self._lock:
+                self._refreshing = False
+                self._available = ok
+                if ok:
                     self._fail_count = 0
-                    log.info("Moon-PC available at %s:%d", MOON_HOST, MOON_PORT)
-                else:
-                    log.debug("Moon-PC unavailable")
-            return bool(self._available)
+        if ok:
+            log.info("Moon-PC available at %s:%d", MOON_HOST, MOON_PORT)
+        else:
+            log.debug("Moon-PC unavailable")
+        return ok
 
     def _ping(self) -> bool:
         # AUDIT P-rc-frozen-moon_proxy-except-breadth (2026-04-22): narrow
