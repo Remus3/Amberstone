@@ -80,6 +80,8 @@ data/ratings/last_*.json
 data/coach_trace.jsonl
 data/coach_tick_trace.jsonl
 data/spend/
+# P1-4 game-data pipeline: raw-body cache and per-patch reconciled builds (regenerable)
+data/game_data/
 data/vision_state.json
 data/screen_read.json
 data/decisions_pending.json
