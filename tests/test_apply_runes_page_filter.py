@@ -1,5 +1,6 @@
-"""Drift guard: tools/lcu_agent.py::apply_runes DELETE filter MUST
-match all 3 RC page-name prefixes: "RC ", "RC:", "RC-".
+"""Drift guard: tools/lcu_agent.py::apply_runes DELETE filter MUST reclaim
+every RC-authored page (item 210) and - since RM-297a - must NOT match user
+pages on a 3-char stem ("RC ", "RC:", "RC-"), which deleted "RC Main" etc.
 
 Item 210 (2026-05-27): operator-reported "runes not pushing during champ
 select for the selected champ". Root cause = the prior filter only
@@ -28,37 +29,28 @@ class ApplyRunesPageFilterTests(unittest.TestCase):
         self.assertIn('if name == "apply_runes":', src,
                       "apply_runes handler MUST exist in the agent")
 
-    def test_filter_matches_three_prefix_tokens(self) -> None:
-        # Read the apply_runes block + assert all 3 prefix string
-        # constants appear AS LITERALS inside it. AST-walk to avoid
-        # matching the comment block above (the comment lists the
-        # 4 RC name templates as docstring; the actual filter is a
-        # tuple of 3 string literals).
-        src = _AGENT.read_text(encoding="utf-8")
-        # Locate the apply_runes block (between the if-statement and
-        # the next top-level "if name ==" branch).
-        start = src.index('if name == "apply_runes":')
-        # Next sibling branch starts at "if name == \"reroll\":"
-        end = src.index('if name == "reroll":')
-        block = src[start:end]
-        for token in ("RC ", "RC:", "RC-"):
-            self.assertIn(f'"{token}"', block,
-                          f"apply_runes DELETE filter MUST include literal "
-                          f"\"{token}\" so RC-authored pages with that "
-                          f"prefix get reclaimed - operator's account is "
-                          f"3-slot capped, stale RC pages block new apply.")
+    def test_filter_reclaims_every_rc_authored_prefix(self) -> None:
+        # Item 210's stuck page was "RC Experimental - Vayne". RM-297a
+        # (2026-10-03) replaced the 3-char stem filter - which ALSO deleted
+        # user pages named "RC Main" / "RC-smurf" / "RC:test" - with the
+        # shared whole-prefix rule; this keeps item 210's guarantee
+        # BEHAVIOURALLY instead of by grepping literals.
+        import sys
+        sys.path.insert(0, str(_ROOT))
+        from lcu.lcu_rune_writer import is_rc_owned_page
+        for name in ("RC Experimental - Vayne", "RC: Lulu (ARAM)",
+                     "RC - Ashe (SR)"):
+            self.assertTrue(is_rc_owned_page(
+                {"id": 1, "name": name, "isDeletable": True}), name)
 
-    def test_filter_uses_slice_3_prefix_check(self) -> None:
-        # Concrete shape guard: the filter should slice the page name to
-        # the first 3 chars and check membership in a tuple. If anyone
-        # refactors back to startswith("RC: ") only, this catches it.
+    def test_filter_no_longer_matches_user_pages_on_a_3_char_stem(self) -> None:
+        # The old shape pinned here (`nm[:3] in (...)`) IS the RM-297a bug.
         src = _AGENT.read_text(encoding="utf-8")
         start = src.index('if name == "apply_runes":')
         end = src.index('if name == "reroll":')
         block = src[start:end]
-        self.assertIn('nm[:3] in (', block,
-                      "apply_runes filter MUST use nm[:3] tuple-membership "
-                      "check (covers RC: / RC space / RC dash) per item 210")
+        self.assertIn("is_rc_owned_page(pg)", block)
+        self.assertNotIn("nm[:3] in (", block)
 
 
 class AsciiHygieneTests(unittest.TestCase):
