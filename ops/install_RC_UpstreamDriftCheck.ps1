@@ -5,6 +5,9 @@
 # patchLastChanged + CDragon content-metadata). Alert mode only: it
 # detects, advances the sentinel, and posts a bridge note on a real
 # content change. It does NOT --auto-refresh (that stays operator-opt-in).
+# --spec-watch (P1-3) also records new patch / champion / item / field keys of
+# the DDragon index once each (tools/spec_watch.py); an unreadable spec makes
+# the run exit 2.
 # RC-DDragonMirrorRefresh runs 03:30, so 03:45 stays clear of it.
 #
 # Idempotent: unregisters any existing task with the same name first.
@@ -19,7 +22,7 @@ $ErrorActionPreference = "Stop"
 $TaskName  = "RC-UpstreamDriftCheck"
 $Python    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $Script    = "C:\Riot Commander\tools\upstream_drift_check.py"
-$Arguments = "`"$Script`" --bridge-note"
+$Arguments = "`"$Script`" --bridge-note --spec-watch"
 
 if (-not (Test-Path $Python)) { throw "python not found at $Python" }
 if (-not (Test-Path $Script)) { throw "script not found at $Script" }

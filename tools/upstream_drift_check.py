@@ -627,6 +627,17 @@ def render_table(fields) -> str:
 
 
 # --------------------------------------------------------------------------- CLI
+def _run_spec_watch() -> int:
+    """P1-3 spec / patch watch, applied (the daily task's run). Returns its exit code."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from tools import spec_watch
+
+    code, summary = spec_watch.run(apply=True)
+    logger.info("spec-watch: exit=%s outcome=%s", code, summary.get("outcome"))
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="Detect upstream content drift (ddragon / meraki / cdragon).")
@@ -653,6 +664,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ack", action="store_true",
                    help="RM-514: mark every recorded drift alert acknowledged, "
                         "then exit (clears the rc_facts session-start anomaly).")
+    p.add_argument("--spec-watch", action="store_true",
+                   help="P1-3: also run tools/spec_watch.py with --apply (key "
+                        "and field diff of the DDragon index, posted once). A "
+                        "spec that cannot be fetched or parsed makes this run "
+                        "exit 2, after the drift work is done.")
     p.add_argument("--json", default=None, metavar="PATH",
                    help="also dump the full structured report to PATH")
     p.add_argument("--patch", default=None, metavar="PIN",
@@ -762,6 +778,12 @@ def main(argv: list[str] | None = None) -> int:
         else:
             logger.info("no upstream drift (sentinel advanced)")
 
+        if args.spec_watch:
+            # Unlike the side effects above this one is NOT fail-soft: the
+            # promise it keeps is "a spec we cannot read is a failure, never a
+            # quiet pass" (P1-3), so its exit 2 becomes this run's exit 2.
+            if _run_spec_watch() == 2:
+                return 2
         return 0
     except Exception as e:  # noqa: BLE001 - hard unexpected failure -> exit 2
         logger.exception("upstream_drift_check hard error: %s", e)
