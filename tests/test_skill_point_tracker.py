@@ -180,7 +180,7 @@ def test_fence_udyr_r_at_level_one_four_basic_like_slots():
     assert spt.slot_open(rd, "Udyr", "r") is True
 
 
-@pytest.mark.parametrize("champion", ["Jayce", "Elise", "Nidalee", "Karma"])
+@pytest.mark.parametrize("champion", ["Elise", "Nidalee", "Karma"])
 def test_fence_free_r_rank_kits(champion):
     # R rank 1 is granted at level 1 without a point: level 1 + Q1 + R1 is
     # fully spent, not "-1 unspent" and not a phantom point later.
@@ -191,8 +191,38 @@ def test_fence_free_r_rank_kits(champion):
     assert spt.unspent(rd, champion) == 1
 
 
+def test_fence_jayce_real_frames_r_stays_one():
+    # Jayce starts with Transform (R rank 1, free) and can never rank it;
+    # every level point goes to a basic, which ranks to 6.
+    _fence("Jayce", [(1.0, _rd(1, q=1, r=1)), (90.0, _rd(2, q=1, w=1, r=1)),
+                     (400.0, _rd(6, q=3, w=2, e=1, r=1)),
+                     (900.0, _rd(11, q=6, w=4, e=1, r=1)),
+                     (1600.0, _rd(16, q=6, w=6, e=4, r=1)),
+                     (2000.0, _rd(18, q=6, w=6, e=6, r=1))])
+    rd = spt.read_skill_snapshot(_rd(2, q=1, r=1))
+    assert spt.unspent(rd, "Jayce") == 1
+
+
+@pytest.mark.parametrize("frame", [
+    _rd(6, q=3, w=2, e=1, r=1),
+    _rd(11, q=6, w=4, e=1, r=1),
+    _rd(16, q=6, w=6, e=4, r=1),
+])
+def test_jayce_r_never_opens_at_6_11_16(frame):
+    # The level-6/11/16 R unlock that every other kit gets does not exist
+    # for Jayce: with basics placed legally and R=1, nothing is held and R
+    # is not an open slot, so no nag can fire.
+    rd = spt.read_skill_snapshot(frame)
+    assert spt.unspent(rd, "Jayce") == 0
+    assert spt.spendable(rd, "Jayce") == 0
+    assert spt.slot_open(rd, "Jayce", "r") is False
+    st, ev = spt.step(spt.TrackerState(), rd, 10.0, "Jayce")
+    st, ev = spt.step(st, rd, 500.0, "Jayce")
+    assert ev == [] and spt.skill_point_callout(st, 900.0) is None
+
+
 def test_jayce_basics_rank_six():
-    rd = spt.read_skill_snapshot(_rd(11, q=5, w=5, e=1, r=2))
+    rd = spt.read_skill_snapshot(_rd(11, q=5, w=5, e=1, r=1))
     assert spt.slot_open(rd, "Jayce", "q") is True
     assert spt.slot_open(rd, "Elise", "q") is False
 
