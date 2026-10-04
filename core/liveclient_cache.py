@@ -306,11 +306,18 @@ def _on_task_done(fut: Any) -> None:
 
 def _install_optional_taps() -> None:
     """Flag-gated, default-OFF listeners that have no other non-frozen wiring
-    point. RM-605: the live-session recorder (RC_SESSION_RECORDER). Fail-soft:
-    a tap that cannot install never blocks the poll loop from starting."""
+    point. RM-605: the live-session recorder (RC_SESSION_RECORDER). RM-606:
+    the self ability-usage log (RC_SELF_CAST_LOG). Each tap has its own
+    try-block. Fail-soft: a tap that cannot install never blocks the poll
+    loop from starting, nor the other taps."""
     try:
         from core.live_session_recorder import install_if_enabled
         install_if_enabled()
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("liveclient_cache optional tap: %s", exc)
+    try:
+        from core.self_cast_log import install_if_enabled as _self_cast_install
+        _self_cast_install()
     except Exception as exc:  # noqa: BLE001
         _log.debug("liveclient_cache optional tap: %s", exc)
 
