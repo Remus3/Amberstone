@@ -83,7 +83,7 @@ def main() -> int:
                      f"{x.get('nominated_retune')}")
     lines.append("")
 
-    (BASE / "REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (BASE / "REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"COVERAGE {n}/{ROSTER}  SEV {dict(sev)}")
     print(f"MISMATCH {len(mism)}  MINOR {len(minor)}  NOMS {len(noms)}")
     print("BY_SCORER", {k: dict(c) for k, c in by_scorer.items()})

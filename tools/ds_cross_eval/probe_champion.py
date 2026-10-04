@@ -272,7 +272,7 @@ def main() -> int:
     outdir.mkdir(parents=True, exist_ok=True)
     fp = outdir / (data["champion"] + ".json")
     tmp = fp.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8", newline="\n")
     tmp.replace(fp)
     print(str(fp))
     return 0

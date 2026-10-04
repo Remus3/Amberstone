@@ -185,7 +185,7 @@ def main() -> int:
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     tmp = OUTPUT.with_suffix(OUTPUT.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8", newline="\n")
     tmp.replace(OUTPUT)
 
     print(

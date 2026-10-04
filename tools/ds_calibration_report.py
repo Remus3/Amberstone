@@ -79,6 +79,7 @@ def write_atomic(payload: dict, out_path: Path) -> None:
     tmp.write_text(
         json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True),
         encoding="utf-8",
+        newline="\n",
     )
     tmp.replace(out_path)
 
