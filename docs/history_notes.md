@@ -41,6 +41,26 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-03e - NOW-7 gate armed; FLEET-KIT v4 adopted; routed spawns on kit _run; DS rm115 deadline flake fixed
+
+- **Merges (all pushed, c5739fbe0..251457ad7):** NOW-7 gate (`4c61fb0eb`), FLEET-KIT v4 (`c8341e619`), routed spawns via kit `_run` (`fcc53a232`), DS rm115 60 s deadline (`251457ad7`). LEDGER 1469-1472. Each verifier MERGE-OK.
+- **CI RED on 251457ad7 (run 37150006655):** 4 new tree-kill tests fail on ubuntu + 2 pre-existing (adjudicator console-flash stale entry, p2w2_ds_h `_FakeProc.args`). Fix-forward slice in flight at wrap.
+- **Reply to MAIN 1204 + 1327** delivered 1411, 1/1. MAIN 0915/0925 lane widget landed by another attended session (`e1591f1f5`, `c88efdf13`), which sends that answer; RC review = no change needed.
+- **Do NOT redo:** NOW-7 arming, v4 vendoring, the five routed paths, the rm115 deadline.
+
+---
+
+# 2026-10-03d - RM-481 / RM-484 / RM-487 shipped; FLEET-KIT v3 adopted; NOW-7 measurement merged
+
+- **Commits (all merged + pushed, ec2f85798..51ab14da7):** RM-481 LF generators (`5e9fdb250`, merge `a28fab20b`), RM-484 Riot 429 vs absence in five offline tools via `core/riot_retry.py` (`14ae0ea6e`, merge `93c508dbc`), RM-487 env-first credential reads (`22a9aae35`, merge `38e324616`), FLEET-KIT v3 (`79aae2efb`, `95e94058e`, `47d4cf506`; merges `869f1b100` + `51ab14da7`). LEDGER 1464-1467.
+- **FLEET-KIT v3:** operator order in chat + MAIN 0955/1014/1016. Kit vendored at `ops/fleet_kit/`, CLAUDE.md 52947 -> 31487 bytes (history in `docs/claude-md-history.md`), /done quiet, 5 spawn paths via `ops/loop/fleet_route.py`; responder/executor/run_lane stay on the headless_env gate. Reply to MAIN delivered 1134, 1/1 reached. 11 kit gaps await v4.
+- **Filed:** RM-510 timeline_ingest exit 0 on rate_limited; RM-511 stale model pins; RM-512 RIOT_API_KEY precedence (operator call). Pin moved to RM-513 (was stale at RM-476).
+- **NOW-7 measurement MERGED** (`663abfe18`, slice `d6763fefd`, LEDGER 1468): 2 level-only leaks, 0 propagate/handler; gate NOT armed - next is fix 2 leaks + 3 arming prerequisites, then arm.
+- **Not acted on (needs operator in chat):** MAIN 0915 lane-widget redesign, 0925 ACCOUNTS strip. C4 `slots.py` 290cbf80 still held (joint act).
+- **Do NOT redo:** RM-481 / RM-484 / RM-487 (first row) / FLEET-KIT v3 adoption / NOW-7 measurement pass.
+
+---
+
 # 2026-10-03c - rc_facts per-task running grace (operator away, unattended continue)
 
 - **Commit:** `c84d30b0c` (worktree slice, ff to main). LEDGER 1463.
