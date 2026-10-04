@@ -90,6 +90,39 @@ def _serve_decisions(h) -> None:
 # decisions). Cap is 50 - past that the dashboard panel doesn't add value.
 _LOG_PATH = APP_DIR / "data" / "decisions_log.jsonl"
 
+# RM-238: tail-read geometry. 64 KiB chunks, and never more than 4 MiB
+# scanned per request however large the file grows or however much of its
+# tail is junk. 50 entries at the live ~700 bytes each is ~35 KiB, so one
+# chunk satisfies a normal request.
+_TAIL_CHUNK = 64 * 1024
+_TAIL_MAX_BYTES = 4 * 1024 * 1024
+
+
+def _iter_lines_newest_first(fh, chunk: int = _TAIL_CHUNK,
+                             max_bytes: int = _TAIL_MAX_BYTES):
+    """Yield decoded lines of a binary file handle from the END backwards.
+
+    Reads at most ``max_bytes`` from the tail in ``chunk``-sized steps, so the
+    cost is bounded by what the caller consumes, not by the file size. A line
+    cut by the byte budget is dropped rather than yielded half-formed.
+    """
+    fh.seek(0, 2)
+    pos = fh.tell()
+    budget = max_bytes
+    carry = b""
+    while pos > 0 and budget > 0:
+        step = min(chunk, pos, budget)
+        pos -= step
+        budget -= step
+        fh.seek(pos)
+        buf = fh.read(step) + carry
+        parts = buf.split(b"\n")
+        carry = parts[0]  # possibly partial - completed by the next chunk
+        for raw in reversed(parts[1:]):
+            yield raw.decode("utf-8", errors="replace")
+    if pos == 0 and carry:
+        yield carry.decode("utf-8", errors="replace")
+
 
 def _serve_decisions_log(h) -> None:
     """GET /api/decisions/log?limit=N - last N resolved decisions, newest
@@ -105,19 +138,16 @@ def _serve_decisions_log(h) -> None:
             limit = 20
         if not _LOG_PATH.exists():
             h._send(200, b'{"entries":[]}', "application/json"); return
-        # Reads the whole file. The old comment here claimed this was
-        # "bounded by the JSONL's natural size cap"; there is no cap - the
-        # log is append-only and nothing rotates it (`core/log_retention.py`
-        # covers no `.jsonl`, grepped 2026-08-30). The real bound is write
-        # VOLUME, at most ~5 decisions per game: the live file was 3775
-        # bytes on 2026-08-30 having been appended to since June. Low risk
-        # today, but it grows without limit - RM-238.
+        # RM-238: the log is append-only and nothing rotates it
+        # (`core/log_retention.py` covers no `.jsonl`), so a whole-file read
+        # grew without bound. Read the TAIL backwards in fixed chunks instead
+        # and stop once `limit` valid entries are in hand, with a hard byte
+        # budget so even an all-junk file costs at most _TAIL_MAX_BYTES.
         try:
-            text = _LOG_PATH.read_text(encoding="utf-8", errors="replace")
+            fh = open(_LOG_PATH, "rb")  # noqa: SIM115 - closed below
         except OSError as exc:
             log.debug("api/decisions/log read: %s", exc)
             h._send(200, b'{"entries":[]}', "application/json"); return
-        lines = text.splitlines()
         # Lane 8 cycle 18: this over-fetched by a FIXED `+4` and then dropped
         # blank and torn lines from that window, so any tail damage came
         # straight off the result - measured at 30 good rows plus 10 torn
@@ -125,18 +155,19 @@ def _serve_decisions_log(h) -> None:
         # 6, with a 200. Walk backwards from the end instead and stop once
         # `limit` VALID entries are in hand, so junk costs nothing.
         entries: list = []
-        for line in reversed(lines):
-            if len(entries) >= limit:
-                break
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                e = json.loads(line)
-            except json.JSONDecodeError:
-                continue  # tolerate a torn append
-            if isinstance(e, dict) and e.get("id"):
-                entries.append(e)
+        with fh:
+            for line in _iter_lines_newest_first(fh):
+                if len(entries) >= limit:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue  # tolerate a torn append
+                if isinstance(e, dict) and e.get("id"):
+                    entries.append(e)
         # `entries` is already newest-first - it was built from the tail back.
         h._send(200, json.dumps({"entries": entries}).encode("utf-8"),
                 "application/json")
