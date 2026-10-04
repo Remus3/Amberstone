@@ -102,6 +102,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sqlite3
 import threading
@@ -363,6 +364,10 @@ def _read_game_end_pin(scheduled_at: float) -> dict[str, Any] | None:
         written_at = float(data.get("written_at"))
     except (TypeError, ValueError):
         return None
+    # NaN compares False against everything, so it would pass the age check
+    # below; +inf would read as newer than every chain. Neither is a time.
+    if not math.isfinite(written_at):
+        return None
     if written_at < scheduled_at - PIN_SLACK_S:
         return None
     qid = data.get("queue_id")
@@ -473,8 +478,12 @@ def _resolve_puuid_for(pin: dict[str, Any], riot_api: Any) -> str | None:
     """
     rid = pin.get("riot_id")
     if rid and len(rid) == 2:
-        acct = riot_api.get_account_by_riot_id(
-            rid[0], rid[1], region=REGION_REGIONAL)
+        try:
+            acct = riot_api.get_account_by_riot_id(
+                rid[0], rid[1], region=REGION_REGIONAL)
+        except Exception as exc:  # noqa: BLE001 - fall through to the state
+            _log.debug("rewind_live_writer account lookup error: %s", exc)
+            acct = None
         if isinstance(acct, dict):
             puuid = acct.get("puuid")
             if isinstance(puuid, str) and puuid:

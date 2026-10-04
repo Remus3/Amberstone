@@ -669,6 +669,12 @@ class PostgameCollector:
 
     # How long to poll for EOG phase after game_end signal (seconds)
     _EOG_TIMEOUT_S  = 120
+    # Y-01: a history-fallback game is pinned for the rewind live writer only
+    # if it ended no earlier than (trigger time - this slack). gameCreation is
+    # stamped before the loading screen, so creation + duration UNDER-states
+    # the real end by the load time; 300 s covers that. A previous game ended
+    # at least one champ select + load + 3 min remake ago, so it stays out.
+    _HISTORY_PIN_SLACK_S = 300.0
     # Poll interval while waiting for EOG phase
     _POLL_INTERVAL  = 3.0
     # Short delay after EOG phase detected before fetching (client needs moment to populate)
@@ -682,6 +688,7 @@ class PostgameCollector:
         self._stop  = threading.Event()
         self._trigger = threading.Event()
         self._game_mode_hint = "CLASSIC"
+        self._trigger_at: Optional[float] = None
         self._thread: Optional[threading.Thread] = None
         self._task: Optional[Any] = None
 
@@ -733,6 +740,7 @@ class PostgameCollector:
         Arms the EOG collection for the next post-game lobby detection.
         """
         self._game_mode_hint = game_mode
+        self._trigger_at = time.time()
         self._trigger.set()
         _log.info("PostgameCollector: triggered for mode=%s", game_mode)
 
@@ -839,6 +847,25 @@ class PostgameCollector:
         except Exception as exc:  # noqa: BLE001
             _log.debug("postgame: game-end pin not written: %s", exc)
 
+    def _history_game_is_fresh(self, game: dict) -> bool:
+        """True only when ``gameCreation`` (ms) + ``gameDuration`` (s) of a
+        history game is >= trigger time - slack. Fails CLOSED: no trigger
+        time, missing / non-finite timing -> False (no pin)."""
+        trigger_at = getattr(self, "_trigger_at", None)
+        try:
+            created_ms = float(game.get("gameCreation"))
+            duration_s = float(game.get("gameDuration"))
+            trigger_at = float(trigger_at)
+        except (TypeError, ValueError):
+            return False
+        if not all(math.isfinite(v) for v in (created_ms, duration_s,
+                                              trigger_at)):
+            return False
+        if created_ms <= 0 or duration_s <= 0:
+            return False
+        ended_at = created_ms / 1000.0 + duration_s
+        return ended_at >= trigger_at - self._HISTORY_PIN_SLACK_S
+
     def _capture_via_history(self, game_mode: str) -> bool:
         """
         Fallback: get the most recent match from LCU match history and save it.
@@ -878,8 +905,18 @@ class PostgameCollector:
             # Adapt match history format to EOG format
             adapted = self._adapt_match_history(game)
             if adapted:
-                self._publish_game_end_pin(adapted, summoner,
-                                           mode_hint=game_mode)
+                # Unlike the EOG block, history may not list the just-ended
+                # game yet; then its first entry is the PREVIOUS game, and a
+                # fresh pin on it would recreate the Y-01 defect. Pin only a
+                # game provably ended at/after this trigger; otherwise skip
+                # and the writer chain falls back as documented.
+                if self._history_game_is_fresh(game):
+                    self._publish_game_end_pin(adapted, summoner,
+                                               mode_hint=game_mode)
+                else:
+                    _log.info("postgame: history game %s predates the "
+                              "trigger - no live-writer pin",
+                              adapted.get("gameId"))
                 raw_mode = adapted.get("gameMode") or game.get("gameMode") or game_mode
                 _save_eog(adapted, raw_mode, _ITEM_MAP, _RUNE_MAP)
                 return True
