@@ -64,6 +64,10 @@ DEFAULT_TIMEOUT = 15.0
 MIN_INTERVAL_SEC = 1.0
 BREAKER_THRESHOLD = 5
 BREAKER_COOLDOWN_SEC = 60.0
+# RM-274. Cap on per-host state entries; see `HttpClient._evict_idle_hosts_locked`.
+# Far above the handful of hosts this tree actually talks to, so eviction only
+# ever runs in a process that has been fed an unbounded hostname stream.
+MAX_TRACKED_HOSTS = 1024
 
 # RM-351. `timeout` bounds TIME, not BYTES: a remote that keeps drip-feeding
 # data inside the inactivity timeout streams for as long as it likes, and a
@@ -439,9 +443,41 @@ class HttpClient:
         with self._hosts_lock:
             st = self._hosts.get(host)
             if st is None:
+                if len(self._hosts) >= MAX_TRACKED_HOSTS:
+                    self._evict_idle_hosts_locked()
                 st = _HostState()
                 self._hosts[host] = st
             return st
+
+    def _evict_idle_hosts_locked(self) -> None:
+        """Shrink `_hosts` toward 3/4 of MAX_TRACKED_HOSTS. Caller holds
+        `_hosts_lock`.
+
+        RM-274. Never evicts a host whose breaker is open or whose half-open
+        probe is in flight: dropping that state would silently reset the
+        protection the host earned. A state whose lock is held right now is
+        mid-call and is skipped too. Healthy hosts go first, least recently
+        called first; hosts carrying a partial failure count go only after
+        every healthy one. If everything left is protected the map is
+        allowed to exceed the cap rather than discard protection.
+        """
+        target = (MAX_TRACKED_HOSTS * 3) // 4
+        candidates: list[tuple[bool, float, str]] = []
+        for name, st in self._hosts.items():
+            if not st.lock.acquire(blocking=False):
+                continue
+            try:
+                if st.opened_at is not None or st.probe_in_flight:
+                    continue
+                if st.rate_lock.locked():
+                    continue
+                candidates.append((st.failures > 0, st.last_call, name))
+            finally:
+                st.lock.release()
+        candidates.sort()
+        excess = len(self._hosts) - target
+        for _flaky, _last, name in candidates[:max(excess, 0)]:
+            del self._hosts[name]
 
     def _check_breaker(self, host: str, now: float) -> None:
         """Raise CircuitOpen unless this caller may proceed.
