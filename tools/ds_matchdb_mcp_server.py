@@ -113,6 +113,7 @@ from core.daemon_slayer_client import (  # noqa: E402
     is_engine_up as _is_engine_up,
     rank_for_primary_archetype as _rank_for_primary_archetype,
 )
+from core.log_scrub import scrub_log  # noqa: E402
 from core.match_db import MatchDB  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -625,7 +626,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     server_version = f"{SERVER_NAME}/{SERVER_VERSION}"
 
     def log_message(self, fmt: str, *a: object) -> None:
-        log.info("HTTP " + fmt, *a)
+        # RM-321: an override loses the stdlib's control-character escaping;
+        # scrub the formatted record and name the peer.
+        log.info("HTTP %s %s", self.address_string(), scrub_log(fmt % a))
 
     def _send(self, status: int, body: bytes,
               ctype: str = "application/json") -> None:
