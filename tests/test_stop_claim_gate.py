@@ -1726,3 +1726,85 @@ def test_subagent_commit_is_not_a_speaker_commit(sentence):
 @pytest.mark.parametrize("sentence", SUBAGENT_COMMIT_TRUE_POSITIVES)
 def test_subagent_wording_does_not_launder_a_speaker_commit(sentence):
     assert "commit_claim_without_commit" in _audit_checks(sentence), sentence
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-04 verifier gaps. (a) "Merged to main." made no claim the gate could
+# see: CLAIM_COMMIT and CLAIM_PUSH never read "merged". It is a landed-state
+# claim backed only by a git merge / gh pr merge / git push. (b) A conjoined
+# "and pushed" after a third-party commit subject must still raise the push
+# flag: the third-party exemption is check 6's, never check 9's.
+# ---------------------------------------------------------------------------
+MERGE_CLAIM_TRUE_POSITIVES = [
+    "Merged to main.",
+    "Merged into main.",
+    "merged into main",
+    "Merged it into main.",
+    "The branch is merged into main.",
+    "Merged onto origin/main.",
+    "Merged to master and tagged.",
+    # A third-party subject elsewhere does not launder the speaker's merge.
+    "The agent wrote it; merged to main.",
+    "Agent-a3 built it and I merged it into main.",
+    "Agent-a3 merged to main, then I merged it into main.",
+]
+
+MERGE_CLAIM_FALSE_POSITIVES = [
+    "Not merged to main yet.",
+    "It isn't merged into main.",
+    "Nothing is merged into main.",
+    "I'll merge to main after the verifier.",
+    "Will be merged into main once CI is green.",
+    "The agent merged its slice into main.",
+    "Agent-a3 merged to main.",
+    "LW merged 700cd64 into its main.",
+    "The fix was merged into main by the merger agent.",
+    "According to the hand-off, the branch was merged into main.",
+    "Main is unchanged.",
+]
+
+
+@pytest.mark.parametrize("sentence", MERGE_CLAIM_TRUE_POSITIVES)
+def test_merge_to_main_claim_without_merge_is_flagged(sentence):
+    assert "merge_claim_without_merge" in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("sentence", MERGE_CLAIM_FALSE_POSITIVES)
+def test_negated_future_or_third_party_merge_is_not_a_claim(sentence):
+    assert "merge_claim_without_merge" not in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("command", [
+    "git merge --ff-only worktree-agent-x",
+    "git push origin main",
+    "gh pr merge 12 --squash",
+])
+def test_merge_claim_backed_by_git_evidence_does_not_flag(command):
+    ev = {"texts": ["Merged to main."], "bash": [command], "edited": [],
+          "runs": [], "ci_runs": [], "artifacts": []}
+    assert "merge_claim_without_merge" not in {f["check"] for f in gate.audit(ev)}
+
+
+def test_merge_claim_survives_the_stop_hook_subprocess(tmp_path):
+    report = _run_gate(tmp_path, [_assistant(_text("Merged to main."))])
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+CONJOINED_PUSH_TRUE_POSITIVES = [
+    "The agent committed X and pushed.",
+    "The agent committed abc1234 and pushed it.",
+    "Agent-a3 committed abc1234 and pushed.",
+    "LW committed 700cd64 and pushed.",
+    "The slice committed the fix and pushed to main.",
+]
+
+
+@pytest.mark.parametrize("sentence", CONJOINED_PUSH_TRUE_POSITIVES)
+def test_conjoined_and_pushed_raises_the_push_flag(sentence):
+    assert "push_claim_without_push" in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("sentence", CONJOINED_PUSH_TRUE_POSITIVES)
+def test_conjoined_and_pushed_through_the_stop_hook(tmp_path, sentence):
+    report = _run_gate(tmp_path, [_assistant(_text(sentence))])
+    assert "push_claim_without_push" in _checks(report), sentence
