@@ -1,150 +1,71 @@
 NEXT SESSION
 ------------
-Next action: file + fix the out-of-scope stale model pins RM-511 surfaced (next
-free id RM-516): coaches/aram_coach.py:770, coaches/arena_coach.py:1204,
-coaches/brawl_coach.py:638 r._model = "claude-sonnet-4-6"; modes/shared_vision.py:121
-SONNET_MODEL = "claude-sonnet-4-6"; core/cost_tracker.py:89-97 has no price rows for
-claude-opus-5-5 / claude-sonnet-5-5 (and loop price_per_mtok still opus 15/75). Live
-coaching path - Tier-2-ish, verify a live Haiku/Sonnet call degrades friendly.
-tools/inbox_responder_runner.py:97 MODEL = "claude-sonnet-4-5" is part of the armed
-agreement id - do NOT change without re-arming; report only. Docs-only mentions:
-docs/specs/leap/*.md + tools/live-gated-drain.md (claude-opus-4-8),
-docs/RESPONDER_RUNNER_SPEC.md:224.
+Next action: RC restart owed. The main tree checkout was behind origin and held ANOTHER
+session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/
+conftest.py, untracked test_agent6_failure_stub_l03.py) plus unpushed a6f3fa42a (agent6
+audit). Once that session has landed its work, fast-forward the main tree to origin/main,
+py_compile, echo restart > restart_trigger.txt, and read back ops/runtime/health.json (new
+pid, alive, last_reload_ok). Restart covers frozen app/_health_monitor.py (RM-377), RM-235
+/api/health/all counters, RM-267 :8889 /stats token, RM-261 ops/rc_supervisor.py +
+ops/rc_dev_runtime.py scratch-name changes, RM-258 writer moves.
 
-Carried forward (not acted on yet):
-- External-lift intake (lift 1) 2026-10-04 (LEDGER 1561-1622; rows RM-601..RM-657,
-  RM-661..RM-668, residuals RM-658..RM-660 + RM-669..RM-679; refs "external reference
-  A..I / L" only, never the source). Band 1 RM-601..RM-613 and Band 3 RM-637..RM-641
-  (ADR-016) LANDED; RM-603 / RM-608 / RM-611 PARTIAL. OPEN: Band 2 RM-614..RM-636 and
-  Band 4 RM-642..RM-657 (BACKLOG "External-lift intake"); residual rows RM-658..RM-660,
-  RM-669..RM-679 (RM-660 needs a distinct adjudicator first - Settled target-state fence;
-  RM-603 skill-point toast is held by the B4 in-game compliance rule - operator / DevRel
-  call). DS batch RM-522 + RM-661 + RM-662 + RM-666 LANDED on origin/main (LEDGER 1652,
-  ENGINE 1.285.0, patch 16.19.1) but the LIVE DS :8860 still serves 16.18.1 / 1.284.0:
-  the main checkout C:\Riot Commander (local a6f3fa42a, 39 behind origin, 3 dirty paths -
-  another session's work) was NOT touched. OWED: once the main checkout is at origin/main,
-  taskkill the :8860 PID, schtasks /Run /TN RC-DaemonSlayer (again if the port was still
-  bound), read back /health = 1.285.0 / 16.19.1. A side server from the worktree already
-  read back 1.285.0 / 16.19.1 and Aatrox ARAM MR 47 vs SR 32. New finding, unfiled (id
-  reserve exhausted - take the next sequential id): tools/daemon_slayer_wiki_stats_extract.py
-  lets a commented-out ARAM block in a second Kled record (id 240.1) overwrite the real one
-  (Kled dmg_taken). LIVE-GATED: LX-01..LX-13 in docs/LIVE_GAME_GATED_SYNC.md.
-  Main-checkout chore: re-mirror tools/ship-batch.md into the gitignored
-  .claude/skills/ship-batch/SKILL.md and .claude/commands/ship-batch.md (RM-668 step 0).
-  Restart the RC-HotkeyListener task so it loads the Ctrl+Shift+K mark slot (RM-638).
-  OPERATOR ASK (one batch, physical / credential; nothing records until done): start OBS
-  and enable its websocket server with the password already in config; choose the
-  recording disk and folder (>= 28 GB free to start); scene capture source WGC display or
-  window capture, never game capture; locked resolution + Borderless; record format
-  hybrid MP4 if chapters are wanted; 1-2 s keyframe interval; install ffmpeg (with
-  ffprobe) on PATH or set obs.record.ffmpeg_path; set obs.record.enabled true in
-  config/coach_settings.json and "vod_record": "allow" per mode in
-  config/feature_flags.json; retention stays dry-run until the operator turns it off.
-  Not intake, red on CI (owners): test_rm415_liveclient x7 = RM-308 58a2d0dec (Wave1);
-  test_headless_env + lane8 sibling-writers = 585473f74 (drain_waves_2_3).
-- External-reference lift 2 ingest 2026-10-04 (LEDGER 1560-1590; rows RM-526..RM-594):
-  Band 1 ALL SHIPPED (RM-526..RM-533, RM-535..RM-537, Y-06 on the CCR-135/S10 line)
-  plus Band 3 RM-567 (frozen lcu_client, operator grant) and RM-568 (phone push,
-  DEFAULT-OFF, NOT ARMED). OPEN: Bands 2 and 4 rows in BACKLOG "External reference
-  lift 2" (build by value; cite "external reference X" only, never the source).
-  BLOCKED ON MAIN fleet-kit v5 (build only the RC consumer once the kit ships, no
-  divergent copy): RM-534 (Y-10 ask queue), RM-538 (Y-14 watcher primitive),
-  RM-539 / RM-540 (Y-15/16 send journal + paste check), RM-541 (Y-17 ctx hook,
-  also settings.json halt point), RM-542 (Y-18 ask-routing Stop hook), and any
-  general dashboard token layer beyond RM-531's League hues. OPERATOR ASK (one
-  batch, physical/credential): to arm RM-568 install the push server on Legion
-  (tailnet-only, deny-all), mint a publish token, store it in user env var
-  RC_PUSH_TOKEN (topic in RC_PUSH_TOPIC), install the phone app on the tailnet and
-  subscribe, copy config/push_notify.example.json to config/push_notify.json with
-  the own-tailnet suffix + server, then "enabled": true (arming = halt review).
-  LIVE-GATED: G4-30 (RM-526 Step 0, 5 real game-end statuses + EOG queueId).
-  Residuals recorded in the LEDGER entries, unfiled: Y-03 deployed agent copy
-  outside the repo not updated (halt boundary) and agent skip counts not in /stats;
-  Y-04 five 2021 q830 rows with game_end_ts=0 need a backfill, docs/API.md keys;
-  Y-05 net-0 swap accepted uncaveated; Y-06 needs a scheduled task (halt point) +
-  run lock; Y-07 colour-blind variant, minimap_zoi.js:125 team pair; Y-08 retry/
-  give-up actions; Y-09 badge needs comp capture; Y-44 pooled-path 401 rotation +
-  lcu_rune_writer POST loop; Y-45 watchers pass no tailnet links, push-server
-  licence check. Main checkout's gitignored .claude/commands mirror was re-synced
-  to the new tools/*.md probe recipes (RM-536); drift_guard there reports mirror
-  drift only until that checkout pulls.
-- Fleet-ideas ingest 2026-10-04 (LEDGER 1583-1589; P1-5, P1-4, P1-3, P2-4, P2-5,
-  P2-10 shipped): RM-595 DS percent-reduction-after-negative divergence (Tier-2,
-  strict-xfail pinned); RM-596 P0-3 gate board OFFERED, decide adopt/decline;
-  RM-597 residuals - frozen app/_game_lifecycle.py mid-game on_game_start (needs
-  operator approval), elevated re-install of RC-UpstreamDriftCheck so the live
-  task passes --spec-watch, wire lib/game_data builds into DS/dashboard, a caller
-  for core/build_planner/relax.py, move the 3/5/8/12 s live-data gates onto
-  core.math_core.freshness. Golden file has 79 external cases, not hundreds:
-  grow it only from new EXTERNAL sources.
-- Kit gaps for MAIN v5 (RC 1411 note + 2026-10-03 1915 POSIX note): public launch
-  function (RC depends on private _run); argv-instruction-plus-stdin-body mode; POSIX
-  _kill_tree (now reported). Responder / loop executor / run_lane still on
-  ops/loop/headless_env.py until kit flags fit (responder constant argv + kill record;
-  executor MCP servers vs --strict-mcp-config + two-part command; run_lane no timeout
-  vs kit 3600 s default + streamed log). ruff ignore for ops/fleet_kit is removed, so
-  a future kit lint finding fails RC ruff with no local fix allowed. Watch inbox for a
-  MAIN v5 ack.
-- MAIN 1327 item 1.2 (0830 unattended MATCH) is the unattended responder's; not
-  answered by an attended session.
-- RM-512: RIOT_API_KEY precedence in core/riot_api.py:68 - OPERATOR policy call
-  (RM-487 residual). Do not change without the operator.
-- RM-481 residual: other text-mode writers still emit CRLF (DS extractors,
-  tools/ds_cc_conditional_to_json.py:93).
-- NOW-7 residual (verifier note): in a psutil-less env a genuinely nested child
-  pytest would be gated (ancestor check fails safe to "not ancestor"); not reachable
-  on CI (psutil pinned in requirements.txt).
-- Console-flash guard: still hand-listed (undiscoverable) - hook scripts
-  (.claude/settings.json untracked), modules a task target only imports, task targets
-  outside the tree, ops/rc_supervisor.py.
-- Replay rotation logs 104 empty-window observations - separate cleanup, unfiled.
-- tests/test_loop_concurrency.py slots.py pin is RED vs the sibling copy (locally;
-  skips on CI) - joint act. C4 slots.py candidate 290cbf80 still HELD (RSC halt
-  clause (b), pending a MAIN ruling). Do NOT vendor or move SHARED_SHA256 until the
-  carriers' round closes.
-- Worktrees: agent-a0a31cf1b05f41e28 holds UNMERGED 6a53008f4 "feat(responder):
-  MAIN provenance, 120-runs-per-24h cap, TERMINAL skip" (git cherry +, not on main) -
-  review whether kit v4 superseded it before merging or dropping.
-  agent-a1bc4e611575b086e bcc754939 is patch-equivalent on main (git cherry -) -
-  removable with git worktree remove + git branch -D (only -D case; confirm cherry
-  again first).
-- Lane-widget low-severity review notes (sent to the other session, its call): past
-  reset shows "(resets 0m)" (src/accounts.js:316); freshness mtime-only (:347,351);
-  config cached until restart (src/poll.js). RSC inbox_status.json reports state
-  "limit" with 0/120 runs - RSC writer inconsistency.
-- Watch: rc_facts flags a periodic run that outlives its repetition interval as STUCK
-  (by design). If RC-InboxResponder trips it repeatedly, that is a real overlap -
-  investigate runtime, do not widen the grace.
-- Inbox has 65 unread notes; the responder owns them - do not hand-answer them; check
-  ops/runtime/inbox_responder_answered.json first.
-- Box load: many concurrent pytest runs from other sessions/trees; do not start a
-  full local suite while 2+ others run (OOM). CI is the full-suite gate.
-- stop_claim_gate: a subjectless "Committed as <sha>" sentence is unattributable and
-  cannot be cleared after the fact - always name the committer (subagent vs session).
+Open from the drain (2026-10-03/04 session):
+- RM-258 PARTIAL: guard exempts all of tools/ except lcu_agent.py + hotkey_listener.py;
+  row allows only tools/*extract*. Verifier counted 86 bare renames / 72 shared scratch
+  names left in tools/ (watchers: phase_watcher, cost_health_watchdog, ds_feed_watch,
+  ci_watchdog, spec_watch, progress_watch). Broken core/ now silently disables the
+  self-monitor (rc_supervisor.py:1466-1468). tools/legion_agent_boot.ps1 standalone copy
+  to C:\RC-Agent cannot import core.
+- Pre-existing test failures seen by the atomic merger, outside its diff: web/ digest in
+  test_web_ascii_sweep.py; test_champion_mode_variants.py item count 164 vs 162 (likely
+  16.19.1 data drift); RM-662 DS skip-hygiene. CI on 89062445e not yet read - read it first.
+- Still open rows: RM-279 (dead-code vs revive, 4 tests + ASCII allowlist together), RM-280
+  (portalocker lock redesign), RM-368, RM-381 (capacity), RM-292b-d, RM-251(b), RM-370
+  (two workflow_dispatch CI runs <26 min apart), RM-229 (LCU pooled read unbounded), RM-290
+  (table write-only), RM-27, RM-248, RM-486, RM-189, RM-167, RM-204, RM-12/RM-14 flips,
+  RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-256 redo = RM-521, RM-297b
+  (needs non-author adjudicator + CI), RM-519 (responder provenance on kit verify_main).
+- Joint acts, never solo: SHARED_SHA256 / CHANNEL_PIN re-pin, RM-502, RM-429, RM-430.
+- Kept worktrees/branches (git cherry shows +, review before -D): drain-wave2-atomic
+  (4c97788b8 conflict-resolved on main), drain-wave2-tail-backlog (RM-272/282/432
+  renumbered, RM-229 dropped), worktree-wf_0815ac54-8f2-4 (RM-239/242), -5 (RM-500),
+  worktree-agent-a0a31cf1b05f41e28 (6a53008f4 superseded by kit v4), RM-256 / RM-297b
+  branches, worktree-agent-a4cfeb79e86b5bf30 (launcher fix, merged as 7e32c2933).
+- stop_claim_gate false positives to file: negated "isn't pushed" flagged as a push claim;
+  future-tense "I'll confirm CI" flagged as a CI claim; subagent-made commit sentence
+  without a named committer flagged.
+- Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; another session already
+  ingested -2 (RM-526..RM-594 filed, Y-05 shipped). Operator APPROVED Y-44 (frozen
+  lcu_client.py) and Y-45 (phone push off-box) in chat 2026-10-03.
 
-Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). RC pid 28020
-alive, last_reload_ok true, LCU phase client (no game). Recall first
-(python tools/perseus_recall.py "<item>") before starting any ROADMAP row. Next free
-ROADMAP id = RM-516 (pin in docs/DS_SWEEP_TRACKER.md). ROADMAP.md relocated to
-80.5% of budget (50d1596a7, fourteenth pass into docs/ROADMAP_HISTORY.md); no other
-row is fully closed, so the next relocation needs row-by-row judgment.
+Carried forward (not acted on):
+- Kit gaps for MAIN v5: public launch function (RC uses private _run); argv-plus-stdin
+  mode; POSIX _kill_tree; fleet_route has no effort knob. Responder / loop executor /
+  run_lane still on ops/loop/headless_env.py. Watch inbox for MAIN v5 (MAIN 0020 order:
+  do not build divergent local fleet-ops versions).
+- MAIN 1327 item 1.2 (0830 unattended MATCH) belongs to the unattended responder.
+- RM-512 was self-adjudicated in wave 1 (see LEDGER); operator may revisit.
+- RM-481 residual CRLF writers - check whether wave 1 RM-481/448 closed all.
+- Console-flash guard still hand-listed for hook scripts / task targets outside tree.
+- tests/test_loop_concurrency.py slots.py pin RED vs sibling locally; C4 candidate 290cbf80
+  HELD pending MAIN ruling. Do not vendor or move SHARED_SHA256.
+- Lane-widget notes (other session's call): "(resets 0m)", mtime-only freshness, config
+  cache; RSC inbox_status "limit" at 0/120.
+- rc_facts STUCK flag on RC-InboxResponder = real overlap, do not widen grace.
+- Inbox: 67 unread; the responder owns them - check ops/runtime/inbox_responder_answered.json.
+- Box load: no local full suite while 2+ others run (OOM). CI is the full gate.
+- slot bucket 1.lock unreadable (0 bytes, ~18h old) flagged by rc_facts - investigate owner.
 
-Acceptance: coach/vision model ids current with a guard test; cost_tracker prices the
-new ids; CI on main green.
+Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Drain launcher
+ops/loop/drain_waves_2_3.py (--waves/--only) is reusable; it halts when the main tree is
+dirty. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin (RM-6xx range now in use).
 
-Do NOT redo (shipped this session, verifier MERGE-OK, pushed):
-- RM-510 residual: unthrottled None lookup/ids exits 1 in timeline_ingest (887422d85).
-- RM-511 stale model pins in loop / supervisor / charters (fc4ae28c1, slice 8de1d7db2).
-- POSIX kit gap note to MAIN (sha256 2ba665d7..., 1/1 reached).
-- 13 merged agent worktrees pruned.
-Earlier: CI red p2w2 (e8a498d6e), ROADMAP dup ids + guard (3ac0da26b), NOW-7 residual
-(9a86540e5), console-flash completeness (3011cf91a), RM-510 (1fe7c1b5d), NOW-7 gate
-arming (4c61fb0eb), FLEET-KIT v4 (c8341e619), routed spawns (fcc53a232).
+Do NOT redo (shipped this session, verifier-gated, pushed): wave 1 (78 rows, d1d078aab,
+LEDGER 1480-1559), docs citation fix fc9b12431, launcher fix 7e32c2933, wave 2
+tail-backlog + wave 3 ascii (3ef556865), wave 2 tail-roadmap (1e3e514c8, LEDGER
+1623-1651), wave 2 atomic (89062445e, LEDGER 1654-1659).
 
-Status: pushed 1d694251c..50d1596a7 plus this hand-off commit; local gate ruff
-clean, hygiene 14 passed, drift_guard 0 breaches after relocation; CI runs on
-fc4ae28c1 and eaf771568 were cancelled by superseding pushes - the run on this
-hand-off commit is the gate; if it is not green, resolving it is the FIRST action.
-RC healthy; LEDGER 1478-1479; session file ~0.8 MB.
+Status: /done ran on a usage-limit grace allowance: hand-off only. NOT done this wrap:
+WAKEUP_NOTES trim, memory lessons, perseus_sync, CI read on 89062445e. Do those first.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
