@@ -66,6 +66,7 @@ data/meta/ddragon_*.json          linguist-generated=true
 *.ini   text eol=lf
 *.ps1   text eol=lf
 *.spec  text eol=lf
+*.lock  text eol=lf
 
 # FLEET-KIT v4 ships LICENSE and NOTICE with NO extension, so no rule above
 # covers them; under core.autocrlf=true a fresh checkout would write them CRLF
