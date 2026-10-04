@@ -123,6 +123,8 @@ _Clean-room only: every row is re-implemented from OBSERVED BEHAVIOUR; nothing i
 
 - **RM-677 (Tier-1) `core/metric_streamer.py:101-136` keeps its own `_last_level` and detects l6 / l11 / l16 crossings itself** - a second source of truth beside the RM-604 `level_up` event kind; migrate it to subscribe to the event channel (same outputs, golden before/after).
 
+- **RM-678 (Tier-1, UI audit) RM-608 surface** - render the estimated death recap as a panel line and a PGR section (`core/death_recap.format_line` / `read_rows` are ready); first confirm whether `build_state` runs in the same process as the liveclient_cache listener (an in-memory latest recap may never reach it - read the jsonl instead); label "estimated" everywhere.
+
 - **RM-668 (L-08, S) Data-feed watch per DS batch** - read-only checklist step (changelog high-water, HEAD the chunk URLs, per-block body hash via `tools/ds_feed_index.py`); not a poller. Cross-ref: fleet-ideas patch/spec watch.
 
 ---
