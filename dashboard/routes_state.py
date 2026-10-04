@@ -11,6 +11,7 @@ import hashlib
 import json
 from dashboard._errors import GENERIC_ERROR, send_error
 import logging
+import math
 import os
 import threading
 import time
@@ -150,7 +151,9 @@ def _agent6_audit_outcomes_ex(max_count: int = 3) -> tuple[list, bool]:
         log.warning("agent6 audit-outcomes scan: %s: %s",
                     type(exc).__name__, exc)
         scanned_clean = False
-    result = outcomes[-max_count:]
+    # RM-244(d): `outcomes[-0:]` is `outcomes[0:]` - max_count=0 returned
+    # EVERYTHING and a negative count dropped from the wrong end.
+    result = outcomes[-max_count:] if max_count > 0 else []
     if sig is not None and scanned_clean:
         _A6_MEMO = (sig, list(result))
     return result, scanned_clean
@@ -191,7 +194,12 @@ def _as_str(value: object) -> str:
 # 2x build/s bounded by the _deterministic_coaching 3.0s DS-call TTL. Clamped
 # to a floor so a 0/garbage override never spins a 0s-sleep SSE loop or a 0s
 # TTL (every tick rebuilds). Env-tunable to restore 1.0 if ever needed.
+# RM-244(c): and to a CEILING - "inf" or "1e9" used to freeze the TTL cache
+# permanently and make the SSE loop `time.sleep(inf)`. A non-finite value
+# (including "nan", which compares False against both bounds) is garbage and
+# falls back to the default.
 _STATE_CADENCE_FLOOR_S = 0.1
+_STATE_CADENCE_CEIL_S = 5.0
 
 
 def _state_cadence_s() -> float:
@@ -199,7 +207,9 @@ def _state_cadence_s() -> float:
         v = float(os.environ.get("RC_STATE_CADENCE_SEC", "0.5"))
     except (TypeError, ValueError):
         v = 0.5
-    return v if v >= _STATE_CADENCE_FLOOR_S else _STATE_CADENCE_FLOOR_S
+    if not math.isfinite(v):
+        v = 0.5
+    return min(_STATE_CADENCE_CEIL_S, max(_STATE_CADENCE_FLOOR_S, v))
 
 
 _STATE_CADENCE_S = _state_cadence_s()
@@ -235,7 +245,7 @@ def _timed_build_state() -> dict:
 
 
 def _state_payload_cached() -> bytes:
-    """Serialized /api/state payload behind the shared 1.0s TTL cache.
+    """Serialized /api/state payload behind the shared _STATE_CADENCE_S TTL cache.
 
     Cycle-8 audit (slice B): previously only _serve_state used the TTL
     cache while every SSE subscriber re-ran a full build_state() per 1s
@@ -417,7 +427,7 @@ def _serve_state_stream(h) -> None:
             return
 
         while time.time() - start < _SSE_MAX_DURATION_S:
-            # Cycle-8 audit (slice B): go through the shared 1.0s TTL
+            # Cycle-8 audit (slice B): go through the shared _STATE_CADENCE_S TTL
             # payload cache so N subscribers + the HTTP poller dedupe to
             # one build_state() per second instead of N+1.
             try:
@@ -1170,11 +1180,17 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
         # the whole /api/ds-preview + /api/build-order call). A garbage
         # override degrades to a sane 0.0 for that field instead - the
         # same graceful-degrade contract paths 2 and 3 already honor.
+        # RM-244(a): `float("nan")` / `float("inf")` succeed, and a
+        # non-finite value echoed as `target_stats` serialized to a literal
+        # NaN / Infinity token - invalid JSON that hard-fails the browser's
+        # `response.json()`, and a poisoned input to the DS seams. A
+        # non-finite override degrades to 0.0 like any other garbage.
         def _f(key: str) -> float:
             try:
-                return float(payload.get(key) or 0.0)
-            except (TypeError, ValueError):
+                v = float(payload.get(key) or 0.0)
+            except (TypeError, ValueError, OverflowError):
                 return 0.0
+            return v if math.isfinite(v) else 0.0
         return {
             "target_armor":    _f("target_armor"),
             "target_mr":       _f("target_mr"),
@@ -1194,7 +1210,6 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
         snap = _lc_get()
         if snap.data is not None and snap.age_s < 8.0:
             my_team = active_player_team(snap.data)
-            enemy_team = "ORDER" if my_team == "CHAOS" else ("CHAOS" if my_team == "ORDER" else None)
             # ``enemy_items_from_liveclient(data, exclude_team=my_team)``
             # filters to opponents.
             enemy_items = enemy_items_from_liveclient(snap.data, exclude_team=my_team)

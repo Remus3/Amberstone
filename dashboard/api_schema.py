@@ -88,8 +88,10 @@ class HealthAllResponse(_AllowExtra):
     daemon_slayer: dict[str, Any] = {}
     supervisor: dict[str, Any] = {}
     cost: dict[str, Any] = {}
-    bridge: dict[str, Any] = {}
-    peers: dict[str, Any] = {}
+    # RM-244(e): the handler emits `agent6` and has never emitted `bridge` /
+    # `peers` (the Peer bridge is decommissioned, ADR-012), so the generated
+    # JS types advertised two fields that never exist and omitted a real one.
+    agent6: dict[str, Any] = {}
     rc_version: str = ""
 
 
