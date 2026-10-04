@@ -46,6 +46,7 @@ import urllib.request
 
 from core import next_buy_fallback as _next_buy_fallback
 from core.liveclient_coerce import as_bool, as_list
+from core.live_event_deriver import OBJECTIVE_EVENT_NAMES
 from core.vision_token import get_vision_token
 from core.ward_cue import compute_ward_cue
 from item_advisor import (
@@ -434,8 +435,8 @@ def liveclient_summary() -> dict:
         try:
             # RM-601: HordeKill is the voidgrub take (one event per grub);
             # it sat unmodelled, so grub takes never reached a callout.
-            _obj_names = {"DragonKill": "dragon", "BaronKill": "baron",
-                          "HeraldKill": "herald", "HordeKill": "voidgrub"}
+            # RM-604: the name map is shared with core/live_event_deriver.py.
+            _obj_names = OBJECTIVE_EVENT_NAMES
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
             _raw_events = _as_dict(d.get("events")).get("Events")
