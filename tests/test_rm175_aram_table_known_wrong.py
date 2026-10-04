@@ -256,6 +256,11 @@ def _table_bytes_or_skip(patch: str) -> Path:
             "closed-form and axis-census assertions still ran.",
             UserWarning, stacklevel=2,
         )
+        # RM-509: skip in CI (no LFS fetch, by decision), FAIL where
+        # RC_REQUIRE_LFS_CONTENT=1 says the content must be here.
+        from tests._lfs_policy import REQUIRE_LFS_ENV, lfs_required
+        if lfs_required():
+            pytest.fail(f"{REQUIRE_LFS_ENV}=1 and the LFS subject is missing: {reason}")
         pytest.skip(reason)
     return path
 

@@ -128,6 +128,13 @@ def load_shipped_table(path: Path, label: str) -> dict:
         # and paying for LFS on every run - and a permanently red guard gets
         # deleted, not fixed. If asserting LFS-backed tables in CI is ever
         # wanted, turn on LFS checkout; do not weaken this branch.
+        # RM-509: RC_REQUIRE_LFS_CONTENT=1 (the LFS flag, not the tables
+        # flag) turns this skip into a failure on a checkout that must have it.
+        from tests._lfs_policy import REQUIRE_LFS_ENV, lfs_required
+        if lfs_required():
+            raise AssertionError(
+                f"{REQUIRE_LFS_ENV}=1 but {label} at {path} is an unfetched "
+                "git-lfs pointer")
         raise unittest.SkipTest(
             f"{label} at {path} is an unfetched git-lfs pointer - the content "
             "is not in this checkout, so there is nothing to assert against"
