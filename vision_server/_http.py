@@ -31,6 +31,34 @@ MONITOR_HTML_PATH = Path(__file__).parent.parent / "moon_monitor.html"
 # inside handle_upload_frame.
 MAX_BODY_BYTES = 10 * 1024 * 1024
 
+# RM-268: fixed client-facing token for a POST body that is valid JSON but
+# not an object. Never echoes the body.
+_BAD_BODY = "body must be a JSON object"
+
+
+class _BadBody(ValueError):
+    """A POST body the dispatch refuses with a 400 before anything is queued."""
+
+
+def _json_object(body: bytes) -> dict:
+    """Parse ONCE and require a dict. `lcu_queue_command` annotates
+    `cmd: dict` and the RC-LCUAgent calls `.get` on what it drains, so a
+    list / string / number must stop here (RM-268)."""
+    obj = json.loads(body or b"{}")
+    if not isinstance(obj, dict):
+        raise _BadBody(_BAD_BODY)
+    return obj
+
+
+def _post_lcu_cmd(body: bytes) -> dict:
+    return {"id": lcu_queue_command(_json_object(body))}
+
+
+def _post_lcu_cmd_done(body: bytes) -> dict:
+    obj = _json_object(body)
+    lcu_record_result(obj.get("id"), obj.get("result"))
+    return {"ok": True}
+
 
 class Handler(BaseHTTPRequestHandler):
     def _auth(self) -> bool:
@@ -217,16 +245,16 @@ class Handler(BaseHTTPRequestHandler):
                 "upload-frame": handle_upload_frame,
                 "upload-liveclient": handle_upload_liveclient,
                 "upload-lcu": handle_upload_lcu,
-                "lcu-cmd": lambda b: {"id": lcu_queue_command(json.loads(b or '{}'))},
-                "lcu-cmd-done": lambda b: (lcu_record_result(
-                    (json.loads(b or '{}')).get("id"),
-                    (json.loads(b or '{}')).get("result")) or {"ok": True}),
+                "lcu-cmd": _post_lcu_cmd,
+                "lcu-cmd-done": _post_lcu_cmd_done,
             }
             h = handlers.get(self.path.lstrip("/"))
             if h:
                 self._j(200, h(body))
             else:
                 self._j(404, {"error": "unknown"})
+        except _BadBody:
+            self._j(400, {"error": _BAD_BODY})
         except Exception as e:  # noqa: BLE001
             self._err500(self.path, e)
 
