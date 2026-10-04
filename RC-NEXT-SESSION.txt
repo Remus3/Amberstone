@@ -12,6 +12,15 @@ docs/specs/leap/*.md + tools/live-gated-drain.md (claude-opus-4-8),
 docs/RESPONDER_RUNNER_SPEC.md:224.
 
 Carried forward (not acted on yet):
+- Fleet-ideas ingest 2026-10-04 (LEDGER 1583-1589; P1-5, P1-4, P1-3, P2-4, P2-5,
+  P2-10 shipped): RM-595 DS percent-reduction-after-negative divergence (Tier-2,
+  strict-xfail pinned); RM-596 P0-3 gate board OFFERED, decide adopt/decline;
+  RM-597 residuals - frozen app/_game_lifecycle.py mid-game on_game_start (needs
+  operator approval), elevated re-install of RC-UpstreamDriftCheck so the live
+  task passes --spec-watch, wire lib/game_data builds into DS/dashboard, a caller
+  for core/build_planner/relax.py, move the 3/5/8/12 s live-data gates onto
+  core.math_core.freshness. Golden file has 79 external cases, not hundreds:
+  grow it only from new EXTERNAL sources.
 - Kit gaps for MAIN v5 (RC 1411 note + 2026-10-03 1915 POSIX note): public launch
   function (RC depends on private _run); argv-instruction-plus-stdin-body mode; POSIX
   _kill_tree (now reported). Responder / loop executor / run_lane still on
