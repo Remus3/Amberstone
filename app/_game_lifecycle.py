@@ -60,6 +60,16 @@ def _safe_log(label: str) -> None:
     except Exception: pass
 
 
+def _blank_coaching_fields() -> dict:
+    """The coaching keys cleared at game start and game end (RM-277: passed
+    to app._write_data so only these keys are written, under the lock)."""
+    d = {f: "" for f in ("action", "immediate", "next", "fight_rule", "wave",
+                         "objective", "reset_item", "risk", "map")}
+    d["win_pct"] = None
+    d["log"] = []
+    return d
+
+
 def _log_rating_outcome(label: str, grade, report: dict) -> None:
     """RM-259: log what the rating writer ACTUALLY did. save_rating /
     save_tft_rating swallow their own file-write failure, so the grade alone
@@ -138,12 +148,9 @@ class GameLifecycleManager:
                 except Exception:
                     _safe_log(f"{flag} coach start failed")
                 return
-        for f in ("action","immediate","next","fight_rule","wave",
-                  "objective","reset_item","risk","map"):
-            app.data[f] = ""
-        app.data["win_pct"] = None
-        app.data["log"]     = []
-        app._write_data()
+        _blank = _blank_coaching_fields()
+        app.data.update(_blank)
+        app._write_data(_blank)  # RM-277: locked RMW of the cleared keys only
         if app._coach:
             try: app._coach.reset_state()
             except Exception: pass
@@ -256,12 +263,9 @@ class GameLifecycleManager:
                     _log_rating_outcome("Performance", g, _rep)
                 except Exception:
                     _safe_log("save_rating error")
-        for f in ("action","immediate","next","fight_rule","wave",
-                  "objective","reset_item","risk","map"):
-            app.data[f] = ""
-        app.data["win_pct"] = None
-        app.data["log"]     = []
-        app._write_data()
+        _blank = _blank_coaching_fields()
+        app.data.update(_blank)
+        app._write_data(_blank)  # RM-277: locked RMW of the cleared keys only
         if app._coach:
             try: app._coach.reset_state()
             except Exception: pass

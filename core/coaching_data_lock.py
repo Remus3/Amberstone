@@ -30,13 +30,12 @@ SCOPE - READ THIS BEFORE TRUSTING THE LOCK (measured, cycle 28):
      not an active serializer. Do not delete it on that basis - it is the
      only thing that would work if a writer ever moves out of process -
      but do not assume it is carrying load either.
-  2. The lock does NOT cover every writer. `app/__init__.py` `_write_data()`
-     writes root coaching_data.json WITHOUT this lock, reached from
-     app/_overlay_manager.py and app/_game_lifecycle.py. That gap is filed
-     as RM-277; `app/__init__.py` is a FROZEN file, so closing it needs an
-     adjudicating agent. Until then the docstring claim that concurrent
-     writers "can't lose each other's updates" holds only among the four
-     holders listed above.
+  2. RM-277 CLOSED (2026-10-03, frozen-file grant): `app/__init__.py`
+     `_write_data()` and `_init_data_file()` are now holders too - a locked
+     read-modify-write that applies only the caller's named keys - reached
+     from app/_overlay_manager.py (switch_mode) and app/_game_lifecycle.py
+     (game start / end). Before that they wrote root coaching_data.json
+     with NO lock and replaced the whole file with a poll-stale copy.
 
 A PRIOR VERSION OF THIS DOCSTRING NAMED
 `aftergame_summary.write_to_client_coaching_data (may run out-of-process via
