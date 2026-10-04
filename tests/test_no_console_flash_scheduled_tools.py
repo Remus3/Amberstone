@@ -96,6 +96,9 @@ SCHEDULED_SPAWNERS = (
     "ops/loop/interrupt.py",
     "ops/loop/lane_launcher.py",
     "ops/loop/queue_loop.py",
+    # 2026-10-03 Wave1 merge: headless drain-wave launcher (git via _git,
+    # creationflags=_NO_WINDOW); found by the import-closure completeness check.
+    "ops/loop/drain_waves_2_3.py",
     "tools/upstream_drift_check.py",
     # 2026-10-03, second pass: found by the IMPORT CLOSURE added to the
     # completeness check (a task target imports them, so they run under the

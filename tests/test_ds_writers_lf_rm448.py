@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -89,7 +90,7 @@ def test_detector_positive_control():
     assert text_mode_writes_without_newline(src) == [3, 4, 5, 6]
 
 
-@pytest.mark.skipif(os.linesep != "\r\n", reason="CRLF translation only happens on Windows")
+@pytest.mark.skipif(sys.platform != "win32", reason="CRLF translation only happens on Windows")
 def test_forced_crlf_positive_control(tmp_path):
     """Proves the defect is real on this host and that newline='\\n' cures it."""
     bad = tmp_path / "bad.json"

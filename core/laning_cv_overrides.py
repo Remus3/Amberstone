@@ -21,7 +21,7 @@ PURPOSE
     resolver can pass a preloaded dict in tests.
 
 SHADOW-FIRST (charter 4b "do not flip blind")
-    Like the WS1 step-1 hold-band (commit 4da01fbe), this ships SHADOW-ONLY: the
+    Like the WS1 step-1 hold-band (commit 35e0119d), this ships SHADOW-ONLY: the
     override rides the ``data/hz_choice_shadow.jsonl`` record (a new
     ``cv_override`` column) so ``tools/hz_shadow_report`` can re-measure
     det-vs-Haiku agreement WITH the CV layer applied, on the same live games,
