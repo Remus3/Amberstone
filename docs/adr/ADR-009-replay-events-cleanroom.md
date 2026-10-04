@@ -1,7 +1,7 @@
 # ADR-009: Replay events sidecar over Match-V5 timeline, league_record GPLv3 cleanroom
 
 **Date:** 2026-05-20
-**Status:** Accepted
+**Status:** Accepted (video-capture deferral amended by ADR-016, 2026-10-04; the timeline decision stands)
 
 ## Context
 

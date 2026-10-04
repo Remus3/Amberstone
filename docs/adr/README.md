@@ -25,6 +25,7 @@ adding a row here in the same commit.
 | [013](ADR-013-laning-verdict-flip-retired.md) | HZ-A laning-verdict flip RETIRED - the verdict carries zero information | Accepted (closes RM-155) |
 | [014](ADR-014-aram-laning-table-known-wrong-not-regenerated.md) | Shipped ARAM laning tables are KNOWN-WRONG on economy (`gold_at_band` x `0.5/1.01`) and are deliberately NOT regenerated | Accepted (closes RM-175) |
 | [015](ADR-015-shared-repo-enumeration.md) | Repo-root enumeration in tests goes through `tests/_repo_walk`, git index primary and directory skips as backstop | Accepted (records a 2026-09-07 decision that had no record; RM-394 shipped separately, RM-395 open for the two holdouts) |
+| [016](ADR-016-local-match-recording.md) | Local match recording drives the operator's own OBS over obs-websocket, opt-in, ownership-scoped, disk-guarded, retention dry-run by default; video is ADDITIVE to the Match-V5 timeline | Accepted (amends ADR-009's video-capture deferral on operator approval 2026-10-04; RM-637..RM-641) |
 
 ## Reading order for a new session
 
