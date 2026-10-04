@@ -130,11 +130,16 @@ class AramDamageMultiplierDirectionTests(unittest.TestCase):
                 )
 
     def test_dmg_dealt_not_applied_to_ehp_term(self) -> None:
-        # aramDamageDealt is OUTGOING-only. Aatrox aramDamageTaken == 1.0,
-        # so its ARAM EHP must equal SR EHP exactly - proves the dealt
-        # multiplier did NOT leak into the survivability term.
-        sr = compute_ehp(self.snap, "Aatrox", level=11, mode="SR")
-        ar = compute_ehp(self.snap, "Aatrox", level=11, mode="ARAM")
+        # aramDamageDealt is OUTGOING-only. Ashe: aramDamageDealt 1.05,
+        # aramDamageTaken 1.0, RANGED - so her ARAM EHP must equal SR EHP
+        # exactly, which proves the dealt multiplier did NOT leak into the
+        # survivability term. (Was Aatrox until RM-666: a MELEE champion now
+        # carries the ARAM +15 bonus MR, a legitimate EHP delta.)
+        mods = _aram_mods(self.snap, "Ashe")
+        self.assertNotEqual(float(mods["aramDamageDealt"]), 1.0)
+        self.assertEqual(float(mods["aramDamageTaken"]), 1.0)
+        sr = compute_ehp(self.snap, "Ashe", level=11, mode="SR")
+        ar = compute_ehp(self.snap, "Ashe", level=11, mode="ARAM")
         self.assertAlmostEqual(ar.mode_multiplier, 1.0)
         self.assertAlmostEqual(ar.blended_ehp, sr.blended_ehp, places=4)
 

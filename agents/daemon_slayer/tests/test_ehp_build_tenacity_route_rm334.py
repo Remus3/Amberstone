@@ -443,8 +443,13 @@ class PreChangeByteIdentityTests(_Base):
             "5b8f09999b0197459e7a845ae355e2e699698ef5c8c8bc1dc332beea7f9b6603",
         "acceptance_two_cc_enemies":
             "47918eff8eb891c29034745f408100becde2f1274566390563a426e2b52b1633",
+        # Re-pinned by RM-666 (ENGINE 1.285.0): Sion is MELEE, so the ARAM
+        # +15 bonus MR legitimately moves this ARAM body. The old digest
+        # (78c95a77...4c1a4) still held at 16.19.1 with that engine change
+        # stashed, so the move is attributed to RM-666 alone; this pin stays
+        # a pre-change capture for RM-334's own key.
         "seams_armed_aram":
-            "78c95a77ea276502b4842f0eeb492fa7cb7659ea7606fc6c520006cebd94c1a4",
+            "c0361bb011cda3caebbc91119337d96fc0e5c5f6b271384c6ac203e97ee63df8",
     }
 
     @staticmethod
