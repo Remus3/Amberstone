@@ -17,10 +17,11 @@ falls back to the legacy elif chains in web_dashboard while the
 migration is in progress.
 
 Phase 4.1 (s143): POST bodies for paths in _REQUEST_MODELS are
-soft-validated against dashboard.api_schema before dispatch - warnings
-only, never reject. Mirrors the soft-warn pattern from
-core.coaching_payload (Phase 4.3).
+validated against dashboard.api_schema before dispatch. Originally
+warnings-only; since RM-243 an invalid body is REJECTED with a 400 that
+names each field (see `_validate_request_body`).
 """
+import json
 import logging
 from http.server import BaseHTTPRequestHandler
 from typing import Callable
@@ -244,31 +245,59 @@ _REQUEST_MODELS = {
 }
 
 
-def _validate_request_body(path: str, body) -> None:
-    """Soft-validate POST body against api_schema. Logs WARNING per field
-    error; never raises. Silent pass-through for paths not in
-    _REQUEST_MODELS."""
+def _validate_request_body(path: str, body) -> "list[dict] | None":
+    """Validate a POST body against api_schema.
+
+    Returns None when the body is acceptable (or the path is unmapped), else
+    a list of ``{"field", "msg"}`` dicts - pydantic's location and generic
+    message only, never the raw ValidationError text or the offending INPUT
+    (RM-134). Each error is also logged at WARNING.
+
+    RM-243 (2026-10-03): this used to DETECT the defect, LOG it, return None,
+    and let `dispatch_post` dispatch the bad body anyway. Flipped to reject
+    after the per-route production survey the row required:
+      * logs/: 32 retained day logs carry ZERO `request_body[` warnings, and
+        sibling rc.* loggers (rc.lcu, rc.resources) are measured to reach that
+        sink, so no live traffic currently fails any of the six models;
+      * senders read: /api/input main.js `{text}`; /api/command dev.js and
+        screen_read.js `{command}`; /api/ds-preview active_match.js and
+        champ_select.js `{champion, mode, level|0, items: [str], archetype?,
+        enemies?}`; /api/build-order active_match.js / build_order.js (adds
+        slots / incumbent / enemies - extras are allowed on that model);
+        /api/team-context/refresh tools/lcu_agent._build_team_context_body
+        `{queue_id: int, roster: [{puuid, summoner_name, team_id,
+        locked_champion}]}`; /api/speak has no in-tree sender.
+    """
     base = path.split("?", 1)[0]
     model_cls = _REQUEST_MODELS.get(base)
     if model_cls is None:
-        return
+        return None
     if not isinstance(body, dict):
         log.warning("request_body[%s]: expected dict, got %s",
                     base, type(body).__name__)
-        return
+        return [{"field": "", "msg": "expected a JSON object"}]
     try:
         model_cls.model_validate(body)
     except ValidationError as exc:
+        errors = []
         for err in exc.errors():
             loc = ".".join(str(x) for x in err["loc"])
             log.warning("request_body[%s] %s: %s", base, loc, err["msg"])
+            errors.append({"field": loc, "msg": str(err["msg"])})
+        return errors
+    return None
 
 
 def dispatch_post(handler: BaseHTTPRequestHandler, body: object) -> bool:
     """Same as dispatch_get but for POST. `body` is the parsed JSON
     payload (dict) extracted upstream."""
     path = handler.path
-    _validate_request_body(path, body)
+    errors = _validate_request_body(path, body)
+    if errors:
+        handler._send(400, json.dumps({"error": "bad_request_body",
+                                       "fields": errors}).encode("utf-8"),
+                      "application/json")
+        return True
     for matcher, fn in _gather_post():
         if matcher(path):
             fn(handler, body)
