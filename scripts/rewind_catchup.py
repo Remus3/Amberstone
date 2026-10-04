@@ -597,6 +597,16 @@ def _insert_timeline_rows(
             event_rows.append(parse_event(ev, match_id))
     insert_rows(conn, "timeline_frames", frame_rows)
     insert_rows(conn, "timeline_events", event_rows)
+    # RM-607: Match-V5 rows win - drop any live-tape item rows this match now
+    # supersedes, so readers that do not filter on `source` never double count.
+    # A no-op (never ALTERs) while the `source` column is absent; a purge
+    # failure must never cost the Match-V5 write.
+    try:
+        from core import live_item_tape_store as _tape_store
+        _tape_store.purge_superseded_tape_rows(conn, match_id)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("rewind_catchup: tape purge skipped for %s: %s",
+                     match_id, exc)
 
 
 def apply_timeline(
