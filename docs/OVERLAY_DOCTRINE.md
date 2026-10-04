@@ -24,7 +24,7 @@ action glyphs (U+26A0 warn, U+2713 check, U+25BA play) are code, not punctuation
 ## 0. WHY THE OLD OVERLAY WAS "UTTERLY NOT IT"
 --------------------------------------------------------------------------------
 
-The pre-doctrine overlay (`web/css/overlay.css` as of `806c77dd`) was a single
+The pre-doctrine overlay (`web/css/overlay.css` as of `b69f8112`) was a single
 monolithic 460px right-edge dock that was a CSS-NARROWED SUBSET of the dashboard
 DOM. Three structural failures:
 

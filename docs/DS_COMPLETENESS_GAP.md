@@ -141,7 +141,7 @@ queue is provably dry as of item 348).
   landed.** `ops/audit/ds_cross_eval/` is a full 172-champion DS-pick-vs-actual-WIN
   correlation deliverable (PROGRAM/REPORT/TIER2_REPORT/SYSTEMIC_FINDINGS + per-champion
   JSON), anchored on `rewind_history.db` WIN outcomes (n=2941, ARAM n=2081); DONE
-  2026-06-16 commit 89934b80, 172/172 (`project_ds_comprehensive_cross_eval` memory). So
+  2026-06-16 commit 1cd0a8e9, 172/172 (`project_ds_comprehensive_cross_eval` memory). So
   the validation SURFACE is not a gap. WHAT IS LACKING: the harness produced WIN-evidence
   for B1 (melee-gate), DSP11 (kit-axis), RF1 (bruiser-survivability) - those still need
   the operator's default-ON sign-off (bucket e); and clusters A/B are an open Tier-2

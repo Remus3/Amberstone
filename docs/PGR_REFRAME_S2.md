@@ -87,7 +87,7 @@ and bought Item X (career +3.1pp)".
   strip - SR/ARAM show the rune page, Arena shows the 6 picked augments instead
   of runes (spec line 85). Descriptive only, no WPA. `?ui_mock=1` fixtures per
   mode.
-- S5 per-player @N SHIPPED (PGR1, commit c162e5bd): `_enrich_match_timeline`
+- S5 per-player @N SHIPPED (PGR1, commit b9c926d0): `_enrich_match_timeline`
   now emits an `at_n` per-participant snapshot (gold + cs from the Match-V5
   timeline frame nearest 10 min; sub-10-min games fall back to the last frame)
   and `_fold_at_n_into_roster` copies gold_at_n/cs_at_n/at_n_minute onto each

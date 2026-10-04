@@ -176,15 +176,15 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | # | item | tag | VERDICT | evidence |
 |---|---|---|---|---|
 | 1 | Trinket/vision-ready single-pulse cue | NEW | OPEN | no ward-ready cue; overlay_pulse.js glow only |
-| 2 | Dashboard stays w/ overlay active | P3.4 | SHIPPED | 183f1969; overlay_settings.js keepCompanion |
+| 2 | Dashboard stays w/ overlay active | P3.4 | SHIPPED | ffedbd2b; overlay_settings.js keepCompanion |
 | 3 | Ration motion/pulse to urgent | NEW | SHIPPED | overlay_priority.js:113 `shouldPulse` |
 | 4 | Minimap-anchored objective/camp timers | NEW | OPEN | am-pane-map glow only; no timer chips |
-| 5 | DPI/scaleFactor overlay sizing | P4.1 | SHIPPED | 4d5d54f0; overlay_state.js:356 `normScaleFactor` |
+| 5 | DPI/scaleFactor overlay sizing | P4.1 | SHIPPED | 1822e22f; overlay_state.js:356 `normScaleFactor` |
 | 6 | Fullscreen "go Borderless" hint | NEW | OPEN | comment only; no HWND/WS_POPUP read |
 | 7 | Tiered spike-crossed "do now" cue | NEW | GATED-LIVE | arbitration shipped; producer unwired |
 | 8 | Settings without hotkeys | P3.5/4.4 | SHIPPED | overlay_settings.js sendOverlayAction |
 | 9 | Fight-mode declutter (body.fight) | NEW | OPEN | no fight-state class |
-| 10 | Opacity/scale/per-element sliders | NEW | SHIPPED | overlay_settings.js + 85d6b29e |
+| 10 | Opacity/scale/per-element sliders | NEW | SHIPPED | overlay_settings.js + 177744ae |
 | 11 | Segmented meter + ring gauges | NEW | OPEN | none in web/js or overlay css |
 | 12 | Core+contextual overlay bands | NEW | OPEN | depends on item 9 |
 | 13 | Elevation parity guard (UIPI) | NEW | OPEN | crash reason string only |
@@ -209,21 +209,21 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 32 | aggregator-G-style PGR reframe (s220) | GATED | GATED-LIVE | LIVE_GAME_GATED_SYNC PGR S3/4/5 |
 | 33 | Timeline OP-Score trajectory | NEW | SHIPPED | op_score.js GET /api/op-score-curve |
 | 34 | carry-efficiency grade default-ON | FLIP | GATED-LIVE | re-grades historic rows |
-| 35 | Result-first win-colored history row | NEW | SHIPPED | main.js:1930 + ad4c9906 |
+| 35 | Result-first win-colored history row | NEW | SHIPPED | main.js:1930 + 8150670d |
 | 36 | History champ/queue/result filters | NEW | OPEN | scope tabs only |
 | 37 | Per-session W-L header | NEW | OPEN | _agg_session emits no W-L |
 | 38 | Richer row + expand accordion | NEW | OPEN | routes to PGR, no accordion |
 | 39 | Gold-diff chart + event ribbon + story | NEW | OPEN | ribbon ships; chart/story absent |
 | 40 | Lane @10/@15 breakpoints + bands | NEW | OPEN | single @N row only |
 | 41 | Kill-clustering ribbon + death heatmap | NEW | OPEN | no kill_pos plot |
-| 42 | prefers-reduced-motion replacement | NEW | SHIPPED | tokens.css:169 (E8 19f8116f) |
+| 42 | prefers-reduced-motion replacement | NEW | SHIPPED | tokens.css:169 (E8 eff7ca7c) |
 | 43 | Redundant status glyphs | NEW | SHIPPED | tokens.css:152 triangle glyphs (E8) |
 | 44 | Threshold status helper `statusFor()` | NEW | SHIPPED | status.js:43 (E8) |
 | 45 | Quiet-by-default motion sweep | NEW | OPEN | ~9 infinite loops live |
 | 46 | Two-tier design tokens | NEW | OPEN | --signal-good still literal |
 | 47 | Labeled grid + tonal elevation | NEW | OPEN | no surface/text-tier tokens |
 | 48 | Dark-values audit + lock | NEW | OPEN | near-compliant; no lock artifact |
-| 49 | Haiku-free laning coach (CV) | P5.1 | SHIPPED | 77ef5e2a laning_cv_overrides.py |
+| 49 | Haiku-free laning coach (CV) | P5.1 | SHIPPED | ed4175b5 laning_cv_overrides.py |
 | 50 | Laning hold-band recalibration | GATED | GATED | E5 shadow only; engine threshold undone |
 | 51 | ABC specificity + condition branching | P5.3/5.4 | SHIPPED | trigger field + rebranch |
 | 52 | Mid/late/objective playbook | P5.5/5.6 | SHIPPED | objective_playbook.py |
@@ -234,11 +234,11 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 57 | Antiheal callout membership review | NEW | SHIPPED | heal_threat.py:187 (product residual) |
 | 58 | RuneWriter poll 2.0s->1.0s | P6.2 | SHIPPED | POLL_INTERVAL <=1.0s |
 | 59 | Cache CS gameMode (L2) | NEW | OPEN | live-reads lobby per tick |
-| 60 | SSE tick + build TTL ->0.5s (L4) | P6.3 | SHIPPED | e9b1a5d0 _STATE_CADENCE_S |
+| 60 | SSE tick + build TTL ->0.5s (L4) | P6.3 | SHIPPED | 4f19d305 _STATE_CADENCE_S |
 | 61 | Pooled keep-alive LCU conn (L6) | GATED | GATED-LIVE | lcu_pool.py OFF; E7 |
 | 62 | Single CS reader on 1-PC (L3) | NEW | OPEN | research-only docs/_archive/2026-07-28-research-consolidation/RC2_RESEARCH_io_timing_map.md:174 |
 | 63 | Min-interval guard + 1.5s :2999 floor | NEW | SHIPPED | lcu_pool.py:198 `MinIntervalGuard` |
-| 64 | Port/CPU regression verify | P6.4/6.6 | SHIPPED | 92ca2279 footprint guard |
+| 64 | Port/CPU regression verify | P6.4/6.6 | SHIPPED | df4a2b0c footprint guard |
 | 65 | 11 flag-ready re-rank seams flip | FLIP | GATED-LIVE | =E2; live_flip_eyeball.py |
 | 66 | Wire DSP4-7 + antitank producers | GATED | GATED | live call-site wiring |
 | 67 | Anivia revive + Orianna E flip | FLIP/GATED | GATED-LIVE | revive OFF; Orianna live-wire |
@@ -251,16 +251,16 @@ Full per-item audit trail with evidence citations: **Appendix** below.
 | 74 | cdragon/wiki data tails (b1/b2) | CLOSED-ish | CLOSED | needs NEW extractor key |
 | 75 | live producers ~88 st-* rows | GATED | GATED-LIVE | live corpus |
 | 76 | /api/ward-heat producer | GATED | GATED | no WARD_PLACED source |
-| 77 | win on end-of-game ingest | NEW | SHIPPED | ad4c9906; test_history_win_capture.py |
+| 77 | win on end-of-game ingest | NEW | SHIPPED | 8150670d; test_history_win_capture.py |
 | 78 | LBAND1 benchmark-band wire-in | GATED | GATED-LIVE | real/replayed game |
 | 79 | set_augment_intent endpoint discovery | GATED | GATED-LIVE | live Arena 1750 |
 | 80 | CDragon game-data catalog adoption | GATED | GATED | no CD-ledger trigger |
-| 81 | ASCII full sweep + warning | P7.1 | SHIPPED | dbbd7a8d |
-| 82 | stale-file census >1 week | P7.2 | SHIPPED | 29fa1750 |
-| 83 | dead-code removal + reorg | P7.3/7.4 | SHIPPED | 5f3391c8 + 386d5e2c |
+| 81 | ASCII full sweep + warning | P7.1 | SHIPPED | c1b6e66d |
+| 82 | stale-file census >1 week | P7.2 | SHIPPED | 9db9cf93 |
+| 83 | dead-code removal + reorg | P7.3/7.4 | SHIPPED | ff35b227 + 5a816be2 |
 | 84 | full 362-file mirror de-dup | GATED | GATED | own session; gist/CI coupling |
 | 85 | gamepc_*.py archival | GATED | GATED | prior pass NOT-safe |
-| 86 | verify dual suite green | P7.5 | SHIPPED | afa07330 17151/0 |
+| 86 | verify dual suite green | P7.5 | SHIPPED | a2cd9fdc 17151/0 |
 | 87 | NOW block (cross-listed set) | NOW | SHIPPED | P3-P7 + E1/E3-E9 |
 | 88 | FUTURE gated set | FUTURE | GATED | dataset/live/product call |
 | 89 | CLOSED research set | CLOSED | CLOSED | CLAUDE Settled + BACKLOG |

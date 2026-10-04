@@ -302,16 +302,16 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   still champ-select mounts. SOURCE: LEDGER 715/717/623/635.
 - **G1-02** `[CS-CAPTURE]` (was A5) rc-shell PRE-GAME LOBBY `lcu.lobby.members[]` render (YOUR MAINS /
   PARTY / MY TOP-8; if empty, capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member`
-  output) + eyeball the overlay surface gate `cac1df3a` (companion in lobby/CS, lean HUD once
+  output) + eyeball the overlay surface gate `bc4625d8` (companion in lobby/CS, lean HUD once
   liveclient populates). SOURCE: ledger 2026-06-20.
-- **G1-03** `[CS-SCENARIO]` (was A3) CC-conditional pairing UI renders on champ-select (`541cd9d3`) -
+- **G1-03** `[CS-SCENARIO]` (was A3) CC-conditional pairing UI renders on champ-select (`a685a530`) -
   needs a CC-pairing lobby to roll; never rolled 2026-07-04. Rides every champ-select at any gate.
-- **G1-04** (was A4 + QA24) LOBBY1 top-8 friend-invite live verify (`1f4f4118`) + the QA24 non-friend
+- **G1-04** (was A4 + QA24) LOBBY1 top-8 friend-invite live verify (`b9cb0092`) + the QA24 non-friend
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
   docs/ORCHESTRATION_PLAN.md:63.
 - **G1-05** `[BLOCKED - RE-TAGGED 2026-07-18]` (was A11) OVL2 Pengu Surface C live validation
-  (`aab53e37`). **RE-TAG source: this GATE 1 row; destination: BLOCKED - it is neither drainable by a
+  (`7ddada96`). **RE-TAG source: this GATE 1 row; destination: BLOCKED - it is neither drainable by a
   game nor stale-and-closable.** SETTLED HEADLESS: repo-root `pengu/` is ABSENT and all 6 tests in
   `tests/test_pengu_plugin_skeleton.py` skip via a `pytestmark` `skipif(not PENGU.is_dir())` with the
   reason "pengu/ stub relocated to docs/_archive/2026-07-07-pengu-stub". **But the source is NOT gone -
@@ -322,7 +322,7 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   the test header itself says the stub is code-only and live validation is OWED.
   BLOCKED ON one operator decision: un-archive the stub back to `pengu/` and rebuild, OR retire the
   row. Until that is answered there is nothing a game can drain, so do NOT count this row in a gate
-  session. Cited `aab53e37` does not resolve in this repo (4 of GATE 1's 5 cited hashes do not - they
+  session. Cited `7ddada96` does not resolve in this repo (4 of GATE 1's 5 cited hashes do not - they
   are pre-cherry-pick worktree SHAs per the `docs/history_notes.md:4468` merge workflow: a systemic
   citation defect, not fabrication). SOURCE: docs/ORCHESTRATION_PLAN.md:82.
 - **G1-06** `[NOT BUILT]` (was A12) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance - queued
@@ -483,7 +483,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 
 ### `[BATCH OVERLAY-PIXEL]` - overlay up, one screenshot pass
 
-- **G2-25** (was B24) Overlay populated pixel-capture family: OVL1 settings controls (`4d09f8ac`);
+- **G2-25** (was B24) Overlay populated pixel-capture family: OVL1 settings controls (`f621168d`);
   R33 ward_cue / spike_cue / objective_chips / minimap_zoi / minimap_rect (`2b03c529`); R40 draft_elo
   chip + ward_heat strip (`4a1622cc`); W3E callouts + lead_projection; spike-markers live-clock cursor;
   item-662 first-match no-flash confirm; OQ14 Item Shaper Row4 SHAPER strip (`dc45f749`). Also folds
@@ -680,7 +680,7 @@ survivability flips below cannot roll otherwise.
 
 ### Champ-select
 
-- **G3-01** (was A6) E7a bench-swap queue-drain eyeball (`64591d5f`): click a bench champ in a real
+- **G3-01** (was A6) E7a bench-swap queue-drain eyeball (`eb361c27`): click a bench champ in a real
   ARAM champ-select and confirm the swap registers visibly faster.
 - **G3-02** (was A10) KEYSTONE residual: operator visual reassurance of the rendered bench (data path
   proven; no capture pursued). SOURCE: ROADMAP.md:100.
@@ -865,7 +865,7 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 
 - **G4-01** (was A9) Enemy/ban-dependent champ-select captures: OQ9 ban-reason labels (`1bf255ea`),
   cooldown-watch card (render-gated on committed enemies), UIX1 champ-select SR live capture
-  (`3c123060`). SOURCE: LEDGER 726.
+  (`18f37d4f`). SOURCE: LEDGER 726.
 
 ### `[BATCH DS-SEAM]` - real-enemy / real-ally seams (same restart discipline as GATE 2)
 
@@ -1544,9 +1544,9 @@ by fixture, harness, dev-preview, replay corpus, unit test, or synthetic livecli
   F6a (dep=E5) is marked DONE 2026-06-29; reconcile the E5 status.
 - `Share/docs/05_AUDIT_AND_REFACTOR.md:20-21` - "7144 tests / 227 files" stale vs the live run at the
   current ENGINE (DS-batch docs job).
-- Stale-hash citations to correct OUTSIDE append-only ledgers: item 508 build-order report `4623edd7`
-  -> `7ee593d3`; QA4 chips `f570f527` -> `77f0e494`; HZ-B `--static` `917cbb89` -> `d528f6cb`; HZ-B
-  regen `a5101e20` -> `559245a0`; E12 `109c80f0` -> `e9b1a5d0` + `48fcee51`; G4-boots `c258c4ab` ->
+- Stale-hash citations to correct OUTSIDE append-only ledgers: item 508 build-order report `5db73817`
+  -> `7ee593d3`; QA4 chips `03c8d49b` -> `77f0e494`; HZ-B `--static` `035d7ff7` -> `d528f6cb`; HZ-B
+  regen `07cb6365` -> `559245a0`; E12 `109c80f0` -> `4f19d305` + `16adb6cb`; G4-boots `54d0706a` ->
   `f8353d5d`; D7-hist "Kai'Sa id 6646" -> the real `tracked_champion_id` 145.
 - `RC_WORK_TRACKER.md` rows resynced 2026-07-18 (see the tracker's own CLOSED section); the
   previously-flagged AWAITING/CLOSED misplacements are fixed in that pass.
@@ -1959,25 +1959,25 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   or default `RC_COMP_HP_LEAN=1` in the supervisor env). NO ENGINE_VERSION bump / Share sync (engine
   untouched - the seam only changes the TARGET fed to the already-shipped DSV1 scorer).
 
-- 2026-06-20 RC2 rc-shell standalone-app live session (code fixes shipped `cac1df3a` + `81f74d88`;
+- 2026-06-20 RC2 rc-shell standalone-app live session (code fixes shipped `bc4625d8` + `30e2d3fa`;
   runtime recovery). LIVE-VERIFY OWED (needs a live ARAM/any lobby): `lcu.lobby.members[]` must render
   in the rc-shell PRE-GAME LOBBY panel (YOUR MAINS / PARTY / MY TOP-8). The agent DOES forward members[]
   (`tools/lcu_agent.py:706-717`) but the operator saw empty members during a live lobby; could NOT
   reproduce after they left it (LCU phase=None). Next lobby: confirm the panels populate; if empty,
   capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member` output to find why members
   drop (suspect event-mode 2400 member shape OR the post-RC-restart stale-agent window). ALSO eyeball
-  the overlay surface gate (`cac1df3a`): companion dashboard shows in the lobby/champ-select and flips to
+  the overlay surface gate (`bc4625d8`): companion dashboard shows in the lobby/champ-select and flips to
   the lean HUD only once `liveclient` populates (a real game starts). Separately tracked (NOT live-gated,
   headless next session): agent restart-resilience - RC-LCUAgent/Hotkey/Relay must survive boot + auto-
   resync after an RC restart (the systemic root cause of the whole session's cascade). NOT a DS seam.
 
 - 2026-06-20 RC2 E-batch E12-L2 + E7a (RC-side, NOT DS seams; shipped code-safe, no flip flag).
-  E7a (`64591d5f`) tightens the RC-LCUAgent bench-swap queue-drain (fast 0.1s re-poll on a
+  E7a (`eb361c27`) tightens the RC-LCUAgent bench-swap queue-drain (fast 0.1s re-poll on a
   latency-sensitive cmd vs the 0.5s idle wait). LIVE EYEBALL OWED: in a real ARAM champ-select,
   click a bench champ and confirm the swap registers visibly faster - cannot be exercised offline
   (needs a live LCU champ-select with a populated bench). The RC-LCUAgent runs as an ONLOGON task
   with no restart_trigger, so a code refresh needs `taskkill /F` the agent pid + `Start-ScheduledTask
-  RC-LCUAgent`. E12-L2 (`48fcee51`) memoizes RuneWriter's lobby gameMode per champ-select session.
+  RC-LCUAgent`. E12-L2 (`16adb6cb`) memoizes RuneWriter's lobby gameMode per champ-select session.
   LIVE EYEBALL OWED: confirm RuneWriter still pushes the correct mode-appropriate runes/spells on
   champ-select enter (cache is per-session, cleared on `_reset_spell_state`) and a mode change across
   back-to-back champ-selects re-detects. Neither blocks any further stage.
@@ -2162,7 +2162,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   previously the only EXCLUDED live item with no checklist row. Every other rank.py/burst.py/combo.py
   default-OFF seam (DSP2/DSP4/DSP8/DSP11) + the ROADMAP Phase-D flips + champ-select Haiku flip already had
   an accurately-located row. No new seam shipped; no new OPEN work discovered (OPEN1/OPEN2 still pending).
-- 2026-06-17 HZU1 (no ENGINE bump - tooling + docs; the item-level CODE shipped item 457 @a30cbba4):
+- 2026-06-17 HZU1 (no ENGINE bump - tooling + docs; the item-level CODE shipped item 457 @ccfd2e18):
   the HZ Lane-B build-order Haiku-flip gate already mines item-level signal, but its VERDICT is HOLD.
   Fresh re-run @651 SR matches (`--limit 0`) independently REPRODUCED item 457 byte-for-byte: lean-level
   followed-vs-not +2.3pp (766 vs 1066 rows, 95%=[-2.3,+6.9], flip_ready=False); completion-timing also a
@@ -2232,7 +2232,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   `rank_items(exempt_offclass_by_win=True)` at the carry/dps scorer call site (the caster-marksman
   re-include; section B above). Validate the re-rank vs a real Ezreal/Corki game before flipping.
 - 2026-06-17 seeded from ROADMAP open-tail consolidation. DSP* seam flips append here as they ship.
-- 2026-06-20 RC2 P3.3 overlay pulse-rationing flip (UI behavior, NOT a DS seam; `87f41baf` shipped
+- 2026-06-20 RC2 P3.3 overlay pulse-rationing flip (UI behavior, NOT a DS seam; `7f9b274c` shipped
   the SHADOW). Shadow: `right_now.js` stamps `data-s0-cue` / `data-s0-tier` / `data-s0-pulse` on
   `#right-now` each render via `overlay_priority.signalFromState` -> `selectPrimary` -> `shouldPulse`,
   with ZERO live pulse change. SHIPPED LIVE (operator-approved 2026-06-22, verify-next-game): the
@@ -2249,7 +2249,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
   NOT headless): on a real game confirm the suppressed pulses were all benign re-emits and the Emergency /
   one-shot Urgent cross still glows. The arbitration single-winner (A2) + 44px choice hit-target already
   ship live.
-- 2026-06-20 RC2 P4.1 DPI/resolution overlay sizing live eyeball (UI geometry, NOT a DS seam; `4d5d54f0`
+- 2026-06-20 RC2 P4.1 DPI/resolution overlay sizing live eyeball (UI geometry, NOT a DS seam; `1822e22f`
   shipped the code). The shell now sizes the overlay window by the work-area scale (resolveOverlayMetrics)
   and zooms the dock content to match (overlay.css `--rc-overlay-scale`). Headless-verified via the
   real-Chromium `test_overlay_view` fixture audit at 2560x1440 (dock zooms to ~598px right-anchored,
