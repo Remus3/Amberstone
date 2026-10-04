@@ -11,7 +11,11 @@ Routes (127.0.0.1 ONLY - there is deliberately no --host option):
   GET /api/state                    latest frame envelope: {captured_at,
                                     recorded_captured_at, replay: true,
                                     game_time, snapshot, vision_state?, header}
-  GET /liveclientdata/allgamedata   the raw recorded :2999 snapshot
+  GET /liveclientdata/allgamedata   the raw recorded :2999 snapshot; the body
+                                    mirrors the live endpoint byte-for-byte, so
+                                    it carries NO replay field - the marker is
+                                    the response header X-RC-Replay: 1 (sent on
+                                    every route)
   GET /api/events[?since=<id>]      ONLY when an event source is plugged in
                                     (core/live_event_deriver.py, X-04, if
                                     present); otherwise the route is absent
@@ -30,8 +34,9 @@ relative to the first frame). --hold keeps serving the last frame after the
 end instead of exiting.
 
 Replay output is NOT live evidence. A replay NEVER closes a live-gated row
-(docs/LIVE_GAME_GATED_SYNC.md): every payload carries ``replay: true`` and
-any gated row still needs a real live game. Recordings name other players and
+(docs/LIVE_GAME_GATED_SYNC.md): every response carries the header
+``X-RC-Replay: 1``, the /api/state and /api/events bodies also carry
+``replay: true``, and any gated row still needs a real live game. Recordings name other players and
 live under gitignored logs/; never commit one.
 """
 from __future__ import annotations
@@ -177,6 +182,9 @@ def make_server(state: ReplayState, port: int = DEFAULT_PORT, host: str = LOOPBA
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
             self.send_header("Cache-Control", "no-store")
+            # Every replay response is marked at the HTTP layer, including the
+            # raw allgamedata mirror whose body must stay byte-identical.
+            self.send_header("X-RC-Replay", "1")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
