@@ -155,8 +155,14 @@ def build_rows(match_id: str, events: Iterable[lit.TapeEvent],
     """Persisted-type events -> timeline_events rows (one row per copy, the
     Match-V5 convention). Other tape types are not rows."""
     pids = participant_ids or {}
+    events = list(events)
+    # Only the LATEST game segment belongs to this match_id: anything from an
+    # earlier segment is a previous game whose end was missed (never invent).
+    latest = max((e.segment for e in events), default=0)
     rows: list[dict] = []
     for e in events:
+        if e.segment != latest:
+            continue
         if e.event_type not in lit.PERSISTED_TYPES:
             continue
         team_id = _TEAM_ID.get(e.team)
