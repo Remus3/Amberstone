@@ -176,11 +176,18 @@ class TestDispatchPostIntegration:
 
         class _FakeHandler:
             path = "/api/input"
+            sent = None
 
+            def _send(self, status, payload, ctype):
+                self.sent = (status, payload, ctype)
+
+        h = _FakeHandler()
         with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
-            ok = _dispatch.dispatch_post(_FakeHandler(), {})  # missing text
+            ok = _dispatch.dispatch_post(h, {})  # missing text
         assert ok is True
-        assert called["body"] == {}  # dispatch still proceeded
+        # RM-243: the verdict is ENFORCED now - rejected, never dispatched.
+        assert "body" not in called
+        assert h.sent[0] == 400
         msgs = _warnings(caplog)
         assert any("text" in m for m in msgs), msgs
 
