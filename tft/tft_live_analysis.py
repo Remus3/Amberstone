@@ -206,6 +206,87 @@ _NOT_UNIT_LABELS={
     "empty","front","back","mid","row","col","tank","carry","support","dps",
     "trait","origin","class","active","inactive","breakpoint",
 }
+# RM-303: trait names OCR reads as unit names (was a local of _write that
+# guarded shop_units only).
+_TRAIT_NAMES = frozenset({
+    "timebreaker","space groove","dark star","anima","nova","n.o.v.a.","meeple","mecha",
+    "conduit","redeemer","rogue","stargazer","psionic","shepherd","vanguard","primordian",
+    "bastion","fateweaver","voyager","scholar","bruiser","defender","invoker","quickstriker",
+    "slayer","vanquisher","arcanist","juggernaut","warden","gunslinger","replicator",
+    "ixtal","yordle","shadow isles","zaun","bilgewater","noxus","freljord","demacia",
+    "ionia","targon","shurima","marauder","eternal","harvester","chronokeeper",
+    "challenger","gun goddess","longshot","sniper","arbiter","contract killer",
+    "stellar","automata","conqueror","soul","void","arcane","channeler",
+    "party crasher","divine","factory new","darkin","dragonborn",
+    "astron","astronaut","primordial"})
+_STAR_SUFFIX_RE = re.compile(r"\s*[1-3]\s*-?\s*(?:star|\*)\s*$", re.IGNORECASE)
+
+
+def _is_trait_label(ul):
+    """True when a lowercased unit string is a trait name (incl. "A/B" and
+    the "unknown Trait/Trait" vision format)."""
+    def _hit(s):
+        if any(s == t or s.startswith(t + " ") or s.startswith(t + "/") for t in _TRAIT_NAMES):
+            return True
+        return "/" in s and all(p.strip() in _TRAIT_NAMES for p in s.split("/"))
+    if _hit(ul):
+        return True
+    if ul.startswith("unknown "):
+        rest = ul[8:].strip()
+        return bool(rest) and _hit(rest)
+    return False
+
+
+def _unit_base(u):
+    """Champion name with cost "(...)" and star ("2-star") annotations off."""
+    s = str(u).strip().split("(")[0].strip()
+    return _STAR_SUFFIX_RE.sub("", s).strip()
+
+
+def _sanitize_units(units):
+    """RM-303: the one sanitizer for board / bench / shop.
+
+    Placeholders ("", "empty", "unknown", "SPECTATING") pass through. A
+    trait label or a name off the Set 17 roster becomes "unknown"; a real
+    champion keeps its original text (star / cost annotations intact).
+    Roster measured 2026-10-03 against data/meta/tft_set17_champion_codes.json
+    (64 names) and every comp unit in tft_set17_meta.json /
+    tft_set17_pbe_meta.json (61 names): zero missing, so extending the
+    whitelist to the BOARD rewrites no legitimate champion.
+    """
+    out = []
+    for u in (units if isinstance(units, list) else []):
+        if not u or u in ("empty", "unknown") or str(u).strip().upper() == "SPECTATING":
+            out.append(u)
+            continue
+        ul = str(u).lower().strip()
+        if _is_trait_label(ul):
+            out.append("unknown")
+            continue
+        out.append(u if _unit_base(u).lower() in _TFT_CHAMP_LOWER else "unknown")
+    return out
+
+
+def _coerce_hp(v):
+    """RM-303: hp to a number before the 0..100 clamp; non-numeric -> None.
+
+    A vision read of the STRING "999" used to bypass the isinstance-gated
+    clamp and reach ops/rc_state_validator.py as an out-of-range value.
+    Out-of-range keeps the historical clamp target of 0.
+    """
+    if v is None or isinstance(v, bool):
+        return None
+    try:
+        f = float(str(v).strip()) if isinstance(v, str) else float(v)
+    except (TypeError, ValueError):
+        return None
+    if f != f or f in (float("inf"), float("-inf")):
+        return None
+    if f > 100 or f < 0:
+        return 0
+    return int(f) if f == int(f) else f
+
+
 _NOT_AUGMENTS={"buy xp","reroll","sell","level up","refresh","skip","lock","bruiser","defense","attack"}
 def _is_valid_unit(name):
     if not name or name=="empty": return False
@@ -427,7 +508,7 @@ class TftLiveAnalysis:
         except Exception: pass  # noqa: BLE001
         cs=self._coach_state; rt=vs.get("traits_active") or []
         tn={t.split()[0].lower() for t in rt if t}
-        bc=self._clean_units(vs.get("board_units"),tn); bn=self._clean_units(vs.get("bench_units"),tn); sc=self._clean_units(vs.get("shop_units"),tn)
+        bc=self._clean_units(_sanitize_units(vs.get("board_units")),tn); bn=self._clean_units(_sanitize_units(vs.get("bench_units")),tn); sc=self._clean_units(_sanitize_units(vs.get("shop_units")),tn)  # RM-303: same sanitizer the payload gets
         lc=f"LAST ROUND LOST - took {vs.get('round_damage','?')} damage." if vs.get("last_round_result")=="loss" else ""
         ac=f"ACTIVE AUGMENTS: {', '.join(str(a) for a in vs.get('augments',[]))}" if vs.get("augments") else ""
         # Unit presence from board/roster clicks
@@ -502,7 +583,7 @@ class TftLiveAnalysis:
                 ex=_load(self._data_file)
                 out=dict(ex) if isinstance(ex,dict) else {"mode":"tft_live"}
                 out.update({"mode":"tft_live","stage_round":cs.get("stage_round",""),
-                            "level":vs.get("level") or cs.get("level"),"hp":vs.get("hp"),
+                            "level":vs.get("level") or cs.get("level"),"hp":_coerce_hp(vs.get("hp")),
                             "degraded":True,"degraded_message":_DEGRADED_TEXT})
                 _write(self._data_file,out)
             # Invalidate the write gate. Without this, a recovery cycle whose
@@ -522,7 +603,7 @@ class TftLiveAnalysis:
         if not ch: return
         def _fc(c): return f"{c.get('name','?')}: {c.get('description','')}" if isinstance(c,dict) else str(c)
         p=_AUGMENT_SELECT_PROMPT.format(stage_round=cs.get("stage_round","?"),level=vs.get("level") or cs.get("level","?"),
-            board=_fmt(self._clean_units(vs.get("board_units"),set())),traits=_fmt(vs.get("traits_active")),
+            board=_fmt(self._clean_units(_sanitize_units(vs.get("board_units")),set())),traits=_fmt(vs.get("traits_active")),
             # RM-364: sanitise the RENDERED choice at the join, NOT inside
             # _fc - _fc also feeds the `augment_choices` list written to the
             # coaching data file below (:527), which the dashboard panel
@@ -567,44 +648,13 @@ class TftLiveAnalysis:
             "comp":f.get("comp",""),"build":f.get("build",""),"buy":f.get("buy",""),"sell":f.get("sell",""),
             "keep":f.get("keep",""),"augment_play":f.get("augmentplay",""),"loss":f.get("loss",""),
             "unit_placement":f.get("unitplacement",""),"unit_swap":f.get("unitswap","")}
-        # Pre-write: strip trait names from shop_units + clamp HP
-        _TN = {"timebreaker","space groove","dark star","anima","nova","n.o.v.a.","meeple","mecha",
-               "conduit","redeemer","rogue","stargazer","psionic","shepherd","vanguard","primordian",
-               "bastion","fateweaver","voyager","scholar","bruiser","defender","invoker","quickstriker",
-               "slayer","vanquisher","arcanist","juggernaut","warden","gunslinger","replicator",
-               "ixtal","yordle","shadow isles","zaun","bilgewater","noxus","freljord","demacia",
-               "ionia","targon","shurima","marauder","eternal","harvester","chronokeeper",
-               "challenger","gun goddess","longshot","sniper","arbiter","contract killer",
-               "stellar","automata","conqueror","soul","void","arcane","channeler",
-               "party crasher","divine","factory new","darkin","dragonborn",
-               "astron","astronaut","primordial"}
-        if "shop_units" in out:
-            _cleaned = []
-            for _u in out.get("shop_units", []):
-                if not _u or _u == "empty": _cleaned.append(_u); continue
-                _ul = str(_u).lower().strip()
-                _is_t = any(_ul == t or _ul.startswith(t + " ") or _ul.startswith(t + "/") for t in _TN)
-                if not _is_t and "/" in _ul:
-                    _is_t = all(p.strip() in _TN for p in _ul.split("/"))
-                # Also catch "unknown Trait/Trait" format
-                if not _is_t and _ul.startswith("unknown "):
-                    _rest = _ul[8:].strip()  # strip "unknown "
-                    if _rest:
-                        _is_t = any(_rest == t or _rest.startswith(t + "/") or _rest.startswith(t + " ") for t in _TN)
-                        if not _is_t and "/" in _rest:
-                            _is_t = all(p.strip() in _TN for p in _rest.split("/"))
-                if _is_t:
-                    _cleaned.append("unknown")
-                else:
-                    # Whitelist: only allow known Set 17 champion names
-                    _name_clean = str(_u).strip().split("(")[0].strip()  # strip cost annotations
-                    if _name_clean.lower() in _TFT_CHAMP_LOWER or _name_clean in _TFT_CHAMPIONS:
-                        _cleaned.append(_u)
-                    else:
-                        _cleaned.append("unknown")
-            out["shop_units"] = _cleaned
-        _ohp = out.get("hp")
-        if _ohp and isinstance(_ohp, (int, float)) and (_ohp > 100 or _ohp < 0): out["hp"] = 0
+        # Pre-write: RM-303 - ONE sanitizer over all three unit lists (it used
+        # to run on shop_units only, so a trait read as a champion was scrubbed
+        # from the shop and published on the board / bench), and hp is
+        # coerced to a number BEFORE the clamp (a string "999" bypassed it).
+        for _k in ("board_units", "bench_units", "shop_units"):
+            out[_k] = _sanitize_units(out.get(_k))
+        out["hp"] = _coerce_hp(out.get("hp"))
         # Fix false "empty board" in loss when board_units has entries
         _bu = out.get("board_units", [])
         _loss = out.get("loss", "") or ""

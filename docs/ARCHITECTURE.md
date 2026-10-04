@@ -248,6 +248,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | File | Role |
 |---|---|
 | `tests/test_rm301_tft_force_scan_lock.py` | regression - RM-301 TFT force_scan RMW serialized against loop-thread writers |
+| `tests/test_rm303_tft_unit_list_sanitizer.py` | regression - RM-303 one sanitizer for TFT board/bench/shop + numeric hp clamp |
 
 ### Tests
 | File | Role |
@@ -325,7 +326,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |
-| 7 P2 | - | `tft/tft_live_analysis.py:313` | C - clear stale choices on augment-select force scan |
+| 7 P2 | - | `tft/tft_live_analysis.py:394` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->
 
