@@ -51,7 +51,7 @@ NODE = shutil.which("node")
 # spec reporter's glyph-prefixed "pass N").
 _TALLY = re.compile(
     r"^\s*(?:#\s*|\S\s+)?(tests|pass|fail)[ \t]+(\d+)[ \t]*$", re.M)
-# Measured 2026-10-04: the suite reports 18 passing tests. 15 leaves room to
+# Measured 2026-10-04: the suite reports 20 passing tests. 15 leaves room to
 # delete or merge a test without tripping; a runner that loaded nothing lands at 0.
 _MIN_PASS = 15
 
