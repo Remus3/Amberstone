@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import subprocess
 import sys
 import threading
@@ -82,11 +83,37 @@ def _replace_with_retry(src: Path, dst: Path) -> None:
             time.sleep(delays[i])
 
 
-def atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+def _scratch_path(path: Path) -> Path:
+    # RM-261: per-writer scratch name. `<dest>.tmp` was shared by every writer
+    # of a file (supervisor and app both write ops/runtime/*.json), so two
+    # writers could interleave in one scratch file and publish torn bytes -
+    # the RM-254 defect, which core/polled_json fixed but this deliberately
+    # stdlib-only copy kept.
+    return path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+
+
+def _write_then_replace(path: Path, data: bytes) -> None:
+    # Flush + fsync before the rename publishes the file (RM-263 parity with
+    # core/polled_json), and never leave the scratch file behind.
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    _replace_with_retry(tmp, path)
+    tmp = _scratch_path(path)
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        _replace_with_retry(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
+def atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+    _write_then_replace(
+        Path(path), json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
 
 
 def _pid_alive(pid: int) -> bool:
@@ -1611,9 +1638,9 @@ class Supervisor:
                     try:
                         _tf = self.project_root / "restart_trigger.txt"
                         if _tf.exists() and _tf.stat().st_size > 0:
-                            _tf_tmp = _tf.with_suffix(".clear.tmp")
-                            _tf_tmp.write_text("", encoding="utf-8")
-                            os.replace(_tf_tmp, _tf)
+                            # RM-258/RM-261: per-writer scratch + the WinError
+                            # 5 retry this file already defines.
+                            _write_then_replace(_tf, b"")
                             self.log("restart_trigger.txt detected -- restarting")
                             self.restart_app(reason="restart_trigger")
                     except (OSError, ValueError) as exc:
