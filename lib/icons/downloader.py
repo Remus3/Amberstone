@@ -88,6 +88,13 @@ def _safe_relpath(rel: str | None) -> str | None:
     return "/".join(parts)
 
 
+_IMAGE_MAGIC = (b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff")
+
+
+def _looks_like_image(body: bytes) -> bool:
+    return bool(body) and body.startswith(_IMAGE_MAGIC)
+
+
 class IconDownloader:
     def __init__(self, version: str | None = None) -> None:
         self._client = get_client()
@@ -108,6 +115,15 @@ class IconDownloader:
             return False
         if resp.status != 200:
             logger.warning("icon %s: HTTP %d", url, resp.status)
+            return False
+        # RM-373: a 200 is not proof of an image - an error page or an
+        # interstitial would be written over a good icon (force=True path).
+        # Judge the BYTES before the write; DDragon icons are PNG (JPEG
+        # tolerated for art assets). Binary payload, so magic bytes - not the
+        # lib/scrapers HTML marker list.
+        if not _looks_like_image(resp.body):
+            logger.warning("icon %s: 200 body is not an image (%d bytes) - "
+                           "keeping the existing file", url, len(resp.body))
             return False
         _atomic_write_bytes(target, resp.body)
         return True
