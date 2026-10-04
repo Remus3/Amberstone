@@ -840,6 +840,7 @@ class PostgameCollector:
         eog = self._fetch_eog_stats_block()
         if eog:
             self._publish_game_end_pin(eog, mode_hint=game_mode)
+            self._attach_moment_marks(eog)
             _save_eog(eog, game_mode, _ITEM_MAP, _RUNE_MAP)
             _save_raw_document(eog.get("gameId"), "eog", eog)
             # Best-effort: try to get item timeline from match history
@@ -885,6 +886,21 @@ class PostgameCollector:
             on_game_end_if_enabled(eog.get("gameId") or eog.get("game_id"))
         except Exception as exc:  # noqa: BLE001
             _log.debug("postgame: item-tape persist not scheduled: %s", exc)
+
+    def _attach_moment_marks(self, eog: dict, game_length_s=None) -> None:
+        """RM-638 (X-38, external reference C): attach the in-game "mark this
+        moment" presses for the just-ended game (core/moment_marks.py). Its OWN
+        try-block, deliberately outside _publish_game_end_pin, so neither seam
+        can cost the other or the capture."""
+        try:
+            from core import moment_marks
+            if game_length_s is None:
+                game_length_s = eog.get("gameLength") or eog.get("gameDuration")
+            moment_marks.attach_for_game(
+                eog.get("gameId") or eog.get("game_id"), game_length_s,
+                getattr(self, "_trigger_at", None) or time.time())
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("postgame: moment marks not attached: %s", exc)
 
     def _history_game_is_fresh(self, game: dict) -> bool:
         """True only when ``gameCreation`` (ms) + ``gameDuration`` (s) of a
@@ -952,6 +968,8 @@ class PostgameCollector:
                 if self._history_game_is_fresh(game):
                     self._publish_game_end_pin(adapted, summoner,
                                                mode_hint=game_mode)
+                    self._attach_moment_marks(
+                        adapted, game_length_s=game.get("gameDuration"))
                 else:
                     _log.info("postgame: history game %s predates the "
                               "trigger - no live-writer pin",
