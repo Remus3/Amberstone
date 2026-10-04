@@ -1488,6 +1488,11 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+- **LX-09** (RM-638, mark hotkey; restart the RC-HotkeyListener task first so it loads the new slot)
+  In a real game press Ctrl+Shift+K: a row lands in `ops/runtime/moment_marks.jsonl` with a real game id;
+  a press during the loading screen is dropped and logged; after the game the marks attach to that
+  game and show as "you flagged" pins in Replay and PGR. Note: in the Practice Tool Shift+K spawns a
+  drake, so the chord may also do that there.
 - **LX-08** (RM-603, skill points) Capture whether `/allgamedata` `activePlayer.abilities` carries
   `abilityLevel` per slot; whether the free R rank of Jayce / Elise / Nidalee / Karma reads 1 at level 1;
   what Aphelios's slots report; whether ranks read the same in ARAM, Arena and URF.
