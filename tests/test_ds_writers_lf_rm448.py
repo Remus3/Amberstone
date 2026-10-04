@@ -20,7 +20,11 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 _GLOBS = ("tools/ds_*.py", "tools/daemon_slayer_*.py", "tools/ds_cross_eval/*.py",
-          "scripts/build_spell_cast_rates.py")
+          "scripts/build_spell_cast_rates.py",
+          # RC-side writers of DS tables under data/daemon_slayer/ (found by the
+          # RM-513 Arena regen, which left CRLF on disk):
+          "core/build_order_precompute.py", "core/build_order_variants.py",
+          "core/laning_scenario_precompute.py")
 
 
 def _scoped_files() -> list[Path]:

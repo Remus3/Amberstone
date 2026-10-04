@@ -708,7 +708,7 @@ def atomic_write(payload: dict, out_path: Path) -> None:
         prefix=f".{out_path.stem}.", suffix=".tmp", dir=str(out_path.parent),
     )
     try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as fh:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(payload, fh, ensure_ascii=True, indent=2, sort_keys=True)
             fh.write("\n")
         os.replace(tmp_path, str(out_path))
