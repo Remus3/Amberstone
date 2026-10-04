@@ -10,6 +10,12 @@ liveness probe, the pid arm makes exactly one.
 These tests pin the age just past `stale_after` (1.5x), below any plausible
 ceiling, so the AGE arm is identified. `ops/loop/slots.py` itself is a
 byte-identical cross-repo file and is not edited here.
+
+Re-pinned 2026-10-04 (joint-round C4): slots.py gained HARD_STALE_MULTIPLE
+(2.0). A READABLE lock with a live pid is no longer reclaimed on age alone
+between stale_after and stale_after * HARD_STALE_MULTIPLE - that band now
+reaches the pid arm. The age arm survives only as the hard ceiling, pinned
+just past it (HARD_STALE_MULTIPLE + 0.5) with zero liveness probes.
 """
 
 from __future__ import annotations
@@ -55,10 +61,27 @@ def _counting_pid_alive(monkeypatch, verdict: bool = True) -> list[int]:
     return calls
 
 
-def test_live_holder_just_past_stale_after_is_stale_by_the_age_arm(tmp_path, monkeypatch):
+def test_live_holder_just_past_stale_after_is_kept_by_the_pid_arm(tmp_path, monkeypatch):
+    """C4: below the hard ceiling a live holder keeps its slot; age alone is
+    not evidence the holder is gone, so pid_alive is consulted exactly once."""
+    assert 1.5 < slots.HARD_STALE_MULTIPLE
     calls = _counting_pid_alive(monkeypatch, verdict=True)
+    assert slots.is_stale(_lock(tmp_path, 1.5 * STALE_AFTER), STALE_AFTER) is False
+    assert calls == [os.getpid()]
+
+
+def test_dead_holder_just_past_stale_after_is_stale_by_the_pid_arm(tmp_path, monkeypatch):
+    calls = _counting_pid_alive(monkeypatch, verdict=False)
     assert slots.is_stale(_lock(tmp_path, 1.5 * STALE_AFTER), STALE_AFTER) is True
-    assert calls == [], "age arm must fire BEFORE any liveness probe"
+    assert calls == [os.getpid()]
+
+
+def test_live_holder_just_past_the_hard_ceiling_is_stale_by_the_age_arm(tmp_path, monkeypatch):
+    """The fail-open ceiling: a reused pid must never deadlock the bucket."""
+    calls = _counting_pid_alive(monkeypatch, verdict=True)
+    age = (slots.HARD_STALE_MULTIPLE + 0.5) * STALE_AFTER
+    assert slots.is_stale(_lock(tmp_path, age), STALE_AFTER) is True
+    assert calls == [], "ceiling arm must fire BEFORE any liveness probe"
 
 
 def test_live_holder_inside_stale_after_reaches_the_pid_arm(tmp_path, monkeypatch):
