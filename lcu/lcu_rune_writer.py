@@ -601,6 +601,26 @@ def _poll_interval_from_env(
     return value
 
 
+# RM-297a/b: the FULL page-name prefixes RC itself has ever authored. A page
+# is RC-owned (and so reclaimable) only if its name starts with one of these
+# whole strings - never on a 3-char stem, which also matched user pages named
+# "RC Main" / "RC-smurf" / "RC:test" and deleted them.
+#   "RC: "               - this writer, loadout_resolver, routes_loadout,
+#                          routes_sr_draft and tools/lcu_agent's default
+#   "RC - "              - the frozen lcu/lcu_client.py writer
+#                          (_RC_PAGE_PREFIX); kept so each writer reclaims
+#                          the other's slot on a page-capped account
+#   "RC Experimental - " - the retired item-213 producer (legacy pages)
+RC_OWNED_PAGE_PREFIXES: tuple[str, ...] = ("RC: ", "RC - ", "RC Experimental - ")
+
+
+def is_rc_owned_page(page: object) -> bool:
+    """True when ``page`` is a deletable LCU rune page RC authored."""
+    if not isinstance(page, dict) or not page.get("isDeletable"):
+        return False
+    return str(page.get("name", "")).startswith(RC_OWNED_PAGE_PREFIXES)
+
+
 class RuneWriter:
     """
     Background thread that monitors champion select and auto-writes
