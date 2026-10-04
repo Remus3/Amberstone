@@ -36,6 +36,11 @@ Source by source:
   reference read by the Daemon Slayer sidecar extractor. Governed by that
   wiki's content licence and by Riot's terms for the underlying game data.
 
+  `tests/fixtures/game_data_replay/` holds small trimmed captures (five
+  champions, two items) from Data Dragon, Meraki Analytics and the wiki's raw
+  ChampionData module, recorded 2026-10-04 for the offline game-data pipeline
+  tests. Numbers only; each stays governed by its source's terms above.
+
 * Riot API / Match-V5 - match, timeline and summoner records retrieved with
   a personal API key. Governed by Riot's API terms. These records concern
   identifiable player accounts and are retained locally, not redistributed.

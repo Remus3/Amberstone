@@ -256,7 +256,12 @@ class _BlocklistRedirectHandler(urllib_request.HTTPRedirectHandler):
 
 
 class HttpClient:
-    def __init__(self, blocklist_path: Path = _BLOCKLIST_PATH) -> None:
+    def __init__(self, blocklist_path: Path = _BLOCKLIST_PATH, trust_env_proxy: bool = True) -> None:
+        # ``trust_env_proxy=False`` (P1-4 game-data pipeline): ignore the
+        # HTTP(S)_PROXY environment so a local proxy cannot sit between this
+        # in-process client and the upstream and rewrite what it returns. The
+        # default keeps urllib's normal behaviour for every other caller.
+        self._trust_env_proxy = trust_env_proxy
         self._blocklist_path = blocklist_path
         # Both halves live in ONE tuple so a reader can never observe the
         # hostname set already swapped while the suffix tuple is still the
@@ -282,6 +287,8 @@ class HttpClient:
         handlers: list[Any] = [_BlocklistRedirectHandler(self)]
         if _SSL_CONTEXT is not None:
             handlers.append(urllib_request.HTTPSHandler(context=_SSL_CONTEXT))
+        if not self._trust_env_proxy:
+            handlers.append(urllib_request.ProxyHandler({}))
         self._opener = urllib_request.build_opener(*handlers)
         self._reload_blocklist()
 
