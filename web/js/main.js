@@ -7606,7 +7606,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             .then(r => r.ok ? r.json() : null)
             .then(j => {
               if (!j) return;
-              dot.classList.remove("green","yellow","red");
+              // Y-13: "unknown" is a real status; drop it like the others.
+              dot.classList.remove("green","yellow","red","unknown");
               dot.classList.add(j.status || "yellow");
               const cost = j.cost || {};
               const sup = j.supervisor || {};
@@ -7626,6 +7627,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
                 dsLine,
                 `cost $${(cost.today_usd || 0).toFixed(2)} · ${banner}`,
               ];
+              // Y-13: name the sub-probes that went unmeasured (status capped).
+              if (Array.isArray(j.why) && j.why.length) {
+                lines.push(`unmeasured: ${j.why.join(", ")}`);
+              }
               dot.title = lines.join("\n");
               dot.setAttribute("data-tt", dot.title);
             })

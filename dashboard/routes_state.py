@@ -501,6 +501,11 @@ def _serve_health(h) -> None:
 _RC_HEARTBEAT_STALE_S = 15.0
 #: RM-191: a DevRuntime fatal within this window turns the rollup yellow.
 _RC_FATAL_RECENT_S = 300.0
+#: Y-13: the /api/health/all sub-probe blocks whose unknown or errored result
+#: is named in `why` and caps the rollup at yellow ("rc" is the health.json
+#: read itself, judged by alive/staleness, not a sub-probe).
+_HEALTH_SUBPROBES = ("vision", "daemon_slayer", "supervisor", "cost",
+                     "agent6", "rc_fatal")
 
 
 def _serve_health_all(h) -> None:
@@ -617,13 +622,23 @@ def _serve_health_all(h) -> None:
         _banner = rollup.get("cost", {}).get("banner")
         cost_ok = _banner is not None and _banner != "over"
         agent6_degraded = (rollup.get("agent6") or {}).get("status") == "yellow"
+        # Y-13 (external reference L2): unknown is not neutral. A sub-probe
+        # that reports status "unknown" (agent6 incomplete scan) or carries an
+        # error (it raised) went unmeasured, so it is named here and caps the
+        # verdict at yellow - it must never let the rollup read green.
+        rollup["why"] = [
+            k for k in _HEALTH_SUBPROBES
+            if isinstance(rollup.get(k), dict)
+            and (rollup[k].get("status") == "unknown" or rollup[k].get("error"))
+        ]
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
         elif (not cost_ok
               or not ds_ok
               or rollup.get("cost", {}).get("banner") == "warn"
               or agent6_degraded
-              or rc_fatal_recent):
+              or rc_fatal_recent
+              or rollup["why"]):
             rollup["status"] = "yellow"
         else:
             rollup["status"] = "green"

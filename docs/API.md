@@ -15,7 +15,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/state` | Current coach payload + health + LCU snapshot (500 ms poll target) | `StateResponse` |
 | `/api/state-stream` | SSE stream of `/api/state` on change (heartbeat every 15 s) | `StateResponse` events |
 | `/api/health` | RC process health (`ops/runtime/health.json` + `rc_version`) | `HealthResponse` |
-| `/api/health/all` | Consolidated rollup: RC + vision + DS + supervisor + cost | `HealthAllResponse` |
+| `/api/health/all` | Consolidated rollup: RC + vision + DS + supervisor + cost + agent6; `why` names unknown/errored sub-probes, which cap `status` at yellow (Y-13) | `HealthAllResponse` |
 | `/api/ui-version` | SHA-1 hash of static asset mtimes (dashboard hot-reload trigger) | `{"v": str}` |
 | `/api/asset-stamp` | Max mtime across `dashboard._static.asset_fileset()` (`index.html` + `css/**/*.css` + `js/**/*.js`, the same set `/api/ui-version` hashes) | `{"mtime": float}` |
 | `/api/cost` | Cost tracker state + daily spend | - |

@@ -181,6 +181,7 @@
  * @property {Object} cost
  * @property {Object} agent6
  * @property {string} rc_version
+ * @property {Array} why
  */
 
 /**

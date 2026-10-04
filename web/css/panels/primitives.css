@@ -95,6 +95,10 @@ header { transition: height 180ms ease; }
 .health-dot.green  { background: var(--good); box-shadow: 0 0 6px rgba(127,209,154,0.55); }
 .health-dot.yellow { background: var(--gold); box-shadow: 0 0 6px rgba(245,184,124,0.55); }
 .health-dot.red    { background: var(--bad);  box-shadow: 0 0 6px rgba(240,126,139,0.65); }
+/* Y-13: a status the rollup could not measure. Hollow dim ring - distinct
+ * from the three filled verdicts by SHAPE as well as hue, so it never
+ * reads as a muted green. */
+.health-dot.unknown { background: transparent; box-shadow: inset 0 0 0 2px var(--text-dim); }
 
 /* ---------------------------------------------------------------------
  * AUDIT 2026-04-28 - suggestion 2.3 replay scrubber.
