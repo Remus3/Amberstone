@@ -1467,6 +1467,20 @@ JADE-specific VALUES (`JADE`, `Jade_Ahri`) still need a real JADE game. NB the r
 
 ---
 
+## EXTERNAL-LIFT INTAKE live halves (filed 2026-10-04; counted HERE, not in the OPEN figure above)
+
+Prep halves shipped synthetically; each row below is the half that only a real game can close
+(Settled: the live-gated set is not synthetically drainable; a replayed session never closes one).
+Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
+
+- **LX-01** (RM-609, draft log) In a real ranked / draft champ select with the LCU agent running:
+  rows land in `rewind_history.db` table `draft_log`; record whether the session's gameId is set at
+  FINALIZATION or the gameflow fallback fired; whether trades / bench swaps during FINALIZATION show
+  in `final_champion_id`; the Match-V5 row for that game joins on game_id and `attach_draft_log`
+  names the right lane opponent; an ARAM / Arena session with no pick actions writes no rows and
+  reads `draft_source='none'`; the agent's writes coexist with the post-game ingest without lock
+  errors.
+
 ## PARKED / HOLD - deliberately OFF the active checklist
 
 Do not drain these. They are listed so nobody re-adds them.
