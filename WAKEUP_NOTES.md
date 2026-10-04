@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-04b - CI red 12 -> 5 (rm415); L-03 landed; DS + RC restarted
+
+- **Shipped (pushed):** `89ce8df91` agent6 L-03 stub isolation (LEDGER 1661), `67f94e8f6` rm415 re-pin to RM-308(b) None (LEDGER 1662).
+- **Restarts:** DS :8860 now 1.285.0 / 16.19.1; RC restarted, health alive + last_reload_ok.
+- **CI 37209062693 on `67f94e8f6`:** 5 failed = 4 operator-left RM-172 + 1 pre-existing next_buy_lean_bucket arena count.
+- **Next:** next_buy_lean_bucket arena divergence count (only non-operator-held CI red), then hand-off carry-forwards.
+- **Do NOT redo:** rm415 fix, L-03, DS/RC restarts.
+
+---
+
 # 2026-10-04a - /done wrap from a clean worktree; main CI red on 12 tests; DS :8860 stale
 
 - **Wrap shape:** main checkout is ~52 behind origin/main, holds ANOTHER session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/conftest.py, untracked test_agent6_failure_stub_l03.py) and unpushed `a6f3fa42a` (agent6 audit). Not touched. This wrap committed only WAKEUP_NOTES + RC-NEXT-SESSION.txt from a detached worktree off origin/main.
@@ -23,12 +33,3 @@
 - **Worktrees:** 13 merged pruned. `a1bc4e6` patch already on main (needs `branch -D`); `a0a31cf` holds unmerged responder commit `6a53008f4`.
 - **Next:** stale coach/vision model pins (`claude-sonnet-4-6`) + cost_tracker price rows - file as a ROADMAP row.
 - **Do NOT redo:** RM-510 residual, RM-511, the POSIX note.
-
----
-
-# 2026-10-03f - CI red fixed; ROADMAP dup ids; NOW-7 residual; console-flash completeness; RM-510
-
-- **Merges (all pushed, verifier MERGE-OK each):** `e8a498d6e` p2w2 `_FakeProc.args` (CI red root cause `47d4cf506`), `3ac0da26b` ROADMAP dup ids -> RM-513/514/515 + uniqueness guard, `9a86540e5` NOW-7 gate honours outer pid only as live ancestor + inert banner, `3011cf91a` console-flash AST completeness + upstream_drift_check CREATE_NO_WINDOW, `1fe7c1b5d` RM-510 ingest exit 0/75/1. LEDGER 1473-1477.
-- **CI green:** run 37162099927 on `9a86540e5`, run 37163680156 on `1fe7c1b5d`.
-- **Next:** POSIX kit gap report to MAIN, then RM-511 stale model pins.
-- **Do NOT redo:** any of the five items above; NOW-7 is fully closed.
