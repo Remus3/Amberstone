@@ -82,8 +82,11 @@ _SCRUB_RANGES = tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
 # /api/loadout/apply and /api/sr-draft/apply. Read-only siblings
 # (/api/lcu-cmd-result, /api/loadout/list, /api/loadout/rune-pages) are NOT
 # members - they enqueue nothing.
+# RM-251(a): "/api/loop-control" was dropped from this set - S10 Task 9
+# de-registered it from the :8888 dispatch table (Mission Control serves it),
+# so on this surface it 404s and the literal was dead.
 _CONTROL_ENDPOINTS = frozenset({
-    "/api/command", "/api/input", "/api/analyze", "/api/loop-control",
+    "/api/command", "/api/input", "/api/analyze",
     "/api/lcu-cmd", "/api/loadout/apply", "/api/sr-draft/apply",
 })
 

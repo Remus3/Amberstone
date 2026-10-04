@@ -1,7 +1,7 @@
 """D9: control-endpoint auth gate on the :8888 POST handler.
 
-dashboard/_handler.py do_POST gates /api/command, /api/input, /api/analyze and
-/api/loop-control behind an X-RC-Token == RC_DASH_TOKEN check, but ONLY when
+dashboard/_handler.py do_POST gates /api/command, /api/input, /api/analyze (and
+the LCU-queue writers) behind an X-RC-Token == RC_DASH_TOKEN check, but ONLY when
 RC_DASH_TOKEN is set + non-empty (open otherwise, so a fresh deploy is not
 locked out). These tests pin that gate: 401 on missing/wrong token, pass-through
 on a correct token, open when the token is unset, and no gating on a

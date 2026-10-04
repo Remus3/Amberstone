@@ -15,7 +15,7 @@ Routes:
        field a 400 {"ok": false, "error": ...}. Never crashes; the raw
        exception text stays in the log only (CLAUDE.md error rule).
 
-Trust model: same as every other dashboard POST (/api/command, /api/loop-control)
+Trust model: same as every other dashboard POST (/api/command, /api/input)
 - the :8888 surface is local / Tailscale-tailnet only, single-operator. This
 route only flips a tiny preference flag; it never executes anything itself.
 """
