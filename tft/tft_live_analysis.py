@@ -150,6 +150,11 @@ def _as_name_list(value: object) -> list:
         if s:
             out.append(s)
     return out
+# RM-301: serializes every read-modify-write of the live data file across the
+# _loop thread (_write / _publish_degraded / _run_augment_select) and the
+# hotkey thread (force_scan). Held ONLY across file I/O.
+_DATA_FILE_LOCK = threading.Lock()
+FORCE_SCAN_LOCK_TIMEOUT_S = 2.0
 _TFT_CHAMPIONS = {
     # Set 17: Space Gods - confirmed from CommunityDragon PBE
     "Aatrox","Akali","Aurelion Sol","Aurora","Bard","Bel'Veth","Blitzcrank",
@@ -307,21 +312,31 @@ class TftLiveAnalysis:
     def force_scan(self) -> None:
         # arch: phase 7 P2-C - clear stale choices on augment-select force scan
         # so the fresh vision read produces new advice
-        try:
-            import json as _j
-            _f = self._data_file
-            if hasattr(_f, "exists") and _f.exists():
-                _d = _j.loads(_f.read_text(encoding="utf-8"))
-            else:
-                _d = _j.loads(Path(str(_f)).read_text(encoding="utf-8"))
-            if _d.get("augment_select"):
-                _d["augment_choices"] = []
-                _d["aug_take"] = ""
-                _d["aug_why"] = ""
-                _d["aug_plan"] = "Rescanning augment choices..."
-                atomic_write_json(Path(str(self._data_file)), _d)
-        except Exception as _exc:  # noqa: BLE001
-            logger.debug("force_scan pre-clear failed: %s", _safe_err(_exc))
+        # RM-301: this read-modify-write runs on the hotkey thread while the
+        # _loop thread's writers RMW the same file; unserialized, the loser's
+        # fields were lost. It now takes _DATA_FILE_LOCK - which is held ONLY
+        # across file I/O, never across the vision read or the model call
+        # (self._lock spans those) - with a BOUNDED wait. Give-up path: if
+        # the lock is not free within FORCE_SCAN_LOCK_TIMEOUT_S the pre-clear
+        # is skipped (logged) and the forced scan still runs; the next
+        # augment-select publish overwrites the stale choices anyway.
+        if not _DATA_FILE_LOCK.acquire(timeout=FORCE_SCAN_LOCK_TIMEOUT_S):
+            logger.warning("force_scan: data file busy > %.1fs - pre-clear skipped",
+                           FORCE_SCAN_LOCK_TIMEOUT_S)
+        else:
+            try:
+                _f = Path(str(self._data_file))
+                _d = json.loads(_f.read_text(encoding="utf-8"))
+                if isinstance(_d, dict) and _d.get("augment_select"):
+                    _d["augment_choices"] = []
+                    _d["aug_take"] = ""
+                    _d["aug_why"] = ""
+                    _d["aug_plan"] = "Rescanning augment choices..."
+                    atomic_write_json(_f, _d)
+            except Exception as _exc:  # noqa: BLE001
+                logger.debug("force_scan pre-clear failed: %s", _safe_err(_exc))
+            finally:
+                _DATA_FILE_LOCK.release()
         self._force_flag = True
         logger.info("Force vision scan triggered (augment reroll path)")
     def notify_round(self, state: dict) -> None:
@@ -483,12 +498,13 @@ class TftLiveAnalysis:
         `degraded_message` beside it. Never carries the upstream error text.
         """
         try:
-            ex=_load(self._data_file)
-            out=dict(ex) if isinstance(ex,dict) else {"mode":"tft_live"}
-            out.update({"mode":"tft_live","stage_round":cs.get("stage_round",""),
-                        "level":vs.get("level") or cs.get("level"),"hp":vs.get("hp"),
-                        "degraded":True,"degraded_message":_DEGRADED_TEXT})
-            _write(self._data_file,out)
+            with _DATA_FILE_LOCK:  # RM-301: serialize the read-modify-write
+                ex=_load(self._data_file)
+                out=dict(ex) if isinstance(ex,dict) else {"mode":"tft_live"}
+                out.update({"mode":"tft_live","stage_round":cs.get("stage_round",""),
+                            "level":vs.get("level") or cs.get("level"),"hp":vs.get("hp"),
+                            "degraded":True,"degraded_message":_DEGRADED_TEXT})
+                _write(self._data_file,out)
             # Invalidate the write gate. Without this, a recovery cycle whose
             # advice is byte-identical to the last good one compares equal to
             # _last_write, is suppressed, and leaves degraded=True on disk
@@ -536,9 +552,11 @@ class TftLiveAnalysis:
             raw=re.sub(r'\*{1,3}(.*?)\*{1,3}',r'\1',_araw)
             tk=_xf(raw,"Take"); why=_xf(raw,"Why"); plan=_xf(raw,"Gameplan")
             if not tk: tk=ch[0].get("name","") if isinstance(ch[0],dict) else str(ch[0])
-            ex=_load(self._data_file)
-            ex.update({"augment_select":True,"aug_take":tk,"aug_why":why or "","aug_plan":plan or "","augment_choices":[_fc(c) for c in ch]})
-            _write(self._data_file,ex); logger.info("Augment select written")
+            with _DATA_FILE_LOCK:  # RM-301: serialize the read-modify-write
+                ex=_load(self._data_file)
+                ex.update({"augment_select":True,"aug_take":tk,"aug_why":why or "","aug_plan":plan or "","augment_choices":[_fc(c) for c in ch]})
+                _write(self._data_file,ex)
+            logger.info("Augment select written")
         except Exception as e:  # noqa: BLE001
             logger.error("Augment select: %s", _safe_err(e))
     def _write(self,vs,f,cs):
@@ -609,7 +627,12 @@ class TftLiveAnalysis:
         # like-for-like preservation of the old behaviour.
         out["degraded"]=False; out["degraded_message"]=""
         if out!=self._last_write:
-            self._last_write=dict(out); _write(self._data_file,out); logger.debug("Live analysis written")
+            self._last_write=dict(out)
+            # RM-301: module _write is itself a read-modify-write (augment
+            # persistence), so it runs under the file lock too.
+            with _DATA_FILE_LOCK:
+                _write(self._data_file,out)
+            logger.debug("Live analysis written")
 
 def _fmt(lst):
     if not lst: return "none"
