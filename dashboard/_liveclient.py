@@ -45,6 +45,7 @@ import time
 import urllib.request
 
 from core import next_buy_fallback as _next_buy_fallback
+from core.liveclient_coerce import as_bool, as_list
 from core.vision_token import get_vision_token
 from core.ward_cue import compute_ward_cue
 from item_advisor import (
@@ -106,13 +107,17 @@ def _as_dict(v) -> dict:
     return v if isinstance(v, dict) else {}
 
 
-def _as_list(v) -> list:
-    return v if isinstance(v, list) else []
+def _as_list(v, field: str | None = None) -> list:
+    """RM-602: delegates to ``core.liveclient_coerce.as_list``. A real list is
+    unchanged; an OBJECT-SHAPED list (all-integer keys) is read as its values
+    in numeric key order with one warning per field, where it used to be
+    silently dropped to ``[]``; anything else is still ``[]``."""
+    return as_list(v, field)
 
 
-def _dicts(v) -> list:
-    """The dict entries of ``v`` when it is a list, else ``[]``."""
-    return [x for x in _as_list(v) if isinstance(x, dict)]
+def _dicts(v, field: str | None = None) -> list:
+    """The dict entries of ``v`` read through ``_as_list``, else ``[]``."""
+    return [x for x in _as_list(v, field) if isinstance(x, dict)]
 
 
 def _lean_roster(all_players) -> list:
@@ -131,7 +136,7 @@ def _lean_roster(all_players) -> list:
         sc = _as_dict(p.get("scores"))
         items = [
             {"itemID": it.get("itemID"), "slot": it.get("slot")}
-            for it in _dicts(p.get("items"))
+            for it in _dicts(p.get("items"), "items")
         ]
         out.append({
             "summonerName":    p.get("summonerName", ""),
@@ -193,7 +198,7 @@ def liveclient_summary() -> dict:
         gd = _as_dict(d.get("gameData"))
         cs = _as_dict(ap.get("championStats"))
         me_name = ap.get("summonerName", "")
-        all_players = _dicts(d.get("allPlayers"))
+        all_players = _dicts(d.get("allPlayers"), "allPlayers")
         me_pl = next(
             (p for p in all_players if p.get("summonerName") == me_name),
             None,
@@ -241,7 +246,7 @@ def liveclient_summary() -> dict:
             # renders a null cs as "-". Same seam as players[].creep_score.
             out["cs"]  = _int_or_none(s.get("creepScore"))
             out["champion"] = me_pl.get("championName")
-            owned_items = [it.get("displayName", "") for it in _dicts(me_pl.get("items"))]
+            owned_items = [it.get("displayName", "") for it in _dicts(me_pl.get("items"), "items")]
             # s184 - item-id list so server-side consumers (archetype_mismatch
             # nudge, DS relscore / knobs build context) don't need a name -> id
             # resolver for the operator's own inventory.
@@ -261,7 +266,7 @@ def liveclient_summary() -> dict:
             from core.daemon_slayer_resolver import NON_INVENTORY_IDS
             owned_item_ids = [
                 iid for iid in
-                (str(it.get("itemID", "")) for it in _dicts(me_pl.get("items")))
+                (str(it.get("itemID", "")) for it in _dicts(me_pl.get("items"), "items"))
                 if iid and iid not in NON_INVENTORY_IDS
             ]
             my_team = me_pl.get("team")
@@ -278,10 +283,10 @@ def liveclient_summary() -> dict:
             # scanning enemy sustain + ally anti-heal is a hard live fact.
             enemy_item_ids = [str(it.get("itemID", "")) for p in all_players
                               if p.get("team") and p.get("team") != my_team
-                              for it in _dicts(p.get("items"))]
+                              for it in _dicts(p.get("items"), "items")]
             ally_item_ids = [str(it.get("itemID", "")) for p in all_players
                              if p.get("team") and p.get("team") == my_team
-                             for it in _dicts(p.get("items"))]
+                             for it in _dicts(p.get("items"), "items")]
             # Riot compliance 2026-08-11: the per-enemy summoner-spell producer
             # (slice 4, 2026-06-28) was REMOVED here along with its overlay
             # tap-tracker. Riot's third-party rules ban tracking enemy summoner
@@ -371,7 +376,7 @@ def liveclient_summary() -> dict:
         # every event-derived callout; verified live 2026-06-27).
         inhib_events: list = []
         try:
-            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
+            for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "InhibKilled":
                     continue
                 t = ev.get("EventTime")
@@ -390,7 +395,7 @@ def liveclient_summary() -> dict:
         # earliest. Isolated try so a malformed block degrades to [].
         minion_events: list = []
         try:
-            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
+            for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
                     continue
                 t = ev.get("EventTime")
@@ -405,7 +410,7 @@ def liveclient_summary() -> dict:
         # name. Isolated try so a malformed block degrades to [].
         turret_events: list = []
         try:
-            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
+            for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "TurretKilled":
                     continue
                 t = ev.get("EventTime")
@@ -432,9 +437,12 @@ def liveclient_summary() -> dict:
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
             _raw_events = _as_dict(d.get("events")).get("Events")
-            if not isinstance(_raw_events, list):
+            _ev_list = _as_list(_raw_events, "Events")
+            # RM-602: an object-shaped Events block that coerces to entries IS
+            # event data; only a non-list that coerces to nothing is "no data".
+            if not isinstance(_raw_events, list) and not _ev_list:
                 objective_events = None
-            for ev in _as_list(_raw_events):
+            for ev in _ev_list:
                 if not isinstance(ev, dict):
                     continue
                 obj = _obj_names.get(ev.get("EventName"))
@@ -480,7 +488,7 @@ def liveclient_summary() -> dict:
         # try so a malformed events block degrades to [].
         minion_spawn_events: list = []
         try:
-            for ev in _as_list(_as_dict(d.get("events")).get("Events")):
+            for ev in _as_list(_as_dict(d.get("events")).get("Events"), "Events"):
                 if not isinstance(ev, dict) or ev.get("EventName") != "MinionsSpawning":
                     continue
                 t = ev.get("EventTime")

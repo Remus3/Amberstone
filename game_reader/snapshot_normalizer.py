@@ -17,6 +17,7 @@ import math
 import time
 import urllib.parse
 
+from core.liveclient_coerce import as_list
 from core.mode_capabilities import district_config, has_capability
 
 from .mode_router import is_tft_mode, tower_count_for, tft_minimal_state
@@ -317,15 +318,16 @@ class _NormalizerMixin:
         if not isinstance(game_info, dict):
             game_info = {}
         # Filter to dicts only - list elements can be strings when API is in a transitional state
+        # RM-602: list fields go through core.liveclient_coerce.as_list, so an
+        # OBJECT-SHAPED list ({"0": a, "1": b}) is read in key order (warned
+        # once per field) instead of being dropped to [].
         raw_players = raw.get("allPlayers", [])
-        all_players = [p for p in (raw_players if isinstance(raw_players, list) else [])
+        all_players = [p for p in as_list(raw_players, "allPlayers")
                        if isinstance(p, dict)]
         events_wrap = raw.get("events", {})
         if not isinstance(events_wrap, dict):
             events_wrap = {}
-        events = events_wrap.get("Events", [])
-        if not isinstance(events, list):
-            events = []
+        events = as_list(events_wrap.get("Events", []), "Events")
         # Reset per-game event counters before reprocessing
         self._order_towers_down = 0
         self._chaos_towers_down = 0
@@ -478,8 +480,7 @@ class _NormalizerMixin:
             kills = _coerce_int(sc.get("kills", 0))
             deaths = _coerce_int(sc.get("deaths", 0))
             assists = _coerce_int(sc.get("assists", 0))
-            raw_items = me.get("items", [])
-            if not isinstance(raw_items, list): raw_items = []
+            raw_items = as_list(me.get("items", []), "items")
             my_items = [it.get("displayName", "")
                         for it in raw_items
                         if isinstance(it, dict) and it.get("displayName")]
@@ -1349,7 +1350,9 @@ class _NormalizerMixin:
                 continue
             elv    = _coerce_int(e.get("level", 1), 1)
             edead  = e.get("isDead", False)
-            eitems = [it.get("displayName", "") for it in e.get("items", []) if it.get("displayName")]
+            eitems = [it.get("displayName", "")
+                      for it in as_list(e.get("items", []), "items")
+                      if isinstance(it, dict) and it.get("displayName")]
             eitemsStr = ", ".join(eitems[:3]) if eitems else "starter items"
             if not edead:
                 parts.append(f"{ename} lv{elv} [{eitemsStr}]")
@@ -1398,12 +1401,8 @@ class _NormalizerMixin:
                 keystone = {}
             primary = data.get("primaryRuneTree", {})
             secondary = data.get("secondaryRuneTree", {})
-            general = data.get("generalRunes", [])
-            if not isinstance(general, list):
-                general = []
-            shards = data.get("statRunes", [])
-            if not isinstance(shards, list):
-                shards = []
+            general = as_list(data.get("generalRunes", []), "generalRunes")
+            shards = as_list(data.get("statRunes", []), "statRunes")
             # ids through _coerce_num so a single NaN/bad id degrades to 0
             # instead of int() raising and blanking the whole structure.
             return {
