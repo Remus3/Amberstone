@@ -119,6 +119,8 @@ _Clean-room only: every row is re-implemented from OBSERVED BEHAVIOUR; nothing i
 
 - **RM-675 (Tier-1) RM-610 residuals** - the WR anchor cannot see SQL-side `SUM(win)/COUNT(*)` rates; `coaches/adaptation_hint_session.py` and `coaches/adaptation_hint_temporal.py` divide by wins+losses but still count remakes (bodies pinned byte-for-byte by the test_round suite - re-pin deliberately); `core/riot_api.py` `summarize_recent` (lobby scouting) counts an unknown result as a loss. Each is listed in the guard's EXEMPT table with a reason.
 
+- **RM-676 (Tier-1) RM-611 residuals** - (a) the `raw_documents` rows are LCU-client shape (top-level `frames`, numeric gameId) while the versioned extractors read Match-V5 shape or the rewind tables, so nothing re-derives from them yet - either add an LCU-to-extractor adapter or index the Match-V5 JSON `tools/timeline_ingest.py` already keeps; (b) the idle re-derive job is owed only once PGR output is persisted; (c) the docstring of `tests/test_pgr_derive_golden_rm611.py` overclaims ("the same bytes a re-derive would start from") - correct it.
+
 - **RM-668 (L-08, S) Data-feed watch per DS batch** - read-only checklist step (changelog high-water, HEAD the chunk URLs, per-block body hash via `tools/ds_feed_index.py`); not a poller. Cross-ref: fleet-ideas patch/spec watch.
 
 ---
