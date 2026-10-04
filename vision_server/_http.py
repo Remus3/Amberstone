@@ -42,12 +42,17 @@ class Handler(BaseHTTPRequestHandler):
 
     # -- GET ----------------------------------------------------------------
     def do_GET(self) -> None:
-        # Public: health, stats, monitor page
+        # Public: health and the monitor page. /stats is NOT public (RM-267):
+        # it carries per-kind counters, model ids and a 30-entry request log,
+        # and no in-repo page fetches it, so it gates like every data GET.
         if self.path == "/health":
             self._j(200, {"alive": True, "model": VISION_MODEL,
                           "api_key_ok": api_key_present(),
                           "uptime_s": int(time.time() - _START_TIME)})
         elif self.path in ("/stats", "/stats/"):
+            if not self._auth():
+                self._j(401, {"error": "unauthorized"})
+                return
             try:
                 self._j(200, get_stats())
             except Exception as e:  # noqa: BLE001
