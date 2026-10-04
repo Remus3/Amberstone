@@ -1214,6 +1214,12 @@ def resolve_push_range(
 # ---------------------------------------------------------------------------
 # Git plumbing
 # ---------------------------------------------------------------------------
+# Console-flash guard (tests/test_no_console_flash_scheduled_tools.py): this
+# module is reachable by IMPORT from an unattended entry point, where a bare
+# git.exe child allocates and flashes a console.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+
 class GitFault(RuntimeError):
     pass
 
@@ -1224,6 +1230,7 @@ def _git(root: Path, args: Sequence[str], stdin_text: str = "") -> str:
             ["git", "-C", str(root), *args],
             input=stdin_text.encode("utf-8") if stdin_text else None,
             capture_output=True,
+            creationflags=_NO_WINDOW,
         )
     except OSError as exc:
         raise GitFault(f"git could not be invoked: {exc}")
@@ -1240,6 +1247,7 @@ def _has_object(root: Path, sha: str) -> bool:
         proc = subprocess.run(
             ["git", "-C", str(root), "cat-file", "-e", sha + "^{commit}"],
             capture_output=True,
+            creationflags=_NO_WINDOW,
         )
     except OSError:
         return False
