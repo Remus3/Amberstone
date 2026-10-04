@@ -162,10 +162,10 @@ def test_lock_held_by_a_dead_pid_is_reaped(tmp_path: Path):
 
 
 def test_lock_far_past_stale_after_is_reaped_ceiling_case(tmp_path: Path):
-    """The x100 CEILING case (RM-503): green under the age arm today and under
-    any future hard ceiling alike, so it identifies no arm. The arm-A case - a
-    live holder between stale_after and any ceiling, with the pid_alive call
-    count asserted - lives in tests/test_slots_is_stale_arms_rm503.py."""
+    """The x100 CEILING case (RM-503): past the HARD_STALE_MULTIPLE ceiling
+    (joint-round C4, 2026-10-04) a live pid is reclaimed anyway. The band
+    between stale_after and the ceiling, with the pid_alive call count
+    asserted, lives in tests/test_slots_is_stale_arms_rm503.py."""
     old = tmp_path / "0.lock"
     old.write_text(json.dumps({"pid": os.getpid(), "ts": time.time() - 10_000}),
                    encoding="utf-8")
@@ -536,7 +536,17 @@ SHARED_SHA256 = {
     # "a specific repo" rather than "ANY of them". The wording shipped unchanged
     # anyway, since deviating from agreed bytes on one side's private judgement
     # is the exact failure this pin exists to catch. Do not restore the claim.
-    "slots.py": "71fa2a683f2eaa04dd61feb2bebc646b5f9086e692c5acc05a9239de49d07d1b",
+    #
+    # re-pinned 2026-10-04 (joint-round C4, carrier commit 700cd64): BEHAVIOURAL,
+    # not docstring. HARD_STALE_MULTIPLE = 2.0 adds a live-holder rule: a
+    # readable lock whose pid is still alive is no longer reclaimed on age alone
+    # until it is older than stale_after * HARD_STALE_MULTIPLE. LW authored the
+    # bytes and wrote first, RSC followed, RC copied them with a BYTE-level copy
+    # off the carrier's live tree (operator-approved 2026-10-04) and re-hashed
+    # from its OWN disk; the carrier digest was a value to CHECK against, never
+    # the source. Measured here: 9627 -> 11426 bytes, LW == RSC == RC.
+    # previous 71fa2a683f2eaa04dd61feb2bebc646b5f9086e692c5acc05a9239de49d07d1b
+    "slots.py": "290cbf80ce6989e15ad778be9032503733c8820030bfa6a9b27439b29d70486e",
     # re-pinned 2026-09-06: the carrier authored (commit 1de8d4e), operator-approved, and
     # this is the FIRST winmutex re-pin that is not docstring-only - the mutex
     # name VALUES rotated to opaque strings and the header prose naming the

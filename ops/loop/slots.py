@@ -16,10 +16,11 @@ fan-out from two repos degrades both.
 PROTOCOL. A token bucket of exclusive-create lockfiles in a shared directory.
   acquire: O_CREAT|O_EXCL on slots/<i>.lock for i in range(max_slots); first
            success wins. The file carries {pid, repo, run_id, cycle, ts}.
-  reap:    a lock whose ts is older than stale_after OR whose pid is not alive
-           is reclaimed. FAIL-OPEN by design - a crashed holder must never
-           deadlock the other repo, so a stale lock is reclaimed rather than
-           respected forever.
+  reap:    a lock whose pid is not alive, or whose ts is older than
+           stale_after * HARD_STALE_MULTIPLE, is reclaimed; an unreadable
+           lock is reclaimed on mtime older than stale_after. FAIL-OPEN by
+           design - a crashed holder must never deadlock the other repo, so
+           a stale lock is reclaimed rather than respected forever.
   release: unlink, always, in a finally.
   wait:    jittered backoff so two loops do not lockstep into each other.
 
@@ -38,9 +39,16 @@ from pathlib import Path
 
 DEFAULT_ROOT = Path(r"C:\ProgramData\lw-loop\slots")
 
-# A cycle deadline is 5400s; a lock older than well past that belongs to a
-# process that died without cleaning up.
+# A cycle deadline is 5400s and stale_after is three of them. Past it, an
+# unreadable lock is reclaimed on mtime age; a readable one is reclaimed only
+# if its pid is dead or it passes the ceiling below - age alone is not
+# evidence a live holder is gone (see is_stale).
 DEFAULT_STALE_AFTER = 3.0 * 5400.0
+
+# Hard fail-open ceiling, as a multiple of stale_after: past this a lock is
+# reclaimed even if its pid is alive, because a reused pid must never be able
+# to deadlock the bucket. Below it, a live holder keeps its slot.
+HARD_STALE_MULTIPLE = 2.0
 
 
 class SlotTimeout(RuntimeError):
@@ -92,7 +100,8 @@ def _read(path: Path) -> dict:
 
 
 def is_stale(path: Path, stale_after: float, now: float | None = None) -> bool:
-    """A lock is stale if its holder is gone or it has outlived stale_after."""
+    """A lock is stale if its holder is gone, or it has outlived the fail-open
+    ceiling, or it is unreadable and its mtime is older than stale_after."""
     rec = _read(path)
     if not rec:
         # Unreadable or half-written: fall back to mtime so a corrupt lock
@@ -102,7 +111,22 @@ def is_stale(path: Path, stale_after: float, now: float | None = None) -> bool:
         except OSError:
             return True
     now = time.time() if now is None else now
-    if (now - float(rec.get("ts", 0))) > stale_after:
+    age = now - float(rec.get("ts", 0))
+    # AGE ALONE IS NOT EVIDENCE THE HOLDER IS GONE. `ts` is stamped once at
+    # hold() entry and never refreshed - there is no heartbeat on the hold
+    # path - so a LIVE holder that runs past stale_after is byte-for-byte
+    # indistinguishable from a crashed one, and the old age-first arm
+    # short-circuited before pid_alive was ever consulted. Liveness decides
+    # below the ceiling ON THIS PATH ONLY, the path that has a readable typed
+    # record. The unreadable-or-half-written fallback above is unchanged and
+    # is still AGE-ONLY: it returns on mtime age, and on OSError it returns
+    # True without asking anything. Neither branch consults liveness, and no
+    # claim here extends to them. The ceiling is kept because a REUSED pid
+    # would otherwise hold the bucket forever, which is the fail-open rule in
+    # the module docstring. Raised on the shared channel 2026-09-20; this
+    # comment corrected 2026-10-02 after a review read the earlier wording as a
+    # statement about the whole function.
+    if age > stale_after * HARD_STALE_MULTIPLE:
         return True
     return not pid_alive(int(rec.get("pid", 0)))
 
@@ -154,7 +178,8 @@ def release(slot: Path, log=None, attempts: int = RELEASE_ATTEMPTS,
     tmp-then-replace: measured on Windows, os.replace onto a file held open by a
     reader fails (WinError 5) while an in-place write succeeds. A torn write is
     safe in this one direction - _read returns {} and is_stale falls back to
-    mtime, which reports stale too.
+    mtime, which reports stale once stale_after has passed since the write
+    (not at once: the write itself refreshes the mtime).
     """
     for i in range(max(1, attempts)):
         try:
@@ -176,7 +201,8 @@ def release(slot: Path, log=None, attempts: int = RELEASE_ATTEMPTS,
     except OSError:
         if log:
             log(f"slots: WARNING release of {slot.name} failed AND it could not be "
-                f"neutralised - the lane is held until stale_after elapses")
+                f"neutralised - the lane is held until its pid dies or, at the "
+                f"latest, the fail-open ceiling elapses")
     return False
 
 
