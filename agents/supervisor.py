@@ -192,6 +192,35 @@ __all__ = [
 _UNKNOWN_CHAMPION = ("", "Unknown", None)
 
 
+#: RM-259: with no usable match length, a rating file older than this is
+#: treated as belonging to a previous game. Ratings are written at game end,
+#: immediately before the post-game transition that files the summary.
+_RATING_FRESH_MAX_AGE_S = 15 * 60
+#: Slack under the derived match start (clock skew, end-screen delay).
+_RATING_START_SLACK_S = 120
+
+
+def _rating_file_is_current(path, game_time_s, *, now: float | None = None) -> bool:
+    """True when ``path``'s mtime is not older than the match being
+    summarised (RM-259). An unreadable mtime is NOT current."""
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return False
+    now = time.time() if now is None else now
+    try:
+        gts = float(game_time_s)
+    except (TypeError, ValueError):
+        gts = 0.0
+    if gts > 0:
+        # Known match length: anything written before the match started
+        # belongs to an earlier game.
+        floor = now - gts - _RATING_START_SLACK_S
+    else:
+        floor = now - _RATING_FRESH_MAX_AGE_S
+    return mtime >= floor
+
+
 def _should_emit_game_summary(payload: dict[str, Any]) -> bool:
     """False when the ingester is GUARANTEED to refuse this summary.
 
@@ -797,6 +826,19 @@ class Supervisor:
             log.debug("rating-file locator import failed: %s", e)
             _lrf = None
         rating_path = _lrf(str(_PROJECT_ROOT)) if _lrf is not None else None
+        # RM-259: a failed rating write leaves the PRIOR game's file with its
+        # stale mtime, and the locator still picks it - which used to copy a
+        # previous game's (possibly another mode's) grade into THIS summary.
+        # Refuse a rating file whose mtime predates the match being
+        # summarised: the match start when game_time_s is known, else a
+        # bounded freshness window (ratings are written at game end, right
+        # before this transition fires).
+        if rating_path is not None and not _rating_file_is_current(
+                rating_path, summary_payload.get("game_time_s")):
+            log.warning("post-game summary: rating file %s predates this "
+                        "match; not enriching (RM-259)", rating_path.name)
+            summary_payload["rating_stale"] = True
+            rating_path = None
         try:
             if rating_path and rating_path.exists():
                 rating_data = json.loads(rating_path.read_text(encoding="utf-8"))
