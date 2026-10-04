@@ -127,6 +127,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_ds_skill_order.py` | DS ability max-order backend |
 | `dashboard/routes_ds_sweep.py` | DS stat-sweep graph backend |
 | `dashboard/routes_duo_synergy.py` | 101.qq duo-synergy backend |
+| `dashboard/routes_events.py` | /api/events resumable SSE over the live event ring |
 | `dashboard/routes_lobby_aux.py` | top8 + mains backend |
 | `dashboard/routes_loop_control.py` | POST /api/loop-control route table - S10 Task 9 de-registered it from the :8888 dispatch table; only mc/routes.py imports it now (:8895) |
 | `dashboard/routes_loop_monitor.py` | GET /api/loop-monitor (per-tool-call timeline) |
@@ -187,6 +188,8 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/lcu_mastery.py` | key-free champion mastery for any PUUID via the LCU |
 | `core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
 | `core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
+| `core/live_event_deriver.py` | pure live event deriver over consecutive Live Client snapshots |
+| `core/live_event_hub.py` | bounded live event ring + process hub fed by liveclient_cache |
 | `core/live_item_tape.py` | RM-607 live inventory tape - item buy/sell/combine diff over allPlayers |
 | `core/live_item_tape_store.py` | RM-607 live inventory tape - game-end timeline_events persistence |
 | `core/log_retention.py` | periodic logs/ trimmer (age + hard size cap) |
