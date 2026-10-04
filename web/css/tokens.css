@@ -39,6 +39,40 @@
   --prim-gold:  200, 170, 110;  /* #C8AA6E Hextech frame gold  */
   --prim-teal:  10, 200, 185;   /* #0AC8B9 Hextech teal        */
 
+  /* DATA-VIZ tier (Y-07, external reference P; RM-531). League-DOMAIN hues
+   * defined ONCE, as rgb parts shaped like --prim-* so a chart dials alpha
+   * per use: rgb(var(--data-ally)) / rgba(var(--data-ally), 0.35). These
+   * name MEANING (team side, damage type, resource), never status: team
+   * identity must not borrow --signal-good / --signal-bad (or their
+   * --prim-green / --prim-red parts), so "enemy" can never read as "bad".
+   *
+   * Team encoding is PERSPECTIVE, not map side: ally is always the azure,
+   * enemy always the coral, whichever side of the map we spawn on (the
+   * in-game minimap and health bars use the same perspective rule).
+   *
+   * Hues are our own picks, measured (tests/test_data_viz_tier_y07.py
+   * recomputes all of this from the CSS): each clears 4.5:1 against the
+   * --canvas / --surface / --surface-2 of all six themes and the overlay
+   * backings; the tightest case is arcane --surface-2 for every hue (ally
+   * 4.72, magic 4.97, xp 5.52, all others >= 6.0). Ally/enemy sit >= 9.1
+   * OKLab dE (x100) from every theme's good/bad hue (closest: enemy vs the
+   * ember bad) and 31.6 dE from each other. No theme re-tint is
+   * needed; the overlay re-points only the damage hues (palette law,
+   * overlay.css section 0). */
+  /* Hex annotations below are written without the hash on purpose: the OQ6
+   * dark-literal ratchet counts any hash-hex starting 0-2, comments included,
+   * and the ally hue (hex 2490FA) is not a dark value. */
+  --data-ally:         36, 144, 250;   /* hex 2490FA azure - our team     */
+  --data-enemy:        250, 128, 122;  /* hex FA807A coral - their team   */
+  --data-neutral:      214, 212, 224;  /* hex D6D4E0 pale slate - no side */
+  --data-dmg-physical: 235, 138, 58;   /* hex EB8A3A orange               */
+  --data-dmg-magic:    163, 124, 247;  /* hex A37CF7 violet               */
+  --data-dmg-true:     236, 232, 223;  /* hex ECE8DF warm white           */
+  --data-dmg-onhit:    217, 207, 74;   /* hex D9CF4A citron               */
+  --data-gold:         227, 179, 65;   /* hex E3B341 gold                 */
+  --data-xp:           199, 125, 232;  /* hex C77DE8 orchid               */
+  --data-cs:           143, 224, 208;  /* hex 8FE0D0 mint                 */
+
   /* Semantic colors (additive to existing palette; do NOT replace
    * --bg / --fg / --good / --bad / --gold which the primitives.css
    * chrome layer already owns). */

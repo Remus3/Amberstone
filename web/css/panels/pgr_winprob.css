@@ -63,11 +63,13 @@
   opacity: 0.16;
   stroke: none;
 }
+/* Team side reads the Y-07 data-viz tier (tokens.css --data-*), never the
+ * good/bad status hues: "ally favoured" is team identity, not a verdict. */
 .pwp-area-ally {
-  fill: var(--signal-good, #6ec977);
+  fill: rgb(var(--data-ally));
 }
 .pwp-area-enemy {
-  fill: var(--signal-bad, #ff5050);
+  fill: rgb(var(--data-enemy));
 }
 
 /* Swing-event dots: green for a swing in our favour, red against. */
@@ -113,10 +115,10 @@
   border-radius: 2px;
   display: inline-block;
 }
-.pwp-ally { color: var(--signal-good, #6ec977); }
-.pwp-ally::before { background: var(--signal-good, #6ec977); }
-.pwp-enemy { color: var(--signal-bad, #ff5050); }
-.pwp-enemy::before { background: var(--signal-bad, #ff5050); }
+.pwp-ally { color: rgb(var(--data-ally)); }
+.pwp-ally::before { background: rgb(var(--data-ally)); }
+.pwp-enemy { color: rgb(var(--data-enemy)); }
+.pwp-enemy::before { background: rgb(var(--data-enemy)); }
 .pwp-legend-hint {
   color: var(--text-dim, #8b93a7);
   margin-left: auto;

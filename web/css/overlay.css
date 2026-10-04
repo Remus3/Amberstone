@@ -28,6 +28,14 @@ body[data-shell="overlay"] {
   --ovx-warn: 232, 163, 61;      /* #E8A33D Hextech warn */
   --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
   --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
+  /* Damage-type hues (Y-07, external reference P): the threat donut renders in
+   * the overlay build widget, so its hues join the overlay table (doctrine
+   * section 5). Same parts as the tokens.css --data-dmg-* tier; each clears
+   * 4.5:1 on --ovx-bg and --ovx-bg-nested (tests/test_data_viz_tier_y07.py). */
+  --ovx-dmg-physical: 235, 138, 58;  /* #EB8A3A */
+  --ovx-dmg-magic: 163, 124, 247;    /* #A37CF7 */
+  --ovx-dmg-true: 236, 232, 223;     /* #ECE8DF */
+  --ovx-dmg-onhit: 217, 207, 74;     /* #D9CF4A */
 }
 
 /* 0-type. OVERLAY SUB-FLOOR TYPE TOKENS - RM-139. Sub-floor type read at game
@@ -66,6 +74,13 @@ body[data-shell="overlay"] {
   --signal-good-soft: rgba(var(--ovx-good), 0.18);
   --signal-bad-soft: rgba(var(--ovx-red), 0.18);
   --signal-warn-soft: rgba(var(--ovx-warn), 0.18);
+  /* Y-07 data-viz tier: damage hues re-pointed onto the section-0 parts. Team
+   * and resource hues are not re-pointed - no overlay widget paints them yet
+   * (spike curve / ward heat / ds-sweep / map pane are display:none here). */
+  --data-dmg-physical: var(--ovx-dmg-physical);
+  --data-dmg-magic: var(--ovx-dmg-magic);
+  --data-dmg-true: var(--ovx-dmg-true);
+  --data-dmg-onhit: var(--ovx-dmg-onhit);
   /* The ONE generic panel-container hairline (operator 2026-07-06: unify the
    * scattered gold border alphas so every panel box reads the same). The
    * semantic status borders (good/red/warn/cyan) and the head-rule / hover /
