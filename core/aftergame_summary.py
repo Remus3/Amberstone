@@ -404,7 +404,8 @@ def build_summary(match_id: str, *, puuid: Optional[str] = None,
     # Outcome headline prefix
     if outcome is None:
         outcome = "VICTORY" if meta["win"] else "DEFEAT"
-    out["action"] = f"{'✓' if meta['win'] else '⚠'} {outcome}"
+    marker = "\u2713" if meta["win"] else "\u26a0"
+    out["action"] = f"{marker} {outcome}"
     return out
 
 

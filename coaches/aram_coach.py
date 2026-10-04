@@ -246,7 +246,7 @@ def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
     # nuked the entire build. Split on BOTH separators so individual
     # items get matched correctly.
     import re as _re
-    parts = [p.strip() for p in _re.split(r'[→,]', item_build) if p.strip()]
+    parts = [p.strip() for p in _re.split(r'[\u2192,]', item_build) if p.strip()]
     kept = []
     for p in parts:
         np = _norm(p)
@@ -257,7 +257,7 @@ def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
         is_class_dupe = any((b in np) or (np in b) for b in banned_peers)
         if not is_dupe and not is_class_dupe:
             kept.append(p)
-    return " → ".join(kept)
+    return " \u2192 ".join(kept)
 
 
 def _split_item_build_like_ui(item_build: str) -> list:

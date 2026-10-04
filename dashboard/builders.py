@@ -214,7 +214,7 @@ def _build_session_summary() -> dict:
         return {"games": 0, "window_label": "no matches"}
     current = sessions[0]
     summary = _agg_session(current)
-    summary["window_label"] = f"current session · {summary['started_at']} → {summary['last_at']}"
+    summary["window_label"] = f"current session \xb7 {summary['started_at']} \u2192 {summary['last_at']}"
     return summary
 
 
@@ -339,7 +339,7 @@ def _build_diagnostics() -> dict:
     h = out["health"]
     out["connections"].append({
         "name": "RC supervisor", "ok": bool(h.get("alive")),
-        "detail": f"pid {h.get('pid','?')} · mode {h.get('mode','?')} · reload_ok {h.get('last_reload_ok')}"
+        "detail": f"pid {h.get('pid','?')} \xb7 mode {h.get('mode','?')} \xb7 reload_ok {h.get('last_reload_ok')}"
     })
     # Vision relay (loopback)
     try:

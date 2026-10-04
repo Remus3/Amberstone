@@ -134,7 +134,7 @@ def detect_and_file(
                 "detected_at": _now_iso(),
                 "message": (
                     f"{entry['champion']} ({mode}) KDA dropped "
-                    f"{entry['baseline_ratio']:.2f} → {entry['recent_ratio']:.2f} "
+                    f"{entry['baseline_ratio']:.2f} \u2192 {entry['recent_ratio']:.2f} "
                     f"({entry['delta']:+.2f}) over last {entry['sample']} games."
                 ),
             }

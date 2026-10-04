@@ -50,7 +50,7 @@ def coaching_digest(
                 "champion": e["champion"],
                 "message": (
                     f"{e['champion']} ({m}) KDA {e['baseline_ratio']:.2f} "
-                    f"→ {e['recent_ratio']:.2f} ({e['delta']:+.2f}) over "
+                    f"\u2192 {e['recent_ratio']:.2f} ({e['delta']:+.2f}) over "
                     f"last {e['sample']} games"
                 ),
                 "data": e,
@@ -64,7 +64,7 @@ def coaching_digest(
                 "champion": e["champion"],
                 "message": (
                     f"{e['champion']} ({m}) KDA {e['baseline_ratio']:.2f} "
-                    f"→ {e['recent_ratio']:.2f} (+{e['delta']:.2f}) over "
+                    f"\u2192 {e['recent_ratio']:.2f} (+{e['delta']:.2f}) over "
                     f"last {e['sample']} games"
                 ),
                 "data": e,

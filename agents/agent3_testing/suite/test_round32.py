@@ -64,7 +64,7 @@ def test_advisories_list_includes_cold_streak(fresh_scheduler) -> None:
         payload={
             "mode": "aram", "champion": "Jinx", "delta": -1.5, "sample": 10,
             "baseline_kda_ratio": 3.94, "recent_kda_ratio": 2.44,
-            "message": "Jinx (aram) KDA dropped 3.94 → 2.44",
+            "message": "Jinx (aram) KDA dropped 3.94 \u2192 2.44",
             "detected_at": "2026-04-22T12:00:00Z",
         },
         user_override=True,

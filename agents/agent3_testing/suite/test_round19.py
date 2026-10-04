@@ -92,7 +92,7 @@ def test_post_game_summary_files_task(tmp_path: Path, monkeypatch) -> None:
             "game_time": "24:00",
             "kda": "10/3/15",
             "items_display": "Ludens, Sorc Boots",
-            "item_build": "Ludens → Shadowflame",
+            "item_build": "Ludens \u2192 Shadowflame",
             "action": "Victory",
         }),
         encoding="utf-8",

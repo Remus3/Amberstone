@@ -2,7 +2,7 @@
 
 Generates and persistently iterates on off-meta "funky" builds for each
 champion in ARAM Mayhem (and ARAM). The user opts in via the variant
-dropdown - picking "⚗ Experimental" applies whatever this module's
+dropdown - picking "U+2697 Experimental" applies whatever this module's
 current iteration says. After the game ends, the user's grade feeds
 back here and the module either keeps the build (good result) or
 generates the next iteration (poor result), exploring different
@@ -192,7 +192,7 @@ def _build_history_block(history: list[dict]) -> str:
         item_short = ", ".join(items[:4]) + (", ..." if len(items) > 4 else "")
         lines.append(
             f"  it.{it} ({label}): {runes.get('keystone','?')}/{runes.get('primary','?')} "
-            f"→ {item_short} | grade={grade} kda={kda} kp={kp}% verdict={verdict}"
+            f"\u2192 {item_short} | grade={grade} kda={kda} kp={kp}% verdict={verdict}"
         )
     return "\n".join(lines)
 

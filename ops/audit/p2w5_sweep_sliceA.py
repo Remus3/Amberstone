@@ -9,14 +9,14 @@ import pathlib
 
 # Decorative-glyph -> ASCII map (union of what the slice agents normalized).
 GLYPHS = {
-    "→": "->",   # rightwards arrow
-    "↔": "<->",  # left-right arrow
-    "─": "-",    # box-drawings light horizontal
-    "−": "-",    # minus sign
-    "×": "x",    # multiplication sign
-    "≈": "~",    # almost equal to
-    "≥": ">=",   # greater-than or equal to
-    "≤": "<=",   # less-than or equal to
+    "\u2192": "->",   # rightwards arrow
+    "\u2194": "<->",  # left-right arrow
+    "\u2500": "-",    # box-drawings light horizontal
+    "\u2212": "-",    # minus sign
+    "\xd7": "x",    # multiplication sign
+    "\u2248": "~",    # almost equal to
+    "\u2265": ">=",   # greater-than or equal to
+    "\u2264": "<=",   # less-than or equal to
 }
 
 TARGETS = [

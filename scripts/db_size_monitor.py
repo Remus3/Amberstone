@@ -148,7 +148,7 @@ def main() -> int:
             print(f"  {mark}{r['label']:<28} {_fmt(r['bytes'])}")
         if breaches:
             print()
-            print(f"⚠ {len(breaches)} threshold breach(es):")
+            print(f"\u26a0 {len(breaches)} threshold breach(es):")
             for b in breaches:
                 print(f"  {b['label']:<28} {_fmt(b['bytes'])} > {_fmt(b['threshold'])} (over by {_fmt(b['over_by'])})")
         else:
