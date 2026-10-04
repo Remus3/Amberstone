@@ -108,6 +108,8 @@ data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
 data/coaching/death_patterns.json
+# RM-608 estimated death-recap rows (runtime; contributor champions + model shares)
+data/coaching/death_recaps.jsonl
 # data/coaching/aram_item_interaction.json is deliberately TRACKED (2026-07-30).
 # It is the ONLY source of deterministic item_build_reasons
 # (dashboard/_deterministic_coaching.py cue_reasons), the loader degrades to {}
