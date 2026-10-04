@@ -96,7 +96,8 @@ _VISION_FRESH_S = 10.0
 # (0.5s poll -> 4096 frames is ~34 minutes of backlog). Overflow drops frames.
 _QUEUE_MAX = 4096
 
-_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+# Used with fullmatch: "$" alone would accept a trailing newline.
+_SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
 
 class SessionFormatError(ValueError):
@@ -328,7 +329,7 @@ class LiveSessionRecorder:
             gid = str(self._game_id_provider() or "")
         except Exception:  # noqa: BLE001
             gid = ""
-        if not _SAFE_ID.match(gid):
+        if not _SAFE_ID.fullmatch(gid):
             gid = f"nogameid-{int(captured_at)}"
         self._dir.mkdir(parents=True, exist_ok=True)
         path = self._dir / (gid + ".jsonl")
