@@ -16,7 +16,9 @@ True is default-OFF prose wrong. If the default is ever deliberately flipped
 back to OFF, this guard's premise disappears and it stops demanding the
 prose say ON - it does not need editing to stay correct.
 
-THE FROZEN HALF IS RECORDED, NOT SUPPRESSED. lcu/lcu_client.py is on the
+THE FROZEN HALF SHIPPED 2026-10-03 (frozen-file grant); the history below is
+kept because the registry mechanism still governs any future entry.
+THE FROZEN HALF WAS RECORDED, NOT SUPPRESSED. lcu/lcu_client.py is on the
 CLAUDE.md frozen list, so its stale comment could not be repaired in the
 commit that shipped this guard. It is listed in _FROZEN_PENDING with the row
 that owns it. Two separate tests keep that registry honest: an entry is only
@@ -74,13 +76,10 @@ _DEFAULT_OFF_CLAIM = re.compile(
 
 #: Known-stale prose that a FROZEN file carries, mapped to the row that owns it.
 #: An entry here is a debt that is recorded, not a defect that is forgiven.
-_FROZEN_PENDING = {
-    "lcu/lcu_client.py": (
-        "RM-358 - the DEFAULT-OFF (RC_LCU_POOL) comment in _request. The file is "
-        "on the CLAUDE.md frozen list, so repairing it needs an adjudicating "
-        "agent that did not author the change plus explicit operator approval."
-    ),
-}
+#: EMPTY since RM-358's frozen half shipped (lcu/lcu_client.py _request comment
+#: repaired under the 2026-10-03 frozen-file grant); the exemption was retired
+#: in the same commit as the fix, as the module docstring requires.
+_FROZEN_PENDING: dict = {}
 
 
 def _frozen_files_from_claude_md():
@@ -313,8 +312,13 @@ class TestFrozenPendingRegistryStaysHonest(unittest.TestCase):
                     f"dead weight - delete it from _FROZEN_PENDING. Owner: {why}",
                 )
 
-    def test_the_frozen_client_is_the_only_outstanding_half(self):
-        self.assertEqual({"lcu/lcu_client.py"}, set(_FROZEN_PENDING))
+    def test_no_outstanding_frozen_half(self):
+        # RM-358's frozen half shipped; a new entry needs a new owning row.
+        self.assertEqual(set(), set(_FROZEN_PENDING))
+
+    def test_the_frozen_client_stays_repaired(self):
+        hits = [o for o in _stale_claims() if o[0] == "lcu/lcu_client.py"]
+        self.assertEqual([], hits, f"lcu/lcu_client.py claims default-OFF again: {hits}")
 
 
 if __name__ == "__main__":
