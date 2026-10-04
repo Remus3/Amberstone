@@ -523,7 +523,19 @@ _WEB = _REPO_ROOT / "web"
 # _validPos). One LIVE-edited path, no file added or removed: swapping exactly
 # web/js/panels/replay_minimap.js back to its ce871a447 blob reproduces the
 # superseded ed4bec34... value EXACTLY.
-_LIVE_HALF_DIGEST = "57f64cbb2305ae48c90ff2df149b242b5adf84c4fa07b8c4f7ff75f1225c72a0"
+# superseded by the merged re-capture below: "57f64cbb2305ae48c90ff2df149b242b5adf84c4fa07b8c4f7ff75f1225c72a0"
+#
+# MERGED external-lift intake (2026-10-04, RM-612 landed on 92a9e9906). That
+# base had ALREADY drifted from the 3a1f5b31... pin (to d4a3b38a...): RM-638
+# (73b738635, "you flagged" pins) edited LIVE spans and landed without a
+# re-capture, so origin/main was red on this guard. ATTRIBUTED BY
+# SUBSTITUTION on the merged tree: swapping exactly the RM-638 web files
+# (web/css/panels/pgr_winprob.css, replay_events.css, web/js/panels/
+# pgr_winprob.js, replay_events.js) back to their 73b738635~1 blobs AND the
+# four RM-612 paths back to their 92a9e9906 blobs (removing the added
+# replay_minimap.js) reproduces 3a1f5b31... EXACTLY; swapping only the RM-612
+# paths reproduces d4a3b38a... EXACTLY. Those eight paths are the whole change.
+_LIVE_HALF_DIGEST = "8dcc72c66a1ac741d5ff515dec2fdba2fdf6ed855c13024094452ca020282433"
 
 
 def _web_sources() -> list[Path]:

@@ -1488,6 +1488,15 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+- **LX-10** (RM-637, OBS auto-record; ONLY after the operator's batched ADR-016 setup: OBS running,
+  websocket enabled, WGC capture source, locked resolution + Borderless, `obs.record.enabled` and
+  `vod_record` allowed) One real match: StartRecord on InProgress + Live Client, STARTED carries
+  outputPath on OBS 32 / websocket 5.7.3, sidecar finalised with offset and bookmarks, chapters land if
+  the format is hybrid MP4, alignment against real video, stall detector on the real encoder, CPU and
+  frame time measured before any default-on, LCU bus delivers both gameflow URIs; the resolution-swap
+  hazard G6-03 never exercised stays out of scope while the resolution is locked.
+- **LX-11** (RM-612, replay-scrubber minimap) Visual check on the real dashboard: map art loads, badges
+  and ally / enemy rings render, "sampled every 60 s" label visible, a death hides the victim.
 - **LX-09** (RM-638, mark hotkey; restart the RC-HotkeyListener task first so it loads the new slot)
   In a real game press Ctrl+Shift+K: a row lands in `ops/runtime/moment_marks.jsonl` with a real game id;
   a press during the loading screen is dropped and logged; after the game the marks attach to that
