@@ -35,8 +35,15 @@ on:
 # commit lands on the same ref, so rapid pushes do not each bill to completion.
 # event_name is in the group so a push never cancels the nightly schedule run
 # (or vice versa) - only same-event runs supersede each other.
+#
+# RM-370 (2026-10-04): a workflow_dispatch run gets its OWN group (run_id
+# suffix, dispatch event only). The queue lane dispatches once per ~26 min
+# cycle and a dispatch run takes 45-67 min, so a shared dispatch group let
+# each cycle cancel the previous cycle's run (measured: 34012397811 cancelled
+# by 34013317217). Push / schedule keep superseding exactly as before -
+# cancel-in-progress stays true (RM-157 cost fence).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}${{ github.event_name == 'workflow_dispatch' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 # CI-ONLY THROWAWAY, and deliberately not a repo secret (2026-09-06).
