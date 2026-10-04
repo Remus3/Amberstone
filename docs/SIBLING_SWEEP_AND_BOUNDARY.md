@@ -51,6 +51,17 @@ LFS OBJECT CONTENT is never scanned by `--pre-push` (the pointer is, and scans c
 
 **And there is NO TIMEOUT: RC halts and WAITS.** It never proceeds after a delay, because a bilateral rule that auto-proceeds is a unilateral rule with extra steps. `RC-InboxResponder` stays DISARMED until an expiring agreement record arms it, and an unattended loop must never arm another repo.
 
+## Outbound documents others may vendor: licence beats their name sweep (RM-505)
+
+Read this BEFORE authoring any RC document meant for a sibling to adopt. Measured 2026-10-02 on `docs/CITE_BY_SYMBOL.md`: a sibling licence gate correctly refused it for carrying NO licence statement; RC added repository, visibility, licence and copyright holder; that fix then made the bytes un-vendorable into a sibling's tracked path, because a public tree's name sweep refuses RC's project name. Provenance REQUIRES naming the source; a recipient's name sweep REQUIRES not carrying it. The same bytes in a tracked path cannot satisfy both.
+
+**DECISION (self-adjudicated 2026-10-03, operator-gated policy row):** every outbound document carries its licence and provenance IN THE ARTIFACT, and RC states in the delivery note that the expected adoption is the IDEA with attribution, not the BYTES. Both recipients chose exactly that independently, unprompted.
+
+- Rejected: licence only in the delivery note - the artifact then travels unlicensed, which was the original defect.
+- Rejected: a names-free variant beside the licensed one - doubles the artifacts, invites drift, and still ships an unlicensed copy.
+- Never: remove or spell around the licence or the name to get past a recipient's sweep. That was the correct refusal, and evading a sweep hides the pattern from the next human reader too.
+- Reverses if: a recipient's tree adopts a vendoring path that exempts attributed third-party files from its name sweep (then bytes become adoptable as-is).
+
 ## Superseded readings that must never be restored
 
 The 2026-09-09 gap sentence that sat here - asserting in capitals that RC had no such sweep, that no such test file existed, and that pre-push was LFS ONLY - was true when written and is now false in all three halves; it is deleted, not softened, and must not be restored.
