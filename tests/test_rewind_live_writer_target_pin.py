@@ -426,6 +426,26 @@ class PinSourceTests(_PinBase):
         self.assertEqual(r["status"], "ok", r)
         self.assertEqual(calls["ids"][0][0], "state-puuid")
 
+    def test_account_lookup_raising_falls_back_to_state_puuid(self):
+        """Verifier fix 2: a raising Account-V1 must not end the chain."""
+        self.write_pin(riot_id=("SamplePlayer", "TST"))
+        calls = self.riot([[TARGET_ID]])
+        with mock.patch.object(riot_api, "get_account_by_riot_id",
+                               side_effect=RuntimeError("boom")):
+            r = self.first_attempt()
+        self.assertEqual(r["status"], "ok", r)
+        self.assertEqual(calls["ids"][0][0], "state-puuid")
+
+    def test_non_finite_written_at_is_rejected(self):
+        """Verifier fix 3: NaN compares False, so it slipped the age check;
+        +inf is 'newer than everything'. Both are garbage, not a pin."""
+        now = time.time()
+        for bad in ("NaN", "Infinity"):
+            self.pin_path.write_text(
+                f'{{"game_id": "{TARGET_GAME}", "written_at": {bad}}}',
+                encoding="utf-8")
+            self.assertIsNone(rlw._read_game_end_pin(now), bad)
+
     def test_pin_write_is_atomic_and_shaped(self):
         rlw.write_game_end_pin(TARGET_GAME, queue_id=450, game_mode="ARAM",
                                riot_id=("SamplePlayer", "TST"))
@@ -502,6 +522,71 @@ class CollectorSeamTests(unittest.TestCase):
         self.assertEqual(data["game_mode"], "KIWI")
         self.assertEqual((data["game_name"], data["tag_line"]),
                          ("SamplePlayer", "TST"))
+
+    def _history_collector(self, game, trigger_at):
+        mod, col = self._collector(None, None)
+        summoner = {"puuid": "lcu-puuid", "gameName": "SamplePlayer",
+                    "tagLine": "TST"}
+        hist = {"games": {"games": [game]}}
+
+        def lcu_get(path):
+            if path == "/lol-summoner/v1/current-summoner":
+                return summoner
+            if "/matches?" in path:
+                return hist
+            return None
+        col._lcu_get = lcu_get
+        col._trigger_at = trigger_at
+        return mod, col
+
+    def _history_game(self, game_id, ended_at):
+        duration_s = 1200
+        return {"gameId": int(game_id), "queueId": 450, "gameMode": "ARAM",
+                "gameCreation": int((ended_at - duration_s) * 1000),
+                "gameDuration": duration_s, "participants": [],
+                "participantIdentities": [], "teams": []}
+
+    def test_history_game_that_ended_before_the_trigger_is_not_pinned(self):
+        """Verifier fix 1: LCU history has not picked up the just-ended game,
+        so its first entry is the PREVIOUS game - it must not be pinned."""
+        trigger_at = time.time()
+        game = self._history_game(PREV_GAME, ended_at=trigger_at - 1800)
+        mod, col = self._history_collector(game, trigger_at)
+        with mock.patch.object(mod, "_save_eog"):
+            col._capture_via_history("ARAM")
+        self.assertFalse(rlw.PIN_PATH.exists(),
+                         "a stale history game must never get a fresh pin")
+
+    def test_history_game_that_just_ended_is_pinned(self):
+        trigger_at = time.time()
+        game = self._history_game(TARGET_GAME, ended_at=trigger_at - 30)
+        mod, col = self._history_collector(game, trigger_at)
+        with mock.patch.object(mod, "_save_eog"):
+            self.assertTrue(col._capture_via_history("ARAM"))
+        data = json.loads(rlw.PIN_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(data["game_id"], TARGET_GAME)
+
+    def test_history_game_without_timing_or_trigger_is_not_pinned(self):
+        trigger_at = time.time()
+        game = self._history_game(TARGET_GAME, ended_at=trigger_at - 30)
+        del game["gameCreation"]
+        mod, col = self._history_collector(game, trigger_at)
+        with mock.patch.object(mod, "_save_eog"):
+            col._capture_via_history("ARAM")
+        self.assertFalse(rlw.PIN_PATH.exists())
+        game = self._history_game(TARGET_GAME, ended_at=trigger_at - 30)
+        mod, col = self._history_collector(game, None)
+        with mock.patch.object(mod, "_save_eog"):
+            col._capture_via_history("ARAM")
+        self.assertFalse(rlw.PIN_PATH.exists())
+
+    def test_trigger_records_the_trigger_time(self):
+        import lcu.lcu_postgame_collector as mod
+        col = object.__new__(mod.PostgameCollector)
+        col._trigger = threading.Event()
+        t0 = time.time()
+        col.trigger("ARAM")
+        self.assertGreaterEqual(col._trigger_at, t0)
 
     def test_pin_failure_never_costs_the_capture(self):
         eog = {"gameId": int(TARGET_GAME), "teams": []}
