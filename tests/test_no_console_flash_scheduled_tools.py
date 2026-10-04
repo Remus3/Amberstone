@@ -97,6 +97,13 @@ SCHEDULED_SPAWNERS = (
     "ops/loop/lane_launcher.py",
     "ops/loop/queue_loop.py",
     "tools/upstream_drift_check.py",
+    # 2026-10-03, second pass: found by the IMPORT CLOSURE added to the
+    # completeness check (a task target imports them, so they run under the
+    # same pythonw host). routes_loop_status was already compliant;
+    # sibling_name_sweep spawned git bare at _git and _has_object and now
+    # carries the flag.
+    "dashboard/routes_loop_status.py",
+    "tools/sibling_name_sweep.py",
 )
 
 # Modules run by a CLAUDE HOOK, which is the same exposure by a different route:
@@ -297,10 +304,11 @@ def test_hook_spawners_import_subprocess_by_name_only(rel: str) -> None:
 #   2. every tracked .py named as a target by a tracked scheduled-task
 #      definition (*.xml / *.ps1 directly under ops/ or tools/ whose text
 #      registers a task) - the RC-* entry points themselves.
+#   3. (2026-10-03, hand-off residual closed) the in-repo IMPORT CLOSURE of the
+#      task targets - a module a target only imports runs under the same host.
 # NOT discoverable, so still hand-listed above: hook scripts (the wiring lives
-# in .claude/settings.json, which is per-host and untracked), modules a task
-# target IMPORTS (no transitive walk - tools/inbox_responder_procs.py is listed
-# by hand for exactly that reason), and any task target outside the tree.
+# in .claude/settings.json, which is per-host and untracked), any task target
+# outside the tree, and imports done dynamically (importlib by path string).
 # ---------------------------------------------------------------------------
 
 #: Spawning modules in the discoverable scope that are deliberately NOT held to
@@ -367,11 +375,58 @@ def _resolve_mention(mention: str, universe: frozenset[str]) -> str | None:
     return None
 
 
+def _module_candidates(rel: str, node: ast.AST) -> list[str]:
+    """Repo-relative .py paths an import node in `rel` may resolve to.
+
+    Covers dotted absolute imports (`tools.x`, `from ops.loop import y`) and the
+    bare sibling form the tools/ scripts use after `sys.path.insert(_TOOLS)`
+    (`import ds_wiki_staleness_check`) - the latter resolves in the importer's
+    OWN directory. Over-approximation is safe: a candidate that is not a
+    tracked file is simply dropped by the caller."""
+    here = rel.rpartition("/")[0]
+    names: list[str] = []
+    if isinstance(node, ast.Import):
+        names = [a.name for a in node.names]
+    elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+        names = [node.module] + [f"{node.module}.{a.name}" for a in node.names]
+    out = []
+    for name in names:
+        dotted = name.replace(".", "/")
+        out += [f"{dotted}.py", f"{dotted}/__init__.py"]
+        if here and "." not in name:
+            out.append(f"{here}/{name}.py")
+    return out
+
+
+def _import_closure(roots: set[str], universe: frozenset[str], root: Path) -> set[str]:
+    """Console-flash residual (hand-off 2026-10-03): a module a task target
+    only IMPORTS spawns under the same pythonw host, and was discoverable only
+    by hand. Walk in-repo imports from the task targets to a fixed point."""
+    seen: set[str] = set()
+    todo = list(roots)
+    while todo:
+        rel = todo.pop()
+        if rel in seen:
+            continue
+        seen.add(rel)
+        try:
+            tree = ast.parse((root / rel).read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, ValueError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                for cand in _module_candidates(rel, node):
+                    if cand in universe and cand not in seen:
+                        todo.append(cand)
+    return seen
+
+
 def _discoverable_scope(root: Path) -> set[str]:
     py = {_repo_walk.relative_posix(p, root)
           for p in _repo_walk.repo_files(root, ("*.py",))}
     universe = frozenset(py)
     scope = {rel for rel in py if rel.startswith(_LOOP_DIR)}
+    task_targets: set[str] = set()
     for path in _repo_walk.repo_files(root, ("*.xml", "*.ps1")):
         rel = _repo_walk.relative_posix(path, root)
         head, _, name = rel.rpartition("/")
@@ -383,7 +438,9 @@ def _discoverable_scope(root: Path) -> set[str]:
         for mention in _PY_MENTION.findall(text):
             hit = _resolve_mention(mention, universe)
             if hit:
-                scope.add(hit)
+                task_targets.add(hit)
+    scope |= task_targets
+    scope |= _import_closure(task_targets, universe, root)
     return scope
 
 
