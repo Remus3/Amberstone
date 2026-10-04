@@ -21,7 +21,9 @@ Read-only. Mirrors core.duration_winrate's _open_ro() file:...?mode=ro seam
 (core/duration_winrate.py:57-64) so tests inject a synthetic tmp_path db and
 the suite stays clean-checkout safe (the real db is gitignored). Never
 writes to the db. Never raises - an absent db or empty corpus returns a
-well-formed ok payload with empty buckets and a neutral readiness of 50.
+well-formed ok payload with empty buckets and an UNKNOWN readiness (score
+None, state "unknown"): no evidence is not a neutral 50 (Y-04, external
+reference O + Q).
 """
 from __future__ import annotations
 
@@ -72,6 +74,38 @@ _READINESS_PTS = 100.0
 # shrink(5)=0.5.
 _CONF_HIGH = 0.8
 _CONF_MED = 0.5
+
+# ---- Y-04 readiness light + override/flag table (external reference O + Q) --
+# Thresholds are MEASURED on the operator's own corpus (read-only, 2026-10-04,
+# data/rewind_history.db: 2963 games, 529 sessions, baseline laplace WR
+# 0.5157), never copied from anywhere.
+#
+# LOSS_STREAK_K: WR of the next game given the CURRENT in-session loss run is
+# >= k, pooled: k>=1 -0.4 pts (n=1178), k>=2 -1.4 (n=484), k>=3 -4.4 (n=206),
+# k>=4 -8.4 (n=93), k>=5 -12.4 (n=44). The knee is at 3: below it the shift is
+# inside noise, from it on it is several pts and grows.
+LOSS_STREAK_K = 3
+# FACTOR_FLAG_PTS: a contributing factor whose shrink-blended delta is at or
+# below this raises a signal flag. Measured: of 43 buckets with n >= MIN_GAMES,
+# 13 sit at <= -2, 11 at <= -3, 6 at <= -5; -3 is the first level that
+# separates the loss-run knee (-4.4) from the k>=2 noise (-1.4).
+FACTOR_FLAG_PTS = -3.0
+# deep_session fires at position POSITION_CAP when that bucket's blended WR is
+# below baseline (measured: the 8+ bucket runs -1.6 pts, n=811). It is a
+# SIGNAL (counts toward the 2/3 rule), not an override: -1.6 sits inside the
+# same noise band as the k>=2 loss run, and as a hard cap it turned 23% of
+# replayed queue instants yellow on its own. Only loss_streak, whose knee is
+# measured at -4.4, is a hard override.
+# No dedicated rust override: the longest rust bucket (2d+) runs +6.0 pts
+# (n=100) and every gap >= N days tail through 30d is ABOVE baseline here, so a
+# "long break" override would contradict this operator's own data. A rust
+# bucket that does run below baseline (1-2d: -4.1, n=70) is caught by the
+# generic factor rule instead.
+#
+# Composite light from the score: at or below this reads yellow (matches the
+# panel's existing <=45 "unfavorable" band in session_hygiene.js), else green.
+_LIGHT_LOW_SCORE = 45.0
+_LIGHT_RANK = {"green": 0, "yellow": 1, "red": 2}
 
 
 def _open_ro(db_path: Path) -> Optional[sqlite3.Connection]:
@@ -178,7 +212,7 @@ def compute_session_hygiene(db_path: Path = DEFAULT_DB,
         sqlite handle (else a read-only handle to db_path is opened + closed).
 
     Never raises. An absent db / empty corpus yields ok=True, n=0, empty
-    buckets, and a neutral readiness of 50.
+    buckets, and an unknown readiness (score None, state "unknown").
     """
     if now_ms is None:
         now_ms = int(time.time() * 1000)
@@ -284,10 +318,28 @@ def compute_session_hygiene(db_path: Path = DEFAULT_DB,
         "diff_champ": _bucket(diff[0], diff[1], overall_wr),
     }
 
+    # ---- in-session loss run (Y-04 loss_streak override) ------------------
+    # Corpus tally: games played while the in-session loss run before them was
+    # >= LOSS_STREAK_K. Current: the open session's trailing loss run.
+    streak = [0, 0]
+    run = 0
+    prev_sid = None
+    for a in annotated:
+        if a["session_id"] != prev_sid:
+            run = 0
+        if run >= LOSS_STREAK_K:
+            streak[1] += 1
+            streak[0] += a["win"]
+        run = 0 if a["win"] else run + 1
+        prev_sid = a["session_id"]
+    current_loss_run = run if in_session else 0
+    loss_run_bucket = _bucket(streak[0], streak[1], overall_wr)
+
     # ---- readiness --------------------------------------------------------
     readiness = _readiness(
         now_ms, tz, overall_wr, in_session, current_session_games,
         gap_since_last, wr_by_position, wr_by_hour, wr_by_weekday, rust,
+        current_loss_run=current_loss_run, loss_run_bucket=loss_run_bucket,
     )
 
     return {
@@ -313,13 +365,94 @@ def compute_session_hygiene(db_path: Path = DEFAULT_DB,
     }
 
 
+def _base_light(score) -> str:
+    """Composite light before any flag: unknown without a score."""
+    if score is None:
+        return "unknown"
+    return "yellow" if score <= _LIGHT_LOW_SCORE else "green"
+
+
+def _light(base: str, flags: list) -> str:
+    """Apply the deterministic flag rules to a base light.
+
+    An "override" flag caps the light at yellow (it never lifts one). Two
+    flags turn green to yellow; the rule applies ONLY when currently green,
+    so unknown stays unknown. Three or more flags are red.
+    """
+    state = base
+    if len(flags) >= 3:
+        return "red"
+    if state == "unknown":
+        return state
+    if any(f.get("kind") == "override" for f in flags):
+        if _LIGHT_RANK[state] < _LIGHT_RANK["yellow"]:
+            state = "yellow"
+    if len(flags) == 2 and state == "green":
+        state = "yellow"
+    return state
+
+
+def _shift_words(delta_pts: float) -> str:
+    """Odds-shift wording - "N pts lower/higher", never a cause."""
+    word = "lower" if delta_pts < 0 else "higher"
+    return f"{abs(delta_pts):.1f} pts {word}"
+
+
+def _flags(overall_wr, factors, pos_bucket, next_position, in_session,
+           current_loss_run, loss_run_bucket) -> list:
+    """The deterministic override/flag table. Each flag is
+    {flag, kind, n, delta_pts, note}; kind "override" caps the light."""
+    flags = []
+    if current_loss_run >= LOSS_STREAK_K:
+        n = loss_run_bucket["games"] if loss_run_bucket else 0
+        if n >= MIN_GAMES:
+            d = round((loss_run_bucket["wr_blended"] - overall_wr) * _READINESS_PTS, 2)
+            tail = (f"your WR after {LOSS_STREAK_K}+ straight losses in a session "
+                    f"has been {_shift_words(d)} (n={n})")
+        else:
+            d = None
+            tail = (f"too few past games after {LOSS_STREAK_K}+ straight losses "
+                    f"in a session to measure (n={n})")
+        flags.append({"flag": "loss_streak", "kind": "override", "n": n,
+                      "delta_pts": d,
+                      "note": f"{current_loss_run} straight losses this session; {tail}"})
+
+    deep = False
+    if (in_session and next_position == POSITION_CAP and pos_bucket is not None
+            and pos_bucket["games"] >= MIN_GAMES
+            and pos_bucket["wr_blended"] < overall_wr):
+        deep = True
+        d = round((pos_bucket["wr_blended"] - overall_wr) * _READINESS_PTS, 2)
+        flags.append({"flag": "deep_session", "kind": "signal",
+                      "n": pos_bucket["games"], "delta_pts": d,
+                      "note": (f"game #{POSITION_CAP}+ this session; your WR at "
+                               f"that depth has been {_shift_words(d)} "
+                               f"(n={pos_bucket['games']})")})
+
+    for f in factors:
+        if not f["contributed"] or f["delta_pts"] > FACTOR_FLAG_PTS:
+            continue
+        if deep and f["factor"] == "session_position":
+            continue  # same bucket as deep_session; never count it twice
+        flags.append({"flag": f"{f['factor']}_below", "kind": "signal",
+                      "n": f["n"], "delta_pts": f["delta_pts"],
+                      "note": (f"{f['note']}: your WR in this context has been "
+                               f"{_shift_words(f['delta_pts'])} (n={f['n']})")})
+    return flags
+
+
 def _readiness(now_ms, tz, overall_wr, in_session, current_session_games,
-               gap_since_last, wr_by_position, wr_by_hour, wr_by_weekday, rust):
+               gap_since_last, wr_by_position, wr_by_hour, wr_by_weekday, rust,
+               current_loss_run=0, loss_run_bucket=None):
     """Bounded 0-100 "Should I Queue" odds-shift for the CURRENT context.
 
-    Centered at 50 (neutral). Each contributing factor moves it by its
-    shrink-blended WR delta vs the player's own baseline, so thin buckets
-    barely nudge it. Clamped to [0, 100]. NOT a prediction - an odds-shift.
+    Centered at 50. Each contributing factor moves it by its shrink-blended
+    WR delta vs the player's own baseline, so thin buckets barely nudge it.
+    Clamped to [0, 100]. NOT a prediction - an odds-shift.
+
+    Y-04: with NO contributing factor there is no composite - score None,
+    state "unknown" and a basis sentence, never a neutral-looking 50. The
+    flag table then sets state green / yellow / red (see _light).
     """
     now_dt = datetime.fromtimestamp(now_ms / 1000.0, tz)
     next_position = min(current_session_games + 1, POSITION_CAP) if in_session else 1
@@ -353,8 +486,19 @@ def _readiness(now_ms, tz, overall_wr, in_session, current_session_games,
     add("weekday", wr_by_weekday[now_dt.weekday()], WEEKDAY_LABELS[now_dt.weekday()])
 
     contributing = [f for f in factors if f["contributed"]]
-    adj = sum(f["delta_pts"] for f in contributing)
-    score = max(0.0, min(100.0, 50.0 + adj))
+    if contributing:
+        adj = sum(f["delta_pts"] for f in contributing)
+        score = round(max(0.0, min(100.0, 50.0 + adj)), 1)
+        basis = (f"Based on {len(contributing)} of {len(factors)} context "
+                 f"factors with >= {MIN_GAMES} games.")
+    else:
+        score = None
+        basis = (f"Unknown: no context bucket has >= {MIN_GAMES} games yet, "
+                 f"so there is no readiness read.")
+
+    flags = _flags(overall_wr, factors, pos_bucket, next_position, in_session,
+                   current_loss_run, loss_run_bucket)
+    state = _light(_base_light(score), flags)
 
     if contributing:
         min_n = min(f["n"] for f in contributing)
@@ -369,7 +513,7 @@ def _readiness(now_ms, tz, overall_wr, in_session, current_session_games,
         confidence = "LOW"
 
     return {
-        "score": round(score, 1),
+        "score": score,
         "confidence": confidence,
         "factors": factors,
         "context": {
@@ -381,4 +525,8 @@ def _readiness(now_ms, tz, overall_wr, in_session, current_session_games,
             "local_hour": now_dt.hour,
             "local_weekday": now_dt.weekday(),
         },
+        # Y-04 keys, appended at the END so the old contract keeps its order.
+        "state": state,
+        "flags": flags,
+        "basis": basis,
     }

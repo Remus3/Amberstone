@@ -32,5 +32,34 @@
     {"champion": "Tristana",    "mode": "ARAM",        "kda": "11/3/8",  "grade": "A",  "timestamp": "1:48 PM"},
     {"champion": "Kai'Sa",      "mode": "Ranked Solo", "kda": "9/4/11",  "grade": "A-", "timestamp": "12:55 PM"},
     {"champion": "Jinx",        "mode": "ARAM",        "kda": "7/4/6",   "grade": "S-", "timestamp": "12:02 PM"}
-  ]
+  ],
+  "session_hygiene": {
+    "ok": true,
+    "n": 3,
+    "overall_wr": 0.6,
+    "readiness": {
+      "score": null,
+      "confidence": "LOW",
+      "factors": [
+        {"factor": "session_position", "n": 1, "delta_pts": 0.0, "contributed": false, "note": "next game is #3 this session"},
+        {"factor": "rust", "n": 2, "delta_pts": 0.0, "contributed": false, "note": "0.4h since last game"},
+        {"factor": "hour", "n": 1, "delta_pts": 0.0, "contributed": false, "note": "local hour 16"},
+        {"factor": "weekday", "n": 3, "delta_pts": 0.0, "contributed": false, "note": "Sat"}
+      ],
+      "context": {"in_session": true, "current_session_games": 2, "next_position": 3, "hours_since_last": 0.4, "local_hour": 16, "local_weekday": 5},
+      "state": "unknown",
+      "flags": [],
+      "basis": "Unknown: no context bucket has >= 5 games yet, so there is no readiness read."
+    },
+    "wr_by_session_position": [
+      {"position": 1, "label": "1", "wr": null, "games": 1},
+      {"position": 2, "label": "2", "wr": null, "games": 1},
+      {"position": 3, "label": "3", "wr": null, "games": 1},
+      {"position": 4, "label": "4", "wr": null, "games": 0},
+      {"position": 5, "label": "5", "wr": null, "games": 0},
+      {"position": 6, "label": "6", "wr": null, "games": 0},
+      {"position": 7, "label": "7", "wr": null, "games": 0},
+      {"position": 8, "label": "8+", "wr": null, "games": 0}
+    ]
+  }
 }

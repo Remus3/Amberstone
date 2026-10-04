@@ -457,7 +457,15 @@ _WEB = _REPO_ROOT / "web"
 # header in web/js/panels/coach_decisions.js. Neither is a glyph change.
 # MERGED Wave1 (2026-10-03): both re-captures above landed together, so the
 # pin below is the digest of the merged tree (recomputed, not either slice's).
-_LIVE_HALF_DIGEST = "3cc269ba0a0c7b883edc4f70e2000c13bf8416aecd663b4fb01a23bc2e5b6892"
+#
+# RE-CAPTURED 2026-10-04 at Y-04 (readiness unknown state + flags; external
+# reference O + Q). Ordinary case, no tokeniser change, no file added or
+# removed. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/panels/session_hygiene.js and web/css/panels/session_hygiene.css back
+# to their origin/main d1d078aab blobs reproduces the superseded 3cc269ba...
+# value EXACTLY, so those two files are the whole change. Neither is a glyph
+# change. If another slice re-captures in parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "5afd8b1d7f2c7972c4511c235fbafcb396674b684d94e2ad31e5499e756a8c45"
 
 
 def _web_sources() -> list[Path]:
