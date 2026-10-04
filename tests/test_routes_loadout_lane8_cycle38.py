@@ -309,10 +309,15 @@ def test_whitespace_padded_cmd_is_forwarded_normalized(monkeypatch):
     monkeypatch.setattr(mod, "_urlopen", _capture)
     monkeypatch.setitem(__import__("sys").modules, "web_dashboard",
                         type("M", (), {"_VISION_TOKEN": "t"})())
-    status, _, _ = _post_cmd({"cmd": "  accept_ready  ", "extra": 1})
+    status, _, _ = _post_cmd({"cmd": "  set_config  ", "auto_accept": True,
+                              "extra": 1})
     assert status == 200
-    assert seen["body"]["cmd"] == "accept_ready", "forwarded an unstripped verb"
-    assert seen["body"]["extra"] == 1, "sibling keys must still pass through"
+    assert seen["body"]["cmd"] == "set_config", "forwarded an unstripped verb"
+    # RM-296a superseded the old "sibling keys must still pass through" pin:
+    # DECLARED keys pass through, undeclared ones (which the agent never
+    # reads) are dropped at the edge.
+    assert seen["body"]["auto_accept"] is True
+    assert "extra" not in seen["body"]
 
 
 # ------------------------------ A3: raw exception text into the champ-select UI
