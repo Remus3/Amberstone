@@ -137,9 +137,14 @@ class LcuClient(_PGMixin):
             self._lockfile_missing_last_log = now
         return False
 
-    def _refresh_conn_if_changed(self) -> None:
+    def _refresh_conn_if_changed(self) -> bool:
         """Re-auth when the LCU lockfile rotates (League restart) so a
         long-lived RC survives a client restart WITHOUT an RC restart.
+
+        RM-567 (Y-44): returns True only when the re-read changed the port or
+        the auth (or cleared them because League closed); False otherwise.
+        `_request` retries a 401/403 only on True. Callers that ignore the
+        return value are unaffected.
 
         Mirrors the RC-LCUAgent's ensure_lcu_conn() (tools/lcu_agent.py), the
         reference pattern that already survives a rotation. mtime-guarded: the
@@ -153,28 +158,29 @@ class LcuClient(_PGMixin):
         reference_runewriter_dies_after_game1 (2026-07-01).
         """
         if not self._port:
-            return  # not yet connected - connect() owns the cold start
+            return False  # not yet connected - connect() owns the cold start
         for lf in _LOCKFILE_PATHS:
             try:
                 mtime = lf.stat().st_mtime
             except OSError:
                 continue  # this install path absent - try the next
             if lf == self._lockfile_path and mtime == self._lockfile_mtime:
-                return  # unchanged since last read - fast path, no re-parse
+                return False  # unchanged since last read - fast path, no re-parse
             try:
                 port, pw = _parse_lockfile_fields(lf.read_text(encoding="utf-8"))
             except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
                 _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
-                return
+                return False
             auth = base64.b64encode(f"riot:{pw}".encode()).decode()
-            if port != self._port or auth != self._auth:
+            changed = port != self._port or auth != self._auth
+            if changed:
                 _log.info("LCU reconnected: port %d (lockfile rotated, from %s)",
                           port, lf)
             self._port = port
             self._auth = auth
             self._lockfile_path = lf
             self._lockfile_mtime = mtime
-            return
+            return changed
         # No lockfile on any known path -> League closed. Clear creds so a later
         # launch reconnects via connect()/the cold-start path.
         _log.info("LCU lockfile gone - client closed; creds cleared")
@@ -182,6 +188,7 @@ class LcuClient(_PGMixin):
         self._auth = None
         self._lockfile_path = None
         self._lockfile_mtime = None
+        return True
 
     @staticmethod
     def last_request_error() -> "str | None":
@@ -241,24 +248,46 @@ class LcuClient(_PGMixin):
             with urllib.request.urlopen(req, context=self._ssl, timeout=3) as resp:
                 raw = resp.read().decode()
             return json.loads(raw) if raw.strip() else {}
+        except urllib.error.HTTPError as exc:
+            # RM-567 (Y-44, external reference N): HTTPError subclasses
+            # URLError, so it MUST be handled first. The server answered, so
+            # nothing is re-sent unless the answer is 401/403 AND a lockfile
+            # re-read shows the port or auth rotated (stale creds after a
+            # League restart). Every other non-2xx returns at once.
+            err = f"http {exc.code}"
+            if _retry and exc.code in (401, 403) and self._refresh_conn_if_changed():
+                return self._retry_once(method, endpoint, data, err)
+            _REQ_DIAG.err = err
+            return None
         except (urllib.error.URLError, OSError, TimeoutError) as exc:
             # Connection-level failure - most often a dead port after a League
-            # restart rotated the lockfile. Re-read it; if it rotated, retry
-            # ONCE on the fresh port. reference_runewriter_dies_after_game1.
-            code = getattr(exc, "code", None)
-            err = f"http {code}" if code is not None else f"transport {type(exc).__name__}"
-            if _retry:
+            # restart rotated the lockfile (reference_runewriter_dies_after_game1).
+            # RM-567: a pure connect-refused never reached the server, so it
+            # gets one retry for any method. A timeout / reset may come AFTER
+            # the bytes were sent, so it is retried only for an idempotent
+            # method - a write the peer may have applied is never re-sent.
+            reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+            err = f"transport {type(exc).__name__}"
+            if _retry and (isinstance(reason, ConnectionRefusedError)
+                           or lcu_pool.is_idempotent(method)):
                 self._refresh_conn_if_changed()
-                if self._port:
-                    out = self._request(method, endpoint, data=data, _retry=False)
-                    if out is None and getattr(_REQ_DIAG, "err", None) is None:
-                        _REQ_DIAG.err = err
-                    return out
+                return self._retry_once(method, endpoint, data, err)
             _REQ_DIAG.err = err
             return None
         except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
             _REQ_DIAG.err = "bad json"
             return None
+
+    def _retry_once(self, method, endpoint, data, err):
+        """The single bounded retry (_retry=False) shared by the RM-567 paths;
+        keeps the first failure's reason when the retry records none."""
+        if not self._port:
+            _REQ_DIAG.err = err
+            return None
+        out = self._request(method, endpoint, data=data, _retry=False)
+        if out is None and getattr(_REQ_DIAG, "err", None) is None:
+            _REQ_DIAG.err = err
+        return out
 
     # === Auto-Accept ===========================================================
 
