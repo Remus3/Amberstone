@@ -360,6 +360,36 @@ class StaleCodeDetectionTests(unittest.TestCase):
         self.assertTrue(res["acted"])
         self.assertEqual(res["trigger"], "stale_code")
 
+    def test_scan_never_enters_excluded_dir(self) -> None:
+        # Frozen supervisor walker (LEDGER 1429 item 5): the scan was a
+        # 1 Hz rglob over agents/ that POST-FILTERED agents/daemon_slayer,
+        # i.e. it still listed and stat'ed ~87 pct of the tree it then
+        # threw away. The excluded subtree must be PRUNED - never listed.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, _r, _clk, _logs = _build_watcher(root)
+            started = self._now() - timedelta(hours=2)
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            for i in range(5):
+                _make_code_file(root, f"agents/daemon_slayer/sub{i}/m{i}.py",
+                                started.timestamp() + 9000)
+            _make_code_file(root, "agents/agent2_backend/file_ingest.py",
+                            started.timestamp() - 600)
+            ds = os.path.normcase(str(root / "agents" / "daemon_slayer"))
+            seen = []
+            real_scandir = os.scandir
+
+            def _spy(path=".", *a, **k):
+                seen.append(os.path.normcase(os.fspath(path)))
+                return real_scandir(path, *a, **k)
+
+            with mock.patch("os.scandir", side_effect=_spy):
+                newest = w._newest_code_mtime()
+        self.assertTrue(seen, "positive control: the walk must list dirs")
+        self.assertFalse([s for s in seen if s.startswith(ds)],
+                         "excluded subtree was listed, not pruned")
+        self.assertAlmostEqual(newest, started.timestamp() - 600, delta=2)
+
     def test_code_older_than_started_at_stays_healthy(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
