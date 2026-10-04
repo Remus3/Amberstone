@@ -85,6 +85,17 @@ def _get_api_key() -> Optional[str]:
     Returns the key string or None when:
       - file doesn't exist (logged once at WARNING)
       - file exists but is empty / wrong format (logged + cache cleared)
+
+    RM-512 (adjudicated 2026-10-03): the `RIOT_API_KEY` environment variable
+    is DELIBERATELY NOT READ - neither first nor as a fallback - unlike the
+    env-first Anthropic readers RM-487 flipped. Measured on Legion: a
+    Machine-scope RIOT_API_KEY exists and DIFFERS from this file. The file is
+    the entitlement-bearing product-app key; env-first would silently switch
+    the live key (replays 400 on the dev key, and `_key_fingerprint` would
+    re-key every PUUID cache row), and an env fallback would do the same the
+    moment the file goes missing. Reverse only if the operator makes the env
+    value the product key (or removes it). Guard:
+    tests/test_riot_api_key_precedence_rm512.py.
     """
     global _KEY_CACHE, _KEY_WARNED_MISSING
     with _KEY_LOCK:
