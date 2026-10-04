@@ -6,7 +6,7 @@
   "poll_sec": 5,
   "channel": "sdk",
   "_channel_note": "MUST be sdk for P5. The ahk channel is a machine-wide singleton keyed on claude_window_title, so a concurrent run on that channel would prove nothing about the thing P5 exists to test.",
-  "executor_model": "claude-opus-5",
+  "executor_model": "claude-opus-5-5",
   "executor_cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
   "max_concurrent_lanes": 3,
   "_lanes_note": "Machine-wide cap on concurrent executor calls across ALL callers (RC + Sibling-A + Sibling-B since 2026-09-06, replacing the archived Sibling-C), enforced via C:/ProgramData/lw-loop/slots. Every participating repo MUST agree on this number. See _max_concurrent_lanes_note for the full history and the live asymmetry; do not let these two notes drift apart.",
@@ -20,8 +20,7 @@
   "claude_window_title": "Claude",
   "adjudicator": "claude",
   "claude_adjudicator": {
-    "cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
-    "model": "opus",
+    "model": "claude-sonnet-5-5",
     "timeout_sec": 300
   },
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
