@@ -352,6 +352,31 @@ def reset_cs_retention_between_tests():
 
 
 @pytest.fixture(autouse=True)
+def reset_rewind_live_writer_staging_between_tests():
+    """`lib/rewind_live_writer.py` keeps its staged-Timer cap and in-flight
+    target claims process-global (correct in production: one process, one
+    game end at a time). Between tests a Timer still pending from one test
+    holds a cap slot and a claim in the next, so a later test reads
+    `staged_cap_reached` / `duplicate_target` (CI run 37183631213). Only
+    touched when the module is already imported; pending real Timers are
+    cancelled so none fires into a later test."""
+    yield
+    rlw = sys.modules.get("lib.rewind_live_writer")
+    if rlw is None:
+        return
+    for t in list(getattr(rlw, "_STAGED_TIMERS", [])):
+        cancel = getattr(t, "cancel", None)
+        if isinstance(t, threading.Thread) and callable(cancel):
+            try:
+                cancel()
+            except Exception:  # noqa: BLE001
+                pass
+    reset = getattr(rlw, "_reset_staging_for_tests", None)
+    if callable(reset):
+        reset()
+
+
+@pytest.fixture(autouse=True)
 def reset_lockfile_notice_between_tests():
     """`lcu/lockfile_notice.py` dedupes the LCU lockfile-missing notice across
     every client in the process, so its episode state is process-global for the

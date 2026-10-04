@@ -409,8 +409,11 @@ def _is_event_mode(pin: dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 def _timer_alive(t: Any) -> bool:
+    # Only a real `True` counts: a handle whose is_alive() returns some other
+    # truthy object (a mock left behind by a patched Timer) is not a pending
+    # Thread and must not hold a cap slot forever.
     try:
-        return bool(t.is_alive())
+        return t.is_alive() is True
     except Exception:  # noqa: BLE001 - a broken handle holds no slot
         return False
 
