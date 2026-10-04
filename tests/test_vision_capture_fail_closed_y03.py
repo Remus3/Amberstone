@@ -17,7 +17,8 @@ All three are counted in vision stats (``get_stats()["capture_skip"]``).
 
 The blank threshold was MEASURED (2026-10-04, this slice): the twelve real
 2560x1440 League stills in data/vision_calib_reference (including the grey
-self_dead death screen) have a 64-px-thumbnail luminance range of 107..166;
+self_dead death screen) have a 64-px-thumbnail luminance range of 118..184
+(re-measured with the shipped core.screen_grab.luma_range);
 uniform frames at 0/16/128/255 grey, JPEG q85 at 1280x720 and 2560x1440, have
 range 0. The cut-off sits far from both clusters.
 
@@ -140,8 +141,8 @@ def test_threshold_boundary():
 
 
 def test_threshold_sits_well_below_measured_real_frames():
-    # Lowest measured real League still = 107 (see module docstring).
-    assert 0 < screen_grab.BLANK_LUMA_RANGE_MAX < 107 // 4
+    # Lowest measured real League still = 118 (see module docstring).
+    assert 0 < screen_grab.BLANK_LUMA_RANGE_MAX < 118 // 4
 
 
 # -- locked probe (shared core helper) --------------------------------------
@@ -199,7 +200,8 @@ def _gdi(monkeypatch, img, fg):
         return img
     monkeypatch.setattr(ImageGrab, "grab", _grab)
     monkeypatch.setattr(_frame, "_input_desktop_locked", lambda: False)
-    monkeypatch.setattr(_frame, "_league_foreground", lambda: fg)
+    if fg is not None:  # None = leave the image-name seam to the caller
+        monkeypatch.setattr(_frame, "_league_foreground", lambda: fg)
     return grabs
 
 
@@ -240,6 +242,29 @@ def test_foreground_sighting_refreshes_grace(monkeypatch):
     before = time.time()
     _frame._maybe_self_grab()
     assert _frame._league_fg_last_seen >= before
+
+
+@pytest.mark.parametrize("image", ["league of legends.exe",
+                                   "amberstone shell.exe", "electron.exe"])
+def test_overlay_or_league_foreground_lets_grab_proceed(monkeypatch, image):
+    """The RC overlay (rc-shell, focusable while ACTIVE) can hold foreground
+    for ~20s mid-game; its transparent frame over League is still game content,
+    so the GDI gate must not go dark. Packaged name = electron-builder
+    productName "Amberstone Shell"; live launches run node_modules electron.exe."""
+    grabs = _gdi(monkeypatch, _textured(), fg=None)
+    monkeypatch.setattr(_frame, "_foreground_image", lambda: image)
+    out = _frame._maybe_self_grab()
+    assert out is not None and out["source"] == "self_grab"
+    assert grabs == [1]
+    assert _counts()["not_foreground"] == 0
+
+
+def test_other_foreground_image_still_skips(monkeypatch):
+    grabs = _gdi(monkeypatch, _textured(), fg=None)
+    monkeypatch.setattr(_frame, "_foreground_image", lambda: "explorer.exe")
+    assert _frame._maybe_self_grab() is None
+    assert grabs == []
+    assert _counts()["not_foreground"] == 1
 
 
 def test_obs_source_is_not_foreground_gated(monkeypatch):
@@ -306,6 +331,8 @@ def test_agent_constants_match_core(agent):
     assert agent.BLANK_LUMA_RANGE_MAX == screen_grab.BLANK_LUMA_RANGE_MAX
     assert agent.BLANK_THUMB_WIDTH == screen_grab.BLANK_THUMB_WIDTH
     assert agent.FOREGROUND_GRACE_S == _frame._FOREGROUND_GRACE_S
+    assert agent.GAME_CONTENT_IMAGES == _frame._GAME_CONTENT_IMAGES
+    assert "league of legends.exe" in agent.GAME_CONTENT_IMAGES
     assert tuple(agent.SKIP_COUNTS) == REASONS
 
 
@@ -323,6 +350,17 @@ def test_agent_gate_not_foreground_primary_only(agent, monkeypatch):
     assert agent.capture_gate(primary=True) == "not_foreground"
     # The --no-primary UI-debug channel streams the dashboard on purpose.
     assert agent.capture_gate(primary=False) is None
+
+
+@pytest.mark.parametrize("image", ["amberstone shell.exe", "electron.exe"])
+def test_agent_gate_overlay_foreground_counts_as_game(agent, monkeypatch, image):
+    monkeypatch.setattr(agent, "_input_desktop_locked", lambda: False)
+    monkeypatch.setattr(agent, "_foreground_image", lambda: image)
+    agent._fg_last_seen = 0.0
+    assert agent.capture_gate(primary=True) is None
+    monkeypatch.setattr(agent, "_foreground_image", lambda: "explorer.exe")
+    agent._fg_last_seen = 0.0
+    assert agent.capture_gate(primary=True) == "not_foreground"
 
 
 def test_agent_gate_grace(agent, monkeypatch):

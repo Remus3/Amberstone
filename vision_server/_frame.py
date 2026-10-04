@@ -87,14 +87,32 @@ def _input_desktop_locked() -> bool:
     return input_desktop_locked()
 
 
-def _league_foreground() -> bool:
-    """Seam: True iff League of Legends.exe owns the foreground window.
+# Foreground images whose frame is GAME CONTENT. The RC overlay (rc-shell,
+# focusable while ACTIVE - rc-shell/src/main.js overlay BrowserWindow) can
+# hold foreground ~20s mid-game, and its transparent frame over League is
+# still the game, so it must not darken the gate. "amberstone shell.exe" is
+# the packaged name (electron-builder productName "Amberstone Shell");
+# "electron.exe" is included because the live overlay is launched from
+# node_modules electron.exe (Desktop shortcut + rc-shell/launch_overlay.bat),
+# and a stray dev Electron app is a far smaller risk than a dark vision feed.
+# tools/screen_agent.py mirrors this set (test-pinned).
+_GAME_CONTENT_IMAGES = frozenset({
+    "league of legends.exe", "amberstone shell.exe", "electron.exe"})
+
+
+def _foreground_image() -> str:
+    """Seam: lower-cased image name owning the foreground window, "" on error.
     Reuses the read-only probe in core.vision_profiles (image name only)."""
     try:
-        from core.vision_profiles import _league_is_foreground
-        return bool(_league_is_foreground())
+        from core.vision_profiles import _foreground_image_name
+        return _foreground_image_name() or ""
     except Exception:  # noqa: BLE001
-        return False
+        return ""
+
+
+def _league_foreground() -> bool:
+    """Seam: True iff League OR the RC overlay owns the foreground window."""
+    return _foreground_image() in _GAME_CONTENT_IMAGES
 
 
 def _gdi_gate() -> "str | None":

@@ -75,6 +75,14 @@ def _league_is_foreground() -> bool:
     calibrated base still with a desktop frame. Fail-soft: returns False on any
     error or on a non-Windows / headless host (never raises). Injectable seam -
     tests monkeypatch this function directly."""
+    return _foreground_image_name() == _LEAGUE_EXE
+
+
+def _foreground_image_name() -> str:
+    """Lower-cased image file name (e.g. ``league of legends.exe``) of the
+    process owning the Windows foreground window, or "" on any error / no
+    foreground / non-Windows host. Read-only: the window handle, its pid and
+    the image path - nothing is injected (Vanguard)."""
     try:
         import ctypes
         from ctypes import wintypes
@@ -83,28 +91,27 @@ def _league_is_foreground() -> bool:
         kernel32 = ctypes.windll.kernel32
         hwnd = user32.GetForegroundWindow()
         if not hwnd:
-            return False
+            return ""
         pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         if not pid.value:
-            return False
+            return ""
         # PROCESS_QUERY_LIMITED_INFORMATION (0x1000) - available without full
         # rights and enough for QueryFullProcessImageNameW.
         h = kernel32.OpenProcess(0x1000, False, pid.value)
         if not h:
-            return False
+            return ""
         try:
             buf = ctypes.create_unicode_buffer(1024)
             size = wintypes.DWORD(len(buf))
             if not kernel32.QueryFullProcessImageNameW(
                     h, 0, buf, ctypes.byref(size)):
-                return False
-            name = buf.value.rsplit("\\", 1)[-1].lower()
-            return name == _LEAGUE_EXE
+                return ""
+            return buf.value.rsplit("\\", 1)[-1].lower()
         finally:
             kernel32.CloseHandle(h)
     except Exception:  # noqa: BLE001
-        return False
+        return ""
 
 
 def active_config_key() -> str:
