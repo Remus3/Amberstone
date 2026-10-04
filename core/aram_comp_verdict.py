@@ -231,17 +231,98 @@ def _bench_addresses(champ_name: str, gap: str, detail, f: dict) -> bool:
     return False
 
 
-def _best_bench(bench: list, gap: str, detail, f: dict, gaps: list) -> Optional[str]:
-    """Pick the bench champ fixing `gap` that ALSO covers the most other gaps."""
+# Y-05 net-benefit gate (external reference S, method only). A gap a swap
+# NEWLY INTRODUCES weighs this much against the gaps it fixes; anything not
+# listed weighs 1. Range and frontline weigh 2 because they are the two factors
+# comp_verdict already reports at "high" confidence: swapping out the only
+# frontline to gain range must not read as an even trade.
+_INTRODUCED_WEIGHT = {"range": 2, "frontline": 2}
+
+
+def _gap_keys(gaps: list) -> list:
+    """Ordered gap list -> JSON-plain keys ("range", "damage:ap", ...)."""
+    return [f"{g}:{d}" if d else g for g, d in gaps]
+
+
+def _introduced_weight(keys) -> int:
+    return sum(_INTRODUCED_WEIGHT.get(str(k).split(":", 1)[0], 1) for k in keys)
+
+
+def _trial_team(team: list, my_champ: str, candidate: str) -> Optional[list]:
+    """A NEW list with my champion's slot replaced by `candidate`; None when my
+    champion is not in `team` (no slot to model). Never mutates `team`."""
+    mine = _norm(my_champ)
+    if not mine:
+        return None
+    for i, name in enumerate(team):
+        if _norm(name) == mine:
+            return [*team[:i], candidate, *team[i + 1:]]
+    return None
+
+
+def _best_bench(bench: list, gap: str, detail, f: dict, gaps: list,
+                team: Optional[list] = None, my_champ: str = "") -> dict:
+    """Pick the bench champ fixing `gap`, judged on the TRIAL team.
+
+    Each candidate that addresses `gap` is re-scored on the team with MY
+    champion replaced: compute_factors + _ordered_gaps on that trial team.
+    It is accepted only when gaps fixed >= weighted gaps newly introduced
+    (_INTRODUCED_WEIGHT). Ranking: net gaps removed, then keeps every factor
+    already satisfied, then the legacy score (fixes `gap` + covers the most
+    other gaps). Returns {"pick", "gaps_after", "caveat"}; pick None when no
+    candidate passes, with the caveat naming the best rejected one.
+
+    When my champion is not in `team` the trial cannot be built: the legacy
+    pick is kept and the caveat says it was not net-checked.
+    """
+    before = _gap_keys(gaps)
+    before_set = set(before)
     others = [(g, d) for g, d in gaps if g != gap]
-    best, best_score = None, -1
+    best, best_rank, rejected = None, None, None
     for name in bench:
         if not _bench_addresses(name, gap, detail, f):
             continue
         score = 1 + sum(1 for g, d in others if _bench_addresses(name, g, d, f))
-        if score > best_score:
-            best, best_score = name, score
-    return best
+        trial = _trial_team(team or [], my_champ, name)
+        if trial is None:
+            rank = (0, 1, score)
+            cand = {"pick": name, "gaps_after": list(before),
+                    "caveat": f"{name}: swap not net-checked "
+                              f"({my_champ or 'my champion'} not in my team)."}
+        else:
+            after = _gap_keys(_ordered_gaps(compute_factors(trial)))
+            fixed = [k for k in before if k not in set(after)]
+            introduced = [k for k in after if k not in before_set]
+            net = len(fixed) - _introduced_weight(introduced)
+            if net < 0:
+                if rejected is None or net > rejected[0]:
+                    rejected = (net, name, fixed, introduced)
+                continue
+            rank = (net, 0 if introduced else 1, score)
+            caveat = ""
+            if introduced:
+                caveat = (f"Swap to {name} breaks "
+                          f"{', '.join(_key_phrase(k) for k in introduced)}.")
+            cand = {"pick": name, "gaps_after": after, "caveat": caveat}
+        if best_rank is None or rank > best_rank:
+            best, best_rank = cand, rank
+    if best is not None:
+        return best
+    caveat = ""
+    if rejected is not None:
+        net, name, fixed, introduced = rejected
+        fixes = ", ".join(_key_phrase(k) for k in fixed) or "no gap"
+        caveat = (f"{name} rejected: fixes {fixes} but breaks "
+                  f"{', '.join(_key_phrase(k) for k in introduced)} "
+                  f"(net {net}).")
+    return {"pick": None, "gaps_after": list(before), "caveat": caveat}
+
+
+def _key_phrase(key: str) -> str:
+    gap, _, detail = str(key).partition(":")
+    if gap == "damage" and detail:
+        return f"damage mix (no {detail.upper()})"
+    return gap
 
 
 def _variant_addresses(variant: dict, keywords: tuple) -> bool:
@@ -259,11 +340,23 @@ def _find_variant(variants: list, current: str, keywords: tuple) -> Optional[dic
     return None
 
 
-def _result(ok, rec, swap_to, variant_to, reason, conf, f):
+def _result(ok, rec, swap_to, variant_to, reason, conf, f,
+            gaps_before=None, gaps_after=None, caveat=""):
+    # Y-05: gaps_before / gaps_after are the ordered gap keys of the current
+    # team and of the team the verdict leads to (a variant or a stay leaves the
+    # composition, so the gaps, unchanged). caveat names what a swap breaks or
+    # why a candidate was rejected; "" when there is nothing to say. A caveat
+    # is also appended to `reason` so text-only renderers still show it.
+    if caveat:
+        reason = f"{reason} {caveat}"
+    before = list(gaps_before or [])
     return {
         "ok": ok, "recommendation": rec, "swap_to": swap_to or "",
         "variant_to": variant_to or "", "reason": reason,
         "confidence": conf, "factors": f,
+        "gaps_before": before,
+        "gaps_after": list(before if gaps_after is None else gaps_after),
+        "caveat": caveat or "",
     }
 
 
@@ -291,11 +384,13 @@ def comp_verdict(state: dict) -> dict:
 
         f = compute_factors(team)
         gaps = _ordered_gaps(f)
+        before = _gap_keys(gaps)
         if not gaps:
             reason = (f"Comp is balanced ({f['ranged_count']} ranged, mixed "
                       f"damage, frontline present) - stay.")
-            return _result(True, "stay", "", "", reason, "high", f)
+            return _result(True, "stay", "", "", reason, "high", f, before)
 
+        rejected_caveat = ""
         for gap, detail in gaps:
             # Build-addressable gaps (damage / sustain): prefer a variant.
             if gap == "damage":
@@ -308,23 +403,33 @@ def comp_verdict(state: dict) -> dict:
                     excess = "AD" if detail == "ap" else "AP"
                     reason = (f"All-{excess} comp - the {v.get('label') or v['key']} "
                               f"variant adds {'magic' if detail == 'ap' else 'physical'} damage.")
-                    return _result(True, "variant", "", v["key"], reason, "medium", f)
+                    return _result(True, "variant", "", v["key"], reason, "medium",
+                                   f, before)
             if gap == "sustain":
                 v = _find_variant(variants, current_variant, _SUSTAIN_VARIANT_KW)
                 if v:
                     reason = (f"Comp lacks sustain - the {v.get('label') or v['key']} "
                               f"variant adds healing/lifesteal.")
-                    return _result(True, "variant", "", v["key"], reason, "medium", f)
+                    return _result(True, "variant", "", v["key"], reason, "medium",
+                                   f, before)
 
-            pick = _best_bench(bench, gap, detail, f, gaps)
+            choice = _best_bench(bench, gap, detail, f, gaps, team, my_champ)
+            pick = choice["pick"]
             if pick:
                 reason = _swap_reason(gap, detail, pick, f)
                 conf = "high" if gap in ("range", "frontline") else "medium"
-                return _result(True, "swap", pick, "", reason, conf, f)
+                return _result(True, "swap", pick, "", reason, conf, f, before,
+                               choice["gaps_after"], choice["caveat"])
+            rejected_caveat = rejected_caveat or choice["caveat"]
 
         top = gaps[0][0]
-        reason = f"{_gap_phrase(top)}, but no bench champ or variant fixes it - stay."
-        return _result(True, "stay", "", "", reason, "low", f)
+        if rejected_caveat:
+            reason = (f"{_gap_phrase(top)}, but no bench swap fixes more gaps "
+                      f"than it opens - stay.")
+        else:
+            reason = f"{_gap_phrase(top)}, but no bench champ or variant fixes it - stay."
+        return _result(True, "stay", "", "", reason, "low", f, before,
+                       None, rejected_caveat)
     except Exception as exc:  # never raise into the coach path  # noqa: BLE001
         logger.debug("comp_verdict failed: %s", exc)
         return _stay_unknown()
