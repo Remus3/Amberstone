@@ -14,6 +14,8 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from core.polled_json import atomic_write_json
+
 logger = logging.getLogger("rc.tft.heatmap")
 
 _ROOT = Path(__file__).parent.parent
@@ -110,9 +112,7 @@ def update_heatmap() -> int:
     """
     _RATINGS_DIR.mkdir(parents=True, exist_ok=True)
     heatmap = build_heatmap()
-    tmp = _HEATMAP_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps(heatmap, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(_HEATMAP_FILE)
+    atomic_write_json(_HEATMAP_FILE, heatmap)
     n = heatmap["games_counted"]
     logger.info("Placement heatmap updated: %d games, %d units tracked",
                 n, len(heatmap["positions"]))

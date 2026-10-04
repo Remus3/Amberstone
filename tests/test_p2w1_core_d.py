@@ -213,11 +213,20 @@ class DamageMixTtlCachePruneTests(unittest.TestCase):
 
 class AftergameWriteLogsSwallowedErrorTests(unittest.TestCase):
     def test_failure_returns_false_and_logs(self):
-        # Target inside a nonexistent directory -> tmp write raises.
-        bad_target = pathlib.Path(tempfile.gettempdir()) / "rc_p2w1_missing_dir" / "x" / "coaching_data.json"
-        with self.assertLogs("rc.aftergame_summary", level="WARNING"):
-            ok = ag.write_to_client_coaching_data({"action": "x"}, target=bad_target)
-        self.assertFalse(ok)
+        # RM-258/RM-261: the shared writer creates missing parent dirs, so a
+        # missing directory no longer fails. Make the parent a regular FILE
+        # instead -> mkdir / scratch open raises OSError.
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="ag_bad_"))
+        try:
+            blocker = tmp / "not_a_dir"
+            blocker.write_text("x", encoding="utf-8")
+            bad_target = blocker / "coaching_data.json"
+            with self.assertLogs("rc.aftergame_summary", level="WARNING"):
+                ok = ag.write_to_client_coaching_data({"action": "x"}, target=bad_target)
+            self.assertFalse(ok)
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def test_success_still_returns_true(self):
         tmp = pathlib.Path(tempfile.mkdtemp(prefix="ag_ok_"))

@@ -2,7 +2,8 @@
 the Phase 3 supervisor.
 
 Behavior-preserving split (s243) of agents/supervisor.py - see that
-module's split note. Leaf module: depends only on the stdlib. Do NOT add
+module's split note. Leaf module: depends only on the stdlib and
+core.polled_json (itself stdlib-only). Do NOT add
 imports of agents.supervisor / _supervisor_http / _supervisor_ephemeral
 here - that would create a cycle. The public surface is re-exported by
 agents.supervisor; import from there (not this module) in tests/callers.
@@ -20,6 +21,8 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+from core.polled_json import atomic_write_text
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -261,32 +264,18 @@ def _atomic_write_json(target: Path, obj: object) -> None:
     ``ops/rc_supervisor.py`` every cycle; a direct ``write_text`` is
     observable mid-write and a torn read decodes as missing_lockfile,
     contributing a spurious unhealthy signal toward a false restart. Write
-    to a PID-unique temp in the same dir (so the rename is same-filesystem
-    and never collides with a concurrent reclaiming starter), then
-    ``os.replace`` - atomic on POSIX and Windows.
+    to a per-writer (pid + token) temp in the same dir (so the rename is
+    same-filesystem and never collides with a concurrent reclaiming starter),
+    then ``os.replace`` - atomic on POSIX and Windows.
 
-    Audit L-02 (2026-07-12): retry ``os.replace`` up to 3 times on transient
-    Windows PermissionError (reference_os_replace_winerror5), then always
-    unlink the ``.tmp`` sibling via finally so a crash or WinError 5 never
-    orphans a per-PID temp file into ``agents/state/``.
+    Audit L-02 (2026-07-12) / RM-261: delegated to
+    ``core.polled_json.atomic_write_text``, which fsyncs, retries ``os.replace``
+    on transient Windows PermissionError (reference_os_replace_winerror5) with
+    a bounded backoff, re-raises on exhaustion, and always unlinks the ``.tmp``
+    sibling so a crash or WinError 5 never orphans a temp file into
+    ``agents/state/``. Compact ``json.dumps(obj)`` is kept: same bytes as before.
     """
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps(obj), encoding="utf-8")
-    try:
-        for attempt in range(3):
-            try:
-                os.replace(tmp, target)
-                return
-            except PermissionError:
-                if attempt == 2:
-                    raise
-                time.sleep(0.06)
-    finally:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
+    atomic_write_text(target, json.dumps(obj))
 
 
 def _pid_alive(pid: int) -> bool:
@@ -310,16 +299,17 @@ def _pid_alive(pid: int) -> bool:
 
 
 def _reap_orphan_lockfile_tmps() -> None:
-    """Delete ``lockfile.<pid>.tmp`` files where ``<pid>`` is not a live process.
+    """Delete ``lockfile.<pid>[.<token>].tmp`` files where ``<pid>`` is not a
+    live process (``.<token>`` is the core.polled_json per-writer suffix).
 
     Called once at ``acquire_lock()`` startup. Cleans up tmps orphaned by a
     prior crash or transient WinError 5 before the current supervisor takes
     ownership (audit L-02, 2026-07-12).
     """
     for p in STATE_DIR.glob("lockfile.*.tmp"):
-        stem = p.name  # "lockfile.<pid>.tmp"
-        parts = stem.rsplit(".", 2)
-        if len(parts) != 3:
+        # "lockfile.<pid>.tmp" (legacy) or "lockfile.<pid>.<token>.tmp"
+        parts = p.name.split(".")
+        if len(parts) not in (3, 4) or parts[0] != "lockfile":
             continue
         try:
             pid = int(parts[1])

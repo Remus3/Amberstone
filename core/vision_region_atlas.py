@@ -26,6 +26,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from core.polled_json import atomic_write_text
+
 SCHEMA_VERSION = 1
 
 # Repo-relative paths (this module lives in core/, so the repo root is one up).
@@ -121,25 +123,17 @@ def build_atlas(regions_src_path=None):
 def write_atlas(atlas, path=None):
     """Atomically write the atlas JSON; return the path, or None on failure.
 
-    Writes to a sibling .tmp then replace()-s it into place (overlays poll
-    mid-write). JSON is indent=2, sort_keys=True, ensure_ascii=True, trailing
-    newline - deterministic bytes. Best-effort removes the .tmp on failure.
-    Never raises.
+    Writes via core.polled_json.atomic_write_text (per-writer scratch file,
+    replaced into place; overlays poll mid-write). JSON is indent=2,
+    sort_keys=True, ensure_ascii=True, trailing newline - deterministic bytes.
+    The helper removes its scratch file on failure. Never raises.
     """
     p = DEFAULT_ATLAS_PATH if path is None else Path(path)
-    tmp = p.with_suffix(p.suffix + ".tmp")
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(atlas, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
-        tmp.write_text(text, encoding="utf-8")
-        tmp.replace(p)
+        atomic_write_text(p, text)
         return p
     except Exception:  # noqa: BLE001 - fail-soft contract
-        try:
-            if tmp.exists():
-                tmp.unlink()
-        except Exception:  # noqa: BLE001 - best-effort tmp cleanup
-            pass
         return None
 
 

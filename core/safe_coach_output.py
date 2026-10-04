@@ -2,6 +2,8 @@ import functools
 import logging
 import json
 
+from core.polled_json import atomic_write_text
+
 def safe_coach_output(mode_name: str, write_status_fn_name: str = "_write_status_field"):
     """
     Decorator for coach `_run` or `_run_coach` methods to guarantee friendly 
@@ -51,9 +53,7 @@ def safe_coach_output(mode_name: str, write_status_fn_name: str = "_write_status
                                 except Exception:  # noqa: BLE001
                                     pass
                             current["immediate"] = f"Immediate: {_status}"
-                            tmp = out_path.with_suffix(".tmp")
-                            tmp.write_text(json.dumps(current, indent=2), encoding="utf-8")
-                            tmp.replace(out_path)
+                            atomic_write_text(out_path, json.dumps(current, indent=2))
                     except Exception as wr_e:  # noqa: BLE001
                         logger.error("Failed to write safe fallback for %s: %s", mode_name, wr_e)
         return wrapper
