@@ -111,6 +111,17 @@ SCHEDULED_SPAWNERS = (
     # carries the flag.
     "dashboard/routes_loop_status.py",
     "tools/sibling_name_sweep.py",
+    # 2026-10-04 lift-1 CI repair (RM-607/RM-608): found by the import closure.
+    # scripts/rewind_catchup.py (a task target) imports the RM-607 item-tape
+    # store -> liveclient_cache -> the RM-608 death recap, which imports this
+    # module. ensure_running's Popen already carries CREATE_NO_WINDOW; listed
+    # so it stays that way.
+    "core/daemon_slayer_client.py",
+    # Same root, second edge (RM-637): liveclient_cache -> obs_recorder ->
+    # obs_publisher -> dashboard/_state_builder pulls the dashboard dispatch
+    # tree into the closure. Both sites already pass CREATE_NO_WINDOW.
+    "coaches/voice_coach.py",
+    "dashboard/server.py",
 )
 
 # Modules run by a CLAUDE HOOK, which is the same exposure by a different route:
