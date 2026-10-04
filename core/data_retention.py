@@ -79,6 +79,31 @@ avoid. Each class gets its own verdict:
       DS calibration tables are derived from it) and its mtime is not
       advancing hourly. It is production data, not corpus growth.
 
+RM-117 RETENTION DECISION (adjudicated 2026-10-03; was "operator decision
+pending" on tier-1 3.72 GB / tier-2 24.6 MB / tier-3 137 MB)
+-------------------------------------------------------------------------
+Re-measured on the live data/ before deciding (`python -m core.data_retention`):
+
+  Tier 1 - the two rewind_history.db backups (3.72 GB): ABSENT. STALE_BACKUP
+           n=0; only the live rewind_history.db remains. Nothing to decide.
+  Tier 2 - the .bak-item211/213/263 snapshots (24.6 MB): ABSENT (same n=0).
+  Tier 3 - superseded patch generations (now 183 MB, n=17): every one is
+           (at least partly) GIT-TRACKED. DECISION: tracked generations are
+           repository content, not retention targets - pruning one is a
+           commit, owned by RM-489, and tests read older generations by
+           name. They are now excluded from SUPERSEDED_PATCH (see
+           `_git_tracked_files`); untracked superseded generations keep the
+           recommend-operator verdict.
+
+Alternatives rejected: sweeping tier 3 from data/ (creates unreviewed repo
+deletions and breaks tests that read e.g. data/daemon_slayer/16.15.1);
+lowering DEFAULT_KEEP_PATCHES (same effect). Unchanged and still fenced: do
+NOT delete data/riot_api_cache.db (RM-153; alarm-only), and APPEND_LOG stays
+the only auto-eligible class with apply() still uncalled - executing any
+removal under the live data/ is out-of-tree and goes through the Recycle Bin,
+never unlink (CLAUDE.md fleet item 9). Reverse if RM-489 untracks the patch
+dirs: they then fall back into SUPERSEDED_PATCH automatically.
+
 SAFETY CONTRACT
 ---------------
 `scan`, `plan`, `render_report` and `game_information_manifest` are
@@ -371,6 +396,41 @@ def _classify_file(name: str) -> str:
     return CLASS_RETAIN
 
 
+def _git_tracked_files(root: Path) -> frozenset[str]:
+    """Posix paths (relative to `root`) that git tracks under `root`.
+
+    RM-117 retention decision (2026-10-03): a superseded patch generation
+    that git TRACKS is repository content, not corpus growth - pruning it is
+    a commit, owned by RM-489 (tracked ddragon / DS patch dirs), and several
+    tests read older generations by name. Fail-soft: outside a repo, without
+    git, or on any error this returns an empty set, so classification falls
+    back to the pre-decision behaviour. Read-only (`git ls-files`).
+    """
+    import subprocess
+
+    try:
+        flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
+        res = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            capture_output=True, timeout=30, creationflags=flags,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return frozenset()
+    if res.returncode != 0:
+        return frozenset()
+    return frozenset(
+        p for p in res.stdout.decode("utf-8", "replace").split("\0") if p
+    )
+
+
+def _is_tracked_dir(root: Path, d: Path, tracked: frozenset[str]) -> bool:
+    try:
+        prefix = d.relative_to(root).as_posix() + "/"
+    except ValueError:
+        return False
+    return any(p.startswith(prefix) for p in tracked)
+
+
 def _superseded_patch_dirs(root: Path, keep_patches: int) -> list[Path]:
     """Directories whose name is a version and which a newer sibling supersedes."""
     groups: dict[Path, list[Path]] = {}
@@ -404,12 +464,17 @@ def scan(
     *,
     keep_patches: int = DEFAULT_KEEP_PATCHES,
     now: Optional[float] = None,
+    tracked: Optional[frozenset[str]] = None,
 ) -> list[Candidate]:
     """Classify everything under `data_dir`. Read-only.
 
     Returns one Candidate per file, plus one per superseded patch
     directory. Files inside a superseded patch directory are folded into
     that directory's Candidate rather than reported twice.
+
+    `tracked` (data_dir-relative posix paths git tracks; None = ask git)
+    removes git-tracked generations from SUPERSEDED_PATCH - see
+    `_git_tracked_files` for the RM-117 decision.
     """
     import time
 
@@ -417,10 +482,13 @@ def scan(
     if not root.is_dir():
         return []
     now = time.time() if now is None else now
+    if tracked is None:
+        tracked = _git_tracked_files(root)
 
     out: list[Candidate] = []
 
-    superseded = _superseded_patch_dirs(root, keep_patches)
+    superseded = [d for d in _superseded_patch_dirs(root, keep_patches)
+                  if not _is_tracked_dir(root, d, tracked)]
     superseded_set = {p.resolve() for p in superseded}
     for d in superseded:
         st = _stat(d)
@@ -488,6 +556,7 @@ def plan(
     max_cache_bytes: int = DEFAULT_MAX_CACHE_BYTES,
     keep_patches: int = DEFAULT_KEEP_PATCHES,
     now: Optional[float] = None,
+    tracked: Optional[frozenset[str]] = None,
 ) -> RetentionPlan:
     """Build the retention plan for `data_dir`. Read-only - deletes nothing.
 
@@ -507,7 +576,7 @@ def plan(
         max_cache_bytes=max_cache_bytes,
     )
     root = Path(data_dir)
-    raw = scan(root, keep_patches=keep_patches, now=now)
+    raw = scan(root, keep_patches=keep_patches, now=now, tracked=tracked)
 
     candidates: list[Candidate] = []
     for c in raw:

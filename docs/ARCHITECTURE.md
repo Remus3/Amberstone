@@ -215,6 +215,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
 | `tests/test_coach_choices_characterization_p2_2.py` | P2.2 structured-output hardening - coach_choices wire golden-master |
 | `tests/test_coach_output_p2_2.py` | P2.2 tail - shared coach-output model parity golden master |
+| `tests/test_data_retention_rm117_tracked_patches.py` | regression - RM-117 retention decision: git-tracked patch generations are not retention targets |
 | `tests/test_riot_api_key_precedence_rm512.py` | regression - RM-512 Riot key precedence is FILE-ONLY; RIOT_API_KEY env never read |
 
 ### Tools / ops
