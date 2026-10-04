@@ -41,6 +41,7 @@ go vacuous when the patch data changes.
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from agents.daemon_slayer.ability_dps import compute_ability_dps
 from agents.daemon_slayer.ability_hps import compute_ability_hps
@@ -53,10 +54,13 @@ from agents.daemon_slayer.hps import compute_hps
 from agents.daemon_slayer.rank import MODE_MAP_ID, rank_items
 
 # The build the RM-325 finding was reproduced on against the live
-# :8860 engine. Ziggs carries a non-1.0 aramDamageDealt AND a wiki
-# sidecar dmg_dealt that DISAGREES with it, which is what makes the
-# lowercase fall-through observable rather than coincidentally equal.
+# :8860 engine. Ziggs carries a non-1.0 aramDamageDealt; the DPS class
+# plants a sidecar dmg_dealt that DISAGREES with it (the live sidecar
+# agrees from 16.19.1), which is what makes the lowercase fall-through
+# observable rather than coincidentally equal.
 _CHAMP = "Ziggs"
+# Sidecar dmg_dealt planted by DpsModeCaseParityTests (see its setUpClass).
+_SIDECAR_SENTINEL = 0.5
 _LEVEL = 13
 _ITEMS = ("3020", "6653")
 
@@ -76,7 +80,18 @@ class DpsModeCaseParityTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.snap = DataSnapshot.load()
+        # The probe needs the wiki sidecar dmg_dealt to DISAGREE with
+        # aramDamageDealt. Live data stopped providing that at 16.19.1, when
+        # the ARAM re-extract converged Ziggs to the sidecar's 0.92 (RM-522;
+        # RM-662 now guards that the two sources AGREE). So the sidecar row
+        # is replaced with a sentinel on a copy of the snapshot: the test is
+        # about WHICH branch runs, not about either source's value.
+        snap = DataSnapshot.load()
+        row = dict(snap.wiki_stats.get(_CHAMP) or {})
+        mm = dict(row.get("mode_modifiers") or {})
+        mm["aram"] = {**(mm.get("aram") or {}), "dmg_dealt": _SIDECAR_SENTINEL}
+        row["mode_modifiers"] = mm
+        cls.snap = replace(snap, wiki_stats={**snap.wiki_stats, _CHAMP: row})
 
     def _dps(self, mode: str, apply_mode_modifiers: bool):
         return compute_dps(
