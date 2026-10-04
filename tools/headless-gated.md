@@ -49,11 +49,26 @@ It reads `~/.perseus-vault/` by absolute path, so it works from the worktree. Na
 |---|---|---|
 | RC health | Read `ops/runtime/health.json` | pid, alive, mode, last_reload_ok |
 | RC state | `curl -sk https://127.0.0.1:8888/api/state` | `mode_key`, `liveclient`, `coach`, `lcu`, `screen_read`, `minimap_*`, `zoi` |
-| Relay | `curl -sk https://127.0.0.1:8889/latest-liveclient` | the relayed `:2999` snapshot |
-| Frame | `curl -sk https://127.0.0.1:8889/latest-frame` | the in-process vision frame the coaches read |
+| Relay | `curl -s -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-liveclient` | the relayed `:2999` snapshot |
+| Frame | `curl -s -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-frame` | the in-process vision frame the coaches read |
 | DS | `curl -s http://127.0.0.1:8860/health` | HTTP, not HTTPS; patch + ENGINE_VERSION |
 
-All five answered on 2026-08-02. `-k` because the cert is mkcert self-signed.
+All five answered on 2026-08-02. `-k` on :8888 only, because that cert is mkcert self-signed. :8889 is plain HTTP and token-gated: `$TOK` comes from the block below.
+
+Resolve the token once per shell, from the repo root (never echo or paste the value):
+
+```bash
+TOK=$(python -c 'from core.vision_token import get_vision_token as g; print(g())')
+```
+
+When a :8889 probe comes back empty, tell the causes apart before calling the relay dead:
+
+| Symptom | Cause | Check | Fix |
+|---|---|---|---|
+| curl status `000` on every :8889 path, http included | Dead relay: nothing listening on :8889 (a detached child; RC respawns it only at startup when the port is down) | `curl -s -o /dev/null -w "%{http_code}" -H "X-RC-Token: $TOK" http://127.0.0.1:8889/health` prints `000` | `echo restart > restart_trigger.txt`; if the port listens on old code, taskkill the listener PID first (memory `reference_vision_server_restart_does_not_redeploy`) |
+| curl status `000` or an empty body, yet `/health` over http answers 200 | Wrong scheme: `https://` against the plain-HTTP relay | `curl -s -o /dev/null -w "%{http_code}" -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-frame/meta` answers where the https form gave `000` | Use `http://`, never `https://` or `-k`, on :8889 (memory `reference_vision_relay_probe_needs_http_and_token`) |
+| HTTP `401` with `{"error": "unauthorized"}` | Missing token: no `X-RC-Token` header, or one the listener does not hold | `curl -s -o /dev/null -w "%{http_code}" -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-frame/meta` is 200 with the resolved `$TOK` | Send the header from `core.vision_token.get_vision_token()`, never a pasted value; 401 WITH the resolved token means a rotation the listener missed (memory `reference_vision_token_canonical`) |
+| 200 and a frame, but the pixels disagree with `liveclient` | Stale frame: `/latest-frame` serves the LAST frame (load screen, alt-tab) | `curl -s -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-frame/meta` and compare its `ts` with now and with `liveclient` game_time | Re-capture once the frame is fresh, else escalate to a desktop screenshot; never tick on an untimed frame (memory `feedback_capture_artifact_staleness`) |
 
 **1d. Two worktree traps, both measured 2026-07-31.**
 
