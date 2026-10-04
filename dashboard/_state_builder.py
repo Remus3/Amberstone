@@ -486,6 +486,25 @@ def _ascii_clean(obj):
     return obj
 
 
+def _with_comp_coverage(tc):
+    """Y-09 (RM-533): additive ``coverage`` key on a COPY of team_context.
+
+    The route cache dict is never mutated (shallow copy). Comp FACTS only
+    (core/comp_coverage.py), never a win prediction. Fail-soft: any error
+    leaves ``coverage`` None and never raises into the state build. A cold
+    cache (None) passes through unchanged.
+    """
+    if not isinstance(tc, dict):
+        return tc
+    out = dict(tc)
+    try:
+        from core.comp_coverage import coverage_from_team_context
+        out["coverage"] = coverage_from_team_context(tc)
+    except Exception:  # noqa: BLE001 - fail-soft
+        out["coverage"] = None
+    return out
+
+
 def build_state() -> dict:
     _stages: list[tuple[str, float]] = []
     _t = time.monotonic()
@@ -571,7 +590,7 @@ def build_state() -> dict:
     # /api/team-context/refresh. Dashboard panel reads coach.team_context
     # and falls back to skeleton rows when fields are empty.
     _mark("latch_overlay")
-    coach["team_context"] = get_team_context()
+    coach["team_context"] = _with_comp_coverage(get_team_context())
     _mark("team_context")
 
     # s182 (2026-05-13) - surface the operator's effective archetype pick
