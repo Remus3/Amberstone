@@ -48,7 +48,7 @@ Set-Location $Cwd
 # carry a gitignored config. Falls back to a known-good model when the file is
 # missing or unparseable, because a lane must never fail to spawn over a config
 # read.
-$model = "claude-opus-5"
+$model = "claude-opus-5-5"
 try {
   $cfgPath = Join-Path $PSScriptRoot "config.json"
   if (Test-Path $cfgPath) {
