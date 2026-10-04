@@ -298,6 +298,17 @@ def _on_task_done(fut: Any) -> None:
         )
 
 
+def _install_optional_taps() -> None:
+    """Flag-gated, default-OFF listeners that have no other non-frozen wiring
+    point. RM-605: the live-session recorder (RC_SESSION_RECORDER). Fail-soft:
+    a tap that cannot install never blocks the poll loop from starting."""
+    try:
+        from core.live_session_recorder import install_if_enabled
+        install_if_enabled()
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("liveclient_cache optional tap: %s", exc)
+
+
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:
     """Launch the background fetcher (idempotent). Prefers spawning on the
     main AppLoop if one exists; falls back to a daemon thread otherwise."""
@@ -306,6 +317,7 @@ def start(poll_s: float = _DEFAULT_POLL_S) -> None:
         if (_thread is not None and _thread.is_alive()) or _task_alive():
             return
         _stop.clear()
+        _install_optional_taps()
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
