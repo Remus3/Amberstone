@@ -2251,7 +2251,7 @@ def _dry_expected_tail(config: RunnerConfig) -> list:
     """
     return [
         "-p", "--restricted", "--tools", "Read,Glob,Grep", "--strict-mcp-config",
-        "--no-session-persistence", "--max-turns", str(config.max_turns),
+        "--setting-sources", "project,local", "--no-session-persistence", "--max-turns", str(config.max_turns),
         "--model", config.model, "--output-format", "json",
         "--json-schema", PROPOSAL_SCHEMA, "--system-prompt", SYSTEM_PROMPT,
     ]
