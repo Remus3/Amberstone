@@ -121,6 +121,8 @@ _Clean-room only: every row is re-implemented from OBSERVED BEHAVIOUR; nothing i
 
 - **RM-676 (Tier-1) RM-611 residuals** - (a) the `raw_documents` rows are LCU-client shape (top-level `frames`, numeric gameId) while the versioned extractors read Match-V5 shape or the rewind tables, so nothing re-derives from them yet - either add an LCU-to-extractor adapter or index the Match-V5 JSON `tools/timeline_ingest.py` already keeps; (b) the idle re-derive job is owed only once PGR output is persisted; (c) the docstring of `tests/test_pgr_derive_golden_rm611.py` overclaims ("the same bytes a re-derive would start from") - correct it.
 
+- **RM-677 (Tier-1) `core/metric_streamer.py:101-136` keeps its own `_last_level` and detects l6 / l11 / l16 crossings itself** - a second source of truth beside the RM-604 `level_up` event kind; migrate it to subscribe to the event channel (same outputs, golden before/after).
+
 - **RM-668 (L-08, S) Data-feed watch per DS batch** - read-only checklist step (changelog high-water, HEAD the chunk URLs, per-block body hash via `tools/ds_feed_index.py`); not a poller. Cross-ref: fleet-ideas patch/spec watch.
 
 ---
