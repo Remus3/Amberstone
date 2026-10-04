@@ -11,14 +11,16 @@ Lifecycle (per Agent 7 charter):
     the supervisor calls ``close()`` during shutdown.
   * After warm ends, the next ``send()`` re-warms automatically.
 
-Thread-safety: the SDK client is threadsafe for independent calls, but
-we serialise ``send()`` under an internal lock because we're editing a
-shared ``messages`` list. The lock is held across the upstream call, so
-a waiter blocks for up to the 30s request timeout - not "briefly", as
-this docstring claimed before the lane-8 audit of 2026-08-31. ``stats()``
-and ``close()`` take the same lock, so a shutdown racing an in-flight
-send waits on it too. Acceptable for an interactive NL parser at current
-cadence; narrowing the lock to the history mutation is filed as RM-294.
+Thread-safety (RM-294a): two locks. ``_send_lock`` serialises whole
+``send()`` calls, so turns never interleave in the shared history - a
+second send waits for the first to finish, up to the 30s request
+timeout. ``_lock`` guards state only (history, counters, client) and is
+NEVER held across the upstream call: ``send()`` snapshots the history
+under it, calls the API outside it, then re-takes it to append the reply.
+So ``stats()`` and ``close()`` return promptly even while a send is in
+flight. A ``close()`` that lands mid-send bumps ``_generation``; the late
+reply is still returned to its caller but is not written back into the
+cleared history.
 """
 from __future__ import annotations
 
@@ -127,7 +129,9 @@ class WarmAgent7Session:
         self._total_sent: int = 0
         self._total_input_tokens: int = 0
         self._total_output_tokens: int = 0
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()        # state only; never across I/O
+        self._send_lock = threading.Lock()   # serialises whole send() calls
+        self._generation = 0                 # bumped by close()
 
     # ---- lifecycle ----------------------------------------------------
     def _ensure_client(self) -> None:
@@ -192,7 +196,9 @@ class WarmAgent7Session:
         return text
 
     def close(self) -> None:
+        # State lock only (RM-294a): must not wait on an in-flight send.
         with self._lock:
+            self._generation += 1
             self._messages.clear()
             # anthropic 0.96.0 DOES expose close() (and __enter__); the
             # previous comment here claimed it did not and left the httpx
@@ -230,74 +236,87 @@ class WarmAgent7Session:
         if not user_text.strip():
             raise WarmSessionError("empty user_text")
 
+        with self._send_lock:
+            return self._send_serialized(user_text, max_tokens)
+
+    def _send_serialized(self, user_text: str, max_tokens: int) -> dict[str, Any]:
+        """One send under ``_send_lock``. ``_lock`` is held only for the
+        two short state sections either side of the network call."""
         with self._lock:
             self._check_idle()
             self._ensure_client()
             self._messages.append({"role": "user", "content": user_text})
             self._trim_history()
-            try:
-                resp = self._client.messages.create(
-                    model=self._model,
-                    max_tokens=max_tokens,
-                    system=(
-                        [{"type": "text", "text": self._charter,
-                          "cache_control": {"type": "ephemeral"}}]
-                        if self._charter else None
-                    ),
-                    messages=self._messages,
-                    timeout=30,
-                )
-            except Exception as e:               # noqa: BLE001
-                # Roll back the user message so a retry doesn't
-                # duplicate it into the conversation. No re-align is
-                # needed after this pop: _trim_history above guarantees
-                # messages[0] is a user turn, and popping the TAIL cannot
-                # change the head. A re-align loop here was written, then
-                # removed when mutation testing showed it unreachable
-                # (an equivalent mutant), rather than shipped as dead
-                # code carrying a comment claiming work it never does.
-                if self._messages and self._messages[-1]["role"] == "user":
+            snapshot = list(self._messages)
+            client = self._client
+            gen = self._generation
+
+        try:
+            resp = client.messages.create(
+                model=self._model,
+                max_tokens=max_tokens,
+                system=(
+                    [{"type": "text", "text": self._charter,
+                      "cache_control": {"type": "ephemeral"}}]
+                    if self._charter else None
+                ),
+                messages=snapshot,
+                timeout=30,
+            )
+        except Exception as e:               # noqa: BLE001
+            # Roll back the user message so a retry doesn't duplicate it
+            # into the conversation. Popping the TAIL cannot change the
+            # head, so _trim_history's user-first alignment still holds.
+            # Skipped when close() ran meanwhile: it already cleared it.
+            with self._lock:
+                if (gen == self._generation and self._messages
+                        and self._messages[-1]["role"] == "user"):
                     self._messages.pop()
-                # Raw error to logs/ per the CLAUDE.md Error Handling
-                # rule; the propagated string is redacted.
-                logger.warning("warm send failed: %s", e)
-                raise WarmSessionError(self._redact(str(e))) from e
+            # Raw error to logs/ per the CLAUDE.md Error Handling
+            # rule; the propagated string is redacted.
+            logger.warning("warm send failed: %s", e)
+            raise WarmSessionError(self._redact(str(e))) from e
 
-            try:
-                text = resp.content[0].text
-            except (AttributeError, IndexError) as e:
-                raise WarmSessionError(f"malformed response: {e}") from e
+        try:
+            text = resp.content[0].text
+        except (AttributeError, IndexError) as e:
+            raise WarmSessionError(f"malformed response: {e}") from e
 
-            self._messages.append({"role": "assistant", "content": text})
-            self._trim_history()
-            self._last_activity = time.monotonic()
+        usage = getattr(resp, "usage", None)
+        inp = int(getattr(usage, "input_tokens", 0) or 0) if usage else 0
+        out = int(getattr(usage, "output_tokens", 0) or 0) if usage else 0
+
+        with self._lock:
+            if gen == self._generation:
+                self._messages.append({"role": "assistant", "content": text})
+                self._trim_history()
+                self._last_activity = time.monotonic()
+            # else: close() ran mid-send - return the reply to its caller
+            # but do not resurrect the cleared history.
             self._total_sent += 1
-
-            usage = getattr(resp, "usage", None)
-            inp = int(getattr(usage, "input_tokens", 0) or 0) if usage else 0
-            out = int(getattr(usage, "output_tokens", 0) or 0) if usage else 0
             self._total_input_tokens += inp
             self._total_output_tokens += out
+            turns = self._total_sent
 
-            # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. Warm
-            # session reuses one client across turns; recording happens per
-            # turn so by_purpose["agent7_warm"] reflects real cadence.
-            try:
-                from core.cost_tracker import record_anthropic_response
-                record_anthropic_response(resp, model=self._model, purpose="agent7_warm")
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("cost_tracker record: %s", exc)
+        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. Warm
+        # session reuses one client across turns; recording happens per
+        # turn so by_purpose["agent7_warm"] reflects real cadence. Outside
+        # the state lock (file I/O); still serialised by _send_lock.
+        try:
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(resp, model=self._model, purpose="agent7_warm")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cost_tracker record: %s", exc)
 
-            # Built INSIDE the lock: `turns` read outside it could be
-            # bumped by a concurrent send between release and return, so
-            # two callers could report the same turn number.
-            return {
-                "text": text,
-                "model": self._model,
-                "input_tokens": inp,
-                "output_tokens": out,
-                "turns": self._total_sent,
-            }
+        # `turns` was captured INSIDE the lock above, so two callers can
+        # never report the same turn number.
+        return {
+            "text": text,
+            "model": self._model,
+            "input_tokens": inp,
+            "output_tokens": out,
+            "turns": turns,
+        }
 
     # ---- introspection ------------------------------------------------
     def stats(self) -> dict[str, Any]:
