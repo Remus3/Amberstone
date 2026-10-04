@@ -612,6 +612,17 @@ def _serve_health_all(h) -> None:
             log.warning("health/all coaching-data-lock probe: %s: %s",
                         type(e).__name__, e)
             rollup["coaching_data_lock"] = {"error": GENERIC_ERROR}
+        # RM-235: per-game Live Client subresource failure counters (reset by
+        # SrAramWorker at each game boundary). Informational; no status move.
+        try:
+            from game_reader.snapshot_normalizer import (
+                get_liveclient_subresource_failures as _lcsf,
+            )
+            rollup["liveclient_subresource_failures"] = _lcsf()
+        except Exception as e:  # noqa: BLE001
+            log.warning("health/all liveclient-subresource probe: %s: %s",
+                        type(e).__name__, e)
+            rollup["liveclient_subresource_failures"] = {"error": GENERIC_ERROR}
         rc_stale = False
         _upd = (rollup.get("rc") or {}).get("updated_at")
         if _upd:

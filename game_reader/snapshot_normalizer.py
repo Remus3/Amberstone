@@ -149,14 +149,11 @@ def get_liveclient_subresource_failures() -> dict:
 def reset_liveclient_subresource_failures() -> None:
     """Clear the counters and the throttle state.
 
-    TEST HOOK ONLY. This previously advertised itself as a "new-game hook";
-    measured 2026-08-30, it has NO production caller, so the counters and
-    the 60s throttle are process-global and survive every game boundary in
-    a process that runs for days. Two consequences, both real: the WARNING
-    text "so far this session" means the PROCESS, not the game; and a warn
-    that fired shortly before a new game silences the first part of that
-    game. Wiring it to game start belongs with the worker, not here - filed
-    as RM-235.
+    Called per game by `SrAramWorker._apply_pending_reset` (RM-235), so the
+    counters and the 60s throttle are per-GAME: "so far" in the WARNING means
+    this game, and a warn just before a new game does not silence it. The
+    counts are served on /api/health/all as
+    `liveclient_subresource_failures`.
     """
     _subresource_failures.clear()
     _subresource_last_warn.clear()

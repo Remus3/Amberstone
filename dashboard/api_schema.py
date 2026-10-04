@@ -98,6 +98,8 @@ class HealthAllResponse(_AllowExtra):
     why: list[str] = []
     # RM-282: core/coaching_data_lock degradation counters (in-process).
     coaching_data_lock: dict[str, Any] = {}
+    # RM-235: per-game Live Client subresource failure counts.
+    liveclient_subresource_failures: dict[str, Any] = {}
 
 
 # -- POST /api/input ------------------------------------------------------
