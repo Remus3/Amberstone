@@ -293,6 +293,21 @@ def _finding_table(findings: Sequence) -> List[str]:
     return lines
 
 
+def degraded_annotation(cfg, environ=None) -> str | None:
+    """RM-488: a DEGRADED pass must be visible WITHOUT opening the log.
+
+    The capitals notice lives inside the step log, so the run page still shows
+    a plain green tick over a needle arm that never ran. Under GitHub Actions a
+    `::warning` workflow command surfaces it as an annotation on the run
+    summary. Carries no literal (PUBLIC log). Outside Actions: None."""
+    env = os.environ if environ is None else environ
+    if cfg.mode != sweep.MODE_DEGRADED or env.get("GITHUB_ACTIONS") != "true":
+        return None
+    return ("::warning title=sibling sweep DEGRADED::The real-name needle arm "
+            "did not run (RC_MOON_SYNC_REPOS secret unset). This green is "
+            "PARTIAL - structural arm and fabricated controls only.")
+
+
 def evaluate(
     cfg,
     stats,
@@ -398,6 +413,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ok, lines = evaluate(cfg, stats, findings)
     for line in lines:
         print(line)
+    annotation = degraded_annotation(cfg)
+    if annotation:
+        print(annotation)
     print(f"[sweep-ci] {'PASS' if ok else 'FAIL'}")
     return EXIT_OK if ok else EXIT_FAIL
 
