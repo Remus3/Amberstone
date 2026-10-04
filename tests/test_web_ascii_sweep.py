@@ -465,7 +465,19 @@ _WEB = _REPO_ROOT / "web"
 # to their origin/main d1d078aab blobs reproduces the superseded 3cc269ba...
 # value EXACTLY, so those two files are the whole change. Neither is a glyph
 # change. If another slice re-captures in parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "5afd8b1d7f2c7972c4511c235fbafcb396674b684d94e2ad31e5499e756a8c45"
+# superseded by the merged re-capture below: "5afd8b1d7f2c7972c4511c235fbafcb396674b684d94e2ad31e5499e756a8c45"
+#
+# Re-captured 2026-10-04 for Y-13 (external reference L2), three INTENDED live
+# edits, attributed by swapping exactly web/js/main.js (health dot drops the
+# "unknown" class + "unmeasured" tooltip line), web/css/panels/primitives.css
+# (.health-dot.unknown) and web/js/lib/state_schema.js (regenerated: `why`)
+# back to origin/main d1d078aab - the digest returns to 3cc269ba... EXACTLY, so
+# those three files are the whole change. No glyph change.
+# superseded by the merged re-capture below: "7d96dfb2081a61e2d99950e767cf5c10ed661ee834e46b7aaf2ef0eb0b77d219"
+#
+# MERGED lift-2 (2026-10-04): Y-04 and Y-13 re-captures landed together; the pin
+# below is the digest of the merged tree (recomputed, not either slice's).
+_LIVE_HALF_DIGEST = "214e8e2686705bd76424c05ddc01665a19b18c6a5a5c8717a71e55c098ee4985"
 
 
 def _web_sources() -> list[Path]:
