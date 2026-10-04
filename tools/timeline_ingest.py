@@ -35,7 +35,10 @@ EXIT CODES (RM-510; see `exit_code()`):
     75  EX_TEMPFAIL (sysexits.h) - the run finished, but at least one match,
         account lookup or ids page stayed rate limited after every retry, and
         no row failed hard. Re-running later finishes the work (resumable).
-    1   at least one match row ended 'fail' (not a throttle). Hard wins.
+    1   at least one match row ended 'fail', or an account lookup / ids page
+        returned None WITHOUT a throttle (a failed call; an empty ids page
+        is the end of the history, not a failure). Hard wins. Same contract
+        as tools/ladder_role_scout.py.
 """
 from __future__ import annotations
 
@@ -66,11 +69,15 @@ EX_TEMPFAIL = 75
 # RM-510: ids pages that stayed rate limited (each truncates one account's
 # history for this run). main() resets it; exit_code() reads it.
 _ids_rate_limited = {"n": 0}
+# RM-510 residual: ids pages that returned None WITHOUT a throttle (a failed
+# call, not an end of history). main() resets it; counts as a hard failure.
+_ids_failed = {"n": 0}
 
 
-def exit_code(tally: dict, other_rate_limited: int = 0) -> int:
+def exit_code(tally: dict, other_rate_limited: int = 0,
+              other_hard: int = 0) -> int:
     """The RM-510 contract: 1 on any hard fail, else 75 on any throttle, else 0."""
-    if tally.get("fail"):
+    if tally.get("fail") or other_hard:
         return 1
     if tally.get("rate_limited") or other_rate_limited:
         return EX_TEMPFAIL
@@ -111,6 +118,12 @@ def match_ids_for(puuid: str, want: int, queue: int = 420) -> list:
             _ids_rate_limited["n"] += 1
             log.warning("ids page rate limited for %s at start=%d - "
                         "history truncated for this run", puuid[:12], start)
+        elif page is None:
+            # RM-510 residual: None WITHOUT a throttle is a failed call, not
+            # the end of the history ([] is the end). Hard failure.
+            _ids_failed["n"] += 1
+            log.warning("ids page FAILED (not a throttle) for %s at start=%d",
+                        puuid[:12], start)
         if not page:
             break
         out.extend(page)
@@ -249,6 +262,7 @@ def main(argv=None) -> int:
     # duplicate saved is two calls not spent.
     wanted, resolved, failed_acct, acct_rate_limited = [], 0, 0, 0
     _ids_rate_limited["n"] = 0
+    _ids_failed["n"] = 0
     seen_ids = set()
     for i, (riot_id, name, tag) in enumerate(ids, 1):
         _pace()
@@ -292,10 +306,13 @@ def main(argv=None) -> int:
                   f"elapsed={time.time() - t0:.0f}s", flush=True)
     print(f"DONE {tally} elapsed={time.time() - t0:.0f}s -> {dest}", flush=True)
     other = acct_rate_limited + _ids_rate_limited["n"]
-    rc = exit_code(tally, other)
+    acct_hard = failed_acct - acct_rate_limited
+    rc = exit_code(tally, other, acct_hard + _ids_failed["n"])
     if rc:
         print(f"EXIT {rc}: fail={tally['fail']} rate_limited={tally['rate_limited']} "
+              f"account_lookups_failed={acct_hard} "
               f"account_lookups_rate_limited={acct_rate_limited} "
+              f"ids_pages_failed={_ids_failed['n']} "
               f"ids_pages_rate_limited={_ids_rate_limited['n']} "
               "(75 = re-run later; resumable)", flush=True)
     return rc

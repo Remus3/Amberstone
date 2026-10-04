@@ -22,7 +22,7 @@ EXIT CODES (RM-510, same contract as tools/timeline_ingest.py):
         call stayed rate limited after every retry and none failed hard; the
         file is thinner than it should be, re-run later.
     1   a ladder call failed (file left untouched) or an ids / match call
-        failed hard (not a throttle). Hard wins over tempfail.
+        failed hard (None WITHOUT a throttle). Hard wins over tempfail.
 """
 from __future__ import annotations
 

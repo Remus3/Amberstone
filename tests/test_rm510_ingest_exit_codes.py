@@ -12,7 +12,9 @@ Exit-code contract (both tools; see the module docstrings):
     75  EX_TEMPFAIL (BSD sysexits.h) - the run finished, at least one call
         stayed rate limited after every retry, and no row failed hard.
         Re-running later is expected to finish the work.
-    1   at least one row failed hard (not a throttle). Hard wins over tempfail.
+    1   at least one row failed hard (not a throttle), including an account
+        lookup / ids call that returned None without a throttle (residual).
+        Hard wins over tempfail.
 
 Fully offline: every network seam and every sleep is monkeypatched.
 """
@@ -189,4 +191,60 @@ def test_scout_hard_match_failure_exits_one(tmp_path, monkeypatch):
     monkeypatch.setattr(
         RA, "get_match",
         lambda mid: _not_found() if mid == "M2" else _ok(_SCOUT_MATCH)())
+    assert _run_scout(tmp_path / "o.json") == 1
+
+
+# ------------------------------------- RM-510 residual: None WITHOUT throttle
+#
+# A lookup / ids call that returns None and was NOT throttled is a hard
+# failure of that call (riot_retry: throttled False + None = an error or a
+# not_found, never "ask again later"). ladder_role_scout already exited 1 on
+# it; timeline_ingest exited 0. One contract: exit 1, both tools.
+
+def test_ingest_unthrottled_account_lookup_failure_exits_one(tmp_path,
+                                                            monkeypatch):
+    _wire_ingest(monkeypatch, account=_not_found)
+    code, _ = _run_ingest(tmp_path)
+    assert code == 1
+
+
+def test_ingest_unthrottled_ids_page_failure_exits_one(tmp_path, monkeypatch):
+    _wire_ingest(monkeypatch, ids=_not_found)
+    code, _ = _run_ingest(tmp_path)
+    assert code == 1
+
+
+def test_ingest_empty_ids_page_is_end_of_history_exits_zero(tmp_path,
+                                                            monkeypatch):
+    """[] is a real end of history (a fact), not a failed call."""
+    _wire_ingest(monkeypatch, ids=_ok([]))
+    code, _ = _run_ingest(tmp_path)
+    assert code == 0
+
+
+def test_ingest_hard_lookup_failure_wins_over_rate_limited(tmp_path,
+                                                          monkeypatch):
+    """Account A fails hard, account B's timelines stay throttled -> 1."""
+    _wire_ingest(monkeypatch, timeline=_throttle)
+    monkeypatch.setattr(rr, "load_roster", lambda: [
+        SimpleNamespace(riot_id="A#NA1", name="A", tag="NA1"),
+        SimpleNamespace(riot_id="B#NA1", name="B", tag="NA1")])
+    monkeypatch.setattr(
+        RA, "get_account_by_riot_id",
+        lambda n, t: _not_found() if n == "A" else _ok({"puuid": "P2"})())
+    code, out = _run_ingest(tmp_path)
+    assert "'rate_limited': 2" in out
+    assert code == 1
+
+
+def test_scout_unthrottled_ids_failure_exits_one(tmp_path, monkeypatch):
+    """Pins the side of the contract ladder_role_scout already honoured."""
+    base = _scout_call()
+
+    def _call(endpoint, url, rate_limit_timeout_s=5.0):
+        if endpoint == "match_v5_ids" and "P2" in url:
+            return _not_found()
+        return base(endpoint, url, rate_limit_timeout_s)
+    monkeypatch.setattr(RA, "_call", _call)
+    monkeypatch.setattr(RA, "get_match", _ok(_SCOUT_MATCH))
     assert _run_scout(tmp_path / "o.json") == 1
