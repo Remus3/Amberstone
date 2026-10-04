@@ -8,7 +8,6 @@ file lives under tmp_path.
 
 Symbols used (file:line at time of writing):
   core/polled_json.py:113 atomic_write_json, :148 read_json_dict,
-    :194 PolledJsonFile (:227 read, :234 write_field, :242 update)
   core/cost_tracker.py:121 _COACH_CFG, :126 _RC_CFG, :183 _today_str,
     :187 _empty_ledger, :201 _read_config, :209 CostTracker, :241 record_call,
     :311 daily_spend, :336 allow_call, :342 banner_state, :423 coach_disabled,
@@ -29,7 +28,7 @@ import pytest
 
 from core import augment_external_source as X
 from core import cost_tracker as ct
-from core.polled_json import PolledJsonFile, atomic_write_json, read_json_dict
+from core.polled_json import atomic_write_json, read_json_dict
 from tests._store_states import (
     ABSENT,
     EMPTY,
@@ -62,7 +61,6 @@ _POLLED_READ = {
 def test_polled_read_json_dict_per_state(tmp_path, state):
     path = POLLED.build(tmp_path, state)
     assert read_json_dict(path, _DEFAULT) == _POLLED_READ[state]
-    assert PolledJsonFile(path, _DEFAULT).read() == _POLLED_READ[state]
 
 
 def test_polled_valid_empty_list_is_not_a_dict_and_reads_as_default(tmp_path):
@@ -74,10 +72,12 @@ def test_polled_valid_empty_list_is_not_a_dict_and_reads_as_default(tmp_path):
 
 
 @parametrize_states(JSON_STATES_WITH_ZERO_BYTE)
-def test_polled_write_field_round_trips_from_each_state(tmp_path, state):
+def test_polled_read_modify_write_round_trips_from_each_state(tmp_path, state):
+    # RM-264 removed PolledJsonFile; the read-modify-write is the two helpers.
     path = POLLED.build(tmp_path, state)
-    pf = PolledJsonFile(path, _DEFAULT)
-    returned = pf.write_field("immediate", "All-In")
+    returned = read_json_dict(path, _DEFAULT)
+    returned["immediate"] = "All-In"
+    atomic_write_json(path, returned)
     reread = read_json_dict(path, {})
     assert reread["immediate"] == "All-In"
     assert reread == returned
@@ -89,7 +89,9 @@ def test_polled_write_field_round_trips_from_each_state(tmp_path, state):
 @parametrize_states(JSON_STATES_WITH_ZERO_BYTE)
 def test_polled_update_and_atomic_write_round_trip_from_each_state(tmp_path, state):
     path = POLLED.build(tmp_path, state)
-    PolledJsonFile(path, _DEFAULT).update(win_pct=42)
+    cur = read_json_dict(path, _DEFAULT)
+    cur["win_pct"] = 42
+    atomic_write_json(path, cur)
     assert read_json_dict(path, {})["win_pct"] == 42
     atomic_write_json(path, {"replaced": True})
     assert read_json_dict(path, {}) == {"replaced": True}

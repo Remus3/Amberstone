@@ -34,7 +34,8 @@ hand-rolls its scratch name and is NOT converted - RM-261).
 
 W2/W3 SEVERITY, stated honestly: no current production caller passes a default
 containing a nested mutable - every one passes {} or a freshly-built dict - and
-PolledJsonFile has ZERO production constructions (RM-264). Both are therefore
+PolledJsonFile had ZERO production constructions and was REMOVED under RM-264
+(2026-10-04), taking its W3 tests with it. Both were therefore
 real defects in the contract with LATENT rather than live exposure. They are
 fixed and guarded here because this module is the thing every new polled-JSON
 site is pointed at, not because an incident was observed.
@@ -106,15 +107,6 @@ def test_read_json_dict_returns_default_on_non_dict_json(tmp_path):
     assert polled_json.read_json_dict(p, {"d": 1}) == {"d": 1}
 
 
-def test_polled_json_file_write_read_field_and_update(tmp_path):
-    pf = polled_json.PolledJsonFile(tmp_path / "pf.json", default={"mode": "client"})
-    assert pf.read() == {"mode": "client"}
-    pf.write({"mode": "aram"})
-    assert pf.read() == {"mode": "aram"}
-    assert pf.write_field("immediate", "All-In")["immediate"] == "All-In"
-    assert pf.update(win_pct=42)["win_pct"] == 42
-    assert pf.read() == {"mode": "aram", "immediate": "All-In", "win_pct": 42}
-
 
 # ---------------------------------------------------------------------------
 # W1 - the "always returns a dict" promise must hold for undecodable bytes.
@@ -139,12 +131,6 @@ def test_read_json_dict_logs_a_warning_on_undecodable_bytes(tmp_path, caplog):
     assert any("decode" in r.message.lower() for r in caplog.records), (
         "an undecodable polled file must leave a trace, not vanish silently")
 
-
-def test_polled_json_file_read_survives_undecodable_bytes(tmp_path):
-    p = tmp_path / "pf.json"
-    p.write_bytes(b"\xff\xfe\x00")
-    pf = polled_json.PolledJsonFile(p, default={"mode": "client"})
-    assert pf.read() == {"mode": "client"}
 
 
 # ---------------------------------------------------------------------------
@@ -187,33 +173,6 @@ def test_read_json_dict_does_not_mutate_the_callers_default_object(tmp_path):
     polled_json.read_json_dict(tmp_path / "nope.json", default)["log"].append("x")
     assert default["log"] == [], "the caller's own default dict was mutated"
 
-
-def test_polled_json_file_read_does_not_share_nested_default(tmp_path):
-    pf = polled_json.PolledJsonFile(tmp_path / "pf.json", default={"log": []})
-    pf.read()["log"].append("poison")
-    assert pf.read()["log"] == []
-
-
-def test_polled_json_file_does_not_alias_the_constructor_default(tmp_path):
-    caller_default = {"log": []}
-    pf = polled_json.PolledJsonFile(tmp_path / "pf.json", default=caller_default)
-    pf.read()["log"].append("poison")
-    assert caller_default["log"] == [], (
-        "the instance aliased the caller's nested default")
-
-
-def test_polled_json_file_snapshots_the_constructor_default(tmp_path):
-    """Construction must take a SNAPSHOT, not a live view of the caller's dict.
-
-    This is the direction read()'s own deep copy cannot cover: the caller
-    mutating its own default afterwards must not retune an already-built
-    instance. Added because a mutation run proved the constructor's deep copy
-    was otherwise unguarded.
-    """
-    caller_default = {"log": []}
-    pf = polled_json.PolledJsonFile(tmp_path / "pf.json", default=caller_default)
-    caller_default["log"].append("added after construction")
-    assert pf.read() == {"log": []}
 
 
 # ---------------------------------------------------------------------------
