@@ -307,7 +307,8 @@ def _on_task_done(fut: Any) -> None:
 def _install_optional_taps() -> None:
     """Flag-gated, default-OFF listeners that have no other non-frozen wiring
     point. RM-605: the live-session recorder (RC_SESSION_RECORDER). RM-606:
-    the self ability-usage log (RC_SELF_CAST_LOG). Each tap has its own
+    the self ability-usage log (RC_SELF_CAST_LOG). RM-607: the item tape
+    (RC_ITEM_TAPE). RM-608: the estimated death recap (RC_DEATH_RECAP). Each tap has its own
     try-block. Fail-soft: a tap that cannot install never blocks the poll
     loop from starting, nor the other taps."""
     try:
@@ -327,6 +328,13 @@ def _install_optional_taps() -> None:
         _tape_install()
     except Exception as exc:  # noqa: BLE001
         _log.debug("liveclient_cache item-tape tap: %s", exc)
+    # RM-608: the ESTIMATED death recap (RC_DEATH_RECAP, default OFF). Its own
+    # try-block so one tap failing never disables the other.
+    try:
+        from core.death_recap import install_if_enabled as _recap_install
+        _recap_install()
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("liveclient_cache death-recap tap: %s", exc)
 
 
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:
