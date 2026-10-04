@@ -373,7 +373,41 @@ EV_NODE_PASS = re.compile(r"^[^a-zA-Z\n]{0,4}pass\s+(\d[\d,]{0,9})\s*$", re.M)
 EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
                          # `node --test <one file>` is as filtered as `-k`.
                          r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I)
-EV_COMMIT = re.compile(r"\bgit\b[^|;&]*\bcommit\b", re.I)
+# (?<!-): `--no-commit` (cherry-pick / revert / merge) is the OPPOSITE of
+# committing, and \b alone let it count as evidence.
+EV_COMMIT = re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.I)
+# Commit-CREATING subcommands other than `git commit` (measured 2026-10-04: a
+# merger cherry-picked slices onto main, said "X is committed in <sha>", and was
+# flagged). The subcommand must be git's FIRST non-option word, so `git log
+# --grep=revert` or `git merge-base` cannot borrow it. cherry-pick / revert make
+# a commit unless told not to; a plain `git merge` is NOT credited - it
+# fast-forwards whenever it can and the command line cannot say which happened -
+# so only `merge --no-ff` counts. Sequencer controls (--abort/--quit/--skip) and
+# --no-commit / -n / --squash / --ff-only create nothing.
+EV_COMMIT_CREATING = re.compile(
+    r"\bgit\b(?:\s+-[Cc]\s+\S+|\s+--?[\w-]+(?:=\S+)?)*\s+"
+    r"(cherry-pick|revert|merge)\b([^|;&\n]*)", re.I)
+_NO_COMMIT_FLAG = re.compile(
+    r"(?:^|\s)(?:--abort|--quit|--skip|--no-commit|--squash|--ff-only)(?=\s|$)")
+_PICK_NO_COMMIT_SHORT = re.compile(r"(?:^|\s)-n(?=\s|$)")
+_MERGE_NO_FF = re.compile(r"(?:^|\s)--no-ff(?=\s|$)")
+
+
+def _creates_commit(command):
+    """True when a cherry-pick / revert / `merge --no-ff` in COMMAND commits."""
+    for match in EV_COMMIT_CREATING.finditer(command):
+        sub, tail = match.group(1).lower(), match.group(2)
+        if _NO_COMMIT_FLAG.search(tail):
+            continue
+        if sub == "merge":
+            if _MERGE_NO_FF.search(tail):
+                return True
+            continue
+        if not _PICK_NO_COMMIT_SHORT.search(tail):
+            return True
+    return False
+
+
 EV_PUSH = re.compile(r"\bgit\b[^|;&]*\bpush\b", re.I)
 # Check 10 evidence. `pr merge` is matched without the binary because RC
 # invokes gh through a variable ("$GH" pr merge) - see EV_CI below.
@@ -816,7 +850,7 @@ def audit(ev):
                         for m in EV_PASSED.findall(line)}
     # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
-    did_commit = any(EV_COMMIT.search(c) for c in bash)
+    did_commit = any(EV_COMMIT.search(c) or _creates_commit(c) for c in bash)
     did_push = any(EV_PUSH.search(c) for c in bash)
     did_merge = did_push or any(EV_MERGE.search(c) for c in bash)
     # EV_CI runs on the noise-stripped command; EV_CI_VAR must NOT, because
