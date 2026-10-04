@@ -164,7 +164,12 @@ def test_subagent_first_blocks_byte_intact():
             continue  # game-monitor.md carries no SUBAGENT-FIRST block
         seen += 1
         digest = hashlib.sha256(blk.encode("utf-8")).hexdigest()
-        assert digest == _SUBAGENT_FIRST_SHA256, f"tools/{f}: SUBAGENT-FIRST block changed"
+        assert digest == _SUBAGENT_FIRST_SHA256, (
+            f"tools/{f}: SUBAGENT-FIRST block changed (got {digest}). If the "
+            "protocol block was changed ON PURPOSE in every tools/*.md that "
+            "carries it, re-pin _SUBAGENT_FIRST_SHA256 to the new digest; if "
+            "only this file differs, restore it to the shared block."
+        )
     assert seen == 3, f"expected 3 SUBAGENT-FIRST blocks in the item files, saw {seen}"
 
 
