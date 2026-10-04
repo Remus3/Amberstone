@@ -154,6 +154,18 @@ def _wpa_totals(events: list, lane_end_s: int = _LANE_END_S) -> dict:
     }
 
 
+def _you_flagged(match_id: str) -> list[dict]:
+    """RM-638: the player's in-game "mark this moment" pins for this match
+    (core/moment_marks.py). ADDITIVE field, read per request (never cached);
+    any failure is an empty list."""
+    try:
+        from core.moment_marks import pins_for_match
+        return pins_for_match(match_id)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("api/post-game-wpa: you_flagged unavailable: %s", exc)
+        return []
+
+
 def _serve_post_game_wpa(h) -> None:
     """GET /api/post-game-wpa?match_id=<id>"""
     try:
@@ -179,6 +191,7 @@ def _serve_post_game_wpa(h) -> None:
             payload = dict(cached)
             payload["elapsed_ms"] = int((time.time() - t0) * 1000)
             payload["cached"] = True
+            payload["you_flagged"] = _you_flagged(match_id)
             h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
             return
 
@@ -205,6 +218,7 @@ def _serve_post_game_wpa(h) -> None:
             body["totals"] = _wpa_totals(body.get("events", []))
             body["elapsed_ms"] = int((time.time() - t0) * 1000)
             body["cached"] = False
+            body["you_flagged"] = _you_flagged(match_id)
             h._send(200, json.dumps(body).encode("utf-8"), "application/json")
             return
 
@@ -218,6 +232,7 @@ def _serve_post_game_wpa(h) -> None:
         _cache_put(cache_key, dict(payload))
         payload["elapsed_ms"] = int((time.time() - t0) * 1000)
         payload["cached"] = False
+        payload["you_flagged"] = _you_flagged(match_id)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper

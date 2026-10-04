@@ -1,7 +1,7 @@
 """hotkey_listener.py - Legion-local global hotkeys for coach decisions.
 
 Background process that watches Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A /
-Ctrl+Shift+B via a WH_KEYBOARD_LL low-level keyboard hook.
+Ctrl+Shift+B / Ctrl+Shift+K via a WH_KEYBOARD_LL low-level keyboard hook.
 
 Mechanism note: this used RegisterHotKey (the quiet registered-accelerator API)
 specifically to AVOID a low-level hook, on the theory that hooks trip anti-cheat
@@ -25,6 +25,12 @@ When a hotkey fires:
      holds foreground focus, and (as it turned out) neither does a Win32
      RegisterHotKey accelerator - only the WH_KEYBOARD_LL hook below does.
   4. If no pending decision (slots 1/2): silent no-op (no crash, no toast).
+  5. Ctrl+Shift+K -> "mark this moment" (RM-638, directive X-38, external
+     reference C): GET :2999 gamestats, append {game_id, game_time_s,
+     wall_ts} to ops/runtime/moment_marks.jsonl (core/moment_marks.py). The
+     post-game collector attaches the marks and PGR / Replay show them as
+     "you flagged" pins. If :2999 is down (loading screen) the mark is dropped
+     and logged. No OBS dependency.
 
 This lets the player answer a coach decision OR move the overlay without
 alt-tabbing out of League. The Edge dashboard updates from its own poll loop
@@ -209,6 +215,75 @@ def signal_overlay_panel_cycle() -> None:
         log.warning("overlay panel-cycle signal failed: %s", exc)
 
 
+# -- Mark this moment (RM-638) ---------------------------------------------------
+# Short on purpose: a hung :2999 must not stall the dispatch worker behind it.
+MARK_HTTP_TIMEOUT = 1.0
+_GAMESTATS_PATH = "/liveclientdata/gamestats"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _ensure_repo_on_path() -> None:
+    """The logon task runs this file as a script (sys.path[0] = tools/), so the
+    repo root must be importable before the core helpers are."""
+    root = str(_REPO_ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+
+
+def _liveclient_base_url() -> str:
+    _ensure_repo_on_path()
+    from core.game_host import GAME_HOST  # noqa: PLC0415
+    return f"https://{GAME_HOST}:2999"
+
+
+def _default_game_id() -> str:
+    """LCU gameId via the :8889 relay (core/live_session_recorder.py); '' when
+    unknown, and then the collector attaches the mark by wall-time window."""
+    _ensure_repo_on_path()
+    from core.live_session_recorder import default_game_id_provider  # noqa: PLC0415
+    return default_game_id_provider()
+
+
+def handle_moment_mark(*, base_url: str | None = None, game_id_provider=None,
+                       marks_file=None, now=time.time) -> dict | None:
+    """Ctrl+Shift+K: read the game clock and append one mark. Returns the mark,
+    or None when it was dropped (:2999 down / unusable body / write failed).
+    Never raises - it runs on the dispatch worker."""
+    try:
+        wall_ts = now()
+        url = (base_url or _liveclient_base_url()) + _GAMESTATS_PATH
+        try:
+            with urllib.request.urlopen(
+                url, timeout=MARK_HTTP_TIMEOUT, context=_SSL_CTX
+            ) as r:
+                stats = json.loads(r.read())
+        except (OSError, ValueError) as exc:
+            log.info("moment mark dropped: :2999 gamestats unavailable (%s)", exc)
+            return None
+        try:
+            gid = (game_id_provider or _default_game_id)()
+        except Exception as exc:  # noqa: BLE001
+            log.info("moment mark: game_id unknown (%s); recording null", exc)
+            gid = None
+        _ensure_repo_on_path()
+        from core import moment_marks  # noqa: PLC0415
+        mark = moment_marks.build_mark(stats, gid, wall_ts)
+        if mark is None:
+            log.info("moment mark dropped: gamestats carried no usable gameTime")
+            return None
+        moment_marks.append_mark(mark, marks_file)
+        log.info("moment mark: game_id=%s game_time_s=%.1f",
+                 mark["game_id"], mark["game_time_s"])
+        try:
+            moment_marks.request_replay_buffer_save(mark)   # RM-637 hook
+        except Exception as exc:  # noqa: BLE001
+            log.warning("moment mark: replay-buffer hook failed: %s", exc)
+        return mark
+    except Exception as exc:  # noqa: BLE001
+        log.warning("moment mark dropped: %s", exc)
+        return None
+
+
 def handle_hotkey(cache: DecisionCache, slot: int) -> None:
     """slot=1 -> first option; slot=2 -> second option."""
     d = cache.topmost()
@@ -232,19 +307,30 @@ _VK_1        = 0x31
 _VK_2        = 0x32
 _VK_A        = 0x41
 _VK_B        = 0x42
+_VK_K        = 0x4B
 _VK_CONTROL  = 0x11
 _VK_SHIFT    = 0x10
 _SLOT_OVERLAY_TOGGLE = 3
 _SLOT_OVERLAY_PANEL_CYCLE = 4
+_SLOT_MOMENT_MARK = 5
 
 # Hotkeys we claim, as (slot, vk). Ctrl+Shift+1/2 = coach slots, A = overlay
 # ACTIVE toggle, B = overlay panel-set cycle (coach/build/threat). (B not C:
 # Ctrl+Shift+C is commonly bound by other apps - Discord / Overlay Platform M / browser
-# DevTools - so B is the less-contended choice.) This table is the source of
-# truth; the decoder's vk->slot map is derived from it so the two cannot drift.
+# DevTools - so B is the less-contended choice.) K = mark this moment
+# (RM-638). Why K: every slot here is Ctrl+Shift+<key> and the hook OBSERVES,
+# never swallows, so League sees the chord too. League's DEFAULT Ctrl chords
+# are Ctrl+Q/W/E/R (level an ability), Ctrl+1..6 (emotes / mastery badge) and
+# Ctrl+F (FPS readout); K is none of those and League ships no Ctrl+Shift
+# default. M was rejected: Ctrl+Shift+M is a common chat-app mute toggle. RC
+# carries no League keybind data to check against (no input.ini parser in the
+# tree), so a player rebind onto Ctrl+Shift+K is the residual risk. This table
+# is the source of truth; the decoder's vk->slot map is derived from it so the
+# two cannot drift.
 _HOTKEYS = (
     (1, _VK_1), (2, _VK_2),
     (_SLOT_OVERLAY_TOGGLE, _VK_A), (_SLOT_OVERLAY_PANEL_CYCLE, _VK_B),
+    (_SLOT_MOMENT_MARK, _VK_K),
 )
 _VK_TO_SLOT = {vk: slot for slot, vk in _HOTKEYS}
 
@@ -359,6 +445,8 @@ def _dispatch_one(cache: DecisionCache, slot: int) -> None:
         signal_overlay_active_toggle()
     elif slot == _SLOT_OVERLAY_PANEL_CYCLE:
         signal_overlay_panel_cycle()
+    elif slot == _SLOT_MOMENT_MARK:
+        handle_moment_mark()
     else:
         handle_hotkey(cache, slot)
 
@@ -409,7 +497,8 @@ def message_loop() -> None:
 
 def main() -> int:
     log.info("hotkey_listener starting "
-             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A / Ctrl+Shift+B, "
+             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A / Ctrl+Shift+B / "
+             "Ctrl+Shift+K, "
              "WH_KEYBOARD_LL)")
     cache = DecisionCache()
     stop = threading.Event()
