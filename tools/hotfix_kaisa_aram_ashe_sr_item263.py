@@ -97,7 +97,7 @@ def main() -> None:
         flips += 1
         print(f"  patched {name} {vk}: PRIMARY = {prim['label']} {prim['items'][:3]}...")
     tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(d, ensure_ascii=True, indent=2), encoding="utf-8")
+    tmp.write_bytes(json.dumps(d, ensure_ascii=True, indent=2).encode("utf-8"))
     os.replace(tmp, p)
     print(f"OK {flips} variants patched, atomic write done")
 

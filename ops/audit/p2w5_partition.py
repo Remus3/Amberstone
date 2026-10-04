@@ -28,7 +28,7 @@ for i, b in enumerate(bins):
 
 json.dump(
     {chr(65 + i): bins[i] for i in range(6)},
-    open("ops/audit/p2w5_slices.json", "w", encoding="utf-8"),
+    open("ops/audit/p2w5_slices.json", "w", encoding="utf-8", newline="\n"),
     indent=1,
 )
 print("total", len(files), "files /", sum(load), "LOC -> ops/audit/p2w5_slices.json")

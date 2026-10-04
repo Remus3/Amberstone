@@ -142,7 +142,7 @@ def run(dry_run: bool = False) -> int:
         return 0
     text = json.dumps(data, indent=2, ensure_ascii=True) + "\n"
     tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_text(text, encoding="utf-8")
+    tmp.write_bytes(text.encode("utf-8"))
     os.replace(str(tmp), str(_LOADOUTS))
     print(f"wrote {_LOADOUTS}")
     return 0

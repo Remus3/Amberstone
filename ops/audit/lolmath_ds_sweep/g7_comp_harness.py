@@ -229,7 +229,7 @@ def main(patch: str = "16.12.1") -> None:
     }
     outp = Path(f"{HERE}/g7_comp_parity.json")
     tmp = outp.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    tmp.write_bytes(json.dumps(out, indent=2).encode("utf-8"))
     tmp.replace(outp)
     print(f"\nWROTE {outp}")
 
