@@ -20,6 +20,13 @@ Windows makes three details load-bearing, and all three are easy to get wrong:
      from what the caller serialized. Everything here encodes to bytes first
      and writes bytes.
 
+Crash durability: the scratch file is flushed and fsynced BEFORE the rename
+publishes it, so a hard kill or power loss leaves either the old content or
+the complete new content, never a correctly-named file with partial bytes.
+The parent directory is not fsynced (Windows cannot open a directory handle
+for that), so after a power loss the rename itself may be lost and a reader
+sees the OLD content - stale, but never torn.
+
 Stdlib only. No dependencies, no configuration, no global state.
 """
 from __future__ import annotations
@@ -99,6 +106,11 @@ def _write_then_replace(path: Path, data: bytes) -> None:
     tmp = _scratch_path(path)
     try:
         tmp.write_bytes(data)
+        # fsync flushes the FILE's cached data (FlushFileBuffers on Windows,
+        # the inode on POSIX), not just this handle's, so a second handle
+        # opened after write_bytes closed its own is sufficient.
+        with open(tmp, "rb+") as fh:
+            os.fsync(fh.fileno())
         _replace_with_retry(tmp, path)
     except BaseException:
         try:

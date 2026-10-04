@@ -14,6 +14,16 @@ isinstance(dict) dance, with subtle variations. This module centralises:
 
 Migration target: any new polled-JSON site should use these helpers; legacy
 sites are migrated opportunistically as they are touched.
+
+Durability contract (RM-263, 2026-10-04): every writer flushes and fsyncs the
+scratch file BEFORE the rename publishes it, so a hard kill (`taskkill /F` is
+the prescribed restart path) or a power loss leaves either the old content or
+the complete new content - never a correctly-named file holding zero or
+partial bytes. Measured cost on Legion: ~1.2 ms median / ~3 ms p95 per 2 KB
+write, against a coach tick measured in seconds. LIMIT, stated so nobody
+over-trusts it: the parent DIRECTORY is not fsynced (Windows cannot open a
+directory handle for fsync), so after a power loss the rename itself may be
+lost and the reader sees the OLD content - stale, but never torn.
 """
 from __future__ import annotations
 
@@ -101,6 +111,11 @@ def _write_then_replace(path: Path, data: bytes) -> None:
     tmp = _scratch_path(path)
     try:
         tmp.write_bytes(data)
+        # fsync flushes the FILE's cached data (FlushFileBuffers on Windows,
+        # the inode on POSIX), not just this handle's, so a second handle
+        # opened after write_bytes closed its own is sufficient.
+        with open(tmp, "rb+") as fh:
+            os.fsync(fh.fileno())
         _replace_with_retry(tmp, path)
     except BaseException:
         try:
