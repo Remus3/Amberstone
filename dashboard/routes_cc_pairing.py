@@ -79,6 +79,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
 
+from dashboard._get_caps import MAX_CHAMPION_LIST, reject_oversized
 log = logging.getLogger("rc.web_dashboard")
 
 # 5-min response TTL mirrors routes_cooldown_watch exactly.
@@ -164,6 +165,9 @@ def _serve_cc_pairing(h) -> None:
         top_n = _parse_top_n((qs.get("top_n") or [""])[0].strip())
         ally_ids = _parse_champ_list(ally_raw)
 
+        # RM-299b: compute_cc_pairing scores ally PAIRS - quadratic fan-out.
+        if reject_oversized(h, MAX_CHAMPION_LIST, ally=ally_ids):
+            return
         if not ally_ids:
             payload = {
                 "ok":         False,

@@ -94,6 +94,10 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
 
+from dashboard._get_caps import reject_oversized
+
+# RM-299b: one engine cast per seq element; a real combo is ~4-12 casts.
+_MAX_SEQ_STEPS = 32
 log = logging.getLogger("rc.web_dashboard")
 
 # 5-min response TTL mirrors routes_cooldown_watch exactly.
@@ -375,6 +379,9 @@ def _serve_ds_combo(h) -> None:
         items = _parse_items((qs.get("items") or [""])[0].strip())
         seq = _parse_seq(seq_raw)
         target_armor = _parse_float((qs.get("target_armor") or [""])[0].strip())
+        # RM-299b: the engine simulates the combo one cast per element.
+        if reject_oversized(h, _MAX_SEQ_STEPS, seq=seq):
+            return
         target_mr = _parse_float((qs.get("target_mr") or [""])[0].strip())
         target_max_hp = _parse_float((qs.get("target_max_hp") or [""])[0].strip())
         target_bonus_hp = _parse_float(
