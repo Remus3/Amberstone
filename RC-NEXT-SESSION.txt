@@ -1,34 +1,23 @@
 NEXT SESSION
 ------------
-Next action: resolve main CI RED (run 37194003841 on 3c6e55324, read 2026-10-04: 12 failed /
-37925 passed / 291 skipped). Fix forward, rm415 first:
-- 7 x tests/test_rm415_liveclient.py::test_events_retyped_degrades_every_event_list[None,
-  bool, empty, float, int, nan, strnum] - "assert None == []". Introduced by Wave1 RM-308
-  commit 58a2d0dec (fix(callouts): dedupe inhibitor rows; drake row honest on no-data).
-- 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests (_route_rank /
-  _route_rank_onhit, rank_for / rank_onhit_for) - operator said LEAVE these; do not fix.
-- 1 x tests/test_next_buy_lean_bucket.py arena divergence count (65 !=) - pre-existing.
-- drain_waves_2_3.py failures belong to the drain session - not this session's to fix.
-A scheduled ci run 37206748364 on the same SHA was in_progress at wrap; read it.
+Next action: main CI (run 37209062693 on 67f94e8f6) is RED on 5, down from 12:
+- 1 x tests/test_next_buy_lean_bucket.py::BucketSelectionPropertyTests::
+  test_divergence_is_real_and_the_counts_are_what_was_filed [mode='arena'] (65 != filed
+  count) - pre-existing; the only CI red not operator-held. Root-cause (DDragon 16.19.1
+  pool drift vs a filed count?) and fix forward, re-deriving the count, never loosening.
+- 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests - operator said
+  LEAVE these; do not fix.
 
-Then (once the main checkout is brought to origin - see below):
-- DS :8860 still serves ENGINE 1.284.0 / patch 16.18.1 (read off /health at wrap); origin
-  carries 1.285.0 (agents/daemon_slayer/__init__.py) on 16.19.1 (data/daemon_slayer/
-  current.txt). Kill the :8860 listener PID (taskkill /F /PID, never Stop-Process),
-  schtasks /Run /TN RC-DaemonSlayer, verify curl http://127.0.0.1:8860/health reports
-  1.285.0 and 16.19.1.
-- RC restart owed: fast-forward the main tree to origin/main, py_compile, echo restart >
-  restart_trigger.txt, read back ops/runtime/health.json (new pid, alive, last_reload_ok).
-  Restart covers frozen app/_health_monitor.py (RM-377), RM-235 /api/health/all counters,
-  RM-267 :8889 /stats token, RM-261 ops/rc_supervisor.py + ops/rc_dev_runtime.py
-  scratch-name changes, RM-258 writer moves.
+Shipped this session (do NOT redo): 89ce8df91 agent6 L-03 stub isolation (LEDGER 1661;
+note: the prior hand-off called that WIP another session's - it was committed before that
+line was read; tell any drain session that owned it to rebase); 67f94e8f6 rm415 re-pin to
+RM-308(b) None (LEDGER 1662); DS :8860 restarted -> /health 1.285.0 / 16.19.1; RC
+restarted (health alive + last_reload_ok). Main checkout is now level with origin/main
+(a6f3fa42a agent6 audit doc pushed too).
 
-Main checkout state at wrap (DO NOT stage / stash / reset / commit it): 52 behind
-origin/main, 1 ahead with UNPUSHED a6f3fa42a (docs(agent6): full audit pass - not on
-origin), and ANOTHER session's uncommitted work: M agents/_supervisor_ephemeral.py,
-M agents/agent3_testing/suite/conftest.py, ?? agents/agent3_testing/suite/
-test_agent6_failure_stub_l03.py. A drain-wave session may be active. Wait for that session
-to land its work before fast-forwarding.
+Leftover: branch worktree-agent-a96714b6b15348886 (commit cherry-picked as 67f94e8f6;
+git cherry should show -, then git branch -D); progress file
+ops/loop/control/progress/rm415_fix.json (untracked, done).
 
 Operator setup list (physical / operator acts, batch into one ask):
 - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window capture
@@ -99,28 +88,21 @@ Carried forward (not acted on):
 - ROADMAP top open: EXTERNAL-LIFT INTAKE band 1 (bodies in BACKLOG.md "External-lift
   intake"), RM-486, RM-488/489, RM-479, RM-482.
 
-Retired this wrap (with reason): "CI on 89062445e not yet read" - superseded, CI read on
-newer 3c6e55324 (above). "Pre-existing failures: test_web_ascii_sweep digest,
-test_champion_mode_variants 164 vs 162, RM-662 DS skip-hygiene" - fixed on origin by
-8d02bc9e0, ac4fda142, 01717c031; none appear in run 37194003841's failure list.
-"WAKEUP_NOTES trim" - done this wrap (scripts/wakeup_prune.py --keep 3).
-
 Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Drain launcher
 ops/loop/drain_waves_2_3.py (--waves/--only) is reusable; it halts when the main tree is
-dirty. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin (RM-6xx range now in use).
+dirty. Next free LEDGER id 1663. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin.
 
-Acceptance: CI green on main except the 4 operator-left RM-172 subtests (or all green);
-:8860 /health = 1.285.0 / 16.19.1; RC health.json new pid, alive, last_reload_ok.
+Acceptance: CI green on main except the 4 operator-left RM-172 subtests.
 
 Do NOT redo (shipped, verifier-gated, pushed): wave 1 (78 rows, d1d078aab, LEDGER
 1480-1559), docs citation fix fc9b12431, launcher fix 7e32c2933, wave 2 tail-backlog +
 wave 3 ascii (3ef556865), wave 2 tail-roadmap (1e3e514c8, LEDGER 1623-1651), wave 2 atomic
-(89062445e, LEDGER 1654-1659), DS batch CI repair (3c6e55324, LEDGER 1660).
+(89062445e, LEDGER 1654-1659), DS batch CI repair (3c6e55324, LEDGER 1660), plus this
+session's 89ce8df91 / 67f94e8f6 and the DS + RC restarts.
 
-Status (2026-10-04 wrap): commits = WAKEUP_NOTES entry + this hand-off only, made from a
-detached worktree off origin/main (push range recorded in the commit log). CI = RED (12,
-detailed above). RC health.json at wrap: pid 24720, alive true, last_reload_ok true (the
-running code predates origin - restart owed). lcu phase None (not in game). No intent
-pending, no steers pending.
+Status (2026-10-04b wrap): pushed 89ce8df91, 67f94e8f6, plus this docs/hand-off commit.
+Local gate: ruff clean, hygiene 14 passed, drift_guard 0 breaches. CI = RED 5 (above).
+RC health.json: pid 23768, alive true, last_reload_ok true. lcu phase None, mode client
+(not in game). No intent pending, no steers pending. Session file ~0.8 MB.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
