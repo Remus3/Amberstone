@@ -308,6 +308,28 @@ def _reject_bad_keep(keep: int) -> bool:
     return False
 
 
+def _keep_cut(sessions: list[str], keep: int) -> int:
+    """Index splitting `sessions` into (kept, moved) by REAL sessions.
+
+    RM-475: the cut used to be `sessions[:keep]`, so a zero-heading block
+    (kept IN POSITION since RM-276 (4c)) consumed a keep slot purely by its
+    place in the file, and `--keep 3` over `S1, ZERO, S2, S3` archived the
+    real session S3. Only blocks carrying a SESSION_RE match count; a
+    zero-heading block before the cut rides along with the kept ones.
+    """
+    real = 0
+    for i, body in enumerate(sessions):
+        if SESSION_RE.search(body):
+            real += 1
+            if real == keep:
+                return i + 1
+    return len(sessions)
+
+
+def _real_count(sessions: list[str]) -> int:
+    return sum(1 for body in sessions if SESSION_RE.search(body))
+
+
 def prune(*, keep: int, dry_run: bool) -> int:
     if _reject_bad_keep(keep):
         return 2
@@ -316,12 +338,14 @@ def prune(*, keep: int, dry_run: bool) -> int:
         return 1
     text = WAKEUP.read_text(encoding="utf-8")
     header, sessions = split_sessions(text)
-    if len(sessions) <= keep:
-        print(f"wakeup_prune: {len(sessions)} session(s) <= keep={keep}; nothing to do")
+    real = _real_count(sessions)
+    cut = _keep_cut(sessions, keep)
+    if real <= keep or cut >= len(sessions):
+        print(f"wakeup_prune: {real} session(s) <= keep={keep}; nothing to do")
         return 0
 
-    keep_sessions = sessions[:keep]
-    move_sessions = sessions[keep:]
+    keep_sessions = sessions[:cut]
+    move_sessions = sessions[cut:]
     moved_ids = [
         next((ln for ln in b.lstrip("\n").splitlines() if ln.strip()),
              "(non-session block)")
@@ -364,9 +388,10 @@ def check(keep: int) -> int:
         return 0
     text = WAKEUP.read_text(encoding="utf-8")
     _, sessions = split_sessions(text)
-    if len(sessions) > keep:
+    real = _real_count(sessions)
+    if real > keep:
         print(
-            f"wakeup_prune --check: WAKEUP_NOTES has {len(sessions)} sessions "
+            f"wakeup_prune --check: WAKEUP_NOTES has {real} sessions "
             f"(> keep={keep}); run `$env:LOCALAPPDATA/Programs/Python/Python314/python.exe scripts/wakeup_prune.py`",
             file=sys.stderr,
         )
