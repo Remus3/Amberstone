@@ -410,6 +410,11 @@ config/operator_identity.json
 # projects and differs per machine; ops/moon_sync_repos.example.json ships.
 ops/moon_sync_repos.json
 
+# Y-45 phone push (core/operator_push.py): the ntfy server url, topic and the
+# token REFERENCE for this install. Topic + url are capabilities; never commit.
+# config/push_notify.example.json ships (disabled).
+config/push_notify.json
+
 # Pre-public flip 2026-09-07: rosters of OTHER PEOPLE'S accounts. Both are
 # regenerable (tools/ladder_role_scout.py) and neither is ours to redistribute,
 # so the live files are untracked and only .example.json shapes ship.
