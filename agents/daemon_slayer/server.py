@@ -3027,7 +3027,19 @@ class Handler(BaseHTTPRequestHandler):
 
     # Quiet the default access-log spam - we surface our own.
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
-        _log.debug("%s - %s", self.address_string(), format % args)
+        # RM-321: an override loses the stdlib's control-character escaping
+        # (`message.translate(self._control_char_table)` lives inside the
+        # base method). The DS engine stays core-free, so use the handler's
+        # own stdlib table, with an equivalent escape if it is ever dropped.
+        msg = format % args
+        table = getattr(self, "_control_char_table", None)
+        if table is not None:
+            msg = msg.translate(table)
+        else:
+            msg = "".join(
+                f"\\x{ord(c):02x}" if ord(c) < 0x20 or 0x7F <= ord(c) < 0xA0
+                else ("\\\\" if c == "\\" else c) for c in msg)
+        _log.debug("%s - %s", self.address_string(), msg)
 
     # ----- helpers
 
