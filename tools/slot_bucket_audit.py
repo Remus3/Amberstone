@@ -18,7 +18,12 @@ Verdicts per lock:
   PID_REUSED  the pid is alive but its process started AFTER the lock's ts, so
               the live process is not the holder (needs psutil; otherwise
               reported as UNVERIFIED_START)
-  OVER_STALE  age beyond stale_after (slots' own reap arm would condemn it)
+  OVER_STALE  live pid, age beyond stale_after. This is the AUDIT's leak call,
+              not slots': under ops/loop/slots.py is_stale a readable lock
+              with a LIVE pid is kept until age > stale_after *
+              HARD_STALE_MULTIPLE (2.0; the ceiling arm, then the pid_alive
+              return). The row's `slots_would_reap` says which side of that
+              ceiling the lock is on.
   UNREADABLE  empty or non-JSON lock (a half-written or zero-byte leftover)
 
 A lock is RC-AUTHORED when its `repo` is this repo's root (case-insensitive)
@@ -113,7 +118,15 @@ def classify(path: Path, stale_after: float, now: float | None = None,
                    detail=f"pid {pid} started {int(started - ts)}s after the lock ts")
         return out
     if age > stale_after:
-        out.update(verdict="OVER_STALE", detail=f"age {int(age)}s > {int(stale_after)}s")
+        # slots.is_stale keeps a live holder until the fail-open ceiling; only
+        # past it would slots' own reap reclaim the lock.
+        ceiling = stale_after * slots.HARD_STALE_MULTIPLE
+        would_reap = age > ceiling
+        tail = (f"past slots fail-open ceiling {int(ceiling)}s: slots would reap it"
+                if would_reap else
+                f"live holder kept by slots until {int(ceiling)}s")
+        out.update(verdict="OVER_STALE", slots_would_reap=would_reap,
+                   detail=f"age {int(age)}s > {int(stale_after)}s; {tail}")
         return out
     out.update(verdict="OK" if started is not None else "UNVERIFIED_START",
                detail="" if started is not None else "no psutil: start time unknown")

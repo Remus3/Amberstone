@@ -1590,3 +1590,139 @@ def test_adjectival_or_attributed_commit_is_not_a_commit_claim(tmp_path, sentenc
     """Describing committed data, or another agent's commit, is not committing."""
     report = _run_gate(tmp_path, [_assistant(_text(sentence))])
     assert "commit_claim_without_commit" not in _checks(report), sentence
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-04 false-positive round. Four classes, each with its own regression
+# floor. Audited in-process (gate.audit) rather than through a subprocess: the
+# evidence is empty, so only the claim scan is under test.
+# ---------------------------------------------------------------------------
+def _audit_checks(sentence):
+    ev = {"texts": [sentence], "bash": [], "edited": [], "runs": [],
+          "ci_runs": [], "artifacts": []}
+    return {f["check"] for f in gate.audit(ev)}
+
+
+# (a) A sibling tree's CHANNEL CODE as the subject is a third party. Codes
+# only - never a sibling repo name in a tracked file.
+CHANNEL_CODE_COMMIT_FALSE_POSITIVES = [
+    "LW committed 700cd64.",
+    "LW committed 700cd64 on its own main.",
+    "RSC committed the fix.",
+    "SS has committed the shared file.",
+    "MAIN committed the kit bump.",
+    "The fix was committed by LW.",
+    "LW's commit landed on its main.",
+]
+
+CHANNEL_CODE_COMMIT_TRUE_POSITIVES = [
+    "I committed 700cd64 after LW asked.",
+    "LW asked, and I committed 700cd64.",
+    "LW committed 700cd64 and I pushed it.",
+    # RC is THIS tree's own code: never a third party.
+    "RC committed the adoption.",
+]
+
+
+@pytest.mark.parametrize("sentence", CHANNEL_CODE_COMMIT_FALSE_POSITIVES)
+def test_channel_code_subject_is_not_a_speaker_commit(sentence):
+    assert "commit_claim_without_commit" not in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("sentence", CHANNEL_CODE_COMMIT_TRUE_POSITIVES)
+def test_channel_code_does_not_launder_a_speaker_commit(sentence):
+    assert "commit_claim_without_commit" in _audit_checks(sentence), sentence
+
+
+# (b) A contracted negation governs the claim word as much as "not" does.
+NEGATED_PUSH_CONTRACTION_FALSE_POSITIVES = [
+    "The branch isn't pushed.",
+    "It isn't pushed yet.",
+    "This isn't pushed to origin yet.",
+    "The commit is local and isn't pushed.",
+    "The worktree branch wasn't pushed.",
+    "I haven't pushed anything.",
+    "We didn't push it.",
+]
+
+NEGATED_PUSH_CONTRACTION_TRUE_POSITIVES = [
+    "The branch is pushed, but it isn't merged.",
+    "I pushed it, though it isn't verified.",
+    "It is pushed.",
+]
+
+
+@pytest.mark.parametrize("sentence", NEGATED_PUSH_CONTRACTION_FALSE_POSITIVES)
+def test_contracted_negation_is_not_a_push_claim(sentence):
+    assert "push_claim_without_push" not in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("sentence", NEGATED_PUSH_CONTRACTION_TRUE_POSITIVES)
+def test_trailing_contracted_negation_still_flags_a_push(sentence):
+    assert "push_claim_without_push" in _audit_checks(sentence), sentence
+
+
+# (c) A FUTURE / intended CI check is a plan, not a report of CI state.
+FUTURE_CI_FALSE_POSITIVES = [
+    "I'll confirm CI is green.",
+    "I'll confirm CI green after the push.",
+    "Will check CI passing.",
+    "I will check whether CI is green.",
+    "We are going to verify CI is green before merging.",
+    "Still need to confirm CI is green.",
+]
+
+FUTURE_CI_TRUE_POSITIVES = [
+    "CI is green; I'll merge next.",
+    "I confirmed CI is green.",
+    "CI passed, so I will merge.",
+    "CI is green.",
+]
+
+
+@pytest.mark.parametrize("sentence", FUTURE_CI_FALSE_POSITIVES)
+def test_future_ci_check_is_not_a_ci_claim(sentence):
+    assert "ci_claim_without_probe" not in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("sentence", FUTURE_CI_TRUE_POSITIVES)
+def test_present_or_past_ci_claim_still_flags(sentence):
+    assert "ci_claim_without_probe" in _audit_checks(sentence), sentence
+
+
+# (d) A subagent's commit, the agent named by an identifier, by a passive
+# "by the agent", or by a possessive, is not the speaker's commit.
+SUBAGENT_COMMIT_FALSE_POSITIVES = [
+    # The plain forms - already exempt, kept as a regression floor.
+    "the agent committed abc1234",
+    "the slice committed",
+    # The forms measured flagging on 2026-10-04.
+    "Agent-a3 committed abc1234.",
+    "agent-a38e5131 committed abc1234.",
+    "Slice 2 committed abc1234.",
+    "Agent B committed abc1234.",
+    "abc1234 was committed by the agent.",
+    "The fix was committed by the subagent in its worktree.",
+    "Committed by the slice agent as abc1234.",
+    "The slice's commit landed in its worktree.",
+    "The agent's commit is in its branch.",
+]
+
+SUBAGENT_COMMIT_TRUE_POSITIVES = [
+    "Committed abc1234.",
+    "abc1234 was committed.",
+    "I committed abc1234 for the agent.",
+    "The agent wrote it and I committed abc1234.",
+    "Agent-a3 committed abc1234 and I pushed it.",
+    "Committed by me after the agent finished.",
+]
+
+
+@pytest.mark.parametrize("sentence", SUBAGENT_COMMIT_FALSE_POSITIVES)
+def test_subagent_commit_is_not_a_speaker_commit(sentence):
+    assert "commit_claim_without_commit" not in _audit_checks(sentence), sentence
+
+
+@pytest.mark.parametrize("sentence", SUBAGENT_COMMIT_TRUE_POSITIVES)
+def test_subagent_wording_does_not_launder_a_speaker_commit(sentence):
+    assert "commit_claim_without_commit" in _audit_checks(sentence), sentence
