@@ -316,8 +316,9 @@ def test_game_time_going_backwards_resets_state():
 
 def test_load_cost_table_reads_ds_per_rank_costs():
     table = scl.load_cost_table("Ahri")
-    if not table:
-        pytest.skip("DS champion_abilities.json not present")
+    # The DS champion data is tracked, so an empty table is a defect, not an
+    # absent environment capability (tests/test_skip_condition_hygiene.py).
+    assert table, "DS champion_abilities.json did not load for Ahri"
     res, costs = table["Q"]
     assert res == "MANA"
     assert len(costs) == 5
