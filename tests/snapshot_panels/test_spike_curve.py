@@ -122,11 +122,13 @@ def test_emits_expected_dom_classes():
 
 
 def test_palette_matches_brief():
-    """Brief specifies #5096ff (ally blue), #ff5050 (enemy red), and a
+    """Team colours come from the Y-07 data-viz tier (tokens.css --data-*,
+    perspective encoding; was the #5096ff / #ff5050 literal pair), plus a
     gray dashed 'now' marker. Drift breaks the team color semantic."""
     src = _read(JS_PATH)
-    assert "#5096ff" in src, "ally color #5096ff missing"
-    assert "#ff5050" in src, "enemy color #ff5050 missing"
+    assert 'const _ALLY_COLOR = "rgb(var(--data-ally))"' in src, "ally tier token missing"
+    assert 'const _ENEMY_COLOR = "rgb(var(--data-enemy))"' in src, "enemy tier token missing"
+    assert "#5096ff" not in src and "#ff5050" not in src, "pre-tier team literal back"
     # Now marker should be dashed gray of some kind.
     assert "stroke-dasharray" in src
     assert "rgba(180, 180, 180" in src or "_NOW_COLOR" in src
