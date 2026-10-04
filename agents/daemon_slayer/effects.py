@@ -896,6 +896,11 @@ def effective_target_armor(
     # 30 flat armor reduction vs a ~27-armor squishy = -3 effective,
     # ~1.03x physical) - conflating the two distinct League rules.
     armor = target_armor - red_flat       # flat reduction (League order)
+    if armor <= 0.0:
+        # RM-595: once FLAT reduction reaches <= 0 the wiki skips every later
+        # step, percent reduction included (Target B: 18 - 30 = -12, not
+        # -12 * 0.7). Mirrors core.math_core.effective_resist.
+        return armor
     armor = armor * (1.0 - red_pct)      # % reduction (Black Cleaver) - composed
     if armor <= 0.0:
         # Reduction alone already crossed zero - penetration is a no-op.
@@ -949,6 +954,10 @@ def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> floa
     # pure 30 flat MR reduction (no magic pen), so a low-MR squishy can
     # legitimately go negative.
     mr = target_mr - red_flat            # flat reduction (League order)
+    if mr <= 0.0:
+        # RM-595: flat reduction reached <= 0 - the wiki skips percent
+        # reduction and all penetration (Target B: 18 - 20 = -2, not -1.4).
+        return mr
     mr = mr * (1.0 - red_pct)           # % reduction (Bloodletter's Curse) - composed
     if mr <= 0.0:
         # Reduction alone already crossed zero - penetration is a no-op.

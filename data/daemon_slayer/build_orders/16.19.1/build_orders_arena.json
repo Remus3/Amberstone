@@ -14888,8 +14888,8 @@
     ],
     "level": 11
   },
-  "engine_version": "1.285.0",
-  "generated_at": "2026-10-04T06:26:46Z",
+  "engine_version": "1.286.0",
+  "generated_at": "2026-10-04T21:24:04Z",
   "mode": "arena",
   "schema": "build_order_precompute/v1",
   "version": "16.19.1"

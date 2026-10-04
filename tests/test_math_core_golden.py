@@ -215,12 +215,11 @@ DS_PEN = [c for c in CASES if _ds_pipeline_applicable(c)]
 # engine defect against the external source; it is pinned strict-xfail so the
 # fix flips this test red until the entry is removed (Tier-2 engine change,
 # carried in the hand-off - not fixed inside P1-5).
-DS_KNOWN_DIVERGENCE = {
-    # Wiki: once flat reduction takes the resist to zero or below, percent
-    # reduction and all penetration are skipped. DS applies percent reduction
-    # to the negative value (-2 * 0.7 = -1.4), shrinking the amplification.
-    "mr-target-b",
-}
+DS_KNOWN_DIVERGENCE: set[str] = set()
+# Emptied by RM-595 (2026-10-04): "mr-target-b" was pinned here because DS
+# applied percent reduction to a resist that flat reduction had already taken
+# to zero or below (-2 * 0.7 = -1.4 vs the wiki's -2). Fixed in
+# effects.effective_target_mr / effective_target_armor.
 
 
 def _armor_effect(ItemEffect, kw):
