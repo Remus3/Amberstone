@@ -503,22 +503,33 @@ class _Phase3Watcher:
                     continue
                 if newest is None or m > newest:
                     newest = m
-            excluded = tuple(
-                self._project_root / e for e in self._EXCLUDED_CODE_DIRS
-            )
+            # PRUNED walk (LEDGER 1429 item 5): the excluded subtree is
+            # never listed, instead of an rglob that stats it and then
+            # post-filters it away (~87 pct of the agents/ tree, 1 Hz).
+            excluded = {
+                os.path.normcase(str(self._project_root / e))
+                for e in self._EXCLUDED_CODE_DIRS
+            }
             for rel in self._WATCHED_CODE_DIRS:
                 base = self._project_root / rel
                 if not base.is_dir():
                     continue
-                for p in base.rglob("*.py"):
-                    if any(p.is_relative_to(ex) for ex in excluded):
-                        continue
-                    try:
-                        m = p.stat().st_mtime
-                    except OSError:
-                        continue
-                    if newest is None or m > newest:
-                        newest = m
+                for dirpath, dirnames, filenames in os.walk(base):
+                    dirnames[:] = [
+                        d for d in dirnames
+                        if d != "__pycache__" and not d.startswith(".")
+                        and os.path.normcase(os.path.join(dirpath, d))
+                        not in excluded
+                    ]
+                    for fn in filenames:
+                        if not fn.endswith(".py"):
+                            continue
+                        try:
+                            m = os.stat(os.path.join(dirpath, fn)).st_mtime
+                        except OSError:
+                            continue
+                        if newest is None or m > newest:
+                            newest = m
         except Exception:  # noqa: BLE001 - scan must never raise
             return None
         return newest
