@@ -1487,7 +1487,11 @@ class _NormalizerMixin:
                 if not isinstance(ability, dict):
                     continue
                 name = ability.get("displayName") or ability.get("name") or ""
-                lvl  = ability.get("abilityLevel") or ability.get("level")
+                # RM-603: key PRESENCE, not truthiness - an unranked slot
+                # reports abilityLevel 0, which a falsy `or` turned into None.
+                lvl  = ability.get("abilityLevel")
+                if lvl is None:
+                    lvl = ability.get("level")
                 if name:
                     result[slot.lower()] = {
                         "name":  name,
