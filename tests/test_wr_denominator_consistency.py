@@ -455,11 +455,16 @@ class ConsistencyTests(unittest.TestCase):
         for mod, label, fn in _all_runners():
             module = importlib.import_module(mod[:-3].replace("/", "."))
             with self.subTest(builder=label):
+                clean = _measure(fn)
                 with mock.patch.object(module, "resolved_wr",
                                        _total_games_variant):
                     got = _measure(fn)
-                self.assertIn(got, (25.0, 33.3),
-                              f"{label} bypasses the helper")
+                # The swap must MOVE the number: a builder whose reported
+                # rate does not depend on the helper bypasses it, even if
+                # it happens to call it somewhere.
+                self.assertNotEqual(got, clean,
+                                    f"{label} bypasses the helper")
+                self.assertIn(got, (25.0, 33.3), label)
                 self.assertEqual(len(_inconsistent({label: got})), 1)
 
 
