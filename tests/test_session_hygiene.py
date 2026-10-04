@@ -305,6 +305,186 @@ def test_readiness_drops_for_tilt_pattern(tmp_path):
     out = sh.compute_session_hygiene(db_path=db, now_ms=now, tz=FIXED_TZ)
     assert out["session_detection"]["current_session_games"] == 4
     assert out["readiness"]["score"] < 50
+    # Y-04: the always-losing next position is a factor >= FACTOR_FLAG_PTS
+    # below baseline, so it raises a signal flag.
+    names = [f["flag"] for f in out["readiness"]["flags"]]
+    assert "session_position_below" in names
+
+
+# --------------------------------------------------------------------------
+# Y-04 "unknown is not neutral" (external reference O + Q)
+# --------------------------------------------------------------------------
+
+def _flag_names(out):
+    return [f["flag"] for f in out["readiness"]["flags"]]
+
+
+def test_readiness_unknown_on_empty_corpus(tmp_path):
+    # No bucket clears MIN_GAMES -> no composite. The old payload said 50.0
+    # (a measured-looking mid score); now score is None and state unknown.
+    db = _make_db(tmp_path, [])
+    out = sh.compute_session_hygiene(db_path=db, now_ms=_ANCHOR_UTC_MS, tz=FIXED_TZ)
+    r = out["readiness"]
+    assert r["score"] is None
+    assert r["state"] == "unknown"
+    assert r["flags"] == []
+    assert f">= {sh.MIN_GAMES} games" in r["basis"]
+
+
+def test_readiness_unknown_on_thin_corpus(tmp_path):
+    # 3 games: every bucket is below MIN_GAMES -> still unknown, never green.
+    rows = [_game(_ANCHOR_UTC_MS + i * _DAY_MS, 1) for i in range(3)]
+    db = _make_db(tmp_path, rows)
+    out = sh.compute_session_hygiene(db_path=db, now_ms=rows[-1][1] + _DAY_MS,
+                                     tz=FIXED_TZ)
+    assert out["readiness"]["state"] == "unknown"
+    assert out["readiness"]["score"] is None
+
+
+def test_readiness_new_keys_appended_at_end(tmp_path):
+    db = _make_db(tmp_path, [])
+    out = sh.compute_session_hygiene(db_path=db, now_ms=_ANCHOR_UTC_MS, tz=FIXED_TZ)
+    keys = list(out["readiness"].keys())
+    # the pre-Y-04 contract keeps its order; the new keys ride at the END.
+    assert keys[:4] == ["score", "confidence", "factors", "context"]
+    assert keys[4:] == ["state", "flags", "basis"]
+
+
+def _streak_corpus(final_session_results, sessions=28):
+    """`sessions` 6-game alternating sessions (enough history for every factor
+    to contribute) and a final open session with the given results."""
+    rows = []
+    base = _ANCHOR_UTC_MS
+    for s in range(sessions):
+        t = base + s * _DAY_MS
+        for pos in range(6):
+            g = _game(t, (pos + s) % 2)
+            rows.append(g)
+            t = g[1] + 5 * 60 * 1000
+    t = base + sessions * _DAY_MS
+    for win in final_session_results:
+        g = _game(t, win)
+        rows.append(g)
+        t = g[1] + 5 * 60 * 1000
+    return rows
+
+
+def test_planted_four_loss_session_flags_loss_streak_and_caps(tmp_path):
+    rows = _streak_corpus([0, 0, 0, 0])
+    db = _make_db(tmp_path, rows)
+    out = sh.compute_session_hygiene(db_path=db, now_ms=rows[-1][1] + 60_000,
+                                     tz=FIXED_TZ)
+    r = out["readiness"]
+    assert r["score"] is not None
+    assert "loss_streak" in _flag_names(out)
+    ls = [f for f in r["flags"] if f["flag"] == "loss_streak"][0]
+    assert ls["kind"] == "override"
+    # capped: a hard override never leaves the light green.
+    assert r["state"] in ("yellow", "red")
+
+
+def test_loss_streak_alone_caps_a_green_composite(tmp_path, monkeypatch):
+    # Isolate the override: disable the factor signal rule so loss_streak is
+    # the ONLY flag. The composite score reads green; the override caps it.
+    monkeypatch.setattr(sh, "FACTOR_FLAG_PTS", -1000.0)
+    rows = _streak_corpus([0, 0, 0, 0])
+    db = _make_db(tmp_path, rows)
+    out = sh.compute_session_hygiene(db_path=db, now_ms=rows[-1][1] + 60_000,
+                                     tz=FIXED_TZ)
+    r = out["readiness"]
+    assert _flag_names(out) == ["loss_streak"]
+    assert sh._base_light(r["score"]) == "green"
+    assert r["state"] == "yellow"
+
+
+def test_no_loss_streak_flag_when_session_run_is_broken(tmp_path):
+    # Positive control for the planted case: same corpus, last game a win.
+    rows = _streak_corpus([0, 0, 0, 1])
+    db = _make_db(tmp_path, rows)
+    out = sh.compute_session_hygiene(db_path=db, now_ms=rows[-1][1] + 60_000,
+                                     tz=FIXED_TZ)
+    assert "loss_streak" not in _flag_names(out)
+
+
+def test_loss_streak_not_carried_across_sessions(tmp_path):
+    # Four losses, then a break longer than SESSION_GAP_MS: not in a session,
+    # so there is no current-session loss run.
+    rows = _streak_corpus([0, 0, 0, 0])
+    db = _make_db(tmp_path, rows)
+    out = sh.compute_session_hygiene(
+        db_path=db, now_ms=rows[-1][1] + sh.SESSION_GAP_MS + 60_000, tz=FIXED_TZ)
+    assert "loss_streak" not in _flag_names(out)
+
+
+def test_flag_notes_are_odds_shift_never_causal(tmp_path):
+    rows = _streak_corpus([0, 0, 0, 0])
+    db = _make_db(tmp_path, rows)
+    out = sh.compute_session_hygiene(db_path=db, now_ms=rows[-1][1] + 60_000,
+                                     tz=FIXED_TZ)
+    notes = [f["note"] for f in out["readiness"]["flags"]]
+    assert notes
+    for note in notes:
+        low = note.lower()
+        assert "pts" in low or "too few" in low
+        for causal in ("because", "makes you", "causes", "tired", "you play worse"):
+            assert causal not in low
+        assert note.isascii()
+
+
+def test_route_passes_null_score_through(tmp_path, monkeypatch):
+    # The HTTP route must serialize the unknown readiness as JSON null, never a
+    # coerced 0 / 50.
+    import json
+
+    from dashboard import routes_session_hygiene as route
+
+    db = _make_db(tmp_path, [])
+    real = sh.compute_session_hygiene
+    monkeypatch.setattr(
+        route.session_hygiene, "compute_session_hygiene",
+        lambda queue_ids=None: real(db_path=db, now_ms=_ANCHOR_UTC_MS,
+                                    tz=FIXED_TZ, queue_ids=queue_ids))
+    route._reset_caches()
+    sent = {}
+
+    class _H:
+        path = "/api/session-hygiene"
+
+        def _send(self, code, body, ctype):
+            sent["code"], sent["body"] = code, body
+
+    route._serve_session_hygiene(_H())
+    route._reset_caches()
+    assert sent["code"] == 200
+    payload = json.loads(sent["body"])
+    assert payload["readiness"]["score"] is None
+    assert payload["readiness"]["state"] == "unknown"
+    assert b'"score": null' in sent["body"]
+
+
+@pytest.mark.parametrize("base, kinds, expected", [
+    ("unknown", [], "unknown"),
+    ("unknown", ["signal", "signal"], "unknown"),     # yellow rule needs green
+    ("unknown", ["override"], "unknown"),             # a cap cannot invent a light
+    ("unknown", ["override", "signal", "signal"], "red"),  # 3+ is unconditional
+    ("green", [], "green"),
+    ("green", ["signal"], "green"),
+    ("green", ["override"], "yellow"),                # hard override caps
+    ("green", ["signal", "signal"], "yellow"),        # 2 flags = yellow
+    ("yellow", ["signal", "signal"], "yellow"),
+    ("green", ["signal", "signal", "signal"], "red"),  # 3+ = red
+    ("yellow", ["override", "signal", "signal"], "red"),
+])
+def test_light_rules(base, kinds, expected):
+    flags = [{"flag": f"f{i}", "kind": k} for i, k in enumerate(kinds)]
+    assert sh._light(base, flags) == expected
+
+
+def test_base_light_from_score():
+    assert sh._base_light(None) == "unknown"
+    assert sh._base_light(50.0) == "green"
+    assert sh._base_light(sh._LIGHT_LOW_SCORE) == "yellow"
+    assert sh._base_light(sh._LIGHT_LOW_SCORE + 0.1) == "green"
 
 
 # --------------------------------------------------------------------------
@@ -331,7 +511,9 @@ def test_empty_db_fails_soft(tmp_path):
     assert out["ok"] is True
     assert out["n"] == 0
     assert out["session_detection"]["session_count"] == 0
-    assert 0 <= out["readiness"]["score"] <= 100
+    # Y-04: no evidence -> no score (was a neutral-looking 50).
+    assert out["readiness"]["score"] is None
+    assert out["readiness"]["state"] == "unknown"
 
 
 def test_single_game_db_fails_soft(tmp_path):
@@ -400,7 +582,13 @@ def test_real_db_smoke_structure():
     ):
         assert key in out
     assert out["ok"] is True
-    assert 0 <= out["readiness"]["score"] <= 100
+    r = out["readiness"]
+    assert r["state"] in ("unknown", "green", "yellow", "red")
+    if r["state"] == "unknown":
+        assert r["score"] is None
+    else:
+        assert 0 <= r["score"] <= 100
+    assert isinstance(r["flags"], list)
     assert len(out["wr_by_hour"]) == 24
     assert len(out["wr_by_weekday"]) == 7
     assert 0.0 <= out["overall_wr"] <= 1.0

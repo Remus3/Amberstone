@@ -14,7 +14,10 @@ Request shape:
           420 for ranked solo). Any non-int token -> 400. Omitted -> all games.
 
 Response is compute_session_hygiene(...)'s dict plus cached (bool) and
-elapsed_ms (int).
+elapsed_ms (int). readiness.score is NULL (JSON null) with
+readiness.state == "unknown" when no context bucket has enough games (Y-04);
+readiness.state / flags / basis are appended after the older keys. This route
+passes the dict through untouched, so no transform here may coerce the null.
 
 Cache: 5min in-process keyed by the queue tuple - mirrors
 routes_duration_winrate so a re-polling panel does not turn the corpus scan

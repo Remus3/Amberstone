@@ -38,6 +38,47 @@
 #session-hygiene-card .sh-conf.sh-conf-med  { color: var(--signal-info); }
 #session-hygiene-card .sh-conf.sh-conf-low  { color: var(--text-faint); }
 
+/* Y-04 readiness light chip. Unknown is dim, never colored like a verdict. */
+#session-hygiene-card .sh-state {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+#session-hygiene-card .sh-state.sh-state-green   { color: var(--signal-good); }
+#session-hygiene-card .sh-state.sh-state-yellow  { color: var(--signal-warn); }
+#session-hygiene-card .sh-state.sh-state-red     { color: var(--signal-bad); }
+#session-hygiene-card .sh-state.sh-state-unknown { color: var(--signal-dim); }
+
+/* Basis sentence + flag lines: always rendered (placeholder text when empty)
+ * and line-height-floored so the unknown and known cards share one skeleton -
+ * no reflow when the score goes null. */
+#session-hygiene-card .sh-basis {
+  min-height: 1.5em;
+  margin-bottom: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+#session-hygiene-card .sh-flags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* em is resolved against THIS font-size, so set it here: one flag line. */
+  font-size: var(--fs-xs);
+  min-height: 1.5em;
+  margin-bottom: var(--space-3);
+}
+#session-hygiene-card .sh-flag {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--signal-warn);
+}
+#session-hygiene-card .sh-flag.is-override { color: var(--signal-bad); }
+#session-hygiene-card .sh-flag.is-none     { color: var(--text-faint); }
+
 #session-hygiene-card .sh-factors {
   display: flex;
   flex-direction: column;
