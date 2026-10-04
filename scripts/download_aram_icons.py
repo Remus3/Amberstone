@@ -116,5 +116,5 @@ common = [
 for name in common:
     slug = slugify(name)
     path = OUT_DIR / f"{slug}.png"
-    status = "✓" if path.exists() else "✗ MISSING"
+    status = "\u2713" if path.exists() else "\u2717 MISSING"
     print(f"  {name!s:35} -> {slug}.png  {status}")

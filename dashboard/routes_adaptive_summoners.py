@@ -192,13 +192,13 @@ def _recommend(base: list[int], role: str, threat: dict) -> dict:
 
     if cc_threat >= _CC_SWAP_THRESHOLD and role_upper in _CLEANSE_ELIGIBLE_ROLES:
         secondary = _CLEANSE
-        reason = f"CC threat {cc_threat:.0f}/10 · Cleanse > Heal"
+        reason = f"CC threat {cc_threat:.0f}/10 \xb7 Cleanse > Heal"
     elif burst_threat >= _BURST_SWAP_THRESHOLD and role_upper in _BARRIER_ELIGIBLE_ROLES:
         secondary = _BARRIER
-        reason = f"burst threat {burst_threat:.0f}/10 · Barrier > Heal"
+        reason = f"burst threat {burst_threat:.0f}/10 \xb7 Barrier > Heal"
     else:
         reason = (
-            f"baseline · {_SPELL_NAMES.get(secondary, str(secondary))}"
+            f"baseline \xb7 {_SPELL_NAMES.get(secondary, str(secondary))}"
             + (f" (CC {cc_threat:.0f} / burst {burst_threat:.0f})"
                if (cc_threat or burst_threat) else "")
         )

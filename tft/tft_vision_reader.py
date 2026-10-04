@@ -37,7 +37,7 @@ _EXTRACT_PROMPT = """You are analyzing a TFT (Teamfight Tactics) screenshot at 1
 Focus ONLY on what requires visual AI: unit names on cards, bench, and board.
 Numbers (round, HP, level, gold) are handled separately - skip them.
 
-═══ READ IN THIS ORDER ═══
+\u2550\u2550\u2550 READ IN THIS ORDER \u2550\u2550\u2550
 
 STEP 1 - TRAITS PANEL (LEFT SIDE):
 Read the vertical traits panel on the LEFT edge. Each row: trait icon, name, count (e.g. "N.O.V.A. 3").
@@ -58,12 +58,12 @@ Read 3 augment slots above bench. Full name required (e.g. "Vanguard Heart", "Ro
 Never infer augments from trait counts. If unreadable return [].
 If augment SELECT screen visible: set is_augment_select=true, list choices in augment_choices.
 
-═══ CRITICAL RULES ═══
+\u2550\u2550\u2550 CRITICAL RULES \u2550\u2550\u2550
 - board_units MUST match traits. Never output trait names as unit names.
 - Shop: read the bold champion NAME, not the trait tags below it.
 - If spectating someone else's board: board_units=["SPECTATING"].
 
-═══ OUTPUT FORMAT ═══
+\u2550\u2550\u2550 OUTPUT FORMAT \u2550\u2550\u2550
 Return ONLY valid JSON, no markdown:
 {
   "traits_active":  ["N.O.V.A. 3", "Bastion 2"],

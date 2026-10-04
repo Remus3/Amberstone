@@ -298,7 +298,7 @@ def comp_context_str(champion: str, current_items: list,
     if warnings:
         lines.append("Build warnings:")
         for w in warnings[:2]:
-            lines.append(f"  ✗ {w}")
+            lines.append(f"  \u2717 {w}")
 
     # Suggestions
     suggestions = suggest_items(champion, enemy_champs, ally_champs,
@@ -306,6 +306,6 @@ def comp_context_str(champion: str, current_items: list,
     if suggestions:
         lines.append("Item priority:")
         for item, reason in suggestions[:2]:
-            lines.append(f"  → {item}: {reason}")
+            lines.append(f"  \u2192 {item}: {reason}")
 
     return "\n".join(lines)
