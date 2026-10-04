@@ -1,0 +1,4 @@
+{
+  "changelog_high_water": "2026-09-20",
+  "_note": "RM-668. Last upstream changelog date a human reviewed (external reference L). Seeded at the 16.18.1 extract date. Advance only with: python tools/ds_feed_watch.py --ack YYYY-MM-DD"
+}
