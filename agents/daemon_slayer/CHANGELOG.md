@@ -1341,6 +1341,15 @@ ENGINE_VERSION 1.10.0):
   1 -> 0.95; Ziggs dealt 0.87 -> 0.92). Lanes 5, scenarios 173. The bump
   is for the moved ARAM engine output; every 16.19.1 build table is
   regenerated against it.
+- feat (DEFAULT scoring, ARAM): RM-666 melee champions gain 15 bonus MR in
+  ARAM (League wiki ARAM page, read 2026-10-04). ``engine.
+  ARAM_MELEE_BONUS_MR`` added to the final ``mr`` in
+  ``_apply_mode_modifiers`` (mode == "ARAM" only) for base attackrange <
+  350, the ``rank._champion_is_melee`` split, pinned to it roster-wide by a
+  parity test. Not stacked with ARAM: Mayhem's own global melee armor/MR
+  grant (unmodelled; the wiki does not say whether it is the same grant).
+  The three 16.19.1 ARAM tables were regenerated (15 of 173 Lane B ARAM
+  champions moved); SR / Arena unchanged. Shipped in the same 1.285.0.
 1.284.0 (2026-10-03) - RM-513 Arena augment-reward deny, RM-480 residuals,
 RM-479 /stats augment_stacks transport.
 - fix (DEFAULT scoring, Arena): ``rank._ARENA_EXCLUDED_ITEM_IDS`` =

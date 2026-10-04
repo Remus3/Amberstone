@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
+from ._melee_ranged import attackrange_is_ranged
 from ._passive_as_lock_overrides import as_lock_entry
 from .augments import (
     apply_augment_conversions,
@@ -226,6 +227,29 @@ def _combine_items(
     return out
 
 
+# RM-666: classic ARAM grants melee champions 15 bonus magic resistance (League
+# wiki ARAM page, Champions section, read 2026-10-04). The per-champion
+# aram_modifiers block carries no such field, so it is a flat engine-side
+# addend. Same gate as the rest of this hook: mode == "ARAM" only.
+ARAM_MELEE_BONUS_MR: float = 15.0
+
+
+def _aram_champion_is_melee(champ_rec: Optional[dict]) -> bool:
+    """The ``rank._champion_is_melee`` split (base attackrange < 350) without
+    the Arena augment arm, which cannot fire in ARAM. ``engine`` cannot import
+    ``rank`` (rank -> dps -> engine), so a roster-wide parity test pins the two.
+
+    Unlike the rank predicate, a record with NO attackrange fails closed to
+    False here: a missing record must never be granted a stat.
+    """
+    if not isinstance(champ_rec, dict):
+        return False
+    rng = (champ_rec.get("stats") or {}).get("attackrange")
+    if rng is None:
+        return False
+    return not attackrange_is_ranged(rng)
+
+
 def _apply_mode_modifiers(
     scaled: dict[str, float],
     raw_base: dict[str, float],
@@ -249,6 +273,10 @@ def _apply_mode_modifiers(
         ``scaled["aram_tenacity_mult"]`` (default 1.0). Same exposure-only
         posture as the AH delta; an EHP-side scorer that ingests enemy CC
         duration can read this value directly to amortize it.
+
+    Plus one mode-wide (not per-champion) term:
+      * melee +15 bonus MR (RM-666, ``ARAM_MELEE_BONUS_MR``), added to the
+        final ``mr``; ranged champions and malformed records get nothing.
 
     aramHealing / aramShielding / aramDamageDealt / aramDamageTaken are
     NOT applied here - they remain in their dedicated consumers (HPS,
@@ -285,6 +313,12 @@ def _apply_mode_modifiers(
     scaled["aram_tenacity_mult"] = aram_ten
     if aram_ten != 1.0:
         notes.append(f"ARAM aramTenacity={aram_ten:.2f}x effective CC duration")
+
+    # RM-666: added to the FINAL block, not base_stats, because the grant is
+    # BONUS MR (bonus-MR scalings see it, % MR items do not multiply it).
+    if _aram_champion_is_melee(champion):
+        scaled["mr"] = scaled.get("mr", 0.0) + ARAM_MELEE_BONUS_MR
+        notes.append(f"ARAM melee +{ARAM_MELEE_BONUS_MR:.0f} MR")
 
     return scaled, notes
 
