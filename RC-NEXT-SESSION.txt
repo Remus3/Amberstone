@@ -1,13 +1,53 @@
 NEXT SESSION
 ------------
-Next action: RC restart owed. The main tree checkout was behind origin and held ANOTHER
-session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/
-conftest.py, untracked test_agent6_failure_stub_l03.py) plus unpushed a6f3fa42a (agent6
-audit). Once that session has landed its work, fast-forward the main tree to origin/main,
-py_compile, echo restart > restart_trigger.txt, and read back ops/runtime/health.json (new
-pid, alive, last_reload_ok). Restart covers frozen app/_health_monitor.py (RM-377), RM-235
-/api/health/all counters, RM-267 :8889 /stats token, RM-261 ops/rc_supervisor.py +
-ops/rc_dev_runtime.py scratch-name changes, RM-258 writer moves.
+Next action: resolve main CI RED (run 37194003841 on 3c6e55324, read 2026-10-04: 12 failed /
+37925 passed / 291 skipped). Fix forward, rm415 first:
+- 7 x tests/test_rm415_liveclient.py::test_events_retyped_degrades_every_event_list[None,
+  bool, empty, float, int, nan, strnum] - "assert None == []". Introduced by Wave1 RM-308
+  commit 58a2d0dec (fix(callouts): dedupe inhibitor rows; drake row honest on no-data).
+- 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests (_route_rank /
+  _route_rank_onhit, rank_for / rank_onhit_for) - operator said LEAVE these; do not fix.
+- 1 x tests/test_next_buy_lean_bucket.py arena divergence count (65 !=) - pre-existing.
+- drain_waves_2_3.py failures belong to the drain session - not this session's to fix.
+A scheduled ci run 37206748364 on the same SHA was in_progress at wrap; read it.
+
+Then (once the main checkout is brought to origin - see below):
+- DS :8860 still serves ENGINE 1.284.0 / patch 16.18.1 (read off /health at wrap); origin
+  carries 1.285.0 (agents/daemon_slayer/__init__.py) on 16.19.1 (data/daemon_slayer/
+  current.txt). Kill the :8860 listener PID (taskkill /F /PID, never Stop-Process),
+  schtasks /Run /TN RC-DaemonSlayer, verify curl http://127.0.0.1:8860/health reports
+  1.285.0 and 16.19.1.
+- RC restart owed: fast-forward the main tree to origin/main, py_compile, echo restart >
+  restart_trigger.txt, read back ops/runtime/health.json (new pid, alive, last_reload_ok).
+  Restart covers frozen app/_health_monitor.py (RM-377), RM-235 /api/health/all counters,
+  RM-267 :8889 /stats token, RM-261 ops/rc_supervisor.py + ops/rc_dev_runtime.py
+  scratch-name changes, RM-258 writer moves.
+
+Main checkout state at wrap (DO NOT stage / stash / reset / commit it): 52 behind
+origin/main, 1 ahead with UNPUSHED a6f3fa42a (docs(agent6): full audit pass - not on
+origin), and ANOTHER session's uncommitted work: M agents/_supervisor_ephemeral.py,
+M agents/agent3_testing/suite/conftest.py, ?? agents/agent3_testing/suite/
+test_agent6_failure_stub_l03.py. A drain-wave session may be active. Wait for that session
+to land its work before fast-forwarding.
+
+Operator setup list (physical / operator acts, batch into one ask):
+- Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window capture
+  source; set the game to borderless; install ffmpeg; set obs.record.enabled; restart
+  RC-HotkeyListener.
+- RC-UpstreamDriftCheck needs an ELEVATED reinstall.
+- Y-45 phone push needs WSL + ntfy (operator installing WSL; tailnet host known locally,
+  never write it into a tracked file). Y-45 was approved in chat 2026-10-03.
+- Re-copy the gitignored ship-batch from tools/ship-batch.md.
+
+Decisions pending:
+- RM-603 in-game callout compliance decision (operator).
+- RM-660 needs an adjudicator (distinct agent, record decision/alternatives/why).
+- Frozen app/_game_lifecycle.py mid-game start fix needs explicit operator approval.
+
+Open bugs / rows added today:
+- Unnumbered: Kled wiki extractor overwrite bug - file an RM row.
+- RM-595 DS percent-resist bug.
+- Y-01 needs 5 real game ends (live-gated; not synthetically drainable).
 
 Open from the drain (2026-10-03/04 session):
 - RM-258 PARTIAL: guard exempts all of tools/ except lcu_agent.py + hotkey_listener.py;
@@ -16,9 +56,6 @@ Open from the drain (2026-10-03/04 session):
   ci_watchdog, spec_watch, progress_watch). Broken core/ now silently disables the
   self-monitor (rc_supervisor.py:1466-1468). tools/legion_agent_boot.ps1 standalone copy
   to C:\RC-Agent cannot import core.
-- Pre-existing test failures seen by the atomic merger, outside its diff: web/ digest in
-  test_web_ascii_sweep.py; test_champion_mode_variants.py item count 164 vs 162 (likely
-  16.19.1 data drift); RM-662 DS skip-hygiene. CI on 89062445e not yet read - read it first.
 - Still open rows: RM-279 (dead-code vs revive, 4 tests + ASCII allowlist together), RM-280
   (portalocker lock redesign), RM-368, RM-381 (capacity), RM-292b-d, RM-251(b), RM-370
   (two workflow_dispatch CI runs <26 min apart), RM-229 (LCU pooled read unbounded), RM-290
@@ -31,6 +68,8 @@ Open from the drain (2026-10-03/04 session):
   renumbered, RM-229 dropped), worktree-wf_0815ac54-8f2-4 (RM-239/242), -5 (RM-500),
   worktree-agent-a0a31cf1b05f41e28 (6a53008f4 superseded by kit v4), RM-256 / RM-297b
   branches, worktree-agent-a4cfeb79e86b5bf30 (launcher fix, merged as 7e32c2933).
+  Also this wrap's detached worktree C:/rc-worktrees/done-20261004 (safe to remove once
+  its commit is on origin).
 - stop_claim_gate false positives to file: negated "isn't pushed" flagged as a push claim;
   future-tense "I'll confirm CI" flagged as a CI claim; subagent-made commit sentence
   without a named committer flagged.
@@ -39,6 +78,8 @@ Open from the drain (2026-10-03/04 session):
   lcu_client.py) and Y-45 (phone push off-box) in chat 2026-10-03.
 
 Carried forward (not acted on):
+- Not done by the 2026-10-04 grace wrap and still not done: memory lessons from the drain,
+  python tools/perseus_sync.py.
 - Kit gaps for MAIN v5: public launch function (RC uses private _run); argv-plus-stdin
   mode; POSIX _kill_tree; fleet_route has no effort knob. Responder / loop executor /
   run_lane still on ops/loop/headless_env.py. Watch inbox for MAIN v5 (MAIN 0020 order:
@@ -55,17 +96,31 @@ Carried forward (not acted on):
 - Inbox: 67 unread; the responder owns them - check ops/runtime/inbox_responder_answered.json.
 - Box load: no local full suite while 2+ others run (OOM). CI is the full gate.
 - slot bucket 1.lock unreadable (0 bytes, ~18h old) flagged by rc_facts - investigate owner.
+- ROADMAP top open: EXTERNAL-LIFT INTAKE band 1 (bodies in BACKLOG.md "External-lift
+  intake"), RM-486, RM-488/489, RM-479, RM-482.
+
+Retired this wrap (with reason): "CI on 89062445e not yet read" - superseded, CI read on
+newer 3c6e55324 (above). "Pre-existing failures: test_web_ascii_sweep digest,
+test_champion_mode_variants 164 vs 162, RM-662 DS skip-hygiene" - fixed on origin by
+8d02bc9e0, ac4fda142, 01717c031; none appear in run 37194003841's failure list.
+"WAKEUP_NOTES trim" - done this wrap (scripts/wakeup_prune.py --keep 3).
 
 Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Drain launcher
 ops/loop/drain_waves_2_3.py (--waves/--only) is reusable; it halts when the main tree is
 dirty. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin (RM-6xx range now in use).
 
-Do NOT redo (shipped this session, verifier-gated, pushed): wave 1 (78 rows, d1d078aab,
-LEDGER 1480-1559), docs citation fix fc9b12431, launcher fix 7e32c2933, wave 2
-tail-backlog + wave 3 ascii (3ef556865), wave 2 tail-roadmap (1e3e514c8, LEDGER
-1623-1651), wave 2 atomic (89062445e, LEDGER 1654-1659).
+Acceptance: CI green on main except the 4 operator-left RM-172 subtests (or all green);
+:8860 /health = 1.285.0 / 16.19.1; RC health.json new pid, alive, last_reload_ok.
 
-Status: /done ran on a usage-limit grace allowance: hand-off only. NOT done this wrap:
-WAKEUP_NOTES trim, memory lessons, perseus_sync, CI read on 89062445e. Do those first.
+Do NOT redo (shipped, verifier-gated, pushed): wave 1 (78 rows, d1d078aab, LEDGER
+1480-1559), docs citation fix fc9b12431, launcher fix 7e32c2933, wave 2 tail-backlog +
+wave 3 ascii (3ef556865), wave 2 tail-roadmap (1e3e514c8, LEDGER 1623-1651), wave 2 atomic
+(89062445e, LEDGER 1654-1659), DS batch CI repair (3c6e55324, LEDGER 1660).
+
+Status (2026-10-04 wrap): commits = WAKEUP_NOTES entry + this hand-off only, made from a
+detached worktree off origin/main (push range recorded in the commit log). CI = RED (12,
+detailed above). RC health.json at wrap: pid 24720, alive true, last_reload_ok true (the
+running code predates origin - restart owed). lcu phase None (not in game). No intent
+pending, no steers pending.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
