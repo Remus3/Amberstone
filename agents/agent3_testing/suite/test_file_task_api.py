@@ -22,10 +22,32 @@ def _port_open(host: str, port: int, timeout: float = 0.5) -> bool:
 
 # -- /api/file-task (via spawned supervisor) -------------------------
 
+# RM-409: OPT-IN, never a liveness probe. On a runner a closed port means "no
+# supervisor, skip"; on the operator's box an OPEN port means "the REAL
+# supervisor" - these tests POST /api/file-task and /dismiss, so the old
+# port-closed skip filed tasks into the LIVE stack. A liveness probe cannot tell
+# a disposable fixture supervisor from the operator's, so only an explicit flag
+# may arm them.
+LIVE_OPT_IN_ENV = "RC_AGENT3_LIVE_SUPERVISOR_TESTS"
+
+
+def live_supervisor_skip_reason(environ, port_open) -> str | None:
+    """None when the live tests may run, else the skip reason."""
+    if str(environ.get(LIVE_OPT_IN_ENV, "")).strip() != "1":
+        return (f"mutates a live supervisor over HTTP; set {LIVE_OPT_IN_ENV}=1 "
+                "against a DISPOSABLE supervisor to run (RM-409)")
+    if not port_open():
+        return "supervisor not running on :8890"
+    return None
+
+
 @pytest.fixture(scope="module")
 def live_supervisor():
-    if not _port_open("127.0.0.1", 8890):
-        pytest.skip("supervisor not running on :8890")
+    import os
+    reason = live_supervisor_skip_reason(
+        os.environ, lambda: _port_open("127.0.0.1", 8890))
+    if reason:
+        pytest.skip(reason)
 
 
 @pytest.mark.timeout(10)
