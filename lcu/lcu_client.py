@@ -182,14 +182,20 @@ class LcuClient(_PGMixin):
         # when the body is empty), non-2xx -> None (mirrors the urlopen
         # HTTPError -> None so a 404 error body never leaks as a dict to
         # callers), and a fail-soft pool None falls through to the per-call
-        # urlopen read. Lazy import keeps the frozen top-level import block
-        # untouched (same pattern as LIFT 5).
+        # urlopen read. RM-366: a write whose bytes were fully sent before the
+        # fault comes back as SENT_UNCONFIRMED and returns None WITHOUT that
+        # fallthrough, so a POST/PATCH is never transmitted twice. Lazy import
+        # keeps the frozen top-level import block untouched (LIFT 5 pattern).
         from core import lcu_pool
         if lcu_pool.pool_enabled():
             res = lcu_pool.get_shared_pool().request(
                 GAME_HOST, self._port, method, endpoint,
-                headers=headers, body=body,
+                headers=headers, body=body, distinguish_sent=True,
             )
+            if res is lcu_pool.SENT_UNCONFIRMED:
+                _log.debug("LCU %s %s: sent, response lost; not re-sent "
+                           "(RM-366)", method, endpoint)
+                return None
             if res is not None:
                 status, payload = res
                 if not (200 <= status < 300):

@@ -286,9 +286,11 @@ class LcuClientPoolPilotTests(unittest.TestCase):
         seen = {}
 
         class _P:
-            def request(self, host, port, method, path, headers=None, body=None):
+            def request(self, host, port, method, path, headers=None, body=None,
+                        distinguish_sent=False):
                 seen.update(host=host, port=port, method=method,
-                            path=path, headers=headers, body=body)
+                            path=path, headers=headers, body=body,
+                            distinguish_sent=distinguish_sent)
                 return (200, b'{"via": "pool"}')
 
         orig = lcu_pool.get_shared_pool
@@ -306,8 +308,10 @@ class LcuClientPoolPilotTests(unittest.TestCase):
         seen = {}
 
         class _P:
-            def request(self, host, port, method, path, headers=None, body=None):
-                seen.update(method=method, body=body)
+            def request(self, host, port, method, path, headers=None, body=None,
+                        distinguish_sent=False):
+                seen.update(method=method, body=body,
+                            distinguish_sent=distinguish_sent)
                 return (200, b"")  # empty body -> {} per the contract
 
         orig = lcu_pool.get_shared_pool
@@ -317,6 +321,8 @@ class LcuClientPoolPilotTests(unittest.TestCase):
         self.assertEqual(out, {})  # empty body decodes to {}
         self.assertEqual(seen["method"], "POST")
         self.assertEqual(seen["body"], b'{"code": "abc"}')
+        # RM-366: the client opts in to the sent-vs-unsent distinction.
+        self.assertTrue(seen["distinguish_sent"])
 
     def test_pool_non_2xx_returns_none(self):
         os.environ["RC_LCU_POOL"] = "1"

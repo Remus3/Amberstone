@@ -45,15 +45,32 @@ _TRUTHY = ("1", "true", "yes", "on")
 #: method through the pool, including ready-check accept, rune-page create and
 #: champ-select bench swap. POST and PATCH are deliberately absent.
 #:
-#: SCOPE, measured - this gate closes the double-apply INSIDE THE POOL ONLY, and
-#: the end-to-end hazard is NOT closed. On the give-up return of None,
-#: lcu/lcu_client.py:191 falls through to its urlopen path at :200 and re-sends
-#: the identical method and body, so a POST that faults in getresponse() is
-#: still transmitted twice: this change takes the worst case from 3 sends to 2,
-#: not to 1. Closing it needs an edit to lcu/lcu_client.py, which is a FROZEN
-#: file requiring operator approval - filed as RM-366. Do not read the gate
-#: below as an end-to-end exactly-once guarantee.
+#: SCOPE - end to end since RM-366. RM-345 alone closed the double-apply inside
+#: the pool only: on the give-up None, lcu/lcu_client.py fell through to its
+#: urlopen path and re-sent the identical write (3 sends down to 2, not to 1).
+#: RM-366 (frozen-file grant) makes the give-up distinguishable: the client
+#: passes distinguish_sent=True and receives SENT_UNCONFIRMED when a
+#: non-idempotent request's bytes were fully written before the fault, and
+#: then returns None WITHOUT the urlopen re-send. A request that faulted while
+#: being written (connect refused, send failed) still returns None and still
+#: falls through, because it was never fully transmitted.
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"})
+
+
+class _SentUnconfirmed:
+    """Sentinel type: a non-idempotent request was fully written, then the
+    response failed. The peer may have applied it; never re-send (RM-366)."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - debug aid
+        return "SENT_UNCONFIRMED"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+SENT_UNCONFIRMED = _SentUnconfirmed()
 
 
 def is_idempotent(method: object) -> bool:
@@ -61,8 +78,8 @@ def is_idempotent(method: object) -> bool:
 
     Fail-closed by design: a non-string or unrecognised verb is treated as a
     write, so an unknown method is not replayed BY THE POOL. See the scope note
-    on IDEMPOTENT_METHODS: the caller's urlopen fallthrough can still re-send it
-    once, so this is not an end-to-end exactly-once guarantee (RM-366).
+    on IDEMPOTENT_METHODS for how a caller suppresses its own fallback re-send
+    via distinguish_sent / SENT_UNCONFIRMED (RM-366).
     """
     if not isinstance(method, str):
         return False
@@ -152,7 +169,14 @@ class HttpsConnectionPool:
         *,
         headers: Optional[dict] = None,
         body: Optional[bytes] = None,
+        distinguish_sent: bool = False,
     ):
+        """See the class docstring. With ``distinguish_sent=True`` a
+        non-idempotent request whose bytes were fully written before the
+        fault returns the ``SENT_UNCONFIRMED`` sentinel instead of None, so
+        a caller with its own fallback (lcu/lcu_client.py) can tell "may
+        already be applied - do NOT re-send" from "never transmitted"
+        (RM-366). The default keeps the plain None contract."""
         try:
             key = (host, int(port))
         except (TypeError, ValueError):
@@ -169,8 +193,12 @@ class HttpsConnectionPool:
             # Non-idempotent: one attempt only.
             for attempt in (0, 1):
                 conn = self._get_conn(key)
+                sent = False
                 try:
                     conn.request(method, path, body, hdrs)
+                    # request() returned: every byte is on the wire, so from
+                    # here on the peer may have applied the write (RM-366).
+                    sent = True
                     resp = conn.getresponse()
                     data = resp.read()  # full read keeps the socket reusable
                     return (resp.status, data)
@@ -179,9 +207,11 @@ class HttpsConnectionPool:
                     if not retryable:
                         _log.debug(
                             "pool request %s %s%s failed; not retried "
-                            "(non-idempotent, RM-345): %s",
-                            method, host, path, e,
+                            "(non-idempotent, RM-345, sent=%s): %s",
+                            method, host, path, sent, e,
                         )
+                        if sent and distinguish_sent:
+                            return SENT_UNCONFIRMED
                         return None
                     if attempt == 1:
                         _log.debug("pool request %s%s failed twice: %s", host, path, e)
