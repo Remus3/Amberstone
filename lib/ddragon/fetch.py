@@ -63,6 +63,14 @@ def latest_version(client=None) -> str:
     return validate_version(versions[0])
 
 
+def _is_ddragon_payload(data: Any) -> bool:
+    """champion / item / summoner are `{"data": {...}}`; runesReforged is a
+    non-empty list. Anything else is not the requested document."""
+    if isinstance(data, dict):
+        return isinstance(data.get("data"), dict)
+    return isinstance(data, list) and len(data) > 0
+
+
 class DDragon:
     """Single-version DDragon pull + cache."""
 
@@ -95,6 +103,14 @@ class DDragon:
         if resp.status != 200:
             raise RuntimeError(f"DDragon {name}: HTTP {resp.status}")
         data = resp.json()
+        # RM-373: the parse gates ENCODING, not SHAPE - a well-formed
+        # {"error": "blocked"} or "maintenance" parsed fine and was written
+        # over the cache, which _read_cached then served forever. Require the
+        # DDragon envelope before the write.
+        if not _is_ddragon_payload(data):
+            raise RuntimeError(
+                f"DDragon {name}: 200 body is not a DDragon payload "
+                f"({type(data).__name__}) - cache left unchanged")
         _atomic_write_json(self._cached(name), data)
         logger.info("ddragon %s@%s cached (%d bytes)", name, self._version, len(resp.body))
         return data
