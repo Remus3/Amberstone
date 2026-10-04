@@ -119,12 +119,6 @@ def get_vision_token_source() -> TokenSource:
     return _resolve()[1]
 
 
-def is_using_legacy_fallback() -> bool:
-    # 2026-04-28 (proposal 1.7): legacy fallback retired; always False.
-    # Kept as a no-op shim for callers (e.g., dashboards) that probe it.
-    return False
-
-
 def debug() -> None:
     """Print the active source + first/last 4 chars of the token. Never
     prints the full secret - safe for copy-paste troubleshooting."""
