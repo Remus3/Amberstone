@@ -43,6 +43,21 @@ if [ -f "$ROOT/tools/sibling_name_sweep.py" ]; then
     fi
 fi
 
+# RM-492 credential-shape scan over the lines this push ADDS. Same stdin
+# replay and the same exit contract as the sweep above (2 HALT, 3 FAULT), and
+# it too runs BEFORE the LFS upload. Values are never printed.
+if [ -f "$ROOT/tools/credential_history_scan.py" ]; then
+    if ! command -v "$PY" >/dev/null 2>&1; then
+        printf >&2 "%s\n" "[credential-history] FAULT - no python on PATH, so the credential scan could not run. This is not a clean verdict."
+        exit 3
+    fi
+    printf '%s\n' "$REFS" | "$PY" "$ROOT/tools/credential_history_scan.py" --pre-push "$@"
+    CRED_RC=$?
+    if [ "$CRED_RC" -ne 0 ]; then
+        exit "$CRED_RC"
+    fi
+fi
+
 # Replay the captured ref lines to LFS on stdin without touching the invocation
 # line itself. `exec <` redirects this shell's stdin, so the command below reads
 # exactly what git handed us.
