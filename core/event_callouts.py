@@ -363,6 +363,10 @@ def _objective_callouts(game_time_s: float,
     # Window (seconds) after a spawn during which we still surface it as
     # "active" so the coach can call the contest, not just the pre-warn.
     active_window = _OBJ_ACTIVE_WINDOW_S
+    # RM-308(b): a list (even []) is event DATA - "no take seen" is a fact;
+    # None is NO DATA. Drakes respawn 5:00 after a TAKE, never on a game-start
+    # grid, so with no take on record the first drake is still standing.
+    has_event_data = isinstance(objective_events, list)
     for tag, spawn_s, _line, cadence_s in _SR_OBJECTIVES:
         if tag in claimed:
             continue  # emitted (or suppressed) with real-take timing above
@@ -370,23 +374,22 @@ def _objective_callouts(game_time_s: float,
         if cadence_s and cadence_s > 0:
             if game_time_s < spawn_s:
                 eta = spawn_s - game_time_s
+            elif has_event_data or (game_time_s - spawn_s) <= active_window:
+                # Data says untaken -> UP since spawn (persists). Without
+                # data only the just-spawned window is a fact.
+                out.append({
+                    "tag": tag,
+                    "line": _active_line(tag, line),
+                    "eta_s": round(spawn_s - game_time_s, 1),  # <= 0
+                    "kind": "objective",
+                })
+                continue
             else:
-                # Next cadence boundary at/after now.
-                elapsed_since_first = game_time_s - spawn_s
-                n_passed = int(elapsed_since_first // cadence_s)
-                next_spawn = spawn_s + (n_passed + 1) * cadence_s
-                # If we just crossed a spawn within the active window,
-                # surface it as active (eta_s <= 0) instead of the next one.
-                last_spawn = spawn_s + n_passed * cadence_s
-                if (game_time_s - last_spawn) <= active_window:
-                    out.append({
-                        "tag": tag,
-                        "line": _active_line(tag, line),
-                        "eta_s": round(last_spawn - game_time_s, 1),  # <= 0
-                        "kind": "objective",
-                    })
-                    continue
-                eta = next_spawn - game_time_s
+                # No event data: whether the drake was taken (and so when it
+                # respawns) is unknowable. Silence, not the old 5:00-grid
+                # guess that read "Drake spawns 5:00" over a standing drake
+                # (the _inhib_lane rule: a missing row beats a wrong one).
+                continue
             out.append({
                 "tag": tag,
                 "line": line,
@@ -679,7 +682,11 @@ def inhibitor_callouts(inhib_events: object, game_time_s: float) -> list[dict]:
     gt = _finite(game_time_s)
     if gt is None:
         gt = 0.0
-    out: list[dict] = []
+    # RM-308(a): keyed by tag, soonest respawn kept. Both teams own a top
+    # inhibitor and the tag is deliberately side-less, so two downs in one
+    # lane produced two rows with an identical tag AND identical text -
+    # two of three panel slots spent on one sentence in a base race.
+    by_tag: dict[str, dict] = {}
     for ev in inhib_events:
         if not isinstance(ev, dict):
             continue
@@ -691,13 +698,17 @@ def inhibitor_callouts(inhib_events: object, game_time_s: float) -> list[dict]:
             continue  # already respawned
         lane = _inhib_lane(ev.get("name"))
         lane_clause = f" ({lane})" if lane else ""
-        out.append({
-            "tag": f"inhib_{lane or 'lane'}",
+        tag = f"inhib_{lane or 'lane'}"
+        prev = by_tag.get(tag)
+        if prev is not None and prev["eta_s"] <= round(eta, 1):
+            continue
+        by_tag[tag] = {
+            "tag": tag,
             "line": f"Inhib down{lane_clause} - super minions pushing",
             "eta_s": round(eta, 1),
             "kind": "inhibitor",
-        })
-    return out
+        }
+    return list(by_tag.values())
 
 
 def structure_siege_callout(

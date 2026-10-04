@@ -521,8 +521,11 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     # RC2 P5.7 (WS4): neutral-objective kill events for the lost-objective macro
     # response. Liveclient-only (SR live events); absent -> omitted, the pure
     # macro_response handles the gap.
+    # RM-308(b): an EMPTY list is stamped too - it means "events read, no
+    # takes" (drake standing since its spawn), while an absent key means "no
+    # event data" (the drake row goes silent). Dropping [] collapsed the two.
     objective_events = lc.get("objective_events")
-    if isinstance(objective_events, list) and objective_events:
+    if isinstance(objective_events, list):
         gs["objective_events"] = objective_events
 
     # Per-team item-id pools (for the heal-threat nudge) come only from the
@@ -667,8 +670,8 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         tuple(sorted(
             f"{e.get('name')}:{e.get('killer_team')}:{e.get('down_at_s')}"
             for e in obj_events if isinstance(e, dict)))
-        if isinstance(obj_events, list) else ()
-    )
+        if isinstance(obj_events, list) else ("<no-event-data>",)
+    )  # RM-308(b): [] and "no data" render differently, so key them apart
     # Per-team item pools drive the heal-threat callout, so they must change
     # the sig too (same sig-completeness rule as item ids / inhib events) - an
     # enemy completing a sustain item or an ally buying anti-heal must re-compute

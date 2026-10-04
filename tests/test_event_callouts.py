@@ -69,22 +69,18 @@ class DragonActiveAndRespawnTests(unittest.TestCase):
         self.assertIsNotNone(drake)
         self.assertLessEqual(drake["eta_s"], 0.0)
 
-    def test_drake_next_after_active_window(self):
-        # At 360s (60s past spawn, beyond the 30s active window) the next
-        # drake on the 5min cadence is at 600s -> eta 240.
+    def test_drake_after_active_window_without_data_is_silent(self):
+        # RM-308(b): at 360s with NO event data nobody can know whether the
+        # 300s drake was taken; the old 5:00-grid "next at 600" was a guess.
         cs = _all_callouts_unbounded("sr", 360.0, 6, 1)
-        drake = _by_tag(cs, "dragon")
-        self.assertIsNotNone(drake)
-        self.assertGreater(drake["eta_s"], 0.0)
-        self.assertAlmostEqual(drake["eta_s"], 240.0, delta=0.01)
+        self.assertIsNone(_by_tag(cs, "dragon"))
 
-    def test_drake_respawn_cadence_late_game(self):
-        # At 905s: first 300, then 600, then 900 spawned. 905 is 5s past
-        # the 900s spawn -> active.
-        cs = _all_callouts_unbounded("sr", 905.0, 11, 2)
+    def test_drake_untaken_with_data_stays_up(self):
+        # RM-308(b): event data with no take -> the 300s drake still stands.
+        cs = next_callouts("sr", 905.0, 11, 2, max_n=99, objective_events=[])
         drake = _by_tag(cs, "dragon")
         self.assertIsNotNone(drake)
-        self.assertLessEqual(drake["eta_s"], 0.0)
+        self.assertAlmostEqual(drake["eta_s"], -605.0, delta=0.01)
 
 
 class LevelSpikeTests(unittest.TestCase):
@@ -628,17 +624,15 @@ class DynamicObjectiveRespawnTests(unittest.TestCase):
         return {"name": "dragon", "killer_team": side, "dragon_type": dtype,
                 "down_at_s": t}
 
-    # -- characterization: the static path is preserved without real events ----
-    def test_characterization_static_when_no_events(self):
+    # -- RM-308(b): no-data vs no-takes are resolved differently ---------------
+    def test_no_event_data_past_first_window_is_silent(self):
         cs = next_callouts("sr", 700.0, 6, 1, max_n=99)
-        drake = _by_tag(cs, "dragon")
-        self.assertAlmostEqual(drake["eta_s"], 200.0, delta=0.01)  # 900-grid - 700
+        self.assertIsNone(_by_tag(cs, "dragon"))
 
-    def test_empty_events_identical_to_no_events(self):
-        no_ev = _by_tag(next_callouts("sr", 700.0, 6, 1, max_n=99), "dragon")
+    def test_empty_events_means_untaken_drake_is_up(self):
         empty = _by_tag(
             next_callouts("sr", 700.0, 6, 1, max_n=99, objective_events=[]), "dragon")
-        self.assertAlmostEqual(no_ev["eta_s"], empty["eta_s"], delta=0.01)
+        self.assertAlmostEqual(empty["eta_s"], -400.0, delta=0.01)
 
     # -- dynamic: real take drives the ETA -------------------------------------
     def test_dragon_respawn_tracks_real_take(self):
