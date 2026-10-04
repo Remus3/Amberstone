@@ -96,6 +96,8 @@ class HealthAllResponse(_AllowExtra):
     # Y-13: sub-probes whose result is unknown (status "unknown") or errored.
     # Non-empty caps `status` at "yellow" (red still wins); [] when all measured.
     why: list[str] = []
+    # RM-282: core/coaching_data_lock degradation counters (in-process).
+    coaching_data_lock: dict[str, Any] = {}
 
 
 # -- POST /api/input ------------------------------------------------------
