@@ -69,6 +69,30 @@ _CONTROL_CHAR_TABLE = getattr(BaseHTTPRequestHandler, "_control_char_table", Non
 _SCRUB_RANGES = tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
 
 
+# D9 control-endpoint class: POSTs gated behind X-RC-Token == RC_DASH_TOKEN
+# (when that env var is set; it is set NOWHERE in this deployment today, so
+# the gate is inert and membership is a recorded DECISION, not a live fix).
+#
+# RM-296c (2026-10-03), decided deliberately rather than by omission: every
+# POST that WRITES TO THE LCU COMMAND QUEUE is a control endpoint, because it
+# drives the live League client (lock_pick, start_matchmaking,
+# lobby.kick_member, lobby.invite_player, rune / item / spell pushes) - at
+# least as consequential as the four original members. That is /api/lcu-cmd
+# plus the two routes that reach the SAME queue by the same token:
+# /api/loadout/apply and /api/sr-draft/apply. Read-only siblings
+# (/api/lcu-cmd-result, /api/loadout/list, /api/loadout/rune-pages) are NOT
+# members - they enqueue nothing.
+_CONTROL_ENDPOINTS = frozenset({
+    "/api/command", "/api/input", "/api/analyze", "/api/loop-control",
+    "/api/lcu-cmd", "/api/loadout/apply", "/api/sr-draft/apply",
+})
+
+
+def is_control_endpoint(path_base: str) -> bool:
+    """True when a POST to ``path_base`` must pass the RC_DASH_TOKEN gate."""
+    return path_base in _CONTROL_ENDPOINTS
+
+
 def _scrub_log(text: str) -> str:
     """Escape control characters so a request cannot inject into the log.
 
@@ -524,7 +548,7 @@ class Handler(BaseHTTPRequestHandler):
 
         # D9: Control Endpoint Auth
         path_base = self.path.split("?", 1)[0]
-        if path_base in ("/api/command", "/api/input", "/api/analyze", "/api/loop-control"):
+        if is_control_endpoint(path_base):
             dash_token = os.environ.get("RC_DASH_TOKEN", "").strip()
             if dash_token:
                 req_token = (self.headers.get("X-RC-Token") or "").strip()
