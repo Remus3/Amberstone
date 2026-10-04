@@ -12,6 +12,31 @@ docs/specs/leap/*.md + tools/live-gated-drain.md (claude-opus-4-8),
 docs/RESPONDER_RUNNER_SPEC.md:224.
 
 Carried forward (not acted on yet):
+- External-lift intake (lift 1) 2026-10-04 (LEDGER 1561-1622; rows RM-601..RM-657,
+  RM-661..RM-668, residuals RM-658..RM-660 + RM-669..RM-679; refs "external reference
+  A..I / L" only, never the source). Band 1 RM-601..RM-613 and Band 3 RM-637..RM-641
+  (ADR-016) LANDED; RM-603 / RM-608 / RM-611 PARTIAL. OPEN: Band 2 RM-614..RM-636 and
+  Band 4 RM-642..RM-657 (BACKLOG "External-lift intake"); residual rows RM-658..RM-660,
+  RM-669..RM-679 (RM-660 needs a distinct adjudicator first - Settled target-state fence;
+  RM-603 skill-point toast is held by the B4 in-game compliance rule - operator / DevRel
+  call). DS batch RM-522 + RM-661 (16.19.1 re-extract) + RM-662 (ARAM parity guard) +
+  RM-666 (ARAM melee +15 MR, premise confirmed on the wiki) was IN FLIGHT on branch
+  lift1/ds-batch (b55458e56, 2822aec23, 369fdd6de; ENGINE 1.285.0 proposed) - check LEDGER
+  for its landing; if absent, verify and land it (Tier-2: dual suite, DS :8860 restart,
+  Share mirror, /health read-back). LIVE-GATED: LX-01..LX-13 in docs/LIVE_GAME_GATED_SYNC.md.
+  Main-checkout chore: re-mirror tools/ship-batch.md into the gitignored
+  .claude/skills/ship-batch/SKILL.md and .claude/commands/ship-batch.md (RM-668 step 0).
+  Restart the RC-HotkeyListener task so it loads the Ctrl+Shift+K mark slot (RM-638).
+  OPERATOR ASK (one batch, physical / credential; nothing records until done): start OBS
+  and enable its websocket server with the password already in config; choose the
+  recording disk and folder (>= 28 GB free to start); scene capture source WGC display or
+  window capture, never game capture; locked resolution + Borderless; record format
+  hybrid MP4 if chapters are wanted; 1-2 s keyframe interval; install ffmpeg (with
+  ffprobe) on PATH or set obs.record.ffmpeg_path; set obs.record.enabled true in
+  config/coach_settings.json and "vod_record": "allow" per mode in
+  config/feature_flags.json; retention stays dry-run until the operator turns it off.
+  Not intake, red on CI (owners): test_rm415_liveclient x7 = RM-308 58a2d0dec (Wave1);
+  test_headless_env + lane8 sibling-writers = 585473f74 (drain_waves_2_3).
 - External-reference lift 2 ingest 2026-10-04 (LEDGER 1560-1590; rows RM-526..RM-594):
   Band 1 ALL SHIPPED (RM-526..RM-533, RM-535..RM-537, Y-06 on the CCR-135/S10 line)
   plus Band 3 RM-567 (frozen lcu_client, operator grant) and RM-568 (phone push,
