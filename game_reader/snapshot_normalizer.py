@@ -161,6 +161,20 @@ def reset_liveclient_subresource_failures() -> None:
     _subresource_last_warn.clear()
 
 
+# RM-237: aggregate wall-clock budget for the per-tick subresource GETs
+# (/activeplayerrunes, up to five /playermainrunes, /activeplayerabilities,
+# the LCU game-id relay). Each `_get` is timeout=2 PER SOCKET OPERATION, so
+# unbudgeted they summed to a ~17 s worst-case tick against the health
+# monitor's 12 s liveness threshold (app/_health_monitor.py). A GET is only
+# STARTED while budget remains, so the subresource half is bounded by the
+# budget plus one in-flight call.
+SUBRESOURCE_TICK_BUDGET_S = 3.0
+
+
+class SubresourceBudgetExhausted(RuntimeError):
+    """A subresource GET was skipped because the tick budget ran out."""
+
+
 def _note_subresource_failure(subresource: str, exc: BaseException) -> None:
     """Count a swallowed subresource read failure and warn (throttled)."""
     count = _subresource_failures.get(subresource, 0) + 1
@@ -340,6 +354,8 @@ class _NormalizerMixin:
         # so a gameMode gate would wrongly strip them. Without a map number,
         # fall back to the mode table: only the known non-SR maps are gated.
         self._sr_geometry = _is_sr_geometry(game_info.get("mapNumber"), game_mode)
+        # RM-237: arm this tick's aggregate subresource budget.
+        self._sub_deadline = time.monotonic() + SUBRESOURCE_TICK_BUDGET_S
 
         # -- Detect GameEnd event - return None immediately so the overlay
         # exits game mode without waiting for the 30-second grace period ------
@@ -696,12 +712,32 @@ class _NormalizerMixin:
             # API-002: ability names + levels (no cooldowns - RM-236(e))
             "my_abilities":       self._read_my_abilities(),
             # DS calibration: Riot game_id from LCU relay ('' when no game or agent stale)
-            "game_id":            self._try_lcu_game_id(),
+            # RM-237: inside the tick budget like the other subresources.
+            "game_id":            (self._try_lcu_game_id()
+                                   if self._sub_budget_left() > 0 else ""),
         }
 
     # ------------------------------------------------------------------
     # Derived overlay fields
     # ------------------------------------------------------------------
+
+    def _sub_budget_left(self) -> float:
+        """RM-237: seconds of subresource budget left this tick (inf when no
+        tick has armed a deadline - direct helper calls keep old behaviour)."""
+        deadline = getattr(self, "_sub_deadline", None)
+        if deadline is None:
+            return math.inf
+        return deadline - time.monotonic()
+
+    def _sub_get(self, url):
+        """RM-237: `_get` for per-tick subresources, refused once the tick's
+        aggregate budget is spent. The refusal raises into the caller's
+        existing fail-soft handler, so it is counted and warned like any
+        other unavailable subresource."""
+        if self._sub_budget_left() <= 0:
+            raise SubresourceBudgetExhausted(
+                f"tick budget {SUBRESOURCE_TICK_BUDGET_S}s spent; skipped {url}")
+        return self._get(url)
 
     def _zone_of(self, x: float, z: float) -> str:
         """RM-236(d): `_map_zone` is Summoner's Rift geometry. On any other
@@ -1330,7 +1366,7 @@ class _NormalizerMixin:
         Returns "" on any failure - never raises.
         """
         try:
-            data = self._get(f"{LIVE_API}/activeplayerrunes")
+            data = self._sub_get(f"{LIVE_API}/activeplayerrunes")
             if not isinstance(data, dict):
                 return ""
             keystone  = data.get("keystone", {})
@@ -1354,7 +1390,7 @@ class _NormalizerMixin:
         Returns {} on any failure - never raises.
         """
         try:
-            data = self._get(f"{LIVE_API}/activeplayerrunes")
+            data = self._sub_get(f"{LIVE_API}/activeplayerrunes")
             if not isinstance(data, dict):
                 return {}
             keystone = data.get("keystone", {})
@@ -1417,7 +1453,7 @@ class _NormalizerMixin:
                 continue
             try:
                 encoded = urllib.parse.quote(summoner)
-                data = self._get(f"{LIVE_API}/playermainrunes?summonerName={encoded}")
+                data = self._sub_get(f"{LIVE_API}/playermainrunes?summonerName={encoded}")
                 if not isinstance(data, dict):
                     continue
                 keystone = data.get("keystone", {})
@@ -1443,7 +1479,7 @@ class _NormalizerMixin:
         read `ab.get("cooldown")` degrade identically (None -> omitted).
         """
         try:
-            data = self._get(f"{LIVE_API}/activeplayerabilities")
+            data = self._sub_get(f"{LIVE_API}/activeplayerabilities")
             if not isinstance(data, dict):
                 return {}
             result = {}
