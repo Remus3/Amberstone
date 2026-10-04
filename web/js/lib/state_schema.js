@@ -179,8 +179,7 @@
  * @property {Object} daemon_slayer
  * @property {Object} supervisor
  * @property {Object} cost
- * @property {Object} bridge
- * @property {Object} peers
+ * @property {Object} agent6
  * @property {string} rc_version
  */
 
