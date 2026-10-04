@@ -186,6 +186,42 @@ def _candidate_pool(seed: dict, owned_ids, top_k: int) -> list[dict]:
     return pool
 
 
+def _resolve_forced(forced_item_ids, owned, rows_by_id: dict, depth: int,
+                    notes: list) -> list[str]:
+    """RM-483: normalize the forced (locked, not-yet-owned) item ids.
+
+    Order is the caller's priority. Owned ids are already satisfied; ids
+    outside the candidate pool are noted, never invented (the planner has no
+    score row for them); a second forced id in an already-forced unique family
+    is dropped (no-double-unique is engine-authoritative); the list is
+    truncated to the planning depth.
+    """
+    owned_set = {str(i) for i in (owned or ())}
+    kept: list[str] = []
+    fams: dict[str, str] = {}
+    for raw in (forced_item_ids or ()):
+        iid = str(raw).strip()
+        if not iid or iid in kept or iid in owned_set:
+            continue
+        row = rows_by_id.get(iid)
+        if row is None:
+            notes.append(f"forced item {iid} not in candidate pool - ignored")
+            continue
+        fam = str(row.get("unique_passive_key") or "")
+        if fam and fam in fams:
+            notes.append(f"forced item {iid} shares unique family {fam} "
+                         f"with forced {fams[fam]} - dropped")
+            continue
+        if fam:
+            fams[fam] = iid
+        kept.append(iid)
+    if len(kept) > depth:
+        notes.append(f"forced items exceed planning depth {depth} - kept "
+                     f"the first {depth}")
+        kept = kept[:depth]
+    return kept
+
+
 def _to_planned(row: dict, terms: ScoreTerms) -> PlannedItem:
     return PlannedItem(
         item_id=str(row.get("item_id")),
@@ -208,8 +244,16 @@ def plan_build(
     top_k: int = DEFAULT_TOP_K,
     prune_threshold: float = DEFAULT_PRUNE_THRESHOLD,
     mode: str = "SR",
+    forced_item_ids=None,
 ) -> BuildPlan:
     """Plan an ordered build via beam search over the seed candidate pool.
+
+    ``forced_item_ids`` (RM-483) are locked items the player does NOT own yet
+    but has committed to: every one that is in the candidate pool appears in
+    every surviving beam, enforced by feasibility pruning during the search
+    (a partial build is dropped once the remaining slots cannot fit its
+    missing forced items, and a forced item's unique family is reserved).
+    Exclusions are recorded in ``notes``. None / empty = unchanged behaviour.
 
     ``seed_fn(champion, owned_ids, mode=...)`` returns the {ranked[], order[]}
     envelope (the HTTP boundary to DS - injectable, defaults to None). When it
@@ -253,6 +297,11 @@ def plan_build(
 
     rows_by_id = {r["item_id"]: r for r in pool}
     owned_count = len(owned)
+    forced = _resolve_forced(forced_item_ids, owned, rows_by_id, depth,
+                             plan.notes)
+    forced_set = frozenset(forced)
+    forced_fams = {str(rows_by_id[i].get("unique_passive_key") or "")
+                   for i in forced} - {""}
 
     def _score(id_seq: list[str]) -> ScoreTerms:
         return score_build(
@@ -285,6 +334,15 @@ def plan_build(
                 fam = str(row.get("unique_passive_key") or "")
                 if fam and fam in parent_fams:
                     continue
+                if forced_set:
+                    # RM-483: a forced item's unique family is reserved for it.
+                    if iid not in forced_set and fam and fam in forced_fams:
+                        continue
+                    # Feasibility: the slots left after this one must fit
+                    # every forced item this partial build still lacks.
+                    missing = len(forced_set - parent_ids - {iid})
+                    if missing > depth - d:
+                        continue
                 new_seq = [pi.item_id for pi in parent.items] + [iid]
                 key = frozenset(new_seq)
                 if key in seen:  # dedupe-by-set (order-invariant).
