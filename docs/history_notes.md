@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-03g - POSIX kit gap to MAIN; RM-511 model pins; RM-510 residual; worktree prune
+
+- **Merges (pushed, verifier MERGE-OK each):** `887422d85` RM-510 residual (unthrottled None exits 1 in timeline_ingest), `fc4ae28c1` RM-511 stale model pins. LEDGER 1478-1479.
+- **MAIN note:** POSIX `_kill_tree` kills only the direct child (kit v4), delivered 1/1, sha256 `2ba665d7`.
+- **Worktrees:** 13 merged pruned. `a1bc4e6` patch already on main (needs `branch -D`); `a0a31cf` holds unmerged responder commit `6a53008f4`.
+- **Next:** stale coach/vision model pins (`claude-sonnet-4-6`) + cost_tracker price rows - file as a ROADMAP row.
+- **Do NOT redo:** RM-510 residual, RM-511, the POSIX note.
+
+---
+
 # 2026-10-03f - CI red fixed; ROADMAP dup ids; NOW-7 residual; console-flash completeness; RM-510
 
 - **Merges (all pushed, verifier MERGE-OK each):** `e8a498d6e` p2w2 `_FakeProc.args` (CI red root cause `47d4cf506`), `3ac0da26b` ROADMAP dup ids -> RM-513/514/515 + uniqueness guard, `9a86540e5` NOW-7 gate honours outer pid only as live ancestor + inert banner, `3011cf91a` console-flash AST completeness + upstream_drift_check CREATE_NO_WINDOW, `1fe7c1b5d` RM-510 ingest exit 0/75/1. LEDGER 1473-1477.

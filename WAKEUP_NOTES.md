@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-04c - joint-round C4 slots.py adopted, SHARED_SHA256 re-pinned
+
+- **Shipped (pushed):** `9024fd2cd` C4 `ops/loop/slots.py` (LW `700cd64`) byte-copied, 11426 bytes, digest equal to LW; `test_slots_is_stale_arms_rm503` +2 C4 live-holder cases (LEDGER 1663). Operator approved in chat and told CS / SS directly; RC sent no note.
+- **Gate:** 45 passed over loop_concurrency + rm503 + rm504.
+- **New open:** `tools/slot_bucket_audit.py` OVER_STALE wording is wrong for a live holder under C4; `tools/stop_claim_gate.py` flags "LW committed ..." (sibling code as subject) as an unbacked commit claim.
+- **Next:** next_buy_lean_bucket arena count CI red (carried), then the unread MAIN notes (FLEET-KIT v4 order, 1327 FIX).
+- **Do NOT redo:** C4 adoption / re-pin; do not re-raise the "C4 HELD pending MAIN" line.
+
+---
+
 # 2026-10-04b - CI red 12 -> 5 (rm415); L-03 landed; DS + RC restarted
 
 - **Shipped (pushed):** `89ce8df91` agent6 L-03 stub isolation (LEDGER 1661), `67f94e8f6` rm415 re-pin to RM-308(b) None (LEDGER 1662).
@@ -23,13 +33,3 @@
 - **DS :8860 still serves 1.284.0 / 16.18.1** (read off /health); origin carries 1.285.0 / 16.19.1. Restart after the main checkout reaches origin.
 - **Next:** fix CI red (rm415 first), then DS restart + RC restart once the main checkout is fast-forwarded.
 - **Do NOT redo:** nothing shipped beyond this hand-off.
-
----
-
-# 2026-10-03g - POSIX kit gap to MAIN; RM-511 model pins; RM-510 residual; worktree prune
-
-- **Merges (pushed, verifier MERGE-OK each):** `887422d85` RM-510 residual (unthrottled None exits 1 in timeline_ingest), `fc4ae28c1` RM-511 stale model pins. LEDGER 1478-1479.
-- **MAIN note:** POSIX `_kill_tree` kills only the direct child (kit v4), delivered 1/1, sha256 `2ba665d7`.
-- **Worktrees:** 13 merged pruned. `a1bc4e6` patch already on main (needs `branch -D`); `a0a31cf` holds unmerged responder commit `6a53008f4`.
-- **Next:** stale coach/vision model pins (`claude-sonnet-4-6`) + cost_tracker price rows - file as a ROADMAP row.
-- **Do NOT redo:** RM-510 residual, RM-511, the POSIX note.
