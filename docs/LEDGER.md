@@ -101,6 +101,166 @@ Pointers: open work -> `ROADMAP.md` + `BACKLOG.md`; recent sessions -> `WAKEUP_N
 
 ---
 
+1559. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **Wave1 merge guards (main `7c9f52599`), verifier-gated per slice; merged by the single Wave1 merger.** Merge-time repo-wide guard fixes: ascii-source baseline narrowed for RM-262, drain_waves_2_3.py listed for console-flash, two new-test skips made capability-gated / assertive, laning_cv_overrides.py dead sha remapped. drift_guard mirror drift fixed by re-mirroring three tools/*.md into the local .claude/commands mirror.
+
+1558. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-418, verifier-gated per slice; merged by the single Wave1 merger.** RM-260 RE-FILED from the docs slice's live-verified text (offsets at 800d186bc): mark_active has zero production callers, outer handler redacted, and coaches/experimental_builder.py:241 logs exc UNREDACTED beside the Anthropic(api_key=...) client. RM-260 body in BACKLOG superseded by the re-filing; RM-260 stays OPEN for build.
+
+1557. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-483 (main `56b42f5d9`), verifier-gated per slice; merged by the single Wave1 merger.** plan_build(forced_item_ids=None) keeps every in-pool forced id in every surviving beam via feasibility pruning + unique-family reservation; misses recorded in notes. replan.py / routes_build_plan / UI lock control not wired yet.
+
+1556. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-507 (main `e3320e14c`), verifier-gated per slice; merged by the single Wave1 merger.** Report docs/specs/channel_reply_debt_rm507_2026-10-03.md: 496 inbox files (478 inbound + 18 self-copies); replies open with 'Replies-To: <inbound filename>'; RM code retired (archived tree); MAIN stays out of responder participants. CHANNEL.md untouched.
+
+1555. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-505 (main `3ea6d2b89`), verifier-gated per slice; merged by the single Wave1 merger.** docs/SIBLING_SWEEP_AND_BOUNDARY.md: outbound-document shape - licence and provenance IN the artifact, recipients adopt the idea with attribution, never spell around a sweep; reversal condition stated.
+
+1554. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-501 (main `081811077`), verifier-gated per slice; merged by the single Wave1 merger.** Dead-citation repair: 8 living docs remapped in place (77 occurrences, 75 -> 5 unresolvable); append-only history files NOT edited - docs/SHA_CITATION_MAP.md carries 349 dead->live pairs (all verified). tools/rewrite_sha_citations.py: word-boundary fix + --skip-resolvable. Operator gate on 'the gated RM-501 repair' treated as lifted by this session's operator request ('complete those open tasks ... frozen grant allowed').
+
+1553. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-494 (main `246737a68`), verifier-gated per slice; merged by the single Wave1 merger.** CLAUDE.md Settled block: preamble (a reversal condition re-opens for re-check, never licenses deleting the fence) and a 'Reverses if:' clause on all 22 lines; item-5 overlap note no longer an open gap; anchored guard test. FLEET block untouched.
+
+1552. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-380 (main `fc54fa8b2`), verifier-gated per slice; merged by the single Wave1 merger.** CONFIG_AUTHORITY.md names both feature_flags parsers (feature_policy + config_validator); the two hard constant pairs guarded (source-text read of frozen files, anchor + ablation); headless-queue.md stale pins replaced by a text-anchored pointer.
+
+1551. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-149 (main `e2aa9332c`), verifier-gated per slice; merged by the single Wave1 merger.** Docs-only rulings: %USERPROFILE%\.gemini PURGEABLE (still per-path adjudicator + live-reference grep + Recycle Bin + operator halt); Temp clone tree: age prune withdrawn, only whole ended session dirs with no worktree entry, via Recycle Bin. Self-adjudicated by the producer, not a distinct adjudicator (recorded per verifier caveat).
+
+1550. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-191 (main `ba52e9ae6`), verifier-gated per slice; merged by the single Wave1 merger.** write_fatal is a counted channel (fatal_stats ring of 10, ERROR log, last_fatal.txt kept); health.json carries fatal_count / last_fatal_at / recent_fatals; /api/health/all adds rc_heartbeat_age_s and rc_stale (red > 15 s; recent fatal = yellow). The live handle-holder probe stays LIVE-GATED.
+
+1549. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-277 (main `75efc90e7`), verifier-gated per slice; merged by the single Wave1 merger.** app._write_data(fields) and _init_data_file take coaching_data_lock around re-read / merge / write; callers name their keys; SCRIPT_DIR untouched (frozen, grant).
+
+1548. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-259 (main `e0328f68a`), verifier-gated per slice; merged by the single Wave1 merger.** save_rating / save_tft_rating fill a report dict; frozen app/_game_lifecycle logs saved / NOT saved / skipped at 3 sites; agents/supervisor refuses a rating file older than the match (game_time_s + 120 s slack, else 15 min).
+
+1547. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-230 (main `38eb955d7`), verifier-gated per slice; merged by the single Wave1 merger.** lcu_client _parse_lockfile_fields: port all digits 1..65535, password non-blank; applied in connect() and _refresh_conn_if_changed (bad rotated lockfile keeps last good creds).
+
+1546. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-366 (main `1d18c5202`), verifier-gated per slice; merged by the single Wave1 merger.** HttpsConnectionPool.request(distinguish_sent=True) returns a falsy SENT_UNCONFIRMED sentinel when a POST/PATCH faults after send; LcuClient returns None without the urlopen fallback, so a write goes out once. GET path unchanged.
+
+1545. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-358 (main `db9a33bf4`), verifier-gated per slice; merged by the single Wave1 merger.** Frozen half: lcu_client _request comment says the pool is DEFAULT-ON; _FROZEN_PENDING emptied with a revert guard.
+
+1544. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-289 (main `c7f18d075`), verifier-gated per slice; merged by the single Wave1 merger.** core/moon_proxy.is_available pings /health outside self._lock (claim under lock, ping unlocked, publish under lock, finally clears the flag). Frozen, grant.
+
+1543. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **frozen supervisor walker (main `9f35d814f`), verifier-gated per slice; merged by the single Wave1 merger.** ops/rc_supervisor.py _Phase3Watcher._newest_code_mtime: rglob + post-filter -> os.walk that never enters agents/daemon_slayer / __pycache__ / dot-dirs (frozen, operator grant this session). Takes effect at the next supervisor restart (NOT bounced at merge - running work).
+
+1542. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-294b (main `52a836781`), verifier-gated per slice; merged by the single Wave1 merger.** tools/tests already in CI (RM-407); agent3 suite 351 passed / 8 skipped locally but stays unwired until the 1-in-3 heartbeat flake is fixed at source; its failure message now carries samples, window and child liveness.
+
+1541. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **replay-rotation residual (main `a0e757963`), verifier-gated per slice; merged by the single Wave1 merger.** pull_rotation_report leaves empty windows out of the first/last comparison and reports empty_observations (~104 empty rows in the out-of-tree ROFL archive, not rewritten).
+
+1540. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **console-flash residual (main `aaacee4cd`), verifier-gated per slice; merged by the single Wave1 merger.** Completeness check walks the task targets' import closure; tools/sibling_name_sweep.py git spawn gains CREATE_NO_WINDOW; dashboard/routes_loop_status.py listed. At merge it also caught ops/loop/drain_waves_2_3.py (listed in 7c9f52599).
+
+1539. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **NOW-7 residual (main `f54c14be3`), verifier-gated per slice; merged by the single Wave1 merger.** is_live_ancestor without psutil proves the direct parent via os.getppid().
+
+1538. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-135 (main `1f8d0c704`), verifier-gated per slice; merged by the single Wave1 merger.** tools/backup_irreplaceable.py: SQLite online-backup snapshots of irreplaceable data/*.db into gitignored ops/backups/data/<stamp>/, manifest, retention, verify (restore to temp + integrity_check + row counts), non-overwriting restore. Not done: first live backup, schedule, off-box copy (operator decisions).
+
+1537. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-409 (main `f967f3251`), verifier-gated per slice; merged by the single Wave1 merger.** test_file_task_api runs only under RC_AGENT3_LIVE_SUPERVISOR_TESTS=1; census of the other agent3 files clean.
+
+1536. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-508 (main `b34abdf29`), verifier-gated per slice; merged by the single Wave1 merger.** Home view request-generation counter: a stale startup /api/home/summary ({} from the mock server) can no longer wipe the W/L pips. No timeout or assertion relaxed. CI-runner confirmation pending.
+
+1535. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-509 (main `4d6199552`), verifier-gated per slice; merged by the single Wave1 merger.** CI does not fetch LFS (bandwidth); the pin is an explicit skip with a reason, RC_REQUIRE_LFS_CONTENT=1 makes it FAIL (test_rm175 + test_build_order_precompute).
+
+1534. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-489 (main `97f884e43`), verifier-gated per slice; merged by the single Wave1 merger.** Two stores, two rules: RETAIN=2 covers only the gitignored web/data/ddragon mirror; the tracked data/meta_build/ddragon archive keeps everything (DS quotes archived patches). Guards: cited patches tracked, pruner cannot reach the archive.
+
+1533. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-488 (main `34f2611e0`), verifier-gated per slice; merged by the single Wave1 merger.** DEGRADED sweep prints a ::warning annotation under GitHub Actions. Arming CI's real-name sweep needs the operator to set the RC_MOON_SYNC_REPOS secret (halt boundary). The six halted lane/* pushes were resolved by deletion (LEDGER 1457).
+
+1532. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-491 (main `e6a77a12e`), verifier-gated per slice; merged by the single Wave1 merger.** Sibling sweep tree arm also scans untracked, non-ignored files; untracked count in the clean line.
+
+1531. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-514 (main `2a7c92c5e`), verifier-gated per slice; merged by the single Wave1 merger.** upstream drift checker writes an unacknowledged alert to upstream_drift_alerts.json BEFORE the sentinel advances (exit 2 if it cannot); --ack; rc_facts lists unacknowledged alerts.
+
+1530. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-515 (main `52d46aab9`), verifier-gated per slice; merged by the single Wave1 merger.** certifi 2026.2.25 -> 2026.7.22; requests/urllib3/cryptography deliberately unpinned (no tracked import; guard reds if one appears); anthropic 1.x and websockets 17 majors still need evaluation.
+
+1529. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-493 (main `19149b40c`), verifier-gated per slice; merged by the single Wave1 merger.** tools/freeze_witness.py hashes on-disk files incl. ignored ones (snapshot / verify / price); 0.010 s ops/loop, 0.043 s tools/.
+
+1528. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-504 (main `81b1de47c`), verifier-gated per slice; merged by the single Wave1 merger.** tools/slot_bucket_audit.py read-only verdicts (DEAD_PID / PID_REUSED / OVER_STALE / UNREADABLE) run by rc_facts; loop_controller.pre_hold_reap logs then reaps condemned locks; ops/loop/hold_corpus_rc.json (44/43/1/43, worst 5401 s, lower bound). Live: a 0-byte 1.lock ~13 h old in the shared bucket, reported not cleared; caller unidentified.
+
+1527. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-506 (main `27968ce59`), verifier-gated per slice; merged by the single Wave1 merger.** Durable control/DISARMED sentinel (main() exits 3 before claim_repo; cycle top and waits halt); STOP stays a cycle brake. slots.py STOP awareness is a joint cross-repo act, not done.
+
+1526. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-503 (main `ad06efbf3`), verifier-gated per slice; merged by the single Wave1 merger.** Test pins WHICH is_stale arm fires (age arm at 1.5x stale_after, zero pid_alive calls). slots.py and SHARED_SHA256 untouched.
+
+1525. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-431 (main `f9d1ca0a5`), verifier-gated per slice; merged by the single Wave1 merger.** Long-run confirming-count deadlock closed by RM-498 (candidate a); candidate (c) rejected; pinned with an overlapping-runs test.
+
+1524. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-498 (main `bd9861822`), verifier-gated per slice; merged by the single Wave1 merger.** stop_claim_gate keeps one deferred entry per background launch, creditable by up to 2 summary-bearing reads; only EV_SUMMARY_LINE lines attach.
+
+1523. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-490 (main `f51e1d66d`), verifier-gated per slice; merged by the single Wave1 merger.** stop_claim_gate EV_VACUOUS matches a line-leading pytest INTERNALERROR>.
+
+1522. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **dashboard guard re-pin (main `04d78be77`), verifier-gated per slice; merged by the single Wave1 merger.** test_apply_runes_page_filter re-pinned to the RM-297a rule; test_web_ascii_sweep _LIVE_HALF_DIGEST recomputed on the MERGED tree (RM-196 + RM-139 + RM-244 + RM-240 + RM-508 web edits; neither slice's own value).
+
+1521. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-247 (main `e43ef3b72`), verifier-gated per slice; merged by the single Wave1 merger.** 8K (7680x4320) cap on upload_frame and the crop path; bomb-class / MemoryError frames refused (ok=False), not forwarded. Real in-game frame check still LIVE-GATED.
+
+1520. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-299a (main `ee04ba430`), verifier-gated per slice; merged by the single Wave1 merger.** RC2_QA_CONSOLIDATED symbols backticked so citations verify content (2 rows now CONFIRMED, 2 line numbers re-derived). ~1327 RESOLVES/UNCHECKED citations remain (195 in BACKLOG.md) - lane-7 doc sweep.
+
+1519. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-299b (main `024778855`), verifier-gated per slice; merged by the single Wave1 merger.** GET list params capped only where they fan out (cc_blended / cc_conditional / cc_pairing / peel_priority 16 champions; ds_combo seq 32), 400 not truncate.
+
+1518. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-245 (main `72e1b7bac`), verifier-gated per slice; merged by the single Wave1 merger.** routes_state degraded paths: failed SSE build sends keep-alive only, asset-stamp failure 503 ok:false, single-flight cache misses, cost_ok fails closed.
+
+1517. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-240 (main `c703104f3`), verifier-gated per slice; merged by the single Wave1 merger.** Every POST under /api/decisions/ is a control endpoint; coach_decisions.js sends X-RC-Token from localStorage. Inert until the operator sets RC_DASH_TOKEN and the localStorage value.
+
+1516. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-297c (main `5524366c9`), verifier-gated per slice; merged by the single Wave1 merger.** Rune write outer circuit: backoff 2/4/8/16/32 s, stop after 6, one WARNING per pick with the reason from LcuClient.last_request_error() (frozen lcu_client, grant). Log wording unchanged (lcu_push_watcher parses it). Landed WITHOUT RM-297b (held).
+
+1515. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-296e (main `7e2777754`), verifier-gated per slice; merged by the single Wave1 merger.** Measured: both :8888 servers are ThreadingHTTPServer, thread per request, no pool; no change; pin test reds if a bounded pool appears.
+
+1514. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-296b (main `806f25b42`), verifier-gated per slice; merged by the single Wave1 merger.** /api/loadout/apply returns queued_ids [{cmd,id}] beside the unchanged queued list; UI polling deferred to lane 4 (UI-audit owed).
+
+1513. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-296a (main `d8680aba5`), verifier-gated per slice; merged by the single Wave1 merger.** Per-verb schema for all 28 /api/lcu-cmd verbs; wrong type -> 400 naming the field; undeclared keys dropped; integer fields accept numeric strings.
+
+1512. DONE **2026-10-04 (Wave1 drain merge, Tier-2.)** - **RM-243 (main `e57943eb3`), verifier-gated per slice; merged by the single Wave1 merger.** POST body validator rejects: 400 naming each field, no raw ValidationError, no echo, no dispatch (sender survey: 32 day logs, 0 request_body warnings).
+
+1511. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-299c (main `ea1b28d5e`), verifier-gated per slice; merged by the single Wave1 merger.** Cleanse-advisory import: ImportError separated; every failure one WARNING per exception class, still degrades to no advisory.
+
+1510. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-296c (main `5146860c8`), verifier-gated per slice; merged by the single Wave1 merger.** /api/lcu-cmd, /api/loadout/apply, /api/sr-draft/apply are control endpoints (membership pinned); RC_DASH_TOKEN NOT enabled. Enabling it later 401s the main.js / champ_select.js / item_build.js callers, which send no X-RC-Token (operator act).
+
+1509. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-321 (main `b9c046ae2`), verifier-gated per slice; merged by the single Wave1 merger.** core/log_scrub.py shared control-char scrub; mc/handler, ds_matchdb MCP, vision _http scrub and name the peer; DS server uses a stdlib table (stays core-free). DS restarted at merge.
+
+1508. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-297a (main `0e48ad748`), verifier-gated per slice; merged by the single Wave1 merger.** Rune-page ownership is a shared whole-prefix, type-first check (RC_OWNED_PAGE_PREFIXES incl. 'RC - ' for item 210) plus isDeletable; a user page 'RC Main' survives.
+
+1507. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-244 (main `ad99cbef9`), verifier-gated per slice; merged by the single Wave1 merger.** routes_state residuals (a) NaN/inf -> 0.0, (c) cadence clamp, (d) max_count<=0 -> [], (e) HealthAllResponse agent6 in / bridge+peers out with state_schema.js regenerated, (f) docstrings, (g) dead store; (b) was RM-414.
+
+1506. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-241 (main `a3d216470`), verifier-gated per slice; merged by the single Wave1 merger.** core/vision_token._resolve rejects tokens with whitespace / control / non-ASCII (RuntimeError never contains the token); live config token passes.
+
+1505. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-238 (main `b7f274c93`), verifier-gated per slice; merged by the single Wave1 merger.** /api/decisions/log tail-reads 64 KiB chunks, scans at most 4 MiB.
+
+1504. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-117 (main `02f71d605`), verifier-gated per slice; merged by the single Wave1 merger.** Retention decision adjudicated after a read-only re-measure: tiers 1/2 already empty; all 17 tier-3 superseded patch generations are git-tracked, so data_retention excludes tracked dirs (read-only fail-soft git ls-files). Nothing deleted. riot_api_cache.db 4.3 GB stays alarm-only.
+
+1503. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-512 (main `df97228ec`), verifier-gated per slice; merged by the single Wave1 merger.** Adjudicated: core/riot_api.py stays FILE-ONLY, RIOT_API_KEY never read (a Machine-scope env value exists and differs from the product key the replays endpoint is approved for). Reverses if the operator makes the env value the product key or removes it. 3 pin tests.
+
+1502. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-139 (main `b3f711405`), verifier-gated per slice; merged by the single Wave1 merger.** --fs-ov-* type tokens moved to :root:has(> body[data-shell=overlay]) so root-mounted widgets resolve them; palette stays body-scoped; no pixel change, no UI-audit owed.
+
+1501. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-196 (main `60bd62ecc`), verifier-gated per slice; merged by the single Wave1 merger.** ds_statcheck knob strip re-renders and re-wires on champion change; edit handler reads data-champ at fire time (Playwright test).
+
+1500. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-303 (main `acfa47a71`), verifier-gated per slice; merged by the single Wave1 merger.** One _sanitize_units for board/bench/shop and every prompt path; _coerce_hp before the clamp; roster whitelist guarded against set-17 codes and meta comps.
+
+1499. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-301 (main `4f37023f9`), verifier-gated per slice; merged by the single Wave1 merger.** tft_live_analysis _DATA_FILE_LOCK around every data-file RMW; force_scan waits <= 2.0 s then skips the pre-clear with a WARNING and still scans.
+
+1498. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-237 (main `31be6497d`), verifier-gated per slice; merged by the single Wave1 merger.** Subresource GETs share one 3.0 s tick budget (worst tick ~17 s -> budget + one call); fresh GameReader per generation; reset_reader_state clears in place on the poll thread.
+
+1497. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-236 (main `5943f291b`), verifier-gated per slice; merged by the single Wave1 merger.** snapshot_normalizer six defects: tier-3 boot set pinned to DDragon recipe tree (the row's own list was partly wrong), per-side drake counting for the soul note, mirror-match self by level / refuse when ambiguous, SR-only zone text (mapNumber 11), dead cooldown key removed, obj timer 0 when up. Frozen core/game_snapshot.py untouched. Residual RM-525 (item_advisor._BOOT_UPGRADES).
+
+1496. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-500 (main `d8d691012`), verifier-gated per slice; merged by the single Wave1 merger.** Closed BY RM-454: same root cause (same-count write inside one mtime tick), RM-454's content-digest key is exact and made the RM-450 xfails strict. The tooling slice's own RM-500 commit (st_ino + SQLite change counter + WAL signature) conflicted with RM-454 in core/augment_recommender.py and was DROPPED at merge as superseded.
+
+1495. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-454 (main `d8d691012`), verifier-gated per slice; merged by the single Wave1 merger.** Own-history cache key = (path, matching-row count, blake2b of the scanned rows); unreadable key neither served nor stored; PRAGMA data_version rejected (open handle blocks unlink on Windows, WinError 32). Hit cost 36 -> 45-52 ms, a disclosed trade for exactness. RM-450 xfails now strict.
+
+1494. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-294a (main `4acf8129e`), verifier-gated per slice; merged by the single Wave1 merger.** warm_session: _send_lock serialises send(); _lock covers only history/counter; API call outside it; close() bumps _generation so a late reply is not written into cleared history. Needs RC restart (done at merge).
+
+1493. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-262 (main `b0784ba82`), verifier-gated per slice; merged by the single Wave1 merger.** Arena / aram / brawl live Haiku prompts ASCII (arrows, box rules, >=). Residual RM-523: aram_coach.py:249/260 arrow parse/join (pinned by phase2_smoke), adaptation_hint_digest.py, experimental_builder.py f-strings.
+
+1492. DONE **2026-10-04 (Wave1 drain merge, Tier-0.)** - **RM-304 (main `cf26290c5`), verifier-gated per slice; merged by the single Wave1 merger.** Siege lines cut to 8 words; siege budget exemption removed so the default 8-word guard enforces them.
+
+1491. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-308 (main `58a2d0dec`), verifier-gated per slice; merged by the single Wave1 merger.** inhibitor_callouts one row per tag (soonest respawn); event list (even empty) = no takes, None = no data (drake row silent past the first window); _liveclient emits None on a failed read, _deterministic_coaching passes [] through with a distinct cache key. JS residual RM-518.
+
+1490. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-306 (main `815aa7d1a`), verifier-gated per slice; merged by the single Wave1 merger.** Elder never from the static schedule: row only at soul-securing drake +360s or Elder take +360s; unknown killer counts the 4th elemental drake overall (RM-307 interaction).
+
+1489. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-305 (main `8968d5120`), verifier-gated per slice; merged by the single Wave1 merger.** Baron / Herald / Elder stay 'UP now' until a take event (Herald also at its 19:45 despawn; HeraldKill retires it); _OBJ_ACTIVE_WINDOW_S not widened.
+
+1488. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-516 (main `f762d3726`), verifier-gated per slice; merged by the single Wave1 merger.** FILED AND SHIPPED this wave: SONNET_MODEL -> claude-sonnet-5-5; aram/arena/brawl vision overrides import SONNET_MODEL; direct vision fallback takes the first TEXT block (Sonnet 5.5 may lead with thinking); cost_tracker sonnet-5-5 / opus-5-5 rows, opus-4-7 corrected; 11 ops/loop config price tables. RESPONDER_RUNNER_SPEC.md and inbox_responder_runner.py untouched (bound to the armed agreement). Residual RM-524.
+
+1487. DONE **2026-10-04 (Wave1 drain merge, Tier-2.)** - **ENGINE 1.284.0 (main `77c32e3f5`), verifier-gated per slice; merged by the single Wave1 merger.** ENGINE_VERSION 1.283.0 -> 1.284.0 for RM-513 / RM-480 residuals / RM-479; CHANGELOG prepended; 136-file pin restamp version-string-only (verifier-checked). Share mirror: no sync tool exists since gist_share_sync was deleted 2026-09-07 - nothing to sync.
+
+1486. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-2.)** - **RM-81 (main `d7b3c6f47`), verifier-gated per slice; merged by the single Wave1 merger.** 8 more stale ratio rows override-resolved through the RM-480 residuals; ~110 remain, each needing its own per-rank wiki measurement. Default-on flip stays a separate live-measured decision. Row stays OPEN.
+
+1485. DONE **2026-10-04 (Wave1 drain merge, Tier-2.)** - **RM-480 (main `d7b3c6f47`), verifier-gated per slice; merged by the single Wave1 merger.** Residuals closed in the DEFAULT-OFF override registry: Qiyana Q form 1, all LeBlanc R blocks (new AbilityBaseOverride.block_index), Kennen R cooldown 120 flat (corrects LEDGER 1453: [120,120] is TRUE per V26.04), Naafiri R re-targeted to V26.15. ability_staleness _override_resolved 23 -> 31.
+
+1484. DONE **2026-10-04 (Wave1 drain merge, Tier-2.)** - **RM-479 (main `8c01ac66e`), verifier-gated per slice; merged by the single Wave1 merger.** POST /stats forwards augment_stacks (server._opt_augment_stacks; absent/null byte-identical, bad shape 400); the known-unreachable debt entry in tests/test_ds_parity_map.py deleted so the ratchet enforces it.
+
+1483. PARTIAL **2026-10-04 (Wave1 drain merge, Tier-2.)** - **RM-513 (main `bfefceee7, 5992f4a71`), verifier-gated per slice; merged by the single Wave1 merger.** Void Immolation 223069 is an augment / quest reward in Arena too (wiki); rank._ARENA_EXCLUDED_ITEM_IDS denies it in _filter_candidates on ARENA; 3 Arena tables regenerated, feed index re-hashed. RESIDUAL filed as RM-517: data/champion_loadouts.json still carries it in 289 Arena / 66 ARAM paths.
+
+1482. DONE **2026-10-04 (Wave1 drain merge, Tier-2.)** - **RM-448 (main `3f480acb5, d790e11fd`), verifier-gated per slice; merged by the single Wave1 merger.** 14 DS tools/scripts text-mode writers plus 3 core DS table writers (build_order_precompute, build_order_variants, laning_scenario_precompute) write LF; AST guard tests/test_ds_writers_lf_rm448.py with forced-CRLF positive control. Index had zero CRLF, no backfill. Non-DS core writers out of scope.
+
+1481. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-481 (main `3f480acb5`), verifier-gated per slice; merged by the single Wave1 merger.** tools/ds_cc_conditional_to_json.py writes newline='\n'; shipped with RM-448.
+
+1480. DONE **2026-10-04 (Wave1 drain merge, Tier-1.)** - **RM-445 (main `f8b79757b`), verifier-gated per slice; merged by the single Wave1 merger.** cmd_runes refetches on a DDragon version change (sidecar data/meta/ddragon_runes_version.json); ddragon_runes.json backfilled to 16.19.1. Engine half: no change (DS already on 16.18.1; Rageblade duration inert under steady-state stacks). DS is one patch behind DDragon 16.19.1 - filed as RM-522.
+
 1479. DONE **2026-10-03 (session 2026-10-03g, Tier-1.)** - **RM-511: stale Claude model pins moved to current ids (merge `fc4ae28c1`, slice `8de1d7db2`, verifier MERGE-OK).** Agent 7 -> `claude-haiku-4-5-20251001`; agents 2-6 -> `claude-sonnet-5-5` / `claude-opus-5-5` in `agents/_supervisor_common.py` AGENT_MODELS, `agents/state/resolved_decisions.json` (live seed contract, version unchanged), `ops/phase3_setup.py` and charters; loop `executor_model` -> `claude-opus-5-5`; adjudicator block drops the unread `cmd` key and prices on `claude-sonnet-5-5` (the kit always runs it on sonnet). Guard `tests/test_rm511_model_pins_current.py` (red 7/8 before the fix, minimum-count asserts so an empty scan fails). Out of scope, carried: coaches + `modes/shared_vision.py` still `claude-sonnet-4-6`; `core/cost_tracker.py` has no price rows for the new ids; responder MODEL is part of its agreement id.
 
 1478. DONE **2026-10-03 (session 2026-10-03g, Tier-1.)** - **RM-510 residual: unthrottled None lookup / ids page exits 1 in `tools/timeline_ingest.py` (fast-forward `887422d85`, verifier MERGE-OK).** Aligns with `tools/ladder_role_scout.py`; empty ids page still exits 0; hard failure beats 75. Decision: None without a throttle is a hard failure (RM-484 counts it as a failure; 75 would promise a retry that cannot succeed). No exit-code consumer exists. Also this session: POSIX `_kill_tree` gap (no killpg, `ops/fleet_kit/fleet_headless.py:630-640`) delivered to MAIN, 1/1 reached; 13 merged worktrees pruned.
