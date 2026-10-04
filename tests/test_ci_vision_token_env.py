@@ -25,8 +25,9 @@ The two things this pins, and they pull in opposite directions on purpose:
 
 1. The value EXISTS, so the red above cannot silently return by someone tidying
    the `env:` block away.
-2. The value is NOT shaped like the real token. `_resolve` does no format
-   validation at all - any non-empty string resolves - so nothing except this
+2. The value is NOT shaped like the real token. `_resolve` does no SHAPE
+   validation - since RM-241 it rejects only whitespace, control and non-ASCII
+   characters, so any printable-ASCII string resolves - and nothing except this
    test stops the next person from "fixing" a CI failure by pasting the live
    32-hex token back into a tracked file. That is precisely the state
    `f8323887e` removed, and it would land wearing the costume of a bug fix.
