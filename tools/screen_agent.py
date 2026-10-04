@@ -20,6 +20,19 @@ Bandwidth: ~100-300KB per frame (PNG, optimized) at 0.5 Hz default = ~150KB/s.
 
 Tunables: INTERVAL_S, JPEG_QUALITY, USE_JPEG, MAX_WIDTH, MONITOR_INDEX.
 
+Fail-closed capture (Y-03, external reference K): each loop cycle is refused,
+not uploaded, with one named reason - `locked` (the input desktop cannot be
+opened: locked workstation or a secure desktop such as UAC), `not_foreground`
+(primary stream only: League of Legends.exe has not held the foreground window
+within FOREGROUND_GRACE_S; the --no-primary UI-debug stream captures the
+dashboard on purpose) or `blank` (a near-uniform frame by luminance range on
+a downscaled grey copy). A refusal is NOT an upload failure: it never feeds
+the backoff. Counts live in SKIP_COUNTS and are logged. This file is deployed
+standalone (no repo above it), so the probes are local copies of
+core/screen_grab.py + core/vision_profiles.py; the constants are test-pinned
+equal. Read-only probes: foreground image name + desktop open; nothing is
+injected (Vanguard).
+
 Monitor selection (2026-04-24): `--monitor N` picks a single monitor by
 0-based index (0 = primary, 1 = secondary, ...). Omit the flag to capture
 the whole virtual desktop spanning all displays. The agent logs every
@@ -129,6 +142,16 @@ MONITOR_INDEX  = 0            # was None; primary monitor only by default
 CHANNEL        = "legion"     # upload `source` field; distinguishes concurrent streams
 PRIMARY        = True         # False = don't update the global /latest-frame slot
 
+# Y-03 fail-closed gate. Values mirror core/screen_grab.py (blank detector,
+# measured there) and vision_server/_frame.py (grace); pinned equal by
+# tests/test_vision_capture_fail_closed_y03.py.
+BLANK_THUMB_WIDTH    = 64
+BLANK_LUMA_RANGE_MAX = 16
+FOREGROUND_GRACE_S   = 3.0
+SKIP_COUNTS = {"locked": 0, "not_foreground": 0, "blank": 0}
+_LEAGUE_EXE = "league of legends.exe"
+_fg_last_seen = 0.0
+
 # Stall-warn threshold (seconds). A single cycle slower than this gets
 # a WARNING with the capture/upload breakdown so the operator can see
 # whether it was the OS capture call or the network upload that stalled.
@@ -171,6 +194,93 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
 
     ctypes.windll.user32.EnumDisplayMonitors(0, 0, MonitorEnumProc(_cb), 0)
     return rects
+
+
+class CaptureSkipped(Exception):
+    """A capture refused on purpose (Y-03). `reason` is one of SKIP_COUNTS."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def _input_desktop_locked() -> bool:
+    """True when the input desktop cannot be opened (locked / secure desktop).
+    A probe error reads locked (fail closed); non-Windows reads False."""
+    if sys.platform != "win32":
+        return False
+    try:
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        user32.OpenInputDesktop.restype = ctypes.c_void_p
+        user32.OpenInputDesktop.argtypes = [wintypes.DWORD, wintypes.BOOL,
+                                            wintypes.DWORD]
+        user32.CloseDesktop.argtypes = [ctypes.c_void_p]
+        h = user32.OpenInputDesktop(0, False, 0x0100)  # DESKTOP_SWITCHDESKTOP
+        if not h:
+            return True
+        user32.CloseDesktop(h)
+        return False
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _league_foreground() -> bool:
+    """True iff the foreground window's process image is League of
+    Legends.exe. Reads only the image name; False on any error."""
+    try:
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return False
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if not pid.value:
+            return False
+        h = kernel32.OpenProcess(0x1000, False, pid.value)  # QUERY_LIMITED_INFO
+        if not h:
+            return False
+        try:
+            buf = ctypes.create_unicode_buffer(1024)
+            size = wintypes.DWORD(len(buf))
+            if not kernel32.QueryFullProcessImageNameW(h, 0, buf,
+                                                       ctypes.byref(size)):
+                return False
+            return buf.value.rsplit("\\", 1)[-1].lower() == _LEAGUE_EXE
+        finally:
+            kernel32.CloseHandle(h)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def capture_gate(primary: bool = PRIMARY, now: float | None = None) -> str | None:
+    """Return a Y-03 skip reason for this cycle, or None to capture."""
+    global _fg_last_seen
+    if _input_desktop_locked():
+        return "locked"
+    if not primary:
+        return None
+    now = time.time() if now is None else now
+    if _league_foreground():
+        _fg_last_seen = now
+        return None
+    if now - _fg_last_seen <= FOREGROUND_GRACE_S:
+        return None
+    return "not_foreground"
+
+
+def _luma_range(img) -> int:
+    grey = img.convert("L")
+    h = max(1, round(grey.height * BLANK_THUMB_WIDTH / max(1, grey.width)))
+    lo, hi = grey.resize((BLANK_THUMB_WIDTH, h)).getextrema()
+    return int(hi) - int(lo)
+
+
+def _frame_blank(img) -> bool:
+    try:
+        return _luma_range(img) <= BLANK_LUMA_RANGE_MAX
+    except Exception:  # noqa: BLE001
+        return False
 
 
 # --- Capture backend: DXGI Desktop Duplication via bettercam ----------------
@@ -252,7 +362,8 @@ def _bettercam_image(output_idx: int):
 
 
 def capture(monitor_index: int | None = MONITOR_INDEX,
-            crop: tuple[int, int, int, int] | None = None) -> tuple[str, str, int, int]:
+            crop: tuple[int, int, int, int] | None = None,
+            drop_blank: bool = False) -> tuple[str, str, int, int]:
     """Return (b64, format, width, height) for the chosen monitor via DXGI
     Desktop Duplication (bettercam) on the single real adapter - legacy
     virtual-desktop / virtual-adapter capture is retired (see the capture-
@@ -264,6 +375,9 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
     crop: optional (left, top, right, bottom) bbox in output-local coords
     applied AFTER the grab. Used by the fast minimap stream so the agent
     sends a ~30KB region instead of a full frame.
+
+    drop_blank: raise CaptureSkipped("blank") for a near-uniform frame
+    (Y-03). The loop passes True; --once leaves it off for debugging.
     """
     global _BETTERCAM_DISABLED
     output_idx = _resolve_output_idx(monitor_index)
@@ -293,6 +407,8 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
         r = max(l + 1, min(r, img.width))
         b = max(t + 1, min(b, img.height))
         img = img.crop((l, t, r, b))
+    if drop_blank and _frame_blank(img):
+        raise CaptureSkipped("blank")
     if MAX_WIDTH and img.width > MAX_WIDTH:
         ratio = MAX_WIDTH / img.width
         img = img.resize((MAX_WIDTH, int(img.height * ratio)))
@@ -323,6 +439,25 @@ def upload(b64: str, fmt: str, w: int, h: int,
         return json.loads(r.read())
 
 
+def _gated_capture(monitor_index: int | None,
+                   crop: tuple[int, int, int, int] | None,
+                   primary: bool) -> tuple[str, str, int, int]:
+    """One fail-closed capture: gate, then grab with blank dropping."""
+    reason = capture_gate(primary)
+    if reason is not None:
+        raise CaptureSkipped(reason)
+    return capture(monitor_index, crop=crop, drop_blank=True)
+
+
+def _note_skip(reason: str) -> None:
+    SKIP_COUNTS[reason] = SKIP_COUNTS.get(reason, 0) + 1
+    total = sum(SKIP_COUNTS.values())
+    # First skip and every 30th after (~1/min at the 2s cadence) - a locked
+    # box must not flood the log.
+    if total == 1 or total % 30 == 0:
+        log.info("capture skipped (%s); totals %s", reason, SKIP_COUNTS)
+
+
 def loop(interval: float, monitor_index: int | None,
          channel: str, primary: bool,
          crop: tuple[int, int, int, int] | None = None) -> None:
@@ -343,7 +478,7 @@ def loop(interval: float, monitor_index: int | None,
         t0 = time.time()
         try:
             t_capture_start = time.time()
-            b64, fmt, w, h = capture(monitor_index, crop=crop)
+            b64, fmt, w, h = _gated_capture(monitor_index, crop, primary)
             t_capture_done = time.time()
             r = upload(b64, fmt, w, h, channel=channel, primary=primary)
             t_done = time.time()
@@ -361,6 +496,9 @@ def loop(interval: float, monitor_index: int | None,
                          fmt, w, h, len(b64) // 1024, total_ms, cap_ms, up_ms,
                          r.get("ok"))
             consecutive_fail = 0
+        except CaptureSkipped as e:
+            # Y-03: a refusal is not a failure - no backoff, no upload.
+            _note_skip(e.reason)
         except urllib.error.URLError as e:
             consecutive_fail += 1
             log.warning("upload failed (%dx): %s", consecutive_fail, e)

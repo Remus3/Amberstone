@@ -38,9 +38,14 @@ class VisionFrameSelfHealTests(unittest.TestCase):
         _frame._reset_self_read_state()
         self._orig_fetch = _frame._fetch_frame_direct
         self._orig_host = _frame.GAME_HOST
+        # Y-03: hermetic - these tests are about the cache, not the locked
+        # gate, so a locked box running the suite must not flip them.
+        self._orig_locked = _frame._input_desktop_locked
+        _frame._input_desktop_locked = lambda: False
         self.calls = []
 
     def tearDown(self):
+        _frame._input_desktop_locked = self._orig_locked
         _frame._fetch_frame_direct = self._orig_fetch
         _frame.GAME_HOST = self._orig_host
         _frame._reset_self_read_state()

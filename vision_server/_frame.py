@@ -21,6 +21,19 @@ config) disables the self-grab (the agent stays primary; a remote box's screen
 is not capturable here). Self-grabs are lightly throttled to avoid redundant
 back-to-back grabs
 and are fail-soft (return the existing cache, never raise).
+
+Y-03 (external reference K) - the self-grab FAILS CLOSED with one named
+reason (vocabulary: vision_server._stats.CAPTURE_SKIP_REASONS), counted in
+``get_stats()["capture_skip"]``:
+- ``locked``: the input desktop cannot be opened (locked / secure desktop);
+  checked in ``_maybe_self_grab`` before ANY source is tried.
+- ``not_foreground``: League of Legends.exe has not held the foreground window
+  within ``_FOREGROUND_GRACE_S``; GDI path only (the OBS lane captures a scene,
+  not the desktop, so an alt-tab cannot leak into it).
+- ``blank``: a near-uniform frame (core.screen_grab.frame_is_blank), dropped
+  from both lanes before it can reach OCR, Sonnet or a calibration still.
+The probes read only the foreground window's image name and whether the input
+desktop opens; nothing is injected (Vanguard).
 """
 from __future__ import annotations
 
@@ -31,9 +44,16 @@ import threading
 import time
 
 from core.game_host import GAME_HOST
+from core.screen_grab import frame_is_blank, input_desktop_locked
 
 from ._config import log
-from ._stats import _record, _stats, _stats_lock
+from ._stats import (
+    _capture_skips,
+    _record,
+    _record_capture_skip,
+    _stats,
+    _stats_lock,
+)
 
 _frame_lock = threading.Lock()
 _latest_frame: dict = {"b64": None, "ts": 0.0, "size": 0, "source": None,
@@ -52,6 +72,62 @@ _SELF_GRAB_MAX_WIDTH = 1280       # downscale to the documented coaching width
 _SELF_GRAB_JPEG_QUALITY = 85      # matches the legacy screen-agent sweet spot
 _self_grab_lock = threading.Lock()
 _last_self_grab_attempt = 0.0
+# Y-03 grace window: a GDI grab is still allowed this long after League was
+# last SEEN in the foreground. Derived, not lifted: it spans one screen-agent
+# cycle (2.0s) plus margin over the self-grab stale/throttle cadence
+# (1.0s / 0.5s), so one alt-tab flick or a focus hand-off at a loading screen
+# does not drop a cycle, while a sustained alt-out stops shipping desktop
+# frames within ~3s. tools/screen_agent.py mirrors this value (test-pinned).
+_FOREGROUND_GRACE_S = 3.0
+_league_fg_last_seen = 0.0
+
+
+def _input_desktop_locked() -> bool:
+    """Seam: True on a locked / secure input desktop (core.screen_grab)."""
+    return input_desktop_locked()
+
+
+def _league_foreground() -> bool:
+    """Seam: True iff League of Legends.exe owns the foreground window.
+    Reuses the read-only probe in core.vision_profiles (image name only)."""
+    try:
+        from core.vision_profiles import _league_is_foreground
+        return bool(_league_is_foreground())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _gdi_gate() -> "str | None":
+    """Foreground gate for the GDI desktop grab. Returns ``not_foreground``
+    to refuse, else None. A foreground sighting refreshes the grace window."""
+    global _league_fg_last_seen
+    now = time.time()
+    if _league_foreground():
+        _league_fg_last_seen = now
+        return None
+    if now - _league_fg_last_seen <= _FOREGROUND_GRACE_S:
+        return None
+    return "not_foreground"
+
+
+def _frame_blank(img) -> bool:
+    """Seam: near-uniform frame check; an error never drops a frame."""
+    try:
+        return frame_is_blank(img)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _note_capture_skip(reason: str) -> None:
+    _record_capture_skip(reason)
+    log.debug("frame capture skipped: %s", reason)
+
+
+def last_capture_skip() -> dict:
+    """The most recent Y-03 refusal: {"reason": str|None, "ts": float}."""
+    with _stats_lock:
+        return {"reason": _capture_skips["last_reason"],
+                "ts": _capture_skips["last_ts"]}
 
 
 def _maybe_obs_frame():
@@ -78,6 +154,9 @@ def _maybe_obs_frame():
             from PIL import Image
             img = Image.open(io.BytesIO(raw))
             img.load()
+            if _frame_blank(img):  # Y-03: drop a flat scene, fall to GDI
+                _note_capture_skip("blank")
+                return None
             if img.width > _SELF_GRAB_MAX_WIDTH:
                 ratio = _SELF_GRAB_MAX_WIDTH / img.width
                 img = img.resize((_SELF_GRAB_MAX_WIDTH,
@@ -116,6 +195,13 @@ def _fetch_frame_direct():
     obs_frame = _maybe_obs_frame()
     if obs_frame is not None:
         return obs_frame
+    # Y-03: the GDI grab reads the DESKTOP, so refuse it unless League holds
+    # (or very recently held) the foreground - an alt-tab must not ship a
+    # desktop frame to OCR / Sonnet.
+    gate = _gdi_gate()
+    if gate is not None:
+        _note_capture_skip(gate)
+        return None
     try:
         from PIL import ImageGrab
     except Exception:  # noqa: BLE001
@@ -123,6 +209,11 @@ def _fetch_frame_direct():
     try:
         img = ImageGrab.grab()  # primary virtual screen, single GDI BitBlt
         if img is None:
+            return None
+        # Y-03: a near-uniform frame (black / white / flat) carries no game
+        # state; drop it BEFORE it can become a calibration still.
+        if _frame_blank(img):
+            _note_capture_skip("blank")
             return None
         # Arm single-screen calibration: persist a NATIVE (pre-downscale) reference
         # frame per HUD profile ONCE, only while a game is live AND League holds the
@@ -157,9 +248,10 @@ def _fetch_frame_direct():
 
 def _reset_self_read_state() -> None:
     """Test helper: clear the self-grab throttle + the cached frame slots."""
-    global _last_self_grab_attempt
+    global _last_self_grab_attempt, _league_fg_last_seen
     with _self_grab_lock:
         _last_self_grab_attempt = 0.0
+        _league_fg_last_seen = 0.0
     with _frame_lock:
         _latest_frame.update({"b64": None, "ts": 0.0, "size": 0,
                               "source": None, "width": None, "height": None,
@@ -170,13 +262,20 @@ def _reset_self_read_state() -> None:
 def _maybe_self_grab() -> dict | None:
     """If League is local and the cache is stale, grab one frame in-process
     (throttled). Returns the freshly populated frame dict or None to fall
-    through to the existing cache."""
+    through to the existing cache.
+
+    Y-03: fails closed - a locked / secure input desktop returns None with
+    reason ``locked`` before any source is tried; ``not_foreground`` (GDI
+    only) and ``blank`` are refused inside ``_fetch_frame_direct``."""
     global _last_self_grab_attempt
     now = time.time()
     with _self_grab_lock:
         if now - _last_self_grab_attempt < _SELF_GRAB_MIN_INTERVAL_S:
             return None
         _last_self_grab_attempt = now
+    if _input_desktop_locked():
+        _note_capture_skip("locked")
+        return None
     grabbed = _fetch_frame_direct()
     if not isinstance(grabbed, dict) or not grabbed.get("b64"):
         return None
