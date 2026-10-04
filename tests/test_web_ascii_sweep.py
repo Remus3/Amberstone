@@ -535,7 +535,17 @@ _WEB = _REPO_ROOT / "web"
 # four RM-612 paths back to their 92a9e9906 blobs (removing the added
 # replay_minimap.js) reproduces 3a1f5b31... EXACTLY; swapping only the RM-612
 # paths reproduces d4a3b38a... EXACTLY. Those eight paths are the whole change.
-_LIVE_HALF_DIGEST = "8dcc72c66a1ac741d5ff515dec2fdba2fdf6ed855c13024094452ca020282433"
+# superseded by the RM-641 re-capture below: "8dcc72c66a1ac741d5ff515dec2fdba2fdf6ed855c13024094452ca020282433"
+#
+# RE-CAPTURED 2026-10-04 at RM-641 (review-player model + S5 Replay video
+# lane; external reference E), rebased on 4b994fb35. Ordinary case, no
+# tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping exactly
+# web/js/panels/dev.js, web/index.html and web/css/dashboard.css back to their
+# 4b994fb35 blobs and removing the three added swept files
+# web/js/panels/review_player_model.js, web/js/panels/review_player.js and
+# web/css/panels/review_player.css reproduces the superseded 8dcc72c6... value
+# EXACTLY. Those six paths are the whole change. No glyph change.
+_LIVE_HALF_DIGEST = "a4a299abc36efba7faeda61fb6f23d14be8150b9c39946ebe9e3c1ef9dac319c"
 
 
 def _web_sources() -> list[Path]:
