@@ -201,8 +201,12 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
     return rects
 
 
-class CaptureSkipped(Exception):
-    """A capture refused on purpose (Y-03). `reason` is one of SKIP_COUNTS."""
+class CaptureRefused(Exception):
+    """A capture refused on purpose (Y-03). `reason` is one of SKIP_COUNTS.
+
+    Not named *Skipped: tests/test_skip_condition_hygiene.py reads any raised
+    `...Skipped` / `...SkipTest` as a test-skip construct (CI run 37183631213).
+    """
 
     def __init__(self, reason: str):
         super().__init__(reason)
@@ -386,7 +390,7 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
     applied AFTER the grab. Used by the fast minimap stream so the agent
     sends a ~30KB region instead of a full frame.
 
-    drop_blank: raise CaptureSkipped("blank") for a near-uniform frame
+    drop_blank: raise CaptureRefused("blank") for a near-uniform frame
     (Y-03). The loop passes True; --once leaves it off for debugging.
     """
     global _BETTERCAM_DISABLED
@@ -418,7 +422,7 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
         b = max(t + 1, min(b, img.height))
         img = img.crop((l, t, r, b))
     if drop_blank and _frame_blank(img):
-        raise CaptureSkipped("blank")
+        raise CaptureRefused("blank")
     if MAX_WIDTH and img.width > MAX_WIDTH:
         ratio = MAX_WIDTH / img.width
         img = img.resize((MAX_WIDTH, int(img.height * ratio)))
@@ -455,7 +459,7 @@ def _gated_capture(monitor_index: int | None,
     """One fail-closed capture: gate, then grab with blank dropping."""
     reason = capture_gate(primary)
     if reason is not None:
-        raise CaptureSkipped(reason)
+        raise CaptureRefused(reason)
     return capture(monitor_index, crop=crop, drop_blank=True)
 
 
@@ -506,7 +510,7 @@ def loop(interval: float, monitor_index: int | None,
                          fmt, w, h, len(b64) // 1024, total_ms, cap_ms, up_ms,
                          r.get("ok"))
             consecutive_fail = 0
-        except CaptureSkipped as e:
+        except CaptureRefused as e:
             # Y-03: a refusal is not a failure - no backoff, no upload.
             _note_skip(e.reason)
         except urllib.error.URLError as e:
