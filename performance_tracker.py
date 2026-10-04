@@ -327,7 +327,8 @@ def calculate_tft_rating(placement,stage=0,level=0,game_mins=0.0,traits=None,uni
     if 0<stage<=4:n.append(f"Eliminated Stage {stage} - stabilize earlier")
     return gm,n[:4]
 
-def save_tft_rating(script_dir,tft_live,tft_coaching=None):
+def save_tft_rating(script_dir,tft_live,tft_coaching=None,report=None):
+    _report_set(report, False, False)
     if not tft_live: return ("", [])
     variant=(tft_coaching or {}).get("variant","standard")
     # _num on both feed-supplied numbers: same root cause as the save_rating
@@ -406,10 +407,13 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
         "tft_placement":placement,"tft_stage":sn,"tft_level":lv,
         "tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_core_units":core,
         "tft_unit_positions":_unit_positions,"tft_unit_placement":_raw_placement}
+    _written = False
     try:
         _atomic_write_json(_mode_file(script_dir, "TFT"), data)
+        _written = True
     except Exception as _e:  # noqa: BLE001
         _log.warning("TFT rating save failed: %s", _e)  # QUAL-002
+    _report_set(report, True, _written)
     db=_get_db(script_dir)
     if db:
         try:db.save_match({"mode":"TFT","champion":comp,"grade":grade,"game_time_s":gs,"tft_placement":placement,"tft_stage":sn,"tft_level":lv,"tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_items":"","notes":notes,"label":lmap.get(placement,"")})
@@ -429,7 +433,18 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
         _log.warning("Heatmap update: %s", _e)
     return grade, notes
 
-def save_rating(script_dir,champion,game_state,ally_kills_total):
+def _report_set(report, rated, written):
+    """RM-259: fill the caller's optional out-of-band outcome dict. The
+    return value cannot carry it - app/_game_lifecycle.py unpacks
+    ``g, n = save_rating(...)`` - so a caller that needs to know whether
+    the rating FILE was actually written passes ``report={}``."""
+    if isinstance(report, dict):
+        report["rated"] = bool(rated)
+        report["file_written"] = bool(written)
+
+
+def save_rating(script_dir,champion,game_state,ally_kills_total,report=None):
+    _report_set(report, False, False)
     if not is_valid_match(game_state): return ("", [])
     # Every numeric read goes through _num: the upstream feed supplies these
     # and a present-but-null field used to crash the whole save (six measured
@@ -448,10 +463,13 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
     data={"rating":grade,"label":GRADE_LABEL.get(grade,""),"champion":champion,"game_mode":raw_mode,"mode_category":category,"game_time":game_state.get("game_time","0:00"),
         "stats":{"cs_per_min":round(stats["cs_per_min"],1),"kda":kda_str,"deaths":stats["deaths"],"kill_participation":kp,"gold_per_min":gpm},
         "notes":notes,"timestamp":datetime.now().strftime("%Y-%m-%d %H:%M")}
+    _written = False
     try:
         _atomic_write_json(_mode_file(script_dir, category), data)
+        _written = True
     except Exception as _e:  # noqa: BLE001
         _log.warning("Rating save failed (%s): %s", category, _e)  # QUAL-002
+    _report_set(report, True, _written)
     db=_get_db(script_dir)
     if db:
         # 2026-05-09: snapshot the engine's last DS pick set into raw_data
