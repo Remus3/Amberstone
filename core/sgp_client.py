@@ -191,6 +191,10 @@ class SgpClient:
 
     def match_history(self, puuid: str, start: int = 0, count: int = 20) -> list[dict]:
         """One page of games. Returns [] on any fault - never raises."""
+        if not sgp_enabled():
+            # RM-194: the RC_SGP kill switch gates the only request path.
+            _log.info("SGP disabled via RC_SGP")
+            return []
         url = match_history_url(self.hosts.match_history, puuid, start, count)
         status, body = self._transport(url, self._headers())
         if status != 200 or not body:
