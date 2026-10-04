@@ -203,13 +203,41 @@ def _is_excluded_name(path_text: str, excluded: Sequence[str]) -> bool:
     return any(name == str(e).casefold() for e in excluded)
 
 
+def _scratch_path(path: Path) -> Path:
+    # RM-261: per-writer scratch name; `<dest>.tmp` was shared by every writer
+    # of the destination (RM-254 class).
+    return path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+
+
+def _publish(tmp: Path, path: Path) -> None:
+    """fsync the finished scratch file, rename it over `path`, and never
+    leave it behind on failure (RM-263 parity with core/polled_json)."""
+    try:
+        with open(tmp, "rb+") as fh:
+            os.fsync(fh.fileno())
+        _replace_with_retry(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False),
-                   encoding="utf-8")
-    _replace_with_retry(tmp, path)
+    tmp = _scratch_path(path)
+    try:
+        tmp.write_bytes(
+            json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+    _publish(tmp, path)
 
 
 def clear_pycache_for(path: Path) -> None:
@@ -221,9 +249,16 @@ def clear_pycache_for(path: Path) -> None:
 def copy_atomic(src: Path, dst: Path) -> None:
     dst = Path(dst)
     dst.parent.mkdir(parents=True, exist_ok=True)
-    tmp = dst.with_suffix(dst.suffix + ".tmp")
-    shutil.copy2(src, tmp)
-    _replace_with_retry(tmp, dst)
+    tmp = _scratch_path(dst)
+    try:
+        shutil.copy2(src, tmp)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+    _publish(tmp, dst)
 
 
 def wait_for_result(result_dir: Path, stem: str,

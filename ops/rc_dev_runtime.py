@@ -101,8 +101,22 @@ _ATOMIC_WRITE_BACKOFF_S = 0.05
 
 def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    # RM-261: per-writer scratch name (`<dest>.tmp` was shared by every writer
+    # of the file), written as LF bytes and fsynced before the rename (RM-263
+    # parity with core/polled_json). The payload write is inside the same
+    # cleanup as the rename so a failed write cannot orphan the scratch file.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
+    try:
+        with open(tmp, "wb") as fh:
+            fh.write(json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8"))
+            fh.flush()
+            os.fsync(fh.fileno())
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
     # Only OSError is retried - that is the rename-contention family
     # (PermissionError is a subclass). Anything else is a real bug in the
