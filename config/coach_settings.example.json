@@ -15,6 +15,13 @@
     "frame_source_name": "Game Capture",
     "frame_timeout_s": 1.5,
     "frame_width": 0,
-    "frame_max_age_s": 3.0
+    "frame_max_age_s": 3.0,
+    "record": {
+      "enabled": false,
+      "liveclient_failures_to_stop": 20,
+      "obs_failures_to_stop": 5,
+      "stall_polls": 3,
+      "poll_s": 1.0
+    }
   }
 }

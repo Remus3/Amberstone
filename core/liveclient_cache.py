@@ -69,6 +69,12 @@ class Snapshot:
     ts: float = 0.0
     fetched_at: float = 0.0
     no_game: bool = False
+    # RM-637 (ADR-016): why `data` is None. "" on success, "transport" when
+    # the relay could not be reached (refused, reset, timeout), "http" for an
+    # error status (including the authoritative 404 and a relay-side error
+    # envelope), "parse" for an unreadable or wrongly-shaped body. Only
+    # "transport" counts toward the recorder's consecutive-failure stop.
+    failure: str = ""
 
     @property
     def age_s(self) -> float:
@@ -204,15 +210,27 @@ def _fetch_once() -> Snapshot:
     try:
         req = Request(_RELAY_URL, headers=_auth_headers())
         with urlopen(req, timeout=_RELAY_TIMEOUT) as r:
-            wrap = json.loads(r.read())
+            raw = r.read()
     except HTTPError as e:
         if e.code == 404:
-            return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=True)
-        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
+            return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=True,
+                            failure="http")
+        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False,
+                        failure="http")
     except Exception:  # noqa: BLE001
-        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
-    if not isinstance(wrap, dict) or "error" in wrap:
-        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
+        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False,
+                        failure="transport")
+    try:
+        wrap = json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False,
+                        failure="parse")
+    if not isinstance(wrap, dict):
+        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False,
+                        failure="parse")
+    if "error" in wrap:
+        return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False,
+                        failure="http")
     data = wrap.get("data")
     ts = _coerce_ts(wrap.get("ts"))
     if ts is None:
@@ -228,7 +246,8 @@ def _fetch_once() -> Snapshot:
         )
         ts = 0.0
     if not isinstance(data, dict):
-        return Snapshot(data=None, ts=ts, fetched_at=fetched_at, no_game=False)
+        return Snapshot(data=None, ts=ts, fetched_at=fetched_at, no_game=False,
+                        failure="parse")
     return Snapshot(data=data, ts=ts, fetched_at=fetched_at, no_game=False)
 
 
@@ -308,7 +327,8 @@ def _install_optional_taps() -> None:
     """Flag-gated, default-OFF listeners that have no other non-frozen wiring
     point. RM-605: the live-session recorder (RC_SESSION_RECORDER). RM-606:
     the self ability-usage log (RC_SELF_CAST_LOG). RM-607: the item tape
-    (RC_ITEM_TAPE). RM-608: the estimated death recap (RC_DEATH_RECAP). Each tap has its own
+    (RC_ITEM_TAPE). RM-608: the estimated death recap (RC_DEATH_RECAP). RM-637: the OBS
+    match recorder (obs.record.enabled). Each tap has its own
     try-block. Fail-soft: a tap that cannot install never blocks the poll
     loop from starting, nor the other taps."""
     try:
@@ -335,6 +355,13 @@ def _install_optional_taps() -> None:
         _recap_install()
     except Exception as exc:  # noqa: BLE001
         _log.debug("liveclient_cache death-recap tap: %s", exc)
+    # RM-637 (ADR-016): OBS match recorder, gated on obs.record.enabled
+    # (default false) plus the default-off vod_record feature policy.
+    try:
+        from core.obs_recorder import install_if_enabled as _rec_install
+        _rec_install()
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("liveclient_cache optional tap (obs recorder): %s", exc)
 
 
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:

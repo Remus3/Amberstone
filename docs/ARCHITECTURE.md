@@ -175,6 +175,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/comp_coverage.py` | closed-axis comp coverage + shared-vulnerability facts |
 | `core/data_retention.py` | retention policy + report over data/ |
 | `core/defensive_picks.py` | defensive item ranker |
+| `core/disk_guard.py` | recording disk guard - pure budget math + ownership-scoped producer |
 | `core/district_fusion.py` | API-ground-truth fusion over the CV district presence vector |
 | `core/ds_support_route_overrides.py` | Slice C support-tag route-override loader (RM-84) |
 | `core/edge_watcher.py` | edge-triggered per-target state watcher (startup state and reconnects never fire) |
@@ -205,6 +206,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
 | `core/next_buy_fallback.py` | static DS build-order fallback for the NEXT BUY feed |
 | `core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
+| `core/obs_recorder.py` | OBS match recorder (operator-gated, default OFF) |
 | `core/ops_panels.py` | data layer for the three ops dashboard panels |
 | `core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
 | `core/ports.py` | canonical TCP port registry for RC + Daemon Slayer, and the cross-project block reservations |
@@ -218,6 +220,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
 | `core/sgp_client.py` | service-gateway match-history client - serves event modes Match-V5 refuses |
 | `core/vision_fusion.py` | confidence-weighted partial-read fusion of Live Client + CV reads |
+| `core/vod_alignment.py` | pure VOD alignment (game time -> recording time) |
 | `core/ward_cue.py` | ward-readiness extractor over the active player's Live Client items |
 | `core/ward_events.py` | ward-coverage rolling-window backend |
 | `core/ward_producer.py` | ward-placement producer over allPlayers inventory delta |

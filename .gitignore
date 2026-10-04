@@ -70,6 +70,8 @@ tools/mcp_token.txt
 
 # Live coaching state (mutates per game - written by main.py atomically)
 coaching_data.json
+# RM-637 / ADR-016 OBS recording sidecars (name other players' events; local only)
+data/recordings/
 data/aram_coaching_data.json
 data/arena_coaching_data.json
 data/brawl_coaching_data.json
