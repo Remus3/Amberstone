@@ -114,9 +114,13 @@ def _reset_cache_for_tests():
 # So the corridor districts bucket as "mid" and carry NO side; the
 # mid_lane square buckets as "river" and carries no side either (its two
 # halves are both sides of the river and the id cannot tell them apart).
+# Side is GEOMETRIC (which side of the base-to-base corridor), not read
+# from the id: the left strip "jungle_bot_blue" is TOP side and the right
+# strip "jungle_top_red" is BOT side (verifier-measured on the local DB:
+# 14/14 and 10/10 jungler frames; pinned in the tests).
 _SIDE_BY_DISTRICT = {
-    "top_lane": "top", "jungle_top_blue": "top", "jungle_top_red": "top",
-    "bot_lane": "bot", "jungle_bot_blue": "bot", "jungle_bot_red": "bot",
+    "top_lane": "top", "jungle_top_blue": "top", "jungle_bot_blue": "top",
+    "bot_lane": "bot", "jungle_bot_red": "bot", "jungle_top_red": "bot",
 }
 
 _BUCKET_BY_DISTRICT = {
