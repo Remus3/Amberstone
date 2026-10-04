@@ -348,7 +348,14 @@ EV_CI_VAR = re.compile(
     re.I)
 EV_BYPASS = re.compile(r"--no-verify\b|--no-gpg-sign\b|core\.hooksPath\s*=", re.I)
 EV_PASSED = re.compile(r"\b(\d[\d,]{0,9})\s+passed\b", re.I)
-EV_VACUOUS = re.compile(r"no tests ran|collected 0 items", re.I)
+# RM-490: a run that died with pytest's own `INTERNALERROR>` marker is vacuous
+# too - it produced no trustworthy verdict, even when it printed a count on the
+# way down (LEDGER precedent: an xdist worker crash that misreported "22 failed",
+# and an OOM `INTERNALERROR MemoryError` during a five-slice parallel run).
+# Anchored on the line-leading marker pytest prints, so prose that merely NAMES
+# the word does not poison a real run.
+EV_VACUOUS = re.compile(r"no tests ran|collected 0 items|^\s*INTERNALERROR>",
+                        re.I | re.M)
 # A backgrounded run answers with a launcher handoff, not a summary. The real
 # output lands later, when the output file is read by some unrelated command.
 EV_BACKGROUND = re.compile(r"running in background with ID|Output is being written to",
