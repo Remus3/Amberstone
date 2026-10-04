@@ -164,6 +164,15 @@ def canonical_body(obj):
 
 
 def body_md5(obj) -> str:
+    """8-hex body hash. JSON values hash their canonical form (stamps stripped).
+
+    RM-668: ``bytes`` hash VERBATIM - a fetched upstream chunk is not JSON and
+    has no stamp keys to strip, and tools/ds_feed_watch.py records that hash
+    per data block in the manifest. Bytes were a TypeError before, so this
+    changes no existing hash; a ``str`` is still a JSON value.
+    """
+    if isinstance(obj, (bytes, bytearray)):
+        return hashlib.md5(bytes(obj)).hexdigest()[:8]
     blob = json.dumps(canonical_body(obj), sort_keys=True, separators=(",", ":"))
     return hashlib.md5(blob.encode("utf-8")).hexdigest()[:8]
 
