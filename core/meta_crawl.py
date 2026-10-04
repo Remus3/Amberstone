@@ -208,6 +208,11 @@ def crawl(
     written here first and removed as provably inert - mutating it away left
     every test green (RM-355).
     """
+    if not crawl_enabled():
+        # RM-194: the documented kill switch must gate the entrypoint, in the
+        # core/lcu_events.py LcuEventBus.run() shape. Zero fetches, no write.
+        _log.info("meta crawl disabled via RC_META_CRAWL")
+        return CrawlResult(total_games=0, visited_players=0, champion_stats={}, seen_patches=())
     accumulator = CrawlAccumulator(target_patch=target_patch)
     visited: set[str] = set()
     frontier: list[str] = [seed_puuid]
