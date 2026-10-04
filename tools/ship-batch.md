@@ -18,6 +18,17 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   - `agents/daemon_slayer/__init__.py` ENGINE_VERSION (authoritative; NOT pyproject)
   - `data/daemon_slayer/current.txt` (patch)
   - `curl -sk http://127.0.0.1:8860/health` (engine_version / patch / champions / items)
+- Upstream feed watch (RM-668, external reference L). READ-ONLY, run by hand
+  here every batch and at least every 3-4 weeks; it is not a poller and has no
+  scheduled task: `python tools/ds_feed_watch.py`. It diffs the upstream
+  changelog against the tracked high-water date in `tools/ds_feed_watch.json`,
+  HEADs every chunk URL in the current manifest's data-block list, and hashes
+  each live chunk body (`ds_feed_index.body_md5`, raw bytes). Act on it:
+  new changelog entries = read them, then `--ack YYYY-MM-DD`; a MOVED or
+  UNREACHABLE block = the extractor's numbers may be stale, so scope a
+  re-extract into this batch. When the batch re-extracts, record the fresh
+  hashes beside the URLs with `--record` and then
+  `python tools/ds_feed_index.py --write` (the manifest is an indexed feed).
 - State the batch scope + assumptions explicitly before editing.
 
 ## 1. Implement
