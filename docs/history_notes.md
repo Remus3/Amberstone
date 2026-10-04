@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-04b - CI red 12 -> 5 (rm415); L-03 landed; DS + RC restarted
+
+- **Shipped (pushed):** `89ce8df91` agent6 L-03 stub isolation (LEDGER 1661), `67f94e8f6` rm415 re-pin to RM-308(b) None (LEDGER 1662).
+- **Restarts:** DS :8860 now 1.285.0 / 16.19.1; RC restarted, health alive + last_reload_ok.
+- **CI 37209062693 on `67f94e8f6`:** 5 failed = 4 operator-left RM-172 + 1 pre-existing next_buy_lean_bucket arena count.
+- **Next:** next_buy_lean_bucket arena divergence count (only non-operator-held CI red), then hand-off carry-forwards.
+- **Do NOT redo:** rm415 fix, L-03, DS/RC restarts.
+
+---
+
 # 2026-10-04a - /done wrap from a clean worktree; main CI red on 12 tests; DS :8860 stale
 
 - **Wrap shape:** main checkout is ~52 behind origin/main, holds ANOTHER session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/conftest.py, untracked test_agent6_failure_stub_l03.py) and unpushed `a6f3fa42a` (agent6 audit). Not touched. This wrap committed only WAKEUP_NOTES + RC-NEXT-SESSION.txt from a detached worktree off origin/main.

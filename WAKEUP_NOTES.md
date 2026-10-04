@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-04e - slot-audit ownerless lock + responder audit-hook allowlist; ROADMAP budget relocation
+
+- **Shipped (pushed `cb933e65f..3bba448c8`):** `636848e9a` fix(slot-audit) ownerless readable lock owner is "unknown", not foreign (LEDGER 1668); `3bba448c8` test(responder) audit hook fails ANY write outside the pytest temp root per MAIN 2320 s2 point 2 (LEDGER 1669). Both verifier CONFIRMED.
+- **Optional tighten (not a defect):** the responder `__pycache__` exemption covers any file under such a dir, not only `.pyc`.
+- **Found already done (no new work):** stop_claim_gate gaps `174da7a02`, slot attribution main fix `9fe294001`, lean flags MAIN 0912/0850 `09db31dee`, MAIN 2320 marker scan `467e22d96`, Firecrawl atlas `005f1324d`, Kled wiki row = RM-600 `f7ee2a85c`.
+- **ROADMAP budget:** 92% -> 89.5% by relocating 5 shipped rows VERBATIM to `docs/ROADMAP_HISTORY.md` `## 2026-10-04e`. Headroom is thin; the next ROADMAP growth needs another relocation pass.
+- **Do NOT redo:** the two commits above, the hand-off items listed as already done, the 2026-10-04e relocation.
+
+---
+
 # 2026-10-04d - last non-operator CI red cleared; Firecrawl dropped; gate fixes; inbox triaged
 
 - **Shipped (pushed):** `5a2feb7a7` arena lean-divergence 64 -> 65 re-pin, root cause RM-513 `bfefceee7` (LEDGER 1664); `2590a7fe0` Firecrawl out of 3 headless prompts per MAIN 0850 (LEDGER 1665); `329d81cb1` slot_bucket_audit OVER_STALE wording + stop_claim_gate false positives, verifier CONFIRMED (LEDGER 1666).
@@ -24,13 +34,3 @@
 - **New open:** `tools/slot_bucket_audit.py` OVER_STALE wording is wrong for a live holder under C4; `tools/stop_claim_gate.py` flags "LW committed ..." (sibling code as subject) as an unbacked commit claim.
 - **Next:** next_buy_lean_bucket arena count CI red (carried), then the unread MAIN notes (FLEET-KIT v4 order, 1327 FIX).
 - **Do NOT redo:** C4 adoption / re-pin; do not re-raise the "C4 HELD pending MAIN" line.
-
----
-
-# 2026-10-04b - CI red 12 -> 5 (rm415); L-03 landed; DS + RC restarted
-
-- **Shipped (pushed):** `89ce8df91` agent6 L-03 stub isolation (LEDGER 1661), `67f94e8f6` rm415 re-pin to RM-308(b) None (LEDGER 1662).
-- **Restarts:** DS :8860 now 1.285.0 / 16.19.1; RC restarted, health alive + last_reload_ok.
-- **CI 37209062693 on `67f94e8f6`:** 5 failed = 4 operator-left RM-172 + 1 pre-existing next_buy_lean_bucket arena count.
-- **Next:** next_buy_lean_bucket arena divergence count (only non-operator-held CI red), then hand-off carry-forwards.
-- **Do NOT redo:** rm415 fix, L-03, DS/RC restarts.

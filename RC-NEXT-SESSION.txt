@@ -1,58 +1,49 @@
 NEXT SESSION
 ------------
-Next action: CI is GREEN except the 4 operator-held RM-172 subtests (acceptance met).
-Pick next: (a) watch inbox for MAIN's ruling on RC 2026-10-04-1532 (refreshed responder
-agreement adding MAIN as counterparty + fresh budget, so the 0830 unattended MATCH can be
-answered); (b) work the "New open items" / "Open from the drain" lists below.
+Next action: operator restarted the machine to enable Windows Sandbox + a Linux VM (WSL).
+First: re-probe live state (rc_facts session hook, ops/runtime/health.json, DS :8860 /health,
+scheduled tasks incl. RC-InboxResponder) - a reboot is exactly when ONLOGON agents and the
+supervisor fail to come back. Then: if WSL is now up, Y-45 phone push (WSL + ntfy) is
+unblocked. Then (a) watch inbox for MAIN's ruling on RC 2026-10-04-1532 (refreshed responder
+agreement adding MAIN as counterparty + fresh budget); (b) work the open lists below.
 
-Shipped this session (do NOT redo; pushed 0444b729d..329d81cb1, LEDGER 1664-1667):
-- 5a2feb7a7 arena lean-divergence count re-pinned 64 -> 65 (root cause RM-513 bfefceee7
-  excluding item 223069 + arena table regen; verifier re-derived; assertion still exact).
-  The next_buy_lean_bucket arena CI red is CLEARED.
-- 2590a7fe0 Firecrawl dropped from tools/{directed-headless-upgrade,headless-research,
-  headless-upgrade}.md per MAIN 0850; guard tests/test_headless_prompts_no_disabled_plugins.py;
-  gitignored .claude/commands copies re-synced.
-- 329d81cb1 slot_bucket_audit OVER_STALE wording fixed to C4 semantics (+slots_would_reap
-  flag); stop_claim_gate false positives fixed (channel-code subjects, contracted negatives,
-  future-tense CI, named/passive/possessive subagent commits). Verifier CONFIRMED.
-- Inbox triage: all MAIN notes SHA-256 MATCH; kit v4 already adopted. Report
-  ops/loop/control/progress/inbox_triage_report.md. Channel reply delivered to MAIN:
-  2026-10-04-1532-from-RC-ANSWER-MAIN-0845-0850-0855-0912-... sha256 b1270032...1af8,
-  reached 1/1. Slot bucket 1.lock = empty dead-holder lock (~30.6h), self-clears on next
-  contended acquire; left untouched (not an RC leak despite audit attribution).
-- Earlier sessions: wave 1 (d1d078aab, LEDGER 1480-1559), fc9b12431, 7e32c2933, 3ef556865,
-  1e3e514c8, 89062445e, 3c6e55324, 89ce8df91 (1661), 67f94e8f6 (1662), 9024fd2cd C4 slots
-  adoption (1663; RC slots.py sha256 290cbf80..., equal to LW).
+Shipped this session 2026-10-04e (do NOT redo; pushed cb933e65f..3bba448c8, LEDGER 1668-1669):
+- 636848e9a slot_bucket_audit: readable lock with no repo field is owner unknown (was
+  foreign); unknown-owner anomaly list only includes leak-verdict locks. Verifier CONFIRMED.
+- 3bba448c8 responder audit hook fails ANY write outside pytest basetemp (MAIN 2320 point 2).
+  Verifier CONFIRMED. Optional tighten: exemption covers ANY file under a __pycache__ dir,
+  not only .pyc (e.g. ops/runtime/__pycache__/note.json would be exempt).
+- Hand-off items found ALREADY DONE by earlier commits (removed from lists): stop_claim_gate
+  "Merged to main." + "committed X and pushed" gaps (174da7a02); slot attribution main fix
+  (9fe294001); lean flags MAIN 0912/0850 on responder / loop executor / run_lane (09db31dee);
+  MAIN 2320 per-run marker scan (467e22d96); Firecrawl atlas node (005f1324d); Kled wiki
+  overwrite RM row = RM-600 (f7ee2a85c).
+- Inbox triage: ops/loop/control/progress/inbox_triage_1004e.md. MAIN has NOT ruled on RC
+  1532. CS 1634 (no reply requested) says the C4 re-pin row stays open until RC lands the
+  290cbf80 bytes - RC is already at 290cbf80 (9024fd2cd); joint act, do not act solo.
+- ROADMAP relocated 92% -> 89.5% of budget (docs/ROADMAP_HISTORY.md 2026-10-04e block);
+  thin headroom - next growth needs another relocation.
 
-New open items (this session):
-- MAIN 0850 section 2 (project-scope flags) and MAIN 0912 lean flags are PARTIAL: responder
-  lacks --setting-sources; loop executor and run_lane lack both MCP flags. Kit-spawned runs
-  are fine. Fix on RC's pre-kit route ops/loop/headless_env.py or wait for v5 routing.
-- MAIN 2320 ruling (per-run marker scan in the guard) - triage found no marker scan; verify.
-- stop_claim_gate pre-existing gaps (verifier): "Merged to main." is unflagged; "The agent
-  committed X and pushed." gets no push flag. Accepted gaps from the fix: "I'll note CI is
-  green" passes; an unlisted shouted capitalised word could read as a channel code.
-- slot_bucket_audit charges every unreadable lock to RC - attribution is wrong; fix.
-- Firecrawl still in atlas.html (descriptive map, not a prompt) - optional cleanup.
-
-Carried forward from the previous hand-off (not acted on):
+Open items:
+- stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted
+  capitalised word could read as a channel code.
 - 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests RED - operator said
   LEAVE; do not fix.
-- Leftover: branch worktree-agent-a96714b6b15348886 no longer resolves - treat as deleted;
-  progress file ops/loop/control/progress/rm415_fix.json (untracked, done).
+- Leftover: progress file ops/loop/control/progress/rm415_fix.json (untracked, done).
 - Operator setup list (physical / operator acts, batch into one ask):
   - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window
     capture source; set the game to borderless; install ffmpeg; set obs.record.enabled;
     restart RC-HotkeyListener.
   - RC-UpstreamDriftCheck needs an ELEVATED reinstall.
-  - Y-45 phone push needs WSL + ntfy (operator installing WSL; tailnet host known locally,
-    never write it into a tracked file). Y-45 approved in chat 2026-10-03.
+  - Y-45 phone push needs WSL + ntfy (WSL being enabled this reboot; tailnet host known
+    locally, never write it into a tracked file). Y-45 approved in chat 2026-10-03.
   - Re-copy the gitignored ship-batch from tools/ship-batch.md.
 - Decisions pending: RM-603 in-game callout compliance (operator); RM-660 needs an
   adjudicator (distinct agent, record decision/alternatives/why); frozen
   app/_game_lifecycle.py mid-game start fix needs explicit operator approval.
-- Open bugs / rows: unnumbered Kled wiki extractor overwrite bug - file an RM row; RM-595 DS
-  percent-resist bug; Y-01 needs 5 real game ends (live-gated).
+- Open bugs / rows: RM-600 Kled wiki extractor overwrite (filed, unfixed); RM-595 DS
+  percent-resist bug (flat zero-skip shipped f7ee2a85c - check percent half); Y-01 needs 5
+  real game ends (live-gated).
 - RM-258 PARTIAL: guard exempts all of tools/ except lcu_agent.py + hotkey_listener.py; row
   allows only tools/*extract*. 86 bare renames / 72 shared scratch names left in tools/
   (watchers: phase_watcher, cost_health_watchdog, ds_feed_watch, ci_watchdog, spec_watch,
@@ -68,42 +59,39 @@ Carried forward from the previous hand-off (not acted on):
   drain-wave2-tail-backlog, worktree-wf_0815ac54-8f2-4 (RM-239/242), -5 (RM-500),
   worktree-agent-a0a31cf1b05f41e28 (superseded by kit v4), RM-256 / RM-297b branches,
   worktree-agent-a4cfeb79e86b5bf30 (merged as 7e32c2933), detached C:/rc-worktrees/
-  done-20261004. NEW this session (all cherry-picked to main, safe to remove):
+  done-20261004. Previous session's (all cherry-picked, safe to remove):
   worktree-agent-a8139d07d888c2f11, worktree-agent-a38e5131a8250fc5c,
-  worktree-agent-ac142e29ad5b833d1 (under .claude/worktrees/).
+  worktree-agent-ac142e29ad5b833d1. This session's worktrees already removed.
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
-- Memory lessons from the drain, and python tools/perseus_sync.py (still not done).
+- Memory lessons from the drain (perseus_sync was run this session: 1970/1970 embedded).
 - Kit gaps for MAIN v5: public launch function (RC uses private _run); argv-plus-stdin mode;
   POSIX _kill_tree; fleet_route has no effort knob. Responder / loop executor / run_lane
-  still on ops/loop/headless_env.py. MAIN's v5 working dir exists but NO v5 note/bundle yet -
-  do not copy from it (MAIN 0020: no divergent local fleet-ops versions; tools/spec_watch.py
-  stays local).
+  still on ops/loop/headless_env.py. No v5 note/bundle yet - do not copy from MAIN's v5
+  working dir (MAIN 0020; tools/spec_watch.py stays local).
 - RM-512 self-adjudicated in wave 1 (operator may revisit). RM-481 residual CRLF writers -
-  check whether wave 1 RM-481/448 closed all. Console-flash guard still hand-listed for hook
-  scripts / task targets outside tree.
+  005f1324d shipped a residual pass; confirm none remain. Console-flash guard still
+  hand-listed for hook scripts / task targets outside tree.
 - Lane-widget notes (other session's call): "(resets 0m)", mtime-only freshness, config
   cache; RSC inbox_status "limit" at 0/120.
 - rc_facts STUCK flag on RC-InboxResponder = real overlap, do not widen grace. Responder
   exhausts its 32-reply budget every run since 10-03 00:57.
-- Inbox: run python tools/rc_facts.py --mark-inbox-seen after reading (not run this
-  session). Non-MAIN notes: no open ask of RC (LW 0700 digest reply optional).
+- Inbox: run python tools/rc_facts.py --mark-inbox-seen after reading (not yet run).
+  LW 0700 digest reply optional.
 - Box load: no local full suite while 2+ others run (OOM). CI is the full gate.
 - ROADMAP top open: EXTERNAL-LIFT INTAKE band 1 (BACKLOG.md "External-lift intake"),
   RM-486, RM-488/489, RM-479, RM-482.
 
 Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). Drain launcher
 ops/loop/drain_waves_2_3.py (--waves/--only) reusable; halts when the main tree is dirty.
-Next free LEDGER id 1668. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin.
+Next free LEDGER id 1670. Next free RM id: see docs/DS_SWEEP_TRACKER.md pin.
 
 Acceptance: CI green on main except the 4 operator-left RM-172 subtests.
 
-Status (2026-10-04d wrap): pushed 0444b729d..329d81cb1 (3 commits) plus this docs/hand-off
-commit. Local gate: ruff clean, hygiene 14 passed, drift_guard 0 breaches. CI 329d81cb1 run
-37232336531: 4 failed / 37988 passed - only the 4 RM-172 subtests (operator-held);
-docs-guards success; CodeQL success. The docs/hand-off commit's own CI is not recorded here.
-RC health.json: pid 18356 (restarted 20:29Z, not by this session), alive true. mode client,
-lcu phase None. No intent pending, no steers, no monitors armed, nothing in flight. Session
-file ~0.9 MB.
+Status (2026-10-04e wrap): pushed cb933e65f..3bba448c8 (2 commits) plus this docs/hand-off
+commit. Local gate: ruff clean, hygiene 14 passed, drift_guard 0 breaches. CI for 3bba448c8
+run 37240333939: pending at wrap (collect with gh run view 37240333939). RC health.json pid
+39216 (restarted 22:31Z), alive true, last_reload_ok true; mode client, lcu phase None.
+No intent pending, no steers, no monitors armed, nothing in flight. Session file ~0.75 MB.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
