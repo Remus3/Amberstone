@@ -32,7 +32,7 @@ Status: SPEC (Fable 5 forward-leap portfolio, 2026-07-16). No code in this file.
 >   Jayce W / Sivir W / Nidalee Q - none of the six bruisers D7 excludes.
 > - Remaining value on this seam is the RM-39 default-ON flip, which is live-gated and
 >   blocked on the RM-98 cast-rate time base, not in this spec.
-Owner of execution: one cold Opus 4.8 (Max20) session, effort max.
+Owner of execution: one cold Opus 5.5 (Max20) session, effort max.
 Scope discipline: this spec is self-contained. A session with ONLY CLAUDE.md +
 this file has everything it needs. Do not re-derive scope from chat or memory.
 Ground truth in this doc was probed live 2026-07-16 at ENGINE 1.216.0 / patch
@@ -514,7 +514,7 @@ commit). The sibling SEMANTIC validation (D3) and the auto-empower exclusion
 checks (D7) fit inside the session - they are grep + one-probe-per-champ, not new
 research arcs.
 
-MODEL: claude-opus-4-8, effort max. Subagent-first per CLAUDE.md: the two disjoint
+MODEL: claude-opus-5-5, effort max. Subagent-first per CLAUDE.md: the two disjoint
 sub-fixes are a natural 2-slice parallel (abilities.py vs hybrid.py, no shared
 file) with a read-only verifier gate before the merge + bump; or inline if the
 session prefers (both are single-module + its test, near the R9 threshold). The

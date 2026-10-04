@@ -1,4 +1,4 @@
-EXECUTION SESSION - LEAP-02 KaiSa P routing + Gwen P pins. Model claude-opus-4-8, effort max.
+EXECUTION SESSION - LEAP-02 KaiSa P routing + Gwen P pins. Model claude-opus-5-5, effort max.
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 

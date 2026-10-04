@@ -10,16 +10,16 @@
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
   "price_per_mtok": {
     "opus": {
-      "input": 15.0,
-      "output": 75.0,
-      "cache_write": 18.75,
-      "cache_read": 1.5
+      "input": 4.0,
+      "output": 20.0,
+      "cache_write": 5.0,
+      "cache_read": 0.2
     },
     "sonnet": {
-      "input": 3.0,
-      "output": 15.0,
-      "cache_write": 3.75,
-      "cache_read": 0.3
+      "input": 2.0,
+      "output": 10.0,
+      "cache_write": 2.5,
+      "cache_read": 0.2
     },
     "haiku": {
       "input": 1.0,
@@ -28,10 +28,10 @@
       "cache_read": 0.1
     },
     "default": {
-      "input": 15.0,
-      "output": 75.0,
-      "cache_write": 18.75,
-      "cache_read": 1.5
+      "input": 4.0,
+      "output": 20.0,
+      "cache_write": 5.0,
+      "cache_read": 0.2
     }
   },
   "adjudicator": "claude",

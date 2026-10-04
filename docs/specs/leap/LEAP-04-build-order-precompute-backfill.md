@@ -1,6 +1,6 @@
 # LEAP-04 - build_order precompute backfill (resolve the coherence-dock design Q, then spec the regen)
 
-Status: SPEC (author Fable 5, 2026-07-16). Execution: one Opus 4.8 session, max effort.
+Status: SPEC (author Fable 5, 2026-07-16). Execution: one Opus 5.5 session, max effort.
 Program: Fable 5 Forward Leap portfolio (docs/specs/2026-07-16-fable5-forward-leap-kickoff.md).
 Closes: BACKLOG.md:13 OQ24 residual tail (2) + docs/ORCHESTRATION_PLAN.md:358 (OQ24-cycle11)
 open design question. Predecessor context: docs/specs/2026-07-13-ds-build-coherence-refactor.md
@@ -243,7 +243,7 @@ regen, justify reduced scope" allowance):
 ## EST SESSIONS + MODEL
 
 - EST SESSIONS: 1.
-- MODEL: claude-opus-4-8, effort max (the parity reasoning + validate-before-trust-the-diff
+- MODEL: claude-opus-5-5, effort max (the parity reasoning + validate-before-trust-the-diff
   judgement warrant it, even though the mechanical footprint is small).
 
 ---

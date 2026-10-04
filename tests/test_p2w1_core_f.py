@@ -265,7 +265,7 @@ def test_banner_state_malformed_budget_returns_ok(tmp_path):
 def test_numeric_string_budget_still_enforced(tmp_path):
     t = _tracker(tmp_path, {"daily_budget_usd": "1.0"})
     assert t.allow_call() is True
-    # 1M input tokens on opus pricing = $15 > $1 budget.
+    # 1M input tokens on opus-4-7 pricing = $5 > $1 budget.
     t.record_call(model="claude-opus-4-7", input_tokens=1_000_000,
                   purpose="test")
     assert t.allow_call() is False

@@ -12,7 +12,7 @@ Status: SPEC (ready to execute)
 Author: spec-author agent, 2026-07-16
 Owner mode: ARAM / ARAM Mayhem coach
 Tier: Tier-1 (local logic, single module) - see R5 TIER
-Est: 1 short session, model claude-opus-4-8, effort high
+Est: 1 short session, model claude-opus-5-5, effort high
 
 ---
 
@@ -342,7 +342,7 @@ Do NOT touch: `coaches/_base_coach.py`, `core/moon_proxy.py` (FROZEN),
 
 ## EST SESSIONS
 
-1 short session. Model `claude-opus-4-8`, effort high.
+1 short session. Model `claude-opus-5-5`, effort high.
 
 ---
 
