@@ -6,6 +6,8 @@ import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } fro
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
 import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
+// RM-612 (X-12): pure minimap logic (death windows, last-known + age halo).
+import { buildModel, stateAt, worldToCanvas, mapArtUrls, monogram, MAP_WORLD } from './replay_minimap.js';
 
 // -- Settings view (2026-04-26) -----------------------------------
 function _settingsRefresh() {
@@ -335,6 +337,7 @@ function _replayLoadMatch(matchId, rowEl) {
       if (!d) return;
       _REPLAY.match = d;
       _REPLAY.snapshotIdx = 0;
+      _replayMapAttach(d);
       const slider = document.getElementById("replay-slider");
       if (slider) {
         slider.max = String(Math.max(0, (d.snapshots || []).length - 1));
@@ -358,12 +361,16 @@ function _replayLoadMatch(matchId, rowEl) {
     })
     .catch(e => console.warn("replay match:", e));
 }
-function _replayRenderSnapshot(idx) {
+function _replayRenderSnapshot(idx, mapTms) {
   const d = _REPLAY.match;
   if (!d || !d.snapshots || !d.snapshots.length) return;
   const snap = d.snapshots[Math.max(0, Math.min(idx, d.snapshots.length - 1))];
   const clock = document.getElementById("replay-clock");
   if (clock) clock.textContent = `t = ${snap.minute.toFixed(1)}min`;
+  // RM-612: the slider puts the map on the frame time; a timeline-event seek
+  // passes the event's exact clock so the map shows that moment (with halos
+  // for sample age) while the grid shows the nearest frame.
+  _replayMapSetTime(mapTms != null ? mapTms : snap.timestamp_ms);
   const tbody = document.getElementById("replay-grid-body");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -439,7 +446,185 @@ function _replaySeekToClock(clockS) {
   _REPLAY.snapshotIdx = bestIdx;
   const slider = document.getElementById("replay-slider");
   if (slider && !slider.disabled) slider.value = String(bestIdx);
-  _replayRenderSnapshot(bestIdx);
+  _replayRenderSnapshot(bestIdx, (Number(clockS) || 0) * 1000);
+}
+
+// -- RM-612 (X-12, external reference I): past-match minimap -------------
+// Canvas-only layer on the scrubber. All position / death-window / halo logic
+// is in replay_minimap.js (node-tested); this section only draws. Redraws are
+// coalesced to one animation frame and never touch DOM structure, so a
+// focused slider or checkbox is never repainted.
+const _REPLAY_MAP = {
+  model: null, t: 0, allyTeam: 100,
+  art: null, artKind: null, icons: new Map(), raf: 0,
+};
+// Resolve a CSS custom property for canvas use. Every name passed here is
+// pinned to an existing definition by tests/test_replay_minimap_crosscheck.py
+// (an undefined var would resolve to "" and fail silently).
+function _replayMapToken(name) {
+  try {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  } catch (_) {
+    return "";
+  }
+}
+function _replayMapAttach(d) {
+  const fig = document.getElementById("replay-map-figure");
+  const model = buildModel(d);
+  _REPLAY_MAP.model = model;
+  if (!fig) return;
+  // Event modes (queue 2400) and matches with no stored positions: no map.
+  if (model.hidden) { fig.hidden = true; return; }
+  fig.hidden = false;
+  const tracked = (d.participants || []).find(p =>
+    p.champion_id === (d.tracked && d.tracked.champion_id));
+  _REPLAY_MAP.allyTeam = tracked ? tracked.team_id : 100;
+  _replayMapLoadArt(model.kind);
+}
+function _replayMapLoadArt(kind) {
+  if (_REPLAY_MAP.artKind === kind) return;
+  _REPLAY_MAP.artKind = kind;
+  _REPLAY_MAP.art = null;
+  // Map art RC already uses: the local DDragon map image, then the tracked SVG.
+  const urls = mapArtUrls(kind, ITEMS && ITEMS.version);
+  const tryAt = (i) => {
+    if (i >= urls.length) return;
+    const img = new Image();
+    img.onload = () => {
+      if (_REPLAY_MAP.artKind !== kind) return;
+      _REPLAY_MAP.art = img;
+      _replayMapSchedule();
+    };
+    img.onerror = () => tryAt(i + 1);
+    img.src = urls[i];
+  };
+  tryAt(0);
+}
+// Cached DDragon champion icon (same /icons/champions/ URL the grid uses).
+// Returns null until loaded or on a miss, so the caller draws the monogram.
+function _replayMapIcon(name) {
+  let rec = _REPLAY_MAP.icons.get(name);
+  if (!rec) {
+    rec = { img: new Image(), ok: false };
+    rec.img.onload = () => { rec.ok = true; _replayMapSchedule(); };
+    rec.img.onerror = () => { rec.ok = false; };
+    rec.img.src = _replayChampIconUrl(name);
+    _REPLAY_MAP.icons.set(name, rec);
+  }
+  return rec.ok ? rec.img : null;
+}
+function _replayMapSetTime(tMs) {
+  _REPLAY_MAP.t = Math.max(0, Number(tMs) || 0);
+  _replayMapSchedule();
+}
+function _replayMapSchedule() {
+  if (_REPLAY_MAP.raf) return;
+  const run = () => { _REPLAY_MAP.raf = 0; _replayMapDraw(); };
+  _REPLAY_MAP.raf = (typeof requestAnimationFrame === "function")
+    ? requestAnimationFrame(run) : setTimeout(run, 16);
+}
+function _replayMapDraw() {
+  const m = _REPLAY_MAP.model, d = _REPLAY.match;
+  const canvas = document.getElementById("replay-map-canvas");
+  if (!m || m.hidden || !d || !canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const W = canvas.width, H = canvas.height, t = _REPLAY_MAP.t;
+  const fg = _replayMapToken("--text");
+  const allyColor = _replayMapToken("--signal-info") || fg;
+  const enemyColor = _replayMapToken("--signal-bad") || fg;
+  const badgeBg = _replayMapToken("--surface");
+  ctx.clearRect(0, 0, W, H);
+  if (_REPLAY_MAP.art) {
+    ctx.save();
+    ctx.filter = "saturate(0.55) brightness(0.7)";   // same treatment as grid.css map backdrop
+    ctx.drawImage(_REPLAY_MAP.art, 0, 0, W, H);
+    ctx.restore();
+  }
+  const unitsToPx = W / (MAP_WORLD[m.kind] || MAP_WORLD.sr);
+  const R = Math.round(W / 30);
+  const alive = [], dead = [], revived = [];
+  for (const p of d.participants || []) {
+    const s = stateAt(m, p.participant_id, t);
+    const color = p.team_id === _REPLAY_MAP.allyTeam ? allyColor : enemyColor;
+    if (s.dead) {
+      if (s.deathPos) dead.push({ s, color });
+    } else if (s.visible) {
+      alive.push({ p, s, color });
+      if (s.revive) revived.push(p.champion_name || "?");
+    }
+  }
+  // Death spots: a small cross where the victim fell; the badge itself is
+  // hidden for the whole death window.
+  for (const { s, color } of dead) {
+    const [x, y] = worldToCanvas(s.deathPos, m.kind, W, H);
+    const k = R * 0.5;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - k, y - k); ctx.lineTo(x + k, y + k);
+    ctx.moveTo(x + k, y - k); ctx.lineTo(x - k, y + k);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Age halos under every badge: radius = how far the champion could be from
+  // its last sample. Never interpolated, never carried across a death.
+  for (const { s, color } of alive) {
+    if (!(s.haloUnits > 0)) continue;
+    const [x, y] = worldToCanvas(s.pos, m.kind, W, H);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(R, s.haloUnits * unitsToPx), 0, Math.PI * 2);
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 0.45;
+    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    ctx.restore();
+  }
+  for (const { p, s, color } of alive) {
+    const [x, y] = worldToCanvas(s.pos, m.kind, W, H);
+    const icon = _replayMapIcon(p.champion_name);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, Math.PI * 2);
+    ctx.closePath();
+    if (badgeBg) { ctx.fillStyle = badgeBg; ctx.fill(); }
+    if (icon) {
+      ctx.save();
+      ctx.clip();
+      ctx.drawImage(icon, x - R, y - R, 2 * R, 2 * R);
+      ctx.restore();
+    } else {
+      // operator-exception: canvas monogram (NOT DOM text, no --fs-* token
+      // possible). 17px on the 480px backing store renders ~10.6px at the
+      // 300px CSS size - the same scale as map_state.js's 11px canvas glyphs -
+      // and two letters fit inside the 32px-backing badge circle.
+      ctx.fillStyle = fg;
+      ctx.font = "bold 17px Lato, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(monogram(p.champion_name), x, y + 1);
+    }
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = color;
+    if (s.revive) ctx.setLineDash([4, 3]);   // revive suspected: dashed ring
+    ctx.stroke();
+    ctx.restore();
+  }
+  const clockEl = document.getElementById("replay-map-clock");
+  const clockTxt = "Map at " + _replayDurStr(Math.floor(t / 1000));
+  if (clockEl && clockEl.textContent !== clockTxt) clockEl.textContent = clockTxt;
+  const flagsEl = document.getElementById("replay-map-flags");
+  const flagsTxt = revived.length
+    ? "Revive suspected (a sample contradicts the death timer): " + revived.join(", ")
+    : "";
+  if (flagsEl && flagsEl.textContent !== flagsTxt) flagsEl.textContent = flagsTxt;
 }
 function _replayViewWireOnce() {
   if (window.__replayWired) return;
