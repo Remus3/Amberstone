@@ -477,7 +477,22 @@ _WEB = _REPO_ROOT / "web"
 #
 # MERGED lift-2 (2026-10-04): Y-04 and Y-13 re-captures landed together; the pin
 # below is the digest of the merged tree (recomputed, not either slice's).
-_LIVE_HALF_DIGEST = "214e8e2686705bd76424c05ddc01665a19b18c6a5a5c8717a71e55c098ee4985"
+# superseded by the merged re-capture below: "214e8e2686705bd76424c05ddc01665a19b18c6a5a5c8717a71e55c098ee4985"
+#
+# RE-CAPTURED at Y-07 (2026-10-04, data-viz token tier, external reference P).
+# Ordinary case, no tokeniser change, no file added or removed. ATTRIBUTED BY
+# SUBSTITUTION: recomputing with the origin/main blobs (f46631a90) of exactly
+# the nine web files this slice edits - web/css/tokens.css, overlay.css,
+# panels/pgr_winprob.css, panels/ward_heat.css and web/js/panels/ds_sweep.js,
+# map_state.js, spike_curve.js, threat_donut.js, ward_heat.js - reproduces the
+# superseded 3cc269ba... value EXACTLY, so those nine files are the whole
+# change. Parallel lift-2 slices touching web/ race on this pin: the merger
+# recomputes it over the merged tree.
+# superseded by the merged re-capture below: "e8530115360cc3ec548b74eb5696cbcaf2f78e3221e5a98c70d12eaf0b57d70f"
+#
+# MERGED lift-2 (2026-10-04): Y-07 re-capture landed on top of the above; the pin
+# below is the digest of the merged tree (recomputed, not either slice's).
+_LIVE_HALF_DIGEST = "32545c4d18605fc2cbdc6a3df4df838b524eab8f74482831f0236c5db226b23c"
 
 
 def _web_sources() -> list[Path]:

@@ -27,10 +27,12 @@ const _WH_SIG = Object.create(null);
 const _FETCH_INTERVAL_MS = 4000;   // server already caches 2s; client polls 4s
 const _WINDOW_S = 90;
 
-// Color ramp - low count = faint, high count = bright. Aligns with the
-// ally/enemy palette used in cd_ledger + spike_curve.
-const _ALLY_BASE = [80, 150, 255];   // #5096ff blue
-const _ENEMY_BASE = [255, 80, 80];   // #ff5050 red
+// Color ramp - low count = faint, high count = bright. The bases are the
+// Y-07 data-viz tier tokens (web/css/tokens.css --data-*, rgb parts), so the
+// strip shares one team encoding with spike_curve / ds_sweep / map_state.
+// The fill lands in an inline style="background:..." where var() resolves.
+const _ALLY_BASE = "--data-ally";
+const _ENEMY_BASE = "--data-enemy";
 const _UNCOVERED = "#ff3030";
 
 const _LANES = ["top", "jg", "mid", "bot"];
@@ -43,8 +45,8 @@ function _intensity(n) {
   return 0.85;
 }
 
-function _rgba(rgb, alpha) {
-  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha.toFixed(2)})`;
+function _rgba(token, alpha) {
+  return `rgba(var(${token}), ${alpha.toFixed(2)})`;
 }
 
 // Build a single side row's HTML. ``uncovered`` is a Set of lanes with
