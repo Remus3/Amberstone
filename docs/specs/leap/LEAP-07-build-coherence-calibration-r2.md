@@ -15,7 +15,7 @@
 > unchanged; ACs that assert an ENGINE bump are struck.
 > SEQUENCING: run AFTER LEAP-04 (this spec consumes its regen procedure + guard).
 
-Status: SPEC (author Fable 5, 2026-07-16). Execution: one Opus 4.8 session, max effort.
+Status: SPEC (author Fable 5, 2026-07-16). Execution: one Opus 5.5 session, max effort.
 Program: Fable 5 Forward Leap portfolio (docs/specs/2026-07-16-fable5-forward-leap-kickoff.md).
 Closes: BACKLOG.md:13 OQ24 residual tail (4) [Zeri AP-on-AD class] + docs/ORCHESTRATION_PLAN.md:362
   (OQ24-Step1b Kai'Sa Eclipse#6 light-dock) + docs/ORCHESTRATION_PLAN.md:360 (OQ25 NOW bucket:
@@ -343,7 +343,7 @@ Regenerated / re-stamped (per LEAP-04 procedure):
 
 ---
 
-## EST SESSIONS: 1   |   MODEL: claude-opus-4-8, effort max
+## EST SESSIONS: 1   |   MODEL: claude-opus-5-5, effort max
 
 The three residuals share the single carry-coherence chokepoint + one regen; one focused Opus
 4.8 session is sufficient. DD1 is expected to be a define-the-seam / no-flip outcome, DD2 a

@@ -1,7 +1,7 @@
 # LEAP-03 - On-hit (ds.onhit) consumer-surface completion
 
 Status: SPEC (pre-implementation). Author pass: 2026-07-16.
-Target model: claude-opus-4-8, effort HIGH.
+Target model: claude-opus-5-5, effort HIGH.
 Estimated sessions: 1 (short).
 Context: 7th archetype scorer `ds.onhit` shipped Slice B, ENGINE 1.216.0, LEDGER 911.
 
@@ -371,7 +371,7 @@ archetype_chip.js are all non-frozen; verified against the CLAUDE.md frozen list
 
 ## EST SESSIONS + MODEL
 
-1 short session. Target model claude-opus-4-8, effort HIGH. The slices are small
+1 short session. Target model claude-opus-5-5, effort HIGH. The slices are small
 and independent; the only real cost is the Tier-2 DS suite + Share mirror +
 `:8893` restart for the one-route server.py edit, and the 5-phase chip audit.
 TDD RED-first per slice (the pinning tests already exist to invert).

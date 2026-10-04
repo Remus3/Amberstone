@@ -7,7 +7,7 @@
 > the ARAM/Arena layout must reserve/collapse its slot per the SCOPE-3 no-hole rule + AC8.
 
 Status: SPEC (Fable 5 forward-leap portfolio, 2026-07-16). No code in this file.
-Owner of execution: one cold Opus 4.8 (Max20) session, effort high.
+Owner of execution: one cold Opus 5.5 (Max20) session, effort high.
 Scope discipline: this spec is self-contained. A session with ONLY CLAUDE.md +
 this file has everything it needs. Do not re-derive scope from chat or memory.
 
@@ -301,7 +301,7 @@ DO NOT MODIFY (reuse as-is):
 - Estimated sessions: 1-2 (1 if the single-scroll re-place + audit is clean; a 2nd
   only if the fixture-audit surfaces a hierarchy MUST-FIX that needs a CSS grid
   rework).
-- Model: claude-opus-4-8, effort HIGH.
+- Model: claude-opus-5-5, effort HIGH.
 - One portfolio item per session; `/clear` on entry; no mid-run operator questions
   (log ambiguity + proceed with the D1-D7 recommendation).
 

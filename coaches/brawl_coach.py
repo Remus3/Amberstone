@@ -632,10 +632,10 @@ Return ONLY JSON.
 
     def __init__(self, api_key: str, mode: str):
         import anthropic
-        from modes.shared_vision import GameVisionReader
+        from modes.shared_vision import SONNET_MODEL, GameVisionReader
         r = GameVisionReader.__new__(GameVisionReader)
         r._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")
-        r._model  = "claude-sonnet-4-6"
+        r._model  = SONNET_MODEL
         r._last   = {}
         if "ULTBOOK" in mode.upper() or "URF" in mode.upper():
             r.PROMPT = self._URF_PROMPT

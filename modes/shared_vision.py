@@ -118,7 +118,9 @@ def _capture_screen() -> Optional[str]:
 # `state_summary` to read() so the pre-screen skips Sonnet when the
 # summary hasn't drifted from the last successful extraction.
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
-SONNET_MODEL = "claude-sonnet-4-6"
+# RM-516: current Sonnet. The three mode coaches import this name instead of
+# re-pinning a literal, so a model refresh is this one line.
+SONNET_MODEL = "claude-sonnet-5-5"
 
 # -- R126 fusion shadow lane (RM-01 / Lane E, S6 - SHADOW-FIRST) --------------
 # Wires core.vision_fusion.fuse_reads into the tiered vision tick as LOG-ONLY
@@ -232,7 +234,7 @@ class GameVisionReader:
     """
     Base class for screen extraction.
     Subclasses provide PROMPT and override _postprocess(raw_dict).
-    Always uses claude-sonnet-4-6 for best small-text OCR.
+    Always uses SONNET_MODEL for best small-text OCR.
 
     AUDIT 2026-04-28 (5.6): pass `state_summary` to read() - a short
     text snapshot of HUD-relevant facts the LCU/live-client API
@@ -414,7 +416,14 @@ class GameVisionReader:
                 timeout    = _REQUEST_TIMEOUT_S,
             )
             ms  = int((time.time() - t0) * 1000)
-            raw = resp.content[0].text.strip()
+            # RM-516: SONNET_MODEL now runs adaptive thinking by default, so
+            # content[0] can be a thinking block with no .text. Take the
+            # first text block (same rule as vision_server._first_text).
+            raw = next((b.text for b in (getattr(resp, "content", None) or [])
+                        if isinstance(getattr(b, "text", None), str)), "").strip()
+            if not raw:
+                logger.warning("Vision direct: no text block in response")
+                return None
             logger.debug("Vision direct (fallback) in %dms", ms)
             # AUDIT 2026-04-28 (5.8): record direct-fallback Sonnet calls.
             try:
