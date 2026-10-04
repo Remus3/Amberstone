@@ -24,7 +24,7 @@ import { readFileSync } from "node:fs";
 
 import {
   deathTimerS, haloUnits, monogram, mapKindForQueue, buildModel, stateAt,
-  worldToCanvas, HALO_MAX_UNITS, HALO_MEAN_UNITS, FOUNTAIN_FALLBACK,
+  worldToCanvas, HALO_MAX_UNITS, HALO_BY_AGE, FOUNTAIN_FALLBACK, _validPos,
 } from "./replay_minimap.js";
 
 const DT_TABLE = JSON.parse(readFileSync(
@@ -230,9 +230,14 @@ test("a killer who is dead at the kill time (posthumous kill) gets no kill sampl
 });
 
 // --- halo ------------------------------------------------------------------------
-test("halo grows with sample age, hits the measured mean at 30 s, and is capped", () => {
+test("halo follows the measured mean last-known error by sample age, and is capped", () => {
   assert.strictEqual(haloUnits(0), 0);
-  assert.ok(Math.abs(haloUnits(30) - HALO_MEAN_UNITS) < 1e-9);
+  // Table knots are the measured bin means (see HALO_BY_AGE in the module).
+  for (const [age, units] of HALO_BY_AGE) {
+    assert.ok(Math.abs(haloUnits(age) - units) < 1e-9, `knot ${age}s`);
+  }
+  assert.strictEqual(haloUnits(25), 2748);
+  assert.ok(Math.abs(haloUnits(20) - (1811 + 2748) / 2) < 1e-9, "linear between knots");
   let prev = -1;
   for (let a = 0; a <= 600; a += 5) {
     const h = haloUnits(a);
@@ -251,6 +256,30 @@ test("between frames the halo reflects the age of the last-known sample (no inte
   assert.deepStrictEqual(s.pos, [6000, 6000]);     // last-known, not a blend toward 6500
   assert.strictEqual(s.ageS, 30);
   assert.ok(s.haloUnits > 0);
+});
+
+// --- position validation ---------------------------------------------------------------
+test("_validPos rejects null / non-finite / non-number coordinates", () => {
+  assert.strictEqual(_validPos([100, 200]), true);
+  assert.strictEqual(_validPos([0, 0]), true);
+  for (const bad of [null, undefined, [], [5], [null, null], [null, 5], [5, null],
+                     [NaN, 5], [5, Infinity], [-Infinity, 0], ["", ""], ["100", "200"],
+                     [undefined, undefined], "12", { 0: 1, 1: 2 }]) {
+    assert.strictEqual(_validPos(bad), false, `accepted ${JSON.stringify(bad)}`);
+  }
+});
+
+test("a [null, null] frame or kill position never becomes a drawable sample", () => {
+  const match = syntheticMatch();
+  match.snapshots[1].entries[0].pos = [null, null];   // pid 1 at 60 s
+  match.kills[0].pos = [null, null];                  // pid 6 kills pid 1 at 70 s
+  const m = buildModel(match);
+  assert.ok(!(m.samples.get(1) || []).some((x) => x.t === 60000), "null frame pos kept");
+  assert.ok(!(m.samples.get(6) || []).some((x) => x.t === 70000), "null kill pos kept");
+  assert.strictEqual(m.windows.get(1)[0].killPos, null);
+  // pid 1 at 65 s falls back to its frame-0 fountain sample, never to (0, 0).
+  const s = stateAt(m, 1, 65000);
+  assert.notDeepStrictEqual(s.pos, [0, 0]);
 });
 
 // --- modes / helpers -----------------------------------------------------------------

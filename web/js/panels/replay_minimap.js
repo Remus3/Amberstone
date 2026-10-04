@@ -7,8 +7,9 @@
 //
 // HONEST UNCERTAINTY, NOT INTERPOLATION. Match-V5 frames are 60 s samples, and
 // core/replay_analysis.py (module docstring) records that a 60 s position is a
-// sample, not a track. Interpolating between two frames was measured at about
-// 2000 units mean / 8900 max error, so this module never blends positions. A
+// sample, not a track. Linear interpolation between two frames was MEASURED
+// here (RM-612, see HALO_BY_AGE below for method) at mean 2636 / max 14785
+// units of error, so this module never blends positions. A
 // champion is drawn at its LAST-KNOWN position with a halo that grows with the
 // age of that sample, snaps to the exact kill position at its own kill events,
 // and is hidden for the whole of a death window.
@@ -44,14 +45,24 @@ function deathTimerS(level, timeMs) {
 }
 
 // --- constants (ours) -----------------------------------------------------------
-// Halo: linear in sample age so that 30 s (the mean age of a uniformly placed
-// moment inside a 60 s frame gap) gives the measured MEAN interpolation error,
-// capped at the measured MAX error. Both figures: core/replay_analysis.py,
-// measured 2026-07-26 on one archived SR game. They size the uncertainty; they
-// are not a claim about any one champion's speed.
-const HALO_MEAN_UNITS = 2000;
-const HALO_MAX_UNITS = 8900;
-const HALO_UNITS_PER_S = HALO_MEAN_UNITS / 30;
+// Halo = the MEAN last-known-position error at that sample age, MEASURED
+// 2026-10-04 (RM-612) read-only on data/rewind_history.db, the 300 most recent
+// ranked-solo (queue 420) matches. Method: at every CHAMPION_KILL the victim's
+// true position is the event's kill position (sub-second); its last frame at or
+// before the kill (alive at that frame, no death in between) is the last-known
+// sample. Error = distance(frame pos, kill pos), binned by sample age, n = 15583:
+//   age  0-10 s mean  788   10-20 s 1811   20-30 s 2748
+//       30-40 s     3559   40-50 s 4063   50-60 s 4394   (units; p90 at 50-60 s
+//   is 9026, max 17672 - a halo is a typical displacement, not a bound).
+// Knots sit at the bin midpoints; linear between; flat after the last bin.
+// Why no interpolation either: the same corpus measured LINEAR interpolation
+// between the killer's bracketing frames against the kill position at mean 2636
+// / median 2094 / max 14785 units (n = 11884; includes the killer's attack-range
+// offset) - a confident point with a multi-thousand-unit error.
+const HALO_BY_AGE = Object.freeze([
+  [0, 0], [5, 788], [15, 1811], [25, 2748], [35, 3559], [45, 4063], [55, 4394],
+].map((k) => Object.freeze(k)));
+const HALO_MAX_UNITS = HALO_BY_AGE[HALO_BY_AGE.length - 1][1];
 
 // Revive / echo tolerance. MEASURED 2026-10-04 on data/rewind_history.db, the
 // 80 most recent ranked-solo matches: of 2885 victim frames that fall inside a
@@ -105,7 +116,14 @@ function mapArtUrls(kind, ddragonVersion) {
 function haloUnits(ageS) {
   const a = Number(ageS);
   if (!(a > 0)) return 0;
-  return Math.min(HALO_MAX_UNITS, a * HALO_UNITS_PER_S);
+  for (let i = 1; i < HALO_BY_AGE.length; i++) {
+    const [a1, u1] = HALO_BY_AGE[i];
+    if (a <= a1) {
+      const [a0, u0] = HALO_BY_AGE[i - 1];
+      return u0 + (u1 - u0) * (a - a0) / (a1 - a0);
+    }
+  }
+  return HALO_MAX_UNITS;
 }
 
 function monogram(name) {
@@ -126,9 +144,13 @@ function _dist(a, b) {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
 
+// A position is two finite NUMBERS. Coercion is deliberately refused
+// (Number.isFinite, unlike the global isFinite, is false for any non-number):
+// Number(null) and Number("") are 0, so a coercing check would draw a missing
+// position at the map's bottom-left corner.
 function _validPos(p) {
   return Array.isArray(p) && p.length >= 2
-    && Number.isFinite(Number(p[0])) && Number.isFinite(Number(p[1]));
+    && Number.isFinite(p[0]) && Number.isFinite(p[1]);
 }
 
 function _median(xs) {
@@ -310,6 +332,6 @@ function stateAt(model, pid, tMs) {
 export {
   deathTimerS, tifPct, haloUnits, monogram, mapKindForQueue, mapArtUrls,
   buildModel, stateAt, worldToCanvas,
-  HALO_MEAN_UNITS, HALO_MAX_UNITS, ECHO_TOL_UNITS, FOUNTAIN_FALLBACK, MAP_WORLD,
-  DEATH_BRW_SECONDS,
+  HALO_BY_AGE, HALO_MAX_UNITS, ECHO_TOL_UNITS, FOUNTAIN_FALLBACK, MAP_WORLD,
+  DEATH_BRW_SECONDS, _validPos,
 };
