@@ -127,6 +127,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
 
+from dashboard._get_caps import MAX_CHAMPION_LIST, reject_oversized
 log = logging.getLogger("rc.web_dashboard")
 
 # 5-min response TTL mirrors routes_cc_blended_ehp_threat exactly.
@@ -306,6 +307,9 @@ def _serve_cc_conditional_pressure(h) -> None:
         ally_ids = _parse_champ_list(ally_raw)
         enemy_ids = _parse_champ_list(enemy_raw)
 
+        # RM-299b: _side_conditional scores per champion - cap the fan-out.
+        if reject_oversized(h, MAX_CHAMPION_LIST, ally=ally_ids, enemy=enemy_ids):
+            return
         # Both sides empty after parse -> no usable input.
         if not ally_ids and not enemy_ids:
             payload = {
