@@ -104,6 +104,7 @@ def test_round_trip_byte_identical_snapshot_content_over_http(tmp_path):
         with urllib.request.urlopen(
                 f"http://127.0.0.1:{port}/liveclientdata/allgamedata", timeout=5) as r:
             raw_last = json.loads(r.read())
+            replay_header = r.headers.get("X-RC-Replay")
     finally:
         server.shutdown()
         server.server_close()
@@ -113,7 +114,9 @@ def test_round_trip_byte_identical_snapshot_content_over_http(tmp_path):
         assert _canon(got["snapshot"]) == _canon(orig)
         assert got["vision_state"] == {"enemies": []}
         assert got["replay"] is True
-    assert _canon(raw_last) == _canon(snaps[-1])
+    assert _canon(raw_last) == _canon(snaps[-1])   # body mirrors live: no replay field
+    assert "replay" not in raw_last
+    assert replay_header == "1"                     # marker lives in the header
     # speed 1 on a perfect clock: total wall time == recorded span.
     assert clock.now() - 1000.0 == pytest.approx(19 * 0.5)
 

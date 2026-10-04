@@ -292,6 +292,50 @@ def test_unsafe_game_id_falls_back_inside_dir(tmp_path):
     assert files[0].name.startswith("nogameid-")
 
 
+def test_game_id_with_trailing_newline_is_rejected(tmp_path):
+    rec = _recorder(tmp_path, game_id="9000000001\n")
+    rec.record(_snap(1.0))
+    rec.flush()
+    rec.close()
+    names = [p.name for p in tmp_path.iterdir()]
+    assert len(names) == 1
+    assert names[0].startswith("nogameid-")
+
+
+def test_record_never_blocks_and_drops_when_queue_full(tmp_path, monkeypatch):
+    monkeypatch.setattr(lsr, "_QUEUE_MAX", 4)
+    gate = threading.Event()
+    entered = threading.Event()
+
+    def stalled_vision():
+        entered.set()
+        gate.wait(10)   # wedge the writer thread on the first frame
+        return None
+
+    rec = _recorder(tmp_path)
+    rec._vision_provider = stalled_vision
+    try:
+        assert rec.record(_snap(0.0)) is True
+        assert entered.wait(5)              # writer is now stuck holding frame 0
+        accepted = [rec.record(_snap(1.0 + i)) for i in range(4)]
+        assert accepted == [True] * 4       # queue now full (maxsize 4)
+        import time as _t
+        t0 = _t.perf_counter()
+        overflow = [rec.record(_snap(10.0 + i)) for i in range(5)]
+        elapsed = _t.perf_counter() - t0
+        assert overflow == [False] * 5
+        assert rec.dropped == 5
+        # The poll loop must never wait on the disk: 5 overflow calls, well
+        # under one blocking-put timeout in total.
+        assert elapsed < 0.25
+    finally:
+        gate.set()
+        rec.flush()
+        rec.close()
+    lines = _lines(tmp_path / "9000000001.jsonl")
+    assert len(lines) == 1 + 5
+
+
 def test_game_time_rewind_starts_new_session(tmp_path):
     ids = iter(["9000000010", "9000000011"])
     rec = lsr.LiveSessionRecorder(
