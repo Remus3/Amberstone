@@ -19,6 +19,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
@@ -68,10 +70,26 @@ def test_append_uses_the_shared_file_append_data_helper(tmp_path, monkeypatch):
     from core import operator_notify
     monkeypatch.setattr(operator_notify, "_win32_append",
                         lambda path, data: calls.append((Path(path), data)))
-    monkeypatch.setattr(mm.os, "name", "nt")
+    # Fake the host through operator_notify's seam, never os.name: patching the
+    # global os.name to "nt" makes pathlib build WindowsPath on a Linux runner
+    # ("cannot instantiate 'WindowsPath' on your system").
+    monkeypatch.setattr(operator_notify, "_on_windows", lambda: True)
     p = tmp_path / "m.jsonl"
     mm.append_mark({"game_id": None, "game_time_s": 1.0, "wall_ts": 2.0}, p)
     assert calls == [(p, b'{"game_id": null, "game_time_s": 1.0, "wall_ts": 2.0}\n')]
+
+
+def test_append_off_windows_uses_the_portable_o_append_helper(tmp_path, monkeypatch):
+    calls = []
+    from core import operator_notify
+    monkeypatch.setattr(operator_notify, "_portable_append",
+                        lambda path, data: calls.append((Path(path), data)))
+    monkeypatch.setattr(operator_notify, "_win32_append",
+                        lambda path, data: pytest.fail("win32 path off Windows"))
+    monkeypatch.setattr(operator_notify, "_on_windows", lambda: False)
+    p = tmp_path / "m.jsonl"
+    mm.append_mark({"game_id": "1", "game_time_s": 1.0, "wall_ts": 2.0}, p)
+    assert calls == [(p, b'{"game_id": "1", "game_time_s": 1.0, "wall_ts": 2.0}\n')]
 
 
 def test_read_marks_skips_malformed_lines(tmp_path):
