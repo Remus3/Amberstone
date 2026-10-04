@@ -27,6 +27,7 @@ from io import BytesIO
 
 from ._config import COACH_MODEL, VISION_MODEL, _get_client, log
 from ._stats import _record
+from ._stats import note_ocr_stack_missing as _note_ocr_stack_missing
 
 _VISION_PROMPT = """Analyze TFT screenshot. Return ONLY valid JSON:
 {"traits_active":["N.O.V.A. 3"],"board_units":["Aatrox 2-star","Caitlyn"],
@@ -406,7 +407,9 @@ def handle_ocr(body: bytes) -> dict:
     try:
         import pytesseract
         from PIL import Image, ImageEnhance
-    except ImportError:
+    except ImportError as exc:
+        # Capability, not a per-call error (RM-272): no _record here.
+        _note_ocr_stack_missing(exc)
         return {"error": "pytesseract/PIL missing"}
     # winget install does not add Tesseract to PATH on Windows; pin to default.
     import os.path as _osp
