@@ -318,6 +318,29 @@ def test_game_time_rewind_starts_a_new_game(catalog):
         _inv([DORAN_BLADE]))
 
 
+def test_clock_rewind_discards_the_previous_games_events(catalog):
+    """A missed game end must never leak game A's items into game B's drain
+    (verifier probe: A buys 1036 at 600 s, B buys 1055)."""
+    tape = lit.LiveItemTape(catalog=catalog)
+    tape.ingest([_player(1, _inv([]))], 500.0)
+    tape.ingest([_player(1, _inv([LONG_SWORD]))], 600.0)       # game A buy
+    tape.ingest([_player(1, _inv([]))], 10.0)                  # game B starts
+    tape.ingest([_player(1, _inv([DORAN_BLADE]))], 20.0)       # game B buy
+    drained = tape.drain()
+    buys = [e.item_id for e in drained if e.event_type == lit.EV_PURCHASED]
+    assert buys == [DORAN_BLADE]
+    assert len({e.segment for e in drained}) == 1
+
+
+def test_events_carry_their_game_segment(catalog):
+    tape = lit.LiveItemTape(catalog=catalog)
+    tape.ingest([_player(1, _inv([]))], 500.0)
+    seg_a = tape.segment
+    tape.ingest([_player(1, _inv([]))], 10.0)
+    assert tape.segment == seg_a + 1
+    assert {e.segment for e in tape.events} == {seg_a + 1}
+
+
 def test_persisted_types_are_the_three_timeline_types():
     assert lit.PERSISTED_TYPES == frozenset(
         {"ITEM_PURCHASED", "ITEM_SOLD", "ITEM_COMBINED"})

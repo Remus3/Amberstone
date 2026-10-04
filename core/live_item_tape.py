@@ -71,6 +71,10 @@ Known blind spots (under-count, never invent)
     snapshot, so the tape records nothing. Likewise a component bought and
     combined inside one tick shows only the completed item.
   * A sale in the same tick as a grant is typed ITEM_REMOVED (not ITEM_SOLD).
+  * A game whose end is never drained is DISCARDED when the next game's clock
+    rewind is seen; every event carries a ``segment`` and the store persists
+    only the latest segment, so one game's items never land under another
+    game's match_id.
   * ``fold(events)`` reproduces the LAST GOOD snapshot exactly; a player whose
     ``items`` field is missing in a torn payload is skipped, not emptied.
 """
@@ -80,7 +84,7 @@ import json
 import logging
 import threading
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -258,6 +262,9 @@ class TapeEvent:
     item_id: int
     count: int = 1
     components: tuple[int, ...] = ()
+    # Game segment: bumped on every detected new game (clock rewind). The
+    # store persists only the LATEST segment of a drained batch.
+    segment: int = 0
 
 
 def player_key(player: Any) -> Optional[tuple[str, str]]:
@@ -347,11 +354,15 @@ class LiveItemTape:
         # key -> (inventory multiset, ids seen in the trinket slot)
         self._state: dict[tuple[str, str], tuple[Counter, set[int]]] = {}
         self._last_time: Optional[float] = None
+        self.segment = 0
 
     def reset(self) -> None:
+        """Start a fresh game. The segment counter keeps rising so events
+        from different games can never share a segment number."""
         self.events = []
         self._state = {}
         self._last_time = None
+        self.segment += 1
 
     def drain(self) -> list[TapeEvent]:
         """Hand back the whole tape and start a fresh one."""
@@ -369,11 +380,18 @@ class LiveItemTape:
             return []
         new: list[TapeEvent] = []
         if self._last_time is not None and gt < self._last_time - _NEW_GAME_REWIND_S:
-            # Clock went back: a new game. Close every player (item_id 0
-            # baseline = "inventory cleared") and start over.
-            new.extend(TapeEvent(gt, k[0], k[1], EV_BASELINE, 0, 0)
-                       for k in sorted(self._state))
+            # Clock went back: a NEW game whose predecessor was never drained
+            # (a missed game end). DISCARD the earlier game's events - they
+            # have no match_id to belong to, and draining them later would
+            # file game A's items under game B's id (verifier finding). The
+            # tape under-counts a lost game rather than mislabel it.
+            if self.events:
+                _log.info("live_item_tape: new game detected; discarding %d "
+                          "undrained events from segment %d",
+                          len(self.events), self.segment)
+            self.events = []
             self._state = {}
+            self.segment += 1
         self._last_time = gt
 
         seen: dict[tuple[str, str], Any] = {}
@@ -401,6 +419,7 @@ class LiveItemTape:
                 new.extend(self._diff(key, gt, prev[0], curr, prev[1] | slot6,
                                       flagged))
             self._state[key] = (curr, slot6)
+        new = [replace(e, segment=self.segment) for e in new]
         self.events.extend(new)
         return new
 
