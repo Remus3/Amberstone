@@ -82,9 +82,3 @@ EXCLUDED_MODES = {
     "PRACTICETOOL", "TUTORIAL",
     "TUTORIAL_MODULE_1", "TUTORIAL_MODULE_2", "TUTORIAL_MODULE_3",
 }
-
-# -- Helpers ------------------------------------------------------------------
-def strip_tags(text: str) -> str:
-    """Remove [A],[/A],[E],[/E],[T],[/T] markup from text."""
-    import re
-    return re.sub(r'\[/?[AET]\]', '', text)
