@@ -48,8 +48,18 @@ if str(_TOOLS) not in sys.path:
 
 from ds_feed_index import _DATA, body_md5, live_patch  # noqa: E402
 
-# Pre-existing manifest key written by tools/daemon_slayer_extract.py.
-DATA_BLOCKS_KEY = "lolmath_data_blocks"
+# The pre-existing manifest key written by tools/daemon_slayer_extract.py is
+# found by its suffix, so this file never spells the external source's name
+# (directive hard rule 3: provenance is "external reference L" only).
+DATA_BLOCKS_SUFFIX = "_data_blocks"
+
+
+def data_blocks_key(src) -> Optional[str]:
+    """The single `sources` key ending in DATA_BLOCKS_SUFFIX, else None."""
+    if not isinstance(src, dict):
+        return None
+    keys = [k for k in src if isinstance(k, str) and k.endswith(DATA_BLOCKS_SUFFIX)]
+    return keys[0] if len(keys) == 1 else None
 # New sibling key: per-block body hash recorded beside each URL.
 HASHES_KEY = "data_block_body_md5"
 CHANGELOG_PATH = "/info/changelog/"
@@ -102,7 +112,8 @@ def manifest_path(patch: Optional[str] = None) -> Path:
 
 def block_urls(manifest: dict) -> dict:
     src = manifest.get("sources") if isinstance(manifest, dict) else None
-    blocks = src.get(DATA_BLOCKS_KEY) if isinstance(src, dict) else None
+    key = data_blocks_key(src)
+    blocks = src.get(key) if key else None
     if not isinstance(blocks, dict):
         return {}
     return {str(k): str(v) for k, v in blocks.items() if isinstance(v, str)}
