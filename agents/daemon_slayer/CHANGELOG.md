@@ -1331,6 +1331,16 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.285.0 (2026-10-04) - DS patch 16.18.1 -> 16.19.1 (RM-522 / RM-661).
+- data: ``aram_modifiers`` re-extracted at 16.19.1 (external reference L):
+  21 fields over 16 champions moved (Azir / Gnar / Kaisa / Kindred / Quinn /
+  Yasuo / Yone attack speed 1 -> 1.025, Xayah 1 -> 1.03; Briar taken 0.95
+  -> 1, heal 1.15 -> 1.1; Kled dealt 1.05 -> 1; Mordekaiser taken 1.02 -> 1,
+  dealt 0.95 -> 1; Qiyana AH 0 -> 20; Viktor taken 1.05 -> 1, dealt 0.95 ->
+  1; Vladimir taken 1.05 -> 1, heal 0.9 -> 1; Zaahen taken 1 -> 1.05, dealt
+  1 -> 0.95; Ziggs dealt 0.87 -> 0.92). Lanes 5, scenarios 173. The bump
+  is for the moved ARAM engine output; every 16.19.1 build table is
+  regenerated against it.
 1.284.0 (2026-10-03) - RM-513 Arena augment-reward deny, RM-480 residuals,
 RM-479 /stats augment_stacks transport.
 - fix (DEFAULT scoring, Arena): ``rank._ARENA_EXCLUDED_ITEM_IDS`` =

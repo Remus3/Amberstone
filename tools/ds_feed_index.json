@@ -613,9 +613,10 @@
         "declared_patch": "16.18.1",
         "stamp_field": "_patch"
       }
-    }
+    },
+    "16.19.1": {}
   },
-  "generated_from_current_txt": "16.18.1",
+  "generated_from_current_txt": "16.19.1",
   "known_stamp_lag": {},
   "known_static_body": {}
 }
