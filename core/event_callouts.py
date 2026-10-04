@@ -77,6 +77,10 @@ _SR_BARON_S = SR_BARON_FIRST_S
 _SR_PLATES_FALL_S = 840.0      # 14:00 (turret plating gone)
 _SR_ELDER_NOMINAL_S = 2100.0   # ~35:00 nominal late marker
 _SR_HERALD_DESPAWN_S = 1185.0  # 19:45 - Herald leaves the pit before Baron
+# RM-306: Elder exists only after Dragon Soul; it spawns 6:00 after the
+# soul-securing drake and respawns 6:00 after an Elder take.
+_SR_ELDER_AFTER_SOUL_S = 360.0
+_SR_ELDER_RESPAWN_S = 360.0
 _INHIB_RESPAWN_S = 300.0       # 5:00 - inhibitor respawn after it falls
 
 # RM-305: epic monsters STAND in their pit until killed, unlike the plates
@@ -302,9 +306,21 @@ def _dynamic_epic_callouts(objective_events: object,
     Objectives with no kill yet are left to the static schedule (unclaimed).
     """
     rows: list[dict] = []
-    claimed: set = set()
+    # RM-306: Elder is ALWAYS claimed - it never runs on the static nominal
+    # schedule, because it cannot exist before a soul is secured. Without
+    # event data no soul can be shown, so no row.
+    claimed: set = {"elder"}
     if not isinstance(objective_events, list) or not objective_events:
         return rows, claimed
+
+    last_elder = _last_elder_kill_t(objective_events)
+    soul_t = _soul_secured_at(objective_events)
+    if last_elder is not None:
+        rows.append(_schedule_row(
+            "elder", last_elder + _SR_ELDER_RESPAWN_S, game_time_s))
+    elif soul_t is not None:
+        rows.append(_schedule_row(
+            "elder", soul_t + _SR_ELDER_AFTER_SOUL_S, game_time_s))
 
     counts = _elemental_drake_counts(objective_events)
     if max(counts.values()) >= _SOUL_SECURED_STACKS:
@@ -874,6 +890,57 @@ def _elemental_drake_counts(objective_events: object) -> dict:
         if side in counts:
             counts[side] += 1
     return counts
+
+
+def _last_elder_kill_t(objective_events: object) -> Optional[float]:
+    """Latest Elder take (a DragonKill whose dragon_type is Elder), or None."""
+    last: Optional[float] = None
+    if not isinstance(objective_events, list):
+        return None
+    for ev in objective_events:
+        if not isinstance(ev, dict) or ev.get("name") != "dragon":
+            continue
+        if _is_elemental_drake(ev):
+            continue
+        t = _finite(ev.get("down_at_s"))
+        if t is not None and (last is None or t > last):
+            last = t
+    return last
+
+
+def _soul_secured_at(objective_events: object) -> Optional[float]:
+    """Time the first Dragon Soul was secured, or None (RM-306).
+
+    Sided: the 4th elemental drake of whichever side got there first. RM-307
+    fallback: when some elemental kills have an unresolved killer, sided
+    counts under-count, so the 4th elemental drake OVERALL is used instead
+    (four is necessary for any soul) - a possible soul keeps Elder visible
+    rather than suppressing it forever on an attribution gap.
+    """
+    if not isinstance(objective_events, list):
+        return None
+    by_side: dict[str, list[float]] = {"ally": [], "enemy": []}
+    every: list[float] = []
+    unresolved = False
+    for ev in objective_events:
+        if not isinstance(ev, dict) or not _is_elemental_drake(ev):
+            continue
+        t = _finite(ev.get("down_at_s"))
+        if t is None:
+            continue
+        every.append(t)
+        side = ev.get("killer_team")
+        if side in by_side:
+            by_side[side].append(t)
+        else:
+            unresolved = True
+    secured = [sorted(ts)[_SOUL_SECURED_STACKS - 1] for ts in by_side.values()
+               if len(ts) >= _SOUL_SECURED_STACKS]
+    if secured:
+        return min(secured)
+    if unresolved and len(every) >= _SOUL_SECURED_STACKS:
+        return sorted(every)[_SOUL_SECURED_STACKS - 1]
+    return None
 
 
 def dragon_soul_callout(objective_events: object) -> Optional[dict]:
