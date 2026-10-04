@@ -149,7 +149,12 @@ BLANK_THUMB_WIDTH    = 64
 BLANK_LUMA_RANGE_MAX = 16
 FOREGROUND_GRACE_S   = 3.0
 SKIP_COUNTS = {"locked": 0, "not_foreground": 0, "blank": 0}
-_LEAGUE_EXE = "league of legends.exe"
+# Foreground images whose frame is game content: League, plus the RC overlay
+# (focusable while ACTIVE; its transparent frame over League is still the
+# game). Packaged = "amberstone shell.exe"; live launches run electron.exe.
+# Mirrors vision_server/_frame.py _GAME_CONTENT_IMAGES (test-pinned).
+GAME_CONTENT_IMAGES = frozenset({
+    "league of legends.exe", "amberstone shell.exe", "electron.exe"})
 _fg_last_seen = 0.0
 
 # Stall-warn threshold (seconds). A single cycle slower than this gets
@@ -224,33 +229,38 @@ def _input_desktop_locked() -> bool:
         return True
 
 
-def _league_foreground() -> bool:
-    """True iff the foreground window's process image is League of
-    Legends.exe. Reads only the image name; False on any error."""
+def _foreground_image() -> str:
+    """Lower-cased image name of the foreground window's process, "" on any
+    error. Reads only the image name."""
     try:
         user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
         hwnd = user32.GetForegroundWindow()
         if not hwnd:
-            return False
+            return ""
         pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
         if not pid.value:
-            return False
+            return ""
         h = kernel32.OpenProcess(0x1000, False, pid.value)  # QUERY_LIMITED_INFO
         if not h:
-            return False
+            return ""
         try:
             buf = ctypes.create_unicode_buffer(1024)
             size = wintypes.DWORD(len(buf))
             if not kernel32.QueryFullProcessImageNameW(h, 0, buf,
                                                        ctypes.byref(size)):
-                return False
-            return buf.value.rsplit("\\", 1)[-1].lower() == _LEAGUE_EXE
+                return ""
+            return buf.value.rsplit("\\", 1)[-1].lower()
         finally:
             kernel32.CloseHandle(h)
     except Exception:  # noqa: BLE001
-        return False
+        return ""
+
+
+def _league_foreground() -> bool:
+    """True iff League or the RC overlay owns the foreground window."""
+    return _foreground_image() in GAME_CONTENT_IMAGES
 
 
 def capture_gate(primary: bool = PRIMARY, now: float | None = None) -> str | None:
