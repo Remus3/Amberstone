@@ -1695,6 +1695,22 @@
                replay_events.js from /api/replay/events?match_id=<id>.
                Default include set is strong events only; the [+items] /
                [+wards] toggles expand the ribbon for finer-grained replay. -->
+          <!-- RM-612 (X-12): past-match minimap beside the timeline. Canvas
+               only, drawn by dev.js _replayMapDraw from the pure logic in
+               panels/replay_minimap.js. Positions are 60 s samples, never
+               interpolated: last-known badge + an age halo, hidden while
+               dead. Hidden for modes with no timeline (queue 2400). -->
+          <div class="replay-map-row">
+          <figure class="replay-map-figure" id="replay-map-figure" hidden>
+            <canvas id="replay-map-canvas" class="replay-map-canvas"
+                    width="480" height="480" role="img"
+                    aria-label="Champion positions at the selected time"></canvas>
+            <figcaption class="replay-map-caption">
+              <span class="replay-map-clock" id="replay-map-clock">-</span>
+              <span class="replay-map-note">Positions sampled every 60 s; the halo grows with time since the last sample</span>
+              <span class="replay-map-flags" id="replay-map-flags"></span>
+            </figcaption>
+          </figure>
           <section class="replay-events-section" id="replay-events-section" hidden>
             <header class="replay-events-head">
               <span class="replay-events-title">Timeline</span>
@@ -1716,6 +1732,7 @@
               No timeline events for this match.
             </div>
           </section>
+          </div>
           <div class="replay-grid-wrap">
             <table class="replay-grid">
               <thead>
