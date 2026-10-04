@@ -268,6 +268,16 @@ _ARAM_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
     "226668",  # Ultra Hydra - 6000g, maps {12} only, Mayhem "Ultra Hydra" augment reward (NEW 16.17.1)
 })
 
+# RM-513 (2026-10-03): the Arena counterpart. DDragon also marks Void Immolation
+# purchasable on map 30, but the wiki item page reads "Available on Arena and
+# ARAM: Mayhem" / "Obtained from the Quest: Icathia's Fall augment" - an augment
+# REWARD in Arena too. Unexcluded it opened 217 of 519 (42 percent) 16.18.1
+# Arena builds. Structural guard for the next one:
+# tests/test_arena_augment_reward_exclusion_rm513.py.
+_ARENA_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
+    "223069",  # Void Immolation - 6000g, Arena "Quest: Icathia's Fall" reward
+})
+
 
 # Ranged-ONLY item purchasability gate (2026-07-02, patch 16.13.1).
 #
@@ -798,6 +808,9 @@ def _filter_candidates(
         # mirror namespace) - deny unconditionally on ARAM BEFORE the inject
         # force-admit, like the SR-exclude + non-coachable gates.
         if mode.upper() == "ARAM" and item_id in _ARAM_EXCLUDED_ITEM_IDS:
+            continue
+        # RM-513: same deny on Arena for augment-reward mega-items.
+        if mode.upper() == "ARENA" and item_id in _ARENA_EXCLUDED_ITEM_IDS:
             continue
         # Ornn masterwork deny (operator 2026-07-06): items obtainable ONLY via an
         # Ornn ally upgrade (Wooglet's Witchcap etc.) are marked gold.purchasable

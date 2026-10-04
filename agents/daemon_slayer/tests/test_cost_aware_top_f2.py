@@ -148,17 +148,19 @@ class TestCostCeilingRankers(unittest.TestCase):
     def test_dps_default_off_byte_identical(self):
         self.assertEqual(self._dps_ids(), self._dps_ids(cost_ceiling=None))
 
-    def test_arena_mode_still_admits_void_immolation(self):
-        # Arena mode (maps.30=true) should still admit it - the hard-exclude
-        # only fires on ARAM (mode.upper() == "ARAM").
+    def test_arena_mode_excludes_void_immolation(self):
+        # RM-513 (2026-10-03) REFUTED the old premise that maps.30=true makes
+        # it an Arena purchase: the wiki page reads "Obtained from the Quest:
+        # Icathia's Fall augment" in Arena too, so rank._ARENA_EXCLUDED_ITEM_IDS
+        # denies it there (tests/test_arena_augment_reward_exclusion_rm513.py).
         from agents.daemon_slayer.rank import _filter_candidates as fc
         cands = fc(
             self.snap, mode="arena", current_ids=set(), budget=None,
             include_components=False, only_ids=None,
         )
         ids = {iid for iid, _ in cands}
-        self.assertIn(VOID_IMMOLATION, ids,
-                      "Void Immolation must remain legal in Arena mode")
+        self.assertNotIn(VOID_IMMOLATION, ids,
+                         "Void Immolation is an augment reward in Arena, not a purchase")
 
 
 if __name__ == "__main__":

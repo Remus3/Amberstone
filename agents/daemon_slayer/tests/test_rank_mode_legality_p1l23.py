@@ -37,6 +37,7 @@ import unittest
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.rank import (
     MODE_MAP_ID,
+    _ARENA_EXCLUDED_ITEM_IDS,
     _NON_COACHABLE_ITEM_IDS,
     _filter_candidates,
     _is_legal_in_mode,
@@ -136,6 +137,11 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
     if map_id == "12":
         from agents.daemon_slayer.rank import _ARAM_EXCLUDED_ITEM_IDS
         out = out - _ARAM_EXCLUDED_ITEM_IDS
+    # RM-513 (2026-10-03): Arena counterpart - augment-reward mega-items DDragon
+    # marks purchasable on map 30 - mirror _filter_candidates.
+    if map_id == "30":
+        from agents.daemon_slayer.rank import _ARENA_EXCLUDED_ITEM_IDS
+        out = out - _ARENA_EXCLUDED_ITEM_IDS
     # DDragon alias-id dedup (operator 2026-07-12): mirror _filter_candidates -
     # when the same item name survives under two ids of DIFFERENT length, the
     # strictly-longer id is a DDragon alias variant (the "32xxxx" / "66xxxx"
@@ -377,6 +383,9 @@ class KnownExceptionScopingTests(unittest.TestCase):
             # about coachability - the deny is pinned separately in
             # test_non_coachable_arena_spatula_a27b.py.
             and k not in _NON_COACHABLE_ITEM_IDS
+            # RM-513: 223069 Void Immolation is an augment reward in Arena
+            # (rank._ARENA_EXCLUDED_ITEM_IDS), legitimately absent from the pool.
+            and k not in _ARENA_EXCLUDED_ITEM_IDS
         ]
         self.assertGreater(
             len(mirror_ids), 0, "no purchasable 22-prefixed mirror items"
