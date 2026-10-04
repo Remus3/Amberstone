@@ -466,13 +466,28 @@ def pull_rotation_report(archive_dir) -> dict:
         by_account.setdefault(row.get("account"), []).append(row)
 
     report = {}
-    for account, rows in by_account.items():
+    for account, all_rows in by_account.items():
+        # Hand-off residual (2026-10-03): an EMPTY window is not evidence about
+        # rotation. Before RM-484 a throttled /replays listing was recorded as
+        # [] (measured: ~104 such rows across the per-player logs), and as the
+        # first or last sample it reads as "every game dropped" or "all new".
+        # A genuine zero-replay listing proves nothing either. Excluded from
+        # the comparison, still counted, never deleted (the log is append-only
+        # and lives outside the repo).
+        rows = [r for r in all_rows if r.get("match_ids")]
+        empty = len(all_rows) - len(rows)
+        if not rows:
+            report[account] = {"observations": 0, "empty_observations": empty,
+                               "rotated": None, "new_ids": [], "dropped_ids": [],
+                               "first_seen": [], "last_seen": []}
+            continue
         rows.sort(key=lambda r: r.get("observed_at_unix") or 0)
         first = set(rows[0].get("match_ids") or [])
         last = set(rows[-1].get("match_ids") or [])
         new_ids = sorted(last - first)
         report[account] = {
             "observations": len(rows),
+            "empty_observations": empty,
             "rotated": (bool(new_ids) if len(rows) > 1 else None),
             "new_ids": new_ids,
             "dropped_ids": sorted(first - last),
