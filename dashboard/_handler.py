@@ -49,6 +49,7 @@ import os
 import time
 from http.server import BaseHTTPRequestHandler
 
+from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
 
 log = logging.getLogger("rc.web_dashboard")
@@ -69,19 +70,13 @@ _SCRUB_RANGES = tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
 
 
 def _scrub_log(text: str) -> str:
-    """Escape control characters so a request cannot inject into the log."""
-    if _CONTROL_CHAR_TABLE is not None:
-        return text.translate(_CONTROL_CHAR_TABLE)
-    # The backslash escape is not decoration: without it a client can type
-    # the literal six characters `\x1b[31m` and produce a log line byte-for-
-    # byte identical to a scrubbed real ESC, so the escaping stops being
-    # injective. The stdlib table maps `\` to `\\` for exactly this reason,
-    # and the fallback is asserted equivalent to it by test.
-    return "".join(
-        f"\\x{ord(ch):02x}" if ord(ch) in _SCRUB_RANGES
-        else ("\\\\" if ch == "\\" else ch)
-        for ch in text
-    )
+    """Escape control characters so a request cannot inject into the log.
+
+    RM-321: the implementation was lifted to ``core.log_scrub`` so the
+    servers that must not import ``dashboard/`` can share it; this module's
+    table is passed through so the fallback arm stays testable here.
+    """
+    return _core_scrub_log(text, _CONTROL_CHAR_TABLE)
 
 # OVL2 (Electron Phase 6, Pengu Surface C): loopback origins always allowed
 # to read responses cross-origin. The Pengu Loader plugin (pengu/) runs in
