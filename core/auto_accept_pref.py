@@ -22,6 +22,8 @@ import logging
 import threading
 from pathlib import Path
 
+from core.polled_json import atomic_write_text
+
 _log = logging.getLogger("rc.lcu")
 
 _PREF_PATH = Path(__file__).resolve().parent.parent / "data" / "auto_accept_pref.json"
@@ -61,9 +63,6 @@ def set_enabled(enabled: bool) -> bool:
     """
     enabled = bool(enabled)
     with _WRITE_LOCK:
-        _PREF_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = _PREF_PATH.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps({"enabled": enabled}), encoding="utf-8")
-        tmp.replace(_PREF_PATH)
+        atomic_write_text(_PREF_PATH, json.dumps({"enabled": enabled}))
     _log.info("auto-accept preference set: enabled=%s", enabled)
     return enabled

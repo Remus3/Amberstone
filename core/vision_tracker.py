@@ -22,6 +22,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from core.polled_json import atomic_write_text
+
 _log = logging.getLogger("rc.vision_tracker")
 _APP_DIR = Path(__file__).parent.parent
 
@@ -390,10 +392,7 @@ class VisionTracker:
 
     def _write_atomic(self) -> None:
         try:
-            tmp = self._out.with_suffix(self._out.suffix + ".tmp")
-            self._out.parent.mkdir(parents=True, exist_ok=True)
-            tmp.write_text(json.dumps(self.state(), indent=2), encoding="utf-8")
-            tmp.replace(self._out)
+            atomic_write_text(self._out, json.dumps(self.state(), indent=2))
         except Exception as exc:  # noqa: BLE001
             _log.debug("vision_state write failed: %s", exc)
 

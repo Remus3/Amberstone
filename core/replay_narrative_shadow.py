@@ -21,6 +21,8 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.polled_json import atomic_write_text
+
 log = logging.getLogger("rc.replay_narrative_shadow")
 
 # Default shadow path - project root is two levels above this file (core/).
@@ -91,20 +93,17 @@ def log_replay_narrative(
             "native": native_dict,
         }
 
-        target.parent.mkdir(parents=True, exist_ok=True)
         # Atomic append: read the existing file, append the new line, write the
-        # whole buffer to a tmp sibling, then replace the target in one rename.
-        # Mirrors the repo "tmp.write_text(...); tmp.replace(target)" hard rule
-        # so a concurrent reader never sees a partially written tail.
+        # whole buffer through the shared core.polled_json writer (per-writer
+        # scratch, retry, fsync) so a concurrent reader never sees a partially
+        # written tail.
         existing = ""
         try:
             existing = target.read_text(encoding="utf-8")
         except FileNotFoundError:
             existing = ""
         buffer = existing + json.dumps(record) + "\n"
-        tmp = target.with_suffix(target.suffix + ".tmp")
-        tmp.write_text(buffer, encoding="utf-8")
-        tmp.replace(target)
+        atomic_write_text(target, buffer)
         _LAST_SIG[tkey] = sig
 
         return record

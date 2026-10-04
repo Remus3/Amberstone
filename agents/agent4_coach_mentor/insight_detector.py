@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable
 
 from coaches.adaptation_hint import SUPPORTED_MODES, coaching_digest
+from core.polled_json import atomic_write_text
 
 if TYPE_CHECKING:
     from agents.agent1_lead.scheduler import Scheduler
@@ -58,10 +58,7 @@ def _load_cooldowns() -> dict[str, str]:
 
 
 def _save_cooldowns(cooldowns: dict[str, str]) -> None:
-    COOLDOWN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = COOLDOWN_FILE.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(cooldowns, indent=2), encoding="utf-8")
-    os.replace(tmp, COOLDOWN_FILE)
+    atomic_write_text(COOLDOWN_FILE, json.dumps(cooldowns, indent=2))
 
 
 def _cooldown_key(insight: dict) -> str:

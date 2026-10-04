@@ -23,9 +23,10 @@ holds the ``:root`` palette + base font tokens).
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Any
+
+from core.polled_json import atomic_write_bytes
 
 logger = logging.getLogger("agent4.ui_applier")
 
@@ -88,10 +89,7 @@ def _resolve_target(rel_path: str) -> Path:
 def _atomic_write(target: Path, content: bytes) -> None:
     """Write via ``.tmp`` + ``os.replace``. Same atomic-write invariant
     overlays rely on per CLAUDE.md."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_suffix(target.suffix + ".uiproposal.tmp")
-    tmp.write_bytes(content)
-    os.replace(tmp, target)
+    atomic_write_bytes(target, content)
 
 
 def _validate_js_sanity(content: str, rel_path: str) -> None:

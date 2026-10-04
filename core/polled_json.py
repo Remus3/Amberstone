@@ -87,8 +87,9 @@ def _scratch_path(path: Path) -> Path:
     OWN PROCESS (the RC-LCUAgent ONLOGON task) and is the motivating case for
     the pid below. coaching_data.json has at least THREE: app/__init__.py:253
     and :272, dashboard/_writers.py:63 (set_pregame), and
-    coach_integration/_coach.py:713, which still hand-rolls
-    `data_file.with_suffix(".tmp")` and is NOT converted - see RM-261.
+    coach_integration/_coach.py, which hand-rolled
+    `data_file.with_suffix(".tmp")` until RM-258/RM-261 routed it through here
+    (repo-wide guard: tests/test_atomic_write_guard_rm258_rm261.py).
 
     The pid is part of the name because the writers can be separate processes
     (RC-HotkeyListener and RC-LCUAgent are their own ONLOGON tasks), which is

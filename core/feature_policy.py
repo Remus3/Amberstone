@@ -50,6 +50,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from core.polled_json import atomic_write_text
+
 _log = logging.getLogger("rc.feature_policy")
 
 # -- Paths -----------------------------------------------------------------
@@ -486,9 +488,6 @@ def write_disabled_placeholder(mode: str, feature: Optional[str] = None,
 def _write_json(path: Path, data: dict) -> None:
     """Atomically write a JSON file. Parent dir is created if absent."""
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        tmp.replace(path)
+        atomic_write_text(path, json.dumps(data, indent=2))
     except Exception as exc:  # noqa: BLE001
         _log.error("feature_policy: _write_json(%s) failed: %s", path, exc)

@@ -19,9 +19,14 @@ its version/locked_at stamps - a re-run never wipes locked decisions.
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
+
+# Run as ``python ops/phase3_setup.py``, so sys.path[0] is ops/ and the
+# repo's own packages are invisible without this.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from core.polled_json import atomic_write_text  # noqa: E402
 
 ROOT = Path(r"C:\Riot Commander")
 
@@ -177,10 +182,7 @@ RESOLVED_DECISIONS = {
 
 
 def atomic_write_json(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    atomic_write_text(path, json.dumps(data, indent=2))
 
 
 def merge_resolved_decisions(existing: dict | None) -> dict:

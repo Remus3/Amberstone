@@ -63,6 +63,7 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     shape_snapshot,
 )
 from lcu.lcu_rune_writer import is_rc_owned_page  # noqa: E402
+from core.polled_json import atomic_write_text  # noqa: E402
 
 # RM-154. The RC-LCUAgent task runs this under pythonw.exe, which has NO
 # console: print() is discarded and stderr is None, so every line this module
@@ -1371,14 +1372,11 @@ _augment_scan_state = {"was_open": False}
 
 
 def _write_force_scan_marker() -> None:
-    """Bump data/force_scan.json (tmp+replace, standalone - the agent cannot
-    import core.polled_json). Payload matches dashboard/_writers.force_vision_scan
-    and core.hotkeys: {"force": <ts>}."""
-    p = _APP_DIR_LCU / "data" / "force_scan.json"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps({"force": time.time()}), encoding="utf-8")
-    tmp.replace(p)
+    """Bump data/force_scan.json via core.polled_json (importable: the repo
+    root is put on sys.path at the top of this module). Payload matches
+    dashboard/_writers.force_vision_scan and core.hotkeys: {"force": <ts>}."""
+    atomic_write_text(_APP_DIR_LCU / "data" / "force_scan.json",
+                      json.dumps({"force": time.time()}))
 
 
 def _maybe_force_augment_scan(state: dict) -> None:
@@ -1422,14 +1420,11 @@ def _save_ingest_state() -> None:
     """Atomic write of the persisted ingest state. Called after each
     successful POST + after startup recovery."""
     try:
-        INGEST_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = INGEST_STATE_FILE.with_suffix(INGEST_STATE_FILE.suffix + ".tmp")
         payload = {
             "last_game_id_ingested": _post_match_ingest_state["last_game_id_ingested"],
             "saved_at":              time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
-        tmp.write_text(json.dumps(payload), encoding="utf-8")
-        os.replace(tmp, INGEST_STATE_FILE)
+        atomic_write_text(INGEST_STATE_FILE, json.dumps(payload))
     except OSError as exc:
         log.error(f"[ingest-state] save failed: {exc}")
 

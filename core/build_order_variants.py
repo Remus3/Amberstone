@@ -104,9 +104,7 @@ import logging
 logger = logging.getLogger("rc.build_order_variants")
 import argparse
 import json
-import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Callable, Optional, Sequence
@@ -138,6 +136,7 @@ from core.build_order_precompute import (
     split_bias,
 )
 from core.ds_antitank_hint import build_antitank_hint
+from core.polled_json import atomic_write_text
 
 # Project root: core/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
@@ -434,21 +433,10 @@ def atomic_write(payload: dict, out_path: Path) -> None:
     rule). ASCII-only, sorted keys for a stable diff. Mirrors
     ``core.build_order_precompute.atomic_write``.
     """
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=f".{out_path.stem}.", suffix=".tmp", dir=str(out_path.parent),
+    atomic_write_text(
+        out_path,
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
     )
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(payload, fh, ensure_ascii=True, indent=2, sort_keys=True)
-            fh.write("\n")
-        os.replace(tmp_path, str(out_path))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
 
 
 # --------------------------------------------------------------------------- #

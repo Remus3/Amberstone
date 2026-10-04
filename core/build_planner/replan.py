@@ -54,6 +54,7 @@ from core.build_planner.planner import BuildPlan, plan_build
 from core.build_planner.scoring import score_build, stage_for
 from core.build_planner.situational import classify_item
 from core.failed_load_gate import FailedLoadGate
+from core.polled_json import atomic_write_text
 
 # --------------------------------------------------------------------------- #
 # Lazy recipe / boots catalog - the same ddragon_items.json situational.py
@@ -769,14 +770,11 @@ class ReplanLoop:
     def end_match(self, path=None) -> list:
         """Return the action log. Write ONLY when ``path`` is given (atomic).
 
-        Atomic save: write a sibling ``.tmp`` then ``replace`` it onto the target
-        so a mid-write reader never sees a partial file (repo hard rule).
+        Atomic save via the shared ``core.polled_json`` writer so a mid-write
+        reader never sees a partial file (repo hard rule).
         """
         if path is not None:
-            target = Path(path)
-            tmp = target.with_name(target.name + ".tmp")
-            tmp.write_text(
-                json.dumps(self.action_log, ensure_ascii=True, indent=2),
-                encoding="utf-8")
-            tmp.replace(target)
+            atomic_write_text(
+                Path(path),
+                json.dumps(self.action_log, ensure_ascii=True, indent=2))
         return self.action_log

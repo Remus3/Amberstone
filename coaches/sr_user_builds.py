@@ -69,12 +69,13 @@ from __future__ import annotations
 import copy
 import json
 import logging
-import os
 import secrets
 import time
 from pathlib import Path
 from threading import RLock
 from typing import Any, Optional
+
+from core.polled_json import _replace_with_retry, atomic_write_json
 
 _log = logging.getLogger("rc.sr_user_builds")
 
@@ -448,7 +449,7 @@ def _quarantine_corrupt_store(cause: Exception) -> None:
         target = _STORE_PATH.with_name(
             f"user_builds.corrupt-{stamp}-{n}.json")
     try:
-        os.replace(_STORE_PATH, target)
+        _replace_with_retry(_STORE_PATH, target)
     except OSError as exc:
         # Could not move it aside - then it is NOT safe to overwrite either.
         _log.error("user_builds corrupt (%s) and quarantine failed: %s",
@@ -505,41 +506,15 @@ def _load() -> dict[str, Any]:
 
 
 def _save(store: dict[str, Any]) -> None:
-    """Atomic write: tmp.write_text -> tmp.replace. Bumps in-memory
-    mtime cache to the post-replace mtime so the next _load() doesn't
-    re-parse what we just wrote."""
+    """Atomic write via core.polled_json (per-writer scratch name, fsync,
+    WinError 5 retry, scratch cleanup on failure). Bumps in-memory mtime
+    cache to the post-replace mtime so the next _load() doesn't re-parse
+    what we just wrote."""
     global _CACHE, _CACHE_MTIME
-    _STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    # W6: a per-writer scratch name. A single shared "<name>.json.tmp" is what
-    # two concurrent writers would both open, the second truncating the first
-    # mid-write - which defeats the atomicity the tmp+rename exists to give.
-    tmp = _STORE_PATH.with_name(
-        f"{_STORE_PATH.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
-    # Bytes, not write_text: Path.write_text rewrites LF as CRLF on Windows and
-    # read_text hides it coming back (reference_windows_write_text_crlf_byte_count).
-    payload = json.dumps(store, indent=2, ensure_ascii=False)
     try:
-        tmp.write_bytes(payload.encode("utf-8"))
-        # core.atomic_write_json's WinError 5 retry pattern (memory:
-        # reference_os_replace_winerror5). Brief retry covers the case
-        # where a concurrent reader has the destination open.
-        for delay_ms in (0, 25, 50, 200):
-            if delay_ms:
-                time.sleep(delay_ms / 1000.0)
-            try:
-                os.replace(tmp, _STORE_PATH)
-                break
-            except PermissionError as exc:
-                if delay_ms == 200:
-                    _log.warning("user_builds save retry exhausted: %s", exc)
-                    raise
-    except BaseException:
-        # W6: the pre-fix code re-raised and orphaned the scratch file, so an
-        # exhausted retry left a stale user_builds.json.tmp on disk forever.
-        try:
-            tmp.unlink()
-        except OSError:
-            pass
+        atomic_write_json(_STORE_PATH, store)
+    except PermissionError as exc:
+        _log.warning("user_builds save retry exhausted: %s", exc)
         raise
     # Publish only after the write has actually landed.
     _CACHE = store

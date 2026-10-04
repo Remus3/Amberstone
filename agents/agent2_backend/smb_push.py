@@ -13,7 +13,8 @@ Agent 0's evaluator and was a bug.
 Contract (S11.4, S7):
   * Share: ``\\\\192.0.2.237\\RCClient\\`` (persistent cmdkey-stored creds).
   * Writable zones: ``forwarder\\``, ``web\\``. Anything else is rejected.
-  * Atomic write: local -> ``<remote>.tmp`` -> ``os.replace`` over UNC.
+  * Atomic write: local -> ``<remote>.<pid>.<token>.tmp`` -> ``os.replace``
+    (with WinError 5 retry) over UNC.
   * Backup: existing remote file copied to
     ``\\\\192.0.2.237\\RCClient\\backup\\<YYYYMMDD-HHMMSS>-<label>\\<basename>``
     before the overwrite lands.
@@ -37,6 +38,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
+
+from core.polled_json import _replace_with_retry, _scratch_path
 
 SHARE_UNC = r"\\192.0.2.237\RCClient"
 ALLOWED_SUBDIRS = ("forwarder", "web")
@@ -166,10 +169,12 @@ def push(
     expected_sha = _sha256(local)
     backup = _backup_existing(remote_path, label)
 
-    tmp_path = remote_path.with_suffix(remote_path.suffix + ".tmp")
+    # The copy crosses volumes (local -> share); only the final rename has to
+    # be same-filesystem, so the scratch file is a sibling on the share.
+    tmp_path = _scratch_path(remote_path)
     try:
         shutil.copyfile(local, tmp_path)
-        os.replace(tmp_path, remote_path)
+        _replace_with_retry(tmp_path, remote_path)
     except OSError as e:
         # Best-effort cleanup of .tmp if replace never happened.
         try:

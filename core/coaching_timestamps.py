@@ -27,6 +27,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from core.polled_json import atomic_write_text
+
 _log = logging.getLogger("rc.coaching_ts")
 
 _PROJECT_DIR = Path(__file__).parent.parent
@@ -60,16 +62,13 @@ def write_coaching_ts(mode: str,
 
     rt = Path(runtime_dir) if runtime_dir is not None else _RUNTIME_DIR
     try:
-        rt.mkdir(parents=True, exist_ok=True)
         ts_file = rt / f"coaching_ts_{mode_key}.json"
-        ts_tmp  = ts_file.with_suffix(".tmp")
-        ts_tmp.write_text(
+        atomic_write_text(
+            ts_file,
             json.dumps({
                 "ts":   datetime.now(timezone.utc).isoformat(),
                 "mode": mode_key,
             }),
-            encoding="utf-8",
         )
-        ts_tmp.replace(ts_file)
     except Exception as exc:  # noqa: BLE001
         _log.debug("coaching_ts: write failed for mode %r: %s", mode_key, exc)

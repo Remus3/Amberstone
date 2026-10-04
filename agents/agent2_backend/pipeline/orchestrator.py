@@ -47,12 +47,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
 import time
 from pathlib import Path
 from typing import Iterable
 
+from core.polled_json import atomic_write_text
 from lib.ddragon import DDragon, fetch_all as ddragon_fetch_all
 from lib.http import Blocked, CircuitOpen, HttpError
 from lib.scrapers import SiteBScraper, SiteDScraper
@@ -78,10 +78,7 @@ MODE_TO_SCRAPER_MODE = {
 
 
 def _atomic_write_json(path: Path, data: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
-    os.replace(tmp, path)
+    atomic_write_text(path, json.dumps(data, indent=2, default=str))
 
 
 class PipelineOrchestrator:

@@ -17,6 +17,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from core.polled_json import atomic_write_text
+
 from agents._supervisor_common import (
     AGENT_CHARTERS,
     AGENT_MODELS,
@@ -185,7 +187,6 @@ def _write_agent6_failure_stub(
         ts_file = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
         completed_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         stub_path = reports_dir / f"{ts_file}-FAILED-{task_id}.md"
-        tmp = stub_path.with_suffix(".tmp")
         lines = [
             f"# Agent 6 audit FAILED - {task_id}",
             "",
@@ -199,8 +200,7 @@ def _write_agent6_failure_stub(
             "",
             "No report artifact was written. Check the sidecar log for stdout/stderr.",
         ]
-        tmp.write_text("\n".join(lines), encoding="utf-8")
-        tmp.replace(stub_path)
+        atomic_write_text(stub_path, "\n".join(lines))
     except OSError as e:
         log.warning("agent6 failure stub write failed: %s", e)
 

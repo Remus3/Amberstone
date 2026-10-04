@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agents.agent1_lead import Scheduler, TaskStatus
+from core.polled_json import _replace_with_retry
 
 AUDIT_OP = "agent6-full-audit-pass"
 NON_TERMINAL = (
@@ -48,7 +49,7 @@ def _write_log_line(line: str) -> None:
     except OSError:
         oversize = False
     if oversize:
-        LOG_PATH.replace(LOG_PATH.with_suffix(LOG_PATH.suffix + ".1"))
+        _replace_with_retry(LOG_PATH, LOG_PATH.with_suffix(LOG_PATH.suffix + ".1"))
     with LOG_PATH.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(line + "\n")
 

@@ -418,7 +418,10 @@ def build_reel(sidecar_path: Any, *, ffmpeg: Optional[str] = None,
                 detail = f"concat failed rc={res.returncode}"
                 raise RuntimeError(detail)
         report(85)
-        os.replace(final, out)
+        # RM-258/RM-261: renames an EXISTING ffmpeg output (not freshly written
+        # content), so only the shared bounded WinError-5 retry applies.
+        from core.polled_json import _replace_with_retry
+        _replace_with_retry(final, out)
         # Read back what landed on disk (what RM-640 retention will stat).
         size = out.stat().st_size
         if size <= 0:

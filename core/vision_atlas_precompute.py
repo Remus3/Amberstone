@@ -36,6 +36,8 @@ import json
 import logging
 from pathlib import Path
 
+from core.polled_json import atomic_write_text
+
 import core.vision_template_match as vtm
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -323,25 +325,17 @@ def load_manifest(path=None):
 def write_manifest(manifest, path=None):
     """Atomically write the manifest JSON; return the path, or None on failure.
 
-    Writes to a sibling .tmp then os.replace()-s it into place (overlays poll
-    mid-write). JSON is indented, sort_keys=True, ensure_ascii=True, trailing
-    newline - deterministic bytes. Best-effort removes the .tmp on failure.
-    Never raises.
+    Writes via core.polled_json.atomic_write_text (per-writer scratch file,
+    replaced into place; overlays poll mid-write). JSON is indented,
+    sort_keys=True, ensure_ascii=True, trailing newline - deterministic bytes.
+    The helper removes its scratch file on failure. Never raises.
     """
     p = _MANIFEST_PATH if path is None else Path(path)
-    tmp = p.with_suffix(p.suffix + ".tmp")
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
-        tmp.write_text(text, encoding="utf-8")
-        tmp.replace(p)
+        atomic_write_text(p, text)
         return p
     except Exception:  # noqa: BLE001 - fail-soft contract
-        try:
-            if tmp.exists():
-                tmp.unlink()
-        except Exception:  # noqa: BLE001 - best-effort tmp cleanup
-            pass
         return None
 
 

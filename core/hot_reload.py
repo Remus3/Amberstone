@@ -49,6 +49,8 @@ import threading
 import time
 from pathlib import Path
 
+from core.polled_json import atomic_write_text
+
 # Frozen files (CLAUDE.md hard rule) - absolute repo-relative paths.
 _FROZEN_PATHS: set[str] = {
     # Use as_posix() so paths are always forward-slash on every platform.
@@ -262,10 +264,8 @@ def _scan_py_files(root: Path) -> dict[str, float]:
 
 def _write_json(path: Path, data: dict) -> None:
     """Atomic write a JSON status file."""
-    tmp = path.with_suffix(".tmp")
     try:
-        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        os.replace(tmp, path)
+        atomic_write_text(path, json.dumps(data, indent=2))
     except OSError:
         pass
 
@@ -337,9 +337,7 @@ def _watch_loop(root: Path, halt_path: Path, status_path: Path) -> None:
 
         # All changed files compile clean -> trigger restart.
         try:
-            ttmp = trigger.with_suffix(".tmp")
-            ttmp.write_text("auto-hot-reload", encoding="utf-8")
-            os.replace(ttmp, trigger)
+            atomic_write_text(trigger, "auto-hot-reload")
         except OSError:
             pass
 

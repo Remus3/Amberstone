@@ -134,9 +134,7 @@ import json
 import logging
 logger = logging.getLogger("rc.laning_scenario_precompute")
 import math
-import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 from dataclasses import dataclass
@@ -169,6 +167,7 @@ from agents.daemon_slayer.spike_markers import compute_spike_markers
 # lead_projection imports nothing from core).
 from core import lead_projection as _lead
 from core.failed_load_gate import FailedLoadGate
+from core.polled_json import atomic_write_text
 
 # Project root: core/ -> C:\Riot Commander\
 _ROOT = Path(__file__).resolve().parent.parent
@@ -956,24 +955,13 @@ def atomic_write(payload: dict, out_path: Path) -> None:
     ~468k leaf cells - compact keeps it ~55MB instead of ~290MB pretty, and the
     blob is machine-read not hand-diffed, so readability is moot.
     """
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=f".{out_path.stem}.", suffix=".tmp", dir=str(out_path.parent),
+    atomic_write_text(
+        out_path,
+        json.dumps(
+            payload, ensure_ascii=True,
+            separators=(",", ":"), sort_keys=True,
+        ) + "\n",
     )
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(
-                payload, fh, ensure_ascii=True,
-                separators=(",", ":"), sort_keys=True,
-            )
-            fh.write("\n")
-        os.replace(tmp_path, str(out_path))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
 
 
 # --------------------------------------------------------------------------- #

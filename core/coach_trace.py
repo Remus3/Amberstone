@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 import time
 from pathlib import Path
 from typing import Any, Optional
 
+from core.polled_json import atomic_write_text
 from core.prom_metrics import Histogram
 
 _log = logging.getLogger("rc.coach_trace")
@@ -138,9 +138,7 @@ def _trim() -> None:
         if len(lines) <= MAX_LINES:
             return
         kept = lines[-MAX_LINES:]
-        tmp = _TRACE_FILE.with_suffix(_TRACE_FILE.suffix + ".tmp")
-        tmp.write_text("\n".join(kept) + "\n", encoding="utf-8")
-        os.replace(tmp, _TRACE_FILE)
+        atomic_write_text(_TRACE_FILE, "\n".join(kept) + "\n")
     except Exception as exc:  # noqa: BLE001
         _log.debug("coach_trace trim failed: %s", exc)
 
