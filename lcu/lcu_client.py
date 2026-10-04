@@ -26,6 +26,13 @@ from core.game_host import GAME_HOST
 
 _log = logging.getLogger("rc.lcu")
 
+# RM-297c (frozen-file grant 2026-10-03): `_request` returns None on every
+# transport, JSON and non-2xx path, so a caller could not say WHY a call
+# failed - a 400 on a bad perk id, a 403 page cap and a dead socket all logged
+# the same word. The contract (None on failure) is unchanged; the reason is
+# recorded per THREAD here and read back with `LcuClient.last_request_error()`.
+_REQ_DIAG = threading.local()
+
 _APP_DIR = Path(__file__).parent.parent
 
 _LOCKFILE_PATHS = [
@@ -176,8 +183,15 @@ class LcuClient(_PGMixin):
         self._lockfile_path = None
         self._lockfile_mtime = None
 
+    @staticmethod
+    def last_request_error() -> "str | None":
+        """Why this thread's most recent `_request` returned None, or None."""
+        return getattr(_REQ_DIAG, "err", None)
+
     def _request(self, method, endpoint, data=None, _retry=True):
+        _REQ_DIAG.err = None
         if not self._port or not self._auth:
+            _REQ_DIAG.err = "not connected"
             return None
         url = f"https://{GAME_HOST}:{self._port}{endpoint}"
         headers = {
@@ -212,11 +226,13 @@ class LcuClient(_PGMixin):
             if res is not None:
                 status, payload = res
                 if not (200 <= status < 300):
+                    _REQ_DIAG.err = f"http {status}"
                     return None
                 try:
                     raw = payload.decode()
                     return json.loads(raw) if raw.strip() else {}
                 except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                    _REQ_DIAG.err = "bad json"
                     return None
         req = urllib.request.Request(url, data=body, headers=headers, method=method)
         # AUDIT P-rc-frozen-lcu-urlopen (2026-04-22): context-manager the
@@ -225,16 +241,23 @@ class LcuClient(_PGMixin):
             with urllib.request.urlopen(req, context=self._ssl, timeout=3) as resp:
                 raw = resp.read().decode()
             return json.loads(raw) if raw.strip() else {}
-        except (urllib.error.URLError, OSError, TimeoutError):
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:
             # Connection-level failure - most often a dead port after a League
             # restart rotated the lockfile. Re-read it; if it rotated, retry
             # ONCE on the fresh port. reference_runewriter_dies_after_game1.
+            code = getattr(exc, "code", None)
+            err = f"http {code}" if code is not None else f"transport {type(exc).__name__}"
             if _retry:
                 self._refresh_conn_if_changed()
                 if self._port:
-                    return self._request(method, endpoint, data=data, _retry=False)
+                    out = self._request(method, endpoint, data=data, _retry=False)
+                    if out is None and getattr(_REQ_DIAG, "err", None) is None:
+                        _REQ_DIAG.err = err
+                    return out
+            _REQ_DIAG.err = err
             return None
         except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            _REQ_DIAG.err = "bad json"
             return None
 
     # === Auto-Accept ===========================================================
