@@ -30,7 +30,8 @@ class FakeObs:
     def __init__(self, *, recording=False, ws_version="5.7.3",
                  output_mode="Simple", rec_format="hybrid_mp4",
                  scene_items=None, groups=None, record_dir="/synthetic/vids",
-                 start_ok=True, chapter_ok=True, emit_started=True):
+                 start_ok=True, chapter_ok=True, emit_started=True,
+                 scene_fail=False, status_path=False):
         self.recording = recording
         self.ws_version = ws_version
         self.output_mode = output_mode
@@ -43,6 +44,8 @@ class FakeObs:
         self.start_ok = start_ok
         self.chapter_ok = chapter_ok
         self.emit_started = emit_started
+        self.scene_fail = scene_fail
+        self.status_path = status_path
         self.requests: list = []
         self.subs = None
         self.n = 0
@@ -95,9 +98,11 @@ class FakeObs:
             if self.recording:
                 self.duration_ms += 2000
                 self.bytes += 8_400_000
-            await self._reply(ws, d, data={
-                "outputActive": self.recording, "outputPaused": False,
-                "outputDuration": self.duration_ms, "outputBytes": self.bytes})
+            data = {"outputActive": self.recording, "outputPaused": False,
+                    "outputDuration": self.duration_ms, "outputBytes": self.bytes}
+            if self.status_path:
+                data["outputPath"] = self.path
+            await self._reply(ws, d, data=data)
         elif rt == "GetVersion":
             await self._reply(ws, d, data={"obsVersion": "32.1.2",
                                            "obsWebSocketVersion": self.ws_version,
@@ -116,6 +121,8 @@ class FakeObs:
         elif rt == "GetCurrentProgramScene":
             await self._reply(ws, d, data={"currentProgramSceneName": "Main",
                                            "sceneName": "Main"})
+        elif rt == "GetSceneItemList" and self.scene_fail:
+            await self._reply(ws, d, ok=False, code=600)
         elif rt == "GetSceneItemList":
             name = rd.get("sceneName")
             items = self.scene_items if name == "Main" else self.groups.get(name, [])
@@ -146,6 +153,10 @@ class FakeObs:
             await self._reply(ws, d, ok=self.chapter_ok)
         else:
             await self._reply(ws, d, ok=False, code=204)
+
+    async def drop_all(self):
+        for ws in list(self.conns):
+            await ws.close()
 
     def types(self):
         return [r[0] for r in self.requests]
@@ -861,3 +872,111 @@ def test_tick_itself_is_gated_on_the_flag(tmp_path):
         await rec.close()
     run_coro(body_wrap(fake, body))
     assert fake.requests == [] and fake.subs is None
+
+
+# -- verifier follow-ups -----------------------------------------------------------
+
+def test_unreadable_scene_refuses_start(tmp_path):
+    fake = FakeObs(scene_fail=True)
+    clock = Clock()
+
+    async def body(port):
+        rec = make(port, tmp_path, clock)
+        await _start_game(rec, clock)
+        await rec.close()
+    run_coro(body_wrap(fake, body))
+    assert "GetSceneItemList" in fake.types()
+    assert "StartRecord" not in fake.types()
+    sc = sidecar(tmp_path)
+    assert sc["owner"] == "none"
+    assert sc["diagnostics"]["refused"] == "scene_probe_failed"
+
+
+async def _reconnect_then_end(rec, fake, clock, *, mutate):
+    await _start_game(rec, clock)
+    assert rec.ownership() == (True, False)
+    await fake.drop_all()
+    await asyncio.sleep(0.1)
+    clock.t += 60
+    mutate()
+    rec.on_liveclient_snapshot(lc(clock, 50.0))
+    # first tick notices the dead socket, later ones reconnect and re-verify
+    for _ in range(3):
+        await rec.tick()
+    owned = rec.ownership()
+    rec.on_gameflow_phase("EndOfGame")
+    await rec.tick()
+    return owned
+
+
+def test_reconnect_same_recording_keeps_ownership(tmp_path):
+    fake = FakeObs()
+    clock = Clock()
+
+    def same():
+        fake.duration_ms = 60_000  # continuous since RC's start
+
+    async def body(port):
+        rec = make(port, tmp_path, clock)
+        return await _reconnect_then_end(rec, fake, clock, mutate=same)
+    owned = run_coro(body_wrap(fake, body))
+    assert owned == (True, False)
+    assert "StopRecord" in fake.types()
+    assert sidecar(tmp_path)["diagnostics"]["ownership_lost"] is None
+
+
+def test_reconnect_after_operator_restart_revokes_ownership(tmp_path):
+    fake = FakeObs()
+    clock = Clock()
+
+    def restarted():
+        # Missed while disconnected: operator stopped RC's file and started
+        # their own; OBS is recording again but the duration restarted.
+        fake.path = "/synthetic/vids/mine.mp4"
+        fake.duration_ms = 4_000
+
+    async def body(port):
+        rec = make(port, tmp_path, clock)
+        return await _reconnect_then_end(rec, fake, clock, mutate=restarted)
+    owned = run_coro(body_wrap(fake, body))
+    assert owned == (False, False)
+    assert "StopRecord" not in fake.types()
+    assert fake.recording is True
+    assert sidecar(tmp_path)["diagnostics"]["ownership_lost"] == "unconfirmed_after_reconnect"
+
+
+def test_reconnect_path_mismatch_revokes_ownership(tmp_path):
+    fake = FakeObs(status_path=True)
+    clock = Clock()
+
+    def other_path():
+        fake.duration_ms = 60_000  # duration alone would look continuous
+        fake.path = "/synthetic/vids/mine.mp4"
+
+    async def body(port):
+        rec = make(port, tmp_path, clock)
+        return await _reconnect_then_end(rec, fake, clock, mutate=other_path)
+    owned = run_coro(body_wrap(fake, body))
+    assert owned == (False, False)
+    assert "StopRecord" not in fake.types()
+
+
+def test_reconnect_with_recording_stopped_revokes_ownership(tmp_path):
+    fake = FakeObs()
+    clock = Clock()
+
+    def stopped():
+        fake.recording = False
+        fake.duration_ms = 60_000  # duration alone would look continuous
+
+    async def body(port):
+        rec = make(port, tmp_path, clock)
+        return await _reconnect_then_end(rec, fake, clock, mutate=stopped)
+    owned = run_coro(body_wrap(fake, body))
+    assert owned == (False, False)
+    assert "StopRecord" not in fake.types()
+
+
+def test_module_docstring_states_push_only_limit():
+    doc = orc.__doc__ or ""
+    assert "mid-game" in doc and "push-only" in doc
