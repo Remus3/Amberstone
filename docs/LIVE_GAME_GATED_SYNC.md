@@ -1062,6 +1062,14 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
   NO LIVE RESIDUAL. What remains is the operator's per-row call: run `--trust-lcu CHAMP + --match-id`
   for 1633 and 1506, clear the 5 ARAM rows as junk, then VERIFY the historical rows actually changed
   (Data Fixes rule - a fix is not done until the bad rows are backfilled). SOURCE: ROADMAP.md:81.
+- **G4-30** `[NEW 2026-10-04]` RM-526 / Y-01 Step 0 - the live half of the target-pinned live
+  writer (code SHIPPED headless, LEDGER entry for RM-526). Over the next 5 real game ends (include
+  at least one Mayhem q2400 and one Match-V5-eligible game), read the writer's INFO lines
+  `chain ... attempt N ended <status>` in `logs/` and record per game: target id, final status
+  (ok / already_present / event_mode_excluded / parked), attempts used. Also confirm whether the
+  LCU EOG block carries `queueId` (if absent, a Mayhem game retries ~19.5 min then parks instead
+  of ending `event_mode_excluded` at once). PASS = every eligible game ends `ok` for ITS OWN id and
+  no game reports the previous game's id. SOURCE: ROADMAP RM-526.
 
 ---
 
