@@ -46,6 +46,8 @@ import sqlite3
 from typing import Callable, Optional
 
 from core import draft_elo_db
+from core.corpus_hygiene import REMAKE_MAX_SECONDS
+from core.resolved_wr import classify, resolution_select, resolved_wr, wr_pct
 
 # Rift map ids. The operator plays mostly ARAM (map 12) but SR (map 11) is the
 # only mode where all 8 axes are individually meaningful (ARAM has no wards /
@@ -55,7 +57,7 @@ MODE_MAPS: dict[str, int] = {"sr": 11, "aram": 12, "arena": 30}
 
 DEFAULT_WINDOW = 20
 MIN_GAMES = 10            # below this the percentile baseline is too thin to trust
-MIN_DURATION_S = 300      # drop remakes / very-early surrenders
+MIN_DURATION_S = REMAKE_MAX_SECONDS  # drop remakes (RM-610: one shared cutoff, 300 s)
 MIN_REFERENCE_GAMES = 5   # below this the winning-games reference polygon is noise
 
 # (key, label, unit, higher_is_better, per-game metric selector)
@@ -148,11 +150,18 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
         "WHERE " + " AND ".join(where) + " "
         "ORDER BY m.game_creation_ts DESC"
     )
+    # RM-610: the remake signals ride along (column-tolerant) so the window
+    # win rate is judged by core.resolved_wr; the SQL duration floor above
+    # already equals corpus_hygiene.REMAKE_MAX_SECONDS.
+    extra = resolution_select(conn, "m")
+    if extra:
+        sql = sql.replace(" AS team_kills ", " AS team_kills" + extra + " ", 1)
     seen: set[str] = set()
     games: list[dict] = []
     for row in conn.execute(sql, params):
         (mid, dur_s, ts, champ, minions, neutral, vis, gold, dmg, deaths,
-         kills, assists, drag, baron, turret, inhib, win, team_kills) = row
+         kills, assists, drag, baron, turret, inhib, win, team_kills) = row[:18]
+        surrender = row[-1] if "early_surrender" in extra else 0
         if mid in seen:
             continue
         seen.add(mid)
@@ -171,7 +180,11 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
             "gpm": float(gold or 0) / dur_min,
             "kda": (float(kills or 0) + float(assists or 0)) / max(1.0,
                                                                    float(deaths or 0)),
-            "win": int(win or 0),
+            # RM-610: an unknown result stays None (was int(win or 0), which
+            # read every unknown game as a loss).
+            "win": None if win is None else int(win),
+            "game_duration_s": dur_s,
+            "game_ended_in_early_surrender": surrender,
             "kp": (float(kills or 0) + float(assists or 0)) / team_k if team_k > 0 else 0.0,
         })
     return games
@@ -419,19 +432,25 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     out["tip"] = _AXIS_TIPS.get(weakest["key"]) if weakest else None
 
     # Current streak from the newest game backward (full history).
+    # RM-610: unknown-result and remake games neither extend nor break it.
     streak = None
-    if games:
-        kind = "win" if games[0]["win"] else "loss"
-        want = games[0]["win"]
+    decided = [g for g in games if classify(g) in ("win", "loss")]
+    if decided:
+        want = decided[0]["win"]
+        kind = "win" if want else "loss"
         n = 0
-        for g in games:
-            if int(g["win"]) == want:
+        for g in decided:
+            if g["win"] == want:
                 n += 1
             else:
                 break
         streak = {"kind": kind, "n": n}
     out["win_streak"] = streak
-    out["win_rate"] = (sum(g["win"] for g in recent) / len(recent)) if recent else None
+    # RM-610: resolved games only (shared helper); None -> the '-' sentinel
+    # at the snapshot tile.
+    r_wins, r_resolved, _ = resolved_wr(recent)
+    pct = wr_pct(r_wins, r_resolved, None)
+    out["win_rate"] = None if pct is None else pct / 100.0
     out["kp_pct"] = round(100.0 * sum(g["kp"] for g in recent) / len(recent), 1) if recent else None
     out["kda_mean"] = round(sum(g["kda"] for g in recent) / len(recent), 2) if recent else None
 

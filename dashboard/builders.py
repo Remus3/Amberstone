@@ -125,6 +125,10 @@ def _load_match_rows(limit: int | None = None) -> list[dict]:
                 "label": label or "",
                 "win": _lcu_win(raw_data),
             })
+            # RM-610: the History view tallies W-L / win rate and badges
+            # rows off this one resolved-result stamp (remake = game_time_s
+            # under corpus_hygiene.REMAKE_MAX_SECONDS).
+            rows[-1]["result"] = classify(rows[-1])
         return rows
     except sqlite3.Error:
         getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db), None)
