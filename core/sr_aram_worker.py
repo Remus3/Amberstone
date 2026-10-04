@@ -100,32 +100,71 @@ class SrAramWorker(BaseCoachWorker):
         self._coach          = coach
         self._comp_ctx_fn    = comp_context_fn
         self._reader: Any = None
+        self._reader_gen: Optional[int] = None
+        # RM-237: a reset requested from the AppLoop thread is only FLAGGED
+        # here and consumed by the poll thread at the top of its next tick,
+        # so it can never land between two reads of one derivation.
+        self._reset_pending = False
+        self._reset_reason = ""
 
     def reset_reader_state(self, reason: str = "") -> None:
-        if self._reader is not None:
-            try:
-                self._reader._enemy_last_seen  = {}
-                self._reader._enemy_death_time = {}
-                if reason:
-                    _log.debug("SrAramWorker: reader state reset (%s)", reason)
-            except Exception as exc:  # noqa: BLE001
-                _log.warning("SrAramWorker: reset_reader_state failed: %s", exc)
+        """Request a per-game tracking reset (thread-safe).
 
-    def _init_reader(self) -> bool:
+        RM-237: this used to REBIND `_enemy_last_seen` / `_enemy_death_time`
+        from the AppLoop thread while the poll thread was mid-derivation, so
+        one tick could write into the old dict and read the new one, render
+        every enemy "untracked" and emit a false "play safe". Now the poll
+        thread applies the reset itself before its next read.
+        """
+        self._reset_reason = reason
+        self._reset_pending = True
+
+    def _apply_pending_reset(self, reader: Any) -> None:
+        if not self._reset_pending or reader is None:
+            return
+        self._reset_pending = False
+        try:
+            reader._enemy_last_seen.clear()
+            reader._enemy_death_time.clear()
+            if self._reset_reason:
+                _log.debug("SrAramWorker: reader state reset (%s)",
+                           self._reset_reason)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("SrAramWorker: reset_reader_state failed: %s", exc)
+
+    def _init_reader(self, my_gen: Optional[int] = None) -> bool:
+        """Ensure a GameReader for generation `my_gen`.
+
+        RM-237: a NEW generation always gets a FRESH reader. A restart is
+        triggered when the old thread looks dead - typically because it is
+        still blocked deep in HTTP - and the old early return
+        (`if self._reader is not None`) handed the new thread that SAME
+        instance, so two threads mutated its tracking dicts and per-game
+        counters concurrently. The superseded thread keeps its own local
+        reference and exits on its next generation check.
+        """
         if self._reader is not None:
-            return True
+            if my_gen is None or self._reader_gen == my_gen:
+                return True
+            if self._reader_gen is None:
+                # An unstamped reader (injected before any generation ran)
+                # is adopted by the first generation that sees it.
+                self._reader_gen = my_gen
+                return True
         try:
             from game_reader import GameReader
             self._reader = GameReader()
+            self._reader_gen = my_gen
             return True
         except Exception as exc:  # noqa: BLE001
             _log.error("SrAramWorker: GameReader import failed: %s", exc)
             return False
 
     def _run(self, my_gen: int) -> None:
-        if not self._init_reader():
+        if not self._init_reader(my_gen):
             _log.error("SrAramWorker gen=%d: no GameReader - exiting", my_gen)
             return
+        reader = self._reader  # this generation's own instance (RM-237)
 
         backoff      = BACKOFF_MIN_S
         was_in_game  = False
@@ -137,9 +176,10 @@ class SrAramWorker(BaseCoachWorker):
                 return
 
             self.pulse_ts = time.monotonic()
+            self._apply_pending_reset(reader)
 
             try:
-                state = self._reader.read_game()
+                state = reader.read_game()
 
                 if my_gen != self._generation:
                     _log.debug("SrAramWorker gen=%d superseded post-read - discarding", my_gen)
