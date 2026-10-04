@@ -268,6 +268,56 @@ header { transition: height 180ms ease; }
 }
 .replay-slider:disabled { opacity: 0.3; cursor: default; }
 
+/* RM-612 replay minimap */
+/* Map figure beside the timeline ribbon. The row keeps the ribbon's height
+ * budget (item 185): the map is a fixed-width column and the ribbon takes the
+ * rest, wrapping under the map on narrow viewports. The canvas is display
+ * only (no pointer handlers), so it carries no hit-target. */
+.replay-map-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.replay-map-row > .replay-events-section {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.replay-map-figure {
+  flex: 0 0 300px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.replay-map-figure[hidden] { display: none; }
+.replay-map-canvas {
+  width: 300px;
+  height: 300px;
+  max-width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+  background: var(--surface-alt);
+}
+.replay-map-caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.replay-map-clock {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.replay-map-flags {
+  color: var(--accent);
+}
+.replay-map-flags:empty { display: none; }
+/* /RM-612 */
+
 .replay-grid-wrap {
   flex: 1; overflow: auto;
   border-radius: var(--panel-radius-sm);
