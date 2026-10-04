@@ -20,11 +20,18 @@ Response shape:
     "wr_pct":   57,
     "threat_band": "green" | "amber" | "red" | "unknown",
     "recent": [
-      {"match_id": "NA1_...", "ts": 1746000000, "result": "WIN"|"LOSS"},
+      {"match_id": "NA1_...", "ts": 1746000000,
+       "result": "WIN"|"LOSS"|"REMAKE"|"UNKNOWN"},
       ...up to 5
     ],
+    "games_total": 8,
+    "wr_display": "57%" | "-",
     "elapsed_ms": 4
   }
+
+RM-610: sample_n, wins, losses and wr_pct count RESOLVED games only
+(known result, not a remake) via core.resolved_wr; games_total counts
+every matching game.
 
 Threat band rules:
   - sample_n < 5  -> "unknown" (override - small samples aren't trustworthy)
@@ -47,6 +54,8 @@ import sqlite3
 import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+from core.resolved_wr import classify, resolution_select, resolved_wr, wr_pct
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -124,13 +133,15 @@ def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
     if days > 0:
         since_ms = int((time.time() - days * 86400) * 1000)
 
-    # Aggregate row.
+    # RM-610: one row per game, judged by the shared resolved-WR helper
+    # (known result, not a remake) instead of COUNT(*) / SUM(win).
+    extra = resolution_select(conn, "m")
+    name_row = conn.execute(
+        "SELECT champion_name FROM participants WHERE champion_id = ? LIMIT 1",
+        (champ_id,)).fetchone()
+    name = name_row[0] if name_row else None
     sql_agg = f"""
-        SELECT
-          (SELECT champion_name FROM participants
-             WHERE champion_id = ? LIMIT 1) AS champ_name,
-          COUNT(*) AS games,
-          SUM(CASE WHEN op.win=1 THEN 1 ELSE 0 END) AS wins
+        SELECT op.win AS win{extra}
         FROM participants op
         JOIN matches m ON m.match_id = op.match_id
         WHERE op.puuid = ?
@@ -143,17 +154,18 @@ def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
               AND e.champion_id = ?
           )
     """
-    row = conn.execute(sql_agg, (champ_id, puuid, *queue_ids, since_ms, champ_id)).fetchone()
-    name, games, wins = row if row else (None, 0, 0)
-    games = int(games or 0)
-    wins = int(wins or 0)
+    cur = conn.execute(sql_agg, (puuid, *queue_ids, since_ms, champ_id))
+    cols = [d[0] for d in cur.description]
+    game_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    total_games = len(game_rows)
+    wins, games, wr_display = resolved_wr(game_rows)
     losses = games - wins
-    wr_pct = int(round(100 * wins / games)) if games else 0
-    band = _classify_band(games, wr_pct)
+    pct = wr_pct(wins, games, 0) or 0
+    band = _classify_band(games, pct)
 
     # Recent 5 matches.
     sql_recent = f"""
-        SELECT op.match_id, m.game_creation_ts, op.win
+        SELECT op.match_id, m.game_creation_ts, op.win{extra}
         FROM participants op
         JOIN matches m ON m.match_id = op.match_id
         WHERE op.puuid = ?
@@ -169,13 +181,17 @@ def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
         LIMIT 5
     """
     cur = conn.execute(sql_recent, (puuid, *queue_ids, since_ms, champ_id))
+    rcols = [d[0] for d in cur.description]
     recent: list[dict] = []
     for r in cur.fetchall():
-        match_id, ts_ms, win = r
+        row = dict(zip(rcols, r))
+        # Unresolved games stay listed, badged REMAKE / UNKNOWN instead
+        # of being read as a loss.
         recent.append({
-            "match_id": str(match_id or ""),
-            "ts": int((ts_ms or 0) // 1000),  # seconds (ms in DB)
-            "result": "WIN" if win else "LOSS",
+            "match_id": str(row["match_id"] or ""),
+            "ts": int((row["game_creation_ts"] or 0) // 1000),  # s (ms in DB)
+            "result": {"win": "WIN", "loss": "LOSS", "remake": "REMAKE"}.get(
+                classify(row), "UNKNOWN"),
         })
 
     return {
@@ -184,9 +200,11 @@ def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
         "sample_n":     games,
         "wins":         wins,
         "losses":       losses,
-        "wr_pct":       wr_pct,
+        "wr_pct":       pct,
         "threat_band":  band,
         "recent":       recent,
+        "games_total":  total_games,
+        "wr_display":   wr_display,
     }
 
 
