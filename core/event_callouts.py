@@ -750,14 +750,15 @@ def structure_siege_callout(
     if _has_recent(inhib_events):
         out.append({
             "tag": "siege_inhib",
-            "line": "Inhibitor down - super minions pushing; group to siege or peel, do not split low",
+            # RM-304: <= 8 words like every other panel line (was 15).
+            "line": "Inhib down - group up, do not split",
             "eta_s": 0,
             "kind": "siege",
         })
     if _has_recent(turret_events):
         out.append({
             "tag": "siege_turret",
-            "line": "Turret down - space opened; re-ward the flank, do not dive without numbers",
+            "line": "Turret down - re-ward flank, no outnumbered dives",
             "eta_s": 0,
             "kind": "siege",
         })
