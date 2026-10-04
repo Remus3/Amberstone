@@ -14,6 +14,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 |---|---|---|
 | `/api/state` | Current coach payload + health + LCU snapshot (500 ms poll target) | `StateResponse` |
 | `/api/state-stream` | SSE stream of `/api/state` on change (heartbeat every 15 s) | `StateResponse` events |
+| `/api/events` | RM-604: discrete live events (death/respawn/level_up/item_completed/objective_taken) as SSE with monotonic `id:`; resume via `?since=<id>` (wins) or `Last-Event-ID`; bounded 1024 ring, `gap` {from,to} when fallen off; `hello` {head} for a fresh client (late joiners read `/api/state`); `: hb` every 15 s idle. Non-SSE Accept returns JSON `{head, events, gap, state}` | see `dashboard/routes_events.py` |
 | `/api/health` | RC process health (`ops/runtime/health.json` + `rc_version`) | `HealthResponse` |
 | `/api/health/all` | Consolidated rollup: RC + vision + DS + supervisor + cost + agent6; `why` names unknown/errored sub-probes, which cap `status` at yellow (Y-13) | `HealthAllResponse` |
 | `/api/ui-version` | SHA-1 hash of static asset mtimes (dashboard hot-reload trigger) | `{"v": str}` |

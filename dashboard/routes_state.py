@@ -1442,6 +1442,8 @@ def _serve_build_order_post(h, payload) -> None:
         send_error(h, exc)
 
 
+from dashboard.routes_events import _serve_events  # noqa: E402  RM-604
+
 # -- route table ------------------------------------------------------
 
 # The /api/ui-version handler uses prefix() because the legacy do_GET
@@ -1449,6 +1451,7 @@ def _serve_build_order_post(h, payload) -> None:
 GET_ROUTES = [
     (equals("/api/state"),         _serve_state),
     (equals("/api/state-stream"),  _serve_state_stream),
+    (equals("/api/events"),        _serve_events),        # RM-604 / X-04
     (equals("/api/health"),        _serve_health),
     (equals("/api/health/all"),    _serve_health_all),
     (prefix("/api/ui-version"),    _serve_ui_version),
