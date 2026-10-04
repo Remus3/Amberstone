@@ -19,11 +19,16 @@ Carried forward (not acted on yet):
   Band 4 RM-642..RM-657 (BACKLOG "External-lift intake"); residual rows RM-658..RM-660,
   RM-669..RM-679 (RM-660 needs a distinct adjudicator first - Settled target-state fence;
   RM-603 skill-point toast is held by the B4 in-game compliance rule - operator / DevRel
-  call). DS batch RM-522 + RM-661 (16.19.1 re-extract) + RM-662 (ARAM parity guard) +
-  RM-666 (ARAM melee +15 MR, premise confirmed on the wiki) was IN FLIGHT on branch
-  lift1/ds-batch (b55458e56, 2822aec23, 369fdd6de; ENGINE 1.285.0 proposed) - check LEDGER
-  for its landing; if absent, verify and land it (Tier-2: dual suite, DS :8860 restart,
-  Share mirror, /health read-back). LIVE-GATED: LX-01..LX-13 in docs/LIVE_GAME_GATED_SYNC.md.
+  call). DS batch RM-522 + RM-661 + RM-662 + RM-666 LANDED on origin/main (LEDGER 1652,
+  ENGINE 1.285.0, patch 16.19.1) but the LIVE DS :8860 still serves 16.18.1 / 1.284.0:
+  the main checkout C:\Riot Commander (local a6f3fa42a, 39 behind origin, 3 dirty paths -
+  another session's work) was NOT touched. OWED: once the main checkout is at origin/main,
+  taskkill the :8860 PID, schtasks /Run /TN RC-DaemonSlayer (again if the port was still
+  bound), read back /health = 1.285.0 / 16.19.1. A side server from the worktree already
+  read back 1.285.0 / 16.19.1 and Aatrox ARAM MR 47 vs SR 32. New finding, unfiled (id
+  reserve exhausted - take the next sequential id): tools/daemon_slayer_wiki_stats_extract.py
+  lets a commented-out ARAM block in a second Kled record (id 240.1) overwrite the real one
+  (Kled dmg_taken). LIVE-GATED: LX-01..LX-13 in docs/LIVE_GAME_GATED_SYNC.md.
   Main-checkout chore: re-mirror tools/ship-batch.md into the gitignored
   .claude/skills/ship-batch/SKILL.md and .claude/commands/ship-batch.md (RM-668 step 0).
   Restart the RC-HotkeyListener task so it loads the Ctrl+Shift+K mark slot (RM-638).
