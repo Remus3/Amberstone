@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 
-from ._config import COACH_MODEL, VISION_MODEL, _START_TIME, api_key_present
+from ._config import COACH_MODEL, VISION_MODEL, _START_TIME, api_key_present, log
 
 _stats_lock = threading.Lock()
 _stats: dict = {
@@ -76,6 +76,37 @@ def _reset_capture_skips() -> None:
         _capture_skips["last_ts"] = 0.0
 
 
+# RM-272: a missing OCR stack is a static machine fact, not a per-call event.
+# Recording it through ``_record`` would flood both rings with a permanent
+# condition (and make error-count assertions pass for the wrong reason on a
+# stack-less runner), so it is surfaced as a CAPABILITY field on /stats plus
+# one latched WARNING in logs/.
+_ocr_stack_error: str = ""
+
+
+def note_ocr_stack_missing(exc: BaseException) -> None:
+    """Latch the OCR-stack import failure; log it exactly once per process."""
+    global _ocr_stack_error
+    with _stats_lock:
+        first = not _ocr_stack_error
+        _ocr_stack_error = f"{type(exc).__name__}: {exc}"[:200] or "ImportError"
+    if first:
+        log.warning(
+            "OCR stack unavailable (pytesseract/PIL import failed: %s) - "
+            "/ocr returns an error until it is installed; /stats "
+            "ocr_stack_ok=false", exc,
+        )
+
+
+def ocr_stack_ok() -> bool:
+    """True when pytesseract and PIL are importable and no import has failed."""
+    import importlib.util
+    if _ocr_stack_error:
+        return False
+    return all(importlib.util.find_spec(m) is not None
+               for m in ("pytesseract", "PIL"))
+
+
 def get_stats() -> dict:
     with _stats_lock:
         stats_copy = {k: dict(v) for k, v in _stats.items()}
@@ -92,4 +123,5 @@ def get_stats() -> dict:
             "vision_model": VISION_MODEL,
             "coach_model":  COACH_MODEL,
             "api_key_ok":   api_key_present(),
+            "ocr_stack_ok": ocr_stack_ok(),
         }
