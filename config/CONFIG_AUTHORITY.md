@@ -21,7 +21,8 @@ ops/rc_config.json
     │
     └── config/feature_flags.json  [Phase 1 Step 7]
             Per-mode feature policy matrix.
-            Read ONLY by: core/feature_policy.py (non-frozen).
+            Parsed by: core/feature_policy.py (runtime policy) AND
+              core/config_validator.py (startup validation). Both non-frozen.
             Consumed at: sr_aram_worker._submit_coaching(), tft_worker._run(),
               tft_worker._init_components(), app._on_game_start().
 ```
@@ -74,7 +75,8 @@ Owns:
 - `max_tokens` (max response tokens per coaching call)
 - `tft_pbe` (route TFT sessions to PBE coach when true)
 
-Read by: `coach_integration.py`, `coaches/__init__.py`.
+Read by (NOT an exhaustive list - grep `coach_settings.json` before relying on
+it; RM-380): `coach_integration/_coach.py`, `coaches/__init__.py`, and others.
 Does NOT affect the control plane, supervisor, or self-monitor.
 
 ### config/feature_flags.json - Feature Policy Authority [Phase 1 Step 7]
@@ -84,7 +86,16 @@ Owns:
 - Per-feature decisions: "allow" | "disabled"
 - Supported features: live_coaching (all modes), tft_vision_analysis (tft only)
 
-Read ONLY by: `core/feature_policy.py` (non-frozen).
+Parsed by TWO readers (RM-380, measured 2026-10-03), both non-frozen:
+- `core/feature_policy.py` - the runtime policy reader every gate below uses.
+- `core/config_validator.py` - `_validate_feature_flags()`, run by
+  `validate_all()`; it parses and validates the file but gates nothing.
+
+A change to the file's shape must satisfy BOTH. Presence-only references
+(existence checks / copy lists, not parsers): `tools/bootstrap_env_check.py`,
+`tools/dev_cli.py`, `tools/build_portable.py`.
+`tests/test_config_authority_constants_rm380.py` fails if a `core/` module
+parses this file without being named here.
 
 Runtime consumers via feature_policy.is_allowed() - final gate locations:
 
@@ -132,17 +143,21 @@ No remaining gate debt: all modes have full per-poll live_coaching gate coverage
 | ops/rc_config.json | rc_supervisor.py (FROZEN) | main.py (DevRuntime init), ops/rc_transactional_deploy.py |
 | self_monitor_profile.json | rc_supervisor.py (FROZEN), rc_self_monitor.py (FROZEN) | - |
 | coach_settings.json | - | coach_integration.py, coaches/__init__.py |
-| feature_flags.json | - | core/feature_policy.py (Step 7) |
+| feature_flags.json | - | core/feature_policy.py (Step 7), core/config_validator.py |
 
 ---
 
 ## Constants That Must Agree
 
 The following constant pairs are documented as needing to agree.
-In Phase 1 Step 1, disagreements are NOT automatically detected -- this table
-exists for audit and manual review purposes only. Auto-checking these pairs
-would require reading from frozen files (rc_supervisor.py, rc_self_monitor.py),
-which is not permitted in Phase 1.
+The two hard "must match" relationships (startup grace vs the supervisor's
+startup heartbeat timeout; bootstrap grace = 2x startup grace) are GUARDED by
+`tests/test_config_authority_constants_rm380.py` (RM-380, 2026-10-03). It reads
+the frozen files as SOURCE TEXT, never imports or edits them, so the Phase 1
+read-only rule for those files still holds. The other two rows are
+document-only by design: the supervisor reads `max_heartbeat_age_seconds`
+directly (no second copy exists to disagree), and `max_restart_attempts` may
+legitimately differ between subsystems.
 
 | constant A | location A | constant B | location B | relationship |
 |---|---|---|---|---|
