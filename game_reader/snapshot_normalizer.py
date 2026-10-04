@@ -17,7 +17,7 @@ import math
 import time
 import urllib.parse
 
-from core.mode_capabilities import has_capability
+from core.mode_capabilities import district_config, has_capability
 
 from .mode_router import is_tft_mode, tower_count_for, tft_minimal_state
 from .poller import LIVE_API
@@ -31,6 +31,67 @@ FIRST_DRAGON = 300       # 5:00
 FIRST_RIFT_HERALD = 480  # 8:00
 FIRST_BARON = 1200       # 20:00
 FIRST_ATAKHAN = 1200     # 20:00
+
+# RM-236(a): tier-3 boots (lowercased DDragon display names). Each is a leaf of
+# the Boots (1001) recipe tree at depth >= 2, reachable only through the lane
+# quest boot upgrade. Pinned against the DDragon recipe tree by
+# tests/test_rm236_snapshot_normalizer_defects.py - a patch that adds or
+# renames one fails that test instead of silently going stale.
+_TIER3_BOOTS = frozenset({
+    "armored advance", "chainlaced crushers", "crimson lucidity",
+    "forever forward", "gunmetal greaves", "immortal path",
+    "spellslinger's shoes", "swiftmarch",
+})
+
+
+def _dragon_tally(events, ally_keys, enemy_keys) -> dict:
+    """RM-236(b): per-side ELEMENTAL drake count from the event stream.
+
+    `KillerName` is matched against each side's identity keys (normalized
+    player names and champion names; a champion name present on BOTH sides -
+    a mirror - is ambiguous and dropped from both key sets by the caller).
+    Elder does not count toward soul. An unattributable killer counts in
+    `unknown` and is NEVER credited to a side: a missed soul note beats a
+    false one. Never raises.
+    """
+    tally = {"ally": 0, "enemy": 0, "unknown": 0}
+    for ev in events if isinstance(events, list) else []:
+        if not isinstance(ev, dict) or ev.get("EventName") != "DragonKill":
+            continue
+        dtype = ev.get("DragonType")
+        if isinstance(dtype, str) and dtype.strip().lower() == "elder":
+            continue
+        killer = ev.get("KillerName")
+        k_norm = _normalize_name(killer) if isinstance(killer, str) else ""
+        if k_norm and k_norm in ally_keys:
+            tally["ally"] += 1
+        elif k_norm and k_norm in enemy_keys:
+            tally["enemy"] += 1
+        else:
+            tally["unknown"] += 1
+    return tally
+
+
+_SR_MAP_NUMBER = 11
+
+
+def _is_sr_geometry(map_number, game_mode) -> bool:
+    """RM-236(d): True when Summoner's Rift coordinate math applies."""
+    if isinstance(map_number, (int, float)) and not isinstance(map_number, bool):
+        return int(map_number) == _SR_MAP_NUMBER
+    return district_config(game_mode) not in ("aram", "arena")
+
+
+def _side_keys(players) -> set:
+    """Identity keys a `KillerName` can carry for one side's players."""
+    keys = set()
+    for p in players:
+        for field in ("riotIdGameName", "summonerName", "riotIdPlusTagLine",
+                      "riotId", "championName"):
+            v = _normalize_name(p.get(field) or "")
+            if v:
+                keys.add(v)
+    return keys
 
 
 def _normalize_name(name: str) -> str:
@@ -273,6 +334,13 @@ class _NormalizerMixin:
             return tft_minimal_state(game_mode, active, game_info, events,
                                      time_str, game_time)
 
+        # RM-236(d): SR coordinate math is valid only on the SR map. The
+        # Live Client `gameData.mapNumber` (11 = Summoner's Rift) is the map
+        # truth - URF / One for All run on SR under a non-CLASSIC gameMode,
+        # so a gameMode gate would wrongly strip them. Without a map number,
+        # fall back to the mode table: only the known non-SR maps are gated.
+        self._sr_geometry = _is_sr_geometry(game_info.get("mapNumber"), game_mode)
+
         # -- Detect GameEnd event - return None immediately so the overlay
         # exits game mode without waiting for the 30-second grace period ------
         for ev in events:
@@ -304,14 +372,27 @@ class _NormalizerMixin:
 
         # -- Fallback: if name match fails, use activePlayer champion name
         # to find ourselves in the player list
+        # RM-236(c): in a MIRROR (blind pick, One for All) more than one
+        # player carries my champion name, and "first match" picked the enemy
+        # roughly half the time, INVERTING ally_comp / enemy_comp, the tower
+        # counts and every side-dependent derivation. Disambiguate on level;
+        # if still ambiguous, refuse to guess (me stays None) and log it.
         if me is None:
             active_champ = active.get("championName", "")
             if active_champ:
-                for p in all_players:
-                    if p.get("championName", "") == active_champ:
-                        me = p
-                        my_team = p.get("team", "ORDER")
-                        break
+                cands = [p for p in all_players
+                         if p.get("championName", "") == active_champ]
+                if len(cands) > 1:
+                    a_lvl = _coerce_int(active.get("level", 0))
+                    cands = [p for p in cands
+                             if _coerce_int(p.get("level", -1), -1) == a_lvl]
+                if len(cands) == 1:
+                    me = cands[0]
+                    my_team = me.get("team", "ORDER")
+                elif cands:
+                    _log.warning("self-identification ambiguous: %d players "
+                                 "on %s at the same level - not guessing a "
+                                 "team", len(cands), active_champ)
 
         # -- Champion name: prefer allPlayers (most reliable) ------------
         my_champ = ""
@@ -388,22 +469,16 @@ class _NormalizerMixin:
                         if isinstance(it, dict) and it.get("displayName")]
 
         # -- Lane quest boots detection -------------------------------------
-        ADVANCED_BOOTS = {
-            "berserker's greaves", "plated steelcaps", "mercury's treads",
-            "sorcerer's shoes", "boots of swiftness", "ionian boots of lucidity",
-            "mobility boots", "boots of speed",
-        }
+        # RM-236(a): a TIER-3 boot is only obtainable through the lane-quest
+        # upgrade, so owning one is the one observable signal that the quest
+        # completed. The old set listed tier-2 boots (owned by everyone, quest
+        # or not), a "boots of speed" that matches no item, and fell back to a
+        # `len(combat_items) >= 3` proxy that returned True with no boots at
+        # all. Both directions fed a literal build instruction into the live
+        # SR prompt. `_TIER3_BOOTS` is pinned against the DDragon recipe tree
+        # by tests/test_rm236_snapshot_normalizer_defects.py.
         items_lower = [i.lower() for i in my_items]
-        has_visible_boots = any(b in items_lower for b in ADVANCED_BOOTS)
-        consumables = {"total biscuit of everlasting will", "refillable potion",
-                       "health potion", "stealth ward", "control ward", "elixir of wrath",
-                       "elixir of iron", "elixir of sorcery", "oracle lens",
-                       "doran's blade", "doran's ring", "doran's shield", "dagger",
-                       "long sword", "pickaxe", "bf sword", "recurve bow",
-                       "cloth armor", "null-magic mantle", "ruby crystal"}
-        combat_items = [i for i in items_lower
-                        if i and i not in consumables and "ward" not in i]
-        quest_boots_owned = has_visible_boots or len(combat_items) >= 3
+        quest_boots_owned = any(i in _TIER3_BOOTS for i in items_lower)
         summ_d = ""
         summ_f = ""
         if me:
@@ -435,7 +510,9 @@ class _NormalizerMixin:
         # -- Ally details (exclude self) -----------------------------------
         ally_details = []
         for a in allies:
-            if me and a.get("championName") == me.get("championName"):
+            # RM-236(c) sibling: exclude SELF by identity, not by champion
+            # name - in One for All every ally shares my champion name.
+            if a is me:
                 continue
             asc = a.get("scores", {})
             if not isinstance(asc, dict): asc = {}
@@ -448,11 +525,19 @@ class _NormalizerMixin:
 
         # -- Team comps ----------------------------------------------------
         ally_comp = [a.get("championName", "?") for a in allies
-                     if a.get("championName") != my_champ]
+                     if ((a is not me) if me
+                         else a.get("championName") != my_champ)]
         enemy_comp = [e.get("championName", "?") for e in enemies]
 
         # -- Objectives ----------------------------------------------------
-        objectives = self._calc_objectives(events, game_time, dead_enemies)
+        # RM-236(b): attribute each DragonKill to a side; a key present on
+        # BOTH sides (a mirror champion name) is ambiguous and dropped.
+        _ally_keys = _side_keys(allies)
+        _enemy_keys = _side_keys(enemies)
+        _shared = _ally_keys & _enemy_keys
+        objectives = self._calc_objectives(
+            events, game_time, dead_enemies,
+            ally_keys=_ally_keys - _shared, enemy_keys=_enemy_keys - _shared)
         obj_timers_dict = self._calc_obj_dict(events, game_time)
         # Tower state from event counters (populated by _calc_objectives)
         _max_t = tower_count_for(game_mode)
@@ -493,14 +578,21 @@ class _NormalizerMixin:
         camp_hint         = (self._camp_hint(my_pos, my_team, game_time, obj_timers_dict)
                              if game_mode == "CLASSIC" else "")
 
+        # RM-236(d): jungle gank threat and "past enemy T1" are SR-geometry
+        # derivations; gate them like the sibling camp_hint / ward_hint.
         try:
-            gank_threat, friendly_jg = self._gank_threat(enemies, allies, my_pos, game_time, my_team)
+            if self._sr_geometry:
+                gank_threat, friendly_jg = self._gank_threat(
+                    enemies, allies, my_pos, game_time, my_team)
+            else:
+                gank_threat, friendly_jg = "", ""
         except Exception as exc:  # noqa: BLE001
             _log.debug("_gank_threat failed: %s", exc)
             gank_threat, friendly_jg = "", ""
 
         try:
-            position_note = self._position_assessment(my_pos, allies, me, my_team)
+            position_note = (self._position_assessment(my_pos, allies, me, my_team)
+                             if self._sr_geometry else "")
         except Exception as exc:  # noqa: BLE001
             _log.debug("_position_assessment failed: %s", exc)
             position_note = ""
@@ -601,7 +693,7 @@ class _NormalizerMixin:
             "combat_stats":       combat_stats,
             "runes_full":         runes_full,
             "stat_shards":        runes_full.get("stat_runes", []),
-            # API-002: ability cooldowns
+            # API-002: ability names + levels (no cooldowns - RM-236(e))
             "my_abilities":       self._read_my_abilities(),
             # DS calibration: Riot game_id from LCU relay ('' when no game or agent stale)
             "game_id":            self._try_lcu_game_id(),
@@ -610,6 +702,16 @@ class _NormalizerMixin:
     # ------------------------------------------------------------------
     # Derived overlay fields
     # ------------------------------------------------------------------
+
+    def _zone_of(self, x: float, z: float) -> str:
+        """RM-236(d): `_map_zone` is Summoner's Rift geometry. On any other
+        map (Howling Abyss etc.) it named SR zones ("drake", "bot lane") for
+        coordinates that mean something else, so non-SR ticks get a neutral
+        label. `_sr_geometry` is set per tick by `_process_game`; a host that
+        never ran a tick keeps the historical SR behaviour."""
+        if getattr(self, "_sr_geometry", True):
+            return self._map_zone(x, z)
+        return "seen"
 
     @staticmethod
     def _map_zone(x: float, z: float) -> str:
@@ -668,7 +770,7 @@ class _NormalizerMixin:
 
             if x or z:
                 self._enemy_last_seen[name] = {
-                    "zone":      self._map_zone(x, z),
+                    "zone":      self._zone_of(x, z),
                     "time":      game_time,
                     "x": x, "z": z,
                     "dead":      False,
@@ -693,7 +795,7 @@ class _NormalizerMixin:
                 continue
 
             if x or z:
-                zone = self._map_zone(x, z)
+                zone = self._zone_of(x, z)
                 dist = ((x - px) ** 2 + (z - pz) ** 2) ** 0.5
                 tag  = "CLOSE" if (px or pz) and dist < NEARBY else zone
                 visible.append(f"{name} [{tag}]")
@@ -728,7 +830,8 @@ class _NormalizerMixin:
         return "\n".join(parts) if parts else "No enemy data"
 
     def _calc_objectives(self, events: list, game_time: float,
-                          dead_enemies=None) -> str:
+                          dead_enemies=None, ally_keys=None,
+                          enemy_keys=None) -> str:
         dragon_kills = []
         last_baron_time = None
         for ev in events:
@@ -764,6 +867,20 @@ class _NormalizerMixin:
         last_dragon_time = dragon_kills[-1] if dragon_kills else None
         dragon_num = len(dragon_kills)
 
+        # RM-236(b): the soul note used to read `len(dragon_kills)` - BOTH
+        # teams summed - so a 2-1 split read "[SOUL - 3 kills]" and a real
+        # 3-0 soul point stayed silent if the enemy had also taken one. Soul
+        # is per side: EXACTLY 3 elemental drakes on one side = soul point.
+        tally = _dragon_tally(events, ally_keys or set(), enemy_keys or set())
+        a_d, e_d = tally["ally"], tally["enemy"]
+        point = [s for s, n in (("enemy", e_d), ("ally", a_d)) if n == 3]
+        if point:
+            soul_note = " [SOUL POINT - " + " + ".join(point) + "]"
+        elif a_d + e_d >= 2:
+            soul_note = f" [drakes {a_d}-{e_d}]"
+        else:
+            soul_note = ""
+
         lines = []
 
         if game_time < FIRST_DRAGON:
@@ -773,10 +890,8 @@ class _NormalizerMixin:
             nxt = last_dragon_time + DRAGON_RESPAWN
             if nxt > game_time:
                 remain = int(nxt - game_time)
-                soul_note = f" [SOUL - {dragon_num} kills]" if dragon_num >= 3 else ""
                 lines.append(f"Drake #{dragon_num + 1} in {remain // 60}:{remain % 60:02d}{soul_note}")
             else:
-                soul_note = f" [{dragon_num} kills]" if dragon_num >= 2 else ""
                 lines.append(f"Drake UP{soul_note}")
         else:
             lines.append("Drake UP")
@@ -809,13 +924,19 @@ class _NormalizerMixin:
 
         last_dragon_time = dragon_kills[-1] if dragon_kills else None
 
+        # RM-236(f): an objective that is UP returns 0, not None. None used to
+        # mean BOTH "up right now" and "no data", and every consumer
+        # (_coach objective_window, cache_engine.obj_window, _camp_hint)
+        # read None as "nothing imminent" - so the coach went quiet exactly
+        # when dragon / baron were contestable. 0 = "up now"; None is now
+        # reserved for "no data" (the consumers' own `{}` default).
         def timer(last_kill, respawn, first_spawn):
             if game_time < first_spawn:
                 return int(first_spawn - game_time)
             if last_kill is None:
-                return None
+                return 0
             nxt = last_kill + respawn
-            return max(0, int(nxt - game_time)) if nxt > game_time else None
+            return int(nxt - game_time) if nxt > game_time else 0
 
         return {
             "dragon": timer(last_dragon_time, DRAGON_RESPAWN, FIRST_DRAGON),
@@ -1094,7 +1215,7 @@ class _NormalizerMixin:
             if adead:
                 friendly = f"{aname} [DEAD]"
             elif ax or az:
-                zone = self._map_zone(ax, az)
+                zone = self._zone_of(ax, az)
                 dist = self._walk_time(apos, my_pos) if my_pos else None
                 if dist is not None:
                     if dist <= 8:
@@ -1121,7 +1242,7 @@ class _NormalizerMixin:
             return ""
 
         x, z = my_pos.get("x", 0), my_pos.get("z", 0)
-        zone = self._map_zone(x, z)
+        zone = self._zone_of(x, z)
         issues = []
 
         if my_team == "ORDER":
@@ -1187,7 +1308,7 @@ class _NormalizerMixin:
             ex, ez = epos.get("x", 0), epos.get("z", 0)
             if not (ex or ez):
                 continue
-            zone = self._map_zone(ex, ez)
+            zone = self._zone_of(ex, ez)
             if zone not in ("bot lane", "bot side"):
                 continue
             elv    = _coerce_int(e.get("level", 1), 1)
@@ -1311,8 +1432,15 @@ class _NormalizerMixin:
 
     def _read_my_abilities(self) -> dict:
         """
-        Fetch /activeplayerabilities -> {q/w/e/r: {name, cooldown, level}}
+        Fetch /activeplayerabilities -> {q/w/e/r: {name, level}}
         Returns {} on any failure.
+
+        RM-236(e): there is NO `cooldown` key. Riot's ActivePlayerAbilities
+        schema carries no cooldown field (memory
+        reference-liveclient-no-hud-data: the Live Client exposes no live
+        ability cooldowns), so the key this used to emit was structurally
+        always None while the docstring promised a value. Consumers that
+        read `ab.get("cooldown")` degrade identically (None -> omitted).
         """
         try:
             data = self._get(f"{LIVE_API}/activeplayerabilities")
@@ -1324,13 +1452,11 @@ class _NormalizerMixin:
                 if not isinstance(ability, dict):
                     continue
                 name = ability.get("displayName") or ability.get("name") or ""
-                cd   = ability.get("cooldown")
                 lvl  = ability.get("abilityLevel") or ability.get("level")
                 if name:
                     result[slot.lower()] = {
-                        "name":     name,
-                        "cooldown": round(float(cd), 1) if cd is not None else None,
-                        "level":    int(lvl) if lvl is not None else None,
+                        "name":  name,
+                        "level": _coerce_int(lvl) if lvl is not None else None,
                     }
             return result
         except Exception as exc:  # noqa: BLE001
