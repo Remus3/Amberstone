@@ -27,9 +27,12 @@ polls - same effect as the Ctrl+Tab hotkey.
 from __future__ import annotations
 
 import json
+import logging
 import time
 
-from dashboard._context import APP_DIR, read_json
+from dashboard._context import APP_DIR, read_json, read_json_checked
+
+_log = logging.getLogger("rc.web_dashboard")
 
 
 def atomic_write_json(rel: str, data: dict) -> None:
@@ -71,7 +74,14 @@ def set_pregame(text: str) -> None:
     can't clobber this update (NOTE-003 fix)."""
     from core.coaching_data_lock import coaching_data_lock
     with coaching_data_lock():
-        data = read_json("coaching_data.json")
+        # RM-278: never write back a file we failed to read - {} (or
+        # {"pregame": ...}) over a good file destroys every coaching field,
+        # and holding the lock only guarantees the clobber lands cleanly.
+        data, ok = read_json_checked("coaching_data.json")
+        if not ok:
+            _log.warning("set_pregame: coaching_data.json unreadable - "
+                         "skipping the write rather than clobbering it")
+            return
         data["pregame"] = text
         atomic_write_json("coaching_data.json", data)
 
