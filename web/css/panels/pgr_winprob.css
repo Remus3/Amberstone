@@ -82,6 +82,18 @@
 .pwp-dot-neg { fill: var(--signal-bad, #ff5050); }
 .pwp-dot-zero { fill: var(--signal-dim, #8a8e9c); }
 
+/* RM-638: the player's in-game "mark this moment" presses - a dashed
+ * vertical marker with a small head, secondary accent so it never reads
+ * as a swing verdict (good/bad) or a team side (ally/enemy). */
+.pwp-flag-mark { cursor: help; }
+.pwp-flag {
+  stroke: var(--accent-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 3;
+  opacity: 0.85;
+}
+.pwp-flag-head { fill: var(--accent-2); }
+
 .pwp-ylab,
 .pwp-xlab {
   fill: var(--text-dim, #8b93a7);
