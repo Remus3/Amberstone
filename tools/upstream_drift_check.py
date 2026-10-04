@@ -415,6 +415,78 @@ def _atomic_write_sentinel(obj: dict) -> None:
     os.replace(tmp, SENTINEL_PATH)
 
 
+# RM-514: the ALERT CHANNEL. The scheduled task runs under pythonw.exe with no
+# log handler, so the WARNING below went nowhere and the sentinel advance then
+# CONSUMED the 2026-09-12 drift silently. A drift is now recorded DURABLY here,
+# BEFORE the sentinel advances, and stays UNACKNOWLEDGED until `--ack`;
+# tools/rc_facts.py surfaces unacknowledged alerts as a session-start anomaly.
+ALERTS_NAME = "upstream_drift_alerts.json"
+
+
+def _alerts_path() -> Path:
+    """Beside the sentinel, resolved at CALL time so a test that redirects
+    SENTINEL_PATH redirects the alerts too (no live ops/runtime write)."""
+    return SENTINEL_PATH.with_name(ALERTS_NAME)
+
+
+def load_alerts(path: Path | None = None) -> list[dict]:
+    path = path or _alerts_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def _write_alerts(alerts: list[dict], path: Path | None = None) -> None:
+    path = path or _alerts_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_bytes((json.dumps(alerts, indent=2) + "\n").encode("ascii"))
+    os.replace(tmp, path)
+
+
+def record_alert(fields, path: Path | None = None) -> dict:
+    """Append one unacknowledged drift alert. Raises on write failure - the
+    caller must NOT advance the sentinel past a drift it could not record."""
+    alert = {
+        "at": _now_iso(),
+        "changed": [{"name": f.name, "previous": f.previous, "current": f.current}
+                    for f in fields if f.changed],
+        "acknowledged": False,
+    }
+    alerts = load_alerts(path)
+    alerts.append(alert)
+    _write_alerts(alerts[-200:], path)
+    return alert
+
+
+def acknowledge_alerts(path: Path | None = None) -> int:
+    alerts = load_alerts(path)
+    n = sum(1 for a in alerts if not a.get("acknowledged"))
+    for a in alerts:
+        a["acknowledged"] = True
+    if n:
+        _write_alerts(alerts, path)
+    return n
+
+
+def unacked_alert_lines(path: Path | None = None) -> list[str]:
+    """One line per unacknowledged drift alert, for rc_facts. Never raises."""
+    try:
+        out = []
+        for a in load_alerts(path):
+            if a.get("acknowledged"):
+                continue
+            moved = ", ".join(f"{c['name']} {c['previous']} -> {c['current']}"
+                              for c in a.get("changed", []))
+            out.append(f"upstream drift UNACKNOWLEDGED since {a.get('at')}: {moved} "
+                       f"(ack: python tools/upstream_drift_check.py --ack)")
+        return out
+    except Exception as exc:  # noqa: BLE001
+        return [f"upstream drift alerts unreadable: {type(exc).__name__}"]
+
+
 def advance_sentinel(previous: dict, current: dict, fields, *, drift: bool) -> dict:
     """Write the advanced sentinel.
 
@@ -578,6 +650,9 @@ def main(argv: list[str] | None = None) -> int:
                         "data/queue_catalog_snapshot.json, then exit. Run this "
                         "only after REVIEWING a cdragon_queue_catalog drift - "
                         "it is the human step that re-grounds the queue map.")
+    p.add_argument("--ack", action="store_true",
+                   help="RM-514: mark every recorded drift alert acknowledged, "
+                        "then exit (clears the rc_facts session-start anomaly).")
     p.add_argument("--json", default=None, metavar="PATH",
                    help="also dump the full structured report to PATH")
     p.add_argument("--patch", default=None, metavar="PIN",
@@ -595,6 +670,10 @@ def main(argv: list[str] | None = None) -> int:
         # Reset the per-run error map (probes set entries on failure).
         for k in FIELD_NAMES:
             _LAST_ERRORS[k] = None
+
+        if args.ack:
+            print(f"acknowledged {acknowledge_alerts()} upstream drift alert(s)")
+            return 0
 
         if args.refresh_queue_snapshot:
             snap = write_queue_snapshot()
@@ -645,6 +724,11 @@ def main(argv: list[str] | None = None) -> int:
             # Cron gate: do NOT write the sentinel, do NOT fire side effects.
             return 1 if drift else 0
 
+        if drift:
+            # RM-514: record BEFORE advancing - a failure here raises to the
+            # exit-2 handler and leaves the sentinel un-advanced, so the drift
+            # is re-detected next run instead of consumed.
+            record_alert(fields)
         advance_sentinel(previous, current, fields, drift=drift)
 
         if args.staleness_recent:
