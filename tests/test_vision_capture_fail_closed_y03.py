@@ -373,7 +373,7 @@ def test_agent_gate_grace(agent, monkeypatch):
 def test_agent_drops_black_frame(agent, monkeypatch):
     monkeypatch.setattr(agent, "_bettercam_image",
                         lambda idx: Image.new("RGB", (1920, 1080), (0, 0, 0)))
-    with pytest.raises(agent.CaptureSkipped) as ei:
+    with pytest.raises(agent.CaptureRefused) as ei:
         agent.capture(0, drop_blank=True)
     assert ei.value.reason == "blank"
     # Positive control: a textured frame encodes normally.
@@ -388,7 +388,7 @@ def test_agent_loop_skip_is_counted_and_not_a_failure(agent, monkeypatch):
     reasons = iter(["not_foreground", "locked", "blank", "blank"])
 
     def _gated(*a, **k):
-        raise agent.CaptureSkipped(next(reasons))
+        raise agent.CaptureRefused(next(reasons))
     monkeypatch.setattr(agent, "_gated_capture", _gated)
     monkeypatch.setattr(agent, "upload",
                         lambda *a, **k: pytest.fail("skipped frame uploaded"))
