@@ -36,6 +36,11 @@ Response:
     "elapsed_ms": 12
   }
 
+Each player row also carries ``opening`` (RM-613, additive): the
+core.opening_tendency metrics for that puuid from the local timeline DB
+(each metric a shrunk rate dict or the '-' thin-sample sentinel), or None
+when that computation failed.
+
 Degraded (Riot key absent): {"ok": false, "reason": "riot_key_unconfigured",
 "players": []} with HTTP 200 - the dashboard renders a friendly empty
 state, never a raw error (see CLAUDE.md Error Handling).
@@ -48,7 +53,7 @@ import threading
 import time
 from typing import Any, Optional
 
-from core import riot_api
+from core import opening_tendency, riot_api
 from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
@@ -215,6 +220,23 @@ def _extract_puuids(body: Any) -> list[str]:
     return out
 
 
+def _attach_opening(players: list, puuids: list[str]) -> None:
+    """RM-613: additive per-player ``opening`` field (core.opening_tendency).
+
+    Local rewind_history.db read only - zero Riot API calls, so it does not
+    touch the rank rate limit. Runs over the already-CAPPED puuid list. A
+    failure sets ``opening: None`` on every row and never costs a rank. The
+    field is added to the per-request copies, never to the rank cache.
+    """
+    try:
+        by_puuid = opening_tendency.opening_tendencies(puuids)
+    except Exception as exc:  # noqa: BLE001 - opening is best-effort
+        log.warning("api/scouting: opening tendencies failed: %s", exc)
+        by_puuid = {}
+    for row in players:
+        row["opening"] = by_puuid.get(row.get("puuid"))
+
+
 def _serve_scouting(h, body) -> None:
     """POST /api/scouting - route entry point."""
     t0 = time.time()
@@ -235,6 +257,7 @@ def _serve_scouting(h, body) -> None:
 
         now = time.time()
         players = [_scout_one(p, now) for p in puuids]
+        _attach_opening(players, puuids)
 
         payload = {
             "ok": True,

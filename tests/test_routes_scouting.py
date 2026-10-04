@@ -317,3 +317,45 @@ def test_malformed_player_is_not_cached_as_a_good_row():
         _post(_FakeHandler("/api/scouting"), {"puuids": ["puuid-b"]})
         # A poisoned row must not be served from cache on the next request.
         assert fetch.call_count > first_calls
+
+
+# -- RM-613: additive per-puuid opening-tendency field --------------------
+
+def test_opening_field_attached_per_player_and_capped():
+    """The opening metrics ride on each player row (additive field), are
+    computed for the CAPPED puuid list only, and cost no Riot calls."""
+    handler = _FakeHandler("/api/scouting")
+    asked = []
+
+    def _fake_opening(puuids, **_kw):
+        asked.append(list(puuids))
+        return {p: {"games": 0, "jungle_start_side": "-"} for p in puuids}
+
+    many = [f"p{i}" for i in range(25)]
+    with mock.patch.object(rs.riot_api, "get_summoner_rank",
+                           return_value=None), \
+         mock.patch.object(rs.riot_api, "is_configured", return_value=True), \
+         mock.patch.object(rs.opening_tendency, "opening_tendencies",
+                           side_effect=_fake_opening):
+        code, payload = _post(handler, {"puuids": many})
+    assert code == 200
+    assert asked == [many[:10]]
+    assert len(payload["players"]) == 10
+    for p in payload["players"]:
+        assert p["opening"] == {"games": 0, "jungle_start_side": "-"}
+    # The rank fields are still there (additive, not a replacement).
+    assert "ranked" in payload["players"][0]
+
+
+def test_opening_failure_does_not_break_ranks():
+    handler = _FakeHandler("/api/scouting")
+    with mock.patch.object(rs.riot_api, "get_summoner_rank",
+                           side_effect=_fake_get_summoner_rank), \
+         mock.patch.object(rs.riot_api, "is_configured", return_value=True), \
+         mock.patch.object(rs.opening_tendency, "opening_tendencies",
+                           side_effect=RuntimeError("db gone")):
+        code, payload = _post(handler, {"puuids": ["puuid-a"]})
+    assert code == 200
+    a = payload["players"][0]
+    assert a["tier"] == "DIAMOND"
+    assert a["opening"] is None
