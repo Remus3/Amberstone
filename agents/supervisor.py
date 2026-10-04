@@ -2,8 +2,8 @@
 
 Per S10 responsibilities:
 
-  * Start the WS relay server on 0.0.0.0:8891.
-  * Start the web UI HTTP server on 0.0.0.0:8890 (serves ``web/``).
+  * Start the WS relay server on BIND_HOST:8891 (loopback by default, RM-231).
+  * Start the web UI HTTP server on BIND_HOST:8890 (serves ``web/``).
   * Run the async event loop for Agents 0, 1, 3 (pure Python).
   * Spawn ephemeral ``claude`` sessions on Agent 1 dispatches for 2/4/5/6.
   * Maintain a warm Agent 7 session during play windows (stub - warm
@@ -89,6 +89,7 @@ from agents.agent7_context.warm_session import (
 from agents._supervisor_common import (
     AGENT_CHARTERS,
     AGENT_MODELS,
+    BIND_HOST,
     CLAUDE_CLI,
     DEFAULT_SPAWN_BUDGET_USD,
     DEFAULT_SPAWN_TIMEOUT_SEC,
@@ -304,7 +305,7 @@ class Supervisor:
 
         # Audit L2: preflight the ports so failure is a clear log line.
         for port, label in ((WEB_PORT, "web"), (WS_PORT, "ws")):
-            if not _port_available("0.0.0.0", port):
+            if not _port_available(BIND_HOST, port):
                 raise RuntimeError(
                     f"port {port} ({label}) is already in use - another supervisor? "
                     f"run: `netstat -ano | findstr :{port}` to identify the holder"
@@ -322,7 +323,7 @@ class Supervisor:
         self._agent0 = Evaluator(game_state_probe=self._game_state_probe)
         self._scheduler = Scheduler(agent0_evaluate=self._agent0.evaluate)
 
-        self._ws = WSServer(host="0.0.0.0", port=WS_PORT)
+        self._ws = WSServer(host=BIND_HOST, port=WS_PORT)
         await self._ws.start()
 
         # Warm Agent 7 session - lazy, opens on first /api/input call OR

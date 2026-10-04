@@ -21,7 +21,7 @@ Logging split:
   logs/ws/push.log     - /push connect/disconnect/broadcast fanout
 
 Usage (standalone test):
-  python -m agents.agent2_backend.ws_server --host 0.0.0.0 --port 8891
+  python -m agents.agent2_backend.ws_server --host 127.0.0.1 --port 8891
 
 In production the supervisor imports and runs ``WSServer.run_forever()`` on
 its event loop.
@@ -43,7 +43,7 @@ from websockets.asyncio.server import ServerConnection, serve
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOG_ROOT = _PROJECT_ROOT / "logs" / "ws"
 
-DEFAULT_HOST = "0.0.0.0"
+DEFAULT_HOST = "127.0.0.1"  # RM-231: loopback; widen only deliberately
 DEFAULT_PORT = 8891
 HEARTBEAT_INTERVAL_SEC = 5.0
 

@@ -27,7 +27,7 @@ from dashboard._handler import _scrub_log
 
 from agents.agent7_context.warm_session import WarmSessionError, warm_spawn_factory
 
-from agents._supervisor_common import WEB_PORT, WEB_ROOT, _iso_now, log
+from agents._supervisor_common import BIND_HOST, WEB_PORT, WEB_ROOT, _iso_now, log
 from agents._supervisor_ephemeral import spawn_ephemeral_llm
 
 if TYPE_CHECKING:  # runtime-free fwd-ref: Supervisor lives in the facade
@@ -917,8 +917,9 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         Goes through all existing gating (hard-gate, frozen-file guard,
         Agent 0 review). Fails with 400 on malformed input.
 
-        LAN trust model: same as /api/input - whoever can reach 8890
-        can dispatch tasks. Don't expose 8890 beyond LAN.
+        Trust model: same as /api/input - whoever can reach 8890 can
+        dispatch tasks. Bound to loopback by default (RM-231,
+        RC_PHASE3_BIND_HOST); don't widen it beyond a trusted network.
         """
         raw = self._read_body()
         try:
@@ -1028,9 +1029,9 @@ class _WebServer(socketserver.ThreadingTCPServer):
 def start_web_server(port: int = WEB_PORT, supervisor: "Supervisor" | None = None) -> socketserver.TCPServer:
     WEB_ROOT.mkdir(parents=True, exist_ok=True)
     handler = lambda *a, **kw: _QuietHandler(*a, directory=str(WEB_ROOT), **kw)  # noqa: E731
-    srv = _WebServer(("0.0.0.0", port), handler)
+    srv = _WebServer((BIND_HOST, port), handler)
     srv.supervisor = supervisor  # type: ignore[assignment]
     t = threading.Thread(target=srv.serve_forever, name="web-http", daemon=True)
     t.start()
-    log.info("web HTTP server listening on 0.0.0.0:%d (root=%s)", port, WEB_ROOT)
+    log.info("web HTTP server listening on %s:%d (root=%s)", BIND_HOST, port, WEB_ROOT)
     return srv

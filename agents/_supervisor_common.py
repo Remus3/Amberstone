@@ -59,6 +59,32 @@ LOG_ROOT = _PROJECT_ROOT / "logs" / "agents"
 # or that registry assertion flips repo-wide with no obvious cause.
 WS_PORT = _env_port("RC_PHASE3_WS_PORT", 8891)
 WEB_PORT = _env_port("RC_PHASE3_WEB_PORT", 8890)
+
+
+def _env_bind_host(name: str, default: str = "127.0.0.1") -> str:
+    """Bind address for :8890/:8891 (RM-231). Loopback unless overridden.
+
+    Measured 2026-10-04 before narrowing: every in-repo client reaches these
+    ports on 127.0.0.1 - the :8888 dashboard proxies :8890 via
+    `dashboard/_handler.py` SUPERVISOR_ORIGIN and `routes_state` /api/analyze,
+    and `web/js/main.js` routes the :8891 WS to 127.0.0.1 from every HTTPS
+    page (a remote HTTPS viewer could never reach Legion's :8891 anyway);
+    no ESTABLISHED remote connection was present on either port. A remote
+    client that genuinely needs the wide bind sets RC_PHASE3_BIND_HOST
+    deliberately. Only an IP literal is accepted; anything else falls back
+    to loopback rather than widening by accident.
+    """
+    import ipaddress
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return str(ipaddress.ip_address(raw))
+    except ValueError:
+        return default
+
+
+BIND_HOST = _env_bind_host("RC_PHASE3_BIND_HOST")
 HEARTBEAT_INTERVAL = 5.0
 # Legacy 2-PC SMB-push target (Game-PC LAN IP). Retired post-1PC (ADR-011):
 # Game-PC is out of the pipeline, so the cross-machine push path is dead and
