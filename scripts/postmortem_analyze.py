@@ -45,6 +45,15 @@ Patterns (8; all computable from existing schema, no derived data layer):
   - late_throw:       died after 25:00 in-game (late-game positioning errors)
   - rapid_repeat:     died <=60s after a previous death by the same victim (tilt cluster)
 
+Damage recap section (RM-608, additive, OPTIONAL): when the ESTIMATED death
+recap rows written by core/death_recap.py (data/coaching/death_recaps.jsonl,
+gitignored, default-off flag RC_DEATH_RECAP) exist, the report gains
+    "damage_recap": {"provenance": "estimated", "total_recaps", "rows_with_shares",
+                     "mean_shares": {physical, magic, true}, "dominant_type_counts",
+                     "basis_counts", "top_killer_champions": [{champion, count}]}
+The key is ABSENT when there are no rows, so existing output is unchanged.
+These shares are a model built from contributor builds, never a damage log.
+
 Role grades section is the 2nd live consumer of core/post_game_rubric.py
 (shipped item 131 Slice A). Computes a per-match per-role grade for every
 operator participant row carrying a non-empty team_position, aggregates by
@@ -73,6 +82,7 @@ from core.smoothed_rates import laplace_rate, shrink  # noqa: E402
 
 DEFAULT_DB = ROOT / "data" / "rewind_history.db"
 DEFAULT_OUTPUT = ROOT / "data" / "coaching" / "death_patterns.json"
+DEFAULT_RECAPS = ROOT / "data" / "coaching" / "death_recaps.jsonl"
 CATCHUP_STATE = ROOT / "data" / "rewind_catchup.state.json"
 
 EARLY_THRESHOLD_MS = 3 * 60 * 1000
@@ -448,6 +458,62 @@ def aggregate_role_grades(grades: list[dict]) -> dict:
     }
 
 
+_SHARE_KEYS = ("physical", "magic", "true")
+
+
+def load_death_recaps(path: pathlib.Path) -> list[dict]:
+    """RM-608: read the estimated recap rows (fail-soft, [] when absent)."""
+    from core.death_recap import read_rows
+    return read_rows(pathlib.Path(path))
+
+
+def aggregate_death_recaps(rows: list[dict]) -> dict:
+    """RM-608: fold ESTIMATED recap rows into the damage_recap section.
+
+    Only rows tagged provenance=estimated are counted. mean_shares is the
+    plain mean over rows that carry shares, renormalized to sum to 1.
+    """
+    recaps = [r for r in rows or [] if isinstance(r, dict)
+              and r.get("provenance") == "estimated"]
+    sums = dict.fromkeys(_SHARE_KEYS, 0.0)
+    dominant = dict.fromkeys(_SHARE_KEYS, 0)
+    basis: dict[str, int] = {}
+    killers: dict[str, int] = {}
+    n_shares = 0
+    for r in recaps:
+        b = str(r.get("basis") or "unknown")
+        basis[b] = basis.get(b, 0) + 1
+        for c in r.get("contributors") or []:
+            if isinstance(c, dict) and c.get("role") == "killer" and c.get("champion"):
+                killers[c["champion"]] = killers.get(c["champion"], 0) + 1
+        sh = r.get("shares")
+        if not isinstance(sh, dict):
+            continue
+        try:
+            vals = {k: float(sh.get(k) or 0.0) for k in _SHARE_KEYS}
+        except (TypeError, ValueError):
+            continue
+        if sum(vals.values()) <= 0:
+            continue
+        n_shares += 1
+        for k in _SHARE_KEYS:
+            sums[k] += vals[k]
+        dominant[max(_SHARE_KEYS, key=lambda k: (vals[k], -_SHARE_KEYS.index(k)))] += 1
+    tot = sum(sums.values())
+    mean = {k: (round(sums[k] / tot, 4) if tot > 0 else 0.0) for k in _SHARE_KEYS}
+    top = sorted(killers.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
+    return {
+        "provenance": "estimated",
+        "label": "estimated damage-type split (model from contributor builds, not a damage log)",
+        "total_recaps": len(recaps),
+        "rows_with_shares": n_shares,
+        "mean_shares": mean,
+        "dominant_type_counts": dominant,
+        "basis_counts": basis,
+        "top_killer_champions": [{"champion": k, "count": v} for k, v in top],
+    }
+
+
 def write_atomic(target: pathlib.Path, payload: dict) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=".postmortem.", suffix=".tmp", dir=str(target.parent))
@@ -470,6 +536,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output JSON path")
     parser.add_argument("--puuid", action="append", default=None,
                         help="PUUID to analyze (may repeat). Default: read from rewind_catchup.state.json")
+    parser.add_argument("--recaps", default=str(DEFAULT_RECAPS),
+                        help="RM-608 estimated death-recap JSONL (optional; section omitted when empty)")
     parser.add_argument("--dry-run", action="store_true", help="Compute + print report, do not write")
     args = parser.parse_args(argv)
 
@@ -492,6 +560,14 @@ def main(argv: list[str] | None = None) -> int:
         report["role_grades"] = aggregate_role_grades(grades)
     finally:
         conn.close()
+
+    # RM-608: additive, estimated-only section; absent when there are no rows.
+    try:
+        recap_rows = load_death_recaps(pathlib.Path(args.recaps))
+    except Exception:  # noqa: BLE001
+        recap_rows = []
+    if recap_rows:
+        report["damage_recap"] = aggregate_death_recaps(recap_rows)
 
     if args.dry_run:
         print(json.dumps(report, indent=2))

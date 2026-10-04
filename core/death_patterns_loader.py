@@ -123,6 +123,23 @@ def role_grades_summary(path: pathlib.Path | None = None) -> dict:
     return rg
 
 
+def damage_recap_summary(path: pathlib.Path | None = None) -> dict:
+    """Return the RM-608 ``damage_recap`` section (ESTIMATED damage-type split).
+
+    Additive companion to role_grades_summary. Empty dict when the JSON is
+    missing/malformed, the section is absent, or it is not tagged
+    provenance=estimated (the split is a model and must never surface
+    unlabelled). Same fail-soft contract as the other helpers.
+    """
+    data = _safe_load(path or _DEFAULT_PATH)
+    if not isinstance(data, dict) or not data:
+        return {}
+    dr = data.get("damage_recap")
+    if not isinstance(dr, dict) or dr.get("provenance") != "estimated":
+        return {}
+    return dr
+
+
 def personal_context_block(path: pathlib.Path | None = None) -> str:
     """Format the top-3 patterns as a system-prompt-ready string block.
 
