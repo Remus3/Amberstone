@@ -645,7 +645,7 @@ class _NormalizerMixin:
         # byte-equivalence table, single counter increment).
         runes_full = self._read_my_runes_structured()
 
-        return {
+        snapshot = {
             "game_time":          time_str,
             "game_seconds":       game_time,
             "champion":           my_champ,
@@ -714,6 +714,17 @@ class _NormalizerMixin:
             "game_id":            (self._try_lcu_game_id()
                                    if self._sub_budget_left() > 0 else ""),
         }
+        if me is None:
+            # RM-376: the operator is not in allPlayers (partial payload,
+            # reconnect, ambiguous mirror). cs / kills / items were never
+            # measured, while level / gold / hp (from activePlayer) are real -
+            # so say so instead of emitting a measured-looking "0/0/0". Only
+            # on this path: the found path stays byte-unchanged. Numerics keep
+            # their types for arithmetic consumers; kda is a display / prompt
+            # string everywhere, so it takes the approved "-" no-data sentinel.
+            snapshot["operator_found"] = False
+            snapshot["kda"] = "-"
+        return snapshot
 
     # ------------------------------------------------------------------
     # Derived overlay fields
