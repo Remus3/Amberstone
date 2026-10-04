@@ -302,9 +302,16 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     atomic_write_bytes(Path(path), json.dumps(data, indent=2, ensure_ascii=True).encode("ascii"))
 
 
+def _on_windows() -> bool:
+    """Host check behind one seam, so the no-window spawn contract is tested
+    on a non-Windows CI runner by faking the host instead of skipping."""
+    return sys.platform == "win32"
+
+
 def _run(runner: Callable, cmd: list, timeout: int) -> subprocess.CompletedProcess:
+    # POSIX subprocess raises on a non-zero creationflags, so 0 off Windows.
     return runner(cmd, capture_output=True, timeout=timeout,
-                  creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
+                  creationflags=CREATE_NO_WINDOW if _on_windows() else 0)
 
 
 def _probe_duration(runner: Callable, ffprobe: Optional[str], path: Path) -> Optional[float]:
