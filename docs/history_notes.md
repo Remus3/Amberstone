@@ -41,6 +41,15 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-03f - CI red fixed; ROADMAP dup ids; NOW-7 residual; console-flash completeness; RM-510
+
+- **Merges (all pushed, verifier MERGE-OK each):** `e8a498d6e` p2w2 `_FakeProc.args` (CI red root cause `47d4cf506`), `3ac0da26b` ROADMAP dup ids -> RM-513/514/515 + uniqueness guard, `9a86540e5` NOW-7 gate honours outer pid only as live ancestor + inert banner, `3011cf91a` console-flash AST completeness + upstream_drift_check CREATE_NO_WINDOW, `1fe7c1b5d` RM-510 ingest exit 0/75/1. LEDGER 1473-1477.
+- **CI green:** run 37162099927 on `9a86540e5`, run 37163680156 on `1fe7c1b5d`.
+- **Next:** POSIX kit gap report to MAIN, then RM-511 stale model pins.
+- **Do NOT redo:** any of the five items above; NOW-7 is fully closed.
+
+---
+
 # 2026-10-03e - NOW-7 gate armed; FLEET-KIT v4 adopted; routed spawns on kit _run; DS rm115 deadline flake fixed
 
 - **Merges (all pushed, c5739fbe0..251457ad7):** NOW-7 gate (`4c61fb0eb`), FLEET-KIT v4 (`c8341e619`), routed spawns via kit `_run` (`fcc53a232`), DS rm115 60 s deadline (`251457ad7`). LEDGER 1469-1472. Each verifier MERGE-OK.
