@@ -159,6 +159,8 @@ def test_argv_tail_is_the_literal_read_only_shape(cfg):
         "--tools",
         "Read,Glob,Grep",
         "--strict-mcp-config",
+        "--setting-sources",
+        "project,local",
         "--no-session-persistence",
         "--max-turns",
         str(cfg.max_turns),

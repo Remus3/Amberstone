@@ -3951,6 +3951,7 @@ def test_real_spawner_argv_is_constant_and_the_note_rides_on_stdin(world, monkey
     call = recorded[0]
     tail = [
         "-p", "--restricted", "--tools", "Read,Glob,Grep", "--strict-mcp-config",
+        "--setting-sources", "project,local",
         "--no-session-persistence", "--max-turns", str(world.config.max_turns),
         "--model", world.config.model, "--output-format", "json",
         "--json-schema", spawn_mod.PROPOSAL_SCHEMA, "--system-prompt", spawn_mod.SYSTEM_PROMPT,

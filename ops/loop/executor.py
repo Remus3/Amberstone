@@ -1349,6 +1349,12 @@ class SdkExecutor:
             "--permission-mode", self.cfg.get("permission_mode", "bypassPermissions"),
             "--json-schema", _json.dumps(DONE_SCHEMA),
             "--add-dir", str(self.cfg.get("repo_root", ".")),
+            # MAIN 0912 item A: the kit's lean pair (ops/fleet_kit/fleet_headless.py
+            # build_argv, DEFAULT_SOURCES). No MCP servers, no user-scope plugins
+            # or SessionStart injection; project hooks and settings still load,
+            # so no RC floor is traded for tokens (hence not --bare).
+            "--strict-mcp-config",
+            "--setting-sources", "project,local",
         ]
         # RM-137: push RC's standing rules into every subagent this cycle spawns.
         # Config-driven on purpose - if a CLI upgrade ever rejects the flag, the
