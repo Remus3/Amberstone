@@ -307,6 +307,22 @@ def _pending() -> dict[str, str]:
 _TOOLS = _ROOT / "tools"
 
 
+def _parsed_tools() -> list[tuple[str, ast.AST]]:
+    """(repo-relative path, AST) for every parseable .py under tools/.
+
+    The ONE file walk behind ``_filename_write_sites``; its meta-guard counts
+    this same list, so a changed root or glob moves both together (RM-496).
+    """
+    out: list[tuple[str, ast.AST]] = []
+    for py in sorted(_TOOLS.rglob("*.py")):
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):  # pragma: no cover - none today
+            continue
+        out.append((py.relative_to(_ROOT).as_posix(), tree))
+    return out
+
+
 def _filename_write_sites(feed: str) -> list[str]:
     """Places under tools/ that name FEED in a path-construction position.
 
@@ -336,12 +352,7 @@ def _filename_write_sites(feed: str) -> list[str]:
     than assumed.
     """
     sites: list[str] = []
-    for py in sorted(_TOOLS.rglob("*.py")):
-        try:
-            tree = ast.parse(py.read_text(encoding="utf-8"))
-        except (SyntaxError, UnicodeDecodeError):  # pragma: no cover - none today
-            continue
-        rel = py.relative_to(_ROOT).as_posix()
+    for rel, tree in _parsed_tools():
         for node in ast.walk(tree):
             if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
                 right = node.right
@@ -388,13 +399,7 @@ def test_the_filename_write_site_scan_actually_finds_generators():
     renamed tools/ dir, or an rglob that matched nothing walks zero files and
     also returns no sites.
     """
-    parsed = 0
-    for py in sorted(_TOOLS.rglob("*.py")):
-        try:
-            ast.parse(py.read_text(encoding="utf-8"))
-        except (SyntaxError, UnicodeDecodeError):  # pragma: no cover - none today
-            continue
-        parsed += 1
+    parsed = len(_parsed_tools())
     assert parsed >= 50, (
         f"the write-site scan walked only {parsed} parseable files under "
         f"{_TOOLS} - it is not looking at this repo, so every 'authored' row "
