@@ -20,6 +20,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from core.polled_json import atomic_write_json, read_json_dict
+
 _log = logging.getLogger("rc.lcu.runes")
 
 _APP_DIR = Path(__file__).parent.parent
@@ -325,15 +327,10 @@ def load_spell_pair(mode: str, is_aram: bool) -> tuple[int, int]:
     is_aram: True for ARAM/KIWI; False for SR.
     Falls back to safe defaults if file missing or invalid.
     """
-    try:
-        if _SPELL_PREFS_PATH.exists():
-            prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding='utf-8'))
-            key   = "aram_mode" if is_aram else "sr_mode"
-            pref  = prefs.get(key, "snowball" if is_aram else "teleport")
-        else:
-            pref = "snowball" if is_aram else "teleport"
-    except Exception:  # noqa: BLE001
-        pref = "snowball" if is_aram else "teleport"
+    # RM-297d: read_json_dict owns missing / undecodable / non-dict handling.
+    prefs = read_json_dict(_SPELL_PREFS_PATH)
+    key = "aram_mode" if is_aram else "sr_mode"
+    pref = prefs.get(key, "snowball" if is_aram else "teleport")
 
     if is_aram:
         if pref == "exhaust":
@@ -373,10 +370,12 @@ def resolve_spell_pair(champion: str, mode: str) -> tuple[int, int]:
     return load_spell_pair(mode, is_aram)
 
 
-# Audit cycle 10 (P2-W1-app-B): serializes save_spell_pref writers -
-# concurrent calls shared one .tmp name (cycle-9 shared-tmp race class)
-# and a transient os.replace WinError 5 silently dropped the write.
-# Mirrors coaches/_base_coach.safe_write (lock + bounded replace retry).
+# Audit cycle 10 (P2-W1-app-B): serializes the read-modify-write of both
+# spell_prefs.json writers in-process. RM-297d (2026-10-04): the write itself
+# goes through core.polled_json.atomic_write_json - per-writer scratch name,
+# the shared 275 ms WinError 5 retry (the hand-rolled one gave up at 45 ms and
+# DROPPED the operator's preference), fsync, LF bytes, and no orphaned
+# scratch file on any failure path.
 _SPELL_PREFS_LOCK = threading.Lock()
 
 
@@ -384,37 +383,14 @@ def save_spell_pref(mode_key: str, value: str) -> None:
     """Write updated spell preference to spell_prefs.json (atomic write)."""
     try:
         with _SPELL_PREFS_LOCK:
-            if _SPELL_PREFS_PATH.exists():
-                prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding='utf-8'))
-            else:
-                prefs = {}
+            prefs = read_json_dict(_SPELL_PREFS_PATH)
             prefs[mode_key] = value
-            tmp = _SPELL_PREFS_PATH.with_suffix('.tmp')
-            tmp.write_text(json.dumps(prefs, indent=2, ensure_ascii=False),
-                           encoding='utf-8')
-            for attempt in range(3):
-                try:
-                    tmp.replace(_SPELL_PREFS_PATH)
-                    break
-                except PermissionError:
-                    # os.replace transient WinError 5 under concurrent
-                    # read - retry with backoff, give up after 3.
-                    if attempt == 2:
-                        _log.warning("save_spell_pref: replace gave up after 3 tries")
-                        try:
-                            tmp.unlink(missing_ok=True)
-                        except OSError:
-                            pass
-                    else:
-                        time.sleep(0.015 * (2 ** attempt))
-    # Narrowed 2026-07-19: Path.exists / read_text / write_text / Path.replace
-    # raise OSError (PermissionError is retried inline above); read_text raises
-    # UnicodeDecodeError and json.loads raises JSONDecodeError, both ValueError
-    # subclasses; prefs[mode_key] = value raises TypeError when the file stored
-    # a JSON list instead of an object, and json.dumps raises TypeError /
-    # ValueError. Those are every raising statement in the try.
+            atomic_write_json(_SPELL_PREFS_PATH, prefs)
+    # read_json_dict never raises for a missing / corrupt / non-dict file; the
+    # write raises OSError once the shared retry is exhausted (scratch file
+    # already removed), and json.dumps raises TypeError / ValueError.
     except (OSError, TypeError, ValueError) as exc:
-        _log.debug("save_spell_pref: %s", exc)
+        _log.warning("save_spell_pref: write dropped: %s", exc)
 
 
 # -- Per-champion-per-mode spell memory (RC2 E6) ---------------------------
@@ -461,9 +437,7 @@ def load_champ_spell_pref(champion: str, mode: str) -> Optional[tuple[int, int]]
     if not champion:
         return None
     try:
-        if not _SPELL_PREFS_PATH.exists():
-            return None
-        prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding="utf-8"))
+        prefs = read_json_dict(_SPELL_PREFS_PATH)
         by_champ = prefs.get("by_champ")
         if not isinstance(by_champ, dict):
             return None
@@ -485,9 +459,9 @@ def save_champ_spell_pref(champion: str, mode: str,
 
     Writes spell_prefs.json["by_champ"][<mode_tag>][<champion>] = [s1, s2],
     creating the nested maps as needed and preserving every other key.
-    Shares _SPELL_PREFS_LOCK + the bounded replace-retry with save_spell_pref
-    so concurrent writers never share a .tmp or drop a write on a transient
-    WinError 5.
+    Shares _SPELL_PREFS_LOCK and core.polled_json.atomic_write_json with
+    save_spell_pref (RM-297d), so the read-modify-write is serialized
+    in-process and the write rides out a transient WinError 5.
     """
     if not champion:
         return
@@ -497,12 +471,7 @@ def save_champ_spell_pref(champion: str, mode: str,
         return
     try:
         with _SPELL_PREFS_LOCK:
-            if _SPELL_PREFS_PATH.exists():
-                prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding="utf-8"))
-                if not isinstance(prefs, dict):
-                    prefs = {}
-            else:
-                prefs = {}
+            prefs = read_json_dict(_SPELL_PREFS_PATH)
             by_champ = prefs.get("by_champ")
             if not isinstance(by_champ, dict):
                 by_champ = {}
@@ -513,31 +482,13 @@ def save_champ_spell_pref(champion: str, mode: str,
                 per_mode = {}
                 by_champ[tag] = per_mode
             per_mode[champion] = [s1, s2]
-
-            tmp = _SPELL_PREFS_PATH.with_suffix(".tmp")
-            tmp.write_text(json.dumps(prefs, indent=2, ensure_ascii=False),
-                           encoding="utf-8")
-            for attempt in range(3):
-                try:
-                    tmp.replace(_SPELL_PREFS_PATH)
-                    break
-                except PermissionError:
-                    if attempt == 2:
-                        _log.warning(
-                            "save_champ_spell_pref: replace gave up after 3 tries")
-                        try:
-                            tmp.unlink(missing_ok=True)
-                        except OSError:
-                            pass
-                    else:
-                        time.sleep(0.015 * (2 ** attempt))
-    # Narrowed 2026-07-19: same raise surface as save_spell_pref above -
-    # OSError from exists/read_text/write_text/replace, ValueError from
-    # UnicodeDecodeError + JSONDecodeError, TypeError/ValueError from
-    # json.dumps. mode_tag (:397) is pure str/dict work and cannot raise, and
-    # prefs / by_champ / per_mode are all isinstance-guarded to dict above.
+            atomic_write_json(_SPELL_PREFS_PATH, prefs)
+    # Same raise surface as save_spell_pref above: OSError from an exhausted
+    # write, TypeError / ValueError from json.dumps. mode_tag is pure str/dict
+    # work, and prefs / by_champ / per_mode are all isinstance-guarded above.
     except (OSError, TypeError, ValueError) as exc:
-        _log.debug("save_champ_spell_pref(%s/%s): %s", champion, mode, exc)
+        _log.warning("save_champ_spell_pref(%s/%s): write dropped: %s",
+                     champion, mode, exc)
 
 
 # ==============================================================================
