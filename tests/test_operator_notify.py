@@ -55,6 +55,14 @@ def _xml_from_ps(script: str) -> str:
 
 
 @pytest.fixture
+def win_host(monkeypatch):
+    """The spawn contract is host-independent once subprocess.run is faked;
+    fake a Windows host so CI's Linux runner exercises it instead of
+    short-circuiting on "not windows" (CI run 37183631213)."""
+    monkeypatch.setattr(on, "_on_windows", lambda: True)
+
+
+@pytest.fixture
 def unheld(monkeypatch):
     monkeypatch.delenv("RC_NOTIFY_HOLD", raising=False)
 
@@ -78,7 +86,7 @@ def test_escape_link_attribute_is_valid_xml():
     assert root.get("activationType") == "protocol"
 
 
-def test_wintoast_ships_escaped_xml_in_one_hidden_powershell(monkeypatch, unheld):
+def test_wintoast_ships_escaped_xml_in_one_hidden_powershell(monkeypatch, unheld, win_host):
     fake = _FakeRun()
     monkeypatch.setattr(on.subprocess, "run", fake)
     ok, detail = on.WinToastNotifier().notify(on.Notification("A & B <c>", "1 < 2"))
@@ -93,7 +101,7 @@ def test_wintoast_ships_escaped_xml_in_one_hidden_powershell(monkeypatch, unheld
     ET.fromstring(_xml_from_ps(script))  # the payload LoadXml will see is valid
 
 
-def test_wintoast_nonzero_exit_is_false_with_detail(monkeypatch, unheld):
+def test_wintoast_nonzero_exit_is_false_with_detail(monkeypatch, unheld, win_host):
     fake = _FakeRun(returncode=1, stdout="", stderr="LoadXml boom")
     monkeypatch.setattr(on.subprocess, "run", fake)
     ok, detail = on.WinToastNotifier().notify(on.Notification("t", "b"))
@@ -101,7 +109,7 @@ def test_wintoast_nonzero_exit_is_false_with_detail(monkeypatch, unheld):
     assert "LoadXml boom" in detail
 
 
-def test_wintoast_app_id_is_configurable(monkeypatch, unheld):
+def test_wintoast_app_id_is_configurable(monkeypatch, unheld, win_host):
     fake = _FakeRun()
     monkeypatch.setattr(on.subprocess, "run", fake)
     on.WinToastNotifier(app_id="Some.App!Id").notify(on.Notification("t", "b"))
@@ -180,7 +188,16 @@ def test_module_notify_never_raises_even_if_notify_itself_raises():
     assert ok is False and "broken" in detail
 
 
-def test_wintoast_spawn_oserror_is_false(monkeypatch, unheld):
+def test_non_windows_host_spawns_nothing(monkeypatch, unheld):
+    fake = _FakeRun()
+    monkeypatch.setattr(on.subprocess, "run", fake)
+    monkeypatch.setattr(on, "_on_windows", lambda: False)
+    ok, detail = on.WinToastNotifier().notify(on.Notification("t", "b"))
+    assert ok is False and detail == "not windows"
+    assert fake.calls == []
+
+
+def test_wintoast_spawn_oserror_is_false(monkeypatch, unheld, win_host):
     def _boom(*a, **k):
         raise FileNotFoundError("no powershell")
     monkeypatch.setattr(on.subprocess, "run", _boom)
@@ -208,7 +225,8 @@ def test_hold_does_not_stop_the_file_floor(monkeypatch, tmp_path):
 
 
 def test_conftest_sets_hold_and_redirects_floor():
-    assert os.environ.get("RC_NOTIFY_HOLD") == "1"
+    hold = os.environ.get("RC_NOTIFY_HOLD")
+    assert hold == "1"
     floor = Path(os.environ["RC_NOTIFY_JSONL"]).resolve()
     assert ROOT.resolve() not in floor.parents, floor
 

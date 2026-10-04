@@ -55,6 +55,12 @@ WINDOWS_TERMINAL_APP_ID = "Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"
 # DETACHED_PROCESS - powershell then exits at once, silently, rc=0.
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
+
+def _on_windows() -> bool:
+    """Host check behind one seam, so the spawn contract can be tested on a
+    non-Windows CI runner by faking the host instead of skipping."""
+    return sys.platform == "win32"
+
 PRIORITIES = ("min", "low", "default", "high", "urgent")
 
 # Keeps the -EncodedCommand line well under the 32767-char Win32 limit.
@@ -160,7 +166,7 @@ class WinToastNotifier(Notifier):
         )
 
     def _send(self, n: Notification) -> tuple[bool, str]:
-        if sys.platform != "win32":
+        if not _on_windows():
             return False, "not windows"
         enc = base64.b64encode(self.script(n).encode("utf-16-le")).decode("ascii")
         try:
