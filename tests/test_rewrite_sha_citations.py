@@ -144,3 +144,33 @@ def test_ledger_citation_shape_is_actually_matched_by_the_pattern():
     sample = "landed (`00684480` + `f173ce39`)"
     found = re.findall(BACKTICKED_SHA_RE, sample)
     assert found == ["00684480", "f173ce39"]
+
+
+def test_a_citation_that_already_resolves_is_never_remapped(cmap):
+    """RM-501: run months AFTER the rewrite, a doc mixes dead pre-rewrite
+    citations with live post-rewrite ones. A live sha whose prefix happens
+    to match an OLD key must be left alone - remapping it would point a
+    correct citation at a different commit."""
+    live = OLD_A[:8]
+    dead = OLD_B[:8]
+    text = f"`{live}` and `{dead}`"
+    out, stats, _ = rewrite_text(text, cmap, SHA_RE, skip=lambda t: t == live)
+    assert out == f"`{live}` and `{NEW_B[:8]}`"
+    assert stats["skipped"] == 1
+    assert stats["ok"] == 1
+
+
+def test_a_hex_run_inside_a_word_is_not_a_citation():
+    """RM-501 dry run: 'feedbac' inside 'feedback_...' matched the old
+    hex-only boundary, so an old sha starting 'feedbac' would have rewritten
+    a memory filename. The boundary must be any word character."""
+    assert SHA_RE.search("see feedback_no_history_rewrite") is None
+    assert SHA_RE.search("x_deadbeef1") is None
+    assert SHA_RE.search("(deadbeef1)").group(1) == "deadbeef1"
+    assert SHA_RE.search("`deadbeef1`").group(1) == "deadbeef1"
+
+
+def test_skip_default_keeps_the_old_behaviour(cmap):
+    out, stats, _ = rewrite_text(f"`{OLD_A[:8]}`", cmap, SHA_RE)
+    assert out == f"`{NEW_A[:8]}`"
+    assert stats.get("skipped", 0) == 0
