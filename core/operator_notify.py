@@ -281,8 +281,20 @@ class FirstThatWorks(Notifier):
 
 
 def default_chain(app_id: str = DEFAULT_APP_ID) -> FirstThatWorks:
-    """Desktop toast first, jsonl floor last. Later sinks insert before the floor."""
-    return FirstThatWorks([WinToastNotifier(app_id=app_id), JsonlNotifier()])
+    """Desktop toast, jsonl floor last. Later sinks insert before the floor.
+
+    Y-45: the phone push (core/operator_push.NtfyNotifier) goes FIRST, but only
+    when its gitignored config exists and says enabled - default-off.
+    """
+    chain: list[Notifier] = [WinToastNotifier(app_id=app_id), JsonlNotifier()]
+    try:
+        from core.operator_push import NtfyNotifier  # noqa: PLC0415 - avoids a cycle
+        push = NtfyNotifier.from_config()
+    except Exception:  # noqa: BLE001 - an optional sink never breaks the chain
+        push = None
+    if push is not None:
+        chain.insert(0, push)
+    return FirstThatWorks(chain)
 
 
 def notify(title: str, body: str, priority: str = "default",

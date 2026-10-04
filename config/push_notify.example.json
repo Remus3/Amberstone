@@ -1,0 +1,9 @@
+{
+  "_comment": "Y-45 phone push. Copy to config/push_notify.json (gitignored) and set enabled to true only after the operator acts in core/operator_push.py are done. token MUST be a reference: {\"env\": NAME} (a user env var) or {\"file\": path} (first non-blank line of a gitignored file). server and topic may be literals here or references. Links in messages must use a tailnet hostname; loopback links are refused. tailnet_suffix MUST be replaced with your own tailnet (the placeholder or a bare .ts.net refuses to arm).",
+  "enabled": false,
+  "server": "https://rc-host.<tailnet>.ts.net:8443",
+  "topic": {"env": "RC_PUSH_TOPIC"},
+  "token": {"env": "RC_PUSH_TOKEN"},
+  "tailnet_suffix": ".<your-tailnet>.ts.net",
+  "timeout_s": 4
+}
