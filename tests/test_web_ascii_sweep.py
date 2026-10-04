@@ -545,7 +545,16 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/review_player_model.js, web/js/panels/review_player.js and
 # web/css/panels/review_player.css reproduces the superseded 8dcc72c6... value
 # EXACTLY. Those six paths are the whole change. No glyph change.
-_LIVE_HALF_DIGEST = "a4a299abc36efba7faeda61fb6f23d14be8150b9c39946ebe9e3c1ef9dac319c"
+# superseded by the RM-522 re-capture below: "a4a299abc36efba7faeda61fb6f23d14be8150b9c39946ebe9e3c1ef9dac319c"
+#
+# RE-CAPTURED 2026-10-04 at RM-522 (DS patch 16.18.1 -> 16.19.1, landed as
+# 1161a52e3, which shipped without this re-capture and left main red here).
+# Ordinary case, no tokeniser change. ATTRIBUTED BY SUBSTITUTION: swapping
+# exactly web/js/lib/items_index.js back to its 1161a52e3~1 blob (the
+# DDRAGON_FALLBACK_VERSION literal 16.19.1 -> 16.18.1) reproduces the
+# superseded a4a299ab... value EXACTLY. That one path is the whole change.
+# No glyph change.
+_LIVE_HALF_DIGEST = "3ed09b85944aa0a9cec18bdc4e8bf9a5321a7f0bcfc9c5f1206d2778782da6c8"
 
 
 def _web_sources() -> list[Path]:
