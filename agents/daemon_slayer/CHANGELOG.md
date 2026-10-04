@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.284.0 (2026-10-03) - RM-513 Arena augment-reward deny, RM-480 residuals,
+RM-479 /stats augment_stacks transport.
+- fix (DEFAULT scoring, Arena): ``rank._ARENA_EXCLUDED_ITEM_IDS`` =
+  {223069 Void Immolation}, denied in ``_filter_candidates`` on ARENA. The
+  wiki reads "Obtained from the Quest: Icathia's Fall augment" in Arena as
+  well as ARAM: Mayhem; unexcluded it opened 217 of 519 Arena builds. The
+  three 16.18.1 Arena tables were regenerated (every changed cell had held
+  223069); SR / ARAM tables unchanged.
+- feat (DEFAULT-OFF ``apply_ability_base_overrides``): the registry gains
+  ``block_index`` (select a repeated attribute by position) and FORM-level
+  fields (``cooldown``, empty attribute). New / re-targeted entries,
+  wiki-measured 2026-10-03: Qiyana Q form 1 (four blocks), LeBlanc R all
+  seven blocks, Kennen R cooldown 120/100/80 -> 120 flat (V26.04), Naafiri R
+  125/200/275 +100 pct bonus AD and packmate 12.5/20/27.5 +10 pct (V26.15).
+- feat: POST /stats parses ``augment_stacks`` ({apiName: number}) and
+  forwards it to ``build_champion``; absent is byte-identical, bad shapes 400.
 1.283.0 (2026-09-21) - RM-480 ability override registry lifted to ratios.
 - feat: ``_ability_base_overrides.AbilityBaseOverride`` gains ``field``
   (last, default ``"base"``): an entry may now correct a per-rank RATIO
