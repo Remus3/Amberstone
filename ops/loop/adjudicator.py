@@ -77,7 +77,10 @@ def _fleet_route_module():
 
 # The CLI binary is resolved by the fleet kit (`claude_exe`), not here: the
 # `cmd` key of the `claude_adjudicator` config block is no longer read.
-DEFAULT_CLAUDE_MODEL = "opus"
+# RM-511: the kit runs this call on sonnet (writes_code=False), and the model
+# here only prices the workload signal when the kit's usage line carries none,
+# so the default names that tier as a current exact id.
+DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5"
 DEFAULT_CLAUDE_TIMEOUT_SEC = 300
 
 

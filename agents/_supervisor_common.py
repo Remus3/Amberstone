@@ -73,12 +73,14 @@ SMB_TARGET = "192.0.2.237"
 EXPECTED_DECISIONS_VERSION = "phase3-1.1"
 
 AGENT_MODELS = {
-    "2": "claude-sonnet-4-6",
-    "3": "claude-sonnet-4-6",
-    "4": "claude-sonnet-4-6",
-    "5": "claude-sonnet-4-6",
-    "6": "claude-opus-4-7",
-    "7": "claude-haiku-4-5",
+    "2": "claude-sonnet-5-5",
+    "3": "claude-sonnet-5-5",
+    "4": "claude-sonnet-5-5",
+    "5": "claude-sonnet-5-5",
+    "6": "claude-opus-5-5",
+    # Dated id, matching agents/agent7_context/warm_session.py DEFAULT_MODEL
+    # and the core/cost_tracker.py price key (RM-511).
+    "7": "claude-haiku-4-5-20251001",
 }
 
 # Where each agent's charter lives. Loaded and passed via

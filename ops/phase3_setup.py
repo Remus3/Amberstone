@@ -75,17 +75,18 @@ RESOLVED_DECISIONS = {
     "agents": {
         "0": {"role": "gatekeeper", "substrate": "python"},
         "1": {"role": "lead", "substrate": "python"},
-        "2": {"role": "backend", "substrate": "ephemeral_llm", "model": "claude-sonnet-4-6"},
-        "3": {"role": "testing", "substrate": "python_plus_ephemeral_llm", "model": "claude-sonnet-4-6"},
+        "2": {"role": "backend", "substrate": "ephemeral_llm", "model": "claude-sonnet-5-5"},
+        "3": {"role": "testing", "substrate": "python_plus_ephemeral_llm", "model": "claude-sonnet-5-5"},
         "4": {
             "role": "coach_mentor",
             "substrate": "ephemeral_llm",
-            "model_default": "claude-sonnet-4-6",
-            "model_deep": "claude-opus-4-7",
+            "model_default": "claude-sonnet-5-5",
+            "model_deep": "claude-opus-5-5",
         },
-        "5": {"role": "ui", "substrate": "ephemeral_llm", "model": "claude-sonnet-4-6"},
-        "6": {"role": "auditor", "substrate": "ephemeral_llm", "model": "claude-opus-4-7"},
-        "7": {"role": "user_context", "substrate": "warm_llm_during_play", "model": "claude-haiku-4-5"},
+        "5": {"role": "ui", "substrate": "ephemeral_llm", "model": "claude-sonnet-5-5"},
+        "6": {"role": "auditor", "substrate": "ephemeral_llm", "model": "claude-opus-5-5"},
+        "7": {"role": "user_context", "substrate": "warm_llm_during_play",
+              "model": "claude-haiku-4-5-20251001"},
     },
     "panels": {
         "roster": [

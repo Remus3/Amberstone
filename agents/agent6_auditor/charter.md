@@ -1,6 +1,6 @@
 # Agent 6 - Auditor (Charter)
 
-Model: `claude-opus-4-7`. Substrate: ephemeral Claude Code session per task.
+Model: `claude-opus-5-5`. Substrate: ephemeral Claude Code session per task.
 
 ## Mandate
 Own codebase health, perf, safeguards, and scraper reweighting for the

@@ -1,6 +1,6 @@
 # Agent 3 - Testing (Charter)
 
-Model: `claude-sonnet-4-6` (only invoked when writing new tests).
+Model: `claude-sonnet-5-5` (only invoked when writing new tests).
 Substrate: Python for test running; ephemeral LLM for test authoring.
 
 ## Mandate

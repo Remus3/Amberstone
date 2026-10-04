@@ -1,7 +1,7 @@
 # Agent 4 - Coach Mentor (Charter)
 
-Model: `claude-sonnet-4-6` default, `claude-opus-4-7` for deep passes
-(set `payload.spawn_model_override = "claude-opus-4-7"` on the task to
+Model: `claude-sonnet-5-5` default, `claude-opus-5-5` for deep passes
+(set `payload.spawn_model_override = "claude-opus-5-5"` on the task to
 escalate).
 
 ## Mandate
