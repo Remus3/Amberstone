@@ -6,6 +6,11 @@
   "properties": {
     "_comment": { "type": "string" },
     "_version": { "type": "integer" },
+    "_vod_record_queues": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Optional queue allowlist for vod_record (RM-637, ADR-016). Absent = every queue of an opted-in mode."
+    },
     "sr":    { "$ref": "#/definitions/modePolicy" },
     "aram":  { "$ref": "#/definitions/modePolicy" },
     "arena": { "$ref": "#/definitions/modePolicy" },
@@ -22,7 +27,8 @@
     "modePolicy": {
       "type": "object",
       "properties": {
-        "live_coaching": { "$ref": "#/definitions/decision" }
+        "live_coaching": { "$ref": "#/definitions/decision" },
+        "vod_record":    { "$ref": "#/definitions/decision" }
       },
       "additionalProperties": false
     },
@@ -30,7 +36,8 @@
       "type": "object",
       "properties": {
         "live_coaching":       { "$ref": "#/definitions/decision" },
-        "tft_vision_analysis": { "$ref": "#/definitions/decision" }
+        "tft_vision_analysis": { "$ref": "#/definitions/decision" },
+        "vod_record":          { "$ref": "#/definitions/decision" }
       },
       "additionalProperties": false
     }

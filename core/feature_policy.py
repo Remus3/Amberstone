@@ -69,12 +69,21 @@ _SAFE_DEFAULT    = "allow"
 
 # Known modes and their known features
 _KNOWN_FEATURES: Dict[str, set] = {
-    "sr":    {"live_coaching"},
-    "aram":  {"live_coaching"},
-    "arena": {"live_coaching"},
-    "brawl": {"live_coaching"},
-    "tft":   {"live_coaching", "tft_vision_analysis"},
+    "sr":    {"live_coaching", "vod_record"},
+    "aram":  {"live_coaching", "vod_record"},
+    "arena": {"live_coaching", "vod_record"},
+    "brawl": {"live_coaching", "vod_record"},
+    "tft":   {"live_coaching", "tft_vision_analysis", "vod_record"},
 }
+
+# RM-637 (ADR-016): features whose safe default is "disabled", not "allow".
+# OBS match recording is opt-in: absent, malformed or unknown -> off. Every
+# other feature keeps the historical allow default.
+_DEFAULT_OFF_FEATURES = frozenset({"vod_record"})
+
+# Optional top-level queue allowlist for vod_record (a "_" metadata key, so
+# the matrix validator skips it). Absent -> every queue of an opted-in mode.
+_VOD_RECORD_QUEUES_KEY = "_vod_record_queues"
 
 # -- Neutral placeholder payloads ------------------------------------------
 
@@ -275,14 +284,15 @@ class _PolicyCache:
                 decisions[mode] = {}
                 block = self._matrix.get(mode)
                 for feat in sorted(features):
+                    default = "disabled" if feat in _DEFAULT_OFF_FEATURES else "allow"
                     if isinstance(block, dict):
                         dec = block.get(feat)
                         if dec in _VALID_DECISIONS:
                             decisions[mode][feat] = dec
                         else:
-                            decisions[mode][feat] = "allow"  # safe default
+                            decisions[mode][feat] = default  # safe default
                     else:
-                        decisions[mode][feat] = "allow"  # safe default
+                        decisions[mode][feat] = default  # safe default
 
             return {
                 "policy_source_status":  self._status,
@@ -329,16 +339,20 @@ def is_allowed(mode: str, feature: str) -> bool:
     Parameters
     ----------
     mode    : "sr" | "aram" | "arena" | "brawl" | "tft"
-    feature : "live_coaching" | "tft_vision_analysis"
+    feature : "live_coaching" | "tft_vision_analysis" | "vod_record"
+              (vod_record is default-OFF: see _DEFAULT_OFF_FEATURES)
     """
     try:
         _cache._check_reload()
     except Exception:  # noqa: BLE001
         pass  # reload errors are non-fatal; proceed with cached matrix
 
-    mode_key = mode.lower().strip()
+    default = feature not in _DEFAULT_OFF_FEATURES
+    mode_key = str(mode or "").lower().strip()
 
     if mode_key not in _KNOWN_FEATURES:
+        if not default:
+            return False
         _log.warning("feature_policy: unknown mode %r - defaulting to allow", mode_key)
         return True
 
@@ -351,20 +365,44 @@ def is_allowed(mode: str, feature: str) -> bool:
 
     mode_block = _cache._matrix.get(mode_key)
     if not isinstance(mode_block, dict):
-        return True
+        return default
 
     decision = mode_block.get(feature)
     if decision is None:
-        return True
+        return default
 
     if decision not in _VALID_DECISIONS:
         _log.warning(
-            "feature_policy: malformed decision %r for %s.%s - defaulting to allow",
-            decision, mode_key, feature,
+            "feature_policy: malformed decision %r for %s.%s - defaulting to %s",
+            decision, mode_key, feature, "allow" if default else "disabled",
         )
-        return True
+        return default
 
     return decision == "allow"
+
+
+def vod_record_allowed(mode: Any, queue_id: Any) -> bool:
+    """RM-637 (ADR-016): True only when ``mode`` explicitly allows
+    ``vod_record`` AND, if the top-level ``_vod_record_queues`` list is
+    present, ``queue_id`` is in it. Default OFF; never raises."""
+    try:
+        if not is_allowed(str(mode or ""), "vod_record"):
+            return False
+        queues = _cache._matrix.get(_VOD_RECORD_QUEUES_KEY)
+        if queues is None:
+            return True
+        if not isinstance(queues, list):
+            return False
+        if queue_id is None or isinstance(queue_id, bool):
+            return False
+        try:
+            q = int(queue_id)
+        except (TypeError, ValueError):
+            return False
+        return any(isinstance(x, int) and not isinstance(x, bool) and x == q
+                   for x in queues)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def get_policy_state() -> Dict[str, Any]:

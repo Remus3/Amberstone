@@ -531,12 +531,13 @@ def _validate_feature_flags() -> ValidationResult:
             ],
         )
     _KNOWN_MODES = {"sr", "aram", "arena", "brawl", "tft"}
+    # vod_record: RM-637 / ADR-016 OBS match recording, default OFF.
     _KNOWN_FEATURES = {
-        "sr":    {"live_coaching"},
-        "aram":  {"live_coaching"},
-        "arena": {"live_coaching"},
-        "brawl": {"live_coaching"},
-        "tft":   {"live_coaching", "tft_vision_analysis"},
+        "sr":    {"live_coaching", "vod_record"},
+        "aram":  {"live_coaching", "vod_record"},
+        "arena": {"live_coaching", "vod_record"},
+        "brawl": {"live_coaching", "vod_record"},
+        "tft":   {"live_coaching", "tft_vision_analysis", "vod_record"},
     }
     _VALID_DECISIONS = {"allow", "disabled"}
     issues: List[str] = []

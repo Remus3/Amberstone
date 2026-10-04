@@ -143,10 +143,16 @@ def _reset_frame_slot() -> None:
 
 
 async def request_response(ws, request_type, request_data=None,
-                           timeout_s: float = _REQUEST_TIMEOUT_S):
+                           timeout_s: float = _REQUEST_TIMEOUT_S,
+                           on_event=None):
     """Send an op:6 Request and await the op:7 RequestResponse whose
     requestId matches. Returns the op:7 `d` payload dict, or None on
-    timeout / connection error / any failure. Never raises."""
+    timeout / connection error / any failure. Never raises.
+
+    `on_event` (RM-637, additive, default None): when given, every op:5
+    Event read while waiting is handed to it (its `d` dict) instead of
+    being discarded, so a caller that subscribed to events does not lose
+    them to this lane. A raising callback is swallowed."""
     rid = "rc-req-" + uuid.uuid4().hex
     payload: dict = {"op": 6, "d": {"requestType": str(request_type),
                                     "requestId": rid}}
@@ -164,7 +170,17 @@ async def request_response(ws, request_type, request_data=None,
                 msg = json.loads(raw)
             except Exception:  # noqa: BLE001
                 continue
-            if not isinstance(msg, dict) or msg.get("op") != 7:
+            if not isinstance(msg, dict):
+                continue
+            if msg.get("op") == 5 and on_event is not None:
+                ev = msg.get("d")
+                if isinstance(ev, dict):
+                    try:
+                        on_event(ev)
+                    except Exception:  # noqa: BLE001
+                        pass
+                continue
+            if msg.get("op") != 7:
                 continue
             d = msg.get("d") or {}
             if d.get("requestId") == rid:
@@ -419,7 +435,8 @@ class OBSPublisher:
             if not self._stop.is_set():
                 await asyncio.sleep(_BACKOFF_AFTER_DROP_S)
 
-    async def _identify(self, ws, password: str) -> bool:
+    async def _identify(self, ws, password: str,
+                        event_subscriptions: int = 0) -> bool:
         """OBS-WebSocket v5 handshake: server sends Hello (op=0); client
         responds with Identify (op=1) including auth response if a
         password is required; server confirms with Identified (op=2).
@@ -437,7 +454,13 @@ class OBSPublisher:
         # eventSubscriptions=0: the publisher only pushes SetInputSettings
         # and never consumes events. The OBS-WS default (omitted field) is
         # subscribe-to-ALL, which floods the never-read recv queue.
-        identify = {"op": 1, "d": {"rpcVersion": 1, "eventSubscriptions": 0}}
+        # RM-637: a caller that DOES read events (core/obs_recorder.py) passes
+        # its own explicit bitmask; the publisher keeps 0.
+        try:
+            subs = int(event_subscriptions or 0)
+        except (TypeError, ValueError):
+            subs = 0
+        identify = {"op": 1, "d": {"rpcVersion": 1, "eventSubscriptions": subs}}
         auth = d.get("authentication")
         if auth:
             if not isinstance(auth, dict):
@@ -529,6 +552,14 @@ class OBSPublisher:
             },
         }
         await ws.send(json.dumps(request))
+
+
+async def identify(ws, password: str, event_subscriptions: int = 0) -> bool:
+    """Public OBS-WS v5 handshake helper (RM-637, additive). Same bounded,
+    fail-soft handshake the publisher uses, with a caller-chosen event
+    subscription bitmask. Returns True once Identified (op:2) arrives."""
+    return await OBSPublisher()._identify(
+        ws, password or "", event_subscriptions=event_subscriptions)
 
 
 _publisher: OBSPublisher | None = None
