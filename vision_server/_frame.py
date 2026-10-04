@@ -206,6 +206,32 @@ def _maybe_self_grab() -> dict | None:
 # cache or a misbehaving uploader. Without this, a stray 100 MB upload would
 # OOM the server before magic-byte validation runs.
 _MAX_FRAME_B64 = 7_000_000
+# RM-247: same ceiling as vision_server._inference._VISION_MAX_W/_H - real
+# frames are 1920x1080 or stitched 3840x1080/1280; 8K is the hard ceiling.
+_MAX_FRAME_W = 7680
+_MAX_FRAME_H = 4320
+
+
+def _frame_dims(img_b64) -> "tuple[int, int] | None":
+    """(width, height) from the image HEADER, or None if unreadable.
+
+    A decompression-bomb-class header (PIL raises DecompressionBombError at
+    open for > 2x its pixel limit) is reported as an out-of-range size so it
+    is refused rather than treated as unreadable.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    try:
+        raw = _b64.b64decode(img_b64, validate=False)
+        with Image.open(io.BytesIO(raw)) as im:
+            return im.size
+    except Exception as exc:  # noqa: BLE001 - unreadable header: fail open
+        bomb = getattr(Image, "DecompressionBombError", None)
+        if bomb is not None and isinstance(exc, bomb):
+            return (_MAX_FRAME_W + 1, _MAX_FRAME_H + 1)
+        return None
 
 
 def handle_upload_frame(body: bytes) -> dict:
@@ -261,6 +287,18 @@ def handle_upload_frame(body: bytes) -> dict:
         log.debug("frame magic check failed: %s", _exc)
         # Don't fail-closed on validation glitches - let the frame through so
         # a corner-case base64 layout doesn't blackhole real captures.
+    # RM-247: dimension cap. The byte cap above bounds the WIRE, not the
+    # decode - a tiny PNG can declare a huge canvas, and every coach that
+    # reads /latest-frame decodes it. Header-only read (Image.open does not
+    # decode pixels); an unreadable header keeps the fail-open policy above.
+    dims = _frame_dims(img)
+    if dims is not None:
+        fw, fh = dims
+        if not (0 < fw <= _MAX_FRAME_W and 0 < fh <= _MAX_FRAME_H):
+            _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
+            return {"error": "frame_dimensions_out_of_range",
+                    "width": fw, "height": fh,
+                    "limit": [_MAX_FRAME_W, _MAX_FRAME_H]}
     src = d.get("source", "unknown")
     primary = bool(d.get("primary", True))
     # Item 207: optional event_meta field tags the frame as event-
