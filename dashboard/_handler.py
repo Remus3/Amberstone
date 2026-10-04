@@ -88,9 +88,23 @@ _CONTROL_ENDPOINTS = frozenset({
 })
 
 
+# RM-240 (2026-10-03): the two decision-resolving POSTs -
+# /api/decisions/<id> and /api/decisions/respond_active - write through
+# DecisionStore.record_choice (removes the pending decision, appends to
+# data/decisions_log.jsonl: irreversible) and were in NEITHER list. Posture
+# DECIDED: the RC_DASH_TOKEN gate, not a :8888 rebind - the dashboard client
+# already sends `localStorage.rc_dash_token` as X-RC-Token on control POSTs
+# (now also from coach_decisions.js), whereas rebinding :8888 to loopback +
+# tailnet would cut every LAN viewer at once. Every POST under the prefix is
+# covered (both routes, and any future decision writer). The GETs under
+# /api/decisions/ (log, heartbeat) are never POSTed and are unaffected.
+_CONTROL_PREFIXES = ("/api/decisions/",)
+
+
 def is_control_endpoint(path_base: str) -> bool:
     """True when a POST to ``path_base`` must pass the RC_DASH_TOKEN gate."""
-    return path_base in _CONTROL_ENDPOINTS
+    return (path_base in _CONTROL_ENDPOINTS
+            or path_base.startswith(_CONTROL_PREFIXES))
 
 
 def _scrub_log(text: str) -> str:

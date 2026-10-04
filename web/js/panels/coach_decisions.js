@@ -89,7 +89,9 @@ async function recordChoice(id, choice, li, actions) {
   try {
     const r = await fetch(`/api/decisions/${encodeURIComponent(id)}`, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      // RM-240: decision POSTs are control endpoints; send the optional
+      // RC_DASH_TOKEN the same way the other control POSTs do.
+      headers: {"Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {})},
       body: JSON.stringify({choice}),
     });
     if (!r.ok) {
