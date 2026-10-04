@@ -72,7 +72,10 @@ try {
 # the streams are still folded into the same file, they are just written as
 # UTF-8 now. The reader stays tolerant of the old shape for logs already on
 # disk (dashboard/routes_loop_status._decode_lane_log).
+# MAIN 0912 item A: the kit's lean pair (fleet_headless build_argv). The sources
+# value is QUOTED: a bare project,local is a PowerShell array, not one argument.
+# Not --bare: RC floors live in project hooks, which --setting-sources keeps.
 Get-Content $PromptFile -Raw |
-  & $claude -p --model $model --dangerously-skip-permissions *>&1 |
+  & $claude -p --model $model --dangerously-skip-permissions --strict-mcp-config --setting-sources 'project,local' *>&1 |
   Out-File $Log -Append -Encoding utf8
 "lane exit $(Get-Date -Format s) code=$LASTEXITCODE" | Out-File $Log -Append -Encoding utf8
