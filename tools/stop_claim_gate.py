@@ -307,6 +307,18 @@ CLAIM_COMMIT_THIRD_PARTY_BY = re.compile(
     r"(?:" + _AGENT_NOUN + r")\b", re.I)
 CLAIM_COMMIT_CHANNEL_CODE_BY = re.compile(
     r"\s+by\s+(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}\b")
+# Check 10 (merge), added 2026-10-04 on a verifier finding: "Merged to main."
+# made no claim the gate could see - CLAIM_COMMIT and CLAIM_PUSH never read
+# "merged" - although in this repo a merge to main IS a deployment. Narrow on
+# purpose: the past participle plus a to/into/onto/on main|master target (up to
+# three object words between, "merged it into main", "merged the slice branch
+# into main"). Suppressed by the SAME guards as check 6 - a governing negation,
+# a future/intent marker (CLAIM_CI_FUTURE, same 40-char window), attribution,
+# and a third-party subject (agent noun, channel code, passive "by the agent")
+# - all vetoed by a first-person git action anywhere on the line.
+CLAIM_MERGE = re.compile(
+    r"\bmerged\s+(?:[\w./'-]+\s+){0,3}?(?:to|into|onto|on)\s+"
+    r"(?:the\s+)?(?:origin/)?(?:main|master)\b", re.I)
 CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.I)
 
 # Evidence patterns.
@@ -363,6 +375,9 @@ EV_FILTERED = re.compile(r"\s-k\s|::|\btests?[\w/\\.-]*\.py\b"
                          r"|[\w/\\.-]+\.test\.[cm]?js\b", re.I)
 EV_COMMIT = re.compile(r"\bgit\b[^|;&]*\bcommit\b", re.I)
 EV_PUSH = re.compile(r"\bgit\b[^|;&]*\bpush\b", re.I)
+# Check 10 evidence. `pr merge` is matched without the binary because RC
+# invokes gh through a variable ("$GH" pr merge) - see EV_CI below.
+EV_MERGE = re.compile(r"\bgit\b[^|;&]*\bmerge\b|\bpr\s+merge\b", re.I)
 # The binary and its subcommand need not be ADJACENT: RC's own convention is to
 # invoke gh by absolute path through a variable (`GH="...gh.exe"; "$GH" run
 # list`), so requiring "gh run" made a real probe invisible on every wrap. The
@@ -755,6 +770,27 @@ def audit(ev):
             return True
         return False
 
+    def _merge_speaker_claim(sentence, line):
+        """Check 10's analogue of _commit_speaker_claim: True when some
+        CLAIM_MERGE match is the SPEAKER's, i.e. not negated, not future, and
+        not a third party's. A first-person git action on the line always
+        counts."""
+        if CLAIM_FIRST_PERSON_COMMITTED.search(line):
+            return True
+        for match in CLAIM_MERGE.finditer(sentence):
+            lead = sentence[:match.start()]
+            tail = sentence[match.end():]
+            window = lead[-40:]
+            if CLAIM_NEGATION.search(window) or CLAIM_CI_FUTURE.search(window):
+                continue
+            if (CLAIM_COMMIT_THIRD_PARTY_LEAD.search(lead)
+                    or CLAIM_COMMIT_CHANNEL_CODE_LEAD.search(lead)
+                    or CLAIM_COMMIT_THIRD_PARTY_BY.match(tail)
+                    or CLAIM_COMMIT_CHANNEL_CODE_BY.match(tail)):
+                continue
+            return True
+        return False
+
     def flag(check, quote, claimed="", observed=""):
         findings.append({"check": check, "quote": quote[:300],
                          "claimed": str(claimed), "observed": str(observed)})
@@ -782,6 +818,7 @@ def audit(ev):
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     did_commit = any(EV_COMMIT.search(c) for c in bash)
     did_push = any(EV_PUSH.search(c) for c in bash)
+    did_merge = did_push or any(EV_MERGE.search(c) for c in bash)
     # EV_CI runs on the noise-stripped command; EV_CI_VAR must NOT, because
     # strip_command_noise deletes quoted literals and a `python -c "<script>"`
     # probe is ENTIRELY inside one quoted literal - stripped, it reduces to
@@ -854,6 +891,11 @@ def audit(ev):
                 and not _negated(sentence, CLAIM_PUSH)
                 and not _attributed(sentence, CLAIM_PUSH)):
             flag("push_claim_without_push", sentence)                      # 9
+        if (not did_merge and CLAIM_MERGE.search(sentence)
+                and _merge_speaker_claim(sentence, line)
+                and not _attributed(sentence, CLAIM_MERGE,
+                                    CLAIM_FIRST_PERSON_COMMITTED)):
+            flag("merge_claim_without_merge", sentence)                    # 10
     # RM-421 - ADVISORY, see ARTIFACT_SCAN_BASENAMES. Same claim regex and
     # the same observed-counts evidence as count_mismatch; only the surface
     # differs. Never fires without observed counts (nothing to contradict).
