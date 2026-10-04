@@ -507,7 +507,17 @@ _WEB = _REPO_ROOT / "web"
 #
 # MERGED lift-2 (2026-10-04): Y-08 re-capture landed on top of the above; the pin
 # below is the digest of the merged tree (recomputed, not either slice's).
-_LIVE_HALF_DIGEST = "3a1f5b31e60e1be587e47b53df7474df367bfafce95a9103e980ffb75ce59c1f"
+# superseded by the RM-612 re-capture below: "3a1f5b31e60e1be587e47b53df7474df367bfafce95a9103e980ffb75ce59c1f"
+#
+# RE-CAPTURED at RM-612 (2026-10-04, replay-scrubber minimap), rebased onto
+# origin/main 24fdd8d8b. Ordinary case, no tokeniser change; one path ADDED
+# (web/js/panels/replay_minimap.js) and LIVE edits to web/js/panels/dev.js,
+# web/index.html and web/css/panels/primitives.css. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly those four paths back to their 24fdd8d8b
+# blobs (and removing the added one) reproduces the superseded 3a1f5b31...
+# value EXACTLY, so they are the whole change. If another slice re-captures in
+# parallel, the merger recomputes.
+_LIVE_HALF_DIGEST = "ed4bec34508935f9c3a9a8b34412247378af19aa534fa4fa2a3e01defebed839"
 
 
 def _web_sources() -> list[Path]:

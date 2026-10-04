@@ -1,0 +1,26 @@
+{
+  "_about": "Cross-check table for the JS port of core.post_game_score.calculate_death_timer (web/js/panels/replay_minimap.js deathTimerS). Values were produced by the Python function; tests/test_replay_minimap_crosscheck.py re-derives every row from Python and web/js/panels/replay_minimap.test.mjs asserts the JS port matches the same rows. Levels 0 and 25 pin the [1, 18] clamp.",
+  "cases": [
+    {"level": 0, "time_ms": 0, "seconds": 10.0},
+    {"level": 0, "time_ms": 900001, "seconds": 10.0425},
+    {"level": 1, "time_ms": 0, "seconds": 10.0},
+    {"level": 1, "time_ms": 900000, "seconds": 10.0},
+    {"level": 1, "time_ms": 1234567, "seconds": 10.51},
+    {"level": 1, "time_ms": 3600000, "seconds": 15.0},
+    {"level": 6, "time_ms": 0, "seconds": 16.0},
+    {"level": 6, "time_ms": 900001, "seconds": 16.068},
+    {"level": 6, "time_ms": 2100500, "seconds": 18.568},
+    {"level": 6, "time_ms": 2700000, "seconds": 19.48},
+    {"level": 11, "time_ms": 1234567, "seconds": 36.785},
+    {"level": 11, "time_ms": 2100500, "seconds": 40.6175},
+    {"level": 11, "time_ms": 3300000, "seconds": 52.5},
+    {"level": 16, "time_ms": 900001, "seconds": 47.701875},
+    {"level": 16, "time_ms": 2700000, "seconds": 57.83125},
+    {"level": 18, "time_ms": 0, "seconds": 52.5},
+    {"level": 18, "time_ms": 2100500, "seconds": 60.926249999999996},
+    {"level": 18, "time_ms": 2700000, "seconds": 63.91875},
+    {"level": 18, "time_ms": 3600000, "seconds": 78.75},
+    {"level": 25, "time_ms": 1234567, "seconds": 55.1775},
+    {"level": 25, "time_ms": 3600000, "seconds": 78.75}
+  ]
+}
