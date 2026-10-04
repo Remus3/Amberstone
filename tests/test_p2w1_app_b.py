@@ -288,22 +288,25 @@ def test_save_spell_pref_serialized_and_atomic(tmp_path, monkeypatch):
 def test_save_spell_pref_retries_transient_permission_error(tmp_path, monkeypatch):
     """os.replace WinError 5 class: one transient PermissionError on
     replace must not silently drop the preference write."""
+    import core.polled_json as pj
     import lcu.lcu_rune_writer as rw
 
     prefs = tmp_path / "spell_prefs.json"
     monkeypatch.setattr(rw, "_SPELL_PREFS_PATH", prefs)
 
+    # RM-297d: the write goes through core.polled_json.atomic_write_json, whose
+    # rename is os.replace inside _replace_with_retry - fault that seam.
     calls = {"n": 0}
-    real_replace = rw.Path.replace
+    real_replace = pj.os.replace
 
-    def _flaky(self, target):
-        if str(target) == str(prefs):
+    def _flaky(src, dst):
+        if str(dst) == str(prefs):
             calls["n"] += 1
             if calls["n"] == 1:
                 raise PermissionError(5, "transient lock")
-        return real_replace(self, target)
+        return real_replace(src, dst)
 
-    monkeypatch.setattr(rw.Path, "replace", _flaky)
+    monkeypatch.setattr(pj.os, "replace", _flaky)
     rw.save_spell_pref("sr_mode", "ignite")
     assert calls["n"] >= 2, "no retry happened"
     assert json.loads(prefs.read_text(encoding="utf-8")) == {"sr_mode": "ignite"}
