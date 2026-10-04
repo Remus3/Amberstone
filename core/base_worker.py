@@ -22,7 +22,7 @@ import logging
 import math
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 _log = logging.getLogger("rc.base_worker")
 
@@ -91,6 +91,14 @@ class BaseCoachWorker:
         # single store to _pulse_ts, so the reader cannot observe a torn value.
         self._pulse_ts: float = 0.0
         self.last_success_ts: float = 0.0
+        # RM-198: lifecycle failures that used to be invisible. A restart()
+        # whose bounded join timed out leaves the old thread running; it is
+        # kept here (gen -> thread) until it finally exits, and reported by
+        # health_pulse(). _run_safe records crashes into the three fields.
+        self._stranded: Dict[int, threading.Thread] = {}
+        self.crash_count: int = 0
+        self.last_error: Optional[str] = None
+        self.died_ts: float = 0.0
 
     @property
     def pulse_ts(self) -> float:
@@ -132,8 +140,21 @@ class BaseCoachWorker:
     def restart(self) -> None:
         """stop() + bounded join + start() with a fresh generation."""
         self.stop()
-        if self._thread is not None:
-            self._thread.join(timeout=self._restart_join_timeout_s)
+        old = self._thread
+        old_gen = self._generation
+        if old is not None:
+            old.join(timeout=self._restart_join_timeout_s)
+            # Thread.join returns None either way; is_alive() is the only
+            # truth. restart() exists for a wedged worker, which is exactly
+            # when this join times out (RM-198).
+            if old.is_alive():
+                self._stranded[old_gen] = old
+                _log.warning(
+                    "%s gen=%d did not exit within %.1fs of restart; "
+                    "left running (stranded)",
+                    self._thread_name_prefix, old_gen,
+                    self._restart_join_timeout_s,
+                )
         self.start()
 
     def is_alive(self) -> bool:
@@ -149,7 +170,18 @@ class BaseCoachWorker:
             "generation":       self._generation,
             "pulse_ts":         self.pulse_ts,
             "last_success_ts":  self.last_success_ts,
+            "stranded_generations": self.stranded_generations(),
+            "crash_count":      self.crash_count,
+            "last_error":       self.last_error,
+            "died_ts":          self.died_ts,
         }
+
+    def stranded_generations(self) -> List[int]:
+        """Generations a restart() left running, pruned once they exit."""
+        for gen, thread in list(self._stranded.items()):
+            if not thread.is_alive():
+                self._stranded.pop(gen, None)
+        return sorted(self._stranded)
 
     # -- Subclass hook ----------------------------------------------------
 
@@ -162,5 +194,9 @@ class BaseCoachWorker:
         notices via the stale pulse_ts."""
         try:
             self._run(my_gen)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            # RM-198: record the crash where health_pulse() can see it.
+            self.crash_count += 1
+            self.last_error = f"gen={my_gen} {type(exc).__name__}: {exc}"[:300]
+            self.died_ts = time.monotonic()
             _log.exception("%s gen=%d crashed", self._thread_name_prefix, my_gen)
