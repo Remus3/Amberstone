@@ -660,28 +660,20 @@ def _serve_ui_version(h) -> None:
 def _asset_stamp_mtime() -> float:
     """Max mtime across EVERY static asset the overlay/dashboard serves out of
     web/ - the hot-reload poller signal. 2026-06-29: this MUST mirror the
-    fileset dashboard._static.compute_asset_hash walks (the explicit roots PLUS
-    css/panels, js/panels, js/lib), not just the original three files. With only
+    fileset dashboard._static.compute_asset_hash walks (since Y-11 both read
+    dashboard._static.asset_fileset()), not just the original three files. With only
     index.html/dashboard.css/main.js tracked, edits to a per-panel ESM module
     (e.g. js/panels/minimap_zoi.js) never bumped the stamp, so the in-game
     Electron overlay never auto-reloaded and the operator only ever saw stale
     panel JS unless they manually relaunched rc-shell (the root cause of the
     long-standing "fix never reached the overlay" / electron_overlay_only trap)."""
-    root = APP_DIR / "web"
+    # Y-11 (external reference L2): the fileset is the SAME function
+    # compute_asset_hash uses - one glob, no second hand list to drift.
+    from dashboard import _static
     mtimes = []
-    for rel in ("index.html", "css/dashboard.css", "css/overlay.css",
-                "js/main.js", "js/overlay_pulse.js"):
-        p = root / rel
-        if p.exists():
-            mtimes.append(os.path.getmtime(p))
-    for subdir, ext in (("css/panels", ".css"),
-                        ("js/panels", ".js"),
-                        ("js/lib", ".js")):
-        d = root / subdir
+    for _rel, p in _static.asset_fileset():
         try:
-            for f in d.iterdir():
-                if f.is_file() and f.suffix == ext:
-                    mtimes.append(os.path.getmtime(f))
+            mtimes.append(os.path.getmtime(p))
         except OSError:
             pass
     return max(mtimes) if mtimes else 0.0

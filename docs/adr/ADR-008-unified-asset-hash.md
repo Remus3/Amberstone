@@ -112,3 +112,18 @@ The drift this ADR closes was live for ~10 days (s164 ship 2026-05-10
 to s171.8 fix 2026-05-12). If a similar parallel-implementations
 pattern shows up in a future routing/serving layer, treat it as a
 direct ADR-008 violation rather than a fresh problem.
+
+## Amendment 2026-10-04 (Y-11, external reference L2) - key widened, decision unchanged
+
+The parts list above was still a hand list, and it drifted exactly the way
+this ADR warns about: `web/css/tokens.css`, `themes.css` and `hextech.css` are
+`@import`ed by `css/dashboard.css` from the css/ ROOT, outside every walked
+subdirectory, and `/api/asset-stamp` (`routes_state._asset_stamp_mtime`) kept a
+second copy of the same list. A design-token edit reloaded neither the browser
+nor the overlay. Both callers now read one function,
+`dashboard._static.asset_fileset()`: `web/index.html` + `web/css/**/*.css` +
+`web/js/**/*.js`, sorted by relative path, pruning `test`, `node_modules`,
+`__pycache__` and dot-directories at directory level. The hash format
+(`rel:int(mtime)`, sha1, 10 hex) is unchanged. Measured on Legion: 159 files,
+uncached hash median ~10.6 ms vs ~14.7 ms for the old lists, so the optional
+content-digest cache was not built. Guard: `tests/test_asset_fileset_y11.py`.
