@@ -151,8 +151,22 @@ class ScraperBase:
         _atomic_write_json(self._last_fetch_path, cur)
 
     # ----- fetch helper ---------------------------------------------
+    def _same_origin(self, url: str) -> bool:
+        a, b = urlparse(url), urlparse(self.base_url)
+        return (a.scheme.lower(), (a.netloc or "").lower()) == (
+            b.scheme.lower(), (b.netloc or "").lower())
+
     def fetch(self, path: str, cache_key: str, ext: str = "html") -> str:
         url = path if path.startswith("http") else f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
+        # RM-374 (contract change, stated): an absolute URL must share
+        # scheme + host with base_url. robots.txt is parsed from base_url and
+        # RobotFileParser matches on PATH only, so a foreign host would be
+        # authorized by THIS site's rules and cached under THIS site's dir.
+        # Refused before robots, network or cache are touched.
+        if not self._same_origin(url):
+            self.stamp_last_fetch(cache_key, status="foreign_host")
+            raise PermissionError(f"{self.site}: refusing foreign-host URL {url!r}; "
+                             f"fetch() only serves {self.base_url}")
         if not self.can_fetch(url):
             self.stamp_last_fetch(cache_key, status="robots_disallowed")
             raise PermissionError(f"robots.txt disallows {url} for {self.site}")
