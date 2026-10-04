@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-04a - /done wrap from a clean worktree; main CI red on 12 tests; DS :8860 stale
+
+- **Wrap shape:** main checkout is ~52 behind origin/main, holds ANOTHER session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/conftest.py, untracked test_agent6_failure_stub_l03.py) and unpushed `a6f3fa42a` (agent6 audit). Not touched. This wrap committed only WAKEUP_NOTES + RC-NEXT-SESSION.txt from a detached worktree off origin/main.
+- **CI (read off gh, run 37194003841 on `3c6e55324`): RED, 12 failed / 37925 passed.** 7 test_rm415_liveclient (Wave1 RM-308 commit `58a2d0dec`), 4 RM-172 seam characterization (operator said leave), 1 test_next_buy_lean_bucket arena (pre-existing). drain_waves_2_3.py failures are owned by the drain session.
+- **DS :8860 still serves 1.284.0 / 16.18.1** (read off /health); origin carries 1.285.0 / 16.19.1. Restart after the main checkout reaches origin.
+- **Next:** fix CI red (rm415 first), then DS restart + RC restart once the main checkout is fast-forwarded.
+- **Do NOT redo:** nothing shipped beyond this hand-off.
+
+---
+
 # 2026-10-03g - POSIX kit gap to MAIN; RM-511 model pins; RM-510 residual; worktree prune
 
 - **Merges (pushed, verifier MERGE-OK each):** `887422d85` RM-510 residual (unthrottled None exits 1 in timeline_ingest), `fc4ae28c1` RM-511 stale model pins. LEDGER 1478-1479.
@@ -22,23 +32,3 @@
 - **CI green:** run 37162099927 on `9a86540e5`, run 37163680156 on `1fe7c1b5d`.
 - **Next:** POSIX kit gap report to MAIN, then RM-511 stale model pins.
 - **Do NOT redo:** any of the five items above; NOW-7 is fully closed.
-
----
-
-# 2026-10-03e - NOW-7 gate armed; FLEET-KIT v4 adopted; routed spawns on kit _run; DS rm115 deadline flake fixed
-
-- **Merges (all pushed, c5739fbe0..251457ad7):** NOW-7 gate (`4c61fb0eb`), FLEET-KIT v4 (`c8341e619`), routed spawns via kit `_run` (`fcc53a232`), DS rm115 60 s deadline (`251457ad7`). LEDGER 1469-1472. Each verifier MERGE-OK.
-- **CI RED on 251457ad7 (run 37150006655):** 4 new tree-kill tests fail on ubuntu + 2 pre-existing (adjudicator console-flash stale entry, p2w2_ds_h `_FakeProc.args`). Fix-forward slice in flight at wrap.
-- **Reply to MAIN 1204 + 1327** delivered 1411, 1/1. MAIN 0915/0925 lane widget landed by another attended session (`e1591f1f5`, `c88efdf13`), which sends that answer; RC review = no change needed.
-- **Do NOT redo:** NOW-7 arming, v4 vendoring, the five routed paths, the rm115 deadline.
-
----
-
-# 2026-10-03d - RM-481 / RM-484 / RM-487 shipped; FLEET-KIT v3 adopted; NOW-7 measurement merged
-
-- **Commits (all merged + pushed, ec2f85798..51ab14da7):** RM-481 LF generators (`5e9fdb250`, merge `a28fab20b`), RM-484 Riot 429 vs absence in five offline tools via `core/riot_retry.py` (`14ae0ea6e`, merge `93c508dbc`), RM-487 env-first credential reads (`22a9aae35`, merge `38e324616`), FLEET-KIT v3 (`79aae2efb`, `95e94058e`, `47d4cf506`; merges `869f1b100` + `51ab14da7`). LEDGER 1464-1467.
-- **FLEET-KIT v3:** operator order in chat + MAIN 0955/1014/1016. Kit vendored at `ops/fleet_kit/`, CLAUDE.md 52947 -> 31487 bytes (history in `docs/claude-md-history.md`), /done quiet, 5 spawn paths via `ops/loop/fleet_route.py`; responder/executor/run_lane stay on the headless_env gate. Reply to MAIN delivered 1134, 1/1 reached. 11 kit gaps await v4.
-- **Filed:** RM-510 timeline_ingest exit 0 on rate_limited; RM-511 stale model pins; RM-512 RIOT_API_KEY precedence (operator call). Pin moved to RM-513 (was stale at RM-476).
-- **NOW-7 measurement MERGED** (`663abfe18`, slice `d6763fefd`, LEDGER 1468): 2 level-only leaks, 0 propagate/handler; gate NOT armed - next is fix 2 leaks + 3 arming prerequisites, then arm.
-- **Not acted on (needs operator in chat):** MAIN 0915 lane-widget redesign, 0925 ACCOUNTS strip. C4 `slots.py` 290cbf80 still held (joint act).
-- **Do NOT redo:** RM-481 / RM-484 / RM-487 (first row) / FLEET-KIT v3 adoption / NOW-7 measurement pass.
