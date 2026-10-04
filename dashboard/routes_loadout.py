@@ -108,6 +108,100 @@ _LCU_ALLOWED_CMDS = {
 }
 
 
+# RM-296a: per-verb payload schema for /api/lcu-cmd. Each verb's keys and
+# kinds are DERIVED from the `execute_command` branch in tools/lcu_agent.py
+# that consumes them (line numbers as of 2026-10-03), never guessed:
+#   set_config L429-433 (loop over the four keys), apply_item_set L443-462,
+#   apply_item_sets_batch L486, delete_stale_rc_item_sets L554-555,
+#   apply_runes L602-605, bench_swap L664, set_summoners L669,
+#   set_summoner_spell L680/L684, set_ban/pick_intent L716,
+#   request_position_swap L740, request_pick_order_swap L767,
+#   set_augment_intent L815-816, trade_request L842, accept_trade L868,
+#   decline_trade L891, change_queue_type L921, lock_pick L927,
+#   lobby.set_position_prefs L985-986, lobby.set_party_type L996,
+#   lobby.invite_player L1008-1010, lobby.promote_leader L1026-1027,
+#   lobby.kick_member L1058-1059; no keys read by reroll, accept_ready,
+#   start_matchmaking, cancel_matchmaking, lobby.create_practice_tool.
+# Kinds (a "?" suffix also accepts JSON null, used only where the agent reads
+# the key through an `or default`):
+#   int   - a JSON integer (not bool), an integral float, or a decimal-digit
+#           string: the agent int()s these, and the champ-select DOM hands
+#           over dataset strings ("3"), so a string id is LEGITIMATE traffic.
+#   str / bool / list - exactly that JSON type.
+# A key the verb does not read is DROPPED before forwarding (the agent never
+# reads it, so this cannot reject legitimate traffic); a declared key of the
+# wrong kind is a 400 naming the field.
+_LCU_CMD_SCHEMA: dict[str, dict[str, str]] = {
+    "accept_ready": {}, "reroll": {}, "start_matchmaking": {},
+    "cancel_matchmaking": {}, "lobby.create_practice_tool": {},
+    "set_config": {"auto_accept": "bool", "summoner_override": "bool",
+                   "summoner_d": "int", "summoner_f": "int"},
+    "apply_item_set": {"set_uid": "str?", "title": "str?",
+                       "champion_id": "int?", "blocks": "list?",
+                       "items": "list?", "replace_all_rc": "bool"},
+    "apply_item_sets_batch": {"sets": "list?"},
+    "delete_stale_rc_item_sets": {"active_champion": "str?",
+                                  "active_mode": "str?"},
+    "apply_runes": {"page_name": "str", "primary_id": "int",
+                    "sub_id": "int", "perk_ids": "list?"},
+    "bench_swap": {"championId": "int", "champion_id": "int"},
+    "set_summoners": {"d": "int", "f": "int"},
+    "set_summoner_spell": {"slot": "int", "spellId": "int"},
+    "set_ban_intent": {"championId": "int"},
+    "set_pick_intent": {"championId": "int"},
+    "lock_pick": {"championId": "int"},
+    "request_position_swap": {"cell_id": "int"},
+    "request_pick_order_swap": {"cell_id": "int"},
+    "trade_request": {"cell_id": "int"},
+    "accept_trade": {"cell_id": "int"},
+    "decline_trade": {"cell_id": "int"},
+    "set_augment_intent": {"augment_id": "int", "slot": "int"},
+    "change_queue_type": {"queue_id": "int"},
+    "lobby.set_position_prefs": {"primary": "str?", "first": "str?",
+                                 "secondary": "str?", "second": "str?"},
+    "lobby.set_party_type": {"party_type": "str?"},
+    "lobby.invite_player": {"riot_id": "str?", "summoner_id": "int?",
+                            "puuid": "str?"},
+    "lobby.promote_leader": {"riot_id": "str?", "summoner_id": "int?"},
+    "lobby.kick_member": {"riot_id": "str?", "summoner_id": "int?"},
+}
+
+
+def _kind_ok(kind: str, val) -> bool:
+    if kind.endswith("?"):
+        if val is None:
+            return True
+        kind = kind[:-1]
+    if kind == "int":
+        if isinstance(val, bool):
+            return False
+        if isinstance(val, int):
+            return True
+        if isinstance(val, float):
+            return val.is_integer()
+        return isinstance(val, str) and val.strip().lstrip("-").isdigit()
+    if kind == "str":
+        return isinstance(val, str)
+    if kind == "bool":
+        return isinstance(val, bool)
+    if kind == "list":
+        return isinstance(val, list)
+    return False
+
+
+def _validate_lcu_cmd(cmd_name: str, payload: dict) -> tuple[dict | None, str | None]:
+    """Return (forwarded_payload, None) or (None, offending_field)."""
+    schema = _LCU_CMD_SCHEMA.get(cmd_name, {})
+    out: dict = {"cmd": cmd_name}
+    for key, kind in schema.items():
+        if key not in payload:
+            continue
+        if not _kind_ok(kind, payload[key]):
+            return None, key
+        out[key] = payload[key]
+    return out, None
+
+
 def _text(payload, key: str, default: str = "") -> str:
     """Read a string field WITHOUT assuming the client sent a string.
 
@@ -556,8 +650,7 @@ def _serve_lcu_cmd_post(h, payload) -> None:
         # passed here and reached `lcu_agent.py:422`, whose `name ==
         # "accept_ready"` is False - the agent answered "unknown cmd" while
         # this route had already reported acceptance. Forward the same
-        # bytes that were validated.
-        forwarded = dict(payload, cmd=cmd_name)
+        # bytes that were validated (RM-296a: only the schema's keys).
         req = urllib.request.Request(
             "http://127.0.0.1:8889/lcu-cmd",
             data=json.dumps(forwarded).encode(),
@@ -576,6 +669,15 @@ def _serve_lcu_cmd_post(h, payload) -> None:
 def _scrub_result_err(body: bytes) -> bytes:
     """Replace a raw exception string in an LCU result with a friendly one.
 
+    # RM-296a: per-verb payload schema - the edge used to validate the VERB
+    # and forward every sibling key unexamined to the last gate before the
+    # live League client.
+    forwarded, bad_field = _validate_lcu_cmd(cmd_name, payload)
+    if bad_field is not None:
+        h._send(400, json.dumps({"error": "bad_lcu_cmd_field", "cmd": cmd_name,
+                                 "field": bad_field}).encode(),
+                "application/json")
+        return
     Lane 8 cycle 38. CLAUDE.md "Error Handling" is absolute: never surface a
     raw error string on a user-facing surface; log it and render a friendly
     degraded message. This route breached it on the 200 path, not the error
