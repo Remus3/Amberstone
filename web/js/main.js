@@ -1964,10 +1964,21 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // session's own matches (server + ui_mock rows both carry `win`).
   // Strict booleans only - win === null (pre-ingest, undecided) is
   // neither a W nor an L (builders.py no-guessed-outcome rule).
+  // RM-610: one resolved-result rule for every History tally. The server
+  // stamps m.result via core.resolved_wr.classify (win / loss / remake /
+  // unknown); rows without it (ui_mock) fall back to the strict-boolean
+  // win rule. Only "win" and "loss" enter a W-L or a win rate.
+  function _historyResult(m) {
+    if (!m) return "unknown";
+    if (typeof m.result === "string" && m.result) return m.result;
+    if (m.win === true) return "win";
+    if (m.win === false) return "loss";
+    return "unknown";
+  }
   function _sessionWL(s) {
     const ms = (s && s.matches) || [];
-    const wins = ms.filter((m) => m && m.win === true).length;
-    const losses = ms.filter((m) => m && m.win === false).length;
+    const wins = ms.filter((m) => _historyResult(m) === "win").length;
+    const losses = ms.filter((m) => _historyResult(m) === "loss").length;
     return { wins, losses, label: (wins + losses) ? `${wins}W-${losses}L` : "" };
   }
   function _historyFetchAndRender() {
@@ -2122,8 +2133,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // data-result attr + result-win/result-loss class so the
     // result-first row + the later Hextech tint can key off it. win is
     // true/false when known, null for pre-LCU-ingest rows (no tint).
-    if (m.win === true) { li.dataset.result = "win"; li.classList.add("result-win"); }
-    else if (m.win === false) { li.dataset.result = "loss"; li.classList.add("result-loss"); }
+    // RM-610: a remake / unknown-result row stays listed, untinted, with a
+    // REMAKE / ? badge, and is excluded from every W-L and win rate.
+    const res = _historyResult(m);
+    if (res === "win") { li.dataset.result = "win"; li.classList.add("result-win"); }
+    else if (res === "loss") { li.dataset.result = "loss"; li.classList.add("result-loss"); }
+    else li.dataset.result = res;
+    const badge = (res === "remake")
+      ? `<span class="hx-chip" title="Remake - not counted in W-L or win rate">REMAKE</span>`
+      : (res === "unknown")
+        ? `<span class="hx-chip" title="Result unknown - not counted in W-L or win rate">?</span>`
+        : "";
     const grade = String(m.grade || "-")[0];
     // LIFT 4 filter keys (champion / mode / grade) live on the dataset.
     li.dataset.champion = m.champion || "";
@@ -2131,6 +2151,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     li.dataset.grade = grade;
     li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
       `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
+      badge +
       `<span class="dim">${escapeHtml(m.kda)}</span>` +
       `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
     // HIST1: clicking a History match row opens its detached historical
@@ -2211,8 +2232,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     let wins = 0, losses = 0, kdaSum = 0, kdaN = 0;
     const champCount = {};
     (matches || []).forEach((m) => {
-      if (m.win === true) wins += 1;
-      else if (m.win === false) losses += 1;
+      const res = _historyResult(m);
+      if (res === "win") wins += 1;
+      else if (res === "loss") losses += 1;
       const champ = String(m.champion || "");
       if (champ) champCount[champ] = (champCount[champ] || 0) + 1;
       const p = String(m.kda || "").split("/").map((x) => parseInt(x, 10));
@@ -2283,8 +2305,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       .filter((m) => {
         if (champ && String(m.champion || "") !== champ) return false;
         if (mode && String(m.mode || "") !== mode) return false;
-        if (result === "win" && m.win !== true) return false;
-        if (result === "loss" && m.win !== false) return false;
+        if (result === "win" && _historyResult(m) !== "win") return false;
+        if (result === "loss" && _historyResult(m) !== "loss") return false;
         if (grades && grades.size && !grades.has(String(m.grade || "-")[0])) return false;
         return true;
       })

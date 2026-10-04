@@ -36,8 +36,14 @@ def test_session_wl_helper_counts_strict_booleans():
     js = _js()
     assert "function _sessionWL(" in js, "main.js missing the _sessionWL helper"
     body = js.split("function _sessionWL(", 1)[1].split("\n  }", 1)[0]
-    assert "=== true" in body, "wins must be counted with win === true (strict)"
-    assert "=== false" in body, "losses must be counted with win === false (strict)"
+    # RM-610: the tally now goes through the shared _historyResult rule
+    # (server result stamp, else the same strict-boolean fallback), which
+    # also keeps remakes out of the W-L.
+    assert '_historyResult(m) === "win"' in body
+    assert '_historyResult(m) === "loss"' in body
+    rule = js.split("function _historyResult(", 1)[1].split("\n  }", 1)[0]
+    assert "m.win === true" in rule, "fallback wins must be strict win === true"
+    assert "m.win === false" in rule, "fallback losses must be strict win === false"
 
 
 def test_session_row_template_carries_wl_chip():
