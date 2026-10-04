@@ -187,6 +187,8 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/lcu_mastery.py` | key-free champion mastery for any PUUID via the LCU |
 | `core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
 | `core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
+| `core/live_item_tape.py` | RM-607 live inventory tape - item buy/sell/combine diff over allPlayers |
+| `core/live_item_tape_store.py` | RM-607 live inventory tape - game-end timeline_events persistence |
 | `core/log_retention.py` | periodic logs/ trimmer (age + hard size cap) |
 | `core/log_setup.py` | log init [FROZEN] |
 | `core/macro_context.py` | fog-only macro snapshot for the deterministic decision tree |
