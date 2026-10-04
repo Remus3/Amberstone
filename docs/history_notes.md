@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-04a - /done wrap from a clean worktree; main CI red on 12 tests; DS :8860 stale
+
+- **Wrap shape:** main checkout is ~52 behind origin/main, holds ANOTHER session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/conftest.py, untracked test_agent6_failure_stub_l03.py) and unpushed `a6f3fa42a` (agent6 audit). Not touched. This wrap committed only WAKEUP_NOTES + RC-NEXT-SESSION.txt from a detached worktree off origin/main.
+- **CI (read off gh, run 37194003841 on `3c6e55324`): RED, 12 failed / 37925 passed.** 7 test_rm415_liveclient (Wave1 RM-308 commit `58a2d0dec`), 4 RM-172 seam characterization (operator said leave), 1 test_next_buy_lean_bucket arena (pre-existing). drain_waves_2_3.py failures are owned by the drain session.
+- **DS :8860 still serves 1.284.0 / 16.18.1** (read off /health); origin carries 1.285.0 / 16.19.1. Restart after the main checkout reaches origin.
+- **Next:** fix CI red (rm415 first), then DS restart + RC restart once the main checkout is fast-forwarded.
+- **Do NOT redo:** nothing shipped beyond this hand-off.
+
+---
+
 # 2026-10-03g - POSIX kit gap to MAIN; RM-511 model pins; RM-510 residual; worktree prune
 
 - **Merges (pushed, verifier MERGE-OK each):** `887422d85` RM-510 residual (unthrottled None exits 1 in timeline_ingest), `fc4ae28c1` RM-511 stale model pins. LEDGER 1478-1479.
