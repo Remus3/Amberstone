@@ -875,6 +875,16 @@ class PostgameCollector:
                 riot_id=riot_id)
         except Exception as exc:  # noqa: BLE001
             _log.debug("postgame: game-end pin not written: %s", exc)
+        # RM-607: persist the live item tape under this proven-fresh gameId
+        # (RC_ITEM_TAPE, default OFF). Hooked here, not in _save_eog, because
+        # _save_eog also runs for a STALE history game; this method only runs
+        # for the just-ended one. The store schedules a daemon Timer, so the
+        # collector thread never waits. Own try: never costs the capture.
+        try:
+            from core.live_item_tape_store import on_game_end_if_enabled
+            on_game_end_if_enabled(eog.get("gameId") or eog.get("game_id"))
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("postgame: item-tape persist not scheduled: %s", exc)
 
     def _history_game_is_fresh(self, game: dict) -> bool:
         """True only when ``gameCreation`` (ms) + ``gameDuration`` (s) of a

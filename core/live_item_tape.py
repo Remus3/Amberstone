@@ -542,10 +542,30 @@ def drain_tape() -> list[TapeEvent]:
 
 _LISTENER_INSTALLED = False
 
+# Kill switch / opt-in. DEFAULT OFF: with the flag off no listener is installed,
+# no tape accumulates and nothing is persisted (the shared timeline_events table
+# is never altered). Same truthy set as RC_SESSION_RECORDER.
+FLAG_ENV = "RC_ITEM_TAPE"
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+
+
+def is_enabled(environ: Optional[dict] = None) -> bool:
+    import os
+    env = os.environ if environ is None else environ
+    return str(env.get(FLAG_ENV, "0")).strip().lower() in _TRUTHY
+
+
+def install_if_enabled() -> bool:
+    """Install the listener only when ``RC_ITEM_TAPE`` is on. Called from
+    ``core.liveclient_cache._install_optional_taps`` (non-frozen seam)."""
+    if not is_enabled():
+        return False
+    return install_liveclient_listener()
+
 
 def install_liveclient_listener() -> bool:
     """Idempotent: register ``tick_from_snapshot`` on liveclient_cache.
-    NOT wired by this change (main.py is frozen) - see the RM-607 report."""
+    Production reaches this only through ``install_if_enabled``."""
     global _LISTENER_INSTALLED
     if _LISTENER_INSTALLED:
         return False
