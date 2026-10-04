@@ -1808,3 +1808,65 @@ def test_conjoined_and_pushed_raises_the_push_flag(sentence):
 def test_conjoined_and_pushed_through_the_stop_hook(tmp_path, sentence):
     report = _run_gate(tmp_path, [_assistant(_text(sentence))])
     assert "push_claim_without_push" in _checks(report), sentence
+
+
+# ---------------------------------------------------------------------------
+# Check 6 evidence - commit-CREATING git subcommands other than `git commit`.
+# MEASURED 2026-10-04: a merger session cherry-picked slices onto main and said
+# "X is committed in <sha>"; EV_COMMIT only saw the literal word "commit", so
+# the true claim was flagged commit_claim_without_commit. cherry-pick and revert
+# create a commit per pick unless told not to; `merge --no-ff` always creates a
+# merge commit. A plain `git merge` is NOT credited: it fast-forwards whenever
+# it can, and nothing on the command line says which happened.
+# ---------------------------------------------------------------------------
+COMMIT_CREATING_COMMANDS = [
+    "git cherry-pick abc123 def456",
+    "git cherry-pick -x abc123",
+    "git cherry-pick --continue",
+    "git -C some/dir cherry-pick abc123",
+    "git revert abc123",
+    "git revert --no-edit abc123",
+    "git revert --continue",
+    "git merge --no-ff lane/slice",
+]
+
+
+@pytest.mark.parametrize("command", COMMIT_CREATING_COMMANDS)
+def test_a_commit_creating_git_command_backs_a_commit_claim(tmp_path, command):
+    rows = [
+        _assistant(_tool_use("Bash", command=command)),
+        _tool_result("[main 1a2b3c4] slice"),
+        _assistant(_text("The slice is committed in abc123.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "commit_claim_without_commit" not in _checks(report), command
+
+
+NON_COMMITTING_COMMANDS = [
+    "git cherry-pick --abort",
+    "git cherry-pick --quit",
+    "git cherry-pick --skip",
+    "git cherry-pick -n abc123",
+    "git cherry-pick --no-commit abc123",
+    "git revert --abort",
+    "git revert -n abc123",
+    "git revert --no-commit abc123",
+    "git merge lane/slice",
+    "git merge --ff-only lane/slice",
+    "git merge --squash lane/slice",
+    "git merge --abort",
+    "git merge --no-ff --no-commit lane/slice",
+    "git log --oneline",
+    "git show abc123",
+]
+
+
+@pytest.mark.parametrize("command", NON_COMMITTING_COMMANDS)
+def test_a_non_committing_git_command_does_not_back_a_commit_claim(tmp_path, command):
+    rows = [
+        _assistant(_tool_use("Bash", command=command)),
+        _tool_result(""),
+        _assistant(_text("The slice is committed in abc123.")),
+    ]
+    report = _run_gate(tmp_path, rows)
+    assert "commit_claim_without_commit" in _checks(report), command
