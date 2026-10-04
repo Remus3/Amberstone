@@ -72,6 +72,9 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 ROOT = Path(__file__).resolve().parent.parent
+# RC-UpstreamDriftCheck runs this under pythonw, which hides only its OWN
+# console; a console-subsystem child would get a fresh one and flash.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 SENTINEL_PATH = ROOT / "ops" / "runtime" / "upstream_drift.json"
 
 DDRAGON_VERSIONS_URL = "https://ddragon.leagueoflegends.com/api/versions.json"
@@ -491,7 +494,8 @@ def trigger_refresh() -> tuple[bool, str]:
     details: list[str] = []
     for cmd, label in runs:
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120,
+                                  creationflags=_NO_WINDOW)
             ok = proc.returncode in (0, 1)
             all_ok = all_ok and ok
             details.append(f"{label} rc={proc.returncode}")
