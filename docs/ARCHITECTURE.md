@@ -136,6 +136,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/routes_moon_sync.py` | GET /api/moon-sync-status - read-only moon_sync poller liveness |
 | `dashboard/routes_ops_panels.py` | ops panels backend (seam map / drift strip / gated queue) |
 | `dashboard/routes_peel_priority.py` | peel-target verdict backend (item 304 Phase D) |
+| `dashboard/routes_recordings.py` | RM-641 recording sidecar summary + allow-listed video stream with HTTP Range |
 | `dashboard/routes_scouting.py` | player-scouting backend (rank fan-out) |
 | `dashboard/routes_spike_curve.py` | power-curve sparkline backend |
 | `dashboard/routes_spike_markers.py` | live power-spike markers backend |
