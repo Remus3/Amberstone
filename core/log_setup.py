@@ -84,7 +84,18 @@ class DailyRotatingFileHandler(RotatingFileHandler):
 
 
 def _prune_old_logs(log_dir: Path, retention_days: int = _RETENTION_DAYS) -> int:
-    """Delete .log / .log.N files older than retention_days. Returns count deleted."""
+    """Delete .log / .log.N files older than retention_days. Returns count deleted.
+
+    Raises ValueError on a non-positive cap (RM-162, the RM-161 shape): the
+    cutoff is ``now - retention_days * 86400``, so at ``<= 0`` every file the
+    glob matches is older than it and the retention knob would erase the
+    corpus. ``setup()`` already degrades any exception here to 0 pruned.
+    """
+    if retention_days <= 0:
+        raise ValueError(
+            f"retention_days must be > 0, got {retention_days!r} - a cutoff "
+            "at or after now would delete every log instead of bounding them"
+        )
     import time as _time
     try:
         cutoff = _time.time() - (retention_days * 86400)
