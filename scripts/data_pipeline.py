@@ -40,6 +40,8 @@ if str(ROOT) not in sys.path:
 
 from agents.daemon_slayer import mode_variants  # noqa: E402
 from core import external_sources  # noqa: E402
+# RM-379: the RM-359 filename validator, applied before every icon write.
+from lib.icons.downloader import _safe_basename  # noqa: E402
 
 DATA     = ROOT / "data"
 META     = DATA / "meta"
@@ -547,7 +549,9 @@ def cmd_runes(force: bool = False):
     downloaded = skipped = failed = 0
     for tree in data:
         tree_icon_url  = f"{DDRAGON_BASE}/cdn/img/{tree.get('icon', '')}"
-        tree_icon_name = Path(tree.get("icon", "")).name
+        # RM-379: flatten to the basename as before, then VALIDATE it - a
+        # wire-supplied ".." or dotfile name must never become a write target.
+        tree_icon_name = _safe_basename(Path(tree.get("icon", "")).name)
         if tree_icon_name:
             result = _download_icon(tree_icon_url, rune_icon_dir / tree_icon_name, tree.get("name", ""))
             if result: downloaded += 1
@@ -556,7 +560,7 @@ def cmd_runes(force: bool = False):
         for slot in tree.get("slots", []):
             for rune in slot.get("runes", []):
                 rune_icon_url  = f"{DDRAGON_BASE}/cdn/img/{rune.get('icon', '')}"
-                rune_icon_name = Path(rune.get("icon", "")).name
+                rune_icon_name = _safe_basename(Path(rune.get("icon", "")).name)
                 if rune_icon_name:
                     result = _download_icon(rune_icon_url, rune_icon_dir / rune_icon_name, rune.get("name", ""))
                     if result: downloaded += 1
@@ -589,7 +593,11 @@ def cmd_icons(force: bool = False):
         log.info("  Downloading %d champion icons...", len(champs))
         dl = sk = 0
         for name, info in champs.items():
-            icon_file = info.get("image", {}).get("full", f"{name}.png")
+            icon_file = _safe_basename(info.get("image", {}).get("full", f"{name}.png"))
+            if not icon_file:  # RM-379: hostile image.full - never a path
+                log.warning("  champion %r: unsafe image.full - skipped", name)
+                sk += 1
+                continue
             url  = f"{base_img}/champion/{icon_file}"
             dest = champ_dir / icon_file
             if _download_icon(url, dest, name): dl += 1
@@ -607,7 +615,11 @@ def cmd_icons(force: bool = False):
         log.info("  Downloading %d summoner spell icons...", len(spells))
         dl = sk = 0
         for name, info in spells.items():
-            icon_file = info.get("image", {}).get("full", f"{name}.png")
+            icon_file = _safe_basename(info.get("image", {}).get("full", f"{name}.png"))
+            if not icon_file:  # RM-379
+                log.warning("  spell %r: unsafe image.full - skipped", name)
+                sk += 1
+                continue
             url  = f"{base_img}/spell/{icon_file}"
             dest = spell_dir / icon_file
             if _download_icon(url, dest, name): dl += 1
