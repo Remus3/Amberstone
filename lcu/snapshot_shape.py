@@ -95,6 +95,11 @@ _LOBBY_QUEUE_NAMES = {
 # 10 min because riot-id changes are rare (and would re-fire on next
 # capture cycle anyway since cache is per-process).
 _SUMMONER_LOOKUP_TTL_S = 600.0
+# RM-293(a): a MISS (404, transport error, non-dict) is remembered too, under
+# its own SHORT ttl. Without it an id LCU keeps declining was re-fetched every
+# capture tick (1 Hz in tools/lcu_agent.py); kept short so a transient blip
+# cannot suppress a real lookup for the full success ttl.
+_SUMMONER_MISS_TTL_S = 30.0
 # The TTL alone bounded FRESHNESS, never SIZE: an expired entry was re-fetched
 # but never removed, so the dict grew monotonically for the life of the
 # process. The dashboard runs for days across many lobbies, and every distinct
@@ -157,22 +162,25 @@ def _lookup_summoner_by_id(request: Callable[..., tuple], sid: int):
     callers must tolerate missing data and emit empty strings.
     """
     # Coerce HERE rather than trusting callers. ``sid`` is interpolated into
-    # the request path below, and ``tools/lcu_agent.py:254`` re-exports this
-    # helper with an unenforced ``sid: int`` annotation and no coercion of
-    # its own - a string argument would build
-    # ``/lol-summoner/v1/summoners/../../<anything>`` and the transport
-    # concatenates it raw (``tools/lcu_agent.py:210``). That re-export has
-    # zero non-test callers today, so the containment was ACCIDENTAL rather
-    # than enforced; this makes it intrinsic.
+    # the request path below - a string argument would build
+    # ``/lol-summoner/v1/summoners/../../<anything>`` and the LCU agent's
+    # transport concatenates it raw. ``tools/lcu_agent.py`` used to re-export
+    # this helper with an unenforced ``sid: int`` annotation; that zero-caller
+    # re-export was deleted (RM-293(c)), and this coercion is the guard.
     sid = _coerce_int(sid, default=0)
     if not sid:
         return None
     cached = _summoner_lookup_cache.get(sid)
     now = time.time()
-    if cached and (now - cached.get("fetched_at", 0)) < _SUMMONER_LOOKUP_TTL_S:
-        return cached.get("data")
+    if cached:
+        ttl = (_SUMMONER_MISS_TTL_S if cached.get("data") is None
+               else _SUMMONER_LOOKUP_TTL_S)
+        if (now - cached.get("fetched_at", 0)) < ttl:
+            return cached.get("data")
     payload, err = request("GET", f"/lol-summoner/v1/summoners/{sid}")
     if not isinstance(payload, dict):
+        _prune_summoner_lookup_cache(now)
+        _summoner_lookup_cache[sid] = {"data": None, "fetched_at": now}
         return None
     _prune_summoner_lookup_cache(now)
     _summoner_lookup_cache[sid] = {"data": payload, "fetched_at": now}
