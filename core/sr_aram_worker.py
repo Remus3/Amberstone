@@ -130,6 +130,13 @@ class SrAramWorker(BaseCoachWorker):
         try:
             reader._enemy_last_seen.clear()
             reader._enemy_death_time.clear()
+            # RM-235: the subresource failure counters and their 60s warn
+            # throttle are per-GAME, not per-process. Reset here, in the
+            # worker (app/_game_lifecycle.py is frozen and requests this).
+            from game_reader.snapshot_normalizer import (
+                reset_liveclient_subresource_failures,
+            )
+            reset_liveclient_subresource_failures()
             if self._reset_reason:
                 _log.debug("SrAramWorker: reader state reset (%s)",
                            self._reset_reason)
