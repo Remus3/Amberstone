@@ -623,9 +623,11 @@ def test_the_expected_package_layout_is_present():
     assert missing == [], f"missing from the extracted package: {missing}"
 
 
-def test_core_polled_json_still_keeps_its_wrapper_class(rc_tree):
-    """The extraction did NOT modify core/polled_json.py - RC has many
-    importers and the blast radius of this slice is zero. If this ever fails,
-    someone edited the original; re-read the exclusion rationale above."""
+def test_core_polled_json_no_longer_carries_the_wrapper_class(rc_tree):
+    """RM-264 (2026-10-04) REMOVED PolledJsonFile from core/polled_json.py: it
+    had zero production instantiations, and the one read-modify-write caller
+    it was pitched at serializes through its own lock. Both copies now ship
+    the same function-only surface; a class reappearing here is a new API and
+    must be decided, not drifted into."""
     classes = [n.name for n in rc_tree.body if isinstance(n, ast.ClassDef)]
-    assert classes == ["PolledJsonFile"]
+    assert classes == []

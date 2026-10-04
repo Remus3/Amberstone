@@ -10,7 +10,13 @@ isinstance(dict) dance, with subtle variations. This module centralises:
   - atomic_write_json(path, payload): write-then-rename
   - read_json_dict(path, default): always returns a dict; corrupt/non-dict
     files yield the default
-  - PolledJsonFile: thread-safe wrapper for read/write/write_field/update
+
+RM-264 (2026-10-04): the PolledJsonFile wrapper class this module used to
+advertise was REMOVED - it had zero production instantiations in five weeks,
+its per-instance lock never delivered the per-path serialization it promised,
+and the read-modify-write callers (core/cost_tracker.py) already serialize
+through their own lock. A read-modify-write is read_json_dict -> mutate ->
+atomic_write_json under the caller's own lock.
 
 Migration target: any new polled-JSON site should use these helpers; legacy
 sites are migrated opportunistically as they are touched.
@@ -32,10 +38,9 @@ import json
 import logging
 import os
 import secrets
-import threading
 import time
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 _log = logging.getLogger("rc.polled_json")
 
@@ -204,60 +209,3 @@ def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:
         _log.warning("polled_json: %s is not a dict (got %s)", path, type(data).__name__)
         return fallback
     return data
-
-
-class PolledJsonFile:
-    """Thread-safe wrapper around a polled JSON file.
-
-    The lock serializes read-modify-write between users of ONE INSTANCE;
-    cross-process ordering still relies on tmp+rename atomicity. Two instances
-    built for the same path do NOT serialize against each other - the lock is
-    per-instance, not per-path - so share the instance rather than constructing
-    a second one. `default` is returned when the file is missing or corrupt;
-    never None, and it is a deep copy (see read_json_dict).
-
-    LANE 8 CYCLE 24 - REACHABILITY: this class has ZERO production
-    instantiations. Measured by grep over every tracked `.py`: outside
-    `tests/test_polled_json_lane8_cycle24.py` nothing constructs it, so the
-    module's advertised wrapper is currently unadopted while the three
-    module-level helpers carry all real traffic. It is NOT deleted, because it
-    is the documented migration target above rather than accidental dead code
-    (RM-264 holds the adopt-or-remove decision). Treat the per-instance lock
-    caveat as latent, not live.
-
-    Typical usage:
-        pf = PolledJsonFile(Path("coaching_data.json"), default={"mode": "client"})
-        cur = pf.read()
-        pf.write_field("immediate", "All-In")
-        pf.update(mode="aram", win_pct=42)
-    """
-
-    def __init__(self, path: Path, default: Optional[Mapping[str, Any]] = None) -> None:
-        self.path = Path(path)
-        # LANE 8 CYCLE 24 (W3): deep, so the instance does not alias a nested
-        # mutable inside the caller's default (and read() cannot hand it out).
-        self._default: dict = copy.deepcopy(dict(default)) if default else {}
-        self._lock = threading.Lock()
-
-    def read(self) -> dict:
-        return read_json_dict(self.path, self._default)
-
-    def write(self, payload: Mapping[str, Any]) -> None:
-        with self._lock:
-            atomic_write_json(self.path, dict(payload))
-
-    def write_field(self, key: str, value: Any) -> dict:
-        """Read-modify-write a single field. Returns the new full dict."""
-        with self._lock:
-            cur = read_json_dict(self.path, self._default)
-            cur[key] = value
-            atomic_write_json(self.path, cur)
-            return cur
-
-    def update(self, **fields: Any) -> dict:
-        """Read-modify-write multiple fields at once. Returns new full dict."""
-        with self._lock:
-            cur = read_json_dict(self.path, self._default)
-            cur.update(fields)
-            atomic_write_json(self.path, cur)
-            return cur
