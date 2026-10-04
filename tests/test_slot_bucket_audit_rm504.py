@@ -58,6 +58,44 @@ def test_over_stale_live_lock_is_a_leak(tmp_path):
     assert rows[0]["rc_authored"] is True
 
 
+def test_over_stale_text_does_not_claim_slots_condemns_a_live_holder(tmp_path):
+    """Under the adopted C4 slots.py, is_stale keeps a LIVE holder until
+    stale_after * HARD_STALE_MULTIPLE (slots.py HARD_STALE_MULTIPLE and the
+    ceiling arm in is_stale). OVER_STALE below that ceiling must not say slots'
+    reap arm would condemn the lock."""
+    assert "would condemn" not in sba.__doc__
+    assert "HARD_STALE_MULTIPLE" in sba.__doc__
+    _lock(tmp_path, 0, pid=444, repo=str(sba.ROOT), ts=NOW - 1500)
+    rows = _audit(tmp_path, alive_pids={444}, starts={444: NOW - 9000})
+    row = rows[0]
+    assert row["verdict"] == "OVER_STALE"
+    assert row["slots_would_reap"] is False
+    assert "kept by slots" in row["detail"]
+    assert "2000s" in row["detail"]
+
+
+def test_over_stale_past_ceiling_says_slots_would_reap(tmp_path):
+    _lock(tmp_path, 0, pid=444, repo=str(sba.ROOT), ts=NOW - 2500)
+    rows = _audit(tmp_path, alive_pids={444}, starts={444: NOW - 9000})
+    row = rows[0]
+    assert row["verdict"] == "OVER_STALE"
+    assert row["slots_would_reap"] is True
+    assert "fail-open ceiling" in row["detail"]
+
+
+def test_slots_would_reap_matches_slots_is_stale(tmp_path, monkeypatch):
+    """Semantic cross-check against the byte-pinned slots.is_stale itself, not
+    a restatement of it: for a live pid, the audit's reap prediction must equal
+    what slots would actually do at the same `now`."""
+    monkeypatch.setattr(sba.slots, "pid_alive", lambda pid: pid == 444)
+    for age in (500.0, 1500.0, 1999.0, 2001.0, 5000.0):
+        p = _lock(tmp_path, 0, pid=444, repo=str(sba.ROOT), ts=NOW - age)
+        row = sba.classify(p, 1000.0, now=NOW, alive=lambda pid: pid == 444,
+                           start_time=lambda pid: NOW - 9000)
+        expect = sba.slots.is_stale(p, 1000.0, now=NOW)
+        assert row.get("slots_would_reap", False) is expect, (age, row)
+
+
 def test_foreign_dead_lock_is_reported_but_not_rc_leak(tmp_path):
     _lock(tmp_path, 0, pid=555, repo="C:\\Some Sibling", ts=NOW - 50)
     rows = _audit(tmp_path)
