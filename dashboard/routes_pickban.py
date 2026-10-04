@@ -685,6 +685,22 @@ def _query_struggle_ban(conn: sqlite3.Connection, puuid: str, role: str,
     return top
 
 
+_ADVISORY_IMPORT_WARNED: set = set()
+
+
+def _warn_advisory_import_once(what: str, exc: BaseException) -> None:
+    """RM-299c: a failed advisory import must be VISIBLE, but not spam the
+    log on every pick/ban request - one WARNING per (site, class)."""
+    key = (what, type(exc).__name__)
+    if key in _ADVISORY_IMPORT_WARNED:
+        log.debug("cleanse advisory disabled (%s): %s: %s",
+                  what, type(exc).__name__, exc)
+        return
+    _ADVISORY_IMPORT_WARNED.add(key)
+    log.warning("cleanse advisory disabled (%s): %s: %s",
+                what, type(exc).__name__, exc)
+
+
 def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
                                my_summoners: tuple[int, ...]) -> str | None:
     """Heuristic CC-cleanse advisory. Reads enemy locked champs, counts
@@ -707,14 +723,28 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
         from agents.daemon_slayer._per_spell_cc import (
             _PER_SPELL_CC_DURATIONS,
         )
-    except Exception:  # noqa: BLE001
+    except ImportError as exc:
+        _warn_advisory_import_once("cc registry import", exc)
+        return None
+    # RM-299c: the IMPORT PATH was fixed in cycle 8, the SWALLOW was not.
+    # Measured what these imports can raise beyond ImportError:
+    # cc_conditional reads the REQUIRED cc_conditional_registry.json at import
+    # (`_load_registry_data`), so a moved / malformed file surfaces as
+    # FileNotFoundError / OSError / JSONDecodeError / ValueError / KeyError.
+    # Kept degrading to "no advisory" - an unhandled raise inside a :8888
+    # handler is a behaviour change this row does not license - but it is
+    # now VISIBLE: one WARNING per exception class per process.
+    except Exception as exc:  # noqa: BLE001 - see RM-299c note above
+        _warn_advisory_import_once("cc registry load", exc)
         return None
     try:
         # Registry keys are canonical DDragon ids ("TwistedFate",
         # "MonkeyKing"); DDragon hands us display names ("Twisted
         # Fate", "Wukong"). Same bridge routes_peel_priority uses.
         from core.archetype_picks import canonical_champion_id as _canon
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 - RM-299c: degrade, but visibly
+        _warn_advisory_import_once("canonical_champion_id import", exc)
+
         def _canon(n: str) -> str:
             return n
     # Reverse champion-id -> name via DDragon dictionary (already
