@@ -378,6 +378,31 @@ EV_SUMMARY_LINE = re.compile(
 
 EDIT_TOOLS = {"edit", "write", "multiedit", "notebookedit"}
 
+# RM-421: the claim surface was chat prose only - an Edit/Write records its
+# file_path and never its CONTENT, so a fabricated count written into a
+# tracked file was invisible while the same sentence in chat was flagged.
+# DECIDED narrow first cut (the row's own proposal): scan ONLY the content
+# written into these two append-style trackers, with the EXISTING
+# CLAIM_COUNT + strip_prose_noise, under a NEW check name that is ADVISORY -
+# reported, never blocking - until its false-positive rate is scored apart
+# from count_mismatch. Widening what is scanned is what poisoned the first
+# armed session (LEDGER 1154), and a doc legitimately recites historical
+# counts, so this neither widens to every file nor arms.
+ARTIFACT_SCAN_BASENAMES = frozenset({"ledger.md", "backlog.md"})
+ADVISORY_CHECKS = frozenset({"artifact_count_mismatch"})
+
+
+def _written_content(name, data):
+    """The text an Edit / Write / MultiEdit puts on disk (new side only)."""
+    if name == "write":
+        return str(data.get("content") or "")
+    if name == "edit":
+        return str(data.get("new_string") or "")
+    if name == "multiedit":
+        return "\n".join(str(e.get("new_string") or "")
+                         for e in (data.get("edits") or []) if isinstance(e, dict))
+    return ""
+
 # Everything below exists because the ARMED gate's first real session produced 9
 # findings and 9 false positives (LEDGER 1154). Every one was the gate reading a
 # DESCRIPTION of a thing as the thing itself: a bypass flag named inside a
@@ -529,7 +554,8 @@ def collect_evidence(rows):
     of a suite run - reading it as one is what poisoned every claim in the first
     armed session.
     """
-    ev = {"texts": [], "bash": [], "edited": [], "runs": [], "ci_runs": []}
+    ev = {"texts": [], "bash": [], "edited": [], "runs": [], "ci_runs": [],
+          "artifacts": []}
     pending = None
     # RM-498: one OPEN entry per backgrounded launch, each with room for
     # DEFERRED_SUMMARY_CAP summary-bearing reads. The old single per-session
@@ -568,6 +594,11 @@ def collect_evidence(rows):
                     target = data.get("file_path") or data.get("path") or ""
                     if target:
                         ev["edited"].append(str(target))
+                        base = str(target).replace("\\", "/").rsplit("/", 1)[-1]
+                        if base.lower() in ARTIFACT_SCAN_BASENAMES:
+                            written = _written_content(name, data)
+                            if written:
+                                ev["artifacts"].append((str(target), written))
             elif kind == "tool_result":
                 text = _result_text(block)
                 if pending is not None:
@@ -775,6 +806,18 @@ def audit(ev):
                 and not _negated(sentence, CLAIM_PUSH)
                 and not _attributed(sentence, CLAIM_PUSH)):
             flag("push_claim_without_push", sentence)                      # 9
+    # RM-421 - ADVISORY, see ARTIFACT_SCAN_BASENAMES. Same claim regex and
+    # the same observed-counts evidence as count_mismatch; only the surface
+    # differs. Never fires without observed counts (nothing to contradict).
+    for target, written in ev.get("artifacts", []):
+        cleaned = strip_prose_noise(written)
+        for prefix, count in CLAIM_COUNT.findall(cleaned):
+            if prefix.lower() in CLAIM_COUNT_ORDINAL:
+                continue
+            bare = count.replace(",", "")
+            if observed_counts and bare not in observed_counts:
+                flag("artifact_count_mismatch", f"{target}: {count} passed",
+                     claimed=bare, observed=", ".join(sorted(observed_counts)))
     return findings
 
 
@@ -886,9 +929,11 @@ def main(argv=None):
     # block loops forever. `stop_hook_active` is true once we have already
     # blocked, and it is the only thing standing between armed mode and a spin.
     reentry = bool(payload.get("stop_hook_active"))
-    should_block = bool(args.arm and findings and not reentry)
+    # RM-421: advisory checks are reported and recorded, never blocking.
+    blocking = [f for f in findings if f["check"] not in ADVISORY_CHECKS]
+    should_block = bool(args.arm and blocking and not reentry)
     report["blocked"] = should_block
-    if args.arm and findings and reentry:
+    if args.arm and blocking and reentry:
         report["reason"] = "stop_hook_active"
     write_report(report, args.report)
     append_history(report, args.history, args.history_max)
