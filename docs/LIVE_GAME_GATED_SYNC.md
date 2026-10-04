@@ -1488,6 +1488,9 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+- **LX-08** (RM-603, skill points) Capture whether `/allgamedata` `activePlayer.abilities` carries
+  `abilityLevel` per slot; whether the free R rank of Jayce / Elise / Nidalee / Karma reads 1 at level 1;
+  what Aphelios's slots report; whether ranks read the same in ARAM, Arena and URF.
 - **LX-07** (RM-608, death recap) With `RC_DEATH_RECAP=1`, one real own death writes a row to
   `data/coaching/death_recaps.jsonl` (champion names only); confirm the live VictimName / KillerName
   forms (shared with LX-02 / RM-673); sanity-check the estimated split per mode (SR, ARAM / KIWI, Arena).
