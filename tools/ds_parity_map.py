@@ -234,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = out.with_suffix(".tmp")
-        tmp.write_text(json.dumps(m, indent=2, sort_keys=True), encoding="utf-8")
+        tmp.write_text(json.dumps(m, indent=2, sort_keys=True), encoding="utf-8", newline="\n")
         tmp.replace(out)
         print(f"map: {out}")
 

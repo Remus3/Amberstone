@@ -90,7 +90,7 @@ def main() -> int:
             return 1
         print("OK", _OUT)
         return 0
-    with open(_OUT, "w", encoding="utf-8") as f:
+    with open(_OUT, "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     print("WROTE", _OUT, len(text), "bytes")
     return 0
