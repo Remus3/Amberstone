@@ -32,9 +32,12 @@ never passed the flag to anything.
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 import pytest
+
+from tests import _repo_walk
 
 ROOT = Path(__file__).parent.parent
 
@@ -86,6 +89,14 @@ SCHEDULED_SPAWNERS = (
     # export modules all go through it - so listing this one file gives the
     # guard exactly the two calls that matter (the Popen and the taskkill).
     "tools/inbox_responder_procs.py",
+    # 2026-10-03: found by the completeness check below, not by hand. The three
+    # loop modules were already compliant (every site resolves to _NO_WINDOW);
+    # upstream_drift_check (RC-UpstreamDriftCheck, daily, pythonw) was not -
+    # its trigger_refresh spawned two children bare - and now carries the flag.
+    "ops/loop/interrupt.py",
+    "ops/loop/lane_launcher.py",
+    "ops/loop/queue_loop.py",
+    "tools/upstream_drift_check.py",
 )
 
 # Modules run by a CLAUDE HOOK, which is the same exposure by a different route:
@@ -269,3 +280,178 @@ def test_hook_spawners_import_subprocess_by_name_only(rel: str) -> None:
         f"and friends, so those spawns would be invisible to it. Use a bare "
         f"`import subprocess`."
     )
+
+
+# ---------------------------------------------------------------------------
+# COMPLETENESS (2026-10-03). Every check above runs over a HAND-LIST, so a new
+# spawn in a module that is not on the list is invisible by construction - the
+# same blind spot the 2026-07-27 note records, still open after it: re-adding a
+# direct subprocess call to ops/loop/adjudicator.py (dropped from the list when
+# it moved onto fleet_route.spawn) would have stayed green. So the guard's
+# DISCOVERABLE scope is now enumerated from the tree and every spawning module
+# in it must be listed or allowlisted with a reason.
+#
+# DISCOVERABLE SCOPE, two halves:
+#   1. every tracked .py under ops/loop/ - the autonomous loop runs every one
+#      of its modules unattended, cycle after cycle;
+#   2. every tracked .py named as a target by a tracked scheduled-task
+#      definition (*.xml / *.ps1 directly under ops/ or tools/ whose text
+#      registers a task) - the RC-* entry points themselves.
+# NOT discoverable, so still hand-listed above: hook scripts (the wiring lives
+# in .claude/settings.json, which is per-host and untracked), modules a task
+# target IMPORTS (no transitive walk - tools/inbox_responder_procs.py is listed
+# by hand for exactly that reason), and any task target outside the tree.
+# ---------------------------------------------------------------------------
+
+#: Spawning modules in the discoverable scope that are deliberately NOT held to
+#: the creationflags check. Every entry needs a reason; a frozen file that
+#: cannot be made compliant goes here, never edited. Empty today: every
+#: discovered spawner is compliant and listed.
+SPAWN_ALLOWLIST: dict[str, str] = {}
+
+_LOOP_DIR = "ops/loop/"
+_TASK_DEF_DIRS = ("ops/", "tools/")
+_TASK_DEF_MARKERS = ("ScheduledTask", "<Task ", "schtasks")
+_PY_MENTION = re.compile(r"[A-Za-z0-9_./\\-]+\.py\b")
+
+_SUBPROCESS_SPAWNS = _SPAWN_ATTRS | {"getoutput", "getstatusoutput"}
+
+
+def _spawn_sites(tree: ast.AST) -> list[tuple[int, str]]:
+    """Every process-spawning call, in every form, as (lineno, form).
+
+    Deliberately WIDER than _spawn_calls: it also sees `import subprocess as
+    sp`, `from subprocess import run`, os.system / os.popen / os.spawn* /
+    os.exec* / os.startfile and asyncio.create_subprocess_*. Discovery must not
+    share the per-file scanner's blind spot, or a module spawning only through
+    an alias would be neither listed nor found.
+    """
+    sub_names = {"subprocess"}
+    bare: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "subprocess":
+                    sub_names.add(alias.asname or "subprocess")
+        elif isinstance(node, ast.ImportFrom) and node.module == "subprocess":
+            bare.update(a.asname or a.name for a in node.names
+                        if a.name in _SUBPROCESS_SPAWNS)
+    out = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id in bare:
+            out.append((node.lineno, func.id))
+        elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+            owner, attr = func.value.id, func.attr
+            if ((owner in sub_names and attr in _SUBPROCESS_SPAWNS)
+                    or (owner == "os" and (attr in {"system", "popen", "startfile"}
+                                           or attr.startswith(("spawn", "exec"))))
+                    or (owner == "asyncio"
+                        and attr.startswith("create_subprocess_"))):
+                out.append((node.lineno, f"{owner}.{attr}"))
+    return sorted(out)
+
+
+def _resolve_mention(mention: str, universe: frozenset[str]) -> str | None:
+    """Longest path suffix of a task-definition .py mention that is a tracked
+    file. `C:\\Riot Commander\\tools\\x.py` tokenises to `Commander\\tools\\x.py`
+    (the regex stops at the space), so the leading parts are dropped until a
+    repo-relative path matches."""
+    parts = [p for p in mention.replace("\\", "/").split("/") if p]
+    for i in range(len(parts)):
+        cand = "/".join(parts[i:])
+        if cand in universe:
+            return cand
+    return None
+
+
+def _discoverable_scope(root: Path) -> set[str]:
+    py = {_repo_walk.relative_posix(p, root)
+          for p in _repo_walk.repo_files(root, ("*.py",))}
+    universe = frozenset(py)
+    scope = {rel for rel in py if rel.startswith(_LOOP_DIR)}
+    for path in _repo_walk.repo_files(root, ("*.xml", "*.ps1")):
+        rel = _repo_walk.relative_posix(path, root)
+        head, _, name = rel.rpartition("/")
+        if f"{head}/" not in _TASK_DEF_DIRS or not name:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if not any(m in text for m in _TASK_DEF_MARKERS):
+            continue
+        for mention in _PY_MENTION.findall(text):
+            hit = _resolve_mention(mention, universe)
+            if hit:
+                scope.add(hit)
+    return scope
+
+
+def _unlisted_spawners(root: Path, listed: set[str]) -> dict[str, list]:
+    out = {}
+    for rel in sorted(_discoverable_scope(root)):
+        if rel in listed:
+            continue
+        sites = _spawn_sites(ast.parse((root / rel).read_text(encoding="utf-8")))
+        if sites:
+            out[rel] = sites
+    return out
+
+
+def test_discoverable_scope_is_not_vacuous() -> None:
+    # An empty scope and a fully-listed tree give the same green verdict, so
+    # anchor the enumeration on files each half must reach.
+    _repo_walk.self_check(ROOT)
+    scope = _discoverable_scope(ROOT)
+    for anchor in ("ops/loop/executor.py", "ops/loop/adjudicator.py",
+                   "tools/ci_watchdog.py", "tools/upstream_drift_check.py"):
+        assert anchor in scope, f"{anchor} fell out of the discoverable scope"
+    spawning = [rel for rel in scope
+                if _spawn_sites(ast.parse((ROOT / rel).read_text(encoding="utf-8")))]
+    assert len(spawning) >= 5, spawning
+
+
+def test_allowlist_entries_carry_a_reason_and_still_apply() -> None:
+    scope = _discoverable_scope(ROOT)
+    for rel, reason in SPAWN_ALLOWLIST.items():
+        assert reason.strip(), f"{rel} is allowlisted without a reason"
+        assert rel not in ALL_SPAWNERS, f"{rel} is both listed and allowlisted"
+        assert rel in scope, f"{rel} is allowlisted but outside the scope - drop it"
+        assert _spawn_sites(ast.parse((ROOT / rel).read_text(encoding="utf-8"))), (
+            f"{rel} is allowlisted but no longer spawns - drop it")
+
+
+def test_every_discovered_spawner_is_listed_or_allowlisted() -> None:
+    unlisted = _unlisted_spawners(ROOT, set(ALL_SPAWNERS) | set(SPAWN_ALLOWLIST))
+    assert not unlisted, (
+        f"Modules in the guard's discoverable scope spawn a child process but "
+        f"are neither in SCHEDULED_SPAWNERS / HOOK_SPAWNERS nor in "
+        f"SPAWN_ALLOWLIST, so nothing checks their creationflags: {unlisted}. "
+        f"Pass creationflags=CREATE_NO_WINDOW and list the module, or allowlist "
+        f"it with a reason."
+    )
+
+
+def test_completeness_check_catches_a_synthetic_spawn(tmp_path: Path) -> None:
+    # Positive control: the exact regression this check exists for - a direct
+    # spawn re-added to the adjudicator - plus an aliased one in a scheduled
+    # task's target, on a tree with no git index (the walker's pruned path).
+    loop = tmp_path / "ops" / "loop"
+    loop.mkdir(parents=True)
+    (loop / "adjudicator.py").write_text(
+        "import subprocess\nsubprocess.run(['git', 'status'])\n", encoding="utf-8")
+    (loop / "quiet.py").write_text("x = 1\n", encoding="utf-8")
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    (tools / "nightly.py").write_text(
+        "from subprocess import Popen as P\nP(['schtasks'])\n", encoding="utf-8")
+    (tools / "interactive.py").write_text(
+        "import os\nos.system('cls')\n", encoding="utf-8")
+    (tmp_path / "ops" / "install_RC_Nightly.ps1").write_text(
+        '$Script = "C:\\Riot Commander\\tools\\nightly.py"\n'
+        "Register-ScheduledTask -TaskName RC-Nightly\n", encoding="utf-8")
+
+    found = _unlisted_spawners(tmp_path, set())
+    assert set(found) == {"ops/loop/adjudicator.py", "tools/nightly.py"}, found
+    assert _unlisted_spawners(
+        tmp_path, {"ops/loop/adjudicator.py", "tools/nightly.py"}) == {}
