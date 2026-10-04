@@ -189,10 +189,17 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
         # distinct post-startup refresh.
         lock = state_dir / "lockfile"
         first_hb: str | None = None
+        # RM-294b: this assertion flaked 1-in-3 under a loaded full run and
+        # never reproduced in isolation (4/4 green 2026-10-03 with 6 other
+        # pytest processes on the box). Record what was SEEN so the next red
+        # carries its own diagnosis instead of another re-run.
+        seen: list[tuple[float, object]] = []
+        hb_t0 = time.time()
         for _ in range(20):
             if lock.exists():
                 data = json.loads(lock.read_text(encoding="utf-8") or "{}")
                 hb = data.get("heartbeat_at")
+                seen.append((round(time.time() - hb_t0, 1), hb))
                 if hb is not None:
                     if first_hb is None:
                         first_hb = hb
@@ -200,7 +207,10 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
                         break  # second distinct heartbeat - loop is alive
             time.sleep(1)
         else:
-            pytest.fail("lockfile heartbeat never refreshed to a second value")
+            pytest.fail(
+                "lockfile heartbeat never refreshed to a second value; "
+                f"window {time.time() - hb_t0:.1f}s, child alive="
+                f"{proc.poll() is None}, samples (t_s, heartbeat_at)={seen[-8:]}")
     finally:
         # Hard kill - spec forbids Stop-Process, use taskkill.
         if sys.platform.startswith("win"):
