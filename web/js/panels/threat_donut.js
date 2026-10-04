@@ -22,11 +22,16 @@
 //   filled async once the fetch resolves. Re-rendering with the same
 //   (champId, items) within 60s hits the cache instead of refetching.
 
+// Damage-type hues come from the Y-07 data-viz tier (web/css/tokens.css
+// --data-dmg-*, re-pointed onto --ovx-dmg-* parts inside the overlay shell).
+// They are applied through arc.style.stroke, never setAttribute("stroke"):
+// var() inside an SVG presentation attribute is not spec-promised, while a
+// style declaration always resolves it.
 const _PALETTE = {
-  physical: "#ff5050",
-  magical:  "#5070ff",
-  true:     "#eeeeee",
-  on_hit:   "#ffaa00",
+  physical: "rgb(var(--data-dmg-physical))",
+  magical:  "rgb(var(--data-dmg-magic))",
+  true:     "rgb(var(--data-dmg-true))",
+  on_hit:   "rgb(var(--data-dmg-onhit))",
 };
 
 // Module-scoped cache. Key = `${champId}:${itemsHash}`, value =
@@ -119,8 +124,7 @@ function _placeholder(parentEl, label, tooltip) {
 
 // Build the 4-slice donut SVG from a mix object. Slices in stable
 // order: physical, magical, true, on_hit (matches palette dict +
-// matches the order operator visually associates with red/blue/white/
-// gold). Slices smaller than 0.5% are dropped so we don't render
+// the Y-07 tier order orange/violet/white/citron). Slices smaller than 0.5% are dropped so we don't render
 // hairline arcs that anti-alias to invisible dust.
 //
 // The donut is drawn as 4 stroked arcs on a single circle (r=10,
@@ -157,12 +161,12 @@ function _buildDonutSvg(mix) {
     arc.setAttribute("cy", "14");
     arc.setAttribute("r", "10");
     arc.setAttribute("fill", "none");
-    arc.setAttribute("stroke", _PALETTE[s.key] || "#888");
+    arc.style.stroke = _PALETTE[s.key] || "rgb(var(--data-neutral))";
     arc.setAttribute("stroke-width", "5");
     arc.setAttribute("stroke-dasharray", `${len} ${C - len}`);
     arc.setAttribute("stroke-dashoffset", String(-offset));
     // Rotate -90deg so the first slice starts at 12 o'clock (matches
-    // operator reading order: physical-red is the visual anchor).
+    // operator reading order: physical is the visual anchor).
     arc.setAttribute("transform", "rotate(-90 14 14)");
     svg.appendChild(arc);
     offset += len;

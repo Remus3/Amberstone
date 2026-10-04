@@ -168,6 +168,15 @@ The palette is law. No color literal outside this table reaches a widget.
 | caution / urgent    | #C8AA6E  | the single Urgent caution hue (reuse gold)                 |
 | lethal / emergency  | #E84057  | the ONE pop-out: Emergency glow + `urgent` band; max once  |
 | neutral text        | #FFFFFF  | widget body ink (`--ovx-text`): ACTION verb full, OBJECTIVE footer @0.55 |
+| dmg physical        | #EB8A3A  | threat donut slice (`--ovx-dmg-physical` -> `--data-dmg-physical`, Y-07) |
+| dmg magic           | #A37CF7  | threat donut slice (`--ovx-dmg-magic` -> `--data-dmg-magic`)  |
+| dmg true            | #ECE8DF  | threat donut slice (`--ovx-dmg-true` -> `--data-dmg-true`)    |
+| dmg on-hit          | #D9CF4A  | threat donut slice (`--ovx-dmg-onhit` -> `--data-dmg-onhit`)  |
+
+Data-viz hues (team side, damage type, resource) are defined ONCE in the
+tokens.css `--data-*` tier; a hue joins this table (as an `--ovx-*` part the
+overlay re-points `--data-*` onto) only when an overlay widget actually paints
+it. Team hues are never the good / emergency status hues above.
 
 PREMIUM CUES (the difference between "dev tool" and "Hextech HUD"):
 - Border: 1px gold hairline at 0.30 alpha idle; lifts to 1.0 on the active/dragged

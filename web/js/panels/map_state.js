@@ -179,6 +179,30 @@ function _bubbleKernel(d2) {
   return t * t;
 }
 
+// Y-07 data-viz tier read for the canvas painters. A canvas cannot resolve
+// var(), so the --data-* rgb parts are read off document.body - NOT
+// documentElement: overlay re-points are body-scoped (RM-139 shape). Minimal
+// on purpose (one getComputedStyle per paint); the cached, theme-invalidated
+// resolver is a separate row (Y-31). An unresolved token paints a loud debug
+// magenta plus one console line, never a silent black.
+const _DATA_SENTINEL = [255, 0, 255];
+const _dataWarned = new Set();
+function _dataRGB(token) {
+  const raw = getComputedStyle(document.body).getPropertyValue(token);
+  const parts = String(raw || "").split(",").map((x) => Number(x.trim()));
+  if (parts.length === 3 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+    return parts;
+  }
+  if (!_dataWarned.has(token)) {
+    _dataWarned.add(token);
+    console.warn(`[map_state] ${token} did not resolve on body - painting debug magenta`);
+  }
+  return _DATA_SENTINEL;
+}
+function _rgbCss(rgb) {
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
 function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
   const lo = ZOI.loRes;
   const off = document.createElement("canvas");
@@ -186,9 +210,10 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
   const offCtx = off.getContext("2d");
   const img = offCtx.createImageData(lo, lo);
   const myIsRed = myTeam === "red";
-  // Team color RGB.
-  const myRGB    = myIsRed ? [240, 126, 139] : [138, 140, 240];   // coral vs lavender
-  const enemyRGB = myIsRed ? [138, 140, 240] : [240, 126, 139];
+  // Team color RGB - Y-07 tier, by PERSPECTIVE (ally is always the ally hue,
+  // whichever map side we spawn on); was a side-keyed coral/lavender pair.
+  const myRGB    = _dataRGB("--data-ally");
+  const enemyRGB = _dataRGB("--data-enemy");
   // Keep weights flat but summable. Radius in normalized units -
   // scales with game phase so late-game teamfights read wider.
   const R = _zoiRadius(gtS);
@@ -294,8 +319,9 @@ function renderMinimapCanvases(p) {
   }
   const myTeam = (p.my_team || "blue").toLowerCase();
   document.body.dataset.myteam = myTeam;
-  const myColor = myTeam === "red" ? "#F07E8B" : "#8A8CF0";
-  const enemyColor = myTeam === "red" ? "#8A8CF0" : "#F07E8B";
+  // Y-07 tier, by perspective (matches the ZOI tint above).
+  const myColor = _rgbCss(_dataRGB("--data-ally"));
+  const enemyColor = _rgbCss(_dataRGB("--data-enemy"));
 
   // Drop positions for dead champions - they're not exerting pressure.
   // *_respawns keys -> remaining seconds; >0 = dead, skip contribution.
