@@ -252,11 +252,6 @@ _summoner_lookup_cache = _snap._summoner_lookup_cache
 _mastery_cache = _snap._mastery_cache
 
 
-def _lookup_summoner_by_id(sid: int):
-    """Agent-name wrapper: inject ``lcu_request`` into the moved helper."""
-    return _snap._lookup_summoner_by_id(lcu_request, sid)
-
-
 def _reset_summoner_lookup_cache_for_tests() -> None:
     _snap._reset_summoner_lookup_cache_for_tests()
 
