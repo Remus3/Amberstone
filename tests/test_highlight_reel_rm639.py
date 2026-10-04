@@ -251,7 +251,24 @@ def test_runner_ffmpeg_missing_does_nothing(tmp_path, monkeypatch):
     assert not (p.parent / "NA1_1001").exists()
 
 
-def test_runner_two_segments_concat_faststart_and_sidecar_record(tmp_path):
+def test_runner_off_windows_passes_no_creationflags(tmp_path, monkeypatch):
+    # POSIX subprocess rejects a non-zero creationflags, so off Windows the
+    # runner must get 0. The host is faked through hr._on_windows.
+    monkeypatch.setattr(hr, "_on_windows", lambda: False)
+    side = _sidecar([_death(300)], offset=0.0)
+    p = _write_side(tmp_path, side)
+    ff, fp = _tools(tmp_path)
+    fake = FakeFF()
+    res = hr.build_reel(p, ffmpeg=ff, ffprobe=fp, runner=fake)
+    assert res.status == "ok", res
+    assert fake.calls
+    assert all(kw.get("creationflags") == 0 for _, kw in fake.calls)
+
+
+def test_runner_two_segments_concat_faststart_and_sidecar_record(tmp_path, monkeypatch):
+    # The ffmpeg runner's no-window contract is the WINDOWS one; fake the host
+    # so a Linux runner checks it too instead of reading its own 0.
+    monkeypatch.setattr(hr, "_on_windows", lambda: True)
     side = _sidecar([_death(300), _death(600)], offset=0.0)
     p = _write_side(tmp_path, side)
     ff, fp = _tools(tmp_path)
