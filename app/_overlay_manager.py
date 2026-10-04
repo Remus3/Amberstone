@@ -42,7 +42,7 @@ class OverlayManager:
         app.mode = mode
         app._auto_mode = auto if auto else app._auto_mode
         app.data["mode"] = mode
-        app._write_data()
+        app._write_data({"mode": mode})  # RM-277: locked RMW of this key only
 
     def apply_mode(self, mode: str) -> None:
         """No-op. Kept for the single call from OverlayApp.__init__ tail."""

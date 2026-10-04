@@ -17,9 +17,9 @@ Lane 8 cycle 28 correction: this used to also name "the supervisor's
 aftergame collector" as a writer. That was false. `core/aftergame_summary.py`
 has ZERO production importers - it is reachable only through its own
 `if __name__ == "__main__"` block - it never takes the lock, and it targets
-`data/coaching_data.json`, not the root file this module writes. The real
-uncovered writer is `app/__init__.py` `_write_data()`, which is filed as
-RM-277 (frozen file, needs an adjudicating agent).
+`data/coaching_data.json`, not the root file this module writes. The last
+uncovered writer, `app/__init__.py` `_write_data()`, now takes the lock too
+(RM-277, closed 2026-10-03 under a frozen-file grant).
 
 `force_vision_scan()` writes a sentinel that BaseCoach._vision_loop
 polls - same effect as the Ctrl+Tab hotkey.

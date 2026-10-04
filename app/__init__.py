@@ -239,19 +239,26 @@ class OverlayApp:
     # -- Data file / poll ------------------------------------------------------
 
     def _init_data_file(self):
-        pg = ""
-        try:
-            if DATA_FILE.exists():
-                pg = json.loads(DATA_FILE.read_text(encoding="utf-8")).get("pregame", "")
-        except Exception: pass
-        cl = {
-            "mode": "client", "action": "", "immediate": "", "next": "",
-            "fight_rule": "", "wave": "", "objective": "", "reset_item": "",
-            "risk": "", "map": "", "win_pct": None, "log": [],
-            "pregame": pg or "Waiting for draft data...\n\nPaste game state in chat to begin coaching.",
-        }
-        try: _atomic_write_json(DATA_FILE, cl)
-        except Exception: pass
+        # RM-277: the pregame read and the reset write are one critical
+        # section under the shared coaching_data_lock, so a concurrent
+        # set_pregame / coach write cannot land between them and be lost.
+        # Top-level acquirer only - the lock is deliberately non-reentrant
+        # (LEDGER 404).
+        from core.coaching_data_lock import coaching_data_lock
+        with coaching_data_lock():
+            pg = ""
+            try:
+                if DATA_FILE.exists():
+                    pg = json.loads(DATA_FILE.read_text(encoding="utf-8")).get("pregame", "")
+            except Exception: pass
+            cl = {
+                "mode": "client", "action": "", "immediate": "", "next": "",
+                "fight_rule": "", "wave": "", "objective": "", "reset_item": "",
+                "risk": "", "map": "", "win_pct": None, "log": [],
+                "pregame": pg or "Waiting for draft data...\n\nPaste game state in chat to begin coaching.",
+            }
+            try: _atomic_write_json(DATA_FILE, cl)
+            except Exception: pass
 
     def _poll_file(self):
         try:
@@ -267,10 +274,35 @@ class OverlayApp:
         except Exception: pass
         self.scheduler.schedule(POLL_DATA_MS, self._poll_file)
 
-    def _write_data(self):
+    def _write_data(self, fields=None):
+        """Persist app-side changes to root coaching_data.json.
+
+        RM-277: this used to replace the WHOLE file with ``self.data`` - a
+        copy refreshed only by the 500 ms poller - and took no lock, so it
+        could erase a coach write made since the last poll, and a coach RMW
+        straddling it could resurrect the text it had just cleared (live
+        coaching shown after game end). Now a read-modify-write under the
+        shared coaching_data_lock: re-read the file, apply ONLY ``fields``
+        (the keys this caller changed), write, and adopt the merged result
+        as ``self.data``. ``fields=None`` keeps the legacy whole-dict
+        semantics (still locked) for any caller that has not named its keys.
+        """
+        from core.coaching_data_lock import coaching_data_lock
+        changes = dict(self.data if fields is None else fields)
         try:
-            _atomic_write_json(DATA_FILE, self.data)
-            self._last_mtime = DATA_FILE.stat().st_mtime
+            with coaching_data_lock():
+                try:
+                    cur = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+                    if not isinstance(cur, dict):
+                        cur = {}
+                except (OSError, ValueError):
+                    cur = {}
+                if fields is None:
+                    cur = {}
+                cur.update(changes)
+                _atomic_write_json(DATA_FILE, cur)
+                self._last_mtime = DATA_FILE.stat().st_mtime
+            self.data = cur
         except Exception: pass
 
     def _force_refresh(self): self._last_mtime = 0

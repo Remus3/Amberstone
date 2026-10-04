@@ -93,7 +93,7 @@ class _App:
         import queue
         self._tft_q = queue.Queue()
 
-    def _write_data(self):
+    def _write_data(self, fields=None):
         pass
 
     def _update_envelope(self, *a, **k):
