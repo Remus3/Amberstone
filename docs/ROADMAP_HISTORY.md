@@ -1,5 +1,13 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-04 - Wave3 drain merge, 1 row
+
+RM-300 shipped (LEDGER 1620, `4d01d5ac6`). The row below moves here VERBATIM as
+it stood at `7e32c2933`; `ROADMAP.md` keeps a one-line stub. Its "Next free id"
+sentence is a historical record, not the current pointer.
+
+- **RM-300 OPEN (filed 2026-08-31, lane 8 cycle 42; LANE 7, Tier-1)** - **28 tracked `.py` files carry 640 non-ASCII codepoints against the CLAUDE.md 7-bit rule, and NO guard can find them.** `tools/precommit_gate.py` scans ADDED lines only, so an already-committed file is invisible to it forever; `tests/test_u2500_hygiene.py` walks an ALLOWLIST, so it cannot discover a violator. Census: U+00B7 x300, U+2550 x144, U+2192 x105, plus CJK and emoji over 34 codepoints; none exempt under `_ascii_exempt`. Body + acceptance in `BACKLOG.md`. **Next free id = RM-301.** [2026-10-04 Wave1: RM-301 shipped - LEDGER 1480-1559]
+
 ## 2026-10-01 - size-budget relocation pass (the tenth), 7 rows
 
 `python tools/drift_guard.py` exited 1 with `BREACH [doc-budget] ROADMAP.md at
