@@ -891,6 +891,111 @@ def _prod_artifact_sizes() -> dict:
     return out
 
 
+# RM-148. The size snapshot cannot tell a TEST writing a prod path from the
+# LIVE RC doing its job: RC rewrites `data/vision_state.json` every 1-2 s and
+# appends the shadow logs on its own cadence, so on Legion the guard reddened
+# the /done gate with no test at fault (2051->2039 with RC pid 2228 live), and
+# the false positive scaled with suite runtime. Do NOT drop entries to silence
+# it - the guard exists because a test once really wrote a prod path (RF5).
+#
+# Fix: distinguish the WRITER. A process-wide audit hook records every
+# open-for-write / rename / replace / unlink of a guarded path made BY THIS
+# PROCESS (each xdist worker runs its own session fixture, so each worker
+# watches itself). At teardown a changed artifact FAILS if this process wrote
+# it; it is EXCUSED only if it is one the live RC owns AND a live RC was seen
+# at session start or end AND no in-process write was recorded. With no live
+# RC (CI, a box with RC down) every change still fails, exactly as before.
+# Residual gap, stated: a test that spawns a SUBPROCESS to write a guarded RC
+# artifact while RC is live is not attributable and is excused.
+_LIVE_RC_OWNED = frozenset(
+    rel for rel in _PROD_ARTIFACT_GUARD if rel.startswith("data/")
+)
+_WRITE_FLAGS = (os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT
+                | os.O_TRUNC)
+
+
+def _norm(p) -> str:
+    return os.path.normcase(os.path.abspath(os.fsdecode(p)))
+
+
+class _ProdWriteRecorder:
+    """Collects in-process writes to watched paths from audit events."""
+
+    _EVENTS = frozenset({"open", "os.rename", "os.replace", "os.remove",
+                         "os.truncate", "shutil.copyfile", "shutil.move"})
+
+    def __init__(self, watched=()):
+        self.watched = {_norm(_REPO_ROOT / r): r for r in watched}
+        self.written: set = set()
+        self.active = False
+
+    def _hit(self, p) -> None:
+        if isinstance(p, (str, bytes, os.PathLike)):
+            rel = self.watched.get(_norm(p))
+            if rel is not None:
+                self.written.add(rel)
+
+    def on_event(self, event, args) -> None:
+        if not self.active or event not in self._EVENTS:
+            return
+        try:
+            if event == "open":
+                path, mode, flags = (tuple(args) + (None, None, None))[:3]
+                if isinstance(mode, str):
+                    if not any(c in mode for c in "wax+"):
+                        return
+                elif not (isinstance(flags, int) and flags & _WRITE_FLAGS):
+                    return
+                self._hit(path)
+            elif event == "os.truncate":
+                self._hit(args[0])
+            elif event == "os.remove":
+                self._hit(args[0])
+            else:  # rename / replace / copyfile / move: destination matters
+                if len(args) > 1:
+                    self._hit(args[1])
+        except Exception:  # noqa: BLE001 - an audit hook must never raise
+            pass
+
+
+_PROD_WRITES = _ProdWriteRecorder(_PROD_ARTIFACT_GUARD)
+sys.addaudithook(_PROD_WRITES.on_event)
+
+
+def _live_rc_pid():
+    """PID of a live RC per ops/runtime/health.json, else None.
+
+    Liveness is probed with psutil, never `os.kill(pid, 0)`, which on Windows
+    TERMINATES the target. The pytest process itself is never "the live RC".
+    """
+    try:
+        import json as _json
+        h = _json.loads((_REPO_ROOT / "ops" / "runtime" / "health.json")
+                        .read_text(encoding="utf-8"))
+        pid = int(h.get("pid") or 0)
+    except Exception:  # noqa: BLE001
+        return None
+    if pid <= 0 or pid == os.getpid():
+        return None
+    try:
+        import psutil
+        return pid if psutil.pid_exists(pid) else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _classify_prod_changes(before, after, written, live_rc) -> list:
+    """Changed guarded artifacts that a TEST must be blamed for (RM-148)."""
+    out = []
+    for rel in _PROD_ARTIFACT_GUARD:
+        if before.get(rel) == after.get(rel):
+            continue
+        if rel in written or not (live_rc and rel in _LIVE_RC_OWNED):
+            out.append(rel + " " + str(before.get(rel)) + "->"
+                       + str(after.get(rel)))
+    return out
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _no_live_tft_ocr():
     """No test may start the live TFT OCR capture thread.
@@ -947,13 +1052,17 @@ def _no_live_tft_ocr():
 def assert_prod_artifacts_unchanged():
     before = _prod_artifact_sizes()
     spend_before = _spend_ledger_snapshot()
-    yield
+    live_at_start = _live_rc_pid()
+    _PROD_WRITES.written.clear()
+    _PROD_WRITES.active = True
+    try:
+        yield
+    finally:
+        _PROD_WRITES.active = False
     after = _prod_artifact_sizes()
-    changed = [
-        rel + " " + str(before[rel]) + "->" + str(after[rel])
-        for rel in _PROD_ARTIFACT_GUARD
-        if before[rel] != after[rel]
-    ]
+    live_rc = live_at_start or _live_rc_pid()
+    changed = _classify_prod_changes(before, after, _PROD_WRITES.written,
+                                     live_rc)
     spend_after = _spend_ledger_snapshot()
     for name in sorted(set(spend_before) | set(spend_after)):
         b = spend_before.get(name)
