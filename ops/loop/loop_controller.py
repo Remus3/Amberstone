@@ -231,6 +231,40 @@ def stop(reason):
     log(f"STOP written: {reason}")
     sys.exit(0)
 
+
+# ---- RM-506: STOP is a CYCLE-LEVEL BRAKE; DISARMED is the DURABLE disarm ----
+# Decision recorded (RM-506): `control/STOP` halts a RUNNING controller and is
+# deliberately unlinked by main() at startup, so a self-restart for new code is
+# not blocked by its own prior halt - that reason still stands, so STOP keeps
+# that meaning. A durable operator disarm is a SEPARATE sentinel,
+# `control/DISARMED`, that main() NEVER deletes: while it exists the controller
+# refuses to start and halts at the next cycle top or handshake poll. Removing
+# it is the operator's (or MAIN's) explicit re-arm act.
+DISARM_NAME = "DISARMED"
+EXIT_DISARMED = 3
+# Reset on every launch. DISARM_NAME must never appear here - pinned by
+# tests/test_loop_controller_disarm_rm506.py.
+RESET_ON_START = ("STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt")
+
+
+def disarm_path(ctl=None):
+    """The durable-disarm sentinel if present, else None."""
+    p = Path(ctl or CTL) / DISARM_NAME
+    return p if p.exists() else None
+
+
+def reset_control_files(ctl=None):
+    """Clear the per-run handshake files. Never touches DISARM_NAME."""
+    base = Path(ctl or CTL)
+    for f in RESET_ON_START:
+        (base / f).unlink(missing_ok=True)
+
+
+def halt_if_disarmed(where):
+    if disarm_path() is not None:
+        log(f"durable DISARMED sentinel present ({where}) - not running")
+        sys.exit(EXIT_DISARMED)
+
 # ---- git helpers -------------------------------------------------------
 def git(*args):
     # Bound every git call: the headless loop has NO deadline around these
@@ -827,6 +861,7 @@ def wait_for(path, deadline_ts, watch_bridge=False):
     while time.time() < deadline_ts:
         if (CTL / "STOP").exists():
             log("external STOP seen"); sys.exit(0)
+        halt_if_disarmed("wait_for")
         if Path(path).exists():
             return True
         if watch_bridge and not warned:
@@ -841,6 +876,7 @@ def wait_gone(path, deadline_ts):
     while time.time() < deadline_ts:
         if (CTL / "STOP").exists():
             log("external STOP seen"); sys.exit(0)
+        halt_if_disarmed("wait_gone")
         if not Path(path).exists():
             return True
         time.sleep(CFG["poll_sec"])
@@ -1051,9 +1087,11 @@ def claim_repo():
 
 def main():
     global RUN_ID
+    # RM-506: the durable disarm is checked BEFORE claiming the repo or
+    # clearing anything, so a disarmed launch leaves no trace but a log line.
+    halt_if_disarmed("startup")
     RUN_ID = claim_repo()
-    for f in ("STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt"):
-        (CTL / f).unlink(missing_ok=True)
+    reset_control_files()
     # A self-restart for new code resumes where it left off: starting over at 1
     # would let a code edit reset the cycle budget, and max_cycles is the real
     # limiter of this loop - there is no spend ceiling. Spend is restored for
@@ -1100,6 +1138,7 @@ def main():
         if (CTL / "STOP").exists():
             log("external STOP seen (cycle top)")
             sys.exit(0)
+        halt_if_disarmed("cycle top")
         # Beside the STOP poll deliberately: this is the only point in the cycle
         # where no handshake is in flight, so a re-exec cannot abandon an
         # executor waiting on claude.done.
