@@ -1331,6 +1331,18 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.286.0 (2026-10-04) - RM-595 flat-reduction zero-skip.
+- math: ``effects.effective_target_mr`` / ``effective_target_armor`` now
+  return as soon as FLAT reduction takes the resist to zero or below,
+  skipping percent reduction and all penetration (League wiki Magic /
+  Armor penetration, worked Target B: 18 MR - 20 flat = -2, was -1.4;
+  18 armor - 30 flat = -12, was -8.4). Matches
+  ``core.math_core.effective_resist``. Only affects targets whose resist
+  flat reduction drives non-positive while a percent reduction is also
+  present (Flesheater + Black Cleaver / Bloodletter's Curse class).
+  ``ehp._effective_resist_after_pen`` checked: no flat-reduction step, so
+  not the same shape. Golden ``mr-target-b`` strict-xfail removed.
+
 1.285.0 (2026-10-04) - DS patch 16.18.1 -> 16.19.1 (RM-522 / RM-661).
 - data: ``aram_modifiers`` re-extracted at 16.19.1 (external reference L):
   21 fields over 16 champions moved (Azir / Gnar / Kaisa / Kindred / Quinn /
