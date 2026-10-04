@@ -118,7 +118,35 @@ function _point(t, prob, tMin, tSpan) {
  * Build the SVG markup string for the win-prob curve.
  * `events` is the ascending-by-time event list; operatorTeam 100/200/0.
  */
-function _svgHtml(events, topPhases, operatorTeam) {
+const FLAG_LABEL = "you flagged";
+
+/**
+ * RM-638: one vertical marker per in-game "mark this moment" press
+ * (payload.you_flagged, core/moment_marks.py) at its game_time_s, clamped
+ * into the plotted time range. A <title> carries the "you flagged M:SS"
+ * label (same hover contract as the swing dots). Pure string build.
+ */
+function _flagMarksHtml(flags, tMin, tMax, tSpan) {
+  const yTop = PAD_T;
+  const yBot = PAD_T + PLOT_H;
+  return (flags || [])
+    .filter((f) => f && isFinite(Number(f.game_time_s)))
+    .map((f) => {
+      const t = Math.max(tMin, Math.min(tMax, Number(f.game_time_s)));
+      const x = _point(t, 0.5, tMin, tSpan).x.toFixed(1);
+      const title = `${FLAG_LABEL} ${_fmtMmSs(f.game_time_s)}`;
+      return (
+        `<g class="pwp-flag-mark"><title>${_escHtml(title)}</title>` +
+        `<line class="pwp-flag" x1="${x}" y1="${yTop}" x2="${x}" y2="${yBot}"></line>` +
+        `<polygon class="pwp-flag-head" points="${x},${yTop + 6} ` +
+        `${(Number(x) - 4).toFixed(1)},${yTop} ${(Number(x) + 4).toFixed(1)},${yTop}">` +
+        `</polygon></g>`
+      );
+    })
+    .join("");
+}
+
+function _svgHtml(events, topPhases, operatorTeam, flags) {
   const evs = (events || [])
     .filter((e) => e && e.game_time != null && e.prob_after != null)
     .slice()
@@ -213,6 +241,8 @@ function _svgHtml(events, topPhases, operatorTeam) {
     `<polygon class="pwp-area ${areaCls}" points="${areaPts}"></polygon>` +
     // the curve
     `<polyline class="pwp-line" points="${polyPts}"></polyline>` +
+    // RM-638 "you flagged" markers (under the dots so a dot stays hoverable)
+    _flagMarksHtml(flags, tMin, tMax, tSpan) +
     // swing dots
     dots +
     // y labels
@@ -230,8 +260,12 @@ function _svgHtml(events, topPhases, operatorTeam) {
 function _cardHtml(payload, operatorTeam) {
   const events = (payload && payload.events) || [];
   const topPhases = (payload && payload.top_phases) || [];
-  const svg = _svgHtml(events, topPhases, operatorTeam);
+  const flags = Array.isArray(payload && payload.you_flagged) ? payload.you_flagged : [];
+  const svg = _svgHtml(events, topPhases, operatorTeam, flags);
   if (!svg) return "";
+  const flagHint = flags.length
+    ? `<span class="pwp-legend-hint">dashed marker = ${FLAG_LABEL} (${flags.length})</span>`
+    : "";
   const modelTag =
     payload.model === "trained"
       ? `model v${payload.model_version || "?"}`
@@ -254,6 +288,7 @@ function _cardHtml(payload, operatorTeam) {
     `<span class="pwp-legend-item pwp-ally">above 50% = ahead</span>` +
     `<span class="pwp-legend-item pwp-enemy">below 50% = behind</span>` +
     `<span class="pwp-legend-hint">hover a dot for the swing</span>` +
+    flagHint +
     `</div>` +
     `</div>`
   );
@@ -328,6 +363,8 @@ export const __test = {
   _point,
   _svgHtml,
   _cardHtml,
+  _flagMarksHtml,
+  FLAG_LABEL,
   _typeLabel,
   _fmtMmSs,
   _fmtSignedPP,
