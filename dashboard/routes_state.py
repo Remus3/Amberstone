@@ -15,6 +15,7 @@ import os
 import threading
 import time
 import urllib.request
+from datetime import datetime, timezone
 
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
@@ -452,6 +453,13 @@ def _serve_health(h) -> None:
     h._send(200, json.dumps(d).encode("utf-8"), "application/json")
 
 
+#: RM-191: health.json older than this reads as a STALE heartbeat (the writer
+#: ticks every ~1 s; 15 s absorbs a GC pause or a slow state provider).
+_RC_HEARTBEAT_STALE_S = 15.0
+#: RM-191: a DevRuntime fatal within this window turns the rollup yellow.
+_RC_FATAL_RECENT_S = 300.0
+
+
 def _serve_health_all(h) -> None:
     # Consolidated rollup: RC health + vision-server health +
     # supervisor PID lock view + cost-banner state. One green/
@@ -528,7 +536,37 @@ def _serve_health_all(h) -> None:
         except Exception as e:  # noqa: BLE001
             log.warning("health/all agent6 probe: %s: %s", type(e).__name__, e)
             rollup["agent6"] = {"error": GENERIC_ERROR, "status": "unknown"}
-        rc_ok = bool(rollup.get("rc", {}).get("alive"))
+        # RM-191: the DevRuntime fatal record, read IN-PROCESS (the dashboard
+        # runs inside the RC process) so it is visible even while the
+        # health.json write is the thing failing, plus the heartbeat age -
+        # the 2026-08-09 outage was a frozen health.json that still read
+        # alive=true from a live pid.
+        rc_fatal_recent = False
+        try:
+            from ops.rc_dev_runtime import fatal_stats as _fatal_stats
+            rollup["rc_fatal"] = _fatal_stats()
+            _last = rollup["rc_fatal"].get("last_at")
+            if _last:
+                _age = (datetime.now(timezone.utc)
+                        - datetime.fromisoformat(_last)).total_seconds()
+                rc_fatal_recent = _age <= _RC_FATAL_RECENT_S
+        except Exception as e:  # noqa: BLE001
+            log.warning("health/all rc fatal probe: %s: %s", type(e).__name__, e)
+            rollup["rc_fatal"] = {"error": GENERIC_ERROR}
+        rc_stale = False
+        _upd = (rollup.get("rc") or {}).get("updated_at")
+        if _upd:
+            try:
+                _hb = datetime.fromisoformat(str(_upd))
+                if _hb.tzinfo is None:
+                    _hb = _hb.replace(tzinfo=timezone.utc)
+                _hb_age = (datetime.now(timezone.utc) - _hb).total_seconds()
+                rollup["rc_heartbeat_age_s"] = round(_hb_age, 1)
+                rc_stale = _hb_age > _RC_HEARTBEAT_STALE_S
+            except (TypeError, ValueError):
+                pass
+        rollup["rc_stale"] = rc_stale
+        rc_ok = bool(rollup.get("rc", {}).get("alive")) and not rc_stale
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
         cost_ok = rollup.get("cost", {}).get("banner") != "over"
@@ -538,7 +576,8 @@ def _serve_health_all(h) -> None:
         elif (not cost_ok
               or not ds_ok
               or rollup.get("cost", {}).get("banner") == "warn"
-              or agent6_degraded):
+              or agent6_degraded
+              or rc_fatal_recent):
             rollup["status"] = "yellow"
         else:
             rollup["status"] = "green"
