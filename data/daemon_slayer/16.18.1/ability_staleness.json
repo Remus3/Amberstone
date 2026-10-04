@@ -3857,7 +3857,12 @@
    "wiki": [
     120.0,
     120.0
-   ]
+   ],
+   "override_effective": [
+    120.0,
+    120.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Kennen",
@@ -4073,7 +4078,12 @@
    "wiki": [
     70.0,
     230.0
-   ]
+   ],
+   "override_effective": [
+    70.0,
+    230.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Leblanc",
@@ -4087,7 +4097,12 @@
    "wiki": [
     140.0,
     460.0
-   ]
+   ],
+   "override_effective": [
+    140.0,
+    460.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Leblanc",
@@ -4101,7 +4116,12 @@
    "wiki": [
     210.0,
     690.0
-   ]
+   ],
+   "override_effective": [
+    210.0,
+    690.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Leblanc",
@@ -4134,7 +4154,12 @@
    "wiki": [
     70.0,
     230.0
-   ]
+   ],
+   "override_effective": [
+    70.0,
+    230.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Leblanc",
@@ -4148,7 +4173,12 @@
    "wiki": [
     140.0,
     460.0
-   ]
+   ],
+   "override_effective": [
+    140.0,
+    460.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Leblanc",
@@ -4955,10 +4985,10 @@
     275.0
    ],
    "override_effective": [
-    150.0,
-    300.0
+    125.0,
+    275.0
    ],
-   "resolved_by_override": false
+   "resolved_by_override": true
   },
   {
    "champion": "Naafiri",
@@ -4978,7 +5008,12 @@
     120.0,
     120.0
    ],
-   "engine_stale": true
+   "engine_stale": true,
+   "override_effective": [
+    100.0,
+    100.0
+   ],
+   "resolved_by_override": true
   },
   {
    "champion": "Nami",
@@ -7979,5 +8014,5 @@
    ]
   }
  ],
- "_override_resolved": 23
+ "_override_resolved": 31
 }

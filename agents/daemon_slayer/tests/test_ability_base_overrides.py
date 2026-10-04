@@ -43,13 +43,16 @@ _EXPECTED: tuple[tuple[str, str, int, str, tuple, tuple], ...] = (
         (80.0, 117.647059, 155.294118, 192.941176, 230.588235),
         (80.0, 115.0, 150.0, 185.0, 220.0),
     ),
+    # RM-480 residual (2026-10-03): V26.15 re-tuned Hounds' Pursuit to
+    # 125 / 200 / 275 (wiki-measured), so the A-03 target 150 : 300 is itself
+    # stale. The on-disk guard is unchanged.
     (
         "Naafiri",
         "R",
         0,
         "Physical Damage",
         (150.0, 250.0, 350.0),
-        (150.0, 225.0, 300.0),
+        (125.0, 200.0, 275.0),
     ),
     (
         "Heimerdinger",
@@ -127,11 +130,15 @@ _RM480_SEVEN = {"Poppy", "Qiyana", "Thresh", "Kennen", "Chogath", "Cassiopeia", 
 
 def test_registry_covers_exactly_the_documented_champions() -> None:
     assert {k[0] for k in _ABILITY_BASE_OVERRIDES} == _RM81_SIX | _RM480_SEVEN
-    assert len(_ABILITY_BASE_OVERRIDES) == 13
+    # 13 + Qiyana Q form 1 (RM-480 residual).
+    assert len(_ABILITY_BASE_OVERRIDES) == 14
     for (cid, _key, _form), entries in _ABILITY_BASE_OVERRIDES.items():
         for entry in entries:
             assert isinstance(entry, AbilityBaseOverride)
-            if cid in _RM81_SIX:
+            if cid == "Naafiri":
+                # RM-480 residual: re-targeted to the V26.15 wiki values.
+                assert "wiki" in entry.source
+            elif cid in _RM81_SIX:
                 # The RM-81 six cite their DS_ABILITY_SHAPING_NOTES.md line.
                 assert "DS_ABILITY_SHAPING_NOTES.md:" in entry.source
                 assert entry.field == "base"
@@ -261,12 +268,12 @@ def test_ability_dps_moves_for_each_of_the_six(
     assert _spell(before, key).dps != _spell(after, key).dps
 
 
-def test_rank_zero_is_exact_for_naafiri_r(
+def test_naafiri_r_rank_zero_now_moves(
     snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
 ) -> None:
-    """Naafiri R rank 0 is 150 in BOTH series - the correction is 350 -> 300 at
-    max rank only. Level 6 (R rank 0) must therefore be byte-identical, which
-    proves the override is a slope fix and not a blanket rescale."""
+    """RM-480 residual: the A-03 entry was a slope fix (rank 0 = 150 in both
+    series). V26.15 cut rank 0 to 125 and the bonus AD ratio 120 -> 100, so the
+    re-targeted entry moves Naafiri R at level 6 (R rank 0) too - DOWNWARD."""
     data = DataSnapshot.load(data_root=_DATA_ROOT)
     before = ability_dps.compute_ability_dps(
         data, "Naafiri", level=6, target_armor=100.0, target_mr=70.0,
@@ -276,8 +283,7 @@ def test_rank_zero_is_exact_for_naafiri_r(
         data, "Naafiri", level=6, target_armor=100.0, target_mr=70.0,
         abilities_snapshot=snap_on,
     )
-    assert _spell(before, "R").raw_damage_per_cast == _spell(after, "R").raw_damage_per_cast
-    assert _spell(before, "R").dps == _spell(after, "R").dps
+    assert _spell(after, "R").raw_damage_per_cast < _spell(before, "R").raw_damage_per_cast
 
 
 def test_override_is_skipped_when_the_extract_is_already_correct(
@@ -380,28 +386,87 @@ def test_rm480_stale_guard_on_disk_and_corrected_with_flag_on(
         assert len(on) == len(off)
 
 
-def test_leblanc_r_override_lands_on_block_three_only(
+def test_leblanc_r_all_seven_blocks_corrected_by_index(
     snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
 ) -> None:
-    """LeBlanc R Magic Damage (Mimic: Distortion) is damage block index 3; the
-    default block_strategy reads block 0 (Orb), which this slice leaves alone."""
+    """RM-480 residual: every Mimic block, addressed by BLOCK INDEX because
+    "Total Magic Damage" appears twice (block 2 Sigil of Malice total, block 6
+    Ethereal Chains total). Wiki-measured 2026-10-03; AP ratios unchanged
+    except Distortion (block 3)."""
+    want_base = {
+        0: (70.0, 150.0, 230.0), 1: (140.0, 300.0, 460.0), 2: (210.0, 450.0, 690.0),
+        3: (150.0, 315.0, 480.0), 4: (70.0, 150.0, 230.0), 5: (140.0, 300.0, 460.0),
+        6: (210.0, 450.0, 690.0),
+    }
+    want_ap = {0: 40.0, 1: 80.0, 2: 120.0, 3: 90.0, 4: 40.0, 5: 85.0, 6: 125.0}
     off = snap_off.get_ability("Leblanc", "R", 0).damage_blocks
     on = snap_on.get_ability("Leblanc", "R", 0).damage_blocks
-    assert on[3].attribute == "Magic Damage"
-    assert _close(on[3].ap_pct, (90.0,) * 3)
-    for i in (0, 1, 2, 4, 5, 6):
-        assert on[i] == off[i]
+    assert on[2].attribute == on[6].attribute == "Total Magic Damage"
+    for i, base in want_base.items():
+        assert _close(on[i].base, base), (i, on[i].base)
+        assert _close(on[i].ap_pct, (want_ap[i],) * 3), (i, on[i].ap_pct)
+        assert off[i].base[0] == base[0] and off[i].base[2] != base[2]
 
 
-def test_qiyana_q_empowered_form_is_not_touched(
+def test_qiyana_q_empowered_form_corrected(
     snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
 ) -> None:
-    assert snap_off.get_ability("Qiyana", "Q", 1) == snap_on.get_ability("Qiyana", "Q", 1)
+    """RM-480 residual: Elemental Wrath (form 1), wiki-measured 2026-10-03."""
+    want = {
+        "Physical Damage": (80.0, 110.0, 140.0, 170.0, 200.0),
+        "Reduced Damage": (60.0, 82.5, 105.0, 127.5, 150.0),
+        "Increased Damage": (128.0, 176.0, 224.0, 272.0, 320.0),
+        "Subsequent Increased Damage": (108.0, 148.5, 189.0, 229.5, 270.0),
+    }
+    off = snap_off.get_ability("Qiyana", "Q", 1)
+    on = snap_on.get_ability("Qiyana", "Q", 1)
+    for attr, base in want.items():
+        assert _close(_block(on, attr).base, base), attr
+        assert not _close(_block(off, attr).base, base), attr
+        assert _block(on, attr).bonus_ad_pct == _block(off, attr).bonus_ad_pct
+
+
+def test_naafiri_r_ratio_and_packmate_corrected(snap_on: AbilitiesSnapshot) -> None:
+    """V26.15 (wiki 2026-10-03): 125/200/275 (+100% bonus AD); per packmate
+    12.5/20/27.5 (+10% bonus AD)."""
+    form = snap_on.get_ability("Naafiri", "R", 0)
+    blk = _block(form, "Physical Damage")
+    assert _close(blk.base, (125.0, 200.0, 275.0))
+    assert _close(blk.bonus_ad_pct, (100.0,) * 3)
+    pack = _block(form, "Physical Damage per Packmate")
+    assert _close(pack.base, (12.5, 20.0, 27.5))
+    assert _close(pack.bonus_ad_pct, (10.0,) * 3)
+
+
+def test_kennen_r_cooldown_is_flat_120_with_flag_on(
+    snap_off: AbilitiesSnapshot, snap_on: AbilitiesSnapshot
+) -> None:
+    """RM-480 residual: V26.04 "Cooldown increased to 120 seconds at all ranks
+    from 120 / 100 / 80" (wiki patch history, fetched 2026-10-03). The detector
+    row [120, 120] is TRUE, not the parse error LEDGER 1453 called it. A
+    FORM-level field, so the entry carries no block attribute."""
+    assert snap_off.get_ability("Kennen", "R", 0).cooldown == (120.0, 100.0, 80.0)
+    assert snap_on.get_ability("Kennen", "R", 0).cooldown == (120.0, 120.0, 120.0)
+
+
+def test_form_field_entry_shape_is_enforced() -> None:
+    with pytest.raises(ValueError):
+        # cooldown is form-level: a block attribute is meaningless there.
+        AbilityBaseOverride(attribute="Magic Damage", stale=(1.0,), corrected=(2.0,),
+                            source="x", note="x", field="cooldown")
+    with pytest.raises(ValueError):
+        # a block field needs a block attribute.
+        AbilityBaseOverride(attribute="", stale=(1.0,), corrected=(2.0,),
+                            source="x", note="x", field="base")
 
 
 def test_rm81_six_output_unchanged_by_the_ratio_lift(snap_on: AbilitiesSnapshot) -> None:
     """Every non-base field of the six original rows is untouched by the lift."""
     for cid, key, fi, attr, _stale, _corrected in _EXPECTED:
+        if cid == "Naafiri":
+            # RM-480 residual: V26.15 moved the ratio too (pinned in
+            # test_naafiri_r_ratio_and_packmate_corrected).
+            continue
         on = _block(snap_on.get_ability(cid, key, fi), attr)
         raw = AbilitiesSnapshot.load(data_root=_DATA_ROOT).get_ability(cid, key, fi)
         off = _block(raw, attr)
