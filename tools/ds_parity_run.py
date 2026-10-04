@@ -225,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.report)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(".tmp")
-    tmp.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    tmp.write_text(json.dumps(report, indent=2), encoding="utf-8", newline="\n")
     tmp.replace(out)
 
     print(f"report: {out}")

@@ -428,7 +428,7 @@ def main(argv: Optional[list] = None) -> int:
         out = Path(args.json_out)
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = out.with_suffix(out.suffix + ".tmp")
-        tmp.write_text(json.dumps(report, indent=1), encoding="utf-8")
+        tmp.write_text(json.dumps(report, indent=1), encoding="utf-8", newline="\n")
         tmp.replace(out)
         print(f"wrote {out}")
     return 0

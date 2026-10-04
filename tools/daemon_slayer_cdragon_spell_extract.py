@@ -587,6 +587,7 @@ def _atomic_write_json(path: Path, payload: Any) -> None:
     tmp.write_text(
         json.dumps(payload, ensure_ascii=True, indent=1, sort_keys=True),
         encoding="utf-8",
+        newline="\n",
     )
     os.replace(tmp, path)
 

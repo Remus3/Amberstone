@@ -171,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json:
         Path(args.json).write_text(
-            json.dumps(report, indent=2), encoding="utf-8"
+            json.dumps(report, indent=2), encoding="utf-8", newline="\n"
         )
         print(f"wrote {args.json}")
     return 0

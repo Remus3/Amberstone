@@ -47,7 +47,7 @@ def main() -> int:
             data = P.probe(ch)
             fp = outdir / (data["champion"] + ".json")
             tmp = fp.with_suffix(".tmp")
-            tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            tmp.write_text(json.dumps(data, indent=2), encoding="utf-8", newline="\n")
             tmp.replace(fp)
             ok += 1
         except Exception as exc:  # noqa: BLE001
