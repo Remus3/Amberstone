@@ -69,10 +69,16 @@ class TestUnifiedRcPagePrefix(unittest.TestCase):
         # delete filter still reclaims every RC-authored prefix. Item-210 fix:
         # never narrow this back to "RC: " only or the operator's 3-slot account
         # fills up and POST /lol-perks/v1/pages 4xx-fails the whole rune push.
+        # RM-297a: the filter is now the whole-prefix rule shared from
+        # lcu.lcu_rune_writer, not a 3-char stem (which deleted USER pages
+        # such as "RC Main"). It must still cover every RC-authored prefix.
+        from lcu.lcu_rune_writer import RC_OWNED_PAGE_PREFIXES
+        for literal in ("RC: ", "RC - ", "RC Experimental - "):
+            self.assertIn(literal, RC_OWNED_PAGE_PREFIXES,
+                          f"wipe filter dropped prefix {literal!r}")
         src = _read("tools/lcu_agent.py")
-        for literal in ('"RC "', '"RC:"', '"RC-"'):
-            self.assertIn(literal, src,
-                          f"wipe filter dropped prefix {literal}")
+        self.assertIn("is_rc_owned_page(pg)", src)
+        self.assertNotIn("nm[:3]", src)
 
     def test_lcu_client_is_frozen_holdout(self) -> None:
         # Documents the known, intentionally-skipped divergence so this guard

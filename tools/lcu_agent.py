@@ -62,6 +62,7 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
     _derive_search_state,
     shape_snapshot,
 )
+from lcu.lcu_rune_writer import is_rc_owned_page  # noqa: E402
 
 # RM-154. The RC-LCUAgent task runs this under pythonw.exe, which has NO
 # console: print() is discarded and stderr is None, so every line this module
@@ -620,15 +621,21 @@ def execute_command(cmd: dict) -> dict:
         #   - "RC: Auto"                         this agent's default
         # The lone divergent holdout is the FROZEN lcu/lcu_client.py
         # (_RC_PAGE_PREFIX = "RC - "), left as-is by OPEN1 and harmless
-        # precisely because this filter still reclaims it (its name starts
-        # "RC "). Keep the 3-prefix match - do NOT narrow it back to
-        # "RC: " only. tests/test_rc_page_name_prefix_unified.py guards it.
+        # precisely because this filter still reclaims it.
+        #
+        # RM-297a (2026-10-03): the old 3-char stem test (first three chars in
+        # {"RC ", "RC:", "RC-"}) also matched USER pages named "RC Main", "RC-smurf" or
+        # "RC:test" and DELETED them, and it dereferenced `pg.get` one line
+        # before the isinstance guard, so a non-dict row raised and killed the
+        # whole delete-plus-POST. Ownership is now the shared whole-prefix
+        # rule in lcu.lcu_rune_writer (RC_OWNED_PAGE_PREFIXES, which still
+        # includes the frozen client's "RC - "), checked type-first.
+        # tests/test_rc_page_name_prefix_unified.py + tests/
+        # test_lcu_agent_rune_page_ownership_rm297a.py guard it.
         pages, _ = lcu_request("GET", "/lol-perks/v1/pages")
         if isinstance(pages, list):
             for pg in pages:
-                nm = str(pg.get("name", ""))
-                if (isinstance(pg, dict) and pg.get("isDeletable")
-                        and nm[:3] in ("RC ", "RC:", "RC-")):
+                if is_rc_owned_page(pg):
                     pid = pg.get("id")
                     if pid:
                         lcu_request("DELETE", f"/lol-perks/v1/pages/{pid}")
