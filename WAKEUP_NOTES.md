@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-04d - last non-operator CI red cleared; Firecrawl dropped; gate fixes; inbox triaged
+
+- **Shipped (pushed):** `5a2feb7a7` arena lean-divergence 64 -> 65 re-pin, root cause RM-513 `bfefceee7` (LEDGER 1664); `2590a7fe0` Firecrawl out of 3 headless prompts per MAIN 0850 (LEDGER 1665); `329d81cb1` slot_bucket_audit OVER_STALE wording + stop_claim_gate false positives, verifier CONFIRMED (LEDGER 1666).
+- **Inbox (LEDGER 1667):** all MAIN notes SHA-256 MATCH; kit v4 already adopted; reply `2026-10-04-1532` reached 1/1 answering 0845/0850/0855/0912. Report `ops/loop/control/progress/inbox_triage_report.md`.
+- **CI:** only the 4 operator-left RM-172 subtests should remain red.
+- **Next:** MAIN 0830 awaits MAIN's ruling on a refreshed responder agreement; then the hand-off carry-forwards.
+- **Open gate gaps (filed):** "Merged to main." unflagged; "The agent committed X and pushed." gets no push flag.
+- **Do NOT redo:** arena 65 re-pin, Firecrawl removal, OVER_STALE wording, stop_claim_gate FP fixes, MAIN-note hash checks, the 0845/0850/0855/0912 replies. Leave slot `1.lock` alone (dead-holder, self-clears).
+
+---
+
 # 2026-10-04c - joint-round C4 slots.py adopted, SHARED_SHA256 re-pinned
 
 - **Shipped (pushed):** `9024fd2cd` C4 `ops/loop/slots.py` (LW `700cd64`) byte-copied, 11426 bytes, digest equal to LW; `test_slots_is_stale_arms_rm503` +2 C4 live-holder cases (LEDGER 1663). Operator approved in chat and told CS / SS directly; RC sent no note.
@@ -23,13 +34,3 @@
 - **CI 37209062693 on `67f94e8f6`:** 5 failed = 4 operator-left RM-172 + 1 pre-existing next_buy_lean_bucket arena count.
 - **Next:** next_buy_lean_bucket arena divergence count (only non-operator-held CI red), then hand-off carry-forwards.
 - **Do NOT redo:** rm415 fix, L-03, DS/RC restarts.
-
----
-
-# 2026-10-04a - /done wrap from a clean worktree; main CI red on 12 tests; DS :8860 stale
-
-- **Wrap shape:** main checkout is ~52 behind origin/main, holds ANOTHER session's uncommitted work (agents/_supervisor_ephemeral.py, agents/agent3_testing/suite/conftest.py, untracked test_agent6_failure_stub_l03.py) and unpushed `a6f3fa42a` (agent6 audit). Not touched. This wrap committed only WAKEUP_NOTES + RC-NEXT-SESSION.txt from a detached worktree off origin/main.
-- **CI (read off gh, run 37194003841 on `3c6e55324`): RED, 12 failed / 37925 passed.** 7 test_rm415_liveclient (Wave1 RM-308 commit `58a2d0dec`), 4 RM-172 seam characterization (operator said leave), 1 test_next_buy_lean_bucket arena (pre-existing). drain_waves_2_3.py failures are owned by the drain session.
-- **DS :8860 still serves 1.284.0 / 16.18.1** (read off /health); origin carries 1.285.0 / 16.19.1. Restart after the main checkout reaches origin.
-- **Next:** fix CI red (rm415 first), then DS restart + RC restart once the main checkout is fast-forwarded.
-- **Do NOT redo:** nothing shipped beyond this hand-off.
