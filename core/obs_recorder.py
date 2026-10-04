@@ -38,6 +38,20 @@ Rules from ADR-016, each enforced here:
   * Sidecar ``data/recordings/<matchId>.json`` (gitignored), atomic write.
   * The disk guard (``core/disk_guard.py``) runs as its own producer.
 
+Known limit (push-only LCU bus): ``core/lcu_events.py`` delivers gameflow
+CHANGES only; it never replays the current phase on connect. An RC that
+starts (or restarts) mid-game therefore never sees InProgress for that game
+and does not record it. Recording resumes with the next game's transition.
+
+Reconnect rule: RecordStateChanged events sent while the obs-websocket
+connection was down are lost, so after any reconnect during an RC-owned
+recording ownership is RE-VERIFIED before any StopRecord or chapter:
+GetRecordStatus must report outputActive, and its outputPath (when the server
+supplies one) must equal the token; when it does not, the recording's
+outputDuration must match the wall time since RC's own STARTED within
+``REVERIFY_TOLERANCE_S`` (an operator stop + restart resets the duration).
+Anything that cannot be confirmed is treated as NOT owned.
+
 Wiring: ``install_if_enabled()`` is called from the default-off optional-tap
 hook in ``core/liveclient_cache.py`` (non-frozen). With the flag off it reads
 the config once and returns False.
@@ -78,6 +92,12 @@ STARTED = "OBS_WEBSOCKET_OUTPUT_STARTED"
 STOPPED = "OBS_WEBSOCKET_OUTPUT_STOPPED"
 
 CHAPTER_MIN_WS = (5, 5, 0)
+
+# Our own choice: OBS reports outputDuration from its first encoded frame and
+# RC stamps STARTED when the event is read, so a few seconds of skew are
+# normal; 10 s still rejects an operator restart unless it landed within
+# 10 s of RC's own start (documented residual risk).
+REVERIFY_TOLERANCE_S = 10.0
 HYBRID_FORMATS = frozenset({"hybrid_mp4"})
 GAME_CAPTURE_KIND = "game_capture"
 
@@ -276,6 +296,7 @@ class _Game:
         self.death_count: Optional[int] = None
         self.tracker = AlignmentTracker(record_start_wall=attach_wall)
         self.last_status: Optional[dict] = None
+        self.reverify = False
         self.prev_duration: Optional[tuple[float, float]] = None
         self.stall_run = 0
         self.diag: dict = {
@@ -539,6 +560,12 @@ class ObsRecorder:
             if self._sess is None:
                 self._obs_fail += 1
                 return None
+            with self._lock:
+                g = self._game
+                if g is not None and g.owned and not g.pending_start:
+                    # events were lost while disconnected: ownership must be
+                    # re-proved before RC touches this recording again
+                    g.reverify = True
         d = await self._sess.request(rtype, data)
         if d is None:
             self._obs_fail += 1
@@ -546,6 +573,30 @@ class ObsRecorder:
             return None
         self._obs_fail = 0
         return d
+
+    async def _reverify(self, g: _Game) -> None:
+        """Re-prove ownership after a reconnect; unconfirmed = not owned."""
+        st = await self._req("GetRecordStatus")
+        sd = _rdata(st) if _ok(st) else {}
+        now = float(self._clock())
+        confirmed = False
+        if sd.get("outputActive") is True and g.token:
+            path = sd.get("outputPath")
+            if isinstance(path, str) and path:
+                confirmed = path == g.token
+            elif g.record_start_wall is not None:
+                try:
+                    dur = float(sd.get("outputDuration")) / 1000.0
+                    confirmed = abs(dur - (now - g.record_start_wall)) <= REVERIFY_TOLERANCE_S
+                except (TypeError, ValueError):
+                    confirmed = False
+        with self._lock:
+            g.reverify = False
+            if not confirmed and g.owned:
+                g.owned = False
+                g.diag["ownership_lost"] = "unconfirmed_after_reconnect"
+                _log.warning("OBS recorder: ownership not confirmed after reconnect; "
+                             "RC will not stop this recording")
 
     async def _pump(self, timeout_s: float = 0.05) -> None:
         if self._sess is not None and not await self._sess.pump(timeout_s):
@@ -763,6 +814,8 @@ class ObsRecorder:
     async def _finish(self, g: _Game, reason: str) -> None:
         g.diag["liveclient_transport_failures"] = self._lc_fail
         g.diag["obs_transport_failures"] = self._obs_fail
+        if g.owner == "rc" and g.owned and g.reverify:
+            await self._reverify(g)
         if g.owner == "rc" and g.owned and reason != "obs_transport_failures":
             g.stopping = True
             r = await self._req("StopRecord")
@@ -845,6 +898,8 @@ class ObsRecorder:
         await self._pump()
         if g.owner == "rc" and g.owned:
             await self._poll_status(g)
+            if g.reverify:
+                await self._reverify(g)
             await self._flush_chapters(g)
         reason = self._stop_reason(g)
         if reason:
