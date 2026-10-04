@@ -8,6 +8,7 @@ import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } fro
 import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
 // RM-612 (X-12): pure minimap logic (death windows, last-known + age halo).
 import { buildModel, stateAt, worldToCanvas, mapArtUrls, monogram, MAP_WORLD } from './replay_minimap.js';
+import { loadReviewPlayer } from './review_player.js';
 
 // -- Settings view (2026-04-26) -----------------------------------
 function _settingsRefresh() {
@@ -326,6 +327,9 @@ function _replayLoadMatch(matchId, rowEl) {
   // parallel with the per-frame snapshot fetch below. Both target
   // the same matchId so the ribbon + scrubber are coherent.
   try { loadReplayEvents(matchId); } catch (_) {}
+  // RM-641: local recording lane (hidden unless an RM-637 sidecar names a
+  // servable video). The team arrives with the match payload below.
+  try { loadReviewPlayer(matchId, null); } catch (_) {}
   const matchPromise = _replayIsMock()
     ? _replayMockLoad().then((m) => {
         if (!m || !Array.isArray(m.matches)) return null;
@@ -356,6 +360,11 @@ function _replayLoadMatch(matchId, rowEl) {
                 : "")
           : "";
         m.textContent = `${d.match_id} - ${_replayQueueLabel(d.queue_id)} - ${_replayDurStr(d.duration_s)} - patch ${d.patch || "?"}${v}`;
+      }
+      {
+        const me = (d.participants || []).find(p =>
+          p.champion_id === (d.tracked && d.tracked.champion_id));
+        try { loadReviewPlayer(matchId, me ? Number(me.team_id) : null); } catch (_) {}
       }
       _replayRenderSnapshot(0);
     })

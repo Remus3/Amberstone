@@ -1684,6 +1684,23 @@
                  class="replay-slider"
                  min="0" max="0" value="0" step="1"
                  disabled />
+          <!-- RM-641 (X-41, ADR-016): local recording of this match with a
+               marker lane (RM-637 sidecar bookmarks) and a PGR cost lane
+               (/api/post-game-wpa). Hidden unless a sidecar names a
+               servable video (dashboard/routes_recordings.py). Populated
+               by review_player.js; markers render once, then class-toggle. -->
+          <div class="replay-video-section" id="replay-video-section" tabindex="-1"
+               role="region" aria-label="Match recording" hidden>
+            <header class="replay-events-head">
+              <span class="replay-events-title">Recording</span>
+              <span class="replay-video-keys">[ ] marker - d / D death - Space play - Esc release</span>
+            </header>
+            <video class="replay-video" id="replay-video" controls preload="metadata" playsinline></video>
+            <div class="replay-video-lane" id="replay-video-lane" role="group"
+                 aria-label="Recording markers"></div>
+            <div class="replay-video-lane replay-video-lane-cost" id="replay-video-cost" role="group"
+                 aria-label="Win-chance cost moments" hidden></div>
+          </div>
           <!-- s220 PGR S5: Match-V5 timeline event ribbon (kills,
                objectives, turret plates). R30 page-6: hoisted ABOVE the
                scoreboard grid so the actionable event index is the hero,

@@ -1,0 +1,92 @@
+/* RM-641 (X-41, ADR-016): S5 Replay video lane.
+ *
+ * Recording player + marker lane (RM-637 sidecar bookmarks) + PGR cost
+ * lane. Markers are absolutely positioned by percent, rendered once per
+ * match by review_player.js and only class-toggled afterwards (.is-past).
+ * Existing tokens only (tokens.css / themes.css). Each marker kind carries
+ * an ASCII glyph so it never reads by hue alone. ASCII only.
+ *
+ * Marker width 24px equals CLUSTER_RADIUS_PX in review_player_model.js, so
+ * two clusters never overlap; height is the shared --hit-min.
+ */
+.replay-video-section {
+  padding: var(--panel-padding-comp);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm);
+  display: flex; flex-direction: column;
+  gap: var(--space-2);
+}
+.replay-video-section[hidden] { display: none; }
+.replay-video-section { flex-shrink: 0; }
+/* UI audit HIERARCHY fix: the Replay main pane (primitives.css) is a
+ * fixed-height flex column with overflow: hidden whose existing children
+ * (meta, slider, timeline <= 320px list, grid >= 360px) already fill a
+ * ~920px viewport. A visible recording would push the grid off the clipped
+ * bottom, so the pane scrolls ONLY while the lane is shown; without a
+ * recording the page is byte-for-byte the old layout. */
+.replay-main-pane:has(> .replay-video-section:not([hidden])) { overflow-y: auto; }
+.replay-video-section:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+
+.replay-video-keys {
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono, monospace);
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replay-video {
+  width: 100%;
+  max-height: 45vh;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.replay-video-lane {
+  position: relative;
+  height: var(--hit-min);
+  margin: 0 12px; /* half a marker, so a marker at 0% / 100% stays inside */
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.replay-video-lane[hidden] { display: none; }
+
+.replay-video-marker {
+  position: absolute;
+  top: 0;
+  width: 24px;
+  height: 100%;
+  margin-left: -12px;
+  padding: 0;
+  border: 0;
+  border-left: 2px solid var(--text-dim);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.replay-video-marker::before { content: "."; font-weight: 700; }
+.replay-video-marker[data-icon="death"]     { border-left-color: var(--bad); }
+.replay-video-marker[data-icon="death"]::before     { content: "x"; color: var(--bad); }
+.replay-video-marker[data-icon="objective"] { border-left-color: var(--warn); }
+.replay-video-marker[data-icon="objective"]::before { content: "*"; color: var(--warn); }
+.replay-video-marker[data-icon="kill"]      { border-left-color: var(--good); }
+.replay-video-marker[data-icon="kill"]::before      { content: "+"; color: var(--good); }
+.replay-video-marker[data-icon="structure"]::before { content: "#"; }
+.replay-video-marker[data-icon="cost"]      { border-left-color: var(--bad); }
+.replay-video-marker[data-icon="cost"]::before      { content: "v"; color: var(--bad); }
+.replay-video-marker.is-past { opacity: 0.55; }
+.replay-video-marker:hover { background: var(--surface-alt); }
+.replay-video-marker:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+  opacity: 1;
+}
