@@ -131,9 +131,26 @@ CLAIM_CITATION = re.compile(
 # lane 8). The negation must GOVERN the claim word, so it is looked for in the
 # 40 chars immediately BEFORE the match and not merely somewhere in the
 # sentence: "I committed the fix, but not the docs" still flags.
+# The contracted forms ("isn't pushed", "wasn't pushed", "haven't pushed")
+# were missed until 2026-10-04: only the spelled-out "not" was in the set, so
+# "The branch isn't pushed" flagged while "The branch is not pushed" did not.
+# Same 40-char governing window, so a TRAILING contraction ("pushed, but it
+# isn't merged") still flags. The apostrophe class admits U+2019, escaped so
+# this file stays 7-bit ASCII.
 CLAIM_NEGATION = re.compile(
-    r"\b(?:nothing|not|no|never|none|neither|without)\b", re.I)
+    r"\b(?:nothing|not|no|never|none|neither|without|cannot)\b"
+    r"|\b\w+n['\u2019]t\b", re.I)
 CLAIM_CI = re.compile(r"\bCI\b[^.\n]{0,30}?\b(?:green|passing|passed|clean)\b", re.I)
+# A CI claim in the FUTURE or as an INTENT ("I'll confirm CI is green", "will
+# check CI passing", "need to verify CI is green") reports a plan, not CI state.
+# Measured flagging 2026-10-04. The marker must stand in the 40 chars BEFORE
+# "CI" - the same governing-window rule as CLAIM_NEGATION - so "CI is green;
+# I'll merge next" and "CI passed, so I will merge" still flag.
+CLAIM_CI_FUTURE = re.compile(
+    r"\b(?:will|shall|going\s+to|about\s+to|plan(?:ning)?\s+to|intend\s+to)\b"
+    r"|\b\w+['\u2019]ll\b"
+    r"|\b(?:need|needs|have|has|want|wants|yet)\s+to\s+"
+    r"(?:check|confirm|verify|probe|watch|see|re-?check)\b", re.I)
 CLAIM_COMMIT = re.compile(r"\bcommitted\b|\bcommit(?:ted)?\s+(?:and pushed|is in|landed)\b", re.I)
 CLAIM_PUSH = re.compile(r"\bpushed\b", re.I)
 # FOURTH shape in the same family, measured 2026-09-20: ATTRIBUTED speech.
@@ -261,10 +278,35 @@ CLAIM_COMMIT_DETERMINER_LEAD = re.compile(
     r"\b(?:the|a|an|this|that|these|those|its|their|his|her)\s+$", re.I)
 CLAIM_COMMIT_ADJECTIVE_TAIL = re.compile(
     r"\s+(?!(?:and|or|to|by|in|on|at|as)\b)[A-Za-z]", re.I)
+# 2026-10-04 widening, each shape measured flagging:
+#   - an agent noun carrying an IDENTIFIER ("Agent-a3", "Slice 2", "Agent B");
+#   - a POSSESSIVE subject ("The slice's commit landed in its worktree");
+#   - a sibling tree's CHANNEL CODE as subject ("LW committed 700cd64"). Codes
+#     are matched by SHAPE (2-4 uppercase letters, case-sensitive), never by a
+#     list of sibling names - those must never appear in a tracked file. RC is
+#     THIS tree's own code and is excluded, as are acronyms that are not actors;
+#   - a PASSIVE third-party agent ("committed by the agent", "by LW").
+# Every one stays vetoed by a first-person git action anywhere on the line.
+_THIRD_PARTY_AUX = r"\s+(?:(?:has|had|have|already|just|then|also|finally)\s+)*$"
+_AGENT_NOUN = r"(?:agents?|subagents?|slices?|workers?|verifier|lanes?|sibling)"
+_AGENT_ID = r"(?:[-_]\w{1,16}|\s+(?:[A-Z]|\d+|[a-z]*\d\w*))?"
 CLAIM_COMMIT_THIRD_PARTY_LEAD = re.compile(
-    r"\b(?:agents?|subagents?|slices?|workers?|verifier|lanes?|"
-    r"sibling|they|he|she)\s+(?:(?:has|had|have|already|just|then|also|"
-    r"finally)\s+)*$", re.I)
+    r"\b(?:" + _AGENT_NOUN + _AGENT_ID + r"|they|he|she)(?:'s|s')?"
+    + _THIRD_PARTY_AUX, re.I)
+# Shouted prose is not a channel code: "THE COMMITTED FIX IS IN MAIN" must keep
+# flagging, so English function words in capitals are refused too.
+_NOT_A_CHANNEL_CODE = (r"(?:RC|CI|PR|HEAD|WIP|TODO|API|URL|OK|LF|CRLF|JSON|UI|DS|"
+                       r"THE|THIS|THAT|ITS|AND|BUT|ALL|ANY|OUR|WE|US|IT|HE|SHE|"
+                       r"YOU|NOT|NOW|THEN|ALSO|JUST|HAS|HAD|HAVE|WAS|IS|ARE|"
+                       r"WERE|BEEN|SO|AS|ONE|EACH|BOTH|SOME|THEY|THEM)")
+CLAIM_COMMIT_CHANNEL_CODE_LEAD = re.compile(
+    r"(?<![\w-])(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}(?:'s)?"
+    + _THIRD_PARTY_AUX)
+CLAIM_COMMIT_THIRD_PARTY_BY = re.compile(
+    r"\s+by\s+(?:(?:the|a|an|its|each|that|this)\s+)?(?:\w+\s+)?"
+    r"(?:" + _AGENT_NOUN + r")\b", re.I)
+CLAIM_COMMIT_CHANNEL_CODE_BY = re.compile(
+    r"\s+by\s+(?!" + _NOT_A_CHANNEL_CODE + r"\b)[A-Z]{2,4}\b")
 CLAIM_FULL_SUITE = re.compile(r"\b(?:full suite|all tests|entire suite|whole suite)\b", re.I)
 
 # Evidence patterns.
@@ -705,7 +747,10 @@ def audit(ev):
                     and CLAIM_COMMIT_DETERMINER_LEAD.search(lead)
                     and CLAIM_COMMIT_ADJECTIVE_TAIL.match(tail)):
                 continue
-            if CLAIM_COMMIT_THIRD_PARTY_LEAD.search(lead):
+            if (CLAIM_COMMIT_THIRD_PARTY_LEAD.search(lead)
+                    or CLAIM_COMMIT_CHANNEL_CODE_LEAD.search(lead)
+                    or CLAIM_COMMIT_THIRD_PARTY_BY.match(tail)
+                    or CLAIM_COMMIT_CHANNEL_CODE_BY.match(tail)):
                 continue
             return True
         return False
@@ -794,7 +839,10 @@ def audit(ev):
                 continue
             if not _same_file(path, ev["edited"]):
                 flag("file_claim_without_edit", sentence, claimed=path)    # 3
-        if CLAIM_CI.search(sentence) and not probed_ci:
+        ci_match = CLAIM_CI.search(sentence)
+        if (ci_match and not probed_ci
+                and not CLAIM_CI_FUTURE.search(
+                    sentence[max(0, ci_match.start() - 40):ci_match.start()])):
             flag("ci_claim_without_probe", sentence)                       # 4
         if (CLAIM_COMMIT.search(sentence) and not did_commit
                 and not _negated(sentence, CLAIM_COMMIT)
