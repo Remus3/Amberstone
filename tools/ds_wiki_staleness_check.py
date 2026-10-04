@@ -1081,6 +1081,16 @@ def _override_lookup(patch: str):
         return None
 
     def lookup(champ: str, slot: str, attr: str, key: str):
+        if key == "cooldown":
+            # RM-480 residual: a FORM-level override (empty attribute).
+            f_on = (on.champions.get(champ) or {}).get(slot) or ()
+            f_off = (off.champions.get(champ) or {}).get(slot) or ()
+            if not f_on or not f_off:
+                return None
+            c_on, c_off = f_on[0].cooldown, f_off[0].cooldown
+            if not c_on or c_on == c_off:
+                return None
+            return (float(c_on[0]), float(c_on[-1]))
         b_on = _first(on, champ, slot, attr)
         b_off = _first(off, champ, slot, attr)
         if b_on is None or b_off is None:
@@ -1116,6 +1126,8 @@ def annotate_override_resolution(report: dict[str, Any], lookup) -> None:
             attr, key = field_[len("base:"):], "base"
         elif field_.startswith("ratio:"):
             _, attr, key = field_.split(":", 2)
+        elif field_ == "cooldown":
+            attr, key = "", "cooldown"
         else:
             continue
         eff = lookup(row["champion"], row["ability"], attr, key) if lookup else None
