@@ -54,6 +54,16 @@ def test_headless_prompts_do_not_name_firecrawl():
     assert not hits, f"headless prompt names the disabled firecrawl plugin: {hits}"
 
 
+def test_atlas_does_not_list_firecrawl_as_a_tool():
+    # atlas.html is the descriptive repo map; after MAIN 0850 it must not
+    # present the disabled firecrawl plugin as an available MCP node.
+    atlas = _REPO / "atlas.html"
+    assert atlas.is_file(), "atlas.html missing - update this guard"
+    hits = [n for n, line in enumerate(atlas.read_text(encoding="utf-8").splitlines(), start=1)
+            if _BANNED.search(line)]
+    assert not hits, f"atlas.html names the disabled firecrawl plugin at lines {hits}"
+
+
 def test_pattern_catches_a_planted_mention():
     # Positive control: the banned pattern must match the forms that shipped.
     for sample in ("Firecrawl", "`firecrawl-scrape`", "FIRECRAWL"):

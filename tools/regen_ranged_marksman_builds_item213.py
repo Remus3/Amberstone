@@ -241,9 +241,8 @@ def main(argv: list[str]) -> int:
     backup = _LOADOUTS.with_suffix(f".json.bak-item213-{ts}")
     backup.write_bytes(_LOADOUTS.read_bytes())
     tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_text(
-        json.dumps(data, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
+    tmp.write_bytes(
+        (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8"),
     )
     tmp.replace(_LOADOUTS)
     print(f"wrote {_LOADOUTS} (backup {backup.name})")

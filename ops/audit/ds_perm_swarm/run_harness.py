@@ -34,7 +34,7 @@ _DEFAULT_OUT = _ROOT / "ops" / "audit" / "ds_perm_swarm" / "report"
 def _atomic_write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
+    tmp.write_bytes(text.encode("utf-8"))
     os.replace(tmp, path)
 
 
