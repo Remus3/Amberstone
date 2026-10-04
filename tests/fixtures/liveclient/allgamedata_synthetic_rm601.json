@@ -1,0 +1,86 @@
+{
+  "_comment": "RM-601 SYNTHETIC Live Client allgamedata fixture. Hand-written, name-scrubbed (every player identity is SyntheticN#TST); it is NOT a capture. Shape follows the documented :2999 allgamedata envelope. Stolen is deliberately the STRING form the wire uses.",
+  "activePlayer": {
+    "summonerName": "Synthetic1#TST",
+    "riotId": "Synthetic1#TST",
+    "riotIdGameName": "Synthetic1",
+    "riotIdTagLine": "TST",
+    "level": 7,
+    "currentGold": 850.0,
+    "championStats": {
+      "currentHealth": 900.0,
+      "maxHealth": 1200.0,
+      "resourceValue": 300.0,
+      "resourceMax": 400.0
+    }
+  },
+  "allPlayers": [
+    {
+      "championName": "Ashe", "rawChampionName": "game_character_displayname_Ashe",
+      "summonerName": "Synthetic1#TST", "riotId": "Synthetic1#TST",
+      "riotIdGameName": "Synthetic1", "riotIdTagLine": "TST",
+      "team": "ORDER", "level": 7, "isDead": false, "respawnTimer": 0.0,
+      "position": "BOTTOM",
+      "items": [{"itemID": 1055, "displayName": "Doran's Blade", "slot": 0, "count": 1}],
+      "scores": {"kills": 1, "deaths": 0, "assists": 1, "creepScore": 60, "wardScore": 3.0}
+    },
+    {
+      "championName": "Leona", "rawChampionName": "game_character_displayname_Leona",
+      "summonerName": "Synthetic2#TST", "riotId": "Synthetic2#TST",
+      "riotIdGameName": "Synthetic2", "riotIdTagLine": "TST",
+      "team": "ORDER", "level": 6, "isDead": false, "respawnTimer": 0.0,
+      "position": "UTILITY",
+      "items": [],
+      "scores": {"kills": 0, "deaths": 0, "assists": 2, "creepScore": 10, "wardScore": 6.0}
+    },
+    {
+      "championName": "Zed", "rawChampionName": "game_character_displayname_Zed",
+      "summonerName": "Synthetic3#TST", "riotId": "Synthetic3#TST",
+      "riotIdGameName": "Synthetic3", "riotIdTagLine": "TST",
+      "team": "CHAOS", "level": 7, "isDead": false, "respawnTimer": 0.0,
+      "position": "JUNGLE",
+      "items": [],
+      "scores": {"kills": 0, "deaths": 1, "assists": 0, "creepScore": 55, "wardScore": 2.0}
+    },
+    {
+      "championName": "Lux", "rawChampionName": "game_character_displayname_Lux",
+      "summonerName": "Synthetic4#TST", "riotId": "Synthetic4#TST",
+      "riotIdGameName": "Synthetic4", "riotIdTagLine": "TST",
+      "team": "CHAOS", "level": 6, "isDead": false, "respawnTimer": 0.0,
+      "position": "MIDDLE",
+      "items": [],
+      "scores": {"kills": 0, "deaths": 0, "assists": 0, "creepScore": 50, "wardScore": 1.0}
+    }
+  ],
+  "events": {
+    "Events": [
+      {"EventID": 0, "EventName": "GameStart", "EventTime": 0.05},
+      {"EventID": 1, "EventName": "MinionsSpawning", "EventTime": 65.0},
+      {"EventID": 2, "EventName": "FirstBlood", "EventTime": 200.0, "Recipient": "Synthetic1"},
+      {"EventID": 3, "EventName": "ChampionKill", "EventTime": 200.0,
+       "KillerName": "Synthetic1", "VictimName": "Synthetic3", "Assisters": ["Synthetic2"]},
+      {"EventID": 4, "EventName": "Multikill", "EventTime": 201.0,
+       "KillerName": "Synthetic1", "KillStreak": 2},
+      {"EventID": 5, "EventName": "DragonKill", "EventTime": 330.0, "DragonType": "Fire",
+       "Stolen": "False", "KillerName": "Zed", "Assisters": []},
+      {"EventID": 6, "EventName": "HordeKill", "EventTime": 488.0,
+       "Stolen": "False", "KillerName": "Ashe", "Assisters": ["Leona"]},
+      {"EventID": 7, "EventName": "HordeKill", "EventTime": 492.0,
+       "Stolen": "False", "KillerName": "Ashe", "Assisters": ["Leona"]},
+      {"EventID": 8, "EventName": "HordeKill", "EventTime": 497.0,
+       "Stolen": "True", "KillerName": "Zed", "Assisters": []},
+      {"EventID": 9, "EventName": "TurretKilled", "EventTime": 505.0,
+       "TurretKilled": "Turret_T2_L_03_A", "KillerName": "Ashe", "Assisters": []},
+      {"EventID": 10, "EventName": "FirstBrick", "EventTime": 505.0, "KillerName": "Ashe"},
+      {"EventID": 11, "EventName": "Ace", "EventTime": 510.0,
+       "Acer": "Synthetic1", "AcingTeam": "ORDER"}
+    ]
+  },
+  "gameData": {
+    "gameMode": "CLASSIC",
+    "gameTime": 510.0,
+    "mapName": "Map11",
+    "mapNumber": 11,
+    "mapTerrain": "Default"
+  }
+}

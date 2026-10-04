@@ -829,6 +829,54 @@ def epic_buff_callouts(objective_events: object, game_time_s: float) -> list[dic
     return out
 
 
+# RM-601 (directive X-01, external reference E): voidgrub takes. The Live Client
+# emits one HordeKill per grub; dashboard/_liveclient.py surfaces each as an
+# objective_events row named "voidgrub" carrying a ``stolen`` bool. The row
+# shows for this many seconds after the latest take. 30s is an RC display
+# choice (one glance after the camp clears), NOT a measured game constant.
+GRUB_CALLOUT_WINDOW_S = 30.0
+
+
+def voidgrub_callout(objective_events: object,
+                     game_time_s: float) -> Optional[dict]:
+    """Active ``voidgrub`` row after a recent grub take, else None.
+
+    The line carries the running grub count per side (``unknown`` killers count
+    toward the total only) and leads with ``STOLEN`` when any take inside the
+    window was a steal; the row also carries ``stolen`` as a bool flag.
+    Fail-soft: non-list / bad entries / non-finite times -> None.
+    """
+    if not isinstance(objective_events, list):
+        return None
+    gt = _finite(game_time_s)
+    if gt is None:
+        return None
+    takes: list[tuple[float, str, bool]] = []
+    for ev in objective_events:
+        if not isinstance(ev, dict) or ev.get("name") != "voidgrub":
+            continue
+        t = _finite(ev.get("down_at_s"))
+        if t is None or t > gt:
+            continue
+        takes.append((t, ev.get("killer_team"), ev.get("stolen") is True))
+    if not takes:
+        return None
+    last = max(t for t, _, _ in takes)
+    if gt - last > GRUB_CALLOUT_WINDOW_S:
+        return None
+    ally = sum(1 for _, side, _ in takes if side == "ally")
+    enemy = sum(1 for _, side, _ in takes if side == "enemy")
+    stolen = any(s for t, _, s in takes if gt - t <= GRUB_CALLOUT_WINDOW_S)
+    if ally or enemy:
+        line = f"Voidgrubs: ally {ally} - enemy {enemy}"
+    else:
+        line = f"Voidgrubs taken: {len(takes)}"
+    if stolen:
+        line = "STOLEN - " + line
+    return {"tag": "voidgrub", "line": line, "eta_s": round(last - gt, 1),
+            "kind": "objective", "stolen": stolen}
+
+
 # A team secures Dragon Soul on its 4th elemental drake, so at EXACTLY 3 the
 # next drake IS the soul drake - the single glanceable "force or deny"
 # inflection. Elder dragons spawn only AFTER soul and never count toward it.
@@ -1076,7 +1124,9 @@ def next_callouts(
             instant siege callout.
         objective_events: list of ``{name, killer_team, down_at_s}`` Baron/Elder
             kill events (SR only). Each live epic buff yields a sided expiry
-            countdown (see epic_buff_callouts).
+            countdown (see epic_buff_callouts). RM-601: ``voidgrub`` rows
+            (HordeKill, with a ``stolen`` bool) yield one recent-take row
+            (see voidgrub_callout).
         turret_events: list of ``{down_at_s, name}`` TurretKilled events. Feeds
             the instant siege callout only (SR + ARAM).
         minion_events: list of ``{at_s}`` MinionsSpawning events, the anchor
@@ -1123,6 +1173,10 @@ def next_callouts(
         callouts.extend(inhibitor_callouts(inhib_events, gt))
         # Epic-buff (Baron/Elder) expiry countdowns - SR-only neutral objectives.
         callouts.extend(epic_buff_callouts(objective_events, gt))
+        # RM-601: recent voidgrub take (HordeKill), with its steal flag.
+        grub = voidgrub_callout(objective_events, gt)
+        if grub is not None:
+            callouts.append(grub)
         # RM-124 deterministic wave / cannon clock. SR-only, and additionally
         # gated OFF by default (enable_wave) until the provisional cadence table
         # is validated against one real game - a do-not-flip-blind live number.
