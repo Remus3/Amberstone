@@ -43,8 +43,14 @@ class _TmpTreeCase(unittest.TestCase):
         for d in (self.outside, self.project, self.staging, self.runtime):
             d.mkdir(parents=True, exist_ok=True)
         self.request_path = base / "req.json"
+        # RM-160: requests are HMAC-signed. The key lives in the temp tree and
+        # the module default is pointed at it for the duration of the test.
+        self.key_path = D.ensure_key(base / "deploy_request.key")
+        self._saved_key_path = D.DEFAULT_KEY_PATH
+        D.DEFAULT_KEY_PATH = self.key_path
 
     def tearDown(self) -> None:
+        D.DEFAULT_KEY_PATH = self._saved_key_path
         self._tmp.cleanup()
 
     def _write_request(self, req: dict) -> Path:
@@ -53,6 +59,7 @@ class _TmpTreeCase(unittest.TestCase):
         req.setdefault("runtime_dir", str(self.runtime))
         req.setdefault("health_timeout_seconds", 0.05)
         req.setdefault("command_timeout_seconds", 0.05)
+        req = D.sign_request(req, self.key_path)
         self.request_path.write_text(json.dumps(req), encoding="utf-8")
         return self.request_path
 
@@ -542,7 +549,8 @@ class RequestValidationTests(_TmpTreeCase):
 
     def test_missing_project_root_is_reported_not_raised(self) -> None:
         self.request_path.write_text(
-            json.dumps({"request_id": "v3", "files": []}), encoding="utf-8")
+            json.dumps(D.sign_request({"request_id": "v3", "files": []},
+                                      self.key_path)), encoding="utf-8")
         result = D.do_deploy(self.request_path)
         self.assertFalse(result["ok"])
         self.assertEqual(result["phase"], "validate")
@@ -552,6 +560,86 @@ class RequestValidationTests(_TmpTreeCase):
         result = D.do_deploy(req)
         self.assertEqual(result["request_id"], "v4")
         self.assertIn("handled_at", result)
+
+
+class RequestAuthTests(_TmpTreeCase):
+    """RM-160: who may ENQUEUE. An unsigned request is rejected at a new
+    `auth` phase, before the containment pass touches any path."""
+
+    def _victim(self) -> Path:
+        victim = self.project / "core" / "victim.py"
+        victim.parent.mkdir(parents=True, exist_ok=True)
+        victim.write_text("ORIGINAL = 1\n", encoding="utf-8")
+        self._stage("victim.py", "PWNED = 1\n")
+        return victim
+
+    def _raw(self, req: dict) -> Path:
+        req.setdefault("project_root", str(self.project))
+        req.setdefault("staging_root", str(self.staging))
+        req.setdefault("runtime_dir", str(self.runtime))
+        self.request_path.write_text(json.dumps(req), encoding="utf-8")
+        return self.request_path
+
+    def test_unsigned_request_is_rejected_at_auth_and_writes_nothing(self) -> None:
+        victim = self._victim()
+        result = D.do_deploy(self._raw({
+            "request_id": "a1",
+            "files": [{"live": "core/victim.py", "staged": "victim.py"}]}))
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("unsigned", result["error"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_tampered_request_is_rejected(self) -> None:
+        victim = self._victim()
+        signed = D.sign_request({
+            "request_id": "a2", "project_root": str(self.project),
+            "staging_root": str(self.staging), "runtime_dir": str(self.runtime),
+            "files": [{"live": "core/other.py", "staged": "victim.py"}]},
+            self.key_path)
+        signed["files"][0]["live"] = "core/victim.py"  # retarget after signing
+        self.request_path.write_text(json.dumps(signed), encoding="utf-8")
+        result = D.do_deploy(self.request_path)
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("does not verify", result["error"])
+        self.assertEqual(victim.read_text(encoding="utf-8"), "ORIGINAL = 1\n")
+
+    def test_signature_from_another_key_is_rejected(self) -> None:
+        other = D.ensure_key(Path(self._tmp.name) / "other.key")
+        req = D.sign_request({"request_id": "a3", "files": []}, other)
+        self.request_path.write_text(json.dumps(req), encoding="utf-8")
+        self.assertEqual(D.do_deploy(self.request_path)["phase"], "auth")
+
+    def test_missing_key_fails_closed(self) -> None:
+        req = self._write_request({"request_id": "a4", "files": []})
+        result = D.do_deploy(req, key_path=Path(self._tmp.name) / "absent.key")
+        self.assertEqual(result["phase"], "auth")
+        self.assertIn("fail closed", result["error"])
+
+    def test_signed_request_passes_auth_and_reaches_validate(self) -> None:
+        req = self._write_request({"request_id": "a5", "files": []})
+        result = D.do_deploy(req)
+        self.assertEqual(result["phase"], "validate")
+
+    def test_request_cannot_name_its_own_key(self) -> None:
+        """A `key_path`-like field in the request is ignored: the key
+        location is fixed by the worker, never taken from the request."""
+        own = D.ensure_key(Path(self._tmp.name) / "attacker.key")
+        req = D.sign_request({"request_id": "a6", "files": [],
+                              "key_path": str(own), "key_file": str(own)}, own)
+        self.request_path.write_text(json.dumps(req), encoding="utf-8")
+        self.assertEqual(D.do_deploy(self.request_path)["phase"], "auth")
+
+    def test_error_never_carries_key_material(self) -> None:
+        key = self.key_path.read_text(encoding="ascii").strip()
+        result = D.do_deploy(self._raw({"request_id": "a7", "files": [],
+                                        "signature": "00" * 32}))
+        self.assertNotIn(key, json.dumps(result))
+
+    def test_ensure_key_never_overwrites(self) -> None:
+        before = self.key_path.read_bytes()
+        D.ensure_key(self.key_path)
+        self.assertEqual(self.key_path.read_bytes(), before)
 
 
 if __name__ == "__main__":

@@ -37,8 +37,11 @@ the project, where the dashboard static route would then serve it.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 import json
 import os
+import secrets
 import py_compile
 import shutil
 import time
@@ -61,6 +64,81 @@ DEFAULT_EXCLUDED_NAMES = ("API-Key-Claude.txt",)
 # it: this module is launched by absolute path as a SCRIPT, so sys.path[0] is
 # `ops/` and the project root is not importable here.
 _REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
+
+
+# RM-160. Who may ENQUEUE. Path containment bounds WHERE a request may write,
+# but anything able to drop one file into `deploy_requests/` could still
+# replace any file under project_root and trigger a restart - and lanes run
+# headless with bypassPermissions, exactly where a stray write is unattended.
+# An ACL cannot separate the writer from the supervisor (both run as the same
+# Administrator account on Legion), so the request carries an HMAC-SHA256
+# `signature` over its canonical JSON, keyed by a per-machine secret that is
+# never committed (`ops/runtime/` is gitignored). The key LOCATION is fixed
+# here and never read from the request: a request that could name its own
+# key file could sign itself. No key provisioned = every request refused
+# (fail closed). Producers sign with `sign_request` / `--sign`.
+DEFAULT_KEY_PATH = Path(__file__).resolve().parent / "runtime" / "deploy_request.key"
+SIGNATURE_FIELD = "signature"
+
+
+class DeployAuthError(ValueError):
+    """The request is unsigned, mis-signed, or no deploy key exists."""
+
+
+def _canonical(req: Dict[str, Any]) -> bytes:
+    body = {k: v for k, v in req.items() if k != SIGNATURE_FIELD}
+    return json.dumps(body, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=True).encode("ascii")
+
+
+def _read_key(key_path: Path) -> bytes:
+    try:
+        key = key_path.read_text(encoding="ascii").strip()
+    except FileNotFoundError:
+        raise DeployAuthError(
+            f"no deploy key provisioned at {key_path.name} - refusing every "
+            "request (fail closed); run with --init-key to create one") from None
+    except (OSError, UnicodeDecodeError) as exc:
+        raise DeployAuthError(f"deploy key unreadable: {type(exc).__name__}") from None
+    if len(key) < 32:
+        raise DeployAuthError("deploy key too short (need >= 32 hex chars)")
+    return key.encode("ascii")
+
+
+def ensure_key(key_path: Path = DEFAULT_KEY_PATH) -> Path:
+    """Create the per-machine deploy key if absent. Never overwrites one."""
+    key_path = Path(key_path)
+    if key_path.exists():
+        return key_path
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = key_path.with_name(key_path.name + f".{uuid.uuid4().hex}.tmp")
+    tmp.write_text(secrets.token_hex(32) + "\n", encoding="ascii")
+    try:
+        os.link(tmp, key_path)  # fails if another producer won the race
+    except FileExistsError:
+        pass
+    finally:
+        tmp.unlink(missing_ok=True)
+    return key_path
+
+
+def sign_request(req: Dict[str, Any], key_path: Path = DEFAULT_KEY_PATH) -> Dict[str, Any]:
+    """Return a copy of `req` carrying a valid `signature`."""
+    key = _read_key(Path(key_path))
+    out = {k: v for k, v in req.items() if k != SIGNATURE_FIELD}
+    out[SIGNATURE_FIELD] = hmac.new(key, _canonical(out), hashlib.sha256).hexdigest()
+    return out
+
+
+def verify_request(req: Dict[str, Any], key_path: Path = DEFAULT_KEY_PATH) -> None:
+    """Raise DeployAuthError unless `req` carries a valid signature."""
+    sig = req.get(SIGNATURE_FIELD)
+    if not isinstance(sig, str) or not sig:
+        raise DeployAuthError("request is unsigned")
+    key = _read_key(Path(key_path))
+    want = hmac.new(key, _canonical(req), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(want, sig.strip().lower()):
+        raise DeployAuthError("request signature does not verify")
 
 
 class DeployPathError(ValueError):
@@ -391,7 +469,8 @@ def _public(entry: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in entry.items() if not k.startswith("_")}
 
 
-def do_deploy(request_path: Path) -> Dict[str, Any]:
+def do_deploy(request_path: Path,
+              key_path: Optional[Path] = None) -> Dict[str, Any]:
     request_path = Path(request_path)
     request_id = request_path.stem
     try:
@@ -399,6 +478,15 @@ def do_deploy(request_path: Path) -> Dict[str, Any]:
         if not isinstance(req, dict):
             raise ValueError(
                 f"request must be a JSON object, got {type(req).__name__}")
+    except (OSError, JSONDecodeError, TypeError, ValueError) as exc:
+        return _fail(request_id, "validate",
+                     error=f"{type(exc).__name__}: {exc}")
+    # RM-160: authenticate BEFORE the containment pass reads a single path.
+    try:
+        verify_request(req, Path(key_path) if key_path else DEFAULT_KEY_PATH)
+    except DeployAuthError as exc:
+        return _fail(request_id, "auth", error=f"DeployAuthError: {exc}")
+    try:
         request_id = str(req.get("request_id") or request_path.stem)
         project_root = Path(req["project_root"]).resolve()
         staging_root = Path(req["staging_root"]).resolve()
@@ -563,11 +651,27 @@ def _default_result_path(request_path: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--request", required=True,
+    parser.add_argument("--request", required=False,
                         help="Path to deploy request JSON file.")
     parser.add_argument("--result", required=False,
                         help="Optional result JSON path.")
+    parser.add_argument("--init-key", action="store_true",
+                        help="Create the per-machine deploy key if absent (RM-160).")
+    parser.add_argument("--sign", metavar="REQUEST",
+                        help="Sign REQUEST in place with the deploy key (RM-160).")
     args = parser.parse_args()
+    if args.init_key:
+        ensure_key()
+        print("deploy key present")
+        return 0
+    if args.sign:
+        target = Path(args.sign).resolve()
+        signed = sign_request(json.loads(target.read_text(encoding="utf-8-sig")))
+        atomic_write_json(target, signed)
+        print(f"signed {target.name}")
+        return 0
+    if not args.request:
+        parser.error("--request is required")
 
     request_path = Path(args.request).resolve()
     result = do_deploy(request_path)
