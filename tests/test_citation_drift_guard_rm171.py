@@ -842,13 +842,17 @@ class CitationAuditMechanics(unittest.TestCase):
         # non-empty, and that it is a bounded slice rather than the tree.
         docs = [p for p in ca.tracked_files(REPO_ROOT) if p.endswith(".md")]
         self.assertGreater(len(docs), 100, "tracked-doc enumeration collapsed")
+        # RM-496: read the REAL exclusion (`ca._HISTORY_PREFIXES` through
+        # `ca.scope_of`) rather than a retyped copy of the prefix list - a
+        # copy kept this test green with the real prefixes emptied.
+        artifact_prefixes = tuple(
+            p for p in ca._HISTORY_PREFIXES if p != "docs/_archive/")
+        self.assertTrue(artifact_prefixes, "artifact prefixes emptied")
         excluded = [
             d
             for d in docs
-            if d.startswith("docs/_rescore/")
-            or d.startswith("docs/_overlap/")
-            or d.startswith("docs/_rsc_score/")
-            or d.startswith("docs/_scratch_")
+            if d.startswith(artifact_prefixes)
+            and ca.scope_of(d) == ca.HISTORY
         ]
         self.assertGreater(len(excluded), 0, "artifact exclusion matches nothing")
         guarded = [d for d in docs if ca.scope_of(d) == ca.GUARDED]

@@ -190,6 +190,12 @@ def _mountless(root: Path) -> dict[str, str]:
     }
 
 
+def _orphan_labels(root: Path) -> list[str]:
+    """VIEW_LABELS keys that name no view in VIEW_IDS (RM-496: one shared
+    checker, so the guard and its positive control cannot drift apart)."""
+    return sorted(set(_view_labels(root)) - set(_view_ids(root)))
+
+
 def _unknown_menu_views(root: Path) -> dict[str, str]:
     """{data-view value: site} for menu items naming no known view."""
     known = set(_view_ids(root))
@@ -279,9 +285,7 @@ def test_every_label_key_is_a_view_id():
     check that only walked VIEW_IDS would have reported the registry clean
     with the label still sitting there.
     """
-    ids = _view_ids(ROOT)
-    labels = _view_labels(ROOT)
-    orphans = sorted(set(labels) - set(ids))
+    orphans = _orphan_labels(ROOT)
     assert not orphans, (
         f"{len(orphans)} VIEW_LABELS key(s) name no view in VIEW_IDS. A label "
         "for a view that does not exist is dead weight that reads as evidence "
@@ -418,13 +422,11 @@ def test_guard_catches_an_orphan_label(tmp_path):
         '  "settings": "Settings",\n',
         '  "settings": "Settings",\n  "dev": "Dev",\n',
     )
-    ids = set(_view_ids(root))
-    labels = _view_labels(root)
     assert not _mountless(root), (
         "a label-only restore must NOT move the mount guard - if it does, the "
         "two directions are not independent and this probe proves nothing"
     )
-    assert sorted(set(labels) - ids) == ["dev"], (
+    assert _orphan_labels(root) == ["dev"], (
         "the label direction did not catch the orphan dev label"
     )
 

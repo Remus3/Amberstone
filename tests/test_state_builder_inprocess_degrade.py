@@ -280,11 +280,18 @@ class TestCallerSeamNoPayloadLeak(_StateBuilderDegradeBase):
         rec = logging.LogRecord(
             _LOGGER_NAME, logging.WARNING, __file__, 1,
             "leaked %s", (self.MARKER,), None)
-        self.assertIn(self.MARKER, rec.getMessage())
-        self.assertIn(self.MARKER, repr(rec.args))
-        self.assertIn(self.MARKER, repr(rec.__dict__))
-        self.assertIn(self.MARKER,
-                      logging.Formatter("%(message)s").format(rec))
+        # RM-496: drive the REAL checker, not a retyped copy of its probes -
+        # a copy stayed green if `_assert_marker_absent` lost a probe.
+        with self.assertRaises(AssertionError):
+            self._assert_marker_absent(rec)
+        # And a record carrying the marker ONLY in an arg that the message
+        # never renders still trips it (the `args` / `__dict__` probes).
+        hidden = logging.LogRecord(
+            _LOGGER_NAME, logging.WARNING, __file__, 1,
+            "only %(shown)s", ({"shown": "ok", "hidden": self.MARKER},), None)
+        self.assertNotIn(self.MARKER, hidden.getMessage())
+        with self.assertRaises(AssertionError):
+            self._assert_marker_absent(hidden)
 
 
 class TestCallerSeamImportArm(_StateBuilderDegradeBase):
