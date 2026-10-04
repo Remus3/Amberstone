@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import os
 import ssl
-import subprocess
 import sys
 import time
 import urllib.request
@@ -31,6 +30,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+from core import operator_notify  # noqa: E402 - needs the repo root on sys.path
 
 _REPORT = _ROOT / "ops" / "audit" / "ds_perm_swarm" / "report"
 _DS = _ROOT / "agents" / "daemon_slayer"
@@ -167,33 +168,6 @@ def _short(seam: str) -> str:
     return seam.split("_")[0].replace("target", "").replace("preset=", "") or seam
 
 
-def _toast(title: str, body: str) -> None:
-    """Fire a native Windows toast via hidden PowerShell WinRT (no console flash)."""
-    ps = f"""$ErrorActionPreference='SilentlyContinue'
-[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null
-[Windows.UI.Notifications.ToastNotification,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null
-[Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime]|Out-Null
-$t=@'
-<toast><visual><binding template="ToastGeneric"><text>{title}</text><text>{body}</text></binding></visual></toast>
-'@
-$x=New-Object Windows.Data.Xml.Dom.XmlDocument
-$x.LoadXml($t)
-$n=New-Object Windows.UI.Notifications.ToastNotification $x
-$app='{{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}}\\WindowsPowerShell\\v1.0\\powershell.exe'
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show($n)
-"""
-    tmp = _REPORT / "_toast.ps1"
-    try:
-        tmp.write_text(ps, encoding="ascii")
-        subprocess.Popen(
-            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-             "-WindowStyle", "Hidden", "-File", str(tmp)],
-            creationflags=0x08000000,  # CREATE_NO_WINDOW
-        )
-    except Exception:  # noqa: BLE001 - toast is best-effort; the file always lands
-        pass
-
-
 def _emit(champ: str, mode: str, preset: str, verdict: dict, enemies: list[str]) -> None:
     fr = verdict["flip_ready"]
     ck = verdict["check"]
@@ -209,7 +183,8 @@ def _emit(champ: str, mode: str, preset: str, verdict: dict, enemies: list[str])
         ) or "(none)"
         title = f"RC: {champ} ({mode}) vs {preset}-comp"
         body = f"FLIP-READY: {ready_txt}\nCHECK: {check_txt}"
-    _toast(title, body)
+    # Y-02: one notify path (escaped toast, jsonl floor); never raises.
+    operator_notify.notify(title, body, tags=("live-flip",))
 
     lines = [f"# Live-flip verdict - {champ} ({mode}), {preset}-comp",
              f"enemies: {', '.join(enemies) or '-'}", ""]
