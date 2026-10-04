@@ -109,7 +109,17 @@ def is_live_ancestor(candidate, pid) -> bool:
     """
     try:
         import psutil
-
+    except ImportError:
+        # NOW-7 residual: without psutil a genuinely nested child pytest was
+        # always gated. Stdlib fallback, deliberately narrow: only the DIRECT
+        # parent of THIS process is provable (os.getppid() is fixed at our
+        # creation, so it cannot name a process that did not spawn us). Deeper
+        # chains still answer False - an unverifiable stamp never disarms.
+        try:
+            return int(pid) == os.getpid() and int(candidate) == os.getppid()
+        except (TypeError, ValueError):
+            return False
+    try:
         want = int(candidate)
         proc = psutil.Process(int(pid))
         for _ in range(256):  # bounded walk
