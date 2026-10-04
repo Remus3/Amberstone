@@ -213,11 +213,23 @@ class ARAMModeTests(unittest.TestCase):
         self.assertAlmostEqual(r.mode_multiplier, 1.0)
 
     def test_aram_modifier_at_1_equals_sr(self) -> None:
-        # Aatrox has aramDamageTaken=1.0 -> ARAM EHP == SR EHP (modulo any
-        # ARAM AS changes that affect bonus AS, which don't touch EHP).
+        # A RANGED champion with aramDamageTaken=1.0 -> ARAM EHP == SR EHP
+        # (modulo ARAM AS changes on bonus AS, which don't touch EHP). It was
+        # Aatrox until RM-666: melee champions now carry the ARAM +15 bonus
+        # MR, so a melee champion's ARAM EHP is legitimately higher.
+        sr = compute_ehp(self.snap, "Ashe", level=11, mode="SR")
+        aram = compute_ehp(self.snap, "Ashe", level=11, mode="ARAM")
+        ashe = self.snap.champion("Ashe")["lolmath"]["aram_modifiers"]
+        self.assertEqual(float(ashe["aramDamageTaken"]), 1.0)
+        self.assertAlmostEqual(sr.blended_ehp, aram.blended_ehp, places=2)
+
+    def test_aram_melee_mr_lifts_ehp_rm666(self) -> None:
+        # Aatrox: aramDamageTaken 1.0, melee -> the only ARAM EHP delta is
+        # the +15 bonus MR.
         sr = compute_ehp(self.snap, "Aatrox", level=11, mode="SR")
         aram = compute_ehp(self.snap, "Aatrox", level=11, mode="ARAM")
-        self.assertAlmostEqual(sr.blended_ehp, aram.blended_ehp, places=2)
+        self.assertAlmostEqual(aram.mr - sr.mr, 15.0)
+        self.assertGreater(aram.blended_ehp, sr.blended_ehp)
 
     def test_aram_damage_taken_below_one_inflates_ehp(self) -> None:
         # Find a champion whose aramDamageTaken < 1.0 (takes less damage in
