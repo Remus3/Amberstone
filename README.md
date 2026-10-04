@@ -1,9 +1,12 @@
 # Amberstone
 
-A local, real-time coaching companion for League of Legends and Teamfight
-Tactics.
+![Amberstone - local real-time coaching for League of Legends and TFT](./docs/assets/social-preview.png)
 
-[![CI](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml)
+A local, real-time coaching companion for League of Legends and Teamfight
+Tactics. A deterministic engine does the item and damage math; the AI coach only
+narrates what that math already decided.
+
+[![CI](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml) [![License: Apache-2.0](https://img.shields.io/github/license/Remus3/Amberstone)](./LICENSE) [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](./.github/workflows/ci.yml) [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](#limitations) [![Codebase atlas](https://img.shields.io/badge/atlas-interactive%20map-orange)](https://remus3.github.io/Amberstone/atlas.html)
 
 It watches the match you are actually in through the Riot Live Client API, does
 the item and damage math locally in a deterministic engine, and turns that into
@@ -23,11 +26,13 @@ from the network.
 |---|---|
 | [What makes it different](#what-makes-it-different) | why the math runs before the model, and what that buys |
 | [What it does](#what-it-does) | the features, and the modes they run in |
+| [Quickstart](#quickstart) | from a fresh clone to the dashboard on one Windows PC |
 | [How it works](#how-it-works) | the pipeline in one diagram, plus the port map |
 | [Daemon Slayer build engine](#daemon-slayer-build-engine) | the engine everything else is built around |
+| [Riot policy stance](#riot-policy-stance) | what was removed or fenced to stay inside Riot's third-party rules |
 | [Limitations](#limitations) | what it cannot do, and why |
 | [Status](#status) | what is done, what is in flight, what is blocked on a live game, and what is deliberately not being built |
-| [How the work gets done](#how-the-work-gets-done) | the headless lanes that maintain it, and why one item per cycle |
+| [How the work gets done](#how-the-work-gets-done) | multi-agent Claude Code, the headless background lanes, and the cross-repo note channel |
 | [Data sources and credits](#data-sources-and-credits) | the public projects the game data comes from |
 | [Documentation map](#documentation-map) | every other document, and who each is written for |
 
@@ -73,6 +78,38 @@ Modes: Summoner's Rift, ARAM including its event variants, Arena, and Teamfight
 Tactics. A fifth path covers Riot's rotating game modes - URF, One for All,
 Nexus Blitz and their siblings - which is wired and enabled, but only exercised
 when Riot actually rotates one of them in.
+
+---
+
+## Quickstart
+
+There is no hosted version and no packaged release; it runs from a checkout on
+the same Windows PC as the game.
+
+1. Install Python 3.12 or newer (CI tests on 3.12) and
+   [Git LFS](https://git-lfs.com/), then clone:
+
+   ```text
+   git clone https://github.com/Remus3/Amberstone.git
+   cd Amberstone
+   git lfs install --local
+   git lfs pull
+   ```
+
+   Without LFS the precomputed laning tables arrive as pointer files and that
+   coach falls back to a live model call.
+2. Run `install.bat`. It installs `requirements.txt`, creates the runtime
+   directories, and asks for an Anthropic API key in `API-Key-Claude.txt`
+   (gitignored). A Riot developer key is optional and goes in
+   `API-Key-Riot.txt` (also gitignored); it is only needed for Match-V5 history.
+3. Run `start.bat`, then open the dashboard on port `:8888`. It serves plain
+   HTTP until a local certificate exists (`tools/regen_rc_cert.ps1` makes one),
+   then HTTPS.
+
+Contributors: run `python scripts/install_hooks.py` first. The git hooks are
+the authoritative commit and push gates, and a fresh clone has none.
+Day-to-day procedures - restart, health checks, scheduled tasks - are in
+[`docs/OPERATIONS.md`](./docs/OPERATIONS.md).
 
 ---
 
@@ -146,6 +183,39 @@ registries and its test suite all live under
 
 ---
 
+## Riot policy stance
+
+The project is built to sit inside Riot's published third-party application
+rules, and treats them as engineering constraints with tests behind them rather
+than as a note in a README. Measured against those rules, the codebase has:
+
+- **Removed enemy cooldown tracking.** The enemy summoner-spell tracker and the
+  per-player summoner and ultimate cooldown ledger were deleted. A threat cell
+  that used to show an enemy ability's cooldown was rebuilt to carry only static
+  kit facts the client already shows (which ability, how long its crowd control
+  lasts) and no enemy cooldown number.
+- **Stopped live imperatives and power-spike alerts.** In game, decision points
+  are captured silently and reviewed after the match instead of being pushed as
+  "do this now" notifications.
+- **Anonymised champion select.** Non-party summoner names are replaced at the
+  producer with positional labels, so every consumer inherits it.
+- **Refused Riot's Brawl mode.** It is routed to an unsupported mode that loads
+  no coach, ahead of any default.
+- **No TFT win-rate or augment-placement statistics.** TFT advice comes from the
+  player's own board.
+
+Each removal left an inverted guard test that turns red if the banned surface
+comes back. Three questions are still open and are tracked rather than assumed
+settled, all for Riot developer relations: the screen-capture vision path,
+declaring LCU use in a Riot application, and how in-game build recommendations
+are treated. The plan, with the rule each item answers to, is
+[`docs/OVERLAY_COMPLIANCE_PLAN.md`](./docs/OVERLAY_COMPLIANCE_PLAN.md).
+
+The project runs on a personal Riot API key and is not a registered or
+approved Riot product; see the disclaimer at the end of this page.
+
+---
+
 ## Limitations
 
 - **Windows only, one machine.** Game, coach, dashboard and overlay share a PC.
@@ -163,6 +233,8 @@ registries and its test suite all live under
 ---
 
 ## Status
+
+As of 2026-10-03.
 
 **Working now.** The full loop runs end to end: the live reader, the build
 engine, the coach, the dashboard and the overlay. The build engine and
@@ -197,6 +269,11 @@ Open work lives in [`ROADMAP.md`](./ROADMAP.md), the longer-horizon queue in
 
 ## How the work gets done
 
+The project is written and maintained by one person directing Claude Code
+agents. An attended session plans and merges; the building is done by
+sub-agents in isolated git worktrees, and a separate read-only verifier has to
+pass a change before it counts as done. The producer never grades its own work.
+
 **Headless lanes.** Maintenance runs as mutually exclusive lanes, one holder at
 a time, each in its own git worktree, so nothing edits the checkout a person is
 reading. A lane is a single `claude -p` worker fed a tracked prompt document
@@ -206,6 +283,23 @@ from [`tools/`](./tools/).
 `file:line` evidence and an acceptance check; a queue lane does exactly one of
 them and exits, and a driver re-fires it. A crash loses one item rather than a
 night's work, and each item arrives as its own reviewable commit.
+
+**Background, not in the way.** Lanes and other headless runs start through one
+spawn helper that fails closed, opens no visible console, caps itself at 120
+runs per rolling 24 hours, and writes a live status file, so long work reports
+progress while it runs instead of only at the end.
+
+**Cross-repo note sync.** This repository is one of several on the same
+machine that coordinate through plain-text notes. Each repository has a
+gitignored inbox; a note is delivered by writing into the recipient's inbox and
+confirmed by re-hashing the delivered copy. As of this pass the channel runs
+end to end without a person relaying: a scheduled responder answers incoming
+notes headlessly every few minutes, but only while a hand-written, expiring
+agreement arms it, and a STOP file overrides it at any point. The channel
+conventions are in [`docs/CHANNEL.md`](./docs/CHANNEL.md). The other
+repositories are referred to only by short codes; their names and paths live
+in per-machine config that is never committed, and a pre-push sweep checks
+outgoing diffs for them.
 
 The control plane and the lane roster are described in
 [`docs/MISSION_CONTROL_PLAN.md`](./docs/MISSION_CONTROL_PLAN.md).
