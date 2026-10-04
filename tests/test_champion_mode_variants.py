@@ -198,8 +198,15 @@ class TestPredicates:
     def test_canonical_items_drops_only_the_band(self):
         rows = _upstream_rows("item.json")
         kept = canonical_items(rows)
-        assert len(kept) == len(rows) - 162
+        # MEASURED 2026-10-04: the band grew 162 -> 164 at 16.19.1 (DDragon
+        # added 773161 Moonflair Spellblade and 773162 Cloak and Dagger, both
+        # map 453 only) while the canonical side stayed at 706, the 16.14.1
+        # shape. Both halves are pinned: the band size alone would also pass a
+        # predicate that dropped two canonical rows instead.
+        assert len(rows) - len(kept) == 164
+        assert len(kept) == 706
         assert "1001" in kept and "771001" not in kept
+        assert "773161" not in kept and "773162" not in kept
 
 
 class TestEngineRegistries:
