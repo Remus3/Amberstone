@@ -291,6 +291,24 @@ def _coerce_push_flag(payload, key: str):
     return coerce_json_flag(payload, key, True)
 
 
+def _queue_id(body) -> "int | str | None":
+    """The command id from a vision-server /lcu-cmd reply, or None.
+
+    RM-296b. The reply is `{"ok": true, "id": N}`; anything unreadable is
+    None rather than an exception - the enqueue itself already succeeded.
+    """
+    try:
+        data = json.loads(body or b"{}")
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    rid = data.get("id")
+    if isinstance(rid, bool) or not isinstance(rid, (int, str)):
+        return None
+    return rid
+
+
 def _post_lcu_cmd(cmd_obj: dict) -> bytes:
     """POST one command to the vision server's LCU queue; return its body.
 
@@ -570,12 +588,20 @@ def _serve_loadout_apply_post(h, payload) -> None:
         if not resolved.get("ok"):
             h._send(404, json.dumps(resolved).encode(), "application/json"); return
         queued = []
+        queued_ids = []
         failed = []
         def _enqueue(cmd_obj):
             if not cmd_obj: return
             try:
-                _post_lcu_cmd(cmd_obj)
+                body = _post_lcu_cmd(cmd_obj)
                 queued.append(cmd_obj.get("cmd"))
+                # RM-296b: the vision server answers {"id": N}; this route
+                # used to read and DISCARD it, so a push the LCU agent later
+                # REJECTED could never be learned about - the id needed to
+                # poll /api/lcu-cmd-result was gone before the response was
+                # built. Surfaced additively (`queued` keeps its str shape).
+                queued_ids.append({"cmd": cmd_obj.get("cmd"),
+                                   "id": _queue_id(body)})
             except Exception as exc:  # noqa: BLE001
                 # Still non-fatal per command - one dead push must not abort
                 # the other two - but it is now REPORTED. See the `ok` note
@@ -608,6 +634,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
             "champion": champ, "variant": variant, "mode": resolved.get("mode"),
             "label":    resolved.get("label"),
             "queued":   queued,
+            "queued_ids": queued_ids,
             "failed":   failed,
             "raw_items": resolved.get("raw_items", []),
             "item_ids":  item_ids,
@@ -643,6 +670,15 @@ def _serve_lcu_cmd_post(h, payload) -> None:
                         "allowed": sorted(_LCU_ALLOWED_CMDS)}).encode(),
             "application/json")
         return
+    # RM-296a: per-verb payload schema - the edge used to validate the VERB
+    # and forward every sibling key unexamined to the last gate before the
+    # live League client.
+    forwarded, bad_field = _validate_lcu_cmd(cmd_name, payload)
+    if bad_field is not None:
+        h._send(400, json.dumps({"error": "bad_lcu_cmd_field", "cmd": cmd_name,
+                                 "field": bad_field}).encode(),
+                "application/json")
+        return
     try:
         from web_dashboard import _VISION_TOKEN
         # Lane 8 cycle 38: the edge validated the STRIPPED name and then
@@ -669,15 +705,6 @@ def _serve_lcu_cmd_post(h, payload) -> None:
 def _scrub_result_err(body: bytes) -> bytes:
     """Replace a raw exception string in an LCU result with a friendly one.
 
-    # RM-296a: per-verb payload schema - the edge used to validate the VERB
-    # and forward every sibling key unexamined to the last gate before the
-    # live League client.
-    forwarded, bad_field = _validate_lcu_cmd(cmd_name, payload)
-    if bad_field is not None:
-        h._send(400, json.dumps({"error": "bad_lcu_cmd_field", "cmd": cmd_name,
-                                 "field": bad_field}).encode(),
-                "application/json")
-        return
     Lane 8 cycle 38. CLAUDE.md "Error Handling" is absolute: never surface a
     raw error string on a user-facing surface; log it and render a friendly
     degraded message. This route breached it on the 200 path, not the error
