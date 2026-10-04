@@ -9,9 +9,11 @@ runner calls it, which is the exact failure this build exists to close.
 
 Nothing here writes under `ops/runtime` or into any real sibling inbox. Every
 path is injected, and the module-scoped `_live_surfaces_unchanged` arm fails if
-THIS process wrote any live surface (in-process audit hook) or if a surface with
-no ambient writer moved a byte (digest) - see `_ambient_keys` for why the armed
-responder's own files and the sibling inboxes are audit-only.
+THIS process wrote any live surface (in-process audit hook), wrote ANY path
+outside pytest's basetemp (the same hook's allowlist half, MAIN 2320 s2 (2);
+exemptions at `_outside_root_exempt`), or if a surface with no ambient writer
+moved a byte (digest) - see `_ambient_keys` for why the armed responder's own
+files and the sibling inboxes are audit-only.
 
 No test reaches `real_spawner`. `RC_RESPONDER_REAL_SPAWN` is deleted from the
 process environment by an autouse fixture, and every arm that passes
@@ -417,12 +419,19 @@ class _SurfaceWriteAuditor:
         self.watches: list = []
         self._busy = False
 
-    def watch(self, surfaces: dict) -> dict:
+    def watch(self, surfaces: dict, allow_roots=None) -> dict:
+        """`allow_roots` (MAIN 2320 ruling s2 (2)) turns on the ALLOWLIST half:
+        every write-shaped target that is under none of these roots and is not
+        an `_outside_root_exempt` path is recorded in `w["outside"]`. None (the
+        default) leaves that half off, for the planted per-test guards."""
         # `_norm_path` itself calls GetLongPathNameW through ctypes; hold the
         # reentrancy flag so those calls are never recorded as writes.
         was, self._busy = self._busy, True
         try:
-            w = {"prefixes": {k: _norm_path(v) for k, v in surfaces.items()}, "hits": []}
+            w = {"prefixes": {k: _norm_path(v) for k, v in surfaces.items()}, "hits": [],
+                 "allow": (None if allow_roots is None
+                           else tuple(_norm_path(r) for r in allow_roots)),
+                 "outside": []}
         finally:
             self._busy = was
         self.watches.append(w)
@@ -474,10 +483,37 @@ class _SurfaceWriteAuditor:
                     continue
                 for w in self.watches:
                     for key, prefix in w["prefixes"].items():
-                        if norm == prefix or norm.startswith(prefix + os.sep):
+                        if _under(norm, prefix):
                             w["hits"].append((key, event, norm))
+                    allow = w.get("allow")
+                    if (allow is not None and not any(_under(norm, r) for r in allow)
+                            and not _outside_root_exempt(norm)):
+                        w["outside"].append((event, norm))
         finally:
             self._busy = False
+
+
+def _under(norm: str, prefix: str) -> bool:
+    return norm == prefix or norm.startswith(prefix.rstrip(os.sep) + os.sep)
+
+
+# Exemptions from the allowlist half (MAIN 2320 ruling s2 (2)), each one PROVABLY
+# needed and none of them able to hold a note, reply or runtime record:
+#   1. any path with a `__pycache__` component - importlib's bytecode cache
+#      (`SourceFileLoader._cache_bytecode`: os.mkdir, os.open O_CREAT, os.replace)
+#      on the first import of a module an arm reaches lazily.
+#   2. `sys.pycache_prefix`, when set - the same bytecode cache relocated.
+# Pytest's own writes (the cache provider, junit, the retention rmtree) happen
+# at session end or inside basetemp, outside the module watch or inside the
+# allowed root, so pytest needs no exemption here.
+_PYCACHE_PART = os.sep + "__pycache__"
+
+
+def _outside_root_exempt(norm: str) -> bool:
+    if (_PYCACHE_PART + os.sep) in norm or norm.endswith(_PYCACHE_PART):
+        return True
+    prefix = getattr(sys, "pycache_prefix", None)
+    return bool(prefix) and _under(norm, os.path.normcase(os.path.abspath(prefix)))
 
 
 _SURFACE_AUDITOR = _SurfaceWriteAuditor()
@@ -525,17 +561,19 @@ class _LiveSurfaceGuard:
     """Digest every NON-ambient surface, audit EVERY surface, scan EVERY surface
     for this run's marker, report all three."""
 
-    def __init__(self, surfaces: dict, ambient: frozenset, marker: str = _RUN_MARKER) -> None:
+    def __init__(self, surfaces: dict, ambient: frozenset, marker: str = _RUN_MARKER,
+                 allow_roots=None) -> None:
         self.surfaces = dict(surfaces)
         self.ambient = frozenset(ambient)
         self.marker = marker
+        self.allow_roots = None if allow_roots is None else [Path(r) for r in allow_roots]
         self.digested = sorted(k for k in self.surfaces if k not in self.ambient)
         self.before: dict = {}
         self._watch = None
 
     def start(self) -> None:
         self.before = {k: _digest_path(Path(self.surfaces[k])) for k in self.digested}
-        self._watch = _SURFACE_AUDITOR.watch(self.surfaces)
+        self._watch = _SURFACE_AUDITOR.watch(self.surfaces, allow_roots=self.allow_roots)
 
     def finish(self) -> list:
         if self._watch is not None:
@@ -550,6 +588,11 @@ class _LiveSurfaceGuard:
         if written:
             problems.append(f"live surfaces written by this process (audit): {written}; "
                             f"first events: {hits[:5]}")
+        outside = list(self._watch["outside"]) if self._watch is not None else []
+        if outside:
+            paths = sorted({p for _e, p in outside})
+            problems.append(f"writes outside the temp root by this process (allowlist, "
+                            f"MAIN 2320 s2 (2)): {paths[:10]}; first events: {outside[:5]}")
         leaked = _marker_hits(self.surfaces, self.marker)
         if leaked:
             problems.append(f"this run's marker {self.marker} found in live surfaces: {leaked}")
@@ -594,7 +637,10 @@ def _live_surfaces_unchanged(request, tmp_path_factory):
         f"the ambient set drifted: {sorted(ambient)} != {sorted(expected)}")
     drives = _selection_drives_an_arm(request.session.items, request.module)
     assert not any(k.endswith(":agreement") for k in ambient), sorted(ambient)
-    guard = _LiveSurfaceGuard(surfaces, ambient)
+    # MAIN 2320 s2 (2): the allowlist half - any write by this process outside
+    # pytest's basetemp (every tmp_path of the module lives under it) fails.
+    guard = _LiveSurfaceGuard(surfaces, ambient,
+                              allow_roots=[tmp_path_factory.getbasetemp()])
     assert guard.digested, (
         "every live surface was excluded from the digest half - it would then "
         f"pass for the wrong reason (surfaces: {sorted(surfaces)})")
@@ -742,6 +788,31 @@ def test_live_surface_guard_marker_half_catches_an_out_of_process_ambient_leak(t
         problems = guard.finish()
     assert len(problems) == 1 and "marker" in problems[0], problems
     assert "main:sibling:ZZ" in problems[0], problems
+
+
+def test_live_surface_guard_trips_on_a_write_outside_the_temp_root(tmp_path):
+    """MAIN 2320 ruling s2 (2), fail-first: the seam tripwire is an ALLOWLIST.
+    A write by this process to a path that is NOT a live surface but lies
+    OUTSIDE the test's temp root must still fail the guard; a write inside the
+    root and an exempt bytecode-cache write must not."""
+    surfaces, ambient = _planted_surfaces(tmp_path)
+    temp_root = tmp_path / "temp_root"
+    temp_root.mkdir()
+    outside = tmp_path / "not_a_surface" / "stray.txt"
+    outside.parent.mkdir()
+    guard = _LiveSurfaceGuard(surfaces, ambient, allow_roots=[temp_root])
+    guard.start()
+    try:
+        (temp_root / "inside.txt").write_text("ok", encoding="ascii")
+        cache = tmp_path / "pkg" / "__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "m.cpython-314.pyc").write_bytes(b"pyc")
+        outside.write_text("stray", encoding="ascii")
+    finally:
+        problems = guard.finish()
+    assert len(problems) == 1 and "outside the temp root" in problems[0], problems
+    assert "stray.txt" in problems[0], problems
+    assert "inside.txt" not in problems[0] and "__pycache__" not in problems[0], problems
 
 
 def test_generated_notes_and_replies_carry_the_run_marker(tmp_path):
