@@ -1,0 +1,1 @@
+RM-258 repo-wide bare os.replace class (~45 writers) - route to one shared atomic-write helper (tmp write + fsync + replace, Win retry); RM-261/263/264 hand-rolled scratch names, no fsync, PolledJsonFile unused; RM-297d hand-rolled atomic writers. Use tests/_repo_walk for any repo-wide guard (ADR-015). Frozen files granted.
