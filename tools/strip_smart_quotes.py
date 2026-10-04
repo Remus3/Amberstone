@@ -178,6 +178,13 @@ def _is_external_data(rel_posix: str) -> bool:
         return True
     if rel_posix == "data/meta/ddragon_champions.json":
         return True
+    # RM-300: kept in step with tests/test_smart_quote_hygiene._is_external_data.
+    # Without these, a dry-run reported 5 "replacements" in Riot's own item
+    # text and --apply would have rewritten a DDragon mirror RC does not author.
+    if rel_posix in {"data/meta/ddragon_items.json",
+                     "data/meta/ddragon_runes.json",
+                     "data/meta/ddragon_summoner_spells.json"}:
+        return True
     return False
 
 

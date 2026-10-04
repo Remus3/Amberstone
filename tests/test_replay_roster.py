@@ -73,8 +73,8 @@ def test_player_slug_sanitises_characters_that_cannot_be_a_windows_dir():
 def test_two_different_unicode_names_do_not_collide(tmp_path):
     # Collapsing CJK to underscores is lossy: without a disambiguating digest
     # these two distinct players share a directory and their replays merge.
-    a = rr.player_slug("我依然", "我不")
-    b = rr.player_slug("東方树", "爱七")
+    a = rr.player_slug("\u6211\u4f9d\u7136", "\u6211\u4e0d")
+    b = rr.player_slug("\u6771\u65b9\u6811", "\u7231\u4e03")
     assert a != b
     assert len(a.split("-")) == 3      # name-tag-digest
 
@@ -89,7 +89,7 @@ def test_an_ascii_riot_id_keeps_its_plain_slug():
 
 
 def test_the_digest_is_stable_across_calls():
-    assert rr.player_slug("我依", "x") == rr.player_slug("我依", "x")
+    assert rr.player_slug("\u6211\u4f9d", "x") == rr.player_slug("\u6211\u4f9d", "x")
 
 
 def test_stats_dir_sits_inside_the_player_dir(tmp_path):
