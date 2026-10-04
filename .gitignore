@@ -419,3 +419,7 @@ data/ladder_role_mains.json
 # table when they are absent, so an untracked cache costs nothing but stops the
 # repo redistributing a vendor's dataset.
 data/daemon_slayer/*/mayhem_augment_stats.json
+
+# RM-135: data backup snapshots (tools/backup_irreplaceable.py). Copies of
+# live databases - never tracked. Excluded from deploy rollback (ops/backups/).
+ops/backups/data/
