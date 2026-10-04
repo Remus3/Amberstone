@@ -12,6 +12,32 @@ docs/specs/leap/*.md + tools/live-gated-drain.md (claude-opus-4-8),
 docs/RESPONDER_RUNNER_SPEC.md:224.
 
 Carried forward (not acted on yet):
+- External-reference lift 2 ingest 2026-10-04 (LEDGER 1560-1590; rows RM-526..RM-594):
+  Band 1 ALL SHIPPED (RM-526..RM-533, RM-535..RM-537, Y-06 on the CCR-135/S10 line)
+  plus Band 3 RM-567 (frozen lcu_client, operator grant) and RM-568 (phone push,
+  DEFAULT-OFF, NOT ARMED). OPEN: Bands 2 and 4 rows in BACKLOG "External reference
+  lift 2" (build by value; cite "external reference X" only, never the source).
+  BLOCKED ON MAIN fleet-kit v5 (build only the RC consumer once the kit ships, no
+  divergent copy): RM-534 (Y-10 ask queue), RM-538 (Y-14 watcher primitive),
+  RM-539 / RM-540 (Y-15/16 send journal + paste check), RM-541 (Y-17 ctx hook,
+  also settings.json halt point), RM-542 (Y-18 ask-routing Stop hook), and any
+  general dashboard token layer beyond RM-531's League hues. OPERATOR ASK (one
+  batch, physical/credential): to arm RM-568 install the push server on Legion
+  (tailnet-only, deny-all), mint a publish token, store it in user env var
+  RC_PUSH_TOKEN (topic in RC_PUSH_TOPIC), install the phone app on the tailnet and
+  subscribe, copy config/push_notify.example.json to config/push_notify.json with
+  the own-tailnet suffix + server, then "enabled": true (arming = halt review).
+  LIVE-GATED: G4-30 (RM-526 Step 0, 5 real game-end statuses + EOG queueId).
+  Residuals recorded in the LEDGER entries, unfiled: Y-03 deployed agent copy
+  outside the repo not updated (halt boundary) and agent skip counts not in /stats;
+  Y-04 five 2021 q830 rows with game_end_ts=0 need a backfill, docs/API.md keys;
+  Y-05 net-0 swap accepted uncaveated; Y-06 needs a scheduled task (halt point) +
+  run lock; Y-07 colour-blind variant, minimap_zoi.js:125 team pair; Y-08 retry/
+  give-up actions; Y-09 badge needs comp capture; Y-44 pooled-path 401 rotation +
+  lcu_rune_writer POST loop; Y-45 watchers pass no tailnet links, push-server
+  licence check. Main checkout's gitignored .claude/commands mirror was re-synced
+  to the new tools/*.md probe recipes (RM-536); drift_guard there reports mirror
+  drift only until that checkout pulls.
 - Fleet-ideas ingest 2026-10-04 (LEDGER 1583-1589; P1-5, P1-4, P1-3, P2-4, P2-5,
   P2-10 shipped): RM-595 DS percent-reduction-after-negative divergence (Tier-2,
   strict-xfail pinned); RM-596 P0-3 gate board OFFERED, decide adopt/decline;
