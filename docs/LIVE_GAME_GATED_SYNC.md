@@ -1488,6 +1488,12 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   `core/self_cast_log.detect_from_frames`; per-slot totals within tolerance of Match-V5
   spell1..4 casts; re-measure FALL_THRESHOLD, GAP_S, the partial-cost tolerance and the validator
   tolerance on real data; note per-second drains / toggles (expected slot_guess None).
+- **LX-12** (RM-639, death reel; after LX-10 and an operator ffmpeg install) Cut a real OBS recording after
+  a real game: keyframe snapping still gives usable windows, the faststart output plays in the dashboard,
+  ffprobe duration roughly equals the sum of the windows.
+- **LX-13** (RM-641, review player; after LX-10) Real recording playback and seeking in Chrome over the
+  dashboard's TLS handler with 206 responses; marker alignment against real footage; hotkeys and focus in
+  a real browser; the PGR cost lane timing against the video.
 - **LX-10** (RM-637, OBS auto-record; ONLY after the operator's batched ADR-016 setup: OBS running,
   websocket enabled, WGC capture source, locked resolution + Borderless, `obs.record.enabled` and
   `vod_record` allowed) One real match: StartRecord on InProgress + Live Client, STARTED carries
