@@ -1102,6 +1102,12 @@ def main(session: str | None = None) -> int:
         anomalies.extend(_sba.anomaly_lines())
     except Exception as exc:  # noqa: BLE001 - a hook must never fail the session start
         anomalies.append(f"slot bucket audit unavailable: {type(exc).__name__}")
+    # RM-514: the upstream drift checker's durable alert channel.
+    try:
+        from tools import upstream_drift_check as _udc
+        anomalies.extend(_udc.unacked_alert_lines())
+    except Exception as exc:  # noqa: BLE001 - a hook must never fail the session start
+        anomalies.append(f"upstream drift alerts unavailable: {type(exc).__name__}")
     block, inbox_anomalies, inbox_keys = _inbox_section(_ROOT, session, subtract=False)
     anomalies.extend(inbox_anomalies)
     if block:
