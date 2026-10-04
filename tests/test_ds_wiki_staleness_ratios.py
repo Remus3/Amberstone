@@ -240,6 +240,42 @@ def test_override_that_misses_the_wiki_is_not_resolved():
     assert report["_override_resolved"] == 0
 
 
+def test_cooldown_row_annotated_through_a_form_level_override():
+    """RM-480 residual: the registry can now correct a FORM-level cooldown, so
+    a cooldown row is annotated when (and only when) the lookup answers for it."""
+    report = {
+        "findings": [
+            {"champion": "Kennen", "ability": "R", "field": "cooldown",
+             "meraki": [120.0, 80.0], "wiki": [120.0, 120.0]},
+            {"champion": "Zed", "ability": "R", "field": "cooldown",
+             "meraki": [120.0, 80.0], "wiki": [100.0, 80.0]},
+        ],
+        "stale_champions": ["Kennen", "Zed"],
+    }
+    seen = []
+
+    def lookup(champ, slot, attr, key):
+        seen.append((champ, attr, key))
+        return (120.0, 120.0) if champ == "Kennen" and key == "cooldown" else None
+
+    M.annotate_override_resolution(report, lookup)
+    kennen, zed = report["findings"]
+    assert ("Kennen", "", "cooldown") in seen
+    assert kennen["resolved_by_override"] is True
+    assert kennen["override_effective"] == [120.0, 120.0]
+    assert "resolved_by_override" not in zed
+    assert report["_override_resolved"] == 1
+
+
+def test_real_override_lookup_resolves_kennen_cooldown_and_leblanc_orb():
+    lookup = M._override_lookup("16.18.1")
+    assert lookup is not None
+    assert lookup("Kennen", "R", "", "cooldown") == (120.0, 120.0)
+    assert lookup("Leblanc", "R", "Orb Magic Damage", "base") == (70.0, 230.0)
+    assert lookup("Naafiri", "R", "Physical Damage", "base") == (125.0, 275.0)
+    assert lookup("Zed", "R", "", "cooldown") is None
+
+
 def test_real_override_lookup_resolves_thresh_e():
     """End to end against the committed 16.18.1 data and the real registry."""
     lookup = M._override_lookup("16.18.1")

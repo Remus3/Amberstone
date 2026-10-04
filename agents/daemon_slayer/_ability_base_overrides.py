@@ -130,6 +130,12 @@ _ALLOWED_FIELDS: tuple[str, ...] = (
     "caster_bonus_mp_pct",
 )
 
+# RM-480 residual (2026-10-03): FORM-level per-rank fields. These live on
+# ``AbilityForm``, not on a ``DamageBlock``, so an entry for one carries an
+# EMPTY ``attribute``. Kept apart from ``_ALLOWED_FIELDS`` because that tuple is
+# pinned equal to the detector's damage-ratio keys.
+_FORM_FIELDS: tuple[str, ...] = ("cooldown",)
+
 
 @dataclass(frozen=True)
 class AbilityBaseOverride:
@@ -152,12 +158,27 @@ class AbilityBaseOverride:
     source: str
     note: str
     field: str = "base"
+    # RM-480 residual: select the block by POSITION instead of first-attribute
+    # match, for a form that repeats an attribute (LeBlanc R carries "Total
+    # Magic Damage" at blocks 2 and 6). The attribute must still equal the
+    # block's, so a reorder fails the guard instead of hitting the wrong block.
+    block_index: int | None = None
 
     def __post_init__(self) -> None:
-        if self.field not in _ALLOWED_FIELDS:
+        if self.field in _FORM_FIELDS:
+            if self.attribute or self.block_index is not None:
+                raise ValueError(
+                    f"AbilityBaseOverride form field {self.field!r} takes no "
+                    "block attribute / block_index"
+                )
+        elif self.field not in _ALLOWED_FIELDS:
             raise ValueError(
                 f"AbilityBaseOverride field {self.field!r} is not one of "
-                f"{_ALLOWED_FIELDS}"
+                f"{_ALLOWED_FIELDS + _FORM_FIELDS}"
+            )
+        elif not self.attribute:
+            raise ValueError(
+                f"AbilityBaseOverride block field {self.field!r} needs an attribute"
             )
         if not self.stale or len(self.stale) != len(self.corrected):
             raise ValueError(
@@ -167,6 +188,10 @@ class AbilityBaseOverride:
 
 
 _RM480_SRC = "data/daemon_slayer/16.18.1/ability_staleness.json"
+# RM-480 residuals: per-rank lists read off wiki.leagueoflegends.com on
+# 2026-10-03 (read-only fetch); endpoints agree with the ``wiki`` column of
+# ability_staleness.json wherever the report has a row.
+_WIKI_1003 = "wiki.leagueoflegends.com 2026-10-03 + " + _RM480_SRC
 
 # (champion_id, key, form_index) -> the block overrides for that form.
 #
@@ -194,13 +219,43 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
     # [150, 350] -> [150, 300]", true drift 14.3 pct, first divergence at ranked
     # item 3 (top-5: Serylda's <-> Bloodthirster swap, notes:582). Rank 0 is 150
     # in BOTH series - the correction is a slope fix, not a rescale.
+    #
+    # RM-480 residual (2026-10-03): the A-03 TARGET went stale too. V26.15
+    # renamed the ult Hounds' Pursuit and re-tuned it - wiki patch history:
+    # "Base damage reduced to 125 / 200 / 275 from 150 / 225 / 300" and "Bonus
+    # AD ratio reduced to 100% bonus AD from 120%"; the per-packmate block reads
+    # 12.5 / 20 / 27.5 (+ 10% bonus AD). All per-rank values wiki-measured
+    # 2026-10-03. Guards are the extract (unchanged since A-03).
     ("Naafiri", "R", 0): (
         AbilityBaseOverride(
             attribute="Physical Damage",
             stale=(150.0, 250.0, 350.0),
-            corrected=_ramp(150.0, 300.0, 3),
-            source="docs/_archive/2026-07-28-research-consolidation/DS_ABILITY_SHAPING_NOTES.md:567",
-            note="The Call of the Pack: base 150 : 350 -> 150 : 300 (3 ranks); 14.3 pct drift, moves ranked item 3",
+            corrected=(125.0, 200.0, 275.0),
+            source=_WIKI_1003 + " (Naafiri R; was DS_ABILITY_SHAPING_NOTES.md:567)",
+            note="Hounds' Pursuit: base 150 : 350 -> 125 : 275 (V26.15), wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Physical Damage",
+            field="bonus_ad_pct",
+            stale=(120.0,) * 3,
+            corrected=(100.0,) * 3,
+            source=_WIKI_1003 + " (Naafiri R ratio)",
+            note="Hounds' Pursuit: 120 -> 100 pct bonus AD (V26.15), wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Physical Damage per Packmate",
+            stale=(15.0, 25.0, 35.0),
+            corrected=(12.5, 20.0, 27.5),
+            source=_WIKI_1003 + " (Naafiri R packmate)",
+            note="Hounds' Pursuit per packmate: base 15 : 35 -> 12.5 : 27.5, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Physical Damage per Packmate",
+            field="bonus_ad_pct",
+            stale=(12.0,) * 3,
+            corrected=(10.0,) * 3,
+            source=_WIKI_1003 + " (Naafiri R packmate ratio)",
+            note="Hounds' Pursuit per packmate: 12 -> 10 pct bonus AD, wiki-measured",
         ),
     ),
     # Heimerdinger W Hextech Micro-Rockets. notes:568 - "W base Initial Rocket
@@ -301,9 +356,8 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             note="Hammer Shock total: flat 18 -> 14/15/16/17/18 pct max HP, wiki-measured",
         ),
     ),
-    # Form 0 (Edge of Ixtal) only. Form 1 (Elemental Wrath) carries the same
-    # stale Physical/Reduced blocks plus Increased/Subsequent blocks the report
-    # has no row for - deliberately left for a follow-up, not guessed at here.
+    # Form 0 (Edge of Ixtal). Form 1 (Elemental Wrath) is the RM-480 residual
+    # entry below.
     ("Qiyana", "Q", 0): (
         AbilityBaseOverride(
             attribute="Physical Damage",
@@ -318,6 +372,40 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             corrected=(60.0, 82.5, 105.0, 127.5, 150.0),
             source=_RM480_SRC + " (base:Reduced Damage)",
             note="Edge of Ixtal reduced: base 45 : 135 -> 60 : 150, wiki-measured",
+        ),
+    ),
+    # RM-480 residual: Elemental Wrath carries the same stale Physical / Reduced
+    # blocks plus the terrain-empowered Increased (1.6x) / Subsequent blocks.
+    # Wiki-measured 2026-10-03; bonus AD ratios unchanged (90 / 67.5 / 144 /
+    # 121.5 on both sides), so base only.
+    ("Qiyana", "Q", 1): (
+        AbilityBaseOverride(
+            attribute="Physical Damage",
+            stale=(60.0, 90.0, 120.0, 150.0, 180.0),
+            corrected=(80.0, 110.0, 140.0, 170.0, 200.0),
+            source=_WIKI_1003 + " (Qiyana Q form 1)",
+            note="Elemental Wrath: base 60 : 180 -> 80 : 200, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Reduced Damage",
+            stale=(45.0, 67.5, 90.0, 112.5, 135.0),
+            corrected=(60.0, 82.5, 105.0, 127.5, 150.0),
+            source=_WIKI_1003 + " (Qiyana Q form 1)",
+            note="Elemental Wrath reduced: base 45 : 135 -> 60 : 150, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Increased Damage",
+            stale=(96.0, 144.0, 192.0, 240.0, 288.0),
+            corrected=(128.0, 176.0, 224.0, 272.0, 320.0),
+            source=_WIKI_1003 + " (Qiyana Q form 1)",
+            note="Elemental Wrath terrain increased: base 96 : 288 -> 128 : 320, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Subsequent Increased Damage",
+            stale=(81.0, 121.5, 162.0, 202.5, 243.0),
+            corrected=(108.0, 148.5, 189.0, 229.5, 270.0),
+            source=_WIKI_1003 + " (Qiyana Q form 1)",
+            note="Elemental Wrath terrain subsequent: base 81 : 243 -> 108 : 270, wiki-measured",
         ),
     ),
     ("Thresh", "E", 0): (
@@ -337,8 +425,19 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             note="Flay: 70 -> 60 pct AP (V26.17), wiki-measured",
         ),
     ),
-    # The report's Kennen R cooldown row ([120, 120]) is out of scope here.
+    # RM-480 residual: the report's Kennen R cooldown row ([120, 120]) is TRUE,
+    # not a parse error - wiki patch history V26.04 "Cooldown increased to 120
+    # seconds at all ranks from 120 / 100 / 80" (fetched 2026-10-03). A
+    # FORM-level entry (empty attribute).
     ("Kennen", "R", 0): (
+        AbilityBaseOverride(
+            attribute="",
+            field="cooldown",
+            stale=(120.0, 100.0, 80.0),
+            corrected=(120.0, 120.0, 120.0),
+            source=_WIKI_1003 + " (cooldown)",
+            note="Slicing Maelstrom: cooldown 120/100/80 -> 120 flat (V26.04), wiki-measured",
+        ),
         AbilityBaseOverride(
             attribute="Magic Damage Per Bolt",
             stale=(40.0, 75.0, 110.0),
@@ -406,25 +505,64 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
             note="Twin Fang bonus: 55 -> 45 pct AP, wiki-measured",
         ),
     ),
-    # Mimic: Distortion is damage block index 3. The default
-    # ``block_strategy="first"`` reads block 0 (Orb Magic Damage), so this entry
-    # does NOT move default scoring. The report's other five LeBlanc R base rows
-    # (Orb / Mark / Total / Application / Fracture) are out of scope here.
+    # LeBlanc R Mimic: all seven blocks, addressed by ``block_index`` because
+    # "Total Magic Damage" repeats (block 2 = Sigil of Malice total, block 6 =
+    # Ethereal Chains total). Block 3 (Mimic: Distortion) is the 1.283.0 entry;
+    # the other six are the RM-480 residual, wiki-measured 2026-10-03
+    # (70/150/230, 140/300/460, 210/450/690; AP ratios unchanged). Block 0 (Orb)
+    # is what the default ``block_strategy="first"`` reads, so with the flag ON
+    # LeBlanc R scoring now moves.
     ("Leblanc", "R", 0): (
         AbilityBaseOverride(
-            attribute="Magic Damage",
+            attribute="Orb Magic Damage", block_index=0,
+            stale=(70.0, 140.0, 210.0), corrected=(70.0, 150.0, 230.0),
+            source=_WIKI_1003 + " (base:Orb Magic Damage)",
+            note="Mimic: Sigil of Malice orb: base 70 : 210 -> 70 : 230, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Mark Magic Damage", block_index=1,
+            stale=(140.0, 280.0, 420.0), corrected=(140.0, 300.0, 460.0),
+            source=_WIKI_1003 + " (base:Mark Magic Damage)",
+            note="Mimic: Sigil of Malice mark: base 140 : 420 -> 140 : 460, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Magic Damage", block_index=2,
+            stale=(210.0, 420.0, 630.0), corrected=(210.0, 450.0, 690.0),
+            source=_WIKI_1003 + " (base:Total Magic Damage, Sigil of Malice)",
+            note="Mimic: Sigil of Malice total: base 210 : 630 -> 210 : 690, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Magic Damage", block_index=3,
             stale=(150.0, 300.0, 450.0),
             corrected=(150.0, 315.0, 480.0),
             source=_RM480_SRC + " (base:Magic Damage)",
-            note="Mimic: Distortion: base 150 : 450 -> 150 : 480, wiki-measured; block 3, not read by default scoring",
+            note="Mimic: Distortion: base 150 : 450 -> 150 : 480, wiki-measured",
         ),
         AbilityBaseOverride(
-            attribute="Magic Damage",
+            attribute="Magic Damage", block_index=3,
             field="ap_pct",
             stale=(75.0,) * 3,
             corrected=(90.0,) * 3,
             source=_RM480_SRC + " (ratio:Magic Damage:ap_pct)",
-            note="Mimic: Distortion: 75 -> 90 pct AP, wiki-measured; block 3, not read by default scoring",
+            note="Mimic: Distortion: 75 -> 90 pct AP, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Application Magic Damage", block_index=4,
+            stale=(70.0, 140.0, 210.0), corrected=(70.0, 150.0, 230.0),
+            source=_WIKI_1003 + " (base:Application Magic Damage)",
+            note="Mimic: Ethereal Chains application: base 70 : 210 -> 70 : 230, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Fracture Magic Damage", block_index=5,
+            stale=(140.0, 280.0, 420.0), corrected=(140.0, 300.0, 460.0),
+            source=_WIKI_1003 + " (base:Fracture Magic Damage)",
+            note="Mimic: Ethereal Chains fracture: base 140 : 420 -> 140 : 460, wiki-measured",
+        ),
+        AbilityBaseOverride(
+            attribute="Total Magic Damage", block_index=6,
+            stale=(210.0, 420.0, 630.0), corrected=(210.0, 450.0, 690.0),
+            source=_WIKI_1003 + " (base:Total Magic Damage, Ethereal Chains)",
+            note="Mimic: Ethereal Chains total: base 210 : 630 -> 210 : 690, wiki-measured",
         ),
     ),
 }
@@ -433,9 +571,9 @@ _ABILITY_BASE_OVERRIDES: dict[tuple[str, str, int], tuple[AbilityBaseOverride, .
 def _validate_registry() -> None:
     """Refuse an ambiguous registry at import: one (attribute, field) per form."""
     for ident, entries in _ABILITY_BASE_OVERRIDES.items():
-        seen: set[tuple[str, str]] = set()
+        seen: set[tuple[str, str, int | None]] = set()
         for entry in entries:
-            pair = (entry.attribute, entry.field)
+            pair = (entry.attribute, entry.field, entry.block_index)
             if pair in seen:
                 raise ValueError(f"duplicate override {pair} for {ident}")
             seen.add(pair)
@@ -473,14 +611,27 @@ def apply_base_overrides(cid: str, key: str, form):
     if not entries:
         return form
     blocks = list(form.damage_blocks)
-    plan: list[tuple[int, AbilityBaseOverride]] = []
+    plan: list[tuple[int | None, AbilityBaseOverride]] = []
     for entry in entries:
-        idx = next(
-            (i for i, b in enumerate(blocks) if b.attribute == entry.attribute),
-            None,
-        )
-        current = None if idx is None else getattr(blocks[idx], entry.field)
-        if idx is None or not _matches(current, entry.stale):
+        if entry.field in _FORM_FIELDS:
+            idx = None
+            current = getattr(form, entry.field)
+            ok = _matches(current, entry.stale)
+        else:
+            if entry.block_index is not None:
+                bi = entry.block_index
+                idx = (
+                    bi if 0 <= bi < len(blocks)
+                    and blocks[bi].attribute == entry.attribute else None
+                )
+            else:
+                idx = next(
+                    (i for i, b in enumerate(blocks) if b.attribute == entry.attribute),
+                    None,
+                )
+            current = None if idx is None else getattr(blocks[idx], entry.field)
+            ok = idx is not None and _matches(current, entry.stale)
+        if not ok:
             _LOG.warning(
                 "RM-81 override for %s %s %r.%s no longer matches the extract "
                 "(on disk %r, expected stale %r) - whole form SKIPPED. "
@@ -495,9 +646,14 @@ def apply_base_overrides(cid: str, key: str, form):
             )
             return form
         plan.append((idx, entry))
+    form_updates: dict[str, tuple[float, ...]] = {}
     for idx, entry in plan:
+        if idx is None:  # form-level field
+            current = getattr(form, entry.field)
+            form_updates[entry.field] = entry.corrected + tuple(current[len(entry.corrected):])
+            continue
         block = blocks[idx]
         current = getattr(block, entry.field)
         new_vals = entry.corrected + tuple(current[len(entry.corrected):])
         blocks[idx] = replace(block, **{entry.field: new_vals})
-    return replace(form, damage_blocks=tuple(blocks))
+    return replace(form, damage_blocks=tuple(blocks), **form_updates)
