@@ -174,6 +174,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/defensive_picks.py` | defensive item ranker |
 | `core/district_fusion.py` | API-ground-truth fusion over the CV district presence vector |
 | `core/ds_support_route_overrides.py` | Slice C support-tag route-override loader (RM-84) |
+| `core/edge_watcher.py` | edge-triggered per-target state watcher (startup state and reconnects never fire) |
 | `core/enemy_aware_stats.py` | enemy stats from liveclient items |
 | `core/event_callouts.py` | deterministic event-milestone callout table |
 | `core/failed_load_gate.py` | RM-439 failed-load gate (not-cached retry backoff + warn-once-per-streak) |
