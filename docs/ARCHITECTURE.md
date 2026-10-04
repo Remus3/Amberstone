@@ -217,11 +217,13 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
 | `core/provider_cascade.py` | multi-source provider cascade with provenance stamping |
 | `core/queue_modes.py` | queue_id -> dashboard mode_key |
+| `core/recycle_bin.py` | checked send-to-Recycle-Bin (refuses a silent permanent delete) |
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
 | `core/sgp_client.py` | service-gateway match-history client - serves event modes Match-V5 refuses |
 | `core/vision_fusion.py` | confidence-weighted partial-read fusion of Live Client + CV reads |
 | `core/vod_alignment.py` | pure VOD alignment (game time -> recording time) |
+| `core/vod_retention.py` | keep-on-condition VOD retention over RC recording sidecars |
 | `core/ward_cue.py` | ward-readiness extractor over the active player's Live Client items |
 | `core/ward_events.py` | ward-coverage rolling-window backend |
 | `core/ward_producer.py` | ward-placement producer over allPlayers inventory delta |

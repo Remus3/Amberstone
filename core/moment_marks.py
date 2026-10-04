@@ -219,6 +219,71 @@ def pins_for_match(match_id: Any, out_dir: Optional[os.PathLike] = None) -> list
     return [p for p in pins if isinstance(p, dict)]
 
 
+class MarksUnreadable(Exception):
+    """A strict read could not PROVE the mark state (corrupt or unreadable)."""
+
+
+def read_marks_strict(path: Optional[os.PathLike] = None) -> list[dict]:
+    """Like read_marks, but never mistakes "unreadable" for "no marks".
+
+    RM-640 additive variant for callers that delete on a zero count. A
+    MISSING file is a real zero (no mark was ever pressed) and returns [].
+    Any other OSError, and any line that is not a well-formed mark row,
+    raises MarksUnreadable - the caller must then treat marks as unknown.
+    """
+    p = Path(path) if path is not None else marks_path()
+    try:
+        raw = p.read_text(encoding="utf-8", errors="strict")
+    except FileNotFoundError:
+        return []
+    except (OSError, UnicodeDecodeError) as exc:
+        raise MarksUnreadable(f"{p}: {exc}") from exc
+    out: list[dict] = []
+    for n, line in enumerate(raw.splitlines(), 1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError as exc:
+            raise MarksUnreadable(f"{p}:{n}: not JSON") from exc
+        gt = _finite(row.get("game_time_s")) if isinstance(row, dict) else None
+        wt = _finite(row.get("wall_ts")) if isinstance(row, dict) else None
+        if gt is None or wt is None:
+            raise MarksUnreadable(f"{p}:{n}: not a mark row")
+        out.append({"game_id": _norm_game_id(row.get("game_id")),
+                    "game_time_s": gt, "wall_ts": wt})
+    return out
+
+
+def pins_for_match_strict(match_id: Any,
+                          out_dir: Optional[os.PathLike] = None) -> Optional[list[dict]]:
+    """The per-game pins, or None when NO pin file exists for the game.
+
+    RM-640 additive variant: unlike pins_for_match (which returns [] on any
+    miss), a match id that is not a real gameId, an unreadable file, bad JSON
+    or a malformed pin list raises MarksUnreadable.
+    """
+    gid = _game_id_from_match_id(match_id)
+    if gid is None:
+        raise MarksUnreadable(f"not a gameId: {match_id!r}")
+    d = Path(out_dir) if out_dir is not None else attached_dir()
+    try:
+        raw = (d / f"{gid}.json").read_text(encoding="utf-8", errors="strict")
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError) as exc:
+        raise MarksUnreadable(f"pin file for {gid}: {exc}") from exc
+    try:
+        doc = json.loads(raw)
+    except ValueError as exc:
+        raise MarksUnreadable(f"pin file for {gid}: not JSON") from exc
+    pins = doc.get("pins") if isinstance(doc, dict) else None
+    if not isinstance(pins, list) or not all(isinstance(p, dict) for p in pins):
+        raise MarksUnreadable(f"pin file for {gid}: malformed pins")
+    return pins
+
+
 def request_replay_buffer_save(mark: dict) -> bool:
     """RM-637 HOOK - future obs-websocket SaveReplayBuffer on a mark press.
 
