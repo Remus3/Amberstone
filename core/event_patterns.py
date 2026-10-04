@@ -216,6 +216,72 @@ def skill_order(match, timeline, pid) -> list:
                             "signature": "".join(str(s) for s in slots[:6])})]
 
 
+# RM-603: LEVEL_UP events at or before this game time are STARTING credit, not
+# a point the player sat on. Our own value: data/rewind_history.db (probe
+# 2026-10-04) stamps the ARAM level 2 and 3 grants at 503-508 ms; the first
+# Rift LEVEL_UP lands after 90 s. 5 s separates the two with wide margin.
+_START_GRACE_MS = 5000
+
+
+def _champion_of(match: dict, participant_id: int) -> str:
+    for p in (match.get("info") or {}).get("participants") or []:
+        if p.get("participantId") == participant_id:
+            return str(p.get("championName") or "")
+    return ""
+
+
+def skill_point_latency(match, timeline, pid) -> list:
+    """How long each level-up point sat before it was spent (RM-603, external
+    reference F; post-game half of the live skill-point tracker).
+
+    FIFO pairing per participant: every LEVEL_UP queues one point, every
+    NORMAL SKILL_LEVEL_UP spends the oldest queued point. EVOLVE skill-ups
+    are not level points and are skipped. The level-1 point (no LEVEL_UP is
+    ever sent for it) and any LEVEL_UP inside the start grace (the ARAM
+    level-3 start) are starting credit and are consumed without being
+    measured. Kits whose skill-ups are not level points (Aphelios; see
+    core/skill_point_tracker.py SPECIAL_KITS) are fenced out.
+    """
+    from core.skill_point_tracker import NAG_AFTER_S, kit_rules
+    if not kit_rules(_champion_of(match, pid)).supported:
+        return []
+    queue: list = []        # (level, t_ms, measured)
+    pairs: list = []
+    saw_level_up = False
+    for e in _events(timeline):
+        if e.get("participantId") != pid:
+            continue
+        typ = e.get("type")
+        t = int(e.get("timestamp") or 0)
+        if typ == "LEVEL_UP":
+            saw_level_up = True
+            queue.append((int(e.get("level") or 0), t, t > _START_GRACE_MS))
+        elif typ == "SKILL_LEVEL_UP":
+            if str(e.get("levelUpType") or "NORMAL") != "NORMAL":
+                continue
+            if not queue:
+                continue    # the level-1 point (or a surplus skill-up)
+            level, t_lv, measured = queue.pop(0)
+            if measured:
+                pairs.append({"level": level, "level_t_ms": t_lv,
+                              "spent_t_ms": t, "held_ms": max(0, t - t_lv)})
+    if not saw_level_up or not pairs:
+        return []
+    held = sorted(p["held_ms"] for p in pairs)
+    median = held[(len(held) - 1) // 2]
+    worst = max(pairs, key=lambda p: (p["held_ms"], -p["level_t_ms"]))
+    return [Finding(
+        criterion="skill_point_latency", participant_id=pid,
+        role=role_of(match, pid), t_ms=worst["level_t_ms"],
+        value=median / 1000.0,
+        detail={"pairs": pairs, "n": len(pairs),
+                "median_held_ms": median, "max_held_ms": worst["held_ms"],
+                "held_over_nag": sum(1 for h in held
+                                     if h >= NAG_AFTER_S * 1000),
+                "nag_after_s": NAG_AFTER_S,
+                "unspent_at_end": sum(1 for q in queue if q[2])})]
+
+
 def item_order(match, timeline, pid) -> list:
     """Purchase sequence with timestamps, corrected for undos.
 
@@ -306,6 +372,7 @@ CRITERIA = {
     "kill_participation": kill_participation,
     "plate_share": plate_share,
     "skill_order": skill_order,
+    "skill_point_latency": skill_point_latency,
     "item_order": item_order,
     "gold_deficit_profile": gold_deficit_profile,
 }

@@ -214,6 +214,16 @@ def liveclient_summary() -> dict:
         # RM-461: level degrades to None, its MISSING default (stats_panel.js
         # renders a null level as "-"), never a fabricated 0.
         out["level"] = _int_or_none(ap.get("level"))
+        # RM-603: Q/W/E/R ranks for the skill-point tracker (descriptive
+        # state). None unless all four read, so a partial frame is "no
+        # reading" rather than fabricated zeros.
+        try:
+            from core.skill_point_tracker import read_skill_snapshot
+            _sk = read_skill_snapshot({"level": ap.get("level"),
+                                       "abilities": ap.get("abilities")})
+        except Exception:  # noqa: BLE001 - degrade this field only (RM-456)
+            _sk = None
+        out["ability_ranks"] = dict(_sk.ranks) if _sk is not None else None
         out["gold"]  = _int_or_zero(ap.get("currentGold", 0))
         out["hp"]    = _int_or_zero(cs.get("currentHealth", 0))
         out["hp_max"]   = _int_or_zero(cs.get("maxHealth", 0))
