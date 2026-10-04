@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-10-03f - CI red fixed; ROADMAP dup ids; NOW-7 residual; console-flash completeness; RM-510
+
+- **Merges (all pushed, verifier MERGE-OK each):** `e8a498d6e` p2w2 `_FakeProc.args` (CI red root cause `47d4cf506`), `3ac0da26b` ROADMAP dup ids -> RM-513/514/515 + uniqueness guard, `9a86540e5` NOW-7 gate honours outer pid only as live ancestor + inert banner, `3011cf91a` console-flash AST completeness + upstream_drift_check CREATE_NO_WINDOW, `1fe7c1b5d` RM-510 ingest exit 0/75/1. LEDGER 1473-1477.
+- **CI green:** run 37162099927 on `9a86540e5`, run 37163680156 on `1fe7c1b5d`.
+- **Next:** POSIX kit gap report to MAIN, then RM-511 stale model pins.
+- **Do NOT redo:** any of the five items above; NOW-7 is fully closed.
+
+---
+
 # 2026-10-03e - NOW-7 gate armed; FLEET-KIT v4 adopted; routed spawns on kit _run; DS rm115 deadline flake fixed
 
 - **Merges (all pushed, c5739fbe0..251457ad7):** NOW-7 gate (`4c61fb0eb`), FLEET-KIT v4 (`c8341e619`), routed spawns via kit `_run` (`fcc53a232`), DS rm115 60 s deadline (`251457ad7`). LEDGER 1469-1472. Each verifier MERGE-OK.
@@ -23,12 +32,3 @@
 - **NOW-7 measurement MERGED** (`663abfe18`, slice `d6763fefd`, LEDGER 1468): 2 level-only leaks, 0 propagate/handler; gate NOT armed - next is fix 2 leaks + 3 arming prerequisites, then arm.
 - **Not acted on (needs operator in chat):** MAIN 0915 lane-widget redesign, 0925 ACCOUNTS strip. C4 `slots.py` 290cbf80 still held (joint act).
 - **Do NOT redo:** RM-481 / RM-484 / RM-487 (first row) / FLEET-KIT v3 adoption / NOW-7 measurement pass.
-
----
-
-# 2026-10-03c - rc_facts per-task running grace (operator away, unattended continue)
-
-- **Commit:** `c84d30b0c` (worktree slice, ff to main). LEDGER 1463.
-- grace = min(ExecutionTimeLimit, shortest repetition interval, 2h); unknown -> flat 2h; negative age STUCK. RC-ReplayChainWatch now flagged after 15m, not 2h. Verifier CONFIRM; rc_facts 107 passed; live banner 0 task anomalies.
-- Accepted risk: a run outliving its interval reads STUCK (RC-InboxResponder past 5m). Real overlap signal.
-- **Not touched:** inbox (32 unread, responder-owned); C4 `slots.py` 290cbf80 still a joint act held by RSC halt clause (b) pending MAIN.

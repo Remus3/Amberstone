@@ -1,16 +1,10 @@
 NEXT SESSION
 ------------
-Next action: make CI green. The ONLY red on main 04dbc4b93 (CI run 37154066209:
-1 failed, 35670 passed) is pre-existing tests/test_p2w2_ds_h.py::
-test_ephemeral_failure_message_redacts_stderr - AttributeError: '_FakeProc' has no
-attribute 'args' at agents/_supervisor_ephemeral.py:387. Root-cause first: did the
-fleet_route kit-launch change (fcc53a232) or earlier code start reading proc.args?
-Fix the fake or the reader, TDD, verifier, merge.
-
-Then: NOW-7 residual - the armed logger-leak gate is SILENTLY INERT when
-RC_LOGGER_LEAK_OUTER_PID is inherited from a parent shell (classify_process,
-tests/_logger_leak_report.py:104-117). Add an inert banner or a live-ancestor pid
-check, with a test that an inherited stale pid still gates.
+Next action: kit gaps for MAIN v5 - report the POSIX one to MAIN (fleet kit
+_kill_tree on POSIX kills only the direct child, no killpg; not yet in any note),
+then the RM-511 stale model pins (ops/loop/config*.json claude_adjudicator.model/cmd,
+docs/ADJUDICATOR_SWAP.md:62-63, agents/_supervisor_common.py AGENT_MODELS agent7,
+agents/state/resolved_decisions.json:258, agents/agent7_context/charter.md:3).
 
 Carried forward (not acted on yet):
 - Kit gaps for MAIN v5 (reported in RC 1411 note except the POSIX one): public
@@ -23,30 +17,33 @@ Carried forward (not acted on yet):
   removed, so a future kit lint finding fails RC ruff with no local fix allowed.
 - MAIN 1327 item 1.2 (0830 unattended MATCH) is the unattended responder's; not
   answered by an attended session.
-- tests/test_no_console_flash_scheduled_tools.py does not check that every spawning
-  file is listed (adding a direct spawn back to adjudicator.py would go uncaught).
-- RM-510: timeline_ingest exits 0 when rows end rate_limited (RM-484 residual).
-- RM-511: stale model pins - ops/loop/config*.json claude_adjudicator.model/cmd,
-  docs/ADJUDICATOR_SWAP.md:62-63, agents/_supervisor_common.py AGENT_MODELS agent7,
-  agents/state/resolved_decisions.json:258, agents/agent7_context/charter.md:3.
+- RM-511: stale model pins (paths above).
 - RM-512: RIOT_API_KEY precedence in core/riot_api.py:68 - OPERATOR policy call
   (RM-487 residual). Do not change without the operator.
 - RM-481 residual: other text-mode writers still emit CRLF (DS extractors,
   tools/ds_cc_conditional_to_json.py:93).
+- RM-510 residual (verifier note, non-blocking): an account lookup / ids page that
+  returns None WITHOUT a throttle exits 0 in tools/timeline_ingest.py but 1 in
+  tools/ladder_role_scout.py - align the two (decide which contract).
+- NOW-7 residual (verifier note): in a psutil-less env a genuinely nested child
+  pytest would be gated (ancestor check fails safe to "not ancestor"); not
+  reachable on CI (psutil pinned in requirements.txt).
+- Console-flash guard: still hand-listed (undiscoverable) - hook scripts
+  (.claude/settings.json untracked), modules a task target only imports, task
+  targets outside the tree, ops/rc_supervisor.py.
 - Replay rotation logs 104 empty-window observations - separate cleanup, unfiled.
 - tests/test_loop_concurrency.py slots.py pin is RED vs the sibling copy (locally;
   skips on CI) - joint act. C4 slots.py candidate 290cbf80 still HELD (RSC halt
   clause (b), pending a MAIN ruling). Do NOT vendor or move SHARED_SHA256 until the
   carriers' round closes.
-- ROADMAP duplicate ids RM-486 / RM-487 / RM-488 (two rows each) need renumbering
-  to fresh ids (next free id = RM-513, pin in docs/DS_SWEEP_TRACKER.md).
 - Worktrees: agent-a0a31cf1b05f41e28 and agent-a1bc4e611575b086e hold UNMERGED
   commits (clean) - review before removing. Merged + clean, removable once
   ancestor-checked: agent-aaf137deaa4eb92e5, agent-ab9ef7f95f5d5fb75,
-  agent-a5e62b1518fcb3dcd, and this session's agent-a1abf4cd77f67de5e,
-  agent-a97b46f6c5a6297a8, agent-a09603de9c2164f9b, agent-a36fdac29cf16d68d,
-  agent-a1f8ad47615c0665a (some locked by finished agents). Use git worktree
-  remove + git branch -d only.
+  agent-a5e62b1518fcb3dcd, agent-a1abf4cd77f67de5e, agent-a97b46f6c5a6297a8,
+  agent-a09603de9c2164f9b, agent-a36fdac29cf16d68d, agent-a1f8ad47615c0665a, plus
+  this session's agent-ab815a4faac846571, agent-a4ce17c5e3f2145b0,
+  agent-a02a9381b2517111e, agent-abfb672e3a03279cf, agent-a9d2523c669436fab (all
+  merged to main). Use git worktree remove + git branch -d only.
 - Lane-widget low-severity review notes (sent to the other session, its call):
   past reset shows "(resets 0m)" (src/accounts.js:316); freshness mtime-only
   (:347,351); config cached until restart (src/poll.js). RSC inbox_status.json
@@ -54,28 +51,38 @@ Carried forward (not acted on yet):
 - Watch: rc_facts flags a periodic run that outlives its repetition interval as
   STUCK (by design). If RC-InboxResponder trips it repeatedly, that is a real
   overlap - investigate runtime, do not widen the grace.
-- Inbox has unread notes the responder owns - do not hand-answer them; check
-  ops/runtime/inbox_responder_answered.json first.
+- Inbox has 65 unread notes; the responder owns them - do not hand-answer them;
+  check ops/runtime/inbox_responder_answered.json first.
 - Box load: many concurrent pytest runs from other sessions/trees; do not start a
   full local suite while 2+ others run (OOM). CI is the full-suite gate.
 
-Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). RC pid 6916
-alive, last_reload_ok true. Recall first (python tools/perseus_recall.py "<item>")
-before starting any ROADMAP row.
+Context: RC-InboxResponder ARMED by agreement (expires 2026-11-01). RC pid 2508
+alive, last_reload_ok true, LCU phase client (no game). Recall first
+(python tools/perseus_recall.py "<item>") before starting any ROADMAP row. Next free
+ROADMAP id = RM-516 (pin in docs/DS_SWEEP_TRACKER.md); duplicate ids now guarded by
+tests/test_roadmap_rm_ids_unique.py.
 
-Acceptance: CI run on main shows 0 failed; NOW-7 inert-banner residual has a test
-that fails on the old code.
+Acceptance: POSIX kit gap delivered to MAIN (destination re-hashed, 1/1 reached);
+RM-511 pins point at a current model id with a guard test; CI on main stays green.
 
-Do NOT redo: NOW-7 gate arming (4c61fb0eb), FLEET-KIT v4 adoption (c8341e619),
-routed spawns on kit _run (fcc53a232), CI tree-kill tests both platforms
-(04dbc4b93), DS rm115 60 s deadline (251457ad7), MAIN reply 1411 (1204 + 1327
-items 1.1/1.3, 1/1 reached), MAIN 0915/0925 lane widget (landed by another
-session, e1591f1f5 + c88efdf13, that session answers MAIN), RM-481, RM-484,
-RM-487 first row, FLEET-KIT v3, NOW-7 measurement (663abfe18).
+Do NOT redo (shipped this session, all verifier MERGE-OK, CI green):
+- CI red p2w2_ds_h fake .args (e8a498d6e; root cause 47d4cf506).
+- ROADMAP dup ids RM-486/487/488 second rows -> RM-513/514/515 + uniqueness
+  guard (3ac0da26b).
+- NOW-7 inert-gate residual: outer pid honoured only as live ancestor + inert
+  banner (9a86540e5).
+- Console-flash guard discovers spawning files; upstream_drift_check
+  CREATE_NO_WINDOW (3011cf91a).
+- RM-510 timeline_ingest + ladder_role_scout exit 75 rate_limited / 1 hard fail
+  (1fe7c1b5d).
+Earlier: NOW-7 gate arming (4c61fb0eb), FLEET-KIT v4 adoption (c8341e619), routed
+spawns on kit _run (fcc53a232), CI tree-kill tests both platforms (04dbc4b93), DS
+rm115 60 s deadline (251457ad7), MAIN reply 1411, MAIN 0915/0925 lane widget
+(another session), RM-481, RM-484, RM-487 first row, FLEET-KIT v3, NOW-7
+measurement (663abfe18).
 
-Status: pushed c5739fbe0..04dbc4b93 (merges 4c61fb0eb, c8341e619, fcc53a232,
-251457ad7, wrap d459f813b, 04dbc4b93); local gate ruff clean, hygiene 14 passed,
-drift_guard 0 breaches; CI run 37154066209 RED 1 failed (pre-existing p2w2_ds_h)
-/ 35670 passed; RC healthy; LEDGER 1469-1472; WAKEUP pruned to 3.
+Status: pushed 018ce1825..1fe7c1b5d (5 merges) plus the wrap commit; local gate
+ruff clean, hygiene 14 passed, drift_guard 0 breaches; CI run 37163680156 GREEN on
+1fe7c1b5d (prior 37162099927 green on 9a86540e5); RC healthy; LEDGER 1473-1477.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

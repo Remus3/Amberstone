@@ -41,6 +41,15 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-03c - rc_facts per-task running grace (operator away, unattended continue)
+
+- **Commit:** `c84d30b0c` (worktree slice, ff to main). LEDGER 1463.
+- grace = min(ExecutionTimeLimit, shortest repetition interval, 2h); unknown -> flat 2h; negative age STUCK. RC-ReplayChainWatch now flagged after 15m, not 2h. Verifier CONFIRM; rc_facts 107 passed; live banner 0 task anomalies.
+- Accepted risk: a run outliving its interval reads STUCK (RC-InboxResponder past 5m). Real overlap signal.
+- **Not touched:** inbox (32 unread, responder-owned); C4 `slots.py` 290cbf80 still a joint act held by RSC halt clause (b) pending MAIN.
+
+---
+
 # 2026-10-03b - responder live-surface guard fixed by attribution; rc_facts false anomalies (armed responder, periodic-running) cleared
 
 - **Commits:** `9b3cbe805` + `3f6679d2a` (responder suite guard), `d053a573f` + `dcd530808` (rc_facts agreement-armed + STOP flag), `d2b739dda` (rc_facts periodic-running grace). LEDGER 1461 + 1462.
