@@ -14,6 +14,7 @@ plain dict - no IO side-effects, no http handler coupling.
 """
 import sqlite3
 
+from core.resolved_wr import classify, resolution_select, resolved_wr, wr_pct
 from dashboard._context import (
     APP_DIR as _APP_DIR,
     DB_CONN_LOCAL as _DB_CONN_LOCAL,
@@ -51,27 +52,43 @@ def _compute_last20(rconn, queue_ids: tuple[int, ...] | None = None) -> dict:
     """
     if rconn is None:
         return {}
-    sql = ("SELECT tracked_win FROM matches "
-           "WHERE tracked_win IS NOT NULL ")
-    params: tuple = ()
-    if queue_ids:
-        sql += ("AND queue_id IN (" +
-                ",".join("?" * len(queue_ids)) + ") ")
-        params = tuple(queue_ids)
-    sql += "ORDER BY game_creation_ts DESC LIMIT 20"
     try:
-        recent = [int(r[0]) for r in rconn.execute(sql, params)]
+        # RM-610: remakes are not decided games - they are skipped before
+        # the 20-game window is cut, and the rate goes through the shared
+        # resolved-WR helper.
+        extra = resolution_select(rconn, "matches")
+        sql = ("SELECT tracked_win" + extra + " FROM matches "
+               "WHERE tracked_win IS NOT NULL ")
+        params: tuple = ()
+        if queue_ids:
+            sql += ("AND queue_id IN (" +
+                    ",".join("?" * len(queue_ids)) + ") ")
+            params = tuple(queue_ids)
+        sql += "ORDER BY game_creation_ts DESC"
+        cur = rconn.execute(sql, params)
+        cols = [d[0] for d in cur.description]
+        # Window = newest rows up to the 20th decided game; any remake in
+        # between rides in the window and the helper drops it.
+        window: list[dict] = []
+        decided = 0
+        for r in cur:
+            row = dict(zip(cols, r))
+            window.append(row)
+            if classify(row) in ("win", "loss"):
+                decided += 1
+                if decided >= 20:
+                    break
     except sqlite3.Error as exc:
         _log.debug("last20 compute: %s", exc)
         return {}
-    lw = sum(1 for w in recent if w == 1)
-    ll = sum(1 for w in recent if w == 0)
-    ld = lw + ll
+    lw, ld, _display = resolved_wr(window)
+    kinds = [classify(r) for r in window]
     return {
-        "results":  ["W" if w == 1 else "L" for w in recent],
+        "results":  ["W" if k == "win" else "L" for k in kinds
+                     if k in ("win", "loss")],
         "wins":     lw,
-        "losses":   ll,
-        "win_rate": round(lw * 100.0 / ld, 1) if ld else None,
+        "losses":   ld - lw,
+        "win_rate": wr_pct(lw, ld),
     }
 
 
@@ -246,21 +263,26 @@ def _build_history(scope: str) -> dict:
                 "  (SELECT tracked_champion_name FROM matches "
                 "   WHERE tracked_champion_name != '' "
                 "   GROUP BY tracked_champion_name "
-                "   ORDER BY COUNT(*) DESC LIMIT 1), "
-                "  SUM(CASE WHEN tracked_win = 1 THEN 1 ELSE 0 END), "
-                "  SUM(CASE WHEN tracked_win = 0 THEN 1 ELSE 0 END) "
+                "   ORDER BY COUNT(*) DESC LIMIT 1) "
                 "FROM matches"
             ).fetchone()
-            wins = int(row[3] or 0)
-            losses = int(row[4] or 0)
-            decided = wins + losses
+            # RM-610: season WR over RESOLVED games only (known result,
+            # not a remake) via the shared helper.
+            cur = rconn.execute(
+                "SELECT tracked_win" + resolution_select(rconn, "matches")
+                + " FROM matches")
+            cols = [d[0] for d in cur.description]
+            wins, decided, wr_display = resolved_wr(
+                dict(zip(cols, r)) for r in cur)
+            losses = decided - wins
             season_stats = {
                 "total":     int(row[0] or 0),
                 "avg_kda":   round(float(row[1] or 0), 2),
                 "favorite":  row[2] or "-",
                 "wins":      wins,
                 "losses":    losses,
-                "win_rate":  round(wins * 100.0 / decided, 1) if decided else None,
+                "win_rate":  wr_pct(wins, decided),
+                "win_rate_display": wr_display,
             }
             # Last 20 decided matches, newest-first, as a W/L pip trail.
             last20 = _compute_last20(rconn)
