@@ -182,6 +182,7 @@
  * @property {Object} agent6
  * @property {string} rc_version
  * @property {Array} why
+ * @property {Object} coaching_data_lock
  */
 
 /**
