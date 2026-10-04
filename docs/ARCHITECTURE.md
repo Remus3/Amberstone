@@ -90,6 +90,8 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `coaches/brawl_coach.py` | Brawl mode coach - DS-before-Haiku |
 | `coaches/tft_coach.py` | TFT Set 17 mode coach |
 | `core/build_order.py` | contextual DS-backed build-ORDER planner |
+| `core/build_planner/relax.py` | constraint-relaxing recommender - auto-relax ladder reports dropped soft constraints |
+| `core/build_planner_legality.py` | DS item-legality adapter - builds the relax recommender HARD predicate |
 | `tests/test_cross_mode_ds_p1l6.py` | P1-L6 cross-mode Daemon Slayer integration contract tests |
 | `tests/test_ds_pick_consumption_p1l11.py` | P1-L11 DS pick CONSUMPTION-end contract tests |
 
