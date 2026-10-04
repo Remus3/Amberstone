@@ -7,6 +7,7 @@ Run idempotently: files already present are skipped. Total download is
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -16,9 +17,30 @@ from urllib.error import URLError, HTTPError
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_DIR = ROOT / "data" / "meta_build" / "ddragon"
 
+# RM-372: the same shape as tools/ddragon_mirror_refresh.py VERSION_RE /
+# validate_version (fullmatch, so a trailing newline is refused). Kept local
+# because this script runs as `python scripts/...` with no repo root on
+# sys.path; tests/test_cache_ddragon_assets_version_rm372.py pins agreement.
+_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+def is_valid_version(version) -> bool:
+    return (isinstance(version, str) and not isinstance(version, bool)
+            and _VERSION_RE.fullmatch(version) is not None)
+
+
 def latest_version() -> str:
+    """`latest_pulled` from `_index.json`, validated BEFORE it is joined into
+    any path (RM-372): main() turns it into two created directories, and a
+    hand-edit, a third writer or an old backup could carry `../..` or a
+    non-version string. Raises ValueError rather than creating anything."""
     idx = json.loads((VERSION_DIR / "_index.json").read_text(encoding="utf-8"))
-    return idx["latest_pulled"]
+    version = idx.get("latest_pulled") if isinstance(idx, dict) else None
+    if not is_valid_version(version):
+        raise ValueError(
+            f"refusing unsafe DDragon version {version!r} from _index.json - "
+            "expected <major>.<minor>.<patch>")
+    return version
 
 def fetch(url: str, dest: Path, *, retries: int = 2, timeout: float = 6.0) -> bool:
     if dest.exists() and dest.stat().st_size > 0:
