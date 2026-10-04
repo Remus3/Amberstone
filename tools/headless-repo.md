@@ -61,13 +61,13 @@ are a 2026-07-30 measurement and must be re-measured, never carried forward.
 | Path | Files | Size | Lane-7 posture |
 |---|---|---|---|
 | `%LOCALAPPDATA%\Temp\claude\C--Sibling-A` | 3,376 | **35.5 GB** | SIBLING REPO scratch. Cross-repo act - PROPOSE, never auto-clean |
-| `%LOCALAPPDATA%\Temp\claude\C--Riot-Commander` | 152,231 | 9.5 GB | RC session scratch. Safe to prune BY AGE |
+| `%LOCALAPPDATA%\Temp\claude\C--Riot-Commander` | 152,231 | 9.5 GB | RC session scratch. **NO age prune (RM-149 ruling).** Whole-session-dir removal only - see item 5 |
 | `%APPDATA%\Claude\vm_bundles` | 9 | 8.9 GB | Desktop-app runtime. Do not touch without an app-version check |
 | `%USERPROFILE%\.cache` | 5,628 | 7.5 GB | Mixed tooling cache. Per-subdir adjudication |
 | `%USERPROFILE%\.claude\projects` | 6,707 | 1.9 GB | **EVIDENCE, NOT GARBAGE - never delete** |
 | `%USERPROFILE%\.claude\plugins` | 116,872 | 1.5 GB | Plugin installs. Prune only unreferenced marketplaces |
 | `%APPDATA%\npm` | 1,830 | 0.9 GB | Global npm. Out of scope |
-| `%USERPROFILE%\.gemini` | 1,314 | 151 MB | Retired-vendor state. PURGEABLE since 2026-08-01 - the vendor is decommissioned and nothing reads this. Confirm no live reference before deleting. |
+| `%USERPROFILE%\.gemini` | 1,314 | 151 MB | Retired-vendor state. PURGEABLE since 2026-08-01 (RM-149 ruling) - the vendor is decommissioned and nothing reads this. Grep the repo + scheduled tasks for a live reference first; delete via the Recycle Bin only. |
 | `%USERPROFILE%\.perseus-vault` | 4 | 99 MB | Recall store. RETAIN - never prune |
 
 **1. `~/.claude/projects` holds the SESSION TRANSCRIPTS. They are evidence.** They are the exact input a retroactive audit reads to verify a "tests passed" claim against
@@ -87,12 +87,19 @@ individually before anything is touched." The absence of an allowlist is deliber
 an approval for one path to its siblings. The adjudicator is a DISTINCT agent that did not author the proposal (section 9). A rationale written after seeing the output
 is not a rationale.
 
-**4. RETAIN outright:** `%USERPROFILE%\.perseus-vault` (pruning it silently degrades every future session's rediscovery guard) and `%USERPROFILE%\.gemini`. **No touch
+**4. RETAIN outright:** `%USERPROFILE%\.perseus-vault` (pruning it silently degrades every future session's rediscovery guard). `%USERPROFILE%\.gemini` was
+listed here too, contradicting the table; RM-149 (2026-10-03) ruled it PURGEABLE per the table row, so it is no longer retained - it still goes through the item-3
+per-path adjudicator and the Recycle Bin, and it is still an out-of-tree act that halts for the operator under the CLAUDE.md boundary. **No touch
 without an app-version check:** `%APPDATA%\Claude\vm_bundles` - 8.9 GB in nine files is a runtime, and deleting a bundle the installed app still resolves breaks the
 desktop app rather than cleaning anything.
 
-**5. The only path with a standing "safe" posture is `Temp\claude\C--Riot-Commander`, and even there it is "prune BY AGE", not "prune".** Age is the discriminator, size
-is not. State the cutoff and the count. This lane's own scratchpad lives under that tree - do not prune the run you are inside.
+**5. `Temp\claude\C--Riot-Commander` has NO safe age rule (RM-149 ruling, 2026-10-03). Do not prune it by age, and do not re-propose an age prune.** Measured
+(2026-08-02): the tree is dense with NTFS hardlinks into the repo's own `.git\lfs\objects`, so apparent size multi-counts single physical extents (132 of the 400
+largest delete-set files reclaimed ZERO bytes), and mtime inside a hardlinked clone is the ORIGINAL object's mtime, so any age line slices through the middle of live
+clones. Two age-prune proposals were rejected by an independent adjudicator on exactly this. **The only permitted shape is clone-atomic: remove a WHOLE session
+directory, only when its session has ended and no `git worktree list` entry points into it, via the Recycle Bin.** A link-count-aware partial prune is NOT wanted - the
+physical reclaim is near zero for hardlinked extents and the build cost is not justified (decision, alternatives and why recorded in the RM-149 commit). This lane's own
+scratchpad lives under that tree - do not touch the run you are inside.
 
 ### 3. FROZEN FILES - the adjudicator gate
 
