@@ -66,6 +66,28 @@ def accounts() -> list[tuple[str, str]]:
     return out
 
 
+DEFAULT_PLATFORM = "NA1"
+
+
+def platform() -> str:
+    """The operator's Riot PLATFORM id (``NA1``, ``EUW1``, ...), upper-cased.
+
+    This is the prefix of a Match-V5 match id (``NA1_<gameId>``). It is NOT
+    the regional route (``americas`` / ``europe`` / ``asia``) the Match-V5
+    host uses, and the two must never be swapped. Resolution order matches
+    the rest of this module: env ``RC_RIOT_PLATFORM``, then the ``platform``
+    key of ``config/operator_identity.json``, then ``NA1`` (the default
+    ``core/riot_api.py`` already documents for v1). A value that is not plain
+    alphanumeric is ignored rather than trusted into an id.
+    """
+    for raw in (os.environ.get("RC_RIOT_PLATFORM", ""),
+                str(_blob().get("platform", "") or "")):
+        val = raw.strip().upper()
+        if val and val.isalnum() and val.isascii():
+            return val
+    return DEFAULT_PLATFORM
+
+
 def is_configured() -> bool:
     """True when this install carries a real identity, not the placeholder."""
     return game_name() != PLACEHOLDER_GAME_NAME or bool(accounts())

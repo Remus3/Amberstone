@@ -43,7 +43,8 @@ Design contract (item 119, frozen-file grant headless-upgrade run):
       - Very short game (gameDuration < ``MIN_DURATION_S`` = 180) ->
         skip (DC / remake; not meaningful sample)
       - DB write error -> rollback + log debug; never raises
-  * Max wait wall: 90s + 60s + 1 fetch round = ~150s.
+  * Max wait wall (legacy unpinned path): 90s + 60s + 1 fetch round =
+    ~150s. The pinned chain (below) runs 90s + sum(STAGED_DELAYS_S).
   * Thread-safety: a single module-scoped ``_WRITE_LOCK`` (re-entrant
     via ``threading.Lock`` - the writer never re-locks itself)
     serializes DB writes. Match-V5 ``_call()`` is already token-bucketed
@@ -63,12 +64,45 @@ Constraints the design respects:
     decision: Timer cleans up after firing without needing manual join,
     and its delay is the model fit for "fire 90s after gameEnd".
   * Pure stdlib; no new requirements pinned.
+
+Target pinning (Y-01, external reference M - behaviour only):
+
+  * DEFECT it fixes: the writer asked for ``count=1`` recent ids and took
+    ``ids[0]``. When Match-V5 had not indexed the just-ended game inside the
+    90 s delay, ``ids[0]`` was the PREVIOUS game, the PK probe found it and
+    the writer returned ``already_present`` with no retry - the new game
+    waited for the Sunday catchup while the status claimed success. After an
+    ARAM Mayhem game (q2400, never served by Match-V5) ``ids[0]`` is always
+    the last indexable game, so the event-mode branch almost never fired.
+  * SEAM: ``app/_game_lifecycle.py`` is FROZEN and does not know the gameId at
+    ``on_game_end`` time anyway - the LCU post-game collector reads it from the
+    EOG block seconds later. So the collector publishes an atomic pin file
+    (``write_game_end_pin`` -> ``ops/runtime/last_game_end.json``, gitignored
+    because it carries the live Riot ID) and the writer reads it.
+  * The writer builds ``<PLATFORM>_<gameId>`` with the platform from config
+    (``core.operator_identity.platform``), never from the regional route, and
+    makes staged attempts against THAT id on the fixed ``STAGED_DELAYS_S``
+    schedule. The id is remembered from the first probe that resolved it and
+    carried to every later attempt, so a newer game's pin cannot retarget a
+    running chain. Not listed in recent ids / a 404 on detail = "not indexed
+    yet, retry". ``already_present`` only when the TARGET itself is in the DB.
+  * Only the LAST attempt may take a fallback: with no pin at all it runs the
+    legacy unpinned path once (``fallback=True``); with a pin whose target
+    never got indexed it parks the target in ``fetch_retry`` for the catchup.
+  * q2400 / KIWI ends ``event_mode_excluded`` without any Riot call.
+  * Concurrent chains are deduped by target id under ``_WRITE_LOCK``; pending
+    Timers are capped at ``MAX_STAGED_TIMERS``, counted at accept time; every
+    Timer is a daemon, so a restart only drops staged work the catchup picks
+    up later.
+  * LEDGER 357 FUTURE folded in: the pin also carries the live LCU Riot ID,
+    resolved through Account-V1 ahead of the possibly-stale state PUUID.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import threading
 import time
@@ -103,7 +137,43 @@ MAX_ID_RATE_LIMIT_RETRIES = 3
 # Serializes DB writes across concurrent Timers (operator playing 2 games
 # back-to-back inside the retry window). Match-V5 calls are already
 # token-bucketed in core.riot_api; this lock guards the sqlite write block.
+# It also guards the staged-Timer registry and the in-flight target map below.
 _WRITE_LOCK = threading.Lock()
+
+# -- Y-01 target pinning ----------------------------------------------------
+
+# Written by lcu/lcu_postgame_collector.py through write_game_end_pin().
+# ops/runtime/ is gitignored, which matters: the pin carries the Riot ID.
+PIN_PATH = _PROJECT_ROOT / "ops" / "runtime" / "last_game_end.json"
+
+# A pin older than (scheduled_at - PIN_SLACK_S) belongs to an EARLIER game.
+# The collector writes it AFTER on_game_end schedules the chain (it waits for
+# the EndOfGame phase first), so the slack only absorbs clock jitter; any real
+# previous game ended at least one queue + load + game ago.
+PIN_SLACK_S = 60.0
+
+# Gaps between staged attempts, after the initial DEFAULT_DELAY_S. Our own
+# derivation, not a measured indexing latency (that is the live-gated Step 0):
+# the 300 s and 600 s steps sit at and beyond core/riot_api.py's 300 s
+# not_found negative-cache TTL, so a 404 cached by an earlier attempt has
+# expired before the later ones ask the wire again. Total wall ~19.5 min.
+STAGED_DELAYS_S: tuple[float, ...] = (60.0, 120.0, 300.0, 600.0)
+
+# Pending Timers allowed at once, counted when a Timer is ACCEPTED. A chain
+# holds one pending Timer at a time and a game lasts longer than a chain's
+# spacing, so 2 is the normal ceiling; 4 leaves room for a rate-limit retry.
+MAX_STAGED_TIMERS = 4
+
+# How many recent ids to scan for the target. The list call costs the same
+# for 1 or 5, and 5 still finds the target if a newer game already ended.
+RECENT_ID_WINDOW = 5
+
+# Event modes Match-V5 never serves (Settled: 403/empty is EXPECTED).
+EVENT_MODE_QUEUE_IDS = frozenset({2400})
+EVENT_MODE_GAME_MODES = frozenset({"KIWI"})
+
+_STAGED_TIMERS: list[Any] = []
+_INFLIGHT_TARGETS: dict[str, str] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +254,347 @@ def _do_live_fetch_and_insert(
     rate_limit_attempt: int = 0,
     backoff_s: tuple[float, ...] | None = None,
     sleep: Any = None,
+    scheduled_at: float | None = None,
+    chain: str | None = None,
+    attempt: int = 0,
+    pin: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Timer entry point. Never raises.
+
+    ``scheduled_at`` set (every chain started by ``schedule_live_insert``)
+    selects the Y-01 target-pinned staged path. Without it this is the legacy
+    unpinned single fetch, kept for direct callers and as the last-attempt
+    fallback when no pin ever appeared.
+    """
+    fetch_kw: dict[str, Any] = {}
+    if backoff_s is not None:
+        fetch_kw["backoff_s"] = backoff_s
+    if sleep is not None:
+        fetch_kw["sleep"] = sleep
+    if scheduled_at is None:
+        return _legacy_fetch_and_insert(
+            is_retry=is_retry, retry_after_s=retry_after_s,
+            rate_limit_attempt=rate_limit_attempt, fetch_kw=fetch_kw)
+
+    chain_id = chain or f"chain-{scheduled_at!r}"
+    try:
+        result = _staged_attempt(
+            scheduled_at=float(scheduled_at), chain=chain_id,
+            attempt=int(attempt), pin=pin, retry_after_s=retry_after_s,
+            fetch_kw=fetch_kw)
+    except Exception as exc:  # noqa: BLE001 - never raise from a Timer
+        _log.debug("rewind_live_writer staged attempt error: %s", exc)
+        result = {"status": "error", "cause": "unexpected"}
+        if isinstance(pin, dict) and pin.get("target_id"):
+            result["match_id"] = pin["target_id"]
+    status = str(result.get("status") or "")
+    if not status.endswith("_retry_scheduled"):
+        if status != "duplicate_target":
+            _release_chain(chain_id)
+        _log.info("rewind_live_writer: chain %s attempt %d ended %s (%s)",
+                  chain_id, int(attempt), status,
+                  result.get("match_id") or "no target")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Y-01 pin file (written by the collector, read by the writer)
+# ---------------------------------------------------------------------------
+
+def write_game_end_pin(
+    game_id: Any,
+    *,
+    queue_id: Any = None,
+    game_mode: Any = "",
+    riot_id: tuple[str, str] | None = None,
+) -> bool:
+    """Atomically publish the just-ended game's id for the live writer.
+
+    Called by ``lcu/lcu_postgame_collector.py`` from the gameId it already
+    reads off the EOG block. Returns False (never raises) on a non-numeric id
+    or an OS error. ``riot_id`` is the live LCU ``(gameName, tagLine)``.
+    """
+    gid = str(game_id if game_id is not None else "").strip()
+    if not gid.isdigit() or not gid.isascii():
+        return False
+    try:
+        qid = int(queue_id) if queue_id not in (None, "") else None
+    except (TypeError, ValueError, OverflowError):
+        qid = None
+    payload: dict[str, Any] = {
+        "game_id": gid,
+        "queue_id": qid,
+        "game_mode": str(game_mode or "").strip().upper(),
+        "game_name": "",
+        "tag_line": "",
+        "written_at": float(time.time()),
+    }
+    if riot_id and len(riot_id) == 2:
+        payload["game_name"] = str(riot_id[0] or "").strip()
+        payload["tag_line"] = str(riot_id[1] or "").strip()
+    tmp = PIN_PATH.with_name(
+        f"{PIN_PATH.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        PIN_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(json.dumps(payload), encoding="utf-8")
+        tmp.replace(PIN_PATH)
+    except OSError as exc:
+        _log.debug("rewind_live_writer pin write error: %s", exc)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
+    return True
+
+
+def _read_game_end_pin(scheduled_at: float) -> dict[str, Any] | None:
+    """The pin for THIS chain's game, or None (absent / stale / malformed)."""
+    try:
+        data = json.loads(PIN_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    gid = str(data.get("game_id") or "").strip()
+    if not gid.isdigit() or not gid.isascii():
+        return None
+    try:
+        written_at = float(data.get("written_at"))
+    except (TypeError, ValueError):
+        return None
+    if written_at < scheduled_at - PIN_SLACK_S:
+        return None
+    qid = data.get("queue_id")
+    qid = qid if isinstance(qid, int) and not isinstance(qid, bool) else None
+    name = str(data.get("game_name") or "").strip()
+    tag = str(data.get("tag_line") or "").strip()
+    from core import operator_identity
+    return {
+        "target_id": f"{operator_identity.platform()}_{gid}",
+        "queue_id": qid,
+        "game_mode": str(data.get("game_mode") or "").strip().upper(),
+        "riot_id": [name, tag] if name and tag else None,
+    }
+
+
+def _is_event_mode(pin: dict[str, Any]) -> bool:
+    return (pin.get("queue_id") in EVENT_MODE_QUEUE_IDS
+            or pin.get("game_mode") in EVENT_MODE_GAME_MODES)
+
+
+# ---------------------------------------------------------------------------
+# Y-01 staging: Timer cap + per-target dedupe (both under _WRITE_LOCK)
+# ---------------------------------------------------------------------------
+
+def _timer_alive(t: Any) -> bool:
+    try:
+        return bool(t.is_alive())
+    except Exception:  # noqa: BLE001 - a broken handle holds no slot
+        return False
+
+
+def _accept_timer(delay_s: float, kwargs: dict[str, Any]) -> bool:
+    """Start a daemon Timer for the next attempt if under the cap.
+
+    The cap is counted at ACCEPT time over Timers still pending. The Timer
+    thread running this call is excluded: it is about to finish.
+    """
+    t = threading.Timer(delay_s, _do_live_fetch_and_insert, kwargs=kwargs)
+    t.daemon = True
+    with _WRITE_LOCK:
+        me = threading.current_thread()
+        _STAGED_TIMERS[:] = [x for x in _STAGED_TIMERS
+                             if x is not me and _timer_alive(x)]
+        if len(_STAGED_TIMERS) >= MAX_STAGED_TIMERS:
+            _log.info("rewind_live_writer: %d staged Timers pending (cap); "
+                      "not staging another", len(_STAGED_TIMERS))
+            return False
+        _STAGED_TIMERS.append(t)
+    try:
+        t.start()
+    except RuntimeError as exc:
+        # Process at shutdown can refuse new threads.
+        _log.debug("rewind_live_writer schedule error: %s", exc)
+        with _WRITE_LOCK:
+            if t in _STAGED_TIMERS:
+                _STAGED_TIMERS.remove(t)
+        return False
+    return True
+
+
+def _claim_target(target: str, chain: str) -> bool:
+    """First chain to resolve a target owns it; a second chain backs off."""
+    with _WRITE_LOCK:
+        owner = _INFLIGHT_TARGETS.get(target)
+        if owner is not None and owner != chain:
+            return False
+        _INFLIGHT_TARGETS[target] = chain
+        return True
+
+
+def _release_chain(chain: str) -> None:
+    with _WRITE_LOCK:
+        for target in [t for t, c in _INFLIGHT_TARGETS.items() if c == chain]:
+            del _INFLIGHT_TARGETS[target]
+
+
+def _track_timer_for_tests(t: Any) -> None:
+    with _WRITE_LOCK:
+        _STAGED_TIMERS.append(t)
+
+
+def _reset_staging_for_tests() -> None:
+    with _WRITE_LOCK:
+        _STAGED_TIMERS.clear()
+        _INFLIGHT_TARGETS.clear()
+
+
+def _park_target(rc: Any, match_id: str, reason: str) -> None:
+    """Hand a target the live path could not finish to the catchup drain."""
+    with _WRITE_LOCK:
+        try:
+            conn = _open_db()
+            try:
+                rc.enqueue_retry(conn, match_id, "match", reason)
+                conn.commit()
+            finally:
+                conn.close()
+        except (sqlite3.Error, OSError) as exc:
+            _log.debug("rewind_live_writer park error: %s", exc)
+
+
+def _resolve_puuid_for(pin: dict[str, Any], riot_api: Any) -> str | None:
+    """Live LCU Riot ID (via Account-V1) first, then the catchup state.
+
+    LEDGER 357 FUTURE: the state PUUID goes stale after an account switch
+    until someone runs ``catchup --riot-id``; the live client already knows
+    who is playing.
+    """
+    rid = pin.get("riot_id")
+    if rid and len(rid) == 2:
+        acct = riot_api.get_account_by_riot_id(
+            rid[0], rid[1], region=REGION_REGIONAL)
+        if isinstance(acct, dict):
+            puuid = acct.get("puuid")
+            if isinstance(puuid, str) and puuid:
+                return puuid
+    return _resolve_latest_puuid()
+
+
+def _staged_attempt(
+    *,
+    scheduled_at: float,
+    chain: str,
+    attempt: int,
+    pin: dict[str, Any] | None,
+    retry_after_s: float,
+    fetch_kw: dict[str, Any],
+) -> dict[str, Any]:
+    last = attempt >= len(STAGED_DELAYS_S)
+
+    def _next(status: str, target: str | None, rc: Any = None,
+              cause: str = "") -> dict[str, Any]:
+        out: dict[str, Any] = {"status": status, "pinned": target is not None,
+                               "attempt": attempt}
+        if target:
+            out["match_id"] = target
+        if cause:
+            out["cause"] = cause
+        kwargs = {"retry_after_s": retry_after_s, "scheduled_at": scheduled_at,
+                  "chain": chain, "attempt": attempt + 1, "pin": pin}
+        if _accept_timer(STAGED_DELAYS_S[attempt], kwargs):
+            return out
+        out["status"] = "staged_cap_reached"
+        if target and rc is not None:
+            _park_target(rc, target, "live staged cap")
+        return out
+
+    if pin is None:
+        pin = _read_game_end_pin(scheduled_at)
+    if pin is None:
+        if not last:
+            return _next("awaiting_pin_retry_scheduled", None)
+        # The ONLY fallback, and only on the last attempt: one unpinned
+        # legacy fetch that stages nothing further.
+        res = _legacy_fetch_and_insert(
+            is_retry=True, retry_after_s=retry_after_s,
+            rate_limit_attempt=MAX_ID_RATE_LIMIT_RETRIES, fetch_kw=fetch_kw)
+        res["fallback"] = True
+        res["pinned"] = False
+        return res
+
+    target = str(pin["target_id"])
+    if _is_event_mode(pin):
+        return {"status": "event_mode_excluded", "match_id": target,
+                "pinned": True, "queue_id": pin.get("queue_id")}
+    if not _claim_target(target, chain):
+        return {"status": "duplicate_target", "match_id": target,
+                "pinned": True}
+
+    try:
+        from core import riot_api
+        from scripts import rewind_catchup as rc
+    except ImportError as exc:
+        _log.debug("rewind_live_writer import error: %s", exc)
+        return {"status": "error", "cause": "import", "match_id": target}
+    if not riot_api.is_configured():
+        return {"status": "no_api_key", "match_id": target}
+
+    puuid = _resolve_puuid_for(pin, riot_api)
+    if puuid is None:
+        return {"status": "no_puuid", "match_id": target}
+
+    try:
+        conn = _open_db()
+    except (sqlite3.Error, OSError) as exc:
+        _log.debug("rewind_live_writer open_db error: %s", exc)
+        return {"status": "error", "cause": "open_db", "match_id": target}
+    try:
+        if _match_already_present(conn, target):
+            return {"status": "already_present", "match_id": target,
+                    "pinned": True}
+    finally:
+        try:
+            conn.close()
+        except sqlite3.Error:
+            pass
+
+    def _not_indexed(cause: str) -> dict[str, Any]:
+        if not last:
+            return _next("not_indexed_retry_scheduled", target, rc, cause)
+        _park_target(rc, target, f"live target not indexed ({cause})")
+        return {"status": "target_not_indexed", "match_id": target,
+                "pinned": True, "cause": cause}
+
+    with riot_api.track_outcomes() as id_scope:
+        ids = riot_api.get_recent_matches(
+            puuid, count=RECENT_ID_WINDOW, region=REGION_REGIONAL)
+    if not isinstance(ids, list) or target not in ids:
+        return _not_indexed("ids_rate_limited" if id_scope.rate_limited
+                            else "not_listed")
+
+    detail_outcomes: list[str] = []
+    res = _hydrate_and_write(target, riot_api, rc, fetch_kw, detail_outcomes)
+    if res.get("status") == "no_detail" and (
+            not detail_outcomes or "not_found" in detail_outcomes):
+        # Listed but 404 (or a cached 404 that recorded nothing): Match-V5
+        # has the id before the detail. Not indexed yet - retry.
+        return _not_indexed("detail_404")
+    res["pinned"] = True
+    return res
+
+
+# ---------------------------------------------------------------------------
+# Legacy unpinned path (direct callers + the last-attempt fallback)
+# ---------------------------------------------------------------------------
+
+def _legacy_fetch_and_insert(
+    *,
+    is_retry: bool,
+    retry_after_s: float,
+    rate_limit_attempt: int,
+    fetch_kw: dict[str, Any],
 ) -> dict[str, Any]:
     """Fetch the most recent Match-V5 detail + timeline and write to DB.
 
@@ -220,12 +631,6 @@ def _do_live_fetch_and_insert(
     if not riot_api.is_configured():
         return {"status": "no_api_key"}
 
-    fetch_kw: dict[str, Any] = {}
-    if backoff_s is not None:
-        fetch_kw["backoff_s"] = backoff_s
-    if sleep is not None:
-        fetch_kw["sleep"] = sleep
-
     # Fetch the 1 most-recent match id for the operator.
     with riot_api.track_outcomes() as id_scope:
         ids = riot_api.get_recent_matches(
@@ -241,20 +646,11 @@ def _do_live_fetch_and_insert(
                       "after %d retries; the catchup cron will pick it up",
                       rate_limit_attempt)
             return {"status": "rate_limited"}
-        try:
-            t = threading.Timer(
-                retry_after_s,
-                _do_live_fetch_and_insert,
-                kwargs={
-                    "is_retry": is_retry,
-                    "retry_after_s": retry_after_s,
-                    "rate_limit_attempt": rate_limit_attempt + 1,
-                },
-            )
-            t.daemon = True
-            t.start()
-        except RuntimeError as exc:
-            _log.debug("rewind_live_writer retry-schedule error: %s", exc)
+        if not _accept_timer(retry_after_s, {
+                "is_retry": is_retry,
+                "retry_after_s": retry_after_s,
+                "rate_limit_attempt": rate_limit_attempt + 1}):
+            return {"status": "staged_cap_reached"}
         return {"status": "rate_limited_retry_scheduled"}
     if not ids:
         # Likely Match-V5 hasn't seen the just-ended game yet; schedule
@@ -262,20 +658,11 @@ def _do_live_fetch_and_insert(
         # return None / empty here - those will silently abandon after
         # the retry (Match-V5 will continue to return empty / 403).
         if not is_retry:
-            try:
-                t = threading.Timer(
-                    retry_after_s,
-                    _do_live_fetch_and_insert,
-                    kwargs={
-                        "is_retry": True,
-                        "retry_after_s": retry_after_s,
-                        "rate_limit_attempt": rate_limit_attempt,
-                    },
-                )
-                t.daemon = True
-                t.start()
-            except RuntimeError as exc:
-                _log.debug("rewind_live_writer retry-schedule error: %s", exc)
+            if not _accept_timer(retry_after_s, {
+                    "is_retry": True,
+                    "retry_after_s": retry_after_s,
+                    "rate_limit_attempt": rate_limit_attempt}):
+                return {"status": "staged_cap_reached"}
             return {"status": "retry_scheduled"}
         return {"status": "no_id"}
 
@@ -300,10 +687,26 @@ def _do_live_fetch_and_insert(
         except sqlite3.Error:
             pass
 
+    return _hydrate_and_write(match_id, riot_api, rc, fetch_kw, None)
+
+
+def _hydrate_and_write(
+    match_id: str,
+    riot_api: Any,
+    rc: Any,
+    fetch_kw: dict[str, Any],
+    detail_outcomes: list[str] | None,
+) -> dict[str, Any]:
+    """Detail + timeline fetch and the locked DB write for ONE match id.
+
+    Shared by the legacy and the pinned path. ``detail_outcomes`` (when given)
+    receives the raw outcome labels of the final detail attempt so the pinned
+    path can tell a 404 (retry) from a 403 (no_detail).
+    """
     # Fetch detail.
     detail, d_status = rc.fetch_with_rate_limit_retry(
         lambda: riot_api.get_match(match_id, region=REGION_REGIONAL),
-        **fetch_kw)
+        outcomes_out=detail_outcomes, **fetch_kw)
     if detail is None and d_status == rc.FETCH_RATE_LIMITED:
         # Park the whole match: a later live write for a newer game would
         # otherwise move the catchup window past this one for good.
@@ -419,18 +822,22 @@ def schedule_live_insert(
     operator's "just played" surface fresh.
 
     ``app`` is accepted as the design's standard hook seam but is not
-    used today - the writer self-contains its dependencies. Reserved
-    so future call sites can pass per-app context (queue id hints,
-    spectator mode flag, etc.) without changing the wire.
+    used. Y-01 considered passing the gameId through it and rejected that:
+    at ``on_game_end`` time nothing on ``app`` knows the gameId yet (the
+    LCU collector reads it off the EOG block seconds later), so the seam is
+    the collector's pin file instead (``write_game_end_pin``).
+
+    Every call starts a new target-pinned chain (``scheduled_at`` + a chain
+    id); the Timer counts against ``MAX_STAGED_TIMERS``. Never raises.
     """
     try:
-        t = threading.Timer(
-            delay_s,
-            _do_live_fetch_and_insert,
-            kwargs={"is_retry": False, "retry_after_s": retry_after_s},
-        )
-        t.daemon = True
-        t.start()
-    except RuntimeError as exc:
-        # Process at shutdown can refuse new threads.
+        now = float(time.time())
+        _accept_timer(delay_s, {
+            "is_retry": False,
+            "retry_after_s": retry_after_s,
+            "scheduled_at": now,
+            "chain": f"chain-{now:.6f}-{threading.get_ident()}",
+            "attempt": 0,
+        })
+    except Exception as exc:  # noqa: BLE001 - lifecycle must never see this
         _log.debug("rewind_live_writer schedule error: %s", exc)

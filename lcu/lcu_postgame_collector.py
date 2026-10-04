@@ -803,6 +803,7 @@ class PostgameCollector:
         """Try all EOG endpoints in order. Returns True if something was saved."""
         eog = self._fetch_eog_stats_block()
         if eog:
+            self._publish_game_end_pin(eog, mode_hint=game_mode)
             _save_eog(eog, game_mode, _ITEM_MAP, _RUNE_MAP)
             # Best-effort: try to get item timeline from match history
             self._try_fetch_timeline(str(eog.get("gameId") or ""), game_mode)
@@ -810,6 +811,33 @@ class PostgameCollector:
 
         # Fallback: try match history
         return self._capture_via_history(game_mode)
+
+    def _publish_game_end_pin(self, eog: dict, summoner=None,
+                              mode_hint: str = "") -> None:
+        """Y-01 (external reference M): hand the just-ended gameId to the
+        rewind live writer through its pin file - the NON-frozen seam, since
+        app/_game_lifecycle.py is frozen and does not know the gameId when it
+        schedules the writer. Also carries the live Riot ID (LEDGER 357
+        FUTURE). Best-effort: a failure here must never cost the capture."""
+        try:
+            if summoner is None:
+                summoner = self._lcu_get("/lol-summoner/v1/current-summoner")
+            riot_id = None
+            if isinstance(summoner, dict):
+                name = str(summoner.get("gameName") or "").strip()
+                tag = str(summoner.get("tagLine") or "").strip()
+                if name and tag:
+                    riot_id = (name, tag)
+            from lib.rewind_live_writer import write_game_end_pin
+            write_game_end_pin(
+                eog.get("gameId") or eog.get("game_id"),
+                queue_id=eog.get("queueId"),
+                # The trigger hint is the Live Client gameMode (KIWI for
+                # ARAM Mayhem) - the fallback when the EOG block has none.
+                game_mode=eog.get("gameMode") or mode_hint or "",
+                riot_id=riot_id)
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("postgame: game-end pin not written: %s", exc)
 
     def _capture_via_history(self, game_mode: str) -> bool:
         """
@@ -850,6 +878,8 @@ class PostgameCollector:
             # Adapt match history format to EOG format
             adapted = self._adapt_match_history(game)
             if adapted:
+                self._publish_game_end_pin(adapted, summoner,
+                                           mode_hint=game_mode)
                 raw_mode = adapted.get("gameMode") or game.get("gameMode") or game_mode
                 _save_eog(adapted, raw_mode, _ITEM_MAP, _RUNE_MAP)
                 return True
@@ -990,6 +1020,7 @@ class PostgameCollector:
 
         return {
             "gameId":      game_id,
+            "queueId":     game.get("queueId"),
             "gameMode":    game_mode,
             "gameLength":  game_len,
             "mapId":       map_id,
