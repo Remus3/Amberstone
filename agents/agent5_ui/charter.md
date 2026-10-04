@@ -1,6 +1,6 @@
 # Agent 5 - UI (Charter)
 
-Model: `claude-sonnet-4-6`. Substrate: ephemeral per task.
+Model: `claude-sonnet-5-5`. Substrate: ephemeral per task.
 
 ## Mandate
 Own the `web/` frontend - the secondary-screen Phase 3 dashboard served

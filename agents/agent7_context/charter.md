@@ -1,6 +1,6 @@
 # Agent 7 - User Context (Charter)
 
-Model: `claude-haiku-4-5`. Substrate: `warm_llm_during_play` (matches
+Model: `claude-haiku-4-5-20251001`. Substrate: `warm_llm_during_play` (matches
 `resolved_decisions.json` §agents.7), ephemeral outside the play
 window. Warm window: from UI open or game start until 30 min idle or
 UI close.
