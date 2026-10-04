@@ -220,6 +220,8 @@ _STATE_CADENCE_S = _state_cadence_s()
 # otherwise duplicate the vision-relay round-trip in _build_state).
 _STATE_CACHE_PAYLOAD: bytes | None = None
 _STATE_CACHE_TS: float = 0.0
+_STATE_CACHE_GEN: int = 0               # RM-245(c): bumped per completed build
+_STATE_BUILD_LOCK = threading.Lock()    # RM-245(c): one builder at a time
 
 # S7 instrumentation (2026-06-10, operator report "champ select updates
 # slow"): a build_state() that creeps past the SSE tick stretches every
@@ -252,18 +254,35 @@ def _state_payload_cached() -> bytes:
     tick - N tabs duplicated the LCU/liveclient round-trips + the
     deterministic compute N times per second. Both paths share this
     helper now; the SSE tick equals the TTL (both _STATE_CADENCE_S, RC2
-    6.3) so freshness is unchanged. Unlocked on purpose: a concurrent rebuild is benign
-    (last-write-wins, both payloads valid) and cheaper than serializing
-    the hot path. Raises on build failure - callers keep their own
-    degradation (500 for /api/state, "{}" event for SSE)."""
-    global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS
+    6.3) so freshness is unchanged. The cache HIT path stays lock-free; a
+    MISS is single-flight since RM-245(c) (see below). Raises on build
+    failure - callers keep their own degradation (500 for /api/state, no
+    event at all for SSE, RM-245(a))."""
+    global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS, _STATE_CACHE_GEN
     now = time.time()
     if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < _STATE_CADENCE_S:
         return _STATE_CACHE_PAYLOAD
-    payload = json.dumps(_timed_build_state()).encode("utf-8")
-    _STATE_CACHE_PAYLOAD = payload
-    _STATE_CACHE_TS = now
-    return payload
+    # RM-245(c): in-flight dedupe. The "unlocked on purpose" reasoning above
+    # holds only for a FAST build; logs/ carried 542 `state-build slow` lines
+    # at 1003-1699 ms against the 0.5 s TTL, so every subscriber missed on
+    # every tick and ran its own concurrent LCU + relay round-trip. Now ONE
+    # caller builds; the others wait on the lock and take the payload it
+    # produced (the generation moved while they waited) instead of
+    # rebuilding. A failed build raises to the builder only; a waiter then
+    # tries once itself, so a transient failure is not amplified.
+    gen_seen = _STATE_CACHE_GEN
+    with _STATE_BUILD_LOCK:
+        if _STATE_CACHE_GEN != gen_seen and _STATE_CACHE_PAYLOAD is not None:
+            return _STATE_CACHE_PAYLOAD
+        now = time.time()
+        if (_STATE_CACHE_PAYLOAD is not None
+                and (now - _STATE_CACHE_TS) < _STATE_CADENCE_S):
+            return _STATE_CACHE_PAYLOAD
+        payload = json.dumps(_timed_build_state()).encode("utf-8")
+        _STATE_CACHE_PAYLOAD = payload
+        _STATE_CACHE_TS = time.time()
+        _STATE_CACHE_GEN += 1
+        return payload
 
 
 # --- capability-gap shadow telemetry (L4 Phase-D consumer, item 632) ---------
@@ -434,7 +453,21 @@ def _serve_state_stream(h) -> None:
                 payload = _state_payload_cached()
             except Exception as exc:  # noqa: BLE001
                 log.warning("state-stream build: %s", exc)
-                payload = b"{}"
+                # RM-245(a): this used to send `data: {}`, which the client
+                # applies as AUTHORITATIVE EMPTY STATE - it nulls six cached
+                # fields, flips the view router to "client", and stamps
+                # lastSseTs, which holds the HTTP-fallback repair off for 4 s.
+                # Decision: send NO data event. An SSE comment line keeps the
+                # connection alive and is ignored by EventSource; with no
+                # fresh event, the client's own fallback poll runs and the
+                # /api/state 500 path keeps the last-good render.
+                try:
+                    h.wfile.write(b": state-build-failed\n\n")
+                    h.wfile.flush()
+                except (OSError, ConnectionError):
+                    return
+                time.sleep(_SSE_TICK_S)
+                continue
             ph = hashlib.md5(payload).digest()
             now = time.time()
             if ph != last_hash or (now - last_emit) >= _SSE_HEARTBEAT_S:
@@ -579,7 +612,10 @@ def _serve_health_all(h) -> None:
         rc_ok = bool(rollup.get("rc", {}).get("alive")) and not rc_stale
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
-        cost_ok = rollup.get("cost", {}).get("banner") != "over"
+        # RM-245(d): fail CLOSED. When the cost probe itself errors the block
+        # has no `banner`, and `None != "over"` used to read as healthy.
+        _banner = rollup.get("cost", {}).get("banner")
+        cost_ok = _banner is not None and _banner != "over"
         agent6_degraded = (rollup.get("agent6") or {}).get("status") == "yellow"
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
@@ -660,8 +696,12 @@ def _serve_asset_stamp(h) -> None:
         h._send(200, json.dumps({"mtime": stamp}).encode(),
                 "application/json")
     except Exception as exc:  # noqa: BLE001
-        log.debug("asset-stamp: %s", exc)
-        h._send(200, b'{"mtime":0}', "application/json")
+        # RM-245(b): was 200 {"mtime":0}, indistinguishable from "assets
+        # never change" - the hot-reload signal went silently dead. A 503 is
+        # skipped by the poller (`if (!r.ok) return;`, web/js/main.js) and
+        # the failure is logged where the operator will see it.
+        log.warning("asset-stamp: %s: %s", type(exc).__name__, exc)
+        h._send(503, b'{"ok":false,"mtime":null}', "application/json")
 
 
 # -- POST handlers (slice 2C-7a) --------------------------------------
