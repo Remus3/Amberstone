@@ -19,9 +19,9 @@ from ._config import (AUTH_HEADER, AUTH_TOKEN, SYNC_DIR, VISION_MODEL,
                       _START_TIME, api_key_present, log)
 from ._frame import get_latest_frame, handle_upload_frame
 from ._inference import handle_coach, handle_ocr, handle_vision
-from ._relay import (_lcu_cmd_lock, _lcu_cmd_results, get_latest_liveclient,
-                     get_latest_lcu, handle_upload_liveclient,
-                     handle_upload_lcu, lcu_drain_pending, lcu_queue_command,
+from ._relay import (get_latest_liveclient, get_latest_lcu,
+                     handle_upload_liveclient, handle_upload_lcu,
+                     lcu_drain_pending, lcu_get_result, lcu_queue_command,
                      lcu_record_result)
 from ._stats import get_stats
 
@@ -142,8 +142,8 @@ class Handler(BaseHTTPRequestHandler):
             if rid is None:
                 self._j(400, {"error": "id required"})
                 return
-            with _lcu_cmd_lock:
-                rec = _lcu_cmd_results.get(rid)
+            # RM-266: the one lookup, not a second inline copy of it.
+            rec = lcu_get_result(rid)
             if rec is None:
                 self._j(404, {"error": "pending"})
                 return
