@@ -1,0 +1,13 @@
+{
+ "_doc": "Recorded upstream bodies for the offline replay client (lib/game_data/replay.py). Recorded 2026-10-04 from the live URLs below, then TRIMMED to the entities listed (champions Ahri, Akshan, Draven, Jhin, Kled; items 1055, 3031) and re-serialised (sorted keys, ASCII); values are unmodified. Never add a URL here that was not recorded from the network.",
+ "responses": {
+  "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json": "meraki_champions.json",
+  "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json": "meraki_items.json",
+  "https://ddragon.leagueoflegends.com/api/versions.json": "ddragon_versions.json",
+  "https://ddragon.leagueoflegends.com/cdn/16.18.1/data/en_US/champion.json": "ddragon_champion_16.18.1.json",
+  "https://ddragon.leagueoflegends.com/cdn/16.18.1/data/en_US/item.json": "ddragon_item_16.18.1.json",
+  "https://ddragon.leagueoflegends.com/cdn/16.19.1/data/en_US/champion.json": "ddragon_champion.json",
+  "https://ddragon.leagueoflegends.com/cdn/16.19.1/data/en_US/item.json": "ddragon_item.json",
+  "https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw": "wiki_championdata.lua.txt"
+ }
+}

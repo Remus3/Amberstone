@@ -1,0 +1,46 @@
+{
+ "data": {
+  "1055": {
+   "gold": {
+    "base": 450,
+    "purchasable": true,
+    "sell": 180,
+    "total": 450
+   },
+   "maps": {
+    "11": true,
+    "12": true,
+    "22": false,
+    "30": false,
+    "453": true
+   },
+   "name": "Doran's Blade",
+   "stats": {
+    "FlatHPPoolMod": 80,
+    "FlatPhysicalDamageMod": 10
+   }
+  },
+  "3031": {
+   "gold": {
+    "base": 725,
+    "purchasable": true,
+    "sell": 2450,
+    "total": 3500
+   },
+   "maps": {
+    "11": true,
+    "12": true,
+    "22": false,
+    "30": false,
+    "453": true
+   },
+   "name": "Infinity Edge",
+   "stats": {
+    "FlatCritChanceMod": 0.25,
+    "FlatPhysicalDamageMod": 75
+   }
+  }
+ },
+ "type": "item",
+ "version": "16.18.1"
+}

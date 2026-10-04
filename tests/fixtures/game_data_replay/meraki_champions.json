@@ -1,0 +1,997 @@
+{
+ "Ahri": {
+  "id": 103,
+  "key": "Ahri",
+  "name": "Ahri",
+  "stats": {
+   "acquisitionRadius": {
+    "flat": 525,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAbilityHaste": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAttackSpeed": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageDealt": {
+    "flat": 1,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageTaken": {
+    "flat": 1,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramEnergyRegen": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramHealing": {
+    "flat": 0.9,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramTenacity": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "armor": {
+    "flat": 21,
+    "perLevel": 4.2,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackCastTime": {
+    "flat": 0.3,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDamage": {
+    "flat": 53,
+    "perLevel": 3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDelayOffset": {
+    "flat": -0.1,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackRange": {
+    "flat": 550,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeed": {
+    "flat": 0.668,
+    "perLevel": 2.2,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeedRatio": {
+    "flat": 0.625,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackTotalTime": {
+    "flat": 1.6,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamage": {
+    "flat": 175,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamageModifier": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "gameplayRadius": {
+    "flat": 65,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "health": {
+    "flat": 590,
+    "perLevel": 104,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "healthRegen": {
+    "flat": 2.5,
+    "perLevel": 0.6,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "magicResistance": {
+    "flat": 30,
+    "perLevel": 1.3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "mana": {
+    "flat": 418,
+    "perLevel": 25,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "manaRegen": {
+    "flat": 8,
+    "perLevel": 0.8,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "movespeed": {
+    "flat": 330,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "pathingRadius": {
+    "flat": 35,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "selectionRadius": {
+    "flat": 100,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageDealt": {
+    "flat": 0.9,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageTaken": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   }
+  }
+ },
+ "Akshan": {
+  "id": 166,
+  "key": "Akshan",
+  "name": "Akshan",
+  "stats": {
+   "acquisitionRadius": {
+    "flat": 750,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAbilityHaste": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAttackSpeed": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageDealt": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageTaken": {
+    "flat": 0.95,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramEnergyRegen": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramTenacity": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "armor": {
+    "flat": 26,
+    "perLevel": 4.7,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackCastTime": {
+    "flat": 0.3,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDamage": {
+    "flat": 52,
+    "perLevel": 3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDelayOffset": {
+    "flat": -0.1667,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackRange": {
+    "flat": 500,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeed": {
+    "flat": 0.638,
+    "perLevel": 4,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeedRatio": {
+    "flat": 0.4,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackTotalTime": {
+    "flat": 1.6,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamage": {
+    "flat": 175,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamageModifier": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "gameplayRadius": {
+    "flat": 65,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "health": {
+    "flat": 630,
+    "perLevel": 107,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "healthRegen": {
+    "flat": 3.75,
+    "perLevel": 0.65,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "magicResistance": {
+    "flat": 30,
+    "perLevel": 1.3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "mana": {
+    "flat": 350,
+    "perLevel": 40,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "manaRegen": {
+    "flat": 8.2,
+    "perLevel": 0.7,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "movespeed": {
+    "flat": 330,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "pathingRadius": {
+    "flat": 35,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "selectionRadius": {
+    "flat": 100,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageDealt": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageTaken": {
+    "flat": 1,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   }
+  }
+ },
+ "Draven": {
+  "id": 119,
+  "key": "Draven",
+  "name": "Draven",
+  "stats": {
+   "acquisitionRadius": {
+    "flat": 600,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAbilityHaste": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAttackSpeed": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageDealt": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageTaken": {
+    "flat": 0.95,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramEnergyRegen": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramTenacity": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "armor": {
+    "flat": 29,
+    "perLevel": 4.5,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackCastTime": {
+    "flat": 0.230000004172325,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDamage": {
+    "flat": 62,
+    "perLevel": 3.6,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDelayOffset": {
+    "flat": -0.118840597569942,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackRange": {
+    "flat": 550,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeed": {
+    "flat": 0.679,
+    "perLevel": 2.7,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeedRatio": {
+    "flat": 0.67900002002716,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackTotalTime": {
+    "flat": 1.47300004959106,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamage": {
+    "flat": 175,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamageModifier": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "gameplayRadius": {
+    "flat": 65,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "health": {
+    "flat": 675,
+    "perLevel": 104,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "healthRegen": {
+    "flat": 3.75,
+    "perLevel": 0.7,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "magicResistance": {
+    "flat": 30,
+    "perLevel": 1.3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "mana": {
+    "flat": 361,
+    "perLevel": 39,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "manaRegen": {
+    "flat": 8.05,
+    "perLevel": 0.65,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "movespeed": {
+    "flat": 330,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "pathingRadius": {
+    "flat": 35,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "selectionRadius": {
+    "flat": 111.111099243164,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageDealt": {
+    "flat": 0.95,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageTaken": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   }
+  }
+ },
+ "Jhin": {
+  "id": 202,
+  "key": "Jhin",
+  "name": "Jhin",
+  "stats": {
+   "acquisitionRadius": {
+    "flat": 800,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAbilityHaste": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAttackSpeed": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageDealt": {
+    "flat": 0.95,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageTaken": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramEnergyRegen": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramTenacity": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "armor": {
+    "flat": 24,
+    "perLevel": 4.7,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackCastTime": {
+    "flat": 0.25,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDamage": {
+    "flat": 59,
+    "perLevel": 4.4,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDelayOffset": {
+    "flat": 0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackRange": {
+    "flat": 550,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeed": {
+    "flat": 0.625,
+    "perLevel": 3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeedRatio": {
+    "flat": 0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackTotalTime": {
+    "flat": 1.60000002384185,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamage": {
+    "flat": 175,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamageModifier": {
+    "flat": 0.86,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "gameplayRadius": {
+    "flat": 65,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "health": {
+    "flat": 655,
+    "perLevel": 107,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "healthRegen": {
+    "flat": 3.75,
+    "perLevel": 0.55,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "magicResistance": {
+    "flat": 30,
+    "perLevel": 1.3,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "mana": {
+    "flat": 300,
+    "perLevel": 50,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "manaRegen": {
+    "flat": 6,
+    "perLevel": 0.8,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "movespeed": {
+    "flat": 330,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "pathingRadius": {
+    "flat": 35,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "selectionRadius": {
+    "flat": 120,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageDealt": {
+    "flat": 1.01,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageTaken": {
+    "flat": 1,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   }
+  }
+ },
+ "Kled": {
+  "id": 240,
+  "key": "Kled",
+  "name": "Kled",
+  "stats": {
+   "acquisitionRadius": {
+    "flat": 800,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAbilityHaste": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramAttackSpeed": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageDealt": {
+    "flat": 1.05,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramDamageTaken": {
+    "flat": 1,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramEnergyRegen": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "aramTenacity": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "armor": {
+    "flat": 35,
+    "perLevel": 5.2,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackCastTime": {
+    "flat": 0.280000001192092,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDamage": {
+    "flat": 65,
+    "perLevel": 3.5,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackDelayOffset": {
+    "flat": 0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackRange": {
+    "flat": 250,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeed": {
+    "flat": 0.625,
+    "perLevel": 3.5,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackSpeedRatio": {
+    "flat": 0.625,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "attackTotalTime": {
+    "flat": 1.60000002384185,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamage": {
+    "flat": 175,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "criticalStrikeDamageModifier": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "gameplayRadius": {
+    "flat": 65,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "health": {
+    "flat": 410,
+    "perLevel": 84,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "healthRegen": {
+    "flat": 6,
+    "perLevel": 0.75,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "magicResistance": {
+    "flat": 28,
+    "perLevel": 2.05,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "mana": {
+    "flat": 100,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "manaRegen": {
+    "flat": 0,
+    "perLevel": 0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "movespeed": {
+    "flat": 305,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "pathingRadius": {
+    "flat": 35,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "selectionRadius": {
+    "flat": 100,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageDealt": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfDamageTaken": {
+    "flat": 0.9,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfHealing": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   },
+   "urfShielding": {
+    "flat": 1.0,
+    "perLevel": 0.0,
+    "percent": 0.0,
+    "percentPerLevel": 0.0
+   }
+  }
+ }
+}
