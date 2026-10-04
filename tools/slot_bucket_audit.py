@@ -28,6 +28,9 @@ Verdicts per lock:
 
 A lock is RC-AUTHORED when its `repo` is this repo's root (case-insensitive)
 or carries an `rc-` prefix (the responder writes `repo="rc-responder"`).
+Every row carries `owner`: "rc", "foreign", or "unknown". An UNREADABLE lock
+has NO holder record, so its owner is UNKNOWN: it is reported as an
+unattributed anomaly, never charged to RC (and never counted as an RC leak).
 
 Hold corpus: `--hold-corpus` re-derives acquire/release pairs from a
 controller log and writes them as JSON, so a published worst-hold figure has
@@ -35,6 +38,7 @@ a committed, re-runnable basis (RM-504 second acceptance clause). The corpus is
 explicitly a FLOOR: it covers the LOGGED population only.
 
 Exit 0 when no RC-authored lock is leaked, 1 when one is, 2 on usage error.
+Unattributed (UNREADABLE) locks are printed but do not set the exit code.
 """
 from __future__ import annotations
 
@@ -60,6 +64,7 @@ def _load_slots():
 slots = _load_slots()
 
 LEAK_VERDICTS = frozenset({"DEAD_PID", "PID_REUSED", "OVER_STALE", "UNREADABLE"})
+OWNER_UNKNOWN = "unknown"
 
 
 def process_start_time(pid: int) -> float | None:
@@ -95,7 +100,7 @@ def classify(path: Path, stale_after: float, now: float | None = None,
         mtime = path.stat().st_mtime
     except OSError as exc:
         return {"lock": path.name, "verdict": "UNREADABLE", "detail": str(exc),
-                "record": None, "rc_authored": False}
+                "record": None, "rc_authored": False, "owner": OWNER_UNKNOWN}
     try:
         rec = json.loads(raw)
         if not isinstance(rec, dict):
@@ -103,8 +108,10 @@ def classify(path: Path, stale_after: float, now: float | None = None,
     except ValueError:
         return {"lock": path.name, "verdict": "UNREADABLE",
                 "detail": f"{len(raw)} bytes, mtime age {int(now - mtime)}s",
-                "record": raw[:200], "rc_authored": False}
-    out = {"lock": path.name, "record": rec, "rc_authored": is_rc_authored(rec)}
+                "record": raw[:200], "rc_authored": False, "owner": OWNER_UNKNOWN}
+    mine = is_rc_authored(rec)
+    out = {"lock": path.name, "record": rec, "rc_authored": mine,
+           "owner": "rc" if mine else "foreign"}
     pid = int(rec.get("pid", 0) or 0)
     ts = float(rec.get("ts", 0) or 0)
     age = now - ts
@@ -143,18 +150,29 @@ def audit(root: Path, stale_after: float = slots.DEFAULT_STALE_AFTER,
 
 
 def rc_leaks(rows: list[dict]) -> list[dict]:
-    """Leaked locks RC must answer for. An UNREADABLE lock has no author field,
-    so it is reported too - RC cannot prove it is not its own."""
-    return [r for r in rows if r["verdict"] in LEAK_VERDICTS
-            and (r["rc_authored"] or r["verdict"] == "UNREADABLE")]
+    """Leaked locks RC must answer for: RC-authored rows with a leak verdict.
+    An UNREADABLE lock has no holder record, so it is NOT charged to RC; see
+    unattributed()."""
+    return [r for r in rows if r["verdict"] in LEAK_VERDICTS and r["rc_authored"]]
+
+
+def unattributed(rows: list[dict]) -> list[dict]:
+    """Anomalous locks whose owner cannot be known (no readable holder record)."""
+    return [r for r in rows if r.get("owner") == OWNER_UNKNOWN]
 
 
 def anomaly_lines(root: Path | None = None) -> list[str]:
-    """One line per RC leak, for tools/rc_facts.py. Never raises."""
+    """One line per RC leak and per unattributed lock, for tools/rc_facts.py.
+    Never raises."""
     try:
         rows = audit(Path(root) if root else slots.DEFAULT_ROOT)
-        return [f"slot bucket: {r['lock']} {r['verdict']} - {r.get('detail', '')}"
-                f" (record {json.dumps(r['record'])[:160]})" for r in rc_leaks(rows)]
+        lines = [f"slot bucket: {r['lock']} {r['verdict']} (RC-authored)"
+                 f" - {r.get('detail', '')}"
+                 f" (record {json.dumps(r['record'])[:160]})" for r in rc_leaks(rows)]
+        lines += [f"slot bucket: {r['lock']} {r['verdict']} - owner UNKNOWN"
+                  f" (no holder record; not attributed to RC) - {r.get('detail', '')}"
+                  for r in unattributed(rows)]
+        return lines
     except Exception as exc:  # noqa: BLE001 - a facts hook must never fail
         return [f"slot bucket audit failed: {type(exc).__name__}: {exc}"]
 
@@ -238,13 +256,15 @@ def main(argv=None) -> int:
         return 0
     rows = audit(args.root, args.stale_after)
     leaks = rc_leaks(rows)
+    unknown = unattributed(rows)
     if args.json:
-        print(json.dumps({"root": str(args.root), "locks": rows, "rc_leaks": len(leaks)},
-                         indent=1))
+        print(json.dumps({"root": str(args.root), "locks": rows, "rc_leaks": len(leaks),
+                          "unattributed": len(unknown)}, indent=1))
     else:
         for r in rows:
-            print(f"{r['lock']}: {r['verdict']} rc={r['rc_authored']} {r.get('detail', '')}")
-        print(f"{len(rows)} lock(s), {len(leaks)} RC leak(s) in {args.root}")
+            print(f"{r['lock']}: {r['verdict']} owner={r['owner']} {r.get('detail', '')}")
+        print(f"{len(rows)} lock(s), {len(leaks)} RC leak(s),"
+              f" {len(unknown)} unattributed in {args.root}")
     return 1 if leaks else 0
 
 
