@@ -159,6 +159,18 @@ def _parse_json(raw: str) -> dict | None:
     return None
 
 
+# RM-247 (2026-10-03): dimension cap for the /vision frame path. Real
+# captures are 1920x1080 and stitched dual-monitor 3840x1080 / 3840x1280; an
+# 8K frame (7680x4320) is the ceiling anything legitimate could send. PIL's
+# default 89 MP decompression-bomb threshold was the only bound before.
+_VISION_MAX_W = 7680
+_VISION_MAX_H = 4320
+
+
+class FrameRefused(ValueError):
+    """A frame that must be REFUSED, never forwarded at full size."""
+
+
 def _crop_to_primary(img_b64: str) -> tuple[str, str]:
     """AUDIT 2026-04-29 (gap C): a multi-monitor screen agent could stitch
     both monitors into one frame (3840x1280 typical). League runs on monitor 0
@@ -189,6 +201,11 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
         raw = base64.b64decode(img_b64)
         img = Image.open(_io.BytesIO(raw))
         w, h = img.size
+        # RM-247: Image.open reads the HEADER only, so this refuses an
+        # oversized or bomb-class frame before a single pixel is decoded.
+        if not (0 < w <= _VISION_MAX_W and 0 < h <= _VISION_MAX_H):
+            raise FrameRefused(
+                f"frame {w}x{h} outside 1..{_VISION_MAX_W}x{_VISION_MAX_H}")
         # Already small? Skip - this is a non-stitched frame from a
         # single-monitor capture (or a future cropped agent).
         if w <= 1920 and h <= 1080:
@@ -204,7 +221,17 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
                   w, h, cropped.width, cropped.height,
                   len(raw) // 1024, len(buf.getvalue()) // 1024)
         return out, "image/jpeg"
+    except FrameRefused:
+        raise
     except Exception as exc:  # noqa: BLE001
+        # RM-247: the recovery below FORWARDS the original frame, which is
+        # exactly wrong for a decompression bomb or an allocation failure -
+        # the most expensive frame would reach the API at full size. Those
+        # are refused; any other crop glitch keeps the forward-original path.
+        _bomb = getattr(Image, "DecompressionBombError", None) \
+            if "Image" in locals() else None
+        if isinstance(exc, MemoryError) or (_bomb and isinstance(exc, _bomb)):
+            raise FrameRefused(f"{type(exc).__name__}") from exc
         log.warning("Vision crop failed (%s) - sending original frame", exc)
         mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
         return img_b64, mt
@@ -259,7 +286,13 @@ def handle_vision(body: bytes) -> dict:
         pass
     # AUDIT 2026-04-29 (gap C): crop stitched dual-monitor frame to the
     # primary 1920x1080 region before sending. Halves Sonnet input area.
-    img_send, media_type = _crop_to_primary(img)
+    try:
+        img_send, media_type = _crop_to_primary(img)
+    except FrameRefused as exc:
+        # RM-247: REFUSED and counted, never forwarded to the API.
+        log.warning("Vision frame refused: %s", exc)
+        _record("vision", 0, ok=False)
+        return {"error": "frame_refused"}
     t0 = time.time()
     try:
         # AUDIT 2026-04-29 (gap E): _VISION_PROMPT is identical for every
