@@ -140,6 +140,27 @@ def test_anomaly_line_for_unreadable_lock_does_not_imply_rc(tmp_path):
     assert "RC leak" not in line
 
 
+def test_readable_lock_without_repo_field_is_unknown_not_foreign(tmp_path):
+    """Sibling of the UNREADABLE case: a parseable record that names no `repo`
+    (e.g. `{}` or a pid-only record) is still no holder record. Its owner is
+    UNKNOWN - neither charged to RC nor claimed as a sibling's."""
+    _lock(tmp_path, 3)
+    _lock(tmp_path, 4, pid=777, ts=NOW - 50)
+    rows = _audit(tmp_path)
+    assert [r["owner"] for r in rows] == ["unknown", "unknown"]
+    assert sba.rc_leaks(rows) == []
+    assert sba.unattributed(rows) == rows
+
+
+def test_unattributed_skips_healthy_ownerless_holder(tmp_path):
+    """An ownerless record whose holder is live and fresh is not an anomaly."""
+    _lock(tmp_path, 5, pid=888, ts=NOW - 50)
+    rows = _audit(tmp_path, alive_pids={888}, starts={888: NOW - 900})
+    assert rows[0]["owner"] == "unknown"
+    assert rows[0]["verdict"] == "OK"
+    assert sba.unattributed(rows) == []
+
+
 def test_main_exit_code_ignores_unattributed_lock(tmp_path, capsys):
     (tmp_path / "1.lock").write_text("", encoding="utf-8")
     assert sba.main(["--root", str(tmp_path)]) == 0
