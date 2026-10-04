@@ -110,7 +110,7 @@ done - and MUST NOT commit/push - until it has BOTH a visual capture AND a spec-
 1. Visual proof: after asset-hash reload, capture the ELECTRON OVERLAY on Legion (the Chrome
    :8888 dashboard is RETIRED as a viewing/audit surface per the 2026-06-27 overlay-only directive -
    overlay ONLY). Capture the rc-shell Electron overlay window over League (desktop screenshot), or
-   GET `https://127.0.0.1:8889/latest-frame` for the in-game frame, or drive
+   GET `http://127.0.0.1:8889/latest-frame` (plain HTTP, header `X-RC-Token` from `core.vision_token.get_vision_token()`) for the in-game frame, or drive
    `https://legion-rc:8888/?overlay=1` (the overlay render off live /api/state) + capture. Do NOT
    screenshot a Chrome dashboard window.
 2. UI-audit agent (5-phase ritual; returns MUST-FIX / SHOULD-FIX / NICE-TO-HAVE):
