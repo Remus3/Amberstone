@@ -11,9 +11,11 @@
 // own_death}. Convention from core/vod_alignment.py:
 // video_time = game_time + offset, clamped to >= 0.
 
-// Our own: half of a 24 px pointer hit target. Two markers closer than this
-// cannot both be hit reliably, so they share one cluster.
-export const CLUSTER_RADIUS_PX = 12;
+// Our own: equal to the 24 px marker button width (WCAG 2.5.8 minimum
+// target, web/css/panels/review_player.css). Cluster origins are then more
+// than one button apart, so two rendered markers never overlap; markers
+// closer than that share one cluster.
+export const CLUSTER_RADIUS_PX = 24;
 
 // Directive X-41 behaviour: open at the aligned game start minus 2 s. The
 // file is never trimmed (trimming is a recorded non-goal, ADR-016 / X-41).
