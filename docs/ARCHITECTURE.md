@@ -238,6 +238,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 ### Tools / ops
 | File | Role |
 |---|---|
+| `tools/_perseus_rpc.py` | bounded JSON-RPC reply reader shared by the two Perseus vault clients |
 | `tools/aram_shadow_report.py` | ARAM deterministic-vs-Haiku shadow agreement report (flip-readiness gate) |
 | `tools/arena_shadow_report.py` | Arena shadow-validation report over the deterministic-vs-Haiku log |
 | `tools/build_order_coverage.py` | Lane B precomputed build-order COVERAGE measurement |
@@ -344,7 +345,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 0.7 | - | `core/metrics_cache.py:440` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:338` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:546` | _check_health() returns 3-value state string instead of plain bool |
-| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1503` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
+| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1514` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |

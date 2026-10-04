@@ -36,6 +36,11 @@ import subprocess
 import sys
 import time
 
+try:  # imported as tools.<mod> (tests) or run as a script from tools/
+    from tools._perseus_rpc import read_json_reply
+except ImportError:  # pragma: no cover - script invocation
+    from _perseus_rpc import read_json_reply
+
 PERSEUS_HOME = os.path.join(os.path.expanduser("~"), ".perseus-vault")
 PV = os.path.join(PERSEUS_HOME, "bin", "perseus-vault.exe")
 DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
@@ -111,17 +116,8 @@ class Vault:
             + "\n"
         )
         self.proc.stdin.flush()
-        while True:
-            line = self.proc.stdout.readline()
-            if not line:
-                return None
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                continue
+        # RM-375: bounded - see tools/_perseus_rpc.py.
+        return read_json_reply(self.proc.stdout.readline)
 
     def call(self, tool: str, args: dict):
         return self.rpc("tools/call", {"name": tool, "arguments": args})
