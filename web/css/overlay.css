@@ -28,8 +28,19 @@ body[data-shell="overlay"] {
   --ovx-warn: 232, 163, 61;      /* #E8A33D Hextech warn */
   --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
   --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
-  /* sub-floor type read at game distance on the dock (item-184 exception): the
-   * global tokens.css >=16px floor is overlay-relaxed here, never on :root. */
+}
+
+/* 0-type. OVERLAY SUB-FLOOR TYPE TOKENS - RM-139. Sub-floor type read at game
+ * distance on the dock (item-184 exception): the global tokens.css >=16px
+ * floor is overlay-relaxed here and NOWHERE else. Declared on the ROOT element,
+ * but ONLY when the overlay shell is stamped (:has), because two widgets
+ * (lib/overlay_tooltip.js, lib/overlay_item_radial.js) mount on
+ * document.documentElement - SIBLINGS of <body> - and custom properties
+ * inherit downward only: a body-scoped token never reached them, so their
+ * var(--fs-ov-chip, 13px) always took the fallback. On the dashboard the :has
+ * never matches, so the floor still holds there. The palette stays
+ * body-scoped above. Guard: tests/snapshot_panels/test_overlay_root_type_tokens_rm139.py. */
+:root:has(> body[data-shell="overlay"]) {
   --fs-ov-chip: 13px;
   --fs-ov-sigil: 12px;
   --fs-ov-head: 11px;   /* uppercase widget pane-head label */

@@ -442,7 +442,15 @@ _WEB = _REPO_ROOT / "web"
 # commit landed after 6ef3ca33e WITHOUT re-capturing, so this guard was already
 # red on main) - reproduces the superseded 4e3f9f08... value EXACTLY over all
 # 167 sources, so those three files are the whole change.
-_LIVE_HALF_DIGEST = "eeb2c6c9fd5f11727df4f1674e09e73249fee8104f3c68e64e1155b041ea4ebe"
+#
+# RE-CAPTURED at RM-196 + RM-139 (2026-10-03, Wave1-state slice). Ordinary
+# case, no tokeniser change, no file added or removed. ATTRIBUTED BY
+# SUBSTITUTION: recomputing with the base blobs (800d186bc) of exactly
+# web/js/panels/ds_statcheck.js (RM-196 strip rebind on champion change) and
+# web/css/overlay.css (RM-139 type tokens moved to :root:has(...)) reproduces
+# the superseded eeb2c6c9... value EXACTLY, so those two files are the whole
+# change.
+_LIVE_HALF_DIGEST = "a19bf784eb0dd2cda2e014d75f6595666aa5fc37af52350417188e7266de4438"
 
 
 def _web_sources() -> list[Path]:
