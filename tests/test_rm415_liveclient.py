@@ -138,8 +138,14 @@ def test_other_player_scores_retyped_keeps_the_rest_of_the_summary(bad):
 def test_events_retyped_degrades_every_event_list(bad):
     out = _summary(_frame(events=bad))
     for key in ("inhib_events", "minion_events", "turret_events",
-                "objective_events", "minion_spawn_events"):
+                "minion_spawn_events"):
         assert out.get(key) == []
+    # RM-308(b): objective_events is the one deliberate exception - an
+    # unreadable Events block is NO DATA (None), never "no takes" ([]), because
+    # core.event_callouts resolves the two differently (drake row silent vs
+    # drake UP since spawn). The key must still be present and must not raise.
+    assert "objective_events" in out
+    assert out["objective_events"] is None
     assert out.get("game_time_s") == 600
 
 
