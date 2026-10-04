@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -26,6 +27,7 @@ import threading
 import time
 import traceback
 import uuid
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional
@@ -33,6 +35,46 @@ from typing import Any, Callable, Dict, Iterable, Optional
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+_log = logging.getLogger("rc.dev_runtime")
+
+# -- Fatal-event record (RM-191) -----------------------------------------------
+# Process-wide, so the in-process dashboard can read it even while the
+# health.json write is the thing failing. A counter (frequency) plus a
+# last-N ring (what), never a single overwritten slot.
+_FATAL_RING_MAX = 10
+_FATAL_SUMMARY_MAX = 300
+_FATAL_LOCK = threading.Lock()
+_FATAL_RING: "deque[Dict[str, Any]]" = deque(maxlen=_FATAL_RING_MAX)
+_FATAL_STATE: Dict[str, Any] = {"count": 0, "last_at": None}
+
+
+def _record_fatal(text: str) -> int:
+    first = (text or "").splitlines()[0] if text else ""
+    kind = first.split(":", 1)[0].strip() if ":" in first else "fatal"
+    entry = {"at": _utc_now(), "kind": kind[:60],
+             "summary": first[:_FATAL_SUMMARY_MAX]}
+    with _FATAL_LOCK:
+        _FATAL_STATE["count"] += 1
+        _FATAL_STATE["last_at"] = entry["at"]
+        _FATAL_RING.append(entry)
+        return _FATAL_STATE["count"]
+
+
+def fatal_stats() -> Dict[str, Any]:
+    """Snapshot of this process's DevRuntime fatal record (RM-191)."""
+    with _FATAL_LOCK:
+        return {"count": _FATAL_STATE["count"],
+                "last_at": _FATAL_STATE["last_at"],
+                "recent": list(_FATAL_RING)}
+
+
+def _reset_fatal_stats_for_tests() -> None:
+    with _FATAL_LOCK:
+        _FATAL_STATE["count"] = 0
+        _FATAL_STATE["last_at"] = None
+        _FATAL_RING.clear()
 
 
 # Rename-retry budget. Windows gives no POSIX rename-over-open-file guarantee:
@@ -247,11 +289,28 @@ class DevRuntime:
         self._threads.clear()
 
     def write_fatal(self, text: str) -> None:
+        """Record a loop-level fault (RM-191).
+
+        This used to be a WRITE-ONLY channel: a single-slot overwrite of
+        last_fatal.txt that nothing read, never reached logs/, and swallowed
+        its own failure - which is how the 2026-08-09 health.json rename
+        fault sat unseen for three days while the process stayed alive.
+        Now every call (1) bumps a process-wide counter and a last-N ring
+        (fatal_stats(), also carried in every health.json payload and in
+        /api/health/all, which reads it in-process so it stays visible even
+        when the health.json write itself is what is failing), (2) logs at
+        ERROR to rc.dev_runtime so it lands in logs/YYYY-MM-DD.log, and
+        (3) still writes last_fatal.txt, logging rather than swallowing a
+        failure to do so."""
+        n = _record_fatal(text)
+        first = (text or "").splitlines()[0] if text else ""
+        _log.error("DevRuntime fatal #%d: %s", n, first[:_FATAL_SUMMARY_MAX])
         try:
             self.last_fatal_file.parent.mkdir(parents=True, exist_ok=True)
             self.last_fatal_file.write_text(text, encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.warning("DevRuntime: could not write %s: %s: %s",
+                         self.last_fatal_file, type(exc).__name__, exc)
 
     # -- Health payload --------------------------------------------------------
 
@@ -296,6 +355,13 @@ class DevRuntime:
             "last_reload_ok":    self._last_reload_ok,
             "last_reload_error": self._last_reload_error,
         }
+        # RM-191: the fatal record rides every tick, so a fault that clears
+        # (e.g. a transient rename failure) is still counted on the next
+        # successful write instead of vanishing.
+        _fs = fatal_stats()
+        payload["fatal_count"]    = _fs["count"]
+        payload["last_fatal_at"]  = _fs["last_at"]
+        payload["recent_fatals"]  = _fs["recent"]
 
         if this_tick_sp_ok is None:
             # No provider registered - omit subsystem fields entirely.
