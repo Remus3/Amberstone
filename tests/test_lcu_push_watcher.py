@@ -7,7 +7,7 @@ League restart, the LCU rune push must STILL fire on the FIRST champ-select ente
 These tests exercise ONLY the PURE core - ``classify_events(lines) -> list[dict]``
 and ``render_verdict_md(record) -> str`` - over synthetic log-line fixtures. No
 real log file, no toast, no network is touched here; all side-effecting code lives
-in thin wrappers (``main``/``_tail_new_lines``/``_toast``/``_fetch_state``) that
+in thin wrappers (``main``/``_tail_new_lines``/``_emit``/``_fetch_state``) that
 these tests never call.
 """
 from __future__ import annotations

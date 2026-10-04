@@ -89,6 +89,15 @@ _SUITE_LOG_DIR = Path(tempfile.mkdtemp(prefix="rc-suite-logs-"))
 # passes `path=` or its own env. Guarded by tests/test_hook_log_live_isolation.py.
 os.environ["RC_HOOK_LOG"] = str(_SUITE_LOG_DIR / "hook_invocations.jsonl")
 
+# Y-02: core/operator_notify holds every notifier that reaches a person (the
+# desktop toast, a later phone push) while RC_NOTIFY_HOLD=1, so no test - in
+# process or in a child that inherits this env - can pop a toast on the
+# operator's desktop. The jsonl floor still writes, so it is redirected to the
+# per-worker tmp dir unconditionally (same reasoning as RC_HOOK_LOG above).
+# Guarded by tests/test_operator_notify.py.
+os.environ.setdefault("RC_NOTIFY_HOLD", "1")
+os.environ["RC_NOTIFY_JSONL"] = str(_SUITE_LOG_DIR / "operator_notify.jsonl")
+
 # RM-383: `core/vision_token.py` raises at IMPORT when neither `RC_VISION_TOKEN`
 # nor `config/vision_token.txt` exists, and that file is gitignored, so every
 # worktree and hermetic checkout went red at collection. A throwaway default is

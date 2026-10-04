@@ -43,7 +43,6 @@ import json
 import os
 import re
 import ssl
-import subprocess
 import sys
 import time
 import urllib.request
@@ -53,6 +52,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+from core import operator_notify  # noqa: E402 - needs the repo root on sys.path
 
 _LOG_DIR = _ROOT / "logs"
 _RUNTIME = _ROOT / "ops" / "runtime"
@@ -246,37 +247,6 @@ def _fetch_state() -> dict | None:
         return None
 
 
-def _toast(title: str, body: str) -> None:
-    """Fire a native Windows toast via hidden PowerShell WinRT (no console flash).
-
-    Mirrors tools/live_flip_watcher.py._toast. Best-effort: the verdict file
-    always lands even if the toast fails.
-    """
-    ps = f"""$ErrorActionPreference='SilentlyContinue'
-[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null
-[Windows.UI.Notifications.ToastNotification,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null
-[Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime]|Out-Null
-$t=@'
-<toast><visual><binding template="ToastGeneric"><text>{title}</text><text>{body}</text></binding></visual></toast>
-'@
-$x=New-Object Windows.Data.Xml.Dom.XmlDocument
-$x.LoadXml($t)
-$n=New-Object Windows.UI.Notifications.ToastNotification $x
-$app='{{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}}\\WindowsPowerShell\\v1.0\\powershell.exe'
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show($n)
-"""
-    tmp = _RUNTIME / "_lcu_push_toast.ps1"
-    try:
-        tmp.write_text(ps, encoding="ascii")
-        subprocess.Popen(
-            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-             "-WindowStyle", "Hidden", "-File", str(tmp)],
-            creationflags=0x08000000,  # CREATE_NO_WINDOW
-        )
-    except Exception:  # noqa: BLE001 - toast is best-effort; the file always lands
-        pass
-
-
 def _emit(record: dict) -> None:
     """Toast + append jsonl + overwrite md for one finalized verdict record."""
     record.setdefault("timestamp", time.strftime("%Y-%m-%dT%H:%M:%S"))
@@ -299,7 +269,10 @@ def _emit(record: dict) -> None:
                 "reproduced. Check RuneWriter LCU view.")
     else:
         body = "Restart + champ-select seen; awaiting push."
-    _toast(title, body)
+    # Y-02: one notify path (escaped toast, jsonl floor); never raises, so the
+    # verdict file below always lands.
+    _ok, _detail = operator_notify.notify(title, body, tags=("lcu-push", v))
+    print(f"[lcu-push-watcher] notify: {_detail}")
 
     try:
         with _VERDICT_JSONL.open("a", encoding="utf-8") as fh:
