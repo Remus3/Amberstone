@@ -400,6 +400,23 @@ The two DATA-ONLY sidecars (`cdragon_spell_stats`, `wiki_ability_stats`) write p
 
 ---
 
+## Fresh clone: long paths (RM-422)
+
+`core.longpaths` is unset by default on Windows, and a non-longpath-aware
+API stops at MAX_PATH 260. A clone whose ROOT plus the longest tracked path
+exceeds that aborts checkout PARTWAY with `Filename too long` and leaves a
+half-populated tree that later enumerations report as clean. Two halves:
+
+- **Config:** clone with the setting so git itself can write long paths:
+  `git clone -c core.longpaths=true <url> <dir>` (the `-c` lands in the new
+  repo's own config before checkout; no machine-scope write needed).
+- **Path length:** the longest tracked path is capped at 129 chars by
+  `tests/test_tracked_path_length_rm422.py`, so any root up to 130 chars
+  checks out even without the setting, and tools that use non-longpath-aware
+  APIs still work. Shorten a new long path rather than raising the cap.
+
+---
+
 ## Git LFS (laning_scenarios artifact)
 
 `data/daemon_slayer/laning_scenarios/**/*.json` is Git-LFS-tracked (`.gitattributes`). The full-roster `laning_scenarios_sr.json` is ~62MB and regenerates per patch; LFS keeps the git pack flat (pointer only). On a FRESH clone you need git-lfs or RC reads a 133-byte pointer and the precomputed laning coach fail-softs to live Haiku.
