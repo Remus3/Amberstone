@@ -408,10 +408,35 @@ def _creates_commit(command):
     return False
 
 
-EV_PUSH = re.compile(r"\bgit\b[^|;&]*\bpush\b", re.I)
-# Check 10 evidence. `pr merge` is matched without the binary because RC
-# invokes gh through a variable ("$GH" pr merge) - see EV_CI below.
-EV_MERGE = re.compile(r"\bgit\b[^|;&]*\bmerge\b|\bpr\s+merge\b", re.I)
+# Check 9 / 10 evidence. The subcommand must be git's FIRST non-option word
+# (measured 2026-10-04: `git ... push` anywhere credited `git stash push`, the
+# stash form this environment prescribes, as a push, and `git merge-base` as a
+# merge, silencing the unbacked claim). The -C/-c argument is OPTIONAL so a
+# quoted path that strip_command_noise blanked cannot swallow the subcommand;
+# the subcommand refuses a following [\w.-] so `-c push.default=x` and
+# `merge-base` cannot match. A dry run (--dry-run / -n) uploads nothing, and a
+# merge --abort / --quit merges nothing.
+_GIT_LEAD = r"\bgit(?:\.exe)?(?:\s+-[Cc](?:\s+\S+)?|\s+--?[\w-]+(?:=\S+)?)*\s+"
+_EV_PUSH = re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I)
+_PUSH_DRY_RUN = re.compile(r"(?:^|\s)(?:--dry-run|-n)(?=\s|$)")
+_EV_GIT_MERGE = re.compile(_GIT_LEAD + r"merge(?![\w.-])([^|;&\n]*)", re.I)
+_MERGE_NO_OP = re.compile(r"(?:^|\s)(?:--abort|--quit)(?=\s|$)")
+# `pr merge` is matched without the binary because RC invokes gh through a
+# variable ("$GH" pr merge) - see EV_CI below.
+_EV_PR_MERGE = re.compile(r"\bpr\s+merge\b", re.I)
+
+
+def _did_push(command):
+    """True when COMMAND runs a real (non-dry-run) `git push`."""
+    return any(not _PUSH_DRY_RUN.search(m.group(1))
+               for m in _EV_PUSH.finditer(command))
+
+
+def _did_merge(command):
+    """True when COMMAND runs a `git merge` (not --abort/--quit) or `pr merge`."""
+    return bool(_EV_PR_MERGE.search(command)) or any(
+        not _MERGE_NO_OP.search(m.group(1))
+        for m in _EV_GIT_MERGE.finditer(command))
 # The binary and its subcommand need not be ADJACENT: RC's own convention is to
 # invoke gh by absolute path through a variable (`GH="...gh.exe"; "$GH" run
 # list`), so requiring "gh run" made a real probe invisible on every wrap. The
@@ -851,8 +876,8 @@ def audit(ev):
     # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     did_commit = any(EV_COMMIT.search(c) or _creates_commit(c) for c in bash)
-    did_push = any(EV_PUSH.search(c) for c in bash)
-    did_merge = did_push or any(EV_MERGE.search(c) for c in bash)
+    did_push = any(_did_push(c) for c in bash)
+    did_merge = did_push or any(_did_merge(c) for c in bash)
     # EV_CI runs on the noise-stripped command; EV_CI_VAR must NOT, because
     # strip_command_noise deletes quoted literals and a `python -c "<script>"`
     # probe is ENTIRELY inside one quoted literal - stripped, it reduces to
