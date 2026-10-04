@@ -137,6 +137,11 @@ def CLAUDE_ARGV_TAIL(cfg) -> list[str]:  # noqa: N802 - a constant-shaped builde
         "--tools",
         "Read,Glob,Grep",
         "--strict-mcp-config",
+        # MAIN 0912 item A: the kit's lean pair (fleet_headless DEFAULT_SOURCES).
+        # Under --restricted the export cwd carries no project settings file, so
+        # this only drops user scope; it can never load a floor away.
+        "--setting-sources",
+        "project,local",
         "--no-session-persistence",
         "--max-turns",
         str(cfg.max_turns),
