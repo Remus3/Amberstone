@@ -189,7 +189,7 @@ def _apply_fixes(loadouts: dict, drift: list[dict]) -> int:
 def _atomic_write(target: Path, payload: dict) -> None:
     tmp = target.with_suffix(target.suffix + ".tmp")
     txt = json.dumps(payload, indent=2, ensure_ascii=True)
-    tmp.write_text(txt + "\n", encoding="ascii")
+    tmp.write_bytes((txt + "\n").encode("ascii"))
     tmp.replace(target)
 
 
@@ -240,9 +240,8 @@ def main() -> int:
     if not args.no_backup:
         stamp = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         bak = _LOADOUTS.with_suffix(f".json.bak-slice-a-{stamp}")
-        bak.write_text(
-            json.dumps(loadouts, indent=2, ensure_ascii=True) + "\n",
-            encoding="ascii",
+        bak.write_bytes(
+            (json.dumps(loadouts, indent=2, ensure_ascii=True) + "\n").encode("ascii"),
         )
         print(f"Backup: {bak.name}")
 

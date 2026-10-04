@@ -101,5 +101,5 @@ for display, fmts in MISSING.items():
     if not found:
         print(f"  {display}: NOT FOUND in PBE catalog")
 
-codes_file.write_text(json.dumps(results, indent=2, sort_keys=True))
+codes_file.write_bytes(json.dumps(results, indent=2, sort_keys=True).encode("utf-8"))
 print(f"\nWrote {len(results)} codes")

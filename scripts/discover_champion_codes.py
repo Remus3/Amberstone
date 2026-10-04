@@ -128,5 +128,5 @@ for clean in CHAMPIONS:
         print(f"  {display}: NOT FOUND")
 
 out = META_DIR / "tft_set17_champion_codes.json"
-out.write_text(json.dumps(results, indent=2, sort_keys=True))
+out.write_bytes(json.dumps(results, indent=2, sort_keys=True).encode("utf-8"))
 print(f"\nWrote {len(results)} codes to {out}")

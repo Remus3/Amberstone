@@ -183,7 +183,7 @@ def main() -> int:
             return 2
         print("survivability_item_credit_enchanter.json in sync")
         return 0
-    _OUT.write_text(text, encoding="utf-8")
+    _OUT.write_bytes(text.encode("utf-8"))
     n_items = sum(len(v["items"]) for v in built["champions"].values())
     print(f"wrote {_OUT} - {len(built['champions'])} champs / {n_items} items")
     for champ, v in sorted(built["champions"].items()):

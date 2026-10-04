@@ -232,7 +232,7 @@ def main():
     data = json.loads(_LOADOUTS.read_text(encoding="utf-8"))
     n = apply(data)
     tmp = _LOADOUTS.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+    tmp.write_bytes((json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("utf-8"))
     os.replace(tmp, _LOADOUTS)
     print(f"item269 hotfix applied: {n} build_paths fixed")
 

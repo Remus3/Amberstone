@@ -43,8 +43,9 @@ if banned_hits:
 
 json.dump(
     {chr(65 + i): bins[i] for i in range(6)},
-    open("ops/audit/p2w5h2_slices.json", "w", encoding="utf-8"),
+    open("ops/audit/p2w5h2_slices.json", "w", encoding="utf-8", newline="\n"),
     indent=1,
 )
-json.dump(census, open("ops/audit/p2w5h2_nonascii_census.json", "w", encoding="utf-8"), indent=1)
+json.dump(census, open("ops/audit/p2w5h2_nonascii_census.json", "w", encoding="utf-8", newline="\n"),
+          indent=1)
 print("-> ops/audit/p2w5h2_slices.json + p2w5h2_nonascii_census.json")
