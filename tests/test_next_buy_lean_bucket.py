@@ -181,7 +181,15 @@ class BucketSelectionPropertyTests(unittest.TestCase):
         # Re-measured on the 16.18.1 Lane B tables (2026-09-20): arena 67 -> 64
         # after the regen (Arena mirror stat moves + heal/shield power re-measure);
         # sr / aram unchanged at 71.
-        expected_counts = {"sr": 71, "aram": 71, "arena": 64}
+        # Re-measured 2026-10-04: arena 64 -> 65. Cause is RM-513 (bfefceee7),
+        # NOT the 16.19.1 DDragon bump: rank._ARENA_EXCLUDED_ITEM_IDS
+        # (agents/daemon_slayer/rank.py:277, denied at rank.py:813) drops
+        # 223069 Void Immolation (an augment reward) from the Arena pool, and the
+        # regen removed it from 73 champions' buckets. Diverging set, 16.18.1
+        # arena table at 7fbe7aead vs bfefceee7: +Camille +Vi +Volibear +Wukong,
+        # -Lee Sin -Olaf -Trundle (net +1). The 16.19.1 arena table (1161a52e3)
+        # has the identical 65-champion diverging set; sr / aram still 71.
+        expected_counts = {"sr": 71, "aram": 71, "arena": 65}
         for _game_mode, stem in MODE_STEMS:
             table = _table(stem)
             diverging = sum(
