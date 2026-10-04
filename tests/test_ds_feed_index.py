@@ -283,12 +283,33 @@ _HISTORICAL_STATIC_BODY: dict[str, tuple[str, str]] = {
 }
 
 
+# 2026-10-04 (DS refresh 16.18.1 -> 16.19.1, RM-522): the live registry is
+# non-empty again (four rows). It used to REPLACE the frozen set, which made
+# the population floors below (>= 5 rows, an upstream-static row, both
+# offending verdicts) bind on whatever subset happened to be carried forward
+# that patch - so a correct four-row registry read as a vacuity failure. The
+# frozen set is now ALWAYS checked, and a non-empty live registry is checked
+# IN ADDITION on its own pair: every live row still has to prove its claim,
+# and the floors keep meaning "the hygiene pipeline is exercised", measured on
+# the union. Nothing that was asserted before is asserted less.
+def _hygiene_sets() -> list[tuple[tuple[str, str], dict[str, tuple[str, str]]]]:
+    """``[((prev, live), rows), ...]`` - frozen pair first, live pair if any."""
+    sets = [(_HISTORICAL_PAIR, dict(_HISTORICAL_STATIC_BODY))]
+    if fi.KNOWN_STATIC_BODY:
+        sets.append((_two_most_recent(), dict(fi.KNOWN_STATIC_BODY)))
+    return sets
+
+
 def _registry() -> dict[str, tuple[str, str]]:
-    return dict(fi.KNOWN_STATIC_BODY) or dict(_HISTORICAL_STATIC_BODY)
-
-
-def _pair() -> tuple[str, str]:
-    return _two_most_recent() if fi.KNOWN_STATIC_BODY else _HISTORICAL_PAIR
+    """Union of every hygiene set's rows (a feed in two sets must agree)."""
+    out: dict[str, tuple[str, str]] = {}
+    for _pair_, rows in _hygiene_sets():
+        for feed, row in rows.items():
+            assert out.setdefault(feed, row) == row, (
+                f"{feed} carries {row} live but {out[feed]} in the frozen set - "
+                "one feed cannot be two kinds"
+            )
+    return out
 
 
 def _of_kind(kind: str) -> dict[str, str]:
@@ -473,13 +494,17 @@ def test_upstream_static_exemptions_have_a_genuinely_frozen_vintage():
       * a stamp present in both and DIFFERENT. The vintage moved, so a real
         re-run happened; the feed is refreshed, not static.
     """
-    prev, live = _pair()
-    upstream = _of_kind("upstream-static")
-    assert upstream, (
+    assert _of_kind("upstream-static"), (
         "no 'upstream-static' rows left in KNOWN_STATIC_BODY, so this "
         "obligation is vacuous - if the kind is genuinely retired, drop it "
         "from the closed set"
     )
+    for (prev, live), rows in _hygiene_sets():
+        upstream = [f for f, (k, _r) in rows.items() if k == "upstream-static"]
+        _assert_upstream_frozen(prev, live, upstream)
+
+
+def _assert_upstream_frozen(prev: str, live: str, upstream: list[str]) -> None:
     for feed in upstream:
         before, after = _vintage_value(prev, feed), _vintage_value(live, feed)
         assert before is not None and after is not None, (
@@ -505,16 +530,16 @@ def test_static_body_exemptions_are_still_static():
     exception list and make each row prove the condition it claims, so a fixed
     feed cannot sit in the list forever.
     """
-    prev, live = _pair()
-    for feed in _registry():
-        for patch in (prev, live):
-            assert (_DATA / patch / feed).is_file(), (
-                f"{feed} is exempted but absent from {patch}"
+    for (prev, live), rows in _hygiene_sets():
+        for feed in rows:
+            for patch in (prev, live):
+                assert (_DATA / patch / feed).is_file(), (
+                    f"{feed} is exempted but absent from {patch}"
+                )
+            assert _body_md5(prev, feed) == _body_md5(live, feed), (
+                f"{feed} body MOVED {prev} -> {live} - it is no longer static; "
+                "drop it from KNOWN_STATIC_BODY"
             )
-        assert _body_md5(prev, feed) == _body_md5(live, feed), (
-            f"{feed} body MOVED {prev} -> {live} - it is no longer static; "
-            "drop it from KNOWN_STATIC_BODY"
-        )
 
 
 def test_static_body_exemption_kinds_are_from_the_closed_set():
@@ -556,11 +581,25 @@ def test_pending_vintage_exemptions_name_a_generator_that_still_lacks_a_vintage(
     full scan. The split is asserted below so it cannot quietly swallow the
     whole population.
     """
-    _prev, live = _pair()
+    sets = _hygiene_sets()
+    for index, ((_prev, live), rows) in enumerate(sets):
+        pending = {f: r for f, (k, r) in rows.items() if k == "pending-vintage"}
+        scanned = _check_pending_rows(live, pending)
+        # The floor is the population claim, measured where it was established
+        # (the frozen set, always index 0); live rows are each checked above.
+        if index == 0:
+            assert len(scanned) >= 2, (
+                "the manifest co-production carve-out swallowed nearly every "
+                f"pending-vintage row (only {scanned} got the source scan) - "
+                "check 3 is close to vacuous, re-derive the attribution rule"
+            )
+
+
+def _check_pending_rows(live: str, pending: dict[str, str]) -> list[str]:
     outputs = _manifest_outputs(live)
     scanned: list[str] = []
 
-    for feed, remedy in _pending().items():
+    for feed, remedy in pending.items():
         path = _ROOT / remedy
         assert path.is_file() and path.suffix == ".py", (
             f"{feed} names remedy {remedy!r}, which is not a file in this repo"
@@ -585,12 +624,7 @@ def test_pending_vintage_exemptions_name_a_generator_that_still_lacks_a_vintage(
             "has landed; drop it from KNOWN_STATIC_BODY"
         )
         scanned.append(feed)
-
-    assert len(scanned) >= 2, (
-        "the manifest co-production carve-out swallowed nearly every "
-        f"pending-vintage row (only {scanned} got the source scan) - check 3 is "
-        "close to vacuous, re-derive the attribution rule"
-    )
+    return scanned
 
 
 def test_authored_and_upstream_static_entries_carry_no_remedy():
@@ -645,8 +679,9 @@ def test_static_body_registry_and_index_population_are_non_empty():
         "hygiene tests above are now near-vacuous"
     )
     assert _pending(), "no pending-vintage rows left, so the generator scan is vacuous"
-    for patch in _pair():
-        assert patch in _INDEX["dirs"], f"hygiene pair dir {patch} not indexed"
+    for pair, _rows in _hygiene_sets():
+        for patch in pair:
+            assert patch in _INDEX["dirs"], f"hygiene pair dir {patch} not indexed"
 
     live = _two_most_recent()[1]
     assert len(_INDEX["dirs"][live]) >= 15, (
@@ -845,21 +880,21 @@ def test_exempt_feeds_still_classify_as_unrefreshed():
     exercises the no-stamp branch. Assert only the union and either branch could
     rot away unnoticed.
     """
-    prev, live = _pair()
-    verdicts = _refresh_verdicts(prev, live)
-
     exempt = sorted(_registry())
     assert len(exempt) >= 5, (
         f"only {len(exempt)} exempt feeds - this control is near-vacuous"
     )
 
+    # Keyed (pair, feed): the same feed exempt on two pairs is two samples.
     seen: dict[str, str] = {}
-    for feed in exempt:
-        assert feed in verdicts, (
-            f"{feed} is exempted but carries no verdict in {live} - the control "
-            "population is not what the registry says it is"
-        )
-        seen[feed] = verdicts[feed]
+    for (prev, live), rows in _hygiene_sets():
+        verdicts = _refresh_verdicts(prev, live)
+        for feed in sorted(rows):
+            assert feed in verdicts, (
+                f"{feed} is exempted but carries no verdict in {live} - the "
+                "control population is not what the registry says it is"
+            )
+            seen[f"{live}/{feed}"] = verdicts[feed]
 
     wrong = {f: v for f, v in seen.items() if v not in _OFFENDING_VERDICTS}
     assert not wrong, (

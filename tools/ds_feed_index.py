@@ -134,6 +134,22 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # _HISTORICAL_STATIC_BODY, which keeps the hygiene group exercised on the
     # 16.14.1 -> 16.15.1 pair. Re-add a row here the next time a feed is
     # legitimately carried forward unchanged.
+    #
+    # Re-added 2026-10-04 for the 16.18.1 -> 16.19.1 pair (RM-522). The three
+    # pending-vintage rows were FRESH runs, not copy-forwards - the batch logs
+    # record each run: daemon_slayer_extract (scenarios 173 from the
+    # re-discovered chunks), cdragon_spell_extract (cdragon=16.19, 171 champs,
+    # errors 0) and wiki_stats_extract (source=both, cast measured 170/171,
+    # errors 0) - and upstream returned identical bytes. Their generators
+    # still stamp no vintage, so the body cannot prove that by itself; that is
+    # the pending remedy. enchanter_items.json is hand-curated and was
+    # restamped only: none of its 34 item rows changed in DDragon 16.19.1.
+    "enchanter_items.json": ("authored", "none"),
+    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
+    "wiki_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
+    "cdragon_spell_stats.json":
+        ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
 }
 
 
