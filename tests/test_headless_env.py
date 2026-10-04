@@ -252,6 +252,13 @@ KIT_ROUTED = {
     "ops/loop/adjudicator.py",
     "tools/ci_watchdog.py",
     "agents/_supervisor_ephemeral.py",
+    "ops/loop/drain_waves_2_3.py",
+}
+# KIT_ROUTED files that also start a NON-claude child (git / gh) hidden, so
+# CREATE_NO_WINDOW in them is not a second claude launcher. Reason per file.
+_KIT_ROUTED_OWN_NO_WINDOW = {
+    "tools/ci_watchdog.py": "its git/gh runner `_run`",
+    "ops/loop/drain_waves_2_3.py": "its `git worktree add` runner `_git`",
 }
 LEGACY_ROUTED = {
     "ops/loop/executor.py",
@@ -305,7 +312,7 @@ def test_kit_routed_site_goes_through_fleet_route_only(rel):
     assert "fleet_route" in text and ".spawn(" in text
     # one path, the kit's: no second env builder or direct process start left
     assert "headless_child_env(" not in text
-    assert "CREATE_NO_WINDOW" not in text or rel == "tools/ci_watchdog.py", \
+    assert "CREATE_NO_WINDOW" not in text or rel in _KIT_ROUTED_OWN_NO_WINDOW, \
         "the kit owns the hidden console for the claude spawn"
 
 

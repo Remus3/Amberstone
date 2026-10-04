@@ -22,7 +22,10 @@ def _engine(tmp: Path) -> TftPbeCoachEngine:
 
 def test_failed_status_write_is_logged_and_not_raised(tmp_path, caplog):
     eng = _engine(tmp_path)
-    with patch.object(Path, "replace", side_effect=PermissionError("held open")), \
+    # RM-258 moved the write onto core.polled_json (os.replace + retry), so a
+    # Path.replace patch no longer reaches it; fail the writer seam instead.
+    with patch("tft.tft_pbe_engine.atomic_write_text",
+               side_effect=PermissionError("held open")), \
             caplog.at_level(logging.WARNING, logger="rc.tft.pbe"):
         eng._write_status("Coaching paused - retrying")
     msgs = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
