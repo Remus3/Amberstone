@@ -1,4 +1,4 @@
-EXECUTION SESSION - LEAP-03 onhit consumer completion. Model claude-opus-4-8, effort high.
+EXECUTION SESSION - LEAP-03 onhit consumer completion. Model claude-opus-5-5, effort high.
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 

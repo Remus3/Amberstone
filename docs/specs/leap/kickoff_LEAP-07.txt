@@ -1,4 +1,4 @@
-EXECUTION SESSION - LEAP-07 coherence calibration r2 (RETIERED). Model claude-opus-4-8,
+EXECUTION SESSION - LEAP-07 coherence calibration r2 (RETIERED). Model claude-opus-5-5,
 effort max. Chat caveman ultra; real output to files. Goal: front-load the thinking into
 specs; execution sessions are typing, not deciding. RUN ONLY AFTER LEAP-04 HAS LANDED.
 

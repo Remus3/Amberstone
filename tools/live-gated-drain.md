@@ -1,5 +1,5 @@
 ---
-description: Drain session for docs/LIVE_GAME_GATED_SYNC.md - close open live-gated items while the operator plays (practice SR / ARAM Mayhem / Arena only if flagged), orchestrated multi-agent by default or a single Opus 4.8 max-effort agent when few items remain; if the Max-20x Fable session limit is reached, default the whole run to latest Opus (claude-opus-4-8) max effort + ultracode orchestration. Then resync the doc, clean worktrees/branches, run /done, and print the next-session continuation prompt. Use when the operator says "drain gated items", "live gated drain", or is about to play validation games.
+description: Drain session for docs/LIVE_GAME_GATED_SYNC.md - close open live-gated items while the operator plays (practice SR / ARAM Mayhem / Arena only if flagged), orchestrated multi-agent by default or a single Opus 5.5 max-effort agent when few items remain; if the Max-20x Fable session limit is reached, default the whole run to latest Opus (claude-opus-5-5) max effort + ultracode orchestration. Then resync the doc, clean worktrees/branches, run /done, and print the next-session continuation prompt. Use when the operator says "drain gated items", "live gated drain", or is about to play validation games.
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
@@ -45,7 +45,7 @@ Fable 5 at max effort. If the plan-usage Max-20x FABLE SESSION LIMIT has been
 reached - detect via: (a) the harness/session-start limit notice, (b) the
 `anthropic-usage` MCP `query_usage` tool if connected, (c) the session model id
 resolving to something other than `claude-fable-5`, or (d) the operator saying
-so - then DEFAULT TO THE LATEST OPUS (`claude-opus-4-8`) at max effort WITH
+so - then DEFAULT TO THE LATEST OPUS (`claude-opus-5-5`) at max effort WITH
 ultracode-style orchestration (Workflow tool on every substantive step; token
 cost not a constraint). Pass `model: "opus"` explicitly on Agent / workflow
 `agent()` calls in that case so subagents do not try to inherit an unavailable

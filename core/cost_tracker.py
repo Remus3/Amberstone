@@ -90,13 +90,25 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
         "input": 0.80, "output": 4.00,
         "cache_write_mult": 1.25, "cache_read_mult": 0.10,
     },
+    # Previous-generation rows kept so ledger lines written under them
+    # still price; RM-516 corrected opus-4-7 to its 5 / 25 list price.
     "claude-sonnet-4-6": {
         "input": 3.00, "output": 15.0,
         "cache_write_mult": 1.25, "cache_read_mult": 0.10,
     },
     "claude-opus-4-7": {
-        "input": 15.0, "output": 75.0,
+        "input": 5.00, "output": 25.0,
         "cache_write_mult": 1.25, "cache_read_mult": 0.10,
+    },
+    # RM-516: current ids (claude-api model table 2026-09-25). Cache reads
+    # are 0.20 / MTok on both, so the read multiplier differs.
+    "claude-sonnet-5-5": {
+        "input": 2.00, "output": 10.0,
+        "cache_write_mult": 1.25, "cache_read_mult": 0.10,
+    },
+    "claude-opus-5-5": {
+        "input": 4.00, "output": 20.0,
+        "cache_write_mult": 1.25, "cache_read_mult": 0.05,
     },
 }
 DEFAULT_PRICING = {

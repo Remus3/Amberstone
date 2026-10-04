@@ -764,10 +764,10 @@ class Coach(BaseCoach):
                 pass
         try:
             import anthropic
-            from modes.shared_vision import GameVisionReader
+            from modes.shared_vision import SONNET_MODEL, GameVisionReader
             r = GameVisionReader.__new__(GameVisionReader)
             r._client = anthropic.Anthropic(api_key=self._api_key, base_url="https://api.anthropic.com")
-            r._model  = "claude-sonnet-4-6"
+            r._model  = SONNET_MODEL
             r._last   = {}
             r.PROMPT  = _VISION_PROMPT
             r.TIERED_FIELDS = self._ARAM_TIERED_FIELDS
