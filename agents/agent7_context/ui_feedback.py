@@ -255,13 +255,13 @@ class UIFeedbackParser:
         return UIProposalResult(
             reply=(
                 f"Scaling every font-size token {verb} by {pct}% "
-                f"(base {old_base:.0f}px → {int(new_base)}px). Proposed - "
+                f"(base {old_base:.0f}px \u2192 {int(new_base)}px). Proposed - "
                 f"review + approve to apply."
             ),
             proposed_changes=[{
                 "file": "web/css/panels/base.css",
                 "content": new_css,
-                "summary": f"font-size tokens × {ratio:.3f}",
+                "summary": f"font-size tokens \xd7 {ratio:.3f}",
             }],
             intent="ui_feedback_font_scale",
         )
@@ -298,7 +298,7 @@ class UIFeedbackParser:
             )
         return UIProposalResult(
             reply=(
-                f"Changing `--{var}` → `{val}` in base.css. Proposed - "
+                f"Changing `--{var}` \u2192 `{val}` in base.css. Proposed - "
                 f"review + approve to apply."
             ),
             proposed_changes=[{

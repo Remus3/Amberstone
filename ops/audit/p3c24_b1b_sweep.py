@@ -22,19 +22,19 @@ from pathlib import Path
 # Subset of tools/p3_ascii_sweep.GLYPH_MAP - exactly the glyphs the DS-engine
 # residual holds (verified via ops/audit census). Identical mappings.
 GLYPH_MAP = {
-    "×": "x",       # MULTIPLICATION SIGN
-    "÷": "/",       # DIVISION SIGN
-    "→": "->",      # RIGHTWARDS ARROW
-    "≤": "<=",      # LESS-THAN OR EQUAL TO
-    "≥": ">=",      # GREATER-THAN OR EQUAL TO
-    "≠": "!=",      # NOT EQUAL TO
-    "≈": "~",       # ALMOST EQUAL TO
-    "−": "-",       # MINUS SIGN
-    "·": "*",       # MIDDLE DOT (multiply, default)
-    "•": "*",       # BULLET
-    "✓": "ok",      # CHECK MARK
-    "α": "alpha",   # GREEK SMALL ALPHA
-    "β": "beta",    # GREEK SMALL BETA
+    "\xd7": "x",       # MULTIPLICATION SIGN
+    "\xf7": "/",       # DIVISION SIGN
+    "\u2192": "->",      # RIGHTWARDS ARROW
+    "\u2264": "<=",      # LESS-THAN OR EQUAL TO
+    "\u2265": ">=",      # GREATER-THAN OR EQUAL TO
+    "\u2260": "!=",      # NOT EQUAL TO
+    "\u2248": "~",       # ALMOST EQUAL TO
+    "\u2212": "-",       # MINUS SIGN
+    "\xb7": "*",       # MIDDLE DOT (multiply, default)
+    "\u2022": "*",       # BULLET
+    "\u2713": "ok",      # CHECK MARK
+    "\u03b1": "alpha",   # GREEK SMALL ALPHA
+    "\u03b2": "beta",    # GREEK SMALL BETA
 }
 
 PY_FILES = [
@@ -60,7 +60,7 @@ def transform(text: str, path: str) -> str:
     """The canonical B1b text transform (shared contract with the proof)."""
     # per-hit override: beam.py item-name separator middot -> " / "
     if path.replace("\\", "/").endswith("agents/daemon_slayer/beam.py"):
-        text = text.replace(" · ", " / ")
+        text = text.replace(" \xb7 ", " / ")
     for glyph, ascii_ in GLYPH_MAP.items():
         text = text.replace(glyph, ascii_)
     return text

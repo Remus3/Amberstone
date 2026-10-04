@@ -138,41 +138,41 @@ def retrofill_match(src_conn, match: dict) -> int:
 
     if team_kills > 0:
         kp_pct = round(100 * (k + a) / team_kills)
-        rec("kill_participation_pct", f"{kp_pct}% · {k+a}/{team_kills} team", "pct")
+        rec("kill_participation_pct", f"{kp_pct}% \xb7 {k+a}/{team_kills} team", "pct")
 
     if team_dmg > 0:
         share_pct = round(100 * p["total_damage_dealt_to_champs"] / team_dmg)
         rec("damage_share_summary",
-            f"{share_pct}% · {p['total_damage_dealt_to_champs']//1000}k to champs", "pair")
+            f"{share_pct}% \xb7 {p['total_damage_dealt_to_champs']//1000}k to champs", "pair")
 
     rec("damage_taken_summary",
-        f"{p['total_damage_taken']//1000}k taken · "
+        f"{p['total_damage_taken']//1000}k taken \xb7 "
         f"{p['damage_self_mitigated']//1000}k mitigated", "pair")
 
     rec("cc_score_summary",
-        f"{p['time_ccing_others']}s applied · {p['total_time_cc_dealt']}s total", "pair")
+        f"{p['time_ccing_others']}s applied \xb7 {p['total_time_cc_dealt']}s total", "pair")
 
     if (p["total_heals_on_teammates"] or p["total_damage_shielded_on_teammates"]) > 0:
         rec("heal_shield_summary",
-            f"{p['total_damage_shielded_on_teammates']//1000}k shields · "
+            f"{p['total_damage_shielded_on_teammates']//1000}k shields \xb7 "
             f"{p['total_heals_on_teammates']//1000}k heals", "pair")
 
     td = p["time_spent_dead"] or 0
     td_pct = round(100 * td / duration_s) if duration_s else 0
-    rec("time_dead_summary", f"{td}s · {td_pct}% of game", "pair")
+    rec("time_dead_summary", f"{td}s \xb7 {td_pct}% of game", "pair")
     rec("time_alive_pct", f"{100 - td_pct}%", "pct")
 
     rec("vision_summary",
-        f"{p['vision_score']} score · {p['wards_placed']} placed / "
+        f"{p['vision_score']} score \xb7 {p['wards_placed']} placed / "
         f"{p['wards_killed']} cleared", "pair")
 
     if p.get("detector_wards_placed") is not None:
         rec("pink_ward_uptime",
-            f"{p['detector_wards_placed']} placed · {p['vision_wards_bought']} bought", "pair")
+            f"{p['detector_wards_placed']} placed \xb7 {p['vision_wards_bought']} bought", "pair")
 
-    rec("tower_kills", f"{p['turret_kills']} kills · {p['turret_takedowns']} takedowns", "pair")
+    rec("tower_kills", f"{p['turret_kills']} kills \xb7 {p['turret_takedowns']} takedowns", "pair")
     rec("objective_dance",
-        f"drakes {p['dragon_kills']} · baron {p['baron_kills']}", "pair")
+        f"drakes {p['dragon_kills']} \xb7 baron {p['baron_kills']}", "pair")
 
     rec("first_blood_flag", "1" if p["first_blood_kill"] else "0", "numeric")
     rec("first_tower_flag", "1" if p["first_tower_kill"] else "0", "numeric")

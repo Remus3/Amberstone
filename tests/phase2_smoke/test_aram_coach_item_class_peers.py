@@ -26,7 +26,7 @@ class BootsPeerTests(unittest.TestCase):
 
     def test_berserkers_owned_strips_ionian(self) -> None:
         result = _dedup_build_vs_owned(
-            "Ionian Boots of Lucidity → Shadowflame",
+            "Ionian Boots of Lucidity \u2192 Shadowflame",
             "Berserker's Greaves, Kraken Slayer",
         )
         self.assertNotIn("Ionian", result)
@@ -34,7 +34,7 @@ class BootsPeerTests(unittest.TestCase):
 
     def test_sorcerers_owned_strips_mercury_treads(self) -> None:
         result = _dedup_build_vs_owned(
-            "Mercury's Treads → Rabadon's Deathcap",
+            "Mercury's Treads \u2192 Rabadon's Deathcap",
             "Sorcerer's Shoes, Luden's Companion",
         )
         self.assertNotIn("Mercury's Treads", result)
@@ -42,7 +42,7 @@ class BootsPeerTests(unittest.TestCase):
 
     def test_steelcaps_owned_strips_ionian(self) -> None:
         result = _dedup_build_vs_owned(
-            "Ionian Boots of Lucidity → Trinity Force",
+            "Ionian Boots of Lucidity \u2192 Trinity Force",
             "Plated Steelcaps, Sunfire Aegis",
         )
         self.assertNotIn("Ionian", result)
@@ -50,14 +50,14 @@ class BootsPeerTests(unittest.TestCase):
 
     def test_symbiotic_owned_strips_swiftness(self) -> None:
         result = _dedup_build_vs_owned(
-            "Boots of Swiftness → Heartsteel",
+            "Boots of Swiftness \u2192 Heartsteel",
             "Symbiotic Soles, Warmog's Armor",
         )
         self.assertNotIn("Swiftness", result)
 
     def test_boots_do_not_suppress_non_boot_items(self) -> None:
         result = _dedup_build_vs_owned(
-            "Shadowflame → Rabadon's Deathcap",
+            "Shadowflame \u2192 Rabadon's Deathcap",
             "Sorcerer's Shoes, Luden's Companion",
         )
         self.assertIn("Shadowflame", result)
@@ -65,7 +65,7 @@ class BootsPeerTests(unittest.TestCase):
 
     def test_no_boots_owned_no_suppression(self) -> None:
         result = _dedup_build_vs_owned(
-            "Ionian Boots of Lucidity → Shadowflame",
+            "Ionian Boots of Lucidity \u2192 Shadowflame",
             "Luden's Companion, Shadowflame",
         )
         self.assertIn("Ionian", result)
@@ -76,7 +76,7 @@ class SpellbladePeerTests(unittest.TestCase):
 
     def test_trinity_owned_strips_lich_bane(self) -> None:
         result = _dedup_build_vs_owned(
-            "Lich Bane → Shadowflame",
+            "Lich Bane \u2192 Shadowflame",
             "Trinity Force, Plated Steelcaps",
         )
         self.assertNotIn("Lich Bane", result)
@@ -84,7 +84,7 @@ class SpellbladePeerTests(unittest.TestCase):
 
     def test_lich_bane_owned_strips_divine_sunderer(self) -> None:
         result = _dedup_build_vs_owned(
-            "Divine Sunderer → Sterak's Gage",
+            "Divine Sunderer \u2192 Sterak's Gage",
             "Lich Bane, Shadowflame",
         )
         self.assertNotIn("Divine Sunderer", result)
@@ -92,7 +92,7 @@ class SpellbladePeerTests(unittest.TestCase):
 
     def test_sunderer_owned_strips_essence_reaver(self) -> None:
         result = _dedup_build_vs_owned(
-            "Essence Reaver → Infinity Edge",
+            "Essence Reaver \u2192 Infinity Edge",
             "Divine Sunderer, Black Cleaver",
         )
         self.assertNotIn("Essence Reaver", result)
@@ -100,7 +100,7 @@ class SpellbladePeerTests(unittest.TestCase):
 
     def test_essence_reaver_owned_strips_trinity(self) -> None:
         result = _dedup_build_vs_owned(
-            "Trinity Force → Infinity Edge",
+            "Trinity Force \u2192 Infinity Edge",
             "Essence Reaver, Kraken Slayer",
         )
         self.assertNotIn("Trinity Force", result)
@@ -108,7 +108,7 @@ class SpellbladePeerTests(unittest.TestCase):
 
     def test_spellblade_does_not_suppress_non_spellblade_ad(self) -> None:
         result = _dedup_build_vs_owned(
-            "Black Cleaver → Sterak's Gage",
+            "Black Cleaver \u2192 Sterak's Gage",
             "Trinity Force, Plated Steelcaps",
         )
         self.assertIn("Black Cleaver", result)

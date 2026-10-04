@@ -83,7 +83,7 @@ def collect_from_fixtures() -> set[str]:
             if not val:
                 continue
             # Split on comma, arrow, semicolon, and pipe
-            for token in re.split(r"[,→|;]", val):
+            for token in re.split(r"[,\u2192|;]", val):
                 t = token.strip()
                 # Strip "+" prefix ("+ 7th item" convention)
                 t = t.lstrip("+").strip()
@@ -150,7 +150,7 @@ def main(download: bool = False) -> int:
         else:
             fix_ids.add(iid)
     if fix_unresolved:
-        print(f"  ⚠ {len(fix_unresolved)} name(s) didn't resolve to an id:")
+        print(f"  \u26a0 {len(fix_unresolved)} name(s) didn't resolve to an id:")
         for n in fix_unresolved:
             print(f"    - {n}")
     else:
@@ -169,7 +169,7 @@ def main(download: bool = False) -> int:
         if not png.is_file():
             missing.append(iid)
     if missing:
-        print(f"  ⚠ {len(missing)} missing icon file(s)")
+        print(f"  \u26a0 {len(missing)} missing icon file(s)")
         shown = missing[:30]
         for iid in shown:
             nm = by_id.get(iid, "<unknown>")
