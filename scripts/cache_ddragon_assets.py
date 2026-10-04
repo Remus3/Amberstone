@@ -16,6 +16,10 @@ from urllib.error import URLError, HTTPError
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_DIR = ROOT / "data" / "meta_build" / "ddragon"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+# RM-379: the RM-359 filename validator, applied before every join below.
+from lib.icons.downloader import _safe_basename  # noqa: E402
 
 # RM-372: the same shape as tools/ddragon_mirror_refresh.py VERSION_RE /
 # validate_version (fullmatch, so a trailing newline is refused). Kept local
@@ -73,14 +77,20 @@ def main() -> None:
 
     # Items
     for iid, info in items.items():
-        img = (info.get("image") or {}).get("full") or f"{iid}.png"
+        img = _safe_basename((info.get("image") or {}).get("full") or f"{iid}.png")
+        if not img:  # RM-379: hostile image.full is never a path
+            sys.stderr.write(f"skip item {iid}: unsafe image.full\n")
+            continue
         dst = dst_root / "img" / "item" / img
         did = fetch(f"{base}/item/{img}", dst)
         stats["item"][0] += 1; stats["item"][1] += int(did)
 
     # Champion square portraits
     for key, info in champs.items():
-        img = (info.get("image") or {}).get("full") or f"{key}.png"
+        img = _safe_basename((info.get("image") or {}).get("full") or f"{key}.png")
+        if not img:  # RM-379
+            sys.stderr.write(f"skip champion {key}: unsafe image.full\n")
+            continue
         dst = dst_root / "img" / "champion" / img
         did = fetch(f"{base}/champion/{img}", dst)
         stats["champion"][0] += 1; stats["champion"][1] += int(did)

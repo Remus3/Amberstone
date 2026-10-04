@@ -108,6 +108,15 @@ def collect_from_db() -> set[str]:
     return ids
 
 
+def safe_icon_dest(item_dir: Path, iid: str) -> Path | None:
+    """RM-379: `<iid>.png` under item_dir, or None when iid is not a plain
+    item id (ids reach here from fixtures / the DB, two hops from the wire)."""
+    iid = str(iid)
+    if not iid.isdigit():
+        return None
+    return item_dir / f"{iid}.png"
+
+
 def download_icon(version: str, iid: str, dest: Path) -> str | None:
     """Try DDragon first, then CommunityDragon. Returns the source name
     on success (`ddragon` or `cdragon`), or None if both fail."""
@@ -185,7 +194,10 @@ def main(download: bool = False) -> int:
         print(f"Downloading {len(missing)} missing icons (DDragon -> CommunityDragon fallback)...")
         ok_dd = ok_cd = 0
         for iid in missing:
-            dest = item_dir / f"{iid}.png"
+            dest = safe_icon_dest(item_dir, iid)
+            if dest is None:  # RM-379
+                print(f"  skip unsafe item id {iid!r}")
+                continue
             src = download_icon(version, iid, dest)
             if src == "ddragon":
                 ok_dd += 1
