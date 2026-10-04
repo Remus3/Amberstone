@@ -61,3 +61,37 @@ def read_json(rel: str) -> dict:
     except Exception as exc:  # noqa: BLE001
         log.debug("read %s: %s", rel, exc)
     return {}
+
+
+def read_json_checked(rel: str) -> tuple[dict, bool]:
+    """Like `read_json`, but says whether the read can be TRUSTED (RM-278).
+
+    `read_json` returns {} on every failure, so a read-modify-write caller
+    cannot tell "nothing there yet" from "could not read it" and writes {}
+    back over a good file. Returns (data, ok):
+      - absent file, or an empty / whitespace-only file -> ({}, True): a
+        first-run write must still land;
+      - unreadable (I/O error, e.g. the measured WinError 5 window against a
+        concurrent replace), invalid JSON, or non-dict content -> ({}, False);
+      - a dict -> (dict, True).
+    `read_json` is deliberately left alone for its many read-only callers.
+    """
+    p = APP_DIR / rel
+    try:
+        if not p.exists():
+            return {}, True
+        raw = p.read_bytes().decode("utf-8")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("read %s: unreadable (%s: %s)", rel, type(exc).__name__, exc)
+        return {}, False
+    if not raw.strip():
+        return {}, True
+    try:
+        d = json.loads(raw)
+    except ValueError as exc:
+        log.warning("read %s: invalid JSON (%s)", rel, exc)
+        return {}, False
+    if not isinstance(d, dict):
+        log.warning("read %s: not a dict (%s)", rel, type(d).__name__)
+        return {}, False
+    return d, True

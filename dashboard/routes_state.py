@@ -18,7 +18,7 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-from dashboard._context import APP_DIR, read_json
+from dashboard._context import APP_DIR, read_json, read_json_checked
 from dashboard._dispatch import equals, prefix
 from dashboard._json_flags import (
     bad_flag_body,
@@ -789,8 +789,13 @@ def _serve_command_post(h, payload) -> None:
             # cycle (NOTE-003 fix).
             from core.coaching_data_lock import coaching_data_lock
             with coaching_data_lock():
-                d = read_json("coaching_data.json")
-                atomic_write_json("coaching_data.json", d)
+                # RM-278: a failed read must not be written back as {}.
+                d, ok = read_json_checked("coaching_data.json")
+                if ok:
+                    atomic_write_json("coaching_data.json", d)
+                else:
+                    log.warning("refresh: coaching_data.json unreadable - "
+                                "skipping the rewrite rather than clobbering it")
         elif cmd == "clear_pregame":
             set_pregame("")
         elif cmd == "screen_read":
