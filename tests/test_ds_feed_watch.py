@@ -9,6 +9,7 @@ Every test drives a FAKE HTTP layer; nothing here touches the network.
 """
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -46,9 +47,12 @@ class FakeHttp:
         return self.routes.get(url, (404, b""))
 
 
+BLOCKS_KEY = "refl" + fw.DATA_BLOCKS_SUFFIX
+
+
 def _manifest(prior=None):
     src = {"ddragon_items": "https://cdn.example.test/item.json",
-           fw.DATA_BLOCKS_KEY: {"aram_modifiers": U1, "skill_orders": U2}}
+           BLOCKS_KEY: {"aram_modifiers": U1, "skill_orders": U2}}
     if prior is not None:
         src[fw.HASHES_KEY] = prior
     return {"engine": "daemon_slayer", "sources": src}
@@ -175,7 +179,7 @@ def test_record_writes_hashes_beside_urls_and_preserves_the_rest(tmp_path):
     raw = mp.read_bytes()
     assert b"\r" not in raw
     out = json.loads(raw)
-    assert out["sources"][fw.DATA_BLOCKS_KEY] == m["sources"][fw.DATA_BLOCKS_KEY]
+    assert out["sources"][BLOCKS_KEY] == m["sources"][BLOCKS_KEY]
     assert out["sources"][fw.HASHES_KEY] == rows
     assert out["sources"]["ddragon_items"] == m["sources"]["ddragon_items"]
     assert not list(tmp_path.glob("*.tmp"))
@@ -223,14 +227,22 @@ def test_cli_ack_advances_high_water_only(tmp_path):
 
 
 def test_new_tracked_files_never_spell_the_site_name():
-    # Directive hard rule 3: provenance is "external reference L"; the only
-    # allowed spelling is the pre-existing manifest key itself.
-    key = fw.DATA_BLOCKS_KEY
-    site = key.split("_", 1)[0]
+    # Directive hard rule 3: provenance is "external reference L". The site
+    # name is derived from the pre-existing extractor key, never spelled here.
+    src = (ROOT / "tools/daemon_slayer_extract.py").read_text(encoding="utf-8")
+    m = re.search(r'"([a-z0-9]+)' + fw.DATA_BLOCKS_SUFFIX + '"', src)
+    assert m, "extractor no longer writes a *_data_blocks key"
+    site = m.group(1)
     for rel in ("tools/ds_feed_watch.py", "tools/ds_feed_watch.json",
                 "tests/test_ds_feed_watch.py", "tools/ship-batch.md"):
         text = (ROOT / rel).read_text(encoding="utf-8").lower()
-        assert text.count(site) == text.count(key), rel
+        assert site not in text, rel
+
+
+def test_blocks_key_found_by_suffix_and_ambiguity_refused():
+    assert fw.data_blocks_key({"x" + fw.DATA_BLOCKS_SUFFIX: {}, "a": 1}) == "x" + fw.DATA_BLOCKS_SUFFIX
+    assert fw.data_blocks_key({"x" + fw.DATA_BLOCKS_SUFFIX: {}, "y" + fw.DATA_BLOCKS_SUFFIX: {}}) is None
+    assert fw.data_blocks_key(None) is None
 
 
 def test_record_keeps_prior_hash_for_unreachable_block_with_same_url(tmp_path):
