@@ -63,6 +63,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `moon_vision_server.py` | vision server entrypoint shim - delegates to vision_server.main |
 | `tests/test_relay_lane8_cycle25.py` | lane 8 cycle 25 regression suite |
 | `tests/test_rm236_snapshot_normalizer_defects.py` | regression - RM-236 six snapshot_normalizer defects (quest boots, soul, mirror, SR geometry, cooldown, obj timers) |
+| `tests/test_rm237_poll_tick_budget_and_reader_generation.py` | regression - RM-237 poll tick subresource budget + fresh GameReader per worker generation |
 | `tests/test_rm344_tft_coercion.py` | regression - the TFT early-exit branch must coerce wire numerics too |
 | `tests/test_silent_except_liveclient_subresource.py` | regression - live-client subresource reads must be falsifiable |
 | `tests/test_snapshot_normalizer_wire_coercion.py` | regression - Live Client wire numerics must not crash or poison the snapshot |
@@ -315,7 +316,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 0.7 | - | `core/metrics_cache.py:440` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:338` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:546` | _check_health() returns 3-value state string instead of plain bool |
-| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1467` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
+| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1503` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |
