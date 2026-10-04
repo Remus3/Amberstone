@@ -517,7 +517,13 @@ _WEB = _REPO_ROOT / "web"
 # blobs (and removing the added one) reproduces the superseded 3a1f5b31...
 # value EXACTLY, so they are the whole change. If another slice re-captures in
 # parallel, the merger recomputes.
-_LIVE_HALF_DIGEST = "ed4bec34508935f9c3a9a8b34412247378af19aa534fa4fa2a3e01defebed839"
+# superseded by the RM-612 fix-up re-capture below: "ed4bec34508935f9c3a9a8b34412247378af19aa534fa4fa2a3e01defebed839"
+#
+# RE-CAPTURED at the RM-612 verifier fix-up (measured halo table, strict
+# _validPos). One LIVE-edited path, no file added or removed: swapping exactly
+# web/js/panels/replay_minimap.js back to its ce871a447 blob reproduces the
+# superseded ed4bec34... value EXACTLY.
+_LIVE_HALF_DIGEST = "57f64cbb2305ae48c90ff2df149b242b5adf84c4fa07b8c4f7ff75f1225c72a0"
 
 
 def _web_sources() -> list[Path]:
