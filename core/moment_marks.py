@@ -101,12 +101,12 @@ def build_mark(gamestats: Any, game_id: Any, wall_ts: float) -> Optional[dict]:
 def append_mark(mark: dict, path: Optional[os.PathLike] = None) -> None:
     """Append one JSON line (ASCII, LF). Windows: the shared FILE_APPEND_DATA
     helper; elsewhere one os.write on an O_APPEND fd. Raises OSError."""
-    from core.operator_notify import _portable_append, _win32_append
+    from core.operator_notify import _on_windows, _portable_append, _win32_append
 
     p = Path(path) if path is not None else marks_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     data = (json.dumps(mark, ensure_ascii=True) + "\n").encode("ascii")
-    if os.name == "nt":
+    if _on_windows():
         _win32_append(p, data)
     else:
         _portable_append(p, data)
