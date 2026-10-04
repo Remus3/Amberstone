@@ -100,6 +100,7 @@ def _gather_get() -> list:
                                routes_post_game_rubric,
                                routes_post_game_wpa,
                                routes_replay_events,
+                               routes_recordings,
                                routes_spike_curve,
                                routes_spike_markers,
                                routes_sr_draft, routes_sr_user_builds,
@@ -165,6 +166,7 @@ def _gather_get() -> list:
                       + list(routes_post_game_rubric.GET_ROUTES)
                       + list(routes_post_game_wpa.GET_ROUTES)
                       + list(routes_replay_events.GET_ROUTES)
+                      + list(routes_recordings.GET_ROUTES)
                       + list(routes_spike_curve.GET_ROUTES)
                       + list(routes_spike_markers.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
