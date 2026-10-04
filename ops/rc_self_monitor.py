@@ -14,12 +14,13 @@ Changes vs Phase 0:
 from __future__ import annotations
 
 import json
-import os
 import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from core.polled_json import atomic_write_json
 
 _LADDER = [
     "health_check",
@@ -68,10 +69,10 @@ def _utc() -> str:
 
 
 def _atomic_write(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+    # RM-261: per-writer scratch, fsync, WinError 5 retry, scratch cleanup.
+    # Importable here: rc_supervisor puts the repo root on sys.path before it
+    # imports this module, and core.polled_json is stdlib-only.
+    atomic_write_json(path, data, indent=2)
 
 
 def _read_json(path: Path) -> Optional[Dict[str, Any]]:

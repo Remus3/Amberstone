@@ -43,8 +43,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import tempfile
 import threading
 import time
 from pathlib import Path
@@ -52,6 +50,7 @@ from typing import Optional
 
 from core.ds_onhit_ap_roster import load_onhit_ap_roster
 from core.failed_load_gate import FailedLoadGate
+from core.polled_json import atomic_write_text
 from core.ds_support_route_overrides import load_support_route_overrides
 
 _log = logging.getLogger("rc.archetype_picks")
@@ -608,21 +607,11 @@ def _invalidate_picks_cache() -> None:
 
 
 def _atomic_write_picks(picks: dict[str, dict]) -> None:
-    """Atomic replace mirroring ``routes_lobby_aux._save_top8``."""
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=".cs_archetype_picks.", suffix=".tmp", dir=str(_DATA_DIR),
+    """Atomic replace via the shared ``core.polled_json`` writer."""
+    atomic_write_text(
+        _PICKS_PATH,
+        json.dumps(picks, ensure_ascii=False, indent=2, sort_keys=True),
     )
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-            json.dump(picks, f, ensure_ascii=False, indent=2, sort_keys=True)
-        os.replace(tmp_path, str(_PICKS_PATH))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
 
 
 def save_archetype_pick(

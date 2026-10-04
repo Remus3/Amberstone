@@ -51,13 +51,12 @@ local files only (``data/top8_list.json``, ``match_history.db``,
 """
 import json
 import logging
-import os
 import sqlite3
-import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
+from core.polled_json import atomic_write_json
 from dashboard._dispatch import equals, prefix
 
 log = logging.getLogger("rc.web_dashboard")
@@ -88,19 +87,9 @@ def _load_top8() -> list:
 
 
 def _save_top8(entries: list) -> None:
-    """Atomic write - mirrors core.atomic_write_json's tmp+replace pattern.
+    """Atomic write via core.polled_json.atomic_write_json (raises on failure).
     Caller is responsible for sanitizing entries; this just persists."""
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        prefix=".top8_list.", suffix=".tmp", dir=str(_DATA_DIR))
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-            json.dump(entries, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, str(_TOP8_PATH))
-    except Exception:
-        try: os.unlink(tmp_path)
-        except OSError: pass
-        raise
+    atomic_write_json(_TOP8_PATH, entries)
 
 
 def _sanitize_top8_entry(raw) -> dict | None:

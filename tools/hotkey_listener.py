@@ -53,7 +53,6 @@ from __future__ import annotations
 import ctypes
 import json
 import logging
-import os
 import queue
 import ssl
 import sys
@@ -64,6 +63,12 @@ import urllib.request
 from ctypes import wintypes
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+# Launched as ``pythonw tools/hotkey_listener.py`` (RC-HotkeyListener ONLOGON
+# task), so sys.path[0] is tools/ and the repo's own packages are invisible.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from core.polled_json import atomic_write_text  # noqa: E402
 
 # -- Config --------------------------------------------------------------------
 LEGION_BASE   = "https://192.0.2.230:8888"
@@ -192,10 +197,7 @@ def signal_overlay_active_toggle() -> None:
     """Stamp the toggle-signal file (atomic tmp+replace) so rc-shell flips the
     overlay ACTIVE. Fire-and-forget: a write failure must never crash the loop."""
     try:
-        tmp = TOGGLE_SIGNAL_FILE + ".tmp"
-        with open(tmp, "w", encoding="ascii") as f:
-            f.write(f"{time.time():.3f}")
-        os.replace(tmp, TOGGLE_SIGNAL_FILE)
+        atomic_write_text(Path(TOGGLE_SIGNAL_FILE), f"{time.time():.3f}")
         log.info("overlay ACTIVE toggle signaled")
     except Exception as exc:  # noqa: BLE001
         log.warning("overlay toggle signal failed: %s", exc)
@@ -206,10 +208,7 @@ def signal_overlay_panel_cycle() -> None:
     the overlay panel set. Fire-and-forget: a write failure must never crash the
     loop."""
     try:
-        tmp = PANEL_CYCLE_SIGNAL_FILE + ".tmp"
-        with open(tmp, "w", encoding="ascii") as f:
-            f.write(f"{time.time():.3f}")
-        os.replace(tmp, PANEL_CYCLE_SIGNAL_FILE)
+        atomic_write_text(Path(PANEL_CYCLE_SIGNAL_FILE), f"{time.time():.3f}")
         log.info("overlay panel-cycle signaled")
     except Exception as exc:  # noqa: BLE001
         log.warning("overlay panel-cycle signal failed: %s", exc)

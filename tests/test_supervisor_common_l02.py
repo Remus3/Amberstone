@@ -43,7 +43,10 @@ class TestAtomicWriteJsonRetry:
         # is process-wide (mod.time IS the global time module), so a bare count
         # tallies every thread's sleeps - that is how this read 21378 on CI
         # against an implementation hard-bounded at 2. See tests/_sleep_probe.py.
-        assert sleeps == [0.06, 0.06]
+        # RM-261: the writer delegates to core.polled_json, so the backoff is
+        # that module's schedule (first two steps for two failures).
+        from core import polled_json
+        assert sleeps == list(polled_json._REPLACE_RETRY_DELAYS_S[:2])
         assert target.exists()
         tmps = list(tmp_path.glob("lockfile.*.tmp"))
         assert tmps == [], "tmp must be cleaned up even after retries"
