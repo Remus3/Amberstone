@@ -320,6 +320,13 @@ def _install_optional_taps() -> None:
         _self_cast_install()
     except Exception as exc:  # noqa: BLE001
         _log.debug("liveclient_cache optional tap: %s", exc)
+    # RM-607: the live inventory tape (RC_ITEM_TAPE, default OFF). Own try so
+    # one tap failing never stops another from installing.
+    try:
+        from core.live_item_tape import install_if_enabled as _tape_install
+        _tape_install()
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("liveclient_cache item-tape tap: %s", exc)
 
 
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:

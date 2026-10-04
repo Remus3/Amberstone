@@ -33,9 +33,18 @@ three points: ``persist_tape`` refuses to write when Match-V5 rows exist,
 ``purge_superseded_tape_rows`` deletes tape rows once Match-V5 arrives.
 EXISTING readers (core/item_wpa.py, core/aram_item_interaction.py,
 core/ds_calibration_agreement.py, dashboard/routes_replay_events.py, ...) do
-not filter on ``source``; while a tape row and a later Match-V5 row coexist
-for one match they would double count. The purge is the guard for that
-window (see the wiring note in the RM-607 report).
+not filter on ``source``. They never double count because
+``scripts/rewind_catchup.py::_insert_timeline_rows`` (the single Match-V5
+timeline insert path, also used by lib/rewind_live_writer.py) calls
+``purge_superseded_tape_rows`` right after inserting, so tape rows survive
+only for matches with no Match-V5 item rows.
+
+Wiring (RC_ITEM_TAPE, default OFF): the listener is installed from
+``core.liveclient_cache._install_optional_taps``; the persist is scheduled by
+``on_game_end_if_enabled`` from
+``lcu.lcu_postgame_collector.PostgameCollector._publish_game_end_pin``. With
+the flag OFF nothing is installed or written and the shared
+``timeline_events`` table is never altered.
 
 No ``matches`` row is ever created here: ``write_match`` treats an existing
 ``matches`` row as "children already written" and would skip participants /
@@ -246,6 +255,25 @@ def _persist_to_path(db_path: Path, match_id: str,
         return {"status": "error", "match_id": match_id, "rows": 0}
     finally:
         conn.close()
+
+
+def on_game_end_if_enabled(game_id: Any, *, platform: str | None = None) -> dict:
+    """Flag-gated game-end hook, called from
+    ``lcu.lcu_postgame_collector.PostgameCollector._publish_game_end_pin`` with
+    the end-of-game gameId. Flag OFF: returns at once - no drain, no write,
+    the shared table is never altered. Flag ON: builds
+    ``<PLATFORM>_<gameId>`` (platform from ``core.operator_identity``) and
+    schedules ``on_game_end`` on a daemon Timer (DEFAULT_DELAY_S), so the
+    collector thread is never blocked."""
+    if not lit.is_enabled():
+        return {"status": "disabled"}
+    if platform is None:
+        try:
+            from core.operator_identity import platform as _platform
+            platform = _platform()
+        except Exception:  # noqa: BLE001
+            platform = None
+    return on_game_end(match_id_for(platform, game_id))
 
 
 def on_game_end(match_id: str | None, *, db_path: Path | None = None,
