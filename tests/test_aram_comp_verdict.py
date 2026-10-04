@@ -61,8 +61,13 @@ def test_balanced_comp_recommends_stay():
 
 def test_all_melee_comp_swaps_to_ranged_bench():
     # No ranged on team; a ranged bench champ exists -> swap to fix range gap.
+    # Y-05: my champion is Garen, whose slot breaks no satisfied factor. With
+    # the old default (Aatrox, the team's ONLY sustain) the net-benefit gate
+    # rightly rejects Caitlyn (she leaves range open at 1/2 and drops sustain);
+    # tests/test_aram_comp_verdict_net_gate.py owns that behaviour.
     out = cv.comp_verdict(
-        _state(_ALL_MELEE_AD, bench=["Garen", "Caitlyn", "Malphite"])
+        _state(_ALL_MELEE_AD, my_champion="Garen",
+               bench=["Garen", "Caitlyn", "Malphite"])
     )
     assert out["ok"] is True
     assert out["recommendation"] == "swap"
