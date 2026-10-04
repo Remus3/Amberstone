@@ -56,9 +56,7 @@ def test_real_repo_patch_dirs_are_seen_as_tracked():
         import pytest
         pytest.skip("git unavailable")
     probe = data / "daemon_slayer" / "16.15.1"
-    if not probe.is_dir():
-        import pytest
-        pytest.skip("16.15.1 not present")
+    assert probe.is_dir(), "premise: tracked DS patch dir 16.15.1 is checked out"
     assert dr._is_tracked_dir(data, probe, tracked)
     ls = subprocess.run(["git", "-C", str(data), "ls-files",
                          "daemon_slayer/16.15.1"], capture_output=True)
