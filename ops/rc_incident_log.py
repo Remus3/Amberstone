@@ -26,12 +26,15 @@ Phase 0.3 changes:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+_log = logging.getLogger(__name__)
 
 # -- Constants ----------------------------------------------------------------
 
@@ -52,6 +55,22 @@ def _atomic_write(path: Path, data: Any) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, path)
+
+
+def read_summary(runtime_dir: Path) -> Dict[str, Any]:
+    """Read the summary `IncidentLog.write_summary` produces (RM-193).
+
+    The file had a writer and no reader; GET /api/incidents/summary serves
+    this. Absent or unreadable -> {"available": False}, never an exception.
+    """
+    path = Path(runtime_dir) / "incident_summary.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"available": False}
+    if not isinstance(data, dict):
+        return {"available": False}
+    return {"available": True, **data}
 
 
 class IncidentLog:
@@ -187,8 +206,9 @@ class IncidentLog:
 
         try:
             _atomic_write(self.summary_file, summary)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            # RM-193: was `pass`, so a failed write left no trace anywhere.
+            _log.warning("incident summary write failed: %s", exc)
 
     def purge_old(self) -> int:
         """Delete log entries older than retention_days. Thread-safe. Returns lines removed."""
