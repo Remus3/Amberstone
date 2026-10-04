@@ -103,11 +103,49 @@ def test_foreign_dead_lock_is_reported_but_not_rc_leak(tmp_path):
     assert sba.rc_leaks(rows) == []
 
 
-def test_zero_byte_lock_is_unreadable_and_reported(tmp_path):
+def test_zero_byte_lock_is_unreadable_and_reported_as_unattributed(tmp_path):
+    """An UNREADABLE lock has no holder record, so its owner is UNKNOWN. The
+    anomaly is still reported, but never charged to RC."""
     (tmp_path / "1.lock").write_text("", encoding="utf-8")
     rows = _audit(tmp_path)
     assert rows[0]["verdict"] == "UNREADABLE"
-    assert len(sba.rc_leaks(rows)) == 1
+    assert rows[0]["owner"] == "unknown"
+    assert sba.rc_leaks(rows) == []
+    assert sba.unattributed(rows) == rows
+
+
+def test_non_json_lock_owner_is_unknown(tmp_path):
+    (tmp_path / "2.lock").write_text("{half", encoding="utf-8")
+    rows = _audit(tmp_path)
+    assert rows[0]["verdict"] == "UNREADABLE"
+    assert rows[0]["owner"] == "unknown"
+    assert sba.rc_leaks(rows) == []
+
+
+def test_owner_field_on_readable_rows(tmp_path):
+    _lock(tmp_path, 0, pid=111, repo=str(sba.ROOT), ts=NOW - 50)
+    _lock(tmp_path, 1, pid=555, repo="C:\\Some Sibling", ts=NOW - 50)
+    rows = _audit(tmp_path)
+    assert [r["owner"] for r in rows] == ["rc", "foreign"]
+
+
+def test_anomaly_line_for_unreadable_lock_does_not_imply_rc(tmp_path):
+    (tmp_path / "1.lock").write_text("", encoding="utf-8")
+    lines = sba.anomaly_lines(tmp_path)
+    assert len(lines) == 1, lines
+    line = lines[0]
+    assert "1.lock" in line and "UNREADABLE" in line
+    assert "owner UNKNOWN" in line
+    assert "not attributed to RC" in line
+    assert "RC leak" not in line
+
+
+def test_main_exit_code_ignores_unattributed_lock(tmp_path, capsys):
+    (tmp_path / "1.lock").write_text("", encoding="utf-8")
+    assert sba.main(["--root", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "owner=unknown" in out
+    assert "0 RC leak(s)" in out and "1 unattributed" in out
 
 
 def test_audit_is_read_only(tmp_path):
