@@ -35,6 +35,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/decisions` | Coaching decision ring (last 24 h) | - |
 | `/api/decisions/log` | Extended decision log | - |
 | `/api/decisions/heartbeat` | Decision-banner heartbeat | - |
+| `/api/incidents/summary` | Supervisor 24h incident roll-up (`ops/runtime/incident_summary.json`; `available:false` when absent) | - |
 | `/api/diagnostics` | Full system diagnostics dump | - |
 | `/api/ocr` | OCR debug: run tiered OCR on latest frame | - |
 | `/metrics` | Prometheus metrics (Counter / Gauge / Histogram) | text/plain |

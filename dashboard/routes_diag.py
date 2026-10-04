@@ -350,6 +350,26 @@ def _serve_decisions_heartbeat(h) -> None:
         send_error(h, exc)
 
 
+# RM-193: where the supervisor's IncidentLog writes incident_summary.json
+# (ops/rc_supervisor.py runtime_dir default). Module-level so tests can
+# point it at a tmp dir.
+_INCIDENT_RUNTIME_DIR = APP_DIR / "ops" / "runtime"
+
+
+def _serve_incident_summary(h) -> None:
+    """RM-193: GET /api/incidents/summary -> the supervisor's 24h incident
+    roll-up (ops/runtime/incident_summary.json), which had a live writer
+    (ops/rc_self_monitor.py _maybe_write_summary) and no reader at all.
+    Absent file -> {"available": false}."""
+    try:
+        from ops.rc_incident_log import read_summary
+        payload = read_summary(_INCIDENT_RUNTIME_DIR)
+        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/incidents/summary: %s", exc)
+        send_error(h, exc)
+
+
 def _serve_decisions_respond_active_post(h, payload) -> None:
     """ADR-007 (s169): POST /api/decisions/respond_active
     Body: {choice_index: 0|1, dismiss?: bool, note?: str}
@@ -426,6 +446,7 @@ GET_ROUTES = [
     (equals("/api/decisions"),            _serve_decisions),
     (equals("/api/decisions/log"),        _serve_decisions_log),
     (equals("/api/decisions/heartbeat"),  _serve_decisions_heartbeat),
+    (equals("/api/incidents/summary"),    _serve_incident_summary),
     (equals("/api/diagnostics"),          _serve_diagnostics),
     (equals("/api/ocr"),                  _serve_ocr),
 ]
