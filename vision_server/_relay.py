@@ -28,6 +28,7 @@ import time
 import urllib.request
 
 from core.game_host import GAME_HOST
+from core.relay_age import is_stale
 
 from ._config import log
 from ._stats import _record, _stats, _stats_lock
@@ -289,8 +290,9 @@ def get_latest_liveclient() -> dict:
     # 1-PC self-heal: when the relayed snapshot is stale/missing and League is
     # on this host, read :2999 in-process so the relay agent is non-integral.
     if GAME_HOST in _LOCAL_HOSTS:
-        age = time.time() - float(snap.get("ts") or 0.0)
-        if age > _SELF_READ_STALE_S:
+        # RM-269: is_stale also treats a FUTURE ts (backward clock step) as
+        # stale, where a bare subtraction read it as perfectly fresh.
+        if is_stale(snap.get("ts") or 0.0, _SELF_READ_STALE_S):
             fresh = _maybe_self_read()
             if fresh is not None:
                 return fresh

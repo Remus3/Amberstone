@@ -19,12 +19,12 @@ import logging
 import re
 import ssl
 import subprocess
-import time as _time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
 from core.game_host import GAME_HOST
+from core.relay_age import is_stale as _relay_is_stale
 
 LIVE_API = f"https://{GAME_HOST}:2999/liveclientdata"
 
@@ -100,8 +100,9 @@ class _PollerMixin:
                 wrap = json.loads(r.read())
             if "error" in wrap:
                 return None
-            age = _time.time() - wrap.get("ts", 0)
-            if age > RELAY_MAX_AGE_S:
+            # RM-269: a backward clock step made `age` negative and served
+            # old data as fresh; is_stale treats a future ts as stale.
+            if _relay_is_stale(wrap.get("ts", 0), RELAY_MAX_AGE_S):
                 return None
             return wrap.get("data")
         except urllib.error.HTTPError as e:
@@ -128,7 +129,7 @@ class _PollerMixin:
             )
             with urllib.request.urlopen(req, timeout=1.0) as r:
                 wrap = json.loads(r.read())
-            if _time.time() - wrap.get("ts", 0) > LCU_RELAY_MAX_AGE:
+            if _relay_is_stale(wrap.get("ts", 0), LCU_RELAY_MAX_AGE):  # RM-269
                 return ""
             return str((wrap.get("data") or {}).get("game_id") or "")
         except Exception:  # noqa: BLE001
