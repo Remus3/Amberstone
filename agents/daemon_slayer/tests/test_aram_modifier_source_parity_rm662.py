@@ -178,8 +178,11 @@ class AramModifierSourceParityTests(unittest.TestCase):
         # guard exists for. Comparing the CURRENT wiki sidecar against the
         # 16.18.1 aram_modifiers must surface the lagged fields, so the
         # comparator itself cannot go blind.
-        if not (_DS_DATA / "16.18.1" / "champions.json").exists():
-            self.skipTest("16.18.1 snapshot not on disk")
+        # Tracked data, so its absence is a regression, not an environment gap.
+        self.assertTrue(
+            (_DS_DATA / "16.18.1" / "champions.json").is_file(),
+            "the tracked 16.18.1 snapshot this control reads is gone",
+        )
         _, mism, _, _ = compare(self.patch, "16.18.1")
         unexplained = {(m[0], m[1]) for m in mism if (m[0], m[1]) not in ALLOWLIST}
         for pair in (("Qiyana", "ability_haste"), ("Ziggs", "dmg_dealt"),
