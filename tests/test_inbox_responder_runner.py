@@ -34,6 +34,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -483,12 +484,51 @@ _SURFACE_AUDITOR = _SurfaceWriteAuditor()
 sys.addaudithook(_SURFACE_AUDITOR)
 
 
-class _LiveSurfaceGuard:
-    """Digest every NON-ambient surface, audit EVERY surface, report both."""
+# MAIN 2320 ruling s2 (1): a per-RUN marker stamped into every note and reply
+# the fixtures generate by default (`World.note`, `reply_action`). A leak is
+# THIS run's marker in live state, which no other writer - the armed responder,
+# a sibling repo - can produce, so the scan covers the AMBIENT surfaces too and
+# catches what neither other half can: a SUBPROCESS the test spawns writing an
+# ambient surface (no digest there, and the audit hook sees one process only).
+# The export cache is not scanned: it is a git export of tracked bytes (1.3 GB
+# measured 2026-10-04), no note or reply body can reach it, and the audit half
+# still watches it.
+_RUN_MARKER = f"rcresp{uuid4().hex}"
+_MARKER_SKIP_SUFFIXES = (":export_cache",)
 
-    def __init__(self, surfaces: dict, ambient: frozenset) -> None:
+
+def _marker_hits(surfaces: dict, marker: str) -> list:
+    """Keys of the surfaces whose file names or bytes contain `marker`."""
+    needle = marker.encode("ascii")
+    hits = []
+    for key in sorted(surfaces):
+        if key.endswith(_MARKER_SKIP_SUFFIXES):
+            continue
+        root = Path(surfaces[key])
+        try:
+            files = [root] if root.is_file() else ([p for p in root.rglob("*") if p.is_file()]
+                                                   if root.is_dir() else [])
+        except OSError:
+            files = []
+        for f in files:
+            try:
+                found = marker in f.name or needle in f.read_bytes()
+            except OSError:
+                continue
+            if found:
+                hits.append(key)
+                break
+    return hits
+
+
+class _LiveSurfaceGuard:
+    """Digest every NON-ambient surface, audit EVERY surface, scan EVERY surface
+    for this run's marker, report all three."""
+
+    def __init__(self, surfaces: dict, ambient: frozenset, marker: str = _RUN_MARKER) -> None:
         self.surfaces = dict(surfaces)
         self.ambient = frozenset(ambient)
+        self.marker = marker
         self.digested = sorted(k for k in self.surfaces if k not in self.ambient)
         self.before: dict = {}
         self._watch = None
@@ -510,6 +550,9 @@ class _LiveSurfaceGuard:
         if written:
             problems.append(f"live surfaces written by this process (audit): {written}; "
                             f"first events: {hits[:5]}")
+        leaked = _marker_hits(self.surfaces, self.marker)
+        if leaked:
+            problems.append(f"this run's marker {self.marker} found in live surfaces: {leaked}")
         return problems
 
 
@@ -666,6 +709,47 @@ def test_live_surface_guard_digest_half_still_catches_an_out_of_process_write(tm
         problems = guard.finish()
     assert len(problems) == 1 and "digest" in problems[0], problems
     assert "main:agreement" in problems[0], problems
+
+
+def test_run_marker_scan_finds_a_planted_leak_and_nothing_foreign(tmp_path):
+    """MAIN 2320 ruling s2 (1), fail-first: the scan must SEE a planted leak
+    before its clean verdict is trusted, and must not fire on foreign bytes."""
+    surfaces, _ambient = _planted_surfaces(tmp_path)
+    inbox = surfaces["main:sibling:ZZ"]
+    assert _marker_hits(surfaces, _RUN_MARKER) == []
+    (inbox / "2026-10-03-0603-from-ZZ-foreign.md").write_text("rcresp" + "0" * 32 + "\n",
+                                                               encoding="ascii")
+    assert _marker_hits(surfaces, _RUN_MARKER) == []
+    (inbox / "2026-10-03-0604-from-RC-leak.md").write_text(f"x {_RUN_MARKER}\n",
+                                                            encoding="ascii")
+    assert _marker_hits(surfaces, _RUN_MARKER) == ["main:sibling:ZZ"]
+
+
+def test_live_surface_guard_marker_half_catches_an_out_of_process_ambient_leak(tmp_path):
+    """The gap the marker closes: a subprocess the test spawns writes the test's
+    OWN marker into an AMBIENT surface - no digest (ambient) and no audit event
+    (another process) - and the guard must still fail."""
+    surfaces, ambient = _planted_surfaces(tmp_path)
+    inbox = surfaces["main:sibling:ZZ"]
+    guard = _LiveSurfaceGuard(surfaces, ambient)
+    guard.start()
+    try:
+        subprocess.run([sys.executable, "-c",
+                        "import sys, pathlib; pathlib.Path(sys.argv[1]).write_text(sys.argv[2])",
+                        str(inbox / "2026-10-03-0605-from-RC-leak.md"), _RUN_MARKER],
+                       check=True, timeout=60)
+    finally:
+        problems = guard.finish()
+    assert len(problems) == 1 and "marker" in problems[0], problems
+    assert "main:sibling:ZZ" in problems[0], problems
+
+
+def test_generated_notes_and_replies_carry_the_run_marker(tmp_path):
+    """Every note and reply the fixtures generate by default is stamped, so a
+    leak of either is the test's own marker in live state."""
+    assert _RUN_MARKER in reply_action()["body"]
+    world = World(tmp_path, tmp_path)
+    assert _RUN_MARKER.encode("ascii") in world.note().read_bytes()
 
 
 def test_ambient_runtime_key_pin_rejects_a_planted_extra_key():
@@ -1012,7 +1096,7 @@ def result_bytes(structured_output=None, **over) -> bytes:
     return json.dumps(body).encode("utf-8")
 
 
-def reply_action(body="Measured and reported.\n", targets=("RSC",)):
+def reply_action(body=f"Measured and reported.\nrun {_RUN_MARKER}\n", targets=("RSC",)):
     return {"kind": "reply", "targets": list(targets), "body": body, "overwrite": False}
 
 
@@ -1139,7 +1223,8 @@ class World:
                                                     encoding="ascii", newline="\n")
         return record
 
-    def note(self, name=NOTE_NAME, body="Please report the head sha.\n", mtime=None):
+    def note(self, name=NOTE_NAME, body=f"Please report the head sha.\nrun {_RUN_MARKER}\n",
+             mtime=None):
         path = self.inbox / name
         path.write_bytes(body.encode("utf-8", "surrogatepass") if isinstance(body, str) else body)
         if mtime is not None:
