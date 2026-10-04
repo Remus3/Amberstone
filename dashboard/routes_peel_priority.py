@@ -80,6 +80,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals
 
+from dashboard._get_caps import MAX_CHAMPION_LIST, reject_oversized
 log = logging.getLogger("rc.web_dashboard")
 
 # 5-min response TTL mirrors the cc-route chips exactly.
@@ -258,6 +259,9 @@ def _serve_peel_priority(h) -> None:
         else:
             allies = _parse_champ_list((qs.get("ally") or [""])[0].strip())
             source = "param"
+            # RM-299b: _compute runs _score_ally per ally - cap the fan-out.
+            if reject_oversized(h, MAX_CHAMPION_LIST, ally=allies):
+                return
             if not allies:
                 h._send(200, json.dumps({
                     "ok": False,
