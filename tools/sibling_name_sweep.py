@@ -968,6 +968,8 @@ class ScanStats:
     paths: int = 0
     files: int = 0
     diff_nonempty: bool = False
+    # RM-491: untracked, not-ignored files the tree arm also scanned.
+    untracked: int = 0
 
 
 _SPECIFICITY = {SHAPE_DRIVE: 3, SHAPE_URL: 2, SHAPE_BARE: 1}
@@ -1418,6 +1420,15 @@ def iter_tree_blobs(root: Path, stats: ScanStats):
     rels = [p for p in out.split("\0") if p.strip()]
     if not rels:
         raise GitFault("git ls-files returned nothing - a vacuous tree walk")
+    # RM-491: the hand-run tree arm is what CLAUDE.md tells a session to run on
+    # NEW work, and new work is untracked until `git add`. An index-only
+    # universe proved nothing about it. Untracked, NOT-ignored files join the
+    # universe (`--exclude-standard` keeps gitignored runtime state out, which
+    # is never pushed). The vacuity check above stays on the TRACKED set.
+    others = _git(root, ["ls-files", "-z", "--others", "--exclude-standard"])
+    untracked = [p for p in others.split("\0") if p.strip()]
+    stats.untracked = len(untracked)
+    rels = rels + untracked
     stats.files = len(rels)
     return _tree_blob_stream(root, rels, stats)
 
@@ -1713,7 +1724,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not findings:
         _emit(
             f"[sibling-sweep] clean: {stats.scanned_bytes} bytes, "
-            f"{stats.files} file(s), {stats.commits} commit message(s), "
+            f"{stats.files} file(s) ({stats.untracked} untracked), "
+            f"{stats.commits} commit message(s), "
             f"{stats.binary_blobs} binary/LFS blobs not content-scanned."
         )
         return EXIT_CLEAN
