@@ -29,9 +29,11 @@ _FIXTURE = (Path(__file__).parent / "fixtures" / "liveclient"
 # EventName values that appear in the synthetic fixture but have NO RC
 # consumer on purpose. Every entry carries its reason. Remove an entry when a
 # consumer lands (the stale-entry test below enforces that).
+#
+# GameStart left this list with RM-637 (0f2d41dc4): core/obs_recorder.py reads
+# it by EventName to keep it OFF the chapter bookmarks (_NOT_BOOKMARKS), which
+# is a decision taken on the event, so it is consumed.
 UNCONSUMED_ALLOWLIST: dict[str, str] = {
-    "GameStart": "game start is taken from the LCU gameflow phase and the "
-                 "gameData clock, never from this marker event",
     "FirstBrick": "first-tower bonus marker; the same tower fall is consumed "
                   "via its TurretKilled event",
     "Multikill": "kill-streak flavour; ChampionKill already carries every "
