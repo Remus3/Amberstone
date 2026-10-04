@@ -29,7 +29,7 @@ Verdicts per lock:
 A lock is RC-AUTHORED when its `repo` is this repo's root (case-insensitive)
 or carries an `rc-` prefix (the responder writes `repo="rc-responder"`).
 Every row carries `owner`: "rc", "foreign", or "unknown". An UNREADABLE lock
-has NO holder record, so its owner is UNKNOWN: it is reported as an
+(or a readable one naming no `repo`) has NO holder record, so its owner is UNKNOWN: it is reported as an
 unattributed anomaly, never charged to RC (and never counted as an RC leak).
 
 Hold corpus: `--hold-corpus` re-derives acquire/release pairs from a
@@ -110,8 +110,10 @@ def classify(path: Path, stale_after: float, now: float | None = None,
                 "detail": f"{len(raw)} bytes, mtime age {int(now - mtime)}s",
                 "record": raw[:200], "rc_authored": False, "owner": OWNER_UNKNOWN}
     mine = is_rc_authored(rec)
-    out = {"lock": path.name, "record": rec, "rc_authored": mine,
-           "owner": "rc" if mine else "foreign"}
+    # No `repo` field = no holder record: owner UNKNOWN, never RC or foreign.
+    owner = ("rc" if mine else
+             "foreign" if str(rec.get("repo", "") or "") else OWNER_UNKNOWN)
+    out = {"lock": path.name, "record": rec, "rc_authored": mine, "owner": owner}
     pid = int(rec.get("pid", 0) or 0)
     ts = float(rec.get("ts", 0) or 0)
     age = now - ts
@@ -157,8 +159,10 @@ def rc_leaks(rows: list[dict]) -> list[dict]:
 
 
 def unattributed(rows: list[dict]) -> list[dict]:
-    """Anomalous locks whose owner cannot be known (no readable holder record)."""
-    return [r for r in rows if r.get("owner") == OWNER_UNKNOWN]
+    """Anomalous locks whose owner cannot be known (no holder record: unreadable,
+    or a readable record naming no `repo`). A healthy holder is not listed."""
+    return [r for r in rows
+            if r.get("owner") == OWNER_UNKNOWN and r["verdict"] in LEAK_VERDICTS]
 
 
 def anomaly_lines(root: Path | None = None) -> list[str]:
