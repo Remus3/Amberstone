@@ -114,6 +114,9 @@ _Clean-room only: every row is re-implemented from OBSERVED BEHAVIOUR; nothing i
 - **RM-671 (L-04 coverage) Arena / Mayhem stat augments not modelled** - Hand of Baron (1389), Phenomenal Evil (65 / 1390), Don't Blink (26), Slap Around (136) need a magnitude or stated assumption; Warlock Juicebox (2132) and Purist - Caster (2018) need a source first; refresh cherry_augments with the 16.19.1 batch before grading. Mayhem "ability upgrades" needs its own spec.
 - **RM-672 (Tier-1) `config/minimap_grids/sr.json` district NAMES do not match the map under Match-V5 coordinates** - measured during RM-613 on the local DB: 1285 of 1309 MIDDLE players' 2:00 frames land in `top_river` / `bot_river` (the base-to-base corridor), only 6 in `mid_lane`; `core/minimap_districts.py:22-25` documents this as a legacy convention. Any other consumer reading those names literally is mis-labelling; audit consumers before renaming.
 
+- **RM-673 (Tier-1, live-confirm first) objective `killer_team` likely "unknown" on live rows** - `dashboard/_liveclient.py` classifies the objective killer by matching `KillerName` against champion names, but the live API probably sends a player name there; if so every live objective row (grubs included) is team-unknown and the RM-601 grub line falls back to "Voidgrubs taken: N". Found during RM-601; confirm via LX-02 before changing.
+- **RM-674 (Tier-1) first-blood event-name mismatch** - `game_reader/snapshot_normalizer.py` checks `"FirstBloodKill"` while `coaches/arena_coach.py` consumes `"FirstBlood"`; one of them never matches. Probe a real payload (LX-02) and fix the wrong side. Found during RM-601.
+
 - **RM-668 (L-08, S) Data-feed watch per DS batch** - read-only checklist step (changelog high-water, HEAD the chunk URLs, per-block body hash via `tools/ds_feed_index.py`); not a poller. Cross-ref: fleet-ideas patch/spec watch.
 
 ---

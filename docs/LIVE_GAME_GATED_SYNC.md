@@ -1480,6 +1480,14 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   names the right lane opponent; an ARAM / Arena session with no pick actions writes no rows and
   reads `draft_source='none'`; the agent's writes coexist with the post-game ingest without lock
   errors.
+- **LX-02** (RM-601 / RM-602, Live Client hygiene) Capture one real allgamedata payload into a
+  gitignored path and run `tools/liveclient_shape_audit.py` on it; confirm a real `HordeKill` event's
+  fields (KillerName, Stolen type) match the synthetic fixture; record whether `KillerName` carries a
+  champion name or a player name (decides RM-673).
+- **LX-03** (RM-605, session recorder) With `RC_SESSION_RECORDER=1` during a real match: the file
+  under `logs/sessions/` carries the real gameId, the `config_key` from game.cfg and fresh
+  vision_state; then replay it into the headless UI with `tools/replay_session.py`. A replay never
+  closes any gated row.
 
 ## PARKED / HOLD - deliberately OFF the active checklist
 
