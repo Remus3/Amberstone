@@ -95,6 +95,12 @@ _EXPECTED_FLIPS = {
     "Ornn": ("ad", "ap"),
     "Qiyana": ("ap", "ad"),
     "Rell": ("ad", "ap"),
+    # Joined at 16.19.1 (RM-522): the damage_distribution split moved from
+    # physical 0.554 / magical 0.385 (margin 0.168, below the 0.20 gate) to
+    # 0.579 / 0.365 (margin 0.214), so the kit axis now resolves AD over the
+    # DDragon rating split (magic 6 > attack 5). The name "twelve" below is
+    # historical; the set is thirteen from 16.19.1.
+    "Sejuani": ("ap", "ad"),
     "Seraphine": ("ad", "ap"),
     "TwistedFate": ("ad", "ap"),
     "Vex": ("ad", "ap"),

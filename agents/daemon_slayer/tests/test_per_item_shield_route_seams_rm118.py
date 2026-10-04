@@ -152,11 +152,15 @@ _PROBES: dict[str, tuple[str, tuple[str, ...]]] = {
 # shield ON value (16.15.1 read 4670.6529041447375); Chainlaced Crushers 3173
 # MR 30 -> 25 lowers both halves of its pair (16.15.1 read 5923.776993750001 /
 # 6113.777596691178). The other three pairs are byte-identical across patches.
+# Re-measured at 16.19.1 (RM-522, DDragon stat move only, no registry change):
+# Ryze armorperlevel 4.2 -> 4.7 raises both halves of the Seraph's pair
+# (16.18.1 read 3601.8210250000006 / 4279.22489125). The ON-minus-OFF lift
+# still moves, so the wire is still proven live.
 _MEASURED: dict[str, tuple[float, float]] = {
     _KAENIC: (6560.949098552632, 7002.336717677632),
     _ECLIPSE: (4299.715930460527, 4674.362273881579),
     _CHAINLACED: (5863.31949375, 6048.055390808824),
-    _SERAPHS: (3601.8210250000006, 4279.22489125),
+    _SERAPHS: (3655.9633000000003, 4343.5498450000005),
     _FIMBUL: (5328.295964243422, 5729.085216995396),
 }
 # The full curated item set each seam arms, base id plus every mode mirror.
