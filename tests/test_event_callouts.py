@@ -220,10 +220,9 @@ class CapAndSortTests(unittest.TestCase):
 # are measured, not guessed (lane 8 cycle 44).
 _DEFAULT_WORD_BUDGET = 8
 _KIND_WORD_BUDGET: dict[str, int] = {
-    # structure_siege_callout ships two deliberately long instant-bridge
-    # lines: 15 and 13 words. Whether the panel should carry a 15-word line
-    # at all is a UI question filed for lane 4 (RM-304), not a test question.
-    "siege": 15,
+    # RM-304: the two siege lines (were 15 and 13 words) are shortened to the
+    # default 8, so "siege" has NO entry - the default now enforces them and
+    # re-lengthening either fails here.
     # dragon_soul_callout: the enemy soul-point line is 10 words, which is
     # also the budget the module states for its own sided lines at :93.
     "dragon_soul": 10,
@@ -231,7 +230,6 @@ _KIND_WORD_BUDGET: dict[str, int] = {
 # Tags allowed to use an over-budget kind. Pinned EXACTLY so a NEW long line
 # cannot hide behind an existing kind's exemption. Measured, not guessed.
 _OVER_BUDGET_TAGS = {
-    "siege_inhib", "siege_turret",
     "soul_secured_enemy", "soul_point_ally", "soul_point_enemy",
     "soul_race_enemy",
 }
