@@ -98,6 +98,12 @@ os.environ["RC_HOOK_LOG"] = str(_SUITE_LOG_DIR / "hook_invocations.jsonl")
 os.environ.setdefault("RC_NOTIFY_HOLD", "1")
 os.environ["RC_NOTIFY_JSONL"] = str(_SUITE_LOG_DIR / "operator_notify.jsonl")
 
+# RM-638: core/moment_marks resolves its jsonl + per-game pin dir from these at
+# CALL time; the post-game collector attaches marks on every _capture, so any
+# collector test would otherwise read / write the live ops/runtime tree.
+os.environ["RC_MOMENT_MARKS_JSONL"] = str(_SUITE_LOG_DIR / "moment_marks.jsonl")
+os.environ["RC_MOMENT_MARKS_DIR"] = str(_SUITE_LOG_DIR / "moment_marks_by_game")
+
 # RM-383: `core/vision_token.py` raises at IMPORT when neither `RC_VISION_TOKEN`
 # nor `config/vision_token.txt` exists, and that file is gitignored, so every
 # worktree and hermetic checkout went red at collection. A throwaway default is
