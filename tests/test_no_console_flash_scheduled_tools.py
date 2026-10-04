@@ -83,6 +83,10 @@ SCHEDULED_SPAWNERS = (
     # in the same session precisely so this list can see it, and the scheduled
     # task was repointed at the new path.
     "tools/claude_quota_watch.py",
+    # 2026-10-04 Y-02: the one operator-notify path. claude_quota_watch (a task
+    # target) imports it and its toast spawns powershell.exe under that same
+    # pythonw host; the three watchers' own toast spawns moved here.
+    "core/operator_notify.py",
     # 2026-09-08: the inbox responder's single process seam, run unattended by
     # RC-InboxResponder under pythonw every 5 minutes. It is the ONLY module in
     # the responder carrying a literal subprocess call - the spawn, exec and

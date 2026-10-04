@@ -13,8 +13,14 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import tempfile
+import sys
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core import operator_notify  # noqa: E402 - needs the repo root on sys.path
 
 # Account identities are OPERATOR data, not repo data: they differ per install
 # and one of them is a personal address, so they are read from the environment
@@ -47,32 +53,6 @@ STATE = Path.home() / ".config" / "claude_quota_watch_state.json"
 # unflagged produced a visible ConsoleWindowClass window, flagged produced
 # none. A 250ms poll MISSES it, which is why the first watch came back clean.
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-
-
-def _toast(title: str, body: str) -> None:
-    """Native Windows toast via hidden PowerShell WinRT (no console flash)."""
-    ps = (
-        '[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null\n'
-        '[Windows.UI.Notifications.ToastNotification,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null\n'
-        '$t=@"\n'
-        f'<toast><visual><binding template="ToastGeneric"><text>{title}</text><text>{body}</text></binding></visual></toast>\n'
-        '"@\n'
-        '$x=New-Object Windows.Data.Xml.Dom.XmlDocument;$x.LoadXml($t)\n'
-        '$n=New-Object Windows.UI.Notifications.ToastNotification $x\n'
-        '$app="Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"\n'
-        '[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show($n)\n'
-    )
-    tmp = Path(tempfile.gettempdir()) / "_claude_quota_toast.ps1"
-    tmp.write_text(ps, encoding="utf-8")
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-WindowStyle", "Hidden",
-             "-ExecutionPolicy", "Bypass", "-File", str(tmp)],
-            capture_output=True, timeout=30,
-            creationflags=CREATE_NO_WINDOW,
-        )
-    except Exception:  # noqa: BLE001 - toast is best-effort
-        pass
 
 
 def _load_state() -> dict:
@@ -108,10 +88,14 @@ def main() -> None:
     state = _load_state()
     if wk >= THRESHOLD and state.get("alerted_reset") != reset:
         pct = round(wk * 100)
-        _toast(
+        # Y-02: escaped toast, jsonl floor if it fails. The Windows Terminal
+        # AppId is the one this watcher always toasted under; kept as-is.
+        operator_notify.notify(
             "Claude weekly quota HIGH",
             f"Account A ({ACCT_A}) at {pct}% weekly. Switch the Claude desktop "
             f"login to Account B ({ACCT_B}).",
+            priority="high", tags=("claude-quota",),
+            app_id=operator_notify.WINDOWS_TERMINAL_APP_ID,
         )
         state["alerted_reset"] = reset
         STATE.parent.mkdir(parents=True, exist_ok=True)
