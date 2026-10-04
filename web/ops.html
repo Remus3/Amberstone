@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>RC Ops - seam map / drift / gated queue</title>
+<title>RC Ops - seam map / drift / gated queue / ingest</title>
 <!--
   ADDENDUM A concepts 3, 4 and 5 as REAL panels, fed by /api/ops/*.
 
@@ -33,7 +33,7 @@
 <body>
 
 <h1>RC Ops
-  <span class="sub">Seam map, drift strip and gated queue - live from /api/ops/*</span>
+  <span class="sub">Seam map, drift strip, gated queue and match ingest - live from /api/ops/*</span>
 </h1>
 <p class="stamp" id="stamp">loading...</p>
 
@@ -48,6 +48,10 @@
 
   <section class="ops-panel wide" id="gated-queue-panel">
     <header><h2>Gated Queue</h2><span class="cat">work in flight</span></header>
+  </section>
+
+  <section class="ops-panel wide" id="ingest-freshness-panel">
+    <header><h2>Match Ingest</h2><span class="cat">rewind DB freshness</span></header>
   </section>
 </div>
 

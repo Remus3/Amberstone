@@ -53,7 +53,9 @@ _MIN_FILES = 15
 _MIN_PASS = 150
 
 # Files whose contract a shipped item depends on - must stay in the universe.
-_REQUIRED = ("session_hygiene.test.mjs",)
+_REQUIRED = ("session_hygiene.test.mjs",
+             # Y-08: ingest freshness card - fixed rows, in-place render.
+             "ops_panels.test.mjs")
 
 _CACHE: dict = {}
 

@@ -80,7 +80,7 @@ Ground truth = `dashboard/_dispatch.py` + each `dashboard/routes_*.py` module's
 | `/api/mains` / `/api/top8` | lobby_aux |
 | `/api/moon-sync-status` | moon_sync |
 | `/api/op-score-curve` | op_score |
-| `/api/ops/drift-strip` / `/api/ops/gated-queue` / `/api/ops/seam-map` | ops_panels |
+| `/api/ops/drift-strip` / `/api/ops/gated-queue` / `/api/ops/seam-map` / `/api/ops/ingest-freshness` | ops_panels |
 | `/api/patch-impact` | patch_impact |
 | `/api/peel-priority` | peel_priority |
 | `/api/perf-curve` | perf_curve |

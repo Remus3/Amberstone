@@ -134,3 +134,39 @@ table.seams tr.inert td.seam { color: var(--bad); }
   font-variant-numeric: tabular-nums;
 }
 .countdown .cd-label { color: var(--text-faint); font-size: var(--fs-xs, 16px); }
+
+/* --- 6. Match ingest freshness (Y-08) ----------------------------------- */
+/* Five fixed rows, built once and updated in place by ops_panels.js, so the
+ * card holds its height whether or not any receipt exists. The state column
+ * carries a WORD (ok / check / fail / unknown); colour only reinforces it. */
+.ing {
+  display: grid;
+  grid-template-columns: minmax(200px, auto) 1fr auto;
+  gap: 0 14px;
+}
+.ing-row { display: contents; }
+.ing-row > span {
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min, 42px);
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-xs, 16px);
+}
+.ing-k { color: var(--text-faint); letter-spacing: .5px; }
+.ing-v {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ing-s {
+  justify-content: center;
+  min-width: 96px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.ing-s.s-ok      { color: var(--good); }
+.ing-s.s-amber   { color: var(--warn); }
+.ing-s.s-red     { color: var(--bad); }
+.ing-s.s-unknown { color: var(--text-dim); }
+.ing-basis.ing-fail { color: var(--bad); }

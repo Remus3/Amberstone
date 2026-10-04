@@ -492,7 +492,22 @@ _WEB = _REPO_ROOT / "web"
 #
 # MERGED lift-2 (2026-10-04): Y-07 re-capture landed on top of the above; the pin
 # below is the digest of the merged tree (recomputed, not either slice's).
-_LIVE_HALF_DIGEST = "32545c4d18605fc2cbdc6a3df4df838b524eab8f74482831f0236c5db226b23c"
+# superseded by the merged re-capture below: "32545c4d18605fc2cbdc6a3df4df838b524eab8f74482831f0236c5db226b23c"
+#
+#
+# RE-CAPTURED 2026-10-04 at Y-08 (match-ingest freshness card; external
+# reference M). Ordinary case, no tokeniser change. ATTRIBUTED BY
+# SUBSTITUTION: swapping exactly web/js/panels/ops_panels.js,
+# web/css/panels/ops_panels.css and web/ops.html back to their origin/main
+# 0187629ed blobs reproduces the superseded 5afd8b1d... value EXACTLY. The new
+# web/js/panels/ops_panels.test.mjs is not a swept language (lang_for_path
+# returns None for .mjs), so it is outside this digest. No glyph change. If
+# another slice re-captures in parallel, the merger recomputes.
+# superseded by the merged re-capture below: "d2f4ed5e2b6d2513b04bd01fd2ea9d75c225c213dadb8b956e4fa232daa3eff6"
+#
+# MERGED lift-2 (2026-10-04): Y-08 re-capture landed on top of the above; the pin
+# below is the digest of the merged tree (recomputed, not either slice's).
+_LIVE_HALF_DIGEST = "3a1f5b31e60e1be587e47b53df7474df367bfafce95a9103e980ffb75ce59c1f"
 
 
 def _web_sources() -> list[Path]:

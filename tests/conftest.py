@@ -478,6 +478,9 @@ def fake_headless_route(monkeypatch, _live_state_base):
 _PROD_WRITE_GLOBALS = (
     ("core.coach_trace", "_TRACE_FILE", "coach_trace.jsonl"),
     ("core.ds_calibration", "_LOG_PATH", "ds_calibration.jsonl"),
+    # Y-08: every staged live-writer chain that ENDS in a test appends a
+    # receipt; without this the Y-01 suite would write ops/runtime/.
+    ("lib.ingest_receipt", "RECEIPT_PATH", "rewind_ingest_receipts.jsonl"),
 )
 
 

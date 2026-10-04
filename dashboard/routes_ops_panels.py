@@ -1,5 +1,6 @@
 # arch: ops panels backend (seam map / drift strip / gated queue) | section=dashboard | frozen=no
-"""GET /api/ops/{seam-map,drift-strip,gated-queue} - ADDENDUM A concepts 3/4/5.
+"""GET /api/ops/{seam-map,drift-strip,gated-queue} - ADDENDUM A concepts 3/4/5,
+plus GET /api/ops/ingest-freshness (Y-08 match-ingest freshness card).
 
 Thin dashboard wire over ``core.ops_panels``. NO compute lives here: every
 number is derived in that module so it stays testable without a server, and
@@ -70,10 +71,16 @@ def _serve_gated_queue(h) -> None:
     _serve(h, "gated-queue", ops_panels.compute_gated_queue)
 
 
+def _serve_ingest_freshness(h) -> None:
+    """GET /api/ops/ingest-freshness (Y-08) - read-only; no retry/give-up POST."""
+    _serve(h, "ingest-freshness", ops_panels.compute_ingest_freshness)
+
+
 GET_ROUTES = [
     (equals("/api/ops/seam-map"), _serve_seam_map),
     (equals("/api/ops/drift-strip"), _serve_drift_strip),
     (equals("/api/ops/gated-queue"), _serve_gated_queue),
+    (equals("/api/ops/ingest-freshness"), _serve_ingest_freshness),
 ]
 
 POST_ROUTES: list = []

@@ -295,7 +295,23 @@ def _do_live_fetch_and_insert(
         _log.info("rewind_live_writer: chain %s attempt %d ended %s (%s)",
                   chain_id, int(attempt), status,
                   result.get("match_id") or "no target")
+        _write_receipt(result, scheduled_at, attempt)
     return result
+
+
+def _write_receipt(result: dict[str, Any], scheduled_at: Any,
+                   attempt: Any) -> None:
+    """Y-08: one ingest receipt where a staged chain ENDS. Never raises.
+
+    ``duplicate_target`` is skipped by ``append_receipt`` itself (the owning
+    chain writes the receipt for that game), as is any ``*_retry_scheduled``.
+    """
+    try:
+        from lib import ingest_receipt
+        ingest_receipt.append_receipt(
+            result, scheduled_at=scheduled_at, attempt=attempt)
+    except Exception as exc:  # noqa: BLE001 - a receipt never costs the ingest
+        _log.debug("rewind_live_writer receipt error: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -455,8 +471,11 @@ def _reset_staging_for_tests() -> None:
         _INFLIGHT_TARGETS.clear()
 
 
-def _park_target(rc: Any, match_id: str, reason: str) -> None:
-    """Hand a target the live path could not finish to the catchup drain."""
+def _park_target(rc: Any, match_id: str, reason: str) -> bool:
+    """Hand a target the live path could not finish to the catchup drain.
+
+    True when the ``fetch_retry`` row was committed (Y-08 receipt ``parked``).
+    """
     with _WRITE_LOCK:
         try:
             conn = _open_db()
@@ -467,6 +486,8 @@ def _park_target(rc: Any, match_id: str, reason: str) -> None:
                 conn.close()
         except (sqlite3.Error, OSError) as exc:
             _log.debug("rewind_live_writer park error: %s", exc)
+            return False
+    return True
 
 
 def _resolve_puuid_for(pin: dict[str, Any], riot_api: Any) -> str | None:
@@ -516,7 +537,7 @@ def _staged_attempt(
             return out
         out["status"] = "staged_cap_reached"
         if target and rc is not None:
-            _park_target(rc, target, "live staged cap")
+            out["parked"] = _park_target(rc, target, "live staged cap")
         return out
 
     if pin is None:
@@ -572,9 +593,9 @@ def _staged_attempt(
     def _not_indexed(cause: str) -> dict[str, Any]:
         if not last:
             return _next("not_indexed_retry_scheduled", target, rc, cause)
-        _park_target(rc, target, f"live target not indexed ({cause})")
+        parked = _park_target(rc, target, f"live target not indexed ({cause})")
         return {"status": "target_not_indexed", "match_id": target,
-                "pinned": True, "cause": cause}
+                "pinned": True, "cause": cause, "parked": parked}
 
     with riot_api.track_outcomes() as id_scope:
         ids = riot_api.get_recent_matches(
@@ -719,17 +740,9 @@ def _hydrate_and_write(
     if detail is None and d_status == rc.FETCH_RATE_LIMITED:
         # Park the whole match: a later live write for a newer game would
         # otherwise move the catchup window past this one for good.
-        with _WRITE_LOCK:
-            try:
-                conn = _open_db()
-                try:
-                    rc.enqueue_retry(conn, match_id, "match", "live detail 429")
-                    conn.commit()
-                finally:
-                    conn.close()
-            except (sqlite3.Error, OSError) as exc:
-                _log.debug("rewind_live_writer enqueue error: %s", exc)
-        return {"status": "detail_rate_limited", "match_id": match_id}
+        parked = _park_target(rc, match_id, "live detail 429")
+        return {"status": "detail_rate_limited", "match_id": match_id,
+                "parked": parked}
     if detail is None:
         # 404 / 403 / network / event-mode-key-policy. Silent.
         return {"status": "no_detail", "match_id": match_id}
@@ -809,6 +822,8 @@ def _hydrate_and_write(
         "duration_s": duration_s,
         "has_timeline": bool(timeline),
         "timeline_status": t_status,
+        # record_hydrated parked the timeline in fetch_retry in the same txn.
+        "parked": timeline is None and t_status == rc.FETCH_RATE_LIMITED,
     }
 
 
