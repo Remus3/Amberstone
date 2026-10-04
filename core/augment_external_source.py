@@ -405,23 +405,37 @@ def _refresh_priors(
     return _table_from_snapshot(mode, snap), False
 
 
-def _load_degraded(mode: str) -> AugmentPriorTable:
-    """Last-known snapshot for ``mode`` across any patch dir (newest by
-    mtime), or an empty table. Used when a live fetch fails."""
-    best: Optional[Path] = None
-    best_mtime = -1.0
+def _newest_populated_snapshot(filename: str) -> Optional[tuple[Path, dict]]:
+    """(path, snapshot) for the newest-by-mtime ``<patch>/<filename>`` that
+    actually carries augments, or None.
+
+    P2-5: the newest file used to win on mtime ALONE, so a present-but-empty
+    snapshot (a valid ``{}`` or a 0-byte file left by a crash or a touch) in
+    the current patch dir shadowed an older populated one, and the degraded
+    path served an empty table while good data sat on disk.
+    """
+    cands: list[tuple[float, Path]] = []
     if _DS_DATA_DIR.exists():
         for patch_dir in _DS_DATA_DIR.iterdir():
-            cand = patch_dir / f"{mode}_augment_stats.json"
+            cand = patch_dir / filename
             try:
-                m = cand.stat().st_mtime
+                cands.append((cand.stat().st_mtime, cand))
             except OSError:
                 continue
-            if m > best_mtime:
-                best, best_mtime = cand, m
-    if best is None:
+    for _mtime, cand in sorted(cands, key=lambda c: c[0], reverse=True):
+        snap = read_json_dict(cand)
+        if snap.get("augments"):
+            return cand, snap
+    return None
+
+
+def _load_degraded(mode: str) -> AugmentPriorTable:
+    """Last-known populated snapshot for ``mode`` across any patch dir
+    (newest by mtime), or an empty table. Used when a live fetch fails."""
+    found = _newest_populated_snapshot(f"{mode}_augment_stats.json")
+    if found is None:
         return AugmentPriorTable(mode=mode)
-    snap = read_json_dict(best)
+    best, snap = found
     _log.info("augment_external_source: degraded to cached %s", best)
     return _table_from_snapshot(mode, snap)
 
@@ -637,21 +651,12 @@ def _index_from_snapshot(idx) -> dict[str, int]:
 
 
 def _load_degraded_meta() -> AugmentMetaTable:
-    best: Optional[Path] = None
-    best_mtime = -1.0
-    if _DS_DATA_DIR.exists():
-        for patch_dir in _DS_DATA_DIR.iterdir():
-            cand = patch_dir / "cherry_augments.json"
-            try:
-                m = cand.stat().st_mtime
-            except OSError:
-                continue
-            if m > best_mtime:
-                best, best_mtime = cand, m
-    if best is None:
+    found = _newest_populated_snapshot("cherry_augments.json")
+    if found is None:
         return AugmentMetaTable()
+    best, snap = found
     _log.info("augment_external_source: degraded to cached meta %s", best)
-    return _table_from_meta_snapshot(read_json_dict(best))
+    return _table_from_meta_snapshot(snap)
 
 
 def refresh_meta_cache(

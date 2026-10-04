@@ -110,8 +110,13 @@ def champion_key_map(patch: str, root: Optional[Path] = None) -> dict[int, dict]
     return out
 
 
-def _played_champions(map_id: int, conn: sqlite3.Connection) -> list[tuple]:
-    """[(champion_id, games, wins)] over the tracked player's own matches."""
+def _played_champions(map_id: int, conn: sqlite3.Connection) -> Optional[list[tuple]]:
+    """[(champion_id, games, wins)] over the tracked player's own matches.
+
+    None (not []) when the query fails - e.g. a present db file with no
+    `matches` table - so the caller can state a reason instead of passing the
+    failure off as an empty corpus (P2-5).
+    """
     try:
         sql = ("SELECT tracked_champion_id, COUNT(*), "
                "SUM(CASE WHEN tracked_win THEN 1 ELSE 0 END) "
@@ -121,7 +126,7 @@ def _played_champions(map_id: int, conn: sqlite3.Connection) -> list[tuple]:
         return list(conn.execute(sql, (map_id, MIN_DURATION_S)).fetchall())
     except sqlite3.Error as exc:
         log.warning("patch_impact query: %s", exc)
-        return []
+        return None
 
 
 def _index_changes(report: dict, mode: str) -> dict[str, dict]:
@@ -256,12 +261,18 @@ def compute_patch_impact(mode: str = DEFAULT_MODE,
     own = conn is None
     if own:
         conn = _open_ro()
-    rows = _played_champions(MODE_MAPS[mode], conn) if conn is not None else []
+    rows = _played_champions(MODE_MAPS[mode], conn) if conn is not None else None
     if own and conn is not None:
         try:
             conn.close()
         except sqlite3.Error:
             pass
+    if rows is None:
+        # P2-5: the module contract promises a STATED reason for a missing or
+        # unreadable db; it used to fall through with reason None, so the
+        # panel told a fresh install "no champion has enough games yet".
+        return _empty(mode, old_patch, new_patch, top_n, min_games,
+                      "no readable match history yet")
 
     played = []
     total = 0
