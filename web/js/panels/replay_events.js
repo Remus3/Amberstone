@@ -42,7 +42,13 @@ const _RE = {
   matchId: null,
   include: new Set(),  // subset of {items, skills, wards}
   events:  [],
+  // RM-638: the player's in-game "mark this moment" presses for this match
+  // (route field you_flagged; core/moment_marks.py). Rendered as rows in
+  // the same ribbon, interleaved by clock, so a click seeks like any event.
+  flags:   [],
 };
+
+const FLAG_LABEL = "you flagged";
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the events fetch
@@ -190,20 +196,59 @@ function _saveInclude(set) {
   } catch (_) {}
 }
 
+// RM-638: one "you flagged" pin row. Same row contract as an event row
+// (class, data-clock seek, role=button, tabindex) so the delegated click /
+// keydown seek in wireReplayEventsOnce works on it unchanged.
+function _flagRowHtml(pin) {
+  const clockS = Math.max(0, Math.floor(Number(pin && pin.game_time_s) || 0));
+  const clock  = _fmtMmSs(clockS);
+  return `<li class="replay-events-row" data-kind="flag" data-team="0"
+      data-clock="${clockS}" role="button" tabindex="0"
+      title="You flagged this moment in game - jump the scrubber to ${_escHtml(clock)}">
+      <span class="replay-events-clock">${_escHtml(clock)}</span>
+      <span class="replay-events-label">${_escHtml(FLAG_LABEL)}</span>
+      <span class="replay-events-actor"></span>
+      <span class="replay-events-victim"></span>
+    </li>`;
+}
+
+// Merge event rows and flag rows by clock. A flag sorts AFTER an event at
+// the same second (stable), so the ribbon reads "what happened, then your
+// flag". Pure string build - no DOM reads.
+function _rowsHtml(events, flags) {
+  const items = [];
+  (events || []).forEach((e, i) => {
+    items.push({ c: Number(e && e.clock_s) || 0, o: 0, i, html: _eventRowHtml(e) });
+  });
+  (flags || []).forEach((p, i) => {
+    if (!p || !isFinite(Number(p.game_time_s))) return;
+    items.push({ c: Math.floor(Number(p.game_time_s)), o: 1, i, html: _flagRowHtml(p) });
+  });
+  items.sort((a, b) => (a.c - b.c) || (a.o - b.o) || (a.i - b.i));
+  return items.map((x) => x.html).join("");
+}
+
 function _renderEvents() {
   const list  = document.getElementById("replay-events-list");
   const empty = document.getElementById("replay-events-empty");
   const count = document.getElementById("replay-events-count");
   if (!list || !empty || !count) return;
   const events = _RE.events || [];
+  const flags  = _RE.flags || [];
   count.textContent = String(events.length);
-  if (!events.length) {
+  if (!events.length && !flags.length) {
     list.innerHTML = "";
     empty.hidden = false;
     return;
   }
   empty.hidden = true;
-  const rows = events.map((e) => {
+  // Rebuilt only on a fetch resolve (never on a timer), matching the
+  // pre-RM-638 render; the delegated seek listeners survive the rebuild.
+  list.innerHTML = _rowsHtml(events, flags);
+}
+
+// One timeline-event row (the pre-RM-638 map body, unchanged).
+function _eventRowHtml(e) {
     const clockS  = Number(e.clock_s) || 0;
     const clock   = _fmtMmSs(e.clock_s);
     const label   = _typeLabel(e.type, e.subtype);
@@ -226,8 +271,6 @@ function _renderEvents() {
       <span class="replay-events-actor"${aTitle}>${actor.html}</span>
       <span class="replay-events-victim"${vTitle}>${victim.html}</span>
     </li>`;
-  }).join("");
-  list.innerHTML = rows;
 }
 
 /**
@@ -242,6 +285,7 @@ export function loadReplayEvents(matchId) {
     section.hidden = true;
     _RE.matchId = null;
     _RE.events = [];
+    _RE.flags = [];
     _renderEvents();
     return;
   }
@@ -250,12 +294,13 @@ export function loadReplayEvents(matchId) {
   if (_replayEventsIsMock()) {
     _replayEventsMockLoad()
       .then((m) => {
-        if (!m || !Array.isArray(m.matches)) { _RE.events = []; _renderEvents(); return; }
+        if (!m || !Array.isArray(m.matches)) { _RE.events = []; _RE.flags = []; _renderEvents(); return; }
         const hit = m.matches.find((x) => x.match_id === matchId);
         _RE.events = (hit && Array.isArray(hit.events)) ? hit.events : [];
+        _RE.flags = (hit && Array.isArray(hit.you_flagged)) ? hit.you_flagged : [];
         _renderEvents();
       })
-      .catch(() => { _RE.events = []; _renderEvents(); });
+      .catch(() => { _RE.events = []; _RE.flags = []; _renderEvents(); });
     return;
   }
   const includeParam = [..._RE.include].sort().join(",");
@@ -266,14 +311,17 @@ export function loadReplayEvents(matchId) {
     .then((d) => {
       if (!d || !d.ok) {
         _RE.events = [];
+        _RE.flags = [];
       } else {
         _RE.events = d.events || [];
+        _RE.flags = Array.isArray(d.you_flagged) ? d.you_flagged : [];
       }
       _renderEvents();
     })
     .catch((err) => {
       try { console.warn("[replay-events] fetch failed:", err); } catch (_) {}
       _RE.events = [];
+      _RE.flags = [];
       _renderEvents();
     });
 }
@@ -333,3 +381,6 @@ export function wireReplayEventsOnce() {
     });
   });
 }
+
+// --- test hooks (RM-638 moment_flags.test.mjs) -------------------------
+export const __test = { _rowsHtml, _flagRowHtml, _eventRowHtml, FLAG_LABEL };

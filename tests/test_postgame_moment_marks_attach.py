@@ -175,3 +175,30 @@ def test_post_game_wpa_carries_you_flagged(tmp_path, monkeypatch, mark_paths):
     w._serve_post_game_wpa(h2)
     assert h2.responses[-1][1]["cached"] is True
     assert [p["clock_s"] for p in h2.responses[-1][1]["you_flagged"]] == [200]
+
+
+# -- web render wiring (structure; the behaviour is node-tested) ---------------
+
+_WEB = _PROJECT_ROOT / "web"
+
+
+def test_panels_consume_you_flagged_and_style_with_existing_tokens():
+    replay_js = (_WEB / "js" / "panels" / "replay_events.js").read_text(encoding="utf-8")
+    pgr_js = (_WEB / "js" / "panels" / "pgr_winprob.js").read_text(encoding="utf-8")
+    assert "d.you_flagged" in replay_js and 'data-kind="flag"' in replay_js
+    assert "payload.you_flagged" in pgr_js and "pwp-flag-mark" in pgr_js
+    replay_css = (_WEB / "css" / "panels" / "replay_events.css").read_text(encoding="utf-8")
+    pgr_css = (_WEB / "css" / "panels" / "pgr_winprob.css").read_text(encoding="utf-8")
+    assert '[data-kind="flag"]' in replay_css
+    assert ".pwp-flag" in pgr_css
+    themes = (_WEB / "css" / "themes.css").read_text(encoding="utf-8")
+    assert "--accent-2:" in themes, "flag styling must use a defined token"
+
+
+def test_render_behaviour_is_gated_by_the_node_panel_suite():
+    # tests/test_web_panels_node_suite.py globs web/js/panels/*.test.mjs, so
+    # the executed render test only runs if it lives in that directory.
+    t = _WEB / "js" / "panels" / "moment_flags.test.mjs"
+    assert t.is_file()
+    src = t.read_text(encoding="utf-8")
+    assert "./replay_events.js" in src and "./pgr_winprob.js" in src
