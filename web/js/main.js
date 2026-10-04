@@ -3499,6 +3499,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
+    // RM-508: request generation. applyView("home") / a mode-tab switch clear
+    // the in-flight guard and refetch, so two requests can be outstanding; an
+    // OLDER response landing last (the startup tick's live /api/home/summary
+    // racing the mock fixture) used to repaint over the newer render - the
+    // CI "flake" that wiped the W/L strip. Only the newest request renders.
+    const gen = (_HOME.gen = (_HOME.gen || 0) + 1);
     // Mode-tab filter: a non-ALL tab appends ?mode=<tab> (backend contract:
     // bad/absent mode = unfiltered, payload echoes mode_filter). The mock
     // path ignores the filter - tabs still switch active state and the mock
@@ -3511,6 +3517,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           .then((r) => (r && r.ok ? r.json() : null));
     promise
       .then((data) => {
+        if (gen !== _HOME.gen) return;  // superseded - never paint stale data
         _HOME.fetching = false;
         if (!data) return;
         _HOME.lastFetchAt = Date.now();
@@ -3536,7 +3543,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // AND every mode-tab switch without a separate tab handler.
         _renderHomeSnapshot(_HOME.modeTab, data.rank || null);
       })
-      .catch(() => { _HOME.fetching = false; });
+      .catch(() => { if (gen === _HOME.gen) _HOME.fetching = false; });
   }
   // HOME mode tabs: apply a tab - whitelist, persist, sync every tab
   // button's active/aria-selected state, stamp the overlay dataset hook
