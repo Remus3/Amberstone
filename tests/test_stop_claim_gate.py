@@ -1870,3 +1870,85 @@ def test_a_non_committing_git_command_does_not_back_a_commit_claim(tmp_path, com
     ]
     report = _run_gate(tmp_path, rows)
     assert "commit_claim_without_commit" in _checks(report), command
+
+
+# ---------------------------------------------------------------------------
+# Check 9 / 10 EVIDENCE - the push and merge subcommand must be git's FIRST
+# non-option word. MEASURED 2026-10-04 while re-checking the hand-off's
+# "The agent committed X and pushed. gets no push flag": the claim side flags,
+# but EV_PUSH was `git ... push` anywhere in the command, so a session that ran
+# `git stash push -m tag` (the stash form this environment prescribes) was
+# credited with a push and the unbacked claim went silent. Same root cause on
+# EV_MERGE: `git merge-base` and `git merge --abort` were credited as a merge.
+# ---------------------------------------------------------------------------
+def _evidence_checks(sentence, command):
+    ev = {"texts": [sentence], "bash": [command], "edited": [],
+          "runs": [], "ci_runs": [], "artifacts": []}
+    return {f["check"] for f in gate.audit(ev)}
+
+
+NON_PUSHING_COMMANDS = [
+    "git stash push -u -m wip-tag",
+    "git status && git stash push -m t",
+    "git push --dry-run origin main",
+    "git push -n origin main",
+    "git remote set-url --push origin x",
+    "git config push.default simple",
+    "git -c push.default=current status",
+    "git log --oneline origin/main..HEAD",
+]
+
+
+@pytest.mark.parametrize("command", NON_PUSHING_COMMANDS)
+def test_a_non_pushing_git_command_does_not_back_a_push_claim(command):
+    checks = _evidence_checks("The agent committed X and pushed.", command)
+    assert "push_claim_without_push" in checks, command
+
+
+PUSHING_COMMANDS = [
+    "git push",
+    "git push origin main",
+    "git push -u origin HEAD",
+    "git -C some/dir push origin main",
+    'git -C "C:/Some Dir/repo" push origin main',
+    "git --no-pager push origin main",
+    '"C:/Program Files/Git/cmd/git.exe" push origin main',
+    "git fetch && git push origin main",
+]
+
+
+@pytest.mark.parametrize("command", PUSHING_COMMANDS)
+def test_a_pushing_git_command_backs_a_push_claim(command):
+    checks = _evidence_checks("The agent committed X and pushed.", command)
+    assert "push_claim_without_push" not in checks, command
+
+
+@pytest.mark.parametrize("command", [
+    "git merge-base HEAD origin/main",
+    "git merge --abort",
+    "git merge --quit",
+    "git log --grep=merge",
+    "git stash push -m merge-wip",
+])
+def test_a_non_merging_git_command_does_not_back_a_merge_claim(command):
+    assert "merge_claim_without_merge" in _evidence_checks("Merged to main.", command), command
+
+
+@pytest.mark.parametrize("command", [
+    "git merge lane/slice",
+    "git merge --no-ff lane/slice",
+    "git -C some/dir merge --ff-only lane/slice",
+    '"$GH" pr merge 12 --squash',
+])
+def test_a_merging_command_still_backs_a_merge_claim(command):
+    checks = _evidence_checks("Merged to main.", command)
+    assert "merge_claim_without_merge" not in checks, command
+
+
+def test_stash_push_does_not_launder_a_push_claim_through_the_stop_hook(tmp_path):
+    rows = [
+        _assistant(_tool_use("Bash", command="git stash push -u -m wip-tag")),
+        _tool_result("Saved working directory"),
+        _assistant(_text("The agent committed X and pushed.")),
+    ]
+    assert "push_claim_without_push" in _checks(_run_gate(tmp_path, rows))
