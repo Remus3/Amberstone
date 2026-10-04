@@ -69,7 +69,11 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   BACKLOG "Daemon Slayer scorer calibration"; RM-192..RM-199 are repo/UI/audit
   rows under BACKLOG "Reliability / hardening". None takes a roster checkbox and
   none changes the Summary count.
-  Next free id = **RM-526** (2026-10-04, moved at the Wave1 drain merge).
+  Next free id = **RM-595** (2026-10-04, moved at the external-reference lift-2 filing).
+  **SIXTY-NINE ids were allocated 2026-10-04 by the lift-2 filing, RM-526 .. RM-594:** Band 1
+  under ROADMAP NOW (section "External reference lift 2"), Bands 2-4 in the BACKLOG section of
+  the same name. None takes a roster checkbox and none changes the Summary count.
+  Prior pin, kept for the audit trail: Next free id was **RM-526** (2026-10-04, moved at the Wave1 drain merge).
   **TEN ids were allocated 2026-10-04 by the Wave1 merge:** RM-516 (live coach / vision model pins,
   filed and shipped), and OPEN in `BACKLOG.md` (Wave1 section): RM-517 .. RM-525. RM-520 is the
   renumbered second RM-423 (atlas frame recapture). None takes a roster checkbox and none
