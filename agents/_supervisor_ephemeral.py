@@ -11,6 +11,7 @@ calls here (stdlib module singletons).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -171,6 +172,12 @@ def prune_task_logs(log_root: Path = LOG_ROOT,
     return removed
 
 
+# Module attr so tests can monkeypatch it (L-03). None = derive from
+# _PROJECT_ROOT at call time (tests that patch _PROJECT_ROOT rely on that).
+AGENT6_REPORTS_DIR: Path | None = None
+_SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]")
+
+
 def _write_agent6_failure_stub(
     task_id: str,
     op: str,
@@ -181,12 +188,14 @@ def _write_agent6_failure_stub(
 ) -> None:
     """Write a minimal .md stub under agents/agent6_auditor/reports/ so that
     audit failures leave a visible artifact even when stderr is empty."""
-    reports_dir = _PROJECT_ROOT / "agents" / "agent6_auditor" / "reports"
+    reports_dir = AGENT6_REPORTS_DIR or (
+        _PROJECT_ROOT / "agents" / "agent6_auditor" / "reports")
     try:
         reports_dir.mkdir(parents=True, exist_ok=True)
         ts_file = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
         completed_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        stub_path = reports_dir / f"{ts_file}-FAILED-{task_id}.md"
+        safe_id = _SAFE_ID.sub("_", task_id)[:64] or "unknown"
+        stub_path = reports_dir / f"{ts_file}-FAILED-{safe_id}.md"
         lines = [
             f"# Agent 6 audit FAILED - {task_id}",
             "",

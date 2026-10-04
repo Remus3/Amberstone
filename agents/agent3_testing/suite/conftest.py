@@ -46,6 +46,14 @@ def _isolate_asyncio_running_loop():
 
 
 @pytest.fixture(autouse=True)
+def _isolate_agent6_reports(tmp_path, monkeypatch):
+    """L-03: FAILED stubs from failure-path tests must not land in the live
+    agent6 reports dir."""
+    from agents import _supervisor_ephemeral as se
+    monkeypatch.setattr(se, "AGENT6_REPORTS_DIR", tmp_path / "agent6_reports")
+
+
+@pytest.fixture(autouse=True)
 def _fake_headless_route(monkeypatch, tmp_path_factory):
     """Fake open proxy route for the ephemeral-spawn stubs (operator contract
     2026-10-02; mirrors `fake_headless_route` in tests/conftest.py). Never the
