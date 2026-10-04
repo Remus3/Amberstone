@@ -41,6 +41,7 @@ import time
 from typing import Any, Dict, Optional
 
 from core.base_worker import BaseCoachWorker
+from core.edge_watcher import ABSENT, PRESENT, UNREACHABLE, EdgeWatcher
 
 _log = logging.getLogger("rc.worker")
 
@@ -49,6 +50,9 @@ POLL_INTERVAL_S:   float = 1.5    # nominal poll cadence between reads
 BACKOFF_MIN_S:     float = POLL_INTERVAL_S
 BACKOFF_MAX_S:     float = 8.0    # max backoff on None / exception
 NONE_STREAK_END:   int   = 5      # None reads before declaring game ended
+
+# EdgeWatcher target key for "a live game is running" (P2-4).
+_GAME_TARGET: str = "live_game"
 
 
 # -- WorkerResult ----------------------------------------------------------
@@ -169,6 +173,11 @@ class SrAramWorker(BaseCoachWorker):
         backoff      = BACKOFF_MIN_S
         was_in_game  = False
         none_streak  = 0
+        # P2-4: is_first is an ABSENT -> PRESENT edge, not "first good read of
+        # this run". A fresh watcher per _run means start-up and restart()
+        # prime silently on a game already in progress, and a read error
+        # (UNREACHABLE) followed by a good read re-primes instead of firing.
+        game_edge = EdgeWatcher(None, None)
 
         while not self._stop_event.is_set():
             if my_gen != self._generation:
@@ -189,11 +198,12 @@ class SrAramWorker(BaseCoachWorker):
                     none_streak = 0
                     self.last_success_ts = time.monotonic()
                     backoff = BACKOFF_MIN_S
-                    is_first = not was_in_game
+                    session_start = not was_in_game
                     was_in_game = True
+                    is_first = game_edge.observe(_GAME_TARGET, PRESENT) is not None
 
                     canon_mode = "SR"
-                    if is_first:
+                    if session_start:
                         try:
                             from core.game_snapshot import mode_from_game_mode_string
                             gm = state.get("game_mode", "CLASSIC").upper()
@@ -240,8 +250,13 @@ class SrAramWorker(BaseCoachWorker):
                         was_in_game = False
                         none_streak = 0
                         backoff = BACKOFF_MIN_S
+                    # A None inside an in-game streak is a blip, not an
+                    # absence; only feed ABSENT once no game is held.
+                    if not was_in_game:
+                        game_edge.observe(_GAME_TARGET, ABSENT)
 
             except Exception:  # noqa: BLE001
+                game_edge.observe(_GAME_TARGET, UNREACHABLE)
                 backoff = min(backoff * 1.5, BACKOFF_MAX_S)
                 _log.debug("SrAramWorker read error", exc_info=True)
 
