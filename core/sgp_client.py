@@ -160,11 +160,20 @@ def _extract_token(payload: Any) -> str | None:
     return None
 
 
+# RM-371: the default transport bypasses lib/http/client.py and read an
+# UNBOUNDED body. One match-history page is well under 1 MiB.
+_MAX_BODY_BYTES = 8 * 1024 * 1024
+
+
 def _urllib_transport(url: str, headers: dict) -> tuple[int, bytes]:
     request = urllib.request.Request(url, headers=headers, method="GET")
     try:
         with urllib.request.urlopen(request, timeout=_REQUEST_TIMEOUT) as response:
-            return response.status, response.read()
+            body = response.read(_MAX_BODY_BYTES + 1)
+            if len(body) > _MAX_BODY_BYTES:
+                # OSError, so the arm below turns it into (0, b"").
+                raise OSError(f"SGP response over {_MAX_BODY_BYTES} bytes refused")
+            return response.status, body
     except urllib.error.HTTPError as exc:
         return exc.code, b""
     except (urllib.error.URLError, OSError, TimeoutError) as exc:

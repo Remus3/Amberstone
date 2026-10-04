@@ -301,6 +301,15 @@ def _bump_metric(endpoint: str, outcome: str) -> None:
 # -- HTTP transport ------------------------------------------------------
 
 _HTTP_TIMEOUT_S = 4.0
+# RM-371: this transport bypasses lib/http/client.py and read an UNBOUNDED
+# body. A Match-V5 timeline is a few MB; 32 MiB matches the
+# core/augment_external_source.py cap and leaves ample headroom.
+_MAX_BODY_BYTES = 32 * 1024 * 1024
+
+
+class ResponseTooLarge(OSError):
+    """Body exceeded _MAX_BODY_BYTES. An OSError so `_call_ex_inner`'s
+    existing network-error arm handles it (outcome "error")."""
 
 
 class _HttpResp:
@@ -330,7 +339,12 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout_s) as r:
-            body = r.read()
+            # Read one past the cap: a body of exactly the cap is fine, one
+            # byte more proves it is over (RM-351 / RM-371 shape).
+            body = r.read(_MAX_BODY_BYTES + 1)
+            if len(body) > _MAX_BODY_BYTES:
+                raise ResponseTooLarge(
+                    f"riot_api: response over {_MAX_BODY_BYTES} bytes refused")
             return _HttpResp(r.status, body, dict(r.headers))
     except urllib.error.HTTPError as exc:
         # HTTPError is NOT a plain exception. Its MRO ends
