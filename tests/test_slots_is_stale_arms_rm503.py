@@ -1,0 +1,74 @@
+"""RM-503: assert WHICH ARM of `slots.is_stale` fired, not only the verdict.
+
+The only prior guard on the age arm wrote a live pid at 100x `stale_after` and
+asserted stale. MEASURED 2026-10-02 it was green under the current age arm, under
+a candidate hard ceiling at 4x, and under a mutant ceiling at 1x - one
+assertion, three states, and its arm attribution moved silently. The cheap
+discriminator is the `pid_alive` call count: the age arm returns before any
+liveness probe, the pid arm makes exactly one.
+
+These tests pin the age just past `stale_after` (1.5x), below any plausible
+ceiling, so the AGE arm is identified. `ops/loop/slots.py` itself is a
+byte-identical cross-repo file and is not edited here.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_slots():
+    spec = importlib.util.spec_from_file_location(
+        "rc_loop_slots_rm503_under_test", ROOT / "ops" / "loop" / "slots.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+slots = _load_slots()
+STALE_AFTER = 100.0
+
+
+def _lock(tmp_path: Path, age: float) -> Path:
+    path = tmp_path / "0.lock"
+    path.write_text(json.dumps({"pid": os.getpid(), "ts": time.time() - age}),
+                    encoding="utf-8")
+    return path
+
+
+def _counting_pid_alive(monkeypatch, verdict: bool = True) -> list[int]:
+    calls: list[int] = []
+
+    def fake(pid: int) -> bool:
+        calls.append(pid)
+        return verdict
+
+    monkeypatch.setattr(slots, "pid_alive", fake)
+    return calls
+
+
+def test_live_holder_just_past_stale_after_is_stale_by_the_age_arm(tmp_path, monkeypatch):
+    calls = _counting_pid_alive(monkeypatch, verdict=True)
+    assert slots.is_stale(_lock(tmp_path, 1.5 * STALE_AFTER), STALE_AFTER) is True
+    assert calls == [], "age arm must fire BEFORE any liveness probe"
+
+
+def test_live_holder_inside_stale_after_reaches_the_pid_arm(tmp_path, monkeypatch):
+    """Control: below stale_after the verdict comes from pid_alive, once."""
+    calls = _counting_pid_alive(monkeypatch, verdict=True)
+    assert slots.is_stale(_lock(tmp_path, 0.5 * STALE_AFTER), STALE_AFTER) is False
+    assert calls == [os.getpid()]
+
+
+def test_dead_holder_inside_stale_after_is_stale_by_the_pid_arm(tmp_path, monkeypatch):
+    calls = _counting_pid_alive(monkeypatch, verdict=False)
+    assert slots.is_stale(_lock(tmp_path, 0.5 * STALE_AFTER), STALE_AFTER) is True
+    assert calls == [os.getpid()]
