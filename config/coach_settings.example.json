@@ -21,7 +21,8 @@
       "liveclient_failures_to_stop": 20,
       "obs_failures_to_stop": 5,
       "stall_polls": 3,
-      "poll_s": 1.0
+      "poll_s": 1.0,
+      "ffmpeg_path": ""
     }
   }
 }
