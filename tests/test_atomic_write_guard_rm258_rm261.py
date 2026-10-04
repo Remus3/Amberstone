@@ -74,11 +74,6 @@ SANCTIONED = {
     ("ops/rc_transactional_deploy.py", "_replace_with_retry"):
         "deploy transaction runs while the app tree is being swapped, so it "
         "must not import from the tree it is replacing",
-    ("ops/loop/drain_waves_2_3.py", "_atomic_write"):
-        "the headless drain launcher that runs the drain slices; owned by the "
-        "merger and not edited from a slice it launched. Its scratch name is "
-        "already per-writer (pid + thread id); it has no WinError 5 retry - "
-        "a residual for the merger, recorded here rather than hidden",
 }
 
 _PER_WRITER_HINTS = ("getpid", "token", "uuid", "pid")

@@ -66,6 +66,12 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# Run as a script, sys.path[0] is ops/loop; put the repo root on it so the
+# stdlib-only core.polled_json writer is importable.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
 TASK = "drain-waves-2-3"
 CALLER = "drain_waves_2_3"
 PROMPTS = ROOT / "ops" / "loop" / "prompts"
@@ -133,10 +139,11 @@ def _say(msg: str) -> None:
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-    tmp.write_text(text, encoding="ascii", errors="replace", newline="\n")
-    tmp.replace(path)
+    # RM-258 merger residual: route through core.polled_json (per-writer
+    # scratch, fsync, bounded WinError 5 retry). The ASCII-with-replace
+    # contract of the old hand-rolled writer is kept; bytes are written
+    # verbatim, so LF stays LF.
+    atomic_write_text(path, text.encode("ascii", errors="replace").decode("ascii"))
 
 
 def _write_json(path: Path, obj) -> None:

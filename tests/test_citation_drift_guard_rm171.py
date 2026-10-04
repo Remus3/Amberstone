@@ -624,16 +624,6 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # entry as no longer broken, and it was deleted here. That is the baseline
     # shrinking with the debt, not a regression - do not re-add it.
     #
-    (
-        "BACKLOG.md",
-        "tft/tft_pbe_engine.py:562",
-        "ROT",
-        "Line drift, not content rot: RM-258 (2026-10-04) routed _write_status "
-        "through core.polled_json.atomic_write_text, shortening the method by "
-        "two lines, so the bare `except Exception: pass` the row cites now "
-        "sits at :560 in a 561-line file. Slices may not edit BACKLOG.md; the "
-        "merger re-points the citation and deletes this entry.",
-    ),
 ) + tuple(
     # 2026-09-20. THE MISSION CONTROL WEB UI WAS RETIRED, so `web/mc/` and the
     # three panel test files are gone from the tree. Every citation below was
