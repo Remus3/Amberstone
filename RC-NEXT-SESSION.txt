@@ -1,5 +1,6 @@
 NEXT SESSION
 ------------
+SESSION: 98
 Next action: operator restarted the machine to enable Windows Sandbox + a Linux VM (WSL).
 First: re-probe live state (rc_facts session hook, ops/runtime/health.json, DS :8860 /health,
 scheduled tasks incl. RC-InboxResponder) - a reboot is exactly when ONLOGON agents and the

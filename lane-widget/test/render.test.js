@@ -1718,22 +1718,22 @@ test("showFree does not drop a repo from the ALL tab - every repo keeps its row"
   assert.equal(view.rows.length, 2);
 });
 
-test("the Lane line combines lane and controller into one element", () => {
+test("lane lines fold the controller into lane 0 when every lane is free", () => {
   const lane = (l, c, extra) => allView([repoIn(Object.assign({ lane: l, ctrl: c }, extra || {}))]).rows[0];
   const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 720 } };
   const runCtrl = { state: "RUNNING", pid: 6, payload: { pid: 6, ts: T0 - 900 } };
   const deadLane = { state: "RECLAIMABLE", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 99 } };
   const deadCtrl = { state: "RECLAIMABLE", pid: 6, payload: { pid: 6, ts: T0 - 99 } };
 
-  assert.equal(lane(runLane, runCtrl).laneText, "Lane: queue 12m");
+  assert.equal(lane(runLane, runCtrl).laneText, "queue (lane 0) 12m - no checklist");
   assert.equal(lane(runLane, runCtrl).stateText, "running");
-  assert.equal(lane(runLane, runCtrl, { children: 3 }).laneText, "Lane: queue 12m - kids 3");
-  assert.equal(lane(FREE_LOCK, FREE_LOCK).laneText, "Lane: free");
+  assert.equal(lane(runLane, runCtrl, { children: 3 }).laneText, "queue (lane 0) 12m - kids 3 - no checklist");
+  assert.equal(lane(FREE_LOCK, FREE_LOCK).laneText, "Lane 0: free");
   assert.equal(lane(FREE_LOCK, FREE_LOCK).stateText, "idle");
-  assert.equal(lane(deadLane, FREE_LOCK).laneText, "Lane: STALE (reclaimable)");
-  assert.equal(lane(FREE_LOCK, deadCtrl).laneText, "Lane: STALE (reclaimable)");
+  assert.equal(lane(deadLane, FREE_LOCK).laneText, "Lane 0: STALE (reclaimable)");
+  assert.equal(lane(FREE_LOCK, deadCtrl).laneText, "Lane 0: STALE (reclaimable)");
   assert.equal(lane(deadLane, runCtrl).stateText, "stale");
-  assert.equal(lane(FREE_LOCK, runCtrl).laneText, "Lane: controller 15m");
+  assert.equal(lane(FREE_LOCK, runCtrl).laneText, "Lane 0: controller 15m");
   assert.equal(lane(FREE_LOCK, runCtrl).stateText, "running");
 });
 
@@ -1741,12 +1741,12 @@ test("a stalled lane says so in the state word, which never clips", () => {
   const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 60 } };
   const r = allView([repoIn({ lane: runLane, logs: [{ lane: "queue", ageS: 900, stalled: true }] })]).rows[0];
   assert.equal(r.stateText, "stalled");
-  assert.equal(r.laneText, "Lane: queue 1m");
+  assert.equal(r.laneText, "queue (lane 0) 1m - no checklist");
 });
 
 test("lane age uses the same m-then-HR rule as the Sync line", () => {
   const runLane = { state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 3 * 3600 } };
-  assert.equal(allView([repoIn({ lane: runLane })]).rows[0].laneText, "Lane: queue 3HR");
+  assert.equal(allView([repoIn({ lane: runLane })]).rows[0].laneText, "queue (lane 0) 3HR - no checklist");
 });
 
 test("no ALL row prints a log age, a run id or a separate controller item", () => {
@@ -1768,7 +1768,7 @@ test("every rendered ALL-row string is printable ASCII", () => {
 test("a per-repo tab still renders the lane/controller cards", () => {
   const view = allView([repoIn()], { activeTab: "AAA" });
   assert.equal(view.layout, "cards");
-  assert.ok(view.cards.some((c) => c.label === "AAA lane"));
+  assert.ok(view.cards.some((c) => c.label === "AAA lane 0"));
 });
 
 test("with repo rows the tab strip follows roster order, not state order", () => {
@@ -1807,7 +1807,7 @@ test("renderCards paints one row element per repo with the Sync line split task/
   assert.equal(sync.textContent, "Sync: Appending Ledger [35m/42m][25/120]");
   assert.equal(sync.childNodes[1].textContent, " [35m/42m][25/120]", "the numbers live in their own non-shrinking span");
   const laneLine = first.childNodes.filter((n) => n.classList.contains("row-lane"))[0];
-  assert.equal(laneLine.textContent, "Lane: free");
+  assert.equal(laneLine.textContent, "Lane 0: free");
 });
 
 test("switching back to a per-repo tab drops the rows class from the region", () => {
@@ -1863,4 +1863,114 @@ test("renderCards paints the accounts strip FIRST, above the repo rows, alarm li
   assert.equal(strip.childNodes[0].classList.contains("is-alarm"), false);
   assert.ok(strip.childNodes[1].classList.contains("is-alarm"));
   assert.ok(root.childNodes[1].classList.contains("repo-row"));
+});
+
+// ================================================ FLEET-KIT v6/v7 lanes =====
+// v6 4b: one line per lane index. v7 4b: a LIVE lane shows its NAME then its
+// remaining checklist items, one short line each, cap 3 then +N more; no
+// progress file / no checklist -> `no checklist`; stale -> `STALE`, never a
+// stale list; a free lane shows `free`.
+
+function v7Progress(n, over) {
+  const rows = [];
+  for (let i = 1; i <= n; i += 1) rows.push({ id: "C" + i, task: "Task " + i, state: null, eta_s: null });
+  return JSON.stringify(Object.assign({ eta_s: 300, updated: new Date((T0 - 10) * 1000).toISOString(), checklist: rows }, over || {}));
+}
+
+const V7_LIVE = (progress) => ({
+  state: "RUNNING", pid: 5, payload: { pid: 5, lane: "queue", ts: T0 - 720 }, progressText: progress,
+});
+const V7_DEAD = { state: "RECLAIMABLE", pid: 7, payload: { pid: 7, lane: "ds", ts: T0 - 99 } };
+
+function v7Row(lanes, extra) {
+  return allView([repoIn(Object.assign({ lanes }, extra || {}))]).rows[0];
+}
+
+test("v7: a live lane renders its name, then its items in order, capped at 3 then +N more", () => {
+  const r = v7Row([V7_LIVE(v7Progress(5)), FREE_LOCK, V7_DEAD]);
+  assert.deepEqual(r.laneLines.map((l) => l.text), [
+    "queue (lane 0) 12m",
+    "[ ] C1: Task 1",
+    "[ ] C2: Task 2",
+    "[ ] C3: Task 3",
+    "+2 more",
+    "Lane 1: free",
+    "Lane 2: STALE (reclaimable)",
+  ]);
+  assert.deepEqual(r.laneLines.map((l) => l.kind), ["head", "item", "item", "item", "more", "head", "head"]);
+  assert.equal(r.stateText, "running");
+});
+
+test("v7: exactly three items shows no +N more line", () => {
+  const r = v7Row([V7_LIVE(v7Progress(3)), FREE_LOCK, FREE_LOCK]);
+  assert.equal(r.laneLines.filter((l) => l.kind === "item").length, 3);
+  assert.equal(r.laneLines.filter((l) => l.kind === "more").length, 0);
+});
+
+test("v7: missing progress -> no checklist; stale progress -> STALE and NO items", () => {
+  const stale = v7Progress(2, { eta_s: 60, updated: new Date((T0 - 121) * 1000).toISOString() });
+  const r = v7Row([V7_LIVE(null), V7_LIVE(stale), FREE_LOCK]);
+  const texts = r.laneLines.map((l) => l.text);
+  assert.deepEqual(texts, ["queue (lane 0) 12m - no checklist", "queue (lane 1) 12m - checklist STALE", "Lane 2: free"]);
+  assert.ok(r.laneLines.every((l) => l.kind === "head"), "a stale list is never shown as live");
+});
+
+test("v7: a live lane whose checklist is empty says so on its one line", () => {
+  const r = v7Row([V7_LIVE(v7Progress(0)), FREE_LOCK, FREE_LOCK]);
+  assert.equal(r.laneLines[0].text, "queue (lane 0) 12m - no tasks left");
+});
+
+test("v6: three free lanes read free each, state idle", () => {
+  const r = v7Row([FREE_LOCK, FREE_LOCK, FREE_LOCK]);
+  assert.deepEqual(r.laneLines.map((l) => l.text), ["Lane 0: free", "Lane 1: free", "Lane 2: free"]);
+  assert.equal(r.stateText, "idle");
+});
+
+test("v7: every lane line is printable ASCII even when the progress file is not", () => {
+  const body = JSON.stringify({ eta_s: 300, updated: new Date(T0 * 1000).toISOString(),
+    checklist: [{ id: "C1", task: "Caf" + String.fromCharCode(0xe9, 0x20, 0x2014, 0x20, 0x2610) + " build", state: "r" + String.fromCharCode(0xfc) + "n", eta_s: 5 }] });
+  const r = v7Row([V7_LIVE(body), FREE_LOCK, FREE_LOCK]);
+  for (const l of r.laneLines) assert.match(l.text, /^[\x20-\x7e]*$/, l.text);
+});
+
+test("v7: renderCards paints one row-lane element per line, items flagged row-item", () => {
+  const doc = makeDoc();
+  const root = makeNode(doc, "section");
+  w.renderCards(doc, root, allView([repoIn({ lanes: [V7_LIVE(v7Progress(4)), FREE_LOCK, FREE_LOCK] })]));
+  const row0 = root.childNodes[0];
+  const lines = row0.childNodes.filter((n) => n.classList.contains("row-lane"));
+  assert.deepEqual(lines.map((n) => n.textContent), [
+    "queue (lane 0) 12m", "[ ] C1: Task 1", "[ ] C2: Task 2", "[ ] C3: Task 3", "+1 more", "Lane 1: free", "Lane 2: free",
+  ]);
+  assert.deepEqual(lines.map((n) => n.classList.contains("row-item")), [false, true, true, true, true, false, false]);
+});
+
+test("v6: a per-repo tab renders one card per lane index, labelled with it", () => {
+  const view = allView([repoIn({ lanes: [V7_LIVE(null), FREE_LOCK, V7_DEAD] })], { activeTab: "AAA" });
+  const labels = view.cards.filter((c) => !c.placeholder).map((c) => c.label).sort();
+  assert.deepEqual(labels, ["AAA controller", "AAA lane 0", "AAA lane 1", "AAA lane 2"]);
+});
+
+function govModel(repos, governor) {
+  return buildModel({ repos, now: T0, governor });
+}
+const GOV = { width: 3, held: 2, stale: 0, repos: ["RC", "CS"], queue: 1 };
+
+test("v6: the ALL view carries ONE governor strip line; a per-repo tab does not", () => {
+  const all = w.buildView(govModel([repoIn()], GOV), { activeTab: "ALL" });
+  assert.deepEqual(all.governor, { text: "Governor 2/3 - RC, CS - queue 1", alarm: false });
+  assert.equal(w.buildView(govModel([repoIn()], GOV), { activeTab: "AAA" }).governor, null);
+  assert.equal(w.buildView(govModel([repoIn()], undefined), { activeTab: "ALL" }).governor, null);
+});
+
+test("v6: renderCards paints the governor strip after the accounts strip, before the rows", () => {
+  const doc = makeDoc();
+  const root = makeNode(doc, "section");
+  const m = Object.assign(govModel([repoIn()], GOV), { accounts: ACCT });
+  w.renderCards(doc, root, w.buildView(m, { activeTab: "ALL" }));
+  assert.equal(root.childNodes.length, 3, "accounts strip + governor strip + one repo row");
+  assert.ok(root.childNodes[0].classList.contains("accounts-strip"));
+  assert.ok(root.childNodes[1].classList.contains("governor-strip"));
+  assert.equal(root.childNodes[1].textContent, "Governor 2/3 - RC, CS - queue 1");
+  assert.ok(root.childNodes[2].classList.contains("repo-row"));
 });

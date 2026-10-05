@@ -96,14 +96,18 @@ def _holders(root=None) -> list:
     resulting no-op as a failure.
     """
     out: list = []
+    # FLEET-KIT v6: up to lanes.LANE_CAP lanes run at once, so every RUNNING
+    # index is a holder - reading only the first would leave the others alive
+    # behind a confirmed kill.
     try:
-        lane = dict(lanes.lane_state(root=root))
+        rows = list(lanes.lanes_state(root=root))
     except Exception as exc:  # noqa: BLE001 - a missing lane lock is not fatal
-        log.warning("interrupt: lane_state failed: %s", exc)
-        lane = {}
-    if lane.get("state") == lanes.RUNNING and lane.get("pid"):
-        out.append({"pid": int(lane["pid"]), "kind": "lane",
-                    "lane": lane.get("lane"), "run_id": lane.get("run_id")})
+        log.warning("interrupt: lanes_state failed: %s", exc)
+        rows = []
+    for lane in rows:
+        if lane.get("state") == lanes.RUNNING and lane.get("pid"):
+            out.append({"pid": int(lane["pid"]), "kind": "lane",
+                        "lane": lane.get("lane"), "run_id": lane.get("run_id")})
 
     rec = _read_json(CONTROLLER_LOCK)
     pid = rec.get("pid")

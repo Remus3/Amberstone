@@ -62,15 +62,15 @@ test("each repo yields a lane row and a controller row", () => {
 test("key is stable across polls and is repoCode:kind", () => {
   const m1 = buildModel({ repos: [repo()], now: NOW });
   const m2 = buildModel({ repos: [repo()], now: NOW + 5 });
-  assert.deepEqual(m1.rows.map((r) => r.key), ["RC:lane", "RC:controller"]);
+  assert.deepEqual(m1.rows.map((r) => r.key), ["RC:lane:0", "RC:controller"]);
   assert.deepEqual(m1.rows.map((r) => r.key), m2.rows.map((r) => r.key));
 });
 
 test("a row carries exactly the contracted fields", () => {
   const m = buildModel({ repos: [repo({ lane: running(), children: 3 })], now: NOW });
-  const row = byKey(m)["RC:lane"];
+  const row = byKey(m)["RC:lane:0"];
   assert.deepEqual(Object.keys(row).sort(), [
-    "ageS", "children", "kind", "key", "label", "lane", "logAgeS",
+    "ageS", "children", "kind", "key", "label", "lane", "laneIndex", "logAgeS",
     "repoCode", "runId", "stalled", "state", "worktreeTail",
   ].sort());
 });
@@ -78,22 +78,22 @@ test("a row carries exactly the contracted fields", () => {
 // ------------------------------------------------------------------ labels
 test("a RUNNING lane row is labelled with the lane name", () => {
   const m = buildModel({ repos: [repo({ lane: running() })], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].label, "queue");
-  assert.equal(byKey(m)["RC:lane"].lane, "queue");
+  assert.equal(byKey(m)["RC:lane:0"].label, "queue");
+  assert.equal(byKey(m)["RC:lane:0"].lane, "queue");
 });
 
 test("a FREE lane row is labelled idle", () => {
   const m = buildModel({ repos: [repo()], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].label, "idle");
-  assert.equal(byKey(m)["RC:lane"].lane, null);
+  assert.equal(byKey(m)["RC:lane:0"].label, "idle");
+  assert.equal(byKey(m)["RC:lane:0"].lane, null);
 });
 
 test("a RECLAIMABLE lane keeps its lane name as the label", () => {
   const lane = running();
   lane.state = "RECLAIMABLE";
   const m = buildModel({ repos: [repo({ lane })], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].state, "RECLAIMABLE");
-  assert.equal(byKey(m)["RC:lane"].label, "queue");
+  assert.equal(byKey(m)["RC:lane:0"].state, "RECLAIMABLE");
+  assert.equal(byKey(m)["RC:lane:0"].label, "queue");
 });
 
 test("a hyphenated lane id survives intact", () => {
@@ -101,7 +101,7 @@ test("a hyphenated lane id survives intact", () => {
     repos: [repo({ lane: running({ lane: "true-audit", run_id: "5e9c917b" }) })],
     now: NOW,
   });
-  const row = byKey(m)["RC:lane"];
+  const row = byKey(m)["RC:lane:0"];
   assert.equal(row.lane, "true-audit");
   assert.equal(row.label, "true-audit");
   assert.equal(row.runId, "5e9c917b");
@@ -118,7 +118,7 @@ test("a controller row is labelled controller and carries no lane name", () => {
 // ------------------------------------------------------------ worktreeTail
 test("worktreeTail is the BASENAME only, never a full path", () => {
   const m = buildModel({ repos: [repo({ lane: running() })], now: NOW });
-  const row = byKey(m)["RC:lane"];
+  const row = byKey(m)["RC:lane:0"];
   assert.equal(row.worktreeTail, "wt-queue");
   assert.ok(!row.worktreeTail.includes("\\"));
   assert.ok(!row.worktreeTail.includes("/"));
@@ -135,14 +135,14 @@ test("worktreeTail splits on BOTH separators and skips trailing empties", () => 
   ];
   for (const [wt, want] of cases) {
     const m = buildModel({ repos: [repo({ lane: running({ worktree: wt }) })], now: NOW });
-    assert.equal(byKey(m)["RC:lane"].worktreeTail, want, `wt=${wt}`);
+    assert.equal(byKey(m)["RC:lane:0"].worktreeTail, want, `wt=${wt}`);
   }
 });
 
 test("worktreeTail is null when the worktree is missing or unusable", () => {
   for (const wt of [undefined, null, "", "   ", "///", "\\\\", 42, {}]) {
     const m = buildModel({ repos: [repo({ lane: running({ worktree: wt }) })], now: NOW });
-    assert.equal(byKey(m)["RC:lane"].worktreeTail, null, `wt=${String(wt)}`);
+    assert.equal(byKey(m)["RC:lane:0"].worktreeTail, null, `wt=${String(wt)}`);
   }
 });
 
@@ -162,13 +162,13 @@ test("NO row field ever contains a path separator", () => {
 // --------------------------------------------------------------- ages, logs
 test("ageS is derived from the payload ts and now", () => {
   const m = buildModel({ repos: [repo({ lane: running() })], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].ageS, 300);
+  assert.equal(byKey(m)["RC:lane:0"].ageS, 300);
 });
 
 test("ageS is null when ts is missing or not finite", () => {
   for (const ts of [undefined, null, NaN, Infinity, "x"]) {
     const m = buildModel({ repos: [repo({ lane: running({ ts }) })], now: NOW });
-    assert.equal(byKey(m)["RC:lane"].ageS, null, `ts=${String(ts)}`);
+    assert.equal(byKey(m)["RC:lane:0"].ageS, null, `ts=${String(ts)}`);
   }
 });
 
@@ -180,7 +180,7 @@ test("logAgeS and stalled come from the log row matching the lane name", () => {
       mtimeMs: 1e6, ageS: 900, stalled: true },
   ];
   const m = buildModel({ repos: [repo({ lane: running(), logs })], now: NOW });
-  const row = byKey(m)["RC:lane"];
+  const row = byKey(m)["RC:lane:0"];
   assert.equal(row.logAgeS, 42);
   assert.equal(row.stalled, false);
 });
@@ -188,15 +188,15 @@ test("logAgeS and stalled come from the log row matching the lane name", () => {
 test("a stalled log marks the row stalled", () => {
   const logs = [{ lane: "queue", ageS: 900, stalled: true }];
   const m = buildModel({ repos: [repo({ lane: running(), logs })], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].stalled, true);
-  assert.equal(byKey(m)["RC:lane"].logAgeS, 900);
+  assert.equal(byKey(m)["RC:lane:0"].stalled, true);
+  assert.equal(byKey(m)["RC:lane:0"].logAgeS, 900);
 });
 
 test("no matching log row leaves logAgeS null and stalled false", () => {
   const logs = [{ lane: "ds", ageS: 900, stalled: true }];
   const m = buildModel({ repos: [repo({ lane: running(), logs })], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].logAgeS, null);
-  assert.equal(byKey(m)["RC:lane"].stalled, false);
+  assert.equal(byKey(m)["RC:lane:0"].logAgeS, null);
+  assert.equal(byKey(m)["RC:lane:0"].stalled, false);
 });
 
 test("a controller row never claims a log age", () => {
@@ -209,7 +209,7 @@ test("a controller row never claims a log age", () => {
 test("junk log rows are ignored", () => {
   const logs = [null, 42, "x", {}, { lane: "queue", ageS: "junk", stalled: "yes" }];
   const m = buildModel({ repos: [repo({ lane: running(), logs })], now: NOW });
-  const row = byKey(m)["RC:lane"];
+  const row = byKey(m)["RC:lane:0"];
   assert.equal(row.logAgeS, null);
   assert.equal(row.stalled, false);
 });
@@ -217,14 +217,14 @@ test("junk log rows are ignored", () => {
 // ---------------------------------------------------------------- children
 test("children lands on the lane row", () => {
   const m = buildModel({ repos: [repo({ lane: running(), children: 5 })], now: NOW });
-  assert.equal(byKey(m)["RC:lane"].children, 5);
+  assert.equal(byKey(m)["RC:lane:0"].children, 5);
   assert.equal(byKey(m)["RC:controller"].children, 0);
 });
 
 test("a non-finite children count becomes 0", () => {
   for (const c of [undefined, null, NaN, Infinity, -3, "x", {}]) {
     const m = buildModel({ repos: [repo({ lane: running(), children: c })], now: NOW });
-    assert.equal(byKey(m)["RC:lane"].children, 0, `children=${String(c)}`);
+    assert.equal(byKey(m)["RC:lane:0"].children, 0, `children=${String(c)}`);
   }
 });
 
@@ -385,10 +385,10 @@ test("a payload repo field never overrides the ROSTER code, whatever its case", 
     const lane = running();
     lane.payload.repo = spelling;
     const m = buildModel({ repos: [repo({ code: "AA", isSelf: false, lane })], now: NOW });
-    const row = byKey(m)["AA:lane"];
+    const row = byKey(m)["AA:lane:0"];
     assert.ok(row, `the row must exist for payload repo=${String(spelling)}`);
     assert.equal(row.repoCode, "AA");
-    assert.equal(row.key, "AA:lane");
+    assert.equal(row.key, "AA:lane:0");
     assert.equal(row.state, "RUNNING", "a payload repo field must not drop the row");
   }
 });
@@ -425,8 +425,8 @@ test("two repos are attributed by roster code even when both payloads disagree",
     now: NOW,
   });
   const rows = byKey(m);
-  assert.equal(rows["AA:lane"].lane, "queue");
-  assert.equal(rows["BB:lane"].lane, "repo");
+  assert.equal(rows["AA:lane:0"].lane, "queue");
+  assert.equal(rows["BB:lane:0"].lane, "repo");
   assert.equal(m.summary.repos, 2);
 });
 
@@ -434,15 +434,15 @@ test("a non-finite now yields a null updatedAt and null ages", () => {
   for (const now of [undefined, null, NaN, Infinity, "x"]) {
     const m = buildModel({ repos: [repo({ lane: running() })], now });
     assert.equal(m.updatedAt, null, `now=${String(now)}`);
-    assert.equal(byKey(m)["RC:lane"].ageS, null);
+    assert.equal(byKey(m)["RC:lane:0"].ageS, null);
   }
 });
 
 test("a lane block that is not an object is treated as FREE", () => {
   for (const lane of [null, undefined, 42, "x", []]) {
     const m = buildModel({ repos: [repo({ lane })], now: NOW });
-    assert.equal(byKey(m)["RC:lane"].state, "FREE");
-    assert.equal(byKey(m)["RC:lane"].label, "idle");
+    assert.equal(byKey(m)["RC:lane:0"].state, "FREE");
+    assert.equal(byKey(m)["RC:lane:0"].label, "idle");
   }
 });
 
@@ -638,4 +638,83 @@ test("accounts input becomes rendered strip lines on the model, identifiers stri
   const blob = JSON.stringify(m);
   assert.equal(blob.indexOf(uuid), -1);
   assert.equal(blob.indexOf(email), -1);
+});
+
+// ------------------------------------------------ FLEET-KIT v6/v7 lanes ----
+// v6: up to three lanes per repo (lanes/0..2.lock), one row each. v7: a LIVE
+// lane carries its remaining checklist; a non-live lane carries none.
+
+const FREE_BLOCK = { state: "FREE", payload: null, pid: 0 };
+
+function progressText(n, over) {
+  const rows = [];
+  for (let i = 1; i <= n; i += 1) rows.push({ id: "C" + i, task: "Task " + i, state: null, eta_s: null });
+  return JSON.stringify(Object.assign({ eta_s: 300, updated: isoAt(NOW - 10), checklist: rows }, over || {}));
+}
+
+test("v6: three lane blocks give three lane rows keyed by index, plus the controller", () => {
+  const m = buildModel({
+    repos: [repo({ lanes: [running(), FREE_BLOCK, Object.assign(running({ lane: "ds" }), { state: "RECLAIMABLE" })] })],
+    now: NOW,
+  });
+  const keys = m.rows.map((r) => r.key).sort();
+  assert.deepEqual(keys, ["RC:controller", "RC:lane:0", "RC:lane:1", "RC:lane:2"]);
+  assert.equal(byKey(m)["RC:lane:2"].laneIndex, 2);
+  assert.equal(byKey(m)["RC:lane:2"].state, "RECLAIMABLE");
+  assert.equal(byKey(m)["RC:controller"].laneIndex, null);
+});
+
+test("v6: the repo row carries one entry per lane index, in index order", () => {
+  const m = buildModel({
+    repos: [repo({
+      lanes: [FREE_BLOCK, running({ ts: NOW - 720 }), FREE_BLOCK],
+      laneChildren: [0, 4, 0],
+    })],
+    now: NOW,
+  });
+  const lanes = m.repoRows[0].lanes;
+  assert.deepEqual(lanes.map((l) => l.index), [0, 1, 2]);
+  assert.deepEqual(lanes.map((l) => l.state), ["FREE", "RUNNING", "FREE"]);
+  assert.equal(lanes[1].lane, "queue");
+  assert.equal(lanes[1].ageS, 720);
+  assert.equal(lanes[1].children, 4);
+  // The aggregate fields still describe the repo as a whole.
+  assert.equal(m.repoRows[0].laneState, "RUNNING");
+  assert.equal(m.repoRows[0].lane, "queue");
+});
+
+test("v7: a LIVE lane carries its checklist; free and stale-lock lanes carry null", () => {
+  const live = Object.assign(running(), { progressText: progressText(4) });
+  const dead = Object.assign(running(), { state: "RECLAIMABLE", progressText: progressText(2) });
+  const m = buildModel({ repos: [repo({ lanes: [live, dead, FREE_BLOCK] })], now: NOW });
+  const lanes = m.repoRows[0].lanes;
+  assert.equal(lanes[0].checklist.status, "live");
+  assert.deepEqual(lanes[0].checklist.items.map((i) => i.id), ["C1", "C2", "C3"]);
+  assert.equal(lanes[0].checklist.more, 1);
+  assert.equal(lanes[1].checklist, null, "a stale lock never shows a list");
+  assert.equal(lanes[2].checklist, null);
+});
+
+test("v7: a live lane with no progress text reads no checklist", () => {
+  const m = buildModel({ repos: [repo({ lanes: [running(), FREE_BLOCK, FREE_BLOCK] })], now: NOW });
+  assert.deepEqual(m.repoRows[0].lanes[0].checklist, { status: "none", items: [], more: 0 });
+});
+
+test("legacy single lane input still yields one lane at index 0", () => {
+  const m = buildModel({ repos: [repo({ lane: running() })], now: NOW });
+  assert.equal(m.repoRows[0].lanes.length, 1);
+  assert.equal(m.repoRows[0].lanes[0].index, 0);
+});
+
+test("v6: the governor verdict becomes ONE strip line on the model; absent -> null", () => {
+  const m = buildModel({ repos: [], now: NOW, governor: { width: 3, held: 2, stale: 0, repos: ["RC", "CS"], queue: 3 } });
+  assert.deepEqual(m.governor, { text: "Governor 2/3 - RC, CS - queue 3", alarm: false });
+  assert.equal(buildModel({ repos: [], now: NOW }).governor, null);
+});
+
+test("no lane entry on a repo row carries a path", () => {
+  const live = Object.assign(running(), { progressText: progressText(1) });
+  const m = buildModel({ repos: [repo({ lanes: [live, FREE_BLOCK, FREE_BLOCK] })], now: NOW });
+  const blob = JSON.stringify(m.repoRows);
+  assert.ok(!/fake-worktrees/.test(blob), blob);
 });
