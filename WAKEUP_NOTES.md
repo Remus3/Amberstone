@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-05 - FLEET-KIT v8 adopted (v6+v7+v8 + roster EW/LL-retired) in one squashed commit
+
+- **Shipped (pushed `66a2e43c1..5c2cadb4e`, LEDGER 1670):** kit v8 vendored (12 files), FLEET-COMMON block re-embedded, lanes.py on fleet_lanes cap 3, lane-widget 3 lanes + checklist + governor strip, EW_BLOCK 8940-8959, retired LL needles kept armed via gitignored `retired` map, session checklist (SESSION counter in hand-off, tools/session_checklist.py).
+- **Squash reason:** intermediate slice commits held synthetic drive-root fixtures that halt the pre-push sweep; HEAD tree was clean. Slice history on local `worktree-agent-*` branches.
+- **Decision:** responder agreement NOT re-armed (MAIN 0327); RC inbox is UNATTENDED until the v8 inbox-into-tick fold lands - that is the next item, ahead of CI green.
+- **C4 slots.py:** already landed in `9024fd2cd`; landing note sent 5/5.
+- **Do NOT redo:** v6/v7/v8 vendoring, roster swap, C4 adoption, the ANSWER to MAIN.
+
+---
+
 # 2026-10-04e - slot-audit ownerless lock + responder audit-hook allowlist; ROADMAP budget relocation
 
 - **Shipped (pushed `cb933e65f..3bba448c8`):** `636848e9a` fix(slot-audit) ownerless readable lock owner is "unknown", not foreign (LEDGER 1668); `3bba448c8` test(responder) audit hook fails ANY write outside the pytest temp root per MAIN 2320 s2 point 2 (LEDGER 1669). Both verifier CONFIRMED.
@@ -24,13 +34,3 @@
 - **Next:** MAIN 0830 awaits MAIN's ruling on a refreshed responder agreement; then the hand-off carry-forwards.
 - **Open gate gaps (filed):** "Merged to main." unflagged; "The agent committed X and pushed." gets no push flag.
 - **Do NOT redo:** arena 65 re-pin, Firecrawl removal, OVER_STALE wording, stop_claim_gate FP fixes, MAIN-note hash checks, the 0845/0850/0855/0912 replies. Leave slot `1.lock` alone (dead-holder, self-clears).
-
----
-
-# 2026-10-04c - joint-round C4 slots.py adopted, SHARED_SHA256 re-pinned
-
-- **Shipped (pushed):** `9024fd2cd` C4 `ops/loop/slots.py` (LW `700cd64`) byte-copied, 11426 bytes, digest equal to LW; `test_slots_is_stale_arms_rm503` +2 C4 live-holder cases (LEDGER 1663). Operator approved in chat and told CS / SS directly; RC sent no note.
-- **Gate:** 45 passed over loop_concurrency + rm503 + rm504.
-- **New open:** `tools/slot_bucket_audit.py` OVER_STALE wording is wrong for a live holder under C4; `tools/stop_claim_gate.py` flags "LW committed ..." (sibling code as subject) as an unbacked commit claim.
-- **Next:** next_buy_lean_bucket arena count CI red (carried), then the unread MAIN notes (FLEET-KIT v4 order, 1327 FIX).
-- **Do NOT redo:** C4 adoption / re-pin; do not re-raise the "C4 HELD pending MAIN" line.
