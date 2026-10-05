@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-04c - joint-round C4 slots.py adopted, SHARED_SHA256 re-pinned
+
+- **Shipped (pushed):** `9024fd2cd` C4 `ops/loop/slots.py` (LW `700cd64`) byte-copied, 11426 bytes, digest equal to LW; `test_slots_is_stale_arms_rm503` +2 C4 live-holder cases (LEDGER 1663). Operator approved in chat and told CS / SS directly; RC sent no note.
+- **Gate:** 45 passed over loop_concurrency + rm503 + rm504.
+- **New open:** `tools/slot_bucket_audit.py` OVER_STALE wording is wrong for a live holder under C4; `tools/stop_claim_gate.py` flags "LW committed ..." (sibling code as subject) as an unbacked commit claim.
+- **Next:** next_buy_lean_bucket arena count CI red (carried), then the unread MAIN notes (FLEET-KIT v4 order, 1327 FIX).
+- **Do NOT redo:** C4 adoption / re-pin; do not re-raise the "C4 HELD pending MAIN" line.
+
+---
+
 # 2026-10-04b - CI red 12 -> 5 (rm415); L-03 landed; DS + RC restarted
 
 - **Shipped (pushed):** `89ce8df91` agent6 L-03 stub isolation (LEDGER 1661), `67f94e8f6` rm415 re-pin to RM-308(b) None (LEDGER 1662).
