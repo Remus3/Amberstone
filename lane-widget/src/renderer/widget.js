@@ -116,7 +116,10 @@ function cardLabelFor(row) {
   var r = isObject(row) ? row : {};
   var code = stringOrNull(r.repoCode) || NO_DATA;
   var kind = stringOrNull(r.kind);
-  return kind === null ? code : code + " " + kind;
+  if (kind === null) return code;
+  // FLEET-KIT v6: up to three lanes per repo, so a lane card names its index.
+  var idx = finiteOrNull(r.laneIndex);
+  return code + " " + kind + (kind === "lane" && idx !== null ? " " + idx : "");
 }
 
 /** Coarse age. Absent, negative or non-finite all read as "-". */
@@ -157,9 +160,10 @@ function metaFor(row) {
 
 // ------------------------------------------------- ALL tab: repo rows ------
 // One row per repo, in fixed roster order (src/model.js repoRows). Each row is
-// a display name, a state word, ONE combined Lane line (a headless lane cannot
-// run without its controller, so they are one element) and ONE Sync line from
-// that tree's ops/loop/control/inbox_status.json.
+// a display name, a state word, one line per lane index (FLEET-KIT v6) with a
+// live lane's remaining checklist under it (v7), the controller folded into
+// lane 0 when every lane is free, and ONE Sync line from that tree's
+// ops/loop/control/inbox_status.json.
 
 /**
  * Elapsed span, floored: "<n>m" under 120 minutes, then "<n>HR". The same rule
@@ -178,53 +182,112 @@ function asciiOnly(text) {
   return String(text).replace(/[^\x20-\x7e]/g, "");
 }
 
+/** The repo row's per-index lane entries (src/model.js makeRepoRow `lanes`);
+ *  a hand-built row with only the aggregate fields reads as one lane 0. */
+function laneEntriesOf(r) {
+  if (Array.isArray(r.lanes) && r.lanes.length > 0) return r.lanes.filter(isObject);
+  return [{
+    index: 0, state: r.laneState, lane: r.lane, ageS: r.ageS,
+    children: r.children, stalled: r.stalled, checklist: null,
+  }];
+}
+
 /**
- * The combined Lane element and the row's state word.
+ * The lane LINES and the row's state word (FLEET-KIT v6 4b + v7 4b).
  *
- *   lane RUNNING                 Lane: <name> <age>[ - kids N]   running|stalled
- *   lane or controller stale     Lane: STALE (reclaimable)       stale
- *   controller up, lane free     Lane: controller <age>          running
- *   both free                    Lane: free                      idle
- *   no checkout on this host     Lane: none                      attended|no lane
+ * One line per lane index, plus a LIVE lane's remaining checklist:
+ *
+ *   lane RUNNING      <name> (lane i) <age>[ - kids N]          head
+ *                     [ ] C2: Run the suite (~4m)                item (cap 3)
+ *                     +N more                                    more
+ *     no progress     <name> (lane i) <age> - no checklist       head only
+ *     stale progress  <name> (lane i) <age> - checklist STALE    head only, NEVER items
+ *     empty list      <name> (lane i) <age> - no tasks left      head only
+ *   lane RECLAIMABLE  Lane i: STALE (reclaimable)
+ *   lane FREE         Lane i: free
+ *   no checkout       Lane: none
+ *
+ * The controller lock folds into lane 0 ONLY when every lane is free (it is
+ * then the one thing running): `Lane 0: controller <age>`, or
+ * `Lane 0: STALE (reclaimable)` for a dead controller.
+ *
+ * State word: any running lane -> running (stalled if one is); else any stale
+ * lane or controller -> stale; else a running controller -> running; else idle.
  */
 function laneFor(repoRow) {
   var r = isObject(repoRow) ? repoRow : {};
   if (r.noLane === true) {
     return {
-      text: "Lane: none",
+      lines: [{ text: "Lane: none", kind: "head" }],
       stateKey: "idle",
       stateText: r.attendedOnly === true ? "attended" : "no lane",
     };
   }
-  var lane = r.laneState;
   var ctrl = r.ctrlState;
-  var kids = finiteOrNull(r.children);
-  var kidsText = kids !== null && kids > 0 ? " - kids " + Math.round(kids) : "";
-  if (lane === STATE_RUNNING) {
-    var age = formatSpan(r.ageS);
-    var name = asciiOnly(stringOrNull(r.lane) || "lane");
-    var stalled = r.stalled === true;
-    return {
-      text: "Lane: " + name + (age === null ? "" : " " + age) + kidsText,
-      stateKey: stalled ? "stalled" : "running",
-      stateText: stalled ? "stalled" : "running",
-    };
-  }
-  if (lane === STATE_RECLAIMABLE || (lane === STATE_FREE && ctrl === STATE_RECLAIMABLE)) {
-    return { text: "Lane: STALE (reclaimable)", stateKey: "stale", stateText: "stale" };
-  }
-  if (lane === STATE_FREE && ctrl === STATE_RUNNING) {
+  var entries = laneEntriesOf(r);
+  var lines = [];
+  var anyRunning = false;
+  var anyStalled = false;
+  var anyStale = false;
+  var allFree = true;
+  var unknown = false;
+  entries.forEach(function (e, pos) {
+    var idx = finiteOrNull(e.index);
+    var i = idx === null ? pos : idx;
+    if (e.state !== STATE_FREE) allFree = false;
+    if (e.state === STATE_RUNNING) {
+      anyRunning = true;
+      if (e.stalled === true) anyStalled = true;
+      var age = formatSpan(e.ageS);
+      var kids = finiteOrNull(e.children);
+      var head = asciiOnly(stringOrNull(e.lane) || "lane") + " (lane " + i + ")" +
+        (age === null ? "" : " " + age) +
+        (kids !== null && kids > 0 ? " - kids " + Math.round(kids) : "");
+      var c = isObject(e.checklist) ? e.checklist : null;
+      if (c === null || c.status === "none") {
+        lines.push({ text: head + " - no checklist", kind: "head" });
+      } else if (c.status !== "live") {
+        lines.push({ text: head + " - checklist STALE", kind: "head" });
+      } else {
+        var items = Array.isArray(c.items) ? c.items.filter(isObject) : [];
+        var more = finiteOrNull(c.more);
+        if (items.length === 0 && !(more > 0)) {
+          lines.push({ text: head + " - no tasks left", kind: "head" });
+        } else {
+          lines.push({ text: head, kind: "head" });
+          items.forEach(function (it) {
+            var t = typeof it.text === "string" ? it.text : String(it.id) + ": " + String(it.task);
+            lines.push({ text: asciiOnly(t), kind: "item" });
+          });
+          if (more !== null && more > 0) lines.push({ text: "+" + Math.round(more) + " more", kind: "more" });
+        }
+      }
+    } else if (e.state === STATE_RECLAIMABLE) {
+      anyStale = true;
+      lines.push({ text: "Lane " + i + ": STALE (reclaimable)", kind: "head" });
+    } else if (e.state === STATE_FREE) {
+      lines.push({ text: "Lane " + i + ": free", kind: "head" });
+    } else {
+      unknown = true;
+      lines.push({ text: "Lane " + i + ": unreadable", kind: "head" });
+    }
+  });
+
+  if (allFree && lines.length > 0 && ctrl === STATE_RUNNING) {
     var cage = formatSpan(r.ctrlAgeS);
-    return {
-      text: "Lane: controller" + (cage === null ? "" : " " + cage),
-      stateKey: "running",
-      stateText: "running",
-    };
+    lines[0] = { text: "Lane 0: controller" + (cage === null ? "" : " " + cage), kind: "head" };
+  } else if (allFree && lines.length > 0 && ctrl === STATE_RECLAIMABLE) {
+    lines[0] = { text: "Lane 0: STALE (reclaimable)", kind: "head" };
   }
-  if (lane === STATE_FREE && (ctrl === STATE_FREE || ctrl === undefined || ctrl === null)) {
-    return { text: "Lane: free", stateKey: "idle", stateText: "idle" };
-  }
-  return { text: "Lane: unreadable", stateKey: "unreadable", stateText: "unreadable" };
+
+  var stateKey;
+  if (anyRunning) stateKey = anyStalled ? "stalled" : "running";
+  else if (anyStale || ctrl === STATE_RECLAIMABLE) stateKey = "stale";
+  else if (unknown) stateKey = "unreadable";
+  else if (ctrl === STATE_RUNNING) stateKey = "running";
+  else if (ctrl === STATE_FREE || ctrl === undefined || ctrl === null) stateKey = "idle";
+  else stateKey = "unreadable";
+  return { lines: lines, stateKey: stateKey, stateText: stateKey };
 }
 
 /** One ALL-tab row description. The Sync line is split task / tail so the
@@ -244,7 +307,8 @@ function repoRowFor(repoRow, index) {
     stateKey: lane.stateKey,
     stateText: lane.stateText,
     label: stringOrNull(r.display) || code,
-    laneText: lane.text,
+    laneLines: lane.lines,
+    laneText: lane.lines.map(function (l) { return l.text; }).join(" | "),
     syncTask: syncTask,
     syncTail: syncTail,
     syncText: syncTask + syncTail,
@@ -272,6 +336,17 @@ function buildAccounts(accounts) {
     out.push({ text: asciiOnly(line.text), alarm: line.alarm === true });
   }
   return out;
+}
+
+/**
+ * The GOVERNOR strip (FLEET-KIT v6): ONE machine-wide line painted under the
+ * accounts strip on the ALL tab, e.g. `Governor 2/3 - RC, CS - queue 1`. The
+ * model already carries the rendered line (src/governor.js governorLine);
+ * this keeps it ASCII and drops junk. No slot root on this host -> null.
+ */
+function buildGovernor(g) {
+  if (!isObject(g) || typeof g.text !== "string" || g.text === "") return null;
+  return { text: asciiOnly(g.text), alarm: g.alarm === true };
 }
 
 /**
@@ -458,6 +533,7 @@ function buildView(model, opts) {
       activeTab: activeTab,
       layout: LAYOUT_ROWS,
       accounts: buildAccounts(m.accounts),
+      governor: buildGovernor(m.governor),
       rows: painted,
       cards: [],
       summary: buildSummary(m.summary),
@@ -473,6 +549,7 @@ function buildView(model, opts) {
     activeTab: activeTab,
     layout: LAYOUT_CARDS,
     accounts: [],
+    governor: null,
     rows: [],
     cards: buildCards(shown),
     summary: buildSummary(m.summary),
@@ -696,6 +773,10 @@ function renderCards(doc, root, view) {
       });
       root.appendChild(strip);
     }
+    if (isObject(view.governor)) {
+      // ONE machine strip, under the accounts strip, above the repo rows.
+      root.appendChild(el(doc, "div", "governor-strip" + (view.governor.alarm ? " is-alarm" : ""), view.governor.text));
+    }
     (Array.isArray(view.rows) ? view.rows : []).forEach(function (row) {
       var line = el(doc, "div", "card repo-row state-" + row.stateKey);
 
@@ -704,7 +785,12 @@ function renderCards(doc, root, view) {
       head.appendChild(el(doc, "span", "card-state", row.stateText));
       line.appendChild(head);
 
-      line.appendChild(el(doc, "div", "row-lane", row.laneText));
+      // One element per lane line; checklist items and +N more are indented
+      // under their lane's head line (row-item).
+      var laneLines = Array.isArray(row.laneLines) ? row.laneLines : [{ text: row.laneText, kind: "head" }];
+      laneLines.forEach(function (l) {
+        line.appendChild(el(doc, "div", "row-lane" + (l.kind === "head" ? "" : " row-item"), l.text));
+      });
 
       // Two spans so CSS can ellipsize the task and never the numbers; their
       // concatenated text IS the operator's line, verbatim.

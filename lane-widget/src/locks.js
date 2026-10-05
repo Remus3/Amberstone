@@ -16,8 +16,13 @@
  * `now` is epoch SECONDS, pairing with the lock's own `ts` (python time.time()).
  */
 
-// ops/loop/lanes.py:138-141 - MAX_SLOTS = 1, root control/lanes, LOCK_NAME "0.lock".
-const LANE_LOCK_REL = ["ops", "loop", "control", "lanes", "0.lock"];
+// FLEET-KIT v6 fleet_lanes.py: LANE_CAP_MAX = 3, LANES_REL ops/loop/control/lanes,
+// one lock per lane INDEX (<i>.lock); the lane NAME is a payload field. The
+// widget reads exactly these three NAMED files - never a listing of the dir.
+const LANE_CAP = 3;
+const LANE_LOCK_RELS = [0, 1, 2].map((i) => ["ops", "loop", "control", "lanes", `${i}.lock`]);
+// Lane 0 alias, kept for callers written against the single-lane layout.
+const LANE_LOCK_REL = LANE_LOCK_RELS[0];
 // dashboard/routes_loop_status.py:322 CONTROLLER_LOCK_NAME = "RUNNING.lock".
 const CTRL_LOCK_REL = ["ops", "loop", "control", "RUNNING.lock"];
 
@@ -172,19 +177,37 @@ function classify(opts) {
   // throwing probe must NOT free the lane.
   const alive = safeCall(o.pidAlive, pid, true);
   if (alive === false) {
+    if (holderLive(payload, o)) return { state: RUNNING, pid, reason: "holder_alive" };
     return { state: RECLAIMABLE, pid, reason: "dead_pid" };
   }
 
   if (payload !== null && isStranger(pid, payload.pid_started, o.procStarted)) {
     // Alive, but not the same process: the holder died and the OS reissued its
     // pid. ops/loop/lanes.py:186-206 records the measured incident.
+    if (holderLive(payload, o)) return { state: RUNNING, pid, reason: "holder_alive" };
     return { state: RECLAIMABLE, pid, reason: "pid_reuse_stranger" };
   }
 
   return { state: RUNNING, pid, reason: "alive" };
 }
 
+/**
+ * FLEET-KIT v6 fleet_lanes._lane_row: a run_lane claim repointed at its worker
+ * records the CLAIMING process as holder_pid / holder_started, and the lane
+ * stays RUNNING while EITHER is live (the claimer still merges and gates after
+ * the worker exits). Same pid + start-time rule as the worker itself.
+ */
+function holderLive(payload, o) {
+  if (!isObject(payload)) return false;
+  const hp = pidOrZero(payload.holder_pid);
+  if (hp <= 0) return false;
+  if (safeCall(o.pidAlive, hp, true) === false) return false;
+  return !isStranger(hp, payload.holder_started, o.procStarted);
+}
+
 module.exports = {
+  LANE_CAP,
+  LANE_LOCK_RELS,
   LANE_LOCK_REL,
   CTRL_LOCK_REL,
   FREE,

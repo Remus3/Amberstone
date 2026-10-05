@@ -393,3 +393,35 @@ test("the module exposes no writer, unlinker or reaper FUNCTION", () => {
     );
   }
 });
+
+// ------------------------------------------------- FLEET-KIT v6: three lanes
+// fleet_lanes.py LANE_CAP_MAX = 3, LANES_REL ops/loop/control/lanes, one
+// NAMED lock per index - the widget never lists the lanes directory.
+test("v6: exactly three named lane lock paths, 0.lock 1.lock 2.lock", () => {
+  assert.equal(L.LANE_CAP, 3);
+  assert.deepEqual(L.LANE_LOCK_RELS, [
+    ["ops", "loop", "control", "lanes", "0.lock"],
+    ["ops", "loop", "control", "lanes", "1.lock"],
+    ["ops", "loop", "control", "lanes", "2.lock"],
+  ]);
+  assert.deepEqual(L.LANE_LOCK_REL, L.LANE_LOCK_RELS[0], "lane 0 alias kept");
+});
+
+test("v6: a repointed run_lane claim stays RUNNING while its claimer (holder_pid) lives", () => {
+  // fleet_lanes._lane_row: RUNNING if pid OR holder_pid is live.
+  const p = payload({ pid: DEAD, holder_pid: LIVE, holder_started: 900 });
+  const c = L.classify({ payload: p, now: 1010, pidAlive: aliveOnly, procStarted: noStart });
+  assert.equal(c.state, L.RUNNING);
+});
+
+test("v6: a dead worker AND a dead holder is RECLAIMABLE", () => {
+  const p = payload({ pid: DEAD, holder_pid: DEAD + 1, holder_started: 900 });
+  const c = L.classify({ payload: p, now: 1010, pidAlive: aliveOnly, procStarted: noStart });
+  assert.equal(c.state, L.RECLAIMABLE);
+});
+
+test("v6: a holder whose pid was reused (start time differs) does not keep the lane", () => {
+  const p = payload({ pid: DEAD, holder_pid: LIVE, holder_started: 100 });
+  const c = L.classify({ payload: p, now: 1010, pidAlive: aliveOnly, procStarted: () => 900 });
+  assert.equal(c.state, L.RECLAIMABLE);
+});

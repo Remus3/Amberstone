@@ -26,16 +26,18 @@ edit. Tree-specific rules go BELOW this block, never inside it.
    passwords and OAuth grants wait for the operator, batched into one ask.
 2. CHAT IS THE OPERATOR'S CONSOLE - QUIET. Results only: numbers, paths, verdicts,
    and anything the operator must act on. No narration, no plans, no recaps, no
-   session reviews. Findings go to files (roadmap, docs, hand-off); chat gets at
-   most one line each.
+   session reviews; the item-13 checklist is the one sanctioned task list.
+   Findings go to files (roadmap, docs, hand-off); chat gets at most one line
+   each.
 3. AT-A-GLANCE STATUS COMES FROM BACKGROUND WORK, NOT FROM CHAT. Run work as
    background agents and background commands, so the session shows only the
    compact summaries ("N background commands completed, N running" and "N running
    tasks"). Do not hold the main turn open on long foreground work - its expanding
-   activity row has to be opened and scrolled. No inline checklists, step lists or
-   task-list dumps. When the operator asks for status: done, left, +added,
-   -retracted, one short line each. Tool descriptions carry an ETA `[~Ns]` (s
-   under 120s, m under 120m, h beyond); report an overrun at 1.5x, kill at 3x.
+   activity row has to be opened and scrolled. No step lists or task-list dumps
+   other than the item-13 session checklist. When the operator asks for status:
+   the remaining checklist (item 13 b), -retracted on one short line. Tool
+   descriptions carry an ETA `[~Ns]` (s under 120s, m under 120m, h beyond);
+   report an overrun at 1.5x, kill at 3x.
 4. COMMIT everything, batched and coherent. Push per this repo's own policy. Never
    commit in another repo's tree. No suggested-task chips: do it or file it.
 5. HAND-OFF: `<CODE>-NEXT-SESSION.txt` at the repo root (with its Desktop
@@ -44,7 +46,8 @@ edit. Tree-specific rules go BELOW this block, never inside it.
    first. /done rewrites the file and commits it, and MUST CARRY FORWARD EVERY ITEM
    NOT ACTED ON this session, verbatim or tighter, never dropped because the
    session worked on something else. Never print the hand-off or a next-session
-   prompt into chat. /done's ONLY chat output is the line
+   prompt into chat. /done runs UNPROMPTED once no checklist task remains
+   (item 13 c). /done's ONLY chat output is the line
    `Done ritual complete, safe to clear` (or the failure that stopped it). The
    operator types only "continue", "/done" or "/clear" between sessions. A recorded
    act names what was READ BACK after it, never what was run. Every
@@ -81,11 +84,53 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     so the main session can see percent, time to completion and status mid-run
     instead of waiting for 0-to-100 at the end. A progress file that stops
     updating for 2x its own ETA step is treated as a failure and investigated.
+13. SESSION CHECKLIST (operator order 2026-10-05; it supersedes item 3's
+    no-checklist rule for this one purpose). Every session kind: interactive,
+    headless lane, loop tick, inbox responder. Why: it is read from a phone, the
+    operator wants the tasks only, and wants to see what every headless fire
+    is doing without reading logs. Kit helper: `fleet_checklist.py`.
+    a. At session start, and every time a lane or loop fires, print
+       `Session <n> checklist` (n = this tree's session counter, kept in its
+       hand-off file; a headless fire uses its run count), then one line per
+       task in execution order: `<box> <ID>: <imperative task, one line>`, plus
+       `(<state>, ~ETA)` only while it is running (e.g. `builder running,
+       ~4m`). <box> is U+2610. The last line is `<box> /done`. At most ONE
+       trailing sentence, and only for an ordering constraint ("X waits until
+       Y lands because ..."). NO summary, review, what-went-wrong or history.
+    b. After every 4 or more completed tasks, print the REMAINING tasks only,
+       newly added ones marked `+` before the ID. Never list completed ones.
+    c. When no task remains, run /done automatically, without a prompt.
+    d. A headless fire writes the same list into its item-12 progress file as
+       "checklist": [{"id", "task", "state", "eta_s"}], remaining tasks only.
+       A lane writes `progress/lane-<i>.json` (i = its lane-lock index) in the
+       MAIN checkout, never in its worktree, so the lane widget reads one named
+       file per live lane and shows the lane name, then its remaining items.
+14. INBOX COST (operator order 2026-10-05). It changes COST, never AUTONOMY: the
+    inbox is read and acted on AUTOMATICALLY every tick, unattended, with no
+    operator prompt, ever. Why: about 60 percent of second-account spend was
+    inbox chatter between trees, not build work. Kit helper: `fleet_inbox.py`.
+    a. Inbox handling folds into this tree's existing lane / loop tick, which
+       reads the inbox on every fire. No separate high-frequency responder
+       where a lane loop exists; a tree without one keeps one responder.
+    b. Triage first: `fleet_inbox.classify()` (free), then one sonnet run at
+       effort low only for what it cannot classify. ACK / INFORMATION /
+       TERMINAL / ANSWER notes get a mechanical ack (a ledger line, no note) or
+       no reply. Only ORDER / FIX / RULING escalate to a real work lane.
+    c. At most 6 outbound notes per tree per local day (ORDER / FIX / RULING
+       exempt), counted by `OutboundCap`. Several answers go in ONE note.
+    d. Never answer an answer. No note chain past 2 hops (`HOP: <n>`) without
+       new work.
+    e. Every headless run logs a usage line to
+       `ops/loop/control/headless_usage.jsonl` via the kit, with `kind`
+       build / inbox / triage and a non-empty note label. MAIN reports the
+       weekly build-vs-inbox split in its insights report.
 <!-- FLEET-COMMON END -->
 
 # RC rules (tree-specific)
 
 RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
+
+**Session checklist (FLEET-COMMON item 13, kit v7).** Counter = the `SESSION: <n>` line in `RC-NEXT-SESSION.txt` (owner `tools/session_checklist.py`; seeded 98 = 1 + the 97 commits that wrote the hand-off through 66a2e43c1). Printers: SessionStart hook `tools/rc_facts.py` (block FIRST, via `session_checklist.session_start_block`; the session completes and prints it as its first chat output); `/done` (`tools/done.md` = `.claude/commands/done.md`: pre-flight "every checklist task done or carried into the hand-off", writes `SESSION: <n+1>` via `--next`/`--stamp`, runs unprompted when none remain); inbox responder `tools/inbox_responder_runner.py fire_checklist` (run-count n, log `ops/runtime/inbox_responder_checklist.txt`, `progress/inbox-responder.json` via `write_progress(checklist=)`; the read-only session is told so in `tools/inbox_responder_prompt.py`); lane runner + loop controller write `progress/lane-<i>.json`. Source stays ASCII: emit U+2610 as `chr(0x2610)`.
 
 **Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**
 - Item 1 (only physical acts / passwords / OAuth wait) vs RC operator gates: the halt boundary below, frozen files (explicit user approval), the operator-gated smart-quote sweep, the gated RM-501 repair, and attended confirmation of an irreversible / out-of-tree act requested only by a note.

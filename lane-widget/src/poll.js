@@ -6,15 +6,20 @@
 //
 // Two cadences, both deliberately BOUNDED:
 //
-//   FAST (2000 ms)  exactly 2 file reads per repo - the lane lock and the
-//                   controller lock - and nothing else. No listing, no stat,
-//                   no snapshot.
+//   FAST (2000 ms)  per repo: the 3 NAMED lane locks (lanes/0..2.lock,
+//                   FLEET-KIT v6) + the controller lock, plus ONE read of
+//                   progress/lane-<i>.json for each LIVE lane only (FLEET-KIT
+//                   v7) - at most 7 named reads. No listing, no stat, no
+//                   snapshot.
 //   SLOW (10000 ms) ONE non-recursive listing of <root>/ops/loop/reports per
 //                   repo, ONE read of <root>/ops/loop/control/inbox_status.json
 //                   per repo (skipped for an attended-only tree), plus ONE
 //                   machine-wide process snapshot that every repo reuses,
 //                   plus ONE stat + ONE read of the proxy's state file for the
-//                   ACCOUNTS strip (only when the roster configures one).
+//                   ACCOUNTS strip (only when the roster configures one), plus
+//                   the GOVERNOR strip: the 3 named slot files under
+//                   %ProgramData%\lw-loop\slots and ONE non-recursive listing
+//                   of its sibling queue directory (see readGovernor).
 //
 // A root-less roster row (a rostered repo with no checkout on this host) is
 // read on NEITHER cadence; it still gets its ALL-tab row from the model.
@@ -46,6 +51,22 @@ const REPORTS_REL = ["ops", "loop", "reports"];
 // tick keeps that tick's "exactly 2 lock reads per repo" bound intact.
 // Mirrors src/inbox_status.js STATUS_REL.
 const STATUS_REL = ["ops", "loop", "control", "inbox_status.json"];
+// FLEET-KIT v6: lanes/0.lock 1.lock 2.lock - NAMED reads. Mirrors
+// src/locks.js LANE_LOCK_RELS for a deps object that does not carry it.
+const DEFAULT_LANE_LOCK_RELS = [0, 1, 2].map((i) => ["ops", "loop", "control", "lanes", i + ".lock"]);
+
+/** FLEET-KIT v7: a live lane's checklist file. Mirrors src/checklist.js progressRel. */
+function progressRel(index) {
+  return ["ops", "loop", "control", "progress", "lane-" + index + ".json"];
+}
+
+function freeLanes() {
+  return DEFAULT_LANE_LOCK_RELS.map(() => ({ state: "FREE", payload: null, pid: 0, progressText: null }));
+}
+
+// The machine-wide governor strip (src/governor.js). Pure module, no IO of its
+// own; the poller does the bounded reads below and hands it the bytes.
+const governor = require("./governor.js");
 
 /** A repo the poller can actually read from - root-less roster rows are not. */
 function hasRoot(r) {
@@ -271,6 +292,7 @@ function createPoller(opts) {
   let accountsCfg; // undefined = not resolved yet; null = no accounts config
   let accountsReading = { text: null, mtimeMs: null }; // last SLOW-tick read
   let childrenByPid = new Map(); // pid -> descendant count
+  let governorVerdict = null; // src/governor.js governorFor() result, or null (no slot root)
   let lastModelValue = emptyModel(now());
 
   let fastInFlight = false;
@@ -441,7 +463,8 @@ function createPoller(opts) {
     const built = [];
     for (const r of list) {
       const locks = lockByRoot.get(r.root) || {};
-      const lane = locks.lane || { state: "FREE", payload: null, pid: 0 };
+      const lanes = Array.isArray(locks.lanes) && locks.lanes.length ? locks.lanes : freeLanes();
+      const lane = lanes[0];
       const ctrl = locks.ctrl || { state: "FREE", payload: null, pid: 0 };
       const status = hasRoot(r) ? statusByRoot.get(r.root) : null;
       built.push({
@@ -454,6 +477,8 @@ function createPoller(opts) {
         tickS: r.tickS,
         noLane: r.noLane === true,
         lane: lane,
+        lanes: lanes,
+        laneChildren: lanes.map((b) => childrenByPid.get(b.pid) || 0),
         ctrl: ctrl,
         children: childrenByPid.get(lane.pid) || 0,
         logs: logsByRoot.get(r.root) || [],
@@ -467,6 +492,7 @@ function createPoller(opts) {
         model = d.model.buildModel({
           repos: built,
           now: ts,
+          governor: governorVerdict,
           accounts: acc === null ? null : {
             text: accountsReading.text,
             mtimeMs: accountsReading.mtimeMs,
@@ -491,7 +517,9 @@ function createPoller(opts) {
     return model;
   }
 
-  // FAST: 2 * repoCount reads. Nothing else. Ever.
+  // FAST, per rooted repo: LANE_CAP (3) lane-lock reads + 1 controller-lock
+  // read, plus ONE progress read per LIVE lane (at most 3). All NAMED files;
+  // no listing, no stat, no snapshot. Ever.
   async function tickFast() {
     if (stopped || fastInFlight) {
       return lastModelValue;
@@ -499,9 +527,9 @@ function createPoller(opts) {
     fastInFlight = true;
     try {
       const d = deps();
-      const laneRel = d && d.locks && d.locks.LANE_LOCK_REL
-        ? d.locks.LANE_LOCK_REL
-        : ["ops", "loop", "control", "lanes", "0.lock"];
+      const laneRels = d && d.locks && Array.isArray(d.locks.LANE_LOCK_RELS) && d.locks.LANE_LOCK_RELS.length
+        ? d.locks.LANE_LOCK_RELS
+        : DEFAULT_LANE_LOCK_RELS;
       const ctrlRel = d && d.locks && d.locks.CTRL_LOCK_REL
         ? d.locks.CTRL_LOCK_REL
         : ["ops", "loop", "control", "RUNNING.lock"];
@@ -509,18 +537,35 @@ function createPoller(opts) {
       const next = new Map();
       for (const r of repoList()) {
         if (!hasRoot(r)) continue; // a root-less roster row has nothing to read
-        const laneText = await guard(
-          () => io.readFile(path.join.apply(path, [r.root].concat(laneRel))),
-          null,
-          "read lane lock"
-        );
+        const lanes = [];
+        for (let i = 0; i < laneRels.length; i += 1) {
+          const laneText = await guard(
+            () => io.readFile(path.join.apply(path, [r.root].concat(laneRels[i]))),
+            null,
+            "read lane lock"
+          );
+          const block = classifyText(d, laneText, ts);
+          // v7: ONLY a live lane's progress file is read - a free or stale
+          // lane never shows a list, so reading one would be wasted IO. Read
+          // fresh every tick: a vanished file must not keep its last list.
+          block.progressText = null;
+          if (block.state === "RUNNING") {
+            const text = await guard(
+              () => io.readFile(path.join.apply(path, [r.root].concat(progressRel(i)))),
+              null,
+              "read lane progress"
+            );
+            block.progressText = typeof text === "string" ? text : null;
+          }
+          lanes.push(block);
+        }
         const ctrlText = await guard(
           () => io.readFile(path.join.apply(path, [r.root].concat(ctrlRel))),
           null,
           "read controller lock"
         );
         next.set(r.root, {
-          lane: classifyText(d, laneText, ts),
+          lanes: lanes,
           ctrl: classifyText(d, ctrlText, ts),
         });
       }
@@ -532,6 +577,63 @@ function createPoller(opts) {
     } finally {
       fastInFlight = false;
     }
+  }
+
+  // The GOVERNOR strip's reads, slow tick only, READ-ONLY. Exactly the three
+  // NAMED slot files <slot root>/0.lock 1.lock 2.lock (plus a stat of a slot
+  // whose bytes do not parse - fleet_lanes judges those by mtime), ONE
+  // non-recursive listing of the sibling queue directory, and one read per
+  // *.ticket in it (capped). The slot root itself is never listed. No
+  // ProgramData in the environment -> no reads and no strip.
+  async function readGovernor(ts) {
+    const root = governor.governorRoot(env);
+    if (root === null) {
+      return null;
+    }
+    const slots = [];
+    for (const name of governor.SLOT_NAMES) {
+      const p = path.join(root, name);
+      const text = await guard(() => io.readFile(p), null, "read governor slot");
+      let mtimeS = null;
+      if (typeof text === "string") {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(text);
+        } catch (_e) {
+          parsed = null;
+        }
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Object.keys(parsed).length) {
+          const st = await guard(() => io.statFile(p), null, "stat governor slot");
+          mtimeS = st && isFinite(st.mtimeMs) ? Number(st.mtimeMs) / 1000 : null;
+        }
+      }
+      slots.push({ text: typeof text === "string" ? text : null, mtimeS: mtimeS });
+    }
+    const qdir = governor.queueRoot(root);
+    const listed = await guard(() => io.listDir(qdir), [], "list governor queue");
+    const tickets = [];
+    for (const ent of Array.isArray(listed) ? listed : []) {
+      if (tickets.length >= governor.MAX_TICKETS_READ) break;
+      const name = ent && typeof ent === "object" ? ent.name : null;
+      if (typeof name !== "string" || !name.endsWith(governor.TICKET_SUFFIX)) continue;
+      const text = await guard(() => io.readFile(path.join(qdir, name)), null, "read governor ticket");
+      tickets.push({
+        text: typeof text === "string" ? text : null,
+        mtimeS: isFinite(ent.mtimeMs) ? Number(ent.mtimeMs) / 1000 : null,
+      });
+    }
+    return guard(
+      () => governor.governorFor({
+        slots: slots,
+        tickets: tickets,
+        roster: repoList(),
+        now: ts,
+        pidAlive: pidAlive,
+        procStarted: procStarted,
+      }),
+      null,
+      "governorFor"
+    );
   }
 
   // SLOW: one listing per repo + ONE machine-wide snapshot reused by all.
@@ -617,9 +719,12 @@ function createPoller(opts) {
 
       // Descendant counts for every pid we are currently tracking - one pass
       // over the single snapshot, no per-repo process work.
+      governorVerdict = await readGovernor(ts);
+
       const rootPids = [];
       for (const v of lockByRoot.values()) {
-        for (const side of [v.lane, v.ctrl]) {
+        const sides = (Array.isArray(v.lanes) ? v.lanes : [v.lane]).concat([v.ctrl]);
+        for (const side of sides) {
           if (side && side.pid > 0 && rootPids.indexOf(side.pid) === -1) {
             rootPids.push(side.pid);
           }

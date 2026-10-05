@@ -1,0 +1,87 @@
+/* Fleet kit dashboard tokens. GENERATED from tokens.json by MAIN
+   (tools/fleet_kit.py tokens) - do not edit; edit tokens.json. */
+
+:root {
+  color-scheme: light;
+  --fk-surface: #ffffff;
+  --fk-surface-2: #f3f4f6;
+  --fk-text: #1a1d21;
+  --fk-text-muted: #555d66;
+  --fk-border: #d3d8de;
+  --fk-accent: #1559a8;
+  --fk-status-ok: #1d7a3a;
+  --fk-status-warn: #946200;
+  --fk-status-bad: #c4262f;
+  --fk-status-unknown: #68707a;
+  --fk-status-halted: #7a4fcf;
+  --fk-status-running: #1765c4;
+  --fk-status-idle: #5b636c;
+  --fk-chart-1: #1765c4;
+  --fk-chart-2: #b5520a;
+  --fk-chart-3: #1d7a3a;
+  --fk-chart-4: #7a4fcf;
+  --fk-chart-5: #c4262f;
+  --fk-chart-6: #0d7880;
+  --fk-chart-7: #946200;
+  --fk-chart-8: #b23c84;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --fk-surface: #0f1216;
+    --fk-surface-2: #181c22;
+    --fk-text: #e4e8ec;
+    --fk-text-muted: #99a1aa;
+    --fk-border: #323840;
+    --fk-accent: #5a9ef0;
+    --fk-status-ok: #46b85c;
+    --fk-status-warn: #d19a2a;
+    --fk-status-bad: #f0605a;
+    --fk-status-unknown: #959da6;
+    --fk-status-halted: #a87cf2;
+    --fk-status-running: #5ea4f5;
+    --fk-status-idle: #8a929b;
+    --fk-chart-1: #5ea4f5;
+    --fk-chart-2: #ec8e46;
+    --fk-chart-3: #46b85c;
+    --fk-chart-4: #a87cf2;
+    --fk-chart-5: #f0605a;
+    --fk-chart-6: #3fc0c8;
+    --fk-chart-7: #d19a2a;
+    --fk-chart-8: #de6aa8;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fk-surface: #0f1216;
+  --fk-surface-2: #181c22;
+  --fk-text: #e4e8ec;
+  --fk-text-muted: #99a1aa;
+  --fk-border: #323840;
+  --fk-accent: #5a9ef0;
+  --fk-status-ok: #46b85c;
+  --fk-status-warn: #d19a2a;
+  --fk-status-bad: #f0605a;
+  --fk-status-unknown: #959da6;
+  --fk-status-halted: #a87cf2;
+  --fk-status-running: #5ea4f5;
+  --fk-status-idle: #8a929b;
+  --fk-chart-1: #5ea4f5;
+  --fk-chart-2: #ec8e46;
+  --fk-chart-3: #46b85c;
+  --fk-chart-4: #a87cf2;
+  --fk-chart-5: #f0605a;
+  --fk-chart-6: #3fc0c8;
+  --fk-chart-7: #d19a2a;
+  --fk-chart-8: #de6aa8;
+}
+
+.fk-status-ok { color: var(--fk-status-ok); }
+.fk-status-warn { color: var(--fk-status-warn); }
+.fk-status-bad { color: var(--fk-status-bad); }
+.fk-status-unknown { color: var(--fk-status-unknown); }
+.fk-status-halted { color: var(--fk-status-halted); }
+.fk-status-running { color: var(--fk-status-running); }
+.fk-status-idle { color: var(--fk-status-idle); }

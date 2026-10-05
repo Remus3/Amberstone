@@ -120,6 +120,15 @@ _PER_REPO_ALIAS = re.compile(r"\bSibling-[A-Z]\b")
 # reddens on either half alone, which is the point.
 ROSTER_CODES = ("CS", "LL", "LW", "RC", "RSC", "SS")
 
+# ROSTER CHANGE 2026-10-05 (operator order relayed by MAIN): EW JOINED and LL is
+# RETIRED. ROSTER_CODES above pins the roster table INSIDE the five-way-pinned
+# doc, so it can move only in the same commit as a CHANNEL_PIN re-pin - one tree
+# may not edit those bytes alone. Until that joint act, the doc still lists LL
+# and does not list EW; the two tuples below record the LIVE fleet beside it.
+# LL is a RETIRED record, not a deletion: its row stays in the doc's history.
+RETIRED_CODES = ("LL",)
+LIVE_ROSTER_CODES = ("CS", "EW", "LW", "RC", "RSC", "SS")
+
 
 def _raw() -> bytes:
     return (REPO_ROOT / CHANNEL_DOC).read_bytes()
@@ -317,3 +326,16 @@ def test_channel_doc_names_no_per_repo_alias_and_rosters_every_code_once():
     for code in ROSTER_CODES:
         assert rows.count(code) == 1, f"roster names {code} {rows.count(code)} times; expected exactly 1"
     assert sorted(rows) == sorted(ROSTER_CODES), f"roster rows are {rows}, expected exactly {list(ROSTER_CODES)}"
+
+
+def test_live_roster_is_the_doc_roster_minus_retired_plus_joined():
+    """The live fleet and the pinned doc differ by exactly the 2026-10-05 swap.
+
+    Reddens when a re-pin lands EW in the doc (then fold LIVE into ROSTER_CODES
+    and drop this gap) or when someone edits one tuple without the other.
+    """
+    assert set(RETIRED_CODES) <= set(ROSTER_CODES), "a retired code keeps its doc row"
+    assert not set(RETIRED_CODES) & set(LIVE_ROSTER_CODES), "a retired code is not live"
+    joined = set(LIVE_ROSTER_CODES) - set(ROSTER_CODES)
+    assert joined == {"EW"}, f"joined-but-not-yet-repinned set is {sorted(joined)}"
+    assert set(LIVE_ROSTER_CODES) == (set(ROSTER_CODES) - set(RETIRED_CODES)) | joined

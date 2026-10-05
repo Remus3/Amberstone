@@ -505,6 +505,26 @@ def fake_headless_route(monkeypatch, _live_state_base):
     yield
 
 
+@pytest.fixture(autouse=True)
+def redirect_lane_progress_root(monkeypatch, _live_state_base):
+    """FLEET-KIT v7 item 13 d: every lane fire writes progress/lane-<i>.json in
+    the MAIN checkout. Without this, any test that drives launch_lane or the
+    loop controller writes the operator's live ops/loop/control/progress/
+    (measured: the first run of this slice left a lane-0.json there). The env
+    var reaches a controller the suite starts as a SUBPROCESS (a dry-run cycle
+    otherwise wrote the live progress/loop.json - measured)."""
+    monkeypatch.setenv("RC_LANE_PROGRESS_ROOT",
+                       str(_live_state_base / "lane_progress_root"))
+    try:
+        from ops.loop import lane_progress
+    except Exception:  # noqa: BLE001 - conftest stays dependency-free
+        yield
+        return
+    monkeypatch.setattr(lane_progress, "ROOT_OVERRIDE",
+                        _live_state_base / "lane_progress_root")
+    yield
+
+
 # CTL redirect (test_p2w4_hw2_b, OPEN2).
 _PROD_WRITE_GLOBALS = (
     ("core.coach_trace", "_TRACE_FILE", "coach_trace.jsonl"),

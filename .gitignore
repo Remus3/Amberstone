@@ -413,6 +413,9 @@ config/operator_identity.json
 # Per-host sibling checkout list for the cross-repo inbox poller. Names private
 # projects and differs per machine; ops/moon_sync_repos.example.json ships.
 ops/moon_sync_repos.json
+# A hand-made backup of the live list (MAIN's 2026-10-04 roster swap left one)
+# carries the same private names, so it is ignored by the same rule.
+ops/moon_sync_repos.json.bak
 
 # Y-45 phone push (core/operator_push.py): the ntfy server url, topic and the
 # token REFERENCE for this install. Topic + url are capabilities; never commit.

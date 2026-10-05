@@ -136,6 +136,12 @@ function fakeIo(overrides) {
       calls.processSnapshot += 1;
       return [{ pid: 4242, ppid: 1, name: "python.exe", startMs: 5000 }];
     },
+    // Deterministic by default: without it a fast tick falls back to a NATIVE
+    // signal-0 probe of pid 4242 on this machine, and a live lane adds a
+    // progress-file read, so the read counts below would depend on the host.
+    pidAlive() {
+      return false;
+    },
   };
   return Object.assign(io, overrides || {});
 }
@@ -158,7 +164,7 @@ function mkPoller(io, deps, extra) {
 
 // --- property 1: the fast tick never lists a directory -----------------------
 
-test("the fast tick reads exactly 2 lock files per repo and lists nothing", async () => {
+test("the fast tick reads exactly 4 named lock files per repo and lists nothing", async () => {
   const io = fakeIo();
   const deps = fakeDeps();
   const p = mkPoller(io, deps);
@@ -166,8 +172,8 @@ test("the fast tick reads exactly 2 lock files per repo and lists nothing", asyn
 
   assert.strictEqual(io.calls.listDir.length, 0, "fast tick must not list directories");
   assert.strictEqual(io.calls.processSnapshot, 0, "fast tick must not snapshot processes");
-  assert.strictEqual(io.calls.readFile.length, 4, "2 repos x 2 lock files");
-  assert.ok(io.calls.readFile.every((f) => f.indexOf("0.lock") !== -1 || f.indexOf("RUNNING.lock") !== -1));
+  assert.strictEqual(io.calls.readFile.length, 8, "2 repos x (3 lane locks + 1 controller lock)");
+  assert.ok(io.calls.readFile.every((f) => /lanes[\\/][012]\.lock$/.test(f) || /RUNNING\.lock$/.test(f)));
 });
 
 test("the fast tick stays bounded across repeated ticks", async () => {
@@ -176,7 +182,7 @@ test("the fast tick stays bounded across repeated ticks", async () => {
   await p.tickFast();
   await p.tickFast();
   await p.tickFast();
-  assert.strictEqual(io.calls.readFile.length, 12);
+  assert.strictEqual(io.calls.readFile.length, 24);
   assert.strictEqual(io.calls.listDir.length, 0);
 });
 
@@ -233,7 +239,7 @@ test("a fast tick already in flight is not re-entered", async () => {
   const b = p.tickFast();
   release();
   await Promise.all([a, b]);
-  assert.strictEqual(io.calls.readFile.length, 4, "one pass of 2 repos x 2 locks");
+  assert.strictEqual(io.calls.readFile.length, 8, "one pass of 2 repos x 4 locks");
 });
 
 test("the slow tick takes ONE machine-wide snapshot reused by every repo", async () => {
@@ -606,7 +612,7 @@ test("the fast tick never reads a status file and never touches a root-less tree
   const p = mkPoller(io, rosterDeps(STATUS_ENTRIES(), []));
   await p.tickFast();
   assert.strictEqual(io.calls.readFile.filter(isStatus).length, 0);
-  assert.strictEqual(io.calls.readFile.length, 4, "2 rooted repos x 2 lock files, nothing for ZZZ");
+  assert.strictEqual(io.calls.readFile.length, 8, "2 rooted repos x 4 lock files, nothing for ZZZ");
 });
 
 test("status text and roster fields reach buildModel; a missing file is null", async () => {
@@ -723,7 +729,7 @@ test("the fast tick never touches the proxy state file but keeps the last slow r
   await p.tickFast();
   const fastReads = io.calls.readFile.slice(before);
   assert.strictEqual(fastReads.filter((f) => f === STATE_FILE).length, 0);
-  assert.strictEqual(fastReads.length, 2, "fast tick bound: 2 lock reads per repo, nothing else");
+  assert.strictEqual(fastReads.length, 4, "fast tick bound: 4 lock reads per repo, nothing else");
   assert.strictEqual(captured[captured.length - 1].accounts.text, "{}");
 });
 
@@ -761,4 +767,196 @@ test("a vanished or throwing state file reaches the model as null text, never th
   const m = await p.tickSlow();
   assert.ok(m && Array.isArray(m.rows));
   assert.strictEqual(captured[captured.length - 1].accounts.text, null);
+});
+
+// --- FLEET-KIT v6/v7: three lanes, per-lane checklist, governor strip -------
+// v6 4b: lanes/0.lock 1.lock 2.lock per repo, NAMED reads. v7 4b-4c: for each
+// LIVE lane ONE named read of ops/loop/control/progress/lane-<i>.json under
+// that repo's checkout. v6 4b: ONE governor strip from <slot root>/0..2.lock
+// plus its sibling queue directory. Every read below is checked against an
+// explicit allow-list - reads stay within the named files.
+
+const PD = "C:\\fake-pd";
+const LIVE_A = 100;
+const LIVE_B = 101;
+const DEAD_A = 200;
+
+function progressBody(n) {
+  const rows = [];
+  for (let i = 1; i <= n; i += 1) rows.push({ id: "C" + i, task: "Task " + i, state: null, eta_s: 60 });
+  return JSON.stringify({
+    task: "lane-0", pct: 10, step: "s", eta_s: 600, status: "running",
+    updated: new Date((FIXED_NOW_S - 30) * 1000).toISOString(), checklist: rows,
+  });
+}
+
+function laneIo(files, extra) {
+  const io = {
+    calls: { readFile: [], listDir: [], statFile: [] },
+    readFile(p) {
+      io.calls.readFile.push(p);
+      for (const [suffix, body] of Object.entries(files)) {
+        if (p.replace(/\//g, "\\").endsWith(suffix)) return body;
+      }
+      return null;
+    },
+    statFile(p) {
+      io.calls.statFile.push(p);
+      return { mtimeMs: (FIXED_NOW_S - 30) * 1000 };
+    },
+    listDir(dir) {
+      io.calls.listDir.push(dir);
+      return [];
+    },
+    processSnapshot() {
+      return [];
+    },
+    pidAlive(pid) {
+      return pid === LIVE_A || pid === LIVE_B;
+    },
+    procStarted() {
+      return null;
+    },
+  };
+  return Object.assign(io, extra || {});
+}
+
+function capturingRealDeps(captured, roster) {
+  return Object.assign({}, realDeps, {
+    repos: { resolveRepos: () => roster, resolveAccounts: () => null },
+    model: {
+      buildModel(input) {
+        captured.push(input);
+        return realDeps.model.buildModel(input);
+      },
+    },
+  });
+}
+
+const ONE_REPO = [{ code: "RC", root: ROOT_A, isSelf: true, display: "RC", order: 0 }];
+const lockBody = (pid, lane) => JSON.stringify({ pid, lane, run_id: "r-" + lane, ts: FIXED_NOW_S - 720 });
+
+test("v7: a LIVE lane gets exactly ONE named progress read; free and dead lanes get none", async () => {
+  const io = laneIo({
+    "lanes\\0.lock": lockBody(LIVE_A, "queue"),
+    "lanes\\1.lock": lockBody(DEAD_A, "repo"),
+    "progress\\lane-0.json": progressBody(2),
+    "progress\\lane-1.json": progressBody(2),
+  });
+  const captured = [];
+  const p = createPoller({ rcRoot: ROOT_A, env: {}, io, now: () => FIXED_NOW_S, deps: capturingRealDeps(captured, ONE_REPO) });
+  await p.tickFast();
+  const allowed = [
+    "ops\\loop\\control\\lanes\\0.lock",
+    "ops\\loop\\control\\lanes\\1.lock",
+    "ops\\loop\\control\\lanes\\2.lock",
+    "ops\\loop\\control\\RUNNING.lock",
+    "ops\\loop\\control\\progress\\lane-0.json",
+  ].map((rel) => ROOT_A + "\\" + rel);
+  const reads = io.calls.readFile.map((f) => f.replace(/\//g, "\\"));
+  assert.deepStrictEqual(reads.slice().sort(), allowed.slice().sort(), reads.join(","));
+  assert.strictEqual(io.calls.listDir.length, 0, "no directory walk on the fast tick");
+  const lanes = captured[captured.length - 1].repos[0].lanes;
+  assert.strictEqual(lanes.length, 3);
+  assert.strictEqual(lanes[0].state, "RUNNING");
+  assert.strictEqual(typeof lanes[0].progressText, "string");
+  assert.strictEqual(lanes[1].state, "RECLAIMABLE");
+  assert.strictEqual(lanes[1].progressText, null, "a dead lane's progress file is never read");
+  assert.strictEqual(lanes[2].state, "FREE");
+  assert.strictEqual(lanes[2].progressText, null);
+});
+
+test("v7: a live lane's checklist reaches the ALL row in order, capped at 3 plus +N more", async () => {
+  const io = laneIo({
+    "lanes\\0.lock": lockBody(LIVE_A, "queue"),
+    "progress\\lane-0.json": progressBody(5),
+  });
+  let model = null;
+  const p = createPoller({ rcRoot: ROOT_A, env: {}, io, now: () => FIXED_NOW_S, deps: capturingRealDeps([], ONE_REPO), onModel(m) { model = m; } });
+  await p.tickFast();
+  const lane0 = model.repoRows[0].lanes[0];
+  assert.strictEqual(lane0.checklist.status, "live");
+  assert.deepStrictEqual(lane0.checklist.items.map((i) => i.id), ["C1", "C2", "C3"]);
+  assert.strictEqual(lane0.checklist.more, 2);
+});
+
+test("v7: a missing or stale progress file reaches the row as its fallback, never a list", async () => {
+  const stale = JSON.stringify({
+    eta_s: 60, updated: new Date((FIXED_NOW_S - 121) * 1000).toISOString(),
+    checklist: [{ id: "C1", task: "Old", state: null, eta_s: null }],
+  });
+  const io = laneIo({
+    "lanes\\0.lock": lockBody(LIVE_A, "queue"),
+    "lanes\\1.lock": lockBody(LIVE_B, "ds"),
+    "progress\\lane-1.json": stale,
+  });
+  let model = null;
+  const p = createPoller({ rcRoot: ROOT_A, env: {}, io, now: () => FIXED_NOW_S, deps: capturingRealDeps([], ONE_REPO), onModel(m) { model = m; } });
+  await p.tickFast();
+  const lanes = model.repoRows[0].lanes;
+  assert.strictEqual(lanes[0].checklist.status, "none");
+  assert.strictEqual(lanes[1].checklist.status, "stale");
+  assert.deepStrictEqual(lanes[1].checklist.items, []);
+});
+
+test("v7: a progress file that vanishes is not carried forward from the last tick", async () => {
+  const files = { "lanes\\0.lock": lockBody(LIVE_A, "queue"), "progress\\lane-0.json": progressBody(2) };
+  const io = laneIo(files);
+  let model = null;
+  const p = createPoller({ rcRoot: ROOT_A, env: {}, io, now: () => FIXED_NOW_S, deps: capturingRealDeps([], ONE_REPO), onModel(m) { model = m; } });
+  await p.tickFast();
+  assert.strictEqual(model.repoRows[0].lanes[0].checklist.status, "live");
+  delete files["progress\\lane-0.json"];
+  await p.tickFast();
+  assert.strictEqual(model.repoRows[0].lanes[0].checklist.status, "none");
+});
+
+test("v6: the slow tick reads exactly the three governor slots and lists the queue once", async () => {
+  const slotsDir = PD + "\\lw-loop\\slots\\";
+  const queueDir = PD + "\\lw-loop\\queue";
+  const io = laneIo({
+    "slots\\0.lock": JSON.stringify({ pid: LIVE_A, repo: ROOT_A, run_id: "x", cycle: 1, ts: FIXED_NOW_S - 60 }),
+    "slots\\2.lock": JSON.stringify({ pid: LIVE_B, repo: "CS", run_id: "y", cycle: 1, ts: FIXED_NOW_S - 60 }),
+    "queue\\1.ticket": JSON.stringify({ pid: LIVE_A, repo: "EW", ts: FIXED_NOW_S - 10 }),
+  }, {
+    listDir(dir) {
+      io.calls.listDir.push(dir);
+      if (dir.replace(/\//g, "\\") === queueDir) {
+        return [
+          { name: "1.ticket", mtimeMs: (FIXED_NOW_S - 5) * 1000 },
+          { name: "notes.txt", mtimeMs: (FIXED_NOW_S - 5) * 1000 },
+        ];
+      }
+      return [];
+    },
+  });
+  const captured = [];
+  const p = createPoller({ rcRoot: ROOT_A, env: { ProgramData: PD }, io, now: () => FIXED_NOW_S, deps: capturingRealDeps(captured, ONE_REPO) });
+  await p.tickSlow();
+  const pdReads = io.calls.readFile.map((f) => f.replace(/\//g, "\\")).filter((f) => f.indexOf(PD) === 0);
+  assert.deepStrictEqual(pdReads.sort(), [slotsDir + "0.lock", slotsDir + "1.lock", slotsDir + "2.lock", queueDir + "\\1.ticket"].sort());
+  const pdLists = io.calls.listDir.map((d) => d.replace(/\//g, "\\")).filter((d) => d.indexOf(PD) === 0);
+  assert.deepStrictEqual(pdLists, [queueDir], "ONE non-recursive listing of the queue, never the slot root");
+  const g = captured[captured.length - 1].governor;
+  assert.deepStrictEqual(g, { width: 3, held: 2, stale: 0, repos: ["RC", "CS"], queue: 1 });
+});
+
+test("v6: the governor slot payload's repo PATH never reaches the model", async () => {
+  const io = laneIo({
+    "slots\\0.lock": JSON.stringify({ pid: LIVE_A, repo: "C:\\Some Sibling Checkout", run_id: "x", ts: FIXED_NOW_S - 60 }),
+  });
+  let model = null;
+  const p = createPoller({ rcRoot: ROOT_A, env: { ProgramData: PD }, io, now: () => FIXED_NOW_S, deps: capturingRealDeps([], ONE_REPO), onModel(m) { model = m; } });
+  await p.tickSlow();
+  assert.ok(!JSON.stringify(model).includes("Sibling"), JSON.stringify(model.governor));
+  assert.strictEqual(model.governor.text, "Governor 1/3 - ? - queue 0");
+});
+
+test("v6: no ProgramData in the environment means no governor reads and no strip", async () => {
+  const io = laneIo({});
+  const captured = [];
+  const p = createPoller({ rcRoot: ROOT_A, env: {}, io, now: () => FIXED_NOW_S, deps: capturingRealDeps(captured, ONE_REPO) });
+  await p.tickSlow();
+  assert.ok(io.calls.readFile.every((f) => f.indexOf("lw-loop") === -1));
+  assert.strictEqual(captured[captured.length - 1].governor, null);
 });

@@ -318,7 +318,9 @@ def _fire_lane(body: dict) -> tuple[int, dict]:
         return 503, {"ok": False, "action": "fire_lane",
                      "error": f"launch failed: {exc}", "released": True}
 
-    payload.update(run)
+    # `progress` is the fire's in-process checklist handle (kit v7 item 13),
+    # not JSON - the operator reads it from progress/lane-<i>.json instead.
+    payload.update({k: v for k, v in run.items() if k != "progress"})
     payload["detail"] = f"lane {lane} running (pid {run['pid']})"
     return 200, payload
 

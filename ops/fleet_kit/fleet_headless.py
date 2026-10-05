@@ -28,6 +28,27 @@ cwd, stdin, return_stderr, persist / session_id / resume, model, effort,
 setting_sources, floors_in_hooks, pin, log_path (streamed stream-json log),
 halt_file; plus write_progress() for ops/loop/control/progress/<task>.json.
 
+v5 adds sibling kit files (this file's API is unchanged by them):
+fleet_watch.py (watcher primitive), fleet_secrets.py (secret references) and
+tokens.json + tokens.css (shared dashboard design tokens).
+
+v6 adds fleet_lanes.py (per-repo lanes, one worktree each, under the 3-slot
+machine governor) and OPTIONAL spawn(governor=...): None (default) takes no
+slot, exactly as v5; "queued" or "interactive" holds one governor slot for the
+run, waiting in the fair queue (status "backoff" while it waits) and refusing
+on governor_timeout. One slot per executor call: never also hold slots.hold()
+around a governed spawn. Ruling: inbox acknowledgements stay outside the slots.
+
+v7 adds fleet_checklist.py (FLEET-COMMON item 13, the session checklist) and
+an OPTIONAL write_progress(..., checklist=[{id, task, state, eta_s}]) field;
+without it the progress file is byte-for-byte the v6 shape.
+
+v8 adds fleet_inbox.py (FLEET-COMMON item 14, inbox cost discipline: triage on
+sonnet/low, mechanical acks, an outbound cap, a hop limit, the build-vs-inbox
+cost split) and an OPTIONAL spawn(kind=build|inbox|triage). The usage line
+gains "kind": the explicit value, else inferred by run_kind() (a channel-note
+name is inbox, an empty note unattributed, any other label build).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -44,7 +65,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 4
+KIT_VERSION = 8
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -76,6 +97,10 @@ _MARKER_LINE = re.compile(r"^(?:CLASS\s+)?" + _MARK + r"(?:\s*[-.,:;/]?\s*" + _M
 _MODEL = re.compile(r"^(?:opus|sonnet|haiku|claude-[a-z0-9][a-z0-9.-]*)(?:\[1m\])?$")
 _TOKEN_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _TASK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_CHECK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$")
+CHECKLIST_MAX = 20
+KINDS = ("build", "inbox", "triage")
+_NOTE_SENDER = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-")
 _EPOCH = _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone(_dt.timedelta(0)))
 
 
@@ -511,9 +536,29 @@ def _status_quietly(root, code, state, task, budget, started=None):
         write_status(root, code, state, task, started, budget)
 
 
-def write_progress(root, task, pct, step, eta_s, status, clock=time.time):
+def _checklist_rows(checklist):
+    """FLEET-COMMON item 13 d: the remaining tasks as [{id, task, state, eta_s}]."""
+    if not isinstance(checklist, (list, tuple)):
+        raise ValueError("checklist must be a list of {id, task, state, eta_s}")
+    rows = []
+    for r in checklist[:CHECKLIST_MAX]:
+        if not isinstance(r, dict) or not isinstance(r.get("id"), str) \
+                or not _CHECK_ID.match(r["id"]) or not isinstance(r.get("task"), str) \
+                or not r["task"].strip():
+            raise ValueError(f"bad checklist row {r!r}")
+        state, eta = r.get("state"), r.get("eta_s")
+        if state is not None and not isinstance(state, str):
+            raise ValueError(f"bad checklist state {state!r}")
+        rows.append({"id": r["id"], "task": " ".join(r["task"].split())[:120],
+                     "state": None if state is None else " ".join(state.split())[:40],
+                     "eta_s": None if eta is None else max(0, int(eta))})
+    return rows
+
+
+def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checklist=None):
     """FLEET-COMMON item 12: ops/loop/control/progress/<task>.json with
-    {task, pct, step, eta_s, status: running|done|failed, updated}."""
+    {task, pct, step, eta_s, status: running|done|failed, updated}, plus
+    "checklist" (item 13 d, remaining tasks) when one is passed."""
     if not isinstance(task, str) or not _TASK.match(task):
         raise ValueError(f"task name {task!r} must be a plain file stem")
     if status not in PROGRESS_STATES:
@@ -521,11 +566,27 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time):
     doc = {"task": task, "pct": max(0, min(100, int(pct))), "step": str(step)[:200],
            "eta_s": None if eta_s is None else max(0, int(eta_s)),
            "status": status, "updated": _iso(clock())}
+    if checklist is not None:
+        doc["checklist"] = _checklist_rows(checklist)
     _atomic_write(Path(root) / PROGRESS_REL / (task + ".json"), json.dumps(doc))
     return doc
 
 
-def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None):
+def run_kind(note, kind=None):
+    """build | inbox | triage as given; else inbox for a channel-note name,
+    unattributed for an empty note, build for any other label (v8)."""
+    if kind is not None:
+        if kind not in KINDS:
+            raise Refused(f"kind {kind!r} not in {KINDS}")
+        return kind
+    base = _base(note)
+    if not base:
+        return "unattributed"
+    return "inbox" if _NOTE_SENDER.search(base) else "build"
+
+
+def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None,
+               kind=None):
     r = result if isinstance(result, dict) else {}
     u = r.get("usage") if isinstance(r.get("usage"), dict) else {}
     return {
@@ -539,6 +600,7 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
         "cost_usd": r.get("total_cost_usd"),
         "num_turns": r.get("num_turns"),
         "error": error,
+        "kind": run_kind(note, kind),
     }
 
 
@@ -640,9 +702,11 @@ def _kill_tree(proc):
         proc.kill()
 
 
-def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, **kw):
+def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, on_start=None,
+         **kw):
     """subprocess.run, except stdin defaults to DEVNULL and a timeout kills the
-    whole process tree (claude's own children included) before re-raising."""
+    whole process tree (claude's own children included) before re-raising.
+    on_start(pid) is called once the child exists (v6: the governor slot)."""
     if capture_output:
         kw["stdout"] = kw["stderr"] = subprocess.PIPE
     if input is not None:
@@ -650,6 +714,9 @@ def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, **kw)
     elif stdin is None:
         stdin = subprocess.DEVNULL
     with subprocess.Popen(argv, stdin=stdin, **kw) as proc:
+        if on_start is not None:
+            with contextlib.suppress(Exception):
+                on_start(proc.pid)
         try:
             out, err = proc.communicate(input, timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -679,6 +746,34 @@ def _result_from_log(log_path):
     return found
 
 
+def _lanes():
+    """The sibling kit module fleet_lanes.py, loaded by path (ops/fleet_kit is
+    not a package in every tree)."""
+    name = f"fleet_kit_lanes_v{KIT_VERSION}"
+    if name in sys.modules:
+        return sys.modules[name]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("fleet_lanes.py"))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _governor(root, code, governor, governor_timeout, governor_root, budget, note,
+              since=None):
+    """The slot context for one run: a no-op when governor is None."""
+    if governor is None:
+        return contextlib.nullcontext(None)
+    lanes = _lanes()
+    if governor not in lanes.PRIORITIES:
+        raise Refused(f"governor {governor!r} not None or one of {lanes.PRIORITIES}")
+    return lanes.governor_slot(
+        code, note or "spawn", governor, governor_root, timeout=governor_timeout,
+        since=since,
+        on_wait=lambda: _status_quietly(root, code, "backoff", "Waiting For Slot", budget))
+
+
 def _finish(root, code, budget, line):
     log = Path(root) / USAGE_REL
     with contextlib.suppress(OSError):
@@ -694,13 +789,19 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           exe_source=claude_exe, cwd=None, stdin=False, return_stderr=False,
           persist=False, session_id=None, resume=None, model=None, effort=None,
           setting_sources=DEFAULT_SOURCES, floors_in_hooks=False, pin=None,
-          log_path=None, halt_file=None):
+          log_path=None, halt_file=None, governor=None, governor_timeout=None,
+          governor_root=None, governor_since=None, kind=None):
     """Start ONE headless run and wait for it. Returns the usage line (dict)
     plus "result" (and "stderr" when return_stderr). Raises Refused, before
     anything starts, when the fleet rules forbid it; the status file then reads
     refused / halted / limit. A timeout returns a line with error "timeout" and
     rc None after the process tree is killed. Budget, status and usage files
-    live under root; the child runs in cwd (default root)."""
+    live under root; the child runs in cwd (default root). governor="queued" or
+    "interactive" holds one machine-wide slot for the run (v6); a slot not won
+    within governor_timeout seconds raises Refused and nothing starts; a caller
+    that retries passes governor_since (its first ask) so it keeps its age. A
+    lane run inside fleet_lanes.run_lane takes its ONE slot here, nowhere else.
+    kind (v8) labels the run build / inbox / triage in the usage line."""
     root = Path(root)
     budget = RunBudget(root / BUDGET_REL)
     run = _run if run is None else run
@@ -709,6 +810,7 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         raise Refused("halt file present")
     try:
         check_door(bare, extra, floors_in_hooks)
+        run_kind(note, kind)  # an unknown kind refuses before anything starts
         model, effort = pick_model(writes_code, model), pick_effort(note, effort)
         if not stdin and len(prompt) > ARGV_PROMPT_MAX:
             raise Refused(f"prompt over {ARGV_PROMPT_MAX} chars in argv - pass stdin=True")
@@ -719,6 +821,27 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
                           stdin=stdin, persist=persist, setting_sources=setting_sources,
                           output_format="stream-json" if log_path else "json",
                           session_id=session_id, resume=resume)
+        slot_cm = _governor(root, code, governor, governor_timeout, governor_root,
+                            budget, note, governor_since)
+    except Refused:
+        _status_quietly(root, code, "refused", "Refused", budget)
+        raise
+    with contextlib.ExitStack() as slot_stack:
+        try:
+            slot = slot_stack.enter_context(slot_cm)
+        except _lanes().SlotTimeout as exc:
+            _status_quietly(root, code, "backoff", "No Governor Slot", budget)
+            raise Refused(str(exc)) from None
+        return _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv,
+                              model, effort, cwd, stdin, timeout, log_path,
+                              return_stderr, slot, kind)
+
+
+def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model,
+                   effort, cwd, stdin, timeout, log_path, return_stderr, slot,
+                   kind=None):
+    """The v5 run body, entered only once a governor slot (if any) is held."""
+    try:
         counted = budget.start()
     except Refused:
         _status_quietly(root, code, "refused", "Refused", budget)
@@ -733,6 +856,8 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           "creationflags": _NO_WINDOW}
     if stdin:
         kw["input"] = prompt
+    if slot and run is _run:
+        kw["on_start"] = lambda pid: _lanes().mark_child(slot, pid)
     proc, error = None, None
     try:
         with contextlib.ExitStack() as stack:
@@ -748,7 +873,8 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         error = "timeout"
     except BaseException as exc:
         _finish(root, code, budget, usage_line(None, code, note, model, effort, bare, None,
-                                               time.time() - started, type(exc).__name__))
+                                               time.time() - started, type(exc).__name__,
+                                               kind))
         raise
     if log_path:
         result = _result_from_log(log_path)
@@ -756,7 +882,8 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         result = _json_or_none(getattr(proc, "stdout", None))
     rc = getattr(proc, "returncode", None) if proc is not None else None
     line = usage_line(result, code, note, model, effort, bare, rc,
-                      time.time() - started, error)
+                      time.time() - started, error, kind)
+    line["governor_slot"] = Path(slot).name if slot else None
     _finish(root, code, budget, line)
     line["result"] = result.get("result") if isinstance(result, dict) else None
     if return_stderr:

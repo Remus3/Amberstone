@@ -31,12 +31,13 @@ re-auditing the other two.
 
     8770-8789   Sibling-C        (ARCHIVED 2026-09-06; block held, not reallocated)
     8790-8809   Sibling-B    (named: 8790 PityEngine, 8791 dashboard; 8792-8809 unassigned)
-    8810-8819   Sibling-D    (named: 8810-8814; nothing bound)
+    8810-8819   Sibling-D    (code LL; RETIRED 2026-10-04; block held, not reallocated)
     8860-8879   Daemon Slayer   (in use: 8860 8861 - see MIGRATION below)
     8888-8895   Amberstone      (in use: 8888 8889 8890 8891 8895), plus 2999,
                                 which RIOT binds - see LIVE_CLIENT
     8900-8919   Sibling-A (named: 8900 8901; bound only while the operator runs it)
     8920-8939   Sibling-E      (named: 8920; nothing bound yet - see COLLISION below)
+    8940-8959   Sibling-F      (code EW; registered 2026-10-04, FLEET-KIT v6)
 
 Three of these were assigned after the original round: the operator widened
 Sibling-D from 8810-8814 to 8810-8819 on 2026-08-27, assigned Sibling-E
@@ -45,6 +46,14 @@ Sibling-D from 8810-8814 to 8810-8819 on 2026-08-27, assigned Sibling-E
 first two are recorded independently in `C:/Sibling-D/CLAUDE.md`, which
 carried a six-row table when last read. Whether that table has grown the rsc
 row is a fact about THAT tree, not this one - do not assert it from here.
+
+**EW REPLACES LL, AND LL's BLOCK STAYS HELD (2026-10-04).** The operator
+abandoned the LL tree (Sibling-D) on 2026-10-04 and a new tree, code EW, took
+its place in the fleet. EW was assigned 8940-8959, the band directly above CS
+(MAIN order, FLEET-KIT v6 section 4c). LL's 8810-8819 is NOT freed and NOT
+handed to EW: a retired tree's band stays reserved for the same reason RM's
+does above. `ALL` is unchanged - it lists ports THIS repo binds, and RC binds
+nothing in a sibling block.
 
 RC keeps 8888-8895 because moving a live control plane is churn with no payoff;
 the block is stated so the other two projects can route around it.
@@ -181,8 +190,9 @@ DS_BLOCK = range(8860, 8880)
 LW_BLOCK = range(8900, 8920)
 RM_BLOCK = range(8770, 8790)
 RSC_BLOCK = range(8790, 8810)
-LL_BLOCK = range(8810, 8820)
+LL_BLOCK = range(8810, 8820)  # RETIRED 2026-10-04 - held, never reallocated
 CS_BLOCK = range(8920, 8940)
+EW_BLOCK = range(8940, 8960)
 
 BLOCKS = {
     "rc": RC_BLOCK,
@@ -192,15 +202,16 @@ BLOCKS = {
     "rsc": RSC_BLOCK,
     "ll": LL_BLOCK,
     "cs": CS_BLOCK,
+    "ew": EW_BLOCK,
 }
 """Every project's reserved range, keyed by short name.
 
-LW, RM, RSC, LL and CS are listed so RC can prove disjointness without reading
+LW, RM, RSC, LL, CS and EW are listed so RC can prove disjointness without reading
 their trees. Listing a sibling is NOT a licence to bind in its range, and it is
 not a claim that RC knows what the sibling has allocated INSIDE the block -
 `next_free` refuses to answer for a sibling for exactly that reason.
 
-RC carrying all five blocks is an RC-side choice, not a shared convention. Red
+RC carrying all six sibling blocks is an RC-side choice, not a shared convention. Red
 Moon deliberately does the opposite: it names only its own ports and proves
 disjointness from the negative side, with a guard that fails on any FORBIDDEN
 foreign literal (8888, 8889 and 8860 among them) appearing in its source. So do
@@ -238,7 +249,7 @@ def next_free(block: str = "rc", taken=None) -> int:
     method that nearly handed 8901 to Daemon Slayer.
 
     Only the RC and DS blocks can be answered from this repo. `taken` exists
-    for the sibling blocks: RC does not know what LW, RM, RSC, LL or CS have
+    for the sibling blocks: RC does not know what LW, RM, RSC, LL, CS or EW have
     allocated and must not guess, so asking for one of those without passing
     their allocations raises rather than returning a number that would be a
     fabrication.

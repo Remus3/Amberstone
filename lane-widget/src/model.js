@@ -16,6 +16,8 @@
 const locks = require("./locks.js");
 const inboxStatus = require("./inbox_status.js");
 const accountsMod = require("./accounts.js");
+const checklistMod = require("./checklist.js");
+const governorMod = require("./governor.js");
 
 const KIND_LANE = "lane";
 const KIND_CONTROLLER = "controller";
@@ -98,10 +100,12 @@ function makeRow(repoCode, kind, block, opts) {
     : null;
   const log = kind === KIND_LANE ? logFor(opts.logs, laneName) : null;
 
+  const laneIndex = kind === KIND_LANE ? (finiteOrNull(opts.index) === null ? 0 : opts.index) : null;
   return {
-    key: `${repoCode}:${kind}`,
+    key: kind === KIND_LANE ? `${repoCode}:${kind}:${laneIndex}` : `${repoCode}:${kind}`,
     repoCode,
     kind,
+    laneIndex,
     label: labelFor(kind, state, laneName),
     state,
     lane: laneName,
@@ -123,7 +127,34 @@ function makeRow(repoCode, kind, block, opts) {
  * `stalled` flag (which is derived from log age upstream) is all that remains.
  * No path field: display comes from the roster, never from a root.
  */
-function makeRepoRow(code, repo, laneRow, ctrlRow, now) {
+function makeRepoRow(code, repo, laneRowsIn, ctrlRow, now, laneBlocksIn) {
+  const laneRows = Array.isArray(laneRowsIn) ? laneRowsIn : [laneRowsIn];
+  const laneBlocks = Array.isArray(laneBlocksIn) ? laneBlocksIn : [];
+  // The aggregate fields describe the repo as a whole: the first RUNNING lane,
+  // else the first RECLAIMABLE one, else lane 0.
+  const laneRow = laneRows.find((r) => r.state === locks.RUNNING)
+    || laneRows.find((r) => r.state === locks.RECLAIMABLE)
+    || laneRows[0];
+  // FLEET-KIT v6/v7: one entry per lane index, in index order. A LIVE lane
+  // carries its remaining checklist (src/checklist.js); any other lane carries
+  // null, so a stale lock can never show a list.
+  const lanes = laneRows.map((r, i) => {
+    const block = isObject(laneBlocks[i]) ? laneBlocks[i] : {};
+    return {
+      index: r.laneIndex,
+      state: r.state,
+      lane: r.lane,
+      ageS: r.ageS,
+      children: r.children,
+      stalled: r.stalled,
+      checklist: r.state === locks.RUNNING
+        ? checklistMod.checklistFor({
+          text: typeof block.progressText === "string" ? block.progressText : null,
+          now,
+        })
+        : null,
+    };
+  });
   const order = finiteOrNull(repo.order);
   const ctrlPayload = payloadOf(repo.ctrl);
   const sync = inboxStatus.syncFor({
@@ -146,6 +177,7 @@ function makeRepoRow(code, repo, laneRow, ctrlRow, now) {
     ctrlAgeS: locks.ageS(ctrlPayload, now),
     children: laneRow.children,
     stalled: laneRow.stalled,
+    lanes,
     sync: inboxStatus.syncParts(sync),
   };
 }
@@ -159,8 +191,15 @@ function makeRepoRow(code, repo, laneRow, ctrlRow, now) {
  *           null when the input carries no `accounts` (no config on this
  *           host). Input: { text, mtimeMs, probeS, roles } from poll.js.
  *
+ * governor  the GOVERNOR strip line { text, alarm }, or null. Input: the
+ *           src/governor.js governorFor() verdict from poll.js, or absent.
+ *
  * repos: [ { code, root, isSelf,
- *            lane: { state, payload, pid },   // from locks.classify
+ *            lanes: [ { state, payload, pid, progressText } ]  // v6: one per
+ *                                     // lane index; v7: progressText is the
+ *                                     // LIVE lane's progress/lane-<i>.json
+ *            laneChildren: [ number ], // descendants per lane pid
+ *            lane: { state, payload, pid },   // legacy single-lane input
  *            ctrl: { state, payload, pid },
  *            children: number,                // descendants of the lane pid
  *            ctrlChildren: number,            // optional, controller pid
@@ -182,19 +221,28 @@ function buildModel(opts) {
     // a basename derived from its root.
     const code = stringOrNull(repo.code) || (index === 0 ? "RC" : `REPO-${index + 1}`);
     const logs = Array.isArray(repo.logs) ? repo.logs : [];
-    const laneRow = makeRow(code, KIND_LANE, repo.lane, {
-      now, logs, children: countOrZero(repo.children),
-    });
+    // FLEET-KIT v6: `lanes` is one classified block per lane index (the poller
+    // always sends LANE_CAP). A caller with only the single-lane `lane` block
+    // gets one lane at index 0.
+    const laneBlocks = Array.isArray(repo.lanes) && repo.lanes.length > 0
+      ? repo.lanes.slice(0, locks.LANE_CAP)
+      : [repo.lane];
+    const laneChildren = Array.isArray(repo.laneChildren) ? repo.laneChildren : [repo.children];
+    const laneRows = laneBlocks.map((block, i) => makeRow(code, KIND_LANE, block, {
+      now, logs, index: i, children: countOrZero(laneChildren[i]),
+    }));
     const ctrlRow = makeRow(code, KIND_CONTROLLER, repo.ctrl, {
       now, logs, children: countOrZero(repo.ctrlChildren),
     });
     // A root-less roster entry has nothing to observe, so it contributes no
     // lane/controller rows - only its one ALL-tab repo row below.
     if (repo.noLane !== true) {
-      decorated.push({ row: laneRow, repoIndex: index, kindIndex: 0 });
-      decorated.push({ row: ctrlRow, repoIndex: index, kindIndex: 1 });
+      laneRows.forEach((laneRow, i) => {
+        decorated.push({ row: laneRow, repoIndex: index, kindIndex: i });
+      });
+      decorated.push({ row: ctrlRow, repoIndex: index, kindIndex: laneRows.length });
     }
-    perRepo.push({ row: makeRepoRow(code, repo, laneRow, ctrlRow, now), index });
+    perRepo.push({ row: makeRepoRow(code, repo, laneRows, ctrlRow, now, laneBlocks), index });
   });
 
   // Roster order: a finite `order` first, ascending; then unordered repos;
@@ -246,7 +294,11 @@ function buildModel(opts) {
     ? accountsMod.accountsLines(accountsMod.accountsFor(Object.assign({}, o.accounts, { now })))
     : null;
 
-  return { rows, repoRows, summary, updatedAt: now, accounts };
+  // The GOVERNOR strip (FLEET-KIT v6): the poller's machine-wide verdict from
+  // src/governor.js, rendered to ONE line. null = no slot root on this host.
+  const governor = isObject(o.governor) ? governorMod.governorLine(o.governor) : null;
+
+  return { rows, repoRows, summary, updatedAt: now, accounts, governor };
 }
 
 module.exports = { KIND_LANE, KIND_CONTROLLER, worktreeTail, buildModel, makeRepoRow };

@@ -55,7 +55,7 @@ lanes = _load("lanes")
 
 @pytest.fixture
 def root(tmp_path):
-    return tmp_path / "lanes"
+    return tmp_path / "ops" / "loop" / "control" / "lanes"
 
 
 @pytest.fixture

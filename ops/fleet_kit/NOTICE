@@ -7,9 +7,10 @@ directory for the full terms.
 SCOPE
 
 The license covers every file named in this kit's MANIFEST.json -
-FLEET-COMMON.md, fleet_headless.py, LICENSE and NOTICE - and MANIFEST.json
-itself, including the FLEET-COMMON block that each tree embeds byte-for-byte
-in its CLAUDE.md. FLEET-COMMON.md carries no header of its own because that
+FLEET-COMMON.md, fleet_headless.py, fleet_watch.py, fleet_secrets.py,
+tokens.json, tokens.css, LICENSE and NOTICE - and MANIFEST.json itself,
+including the FLEET-COMMON block that each tree embeds byte-for-byte in its
+CLAUDE.md. FLEET-COMMON.md carries no header of its own because that
 block is byte-pinned; this NOTICE and LICENSE cover it.
 
 ORIGIN

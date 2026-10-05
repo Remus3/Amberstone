@@ -1043,7 +1043,7 @@ def test_inbox_responder_agreement_naming_unknown_counterparty_is_anomaly(tmp_pa
     _lines, anomalies = rc_facts.task_health_lines(_responder_rows(now), root=tmp_path, now=now)
     mine = [a for a in anomalies if "RC-InboxResponder" in a]
     assert len(mine) == 1, anomalies
-    assert "malformed:counterparties" in mine[0]
+    assert "malformed:counterparties_unmapped" in mine[0]
 
 
 def test_inbox_responder_agreement_check_crash_fails_closed(tmp_path, monkeypatch):
