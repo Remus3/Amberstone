@@ -1840,7 +1840,8 @@ AGREEMENT_CASES = [
     ("absent", None, "no_agreement", "absent"),
     ("bad-json", "RAW", "malformed:json", "malformed"),
     ("no-hop-budget", {"hop_budget": None}, "malformed:hop_budget", "malformed"),
-    ("counterparty-unknown", {"counterparties": ["ZZ"]}, "malformed:counterparties", "malformed"),
+    ("counterparty-unknown", {"counterparties": ["ZZ"]}, "malformed:counterparties_unmapped",
+     "malformed"),
     ("open-after-close", {"window_open": "2026-09-08T22:00:00"}, "malformed:window_open",
      "malformed"),
     ("expires-before-close", {"expires": "2026-09-08T20:00:00"}, "malformed:expires", "malformed"),
@@ -3543,7 +3544,7 @@ def test_a_dropped_participant_yields_an_empty_cycle(world):
     world.note(name="2026-09-07-1800-from-CS-topic.md")
     result = world.drive(participants={"RSC": world.rsc})
     assert result.termination == "disarmed"
-    assert result.disarmed_by == "malformed:counterparties"
+    assert result.disarmed_by == "malformed:counterparties_unmapped"
 
 
 def test_delivery_lands_in_a_path_carrying_a_real_space(world):
@@ -4031,6 +4032,46 @@ def test_main_defaults_the_export_unconditionally(world, tmp_path, monkeypatch):
     runner.main(["--cycle"], run=spy, spawner=world.spawner, singleton=_open_singleton,
                 parent_env=world.parent_env)
     assert spy.kwargs["export"] is export_mod.ensure_export
+
+
+def test_main_writes_the_item13_fire_checklist_start_and_end(world, tmp_path, monkeypatch):
+    """FLEET-KIT v7 item 13 (order 2026-10-05 s3.5): a live fire builds its
+    checklist, logs the block and writes progress/inbox-responder.json with
+    the REMAINING rows at fire start, and an empty list when the fire ends."""
+    root = tmp_path / "fakeroot3"
+    monkeypatch.setattr(runner, "ROOT", root)
+    (root / "ops").mkdir(parents=True)
+    seen = {}
+
+    class StartSpy(RunSpy):
+        def __call__(self, **kw):
+            prog = root / "ops/loop/control/progress/inbox-responder.json"
+            seen["start"] = json.loads(prog.read_text(encoding="ascii"))
+            seen["log"] = (root / "ops/runtime" / runner.CHECKLIST_LOG_NAME).read_bytes()
+            return super().__call__(**kw)
+
+    assert runner.main(["--cycle"], run=StartSpy(), spawner=world.spawner, export=world.export,
+                       singleton=_open_singleton, parent_env=world.parent_env) == 0
+    start = seen["start"]
+    assert start["status"] == "running"
+    assert [r["id"] for r in start["checklist"]] == ["R1", "R2", "R3"]
+    log = seen["log"].decode("utf-8").splitlines()
+    assert log[0] == "Session 1 checklist"
+    assert log[1].startswith(chr(0x2610) + " R1: ")
+    assert chr(0x2610) + " /done" in log
+    end = json.loads((root / "ops/loop/control/progress/inbox-responder.json")
+                     .read_text(encoding="ascii"))
+    assert end["checklist"] == [] and end["status"] in ("done", "failed")
+    # the run count advances once per fire
+    runner.main(["--cycle"], run=RunSpy(), spawner=world.spawner, export=world.export,
+                singleton=_open_singleton, parent_env=world.parent_env)
+    assert (root / "ops/runtime" / runner.CHECKLIST_COUNT_NAME).read_text().strip() == "2"
+
+
+def test_fire_checklist_never_raises(tmp_path):
+    blocker = tmp_path / "ops"
+    blocker.write_text("a file where a directory belongs")
+    assert runner.fire_checklist(tmp_path, "c1") is None
 
 
 def test_default_spawner_is_armed_by_one_variable_only():

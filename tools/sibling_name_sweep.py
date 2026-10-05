@@ -102,7 +102,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Mapping, NoReturn, Optional, Sequence
+from typing import Any, Callable, Iterable, Mapping, NoReturn, Optional, Sequence
 
 EXIT_CLEAN = 0
 EXIT_USAGE = 1
@@ -401,6 +401,7 @@ def config_from_parts(
     repos: Iterable[str],
     participants: Mapping[str, str],
     narrowed: Iterable[str] = (),
+    retired: Optional[Mapping[str, Any]] = None,
 ) -> SweepConfig:
     """Build an ARMED config from already-loaded parts. Used by tests and by
     the env-override path, which carries paths only and therefore no codes.
@@ -421,7 +422,24 @@ def config_from_parts(
         leaf = _leaf(raw)
         if leaf and leaf not in names:
             names.append(leaf)
+    # RETIRED siblings (MAIN order 2026-10-05: LL retired, "a retired sibling's
+    # name is still a leak"). A retired tree leaves `participants`, because the
+    # responder reads that map and must never address or spawn for it - but
+    # every value here still arms a name slot and every key still arms a code.
+    # A value is one path / bare name, or a list of them, so a project's
+    # internal name can ride beside its checkout path. Appended at the END with
+    # a default, so every existing call is unchanged.
+    retired_codes: list[str] = []
+    for code, value in (retired or {}).items():
+        items = value if isinstance(value, (list, tuple)) else [value]
+        for raw in items:
+            leaf = _leaf(str(raw)) if isinstance(raw, str) else ""
+            if leaf and leaf not in names:
+                names.append(leaf)
+        if str(code).strip():
+            retired_codes.append(str(code).strip())
     codes = tuple(str(c).strip() for c in (participants or {}) if str(c).strip())
+    codes += tuple(c for c in retired_codes if c not in codes)
     declared = {_narrow_key(n) for n in (narrowed or ()) if str(n).strip()}
     narrowed_names = tuple(n for n in names if _narrow_key(n) in declared)
     return SweepConfig(
@@ -597,7 +615,11 @@ def load_config(
     # key existed, and it is the direction a leak gate must default in.
     narrowed = [str(n) for n in (blob.get("narrowed_names") or []) if str(n).strip()]
     narrowed += [n for n in narrowed_env if n not in narrowed]
-    cfg = config_from_parts(repos, participants, narrowed)
+    # Retired siblings: read by THIS sweep only, never by the responder or the
+    # poller, so a retired code stays a needle without becoming a destination.
+    retired_raw = blob.get("retired")
+    retired = retired_raw if isinstance(retired_raw, dict) else {}
+    cfg = config_from_parts(repos, participants, narrowed, retired)
     cfg.source = str(config_path)
     if cfg.mode == MODE_FAULT:
         cfg.detail = "config parsed but yields zero usable sibling names"

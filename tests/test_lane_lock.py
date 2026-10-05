@@ -102,7 +102,7 @@ def _write_lock(root: Path, payload: dict) -> Path:
 def root(tmp_path):
     # Deliberately NOT created - a read of a lane root that does not exist yet
     # must answer FREE without conjuring the directory.
-    return tmp_path / "lanes"
+    return tmp_path / "ops" / "loop" / "control" / "lanes"
 
 
 @pytest.fixture
@@ -135,15 +135,22 @@ def test_lane_roster_and_single_slot():
     assert lanes.LANES == (
         "upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated",
         "queue")
-    assert lanes.MAX_SLOTS == 1, "every lane is mutually exclusive with the rest"
+    # FLEET-KIT v6 (MAIN 2237 4a): up to three DIFFERENT lanes at once, each
+    # name exclusive. Was MAX_SLOTS == 1; tests/test_lanes_fleet_v6.py owns
+    # the multi-lane behaviour.
+    assert lanes.LANE_CAP == 3
 
 
 # ---- the three states ------------------------------------------------------
 
 def test_free_when_no_lock_exists_and_the_read_creates_nothing(root):
-    assert lanes.lane_state(root) == {
+    st = lanes.lane_state(root)
+    assert {k: st[k] for k in ("state", "lane", "pid", "run_id", "worktree",
+                               "age_s")} == {
         "state": "FREE", "lane": None, "pid": None, "run_id": None,
         "worktree": None, "age_s": None}
+    assert st["running"] == 0
+    assert [r["state"] for r in st["lanes"]] == ["FREE"] * lanes.LANE_CAP
     assert not root.exists(), "lane_state must not create its own root"
 
 
@@ -227,17 +234,23 @@ def test_full_state_cycle_free_running_reclaimable_running_free(root, worktree, 
 
 # ---- refuse, do not queue --------------------------------------------------
 
-def test_second_fire_against_a_live_lane_is_refused_and_mutates_nothing(root, worktree, worktree2):
-    lanes.try_acquire_lane(
-        "upgrade", run_id="r1", worktree=str(worktree), root=root)
+def test_a_fire_with_every_index_held_is_refused_and_mutates_nothing(root, tmp_path):
+    """v6: a DIFFERENT lane now runs beside a live one, up to LANE_CAP; the
+    fire past the cap is the one that is refused, and it still queues nothing."""
+    for i, name in enumerate(("upgrade", "research", "uiux")):
+        wt = tmp_path / f"wt-cap-{name}"
+        wt.mkdir()
+        assert lanes.try_acquire_lane(
+            name, run_id=f"r{i}", worktree=str(wt), root=root)["ok"]
 
     before = _snapshot(root)
-    res = lanes.try_acquire_lane(
-        "research", run_id="r2", worktree=str(worktree2), root=root)
+    wt = tmp_path / "wt-cap-ds"
+    wt.mkdir()
+    res = lanes.try_acquire_lane("ds", run_id="r9", worktree=str(wt), root=root)
     after = _snapshot(root)
 
-    assert res == {"ok": False, "refused": "lane_held",
-                   "holder": "upgrade", "pid": os.getpid()}
+    assert res["ok"] is False and res["refused"] == "lanes_full"
+    assert sorted(res["holders"]) == ["research", "uiux", "upgrade"]
     assert after == before, "a refused fire wrote to disk - it must queue nothing"
 
 
@@ -388,7 +401,7 @@ def test_main_tree_root_falls_back_when_git_is_absent(tmp_path):
 
 def test_guard_rejects_every_spelling_of_the_main_tree(tmp_path):
     """Equality is path-normalized, not string-compared."""
-    root = tmp_path / "lanes"
+    root = tmp_path / "ops" / "loop" / "control" / "lanes"
     base = str(lanes.REPO_ROOT)
     for spelling in (base, base.replace("\\", "/"), base + "/", base + "/."):
         with pytest.raises(ValueError, match="never run against the main tree"):

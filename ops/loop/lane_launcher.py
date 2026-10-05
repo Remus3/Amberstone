@@ -33,6 +33,7 @@ strictly worse than no lock at all.
 from __future__ import annotations
 
 import importlib.util
+import logging
 import os
 import subprocess
 import sys
@@ -40,6 +41,7 @@ import time
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
+_log = logging.getLogger("rc.lane_launcher")
 
 
 def _load_lanes():
@@ -372,9 +374,58 @@ def _spawn(runner: Path, prompt: Path, cwd: Path, log: Path):
         raise LaneLaunchError(f"spawn failed: {exc}") from exc
 
 
+def _progress_mod():
+    """ops/loop/lane_progress.py, bound late (a seam for tests)."""
+    try:
+        return importlib.import_module("ops.loop.lane_progress")
+    except ImportError:
+        pass
+    modname = "rc_loop_lane_progress"
+    if modname in sys.modules:
+        return sys.modules[modname]
+    spec = importlib.util.spec_from_file_location(modname, _HERE / "lane_progress.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _fire_count(lane: str, log_dir: Path | None = None) -> int:
+    """The fire's run count - FLEET-COMMON item 13 a's session n for a headless
+    fire. One log per fire (`lane_<lane>_<run_id>.log`), so this fire is the
+    next one. Best-effort: an unreadable log dir counts as the first fire."""
+    d = LOG_DIR if log_dir is None else Path(log_dir)
+    try:
+        return 1 + sum(1 for _ in d.glob(f"lane_{lane}_*.log"))
+    except OSError:
+        return 1
+
+
+def _lane_checklist(lane: str, token, *, session, progress_root, emit, log_dir):
+    """FLEET-COMMON item 13 d: the fire's checklist, written to
+    progress/lane-<i>.json in the MAIN checkout. None when the token names no
+    lane index (nothing to key the file on) - progress never blocks a fire."""
+    index = lanes.index_of(token)
+    if index is None:
+        return None
+    try:
+        lp = _progress_mod()
+        n = _fire_count(lane, log_dir) if session is None else int(session)
+        return lp.LaneProgress.for_lane(
+            index, n,
+            [("L1", f"Prepare the {lane} lane worktree"),
+             ("L2", f"Start the {lane} worker"),
+             ("L3", f"Run the {lane} worker to its exit")],
+            root=progress_root, emit=emit or _log.info)
+    except Exception as exc:  # noqa: BLE001 - progress must never stop a fire
+        _log.warning("lane %s: checklist unavailable: %s", lane, exc)
+        return None
+
+
 def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
                 root: Path | None = None, log_dir: Path | None = None,
-                spawn=None) -> dict:
+                spawn=None, progress_root: Path | None = None,
+                session: int | None = None, emit=None) -> dict:
     """Start `lane`'s worker and re-point its lock at the spawned process.
 
     `token` is what `try_acquire_lane` handed back. On ANY failure the lane is
@@ -383,11 +434,25 @@ def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
 
     `spawn` is the injection seam for tests - the default really does start a
     process, and no test should.
+
+    Kit v7 item 13: the fire's checklist is printed through `emit` (default:
+    this module's logger) and written to progress/lane-<i>.json in the MAIN
+    checkout (`progress_root` overrides, for tests) at fire start and after
+    each task. The last task stays `worker running` - the worker runs detached
+    and outlives this call, and the widget reads an `updated` older than 2x
+    its eta as STALE rather than live.
     """
     spawn = _spawn if spawn is None else spawn
+    prog = _lane_checklist(lane, token, session=session,
+                           progress_root=progress_root, emit=emit,
+                           log_dir=log_dir)
+    if prog is not None:
+        prog.start()
     try:
         prompt = command_path(lane, root=root)
-        wt = ensure_worktree(lane, base=base, root=root)
+        wt =ensure_worktree(lane, base=base, root=root)
+        if prog is not None:
+            prog.complete("L1")
         log = _log_path(lane, run_id, log_dir=log_dir)
         proc = spawn(RUNNER, prompt, wt, log)
         pid = getattr(proc, "pid", None)
@@ -399,15 +464,24 @@ def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
             # cannot track is worse than no worker.
             _kill(pid)
             raise LaneLaunchError("could not re-point the lane lock at the worker")
-    except LaneLaunchError:
+        if prog is not None:
+            prog.complete("L2")
+            prog.set_state("L3", "worker running")
+    except LaneLaunchError as exc:
+        if prog is not None:
+            prog.fail(str(exc)[:160])
         lanes.release_lane(token)
         raise
     except Exception as exc:  # noqa: BLE001 - any fault must still free the lane
+        if prog is not None:
+            prog.fail(f"launch failed: {exc}"[:160])
         lanes.release_lane(token)
         raise LaneLaunchError(f"launch failed: {exc}") from exc
+    # `progress` is the fire's LaneProgress (None when unavailable): a runner
+    # that waits for the worker - queue_loop - closes L3 with it.
     return {"lane": lane, "run_id": str(run_id), "pid": pid,
             "worktree": str(wt), "log": str(log), "prompt": str(prompt),
-            "started_at": time.time()}
+            "started_at": time.time(), "progress": prog}
 
 
 def _kill(pid: int) -> None:
