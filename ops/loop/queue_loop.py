@@ -908,9 +908,14 @@ def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
 
     token = claim.get("token")
     outcome, detail, pid = OUTCOME_COMPLETED, "", None
+    # Kit v7 item 13 d: the fire's checklist (built and written by launch_lane
+    # into progress/lane-<i>.json, the cycle number as its session n). This
+    # driver is the runner that WAITS for the worker, so it closes L3.
+    prog = None
     try:
         try:
-            run = launch(lane, run_id=run_id, token=token)
+            run = launch(lane, run_id=run_id, token=token, session=int(cycle),
+                         emit=_emit)
         except lane_launcher.LaneLaunchError as exc:
             # launch_lane has ALREADY released the lane on this path; the
             # finally below releases again, which is deliberate - release_lane
@@ -920,6 +925,7 @@ def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
             outcome, detail = OUTCOME_LAUNCH_FAILED, str(exc)[:400]
         else:
             pid = run.get("pid")
+            prog = run.get("progress")
             if not pid:
                 outcome, detail = OUTCOME_LAUNCH_FAILED, "launch returned no pid"
             else:
@@ -967,6 +973,14 @@ def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
                         break
                     sleep(poll_s)
     finally:
+        if prog is not None:
+            try:
+                if outcome == OUTCOME_COMPLETED:
+                    prog.complete("L3", step="worker exited")
+                else:
+                    prog.fail(f"{outcome}: {detail}"[:160])
+            except Exception as exc:  # noqa: BLE001 - progress never fails a cycle
+                _emit(f"cycle {cycle}: checklist update failed: {exc}")
         # Every path, including an exception nobody predicted. The release runs
         # BEFORE that exception escapes, because a driver that dies holding the
         # only lane slot wedges all ten lanes until someone reclaims by hand.

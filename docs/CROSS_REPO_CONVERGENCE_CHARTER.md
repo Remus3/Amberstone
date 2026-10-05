@@ -531,3 +531,30 @@ current roster: a thread reaches EVERY participant, which is now six. Every
 denominator written from today forward uses the roster current on that day, never the
 five in the text above. `docs/CHANNEL.md` is the authority for the current roster;
 this charter is the greppable record of how the rules got here.
+
+---
+
+# ROSTER ADDENDUM 2026-10-05 - EW joins, LL is RETIRED, and nothing above this line is amended
+
+Appended under the same rule as the 2026-09-20 addendum: every line above, both
+addenda's history included, keeps its bytes and its line numbers.
+
+WHAT CHANGED (operator order 2026-10-04, relayed by MAIN 2026-10-05). The LL tree was
+abandoned by its operator and is RETIRED. A new tree, code EW, joined. The fleet is now
+MAIN plus six siblings: RC, CS, LW, SS, RSC and EW.
+
+| Code | Standing from 2026-10-05 |
+|---|---|
+| CS | Participant. |
+| EW | Participant. JOINED 2026-10-05. Not a carrier of `docs/CHANNEL.md` until a five-way re-pin says otherwise. |
+| LL | RETIRED 2026-10-04. Not deleted: its inbox notes, its history rows above and every past vote stand as written. Notes are no longer addressed to it and no headless run is spawned for it. Its port block stays reserved. |
+| LW | Participant. |
+| RC | Participant. |
+| RSC | Participant. |
+| SS | Participant, not a carrier. |
+
+LL's cells above - the "not answered" row, the retracted hooks claim, the votes at
+CHANNEL_VERSION 2 - are a record of what LL did while it was a participant, and are
+deliberately NOT struck through. `docs/CHANNEL.md` still lists LL in its section 0
+roster and does not list EW: that file is pinned byte-for-byte across five trees, so
+its roster changes only in a joint re-pin, never by one tree alone.

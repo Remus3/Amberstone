@@ -230,7 +230,7 @@ def _dead_pid() -> int:
 @pytest.fixture
 def lanesdir(tmp_path, monkeypatch):
     """Redirect the lane-lock root at a tmp dir (production leaves it None)."""
-    root = tmp_path / "lanes"
+    root = tmp_path / "ops" / "loop" / "control" / "lanes"
     monkeypatch.setattr(mod, "LANES_ROOT", root)
     return root
 
@@ -390,7 +390,7 @@ def test_status_and_control_share_one_lane_root(tmp_path, monkeypatch):
     """
     from dashboard import routes_loop_control as ctlmod
 
-    monkeypatch.setattr(_lanes_mod, "DEFAULT_ROOT", tmp_path / "lanes")
+    monkeypatch.setattr(_lanes_mod, "DEFAULT_ROOT", tmp_path / "ops" / "loop" / "control" / "lanes")
     monkeypatch.setattr(mod, "LANES_ROOT", None)      # production value
     monkeypatch.setattr(mod, "_last_commit", lambda: None)
 

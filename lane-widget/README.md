@@ -14,9 +14,15 @@ no code path that mutates another repo's state.
 Per repository in the roster, a bounded and explicitly named set of paths - no
 recursion, no directory walk, no `rglob`:
 
-- `<root>/ops/loop/control/lanes/0.lock` - the single lane slot. There is at
-  most one lane per repo, and the lane NAME is a field inside that one lock
-  rather than a per-lane filename.
+- `<root>/ops/loop/control/lanes/0.lock`, `1.lock` and `2.lock` - the lane
+  slots (FLEET-KIT v6, `fleet_lanes.LANE_CAP_MAX = 3`). A repo runs up to three
+  lanes at once, one lock per lane INDEX; the lane NAME is a field inside the
+  lock, never the filename, so any roster lane can sit at any index. The three
+  are read by NAME every fast tick - the `lanes` directory is never listed.
+- `<root>/ops/loop/control/progress/lane-<i>.json` - read ONLY for a lane
+  whose lock is live (FLEET-KIT v7, FLEET-COMMON item 13 d), one named file per
+  live lane, never for a free or stale one. Its `checklist` field is that lane
+  fire's REMAINING tasks, in order.
 - `<root>/ops/loop/control/RUNNING.lock` - the controller lock.
 - A **non-recursive listing** of `<root>/ops/loop/reports` for the log
   heartbeat. Only filenames and mtimes are used; the logs are legitimately
@@ -32,15 +38,53 @@ recursion, no directory walk, no `rglob`:
 - One **machine-wide process snapshot**, taken once per slow tick and reused
   for every repository, to count the descendants of each live lock pid.
 
+Once per slow tick, machine-wide (not per repository), for the GOVERNOR strip:
+
+- `%ProgramData%\lw-loop\slots\0.lock`, `1.lock`, `2.lock` - the three shared
+  governor slots, read by NAME (plus one stat of a slot whose bytes do not
+  parse, which `fleet_lanes` judges by mtime). The slot root is never listed.
+- ONE **non-recursive listing** of its sibling `%ProgramData%\lw-loop\queue`
+  and one read per `*.ticket` in it (at most 32) - the fair-queue waiters.
+- No `ProgramData` in the environment means no reads and no strip.
+
 ## The ALL tab
 
 One row per repository, in the fixed order the roster's `order` field gives,
 including a repository with no live lane or no checkout on this host. Each row
-is the display name, a state word, ONE combined `Lane:` line (lane and
-controller together - `Lane: <name> 12m`, `Lane: free`,
-`Lane: STALE (reclaimable)`) and ONE `Sync:` line. The per-repo tabs keep the
-lane / controller cards. Display names and order come from the optional
-`roster` key of the gitignored roster file (see the tracked example).
+is the display name, a state word, ONE line per lane index and ONE `Sync:`
+line:
+
+```
+queue (lane 0) 12m
+  [ ] C2: Run the suite (builder running, ~4m)
+  [ ] C3: Commit the adoption
+  +2 more
+Lane 1: free
+Lane 2: STALE (reclaimable)
+```
+
+A LIVE lane shows its NAME (from the lock payload), its index and age, then
+its remaining checklist items from `progress/lane-<i>.json`, one short line
+each, capped at 3 and then `+N more`. With no progress file or no `checklist`
+field it reads `<name> (lane i) <age> - no checklist`; when the file's
+`updated` is older than 2x its `eta_s` (an undatable stamp or a missing
+`eta_s` counts as older; `eta_s` 0 gets a 30 s floor) it reads
+`- checklist STALE` and NO items - a stale list is never shown as live. A free
+lane shows `free`, a dead or pid-reused lock `STALE (reclaimable)`. The
+controller lock folds into lane 0 only when every lane is free
+(`Lane 0: controller 15m`). The per-repo tabs keep one card per lane index plus
+the controller card. Display names and order come from the optional `roster`
+key of the gitignored roster file (see the tracked example).
+
+Under the ACCOUNTS strip sits ONE **GOVERNOR strip** (`src/governor.js`) for
+the whole machine: `Governor 2/3 - RC, CS - queue 1` - slots held out of three,
+the repos holding them in slot order, and the live queue depth, with
+`- N stale` (alarm-styled) when a slot is reclaimable. Slot liveness mirrors
+`fleet_lanes`: pid or executor child alive and not a start-time stranger,
+never past twice the stale window. A slot's `repo` field may be a checkout
+PATH (RC's controller passes its root); it is mapped to its roster code, and
+anything that is neither a roster root nor a bare code renders as `?` - a path
+never reaches the screen.
 
 Above the rows sits ONE **ACCOUNTS strip** (`src/accounts.js`): one line per
 proxy account, labelled by ROLE from the roster's `accounts.roles`, never by
@@ -74,10 +118,12 @@ roster file is the correct fresh-clone answer and yields RC alone, not an error.
 
 ## What it deliberately does NOT read
 
-- `C:\ProgramData\lw-loop\slots` - **not an inventory.** It is held only for the
-  moment around each executor call and its payload carries no lane field, so it
-  is empty in normal operation and could not identify a lane even when it is
-  not.
+- A **listing** of the governor slot root, or any slot beyond `0..2.lock`. The
+  slots are read by name for the GOVERNOR strip only; they are held just for
+  the moment around each executor call and carry no lane field, so they are
+  never used to identify a lane - the lane locks do that.
+- A **listing** of `ops/loop/control/lanes` or `ops/loop/control/progress`.
+  Both are read by exact filename only.
 - **Named mutexes** - they carry no lane identity and cannot be enumerated at
   all on Windows.
 - **Log contents.** Only mtimes are stat'ed. There is no log tailing in v1, and

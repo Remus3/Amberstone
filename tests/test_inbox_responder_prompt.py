@@ -266,7 +266,17 @@ def test_system_prompt_states_the_data_rule_and_requires_a_non_empty_proposal():
     assert "nothing to measure this cycle" in SYSTEM_PROMPT
     assert "Read, Glob and Grep" in SYSTEM_PROMPT
     assert "no write tool" in SYSTEM_PROMPT
-    assert SYSTEM_PROMPT.count("\n\n") == 6, "seven paragraphs"
+    assert SYSTEM_PROMPT.count("\n\n") == 7, "eight paragraphs"
+
+
+def test_prompt_carries_the_item13_checklist_paragraph():
+    """FLEET-KIT v7 item 13 / order 3.5: the spawned session is told the fire's
+    checklist and that the runner logs it and writes write_progress(checklist=).
+    The session itself stays read-only with JSON-only stdout."""
+    assert "Session checklist" in SYSTEM_PROMPT
+    assert "R1" in SYSTEM_PROMPT and "R3" in SYSTEM_PROMPT and "/done" in SYSTEM_PROMPT
+    assert "write_progress(checklist=)" in SYSTEM_PROMPT
+    assert "do not print" in SYSTEM_PROMPT
 
 
 def test_module_is_ascii_and_imports_no_subprocess():

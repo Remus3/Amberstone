@@ -103,6 +103,15 @@ except ModuleNotFoundError:
         Path(__file__).resolve().parents[2] / "core" / "polled_json.py",
     ).atomic_write_bytes
 
+# FLEET-KIT v7 item 13 d: the per-cycle session checklist, mirrored to the log
+# and to progress/loop.json in the MAIN checkout. Same import-then-bind shape as
+# polled_json above, so the test suite's redirect of the package module (see
+# tests/conftest.py redirect_lane_progress_root) is the object used here too.
+try:
+    from ops.loop import lane_progress
+except ModuleNotFoundError:
+    lane_progress = _bind("rc_loop_lane_progress", "lane_progress.py")
+
 _HERE = Path(__file__).resolve().parent
 # The default config is a REPO ASSET, not a machine location. This literal used
 # to be an absolute C: path, which resolves on exactly ONE host: every other
@@ -1109,6 +1118,21 @@ def claim_repo():
     return run_id
 
 
+def cycle_checklist(cycle, *, root=None, emit=None):
+    """FLEET-COMMON item 13 for one loop cycle (a fire): session n = the cycle.
+
+    The controller holds no lane lock, so there is no lane index to key a
+    lane-<i>.json on; it writes progress/loop.json (lane_progress.LOOP_TASK)
+    instead of borrowing an index a real lane may hold."""
+    return lane_progress.LaneProgress(
+        lane_progress.LOOP_TASK, int(cycle),
+        [("C1", "Choose the cycle directive"),
+         ("C2", "Run the executor on the directive"),
+         ("C3", "Audit the cycle diff"),
+         ("C4", "Record the directive outcome")],
+        root=root, emit=log if emit is None else emit)
+
+
 def main():
     global RUN_ID
     # RM-506: the durable disarm is checked BEFORE claiming the repo or
@@ -1167,6 +1191,8 @@ def main():
         # where no handshake is in flight, so a re-exec cannot abandon an
         # executor waiting on claude.done.
         cycle_top_code_guard(cycle)
+        prog = cycle_checklist(cycle)
+        prog.start()
         override = consume_directive_override()
         src = cycle_source(CFG, override)
         if src == "override":
@@ -1183,11 +1209,13 @@ def main():
                 # NO_WORK signal. Advance to the next cycle instead of terminating the whole
                 # run; the no-progress (same-sha) guard still stops a persistent outage.
                 log(f"cycle {cycle}: director adjudicator error (retries exhausted) - advancing, NOT terminating")
+                prog.fail("director adjudicator error (retries exhausted)")
                 continue
             if body[:40].upper().find("NO_WORK") >= 0:
                 stop("director returned NO_WORK")
         awrite(CTL / "directive.md", body)
         awrite(CTL / "cycle.txt", str(cycle))
+        prog.complete("C1")
         # The channel-specific half of a cycle (the AHK typing handshake + done
         # sentinel; one `claude -p` call on the sdk channel) lives behind the
         # executor seam. Artifacts both channels share stay here: directive.md,
@@ -1195,9 +1223,14 @@ def main():
         # Slot held ONLY around the executor call - never around git, the director
         # or the auditor, so a long merge in this repo cannot starve the other one.
         pre_hold_reap(int(CFG.get("max_concurrent_lanes", 2)))
+        prog.set_state("C2", "executor running", CFG.get("cycle_deadline_sec"))
+        # FLEET-KIT v6: this slots.hold IS the executor call's ONE governor
+        # slot. Never also pass the kit's governor kwarg to a spawn made inside it - two slots
+        # in one call deadlock three lanes against a width of three.
         with slots.hold(int(CFG.get("max_concurrent_lanes", 2)),
                         repo=str(ROOT), run_id=RUN_ID, cycle=cycle, log=log):
             rec = EXEC.run(cycle, body, src)
+        prog.complete("C2")
         done = rec.raw
         last_done = done
         new_sha = rec.sha or head()
@@ -1247,9 +1280,11 @@ def main():
         if not regress:
             last_clean_sha = new_sha
         log(f"cycle {cycle}: audit -> {'REGRESS' if regress else 'CLEAN'}")
+        prog.complete("C3")
         # Persist the resolved directive to the chain so the NEXT director cycle
         # sees what was already issued + shipped and builds on it (continuity fix).
         record_directive_outcome(cycle, body, prev_sha, new_sha, done, verdict)
+        prog.complete("C4")
         prev_sha = new_sha
 
     stop(f"max_cycles {CFG['max_cycles']} reached")

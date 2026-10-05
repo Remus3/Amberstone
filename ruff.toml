@@ -75,6 +75,10 @@ exclude = [
 "ops/rc_dev_runtime.py" = ["B", "BLE001"]
 "ops/rc_supervisor.py" = ["B", "BLE001"]
 "dashboard/routes_bridge_pending.py" = ["BLE001"]
+# FLEET-KIT files are vendored byte-for-byte from MAIN and pinned by
+# ops/fleet_kit/MANIFEST.json - a local lint fix would fail conformance, so
+# MAIN owns their style (kit v8 fleet_inbox.py carries UP031 %-formats).
+"ops/fleet_kit/*.py" = ["UP", "E", "B", "BLE001"]
 # Frozen bridge tools - exclude all lint upgrades to prevent auto-fix drift
 "tools/bridge_pull_tasks.py"   = ["UP", "E", "B", "BLE001"]
 "tools/bridge_post_result.py"  = ["UP", "E", "B", "BLE001"]

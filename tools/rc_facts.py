@@ -78,6 +78,9 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 _APP = Path(__file__).resolve().parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
+# FLEET-KIT v7 item 13: the session counter lives in the tracked hand-off's
+# `SESSION: <n>` line; main() prints the session-start checklist block FIRST.
+_HANDOFF = _ROOT / "RC-NEXT-SESSION.txt"
 _LEGION_BASE = "https://legion-rc:8888"
 _TIMEOUT = 2.5
 
@@ -1121,8 +1124,24 @@ def main(session: str | None = None) -> int:
     # never names an absent file). Now stdout, then the flush, and only THEN
     # the record. A record written before delivery marks a block reported that
     # a killed hook never delivered.
+    # FLEET-KIT v7 item 13: the `Session <n> checklist` block goes out FIRST,
+    # ahead of the anomalies. session_start_block never raises.
+    checklist = ""
+    try:
+        from tools import session_checklist as _scl
+        checklist = _scl.session_start_block(_HANDOFF) + "\n\n"
+    except Exception as exc:  # noqa: BLE001 - a hook must never fail the session start
+        checklist = f"Session checklist unavailable: {type(exc).__name__}\n\n"
     delivered = True
     try:
+        try:
+            sys.stdout.write(checklist)
+        except UnicodeEncodeError:
+            # pythonw's piped stdout is cp1252 and cannot encode U+2610;
+            # send the block as UTF-8 bytes rather than lose it or the probe.
+            sys.stdout.flush()
+            sys.stdout.buffer.write(checklist.encode("utf-8"))
+            sys.stdout.flush()
         if anomalies:
             head = "## ! Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
             sys.stdout.write(head)

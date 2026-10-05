@@ -218,7 +218,16 @@ _SYSTEM_PROMPT_PARAGRAPHS = (
         "not write the tag line and do not write the measurement section: the executor "
         "prepends the tag and appends the measurement results itself."
     ),
+    (
+        "Session checklist (fleet rule 13). This fire's checklist is: R1 read the "
+        "fenced note, R2 choose the measurements it needs, R3 return the JSON "
+        "proposal, then /done. Work those tasks in that order. Because this session "
+        "has no write tool and its stdout is the proposal only, the runner builds the "
+        "Checklist for you, prints it to its log and writes it with "
+        "write_progress(checklist=) at fire start and when the fire ends; do not print "
+        "a checklist yourself."
+    ),
 )
 
 SYSTEM_PROMPT = "\n\n".join(_SYSTEM_PROMPT_PARAGRAPHS)
-"""The `--system-prompt` argument - seven paragraphs, fixed text, no per-cycle value."""
+"""The `--system-prompt` argument - eight paragraphs, fixed text, no per-cycle value."""

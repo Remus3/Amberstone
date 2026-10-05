@@ -39,7 +39,7 @@ class FakeProc:
 @pytest.fixture
 def lane_root(tmp_path, monkeypatch):
     """Redirect the lane lock dir AND the worktree base at a tmp sandbox."""
-    root = tmp_path / "lanes"
+    root = tmp_path / "ops" / "loop" / "control" / "lanes"
     monkeypatch.setattr(lanes, "DEFAULT_ROOT", root)
     monkeypatch.setattr(launcher, "WORKTREE_BASE", tmp_path / "worktrees")
     monkeypatch.setattr(launcher, "LOG_DIR", tmp_path / "reports")

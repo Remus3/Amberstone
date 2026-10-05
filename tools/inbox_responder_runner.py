@@ -731,8 +731,14 @@ def load_agreement(root, participants: Mapping[str, Any], *, now: datetime):
     parties = record.get("counterparties")
     if not isinstance(parties, list) or not parties or not all(isinstance(p, str) for p in parties):
         return None, "malformed:counterparties"
+    # Two details, not one (the contract_version precedent below): a BROKEN
+    # field and a well-formed field naming a code the participants map no
+    # longer carries are both refusals, but the second is a stale record after
+    # a roster swap (2026-10-04: the map traded a retired code for EW, the
+    # record did not), and an operator reading the row needs to know which.
+    # The code itself never reaches the detail - participant keys stay off logs.
     if any(p not in participants for p in parties):
-        return None, "malformed:counterparties"
+        return None, "malformed:counterparties_unmapped"
     if not isinstance(record.get("note"), str):
         return None, "malformed:note"
     budget = record.get("hop_budget")
@@ -1295,6 +1301,61 @@ def log_end(log_root, payload: dict) -> None:
     path = invocations_path(log_root)
     _append_line(path, payload)
     _trim(path)
+
+
+CHECKLIST_TASK = "inbox-responder"
+CHECKLIST_LOG_NAME = "inbox_responder_checklist.txt"
+CHECKLIST_COUNT_NAME = "inbox_responder_fires.txt"
+CHECKLIST_ROWS = (
+    ("R1", "Read the fenced inbox note"),
+    ("R2", "Choose the measurements the note needs"),
+    ("R3", "Return the JSON proposal; executor validates and delivers"),
+)
+
+
+def fire_checklist(log_root, cycle_id: str, *, done: bool = False,
+                   termination: Optional[str] = None) -> Optional[str]:
+    """FLEET-KIT v7 item 13 for a responder fire (order 2026-10-05 section 3.5).
+
+    The spawned session is read-only with JSON-only stdout, so the RUNNER
+    builds the fire's Checklist, writes the rendered block to its log
+    (ops/runtime/inbox_responder_checklist.txt) and the remaining rows into the
+    item-12 progress file ops/loop/control/progress/inbox-responder.json via
+    write_progress(checklist=) - at fire start and when the fire ends. Never
+    raises: a progress fault must not cost the tick. Returns the block.
+    """
+    try:
+        from tools import session_checklist as scl
+        rows = [] if done else [{"id": i, "task": t, "state": None, "eta_s": None}
+                                for i, t in CHECKLIST_ROWS]
+        if not done:
+            rows[0]["state"], rows[0]["eta_s"] = "responder running", TASK_ETL_S
+        # A headless fire's <n> is its RUN COUNT (item 13 a), kept beside the
+        # log; the start write advances it, the end write reuses it.
+        counter = _runtime(log_root) / CHECKLIST_COUNT_NAME
+        counter.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            n = int(counter.read_text(encoding="ascii").strip() or 0)
+        except (OSError, ValueError):
+            n = 0
+        if not done:
+            n += 1
+            ctmp = counter.with_name(counter.name + ".tmp")
+            ctmp.write_bytes(f"{n}\n".encode("ascii"))
+            ctmp.replace(counter)
+        block = scl.render_start(n, rows, note=f"responder fire {cycle_id}")
+        log = _runtime(log_root) / CHECKLIST_LOG_NAME
+        log.parent.mkdir(parents=True, exist_ok=True)
+        tmp = log.with_name(log.name + ".tmp")
+        tmp.write_bytes((block + "\n").encode("utf-8"))
+        tmp.replace(log)
+        status = "running" if not done else ("failed" if "failed" in str(termination) else "done")
+        step = f"fire {cycle_id} " + ("start" if not done else f"end: {termination}")
+        scl.write_progress(log_root, CHECKLIST_TASK, 100 if done else 5, step,
+                           None if done else TASK_ETL_S, status, checklist=rows)
+        return block
+    except Exception:  # noqa: BLE001 - never cost the tick that writes it
+        return None
 
 
 def _end_payload(result: CycleResult) -> dict:
@@ -2812,6 +2873,11 @@ def main(argv=None, *, run=run_once, spawner=None, export=None, singleton=None,
             recorder = RecordingSpawner(spawner) if reporting else None
             live_before = live_surface_digests(ROOT, participants) if reporting else {}
 
+            # FLEET-KIT v7 item 13: live fires only, like write_idle below - a
+            # dry cycle describes a scratch world and must not move live files.
+            if not dry:
+                fire_checklist(log_root, cycle_id)
+
             result = run(cycle_id=cycle_id, root=world["root"], repo_root=ROOT,
                          inbox=world["inbox"], participants=world["participants"],
                          spawner=spawner if recorder is None else recorder,
@@ -2824,6 +2890,8 @@ def main(argv=None, *, run=run_once, spawner=None, export=None, singleton=None,
             # describes a scratch world - and a status fault never costs the
             # tick that wrote it.
             if not dry:
+                fire_checklist(log_root, cycle_id, done=True,
+                               termination=getattr(result, "termination", None))
                 with contextlib.suppress(Exception):
                     fleet_route.write_idle(POLL_INTERVAL_S)
 

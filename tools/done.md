@@ -20,6 +20,14 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > Run long steps (CI watch, suites) as background commands so the pane shows only
 > the compact summaries.
 
+> **SESSION CHECKLIST (FLEET-KIT v7 item 13; operator order 2026-10-05, relayed by MAIN).**
+> `/done` is the LAST line of every `Session <n> checklist` and RUNS UNPROMPTED once no
+> other task remains - the session invokes it itself; the operator then only clears.
+> The "no checklist" above is about /done's OWN output: it prints no checklist, review
+> or recap, only the one completion line. The session counter is the `SESSION: <n>`
+> line in `RC-NEXT-SESSION.txt` (owner: `tools/session_checklist.py`); section 10
+> writes `SESSION: <n+1>`.
+
 > **SHAPE (measured 2026-07-26, LEDGER 1065; section 2c retired 2026-08-04, RM-157).**
 > This ritual is FOUR PHASES, and the ordering is load-bearing rather than cosmetic:
 > **Phase 1** the fast local gate (section 0-0b, target 60-90s) -
@@ -64,6 +72,8 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > is not trustworthy as a gate. Do NOT adopt it by suppressing the six.
 
 ### 0. Local check gate - commit only when green
+
+**Pre-flight (FLEET-KIT v7 item 13): every checklist task done or carried into the hand-off.** Walk this session's `Session <n> checklist`: each task is either done (read back) or copied into the section-10 hand-off as an open item. None is dropped.
 
 **First, peek for a queued Mission Control intent** (shortcuts 1 + 2, S3). The done ritual IS the safe boundary a queued intent waits for:
 
@@ -287,9 +297,20 @@ Then add this session's own items, sourced from ground truth this turn, not memo
 
 Keep it self-contained - the next session boots with zero context: name the next action first, then the key file paths / endpoints / live-state, the acceptance check, and any "already shipped - don't re-investigate" note:
 
+**SESSION counter (FLEET-KIT v7 item 13).** Before writing, read the next value:
+`python tools/session_checklist.py --next` (prints n+1 from the CURRENT file's
+`SESSION: <n>` line; exit 1 when the line is missing - then derive n from
+`git log --oneline -- RC-NEXT-SESSION.txt | wc -l` + 1 and say so in the hand-off).
+Put `SESSION: <n+1>` as the line under the `------------` underline. After the write,
+`python tools/session_checklist.py --stamp <n+1>` (idempotent; inserts the line if the
+block lost it) and read it back with `--current` - that read-back is the recorded act.
+The next session's SessionStart hook (`tools/rc_facts.py`) prints `Session <n+1> checklist`
+from it.
+
 ```
 NEXT SESSION
 ------------
+SESSION: <n+1>
 Next action: <the one thing "continue" should work on>
 Carried forward (not acted on yet): <every unacted item from the previous file>
 Context: <key files / endpoints / live-state to probe first>

@@ -139,7 +139,7 @@ class BlockReservationTests(unittest.TestCase):
         self.assertEqual(
             checked, expected, f"expected {expected} pairs across {len(names)} blocks"
         )
-        self.assertEqual(len(names), 7, "a block was added or dropped without review")
+        self.assertEqual(len(names), 8, "a block was added or dropped without review")
 
     def test_sibling_b_block_is_disjoint_and_8870_stays_daemon_slayer(self):
         """The second collision this registry caught, and the first it PREVENTED.
@@ -243,6 +243,22 @@ class BlockReservationTests(unittest.TestCase):
         self.assertEqual(ports.block_for(8809), "rsc")
         self.assertIsNone(ports.block_for(8820))
 
+    def test_ew_block_follows_cs_and_ll_stays_reserved(self):
+        """FLEET-KIT v6 (MAIN order 2026-10-04 section 4c): code EW took
+        8940-8959, the band directly above CS's 8920-8939. The LL tree was
+        abandoned the same day, and its 8810-8819 block stays RESERVED - a
+        retired tree's ports are never reused, the same rule that holds RM's
+        archived 8770-8789. Asserted by NUMBER so a later edit that hands LL's
+        band to EW, or slides EW down onto CS, fails here.
+        """
+        self.assertEqual(ports.EW_BLOCK, range(8940, 8960))
+        for port in (8940, 8959):
+            self.assertEqual(ports.block_for(port), "ew")
+        self.assertEqual(ports.block_for(8939), "cs")
+        self.assertIsNone(ports.block_for(8960))
+        self.assertEqual(ports.BLOCKS["ll"], range(8810, 8820))
+        self.assertEqual(set(ports.EW_BLOCK) & set(ports.BLOCKS["ll"]), set())
+
 
 class NextFreeTests(unittest.TestCase):
     """`next_free` must never invent a number RC has no standing to assign."""
@@ -271,7 +287,7 @@ class NextFreeTests(unittest.TestCase):
         This is the whole point of the guard: a confident wrong number here
         would be handed to a sibling as "your next free port" and collide.
         """
-        for block in ("lw", "rm", "ll", "cs"):
+        for block in ("lw", "rm", "ll", "cs", "ew"):
             with self.assertRaises(ValueError):
                 ports.next_free(block)
 
