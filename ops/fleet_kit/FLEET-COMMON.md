@@ -2,11 +2,14 @@
 
 ################################################################################
 #  SUB-AGENT FIRST. THE MAIN SESSION IS THE OPERATOR'S - KEEP IT CLEAR.        #
-#  Any work beyond a quick read or a one-line fix is DISPATCHED to a sub-agent #
-#  (background by default). The main session plans, dispatches, monitors and   #
-#  reports. Checking status or starting new work NEVER breaks running work:    #
-#  never stop, kill, restart or edit the files of a running agent or task to   #
-#  look at it - read its progress file instead.                                #
+#  The main session ONLY dispatches (Agent, SendMessage), monitors and         #
+#  reports. Every Bash, PowerShell, Read, Edit, Write, Grep, Glob and          #
+#  NotebookEdit call runs inside a sub-agent (background by default) - no      #
+#  quick-read or one-line-fix exception; the kit PreToolUse hook               #
+#  fleet_subagent_first.py denies them in the main thread. Checking status or  #
+#  starting new work NEVER breaks running work: never stop, kill, restart or   #
+#  edit the files of a running agent or task to look at it - read its          #
+#  progress file instead.                                                      #
 ################################################################################
 
 Source of truth: MAIN's fleet kit. A change lands ONLY as a new kit version

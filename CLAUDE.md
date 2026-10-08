@@ -9,11 +9,14 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 
 ################################################################################
 #  SUB-AGENT FIRST. THE MAIN SESSION IS THE OPERATOR'S - KEEP IT CLEAR.        #
-#  Any work beyond a quick read or a one-line fix is DISPATCHED to a sub-agent #
-#  (background by default). The main session plans, dispatches, monitors and   #
-#  reports. Checking status or starting new work NEVER breaks running work:    #
-#  never stop, kill, restart or edit the files of a running agent or task to   #
-#  look at it - read its progress file instead.                                #
+#  The main session ONLY dispatches (Agent, SendMessage), monitors and         #
+#  reports. Every Bash, PowerShell, Read, Edit, Write, Grep, Glob and          #
+#  NotebookEdit call runs inside a sub-agent (background by default) - no      #
+#  quick-read or one-line-fix exception; the kit PreToolUse hook               #
+#  fleet_subagent_first.py denies them in the main thread. Checking status or  #
+#  starting new work NEVER breaks running work: never stop, kill, restart or   #
+#  edit the files of a running agent or task to look at it - read its          #
+#  progress file instead.                                                      #
 ################################################################################
 
 Source of truth: MAIN's fleet kit. A change lands ONLY as a new kit version
@@ -138,13 +141,15 @@ edit. Tree-specific rules go BELOW this block, never inside it.
 
 RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 
-**Session checklist (FLEET-COMMON item 13, kit v7).** Counter = the `SESSION: <n>` line in `RC-NEXT-SESSION.txt` (owner `tools/session_checklist.py`; seeded 98 = 1 + the 97 commits that wrote the hand-off through 66a2e43c1). Printers: SessionStart hook `tools/rc_facts.py` (block FIRST, via `session_checklist.session_start_block`; the session completes and prints it as its first chat output); `/done` (`tools/done.md` = `.claude/commands/done.md`: pre-flight "every checklist task done or carried into the hand-off", writes `SESSION: <n+1>` via `--next`/`--stamp`, runs unprompted when none remain); inbox responder `tools/inbox_responder_runner.py fire_checklist` (run-count n, log `ops/runtime/inbox_responder_checklist.txt`, `progress/inbox-responder.json` via `write_progress(checklist=)`; the read-only session is told so in `tools/inbox_responder_prompt.py`); lane runner + loop controller write `progress/lane-<i>.json`. Source stays ASCII: emit U+2610 as `chr(0x2610)`.
+**Session checklist (FLEET-COMMON item 13, kit v7).** Counter = the `SESSION: <n>` line in `RC-NEXT-SESSION.txt` (owner `tools/session_checklist.py`; seeded 98 = 1 + the 97 commits that wrote the hand-off through 66a2e43c1). Printers: SessionStart hook `tools/rc_facts.py` (block FIRST, via `session_checklist.session_start_block`; the session completes and prints it as its first chat output); `/done` (`tools/done.md` = `.claude/commands/done.md`: pre-flight "every checklist task done or carried into the hand-off", writes `SESSION: <n+1>` via `--next`/`--stamp`, runs unprompted when none remain); inbox responder `tools/inbox_responder_runner.py fire_checklist` (run-count n, log `ops/runtime/inbox_responder_checklist.txt`, `progress/inbox-responder.json` via `write_progress(checklist=)`; the read-only session is told so in `tools/inbox_responder_prompt.py`); lane runner + loop controller write `progress/lane-<i>.json`. Source stays ASCII: emit U+2610 as `chr(0x2610)`. Console printing goes through the kit's `fleet_checklist.emit()` (kit v10), never `print()`: `session_checklist.emit()` (CLI + the rc_facts block) and `ops/loop/lane_progress.LaneProgress` (lane / loop sinks) - a cp1252 sink gets `[ ]`, a missing stdout prints nothing, neither raises.
+
+**SUBAGENT-FIRST hook (kit v10, MAIN 2026-10-08 0839).** `ops/fleet_kit/fleet_subagent_first.py` is a PreToolUse hook in the gitignored project `.claude/settings.json` (matcher `Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit`); it refuses those tools in the interactive main thread only. Mode = first word of gitignored `ops/loop/control/subagent_first.mode` (`log` at adoption; `deny` after 3 interactive sessions whose `subagent_first.jsonl` shows no would-deny row for work that could not be dispatched). Headless runs are exempt only through the kit's `spawn()` (`FLEET_SUBAGENT_FIRST=off`), so `deny` waits until the lane workers move onto `spawn()` (order step 5). `/done` and every slash command carry the DISPATCH block (guard `tests/test_skill_dispatch_v10.py`): the whole skill runs in ONE sub-agent and main relays only its final line.
 
 **Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**
 - Item 1 (only physical acts / passwords / OAuth wait) vs RC operator gates: the halt boundary below, frozen files (explicit user approval), the operator-gated smart-quote sweep, the gated RM-501 repair, and attended confirmation of an irreversible / out-of-tree act requested only by a note.
 - Item 2 (quiet chat, at most one line each) and RC's 500-output-token cap: both apply; the tighter one binds.
 - Item 5 (every do-not-re-litigate entry states what would reverse it): every Settled line below now carries a `Reverses if:` clause (RM-494, 2026-10-03); a NEW Settled line must carry one too.
-- Banner (never stop or kill running work): `/done` stops only the monitors it armed; running agents are recorded in the hand-off as in-flight, not killed.
+- Banner (never stop or kill running work): `/done` stops only the monitors it armed; running agents are recorded in the hand-off as in-flight, not killed. Under kit v10 the main session stops its own monitors, then dispatches the whole ritual to ONE executor sub-agent (`tools/done.md` DISPATCH PROTOCOL) and relays only its final line.
 
 ## Docs map
 
@@ -251,10 +256,10 @@ These govern HOW a step runs; the SHAPE of work is set by "Session Default" belo
 Every session is **orchestrated + multi-agent + self-adjudicating + self-adversarial** (operator 2026-07-30; restated 2026-09-09: "sub-agent first to keep main session quiet and clear, always"). Choosing it needs no justification; departing from it does.
 - The main window is the OPERATOR'S surface: main holds plan, merge, gate and report - never the doing. "It is faster inline" is not a reason.
 - Orchestrated: one merger, disjoint slices decided before work starts. Multi-agent: parallel, worktree-isolated where they write. Self-adjudicating: the producer never grades its own output. Self-adversarial: done-claims get a refutation pass defaulting to refuted; agreement between agents is not evidence.
-- Only exception: genuinely trivial work (one-line cosmetic, typo, single string, conversational answer).
+- Only exception: a conversational answer. Kit v10 removed the trivial-work exception for the interactive main thread (one-line cosmetic, typo and single string are dispatched too); a sub-agent may still inline trivial work.
 - Spec first, verified against ground truth (grep file:line, live `/api/state`, health.json, git) before any code.
 - New session: get intent + acceptance criteria from the loop director or operator, re-probe live state, then build. The loop is single-vendor (all Claude).
-- Act via worktree-isolated build agents + a read-only `verifier` gate before any merge or "done". Every `.claude/commands/*.md` carries the SUBAGENT-FIRST block.
+- Act via worktree-isolated build agents + a read-only `verifier` gate before any merge or "done". Every `.claude/commands/*.md` carries the SUBAGENT-FIRST block and the kit v10 DISPATCH block.
 - Subagents that generate files (esp. tests) run ruff before reporting done.
 
 ## Halt boundary and the headless-looping program (STRICTER than FLEET-COMMON item 1)

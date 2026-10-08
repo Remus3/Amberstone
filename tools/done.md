@@ -9,11 +9,22 @@ description: End-of-session ritual - auto-commit any pending changes, push, do t
 > 4. **Self-adjudicating:** the agent that produced a thing never grades it. **Self-adversarial:** every finding gets an independent pass trying to REFUTE it, defaulting to refuted when uncertain. Two agents agreeing is not evidence (`feedback_row_agreement_is_not_evidence`).
 > 5. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Session Default".
 
-The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order.
+> **DISPATCH (FLEET-KIT v10 banner; MAIN 2026-10-08 0839 ORDER step 4).** In an interactive main session this skill is never run inline.
+> 1. The main session dispatches the WHOLE skill to ONE sub-agent (Agent tool): this file plus the invocation arguments. It relays only that agent's final output - the line(s) this skill names as its chat output, nothing when it names none - with no narration around it.
+> 2. No quick-read or trivial-edit exception in the main thread; this supersedes any "may inline" line in this file. Its Bash / PowerShell / Read / Edit / Write / Grep / Glob / NotebookEdit calls meet the kit PreToolUse hook `ops/fleet_kit/fleet_subagent_first.py` (gitignored mode file `ops/loop/control/subagent_first.mode`: log first, then deny).
+> 3. The dispatched sub-agent, and a headless run (the kit's `spawn()` sets `FLEET_SUBAGENT_FIRST=off`), execute this skill directly and never re-dispatch the whole of it.
+
+The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order - in the ONE dispatched executor below, never in the main session.
+
+> **/done DISPATCH PROTOCOL (FLEET-KIT v10; MAIN 2026-10-08 0839 ORDER step 4).** The WHOLE ritual - sections 0 through 10 - runs in ONE sub-agent, the /done EXECUTOR. The main session runs none of it.
+> - **Main session, before the dispatch (no Bash / PowerShell / Read / Edit / Write / Grep / Glob):** stop the monitors IT armed this session (TaskStop - section 3's monitor half; TaskStop is not a hooked tool). Note the background agents and commands still running, and do NOT stop them (FLEET-COMMON banner). Then launch ONE sub-agent (Agent tool, general-purpose, NOT worktree-isolated: it commits and pushes the main checkout) whose prompt carries what only the main session knows: the session number `<n>`; this session's `Session <n> checklist` with every task marked done (and what was read back) or not done; the in-flight agents / commands with their progress-file paths; and every steer, operator instruction or decision made in chat that the hand-off must carry. The prompt ends: "You are the /done executor. Run tools/done.md sections 0-10 in order yourself; never re-dispatch the whole ritual. Your FINAL message is exactly one line: `Done ritual complete, safe to clear` or `/done stopped: <reason>`."
+> - **Main session, after:** wait for the executor's completion notification and relay its final line VERBATIM as the only chat output - nothing before or after it. If the executor ends without one of those two lines, relay `/done stopped: done executor returned no final line`.
+> - **The executor:** runs every section below itself. It may fan out its own helpers (a `verifier`, a background CI watch), but it owns the ritual and its final line. Section 3 covers the tasks IT started; the main session's in-flight work arrives in the prompt and goes into the hand-off as in-flight. Section 9's done marker and the one line are its last acts.
 
 > **CHAT OUTPUT CONTRACT (FLEET-KIT v3 items 2, 3 and 5; operator order 2026-10-03).**
 > /done's ONLY chat output is the single line `Done ritual complete, safe to clear`,
-> or, when something stopped the ritual, one line `/done stopped: <reason>` instead.
+> or, when something stopped the ritual, one line `/done stopped: <reason>` instead -
+> the executor's final line, relayed verbatim by the main session (DISPATCH PROTOCOL above).
 > No banner, no review, no recap, no checklist, and NEVER the hand-off or a
 > next-session prompt in chat. The LAST act before that line is the kit done
 > marker `python ops/fleet_kit/fleet_done.py mark --session <n> --status done`
@@ -182,9 +193,9 @@ So the push in section 2a has already fired the full dual suite. Note its run id
 
 ### 3. Background tasks started this session
 
-- TaskList - find anything still running (do not print it).
-- Monitors / watchers this session armed: TaskStop. DO NOT leave monitors armed; they're useless after /clear.
-- A still-running build agent or long command is NOT killed to end the session (FLEET-COMMON banner: never stop or kill running work to look at it). Record it in the hand-off file as in-flight, with its progress file path if it has one.
+- TaskList - find anything still running (do not print it). In the executor this lists the tasks IT started; the main session's in-flight work came in the dispatch prompt (DISPATCH PROTOCOL above).
+- Monitors / watchers armed: TaskStop. DO NOT leave monitors armed; they're useless after /clear. The main session stopped its own before the dispatch; the executor stops any it armed.
+- A still-running build agent or long command is NOT killed to end the session (FLEET-COMMON banner: never stop or kill running work to look at it). Record it in the hand-off file as in-flight, with its progress file path if it has one - including every in-flight item the dispatch prompt named.
 
 
 ### 5. RC restart pending
