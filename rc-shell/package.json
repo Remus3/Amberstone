@@ -15,7 +15,7 @@
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
+    "electron": "^44.5.1",
     "electron-builder": "^26.0.12"
   },
   "author": "Amberstone",
