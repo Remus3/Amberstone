@@ -23,6 +23,11 @@ shape to `progress/loop.json` rather than borrow an index a real lane may hold.
 
 NEVER FAILS A LANE. A progress write that raises is reported through `emit`
 and swallowed: the file is an operator's window onto the run, not part of it.
+Every line reaches `emit` through the kit's `fleet_checklist.emit()` (kit v10,
+MAIN 2026-10-08 0839 step 5), so a sink that cannot encode the U+2610 box
+(print() to a cp1252 file under pythonw) gets "[ ]" and a dead sink is
+swallowed - a print fault never escapes into the fire (`launch_lane` calls
+`start()` before the try that releases its lane on failure).
 
 The three kit modules are CONSUMED, never edited (byte-pinned by
 ops/fleet_kit/MANIFEST.json).
@@ -82,6 +87,21 @@ def main_checkout() -> Path:
     return fleet_lanes.main_tree(_HERE.parents[1])
 
 
+class _LineSink:
+    """A one-line `emit(str)` callable seen as the write() stream the kit's
+    fleet_checklist.emit() prints to. The callable's own failures surface as
+    the stream's, so emit() applies its fallbacks to them: a UnicodeEncodeError
+    (print() to a cp1252 file under pythonw) is retried with "[ ]" for the box,
+    and an OSError / ValueError / AttributeError is swallowed."""
+
+    def __init__(self, fn):
+        self._fn = fn
+
+    def write(self, text: str) -> int:
+        self._fn(text[:-1] if text.endswith("\n") else text)
+        return len(text)
+
+
 class LaneProgress:
     """One fire's checklist, mirrored to its log and its progress file."""
 
@@ -92,6 +112,11 @@ class LaneProgress:
         self.cl = fleet_checklist.Checklist(int(session), items, note=note)
         self.emit = emit if emit is not None else (lambda _s: None)
         self._total = len(self.cl.remaining())
+
+    def _say(self, text: str):
+        """Print to the fire's sink through fleet_checklist.emit() (kit v10,
+        MAIN 2026-10-08 0839 step 5): never print() directly, never raise."""
+        return fleet_checklist.emit(text, _LineSink(self.emit))
 
     @classmethod
     def for_lane(cls, index: int, session: int, items, **kw) -> "LaneProgress":
@@ -114,13 +139,13 @@ class LaneProgress:
                 self.root, self.task, self._pct(), step, self._eta(), status,
                 checklist=self.cl.rows())
         except (OSError, ValueError) as exc:
-            self.emit(f"{self.task}: progress write failed: {exc}")
+            self._say(f"{self.task}: progress write failed: {exc}")
             return None
 
     # ---- the fire ----------------------------------------------------------
     def start(self, step: str = "fire start") -> str:
         text = self.cl.start()
-        self.emit(text)
+        self._say(text)
         self._write(step, "running")
         return text
 
@@ -131,11 +156,11 @@ class LaneProgress:
     def complete(self, id_: str, step: str | None = None):
         update = self.cl.complete(id_)
         if update:
-            self.emit(update)
+            self._say(update)
         done = self.cl.all_done()
         self._write(step or f"{id_} done", "done" if done else "running")
         return update
 
     def fail(self, reason: str):
-        self.emit(f"{self.task}: failed - {reason}")
+        self._say(f"{self.task}: failed - {reason}")
         self._write(f"failed: {reason}", "failed")

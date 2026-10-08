@@ -11,7 +11,9 @@ runs /done unprompted once none remain. This module is RC's one owner of:
   * the session-start block - `tools/rc_facts.py` (the SessionStart hook)
     calls `session_start_block()` and prints it FIRST;
   * the headless progress write - `write_progress()` puts the remaining rows
-    into an item-12 progress file as "checklist" (the inbox responder runner).
+    into an item-12 progress file as "checklist" (the inbox responder runner);
+  * the printer - `emit()` is the kit's `fleet_checklist.emit()` (kit v10):
+    every checklist RC prints to a console goes through it, never print().
 
 The rendering itself is the vendored kit's `ops/fleet_kit/fleet_checklist.py`.
 Until a tree carries v7 (or if the file is unreadable) a byte-compatible local
@@ -203,40 +205,78 @@ def write_progress(root, task: str, pct: int, step: str, eta_s, status: str,
     return doc
 
 
-# ------------------------------------------------------------------ CLI
+# ------------------------------------------------------------------ printing
 
-def _emit(text: str) -> None:
-    """Print text even when stdout's codec cannot encode U+2610 (pythonw cp1252)."""
+ASCII_BOX = "[ ]"
+
+
+def emit(text: str, stream=None) -> str | None:
+    """Print text the fleet way: the kit's fleet_checklist.emit() (kit v10, MAIN
+    2026-10-08 0839 ORDER step 5 - checklist printing uses emit(), not print()).
+
+    Never raises for the console: a stream that cannot encode U+2610 (a cp1252
+    pipe or file) gets "[ ]" for the box, a missing stream (pythonw) prints
+    nothing. The SessionStart harness sets PYTHONUTF8, so the hook keeps the
+    glyph. Flushed, so a redirected log shows the block at once. Returns the
+    text actually written, or None. A kit without emit() (pre-v10, or an
+    unreadable file) gets the same contract from the local stand-in.
+    """
+    out = sys.stdout if stream is None else stream
+    kit = kit_checklist()
+    kit_emit = getattr(kit, "emit", None) if kit is not None else None
+    if callable(kit_emit):
+        written = kit_emit(text, out)
+    else:
+        written = _local_emit(text, out)
+    if written is not None:
+        try:
+            out.flush()
+        except (OSError, ValueError, AttributeError):
+            pass
+    return written
+
+
+def _local_emit(text: str, out) -> str | None:
+    """Stand-in for fleet_checklist.emit (same contract) when the kit lacks it."""
+    if out is None:
+        return None
     try:
-        sys.stdout.write(text + "\n")
+        out.write(text + "\n")
     except UnicodeEncodeError:
-        sys.stdout.flush()
-        sys.stdout.buffer.write((text + "\n").encode("utf-8"))
-    sys.stdout.flush()
+        text = text.replace(BOX, ASCII_BOX).encode("ascii", "replace").decode("ascii")
+        try:
+            out.write(text + "\n")
+        except (OSError, ValueError):
+            return None
+    except (OSError, ValueError, AttributeError):
+        return None
+    return text
 
+
+# ------------------------------------------------------------------ CLI
 
 def main(argv: list[str] | None = None, path: Path = HANDOFF) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if "--current" in args:
         n = read_session(path)
-        _emit("none" if n is None else str(n))
+        emit("none" if n is None else str(n))
         return 0
     if "--next" in args:
         n = read_session(path)
         if n is None:
-            _emit("error: no SESSION line in the hand-off")
+            emit("error: no SESSION line in the hand-off")
             return 1
-        _emit(str(n + 1))
+        emit(str(n + 1))
         return 0
     if "--stamp" in args:
         n = int(args[args.index("--stamp") + 1])
         stamp_session(n, path)
-        _emit(str(read_session(path)))
+        emit(str(read_session(path)))
         return 0
     if "--show" in args or not args:
-        _emit(session_start_block(path))
+        emit(session_start_block(path))
         return 0
-    _emit("usage: session_checklist.py [--current | --next | --stamp N | --show]")
+    emit("usage: session_checklist.py [--current | --next | --stamp N | --show]")
     return 2
 
 
