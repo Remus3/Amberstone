@@ -18,7 +18,11 @@ Only the id that HEADS a row is an allocation: a bullet whose bold opener is
 ANCHOR
 ------
 An empty enumeration would pass a bare uniqueness check, so the test also
-requires a floor of headed rows and that a known row (RM-512) is among them.
+requires a floor of headed rows and that the regex enumerates EXACTLY the rows
+an independent, regex-free line parser finds. (The anchor used to be one named
+row, RM-512; the 2026-10-04e wave archived RM-512 to docs/ROADMAP_HISTORY.md,
+which is routine, and the stale anchor went red on CI. A cross-check against a
+second parser covers every row and cannot go stale on an archive.)
 """
 
 from __future__ import annotations
@@ -41,6 +45,32 @@ def headed_ids(text: str) -> list[int]:
     return [int(m.group(1)) for m in ROW_HEAD.finditer(text)]
 
 
+def headed_ids_by_lines(text: str) -> list[int]:
+    """Independent of ROW_HEAD: plain string ops on each line."""
+    out = []
+    for line in text.splitlines():
+        rest = line.lstrip()
+        if not rest.startswith("- **"):
+            continue
+        rest = rest[4:]
+        if rest.startswith("["):
+            close = rest.find("] ")
+            if close < 0:
+                continue
+            rest = rest[close + 2:]
+        if not rest.startswith("RM-"):
+            continue
+        digits = ""
+        for ch in rest[3:]:
+            if not ch.isdigit():
+                break
+            digits += ch
+        if digits and not (rest[3 + len(digits):3 + len(digits) + 1].isalnum()
+                           or rest[3 + len(digits):3 + len(digits) + 1] == "_"):
+            out.append(int(digits))
+    return out
+
+
 class RoadmapRmIdsUnique(unittest.TestCase):
     def setUp(self) -> None:
         self.ids = headed_ids(ROADMAP.read_text(encoding="utf-8"))
@@ -52,7 +82,23 @@ class RoadmapRmIdsUnique(unittest.TestCase):
             f"only {len(self.ids)} RM-headed rows found in ROADMAP.md - "
             "the row-head regex has probably stopped matching",
         )
-        self.assertIn(512, self.ids, "known row RM-512 not enumerated")
+        self.assertEqual(
+            headed_ids_by_lines(ROADMAP.read_text(encoding="utf-8")),
+            self.ids,
+            "ROW_HEAD disagrees with the independent line parser - a row head "
+            "is being missed (or invented) by the regex",
+        )
+
+    def test_line_parser_agrees_on_planted_heads(self) -> None:
+        text = (
+            "- **[!] RM-486: one row** - body.\n"
+            "  - **RM-12 nested** - body.\n"
+            "- **[x] RM-487 SHIPPED: other** - cites RM-486.\n"
+            "- **Not a row** - cites RM-9.\n"
+            "- **[x] RM-48x junk**\n"
+        )
+        self.assertEqual([486, 12, 487], headed_ids_by_lines(text))
+        self.assertEqual(headed_ids(text), headed_ids_by_lines(text))
 
     def test_no_row_id_heads_two_rows(self) -> None:
         dups = sorted(i for i, n in Counter(self.ids).items() if n > 1)

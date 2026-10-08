@@ -389,6 +389,15 @@ def _norm_path(p) -> str:
     return os.path.normcase(_strip_verbatim(s))
 
 
+def _fd_dir_path(fd: int):
+    """The directory an open fd names, or None when it cannot be read back
+    (no /proc fd links, e.g. Windows, where `dir_fd` is unsupported anyway)."""
+    try:
+        return os.readlink(f"/proc/self/fd/{fd}")
+    except (OSError, ValueError, AttributeError, NotImplementedError):
+        return None
+
+
 class _SurfaceWriteAuditor:
     """Records every write-shaped audit event that lands on a watched surface.
 
@@ -414,6 +423,35 @@ class _SurfaceWriteAuditor:
     # FILE_WRITE_ATTRIBUTES, FILE_WRITE_EA.
     _WIN_WRITE_ACCESS = (0x40000000 | 0x10000000 | 0x00010000 | 0x0002 | 0x0004
                          | 0x0100 | 0x0010)
+
+    # Events whose target is a NAME relative to a directory fd (POSIX
+    # `shutil.rmtree` unlinks this way: `os.remove(name, dir_fd=fd)`). Map:
+    # path-arg index -> dir_fd-arg index, per CPython's audit signatures. Only
+    # the WRITTEN paths are returned (os.link / os.symlink: the destination).
+    _DIR_FD_ARGS = {
+        "os.remove": {0: 1}, "os.rmdir": {0: 1}, "os.mkdir": {0: 2},
+        "os.chmod": {0: 2}, "os.utime": {0: 3},
+        "os.rename": {0: 2, 1: 3}, "os.replace": {0: 2, 1: 3},
+        "os.link": {1: 3}, "os.symlink": {1: 2},
+    }
+
+    @classmethod
+    def _dir_fd_targets(cls, event: str, args: tuple) -> list:
+        out = []
+        for pi, fi in cls._DIR_FD_ARGS[event].items():
+            path = args[pi] if pi < len(args) else None
+            if path is None or isinstance(path, int):
+                continue
+            fd = args[fi] if fi < len(args) else None
+            if isinstance(fd, int) and not isinstance(fd, bool):
+                s = os.fsdecode(os.fspath(path))
+                if not os.path.isabs(s):
+                    base = _fd_dir_path(fd)
+                    # Unresolvable fd: keep the bare name, which `_norm_path`
+                    # resolves against the cwd - the old, fail-closed reading.
+                    path = os.path.join(base, s) if base else s
+            out.append(path)
+        return out
 
     def __init__(self) -> None:
         self.watches: list = []
@@ -460,6 +498,8 @@ class _SurfaceWriteAuditor:
             access = access if isinstance(access, int) else 0
             writes = bool(access & cls._WIN_WRITE_ACCESS) or disp in (1, 2, 4, 5)
             return [name] if writes else []
+        if event in cls._DIR_FD_ARGS:
+            return cls._dir_fd_targets(event, tuple(args))
         if event in cls._DST_ONLY:
             return list(args[1:2])
         if event == "ctypes.call_function":
@@ -813,6 +853,58 @@ def test_live_surface_guard_trips_on_a_write_outside_the_temp_root(tmp_path):
     assert len(problems) == 1 and "outside the temp root" in problems[0], problems
     assert "stray.txt" in problems[0], problems
     assert "inside.txt" not in problems[0] and "__pycache__" not in problems[0], problems
+
+
+def test_surface_auditor_resolves_dir_fd_relative_targets(tmp_path, monkeypatch):
+    """CI red 87375e5a1: POSIX `shutil.rmtree` unlinks by NAME relative to a
+    directory fd (`os.remove`/`os.rmdir` audit args `(name, dir_fd)`). The hook
+    resolved the bare name against the cwd (the repo root), so pytest's own
+    tmp_path retention rmtree read as writes outside the temp root. A
+    dir_fd-relative target must resolve against the fd's directory; a target
+    whose fd cannot be resolved keeps the old cwd-relative (fail-closed) form."""
+    d = str(tmp_path / "d")
+    e = str(tmp_path / "e")
+    monkeypatch.setattr(sys.modules[__name__], "_fd_dir_path",
+                        lambda fd: {7: d, 8: e}.get(fd))
+    t = _SurfaceWriteAuditor._targets
+    assert t("os.remove", ("x.md", 7)) == [os.path.join(d, "x.md")]
+    assert t("os.rmdir", (b"sub", 7)) == [os.path.join(d, "sub")]
+    assert t("os.mkdir", ("m", 0o777, 7)) == [os.path.join(d, "m")]
+    assert t("os.rename", ("a", "b", 7, 8)) == [os.path.join(d, "a"), os.path.join(e, "b")]
+    assert t("os.replace", ("a", "b", None, 8)) == ["a", os.path.join(e, "b")]
+    assert t("os.symlink", ("src", "lnk", 8)) == [os.path.join(e, "lnk")]
+    assert t("os.link", ("a", "b", 7, 8)) == [os.path.join(e, "b")]
+    absolute = os.path.join(str(tmp_path), "abs.md")
+    assert t("os.remove", (absolute, 7)) == [absolute]
+    assert t("os.remove", ("x.md", None)) == ["x.md"]
+    assert t("os.remove", ("x.md", 99)) == ["x.md"]
+
+
+@pytest.mark.skipif(not os.path.isdir("/proc/self/fd"), reason="needs /proc fd links")
+def test_fd_dir_path_reads_the_proc_fd_link(tmp_path):
+    fd = os.open(str(tmp_path), os.O_RDONLY)
+    try:
+        assert os.path.samefile(_fd_dir_path(fd), str(tmp_path))
+    finally:
+        os.close(fd)
+    assert _fd_dir_path(-1) is None
+
+
+def test_fd_based_rmtree_inside_the_allowed_root_is_not_an_outside_write(tmp_path):
+    """End to end: the module guard's allowlist must accept the rmtree that
+    pytest's retention policy runs on a tmp dir, on every platform; and the
+    removals must still be SEEN (attributed to the right directory)."""
+    tree = tmp_path / "tree"
+    (tree / "sub").mkdir(parents=True)
+    for name in ("0.lock", ".gitignore", "sub/n.md"):
+        (tree / name).write_text("x", encoding="ascii")
+    w = _SURFACE_AUDITOR.watch({"tree": tree}, allow_roots=[tmp_path])
+    try:
+        shutil.rmtree(tree)
+    finally:
+        _SURFACE_AUDITOR.unwatch(w)
+    assert w["outside"] == [], w["outside"][:5]
+    assert w["hits"], "the auditor saw no removal under the tree"
 
 
 def test_generated_notes_and_replies_carry_the_run_marker(tmp_path):
