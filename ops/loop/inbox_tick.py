@@ -13,11 +13,12 @@ THE PASS (kit `fleet_inbox`, consumed, never edited):
   SKIP  own / TERMINAL / no-reply  -> mark_seen, nothing else
   ACK   ACK-family / ANSWER / past the hop limit -> mark_seen: the mechanical
         ack is a ledger line, NEVER a note and never a spawn
-  WORK  ORDER / FIX / RULING      -> a work row in ops/loop/control/
-        inbox_work.jsonl (never triaged, never damped); a MAIN note is checked
-        against MAIN's committed outbox copy (kit verify_main) and the row says
-        main-verified / main-unverified, so an unverified "order" never carries
-        MAIN's authority
+  WORK  ORDER / FIX / RULING      -> kit enqueue_work queues the row in
+        ops/loop/control/inbox_work.jsonl (never triaged, never damped), plus
+        ONE "rc-provenance" companion line keyed by the same note + sha256; a
+        MAIN note is checked against MAIN's committed outbox copy (kit
+        verify_main) and the provenance says main-verified / main-unverified,
+        so an unverified "order" never carries MAIN's authority
   TRIAGE anything else            -> ONE kit spawn, kind="triage",
         fleet_inbox.TRIAGE_SPAWN (sonnet, effort low, bare); parse_verdict()
         gives NOREPLY / ACK / ANSWER and the note is marked seen either way
@@ -49,6 +50,16 @@ hop_budget`): that responder stays disarmed, which is the ruling's point.
 
 NEVER FAILS A FIRE. `fire_step` swallows every fault into the summary's
 `errors` and completes the checklist row; the lane still runs.
+
+THE WORK QUEUE (RM-685). The kit owns inbox_work.jsonl: enqueue_work writes
+op "queued", mark_work_done op "done", pending_work reads only those two.
+pending(root) = kit pending_work rows with "provenance" joined from the last
+rc-provenance line of the same key ("unknown" if none); close(root, note,
+outcome) marks every pending row of that note done; migrate_legacy(root)
+converts pre-RM-685 rows. CLI: --pending, --done NOTE [--outcome TEXT],
+--migrate-legacy (none of them runs a tick). An answering session or lane
+closes a row when it answers or finishes an ORDER / FIX / RULING:
+  python ops/loop/inbox_tick.py --done <note> --outcome "<answer note + sha>"
 
 Stdlib only; importable as `ops.loop.inbox_tick` or by file path.
 """
@@ -120,6 +131,7 @@ MAX_TRIAGE_PER_TICK = 1
 LOCK_STALE_S = 900
 STEP_ID = "I1"
 STEP_TASK = "Read the RC inbox (scan, classify, triage)"
+PROVENANCE_OP = "rc-provenance"
 _UNSET = object()
 
 
@@ -138,6 +150,23 @@ def _append(path: Path, doc: dict) -> None:
 def _atomic_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_bytes(path, text.encode("ascii"))
+
+
+def _jsonl(path: Path) -> list:
+    """Tolerant JSONL read: blank, non-JSON and non-dict lines are skipped."""
+    try:
+        raw = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    out = []
+    for line in raw.splitlines():
+        try:
+            doc = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(doc, dict):
+            out.append(doc)
+    return out
 
 
 def _parse_iso(value):
@@ -283,9 +312,17 @@ def _make_deliver(root: Path, participants: dict, agreement):
 
 def _empty_summary(dry: bool) -> dict:
     return {"ts": _iso_now(), "unseen": 0, "skipped": 0, "acked": 0, "escalated": 0,
-            "triaged": 0, "deferred": 0, "sent": 0, "held": 0, "armed": False,
-            "agreement": "", "locked": False, "dry": bool(dry), "work": [],
-            "errors": []}
+            "triaged": 0, "deferred": 0, "sent": 0, "held": 0, "pending": 0,
+            "armed": False, "agreement": "", "locked": False, "dry": bool(dry),
+            "work": [], "errors": []}
+
+
+def _count_pending(root: Path, s: dict) -> None:
+    """Open WORK rows after the pass (read-only); a fault is an error string."""
+    try:
+        s["pending"] = len(fleet_inbox.pending_work(root))
+    except Exception as exc:  # noqa: BLE001 - the inbox pass never fails a fire
+        s["errors"].append(f"pending: {type(exc).__name__}: {exc}"[:200])
 
 
 def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
@@ -321,12 +358,14 @@ def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
         if dry:
             for path, d in rows:
                 emit(f"inbox dry: {path.name} -> {d.action} ({d.reason})")
+            _count_pending(root, s)
             return s
         _process(root, rows, s, code=code, agreement=agreement,
                  participants=participants, spawn=spawn, spawn_kw=spawn_kw or {},
                  verify=verify or _default_verify,
                  deliver=deliver or _make_deliver(root, participants, agreement),
                  max_triage=max_triage, emit=emit)
+        _count_pending(root, s)
     finally:
         if not dry:
             _drop_lock(root)
@@ -353,9 +392,14 @@ def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
                 prov = "main-verified" if ok else "main-unverified"
             else:
                 prov = "sibling"
-            _append(root / WORK_REL, {"ts": _iso_now(), "note": name, "cls": d.cls,
-                                      "sender": d.sender, "hop": d.hop,
-                                      "provenance": prov, "state": "open"})
+            # RM-685: the kit owns the row shape and has no room for an extra
+            # key, so provenance rides on a companion line keyed by the same
+            # (note, sha256); kit pending_work reads only op queued / done.
+            row = fleet_inbox.enqueue_work(root, path, d)
+            if row is not None:
+                _append(root / WORK_REL, {"ts": row["ts"], "op": PROVENANCE_OP,
+                                          "note": row["note"], "sha256": row["sha256"],
+                                          "provenance": prov})
             fleet_inbox.mark_seen(root, path, d, verdict="ESCALATED")
             s["escalated"] += 1
             s["work"].append(name)
@@ -425,6 +469,134 @@ def _send(root, answers, s, *, code, deliver, emit):
             s["held"] += len(pairs)
 
 
+# ---- the work queue (RM-685) -------------------------------------------------
+
+def pending(root) -> list[dict]:
+    """Kit pending_work rows (copies), oldest first, each with "provenance"
+    joined from the LAST rc-provenance line of the same (note, sha256);
+    "unknown" when there is none. A row without "op" is a pre-RM-685 legacy
+    row: the kit reader ignores it, so it is not open work until
+    migrate_legacy converts it."""
+    root = Path(root)
+    prov = {}
+    for d in _jsonl(root / WORK_REL):
+        if d.get("op") == PROVENANCE_OP:
+            prov[(d.get("note"), d.get("sha256"))] = d.get("provenance")
+    out = []
+    for row in fleet_inbox.pending_work(root):
+        doc = dict(row)
+        doc["provenance"] = prov.get((row.get("note"), row.get("sha256"))) or "unknown"
+        out.append(doc)
+    return out
+
+
+def close(root, note, outcome="done", clock=time.time) -> list[dict]:
+    """Close every pending row of `note` (matched by basename) through kit
+    mark_work_done. Returns the done docs; [] and nothing written when no
+    pending row matched."""
+    root = Path(root)
+    name = Path(str(note or "")).name
+    if not name:
+        return []
+    return [fleet_inbox.mark_work_done(root, row, outcome=outcome, clock=clock)
+            for row in fleet_inbox.pending_work(root) if row.get("note") == name]
+
+
+def _note_sha(inbox: Path, note):
+    if not isinstance(note, str) or not note:
+        return None
+    p = inbox / Path(note).name
+    try:
+        return hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None
+    except OSError:
+        return None
+
+
+def _legacy_doc(chunk: bytes):
+    try:
+        doc = json.loads(chunk.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None
+    if isinstance(doc, dict) and "op" not in doc and "state" in doc:
+        return doc
+    return None
+
+
+def _kit_lines(doc: dict, sha) -> list:
+    note, ts, state = doc.get("note"), doc.get("ts"), doc.get("state")
+    if state == "open":
+        lines = [{"ts": ts, "op": "queued", "note": note, "sha256": sha,
+                  "cls": doc.get("cls"), "sender": doc.get("sender"),
+                  "hop": doc.get("hop")}]
+        if "provenance" in doc:
+            lines.append({"ts": ts, "op": PROVENANCE_OP, "note": note, "sha256": sha,
+                          "provenance": doc["provenance"]})
+        return lines
+    outcome = doc.get("outcome")
+    outcome = str(state if outcome is None else outcome)
+    if "by" in doc:
+        outcome += f" [by {doc['by']}]"
+    return [{"ts": ts, "op": "done", "note": note, "sha256": sha, "outcome": outcome}]
+
+
+def migrate_legacy(root, *, inbox=None) -> dict:
+    """One-off converter for pre-RM-685 rows (the v8 tick shape: "state", no
+    "op"). Stated rule: a row without "op" is legacy; the kit reader ignores
+    it, so it is not open work until this converts it. Each legacy line is
+    replaced IN PLACE: state "open" -> a kit queued line (+ an rc-provenance
+    line when it carried provenance); any other state -> a kit done line, the
+    outcome kept whole plus " [by <by>]". sha256 = the note's bytes in the
+    inbox, None when the note is gone. Every other line stays byte-for-byte.
+    Holds the tick lock (held -> {"locked": True, "legacy": 0}, nothing
+    written); backs the original up beside the file, then rewrites it
+    atomically. Idempotent: a second run finds no legacy row."""
+    root = Path(root)
+    inbox = root / INBOX_DIR if inbox is None else Path(inbox)
+    if not _take_lock(root):
+        return {"locked": True, "legacy": 0}
+    try:
+        return _migrate(root / WORK_REL, inbox)
+    finally:
+        _drop_lock(root)
+
+
+def _migrate(path: Path, inbox: Path) -> dict:
+    res = {"locked": False, "legacy": 0, "queued": 0, "done": 0, "backup": None}
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return res
+    shas: dict = {}
+    out = []
+    for chunk in raw.splitlines(keepends=True):
+        doc = _legacy_doc(chunk)
+        if doc is None:
+            out.append(chunk)
+            continue
+        res["legacy"] += 1
+        note = doc.get("note")
+        if note not in shas:
+            shas[note] = _note_sha(inbox, note)
+        lines = _kit_lines(doc, shas[note])
+        res["queued" if lines[0]["op"] == "queued" else "done"] += 1
+        out.extend((json.dumps(d) + "\n").encode("ascii") for d in lines)
+    if not res["legacy"]:
+        return res
+    data = b"".join(out)
+    if not data.endswith(b"\n"):
+        data += b"\n"
+    stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    backup = path.with_name(f"{path.name}.pre-rm685-{stamp}.bak")
+    n = 1
+    while backup.exists():
+        backup = path.with_name(f"{path.name}.pre-rm685-{stamp}-{n}.bak")
+        n += 1
+    _atomic_write_bytes(backup, raw)
+    _atomic_write_bytes(path, data)
+    res["backup"] = str(backup)
+    return res
+
+
 # ---- the fire's checklist step (FLEET-COMMON 13 d) --------------------------
 
 def summary_line(s: dict) -> str:
@@ -434,6 +606,8 @@ def summary_line(s: dict) -> str:
     for k in ("skipped", "acked", "escalated", "triaged", "deferred", "sent", "held"):
         if s.get(k):
             bits.append(f"{s[k]} {k}")
+    if s.get("pending"):
+        bits.append(f"{s['pending']} work pending")
     if not s.get("armed"):
         bits.append("spawns disarmed")
     if s.get("dry"):
@@ -468,12 +642,37 @@ def fire_step(prog, *, step_id=STEP_ID, root=None, tick=None, **kw) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="One RC inbox pass (FLEET-COMMON 14).")
     ap.add_argument("--root", default=None, help="main checkout (default: this tree's)")
-    ap.add_argument("--dry", action="store_true", help="classify only, write nothing")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--dry", action="store_true", help="classify only, write nothing")
+    mode.add_argument("--pending", action="store_true",
+                      help="print each open WORK row as one JSON line (no tick)")
+    mode.add_argument("--done", metavar="NOTE", default=None,
+                      help="close the open WORK row(s) of NOTE (no tick)")
+    mode.add_argument("--migrate-legacy", action="store_true",
+                      help="convert pre-RM-685 state rows in place (no tick)")
+    ap.add_argument("--outcome", default="done", help="outcome text for --done")
     args = ap.parse_args(argv)
     if args.root:
         root = Path(args.root)
     else:
         root = _bind_kit("fleet_lanes").main_tree(_HERE.parents[1])
+    if args.pending:
+        for row in pending(root):
+            print(json.dumps(row, sort_keys=True))
+        return 0
+    if args.done is not None:
+        done = close(root, args.done, outcome=args.outcome)
+        if not done:
+            print(f"inbox_tick: no pending WORK row for {Path(args.done).name}",
+                  file=sys.stderr)
+            return 1
+        for doc in done:
+            print(json.dumps(doc, sort_keys=True))
+        return 0
+    if args.migrate_legacy:
+        res = migrate_legacy(root)
+        print(json.dumps(res, sort_keys=True))
+        return 1 if res.get("locked") else 0
     s = tick(root, dry=args.dry, emit=print)
     if not args.dry:
         # Item F: the RC-InboxResponder task runs this CLI under pythonw (no

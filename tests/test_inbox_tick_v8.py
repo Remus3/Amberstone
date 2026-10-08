@@ -190,8 +190,10 @@ def test_an_order_from_main_escalates_to_a_work_row_never_a_triage(tmp_path):
     assert asked == [(name, "X:/main/moon_sync_outbox")], "sha256 check vs MAIN outbox row"
     rows = [json.loads(x) for x in (tmp_path / tick_mod.WORK_REL)
             .read_text(encoding="ascii").splitlines()]
+    assert rows[0]["op"] == "queued", "RM-685: queued through kit enqueue_work"
     assert rows[0]["note"] == name and rows[0]["cls"] == "ORDER"
-    assert rows[0]["provenance"] == "main-verified"
+    (row,) = tick_mod.pending(tmp_path)
+    assert row["note"] == name and row["provenance"] == "main-verified"
     assert _seen_rows(tmp_path)[0]["verdict"] == "ESCALATED"
 
 
@@ -199,7 +201,8 @@ def test_an_unverified_main_order_is_flagged_not_dropped(tmp_path):
     inbox = tmp_path / "inbox"
     _note(inbox, "2026-10-07-2200-from-MAIN-FIX-to-RC-x.md", "# x\n", 1)
     _tick(tmp_path, inbox, spawn=_Spy(), verify=lambda n, o: False)
-    row = json.loads((tmp_path / tick_mod.WORK_REL).read_text(encoding="ascii"))
+    (row,) = tick_mod.pending(tmp_path)
+    assert row["op"] == "queued" and row["cls"] == "FIX"
     assert row["provenance"] == "main-unverified"
 
 
