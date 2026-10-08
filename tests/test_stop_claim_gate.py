@@ -424,12 +424,16 @@ def test_the_real_transcript_that_produced_nine_false_positives_is_clean(tmp_pat
 
 
 # ---------------------------------------------------------------- armed mode
-# Exit 2 on Stop does not merely warn: it BLOCKS the session from ending and
-# feeds stderr back to the model. That makes re-entry the danger, not noise.
+# A firing armed gate keeps the session going and feeds the model. MAIN ORDER
+# 2026-10-07 2237 (operator Console review): the channel is exit 0 plus ONE
+# stdout JSON object carrying hookSpecificOutput.additionalContext, shown as
+# "Stop hook feedback" - never exit 2 + stderr / decision:block, which the
+# transcript renders as a "Stop hook error" dump. The detail lives in the
+# report file only. Re-entry is still the danger, not noise.
 
-def _run_armed(tmp_path, rows, stop_hook_active=False):
+def _run_armed(tmp_path, rows, stop_hook_active=False, report_name="report.json"):
     transcript = _write_transcript(tmp_path, rows)
-    report = tmp_path / "report.json"
+    report = tmp_path / report_name
     payload = json.dumps({"session_id": "armed", "transcript_path": str(transcript),
                           "hook_event_name": "Stop", "stop_hook_active": stop_hook_active})
     proc = subprocess.run([sys.executable, str(GATE), "--arm", "--report", str(report),
@@ -439,29 +443,106 @@ def _run_armed(tmp_path, rows, stop_hook_active=False):
     return proc, json.loads(report.read_text(encoding="utf-8"))
 
 
-def test_armed_blocks_on_findings(tmp_path):
+def _feedback(proc):
+    """The fired emit: exactly one stdout line, one JSON object, Stop feedback."""
+    assert proc.returncode == 0, "a firing gate exits 0 (feedback, not a hook error)"
+    assert proc.stderr == "", f"no stderr on the fired path: {proc.stderr!r}"
+    lines = proc.stdout.splitlines()
+    assert len(lines) == 1, f"exactly one stdout line: {proc.stdout!r}"
+    out = json.loads(lines[0])
+    assert set(out) == {"hookSpecificOutput"}, "no top-level decision / reason"
+    spec = out["hookSpecificOutput"]
+    assert spec["hookEventName"] == "Stop"
+    context = spec["additionalContext"]
+    assert "\n" not in context and "\r" not in context
+    assert len(context) <= 160, f"{len(context)} chars: {context!r}"
+    assert context.startswith("stop_claim_gate:")
+    return context
+
+
+def test_armed_fires_one_feedback_line_on_findings(tmp_path):
     proc, report = _run_armed(tmp_path, [_assistant(_text("The full suite passes."))])
-    assert proc.returncode == 2
+    context = _feedback(proc)
     assert report["mode"] == "armed"
-    # stderr is what the model is shown, so it must name the check and the quote.
-    assert "tests_pass_without_run" in proc.stderr
-    assert "full suite passes" in proc.stderr
+    assert report["blocked"] is True
+    # The one line names the code, the count and the report path ...
+    assert "tests_pass_without_run" in context
+    assert context.startswith("stop_claim_gate: 1 unbacked claim ")
+    assert context.endswith("report.json")
+    # ... and the full detail (check + quote) lives in the report file only.
+    assert "full suite passes" not in context
+    assert "full suite passes" in report["message"]
+    assert "tests_pass_without_run" in report["message"]
+
+
+def test_armed_feedback_line_stays_within_160_chars_on_many_findings(tmp_path):
+    """Many codes and a long report path: the path survives, codes truncate."""
+    deep = "d" * 40 + "/" + "e" * 40
+    (tmp_path / deep).mkdir(parents=True)
+    rows = [_assistant(_text("The full suite passes.")),
+            _assistant(_text("All 1397 tests pass.")),
+            _assistant(_text("Committed as abc1234def and pushed."))]
+    proc, report = _run_armed(tmp_path, rows,
+                              report_name=deep + "/stop_claim_report.json")
+    context = _feedback(proc)
+    assert report["findings"]
+    assert report["findings"][0]["check"] in context, "at least one code survives"
+    assert context.endswith("stop_claim_report.json")
 
 
 def test_armed_is_silent_on_a_clean_session(tmp_path):
     proc, report = _run_armed(tmp_path, [_assistant(_text("Read the file, no changes."))])
     assert proc.returncode == 0
+    assert proc.stdout == "" and proc.stderr == ""
     assert report["findings"] == []
 
 
 def test_armed_never_blocks_twice_on_re_entry(tmp_path):
-    """stop_hook_active means we already blocked once. Blocking again loops."""
+    """stop_hook_active means we already fired once. Firing again loops."""
     rows = [_assistant(_text("The full suite passes."))]
     proc, report = _run_armed(tmp_path, rows, stop_hook_active=True)
     assert proc.returncode == 0, "re-entry must not block again"
+    assert proc.stdout == "", "re-entry emits no feedback - it would loop"
     assert report["findings"], "it still reports - it just stops blocking"
     assert report["blocked"] is False
     assert report["reason"] == "stop_hook_active"
+
+
+def test_report_only_mode_emits_nothing_on_findings(tmp_path):
+    transcript = _write_transcript(tmp_path, [_assistant(_text("The full suite passes."))])
+    payload = json.dumps({"session_id": "r", "transcript_path": str(transcript),
+                          "hook_event_name": "Stop", "stop_hook_active": False})
+    proc = subprocess.run([sys.executable, str(GATE), "--report", str(tmp_path / "r.json"),
+                           "--history", str(tmp_path / "h.jsonl")],
+                          input=payload, capture_output=True, text=True,
+                          cwd=str(ROOT), check=False)
+    assert proc.returncode == 0
+    assert proc.stdout == "" and proc.stderr == ""
+
+
+def test_feedback_line_unit_truncates_codes_and_keeps_the_path():
+    findings = [{"check": f"code_{i:02d}_with_a_long_name"} for i in range(12)]
+    path = "C:/" + "p" * 40 + "/stop_claim_report.json"
+    line = gate.feedback_line(findings, path)
+    assert len(line) <= 160 and "\n" not in line
+    assert line.endswith("; see " + path), "a path that fits is kept whole"
+    assert line.startswith("stop_claim_gate: 12 unbacked claims (code_00_with_a_long_name,")
+    assert "more)" in line
+
+
+def test_feedback_line_unit_elides_only_an_overlong_path():
+    findings = [{"check": "count_mismatch"}, {"check": "count_mismatch"}]
+    path = "C:/" + "p" * 200 + "/stop_claim_report.json"
+    line = gate.feedback_line(findings, path)
+    assert len(line) <= 160
+    assert line.startswith("stop_claim_gate: 2 unbacked claims (count_mismatch); see C:/...")
+    assert line.endswith("/stop_claim_report.json")
+
+
+def test_feedback_line_unit_live_default_matches_the_order_example():
+    line = gate.feedback_line([{"check": "count_mismatch"}], gate.DEFAULT_REPORT)
+    assert line == ("stop_claim_gate: 1 unbacked claim (count_mismatch); "
+                    "see ops/runtime/stop_claim_report.json")
 
 
 # ------------------------------------------------------- rolling history
@@ -508,7 +589,7 @@ def test_history_line_carries_the_decision_fields(tmp_path):
     hist = tmp_path / "h.jsonl"
     proc = _run_with_history(tmp_path, [_assistant(_text("The full suite passes."))],
                              hist, armed=True, name="armed")
-    assert proc.returncode == 2
+    assert proc.returncode == 0 and proc.stdout.strip()
     row, = _history(hist)
     assert row["armed"] is True and row["mode"] == "armed"
     assert row["blocked"] is True
@@ -555,7 +636,9 @@ def test_history_failure_never_breaks_the_gate(tmp_path):
                            "--history", str(blocked_path)],
                           input=payload, capture_output=True, text=True,
                           cwd=str(ROOT), check=False)
-    assert proc.returncode == 2, "the gate still blocks even with no history"
+    assert proc.returncode == 0
+    assert json.loads(proc.stdout)["hookSpecificOutput"]["hookEventName"] == "Stop", \
+        "the gate still fires even with no history"
     assert json.loads(report.read_text(encoding="utf-8"))["findings"]
 
 
@@ -1425,15 +1508,19 @@ def test_the_armed_block_message_names_a_remedy_that_actually_works(tmp_path):
 
     Asserted on the real stderr the model is shown, not on the source string.
     """
-    proc, _report = _run_armed(
+    proc, report = _run_armed(
         tmp_path, [_assistant(_text("The full suite passes."))])
-    assert proc.returncode == 2
-    assert "retract" not in proc.stderr.lower(), (
+    _feedback(proc)
+    # MAIN ORDER 2026-10-07 2237: the full message moved from stderr into the
+    # report file (the model reads it there), so the remedy is asserted on the
+    # report's real message text.
+    message = report["message"]
+    assert "retract" not in message.lower(), (
         "retraction does not clear a finding - RM-217 REFUTED 2026-09-12; "
-        f"stderr was: {proc.stderr}")
-    assert "backtick" in proc.stderr.lower(), (
+        f"message was: {message}")
+    assert "backtick" in message.lower(), (
         "the emit must name the remedy that does work - a backticked figure is "
-        f"deleted by strip_prose_noise before any check; stderr was: {proc.stderr}")
+        f"deleted by strip_prose_noise before any check; message was: {message}")
 
 
 # ---------------------------------------------------------------------------
