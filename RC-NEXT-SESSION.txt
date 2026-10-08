@@ -1,74 +1,54 @@
 NEXT SESSION
 ------------
-SESSION: 100
-Next action: F) FOLD INBOX HANDLING INTO THE LANE/LOOP TICK per FLEET-KIT v8 item 14
-(MAIN 0310 order, kit vendored at ops/fleet_kit/fleet_inbox.py). RC's inbox is UNATTENDED
-right now: RC-InboxResponder refuses its agreement (counterparties still list LL, which is
-no longer a participant) AND that agreement's budget is spent (32/32). Per MAIN 0327 RULING:
-do NOT refresh the old agreement; at the fold write ONE record = MAIN as counterparty + MAIN
-outbox row for the sha256 check, EW in, LL out, keep expiry 2026-11-01, no own hop budget
-(the kit's 120 runs / rolling 24 h is the only budget). Tick reads the inbox on EVERY fire
-(fleet_inbox.scan / classify / TRIAGE_SPAWN / OutboundCap / may_reply / HOP lines). Pass
-kind="build" on drain runs, "inbox"/"triage" on inbox runs. Only after the tick
-demonstrably reads the inbox: DISABLE (never delete) RC-InboxResponder. Then ONE ANSWER note
-to MAIN (HOP: 2): tick commit, task disabled, conformance green on v8. Optional: lane-widget
-line from fleet_inbox.repo_split() (7-day build vs inbox dollars).
-NOTE for F: the kit seen-ledger ops/loop/control/inbox_seen.jsonl is PRE-SEEDED (session 99
-backfilled 511 historic notes as seen, plus NOREPLY verdicts for the two 2026-10-05 SS
-notes) - the first tick fire should find zero unseen notes unless new ones arrive.
-Then H) CI green on main: ci + docs-guards were RED on 66a2e43c1; collect CI for 5c2cadb4e
-(runs 37302052616 ci, 37302052480 docs-guards) AND for this session's hand-off commit.
-Known reds: rm172 x4 subtests (operator said LEAVE), tests/test_roadmap_rm_ids_unique.py
-"RM-512 not enumerated" (pre-existing since 66a2e43c1 moved RM-512 in ROADMAP).
+SESSION: 101
+Next action: H) CI green on main. An H agent was IN FLIGHT at the session-100 wrap (worktree
+build agent; progress ops/loop/control/progress/h-ci-green.json). It already pushed
+71fc2b3cd (three reds: dir_fd audit paths, stale RM-512 anchor, long outbound name) and was
+waiting on ci for b23b40368. First: read that progress file; if status done, read back the
+ci + docs-guards conclusions for origin/main tip with gh run list; if stale (2x its ETA),
+treat as failed and re-run H: gh run view <id> --log-failed, root-cause each red, fix forward.
+Known reds to LEAVE: 4 subtests in tests/test_rm172_mode_modifier_seam_characterization.py
+(operator said LEAVE). docs-guards was green on 71fc2b3cd.
 Then G) MAIN 0300 supply-chain order (moon_sync_inbox/2026-10-05-0300-...): dependabot.yml,
 SHA-pinned actions + hash-pinned pip, CodeQL workflow, top-level read-only token, fuzzing
-ruled out; ANSWER with Scorecard before/after. SS's own 0820 ANSWER (2.6 -> 6.4, read this
-session) is a worked example of exactly this: scorecard v5.5.0 in WSL, --commit for the
-before, full HEAD run for the after.
-Then: ddragon 16.20.1 upstream drift - UNACKNOWLEDGED since 2026-10-07T08:45:04Z and its
-data refresh sits UNCOMMITTED in the tree (10 modified JSON under data/meta/ +
-data/meta_build/ddragon/_index.json + web/data/*, untracked data/meta_build/ddragon/16.20.1/
-+ 2 rune icons). Ack: python tools/upstream_drift_check.py --ack, then commit the refresh
-as one data commit. Left uncommitted at this wrap on purpose: not authored this session and
-the ack must land with it.
+ruled out; ANSWER with Scorecard before/after. SS's own 0820 ANSWER (2.6 -> 6.4) is a worked
+example: scorecard v5.5.0 in WSL, --commit for the before, full HEAD run for the after.
+GitHub reports 50 dependabot vulnerabilities on the default branch (21 high) - G covers it.
+Then: watch for MAIN's E: drive move runbook (MAIN 2155 said the next MAIN session moves every
+repo C: -> E:). RC's inventory ANSWER (LEDGER 1672) flagged: absolute core.hookspath in
+.git/config, .claude/settings.json hook commands, ops/rc_config.json, ops/loop/config*.json,
+26 RC-* scheduled tasks, 9 shortcuts, Claude project-state keyed by path, 61 worktrees (git
+worktree repair). Act only on MAIN's runbook.
 
-Session 99 (2026-10-07, AMBERSTONE) did ONLY inbox triage - do NOT redo:
-- Both unread notes read; neither owed a reply. 0820 SS ANSWER to MAIN = TERMINAL
-  no-reply; 0841 SS REPORT to MAIN (kit item-5 closing line) = "No reply needed", ask
-  targets MAIN. No outbound note spent; OutboundCap untouched.
-- Acked via kit fleet_inbox.mark_seen (ledger + NOREPLY verdicts) + rc_facts
-  --mark-inbox-seen (524 recorded).
-- WATCH: a future kit version will likely change the /done closing line to "Done ritual
-  processed, safe to clear and continue" (SS operator order 2026-10-05; SS asked MAIN to
-  carry it in FLEET item 5). Do NOT pre-edit the byte-pinned block; adopt on MAIN's ship.
-
-Shipped 2026-10-05 session (do NOT redo; pushed 66a2e43c1..5c2cadb4e, LEDGER 1670):
-- 5c2cadb4e FLEET-KIT v8 adopted (MAIN 2237 v6 + 0215 v7 + 0230 roster + 0310 v8), one
-  squashed commit: ops/fleet_kit 12 files hash-equal, FLEET-COMMON block re-embedded,
-  ops/loop/lanes.py on fleet_lanes cap 3 (lock dir resolved vs main tree), lane-<i>.json
-  checklist progress, lane-widget 3 lanes + checklist + governor strip, core/ports.py
-  EW_BLOCK 8940-8959 (LL_BLOCK reserved, retired), sweep honours gitignored "retired" map
-  (LL needles stay armed; live ops/moon_sync_repos.json has retired.LL), test_channel_doc_pin
-  RETIRED_CODES/LIVE_ROSTER_CODES, charter roster addendum, tools/session_checklist.py +
-  SESSION counter + /done preflight + responder fire checklist. .claude/commands/done.md
-  re-copied from tools/done.md.
-- Squashed because synthetic drive-root fixtures in intermediate slice commits halted the
-  pre-push sibling sweep; slice history on local branches worktree-agent-af827986bac251ffc
-  (A), -a1f2b1c7d377f65b2 (C), -a5ae4bf4a4765d40d (D), -a28bb1b0d158cab30 (B), merge
-  branch -abd89ea3e70d8c92f (tip 27b15c387), plus -a620786f916e0210a (no-op). All content is
-  in 5c2cadb4e; safe to remove these worktrees/branches.
-- C4 slots.py 290cbf80 was ALREADY landed (9024fd2cd); landing note to CS cc LW RSC SS MAIN
-  delivered 5/5 (sha b6cc0cf6). RC row closed.
-- ANSWER to MAIN (2237/0215/0230/0310/0327) delivered 1/1 sha 41c50677; it says the inbox
-  is unattended until the fold lands.
-- Adjudicated: agreement counterparty swap DEFERRED to the single v8 record (swap mints a
-  fresh 32-hop budget outside the kit). Reverses if MAIN/operator rules otherwise.
+Session 100 (2026-10-07) shipped - do NOT redo (LEDGER 1671-1674):
+- 0f060adbc DDragon 16.19.1 -> 16.20.1 refresh + upstream drift ack. DS :8860 still reports
+  16.19.1 - a DS batch (ENGINE/current.txt + :8860 restart) is a separate, unscheduled item.
+- Item F DONE: a270aab22 / merge c88342a7a ops/loop/inbox_tick.py runs as checklist row I1 in
+  lane_launcher.py + loop_controller.py; single v8 agreement record (MAIN + outbox row, EW in,
+  LL out, expiry 2026-11-01, budget kit; old record kept as
+  ops/runtime/inbox_responder_agreement.v1-retired-20261007.json). bcdd117c7: rc_facts
+  recognises the v8 record + tick action; tick CLI writes inbox_tick_last.json.
+- DECISION: RC-InboxResponder REPOINTED (pythonw ops/loop/inbox_tick.py, 5-min trigger), NOT
+  disabled - FLEET 14a, RC has no scheduled lane loop. Reverses if RC gains a scheduled lane
+  loop (then disable the task). XML backup ops/runtime/RC-InboxResponder.backup-2026-10-07-itemF.xml.
+- ANSWER to MAIN closing 0310 + 0327 (b7fc90740), sha 16ac3d09..., reached 1/1, carries kit
+  gaps: (a) nothing consumes ops/loop/control/inbox_work.jsonl; (b) lane workers launch via
+  run_lane.ps1/headless_route.ps1 not kit spawn (no usage lines); (c) kind "inbox" unused;
+  plus older gaps (public launch fn, argv-plus-stdin, POSIX _kill_tree, fleet_route effort).
+- MAIN 2155 C: inventory ANSWER sha d19f4e15..., reached 1/1 (159 HARDCODED / 39 EXTERNAL /
+  2 DERIVED / 907 DOC + 45 STAYS). Outbox copy docs/_outbound_2026-10-07-2207-*.md committed.
+- MAIN 2237 ORDER: A done (496b91b19 / merge b23b40368, stop_claim_gate emits one Stop
+  additionalContext line; read back live as one line). B done in place: .claude/settings.json
+  is GITIGNORED (not tracked as the order said) - statusLine key deleted, JSON valid. B3
+  read-back (acct2 status line, no [Legion]) = next pane; record if seen. No ANSWER owed.
+- Operator feedback this session: be QUIET in chat - results only, one line each; never relay
+  stop-hook feedback inline; operator cannot scroll past long Bash/hook output.
 
 Carried forward (not acted on yet):
-- Post-reboot item: operator restarted to enable Windows Sandbox + WSL. RC health came back
-  and DS :8860 ok; WSL NOT probed. If WSL is up, Y-45 phone push (WSL + ntfy) is unblocked.
-- 5b: before the first v8 lane fire, stop any old-layout queue_loop (it only knows 0.lock).
-  Main tree lanes/0.lock (pid 7676) is stale/reclaimable; RUNNING.lock (pid 22888) dead.
+- 6-agent clobber lesson: concurrent sub-agents shared a scratchpad prog.py and one overwrote
+  another's progress file. Every sub-agent prompt must name a UNIQUE helper filename.
+- Post-reboot item: WSL NOT probed. If WSL is up, Y-45 phone push (WSL + ntfy) is unblocked.
+- 5b closed: no old queue_loop running, stale lanes/0.lock reclaimed+released by the F demo.
 - stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted
   capitalised word could read as a channel code. A per-sentence finding cannot be
   withdrawn, so relaying a subagent's numbers re-flags every Stop until the session's own
@@ -76,7 +56,8 @@ Carried forward (not acted on yet):
 - 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests RED - operator said
   LEAVE; do not fix.
 - Leftover: progress files ops/loop/control/progress/rm415_fix.json, fleet_v6_slice_c.json,
-  fleet_v7_slice_{a,b,d}.json (untracked, done).
+  fleet_v7_slice_{a,b,d}.json, plus this session's main-2155-inventory, ddragon-16-20-1,
+  item-f-inbox-fold (clobbered then superseded), item-f-cutover, main-2237-console (untracked, done).
 - Operator setup list (physical / operator acts, batch into one ask):
   - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window
     capture source; set the game to borderless; install ffmpeg; set obs.record.enabled;
@@ -103,46 +84,41 @@ Carried forward (not acted on yet):
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW -
   roster change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER
   SHARED_SHA256 re-pin stays joint.
-- Kept worktrees/branches (git cherry shows +, review before -D): drain-wave2-atomic,
-  drain-wave2-tail-backlog, worktree-wf_0815ac54-8f2-4 (RM-239/242), -5 (RM-500),
-  worktree-agent-a0a31cf1b05f41e28 (superseded by kit v4), RM-256 / RM-297b branches,
-  worktree-agent-a4cfeb79e86b5bf30 (merged as 7e32c2933), detached C:/rc-worktrees/
-  done-20261004. Safe to remove: worktree-agent-a8139d07d888c2f11,
-  worktree-agent-a38e5131a8250fc5c, worktree-agent-ac142e29ad5b833d1, plus the six from the
-  2026-10-05 squash listed above. 15 agent worktrees present at the 2026-10-05 wrap.
+- Worktrees/branches (session-100 git cherry audit in the 2155 ANSWER): NEEDED = 6 lane
+  worktrees + any live-agent lock. REVIEW before -D: lift1 death-reel / review-player /
+  vod-retention, lift2 y45, drain-wave2-atomic, drain-wave2-tail-backlog,
+  worktree-agent-a0a31cf1b05f41e28; also worktree-wf_0815ac54-8f2-4 (RM-239/242), -5
+  (RM-500), RM-256 / RM-297b branches. All others not needed. This session added
+  worktree-agent-a74306a8a8a67a8c6 (F, merged), -a78c79eb7ff967095 (2237, merged), and the
+  H agent's worktree (remove after H lands). Removal waits for the E: move runbook.
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
-- Kit gaps reported to MAIN (carried to v7+ on MAIN's record): public launch function (RC
-  uses private _run); argv-plus-stdin mode; POSIX _kill_tree; fleet_route has no effort
-  knob. Responder / loop executor / run_lane still on ops/loop/headless_env.py - item F
-  should move inbox runs onto the kit spawn.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).
 - RM-512 self-adjudicated in wave 1 (operator may revisit). RM-481 residual CRLF writers -
   confirm none remain. Console-flash guard still hand-listed for hook scripts / task
   targets outside tree.
 - Lane-widget notes: "(resets 0m)", mtime-only freshness, config cache; RSC inbox_status
   "limit" at 0/120. Stale checklist renders "- checklist STALE" (not bare STALE) - reverses
-  if MAIN wants the literal.
+  if MAIN wants the literal. Optional: lane-widget line from fleet_inbox.repo_split().
 - Box load: no local full suite while 2+ others run (OOM / 60m timeouts measured again).
   CI is the full gate.
 - ROADMAP top open: EXTERNAL-LIFT INTAKE band 1 (BACKLOG.md "External-lift intake"),
   RM-486, RM-488/489, RM-479, RM-482. ROADMAP budget thin (89.5%).
-- Anomalies standing at this wrap: RC-Phase3-Supervisor last_result=2 (uninvestigated);
-  RC-InboxResponder ENABLED-but-must-stay-DISARMED (resolves at F when it is disabled).
+- Anomaly standing: RC-Phase3-Supervisor last_result=2 (uninvestigated).
+- WATCH: a future kit version will likely change the /done closing line to "Done ritual
+  processed, safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Context: rc_facts session hook; ops/runtime/inbox_responder_agreement.json (counterparties
-still CS LL LW RSC SS - leave until F); ops/moon_sync_repos.json (+ .bak, gitignored);
-ops/fleet_kit/MANIFEST.json version 8. Next free LEDGER id 1671 (session 99 appended none).
+Context: rc_facts session hook; ops/loop/inbox_tick.py (python ops/loop/inbox_tick.py --dry);
+ops/loop/control/inbox_tick_last.json; ops/runtime/inbox_responder_agreement.json (v8);
+ops/moon_sync_repos.json (gitignored); ops/fleet_kit/MANIFEST.json version 8. Next free
+LEDGER id 1675.
 
-Acceptance: F) tick reads RC's inbox unattended (a fire's progress/lane-<i>.json shows the
-inbox step), single agreement record in place, RC-InboxResponder disabled, ANSWER to MAIN
-sent; H) CI green on main except the 4 operator-left RM-172 subtests.
+Acceptance: H) ci + docs-guards green on origin/main tip except the 4 operator-left RM-172
+subtests; G) Scorecard before/after ANSWER sent to MAIN.
 
-Status (2026-10-07 wrap, session 99): no code authored; commits this wrap = WAKEUP_NOTES +
-history_notes prune + this hand-off (docs-only). Local gate: ruff ALL CHECKS PASSED,
-hygiene 14 passed, drift_guard 0 breaches. CI: pending at wrap for the hand-off commit
-(collect with H). RC health: pid 14496 alive, last_reload_ok true, mode client, no game
-(mode_key client, lcu phase None). DS :8860 ok patch 16.19.1. Session file ~0.7 MB.
-ddragon 16.20.1 refresh deliberately left uncommitted (see the drift item above).
+Status (2026-10-07 wrap, session 100): pushed 87375e5a1..b23b40368 plus this wrap's docs
+commit. Local gate: ruff all checks passed, hygiene 14 passed, drift_guard 0 breaches. CI:
+PENDING at wrap (ci for b23b40368 in progress; docs-guards 71fc2b3cd success) - H agent in
+flight. RC health: mode client, no game. DS :8860 patch 16.19.1. Session file ~1 MB.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
