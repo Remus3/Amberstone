@@ -1,0 +1,26 @@
+# Input for .github/ci/requirements-docs-guards.txt - the HASHED install set
+# of docs-guards.yml (the md-reading guards). Deliberately small: none of the
+# selected modules imports the runtime stack (measured 2026-07-27, see the
+# workflow), so this is NOT the root requirements.txt.
+#
+# CI installs the generated .txt with `pip install --require-hashes`. Never
+# hand-edit the .txt: change this file and regenerate, from the repo root,
+# with:
+#
+#   uv pip compile .github/ci/requirements-docs-guards.in --generate-hashes --python-version 3.12 --python-platform x86_64-manylinux_2_28 --output-file .github/ci/requirements-docs-guards.txt
+#
+# --python-version / --python-platform name the RUNNER (ubuntu-latest,
+# setup-python 3.12), so the output is the same on any host. Dependabot's
+# `pip` entry for /.github/ci keeps the pins and hashes current.
+
+# pydantic follows the runtime pin rather than floating: one source of truth
+# for a version, not two.
+-c ../../requirements.txt
+
+pytest
+pytest-asyncio
+pytest-timeout
+# Test-only: the workflow-shape assertions in tests/test_ci_docs_guard_coverage.py.
+# Without it they degrade to skips, and a skipped test is a green tick.
+pyyaml
+pydantic

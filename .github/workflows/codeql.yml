@@ -1,0 +1,79 @@
+# CodeQL, ADVANCED setup (supply-chain order, 2026-10-05, item 2.3).
+#
+# This file replaces GitHub's CodeQL DEFAULT setup (the "Push on main" run
+# under dynamic/github-code-scanning/codeql), which scanned the same three
+# languages. The two cannot run side by side: while default setup is
+# configured, GitHub REJECTS every advanced upload, so this workflow's upload
+# step fails. Default setup is therefore switched to not-configured in the
+# same change that lands this file:
+#
+#   gh api -X PATCH repos/<owner>/<repo>/code-scanning/default-setup -f state=not-configured
+#
+# and the state is read back with a GET on the same endpoint. The SARIF
+# categories below are the ones default setup used (/language:<lang>), so the
+# existing alert history carries over instead of restarting.
+#
+# Why advanced rather than default: the analysis config is now versioned and
+# reviewed like code, every action in it is SHA-pinned like everything else
+# here, and Scorecard's SAST check credits a CodeQL workflow it can read in the
+# tree - default setup lives in repository settings, where it scored
+# "no SAST tool detected" (measured 2026-10-08 at 752bf5cef).
+
+name: codeql
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * 1'  # weekly, Monday 05:23 UTC
+  workflow_dispatch:
+
+# A superseded PR run is cancelled; a push to main is NOT, so every commit
+# that lands on main gets its own complete analysis.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege: the workflow default is read-only. The one job below is
+# elevated at job level, and only by what CodeQL needs.
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    # Measured on default setup at 752bf5cef: python ~3m, javascript-typescript
+    # ~1m, actions ~1m. 60 leaves room for runner variance and repo growth.
+    timeout-minutes: 60
+    permissions:
+      security-events: write  # upload the SARIF results
+      contents: read          # check out the code
+      actions: read           # read workflow metadata for the actions language
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+    steps:
+      # SHA-pinned, tag in the trailing comment; Dependabot's github-actions
+      # entry keeps both current.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 1
+
+      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: "/language:${{ matrix.language }}"
