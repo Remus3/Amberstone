@@ -84,6 +84,7 @@ def test_artifact_finding_never_blocks_an_armed_gate(tmp_path):
                            "--history", str(tmp_path / "h.jsonl")],
                           input=payload, capture_output=True, text=True, cwd=str(ROOT))
     assert proc.returncode == 0
+    assert proc.stdout == "", "an advisory-only run emits no Stop feedback"
     data = json.loads(report.read_text(encoding="utf-8"))
     assert [f["check"] for f in data["findings"]] == ["artifact_count_mismatch"]
     assert data["blocked"] is False
