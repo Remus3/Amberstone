@@ -1,63 +1,80 @@
 NEXT SESSION
 ------------
-SESSION: 101
-Next action: H) CI green on main. An H agent was IN FLIGHT at the session-100 wrap (worktree
-build agent; progress ops/loop/control/progress/h-ci-green.json). It already pushed
-71fc2b3cd (three reds: dir_fd audit paths, stale RM-512 anchor, long outbound name) and was
-waiting on ci for b23b40368. First: read that progress file; if status done, read back the
-ci + docs-guards conclusions for origin/main tip with gh run list; if stale (2x its ETA),
-treat as failed and re-run H: gh run view <id> --log-failed, root-cause each red, fix forward.
-Known reds to LEAVE: 4 subtests in tests/test_rm172_mode_modifier_seam_characterization.py
-(operator said LEAVE). docs-guards was green on 71fc2b3cd.
+SESSION: 102
+Next action: E) VERIFY THE E: CUTOVER. Session 101 staged the C: -> E: move (operator chat order
+2026-10-08) and left a detached waiter (ops/migrate/e_move.ps1 -Phase Cutover) that ran after
+session 101's Claude exited. First: powershell.exe -NoProfile -ExecutionPolicy Bypass -File
+"E:\Riot Commander\ops\migrate\e_move.ps1" -Phase Status (first line = verdict). Then read back:
+- cut_over: C:\Riot Commander and C:\rc-worktrees are JUNCTIONS to E: (Get-Item .LinkType);
+  ops/runtime/health.json new pid alive=true; listeners 8888/8889/8860; 25 RC-* tasks point at
+  E: (Get-ScheduledTask actions) and the recorded enabled set is re-enabled (RC-CIWatchdog and
+  RC-WeeklyHygiene stay DISABLED); git worktree list = 25, all E: paths; rc_facts hook printed at
+  start. Record in LEDGER 1676 (flip PARTIAL -> DONE with the read-back).
+- rolled_back: RC runs from C: as before; read the reason in ops/runtime/e_move_state.json,
+  fix, re-run Cutover per ops/migrate/README.md (needs a session exit again).
+- needs_operator / cutover_running stuck: read state + E:\Riot Commander\logs\e_move.log; the
+  README has the non-detached -NoWait resume from E:.
+After cut_over: the renamed originals C:\Riot Commander.pre-E-move-20261008 and
+C:\rc-worktrees.pre-E-move-20261008 (~31 GB) stay until the operator confirms; then Recycle Bin
+(FLEET 9; too big for the bin = ask the operator, never a direct unlink). Check the cutover's
+catch-up copy list (state file) for sibling notes that landed in the old inbox.
+
+Then V) MAIN v9 ORDER (moon_sync_inbox/2026-10-07-2354-from-MAIN-ORDER-to-RC-FLEET-KIT-v9-...):
+1 vendor kit v9 from 2026-10-07-2354-from-MAIN-FLEET-KIT-v9/ byte-for-byte (one commit, verify
+MANIFEST), re-embed FLEET-COMMON.md (item 15) in CLAUDE.md; 2 /done last act = python
+ops/fleet_kit/fleet_done.py mark --session <n> --status done; 3 project Stop hook
+ops/fleet_kit/fleet_done.py stop-hook (relative to project dir); display keys ALREADY removed in
+session 101 (theme, spinnerTipsEnabled, prefersReducedMotion, nested spinnerTipsEnabled) -
+re-check zero; 4 gitignore ops/loop/control/session_done.json + .seen; 5 MIG-1 DONE in session
+101: git worktree list 64 -> 25 (39 removed, 0 forced, no branch deleted; kept 6 lanes + 18 with
+git cherry unique commits; 9 of those only have commits whose subjects are on main - second-pass
+candidates: lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08, -y11-y13,
+drain-wave2-atomic). 6 ONE ANSWER to MAIN (HOP: 2): vendoring commit + MANIFEST sha256 +
+conformance + prune counts 64 -> 25 + THE MOVE: RC moved itself to E: on the operator's chat
+order, C: paths are junctions so sibling rosters and channel paths keep working until MAIN's
+layout doc repoints them; the Console app pane config (outside RC) still names the C: path.
+Then H) CI red on main: ci + docs-guards FAILED on 96e3046d4 (session-100 wrap). The H agent
+from session 100 is dead (progress h-ci-green.json frozen 2026-10-07T22:46; its worktree was
+pruned). gh run view <id> --log-failed, root-cause each red, fix forward. Known reds to LEAVE: 4
+subtests in tests/test_rm172_mode_modifier_seam_characterization.py (operator said LEAVE).
 Then G) MAIN 0300 supply-chain order (moon_sync_inbox/2026-10-05-0300-...): dependabot.yml,
 SHA-pinned actions + hash-pinned pip, CodeQL workflow, top-level read-only token, fuzzing
 ruled out; ANSWER with Scorecard before/after. SS's own 0820 ANSWER (2.6 -> 6.4) is a worked
 example: scorecard v5.5.0 in WSL, --commit for the before, full HEAD run for the after.
 GitHub reports 50 dependabot vulnerabilities on the default branch (21 high) - G covers it.
-Then: watch for MAIN's E: drive move runbook (MAIN 2155 said the next MAIN session moves every
-repo C: -> E:). RC's inventory ANSWER (LEDGER 1672) flagged: absolute core.hookspath in
-.git/config, .claude/settings.json hook commands, ops/rc_config.json, ops/loop/config*.json,
-26 RC-* scheduled tasks, 9 shortcuts, Claude project-state keyed by path, 61 worktrees (git
-worktree repair). Act only on MAIN's runbook.
 
-Session 100 (2026-10-07) shipped - do NOT redo (LEDGER 1671-1674):
-- 0f060adbc DDragon 16.19.1 -> 16.20.1 refresh + upstream drift ack. DS :8860 still reports
-  16.19.1 - a DS batch (ENGINE/current.txt + :8860 restart) is a separate, unscheduled item.
-- Item F DONE: a270aab22 / merge c88342a7a ops/loop/inbox_tick.py runs as checklist row I1 in
-  lane_launcher.py + loop_controller.py; single v8 agreement record (MAIN + outbox row, EW in,
-  LL out, expiry 2026-11-01, budget kit; old record kept as
-  ops/runtime/inbox_responder_agreement.v1-retired-20261007.json). bcdd117c7: rc_facts
-  recognises the v8 record + tick action; tick CLI writes inbox_tick_last.json.
-- DECISION: RC-InboxResponder REPOINTED (pythonw ops/loop/inbox_tick.py, 5-min trigger), NOT
-  disabled - FLEET 14a, RC has no scheduled lane loop. Reverses if RC gains a scheduled lane
-  loop (then disable the task). XML backup ops/runtime/RC-InboxResponder.backup-2026-10-07-itemF.xml.
-- ANSWER to MAIN closing 0310 + 0327 (b7fc90740), sha 16ac3d09..., reached 1/1, carries kit
-  gaps: (a) nothing consumes ops/loop/control/inbox_work.jsonl; (b) lane workers launch via
-  run_lane.ps1/headless_route.ps1 not kit spawn (no usage lines); (c) kind "inbox" unused;
-  plus older gaps (public launch fn, argv-plus-stdin, POSIX _kill_tree, fleet_route effort).
-- MAIN 2155 C: inventory ANSWER sha d19f4e15..., reached 1/1 (159 HARDCODED / 39 EXTERNAL /
-  2 DERIVED / 907 DOC + 45 STAYS). Outbox copy docs/_outbound_2026-10-07-2207-*.md committed.
-- MAIN 2237 ORDER: A done (496b91b19 / merge b23b40368, stop_claim_gate emits one Stop
-  additionalContext line; read back live as one line). B done in place: .claude/settings.json
-  is GITIGNORED (not tracked as the order said) - statusLine key deleted, JSON valid. B3
-  read-back (acct2 status line, no [Legion]) = next pane; record if seen. No ANSWER owed.
-- Operator feedback this session: be QUIET in chat - results only, one line each; never relay
-  stop-hook feedback inline; operator cannot scroll past long Bash/hook output.
+Session 101 (2026-10-08) shipped - do NOT redo (LEDGER 1675-1676):
+- Model pin removed: .claude/settings.json "model": "claude-fable-5[1m]" deleted (it overrode
+  /model on every restart); docs/DEEP_AUDIT_CHARTER.md now says pass --model per run, never pin.
+  Memory feedback_no_project_model_pin. effortLevel "xhigh" is STILL pinned in project settings
+  (operator told; remove only if asked).
+- E: move staged: Stop/Preseed/RepointInternal ran 01:21 (25 tasks disabled with prior state
+  recorded, 16 RC processes killed, E: .git = C: bytes, 25/25 worktrees on E:, hooksPath + 67
+  untracked configs repointed, backups ops/runtime/e_move_backup/, Claude memory copied to
+  E--Riot-Commander). Tool reviewed twice by independent verifiers; all blockers fixed.
+- MIG-1 prune done (above).
+- MAIN 2237 ORDER (A stop_claim_gate one line, B statusLine) was done in session 100 - inbox
+  copy is just unread; mark seen.
 
 Carried forward (not acted on yet):
+- RM-new: 159 tracked HARDCODED C: literals (inventory docs/_outbound_2026-10-07-2207-*.md
+  section 2) still say C:\Riot Commander - they work through the junction; convert to derived
+  (repo-root relative) in a TDD slice, never in frozen files without operator approval. Until
+  then the junction must stay.
+- B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
 - 6-agent clobber lesson: concurrent sub-agents shared a scratchpad prog.py and one overwrote
   another's progress file. Every sub-agent prompt must name a UNIQUE helper filename.
 - Post-reboot item: WSL NOT probed. If WSL is up, Y-45 phone push (WSL + ntfy) is unblocked.
-- 5b closed: no old queue_loop running, stale lanes/0.lock reclaimed+released by the F demo.
 - stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted
   capitalised word could read as a channel code. A per-sentence finding cannot be
   withdrawn, so relaying a subagent's numbers re-flags every Stop until the session's own
   run/commit exists - attribute with backticks.
 - 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests RED - operator said
   LEAVE; do not fix.
-- Leftover: progress files ops/loop/control/progress/rm415_fix.json, fleet_v6_slice_c.json,
-  fleet_v7_slice_{a,b,d}.json, plus this session's main-2155-inventory, ddragon-16-20-1,
-  item-f-inbox-fold (clobbered then superseded), item-f-cutover, main-2237-console (untracked, done).
+- Leftover progress files ops/loop/control/progress/: rm415_fix, fleet_v6_slice_c,
+  fleet_v7_slice_{a,b,d}, main-2155-inventory, ddragon-16-20-1, item-f-inbox-fold,
+  item-f-cutover, main-2237-console, h-ci-green (dead), mig1-prune, e-move-script,
+  e-move-review, e-move-rereview (untracked, done).
 - Operator setup list (physical / operator acts, batch into one ask):
   - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window
     capture source; set the game to borderless; install ffmpeg; set obs.record.enabled;
@@ -84,13 +101,11 @@ Carried forward (not acted on yet):
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW -
   roster change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER
   SHARED_SHA256 re-pin stays joint.
-- Worktrees/branches (session-100 git cherry audit in the 2155 ANSWER): NEEDED = 6 lane
-  worktrees + any live-agent lock. REVIEW before -D: lift1 death-reel / review-player /
-  vod-retention, lift2 y45, drain-wave2-atomic, drain-wave2-tail-backlog,
-  worktree-agent-a0a31cf1b05f41e28; also worktree-wf_0815ac54-8f2-4 (RM-239/242), -5
-  (RM-500), RM-256 / RM-297b branches. All others not needed. This session added
-  worktree-agent-a74306a8a8a67a8c6 (F, merged), -a78c79eb7ff967095 (2237, merged), and the
-  H agent's worktree (remove after H lands). Removal waits for the E: move runbook.
+- Worktrees: 25 remain after MIG-1 (6 lanes + 18 with unique commits). REVIEW before -D:
+  lift1 death-reel (RM-639) / review-player (RM-641) / vod-retention (RM-640), lift2 y45
+  (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432 ADR-016, RM-229), agent worktrees
+  a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work; hand-off says squashed
+  into 5c2cadb4e - unverified). Stray file C:\rc-worktrees\before_sweep_s2.txt.
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).
@@ -108,17 +123,20 @@ Carried forward (not acted on yet):
 - WATCH: a future kit version will likely change the /done closing line to "Done ritual
   processed, safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Context: rc_facts session hook; ops/loop/inbox_tick.py (python ops/loop/inbox_tick.py --dry);
-ops/loop/control/inbox_tick_last.json; ops/runtime/inbox_responder_agreement.json (v8);
-ops/moon_sync_repos.json (gitignored); ops/fleet_kit/MANIFEST.json version 8. Next free
-LEDGER id 1675.
+Context: ops/migrate/README.md; ops/runtime/e_move_state.json; logs/e_move.log;
+ops/runtime/e_move_backup/ (task XML, .lnk, .claude.json, config backups); rc_facts session
+hook; ops/loop/inbox_tick.py; ops/runtime/inbox_responder_agreement.json (v8, expires
+2026-11-01); ops/moon_sync_repos.json (gitignored); ops/fleet_kit/MANIFEST.json version 8. Next
+free LEDGER id 1677.
 
-Acceptance: H) ci + docs-guards green on origin/main tip except the 4 operator-left RM-172
-subtests; G) Scorecard before/after ANSWER sent to MAIN.
+Acceptance: E) -Phase Status = cut_over, RC healthy from E:, LEDGER 1676 DONE; V) kit v9
+vendored + ANSWER sent; H) ci + docs-guards green on origin/main tip except the 4
+operator-left RM-172 subtests; G) Scorecard before/after ANSWER sent to MAIN.
 
-Status (2026-10-07 wrap, session 100): pushed 87375e5a1..b23b40368 plus this wrap's docs
-commit. Local gate: ruff all checks passed, hygiene 14 passed, drift_guard 0 breaches. CI:
-PENDING at wrap (ci for b23b40368 in progress; docs-guards 71fc2b3cd success) - H agent in
-flight. RC health: mode client, no game. DS :8860 patch 16.19.1. Session file ~1 MB.
+Status (2026-10-08 wrap, session 101): see git log for the push range of this session's commit
+(ops/migrate tooling, LEDGER 1675-1676, charter, hand-off). Local gate: ruff + py_compile +
+hygiene on touched files. CI at wrap: 96e3046d4 ci + docs-guards RED (H). RC health at wrap:
+STOPPED on purpose for the cutover (all RC-* tasks disabled until the waiter restarts them).
+DS :8860 patch 16.19.1.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
