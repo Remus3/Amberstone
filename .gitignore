@@ -349,6 +349,11 @@ ops/loop/control/progress/
 # (ops/fleet_kit/fleet_done.py MARKER_REL / SEEN_REL), named per the kit order.
 ops/loop/control/session_done.json
 ops/loop/control/session_done.seen
+# FLEET-KIT v10 (MAIN 2026-10-08 0839 ORDER step 3): the SUBAGENT-FIRST hook's
+# mode file and its decision log (ops/fleet_kit/fleet_subagent_first.py
+# MODE_REL / LOG_REL), named per the kit order.
+ops/loop/control/subagent_first.mode
+ops/loop/control/subagent_first.jsonl
 
 # Transient verify/test scratch dropped at repo root by DS item runs
 # (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.
