@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-04d - last non-operator CI red cleared; Firecrawl dropped; gate fixes; inbox triaged
+
+- **Shipped (pushed):** `5a2feb7a7` arena lean-divergence 64 -> 65 re-pin, root cause RM-513 `bfefceee7` (LEDGER 1664); `2590a7fe0` Firecrawl out of 3 headless prompts per MAIN 0850 (LEDGER 1665); `329d81cb1` slot_bucket_audit OVER_STALE wording + stop_claim_gate false positives, verifier CONFIRMED (LEDGER 1666).
+- **Inbox (LEDGER 1667):** all MAIN notes SHA-256 MATCH; kit v4 already adopted; reply `2026-10-04-1532` reached 1/1 answering 0845/0850/0855/0912. Report `ops/loop/control/progress/inbox_triage_report.md`.
+- **CI:** only the 4 operator-left RM-172 subtests should remain red.
+- **Next:** MAIN 0830 awaits MAIN's ruling on a refreshed responder agreement; then the hand-off carry-forwards.
+- **Open gate gaps (filed):** "Merged to main." unflagged; "The agent committed X and pushed." gets no push flag.
+- **Do NOT redo:** arena 65 re-pin, Firecrawl removal, OVER_STALE wording, stop_claim_gate FP fixes, MAIN-note hash checks, the 0845/0850/0855/0912 replies. Leave slot `1.lock` alone (dead-holder, self-clears).
+
+---
+
 # 2026-10-04c - joint-round C4 slots.py adopted, SHARED_SHA256 re-pinned
 
 - **Shipped (pushed):** `9024fd2cd` C4 `ops/loop/slots.py` (LW `700cd64`) byte-copied, 11426 bytes, digest equal to LW; `test_slots_is_stale_arms_rm503` +2 C4 live-holder cases (LEDGER 1663). Operator approved in chat and told CS / SS directly; RC sent no note.

@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-07 - AMBERSTONE inbox triage: 2 SS notes read, no reply owed, seen-ledger backfilled
+
+- **Inbox (session 99):** `2026-10-05-0820` SS ANSWER to MAIN (Scorecard 2.6 -> 6.4) = marked TERMINAL no-reply, skip; `2026-10-05-0841` SS REPORT to MAIN (kit item-5 closing line) = "No reply needed", ask targets MAIN (carry line in next kit). No outbound note spent; OutboundCap untouched.
+- **Acks:** kit `fleet_inbox.mark_seen` ledger lines + explicit NOREPLY verdicts in `ops/loop/control/inbox_seen.jsonl` (gitignored) + `rc_facts --mark-inbox-seen` (524 recorded).
+- **Side effect (beneficial):** the kit seen-ledger was EMPTY, so the scan backfilled 511 historic notes as seen - pre-seeds dedupe for the item-F tick fold; do not re-triage them.
+- **Watch:** expect a future kit version to change the FLEET item 5 /done closing line to `Done ritual processed, safe to clear and continue` (SS operator order 2026-10-05, SS asked MAIN to carry it). Do NOT pre-edit the byte-pinned FLEET-COMMON block; adopt only on MAIN's kit ship.
+- **Not acted (carried):** C1/F inbox fold (next action, spec in hand-off); ddragon 16.20.1 upstream drift UNACKNOWLEDGED and its data refresh uncommitted (10 modified JSON + `data/meta_build/ddragon/16.20.1/` + 2 rune icons) - ack via `python tools/upstream_drift_check.py --ack`, then commit the refresh.
+- **Do NOT redo:** the 2 note acks / verdicts. No LEDGER entry - nothing shipped, triage only.
+
+---
+
 # 2026-10-05 - FLEET-KIT v8 adopted (v6+v7+v8 + roster EW/LL-retired) in one squashed commit
 
 - **Shipped (pushed `66a2e43c1..5c2cadb4e`, LEDGER 1670):** kit v8 vendored (12 files), FLEET-COMMON block re-embedded, lanes.py on fleet_lanes cap 3, lane-widget 3 lanes + checklist + governor strip, EW_BLOCK 8940-8959, retired LL needles kept armed via gitignored `retired` map, session checklist (SESSION counter in hand-off, tools/session_checklist.py).
@@ -23,14 +34,3 @@
 - **Found already done (no new work):** stop_claim_gate gaps `174da7a02`, slot attribution main fix `9fe294001`, lean flags MAIN 0912/0850 `09db31dee`, MAIN 2320 marker scan `467e22d96`, Firecrawl atlas `005f1324d`, Kled wiki row = RM-600 `f7ee2a85c`.
 - **ROADMAP budget:** 92% -> 89.5% by relocating 5 shipped rows VERBATIM to `docs/ROADMAP_HISTORY.md` `## 2026-10-04e`. Headroom is thin; the next ROADMAP growth needs another relocation pass.
 - **Do NOT redo:** the two commits above, the hand-off items listed as already done, the 2026-10-04e relocation.
-
----
-
-# 2026-10-04d - last non-operator CI red cleared; Firecrawl dropped; gate fixes; inbox triaged
-
-- **Shipped (pushed):** `5a2feb7a7` arena lean-divergence 64 -> 65 re-pin, root cause RM-513 `bfefceee7` (LEDGER 1664); `2590a7fe0` Firecrawl out of 3 headless prompts per MAIN 0850 (LEDGER 1665); `329d81cb1` slot_bucket_audit OVER_STALE wording + stop_claim_gate false positives, verifier CONFIRMED (LEDGER 1666).
-- **Inbox (LEDGER 1667):** all MAIN notes SHA-256 MATCH; kit v4 already adopted; reply `2026-10-04-1532` reached 1/1 answering 0845/0850/0855/0912. Report `ops/loop/control/progress/inbox_triage_report.md`.
-- **CI:** only the 4 operator-left RM-172 subtests should remain red.
-- **Next:** MAIN 0830 awaits MAIN's ruling on a refreshed responder agreement; then the hand-off carry-forwards.
-- **Open gate gaps (filed):** "Merged to main." unflagged; "The agent committed X and pushed." gets no push flag.
-- **Do NOT redo:** arena 65 re-pin, Firecrawl removal, OVER_STALE wording, stop_claim_gate FP fixes, MAIN-note hash checks, the 0845/0850/0855/0912 replies. Leave slot `1.lock` alone (dead-holder, self-clears).
