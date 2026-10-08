@@ -475,6 +475,11 @@ def main(argv=None) -> int:
     else:
         root = _bind_kit("fleet_lanes").main_tree(_HERE.parents[1])
     s = tick(root, dry=args.dry, emit=print)
+    if not args.dry:
+        # Item F: the RC-InboxResponder task runs this CLI under pythonw (no
+        # stdout), so the summary file is a scheduled fire's only read-back.
+        with contextlib.suppress(OSError, TypeError, ValueError):
+            _atomic_text(root / LAST_REL, json.dumps(s, sort_keys=True) + "\n")
     print(json.dumps(s, sort_keys=True))
     return 0
 
