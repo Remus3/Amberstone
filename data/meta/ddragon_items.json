@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "version": "16.19.1",
+  "version": "16.20.1",
   "basic": {
     "name": "",
     "rune": {
@@ -2368,7 +2368,7 @@
     },
     "1221": {
       "name": "Top Lane Quest Reward",
-      "description": "<mainText><stats></stats><br><br><font color = '#00FF00'>Rewards</font><br>• Enhance your Teleport with a large max-health shield on use<br>• Flat bonus experience, more experience from all sources, and an increased level cap</mainText>",
+      "description": "<mainText><stats></stats><br><br><font color = '#00FF00'>Rewards</font><br>• Enhance your Teleport with a  shield for 10s on use and 30s reduced cooldown<br>• Flat bonus experience, more experience from all sources, and an increased level cap</mainText>",
       "colloq": "",
       "plaintext": "",
       "inStore": false,
@@ -2401,7 +2401,7 @@
     },
     "1222": {
       "name": "Top Lane Quest",
-      "description": "<mainText><stats></stats><br><br>Takedown champions, minions, towers, plates, and epic monsters to complete your quest. Earn points much faster in top lane!<br><br><font color = '#00FF00'>Rewards</font><br>• Enhance your Teleport with a large max-health shield on use<br>• Flat bonus experience, more experience from all sources, and increased level cap</mainText>",
+      "description": "<mainText><stats></stats><br><br>Takedown champions, minions, towers, plates, and epic monsters to complete your quest. Earn points much faster in top lane!<br><br><font color = '#00FF00'>Rewards</font><br>• Enhance your Teleport with a large max-health shield on use and reduced cooldown<br>• Flat bonus experience, more experience from all sources, and increased level cap</mainText>",
       "colloq": "",
       "plaintext": "",
       "inStore": false,
@@ -8513,7 +8513,7 @@
     },
     "223152": {
       "name": "Hextech Rocketbelt",
-      "description": "<mainText><stats><attention>95</attention> Ability Power<br><attention>400</attention> Health<br><attention>20</attention> Ability Haste</stats><br><br><active>Active -</active> <active>Supersonic:</active> Dash in target direction, unleashing an arc of magic missiles that deal damage.</mainText>",
+      "description": "<mainText><stats><attention>95</attention> Ability Power<br><attention>400</attention> Health<br><attention>10</attention> Ability Haste</stats><br><br><active>Active -</active> <active>Supersonic:</active> Dash in target direction, unleashing an arc of magic missiles that deal damage.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -16417,7 +16417,7 @@
     },
     "3152": {
       "name": "Hextech Rocketbelt",
-      "description": "<mainText><stats><attention>60</attention> Ability Power<br><attention>350</attention> Health<br><attention>20</attention> Ability Haste</stats><br><br><active>Supersonic</active><br>Dash in target direction, unleashing missiles that deal <magicDamage>magic damage</magicDamage>.</mainText>",
+      "description": "<mainText><stats><attention>60</attention> Ability Power<br><attention>350</attention> Health<br><attention>10</attention> Ability Haste</stats><br><br><active>Supersonic</active><br>Dash in target direction, unleashing missiles that deal <magicDamage>magic damage</magicDamage>.</mainText>",
       "colloq": "rocket belt;",
       "plaintext": "Activate to dash forward and unleash a fiery explosion",
       "from": [
