@@ -282,7 +282,8 @@ def _spawn(prompt: str, *, task: str, extra, cwd: Path, timeout: float) -> dict:
     t0 = time.time()
     try:
         line, proc = fr.spawn(prompt, caller=CALLER, note=f"drain-{task}", writes_code=True,
-                              bare=False, extra=tuple(extra), cwd=cwd, timeout=timeout)
+                              bare=False, extra=tuple(extra), cwd=cwd, timeout=timeout,
+                              kind="build")
     except fr.RouteRefused as exc:
         _say(f"REFUSED {task}: {exc.reason} {exc.detail}")
         return {"rc": None, "result": None, "error": f"refused:{exc.reason}", "stderr": ""}

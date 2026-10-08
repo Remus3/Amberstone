@@ -112,6 +112,13 @@ try:
 except ModuleNotFoundError:
     lane_progress = _bind("rc_loop_lane_progress", "lane_progress.py")
 
+# FLEET-KIT v8 item 14: every cycle reads the RC inbox first (row I1), against
+# the same MAIN checkout its progress/loop.json lives in. Never fails a cycle.
+try:
+    from ops.loop import inbox_tick
+except ModuleNotFoundError:
+    inbox_tick = _bind("rc_loop_inbox_tick", "inbox_tick.py")
+
 _HERE = Path(__file__).resolve().parent
 # The default config is a REPO ASSET, not a machine location. This literal used
 # to be an absolute C: path, which resolves on exactly ONE host: every other
@@ -1126,7 +1133,8 @@ def cycle_checklist(cycle, *, root=None, emit=None):
     instead of borrowing an index a real lane may hold."""
     return lane_progress.LaneProgress(
         lane_progress.LOOP_TASK, int(cycle),
-        [("C1", "Choose the cycle directive"),
+        [(inbox_tick.STEP_ID, inbox_tick.STEP_TASK),
+         ("C1", "Choose the cycle directive"),
          ("C2", "Run the executor on the directive"),
          ("C3", "Audit the cycle diff"),
          ("C4", "Record the directive outcome")],
@@ -1193,6 +1201,7 @@ def main():
         cycle_top_code_guard(cycle)
         prog = cycle_checklist(cycle)
         prog.start()
+        inbox_tick.fire_step(prog, emit=log, dry=DRY)
         override = consume_directive_override()
         src = cycle_source(CFG, override)
         if src == "override":
