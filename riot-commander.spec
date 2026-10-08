@@ -74,8 +74,8 @@ Known limitations (first-build issues to expect)
 2. Pillow image codecs may need explicit hooks on first build; if
    PNG/JPEG fails, append `--hidden-import PIL._tkinter_finder` and
    rebuild with --clean.
-3. websockets 16.x (asyncio-based) and portalocker 3.x are pure-
-   Python - no special hooks needed.
+3. websockets (asyncio-based) and portalocker (versions pinned in
+   requirements.txt) need no special hooks.
 4. anthropic SDK pulls in tokenizers + httpx; PyInstaller's auto-
    discovery handles them, but if the resulting binary is >300 MB
    look at `excludes` for unused submodules.
