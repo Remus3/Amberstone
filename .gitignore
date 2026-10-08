@@ -345,6 +345,10 @@ ops/loop/control/headless_budget.json
 ops/loop/control/headless_usage.jsonl
 # FLEET-KIT v3 item 12: per-task sub-agent progress files.
 ops/loop/control/progress/
+# FLEET-KIT v9 item 15: the /done marker and its Stop-hook dedupe file
+# (ops/fleet_kit/fleet_done.py MARKER_REL / SEEN_REL), named per the kit order.
+ops/loop/control/session_done.json
+ops/loop/control/session_done.seen
 
 # Transient verify/test scratch dropped at repo root by DS item runs
 # (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.
