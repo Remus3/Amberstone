@@ -180,8 +180,10 @@ def test_launch_lane_writes_its_checklist_at_fire_start_and_after_each_task(
                                session=4)
     assert run["pid"] == os.getpid()
     task = f"lane-{claim['index']}"
-    assert writes[0] == (task, ["L1", "L2", "L3"], "running"), "fire start"
-    assert writes[1][1] == ["L2", "L3"] and writes[2][1] == ["L3"]
+    # Kit v8 item 14: the inbox pass (I1) is the first row of every fire.
+    assert writes[0] == (task, ["I1", "L1", "L2", "L3"], "running"), "fire start"
+    assert writes[2][1] == ["L1", "L2", "L3"], "the inbox pass completed first"
+    assert writes[3][1] == ["L2", "L3"] and writes[4][1] == ["L3"]
     doc = _doc(main, task)
     assert doc["checklist"][0]["id"] == "L3"
     assert doc["checklist"][0]["state"] == "worker running"
@@ -249,8 +251,8 @@ def test_loop_controller_cycle_checklist_writes_loop_json(tmp_path):
     prog.start()
     assert seen[0].splitlines()[0] == "Session 9 checklist"
     doc = _doc(tmp_path, "loop")
-    assert [r["id"] for r in doc["checklist"]] == ["C1", "C2", "C3", "C4"]
-    for cid in ("C1", "C2", "C3", "C4"):
+    assert [r["id"] for r in doc["checklist"]] == ["I1", "C1", "C2", "C3", "C4"]
+    for cid in ("I1", "C1", "C2", "C3", "C4"):
         prog.complete(cid)
     doc = _doc(tmp_path, "loop")
     assert doc["status"] == "done" and doc["checklist"] == []
