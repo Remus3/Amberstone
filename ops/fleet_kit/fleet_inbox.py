@@ -45,14 +45,14 @@ import re
 import time
 from pathlib import Path
 
-INBOX_VERSION = 1
+INBOX_VERSION = 2
 OUTBOUND_CAP = 6
 MAX_HOPS = 2
 EXEMPT = ("ORDER", "FIX", "RULING")
 ACK_CLASSES = ("ACK", "INFORMATION", "TERMINAL", "CORRECTION-ACCEPTED",
-               "POLL-ANSWER", "RECEIVED", "NO-REPLY", "NOREPLY")
+               "POLL-ANSWER", "RECEIVED", "NO-REPLY", "NOREPLY", "REPORT")
 ANSWER_CLASSES = ("ANSWER", "ACK", "RECEIVED", "POLL-ANSWER", "INFORMATION",
-                  "CORRECTION-ACCEPTED", "RESPONDER", "REPLY")
+                  "CORRECTION-ACCEPTED", "RESPONDER", "REPLY", "AUTO-REPLY")
 TRIAGE_SPAWN = {"model": "sonnet", "effort": "low", "bare": True, "timeout": 300}
 SKIP, ACK, WORK, TRIAGE = "skip", "ack", "work", "triage"
 VERDICTS = ("NOREPLY", "ACK", "ANSWER")
@@ -62,7 +62,10 @@ OUTBOUND_REL = Path("ops/loop/control/outbound_notes.jsonl")
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
 _SENDER = re.compile(r"(?:^|[-_])(?i:from)-([A-Z]+)-")
 _CLASS = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-([A-Za-z]+(?:-[A-Z]+)?)")
-_TITLE = re.compile(r"^#+\s*(?i:from)\s+([A-Z]+)\b(?:\s*-\s*([A-Z][A-Za-z-]*))?")
+_AUTO = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-(?i:auto[-_]?reply)(?:[-_.]|$)")
+_TITLE = re.compile(r"^#+\s*(?i:from)\s+([A-Z]+)\b(?:\s*\([^)]*\))?"
+                    r"(?:\s*-\s*([A-Z][A-Za-z-]*))?")
+_RESPONDER_TAG = re.compile(r"^\[([A-Z]+)-RESPONDER\]", re.M)
 _HOP = re.compile(r"^\s*HOP:\s*(\d+)\s*$", re.M)
 _VERDICT = re.compile(r"^\s*VERDICT:\s*([A-Z-]+)\s*$", re.M)
 _MARK = r"(?:TERMINAL|NO[-_ ]?REPLY)"
@@ -111,17 +114,28 @@ def sender(name, head=""):
     if m:
         return m.group(1)
     t = _title(head)
-    return t.group(1) if t else None
+    if t:
+        return t.group(1)
+    r = _RESPONDER_TAG.search(head or "")
+    return r.group(1) if r else None
 
 
 def note_class(name, head=""):
-    """ORDER, FIX, ANSWER, ... from the name (`-from-XX-<CLASS>-`), else the title."""
+    """ORDER, FIX, ANSWER, ... from the name (`-from-XX-<CLASS>-`), else the title.
+    A responder's `-from-XX-auto-reply-to-<quoted note>` is AUTO-REPLY (an
+    answer), never the class of the note it quotes (v9)."""
+    if _AUTO.search(_base(name)):
+        return "AUTO-REPLY"
     m = _CLASS.search(_base(name))
     if m:
         word = m.group(1).upper()
         return word if word in ACK_CLASSES else word.split("-")[0]
     t = _title(head)
-    return t.group(2).upper().split("-")[0] if t and t.group(2) else None
+    if t and t.group(2):
+        return t.group(2).upper().split("-")[0]
+    if _RESPONDER_TAG.search(head or ""):
+        return "AUTO-REPLY"
+    return None
 
 
 def hop(head):
@@ -196,11 +210,22 @@ def next_hop(incoming_hop, new_work=False):
 # ---------------------------------------------------------------- ledgers
 
 def _local_day(epoch):
-    return _dt.datetime.fromtimestamp(epoch).strftime("%Y-%m-%d")
+    try:
+        return _dt.datetime.fromtimestamp(epoch).strftime("%Y-%m-%d")
+    except (OSError, OverflowError, ValueError):
+        return (_EPOCH + _dt.timedelta(seconds=epoch)).strftime("%Y-%m-%d")
+
+
+_EPOCH = _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone.utc)
 
 
 def _iso(epoch):
-    return _dt.datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
+    """Local ISO time. Near the epoch Windows' localtime() raises OSError 22;
+    fall back to UTC arithmetic there (v9; same class as the v5 headless fix)."""
+    try:
+        return _dt.datetime.fromtimestamp(epoch).astimezone().isoformat(timespec="seconds")
+    except (OSError, OverflowError, ValueError):
+        return (_EPOCH + _dt.timedelta(seconds=epoch)).isoformat(timespec="seconds")
 
 
 def _append(path, doc):
