@@ -41,6 +41,27 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-07 - AMBERSTONE inbox triage: 2 SS notes read, no reply owed, seen-ledger backfilled
+
+- **Inbox (session 99):** `2026-10-05-0820` SS ANSWER to MAIN (Scorecard 2.6 -> 6.4) = marked TERMINAL no-reply, skip; `2026-10-05-0841` SS REPORT to MAIN (kit item-5 closing line) = "No reply needed", ask targets MAIN (carry line in next kit). No outbound note spent; OutboundCap untouched.
+- **Acks:** kit `fleet_inbox.mark_seen` ledger lines + explicit NOREPLY verdicts in `ops/loop/control/inbox_seen.jsonl` (gitignored) + `rc_facts --mark-inbox-seen` (524 recorded).
+- **Side effect (beneficial):** the kit seen-ledger was EMPTY, so the scan backfilled 511 historic notes as seen - pre-seeds dedupe for the item-F tick fold; do not re-triage them.
+- **Watch:** expect a future kit version to change the FLEET item 5 /done closing line to `Done ritual processed, safe to clear and continue` (SS operator order 2026-10-05, SS asked MAIN to carry it). Do NOT pre-edit the byte-pinned FLEET-COMMON block; adopt only on MAIN's kit ship.
+- **Not acted (carried):** C1/F inbox fold (next action, spec in hand-off); ddragon 16.20.1 upstream drift UNACKNOWLEDGED and its data refresh uncommitted (10 modified JSON + `data/meta_build/ddragon/16.20.1/` + 2 rune icons) - ack via `python tools/upstream_drift_check.py --ack`, then commit the refresh.
+- **Do NOT redo:** the 2 note acks / verdicts. No LEDGER entry - nothing shipped, triage only.
+
+---
+
+# 2026-10-05 - FLEET-KIT v8 adopted (v6+v7+v8 + roster EW/LL-retired) in one squashed commit
+
+- **Shipped (pushed `66a2e43c1..5c2cadb4e`, LEDGER 1670):** kit v8 vendored (12 files), FLEET-COMMON block re-embedded, lanes.py on fleet_lanes cap 3, lane-widget 3 lanes + checklist + governor strip, EW_BLOCK 8940-8959, retired LL needles kept armed via gitignored `retired` map, session checklist (SESSION counter in hand-off, tools/session_checklist.py).
+- **Squash reason:** intermediate slice commits held synthetic drive-root fixtures that halt the pre-push sweep; HEAD tree was clean. Slice history on local `worktree-agent-*` branches.
+- **Decision:** responder agreement NOT re-armed (MAIN 0327); RC inbox is UNATTENDED until the v8 inbox-into-tick fold lands - that is the next item, ahead of CI green.
+- **C4 slots.py:** already landed in `9024fd2cd`; landing note sent 5/5.
+- **Do NOT redo:** v6/v7/v8 vendoring, roster swap, C4 adoption, the ANSWER to MAIN.
+
+---
+
 # 2026-10-04e - slot-audit ownerless lock + responder audit-hook allowlist; ROADMAP budget relocation
 
 - **Shipped (pushed `cb933e65f..3bba448c8`):** `636848e9a` fix(slot-audit) ownerless readable lock owner is "unknown", not foreign (LEDGER 1668); `3bba448c8` test(responder) audit hook fails ANY write outside the pytest temp root per MAIN 2320 s2 point 2 (LEDGER 1669). Both verifier CONFIRMED.

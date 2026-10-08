@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-08b - session 102: E: cutover verified, kit v9 vendored, CI back to baseline, supply-chain 2.7 -> 6.6
+
+- **Shipped (LEDGER 1676-1679):** E: cutover read back (`cut_over`, junctions at the old C: paths, RC healthy from E:); `0d4fcbd3c` kit v9 merge (vendor `4212ac07a`, done-marker `720a5d234`) + Stop hook in gitignored `.claude/settings.json` + ANSWER to MAIN 2354; `235445841` three CI reds; `119d3a85e`/`c206af930` supply chain (dependabot, SHA pins, hashed CI pip, read-only tokens, CodeQL gated to dispatch, Pillow 12.3.0) + ANSWER to MAIN 0300 (Scorecard 2.7 -> 6.6).
+- **CI read-back:** `97ee9aed1` ci = only the 4 operator-left RM-172 subtests; docs-guards green.
+- **Operator asks open:** Recycle Bin for the two `*.pre-E-move-20261008` asides (~31 GB); CodeQL default setup -> not-configured then restore `codeql.yml` triggers.
+- **Finding:** the Dependabot pip PR fails the pin-agreement step (no hashed-file regen) and bundles 3 majors - do not merge as is.
+- **Do NOT redo:** the cutover verify, kit v9 vendoring + answer, the three CI fixes, the supply-chain slice + answer.
+
+---
+
 # 2026-10-08 - session 101: model pin removed, MIG-1 prune, C: -> E: move staged
 
 - **Shipped (LEDGER 1675-1676):** project `"model"` pin removed from `.claude/settings.json` (overrode /model on restart); `ops/migrate/e_move.ps1` move tooling (two independent reviews, all blockers fixed); MIG-1 worktree prune 64 -> 25.
@@ -22,24 +32,3 @@
 - **MAIN 2155 C: inventory answered** (159 HARDCODED); MAIN sends the E: move runbook next.
 - **In flight at wrap:** H agent waiting on CI for `b23b40368` (progress `ops/loop/control/progress/h-ci-green.json`).
 - **Do NOT redo:** item F, the repoint, DDragon commit, both MAIN answers, the stop-gate change.
-
----
-
-# 2026-10-07 - AMBERSTONE inbox triage: 2 SS notes read, no reply owed, seen-ledger backfilled
-
-- **Inbox (session 99):** `2026-10-05-0820` SS ANSWER to MAIN (Scorecard 2.6 -> 6.4) = marked TERMINAL no-reply, skip; `2026-10-05-0841` SS REPORT to MAIN (kit item-5 closing line) = "No reply needed", ask targets MAIN (carry line in next kit). No outbound note spent; OutboundCap untouched.
-- **Acks:** kit `fleet_inbox.mark_seen` ledger lines + explicit NOREPLY verdicts in `ops/loop/control/inbox_seen.jsonl` (gitignored) + `rc_facts --mark-inbox-seen` (524 recorded).
-- **Side effect (beneficial):** the kit seen-ledger was EMPTY, so the scan backfilled 511 historic notes as seen - pre-seeds dedupe for the item-F tick fold; do not re-triage them.
-- **Watch:** expect a future kit version to change the FLEET item 5 /done closing line to `Done ritual processed, safe to clear and continue` (SS operator order 2026-10-05, SS asked MAIN to carry it). Do NOT pre-edit the byte-pinned FLEET-COMMON block; adopt only on MAIN's kit ship.
-- **Not acted (carried):** C1/F inbox fold (next action, spec in hand-off); ddragon 16.20.1 upstream drift UNACKNOWLEDGED and its data refresh uncommitted (10 modified JSON + `data/meta_build/ddragon/16.20.1/` + 2 rune icons) - ack via `python tools/upstream_drift_check.py --ack`, then commit the refresh.
-- **Do NOT redo:** the 2 note acks / verdicts. No LEDGER entry - nothing shipped, triage only.
-
----
-
-# 2026-10-05 - FLEET-KIT v8 adopted (v6+v7+v8 + roster EW/LL-retired) in one squashed commit
-
-- **Shipped (pushed `66a2e43c1..5c2cadb4e`, LEDGER 1670):** kit v8 vendored (12 files), FLEET-COMMON block re-embedded, lanes.py on fleet_lanes cap 3, lane-widget 3 lanes + checklist + governor strip, EW_BLOCK 8940-8959, retired LL needles kept armed via gitignored `retired` map, session checklist (SESSION counter in hand-off, tools/session_checklist.py).
-- **Squash reason:** intermediate slice commits held synthetic drive-root fixtures that halt the pre-push sweep; HEAD tree was clean. Slice history on local `worktree-agent-*` branches.
-- **Decision:** responder agreement NOT re-armed (MAIN 0327); RC inbox is UNATTENDED until the v8 inbox-into-tick fold lands - that is the next item, ahead of CI green.
-- **C4 slots.py:** already landed in `9024fd2cd`; landing note sent 5/5.
-- **Do NOT redo:** v6/v7/v8 vendoring, roster swap, C4 adoption, the ANSWER to MAIN.
