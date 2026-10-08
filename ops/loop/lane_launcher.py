@@ -390,6 +390,23 @@ def _progress_mod():
     return mod
 
 
+def _inbox_mod():
+    """ops/loop/inbox_tick.py (FLEET-KIT v8 item 14), bound late like
+    _progress_mod: every lane fire reads the RC inbox before its own work."""
+    try:
+        return importlib.import_module("ops.loop.inbox_tick")
+    except ImportError:
+        pass
+    modname = "rc_loop_inbox_tick"
+    if modname in sys.modules:
+        return sys.modules[modname]
+    spec = importlib.util.spec_from_file_location(modname, _HERE / "inbox_tick.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[modname] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _fire_count(lane: str, log_dir: Path | None = None) -> int:
     """The fire's run count - FLEET-COMMON item 13 a's session n for a headless
     fire. One log per fire (`lane_<lane>_<run_id>.log`), so this fire is the
@@ -413,7 +430,8 @@ def _lane_checklist(lane: str, token, *, session, progress_root, emit, log_dir):
         n = _fire_count(lane, log_dir) if session is None else int(session)
         return lp.LaneProgress.for_lane(
             index, n,
-            [("L1", f"Prepare the {lane} lane worktree"),
+            [(_inbox_mod().STEP_ID, _inbox_mod().STEP_TASK),
+             ("L1", f"Prepare the {lane} lane worktree"),
              ("L2", f"Start the {lane} worker"),
              ("L3", f"Run the {lane} worker to its exit")],
             root=progress_root, emit=emit or _log.info)
@@ -425,7 +443,7 @@ def _lane_checklist(lane: str, token, *, session, progress_root, emit, log_dir):
 def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
                 root: Path | None = None, log_dir: Path | None = None,
                 spawn=None, progress_root: Path | None = None,
-                session: int | None = None, emit=None) -> dict:
+                session: int | None = None, emit=None, inbox_tick=None) -> dict:
     """Start `lane`'s worker and re-point its lock at the spawned process.
 
     `token` is what `try_acquire_lane` handed back. On ANY failure the lane is
@@ -441,6 +459,11 @@ def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
     each task. The last task stays `worker running` - the worker runs detached
     and outlives this call, and the widget reads an `updated` older than 2x
     its eta as STALE rather than live.
+
+    Kit v8 item 14: the FIRST checklist row (I1) is the inbox pass -
+    ops/loop/inbox_tick.fire_step, against the same MAIN checkout the progress
+    file lives in. It never raises and never blocks the lane beyond its own
+    bound (at most one triage spawn). `inbox_tick` replaces the pass (tests).
     """
     spawn = _spawn if spawn is None else spawn
     prog = _lane_checklist(lane, token, session=session,
@@ -448,6 +471,11 @@ def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
                            log_dir=log_dir)
     if prog is not None:
         prog.start()
+        try:
+            _inbox_mod().fire_step(prog, tick=inbox_tick,
+                                   emit=emit or _log.info)
+        except Exception as exc:  # noqa: BLE001 - the inbox never stops a fire
+            _log.warning("lane %s: inbox pass unavailable: %s", lane, exc)
     try:
         prompt = command_path(lane, root=root)
         wt =ensure_worktree(lane, base=base, root=root)
