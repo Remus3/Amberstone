@@ -24,6 +24,7 @@ SUBAGENT-FIRST hook). That is ASSERTED here, never re-implemented.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -250,6 +251,63 @@ def test_run_lane_keeps_the_background_wait_ceiling_for_the_child():
 
 def test_the_pre_kit_powershell_gate_is_retired():
     assert not (REPO / "ops" / "loop" / "headless_route.ps1").exists()
+
+
+def test_run_lane_refusal_points_at_the_log_the_refusal_lands_in():
+    """A headless_env refusal (unset / bad / non-loopback / down proxy) is
+    logged by headless_env._log_refusal to logs/headless_route.log, and a kit
+    refusal is logged there by fleet_route too; neither path is guaranteed to
+    touch the kit status file, so the runner must not send the reader there."""
+    code = "\n".join(_code_lines(RUN_LANE.read_text(encoding="ascii")))
+    refused = [ln for ln in code.splitlines() if "lane refused" in ln]
+    assert refused, "the refusal line is gone"
+    for ln in refused:
+        assert "inbox_status.json" not in ln, ln
+    assert any(r"logs\headless_route.log" in ln for ln in refused), refused
+
+
+def test_run_lane_never_reads_an_empty_exit_code_as_success():
+    """When python itself cannot start, PowerShell sets no exit code: the old
+    script logged "code=" and exited 0. Anything that is not an integer exit
+    code from the route must be a fail-closed exit 3 (the old route's code)."""
+    code = "\n".join(_code_lines(RUN_LANE.read_text(encoding="ascii")))
+    # the stale value of an earlier native call can never be read as this one's
+    assert "$global:LASTEXITCODE = $null" in code
+    assert re.search(r"-notmatch\s+'\^-\?\\d\+\$'", code), \
+        "the exit code must be checked to be an integer before it is trusted"
+
+
+def _powershell_51():
+    root = os.environ.get("SystemRoot") or os.environ.get("SYSTEMROOT")
+    exe = Path(root) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe" \
+        if root else None
+    return exe if exe is not None and exe.is_file() else None
+
+
+@pytest.mark.skipif(_powershell_51() is None, reason="Windows PowerShell 5.1 not present")
+def test_run_lane_exits_3_when_python_cannot_start(tmp_path):
+    """Executed for real under Windows PowerShell 5.1, with NO python reachable:
+    LOCALAPPDATA points at an empty dir (no pinned interpreter) and PATH holds
+    System32 only, so `python` cannot resolve. Belt and braces: the prompt file
+    does not exist, so even a python that did start would fail on the read
+    before any spawn - this test can never start a real claude."""
+    root = os.environ.get("SystemRoot") or os.environ.get("SYSTEMROOT")
+    env = dict(os.environ)
+    for key in [k for k in env if k.upper() in ("PATH", "LOCALAPPDATA")]:
+        del env[key]
+    env["PATH"] = str(Path(root) / "System32")
+    env["LOCALAPPDATA"] = str(tmp_path / "no_python_here")
+    log = tmp_path / "lane.log"
+    proc = subprocess.run(
+        [str(_powershell_51()), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+         str(RUN_LANE), "-PromptFile", str(tmp_path / "absent_prompt.md"),
+         "-Cwd", str(tmp_path), "-Log", str(log)],
+        env=env, cwd=str(tmp_path), capture_output=True, text=True, timeout=120,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    text = log.read_text(encoding="utf-8-sig", errors="replace")
+    assert proc.returncode == 3, (proc.returncode, text, proc.stderr)
+    assert "lane start" in text and "could not start" in text, text
+    assert "code=\n" not in text and not text.rstrip().endswith("code="), text
 
 
 # ---------------------------------------------------------------------------
