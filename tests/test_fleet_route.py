@@ -266,6 +266,7 @@ def kit_launch(monkeypatch):
 
 
 def test_default_launcher_is_the_kits_own_run(kit_launch, tmp_path):
+    assert fleet_route._kit_launcher(fleet_route.kit()) is fleet_route.kit()._run
     line, proc = fleet_route.spawn("TASK", caller="t", root=tmp_path)
     (p,) = _FakePopen.instances
     assert p.argv[:3] == ["claude-fake.exe", "-p", "TASK"]
@@ -309,6 +310,8 @@ def test_rc_gate_refusal_reaches_no_popen(kit_launch, tmp_path, monkeypatch):
 
 def test_kit_without_a_launcher_refuses_before_counting(kit_launch, tmp_path, monkeypatch):
     k = fleet_route.kit()
+    # v10 names the launch publicly (`launch`); `_run` is the older private name
+    monkeypatch.delattr(k, "launch")
     monkeypatch.delattr(k, "_run")
     with pytest.raises(fleet_route.RouteRefused) as ei:
         fleet_route.spawn("T", caller="t", root=tmp_path)

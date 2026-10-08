@@ -176,9 +176,14 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
                  or (k.upper().startswith("ANTHROPIC_") and k.upper().endswith("BASE_URL"))}
     dropped, leaked = _spawn_env_key_diff(env, stripped)
     assert not dropped, f"inheritable parent keys missing from the spawn env: {dropped}"
-    # The one key the spawn adds is the routed proxy URL (headless-routing
-    # contract 2026-10-02); anything else would be a leaked override.
-    assert leaked == ["ANTHROPIC_BASE_URL"], f"auth overrides survived into the spawn env: {leaked}"
+    # The keys the spawn adds: the routed proxy URL (headless-routing contract
+    # 2026-10-02) and, since FLEET-KIT v10, the kit's own FLEET_SUBAGENT_FIRST=off
+    # (a headless run is exempt from the SUBAGENT-FIRST hook; set by the kit's
+    # child_env, asserted here, never re-implemented). Anything else would be a
+    # leaked override.
+    assert leaked == ["ANTHROPIC_BASE_URL", "FLEET_SUBAGENT_FIRST"], \
+        f"auth overrides survived into the spawn env: {leaked}"
+    assert env["FLEET_SUBAGENT_FIRST"] == "off"
 
 
 def test_spawn_env_has_no_none_values(monkeypatch: pytest.MonkeyPatch) -> None:
