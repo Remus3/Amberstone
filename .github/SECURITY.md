@@ -62,11 +62,10 @@ The parts worth pointing a reviewer at:
 - Every workflow token is read-only by default. The two jobs that commit to
   `main` (the docs-guards auto-repair and the patch-day data sync) are the only
   ones granted `contents: write`, at job level.
-- CodeQL scans every push to `main` (python, javascript-typescript, actions).
-  Today that is GitHub's default setup; a checked-in advanced workflow
-  (`.github/workflows/codeql.yml`) is in place, runs on demand, and takes over
-  push / pull-request / weekly scanning once default setup is switched off -
-  the two cannot upload side by side.
+- CodeQL scans every push to `main`, every pull request to `main` and once a
+  week (python, javascript-typescript, actions), from the checked-in advanced
+  workflow `.github/workflows/codeql.yml`. GitHub's default setup is switched
+  off (since 2026-10-08) - the two cannot upload side by side.
 
 ## Fuzzing: ruled out, for now
 

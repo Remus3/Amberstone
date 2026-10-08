@@ -1,27 +1,21 @@
 # CodeQL, ADVANCED setup (supply-chain order, 2026-10-05, item 2.3).
 #
-# GATED: workflow_dispatch ONLY, until the operator does the companion act.
+# LIVE: this file is the repository's ONLY CodeQL scanner.
 # -------------------------------------------------------------------------
-# GitHub's CodeQL DEFAULT setup (the "Push on main" run under
-# dynamic/github-code-scanning/codeql) is still ON for this repository and
-# scans the same three languages. The two cannot run side by side: while
-# default setup is configured, GitHub REJECTS every advanced upload, so a
-# push / pull_request / schedule run of this file would analyse and then fail
-# at the upload step, red on every commit, while default setup keeps scanning.
-# Switching default setup off is an out-of-tree repository-settings act, so
-# it waits for the operator (session 102 decision). The companion act, in
-# order:
+# GitHub's CodeQL DEFAULT setup was switched off on 2026-10-08 (operator
+# approved, session 103; `gh api repos/<owner>/<repo>/code-scanning/default-setup`
+# read back "state": "not-configured"), and the push / pull_request /
+# schedule triggers below were restored in the same act. The two setups
+# cannot run side by side: while default setup is configured, GitHub REJECTS
+# every advanced upload, so these triggers would go red at the upload step.
 #
-#   1. gh api -X PATCH repos/<owner>/<repo>/code-scanning/default-setup -f state=not-configured
-#   2. read it back: gh api repos/<owner>/<repo>/code-scanning/default-setup
-#      must report "state": "not-configured"
-#   3. re-enable the push / pull_request / schedule triggers in the `on:`
-#      block below (kept there, commented, exactly as they will be restored)
-#   4. confirm the first advanced run uploads (Security -> Code scanning)
+# To go back to default setup: comment out push / pull_request / schedule
+# below (keep workflow_dispatch), then
+#   gh api -X PATCH repos/<owner>/<repo>/code-scanning/default-setup -f state=configured
+# and read it back. Never run both.
 #
-# Until then this file is real configuration that runs only on demand; the
-# SARIF categories below are the ones default setup uses (/language:<lang>),
-# so the alert history carries over instead of restarting when it takes over.
+# The SARIF categories below are the ones default setup used
+# (/language:<lang>), so the alert history carried over instead of restarting.
 #
 # Why advanced rather than default: the analysis config is now versioned and
 # reviewed like code, every action in it is SHA-pinned like everything else
@@ -32,14 +26,14 @@
 name: codeql
 
 on:
-  # GATED - see the top of this file. Restore these three triggers only after
-  # default setup reads back as not-configured:
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
-  # schedule:
-  #   - cron: '23 5 * * 1'  # weekly, Monday 05:23 UTC
+  # Restored 2026-10-08 once default setup read back not-configured - see the
+  # top of this file before commenting any of them out again.
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 5 * * 1'  # weekly, Monday 05:23 UTC
   workflow_dispatch:
 
 # A superseded PR run is cancelled; a push to main is NOT, so every commit
