@@ -105,13 +105,13 @@ jobs:
       # Every `uses:` is pinned to a full commit SHA with its release tag as a
       # trailing comment (supply-chain order, 2026-10-05). Dependabot's
       # github-actions entry keeps the SHA and the comment current together.
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # FULL history. See the long note on the `check` job's checkout
           # below - this job runs the same `pytest tests/` tree and fails the
           # same 12 ways without it.
           fetch-depth: 0
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -247,7 +247,7 @@ jobs:
     # the floor here; 75 keeps the same variance margin the 65 had.
     timeout-minutes: 95
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # FULL history, and it is load-bearing, not defensive.
           #
@@ -292,7 +292,7 @@ jobs:
           # check out with fetch-depth: 0.
           fetch-depth: 0
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -368,7 +368,7 @@ jobs:
       # the hash-pinned `playwright` wheel above, which names the exact browser
       # revision it downloads.
       - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-ms-playwright-v1
@@ -771,12 +771,12 @@ jobs:
     # narrowed COUNT are the only things this comment is allowed to carry.
     timeout-minutes: 65
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           lfs: false
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
