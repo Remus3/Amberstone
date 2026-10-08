@@ -18,6 +18,15 @@ d. ROT ALERTS ONCE - consecutive fetch failures are counted per source; when
    successful fetch resets the count.
 e. QUIET WHEN NOTHING CHANGED - no new ids, no deliver() call.
 
+v10 keyword-only extensions (LW 0135, all off by default, so a v9 call is
+unchanged): partial=True lets deliver() return {"delivered": [ids]} and
+advances exactly those ids; confirm_arg=True calls deliver(items, confirm)
+and confirm(ids) persists those ids at once (a long delivery that dies after
+one item never re-sends it); baseline=False treats a STATE-shaped source's
+first run as work, not history; persist=False writes nothing (dry run).
+FlatSeenState reads and writes a legacy {"seen": [...]} file for one source;
+`{}` there is CORRUPT, never "seen nothing".
+
 Callers check their own HALT file before calling run_source. A state file that
 exists but cannot be parsed raises WatchStateCorrupt and is never rewritten,
 because a silent reset would replay history as news.
@@ -35,7 +44,8 @@ from pathlib import Path
 
 SCHEMA = 1
 MAX_SEEN = 5000
-OUTCOMES = ("baseline", "nothing-new", "delivered", "deliver-failed", "fetch-failed")
+OUTCOMES = ("baseline", "nothing-new", "delivered", "deliver-failed", "fetch-failed",
+            "deliver-partial")
 # fetch / deliver / alert are INJECTED callables: whatever they raise is an
 # outcome of the run (rot, failed send), never a crash of the watcher. Named
 # once here so every such handler is deliberate and greppable.
@@ -105,6 +115,53 @@ class WatchState:
         try:
             with tmp.open("w", encoding="ascii", newline="\n") as f:
                 f.write(json.dumps(self._data, indent=1, sort_keys=True) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            tmp.replace(self.path)
+        finally:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+
+
+class FlatSeenState:
+    """A legacy single-source seen file, {"seen": [ids]}, behind the WatchState
+    interface run_source uses. A missing file is a fresh, un-baselined source;
+    a file that is not exactly {"seen": [str, ...]} (`{}` included) raises
+    WatchStateCorrupt and is never rewritten. Failure counts and the alert
+    flag live in memory only (the legacy file has no room for them)."""
+
+    def __init__(self, path, max_seen=MAX_SEEN):
+        self.path = Path(path)
+        self.max_seen = int(max_seen)
+        self._rec = {"baselined": False, "seen": [], "failures": 0, "alerted": False}
+        if self.path.exists():
+            try:
+                doc = json.loads(self.path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise WatchStateCorrupt(f"unreadable seen file: {exc}") from None
+            if not (isinstance(doc, dict) and isinstance(doc.get("seen"), list)
+                    and all(isinstance(i, str) for i in doc["seen"])):
+                raise WatchStateCorrupt("seen file is not {\"seen\": [ids]}")
+            self._rec["seen"], self._rec["baselined"] = list(doc["seen"]), True
+
+    def _src(self, source):
+        return self._rec
+
+    def seen(self, source=None):
+        return list(self._rec["seen"])
+
+    def baselined(self, source=None):
+        return bool(self._rec["baselined"])
+
+    def _add_seen(self, source, ids):
+        self._rec["seen"] = (self._rec["seen"] + list(ids))[-self.max_seen:]
+
+    def save(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_name(f"{self.path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+        try:
+            with tmp.open("w", encoding="ascii", newline="\n") as f:
+                f.write(json.dumps({"seen": self._rec["seen"]}, indent=1) + "\n")
                 f.flush()
                 os.fsync(f.fileno())
             tmp.replace(self.path)
@@ -256,11 +313,14 @@ def _first_line(exc):
     return text.splitlines()[0][:200] if text else type(exc).__name__
 
 
-def run_source(state, source, fetch, deliver, alert, alert_after=5, describe=None):
+def run_source(state, source, fetch, deliver, alert, alert_after=5, describe=None, *,
+               partial=False, confirm_arg=False, baseline=True, persist=True):
     """One pass over one source. Returns {"source", "outcome", "new", "detail"};
     outcome is one of OUTCOMES. Never raises for a fetch, deliver or alert
-    failure (those are outcomes); state is saved once, after delivery."""
+    failure (those are outcomes); state is saved once, after delivery (and at
+    each confirm() when confirm_arg). Keyword extensions: see the module doc."""
     rec = state._src(source)
+    save = state.save if persist else (lambda: None)
     try:
         ids = _norm_ids(fetch())
     except ANY_FAILURE as exc:  # every fetch failure is rot
@@ -272,30 +332,49 @@ def run_source(state, source, fetch, deliver, alert, alert_after=5, describe=Non
             except ANY_FAILURE:  # an alert sink never breaks the run
                 ok = False
             rec["alerted"] = ok
-        state.save()
+        save()
         return {"source": source, "outcome": "fetch-failed", "new": [], "detail": detail}
     rec["failures"], rec["alerted"] = 0, False
     if not rec["baselined"]:
         rec["baselined"] = True
-        state._add_seen(source, ids)
-        state.save()
-        return {"source": source, "outcome": "baseline", "new": [],
-                "detail": f"baseline {len(ids)} ids"}
+        if baseline:
+            state._add_seen(source, ids)
+            save()
+            return {"source": source, "outcome": "baseline", "new": [],
+                    "detail": f"baseline {len(ids)} ids"}
     known = set(rec["seen"])
     new = [i for i in ids if i not in known]
     if not new:
-        state.save()
+        save()
         return {"source": source, "outcome": "nothing-new", "new": [], "detail": ""}
+    confirmed = []
+
+    def confirm(ids):
+        got = [i for i in _norm_ids(ids) if i in new and i not in confirmed]
+        if got:
+            confirmed.extend(got)
+            state._add_seen(source, got)
+            save()
+        return got
     try:
-        answer = deliver(list(new))
+        answer = deliver(list(new), confirm) if confirm_arg else deliver(list(new))
         detail = str(answer.get("detail", "")) if isinstance(answer, dict) else ""
     except ANY_FAILURE as exc:  # a failed send is an outcome
         answer, detail = None, _first_line(exc)
     if not _delivered(answer):
-        state.save()
+        part = []
+        if partial and isinstance(answer, dict) and isinstance(answer.get("delivered"), list):
+            part = [i for i in _norm_ids(answer["delivered"]) if i in new and i not in confirmed]
+            state._add_seen(source, part)
+        done = confirmed + part
+        save()
+        if done:
+            return {"source": source, "outcome": "deliver-partial", "new": done,
+                    "detail": detail or f"{len(done)} of {len(new)} delivered"}
         return {"source": source, "outcome": "deliver-failed", "new": new,
                 "detail": detail or "not delivered"}
-    state._add_seen(source, new)
-    state.save()
+    new_rest = [i for i in new if i not in confirmed]
+    state._add_seen(source, new_rest)
+    save()
     label = ", ".join(describe(i) for i in new) if describe else f"{len(new)} new"
     return {"source": source, "outcome": "delivered", "new": new, "detail": label}
