@@ -46,20 +46,22 @@ def test_the_helpers_are_the_vendored_kit():
         (ROOT / "ops/fleet_kit/fleet_checklist.py").resolve()
     assert Path(lp.fleet_headless.__file__).resolve() == \
         (ROOT / "ops/fleet_kit/fleet_headless.py").resolve()
-    # Kit v8 (MAIN 2026-10-05 0310) superseded v7, and kit v9 (MAIN 2026-10-07
-    # 2354) superseded v8, each with write_progress(checklist=) unchanged (v9
-    # only added an SPDX header to fleet_checklist).
-    assert lp.fleet_headless.KIT_VERSION == 9
+    # Kit v8 (MAIN 2026-10-05 0310) superseded v7, kit v9 (MAIN 2026-10-07
+    # 2354) superseded v8, and kit v10 (MAIN 2026-10-08 0839) superseded v9,
+    # each with write_progress(checklist=) unchanged (v9 only added an SPDX
+    # header to fleet_checklist; v10 added emit()).
+    assert lp.fleet_headless.KIT_VERSION == 10
 
 
-def test_the_vendored_kit_is_v9_with_its_fifteen_file_set():
+def test_the_vendored_kit_is_v10_with_its_sixteen_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 9
+    assert man["version"] == 10
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json",
         "fleet_checklist.py", "fleet_done.py", "fleet_headless.py",
         "fleet_inbox.py", "fleet_lanes.py", "fleet_secrets.py",
-        "fleet_statusline.js", "fleet_subagent_status.js", "fleet_watch.py",
+        "fleet_statusline.js", "fleet_subagent_first.py",
+        "fleet_subagent_status.js", "fleet_watch.py",
         "tokens.css", "tokens.json"])
     on_disk = {p.name for p in (ROOT / "ops/fleet_kit").iterdir()
                if p.is_file() and p.name != "MANIFEST.json"}
