@@ -90,6 +90,7 @@ TWO HONEST LIMITS ON THIS FIX, both measured rather than assumed:
      this design - but the worst case is recorded here rather than hidden.
      The scratch-name half belongs to RM-261.
 """
+import inspect
 import logging
 import threading
 import time
@@ -167,6 +168,34 @@ _MAX_EPISODES_LOGGED = 5
 _LOG_REOPEN_AFTER_S = 1800.0
 _episodes_logged_window = 0
 _last_episode_logged_at: float | None = None
+
+
+# portalocker 4.0 made `Lock.release()` SWALLOW unlock / close failures (it
+# logs a warning and closes the handle itself) unless the Lock is built with
+# the keyword-only `raise_on_release_error=True`. Without the opt-in the
+# RM-282 `file_lock_release_failures` counter could never move on 4.x. 3.x
+# has no such parameter and forwards unknown keywords to `open()`, which
+# would fail every acquire - so the opt-in follows the INSTALLED signature,
+# read from `portalocker.Lock` at call time (a test stub replaces it), and
+# memoised per Lock object. tests/test_coaching_data_lock_release_optin_portalocker4.py
+_release_optin_memo: tuple[object, dict] | None = None
+
+
+def _release_error_opt_in() -> dict:
+    """`{"raise_on_release_error": True}` when the installed Lock declares
+    that keyword (portalocker >= 4.0), else `{}`."""
+    global _release_optin_memo
+    lock_cls = portalocker.Lock
+    memo = _release_optin_memo
+    if memo is not None and memo[0] is lock_cls:
+        return memo[1]
+    try:
+        declares = "raise_on_release_error" in inspect.signature(lock_cls).parameters
+    except (TypeError, ValueError):
+        declares = False
+    kwargs = {"raise_on_release_error": True} if declares else {}
+    _release_optin_memo = (lock_cls, kwargs)
+    return kwargs
 
 
 def coaching_data_lock_stats() -> dict:
@@ -393,6 +422,7 @@ class _CombinedLock:
             # expires). In blocking mode a timeout would be silently inert.
             fl = portalocker.Lock(
                 str(_LOCK_FILE), mode="a+b", timeout=_LOCK_TIMEOUT_S,
+                **_release_error_opt_in(),
             )
             fl.acquire()
         except portalocker.LockException as exc:
@@ -433,9 +463,11 @@ class _CombinedLock:
                 "force-closing the handle so the OS lock is not stranded. "
                 "Release-failure count now %d.", exc, n,
             )
-            # portalocker.Lock.release() unlocks BEFORE it closes, so a
+            # portalocker 3.x Lock.release() unlocks BEFORE it closes, so a
             # raising unlock leaves the handle OPEN and the byte range still
             # locked - and portalocker.Lock has no finalizer to reclaim it.
+            # (4.x claims and closes the handle itself before it raises, so
+            # `fl.fh` is already None there and this fallback is a no-op.)
             # Dropping the last reference would strand the OS lock until the
             # process exits, after which every later acquire burns the full
             # poll. Closing the handle releases the lock on win32 and POSIX
