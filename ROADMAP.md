@@ -58,7 +58,7 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 **Filed 2026-10-08, session 103 (LEDGER 1680-1685):**
 - **[!] RM-680 (Tier-2, DS batch lane): DS patch 16.19.1 -> 16.20.1.** DDragon 16.20.1 is synced (LEDGER 1671) and cdragon 16.20 drift acked (LEDGER 1685), but DS `/health` still reports 16.19.1. Same recipe as LEDGER 1652: extract for 16.20.1 with manifest counts 173 each and lanes non-zero; diff vs 16.19.1 in the LEDGER entry; ENGINE bump + build tables regenerated; cherry_augments refetch; Share mirror; DS :8860 restart with `/health` read back as 16.20.1; dual suite; RM-662 ARAM parity guard passes or its allowlist delta is recorded.
 - **[!] RM-681 anthropic SDK 1.x (HELD) - RM-682 Dependabot pip PRs red by design (regen workflow) - RM-683 retire `tools/inbox_responder_spawn.py` - RM-684 CLI pin test (2.1.293 vs 2.1.285, execs a real claude).** Bodies + acceptance in `BACKLOG.md` "Session 103 filings".
-- **[ ] RM-685 (Tier-1, filed session 104, LEDGER 1687): the inbox tick's WORK rows never drain** (RC row shape, not kit v10 `enqueue_work`). Body + acceptance in `BACKLOG.md` "Session 103 filings".
+- **[x] RM-685 SHIPPED 2026-10-08 (session 104, LEDGER 1688, main `2bab685f0`) (Tier-1, filed session 104, LEDGER 1687): the inbox tick's WORK rows never drain** (RC row shape, not kit v10 `enqueue_work`). Fixed: rows go through kit `enqueue_work` + an `rc-provenance` companion line; close with `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`. Body + acceptance in `BACKLOG.md` "Session 103 filings".
 
 > **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
 
