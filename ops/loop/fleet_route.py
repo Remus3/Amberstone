@@ -130,8 +130,12 @@ def _kit_launcher(k):
 def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False,
           bare: bool = False, rules_file=None, extra: Sequence[str] = (),
           stdin: Optional[str] = None, cwd=None, timeout: float = 3600,
-          root=None):
+          root=None, kind: Optional[str] = None):
     """Start ONE headless run through the kit. Returns `(usage_line, proc)`.
+
+    `kind` (kit v8, FLEET-COMMON 14 e) labels the usage line build / inbox /
+    triage; omitted, the kit infers it from the note (drain-* -> build) and the
+    pre-v8 call shape is kept byte-for-byte (no `kind=` reaches the kit).
 
     Raises `RouteRefused` before anything starts when either the RC gate or the
     kit refuses. `proc` is the raw CompletedProcess the kit's `run` seam saw.
@@ -177,11 +181,12 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     # kit's own `_run`), which the kit's `stdin=True` (the whole prompt on
     # stdin, no argv prompt) does not express - see the module docstring.
     do_spawn = _kit_spawn or k.spawn
+    kind_kw = {} if kind is None else {"kind": kind}
     try:
         line = do_spawn(root, CODE, prompt, note=note, writes_code=writes_code, bare=bare,
                         rules_file=rules_file, timeout=timeout, extra=tuple(extra),
                         run=_run, url_source=lambda: url, connect=_connect,
-                        exe_source=_exe_source, cwd=cwd)
+                        exe_source=_exe_source, cwd=cwd, **kind_kw)
     except k.Refused as exc:
         he._log_refusal(caller, "kit")
         raise RouteRefused("kit", str(exc)) from None
@@ -214,7 +219,8 @@ def main(argv=None) -> int:
     """CLI for the PowerShell runners.
 
     fleet_route.py --caller NAME (--prompt TEXT | --prompt-file PATH)
-                   [--writes-code] [--note NAME] [--timeout S] [-- EXTRA...]
+                   [--writes-code] [--note NAME] [--timeout S]
+                   [--kind build|inbox|triage] [-- EXTRA...]
 
     Prints the run's result text to stdout and the child's stderr to stderr.
     Exit: the child's code, or 3 when the route or the kit refused.
@@ -243,7 +249,8 @@ def main(argv=None) -> int:
     try:
         line, proc = spawn(prompt, caller=caller, note=_opt("--note", "") or "",
                            writes_code="--writes-code" in args, extra=extra,
-                           timeout=float(_opt("--timeout", "3600")))
+                           timeout=float(_opt("--timeout", "3600")),
+                           kind=_opt("--kind"))
     except RouteRefused as exc:
         sys.stderr.write(f"{exc}\n")
         return EXIT_REFUSED
