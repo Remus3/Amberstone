@@ -245,7 +245,10 @@ def test_run_lane_keeps_the_background_wait_ceiling_for_the_child():
         "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "2400000", "ANTHROPIC_API_KEY": "k",
         "CLAUDE_CODE_USE_BEDROCK": "1"})
     assert env["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"] == "2400000"
-    assert "ANTHROPIC_API_KEY" not in env and "CLAUDE_CODE_USE_BEDROCK" not in env
+    # read the membership into a local first: an `in env` assert operand would
+    # render the whole mapping on failure (tests/test_no_environ_in_assert_operands.py)
+    leaked = sorted(k for k in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_USE_BEDROCK") if k in env)
+    assert leaked == []
     assert env["FLEET_SUBAGENT_FIRST"] == "off"
 
 
