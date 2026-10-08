@@ -7,7 +7,8 @@ MAIN 2026-10-05 0310 ORDER section 3-4 and 0327 RULING:
 - SKIP / ACK notes get a mechanical ledger line, never a note and never a spawn;
 - ORDER / FIX / RULING escalate to a work row (never damped, never triaged);
 - anything else gets at most ONE triage spawn per tick through the KIT's spawn,
-  kind="triage", fleet_inbox.TRIAGE_SPAWN (sonnet, effort low);
+  kind="triage", fleet_inbox.triage_spawn_kwargs(True) (sonnet, effort low,
+  non-bare: kit v11 ruling R1, RC's floors live in hooks);
 - an ANSWER verdict leaves as ONE batched note per destination with a HOP line,
   only when may_reply() and OutboundCap allow it;
 - ONE agreement record: MAIN a counterparty plus a MAIN outbox row for the
@@ -214,11 +215,19 @@ def test_an_unclassifiable_note_gets_one_triage_through_the_kit_shape(tmp_path):
     s = _tick(tmp_path, inbox, spawn=spy)
     (c,) = spy.calls
     assert c["code"] == "RC" and c["kind"] == "triage" and c["note"] == name
-    for k, v in fi.TRIAGE_SPAWN.items():
-        assert c[k] == v, k
+    # kit v11 ruling R1: RC's floors live in hooks, so triage runs non-bare.
+    for k, v in fi.triage_spawn_kwargs(True).items():
+        assert k in c and c[k] == v, k
+    assert c["bare"] is False
+    assert c["floors_in_hooks"] is True
     assert "which port?" in c["prompt"]
     assert s["triaged"] == 1
     assert _seen_rows(tmp_path)[0]["verdict"] == "NOREPLY"
+
+
+def test_rc_declares_its_floors_live_in_hooks():
+    # Literal expectation (kit v11 R1): precommit_gate PreToolUse + .githooks.
+    assert tick_mod.FLOORS_IN_HOOKS is True
 
 
 def test_at_most_max_triage_spawns_per_tick_the_rest_wait(tmp_path):
@@ -383,6 +392,7 @@ def test_the_default_spawn_is_the_kit_and_labels_the_usage_line_triage(tmp_path)
     (argv,) = argvs
     assert argv[argv.index("--model") + 1] == "sonnet"
     assert argv[argv.index("--effort") + 1] == "low"
+    assert "--bare" not in argv and "--strict-mcp-config" in argv, "v11 R1: non-bare"
     lines = [json.loads(x) for x in (tmp_path / fh.USAGE_REL)
              .read_text(encoding="ascii").splitlines()]
     assert lines[-1]["kind"] == "triage" and lines[-1]["note"] == name

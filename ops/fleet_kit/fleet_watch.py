@@ -31,12 +31,18 @@ Callers check their own HALT file before calling run_source. A state file that
 exists but cannot be parsed raises WatchStateCorrupt and is never rewritten,
 because a silent reset would replay history as news.
 
+v11 (CS 1623 item 6): no exception text reaches a message, an alert() payload
+or a run detail with a path in it - an OSError renders as its class, errno and
+strerror only (never its filename), and any other text has absolute paths
+replaced by <path> (_safe_reason).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
 import contextlib
 import json
 import os
+import re
 import shutil
 import sys
 import uuid
@@ -50,6 +56,27 @@ OUTCOMES = ("baseline", "nothing-new", "delivered", "deliver-failed", "fetch-fai
 # outcome of the run (rot, failed send), never a crash of the watcher. Named
 # once here so every such handler is deliberate and greppable.
 ANY_FAILURE = (Exception,)
+
+
+# A Windows drive path, a UNC path, or a POSIX absolute path of 2+ parts.
+_PATHLIKE = re.compile(r"(?:(?<![A-Za-z])[A-Za-z]:[\\/]|\\\\|(?<![\w.:/])/(?=[^/\s]+/))"
+                       r"[^\s'\"<>|,;]*")
+# Any remaining token with a backslash in it (the tail of a path with spaces).
+_BACKSLASHED = re.compile(r"[^\s'\"]*\\[^\s'\"]*")
+
+
+def _safe_reason(exc):
+    """One line describing exc with no path in it: an OSError is its errno and
+    strerror only (its filename attributes are never rendered); any other
+    exception's first line has absolute paths, and any token holding a
+    backslash, replaced by <path>."""
+    if isinstance(exc, OSError) and (exc.errno is not None or exc.strerror):
+        text = f"[Errno {exc.errno}] {exc.strerror or ''}".strip()
+    else:
+        lines = str(exc).strip().splitlines()
+        text = lines[0] if lines else ""
+    text = _BACKSLASHED.sub("<path>", _PATHLIKE.sub("<path>", text))
+    return text[:200] or type(exc).__name__
 
 
 class WatchStateCorrupt(Exception):
@@ -83,7 +110,7 @@ class WatchState:
             try:
                 doc = json.loads(self.path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as exc:
-                raise WatchStateCorrupt(f"unreadable watch state: {exc}") from None
+                raise WatchStateCorrupt(f"unreadable watch state: {_safe_reason(exc)}") from None
             if not (isinstance(doc, dict) and isinstance(doc.get("sources"), dict)
                     and all(_valid_source(r) for r in doc["sources"].values())):
                 raise WatchStateCorrupt("watch state has the wrong shape")
@@ -138,7 +165,7 @@ class FlatSeenState:
             try:
                 doc = json.loads(self.path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as exc:
-                raise WatchStateCorrupt(f"unreadable seen file: {exc}") from None
+                raise WatchStateCorrupt(f"unreadable seen file: {_safe_reason(exc)}") from None
             if not (isinstance(doc, dict) and isinstance(doc.get("seen"), list)
                     and all(isinstance(i, str) for i in doc["seen"])):
                 raise WatchStateCorrupt("seen file is not {\"seen\": [ids]}")
@@ -309,8 +336,7 @@ def _delivered(answer):
 
 
 def _first_line(exc):
-    text = f"{type(exc).__name__}: {exc}".strip()
-    return text.splitlines()[0][:200] if text else type(exc).__name__
+    return f"{type(exc).__name__}: {_safe_reason(exc)}"[:200]
 
 
 def run_source(state, source, fetch, deliver, alert, alert_after=5, describe=None, *,

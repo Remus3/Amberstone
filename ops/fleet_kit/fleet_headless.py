@@ -72,6 +72,14 @@ v10 (backward compatible; every new parameter is optional):
 - status task names are the MAIN 0915 basic set only (TASKS; CS 1234);
 - a command-line entry: `python fleet_headless.py spawn ...` (CS 0224).
 
+v11:
+- the command line gains ONE pass-through, `--permission-mode MODE`, its
+  value limited to the CLI's own modes (PERMISSION_MODES), mapped to
+  extra=("--permission-mode", MODE) and screened by check_door like any
+  extra (ruling R2). There is no generic --extra on the command line;
+- a governor SlotTimeout is reported as a fixed kit message built from
+  numbers, never str(exc) (CS 1623 item 6).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -88,7 +96,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 10
+KIT_VERSION = 11
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -885,6 +893,14 @@ def _finish(root, code, budget, line):
     _status_quietly(root, code, "idle", "Idle", budget, time.time())
 
 
+def _secs(value):
+    """A timeout rendered from numbers only for a Refused message; anything
+    that is not a number reads 'the default wait'."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "the default wait"
+    return f"{value:g}s"
+
+
 def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           rules_file=None, timeout=3600, extra=(), run=None,
           url_source=base_url, connect=socket.create_connection,
@@ -939,9 +955,9 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
     with contextlib.ExitStack() as slot_stack:
         try:
             slot = slot_stack.enter_context(slot_cm)
-        except _lanes().SlotTimeout as exc:
+        except _lanes().SlotTimeout:
             _status_quietly(root, code, "backoff", "Backing Off", budget)
-            raise Refused(str(exc)) from None
+            raise Refused(f"no governor slot within {_secs(governor_timeout)}") from None
         return _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv,
                               model, effort, cwd, stdin, timeout, log_path,
                               return_stderr, slot, kind, stdin_data)
@@ -1017,11 +1033,13 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
 # ---------------------------------------------------------------- CLI (v10)
 
 CLI_OK, CLI_USAGE, CLI_REFUSED, CLI_TIMEOUT = 0, 2, 3, 4
+PERMISSION_MODES = ("acceptEdits", "bypassPermissions", "default", "dontAsk", "plan")
 
 
 def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     """`python fleet_headless.py spawn --root R --code C --note N [options]`
-    for callers that are not Python (CS 0224). The prompt comes from
+    for callers that are not Python (CS 0224). v11: --permission-mode MODE
+    (one of PERMISSION_MODES) is the only pass-through flag. The prompt comes from
     --prompt-file, else stdin. Prints the usage line as one JSON line. Exit
     0 ran, 2 bad arguments, 3 Refused, 4 timeout. Every fleet rule applies
     exactly as for spawn(); no flag or variable bypasses the proxy or the door."""
@@ -1040,6 +1058,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     sp.add_argument("--cwd")
     sp.add_argument("--floors-in-hooks", action="store_true")
     sp.add_argument("--prompt-file")
+    sp.add_argument("--permission-mode", choices=PERMISSION_MODES)
     try:
         args = ap.parse_args(argv)
     except SystemExit:
@@ -1064,7 +1083,8 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
             args.root, args.code, prompt, note=args.note, writes_code=args.writes_code,
             timeout=args.timeout, cwd=args.cwd, stdin=len(prompt) > ARGV_PROMPT_MAX,
             model=args.model, effort=args.effort, floors_in_hooks=args.floors_in_hooks,
-            kind=args.kind)
+            kind=args.kind,
+            extra=("--permission-mode", args.permission_mode) if args.permission_mode else ())
     except Refused as exc:
         print(json.dumps({"refused": str(exc)}), file=out)
         return CLI_REFUSED

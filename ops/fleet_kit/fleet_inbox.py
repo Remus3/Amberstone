@@ -17,14 +17,15 @@ high-frequency responder when a lane loop exists):
         elif d.action == ACK:  mark_seen(root, path, d)   # mechanical, no note
         elif d.action == WORK: escalate to a real work lane (ORDER/FIX/RULING)
         else:  # TRIAGE - one cheap look
-            line = fleet_headless.spawn(..., kind="triage", **TRIAGE_SPAWN)
+            line = fleet_headless.spawn(..., kind="triage",
+                                         **triage_spawn_kwargs(FLOORS_IN_HOOKS))
             v = parse_verdict(line["result"])             # NOREPLY | ACK | ANSWER
             ... collect ANSWER bodies, mark_seen(...)
     answers -> ONE batched note per destination per tick (batch_note), sent only
     if OutboundCap(root).allow(cls) and may_reply(...) for every part.
 
 Rules enforced here:
-- triage first on sonnet at effort low (TRIAGE_SPAWN), and only for notes the
+- triage first on sonnet at effort low (triage_spawn_kwargs), and only for notes the
   name/title cannot classify; ACK / INFORMATION / TERMINAL classes get a
   mechanical ack (a ledger line, never a note) or no reply; only ORDER / FIX /
   RULING escalate to a work lane;
@@ -39,6 +40,10 @@ v10: a block-quoted marker line is not a marker; scan reads a 4096-byte head
 and re-offers a seen name whose bytes changed (the ledger records sha256);
 enqueue_work / pending_work / mark_work_done keep inbox_work.jsonl, the WORK
 queue a tree's lane tick consumes; no printf-style formatting (ruff UP031).
+
+v11: TRIAGE_SPAWN no longer carries "bare" (it contradicted item 10 and was
+refused at the door in every floors-in-hooks tree); use
+triage_spawn_kwargs(floors_in_hooks), which sets bare = not floors_in_hooks.
 
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
@@ -59,7 +64,7 @@ ACK_CLASSES = ("ACK", "INFORMATION", "TERMINAL", "CORRECTION-ACCEPTED",
                "POLL-ANSWER", "RECEIVED", "NO-REPLY", "NOREPLY", "REPORT")
 ANSWER_CLASSES = ("ANSWER", "ACK", "RECEIVED", "POLL-ANSWER", "INFORMATION",
                   "CORRECTION-ACCEPTED", "RESPONDER", "REPLY", "AUTO-REPLY")
-TRIAGE_SPAWN = {"model": "sonnet", "effort": "low", "bare": True, "timeout": 300}
+TRIAGE_SPAWN = {"model": "sonnet", "effort": "low", "timeout": 300}
 SKIP, ACK, WORK, TRIAGE = "skip", "ack", "work", "triage"
 VERDICTS = ("NOREPLY", "ACK", "ANSWER")
 KINDS = ("build", "inbox", "triage", "unattributed")
@@ -68,6 +73,20 @@ OUTBOUND_REL = Path("ops/loop/control/outbound_notes.jsonl")
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
 WORK_REL = Path("ops/loop/control/inbox_work.jsonl")
 HEAD_BYTES = 4096
+
+
+def triage_spawn_kwargs(floors_in_hooks):
+    """v11 (ruling R1): the spawn() keywords for ONE triage run. TRIAGE_SPAWN
+    plus bare = not floors_in_hooks, with floors_in_hooks passed through so
+    check_door still sees it. A tree whose floors live in hooks triages
+    non-bare (strict MCP, project settings only - FLEET-COMMON item 10's
+    other lean form); a tree with no hook floors triages bare."""
+    kw = dict(TRIAGE_SPAWN)
+    kw["bare"] = not floors_in_hooks
+    kw["floors_in_hooks"] = bool(floors_in_hooks)
+    return kw
+
+
 _SENDER = re.compile(r"(?:^|[-_])(?i:from)-([A-Z]+)-")
 _CLASS = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-([A-Za-z]+(?:-[A-Z]+)?)")
 _AUTO = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-(?i:auto[-_]?reply)(?:[-_.]|$)")

@@ -263,7 +263,10 @@ def _release(path, identity):
         return True
     if _raw(path) != raw:
         return False
-    rec.update({"pid": 0, "ts": 0.0, "orphaned": True})
+    # v11 (CS 1623 item 6): clear every liveness pid, not only pid - a kept
+    # holder_pid / child_pid of a live claimer held the lane RUNNING.
+    rec.update({"pid": 0, "ts": 0.0, "orphaned": True, "holder_pid": 0,
+                "holder_started": None, "child_pid": 0, "child_started": None})
     with contextlib.suppress(OSError), path.open("w", encoding="ascii") as fh:
         json.dump(rec, fh)
     return False
