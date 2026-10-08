@@ -352,6 +352,10 @@ class _HangPopen:
         self.returncode = 1
         return ("", "")
 
+    def wait(self, timeout=None):
+        # kit v10 POSIX tree-kill waits on the child between SIGTERM and SIGKILL
+        return self.returncode
+
     def kill(self):
         self.killed = True
 
@@ -359,7 +363,7 @@ class _HangPopen:
 @pytest.fixture
 def kit_hang(routed, kit_platform, monkeypatch):
     """REAL kit spawn + the kit's own `_run`; only Popen and taskkill faked.
-    Runs once per kit kill branch (win32 taskkill /T, POSIX proc.kill) via
+    Runs once per kit kill branch (win32 taskkill /T, POSIX group kill) via
     `kit_platform`, so the ubuntu CI and Legion both cover both branches."""
     import subprocess as _sp
     monkeypatch.setattr(fleet_route, "_launch", None)

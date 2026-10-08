@@ -1181,22 +1181,25 @@ def main(session: str | None = None) -> int:
     # a killed hook never delivered.
     # FLEET-KIT v7 item 13: the `Session <n> checklist` block goes out FIRST,
     # ahead of the anomalies. session_start_block never raises.
+    # Kit v10 (MAIN 2026-10-08 0839 step 5): it is printed through
+    # fleet_checklist.emit() (session_checklist.emit), never a bare write: a
+    # cp1252 stdout gets "[ ]" for U+2610 instead of raising, and pythonw (no
+    # stdout) prints nothing - emit() then returns None, which counts as NOT
+    # delivered exactly as the failed write did before.
     checklist = ""
+    _scl = None
     try:
         from tools import session_checklist as _scl
-        checklist = _scl.session_start_block(_HANDOFF) + "\n\n"
+        checklist = _scl.session_start_block(_HANDOFF) + "\n"
     except Exception as exc:  # noqa: BLE001 - a hook must never fail the session start
-        checklist = f"Session checklist unavailable: {type(exc).__name__}\n\n"
+        checklist = f"Session checklist unavailable: {type(exc).__name__}\n"
     delivered = True
     try:
-        try:
-            sys.stdout.write(checklist)
-        except UnicodeEncodeError:
-            # pythonw's piped stdout is cp1252 and cannot encode U+2610;
-            # send the block as UTF-8 bytes rather than lose it or the probe.
-            sys.stdout.flush()
-            sys.stdout.buffer.write(checklist.encode("utf-8"))
-            sys.stdout.flush()
+        if _scl is not None:
+            if _scl.emit(checklist) is None:
+                raise OSError("session checklist block not delivered")
+        else:
+            sys.stdout.write(checklist + "\n")
         if anomalies:
             head = "## ! Anomalies\n\n" + "\n".join(f"- {a}" for a in anomalies) + "\n\n"
             sys.stdout.write(head)

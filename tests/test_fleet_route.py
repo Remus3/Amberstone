@@ -240,6 +240,10 @@ class _FakePopen:
         self.returncode = -9 if self.killed else 0
         return ('{"result": "ok"}', "")
 
+    def wait(self, timeout=None):
+        # kit v10 POSIX tree-kill waits on the child between SIGTERM and SIGKILL
+        return self.returncode
+
     def kill(self):
         self.killed = True
 
@@ -279,8 +283,9 @@ def test_body_rides_stdin_beside_the_argv_instruction(kit_launch, tmp_path):
     assert p.stdin_arg == subprocess.PIPE and p.inputs == ["BODY"]
 
 
-# The kit's kill branches on sys.platform (taskkill /T on win32, proc.kill on
-# POSIX); `kit_platform` runs each timeout test once per branch on every host.
+# The kit's kill branches on sys.platform (taskkill /T on win32; on POSIX, kit
+# v10, SIGTERM then SIGKILL to the child's own process group, then proc.kill);
+# `kit_platform` runs each timeout test once per branch on every host.
 def test_timeout_kills_the_process_tree_through_the_kit(kit_launch, kit_platform, tmp_path):
     _FakePopen.hang = True
     with pytest.raises(subprocess.TimeoutExpired):

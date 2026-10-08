@@ -46,20 +46,22 @@ def test_the_helpers_are_the_vendored_kit():
         (ROOT / "ops/fleet_kit/fleet_checklist.py").resolve()
     assert Path(lp.fleet_headless.__file__).resolve() == \
         (ROOT / "ops/fleet_kit/fleet_headless.py").resolve()
-    # Kit v8 (MAIN 2026-10-05 0310) superseded v7, and kit v9 (MAIN 2026-10-07
-    # 2354) superseded v8, each with write_progress(checklist=) unchanged (v9
-    # only added an SPDX header to fleet_checklist).
-    assert lp.fleet_headless.KIT_VERSION == 9
+    # Kit v8 (MAIN 2026-10-05 0310) superseded v7, kit v9 (MAIN 2026-10-07
+    # 2354) superseded v8, and kit v10 (MAIN 2026-10-08 0839) superseded v9,
+    # each with write_progress(checklist=) unchanged (v9 only added an SPDX
+    # header to fleet_checklist; v10 added emit()).
+    assert lp.fleet_headless.KIT_VERSION == 10
 
 
-def test_the_vendored_kit_is_v9_with_its_fifteen_file_set():
+def test_the_vendored_kit_is_v10_with_its_sixteen_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 9
+    assert man["version"] == 10
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json",
         "fleet_checklist.py", "fleet_done.py", "fleet_headless.py",
         "fleet_inbox.py", "fleet_lanes.py", "fleet_secrets.py",
-        "fleet_statusline.js", "fleet_subagent_status.js", "fleet_watch.py",
+        "fleet_statusline.js", "fleet_subagent_first.py",
+        "fleet_subagent_status.js", "fleet_watch.py",
         "tokens.css", "tokens.json"])
     on_disk = {p.name for p in (ROOT / "ops/fleet_kit").iterdir()
                if p.is_file() and p.name != "MANIFEST.json"}
@@ -146,6 +148,53 @@ def test_an_update_after_four_completions_is_printed(tmp_path):
         p.complete(f"T{i}")
     assert seen[-1].startswith("Session 3 checklist - remaining")
     assert "T5" in seen[-1] and "T1" not in seen[-1]
+
+
+# ---- kit v10: checklist printing goes through fleet_checklist.emit() --------
+# MAIN 2026-10-08 0839 ORDER step 5. The fire's sinks are queue_loop._emit and
+# loop_controller.log (print() under pythonw, stdout redirected to a cp1252
+# file) and lane_launcher's logger; the U+2610 box cannot encode on the first
+# two, and a raise from prog.start() escapes launch_lane before its release.
+
+def test_checklist_printing_goes_through_the_kits_emit(tmp_path, monkeypatch):
+    calls = []
+    real = lp.fleet_checklist.emit
+
+    def spy(text, stream=None):
+        calls.append(text)
+        return real(text, stream)
+
+    monkeypatch.setattr(lp.fleet_checklist, "emit", spy)
+    seen = []
+    p = lp.LaneProgress("loop", 2, [("T1", "Task 1")], root=tmp_path, emit=seen.append)
+    text = p.start()
+    assert calls == [text] and seen == [text]
+
+
+def test_a_cp1252_sink_gets_the_ascii_box_and_never_fails_the_fire(tmp_path):
+    seen = []
+
+    def cp1252_print(line):
+        line.encode("cp1252")  # U+2610 raises UnicodeEncodeError, as print() does
+        seen.append(line)
+
+    p = lp.LaneProgress("loop", 2, [("T1", "Task 1")], root=tmp_path, emit=cp1252_print)
+    text = p.start()
+    assert BOX in text, "the returned block keeps the glyph"
+    assert seen == [text.replace(BOX, "[ ]")]
+    assert _doc(tmp_path, "loop")["status"] == "running"
+
+
+def test_a_dead_sink_never_fails_the_fire(tmp_path):
+    def dead(_line):
+        raise OSError("log handle closed")
+
+    p = lp.LaneProgress("loop", 2, [("T1", "Task 1"), ("T2", "Task 2")],
+                        root=tmp_path, emit=dead)
+    p.start()
+    p.complete("T1")
+    p.fail("worker died")
+    assert _doc(tmp_path, "loop")["status"] == "failed"
 
 
 # ---- the lane runner: launch_lane writes lane-<i>.json ---------------------

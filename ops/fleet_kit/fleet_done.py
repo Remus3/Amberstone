@@ -138,7 +138,7 @@ def mark(root, session, status, reason=None, bg=0, env=None, clock=None):
     env = os.environ if env is None else env
     now = (clock or time.time)()
     if status not in STATUSES:
-        raise ValueError("status %r not in %s" % (status, STATUSES))
+        raise ValueError("status {!r} not in {}".format(status, STATUSES))
     session = int(session)
     bg = max(0, int(bg or 0))
     root = Path(root)
@@ -183,12 +183,12 @@ def validate(root, doc=None, session_id=None, pane=None, head_fn=head):
     if not doc:
         return None, "no marker"
     if doc.get("schema") != SCHEMA:
-        return None, "schema %r" % doc.get("schema")
+        return None, "schema {!r}".format(doc.get("schema"))
     status = doc.get("status")
     if status not in STATUSES:
-        return None, "status %r" % status
+        return None, "status {!r}".format(status)
     if status == "done" and doc.get("safe_to_clear") is not True:
-        return None, "done but not safe to clear (%s bg)" % doc.get("background_tasks")
+        return None, "done but not safe to clear ({} bg)".format(doc.get("background_tasks"))
     if session_id:
         if doc.get("session_id") != session_id:
             return None, "other session"
@@ -211,13 +211,13 @@ def validate(root, doc=None, session_id=None, pane=None, head_fn=head):
         return None, "hand-off changed after /done"
     if status == "failed":
         return "FAIL", doc.get("reason") or "failed"
-    return "DONE", "S%s safe to clear" % doc.get("session")
+    return "DONE", "S{} safe to clear".format(doc.get("session"))
 
 
 # ---------------------------------------------------------------- stop hook
 
 def _osc(n, text):
-    return "\x1b]%d;%s\x07" % (n, text)
+    return f"\x1b]{n};{text}\x07"
 
 
 def stop_hook(data, root=None):
@@ -233,7 +233,7 @@ def stop_hook(data, root=None):
     code, n = doc.get("tree") or "--", doc.get("session")
     waiting = len(data.get("background_tasks") or []) + len(data.get("session_crons") or [])
     if waiting:
-        return {"terminalSequence": _osc(2, "%s S%s done, waiting %d bg" % (code, n, waiting))}
+        return {"terminalSequence": _osc(2, f"{code} S{n} done, waiting {waiting} bg")}
     seen = root / SEEN_REL
     try:
         if seen.read_text(encoding="ascii").strip() == doc.get("at"):
@@ -241,10 +241,10 @@ def stop_hook(data, root=None):
     except OSError:
         pass
     try:
-        _atomic_write(seen, "%s\n" % doc.get("at"))
+        _atomic_write(seen, "{}\n".format(doc.get("at")))
     except OSError:
         return {}
-    title = "%s DONE S%s - safe to clear" % (code, n)
+    title = "{} DONE S{} - safe to clear".format(code, n)
     return {"terminalSequence": _osc(2, title) + _osc(9, title)}
 
 
@@ -278,12 +278,12 @@ def main(argv=None, stdin=None, stdout=None):
     root = Path(args.root) if args.root else main_checkout(os.getcwd())
     if args.cmd == "mark":
         doc = mark(root, args.session, args.status, args.reason, args.bg)
-        stdout.write("session_done S%s %s safe_to_clear=%s\n" % (
+        stdout.write("session_done S{} {} safe_to_clear={}\n".format(
             doc["session"], doc["status"], str(doc["safe_to_clear"]).lower()))
         return 0 if doc["status"] == args.status else 1
     verdict, why = validate(root, session_id=args.session_id
                             or os.environ.get("CLAUDE_CODE_SESSION_ID"), pane=args.pane)
-    stdout.write("%s: %s\n" % (verdict or "none", why))
+    stdout.write("{}: {}\n".format(verdict or "none", why))
     return 0 if verdict == "DONE" else 1
 
 
