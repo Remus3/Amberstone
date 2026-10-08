@@ -149,7 +149,7 @@ jobs:
           # `pip install --upgrade pip` line is gone: an unpinned download of
           # the installer itself, and the runner's pip already supports
           # --require-hashes.
-          pip install --require-hashes -r .github/ci/requirements-docs-guards.txt  # pytest pytest-asyncio pytest-timeout pyyaml pydantic
+          pip install --require-hashes -r .github/ci/requirements-docs-guards.txt
           python -c "import yaml, pytest, pytest_timeout, pytest_asyncio, pydantic"
 
       - name: Derive the md-reading guard set

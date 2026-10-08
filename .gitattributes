@@ -67,6 +67,10 @@ data/meta/ddragon_*.json          linguist-generated=true
 *.ps1   text eol=lf
 *.spec  text eol=lf
 *.lock  text eol=lf
+# pip-compile / uv inputs (.github/ci/requirements-*.in, 2026-10-08 supply-chain
+# slice). The hashed .txt they generate is already pinned by *.txt above; the
+# input is pinned too so a Windows checkout never feeds the generator CRLF.
+*.in    text eol=lf
 
 # FLEET-KIT v4 ships LICENSE and NOTICE with NO extension, so no rule above
 # covers them; under core.autocrlf=true a fresh checkout would write them CRLF
