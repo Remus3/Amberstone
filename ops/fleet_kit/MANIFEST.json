@@ -1,17 +1,21 @@
 {
- "common_block_sha256": "ecd56ed8404f6d92bf0a621476ae6763a3726e390c302ce48295c893e6c21939",
+ "common_block_sha256": "a8de1743d8b5aaf06eec63fbcebf2b854505caef7a2cc9bb12bfcfd6f64fdd35",
  "files": {
-  "FLEET-COMMON.md": "ecd56ed8404f6d92bf0a621476ae6763a3726e390c302ce48295c893e6c21939",
+  "FLEET-COMMON.md": "a8de1743d8b5aaf06eec63fbcebf2b854505caef7a2cc9bb12bfcfd6f64fdd35",
   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
   "NOTICE": "a4381b8b538477c505d391d5b8c5b179fb1274efeab06681a9d01456be3468c0",
-  "fleet_checklist.py": "138bf2f8d15de69e29278c84f12be5c39285a44566e1439433da9baf7aab516b",
-  "fleet_headless.py": "64e48a87fbf27858be894a21a9e507b60c0e00430cfd6502a5af1d4a50c96cff",
-  "fleet_inbox.py": "9c5ce43481d38776462af918a3445db509ac025223586af0ca60229950294069",
+  "cli_display.json": "cc4ca1544ea90d255d6defcd845cd1e7bb0abea49d7a7c2cc566295923caaa2f",
+  "fleet_checklist.py": "2088d8f7d0a632b8756d77bace997005fd6b7302fd7a6251f9f939af21993724",
+  "fleet_done.py": "266dfc37639f92b723c9d89e4fd01b0f71b93cb554e1736f5a88546f37757f6a",
+  "fleet_headless.py": "5fcc9df9a9e4a1290184400af629f26b82edc3971a87436e33d09b88afb13c60",
+  "fleet_inbox.py": "f329b9f166ac193ab3305f3999fcae1b76e298e4f96a206004b241348cf90d28",
   "fleet_lanes.py": "0f2338fb0e32a9255b5eb8174cba7ddb8603c113ef2d31967e30cee4ef1001c6",
   "fleet_secrets.py": "4e112c1f22c448fe773155b753fce5c678a09afc878cdf31b258eac5b3f0cf38",
+  "fleet_statusline.js": "cc3795d6cfd6eecc32d836532d71056709db3ee0b110b5ecec6c2c1f59b1e4cb",
+  "fleet_subagent_status.js": "a618096df9d72cf2ebefde4177f00b7cfe377c16c99eadaf30549aad596cb0fd",
   "fleet_watch.py": "77bd6fa3addaa23a4c152b83e59c8b0a9ed7eed1dd1950ee42db6117dfb2c4b8",
   "tokens.css": "120cc31990110049e405fb15020e12646089f210a02becda6bb08d795b0a33a7",
-  "tokens.json": "57108677f942e54cda7e54e81c6069b8388b1fc8d2dd8cc3af81840e7cd50b5d"
+  "tokens.json": "965ed8aa3d9be380d863c000d18143155e71d81ad02f988050d5cfef5d09a0bd"
  },
- "version": 8
+ "version": 9
 }
