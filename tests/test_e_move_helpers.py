@@ -9,6 +9,7 @@ from __future__ import annotations
 import codecs
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -206,7 +207,9 @@ def test_find_strays_reports_destination_only_entries_and_deletes_nothing(tmp_pa
         (root / "a").mkdir(parents=True)
         (root / "a" / "b.txt").write_bytes(b"x")
         (root / "keep").mkdir()
-    (dst / "A" / "EXTRA.txt").write_bytes(b"x")
+    # Same case as the mkdir above: "A" only reached "a" on a case-INsensitive
+    # filesystem, so the CI (Linux) runner raised FileNotFoundError here.
+    (dst / "a" / "EXTRA.txt").write_bytes(b"x")
     (dst / "gone_dir" / "sub").mkdir(parents=True)
     (dst / "gone_dir" / "x.txt").write_bytes(b"x")
     (dst / "gone_dir" / "sub" / "y.txt").write_bytes(b"x")
@@ -224,6 +227,10 @@ def test_find_strays_reports_destination_only_entries_and_deletes_nothing(tmp_pa
     assert em.find_strays(src, tmp_path / "nope")["missing"] is True
 
 
+# The maps here are built from tmp_path, and PathRewriter accepts only
+# drive-absolute Windows paths (DrivePath.parse) - by design, it is the C: -> E:
+# move tool. A POSIX tmp_path ("/tmp/...") is refused with ValueError.
+@pytest.mark.skipif(os.name != "nt", reason="PathRewriter maps drive-absolute Windows paths only")
 def test_repoint_gitdirs_rewrites_links_and_classifies(tmp_path):
     src, dst = tmp_path / "src repo", tmp_path / "dst repo"
     wt_src, wt_dst = tmp_path / "wt-src", tmp_path / "wt-dst"
