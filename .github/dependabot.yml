@@ -1,0 +1,65 @@
+# Dependabot version updates (supply-chain order, 2026-10-05, item 2.1).
+#
+# One `updates` entry per ecosystem actually present in this tree, weekly, and
+# ONE group per ecosystem so a week is at most one PR per ecosystem, not a
+# burst. Nothing here auto-merges: a Dependabot PR is merged by this tree once
+# its gating CI (ci.yml) is green on it.
+#
+# Security alerts are a separate GitHub feature and are NOT configured here;
+# this file only schedules version-update PRs.
+
+version: 2
+updates:
+  # Every `uses:` in .github/workflows/ is pinned to a full commit SHA with the
+  # release tag as a trailing comment. Dependabot updates the SHA and the
+  # comment together - this entry is how those pins stay current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # "/"                   requirements.txt - the runtime pins (exact `==`,
+  #                       no hashes, installable on the operator's box).
+  # "/.github/ci"         the HASHED CI install sets (requirements-*.txt,
+  #                       generated from the .in beside each; the regeneration
+  #                       command is in each .in header). ci.yml checks that
+  #                       every runtime pin agrees with the hashed set, so a
+  #                       bump that updates one and not the other goes red.
+  # "/oss/win32_atomic_io" the extracted package's pyproject (stdlib-only
+  #                       today; listed so a dependency added later is seen).
+  - package-ecosystem: pip
+    directories:
+      - "/"
+      - "/.github/ci"
+      - "/oss/win32_atomic_io"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      pip:
+        patterns: ["*"]
+
+  # npm: every tracked package.json that declares dependencies. NONE carries a
+  # tracked lockfile - package-lock.json is gitignored repo-wide - so
+  # Dependabot updates the package.json ranges only. lane-widget/package.json
+  # declares no dependencies at all and is deliberately not listed.
+  - package-ecosystem: npm
+    directories:
+      - "/rc-shell"
+      - "/ops/audit/lolmath_ds_sweep"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm:
+        patterns: ["*"]

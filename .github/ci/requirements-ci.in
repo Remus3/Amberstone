@@ -1,0 +1,33 @@
+# Input for .github/ci/requirements-ci.txt - the HASHED install set of the
+# ci.yml jobs that run the suite (nightly-full-suite and check).
+#
+# CI installs the generated .txt with `pip install --require-hashes`, so every
+# package, transitive ones included, is pinned to an exact version AND to the
+# sha256 of the files PyPI serves for it. Never hand-edit the .txt: change this
+# file (or the root requirements.txt it includes) and regenerate, from the repo
+# root, with:
+#
+#   uv pip compile .github/ci/requirements-ci.in --generate-hashes --python-version 3.12 --python-platform x86_64-manylinux_2_28 --output-file .github/ci/requirements-ci.txt
+#
+# --python-version / --python-platform name the RUNNER (ubuntu-latest,
+# setup-python 3.12), not the box the command runs on, so the output is the
+# same on Windows, WSL or Linux. Dependabot's `pip` entry for /.github/ci keeps
+# the pins and hashes current.
+#
+# The runtime pins live ONCE, in the root requirements.txt (exact `==` pins,
+# no hashes, so it stays installable on the operator's Python 3.14 box). The
+# names below are test-only tools; they are left unversioned here on purpose,
+# so a regeneration takes the current release and the .txt carries the pin.
+
+-r ../../requirements.txt
+
+pytest
+pytest-asyncio
+pytest-timeout
+pytest-xdist
+ruff
+playwright
+mypy
+# Test-only: parses .github/workflows/*.yml for the workflow-contract guards
+# (tests/test_ci_docs_guard_coverage.py, tests/test_ci_job_timeout_headroom_rm156.py).
+pyyaml
