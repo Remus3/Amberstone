@@ -20,7 +20,8 @@ THE PASS (kit `fleet_inbox`, consumed, never edited):
         verify_main) and the provenance says main-verified / main-unverified,
         so an unverified "order" never carries MAIN's authority
   TRIAGE anything else            -> ONE kit spawn, kind="triage",
-        fleet_inbox.TRIAGE_SPAWN (sonnet, effort low, bare); parse_verdict()
+        fleet_inbox.triage_spawn_kwargs(FLOORS_IN_HOOKS) (sonnet, effort low,
+        non-bare: RC's floors live in hooks, kit v11 R1); parse_verdict()
         gives NOREPLY / ACK / ANSWER and the note is marked seen either way
   ANSWER parts -> ONE batched note per destination (batch_note, HOP line), only
         when may_reply() holds, the sender is a counterparty, and
@@ -128,6 +129,8 @@ LAST_REL = Path("ops/loop/control/inbox_tick_last.json")
 HELD_REL = Path("ops/loop/control/inbox_held")
 DELIVERIES_REL = Path("ops/loop/control/inbox_deliveries.jsonl")
 MAX_TRIAGE_PER_TICK = 1
+# RC's commit floors live in hooks, so --bare would skip them (kit v11 ruling R1).
+FLOORS_IN_HOOKS = True
 LOCK_STALE_S = 900
 STEP_ID = "I1"
 STEP_TASK = "Read the RC inbox (scan, classify, triage)"
@@ -414,7 +417,7 @@ def _process(root, rows, s, *, code, agreement, participants, spawn, spawn_kw,
                 s["errors"].append(f"{name}: unreadable ({type(exc).__name__})")
                 s["deferred"] += 1
                 continue
-            kw = dict(fleet_inbox.TRIAGE_SPAWN)
+            kw = dict(fleet_inbox.triage_spawn_kwargs(FLOORS_IN_HOOKS))
             kw.update(spawn_kw)
             kw.setdefault("halt_file", str(root / STOP_REL))
             do_spawn = spawn or fleet_headless.spawn

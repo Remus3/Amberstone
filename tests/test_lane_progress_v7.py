@@ -49,13 +49,14 @@ def test_the_helpers_are_the_vendored_kit():
     # Kit v8 (MAIN 2026-10-05 0310) superseded v7, kit v9 (MAIN 2026-10-07
     # 2354) superseded v8, and kit v10 (MAIN 2026-10-08 0839) superseded v9,
     # each with write_progress(checklist=) unchanged (v9 only added an SPDX
-    # header to fleet_checklist; v10 added emit()).
-    assert lp.fleet_headless.KIT_VERSION == 10
+    # header to fleet_checklist; v10 added emit()). Kit v11 (MAIN 2026-10-08
+    # 1840) superseded v10 with fleet_checklist byte-identical.
+    assert lp.fleet_headless.KIT_VERSION == 11
 
 
-def test_the_vendored_kit_is_v10_with_its_sixteen_file_set():
+def test_the_vendored_kit_is_v11_with_its_sixteen_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 10
+    assert man["version"] == 11
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json",
         "fleet_checklist.py", "fleet_done.py", "fleet_headless.py",
