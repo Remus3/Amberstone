@@ -21,6 +21,18 @@ OPERATOR ASKS (batched, re-ask in ONE line):
    written by E1's crashed hidden runs - a halt-boundary breach by Windows WER, recorded).
 4. Plus the physical-setup list below (carried from session 102).
 
+SESSION 104 ADDITIONS (inbox sync + arm, LEDGER 1687; supersede the stale facts in the paragraph below):
+- SUBAGENT-FIRST ARMED: mode is now `deny` (read back `deny\n`; kit mode() = deny). It was armed EARLY on the
+  operator's attended "arm", by adjudicator ruling A; the 3-session criterion was NOT met. MAIN was told in
+  2026-10-08-1431 ANSWER (sha256 73dda790..., reached 1/1). WATCH: if a deny row shows main-thread work that
+  cannot be dispatched (an AHK-typed loop window or a background session without agent_id), write `log` and
+  ask MAIN for a ruling.
+- The K2 / deny report owed to MAIN is DONE (that 1431 note). OutboundCap is 4/6 on 2026-10-08.
+- NEW RM-685 (Tier-1): the inbox tick's WORK rows never drain (RC row shape, not kit v10 enqueue_work).
+  BACKLOG "Session 103 filings". Next free RM id RM-686. Next free LEDGER id 1688.
+- CI on wrap HEAD 00618c625 is at the RM-172 baseline (ci 37808387559: 4 failed / 38349 passed);
+  test_no_environ is green, so that first action is closed.
+
 SUBAGENT-FIRST hook: mode `log` (gitignored `ops/loop/control/subagent_first.mode`). Session 103 was
 interactive session 1 of 3 toward `deny`; the deny date ~2026-10-11 was promised to MAIN. Read
 `ops/loop/control/subagent_first.jsonl` for would-deny rows of work that could not be dispatched:
