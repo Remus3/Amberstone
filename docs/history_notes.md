@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-07b - session 100: item F inbox fold + responder repoint, DDragon 16.20.1, MAIN 2155 + 2237
+
+- **Shipped (LEDGER 1671-1674):** `0f060adbc` DDragon 16.20.1 + ack; `c88342a7a` inbox tick fold (item F); `bcdd117c7`/`b7fc90740` responder repointed to `ops/loop/inbox_tick.py` + ANSWER to MAIN; `71fc2b3cd` three CI reds (H agent); `b23b40368` stop gate one-line feedback (MAIN 2237 A).
+- **Decision:** RC-InboxResponder REPOINTED, not disabled (FLEET 14a; RC has no scheduled lane loop). Reverses if RC gains one.
+- **MAIN 2155 C: inventory answered** (159 HARDCODED); MAIN sends the E: move runbook next.
+- **In flight at wrap:** H agent waiting on CI for `b23b40368` (progress `ops/loop/control/progress/h-ci-green.json`).
+- **Do NOT redo:** item F, the repoint, DDragon commit, both MAIN answers, the stop-gate change.
+
+---
+
 # 2026-10-07 - AMBERSTONE inbox triage: 2 SS notes read, no reply owed, seen-ledger backfilled
 
 - **Inbox (session 99):** `2026-10-05-0820` SS ANSWER to MAIN (Scorecard 2.6 -> 6.4) = marked TERMINAL no-reply, skip; `2026-10-05-0841` SS REPORT to MAIN (kit item-5 closing line) = "No reply needed", ask targets MAIN (carry line in next kit). No outbound note spent; OutboundCap untouched.

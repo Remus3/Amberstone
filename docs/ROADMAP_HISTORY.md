@@ -1,5 +1,16 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-08 - size-budget relocation pass (session 103 /done), 2 rows
+
+`ROADMAP.md` reached 91 percent of its 81920-byte budget after the session 103
+filings (RM-680..RM-684), and `tools/drift_guard.py` warns at 90. The two rows
+below were fully shipped or closed; they move here VERBATIM as they stood at
+c25553f53, and `ROADMAP.md` keeps a one-line stub for each.
+
+- **RM-254 CLOSED (2026-08-30, lane 8 cycle 24) + RM-261 / RM-262 / RM-263 / RM-264 SHIPPED (2026-10-04)** - the `core/polled_json.py` audit closed RM-254 plus four more defects; the closed finding, the full row body and the c30 addendum's 11-site enumeration are archived VERBATIM in the `## 2026-10-02` block - **READ IT before re-opening any of these ids.** Open spawn: (261) ~96 modules still hand-roll the same scratch name, incl. the shared `coaches/_base_coach.py:85` `safe_write` and 11 further sites in the c30 addendum; (262) four U+2192 in a live Haiku prompt at `coaches/arena_coach.py:159-160`; (263) no `fsync` anywhere, so atomic against a reader but not `taskkill /F`; (264) `PolledJsonFile` has ZERO production instantiations. Bodies in `BACKLOG.md`. [2026-10-04 Wave1: RM-262 shipped - LEDGER 1480-1559] [2026-10-04 Wave2-atomic: RM-261 / RM-263 / RM-264 shipped - LEDGER 1654-1657]
+
+- **RM-234 SHIPPED 2026-09-11 (LEDGER 1398; the closure detail and its refuted premise archived VERBATIM in the `## 2026-10-02` block); RM-235 SHIPPED 2026-10-04 (Wave2-tail drain, LEDGER 1631); RM-236 / RM-237 SHIPPED 2026-10-04 (Wave1, LEDGER 1497 / 1498) (filed 2026-08-30, lane 8 cycle 17; LANE 8, Tier-1)** - what cycle 17 did NOT fix in `game_reader/snapshot_normalizer.py`: process-global subresource counters with no production reader or reset (235); six further defects, FOUR wrong on real Riot data every game, headed by `quest_boots_owned` being wrong in both directions on 16.15.1 while feeding a build instruction into the live SR prompt (236); and a ~17s worst-case poll tick that trips the 12s liveness threshold, whose auto-remediation then hands a second thread the SAME `GameReader` (237). Bodies in `BACKLOG.md`. [2026-10-04 Wave1: RM-236 shipped; RM-237 shipped - LEDGER 1480-1559]
+
 ## 2026-10-04 - Wave2-tail drain merge, 4 rows
 
 RM-193 / RM-194 / RM-195 / RM-198, RM-266 .. RM-269, RM-293 (a)+(c) and RM-317
