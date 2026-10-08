@@ -48,6 +48,29 @@ sonnet/low, mechanical acks, an outbound cap, a hop limit, the build-vs-inbox
 cost split) and an OPTIONAL spawn(kind=build|inbox|triage). The usage line
 gains "kind": the explicit value, else inferred by run_kind() (a channel-note
 name is inbox, an empty note unattributed, any other label build).
+Kind "inbox" is a run that DOES the work a note orders (an ORDER / FIX /
+RULING lane); "triage" is the cheap classification look; "build" is the rest.
+
+v10 (backward compatible; every new parameter is optional):
+- a block-quoted line (`> TERMINAL`) is never a marker: quoting a note is not
+  marking this one (RSC 1540 gap 1);
+- the usage line carries "is_error" and "subtype" from the claude result, and
+  spawn's return adds "receipt", the full result event (RSC gap 2, LW 1258 A);
+- the run budget lock is an OS byte-range lock on a file that is never
+  unlinked, so a dead holder frees it at once (RSC gap 3);
+- halt_file halts on ANY entry at the path, a dangling symlink included
+  (RSC gap 4);
+- a POSIX timeout kills the child's whole process group (RC 1915);
+- _run passes a literal creationflags= to Popen (LW 1258 B), and launch() is
+  its public name (RC 2220 d);
+- spawn(stdin_data=...) keeps the prompt in argv and feeds stdin_data on
+  stdin (RC 2220 e); a custom run= that accepts on_start gets it, and the
+  usage line records "child_marked" (RSC 0523 item 6);
+- an OSError before the run starts is a Refused, never a raw escape;
+- _atomic_write retries a briefly locked target and never orphans its tmp
+  (RSC 0523 item 2);
+- status task names are the MAIN 0915 basic set only (TASKS; CS 1234);
+- a command-line entry: `python fleet_headless.py spawn ...` (CS 0224).
 
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
@@ -65,7 +88,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 9
+KIT_VERSION = 10
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -99,7 +122,12 @@ _TOKEN_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _TASK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _CHECK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$")
 CHECKLIST_MAX = 20
+ATOMIC_TRIES = 8
 KINDS = ("build", "inbox", "triage")
+# MAIN 0915 section 1: the BASIC status task names, the operator's words.
+TASKS = ("Idle", "Checking Inbox", "Waiting for Slot", "Running Session",
+         "Delivering Notes", "Committing", "Backing Off", "Halted", "Turn Limit Reached")
+REFUSED_TASK = "Idle"  # a refused start runs nothing; state "refused" says why
 _NOTE_SENDER = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-")
 _EPOCH = _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone(_dt.timedelta(0)))
 
@@ -199,6 +227,9 @@ def child_env(url, bare=False, parent=None):
                 k.startswith("ANTHROPIC_") and k.endswith("BASE_URL")):
             del env[k]
     env["ANTHROPIC_BASE_URL"] = url
+    # v10: SUBAGENT-FIRST guards an operator's interactive main thread; a
+    # headless run has no agent_id and no operator, so it is always exempt.
+    env["FLEET_SUBAGENT_FIRST"] = "off"
     if bare:
         env["ANTHROPIC_API_KEY"] = PLACEHOLDER_KEY
     return env
@@ -257,7 +288,9 @@ def _marked_terminal(name, head):
     if "TERMINAL" in tokens or "NOREPLY" in tokens or _has_marker(tokens, "NO-REPLY"):
         return True
     for line in (head or "").splitlines():
-        text = line.strip().lstrip("#*>- \t").rstrip("* \t").upper()
+        if line.lstrip().startswith(">"):
+            continue  # a quoted marker belongs to the quoted note, not this one
+        text = line.strip().lstrip("#*- \t").rstrip("* \t").upper()
         if text and _MARKER_LINE.match(text):
             return True
     return False
@@ -392,6 +425,32 @@ def check_door(bare=False, extra=(), floors_in_hooks=False):
 
 # ---------------------------------------------------------------- budget
 
+def _try_os_lock(fd):
+    """Non-blocking exclusive lock on byte 0 of fd. True = held."""
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return False
+    return True
+
+
+def _os_unlock(fd):
+    with contextlib.suppress(OSError):
+        if sys.platform == "win32":
+            import msvcrt
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_UN)
+
+
 class RunBudget:
     """Runs started per rolling window, persisted as epoch seconds. A missing
     file is zero runs; a file that exists but cannot be read or parsed REFUSES
@@ -449,28 +508,28 @@ class RunBudget:
 
     @contextlib.contextmanager
     def _lock(self):
+        """v10: an OS byte-range lock on <budget>.lock, a file that is never
+        unlinked. The OS frees the lock when its holder's handle closes, so a
+        dead holder frees it at once; no stale timer, no unlink race (RSC 1540
+        gap 3). lock_stale is kept for the signature and is unused."""
         lock = self.path.with_name(self.path.name + ".lock")
         lock.parent.mkdir(parents=True, exist_ok=True)
         deadline = time.monotonic() + self.lock_wait
-        while True:
-            try:
-                fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                break
-            except FileExistsError:
-                with contextlib.suppress(OSError):
-                    if time.time() - lock.stat().st_mtime > self.lock_stale:
-                        lock.unlink()
-                        continue
-                if time.monotonic() >= deadline:
-                    raise Refused("budget lock busy") from None
-                time.sleep(0.05)
         try:
-            os.write(fd, str(os.getpid()).encode("ascii"))
-            yield
+            fd = os.open(str(lock), os.O_CREAT | os.O_RDWR)
+        except OSError as exc:
+            raise Refused(f"budget lock unopenable: {exc.__class__.__name__}") from None
+        try:
+            while not _try_os_lock(fd):
+                if time.monotonic() >= deadline:
+                    raise Refused("budget lock busy")
+                time.sleep(0.05)
+            try:
+                yield
+            finally:
+                _os_unlock(fd)
         finally:
             os.close(fd)
-            with contextlib.suppress(OSError):
-                lock.unlink()
 
     def start(self):
         """Count one start under the lock. True = counted; False = cap reached.
@@ -502,8 +561,19 @@ def _atomic_write(path, text):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    tmp.write_text(text, encoding="ascii", newline="\n")
-    tmp.replace(path)
+    try:
+        tmp.write_text(text, encoding="ascii", newline="\n")
+        for attempt in range(ATOMIC_TRIES):
+            try:
+                tmp.replace(path)
+                return
+            except PermissionError:  # Windows: a reader holds the target briefly
+                if attempt == ATOMIC_TRIES - 1:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
+    finally:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
 
 
 def _iso(epoch):
@@ -599,6 +669,8 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
         "output_tokens": u.get("output_tokens"),
         "cost_usd": r.get("total_cost_usd"),
         "num_turns": r.get("num_turns"),
+        "is_error": r.get("is_error") if isinstance(r.get("is_error"), bool) else None,
+        "subtype": r.get("subtype") if isinstance(r.get("subtype"), str) else None,
         "error": error,
         "kind": run_kind(note, kind),
     }
@@ -689,7 +761,11 @@ def conformance(root):
 
 # ---------------------------------------------------------------- spawn
 
-def _kill_tree(proc):
+def _kill_tree(proc, grace=5.0):
+    """Kill the child and everything it started. Windows: taskkill /T /F.
+    POSIX (v10, RC 1915): the child leads its own session (launch() starts it
+    with start_new_session=True), so SIGTERM its process group, wait `grace`
+    seconds, then SIGKILL the group. proc.kill() stays the last resort."""
     if sys.platform == "win32":
         sysroot = os.environ.get("SYSTEMROOT")
         tk = str(Path(sysroot) / "System32" / "taskkill.exe") if sysroot else \
@@ -698,14 +774,26 @@ def _kill_tree(proc):
             with contextlib.suppress(OSError, subprocess.SubprocessError):
                 subprocess.run([tk, "/T", "/F", "/PID", str(proc.pid)], capture_output=True,
                                timeout=30, creationflags=_NO_WINDOW)
+    else:
+        import signal
+        with contextlib.suppress(OSError):
+            pgid = os.getpgid(proc.pid)
+            if pgid == proc.pid:  # only a group the child leads, never ours
+                with contextlib.suppress(OSError):
+                    os.killpg(pgid, signal.SIGTERM)
+                with contextlib.suppress(subprocess.TimeoutExpired, OSError):
+                    proc.wait(timeout=grace)
+                with contextlib.suppress(OSError):
+                    os.killpg(pgid, signal.SIGKILL)
     with contextlib.suppress(OSError):
         proc.kill()
 
 
 def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, on_start=None,
-         **kw):
-    """subprocess.run, except stdin defaults to DEVNULL and a timeout kills the
-    whole process tree (claude's own children included) before re-raising.
+         creationflags=_NO_WINDOW, **kw):
+    """subprocess.run, except stdin defaults to DEVNULL, no console window opens
+    (a literal creationflags= at Popen, v10) and a timeout kills the whole
+    process tree (claude's own children included) before re-raising.
     on_start(pid) is called once the child exists (v6: the governor slot)."""
     if capture_output:
         kw["stdout"] = kw["stderr"] = subprocess.PIPE
@@ -713,7 +801,9 @@ def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, on_st
         stdin = subprocess.PIPE
     elif stdin is None:
         stdin = subprocess.DEVNULL
-    with subprocess.Popen(argv, stdin=stdin, **kw) as proc:
+    if sys.platform != "win32":
+        kw.setdefault("start_new_session", True)
+    with subprocess.Popen(argv, stdin=stdin, creationflags=creationflags, **kw) as proc:
         if on_start is not None:
             with contextlib.suppress(Exception):
                 on_start(proc.pid)
@@ -725,6 +815,18 @@ def _run(argv, input=None, timeout=None, capture_output=False, stdin=None, on_st
                 proc.communicate(timeout=30)
             raise
     return subprocess.CompletedProcess(argv, proc.returncode, out, err)
+
+
+launch = _run  # v10 public name (RC 2220 d); same object, same behaviour
+
+
+def _accepts_on_start(fn):
+    import inspect
+    try:
+        params = inspect.signature(fn).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(p.name == "on_start" or p.kind is p.VAR_KEYWORD for p in params)
 
 
 def _json_or_none(text):
@@ -771,7 +873,7 @@ def _governor(root, code, governor, governor_timeout, governor_root, budget, not
     return lanes.governor_slot(
         code, note or "spawn", governor, governor_root, timeout=governor_timeout,
         since=since,
-        on_wait=lambda: _status_quietly(root, code, "backoff", "Waiting For Slot", budget))
+        on_wait=lambda: _status_quietly(root, code, "backoff", "Waiting for Slot", budget))
 
 
 def _finish(root, code, budget, line):
@@ -790,7 +892,7 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           persist=False, session_id=None, resume=None, model=None, effort=None,
           setting_sources=DEFAULT_SOURCES, floors_in_hooks=False, pin=None,
           log_path=None, halt_file=None, governor=None, governor_timeout=None,
-          governor_root=None, governor_since=None, kind=None):
+          governor_root=None, governor_since=None, kind=None, stdin_data=None):
     """Start ONE headless run and wait for it. Returns the usage line (dict)
     plus "result" (and "stderr" when return_stderr). Raises Refused, before
     anything starts, when the fleet rules forbid it; the status file then reads
@@ -801,17 +903,22 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
     within governor_timeout seconds raises Refused and nothing starts; a caller
     that retries passes governor_since (its first ask) so it keeps its age. A
     lane run inside fleet_lanes.run_lane takes its ONE slot here, nowhere else.
-    kind (v8) labels the run build / inbox / triage in the usage line."""
+    kind (v8) labels the run build / inbox / triage in the usage line.
+    stdin_data (v10) keeps the prompt in argv and feeds this text on stdin
+    (it cannot be combined with stdin=True). An OSError before the run starts
+    (unreadable registry, unwritable status dir, ...) is raised as Refused."""
     root = Path(root)
     budget = RunBudget(root / BUDGET_REL)
     run = _run if run is None else run
-    if halt_file and Path(halt_file).exists():
+    if halt_file and os.path.lexists(halt_file):  # any entry halts, dangling links too
         _status_quietly(root, code, "halted", "Halted", budget)
         raise Refused("halt file present")
     try:
         check_door(bare, extra, floors_in_hooks)
         run_kind(note, kind)  # an unknown kind refuses before anything starts
         model, effort = pick_model(writes_code, model), pick_effort(note, effort)
+        if stdin and stdin_data is not None:
+            raise Refused("stdin=True and stdin_data both feed stdin - pick one")
         if not stdin and len(prompt) > ARGV_PROMPT_MAX:
             raise Refused(f"prompt over {ARGV_PROMPT_MAX} chars in argv - pass stdin=True")
         url = url_source()
@@ -824,28 +931,34 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         slot_cm = _governor(root, code, governor, governor_timeout, governor_root,
                             budget, note, governor_since)
     except Refused:
-        _status_quietly(root, code, "refused", "Refused", budget)
+        _status_quietly(root, code, "refused", REFUSED_TASK, budget)
         raise
+    except OSError as exc:
+        _status_quietly(root, code, "refused", REFUSED_TASK, budget)
+        raise Refused(f"start failed: {exc.__class__.__name__}") from None
     with contextlib.ExitStack() as slot_stack:
         try:
             slot = slot_stack.enter_context(slot_cm)
         except _lanes().SlotTimeout as exc:
-            _status_quietly(root, code, "backoff", "No Governor Slot", budget)
+            _status_quietly(root, code, "backoff", "Backing Off", budget)
             raise Refused(str(exc)) from None
         return _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv,
                               model, effort, cwd, stdin, timeout, log_path,
-                              return_stderr, slot, kind)
+                              return_stderr, slot, kind, stdin_data)
 
 
 def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model,
                    effort, cwd, stdin, timeout, log_path, return_stderr, slot,
-                   kind=None):
+                   kind=None, stdin_data=None):
     """The v5 run body, entered only once a governor slot (if any) is held."""
     try:
         counted = budget.start()
     except Refused:
-        _status_quietly(root, code, "refused", "Refused", budget)
+        _status_quietly(root, code, "refused", REFUSED_TASK, budget)
         raise
+    except OSError as exc:
+        _status_quietly(root, code, "refused", REFUSED_TASK, budget)
+        raise Refused(f"budget write failed: {exc.__class__.__name__}") from None
     if not counted:
         _status_quietly(root, code, "limit", "Turn Limit Reached", budget)
         raise Refused(f"run budget exhausted ({budget.used()}/{budget.cap})")
@@ -856,8 +969,16 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
           "creationflags": _NO_WINDOW}
     if stdin:
         kw["input"] = prompt
-    if slot and run is _run:
-        kw["on_start"] = lambda pid: _lanes().mark_child(slot, pid)
+    elif stdin_data is not None:
+        kw["input"] = stdin_data
+    marked = {"ok": None}
+    if slot and (run is _run or _accepts_on_start(run)):
+        marked["ok"] = False
+
+        def _mark(pid):
+            _lanes().mark_child(slot, pid)
+            marked["ok"] = True
+        kw["on_start"] = _mark
     proc, error = None, None
     try:
         with contextlib.ExitStack() as stack:
@@ -884,8 +1005,72 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
     line = usage_line(result, code, note, model, effort, bare, rc,
                       time.time() - started, error, kind)
     line["governor_slot"] = Path(slot).name if slot else None
+    line["child_marked"] = marked["ok"]
     _finish(root, code, budget, line)
     line["result"] = result.get("result") if isinstance(result, dict) else None
+    line["receipt"] = result if isinstance(result, dict) else None
     if return_stderr:
         line["stderr"] = getattr(proc, "stderr", None) if proc is not None else None
     return line
+
+
+# ---------------------------------------------------------------- CLI (v10)
+
+CLI_OK, CLI_USAGE, CLI_REFUSED, CLI_TIMEOUT = 0, 2, 3, 4
+
+
+def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
+    """`python fleet_headless.py spawn --root R --code C --note N [options]`
+    for callers that are not Python (CS 0224). The prompt comes from
+    --prompt-file, else stdin. Prints the usage line as one JSON line. Exit
+    0 ran, 2 bad arguments, 3 Refused, 4 timeout. Every fleet rule applies
+    exactly as for spawn(); no flag or variable bypasses the proxy or the door."""
+    import argparse
+    ap = argparse.ArgumentParser(prog="fleet_headless.py")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sp = sub.add_parser("spawn")
+    sp.add_argument("--root", required=True)
+    sp.add_argument("--code", required=True)
+    sp.add_argument("--note", required=True)
+    sp.add_argument("--kind", choices=KINDS)
+    sp.add_argument("--effort", choices=EFFORTS)
+    sp.add_argument("--model")
+    sp.add_argument("--writes-code", action="store_true")
+    sp.add_argument("--timeout", type=int, default=3600)
+    sp.add_argument("--cwd")
+    sp.add_argument("--floors-in-hooks", action="store_true")
+    sp.add_argument("--prompt-file")
+    try:
+        args = ap.parse_args(argv)
+    except SystemExit:
+        return CLI_USAGE
+    out = stdout or sys.stdout
+    if not args.note.strip():
+        print(json.dumps({"error": "empty --note"}), file=out)
+        return CLI_USAGE
+    try:
+        if args.prompt_file:
+            prompt = Path(args.prompt_file).read_text(encoding="utf-8")
+        else:
+            prompt = (stdin or sys.stdin).read()
+    except (OSError, UnicodeDecodeError) as exc:
+        print(json.dumps({"error": f"prompt unreadable: {exc.__class__.__name__}"}), file=out)
+        return CLI_USAGE
+    if not prompt.strip():
+        print(json.dumps({"error": "empty prompt"}), file=out)
+        return CLI_USAGE
+    try:
+        line = (spawn_fn or spawn)(
+            args.root, args.code, prompt, note=args.note, writes_code=args.writes_code,
+            timeout=args.timeout, cwd=args.cwd, stdin=len(prompt) > ARGV_PROMPT_MAX,
+            model=args.model, effort=args.effort, floors_in_hooks=args.floors_in_hooks,
+            kind=args.kind)
+    except Refused as exc:
+        print(json.dumps({"refused": str(exc)}), file=out)
+        return CLI_REFUSED
+    print(json.dumps(line), file=out)
+    return CLI_TIMEOUT if line.get("error") == "timeout" else CLI_OK
+
+
+if __name__ == "__main__":
+    sys.exit(main())

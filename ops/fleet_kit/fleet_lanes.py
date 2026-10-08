@@ -676,9 +676,32 @@ def release_lane(claim):
 
 # ---------------------------------------------------------------- worktrees
 
-def _git(*args, git="git"):
+def find_git(environ=None, cwd=None):
+    """Absolute path of git from PATH, never from the working directory (v10,
+    RSC 0523 item 5: a bare "git" lets Windows run a planted cwd git.exe).
+    Empty, relative and cwd-equal PATH entries are skipped; None if absent."""
+    env = os.environ if environ is None else environ
+    here = os.path.normcase(Path(cwd or Path.cwd()).resolve())
+    exts = [""]
+    if sys.platform == "win32":
+        exts = [e for e in env.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if e]
+    for entry in env.get("PATH", "").split(os.pathsep):
+        d = entry.strip().strip('"')
+        if not d or not Path(d).is_absolute() or os.path.normcase(Path(d).resolve()) == here:
+            continue
+        for ext in exts:
+            p = Path(d) / ("git" + ext)
+            if p.is_file() and (sys.platform == "win32" or os.access(p, os.X_OK)):
+                return str(p)
+    return None
+
+
+def _git(*args, git=None):
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
-    return subprocess.run([git, *args], capture_output=True, text=True, timeout=300,
+    exe = git or find_git()
+    if not exe:
+        raise LaneRefused("git not found on PATH (working directory excluded)")
+    return subprocess.run([exe, *args], capture_output=True, text=True, timeout=300,
                           env=env, creationflags=_NO_WINDOW)
 
 

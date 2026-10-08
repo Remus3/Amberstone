@@ -14,7 +14,7 @@ phone, the operator wants the tasks only.
                              "builder running", 240),
                         item("C2", "Answer MAIN's v7 order")],
                    note="C2 waits until C1 lands because the answer names the commit.")
-    print(cl.start())                  # header, one line per task, then /done
+    emit(cl.start())                   # header, one line per task, then /done
     msg = cl.complete("C1")            # str once 4+ completed since the last print
     cl.add("C3", "File the widget defect")
     if cl.all_done(): ...              # run /done now, unprompted
@@ -26,7 +26,9 @@ the MAIN checkout - fleet_lanes.main_tree(cwd) - never inside its worktree, so
 the lane widget reads one named file per live lane.
 
 Standalone: imports nothing from the rest of the kit. ASCII source; the box
-glyph is emitted as U+2610.
+glyph is emitted as U+2610. v10: emit() prints safely where print() fails - a
+cp1252 console gets "[ ]" for the box, and pythonw (no stdout) prints nothing
+(RSC 0523 item 7).
 """
 
 import re
@@ -173,3 +175,27 @@ class Checklist:
     def rows(self):
         """The progress-file "checklist" field: remaining tasks, in order."""
         return self.remaining()[:ROWS_MAX]
+
+
+ASCII_BOX = "[ ]"
+
+
+def emit(text, stream=None):
+    """Print text; never raise for the console. A stream that cannot encode the
+    box gets "[ ]" instead; a missing stream (pythonw) prints nothing. Returns
+    the text actually written, or None."""
+    import sys
+    out = sys.stdout if stream is None else stream
+    if out is None:
+        return None
+    try:
+        out.write(text + "\n")
+    except UnicodeEncodeError:
+        text = text.replace(BOX, ASCII_BOX).encode("ascii", "replace").decode("ascii")
+        try:
+            out.write(text + "\n")
+        except (OSError, ValueError):
+            return None
+    except (OSError, ValueError, AttributeError):
+        return None
+    return text
