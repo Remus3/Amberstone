@@ -244,24 +244,32 @@ def test_cli_runs_as_a_bare_script_with_the_var_unset(tmp_path):
 # tests/test_headless_route_spawn_paths.py drives each one with the var deleted.
 #
 # KIT_ROUTED: started only through the fleet kit.
-# LEGACY_ROUTED: still on headless_child_env, because FLEET-KIT-v1 cannot
-# express what they need (named kit gaps, reported to MAIN): the responder's
-# agreement-pinned model + measured argv tail, and the executor's --resume
-# continuity, operator-set effort and process-tree kill.
+# LEGACY_ROUTED: still on headless_child_env. MAIN 0839 ORDER (kit v10) step 5
+# moved the loop executor onto the kit (its --resume continuity, operator-set
+# effort and process-tree kill are the kit's session_id= / resume= / effort= and
+# launch now). The ONE path left is the pre-v8 inbox responder: DISARMED and
+# superseded by ops/loop/inbox_tick.py (kit spawn). It spawns only with
+# RC_RESPONDER_REAL_SPAWN=1 AND an agreement record of its own (hop-budget)
+# shape, which the live v8 record fails (`malformed: hop_budget`); its measured
+# argv tail and kill-budget taxonomy are not moved for a component that cannot
+# run. Retiring it is a separate slice.
 KIT_ROUTED = {
     "ops/loop/adjudicator.py",
     "tools/ci_watchdog.py",
     "agents/_supervisor_ephemeral.py",
     "ops/loop/drain_waves_2_3.py",
+    "ops/loop/executor.py",
 }
 # KIT_ROUTED files that also start a NON-claude child (git / gh) hidden, so
 # CREATE_NO_WINDOW in them is not a second claude launcher. Reason per file.
 _KIT_ROUTED_OWN_NO_WINDOW = {
     "tools/ci_watchdog.py": "its git/gh runner `_run`",
     "ops/loop/drain_waves_2_3.py": "its `git worktree add` runner `_git`",
+    "ops/loop/executor.py": "its git readers `_git_out` / `_git_is_ancestor` and "
+                            "the hook-gate checks `_hook_index_modes` / "
+                            "`gate_inactive_reason`",
 }
 LEGACY_ROUTED = {
-    "ops/loop/executor.py",
     "tools/inbox_responder_spawn.py",
 }
 PY_SPAWN_SITES = KIT_ROUTED | LEGACY_ROUTED
@@ -277,9 +285,11 @@ PY_NON_SPAWN = {
 _PY_NAMES_CLI = re.compile(
     r"""["']claude(\.cmd|\.exe)?["']|\bCLAUDE_CLI\b|\bDEFAULT_CLAUDE_CMD\b|\bclaude_exe\b""")
 
-# PowerShell runners that invoke `claude -p`. Each must dot-source the shared
-# gate before its first invocation. Interactive / GUI launchers are excluded:
-# they open a session, they do not spawn a headless one.
+# A PowerShell runner invoking `claude -p` itself. Since MAIN 0839 ORDER (kit
+# v10) step 5 moved the lane runner onto the kit, NO tracked runner may: every
+# headless run goes through ops/loop/fleet_route.py (the kit). Interactive / GUI
+# launchers are not matched: they open a session, they do not spawn a headless
+# one.
 _PS_INVOKES = re.compile(r"&\s*(\$claude|claude)\s+-p\b", re.IGNORECASE)
 
 
@@ -324,25 +334,23 @@ def test_fleet_route_fails_closed_through_the_gate():
     assert "._probe(" in text
 
 
-def test_every_powershell_claude_invocation_is_gated():
-    hits = []
+def test_no_powershell_runner_invokes_claude_directly():
+    scanned, hits = 0, []
     for path in _repo_walk.repo_files(REPO, ("*.ps1",)):
+        scanned += 1
         text = path.read_text(encoding="utf-8", errors="replace")
-        if not _PS_INVOKES.search(text):
-            continue
-        rel = _repo_walk.relative_posix(path, REPO)
-        hits.append(rel)
-        gate = text.find("Assert-HeadlessRoute")
-        first = _PS_INVOKES.search(text).start()
-        assert "headless_route.ps1" in text, f"{rel} does not dot-source the gate"
-        assert 0 <= gate < first, f"{rel} invokes claude before the gate"
-    assert set(hits) >= {"ops/loop/run_lane.ps1"}, hits
+        if _PS_INVOKES.search(text):
+            hits.append(_repo_walk.relative_posix(path, REPO))
+    assert scanned, "empty enumeration would pass vacuously"
+    assert hits == [], f"route these through ops/loop/fleet_route.py (the kit): {hits}"
 
 
 # FLEET-KIT-v1: these PowerShell runners start their run through the fleet
 # kit's CLI door, never `claude -p` directly. A refusal there is exit 3 with
-# nothing started, and the runner must stop on it rather than retry.
-PS_KIT_ROUTED = ("tools/headless_run.ps1", "tools/weekly_hygiene_run.ps1")
+# nothing started, and the runner must stop on it rather than retry. Kit v10
+# (MAIN 0839 ORDER step 5) adds the lane worker runner.
+PS_KIT_ROUTED = ("tools/headless_run.ps1", "tools/weekly_hygiene_run.ps1",
+                 "ops/loop/run_lane.ps1")
 
 
 @pytest.mark.parametrize("rel", PS_KIT_ROUTED)
@@ -353,14 +361,21 @@ def test_powershell_runner_goes_through_the_fleet_route(rel):
     assert "$code -eq 3" in text and "exit 3" in text, f"{rel} does not stop on a refusal"
 
 
-def test_powershell_gate_calls_the_python_helper_and_scopes_to_process():
-    text = (REPO / "ops" / "loop" / "headless_route.ps1").read_text(encoding="ascii")
-    assert "headless_env.py" in text
-    assert "$env:ANTHROPIC_BASE_URL" in text
-    # never user-wide or machine-wide
-    assert "SetEnvironmentVariable" not in text
-    assert "setx" not in text.lower()
-    assert "--auto-fallback" not in text
+def test_no_powershell_runner_sets_the_route_itself():
+    """The pre-kit PowerShell gate (ops/loop/headless_route.ps1) set
+    $env:ANTHROPIC_BASE_URL in its runner's process. It retired with its last
+    caller (run_lane.ps1, kit v10): the kit's child_env is now the ONE place
+    the route reaches a child, and only the child's env."""
+    assert not (REPO / "ops" / "loop" / "headless_route.ps1").exists()
+    offenders, scanned = [], 0
+    for path in _repo_walk.repo_files(REPO, ("*.ps1",)):
+        scanned += 1
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if re.search(r"\$env:ANTHROPIC_BASE_URL\s*=", text, re.IGNORECASE) \
+                or "Assert-HeadlessRoute" in text or "--auto-fallback" in text:
+            offenders.append(_repo_walk.relative_posix(path, REPO))
+    assert scanned, "empty enumeration would pass vacuously"
+    assert offenders == []
 
 
 def test_no_tracked_source_sets_anthropic_base_url_persistently():

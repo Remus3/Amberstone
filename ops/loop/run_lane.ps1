@@ -1,5 +1,22 @@
-# run_lane.ps1 - detached runner for one headless claude -p lane (spawned hidden by
-# spawn_lanes.ps1). Pipes the prompt file to claude on stdin (no cmdline quoting risk).
+# run_lane.ps1 - detached runner for one headless lane worker (spawned hidden by
+# ops/loop/lane_launcher.py). The worker reads its whole prompt from stdin, so
+# there is no command-line quoting risk and no argv length limit.
+#
+# FLEET-KIT v10 (MAIN 0839 ORDER step 5, ruled: "RC: route lanes through spawn /
+# the CLI, use effort="): the worker starts ONLY through the fleet kit, via
+# ops/loop/fleet_route.py -> ops/fleet_kit/fleet_headless.spawn. Never `claude`
+# from here. The route fails closed through ops/loop/headless_env.py first (exit
+# 3, nothing started), then the kit applies its own proxy check, the
+# 120-runs-per-24h budget, the lean flags (strict MCP + project,local sources;
+# not --bare, RC floors live in project hooks), the hidden console, the usage
+# line, the status file, FLEET_SUBAGENT_FIRST=off for the child and a
+# whole-tree kill on timeout. fleet_route.py is resolved next to THIS file, and
+# this runner always lives in the MAIN tree (lane_launcher RUNNER), so the
+# budget / status / usage files land in the MAIN checkout while the child runs
+# in the lane worktree ($Cwd). The lane progress file progress/lane-<i>.json is
+# written by lane_launcher in the MAIN checkout before this runner starts.
+#
+# ASCII only (PowerShell 5.1 ANSI-decodes a no-BOM script).
 param(
   [Parameter(Mandatory)][string]$PromptFile,
   [Parameter(Mandatory)][string]$Cwd,
@@ -7,75 +24,95 @@ param(
 )
 $ErrorActionPreference = "Continue"   # native stderr must not kill the lane; it all goes to the log
 
-# Ride the Max subscription login, never the API key. MEASURED 2026-08-02: the
-# `gated` lane spawned correctly and died 3s later with "Credit balance is too
-# low", because ANTHROPIC_API_KEY is set at MACHINE scope on Legion, the
-# scheduled task that spawns lanes inherits it, and the CLI prefers it over the
-# claude.ai login ("claude.ai connectors are disabled because ANTHROPIC_API_KEY
-# ... takes precedence"). That same warning is in the 2026-07-31 research-lane
-# log, which then ran 15 minutes to exit 0 - so this was latent for as long as
-# the key had credit, and it fails the whole lane the moment it does not.
-# Verified with the var cleared: same CLI, same model, exit 0.
-# Scoped to this runner's own process on purpose. The machine-wide variable is
-# left alone; other consumers (RC's own coaches read API-Key-Claude.txt, not
-# this) are none of this script's business, and a lane is exactly the workload
-# the subscription is for (memory feedback_no_dollar_cap_on_max_subscription).
+# Ride the subscription route, never the API key. MEASURED 2026-08-02: the
+# `gated` lane died 3s after spawning with "Credit balance is too low", because
+# ANTHROPIC_API_KEY is set at MACHINE scope on Legion, the scheduled task that
+# spawns lanes inherits it, and the CLI prefers it over the login. The kit's
+# child_env strips it (and every provider switch) from the child as well; it is
+# cleared here too so nothing else in this runner's tree can pick it up. Scoped
+# to this process only; the machine-wide variable is left alone.
 $env:ANTHROPIC_API_KEY = $null
 
 # Wait long enough for the worker's background subagents (notably the
 # non-negotiable verifier gate) to finish before the CLI terminates them. The
 # default ceiling is 600s; MEASURED 2026-08-30 (lane 8 cycle 3): the verifier
 # was still re-running the dual suite at 600s, the CLI killed it, and the worker
-# exited 0 having committed NOTHING - a whole audit lost. 2400000 ms (40 min) is
-# ample for the RC + DS suites plus the re-read, while staying bounded so a truly
-# wedged task still exits and reports rather than hanging forever.
+# exited 0 having committed NOTHING. 2400000 ms (40 min) stays bounded so a
+# truly wedged task still exits. The kit's child env is a copy of this
+# process's env, so the child inherits the ceiling.
 $env:CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS = "2400000"
 
-$claude = (Get-Command claude -ErrorAction Stop).Source
+# The route prints the worker's result text; a pipe on Windows defaults to the
+# ANSI code page, which cannot encode every character a result may carry.
+$env:PYTHONIOENCODING = "utf-8"
 
-# Headless account routing (operator contract 2026-10-02): proxy-routed child
-# env for THIS process only, or exit 3 with no spawn. See headless_route.ps1.
-. (Join-Path $PSScriptRoot "headless_route.ps1")
-Assert-HeadlessRoute -Caller "run_lane" -Log $Log
-
-Set-Location $Cwd
-
-# Model id comes from ops/loop/config.json (executor_model) so the lanes track
-# the same model as the loop controller instead of keeping a second hardcoded
-# copy that silently drifts. Read via $PSScriptRoot, NOT the worktree cwd: this
-# runner always lives in the MAIN tree (lane_launcher RUNNER =
-# ops/loop/run_lane.ps1), while $Cwd is a fresh worktree checkout that may not
-# carry a gitignored config. Falls back to a known-good model when the file is
-# missing or unparseable, because a lane must never fail to spawn over a config
-# read.
+# Model and effort come from ops/loop/config.json (executor_model,
+# executor_effort) so the lanes track the loop controller instead of a second
+# hardcoded copy that silently drifts. Operator 2026-09-16: the headless lanes
+# run at effort HIGH - passed as the kit's own effort=, never an RC argv knob.
+# Read via $PSScriptRoot, NOT the worktree cwd: $Cwd is a fresh worktree that
+# may not carry a gitignored config. A missing or unparseable file keeps the
+# fallback model and passes no effort (the kit then picks), because a lane must
+# never fail to spawn over a config read.
 $model = "claude-opus-5-5"
+$effort = ""
 try {
   $cfgPath = Join-Path $PSScriptRoot "config.json"
   if (Test-Path $cfgPath) {
     $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
     if ($cfg.executor_model) { $model = [string]$cfg.executor_model }
+    if ($cfg.executor_effort) { $effort = [string]$cfg.executor_effort }
   }
 } catch {
-  # any read or parse fault keeps the fallback model set above
+  # any read or parse fault keeps the fallbacks set above
 }
 
-"lane start $(Get-Date -Format s) cwd=$Cwd model=$model prompt=$PromptFile" | Out-File $Log -Encoding utf8
-# `*>> $Log` wrote the worker's output as UTF-16LE: on Windows PowerShell 5.1
-# the redirection operators use the shell's default Unicode encoding, while the
-# header line above is UTF-8. MEASURED 2026-08-02 on a real 4298-byte lane log:
-# UTF-8 BOM plus a UTF-8 header for 119 bytes, then UTF-16LE for the remaining
-# 4179 - 2066 NUL bytes in one file. Anything reading it as one encoding got
-# "C\0y\0c\0l\0e" for the half that matters, which is what Mission Control
-# would have rendered into its lane-log panel.
-# `*>&1 |` merges every stream into the pipeline so Out-File can set the
-# encoding, keeping the "native stderr must not kill the lane" property above:
-# the streams are still folded into the same file, they are just written as
-# UTF-8 now. The reader stays tolerant of the old shape for logs already on
-# disk (dashboard/routes_loop_status._decode_lane_log).
-# MAIN 0912 item A: the kit's lean pair (fleet_headless build_argv). The sources
-# value is QUOTED: a bare project,local is a PowerShell array, not one argument.
-# Not --bare: RC floors live in project hooks, which --setting-sources keeps.
-Get-Content $PromptFile -Raw |
-  & $claude -p --model $model --dangerously-skip-permissions --strict-mcp-config --setting-sources 'project,local' *>&1 |
-  Out-File $Log -Append -Encoding utf8
-"lane exit $(Get-Date -Format s) code=$LASTEXITCODE" | Out-File $Log -Append -Encoding utf8
+$pyC = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
+if (-not (Test-Path $pyC)) { $pyC = "python" }
+$route = Join-Path $PSScriptRoot "fleet_route.py"
+$note = "lane-" + [System.IO.Path]::GetFileNameWithoutExtension($PromptFile)
+# 6 h ceiling per lane run: the kit's spawn is bounded, so an unattended worker
+# must be too (same ceiling as tools/headless_run.ps1). queue_loop's own cycle
+# timeout still applies on top.
+$timeoutS = "21600"
+
+# Arguments as an ARRAY: PowerShell 5.1 drops an empty native argument, so a
+# value that may be empty is appended only when set. The `--` separator hands
+# the RC permission flag to the kit's extra=.
+$routeArgs = @("--caller", "run_lane", "--note", $note, "--kind", "build", "--writes-code",
+  "--model", $model, "--cwd", $Cwd, "--timeout", $timeoutS,
+  "--prompt-file", $PromptFile, "--prompt-stdin")
+if ($effort) { $routeArgs += @("--effort", $effort) }
+$routeArgs += @("--", "--dangerously-skip-permissions")
+
+"lane start $(Get-Date -Format s) cwd=$Cwd model=$model effort=$effort prompt=$PromptFile route=fleet_route" | Out-File $Log -Encoding utf8
+# `*>&1 |` merges every stream into the pipeline so Out-File sets the encoding
+# (UTF-8): the redirection operators alone write UTF-16LE on Windows PowerShell
+# 5.1 (MEASURED 2026-08-02, a mixed-encoding lane log). The reader stays
+# tolerant of the old shape for logs already on disk
+# (dashboard/routes_loop_status._decode_lane_log).
+# FAIL CLOSED WHEN PYTHON ITSELF CANNOT START. A command PowerShell cannot
+# resolve or launch (no interpreter, PATHEXT missing) sets NO exit code, and
+# `exit $null` is exit 0 - MEASURED on PS 5.1: the lane logged "code=" and
+# read as a clean run. The automatic variable is cleared first, so a stale
+# value can never stand in for this call's, and anything that is not an
+# integer afterwards is a refusal (exit 3, the old route's code).
+$global:LASTEXITCODE = $null
+try {
+  & $pyC $route @routeArgs *>&1 | Out-File $Log -Append -Encoding utf8
+} catch {
+  "lane route error $(Get-Date -Format s): $($_.Exception.Message)" | Out-File $Log -Append -Encoding utf8
+}
+$code = $LASTEXITCODE
+if ($null -eq $code -or "$code" -notmatch '^-?\d+$') {
+  "lane refused $(Get-Date -Format s) - python could not start the fleet route ($pyC, exit code '$code'), nothing started" | Out-File $Log -Append -Encoding utf8
+  exit 3
+}
+if ($code -eq 3) {
+  # fleet_route logs every refusal (headless_env gate and kit alike) through
+  # headless_env._log_refusal, in the MAIN checkout this runner lives in.
+  "lane refused $(Get-Date -Format s) - fleet route refused (exit 3), nothing started; see logs\headless_route.log in the main checkout" | Out-File $Log -Append -Encoding utf8
+  exit 3
+}
+"lane exit $(Get-Date -Format s) code=$code" | Out-File $Log -Append -Encoding utf8
+exit $code
