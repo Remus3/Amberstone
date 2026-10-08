@@ -178,6 +178,22 @@ def test_ahk_stall_recovery_reinjects_then_stops_on_the_second_breach(tmp_path: 
 
 # ---- sdk channel ------------------------------------------------------------
 
+# MAIN 0839 ORDER (FLEET-KIT v10) step 5: the sdk channel starts its cycle
+# through ops/loop/fleet_route.spawn -> the kit, whose exe is the kit's own pick
+# (`claude_exe`), never `executor_cmd`. A stub therefore cannot be handed in as
+# the exe any more; it is REGISTERED here and the autouse shim below stands in
+# for the kit's process launch (`fleet_route._launch`): it runs the registered
+# stub with the stdin, cwd and timeout the kit composed, so every sdk test still
+# exercises the real result parsing on a real child's real stdout. With no stub
+# registered the launch fails the way a missing exe does.
+_STUB: dict = {}
+
+
+def _register_stub(argv: list) -> list:
+    _STUB["argv"] = list(argv)
+    return list(argv)
+
+
 def _stub_claude(tmp_path: Path, payload: str, rc: int = 0) -> list:
     """A fake `claude` that prints a fixed envelope and exits."""
     p = tmp_path / "stub_claude.py"
@@ -186,7 +202,26 @@ def _stub_claude(tmp_path: Path, payload: str, rc: int = 0) -> list:
         "sys.stdin.read()\n"
         f"sys.stdout.write({payload!r})\n"
         f"sys.exit({rc})\n", encoding="utf-8")
-    return [sys.executable, str(p)]
+    return _register_stub([sys.executable, str(p)])
+
+
+@pytest.fixture(autouse=True)
+def _kit_launch_runs_the_registered_stub(monkeypatch: pytest.MonkeyPatch):
+    from ops.loop import fleet_route
+    _STUB.clear()
+
+    def _launch(argv, **kw):
+        _STUB.setdefault("kit_calls", []).append((list(argv), kw))
+        stub = _STUB.get("argv")
+        if stub is None:
+            raise FileNotFoundError(argv[0])
+        return subprocess.run(stub, input=kw.get("input"), cwd=kw.get("cwd"),
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=kw.get("timeout"))
+
+    monkeypatch.setattr(fleet_route, "_launch", _launch)
+    yield
+    _STUB.clear()
 
 
 def _sdk(tmp_path: Path, **over):
@@ -199,7 +234,9 @@ def _sdk(tmp_path: Path, **over):
 def test_sdk_argv_carries_schema_model_and_budget(tmp_path: Path):
     argv = _sdk(tmp_path, executor_cmd="claude.cmd", executor_model="claude-opus-5",
                 cycle_budget_usd=25.0).build_argv(1)
-    assert argv[0] == "claude.cmd"
+    # build_argv is the PREVIEW of the kit-composed argv: the exe is the kit's
+    # pick, so executor_cmd no longer decides argv[0]
+    assert argv[0] == "claude" and "claude.cmd" not in argv
     assert "-p" in argv and "--output-format" in argv
     assert argv[argv.index("--model") + 1] == "claude-opus-5"
     assert argv[argv.index("--max-budget-usd") + 1] == "25.0"
@@ -271,7 +308,7 @@ def test_sdk_timeout_kills_the_tree_and_fails_the_cycle(tmp_path: Path):
     slow = tmp_path / "slow.py"
     slow.write_text("import time\ntime.sleep(60)\n", encoding="utf-8")
     t0 = time.time()
-    rec = _sdk(tmp_path, executor_cmd=[sys.executable, str(slow)],
+    rec = _sdk(tmp_path, executor_cmd=_register_stub([sys.executable, str(slow)]),
                cycle_deadline_sec=2).run(1, "b", "fixed")
     assert "timeout" in rec.error
     assert time.time() - t0 < 45, "the timeout path should not wait out the child"
@@ -282,184 +319,132 @@ def test_sdk_timeout_kills_the_tree_and_fails_the_cycle(tmp_path: Path):
 # MEASURED 2026-07-27, nightly ubuntu CI. The kill path was `taskkill /F /T` and
 # nothing else, so on POSIX it was a missing executable whose OSError was
 # swallowed; the child survived, and the `proc.wait(timeout=30)` that followed
-# re-raised TimeoutExpired out of the handler. The test above ERRORED - against
-# an injected deadline of 2s, reporting 30 - instead of asserting, and an
-# unattended cycle would have died on the same exception. `os.access` has a
-# precedent here (_is_on_disk_executable): the platform that is not under the
-# operator's feet gets a monkeypatched seam, never a skipif.
+# re-raised TimeoutExpired out of the handler, so an unattended cycle died on an
+# exception instead of recording a failed cycle.
+#
+# MAIN 0839 ORDER (FLEET-KIT v10) step 5: the teardown is the KIT's now. The
+# cycle starts through fleet_route -> fleet_headless.spawn, whose launch kills
+# the whole tree on both platforms (win32 taskkill /T /F; POSIX, kit v10 RC
+# 1915, SIGTERM then SIGKILL to the child's own process group) and bounds the
+# reap. The executor's own seams (_spawn_group_kwargs, _kill_process_tree, the
+# reap timer) are retired. These tests drive the REAL kit launch with Popen and
+# the kill faked, once per kit kill branch (tests/_kit_platform.py), and keep
+# the measured property pinned: a wedged child is a RECORDED failed cycle.
+
+from tests import _kit_platform  # noqa: E402
+from tests._kit_platform import assert_kit_killed  # noqa: E402
+
+kit_platform = _kit_platform.kit_platform  # fixture, registered by module attribute
 
 
-class _FakeProc:
-    """Just enough Popen surface for the teardown seam."""
+class _WedgedPopen:
+    """Just enough Popen for the kit's launch: communicate times out once; with
+    `survive` set the reap after the kill times out too (a child the kill
+    missed)."""
 
-    def __init__(self, pid: int = 4242):
-        self.pid = pid
-        self.killed = False
+    made: list = []
+    survive = False
+
+    def __init__(self, argv, stdin=None, **kw):
+        self.argv, self.kw = list(argv), kw
+        self.pid, self.returncode, self.n, self.killed = 4242, None, 0, False
+        _WedgedPopen.made.append(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def communicate(self, input=None, timeout=None):
+        self.n += 1
+        if self.n == 1 or self.survive:
+            raise subprocess.TimeoutExpired(self.argv, timeout)
+        self.returncode = -9
+        return ("", "")
+
+    def wait(self, timeout=None):
+        # kit v10 POSIX tree-kill waits on the child between SIGTERM and SIGKILL
+        return self.returncode
 
     def kill(self):
         self.killed = True
 
 
-def test_the_child_is_spawned_in_its_own_session_on_posix(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(executor.os, "name", "posix")
-    assert executor._spawn_group_kwargs() == {"start_new_session": True}, (
-        "without its own process group the child shares the CONTROLLER's, and "
-        "the killpg teardown would take the loop down with the child")
+@pytest.fixture
+def wedged(monkeypatch: pytest.MonkeyPatch, kit_platform):
+    """The kit's production launch, with Popen and the taskkill call faked."""
+    from ops.loop import fleet_route
+    monkeypatch.setattr(fleet_route, "_launch", None)
+    # The grounding guard reads HEAD before the spawn; keep the spawn the only
+    # process the faked Popen / run can see.
+    monkeypatch.setattr(executor, "_git_head", lambda root: "")
+    _WedgedPopen.made, _WedgedPopen.survive = [], False
+    monkeypatch.setattr(subprocess, "Popen", _WedgedPopen)
+    kills = []
+    monkeypatch.setattr(subprocess, "run", lambda argv, **kw: kills.append(list(argv)) or
+                        subprocess.CompletedProcess(argv, 0, "", ""))
+    return kit_platform, kills
 
 
-def test_the_group_seam_contributes_nothing_on_windows(monkeypatch: pytest.MonkeyPatch):
-    """CREATE_NO_WINDOW must NOT migrate into this helper.
-
-    tests/test_no_console_flash_scheduled_tools.py resolves `creationflags` by
-    AST at every subprocess spawn site, and a `**dict` argument is opaque to that
-    scan - folding the flag in here left this module's only spawn site unprovable
-    and made the console-flash guard report a protection it could no longer see.
-    start_new_session is POSIX-only (Windows takes it as
-    `unused_start_new_session`), so on nt this seam has nothing to add at all.
-    """
-    monkeypatch.setattr(executor.os, "name", "nt")
-    assert executor._spawn_group_kwargs() == {}
+def test_the_executor_keeps_no_teardown_seam_of_its_own():
+    for name in ("_spawn_group_kwargs", "_kill_process_tree", "_REAP_TIMEOUT_SEC",
+                 "_KILL_SIG"):
+        assert not hasattr(executor, name), f"{name} came back - the kit owns the teardown"
 
 
-def test_the_posix_teardown_kills_the_process_group_not_just_the_child(
-        monkeypatch: pytest.MonkeyPatch):
-    """A wedged `claude -p` has child tool processes: killing the pid alone
-    leaves them holding the pipes the cycle is blocked on."""
-    proc = _FakeProc(pid=4242)
-    sent = []
-    monkeypatch.setattr(executor.os, "name", "posix")
-    monkeypatch.setattr(executor.os, "getpgid",
-                        lambda pid: 4242 if pid == 4242 else 7, raising=False)
-    monkeypatch.setattr(executor.os, "killpg",
-                        lambda pgid, sig: sent.append((pgid, sig)), raising=False)
-    executor._kill_process_tree(proc)
-    assert sent == [(4242, executor._KILL_SIG)]
-    assert proc.killed is False, "the single-pid kill is the fallback, not the path"
+def test_a_wedged_cycle_is_killed_as_a_tree_by_the_kit(wedged, tmp_path: Path):
+    plat, kills = wedged
+    rec = _sdk(tmp_path, cycle_deadline_sec=2).run(1, "b", "fixed")
+    assert "timeout" in rec.error
+    (p,) = _WedgedPopen.made
+    assert p.argv[1] == "-p", "started by the kit's argv builder"
+    assert_kit_killed(plat, kills, p.killed, 4242)
 
 
-def test_the_posix_teardown_refuses_to_killpg_the_controllers_own_group(
-        monkeypatch: pytest.MonkeyPatch):
-    """A child spawned WITHOUT start_new_session shares the loop's process
-    group, and killpg there kills the controller doing the reaping - a self-kill
-    dressed as a teardown. The single pid is the correct remedy instead."""
-    proc = _FakeProc(pid=4242)
-    sent = []
-    monkeypatch.setattr(executor.os, "name", "posix")
-    monkeypatch.setattr(executor.os, "getpgid", lambda pid: 7, raising=False)
-    monkeypatch.setattr(executor.os, "killpg",
-                        lambda pgid, sig: sent.append((pgid, sig)), raising=False)
-    executor._kill_process_tree(proc)
-    assert sent == []
-    assert proc.killed is True
-
-
-def test_the_windows_teardown_is_still_taskkill_and_never_stop_process(
-        monkeypatch: pytest.MonkeyPatch):
-    """Regression guard on the platform that already worked. `Stop-Process` is a
-    CLAUDE.md hard rule (it hangs the MCP pipe) and /T is what reaches the child
-    tool processes."""
-    proc = _FakeProc(pid=1234)
-    calls = []
-
-    def _fake_run(argv, **kw):
-        calls.append(list(argv))
-        return subprocess.CompletedProcess(argv, 0)
-
-    monkeypatch.setattr(executor.os, "name", "nt")
-    monkeypatch.setattr(executor.subprocess, "run", _fake_run)
-    executor._kill_process_tree(proc)
-    assert calls == [["taskkill", "/F", "/T", "/PID", "1234"]]
-    assert proc.killed is False
-
-
-def test_the_windows_teardown_falls_back_when_taskkill_cannot_run(
-        monkeypatch: pytest.MonkeyPatch):
-    """taskkill absent from PATH must still kill the child - and must not raise
-    out of a handler whose entire job is to not raise."""
-    proc = _FakeProc(pid=1234)
-
-    def _boom(*a, **k):
-        raise FileNotFoundError("taskkill")
-
-    monkeypatch.setattr(executor.os, "name", "nt")
-    monkeypatch.setattr(executor.subprocess, "run", _boom)
-    executor._kill_process_tree(proc)
-    assert proc.killed is True
-
-
-@pytest.mark.parametrize("osname,wants_group", [("posix", True), ("nt", False)])
-def test_the_sdk_spawn_carries_both_platform_kwargs(
-        osname: str, wants_group: bool, tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch):
-    """What the spawn site actually passes, on both platforms.
-
-    creationflags is asserted on BOTH because it is written literally at the
-    call - which is what keeps tests/test_no_console_flash_scheduled_tools.py
-    able to resolve it by AST. `creationflags=0` is legal on POSIX
-    (subprocess.py:867 raises only on a non-zero value) and the getattr default
-    IS 0 there, so the literal is free. start_new_session is POSIX-only, and on
-    POSIX it is the difference between killpg reaching the CHILD's process group
-    and killpg reaching the loop's own.
-    """
+def test_the_sdk_spawn_carries_the_console_flash_flag(tmp_path: Path,
+                                                      monkeypatch: pytest.MonkeyPatch):
+    """What reaches Popen through the kit's launch: a LITERAL creationflags (kit
+    v10, at the Popen call) on every platform, and a session of its own on
+    POSIX so the group kill reaches the CHILD's group, never the loop's."""
+    from ops.loop import fleet_route
     seen = {}
 
-    class _P:
-        pid = 4321
-        returncode = 0
-
-        def communicate(self, prompt, timeout=None):
+    class _Answering(_WedgedPopen):
+        def communicate(self, input=None, timeout=None):
+            self.returncode = 0
             return (json.dumps({
                 "is_error": False, "total_cost_usd": 0.0,
                 "structured_output": {"sha": "a" * 40, "tests_pass": "1",
                                       "regressions": False, "summary": "s"}}), "")
 
-    def _fake_popen(argv, **kw):
+    def _popen(argv, stdin=None, **kw):
         seen.update(kw)
-        return _P()
+        return _Answering(argv, stdin, **kw)
 
-    # The grounding guard shells out to git before the spawn; stubbing HEAD to
-    # empty keeps this test's ONLY subprocess use the one it is measuring.
+    monkeypatch.setattr(fleet_route, "_launch", None)
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
-    monkeypatch.setattr(executor.os, "name", osname)
-    monkeypatch.setattr(executor.subprocess, "Popen", _fake_popen)
-    rec = _sdk(tmp_path, executor_cmd="claude").run(1, "b", "fixed")
+    monkeypatch.setattr(subprocess, "Popen", _popen)
+    rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error is None
     assert seen["creationflags"] == getattr(subprocess, "CREATE_NO_WINDOW", 0), (
         "the console-flash flag must reach every spawn on every platform")
-    assert ("start_new_session" in seen) is wants_group
+    assert ("start_new_session" in seen) is (sys.platform != "win32")
 
 
 def test_the_sdk_timeout_records_a_failed_cycle_even_if_the_child_survives(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """The measured linux failure, reproduced from Windows by neutering the kill.
-
-    A child that cannot be reaped is still a FAILED CYCLE, never a crash: the
-    escaping TimeoutExpired is what made the CI run report a 30s timeout for a
-    2s deadline and error the test instead of asserting on rec.error.
-    """
-    slow = tmp_path / "slow.py"
-    slow.write_text("import time\ntime.sleep(60)\n", encoding="utf-8")
-    survived = []
-    # Bound BEFORE the patch: monkeypatch does not unwind until teardown, so the
-    # cleanup below would otherwise re-enter the recording stub.
-    real_kill = executor._kill_process_tree
-    monkeypatch.setattr(executor, "_kill_process_tree", survived.append)
-    monkeypatch.setattr(executor, "_REAP_TIMEOUT_SEC", 0.5)
+        wedged, tmp_path: Path):
+    """The measured linux failure: the reap after the kill times out as well.
+    The kit bounds and swallows that reap, so the cycle is RECORDED as failed -
+    the escaping TimeoutExpired that erred the 2026-07-27 CI run cannot recur."""
+    _WedgedPopen.survive = True
     logs = []
     ex = executor.build(
-        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 2,
-         "executor_cmd": [sys.executable, str(slow)]}, tmp_path,
-        log=logs.append, stop=lambda m: None, awrite=lambda p, t: None)
-    try:
-        rec = ex.run(1, "b", "fixed")
-    finally:
-        # The stub recorded the child instead of killing it - kill it for real
-        # rather than leaking a 60s sleeper into the rest of the suite.
-        for child in list(survived):
-            real_kill(child)
-    assert survived, "the timeout path must attempt a tree kill"
+        {"channel": "sdk", "repo_root": str(tmp_path), "cycle_deadline_sec": 2},
+        tmp_path, log=logs.append, stop=lambda m: None, awrite=lambda p, t: None)
+    rec = ex.run(1, "b", "fixed")
     assert "timeout" in rec.error
-    assert any("not reaped" in m for m in logs)
+    assert any("killed the child tree" in m for m in logs)
 
 
 def test_sdk_prompt_drops_the_clear_and_the_cycle_header(tmp_path: Path):

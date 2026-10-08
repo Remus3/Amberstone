@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import os
 import re
-import signal
 import subprocess
 import sys
 import time
@@ -38,23 +37,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-def _headless_env_module():
-    """`ops/loop/headless_env.py`, by package import or by file path.
+def _fleet_route_module():
+    """`ops/loop/fleet_route.py` (RC's one door into the fleet kit), by package
+    import or by file path.
 
     The launcher loads this module BY PATH with no repo root on sys.path, so a
-    plain import can fail there; the fallback binds the sibling file under one
-    private name shared with adjudicator.py. Resolved per call so a test's
-    monkeypatch of the package module is the one used.
+    plain import can fail there; the fallback binds the sibling file under the
+    one private name adjudicator.py and drain_waves_2_3.py use too. Resolved
+    per call so a test's monkeypatch of the package module is the one used.
     """
     try:
-        from ops.loop import headless_env as mod
+        from ops.loop import fleet_route as mod
         return mod
     except ModuleNotFoundError:
         import importlib.util
-        name = "rc_ops_loop_headless_env"
+        name = "rc_ops_loop_fleet_route"
         if name not in sys.modules:
             spec = importlib.util.spec_from_file_location(
-                name, Path(__file__).resolve().parent / "headless_env.py")
+                name, Path(__file__).resolve().parent / "fleet_route.py")
             mod = importlib.util.module_from_spec(spec)
             sys.modules[name] = mod
             spec.loader.exec_module(mod)
@@ -1218,93 +1218,27 @@ def sdk_prompt(cycle: int, body: str, src: str) -> str:
     return f"{head}\n\n{final_step_instruction('sdk')}\n"
 
 
-# ---- child-process teardown (platform seam) ---------------------------------
+# ---- the sdk channel's one door: the fleet kit --------------------------------
 #
-# MEASURED 2026-07-27 on the nightly ubuntu run. The sdk timeout path was
-# `taskkill /F /T` and nothing else. On POSIX taskkill is a missing executable,
-# so the OSError was swallowed, the child outlived the kill, and the
-# `proc.wait(timeout=30)` that followed re-raised TimeoutExpired straight out of
-# the handler - against an INJECTED deadline of 2s, which is why the failure
-# reads "timed out after 30 seconds" and why it ESCAPED run() instead of being
-# recorded. A loop executor that cannot kill a hung child on Linux is a real
-# defect, not a test artifact.
-
-# The reap is bounded and its expiry is deliberately NOT fatal: by the time it
-# runs the cycle's verdict is already decided, and letting it raise is exactly
-# what turned one wedged child into a dead unattended run.
-_REAP_TIMEOUT_SEC = 30
-
-# Resolved at import, not at the call site: SIGKILL does not exist on Windows,
-# so naming it inside the POSIX branch would make that branch unreachable - and
-# so unpinnable - from the one machine this loop actually runs on. The point of
-# the seam is that the platform NOT under my feet still gets a test.
-_KILL_SIG = getattr(signal, "SIGKILL", signal.SIGTERM)
-
-
-def _spawn_group_kwargs() -> dict:
-    """The POSIX-only Popen kwargs the teardown below depends on.
-
-    start_new_session is load-bearing rather than tidy: it gives the child its
-    own process group, and WITHOUT it os.getpgid(child) answers with the
-    CONTROLLER's group - so the killpg below would kill the loop that is trying
-    to reap, a self-kill dressed as a teardown. It is POSIX-only by definition
-    (Windows _execute_child takes it as `unused_start_new_session`), so passing
-    it on nt would be a silent no-op that reads as protection.
-
-    CREATE_NO_WINDOW is deliberately NOT returned from here, though it is the
-    mirror-image platform kwarg. tests/test_no_console_flash_scheduled_tools.py
-    resolves `creationflags` by AST at every subprocess spawn site, and a
-    `**dict` argument is opaque to that scan: folding the flag in here left this
-    module's only spawn site unprovable and made the console-flash guard report
-    a protection it could no longer see. A console flashing on the operator's
-    desktop is a recurring real defect here, so the flag stays written out
-    LITERALLY at the Popen call. `creationflags=0` is legal on POSIX
-    (subprocess.py:867 raises only when it is non-zero) and the getattr default
-    IS 0 there, so the literal costs that platform nothing.
-    """
-    if os.name == "nt":
-        return {}
-    return {"start_new_session": True}
-
-
-def _kill_process_tree(proc) -> None:
-    """Kill a wedged executor child and its descendants. Never raises.
-
-    A `claude -p` that wedged has child tool processes, so killing the pid alone
-    orphans them still holding the pipes this cycle is blocked on - which is why
-    both branches target the TREE and proc.kill() is only the fallback for when
-    the tree kill could not be attempted.
-
-    NEVER Stop-Process (CLAUDE.md hard rule): on Windows the tree kill is
-    `taskkill /F /T`, byte-unchanged from the path that already works. On POSIX
-    it is os.killpg against the child's own group, guarded by a comparison with
-    the loop's own pgid for the reason _spawn_group_kwargs spells out.
-
-    Split out as a seam for the same reason _is_on_disk_executable is: the
-    branch that only ever runs on the other platform is pinned by monkeypatch
-    from Windows rather than left for a CI run to discover - which is precisely
-    how a Windows-only kill path shipped as the whole teardown.
-    """
-    if os.name == "nt":
-        try:
-            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                           capture_output=True, timeout=_REAP_TIMEOUT_SEC,
-                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            return
-        except (OSError, subprocess.SubprocessError):
-            pass
-    else:
-        try:
-            pgid = os.getpgid(proc.pid)
-            if pgid != os.getpgid(0):
-                os.killpg(pgid, _KILL_SIG)
-                return
-        except OSError:
-            pass
-    try:
-        proc.kill()
-    except OSError:
-        pass
+# MAIN 0839 ORDER (FLEET-KIT v10) step 5. The cycle starts ONLY through
+# ops/loop/fleet_route.spawn -> ops/fleet_kit/fleet_headless.spawn. The kit owns
+# the exe pick (never from the working directory), the proxy route on top of
+# RC's fail-closed headless_env gate, the 120-runs-per-24h budget, the lean
+# flags, --output-format, the hidden console, the usage line, the status file,
+# the FLEET_SUBAGENT_FIRST=off child env, and the timeout teardown: the kit's
+# launch kills the WHOLE process tree on both platforms (taskkill /T /F on
+# win32; kit v10 RC 1915: SIGTERM then SIGKILL to the child's own process group
+# on POSIX) before the timeout reaches this module. That retires this module's
+# own Popen, its taskkill / killpg seam and its reap timer (the 2026-07-27
+# ubuntu defect they fixed is the kit's to keep fixed; tests pin it through
+# tests/_kit_platform.py on both branches).
+#
+# The usage-line label. Not a channel-note name, so the kit files the run as
+# kind "build" and picks effort by the note only when the config sets none.
+SDK_NOTE = "loop-cycle"
+SDK_CALLER = "loop_executor"
+# Shown as argv[0] by build_argv's preview; the real exe is the kit's pick.
+_PREVIEW_EXE = "claude"
 
 
 class SdkExecutor:
@@ -1330,63 +1264,66 @@ class SdkExecutor:
         self.session_id: str | None = None
         self.deviations: list = []
 
-    def _argv_prefix(self) -> list:
-        """`executor_cmd` may be a string or an argv list (tests inject a shim)."""
-        cmd = self.cfg.get("executor_cmd")
-        if isinstance(cmd, list):
-            return list(cmd)
-        if isinstance(cmd, str) and cmd:
-            return [cmd]
-        import shutil
-        return [shutil.which("claude.cmd") or shutil.which("claude") or "claude"]
+    def spawn_plan(self, cycle: int) -> dict:
+        """The kit parameters for this cycle: RC's own flags as `extra`, plus
+        the kit's `model` / `effort` / `session_id` / `resume`.
 
-    def build_argv(self, cycle: int) -> list:
+        The kit composes everything else: the exe, `-p`, `--output-format
+        json`, the lean pair (`--strict-mcp-config --setting-sources
+        project,local`, MAIN 0912 item A; not --bare, RC floors live in project
+        hooks), `--model`, `--effort` and the session flag. None of those may
+        appear in `extra`, or the child would see them twice.
+        """
         import json as _json
-        argv = self._argv_prefix() + [
-            "-p",
-            "--output-format", "json",
+        extra = [
             "--input-format", "text",
             "--permission-mode", self.cfg.get("permission_mode", "bypassPermissions"),
             "--json-schema", _json.dumps(DONE_SCHEMA),
             "--add-dir", str(self.cfg.get("repo_root", ".")),
-            # MAIN 0912 item A: the kit's lean pair (ops/fleet_kit/fleet_headless.py
-            # build_argv, DEFAULT_SOURCES). No MCP servers, no user-scope plugins
-            # or SessionStart injection; project hooks and settings still load,
-            # so no RC floor is traded for tokens (hence not --bare).
-            "--strict-mcp-config",
-            "--setting-sources", "project,local",
         ]
         # RM-137: push RC's standing rules into every subagent this cycle spawns.
         # Config-driven on purpose - if a CLI upgrade ever rejects the flag, the
         # kill is deleting one key, not editing code mid-incident.
         subagent_prompt = str(self.cfg.get("subagent_prompt", "") or "").strip()
         if subagent_prompt:
-            argv += ["--append-subagent-system-prompt", subagent_prompt]
-        model = self.cfg.get("executor_model")
-        if model:
-            argv += ["--model", str(model)]
-        # Operator 2026-09-16: the headless lanes run at effort HIGH. Config-driven
-        # for the same reason as subagent_prompt above - if a CLI upgrade ever
-        # rejects the flag, the kill is deleting one key, not editing code
-        # mid-incident. Absent or empty means the flag is not passed at all, so
-        # the argv is byte-identical to the pre-RM version for anyone who does
-        # not set it. Accepted values are MACHINE-VERIFIED on CLI 2.1.251 (a
-        # bogus value makes it print the set): low, medium, high, xhigh, max.
-        effort = str(self.cfg.get("executor_effort", "") or "").strip()
-        if effort:
-            argv += ["--effort", effort]
+            extra += ["--append-subagent-system-prompt", subagent_prompt]
         budget = self.cfg.get("cycle_budget_usd")
         if budget:
-            argv += ["--max-budget-usd", str(budget)]
+            extra += ["--max-budget-usd", str(budget)]
+        model = str(self.cfg.get("executor_model", "") or "").strip() or None
+        # Operator 2026-09-16: the headless lanes run at effort HIGH
+        # (`executor_effort` in ops/loop/config.json). MAIN 0839 ORDER: the value
+        # is the kit's own `effort=` now, never an RC-appended `--effort` argv
+        # pair. Absent or empty passes no effort, and the kit's pick_effort
+        # decides; a value outside the kit's EFFORTS is refused by the kit before
+        # anything starts (a refused cycle, not a crash).
+        effort = str(self.cfg.get("executor_effort", "") or "").strip() or None
         # clear_each_cycle True reproduces the AHK channel's /clear exactly: a
         # brand new session per cycle. False keeps continuity via --resume, which
         # is cheaper (no cold re-read of CLAUDE.md + living docs each cycle).
+        session_id = resume = None
         if self.cfg.get("clear_each_cycle", True) or not self.session_id:
             import uuid
-            argv += ["--session-id", str(uuid.uuid4())]
+            session_id = str(uuid.uuid4())
         else:
-            argv += ["--resume", self.session_id]
-        return argv
+            resume = self.session_id
+        return {"extra": tuple(extra), "model": model, "effort": effort,
+                "session_id": session_id, "resume": resume}
+
+    def build_argv(self, cycle: int, plan: dict | None = None) -> list:
+        """PREVIEW of the argv the kit composes for this cycle (dry runs, tests).
+
+        Built by the kit's own `build_argv` from `spawn_plan`, with the kit's
+        model / effort pick applied, so it cannot drift from what the child
+        gets. argv[0] is a placeholder: the real exe is the kit's
+        `claude_exe()`. The prompt rides stdin, so no argv slot carries it.
+        """
+        plan = self.spawn_plan(cycle) if plan is None else plan
+        k = _fleet_route_module().kit()
+        return k.build_argv(_PREVIEW_EXE, "", k.pick_model(True, plan["model"]),
+                            k.pick_effort(SDK_NOTE, plan["effort"]), False, None,
+                            plan["extra"], stdin=True, session_id=plan["session_id"],
+                            resume=plan["resume"])
 
     def run(self, cycle: int, body: str, src: str) -> DoneRecord:
         import json as _json
@@ -1406,40 +1343,36 @@ class SdkExecutor:
         body = enforce_agent_disjointness(cycle, body, log=self.log,
                                           awrite=self.awrite, ctl=self.ctl,
                                           note=self.deviations.append)
-        argv = self.build_argv(cycle)
+        plan = self.spawn_plan(cycle)
         prompt = sdk_prompt(cycle, body, src)
         timeout = float(self.cfg.get("cycle_deadline_sec", 5400))
-        # Headless account routing (operator contract 2026-10-02): the child
-        # rides the local proxy named by the user env store, or it does not
-        # start. Refused is a failed cycle, never a direct `claude`.
-        _he = _headless_env_module()
+        self.log(f"cycle {cycle}: sdk executor starting ({len(body)} chars, timeout {timeout:.0f}s)")
+        # FLEET-KIT v10 (MAIN 0839 ORDER step 5): the ONE door. RC's fail-closed
+        # headless_env gate runs first inside fleet_route (operator contract
+        # 2026-10-02: the proxy named by the user env store, or no start), then
+        # the kit's own checks; a refusal starts nothing and is a failed cycle,
+        # never a direct `claude`. The whole prompt rides stdin (the kit's
+        # stdin=True), exactly the `-p --input-format text` shape this channel
+        # always used.
+        fr = _fleet_route_module()
         try:
-            child_env = _he.headless_child_env(caller="loop_executor")
-        except _he.HeadlessRouteRefused as exc:
+            _line, proc = fr.spawn(prompt, caller=SDK_CALLER, note=SDK_NOTE,
+                                   writes_code=True, bare=False, extra=plan["extra"],
+                                   cwd=str(self.cfg.get("repo_root", ".")),
+                                   timeout=timeout, kind="build", model=plan["model"],
+                                   effort=plan["effort"], session_id=plan["session_id"],
+                                   resume=plan["resume"], prompt_on_stdin=True)
+        except fr.RouteRefused as exc:
             self.log(f"cycle {cycle}: sdk spawn refused - {exc}")
             stamped = stamp_deviations("", self.deviations)
             return DoneRecord(cycle=cycle, error=f"headless route refused: {exc.reason}",
                               summary=stamped, raw=deviation_only_raw(stamped))
-        self.log(f"cycle {cycle}: sdk executor starting ({len(body)} chars, timeout {timeout:.0f}s)")
-
-        proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, text=True, encoding="utf-8",
-                                errors="replace", cwd=str(self.cfg.get("repo_root", ".")),
-                                env=child_env,
-                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                                **_spawn_group_kwargs())
-        try:
-            out, err = proc.communicate(prompt, timeout=timeout)
         except subprocess.TimeoutExpired:
-            self.log(f"cycle {cycle}: sdk timeout after {timeout:.0f}s - killing the child tree")
-            _kill_process_tree(proc)
-            try:
-                proc.wait(timeout=_REAP_TIMEOUT_SEC)
-            except subprocess.TimeoutExpired:
-                # Reaping is a courtesy; the cycle's verdict is already decided.
-                # Letting this escape IS the measured defect - it converted a
-                # recorded failed cycle into an exception that took the run down.
-                self.log(f"cycle {cycle}: sdk child survived the tree kill - not reaped")
+            # The kit's launch has already killed the whole process tree, reaped
+            # it on a bounded wait, written the usage line (error "timeout") and
+            # reset the status; this only records the failed cycle.
+            self.log(f"cycle {cycle}: sdk timeout after {timeout:.0f}s - "
+                     "the kit killed the child tree")
             # Every failure path stamps too, and into raw as well as onto the
             # record. A cycle that deviated and THEN failed is the case where the
             # director most needs to know its directive was corrected: it is about
@@ -1449,6 +1382,14 @@ class SdkExecutor:
             stamped = stamp_deviations("", self.deviations)
             return DoneRecord(cycle=cycle, error=f"timeout after {timeout:.0f}s",
                               summary=stamped, raw=deviation_only_raw(stamped))
+        except Exception as exc:  # noqa: BLE001 - a failed start is a failed cycle
+            self.log(f"cycle {cycle}: sdk spawn failed - {type(exc).__name__}: {exc}")
+            stamped = stamp_deviations("", self.deviations)
+            return DoneRecord(cycle=cycle, error=f"spawn failed: {type(exc).__name__}",
+                              summary=stamped, raw=deviation_only_raw(stamped))
+        out = (getattr(proc, "stdout", None) or "") if proc is not None else ""
+        err = (getattr(proc, "stderr", None) or "") if proc is not None else ""
+        rc = getattr(proc, "returncode", None) if proc is not None else None
 
         try:
             res = _json.loads(out.strip() or "{}")
@@ -1464,12 +1405,12 @@ class SdkExecutor:
         if sid:
             self.session_id = sid
 
-        if res.get("is_error") or proc.returncode != 0:
+        if res.get("is_error") or rc != 0:
             detail = str(res.get("result") or err or "").strip().replace("\n", " ")[:200]
-            self.log(f"cycle {cycle}: sdk reported error (rc={proc.returncode}): {detail}")
+            self.log(f"cycle {cycle}: sdk reported error (rc={rc}): {detail}")
             stamped = stamp_deviations("", self.deviations)
             return DoneRecord(cycle=cycle, cost_usd=cost, session_id=sid,
-                              error=detail or f"exit {proc.returncode}",
+                              error=detail or f"exit {rc}",
                               summary=stamped, raw=deviation_only_raw(stamped))
 
         so = res.get("structured_output")

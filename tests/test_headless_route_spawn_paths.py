@@ -65,35 +65,28 @@ def _sdk(tmp_path):
                           awrite=lambda p, t: None)
 
 
+_SDK_DONE = ('{"is_error": false, "structured_output": {"sha": "a", '
+             '"tests_pass": "1", "regressions": false, "summary": "s"}}')
+
+
 def test_executor_refuses_without_route(refused, tmp_path, monkeypatch):
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
-    monkeypatch.setattr(executor.subprocess, "Popen",
-                        lambda *a, **k: pytest.fail("Popen reached with no route"))
-    rec = _sdk(tmp_path).run(1, "b", "fixed")
+    with mock.patch("subprocess.run", side_effect=AssertionError("spawned with no route")), \
+         mock.patch("subprocess.Popen", side_effect=AssertionError("spawned with no route")):
+        rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error == "headless route refused: unset"
     assert '"reason": "unset"' in refused.read_text(encoding="utf-8")
 
 
 def test_executor_child_env_carries_route(routed, tmp_path, monkeypatch):
-    seen = {}
-
-    class _P:
-        pid = 1
-        returncode = 0
-
-        def communicate(self, prompt, timeout=None):
-            return ('{"is_error": false, "structured_output": {"sha": "a", '
-                    '"tests_pass": "1", "regressions": false, "summary": "s"}}', "")
-
-    def _popen(argv, **kw):
-        seen.update(kw)
-        return _P()
-
     monkeypatch.setattr(executor, "_git_head", lambda root: "")
-    monkeypatch.setattr(executor.subprocess, "Popen", _popen)
-    rec = _sdk(tmp_path).run(1, "b", "fixed")
+    with mock.patch("subprocess.run", return_value=_done(_SDK_DONE)) as run:
+        rec = _sdk(tmp_path).run(1, "b", "fixed")
     assert rec.error is None
-    assert seen["env"]["ANTHROPIC_BASE_URL"] == FAKE_URL
+    env = run.call_args.kwargs["env"]
+    assert env["ANTHROPIC_BASE_URL"] == FAKE_URL
+    # kit v10 child_env: a headless run is exempt from the SUBAGENT-FIRST hook
+    assert env["FLEET_SUBAGENT_FIRST"] == "off"
     parent_has_base_url = "ANTHROPIC_BASE_URL" in os.environ
     assert parent_has_base_url is False
 
@@ -400,6 +393,39 @@ def test_supervisor_ephemeral_timeout_kills_tree_via_kit(kit_hang):
         with pytest.raises(EphemeralSpawnFailed) as ei:
             spawn_ephemeral_llm("6", "t-kit-hang", "demo", {})
     assert "timed out" in str(ei.value)
+    _assert_tree_killed(kit_hang)
+
+
+# ops/loop/executor.py - the loop controller's sdk channel (MAIN 0839 ORDER,
+# kit v10 step 5): kit spawn with the operator's effort as effort=, the whole
+# prompt on stdin, and the session flag as the kit's session_id= / resume=.
+
+
+def test_kit_call_executor(kit_calls, tmp_path, monkeypatch):
+    monkeypatch.setattr(executor, "_git_head", lambda root: "")
+    ex = executor.build({"channel": "sdk", "repo_root": str(tmp_path),
+                         "cycle_deadline_sec": 60, "executor_effort": "high",
+                         "executor_model": "claude-opus-5-5"}, tmp_path,
+                        log=lambda m: None, stop=lambda m: None, awrite=lambda p, t: None)
+    with mock.patch("subprocess.run", return_value=_done(_SDK_DONE)):
+        rec = ex.run(1, "BODY", "fixed")
+    assert rec.error is None
+    (c,) = kit_calls
+    assert c["code"] == "RC" and c["writes_code"] is True and c["bare"] is False
+    assert c["effort"] == "high" and c["model"] == "claude-opus-5-5"
+    assert c["stdin"] is True and "BODY" in c["prompt"]
+    assert c["kind"] == "build" and c["session_id"] and "resume" not in c
+    extra = list(c["extra"])
+    for owned in ("--effort", "--model", "--output-format", "--strict-mcp-config",
+                  "--setting-sources", "--session-id", "--resume", "-p"):
+        assert owned not in extra, f"the kit owns {owned}"
+    assert "--json-schema" in extra and "--permission-mode" in extra
+
+
+def test_executor_timeout_kills_tree_via_kit(kit_hang, tmp_path, monkeypatch):
+    monkeypatch.setattr(executor, "_git_head", lambda root: "")
+    rec = _sdk(tmp_path).run(1, "b", "fixed")
+    assert "timeout" in rec.error
     _assert_tree_killed(kit_hang)
 
 

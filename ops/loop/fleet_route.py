@@ -13,18 +13,19 @@ every one of those additions is a named kit gap reported to MAIN, not a patch:
    names, and the kit's own `check_url` + probe then run on top of it. The
    kit's probe is pointed at `headless_env._probe`, so there is ONE probe
    implementation in RC and the suite's fakes cover both.
-2. STDIN BESIDE ARGV - OPEN kit gap (MAIN 1327 item 1.1). RC's callers put a
-   short instruction on argv and a multi-kilobyte body on stdin (`claude -p
-   "<task>"` reading piped context). The kit's v4 `stdin=True` means the WHOLE
-   prompt on stdin with NO argv prompt; that is not proven byte-equivalent for
-   `claude -p` (how the CLI joins piped stdin with the argv prompt is
-   undocumented, and no live run is allowed to measure it), so RC keeps the
-   body-beside-argv shape. It reaches the child as `input=` through the `run`
-   seam into the KIT'S OWN launch, `fleet_headless._run`, so only the stdin
-   shape is RC's; the process launch, the DEVNULL default and the timeout
-   tree kill are the kit's. The kit exposes that launch only under a private
-   name; a kit without it is refused before a start is counted (no fallback
-   launch). Ask of MAIN: a public launch, or an argv-prompt-plus-stdin mode.
+2. STDIN BESIDE ARGV. RC's callers put a short instruction on argv and a
+   multi-kilobyte body on stdin (`claude -p "<task>"` reading piped context).
+   It reaches the child as `input=` through the `run` seam into the KIT'S OWN
+   launch, so only the stdin shape is RC's; the process launch, the DEVNULL
+   default and the timeout tree kill are the kit's. FLEET-KIT-v10 closed both
+   asks of MAIN 1327 item 1.1: the launch is public (`fleet_headless.launch`,
+   preferred here; the private `_run` is the same object and the fallback
+   name), and `spawn(stdin_data=)` exists. A kit with neither launch name is
+   refused before a start is counted (no fallback launch).
+   The kit's own `stdin=True` (the WHOLE prompt on stdin, NO argv prompt) is
+   passed through as `prompt_on_stdin=True`: that is the lane runner's and
+   the loop executor's shape (`claude -p` reading its whole prompt from a
+   pipe), and the only shape for a prompt over the kit's ARGV_PROMPT_MAX.
 3. CWD - CLOSED in FLEET-KIT-v4: passed through as the kit's own `cwd=`; the
    budget stays in RC's own root, so the fleet cap counts every RC run in one
    place.
@@ -34,6 +35,13 @@ every one of those additions is a named kit gap reported to MAIN, not a patch:
    re-raises TimeoutExpired so RC callers keep their contract.
 5. The raw `CompletedProcess` (stdout, stderr, returncode) is returned beside
    the kit's usage line, because RC callers judge stderr and the full JSON.
+6. EFFORT, MODEL, SESSION - THIN PASS-THROUGH (MAIN 0839 ORDER, kit v10: "RC:
+   route lanes through spawn / the CLI, use effort="). `effort=`, `model=`,
+   `session_id=` and `resume=` go to the kit's same-named parameters ONLY when
+   the caller sets them; RC adds no default and no validation of its own, so
+   the kit's `pick_effort` / `pick_model` stay the one policy and the kit's
+   own check refuses a bad value before anything starts. The RC-local
+   `--effort` argv knob (the loop executor's) is retired into `effort=`.
 
 The STOP flags (`ops/loop/control/STOP`, `ops/runtime/INBOX_RESPONDER_STOP`)
 and the responder's agreement-record arming check are NOT enforced by the kit
@@ -55,6 +63,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CODE = "RC"
 KIT_PATH = ROOT / "ops" / "fleet_kit" / "fleet_headless.py"
 EXIT_REFUSED = 3
+EXIT_TIMEOUT = 4  # the kit CLI's own code for a run its timeout killed
 # The responder's scheduled task fires every 5 minutes (POLL_INTERVAL_S in
 # tools/inbox_responder_runner.py); the idle status names the next tick.
 DEFAULT_TICK_S = 300
@@ -122,24 +131,39 @@ _launch = None
 
 
 def _kit_launcher(k):
-    """The kit's launch function, or None when this kit version has none."""
-    fn = getattr(k, "_run", None)
-    return fn if callable(fn) else None
+    """The kit's launch function, or None when this kit version has none.
+
+    v10 names it publicly (`launch`); `_run` is the pre-v10 private name of
+    the same object, kept as the fallback for an older vendored kit."""
+    for name in ("launch", "_run"):
+        fn = getattr(k, name, None)
+        if callable(fn):
+            return fn
+    return None
 
 
 def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False,
           bare: bool = False, rules_file=None, extra: Sequence[str] = (),
           stdin: Optional[str] = None, cwd=None, timeout: float = 3600,
-          root=None, kind: Optional[str] = None):
+          root=None, kind: Optional[str] = None, model: Optional[str] = None,
+          effort: Optional[str] = None, prompt_on_stdin: bool = False,
+          session_id: Optional[str] = None, resume: Optional[str] = None):
     """Start ONE headless run through the kit. Returns `(usage_line, proc)`.
 
     `kind` (kit v8, FLEET-COMMON 14 e) labels the usage line build / inbox /
     triage; omitted, the kit infers it from the note (drain-* -> build) and the
     pre-v8 call shape is kept byte-for-byte (no `kind=` reaches the kit).
+    `model`, `effort`, `session_id` and `resume` are the kit's own parameters,
+    passed through only when set (module docstring item 6).
+    `prompt_on_stdin=True` is the kit's `stdin=True`: the WHOLE prompt rides
+    stdin and the argv carries none of it. It cannot be combined with `stdin`
+    (a body beside an argv instruction): both would feed the one pipe.
 
     Raises `RouteRefused` before anything starts when either the RC gate or the
     kit refuses. `proc` is the raw CompletedProcess the kit's `run` seam saw.
     """
+    if prompt_on_stdin and stdin is not None:
+        raise ValueError("prompt_on_stdin and stdin both feed stdin - pick one")
     he = _headless_env()
     try:
         url = he.resolve_base_url(caller=caller)
@@ -181,12 +205,18 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     # kit's own `_run`), which the kit's `stdin=True` (the whole prompt on
     # stdin, no argv prompt) does not express - see the module docstring.
     do_spawn = _kit_spawn or k.spawn
-    kind_kw = {} if kind is None else {"kind": kind}
+    # Only what the caller set reaches the kit: an omitted parameter keeps the
+    # earlier call shape byte-for-byte and leaves the kit's own pick in force.
+    opt_kw = {key: value for key, value in (
+        ("kind", kind), ("model", model), ("effort", effort),
+        ("session_id", session_id), ("resume", resume)) if value is not None}
+    if prompt_on_stdin:
+        opt_kw["stdin"] = True
     try:
         line = do_spawn(root, CODE, prompt, note=note, writes_code=writes_code, bare=bare,
                         rules_file=rules_file, timeout=timeout, extra=tuple(extra),
                         run=_run, url_source=lambda: url, connect=_connect,
-                        exe_source=_exe_source, cwd=cwd, **kind_kw)
+                        exe_source=_exe_source, cwd=cwd, **opt_kw)
     except k.Refused as exc:
         he._log_refusal(caller, "kit")
         raise RouteRefused("kit", str(exc)) from None
@@ -220,10 +250,19 @@ def main(argv=None) -> int:
 
     fleet_route.py --caller NAME (--prompt TEXT | --prompt-file PATH)
                    [--writes-code] [--note NAME] [--timeout S]
-                   [--kind build|inbox|triage] [-- EXTRA...]
+                   [--kind build|inbox|triage] [--model M] [--effort E]
+                   [--cwd DIR] [--prompt-stdin] [-- EXTRA...]
+
+    `--model` / `--effort` are the kit's own parameters, passed through only
+    when given. `--cwd` is the child's working directory (the budget, status
+    and usage files stay under this tree's root). `--prompt-stdin` sends the
+    whole prompt on stdin (the kit's stdin=True); a prompt longer than the
+    kit's ARGV_PROMPT_MAX goes there anyway, exactly as the kit's own CLI does.
+    `-- EXTRA` reaches the kit's `extra=` (the kit's own CLI has no such door).
 
     Prints the run's result text to stdout and the child's stderr to stderr.
-    Exit: the child's code, or 3 when the route or the kit refused.
+    Exit: the child's code, 3 when the route or the kit refused, 4 when the
+    kit's timeout killed the run (the kit CLI's codes).
     """
     args = list(sys.argv[1:] if argv is None else argv)
     extra: list = []
@@ -246,14 +285,23 @@ def main(argv=None) -> int:
         return 2
     if pfile is not None:
         prompt = Path(pfile).read_text(encoding="utf-8")
+    on_stdin = "--prompt-stdin" in args or len(prompt) > kit().ARGV_PROMPT_MAX
     try:
         line, proc = spawn(prompt, caller=caller, note=_opt("--note", "") or "",
                            writes_code="--writes-code" in args, extra=extra,
                            timeout=float(_opt("--timeout", "3600")),
-                           kind=_opt("--kind"))
+                           kind=_opt("--kind"), model=_opt("--model"),
+                           effort=_opt("--effort"), cwd=_opt("--cwd"),
+                           prompt_on_stdin=on_stdin)
     except RouteRefused as exc:
         sys.stderr.write(f"{exc}\n")
         return EXIT_REFUSED
+    except subprocess.TimeoutExpired:
+        # The kit has killed the whole process tree and written the usage line
+        # (error "timeout"); the runner gets the kit CLI's timeout code, not a
+        # traceback.
+        sys.stderr.write("headless run timed out; the kit killed the process tree\n")
+        return EXIT_TIMEOUT
     text = line.get("result")
     if text is None and proc is not None:
         text = proc.stdout
