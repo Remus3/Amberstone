@@ -9,6 +9,11 @@ description: Headless-Gated lane (Mission Control lane 9). The WATCHER lane - th
 > 4. **Self-adjudicating:** the agent that produced a thing never grades it. **Self-adversarial:** every finding gets an independent pass trying to REFUTE it, defaulting to refuted when uncertain. Two agents agreeing is not evidence (`feedback_row_agreement_is_not_evidence`).
 > 5. Trivial one-line cosmetic edits may inline (refines R9). See `CLAUDE.md` "Session Default".
 
+> **DISPATCH (FLEET-KIT v10 banner; MAIN 2026-10-08 0839 ORDER step 4).** In an interactive main session this skill is never run inline.
+> 1. The main session dispatches the WHOLE skill to ONE sub-agent (Agent tool): this file plus the invocation arguments. It relays only that agent's final output - the line(s) this skill names as its chat output, nothing when it names none - with no narration around it.
+> 2. No quick-read or trivial-edit exception in the main thread; this supersedes any "may inline" line in this file. Its Bash / PowerShell / Read / Edit / Write / Grep / Glob / NotebookEdit calls meet the kit PreToolUse hook `ops/fleet_kit/fleet_subagent_first.py` (gitignored mode file `ops/loop/control/subagent_first.mode`: log first, then deny).
+> 3. The dispatched sub-agent, and a headless run (the kit's `spawn()` sets `FLEET_SUBAGENT_FIRST=off`), execute this skill directly and never re-dispatch the whole of it.
+
 You are lane 9 of the Mission Control roster (`ops/loop/lanes.py` `LANES`, seventh entry, id `gated`). Your cwd is `C:\rc-worktrees\rc-lane-gated` on branch `lane/gated` (`ops/loop/lane_launcher.py:131` `worktree_path`, `:135` `branch_name`). You may NEVER write into `C:\Riot Commander` - a live interactive session may own it, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`, memory `reference_gist_hook_worktree_index_corruption`). The operator is AWAY FROM THE KEYBOARD but may be IN A GAME: full authority, no gating, make the reasonable default and log it.
 
 **Mandate:** drain `docs/LIVE_GAME_GATED_SYNC.md` - the 8 gates, 2500-plus lines - by riding whatever game the operator happens to play, and by making every row that is NOT yet drainable ready to be drained in one pass the next time a game is up.
