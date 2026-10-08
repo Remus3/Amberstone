@@ -11,8 +11,13 @@ Contract:
     the payload carries session_id / transcript_path / cwd / hook_event_name /
     stop_hook_active / last_assistant_message).
   - writes ops/runtime/stop_claim_report.json atomically.
-  - REPORT-ONLY by default: always exit 0. `--arm` exits 2 on findings and is
-    deliberately opt-in - a gate that fires wrongly once gets disabled forever,
+  - REPORT-ONLY by default: always exit 0, prints nothing. `--arm` on
+    blocking findings still exits 0 but prints ONE stdout JSON object,
+    {"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext":
+    "<one line <= 160 chars: gate, count, codes, report path>"}}, which keeps
+    the session going and shows as "Stop hook feedback", never a "Stop hook
+    error" (MAIN ORDER 2026-10-07 2237; the full message goes to the report's
+    `message`). Arming is deliberately opt-in - a gate that fires wrongly once gets disabled forever,
     so arming waits until the report is observed quiet on clean sessions.
 
 Usage (hook):
@@ -23,7 +28,9 @@ inherits a windowless console from its bash parent and does not flash (measured
 2026-09-14), so the pythonw token buys nothing; and this gate's only block
 channel is exit 2 plus stderr, which is unmeasured under pythonw on Stop. An
 interpreter swap was proposed as a console-flash remedy and REFUTED by that
-measurement - do not redo it.
+measurement - do not redo it. (The block channel was exit 2 plus stderr when
+that was measured; it is now exit 0 plus one stdout JSON line, which is also
+unmeasured under pythonw, so the reasoning stands.)
 """
 import argparse
 import json
@@ -1045,7 +1052,7 @@ def main(argv=None):
     parser.add_argument("--history-max", type=int, default=HISTORY_MAX,
                         help="keep only the newest N lines; 0 disables rolling")
     parser.add_argument("--arm", action="store_true",
-                        help="exit 2 on findings; OFF by default and stays off "
+                        help="emit one Stop-feedback JSON line on findings; OFF by default and stays off "
                              "until the report is observed quiet on clean sessions")
     args = parser.parse_args(argv)
 
@@ -1073,8 +1080,8 @@ def main(argv=None):
     findings = audit(collect_evidence(read_transcript(transcript)))
     report["findings"] = findings
 
-    # Exit 2 on Stop BLOCKS the session from ending and hands stderr back to the
-    # model. So re-entry is the hazard: if the model restates the claim, a second
+    # A firing gate keeps the session from ending and hands its feedback line to
+    # the model (it was exit 2 + stderr until 2026-10-07). So re-entry is the hazard: if the model restates the claim, a second
     # block loops forever. `stop_hook_active` is true once we have already
     # blocked, and it is the only thing standing between armed mode and a spin.
     reentry = bool(payload.get("stop_hook_active"))
@@ -1113,15 +1120,70 @@ def main(argv=None):
                 detail = f" (claimed {finding['claimed']!r} / observed {finding['observed']!r})"
             lines.append(f"  - {finding['check']}{detail}: {finding['quote']}")
         lines.append(f"  full report: {args.report}")
-        # Under pythonw.exe sys.stderr can be None. Blocking with no reason is
-        # worse than not blocking, so never let the emit itself raise.
+        # MAIN ORDER 2026-10-07 2237 (operator Console review): the full reason
+        # lives in the report file ONLY; the model gets one feedback line via
+        # hookSpecificOutput.additionalContext on exit 0, which the transcript
+        # shows as "Stop hook feedback", not a "Stop hook error" dump (exit 2 +
+        # stderr, or decision:block). It keeps the conversation going under the
+        # same loop protections, so the stop_hook_active handling above stands.
+        report["message"] = "\n".join(lines)
+        write_report(report, args.report)
+        out = {"hookSpecificOutput": {
+            "hookEventName": "Stop",
+            "additionalContext": feedback_line(findings, args.report)}}
+        # Under pythonw.exe sys.stdout can be None. Never let the emit raise.
         try:
-            if sys.stderr is not None:
-                print("\n".join(lines), file=sys.stderr)
+            if sys.stdout is not None:
+                sys.stdout.write(json.dumps(out) + "\n")
+                sys.stdout.flush()
         except (OSError, ValueError):
             pass
-        return 2
     return 0
+
+
+FEEDBACK_MAX = 160
+
+
+def feedback_line(findings, report_path, limit=FEEDBACK_MAX):
+    """One line, at most `limit` chars: gate, count, finding codes, report path.
+
+    The path is shown ROOT-relative when the report sits under ROOT (the live
+    case: ops/runtime/stop_claim_report.json). The code list is cut first, with
+    a `+N more` tail, down to one code; only then is an overlong path shortened,
+    by eliding its middle so the drive and the file name both survive."""
+    codes = []
+    for finding in findings:
+        if finding["check"] not in codes:
+            codes.append(finding["check"])
+    n = len(findings)
+    noun = "unbacked claim" if n == 1 else "unbacked claims"
+    path = _display_path(report_path)
+    head = f"stop_claim_gate: {n} {noun}"
+
+    def build(shown, rest, shown_path):
+        listed = ",".join(shown) + (f",+{rest} more" if rest else "")
+        return f"{head} ({listed}); see {shown_path}"
+
+    if not codes:
+        return f"{head}; see {path}"[:limit]
+    for keep in range(len(codes), 0, -1):
+        line = build(codes[:keep], len(codes) - keep, path)
+        if len(line) <= limit:
+            return line
+    rest = len(codes) - 1
+    budget = limit - len(build(codes[:1], rest, ""))
+    if budget >= 12:
+        tail = budget - 3 - 3
+        return build(codes[:1], rest, path[:3] + "..." + path[-tail:])
+    return build(codes[:1], rest, path)[:limit]
+
+
+def _display_path(report_path):
+    raw = " ".join(str(report_path).split())
+    try:
+        return Path(raw).resolve().relative_to(ROOT).as_posix()
+    except (ValueError, OSError):
+        return raw
 
 
 if __name__ == "__main__":
