@@ -65,7 +65,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 8
+KIT_VERSION = 9
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -83,7 +83,7 @@ ACK_MARKERS = ("INFORMATION", "ACK", "TERMINAL", "CORRECTION-ACCEPTED",
 NEVER_DAMP = ("ORDER", "FIX", "RULING")
 STATES = ("idle", "running", "limit", "halted", "backoff", "refused")
 PROGRESS_STATES = ("running", "done", "failed")
-EFFORTS = ("low", "medium", "high")
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
 SOURCES = ("user", "project", "local")
 DEFAULT_SOURCES = "project,local"
 ARGV_PROMPT_MAX = 30000
