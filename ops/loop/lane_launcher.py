@@ -19,8 +19,12 @@ retrying.
 REUSES THE PROVEN RUNNER. `ops/loop/run_lane.ps1` has detached headless
 `claude -p` workers since 2026-07-16 (`spawn_lanes.ps1`): prompt piped on stdin
 so there is no command-line quoting risk, stderr folded into the log so a native
-warning cannot kill the lane. This module builds the worktree and the argument
-list; it does not re-implement that.
+warning cannot kill the lane. Since FLEET-KIT v10 (MAIN 0839 ORDER step 5) the
+runner starts the worker through the fleet kit (`ops/loop/fleet_route.py` ->
+`fleet_headless.spawn`, effort from the loop config as the kit's effort=), so
+the process under the runner is python and the worker is ITS child. This
+module builds the worktree and the argument list; it does not re-implement
+that.
 
 THE PID IN THE LOCK IS THE WORKER'S, NOT THE CLAIMER'S. A dashboard fire claims
 the lane from the RC server process, which outlives every lane. If the lock kept

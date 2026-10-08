@@ -25,8 +25,9 @@ Files (all gitignored, written atomically):
   logs/drain_waves_2_3.log                          launcher log
 
 Kit choices (FLEET-COMMON item 10): writes_code=True everywhere, so the kit picks
-`opus`; effort is the kit's pick for the note (medium) because fleet_route has no
-effort parameter (kit-gap, not patched here). Permissions follow the lane runner
+`opus`; effort is the kit's pick for the note (medium): fleet_route passes the
+kit's effort= through since kit v10, and this launcher sets none on purpose (its
+runs keep the shape they were measured with). Permissions follow the lane runner
 (ops/loop/run_lane.ps1): --dangerously-skip-permissions; the verifier also gets
 --disallowedTools Edit,Write,NotebookEdit. No ops/loop/slots.py slot is taken:
 its slot root lives outside the repo root, which is RC's halt boundary.
