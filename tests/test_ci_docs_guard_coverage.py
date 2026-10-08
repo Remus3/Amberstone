@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import ast
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -277,12 +278,104 @@ def test_known_scar_module_is_selected():
 # --------------------------------------------------------------------------- #
 # 4. this module's own dependency cannot silently disarm it in CI
 # --------------------------------------------------------------------------- #
+# Since the 2026-10-05 supply-chain order, CI installs from HASH-PINNED files
+# (`pip install --require-hashes -r .github/ci/requirements-*.txt`), so pyyaml
+# no longer appears on the install line itself. "Installs pyyaml" therefore
+# means: a `pip install` line (shell comment stripped - a comment that says
+# pyyaml installs nothing) either names pyyaml as an argument, or names a
+# `-r` file, resolved from the repo root like the runner's checkout, that pins
+# `pyyaml==` (following nested `-r` lines relative to their own file, as pip
+# does). The twin of this helper lives in
+# tests/test_ci_job_timeout_headroom_rm156.py, deliberately not shared: each
+# guard must stand on its own.
+_PIP_INSTALL = re.compile(r"\bpip3?\s+install\b(?P<args>.*)$")
+_SHELL_COMMENT = re.compile(r"(?:^|\s)#.*$")
+_PYYAML_EXACT_PIN = re.compile(r"(?i)^pyyaml\s*===?\s*\S")
+
+
+def _requirements_file_pins_pyyaml(path: Path, _seen: set | None = None) -> bool:
+    seen = set() if _seen is None else _seen
+    try:
+        path = path.resolve()
+    except OSError:
+        return False
+    if path in seen or not path.is_file():
+        return False
+    seen.add(path)
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = _SHELL_COMMENT.sub("", raw).strip()
+        if _PYYAML_EXACT_PIN.match(line):
+            return True
+        nested = re.match(r"(?:-r|--requirement)(?:\s*=\s*|\s+)?(\S+)$", line)
+        if nested and _requirements_file_pins_pyyaml(path.parent / nested.group(1), seen):
+            return True
+    return False
+
+
+def _run_text_installs_pyyaml(text: str, root: Path) -> bool:
+    text = re.sub(r"\\\r?\n", " ", text)
+    for raw in text.splitlines():
+        m = _PIP_INSTALL.search(_SHELL_COMMENT.sub("", raw))
+        if not m:
+            continue
+        try:
+            tokens = shlex.split(m.group("args"))
+        except ValueError:
+            tokens = m.group("args").split()
+        i = 0
+        while i < len(tokens):
+            tok, ref = tokens[i], None
+            if tok in ("-r", "--requirement") and i + 1 < len(tokens):
+                ref, i = tokens[i + 1], i + 1
+            elif tok.startswith("--requirement="):
+                ref = tok.split("=", 1)[1]
+            elif tok.startswith("-r") and len(tok) > 2:
+                ref = tok[2:]
+            elif not tok.startswith("-") and re.split(r"[\[=<>~!;]", tok, maxsplit=1)[0].lower() == "pyyaml":
+                return True
+            if ref is not None and _requirements_file_pins_pyyaml(root / ref):
+                return True
+            i += 1
+    return False
+
+
+@pytest.mark.parametrize(
+    ("install_line", "req_body", "expected"),
+    [
+        # The shape CI uses now: hashed file that pins pyyaml.
+        ("pip install --require-hashes -r ci/req.txt", "pyyaml==6.0.3 \\\n    --hash=sha256:00\n", True),
+        # NEGATIVE CONTROL: a hashed file WITHOUT pyyaml installs no pyyaml.
+        ("pip install --require-hashes -r ci/req.txt", "pytest==9.1.1 \\\n    --hash=sha256:00\n", False),
+        # NEGATIVE CONTROL: a trailing comment naming pyyaml installs nothing.
+        ("pip install --require-hashes -r ci/req.txt  # pyyaml", "pytest==9.1.1\n", False),
+        # A commented-out pin in the file is not a pin.
+        ("pip install -r ci/req.txt", "# pyyaml==6.0.3\npytest==9.1.1\n", False),
+        # A -r file that does not exist installs nothing.
+        ("pip install -r ci/missing.txt", "pyyaml==6.0.3\n", False),
+        # Nested -r, resolved relative to the including file, as pip does.
+        ("pip install -r ci/outer.txt", "pyyaml==6.0.3\n", True),
+        # The pre-hash shape still counts: pyyaml named on the line itself.
+        ("pip install pytest pytest-timeout pyyaml", "", True),
+        ("python -m pip install --requirement=ci/req.txt", "PyYAML==6.0.3\n", True),
+    ],
+)
+def test_pyyaml_install_probe_reads_the_requirements_file(tmp_path, install_line, req_body, expected):
+    """Negative controls first: the probe must not be satisfied by a comment or
+    by a hashed file that lacks pyyaml, or the guard below is decoration."""
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci" / "req.txt").write_text(req_body, encoding="utf-8")
+    (tmp_path / "ci" / "outer.txt").write_text("-r req.txt\n", encoding="utf-8")
+    run = f"set -e\n{install_line}\npython -c \"import yaml\"\n"
+    assert _run_text_installs_pyyaml(run, tmp_path) is expected
+
+
 def test_ci_installs_the_yaml_parser_it_needs():
     """Runs with no yaml at all - so it still fires when the yaml tests skip.
 
     Text-level on purpose: parsing the workflow to learn whether the workflow
     installs the parser is circular. Any workflow step that invokes THIS module
-    must have a pyyaml install somewhere in its job.
+    must have a pyyaml install somewhere in its job - on the install line, or
+    pinned in the `-r` requirements file that line installs.
     """
     me = _HERE.name
     offenders = []
@@ -290,12 +383,13 @@ def test_ci_installs_the_yaml_parser_it_needs():
         text = path.read_text(encoding="utf-8")
         if me not in text:
             continue
-        if not re.search(r"(?im)^\s*pip install\b.*\bpyyaml\b", text):
+        if not _run_text_installs_pyyaml(text, _REPO):
             offenders.append(path.name)
     assert not offenders, (
-        f"{offenders} run {me} but never `pip install pyyaml`. Without it the "
-        "YAML assertions in this module degrade to skips, and a skipped test "
-        "is a green tick."
+        f"{offenders} run {me} but install no pyyaml - neither on a "
+        "`pip install` line nor pinned (`pyyaml==`) in the `-r` file it "
+        "installs. Without it the YAML assertions in this module degrade to "
+        "skips, and a skipped test is a green tick."
     )
 
 

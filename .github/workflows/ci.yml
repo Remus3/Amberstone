@@ -137,9 +137,10 @@ jobs:
           # AND tests/test_ci_job_timeout_headroom_rm156.py both degrade to
           # skips in THIS job while the `check` job below runs them for real -
           # so the nightly reported a green tick over assertions it never made.
-          # The import below makes "the hashed set still carries pyyaml" a
-          # checked fact rather than a comment.
-          pip install --require-hashes -r .github/ci/requirements-ci.txt  # requirements.txt + pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright mypy pyyaml
+          # The workflow-contract guards read the `-r` file named below and
+          # assert pyyaml is pinned IN it; the import after the install fails
+          # this step first if the hashed set ever loses it.
+          pip install --require-hashes -r .github/ci/requirements-ci.txt
           python -c "import yaml, pytest, xdist, pytest_timeout, pytest_asyncio"
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
@@ -317,11 +318,12 @@ jobs:
           # for the same reason as above.
           # pyyaml parses .github/workflows/*.yml for the docs-guard contract
           # test below, and is NOT in requirements.txt (it is test-only).
-          # Without it those assertions degrade to skips, so the import below
-          # fails the step instead if the hashed set ever loses it.
+          # Without it those assertions degrade to skips, so the guards assert
+          # it is pinned in the `-r` file below, and the import after the
+          # install fails this step first if the hashed set ever loses it.
           # json5 and pydantic ARE in requirements.txt now, so they are no
           # longer pinned here - one source of truth for a version, not two.
-          pip install --require-hashes -r .github/ci/requirements-ci.txt  # requirements.txt + pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright mypy pyyaml
+          pip install --require-hashes -r .github/ci/requirements-ci.txt
           python -c "import yaml, pytest, xdist, pytest_timeout, pytest_asyncio, mypy"
 
       # The runtime pins live in requirements.txt; CI installs the HASHED copy
