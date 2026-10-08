@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v10 - SUB-AGENT FIRST enforcement (FLEET-COMMON banner).
+"""Fleet kit v10+ - SUB-AGENT FIRST enforcement (FLEET-COMMON banner).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -10,6 +10,14 @@ through the old "quick read or one-line fix" exception and the operator saw
 Bash and Edit rows in the main pane. This hook makes the rule mechanical.
 
     python fleet_subagent_first.py        (a PreToolUse command hook)
+
+Wiring (v11, ruling R3), in the tree's tracked project .claude/settings.json,
+never the account settings: PreToolUse, matcher
+Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit, timeout 10,
+command ANCHORED to the project dir so a session cd cannot break it:
+    python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py"
+The same string followed by ` || true` is also conformant. The v10
+cwd-relative form exits 2 from any other cwd, which blocks every tool.
 
 Reads the PreToolUse input on stdin. The Claude Code hooks reference
 (https://code.claude.com/docs/en/hooks, "Agent-specific fields") says

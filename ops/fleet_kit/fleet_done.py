@@ -57,6 +57,9 @@ SEEN_REL = Path("ops/loop/control/session_done.seen")
 HANDOFF_SUFFIX = "-NEXT-SESSION.txt"
 CHAT_LINE = "Done ritual complete, safe to clear"
 REASON_MAX = 200
+# v11: three git calls at most per stop-hook run, so 3 x 10 s stays under the
+# 45 s Stop hook timeout (v9-v10 used 15 s each = exactly 45 s).
+GIT_TIMEOUT = 10
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -64,10 +67,41 @@ _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 # ---------------------------------------------------------------- repo facts
 
-def _git(root, *args):
+def find_git(environ=None, cwd=None):
+    """Absolute path of git from PATH, never a bare name and never from the
+    working directory (v11, CS 1623 item 6; the same rule as fleet_lanes).
+    Empty, relative and cwd-equal PATH entries are skipped; None if absent."""
+    env = os.environ if environ is None else environ
     try:
-        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True,
-                           text=True, timeout=15, creationflags=_NO_WINDOW)
+        here = os.path.normcase(Path(cwd or Path.cwd()).resolve())
+    except OSError:
+        here = None
+    exts = [""]
+    if sys.platform == "win32":
+        exts = [e for e in env.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(";") if e]
+    for entry in env.get("PATH", "").split(os.pathsep):
+        d = entry.strip().strip('"')
+        if not d or not Path(d).is_absolute():
+            continue
+        try:
+            if os.path.normcase(Path(d).resolve()) == here:
+                continue
+        except OSError:
+            continue
+        for ext in exts:
+            f = Path(d) / ("git" + ext)
+            if f.is_file() and (sys.platform == "win32" or os.access(f, os.X_OK)):
+                return str(f)
+    return None
+
+
+def _git(root, *args):
+    exe = find_git()
+    if not exe:
+        return None
+    try:
+        r = subprocess.run([exe, "-C", str(root), *args], capture_output=True,
+                           text=True, timeout=GIT_TIMEOUT, creationflags=_NO_WINDOW)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout.strip() if r.returncode == 0 else None
