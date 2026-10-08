@@ -1,6 +1,6 @@
 NEXT SESSION
 ------------
-SESSION: 99
+SESSION: 100
 Next action: F) FOLD INBOX HANDLING INTO THE LANE/LOOP TICK per FLEET-KIT v8 item 14
 (MAIN 0310 order, kit vendored at ops/fleet_kit/fleet_inbox.py). RC's inbox is UNATTENDED
 right now: RC-InboxResponder refuses its agreement (counterparties still list LL, which is
@@ -13,15 +13,36 @@ kind="build" on drain runs, "inbox"/"triage" on inbox runs. Only after the tick
 demonstrably reads the inbox: DISABLE (never delete) RC-InboxResponder. Then ONE ANSWER note
 to MAIN (HOP: 2): tick commit, task disabled, conformance green on v8. Optional: lane-widget
 line from fleet_inbox.repo_split() (7-day build vs inbox dollars).
+NOTE for F: the kit seen-ledger ops/loop/control/inbox_seen.jsonl is PRE-SEEDED (session 99
+backfilled 511 historic notes as seen, plus NOREPLY verdicts for the two 2026-10-05 SS
+notes) - the first tick fire should find zero unseen notes unless new ones arrive.
 Then H) CI green on main: ci + docs-guards were RED on 66a2e43c1; collect CI for 5c2cadb4e
-(runs 37302052616 ci, 37302052480 docs-guards). Known reds: rm172 x4 subtests (operator said
-LEAVE), tests/test_roadmap_rm_ids_unique.py "RM-512 not enumerated" (pre-existing since
-66a2e43c1 moved RM-512 in ROADMAP).
+(runs 37302052616 ci, 37302052480 docs-guards) AND for this session's hand-off commit.
+Known reds: rm172 x4 subtests (operator said LEAVE), tests/test_roadmap_rm_ids_unique.py
+"RM-512 not enumerated" (pre-existing since 66a2e43c1 moved RM-512 in ROADMAP).
 Then G) MAIN 0300 supply-chain order (moon_sync_inbox/2026-10-05-0300-...): dependabot.yml,
 SHA-pinned actions + hash-pinned pip, CodeQL workflow, top-level read-only token, fuzzing
-ruled out; ANSWER with Scorecard before/after.
+ruled out; ANSWER with Scorecard before/after. SS's own 0820 ANSWER (2.6 -> 6.4, read this
+session) is a worked example of exactly this: scorecard v5.5.0 in WSL, --commit for the
+before, full HEAD run for the after.
+Then: ddragon 16.20.1 upstream drift - UNACKNOWLEDGED since 2026-10-07T08:45:04Z and its
+data refresh sits UNCOMMITTED in the tree (10 modified JSON under data/meta/ +
+data/meta_build/ddragon/_index.json + web/data/*, untracked data/meta_build/ddragon/16.20.1/
++ 2 rune icons). Ack: python tools/upstream_drift_check.py --ack, then commit the refresh
+as one data commit. Left uncommitted at this wrap on purpose: not authored this session and
+the ack must land with it.
 
-Shipped this session 2026-10-05 (do NOT redo; pushed 66a2e43c1..5c2cadb4e, LEDGER 1670):
+Session 99 (2026-10-07, AMBERSTONE) did ONLY inbox triage - do NOT redo:
+- Both unread notes read; neither owed a reply. 0820 SS ANSWER to MAIN = TERMINAL
+  no-reply; 0841 SS REPORT to MAIN (kit item-5 closing line) = "No reply needed", ask
+  targets MAIN. No outbound note spent; OutboundCap untouched.
+- Acked via kit fleet_inbox.mark_seen (ledger + NOREPLY verdicts) + rc_facts
+  --mark-inbox-seen (524 recorded).
+- WATCH: a future kit version will likely change the /done closing line to "Done ritual
+  processed, safe to clear and continue" (SS operator order 2026-10-05; SS asked MAIN to
+  carry it in FLEET item 5). Do NOT pre-edit the byte-pinned block; adopt on MAIN's ship.
+
+Shipped 2026-10-05 session (do NOT redo; pushed 66a2e43c1..5c2cadb4e, LEDGER 1670):
 - 5c2cadb4e FLEET-KIT v8 adopted (MAIN 2237 v6 + 0215 v7 + 0230 roster + 0310 v8), one
   squashed commit: ops/fleet_kit 12 files hash-equal, FLEET-COMMON block re-embedded,
   ops/loop/lanes.py on fleet_lanes cap 3 (lock dir resolved vs main tree), lane-<i>.json
@@ -42,18 +63,16 @@ Shipped this session 2026-10-05 (do NOT redo; pushed 66a2e43c1..5c2cadb4e, LEDGE
   is unattended until the fold lands.
 - Adjudicated: agreement counterparty swap DEFERRED to the single v8 record (swap mints a
   fresh 32-hop budget outside the kit). Reverses if MAIN/operator rules otherwise.
-- Inbox: all notes read and marked seen (rc_facts --mark-inbox-seen run).
 
 Carried forward (not acted on yet):
-- Post-reboot item from the previous hand-off: operator restarted to enable Windows Sandbox +
-  WSL. RC health came back (pid 15012 alive, last_reload_ok true) and DS :8860 ok at session
-  start; WSL NOT probed. If WSL is up, Y-45 phone push (WSL + ntfy) is unblocked.
+- Post-reboot item: operator restarted to enable Windows Sandbox + WSL. RC health came back
+  and DS :8860 ok; WSL NOT probed. If WSL is up, Y-45 phone push (WSL + ntfy) is unblocked.
 - 5b: before the first v8 lane fire, stop any old-layout queue_loop (it only knows 0.lock).
   Main tree lanes/0.lock (pid 7676) is stale/reclaimable; RUNNING.lock (pid 22888) dead.
 - stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted
-  capitalised word could read as a channel code. New observation: a per-sentence finding
-  cannot be withdrawn, so relaying a subagent's numbers re-flags every Stop until the
-  session's own run/commit exists - attribute with backticks.
+  capitalised word could read as a channel code. A per-sentence finding cannot be
+  withdrawn, so relaying a subagent's numbers re-flags every Stop until the session's own
+  run/commit exists - attribute with backticks.
 - 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests RED - operator said
   LEAVE; do not fix.
 - Leftover: progress files ops/loop/control/progress/rm415_fix.json, fleet_v6_slice_c.json,
@@ -89,8 +108,8 @@ Carried forward (not acted on yet):
   worktree-agent-a0a31cf1b05f41e28 (superseded by kit v4), RM-256 / RM-297b branches,
   worktree-agent-a4cfeb79e86b5bf30 (merged as 7e32c2933), detached C:/rc-worktrees/
   done-20261004. Safe to remove: worktree-agent-a8139d07d888c2f11,
-  worktree-agent-a38e5131a8250fc5c, worktree-agent-ac142e29ad5b833d1, plus this session's
-  six listed above. 15 agent worktrees present at wrap.
+  worktree-agent-a38e5131a8250fc5c, worktree-agent-ac142e29ad5b833d1, plus the six from the
+  2026-10-05 squash listed above. 15 agent worktrees present at the 2026-10-05 wrap.
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - Kit gaps reported to MAIN (carried to v7+ on MAIN's record): public launch function (RC
@@ -104,23 +123,26 @@ Carried forward (not acted on yet):
 - Lane-widget notes: "(resets 0m)", mtime-only freshness, config cache; RSC inbox_status
   "limit" at 0/120. Stale checklist renders "- checklist STALE" (not bare STALE) - reverses
   if MAIN wants the literal.
-- Box load: no local full suite while 2+ others run (OOM / 60m timeouts measured again
-  this session). CI is the full gate.
+- Box load: no local full suite while 2+ others run (OOM / 60m timeouts measured again).
+  CI is the full gate.
 - ROADMAP top open: EXTERNAL-LIFT INTAKE band 1 (BACKLOG.md "External-lift intake"),
   RM-486, RM-488/489, RM-479, RM-482. ROADMAP budget thin (89.5%).
+- Anomalies standing at this wrap: RC-Phase3-Supervisor last_result=2 (uninvestigated);
+  RC-InboxResponder ENABLED-but-must-stay-DISARMED (resolves at F when it is disabled).
 
 Context: rc_facts session hook; ops/runtime/inbox_responder_agreement.json (counterparties
 still CS LL LW RSC SS - leave until F); ops/moon_sync_repos.json (+ .bak, gitignored);
-ops/fleet_kit/MANIFEST.json version 8. Next free LEDGER id 1671.
+ops/fleet_kit/MANIFEST.json version 8. Next free LEDGER id 1671 (session 99 appended none).
 
 Acceptance: F) tick reads RC's inbox unattended (a fire's progress/lane-<i>.json shows the
 inbox step), single agreement record in place, RC-InboxResponder disabled, ANSWER to MAIN
 sent; H) CI green on main except the 4 operator-left RM-172 subtests.
 
-Status (2026-10-05 wrap): pushed 66a2e43c1..5c2cadb4e plus this docs/hand-off commit.
-Local gate: ruff clean, hygiene 14 passed, drift_guard 0 breaches. CI for 5c2cadb4e: pending
-at wrap (ci run 37302052616, docs-guards 37302052480). RC health.json pid 15012 alive true,
-last_reload_ok true; mode client, lcu phase None. No intent pending, no steers, no monitors
-armed, nothing in flight. Session file ~2 MB.
+Status (2026-10-07 wrap, session 99): no code authored; commits this wrap = WAKEUP_NOTES +
+history_notes prune + this hand-off (docs-only). Local gate: ruff ALL CHECKS PASSED,
+hygiene 14 passed, drift_guard 0 breaches. CI: pending at wrap for the hand-off commit
+(collect with H). RC health: pid 14496 alive, last_reload_ok true, mode client, no game
+(mode_key client, lcu phase None). DS :8860 ok patch 16.19.1. Session file ~0.7 MB.
+ddragon 16.20.1 refresh deliberately left uncommitted (see the drift item above).
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
