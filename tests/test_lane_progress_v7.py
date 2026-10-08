@@ -150,6 +150,53 @@ def test_an_update_after_four_completions_is_printed(tmp_path):
     assert "T5" in seen[-1] and "T1" not in seen[-1]
 
 
+# ---- kit v10: checklist printing goes through fleet_checklist.emit() --------
+# MAIN 2026-10-08 0839 ORDER step 5. The fire's sinks are queue_loop._emit and
+# loop_controller.log (print() under pythonw, stdout redirected to a cp1252
+# file) and lane_launcher's logger; the U+2610 box cannot encode on the first
+# two, and a raise from prog.start() escapes launch_lane before its release.
+
+def test_checklist_printing_goes_through_the_kits_emit(tmp_path, monkeypatch):
+    calls = []
+    real = lp.fleet_checklist.emit
+
+    def spy(text, stream=None):
+        calls.append(text)
+        return real(text, stream)
+
+    monkeypatch.setattr(lp.fleet_checklist, "emit", spy)
+    seen = []
+    p = lp.LaneProgress("loop", 2, [("T1", "Task 1")], root=tmp_path, emit=seen.append)
+    text = p.start()
+    assert calls == [text] and seen == [text]
+
+
+def test_a_cp1252_sink_gets_the_ascii_box_and_never_fails_the_fire(tmp_path):
+    seen = []
+
+    def cp1252_print(line):
+        line.encode("cp1252")  # U+2610 raises UnicodeEncodeError, as print() does
+        seen.append(line)
+
+    p = lp.LaneProgress("loop", 2, [("T1", "Task 1")], root=tmp_path, emit=cp1252_print)
+    text = p.start()
+    assert BOX in text, "the returned block keeps the glyph"
+    assert seen == [text.replace(BOX, "[ ]")]
+    assert _doc(tmp_path, "loop")["status"] == "running"
+
+
+def test_a_dead_sink_never_fails_the_fire(tmp_path):
+    def dead(_line):
+        raise OSError("log handle closed")
+
+    p = lp.LaneProgress("loop", 2, [("T1", "Task 1"), ("T2", "Task 2")],
+                        root=tmp_path, emit=dead)
+    p.start()
+    p.complete("T1")
+    p.fail("worker died")
+    assert _doc(tmp_path, "loop")["status"] == "failed"
+
+
 # ---- the lane runner: launch_lane writes lane-<i>.json ---------------------
 
 launcher = _load("rc_loop_lane_launcher_v7_test",
