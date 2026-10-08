@@ -91,10 +91,27 @@ $routeArgs += @("--", "--dangerously-skip-permissions")
 # 5.1 (MEASURED 2026-08-02, a mixed-encoding lane log). The reader stays
 # tolerant of the old shape for logs already on disk
 # (dashboard/routes_loop_status._decode_lane_log).
-& $pyC $route @routeArgs *>&1 | Out-File $Log -Append -Encoding utf8
+# FAIL CLOSED WHEN PYTHON ITSELF CANNOT START. A command PowerShell cannot
+# resolve or launch (no interpreter, PATHEXT missing) sets NO exit code, and
+# `exit $null` is exit 0 - MEASURED on PS 5.1: the lane logged "code=" and
+# read as a clean run. The automatic variable is cleared first, so a stale
+# value can never stand in for this call's, and anything that is not an
+# integer afterwards is a refusal (exit 3, the old route's code).
+$global:LASTEXITCODE = $null
+try {
+  & $pyC $route @routeArgs *>&1 | Out-File $Log -Append -Encoding utf8
+} catch {
+  "lane route error $(Get-Date -Format s): $($_.Exception.Message)" | Out-File $Log -Append -Encoding utf8
+}
 $code = $LASTEXITCODE
+if ($null -eq $code -or "$code" -notmatch '^-?\d+$') {
+  "lane refused $(Get-Date -Format s) - python could not start the fleet route ($pyC, exit code '$code'), nothing started" | Out-File $Log -Append -Encoding utf8
+  exit 3
+}
 if ($code -eq 3) {
-  "lane refused $(Get-Date -Format s) - fleet route refused (exit 3), nothing started; see logs\headless_route.log and ops\loop\control\inbox_status.json" | Out-File $Log -Append -Encoding utf8
+  # fleet_route logs every refusal (headless_env gate and kit alike) through
+  # headless_env._log_refusal, in the MAIN checkout this runner lives in.
+  "lane refused $(Get-Date -Format s) - fleet route refused (exit 3), nothing started; see logs\headless_route.log in the main checkout" | Out-File $Log -Append -Encoding utf8
   exit 3
 }
 "lane exit $(Get-Date -Format s) code=$code" | Out-File $Log -Append -Encoding utf8
