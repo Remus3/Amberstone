@@ -21,13 +21,27 @@ concurrency:
   group: patch-day-ddragon-sync
   cancel-in-progress: false
 
+# Least privilege (supply-chain order, 2026-10-05). The workflow default is
+# READ, so any job added later inherits nothing it did not ask for.
+permissions:
+  contents: read
+
 jobs:
   patch-day-check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The ONE elevation in this file, at job level: the "Commit and push data
+    # updates" step below commits the refreshed DDragon data and runs
+    # `git push origin main` with the workflow token, which needs
+    # contents: write. Nothing else in the job writes, and no other scope is
+    # granted.
+    permissions:
+      contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      # SHA-pinned, tag in the trailing comment (supply-chain order,
+      # 2026-10-05); Dependabot's github-actions entry keeps both current.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 1
 

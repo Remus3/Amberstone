@@ -39,6 +39,9 @@ on:
       - 'tests/test_ci_docs_guard_coverage.py'
       - 'tools/sanitize_agent6_reports.py'
       - '.github/workflows/docs-guards.yml'
+      # Its hashed install set: a Dependabot bump of this file must run the
+      # one workflow that installs it, or a bad pin waits for the next docs push.
+      - '.github/ci/requirements-docs-guards.txt'
   pull_request:
     branches: [main]
     paths:
@@ -47,6 +50,7 @@ on:
       - 'tests/test_ci_docs_guard_coverage.py'
       - 'tools/sanitize_agent6_reports.py'
       - '.github/workflows/docs-guards.yml'
+      - '.github/ci/requirements-docs-guards.txt'
   workflow_dispatch:
 
 # A newer docs push supersedes an in-flight one, same shape as ci.yml.
@@ -75,17 +79,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      # SHA-pinned, tag in the trailing comment (supply-chain order,
+      # 2026-10-05); Dependabot's github-actions entry keeps both current.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # The selector shells out to `git ls-files`, which needs the real
           # index - a fetch-depth of 1 still provides one, but be explicit
           # that this job is git-dependent.
           fetch-depth: 1
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: .github/ci/requirements-docs-guards.txt
 
       - name: Auto-repair non-ASCII in cloud-routine audit reports
         # push only. A pull_request run must never write, and a fork PR is
@@ -124,16 +131,26 @@ jobs:
           git push origin "HEAD:${{ github.ref_name }}"
           echo "::notice::auto-repaired and pushed; the guards below now run on the fixed tree"
 
-      - name: Install minimal test deps
+      - name: Install minimal test deps (hash-pinned)
         run: |
-          python -m pip install --upgrade pip
           # MEASURED 2026-07-27: not one of the 48 currently-selected modules
           # imports the runtime stack (anthropic / PIL / cv2 / websockets /
           # portalocker / json5 / psutil), so this stays deliberately small -
           # this job runs on ~55% of commits. pyyaml is for the workflow-shape
           # assertions in tests/test_ci_docs_guard_coverage.py; without it
-          # those degrade to skips, and a skipped test is a green tick.
-          pip install pytest pytest-asyncio pytest-timeout pyyaml "pydantic>=2.0"
+          # those degrade to skips, and a skipped test is a green tick - so the
+          # import below fails the step instead if the hashed set loses it.
+          #
+          # HASH-PINNED (supply-chain order, 2026-10-05):
+          # .github/ci/requirements-docs-guards.txt is generated from the .in
+          # beside it (regeneration command in its header) and installed with
+          # --require-hashes. pydantic now follows the runtime pin in
+          # requirements.txt instead of floating at ">=2.0". The old
+          # `pip install --upgrade pip` line is gone: an unpinned download of
+          # the installer itself, and the runner's pip already supports
+          # --require-hashes.
+          pip install --require-hashes -r .github/ci/requirements-docs-guards.txt  # pytest pytest-asyncio pytest-timeout pyyaml pydantic
+          python -c "import yaml, pytest, pytest_timeout, pytest_asyncio, pydantic"
 
       - name: Derive the md-reading guard set
         id: select

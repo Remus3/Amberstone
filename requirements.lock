@@ -44,7 +44,7 @@ mitmproxy-windows==0.12.9
 mitmproxy_rs==0.12.9
 msgpack==1.1.2
 packaging==26.1
-pillow==12.2.0
+pillow==12.3.0
 playwright==1.59.0
 pluggy==1.6.0
 portalocker==3.2.0

@@ -46,6 +46,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}${{ github.event_name == 'workflow_dispatch' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
+# Least privilege (supply-chain order, 2026-10-05). Every job here only READS
+# the repository - none commits, comments, uploads or publishes - so the
+# workflow token is read-only for all of them and no job is elevated. A job
+# added later that truly needs a write scope gets it at JOB level, for that job
+# only; never widen this block.
+permissions:
+  contents: read
+
 # CI-ONLY THROWAWAY, and deliberately not a repo secret (2026-09-06).
 #
 # `f8323887e` untracked config/vision_token.txt, which had been a live 32-hex
@@ -94,30 +102,45 @@ jobs:
     # the step-fires-first invariant real rather than nominal.
     timeout-minutes: 95
     steps:
-      - uses: actions/checkout@v6
+      # Every `uses:` is pinned to a full commit SHA with its release tag as a
+      # trailing comment (supply-chain order, 2026-10-05). Dependabot's
+      # github-actions entry keeps the SHA and the comment current together.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # FULL history. See the long note on the `check` job's checkout
           # below - this job runs the same `pytest tests/` tree and fails the
           # same 12 ways without it.
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install full runtime + test deps
+          cache-dependency-path: .github/ci/requirements-ci.txt
+      - name: Install full runtime + test deps (hash-pinned)
         run: |
-          python -m pip install --upgrade pip
           # The full tree imports the runtime stack (websockets / PIL / portalocker
           # / json5 / anthropic), so the nightly installs requirements.txt - unlike
           # the pure-Python `check` job which runs a minimal ImportError-guarded subset.
-          pip install -r requirements.txt
+          #
+          # HASH-PINNED (supply-chain order, 2026-10-05). .github/ci/requirements-ci.txt
+          # is generated from .github/ci/requirements-ci.in, which includes the
+          # root requirements.txt and adds the test-only tools; every package,
+          # transitives included, carries an exact pin and its sha256, and pip
+          # refuses anything else. The regeneration command is in the .in
+          # header. The old `pip install --upgrade pip` line is gone: it was an
+          # unpinned download of the installer itself, and the runner's pip
+          # already supports --require-hashes.
+          #
           # pyyaml is test-only (not in requirements.txt) and parses
           # .github/workflows/*.yml for the workflow-contract guards. MEASURED
           # 2026-08-04 (RM-156): without it, tests/test_ci_docs_guard_coverage.py
           # AND tests/test_ci_job_timeout_headroom_rm156.py both degrade to
           # skips in THIS job while the `check` job below runs them for real -
           # so the nightly reported a green tick over assertions it never made.
-          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright pyyaml
+          # The import below makes "the hashed set still carries pyyaml" a
+          # checked fact rather than a comment.
+          pip install --require-hashes -r .github/ci/requirements-ci.txt  # requirements.txt + pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright mypy pyyaml
+          python -c "import yaml, pytest, xdist, pytest_timeout, pytest_asyncio"
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
@@ -223,7 +246,7 @@ jobs:
     # the floor here; 75 keeps the same variance margin the 65 had.
     timeout-minutes: 95
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # FULL history, and it is load-bearing, not defensive.
           #
@@ -268,14 +291,14 @@ jobs:
           # check out with fetch-depth: 0.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: .github/ci/requirements-ci.txt
 
-      - name: Install runtime + test deps
+      - name: Install runtime + test deps (hash-pinned)
         run: |
-          python -m pip install --upgrade pip
           # requirements.txt, as of 2026-07-28 (R217-U1). This job used to install
           # a deliberately minimal set, on the reasoning that the only tests it
           # ran were pure-Python subsets. That reasoning expired the moment the
@@ -285,21 +308,65 @@ jobs:
           # green tick. Installing the real stack is what makes the promotion
           # mean anything - the nightly job has installed it for this exact
           # reason since it was written.
-          pip install -r requirements.txt
+          #
+          # HASH-PINNED (supply-chain order, 2026-10-05): the same hashed set as
+          # nightly-full-suite above - .github/ci/requirements-ci.txt, generated
+          # from .github/ci/requirements-ci.in (root requirements.txt + the
+          # test-only tools), installed with --require-hashes. The regeneration
+          # command is in the .in header. `pip install --upgrade pip` is gone
+          # for the same reason as above.
           # pyyaml parses .github/workflows/*.yml for the docs-guard contract
           # test below, and is NOT in requirements.txt (it is test-only).
-          # Without it those assertions degrade to skips.
+          # Without it those assertions degrade to skips, so the import below
+          # fails the step instead if the hashed set ever loses it.
           # json5 and pydantic ARE in requirements.txt now, so they are no
           # longer pinned here - one source of truth for a version, not two.
-          pip install pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright mypy pyyaml
+          pip install --require-hashes -r .github/ci/requirements-ci.txt  # requirements.txt + pytest pytest-asyncio pytest-timeout pytest-xdist ruff playwright mypy pyyaml
+          python -c "import yaml, pytest, xdist, pytest_timeout, pytest_asyncio, mypy"
+
+      # The runtime pins live in requirements.txt; CI installs the HASHED copy
+      # in .github/ci/. A bump that edits one and not the other (a partial
+      # Dependabot PR, a hand edit without the regeneration command) would let
+      # CI test a different version than the box runs. Fail that here, in the
+      # first minute, naming the package.
+      - name: hashed CI install sets agree with requirements.txt
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+          def pins(path):
+              out = {}
+              for line in pathlib.Path(path).read_text(encoding="utf-8").splitlines():
+                  m = re.match(r"([A-Za-z0-9_.-]+)==([^\s;\\]+)", line)
+                  if m:
+                      out[re.sub(r"[-_.]+", "-", m.group(1)).lower()] = m.group(2)
+              return out
+          root = pins("requirements.txt")
+          assert root, "requirements.txt yielded no pins - the parser is wrong, not the file"
+          bad = []
+          for hashed in sorted(pathlib.Path(".github/ci").glob("requirements-*.txt")):
+              got = pins(hashed)
+              for name, ver in sorted(root.items()):
+                  if name in got and got[name] != ver:
+                      bad.append(f"{hashed}: {name}=={got[name]} but requirements.txt pins {ver}")
+              if hashed.name == "requirements-ci.txt":
+                  bad += [f"{hashed}: missing {n} (it installs requirements.txt)" for n in sorted(root) if n not in got]
+          print("\n".join(bad) or "hashed CI install sets agree with requirements.txt")
+          sys.exit(1 if bad else 0)
+          PY
 
       # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
       # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
       # skipped. `playwright install` stays idempotent - it detects the cached
       # browser and re-downloads only on a Playwright upgrade (refreshing the
       # cache post-job).
+      #
+      # NOT hash-pinned, and cannot be: `playwright install` fetches the browser
+      # build from Playwright's own CDN, not from PyPI, so there is no
+      # requirements-file hash to carry. Its version is fixed transitively by
+      # the hash-pinned `playwright` wheel above, which names the exact browser
+      # revision it downloads.
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-ms-playwright-v1
@@ -702,12 +769,12 @@ jobs:
     # narrowed COUNT are the only things this comment is allowed to carry.
     timeout-minutes: 65
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 1
           lfs: false
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
 
