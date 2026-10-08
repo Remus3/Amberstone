@@ -131,13 +131,48 @@ def test_cli_next_without_counter_fails_loud(tmp_path, capsys):
     assert sc.main(["--next"], path=_write(tmp_path, "Next action: x\n")) == 1
 
 
+# Kit v10 (MAIN 2026-10-08 0839 ORDER step 5): checklist printing uses
+# fleet_checklist.emit(), never print(). A cp1252 stream gets "[ ]" for the box
+# (the SessionStart harness sets PYTHONUTF8, so the hook keeps U+2610) and a
+# pythonw process (no stdout) prints nothing; neither raises.
+
 def test_emit_survives_a_cp1252_stdout(monkeypatch):
     raw = io.BytesIO()
-    wrapper = io.TextIOWrapper(raw, encoding="cp1252")
+    wrapper = io.TextIOWrapper(raw, encoding="cp1252", newline="\n")
     monkeypatch.setattr(sys, "stdout", wrapper)
-    sc._emit(f"{BOX} /done")
+    assert sc.emit(f"{BOX} /done") == "[ ] /done"
     wrapper.flush()
+    assert raw.getvalue() == b"[ ] /done\n"
+
+
+def test_emit_keeps_the_box_on_a_utf8_stdout(monkeypatch):
+    raw = io.BytesIO()
+    wrapper = io.TextIOWrapper(raw, encoding="utf-8", newline="\n")
+    monkeypatch.setattr(sys, "stdout", wrapper)
+    assert sc.emit(f"{BOX} /done") == f"{BOX} /done"
     assert raw.getvalue() == f"{BOX} /done\n".encode()
+
+
+def test_emit_under_pythonw_prints_nothing_and_never_raises(monkeypatch):
+    monkeypatch.setattr(sys, "stdout", None)
+    assert sc.emit(f"{BOX} /done") is None
+    assert sc.main(["--show"], path=ROOT / "missing-handoff.txt") == 0
+
+
+def test_emit_is_the_kits_emit(monkeypatch):
+    kit = sc.kit_checklist()
+    assert kit is not None and callable(getattr(kit, "emit", None)), "kit v10 emit()"
+    calls = []
+    monkeypatch.setattr(kit, "emit", lambda text, stream=None: calls.append(text) or text)
+    sc.emit("x")
+    assert calls == ["x"]
+
+
+def test_cli_prints_through_emit(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(sc, "emit", lambda text, stream=None: calls.append(text) or text)
+    assert sc.main(["--show"], path=_write(tmp_path, HANDOFF)) == 0
+    assert calls and calls[0].startswith("Session 41 checklist")
 
 
 def test_tracked_handoff_carries_the_counter():
@@ -166,3 +201,50 @@ def test_rc_facts_prints_the_block_first(tmp_path, monkeypatch):
     assert text.startswith("Session 41 checklist\n"), text[:200]
     assert f"{BOX} /done" in text
     assert text.index(f"{BOX} /done") < text.index("# RC live state")
+
+
+def _rc_facts_world(tmp_path, monkeypatch):
+    from tools import rc_facts
+
+    health = tmp_path / "health.json"
+    health.write_text('{"pid": 1, "alive": true, "last_reload_ok": true}', encoding="utf-8")
+    monkeypatch.setattr(rc_facts, "_HEALTH", health)
+    monkeypatch.setattr(rc_facts, "_APP", tmp_path)
+    monkeypatch.setattr(rc_facts, "_HANDOFF", _write(tmp_path, HANDOFF))
+    monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
+    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
+    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: None)
+    monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
+    monkeypatch.setattr(rc_facts, "_inbox_section", lambda *a, **k: ([], [], set()))
+    return rc_facts
+
+
+def test_rc_facts_prints_the_block_through_emit(tmp_path, monkeypatch):
+    rc_facts = _rc_facts_world(tmp_path, monkeypatch)
+    calls = []
+    real = sc.emit
+    monkeypatch.setattr(sc, "emit", lambda text, stream=None: calls.append(text) or real(text, stream))
+    buf = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", buf)
+    assert rc_facts.main(session=None) == 0
+    assert len(calls) == 1 and calls[0].startswith("Session 41 checklist")
+    assert buf.getvalue().startswith(calls[0] + "\n")
+
+
+def test_rc_facts_on_a_cp1252_stdout_keeps_the_block_and_the_probe(tmp_path, monkeypatch):
+    rc_facts = _rc_facts_world(tmp_path, monkeypatch)
+    raw = io.BytesIO()
+    wrapper = io.TextIOWrapper(raw, encoding="cp1252", newline="\n")
+    monkeypatch.setattr(sys, "stdout", wrapper)
+    assert rc_facts.main(session=None) == 0
+    wrapper.flush()
+    text = raw.getvalue().decode("cp1252")
+    assert text.startswith("Session 41 checklist\n")
+    assert "[ ] /done" in text and text.index("[ ] /done") < text.index("# RC live state")
+
+
+def test_rc_facts_under_pythonw_does_not_raise(tmp_path, monkeypatch):
+    rc_facts = _rc_facts_world(tmp_path, monkeypatch)
+    monkeypatch.setattr(sys, "stdout", None)
+    assert rc_facts.main(session=None) == 0
