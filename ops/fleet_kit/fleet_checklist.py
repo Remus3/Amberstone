@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
 """Fleet kit: the session checklist (FLEET-COMMON item 13, operator order 2026-10-05).
 
 Every session kind - interactive, headless lane, loop tick, inbox responder -
