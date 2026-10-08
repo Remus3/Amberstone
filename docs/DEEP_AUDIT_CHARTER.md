@@ -14,9 +14,10 @@ documentation, professionalism). Run to COMPLETION across as many sessions as ne
 
 ## Model / harness
 
-- Fable 5, MAX effort (effortLevel xhigh set in .claude/settings.json), 1M context: first
-  cycle PROBE the 1M model id (claude-fable-5[1m]) and set it in .claude/settings.json
-  "model" ONLY after verifying the session accepts it (a bad id strands the unattended run).
+- Fable 5, MAX effort, 1M context: first cycle PROBE the 1M model id (claude-fable-5[1m])
+  and pass it per run (`claude --model ...`) ONLY after verifying the session accepts it
+  (a bad id strands the unattended run). NEVER pin "model" in .claude/settings.json: a
+  project pin overrides the operator's /model choice on every restart (operator 2026-10-08).
 - Adjust claude mode usage as required (caveman stays default; drop to normal only where
   the charter demands readable reporting).
 
