@@ -15,7 +15,9 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > /done's ONLY chat output is the single line `Done ritual complete, safe to clear`,
 > or, when something stopped the ritual, one line `/done stopped: <reason>` instead.
 > No banner, no review, no recap, no checklist, and NEVER the hand-off or a
-> next-session prompt in chat. Everything a section below used to "surface" or
+> next-session prompt in chat. The LAST act before that line is the kit done
+> marker `python ops/fleet_kit/fleet_done.py mark --session <n> --status done`
+> (FLEET-KIT v9 item 15; section 9). Everything a section below used to "surface" or
 > "report in the banner" goes into `RC-NEXT-SESSION.txt` (section 10) instead.
 > Run long steps (CI watch, suites) as background commands so the pane shows only
 > the compact summaries.
@@ -276,6 +278,18 @@ The whole chat output of /done is exactly one line, printed LAST, after section 
 ```
 Done ritual complete, safe to clear
 ```
+
+**Done marker - the LAST act, immediately before that line (FLEET-KIT v9 item 15; MAIN 2026-10-07 2354 ORDER).** After section 10's hand-off is committed and READ BACK (the last commit and any last push are done), run from the repo root:
+
+```
+python ops/fleet_kit/fleet_done.py mark --session <n> --status done
+```
+
+- `<n>` is THIS session's number (the `Session <n> checklist` counter); the hand-off now carries `SESSION: <n+1>`. Add `--bg <N>` when section 3 recorded N background tasks still running (the marker is then not safe to clear).
+- The kit reads HEAD and hashes `RC-NEXT-SESSION.txt` ITSELF and writes `ops/loop/control/session_done.json` (gitignored) in the MAIN checkout. The project Stop hook (`ops/fleet_kit/fleet_done.py stop-hook`) turns a valid marker into the tab title `RC DONE S<n> - safe to clear`.
+- Nothing is committed or edited after the mark: a later commit or hand-off edit invalidates it (that is the point - it detects work after /done).
+- A step that stopped the ritual still calls it, with `--status failed --reason "<the step>"`, and then prints `/done stopped: <reason>`. If `mark --status done` exits 1 (the kit downgraded it to failed: hand-off or HEAD unreadable), print `/done stopped: done marker failed` instead of the completion line.
+- Its one `session_done S<n> ...` line is tool output, not chat output.
 
 If something stopped the ritual (commit blocked, push failed, frozen-file or secret refusal, mid-game), print instead the one line `/done stopped: <reason>` and nothing else. Every status figure the old banner carried (commits, push range, gate, CI, RC health, WAKEUP_NOTES, living docs, session size) goes into `RC-NEXT-SESSION.txt`, never into chat.
 
