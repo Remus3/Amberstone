@@ -503,3 +503,19 @@ def test_loop_controller_cycle_checklist_starts_with_the_inbox(tmp_path):
     body = src[src.index("def main():"):]
     assert "inbox_tick.fire_step(prog" in body
     assert body.index("prog.start()") < body.index("inbox_tick.fire_step(prog")
+
+
+def test_cli_main_writes_last_summary_for_scheduled_runs(tmp_path, monkeypatch):
+    # Item F: RC-InboxResponder now runs this CLI under pythonw (no stdout), so
+    # the summary file is the only read-back of a scheduled fire.
+    fake = {"ts": "t", "unseen": 3, "armed": True, "errors": []}
+    monkeypatch.setattr(tick_mod, "tick", lambda root, **kw: dict(fake))
+    assert tick_mod.main(["--root", str(tmp_path)]) == 0
+    last = json.loads((tmp_path / tick_mod.LAST_REL).read_text(encoding="ascii"))
+    assert last["unseen"] == 3 and last["armed"] is True
+
+
+def test_cli_main_dry_writes_no_summary(tmp_path, monkeypatch):
+    monkeypatch.setattr(tick_mod, "tick", lambda root, **kw: {"unseen": 0})
+    assert tick_mod.main(["--root", str(tmp_path), "--dry"]) == 0
+    assert not (tmp_path / tick_mod.LAST_REL).exists()

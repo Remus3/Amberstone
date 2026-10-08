@@ -146,7 +146,8 @@ TASK_PROBE_PS = (
     "next_run = $(if ($i.NextRunTime) { $i.NextRunTime.ToString('o') }); "
     "triggers = (($_.Triggers | ForEach-Object { $_.CimClass.CimClassName }) -join ';'); "
     "time_limit = [string]$_.Settings.ExecutionTimeLimit; "
-    "repetition = (($_.Triggers | ForEach-Object { $_.Repetition.Interval }) -join ';') "
+    "repetition = (($_.Triggers | ForEach-Object { $_.Repetition.Interval }) -join ';'); "
+    "actions = (($_.Actions | ForEach-Object { [string]$_.Arguments }) -join ';') "
     "} } | ConvertTo-Json -Compress"
 )
 
@@ -515,6 +516,59 @@ def inbox_agreement_state(root, now: float) -> tuple[bool, str]:
         return False, detail or "refused"
     return True, f"expires {record.get('expires')}"
 
+
+# Item F (2026-10-07): RC-InboxResponder was REPOINTED (not disabled) onto the
+# v8 kit tick, ops/loop/inbox_tick.py (FLEET-COMMON 14a: a tree with no lane
+# loop keeps one responder). A task whose action runs the tick is judged by the
+# tick's OWN validator against the ONE v8 record; any other action keeps the
+# legacy runner validator above, so the inverted polarity is unchanged.
+INBOX_TICK_REL = Path("ops/loop/inbox_tick.py")
+_INBOX_TICK_MOD = "rc_facts_inbox_tick"
+
+
+def _runs_inbox_tick(task: dict) -> bool:
+    return INBOX_TICK_REL.name in str(task.get("actions") or "")
+
+
+def _load_inbox_tick():
+    mod = sys.modules.get(_INBOX_TICK_MOD)
+    if mod is not None:
+        return mod
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(_INBOX_TICK_MOD, _ROOT / INBOX_TICK_REL)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[_INBOX_TICK_MOD] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except BaseException:
+        sys.modules.pop(_INBOX_TICK_MOD, None)
+        raise
+    return mod
+
+
+def inbox_tick_agreement_state(root, now: float) -> tuple[bool, str]:
+    """(armed, detail) for the v8 tick's agreement record. FAILS CLOSED.
+
+    The tick's own STOP_REL flag first, then inbox_tick.load_roster +
+    inbox_tick.load_agreement - the tick's own functions, no second parser.
+    """
+    try:
+        mod = _load_inbox_tick()
+        root = Path(root)
+        if (root / mod.STOP_REL).exists():
+            return False, "stop_flag"
+        participants, retired = mod.load_roster(root)
+        record, detail = mod.load_agreement(
+            root, participants=participants, retired=retired,
+            now=datetime.fromtimestamp(now),
+        )
+    except Exception as exc:  # noqa: BLE001 - fail closed, never crash the banner
+        return False, f"v8 agreement check failed ({type(exc).__name__})"
+    if record is None:
+        return False, f"v8 {detail or 'refused'}"
+    return True, f"v8 record, inbox tick, expires {record.get('expires')}"
+
 # .ToString('o') emits SEVEN fractional digits; datetime.fromisoformat wants at
 # most six. Trimming beats a try/except that silently reports UNKNOWN for every
 # timestamp the probe itself produced.
@@ -828,7 +882,8 @@ def task_health_lines(
                 root_caused.add(name)
                 continue
             code = _as_int(t.get("last_result"))
-            armed, why = inbox_agreement_state(root, now)
+            judge = inbox_tick_agreement_state if _runs_inbox_tick(t) else inbox_agreement_state
+            armed, why = judge(root, now)
             if armed:
                 ack_lines.append(
                     f"  - {name}: ARMED by agreement, {why} "
