@@ -50,6 +50,20 @@ if str(_OPS_LOOP) not in sys.path:
 _PROD_CFG = json.loads((_OPS_LOOP / "config.json").read_text(encoding="utf-8"))
 
 
+def _prod_control_dir() -> Path:
+    """The production control dir, resolved by the controller's own rule.
+
+    Mirrors loop_controller ``CTL = _cfg_path("control_dir", _HERE / "control")``:
+    an ABSOLUTE ``control_dir`` in config.json is a per-host override, anything
+    else (absent, relative) falls back to ``ops/loop/control``. The key is
+    optional since the 2026-10-09 root reorg (MAIN 2246 sec 3) took the
+    machine path out of the tracked config, so never index it directly.
+    """
+    raw = _PROD_CFG.get("control_dir")
+    p = Path(raw) if raw else None
+    return p if p is not None and p.is_absolute() else _OPS_LOOP / "control"
+
+
 @pytest.fixture
 def lc(monkeypatch, tmp_path):
     """Import (or re-import) the controller module, then redirect its module-
@@ -184,14 +198,21 @@ class TestGitErrorPathDoesNotPolluteProductionLog:
     head error-path tests). The lc fixture must redirect CTL to tmp so no
     test mutates the real loop log (mirror conftest SHADOW_PATH, item 386)."""
 
+    def test_prod_control_dir_is_the_controllers_own_ctl(self):
+        """Anchor for the two checks below: the path they guard must be the
+        one an unredirected controller really writes to, or they pass
+        vacuously against a directory nothing logs into."""
+        mod = importlib.reload(importlib.import_module("loop_controller"))
+        assert mod.CTL.resolve() == _prod_control_dir().resolve()
+
     def test_lc_fixture_redirects_ctl_off_production(self, lc):
-        prod = Path(_PROD_CFG["control_dir"]).resolve()
+        prod = _prod_control_dir().resolve()
         assert lc.CTL.resolve() != prod, (
             "lc fixture must redirect CTL off the production control dir so "
             "error-path log() writes never touch the real controller.log")
 
     def test_git_error_path_does_not_touch_production_log(self, lc, monkeypatch):
-        prod_log = Path(_PROD_CFG["control_dir"]) / "controller.log"
+        prod_log = _prod_control_dir() / "controller.log"
         before = prod_log.stat().st_size if prod_log.exists() else -1
 
         def fake_run(*args, **kwargs):
