@@ -3,10 +3,10 @@ NEXT SESSION
 SESSION: 105
 Next action: MAIN 2026-10-08-2246 REPO-REVIEW ORDER sections 2-8 (section 1 = kit v13 DONE in
 session 105, fd65b8002; its row stays OPEN in inbox_work.jsonl until the ONE later ANSWER covers 2-8,
-then close it with `inbox_tick.py --done`). Read the ORDER in moon_sync_inbox/ by section. Start with
-section 4's DEPENDABOT-1 = E2 below (NEW RULE from that ORDER: never the GitHub merge button or
-`gh pr merge`; land the bump locally as an operator commit, cherry-pick `--reset-author`, through
-fleet_gitlock). The operator CONFIRMED acts A and B in chat 2026-10-09 (LEDGER 1696):
+then close it with `inbox_tick.py --done`). Read the ORDER in moon_sync_inbox/ by section. Section
+4's DEPENDABOT-1 = E2 is DONE (C1, LEDGER 1697, 0be91102b; RULE from that ORDER stays: never the GitHub
+merge button or `gh pr merge`; land a bump locally as an operator commit, cherry-pick `--reset-author`
+or apply the diff, through fleet_gitlock). The operator CONFIRMED acts A and B in chat 2026-10-09 (LEDGER 1696):
 - A (section 5 sidecar move) DONE: lane worktree base read from gitignored ops/lane_worktrees.json
   (46b637da1); the 6 lane worktrees `git worktree move`d to it, RC restarted to load it.
 - B (section 4 history rewrite + force push, scope = all kit v13 flags: 80 commits on main, 113 over
@@ -23,17 +23,12 @@ fleet_gitlock). The operator CONFIRMED acts A and B in chat 2026-10-09 (LEDGER 1
   after the push, remap SHA-anchored tests from the new commit-map (LEDGER 1361: 8 tests broke,
   207 remaps in 89 files last time) and delete the local branches filter-repo migrates from
   refs/remotes/origin/*.
-E2 detail: the operator reported the Electron 44 shell check OK on
-2026-10-08 (operator chat at the session 104 wrap, relayed into this file by the main session; the
-gate is MET; the /done of session 104 deliberately did NOT merge). Land Dependabot npm
-PR #2's change (electron 33.4.11 -> 44.x, rc-shell; 37 open alerts need >= 41.10.6), then in the MAIN
-checkout's rc-shell run `npm ci` and `npx install-electron` once (Electron >= 42 no longer
-downloads the binary on install). `^44.5.1` resolves 44.7.0, so pin EXACT. Re-verify
-`rc-shell\launch_overlay.bat:8`, `tools\legion_on.ps1:81`, `tools\install_lane_widget_shortcut.ps1:44`
-and the Desktop Amberstone.lnk / Lane Widget.lnk. Then remove worktree `.claude/worktrees/e1-electron44`
-(KEEP it until E2; it holds untracked `e1_cache/`).
-After E2: next is RM-680, the DS 16.19.1 -> 16.20.1 batch (Tier-2, DS batch lane, recipe = LEDGER
-1652; acceptance in the ROADMAP NOW row).
+E2 residuals (C1 closed it, LEDGER 1697): read-only `gh pr view 2` - Dependabot should close PR #2
+itself now main carries electron 44.5.1 (do NOT close or comment on it); re-read the Dependabot alert
+count (37 at the push, GitHub re-scans). The Desktop Amberstone.lnk / Lane Widget.lnk do NOT exist -
+OPERATOR ASKS 6. E1 evidence kept in gitignored ops/runtime/e1_electron44_evidence/.
+Next after the 2246 sections: RM-680, the DS 16.19.1 -> 16.20.1 batch (Tier-2, DS batch lane, recipe =
+LEDGER 1652; acceptance in the ROADMAP NOW row).
 FIRST at session start: read CI on the wrap push (docs + hand-off only, pending at wrap). ci should
 sit at the RM-172 baseline (the 4 operator-left subtests); anything else red is the first fix.
 
@@ -60,6 +55,15 @@ wrap; the rest are still open):
    MAIN 2246 section 4 step 2) and re-plan. Review the 92 credential-shaped findings either way
    (classes anthropic / openai / riot_api_key / bearer_token / connection_string_password; values
    never printed; most sit in tests and docs).
+6. Re-create the Desktop Amberstone.lnk and Lane Widget.lnk (both absent at C1, 2026-10-09; Lane
+   Widget via the operator-run tools/install_lane_widget_shortcut.ps1 - it writes outside the tree).
+
+Session 105 C1 (2026-10-09, executor sub-agent) shipped - do NOT redo (LEDGER 1697):
+- E2 Dependabot npm PR #2 landed locally as operator commit 0be91102b: rc-shell electron 33.4.11 ->
+  44.5.1 EXACT pin; gitignored lockfile regenerated (npm 11.12.1), npm ci + npx install-electron done
+  (dist 44.5.1). npm test 329/329, pytest 78 passed. Pushed 7f4d7aa85..0be91102b (remote read back).
+  Worktree e1-electron44 removed (non-force, after its evidence was copied out). RM-696 filed; RM-515
+  row relocated to docs/ROADMAP_HISTORY.md `## 2026-10-09`. Next free RM-697.
 
 Session 105 (2026-10-08, attended, executor sub-agent) shipped - do NOT redo (LEDGER 1694-1695):
 - K12 MAIN 2031 ORDER kit v12 RACE GUARDS: provenance 22/22; d54e41968 (one commit via gitlock) +
@@ -86,7 +90,8 @@ New carry items (session 105, kit-v13 acts executor 2026-10-09):
 - Lane prompts tools/headless-{ds,uiux,true-audit,repo,queue,research,gated}.md still tell the worker
   its toplevel must print the OLD drive-root lane path (stale since the E-move; now the lanes sit
   under the base in ops/lane_worktrees.json). Convert the self-check to `git worktree list` /
-  lane_launcher.worktree_path(), no machine literal (sibling sweep structural arm). Not filed yet.
+  lane_launcher.worktree_path(), no machine literal (sibling sweep structural arm). FILED as RM-696
+  (ROADMAP NOW, LEDGER 1697) - open.
 - The old lane folder now holds only the stray before_sweep_s2.txt and its system-drive junction is
   MAIN's to release; RC did not delete either. mission_control.py (separate pythonw) still holds
   the old base in memory until it restarts; a lane fired from it fails loudly (branch checked out
@@ -216,8 +221,8 @@ Carried forward (not acted on yet):
   e-move-review, e-move-rereview, v9-vendor, h-ci-green-s102, g-supply-chain, session 103's
   k1-kit-v10, c1-dependabot, p1-drift-1620, r1-recycle-premove, q1-codeql, e1-electron44,
   k2-lane-spawn, done-s103, and session 104's inbox-sync-s104, rm-685, rm-685-build, rm-685-verify,
-  rm-685b, kit-v11, kit-v11-build, s1-build, w2-build, w2-s1, rm-689-build, rm-689-verify
-  (all done; gitignored).
+  rm-685b, kit-v11, kit-v11-build, s1-build, w2-build, w2-s1, rm-689-build, rm-689-verify, and
+  session 105's c1-electron (all done; gitignored).
 - Operator setup list (physical / operator acts, batch into one ask with the asks above):
   - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window capture
     source; set the game to borderless; install ffmpeg; set obs.record.enabled; restart
@@ -244,8 +249,8 @@ Carried forward (not acted on yet):
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW - roster
   change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER SHARED_SHA256 re-pin
   stays joint.
-- Worktrees: `git worktree list` = 26 entries at wrap (main + 6 lanes + 18 with unique commits +
-  e1-electron44). REVIEW before -D: lift1 death-reel (RM-639) / review-player (RM-641) /
+- Worktrees: `git worktree list` = 25 entries after C1 (main + 6 lanes + 18 with unique commits;
+  e1-electron44 removed 2026-10-09, LEDGER 1697). REVIEW before -D: lift1 death-reel (RM-639) / review-player (RM-641) /
   vod-retention (RM-640), lift2 y45 (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432 ADR-016,
   RM-229), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work;
   hand-off says squashed into 5c2cadb4e - unverified). Second-pass candidates (only commits whose
@@ -280,12 +285,12 @@ ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.
 (kit spawn path); ops/loop/config.json (effort=); .github/dependabot.yml; .github/ci/requirements-*.in
 (regen command in header); .github/workflows/codeql.yml (advanced, triggers live);
 rc-shell/package.json (electron); ops/runtime/inbox_responder_agreement.json (expires 2026-11-01);
-ops/moon_sync_repos.json (gitignored). Next free LEDGER id 1694. Next free RM id: the guarded pin in
-docs/DS_SWEEP_TRACKER.md (moved past RM-691 at this wrap).
+ops/moon_sync_repos.json (gitignored). Next free LEDGER id 1698. Next free RM id: the guarded pin in
+docs/DS_SWEEP_TRACKER.md (RM-697 after C1).
 
-Acceptance: E2 - PR #2 merged with an EXACT electron pin, npm ci + install-electron done, the three
-launch paths and two Desktop shortcuts re-verified, e1-electron44 removed; then RM-680 - DS /health
-reads 16.20.1 with the LEDGER 1652 recipe complete. Operator asks answered or re-batched.
+Acceptance: MAIN 2246 sections 2-8 answered in ONE ANSWER and its inbox row closed; then RM-680 - DS
+/health reads 16.20.1 with the LEDGER 1652 recipe complete. (E2 met by C1, LEDGER 1697, except the two
+Desktop shortcuts, which are absent - OPERATOR ASKS 6.) Operator asks answered or re-batched.
 
 Status (2026-10-08 wrap, session 104): commits 2a072d72f 6e7a4e50b 0b8511641 2bab685f0 37e7a5623
 b0ed89184 f0b6a1578 3b2f383fe 3982721c2 436feb160 169e8c6e5 01ea61d52 f118ada43 c522be400 (all pushed

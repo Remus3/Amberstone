@@ -1,5 +1,15 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-09 - size-budget relocation (session 105, C1 Electron 44 landing), 1 row
+
+`ROADMAP.md` sat at 89.94 percent of its 81920-byte budget, and the RM-696 filing
+would have crossed the 90 percent `tools/drift_guard.py` line. The shipped RM-515
+row below moves here VERBATIM as it stood at 7f4d7aa85; RM-515 shipped in Wave1
+(LEDGER 1480-1559), its RM-488 half stays open on its own ROADMAP row, and the
+anthropic 1.x major it named is held as RM-681 (LEDGER 1697).
+
+- **[!] RM-515 (filed as the second RM-488; renumbered 2026-10-03): Python dependency currency** - certifi plus unpinned cryptography / urllib3 / requests; anthropic 0.96 -> 1.x and websockets 17 are MAJORS and need evaluation before any bump. [2026-10-04 Wave1: RM-515 shipped; RM-488 partial - LEDGER 1480-1559]
+
 ## 2026-10-08c - size-budget relocation (session 105, FLEET-KIT v12 adoption), 1 row
 
 `ROADMAP.md` sat at 89.95 percent of its 81920-byte budget, and the session 105 filing
