@@ -82,9 +82,9 @@ _EXPECTED_TOTAL_PRE = 2874
 # CORRECTION, and the reason this comment is long. The first pass at this fix
 # claimed the targets were "gitignored, NEVER tracked, permanently unreachable".
 # That is FALSE, and a verifier caught it: the files were ADDED at 32917a1f,
-# MODIFIED at c67d5974 (item 187 - the very sweep recorded above), and REMOVED
-# at 598b8c1d on 2026-07-07. `git cat-file -e 598b8c1d^:<path>` succeeds for all
-# seven, and `git checkout 598b8c1d^ -- _archive/2026-05-01-audit/` restores
+# MODIFIED at eba117c6 (item 187 - the very sweep recorded above), and REMOVED
+# at 947337c4 on 2026-07-07. `git cat-file -e 947337c4^:<path>` succeeds for all
+# seven, and `git checkout 947337c4^ -- _archive/2026-05-01-audit/` restores
 # them. They are decommissioned, not unreachable - a distinction that decides
 # the remedy, because "gone forever" argues for deleting the record while "gone
 # from HEAD, recoverable from history" argues for pinning it.
@@ -105,7 +105,7 @@ _EXPECTED_TOTAL_PRE = 2874
 #   * The decommission itself is asserted against GIT rather than assumed:
 #     each of the seven must be absent from HEAD and present at the removal
 #     commit's parent. Re-adding one to git turns this red and says so.
-_ARCHIVE_REMOVED_AT = "598b8c1d"   # 2026-07-07 scratch-cleanup commit
+_ARCHIVE_REMOVED_AT = "947337c4"   # 2026-07-07 scratch-cleanup commit
 
 _DECOMMISSIONED: tuple[str, ...] = (
     "_archive/2026-05-01-audit/tft/comp_control.py",
