@@ -1,6 +1,6 @@
 """One-shot setup helper for Phase 3 folder tree + state files.
 
-Run from: C:\\Riot Commander\\
+Run from: the repo root
 Creates:
   - agents/ tree (see S4)
   - lib/ tree
@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.polled_json import atomic_write_text  # noqa: E402
 
-ROOT = Path(r"C:\Riot Commander")
+ROOT = Path(__file__).resolve().parent.parent
 
 FOLDERS = [
     # agents tree
@@ -75,7 +75,7 @@ RESOLVED_DECISIONS = {
         "legion_pc": "192.0.2.230",
         "game_pc": "192.0.2.237",
         "moon_pc": "decommissioned",
-        "install_root": "C:\\Riot Commander\\",
+        "install_root": "<repo>\\",
     },
     "agents": {
         "0": {"role": "gatekeeper", "substrate": "python"},
@@ -163,7 +163,7 @@ RESOLVED_DECISIONS = {
             "\\\\192.0.2.237\\RCClient\\web\\",
         ],
         "credential_store": "cmdkey_on_legion_under_target_192.0.2.237",
-        "auth_user": "Administrator",
+        "auth_user": "<user>",
         "forwarder_restart_signal": "\\\\192.0.2.237\\RCClient\\forwarder\\restart_trigger.txt",
     },
     "agent0_rejection": {

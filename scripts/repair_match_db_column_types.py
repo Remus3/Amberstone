@@ -35,7 +35,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.match_db import NUMERIC_COLS, coerce_numeric  # noqa: E402
 
-DEFAULT_DB = Path(r"C:\Riot Commander\data\match_history.db")
+DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "match_history.db"
 
 # typeof() values that mean "this is already a number".
 _GOOD = ("integer", "real")

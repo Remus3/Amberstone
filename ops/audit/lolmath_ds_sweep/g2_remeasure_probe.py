@@ -11,8 +11,11 @@ Usage: python g2_remeasure_probe.py [PATCH]
 import collections
 import json
 import sys
+from pathlib import Path
 
-ROOT = r"C:/Riot Commander"
+# Repo root resolved from this file (ops/audit/lolmath_ds_sweep/ -> repo), never
+# a baked-in machine checkout path.
+ROOT = Path(__file__).resolve().parents[3].as_posix()
 PATCH = sys.argv[1] if len(sys.argv) > 1 else "16.12.1"
 HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 SWEEP = f"{HERE}/lolmath_sweep.json"

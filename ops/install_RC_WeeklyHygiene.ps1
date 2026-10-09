@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 
 $ps      = 'powershell.exe'
-$wrapper = 'C:\Riot Commander\tools\weekly_hygiene_run.ps1'
+$wrapper = Join-Path (Split-Path -Parent $PSScriptRoot) 'tools\weekly_hygiene_run.ps1'
 
 if (-not (Test-Path $wrapper)) { Write-Host "wrapper missing at $wrapper" -ForegroundColor Red; exit 1 }
 
@@ -21,7 +21,7 @@ $settings = New-ScheduledTaskSettingsSet `
               -MultipleInstances IgnoreNew `
               -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
               -StartWhenAvailable
-$prin     = New-ScheduledTaskPrincipal -UserId 'Administrator' -LogonType Interactive -RunLevel Highest
+$prin     = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
 
 Register-ScheduledTask `
     -TaskName 'RC-WeeklyHygiene' `

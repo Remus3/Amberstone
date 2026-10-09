@@ -56,7 +56,7 @@ async function scrape(ctx, slug) {
 }
 
 (async () => {
-  const EXE = 'C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe';
+  const EXE = process.env.LOCALAPPDATA + '\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe';
   const browser = await chromium.launch({ headless: true, executablePath: EXE });
   const ctx = await browser.newContext();
   // harvest roster slugs

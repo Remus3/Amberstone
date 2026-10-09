@@ -37,7 +37,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = r"C:/Riot Commander"
+ROOT = Path(__file__).resolve().parents[3].as_posix()
 HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 
 # lolmath's constant default enemy comp (gen_md.py methodology: 4 squishy + 1 tank).

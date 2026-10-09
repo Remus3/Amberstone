@@ -43,7 +43,7 @@ CREATE_NO_WINDOW = 0x08000000
 _NO_WINDOW = CREATE_NO_WINDOW if os.name == "nt" else 0
 
 # A literal only counts when it is not glued to a longer name on either side:
-# "C:\Riot Commander.pre-E-move-20261008" and "XC:\Riot Commander" must not match.
+# "C:\Some Repo.pre-E-move-20261008" and "XC:\Some Repo" must not match.
 _LEFT = r"(?<![A-Za-z0-9_])"
 _RIGHT = r"(?![A-Za-z0-9_.\-])"
 FORMS = ("json", "bs", "fwd", "msys")

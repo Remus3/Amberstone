@@ -2,10 +2,10 @@
 :: tools\rollback_last.cmd
 :: Reverts the most recent checkpoint commit.
 :: Safe: uses --soft by default so changes stay staged (not lost).
-:: Run from C:\Riot Commander
+:: Run from anywhere (cds to the repo root itself)
 
 setlocal
-cd /d "C:\Riot Commander"
+cd /d "%~dp0.."
 
 echo [rollback] Last 3 commits:
 git log --oneline -3

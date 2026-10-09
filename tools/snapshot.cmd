@@ -2,10 +2,10 @@
 :: tools\snapshot.cmd
 :: Creates a timestamped git checkpoint commit of the current repo state.
 :: Safe to run at any time - no-op if nothing has changed.
-:: Run from C:\Riot Commander
+:: Run from anywhere (cds to the repo root itself)
 
 setlocal
-cd /d "C:\Riot Commander"
+cd /d "%~dp0.."
 
 :: Get timestamp
 for /f "tokens=*" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd_HH-mm-ss"') do set TS=%%T

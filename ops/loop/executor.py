@@ -199,7 +199,7 @@ def _extract_paths(text: str) -> list:
 def _same_file(a: str, b: str) -> bool:
     """Two spellings of one file. The director mixes absolute Windows paths with
     repo-relative ones inside a single directive, so a plain string compare would
-    call `C:/Riot Commander/ops/loop/executor.py` and `ops/loop/executor.py`
+    call `C:/repo/ops/loop/executor.py` and `ops/loop/executor.py`
     disjoint - the exact collision this guard exists to catch."""
     return a == b or a.endswith("/" + b) or b.endswith("/" + a)
 

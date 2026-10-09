@@ -1,5 +1,5 @@
 param(
-    [string]$Root = "C:\Riot Commander"
+    [string]$Root = $PSScriptRoot
 )
 
 $ErrorActionPreference = "Stop"
@@ -180,7 +180,7 @@ Write-Step "Writing tools\\preflight.cmd"
 @'
 @echo off
 setlocal
-cd /d C:\Riot Commander
+cd /d "%~dp0.."
 .\.venv\Scripts\ruff.exe check .
 if errorlevel 1 exit /b 1
 .\.venv\Scripts\python.exe -m compileall -q .
@@ -192,7 +192,7 @@ Write-Step "Writing tools\\snapshot.cmd"
 @'
 @echo off
 setlocal
-cd /d C:\Riot Commander
+cd /d "%~dp0.."
 for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd_HH-mm-ss"') do set TS=%%I
 git add -A
 git commit --allow-empty -m "checkpoint %TS%"
@@ -202,7 +202,7 @@ Write-Step "Writing tools\\rollback_last.cmd"
 @'
 @echo off
 setlocal
-cd /d C:\Riot Commander
+cd /d "%~dp0.."
 git reset --hard HEAD~1
 '@ | Set-Content -LiteralPath (Join-Path $Root "tools\rollback_last.cmd") -Encoding ASCII
 
@@ -239,6 +239,6 @@ try {
 Write-Step "Done"
 Write-Host ""
 Write-Host "Next commands:" -ForegroundColor Green
-Write-Host "  C:\Riot Commander\tools\preflight.cmd"
-Write-Host "  C:\Riot Commander\tools\snapshot.cmd"
-Write-Host "  C:\Riot Commander\tools\rollback_last.cmd"
+Write-Host "  $Root\tools\preflight.cmd"
+Write-Host "  $Root\tools\snapshot.cmd"
+Write-Host "  $Root\tools\rollback_last.cmd"

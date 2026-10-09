@@ -45,7 +45,7 @@ if exist "%STARTUP%\RiotCommanderWatcher.lnk" (
     echo To start immediately without rebooting, run:
     echo   wscript.exe /nologo "%SCRIPT_DIR%rc_watcher_launch.vbs"
 ) else (
-    echo [FAIL] Could not create startup shortcut. Try running as Administrator.
+    echo [FAIL] Could not create startup shortcut. Try an elevated prompt (Run as administrator).
 )
 echo.
 pause

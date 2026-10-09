@@ -69,7 +69,7 @@ Pinned by tests/test_scheduled_task_docstring_commands.py.
 
   Register-ScheduledTask -TaskName "RC-DS-MatchDB-MCP" -Force -RunLevel Highest `
     -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
-    -Action (New-ScheduledTaskAction -Execute "pythonw.exe" -Argument '"C:\\Riot Commander\\tools\\start_ds_matchdb_mcp.py"')
+    -Action (New-ScheduledTaskAction -Execute "pythonw.exe" -Argument '"<repo>\\tools\\start_ds_matchdb_mcp.py"')
 
 Configure local Claude Code .mcp.json (or settings.json mcpServers):
   {

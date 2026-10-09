@@ -140,7 +140,7 @@ class PipelineOrchestrator:
             out["sources"]["site_d"] = {
                 "status": "ok",
                 "bytes": len(html),
-                "cache": str(self._site_d.cache_path(
+                "cache": _repo_rel(self._site_d.cache_path(
                     _cache_key(champ, scraper_mode), ext="html")),
             }
         except (HttpError, Blocked, CircuitOpen, PermissionError, RuntimeError) as e:
@@ -153,7 +153,7 @@ class PipelineOrchestrator:
             out["sources"]["site_b"] = {
                 "status": "ok",
                 "bytes": len(html),
-                "cache": str(self._site_b.cache_path(
+                "cache": _repo_rel(self._site_b.cache_path(
                     _cache_key(champ, scraper_mode), ext="html")),
             }
         except (HttpError, Blocked, CircuitOpen, PermissionError, RuntimeError) as e:
@@ -223,6 +223,16 @@ class PipelineOrchestrator:
 def _cache_key(champ: str, mode: str) -> str:
     """Mirror the cache-key shape the scrapers use internally."""
     return f"{champ.strip().lower().replace(' ', '').replace(chr(39), '')}_{mode}"
+
+
+def _repo_rel(path) -> str:
+    """A cache path as written into the TRACKED coach cache: repo-relative, so
+    the file never carries this machine's checkout path. A path outside the
+    repo (a test's tmp dir, a relocated cache) is kept as given."""
+    try:
+        return Path(path).resolve().relative_to(_PROJECT_ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
 # -- module-level conveniences used by Agent 1 dispatch payloads -----

@@ -36,7 +36,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$RepoRoot   = "C:\Riot Commander"
+$RepoRoot   = Split-Path -Parent $PSScriptRoot
 $WidgetDir  = Join-Path $RepoRoot "lane-widget"
 # The rc-shell Electron binary. lane-widget adds no second Electron install -
 # it runs on the one rc-shell already vendors, which is the exact path

@@ -1,5 +1,5 @@
 @echo off
-cd /d "C:\Riot Commander"
+cd /d "%~dp0.."
 echo.
 echo === Phase 3 Hot-Reload Test: Direct Deploy ===
 echo.

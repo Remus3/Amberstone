@@ -3,7 +3,7 @@
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
-You are the single MERGER for wave @@TAG@@ of an RC drain (repo C:\Riot Commander, branch main). Inputs (build reports + verifier verdicts): the JSON array in @@MERGE_INPUT@@ (one entry per slice: key, branch, worktree, build, verdict, error).
+You are the single MERGER for wave @@TAG@@ of an RC drain (repo @@REPO@@, branch main). Inputs (build reports + verifier verdicts): the JSON array in @@MERGE_INPUT@@ (one entry per slice: key, branch, worktree, build, verdict, error).
 @@EXTRA@@
 Steps:
 1. git fetch; fast-forward main to origin/main. Write progress to ops/loop/control/progress/@@TAG@@-merge.json.
@@ -16,9 +16,9 @@ Steps:
 Return merged (row ids), dropped (row ids + why), pushed, main_sha, halted_reason, notes (incl. CI run id if visible via gh run list).
 
 HEADLESS ADDENDUM (launcher ops/loop/drain_waves_2_3.py; no operator present):
-- Your cwd is the main tree C:\Riot Commander on branch main. If `git status --porcelain --untracked-files=no` is not empty before step 1, do NOTHING else: set halted_reason "main tree dirty" and return.
+- Your cwd is the main tree @@REPO@@ on branch main. If `git status --porcelain --untracked-files=no` is not empty before step 1, do NOTHING else: set halted_reason "main tree dirty" and return.
 - Step 6 exact form (the hook's own gate, run by hand first): printf '%s\n' "refs/heads/main $(git rev-parse HEAD) refs/heads/main $(git rev-parse origin/main)" | python tools/sibling_name_sweep.py --pre-push origin ; ANY non-zero exit (hit = HALT, DEGRADED, FAULT) = do not push, set halted_reason to the exit code and the slot numbers only (never the matched text). Never set the sweep's bypass variable. Never --no-verify, never force-push.
-- Step 7: the slice worktrees live under C:\Riot Commander\.claude\worktrees\drain-*; `git worktree remove` only (no rm -rf); keep any worktree whose branch still holds a commit that is not patch-equivalent on main, and say so in notes.
+- Step 7: the slice worktrees live under @@REPO@@\.claude\worktrees\drain-*; `git worktree remove` only (no rm -rf); keep any worktree whose branch still holds a commit that is not patch-equivalent on main, and say so in notes.
 - Write your result to @@RESULT_FILE@@ (atomic tmp then replace, ASCII, LF) as one JSON object:
   {"merged": [str], "dropped": [str], "pushed": bool, "main_sha": str, "halted_reason": str, "notes": str}
   required: merged, dropped, pushed. dropped entries are "<row id>: <why>".

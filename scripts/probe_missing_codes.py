@@ -39,7 +39,7 @@ def clr():
     lcu("DELETE", f"/lol-tft-team-planner/v1/sets/{sid}/teams/{tid}/champions")
     time.sleep(0.2)
 
-codes_file = Path(r"C:\Riot Commander\data\meta\tft_set17_champion_codes.json")
+codes_file = Path(__file__).resolve().parent.parent / "data" / "meta" / "tft_set17_champion_codes.json"
 results = json.loads(codes_file.read_text()) if codes_file.exists() else {}
 
 # More variants + try known units for collision check

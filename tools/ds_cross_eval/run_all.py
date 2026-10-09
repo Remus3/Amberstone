@@ -15,7 +15,7 @@ import time
 import traceback
 from pathlib import Path
 
-ROOT = Path(r"C:/Riot Commander")
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools" / "ds_cross_eval"))
 

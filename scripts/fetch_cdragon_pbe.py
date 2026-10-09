@@ -5,7 +5,7 @@ import ssl
 import sys
 from pathlib import Path
 
-PROJECT = Path(r"C:\Riot Commander")
+PROJECT = Path(__file__).resolve().parent.parent
 ctx = ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE
 hdrs = {"User-Agent": "Mozilla/5.0"}
 

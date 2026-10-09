@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(r"C:\Riot Commander")))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from core.daemon_slayer_client import rank_for_primary_archetype  # noqa: E402
 
 # (champion, archetype, [lolmath-wanted item NAMES to locate in the ranking])

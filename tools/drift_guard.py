@@ -60,12 +60,15 @@ BUDGET_WARN_PCT = 90.0
 # Same-basename .md in both directories must be byte-identical.
 MIRROR_PAIRS = [("tools", ".claude/commands")]
 
-# Resolved under THIS account's home rather than baked in: a guard naming
-# another account's home silently finds nothing, and a guard that finds nothing
-# reports nothing.
-MEMORY_DIR = (
-    pathlib.Path.home() / ".claude" / "projects" / "C--Riot-Commander" / "memory"
-)
+# Resolved under THIS account's home and THIS checkout's project slug rather
+# than baked in: a guard naming another account's home, or a checkout path the
+# repo has since moved away from, silently finds nothing, and a guard that finds
+# nothing reports nothing.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from core.claude_project import project_dir as _claude_project_dir  # noqa: E402
+
+MEMORY_DIR = _claude_project_dir(ROOT) / "memory"
 MEMORY_INDEX = "MEMORY.md"
 # The ~99 per-champion sweep memories are deliberately not indexed individually;
 # MEMORY.md carries one line covering the closed 173/173 sweep instead.

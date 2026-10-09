@@ -1,13 +1,10 @@
 {
-  "repo_root": "C:\\Riot Commander",
-  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
   "max_cycles": 8,
   "cycle_deadline_sec": 15,
   "poll_sec": 3,
   "dry_run": true,
   "ignore_no_progress": false,
-  "session_jsonl": "C:\\Riot Commander\\ops\\loop\\control\\_fixture_usage.jsonl",
-  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "session_jsonl": "ops\\loop\\control\\_fixture_usage.jsonl",
   "price_per_mtok": {
     "opus": {
       "input": 4.0,

@@ -11,7 +11,7 @@ KEY DESIGN RULES:
   - BEST-EFFORT: partial data is still saved; failures never crash the app
   - ASYNC: runs in background thread, never blocks the overlay
 
-Database:  C:\\Riot Commander\\data\\postgame_stats.db
+Database:  <repo>\\data\\postgame_stats.db
 Tables:    {mode}_matches, {mode}_player_stats, {mode}_item_events,
            raw_documents (RM-611: gzipped eog / match / timeline documents)
 Modes:     ARAM | SR | ARENA | BRAWL | TFT
