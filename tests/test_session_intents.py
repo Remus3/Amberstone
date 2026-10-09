@@ -91,7 +91,10 @@ def test_filenames_match_the_route_not_a_copy():
     assert intents.INTENT_FILES == route._INTENT_FILES
 
 
-def test_default_control_dir_matches_the_route():
+def test_default_control_dir_matches_the_route(monkeypatch):
+    # The DEFAULT is under test: tests/conftest.py points RC_INTENT_CONTROL_DIR at
+    # tmp_path for every test (kit v12 test guard env_roots), so drop it here.
+    monkeypatch.delenv(intents.ENV_ROOT, raising=False)
     assert intents.control_dir().resolve() == route.CONTROL_DIR.resolve()
 
 

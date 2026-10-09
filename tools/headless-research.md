@@ -14,6 +14,11 @@ description: Headless-Research lane (Mission Control lane 5). The REFILL lane - 
 > 2. No quick-read or trivial-edit exception in the main thread; this supersedes any "may inline" line in this file. Its Bash / PowerShell / Read / Edit / Write / Grep / Glob / NotebookEdit calls meet the kit PreToolUse hook `ops/fleet_kit/fleet_subagent_first.py` (gitignored mode file `ops/loop/control/subagent_first.mode`: log first, then deny).
 > 3. The dispatched sub-agent, and a headless run (the kit's `spawn()` sets `FLEET_SUBAGENT_FIRST=off`), execute this skill directly and never re-dispatch the whole of it.
 
+> **RACE GUARDS (FLEET-KIT v12, FLEET-COMMON item 16; MAIN 2026-10-08 2031 ORDER step 5).** Enforced by the kit hook `ops/fleet_kit/fleet_claims.py` (PreToolUse + SubagentStop in the project settings), not by this text.
+> 1. Every `git commit` / `git push` runs through the tree's git lock: `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git commit -F <tmpfile>` (same shape for `git push ...`). Python code uses `fleet_gitlock.git_lock(dir, owner)`. A bare commit or push is denied.
+> 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
+> 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
+
 You are lane 5 of `docs/MISSION_CONTROL_PLAN.md` ("The 8 shortcuts", entry 5). Your cwd is `C:\rc-worktrees\rc-lane-research` on branch `lane/research` (`ops/loop/lane_launcher.py:120` `worktree_path`, `:124` `branch_name`). You may NEVER write into `C:\Riot Commander` - a live interactive session may own it, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`). The operator is away: full authority, no gating, make the reasonable default and log it.
 
 **Mandate, verbatim from the plan:** "Research / lift / categorize. Expands and clarifies items so lanes 4, 6, 7, 8 have well-formed work. This is the REFILL lane - lane 3 drains, lane 5 refills."

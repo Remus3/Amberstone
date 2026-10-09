@@ -50,9 +50,11 @@ _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 def _is_commit(command: str) -> bool:
     s = command.strip()
     # tolerate leading env assignments, `&&`/`;` chains, PowerShell `{` blocks,
-    # and global flags with quoted args (git -C "C:\path" commit).
+    # and global flags with quoted args (git -C "C:\path" commit). FLEET-KIT v12
+    # item 16 a: a commit run through the kit's git lock
+    # (`fleet_gitlock.py run --owner <id> -- git commit ...`) is still a commit.
     return bool(re.search(
-        r"(^|[;&|{(]\s*)git\s+(?:(?:-\S+|\"[^\"]*\"|'[^']*')\s+)*commit\b", s
+        r"(^|[;&|{(]\s*|\s--\s+)git\s+(?:(?:-\S+|\"[^\"]*\"|'[^']*')\s+)*commit\b", s
     ))
 
 

@@ -354,6 +354,15 @@ ops/loop/control/session_done.seen
 # MODE_REL / LOG_REL), named per the kit order.
 ops/loop/control/subagent_first.mode
 ops/loop/control/subagent_first.jsonl
+# FLEET-KIT v12 (MAIN 2026-10-08 2031 ORDER step 4, FLEET-COMMON item 16): the
+# file-claim registry, the git lock, and their mode / decision / break logs
+# (fleet_claims.py CLAIMS_REL / MODE_REL / LOG_REL, fleet_gitlock.py LOCKS_REL /
+# LOG_REL), named per the kit order.
+ops/loop/control/claims/
+ops/loop/control/locks/
+ops/loop/control/claims.jsonl
+ops/loop/control/claims.mode
+ops/loop/control/gitlock.jsonl
 
 # Transient verify/test scratch dropped at repo root by DS item runs
 # (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.

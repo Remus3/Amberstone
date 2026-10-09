@@ -14,6 +14,11 @@ description: End-of-session ritual - auto-commit any pending changes, push, do t
 > 2. No quick-read or trivial-edit exception in the main thread; this supersedes any "may inline" line in this file. Its Bash / PowerShell / Read / Edit / Write / Grep / Glob / NotebookEdit calls meet the kit PreToolUse hook `ops/fleet_kit/fleet_subagent_first.py` (gitignored mode file `ops/loop/control/subagent_first.mode`: log first, then deny).
 > 3. The dispatched sub-agent, and a headless run (the kit's `spawn()` sets `FLEET_SUBAGENT_FIRST=off`), execute this skill directly and never re-dispatch the whole of it.
 
+> **RACE GUARDS (FLEET-KIT v12, FLEET-COMMON item 16; MAIN 2026-10-08 2031 ORDER step 5).** Enforced by the kit hook `ops/fleet_kit/fleet_claims.py` (PreToolUse + SubagentStop in the project settings), not by this text.
+> 1. Every `git commit` / `git push` runs through the tree's git lock: `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git commit -F <tmpfile>` (same shape for `git push ...`). Python code uses `fleet_gitlock.git_lock(dir, owner)`. A bare commit or push is denied.
+> 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
+> 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
+
 The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order - in the ONE dispatched executor below, never in the main session.
 
 > **/done DISPATCH PROTOCOL (FLEET-KIT v10; MAIN 2026-10-08 0839 ORDER step 4).** The WHOLE ritual - sections 0 through 10 - runs in ONE sub-agent, the /done EXECUTOR. The main session runs none of it.
@@ -112,6 +117,7 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
   - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
   - Test slice covering the change: **the targeted module**, plus the DS suite `agents/daemon_slayer/tests/` if the engine was touched (that one is genuinely fast; measure its size with `pytest agents/daemon_slayer --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16). Do NOT run the full `tests/` suite here; section 2c dispatches it to CI instead. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
+- **Any WHOLE suite run locally** (here, by a verifier, anywhere in this ritual) goes through the kit's machine-wide suite gate (FLEET-KIT v12, FLEET-COMMON item 16 c): `python "C:/Riot Commander/ops/fleet_kit/fleet_suite_gate.py" run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate. `<id>` is your claims owner id (RACE GUARDS block above); exit 3 = no slot in time or another live agent's uncommitted edit straddles the run - wait, never bypass.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
 - GREEN: proceed to section 0b, then commit (section 1).
 - RED: fix and re-run. If the failure is pre-existing and unrelated to this session's work, record it in the hand-off file (section 10) and commit only the green-verified authored files - never commit over a regression you introduced.
@@ -154,13 +160,14 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
     before that hardcoded `Claude Opus 4.7 (1M context)`. Both were wrong in the same
     direction: prose describing a step the tooling deletes. Verify against `.githooks/` before
     re-editing this line.)
+  - **Commit through the tree's git lock** (FLEET-KIT v12, FLEET-COMMON item 16 a): write the message to a tmpfile (ASCII), then `python "C:/Riot Commander/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "C:/Riot Commander" commit -F <tmpfile>`. A bare `git commit` is denied by the claims hook. Exit 3 = the lock, a leftover index.lock, or a staged path another live agent claims refused the run (its stderr line says which): wait or unstage that path, never bypass.
   - If pre-commit hooks fail: fix and create a new commit (never `--amend`).
 
 ### 2. Push
 
 - `git -C "C:/Riot Commander" log @{u}.. --oneline` - list local commits not on origin.
 - If empty: skip.
-- Otherwise: `git -C "C:/Riot Commander" push origin <branch>`. No confirmation prompt - pushing is part of the exit ritual.
+- Otherwise: `python "C:/Riot Commander/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "C:/Riot Commander" push origin <branch>` (the git lock, FLEET-KIT v12 item 16 a; a bare `git push` is denied). No confirmation prompt - pushing is part of the exit ritual.
 - Record the push range (e.g. `23854e1..b56f247 main -> main`) in the hand-off file, not in chat.
 - If the push fails (auth, conflict, hook): stop with `/done stopped: push failed - <cause>`.
 

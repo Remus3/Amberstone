@@ -160,7 +160,10 @@ def test_match_id_of_accepts_both_spellings():
     assert rr.match_id_of("https://s3/NA1_123.rofl?x=1") == "NA1_123"
 
 
-def test_roster_root_default_lives_beside_the_operator_archive():
+def test_roster_root_default_lives_beside_the_operator_archive(monkeypatch):
+    # The DEFAULT is under test: tests/conftest.py points RC_ROFL_ARCHIVE_DIR at
+    # tmp_path for every test (kit v12 test guard env_roots), so drop it here.
+    monkeypatch.delenv("RC_ROFL_ARCHIVE_DIR", raising=False)
     root = rr.default_corpus_root()
     assert isinstance(root, Path)
     assert root.name == "RC_ROFL_Archive"
