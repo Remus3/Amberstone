@@ -68,8 +68,75 @@ def _assert_scrubbed(case, blob: str) -> None:
         )
 
 
+def _healthy_rc() -> dict:
+    """A fixed, clean RC heartbeat so these tests never read the LIVE
+    ops/runtime/health.json (kit v14 adoption, 2026-10-09: the live file held a
+    heartbeat rename failure whose text named the repo path, and four probe
+    tests failed on it)."""
+    from datetime import datetime, timezone
+    return {"alive": True, "pid": 1,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "last_reload_error": None, "game_poll_worker_last_error": None,
+            "fatal_count": 0, "last_fatal_at": None, "recent_fatals": []}
+
+
+_REAL_READ_JSON = routes_state.read_json
+
+
+def _read_json_with(rc: dict):
+    def _rj(rel, *a, **k):
+        if str(rel).replace("\\", "/").endswith("ops/runtime/health.json"):
+            return rc
+        return _REAL_READ_JSON(rel, *a, **k)
+    return _rj
+
+
 class HealthAllScrubTests(unittest.TestCase):
     """Every sub-probe failure must degrade to the generic line, not raw text."""
+
+    def setUp(self):
+        patcher = mock.patch.object(routes_state, "read_json",
+                                    side_effect=_read_json_with(_healthy_rc()))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_rc_heartbeat_error_text_is_not_served_verbatim(self):
+        """The RC section is the live health.json and rc_fatal is the in-process
+        fatal ring: both carry raw exception text (a heartbeat rename failure
+        names the absolute repo path). Measured 2026-10-09 during a gated suite.
+        Scrubbed at the wire; `kind` / `at` / counts and null fields survive."""
+        rc = {**_healthy_rc(), "last_reload_error": LEAKY,
+              "game_poll_worker_last_error": LEAKY, "fatal_count": 1,
+              "recent_fatals": [{"at": "2026-10-09T17:55:16+00:00",
+                                 "kind": "heartbeat_error", "summary": LEAKY}]}
+        ring = {"count": 1, "last_at": "2026-10-09T17:55:16+00:00",
+                "recent": [{"at": "2026-10-09T17:55:16+00:00",
+                            "kind": "heartbeat_error", "summary": LEAKY}]}
+        h = _FakeHandler()
+        with mock.patch.object(routes_state, "read_json",
+                               side_effect=_read_json_with(rc)), \
+                mock.patch("ops.rc_dev_runtime.fatal_stats", return_value=ring):
+            routes_state._serve_health_all(h)
+        body = h.body.decode("utf-8")
+        _assert_scrubbed(self, body)
+        rollup = json.loads(body)
+        self.assertEqual(rollup["rc"]["last_reload_error"], GENERIC_ERROR)
+        self.assertEqual(rollup["rc"]["game_poll_worker_last_error"], GENERIC_ERROR)
+        self.assertEqual(rollup["rc"]["recent_fatals"][0]["summary"], GENERIC_ERROR)
+        self.assertEqual(rollup["rc"]["recent_fatals"][0]["kind"], "heartbeat_error")
+        self.assertEqual(rollup["rc"]["fatal_count"], 1)
+        self.assertEqual(rollup["rc_fatal"]["recent"][0]["summary"], GENERIC_ERROR)
+        self.assertEqual(rollup["rc_fatal"]["recent"][0]["kind"], "heartbeat_error")
+        self.assertEqual(rollup["rc_fatal"]["count"], 1)
+
+    def test_rc_null_error_fields_stay_null(self):
+        """The scrub must not invent an error on a clean heartbeat."""
+        h = _FakeHandler()
+        routes_state._serve_health_all(h)
+        rollup = json.loads(h.body.decode("utf-8"))
+        self.assertIsNone(rollup["rc"]["last_reload_error"])
+        self.assertIsNone(rollup["rc"]["game_poll_worker_last_error"])
+        self.assertEqual(rollup["rc"]["recent_fatals"], [])
 
     def _rollup_with_failing(self, target: str):
         """Serve /api/health/all with `target` raising LEAKY; return parsed body."""
