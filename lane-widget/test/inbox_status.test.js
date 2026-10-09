@@ -125,6 +125,14 @@ test("a wrong schema or an unknown state is no signal", () => {
   assert.equal(line(status({ state: "dancing" })), "Sync: no signal [?]");
 });
 
+test("kit v14 state blocked is a live state, never no signal", () => {
+  // FLEET-KIT v14: a proxy outage writes state "blocked" (task "Idle", a
+  // "reason" field) where v13 wrote "refused".
+  assert.equal(line(status({ state: "blocked", task: "Idle", reason: "proxy unreachable: X" })),
+    "Sync: Idle [1m/?][0/120]");
+  assert.equal(line(status({ state: "blocked", task: "" })), "Sync: Blocked [1m/?][0/120]");
+});
+
 test("a file older than 2x the tick is no signal with its age, never stale numbers", () => {
   const got = line(status({
     updated: iso(NOW - 601),

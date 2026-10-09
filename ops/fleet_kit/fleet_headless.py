@@ -103,6 +103,20 @@ v13 (KIT-13 defects; GH-HYGIENE ruling 2026-10-08):
 - sibling kit files fleet_identity.py (FLEET-COMMON 17) and
   fleet_rewrite.py (the operator-gated history rewrite helper).
 
+v14 (KIT-14; every change backward compatible):
+- state "blocked" (STATES, PROGRESS_STATES, tokens.json states): a start that
+  cannot run for an OUTSIDE reason - today an unreachable proxy - writes
+  state "blocked" with a "reason" field to inbox_status.json instead of
+  "refused" (SS 0025). It still raises Refused (subclass Blocked) and still
+  logs the same message text, so substring matchers keep working;
+- distinct refusal codes: every Refused carries .code - "refused",
+  "blocked", "proxy-unreachable", "budget-unreadable", "budget-lock-unopenable",
+  "budget-lock-busy", "budget-write-failed", "budget-spent" (RSC 1925);
+- write_progress(..., reason=None) and `progress --status blocked --reason R`;
+- conformance() also requires each FLEET-COMMON marker ALONE on its own line
+  (SS 2239 c: a splice with the bare BEGIN string welds the first heading onto
+  the marker line while the block hash still passes).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -119,7 +133,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 13
+KIT_VERSION = 14
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -135,8 +149,8 @@ KEEP_EXACT = {"CLAUDE_CODE_USE_POWERSHELL_TOOL"}
 ACK_MARKERS = ("INFORMATION", "ACK", "TERMINAL", "CORRECTION-ACCEPTED",
                "POLL-ANSWER", "RECEIVED", "NO-REPLY", "NOREPLY")
 NEVER_DAMP = ("ORDER", "FIX", "RULING")
-STATES = ("idle", "running", "limit", "halted", "backoff", "refused")
-PROGRESS_STATES = ("running", "done", "failed")
+STATES = ("idle", "running", "limit", "halted", "backoff", "refused", "blocked")
+PROGRESS_STATES = ("running", "done", "failed", "blocked")
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 SOURCES = ("user", "project", "local")
 DEFAULT_SOURCES = "project,local"
@@ -164,11 +178,25 @@ _EPOCH = _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone(_dt.timedelta(0)))
 
 
 class Refused(Exception):
-    """A spawn the kit will not start. str() is the logged reason."""
+    """A spawn the kit will not start. str() is the logged reason; .code is a
+    stable machine-readable class (v14, RSC 1925)."""
+    code = "refused"
+
+    def __init__(self, *args, code=None):
+        super().__init__(*args)
+        if code:
+            self.code = code
+
+
+class Blocked(Refused):
+    """v14: a start an OUTSIDE condition stops (proxy down). The status file
+    says "blocked", not "refused"; still fail closed, never a fallback."""
+    code = "blocked"
 
 
 class BudgetUnreadable(Refused):
     """The budget file exists but cannot be read or parsed: fail closed."""
+    code = "budget-unreadable"
 
 
 # ---------------------------------------------------------------- proxy URL
@@ -242,7 +270,8 @@ def probe(host, port, timeout=2.0, connect=socket.create_connection):
     try:
         connect((host, port), timeout=timeout).close()
     except OSError as exc:
-        raise Refused(f"proxy unreachable: {exc.__class__.__name__}") from None
+        raise Blocked(f"proxy unreachable: {exc.__class__.__name__}",
+                      code="proxy-unreachable") from None
 
 
 def child_env(url, bare=False, parent=None):
@@ -549,11 +578,12 @@ class RunBudget:
         try:
             fd = os.open(str(lock), os.O_CREAT | os.O_RDWR)
         except OSError as exc:
-            raise Refused(f"budget lock unopenable: {exc.__class__.__name__}") from None
+            raise Refused(f"budget lock unopenable: {exc.__class__.__name__}",
+                          code="budget-lock-unopenable") from None
         try:
             while not _try_os_lock(fd):
                 if time.monotonic() >= deadline:
-                    raise Refused("budget lock busy")
+                    raise Refused("budget lock busy", code="budget-lock-busy")
                 time.sleep(0.05)
             try:
                 yield
@@ -637,9 +667,10 @@ def _iso(epoch):
 
 
 def write_status(root, code, state, task, task_started, budget, task_eta_s=None,
-                 next_tick=None, clock=time.time):
+                 next_tick=None, clock=time.time, reason=None):
     """Schema 1 of ops/loop/control/inbox_status.json (MAIN 0915 section 1).
-    state is one of STATES."""
+    state is one of STATES. v14: an optional "reason" (one line, at most 80
+    chars) says why a run is blocked or refused; absent otherwise."""
     doc = {
         "schema": 1, "kit": KIT_VERSION, "code": code,
         "updated": _iso(clock()), "state": state, "task": task[:24],
@@ -648,13 +679,21 @@ def write_status(root, code, state, task, task_started, budget, task_eta_s=None,
         "runs_cap": budget.cap, "window_s": budget.window,
         "cap_frees_at": _iso(budget.frees_at()),
     }
+    if reason:
+        doc["reason"] = " ".join(str(reason).split())[:80]
     _atomic_write(Path(root) / STATUS_REL, json.dumps(doc, indent=1))
     return doc
 
 
-def _status_quietly(root, code, state, task, budget, started=None):
+def _status_quietly(root, code, state, task, budget, started=None, reason=None):
     with contextlib.suppress(OSError):
-        write_status(root, code, state, task, started, budget)
+        write_status(root, code, state, task, started, budget, reason=reason)
+
+
+def _refused_status(root, code, budget, exc):
+    """v14: "blocked" for an outside cause (Blocked), else "refused"."""
+    state = "blocked" if isinstance(exc, Blocked) else "refused"
+    _status_quietly(root, code, state, REFUSED_TASK, budget, reason=str(exc))
 
 
 def _checklist_rows(checklist):
@@ -694,7 +733,8 @@ def main_checkout(path):
     return path
 
 
-def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checklist=None):
+def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checklist=None,
+                   reason=None):
     """FLEET-COMMON item 12: ops/loop/control/progress/<task>.json with
     {task, pct, step, eta_s, status: running|done|failed, updated}, plus
     "checklist" (item 13 d, remaining tasks) when one is passed. v12: in the
@@ -709,6 +749,8 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checkl
            "status": status, "updated": _iso(clock())}
     if checklist is not None:
         doc["checklist"] = _checklist_rows(checklist)
+    if reason:
+        doc["reason"] = " ".join(str(reason).split())[:120]
     path = main_checkout(root) / PROGRESS_REL / (task + ".json")
     _atomic_write(path, json.dumps(doc), verify=True)
     return dict(doc, path=str(path))
@@ -828,6 +870,12 @@ def conformance(root):
     elif hashlib.sha256(text[i + len(BEGIN):j].encode("ascii")).hexdigest() != \
             man.get("common_block_sha256"):
         problems.append("CLAUDE.md FLEET-COMMON block edited")
+    else:
+        lines = text.split("\n")
+        for word, mark in (("BEGIN", BEGIN.rstrip("\n")), ("END", END)):
+            hits = [ln for ln in lines if mark in ln]
+            if len(hits) != 1 or hits[0] != mark:
+                problems.append(f"CLAUDE.md FLEET-COMMON {word} marker is not alone on one line")
     return problems
 
 
@@ -1010,8 +1058,8 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
                           session_id=session_id, resume=resume)
         slot_cm = _governor(root, code, governor, governor_timeout, governor_root,
                             budget, note, governor_since)
-    except Refused:
-        _status_quietly(root, code, "refused", REFUSED_TASK, budget)
+    except Refused as exc:
+        _refused_status(root, code, budget, exc)
         raise
     except OSError as exc:
         _status_quietly(root, code, "refused", REFUSED_TASK, budget)
@@ -1038,10 +1086,12 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
         raise
     except OSError as exc:
         _status_quietly(root, code, "refused", REFUSED_TASK, budget)
-        raise Refused(f"budget write failed: {exc.__class__.__name__}") from None
+        raise Refused(f"budget write failed: {exc.__class__.__name__}",
+                      code="budget-write-failed") from None
     if not counted:
         _status_quietly(root, code, "limit", "Turn Limit Reached", budget)
-        raise Refused(f"run budget exhausted ({budget.used()}/{budget.cap})")
+        raise Refused(f"run budget exhausted ({budget.used()}/{budget.cap})",
+                      code="budget-spent")
     started = time.time()
     _status_quietly(root, code, "running", "Running Session", budget, started)
     kw = {"cwd": str(Path(cwd) if cwd else root), "env": child_env(url, bare),
@@ -1130,6 +1180,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     pp.add_argument("--step", required=True)
     pp.add_argument("--eta-s", type=int)
     pp.add_argument("--status", choices=PROGRESS_STATES, required=True)
+    pp.add_argument("--reason")
     try:
         args = ap.parse_args(argv)
     except SystemExit:
@@ -1138,7 +1189,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     if args.cmd == "progress":
         try:
             doc = write_progress(args.root, args.task, args.pct, args.step, args.eta_s,
-                                 args.status)
+                                 args.status, reason=args.reason)
         except (ValueError, OSError) as exc:
             print(json.dumps({"error": exc.__class__.__name__}), file=out)
             return CLI_USAGE
@@ -1166,7 +1217,8 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
             kind=args.kind,
             extra=("--permission-mode", args.permission_mode) if args.permission_mode else ())
     except Refused as exc:
-        print(json.dumps({"refused": str(exc)}), file=out)
+        print(json.dumps({"refused": str(exc), "code": getattr(exc, "code", "refused")}),
+              file=out)
         return CLI_REFUSED
     print(json.dumps(line), file=out)
     return CLI_TIMEOUT if line.get("error") == "timeout" else CLI_OK

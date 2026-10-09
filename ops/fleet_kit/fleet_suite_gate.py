@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v13 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
+"""Fleet kit v14 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -16,7 +16,11 @@ the number graded was the sibling load, not the code.
 `run`:
   1. refuses (exit 3) while the tree holds uncommitted edits to a path claimed
      in fleet_claims by a live owner other than --owner (env FLEET_CLAIM_OWNER):
-     a run straddling an edit says nothing;
+     a run straddling an edit says nothing. v14 (KIT-14): only TEST-RELEVANT
+     paths count - anything under a tests/ directory, conftest*, pytest /
+     project config and requirements files, and every other path except
+     docs/ and prose (.md .rst .adoc .txt); another agent's doc or ROADMAP
+     edit no longer blocks the suite;
   2. takes one of N machine-wide slots - N = --slots, else env
      FLEET_SUITE_SLOTS, default 2 (v13; was 1), at most MAX_SLOTS - as
      <dir>/slot-<k>.lock by exclusive create, holder {pid, pid_started, start};
@@ -29,7 +33,11 @@ the number graded was the sibling load, not the code.
      or reused is dropped. While waiting it prints a progress line to stderr every 30 s;
      after --timeout (default 3600 s) it FAILS CLOSED (exit 3) without running;
   3. re-checks 1 inside the slot, runs the suite (env FLEET_SUITE_SLOT=k),
-     releases the slot, exits with the suite's code.
+     releases the slot, exits with the suite's code. v14: the suite starts
+     with CREATE_NO_WINDOW when this process has no visible console
+     (fleet_gitlock.quiet_inherit; LW 0000), its output still inherited; a
+     relative command path (env/Scripts/python.exe) is anchored to the cwd
+     (resolve_exe; was WinError 2).
 Pure stdlib plus the sibling kit files fleet_claims.py and fleet_gitlock.py.
 """
 
@@ -273,9 +281,33 @@ def dirty_paths(cwd):
     return out
 
 
+PROSE_SUFFIXES = (".md", ".rst", ".adoc", ".txt")
+CONFIG_NAMES = ("pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini", "package.json",
+                "package-lock.json")
+
+
+def test_relevant(rel):
+    """True when an edit at tree-relative path rel can change a suite's result
+    (v14 KIT-14): docs/ and prose files cannot; tests, conftest, config,
+    requirements and every other path can."""
+    rel = str(rel).replace("\\", "/").lower().removeprefix("./")
+    parts = rel.split("/")
+    name = parts[-1]
+    if "tests" in parts[:-1] or "test" in parts[:-1] or name.startswith("conftest"):
+        return True
+    if name in CONFIG_NAMES or name.startswith("requirements"):
+        return True
+    if parts[0] == "docs":
+        return False
+    return not name.endswith(PROSE_SUFFIXES)
+
+
 def check_straddle(cwd, owner, dirty=dirty_paths, now=None):
     t = claims.tree_of(cwd)
-    hits = claims.foreign_claims(dirty(cwd), owner, now)
+    paths = dirty(cwd)
+    if t is not None:
+        paths = [p for p in paths if test_relevant(claims.rel_in(p, t[0]))]
+    hits = claims.foreign_claims(paths, owner, now)
     if hits:
         where = claims.rel_in(hits[0][0], t[0]) if t else hits[0][0]
         raise GateRefused("SUITE-GATE: {} has uncommitted edits by another live agent; "
@@ -304,6 +336,22 @@ def parse(argv):
     return owner, slots(n), timeout, cmd
 
 
+def resolve_exe(cmd, cwd):
+    """v14 (KIT-13 carry-over): Windows CreateProcess does not find a RELATIVE
+    executable path such as env/py312/Scripts/python.exe (WinError 2), so a
+    relative path-like command word is anchored to cwd when the file exists
+    there (with .exe tried on Windows). Bare names still resolve on PATH."""
+    if not cmd:
+        return list(cmd)
+    w = cmd[0]
+    if Path(w).is_absolute() or ("/" not in w and "\\" not in w):
+        return list(cmd)
+    for cand in (Path(cwd) / w, Path(cwd) / (w + ".exe")):
+        if cand.is_file():
+            return [str(cand), *cmd[1:]]
+    return list(cmd)
+
+
 def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
     cwd = Path(cwd or os.getcwd())
     owner, n, timeout, cmd = parse(argv)
@@ -313,8 +361,9 @@ def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
     try:
         check_straddle(cwd, owner, dirty)
         env = dict(os.environ, FLEET_SUITE_SLOT=str(k))
-        runner = runner or (lambda c, e: subprocess.run(c, cwd=str(cwd), env=e).returncode)
-        return runner(cmd, env)
+        runner = runner or (lambda c, e: subprocess.run(c, cwd=str(cwd), env=e,
+                                                        **gitlock.quiet_inherit()).returncode)
+        return runner(resolve_exe(cmd, cwd), env)
     finally:
         release(d, k, raw)
 

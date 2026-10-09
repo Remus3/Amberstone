@@ -19,7 +19,10 @@ RC_TRACER_REPORT (its default is already the system temp dir, never the live tre
 EXTRA_IGNORE - files under the kit's watched dirs that RC's own scheduled inbox
 tick (RC-InboxResponder, every 5 min) rewrites while a suite runs, added to the
 kit's IGNORE for the same reason the kit ignores inbox_status.json: a change the
-live tick made says nothing about a test. ASCII only.
+live tick made says nothing about a test. Kit v14 (MAIN 2026-10-09 0930 step 3):
+passed as install(..., extra_ignore=EXTRA_IGNORE), which ADDS to the kit IGNORE;
+the v14 IGNORE itself now holds every *.lock and headless_budget.json, so
+inbox_tick.lock and headless_budget.json left this list. ASCII only.
 """
 
 ENV_ROOTS = {
@@ -39,7 +42,5 @@ ENV_ROOTS = {
 
 EXTRA_IGNORE = (
     "ops/loop/control/inbox_tick_last.json",
-    "ops/loop/control/inbox_tick.lock",
     "ops/loop/control/inbox_held/*",
-    "ops/loop/control/headless_budget.json",
 )

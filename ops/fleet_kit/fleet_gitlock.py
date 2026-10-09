@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v13 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
+"""Fleet kit v14 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -28,8 +28,12 @@ callers that run outside a hook (a lane landing, a script).
      minutes is broken ONCE per acquire and the break is logged to
      ops/loop/control/gitlock.jsonl; otherwise it waits up to --timeout
      (default 300 s) with a progress line on stderr, then fails (exit 3);
-  2. checks the worktree's index.lock: removed only when no git process is
-     alive and it is older than 60 s; otherwise waited for, then exit 3;
+  2. checks the worktree's index.lock (v14, RC 0001 sec 9c): removed when it
+     is older than 60 s and the git probe says no git process is alive, or,
+     whatever the probe says, when it is older than INDEX_LOCK_STALE_S (10 min;
+     we hold the tree's git lock, so no routed git writes it); otherwise
+     waited for, then exit 3. A FAILED probe (tasklist / pgrep error, e.g. a
+     DLL-init exit) means UNKNOWN and counts as "git alive" (v14 KIT-14);
   3. for `commit`: refuses (exit 3) when the staged set - plus the tracked
      modifications for -a/--all and any pathspec - holds a path claimed in
      fleet_claims by a live owner other than --owner (env FLEET_CLAIM_OWNER);
@@ -40,6 +44,10 @@ callers that run outside a hook (a lane landing, a script).
      `fleet.operatorIdent` set; an ident git cannot resolve is not refused
      here (the pre-push hook is the hard gate);
   5. runs the git command, releases the lock, exits with git's code.
+
+v14: the git child and every probe start with CREATE_NO_WINDOW when this
+process has no visible console (quiet_inherit()), passing its own stdio
+explicitly so output still arrives; in a visible terminal nothing changes.
 
 Python callers (e.g. a lane landing) use `with git_lock(dir, owner): ...`.
 Messages name a path relative to its tree, never an account or email.
@@ -62,6 +70,7 @@ LOCK_NAME = "git.lock"
 STALE_MIN = 15.0
 WAIT_S = 300.0
 INDEX_LOCK_AGE_S = 60.0
+INDEX_LOCK_STALE_S = 600.0
 INDEX_WAIT_S = 90.0
 HALF_WRITTEN_GRACE_S = 30.0
 PROGRESS_EVERY_S = 15.0
@@ -160,18 +169,56 @@ def holder_gone(rec, now, stale_min=STALE_MIN, alive=pid_alive, started=proc_sta
     return ""
 
 
-def git_alive():
-    """True when any git process is running on the box."""
+def _console_window():
+    """The handle of this process's VISIBLE console window (0 = none)."""
+    if sys.platform != "win32":
+        return 1
+    try:
+        import ctypes
+        return int(ctypes.windll.kernel32.GetConsoleWindow() or 0)
+    except (OSError, AttributeError, ValueError):
+        return 0
+
+
+def quiet_inherit(console=None):
+    """subprocess kwargs for a child that shares this process's stdio (v14,
+    LW 0000). With no visible console the child would open a window, so it
+    gets CREATE_NO_WINDOW and this process's std handles explicitly (a new
+    hidden console would otherwise swallow its output). In a visible terminal
+    the child simply shares it: creationflags 0, nothing else changes."""
+    console = _console_window() if console is None else console
+    if sys.platform != "win32" or console:
+        return {"creationflags": 0}
+    kw = {"creationflags": _NO_WINDOW}
+    for name in ("stdin", "stdout", "stderr"):
+        stream = getattr(sys, name, None)
+        try:
+            if name != "stdin":
+                stream.flush()
+            kw[name] = stream.fileno()
+        except (AttributeError, OSError, ValueError):
+            kw[name] = subprocess.DEVNULL
+    return kw
+
+
+def git_alive(runner=None):
+    """True when a git process is (or may be) running on the box. A probe that
+    fails - cannot start, times out, or exits with an error such as
+    0xc0000142 - is UNKNOWN and answers True: keep the lock (v14 KIT-14)."""
+    runner = runner or subprocess.run
     try:
         if sys.platform == "win32":
-            out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq git.exe", "/NH", "/FO", "CSV"],
-                                 capture_output=True, text=True, timeout=10,
-                                 creationflags=_NO_WINDOW).stdout
-            return "git.exe" in out.lower()
-        out = subprocess.run(["pgrep", "-x", "git"], capture_output=True, text=True,
-                             timeout=10).stdout
-        return bool(out.strip())
-    except (OSError, subprocess.SubprocessError):
+            r = runner(["tasklist", "/FI", "IMAGENAME eq git.exe", "/NH", "/FO", "CSV"],
+                       capture_output=True, text=True, timeout=10, creationflags=_NO_WINDOW)
+            if r.returncode != 0:
+                return True
+            return "git.exe" in (r.stdout or "").lower()
+        r = runner(["pgrep", "-x", "git"], capture_output=True, text=True, timeout=10,
+                   creationflags=_NO_WINDOW)
+        if r.returncode not in (0, 1):  # pgrep: 0 match, 1 none, else error
+            return True
+        return bool((r.stdout or "").strip())
+    except (OSError, subprocess.SubprocessError, ValueError):
         return True
 
 
@@ -297,9 +344,11 @@ def git_lock(cwd, owner=None, verb="", **kw):
 
 
 def clear_index_lock(cwd, clock=time.time, sleep=time.sleep, alive_git=git_alive,
-                     wait=INDEX_WAIT_S, min_age=INDEX_LOCK_AGE_S):
+                     wait=INDEX_WAIT_S, min_age=INDEX_LOCK_AGE_S,
+                     stale_age=INDEX_LOCK_STALE_S):
     """Make sure no leftover index.lock blocks the run. Returns 'none',
-    'removed' or 'cleared' (it went away while we waited)."""
+    'removed' or 'cleared' (it went away while we waited). Staleness is judged
+    per tree by age (v14): any git elsewhere on the box no longer pins it."""
     top, gitdir, main = tree(cwd)
     il = Path(gitdir) / "index.lock"
     begin, seen = clock(), False
@@ -309,7 +358,7 @@ def clear_index_lock(cwd, clock=time.time, sleep=time.sleep, alive_git=git_alive
         except OSError:
             return "cleared" if seen else "none"
         seen = True
-        if age >= min_age and not alive_git():
+        if age >= stale_age or (age >= min_age and not alive_git()):
             try:
                 il.unlink()
             except OSError:
@@ -422,7 +471,7 @@ def run(argv, cwd=None, runner=None, **kw):
     cwd = Path(cwd or os.getcwd())
     owner, timeout, cmd, (verb, args, cdir) = parse(argv)
     where = (cwd / cdir) if cdir and not Path(cdir).is_absolute() else Path(cdir or cwd)
-    runner = runner or (lambda c: subprocess.run(c, cwd=str(cwd)).returncode)
+    runner = runner or (lambda c: subprocess.run(c, cwd=str(cwd), **quiet_inherit()).returncode)
     with git_lock(where, owner, verb, timeout=timeout, **kw):
         clear_index_lock(where)
         if verb == "commit":
