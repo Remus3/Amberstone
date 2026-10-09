@@ -6,8 +6,23 @@ session 105, fd65b8002; its row stays OPEN in inbox_work.jsonl until the ONE lat
 then close it with `inbox_tick.py --done`). Read the ORDER in moon_sync_inbox/ by section. Start with
 section 4's DEPENDABOT-1 = E2 below (NEW RULE from that ORDER: never the GitHub merge button or
 `gh pr merge`; land the bump locally as an operator commit, cherry-pick `--reset-author`, through
-fleet_gitlock). Section 4's history rewrite + force push and section 5's sidecar move are BLOCKED for
-the operator (attended confirmation; out-of-tree) - put both in the ONE operator ask.
+fleet_gitlock). The operator CONFIRMED acts A and B in chat 2026-10-09 (LEDGER 1696):
+- A (section 5 sidecar move) DONE: lane worktree base read from gitignored ops/lane_worktrees.json
+  (46b637da1); the 6 lane worktrees `git worktree move`d to it, RC restarted to load it.
+- B (section 4 history rewrite + force push, scope = all kit v13 flags: 80 commits on main, 113 over
+  all local refs) HALTED BEFORE ANY HISTORY CHANGE: both pre-push gates HALT over the 5949-commit
+  range a force push re-publishes (sibling sweep exit 2, credential scan exit 2, 92 findings - all
+  historical lines already public under the old SHAs). Plan e53339a4dc7d (expires 24 h) and a
+  verified bundle exist (path + sha256 in LEDGER 1696; fresh for 6 h only - re-plan and re-bundle on
+  retry). See OPERATOR ASKS 5. On retry also: branch protection blocks force pushes
+  (allow_force_pushes false, enforce_admins true) - lift for ONE push and restore; filter-repo
+  prompts on the June-21 `.git/filter-repo/already_ran` (move that dir aside to
+  `.git/filter-repo-20260621/` first - it holds the June commit-map the citation map relies on);
+  the kit's `run` refuses linked worktrees (unregister by moving `.git/worktrees/<id>` aside and
+  restore after - `git worktree remove` would delete ignored/untracked work in every worktree);
+  after the push, remap SHA-anchored tests from the new commit-map (LEDGER 1361: 8 tests broke,
+  207 remaps in 89 files last time) and delete the local branches filter-repo migrates from
+  refs/remotes/origin/*.
 E2 detail: the operator reported the Electron 44 shell check OK on
 2026-10-08 (operator chat at the session 104 wrap, relayed into this file by the main session; the
 gate is MET; the /done of session 104 deliberately did NOT merge). Land Dependabot npm
@@ -35,6 +50,16 @@ wrap; the rest are still open):
    (taskkill /F /PID) and the task restarts it within ~1 min; then answer MAIN with line + state +
    restart. Body + acceptance in BACKLOG "Session 103 filings". "Continue headlessly - operator is away"
    was NOT an OK for this.
+5. History rewrite B (confirmed 2026-10-09, HALTED at the push gates): the force push re-publishes
+   5949 commits, so the sibling-name sweep (exit 2) and the credential-history scan (exit 2, 92
+   findings) HALT on lines that are already public under the old SHAs. Choose ONE: (a) authorize the
+   deliberate overrides for that ONE push (RC_SIBLING_SWEEP_BYPASS=1 logs the full report; the
+   credential scan has no env bypass, so that means `--no-verify`, which also skips the identity
+   gate and the LFS upload - run fleet_identity check + the sweeps by hand first), plus a one-push
+   lift of branch protection; or (b) scrub the flagged historical lines too (a local replace file,
+   MAIN 2246 section 4 step 2) and re-plan. Review the 92 credential-shaped findings either way
+   (classes anthropic / openai / riot_api_key / bearer_token / connection_string_password; values
+   never printed; most sit in tests and docs).
 
 Session 105 (2026-10-08, attended, executor sub-agent) shipped - do NOT redo (LEDGER 1694-1695):
 - K12 MAIN 2031 ORDER kit v12 RACE GUARDS: provenance 22/22; d54e41968 (one commit via gitlock) +
@@ -56,6 +81,18 @@ Session 105 (2026-10-08, attended, executor sub-agent) shipped - do NOT redo (LE
 - FILED RM-692 (watchdog fixer child commit outside gitlock), RM-693 (lane worktrees lack RC Claude
   hooks - measure first), RM-694 (two guards read gitignored ops/runtime/responder_export copies),
   RM-695 (tree-sweep self-test MemoryError + xdist wedge). Next free RM-696.
+
+New carry items (session 105, kit-v13 acts executor 2026-10-09):
+- Lane prompts tools/headless-{ds,uiux,true-audit,repo,queue,research,gated}.md still tell the worker
+  its toplevel must print the OLD drive-root lane path (stale since the E-move; now the lanes sit
+  under the base in ops/lane_worktrees.json). Convert the self-check to `git worktree list` /
+  lane_launcher.worktree_path(), no machine literal (sibling sweep structural arm). Not filed yet.
+- The old lane folder now holds only the stray before_sweep_s2.txt and its system-drive junction is
+  MAIN's to release; RC did not delete either. mission_control.py (separate pythonw) still holds
+  the old base in memory until it restarts; a lane fired from it fails loudly (branch checked out
+  elsewhere), it cannot fork a second worktree.
+- Pre-push dry-run tool for a whole-history range: scratch scripts in the session scratchpad only;
+  the sweep over 5949 commits takes ~8.5 min / ~550 MB, the credential scan ~1 min.
 
 New carry items (session 105):
 - NO MORE `Claude-Session:` / co-author lines in commit messages (FLEET-COMMON 17; the commit-msg hook
