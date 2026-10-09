@@ -52,6 +52,19 @@ hop_budget`): that responder stays disarmed, which is the ruling's point.
 NEVER FAILS A FIRE. `fire_step` swallows every fault into the summary's
 `errors` and completes the checklist row; the lane still runs.
 
+THE LIVE STATUS FILE (MAIN 2026-10-08 2246 ORDER section 7, FLEET-COMMON 10).
+Every non-dry pass that takes the lock refreshes ops/loop/control/
+inbox_status.json through the kit's own fleet_headless.write_status, even a
+pass with nothing to do: "running" / "Checking Inbox" once the lock is held,
+then "idle" / "Idle" (or "halted" / "Halted" while the STOP flag is present)
+in the pass's finally, before the lock is dropped, with next_tick when the
+caller names its cadence (`next_tick_s`; the CLI passes TICK_S, the
+RC-InboxResponder task's 5-minute repeat). A dry pass writes nothing; a pass
+that finds the lock held leaves the holder's status alone; a status-write
+fault is a summary error, never a failed tick. Usage rows are the kit's: a
+triage spawn goes through fleet_headless.spawn with kind="triage" and the
+note name as its label, and a tick that spawns nothing logs no usage row.
+
 THE WORK QUEUE (RM-685). The kit owns inbox_work.jsonl: enqueue_work writes
 op "queued", mark_work_done op "done", pending_work reads only those two.
 pending(root) = kit pending_work rows with "provenance" joined from the last
@@ -135,6 +148,9 @@ LAST_REL = Path("ops/loop/control/inbox_tick_last.json")
 HELD_REL = Path("ops/loop/control/inbox_held")
 DELIVERIES_REL = Path("ops/loop/control/inbox_deliveries.jsonl")
 MAX_TRIAGE_PER_TICK = 1
+# The RC-InboxResponder task repeats every 5 minutes
+# (ops/install_RC_InboxResponder.ps1); the CLI's idle status names that tick.
+TICK_S = 300
 # RC's commit floors live in hooks, so --bare would skip them (kit v11 ruling R1).
 FLOORS_IN_HOOKS = True
 LOCK_STALE_S = 900
@@ -357,11 +373,34 @@ def _count_pending(root: Path, s: dict) -> None:
         s["errors"].append(f"pending: {type(exc).__name__}: {exc}"[:200])
 
 
+def _write_status(root: Path, code: str, state: str, task: str, s: dict,
+                  next_tick_s=None) -> None:
+    """The live status file through the KIT's own writer (never reimplemented
+    here). Never raises: a fault is one summary error string."""
+    try:
+        budget = fleet_headless.RunBudget(root / fleet_headless.BUDGET_REL)
+        now = time.time()
+        nt = None if next_tick_s is None else now + float(next_tick_s)
+        fleet_headless.write_status(root, code, state, task, now, budget, next_tick=nt)
+    except Exception as exc:  # noqa: BLE001 - a status fault never fails the tick
+        s["errors"].append(f"status: {type(exc).__name__}: {exc}"[:200])
+
+
+def _end_status(root: Path, code: str, s: dict, next_tick_s) -> None:
+    if (root / STOP_REL).exists():
+        _write_status(root, code, "halted", "Halted", s)
+    else:
+        _write_status(root, code, "idle", "Idle", s, next_tick_s)
+
+
 def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
          retired=None, spawn=None, spawn_kw=None, verify=None, deliver=None,
-         now=None, dry=False, max_triage=MAX_TRIAGE_PER_TICK, emit=None) -> dict:
+         now=None, dry=False, max_triage=MAX_TRIAGE_PER_TICK, emit=None,
+         next_tick_s=None) -> dict:
     """One inbox pass. Returns the summary dict; raises only on a seam fault
-    (fire_step catches that). `dry` classifies and writes nothing."""
+    (fire_step catches that). `dry` classifies and writes nothing. A non-dry
+    pass that holds the lock refreshes the live status file (module docstring,
+    THE LIVE STATUS FILE); `next_tick_s` names the caller's cadence."""
     root = Path(root)
     inbox = root / INBOX_DIR if inbox is None else Path(inbox)
     emit = emit or (lambda _s: None)
@@ -385,6 +424,8 @@ def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
         s["locked"] = True
         return s
     try:
+        if not dry:
+            _write_status(root, code, "running", "Checking Inbox", s)
         rows = fleet_inbox.scan(root, inbox, code)
         s["unseen"] = len(rows)
         if dry:
@@ -400,6 +441,7 @@ def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
         _count_pending(root, s)
     finally:
         if not dry:
+            _end_status(root, code, s, next_tick_s)
             _drop_lock(root)
     return s
 
@@ -747,7 +789,7 @@ def main(argv=None) -> int:
             print(f"inbox_tick: {len(bad)} undecodable line(s) kept byte-for-byte: "
                   f"{', '.join(str(n) for n in bad)}", file=sys.stderr)
         return 1 if res.get("locked") else 0
-    s = tick(root, dry=args.dry, emit=print)
+    s = tick(root, dry=args.dry, emit=print, next_tick_s=TICK_S)
     if not args.dry:
         # Item F: the RC-InboxResponder task runs this CLI under pythonw (no
         # stdout), so the summary file is a scheduled fire's only read-back.
