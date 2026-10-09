@@ -43,6 +43,16 @@ every one of those additions is a named kit gap reported to MAIN, not a patch:
    own check refuses a bad value before anything starts. The RC-local
    `--effort` argv knob (the loop executor's) is retired into `effort=`.
 
+7. ONE USAGE LEDGER, ALWAYS LABELLED (MAIN 2026-10-08 2246 ORDER section 7,
+   FLEET-COMMON 14 e). Every usage row carries a kit `kind` and a NON-EMPTY
+   note label: a caller that names no note is labelled by its own `caller`
+   name (the kit would otherwise log note "" and kind "unattributed"). The
+   default root is the MAIN checkout even when this file is loaded from a
+   linked worktree (the kit's own `main_checkout`), so the budget, the status
+   file and the usage rows MAIN reads stay in one place; the child then still
+   runs in the worktree (cwd defaults to this file's tree). In the main tree
+   nothing changes.
+
 The STOP flags (`ops/loop/control/STOP`, `ops/runtime/INBOX_RESPONDER_STOP`)
 and the responder's agreement-record arming check are NOT enforced by the kit
 and are NOT moved here: they stay in front of their own callers, unchanged.
@@ -134,6 +144,20 @@ _kit_spawn = None  # None -> kit().spawn
 _launch = None
 
 
+def _kit_root(k) -> Path:
+    """The budget / status / usage root (module docstring item 7): the MAIN
+    checkout when ROOT is a linked worktree, else ROOT itself, unchanged."""
+    root = Path(ROOT)
+    find_main = getattr(k, "main_checkout", None)
+    if not callable(find_main):
+        return root
+    try:
+        main = Path(find_main(root))
+        return main if main != root.resolve() else root
+    except OSError:
+        return root
+
+
 def _kit_launcher(k):
     """The kit's launch function, or None when this kit version has none.
 
@@ -156,7 +180,10 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
 
     `kind` (kit v8, FLEET-COMMON 14 e) labels the usage line build / inbox /
     triage; omitted, the kit infers it from the note (drain-* -> build) and the
-    pre-v8 call shape is kept byte-for-byte (no `kind=` reaches the kit).
+    pre-v8 call shape is kept byte-for-byte (no `kind=` reaches the kit). An
+    empty `note` is replaced by `caller`, so the row is never unlabelled
+    (module docstring item 7); `root` omitted is `_kit_root` (the MAIN
+    checkout), with the child's cwd kept in this tree.
     `model`, `effort`, `session_id` and `resume` are the kit's own parameters,
     passed through only when set (module docstring item 6).
     `prompt_on_stdin=True` is the kit's `stdin=True`: the WHOLE prompt rides
@@ -175,7 +202,13 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
         raise RouteRefused(exc.reason, exc.detail) from None
 
     k = kit()
-    root = Path(root) if root is not None else ROOT
+    note = note or caller
+    if root is not None:
+        root = Path(root)
+    else:
+        root = _kit_root(k)
+        if cwd is None and root != Path(ROOT):
+            cwd = ROOT
     launch = _launch or _kit_launcher(k)
     if launch is None:
         # Fail closed before the kit counts a start: without the kit's own
@@ -247,7 +280,8 @@ def write_idle(next_tick_s: Optional[float] = DEFAULT_TICK_S, root=None) -> None
     Never raises: a status-file fault must not cost the tick that wrote it.
     """
     nt = None if next_tick_s is None else time.time() + float(next_tick_s)
-    _idle(kit(), Path(root) if root is not None else ROOT, nt)
+    k = kit()
+    _idle(k, Path(root) if root is not None else _kit_root(k), nt)
 
 
 def main(argv=None) -> int:
