@@ -25,6 +25,10 @@ Contract:
     error" (MAIN ORDER 2026-10-07 2237; the full message goes to the report's
     `message`). Arming is deliberately opt-in - a gate that fires wrongly once gets disabled forever,
     so arming waits until the report is observed quiet on clean sessions.
+  - QUIET MAIN (operator, 2026-10-09; FLEET item 15): a finding reaches that
+    line AT MOST ONCE per session (see SEEN SET), ADVISORY checks never reach
+    it, and a Stop with nothing new prints nothing. The report still lists
+    every finding on every Stop.
 
 Usage (hook):
   python.exe tools/stop_claim_gate.py --arm
@@ -39,7 +43,10 @@ that was measured; it is now exit 0 plus one stdout JSON line, which is also
 unmeasured under pythonw, so the reasoning stands.)
 """
 import argparse
+import hashlib
+import itertools
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -49,6 +56,15 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPORT = ROOT / "ops" / "runtime" / "stop_claim_report.json"
 DEFAULT_HISTORY = ROOT / "ops" / "runtime" / "stop_claim_history.jsonl"
 HISTORY_MAX = 500
+# SEEN SET (operator, 2026-10-09). The scan re-reads the WHOLE transcript every
+# Stop, so without a memory one finding re-fired on every later turn of the
+# session: measured on session e4ff80f0, the same two findings were injected
+# after every main turn although the session had acknowledged and corrected
+# both. One small JSON file per session, beside the report (so a test's
+# `--report` in a temp dir carries its own seen set), written atomically.
+SEEN_DIRNAME = "stop_claim_seen"
+DEFAULT_SEEN_DIR = DEFAULT_REPORT.parent / SEEN_DIRNAME
+SEEN_MAX_SESSIONS = 200
 
 # Claim patterns. Deliberately narrow: a false positive costs more than a miss,
 # because the first wrong flag is what gets the hook turned off.
@@ -703,6 +719,19 @@ def _result_text(block):
     return ""
 
 
+# A sub-agent's RESULT, the "same sub-agent result" of the count-sum rule (see
+# _count_groups): a foreground Agent / Task call's tool_result, or the
+# <result> body of a background agent's <task-notification> user row.
+AGENT_TOOLS = frozenset({"agent", "task"})
+_NOTIFICATION_RESULT = re.compile(r"<result>(.*?)</result>", re.S)
+
+
+def _notification_results(text):
+    if not isinstance(text, str) or "<task-notification>" not in text:
+        return []
+    return _NOTIFICATION_RESULT.findall(text)
+
+
 def collect_evidence(rows):
     """Split a transcript into the assistant's claims and the session's evidence.
 
@@ -711,8 +740,8 @@ def collect_evidence(rows):
     of a suite run - reading it as one is what poisoned every claim in the first
     armed session.
     """
-    ev = {"texts": [], "bash": [], "edited": [], "runs": [], "ci_runs": [],
-          "artifacts": []}
+    ev = {"texts": [], "text_turns": [], "bash": [], "edited": [], "runs": [],
+          "ci_runs": [], "artifacts": [], "agent_results": []}
     pending = None
     # RM-498: one OPEN entry per backgrounded launch, each with room for
     # DEFERRED_SUMMARY_CAP summary-bearing reads. The old single per-session
@@ -721,17 +750,29 @@ def collect_evidence(rows):
     # slot an earlier harness-backgrounded run had swallowed were all measured
     # false positives on TRUE numbers.
     deferred = []
-    for row in rows:
+    agent_calls = set()
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
         role = row.get("type")
+        # The SOURCE TURN of any claim this row carries (seen-set key).
+        turn = str(row.get("uuid") or f"row-{index}")
         for block in _blocks(row):
             if not isinstance(block, dict):
                 continue
             kind = block.get("type")
             if kind == "text" and role == "assistant":
                 ev["texts"].append(str(block.get("text", "")))
+                ev["text_turns"].append(turn)
+            elif kind == "text" and role == "user":
+                # A background sub-agent's final report reaches main as a
+                # user-role <task-notification> (measured 2026-10-09).
+                ev["agent_results"].extend(_notification_results(block.get("text")))
             elif kind == "tool_use":
                 name = str(block.get("name", "")).lower()
                 data = block.get("input") or {}
+                if name in AGENT_TOOLS and isinstance(block.get("id"), str):
+                    agent_calls.add(block["id"])
                 if name in ("bash", "powershell"):
                     command = str(data.get("command", ""))
                     ev["bash"].append(command)
@@ -758,6 +799,11 @@ def collect_evidence(rows):
                                 ev["artifacts"].append((str(target), written))
             elif kind == "tool_result":
                 text = _result_text(block)
+                tid = block.get("tool_use_id")
+                if isinstance(tid, str) and tid in agent_calls:
+                    # A foreground Agent / Task call's report (prose: it only
+                    # ever GROUPS observed counts, see _count_groups).
+                    ev["agent_results"].append(text)
                 if pending is not None:
                     pending["output"] = text
                     # A backgrounded run has not reported yet. Keep it open so
@@ -797,6 +843,67 @@ def _sentences_with_line(texts):
                 part = part.strip()
                 if part:
                     yield part, line
+
+
+def _sentences_with_turn(texts, turns):
+    """`_sentences_with_line` over the noise-stripped TEXTS, each sentence also
+    carrying the source turn of the text it came from (a hand-built evidence
+    dict with no `text_turns` gets a positional turn)."""
+    for index, text in enumerate(texts):
+        turn = turns[index] if index < len(turns) else f"text-{index}"
+        for sentence, line in _sentences_with_line([strip_prose_noise(text)]):
+            yield sentence, line, turn
+
+
+# COUNT SUMS (operator, 2026-10-09). Measured on session e4ff80f0: one sub-agent
+# ran the dual suite in ONE command, whose output printed "10971 passed" (DS)
+# and "28211 passed" (RC); its report named both; the main session wrote
+# "Full suite: 39182 passed" - their sum, true - and count_mismatch fired on it
+# after every turn. A claim equal to the sum of two or more DISTINCT counts that
+# share ONE evidence unit is accepted:
+#   - one test-output block: a single run's output (deferred summaries
+#     included), or a single CI log fetch's summary lines;
+#   - one sub-agent result (AGENT_TOOLS / <task-notification>), counting ONLY
+#     the counts it names that are themselves in observed_counts - the prose
+#     groups evidence, it never supplies it.
+# Nothing wider, no fuzzy matching: two counts from two different blocks or two
+# different results never sum. DISTINCT values, so a summary line read twice
+# cannot double a count (accepted residue: two arms with exactly equal counts
+# cannot be summed). A unit holding more than SUM_GROUP_MAX distinct counts
+# offers only its TOTAL - every subset of a large unit would make almost any
+# number a sum.
+SUM_GROUP_MAX = 4
+
+
+def _count_groups(ev, observed_counts):
+    """The distinct-count sets, one per evidence unit, that hold two or more."""
+    groups = []
+    for run in ev.get("runs", []):
+        groups.append({m.replace(",", "") for pat in (EV_PASSED, EV_NODE_PASS)
+                       for m in pat.findall(run["output"])})
+    for run in ev.get("ci_runs", []):
+        groups.append({m.replace(",", "") for line in run["output"].splitlines()
+                       if EV_SUMMARY_LINE.search(line)
+                       for m in EV_PASSED.findall(line)})
+    for text in ev.get("agent_results", []):
+        named = {count.replace(",", "") for prefix, count in CLAIM_COUNT.findall(text)
+                 if prefix.lower() not in CLAIM_COUNT_ORDINAL}
+        groups.append(named & observed_counts)
+    return [group for group in groups if len(group) >= 2]
+
+
+def _group_sums(groups):
+    """Every sum of two or more distinct counts within one group, as strings
+    (only the total for a group over SUM_GROUP_MAX)."""
+    sums = set()
+    for group in groups:
+        values = sorted({int(v) for v in group if v.isdigit()})
+        if len(values) > SUM_GROUP_MAX:
+            sums.add(sum(values))
+            continue
+        for size in range(2, len(values) + 1):
+            sums.update(sum(combo) for combo in itertools.combinations(values, size))
+    return {str(total) for total in sums}
 
 
 def _same_file(claimed, edited_paths):
@@ -891,9 +998,14 @@ def audit(ev):
             return True
         return False
 
+    turn = ""
+
     def flag(check, quote, claimed="", observed=""):
+        # `turn` is the source turn of the sentence under audit ("" for an
+        # evidence-only finding); it keys the per-session seen set.
         findings.append({"check": check, "quote": quote[:300],
-                         "claimed": str(claimed), "observed": str(observed)})
+                         "claimed": str(claimed), "observed": str(observed),
+                         "turn": turn})
 
     bash = [strip_command_noise(c) for c in ev["bash"]]
     runs = ev["runs"]
@@ -914,6 +1026,8 @@ def audit(ev):
                         for line in r["output"].splitlines()
                         if EV_SUMMARY_LINE.search(line)
                         for m in EV_PASSED.findall(line)}
+    # Sums of counts sharing one evidence unit - see SUM_GROUP_MAX.
+    summed = _group_sums(_count_groups(ev, observed_counts))
     # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
     # RM-687: the subagent_* flags are set only on main()'s MERGED evidence,
@@ -940,8 +1054,8 @@ def audit(ev):
         if EV_BYPASS.search(command) and re.search(r"\bgit\b", command):
             flag("hook_bypass", command, observed=command)
 
-    for sentence, line in _sentences_with_line(
-            strip_prose_noise(t) for t in ev["texts"]):
+    for sentence, line, turn in _sentences_with_turn(ev["texts"],
+                                                     ev.get("text_turns") or []):
         claims_pass = bool(CLAIM_TESTS_PASS.search(sentence))
         if claims_pass and not ran_pytest:
             flag("tests_pass_without_run", sentence)                       # 1
@@ -962,7 +1076,8 @@ def audit(ev):
                     and "," not in count and joined in observed_counts):
                 continue
             bare = count.replace(",", "")
-            if observed_counts and bare not in observed_counts:
+            if (observed_counts and bare not in observed_counts
+                    and str(int(bare)) not in summed):
                 flag("count_mismatch", sentence, claimed=bare,             # 2
                      observed=", ".join(sorted(observed_counts)))
         # A counterfactual asserts nothing about this session - see
@@ -1005,6 +1120,7 @@ def audit(ev):
     # RM-421 - ADVISORY, see ARTIFACT_SCAN_BASENAMES. Same claim regex and
     # the same observed-counts evidence as count_mismatch; only the surface
     # differs. Never fires without observed counts (nothing to contradict).
+    turn = ""
     for target, written in ev.get("artifacts", []):
         cleaned = strip_prose_noise(written)
         for prefix, count in CLAIM_COUNT.findall(cleaned):
@@ -1424,7 +1540,7 @@ def _scan_subagent_file(path, session_start=None):
     are taken in file order and paired to their tool_use by id; a junk row or
     block is skipped on its own and never voids the file."""
     found = _new_subagent_evidence()
-    uses, runs, deferred = {}, [], []
+    uses, cwds, runs, deferred = {}, {}, [], []
     with open(path, encoding="utf-8", errors="replace") as handle:
         for line in handle:
             if "tool_" not in line:
@@ -1442,12 +1558,19 @@ def _scan_subagent_file(path, session_start=None):
                     use = _tool_use_of(block)
                     if use and use[0] not in uses:
                         uses[use[0]] = use
-                        _note_bypass(found, use)
+                        cwd = row.get("cwd")
+                        cwds[use[0]] = cwd if isinstance(cwd, str) else None
                 elif block.get("type") == "tool_result":
                     tid = block.get("tool_use_id")
                     use = uses.pop(tid, None) if isinstance(tid, str) else None
-                    _absorb_result(found, runs, deferred, use, _tool_text(block.get("content")),
-                                   block.get("is_error") is True, session_start)
+                    cwd = cwds.pop(tid, None) if isinstance(tid, str) else None
+                    text = _tool_text(block.get("content"))
+                    errored = block.get("is_error") is True
+                    # A bypass counts only once its call is SEEN to have run:
+                    # noted at RESULT time, never for a refused call.
+                    if use and not _refused(row, text, errored):
+                        _note_bypass(found, use, cwd)
+                    _absorb_result(found, runs, deferred, use, text, errored, session_start)
     for run in runs:
         run.pop("_room", None)
         if run["ci"]:
@@ -1464,13 +1587,240 @@ def _scan_subagent_file(path, session_start=None):
     return found
 
 
-def _note_bypass(found, use):
-    _tid, name, data = use
+def _note_bypass(found, use, cwd=None):
+    tid, name, data = use
     command = data.get("command")
     if name in ("bash", "powershell") and isinstance(command, str):
         stripped = strip_command_noise(command)
         if EV_BYPASS.search(stripped) and re.search(r"\bgit\b", stripped):
-            found["bypass"].append(command)
+            found["bypass"].append((command, cwd, tid))
+
+
+# subagent_hook_bypass SCOPE (operator, 2026-10-09). Measured on session
+# e4ff80f0: a nested verifier's `git -c core.hooksPath=... commit --no-verify`
+# in a THROWAWAY scratch repo was reported on every Stop, although the kit
+# GITLOCK PreToolUse hook REFUSED the call - it never ran - and the repo was not
+# RC. The finding now needs BOTH:
+#   (1) the call EXECUTED: its tool_result is not a refusal. Refusal shapes, all
+#       measured in this project's transcripts: a row carrying
+#       `toolDenialKind` or `permissionDecision.decision == "reject"`, or an
+#       is_error result opening with a PreToolUse hook error, a
+#       `<tool_use_error>`, the worktree-isolation refusal, or a permission
+#       denial. An unpaired call (no result yet) has not been seen to run.
+#   (2) its git statement targets RC: the directory it runs in - the row's
+#       `cwd` (else the Stop payload's cwd), then each `cd` / `Set-Location`
+#       before it, then `git -C` / `--git-dir` / `--work-tree` - resolves to
+#       RC's git common dir (the main checkout or any of its worktrees).
+#       FAIL CLOSED: a target this parser cannot place (an unset variable, a
+#       command substitution, a POSIX-root path) still counts.
+_REFUSAL = re.compile(
+    r"\s*(?:Error:\s*)?(?:PreToolUse:\w+ hook (?:error|denied)\b"
+    r"|<tool_use_error>"
+    r"|This agent is isolated in the worktree\b"
+    r"|Permission to use \S+ (?:has been|was) denied"
+    r"|The user doesn't want to (?:proceed|take this action))")
+
+
+def _refused(row, text, errored):
+    """True when this tool_result row says the call was refused, not run."""
+    if row.get("toolDenialKind"):
+        return True
+    decision = row.get("permissionDecision")
+    if isinstance(decision, dict) and decision.get("decision") == "reject":
+        return True
+    return errored and bool(_REFUSAL.match(text))
+
+
+_UNSET = "\x00unset\x00"
+_STATEMENT_BREAK = re.compile(r"&&|\|\||[;\n|]|(?<![<>&])&(?![>&])")
+_VAR_REF = re.compile(r"'[^']*'|\$\{(\w+)\}|\$(?:env:)?(\w+)", re.I)
+_TOKEN = re.compile(r"""(?:'[^']*'|"[^"]*"|[^\s'"])+""")
+_QUOTE_PART = re.compile(r"""'([^']*)'|"([^"]*)\"""")
+_BASH_ASSIGN = re.compile(r"([A-Za-z_]\w*)=(.*)", re.S)
+_PS_ASSIGN = re.compile(r"\$(?:env:)?(\w+)(?:=(.*))?", re.S | re.I)
+_CD_WORDS = frozenset({"cd", "chdir", "pushd", "set-location", "sl", "push-location"})
+_GIT_PATH_OPTS = frozenset({"-C", "--git-dir", "--work-tree"})
+_GIT_VALUE_OPTS = frozenset({"-c", "--namespace", "--config-env", "--exec-path"})
+_MSYS_DRIVE = re.compile(r"/([A-Za-z])(?=/|$)")
+_WIN_ABS = re.compile(r"[A-Za-z]:[\\/]|[\\/]{2}")
+
+
+def _native_path(raw):
+    """An MSYS drive path (`/e/x`) as its Windows form (`E:/x`); else RAW."""
+    match = _MSYS_DRIVE.match(raw)
+    if not match:
+        return raw
+    return match.group(1).upper() + ":" + (raw[match.end():] or "/")
+
+
+_WINDOWS = os.name == "nt"
+
+
+def _host_path(raw):
+    """RAW as this host reads it: MSYS drive paths are Windows-only (on a POSIX
+    host - CI - `/e/x` is an ordinary absolute path)."""
+    return _native_path(raw) if _WINDOWS else raw
+
+
+def _expand(text, variables):
+    """TEXT with `$NAME` / `${NAME}` / `$env:NAME` replaced from VARIABLES (an
+    unknown name becomes _UNSET); single-quoted spans are left alone."""
+    def sub(match):
+        name = match.group(1) or match.group(2)
+        if name is None:
+            return match.group(0)
+        return variables.get(name.lower(), _UNSET)
+    return _VAR_REF.sub(sub, text)
+
+
+def _tokens(text):
+    """Whitespace-split words with their quote characters removed."""
+    return [_QUOTE_PART.sub(lambda m: m.group(1) if m.group(1) is not None else m.group(2),
+                            token)
+            for token in _TOKEN.findall(text)]
+
+
+def _assigned(statement, variables):
+    """Record a statement that only assigns shell variables; True if it did."""
+    words = _tokens(statement)
+    if words and words[0] == "export":
+        words = words[1:]
+    if not words:
+        return False
+    ps = _PS_ASSIGN.fullmatch(words[0])
+    if ps and (ps.group(2) is not None or (len(words) >= 2 and words[1] == "=")):
+        value = ps.group(2) if ps.group(2) is not None else (
+            words[2] if len(words) == 3 else _UNSET)
+        variables[ps.group(1).lower()] = _expand(value, variables)
+        return True
+    pairs = [_BASH_ASSIGN.fullmatch(word) for word in words]
+    if not all(pairs):
+        return False
+    for pair in pairs:
+        variables[pair.group(1).lower()] = _expand(pair.group(2), variables)
+    return True
+
+
+def _join(base, path):
+    """PATH from directory BASE, or None when either cannot be placed."""
+    if not path or _UNSET in path or any(ch in path for ch in "$`%"):
+        return None
+    path = _host_path(os.path.expanduser(path))
+    if _WIN_ABS.match(path) or (not _WINDOWS and path.startswith("/")):
+        return path
+    # On Windows a non-drive `/x` is relative to Git Bash's own root: unknown.
+    if path.startswith(("/", "\\")) or base is None:
+        return None
+    return base.rstrip("/\\") + "/" + path
+
+
+def _git_target(here, words):
+    """The directory a `git ...` statement acts on, from HERE."""
+    start = next((i for i, word in enumerate(words)
+                  if re.split(r"[\\/]", word)[-1].lower() in ("git", "git.exe")), None)
+    if start is None:
+        return here
+    target, i = here, start + 1
+    while i < len(words) and words[i].startswith("-"):
+        word = words[i]
+        option, eq, value = word.partition("=")
+        if option in _GIT_PATH_OPTS:
+            if not eq:
+                value = words[i + 1] if i + 1 < len(words) else ""
+                i += 1
+            target = _join(target, value)
+        elif option in _GIT_VALUE_OPTS and not eq:
+            i += 1
+        i += 1
+    return target
+
+
+def _bypass_targets(command, cwd):
+    """The directory of each hook-bypassing git statement in COMMAND, None
+    for one that cannot be placed (and [None] when no statement could be
+    picked out of a command the whole-command check flagged)."""
+    if len(command) > COMMAND_PARSE_MAX:
+        return [None]
+    raw = _HEREDOC.sub(" ", command)
+    masked = _QUOTED.sub(lambda m: "x" * len(m.group(0)), raw)
+    here = _host_path(cwd) if cwd else None
+    variables, targets, start = {}, [], 0
+    bounds = [m.span() for m in _STATEMENT_BREAK.finditer(masked)] + [(len(raw), len(raw))]
+    for stop, after in bounds:
+        statement = raw[start:stop].strip().lstrip("({").rstrip(")}").strip()
+        start = after
+        if not statement or _assigned(statement, variables):
+            continue
+        words = _tokens(_expand(statement, variables))
+        if not words:
+            continue
+        head = words[0].lower()
+        if head in _CD_WORDS:
+            path = next((w for w in words[1:] if not w.startswith("-")), None)
+            here = _join(here, path) if path is not None else None
+        elif head in ("popd", "pop-location"):
+            here = None
+        else:
+            stripped = strip_command_noise(statement)
+            if EV_BYPASS.search(stripped) and re.search(r"\bgit\b", stripped):
+                # An absolute `git -C` places the statement even when HERE
+                # is unknown; a relative one from an unknown HERE stays None.
+                targets.append(_git_target(here, words))
+    return targets or [None]
+
+
+def _norm_dir(path):
+    try:
+        return os.path.normcase(str(Path(path).resolve()))
+    except (OSError, ValueError, RuntimeError):
+        return os.path.normcase(os.path.abspath(str(path)))
+
+
+def _linked_common_dir(base, dotgit):
+    """The common dir a linked worktree's `.git` FILE points at, or None."""
+    line = dotgit.read_text(encoding="utf-8").strip()
+    if not line.startswith("gitdir:"):
+        return None
+    gitdir = Path(line[len("gitdir:"):].strip())
+    if not gitdir.is_absolute():
+        gitdir = base / gitdir
+    pointer = gitdir / "commondir"
+    if pointer.is_file():
+        common = Path(pointer.read_text(encoding="utf-8").strip())
+        return _norm_dir(common if common.is_absolute() else gitdir / common)
+    return _norm_dir(gitdir)
+
+
+def _git_common_dir(start):
+    """The git common dir of the repo holding START (which need not exist
+    yet), normalised for comparison, or None when START is in no repo or
+    cannot be read. Never raises."""
+    try:
+        # normpath first: Path keeps "..", and walking the PARENTS of an
+        # un-normalised `<rc>/tools/../../x` would wrongly pass through RC.
+        here = Path(os.path.normpath(_host_path(str(start))))
+        if not here.is_absolute():
+            return None
+        for candidate in (here, *here.parents):
+            dotgit = candidate / ".git"
+            if dotgit.is_dir():
+                return _norm_dir(dotgit)
+            if dotgit.is_file():
+                return _linked_common_dir(candidate, dotgit)
+    except _SCAN_ERRORS:
+        return None
+    return None
+
+
+def _bypass_hits_rc(command, cwd, rc_common):
+    """True when some bypassing git statement in COMMAND targets RC, or
+    cannot be placed (fail closed), or RC's own common dir is unknown."""
+    if rc_common is None:
+        return True
+    for target in _bypass_targets(command, cwd):
+        if target is None or _git_common_dir(target) == rc_common:
+            return True
+    return False
 
 
 def _absorb_result(found, runs, deferred, use, text, errored, session_start):
@@ -1541,7 +1891,8 @@ def subagent_evidence(transcript_path, session_start=None):
             total[key].extend(part[key])
         for key in ("ci", "commit", "merge"):
             total[key] = total[key] or part[key]
-        total["bypass"].extend((label, command) for command in part["bypass"])
+        total["bypass"].extend((label, command, cwd, tid)
+                               for command, cwd, tid in part["bypass"])
         if total["push"] is None and part["push"]:
             total["push"] = {"kind": part["push"], "agent": label}
     return total
@@ -1596,15 +1947,36 @@ def credit_only(main_findings, merged_findings):
     return kept, sorted({f["check"] for f in removed})
 
 
-def _bypass_findings(sub):
-    """ADVISORY subagent_hook_bypass findings, one per distinct command."""
+_RC_COMMON = []
+
+
+def _rc_common_dir():
+    """RC's own git common dir (from ROOT), computed once per process."""
+    if not _RC_COMMON:
+        _RC_COMMON.append(_git_common_dir(ROOT))
+    return _RC_COMMON[0]
+
+
+def _bypass_findings(sub, session_cwd=None, rc_common=None):
+    """ADVISORY subagent_hook_bypass findings, one per distinct command that
+    EXECUTED and targets RC (see _REFUSAL / _bypass_hits_rc). A call's own
+    row cwd wins; SESSION_CWD (the Stop payload's) stands in when absent."""
+    if rc_common is None:
+        rc_common = _rc_common_dir()
     findings, seen = [], set()
-    for label, command in sub["bypass"]:
+    for label, command, cwd, tid in sub["bypass"]:
         if command in seen:
+            continue
+        try:
+            hits = _bypass_hits_rc(command, cwd or session_cwd, rc_common)
+        except _SCAN_ERRORS:
+            hits = True
+        if not hits:
             continue
         seen.add(command)
         findings.append({"check": "subagent_hook_bypass", "quote": command[:300],
-                         "claimed": "", "observed": "agent " + (label or "?")})
+                         "claimed": "", "observed": "agent " + (label or "?"),
+                         "turn": str(tid or "")})
     return findings
 
 
@@ -1687,6 +2059,64 @@ def write_report(report, target):
     tmp.replace(target)
 
 
+# ---------------------------------------------------------------- SEEN SET
+# See SEEN_DIRNAME. Like the history, this is bookkeeping: every failure is
+# swallowed, and a seen set that cannot be read is an EMPTY one (the gate then
+# surfaces again - noisier, never silent about something new).
+
+def finding_key(finding):
+    """Stable identity of a finding across Stops: check + claimed value +
+    source turn + the claim text normalised for case and whitespace."""
+    quote = " ".join(str(finding.get("quote", "")).split()).lower()
+    raw = "\x1f".join((str(finding.get("check", "")), str(finding.get("claimed", "")),
+                       str(finding.get("turn", "")), quote))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+def seen_path(seen_dir, session_id):
+    """SESSION_ID's seen-set file, always directly inside SEEN_DIR."""
+    session_id = str(session_id or "")
+    name = session_id if _SUBAGENT_LABEL.fullmatch(session_id) else (
+        "h-" + hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32])
+    return Path(seen_dir) / (name + ".json")
+
+
+def load_seen(path):
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        keys = data.get("keys") if isinstance(data, dict) else None
+        return {k for k in keys if isinstance(k, str)} if isinstance(keys, list) else set()
+    except (OSError, ValueError, TypeError, AttributeError):
+        return set()
+
+
+def save_seen(path, session_id, keys):
+    """Atomic write (a per-process tmp name, so two Stops cannot share one)."""
+    try:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps({
+            "session_id": str(session_id or ""),
+            "updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "keys": sorted(keys)}, indent=1) + "\n", encoding="utf-8", newline="\n")
+        tmp.replace(path)
+    except (OSError, ValueError):
+        pass
+
+
+def prune_seen(seen_dir, keep=SEEN_MAX_SESSIONS):
+    """Keep only the newest KEEP seen-set files (regenerable bookkeeping: the
+    cost of a lost file is one more surfacing in a long-finished session)."""
+    try:
+        files = sorted(Path(seen_dir).glob("*.json"),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+        for stale in files[keep:]:
+            stale.unlink()
+    except OSError:
+        pass
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", default=str(DEFAULT_REPORT))
@@ -1699,6 +2129,9 @@ def main(argv=None):
     parser.add_argument("--arm", action="store_true",
                         help="emit one Stop-feedback JSON line on findings; OFF by default and stays off "
                              "until the report is observed quiet on clean sessions")
+    parser.add_argument("--seen-dir", default=None,
+                        help="per-session seen-set directory (default: "
+                             f"'{SEEN_DIRNAME}' beside --report)")
     args = parser.parse_args(argv)
 
     try:
@@ -1733,7 +2166,7 @@ def main(argv=None):
         if sub is not None:
             try:
                 kept, cleared = credit_only(findings, audit(_merge_evidence(ev, sub)))
-                findings = kept + _bypass_findings(sub)
+                findings = kept + _bypass_findings(sub, payload.get("cwd") or None)
                 report["subagent_cleared"] = cleared
                 if sub["push"]:
                     report["subagent_push"] = sub["push"]
@@ -1746,16 +2179,30 @@ def main(argv=None):
     # block loops forever. `stop_hook_active` is true once we have already
     # blocked, and it is the only thing standing between armed mode and a spin.
     reentry = bool(payload.get("stop_hook_active"))
-    # RM-421: advisory checks are reported and recorded, never blocking.
+    # RM-421: advisory checks are reported and recorded, never blocking - and
+    # never shown: until 2026-10-09 the feedback line was built from ALL
+    # findings, so an advisory one reached chat as an "unbacked claim".
     blocking = [f for f in findings if f["check"] not in ADVISORY_CHECKS]
-    should_block = bool(args.arm and blocking and not reentry)
+    # SEEN SET: only a blocking finding not yet surfaced in THIS session may
+    # reach the feedback line; the report keeps listing all of them.
+    session_key = str(payload.get("session_id") or Path(str(transcript)).stem)
+    seen_file = seen_path(args.seen_dir or Path(args.report).parent / SEEN_DIRNAME,
+                          session_key)
+    seen = load_seen(seen_file) if blocking else set()
+    fresh = [f for f in blocking if finding_key(f) not in seen]
+    report["already_surfaced"] = len(blocking) - len(fresh)
+    should_block = bool(args.arm and fresh and not reentry)
     report["blocked"] = should_block
-    if args.arm and blocking and reentry:
+    if args.arm and fresh and reentry:
         report["reason"] = "stop_hook_active"
     write_report(report, args.report)
     append_history(report, args.history, args.history_max)
 
     if should_block:
+        # Marked only once surfaced: a re-entry Stop's new finding is not
+        # shown (that would loop), so it must stay new for the next Stop.
+        save_seen(seen_file, session_key, seen | {finding_key(f) for f in fresh})
+        prune_seen(seen_file.parent)
         # The remedy named here must be one this file IMPLEMENTS. It used to
         # read "Fix or retract, then finish", and there is no retraction path in
         # `audit` - RM-217 asked for one, RM-396 refused it by name as a
@@ -1769,13 +2216,16 @@ def main(argv=None):
         # cap), one session carries 49 Stops with findings, 48 of them
         # count_mismatch, and five more sessions carry 14 or more. Prescribing
         # the remedy that works is the fix; the gate's behaviour is unchanged.
-        lines = [f"stop_claim_gate: {len(findings)} claim(s) not backed by this "
+        # (2026-10-09: the SEEN SET now shows each finding once per session,
+        # so the re-flagging no longer reaches chat; the report keeps them.)
+        lines = [f"stop_claim_gate: {len(fresh)} new claim(s) not backed by this "
                  f"session's own evidence. Back them with a real run, or "
                  f"backtick a figure you are quoting rather than asserting "
                  f"(a backticked count is stripped before any check). A later "
                  f"withdrawal does NOT clear a finding - the scan re-reads the "
-                 f"whole transcript every Stop."]
-        for finding in findings:
+                 f"whole transcript every Stop; each one is surfaced once per "
+                 f"session and the report keeps them all."]
+        for finding in fresh:
             detail = ""
             if finding["claimed"] or finding["observed"]:
                 detail = f" (claimed {finding['claimed']!r} / observed {finding['observed']!r})"
@@ -1791,7 +2241,7 @@ def main(argv=None):
         write_report(report, args.report)
         out = {"hookSpecificOutput": {
             "hookEventName": "Stop",
-            "additionalContext": feedback_line(findings, args.report)}}
+            "additionalContext": feedback_line(fresh, args.report)}}
         # Under pythonw.exe sys.stdout can be None. Never let the emit raise.
         try:
             if sys.stdout is not None:
