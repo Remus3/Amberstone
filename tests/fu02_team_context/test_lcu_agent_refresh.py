@@ -14,6 +14,7 @@ The agent runs standalone (Legion-local) and is stdlib-only; tests import via
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import unittest
@@ -203,7 +204,9 @@ class TestPostTeamContextRefresh(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(detail, "ok")
         self.assertEqual(captured["url"],
-                         "https://192.0.2.230:8888/api/team-context/refresh")
+                         agent.LEGION_DASHBOARD + "/api/team-context/refresh")
+        self.assertTrue(agent.LEGION_DASHBOARD.startswith("https://127.0.0.1:")
+                        or "RC_DASHBOARD_BASE" in os.environ)
         self.assertEqual(captured["method"], "POST")
         self.assertIsNone(captured["auth"])   # no bearer post-decommission
         self.assertEqual(captured["ctype"], "application/json")

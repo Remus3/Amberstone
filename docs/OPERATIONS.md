@@ -293,7 +293,7 @@ in the table above.
 
 **There is no Mission Control web page any more (removed 2026-09-20).** The
 `web/mc/` tree is deleted and `mc/handler.py` has no document root, so
-`https://rc-host:8895/` itself is a JSON 404. Drive it with `curl` against
+`https://127.0.0.1:8895/` itself is a JSON 404. Drive it with `curl` against
 `GET /api/loop-status` and `POST /api/loop-control` (the two routes below);
 the listener, the bearer perimeter, the scheduled task and all nine
 loop-control actions are unchanged. The arm-then-confirm step that the page's
@@ -321,7 +321,7 @@ to be documented somewhere first. `--ssl-no-revoke` keeps hostname, chain
 and expiry verification fully enabled and skips only the unsatisfiable
 revocation lookup:
 ```powershell
-curl --ssl-no-revoke https://rc-host:8895/api/loop-status
+curl --ssl-no-revoke https://127.0.0.1:8895/api/loop-status
 ```
 POST routes additionally need `-H "Authorization: Bearer <token>"` (the
 token from `config/mission_control_token.txt` above). Do NOT use

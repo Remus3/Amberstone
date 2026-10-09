@@ -1,0 +1,9 @@
+{
+  "_doc": "Per-host network identity. Copy to ops/local_hosts.json (GITIGNORED) and fill in this machine's values. Read by core/local_hosts.py (mc/server.py tailnet bind) and tools/regen_rc_cert.ps1 (extra TLS SANs). Empty or absent = loopback only. Never put these values in a tracked file, a note or a log.",
+  "tailnet_name": "",
+  "tailnet_fqdn": "",
+  "tailnet_ipv4": "",
+  "lan_ipv4": "",
+  "lan_subnet": "",
+  "cert_sans": []
+}

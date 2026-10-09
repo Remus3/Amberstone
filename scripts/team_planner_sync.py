@@ -34,7 +34,7 @@ ctx      = ssl.create_default_context()
 ctx.check_hostname = False
 ctx.verify_mode    = ssl.CERT_NONE
 hdrs = {"Authorization": f"Basic {auth}", "Accept": "application/json", "Content-Type": "application/json"}
-BASE = f"https://192.0.2.237:{port}"
+BASE = f"https://127.0.0.1:{port}"  # game host is local (ADR-011)
 
 def lcu(method, ep, body=None, silent=False):
     data = json.dumps(body).encode() if body is not None else None

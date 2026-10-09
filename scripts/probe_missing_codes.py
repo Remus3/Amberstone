@@ -19,7 +19,7 @@ port, pw = parts[2], parts[3]
 auth = base64.b64encode(f"riot:{pw}".encode()).decode()
 ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
 hdrs = {"Authorization": f"Basic {auth}", "Accept": "application/json", "Content-Type": "application/json"}
-BASE = f"https://192.0.2.237:{port}"
+BASE = f"https://127.0.0.1:{port}"  # game host is local (ADR-011)
 
 def lcu(m, ep, b=None):
     d = json.dumps(b).encode() if b is not None else None
