@@ -2124,3 +2124,86 @@ def test_a_digest_premise_reaches_the_director_through_the_stamp(
     assert "fixed the workflow" in rec.summary
     assert executor.DIGEST_HEADER in r.written["directive.md"]
     assert any("FROM-DIGEST-PREMISE" in m for m in r.logs)
+
+
+# ---------------------------------------------------------------------------
+# repo_root resolves by the controller's rule, never from the process CWD.
+#
+# Wave 4 merge-fix: the 2026-10-09 leak removal (MAIN 2246 sec 3) took the
+# machine-path `repo_root` out of the tracked ops/loop/config.json (and
+# config.gate.json / config.p5.json never carried one). The executor read
+# `cfg.get("repo_root", ".")` at four sites - the sdk `--add-dir`, the sdk
+# child's cwd, and both channels' grounding git calls - so with no key every one
+# of them meant "whatever directory the controller was started from".
+# loop_controller resolves the same key as ROOT = _cfg_path("repo_root",
+# _HERE.parents[1]): an ABSOLUTE value is a per-host override, anything else is
+# the checkout this module ships in.
+# ---------------------------------------------------------------------------
+
+_SDK_OK = json.dumps({
+    "total_cost_usd": 0.0, "session_id": "s", "is_error": False,
+    "structured_output": {"sha": "f" * 40, "tests_pass": "1",
+                          "regressions": False, "summary": "ok"}})
+
+
+def _add_dir(cfg: dict, ctl: Path) -> str:
+    ex = executor.build(cfg, ctl, log=lambda m: None, stop=lambda m: None,
+                        awrite=lambda p, t: None)
+    extra = ex.spawn_plan(1)["extra"]
+    return extra[extra.index("--add-dir") + 1]
+
+
+@pytest.mark.parametrize("raw", [None, "", "relative/elsewhere"],
+                         ids=["absent", "empty", "relative"])
+def test_sdk_add_dir_is_this_checkout_not_the_cwd(raw, tmp_path: Path,
+                                                   monkeypatch: pytest.MonkeyPatch):
+    cfg = {"channel": "sdk", "cycle_deadline_sec": 60}
+    if raw is not None:
+        cfg["repo_root"] = raw
+    monkeypatch.chdir(tmp_path)
+    assert Path(_add_dir(cfg, tmp_path)) == ROOT
+
+
+def test_an_absolute_repo_root_is_still_a_per_host_override(tmp_path: Path):
+    cfg = {"channel": "sdk", "cycle_deadline_sec": 60, "repo_root": str(tmp_path)}
+    assert Path(_add_dir(cfg, tmp_path)) == tmp_path
+
+
+def test_sdk_child_cwd_is_this_checkout_not_the_cwd(tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch):
+    stub = _stub_claude(tmp_path, _SDK_OK)
+    ex = executor.build({"channel": "sdk", "cycle_deadline_sec": 60,
+                         "executor_cmd": stub}, tmp_path,
+                        log=lambda m: None, stop=lambda m: None,
+                        awrite=lambda p, t: None)
+    seen = []
+    real = executor.enforce_directive_grounding
+
+    def _spy(cycle, body, **kw):
+        seen.append(kw.get("repo_root"))
+        return real(cycle, body, **kw)
+
+    monkeypatch.setattr(executor, "enforce_directive_grounding", _spy)
+    monkeypatch.chdir(tmp_path)
+    rec = ex.run(1, "b", "fixed")
+    assert rec.error is None
+    (_argv, kw), = _STUB["kit_calls"]
+    assert Path(kw["cwd"]) == ROOT, "the sdk child must start in the checkout"
+    assert [Path(s) for s in seen] == [ROOT], "grounding must git the checkout"
+
+
+def test_ahk_grounding_gits_this_checkout_not_the_cwd(tmp_path: Path,
+                                                      monkeypatch: pytest.MonkeyPatch):
+    r = _Rec(tmp_path, {"sha": "a" * 40, "tests_pass": "1",
+                        "regressions": False, "summary": "ok"})
+    seen = []
+
+    def _spy(cycle, body, **kw):
+        seen.append(kw.get("repo_root"))
+        return body
+
+    monkeypatch.setattr(executor, "enforce_directive_grounding", _spy)
+    monkeypatch.chdir(tmp_path)
+    executor.build({"channel": "ahk", "cycle_deadline_sec": 5}, tmp_path,
+                   **r.deps()).run(4, "body", "fixed")
+    assert [Path(s) for s in seen] == [ROOT]

@@ -177,7 +177,14 @@ def _executor_cmd_from_loop_config() -> Optional[str]:
     if not isinstance(data, dict):
         return None
     value = data.get("executor_cmd")
-    return value if isinstance(value, str) else None
+    # Only an ABSOLUTE shim path is a per-host override (loop_controller's
+    # _cfg_path rule). A bare name such as the tracked "claude.cmd" (MAIN 2246
+    # sec 3 took the machine path out) asks for a PATH lookup, which the `which`
+    # arm below does; deriving from it would probe "./node_modules/..." in the
+    # process CWD.
+    if not isinstance(value, str) or not value or not Path(value).is_absolute():
+        return None
+    return value
 
 
 def resolve_claude_exe(
