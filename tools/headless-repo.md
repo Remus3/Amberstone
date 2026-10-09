@@ -208,7 +208,9 @@ re-Read a file you just Edited to confirm - Edit fails loudly.
 Tier-1 and grep the whole tree for the old path as a STRING - including in `.md`, `.ps1`, `.bat`, `.json` and `.yml`, where no import resolver will ever tell you it
 broke. Same for a rename, and for splitting one module into two.
 
-**Run every suite from the REPO ROOT.** `python -m pytest agents/daemon_slayer/tests -q` with cwd = repo root. Measured 2026-07-26: from inside `agents/daemon_slayer/`
+**Run every suite from the REPO ROOT**, a whole one through the gate (TIER TABLE in `tools/done.md`):
+`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300` with cwd = repo
+root. Measured 2026-07-26: from inside `agents/daemon_slayer/`
 the same suite reported 15 failed against 9917 passed - **two real and thirteen pure CWD artifacts**, all of whose tests pass from the root, because registry tests
 `open()` files by a repo-root-relative path and from inside the package the path doubles (`FileNotFoundError: 'agents\daemon_slayer\champion_block_index.json'`).
 Dangerous rather than annoying, because the failure NAMES read like real regressions - `test_registry_still_125_champions`, `test_champion_count_unchanged`,
@@ -269,8 +271,9 @@ own single-thread edits. Tier-0 cosmetic edits are exempt; nothing else is.
 
 - **The agent that produced a thing NEVER grades it.** Absolute for frozen-file edits (section 3) and every out-of-repo path proposal (section 2); the default
   everywhere else. The adjudicator judges against criteria STATED UP FRONT - what makes this right, what makes it wrong, what evidence settles it.
-- **The read-only `verifier` subagent (`.claude/agents/verifier.md`, no Edit/Write) is the ground-truth gate before any merge or "done" claim.** It re-runs the suite
-  fresh, confirms every cited file exists on disk, and returns CONFIRM or REFUTE. Merge only on CONFIRM; default to REFUTED when uncertain.
+- **The read-only `verifier` subagent (`.claude/agents/verifier.md`, no Edit/Write) is the ground-truth gate before any merge or "done" claim.** It re-runs the cited tests
+  fresh - the cited test files plus `--collect-only` counts, never a whole suite (TIER TABLE) - confirms every cited file exists on disk, and returns CONFIRM or
+  REFUTE. Merge only on CONFIRM; default to REFUTED when uncertain.
 - **Agreement between two agents is not evidence** (`feedback_row_agreement_is_not_evidence`). Two agents can share one wrong premise - a panel of eleven plus an
   adversarial judge once produced a fully-cited FALSE retraction because every one checked whether the code said what was claimed and none checked whether the probe
   asked the same question as the filing.
@@ -282,9 +285,10 @@ own single-thread edits. Tier-0 cosmetic edits are exempt; nothing else is.
 
 ### 10. The wrap
 
-1. **Tests, from the REPO ROOT** (section 7): `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ -q -n 8`; add
-   `agents/daemon_slayer/tests -q` if anything you touched is Tier-2, `tests/snapshot_panels/ -q` if a rendered surface moved, `npm test` under `rc-shell/` if the
-   Electron overlay moved. Report the counts observed THIS run, never a prior or subagent-reported number.
+1. **Tests, from the REPO ROOT** (section 7), per the TIER TABLE in `tools/done.md`: Tier-1 names the touched modules' test files; a Tier-2 change, or the
+   wrap of a multi-slice wave you merged, takes ONE gated parallel run over both trees (it covers `tests/snapshot_panels/`):
+   `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`;
+   `npm test` under `rc-shell/` if the Electron overlay moved. Report the counts observed THIS run, never a prior or subagent-reported number.
 2. **Guards, explicitly** - cheap, and this lane's own subject matter: `python tools/drift_guard.py` (exit 0), `python tools/gen_archmap.py --check`, `python
    tools/gen_state_schema.py --check`, `pytest tests/test_doc_size_budget.py tests/test_ci_docs_guard_coverage.py tests/test_web_js_esm_parse.py -q`. If you removed
    anything, run its new pinning test and mutation-test it.

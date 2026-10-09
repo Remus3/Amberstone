@@ -212,7 +212,7 @@ def test_handles_errors(): ...
 After completing any implementation:
 
 - [ ] Every new behavior has a corresponding test
-- [ ] All tests pass: `python -m pytest tests/ -v`
+- [ ] All tests pass at the change's tier (the TIER TABLE in `tools/done.md`): the touched modules' test files at Tier-1; at Tier-2, ONE gated run `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`
 - [ ] Bug fixes include a reproduction test that failed before the fix
 - [ ] Test names describe the behavior being verified
 - [ ] No tests were skipped or disabled
