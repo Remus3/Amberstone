@@ -141,6 +141,38 @@ def _apply_vision_token_test_default(environ, config_path) -> bool:
 
 _VISION_TOKEN_DEFAULT_APPLIED = _apply_vision_token_test_default(os.environ, _VISION_TOKEN_CONFIG_PATH)
 
+# FLEET-KIT v12 RACE GUARDS (FLEET-COMMON item 16 d; MAIN 2026-10-08 2031 ORDER
+# step 6): the kit's test guard. Its SESSION fixture fails a run that changed live
+# tree state (ops/loop/control, moon_sync_inbox, moon_sync_outbox; the kit's
+# ledger / progress / claims / locks / lanes ignores plus the live inbox tick's
+# own files; new inbox files allowed). Its FUNCTION fixture points every env var
+# in tests/_fleet_guard_config.ENV_ROOTS at tmp_path/<sub>. Loaded by file path
+# so ops/fleet_kit never goes on sys.path. Pinned by
+# tests/test_fleet_kit_v12_race_guards.py. Never set FLEET_TEST_GUARD=off in a
+# gate run.
+from tests import _fleet_guard_config  # noqa: E402
+
+
+def _load_fleet_test_guard():
+    import importlib.util as _ilu
+
+    cached = sys.modules.get("fleet_test_guard")
+    if cached is not None:
+        return cached
+    spec = _ilu.spec_from_file_location(
+        "fleet_test_guard", _REPO_ROOT / "ops" / "fleet_kit" / "fleet_test_guard.py")
+    mod = _ilu.module_from_spec(spec)
+    sys.modules["fleet_test_guard"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+fleet_test_guard = _load_fleet_test_guard()
+fleet_test_guard.install(
+    globals(), root=_REPO_ROOT,
+    env_roots=_fleet_guard_config.ENV_ROOTS,
+    ignore=fleet_test_guard.IGNORE + _fleet_guard_config.EXTRA_IGNORE)
+
 _REAL_LOG_DIR = _REPO_ROOT / "logs"
 
 

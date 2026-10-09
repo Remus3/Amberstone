@@ -80,6 +80,16 @@ v11:
 - a governor SlotTimeout is reported as a fixed kit message built from
   numbers, never str(exc) (CS 1623 item 6).
 
+v12 (race guards, FLEET-COMMON 16; ruling 2026-10-08 lane-progress-location):
+- main_checkout(path): the tree's MAIN working tree for path, resolved
+  file-only from a linked worktree's .git file (identical to
+  fleet_lanes.main_tree, kept import-free of it);
+- write_progress() always writes to main_checkout(root)/ops/loop/control/
+  progress/<task>.json, so a caller passing its worktree cwd lands in the main
+  checkout; the returned doc carries "path" (the file written; not on disk);
+- sibling kit files fleet_gitlock.py, fleet_claims.py, fleet_suite_gate.py and
+  fleet_test_guard.py (this file's other API is unchanged by them).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -96,7 +106,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 11
+KIT_VERSION = 12
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -633,10 +643,30 @@ def _checklist_rows(checklist):
     return rows
 
 
+def main_checkout(path):
+    """The MAIN working tree for path, even when path is a linked worktree: its
+    .git is then a FILE `gitdir: <main>/.git/worktrees/<name>` (absolute, or
+    relative to path). Anything else answers path itself. File-only."""
+    path = Path(path).resolve()
+    dotgit = path / ".git"
+    try:
+        raw = dotgit.read_text(encoding="utf-8").strip() if dotgit.is_file() else ""
+    except OSError:
+        raw = ""
+    if raw.startswith("gitdir:"):
+        gitdir = Path(raw.split(":", 1)[1].strip())
+        gitdir = (gitdir if gitdir.is_absolute() else path / gitdir).resolve()
+        if gitdir.parent.name == "worktrees":
+            return gitdir.parents[2]
+    return path
+
+
 def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checklist=None):
     """FLEET-COMMON item 12: ops/loop/control/progress/<task>.json with
     {task, pct, step, eta_s, status: running|done|failed, updated}, plus
-    "checklist" (item 13 d, remaining tasks) when one is passed."""
+    "checklist" (item 13 d, remaining tasks) when one is passed. v12: in the
+    MAIN checkout of root even when root is a linked worktree; the returned
+    doc adds "path", the file written (the file itself does not carry it)."""
     if not isinstance(task, str) or not _TASK.match(task):
         raise ValueError(f"task name {task!r} must be a plain file stem")
     if status not in PROGRESS_STATES:
@@ -646,8 +676,9 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checkl
            "status": status, "updated": _iso(clock())}
     if checklist is not None:
         doc["checklist"] = _checklist_rows(checklist)
-    _atomic_write(Path(root) / PROGRESS_REL / (task + ".json"), json.dumps(doc))
-    return doc
+    path = main_checkout(root) / PROGRESS_REL / (task + ".json")
+    _atomic_write(path, json.dumps(doc))
+    return dict(doc, path=str(path))
 
 
 def run_kind(note, kind=None):

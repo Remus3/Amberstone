@@ -35,6 +35,29 @@ from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# FLEET-KIT v12 RACE GUARDS (FLEET-COMMON item 16 a; MAIN 2026-10-08 2031 ORDER
+# step 5): the watchdog's own push runs inside the tree's git lock. The kit file
+# is loaded lazily by path, so importing this module stays side-effect free.
+# The headless fixer child still commits with a plain `git commit` inside the
+# dedicated watchdog worktree: its tool allowlist is the execution gate and it
+# carries no project hooks there; routing that commit is the follow-up RM-692.
+_GITLOCK_OWNER = "ci-watchdog"
+
+
+def _git_lock(where, owner, verb):
+    """The kit's fleet_gitlock.git_lock(where, owner, verb) context manager."""
+    import importlib.util
+
+    mod = sys.modules.get("fleet_kit_fleet_gitlock")
+    if mod is None:
+        spec = importlib.util.spec_from_file_location(
+            "fleet_kit_fleet_gitlock",
+            _PROJECT_ROOT / "ops" / "fleet_kit" / "fleet_gitlock.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["fleet_kit_fleet_gitlock"] = mod
+        spec.loader.exec_module(mod)
+    return mod.git_lock(where, owner, verb)
+
 RUNTIME_DIR = _PROJECT_ROOT / "ops" / "runtime" / "ci_watchdog"
 SENTINEL = RUNTIME_DIR / "last_seen_run_id.txt"
 HALT = RUNTIME_DIR / "HALT"
@@ -440,6 +463,15 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
                 # FLEET-KIT-v1: the only path that starts `claude`. Fails closed
                 # (route refused -> no spawn, never a direct claude).
                 return _claude_fix_via_kit(cmd, Path(wt), _STEP_TIMEOUTS.get(label, 120))
+            if label == "push":
+                # FLEET-KIT v12 item 16 a: a push runs inside the tree's git
+                # lock. A refusal (lock held, leftover index.lock) is a failed
+                # step, never a bypass.
+                try:
+                    with _git_lock(wt, _GITLOCK_OWNER, "push"):
+                        return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
+                except RuntimeError as exc:
+                    return 3, str(exc)
             return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
 
     # 1. sync the dedicated worktree onto a fresh ci-fix/<id> branch off main

@@ -22,8 +22,9 @@ phone, the operator wants the tasks only.
                                   checklist=cl.rows())
 
 A lane writes progress/lane-<i>.json (lane_task(i), i = its lane-lock index) in
-the MAIN checkout - fleet_lanes.main_tree(cwd) - never inside its worktree, so
-the lane widget reads one named file per live lane.
+the MAIN checkout, never inside its worktree, so the lane widget reads one
+named file per live lane. Since kit v12 fleet_headless.write_progress resolves
+the main checkout itself: pass the worktree cwd as root, no main_tree() call.
 
 Standalone: imports nothing from the rest of the kit. ASCII source; the box
 glyph is emitted as U+2610. v10: emit() prints safely where print() fails - a
