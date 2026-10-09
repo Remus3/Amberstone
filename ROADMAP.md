@@ -44,7 +44,6 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 **Filed 2026-09-21 by the 2026-09-20c validation swarm (LEDGER 1452), after ENGINE 1.281.0 / 1.282.0 (LEDGER 1450 / 1451):**
 - **[!] RM-486: `pytest tests` exits 127 on Legion.** No longer blocks PR #1 (merged `eed3f8849`); CI runs the same suite clean, so the box is at fault, not the suite. LEDGER 1456. Tier-2.
 - **[!] RM-488 six `lane/*` pushes halted by the sibling sweep; CI's own sweep loads names from gitignored per-host config, so it is armed with nothing and its green proves nothing. RM-489 nine tracked ddragon patch dirs vs a current+previous retention claim.** Both: LEDGER 1456. [2026-10-04 Wave1: RM-488 partial; RM-489 shipped - LEDGER 1480-1559]
-- **[x] RM-480 / RM-481 / RM-484 / RM-487 / RM-510 / RM-511 / RM-479 / RM-512 / RM-514 SHIPPED (2026-10-03 .. 2026-10-04 Wave1)** - rows relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-04e` block), with the RM-480 residual list (Qiyana Q form 1, five LeBlanc R blocks, Kennen R cooldown, stale Naafiri R).
 - **[!] RM-482: ARAM Mayhem augment VALUES have no public source** - the augment choice is Haiku-on-names only. Research row; do not invent numbers.
 - **[!] RM-483: locked / forced-item slots for items not yet owned** (build planner). Low value. [2026-10-04 Wave1: RM-483 partial - LEDGER 1480-1559]
 - **[!] RM-485: Fiddlesticks Q default [2,3] may double-count** - NOTE ONLY; the conditional-target-state arc is operator-CLOSED, do not re-open it.
@@ -61,6 +60,7 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 - **[x] RM-685 / RM-688 / RM-689 / RM-687 SHIPPED + FLEET-KIT v11 ADOPTED 2026-10-08 (session 104, LEDGER 1688-1692)** - the five rows are relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-08b` block).
 - **[!] RM-686 (OPERATOR-GATED, MAIN 1840 ORDER section 5 FIX, filed session 104, LEDGER 1689): the headless-proxy launcher returns at once, so the scheduler's RestartOnFailure never fires.** HALTED at RC's halt boundary: the launcher lives outside the repo root, and the read-back kills the live proxy. Body + acceptance in `BACKLOG.md` "Session 103 filings".
 - **[!] RM-690 `--migrate-legacy` leaves a DOUBLE-BOM legacy row unconverted AND unreported - RM-691 two fires breaking a stale `inbox_tick.lock` at once can both hold it (pre-existing) (Tier-1 each, filed session 104 /done, LEDGER 1693).** Bodies + acceptance in `BACKLOG.md` "Session 103 filings".
+- **[!] RM-692 watchdog fixer commits outside the git lock - RM-693 lane worktrees lack RC Claude hooks (measure first) - RM-694 two guards read gitignored ops/runtime copies (Tier-1 each, session 105, LEDGER 1694).** Bodies in `BACKLOG.md` "Session 103 filings".
 
 > **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
 
