@@ -372,7 +372,7 @@ the module for a retention test.
 
 `self._version` is `versions[0]` straight off the wire; `latest_version` guards only
 `if not versions` (`:44`). A JSON string body yields a single character; a list element such
-as `"../../evil"` or an anchored `"C:/Users/Administrator/Desktop/evil"` is joined by
+as `"../../evil"` or an anchored `"%USERPROFILE%/Desktop/evil"` is joined by
 `pathlib` into a path outside `CACHE_ROOT` (on Windows an anchored component replaces the
 left operand entirely). Line 57 creates it and `_pull` writes `champion.json` / `item.json`
 there via `_atomic_write_json(self._cached(name), data)` at `:76`. The same value is

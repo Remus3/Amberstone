@@ -8,8 +8,8 @@ dropped. A silent skip would under-count exactly like the defect this job
 exists to avoid.
 
 Run:
-  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" \
-      "C:\\Riot Commander\\docs\\_rescore\\tally.py"
+  "%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" \
+      "<repo>\\docs\\_rescore\\tally.py"
 """
 
 from __future__ import annotations

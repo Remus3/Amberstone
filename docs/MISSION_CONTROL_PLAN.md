@@ -139,7 +139,7 @@ reviewable on its own.
 It ships to `main` by pushing a ref (`git push origin HEAD:refs/heads/main`,
 fast-forward only) rather than by merging in a working tree, because CI fires
 on push to `main` only and an unattended loop that parked 13 rows on a branch
-would have proven nothing. Pushing a ref does not touch `C:\Riot Commander`,
+would have proven nothing. Pushing a ref does not touch `<repo>`,
 so the worktree-mandatory rule is intact.
 
 Stops on three sentinels, any of which ends the loop at the next cycle
@@ -331,7 +331,7 @@ the correct first session.
 1. **Lane fire vs live interactive session** - **ALLOWED, WORKTREE-MANDATORY.**
    A lane may fire while an interactive session is live, but it may only ever
    run against a git worktree - never the main tree. Your session owns
-   `C:\Riot Commander`; the lane owns a worktree and merges only when the main
+   `<repo>`; the lane owns a worktree and merges only when the main
    tree is idle. This is what makes the phone button usable without ever
    creating two writers to the same working directory, so the concurrent-index
    corruption class (`reference_gist_hook_worktree_index_corruption`) cannot
@@ -518,7 +518,7 @@ Answers "are there other locations". Yes: roughly **67 GB** outside the repo.
 | Path | Files | Size | Lane-7 posture |
 |---|---|---|---|
 | `%LOCALAPPDATA%\Temp\claude\C--Sibling-A` | 3,376 | **35.5 GB** | SIBLING REPO scratch. Cross-repo act - propose, never auto-clean |
-| `%LOCALAPPDATA%\Temp\claude\C--Riot-Commander` | 152,231 | 9.5 GB | RC session scratch. NO age prune - superseded by the RM-149 ruling (2026-10-03, `tools/headless-repo.md` item 5): whole-session-dir removal only |
+| `%LOCALAPPDATA%\Temp\claude\<project-slug>` | 152,231 | 9.5 GB | RC session scratch. NO age prune - superseded by the RM-149 ruling (2026-10-03, `tools/headless-repo.md` item 5): whole-session-dir removal only |
 | `%APPDATA%\Claude\vm_bundles` | 9 | 8.9 GB | Desktop-app runtime. Do not touch without app-version check |
 | `%USERPROFILE%\.cache` | 5,628 | 7.5 GB | Mixed tooling cache. Per-subdir adjudication |
 | `%USERPROFILE%\.claude\projects` | 6,707 | 1.9 GB | **EVIDENCE, NOT GARBAGE - see below** |

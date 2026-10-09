@@ -22,7 +22,7 @@
       "id": "phase3-d003",
       "title": "ADR-006 Riot API key policy - key permitted for champ-select + post-game",
       "decided_at": "2026-04-25",
-      "summary": "Personal Riot API key permitted for champ-select context + post-game full-team enrichment. Key file at C:/Riot Commander/API-Key-Claude.txt (gitignored). Match-V5 403/empty on event modes (ARAM Mayhem KIWI, queue 2400, Arena) is EXPECTED not a key fault. UA-less requests = Cloudflare 1010. Key cache is process-lifetime.",
+      "summary": "Personal Riot API key permitted for champ-select context + post-game full-team enrichment. Key file at <repo>/API-Key-Claude.txt (gitignored). Match-V5 403/empty on event modes (ARAM Mayhem KIWI, queue 2400, Arena) is EXPECTED not a key fault. UA-less requests = Cloudflare 1010. Key cache is process-lifetime.",
       "source": "CLAUDE.md / Settled / ADR-006",
       "authority": "operator"
     },
@@ -215,7 +215,7 @@
     "legion_pc": "192.0.2.230",
     "game_pc": "192.0.2.237",
     "moon_pc": "decommissioned",
-    "install_root": "C:\\Riot Commander\\"
+    "install_root": "<repo>\\"
   },
   "agents": {
     "0": {
@@ -388,7 +388,7 @@
       "\\\\192.0.2.237\\RCClient\\web\\"
     ],
     "credential_store": "cmdkey_on_legion_under_target_192.0.2.237",
-    "auth_user": "Administrator",
+    "auth_user": "<user>",
     "forwarder_restart_signal": "\\\\192.0.2.237\\RCClient\\forwarder\\restart_trigger.txt"
   },
   "agent0_rejection": {

@@ -8,8 +8,8 @@
     "skipped": 2,
     "no_tests_ran": false,
     "exit_code": 0,
-    "cmd": "\"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe\" -m pytest tests/ -q -p no:cacheprovider",
-    "output_file": "C:\\Riot Commander\\ops\\runtime\\truth_gate_suite.txt"
+    "cmd": "\"%LOCALAPPDATA%/Programs/Python/Python314/python.exe\" -m pytest tests/ -q -p no:cacheprovider",
+    "output_file": "<repo>\\ops\\runtime\\truth_gate_suite.txt"
   },
   "git": {
     "clean": false,

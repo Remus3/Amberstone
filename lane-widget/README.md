@@ -141,7 +141,7 @@ npm test
 The app, on RC's already-vendored Electron binary (no second Electron install):
 
 ```
-"C:\Riot Commander\rc-shell\node_modules\electron\dist\electron.exe" "C:\Riot Commander\lane-widget"
+"<repo>\rc-shell\node_modules\electron\dist\electron.exe" "<repo>\lane-widget"
 ```
 
 It holds its own single-instance lock, so a second launch focuses the existing

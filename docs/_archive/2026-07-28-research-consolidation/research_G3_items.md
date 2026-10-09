@@ -1,7 +1,7 @@
 # research/ collapse - Group G3 extraction (8 files)
 
 Read-only QA pass, 2026-07-28. Every item below was re-probed against the live tree
-at `C:\Riot Commander` (HEAD 59e42205). Ground truth used:
+at `<repo>` (HEAD 59e42205). Ground truth used:
 
 - `data/daemon_slayer/current.txt` = **16.14.1**
 - `agents/daemon_slayer/__init__.py:18` `ENGINE_VERSION = "1.262.0"`

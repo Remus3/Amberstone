@@ -21,7 +21,7 @@
 
 3. Trace all LLM calls in the codebase. Group by model tier (Haiku vs Sonnet vs Opus advisor). Tag polling/interval callers. Reconcile tracked cost against the dashboard total and explain any gap. Write findings to docs/ and summarize in WAKEUP_NOTES.
 
-4. Re-verify the corrected insights report numbers (ENGINE version, DS test count, RC suite count, commit count, patch) against live /health :8893 + agents/daemon_slayer/__init__.py + git + the .md docs. Flag every divergence and regenerate the narrative from verified values. Artifact (LOCAL, not in repo): C:\Users\Administrator\.claude\usage-data\report-corrected-2026-05-19.html.
+4. Re-verify the corrected insights report numbers (ENGINE version, DS test count, RC suite count, commit count, patch) against live /health :8893 + agents/daemon_slayer/__init__.py + git + the .md docs. Flag every divergence and regenerate the narrative from verified values. Artifact (LOCAL, not in repo): %USERPROFILE%\.claude\usage-data\report-corrected-2026-05-19.html.
 
 5. Parallel Multi-Batch Engine Pipeline. Spin up 3 to 12 worktree subagents: A = next item-effects batch, B = augment registry against live cdragon, C = scorer tuning, plus any further split that expedites. Each adds tests on its own branch. Then act as integration coordinator: merge all subagent work without error, run the full DS suite, resolve a SINGLE ENGINE_VERSION bump, ship one commit, /done.
 

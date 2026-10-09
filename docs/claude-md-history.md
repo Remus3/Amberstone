@@ -43,11 +43,11 @@ Both in tailnet `example-tailnet.ts.net` (Game-PC retired from the pipeline 2026
 
 ## Paths
 
-- Project root: `C:\Riot Commander\`
-- Python: `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`
-- API key: `C:\Riot Commander\API-Key-Claude.txt` (gitignored)
-- Health: `C:\Riot Commander\ops\runtime\health.json`
-- Logs: `C:\Riot Commander\logs\YYYY-MM-DD.log`
+- Project root: `<repo>\`
+- Python: `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`
+- API key: `<repo>\API-Key-Claude.txt` (gitignored)
+- Health: `<repo>\ops\runtime\health.json`
+- Logs: `<repo>\logs\YYYY-MM-DD.log`
 
 ## Hard rules
 
@@ -217,7 +217,7 @@ Enforcement (hooks in `.claude/settings.json`): PostToolUse `tools/pytest_guard.
 
 ## Scheduled tasks (Legion)
 
-Key: `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO scheduled task (removed 2026-06-11, deep-audit P2): `dashboard/server.py` self-heals `:8889` in-process. Full list: `docs/OPERATIONS.md`.
+Key: `RC-Supervisor` (logon, operator account, HIGHEST). Vision has NO scheduled task (removed 2026-06-11, deep-audit P2): `dashboard/server.py` self-heals `:8889` in-process. Full list: `docs/OPERATIONS.md`.
 
 ## Vision pipeline
 

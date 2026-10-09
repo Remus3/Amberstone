@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-01 PGR S2 single-scroll layout. Model claude-opus-5-5, 
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-01-pgr-s2.md END TO END before any tool call.
+1. Read <repo>\docs\specs\leap\LEAP-01-pgr-s2.md END TO END before any tool call.
    The P3 AMENDMENT block at the top SUPERSEDES body text (winprob is SR-only mode-gated -
    name it in D5; reserve/collapse its slot on ARAM/Arena, no layout hole).
 2. Scope: compose the ALREADY-SHIPPED pgr_* panels into ONE single-scroll aggregator-G-style

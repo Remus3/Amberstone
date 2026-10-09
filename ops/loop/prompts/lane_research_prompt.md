@@ -17,7 +17,7 @@ TASKS (fan out subagents; web research via WebSearch/WebFetch):
    including the shield-lerp next-patch-gated item. Sources: official patch preview,
    reliable patch-note aggregators.
 3. Competitor feature lifts (Section 7b 6-point depth): findings go ONLY to
-   C:\Users\Administrator\Desktop\research-20260716.md - NEVER into the repo (name-scrub
+   %USERPROFILE%\Desktop\research-20260716.md - NEVER into the repo (name-scrub
    rule; no competitor names in repo content or commit messages).
 
 OUTPUT: NEW files only, under docs/_archive/2026-07-28-research-consolidation/2026-07-16-*.md (one per task 1 and 2),
@@ -28,4 +28,4 @@ LANDING: commit on this branch (git commit -F tmpfile, ASCII msg). Then try land
 main: git fetch origin; git rebase origin/main; git push origin HEAD:main - retry x3 on
 race (other autonomous lanes push tonight). If still refused, push the branch
 (git push -u origin docs/research-20260716) and stop. Final act: append a 5-line summary
-to ops/loop/reports/lane_research.done.txt in the MAIN checkout path C:\Riot Commander.
+to ops/loop/reports/lane_research.done.txt in the MAIN checkout (the repo root `spawn_lanes.ps1` resolves).

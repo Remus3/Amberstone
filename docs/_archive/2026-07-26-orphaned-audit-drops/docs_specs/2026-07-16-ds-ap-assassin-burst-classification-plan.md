@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - **ASCII only.** No em-dashes / en-dashes / smart quotes anywhere (repo hard rule). Use ` - ` for a clause break. `tools/precommit_gate.py` blocks banned glyphs + net-new ruff on staged lines.
-- **Python interpreter:** `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe` (referred to as `python` below). Run all commands from repo root `C:/Riot Commander`.
+- **Python interpreter:** `%LOCALAPPDATA%/Programs/Python/Python314/python.exe` (referred to as `python` below). Run all commands from repo root `<repo>`.
 - **`py_compile` any edited `.py` before an RC restart** (syntax errors crash silently under `pythonw.exe`).
 - **RC reload = write any content to `restart_trigger.txt`** (supervisor clears + restarts within ~5s). Then confirm `ops/runtime/health.json` shows a new `pid`, `alive=true`, `last_reload_ok=true`.
 - **NO ENGINE_VERSION bump. NO Share mirror stage. NO DS `:8893` restart.** The engine is unchanged (C4 caller-default-flip precedent: RC-side change + RC reload only).
@@ -197,8 +197,8 @@ Expected: PASS (both files fully green).
 - [ ] **Step 9: Commit**
 
 ```bash
-git -C "C:/Riot Commander" add core/archetype_picks.py tests/test_ap_assassin_override.py tests/test_archetype_axis_correction.py
-git -C "C:/Riot Commander" commit -m "feat(ds): route AP burst-assassins to the ds.burst scorer (Slice A, AP-axis sweep)" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git -C "<repo>" add core/archetype_picks.py tests/test_ap_assassin_override.py tests/test_archetype_axis_correction.py
+git -C "<repo>" commit -m "feat(ds): route AP burst-assassins to the ds.burst scorer (Slice A, AP-axis sweep)" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
 
 ---
@@ -226,17 +226,17 @@ Expected: PASS (0 failed). Trust the exit code (efficiency rule R6). If a failur
 - [ ] **Step 3: Reload RC so the running dashboard picks up the change**
 
 ```bash
-echo restart > "C:/Riot Commander/restart_trigger.txt"
+echo restart > "<repo>/restart_trigger.txt"
 ```
 
 Wait ~6s, then:
-Run: `python -c "import json;d=json.load(open(r'C:/Riot Commander/ops/runtime/health.json'));print(d['pid'],d['alive'],d.get('last_reload_ok'))"`
+Run: `python -c "import json;d=json.load(open(r'<repo>/ops/runtime/health.json'));print(d['pid'],d['alive'],d.get('last_reload_ok'))"`
 Expected: a new `pid`, `True`, `True`.
 
 - [ ] **Step 4: Live-validate the 7 flip to a burst AP build**
 
 ```bash
-cd "C:/Riot Commander" && for c in Akali Ekko Evelynn Fizz Katarina LeBlanc Diana; do
+cd "<repo>" && for c in Akali Ekko Evelynn Fizz Katarina LeBlanc Diana; do
 curl -sk -X POST https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" -d "{\"champion\":\"$c\",\"mode\":\"SR\",\"level\":13}" | python -c "import sys,json;d=json.load(sys.stdin);b=[i.get('item_name') for i in d.get('live',[])];print('$c',d.get('plan_meta',{}).get('scorer'),'|',' > '.join(b))"
 done
 ```
@@ -245,7 +245,7 @@ Expected: every champ shows `scorer == burst` and an AP-led build (Rabadon's / V
 - [ ] **Step 5: Live-validate the controls did not move**
 
 ```bash
-cd "C:/Riot Commander" && for c in Qiyana Syndra Gwen Kassadin; do
+cd "<repo>" && for c in Qiyana Syndra Gwen Kassadin; do
 curl -sk -X POST https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" -d "{\"champion\":\"$c\",\"mode\":\"SR\",\"level\":13}" | python -c "import sys,json;d=json.load(sys.stdin);print('$c',d.get('plan_meta',{}).get('scorer'))"
 done
 ```
@@ -258,9 +258,9 @@ Prepend a dated entry to `docs/LEDGER.md` describing: the AP-axis sweep Slice A 
 - [ ] **Step 7: Commit the LEDGER + any Step-1/2 test fixes**
 
 ```bash
-git -C "C:/Riot Commander" add docs/LEDGER.md tests/
-git -C "C:/Riot Commander" commit -m "docs(ds): LEDGER - AP-assassin burst reroute Slice A + test repoints" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-git -C "C:/Riot Commander" push
+git -C "<repo>" add docs/LEDGER.md tests/
+git -C "<repo>" commit -m "docs(ds): LEDGER - AP-assassin burst reroute Slice A + test repoints" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git -C "<repo>" push
 ```
 
 ---

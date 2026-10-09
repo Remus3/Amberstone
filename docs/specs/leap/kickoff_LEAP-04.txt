@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-04 build-order regen + Family A guard. Model claude-opu
 effort max. Chat caveman ultra; real output to files. Goal: front-load the thinking into
 specs; execution sessions are typing, not deciding.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-04-build-order-precompute-backfill.md END TO
+1. Read <repo>\docs\specs\leap\LEAP-04-build-order-precompute-backfill.md END TO
    END. The design question is ANSWERED in the spec from code evidence: the generator does
    NOT bypass the coherence dock (plan_build_order -> rank_for_primary_archetype ->
    coherence_rerank client-side; :8893 returns raw scores; daemon_slayer_client.py:1523/1585).

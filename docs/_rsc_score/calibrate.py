@@ -25,9 +25,9 @@ is dropped: a silent skip would under-count exactly like the defect this whole
 lane exists to avoid.
 
 Run (from the repo root):
-  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" docs/_rsc_score/calibrate.py blind  --out <path>
-  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" docs/_rsc_score/calibrate.py check  --blinded <path>
-  "C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" docs/_rsc_score/calibrate.py tally  --scorers <A.md> <B.md> <C.md>
+  "%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" docs/_rsc_score/calibrate.py blind  --out <path>
+  "%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" docs/_rsc_score/calibrate.py check  --blinded <path>
+  "%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" docs/_rsc_score/calibrate.py tally  --scorers <A.md> <B.md> <C.md>
 """
 
 from __future__ import annotations

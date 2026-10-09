@@ -6,7 +6,7 @@
 
     <Date>2026-04-19T19:05:08</Date>
 
-    <Author>RC-HOST\Administrator</Author>
+    <Author>RC-HOST\__RC_USER__</Author>
 
     <URI>\RC-VisionServer</URI>
 
@@ -72,11 +72,11 @@
 
     <Exec>
 
-      <Command>"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"</Command>
+      <Command>"%LOCALAPPDATA%\Programs\Python\Python314\python.exe"</Command>
 
-      <Arguments>"C:\Riot Commander\moon_vision_server.py"</Arguments>
+      <Arguments>"__RC_REPO__\moon_vision_server.py"</Arguments>
 
-      <WorkingDirectory>C:\Riot Commander</WorkingDirectory>
+      <WorkingDirectory>__RC_REPO__</WorkingDirectory>
 
     </Exec>
 

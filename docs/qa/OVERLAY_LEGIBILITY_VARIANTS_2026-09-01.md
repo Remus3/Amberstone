@@ -46,7 +46,7 @@ scoped under `body[data-shell="overlay"]`.
 > 2. **The renders and the contrast numbers were measured against the SERVED
 >    build, not this worktree.** `tools/overlay_legibility_preview.py` drives the
 >    live RC dashboard at `https://127.0.0.1:8888`, which serves from
->    `C:\Riot Commander`, and the served `overlay.css` was byte-identical to this
+>    `<repo>`, and the served `overlay.css` was byte-identical to this
 >    branch's `HEAD` (42984 bytes) rather than to the working tree (44688 bytes).
 >    The delta is only the B-OVL-4 addition above, which paints a chip row in
 >    `w-build` and touches none of the measured targets, so the figures stand.
@@ -502,7 +502,7 @@ No League, no LCU, no live game needed - the frames come from the committed
 `data/ui_mock/active_match_<mode>.json` fixtures.
 
 ```
-PY="C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe"
+PY="%LOCALAPPDATA%/Programs/Python/Python314/python.exe"
 
 # Full matrix: 4 variants x 3 backdrops, PNGs + contrast report.
 $PY tools/overlay_legibility_preview.py

@@ -27,7 +27,7 @@ Option 3 is the only durable answer.
 Constraints:
 
 - **Single-user shape only.** Key is operator's personal-tier key, used by one operator on Legion. No proxy service, no JWT auth, no redistribution.
-- **Key location:** `C:\Riot Commander\API-Key-Riot.txt` (gitignored, mirrors `API-Key-Claude.txt` pattern).
+- **Key location:** `<repo>\API-Key-Riot.txt` (gitignored, mirrors `API-Key-Claude.txt` pattern).
 - **All API access flows through one module:** `core/riot_api.py`. Direct `urllib.request` calls to `*.api.riotgames.com` from elsewhere in RC are not permitted.
 - **Caching is required, not optional.** Match-V5 responses are immutable - cache forever. League-V4 / mastery - 5-minute TTL. Account-V1 PUUIDs - cache forever (stable). Cache backend: SQLite at `data/riot_api_cache.db`.
 - **Rate limiting is required.** Token bucket sized to the active key tier's headline limit; soft-fail (log + return None) on bucket exhaustion. Coaches must tolerate missing context, never crash on it.

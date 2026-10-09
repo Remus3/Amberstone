@@ -6,7 +6,7 @@
 
 **Architecture:** New pure engine primitive `agents/daemon_slayer/boot_utility.py` (Share-mirrored, ENGINE-versioned) scores each tier-2 boot on a normalized utility vector weighted by the comp. `core/build_order._select_boots` gains an OFF-default flag: OFF returns today's heuristic verbatim (byte-identical committed tables), ON returns the utility argmax with archetype-default hysteresis. `plan_build_order` threads the flag; the comp signal (`enemy_ad_share`/`enemy_ap_share`) is read from the existing `rank_kwargs`.
 
-**Tech Stack:** Python 3.14 (`C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`), pytest, the DS engine package `agents/daemon_slayer`, the Share mirror (`ds_share_sync`).
+**Tech Stack:** Python 3.14 (`%LOCALAPPDATA%\Programs\Python\Python314\python.exe`), pytest, the DS engine package `agents/daemon_slayer`, the Share mirror (`ds_share_sync`).
 
 ## Global Constraints
 
@@ -506,7 +506,7 @@ Run: `python tools/ds_share_sync.py --check` (path per repo; the precommit gate 
 - [ ] **Step 3: Commit (canonical + Share mirror in ONE commit)**
 
 ```bash
-cd "C:/Riot Commander"
+cd "<repo>"
 git add agents/daemon_slayer/boot_utility.py agents/daemon_slayer/tests/test_boot_utility.py \
         core/build_order.py tests/test_boot_utility_select.py \
         agents/daemon_slayer/__init__.py agents/daemon_slayer/CHANGELOG.md \
