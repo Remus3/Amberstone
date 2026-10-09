@@ -7,12 +7,15 @@ pinned here against the behaviour their docstrings promise:
 * ``project_slug`` (core/claude_project.py:29) - every character outside
   [A-Za-z0-9] becomes one ``-`` (``_NON_ALNUM``, line 26), length preserved.
 * ``main_checkout`` (line 34) - a linked worktree's ``.git`` FILE
-  (``gitdir: <main>/.git/worktrees/<name>``, lines 43-55) resolves to the main
-  checkout; a ``.git`` directory, a missing ``.git``, a link without the
-  ``gitdir:`` prefix (line 49) or one that does not point into
-  ``.git/worktrees`` (line 54, e.g. a submodule) returns the root unchanged;
-  a relative ``gitdir`` resolves against the root (lines 52-53).
-* ``project_dir`` (line 59) - ``<home>/.claude/projects/<slug of the main
+  (``gitdir: <main>/.git/worktrees/<name>``, lines 46-61) resolves to the main
+  checkout; a ``.git`` directory, a missing ``.git``, a link that cannot be
+  read or is not UTF-8 (line 50), a link without the ``gitdir:`` prefix
+  (line 54) or one that does not point into ``.git/worktrees`` (line 59, e.g.
+  a submodule) returns the root unchanged and never raises - its callers
+  resolve at import time with no handler (dashboard/routes_loop_monitor.py:55,
+  tools/drift_guard.py:79, tools/perseus_sync.py:62); a relative ``gitdir``
+  resolves against the root (lines 57-58).
+* ``project_dir`` (line 64) - ``<home>/.claude/projects/<slug of the main
   checkout>``, with ``home`` defaulting to ``Path.home()``.
 
 Every case builds its own tree under tmp_path; nothing here reads or writes
@@ -138,16 +141,20 @@ def test_main_checkout_returns_the_root_when_the_link_cannot_be_read(
     assert cp.main_checkout(wt) == wt
 
 
-@pytest.mark.xfail(
-    strict=True, raises=UnicodeDecodeError,
-    reason="core/claude_project.py:46-48 catches OSError only; a .git link "
-           "that is not UTF-8 raises instead of returning the root as the "
-           "docstring promises. Remove this marker when that is fixed.")
-def test_main_checkout_returns_the_root_for_a_non_utf8_link(tmp_path: Path) -> None:
+@pytest.mark.parametrize("raw", [
+    b"gitdir: /m/.git/worktrees/\xff\xfe\n",     # invalid UTF-8 inside the path
+    b"\xff\xfegitdir: /m/.git/worktrees/wt\n",   # a stray UTF-16 BOM
+    b"gitdir: /m/.git/worktrees/\xc3\n",         # truncated multi-byte sequence
+])
+def test_main_checkout_returns_the_root_for_a_non_utf8_link(tmp_path: Path, raw: bytes) -> None:
+    # Was a crash (UnicodeDecodeError escaped the OSError-only handler); the
+    # callers import-time-resolve with no handler, so it must fall back.
     wt = tmp_path / "wt"
     wt.mkdir()
-    (wt / ".git").write_bytes(b"gitdir: /m/.git/worktrees/\xff\xfe\n")
+    (wt / ".git").write_bytes(raw)
     assert cp.main_checkout(wt) == wt
+    home = tmp_path / "home"
+    assert cp.project_dir(wt, home) == home / ".claude" / "projects" / cp.project_slug(wt)
 
 
 def test_main_checkout_defaults_to_this_checkout() -> None:
