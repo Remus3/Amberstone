@@ -215,25 +215,27 @@ if (-not $git) {
 & $git config --global core.longpaths true
 & $git config --global core.autocrlf false
 
+# FLEET-COMMON 17 (kit v13/v14): every commit carries the OPERATOR identity.
+# Never invent a placeholder or bot identity here - a missing one skips the
+# checkpoint commit instead, and the operator sets their own.
 $userName = (& $git config --global user.name 2>$null)
-if (-not $userName) {
-    & $git config --global user.name "Riot Commander AI"
-}
-
 $userEmail = (& $git config --global user.email 2>$null)
-if (-not $userEmail) {
-    & $git config --global user.email "riot-commander@local"
+$haveIdentity = ($userName -and $userEmail)
+if (-not $haveIdentity) {
+    Write-Warning "git user.name / user.email are not set. Set the OPERATOR identity with 'git config --global user.name' and 'git config --global user.email', then re-run. The checkpoint commit is skipped."
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $Root ".git"))) {
     & $git -C $Root init -b main
 }
 
-& $git -C $Root add -A
-try {
-    & $git -C $Root commit --allow-empty -m "checkpoint: baseline dev stack"
-} catch {
-    Write-Host "Initial commit skipped or already up to date." -ForegroundColor Yellow
+if ($haveIdentity) {
+    & $git -C $Root add -A
+    try {
+        & $git -C $Root commit --allow-empty -m "checkpoint: baseline dev stack"
+    } catch {
+        Write-Host "Initial commit skipped or already up to date." -ForegroundColor Yellow
+    }
 }
 
 Write-Step "Done"
