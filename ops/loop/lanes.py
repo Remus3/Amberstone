@@ -102,7 +102,10 @@ def _main_tree_root(start: Path | None = None) -> Path:
                 # <main>/.git/worktrees/<name> -> parents[2] is <main>/.git's parent
                 if gitdir.parent.name == "worktrees":
                     return gitdir.parents[2]
-    except OSError:
+    except (OSError, UnicodeError):
+        # Git writes the link as UTF-8. A link that cannot be read, or that is
+        # not UTF-8, is an unreadable link: fall back, never raise at import
+        # (same fallback as core/claude_project.main_checkout).
         pass
     return root
 

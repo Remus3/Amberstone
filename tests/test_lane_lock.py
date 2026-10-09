@@ -399,6 +399,26 @@ def test_main_tree_root_falls_back_when_git_is_absent(tmp_path):
     assert lanes._main_tree_root(bare) == bare
 
 
+@pytest.mark.parametrize("payload", [
+    b"gitdir: /main/.git/worktrees/wt\xff\n",          # invalid start byte
+    b"\xff\xfeg\x00i\x00t\x00d\x00i\x00r\x00:\x00",   # stray UTF-16 BOM
+    b"gitdir: /main/.git/worktrees/wt\xe2\x82",        # truncated sequence
+], ids=["invalid-byte", "utf16-bom", "truncated"])
+def test_main_tree_root_falls_back_on_a_non_utf8_gitfile(tmp_path, payload):
+    """A `.git` link that is not UTF-8 is unreadable: fall back, never raise.
+
+    _main_tree_root runs at import time (REPO_ROOT) with no handler around it,
+    so a UnicodeDecodeError here kills every importer of ops/loop/lanes.py.
+    Same root cause and same fallback as core/claude_project.main_checkout
+    (df97e2130): git writes the link as UTF-8, so an undecodable link is an
+    unreadable one and the checkout stands for itself.
+    """
+    wt = tmp_path / "wt"
+    wt.mkdir()
+    (wt / ".git").write_bytes(payload)
+    assert lanes._main_tree_root(wt) == wt
+
+
 def test_guard_rejects_every_spelling_of_the_main_tree(tmp_path):
     """Equality is path-normalized, not string-compared."""
     root = tmp_path / "ops" / "loop" / "control" / "lanes"
