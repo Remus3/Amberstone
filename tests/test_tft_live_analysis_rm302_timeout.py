@@ -5,7 +5,8 @@ carry an explicit per-request timeout.
 THE DEFECT. `_run_analysis` and `_run_augment_select` each fall back to a
 DIRECT `self._client.messages.create(...)` against api.anthropic.com when
 moon_proxy declines. Neither passed a `timeout`, so both inherited the SDK
-default read timeout of 600 s (anthropic 0.96.0, DEFAULT_TIMEOUT read=600)
+default read timeout of 600 s (DEFAULT_TIMEOUT read=600 in anthropic 0.96.0
+and still in 1.11.0)
 inside a loop that ticks every 1.5 s.
 
 THE SYMPTOM IS SILENCE, NOT A THREAD STORM. `_run_cycle` opens with
@@ -23,6 +24,7 @@ test below models the HANG rather than an exception. Handing this suite a
 pre-built exception would have been vacuous.
 """
 import json
+import logging
 import math
 import sys
 import threading
@@ -85,13 +87,46 @@ class _FakeResp:
         self.content = content
 
 
+def _sdk_request_cls():
+    """The Request class of the HTTP library the INSTALLED SDK raises with.
+
+    Read off the SDK's own APITimeoutError signature ('httpx.Request' on
+    anthropic 0.x, 'httpx2.Request' on 1.x) rather than hard-coded. A literal
+    `import httpx` here went stale when anthropic 1.0 moved to httpx2 and
+    stopped installing httpx: the import raised ModuleNotFoundError inside the
+    fake, the production blanket handler caught THAT, and rm302a/b stayed
+    green without a timeout ever being raised.
+    """
+    import importlib
+    import inspect
+
+    import anthropic
+
+    ann = inspect.signature(
+        anthropic.APITimeoutError.__init__).parameters["request"].annotation
+    if not isinstance(ann, str):
+        ann = f"{ann.__module__}.{ann.__qualname__}"
+    mod, _, name = ann.rpartition(".")
+    return getattr(importlib.import_module(mod), name)
+
+
 def _timeout_error():
     """A real anthropic.APITimeoutError, which is what a bounded call raises."""
     import anthropic
-    import httpx
 
     return anthropic.APITimeoutError(
-        request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"))
+        request=_sdk_request_cls()("POST", "https://api.anthropic.com/v1/messages"))
+
+
+class _ErrorLog(logging.Handler):
+    """Collects the ERROR lines the module under test logs."""
+
+    def __init__(self):
+        super().__init__(level=logging.ERROR)
+        self.lines = []
+
+    def emit(self, record):
+        self.lines.append(record.getMessage())
 
 
 class _HangingMessages:
@@ -114,6 +149,10 @@ class _HangingMessages:
 
     def __init__(self):
         self.calls = []
+        # Every APITimeoutError this fake actually raised. Empty after a
+        # bounded call means building the error itself failed, so the code
+        # under test was handed some OTHER exception (see _sdk_request_cls).
+        self.raised = []
         self._release = threading.Event()
 
     def create(self, **kw):
@@ -121,7 +160,9 @@ class _HangingMessages:
         t = kw.get("timeout")
         if isinstance(t, (int, float)) and not isinstance(t, bool) \
                 and math.isfinite(t) and 0 < t < _SDK_DEFAULT_READ_TIMEOUT_S:
-            raise _timeout_error()
+            exc = _timeout_error()
+            self.raised.append(exc)
+            raise exc
         self._release.wait()
         raise AssertionError("unreachable: the hang was released by teardown")
 
@@ -238,6 +279,42 @@ class TftLiveAnalysisTimeoutTest(unittest.TestCase):
         t.start()
         return done.wait(timeout=_PATIENCE_S)
 
+    def _run_bounded_logged(self, fn, *args):
+        """`_run_bounded`, plus the ERROR lines the module logged meanwhile."""
+        log = _ErrorLog()
+        lg = logging.getLogger(tla.logger.name)
+        lg.addHandler(log)
+        try:
+            came_back = self._run_bounded(fn, *args)
+        finally:
+            lg.removeHandler(log)
+        return came_back, log.lines
+
+    def _assert_timeout_path(self, msgs, logged, prefix):
+        """Vacuity guard: the TIMEOUT path ran, not merely SOME error path.
+
+        Both sites end in a blanket `except Exception`, so a fake that blew up
+        for any other reason (an import, a constructor signature) came back
+        just as fast and published the same degraded marker. Pin the chain
+        end to end: one bounded call, one real APITimeoutError raised by the
+        fake, and the production handler logging THAT exception.
+        """
+        import anthropic
+
+        self.assertEqual(len(msgs.calls), 1,
+                         "the local fallback was not called exactly once")
+        self.assertEqual(
+            len(msgs.raised), 1,
+            "the bounded call raised no APITimeoutError - building it failed, "
+            "so the handler saw some other exception and this pass says "
+            "nothing about the timeout path")
+        exc = msgs.raised[0]
+        self.assertIs(type(exc), anthropic.APITimeoutError)
+        self.assertIn(
+            f"{prefix}: {tla._safe_err(exc)}", logged,
+            "the production handler did not log the timeout it was raised - "
+            "it handled a different error")
+
     def _read(self, obj):
         return json.loads(obj._data_file.read_text(encoding="utf-8"))
 
@@ -256,12 +333,13 @@ class TftLiveAnalysisTimeoutTest(unittest.TestCase):
         self._parked.append(msgs)
         obj = _mk(self.tmp, msgs)
 
-        came_back = self._run_bounded(obj._run_analysis, dict(_VS))
+        came_back, logged = self._run_bounded_logged(obj._run_analysis, dict(_VS))
 
         self.assertTrue(
             came_back,
             "the fallback call never returned - it is unbounded, so the "
             "degraded marker is unreachable and the panel goes silent")
+        self._assert_timeout_path(msgs, logged, "Live analysis API")
         self.assertTrue(obj._data_file.exists(),
                         "a timed-out cycle published nothing at all")
         data = self._read(obj)
@@ -283,12 +361,28 @@ class TftLiveAnalysisTimeoutTest(unittest.TestCase):
         self._parked.append(msgs)
         obj = _mk(self.tmp, msgs)
 
-        came_back = self._run_bounded(obj._run_augment_select, dict(_VS))
+        came_back, logged = self._run_bounded_logged(
+            obj._run_augment_select, dict(_VS))
 
         self.assertTrue(
             came_back,
             "the augment-select fallback call never returned - it is "
             "unbounded")
+        self._assert_timeout_path(msgs, logged, "Augment select")
+
+    def test_rm302e_timeout_fixture_uses_the_sdk_transport(self):
+        """The fixture builds a REAL APITimeoutError around a request of the
+        HTTP library the installed SDK uses (httpx2 on anthropic 1.x).
+
+        Fails on its own, without the rm302a/b machinery, the moment the SDK
+        moves transport again and the fixture can no longer construct one.
+        """
+        import anthropic
+
+        exc = _timeout_error()
+        self.assertIs(type(exc), anthropic.APITimeoutError)
+        self.assertIsInstance(exc.request, _sdk_request_cls())
+        self.assertEqual(exc.request.method, "POST")
 
     # ---- the argument itself ---------------------------------------------
 
