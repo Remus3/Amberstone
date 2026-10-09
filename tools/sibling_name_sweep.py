@@ -26,6 +26,8 @@ tree records four shapes that escaped its own one-off sweep, and it ships a
 documented bypass. The honest claim after this lands is "the sweep half is armed
 with a measured escape rate above zero", never "sibling names cannot leak".
 ``--no-verify`` bypasses the whole hook and nothing here can prevent that.
+RM-688: every sweep run appends one redacted JSONL run record, so a pushed range
+with NO record is the after-the-fact signal of a skipped gate - not a real-time one.
 
 TWO ARMS, AND WHY THERE ARE TWO
 -------------------------------
@@ -101,6 +103,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, NoReturn, Optional, Sequence
 
@@ -168,6 +171,31 @@ _REPLACEMENT = chr(0xFFFD)
 
 BYPASS_ENV = "RC_SIBLING_SWEEP_BYPASS"
 BYPASS_LOG = Path("ops") / "runtime" / "sibling_sweep_bypass.log"
+
+# ---------------------------------------------------------------------------
+# RM-688 RUN RECORD.
+#
+# WHY: before this, only the two BYPASS paths wrote anything. A clean pre-push
+# run, a HALT and every FAULT left no trace, so a push that ran this gate and
+# came back clean was indistinguishable, after the fact, from `git push
+# --no-verify`, which skips .githooks/pre-push entirely. Every run now appends
+# ONE line, and a pushed range with no matching record is a range the gate
+# never saw. That is an AFTER-THE-FACT signal; it detects nothing in real time.
+#
+# The record must not become the leak it audits: every value is an enum, int,
+# bool, ISO time or validated hex. Nothing derived from file content, a file
+# path, a ref NAME, the remote name, the remote URL or a finding literal.
+#
+# Append-only, ONE os.write per record on an O_APPEND fd: no read-modify-write,
+# no rolling, nothing a concurrent push can tear. It never raises and never
+# changes an exit code. The path resolves to the MAIN checkout when this copy
+# runs from a linked worktree (the hook runs the worktree's copy), so the record
+# survives worktree cleanup. RUN_LOG_ENV overrides it (the test suite does).
+# ---------------------------------------------------------------------------
+RUN_LOG = Path("ops") / "runtime" / "sibling_sweep_runs.jsonl"
+RUN_LOG_ENV = "RC_SIBLING_SWEEP_RUN_LOG"
+RUN_RECORD_VERSION = 1
+RUN_RANGE_MAX = 16
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -1628,6 +1656,142 @@ def _append_bypass_log(text: str) -> None:
         _emit("[sibling-sweep] BYPASS log could not be written.")
 
 
+def _bypass_env_set() -> bool:
+    return os.environ.get(BYPASS_ENV, "").strip() not in ("", "0", "false", "False")
+
+
+# RM-688 run record - see the RUN_LOG block at the top of this file.
+_HEX = re.compile(r"^[0-9a-f]{1,40}$")
+_HEX_FIELD = re.compile(r"^[0-9a-f]+$")
+
+
+def run_log_path() -> Path:
+    """Where this run's record goes. Never raises.
+
+    ``RC_SIBLING_SWEEP_RUN_LOG`` wins when non-empty; otherwise the MAIN
+    working tree's ``ops/runtime`` when ``REPO_ROOT`` is a linked worktree,
+    else ``REPO_ROOT``'s own.
+    """
+    try:
+        override = (os.environ.get(RUN_LOG_ENV) or "").strip()
+        if override:
+            return Path(override)
+        return (main_working_tree(REPO_ROOT) or REPO_ROOT) / RUN_LOG
+    except Exception:  # noqa: BLE001 - a record path must never break the gate
+        return REPO_ROOT / RUN_LOG
+
+
+def _run_record_failed() -> None:
+    try:
+        _emit("[sibling-sweep] run record could not be written.")
+    except Exception:  # noqa: BLE001 - a dead stderr must not change the exit code
+        pass
+
+
+def _append_run_record(record: dict) -> None:
+    """ONE append-mode write of one ASCII JSON line. Never raises."""
+    try:
+        line = json.dumps(record, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+        data = (line + "\n").encode("ascii")
+        path = run_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0)
+        fd = os.open(str(path), flags, 0o644)
+        try:
+            os.write(fd, data)
+        finally:
+            os.close(fd)
+    except Exception:  # noqa: BLE001 - the record is advisory; the exit code is the gate
+        _run_record_failed()
+
+
+@dataclass
+class _RunContext:
+    """What one sweep run reached. Counts and enums only - never text."""
+
+    arm: str
+    explain: bool
+    cfg_mode: Optional[str] = None
+    hits: int = 0
+    stats: Optional[ScanStats] = None
+    ref_lines: list = field(default_factory=list)
+    bypassed: bool = False
+
+
+def _hex_or_none(value: str) -> Optional[str]:
+    return value if _HEX.match(value or "") else None
+
+
+def _run_range(ref_lines: Sequence[str]) -> list:
+    """``<remote_sha[:12]>..<local_sha[:12]>`` per hex-shaped ref line, capped.
+
+    Only the 2nd and 4th fields are read; the ref NAMES never are.
+    """
+    out: list = []
+    for line in ref_lines:
+        parts = (line or "").split()
+        if len(parts) < 4:
+            continue
+        local_sha, remote_sha = parts[1], parts[3]
+        if not (_HEX_FIELD.match(local_sha) and _HEX_FIELD.match(remote_sha)):
+            continue
+        left, right = _hex_or_none(remote_sha[:12]), _hex_or_none(local_sha[:12])
+        if left is None or right is None:
+            continue
+        out.append(f"{left}..{right}")
+        if len(out) >= RUN_RANGE_MAX:
+            break
+    return out
+
+
+def _run_head() -> Optional[str]:
+    try:
+        return _hex_or_none(_git(REPO_ROOT, ["rev-parse", "HEAD"]).strip()[:12])
+    except Exception:  # noqa: BLE001 - no HEAD (or no git) records null, never fails
+        return None
+
+
+def _run_verdict(ctx: _RunContext, rc: Optional[int]) -> str:
+    if rc is None or rc == EXIT_FAULT:
+        return "fault"
+    if ctx.bypassed:
+        return "bypass"
+    if ctx.explain:
+        return "hit" if ctx.hits else "clean"
+    if rc == EXIT_CLEAN:
+        return "clean"
+    if rc == EXIT_HALT:
+        return "hit"
+    return "fault"
+
+
+def _record_run(ctx: _RunContext, rc: Optional[int]) -> None:
+    """Build and append this run's record. Never raises."""
+    try:
+        stats = ctx.stats or ScanStats()
+        record = {
+            "v": RUN_RECORD_VERSION,
+            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "arm": ctx.arm,
+            "explain": bool(ctx.explain),
+            "cfg": ctx.cfg_mode if ctx.cfg_mode in (MODE_ARMED, MODE_DEGRADED, MODE_FAULT) else None,
+            "verdict": _run_verdict(ctx, rc),
+            "exit": rc if isinstance(rc, int) else None,
+            "hits": int(ctx.hits),
+            "commits": int(stats.commits),
+            "files": int(stats.files),
+            "bytes": int(stats.scanned_bytes),
+            "range": _run_range(ctx.ref_lines) if ctx.arm == "pre-push" else [],
+            "head": _run_head(),
+            "worktree": main_working_tree(REPO_ROOT) is not None,
+            "bypass_env": _bypass_env_set(),
+        }
+    except Exception:  # noqa: BLE001 - the record is advisory; the exit code is the gate
+        _run_record_failed()
+        return
+    _append_run_record(record)
+
+
 class _UsageParser(argparse.ArgumentParser):
     """An ArgumentParser whose argument errors exit EXIT_USAGE, not 2.
 
@@ -1665,108 +1829,134 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _emit("[sibling-sweep] usage error: pick --pre-push, --tree or --scan-file.")
         return EXIT_USAGE
 
-    root = Path(args.config_root) if args.config_root else REPO_ROOT
-    cfg = load_config(root=root)
-    stats = ScanStats()
+    # RM-688: a usage error above is not a sweep run and is not recorded. Every
+    # run past this point is, including one an unexpected exception ends (that
+    # exception still propagates unchanged; the record says verdict "fault",
+    # exit null). The arm mirrors the blob-source precedence in `_sweep`.
+    #
+    # `_sweep` is NESTED in `main` on purpose: it is the post-parse body, and
+    # tests/test_sibling_name_sweep.py guards that `main`'s own source walks the
+    # tree arm LAZILY (RM-477), so the body has to stay inside `main`.
+    arm = "scan-file" if args.scan_file else ("tree" if args.tree else "pre-push")
+    ctx = _RunContext(arm=arm, explain=args.explain is not None)
 
-    if cfg.mode == MODE_FAULT:
-        _emit(mode_banner(cfg))
-        _emit("[sibling-sweep] exit 3 (FAULT) - the gate could NOT run. This is "
-              "not a clean verdict and must not be read as one.")
-        return EXIT_FAULT
+    def _sweep() -> int:
+        """The post-parse body. Same exit codes, same stderr as before RM-688."""
+        root = Path(args.config_root) if args.config_root else REPO_ROOT
+        cfg = load_config(root=root)
+        ctx.cfg_mode = cfg.mode
+        stats = ScanStats()
+        ctx.stats = stats
 
-    _emit(mode_banner(cfg))
-
-    bypass = os.environ.get(BYPASS_ENV, "").strip() not in ("", "0", "false", "False")
-
-    # A DEGRADED run on the PUSH path is not a clean verdict, so it must not
-    # exit like one. Scoped to --pre-push: CI runs the tree arm on a runner
-    # with no config and relies on DEGRADED passing there.
-    if args.pre_push is not None and cfg.mode == MODE_DEGRADED:
-        notice = (
-            "[sibling-sweep] PUSH HALTED - DEGRADED on the pre-push path: the "
-            "per-host config was found neither in this checkout nor in the main "
-            "working tree, so sibling-name matching did NOT run. Restore "
-            "ops/moon_sync_repos.json in the main working tree or set "
-            f"RC_MOON_SYNC_REPOS to arm it. Deliberate override: {BYPASS_ENV}=1 "
-            f"proceeds and appends this notice to {BYPASS_LOG.as_posix()}."
-        )
-        _emit(notice)
-        if not bypass:
+        if cfg.mode == MODE_FAULT:
+            _emit(mode_banner(cfg))
+            _emit("[sibling-sweep] exit 3 (FAULT) - the gate could NOT run. This is "
+                  "not a clean verdict and must not be read as one.")
             return EXIT_FAULT
-        _append_bypass_log(notice)
-        _emit("[sibling-sweep] BYPASS engaged on a DEGRADED push - proceeding "
-              "with the structural arm only.")
 
+        _emit(mode_banner(cfg))
+
+        bypass = _bypass_env_set()
+
+        # A DEGRADED run on the PUSH path is not a clean verdict, so it must not
+        # exit like one. Scoped to --pre-push: CI runs the tree arm on a runner
+        # with no config and relies on DEGRADED passing there.
+        if args.pre_push is not None and cfg.mode == MODE_DEGRADED:
+            notice = (
+                "[sibling-sweep] PUSH HALTED - DEGRADED on the pre-push path: the "
+                "per-host config was found neither in this checkout nor in the main "
+                "working tree, so sibling-name matching did NOT run. Restore "
+                "ops/moon_sync_repos.json in the main working tree or set "
+                f"RC_MOON_SYNC_REPOS to arm it. Deliberate override: {BYPASS_ENV}=1 "
+                f"proceeds and appends this notice to {BYPASS_LOG.as_posix()}."
+            )
+            _emit(notice)
+            if not bypass:
+                return EXIT_FAULT
+            ctx.bypassed = True
+            _append_bypass_log(notice)
+            _emit("[sibling-sweep] BYPASS engaged on a DEGRADED push - proceeding "
+                  "with the structural arm only.")
+
+        try:
+            if args.scan_file:
+                target = Path(args.scan_file)
+                raw = target.read_bytes()
+                text = raw.decode("utf-8", errors="replace")
+                stats.decode_failures += text.count(_REPLACEMENT)
+                stats.files = 1
+                stats.diff_nonempty = bool(raw)
+                blobs = [Blob("FILE", target.name, "A", text)]
+            elif args.tree:
+                # Lazy on purpose (RM-477): `bool()` on a generator proves nothing,
+                # so the non-vacuity claim rests on the eager ls-files check inside
+                # `iter_tree_blobs`, which has already raised if the index is empty.
+                blobs = iter_tree_blobs(REPO_ROOT, stats)
+                stats.diff_nonempty = True
+            else:
+                remote_name = (args.pre_push or ["origin"])[0] or "origin"
+                ref_lines = [ln for ln in sys.stdin.read().splitlines() if ln.strip()]
+                ctx.ref_lines = ref_lines
+                blobs = collect_push_blobs(REPO_ROOT, ref_lines, remote_name, stats)
+                stats.diff_nonempty = bool(blobs)
+        except GitFault as exc:
+            _emit(f"[sibling-sweep] FAULT - {exc}")
+            return EXIT_FAULT
+        except OSError as exc:
+            _emit(f"[sibling-sweep] FAULT - {exc}")
+            return EXIT_FAULT
+
+        # The tree arm's blob source is now a GENERATOR, so its faults surface HERE
+        # rather than above; `ChunkGuardExceeded` joins them because a scan that
+        # cannot justify its own coverage must fail closed, never report clean.
+        try:
+            findings = _run_scan(cfg, blobs, stats)
+            ctx.hits = len(findings)
+        except ChunkGuardExceeded as exc:
+            _emit(f"[sibling-sweep] FAULT - {exc}")
+            return EXIT_FAULT
+        except GitFault as exc:
+            _emit(f"[sibling-sweep] FAULT - {exc}")
+            return EXIT_FAULT
+        except OSError as exc:
+            _emit(f"[sibling-sweep] FAULT - {exc}")
+            return EXIT_FAULT
+
+        # Anti-vacuity: a non-empty diff that scanned zero bytes is a broken guard,
+        # not a clean push.
+        if stats.diff_nonempty and stats.scanned_bytes <= 0:
+            _emit("[sibling-sweep] FAULT - a non-empty push scanned ZERO bytes. An "
+                  "empty enumeration is never a clean verdict (ADR-015).")
+            return EXIT_FAULT
+
+        if args.explain is not None:
+            _emit(explain_finding(findings, args.explain))
+            return EXIT_CLEAN if not findings else EXIT_HALT
+
+        if not findings:
+            _emit(
+                f"[sibling-sweep] clean: {stats.scanned_bytes} bytes, "
+                f"{stats.files} file(s) ({stats.untracked} untracked), "
+                f"{stats.commits} commit message(s), "
+                f"{stats.binary_blobs} binary/LFS blobs not content-scanned."
+            )
+            return EXIT_CLEAN
+
+        report = render_report(findings, stats, cfg, bypassed=bypass)
+        _emit(report)
+        if bypass:
+            ctx.bypassed = True
+            _append_bypass_log(report)
+            _emit("[sibling-sweep] BYPASS engaged - proceeding anyway.")
+            return EXIT_CLEAN
+        return EXIT_HALT
+
+    rc: Optional[int] = None
     try:
-        if args.scan_file:
-            target = Path(args.scan_file)
-            raw = target.read_bytes()
-            text = raw.decode("utf-8", errors="replace")
-            stats.decode_failures += text.count(_REPLACEMENT)
-            stats.files = 1
-            stats.diff_nonempty = bool(raw)
-            blobs = [Blob("FILE", target.name, "A", text)]
-        elif args.tree:
-            # Lazy on purpose (RM-477): `bool()` on a generator proves nothing,
-            # so the non-vacuity claim rests on the eager ls-files check inside
-            # `iter_tree_blobs`, which has already raised if the index is empty.
-            blobs = iter_tree_blobs(REPO_ROOT, stats)
-            stats.diff_nonempty = True
-        else:
-            remote_name = (args.pre_push or ["origin"])[0] or "origin"
-            ref_lines = [ln for ln in sys.stdin.read().splitlines() if ln.strip()]
-            blobs = collect_push_blobs(REPO_ROOT, ref_lines, remote_name, stats)
-            stats.diff_nonempty = bool(blobs)
-    except GitFault as exc:
-        _emit(f"[sibling-sweep] FAULT - {exc}")
-        return EXIT_FAULT
-    except OSError as exc:
-        _emit(f"[sibling-sweep] FAULT - {exc}")
-        return EXIT_FAULT
-
-    # The tree arm's blob source is now a GENERATOR, so its faults surface HERE
-    # rather than above; `ChunkGuardExceeded` joins them because a scan that
-    # cannot justify its own coverage must fail closed, never report clean.
-    try:
-        findings = _run_scan(cfg, blobs, stats)
-    except ChunkGuardExceeded as exc:
-        _emit(f"[sibling-sweep] FAULT - {exc}")
-        return EXIT_FAULT
-    except GitFault as exc:
-        _emit(f"[sibling-sweep] FAULT - {exc}")
-        return EXIT_FAULT
-    except OSError as exc:
-        _emit(f"[sibling-sweep] FAULT - {exc}")
-        return EXIT_FAULT
-
-    # Anti-vacuity: a non-empty diff that scanned zero bytes is a broken guard,
-    # not a clean push.
-    if stats.diff_nonempty and stats.scanned_bytes <= 0:
-        _emit("[sibling-sweep] FAULT - a non-empty push scanned ZERO bytes. An "
-              "empty enumeration is never a clean verdict (ADR-015).")
-        return EXIT_FAULT
-
-    if args.explain is not None:
-        _emit(explain_finding(findings, args.explain))
-        return EXIT_CLEAN if not findings else EXIT_HALT
-
-    if not findings:
-        _emit(
-            f"[sibling-sweep] clean: {stats.scanned_bytes} bytes, "
-            f"{stats.files} file(s) ({stats.untracked} untracked), "
-            f"{stats.commits} commit message(s), "
-            f"{stats.binary_blobs} binary/LFS blobs not content-scanned."
-        )
-        return EXIT_CLEAN
-
-    report = render_report(findings, stats, cfg, bypassed=bypass)
-    _emit(report)
-    if bypass:
-        _append_bypass_log(report)
-        _emit("[sibling-sweep] BYPASS engaged - proceeding anyway.")
-        return EXIT_CLEAN
-    return EXIT_HALT
+        rc = _sweep()
+        return rc
+    finally:
+        _record_run(ctx, rc)
 
 
 if __name__ == "__main__":
