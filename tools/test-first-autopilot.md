@@ -55,10 +55,11 @@ already have and proves it with derived tests before a line of impl exists.
 - Implement the minimal change to satisfy the spec.
 - Loop: `python -m pytest agents/daemon_slayer/tests/<new>.py -q` -> Edit ->
   repeat until the new tests pass.
-- Then the FULL gate, which must be 100% green with zero regressions:
-  `python -m pytest agents/daemon_slayer -q` (baseline is ENGINE-pinned;
-  know the current passed + subtests count and do not drop it), then
-  `python -m pytest -q` for the wider suite.
+- Then the FULL gate, which must be 100% green with zero regressions: ONE
+  gated parallel run over both trees (the TIER TABLE in `tools/done.md`; the
+  DS baseline is ENGINE-pinned - know the current passed + subtests count and
+  do not drop it):
+  `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`.
 - Do not weaken a real assertion to get green. If a prior pin legitimately
   moved because the spec corrects it, rebaseline it deliberately and say so
   in the commit; never silently.
@@ -71,7 +72,8 @@ already have and proves it with derived tests before a line of impl exists.
   minor for a feature/correctness batch, patch for a pure fix) + sweep every
   pinned `ENGINE_VERSION == "<old>"` guard assertion (about 14, in
   agents/daemon_slayer/tests/test_*; the pin IS the guard - a stale pin fails,
-  proving the bump was deliberate). Re-run `python -m pytest -q` fully green.
+  proving the bump was deliberate). Re-run the gated dual suite above once,
+  fully green.
 - Conventional commit naming the spec + ENGINE delta; push origin main.
   Confirm the pre-commit reports py_compile OK.
 - Verify live: `RC-DaemonSlayer` task is NOT supervisor-watched - restart it

@@ -55,9 +55,11 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   where possible; no hardcoded magic numbers; avoid fragile cross-item comparison
   asserts (assert on computed quantities). Wrap class-accessed stubs with
   `@staticmethod` correctly.
-- Full DS suite until green:
-  `python -m pytest agents/daemon_slayer -q`
-  then the wider guard suite `python -m pytest -q` before the version bump.
+- Full DS suite until green, then the wider dual suite before the version bump,
+  each ONE run through the kit's suite gate (the TIER TABLE in `tools/done.md`):
+  `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`
+  then `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`.
+  Iterate on the failing test FILES by name in between; never `pytest -q` from the root.
 
 ## 3. Bump ENGINE_VERSION (with the guard)
 
@@ -76,7 +78,7 @@ to check in. ASCII only, no em/en dashes or smart quotes in any authored byte.
   `assertEqual(daemon_slayer.ENGINE_VERSION, "<old>")`, so a grep for the
   comparison operator alone under-reports badly. Sweep them in one pass; the pin
   IS the guard test (a stale pin fails, proving the bump was deliberate).
-- Re-run `python -m pytest -q` - must be fully green.
+- Re-run the gated dual suite once (the second command above) - must be fully green.
 
 ## 4. Compile + commit + push
 

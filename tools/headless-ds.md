@@ -78,8 +78,9 @@ From the `CLAUDE.md` "Settled - do not re-litigate" section:
 
 ### 3. Running the suite - ALWAYS from the REPO ROOT
 
-**Hard rule: `python -m pytest agents/daemon_slayer/tests -q` from the repo root. Running the same suite with cwd `agents/daemon_slayer/` produces 13 FALSE
-failures.**
+**Hard rule: run the DS suite from the repo root, through the kit's suite gate and in parallel (TIER TABLE in `tools/done.md`):
+`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`. Running the same
+suite with cwd `agents/daemon_slayer/` produces 13 FALSE failures.**
 
 Measured 2026-07-26: from the DS directory the run reported 15 failed / 9917 passed - two real, thirteen pure CWD artifacts (all 159 of their tests pass from
 the root). They split two ways: registry tests that `open()` files by a repo-root-relative path, so from inside the package the path doubles
@@ -135,7 +136,8 @@ A DEFAULT-OFF seam going DEFAULT-ON changes every downstream number. It does not
 - The agent that produced the change NEVER grades it. Dispatch a distinct adjudicating agent judging against criteria STATED UP FRONT (what makes the flip
   right, what makes it wrong, what evidence settles it) - not criteria written after seeing the output.
 - Then an adversarial pass whose job is to REFUTE, defaulting to REFUTED when uncertain. Read-only `verifier` (`.claude/agents/verifier.md`, no Edit/Write) is
-  the ground-truth gate: it re-runs the suite fresh, confirms cited files exist, and returns CONFIRM or REFUTE. Merge only on CONFIRM.
+  the ground-truth gate: it re-runs the cited tests fresh (TIER TABLE: the cited test files plus `--collect-only` counts, never a whole suite), confirms cited
+  files exist, and returns CONFIRM or REFUTE. Merge only on CONFIRM.
 - **Agreement between two agents is not evidence.** Two agents can share one wrong premise, as the RM-39 false retraction proved at a panel of eleven.
 - "Tests still pass" is not adjudication. A default flip can WEAKEN a test into a tautology - every existing test passed the OLD default, so a guard on the
   non-default path was never exercised. Mutation-test it: delete the guard and confirm red.
@@ -185,7 +187,7 @@ changed`; after the bounce the same regen changed 82 of 173).
      `test_engine_tooltip_anchors_match_repo`, `test_daemonslayer_node_desc_engine_anchor_matches_repo`. It is HTML, so an `--include=*.md` grep misses it, and
      it lives in `tests/` not the DS suite, so a DS-only run never catches the drift. The count is the PASSED count and must match `docs/DAEMON_SLAYER.md` - set
      both from the same measured number.
-6. ONE dual suite run from the repo root. Run the two guard modules ALONE first (fast, and in the full run they surface only at the very end): `pytest
+6. ONE dual suite run from the repo root - the TIER TABLE's gated Tier-2 command in `tools/done.md`. Run the two guard modules ALONE first (fast, and in the full run they surface only at the very end): `pytest
    tests/test_docs_daemon_slayer_drift.py tests/test_atlas_dust.py`
 
 ### 8. DS server restart - :8860 is NOT supervisor-watched
@@ -205,8 +207,8 @@ tool (Git Bash rewrites the switches as paths: `Invalid argument/option - 'C:/Pr
 
 ### 9. The wrap
 
-1. Full DUAL suite from the REPO ROOT: `agents/daemon_slayer/tests` then `tests/`. Report the exact pass/fail counts YOU observed this run, never a prior or
-   subagent-reported count.
+1. Full DUAL suite from the REPO ROOT: ONE gated parallel run over `agents/daemon_slayer/tests` and `tests/` (the TIER TABLE's Tier-2 command in
+   `tools/done.md`). Report the exact pass/fail counts YOU observed this run, never a prior or subagent-reported count.
 2. `python -m py_compile` every changed `.py`, then `python -m ruff check .` (F541 is the most common CI-killer). Bounce DS and confirm `/health` serves the new
    version.
 3. Commit + push. Do NOT `git add -A` - stage only files you authored. Special chars go through `git commit -F <tmpfile>` (ASCII-only) or a single-quoted

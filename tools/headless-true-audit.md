@@ -210,16 +210,16 @@ the suite. A test written after the fix proves the fix ran, not that the bug exi
    `py_compile` plus that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION`: full dual suite plus the DS `:8860` restart.
    **A lane-8 rewrite of a `core/` or `dashboard/` module is usually Tier-1 with a Tier-2 tail if it changes a shape any other module reads.** Say
    which tier you paid.
-7. **Verifier gate.** An independent read-only `verifier` subagent (`.claude/agents/verifier.md`, no Edit or Write) re-runs the suite fresh, confirms every
-   cited file exists on disk, and returns CONFIRM or REFUTE. Merge only on CONFIRM. The agent that produced the change NEVER grades it, and **agreement between
+7. **Verifier gate.** An independent read-only `verifier` subagent (`.claude/agents/verifier.md`, no Edit or Write) re-runs the cited tests fresh (TIER TABLE:
+   the cited test files plus `--collect-only` counts, never a whole suite), confirms every cited file exists on disk, and returns CONFIRM or REFUTE. Merge only on CONFIRM. The agent that produced the change NEVER grades it, and **agreement between
    two agents is not evidence** - two agents can share one wrong premise, as an eleven-agent panel proved when it produced a fully-cited FALSE retraction on
    2026-07-18.
 
-**Suite commands, always from the REPO ROOT:**
+**Suite command, always from the REPO ROOT** - ONE gated parallel run over both trees, by the merger, at Tier-2 only (the TIER TABLE in `tools/done.md`;
+Tier-1 names the touched modules' test files instead):
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ -q -n 8
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest agents/daemon_slayer/tests -q
+python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300
 ```
 
 **The DS suite MUST run from the repo root.** Measured 2026-07-26: with cwd `agents/daemon_slayer/` the run reported 15 failed against 9917 passed - two real,

@@ -1,17 +1,22 @@
-"""Tests for tools/pytest_guard.py - the PostToolUse pytest gate.
+"""Tests for tools/pytest_guard.py - the PostToolUse py_compile hook.
 
 Pins the gate semantics (tiered-verification default since item 408, 2026-06-13):
 - docs-only edit (*.md / *.txt / docs/* paths) -> skip everything, exit 0
-- *.py edit (default) -> py_compile only, NO pytest, exit 0
-- non-python code edit (*.js / *.css / etc, default) -> skip, exit 0
-- RC_FULL_SUITE=1 -> restore the old auto `pytest -x --ff -q` on any code edit
+- *.py edit -> py_compile only, NO pytest, exit 0
+- non-python code edit (*.js / *.css / etc) -> skip, exit 0
 - empty / unknown payload -> skip, exit 0 (cannot identify code)
+- the hook NEVER runs a test suite. The RC_FULL_SUITE=1 whole-suite branch was
+  removed 2026-10-09 (MAIN kit-v13 ORDER section 2, PERF-AUDIT item 10): it ran
+  a serial whole-repo suite per edit, outside the machine-wide suite gate, with
+  no timeout. A whole suite now runs only through ops/fleet_kit/fleet_suite_gate.py
+  (FLEET-COMMON 16c; the TIER TABLE in tools/done.md).
 
-Subprocess invocation is monkeypatched so the tests do not actually re-run
-the suite from inside the suite.
+Every process spawn is intercepted at the real `subprocess` module, so a
+re-added suite run is caught however the guard reaches it.
 """
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
@@ -24,6 +29,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from tools import pytest_guard
 
+GUARD_SRC = REPO_ROOT / "tools" / "pytest_guard.py"
+
 
 class _FakeProc:
     def __init__(self, stdout: str = "", stderr: str = "", returncode: int = 0):
@@ -34,14 +41,19 @@ class _FakeProc:
 
 @pytest.fixture
 def captured_run(monkeypatch):
-    """Capture subprocess.run calls so we can assert pytest was/was not invoked."""
+    """Record every subprocess.run / Popen so a test can assert none happened."""
     calls = []
 
     def fake_run(*args, **kwargs):
         calls.append((args, kwargs))
         return _FakeProc(stdout="1 passed in 0.01s\n")
 
-    monkeypatch.setattr(pytest_guard.subprocess, "run", fake_run)
+    def fake_popen(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("pytest_guard must not spawn a process")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
     return calls
 
 
@@ -157,17 +169,47 @@ def test_main_code_py_default_compiles_only(captured_run, monkeypatch, capsys):
     assert "py_compile OK" in capsys.readouterr().out
 
 
-def test_main_full_suite_opt_in_runs_pytest(captured_run, monkeypatch):
-    # RC_FULL_SUITE=1 restores the old auto `pytest -x --ff -q` on a code edit.
+def test_rc_full_suite_env_no_longer_runs_a_suite(captured_run, monkeypatch, capsys):
+    # The retired opt-in: setting RC_FULL_SUITE=1 must NOT bring back a serial,
+    # ungated, untimed whole-repo suite per edit. It compiles like any edit.
     monkeypatch.setenv("RC_FULL_SUITE", "1")
     rc = _invoke({"tool_input": {"file_path": "core/engine.py"}}, monkeypatch)
     assert rc == 0
-    assert len(captured_run) == 1, "RC_FULL_SUITE=1 runs the suite exactly once"
-    args, _kwargs = captured_run[0]
-    cmd = args[0]
-    assert "pytest" in cmd
-    assert "-x" in cmd
-    assert "--ff" in cmd
+    assert captured_run == [], "RC_FULL_SUITE=1 must not spawn pytest any more"
+    out = capsys.readouterr().out
+    assert "py_compile OK" in out
+    # The one-line pointer tells whoever still sets the variable where suites went.
+    assert "fleet_suite_gate" in out
+
+
+def test_guard_source_spawns_no_process_and_reads_no_suite_switch():
+    # Structural pin: the hook holds no spawn site at all, so a whole suite can
+    # only run through the kit's suite gate. Catches every import form.
+    tree = ast.parse(GUARD_SRC.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            assert all(a.name != "subprocess" for a in node.names), "imports subprocess"
+        elif isinstance(node, ast.ImportFrom):
+            assert node.module != "subprocess", "imports from subprocess"
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            owner = node.func.value
+            if isinstance(owner, ast.Name) and owner.id == "os":
+                assert node.func.attr not in {"system", "popen", "startfile"}, (
+                    f"os.{node.func.attr} at line {node.lineno}")
+                assert not node.func.attr.startswith(("spawn", "exec")), (
+                    f"os.{node.func.attr} at line {node.lineno}")
+    assert "_full_suite" not in GUARD_SRC.read_text(encoding="utf-8")
+
+
+def test_compile_failure_reports_and_still_exits_zero(captured_run, monkeypatch,
+                                                       capsys, tmp_path):
+    # Informational hook: a syntax error is reported, never blocks the tool.
+    bad = tmp_path / "broken.py"
+    bad.write_bytes(b"def f(:\n    pass\n")
+    rc = _invoke({"tool_input": {"file_path": str(bad)}}, monkeypatch)
+    assert rc == 0
+    assert captured_run == []
+    assert "py_compile FAILED" in capsys.readouterr().out
 
 
 def test_main_code_js_default_skips(captured_run, monkeypatch, capsys):
@@ -217,52 +259,12 @@ def test_main_unknown_shape_skips_pytest(captured_run, monkeypatch, capsys):
     assert "skipped" in capsys.readouterr().out
 
 
-def test_main_invalid_json_stdin_skips(monkeypatch, capsys):
-    calls = []
-    monkeypatch.setattr(
-        pytest_guard.subprocess,
-        "run",
-        lambda *a, **k: calls.append((a, k)) or _FakeProc(),
-    )
+def test_main_invalid_json_stdin_skips(captured_run, monkeypatch, capsys):
     monkeypatch.setattr("sys.stdin", _StubStdin("not json {{{"))
     rc = pytest_guard.main()
     assert rc == 0
-    assert calls == [], "invalid JSON should treat payload as empty -> skip"
-
-
-def test_main_pytest_output_tail_emitted(monkeypatch, capsys):
-    # The output tail only exists on the RC_FULL_SUITE=1 path.
-    monkeypatch.setenv("RC_FULL_SUITE", "1")
-    long_output = "\n".join(f"line {i}" for i in range(50))
-    monkeypatch.setattr(
-        pytest_guard.subprocess,
-        "run",
-        lambda *a, **k: _FakeProc(stdout=long_output),
-    )
-    monkeypatch.setattr(
-        "sys.stdin", _StubStdin(json.dumps({"tool_input": {"file_path": "x.py"}}))
-    )
-    rc = pytest_guard.main()
-    assert rc == 0
-    out = capsys.readouterr().out
-    # Last 20 lines should be present, earliest should not.
-    assert "line 49" in out
-    assert "line 30" in out
-    assert "line 5" not in out
-
-
-def test_main_pytest_failure_still_exits_zero(monkeypatch):
-    # Informational gate: even a red suite must exit 0 (not block the tool).
-    monkeypatch.setenv("RC_FULL_SUITE", "1")
-    monkeypatch.setattr(
-        pytest_guard.subprocess,
-        "run",
-        lambda *a, **k: _FakeProc(stdout="1 failed", returncode=1),
-    )
-    monkeypatch.setattr(
-        "sys.stdin", _StubStdin(json.dumps({"tool_input": {"file_path": "x.py"}}))
-    )
-    assert pytest_guard.main() == 0
+    assert captured_run == [], "invalid JSON should treat payload as empty -> skip"
+    assert "skipped" in capsys.readouterr().out
 
 
 # ---------- live subprocess (real Python, no monkeypatch) ------------------

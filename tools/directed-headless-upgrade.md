@@ -100,8 +100,8 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 
 ### 3. Phase loop discipline (after EVERY phase)
 1. Lint: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <touched>`; any .py edited -> `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (F541 is the common CI-killer).
-2. Test gate green BEFORE commit: DS `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest agents/daemon_slayer/tests/ -q`; RC
-   `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ --ignore=tests/daemon_slayer -q`; snapshots `tests/snapshot_panels/`.
+2. Test gate green BEFORE commit, per the TIER TABLE in `tools/done.md`: Tier-1 = the touched modules' test files; Tier-2 = ONE gated parallel run by
+   the merger over both trees (it covers `tests/snapshot_panels/`): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`.
 3. Restart-aware: routes -> `echo restart > restart_trigger.txt` + confirm health alive/last_reload_ok;
    engine math -> taskkill DS + `schtasks /Run /TN RC-DaemonSlayer`; web/css|js/panels/* -> asset-hash
    auto-reload (ADR-008), no RC restart - say so.
@@ -336,5 +336,6 @@ PART D - LOOP BEHAVIOR / STOP CONDITIONS / TUNING (controller-driven, automatic)
 
 ### Tuning (operator edits ops/loop/config.json)
 `max_cycles`, `cycle_deadline_sec`, `claude_adjudicator`, `clear_each_cycle`, `directive_suffix`
-(e.g. allow push). Dry-test the plumbing with no spend:
+(e.g. allow push). The per-key notes and history live in `docs/LOOP_CONFIG_NOTES.md`, not in the
+JSON (a note added as a `_`-key fails `tests/test_loop_config_notes_relocated.py`). Dry-test the plumbing with no spend:
 `launch_loop.ps1 -Mode dry` (uses config.dry.json + claude_stub.py).

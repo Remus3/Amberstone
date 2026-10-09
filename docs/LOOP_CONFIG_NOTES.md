@@ -1,0 +1,79 @@
+# Loop config notes
+
+Per-key notes and history for `ops/loop/config.json`, moved out of the JSON on
+2026-10-09 (MAIN kit-v13 ORDER section 2, PERF-AUDIT item 9). JSON carries no
+comments, so the notes had been stored as `_`-prefixed string keys - about 13 KB
+of the 19 KB file, loaded by every reader of the loop config and read by no
+consumer: every consumer reads its keys by exact name (`ops/loop/loop_controller.py`,
+`ops/loop/adjudicator.py`, `ops/loop/run_lane.ps1`, `tools/inbox_responder_runner.py`,
+`tools/inbox_responder_spawn.py`, `dashboard/routes_loop_monitor.py`,
+`dashboard/routes_loop_status.py`). The config now holds values plus one short
+`_notes` pointer to this file.
+
+Rules:
+
+- A new note about a config key goes HERE, under that key's heading, never back
+  into the JSON. `tests/test_loop_config_notes_relocated.py` fails on any
+  `_`-prefixed key in `ops/loop/config.json` other than `_notes`, and pins the
+  load-bearing sentence of each note below.
+- This file covers `ops/loop/config.json` only. The variant configs beside it
+  (`config.gate.json`, `config.p5.json`, `config.dry*.json` and the rest) still
+  carry their own copies of some notes.
+- Each section below is the note exactly as it stood in `ops/loop/config.json`
+  at f19d63c1b, with JSON string escapes decoded (a doubled backslash is one
+  backslash). Dated statements are records of their date, not live checks:
+  re-probe before acting on one.
+
+## `_max_concurrent_lanes_note`
+
+Value key: `max_concurrent_lanes`.
+
+TOTAL concurrent executor calls allowed on this box across ALL THREE callers (Amberstone + Sibling-A + Sibling-B), enforced by ops/loop/slots.py against the shared slot root. MUST equal the value in the other two projects' configs or the governor is theatre - the bucket width becomes whatever the first acquirer believes. VALUE IS 3 as of 2026-08-01, applied in an ORDERED round (LW first, then RC and RM). The flip could not be simultaneous: tests/test_loop_concurrency.py::test_rc_and_lw_agree_on_the_lane_count asserts RC's declared set equals LW's, and LW's suite carries the mirror of that guard - so whoever changes the number FIRST is red until the other follows. RC therefore holds at 2 until LW reports its flip landed, then flips in the same session. Do not raise this alone to 'get ahead'; that is how one side sits red and someone reverts the wrong half. Why 3: three participants at one lane each. 2 was set when there were two participants, and at three it makes one project always wait, turning a throttle into a backlog. The earlier objection was that the shared GPU_MUTEX was declared and acquired by NOTHING while LW is the only GPU-heavy participant; LW closed that (every CUDA consumer now acquires, proven by a census test rather than a claim), and the bucket models Anthropic account concurrency anyway - the GPU is a separate resource with its own governor. STILL NOT MEASURED: three-way concurrency has never run, and neither has recent two-way (LW's loop was wedged 2026-07-27 to 2026-08-01 behind a stale lock naming a recycled pid). 3 is adopted on reasoning; the first genuine three-way run IS the measurement, and the thing to watch is the rate-limit pool, not the GPU. UPDATED 2026-09-06: Sibling-C is ARCHIVED (read-only, working copy deleted) and Sibling-B took the vacated third slot, so the participant NAMES changed and the WIDTH did not - the bucket models Anthropic account concurrency and there are still three participants. RSC is MID-JOIN, so re-probe rather than trusting this line: as of 2026-09-06 20:10 it HAS vendored ops/loop/slots.py and winmutex.py byte-identical (its commit 2a9d6c3, both digests matching the pins in tests/test_loop_concurrency.py) but carries NO SHARED_SHA256, declares NO max_concurrent_lanes, and nothing in its tree calls slots.hold(). An earlier draft of this note said it had no ops/loop directory at all - true when written and false about twenty seconds later, which is the honest measure of how fast this sentence rots. So TODAY the bucket is 3 wide with TWO real acquirers and the third slot unclaimed. That is not a bug and 3 must NOT be lowered to 2 to match - lowering it would have to be undone in another ordered round the moment RSC lands. Do not read 3 as evidence that three loops have ever contended.
+
+## `_directive_suffix_RETIRED_20260726`
+
+Value key: `directive_suffix` (this is the brief it replaced).
+
+RETIRED 2026-09-11 at the RM-405 wrap, kept verbatim as history rather than deleted. It was SIX WEEKS STALE and its cycle-1 instructions pointed OUT OF TREE: copy winmutex.py.from-lw over ops/loop/winmutex.py (a cross-repo byte-pinned artifact) and write a reply into a sibling repo's inbox. Both are halt points under the boundary now in directive_suffix, and the work itself landed long ago - SHARED_SHA256 exists. Starting the loop against this text would have driven cycle 1 straight into three boundary violations on instructions that are no longer true. Do not restore it. AMENDED 2026-09-20: this block is kept verbatim EXCEPT that the three sha256 literals it recited have been REDACTED to a pointer, and that exception is recorded here rather than left silent. Two of the three were superseded by later joint re-pins, so the quoted text asserted stale digests as if authoritative - the exact hazard the loop is meant to avoid, sitting in the loop's own config. No consumer reads this key (ops/loop/loop_controller.py reads directive_suffix by exact name), so nothing acted on them, but a digest literal in prose is a second copy that goes stale and gets copied forward. The ONLY authority for either digest is SHARED_SHA256 in tests/test_loop_concurrency.py, checked against a fresh hash of the file on your own disk. ORIGINAL TEXT FOLLOWS: OPERATOR RUN FOCUS (2026-07-26 night run): drain the f1-phase6-queue. The sibling Sibling-A loop is running CONCURRENTLY on the same queue right now - that is expected and is what the F1 sdk channel was built for. The two repos coordinate through gitignored moon_sync_inbox/ dirs, one per repo. CYCLE 1 IS THE INBOX APPLY - do this before any other item. STEP A: there are uncommitted STAGED .githooks mode changes in this repo from an earlier session; that is f1-phase6 item 1 (chmod +x .githooks/*). Verify with `git diff --cached`, confirm it is only the exec bit, and commit it as its own commit before anything else. Do not discard it and do not fold it into another commit. STEP B: read C:\Riot Commander\moon_sync_inbox\. It holds LW's handoff for f1-phase6 items 9 and 5a plus the exact new bytes as winmutex.py.from-lw. Apply it: copy winmutex.py.from-lw VERBATIM over ops/loop/winmutex.py (do not retype or reflow - the parity pin is on the bytes), then update tests/test_loop_concurrency.py: the UNSERIALIZED-count assertion goes 2 -> 3, port LW's two POSIX tests (monkeypatch sys.platform to 'linux'; assert the marker is emitted, assert no ACQUIRED, assert a caller passing no log= does not crash) using RC-namespaced mutex names, and add the item-5a pin: a SHARED_SHA256 constant plus a test asserting each shared file matches it. Read LW's versions at C:\Sibling-A\tests\test_loop_concurrency.py and mirror them. Digests after the apply, re-hashed from BOTH trees yourself, never taken on trust: [THREE SHA256 LITERALS REDACTED 2026-09-20 - see the AMENDED note above; the current agreed values are SHARED_SHA256 in tests/test_loop_concurrency.py and nowhere else]. Your existing test_shared_modules_are_byte_identical_to_lw is RED against the LW tree until this apply lands - that is the guard working, not a defect. Keep that test; it and the new pin cover different failure modes (it skips when the sibling tree is absent, which is exactly the CI case the pin exists for). STEP C: write a reply into C:\Sibling-A\moon_sync_inbox\ with your post-apply digests for both files, your suite counts, your `gh run list` state, and which queue items you are claiming next. LW is waiting on that reply to mark its pin non-provisional. RC-OWNED QUEUE ITEMS after the apply, in order: (2) gate_inactive_reason must check the exec bit on POSIX, not just presence; (4) ENGINE-IMPACT: BUMP must require a numbered step naming every anchor site;(5) skipif audit - skip when the CAPABILITY is absent, never when the thing under test is; (7) directives naming N parallel agents must assert disjoint files, and the executor serializes AND RECORDS the deviation; (10) enumerate every instance of a defect class IN THE FILE before committing the fix, then across the codebase; (11) a claim heavy enough to justify a schema change ships as a TEST, not a transcript. LW OWNS and RC must NOT touch: items 3 (log the sdk session id on every SdkExecutor path) and 12 (distinguish 'not evaluated' from 'queued' when asserting CI state). If a cycle would touch LW-owned scope, emit NO_WORK for that item and say why. SHARED FILES ops/loop/slots.py and ops/loop/winmutex.py are BYTE-IDENTICAL-BY-CONTRACT with Sibling-A. After the STEP B apply, never edit either unilaterally: write the exact new bytes plus a handoff note into LW's moon_sync_inbox, re-pin SHARED_SHA256, and record the pin as provisional until both trees hash equal. DO NOT REDO (settled): phase-6 DELETIONS are HELD by operator call - the done-sentinel script, meter(), the AHK GUI bridge and claude_window_title all STAY (naming the script literally here trips the channel-neutrality guard in tests/test_loop_executor.py - that guard is deliberately blunt, so the prose bends, not the guard). No Claude dollar cap or usd accounting: on a Max plan total_cost_usd is notional and the transcript meter bills the operator's interactive session. No fcntl fallback in winmutex - POSIX record locks are per-process, so the threads-in-one-process test would stay red without a second RLock layer; LW already rejected it, do not re-propose. No Co-Authored-By: Claude trailer in any commit. When the RC-owned queue is empty, emit NO_WORK rather than inventing scope. Operator-gated forks NEVER block - auto-pick the recommended path and log it. Commit + push each cycle; confirm `gh run list` green before calling a cycle done - a local Windows pass is NOT done. End every cycle with the completion step the directive itself specifies (it is channel-specific; the controller injects the correct one). RC-OWNED ITEMS 4 AND 10 ARE DONE (2026-07-27) and must NOT be re-done: both now live as durable HARD RULES in ops/loop/director_prompt.md, which the controller reads every cycle - item 4 as the NUMBERED ANCHOR-SITE STEP under ENGINE-IMPACT (the queue note's 'five anchors' was an undercount; the measured hand-edit set is SEVEN, listed there with a guard test per site), item 10 as the DEFECT-CLASS ENUMERATION bullet. Do not copy either rule's text back into this brief - one home only, or the two copies silently diverge.
+
+## `_channel_note`
+
+Value key: `channel`.
+
+EXECUTOR channel: 'sdk' (headless `claude -p`, holds no machine-wide resource, returns a real cost receipt) or 'ahk' (the legacy GUI bridge - a machine-wide singleton keyed on claude_window_title, so it can NEVER run concurrently with another loop). Default flipped to sdk 2026-07-26 after F1 P5 passed all four conditions. ROLLBACK IS THIS ONE KEY: set it back to 'ahk'. The ahk channel and done_sentinel.py are deliberately NOT deleted - operator held the phase-6 deletions until sdk has run a full-length RC cycle, not just the 41s P5 doc append. An unknown value fails loud rather than falling back.
+
+## `_channel_posture_note`
+
+Value key: `channel`.
+
+ACCEPTED TRADEOFF, state it rather than discover it: the sdk channel runs `claude -p --permission-mode bypassPermissions`, and MEASURED 2026-07-26 the Claude PreToolUse hooks do NOT survive that mode (a banned glyph committed straight through while the git hooks blocked it). On this channel the git hooks are the ONLY commit gate, which is why the controller refuses to start when core.hooksPath is unset (executor.gate_inactive_reason).
+
+## `_executor_effort_note`
+
+Value key: `executor_effort`.
+
+Operator 2026-09-16: the headless lanes run at effort HIGH. MAIN 0839 ORDER (fleet kit v10): passed as the kit's own effort= - by ops/loop/executor.spawn_plan for the loop's sdk channel and by ops/loop/run_lane.ps1 (fleet_route.py --effort) for the lane workers - never as an RC-appended argv flag. Deleting this key passes no effort and the kit's pick_effort decides. The kit accepts only low, medium, high, xhigh, max (fleet_headless.EFFORTS, the set MACHINE-VERIFIED on CLI 2.1.251) and refuses any other value before a start. Kill switch: delete this key.
+
+## `_cycle_budget_note`
+
+Value key: none (the removed `cycle_budget_usd` and `ceiling_usd` keys).
+
+REMOVED 2026-07-26 (operator): no --max-budget-usd on the sdk channel. The Claude Code Max 20x plan is a SUBSCRIPTION - the CLI's total_cost_usd is a notional API-equivalent price, not money being billed, so a dollar cap truncates a cycle on a number that does not correspond to actual spend. The gate run read $22.01 of a $25 cap and would have been cut off by a slightly larger scope, for no real saving. UPDATED 2026-08-01: ceiling_usd is GONE too - it railed the metered vendor, and with that vendor retired the only spend left was Claude's, so leaving the check would have inverted it into a cap on exactly the spend policy says must never be capped. executor_usd is still recorded per cycle as a workload-size signal - read it as relative effort, never as spend.
+
+## `_adjudicator_vendor_note`
+
+Value key: `adjudicator`.
+
+CLAUDE-ONLY since 2026-08-01 (operator). The loop self-adjudicates: the same vendor executes, directs and audits a cycle, and the read-only guarantee is --permission-mode plan, not vendor diversity. The second vendor and ALL of its machinery are DELETED, not merely unselected - backend registry, exhaustion-signature matching, the sticky failover and the spend ceiling are gone from ops/loop/adjudicator.py. There is therefore NO one-key rollback any more; restoring a second vendor means restoring the code, and the reasons not to are in docs/CONCURRENT_HEADLESS_CONTRACT.md section 9. An 'adjudicator' key naming anything but claude is ignored with a log line rather than honoured.
+
+## `claude_adjudicator._note`
+
+Value key: `claude_adjudicator`.
+
+Read-only by --permission-mode plan, non-interactive by -p/--print, body on stdin. This is the loop's ONLY adjudicator since 2026-08-01. There is no spend ceiling and no count_against_ceiling flag: both existed to keep Claude spend OUT of a metered vendor's rail, and with no metered vendor there is no rail to stay out of. RM-511 (2026-10-03): since FLEET-KIT-v1 the kit resolves the CLI binary and picks the model (sonnet, writes_code=False), so the old cmd key was dead and is removed; model only prices the workload signal when the kit's usage line carries none, so it names the tier the kit actually runs.
+
+## `_subagent_prompt_note`
+
+Value key: `subagent_prompt`.
+
+RM-137 / CCR-146. Appended to every spawned subagent via the UNDOCUMENTED --append-subagent-system-prompt (absent from --help, accepted, propagation proven by canary + negative control on CLI 2.1.220). Must stay byte-equal to ops/loop/executor.SUBAGENT_STANDING_RULES; tests/test_subagent_prompt_flag.py asserts that and pins the CLI version. Kill switch: delete this key.
