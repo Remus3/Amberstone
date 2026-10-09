@@ -39,11 +39,21 @@ PRAGMA. A line carrying `rc-credential-scan: allow-fixture` is exempt. It is
 line-scoped, never file-scoped, so an exemption cannot silently widen, and it
 is visible in the source it exempts. It exists for test fixtures and for docs
 that must show a credential SHAPE.
+
+LEAK CLASSES (MAIN 2246 ORDER sections 3-4). Network and machine identity -
+private-LAN IPv4, tailnet addresses and DNS names, Windows host names, the
+per-host values in the gitignored `ops/local_hosts.json`, user-profile and
+checkout paths - live behind a SEPARATE entry point, `scan_leaks`, so
+`scan_text` (the write-time credential arm and the `--all` history audit)
+keeps its exact population. `tools/credential_history_scan.py --pre-push`
+runs both. Same contract: a leak finding carries line, class and arm only.
 """
 from __future__ import annotations
 
+import ipaddress
 import re
 from bisect import bisect_right
+from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
 
@@ -345,3 +355,277 @@ def format_findings(label: str, findings: list[Finding]) -> list[str]:
         f"  {label}:{f.line_no}  class={f.pattern_class} arm={f.arm}"
         for f in findings
     ]
+
+
+# ---------------------------------------------------------------------------
+# LEAK CLASSES - network and machine identity, not credentials.
+#
+# MAIN 2246 ORDER section 3 finding 1 ("add the class to the pre-push leak
+# sweep") and section 4's replace list (the home-network IPv4 class and the
+# machine host name class). HEAD was scrubbed in LEDGER 1699; this is the
+# prevention half, so the count cannot regrow.
+#
+# GATE classes halt a push. ADVISORY classes are reported and never halt:
+# HEAD still carries them in files other work is rewriting or moving, and the
+# push diff runs `--no-renames`, so a halting class would block the very
+# commits that remove them. Promote one to GATE once its HEAD count is 0.
+#
+# Shapes are written so the pattern SOURCE never matches itself, and no
+# drive-rooted literal appears in this file (the sibling-name sweep's
+# structural arm reads one as an undeclared project).
+# ---------------------------------------------------------------------------
+
+_OCTET = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"
+# A digit or dot on the left, or a digit / dot-digit on the right, means the
+# text is a longer dotted number (a version, a five-part string), not an IPv4.
+_IP_LEFT = r"(?<![0-9.])"
+_IP_RIGHT = r"(?![0-9]|\.[0-9])"
+_HOST_LEFT = r"(?<![A-Za-z0-9_\-])"
+_HOST_RIGHT = r"(?![A-Za-z0-9_\-])"
+
+_LEAK_FAMILIES = (
+    (
+        # RFC 1918: 10/8, 172.16/12, 192.168/16.
+        "private_lan_ipv4",
+        _IP_LEFT
+        + r"(?:10\."
+        + _OCTET
+        + r"|192\.168|172\.(?:1[6-9]|2[0-9]|3[01]))\."
+        + _OCTET
+        + r"\."
+        + _OCTET
+        + _IP_RIGHT,
+    ),
+    (
+        # 100.64.0.0/10 (shared address space; every tailnet node address).
+        # 100.64.0.0/24 is the tree's documented placeholder block and is
+        # excluded, as RFC 5737 is for the LAN class.
+        "tailnet_ipv4",
+        _IP_LEFT
+        + r"100\.(?!64\.0\.)(?:6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\."
+        + _OCTET
+        + r"\."
+        + _OCTET
+        + _IP_RIGHT,
+    ),
+    (
+        # The tailnet DNS name the coordination server generates. A custom
+        # tailnet name has no shape; it is caught by the values arm instead.
+        "tailnet_dns_name",
+        r"(?i:" + _HOST_LEFT + r"tail[0-9a-f]{6}\.ts\.net" + _HOST_RIGHT + r")",
+    ),
+    (
+        # Windows-generated computer names. At least one digit is required in
+        # the random part, which keeps all-letter words (a WIN- prefixed
+        # feature name, say) out.
+        "windows_host_name",
+        r"(?i:"
+        + _HOST_LEFT
+        + r"(?:(?:desktop|laptop)-(?=[a-z]{0,6}[0-9])[a-z0-9]{7}"
+        + r"|win-(?=[a-z]{0,10}[0-9])[a-z0-9]{11})"
+        + _HOST_RIGHT
+        + r")",
+    ),
+    (
+        # ADVISORY. A profile path names the account. Drive form, forward-slash
+        # form and the POSIX-shell form; the stock non-account profiles and
+        # any placeholder (<user>, %USERNAME%, $USER) are not a hit.
+        "user_profile_path",
+        r"(?i:(?<![A-Za-z0-9_])(?:[a-z]:[\\/]{1,2}|/mnt/[a-z]/|/[a-z]/)users[\\/]{1,2}"
+        r"(?!(?:public|default|default user|all users)(?![A-Za-z0-9_.\-])"
+        r"|example|your)"
+        r"[A-Za-z0-9_.\-]*[A-Za-z0-9])",
+    ),
+)
+
+LEAK_PATTERN_CLASSES = (
+    "private_lan_ipv4",
+    "tailnet_ipv4",
+    "tailnet_dns_name",
+    "windows_host_name",
+    "local_host_value",
+)
+ADVISORY_LEAK_CLASSES = ("user_profile_path", "checkout_path")
+
+_LEAK_COMPILED = tuple((name, re.compile(pattern)) for name, pattern in _LEAK_FAMILIES)
+
+# Same prefilter idea as _TRIGGERS: a LOWERCASE literal that must occur inside
+# any match of the family. Getting one wrong blinds the family.
+_LEAK_TRIGGERS = {
+    "private_lan_ipv4": ("10.", "192.168.", "172."),
+    "tailnet_ipv4": ("100.",),
+    "tailnet_dns_name": (".ts.net",),
+    "windows_host_name": ("desktop-", "laptop-", "win-"),
+    "user_profile_path": ("users/", "users\\"),
+}
+
+# Values arm. Placeholders the tree already uses, loopback, the unspecified
+# address and the documentation blocks are never a leak, so a config that
+# carries one cannot turn every doc in the tree into a hit.
+_PLACEHOLDER_HOSTS = frozenset(
+    {"localhost", "rc-host", "peer-host", "work-host", "windows-host"}
+)
+_NON_LEAK_NETS = tuple(
+    ipaddress.ip_network(net)
+    for net in (
+        "192.0.2.0/24",  # RFC 5737 TEST-NET-1
+        "198.51.100.0/24",  # RFC 5737 TEST-NET-2
+        "203.0.113.0/24",  # RFC 5737 TEST-NET-3
+        "100.64.0.0/24",  # the tree's tailnet placeholder block
+        "127.0.0.0/8",
+        "0.0.0.0/8",
+    )
+)
+_MIN_VALUE_CHARS = 4
+_VALUE_LEFT = r"(?<![A-Za-z0-9_\-])(?<![0-9]\.)"
+_VALUE_RIGHT = r"(?![A-Za-z0-9_\-]|\.[0-9])"
+_PATH_LEFT = r"(?<![A-Za-z0-9_])"
+_PATH_RIGHT = r"(?![A-Za-z0-9_\-])"
+
+# Test code and fixtures are exempt (the order's acceptance is "outside
+# tests/fixtures"). A directory component, a test-file name, or one named
+# pytest package that lives outside tests/ and carries its own conftest.py.
+LEAK_EXEMPT_DIRS = frozenset({"tests", "test", "fixtures", "testdata", "__tests__"})
+LEAK_EXEMPT_PREFIXES = ("agents/agent3_testing/suite/",)
+_TEST_FILE = re.compile(
+    r"(?:test_.*\.py|.*_test\.py|conftest\.py|.*\.(?:test|spec)\.[cm]?[jt]sx?)$"
+)
+
+
+def usable_leak_value(value: object) -> bool:
+    """True when ``value`` may be searched for as a literal host value."""
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    if len(text) < _MIN_VALUE_CHARS or any(ch.isspace() for ch in text):
+        return False
+    low = text.lower()
+    if low in _PLACEHOLDER_HOSTS or "example" in low:
+        return False
+    try:
+        addr = ipaddress.ip_address(low.split("/", 1)[0])
+    except ValueError:
+        return True
+    if addr.is_loopback or addr.is_unspecified:
+        return False
+    return not any(addr in net for net in _NON_LEAK_NETS if net.version == addr.version)
+
+
+def checkout_path_variants(path: str) -> tuple[str, ...]:
+    """The spellings an absolute checkout path takes in text.
+
+    Native (backslash), forward-slash, and the POSIX-shell drive form. Values
+    shorter than the minimum are dropped, so a root of "/" never matches.
+    """
+    base = str(path).strip().rstrip("\\/")
+    forward = base.replace("\\", "/")
+    out: list[str] = []
+    candidates = [base.replace("/", "\\"), forward]
+    if len(base) >= 2 and base[1] == ":" and base[0].isalpha():
+        candidates.append("/" + base[0].lower() + forward[2:])
+    else:
+        candidates = [forward]
+    for item in candidates:
+        if len(item) >= _MIN_VALUE_CHARS and item not in out:
+            out.append(item)
+    return tuple(out)
+
+
+def is_leak_exempt(path: str) -> bool:
+    """True for test code and fixtures, the one population allowed a leak shape."""
+    norm = str(path).replace("\\", "/")
+    while norm.startswith("./"):
+        norm = norm[2:]
+    parts = [p for p in norm.lower().split("/") if p]
+    if not parts:
+        return False
+    if any(part in LEAK_EXEMPT_DIRS for part in parts[:-1]):
+        return True
+    if "/".join(parts).startswith(LEAK_EXEMPT_PREFIXES):
+        return True
+    return bool(_TEST_FILE.match(parts[-1]))
+
+
+def is_advisory(finding: Finding) -> bool:
+    """True when the finding is reported but never halts."""
+    return finding.pattern_class in ADVISORY_LEAK_CLASSES
+
+
+@lru_cache(maxsize=256)
+def _value_rx(value: str) -> re.Pattern:
+    return re.compile(_VALUE_LEFT + re.escape(value) + _VALUE_RIGHT, re.IGNORECASE)
+
+
+@lru_cache(maxsize=64)
+def _checkout_rx(value: str) -> tuple[str, re.Pattern] | None:
+    """(prefilter literal, regex) for one checkout path, or None.
+
+    The drive is NOT part of the identity: a checkout that moved drives is
+    still cited under its old drive in older text, so any drive letter (and
+    the POSIX-shell drive form) matches, with either separator.
+    """
+    norm = value.strip().replace("\\", "/").rstrip("/")
+    has_drive = False
+    if len(norm) >= 2 and norm[1] == ":" and norm[0].isalpha():
+        has_drive, norm = True, norm[2:]
+    elif re.match(r"/[A-Za-z](?:/|$)", norm):
+        has_drive, norm = True, norm[2:]
+    segments = [seg for seg in norm.split("/") if seg]
+    if not segments or len("/".join(segments)) < _MIN_VALUE_CHARS:
+        return None
+    head = r"(?:[A-Za-z]:|/[A-Za-z])" if has_drive else ""
+    body = "".join(r"[\\/]{1,2}" + re.escape(seg) for seg in segments)
+    return segments[-1].lower(), re.compile(
+        _PATH_LEFT + head + body + _PATH_RIGHT, re.IGNORECASE
+    )
+
+
+def scan_leaks(
+    text: str,
+    values: tuple[str, ...] | list[str] = (),
+    checkout_paths: tuple[str, ...] | list[str] = (),
+) -> list[Finding]:
+    """Scan ``text`` for the leak classes. Line/class/arm records only.
+
+    ``values`` are this host's literal identity values (gitignored config plus
+    the live computer name), reported as ``local_host_value``.
+    ``checkout_paths`` are the absolute checkout path spellings, reported as
+    the advisory ``checkout_path``. Arms: ``leak`` (shape), ``value`` (literal).
+    The line PRAGMA exempts a line, as for credentials. Path exemption is the
+    CALLER's job (``is_leak_exempt``): this function sees text, not paths.
+    """
+    lowered = text.lower()
+    jobs: list[tuple[str, str, re.Pattern]] = []
+    for name, rx in _LEAK_COMPILED:
+        if any(literal in lowered for literal in _LEAK_TRIGGERS[name]):
+            jobs.append((name, "leak", rx))
+    for value in values:
+        if usable_leak_value(value) and value.strip().lower() in lowered:
+            jobs.append(("local_host_value", "value", _value_rx(value.strip())))
+    path_patterns: set[str] = set()
+    for path in checkout_paths:
+        compiled = _checkout_rx(path) if isinstance(path, str) else None
+        if compiled is None or compiled[1].pattern in path_patterns:
+            continue
+        path_patterns.add(compiled[1].pattern)
+        if compiled[0] in lowered:
+            jobs.append(("checkout_path", "value", compiled[1]))
+    if not jobs:
+        return []
+    starts = _line_starts(text)
+    total = len(text)
+    findings: list[Finding] = []
+    seen: set[tuple[int, str]] = set()
+    for name, arm, rx in jobs:
+        for match in rx.finditer(text):
+            index = bisect_right(starts, match.start()) - 1
+            end = starts[index + 1] if index + 1 < len(starts) else total
+            if PRAGMA in text[starts[index] : end]:
+                continue
+            key = (index + 1, name)
+            if key in seen:
+                continue
+            seen.add(key)
+            findings.append(Finding(index + 1, name, arm))
+    findings.sort(key=lambda f: (f.line_no, f.pattern_class))
+    return findings
