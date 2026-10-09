@@ -181,7 +181,7 @@ ROUTES_WITH_NO_CLIENT_FN = {
 # the wielder's health. So a response-changes witness whose ARENA axis is
 # defensive-only (hp / armor) moves one of these routes ONLY while such an item
 # survives the candidate pool and the top-N cut. That is pool-fragile, and it
-# broke for real: RM-513 (bfefceee7, 2026-10-03) correctly removed Void
+# broke for real: RM-513 (659d7277c, 2026-10-03) correctly removed Void
 # Immolation 223069 (an immolate, own-HP scaling) from the Arena pool; it was
 # the only own-HP item in Akali's top 8, and Akali's ARENA axis is
 # {hp_lvl: 2.0} alone, so /rank and /rank-onhit went byte-identical for her
