@@ -28,8 +28,17 @@ if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
     $ConfigPath = Join-Path $ScriptDir "rc_config.json"
 }
 $config      = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
-$projectRoot = $config.project_root
-$runtimeDir  = if ($config.runtime_dir) { $config.runtime_dir } else { Join-Path $projectRoot "ops\runtime" }
+# Path values are repo-relative (MAIN 2246 sec 3); resolve them against the
+# checkout root derived from this script's location, never the process CWD.
+# An absolute value is a per-host override.
+$repoRoot    = Split-Path -Parent $ScriptDir
+function Resolve-RcPath([string]$Value, [string]$Base, [string]$Default) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return [IO.Path]::GetFullPath($Default) }
+    if ([IO.Path]::IsPathRooted($Value)) { return [IO.Path]::GetFullPath($Value) }
+    return [IO.Path]::GetFullPath((Join-Path $Base $Value))
+}
+$projectRoot = Resolve-RcPath $config.project_root $repoRoot $repoRoot
+$runtimeDir  = Resolve-RcPath $config.runtime_dir $projectRoot (Join-Path $projectRoot "ops\runtime")
 $logDir      = Join-Path $runtimeDir "logs"
 $logFile     = Join-Path $logDir "league_watcher.log"
 $stopFile    = Join-Path $runtimeDir "watchdog.stop"

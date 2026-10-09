@@ -220,7 +220,7 @@ Carried from session 103 (not acted on yet):
 
 Carried forward (not acted on yet):
 - RM-new: 159 tracked HARDCODED C: literals (inventory docs/_outbound_2026-10-07-2207-*.md
-  section 2) still say C:\Riot Commander - they work through the junction; convert to derived
+  section 2) still name the old-drive checkout path - they work through the junction; convert to derived
   (repo-root relative) in a TDD slice, never in frozen files without operator approval. Until
   then the junction must stay. Note /done's own text (tools/done.md) still names C: paths.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
@@ -275,7 +275,7 @@ Carried forward (not acted on yet):
   RM-229), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work;
   hand-off says squashed into 5c2cadb4e - unverified). Second-pass candidates (only commits whose
   subjects are on main): lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08,
-  -y11-y13, drain-wave2-atomic. Stray file C:\rc-worktrees\before_sweep_s2.txt.
+  -y11-y13, drain-wave2-atomic. Stray file <worktree-base>\before_sweep_s2.txt.
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).

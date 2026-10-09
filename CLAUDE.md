@@ -217,11 +217,12 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 
 ## Paths
 
-- Project root: `C:\Riot Commander\`
-- Python: `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`
-- API key: `C:\Riot Commander\API-Key-Claude.txt` (gitignored)
-- Health: `C:\Riot Commander\ops\runtime\health.json`
-- Logs: `C:\Riot Commander\logs\YYYY-MM-DD.log`
+Machine paths are never written here (MAIN 2246 sec 3): `<repo>` = this checkout's root (`git rev-parse --show-toplevel`; code derives it from `Path(__file__)`, `$PSScriptRoot` or `%~dp0`).
+- Project root: `<repo>\`
+- Python: `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`
+- API key: `<repo>\API-Key-Claude.txt` (gitignored)
+- Health: `<repo>\ops\runtime\health.json`
+- Logs: `<repo>\logs\YYYY-MM-DD.log`
 
 ## Hard rules
 
@@ -346,7 +347,7 @@ Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carr
 ## Runtime reference
 
 - **Dashboard:** `web_dashboard.py` at `:8888` HTTPS; endpoints `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed at `https://127.0.0.1:8888/` (or `https://rc-host:8888/` over the tailnet); design baseline 1920x1080 WITH Chrome chrome (~1920x920 viewport); `main` flex-grows (no layout pinned to 1280). Cert: `tools/regen_rc_cert.ps1`. Per-host Anthropic key names are NOT recited here.
-- **Scheduled tasks:** `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO task; `dashboard/server.py` self-heals `:8889`. Full list: `docs/OPERATIONS.md`.
+- **Scheduled tasks:** `RC-Supervisor` (logon, operator account, HIGHEST). Vision has NO task; `dashboard/server.py` self-heals `:8889`. Full list: `docs/OPERATIONS.md`.
 - **Vision:** `screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`; coaches read `:8889/latest-frame`. `_run_vision()` gates on `_fetch_game_data() is not None`. Tiered: OCR first, Sonnet for misses; calibrate `data/vision_regions.json`. Live Client relay self-heals in-process when stale and `GAME_HOST` is local.
 - **Mode detection:** `game_reader.py._process_game()` -> `core/game_snapshot.py`. ARAM Mayhem (`KIWI`) -> `MODE_ARAM`.
 - **Current state:** health/PID `ops/runtime/health.json`; game `data/{aram,arena,brawl,tft}_coaching_data.json`; activity `logs/YYYY-MM-DD.log`; commands `docs/OPERATIONS.md`.

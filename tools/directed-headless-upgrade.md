@@ -46,7 +46,7 @@ operator's own session.
 
 ### A2. Launch the loop (detached)
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\loop\launch_loop.ps1" -Mode live
+powershell -NoProfile -ExecutionPolicy Bypass -File "<repo>\ops\loop\launch_loop.ps1" -Mode live
 ```
 This auto-detects the Claude window PID, writes `ops/loop/control/{target_pid.txt,ahk_mode.txt=live}`,
 starts the AHK bridge + the controller (config.json), and pre-cleans stale sentinels (incl. a
@@ -76,9 +76,9 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 - Git hygiene: `gh run list --limit 6` green baseline (fix red FIRST); `gh pr list` reconcile;
   delete stale merged remote branches; clean stale local worktrees (verify 0 unmerged first,
   unlock + remove --force + prune + branch -D).
-- Write/refresh `C:/Users/Administrator/Desktop/RC_HEADLESS_SYNOPSIS_<YYYY-MM-DD>.md` (atomic).
+- Write/refresh `%USERPROFILE%/Desktop/RC_HEADLESS_SYNOPSIS_<YYYY-MM-DD>.md` (atomic).
 - TaskCreate per phase. Init/resume the slice manifest:
-  `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/slice_orchestrator.py init --run-id <YYYY-MM-DD-NN> --head <sha>` then `add` per slice;
+  `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/slice_orchestrator.py init --run-id <YYYY-MM-DD-NN> --head <sha>` then `add` per slice;
   a prior manifest with non-committed slices = RESUME (skip committed, re-verify rest).
 
 ### 2. Orchestrator-merge pattern (core framing)
@@ -86,12 +86,12 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
   parallel per task, each ONE slice on a DISJOINT file set. Dispatch concurrent agents in a
   SINGLE message with multiple Agent blocks (true concurrency).
 - Merge order: engine / ENGINE_VERSION-bump slice FIRST, then dependents, living-docs sync LAST.
-  Merge via `git -C "C:/Riot Commander" merge --no-ff origin/<branch>` (CWD hazard item 156).
+  Merge via `git -C "<repo>" merge --no-ff origin/<branch>` (CWD hazard item 156).
 - VERIFIER GATE before any merge (ground truth, not the slice agent's word): dispatch the
   read-only `verifier` subagent with the claim + cited test cmd + cited files. Merge only on
   CONFIRM; on REFUTE mark `failed` + re-dispatch - never merge a refuted slice.
 - TRUTH-GATE (mechanized, insights 2026-06-10): final pre-commit reconciliation of a multi-slice
-  round = `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/truth_gate.py --claims <claims.json>` (fresh suite to file, content-level
+  round = `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/truth_gate.py --claims <claims.json>` (fresh suite to file, content-level
   claimed-edit re-read via must_contain, gh CI probe, atomic report to
   ops/runtime/truth_gate_report.json). Exit 2 = commit BLOCKED + `quarantined` slices re-dispatch.
 - Checkpoint each slice in the manifest (in_progress -> verified -> committed --commit <sha>).
@@ -99,7 +99,7 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 - After ALL merges: full relevant test gate, restart as needed, ONE surgical living-docs commit.
 
 ### 3. Phase loop discipline (after EVERY phase)
-1. Lint: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <touched>`; any .py edited -> `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (F541 is the common CI-killer).
+1. Lint: `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m py_compile <touched>`; any .py edited -> `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m ruff check .` (F541 is the common CI-killer).
 2. Test gate green BEFORE commit, per the TIER TABLE in `tools/done.md`: Tier-1 = the touched modules' test files; Tier-2 = ONE gated parallel run by
    the merger over both trees (it covers `tests/snapshot_panels/`): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`.
 3. Restart-aware: routes -> `echo restart > restart_trigger.txt` + confirm health alive/last_reload_ok;
@@ -195,7 +195,7 @@ precompute is worse than a Haiku call - do not flip blind (haiku stays as interi
 - No em-dash, en-dash, or smart quotes anywhere (.py/.md/.ps1/.css/.js/commit/chat). ` - ` for a clause
   break, `-` otherwise. The `"-"` no-data sentinel in dashboard rendering is operator-approved + stays.
 - The /done gate runs `tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py
-  tests/test_u2500_hygiene.py`; drift fix = `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply`.
+  tests/test_u2500_hygiene.py`; drift fix = `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply`.
 
 ### 7. Multi-agent dispatch rules
 - Up to 100 concurrent worktree agents per task, disjoint file sets. Each agent prompt MUST carry the
@@ -250,7 +250,7 @@ not built blind. MED/LOW always defer.
 ### 10. Headless cadence health
 - Desktop synopsis: update every phase complete (atomic); never delete mid-run.
 - Living docs (CLAUDE.md item N+1, ROADMAP, BACKLOG, WAKEUP_NOTES, docs/DAEMON_SLAYER.md): synced at
-  run END as ONE surgical commit. WAKEUP prune: `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts/wakeup_prune.py --keep 3`.
+  run END as ONE surgical commit. WAKEUP prune: `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" scripts/wakeup_prune.py --keep 3`.
 - Worktree cleanup at run END (remove merged + prune + branch -D). 10h+ -> transition to a full RC
   refactor audit (frozen edits still allowed; tests required). Caveman ULTRA token discipline.
 
@@ -280,7 +280,7 @@ HEADLESS UPGRADE WRAP
   cost/latency: <N levers swept, M shipped | all CLEAN>
   ui proof: <N pages captured + audited, M owed | n/a>
   worktrees: <cleaned N | none>
-  Synopsis: C:/Users/Administrator/Desktop/RC_HEADLESS_SYNOPSIS_<date>.md
+  Synopsis: %USERPROFILE%/Desktop/RC_HEADLESS_SYNOPSIS_<date>.md
   Ready for /done.
 ```
 
@@ -302,7 +302,7 @@ DURABLE hand-off (for a TRUE blocker that should end the cycle and reshape the n
    - Atomic-write the findings + context + the explicit question to `ops/loop/control/gemini_ask.txt`
      (tmp + os.replace; plain ASCII).
    - Finish the in-flight slice (never a half-merged state), then run the FINAL STEP
-     `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>` to end the cycle cleanly.
+     `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>` to end the cycle cleanly.
    - The controller consumes `gemini_ask.txt` into the NEXT director call under an `EXECUTOR ESCALATION`
      header (consume-once). That filename is legacy and keeps its name on purpose - renaming a control
      file that appears across append-only history buys nothing. The DIRECTOR resolves it and emits the next directive that encodes the
@@ -322,7 +322,7 @@ PART D - LOOP BEHAVIOR / STOP CONDITIONS / TUNING (controller-driven, automatic)
   verifier-gate each slice, commit-local, no AskUserQuestion, ends with the done_sentinel FINAL STEP).
 - AHK types `/clear` + "read+execute ops/loop/control/directive.md" into this window.
 - The executor (this session) runs PART B + C, commits locally, runs
-  `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>` -> writes control/claude.done.
+  `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>` -> writes control/claude.done.
 - Controller meters spend from the pinned executor JSONL, then the AUDITOR scores the diff. CLEAN -> next
   item; REGRESS (or self-reported regressions) -> next directive is FIX-FIRST.
 

@@ -24,10 +24,10 @@ NEW. File-by-file audit and refactor, prose reformatting, file and folder restru
 Explicitly includes gitignored areas and Claude's save locations elsewhere on the machine. Goal is an outsider-clean GitHub repo. **Frozen-file edits require an
 adjudicating agent's approval** plus tests and CI."
 
-cwd is the lane worktree `C:\rc-worktrees\rc-lane-repo` on branch `lane/repo`. The plan puts lanes 7 and 8 at the highest blast radius, ships them LAST and runs them
+cwd is the lane worktree `<worktree-base>\rc-lane-repo` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/repo`. The plan puts lanes 7 and 8 at the highest blast radius, ships them LAST and runs them
 worktree-first (`docs/MISSION_CONTROL_PLAN.md:100-101`). `ops/loop/lanes.py:136-137` carries `repo` in the lane roster and
 `ops/loop/lane_launcher.py:91-104` now wires it in `LANE_COMMANDS` - S8 turned this lane on, so if you are reading this you were started by a real fire.
-`git worktree list` showed only `C:/Riot Commander` (main) and `C:/rc-worktrees/rc-lane-upgrade` at authoring. If the lane worktree is absent, create it from the
+`git worktree list` showed only `<repo>` (main) and `<worktree-base>/rc-lane-upgrade` at authoring. If the lane worktree is absent, create it from the
 repo root and say so; never silently work in main.
 
 Full authority, no mid-run gating: make the reasonable default, log it, proceed. Never open an `AskUserQuestion` - the operator is away. An operator message mid-run is
@@ -37,12 +37,12 @@ this repo - sanitize on the way IN, not at commit time.
 
 ### 1. Pre-flight
 
-**1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `C:/rc-worktrees/rc-lane-repo`; `git branch --show-current` must print
-`lane/repo`. The convention is code: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = C:\rc-worktrees`, overridable via `RC_LANE_WORKTREE_BASE`), `:145`
+**1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `<worktree-base>/rc-lane-repo`; `git branch --show-current` must print
+`lane/repo`. The convention is code: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = <worktree-base>`, overridable via `RC_LANE_WORKTREE_BASE`), `:145`
 `worktree_path`, `:149` `branch_name`; `ops/loop/lanes.py:317` `_require_worktree` refuses empty, None, or a path resolving to the repo root. If the toplevel is
-`C:/Riot Commander`, STOP and report - two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`).
+`<repo>`, STOP and report - two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`).
 
-**1b. Do NOT run `scripts/install_hooks.py` from the worktree.** MEASURED this run: `git config core.hooksPath` returns the ABSOLUTE `C:\Riot Commander\.githooks`, and
+**1b. Do NOT run `scripts/install_hooks.py` from the worktree.** MEASURED this run: `git config core.hooksPath` returns the ABSOLUTE `<repo>\.githooks`, and
 worktrees share `.git/config`. Hooks DO fire here, but execute the MAIN TREE's hook bodies, so a hook change on `lane/repo` is inert until merged.
 `scripts/install_hooks.py:46-49` runs `git config core.hooksPath .githooks` and that write lands in the shared config, flipping the main tree from an absolute path to a
 relative one resolved against whichever tree is current. `docs/MISSION_CONTROL_PLAN.md:331-334` names this constraint for this lane specifically. Check the value,
@@ -71,7 +71,7 @@ are a 2026-07-30 measurement and must be re-measured, never carried forward.
 | Path | Files | Size | Lane-7 posture |
 |---|---|---|---|
 | `%LOCALAPPDATA%\Temp\claude\C--Sibling-A` | 3,376 | **35.5 GB** | SIBLING REPO scratch. Cross-repo act - PROPOSE, never auto-clean |
-| `%LOCALAPPDATA%\Temp\claude\C--Riot-Commander` | 152,231 | 9.5 GB | RC session scratch. **NO age prune (RM-149 ruling).** Whole-session-dir removal only - see item 5 |
+| `%LOCALAPPDATA%\Temp\claude\<project-slug>` | 152,231 | 9.5 GB | RC session scratch. **NO age prune (RM-149 ruling).** Whole-session-dir removal only - see item 5 |
 | `%APPDATA%\Claude\vm_bundles` | 9 | 8.9 GB | Desktop-app runtime. Do not touch without an app-version check |
 | `%USERPROFILE%\.cache` | 5,628 | 7.5 GB | Mixed tooling cache. Per-subdir adjudication |
 | `%USERPROFILE%\.claude\projects` | 6,707 | 1.9 GB | **EVIDENCE, NOT GARBAGE - never delete** |
@@ -103,7 +103,7 @@ per-path adjudicator and the Recycle Bin, and it is still an out-of-tree act tha
 without an app-version check:** `%APPDATA%\Claude\vm_bundles` - 8.9 GB in nine files is a runtime, and deleting a bundle the installed app still resolves breaks the
 desktop app rather than cleaning anything.
 
-**5. `Temp\claude\C--Riot-Commander` has NO safe age rule (RM-149 ruling, 2026-10-03). Do not prune it by age, and do not re-propose an age prune.** Measured
+**5. `Temp\claude\<project-slug>` has NO safe age rule (RM-149 ruling, 2026-10-03). Do not prune it by age, and do not re-propose an age prune.** Measured
 (2026-08-02): the tree is dense with NTFS hardlinks into the repo's own `.git\lfs\objects`, so apparent size multi-counts single physical extents (132 of the 400
 largest delete-set files reclaimed ZERO bytes), and mtime inside a hardlinked clone is the ORIGINAL object's mtime, so any age line slices through the middle of live
 clones. Two age-prune proposals were rejected by an independent adjudicator on exactly this. **The only permitted shape is clone-atomic: remove a WHOLE session
@@ -221,7 +221,7 @@ registry-count or ASCII-hygiene failure, and never "fix" a data file on the stre
 
 1. **Root-scanning guards are WORKTREE-BLIND, and only SET-EQUALITY guards break.** An offender-scan ("find any file doing X") is immune, because a worktree's extra
    files sit outside the scanned root; a set-equality guard ("this directory contains exactly these N files") breaks. `ops/loop/lane_launcher.py:81-83` records why
-   worktrees live at `C:\rc-worktrees` and not inside the repo: "Inside the repo they would land in the very tree the lane is forbidden to touch, and every repo-wide
+   worktrees live at `<worktree-base>` and not inside the repo: "Inside the repo they would land in the very tree the lane is forbidden to touch, and every repo-wide
    guard would then scan them." Memory `reference_repo_root_guard_worktree_blind`. Separately, a dirty `data/meta_build/ddragon` tree fakes 49 suite failures (main tree
    53 against worktree 2) and looks exactly like real regressions.
 2. **Mirror parity, and the fix ORDER is load-bearing.** `tools/drift_guard.py:61` `MIRROR_PAIRS = [("tools", ".claude/commands")]` - same-basename `.md` in both
@@ -332,7 +332,7 @@ own single-thread edits. Tier-0 cosmetic edits are exempt; nothing else is.
 
 ```
 HEADLESS-REPO WRAP
-  worktree: C:/rc-worktrees/rc-lane-repo (lane/repo)
+  worktree: <worktree-base>/rc-lane-repo (lane/repo)
   HEAD: <short-sha> (<N> commits this run)
   audited: <N> files reviewed / <N> refactored / <N> modules split or relocated
   removed: <N> dead files, <N> dead routes - all pinned by <test files>

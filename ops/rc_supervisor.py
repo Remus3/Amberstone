@@ -669,20 +669,47 @@ class _Phase3Watcher:
 
 #  -  -  Supervisor  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
+# Checkout root, derived from this file's location (ops/ -> repo root). MAIN
+# 2246 ORDER section 3 + operator grant 2026-10-09 (leak removal): the tracked
+# ops/rc_config.json carries no machine path. A RELATIVE config value resolves
+# against this root, never the process CWD (RC-Supervisor runs with no working
+# directory); an ABSOLUTE value is honoured as a per-host override.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _rooted(value: Any, base: Path, default: Path) -> Path:
+    if value in (None, ""):
+        return default.resolve()
+    p = Path(value)
+    return (p if p.is_absolute() else base / p).resolve()
+
+
+def resolve_config_paths(config: Dict[str, Any],
+                         repo_root: Optional[Path] = None) -> Dict[str, Path]:
+    """project_root / runtime_dir / health_file / deploy_script, resolved."""
+    base = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    project_root = _rooted(config.get("project_root"), base, base)
+    runtime_dir = _rooted(config.get("runtime_dir"), project_root,
+                          project_root / "ops" / "runtime")
+    health_file = _rooted(config.get("health_file"), project_root,
+                          runtime_dir / "health.json")
+    deploy_script = _rooted(config.get("deploy_script"), project_root,
+                            project_root / "ops" / "rc_transactional_deploy.py")
+    return {"project_root": project_root, "runtime_dir": runtime_dir,
+            "health_file": health_file, "deploy_script": deploy_script}
+
+
 class Supervisor:
 
     def __init__(self, config_path: Path) -> None:
         self.config_path = config_path
         self.config      = json.loads(config_path.read_text(encoding="utf-8-sig"))
 
-        self.project_root  = Path(self.config["project_root"]).resolve()
-        self.runtime_dir   = Path(
-            self.config.get("runtime_dir") or self.project_root / "ops" / "runtime"
-        ).resolve()
+        _paths = resolve_config_paths(self.config)
+        self.project_root  = _paths["project_root"]
+        self.runtime_dir   = _paths["runtime_dir"]
         self.status_file   = self.runtime_dir / "status.json"
-        self.health_file   = Path(
-            self.config.get("health_file") or self.runtime_dir / "health.json"
-        ).resolve()
+        self.health_file   = _paths["health_file"]
         self.log_file      = self.runtime_dir / "logs" / "supervisor.log"
         self.deploy_req_dir  = self.runtime_dir / "deploy_requests"
         self.deploy_res_dir  = self.runtime_dir / "deploy_results"
@@ -691,10 +718,7 @@ class Supervisor:
 
         self.python_exe    = self.config.get("python_exe") or sys.executable
         self.app_cmd       = self.config["app_cmd"]
-        self.deploy_script = Path(
-            self.config.get("deploy_script")
-            or self.project_root / "ops" / "rc_transactional_deploy.py"
-        ).resolve()
+        self.deploy_script = _paths["deploy_script"]
         self.max_heartbeat_age = float(self.config.get("max_heartbeat_age_seconds", 15.0))
         self.poll_interval     = float(self.config.get("poll_interval_seconds", 1.0))
 

@@ -52,7 +52,7 @@ CLAUDE.md; touch CLAUDE.md itself ONLY for rule / frozen-list / Settled changes.
 
 ### 3. Memory staleness scan
 
-Scan `C:\Users\Administrator\.claude\projects\C--Riot-Commander\memory\` for facts
+Scan `%USERPROFILE%\.claude\projects\<project-slug>\memory\` for facts
 that reference removed or changed infra (e.g. the now-removed gamepc :8892 MCP /
 Game-PC bridge peer, 2-PC topology, an old Riot ID, a stale file:line). For each
 suspect:
@@ -65,7 +65,7 @@ claim live before editing (memory `feedback_verify_before_declare_broken`).
 
 ### 4. Session-start anomaly triage
 
-Re-read the session-start anomaly summary, or run `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/rc_facts.py`.
+Re-read the session-start anomaly summary, or run `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/rc_facts.py`.
 Classify each anomaly EXPECTED vs ACTIONABLE:
 - EXPECTED (Legion-only anomalies that are normal post-1PC) -> note it, no action.
 - ACTIONABLE (e.g. a Legion scheduled task `last_result != 0`) -> investigate

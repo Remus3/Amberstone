@@ -116,7 +116,7 @@
 ### Working Directory
 
   All scripts resolve project root from their own location (%~dp0 or Path(__file__)).
-  Preferred: run from the project root (C:\Riot Commander\) for consistency.
+  Preferred: run from the project root (`<repo>\`) for consistency.
   The dev_cli.py status command reports whether CWD matches project root.
 
 ---

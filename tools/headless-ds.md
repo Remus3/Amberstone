@@ -22,8 +22,8 @@ description: Mission Control lane 6 (Headless-DS). Detached headless worker prom
 You are lane 6 of RC Mission Control, running detached with no operator present. Mandate, verbatim from `docs/MISSION_CONTROL_PLAN.md` line 88: "DS engine
 expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that do not need the operator present."
 
-cwd is the lane worktree `C:\rc-worktrees\rc-lane-ds` on branch `lane/ds`. At authoring, `git worktree list` showed only `C:/Riot Commander` (main) and
-`C:/rc-worktrees/rc-lane-upgrade` - the DS worktree is created by the Mission Control fire, not by this doc. If it is absent, create it from the repo root and
+cwd is the lane worktree `<worktree-base>\rc-lane-ds` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/ds`. At authoring, `git worktree list` showed only `<repo>` (main) and
+`<worktree-base>/rc-lane-upgrade` - the DS worktree is created by the Mission Control fire, not by this doc. If it is absent, create it from the repo root and
 say so; never silently work in the main tree.
 
 Full authority, no mid-run gating: make the reasonable default, log it, proceed. An operator message mid-run is an interrupt - finish the in-flight slice, never
@@ -39,7 +39,7 @@ Docs, ledger entries and your memory of the last bump are all UNTRUSTWORTHY for 
 | engine constant | `agents/daemon_slayer/__init__.py` `ENGINE_VERSION` | READ IT LIVE - that file is the source of truth, and no literal is copied here on purpose |
 | live server | `curl -s http://127.0.0.1:8860/health` (HTTP, not HTTPS) | `engine_version` equals the repo constant **only before you bump, and only in main** - see the LANE-WORKTREE CAVEAT below; `patch 16.15.1, champions 173, items 706` |
 
-**LANE-WORKTREE CAVEAT - MEASURED 2026-09-01 (LEDGER 1317), and it INVERTS the row above.** The `RC-DaemonSlayer` task runs `pythonw.exe` against `C:\Riot Commander\tools\start_daemon_slayer.py` - the MAIN checkout - so `:8860` serves MAIN's engine version no matter what this lane pins. Probed that run: task command line confirmed, listener PID's command line confirmed, main constant 1.278.1, lane constant 1.279.0, served 1.278.1. Consequences: (1) after you bump, served != repo is EXPECTED and is NOT evidence of a stale server; (2) `tests/phase8_smoke/test_sr_draft_profile_engine.py::TestLiveEngineIntegration::test_live_three_profiles` asserts served == imported constant and therefore goes RED on any lane DS bump - structural, not a defect, and it clears only on merge PLUS restart (a merge without the restart leaves it red); (3) the equality test in this table is only meaningful BEFORE your bump, as a check that the server is not stale relative to main.
+**LANE-WORKTREE CAVEAT - MEASURED 2026-09-01 (LEDGER 1317), and it INVERTS the row above.** The `RC-DaemonSlayer` task runs `pythonw.exe` against `<repo>\tools\start_daemon_slayer.py` - the MAIN checkout - so `:8860` serves MAIN's engine version no matter what this lane pins. Probed that run: task command line confirmed, listener PID's command line confirmed, main constant 1.278.1, lane constant 1.279.0, served 1.278.1. Consequences: (1) after you bump, served != repo is EXPECTED and is NOT evidence of a stale server; (2) `tests/phase8_smoke/test_sr_draft_profile_engine.py::TestLiveEngineIntegration::test_live_three_profiles` asserts served == imported constant and therefore goes RED on any lane DS bump - structural, not a defect, and it clears only on merge PLUS restart (a merge without the restart leaves it red); (3) the equality test in this table is only meaningful BEFORE your bump, as a check that the server is not stale relative to main.
 
 
 If the served version lags the repo constant the server is stale - bounce it (section 8) BEFORE measuring anything. The build-order generators compute over live
@@ -234,7 +234,7 @@ tool (Git Bash rewrites the switches as paths: `Invalid argument/option - 'C:/Pr
 
 ```
 HEADLESS-DS WRAP
-  branch: lane/ds (worktree C:/rc-worktrees/rc-lane-ds)
+  branch: lane/ds (worktree <worktree-base>/rc-lane-ds)
   HEAD: <short-sha> (<N> commits this run)
   ENGINE: <old> -> <new> | unchanged
   patch: <data/daemon_slayer/current.txt>

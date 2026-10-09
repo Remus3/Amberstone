@@ -378,7 +378,8 @@ EXIT_ALREADY_RUNNING = 3    # another driver holds DRIVER_MUTEX
 # scheduled task and to any `if ($LASTEXITCODE -ne 0)` a future operator writes:
 # a night that ended at cycle 2 because a worker outlived its kill looked
 # exactly like a night that ran all twelve. EXIT_KILL_FAILED is the one to act
-# on - it means a worker may STILL be writing in C:\rc-worktrees\rc-lane-queue,
+# on - it means a worker may STILL be writing in the lane worktree
+# (lane_launcher.worktree_path("queue"), <worktree-base>/rc-lane-queue),
 # so the next thing anyone does there must be to check for it by hand.
 EXIT_KILL_FAILED = 4        # a worker outlived its taskkill - worktree suspect
 EXIT_CONSECUTIVE_ERRORS = 5  # the same fault repeated until the loop gave up
@@ -588,7 +589,7 @@ def _head_sha() -> str | None:
 
     `git ls-remote` and not `git rev-parse`, for two independent reasons. The
     driver runs in the MAIN tree while the worker commits and pushes from
-    `C:\\rc-worktrees\\rc-lane-queue`, so this tree's own HEAD is not what was
+    the lane worktree `<worktree-base>/rc-lane-queue`, so this tree's own HEAD is not what was
     pushed; and a local `origin/main` ref is only as fresh as the last fetch,
     which nothing in this loop performs. `ls-remote` asks the remote and mutates
     nothing - no fetch, no index, no reflog - which matters because the driver

@@ -1,6 +1,4 @@
 {
-  "repo_root": "C:\\Riot Commander",
-  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
   "max_cycles": 100,
   "cycle_deadline_sec": 5400,
   "poll_sec": 5,
@@ -14,14 +12,13 @@
   "channel": "sdk",
   "executor_model": "claude-opus-5-5",
   "executor_effort": "high",
-  "executor_cmd": "C:\\Users\\Administrator\\AppData\\Roaming\\npm\\claude.cmd",
+  "executor_cmd": "claude.cmd",
   "claude_window_title": "Claude",
   "adjudicator": "claude",
   "claude_adjudicator": {
     "model": "claude-sonnet-5-5",
     "timeout_sec": 300
   },
-  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
   "price_per_mtok": {
     "opus": {
       "input": 4.0,

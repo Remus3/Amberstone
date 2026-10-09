@@ -1,12 +1,13 @@
 {
   "_doc": "Canonical runtime config for Amberstone ops stack. This is the single source of truth for the supervisor, file bridge, and self-monitor. config/runtime.json is a legacy install-time file and is not read by the ops stack.",
 
-  "project_root":           "C:\\Riot Commander",
-  "runtime_dir":            "C:\\Riot Commander\\ops\\runtime",
+  "_paths_note":            "Path values are repo-relative (MAIN 2246 sec 3: no machine path in a tracked file). Readers resolve them against the checkout root derived from their own file location (ops/rc_supervisor.py resolve_config_paths), never the process CWD; an absolute value is a per-host override.",
+  "project_root":           ".",
+  "runtime_dir":            "ops/runtime",
   "python_exe":             "pythonw.exe",
   "app_cmd":                ["pythonw.exe", "main.py"],
-  "health_file":            "C:\\Riot Commander\\ops\\runtime\\health.json",
-  "deploy_script":          "C:\\Riot Commander\\ops\\rc_transactional_deploy.py",
+  "health_file":            "ops/runtime/health.json",
+  "deploy_script":          "ops/rc_transactional_deploy.py",
   "api_key_file":           "API-Key-Claude.txt",
 
   "_supervisor_settings":   "----------------------------------------------",
