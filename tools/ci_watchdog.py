@@ -3,15 +3,27 @@
 
 Item 204 (scoped in docs/CI_WATCHDOG_PLAN.md). Polls GitHub Actions for a
 failed main run, runs a tool-restricted headless claude on a dedicated worktree
-to produce a minimal lint/compile/import/single-test fix, opens a ci-fix PR,
-and - per the operator's 2026-06-18 decisions - auto-merges that PR once its own
-CI goes green, cancels a fix whose target run is already stale (main moved on),
-and escalates to a local-only ESCALATION.md after two strikes.
+to produce a minimal lint/compile/import/single-test fix, opens a ci-fix PR so
+the fix gets its own CI, and - once that CI is green - LANDS the fix locally as
+one operator commit on main (never a GitHub-side PR merge), cancels a fix whose
+target run is already stale (main moved on), and escalates to a local-only
+ESCALATION.md after two strikes.
 
 Operator decisions wired here (ROADMAP item 204, UNBLOCKED 2026-06-18):
-  1. AUTO-MERGE green ci-fix PRs (self-heal unattended).         -> _MERGE_METHOD
+  1. Self-heal green ci-fix PRs unattended.                       -> _land
   2. Escalate to local-only ESCALATION.md after two strikes.     -> send_escalation
   3. CANCEL + restart on newest HEAD (never fix stale code).     -> is_stale
+
+Decision 1 as amended by MAIN's kit-v13 ORDER section 4 and kit-v14 ORDER
+section 4 (operator authority, 2026-10-08 / 2026-10-09): no PR is merged on
+GitHub in any mode, because the web-merge committer (and a squash that keeps
+the fixer as author) is a non-operator identity on main. The green fix is
+squashed LOCALLY into ONE commit whose message the watchdog writes (the
+fixer's message and any trailer in it never reach main), committed through
+ops/fleet_kit/fleet_gitlock.py (lock + AI/bot identity refusal), checked with
+fleet_identity on exactly the range being pushed, pushed as a plain
+fast-forward of HEAD to main, and the PR is then closed. Any refusal leaves the
+PR open and escalates, so the operator lands it by hand.
 
 The decision logic below is pure + unit-tested (tests/test_ci_watchdog.py);
 main() is the thin I/O wiring around gh / git / claude. Nothing here runs at
@@ -42,21 +54,27 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # dedicated watchdog worktree: its tool allowlist is the execution gate and it
 # carries no project hooks there; routing that commit is the follow-up RM-692.
 _GITLOCK_OWNER = "ci-watchdog"
+_KIT_DIR = _PROJECT_ROOT / "ops" / "fleet_kit"
+
+
+def _kit_module(stem):
+    """A vendored fleet-kit module, loaded lazily by path under the same
+    `fleet_kit_<stem>` key the kit's own sibling loader uses (one instance)."""
+    import importlib.util
+
+    key = "fleet_kit_" + stem
+    mod = sys.modules.get(key)
+    if mod is None:
+        spec = importlib.util.spec_from_file_location(key, _KIT_DIR / f"{stem}.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[key] = mod
+        spec.loader.exec_module(mod)
+    return mod
 
 
 def _git_lock(where, owner, verb):
     """The kit's fleet_gitlock.git_lock(where, owner, verb) context manager."""
-    import importlib.util
-
-    mod = sys.modules.get("fleet_kit_fleet_gitlock")
-    if mod is None:
-        spec = importlib.util.spec_from_file_location(
-            "fleet_kit_fleet_gitlock",
-            _PROJECT_ROOT / "ops" / "fleet_kit" / "fleet_gitlock.py")
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules["fleet_kit_fleet_gitlock"] = mod
-        spec.loader.exec_module(mod)
-    return mod.git_lock(where, owner, verb)
+    return _kit_module("fleet_gitlock").git_lock(where, owner, verb)
 
 RUNTIME_DIR = _PROJECT_ROOT / "ops" / "runtime" / "ci_watchdog"
 SENTINEL = RUNTIME_DIR / "last_seen_run_id.txt"
@@ -72,9 +90,6 @@ POLL_LIMIT = 5
 MAX_ATTEMPTS = 2
 MAX_PR_PER_24H = 3
 _DAY_S = 24 * 3600
-# Decision 1: ci-fix PRs are tiny + already CI-green when merged; squash keeps
-# main linear and the branch is auto-deleted.
-_MERGE_METHOD = "--squash"
 
 # Per-step subprocess timeouts (seconds). The two blocking steps need far more
 # than the 120s default: a headless claude fix runs for minutes, and wait_checks
@@ -98,7 +113,7 @@ _CLAUDE_DISALLOWED_TOOLS = ("Write", "Bash(git push:*)")
 _CONTEXT_FILE = ".ci_watchdog_context.md"
 
 # Mirror of the CLAUDE.md "Frozen files" hard list (forward-slashed). A fix that
-# touches any of these is refused + escalated rather than merged.
+# touches any of these is refused + escalated rather than landed.
 FROZEN_FILES = frozenset({
     "main.py",
     "core/log_setup.py",
@@ -235,6 +250,26 @@ def branch_name(run_id: int) -> str:
     return f"ci-fix/{run_id}"
 
 
+def land_branch_name(run_id: int) -> str:
+    """The throwaway LOCAL branch (off fresh origin/main) the fix is squashed onto."""
+    return f"ci-land/{run_id}"
+
+
+def land_message(run_id: int, head_sha: str) -> tuple[str, str]:
+    """(subject, body) of the ONE operator commit that lands a green fix.
+
+    Written by the watchdog, never taken from the fixer: whatever the headless
+    fixer put in its own commit message (an attribution trailer included) is
+    dropped by the squash and never reaches main."""
+    subject = f"ci(fix): auto-fix red CI run {run_id}"
+    body = (
+        f"Landed locally by the CI Watchdog (item 204) after the {branch_name(run_id)} "
+        f"PR's own checks passed on base {head_sha[:12]}. One squash commit through "
+        "fleet_gitlock as the operator; the PR is closed, not merged on GitHub."
+    )
+    return subject, body
+
+
 def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
                   repo: str = REPO) -> list[tuple[str, list[str]]]:
     """The ordered (label, argv) command plan for one fix dispatch.
@@ -243,11 +278,13 @@ def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
     ``execute_dispatch`` runs it step by step. Every git command is scoped to the
     throwaway ``worktree`` (-C) and every gh command to ``repo``; ``claude`` runs
     headless (-p) tool-restricted with NO permission bypass and CANNOT push (the
-    watchdog owns push/PR/merge). ``gh`` is kept literal here for a readable,
-    portable plan - the executor maps it to the absolute binary at run time.
+    watchdog owns push/PR/landing). ``gh`` and ``python`` are kept literal here
+    for a readable, portable plan - the executor maps ``gh`` to the absolute
+    binary and runs the ``land_verify`` identity check in-process.
     """
     wt = str(worktree)
     branch = branch_name(run_id)
+    subject, land_body = land_message(run_id, head_sha)
     instr = (
         f"Read {_CONTEXT_FILE} - it holds the failing CI step log tail and the "
         "offending commit diff. Make the minimal in-bounds fix per your system "
@@ -265,8 +302,12 @@ def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
     body = (
         f"Automated CI fix for failed run {run_id} (head {head_sha[:12]}).\n\n"
         "Scope: lint / py_compile / import / single-test only; frozen files "
-        "refused. Auto-merges on green via the CI Watchdog (item 204)."
+        "refused. On green the CI Watchdog (item 204) lands this fix locally as "
+        "one operator commit on main and closes this PR - it is never merged on "
+        "GitHub."
     )
+    close_note = ("Landed locally on main as one operator commit by the CI Watchdog; "
+                  "closed without a GitHub merge (kit v13/v14 ORDER section 4).")
     return [
         ("fetch", ["git", "-C", wt, "fetch", "origin", "--prune"]),
         ("reset", ["git", "-C", wt, "reset", "--hard", "origin/main"]),
@@ -282,13 +323,27 @@ def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
                        "--title", f"ci(fix): auto-fix red CI run {run_id}",
                        "--body", body]),
         # Self-gate: BLOCK on the ci-fix PR's own checks (--watch) and bail on the
-        # first red (--fail-fast). Exit 0 = every check green -> merge; non-zero ->
-        # escalate. This in-watchdog gate is why no branch protection / repo
-        # auto-merge is needed (so direct-push-to-main keeps working).
+        # first red (--fail-fast). Exit 0 = every check green -> land; non-zero ->
+        # escalate. This in-watchdog gate is why no branch protection is needed
+        # (so direct-push-to-main keeps working).
         ("wait_checks", ["gh", "pr", "checks", branch, "--repo", repo,
                          "--watch", "--fail-fast"]),
-        ("pr_merge", ["gh", "pr", "merge", branch, "--repo", repo, _MERGE_METHOD,
-                      "--delete-branch"]),
+        # LAND LOCALLY (kit v13/v14 ORDER section 4): re-read origin/main, refuse
+        # when it moved off the tested base, squash the fix onto a throwaway
+        # local branch as ONE watchdog-worded commit through fleet_gitlock (the
+        # kit refuses a Claude / bot author or committer), verify the pushed
+        # range with fleet_identity, fast-forward main (never forced), close PR.
+        ("land_fetch", ["git", "-C", wt, "fetch", "origin", "--prune"]),
+        ("land_head", ["git", "-C", wt, "rev-parse", "origin/main"]),
+        ("land_branch", ["git", "-C", wt, "checkout", "-B",
+                         land_branch_name(run_id), "origin/main"]),
+        ("land_squash", ["git", "-C", wt, "merge", "--squash", branch]),
+        ("land_commit", ["git", "-C", wt, "commit", "-m", subject, "-m", land_body]),
+        ("land_verify", ["python", str(_KIT_DIR / "fleet_identity.py"), "check",
+                         "origin/main..HEAD"]),
+        ("land_push", ["git", "-C", wt, "push", "origin", "HEAD:main"]),
+        ("pr_close", ["gh", "pr", "close", branch, "--repo", repo, "--delete-branch",
+                      "--comment", close_note]),
     ]
 
 
@@ -398,6 +453,46 @@ def _gh() -> str:
     return cand if Path(cand).exists() else "gh"
 
 
+def _gitlock_commit(argv: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str]:
+    """`fleet_gitlock.py run --owner ci-watchdog -- <git commit argv>`, in-process.
+
+    The kit takes the tree's git lock, clears a dead index.lock, refuses a path
+    claimed by another live agent, and refuses a Claude / bot author or
+    committer (FLEET-COMMON 16/17) before git runs. A refusal is a failed step
+    (rc 3), never a bypass."""
+    try:
+        kit = _kit_module("fleet_gitlock")
+        return kit.run(["--owner", _GITLOCK_OWNER, "--", *argv], cwd=cwd,
+                       runner=lambda c: _run(list(c), cwd=Path(cwd), timeout=timeout))
+    except RuntimeError as exc:  # the kit's LockRefused is a RuntimeError
+        return 3, str(exc)
+    except (OSError, subprocess.SubprocessError, ImportError) as exc:
+        return 3, f"{type(exc).__name__}: {exc}"
+
+
+def _identity_check(cwd: Path, rev_range: str) -> tuple[int, str]:
+    """fleet_identity's `check <rev_range>`, in-process (no console child under
+    pythonw). Fails closed: no `fleet.operatorIdent` in the worktree's local
+    config, an unlistable range, or anything but exactly ONE commit is a refusal.
+    Reports finding CLASSES only, never a name or address."""
+    try:
+        ident = _kit_module("fleet_identity")
+        idents = ident.operator_idents(str(cwd))
+        if not idents:
+            return 1, f"IDENTITY: no {ident.CONFIG_KEY} in the worktree's local git config"
+        rows = ident.commits(str(cwd), [rev_range])
+        if rows is None:
+            return 1, f"IDENTITY: could not list {rev_range}"
+        if len(rows) != 1:
+            return 1, f"IDENTITY: {rev_range} holds {len(rows)} commit(s), expected exactly 1"
+        found = ident.violations(rows, idents)
+        if found:
+            return 1, "IDENTITY: " + ", ".join(sorted({cls for _sha, cls in found}))
+        return 0, "IDENTITY: 1 commit(s) clean"
+    except Exception as exc:  # noqa: BLE001 - fail closed, never crash the loop
+        return 1, f"IDENTITY: {type(exc).__name__}: {exc}"
+
+
 def send_escalation(run_id: int, head_sha: str, reason: str, detail: str = "") -> tuple[bool, str]:
     """Record a 2-strike escalation to the local ESCALATION.md. Never raises.
 
@@ -433,6 +528,64 @@ def _write_context(worktree: Path, run_id: int, head_sha: str,
         pass
 
 
+def _default_runner(worktree: Path):
+    """The live ``runner(label, argv) -> (rc, out)`` for one dispatch."""
+    wt = str(worktree)
+
+    def runner(label, argv):
+        cmd = list(argv)
+        if cmd and cmd[0] == "gh":
+            cmd[0] = _gh()
+        timeout = _STEP_TIMEOUTS.get(label, 120)
+        if label == "claude_fix":
+            # FLEET-KIT-v1: the only path that starts `claude`. Fails closed
+            # (route refused -> no spawn, never a direct claude).
+            return _claude_fix_via_kit(cmd, Path(wt), timeout)
+        if label in ("push", "land_push"):
+            # FLEET-KIT v12 item 16 a: a push runs inside the tree's git
+            # lock. A refusal (lock held, leftover index.lock) is a failed
+            # step, never a bypass.
+            try:
+                with _git_lock(wt, _GITLOCK_OWNER, "push"):
+                    return _run(cmd, cwd=Path(wt), timeout=timeout)
+            except RuntimeError as exc:
+                return 3, str(exc)
+        if label == "land_commit":
+            # FLEET-COMMON 16/17: the commit goes through fleet_gitlock run.
+            return _gitlock_commit(cmd, Path(wt), timeout)
+        if label == "land_verify":
+            return _identity_check(Path(wt), cmd[-1])
+        return _run(cmd, cwd=Path(wt), timeout=timeout)
+
+    return runner
+
+
+_LAND_STEPS = ("land_fetch", "land_head", "land_branch", "land_squash",
+               "land_commit", "land_verify", "land_push")
+
+
+def _land(steps: dict, runner, head_sha: str) -> tuple[str, str]:
+    """Land a green fix on main locally. Returns ("", "") once main carries it,
+    else (reason, detail) with main untouched and the PR left open.
+
+    Order is the safety argument: the base is re-read and must still be the
+    tested ``head_sha`` (decision 3) before anything is built; the commit is
+    made through the kit's identity-refusing lock; the identity check reads
+    exactly the range being pushed; the push is a plain fast-forward, so a main
+    that moved in the meantime rejects it instead of being overwritten.
+    """
+    for label in _LAND_STEPS:
+        rc, out = runner(label, steps[label])
+        if rc != 0:
+            return (f"not landed: step {label} failed (rc {rc}); PR left open for "
+                    "the operator to land locally", (out or "")[:2000])
+        if label == "land_head" and is_stale(head_sha, (out or "").strip()):
+            return ("not landed: main moved off the tested base during the check "
+                    "watch; PR left open for the operator to land locally",
+                    (out or "").strip()[:80])
+    return "", ""
+
+
 def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
                      worktree: Path = WORKTREE, repo: str = REPO,
                      runner=None) -> dict:
@@ -442,10 +595,10 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
     so the operator can inspect exactly what an armed run would do. Armed, it
     syncs the throwaway worktree, runs the tool-restricted headless fix, enforces
     the frozen-file guard BETWEEN the fix and any push, then pushes + opens the
-    ci-fix PR, BLOCKS on that PR's own CI checks, and squash-merges ONLY when they
-    pass (self-gated - a red PR escalates and is never merged; no branch
-    protection / repo auto-merge needed, so direct-push-to-main keeps working).
-    ``runner(label, argv) -> (rc, stdout)`` is injectable for tests.
+    ci-fix PR, BLOCKS on that PR's own CI checks, and ONLY when they pass lands
+    the fix locally as one operator commit on main (``_land``) and closes the
+    PR. A red PR or any land refusal escalates; nothing is ever merged on
+    GitHub. ``runner(label, argv) -> (rc, stdout)`` is injectable for tests.
     """
     plan = plan_dispatch(run_id, head_sha, worktree=worktree, repo=repo)
     if not arm:
@@ -453,26 +606,8 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
                 "branch": branch_name(run_id), "steps": plan}
 
     steps = {label: argv for label, argv in plan}
-    wt = str(worktree)
     if runner is None:
-        def runner(label, argv):
-            cmd = list(argv)
-            if cmd and cmd[0] == "gh":
-                cmd[0] = _gh()
-            if label == "claude_fix":
-                # FLEET-KIT-v1: the only path that starts `claude`. Fails closed
-                # (route refused -> no spawn, never a direct claude).
-                return _claude_fix_via_kit(cmd, Path(wt), _STEP_TIMEOUTS.get(label, 120))
-            if label == "push":
-                # FLEET-KIT v12 item 16 a: a push runs inside the tree's git
-                # lock. A refusal (lock held, leftover index.lock) is a failed
-                # step, never a bypass.
-                try:
-                    with _git_lock(wt, _GITLOCK_OWNER, "push"):
-                        return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
-                except RuntimeError as exc:
-                    return 3, str(exc)
-            return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
+        runner = _default_runner(worktree)
 
     # 1. sync the dedicated worktree onto a fresh ci-fix/<id> branch off main
     for label in ("fetch", "reset", "branch"):
@@ -495,7 +630,7 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
                 "detail": (fix_out or "")[:2000]}
 
     # 4. frozen-file guard BETWEEN the fix and any push (defense in depth vs the
-    #    whitelist) - refuse + escalate rather than merge a frozen-file edit
+    #    whitelist) - refuse + escalate rather than land a frozen-file edit
     _, names_out = runner("diff_names", steps["diff_names"])
     changed = [ln.strip() for ln in (names_out or "").splitlines() if ln.strip()]
     if not changed:
@@ -505,7 +640,7 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
         return {"action": "escalate", "changed": changed,
                 "reason": "fix touches frozen file(s): " + ", ".join(frozen)}
 
-    # 5. push -> open PR (the self-gate + squash-merge follow in step 6)
+    # 5. push -> open PR (the self-gate + local landing follow in steps 6-7)
     rc, out = runner("push", steps["push"])
     if rc != 0:
         return {"action": "error", "stage": "push", "detail": (out or "")[:2000]}
@@ -514,16 +649,22 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
         return {"action": "error", "stage": "pr_create", "detail": (pr_out or "")[:2000]}
     lines = [ln.strip() for ln in (pr_out or "").splitlines() if ln.strip()]
     pr = lines[-1] if lines else ""
-    # 6. self-gate: BLOCK on the ci-fix PR's OWN CI; merge ONLY when green.
-    #    A red (or timed-out) check escalates - we never merge an unverified fix.
+    # 6. self-gate: BLOCK on the ci-fix PR's OWN CI; land ONLY when green.
+    #    A red (or timed-out) check escalates - we never land an unverified fix.
     rc, checks_out = runner("wait_checks", steps["wait_checks"])
     if rc != 0:
         return {"action": "escalate", "pr": pr, "changed": changed,
-                "reason": "ci-fix PR checks did not pass - not merged",
+                "reason": "ci-fix PR checks did not pass - not landed",
                 "detail": (checks_out or "")[:2000]}
-    rc, out = runner("pr_merge", steps["pr_merge"])
-    return {"action": "merged", "pr": pr, "changed": changed,
-            "merge_rc": rc, "merge_out": (out or "")[:500]}
+    # 7. land locally as ONE operator commit (never a GitHub-side merge), then
+    #    close the PR. A refusal leaves main untouched and the PR open.
+    reason, detail = _land(steps, runner, head_sha)
+    if reason:
+        return {"action": "escalate", "pr": pr, "changed": changed,
+                "reason": reason, "detail": detail}
+    rc, out = runner("pr_close", steps["pr_close"])
+    return {"action": "landed", "pr": pr, "changed": changed,
+            "close_rc": rc, "close_out": (out or "")[:500]}
 
 
 def _current_main_sha() -> str:
