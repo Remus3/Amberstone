@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from dashboard import routes_loop_monitor as mod
 
 
@@ -243,3 +245,30 @@ def test_long_shell_run_counts_as_real_time(tmp_path):
     assert out["stalls"] == []
     row = next(r for r in out["summary"] if r["sig"] == "Bash:pytest")
     assert row["count"] == 1 and abs(row["total_s"] - 1560.0) < 1.0
+
+
+# --- transcript_dir resolves by the controller's rule, never the CWD -----
+# Wave 4 merge-fix: the tracked ops/loop/config.json carries no transcript_dir
+# since the 2026-10-09 leak removal (MAIN 2246 sec 3). loop_controller resolves
+# it as _cfg_path("transcript_dir", _claude_project_dir(ROOT)): an ABSOLUTE
+# value is a per-host override, anything else is Claude's project dir for this
+# checkout. The monitor must read the same directory the controller does, not a
+# path relative to the dashboard process's CWD.
+
+@pytest.mark.parametrize("raw", [None, "", "relative/transcripts"],
+                         ids=["absent", "empty", "relative"])
+def test_transcript_dir_without_an_absolute_value_is_the_project_dir(
+        raw, tmp_path, monkeypatch):
+    cfg = {} if raw is None else {"transcript_dir": raw}
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+    monkeypatch.setattr(mod, "CONFIG_PATH", cfg_path)
+    monkeypatch.chdir(tmp_path)
+    assert mod._transcript_dir() == mod.DEFAULT_TRANSCRIPT_DIR
+
+
+def test_an_absolute_transcript_dir_is_still_a_per_host_override(tmp_path, monkeypatch):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"transcript_dir": str(tmp_path)}), encoding="utf-8")
+    monkeypatch.setattr(mod, "CONFIG_PATH", cfg_path)
+    assert mod._transcript_dir() == tmp_path

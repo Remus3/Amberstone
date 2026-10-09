@@ -146,9 +146,16 @@ def model_price(table, model):
 
 
 def _control_dir(cfg, ctl):
+    """An explicit ctl wins; else `control_dir` by loop_controller's own rule
+    (CTL = _cfg_path("control_dir", _HERE / "control")): an ABSOLUTE value is a
+    per-host override, absent / empty / relative is ops/loop/control - never a
+    path relative to the process CWD. The tracked config carries no
+    control_dir since the 2026-10-09 leak removal (MAIN 2246 sec 3)."""
     if ctl is not None:
         return Path(ctl)
-    return Path((cfg or {}).get("control_dir", Path(__file__).resolve().parent / "control"))
+    raw = (cfg or {}).get("control_dir")
+    p = Path(raw) if raw else None
+    return p if p is not None and p.is_absolute() else Path(__file__).resolve().parent / "control"
 
 
 class ClaudeAdjudicator:

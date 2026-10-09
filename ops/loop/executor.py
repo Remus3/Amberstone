@@ -61,6 +61,26 @@ def _fleet_route_module():
         return sys.modules[name]
 
 
+# The checkout this module ships in (ops/loop/executor.py -> parents[2]).
+_CHECKOUT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def cfg_repo_root(cfg) -> Path:
+    """`repo_root` resolved by loop_controller's own rule, never the CWD.
+
+    loop_controller binds ROOT = _cfg_path("repo_root", _HERE.parents[1]): an
+    ABSOLUTE value is a per-host override; absent, empty or relative means the
+    checkout this module ships in. The tracked configs carry no repo_root since
+    the 2026-10-09 leak removal (MAIN 2246 sec 3), and the old
+    `cfg.get("repo_root", ".")` then meant whatever directory the controller
+    happened to start in - for the sdk child's cwd, its --add-dir and the
+    grounding git calls alike.
+    """
+    raw = (cfg or {}).get("repo_root")
+    p = Path(raw) if raw else None
+    return p if p is not None and p.is_absolute() else _CHECKOUT_ROOT
+
+
 # RM-137 (CCR-146). Appended to the system prompt of EVERY subagent a headless
 # cycle spawns via --append-subagent-system-prompt, which is something no hook
 # can do. The flag is UNDOCUMENTED (absent from `claude --help` on the pinned CLI
@@ -1072,7 +1092,7 @@ class AhkExecutor:
         # header as part of the director's text.
         body = enforce_directive_grounding(cycle, body, log=self.log,
                                            awrite=self.awrite, ctl=ctl,
-                                           repo_root=self.cfg.get("repo_root", "."),
+                                           repo_root=cfg_repo_root(self.cfg),
                                            note=self.deviations.append)
         # No-op (returns the same string, writes nothing) unless the directive
         # dispatches parallel agents whose file sets are not provably disjoint.
@@ -1279,7 +1299,7 @@ class SdkExecutor:
             "--input-format", "text",
             "--permission-mode", self.cfg.get("permission_mode", "bypassPermissions"),
             "--json-schema", _json.dumps(DONE_SCHEMA),
-            "--add-dir", str(self.cfg.get("repo_root", ".")),
+            "--add-dir", str(cfg_repo_root(self.cfg)),
         ]
         # RM-137: push RC's standing rules into every subagent this cycle spawns.
         # Config-driven on purpose - if a CLI upgrade ever rejects the flag, the
@@ -1338,7 +1358,7 @@ class SdkExecutor:
         # colliding directive or to notice one that re-issues landed work.
         body = enforce_directive_grounding(cycle, body, log=self.log,
                                            awrite=self.awrite, ctl=self.ctl,
-                                           repo_root=self.cfg.get("repo_root", "."),
+                                           repo_root=cfg_repo_root(self.cfg),
                                            note=self.deviations.append)
         body = enforce_agent_disjointness(cycle, body, log=self.log,
                                           awrite=self.awrite, ctl=self.ctl,
@@ -1358,7 +1378,7 @@ class SdkExecutor:
         try:
             _line, proc = fr.spawn(prompt, caller=SDK_CALLER, note=SDK_NOTE,
                                    writes_code=True, bare=False, extra=plan["extra"],
-                                   cwd=str(self.cfg.get("repo_root", ".")),
+                                   cwd=str(cfg_repo_root(self.cfg)),
                                    timeout=timeout, kind="build", model=plan["model"],
                                    effort=plan["effort"], session_id=plan["session_id"],
                                    resume=plan["resume"], prompt_on_stdin=True)

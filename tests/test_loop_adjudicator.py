@@ -341,3 +341,32 @@ def test_heartbeat_age_measures_seconds_since_the_stamp(lc, tmp_path):
 def test_heartbeat_age_is_none_for_a_garbage_stamp(lc, tmp_path):
     (tmp_path / "ahk_heartbeat.txt").write_text("not-a-timestamp", encoding="utf-8")
     assert lc.heartbeat_age(ctl=tmp_path, now=1000) is None
+
+
+# --- control_dir resolves by the controller's rule, never the CWD --------
+# Wave 4 merge-fix: the tracked ops/loop/config.json carries no control_dir
+# since the 2026-10-09 leak removal (MAIN 2246 sec 3). loop_controller binds
+# CTL = _cfg_path("control_dir", _HERE / "control"): an ABSOLUTE value is a
+# per-host override, anything else is ops/loop/control. A caller that hands the
+# adjudicator a cfg but no ctl must land in the same place, not in a path
+# relative to whatever directory it was started from.
+
+@pytest.mark.parametrize("raw", [None, "", "relative/control"],
+                         ids=["absent", "empty", "relative"])
+@pytest.mark.parametrize("cls", ["ClaudeAdjudicator", "Adjudicator"])
+def test_control_dir_without_an_absolute_value_is_ops_loop_control(
+        adj, cls, raw, tmp_path, monkeypatch):
+    cfg = _cfg()
+    if raw is not None:
+        cfg["control_dir"] = raw
+    monkeypatch.chdir(tmp_path)
+    assert getattr(adj, cls)(cfg).ctl == _LOOP / "control"
+
+
+def test_an_absolute_control_dir_is_still_a_per_host_override(adj, tmp_path):
+    assert adj.ClaudeAdjudicator(_cfg(control_dir=str(tmp_path))).ctl == tmp_path
+
+
+def test_an_explicit_ctl_still_wins_over_the_config(adj, tmp_path):
+    other = tmp_path / "ctl"
+    assert adj.ClaudeAdjudicator(_cfg(control_dir=str(tmp_path)), other).ctl == other

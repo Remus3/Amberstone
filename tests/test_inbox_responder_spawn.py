@@ -752,3 +752,40 @@ def test_module_contains_no_literal_process_call():
 
 def test_spawner_alias_is_exported():
     assert spawn.Spawner is not None
+
+
+# --- executor_cmd: only an ABSOLUTE value is a per-host override -----------
+# Wave 4 merge-fix: the 2026-10-09 leak removal (MAIN 2246 sec 3) changed the
+# tracked ops/loop/config.json executor_cmd from the npm shim's absolute path to
+# the bare name "claude.cmd". _derive_exe takes the shim's PARENT, which for a
+# bare name is "." - so the probe looked for node_modules/... under whatever
+# directory the process started in and could return a CWD-relative exe. Same
+# rule as loop_controller's _cfg_path: an absolute value means what it says
+# here; anything else falls through to the PATH lookup a bare name asks for.
+
+
+def test_a_bare_executor_cmd_never_resolves_against_the_cwd(tmp_path, monkeypatch):
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    _make_exe(cwd)
+    loop_config = tmp_path / "config.json"
+    loop_config.write_text(json.dumps({"executor_cmd": "claude.cmd"}), encoding="utf-8")
+    monkeypatch.setattr(spawn, "LOOP_CONFIG_PATH", loop_config)
+    monkeypatch.chdir(cwd)
+    assert spawn.resolve_claude_exe(StandInConfig(), {"PATH": ""}) == (None, None)
+
+
+def test_a_bare_executor_cmd_falls_through_to_which(tmp_path, monkeypatch):
+    npm = tmp_path / "npm"
+    npm.mkdir()
+    _make_shim(npm)
+    exe = _make_exe(npm)
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    _make_exe(cwd)
+    loop_config = tmp_path / "config.json"
+    loop_config.write_text(json.dumps({"executor_cmd": "claude.cmd"}), encoding="utf-8")
+    monkeypatch.setattr(spawn, "LOOP_CONFIG_PATH", loop_config)
+    monkeypatch.chdir(cwd)
+    path, source = spawn.resolve_claude_exe(StandInConfig(), {"PATH": str(npm)})
+    assert (path, source) == (exe, "which")

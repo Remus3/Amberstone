@@ -125,9 +125,17 @@ def _parse_ts(s) -> float | None:
 
 # --------------------------------------------------------------------------- session selection
 def _transcript_dir() -> Path:
+    """`transcript_dir` by loop_controller's own rule, never the CWD.
+
+    The controller resolves _cfg_path("transcript_dir", _claude_project_dir(ROOT)):
+    an ABSOLUTE value is a per-host override; absent, empty or relative is
+    Claude's project dir for this checkout. The tracked config carries no
+    transcript_dir since the 2026-10-09 leak removal (MAIN 2246 sec 3).
+    """
     cfg = _read_json(CONFIG_PATH) or {}
-    td = cfg.get("transcript_dir")
-    return Path(td) if td else DEFAULT_TRANSCRIPT_DIR
+    td = cfg.get("transcript_dir") if isinstance(cfg, dict) else None
+    p = Path(td) if isinstance(td, str) and td else None
+    return p if p is not None and p.is_absolute() else DEFAULT_TRANSCRIPT_DIR
 
 
 def _active_session_path() -> Path | None:
