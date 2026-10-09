@@ -61,22 +61,39 @@ Source by source:
 THIRD-PARTY FONTS - SIL OPEN FONT LICENSE 1.1, NOT THE APACHE LICENSE
 ===============================================================================
 
-`atlas.html` inlines subset WOFF2 files of two font families as `data:` URIs
-in its @font-face block. The Apache License 2.0 does not cover them: each font
-stays under the SIL Open Font License, Version 1.1 (SPDX: OFL-1.1; full text at
-https://openfontlicense.org, the URL each font's own licence field points to).
-The OFL permits bundling the fonts with any software and does not extend to
-the page that uses them. The copyright lines below are read from each embedded
-font's own name table (nameID 0), verbatim.
+`atlas.html` inlines nine WOFF 1.0 font files of two font families as `data:`
+URIs in its @font-face block. The Apache License 2.0 does not cover them: each
+font stays under the SIL Open Font License, Version 1.1 (SPDX: OFL-1.1). The
+OFL permits bundling the fonts with any software and does not extend to the
+page that uses them.
 
-* Orbitron - weights 600, 700 and 800 (one embedded file, "Orbitron Regular",
-  Version 2.001).
-  Copyright 2018 The Orbitron Project Authors
-  (https://github.com/theleagueof/orbitron), with Reserved Font Name:
-  "Orbitron".
+Licence text: LICENSES/OFL-1.1.txt, the full OFL-1.1 text, verbatim. Each
+font's own name table (nameID 14) points to http://scripts.sil.org/OFL, which
+now redirects to https://openfontlicense.org; the bundled copy is the plain
+text that site publishes at https://openfontlicense.org/documents/OFL.txt
+(sha256 1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e).
+
+The copyright lines below are read from each embedded font's own name table
+(nameID 0), verbatim, one per line. tools/atlas_build.py writes the same lines
+into a comment beside the @font-face rules, so a copy of the page on its own
+still carries them.
+
+* Orbitron - weights 600 to 800 (one embedded file, a variable font).
+  Unmodified upstream file, WOFF 1.0 wrapper only (table data, checksums and
+  order unchanged; no WOFF metadata), so it keeps its Reserved Font Name
+  lawfully (OFL FAQ 2.2.1): ofl/orbitron/Orbitron[wght].ttf, Version 2.001,
+  38576 bytes, from the google/fonts repository at commit
+  abf71245949027c279caff7c2cb988c97e7d0b11, sha256
+  f42db2dd16e642258e35782916eceb1dcdbea06fb958d77ad71dc5963587e8fd. The
+  build refuses any face that presents a declared Reserved Font Name unless
+  it rebuilds to that exact file.
+  Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron".
 
 * Rajdhani - weights 400, 500, 600 and 700 (eight embedded files: Regular,
-  Medium, SemiBold and Bold, two unicode-range subsets each, Version 1.201).
+  Medium, SemiBold and Bold, latin and latin-ext subsets of each, Version
+  1.201). Modified Version: Google Fonts subsets, re-wrapped as WOFF 1.0.
+  Rajdhani declares no Reserved Font Name (neither in its name table nor in
+  the upstream OFL.txt header), so the subsets keep the family name.
   Copyright (c) 2014 Indian Type Foundry (info@indiantypefoundry.com)
 
 Riot Games trademarks
