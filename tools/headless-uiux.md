@@ -221,10 +221,11 @@ Also: fix any section-B defect, add fixtures, add snapshot tests, restructure pa
 
 ### 8. The wrap
 
-1. **Tests from the REPO ROOT** (from the DS dir, 13 CWD failures mimic registry regressions):
-   `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ -q -n 8`,
-   plus `tests/snapshot_panels/ -q` explicitly when the slice touched a rendered surface, plus `npm test`
-   under `rc-shell/` for the Electron overlay. Report the counts you observed THIS run; never carry a
+1. **Tests from the REPO ROOT** (from the DS dir, 13 CWD failures mimic registry regressions), per the
+   TIER TABLE in `tools/done.md`: the touched modules' test files at Tier-1; at Tier-2 or a merged wave,
+   ONE gated parallel run (it covers `tests/snapshot_panels/`):
+   `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`,
+   plus `npm test` under `rc-shell/` for the Electron overlay. Report the counts you observed THIS run; never carry a
    subagent's number forward.
 2. **Lint:** `... -m ruff check .` (F541 is the recurring CI killer) plus `-m py_compile` on any touched
    `.py`.

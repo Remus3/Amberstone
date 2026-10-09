@@ -141,7 +141,7 @@ Per CLAUDE.md "Session Default", the default shape is orchestrated, multi-agent,
 - **In-game:** fan out one agent per row against the SAME live window (they read, they do not write) and merge their evidence yourself. Reading is parallel-safe; the doc edit is not.
 - **Idle:** normal build fan-out on disjoint files.
 - **Adversarial gate before any tick:** an independent agent tries to REFUTE the evidence, defaulting to refuted when uncertain. It gets the evidence, not the conclusion, and it is asked the SUBSTITUTION question explicitly: "does this evidence answer whether the thing RENDERED/SENT/UPDATED, or only whether it COMPUTED?"
-- **A read-only `verifier` subagent** (`.claude/agents/verifier.md`) gates any merge or "done" claim: it re-runs the suite from a clean state and confirms every cited file exists. Never trust a subagent's test counts or file-existence claims without an independent probe.
+- **A read-only `verifier` subagent** (`.claude/agents/verifier.md`) gates any merge or "done" claim: it re-runs the cited tests from a clean state (TIER TABLE in `tools/done.md`: the cited test files plus `--collect-only` counts, never a whole suite) and confirms every cited file exists. Never trust a subagent's test counts or file-existence claims without an independent probe.
 
 ---
 
