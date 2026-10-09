@@ -60,7 +60,7 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 - **[x] RM-685 / RM-688 / RM-689 / RM-687 SHIPPED + FLEET-KIT v11 ADOPTED 2026-10-08 (session 104, LEDGER 1688-1692)** - the five rows are relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-08b` block).
 - **[!] RM-686 (OPERATOR-GATED, MAIN 1840 ORDER section 5 FIX, filed session 104, LEDGER 1689): the headless-proxy launcher returns at once, so the scheduler's RestartOnFailure never fires.** HALTED at RC's halt boundary: the launcher lives outside the repo root, and the read-back kills the live proxy. Body + acceptance in `BACKLOG.md` "Session 103 filings".
 - **[!] RM-690 `--migrate-legacy` leaves a DOUBLE-BOM legacy row unconverted AND unreported - RM-691 two fires breaking a stale `inbox_tick.lock` at once can both hold it (pre-existing) (Tier-1 each, filed session 104 /done, LEDGER 1693).** Bodies + acceptance in `BACKLOG.md` "Session 103 filings".
-- **[!] RM-692 watchdog fixer commits outside the git lock - RM-693 lane worktrees lack RC Claude hooks (measure first) - RM-694 two guards read gitignored ops/runtime copies (Tier-1 each, session 105, LEDGER 1694).** Bodies in `BACKLOG.md` "Session 103 filings".
+- **[!] RM-692 watchdog fixer commits outside the git lock - RM-693 lane worktrees lack RC Claude hooks (measure first) - RM-694 two guards read gitignored ops/runtime copies - RM-695 tree-sweep self-test MemoryError (Tier-1 each, session 105, LEDGER 1694-1695).** Bodies in `BACKLOG.md` "Session 103 filings".
 
 > **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
 

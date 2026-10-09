@@ -1,10 +1,17 @@
 NEXT SESSION
 ------------
 SESSION: 105
-Next action: C1 / E2 - merge Dependabot npm - the operator reported the Electron 44 shell check OK on
+Next action: MAIN 2026-10-08-2246 REPO-REVIEW ORDER sections 2-8 (section 1 = kit v13 DONE in
+session 105, fd65b8002; its row stays OPEN in inbox_work.jsonl until the ONE later ANSWER covers 2-8,
+then close it with `inbox_tick.py --done`). Read the ORDER in moon_sync_inbox/ by section. Start with
+section 4's DEPENDABOT-1 = E2 below (NEW RULE from that ORDER: never the GitHub merge button or
+`gh pr merge`; land the bump locally as an operator commit, cherry-pick `--reset-author`, through
+fleet_gitlock). Section 4's history rewrite + force push and section 5's sidecar move are BLOCKED for
+the operator (attended confirmation; out-of-tree) - put both in the ONE operator ask.
+E2 detail: the operator reported the Electron 44 shell check OK on
 2026-10-08 (operator chat at the session 104 wrap, relayed into this file by the main session; the
-gate is MET; the /done of session 104 deliberately did NOT merge). Merge Dependabot npm
-PR #2 (electron 33.4.11 -> 44.x, rc-shell; 37 open alerts need >= 41.10.6), then in the MAIN
+gate is MET; the /done of session 104 deliberately did NOT merge). Land Dependabot npm
+PR #2's change (electron 33.4.11 -> 44.x, rc-shell; 37 open alerts need >= 41.10.6), then in the MAIN
 checkout's rc-shell run `npm ci` and `npx install-electron` once (Electron >= 42 no longer
 downloads the binary on install). `^44.5.1` resolves 44.7.0, so pin EXACT. Re-verify
 `rc-shell\launch_overlay.bat:8`, `tools\legion_on.ps1:81`, `tools\install_lane_widget_shortcut.ps1:44`
@@ -28,6 +35,44 @@ wrap; the rest are still open):
    (taskkill /F /PID) and the task restarts it within ~1 min; then answer MAIN with line + state +
    restart. Body + acceptance in BACKLOG "Session 103 filings". "Continue headlessly - operator is away"
    was NOT an OK for this.
+
+Session 105 (2026-10-08, attended, executor sub-agent) shipped - do NOT redo (LEDGER 1694-1695):
+- K12 MAIN 2031 ORDER kit v12 RACE GUARDS: provenance 22/22; d54e41968 (one commit via gitlock) +
+  docs fc3b748e5; claims hooks in the gitignored project settings (deny, kit default; LIVE at once);
+  tests/conftest.py installs fleet_test_guard (tests/_fleet_guard_config.py); RACE GUARDS block in all
+  23 commands + 4 loop prompts; /done commits/pushes via fleet_gitlock and gates whole suites.
+  ANSWER 2026-10-08-2313 reached 1/1 (copy docs/_outbound_2026-10-08-2313-*); ORDER row closed.
+  RC's v9/v10/v11 ANSWERs re-hashed in MAIN's inbox 4/4 - nothing else owed.
+- K13 MAIN 2246 ORDER section 1 kit v13 (arrived 22:51 mid-run): provenance 24/24; fd65b8002; identity
+  hooks in .githooks (commit-msg strip, pre-push FIRST); LOCAL git config fleet.operatorIdent set (2
+  values; a fresh clone must set it before any push or every push is refused). Pushed
+  c042f2106..d54e41968 and d54e41968..fd65b8002 (remote head read back). Section-1 ANSWER
+  2026-10-09-0001 reached 1/1 (copy docs/_outbound_2026-10-09-0001-*; PARTIAL, says 2-8 follow in ONE
+  later ANSWER).
+- Roster: RC's gitignored ops/moon_sync_repos.json EW root was dead (old system-drive path, no
+  junction); repointed to the data-drive root holding moon_sync_inbox, old value under _previous_EW.
+- Gated full suites: v12 run 3 38791 passed / 9 failed; v13 38797 passed / 9 failed; the 9 = 4 RM-172
+  baseline + 4 RM-694 local-only + RM-684; 1 deselected (tree-sweep self-test MemoryError, see below).
+- FILED RM-692 (watchdog fixer child commit outside gitlock), RM-693 (lane worktrees lack RC Claude
+  hooks - measure first), RM-694 (two guards read gitignored ops/runtime/responder_export copies),
+  RM-695 (tree-sweep self-test MemoryError + xdist wedge). Next free RM-696.
+
+New carry items (session 105):
+- NO MORE `Claude-Session:` / co-author lines in commit messages (FLEET-COMMON 17; the commit-msg hook
+  strips them). Every commit / push: `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...`;
+  every whole suite: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; <id> =
+  <session_id>.<agent_id>, named by the claims hook's deny reason. `pytest --version` / `--collect-only`
+  are denied as whole suites (kit finding (a), sent to MAIN) - name a test file or use the gate.
+- Local full dual suite: `-n 8 --dist loadfile` through the gate takes ~6 min, BUT
+  tests/test_ci_sibling_sweep_tree_wiring.py::test_the_gate_runs_green_on_this_tree hits a MemoryError
+  on this box (67 MB tracked laning_scenarios JSON, per-char lists) and its worker death WEDGES the xdist
+  controller at 99% (0 CPU; killed RC's own pytest tree with taskkill /F /T twice). Deselect it in local
+  full runs until RM-695 (streaming `_strip_continuations`) lands.
+- Stale `.git/index.lock` (0 B, 62 min, no RC git alive) was removed by hand; kit gitlock will not clear
+  it while any git runs machine-wide (finding (c), sent to MAIN).
+- History identity count (v13 rules, all 5993 commits): 80 violating commits (MAIN surveyed 36) - for
+  the operator-gated rewrite in MAIN 2246 section 4.
+- OutboundCap: 6/6 notes used on 2026-10-08; 1/6 on 2026-10-09.
 
 Session 104 (2026-10-08) shipped - do NOT redo (LEDGER 1687-1693):
 - I1 inbox sync / reply / arm (operator chat order): MAIN orders 2237 / 2354 / 0839 provenance 3/3,
