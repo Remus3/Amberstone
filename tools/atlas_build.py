@@ -815,6 +815,33 @@ def _write_atomic(path: Path, text: str) -> None:
     tmp.replace(path)
 
 
+STALE_MESSAGE = "atlas.html is stale. Run: python tools/atlas_build.py"
+
+
+def check_page(root: Path, min_modules: int = MIN_REPO_MODULES) -> tuple[int, str]:
+    """The ``--check`` verdict as data: (0, "") fresh, (1, why) stale, (2, why) unbuildable.
+
+    Re-renders with the stamp already in the page, so only a change to what the
+    page maps (a module added, removed or renamed, an import, a docstring,
+    ENGINE_VERSION) makes it stale - a new commit alone does not.
+    tools/drift_guard.py calls this in process; ``main`` prints its message.
+    """
+    target = Path(root).resolve() / ATLAS_NAME
+    try:
+        current = target.read_text(encoding="utf-8")
+    except OSError as exc:
+        return 2, f"atlas_build: cannot read {ATLAS_NAME}: {exc.__class__.__name__}"
+    try:
+        stamp = parse_data(current)["stamp"]
+    except (BuildError, ValueError, KeyError):
+        stamp = None
+    try:
+        page = build_page(root, template=current, stamp=stamp, min_modules=min_modules)
+    except BuildError as exc:
+        return 2, f"atlas_build: {exc}"
+    return (0, "") if page == current else (1, STALE_MESSAGE)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("--check", action="store_true",
@@ -822,24 +849,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--root", default=str(REPO_ROOT), help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     root = Path(args.root).resolve()
+    if args.check:
+        code, message = check_page(root)
+        if message:
+            print(message, file=sys.stderr)
+        return code
     target = root / ATLAS_NAME
     current = target.read_text(encoding="utf-8")
     try:
-        stamp = parse_data(current)["stamp"] if args.check else None
-    except (BuildError, ValueError, KeyError):
-        stamp = None
-    try:
-        page = build_page(root, template=current, stamp=stamp,
+        page = build_page(root, template=current, stamp=None,
                           min_modules=MIN_REPO_MODULES)
     except BuildError as exc:
         print(f"atlas_build: {exc}", file=sys.stderr)
         return 2
-    if args.check:
-        if page != current:
-            print("atlas.html is stale. Run: python tools/atlas_build.py",
-                  file=sys.stderr)
-            return 1
-        return 0
     if page != current:
         _write_atomic(target, page)
     model = parse_data(page)

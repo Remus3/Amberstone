@@ -119,6 +119,7 @@ class ModuleShapeTests(unittest.TestCase):
             "check_version_anchors",
             "check_counted_claims",
             "check_untracked_authored",
+            "check_atlas_fresh",
             "run_all",
             "Finding",
         ):
