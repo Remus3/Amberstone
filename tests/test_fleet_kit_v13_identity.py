@@ -34,7 +34,8 @@ def _text(rel):
 
 def test_v13_kit_ships_identity_and_rewrite():
     man = json.loads((KIT / "MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 13
+    # v14 (MAIN 2026-10-09 0930) superseded v13 and keeps both files.
+    assert man["version"] >= 13
     for name in ("fleet_identity.py", "fleet_rewrite.py"):
         assert name in man["files"] and (KIT / name).is_file(), name
 

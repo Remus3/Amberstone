@@ -281,6 +281,9 @@ PY_NON_SPAWN = {
                                       "only claude caller is inbox_responder_spawn.real_spawner",
     "tools/inbox_responder_runner.py": "resolves cfg.claude_exe; every spawn goes "
                                        "through inbox_responder_spawn.real_spawner",
+    "ops/fleet_kit/fleet_claims.py": "kit v14 session_process(): matches the image "
+                                     "name 'claude' of the hook's ANCESTOR process "
+                                     "to reap its claims; spawns nothing",
 }
 _PY_NAMES_CLI = re.compile(
     r"""["']claude(\.cmd|\.exe)?["']|\bCLAUDE_CLI\b|\bDEFAULT_CLAUDE_CMD\b|\bclaude_exe\b""")

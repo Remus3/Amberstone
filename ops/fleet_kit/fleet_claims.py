@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v13 - RACE GUARDS: the per-tree file-claim registry and its hooks
+"""Fleet kit v14 - RACE GUARDS: the per-tree file-claim registry and its hooks
 (FLEET-COMMON item 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -23,6 +23,20 @@ resolved file-only). owner = <session_id>.<agent_id> from the hook input
 was refreshed within TTL_S (env FLEET_CLAIM_TTL_S); every hook call by an owner
 refreshes it, a dead owner's file is reaped by the next hook call in that tree,
 and SubagentStop releases the finished agent's claims at once.
+
+v14 release and reap (KIT-14: a finished agent's claims lived until the TTL):
+  * release-hook takes the agent id from `agent_id`, else from the
+    `agent_transcript_path` file name (agent-<id>.jsonl), and releases that
+    owner in the project tree, the payload cwd's tree AND every other tree it
+    claimed in (a small per-owner index of main checkouts,
+    <index dir>/<owner>.txt; index dir = env FLEET_CLAIMS_INDEX, else
+    %LOCALAPPDATA%/fleet/claims-index, POSIX ~/.cache/fleet/claims-index;
+    written only for a claim outside the project tree);
+  * an owner file records the hook's ancestor Claude Code process (pid and
+    start time). An owner whose session process is dead or reused is reaped
+    at once, not after the TTL; without a recorded process the TTL rules;
+  * info runs of pytest (--version, -V, -h/--help, --co/--collect-only,
+    --fixtures, --markers) are not whole-suite runs (RC 0001 sec 9a).
 
 Hook decisions (PreToolUse):
   * Edit / Write / NotebookEdit / MultiEdit on a file inside a git tree: the
@@ -159,6 +173,140 @@ def ttl(env=None):
     return v if v > 0 else TTL_S
 
 
+# ---------------------------------------------------------------- session process (v14)
+
+def _win_procs():
+    """{pid: (parent pid, exe name lower)} from a toolhelp snapshot."""
+    import ctypes
+    from ctypes import wintypes
+
+    class PE(ctypes.Structure):
+        _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+                    ("th32ProcessID", wintypes.DWORD), ("th32DefaultHeapID", ctypes.c_size_t),
+                    ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
+                    ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long),
+                    ("dwFlags", wintypes.DWORD), ("szExeFile", ctypes.c_char * 260)]
+    k32 = ctypes.windll.kernel32
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)
+    if not snap or snap == ctypes.c_void_p(-1).value:
+        return {}
+    out = {}
+    try:
+        e = PE()
+        e.dwSize = ctypes.sizeof(PE)
+        ok = k32.Process32First(wintypes.HANDLE(snap), ctypes.byref(e))
+        while ok:
+            out[int(e.th32ProcessID)] = (int(e.th32ParentProcessID),
+                                         e.szExeFile.decode("ascii", "replace").lower())
+            ok = k32.Process32Next(wintypes.HANDLE(snap), ctypes.byref(e))
+    finally:
+        k32.CloseHandle(wintypes.HANDLE(snap))
+    return out
+
+
+def _proc_started(pid):
+    if not WIN:
+        return None
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.windll.kernel32
+    h = k32.OpenProcess(0x1000, False, int(pid))
+    if not h:
+        return None
+    try:
+        t = [wintypes.FILETIME() for _ in range(4)]
+        if not k32.GetProcessTimes(h, *[ctypes.byref(x) for x in t]):
+            return None
+        return ((t[0].dwHighDateTime << 32) | t[0].dwLowDateTime) / 1e7 - 11644473600.0
+    finally:
+        k32.CloseHandle(h)
+
+
+def session_process(pid=None, procs=None, depth=8, started=None):
+    """(pid, started) of the nearest ancestor whose image name starts with
+    'claude' - the Claude Code process the hook runs under - else None."""
+    try:
+        procs = procs if procs is not None else (_win_procs() if WIN else {})
+    except (OSError, AttributeError, ValueError):
+        return None
+    started = started or _proc_started
+    cur = os.getpid() if pid is None else pid
+    for _ in range(depth):
+        row = procs.get(cur)
+        if not row:
+            return None
+        parent = row[0]
+        prow = procs.get(parent)
+        if prow and prow[1].startswith("claude"):
+            return parent, started(parent)
+        cur = parent
+    return None
+
+
+def session_alive(pid, started=None):
+    """True while pid runs (a pid we cannot query counts as alive) and, when
+    both start times are known, it is the same process."""
+    if not WIN:
+        return True
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return True
+    import ctypes
+    k32 = ctypes.windll.kernel32
+    h = k32.OpenProcess(0x1000, False, pid)
+    if not h:
+        return k32.GetLastError() != 87
+    try:
+        code = ctypes.c_ulong()
+        if k32.GetExitCodeProcess(h, ctypes.byref(code)) and code.value != 259:
+            return False
+    finally:
+        k32.CloseHandle(h)
+    have = _proc_started(pid)
+    if started is not None and have is not None:
+        try:
+            return abs(float(started) - have) <= 1.0
+        except (TypeError, ValueError):
+            return True
+    return True
+
+
+# ---------------------------------------------------------------- cross-tree index (v14)
+
+def index_dir(env=None):
+    env = os.environ if env is None else env
+    if env.get("FLEET_CLAIMS_INDEX"):
+        return Path(env["FLEET_CLAIMS_INDEX"])
+    if env.get("LOCALAPPDATA"):
+        return Path(env["LOCALAPPDATA"]) / "fleet" / "claims-index"
+    return Path.home() / ".cache" / "fleet" / "claims-index"
+
+
+def index_add(me, main, env=None):
+    """Record that owner me holds claims in the tree whose main checkout is main."""
+    with contextlib.suppress(OSError):
+        f = index_dir(env) / f"{me}.txt"
+        have = f.read_text(encoding="utf-8").splitlines() if f.is_file() else []
+        if str(main) not in have:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            with f.open("a", encoding="utf-8", newline="\n") as fh:
+                fh.write(str(main) + "\n")
+
+
+def index_pop(me, env=None):
+    """The main checkouts recorded for owner me; the index entry is removed."""
+    f = index_dir(env) / f"{me}.txt"
+    try:
+        mains = [ln for ln in f.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    except OSError:
+        return []
+    with contextlib.suppress(OSError):
+        f.unlink()
+    return mains
+
+
 # ---------------------------------------------------------------- registry
 
 def claims_dir(main):
@@ -241,11 +389,20 @@ def owners(main):
     return out
 
 
-def live(doc, now, ttl_s):
+def live(doc, now, ttl_s, alive=None):
+    """Live = refreshed within the TTL and, when the doc names its session
+    process, that process still runs as the same process (v14)."""
     try:
-        return now - float(doc.get("updated", 0)) <= ttl_s
+        fresh = now - float(doc.get("updated", 0)) <= ttl_s
     except (TypeError, ValueError):
         return False
+    if not fresh:
+        return False
+    pid = doc.get("session_pid")
+    if pid is None:
+        return True
+    alive = alive or session_alive
+    return alive(pid, doc.get("session_started"))
 
 
 def reap(main, now=None, ttl_s=None):
@@ -494,6 +651,8 @@ def bare_git_write(command):
     return None
 
 
+_PYTEST_INFO = frozenset(("--version", "-V", "-h", "--help", "--co", "--collect-only",
+                          "--fixtures", "--markers", "--fixtures-per-test"))
 _PYTEST_WORD = re.compile(r"(?:^|[/\\])(?:py\.test|pytest)(?:\.exe)?$", re.I)
 
 
@@ -519,6 +678,8 @@ def bare_whole_suite(command):
         if i is None:
             continue
         rest = words[i + 1:]
+        if any(w in _PYTEST_INFO for w in rest):
+            continue
         named = [w for w in rest if not w.startswith("-") and (".py" in w or "::" in w)]
         if not named and "-k" not in rest:
             return True
@@ -593,7 +754,15 @@ def decide_edit(payload, me, now, ttl_s):
         hit = holders(t[2], [path], me, now, ttl_s)
         if hit:
             return "deny", _held_reason(hit[0][0], t[0], hit[0][1])
-        claim(t[2], me, path, now, {"agent_type": payload.get("agent_type") or None})
+        meta = {"agent_type": payload.get("agent_type") or None}
+        if not (claims_dir(t[2]) / f"{me}.json").is_file():
+            sp = session_process()
+            if sp:
+                meta["session_pid"], meta["session_started"] = sp
+        claim(t[2], me, path, now, meta)
+    proj = tree_of(project_root(payload, os.environ))
+    if proj is None or norm(proj[2]) != norm(t[2]):
+        index_add(me, t[2])
     return "allow", ""
 
 
@@ -679,16 +848,37 @@ def run_hook(stdin_text, env=None, now=None):
     return json.dumps(deny_output(reason)) if m == "deny" else ""
 
 
+_AGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]+)\.jsonl$")
+
+
+def stop_agent_id(payload):
+    """The finished agent's id: agent_id, else from agent_transcript_path."""
+    if payload.get("agent_id"):
+        return payload["agent_id"]
+    m = _AGENT_FILE.search(str(payload.get("agent_transcript_path") or "").replace("\\", "/"))
+    return m.group(1) if m else None
+
+
 def run_release_hook(stdin_text, env=None):
-    """SubagentStop: drop the finished agent's claims in the project tree."""
+    """SubagentStop: drop the finished agent's claims in the project tree, the
+    payload cwd's tree and every tree in its cross-tree index (v14)."""
     env = os.environ if env is None else env
     payload = json.loads(stdin_text or "{}")
-    if not isinstance(payload, dict) or not payload.get("agent_id"):
+    if not isinstance(payload, dict):
         return ""
-    me = owner_id(payload)
-    t = tree_of(project_root(payload, env))
-    if me and t is not None:
-        release(t[2], me)
+    agent = stop_agent_id(payload)
+    if not agent:
+        return ""
+    me = owner_id(dict(payload, agent_id=agent))
+    if not me:
+        return ""
+    mains = {norm(m): m for m in index_pop(me, env)}
+    for where in (project_root(payload, env), payload.get("cwd")):
+        t = tree_of(where) if where else None
+        if t is not None:
+            mains.setdefault(norm(t[2]), str(t[2]))
+    for m in mains.values():
+        release(m, me)
     return ""
 
 

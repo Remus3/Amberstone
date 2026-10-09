@@ -9,7 +9,9 @@
 //
 // Line 1, fixed-width slots, one space apart, never `|`:
 //   STATE A# CODE/L# branch +N  ctx NN%  5h NN%  7d NN%  model eff
-//   STATE is blank, or DONE / FAIL (validated /done marker), NEEDS, STALE, HALT.
+//   STATE is blank, or DONE / FAIL (validated /done marker), NEEDS, STALE, BLOCK
+//   (v14: a progress row or the loop status says blocked - an outside condition
+//   such as a proxy outage), HALT.
 //   Absent value -> `--` in its slot. Narrow COLUMNS drops whole slots from the
 //   RIGHT; a slot never shrinks. Percent slots reserve two cells for the
 //   problem mark (>= 70 -> 33 + `!`, >= 90 -> 1;31 + `!!`), so a mark never
@@ -32,10 +34,11 @@ const { execFileSync } = require('child_process');
 
 const SLOTS = [['state', 6], ['acct', 2], ['code', 8], ['branch', 12],
   ['ctx', 10], ['h5', 9], ['d7', 9], ['model', 11]];
-const STATE_SGR = { DONE: '1;32', FAIL: '1;31', STALE: '1;31', NEEDS: '1;33', HALT: '35' };
+const STATE_SGR = { DONE: '1;32', FAIL: '1;31', STALE: '1;31', NEEDS: '1;33', HALT: '35', BLOCK: '1;33' };
 const ROW_GLYPH = { running: '[>]', done: '[+]', failed: '[x]', stale: '[!]',
-  needs: '[?]', halted: '[=]' };
-const ROW_SGR = { running: '1', failed: '1;31', stale: '1;31', needs: '1;33', halted: '35' };
+  needs: '[?]', halted: '[=]', blocked: '[#]' };
+const ROW_SGR = { running: '1', failed: '1;31', stale: '1;31', needs: '1;33', halted: '35',
+  blocked: '1;33' };
 const MARKER_REL = ['ops', 'loop', 'control', 'session_done.json'];
 const PROGRESS_REL = ['ops', 'loop', 'control', 'progress'];
 const STATUS_REL = ['ops', 'loop', 'control', 'inbox_status.json'];
@@ -222,6 +225,8 @@ function progressRows(main, nowMs) {
       state = age <= ABANDON_S ? 'needs' : null;
     } else if (d.status === 'halted') {
       state = age <= ABANDON_S ? 'halted' : null;
+    } else if (d.status === 'blocked') {
+      state = age <= ABANDON_S ? 'blocked' : null;
     }
     if (!state) continue;
     let step = d.step;
@@ -300,6 +305,12 @@ function halted(main) {
   return !!(s && ['halted', 'backoff', 'limit'].includes(s.state));
 }
 
+function blocked(main) {
+  // v14: an outside condition (proxy down) stops the loop - not a refusal.
+  const s = readJson(path.join(main, ...STATUS_REL));
+  return !!(s && s.state === 'blocked');
+}
+
 function fitSlots(slots, columns) {
   let n = slots.length;
   const width = (k) => slots.slice(0, k).reduce((a, s) => a + s.w, 0) + (k - 1);
@@ -331,6 +342,7 @@ function render(d, opts) {
   else if (verdict === 'DONE') state = 'DONE';
   else if (rows.some((r) => r.state === 'needs')) state = 'NEEDS';
   else if (rows.some((r) => r.state === 'stale')) state = 'STALE';
+  else if (rows.some((r) => r.state === 'blocked') || (main && blocked(main))) state = 'BLOCK';
   else if (main && halted(main)) state = 'HALT';
   const cfg = env.CLAUDE_CONFIG_DIR || '';
   const am = /acct(\d+)/i.exec(path.basename(cfg));

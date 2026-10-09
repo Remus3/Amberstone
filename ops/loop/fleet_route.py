@@ -94,12 +94,16 @@ def _headless_env():
 
 
 class RouteRefused(RuntimeError):
-    """No headless run was started. `reason` is a short constant code."""
+    """No headless run was started. `reason` is a short constant code. `code`
+    is the machine class to match on (kit v14, MAIN 2026-10-09 0930 step 5): a
+    kit refusal carries the kit's own Refused.code ("proxy-unreachable",
+    "budget-spent", ...); an RC gate refusal carries its reason."""
 
-    def __init__(self, reason: str, detail: str = ""):
+    def __init__(self, reason: str, detail: str = "", code: str | None = None):
         super().__init__(f"headless route refused: {reason}" + (f" ({detail})" if detail else ""))
         self.reason = reason
         self.detail = detail
+        self.code = code or reason
 
 
 class _Closed:
@@ -219,7 +223,8 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
                         exe_source=_exe_source, cwd=cwd, **opt_kw)
     except k.Refused as exc:
         he._log_refusal(caller, "kit")
-        raise RouteRefused("kit", str(exc)) from None
+        raise RouteRefused("kit", str(exc),
+                           code=getattr(exc, "code", None) or "refused") from None
     except subprocess.TimeoutExpired:
         _idle(k, root)
         raise
