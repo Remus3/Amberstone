@@ -1,7 +1,7 @@
 r"""No module under ops/loop may hardcode an absolute repo root.
 
 MEASURED 2026-07-27, nightly CI run 30261946219: ops/loop/loop_controller.py
-defaulted its config to the literal r"C:\Riot Commander\ops\loop\config.json".
+defaulted its config to the literal r"C:\Example Repo\ops\loop\config.json".
 That path resolves on exactly one host. Every other checkout - CI, a fresh
 clone, a git worktree - took the not-found branch and ran with CFG = {}, and
 nothing said so. The damage surfaced two suites away, as a platform-split test

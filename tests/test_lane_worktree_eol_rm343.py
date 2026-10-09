@@ -201,7 +201,7 @@ def _materialize_stale(repo, rel: str) -> None:
     convinced the file is up to date. In that state `checkout-index -f` returns 0
     and does NOTHING, and so does
     `git checkout --pathspec-from-file` (both measured 2026-09-06 on
-    C:/rc-worktrees/rc-lane-ds at git 2.53.0). Only deleting the file first
+    C:/example-worktrees/rc-lane-ds at git 2.53.0). Only deleting the file first
     forces git to write it.
     """
     (repo / rel).write_bytes(CRLF_JSON)

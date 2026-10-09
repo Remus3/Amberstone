@@ -436,7 +436,7 @@ def test_the_example_config_template_is_clean(synth_cfg, synth_needles):
         "C:\\RC-CIWatchdog\\state.json",
         "C:\\RC-Recordings\\2026-09-09.mkv",
         "C:\\Peer-Bridge\\outbox",
-        "C:\\Users\\Administrator\\AppData\\Local",
+        "C:\\Users\\someone\\AppData\\Local",
         "C:\\Program Files\\Git\\bin",
         "C:\\ProgramData\\chocolatey",
         "C:\\Windows\\System32",

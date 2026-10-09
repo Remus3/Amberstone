@@ -15,7 +15,7 @@ not own.
 Ground truth for "what is a worktree here", probed rather than assumed
 ---------------------------------------------------------------------
 ``git worktree list`` puts every live lane worktree OUTSIDE the checkout, under
-``C:/rc-worktrees/rc-lane-<name>`` (plus ``C:/rc-worktrees/rm343-base``), so the
+``C:/example-worktrees/rc-lane-<name>`` (plus ``C:/example-worktrees/rm343-base``), so the
 common case does NOT nest. But ``.claude/worktrees/`` exists in the repo root
 (empty at probe time) and is the in-tree convention, and
 ``moon_sync_inbox/from-CS-verbatim/.claude`` is a nested sibling-repo payload.

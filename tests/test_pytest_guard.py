@@ -64,18 +64,18 @@ class _StubStdin:
 def test_is_docs_only_md():
     assert pytest_guard._is_docs_only("README.md")
     assert pytest_guard._is_docs_only("docs/ARCHITECTURE.md")
-    assert pytest_guard._is_docs_only(r"C:\Riot Commander\docs\OPERATIONS.md")
+    assert pytest_guard._is_docs_only(r"C:\Example Repo\docs\OPERATIONS.md")
 
 
 def test_is_docs_only_txt():
     assert pytest_guard._is_docs_only("notes.txt")
-    assert pytest_guard._is_docs_only(r"C:\Riot Commander\API-Key-Claude.txt")
+    assert pytest_guard._is_docs_only(r"C:\Example Repo\API-Key-Claude.txt")
 
 
 def test_is_docs_only_docs_tree_non_md():
     # any file under docs/ counts even if extension is not .md
     assert pytest_guard._is_docs_only("docs/_archive/snapshot.json")
-    assert pytest_guard._is_docs_only("C:/Riot Commander/docs/adr/007-config.yml")
+    assert pytest_guard._is_docs_only("C:/Example Repo/docs/adr/007-config.yml")
 
 
 def test_is_docs_only_rejects_code():

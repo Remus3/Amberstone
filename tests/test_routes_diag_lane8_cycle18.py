@@ -42,7 +42,7 @@ import dashboard.routes_diag as rd  # noqa: E402
 
 # One raw exception string carrying every shape the envelope must not leak: an
 # absolute Windows path, a filename, and a distinctive secret-shaped token.
-LEAKY = r"unable to open database file at C:\Riot Commander\data\rewind_history.db (ZORBLEAK)"
+LEAKY = r"unable to open database file at C:\Example Repo\data\rewind_history.db (ZORBLEAK)"
 FORBIDDEN = ("ZORBLEAK", "rewind_history.db", "C:\\", "Riot Commander")
 
 

@@ -106,7 +106,7 @@ def test_validate_version_rejects_a_traversal_element():
 
 def test_validate_version_rejects_a_windows_anchored_path():
     """On Windows an anchored element REPLACES the left operand entirely."""
-    for bad in ("C:/Users/Administrator/Desktop/evil", "C:evil", "/etc/passwd",
+    for bad in ("C:/Users/someone/Desktop/evil", "C:evil", "/etc/passwd",
                 "\\\\server\\share"):
         with pytest.raises(ValueError):
             ddr.validate_version(bad)

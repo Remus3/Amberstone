@@ -890,7 +890,7 @@ def test_the_launcher_quotes_the_driver_path_because_the_repo_root_has_a_space()
     """MEASURED on the first real fire, 2026-09-05.
 
     `Start-Process -ArgumentList @($driver, ...)` joins with spaces and quotes
-    nothing, so `C:\\Riot Commander\\ops\\loop\\queue_loop.py` reached pythonw as
+    nothing, so `C:\\Example Repo\\ops\\loop\\queue_loop.py` reached pythonw as
     `C:\\Riot` and it died with `can't open file`. Start-Process had already
     issued a real pid and the launcher had already printed `queue-loop driver
     started`, so the night would have produced nothing while reporting success -

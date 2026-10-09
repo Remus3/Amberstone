@@ -349,7 +349,7 @@ class TestRouteTrustBoundary(_HermeticStoreCase):
         check (feedback_negative_assertion_rules_out_without_pinning_down).
         The real question is what happens when a ValueError carries something
         the client must not see, so that is what this raises."""
-        leaky = ("C:\\Riot Commander\\API-Key-Claude.txt "
+        leaky = ("C:\\Example Repo\\API-Key-Claude.txt "
                  "sk-ant-secret-value-do-not-leak")
         h = _FakeHandler()
         with mock.patch.object(sr_user_builds, "add",

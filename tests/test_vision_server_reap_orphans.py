@@ -28,8 +28,8 @@ from vision_server import _reap
 class FindStaleVisionPidsTests(unittest.TestCase):
     def _procs(self):
         return [
-            (100, r"C:\...\pythonw.exe C:\Riot Commander\moon_vision_server.py"),
-            (200, r"C:\...\pythonw.exe C:\Riot Commander\moon_vision_server.py"),
+            (100, r"C:\...\pythonw.exe C:\Example Repo\moon_vision_server.py"),
+            (200, r"C:\...\pythonw.exe C:\Example Repo\moon_vision_server.py"),
             (300, r"C:\...\pythonw.exe main.py"),            # dashboard - keep
             (400, r"C:\...\python.exe -m vision_server"),    # alt launch - stale
             (500, r"C:\...\python.exe -m pytest tests"),     # unrelated - keep
