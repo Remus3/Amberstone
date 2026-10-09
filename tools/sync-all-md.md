@@ -41,12 +41,12 @@ Read these authoritative sources and write the values down. Every doc must match
 |---|---|
 | League / DDragon patch | `data/daemon_slayer/current.txt` (single line, e.g. `16.10.1`) |
 | `ENGINE_VERSION` | the `ENGINE_VERSION = "x.y.z"` assignment in `agents/daemon_slayer/__init__.py`; cross-check `curl -k https://127.0.0.1:8860/health` (`engine_version` field) if DS is up |
-| DS test count | `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest agents/daemon_slayer/ -q --co 2>$null` > count collected; **collect, don't trust the doc** |
-| Wider RC test count | `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/ -q --co 2>$null` > count collected |
+| DS test count | `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m pytest agents/daemon_slayer/ -q --co 2>$null` > count collected; **collect, don't trust the doc** |
+| Wider RC test count | `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m pytest tests/ -q --co 2>$null` > count collected |
 | Purchasable item count | DS `/health` `item_count`, else the `effects.py` registry length (historically 547) |
 | Champion override coverage | recompute from the four registries `agents/daemon_slayer/champion_{max_priority,combo_sequences,form_index,block_index}.json` - count distinct champions and total (champion,key) entries; **drop the `_meta` key before counting** |
 | Match-history rows | `rewind_history.db` row count (sqlite) - memory historically cites ~2,8xx |
-| Latest session + commits | `git -C "C:/Riot Commander" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in `docs/LEDGER.md` |
+| Latest session + commits | `git -C "<repo>" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in `docs/LEDGER.md` |
 
 Produce a **Canonical Facts table** in your working notes. This is the contract for section 3-section 5. If DS `:8860` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
 
@@ -57,7 +57,7 @@ Produce a **Canonical Facts table** in your working notes. This is the contract 
 - **LIVING - sync targets (surgical edits OK):** `README.md`, `CLAUDE.md` (only the one-line DS reference + the `### Settled` summary (the "Active priorities" block is a static pointer - do NOT add items) in "Living docs"/topology header), `ROADMAP.md`, `BACKLOG.md`, `docs/ARCHITECTURE.md`, `docs/DAEMON_SLAYER.md`, `docs/OPERATIONS.md`, `docs/API.md`, `docs/AGENTS.md`.
 - **APPEND-ONLY - never rewrite, never reflow:** `WAKEUP_NOTES.md` (append + prune via `scripts/wakeup_prune.py` only), `docs/history_notes.md`, everything under `docs/_archive/**`, `docs/adr/**` (ADRs are immutable - add a new ADR, never edit an old one), any dated artifact (`AUDIT_*`, `PHASE_*`, `ARCH-*`, `*_2026-*`), `agents/**/charter.md`, `agents/**/reports/**`. Per memory `feedback_no_history_rewrite` + `reference_archive_dir`: **only sync the living docs; never rewrite a ledger.**
 - **FROZEN - do not edit (CLAUDE.md hard rule):** `tools/diagnose.md`, `tools/caveman.md`, plus anything else on the CLAUDE.md frozen list. Read-only here.
-- **INDEX:** `MEMORY.md` (index of memory files - one line per entry, <=150 chars, never write memory bodies into it) and the memory `*.md` under `C:/Users/Administrator/.claude/projects/C--Riot-Commander/memory/`.
+- **INDEX:** `MEMORY.md` (index of memory files - one line per entry, <=150 chars, never write memory bodies into it) and the memory `*.md` under `%USERPROFILE%/.claude/projects/<project-slug>/memory/`.
 - **SKILL/COMMAND specs:** `.claude/commands/*.md`, `tools/*.md` (the done/diagnose/caveman family), `.claude/skills/*/SKILL.md` - including **this skill's own two files** (see section 9 self-congruence).
 - **CANDIDATE - unclassified:** anything else > section 7 disposition.
 
@@ -118,7 +118,7 @@ Never delete a `.md`. Quarantine is the only removal.
 
 ### 8. Append-only / history protection (hard invariant)
 
-Before any write, re-confirm the target is in the LIVING set. If a fact is wrong in `WAKEUP_NOTES.md`, `docs/history_notes.md`, `docs/_archive/**`, an ADR, or any dated artifact: **do not fix it there.** History records what was true *then*. Note the discrepancy in the report and fix only the LIVING doc. The only sanctioned WAKEUP mutation is `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/scripts/wakeup_prune.py" --keep 3` (idempotent; run only if WAKEUP has >3 sessions and the operator asked for a prune - otherwise just report the count).
+Before any write, re-confirm the target is in the LIVING set. If a fact is wrong in `WAKEUP_NOTES.md`, `docs/history_notes.md`, `docs/_archive/**`, an ADR, or any dated artifact: **do not fix it there.** History records what was true *then*. Note the discrepancy in the report and fix only the LIVING doc. The only sanctioned WAKEUP mutation is `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" "<repo>/scripts/wakeup_prune.py" --keep 3` (idempotent; run only if WAKEUP has >3 sessions and the operator asked for a prune - otherwise just report the count).
 
 ### 9. Self-congruence
 

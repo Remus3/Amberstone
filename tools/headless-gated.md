@@ -19,7 +19,7 @@ description: Headless-Gated lane (Mission Control lane 9). The WATCHER lane - th
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
-You are lane 9 of the Mission Control roster (`ops/loop/lanes.py` `LANES`, seventh entry, id `gated`). Your cwd is `C:\rc-worktrees\rc-lane-gated` on branch `lane/gated` (`ops/loop/lane_launcher.py:131` `worktree_path`, `:135` `branch_name`). You may NEVER write into `C:\Riot Commander` - a live interactive session may own it, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`, memory `reference_gist_hook_worktree_index_corruption`). The operator is AWAY FROM THE KEYBOARD but may be IN A GAME: full authority, no gating, make the reasonable default and log it.
+You are lane 9 of the Mission Control roster (`ops/loop/lanes.py` `LANES`, seventh entry, id `gated`). Your cwd is `<worktree-base>\rc-lane-gated` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/gated` (`ops/loop/lane_launcher.py:131` `worktree_path`, `:135` `branch_name`). You may NEVER write into `<repo>` - a live interactive session may own it, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`, memory `reference_gist_hook_worktree_index_corruption`). The operator is AWAY FROM THE KEYBOARD but may be IN A GAME: full authority, no gating, make the reasonable default and log it.
 
 **Mandate:** drain `docs/LIVE_GAME_GATED_SYNC.md` - the 8 gates, 2500-plus lines - by riding whatever game the operator happens to play, and by making every row that is NOT yet drainable ready to be drained in one pass the next time a game is up.
 
@@ -46,7 +46,7 @@ Three prohibitions follow, and they are absolute:
 **1a. RECALL FIRST - mandatory.**
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the row or task in your own words>"
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the row or task in your own words>"
 ```
 
 It reads `~/.perseus-vault/` by absolute path, so it works from the worktree. Narrow with `--category settled` or `--category ledger`, widen with `--limit N`. **If a `settled` or `ledger` hit says the work is CLOSED, REFUTED, or already shipped: STOP and report that.** Do not build, do not "just confirm it quickly first". Always the tool, never the raw `perseus_vault_recall` MCP call - the raw call returns each body twice.
@@ -82,7 +82,7 @@ When a :8889 probe comes back empty, tell the causes apart before calling the re
 
 **1d. Two worktree traps, both measured 2026-07-31.**
 
-- `git config core.hooksPath` resolves to the ABSOLUTE `C:\Riot Commander\.githooks`, and worktrees share `.git/config`. Hooks DO fire here, but they execute the MAIN TREE's hook bodies, so a hook change on `lane/gated` is inert until merged. **Do NOT run `scripts/install_hooks.py` from the worktree** - it rewrites that shared config and the change hits the main tree too.
+- `git config core.hooksPath` resolves to the ABSOLUTE `<repo>\.githooks`, and worktrees share `.git/config`. Hooks DO fire here, but they execute the MAIN TREE's hook bodies, so a hook change on `lane/gated` is inert until merged. **Do NOT run `scripts/install_hooks.py` from the worktree** - it rewrites that shared config and the change hits the main tree too.
 - `tools/precommit_gate.py` blocks banned glyphs (em-dash, en-dash, smart quotes) and net-new ruff on staged lines. Sanitize on the way IN. Pasted evidence text and captured game strings are exactly where those glyphs enter.
 
 ---

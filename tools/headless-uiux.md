@@ -27,10 +27,10 @@ mutual-exclusion lock live in `ops/loop/lanes.py:136-137` (`LANES = ("upgrade", 
 ### 1. Pre-flight baseline (do this FIRST, every time)
 
 - **Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print
-  `C:/rc-worktrees/rc-lane-uiux` and `git branch --show-current` must print `lane/uiux`. The convention is
-  code, not lore: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = C:\rc-worktrees`, overridable via
+  `<worktree-base>/rc-lane-uiux` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) and `git branch --show-current` must print `lane/uiux`. The convention is
+  code, not lore: `ops/loop/lane_launcher.py:84` (`WORKTREE_BASE = <worktree-base>`, overridable via
   `RC_LANE_WORKTREE_BASE`) and `:145` (`rc-lane-<lane>`). `ops/loop/lanes.py:317` `_require_worktree` raises
-  on an absent worktree. If the toplevel is `C:/Riot Commander`, STOP and report; do not edit.
+  on an absent worktree. If the toplevel is `<repo>`, STOP and report; do not edit.
 - **A fresh worktree has no hooks.** `python scripts/install_hooks.py` first (CLAUDE.md hard rule:
   `core.hooksPath` is LOCAL config and is not cloned). Then recall before building: `python
   tools/perseus_recall.py "<the item in your own words>"` - if a `settled` or `ledger` hit says CLOSED,
@@ -93,7 +93,7 @@ mechanism the repo ALREADY has. Do not invent a second one.
   state-coverage shaped (their own `note` fields say "state-coverage check 5/7 per
   docs/UI_SCALE_SPEC_V2.md"), which is honest but is not the same as real. When you ADD or REFRESH a
   fixture, source its numbers from `data/rewind_history.db` (the real match store) or from the `.rofl`
-  archive at `C:\Users\Administrator\Documents\RC_ROFL_Archive` (Layer-1 extraction yields 365-367 stat
+  archive at `%USERPROFILE%\Documents\RC_ROFL_Archive` (Layer-1 extraction yields 365-367 stat
   fields x 10 players, no client and no patch gate). Never hand-invent a stat line: impossible numbers
   manufacture UI bugs that do not exist and hide the ones that do.
 - **Known fixture trap:** the `active_match_*.json` `liveclient` block is the RAW Live-Client envelope
@@ -253,7 +253,7 @@ Also: fix any section-B defect, add fixtures, add snapshot tests, restructure pa
 - Do NOT invent fixture numbers; root them in `data/rewind_history.db` or the `.rofl` archive.
 - Do NOT strip a rendered glyph before reading `docs/RM125_web_live_glyph_adjudication.md`.
 - Do NOT commit a page before its audit, and do NOT defer a MUST-FIX to a later slice.
-- Do NOT run against `C:\Riot Commander`; this lane is worktree-mandatory.
+- Do NOT run against `<repo>`; this lane is worktree-mandatory.
 - Do NOT accept a subagent's "green" claim without an independent probe.
 - Do NOT open an `AskUserQuestion`; the operator is away. Pick the reasonable default, log it.
 
@@ -261,7 +261,7 @@ Also: fix any section-B defect, add fixtures, add snapshot tests, restructure pa
 
 ```
 HEADLESS UIUX WRAP
-  worktree: C:/rc-worktrees/rc-lane-uiux (lane/uiux)
+  worktree: <worktree-base>/rc-lane-uiux (lane/uiux)
   HEAD: <short-sha> (<N> commits this run)
   items: <N> closed / <N> PREPARED-for-operator / <N> FUTURE
   audits: <N> pages 5-phase audited, <N> MUST-FIX found + fixed in-slice

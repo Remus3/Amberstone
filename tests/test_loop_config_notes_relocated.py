@@ -19,6 +19,7 @@ pointer. Pinned here:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -121,10 +122,17 @@ def test_relocated_keys_are_absent_from_config():
 
 def test_consumers_still_find_their_keys():
     cfg = _config()
-    for key in ("repo_root", "control_dir", "executor_cmd", "transcript_dir",
+    for key in ("executor_cmd",
                 "executor_model", "executor_effort", "adjudicator", "channel",
                 "claude_window_title", "session_jsonl", "subagent_prompt"):
         assert isinstance(cfg.get(key), str), key
+    # MAIN 2246 ORDER section 3: no machine path in a tracked config. The
+    # consumers derive these from the checkout (loop_controller._cfg_path
+    # falls back on an absent / non-absolute value; routes_loop_monitor and
+    # the executor likewise), so the keys are absent, as in every variant.
+    for key in ("repo_root", "control_dir", "transcript_dir"):
+        assert key not in cfg, key
+    assert not re.match(r"^[A-Za-z]:", cfg["executor_cmd"]), "executor_cmd"
     for key in ("max_cycles", "cycle_deadline_sec", "poll_sec", "max_concurrent_lanes"):
         assert isinstance(cfg.get(key), int) and not isinstance(cfg.get(key), bool), key
     for key in ("dry_run", "ignore_no_progress", "clear_each_cycle"):
