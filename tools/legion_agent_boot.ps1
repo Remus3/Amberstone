@@ -16,7 +16,7 @@
 # per-session refresh+launch path, not the persistence owner.
 #
 # Usage (desktop shortcut target):
-#   powershell -ExecutionPolicy Bypass -NoExit -Command "iex (iwr https://rc-host:8888/agent/legion_agent_boot.ps1).Content"
+#   powershell -ExecutionPolicy Bypass -NoExit -Command "iex (iwr https://127.0.0.1:8888/agent/legion_agent_boot.ps1).Content"
 
 $ErrorActionPreference = 'Stop'
 $dest = 'C:\RC-Agent'
@@ -34,7 +34,7 @@ $AGENT_SCRIPTS   = @('screen_agent.py','lcu_agent.py','liveclient_relay.py','hot
 $SUPPORT_SCRIPTS = @()
 foreach ($s in ($AGENT_SCRIPTS + $SUPPORT_SCRIPTS)) {
     $out = Join-Path $dest $s
-    & curl.exe -sk -m 5 -o $out "https://rc-host:8888/agent/$s" 2>$null
+    & curl.exe -sk -m 5 -o $out "https://127.0.0.1:8888/agent/$s" 2>$null
     if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
         Write-Host "  fetched $s" -ForegroundColor Green
     } elseif (Test-Path $out) {

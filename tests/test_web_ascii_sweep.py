@@ -554,7 +554,16 @@ _WEB = _REPO_ROOT / "web"
 # DDRAGON_FALLBACK_VERSION literal 16.19.1 -> 16.18.1) reproduces the
 # superseded a4a299ab... value EXACTLY. That one path is the whole change.
 # No glyph change.
-_LIVE_HALF_DIGEST = "3ed09b85944aa0a9cec18bdc4e8bf9a5321a7f0bcfc9c5f1206d2778782da6c8"
+# superseded by the host-name scrub re-capture below: "3ed09b85944aa0a9cec18bdc4e8bf9a5321a7f0bcfc9c5f1206d2778782da6c8"
+#
+# RE-CAPTURED 2026-10-09 at the host-name / home-address scrub (MAIN 2246
+# sec 3-4): the footer label in web/index.html no longer names the machine,
+# and comments in web/js/main.js, web/ops.html and web/mock/oq3_index.html
+# name loopback or a placeholder. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly those four paths back to their
+# a50a9a616 blobs reproduces the superseded 3ed09b85... value EXACTLY. Those
+# four paths are the whole change. No glyph change.
+_LIVE_HALF_DIGEST = "472be5a8f64f3abc9208fb95175396eaeb9564beffd40742210b28c9df471565"
 
 
 def _web_sources() -> list[Path]:

@@ -5,17 +5,19 @@
 // First principle (docs/ELECTRON_OVERLAY.md section 1): origin is config, not
 // code. The shell is a thin client that just points a window at RC_ORIGIN. The
 // single value RC_ORIGIN is the ONLY thing that changes if the game host moves -
-// https://rc-host:8888 (default) or https://127.0.0.1:8888 (local on Legion).
-// No JS, no panel, no Electron code change.
+// https://127.0.0.1:8888 (default, local on Legion) or the machine's tailnet
+// name (per-host config, never a tracked literal). No JS, no panel, no
+// Electron code change.
 //
 // Precedence for resolveConfig: env RC_ORIGIN  >  saved state  >  defaults.
 
 "use strict";
 
-// Default origin: the Legion dashboard (1-PC, ADR-011). An operator can flip
-// RC_ORIGIN to https://127.0.0.1:8888 (local on Legion) with zero code
-// change. See docs/ELECTRON_OVERLAY.md section 1.
-const DEFAULT_ORIGIN = "https://rc-host:8888";
+// Default origin: the Legion dashboard over loopback (1-PC, ADR-011; the
+// mkcert leaf carries 127.0.0.1). An operator can point RC_ORIGIN at the
+// machine's tailnet name with zero code change. See docs/ELECTRON_OVERLAY.md
+// section 1.
+const DEFAULT_ORIGIN = "https://127.0.0.1:8888";
 
 // Size presets (docs/ELECTRON_OVERLAY.md section 3.7). standard is the
 // DEFAULT_PRESET - the size a fresh companion opens at, since resolveConfig

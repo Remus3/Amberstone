@@ -442,6 +442,10 @@ ops/moon_sync_repos.json.bak
 # path; ops/lane_worktrees.example.json ships.
 ops/lane_worktrees.json
 
+# Per-host network identity (MAIN 2246 ORDER sections 3-4): tailnet node name,
+# tailnet and LAN addresses, extra TLS SANs. ops/local_hosts.example.json ships.
+ops/local_hosts.json
+
 # Y-45 phone push (core/operator_push.py): the ntfy server url, topic and the
 # token REFERENCE for this install. Topic + url are capabilities; never commit.
 # config/push_notify.example.json ships (disabled).

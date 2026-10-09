@@ -26,7 +26,7 @@ from pathlib import Path
 _log = logging.getLogger("rc.web_dashboard")
 
 PORT = 8888
-# Dual-stack bind. `rc-host` resolves IPv6-first on clients (Tailscale AAAA
+# Dual-stack bind. The tailnet node name resolves IPv6-first on clients (Tailscale AAAA
 # fd7a:... + link-local fe80::). A v4-only 0.0.0.0 listener left the browser's
 # IPv6 connect attempts - including the long-lived /api/state-stream EventSource
 # that carries live data - failing with no listener, so the hostname "loaded the
@@ -120,7 +120,7 @@ class _DualProtocolHTTPServer(_DualStackMixin, ThreadingHTTPServer):
                 break
             buf += chunk
         path = "/"
-        host = "192.0.2.230"
+        host = "127.0.0.1"
         try:
             head, _, _ = buf.partition(b"\r\n\r\n")
             lines = head.split(b"\r\n")
@@ -199,8 +199,8 @@ def start_dashboard(app_dir: Path) -> None:
     t.start()
     if scheme == "https":
         _log.info("Web dashboard on https://%s:%d/  (HTTP requests on the "
-                  "same port 301-redirect)  (iPad: https://192.0.2.230:%d/)",
-                  HOST, PORT, PORT)
+                  "same port 301-redirect)",
+                  HOST, PORT)
     else:
         _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
 

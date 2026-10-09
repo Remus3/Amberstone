@@ -31,8 +31,8 @@ test("defaultConfig returns the standard preset dims + RC default origin", () =>
   assert.strictEqual(c.y, null);
 });
 
-test("DEFAULT_ORIGIN is the Legion dashboard origin", () => {
-  assert.strictEqual(DEFAULT_ORIGIN, "https://rc-host:8888");
+test("DEFAULT_ORIGIN is the Legion dashboard origin over loopback", () => {
+  assert.strictEqual(DEFAULT_ORIGIN, "https://127.0.0.1:8888");
 });
 
 // ---- resolveConfig precedence ----------------------------------------------

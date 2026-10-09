@@ -17,8 +17,9 @@ Three deliberate differences from dashboard/server.py, each with a reason:
 
 TLS reuses the existing mkcert material at ops/tls/rc.pem. A SAN is
 host-scoped, not port-scoped, and tools/regen_rc_cert.ps1 already lists
-rc-host, rc-host.example-tailnet.ts.net and 100.64.0.1, so :8895 validates
-with NO cert regen. -k is not acceptable on a surface that can kill.
+the tailnet node name, its tailnet FQDN and the tailnet address (per-host
+config, ops/local_hosts.json `cert_sans`), so :8895 validates with NO cert
+regen. -k is not acceptable on a surface that can kill.
 """
 from __future__ import annotations
 
@@ -28,15 +29,28 @@ import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
+from core import local_hosts
 from mc.handler import Handler
 
 log = logging.getLogger("rc.mc.server")
 
 ROOT = Path(__file__).resolve().parent.parent
 PORT = 8895
-# Loopback plus the Tailscale address. NOT the LAN address (192.0.2.230)
-# and NOT a wildcard - see the module docstring.
-BIND_ADDRESSES = ["127.0.0.1", "100.64.0.1"]
+
+
+def bind_addresses(cfg=None) -> list:
+    """Loopback plus the Tailscale address. NOT the LAN address and NOT a
+    wildcard - see the module docstring. The tailnet address is per-host
+    config (gitignored ops/local_hosts.json `tailnet_ipv4`, validated to
+    100.64.0.0/10); absent or invalid = loopback only."""
+    out = ["127.0.0.1"]
+    tailnet = local_hosts.tailnet_ipv4(cfg)
+    if tailnet:
+        out.append(tailnet)
+    return out
+
+
+BIND_ADDRESSES = bind_addresses()
 
 CERT_PATH = ROOT / "ops" / "tls" / "rc.pem"
 KEY_PATH = ROOT / "ops" / "tls" / "rc-key.pem"

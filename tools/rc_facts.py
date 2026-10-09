@@ -81,7 +81,7 @@ _HEALTH = _APP / "ops" / "runtime" / "health.json"
 # FLEET-KIT v7 item 13: the session counter lives in the tracked hand-off's
 # `SESSION: <n>` line; main() prints the session-start checklist block FIRST.
 _HANDOFF = _ROOT / "RC-NEXT-SESSION.txt"
-_LEGION_BASE = "https://rc-host:8888"
+_LEGION_BASE = "https://127.0.0.1:8888"  # loopback; host names are per-host config
 _TIMEOUT = 2.5
 
 _SSL = ssl.create_default_context()
@@ -1023,7 +1023,7 @@ def main(session: str | None = None) -> int:
     anomalies: list[str] = []
 
     # -- Legion ----------------------------------------------------------
-    out.append("## Legion (rc-host - 100.64.0.1 - 192.0.2.230)\n")
+    out.append("## Legion (this box; names in ops/local_hosts.json)\n")
     health = {}
     try:
         health = json.loads(_HEALTH.read_text(encoding="utf-8"))

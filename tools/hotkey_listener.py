@@ -39,7 +39,7 @@ glances over or not.
 
 Deploy:
   curl.exe -sk -o C:\\RC-Agent\\hotkey_listener.py \\
-      https://192.0.2.230:8888/agent/hotkey_listener.py
+      https://127.0.0.1:8888/agent/hotkey_listener.py
   Start-Process -WindowStyle Hidden py -ArgumentList "C:\\RC-Agent\\hotkey_listener.py"
 
 Or - preferred - let the logon boot script start it at logon (it's now
@@ -71,7 +71,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.polled_json import atomic_write_text  # noqa: E402
 
 # -- Config --------------------------------------------------------------------
-LEGION_BASE   = "https://192.0.2.230:8888"
+# Loopback: RC and this listener share the box (1-PC, ADR-011). It was a
+# hardcoded LAN address; host names and addresses are per-host config now.
+LEGION_BASE   = "https://127.0.0.1:8888"
 DECISIONS_URL = f"{LEGION_BASE}/api/decisions"
 POLL_S        = 2.0
 HTTP_TIMEOUT  = 3.0

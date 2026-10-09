@@ -67,7 +67,7 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
 - OBS Display Capture is continuous DXGI/WGC capture. Keep one locked
   resolution and League Borderless on Legion while recording.
 - Tailscale kept the node name `rc-host` despite the Windows hostname
-  rename to WINDOWS-HOST-A. `rc-host` MagicDNS stays canonical for RC and
+  rename to WINDOWS-HOST. `rc-host` MagicDNS stays canonical for RC and
   the Peer bridge; do not "reconcile" it to the local hostname.
 - Phase-11 cleanup (DONE 2026-06-20): Legion<->Game-PC bridge teardown,
   relocated-agent `gamepc_*.py` rename (-> `lcu_agent` / `liveclient_relay` /

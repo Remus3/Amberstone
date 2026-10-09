@@ -15,8 +15,19 @@ $ErrorActionPreference = 'Stop'
 
 $ProjectRoot  = 'C:\Riot Commander'
 $PythonExe    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-$LanSubnet    = '192.0.2.0/24'
 $TaskName     = 'RC-Phase3-Supervisor'
+
+# The LAN subnet is per-host config (gitignored ops\local_hosts.json
+# `lan_subnet`, template ops\local_hosts.example.json), never a tracked literal.
+$LanSubnet    = ''
+$hostsFile    = Join-Path $ProjectRoot 'ops\local_hosts.json'
+if (Test-Path $hostsFile) {
+    $LanSubnet = [string](Get-Content -Raw -Path $hostsFile | ConvertFrom-Json).lan_subnet
+}
+if (-not $LanSubnet.Trim()) {
+    Write-Host 'set lan_subnet in ops\local_hosts.json first (no firewall rule without it)' -ForegroundColor Red
+    exit 1
+}
 
 function Ensure-FirewallRule {
     param(

@@ -4,7 +4,7 @@
 //
 // What it does (and ONLY this):
 //   - Creates one frameless, always-on-top BrowserWindow.
-//   - Loads RC_ORIGIN (config, not code; default https://rc-host:8888).
+//   - Loads RC_ORIGIN (config, not code; default https://127.0.0.1:8888).
 //   - Restores saved window position/size (clamped on-screen) across launches.
 //   - Persists position/size/preset on move/resize/close.
 //   - Trusts ONLY the RC origin's self-signed (mkcert) cert - scoped, never global.

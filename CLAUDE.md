@@ -199,8 +199,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 ## Topology
 
 - Legion is the ONLY box (1-PC, ADR-011): League + Vanguard + RC + supervisor + vision + dashboard + OBS. Agents RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener run local as ONLOGON tasks.
-- Canonical name: Tailscale `rc-host` / `100.64.0.1` (LAN `192.0.2.230`), tailnet `example-tailnet.ts.net`. Prefer tailnet hostnames.
-- NEVER record the Windows computer name (it is re-rolled). Probe `$env:COMPUTERNAME` live; never reconcile MagicDNS to it. `hostname` returning `RC-HOST` is expected to differ.
+- Canonical name: the Tailscale node name, its tailnet FQDN and address, and the LAN address are PER-HOST CONFIG in gitignored `ops/local_hosts.json` (template `ops/local_hosts.example.json`, reader `core/local_hosts.py`). Never write one into a tracked file, a note or a log (scrubbed from the tree and its history 2026-10-09, MAIN 2246 sec 3-4). In docs and tests: `rc-host` = the node name, `example-tailnet` = the tailnet, `100.64.0.x` = a tailnet address, `192.0.2.x` (RFC 5737) = a LAN address. Prefer tailnet hostnames; code defaults to loopback.
+- NEVER record the Windows computer name (it is re-rolled). Probe `$env:COMPUTERNAME` live; never reconcile MagicDNS to it. `hostname` returning the node name in upper case is expected to differ.
 - Peer machine row is history only (bridge decommissioned, ADR-012).
 - Vision in-process at `127.0.0.1:8889`. Game host is config: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) for Live Client `:2999` + LCU.
 
@@ -343,7 +343,7 @@ Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carr
 
 ## Runtime reference
 
-- **Dashboard:** `web_dashboard.py` at `:8888` HTTPS; endpoints `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed at `https://rc-host:8888/`; design baseline 1920x1080 WITH Chrome chrome (~1920x920 viewport); `main` flex-grows (no layout pinned to 1280). Cert: `tools/regen_rc_cert.ps1`. Per-host Anthropic key names are NOT recited here.
+- **Dashboard:** `web_dashboard.py` at `:8888` HTTPS; endpoints `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed at `https://127.0.0.1:8888/` (or `https://rc-host:8888/` over the tailnet); design baseline 1920x1080 WITH Chrome chrome (~1920x920 viewport); `main` flex-grows (no layout pinned to 1280). Cert: `tools/regen_rc_cert.ps1`. Per-host Anthropic key names are NOT recited here.
 - **Scheduled tasks:** `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO task; `dashboard/server.py` self-heals `:8889`. Full list: `docs/OPERATIONS.md`.
 - **Vision:** `screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`; coaches read `:8889/latest-frame`. `_run_vision()` gates on `_fetch_game_data() is not None`. Tiered: OCR first, Sonnet for misses; calibrate `data/vision_regions.json`. Live Client relay self-heals in-process when stale and `GAME_HOST` is local.
 - **Mode detection:** `game_reader.py._process_game()` -> `core/game_snapshot.py`. ARAM Mayhem (`KIWI`) -> `MODE_ARAM`.

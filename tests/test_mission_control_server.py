@@ -400,10 +400,15 @@ def test_bind_scope_is_loopback_and_tailnet_only():
     Operator decision 2026-07-31: tailnet + loopback only."""
     from mc import server
     assert server.PORT == 8895
-    assert set(server.BIND_ADDRESSES) == {"127.0.0.1", "100.64.0.1"}
+    # The tailnet address is per-host config (gitignored ops/local_hosts.json),
+    # so the scope is pinned through bind_addresses() with explicit configs.
+    assert server.bind_addresses({}) == ["127.0.0.1"]
+    assert server.bind_addresses({"tailnet_ipv4": "100.64.0.1"}) == ["127.0.0.1", "100.64.0.1"]
+    assert server.bind_addresses({"tailnet_ipv4": "192.0.2.10"}) == ["127.0.0.1"], "LAN bind"
+    assert server.BIND_ADDRESSES[0] == "127.0.0.1"
+    assert len(server.BIND_ADDRESSES) <= 2
     for addr in server.BIND_ADDRESSES:
         assert addr not in ("0.0.0.0", "::", ""), "wildcard bind"
-    assert "192.0.2.230" not in server.BIND_ADDRESSES, "LAN bind"
 
 
 def test_bind_failure_exits_non_zero(monkeypatch):

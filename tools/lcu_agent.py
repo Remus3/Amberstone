@@ -13,7 +13,7 @@ Endpoints used (all Legion-local now):
   GET  http://127.0.0.1:8889/lcu-cmd-pending   - drain command queue
   POST http://127.0.0.1:8889/lcu-cmd-done      - report results
 
-(Loopback since RM-150; these were a hardcoded 192.0.2.230, and the base is
+(Loopback since RM-150; these were a hardcoded LAN address, and the base is
 RC_VISION_BASE-overridable - see the LEGION constant below.)
 
 The agent maintains a local config (auto_accept on/off, summoner override,
@@ -84,7 +84,7 @@ logging.basicConfig(
 log = logging.getLogger("lcu_agent")
 
 # Vision-relay base. LOOPBACK by default (RM-150). This was a hardcoded
-# 192.0.2.230, which still resolves on this box but is wrong on both counts
+# LAN address, which still resolves on this box but is wrong on both counts
 # post-ADR-011: both ends are the same machine, so the X-RC-Token crossed the
 # LAN interface in cleartext for nothing, and a DHCP change would have killed
 # this agent silently - it runs as RC-LCUAgent under pythonw, where a dead
@@ -92,7 +92,9 @@ log = logging.getLogger("lcu_agent")
 LEGION = os.environ.get("RC_VISION_BASE", "http://127.0.0.1:8889")
 # Legion's HTTPS dashboard. Distinct from LEGION (vision relay :8889);
 # carries the FU02 team-context refresh route + bearer-auth peer surfaces.
-LEGION_DASHBOARD = "https://192.0.2.230:8888"
+# Loopback by default for the same reasons as LEGION above (1-PC, ADR-011);
+# it was a hardcoded LAN address. RC_DASHBOARD_BASE overrides.
+LEGION_DASHBOARD = os.environ.get("RC_DASHBOARD_BASE", "https://127.0.0.1:8888")
 # AUDIT (cycle-restore 2026-04-25): token resolver - env -> config file -> fallback.
 import os as _os_tok
 from pathlib import Path as _Path_tok

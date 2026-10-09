@@ -61,7 +61,7 @@ in whatever page slice touches them.
 - "Voice picker" has an empty option list.
 
 **Global**
-- Footer still reads **"Legion-PC"** (Game-PC retired, ADR-011; host is WINDOWS-HOST-A).
+- Footer still reads **"Legion-PC"** (Game-PC retired, ADR-011; host is WINDOWS-HOST).
 - Large dead space below the fold on Home / PGR / Session.
 - `performance_tracker.py:39` ships grade labels containing a real em-dash written as a
   BACKSLASH-U-2014 ESCAPE - byte-wise ASCII so every hygiene check passes it, but it renders in the UI

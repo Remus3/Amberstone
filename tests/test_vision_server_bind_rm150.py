@@ -75,7 +75,11 @@ from vision_server import _http
 from vision_server._config import AUTH_HEADER, AUTH_TOKEN
 
 REPO = Path(__file__).resolve().parent.parent
-LAN_PIN = re.compile(r"192\.0\.2\.230:8889")
+# ANY private-LAN IPv4 on :8889 (the box's own LAN address is per-host config,
+# never a tracked literal - MAIN 2246 sec 3-4), so the guard is class-wide.
+LAN_PIN = re.compile(
+    r"(?<![0-9.])(?:10\.[0-9]{1,3}|172\.(?:1[6-9]|2[0-9]|3[01])|192\.168)"
+    r"\.[0-9]{1,3}\.[0-9]{1,3}:8889")
 # Captured before any test redirects Path.home, so the redaction assertions can
 # check the REAL home as well as the scratch one they point the handler at.
 _REAL_HOME = Path.home()

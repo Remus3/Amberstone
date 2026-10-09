@@ -62,7 +62,7 @@ import time
 import urllib.error
 import urllib.request
 
-LEGION_HOST = os.environ.get("RC_LEGION_HOST", "192.0.2.230")
+LEGION_HOST = os.environ.get("RC_LEGION_HOST", "127.0.0.1")
 LEGION_PORT = int(os.environ.get("RC_LEGION_PORT", "8888"))
 RESPOND_URL = f"https://{LEGION_HOST}:{LEGION_PORT}/api/decisions/respond_active"
 
