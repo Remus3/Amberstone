@@ -1,0 +1,15 @@
+[
+  {"file": "01-home.webp", "label": "Home"},
+  {"file": "02-pre-game-lobby.webp", "label": "Pre-Game Lobby"},
+  {"file": "03-champ-select.webp", "label": "Champ Select"},
+  {"file": "04-champ-select-build-bans.webp", "label": "Champ Select - build + bans"},
+  {"file": "05-active-match.webp", "label": "Active Match"},
+  {"file": "06-post-game-review.webp", "label": "Post Game Review"},
+  {"file": "07-session.webp", "label": "Session"},
+  {"file": "08-history.webp", "label": "History"},
+  {"file": "09-replay.webp", "label": "Replay"},
+  {"file": "10-user-builds.webp", "label": "User Builds"},
+  {"file": "11-build-insights.webp", "label": "Build Insights"},
+  {"file": "12-settings.webp", "label": "Settings"},
+  {"file": "13-in-game-overlay.webp", "label": "In-Game Overlay"}
+]
