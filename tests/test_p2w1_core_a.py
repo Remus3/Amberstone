@@ -20,6 +20,8 @@ Plus cheap characterization pins for queue_modes + mayhem_detect.
 """
 from __future__ import annotations
 
+import hashlib
+import re
 import sqlite3
 from pathlib import Path
 
@@ -27,7 +29,23 @@ import pytest
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-_LEGACY_VISION_TOKEN = "RETIRED-TOKEN"
+# The retired legacy vision token, pinned by SHA-256 ONLY: the value itself
+# was scrubbed from the public tree and its history (MAIN 2246 sec 4).
+_LEGACY_VISION_TOKEN_SHA256 = (
+    "b057c60118d5af5fb8553d163830c9f1dbf2dd9a988d3559d5d5b03a34c0c153")
+
+
+def _is_legacy_token(value) -> bool:
+    return (isinstance(value, str)
+            and hashlib.sha256(value.encode()).hexdigest() == _LEGACY_VISION_TOKEN_SHA256)
+
+
+def _contains_legacy_token(text: str) -> bool:
+    for m in re.finditer(r"[0-9A-Za-z_\-]{32,}", text):
+        run = m.group()
+        if any(_is_legacy_token(run[i:i + 32]) for i in range(len(run) - 31)):
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +116,7 @@ class TestLiveclientCacheAuthHeaders:
 
         monkeypatch.setattr(vt, "get_vision_token", _boom)
         headers = liveclient_cache._auth_headers()
-        assert headers.get("X-RC-Token", None) != _LEGACY_VISION_TOKEN
+        assert not _is_legacy_token(headers.get("X-RC-Token", None))
         # Fail-soft contract: header key present, token empty -> server 401s
         # and the poll loop retries; never a silently-authenticating constant.
         assert headers == {"X-RC-Token": ""}
@@ -106,7 +124,7 @@ class TestLiveclientCacheAuthHeaders:
     def test_legacy_hex_absent_from_module_source(self):
         src = (_PROJECT_ROOT / "core" / "liveclient_cache.py").read_text(
             encoding="utf-8")
-        assert _LEGACY_VISION_TOKEN not in src
+        assert not _contains_legacy_token(src)
 
 
 # ---------------------------------------------------------------------------

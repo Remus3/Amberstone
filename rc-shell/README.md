@@ -52,8 +52,8 @@ The window loads `RC_ORIGIN`. This single value is the only thing that changes
 if the game host ever moves - no JS, no panel, no Electron code change.
 
 ```
-RC_ORIGIN=https://rc-host:8888   # default (Legion 1-PC, ADR-011)
-RC_ORIGIN=https://127.0.0.1:8888   # equivalent local origin on Legion
+RC_ORIGIN=https://127.0.0.1:8888   # default (Legion 1-PC, ADR-011)
+RC_ORIGIN=https://rc-host:8888     # the machine's tailnet name (per-host config)
 ```
 
 Override it for a single launch:

@@ -54,7 +54,7 @@ log = logging.getLogger("liveclient_relay")
 def _upload_url() -> str:
     """Where to POST the snapshot.
 
-    Defaults to LOOPBACK. This used to be a hardcoded `192.0.2.230`, which
+    Defaults to LOOPBACK. This used to be a hardcoded LAN address, which
     still resolves on this box but is wrong on both counts post-ADR-011: both
     ends are the same machine, so the X-RC-Token crossed the LAN interface in
     cleartext for nothing, and a DHCP change would have killed the relay

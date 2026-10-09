@@ -80,7 +80,7 @@ import urllib.request
 from ctypes import wintypes
 
 # Frame upload target. LOOPBACK by default (RM-150). This was a hardcoded
-# 192.0.2.230, which still resolves on this box but is wrong on both counts
+# LAN address, which still resolves on this box but is wrong on both counts
 # post-ADR-011: both ends are the same machine, so the X-RC-Token crossed the
 # LAN interface in cleartext for nothing, and a DHCP change would have killed
 # the agent silently (it runs under pythonw - see the logging note in

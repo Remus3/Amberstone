@@ -265,7 +265,7 @@ Manual follow-ups (only if needed):
 
 ### 8. Game state safety check
 
-- Hit `https://127.0.0.1:8888/api/state` (or `https://192.0.2.230:8888/api/state` if local fails) - note `lcu.phase` and `mode_key`.
+- Hit `https://127.0.0.1:8888/api/state` - note `lcu.phase` and `mode_key`.
 - If user is mid-game: finish the ritual, then output `/done stopped: game in progress - /clear would cut live coaching` instead of the completion line.
 
 ### 8b. Session-size check (folded from /wrap)

@@ -27,7 +27,7 @@
 param(
     [string]$InstallDir = "C:\RC-Agent",
     [string]$SidecarDir = "C:\RC-Agent\event_captures",
-    [string]$LegionAgentBase = "https://rc-host:8888/agent",
+    [string]$LegionAgentBase = "https://127.0.0.1:8888/agent",
     [string]$TaskName = "RC-PhaseWatcher",
     [switch]$DryRun
 )

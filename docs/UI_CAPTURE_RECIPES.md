@@ -2,7 +2,7 @@
 
 Per-page operator recipes for Live UI captures (Legion monitor).
 All routes assume the dashboard is open in Chrome on Legion at
-`https://rc-host:8888/` (or `https://192.0.2.230:8888/` LAN fallback).
+`https://127.0.0.1:8888/` (loopback; the tailnet name is per-host config).
 
 For mock-data captures (when operator is between games): append
 `?ui_mock=1` to the URL, then add `&mode=<sr|aram|arena>` where the
@@ -18,7 +18,7 @@ item 187 with 2904+ matches). The 10-row participant table renders
 correctly per the item 185 flex-allocation re-tune
 (`.replay-grid-wrap min-height: 360px` + `.replay-events-list max-height: 320px`).
 
-Mock: `https://rc-host:8888/?ui_mock=1#replay`
+Mock: `https://127.0.0.1:8888/?ui_mock=1#replay`
 Fixture: `web/data/ui_mock/replay.json` (4 matches: Normal Draft 10p +
 Arena overflow + ARAM empty + 2p ranked-solo).
 
@@ -32,9 +32,9 @@ phase=InProgress. The view auto-promotes via `_viewAutoDerive`
 during the in-game window.
 
 Mock per mode (item 188):
-- SR:    `https://rc-host:8888/?ui_mock=1&mode=sr#active-match`
-- ARAM:  `https://rc-host:8888/?ui_mock=1&mode=aram#active-match`
-- Arena: `https://rc-host:8888/?ui_mock=1&mode=arena#active-match`
+- SR:    `https://127.0.0.1:8888/?ui_mock=1&mode=sr#active-match`
+- ARAM:  `https://127.0.0.1:8888/?ui_mock=1&mode=aram#active-match`
+- Arena: `https://127.0.0.1:8888/?ui_mock=1&mode=arena#active-match`
 
 Fixtures:
 - `web/data/ui_mock/active_match_sr.json` (5v5 standard, coach
@@ -62,9 +62,9 @@ Live: navigate to `#last-match` after completing a game. SR baseline
 captured at item 182; ARAM + Arena captured via item 183 mock fixtures.
 
 Mock per mode:
-- SR:    `https://rc-host:8888/?ui_mock=1#last-match` (default fixture)
-- ARAM:  `https://rc-host:8888/?ui_mock=1&mode=aram#last-match`
-- Arena: `https://rc-host:8888/?ui_mock=1&mode=arena#last-match`
+- SR:    `https://127.0.0.1:8888/?ui_mock=1#last-match` (default fixture)
+- ARAM:  `https://127.0.0.1:8888/?ui_mock=1&mode=aram#last-match`
+- Arena: `https://127.0.0.1:8888/?ui_mock=1&mode=arena#last-match`
 
 Fixtures:
 - `web/data/ui_mock/last_match_aram.json` (10p ARAM mapId 12 queue 450,
