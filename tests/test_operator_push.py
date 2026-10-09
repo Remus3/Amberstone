@@ -453,8 +453,8 @@ def test_structural_drive_path_is_refused(fake, monkeypatch):
 
 @pytest.mark.parametrize("field,value", [
     ("body", "ping someone.else@example.org about it"),
-    ("body", "log at C:\\Users\\Administrator\\notes.txt"),  # allowlisted root
-    ("body", "log at C:/Riot Commander/logs/x.log"),  # allowlisted root, fwd slash
+    ("body", "log at C:\\Users\\someone\\notes.txt"),  # allowlisted root
+    ("body", "log at C:/Example Repo/logs/x.log"),  # allowlisted root, fwd slash
     ("body", "share \\\\nas01\\drop\\file.txt"),
     ("title", "see /home/someone/x"),
     ("body", "see /Users/someone/x"),

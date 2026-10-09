@@ -114,7 +114,7 @@ class SyncGetPathTraversal(unittest.TestCase):
 
     def test_absolute_path_injection_is_refused(self) -> None:
         # The probe target CANNOT live beside SYNC_DIR: the repo root is
-        # `C:\Riot Commander`, and a literal space in the request line is
+        # `C:\Example Repo`, and a literal space in the request line is
         # rejected by http.client before it is ever sent (and would be a 400
         # server-side anyway - see the module docstring). The lane worktree
         # path happened to be space-free, which is why this passed there and

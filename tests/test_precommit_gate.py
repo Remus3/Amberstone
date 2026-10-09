@@ -39,15 +39,15 @@ class TestIsCommit:
 
     def test_dash_C_quoted_path(self):
         # The fleet's standard commit shape (PowerShell tool, repo-root -C).
-        assert G._is_commit('git -C "C:\\Riot Commander" commit -m "x"')
+        assert G._is_commit('git -C "C:\\Example Repo" commit -m "x"')
 
     def test_powershell_if_chain(self):
         assert G._is_commit(
-            'git -C "C:\\Riot Commander" add f.py; if ($?) { git -C "C:\\Riot Commander" commit -m "y" }'
+            'git -C "C:\\Example Repo" add f.py; if ($?) { git -C "C:\\Example Repo" commit -m "y" }'
         )
 
     def test_dash_C_quoted_path_push_is_not_commit(self):
-        assert not G._is_commit('git -C "C:\\Riot Commander" push')
+        assert not G._is_commit('git -C "C:\\Example Repo" push')
 
 
 class TestStdinPayload:
@@ -65,8 +65,8 @@ class TestStdinPayload:
 class TestRootFromCommand:
     def test_quoted_dash_C(self):
         assert G._root_from_command(
-            'git -C "C:\\Riot Commander" commit -m "x"'
-        ) == "C:\\Riot Commander"
+            'git -C "C:\\Example Repo" commit -m "x"'
+        ) == "C:\\Example Repo"
 
     def test_unquoted_dash_C(self):
         assert G._root_from_command("git -C C:/wt/slice1 commit") == "C:/wt/slice1"

@@ -76,7 +76,7 @@ def _write_lock(root: Path, payload: dict) -> Path:
 
 def _base(**over) -> dict:
     rec = {"pid": os.getpid(), "lane": "gated", "run_id": "r1",
-           "worktree": r"C:\rc-worktrees\rc-lane-gated", "ts": time.time(),
+           "worktree": r"C:\example-worktrees\rc-lane-gated", "ts": time.time(),
            "repo": str(lanes.REPO_ROOT)}
     rec.update(over)
     return rec

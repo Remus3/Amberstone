@@ -45,7 +45,7 @@ START = "2026-10-08T19:21:46.139Z"
 PUSH_CLAIM = "- **Commits:** 2a072d72f, 6e7a4e50b, 0b8511641, pushed."
 
 # Measured 2026-10-08, agent-a2b90869b12280345.jsonl (owner/repo anonymised).
-PUSH_CMD = ('cd "/e/Riot Commander" && timeout 280 git push origin main 2>&1 | tail -8; '
+PUSH_CMD = ('cd "/e/Example Repo" && timeout 280 git push origin main 2>&1 | tail -8; '
             'git fetch -q origin && git rev-parse --short=9 HEAD origin/main')
 PUSH_OUT = ("Exit code 128\n"
             "[sibling-sweep] clean: 10666 bytes, 6 file(s) (0 untracked), 3 commit "
@@ -61,7 +61,7 @@ REJECTED_OUT = ("To https://github.com/owner/repo.git\n"
                 "error: failed to push some refs to 'https://github.com/owner/repo.git'")
 
 # Measured 2026-10-08, agent-add91de178dd26c09.jsonl (the verifier probe).
-ANCESTRY_CMD = ('cd "E:/Riot Commander" && git fetch origin main 2>&1; echo "fetch_exit=$?"; '
+ANCESTRY_CMD = ('cd "E:/Example Repo" && git fetch origin main 2>&1; echo "fetch_exit=$?"; '
                 'for s in 2a072d72f 6e7a4e50b 0b8511641; do echo "== $s"; git cat-file -t $s; '
                 'git merge-base --is-ancestor $s origin/main; echo "ancestor_exit=$?"; done; '
                 'git rev-parse origin/main')
@@ -77,7 +77,7 @@ def _ancestry_out(code):
             "0b851164121e7bfcc4a80d5e41e8ca25d82fcfd6")
 
 
-REFLOG_CMD = 'cd "E:/Riot Commander" && git reflog show --date=iso refs/remotes/origin/main | head -4'
+REFLOG_CMD = 'cd "E:/Example Repo" && git reflog show --date=iso refs/remotes/origin/main | head -4'
 REFLOG_OUT = ("0b8511641 refs/remotes/origin/main@{2026-10-08 14:35:01 -0500}: update by push\n"
               "00618c625 refs/remotes/origin/main@{2026-10-08 11:23:21 -0500}: update by push\n"
               "c25553f53 refs/remotes/origin/main@{2026-10-08 10:51:54 -0500}: update by push\n"
@@ -902,7 +902,7 @@ def test_subagent_evidence_never_adds_a_finding(tmp_path):
 
 # --------------------------------------------- file_claim_without_edit (check 3)
 
-WT_FILE = "E:/Riot Commander/.claude/worktrees/agent-x/tools/foo_rm687.py"
+WT_FILE = "E:/Example Repo/.claude/worktrees/agent-x/tools/foo_rm687.py"
 
 
 @pytest.mark.parametrize("name,inp", [

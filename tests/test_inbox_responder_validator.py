@@ -43,7 +43,7 @@ from tools.inbox_responder import (  # noqa: E402
 
 
 def _cycle(**kw):
-    base = {"reply_targets": ("RSC",), "root": Path(r"C:\Riot Commander")}
+    base = {"reply_targets": ("RSC",), "root": Path(r"C:\Example Repo")}
     base.update(kw)
     return Cycle(**base)
 
@@ -269,7 +269,7 @@ def test_a1_denies_git_diff_output_which_writes_a_file():
     nothing about the flags, which is how a read-only list acquires a writer.
     """
     d = validate_action(
-        {"kind": "measure", "argv": ["git", "diff", "--output=C:/Riot Commander/x"]}, _cycle())
+        {"kind": "measure", "argv": ["git", "diff", "--output=C:/Example Repo/x"]}, _cycle())
     assert not d.allowed and d.rule == "A1"
 
 
