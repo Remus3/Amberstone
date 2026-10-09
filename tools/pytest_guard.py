@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """PostToolUse fast syntax gate (tiered-verification default, 2026-06-13).
 
-Reads the Claude Code PostToolUse hook payload on stdin. DEFAULT behavior is a
-FAST py_compile syntax check on edited *.py files only - it does NOT run the
-test suite. This implements the operator-accepted tiered-verification tradeoff
-(CLAUDE.md "Execution Efficiency & Tooling Rules" R5-R7): Tier-0 cosmetic and
-Tier-1 local-logic edits must not pay the Tier-2 full-suite tax on every edit.
+Reads the Claude Code PostToolUse hook payload on stdin and runs a FAST
+py_compile syntax check on edited *.py files only. It never runs a test suite.
+This implements the operator-accepted tiered-verification tradeoff (CLAUDE.md
+"Execution Efficiency & Tooling Rules" R5-R7): Tier-0 cosmetic and Tier-1
+local-logic edits must not pay the Tier-2 full-suite tax on every edit.
 
 py_compile still guards the most dangerous class (a syntax error crashes
-silently under pythonw.exe - CLAUDE.md hard rule). Tier-2 work
-(schema / engine / ENGINE_VERSION / item-effect) runs the full suite explicitly,
-model-driven, per R5. Set RC_FULL_SUITE=1 to restore the prior behavior
-(auto `pytest -x --ff -q` on every code edit) for an automated Tier-2 batch.
+silently under pythonw.exe - CLAUDE.md hard rule). A whole suite runs ONLY
+through the kit's machine-wide gate, ops/fleet_kit/fleet_suite_gate.py
+(FLEET-COMMON 16c; the TIER TABLE in tools/done.md). The RC_FULL_SUITE=1 branch
+that re-ran a serial whole-repo `pytest -x --ff -q` on every code edit was
+REMOVED 2026-10-09 (MAIN kit-v13 ORDER section 2, PERF-AUDIT item 10): it ran
+outside the suite gate, with no timeout. The variable is now ignored apart from
+a one-line pointer, so nobody mistakes the silence for a green suite.
+
+The hook spawns no process at all (tests/test_pytest_guard.py pins that), which
+is also why it left HOOK_SPAWNERS in tests/test_no_console_flash_scheduled_tools.py.
 
 Docs-only edits (*.md / *.txt / docs/ tree) skip everything. Always exits 0
 (informational, never blocks the tool).
@@ -19,15 +25,14 @@ Docs-only edits (*.md / *.txt / docs/ tree) skip everything. Always exits 0
 import json
 import os
 import py_compile
-import subprocess
 import sys
 
-# Hooks run under windowless pythonw.exe; a console-subsystem child (python /
-# ruff / git) would otherwise get a fresh console allocated - an on-screen +
-# taskbar flash. CREATE_NO_WINDOW suppresses it (Windows-only; 0 elsewhere).
-_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-
 CODE_SKIP_SUFFIXES = (".md", ".txt")
+
+RETIRED_SUITE_NOTE = (
+    "RC_FULL_SUITE is retired - run a whole suite through "
+    "ops/fleet_kit/fleet_suite_gate.py (TIER TABLE in tools/done.md)"
+)
 
 
 def _is_docs_only(path: str) -> bool:
@@ -50,19 +55,6 @@ def _collect_paths(payload: dict) -> list:
             if isinstance(e, dict) and isinstance(e.get("file_path"), str):
                 paths.append(e["file_path"])
     return paths
-
-
-def _full_suite() -> int:
-    proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "-x", "--ff", "-q"],
-        capture_output=True,
-        text=True,
-        creationflags=_NO_WINDOW,
-    )
-    combined = (proc.stdout or "") + (proc.stderr or "")
-    tail = combined.splitlines()[-20:]
-    sys.stdout.write("\n".join(tail) + "\n")
-    return 0
 
 
 def _fast_compile(py_files: list) -> int:
@@ -102,9 +94,8 @@ def main() -> int:
         print(f"[pytest_guard] docs-only edit ({joined}) - skipped")
         return 0
 
-    # Tier-2 opt-in: restore the old auto-suite behavior for a batch.
     if os.environ.get("RC_FULL_SUITE") == "1":
-        return _full_suite()
+        print(f"[pytest_guard] {RETIRED_SUITE_NOTE}")
 
     py_files = [p for p in paths if p.replace("\\", "/").lower().endswith(".py")]
     if not py_files:
