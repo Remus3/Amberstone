@@ -1,5 +1,18 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-08b - size-budget relocation pass (session 104 /done), 5 rows
+
+`ROADMAP.md` reached 92 percent of its 81920-byte budget after the session 104
+rows, and `tools/drift_guard.py` warns at 90. The five rows below were fully
+shipped; they move here VERBATIM as they stood at c522be400, and `ROADMAP.md`
+keeps one combined one-line stub for them (LEDGER 1693).
+
+- **[x] RM-685 SHIPPED 2026-10-08 (session 104, LEDGER 1688, main `2bab685f0`) (Tier-1, filed session 104, LEDGER 1687): the inbox tick's WORK rows never drain** (RC row shape, not kit v10 `enqueue_work`). Fixed: rows go through kit `enqueue_work` + an `rc-provenance` companion line; close with `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`. Body + acceptance in `BACKLOG.md` "Session 103 filings".
+- **[x] FLEET-KIT v11 ADOPTED 2026-10-08 (session 104, LEDGER 1689, MAIN 1840 ORDER 4.1-4.3):** vendored `b0ed89184`, CLAUDE.md `f0b6a1578`, anchored SUBAGENT-FIRST hook in the gitignored project settings, inbox triage on `triage_spawn_kwargs(True)`.
+- **[x] RM-688 SHIPPED 2026-10-08 (session 104, LEDGER 1690, main `3982721c2`) (Tier-1): a clean sibling-sweep pre-push run left no trace, indistinguishable from `--no-verify`.** Every sweep run now appends one redacted JSONL line (no names, paths, ref names or URL) to gitignored `ops/runtime/sibling_sweep_runs.jsonl` in the main checkout; detection logic and exit codes unchanged. A pushed range with no record is the after-the-fact bypass signal, not a real-time detector.
+- **[x] RM-689 SHIPPED 2026-10-08 (session 104, LEDGER 1691, main `169e8c6e5`) (Tier-1): the two RM-685 verifier notes.** `python ops/loop/inbox_tick.py --done` now holds the tick lock (bounded 30 s wait, exit 3 when still held, nothing written), so it cannot race a scheduled tick; `--migrate-legacy` converts a BOM-led legacy row and keeps an undecodable line byte-for-byte while listing its line number under `undecodable`.
+- **[x] RM-687 SHIPPED 2026-10-08 (session 104, LEDGER 1692, main `f118ada43`) (Tier-1): under SUBAGENT-FIRST deny, `tools/stop_claim_gate.py` flagged every relayed push / test / commit / merge / CI / file claim because it read evidence from the main transcript only.** It now reads this session's sub-agent transcripts lazily and CREDIT-ONLY (a sub-agent result can clear or narrow a main finding, never flag a new sentence); evidence must be a paired, non-backgrounded tool result showing success. New advisory `subagent_hook_bypass`. Accepted limits (hand-echoed output forgery; ancestry not tied to the claimed sha) are documented in code.
+
 ## 2026-10-08 - size-budget relocation pass (session 103 /done), 2 rows
 
 `ROADMAP.md` reached 91 percent of its 81920-byte budget after the session 103

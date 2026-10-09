@@ -41,6 +41,15 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-08 - session 101: model pin removed, MIG-1 prune, C: -> E: move staged
+
+- **Shipped (LEDGER 1675-1676):** project `"model"` pin removed from `.claude/settings.json` (overrode /model on restart); `ops/migrate/e_move.ps1` move tooling (two independent reviews, all blockers fixed); MIG-1 worktree prune 64 -> 25.
+- **Move state at wrap:** Stop/Preseed/RepointInternal done; RC deliberately STOPPED; detached Cutover waiter armed on this session's Claude exit (rename C: dirs aside, junctions C: -> E:, repoint tasks/shortcuts, restart).
+- **Next:** verify the cutover (`e_move.ps1 -Phase Status`), then MAIN v9 vendoring + ONE ANSWER, then CI red on `96e3046d4`.
+- **Do NOT redo:** the model-pin removal, the prune, the E: copy/repoint.
+
+---
+
 # 2026-10-07b - session 100: item F inbox fold + responder repoint, DDragon 16.20.1, MAIN 2155 + 2237
 
 - **Shipped (LEDGER 1671-1674):** `0f060adbc` DDragon 16.20.1 + ack; `c88342a7a` inbox tick fold (item F); `bcdd117c7`/`b7fc90740` responder repointed to `ops/loop/inbox_tick.py` + ANSWER to MAIN; `71fc2b3cd` three CI reds (H agent); `b23b40368` stop gate one-line feedback (MAIN 2237 A).
