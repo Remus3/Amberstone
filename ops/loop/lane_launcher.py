@@ -37,6 +37,7 @@ strictly worse than no lock at all.
 from __future__ import annotations
 
 import importlib.util
+import json
 import logging
 import os
 import subprocess
@@ -83,11 +84,38 @@ REPO_ROOT = lanes.REPO_ROOT
 RUNNER = _HERE / "run_lane.ps1"
 LOG_DIR = _HERE / "reports"
 
-# Worktrees live OUTSIDE the repo, matching the 2026-07-16 precedent
-# (C:\rc-worktrees). Inside the repo they would land in the very tree the lane
-# is forbidden to touch, and every repo-wide guard would then scan them - see
-# memory `reference_repo_root_guard_worktree_blind`.
-WORKTREE_BASE = Path(os.environ.get("RC_LANE_WORKTREE_BASE", r"C:\rc-worktrees"))
+# Worktrees live OUTSIDE the repo, matching the 2026-07-16 precedent (a
+# drive-root rc-worktrees folder). Inside the repo they would land in the very
+# tree the lane is forbidden to touch, and every repo-wide guard would then scan
+# them - see memory `reference_repo_root_guard_worktree_blind`.
+#
+# MAIN 2026-10-08 2246 ORDER section 5 (SIDECAR-1; operator confirmed
+# 2026-10-09): the base moves into this tree's folder under the machine's shared
+# sidecar root. That is a machine path, so it is read from the per-host
+# GITIGNORED `ops/lane_worktrees.json` (template ops/lane_worktrees.example.json)
+# and never written here: the sibling-name sweep's structural arm halts a push
+# carrying an undeclared drive-rooted path. Order: env RC_LANE_WORKTREE_BASE,
+# then the config's `base`, then `<repo parent>/rc-worktrees`.
+WORKTREE_CONFIG = REPO_ROOT / "ops" / "lane_worktrees.json"
+
+
+def resolve_worktree_base(env=None, config: Path | None = None,
+                          repo_root: Path | None = None) -> Path:
+    env = os.environ if env is None else env
+    override = (env.get("RC_LANE_WORKTREE_BASE") or "").strip()
+    if override:
+        return Path(override)
+    try:
+        doc = json.loads(Path(config or WORKTREE_CONFIG).read_text(encoding="utf-8"))
+        base = str(doc.get("base") or "").strip() if isinstance(doc, dict) else ""
+    except (OSError, ValueError):
+        base = ""
+    if base:
+        return Path(base)
+    return Path(repo_root or REPO_ROOT).parent / "rc-worktrees"
+
+
+WORKTREE_BASE = resolve_worktree_base()
 
 # NUL-separated git output, so a path containing whitespace cannot split wrong.
 NUL = "\x00"

@@ -1,0 +1,4 @@
+{
+  "_doc": "Per-host lane worktree base. Copy to ops/lane_worktrees.json (gitignored) and set base to this tree's folder under the machine's shared sidecar root. Read by ops/loop/lane_launcher.py and ops/loop/spawn_lanes.ps1; env RC_LANE_WORKTREE_BASE wins; empty or absent falls back to <repo parent>/rc-worktrees. A machine path never goes in a tracked file.",
+  "base": ""
+}
