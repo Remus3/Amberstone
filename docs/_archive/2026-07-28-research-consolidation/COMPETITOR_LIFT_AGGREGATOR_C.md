@@ -6,7 +6,7 @@ aggregator C website (torn down R89 2026-07-10 / re-confirmed R112 2026-07-13).
 Section-7b heavyweight deep-dive. Method: full-browser render of Aggregator C' own
 overlay guide, corroborated by WebSearch feature copy and the Overlay Platform M store
 listing, then a grep-verify pass against the live RC working tree at
-C:\Riot Commander. 6-point depth checklist per surviving candidate.
+`<repo>`. 6-point depth checklist per surviving candidate.
 
 ## Verdict up front
 

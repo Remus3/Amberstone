@@ -169,7 +169,7 @@ from core import lead_projection as _lead
 from core.failed_load_gate import FailedLoadGate
 from core.polled_json import atomic_write_text
 
-# Project root: core/ -> C:\Riot Commander\
+# Project root: core/ -> <repo>\
 _ROOT = Path(__file__).resolve().parent.parent
 _DS_DIR = _ROOT / "data" / "daemon_slayer"
 _CURRENT_TXT = _DS_DIR / "current.txt"

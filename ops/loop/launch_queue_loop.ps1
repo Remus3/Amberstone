@@ -7,7 +7,7 @@
 # box: a probe script with `param([string]$Log = "$PSScriptRoot\reports\x.log")`
 # resolved it correctly, because PowerShell sets $PSScriptRoot for a script file
 # before it binds parameters. That keeps the default relative to wherever this
-# repo is checked out instead of pinning C:\Riot Commander into a param block.
+# repo is checked out instead of pinning a machine checkout path into a param block.
 param(
   [int]$Cycles = 12,
   [int]$Settle = 45,

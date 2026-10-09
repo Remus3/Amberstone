@@ -372,7 +372,7 @@ second. RC does not claim the first reading over the second.
 
 ## 8. REPRODUCING THIS
 
-    C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe \
+    %LOCALAPPDATA%\Programs\Python\Python314\python.exe \
         docs\_rsc_score\tally_ab.py
 
 Inputs: `docs/_rsc_score/scores_A.md`, `docs/_rsc_score/scores_B.md`,

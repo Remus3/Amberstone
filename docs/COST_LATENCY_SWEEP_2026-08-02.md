@@ -242,12 +242,12 @@ reading prose): the doc names exactly the same 24. **Zero ghosts.**
 Orphan check: each task's `<Exec><Command>` + `<Arguments>` was dumped from the
 task XML and the target file stat-checked on disk. All 24 resolve:
 
-- 21 point at a tracked file under `C:\Riot Commander\` (`tools/*.py`,
+- 21 point at a tracked file under `<repo>\` (`tools/*.py`,
   `scripts/*.py`, `ops/*.py|.ps1`, `mission_control.py`, `agents/supervisor.py`).
 - 2 are `-m` module invocations (`ops.phase3_file_audit`, `agents.supervisor`),
   both of which exist as files.
 - 1, `RC-TeamClaudeProxy`, runs `wscript.exe
-  C:\Users\Administrator\teamclaude_proxy_hidden.vbs` - out of repo, but the file
+  %USERPROFILE%\teamclaude_proxy_hidden.vbs` - out of repo, but the file
   exists (199 bytes, mtime 2026-07-29). Not an orphan; flagged only because it is
   the one target that lives outside the tree and so is invisible to any repo-only
   guard.

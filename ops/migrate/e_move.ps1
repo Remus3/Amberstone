@@ -20,10 +20,11 @@ param(
     [ValidateSet('Stop', 'Preseed', 'RepointInternal', 'Cutover', 'Status')]
     [string]$Phase,
     [switch]$DryRun,
-    [string]$Src = 'C:\Riot Commander',
-    [string]$Dst = 'E:\Riot Commander',
-    [string]$WtSrc = 'C:\rc-worktrees',
-    [string]$WtDst = 'E:\rc-worktrees',
+    # The four roots carry no machine default: a re-run names them explicitly.
+    [Parameter(Mandatory = $true)][string]$Src,
+    [Parameter(Mandatory = $true)][string]$Dst,
+    [Parameter(Mandatory = $true)][string]$WtSrc,
+    [Parameter(Mandatory = $true)][string]$WtDst,
     [int]$WaitPid = 0,
     [int]$ExcludeTreeOfPid = -1,
     [switch]$Detach,

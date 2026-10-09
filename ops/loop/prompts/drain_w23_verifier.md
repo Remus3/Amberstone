@@ -5,7 +5,7 @@ For each item with status done/partial/already_done: inspect the cited commit (g
 HEADLESS ADDENDUM (launcher ops/loop/drain_waves_2_3.py; you are a SEPARATE run from the producer - never trust its claims, re-derive them):
 - Slice: @@SLICE@@. Worktree under test: @@WORKTREE@@ (branch @@BRANCH@@). Edit / Write / NotebookEdit are disabled for this run. "Run with the fix reverted" means in a throwaway `git stash` / `git checkout <sha>~1 -- <file>` inside that worktree that you restore before you finish, leaving `git status` exactly as you found it; if you cannot guarantee that, reason instead of reverting.
 - The ONLY files you may write (via a python one-liner in Bash, atomic tmp then replace, ASCII, LF):
-  1. progress: C:\Riot Commander\ops\loop\control\progress\@@TASK@@.json {"task","pct","step","eta_s","status","updated"}
+  1. progress: @@REPO@@\ops\loop\control\progress\@@TASK@@.json {"task","pct","step","eta_s","status","updated"}
   2. verdict: @@RESULT_FILE@@ = one JSON object
      {"slice": str, "per_item": [{"id": str, "commit": str, "ok": bool, "reason": str}], "tests_observed": str}
      required: slice, per_item; each per_item requires id, ok, reason.

@@ -29,7 +29,7 @@ long-lived conversation, which the read-only `-p --permission-mode plan`
 adjudicator path deliberately does not grant.
 
 **That constraint is now obsolete.** Claude Code CLI **2.1.205** (verified
-installed at `C:\Users\Administrator\AppData\Roaming\npm\claude.cmd`) exposes
+installed at `%USERPROFILE%\AppData\Roaming\npm\claude.cmd`) exposes
 every flag the executor needs:
 
 | Flag | Why the executor needs it |
@@ -298,7 +298,7 @@ correct pattern and is **not currently using it**:
 
   * `.githooks/` is TRACKED and holds `pre-commit` + `commit-msg`.
   * `scripts/install_hooks.py` exists to install them.
-  * But `core.hooksPath` resolves to `C:\Riot Commander\.git\hooks` - the
+  * But `core.hooksPath` resolves to `<repo>\.git\hooks` - the
     UNTRACKED copy.
 
 **The two have fully diverged.** The tracked `.githooks/pre-commit` runs

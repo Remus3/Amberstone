@@ -204,7 +204,7 @@ Build implications (for later slices, not this session unless directed):
 Operator wants, for LATER RESEARCH: images of EACH PANEL (not just full windows) from each competitor
 app, isolated so we can study CONTENT + SPACING of that content per panel/widget.
 - This session captured FULL-WINDOW shots only; preserved (local, NOT committed - contain account
-  stats + competitor UIs) at `C:\Users\Administrator\Documents\RC_Competitor_Research\2026-07-22_full-window\`.
+  stats + competitor UIs) at `%USERPROFILE%\Documents\RC_Competitor_Research\2026-07-22_full-window\`.
 - Next session: systematically capture each app's individual panels/widgets (crop or per-panel shots)
   across Overlay App E / Aggregator A / Coaching App Z7 / Overlay App F / Aggregator C / Aggregator B / Overlay App Z5 - overview cards, stat
   tiles, radar, match rows, overlay widgets, settings groups - labeled by app+panel, saved under the

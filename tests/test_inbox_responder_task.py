@@ -435,7 +435,7 @@ def test_no_account_name_appears_anywhere_in_the_ps1(ps1_text: str) -> None:
 
     This arm used to read the CURRENT account from the environment and search
     the whole file for it, which made it a property of the machine running it.
-    On a box whose account is `Administrator` it passed; on a GitHub Linux
+    On the operator's box (the built-in admin account) it passed; on a GitHub Linux
     runner, where the account is literally `runner`, the same search hit
     `inbox_responder_runner.py` and the English word "runner" and accused the
     ps1 of hardcoding an account it does not hardcode. A probe that is only

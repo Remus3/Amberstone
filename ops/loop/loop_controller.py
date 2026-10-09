@@ -157,6 +157,22 @@ def _cfg_path(key, default):
 
 ROOT = _cfg_path("repo_root", _HERE.parents[1])
 CTL = _cfg_path("control_dir", _HERE / "control")
+
+# Same import-then-bind shape as polled_json above (loaded by absolute path).
+try:
+    from core.claude_project import project_dir as _claude_project_dir
+except ModuleNotFoundError:
+    _claude_project_dir = _bind_path(
+        "rc_core_claude_project",
+        Path(__file__).resolve().parents[2] / "core" / "claude_project.py",
+    ).project_dir
+
+
+def _transcript_dir():
+    """``transcript_dir`` when the config carries an absolute one, else Claude
+    Code's project dir for this checkout - derived, never a baked-in slug of one
+    machine's checkout path."""
+    return _cfg_path("transcript_dir", _claude_project_dir(ROOT))
 CTL.mkdir(parents=True, exist_ok=True)
 DRY = bool(CFG.get("dry_run", False))
 ADJ_USD = 0.0  # cumulative ESTIMATED adjudicator spend - a workload signal, NOT a cap
@@ -834,7 +850,7 @@ def _iso(ts):
         return 0.0
 
 def session_files():
-    d = Path(CFG["transcript_dir"])
+    d = _transcript_dir()
     pin = CFG.get("session_jsonl")
     if pin:
         p = Path(pin)
@@ -1161,7 +1177,7 @@ def main():
     # persistent-session model: pin the session active at launch (the executor being
     # driven via /clear) so the meter bills it for the whole run, not whatever is newest.
     if not CFG.get("session_jsonl"):
-        d = Path(CFG["transcript_dir"])
+        d = _transcript_dir()
         tops = sorted(d.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
         if tops:
             CFG["session_jsonl"] = str(tops[0])

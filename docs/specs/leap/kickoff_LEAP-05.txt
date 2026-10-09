@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-05 ARAM augment fast-poll. Model claude-opus-5-5, effor
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-05-aram-augment-cadence-fastpoll.md END TO
+1. Read <repo>\docs\specs\leap\LEAP-05-aram-augment-cadence-fastpoll.md END TO
    END. The P3 AMENDMENT block at the top SUPERSEDES body text: add env kill-switch
    RC_ARAM_FAST_POLL (default "1"; "0" = legacy 25s cadence byte-identical) per the
    RC_DUO_SYNERGY_LIVE=0 precedent, plus its AC.

@@ -572,8 +572,8 @@ and can land in parallel; F is deferred.
 
 ## Critical Files for Implementation
 
-- C:\Riot Commander\core\laning_scenario_precompute.py    (generator + schema; Slice A)
-- C:\Riot Commander\core\precomputed_laning_coach.py       (request-time reader; Slice B)
-- C:\Riot Commander\dashboard\_deterministic_coaching.py    (live shadow seam + flip gate; Slice C/F)
-- C:\Riot Commander\agents\daemon_slayer\matchup.py         (trade verdict primitive - unchanged, called)
-- C:\Riot Commander\tests\test_laning_scenario_precompute.py (characterization + invariant tests; Slice D)
+- `<repo>\core\laning_scenario_precompute.py`    (generator + schema; Slice A)
+- `<repo>\core\precomputed_laning_coach.py`       (request-time reader; Slice B)
+- `<repo>\dashboard\_deterministic_coaching.py`    (live shadow seam + flip gate; Slice C/F)
+- `<repo>\agents\daemon_slayer\matchup.py`         (trade verdict primitive - unchanged, called)
+- `<repo>\tests\test_laning_scenario_precompute.py` (characterization + invariant tests; Slice D)

@@ -25,14 +25,14 @@ Two problems this solves:
 ## 0. Per-project settings
 
 ```
-PROJECT_ROOT   C:\Riot Commander
-PYTHON         C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe
+PROJECT_ROOT   <repo>
+PYTHON         %LOCALAPPDATA%\Programs\Python\Python314\python.exe
 MAIN_BRANCH    main
 CI_WORKFLOW    ci.yml
 FULL_SUITE_JOB nightly-full-suite      # the job gated on workflow_dispatch
 DOC_BUDGETS    ROADMAP.md=81920, CLAUDE.md=61440
 MIRROR_PAIRS   tools/*.md  <->  .claude/commands/*.md
-MEMORY_DIR     C:\Users\Administrator\.claude\projects\<PROJECT>\memory
+MEMORY_DIR     %USERPROFILE%\.claude\projects\<PROJECT>\memory
 ```
 
 ---

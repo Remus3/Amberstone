@@ -138,23 +138,23 @@ The shape is agent scratch: probe scripts, suite logs, captured stdout.
 ### Ground truth for RC's own paths
 
 ```
-cd "C:/Riot Commander" && git worktree list
-  -> C:/Riot Commander                  [main]
-  -> C:/rc-worktrees/rc-lane-{ds,queue,repo,research,true-audit,uiux}
+cd "<repo>" && git worktree list
+  -> <repo>                  [main]
+  -> <worktree-base>/rc-lane-{ds,queue,repo,research,true-audit,uiux}
 ```
 
-RC repo root: `C:\Riot Commander`. RC worktree bucket: `C:\rc-worktrees`.
+RC repo root: `<repo>`. RC worktree bucket: `<worktree-base>`.
 
 ### Evidence sweep
 
 Every one of the 361 files was read as text and matched against
 `Riot Commander`, `Riot%20Commander`, `riot_commander`, `RiotCommander`,
-`C--Riot-Commander` and `rc-worktrees`. The pattern set was deliberately
+`<project-slug>` and `rc-worktrees`. The pattern set was deliberately
 widened after a first pass, because an empty grep is a claim about the
 pattern and not about the corpus.
 
 Results: `rc-worktrees` 17 files, `Riot Commander` 2 files,
-`C--Riot-Commander` 1 file (already inside the 17). Union of RC-naming
+`<project-slug>` 1 file (already inside the 17). Union of RC-naming
 files: 18.
 
 ### POSITIVE attribution: 18 files
@@ -164,18 +164,18 @@ Seventeen carry an RC worktree path on line 2, all naming the lane-8
 
 | File | mtime | Bytes | Evidence (line 2 unless noted) |
 |---|---|---|---|
-| `p1.py` | 2026-08-31T09:16:47 | 807 | `sys.path.insert(0, r"C:\rc-worktrees\rc-lane-true-audit")` then `from core import event_callouts` |
+| `p1.py` | 2026-08-31T09:16:47 | 807 | `sys.path.insert(0, r"<worktree-base>\rc-lane-true-audit")` then `from core import event_callouts` |
 | `p3.py` | 2026-08-31T09:17:50 | 2242 | same `sys.path.insert` |
 | `p4.py` | 2026-08-31T09:19:45 | 880 | same |
 | `p5.py` | 2026-08-31T09:20:27 | 1683 | same |
-| `p6.py` | 2026-08-31T09:21:06 | 1507 | `root = r"C:\rc-worktrees\rc-lane-true-audit"` |
-| `mut.py` | 2026-08-03T19:12:50 | 1766 | `SRC = ...\rc-lane-true-audit\core\liveclient_cache.py`; also carries `C--Riot-Commander` |
+| `p6.py` | 2026-08-31T09:21:06 | 1507 | `root = r"<worktree-base>\rc-lane-true-audit"` |
+| `mut.py` | 2026-08-03T19:12:50 | 1766 | `SRC = ...\rc-lane-true-audit\core\liveclient_cache.py`; also carries `<project-slug>` |
 | `mut2.py` | 2026-08-03T19:14:43 | 1160 | `SRC = ...\rc-lane-true-audit\modes\shared_vision.py` |
 | `mut3.py` | 2026-08-03T19:16:35 | 938 | `SRC = ...\rc-lane-true-audit\tests\conftest.py` |
 | `mut4.py` | 2026-08-03T19:34:40 | 928 | `SRC = ...\rc-lane-true-audit\core\liveclient_cache.py` |
-| `ascii_check.py` | 2026-08-31T05:56:23 | 1338 | `ROOT = pathlib.Path(r"C:/rc-worktrees/rc-lane-true-audit")` |
+| `ascii_check.py` | 2026-08-31T05:56:23 | 1338 | `ROOT = pathlib.Path(r"<worktree-base>/rc-lane-true-audit")` |
 | `ledger_check.py` | 2026-08-31T05:56:44 | 902 | same shape |
-| `rc_run1.txt` | 2026-08-03T19:19:34 | 23069 | L284 `C:\rc-worktrees\rc-lane-true-audit\tools\liveclient_relay.py:118` |
+| `rc_run1.txt` | 2026-08-03T19:19:34 | 23069 | L284 `<worktree-base>\rc-lane-true-audit\tools\liveclient_relay.py:118` |
 | `rc_run2.txt` | 2026-08-03T19:22:30 | 23069 | L284, same |
 | `rc_suite.txt` | 2026-08-30T05:03:23 | 34118 | L457, same |
 | `rc_final.txt` | 2026-08-30T05:10:30 | 30155 | L378, same |

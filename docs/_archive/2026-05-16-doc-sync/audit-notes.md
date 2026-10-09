@@ -491,7 +491,7 @@ User reviewed the open notes and approved closing all except NOTE-025 (TFT calib
 
 ### FIX-023 · `core/moon_sync.py` moved to `legacy/` (was NOTE-031)
 - 138-line module from the pre-2026-04-19 Moon-PC era. Confirmed no production importers via grep.
-- Moved (not deleted) to `C:/Riot Commander/legacy/moon_sync.py` so the file is recoverable if anything turns out to need it. Cleared stale `__pycache__` entry.
+- Moved (not deleted) to `<repo>/legacy/moon_sync.py` so the file is recoverable if anything turns out to need it. Cleared stale `__pycache__` entry.
 - **NOTE-031 closed.**
 
 ### FIX-024 · `game_reader` skips direct-API when relay says "no game" (was NOTE-006)

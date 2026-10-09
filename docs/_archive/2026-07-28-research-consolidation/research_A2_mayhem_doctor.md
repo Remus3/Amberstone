@@ -288,7 +288,7 @@ from observed history.
 - Augment reads quoted from `analysis.js:129-134`, `cache.js:64-65`, `globalCache.js:77-78`;
   augment catalogue from `lcu.js:42`.
 - SGP call quoted from `generalUtils.js:1100-1112`; host map `generalUtils.js:1036-1053`.
-- RC-side cross-checks run live this session: `ls C:/Riot Commander/core/` (13 `aram_*` /
+- RC-side cross-checks run live this session: `ls <repo>/core/` (13 `aram_*` /
   `augment_*` modules present), `head -30 core/augment_external_source.py`,
   `grep -rln "sgp" --include=*.py core/ tools/ agents/` (no hits),
   `grep -n "SGP" BACKLOG.md` (line 54, FUTURE/ToS-HIGHEST),

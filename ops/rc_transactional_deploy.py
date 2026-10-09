@@ -23,7 +23,7 @@ construction, so every path in the request is treated as hostile here:
 `relative_to`. A prefix check plus a ".." filter was deliberately REPLACED by
 that pattern there because both are bypassable; the same reasoning applies.
 
-MEASURED, not assumed: on Windows `Path("C:/Riot Commander") / Path("C:/x")`
+MEASURED, not assumed: on Windows `Path("C:/repo") / Path("C:/x")`
 is `C:\\x` - an absolute right-hand side discards the root entirely, so
 string-prefix reasoning about the joined path is wrong before it starts.
 
@@ -71,7 +71,7 @@ _REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
 # replace any file under project_root and trigger a restart - and lanes run
 # headless with bypassPermissions, exactly where a stray write is unattended.
 # An ACL cannot separate the writer from the supervisor (both run as the same
-# Administrator account on Legion), so the request carries an HMAC-SHA256
+# operator account on Legion), so the request carries an HMAC-SHA256
 # `signature` over its canonical JSON, keyed by a per-machine secret that is
 # never committed (`ops/runtime/` is gitignored). The key LOCATION is fixed
 # here and never read from the request: a request that could name its own

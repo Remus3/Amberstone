@@ -9,7 +9,7 @@ const assert = require("node:assert/strict");
 
 const { resolveRepos, REPO_CONFIG_REL, joinPath } = require("../src/repos.js");
 
-const RC = "C:\\Riot Commander";
+const RC = "C:\\Example Repo";
 const CFG = joinPath(RC, ...REPO_CONFIG_REL);
 
 function rcEntry() {
@@ -171,7 +171,7 @@ test("duplicate roots are deduped, including case and separator variants", () =>
 test("RC's own root is never re-added by the roster", () => {
   const out = resolveRepos({
     rcRoot: RC,
-    env: { RC_MOON_SYNC_REPOS: "c:/riot commander;C:\\fake-a" },
+    env: { RC_MOON_SYNC_REPOS: "c:/example repo;C:\\fake-a" },
     readFile: () => null,
   });
   assert.deepEqual(out.map((r) => r.root), [RC, "C:\\fake-a"]);
@@ -255,7 +255,7 @@ test("the config path is <rcRoot>/ops/moon_sync_repos.json", () => {
     },
   });
   assert.deepEqual(REPO_CONFIG_REL, ["ops", "moon_sync_repos.json"]);
-  assert.deepEqual(seen, ["C:\\Riot Commander\\ops\\moon_sync_repos.json"]);
+  assert.deepEqual(seen, ["C:\\Example Repo\\ops\\moon_sync_repos.json"]);
 });
 
 test("joinPath picks the separator already present in the root", () => {

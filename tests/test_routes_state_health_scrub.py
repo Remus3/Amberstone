@@ -44,7 +44,7 @@ from dashboard._errors import GENERIC_ERROR  # noqa: E402
 
 # A raw exception string carrying every shape the rollup must not leak: an
 # absolute Windows path, a filename, and a distinctive secret-shaped token.
-LEAKY = r"cannot reach C:\Riot Commander\API-Key-Claude.txt (ZORBLEAK-19)"
+LEAKY = r"cannot reach C:\Example Repo\API-Key-Claude.txt (ZORBLEAK-19)"
 FORBIDDEN = ("ZORBLEAK-19", "API-Key-Claude", "C:\\", "Riot Commander")
 
 

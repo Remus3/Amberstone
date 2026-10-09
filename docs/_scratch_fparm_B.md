@@ -1,7 +1,7 @@
 # FPARM Arm B - ADVERSARIAL COST ARM for the PRE-DISPATCH RE-GROUNDING GATE
 
 Measured 2026-09-12 at HEAD `88776cbab`, clean tree. READ-ONLY: no tracked file was
-edited. Python `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`.
+edited. Python `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`.
 Every number below was derived THIS RUN unless labelled INHERITED.
 
 ---
@@ -25,7 +25,7 @@ refuses 90 percent of work for zero true findings.
 ## 1. CURRENT CITATION ROT - RE-DERIVED
 
 ```
-cd "C:/Riot Commander"
+cd "<repo>"
 python tools/citation_audit.py --help
 python tools/citation_audit.py
 ```

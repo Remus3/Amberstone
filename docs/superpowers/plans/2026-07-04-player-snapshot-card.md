@@ -183,7 +183,7 @@ def test_since_ts_none_is_unchanged_behavior():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe -m pytest tests/test_player_gpi_window.py -v`
+Run: `%LOCALAPPDATA%\Programs\Python\Python314\python.exe -m pytest tests/test_player_gpi_window.py -v`
 Expected: FAIL - `compute_gpi() got an unexpected keyword argument 'since_ts'` (and `KeyError: 'window_n'`).
 
 - [ ] **Step 3: Implement the minimal change in `core/player_gpi.py`**
@@ -238,12 +238,12 @@ Add `"window_n": 0` to the `_empty()` dict so the key is always present.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe -m pytest tests/test_player_gpi_window.py -v`
+Run: `%LOCALAPPDATA%\Programs\Python\Python314\python.exe -m pytest tests/test_player_gpi_window.py -v`
 Expected: PASS (2 passed).
 
 - [ ] **Step 5: Regression - run the existing GPI suite**
 
-Run: `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe -m pytest tests/test_routes_player_profile.py tests/test_player_gpi_this_match.py -q`
+Run: `%LOCALAPPDATA%\Programs\Python\Python314\python.exe -m pytest tests/test_routes_player_profile.py tests/test_player_gpi_this_match.py -q`
 Expected: PASS (unchanged - `since_ts=None` path is byte-identical).
 
 - [ ] **Step 6: Commit**
@@ -515,7 +515,7 @@ Expected: PASS (2 passed).
 
 - [ ] **Step 5: Lint**
 
-Run: `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe -m ruff check dashboard/routes_player_snapshot.py tests/test_routes_player_snapshot.py`
+Run: `%LOCALAPPDATA%\Programs\Python\Python314\python.exe -m ruff check dashboard/routes_player_snapshot.py tests/test_routes_player_snapshot.py`
 Expected: no findings.
 
 - [ ] **Step 6: Commit**
@@ -1065,7 +1065,7 @@ Expected: no net-new findings (the PreToolUse precommit gate also enforces this 
 - [ ] **Step 4: Restart RC + live-verify the route** (asset-only JS/CSS auto-reloads via ADR-008, but the new Python route needs a reload):
 
 ```bash
-echo restart > "C:\Riot Commander\restart_trigger.txt"
+echo restart > "<repo>\restart_trigger.txt"
 ```
 Then confirm health + the live route:
 ```bash

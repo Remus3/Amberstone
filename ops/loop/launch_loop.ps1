@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $py = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
-$root = "C:\Riot Commander"
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $ctl = "$root\ops\loop\control"
 $ahk = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
 $bridge = "$root\ops\loop\claude_gui_bridge.ahk"

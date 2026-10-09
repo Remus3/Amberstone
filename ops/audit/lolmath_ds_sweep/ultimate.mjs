@@ -2,7 +2,7 @@
 // Item row is a SIBLING of the label heading (CURRENT=next, ULTIMATE=prev), so probe both.
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'fs';
-const EXE = 'C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe';
+const EXE = process.env.LOCALAPPDATA + '\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe';
 const base = JSON.parse(readFileSync(new URL('./lolmath_sweep.json', import.meta.url).pathname.replace(/^\//, ''), 'utf-8'));
 const slugs = base.results.map(r => r.slug);
 const OUT = new URL('./ultimate_sweep.json', import.meta.url).pathname.replace(/^\//, '');

@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-02 KaiSa P routing + Gwen P pins. Model claude-opus-5-5
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-02-ds-staged-passives-gwen-kaisa.md END TO END.
+1. Read <repo>\docs\specs\leap\LEAP-02-ds-staged-passives-gwen-kaisa.md END TO END.
    Key premise (already evidence-checked): Gwen P bilinear + KaiSa P stacks SHIPPED long ago
    (items 248/249); Gwen P already AA-routed by Slice B. The slice = add KaiSa P to
    _AA_ROUTED_ON_HIT_KEYS (byte-identical default, live flip LGS-queued), regression-pin

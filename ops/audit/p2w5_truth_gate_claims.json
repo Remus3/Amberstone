@@ -1,6 +1,6 @@
 {
   "run_id": "p2w5-tests-c16",
-  "suite_cmd": "\"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe\" -m pytest tests/ -q -p no:cacheprovider",
+  "suite_cmd": "\"%LOCALAPPDATA%/Programs/Python/Python314/python.exe\" -m pytest tests/ -q -p no:cacheprovider",
   "check_ci": false,
   "slices": [
     {

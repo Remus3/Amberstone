@@ -10,7 +10,7 @@ part, not redacted, not a prefix, not a character count of a prefix. Shapes,
 counts and classes only. No credential was probed against any endpoint.
 
 **NOTHING WAS WRITTEN, DELETED, MOVED, RENAMED OR LOCKED OUTSIDE
-`C:\Riot Commander`.** The scan was read-only. This file, inside the repository
+`<repo>`.** The scan was read-only. This file, inside the repository
 root, is the only byte written. Sibling trees are named by CODE only.
 
 ---
@@ -73,7 +73,7 @@ comparison between them is the most important methodological finding here.
   `sibling_name_sweep`, `liveclient_relay`, ...), RC filenames
   (`RC-NEXT-SESSION`, `API-Key-Claude`, `ops/runtime/health.json`).
 - **Family B, RC PATH markers:** `rc-worktrees`, `rc-lane-<name>`,
-  `C--Riot-Commander`, a drive-rooted `Riot Commander` path.
+  `<project-slug>`, a drive-rooted `Riot Commander` path.
 
 | | files |
 |---|---|
@@ -213,7 +213,7 @@ the attribution arms only, a marker broken across a line wrap.
   construction. 18 + 1 shipped = 19 files, so the file counts reconcile exactly.
   The occurrence counts (27 vs 32) do not; the residue is most likely the
   shipped file plus a spelling CS covered and RC did not. CS scanned three
-  spellings; RC scanned two plus the `ADMINI~1` short form (2 files /
+  spellings; RC scanned two plus the `%USERPROFILE%` short form (2 files /
   3 occurrences).
 - **Home-directory paths.** CS: 6 files. RC measured **18 files** over the
   relocated set. RC's pattern accepts three separators (`C:\Users\...`,
@@ -338,7 +338,7 @@ files a scheduler row and exits (`:33-47`).
 the git index is invisible to 100 per cent of RC's controls.** Four live
 instances today:
 
-1. `C:\Riot Commander\API-Key-Claude.txt` - holds a live Anthropic credential,
+1. `<repo>\API-Key-Claude.txt` - holds a live Anthropic credential,
    is gitignored and therefore outside `git ls-files`, which is the universe of
    `tests/_repo_walk.py:131-137` and `sibling_name_sweep.py:1235`. Nothing
    inspects it. Nothing would notice a second copy under a different name.

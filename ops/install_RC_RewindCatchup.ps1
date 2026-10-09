@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 
 $TaskName = "RC-RewindCatchup"
 $Python   = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-$Script   = "C:\Riot Commander\scripts\rewind_catchup.py"
+$Script   = Join-Path (Split-Path -Parent $PSScriptRoot) "scripts\rewind_catchup.py"
 $Args     = "`"$Script`""
 
 if (-not (Test-Path $Python)) { throw "python not found at $Python" }

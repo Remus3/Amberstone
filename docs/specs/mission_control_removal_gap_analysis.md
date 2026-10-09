@@ -51,8 +51,8 @@ Live probes used: `curl -k` against `https://127.0.0.1:8895` and
 
 | Fact | Measurement |
 |---|---|
-| MC process | `pythonw.exe "C:\Riot Commander\mission_control.py"`, **PID 19284**, alive |
-| Scheduled task | `\RC-MissionControl`, **Status Running**, `At logon time`, Run As `Administrator`, Last Result `-2147020576` |
+| MC process | `pythonw.exe "<repo>\mission_control.py"`, **PID 19284**, alive |
+| Scheduled task | `\RC-MissionControl`, **Status Running**, `At logon time`, Run As the operator account, Last Result `-2147020576` |
 | `GET https://127.0.0.1:8895/api/loop-status` | **200**, full JSON payload, **no Authorization header sent** |
 | `GET https://127.0.0.1:8895/` | **200** `text/html`, 596 bytes |
 | `POST https://127.0.0.1:8895/api/loop-control` with no bearer | **401** `{"ok": false, "error": "unauthorized"}` (401 not 503, so a token IS configured) |
@@ -130,7 +130,7 @@ feature and neither is useful alone.
 
 ## 2. WIDGET COVERAGE
 
-The lane widget is `C:\Riot Commander\lane-widget`, Electron, 15 source files,
+The lane widget is `<repo>\lane-widget`, Electron, 15 source files,
 9 test files. Its own statement of scope: `lane-widget/src/main.js:15-17`
 ("READ-ONLY observer ... never writes, locks, unlinks or reaps anything. The only
 thing it writes anywhere is its own state file under Electron userData") and

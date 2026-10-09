@@ -21,8 +21,8 @@ em = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = em
 _spec.loader.exec_module(em)
 
-SRC, DST = r"C:\Riot Commander", r"E:\Riot Commander"
-WT_SRC, WT_DST = r"C:\rc-worktrees", r"E:\rc-worktrees"
+SRC, DST = r"C:\Example Repo", r"E:\Example Repo"
+WT_SRC, WT_DST = r"C:\example-worktrees", r"E:\example-worktrees"
 MAPS = [(SRC, DST), (WT_SRC, WT_DST)]
 
 
@@ -32,15 +32,15 @@ def rw():
 
 
 @pytest.mark.parametrize("before, after", [
-    (r'"C:\Riot Commander\tools\x.py"', r'"E:\Riot Commander\tools\x.py"'),
-    ("C:/Riot Commander/.git/worktrees/a", "E:/Riot Commander/.git/worktrees/a"),
-    (r'"cmd": "C:\\Riot Commander\\tools\\x.py"', r'"cmd": "E:\\Riot Commander\\tools\\x.py"'),
-    ('Bash(node --check "/c/Riot Commander/web/x.js")', 'Bash(node --check "/e/Riot Commander/web/x.js")'),
-    ("C:\\Riot Commander", "E:\\Riot Commander"),
-    ("cd c:\\riot commander\\ops", "cd e:\\Riot Commander\\ops"),
-    ("C:/RIOT COMMANDER", "E:/Riot Commander"),
-    ("gitdir: C:/rc-worktrees/lane-ds/.git", "gitdir: E:/rc-worktrees/lane-ds/.git"),
-    ("WD=C:\\rc-worktrees", "WD=E:\\rc-worktrees"),
+    (r'"C:\Example Repo\tools\x.py"', r'"E:\Example Repo\tools\x.py"'),
+    ("C:/Example Repo/.git/worktrees/a", "E:/Example Repo/.git/worktrees/a"),
+    (r'"cmd": "C:\\Example Repo\\tools\\x.py"', r'"cmd": "E:\\Example Repo\\tools\\x.py"'),
+    ('Bash(node --check "/c/Example Repo/web/x.js")', 'Bash(node --check "/e/Example Repo/web/x.js")'),
+    ("C:\\Example Repo", "E:\\Example Repo"),
+    ("cd c:\\example repo\\ops", "cd e:\\Example Repo\\ops"),
+    ("C:/EXAMPLE REPO", "E:/Example Repo"),
+    ("gitdir: C:/example-worktrees/lane-ds/.git", "gitdir: E:/example-worktrees/lane-ds/.git"),
+    ("WD=C:\\example-worktrees", "WD=E:\\example-worktrees"),
 ])
 def test_every_spelling_is_rewritten(rw, before, after):
     new, n = rw.rewrite(before)
@@ -49,14 +49,14 @@ def test_every_spelling_is_rewritten(rw, before, after):
 
 
 @pytest.mark.parametrize("text", [
-    r"C:\Riot Commander.pre-E-move-20261008\x",
-    r"C:\Riot Commander2\x",
-    r"C:\Riot Commander_old",
-    r"XC:\Riot Commander\x",
-    r"D:\Riot Commander\x",
-    "C--Riot-Commander",
-    '--name "Riot Commander"',
-    r"C:\Riot\Commander",
+    r"C:\Example Repo.pre-E-move-20261008\x",
+    r"C:\Example Repo2\x",
+    r"C:\Example Repo_old",
+    r"XC:\Example Repo\x",
+    r"D:\Example Repo\x",
+    "C--Example-Repo",
+    '--name "Example Repo"',
+    r"C:\Example\Repo",
 ])
 def test_lookalikes_are_not_rewritten(rw, text):
     assert rw.rewrite(text) == (text, 0)
@@ -64,8 +64,8 @@ def test_lookalikes_are_not_rewritten(rw, text):
 
 
 def test_mixed_line_rewrites_all_and_is_idempotent(rw):
-    line = (r'"C:\Riot Commander\ops\rc_supervisor.py" --config "C:\Riot Commander\ops\rc_config.json"'
-            r' && cd /c/rc-worktrees/a')
+    line = (r'"C:\Example Repo\ops\rc_supervisor.py" --config "C:\Example Repo\ops\rc_config.json"'
+            r' && cd /c/example-worktrees/a')
     once, n = rw.rewrite(line)
     assert n == 3
     assert "C:" not in once and "/c/" not in once
@@ -84,19 +84,19 @@ def test_bare_drive_root_is_refused():
 
 
 def test_rewrite_bytes_preserves_crlf_bom_and_non_ascii(rw):
-    raw = codecs.BOM_UTF8 + "x = 'C:\\Riot Commander\\a'\r\nname = 'caf\u00e9'\r\n".encode("utf-8")
+    raw = codecs.BOM_UTF8 + "x = 'C:\\Example Repo\\a'\r\nname = 'caf\u00e9'\r\n".encode("utf-8")
     new, n, kind = em.rewrite_bytes(raw, rw)
     assert (n, kind) == (1, "bytes")
-    assert new == codecs.BOM_UTF8 + "x = 'E:\\Riot Commander\\a'\r\nname = 'caf\u00e9'\r\n".encode("utf-8")
+    assert new == codecs.BOM_UTF8 + "x = 'E:\\Example Repo\\a'\r\nname = 'caf\u00e9'\r\n".encode("utf-8")
 
 
 def test_rewrite_bytes_handles_utf16_and_skips_binary(rw):
-    raw = codecs.BOM_UTF16_LE + "<Command>C:\\Riot Commander\\x.py</Command>\r\n".encode("utf-16-le")
+    raw = codecs.BOM_UTF16_LE + "<Command>C:\\Example Repo\\x.py</Command>\r\n".encode("utf-16-le")
     new, n, kind = em.rewrite_bytes(raw, rw)
     assert (n, kind) == (1, "utf-16-le")
     assert new.startswith(codecs.BOM_UTF16_LE)
-    assert new[2:].decode("utf-16-le") == "<Command>E:\\Riot Commander\\x.py</Command>\r\n"
-    blob = b"\x00\x01C:\\Riot Commander\\x"
+    assert new[2:].decode("utf-16-le") == "<Command>E:\\Example Repo\\x.py</Command>\r\n"
+    blob = b"\x00\x01C:\\Example Repo\\x"
     assert em.rewrite_bytes(blob, rw) == (blob, 0, "binary")
 
 
@@ -135,16 +135,16 @@ def _claude_json():
     return {
         "numStartups": 3,
         "projects": {
-            "C:/Riot Commander": {
+            "C:/Example Repo": {
                 "hasTrustDialogAccepted": True,
-                "allowedTools": ['Bash(node --check "/c/Riot Commander/web/x.js")'],
+                "allowedTools": ['Bash(node --check "/c/Example Repo/web/x.js")'],
                 "mcpServers": {"usage": {"command": "node",
-                                         "args": ["C:\\Riot Commander\\tools\\usage-mcp-server.js"]}},
+                                         "args": ["C:\\Example Repo\\tools\\usage-mcp-server.js"]}},
                 "lastCost": 1.5,
             },
-            "C:\\Riot Commander": {"hasTrustDialogAccepted": True},
-            "C:/riot commander": {"hasTrustDialogAccepted": False},
-            "C:\\Riot Commander\\.claude\\worktrees\\stale": {"hasTrustDialogAccepted": True},
+            "C:\\Example Repo": {"hasTrustDialogAccepted": True},
+            "C:/example repo": {"hasTrustDialogAccepted": False},
+            "C:\\Example Repo\\.claude\\worktrees\\stale": {"hasTrustDialogAccepted": True},
             "/srv/unrelated": {"hasTrustDialogAccepted": True},
         },
     }
@@ -155,15 +155,15 @@ def test_clone_project_keys_clones_roots_and_rewrites_inside():
     before = json.loads(json.dumps(data))
     actions = em.clone_project_keys(data, MAPS)
     by_from = {a["from"]: a for a in actions}
-    assert by_from["C:/Riot Commander"] == {"from": "C:/Riot Commander", "to": "E:/Riot Commander",
+    assert by_from["C:/Example Repo"] == {"from": "C:/Example Repo", "to": "E:/Example Repo",
                                             "action": "cloned"}
-    assert by_from["C:\\Riot Commander"]["action"] == "cloned"
-    assert by_from["C:/riot commander"]["action"] == "exists"
-    clone = data["projects"]["E:/Riot Commander"]
+    assert by_from["C:\\Example Repo"]["action"] == "cloned"
+    assert by_from["C:/example repo"]["action"] == "exists"
+    clone = data["projects"]["E:/Example Repo"]
     assert clone["hasTrustDialogAccepted"] is True
-    assert clone["allowedTools"] == ['Bash(node --check "/e/Riot Commander/web/x.js")']
-    assert clone["mcpServers"]["usage"]["args"] == ["E:\\Riot Commander\\tools\\usage-mcp-server.js"]
-    assert data["projects"]["E:\\Riot Commander"] == {"hasTrustDialogAccepted": True}
+    assert clone["allowedTools"] == ['Bash(node --check "/e/Example Repo/web/x.js")']
+    assert clone["mcpServers"]["usage"]["args"] == ["E:\\Example Repo\\tools\\usage-mcp-server.js"]
+    assert data["projects"]["E:\\Example Repo"] == {"hasTrustDialogAccepted": True}
     # Nothing removed, nothing pre-existing changed, worktree keys not cloned.
     for k, v in before["projects"].items():
         assert data["projects"][k] == v
@@ -173,10 +173,10 @@ def test_clone_project_keys_clones_roots_and_rewrites_inside():
 
 def test_clone_project_keys_never_overwrites_existing_destination():
     data = _claude_json()
-    data["projects"]["E:/Riot Commander"] = {"hasTrustDialogAccepted": False, "mine": 1}
+    data["projects"]["E:/Example Repo"] = {"hasTrustDialogAccepted": False, "mine": 1}
     actions = em.clone_project_keys(data, MAPS)
-    assert {"from": "C:/Riot Commander", "to": "E:/Riot Commander", "action": "exists"} in actions
-    assert data["projects"]["E:/Riot Commander"] == {"hasTrustDialogAccepted": False, "mine": 1}
+    assert {"from": "C:/Example Repo", "to": "E:/Example Repo", "action": "exists"} in actions
+    assert data["projects"]["E:/Example Repo"] == {"hasTrustDialogAccepted": False, "mine": 1}
 
 
 def test_clone_project_keys_without_projects_is_a_noop():
@@ -194,7 +194,7 @@ def test_clone_keys_in_file_preserves_format_and_dry_run_writes_nothing(tmp_path
     res = em.clone_keys_in_file(f, MAPS, tmp_path / "bak", dry_run=False)
     assert res["written"] is True and res["verified"] is True
     after = json.loads(f.read_text(encoding="utf-8"))
-    assert "E:/Riot Commander" in after["projects"]
+    assert "E:/Example Repo" in after["projects"]
     assert list((tmp_path / "bak").iterdir())
     # Second run is a no-op.
     again = em.clone_keys_in_file(f, MAPS, tmp_path / "bak", dry_run=False)

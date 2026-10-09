@@ -195,7 +195,7 @@ ESM sweep at `tests/test_web_js_esm_parse.py`, never a bare `node --check`.
 
 Scheduled task `RC-MissionControl`:
 
-- trigger ONLOGON, run as Administrator, HIGHEST privileges
+- trigger ONLOGON, run as the operator account, HIGHEST privileges
 - `pythonw.exe mission_control.py` (no console flash). The child-process flash
   caveat is already handled downstream: the only thing this process ever spawns
   is a lane, and `lane_launcher` already uses `CREATE_NO_WINDOW`.

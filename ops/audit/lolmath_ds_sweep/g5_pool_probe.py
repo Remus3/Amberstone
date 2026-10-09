@@ -17,7 +17,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(r"C:\Riot Commander")
+ROOT = Path(__file__).resolve().parents[3]
 DS_DATA = ROOT / "data" / "daemon_slayer"
 PATCH = (DS_DATA / "current.txt").read_text(encoding="utf-8").strip()
 ITEMS = json.loads((DS_DATA / PATCH / "items.json").read_text(encoding="utf-8"))["data"]

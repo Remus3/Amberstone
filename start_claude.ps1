@@ -8,7 +8,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit
 }
 
-Set-Location "C:\Riot Commander"
+Set-Location $PSScriptRoot
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
 Write-Host ""
@@ -108,7 +108,7 @@ try {
 }
 
 # 12. Echo health.json snapshot
-$healthPath = "C:\Riot Commander\ops\runtime\health.json"
+$healthPath = Join-Path $PSScriptRoot "ops\runtime\health.json"
 if (Test-Path $healthPath) {
     try {
         $h = Get-Content $healthPath -Raw | ConvertFrom-Json

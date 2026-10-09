@@ -6,7 +6,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$ProjectRoot = 'C:\Riot Commander'
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 $PythonExe   = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $TaskName    = 'RC-Phase3-PeriodicAudit'
 
@@ -25,7 +25,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit ([TimeSpan]::FromMinutes(5))
 
 $principal = New-ScheduledTaskPrincipal `
-    -UserId 'Administrator' `
+    -UserId $env:USERNAME `
     -LogonType Interactive `
     -RunLevel Highest
 

@@ -41,8 +41,8 @@
 # IgnoreNew is what makes the once-a-minute firing a no-op while the
 # process is alive; RestartCount/RestartInterval are unchanged.
 $python  = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-$script  = 'C:\Riot Commander\mission_control.py'
-$workdir = 'C:\Riot Commander'
+$workdir = Split-Path -Parent $PSScriptRoot
+$script  = Join-Path $workdir 'mission_control.py'
 
 $action = New-ScheduledTaskAction -Execute $python -Argument "`"$script`"" -WorkingDirectory $workdir
 
@@ -57,7 +57,7 @@ $onceTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval
 $onceTrigger.Repetition.Duration = $null
 $onceTrigger.Repetition.StopAtDurationEnd = $false
 
-$principal = New-ScheduledTaskPrincipal -UserId 'Administrator' -RunLevel Highest
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 
 Register-ScheduledTask -TaskName 'RC-MissionControl' -Action $action -Trigger @($logonTrigger, $onceTrigger) -Principal $principal -Settings $settings -Force

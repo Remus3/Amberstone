@@ -2,10 +2,10 @@
 :: tools\preflight.cmd
 :: Runs ruff lint + Python syntax check before a deploy.
 :: Uses system Python (matches the deployed app runtime).
-:: Run from C:\Riot Commander
+:: Run from anywhere (cds to the repo root itself)
 
 setlocal
-cd /d "C:\Riot Commander"
+cd /d "%~dp0.."
 
 echo [preflight] Starting checks...
 echo.

@@ -153,9 +153,9 @@ class FakeLauncher:
         if self.exc is not None:
             raise self.exc
         return {"lane": lane, "run_id": run_id, "pid": 4242,
-                "worktree": rf"C:\rc-worktrees\rc-lane-{lane}",
-                "log": rf"C:\Riot Commander\ops\loop\reports\lane_{lane}.log",
-                "prompt": r"C:\Riot Commander\tools\headless-upgrade.md",
+                "worktree": rf"C:\example-worktrees\rc-lane-{lane}",
+                "log": rf"C:\Example Repo\ops\loop\reports\lane_{lane}.log",
+                "prompt": r"C:\Example Repo\tools\headless-upgrade.md",
                 "started_at": 1.0}
 
 
@@ -538,13 +538,13 @@ def test_an_omitted_worktree_is_filled_by_the_server(ctldir, lanes, monkeypatch)
     FakeLauncher.calls = []
     monkeypatch.setattr(mod, "_launcher", lambda: FakeLauncher())
     monkeypatch.setattr(FakeLauncher, "worktree_path",
-                        staticmethod(lambda lane: rf"C:\rc-worktrees\rc-lane-{lane}"),
+                        staticmethod(lambda lane: rf"C:\example-worktrees\rc-lane-{lane}"),
                         raising=False)
     status, payload, _ = _post({"action": "fire_lane", "lane": "upgrade",
                                 "run_id": "abc12345",
                                 "idempotency_key": KEY_A})
     assert status == 200 and payload["ok"] is True
-    assert fake_worktree_seen(lanes) == r"C:\rc-worktrees\rc-lane-upgrade"
+    assert fake_worktree_seen(lanes) == r"C:\example-worktrees\rc-lane-upgrade"
 
 
 def fake_worktree_seen(lanes):
@@ -676,7 +676,7 @@ def test_fire_lane_propagates_a_lanes_value_error_as_400(ctldir, monkeypatch):
 
     monkeypatch.setattr(mod, "_lanes", lambda: Rejecting())
     status, payload, _ = _post({"action": "fire_lane", "lane": "repo",
-                                "run_id": "cafe0001", "worktree": "C:/Riot Commander",
+                                "run_id": "cafe0001", "worktree": "C:/Example Repo",
                                 "idempotency_key": KEY_A})
     assert status == 400 and payload["ok"] is False
     assert "worktree is mandatory" in payload["error"]

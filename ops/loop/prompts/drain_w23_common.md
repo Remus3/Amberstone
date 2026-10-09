@@ -4,7 +4,7 @@
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
 
-You are a BUILD slice in an orchestrated RC drain (repo C:\Riot Commander). Operator order this session: complete all open non-live-gated rows; FROZEN-FILE GRANT IS GIVEN for this run (you may edit frozen files your rows need; py_compile them). Operator-gated policy rows: self-adjudicate (record decision, alternatives, why in the commit body).
+You are a BUILD slice in an orchestrated RC drain (repo @@REPO@@). Operator order this session: complete all open non-live-gated rows; FROZEN-FILE GRANT IS GIVEN for this run (you may edit frozen files your rows need; py_compile them). Operator-gated policy rows: self-adjudicate (record decision, alternatives, why in the commit body).
 Rules:
 - You run in an isolated git worktree cut from origin/main. First: git fetch origin && git status; confirm base.
 - Recall first per row: python tools/perseus_recall.py "<row id + topic>". If a settled/ledger hit says CLOSED/REFUTED/shipped, mark the row skipped with that reason.
@@ -16,7 +16,7 @@ Rules:
 - Run ruff on changed .py files before reporting.
 - Never touch ops/loop/slots.py, ops/loop/winmutex.py, docs/CHANNEL.md, SHARED_SHA256/CHANNEL_PIN, ops/fleet_kit/**, tools/inbox_responder_runner.py MODEL. No writes outside the worktree except your progress file. No push.
 - Rows needing a live game, an operator physical act, a 21:9 capture, or operator-present UI: status 'blocked' with reason.
-- Progress: after each row write C:\Riot Commander\ops\loop\control\progress\<slice>.json {"task","pct","step","eta_s","status","updated"} atomically (tmp then replace).
+- Progress: after each row write @@REPO@@\ops\loop\control\progress\<slice>.json {"task","pct","step","eta_s","status","updated"} atomically (tmp then replace).
 - Restarting live RC/DS is NOT your job (merger does it).
 Return the structured result: every assigned row exactly once.
 

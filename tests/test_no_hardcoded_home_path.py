@@ -5,8 +5,9 @@ ruled the same way and whose guard SHAPE is copied here on purpose.
 
 WHY THIS EXISTS
 ---------------
-``Administrator`` is the Windows BUILT-IN account name, so this was never an
-identifying leak and must not be reported as one. The real cost is worse:
+The operator's account is the Windows BUILT-IN administrator account, so a home
+path was never an identifying leak on its own (MAIN 2246 section 3 still lists
+the account name as a class, so tracked files carry none). The real cost is worse:
 
 * **A hook or scheduled-task command naming an interpreter under one account is
   a command that does not run under another, and a command that does not run
@@ -35,8 +36,8 @@ dir this way and had a test asserting no home path is baked in.
 THE GUARD'S SHAPE WAS ARRIVED AT BY REFUTATION, NOT INVENTED
 ------------------------------------------------------------
 It matches the SHAPE of a home directory under ANY account name, never the
-string this machine happens to use. A guard that only knew ``Administrator``
-would pass cleanly the day someone commits a path under a different account -
+string this machine happens to use. A guard that only knew this machine's
+account name would pass cleanly the day someone commits a path under a different account -
 which is precisely the day it matters.
 
 ONE DELIBERATE NARROWING, MEASURED
@@ -60,7 +61,9 @@ observed - the quoted path IS the evidence. Rewriting them would destroy the
 record. They are PINNED BY COUNT instead: each may carry exactly the number of
 occurrences it carries today, so a NEW occurrence reddens the suite while the
 record stays intact. A pin that merely TOLERATED a file would let it grow
-forever.
+forever. (2026-10-09: every pinned record took a REDACTION-ONLY edit - the
+account path became a placeholder and nothing else moved - so the set is empty
+and those files are now held to the clean-tree rule; see FROZEN_HISTORICAL.)
 
 WHAT THIS GUARD IS BLIND TO, stated here because a caveat kept out of the
 artifact is a caveat nobody will read:
@@ -124,18 +127,14 @@ RUNNABLE_SUFFIXES = frozenset({
 #: Dated records of what was true on a date. The quoted path IS the evidence,
 #: so these are frozen rather than edited. Raising a number here is a deliberate
 #: act and belongs in the commit message.
-FROZEN_HISTORICAL: dict[str, int] = {
-    # docs/_archive/** is immutable by this repository's own rule - it is even
-    # excluded from ripgrep searches. These two record a retired scheduled task
-    # and a retired LAN bridge exactly as they were registered.
-    "docs/_archive/2026-06-11_RC-VisionServer_schtask_removed.xml": 1,
-    "docs/_archive/run_lan_bridge.bat": 1,
-    # Dated audit artifacts: a claims file and the report produced from it. The
-    # recorded suite command is the observation, not an instruction to re-run.
-    "ops/audit/p2b_claims.json": 2,
-    "ops/audit/p2w5_truth_gate_claims.json": 1,
-    "ops/audit/p2w5_truth_gate_report.json": 1,
-}
+#:
+#: EMPTY BY MEASUREMENT (MAIN 2246 section 3, the user-profile class): the five
+#: records that used to be pinned here - two docs/_archive files and three
+#: ops/audit claim/report artifacts - got a redaction-only edit (home path ->
+#: %USERPROFILE% / %LOCALAPPDATA%, nothing else changed), so each now carries
+#: zero occurrences and falls under the clean-tree test below instead of a
+#: count pin. A future entry needs a record that genuinely cannot be redacted.
+FROZEN_HISTORICAL: dict[str, int] = {}
 
 #: Files that DELIBERATELY contain home-shaped paths because the shape is their
 #: SUBJECT. A guard that cannot plant its own needle cannot prove it is armed,
@@ -288,7 +287,7 @@ class TestThePatternItselfIsArmed:
         """A long or spaced account name collapses to a tilde-and-digit short
         form. The account charset already allows both, and the short form does
         not start with an excluded placeholder character."""
-        assert HOME_SHAPED.search(r"C:\Users\ADMINI~1\AppData\Local\Temp")
+        assert HOME_SHAPED.search(r"C:\Users\SOMEON~1\AppData\Local\Temp")
 
     def test_it_fires_on_a_mixed_slash_spelling(self):
         """Each separator slot is its own character class, so the two were
