@@ -11,7 +11,7 @@
 - **Shipped (LEDGER 1687-1693):** SUBAGENT-FIRST mode `log` -> `deny` EARLY on the operator's attended "arm" (1 of 3 sessions; adjudicated; ANSWER to MAIN 1431 reached 1/1); RM-685 inbox tick queues through kit `enqueue_work` (`2bab685f0`); kit v11 vendored `b0ed89184` + CLAUDE.md `f0b6a1578` + anchored hook (ANSWER to MAIN 1902 reached 1/1); RM-688 sibling-sweep run record (`3982721c2`); RM-689 `--done` holds the tick lock + BOM-tolerant migrate (`169e8c6e5`); RM-687 stop_claim_gate credits this session's sub-agent evidence, credit-only (`f118ada43`).
 - **Wrap (LEDGER 1693):** the two main-only `test_session_checklist_item13.py` failures were a STALE `tools/__pycache__/rc_facts.cpython-314.pyc` whose header matched the source (deleted; 24 passed); ROADMAP relocated to 89.95 percent; RM-690 (double-BOM) + RM-691 (stale-lock race) filed; kit-v11 worktree removed.
 - **Halted for the operator:** RM-686 out-of-tree proxy launcher edit + one proxy kill (MAIN 1840 sec 5).
-- **Next:** E2 if the operator reports the Electron 44 check OK; else RM-680 (DS 16.20.1).
+- **Next:** E2 (the operator reported the Electron 44 check OK at this wrap; merge Dependabot npm PR #2, pin exact), then RM-680 (DS 16.20.1).
 - **Do NOT redo:** the deny switch, kit v11, RM-685 / RM-687 / RM-688 / RM-689, the pyc diagnosis (one stale file in 2642; compare code objects, never marshal bytes).
 
 ---

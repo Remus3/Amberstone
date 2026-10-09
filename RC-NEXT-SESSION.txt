@@ -1,76 +1,92 @@
 NEXT SESSION
 ------------
-SESSION: 104
-Next action: E2 - ONLY if the operator reported the Electron 44 shell check OK: merge Dependabot npm
+SESSION: 105
+Next action: C1 / E2 - merge Dependabot npm - the operator reported the Electron 44 shell check OK on
+2026-10-08 (operator chat at the session 104 wrap, relayed into this file by the main session; the
+gate is MET; the /done of session 104 deliberately did NOT merge). Merge Dependabot npm
 PR #2 (electron 33.4.11 -> 44.x, rc-shell; 37 open alerts need >= 41.10.6), then in the MAIN
 checkout's rc-shell run `npm ci` and `npx install-electron` once (Electron >= 42 no longer
 downloads the binary on install). `^44.5.1` resolves 44.7.0, so pin EXACT. Re-verify
 `rc-shell\launch_overlay.bat:8`, `tools\legion_on.ps1:81`, `tools\install_lane_widget_shortcut.ps1:44`
 and the Desktop Amberstone.lnk / Lane Widget.lnk. Then remove worktree `.claude/worktrees/e1-electron44`
 (KEEP it until E2; it holds untracked `e1_cache/`).
-If the operator has NOT reported: next action is RM-680, the DS 16.19.1 -> 16.20.1 batch (Tier-2, DS
-batch lane, recipe = LEDGER 1652; acceptance in the ROADMAP NOW row).
-Operator launch commands for the check are in session 103 chat; in short: a separate --user-data-dir
-under e1_cache, and close the main Amberstone / Lane Widget first.
+After E2: next is RM-680, the DS 16.19.1 -> 16.20.1 batch (Tier-2, DS batch lane, recipe = LEDGER
+1652; acceptance in the ROADMAP NOW row).
+FIRST at session start: read CI on the wrap push (docs + hand-off only, pending at wrap). ci should
+sit at the RM-172 baseline (the 4 operator-left subtests); anything else red is the first fix.
 
-OPERATOR ASKS (batched, re-ask in ONE line):
-1. Electron 44 shell check result (above).
-2. OK to `pip install -r requirements.txt` on the box (still json5 0.14.0, pydantic 2.13.2,
+OPERATOR ASKS (batched, re-ask in ONE line; the Electron 44 check was answered OK at the session 104
+wrap; the rest are still open):
+1. OK to `pip install -r requirements.txt` on the box (still json5 0.14.0, pydantic 2.13.2,
    portalocker 3.2.0, websockets 16.0), restart RC, then refresh requirements.lock.
-3. OK to Recycle-Bin `%LOCALAPPDATA%\CrashDumps\electron.exe.{25540,22368,12240}.dmp` (~17 MB,
+2. OK to Recycle-Bin `%LOCALAPPDATA%\CrashDumps\electron.exe.{25540,22368,12240}.dmp` (~17 MB,
    written by E1's crashed hidden runs - a halt-boundary breach by Windows WER, recorded).
-4. Plus the physical-setup list below (carried from session 102).
-5. OK to edit the out-of-tree proxy launcher and kill the proxy once for the read-back (RM-686, MAIN 1840 sec 5).
+3. Plus the physical-setup list below (carried from session 102).
+4. OK to edit the out-of-tree proxy launcher and kill the proxy once for the read-back (RM-686, MAIN 1840
+   sec 5): the launcher line becomes `WScript.Quit sh.Run(<same cmdline>, 0, True)` so the scheduled
+   task can restart a crashed proxy; read-back = task Running while the proxy is up, then ONE proxy kill
+   (taskkill /F /PID) and the task restarts it within ~1 min; then answer MAIN with line + state +
+   restart. Body + acceptance in BACKLOG "Session 103 filings". "Continue headlessly - operator is away"
+   was NOT an OK for this.
 
-SESSION 104 ADDITIONS (inbox sync + arm, LEDGER 1687; supersede the stale facts in the paragraph below):
-- SUBAGENT-FIRST ARMED: mode is now `deny` (read back `deny\n`; kit mode() = deny). It was armed EARLY on the
-  operator's attended "arm", by adjudicator ruling A; the 3-session criterion was NOT met. MAIN was told in
-  2026-10-08-1431 ANSWER (sha256 73dda790..., reached 1/1). WATCH: if a deny row shows main-thread work that
-  cannot be dispatched (an AHK-typed loop window or a background session without agent_id), write `log` and
-  ask MAIN for a ruling.
-- The K2 / deny report owed to MAIN is DONE (that 1431 note). OutboundCap is 4/6 on 2026-10-08.
-- NEW RM-685 (Tier-1): the inbox tick's WORK rows never drain (RC row shape, not kit v10 enqueue_work).
-  BACKLOG "Session 103 filings". Next free RM id RM-686. Next free LEDGER id 1688.
-- CI on wrap HEAD 00618c625 is at the RM-172 baseline (ci 37808387559: 4 failed / 38349 passed);
-  test_no_environ is green, so that first action is closed.
+Session 104 (2026-10-08) shipped - do NOT redo (LEDGER 1687-1693):
+- I1 inbox sync / reply / arm (operator chat order): MAIN orders 2237 / 2354 / 0839 provenance 3/3,
+  inbox_work rows done; ANSWER 2026-10-08-1431 (K2 landed, deny early) reached 1/1.
+  ops/loop/control/subagent_first.mode log -> deny armed EARLY on the operator's attended "arm"
+  (criterion said 3 interactive sessions; this was 1/3; adjudicated, LEDGER 1687). Read back: file
+  `deny`, kit mode() `deny`. Commits 2a072d72f 6e7a4e50b 0b8511641 (verifier: ancestors of origin/main).
+- RM-685 inbox_tick queues via kit enqueue_work (2bab685f0 37e7a5623, LEDGER 1688); 6 legacy rows
+  migrated, backup inbox_work.jsonl.pre-rm685-20261008T183819.bak.
+- K11 MAIN 1840 ORDER fleet kit v11 adopted: provenance 18/18; b0ed89184 f0b6a1578 3b2f383fe (LEDGER
+  1689); hook anchored in the gitignored project .claude/settings.json as
+  `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py" || true`; triage non-bare via
+  triage_spawn_kwargs(True); ANSWER 2026-10-08-1902 reached 1/1 (copy docs/_outbound_2026-10-08-1902-*);
+  ORDER row closed, --pending empty (re-read at wrap: empty).
+- RM-688 sibling sweep writes a run record every run to gitignored ops/runtime/sibling_sweep_runs.jsonl
+  (3982721c2 436feb160, LEDGER 1690). A pushed range with no record = a skipped gate.
+- RM-689 inbox_tick --done holds inbox_tick.lock; migrate_legacy handles ONE BOM and keeps undecodable
+  lines (169e8c6e5 01ea61d52, LEDGER 1691).
+- RM-687 stop_claim_gate credits THIS session's sub-agent transcripts, credit-only (f118ada43 c522be400,
+  LEDGER 1692, verifier PASS round 4). Memory note reference_stop_gate_a_subagent_measurement_is_not_yours
+  (primary-account store, C-- and E-- copies) now carries a PARTLY SUPERSEDED header; the verifier rule
+  for relayed claims is unchanged.
+- WRAP (LEDGER 1693, commit 4aed7906f): the two main-checkout-only test_session_checklist_item13.py
+  failures were a STALE tools/__pycache__/rc_facts.cpython-314.pyc whose (mtime, size) header matched
+  the source; deleted, 24 passed in the main checkout. A sweep of all 2642 header-matching pycs
+  (code objects compared with ==, never marshal bytes) found only that one. The live SessionStart hook
+  had been running the stale pre-emit rc_facts until then. ROADMAP relocated (5 shipped rows ->
+  docs/ROADMAP_HISTORY.md `## 2026-10-08b`). RM-690 / RM-691 filed. Leftover worktree
+  .claude/worktrees/agent-ae1b52031e3d3e57e removed (`git worktree remove`, non-force, HEAD f0b6a1578
+  on origin/main) + branch deleted (`git branch -d`); read back: dir gone, worktree list 26 entries.
+- FINDING (answers the session 103 carry item "can worktree-isolated agents write the main checkout"):
+  when a NON-isolated orchestrator sub-agent resumes a worktree-isolated agent via SendMessage, the
+  harness temporarily re-homes the orchestrator into that worktree and refuses git in the main checkout
+  until the worktree agent's turn ends; it restores after. The non-isolated /done executor runs git
+  in the main checkout normally.
 
-SESSION 104 ADDITIONS (kit v11, LEDGER 1689; MAIN 1840 ORDER):
-- DONE: kit v11 vendored b0ed89184 (MANIFEST sha256 c1dcf5a6...), CLAUDE.md f0b6a1578, inbox triage on
-  triage_spawn_kwargs(True), SUBAGENT-FIRST hook re-wired in the gitignored project settings to
-  `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py" || true` (mode still deny). ONE ANSWER
-  2026-10-08-1902 sent to MAIN (copy docs/_outbound_2026-10-08-1902-*). OutboundCap 5/6 on 2026-10-08.
-- OPERATOR ASK (RM-686, HALTED): MAIN 1840 section 5 FIX - the proxy launcher (outside the repo root) must wait
-  on the proxy: `WScript.Quit sh.Run(<same cmdline>, 0, True)`; read-back = task Running while the proxy is up,
-  then ONE proxy kill (taskkill /F /PID) and the task restarts it within ~1 min. Needs the operator's OK for the
-  out-of-tree write and the kill; then answer MAIN with line + state + restart. Body in BACKLOG.
-- Next free RM id RM-690. Next free LEDGER id 1693.
-
-SESSION 104 ADDITIONS (W2 / S1, LEDGER 1690 + 1692; RM-688 + RM-687; RM-689 = LEDGER 1691 by another agent):
-- DONE RM-688 3982721c2: every sibling-sweep run appends one redacted JSONL line to gitignored
-  ops/runtime/sibling_sweep_runs.jsonl in the MAIN checkout. Read back after push 3b2f383fe..436feb160:
-  range 3b2f383fe2fd..436feb1606b0, verdict clean, exit 0. A pushed range with no record = a skipped gate.
-- DONE RM-687 f118ada43: stop_claim_gate reads this session's sub-agent transcripts (lazy, CREDIT-ONLY), so
-  relayed push / test / commit / merge / CI / file claims no longer flag under deny. Verifier round 4 PASS.
-- FOLLOW-UP (unfiled, small): stop_claim_gate _GIT_LEAD backtracks exponentially on `git -c -c -c ...`
-  (pre-existing; 6.1 s at 20 repeats; unrealistic). Memory reference "a subagent measurement is not yours"
-  is superseded for counts a sub-agent observed in a real run - update it at /done.
-- FINDING (answers the session 103 carry item below): when a NON-isolated orchestrator sub-agent resumes a
-  worktree-isolated agent via SendMessage, the harness temporarily re-homes the orchestrator into that
-  worktree and refuses git in E:\Riot Commander until the worktree agent's turn ends; it restores after.
-- FOLLOW-UP (unfiled): tests/test_session_checklist_item13.py rc_facts emit tests (2) FAIL in the MAIN
-  checkout only - same HEAD f118ada43 passes 24/24 in a clean detached worktree, and they fail with the
-  session's doc edits reverted, so it is gitignored local state, not a code change. Investigate.
-
-SUBAGENT-FIRST hook: mode `log` (gitignored `ops/loop/control/subagent_first.mode`). Session 103 was
-interactive session 1 of 3 toward `deny`; the deny date ~2026-10-11 was promised to MAIN. Read
-`ops/loop/control/subagent_first.jsonl` for would-deny rows of work that could not be dispatched:
-at wrap it held 340 rows = 339 sub-agent allows + 1 main would-deny (a Read at 2026-10-08T10:07:02-05:00,
-before the hook was wired; main also used Bash twice at session start). Report the K2 landing (MAIN 0839
-order step 5 done) and the deny switch to MAIN in the next batched note (OutboundCap 3/6 used 2026-10-08).
+New carry items (session 104):
+- H1 procedure: after answering an ORDER / FIX / RULING, close its row:
+  `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`, confirm with `--pending`.
+- W1 WATCH: deny mode may block main-thread work that cannot be dispatched (an AHK-typed loop window,
+  a background session without an agent id). If a deny row shows that, write `log` back to
+  ops/loop/control/subagent_first.mode and ask MAIN for a ruling. One instance this session
+  (stop_claim_gate vs deny) was fixed by RM-687.
+- OutboundCap: 5/6 notes used on 2026-10-08 (resets per local day).
+- RM-690 (double-BOM legacy row neither converted nor reported) and RM-691 (two takers breaking a stale
+  inbox_tick.lock can both hold it; pre-existing) - OPEN, Tier-1, bodies in BACKLOG "Session 103 filings".
+- RM-687 accepted limits: a hand-echoed fake push / `rc=0` line is still credited; ancestry and reflog
+  are not tied to the claimed sha. Unfiled follow-up: stop_claim_gate `_GIT_LEAD` regex backtracks
+  exponentially on `git -c -c -c ...` (pre-existing; 6.1 s at 20 repeats; unrealistic shape).
+- WATCH: one verifier run this session saw 24 child processes die at startup with 0xC0000142 (DLL init
+  failed); not reproduced on re-run. Desktop heap / process pressure suspected, unmeasured.
+- ROADMAP.md is at 89.95 percent of its 81920-byte budget after the wrap relocation (drift_guard warns
+  at 90): the next row added needs a relocation first.
+- Stale pyc class: if a test fails only in the main checkout, rerun with PYTHONPYCACHEPREFIX=<empty dir>
+  before suspecting gitignored state (memory reference_stale_pyc_matching_header, acct2 store).
 
 Session 103 (2026-10-08) shipped - do NOT redo (LEDGER 1680-1686; 1686 = the wrap's CI fix 26e83fd7f):
 - K1 kit v10 vendored 39d9ba6fb, emit() 8b9b6c356, DISPATCH block 74385afb3, merged 600fa8b84,
-  ANSWER to MAIN 0839 delivered 1/1 (copy 3ccca5429). MANIFEST v10 sha256 ae3c91ad...6aecc.
+  ANSWER to MAIN 0839 delivered 1/1 (copy 3ccca5429). Superseded by kit v11 (session 104).
 - Q1 CodeQL default setup -> not-configured (read back), codeql.yml triggers restored c4f306027,
   advanced analyses on main. Reverses if default setup is re-enabled (never run both).
 - R1 both `*.pre-E-move-20261008` asides in the C: Recycle Bin (28,206,278,046 B, 2 items; a restore
@@ -81,15 +97,10 @@ Session 103 (2026-10-08) shipped - do NOT redo (LEDGER 1680-1686; 1686 = the wra
 - K2 lane workers + loop executor start only via fleet_route.spawn -> kit spawn() (3ac0c58fb, fix
   52d752da1, merge c25553f53). ops/loop/headless_route.ps1 deleted. Lanes run --effort high,
   --no-session-persistence, json output, 6 h timeout. run_lane exits 3 when python cannot start (fixed).
-- P1 cdragon 16.20 drift acked; RM-680..RM-684 filed (next free id pin RM-685 in docs/DS_SWEEP_TRACKER.md);
-  BACKLOG RM-522 / RM-661 marked closed by LEDGER 1652.
+- P1 cdragon 16.20 drift acked; RM-680..RM-684 filed; BACKLOG RM-522 / RM-661 marked closed by LEDGER 1652.
 - Session 102 (LEDGER 1676-1679): E: cutover verify, kit v9, three CI fixes, supply-chain slice - done.
 
-New carry items (session 103):
-- Investigate whether worktree-isolated agents can write the main checkout: K2 reported "harness blocked
-  git in E:\Riot Commander" from its worktree agent and merged in its own worktree instead. The
-  non-isolated /done executor ran git (pull, commit, push) in the main checkout without a block.
-  Under SUBAGENT-FIRST main never runs git, so this matters.
+Carried from session 103 (not acted on yet):
 - `executor_cmd` in ops/loop/config.json (+ config.gate.json, config.p5.json) is now UNUSED. The kit
   finds claude on the USER PATH only, so a machine-env-only launch is refused (fails closed).
 - Still off-kit: the disarmed pre-v8 tools/inbox_responder_spawn.py (RM-683). headless_env.py stays as
@@ -98,11 +109,7 @@ New carry items (session 103):
   port; no API reached; tests now pin a fake. NEVER run tests/test_subagent_prompt_flag.py in a
   fake-only pass (it execs a real claude; RM-684 local pin failure 2.1.293 vs 2.1.285).
 - RM-681 anthropic 1.x blockers include a FROZEN core/log_setup.py:180 grant (operator).
-- Worktree cleanup done at wrap: Q1 worktree-agent-a43277a1eab7d7b4d removed (`git worktree remove`,
-  clean, merged at c4f306027) + branch deleted; empty dirs agent-a84895e8e0818b556 and
-  agent-aaaffd28a56c47cbe removed with rmdir (were not locked). C1 agent-a6715f9d860c8efc7 was already
-  unregistered and its dir gone; no ops/runtime/c1_* venvs in the main checkout. c1/* origin branches
-  stay (c1/deps-pip-anthropic1-measure holds 6c4cca1d7 for RM-681).
+- c1/* origin branches stay (c1/deps-pip-anthropic1-measure holds 6c4cca1d7 for RM-681).
 
 Carried forward (not acted on yet):
 - RM-new: 159 tracked HARDCODED C: literals (inventory docs/_outbound_2026-10-07-2207-*.md
@@ -111,7 +118,7 @@ Carried forward (not acted on yet):
   then the junction must stay. Note /done's own text (tools/done.md) still names C: paths.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
 - 6-agent clobber lesson: every sub-agent prompt must name a UNIQUE helper filename (session 102
-  used v9_/h_/g_ prefixes, session 103 d103_ - worked).
+  used v9_/h_/g_ prefixes, session 103 d103_, session 104 d104_ - worked).
 - WSL: Ubuntu v2 installed and runs (session 102 used it for Scorecard). Y-45 phone push still
   needs ntfy (tailnet host known locally, never in a tracked file). Y-45 approved 2026-10-03.
 - stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted capitalised
@@ -124,9 +131,11 @@ Carried forward (not acted on yet):
 - Leftover progress files ops/loop/control/progress/: rm415_fix, fleet_v6_slice_c,
   fleet_v7_slice_{a,b,d}, main-2155-inventory, ddragon-16-20-1, item-f-inbox-fold,
   item-f-cutover, main-2237-console, h-ci-green (dead), mig1-prune, e-move-script,
-  e-move-review, e-move-rereview, v9-vendor, h-ci-green-s102, g-supply-chain, and session 103's
+  e-move-review, e-move-rereview, v9-vendor, h-ci-green-s102, g-supply-chain, session 103's
   k1-kit-v10, c1-dependabot, p1-drift-1620, r1-recycle-premove, q1-codeql, e1-electron44,
-  k2-lane-spawn, done-s103 (all done; gitignored).
+  k2-lane-spawn, done-s103, and session 104's inbox-sync-s104, rm-685, rm-685-build, rm-685-verify,
+  rm-685b, kit-v11, kit-v11-build, s1-build, w2-build, w2-s1, rm-689-build, rm-689-verify
+  (all done; gitignored).
 - Operator setup list (physical / operator acts, batch into one ask with the asks above):
   - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window capture
     source; set the game to borderless; install ffmpeg; set obs.record.enabled; restart
@@ -145,11 +154,11 @@ Carried forward (not acted on yet):
   (watchers: phase_watcher, cost_health_watchdog, ds_feed_watch, ci_watchdog, spec_watch,
   progress_watch). Broken core/ silently disables the self-monitor (rc_supervisor.py:
   1466-1468). tools/legion_agent_boot.ps1 standalone copy to C:\RC-Agent cannot import core.
-- Still open rows: RM-680..RM-684 (new, ROADMAP NOW + BACKLOG "Session 103 filings"), RM-279,
-  RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-486,
-  RM-189, RM-167, RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator
-  fence), RM-256 redo = RM-521, RM-297b (needs non-author adjudicator + CI), RM-519 (responder
-  provenance on kit verify_main).
+- Still open rows: RM-680..RM-684, RM-686 (operator-gated), RM-690, RM-691 (ROADMAP NOW + BACKLOG
+  "Session 103 filings"), RM-279, RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229,
+  RM-290, RM-27, RM-248, RM-486, RM-189, RM-167, RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423,
+  RM-239/RM-242 (operator fence), RM-256 redo = RM-521, RM-297b (needs non-author adjudicator + CI),
+  RM-519 (responder provenance on kit verify_main).
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW - roster
   change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER SHARED_SHA256 re-pin
   stays joint.
@@ -172,36 +181,42 @@ Carried forward (not acted on yet):
 - Box load: no local full suite while 2+ others run (OOM / 60m timeouts measured again). CI is
   the full gate (~20m suite + ~7m Playwright; superseded pushes cancel in-flight ci).
 - ROADMAP top open: RM-680 (DS 16.20.1), EXTERNAL-LIFT INTAKE band 1 (BACKLOG.md "External-lift
-  intake"), RM-486, RM-488/489, RM-479, RM-482. ROADMAP budget 88.9% after the 2026-10-08
-  relocation pass (2 shipped rows -> docs/ROADMAP_HISTORY.md `## 2026-10-08`).
+  intake"), RM-486, RM-488/489, RM-479, RM-482.
 - Anomaly standing: RC-Phase3-Supervisor last_result=2 (uninvestigated).
 - WATCH: a future kit version will likely change the /done closing line to "Done ritual
   processed, safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Context: ops/fleet_kit/MANIFEST.json version 10; ops/fleet_kit/fleet_subagent_first.py (hook) +
-ops/loop/control/subagent_first.{mode,jsonl}; ops/loop/fleet_route.py + ops/loop/run_lane.ps1
+Retired this wrap (with reason): the session 103 item "investigate whether worktree-isolated agents
+can write the main checkout" (answered by the session 104 FINDING above); the session 103 SUBAGENT-FIRST
+`log` paragraph and its ~2026-10-11 deny date (superseded: mode is `deny` since session 104); the
+test_session_checklist_item13 follow-up (root-caused and fixed at this wrap, LEDGER 1693); the
+"session 103 worktree cleanup done at wrap" note (history, nothing open).
+
+Context: ops/fleet_kit/MANIFEST.json version 11; ops/fleet_kit/fleet_subagent_first.py (hook) +
+ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.py (--pending / --done /
+--migrate-legacy); tools/stop_claim_gate.py (RM-687); ops/loop/fleet_route.py + ops/loop/run_lane.ps1
 (kit spawn path); ops/loop/config.json (effort=); .github/dependabot.yml; .github/ci/requirements-*.in
 (regen command in header); .github/workflows/codeql.yml (advanced, triggers live);
 rc-shell/package.json (electron); ops/runtime/inbox_responder_agreement.json (expires 2026-11-01);
-ops/moon_sync_repos.json (gitignored). Next free LEDGER id 1687. Next free RM id RM-685.
+ops/moon_sync_repos.json (gitignored). Next free LEDGER id 1694. Next free RM id: the guarded pin in
+docs/DS_SWEEP_TRACKER.md (moved past RM-691 at this wrap).
 
 Acceptance: E2 - PR #2 merged with an EXACT electron pin, npm ci + install-electron done, the three
-launch paths and two Desktop shortcuts re-verified, e1-electron44 removed; OR RM-680 - DS /health reads
-16.20.1 with the LEDGER 1652 recipe complete. Operator asks answered or re-batched.
+launch paths and two Desktop shortcuts re-verified, e1-electron44 removed; then RM-680 - DS /health
+reads 16.20.1 with the LEDGER 1652 recipe complete. Operator asks answered or re-batched.
 
-Status (2026-10-08 wrap, session 103): commits 39d9ba6fb, 8b9b6c356, 74385afb3, 600fa8b84, 3ccca5429,
-c4f306027, 2bbc172df, 97a334527, cd0d962fb, 0adcd5018, 3ac0c58fb, 52d752da1, c25553f53, then the wrap
-commits 26e83fd7f (CI fix) and the docs + hand-off commit (push range in git log). Local gate
-this wrap: ruff all passed; hygiene 14 passed; targeted slice (kit v10 spawn routes, ephemeral auth env, portalocker4 opt-in, fleet kit conformance) 45 passed;
-docs-guard selected set 2137 passed / 4 skipped; drift_guard 0 breaches.
-CI on c25553f53: ci 37804227327 RED = 5 failed / 38348 passed: the 4 operator-left RM-172 subtests +
-tests/test_no_environ_in_assert_operands.py (K2's test_kit_v10_spawn_routes.py:248 `in env` assert),
-fixed forward in the wrap (26e83fd7f, LEDGER 1686; guard + module 33 passed locally). docs-guards
-37804227425 success; codeql 37804227388 success. The wrap push's own runs were pending at wrap -
-FIRST check at session 104 start: ci on the wrap HEAD should be back at the RM-172 baseline (4 subtests
-only); if test_no_environ is still red, that is the first action. The first wrap push was HALTED by
-the sibling sweep (STRUCT_DRIVE_ROOT on a short drive-root dir name in the R1 lines); redacted and the
-unpushed commits re-made before pushing - nothing left the box. RC health: pid 10508 alive,
-last_reload_ok true, mode_key client (not in game). DS :8860 ENGINE 1.286.0 patch 16.19.1. Session file 1.2 MB.
+Status (2026-10-08 wrap, session 104): commits 2a072d72f 6e7a4e50b 0b8511641 2bab685f0 37e7a5623
+b0ed89184 f0b6a1578 3b2f383fe 3982721c2 436feb160 169e8c6e5 01ea61d52 f118ada43 c522be400 (all pushed
+in-session), then the wrap commits 4aed7906f (docs) and the hand-off commit, pushed c522be400..HEAD at
+wrap (exact range in git log / reflog). Local gate this wrap: ruff all passed; hygiene 14 passed;
+test_session_checklist_item13 24 passed (after the stale pyc delete); docs-guard selected set (87
+modules) + registry / budget / drift-guard tests 2142 passed / 4 skipped with 1 failure fixed in-wrap
+(LEDGER prose named the new pin id; reworded, module re-run 37 passed); drift_guard 0 breaches.
+CI on c522be400 (carries all session 104 code): ci 37866600288 = RM-172 baseline, 4 failed / 38534
+passed / 293 skipped (the 4 operator-left test_rm172 subtests only); docs-guards 37866600298 success;
+codeql 37866600397 success. The wrap push's own runs were pending at wrap.
+RC health: pid 15584 alive, last_reload_ok true, mode_key client (not in game). DS :8860 ENGINE 1.286.0
+patch 16.19.1. Session file 1.0 MB (sub-agent transcripts 19 MB, separate). Background work at wrap:
+none running.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
