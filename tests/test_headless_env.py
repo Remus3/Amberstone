@@ -259,12 +259,15 @@ KIT_ROUTED = {
     "agents/_supervisor_ephemeral.py",
     "ops/loop/drain_waves_2_3.py",
     "ops/loop/executor.py",
+    "ops/loop/repo_review.py",
 }
 # KIT_ROUTED files that also start a NON-claude child (git / gh) hidden, so
 # CREATE_NO_WINDOW in them is not a second claude launcher. Reason per file.
 _KIT_ROUTED_OWN_NO_WINDOW = {
     "tools/ci_watchdog.py": "its git/gh runner `_run`",
     "ops/loop/drain_waves_2_3.py": "its `git worktree add` runner `_git`",
+    "ops/loop/repo_review.py": "its read-only git readers `_git_bytes` and the "
+                               "`git check-ignore` call in `build_manifest`",
     "ops/loop/executor.py": "its git readers `_git_out` / `_git_is_ancestor` and "
                             "the hook-gate checks `_hook_index_modes` / "
                             "`gate_inactive_reason`",
