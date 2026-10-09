@@ -81,8 +81,8 @@ runs. No mid-run questions to operator; log ambiguity + move on.
 |---|---|---|---|
 | RC | window "RC" (fable-5) | STEP 0 spawn lanes -> STEP 1 PROMPT A planning -> STEP 2 arm md-cleanup loop | main checkout; loop is AHK-typed |
 | LW | window "Image" | Sibling-A sibling run | own repo; RC loop auto-defers while its bridge lives |
-| R | headless claude -p (opus-4.8) | deep research: DS meta-valuation + Kai'Sa Manamune + patch 16.15; competitor findings NON-repo | worktree C:\rc-worktrees\research-20260716, branch docs/research-20260716 |
-| U | headless claude -p (opus-4.8) | overlay item 4 + item 8 backend, TDD, NO merge / restart / visual audit | worktree C:\rc-worktrees\ui-20260716, branch ui/overlay-item4-item8-20260716 |
+| R | headless claude -p (opus-4.8) | deep research: DS meta-valuation + Kai'Sa Manamune + patch 16.15; competitor findings NON-repo | worktree `<worktree-base>\research-20260716`, branch docs/research-20260716 |
+| U | headless claude -p (opus-4.8) | overlay item 4 + item 8 backend, TDD, NO merge / restart / visual audit | worktree `<worktree-base>\ui-20260716`, branch ui/overlay-item4-item8-20260716 |
 
 Spawner: ops/loop/spawn_lanes.ps1 (creates worktrees, detaches hidden run_lane.ps1 workers
 that pipe ops/loop/prompts/lane_*.md to claude -p). Done-sentinels + logs in
@@ -95,7 +95,7 @@ then merge, read lane logs + FORWARD_LEAP_PLAN.md.
 
 Directive: docs/specs/2026-07-16-md-cleanup-headless-directive.md
 Config: ops/loop/config.mdclean.json (opus executor, cycle cap 8)
-Launch: powershell -File "C:\Riot Commander\ops\loop\launch_mdclean.ps1"
+Launch: powershell -File "`<repo>\ops\loop\launch_mdclean.ps1`"
 Pins the AHK bridge STRICTLY to the Claude window titled exactly "RC" (errors out if absent, never
 grabs another window). Self-starts bridge + controller. Chained autonomous start: paste the
 AUTONOMOUS RUN prompt (see git log 2026-07-16 / operator chat) into the RC window - it runs

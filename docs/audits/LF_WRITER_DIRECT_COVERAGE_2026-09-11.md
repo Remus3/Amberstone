@@ -1,7 +1,7 @@
 # LF writer direct-test coverage census (RM-410 slice 2)
 
 Date: 2026-09-11. Measured in worktree
-`C:\Riot Commander\.claude\worktrees\agent-a06a1360ddc13c2f7` at HEAD
+`<repo>\.claude\worktrees\agent-a06a1360ddc13c2f7` at HEAD
 `8ad4b66780c3aa0ea2f8bc48dae1fb9b1cb36e44` (`8ad4b6678`), then every citation
 was RE-RESOLVED by an independent verifier against the merge target
 `ca6f42554`. Two `docs/ORCHESTRATION_PLAN.md` line numbers moved by +1 between
@@ -151,7 +151,7 @@ second time by the verifier with identical results:
 - GITIGNORED. `git check-ignore -v` exits 0 and names the rule:
   `.gitignore:160:data/meta_build/ddragon/*/_assets_manifest.json`.
 - 42318 CRLF pairs, from a pre-fix run. Measured on the only copy that exists
-  (`C:\Riot Commander\data\meta_build\ddragon\16.18.1\_assets_manifest.json`;
+  (`<repo>\data\meta_build\ddragon\16.18.1\_assets_manifest.json`;
   the file is absent from the audit worktree, as an untracked path must be):
   1839391 bytes, `raw.count(b"\r\n")` = 42318, `raw.count(b"\r")` = 42318,
   `raw.count(b"\n")` = 42318 - every newline in the file is a CRLF, none bare.

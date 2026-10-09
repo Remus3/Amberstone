@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 
 $TaskName  = "RC-DDragonMirrorRefresh"
 $Python    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-$Script    = "C:\Riot Commander\tools\ddragon_mirror_refresh.py"
+$Script    = Join-Path (Split-Path -Parent $PSScriptRoot) "tools\ddragon_mirror_refresh.py"
 $Arguments = "`"$Script`" --check-changed"
 
 if (-not (Test-Path $Python)) { throw "python not found at $Python" }

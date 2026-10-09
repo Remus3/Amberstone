@@ -52,9 +52,10 @@ if ($dsListening) {
   Write-Host "[on] DS server :8860 already listening (pid $($dsListening[0].OwningProcess))"
 } else {
   $py = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-  $ds = 'C:\Riot Commander\tools\start_daemon_slayer.py'
+  $repo = Split-Path -Parent $PSScriptRoot
+  $ds = Join-Path $repo 'tools\start_daemon_slayer.py'
   if ((Test-Path $py) -and (Test-Path $ds)) {
-    Start-Process -FilePath $py -ArgumentList "`"$ds`"" -WorkingDirectory 'C:\Riot Commander' -WindowStyle Hidden
+    Start-Process -FilePath $py -ArgumentList "`"$ds`"" -WorkingDirectory $repo -WindowStyle Hidden
     Write-Host "[on] DS server launching (start_daemon_slayer.py)"
     Start-Sleep -Seconds 5
     $dsListening = Get-NetTCPConnection -LocalPort 8860 -State Listen -ErrorAction SilentlyContinue
@@ -78,13 +79,14 @@ $rcShell = Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAct
 if ($rcShell) {
   Write-Host "[on] rc-shell overlay already running (pid $($rcShell[0].ProcessId))"
 } else {
-  $electron = 'C:\Riot Commander\rc-shell\node_modules\electron\dist\electron.exe'
+  $rcShellDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'rc-shell'
+  $electron = Join-Path $rcShellDir 'node_modules\electron\dist\electron.exe'
   if (Test-Path $electron) {
     # Launch via the cmd 'start' trampoline: cmd exits immediately and orphans Electron
     # with NO console attachment, so closing this Legion ON terminal can never close the
     # overlay. (A plain Start-Process -WindowStyle Hidden child inherits this console and
     # dies on its CTRL_CLOSE event - the bug this replaces.)
-    $cmdLine = '/c start "rcshell" /d "C:\Riot Commander\rc-shell" "' + $electron + '" .'
+    $cmdLine = '/c start "rcshell" /d "' + $rcShellDir + '" "' + $electron + '" .'
     Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdLine -WindowStyle Hidden
     Write-Host "[on] rc-shell overlay launching (detached)"
   } else {

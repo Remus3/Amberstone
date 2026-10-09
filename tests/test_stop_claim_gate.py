@@ -892,10 +892,10 @@ def test_an_unrelated_run_word_is_not_a_ci_probe(tmp_path):
 # widening it would credit any later `run` after any gh mention, which is the
 # looseness that produced the first armed session's 9 false positives.
 
-GH_AMP = ('cd "C:/Riot Commander" && GH="C:/Program Files/GitHub CLI/gh.exe" '
+GH_AMP = ('cd "C:/Example Repo" && GH="C:/Program Files/GitHub CLI/gh.exe" '
           '&& "$GH" run list --limit 3')
 GH_SUBPROCESS = (
-    'cd "C:/Riot Commander" && python -c "\n'
+    'cd "C:/Example Repo" && python -c "\n'
     "import json,subprocess\n"
     "GH=r'C:/Program Files/GitHub CLI/gh.exe'\n"
     "out=subprocess.run([GH,'run','list','--json','status,conclusion'])\n"
@@ -974,7 +974,7 @@ def test_a_different_variable_cannot_borrow_the_gh_binding(tmp_path):
 # prose-stripping the deletion exists for is unchanged, which the negative
 # cases below are what pin.
 
-GH_QUOTED_ABS = ('cd "C:/Riot Commander" && "C:/Program Files/GitHub CLI/gh.exe" '
+GH_QUOTED_ABS = ('cd "C:/Example Repo" && "C:/Program Files/GitHub CLI/gh.exe" '
                  "run view 30957597488 --json status,conclusion")
 
 
@@ -1003,7 +1003,7 @@ def test_a_gh_invocation_quoted_in_PROSE_is_still_not_evidence(tmp_path):
 def test_quoted_python_path_still_reads_as_a_pytest_run(tmp_path):
     """Same deletion hurt the pytest evidence path for the same reason - the
     interpreter is always invoked by quoted absolute path on this machine."""
-    cmd = ('"C:/Users/Administrator/AppData/Local/Programs/Python/Python314/'
+    cmd = ('"C:/Users/someone/AppData/Local/Programs/Python/Python314/'
            'python.exe" -m pytest tests/test_x.py -q')
     rows = [
         _assistant(_tool_use("Bash", command=cmd)),
@@ -1273,7 +1273,7 @@ def test_a_quoted_backslash_literal_that_is_not_an_exe_is_still_deleted():
     vanishing with the rest of the quoted literals. If the backslash alternative
     were added somewhere broader than the exe branch, this would leak.
     """
-    assert (gate.strip_command_noise(r'type "C:\Riot Commander\logs\no tests ran.txt"')
+    assert (gate.strip_command_noise(r'type "C:\Example Repo\logs\no tests ran.txt"')
             == "type  ")
 # SIXTH shape, and the first that makes the gate blind rather than noisy. Every
 # fix above narrowed what the gate would FLAG; this one is the opposite failure

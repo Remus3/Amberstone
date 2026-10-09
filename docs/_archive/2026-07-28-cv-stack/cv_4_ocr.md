@@ -4,7 +4,7 @@ Slice scope: OCR engine selection for tiny fixed-rect HUD numeral crops in Riot 
 All latency figures below marked MEASURED were run by me on Legion on 2026-07-28.
 
 Bench host: AMD Ryzen 7 7700X 8-Core, Windows 10 Pro 19045, Python 3.14.
-Bench scripts left at `C:\Users\ADMINI~1\AppData\Local\Temp\claude\C--Riot-Commander\25c7f8e2-ed52-4b8d-8bfc-a7da8008f9b5\`
+Bench scripts left at `%TEMP%\claude\<project-slug>\25c7f8e2-ed52-4b8d-8bfc-a7da8008f9b5\`
 (`bench_tess.py`, `bench2.py`, `bench_rapid2.py`, `bench_tmpl2.py`).
 
 **Honesty boundary on my own numbers:** crops are synthetic (Arial Bold white-on-dark,

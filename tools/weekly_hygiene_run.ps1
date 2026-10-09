@@ -9,7 +9,7 @@
 # Mirrors tools/headless_run.ps1's `claude -p` invocation.
 #
 # Usage (manual):
-#   powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\tools\weekly_hygiene_run.ps1"
+#   powershell -ExecutionPolicy Bypass -File "<repo>\tools\weekly_hygiene_run.ps1"
 
 param(
     [string]$Model = "claude-sonnet-5-5"

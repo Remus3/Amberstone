@@ -581,7 +581,7 @@ itself worth recording.
 
 ## 9. Reproducing these numbers
 
-    C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe docs\_overlap\tally_overlap.py
+    %LOCALAPPDATA%\Programs\Python\Python314\python.exe docs\_overlap\tally_overlap.py
 
 The script reads only the three scorer files, fails loudly on any parse or
 vocabulary defect, and prints every COUNT, RATE and VERDICT in sections 1, 2 and

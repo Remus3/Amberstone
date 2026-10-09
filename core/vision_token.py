@@ -13,7 +13,7 @@ authenticating every request with a known constant.
 
   1. Generate a new token:
      ``python -c "import secrets; print(secrets.token_hex(16))"``
-  2. On Legion - write it to ``C:\\Riot Commander\\config\\vision_token.txt``
+  2. On Legion - write it to ``<repo>\\config\\vision_token.txt``
      (first line, no newline required) OR set ``RC_VISION_TOKEN`` env
      var for the supervisor process.
   3. For the Legion-local relay agents - either set ``RC_VISION_TOKEN``

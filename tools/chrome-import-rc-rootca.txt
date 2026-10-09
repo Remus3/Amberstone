@@ -70,7 +70,7 @@ After import, visit chrome://settings/certificates again and
 look in the Authorities tab. Search "mkcert" - you should see
 a single entry like:
    org-mkcert development CA
-       mkcert RC-HOST\Administrator@RC-HOST
+       mkcert RC-HOST\<user>@RC-HOST
 
 Right-click -> Edit -> all three checkboxes ticked.
 

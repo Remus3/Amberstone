@@ -1,8 +1,8 @@
 # Orphan test-tree audit - RM-407
 
 **Measured 2026-09-11, base HEAD `591bf1e0d`, in worktree
-`C:\Riot Commander\.claude\worktrees\agent-abb71fadc14359596`.**
-Interpreter `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`.
+`<repo>\.claude\worktrees\agent-abb71fadc14359596`.**
+Interpreter `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`.
 
 RC carries two test trees that no CI job collects. The question this audit
 answers is NOT "do they exist" but "do they ASSERT anything, and will they run

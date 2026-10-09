@@ -8,8 +8,8 @@ Sizing script: `<scratchpad>/size_silent_excepts.py` (re-runnable, takes repo ro
 
 ## 1. Measured population (this run, not carried forward)
 
-Measured with `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`
-against `C:\Riot Commander`, excluding `tests/`, `Share/`, `python-embed/`,
+Measured with `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`
+against `<repo>`, excluding `tests/`, `Share/`, `python-embed/`,
 `docs/_archive/`, `.git`, `node_modules`, `__pycache__`, venvs, `worktrees`.
 
 Definition: an `except` handler whose body is ONLY `pass` / `continue` / `break` /

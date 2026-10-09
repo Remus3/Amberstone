@@ -89,7 +89,7 @@ class _TmpAppDirCase(unittest.TestCase):
 
     def valid_rc_config(self) -> dict:
         return {
-            "project_root": r"C:\Riot Commander",
+            "project_root": r"C:\Example Repo",
             "runtime_dir": "ops/runtime",
             "python_exe": "python.exe",
             "app_cmd": ["python.exe", "main.py"],

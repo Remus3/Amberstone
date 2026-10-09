@@ -290,7 +290,7 @@ def test_controller_lock_running_for_a_live_pid(loopdir, lanesdir):
     ctl, _cfg = loopdir
     _write_lock(ctl / "RUNNING.lock", {
         "pid": os.getpid(), "run_id": "live01", "ts": time.time(),
-        "repo": r"C:\Riot Commander",
+        "repo": r"C:\Example Repo",
     })
     _, body, _ = _serve(FakeHandler())
     assert body["controller_lock"]["state"] == "RUNNING"
@@ -304,7 +304,7 @@ def test_controller_lock_reclaimable_for_a_dead_pid(loopdir, lanesdir):
     ctl, _cfg = loopdir
     _write_lock(ctl / "RUNNING.lock", {
         "pid": _dead_pid(), "run_id": "eadf15e3", "ts": time.time() - 100,
-        "repo": r"C:\Riot Commander",
+        "repo": r"C:\Example Repo",
     })
     _, body, _ = _serve(FakeHandler())
     assert body["controller_lock"]["state"] == "RECLAIMABLE"

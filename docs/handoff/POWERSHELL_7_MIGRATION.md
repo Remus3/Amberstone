@@ -85,7 +85,7 @@ nothing. Its tracking lags. Confirm from the filesystem and Appx, never winget:
 
 ```
 Get-AppxPackage -Name "Microsoft.PowerShell*"
-Test-Path 'C:\Users\Administrator\AppData\Local\Microsoft\WindowsApps\pwsh.exe'
+Test-Path '%LOCALAPPDATA%\Microsoft\WindowsApps\pwsh.exe'
 Test-Path 'C:\Program Files\PowerShell\7\pwsh.exe'
 ```
 

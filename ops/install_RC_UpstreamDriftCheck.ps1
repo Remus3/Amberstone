@@ -21,7 +21,7 @@ $ErrorActionPreference = "Stop"
 
 $TaskName  = "RC-UpstreamDriftCheck"
 $Python    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-$Script    = "C:\Riot Commander\tools\upstream_drift_check.py"
+$Script    = Join-Path (Split-Path -Parent $PSScriptRoot) "tools\upstream_drift_check.py"
 $Arguments = "`"$Script`" --bridge-note --spec-watch"
 
 if (-not (Test-Path $Python)) { throw "python not found at $Python" }

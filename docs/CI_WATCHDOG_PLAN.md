@@ -56,11 +56,11 @@ Failure budget: max 2 PR attempts per run-id (sentinel: `ops/runtime/ci_watchdog
 
 ## Headless claude isolation
 
-Run from a dedicated git worktree at `C:\RC-CIWatchdog\` (not the live Legion checkout). Avoids stomping on operator's in-flight edits. Worktree refresh: `git fetch && git reset --hard origin/main` before each invocation. Worktree pattern matches the orchestrator-merge precedent (items 134-188).
+Run from a dedicated git worktree at `<ci-watchdog-worktree>\` (not the live Legion checkout). Avoids stomping on operator's in-flight edits. Worktree refresh: `git fetch && git reset --hard origin/main` before each invocation. Worktree pattern matches the orchestrator-merge precedent (items 134-188).
 
 ## Scheduled task
 
-`RC-CIWatchdog` on Legion, every 2 min, runs as Administrator, action = `pythonw.exe tools\ci_watchdog.py`. HIGHEST priority NO (background-class only).
+`RC-CIWatchdog` on Legion, every 2 min, runs as the operator account, action = `pythonw.exe tools\ci_watchdog.py`. HIGHEST priority NO (background-class only).
 
 ## Cost model
 
@@ -93,7 +93,7 @@ Per-invocation: 1 headless claude run with ~5k input tokens (CI log tail + diff 
 
 ## Don't-redo when implementing
 
-- Worktree at `C:\RC-CIWatchdog\` NOT inside `C:\Riot Commander\`.
+- Worktree at `<ci-watchdog-worktree>\` NOT inside `<repo>\`.
 - `--allowed-tools` whitelist on every headless invocation; never `--dangerously-skip-permissions`.
 - Frozen-file refusal pinned in the system prompt AND enforced by Bash glob deny.
 - `last_seen_run_id.txt` is the only state file the poller mutates; everything else is per-run.
@@ -113,7 +113,7 @@ Per-invocation: 1 headless claude run with ~5k input tokens (CI log tail + diff 
 
 **Dry-run-by-default safety:** `main()` (and the bare scheduled-task invocation) is READ-ONLY - it logs each decision + the would-run plan to `audit.jsonl` but mutates NO state (sentinel / attempts / pr-log) and runs no side effects. Arming is the single literal flag `--arm`. Live-verified 2026-06-24: a bare run correctly `skip_stale`-skipped the 4 then-stale red runs with the sentinel left absent; `execute_dispatch(arm=False)` prints the exact 10-step plan.
 
-**ARM step (operator, when ready):** (1) create the dedicated worktree `git worktree add C:\RC-CIWatchdog origin/main` (kept OUT of the live checkout); (2) enable repo auto-merge + a branch-protection CI gate so `--squash --auto` merges only on green; (3) edit `ops/RC-CIWatchdog.xml` action args to append `--arm`, then `schtasks /Create /TN RC-CIWatchdog /XML "ops\RC-CIWatchdog.xml" /F` (runs as the logged-on Administrator so gh/claude/git auth resolves); (4) soak: watch `audit.jsonl` over a real red main before trusting unattended merge. Kill-switch: create `ops\runtime\ci_watchdog\HALT`. The unattended auto-merger must not race the headless run that built it.
+**ARM step (operator, when ready):** (1) create the dedicated worktree `git worktree add <ci-watchdog-worktree> origin/main` (kept OUT of the live checkout); (2) enable repo auto-merge + a branch-protection CI gate so `--squash --auto` merges only on green; (3) edit `ops/RC-CIWatchdog.xml` action args to append `--arm`, then `schtasks /Create /TN RC-CIWatchdog /XML "ops\RC-CIWatchdog.xml" /F` (runs as the logged-on operator account so gh/claude/git auth resolves); (4) soak: watch `audit.jsonl` over a real red main before trusting unattended merge. Kill-switch: create `ops\runtime\ci_watchdog\HALT`. The unattended auto-merger must not race the headless run that built it.
 
 **SELF-GATE design update + ARMED 2026-06-25 (item 622).** The `--auto` + branch-protection merge described above was REPLACED by an in-watchdog self-gate: after `gh pr create`, the dispatch BLOCKS on the ci-fix PR's OWN CI via `gh pr checks <branch> --watch --fail-fast` and squash-merges (`gh pr merge --squash`, no `--auto`) ONLY on green; a red or timed-out check ESCALATES and is never merged. This needs NO `allow_auto_merge` and NO branch protection, so step (2) above is moot and the direct-push-to-main workflow is preserved (verified live: `allow_auto_merge=false`, main unprotected, repo is a private personal account where classic branch protection is gated anyway). Armed via `Register-ScheduledTask` with the task XML carrying `--arm`; `ExecutionTimeLimit` raised PT10M -> PT30M for the blocking check-watch, and the pre-existing `MultipleInstancesPolicy=IgnoreNew` prevents overlapping armed cycles during the wait. Per-step subprocess timeouts (`_STEP_TIMEOUTS`: claude_fix 600s, wait_checks 900s) bound each blocking step. +3 self-gate tests (30 total in `tests/test_ci_watchdog.py`). The CI workflow runs on `pull_request: [main]`, so the ci-fix PR genuinely gets checks for the gate to watch.
 

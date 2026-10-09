@@ -43,7 +43,7 @@ pipeline as live.
 -      "\\\\192.0.2.237\\RCClient\\web\\"
 -    ],
 -    "credential_store": "cmdkey_on_legion_under_target_192.0.2.237",
--    "auth_user": "Administrator",
+-    "auth_user": "<user>",
 -    "forwarder_restart_signal": "\\\\192.0.2.237\\RCClient\\forwarder\\restart_trigger.txt"
 +    "status": "decommissioned",
 +    "deprecated_by": "phase3-d020",
@@ -54,7 +54,7 @@ pipeline as live.
 +      "\\\\192.0.2.237\\RCClient\\web\\"
 +    ],
 +    "credential_store_historical": "cmdkey_on_legion_under_target_192.0.2.237",
-+    "auth_user_historical": "Administrator",
++    "auth_user_historical": "<user>",
 +    "forwarder_restart_signal_historical": "\\\\192.0.2.237\\RCClient\\forwarder\\restart_trigger.txt"
    },
 ```

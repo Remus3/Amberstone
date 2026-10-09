@@ -931,7 +931,7 @@ def test_a_single_agent_directive_is_unaffected():
 
 def test_absolute_and_relative_spellings_of_one_file_still_collide():
     body = ("Dispatch 2 parallel worktree agents.\n"
-            "AGENT 1: C:\\Riot Commander\\ops\\loop\\executor.py\n"
+            "AGENT 1: C:\\Example Repo\\ops\\loop\\executor.py\n"
             "AGENT 2: ops/loop/executor.py\n")
     assert executor.parallel_plan(body).verdict == "overlap"
 

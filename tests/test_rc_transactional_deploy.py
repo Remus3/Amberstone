@@ -3,7 +3,7 @@
 The module had ZERO test references before this file: measured by scanning
 every `tests/**/*.py` for the stem `rc_transactional_deploy`. It is the
 process that overwrites RC's own source files on disk, it runs under the
-supervisor's Administrator token, and it takes every path it writes from a
+supervisor's elevated token, and it takes every path it writes from a
 JSON request dropped into `ops/runtime/deploy_requests/`. No in-repo module
 writes that directory today, so the producer is out-of-band by construction
 - which is precisely why the consumer has to validate.

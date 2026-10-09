@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-03 onhit consumer completion. Model claude-opus-5-5, ef
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-03-onhit-consumer-completion.md END TO END.
+1. Read <repo>\docs\specs\leap\LEAP-03-onhit-consumer-completion.md END TO END.
    PREMISE (evidence-checked): the 6-button 3x2 picker grid was REMOVED (LEDGER 823) and
    replaced by a read-only chip. This slice makes the taxonomy + chip onhit-AWARE; re-adding
    any picker grid is GHOSTED.

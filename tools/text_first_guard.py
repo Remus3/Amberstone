@@ -27,7 +27,7 @@ _DENY = {
     "mcp__computer-use__read_clipboard",
 }
 
-_FLAG = Path(r"C:\Riot Commander\ops\runtime\allow_visual.flag")
+_FLAG = Path(__file__).resolve().parent.parent / "ops" / "runtime" / "allow_visual.flag"
 
 _REASON = (
     "Text-first (CLAUDE.md R1-R2): do not read text/state off the screen. "

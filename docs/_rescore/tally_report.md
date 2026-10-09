@@ -7,10 +7,10 @@ files directly. No scorer-reported total was carried forward.
 **Exact command used:**
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:\Riot Commander\docs\_rescore\tally.py"
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" "<repo>\docs\_rescore\tally.py"
 ```
 
-Run from `C:\Riot Commander`. Exit code 0.
+Run from `<repo>`. Exit code 0.
 
 ---
 

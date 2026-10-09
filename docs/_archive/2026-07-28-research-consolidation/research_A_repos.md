@@ -251,7 +251,7 @@ backlog idea if desired; do not credit or copy this repo for it.
   line 243: `const res = await fetch('https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw');`
 - https://raw.githubusercontent.com/ReformedDoge/Snooze-Manager/main/modules/generalUtils.js
   line 756: `subscription = ctx.socket.observe(uri, listener);`
-- RC live probe of `C:\Riot Commander\data\daemon_slayer\16.14.1\wiki_stats.json`:
+- RC live probe of `<repo>\data\daemon_slayer\16.14.1\wiki_stats.json`:
   170 of 171 champions carry `mode_modifiers`; 7 modes; 15 stat keys (above)
 - RC `agents/daemon_slayer/data_loader.py:520` `mode_modifier()`;
   `core/aram_balance_context.py`; `dashboard/routes_aram_balance.py`

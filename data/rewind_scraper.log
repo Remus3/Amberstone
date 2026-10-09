@@ -120,4 +120,4 @@ Already in DB: 1835 matches
   timeline_frames: 645,982 rows
   timeline_events: 2,516,873 rows
 
-Database: C:\Riot Commander\data\rewind_history.db
+Database: <repo>\data\rewind_history.db

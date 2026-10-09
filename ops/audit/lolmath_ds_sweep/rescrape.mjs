@@ -1,7 +1,7 @@
 // Re-scrape only partial/short champs at low concurrency (optimizer is CPU-bound).
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'fs';
-const EXE = 'C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe';
+const EXE = process.env.LOCALAPPDATA + '\\ms-playwright\\chromium-1217\\chrome-win64\\chrome.exe';
 const F = new URL('./lolmath_sweep.json', import.meta.url).pathname.replace(/^\//, '');
 const data = JSON.parse(readFileSync(F, 'utf-8'));
 const CONC = 2, WAIT = 28000, NEED = 6;

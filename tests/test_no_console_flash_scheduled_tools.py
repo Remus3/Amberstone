@@ -387,7 +387,7 @@ def _spawn_sites(tree: ast.AST) -> list[tuple[int, str]]:
 
 def _resolve_mention(mention: str, universe: frozenset[str]) -> str | None:
     """Longest path suffix of a task-definition .py mention that is a tracked
-    file. `C:\\Riot Commander\\tools\\x.py` tokenises to `Commander\\tools\\x.py`
+    file. `C:\\Example Repo\\tools\\x.py` tokenises to `Repo\\tools\\x.py`
     (the regex stops at the space), so the leading parts are dropped until a
     repo-relative path matches."""
     parts = [p for p in mention.replace("\\", "/").split("/") if p]
@@ -528,7 +528,7 @@ def test_completeness_check_catches_a_synthetic_spawn(tmp_path: Path) -> None:
     (tools / "interactive.py").write_text(
         "import os\nos.system('cls')\n", encoding="utf-8")
     (tmp_path / "ops" / "install_RC_Nightly.ps1").write_text(
-        '$Script = "C:\\Riot Commander\\tools\\nightly.py"\n'
+        '$Script = "C:\\Example Repo\\tools\\nightly.py"\n'
         "Register-ScheduledTask -TaskName RC-Nightly\n", encoding="utf-8")
 
     found = _unlisted_spawners(tmp_path, set())

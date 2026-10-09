@@ -1,27 +1,32 @@
 # ops/migrate - move RC from C: to E:
 
-Moves `C:\Riot Commander` and `C:\rc-worktrees` to `E:\Riot Commander` and
-`E:\rc-worktrees`, then leaves DIRECTORY JUNCTIONS at the old C: paths so every
+Moves `<src>` and `<wt-src>` to `<dst>` and
+`<wt-dst>`, then leaves DIRECTORY JUNCTIONS at the old C: paths so every
 C: literal nobody repointed (tracked HARDCODED paths, frozen files, sibling trees
 writing into `moon_sync_inbox/`) keeps working. External launchers (RC-* tasks,
 shortcuts, Claude Code project keys) are repointed to the canonical E: paths.
+
+Placeholders (no machine path is tracked): `<src>` / `<dst>` = the checkout before /
+after the move (C: / E:), `<wt-src>` / `<wt-dst>` = the lane worktree base before /
+after. Since 2026-10-09 `e_move.ps1` carries no machine defaults, so every launch
+line below also passes `-Src <src> -Dst <dst> -WtSrc <wt-src> -WtDst <wt-dst>`.
 
 Files: `e_move.ps1` (driver, Windows PowerShell 5.1), `e_move_helpers.py` (byte-exact
 rewrites, `.claude.json` edits, stray report; tests in `tests/test_e_move_helpers.py`).
 State: `ops\runtime\e_move_state.json` (Dst once it exists; Cutover writes both trees).
 Log: `logs\e_move.log` (+ `logs\e_move_robocopy.log`). Backups of everything edited:
-`E:\Riot Commander\ops\runtime\e_move_backup\`.
+`<dst>\ops\runtime\e_move_backup\`.
 
 ## Launch lines
 
 Run each with `-DryRun` first (a dry run only lists; it writes nothing but its log,
 beside Src). Replace 12345 with the PID of the Claude session that will exit last.
 
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\migrate\e_move.ps1" -Phase Stop -ExcludeTreeOfPid 12345
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\migrate\e_move.ps1" -Phase Preseed -AllowExistingDst
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\migrate\e_move.ps1" -Phase RepointInternal
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\migrate\e_move.ps1" -Phase Status
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\migrate\e_move.ps1" -Phase Cutover -Detach -WaitPid 12345
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<src>\ops\migrate\e_move.ps1" -Phase Stop -ExcludeTreeOfPid 12345
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<src>\ops\migrate\e_move.ps1" -Phase Preseed -AllowExistingDst
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<src>\ops\migrate\e_move.ps1" -Phase RepointInternal
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<src>\ops\migrate\e_move.ps1" -Phase Status
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<src>\ops\migrate\e_move.ps1" -Phase Cutover -Detach -WaitPid 12345
 
 ## Phases
 
@@ -46,8 +51,8 @@ beside Src). Replace 12345 with the PID of the Claude session that will exit las
    - delta-copies without /XO (C: wins every file), retried up to 3 times;
    - mirrors `.git` and reports files that exist only on E: (strays: report only);
    - re-applies RepointInternal;
-   - renames C:\Riot Commander aside and junctions it at once, then does the same for
-     C:\rc-worktrees;
+   - renames `<src>` aside and junctions it at once, then does the same for
+     `<wt-src>`;
    - after each junction, copies anything that landed in the renamed directory during
      the window (e.g. sibling notes in `moon_sync_inbox`) to E: (/XO) and records it;
    - repoints the tasks, shortcuts and `.claude.json`, restarts the tasks, and checks
@@ -55,28 +60,28 @@ beside Src). Replace 12345 with the PID of the Claude session that will exit las
 
 ## What the operator does
 
-1. Close every shell, editor and Explorer window inside `C:\Riot Commander` or
-   `C:\rc-worktrees`, then exit the Claude session whose PID was given to -WaitPid.
+1. Close every shell, editor and Explorer window inside `<src>` or
+   `<wt-src>`, then exit the Claude session whose PID was given to -WaitPid.
 2. Do NOT start any Claude session - in C: OR E: - and do not let the Console pane
-   auto-restart a session into `C:\Riot Commander`, until Status shows a final verdict.
+   auto-restart a session into `<src>`, until Status shows a final verdict.
    Check from any plain PowerShell window (the first line is the verdict):
 
-       powershell.exe -NoProfile -ExecutionPolicy Bypass -File "E:\Riot Commander\ops\migrate\e_move.ps1" -Phase Status
+       powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<dst>\ops\migrate\e_move.ps1" -Phase Status
 
    `VERDICT cutover_waiting` / `cutover_running`: wait. `VERDICT cut_over`: done.
    `VERDICT rolled_back`: RC runs from C: as before. `VERDICT needs_operator`: read the
    reason; nothing was restarted.
-3. After `cut_over`, start the next session in `E:\Riot Commander`. Relaunch the Lane
+3. After `cut_over`, start the next session in `<dst>`. Relaunch the Lane
    Widget / Amberstone shell from their Desktop shortcuts (Stop ended them).
 
-### Resume when C:\Riot Commander is missing
+### Resume when `<src>` is missing
 
-If the waiter died between the rename and the junction (`C:\Riot Commander` absent,
-`C:\Riot Commander.pre-E-move-<date>` present, verdict `cutover_running` with the waiter
+If the waiter died between the rename and the junction (`<src>` absent,
+`<src>.pre-E-move-<date>` present, verdict `cutover_running` with the waiter
 NOT RUNNING), finish it in the foreground from E: (cwd outside C:):
 
     cd /d E:\
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "E:\Riot Commander\ops\migrate\e_move.ps1" -Phase Cutover -NoWait
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<dst>\ops\migrate\e_move.ps1" -Phase Cutover -NoWait
 
 It reads the recorded aside directory, makes the junction, catches up and continues;
 if it cannot, it puts the original back (or re-creates the junction so the C: path is
@@ -95,13 +100,13 @@ NOTHING is restarted; the status is `needs_operator` with the reason, in both tr
 Manual, after a SUCCESSFUL cutover (work done on E: since then is NOT in the C: copy;
 copy anything you need out of E: first):
 
-    $ps1 = 'E:\Riot Commander\ops\migrate\e_move.ps1'
+    $ps1 = '<dst>\ops\migrate\e_move.ps1'
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ps1 -Phase Stop -ExcludeTreeOfPid 12345
-    cmd /c rmdir "C:\Riot Commander"
-    cmd /c rmdir "C:\rc-worktrees"
-    Rename-Item -LiteralPath 'C:\Riot Commander.pre-E-move-20261008' -NewName 'Riot Commander'
-    Rename-Item -LiteralPath 'C:\rc-worktrees.pre-E-move-20261008' -NewName 'rc-worktrees'
-    Get-ChildItem 'E:\Riot Commander\ops\runtime\e_move_backup\tasks\*.xml' | ForEach-Object {
+    cmd /c rmdir "<src>"
+    cmd /c rmdir "<wt-src>"
+    Rename-Item -LiteralPath '<src>.pre-E-move-20261008' -NewName 'Riot Commander'
+    Rename-Item -LiteralPath '<wt-src>.pre-E-move-20261008' -NewName 'rc-worktrees'
+    Get-ChildItem '<dst>\ops\runtime\e_move_backup\tasks\*.xml' | ForEach-Object {
         $n = $_.BaseName
         Register-ScheduledTask -TaskName $n -Xml (Get-Content -Raw -LiteralPath $_.FullName) -Force
     }

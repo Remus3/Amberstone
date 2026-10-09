@@ -8,7 +8,7 @@ any of those change so recall cannot drift stale.
 
 Sources, highest signal first:
   1. CLAUDE.md "### Settled - do not re-litigate"  -> category 'settled' (always-on)
-  2. ~/.claude/projects/C--Riot-Commander/memory/  -> category = frontmatter type
+  2. ~/.claude/projects/<project-slug>/memory/     -> category = frontmatter type
   3. docs/LEDGER.md numbered items                 -> category 'ledger'
   4. ROADMAP.md / BACKLOG.md sections              -> 'roadmap' / 'backlog'
 
@@ -52,9 +52,14 @@ DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
 # claude_quota_watch.py on 2026-08-01. Flagged now so that never happens.
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MEMDIR = os.path.join(
-    os.path.expanduser("~"), ".claude", "projects", "C--Riot-Commander", "memory"
-)
+# The project slug is derived from THIS checkout (its main working tree), never
+# baked in: a literal publishes the machine's checkout path and goes stale the
+# day the checkout moves.
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+from core.claude_project import project_dir as _claude_project_dir  # noqa: E402
+
+MEMDIR = str(_claude_project_dir(REPO) / "memory")
 
 IMPORTANCE = {"user": 0.95, "feedback": 0.9, "project": 0.8, "reference": 0.75}
 ETYPE = {

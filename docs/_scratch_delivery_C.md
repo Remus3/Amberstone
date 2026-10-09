@@ -130,7 +130,7 @@ Bash, from any directory, with the four sibling roots read out of
 real space):
 
 ```
-python -c "import os,json;c=json.load(open(r'C:/Riot Commander/ops/moon_sync_repos.json'))['participants'];rc=set(os.listdir(r'C:/Riot Commander/moon_sync_inbox'));print('SELF-WRITES:',[f for f in rc if 'from-RC' in f]);[print(k,'undelivered-to-RC:',[f for f in os.listdir(v+'/moon_sync_inbox') if ('from-'+k).lower() in f.lower() and f not in rc]) for k,v in c.items()]"
+python -c "import os,json;c=json.load(open(r'<repo>/ops/moon_sync_repos.json'))['participants'];rc=set(os.listdir(r'<repo>/moon_sync_inbox'));print('SELF-WRITES:',[f for f in rc if 'from-RC' in f]);[print(k,'undelivered-to-RC:',[f for f in os.listdir(v+'/moon_sync_inbox') if ('from-'+k).lower() in f.lower() and f not in rc]) for k,v in c.items()]"
 ```
 
 It prints two things: any `from-RC` file sitting in RC's OWN inbox (must be an

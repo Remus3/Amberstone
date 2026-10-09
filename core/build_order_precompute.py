@@ -142,7 +142,7 @@ from core import archetype_picks
 from core.polled_json import atomic_write_text
 from agents.daemon_slayer.mode_variants import canonical_champions
 
-# Project root: core/ -> C:\Riot Commander\
+# Project root: core/ -> <repo>\
 _ROOT = Path(__file__).resolve().parent.parent
 _DATA_DIR = _ROOT / "data"
 _DS_DIR = _DATA_DIR / "daemon_slayer"
@@ -980,7 +980,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         _install_static_transport()
     elif not args.dry_run and not _engine_up():
         logger.info("DS engine at 127.0.0.1:8860 is not responding. Start it via "
-              '`"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
+              '`"%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
               "refuses to write tables against a dead engine).", file=sys.stderr)
         return 2
 

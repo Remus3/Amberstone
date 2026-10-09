@@ -26,12 +26,12 @@
 # and cascades into a parse failure.
 #
 # Idempotent: unregisters any existing task with the same name first.
-# Path-safe (Register-ScheduledTask handles spaces in "Riot Commander").
+# Path-safe (Register-ScheduledTask handles spaces in the checkout path).
 #
 # Run from an elevated PowerShell:
-#   powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1"
-#   powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1" -Probe
-#   powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1" -Remove
+#   powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_InboxResponder.ps1"
+#   powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_InboxResponder.ps1" -Probe
+#   powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_InboxResponder.ps1" -Remove
 
 param(
     [switch]$Remove,
@@ -41,7 +41,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $TaskName  = "RC-InboxResponder"
-$Root      = "C:\Riot Commander"
+$Root      = Split-Path -Parent $PSScriptRoot
 $Python    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $Script    = "$Root\tools\inbox_responder_runner.py"
 $Arguments = "`"$Script`" --cycle"

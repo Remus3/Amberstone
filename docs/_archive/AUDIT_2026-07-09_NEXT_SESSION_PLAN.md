@@ -89,7 +89,7 @@ engine but left the banner. DAEMON_SLAYER.md is not frozen.
 
 ### 2.1  cost_tracker reads a phantom repo-root rc_config.json  [P2]
 core/cost_tracker.py:122 sets `_RC_CFG = _APP_DIR / "rc_config.json"` where _APP_DIR is
-the repo root, resolving to C:\Riot Commander\rc_config.json which does NOT exist (only
+the repo root, resolving to `<repo>\rc_config.json` which does NOT exist (only
 ops/rc_config.json exists; CONFIG_AUTHORITY.md:10 names ops/rc_config.json the top
 authority). read_json_dict(default={}) swallows the miss - fails silent. Today both files
 lack the keys so behavior = defaults, but an operator who follows CONFIG_AUTHORITY.md and

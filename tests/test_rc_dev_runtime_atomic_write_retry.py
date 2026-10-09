@@ -4,8 +4,8 @@ Why this exists (measured, not theorised). ``ops/runtime/last_fatal.txt`` on
 Legion carried, dated 2026-08-12 20:44:33::
 
     heartbeat_error: PermissionError: [WinError 5] Access is denied:
-    'C:\\Riot Commander\\ops\\runtime\\health.json.tmp'
-    -> 'C:\\Riot Commander\\ops\\runtime\\health.json'
+    'C:\\Example Repo\\ops\\runtime\\health.json.tmp'
+    -> 'C:\\Example Repo\\ops\\runtime\\health.json'
 
 Windows gives no POSIX rename-over-open-file guarantee. A reader, an antivirus
 scan or the search indexer holding a handle for a few milliseconds makes

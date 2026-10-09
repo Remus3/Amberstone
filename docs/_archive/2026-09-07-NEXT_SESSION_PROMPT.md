@@ -1,6 +1,6 @@
 # Amberstone - next session: FORK ON LIVE STATE, do not pick blind
 
-Mirrors the Desktop hand-off at `C:\Users\Administrator\Desktop\RC-NEXT-SESSION.txt`.
+Mirrors the Desktop hand-off at `%USERPROFILE%\Desktop\RC-NEXT-SESSION.txt`.
 Read `git log --oneline` rather than trusting any list below.
 
 ## PROBE FIRST

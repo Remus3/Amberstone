@@ -470,14 +470,14 @@ of it only.
 
 ## 4. EXACT COMMANDS RUN
 
-Python is `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`.
+Python is `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`.
 All of this is read-only.
 
 The existing parser was read first and reused; no second parser was written,
 because a second parser that disagrees is a defect and not a cross-check.
 
-    "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" \
-        "C:\Riot Commander\docs\_rescore\tally.py"
+    "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" \
+        "<repo>\docs\_rescore\tally.py"
 
 That run reports 198 parsed rows over the four chunk files, 0 BLOCKING parse
 problems and 11 benign, and prints the PREVENTION, DISCOVERY and GATE-FAMILY
@@ -488,7 +488,7 @@ directly rather than re-implementing it:
 
     import sys
     from pathlib import Path
-    R = Path(r"C:\Riot Commander\docs\_rescore"); sys.path.insert(0, str(R))
+    R = Path(r"<repo>\docs\_rescore"); sys.path.insert(0, str(R))
     import tally
     problems = []; rows = []
     for n in (1, 2, 3, 4):

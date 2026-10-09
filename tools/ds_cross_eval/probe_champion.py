@@ -26,7 +26,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-ROOT = Path(r"C:/Riot Commander")
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from core.archetype_picks import canonical_champion_id, get_archetype_for  # noqa: E402
