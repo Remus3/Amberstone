@@ -13,7 +13,7 @@ Reports:
   - Resolved project root
   - Python executable and version
   - Git availability
-  - Expected launcher scripts (start.bat, restart_clean.bat)
+  - Expected launcher scripts (start.bat, scripts/restart_clean.bat)
   - Required config files (API-Key-Claude.txt, feature_flags.json)
   - Embedded Python Runtime (Option B): python-embed/python.exe + pythonw.exe
   - GUI launcher: embedded pythonw.exe (Option B) or PATH pythonw.exe (Option A fallback)
@@ -147,7 +147,7 @@ def main() -> int:
     print("\n[Launcher Scripts]")
     launchers = [
         ("start.bat",        "primary launcher (API key + pythonw main.py)"),
-        ("restart_clean.bat","clean-start launcher (kill + cache clear + launch)"),
+        ("scripts/restart_clean.bat", "clean-start launcher (kill + cache clear + launch)"),
         ("main.py",          "true application entrypoint"),
     ]
     for name, desc in launchers:
@@ -304,7 +304,7 @@ def main() -> int:
     # Launchers that must be root-relative for portable distribution
     portable_launchers = [
         ("start.bat",         "uses %~dp0 -- root-relative"),
-        ("restart_clean.bat", "uses %~dp0 -- root-relative"),
+        ("scripts/restart_clean.bat", "uses %~dp0.. -- root-relative"),
         ("install.bat",       "uses %~dp0 -- root-relative"),
     ]
     for name, note in portable_launchers:

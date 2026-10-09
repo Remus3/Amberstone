@@ -18,12 +18,11 @@ No files are written outside the project root during normal operation.
   <project-root>/               <- portable root; can be any path
   |
   +-- main.py                   SOURCE   true application entrypoint
-  +-- app.py                    SOURCE   OverlayApp class (imported by overlay.py)
   +-- overlay.py                SOURCE   tkinter overlay bootstrap
   +-- game_reader.py            SOURCE   Riot Live Client Data reader
   +-- coach_integration.py      SOURCE   SR coaching engine
   +-- start.bat                 LAUNCHER primary launch (API key + embedded pythonw (Option B) or PATH pythonw (fallback))
-  +-- restart_clean.bat         LAUNCHER clean-start (kill + cache clear + relaunch)
+  +-- scripts/restart_clean.bat LAUNCHER clean-start (kill + cache clear + relaunch)
   +-- install.bat               SETUP    one-time setup (packages, dirs, API key)
   +-- API-Key-Claude.txt        SECRET   Anthropic API key (not source-controlled)
   +-- requirements.txt          SOURCE   pip dependency list
@@ -67,8 +66,10 @@ No files are written outside the project root during normal operation.
   All .py files under: core/, coaches/, tft/, ui/, lcu/, tests/, tools/
   All frozen ops files: ops/rc_supervisor.py etc.
   All config files: config/*.json, config/*.md
-  All launchers: start.bat, restart_clean.bat, install.bat
-  requirements.txt, main.py, app.py, overlay.py
+  All launchers: start.bat, install.bat (the only root entry points),
+  scripts/restart_clean.bat, scripts/restart.bat, scripts/kill.bat,
+  scripts/start_debug.bat
+  requirements.txt, main.py, overlay.py
 
 ### Runtime-generated (created at runtime, not in distribution source)
 
@@ -88,10 +89,11 @@ No files are written outside the project root during normal operation.
 ## Paths That Must Be Root-Relative
 
 All launcher scripts (.bat) resolve paths via `%~dp0` (directory of the
-script itself). This means the project root can be any path on any drive.
+script itself; `%~dp0..` for the launchers in scripts/). This means the
+project root can be any path on any drive.
 
   start.bat:         %~dp0API-Key-Claude.txt, %~dp0main.py
-  restart_clean.bat: %~dp0__pycache__, %~dp0*.pyc, %~dp0main.py
+  scripts/restart_clean.bat: %~dp0.. as RC_ROOT, then RC_ROOT\__pycache__, RC_ROOT\main.py
   install.bat:       all paths use %~dp0 -- fully portable
 
 All Python tools (tools/dev_cli.py, tools/bootstrap_env_check.py) resolve

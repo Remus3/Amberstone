@@ -1459,7 +1459,7 @@ def test_the_ci_gate_report_carries_the_narrowing_count(narrow_cfg):
     # the thing under test rather than on an absent environment capability - if
     # the CI gate module ever went missing, this guard would go quietly green
     # instead of red, on the leak gate of a public repo. Caught by
-    # tests/test_skip_condition_hygiene.py; see docs/SKIPIF_AUDIT_2026-07-27.md.
+    # tests/test_skip_condition_hygiene.py; see docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md.
     from tools import sibling_sweep_ci as sweep_ci
 
     stats = sweep.ScanStats(files=10**6, scanned_bytes=10**9)

@@ -424,7 +424,7 @@ def test_the_committed_corpus_still_carries_the_cited_stored_blocks():
     path = _ROOT / "data" / "daemon_slayer" / "16.15.1" / "champion_abilities.json"
     # No skip guard here on purpose. This corpus is TRACKED, so its absence is a
     # defect rather than an environment gate, and a skip would make this an
-    # always-passing test - see docs/SKIPIF_AUDIT_2026-07-27.md and the guard in
+    # always-passing test - see docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md and the guard in
     # tests/test_skip_condition_hygiene.py that caught exactly that here.
     assert path.exists(), f"tracked corpus missing: {path}"
     data = json.loads(path.read_text(encoding="utf-8"))["data"]

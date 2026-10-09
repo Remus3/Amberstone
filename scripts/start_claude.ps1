@@ -1,5 +1,8 @@
-# Riot Commander - Claude Code launcher
+# Amberstone - Claude Code launcher
 # Verifies background agents are up, then launches Claude in this project.
+# Lives in scripts\ (moved from the repo root 2026-10-09, MAIN 2246 sec 3);
+# the repo root is this file's parent folder.
+$RepoRoot = Split-Path -Parent $PSScriptRoot
 
 # Self-elevate if not running as admin
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -8,7 +11,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit
 }
 
-Set-Location $PSScriptRoot
+Set-Location $RepoRoot
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
 Write-Host ""
@@ -108,7 +111,7 @@ try {
 }
 
 # 12. Echo health.json snapshot
-$healthPath = Join-Path $PSScriptRoot "ops\runtime\health.json"
+$healthPath = Join-Path $RepoRoot "ops\runtime\health.json"
 if (Test-Path $healthPath) {
     try {
         $h = Get-Content $healthPath -Raw | ConvertFrom-Json

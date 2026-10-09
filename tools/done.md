@@ -19,6 +19,8 @@ description: End-of-session ritual - auto-commit any pending changes, push, do t
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **PATHS (MAIN 2246 ORDER section 3).** No machine path is written in this file. `<repo>` = this tree's MAIN checkout root (in the main session it is the cwd; from a worktree, the parent of `git rev-parse --path-format=absolute --git-common-dir`). `%LOCALAPPDATA%` / `%USERPROFILE%` expand per account (`$env:LOCALAPPDATA` in PowerShell, `$LOCALAPPDATA` in Git Bash). `%USERPROFILE%/.claude/projects/<project-slug>/` = Claude Code's project dir for this checkout (`core/claude_project.py` `project_dir()`; under the account's own config dir when `CLAUDE_CONFIG_DIR` is set).
+
 The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order - in the ONE dispatched executor below, never in the main session.
 
 > **/done DISPATCH PROTOCOL (FLEET-KIT v10; MAIN 2026-10-08 0839 ORDER step 4).** The WHOLE ritual - sections 0 through 10 - runs in ONE sub-agent, the /done EXECUTOR. The main session runs none of it.
@@ -110,13 +112,13 @@ python tools/session_steer.py --drain --format text
 
 Versioning is cheap; lost work is not. The operator never passes up a commit + push. So the DEFAULT is: always commit + push when local checks are green. Do NOT leave authored work uncommitted at session end just because a change feels small or unfinished - if it passes its checks, it ships.
 
-- Identify the files authored this session: `git -C "C:/Riot Commander" status -s`.
+- Identify the files authored this session: `git -C "<repo>" status -s`.
 - Run the cheap local gate on the touched surface:
-  - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
-  - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
-  - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
+  - `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
+  - `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
+  - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
   - Test slice covering the change, per the TIER TABLE above: **the targeted modules' test files** (Tier-1). For a Tier-2 session (engine touched, schema, ENGINE_VERSION), the TIER TABLE's ONE gated parallel dual-suite run - skip it when the session's merger already ran it on the tree being committed, and never run a whole suite for Tier-0/1 work: the push CI run covers that (section 2c). Measure suite sizes with `pytest <path> --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
-- **Any WHOLE suite run locally** (here or anywhere in this ritual; a verifier never runs one, per the TIER TABLE) goes through the kit's machine-wide suite gate (FLEET-KIT v12, FLEET-COMMON item 16 c): `python "C:/Riot Commander/ops/fleet_kit/fleet_suite_gate.py" run --owner <id> -- <suite cmd>`, where `<suite cmd>` is the TIER TABLE's parallel `-n 8 --dist loadfile` form, never a serial one. A slice that names its test files needs no gate. `<id>` is your claims owner id (RACE GUARDS block above); exit 3 = no slot in time or another live agent's uncommitted edit straddles the run - wait, never bypass.
+- **Any WHOLE suite run locally** (here or anywhere in this ritual; a verifier never runs one, per the TIER TABLE) goes through the kit's machine-wide suite gate (FLEET-KIT v12, FLEET-COMMON item 16 c): `python "<repo>/ops/fleet_kit/fleet_suite_gate.py" run --owner <id> -- <suite cmd>`, where `<suite cmd>` is the TIER TABLE's parallel `-n 8 --dist loadfile` form, never a serial one. A slice that names its test files needs no gate. `<id>` is your claims owner id (RACE GUARDS block above); exit 3 = no slot in time or another live agent's uncommitted edit straddles the run - wait, never bypass.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
 - GREEN: proceed to section 0b, then commit (section 1).
 - RED: fix and re-run. If the failure is pre-existing and unrelated to this session's work, record it in the hand-off file (section 10) and commit only the green-verified authored files - never commit over a regression you introduced.
@@ -125,13 +127,13 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
 ### 0b. Drift guard - the check that saves the cleanup sessions
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/drift_guard.py"
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" "<repo>/tools/drift_guard.py"
 ```
 
 After an ENGINE bump, pass the version you bumped FROM so the anchor sweep runs:
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/tools/drift_guard.py" 1.258.0
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" "<repo>/tools/drift_guard.py" 1.258.0
 ```
 
 Runs in a few seconds and exits 1 on any breach. It checks doc-size budgets, `tools/*.md` vs `.claude/commands/*.md` mirror parity, memory-index integrity, stale version anchors (HTML included), self-inconsistent counted claims, authored files git is not tracking, and `atlas.html` freshness (the `tools/atlas_build.py --check` verdict; fix a stale page with `python tools/atlas_build.py` and commit it).
@@ -142,7 +144,7 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
 
 ### 1. Auto-commit any pending changes
 
-- `git -C "C:/Riot Commander" status -s`
+- `git -C "<repo>" status -s`
 - If output is empty: skip to section 2.
 - Otherwise:
   - **Audit before staging**: refuse to auto-commit any path matching `*SECRET*`, `*HANDSHAKE*`, `*PIVOT*`, `*REPLY*`, `*TOKEN*`, `*KEY*`, `.env*`, `local_paths.json`, `API-Key-Claude.txt`, or anything that looks like credentials. If matched: stop and ask the operator before proceeding.
@@ -159,14 +161,14 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
     before that hardcoded `Claude Opus 4.7 (1M context)`. Both were wrong in the same
     direction: prose describing a step the tooling deletes. Verify against `.githooks/` before
     re-editing this line.)
-  - **Commit through the tree's git lock** (FLEET-KIT v12, FLEET-COMMON item 16 a): write the message to a tmpfile (ASCII), then `python "C:/Riot Commander/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "C:/Riot Commander" commit -F <tmpfile>`. A bare `git commit` is denied by the claims hook. Exit 3 = the lock, a leftover index.lock, or a staged path another live agent claims refused the run (its stderr line says which): wait or unstage that path, never bypass.
+  - **Commit through the tree's git lock** (FLEET-KIT v12, FLEET-COMMON item 16 a): write the message to a tmpfile (ASCII), then `python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "<repo>" commit -F <tmpfile>`. A bare `git commit` is denied by the claims hook. Exit 3 = the lock, a leftover index.lock, or a staged path another live agent claims refused the run (its stderr line says which): wait or unstage that path, never bypass.
   - If pre-commit hooks fail: fix and create a new commit (never `--amend`).
 
 ### 2. Push
 
-- `git -C "C:/Riot Commander" log @{u}.. --oneline` - list local commits not on origin.
+- `git -C "<repo>" log @{u}.. --oneline` - list local commits not on origin.
 - If empty: skip.
-- Otherwise: `python "C:/Riot Commander/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "C:/Riot Commander" push origin <branch>` (the git lock, FLEET-KIT v12 item 16 a; a bare `git push` is denied). No confirmation prompt - pushing is part of the exit ritual.
+- Otherwise: `python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "<repo>" push origin <branch>` (the git lock, FLEET-KIT v12 item 16 a; a bare `git push` is denied). No confirmation prompt - pushing is part of the exit ritual.
 - Record the push range (e.g. `23854e1..b56f247 main -> main`) in the hand-off file, not in chat.
 - If the push fails (auth, conflict, hook): stop with `/done stopped: push failed - <cause>`.
 
@@ -206,11 +208,11 @@ So the push in section 2a has already fired the full dual suite. Note its run id
 
 ### 5. RC restart pending
 
-- Check `C:/Riot Commander/restart_trigger.txt` - if non-empty, RC may still be reloading. Confirm `ops/runtime/health.json` shows `alive=true` AND `last_reload_ok=true` before declaring done.
+- Check `<repo>/restart_trigger.txt` - if non-empty, RC may still be reloading. Confirm `ops/runtime/health.json` shows `alive=true` AND `last_reload_ok=true` before declaring done.
 
 ### 6. WAKEUP_NOTES update
 
-- The next session will bootstrap from `C:/Riot Commander/WAKEUP_NOTES.md` + `MEMORY.md` + git log. Make sure tomorrow-you can pick up cleanly.
+- The next session will bootstrap from `<repo>/WAKEUP_NOTES.md` + `MEMORY.md` + git log. Make sure tomorrow-you can pick up cleanly.
 - Append a short entry (<=20 lines) describing this session's work: commits shipped, key decisions, what's next. Don't rewrite history; just append.
 - Note explicitly any blockers or things tomorrow-you should NOT redo (e.g. "lobby pill fix already shipped in bb4cff9 - don't re-investigate").
 
@@ -248,7 +250,7 @@ Keep WAKEUP_NOTES.md to last 2-3 full sessions only. Bridge spawn overhead grows
 Run the auto-prune helper:
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" "C:/Riot Commander/scripts/wakeup_prune.py" --keep 3
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" "<repo>/scripts/wakeup_prune.py" --keep 3
 ```
 
 This moves any session block past the 3 most recent into `docs/history_notes.md` (newest-first, atomic write). It is a no-op when WAKEUP_NOTES already has <=3 sessions, so always-safe to run. Add `--dry-run` first if you want to preview what would move.
@@ -259,7 +261,7 @@ Manual follow-ups (only if needed):
 
 ### 7. Memory updates
 
-- List new/modified files under `C:/Users/Administrator/.claude/projects/C--Riot-Commander/memory/` since session start.
+- List new/modified files under `%USERPROFILE%/.claude/projects/<project-slug>/memory/` since session start.
 - Confirm `MEMORY.md` indexes any new memories; add if missing.
 
 ### 8. Game state safety check
@@ -269,7 +271,7 @@ Manual follow-ups (only if needed):
 
 ### 8b. Session-size check (folded from /wrap)
 
-- Find the active session jsonl: `Get-ChildItem "C:/Users/Administrator/.claude/projects/C--Riot-Commander/" -Filter "*.jsonl" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 Name, @{N='MB';E={[math]::Round($_.Length/1MB,1)}}`
+- Find the active session jsonl: `Get-ChildItem "%USERPROFILE%/.claude/projects/<project-slug>/" -Filter "*.jsonl" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 Name, @{N='MB';E={[math]::Round($_.Length/1MB,1)}}`
 - > 10 MB: record "session file > 10 MB - /clear overdue" in the hand-off file.
 - > 20 MB: same, flagged first in the hand-off file - at this size compaction is lossy and the model is already degraded.
 

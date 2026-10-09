@@ -105,7 +105,7 @@ def _require_live_catalog(case: "unittest.TestCase") -> None:
     FAILS rather than skips on absence. ``data/meta/ddragon_items.json`` is
     TRACKED, so its absence is a deleted committed file - a DEFECT that must
     fail loudly - and a skip keyed on it would be an always-passing guard
-    (tests/test_skip_condition_hygiene.py, docs/SKIPIF_AUDIT_2026-07-27.md).
+    (tests/test_skip_condition_hygiene.py, docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md).
     """
     case.assertTrue(
         _META_CATALOG.is_file(), f"tracked {_META_CATALOG} is missing"

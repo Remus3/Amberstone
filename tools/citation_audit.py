@@ -284,6 +284,11 @@ UNGUARDED = "UNGUARDED"  # neither - reported, not yet budgeted
 # and refill files (`docs/_outbound_*`, `docs/_draft_*`,
 # `docs/_research_refill_*`) carry zero broken citations and stay budgeted. A
 # blanket `docs/_` rule would have bought nothing and surrendered coverage.
+# (2026-10-09, MAIN 2246 ORDER sec 3: dated reports and outbound copies now
+# move to docs/_archive/<yyyy-mm>/ - the backtest and outbound files named above
+# among them - so they reach HISTORY through the archive prefix. The rule here
+# is unchanged; `docs/_research_refill_*` stays in docs/ as a live input of
+# tools/rm_id_registry.py.)
 #
 # `docs/_overlap/**` joined the class 2026-09-12 for the SAME reason and under
 # the same narrowness rule. It is the working directory of ONE pre-registered

@@ -1,10 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-riot-commander.spec - PyInstaller build spec (Tier 3 #13, 2026-05-01).
+tools/amberstone.spec - PyInstaller build spec (Tier 3 #13, 2026-05-01;
+moved from the repo root and renamed 2026-10-09, MAIN 2246 sec 3).
 
 Bundles main.py + all RC modules + the dashboard's web/ and data/ trees
-into a single-folder distribution under dist/riot-commander/. Yields
-`riot-commander.exe` plus the dependency folder so the recipient
+into a single-folder distribution under dist/amberstone/. Yields
+`amberstone.exe` plus the dependency folder so the recipient
 doesn't need Python installed.
 
 This is **opt-in starter infrastructure**. The current Legion 1-PC
@@ -22,15 +23,15 @@ opt-in, no point pinning the lib for users who never package):
 
 Then from project root:
 
-    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m PyInstaller riot-commander.spec --noconfirm
+    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m PyInstaller tools/amberstone.spec --noconfirm
 
-Output: dist/riot-commander/riot-commander.exe (+ accompanying
-dependency files). Distribute the whole `dist/riot-commander/` folder.
+Output: dist/amberstone/amberstone.exe (+ accompanying
+dependency files). Distribute the whole `dist/amberstone/` folder.
 
 Smoke-test the binary from a vanilla Windows shell (no Python on PATH):
 
-    cd dist\\riot-commander
-    .\\riot-commander.exe --debug
+    cd dist\\amberstone
+    .\\amberstone.exe --debug
 
 Should write logs/<today>.log inside the bundle's working dir and
 boot the dashboard at https://0.0.0.0:8888.
@@ -80,13 +81,14 @@ Known limitations (first-build issues to expect)
    discovery handles them, but if the resulting binary is >300 MB
    look at `excludes` for unused submodules.
 """
-import os
 from pathlib import Path
 
 block_cipher = None
 
-# Project root is the spec file's directory (PyInstaller cwd at build).
-ROOT = Path(os.getcwd()).resolve()
+# Project root = the parent of the spec's folder (tools/). PyInstaller sets
+# SPECPATH to the folder holding the spec, so the root no longer depends on
+# the build's cwd.
+ROOT = Path(SPECPATH).resolve().parent  # noqa: F821 - PyInstaller global
 
 # ── Data files: tuples of (source_path, dest_relative_path) ────────────
 # Walk web/ recursively; data/ selectively (DBs and per-user runtime
@@ -188,7 +190,7 @@ excludes = [
 
 # ── PyInstaller graph ──────────────────────────────────────────────────
 a = Analysis(
-    ["main.py"],
+    [str(ROOT / "main.py")],
     pathex=[str(ROOT)],
     binaries=[],
     datas=datas,
@@ -209,7 +211,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="riot-commander",
+    name="amberstone",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -235,5 +237,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="riot-commander",
+    name="amberstone",
 )
