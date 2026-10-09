@@ -53,9 +53,11 @@ CLAUDE.md's list; all six were deleted with the bridge decommission (ADR-012,
    the relevant test subset green. Do not claim green you did not observe.
 5. ASCII only - no em-dash, en-dash, or smart quotes (hard repo rule).
 6. Commit on `ci-fix/<run-id>` with a message `ci(fix): <one-line root cause>`
-   and the standard Co-Authored-By trailer. Do NOT push or open the PR yourself
-   - the watchdog does that, then auto-merges once your fix's own CI is green.
+   and NO attribution trailer of any kind (no co-author, sign-off or session
+   line). Do NOT push or open the PR yourself - the watchdog does that, and once
+   your fix's own CI is green it lands the fix locally as one operator commit
+   on main (it is never merged on GitHub).
 
 You succeed by making CI green with the smallest correct change, or by cleanly
-escalating when the failure is outside the safe envelope. A wrong fix merged to
+escalating when the failure is outside the safe envelope. A wrong fix landed on
 main is far worse than an escalation.

@@ -109,8 +109,8 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
    UI-audit RUN + every MUST-FIX resolved in-slice; (b) drift-guard set green THIS run
    (bundle-parity + ASCII/u2500 + touched guards); (c) multi-slice round ->
    truth_gate exit 0. Then: NO `git add -A`; stage only authored files; unstage `_scratch/` + stray
-   `.playwright-mcp/*.png`; heredoc message; use the harness-supplied Co-Authored-By trailer (do
-   NOT hardcode a model version).
+   `.playwright-mcp/*.png`; heredoc message; NO attribution trailer of any kind (no
+   co-author, sign-off or session line; FLEET-COMMON 17 - operator identity only).
 5. CI after push: `gh run list --limit 4`; red -> FIX before next phase.
 6. Synopsis row update (atomic). 7. TaskUpdate phase completed; next in_progress.
 
