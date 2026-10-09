@@ -41,6 +41,7 @@ from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.claude_project import project_dir as claude_project_dir
 from dashboard._dispatch import equals
 from dashboard._errors import send_error
 
@@ -48,10 +49,10 @@ log = logging.getLogger("rc.web_dashboard")
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "ops" / "loop" / "config.json"
-# Fallback transcript dir when config.json has none (mirrors the live path).
-DEFAULT_TRANSCRIPT_DIR = (
-    Path.home() / ".claude" / "projects" / "C--Riot-Commander"
-)
+# Fallback transcript dir when config.json has none: Claude Code's project dir
+# for this checkout, derived at run time (core/claude_project.py), never a
+# baked-in slug of one machine's checkout path.
+DEFAULT_TRANSCRIPT_DIR = claude_project_dir(ROOT)
 
 # Newest-N tool calls returned in `recent`; tail cap so a multi-hour session
 # JSONL (tens of MB) never blows memory - the deque keeps only the last lines,

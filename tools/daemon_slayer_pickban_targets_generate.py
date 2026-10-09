@@ -88,7 +88,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-# Project root: tools/ -> C:\Riot Commander\
+# Project root: tools/ -> <repo>\
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 

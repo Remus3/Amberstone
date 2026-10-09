@@ -7,7 +7,7 @@
 # per-slice checkpoint commits so a crash loses at most one in-flight slice.
 #
 # Usage (from anywhere):
-#   powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\tools\headless_run.ps1"
+#   powershell -ExecutionPolicy Bypass -File "<repo>\tools\headless_run.ps1"
 #   powershell -File "...\headless_run.ps1" -Prompt "continue next backlog item" -MaxAttempts 6
 
 param(

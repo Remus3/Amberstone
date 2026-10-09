@@ -14,12 +14,12 @@
         "site_d": {
           "status": "ok",
           "bytes": 628507,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_d\\ahri_sr.html"
+          "cache": "data/meta_build/scraped/site_d/ahri_sr.html"
         },
         "site_b": {
           "status": "ok",
           "bytes": 340607,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_b\\ahri_sr.html"
+          "cache": "data/meta_build/scraped/site_b/ahri_sr.html"
         },
         "curated": {
           "present": false,
@@ -36,12 +36,12 @@
         "site_d": {
           "status": "ok",
           "bytes": 612256,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_d\\lux_sr.html"
+          "cache": "data/meta_build/scraped/site_d/lux_sr.html"
         },
         "site_b": {
           "status": "ok",
           "bytes": 329882,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_b\\lux_sr.html"
+          "cache": "data/meta_build/scraped/site_b/lux_sr.html"
         },
         "curated": {
           "present": false,
@@ -58,12 +58,12 @@
         "site_d": {
           "status": "ok",
           "bytes": 665803,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_d\\darius_sr.html"
+          "cache": "data/meta_build/scraped/site_d/darius_sr.html"
         },
         "site_b": {
           "status": "ok",
           "bytes": 347920,
-          "cache": "C:\\Riot Commander\\data\\meta_build\\scraped\\site_b\\darius_sr.html"
+          "cache": "data/meta_build/scraped/site_b/darius_sr.html"
         },
         "curated": {
           "present": false,

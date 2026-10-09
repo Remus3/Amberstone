@@ -4,7 +4,7 @@ import collections
 import json
 from pathlib import Path
 
-ROOT = r"C:/Riot Commander"
+ROOT = Path(__file__).resolve().parents[3].as_posix()
 PATCH = "16.12.1"
 # Desktop scratch inputs, resolved under THIS account's home rather than baked
 # in: a probe naming another account's home silently finds nothing.

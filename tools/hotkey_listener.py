@@ -80,17 +80,18 @@ HTTP_TIMEOUT  = 3.0
 
 # Overlay ACTIVE-toggle signal file. Ctrl+Shift+A (id 3) stamps this with the
 # current epoch time on each press; rc-shell's main process polls it and flips
-# the overlay ACTIVE (rc-shell/src/main.js startActiveToggleWatch). Hardcoded
-# Legion-absolute, matching the LEGION_BASE convention above + the path
-# rc-shell resolves (C:\Riot Commander\ops\runtime\).
-TOGGLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_active_toggle.txt"
+# the overlay ACTIVE (rc-shell/src/main.js startActiveToggleWatch). Resolved
+# from this checkout, the same <repo>/ops/runtime/ that rc-shell resolves
+# from its own __dirname - never a baked-in machine checkout path.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+TOGGLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_active_toggle.txt")
 
 # Overlay panel-cycle signal file. Ctrl+Shift+B (id 4) stamps this with the
 # current epoch on each press; rc-shell polls it and rotates the overlay panel
 # set coach -> build -> threat (rc-shell/src/main.js startPanelCycleWatch). The
 # in-game build panel was otherwise unreachable: its only switch (Electron
 # Alt+Shift+C) is dead while League holds foreground focus, same as Ctrl+Shift+A.
-PANEL_CYCLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_panel_cycle.txt"
+PANEL_CYCLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_panel_cycle.txt")
 
 def _setup_logging() -> logging.Logger:
     """Log to a durable file (always) plus the console when one exists.

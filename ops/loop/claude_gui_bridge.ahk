@@ -30,7 +30,7 @@ SetTitleMatchMode 2
 ; Live mode with a missing/empty target_hwnd.txt ABORTS the bridge outright.
 ; Exits when control\STOP appears.
 
-CTL := "C:\Riot Commander\ops\loop\control"
+CTL := A_ScriptDir "\control"
 READY := CTL "\gemini.ready"
 TYPED := CTL "\typed.flag"
 STOPF := CTL "\STOP"

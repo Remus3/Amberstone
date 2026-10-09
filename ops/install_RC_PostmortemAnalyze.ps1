@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 $TaskName  = "RC-PostmortemAnalyze"
 $PsExe     = "powershell.exe"
-$Wrapper   = "C:\Riot Commander\ops\run_postmortem_with_restart.ps1"
+$Wrapper   = Join-Path $PSScriptRoot "run_postmortem_with_restart.ps1"
 # -WindowStyle Hidden: without it a re-install recreates an interactive
 # powershell.exe window every Sunday 04:15. The LIVE task does not have this
 # drift (its principal is S4U, read live 2026-09-15); the installer did.

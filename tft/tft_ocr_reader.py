@@ -347,7 +347,7 @@ class TftOcrReader:
         except Exception:  # noqa: BLE001
             return None
 
-    def save_debug_crops(self, out_dir: str = r"C:\Riot Commander\data\ocr_debug") -> None:
+    def save_debug_crops(self, out_dir: str = str(Path(__file__).resolve().parent.parent / "data" / "ocr_debug")) -> None:
         """Save all region crops for manual inspection/calibration."""
         from PIL import ImageDraw
         Path(out_dir).mkdir(parents=True, exist_ok=True)

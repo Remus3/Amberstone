@@ -8,7 +8,7 @@ Data sources (no auth required):
   Match stats:   GET /getmatch/NA/{match_id}/stats    -> 145 fields/player
   Timeline:      GET /getmatch/NA/{match_id}/timeline -> frame-by-frame events
 
-Output: C:\\Riot Commander\\data\\rewind_history.db  (SEPARATE from postgame_stats.db)
+Output: <repo>\\data\\rewind_history.db  (SEPARATE from postgame_stats.db)
 
 Resumable - skips matches already stored. Safe to Ctrl+C and re-run.
 

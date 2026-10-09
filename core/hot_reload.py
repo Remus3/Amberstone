@@ -15,7 +15,7 @@ tools/caveman.md.
 Usage (in app bootstrap)::
 
     from core.hot_reload import start_watcher
-    start_watcher(project_root=Path("C:/Riot Commander"))
+    start_watcher(project_root=Path(__file__).resolve().parent)
 
 Signals:
   - HALT: write anything to ops/runtime/hot_reload_halt.txt to stop the watcher.

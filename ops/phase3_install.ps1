@@ -1,5 +1,5 @@
 ﻿# Phase 3 installer for Legion-PC (§11.12).
-# Idempotent: safe to re-run. Requires Administrator.
+# Idempotent: safe to re-run. Requires an elevated shell.
 #
 # What this does:
 #   1. Inbound firewall rules for the LAN subnet only:
@@ -7,13 +7,13 @@
 #       - RC-Phase3-WSIngest : TCP 8891
 #   2. Task Scheduler entry "RC-Phase3-Supervisor":
 #       - Triggers at startup, 30s delay
-#       - Runs pythonw.exe -m agents.supervisor in C:\Riot Commander\
-#       - Highest privileges as Administrator
+#       - Runs pythonw.exe -m agents.supervisor in the repo root
+#       - Highest privileges as the installing account
 #       - Restart 5x on failure, 1 min interval
 
 $ErrorActionPreference = 'Stop'
 
-$ProjectRoot  = 'C:\Riot Commander'
+$ProjectRoot  = Split-Path -Parent $PSScriptRoot
 $PythonExe    = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
 $TaskName     = 'RC-Phase3-Supervisor'
 
@@ -68,13 +68,13 @@ $action = New-ScheduledTaskAction `
     -Argument '-m agents.supervisor' `
     -WorkingDirectory $ProjectRoot
 
-# Trigger: at Administrator logon + 30s delay. Matches the existing
+# Trigger: at the installing account's logon + 30s delay. Matches the existing
 # RC-Supervisor convention (CLAUDE.md §"Scheduled tasks"). With the
-# machine set to auto-logon as Administrator, this is effectively
-# at-boot. Running as Administrator is required so cross-machine SMB
+# machine set to auto-logon as that account, this is effectively
+# at-boot. Running as that account is required so cross-machine SMB
 # pushes can access the per-user cmdkey-stored credentials for
 # \\192.0.2.237 (SYSTEM does not share those creds).
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User 'Administrator'
+$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $trigger.Delay = 'PT30S'
 
 $settings = New-ScheduledTaskSettingsSet `
@@ -86,7 +86,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit ([TimeSpan]::Zero)
 
 $principal = New-ScheduledTaskPrincipal `
-    -UserId 'Administrator' `
+    -UserId $env:USERNAME `
     -LogonType Interactive `
     -RunLevel Highest
 

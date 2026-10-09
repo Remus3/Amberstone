@@ -239,7 +239,7 @@ def build_prompt(tag: str, note: str, key: str, rows_file: str, base_sha: str) -
     p = _paths(tag, key)
     common = _fill(_prompt_file("drain_w23_common.md"), {
         "WORKTREE": p["worktree"], "BRANCH": p["branch"], "BASE_SHA": base_sha,
-        "RESULT_FILE": p["build_result"]})
+        "RESULT_FILE": p["build_result"], "REPO": ROOT})
     wave_note = _fill(note, {"BASE_SHA": base_sha})
     rows = _prompt_file(rows_file)
     return (f"{common}\n{wave_note}\nSLICE: {tag}-{key}. Progress file name: "
@@ -251,7 +251,7 @@ def verify_prompt(tag: str, key: str) -> str:
     return _fill(_prompt_file("drain_w23_verifier.md"), {
         "BUILD_RESULT": p["build_result"], "WORKTREE": p["worktree"],
         "BRANCH": p["branch"], "SLICE": f"{tag}-{key}", "TASK": p["verify_task"],
-        "RESULT_FILE": p["verify_result"]}) + "\n"
+        "RESULT_FILE": p["verify_result"], "REPO": ROOT}) + "\n"
 
 
 def merge_prompt(tag: str, not_run=()) -> str:
@@ -264,7 +264,7 @@ def merge_prompt(tag: str, not_run=()) -> str:
                              for t, r in not_run))
     return _fill(_prompt_file("drain_w23_merger.md"), {
         "TAG": tag, "MERGE_INPUT": DRAIN_DIR / f"{tag}-merge-input.json",
-        "EXTRA": extra, "RESULT_FILE": DRAIN_DIR / f"{tag}.merge.json"}) + "\n"
+        "EXTRA": extra, "RESULT_FILE": DRAIN_DIR / f"{tag}.merge.json", "REPO": ROOT}) + "\n"
 
 
 # ---------------------------------------------------------------- spawning

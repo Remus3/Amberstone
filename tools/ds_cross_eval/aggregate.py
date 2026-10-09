@@ -13,7 +13,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-ROOT = Path(r"C:/Riot Commander")
+ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / "ops" / "audit" / "ds_cross_eval"
 ROSTER = 172
 

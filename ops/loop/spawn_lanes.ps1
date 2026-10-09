@@ -2,7 +2,7 @@
 # claude -p workers, each in its OWN git worktree (separate index = no contention with
 # the md-cleanup loop committing in the main checkout; no AHK, no window focus).
 $ErrorActionPreference = "Stop"
-$root = "C:\Riot Commander"
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $rep = "$root\ops\loop\reports"
 $runner = "$root\ops\loop\run_lane.ps1"
 # Worktree base (MAIN 2026-10-08 2246 ORDER section 5): env RC_LANE_WORKTREE_BASE,

@@ -3,12 +3,13 @@
 # Idempotent: overwrites the same .lnk each run.
 $desktop = [Environment]::GetFolderPath("Desktop")
 $lnkPath = Join-Path $desktop "RC Headless.lnk"
-$script  = "C:\Riot Commander\tools\rc_headless_launcher.ps1"
+$repo    = Split-Path -Parent $PSScriptRoot
+$script  = Join-Path $repo "tools\rc_headless_launcher.ps1"
 $ws  = New-Object -ComObject WScript.Shell
 $lnk = $ws.CreateShortcut($lnkPath)
 $lnk.TargetPath       = Join-Path $PSHOME "powershell.exe"
 $lnk.Arguments        = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $script + '"'
-$lnk.WorkingDirectory = "C:\Riot Commander"
+$lnk.WorkingDirectory = $repo
 $lnk.IconLocation     = "$env:SystemRoot\System32\shell32.dll,137"
 $lnk.Description       = "Idempotent one-click headless-upgrade launcher (AHK desktop send)"
 $lnk.WindowStyle      = 7

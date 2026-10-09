@@ -20,9 +20,10 @@ param([switch]$LibraryOnly)
 $ErrorActionPreference = "Stop"
 
 $Python  = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
-$Script  = "C:\Riot Commander\scripts\postmortem_analyze.py"
-$Trigger = "C:\Riot Commander\restart_trigger.txt"
-$LogDir  = "C:\Riot Commander\logs"
+$Root    = Split-Path -Parent $PSScriptRoot
+$Script  = Join-Path $Root "scripts\postmortem_analyze.py"
+$Trigger = Join-Path $Root "restart_trigger.txt"
+$LogDir  = Join-Path $Root "logs"
 
 function Invoke-DrainedProcess {
     <#

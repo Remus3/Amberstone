@@ -3,7 +3,7 @@
  * tools/usage-mcp-server.js - Anthropic usage MCP server
  *
  * Add to Claude Code:
- *   claude mcp add anthropic-usage -- node "C:\Riot Commander\tools\usage-mcp-server.js"
+ *   claude mcp add anthropic-usage -- node "<repo>\tools\usage-mcp-server.js"
  *
  * Key resolution order:
  *   1. ANTHROPIC_USAGE_KEY env var
