@@ -36,7 +36,10 @@ def main_checkout(root: Optional[PathLike] = None) -> Path:
 
     A linked worktree has a ``.git`` FILE reading ``gitdir: <main>/.git/worktrees/<name>``;
     anything else (a main checkout, an unreadable or unexpected link) is
-    returned unchanged.
+    returned unchanged. Never raises: every caller resolves at import time
+    with no handler of its own (dashboard/routes_loop_monitor.py:55,
+    tools/drift_guard.py:79, tools/perseus_sync.py:62) or as a config default
+    (ops/loop/loop_controller.py:175).
     """
     base = Path(root) if root is not None else REPO_ROOT
     dotgit = base / ".git"
@@ -44,7 +47,9 @@ def main_checkout(root: Optional[PathLike] = None) -> Path:
         return base
     try:
         line = dotgit.read_text(encoding="utf-8").strip()
-    except OSError:
+    except (OSError, UnicodeError):
+        # Git writes the link as UTF-8. A link that cannot be read, or that is
+        # not UTF-8, is an unreadable link: this checkout stands for itself.
         return base
     if not line.startswith("gitdir:"):
         return base
