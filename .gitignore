@@ -363,6 +363,9 @@ ops/loop/control/locks/
 ops/loop/control/claims.jsonl
 ops/loop/control/claims.mode
 ops/loop/control/gitlock.jsonl
+# FLEET-KIT v13 (MAIN 2026-10-08 2246 ORDER section 1 step 5): the identity
+# hook's strip log (fleet_identity.py LOG_REL).
+ops/loop/control/identity.jsonl
 
 # Transient verify/test scratch dropped at repo root by DS item runs
 # (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.

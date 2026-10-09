@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v12 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16).
+"""Fleet kit v13 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -9,9 +9,16 @@ Why: nothing serialized commits in a tree's main checkout. An interactive
 session, an inbox responder, /done and lane landings could commit at the same
 moment, and no tree handled a leftover .git/index.lock.
 
-    python fleet_gitlock.py run [--owner OWNER] [--timeout S] -- git commit ...
-    python fleet_gitlock.py run [--owner OWNER] -- git push ...
+    python fleet_gitlock.py run --owner <session_id>.<agent_id> [--timeout S] -- git commit ...
+    python fleet_gitlock.py run --owner <session_id>.<agent_id> -- git push ...
     python fleet_gitlock.py status [DIR]
+
+OWNER (v13, one rule): the caller's own claim owner id, exactly as the
+fleet_claims hook computes it - `<session_id>.<agent_id>` for a sub-agent,
+`<session_id>.main` in the main thread. The claims PreToolUse hook DENIES a
+`run` whose --owner differs and its reason names the right id; it is also the
+id the claim check below excludes. Env FLEET_CLAIM_OWNER is the default for
+callers that run outside a hook (a lane landing, a script).
 
 `run`:
   1. acquires <main checkout>/ops/loop/control/locks/git.lock (main checkout =
@@ -26,11 +33,17 @@ moment, and no tree handled a leftover .git/index.lock.
   3. for `commit`: refuses (exit 3) when the staged set - plus the tracked
      modifications for -a/--all and any pathspec - holds a path claimed in
      fleet_claims by a live owner other than --owner (env FLEET_CLAIM_OWNER);
-  4. runs the git command, releases the lock, exits with git's code.
+  4. v13 (FLEET-COMMON 17): for `commit`, refuses (exit 3) when the resolved
+     author or committer ident (`git var GIT_AUTHOR_IDENT` /
+     `GIT_COMMITTER_IDENT`, or a --author argument) is a Claude or bot
+     identity (fleet_identity.is_ai_or_bot) and not in the tree's local
+     `fleet.operatorIdent` set; an ident git cannot resolve is not refused
+     here (the pre-push hook is the hard gate);
+  5. runs the git command, releases the lock, exits with git's code.
 
 Python callers (e.g. a lane landing) use `with git_lock(dir, owner): ...`.
 Messages name a path relative to its tree, never an account or email.
-Pure stdlib plus the sibling kit file fleet_claims.py.
+Pure stdlib plus the sibling kit files fleet_claims.py and fleet_identity.py.
 """
 
 import contextlib
@@ -73,6 +86,7 @@ def _sibling(name):
 
 
 claims = _sibling("fleet_claims")
+identity = _sibling("fleet_identity")
 
 
 # ---------------------------------------------------------------- processes
@@ -339,6 +353,47 @@ def check_claims(top, commit_args, owner, lister=None, now=None):
                           "(git restore --staged <path>) or wait for that agent".format(claims.rel_in(hits[0][0], top)))
 
 
+# ---------------------------------------------------------------- identity (v13)
+
+def _git_var(top, name):
+    git = os.environ.get("FLEET_GIT") or "git"
+    try:
+        r = subprocess.run([git, "-C", str(top), "var", name], capture_output=True, text=True,
+                           timeout=30, creationflags=_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def _ident_parts(ident):
+    """(name, address) from `Name <address> <time> <tz>` or `Name <address>`."""
+    m = re.match(r"^(.*?)\s*<([^>]*)>", ident or "")
+    return (m.group(1), m.group(2)) if m else (ident or "", "")
+
+
+def check_identity(top, commit_args, var=None, idents=None):
+    """Refuse a commit whose author or committer is a Claude or bot identity."""
+    var = var or (lambda name: _git_var(top, name))
+    idents = identity.operator_idents(top) if idents is None else idents
+    seen = []
+    for role, name in (("author", "GIT_AUTHOR_IDENT"), ("committer", "GIT_COMMITTER_IDENT")):
+        v = var(name)
+        if v:
+            seen.append((role, v))
+    for k, a in enumerate(commit_args):
+        if a.startswith("--author="):
+            seen.append(("author", a.split("=", 1)[1]))
+        elif a == "--author" and k + 1 < len(commit_args):
+            seen.append(("author", commit_args[k + 1]))
+    for role, v in seen:
+        n, addr = _ident_parts(v)
+        if identity.is_ai_or_bot(n) or identity.is_ai_or_bot(addr):
+            if identity.is_operator(n, addr, idents):
+                continue
+            raise LockRefused("GITLOCK: the commit {} is a Claude or bot identity; commit as "
+                              "the operator (FLEET-COMMON 17)".format(role))
+
+
 # ---------------------------------------------------------------- CLI
 
 def parse(argv):
@@ -372,6 +427,7 @@ def run(argv, cwd=None, runner=None, **kw):
         clear_index_lock(where)
         if verb == "commit":
             check_claims(tree(where)[0], args, owner)
+            check_identity(tree(where)[0], args)
         return runner(cmd)
 
 

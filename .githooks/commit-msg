@@ -28,6 +28,14 @@ tmp="$1.rcfilt"
 grep -v -i '^Co-Authored-By: Claude' "$1" > "$tmp" || true
 mv "$tmp" "$1"
 
+# 1b. FLEET-KIT v13 (FLEET-COMMON 17, NO AI OR BOT ATTRIBUTION; MAIN 2026-10-08
+# 2246 ORDER section 1 step 4): the kit strips every AI / bot co-author or
+# sign-off trailer, any `Claude-*:` trailer, a "Generated with Claude Code" line
+# and a bare claude.ai session URL line, and logs the count to the gitignored
+# ops/loop/control/identity.jsonl. It never rejects, so `|| true`. The line is
+# the kit's wiring string verbatim (the hook runs at the top of the work tree).
+python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true
+
 # 2. Banned glyphs in the MESSAGE.
 #
 # This half CANNOT live in pre-commit. Git's order is pre-commit -> prepare the

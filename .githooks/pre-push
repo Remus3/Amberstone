@@ -31,6 +31,14 @@ if ! command -v "$PY" >/dev/null 2>&1; then
     PY=python
 fi
 
+# FLEET-KIT v13 (FLEET-COMMON 17; MAIN 2026-10-08 2246 ORDER section 1 step 4):
+# the identity gate runs FIRST. It refuses (exit 1) a pushed range holding an
+# author or committer outside the LOCAL `fleet.operatorIdent` set, or an AI /
+# bot attribution line; no value set = every push refused. Fed the same
+# captured ref lines as the gates below. The line is the kit's wiring string
+# verbatim (the hook runs at the top of the work tree).
+printf '%s\n' "$REFS" | python "ops/fleet_kit/fleet_identity.py" pre-push "$@" || exit 1
+
 if [ -f "$ROOT/tools/sibling_name_sweep.py" ]; then
     if ! command -v "$PY" >/dev/null 2>&1; then
         printf >&2 "%s\n" "[sibling-sweep] FAULT - no python on PATH, so the sibling-name sweep could not run. This is not a clean verdict. Install python or push with --no-verify only if you have checked the diff by hand."

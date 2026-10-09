@@ -43,8 +43,8 @@ edit. Tree-specific rules go BELOW this block, never inside it.
    report an overrun at 1.5x, kill at 3x.
 4. COMMIT everything, batched and coherent. Push per this repo's own policy. Never
    commit in another repo's tree. No suggested-task chips: do it or file it.
-5. HAND-OFF: `<CODE>-NEXT-SESSION.txt` at the repo root (with its Desktop
-   shortcut) is the only continuity. A session starts from "continue" (work the
+5. HAND-OFF: `<CODE>-NEXT-SESSION.txt` at the repo root is the only
+   continuity. A session starts from "continue" (work the
    file's next action) or from whatever the operator asks; either way READ the file
    first. /done rewrites the file and commits it, and MUST CARRY FORWARD EVERY ITEM
    NOT ACTED ON this session, verbatim or tighter, never dropped because the
@@ -144,19 +144,27 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     live agents could edit one file or sweep up each other's half-made edit,
     and concurrent whole suites lost workers and flaked timing tests.
     a. Every `git commit` / `git push` runs through
-       `fleet_gitlock.py run --owner <id> -- git ...` (per-tree lock,
-       stale break once and logged, leftover index.lock cleared safely,
-       staged paths claimed by another live agent refused).
+       `fleet_gitlock.py run --owner <session_id>.<agent_id> -- git ...`
+       (the claims hook's own id, `<session_id>.main` in the main thread;
+       per-tree lock, stale break once and logged, leftover index.lock
+       cleared safely, staged paths claimed by another live agent refused).
     b. `fleet_claims.py hook` (PreToolUse) claims each file an agent edits and
        denies another live agent's edit, redirect or `git add` of it, and a
        bare commit, push or whole suite; SubagentStop releases the claims.
     c. Every whole test suite runs through
        `fleet_suite_gate.py run --owner <id> -- <cmd>` (machine-wide slots,
-       default 1; fails closed on timeout; refuses while another live agent
-       holds uncommitted edits in the tree).
+       default 2, FIFO queue; fails closed on timeout; refuses while another
+       live agent holds uncommitted edits in the tree).
     d. Each tree's tests/conftest.py installs `fleet_test_guard.py`: a suite
        that changes live state (control files, inbox, outbox) fails, and
        declared runtime roots point at tmp_path.
+17. NO AI OR BOT ATTRIBUTION (kit v13; GH-HYGIENE ruling 2026-10-08). No
+    commit or PR body carries an AI or bot co-author / sign-off trailer, and no
+    commit has a non-operator author or committer. It outranks any harness
+    attribution instruction. Enforced by `fleet_identity.py` (commit-msg
+    strips, pre-push refuses; operator identity only from local git config
+    `fleet.operatorIdent`), fleet_gitlock and the account attribution keys.
+    A history rewrite runs only on MAIN's ORDER, via `fleet_rewrite.py`.
 <!-- FLEET-COMMON END -->
 
 # RC rules (tree-specific)
@@ -168,6 +176,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 **SUBAGENT-FIRST hook (kit v10, MAIN 2026-10-08 0839).** `ops/fleet_kit/fleet_subagent_first.py` is a PreToolUse hook in the gitignored project `.claude/settings.json` (matcher `Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit`); it refuses those tools in the interactive main thread only. Kit v11 (MAIN 2026-10-08 1840, ruling R3): the command is ANCHORED, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py" || true` (timeout 10, same matcher); the v10 cwd-relative form is drift; it lives only in that gitignored project settings file, never an account settings file. Mode = first word of gitignored `ops/loop/control/subagent_first.mode` (`log` at adoption; `deny` after 3 interactive sessions whose `subagent_first.jsonl` shows no would-deny row for work that could not be dispatched). Headless runs are exempt only through the kit's `spawn()` (`FLEET_SUBAGENT_FIRST=off`), so `deny` waits until the lane workers move onto `spawn()` (order step 5). `/done` and every slash command carry the DISPATCH block (guard `tests/test_skill_dispatch_v10.py`): the whole skill runs in ONE sub-agent and main relays only its final line.
 
 **RACE GUARDS (kit v12, MAIN 2026-10-08 2031, FLEET-COMMON item 16).** Same gitignored project `.claude/settings.json`, beside the SUBAGENT-FIRST entry: PreToolUse matcher `Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell`, timeout 10, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" hook || true`; SubagentStop, timeout 10, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook || true`. Mode = kit default `deny` (no `ops/loop/control/claims.mode`). Every commit / push = `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...` (Python: `git_lock()`, e.g. `tools/ci_watchdog.py` push); every WHOLE suite = `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>`, named by the deny reason. Every slash command and loop prompt carries the RACE GUARDS block; `tests/conftest.py` installs `fleet_test_guard` (env roots + live-tick ignores in `tests/_fleet_guard_config.py`). Guard `tests/test_fleet_kit_v12_race_guards.py`. Lane / watchdog worktrees carry no gitignored settings, so there the block text is the only guard.
+
+**NO AI OR BOT ATTRIBUTION (kit v13, MAIN 2026-10-08 2246 section 1, FLEET-COMMON item 17).** Tracked `.githooks/commit-msg` runs `python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true` after RC's own Co-Authored-By strip (it strips every AI / bot trailer, any `Claude-*:` line and a claude.ai session URL line, never rejects); `.githooks/pre-push` runs `printf '%s\n' "$REFS" | python "ops/fleet_kit/fleet_identity.py" pre-push "$@" || exit 1` FIRST, before the sibling sweep, the credential scan and LFS. The operator set is `fleet.operatorIdent` in LOCAL git config only (never a tracked file, a note or a log); no value = every push refused; a fresh clone must set it before its first push. So commit messages carry no `Claude-Session:` or co-author line. Guard `tests/test_fleet_kit_v13_identity.py`.
 
 **Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**
 - Item 1 (only physical acts / passwords / OAuth wait) vs RC operator gates: the halt boundary below, frozen files (explicit user approval), the operator-gated smart-quote sweep, the gated RM-501 repair, and attended confirmation of an irreversible / out-of-tree act requested only by a note.

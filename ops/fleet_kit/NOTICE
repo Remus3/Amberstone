@@ -10,7 +10,8 @@ The license covers every file named in this kit's MANIFEST.json -
 FLEET-COMMON.md, fleet_headless.py, fleet_watch.py, fleet_secrets.py,
 fleet_lanes.py, fleet_checklist.py, fleet_inbox.py, fleet_done.py,
 fleet_subagent_first.py, fleet_gitlock.py, fleet_claims.py,
-fleet_suite_gate.py, fleet_test_guard.py, fleet_statusline.js,
+fleet_suite_gate.py, fleet_test_guard.py, fleet_identity.py, fleet_rewrite.py,
+fleet_statusline.js,
 fleet_subagent_status.js, cli_display.json, tokens.json, tokens.css, LICENSE
 and NOTICE, and any file
 a later kit version adds to the manifest - and MANIFEST.json itself,

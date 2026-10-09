@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v12 - RACE GUARDS: the per-tree file-claim registry and its hooks
+"""Fleet kit v13 - RACE GUARDS: the per-tree file-claim registry and its hooks
 (FLEET-COMMON item 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -35,6 +35,15 @@ Hook decisions (PreToolUse):
     DENY a whole-suite pytest (no test FILE named) not run through
     fleet_suite_gate.py; DENY fleet_gitlock.py / fleet_suite_gate.py `run`
     without `--owner <the caller's own owner id>` (the reason gives it).
+    The owner id is ALWAYS `<session_id>.<agent_id>` (`<session_id>.main` in
+    the main thread) - the one rule for --owner on both helpers.
+
+v13 shell parsing (KIT-13): segments split on ; & | && || and newlines only
+OUTSIDE quotes; heredoc bodies (<<WORD ... WORD) and PowerShell here-strings
+are dropped before parsing unless they feed a shell (sh, bash, pwsh, ...);
+a segment that runs a read-only search (grep, rg, findstr, Select-String,
+git grep, ...) never counts as a suite, commit, push or helper run, so search
+TEXT such as "pytest tests/" or "fleet_gitlock.py run" is never matched.
 Reasons are one line, name the path relative to its tree, never an account,
 email or owner of the other agent.
 
@@ -327,7 +336,6 @@ _REDIR = re.compile(r"(?<![<>&])\d?>>?\s*(?!&)" + _TARGET)
 _TEE = re.compile(r"\btee\s+(?:-a\s+|--append\s+)?" + _TARGET)
 _PS_WRITE = re.compile(r"\b(?:Set-Content|Add-Content|Out-File)\b\s+"
                        r"(?:-(?:Path|FilePath|LiteralPath)\s+)?" + _TARGET, re.I)
-_SEGMENT = re.compile(r"&&|\|\||[;|&\n]")
 _SINKS = {"/dev/null", "$null", "nul", "null", "/dev/stderr", "/dev/stdout"}
 _GITLOCK = "fleet_gitlock.py"
 _GATE = "fleet_suite_gate.py"
@@ -362,13 +370,88 @@ def _git_verb(words):
     return words[i], words[i + 1:], cdir
 
 
+_HEREDOC = re.compile(r"<<(-?)[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+_HERESTRING = re.compile(r"@(['\"])[ \t]*\r?\n.*?\r?\n\1@", re.S)
+_SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh", "pwsh", "powershell", "cmd"))
+_SEARCH = frozenset(("grep", "egrep", "fgrep", "rg", "ag", "ack", "findstr",
+                     "select-string", "sls"))
+
+
+def _base(word):
+    w = re.split(r"[/\\]", word or "")[-1].lower()
+    return w[:-4] if w.endswith(".exe") else w
+
+
+def strip_heredocs(command):
+    """The command with heredoc bodies and here-strings removed, except a
+    body fed to a shell (that body is code and stays parsed)."""
+    text = _HERESTRING.sub("@''@", command or "")
+    lines = text.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        for m in _HEREDOC.finditer(line):
+            head = line[:m.start()]
+            seg = re.split(r"&&|\|\||[;|&]", head)[-1].split()
+            if seg and _base(seg[0]) in _SHELLS:
+                continue
+            tag, dash = m.group(3), m.group(1)
+            while i < len(lines):
+                body = lines[i]
+                i += 1
+                if (body.lstrip("\t") if dash else body).rstrip("\r") == tag:
+                    break
+    return "\n".join(out)
+
+
+def _split_unquoted(command):
+    """Split on ; & | && || and newlines that sit outside quotes."""
+    out, cur, q, i, n = [], [], None, 0, len(command)
+    while i < n:
+        c = command[i]
+        if q:
+            cur.append(c)
+            if c == q:
+                q = None
+            elif c == "\\" and q == '"' and i + 1 < n:
+                cur.append(command[i + 1])
+                i += 1
+        elif c in "'\"":
+            q = c
+            cur.append(c)
+        elif c in ";&|\n":
+            out.append("".join(cur))
+            cur = []
+            if i + 1 < n and command[i + 1] == c and c in "&|":
+                i += 1
+        else:
+            cur.append(c)
+        i += 1
+    out.append("".join(cur))
+    return out
+
+
 def _segments(command):
-    return [s.strip() for s in _SEGMENT.split(command or "") if s.strip()]
+    return [s.strip() for s in _split_unquoted(strip_heredocs(command)) if s.strip()]
+
+
+def read_only_search(words):
+    """True when the segment runs a search tool (its text is a pattern)."""
+    if not words:
+        return False
+    b = _base(words[0])
+    if b in _SEARCH:
+        return True
+    g = _git_verb(words)
+    return bool(g and g[0] == "grep")
 
 
 def write_targets(command):
     """Best-effort file targets a shell command writes (redirect, tee, PS)."""
     out = []
+    command = strip_heredocs(command)
     for rx in (_REDIR, _TEE, _PS_WRITE):
         for m in rx.finditer(command or ""):
             t = _unquote(m.group(1))
@@ -402,7 +485,10 @@ def bare_git_write(command):
     for seg in _segments(command):
         if _GITLOCK in seg:
             continue
-        g = _git_verb(_words(seg))
+        words = _words(seg)
+        if read_only_search(words):
+            continue
+        g = _git_verb(words)
         if g and g[0] in ("commit", "push"):
             return g[0]
     return None
@@ -427,6 +513,8 @@ def bare_whole_suite(command):
         if _GATE in seg:
             continue
         words = _words(seg)
+        if read_only_search(words):
+            continue
         i = _pytest_at(words)
         if i is None:
             continue
@@ -444,6 +532,8 @@ def owner_flag_missing(command, me):
             if helper not in seg:
                 continue
             words = _words(seg)
+            if read_only_search(words):
+                continue
             at = [j for j, w in enumerate(words[:4])
                   if w.replace("\\", "/").endswith(helper)]
             if at and at[0] + 1 < len(words) and words[at[0] + 1] == "run":
