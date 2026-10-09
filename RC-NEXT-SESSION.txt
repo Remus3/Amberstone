@@ -43,7 +43,23 @@ SESSION 104 ADDITIONS (kit v11, LEDGER 1689; MAIN 1840 ORDER):
   on the proxy: `WScript.Quit sh.Run(<same cmdline>, 0, True)`; read-back = task Running while the proxy is up,
   then ONE proxy kill (taskkill /F /PID) and the task restarts it within ~1 min. Needs the operator's OK for the
   out-of-tree write and the kill; then answer MAIN with line + state + restart. Body in BACKLOG.
-- Next free RM id RM-687. Next free LEDGER id 1690.
+- Next free RM id RM-690. Next free LEDGER id 1693.
+
+SESSION 104 ADDITIONS (W2 / S1, LEDGER 1690 + 1692; RM-688 + RM-687; RM-689 = LEDGER 1691 by another agent):
+- DONE RM-688 3982721c2: every sibling-sweep run appends one redacted JSONL line to gitignored
+  ops/runtime/sibling_sweep_runs.jsonl in the MAIN checkout. Read back after push 3b2f383fe..436feb160:
+  range 3b2f383fe2fd..436feb1606b0, verdict clean, exit 0. A pushed range with no record = a skipped gate.
+- DONE RM-687 f118ada43: stop_claim_gate reads this session's sub-agent transcripts (lazy, CREDIT-ONLY), so
+  relayed push / test / commit / merge / CI / file claims no longer flag under deny. Verifier round 4 PASS.
+- FOLLOW-UP (unfiled, small): stop_claim_gate _GIT_LEAD backtracks exponentially on `git -c -c -c ...`
+  (pre-existing; 6.1 s at 20 repeats; unrealistic). Memory reference "a subagent measurement is not yours"
+  is superseded for counts a sub-agent observed in a real run - update it at /done.
+- FINDING (answers the session 103 carry item below): when a NON-isolated orchestrator sub-agent resumes a
+  worktree-isolated agent via SendMessage, the harness temporarily re-homes the orchestrator into that
+  worktree and refuses git in E:\Riot Commander until the worktree agent's turn ends; it restores after.
+- FOLLOW-UP (unfiled): tests/test_session_checklist_item13.py rc_facts emit tests (2) FAIL in the MAIN
+  checkout only - same HEAD f118ada43 passes 24/24 in a clean detached worktree, and they fail with the
+  session's doc edits reverted, so it is gitignored local state, not a code change. Investigate.
 
 SUBAGENT-FIRST hook: mode `log` (gitignored `ops/loop/control/subagent_first.mode`). Session 103 was
 interactive session 1 of 3 toward `deny`; the deny date ~2026-10-11 was promised to MAIN. Read
@@ -100,9 +116,9 @@ Carried forward (not acted on yet):
   needs ntfy (tailnet host known locally, never in a tracked file). Y-45 approved 2026-10-03.
 - stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted capitalised
   word could read as a channel code; a FUTURE-tense "waits until X is pushed" fires
-  push_claim_without_push (session 102). A per-sentence finding cannot be withdrawn, so relaying a
-  subagent's numbers re-flags every Stop until the session's own run/commit exists - attribute
-  with backticks.
+  push_claim_without_push (session 102). A per-sentence finding cannot be withdrawn. Since RM-687
+  (f118ada43) a relayed number / push / commit is backed by the session's own sub-agent run, so
+  backtick-attribution is only needed for figures no agent of this session observed.
 - 4 x tests/test_rm172_mode_modifier_seam_characterization.py subtests RED - operator said
   LEAVE; do not fix.
 - Leftover progress files ops/loop/control/progress/: rm415_fix, fleet_v6_slice_c,
