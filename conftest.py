@@ -13,5 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from tests._subtest_channel_guard import install as _install_subtest_guard
+# MAIN FIX TEMP-1: refuse an ad-hoc --basetemp inside a session scratchpad.
+from tests._basetemp_guard import pytest_configure  # noqa: F401
 
 _install_subtest_guard()
