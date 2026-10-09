@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v12 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
+"""Fleet kit v13 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -9,7 +9,8 @@ Why: whole test suites from several trees ran at once on one box. Four
 concurrent suites lost xdist workers, and timing tests flaked under the load:
 the number graded was the sibling load, not the code.
 
-    python fleet_suite_gate.py run [--owner O] [--slots N] [--timeout S] -- <suite cmd>
+    python fleet_suite_gate.py run --owner <session_id>.<agent_id> [--slots N]
+                                   [--timeout S] -- <suite cmd>
     python fleet_suite_gate.py status
 
 `run`:
@@ -17,11 +18,15 @@ the number graded was the sibling load, not the code.
      in fleet_claims by a live owner other than --owner (env FLEET_CLAIM_OWNER):
      a run straddling an edit says nothing;
   2. takes one of N machine-wide slots - N = --slots, else env
-     FLEET_SUITE_SLOTS, default 1, at most MAX_SLOTS - as
+     FLEET_SUITE_SLOTS, default 2 (v13; was 1), at most MAX_SLOTS - as
      <dir>/slot-<k>.lock by exclusive create, holder {pid, pid_started, start};
      <dir> = env FLEET_SUITE_DIR, else %LOCALAPPDATA%/fleet/suite (POSIX:
      ~/.cache/fleet/suite). A slot whose pid is dead or provably reused is
-     broken. While waiting it prints a progress line to stderr every 30 s;
+     broken. v13 FIFO: a waiter first takes a queue ticket
+     <dir>/queue/t-<ns>-<pid>.json and may take a slot only while its ticket
+     is among the oldest LIVE tickets that fit the free slots, so the oldest
+     waiter is served first and none is starved; a ticket whose pid is dead
+     or reused is dropped. While waiting it prints a progress line to stderr every 30 s;
      after --timeout (default 3600 s) it FAILS CLOSED (exit 3) without running;
   3. re-checks 1 inside the slot, runs the suite (env FLEET_SUITE_SLOT=k),
      releases the slot, exits with the suite's code.
@@ -39,8 +44,9 @@ from pathlib import Path
 
 ENV_DIR = "FLEET_SUITE_DIR"
 ENV_SLOTS = "FLEET_SUITE_SLOTS"
-DEFAULT_SLOTS = 1
-MAX_SLOTS = 2
+DEFAULT_SLOTS = 2
+MAX_SLOTS = 4
+QUEUE = "queue"
 WAIT_S = 3600.0
 PROGRESS_EVERY_S = 30.0
 POLL_S = 1.0
@@ -172,21 +178,79 @@ def _say(msg):
         pass
 
 
-def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, **kw):
-    begin = said = clock()
+# ---------------------------------------------------------------- FIFO queue (v13)
+
+def take_ticket(d, pid=None, started=None, ns=None):
+    """Create this waiter's queue ticket; returns its path."""
+    q = Path(d) / QUEUE
+    q.mkdir(parents=True, exist_ok=True)
+    pid = os.getpid() if pid is None else pid
+    started = started or gitlock.proc_started
+    raw = json.dumps({"pid": pid, "pid_started": started(pid)}, sort_keys=True)
     while True:
-        got = try_slot(d, n, clock=clock, **kw)
-        if got:
-            return got
-        now = clock()
-        if now - begin >= timeout:
-            raise GateRefused(f"SUITE-GATE: no suite slot free after {int(timeout)}s "
-                              f"({n} of {n} held); not running the suite")
-        if now - said >= PROGRESS_EVERY_S:
-            said = now
-            _say(f"suite gate: waiting for a suite slot ({n} of {n} held, "
-                 f"{int(now - begin)}s of {int(timeout)}s)")
-        sleep(POLL_S)
+        stamp = time.time_ns() if ns is None else ns
+        p = q / f"t-{stamp:020d}-{pid}.json"
+        try:
+            fd = os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            if ns is not None:
+                ns += 1
+            continue
+        try:
+            os.write(fd, raw.encode("ascii"))
+        finally:
+            os.close(fd)
+        return p
+
+
+def drop_ticket(ticket):
+    with contextlib.suppress(OSError):
+        Path(ticket).unlink()
+
+
+def queue_ahead(d, ticket, alive=None, started=None):
+    """Live tickets older than `ticket` (dead / reused ones are removed)."""
+    q = Path(d) / QUEUE
+    try:
+        names = sorted(x.name for x in q.glob("t-*.json"))
+    except OSError:
+        return 0
+    ahead = 0
+    for name in names:
+        if name >= Path(ticket).name:
+            break
+        if slot_live(q / name, alive, started):
+            ahead += 1
+        else:
+            with contextlib.suppress(OSError):
+                (q / name).unlink()
+    return ahead
+
+
+def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
+            started=None, pid=None, **kw):
+    """FIFO: wait for a slot only while no older live waiter could take it."""
+    begin = said = clock()
+    ticket = take_ticket(d, pid, started)
+    try:
+        while True:
+            free = n - len(held(d, alive, started))
+            if free > 0 and queue_ahead(d, ticket, alive, started) < free:
+                got = try_slot(d, n, pid=pid, alive=alive, started=started, clock=clock, **kw)
+                if got:
+                    return got
+            now = clock()
+            if now - begin >= timeout:
+                raise GateRefused(f"SUITE-GATE: no suite slot free after {int(timeout)}s "
+                                  f"({n} of {n} held); not running the suite")
+            if now - said >= PROGRESS_EVERY_S:
+                said = now
+                _say(f"suite gate: waiting for a suite slot ({n} slot(s), "
+                     f"{queue_ahead(d, ticket, alive, started)} waiter(s) ahead, "
+                     f"{int(now - begin)}s of {int(timeout)}s)")
+            sleep(POLL_S)
+    finally:
+        drop_ticket(ticket)
 
 
 def dirty_paths(cwd):

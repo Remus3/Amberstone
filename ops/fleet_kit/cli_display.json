@@ -1,5 +1,5 @@
 {
- "_README": "Fleet kit v10 CLI display keys (FLEET-COMMON item 15; UI/UX standard section 3). Applied by MAIN to BOTH account settings files; a tree's .claude/settings*.json sets NONE of the keys in tree_forbidden. `settings` keys are set at the top level, `env` keys merged into the account env, `unset` keys removed. In commands, {node} is the node executable and {kit} the directory holding this file, both rendered by MAIN's tools/fleet_kit.py with forward slashes.",
+ "_README": "Fleet kit v13 CLI display keys (FLEET-COMMON item 15; UI/UX standard section 3; v13 adds the GH-HYGIENE attribution keys, FLEET-COMMON 17). Applied by MAIN to BOTH account settings files; a tree's .claude/settings*.json sets NONE of the keys in tree_forbidden. `settings` keys are set at the top level, `env` keys merged into the account env, `unset` keys removed. In commands, {node} is the node executable and {kit} the directory holding this file, both rendered by MAIN's tools/fleet_kit.py with forward slashes.",
  "schema": 1,
  "settings": {
   "spinnerVerbs": {"mode": "replace", "verbs": ["Working"]},
@@ -12,12 +12,14 @@
   "promptSuggestionEnabled": false,
   "viewMode": "focus",
   "statusLine": {"type": "command", "command": "\"{node}\" \"{kit}/fleet_statusline.js\"", "padding": 0, "refreshInterval": 5},
-  "subagentStatusLine": {"type": "command", "command": "\"{node}\" \"{kit}/fleet_subagent_status.js\""}
+  "subagentStatusLine": {"type": "command", "command": "\"{node}\" \"{kit}/fleet_subagent_status.js\""},
+  "attribution": {"commit": "", "pr": ""},
+  "includeCoAuthoredBy": false
  },
  "env": {
   "CLAUDE_CODE_NO_FLICKER": "1",
   "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1"
  },
  "unset": [],
- "tree_forbidden": ["statusLine", "subagentStatusLine", "theme", "spinnerVerbs", "spinnerTipsEnabled", "prefersReducedMotion", "outputStyle", "showTurnDuration"]
+ "tree_forbidden": ["statusLine", "subagentStatusLine", "theme", "spinnerVerbs", "spinnerTipsEnabled", "prefersReducedMotion", "outputStyle", "showTurnDuration", "attribution", "includeCoAuthoredBy"]
 }

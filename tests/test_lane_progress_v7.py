@@ -53,17 +53,19 @@ def test_the_helpers_are_the_vendored_kit():
     # 1840) superseded v10 with fleet_checklist byte-identical. Kit v12 (MAIN
     # 2026-10-08 2031) superseded v11: fleet_checklist docstring only, and
     # write_progress always lands in the MAIN checkout (returned doc adds "path").
-    assert lp.fleet_headless.KIT_VERSION == 12
+    # Kit v13 (MAIN 2026-10-08 2246) superseded v12: fleet_checklist unchanged,
+    # write_progress atomic per task with a `progress` CLI.
+    assert lp.fleet_headless.KIT_VERSION == 13
 
 
-def test_the_vendored_kit_is_v12_with_its_twenty_file_set():
+def test_the_vendored_kit_is_v13_with_its_twenty_two_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 12
+    assert man["version"] == 13
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json",
         "fleet_checklist.py", "fleet_claims.py", "fleet_done.py",
-        "fleet_gitlock.py", "fleet_headless.py",
-        "fleet_inbox.py", "fleet_lanes.py", "fleet_secrets.py",
+        "fleet_gitlock.py", "fleet_headless.py", "fleet_identity.py",
+        "fleet_inbox.py", "fleet_lanes.py", "fleet_rewrite.py", "fleet_secrets.py",
         "fleet_statusline.js", "fleet_subagent_first.py",
         "fleet_subagent_status.js", "fleet_suite_gate.py",
         "fleet_test_guard.py", "fleet_watch.py",

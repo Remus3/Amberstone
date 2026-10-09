@@ -90,6 +90,19 @@ v12 (race guards, FLEET-COMMON 16; ruling 2026-10-08 lane-progress-location):
 - sibling kit files fleet_gitlock.py, fleet_claims.py, fleet_suite_gate.py and
   fleet_test_guard.py (this file's other API is unchanged by them).
 
+v13 (KIT-13 defects; GH-HYGIENE ruling 2026-10-08):
+- write_progress() is atomic per call AND per task: every write goes to its
+  own temp file (<task>.json.<pid>.<thread>.<random>.tmp, never shared by two
+  writers, even two threads of one process), is moved over <task>.json with
+  os.replace, then READ BACK; a lost or torn write is retried, and a write
+  that cannot be confirmed raises instead of passing silently;
+- `python fleet_headless.py progress --root R --task T --pct P --step S
+  --eta-s E --status running|done|failed` writes one progress file from the
+  command line, so an agent never needs a helper script of its own (two
+  agents sharing one helper script lost intermediate writes);
+- sibling kit files fleet_identity.py (FLEET-COMMON 17) and
+  fleet_rewrite.py (the operator-gated history rewrite helper).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -106,7 +119,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 12
+KIT_VERSION = 13
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -575,23 +588,43 @@ class RunBudget:
 
 # ---------------------------------------------------------------- status/usage
 
-def _atomic_write(path, text):
+def _tmp_name(path):
+    """A temp name no other writer (process or thread) can share (v13)."""
+    import threading
+    return path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}."
+                          f"{os.urandom(4).hex()}.tmp")
+
+
+def _atomic_write(path, text, verify=False):
+    """temp + os.replace; with verify=True the target is read back and the
+    write retried until it holds `text` (v13, progress files)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-    try:
-        tmp.write_text(text, encoding="ascii", newline="\n")
-        for attempt in range(ATOMIC_TRIES):
-            try:
-                tmp.replace(path)
+    want = text.encode("ascii")
+    for _round in range(ATOMIC_TRIES if verify else 1):
+        tmp = _tmp_name(path)
+        try:
+            tmp.write_text(text, encoding="ascii", newline="\n")
+            for attempt in range(ATOMIC_TRIES):
+                try:
+                    tmp.replace(path)
+                    break
+                except PermissionError:  # Windows: a reader holds the target briefly
+                    if attempt == ATOMIC_TRIES - 1:
+                        raise
+                    time.sleep(0.05 * (attempt + 1))
+        finally:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+        if not verify:
+            return
+        try:
+            if path.read_bytes() == want:
                 return
-            except PermissionError:  # Windows: a reader holds the target briefly
-                if attempt == ATOMIC_TRIES - 1:
-                    raise
-                time.sleep(0.05 * (attempt + 1))
-    finally:
-        with contextlib.suppress(OSError):
-            tmp.unlink()
+        except OSError:
+            pass
+        time.sleep(0.05)
+    raise OSError(f"progress write to {path.name} could not be confirmed")
 
 
 def _iso(epoch):
@@ -677,7 +710,7 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checkl
     if checklist is not None:
         doc["checklist"] = _checklist_rows(checklist)
     path = main_checkout(root) / PROGRESS_REL / (task + ".json")
-    _atomic_write(path, json.dumps(doc))
+    _atomic_write(path, json.dumps(doc), verify=True)
     return dict(doc, path=str(path))
 
 
@@ -1090,11 +1123,27 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     sp.add_argument("--floors-in-hooks", action="store_true")
     sp.add_argument("--prompt-file")
     sp.add_argument("--permission-mode", choices=PERMISSION_MODES)
+    pp = sub.add_parser("progress")
+    pp.add_argument("--root", required=True)
+    pp.add_argument("--task", required=True)
+    pp.add_argument("--pct", type=int, required=True)
+    pp.add_argument("--step", required=True)
+    pp.add_argument("--eta-s", type=int)
+    pp.add_argument("--status", choices=PROGRESS_STATES, required=True)
     try:
         args = ap.parse_args(argv)
     except SystemExit:
         return CLI_USAGE
     out = stdout or sys.stdout
+    if args.cmd == "progress":
+        try:
+            doc = write_progress(args.root, args.task, args.pct, args.step, args.eta_s,
+                                 args.status)
+        except (ValueError, OSError) as exc:
+            print(json.dumps({"error": exc.__class__.__name__}), file=out)
+            return CLI_USAGE
+        print(json.dumps(doc), file=out)
+        return CLI_OK
     if not args.note.strip():
         print(json.dumps({"error": "empty --note"}), file=out)
         return CLI_USAGE
