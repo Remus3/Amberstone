@@ -4,9 +4,9 @@ SESSION: 105
 HISTORY WAS REWRITTEN 2026-10-09 (LEDGER 1699): every commit id changed. Old SHAs cited anywhere
 resolve through .git/filter-repo/commit-map (pre-June ones: .git/filter-repo-20260621/commit-map
 first); copies beside the bundle in RC's sidecar Backup folder. Every other clone must re-clone or
-hard-reset. NEXT: adopt fleet kit v14 (MAIN 2026-10-09-0930 bundle in moon_sync_inbox/; the coordinator
-queued it as the task after B; not vendored yet).
-Next action after v14: MAIN 2026-10-08-2246 REPO-REVIEW ORDER sections 2-8 (section 1 = kit v13 DONE in
+hard-reset. K14 DONE: fleet kit v14 vendored 3b396481b (LEDGER 1700; ANSWER 1314 reached 1/1, its
+ORDER row closed; drift reads RC OK v14).
+Next action: MAIN 2026-10-08-2246 REPO-REVIEW ORDER sections 2-8 (section 1 = kit v13 DONE in
 session 105, b83f031ee; its row stays OPEN in inbox_work.jsonl until the ONE later ANSWER covers 2-8,
 then close it with `inbox_tick.py --done`). Read the ORDER in moon_sync_inbox/ by section. Section
 4's DEPENDABOT-1 = E2 is DONE (C1, LEDGER 1697, e56d1d790; RULE from that ORDER stays: never the GitHub
@@ -54,6 +54,29 @@ wrap; the rest are still open):
    4 c1/deps-pip-* branches, 8 refs/pull/* refs).
 6. Re-create the Desktop Amberstone.lnk and Lane Widget.lnk (both absent at C1, 2026-10-09; Lane
    Widget via the operator-run tools/install_lane_widget_shortcut.ps1 - it writes outside the tree).
+
+Session 105 K14 (2026-10-09, executor sub-agent) shipped - do NOT redo (LEDGER 1700):
+- MAIN 0930 ORDER kit v14: provenance 24/24; 3b396481b (ONE commit via gitlock; 22/22 staged blobs,
+  MANIFEST d045d4ba...acbb78); conformance() []; conftest extra_ignore + FLEET_SIDECAR_ROOT="" pin
+  (step 3.4 applied: RC tests reach fleet_lanes.worktree_path); RouteRefused.code; lane widget renders
+  state blocked. b5dea9265 = /api/health/all scrubs rc.recent_fatals / rc_fatal.recent / reload +
+  poll-worker error text (root cause of 4 NEW suite failures: live heartbeat WinError 5 put the repo
+  path in health.json; tests read the live file - now stubbed). Gated suite run 3: 38832 passed /
+  9 failed (baseline) / 100 skipped / 1 deselected. Pushed f19d63c1b..b5dea9265 (read back).
+  ANSWER 2026-10-09-1314 sha256 7a07192f reached 1/1 (copy docs/_outbound_2026-10-09-1314-*).
+
+New carry items (session 105 K14):
+- Survey (fleet_identity check --history --by-class): main 6006 commits, 0 flagged, exit 0; 74 local
+  branches 0 flagged. REMOTE residuals exit 1: the 4 origin c1/deps-pip-* (pre-rewrite tips; trigger
+  36 each = ai-or-bot-author 35 / ai-or-bot-committer 33 / trailer 4; ride-along 25-26) and origin
+  dependabot/pip/pip-165f63db95 (a NEW Dependabot PR opened after the rewrite; trigger 1 at depth 1).
+  The Dependabot PR is landed LOCALLY as an operator commit (never the merge button / gh pr merge);
+  the c1 remote branches are OPERATOR ASKS 5.
+- FLEET_SIDECAR_ROOT: MAIN sets it after all six ANSWERs. RC's lanes already run under the sidecar
+  base (ops/lane_worktrees.json, LEDGER 1696); the kit path only fills the lock's kit_worktree field,
+  so RC has nothing to move. If a move is ever asked, it is an out-of-tree act: halt.
+- A drive-root literal in a NEW test halts the pre-push sibling sweep (structural arm); use tmp_path.
+- OutboundCap: 4/6 notes used on 2026-10-09.
 
 Session 105 C1 (2026-10-09, executor sub-agent) shipped - do NOT redo (LEDGER 1697):
 - E2 Dependabot npm PR #2 landed locally as operator commit 0be91102b: rc-shell electron 33.4.11 ->
@@ -276,13 +299,13 @@ can write the main checkout" (answered by the session 104 FINDING above); the se
 test_session_checklist_item13 follow-up (root-caused and fixed at this wrap, LEDGER 1693); the
 "session 103 worktree cleanup done at wrap" note (history, nothing open).
 
-Context: ops/fleet_kit/MANIFEST.json version 11; ops/fleet_kit/fleet_subagent_first.py (hook) +
+Context: ops/fleet_kit/MANIFEST.json version 14; ops/fleet_kit/fleet_subagent_first.py (hook) +
 ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.py (--pending / --done /
 --migrate-legacy); tools/stop_claim_gate.py (RM-687); ops/loop/fleet_route.py + ops/loop/run_lane.ps1
 (kit spawn path); ops/loop/config.json (effort=); .github/dependabot.yml; .github/ci/requirements-*.in
 (regen command in header); .github/workflows/codeql.yml (advanced, triggers live);
 rc-shell/package.json (electron); ops/runtime/inbox_responder_agreement.json (expires 2026-11-01);
-ops/moon_sync_repos.json (gitignored). Next free LEDGER id 1698. Next free RM id: the guarded pin in
+ops/moon_sync_repos.json (gitignored). Next free LEDGER id 1701. Next free RM id: the guarded pin in
 docs/DS_SWEEP_TRACKER.md (RM-697 after C1).
 
 Acceptance: MAIN 2246 sections 2-8 answered in ONE ANSWER and its inbox row closed; then RM-680 - DS
