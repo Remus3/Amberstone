@@ -11,6 +11,12 @@ Contract:
     the payload carries session_id / transcript_path / cwd / hook_event_name /
     stop_hook_active / last_assistant_message).
   - writes ops/runtime/stop_claim_report.json atomically.
+  - RM-687: a sub-agent's tool rows are NOT in the main transcript; they sit in
+    <transcript minus .jsonl>/subagents/agent-<id>.jsonl (measured CLI 2.1.294,
+    2026-10-08; nested agents share that flat dir). Read LAZILY, only when a
+    CLEARABLE finding would stand, only THIS session's dir, and CREDIT-ONLY:
+    paired runs / edits / CI probes / commits / merges / pushes can remove a
+    main-only finding, never add one. Never raises. See CLEARABLE.
   - REPORT-ONLY by default: always exit 0, prints nothing. `--arm` on
     blocking findings still exits 0 but prints ONE stdout JSON object,
     {"hookSpecificOutput": {"hookEventName": "Stop", "additionalContext":
@@ -36,7 +42,7 @@ import argparse
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -423,9 +429,20 @@ def _creates_commit(command):
 # the subcommand refuses a following [\w.-] so `-c push.default=x` and
 # `merge-base` cannot match. A dry run (--dry-run / -n) uploads nothing, and a
 # merge --abort / --quit merges nothing.
+# KNOWN, NOT FIXED (round-4 verifier, 2026-10-08; filed as a follow-up):
+# `git -c -c -c ...` repeated ~20 times backtracks exponentially here (6.1 s
+# on the main path) - an unrealistic shape, pre-existing, left as is.
 _GIT_LEAD = r"\bgit(?:\.exe)?(?:\s+-[Cc](?:\s+\S+)?|\s+--?[\w-]+(?:=\S+)?)*\s+"
 _EV_PUSH = re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I)
-_PUSH_DRY_RUN = re.compile(r"(?:^|\s)(?:--dry-run|-n)(?=\s|$)")
+# The dry-run test is spelling-aware (RM-687 verifier, 2026-10-08: `-nv` and
+# `--dry` were credited as real pushes). git accepts a short-option BUNDLE
+# (`-nv`, `-vn`, `-fn`) and any unambiguous prefix of a long option (`--dr` up;
+# `--d` is ambiguous with --delete), so both count as dry. In a bundle the scan
+# stops at `o`: `-o` takes a value, so in `-onotify` the n is the value's. A
+# SEPARATE token after `-o` is still scanned - deliberately strict, because a
+# quoted -o value is already blanked by strip_command_noise and the next token
+# may be the real flag. `--no-verify` is a long option and never reads as -n.
+_PUSH_DRY_LONG = re.compile(r"--dr(?:y(?:-(?:r(?:u(?:n)?)?)?)?)?")
 _EV_GIT_MERGE = re.compile(_GIT_LEAD + r"merge(?![\w.-])([^|;&\n]*)", re.I)
 _MERGE_NO_OP = re.compile(r"(?:^|\s)(?:--abort|--quit)(?=\s|$)")
 # `pr merge` is matched without the binary because RC invokes gh through a
@@ -433,9 +450,24 @@ _MERGE_NO_OP = re.compile(r"(?:^|\s)(?:--abort|--quit)(?=\s|$)")
 _EV_PR_MERGE = re.compile(r"\bpr\s+merge\b", re.I)
 
 
+def _push_is_dry(args):
+    """True when the `git push` ARGS ask for a dry run, in any spelling git takes."""
+    for token in args.split():
+        if token.startswith("--"):
+            if _PUSH_DRY_LONG.fullmatch(token):
+                return True
+        elif token.startswith("-"):
+            for flag in token[1:]:
+                if flag == "o":
+                    break
+                if flag == "n":
+                    return True
+    return False
+
+
 def _did_push(command):
     """True when COMMAND runs a real (non-dry-run) `git push`."""
-    return any(not _PUSH_DRY_RUN.search(m.group(1))
+    return any(not _push_is_dry(m.group(1))
                for m in _EV_PUSH.finditer(command))
 
 
@@ -512,7 +544,9 @@ EDIT_TOOLS = {"edit", "write", "multiedit", "notebookedit"}
 # armed session (LEDGER 1154), and a doc legitimately recites historical
 # counts, so this neither widens to every file nor arms.
 ARTIFACT_SCAN_BASENAMES = frozenset({"ledger.md", "backlog.md"})
-ADVISORY_CHECKS = frozenset({"artifact_count_mismatch"})
+# RM-687: subagent_hook_bypass (a sub-agent's `--no-verify` and kin) is
+# advisory too - check 5 stays main-bash-only and blocking.
+ADVISORY_CHECKS = frozenset({"artifact_count_mismatch", "subagent_hook_bypass"})
 
 
 def _written_content(name, data):
@@ -882,9 +916,14 @@ def audit(ev):
                         for m in EV_PASSED.findall(line)}
     # Vacuous only if EVERY run was vacuous. One real green run answers the claim.
     vacuous = ran_pytest and all(EV_VACUOUS.search(r["output"]) for r in runs)
-    did_commit = any(EV_COMMIT.search(c) or _creates_commit(c) for c in bash)
-    did_push = any(_did_push(c) for c in bash)
-    did_merge = did_push or any(_did_merge(c) for c in bash)
+    # RM-687: the subagent_* flags are set only on main()'s MERGED evidence,
+    # after a lazy read of THIS session's sub-agent transcripts; the result is
+    # used credit-only (see CLEARABLE). did_merge inherits a sub-agent push.
+    did_commit = (any(EV_COMMIT.search(c) or _creates_commit(c) for c in bash)
+                  or bool(ev.get("subagent_commit")))
+    did_push = any(_did_push(c) for c in bash) or bool(ev.get("subagent_push"))
+    did_merge = (did_push or any(_did_merge(c) for c in bash)
+                 or bool(ev.get("subagent_merge")))
     # EV_CI runs on the noise-stripped command; EV_CI_VAR must NOT, because
     # strip_command_noise deletes quoted literals and a `python -c "<script>"`
     # probe is ENTIRELY inside one quoted literal - stripped, it reduces to
@@ -892,7 +931,8 @@ def audit(ev):
     # for EV_CI_VAR, so a heredoc that DOCUMENTS a gh invocation stays data.
     raw_bash = [_HEREDOC.sub(" ", c) for c in ev["bash"]]
     probed_ci = (any(EV_CI.search(c) for c in bash)
-                 or any(EV_CI_VAR.search(c) for c in raw_bash))
+                 or any(EV_CI_VAR.search(c) for c in raw_bash)
+                 or bool(ev.get("subagent_ci")))
 
     # 5 - evidence-only check. Requires an actual git invocation: a bypass flag
     # NAMED in prose or a heredoc body is documentation, not a bypass.
@@ -991,6 +1031,611 @@ def read_transcript(path):
     return rows
 
 
+# RM-687: sub-agent evidence. Under kit v10 SUBAGENT-FIRST deny mode the main
+# thread cannot run pytest, gh, git or Edit, so every such act is a sub-agent's
+# - and a sub-agent's tool rows are NOT in the main transcript (measured
+# 2026-10-08, CLI 2.1.294: session 9f5488a7 held 135 main rows, 0 of them
+# isSidechain). They live beside it in
+# `<transcript minus .jsonl>/subagents/agent-<agentId>.jsonl`, nested agents in
+# the same flat dir, so every relayed result flagged although a sub-agent had
+# produced it. main() reads them LAZILY (only when a CLEARABLE finding would
+# otherwise stand) and only for THIS session's dir.
+#
+# SUB-AGENT EVIDENCE IS CREDIT-ONLY (coordinator order, 2026-10-08): the final
+# findings are the main-only findings that ALSO survive an audit over main plus
+# sub-agent evidence, matched on (check, quote, claimed), plus a merged finding
+# only on a sentence whose main finding was cleared (a narrower REPLACEMENT,
+# see credit_only). It never flags a sentence main did not flag - so a relayed
+# sum can never newly fire count_mismatch. A sub-agent run that is vacuous
+# (EV_VACUOUS, incl. INTERNALERROR) never credits. Every kind pairs a tool_use
+# to its tool_result by id,
+# never by adjacency (sub-agents issue parallel calls), and none credits from a
+# backgrounded call or a launch-handoff result except test runs, which use the
+# same deferred mechanism as collect_evidence within the one sub-agent file:
+#   tests   (1/2/7/8) pytest / node-test / CI-log calls whose output carries a
+#                     passed count (CI logs: summary lines only);
+#   edits   (3)       Edit / Write / MultiEdit / NotebookEdit not is_error;
+#   CI      (4)       the same command-only EV_CI / EV_CI_VAR bar as main;
+#   commit  (6)       a commit-creating command whose output has git's
+#                     `[<branch> <sha>] ` line (merge --no-ff: "Merge made by");
+#   merge   (10)      a merge with a success line and no conflict / fatal /
+#                     error line, or `pr merge` not is_error;
+#   push    (9)       see _pair_credit.
+# Sub-agent commands never enter ev["bash"] (main's command-only rules would
+# credit them); each kind sets its own flag. Prose and Agent/Task prompts never
+# credit. Check 6 is widened here on an OBSERVED false positive: under deny mode
+# every relayed commit claim flagged (the _attributed doctrine is met).
+# NOT changed: artifact_count_mismatch (RM-421) audits what the MAIN thread
+# wrote into LEDGER / BACKLOG; a sub-agent's writes there are a different
+# speaker's, so that check stays main-only. A sub-agent's `--no-verify` is the
+# ADVISORY check subagent_hook_bypass, computed only when the files were loaded.
+CLEARABLE = frozenset({
+    "tests_pass_without_run", "vacuous_run", "full_suite_claim_over_filtered_run",
+    "count_mismatch", "file_claim_without_edit", "ci_claim_without_probe",
+    "commit_claim_without_commit", "push_claim_without_push",
+    "merge_claim_without_merge"})
+SUBAGENT_FILE_MAX = 64 * 1024 * 1024
+SUBAGENT_TOTAL_MAX = 256 * 1024 * 1024
+# A command longer than this is not parsed for an ancestry probe (re-verifier:
+# 30k spaces after the probe took 4 s through the old tail regex).
+COMMAND_PARSE_MAX = 20000
+_SUBAGENT_LABEL = re.compile(r"[A-Za-z0-9_-]{1,64}")
+# The scan must never raise out of a Stop hook. A tuple, not a blind
+# `except Exception` (ruff BLE ratchet); it covers JSON junk, odd row shapes,
+# unreadable files and a directory named like a transcript.
+_SCAN_ERRORS = (OSError, ValueError, TypeError, AttributeError, LookupError,
+                RuntimeError, MemoryError, OverflowError, re.error)
+# A backgrounded call (input run_in_background, or a launch-handoff result in
+# the EV_BACKGROUND shape) has no observed outcome yet, so it credits NO kind.
+# Every output regex below is matched one LINE at a time, and a line longer
+# than this is skipped unmatched (and closes a push block): the first cut's
+# `^\s*[+*]?\s*` took ~9 s on one 30k-whitespace line (RM-687 verifier).
+OUTPUT_LINE_MAX = 1000
+#
+# ACCEPTED RESIDUE, recorded so it is not re-found as a defect (RM-687 verifier,
+# 2026-10-08). (1) FORGERY: a command that hand-echoes a ref-update line, an
+# `Everything up-to-date` line or a `<prefix>0` line is credited - output-text
+# evidence cannot defend against deliberate forgery. Accepted because the
+# main-thread check 9 credits a bare `git push` COMMAND with no output check at
+# all, so this evidence is strictly stronger than the existing bar, and the
+# gate's threat model is an honest-mistake unbacked claim, not an adversarial
+# agent. (2) BINDING: an ancestry probe is tied neither to the CLAIMED sha nor
+# to session time (any commit already on the remote credits), and a reflog line
+# is time-bound but not sha-bound. The claim side names no sha to bind to.
+
+# Kind "push": a real `git push` (same _did_push discipline: first subcommand,
+# dry run excluded, so `git stash push` never counts) whose OUTPUT carries a
+# ref-update success line. The flag column must be blank, + or *, so
+# `! [rejected]` / `! [remote rejected]` cannot match. is_error is NOT a signal:
+# the measured real push came back is_error TRUE because a later command on the
+# same line failed ("fatal: Needed a single revision").
+#
+# POSITIVELY anchored (RM-687 verifier: a rejected push followed by
+# `git fetch origin 2>&1 | tail -1` was credited off the fetch's update line,
+# its `From <url>` header cut by the tail). git prints `To <url>` and then every
+# ref status line contiguously (transport print_ref_status), so a success line
+# counts only inside that block; any other line closes it - a fetch's `From`
+# header, a rejection's `error:` line, a blank or overlong line. A fetch-shaped
+# destination (`-> origin/...`, `-> refs/remotes/...`, `-> FETCH_HEAD`, and
+# `-> <remote>/...` for every remote a fetch / pull / `remote update` in the SAME
+# command names; `--all` or a bare `remote update` makes any `<x>/<y>` fetch
+# shaped) never counts, even inside a block (re-verifier: `git fetch upstream`
+# after a `| head -2` push). And a call holding ANY dry-run push never credits a
+# push (re-verifier: `git push -n backup main; git push origin main` with the
+# real push rejected). No adjacent ambiguous quantifiers anywhere.
+_PUSH_TO_HEADER = re.compile(r"^To[ \t]+\S")
+_PUSH_STATUS = re.compile(
+    r"^[ \t]*(?:[-+*!=][ \t]+)?"
+    r"(?:[0-9a-f]{7,40}\.\.\.?[0-9a-f]{7,40}|\[[a-z ]{1,40}\])[ \t]")
+_PUSH_REF_OK = re.compile(
+    r"^[ \t]*(?:[+*][ \t]+)?(?:[0-9a-f]{7,40}\.\.\.?[0-9a-f]{7,40}"
+    r"|\[new (?:branch|tag|reference)\])[ \t]+\S+[ \t]+->[ \t]+(\S+)")
+_PUSH_UP_TO_DATE = re.compile(r"^Everything up-to-date[ \t]*$")
+# Every positional argument of a fetch / pull / `remote update` is taken as a
+# remote name - a deliberate superset of "the first non-option argument", so a
+# separate option value (`--depth 3 upstream`) cannot hide the real remote.
+_EV_FETCH = re.compile(_GIT_LEAD + r"(fetch|pull|remote[ \t]+update)(?![\w.-])([^|;&\n]*)",
+                       re.I)
+
+# Kind "ancestry": `git merge-base --is-ancestor <rev> <ref>` where <ref> is a
+# REMOTE-TRACKING ref, matched on a quote-MASKED copy of the command (same
+# length, so spans map back to the raw text): a quoted literal naming the probe
+# is data. Its success must be OBSERVABLE - either nothing but redirections
+# follows it up to end-of-command or `&&` (and the result is not an error), or
+# the next statement echoes `$?` / `$LASTEXITCODE` and the output carries that
+# literal prefix followed by 0.
+_EV_ANCESTRY = re.compile(
+    _GIT_LEAD + r"merge-base(?![\w.-])[ \t]+--is-ancestor[ \t]+"
+    r"(?P<rev>[^\s;&|<>()]+)[ \t]+(?P<ref>[^\s;&|<>()]+)", re.I)
+# The tail after the probe is walked by hand (_ancestry_tail), one redirection
+# token at a time: the old single regex put `[ \t]*` beside `\s*` and went
+# quadratic on a run of spaces (re-verifier, 2026-10-08).
+_REDIRECT = re.compile(r"(?:[0-9]+|&|\*)?>>?(?:&[0-9-]|[ \t]*[^\s;&|<>]+)|<[ \t]*[^\s;&|<>]+")
+# After `&&`, a `;`, newline, `||` or background `&` would let a LATER statement
+# decide is_error, so the probe's exit status would no longer be observable.
+_CHAIN_BREAK = re.compile(r"[;\n]|\|\||(?<![&>])&(?![&>])")
+_STATUS_ECHO = re.compile(r"(?:echo|write-output|printf)[ \t]+(?P<arg>[^;\n&|]*)", re.I)
+_STATUS_VAR = re.compile(r"\$\?|\$LASTEXITCODE\b", re.I)
+_HAS_LETTER = re.compile(r"[A-Za-z]")
+
+# Kind "reflog": `git reflog` or `git log -g/--walk-reflogs` whose output dates
+# an `update by push` at or after the session start. Undated `@{N}` lines and
+# lines without a timezone never credit.
+_EV_REFLOG = re.compile(_GIT_LEAD + r"(reflog|log)(?![\w.-])([^|;&\n]*)", re.I)
+_REFLOG_WALK = re.compile(r"(?:^|\s)(?:-g|--walk-reflogs)(?=\s|$)")
+_REFLOG_PUSH = re.compile(
+    r"@\{(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})[ \t]*([+-]\d{2}:?\d{2}|Z)\}: update by push")
+
+
+def subagent_dir(transcript_path):
+    """THIS session's sub-agent transcript dir: `<transcript minus suffix>/subagents`."""
+    return Path(transcript_path).with_suffix("") / "subagents"
+
+
+def _subagent_files(directory):
+    """`agent-*.jsonl` FILES directly in DIRECTORY (flat) as (path, size),
+    newest mtime first; anything over SUBAGENT_FILE_MAX or not a regular file
+    is skipped."""
+    found = []
+    if not directory.is_dir():
+        return found
+    for path in directory.glob("agent-*.jsonl"):
+        try:
+            if not path.is_file():
+                continue
+            stat = path.stat()
+        except _SCAN_ERRORS:
+            continue
+        if stat.st_size <= SUBAGENT_FILE_MAX:
+            found.append((stat.st_mtime, path, stat.st_size))
+    found.sort(key=lambda item: item[0], reverse=True)
+    return [(path, size) for _mtime, path, size in found]
+
+
+def _agent_label(path):
+    label = path.stem[len("agent-"):]
+    return label if _SUBAGENT_LABEL.fullmatch(label) else ""
+
+
+def _tool_text(content):
+    """A tool_result's text; list parts are joined by NEWLINE so line anchors hold."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(part["text"] for part in content
+                         if isinstance(part, dict) and isinstance(part.get("text"), str))
+    return ""
+
+
+def _output_lines(output):
+    """OUTPUT's lines, each overlong one replaced by None (skipped unmatched)."""
+    return [line if len(line) <= OUTPUT_LINE_MAX else None
+            for line in output.splitlines()]
+
+
+def _fetch_remotes(stripped):
+    """(remote names, any_remote) that a fetch / pull / `remote update` in the
+    noise-stripped command updates. A bare fetch / pull is origin; `--all` or a
+    bare `remote update` is any remote."""
+    names, any_remote = {"origin"}, False
+    for match in _EV_FETCH.finditer(stripped):
+        args = match.group(2).split()
+        positional = [a for a in args if not a.startswith("-") and not set(a) & set("<>")]
+        if "--all" in args or (match.group(1).lower().startswith("remote") and not positional):
+            any_remote = True
+        names.update(positional)
+    return names, any_remote
+
+
+def _fetch_shaped(dst, remotes, any_remote):
+    """True when DST is a remote-tracking / fetch destination, never a push's."""
+    if dst == "FETCH_HEAD" or dst.startswith("refs/remotes/"):
+        return True
+    if any_remote and "/" in dst:
+        return True
+    return any(dst.startswith(name + "/") for name in remotes)
+
+
+def _push_output_ok(output, remotes=frozenset({"origin"}), any_remote=False):
+    """True when OUTPUT carries a ref-update success line INSIDE a git push
+    `To <url>` status block (see _PUSH_TO_HEADER) whose destination is not
+    fetch shaped, or `Everything up-to-date`."""
+    in_block = False
+    for line in _output_lines(output):
+        if line is None:
+            in_block = False
+        elif _PUSH_TO_HEADER.match(line):
+            in_block = True
+        elif _PUSH_UP_TO_DATE.match(line):
+            return True
+        elif in_block:
+            ok = _PUSH_REF_OK.match(line)
+            if ok and not _fetch_shaped(ok.group(1), remotes, any_remote):
+                return True
+            in_block = bool(ok or _PUSH_STATUS.match(line))
+    return False
+
+
+def _remote_tracking(ref):
+    low = ref.lower()
+    return (ref.startswith(("origin/", "refs/remotes/"))
+            or any(tag in low for tag in ("@{u}", "@{upstream}", "@{push}")))
+
+
+def _echoed_zero(arg, output):
+    """True when ARG (an echo argument, raw) reads `$?` / `$LASTEXITCODE` and
+    OUTPUT has a line that is exactly the argument's literal prefix plus 0."""
+    arg = arg.strip()
+    status = _STATUS_VAR.search(arg)
+    if not status:
+        return False
+    lead = arg[:status.start()]
+    if lead.count("'") % 2:
+        return False  # inside single quotes the variable is never expanded
+    prefix = lead.replace('"', "").replace("'", "")
+    if "$" in prefix or "`" in prefix:
+        return False  # not a literal prefix
+    if not _HAS_LETTER.search(prefix):
+        # A bare `echo $?` prints a lone 0 that any honest `wc -l` or
+        # `rev-list --count` beside it can also print (re-verifier, 2026-10-08):
+        # the prefix must name the probe, e.g. `rc=` / `ancestor_exit=`.
+        return False
+    want = prefix + "0"
+    return any(line is not None and line.rstrip() == want
+               for line in _output_lines(output))
+
+
+def _skip_blanks(text, pos, blanks=" \t"):
+    while pos < len(text) and text[pos] in blanks:
+        pos += 1
+    return pos
+
+
+def _ancestry_tail(masked, pos):
+    """Walk the tail after a probe: skip redirections, then return
+    ("end", None), ("and", <rest>), ("next", <start of next statement>) or
+    (None, None). Linear: one token at a time, no regex backtracking."""
+    while True:
+        pos = _skip_blanks(masked, pos)
+        redirect = _REDIRECT.match(masked, pos)
+        if not redirect:
+            break
+        pos = redirect.end()
+    if not masked[pos:].strip():
+        return "end", None
+    if masked.startswith("&&", pos):
+        return "and", masked[pos + 2:]
+    pos = _skip_blanks(masked, pos, "\r")
+    if pos < len(masked) and masked[pos] in ";\n":
+        return "next", _skip_blanks(masked, pos + 1, " \t\r\n")
+    return None, None
+
+
+def _ancestry_ok(command, output, errored):
+    """True when COMMAND observably proved `<rev>` is an ancestor of a
+    remote-tracking ref. See _EV_ANCESTRY. A command over COMMAND_PARSE_MAX
+    chars is not parsed at all."""
+    if len(command) > COMMAND_PARSE_MAX:
+        return False
+    raw = _HEREDOC.sub(" ", _QUOTED_EXE.sub(lambda m: " " + m.group(2) + " ", command))
+    masked = _QUOTED.sub(lambda m: "x" * len(m.group(0)), raw)
+    for match in _EV_ANCESTRY.finditer(masked):
+        ref = raw[match.start("ref"):match.end("ref")].replace('"', "").replace("'", "")
+        if not _remote_tracking(ref):
+            continue
+        if masked[:match.start()].rstrip().endswith(("||", "!")):
+            continue  # `x || probe` may never run it; `! probe` inverts it
+        shape, tail = _ancestry_tail(masked, match.end())
+        if shape == "end" and not errored:
+            return True
+        if shape == "and" and not errored and not _CHAIN_BREAK.search(tail):
+            return True
+        if shape == "next":
+            echo = _STATUS_ECHO.match(masked, tail)
+            if echo and _echoed_zero(raw[echo.start("arg"):echo.end("arg")], output):
+                return True
+    return False
+
+
+def _reflog_time(day, clock, zone):
+    try:
+        if zone == "Z":
+            tz = timezone.utc
+        else:
+            digits = zone[1:].replace(":", "")
+            offset = timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
+            tz = timezone(-offset if zone[0] == "-" else offset)
+        return datetime.strptime(day + " " + clock, "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz)
+    except ValueError:
+        return None
+
+
+def _reflog_ok(command, output, session_start):
+    """True when COMMAND walks a reflog and OUTPUT dates an `update by push` at
+    or after SESSION_START (timezone-aware)."""
+    walks = any(m.group(1).lower() == "reflog" or _REFLOG_WALK.search(m.group(2))
+                for m in _EV_REFLOG.finditer(strip_command_noise(command)))
+    if not walks:
+        return False
+    for line in _output_lines(output):
+        for match in _REFLOG_PUSH.finditer(line or ""):
+            stamp = _reflog_time(*match.groups())
+            if stamp is not None and stamp >= session_start:
+                return True
+    return False
+
+
+def _pair_credit(command, output, errored, session_start):
+    """The push evidence kind one paired sub-agent call credits, or None. A
+    background-launch result credits nothing (see OUTPUT_LINE_MAX notes)."""
+    if EV_BACKGROUND.search(output):
+        return None
+    stripped = strip_command_noise(command)
+    pushes = list(_EV_PUSH.finditer(stripped))
+    if (pushes and not any(_push_is_dry(m.group(1)) for m in pushes)
+            and _push_output_ok(output, *_fetch_remotes(stripped))):
+        return "push"
+    if _ancestry_ok(command, output, errored):
+        return "ancestry"
+    if session_start is not None and _reflog_ok(command, output, session_start):
+        return "reflog"
+    return None
+
+
+# Commit (check 6) and merge (check 10) output shapes. Matched per line on
+# lines no longer than OUTPUT_LINE_MAX; the failure markers are searched over
+# the whole result, so an overlong line can only ever withhold credit.
+_COMMIT_LINE = re.compile(r"^\[[^\]\n]+ [0-9a-f]{7,40}\] ")
+_MERGE_OK = re.compile(r"^Updating [0-9a-f]{7,}\.\.[0-9a-f]{7,}|^Fast-forward"
+                       r"|Merge made by|Already up[ -]to[ -]date")
+_MERGE_BAD = re.compile(r"CONFLICT|Automatic merge failed|^fatal:|^error:", re.M)
+
+
+def _commit_output_ok(stripped, output):
+    if any(line is not None and _COMMIT_LINE.match(line) for line in _output_lines(output)):
+        return True
+    return "Merge made by" in output and _creates_commit(stripped)
+
+
+def _merge_output_ok(stripped, output, errored):
+    if _EV_PR_MERGE.search(stripped) and not errored:
+        return True
+    if not any(not _MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(stripped)):
+        return False
+    return (any(line is not None and _MERGE_OK.search(line) for line in _output_lines(output))
+            and not _MERGE_BAD.search(output))
+
+
+def _new_subagent_evidence():
+    return {"runs": [], "ci_runs": [], "edited": [], "ci": False, "commit": False,
+            "merge": False, "push": None, "bypass": []}
+
+
+def _tool_use_of(block):
+    """(id, name, input) of a usable tool_use block, else None."""
+    tid, name, data = block.get("id"), block.get("name"), block.get("input")
+    if isinstance(tid, str) and isinstance(name, str) and isinstance(data, dict):
+        return tid, name.lower(), data
+    return None
+
+
+def _scan_subagent_file(path, session_start=None):
+    """Every evidence kind in ONE sub-agent transcript (see CLEARABLE). Results
+    are taken in file order and paired to their tool_use by id; a junk row or
+    block is skipped on its own and never voids the file."""
+    found = _new_subagent_evidence()
+    uses, runs, deferred = {}, [], []
+    with open(path, encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            if "tool_" not in line:
+                continue
+            try:
+                row = json.loads(line)
+            except (ValueError, RecursionError):
+                continue
+            if not isinstance(row, dict):
+                continue
+            for block in _blocks(row):
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "tool_use":
+                    use = _tool_use_of(block)
+                    if use and use[0] not in uses:
+                        uses[use[0]] = use
+                        _note_bypass(found, use)
+                elif block.get("type") == "tool_result":
+                    tid = block.get("tool_use_id")
+                    use = uses.pop(tid, None) if isinstance(tid, str) else None
+                    _absorb_result(found, runs, deferred, use, _tool_text(block.get("content")),
+                                   block.get("is_error") is True, session_start)
+    for run in runs:
+        run.pop("_room", None)
+        if run["ci"]:
+            if any(EV_SUMMARY_LINE.search(line) and EV_PASSED.search(line)
+                   for line in run["output"].splitlines()):
+                found["ci_runs"].append({"cmd": run["cmd"], "output": run["output"]})
+        elif EV_VACUOUS.search(run["output"]):
+            # A vacuous / INTERNALERROR run never credits, even when it printed
+            # a count on the way down - in the main thread the same output
+            # scores vacuous_run (RM-490). Round-4 verifier, 2026-10-08.
+            continue
+        elif EV_PASSED.search(run["output"]) or EV_NODE_PASS.search(run["output"]):
+            found["runs"].append({"cmd": run["cmd"], "output": run["output"]})
+    return found
+
+
+def _note_bypass(found, use):
+    _tid, name, data = use
+    command = data.get("command")
+    if name in ("bash", "powershell") and isinstance(command, str):
+        stripped = strip_command_noise(command)
+        if EV_BYPASS.search(stripped) and re.search(r"\bgit\b", stripped):
+            found["bypass"].append(command)
+
+
+def _absorb_result(found, runs, deferred, use, text, errored, session_start):
+    """Fold one tool_result (and its paired tool_use, if any) into FOUND."""
+    _tid, name, data = use if use else (None, "", {})
+    command = data.get("command") if name in ("bash", "powershell") else None
+    stripped = strip_command_noise(command) if isinstance(command, str) else ""
+    is_run = bool(stripped) and bool(EV_PYTEST.search(stripped) or EV_NODE_TEST.search(stripped))
+    is_ci_log = bool(stripped) and not is_run and bool(EV_CI_LOG.search(stripped))
+    background = bool(data.get("run_in_background")) or bool(EV_BACKGROUND.search(text))
+    if is_run or is_ci_log:
+        # Same deferred mechanism as collect_evidence: a backgrounded launch
+        # stays open for its summary lines, read later by any other call.
+        run = {"cmd": command, "output": text, "ci": is_ci_log}
+        runs.append(run)
+        if background:
+            run["_room"] = DEFERRED_SUMMARY_CAP
+            deferred.append(run)
+    elif deferred and EV_SUMMARY_LINE.search(text):
+        target = deferred[0]
+        target["output"] += "\n" + "\n".join(
+            line for line in text.splitlines() if EV_SUMMARY_LINE.search(line))
+        target["_room"] -= 1
+        if target["_room"] <= 0:
+            deferred.pop(0)
+    if use is None or background:
+        return
+    if name in EDIT_TOOLS:
+        target = data.get("file_path") or data.get("path") or data.get("notebook_path")
+        if isinstance(target, str) and target and not errored:
+            found["edited"].append(target)
+        return
+    if not stripped:
+        return
+    if EV_CI.search(stripped) or EV_CI_VAR.search(_HEREDOC.sub(" ", command)):
+        found["ci"] = True
+    if (EV_COMMIT.search(stripped) or _creates_commit(stripped)) and _commit_output_ok(stripped, text):
+        found["commit"] = True
+    if _did_merge(stripped) and _merge_output_ok(stripped, text, errored):
+        found["merge"] = True
+    if found["push"] is None:
+        found["push"] = _pair_credit(command, text, errored, session_start)
+
+
+def subagent_evidence(transcript_path, session_start=None):
+    """Evidence from THIS session's sub-agent transcripts, merged across files
+    read newest first within SUBAGENT_TOTAL_MAX bytes, or None when there is no
+    file to read. "push" is {"kind", "agent"} for the first push credit found.
+    A file that fails is no evidence; this never raises out of the hook.
+    SESSION_START None disables the reflog push kind."""
+    try:
+        files = _subagent_files(subagent_dir(transcript_path))
+    except _SCAN_ERRORS:
+        return None
+    if not files:
+        return None
+    total, budget = _new_subagent_evidence(), SUBAGENT_TOTAL_MAX
+    for path, size in files:
+        if size > budget:
+            break
+        budget -= size
+        try:
+            part = _scan_subagent_file(path, session_start)
+            label = _agent_label(path)
+        except _SCAN_ERRORS:
+            continue
+        for key in ("runs", "ci_runs", "edited"):
+            total[key].extend(part[key])
+        for key in ("ci", "commit", "merge"):
+            total[key] = total[key] or part[key]
+        total["bypass"].extend((label, command) for command in part["bypass"])
+        if total["push"] is None and part["push"]:
+            total["push"] = {"kind": part["push"], "agent": label}
+    return total
+
+
+def subagent_push_evidence(transcript_path, session_start=None):
+    """The first push credit in THIS session's sub-agent transcripts, as
+    {"kind": "push"|"ancestry"|"reflog", "agent": "<agentId or ''>"}, else None."""
+    found = subagent_evidence(transcript_path, session_start)
+    return found["push"] if found else None
+
+
+def _merge_evidence(ev, sub):
+    """EV plus sub-agent evidence. Sub-agent commands never enter "bash"."""
+    merged = dict(ev)
+    merged["runs"] = list(ev.get("runs", [])) + sub["runs"]
+    merged["ci_runs"] = list(ev.get("ci_runs", [])) + sub["ci_runs"]
+    merged["edited"] = list(ev.get("edited", [])) + sub["edited"]
+    merged["subagent_ci"] = sub["ci"]
+    merged["subagent_commit"] = sub["commit"]
+    merged["subagent_merge"] = sub["merge"]
+    merged["subagent_push"] = bool(sub["push"])
+    return merged
+
+
+def _finding_key(finding):
+    return finding["check"], finding["quote"], finding["claimed"]
+
+
+def credit_only(main_findings, merged_findings):
+    """(kept, cleared). A CLEARABLE main finding survives only when the merged
+    audit still raises it. A merged finding is added ONLY on a sentence whose
+    main finding was cleared: sub-agent evidence may REPLACE a flag on an
+    already-flagged sentence with a narrower one (tests_pass_without_run ->
+    full_suite_claim_over_filtered_run after a `-k` sub-agent run, or ->
+    count_mismatch), but never flags a sentence main did not flag (round-4
+    verifier, 2026-10-08)."""
+    still = {_finding_key(f) for f in merged_findings}
+    kept, removed = [], []
+    for finding in main_findings:
+        if finding["check"] not in CLEARABLE or _finding_key(finding) in still:
+            kept.append(finding)
+        else:
+            removed.append(finding)
+    cleared_quotes = {f["quote"] for f in removed}
+    have = {_finding_key(f) for f in kept}
+    for finding in merged_findings:
+        key = _finding_key(finding)
+        if finding["quote"] in cleared_quotes and key not in have:
+            kept.append(finding)
+            have.add(key)
+    return kept, sorted({f["check"] for f in removed})
+
+
+def _bypass_findings(sub):
+    """ADVISORY subagent_hook_bypass findings, one per distinct command."""
+    findings, seen = [], set()
+    for label, command in sub["bypass"]:
+        if command in seen:
+            continue
+        seen.add(command)
+        findings.append({"check": "subagent_hook_bypass", "quote": command[:300],
+                         "claimed": "", "observed": "agent " + (label or "?")})
+    return findings
+
+
+def _parse_aware(value):
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if text[-1:] in ("Z", "z"):
+        text = text[:-1] + "+00:00"
+    try:
+        stamp = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return stamp if stamp.utcoffset() is not None else None
+
+
+def _session_start(rows):
+    """Earliest parseable, timezone-aware top-level `timestamp` in the MAIN
+    transcript rows, or None (which disables the reflog kind)."""
+    earliest = None
+    try:
+        for row in rows or ():
+            if isinstance(row, dict):
+                stamp = _parse_aware(row.get("timestamp"))
+                if stamp is not None and (earliest is None or stamp < earliest):
+                    earliest = stamp
+    except _SCAN_ERRORS:
+        return None
+    return earliest
+
+
 def history_row(report):
     """One flat line per audit.
 
@@ -1077,7 +1722,23 @@ def main(argv=None):
         append_history(report, args.history, args.history_max)
         return 0
 
-    findings = audit(collect_evidence(read_transcript(transcript)))
+    rows = read_transcript(transcript)
+    ev = collect_evidence(rows)
+    findings = audit(ev)
+    # RM-687: LAZY - sub-agent transcripts are read only when a CLEARABLE
+    # finding would otherwise stand, so the common Stop reads nothing extra.
+    # CREDIT-ONLY - see credit_only. Any failure keeps the main-only findings.
+    if any(f["check"] in CLEARABLE for f in findings):
+        sub = subagent_evidence(transcript, _session_start(rows))
+        if sub is not None:
+            try:
+                kept, cleared = credit_only(findings, audit(_merge_evidence(ev, sub)))
+                findings = kept + _bypass_findings(sub)
+                report["subagent_cleared"] = cleared
+                if sub["push"]:
+                    report["subagent_push"] = sub["push"]
+            except _SCAN_ERRORS:
+                pass
     report["findings"] = findings
 
     # A firing gate keeps the session from ending and hands its feedback line to
