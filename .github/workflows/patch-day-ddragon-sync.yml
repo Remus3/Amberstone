@@ -10,13 +10,15 @@ on:
     - cron: '7 * * * *'  # Every hour at :07 (avoiding :00 congestion)
   workflow_dispatch:     # Manual trigger for testing
 
-# This lane fires HOURLY and it COMMITS AND PUSHES to main, so it is the one
-# workflow in the repo where an overlap is not merely wasted queue time. Two runs
-# that both stage the same generated files, commit and push will race, and the
-# loser's push is rejected. `cancel-in-progress: false` is deliberate: queueing is
-# correct here, because cancelling a run part-way through a commit-and-push is
-# worse than making it wait. ci.yml and docs-guards.yml use `true` because
-# cancelling a superseded TEST run costs nothing.
+# REPORT-ONLY (MAIN kit-v13 ORDER section 4, operator authority, 2026-10-08):
+# no workflow pushes to a default branch, because a runner commit is a bot
+# commit. This lane used to commit the refreshed DDragon data and push it to
+# main under a non-operator identity; it now only REPORTS what changed (job
+# summary + a warning annotation) and the operator lands the refresh locally
+# as an operator commit. It deliberately does NOT fail on a pending refresh:
+# a red scheduled run on main would be picked up by the CI watchdog as a CI
+# failure to auto-fix. `cancel-in-progress: false` keeps an hourly run from
+# being cut off mid-download; overlapping runs no longer race on a push.
 concurrency:
   group: patch-day-ddragon-sync
   cancel-in-progress: false
@@ -30,13 +32,8 @@ jobs:
   patch-day-check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # The ONE elevation in this file, at job level: the "Commit and push data
-    # updates" step below commits the refreshed DDragon data and runs
-    # `git push origin main` with the workflow token, which needs
-    # contents: write. Nothing else in the job writes, and no other scope is
-    # granted.
-    permissions:
-      contents: write
+    # No elevation: the job inherits the workflow's read-only token. It writes
+    # nothing back to the repository (report-only, see the header above).
 
     steps:
       # SHA-pinned, tag in the trailing comment (supply-chain order,
@@ -104,39 +101,41 @@ jobs:
           echo "Running data pipeline items index..."
           python scripts/data_pipeline.py items_index
 
-      - name: Commit and push data updates
+      - name: Report data updates (report-only, no commit, no push)
         if: steps.patch_check.outputs.schedule_success == 'true'
         run: |
-          git config user.email "patch-day-sync@anthropic-routines"
-          git config user.name "patch-day-sync"
-
-          # STAGE FIRST, THEN DECIDE. The previous order asked `git diff` about the
-          # WHOLE tree and then staged only two globs, so any unrelated dirty file
-          # sent it into the commit branch with nothing staged. That is why the
-          # commit needed `|| true` to stay green - the guard and the action were
-          # asking about different populations. Staging first makes them agree.
+          # STAGE FIRST, THEN DECIDE, so the question and the population agree:
+          # only the two generated globs count, never an unrelated dirty file.
+          # Staging here only scopes the diff on the runner; nothing is committed.
           git add data/meta/ddragon_*.json web/data/*_index.json
 
           if git diff --cached --quiet; then
-            echo "-> No ddragon data changes staged, nothing to commit"
+            echo "-> No ddragon data changes, nothing to report"
             exit 0
           fi
 
-          git commit -m "chore(ddragon): patch-day sync - $(date -u +%Y-%m-%d)"
-
-          # A push failure HERE cannot be "no changes" - we just committed one.
-          # The previous `|| echo "Push failed or no changes"` made a genuinely
-          # rejected push indistinguishable from a benign no-op, so a lane that
-          # silently stopped publishing data would have looked green forever. Fail
-          # loudly instead; the concurrency group above removes the self-race that
-          # was the most likely cause of a rejection.
-          if git push origin main; then
-            echo "-> pushed the patch-day sync to main"
-          else
-            echo "::error::patch-day sync COMMITTED but FAILED to push to main."
-            echo "::error::The commit exists only on the runner. Re-run this lane."
-            exit 1
-          fi
+          echo "::warning::patch-day DDragon refresh is pending - land it locally as an operator commit (see the job summary)"
+          {
+            echo "## Patch-day DDragon refresh pending"
+            echo ""
+            echo "This lane is report-only: it never commits or pushes to main."
+            echo "Land the refresh locally as an operator commit:"
+            echo ""
+            echo '```'
+            echo "python scripts/audit_ddragon_items.py --download"
+            echo "python scripts/data_pipeline.py items_index"
+            echo '```'
+            echo ""
+            echo "then stage data/meta/ddragon_*.json and web/data/*_index.json and"
+            echo "commit + push them through ops/fleet_kit/fleet_gitlock.py run."
+            echo ""
+            echo "Changed on the runner:"
+            echo ""
+            echo '```'
+            git diff --cached --stat
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          git diff --cached --stat
 
       - name: Report status
         if: always()

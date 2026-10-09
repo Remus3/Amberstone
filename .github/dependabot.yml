@@ -2,8 +2,12 @@
 #
 # One `updates` entry per ecosystem actually present in this tree, weekly, and
 # ONE group per ecosystem so a week is at most one PR per ecosystem, not a
-# burst. Nothing here auto-merges: a Dependabot PR is merged by this tree once
-# its gating CI (ci.yml) is green on it.
+# burst. Nothing here auto-merges, and a Dependabot PR is NEVER merged on
+# GitHub in any mode (MAIN kit-v13/v14 ORDER section 4: a squash keeps the bot
+# as author, a web merge writes a non-operator committer). Once its gating CI
+# (ci.yml) is green, the bump is applied LOCALLY as an operator commit
+# (cherry-pick --reset-author; the commit-msg hook strips trailers) through
+# ops/fleet_kit/fleet_gitlock.py and pushed; the PR closes when it lands.
 #
 # Security alerts are a separate GitHub feature and are NOT configured here;
 # this file only schedules version-update PRs.

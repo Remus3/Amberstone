@@ -222,7 +222,7 @@ first resort.
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8861) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
-| `RC-CIWatchdog` | At startup + periodic (PT2M) | Administrator / armed, but State `Disabled` (measured 2026-09-20; last ran 2026-09-11) | Unattended headless-claude red-main CI auto-fixer; self-gates the merge on the ci-fix PR's OWN green CI (`tools/ci_watchdog.py`, isolated worktree `C:\RC-CIWatchdog`; item 622). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
+| `RC-CIWatchdog` | At startup + periodic (PT2M) | Administrator / armed, but State `Disabled` (measured 2026-09-20; last ran 2026-09-11) | Unattended headless-claude red-main CI auto-fixer; on the ci-fix PR's OWN green CI it lands the fix LOCALLY as one operator commit through fleet_gitlock and closes the PR - never a GitHub merge (`tools/ci_watchdog.py`, isolated worktree `C:\RC-CIWatchdog`; item 622; land-locally 2026-10-09). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
 | `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
 | `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/lcu_agent.py`) |
 | `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
