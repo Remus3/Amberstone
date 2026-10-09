@@ -64,7 +64,6 @@ _DEFAULT_OUTPUT = _PROJECT_ROOT / "dist" / "portable_staging"
 # Top-level Python source files to include
 _ROOT_PY_FILES = [
     "main.py",
-    "app.py",
     "overlay.py",
     "item_advisor.py",
     "performance_tracker.py",
@@ -78,14 +77,17 @@ _ROOT_PY_FILES = [
     "moon_vision_server.py",
 ]
 
-# Top-level launcher / setup scripts
+# Launcher / setup scripts. start.bat and install.bat are the only root entry
+# points; the other launchers live in scripts/ (moved 2026-10-09, MAIN 2246
+# sec 3) and resolve the root as their parent folder, so they keep their
+# relative place in the bundle.
 _ROOT_BAT_FILES = [
     "start.bat",
-    "restart_clean.bat",
+    "scripts/restart_clean.bat",
     "install.bat",
-    "restart.bat",
-    "kill.bat",
-    "start_debug.bat",
+    "scripts/restart.bat",
+    "scripts/kill.bat",
+    "scripts/start_debug.bat",
     "run_watchdog.bat",
     "requirements.txt",
 ]
@@ -402,7 +404,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
 ## After Setup Is Complete
 
   Launch:       start.bat  (uses embedded python-embed\\pythonw.exe)
-  Clean start:  restart_clean.bat
+  Clean start:  scripts\\restart_clean.bat
   Diagnostics:  python-embed\\python.exe tools\\bootstrap_env_check.py
   Operator CLI: python-embed\\python.exe tools\\dev_cli.py status
 
@@ -449,7 +451,7 @@ def build(output_dir: Path, dry: bool = False) -> int:
 ## After Prerequisites Are Met
 
   Launch:       start.bat
-  Clean start:  restart_clean.bat
+  Clean start:  scripts\\restart_clean.bat
   Diagnostics:  python tools/bootstrap_env_check.py
   Operator CLI: python tools/dev_cli.py status
 

@@ -338,7 +338,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 
 | Phase | Date | Location | Note |
 |---|---|---|---|
-| 2.4 | 2026-05-09 | `tools/build_portable.py:75` | vision server entrypoint shim (real code in vision_server/) |
+| 2.4 | 2026-05-09 | `tools/build_portable.py:74` | vision server entrypoint shim (real code in vision_server/) |
 | 7 | 2026-05-09 | `scripts/precommit_msg_check.py:4` | make Conventional Commits subject lines mechanical |
 | 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
 | 0.13 | - | `ops/rc_self_monitor.py:198` | bounded bootstrap window. |

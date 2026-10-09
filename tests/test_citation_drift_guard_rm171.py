@@ -257,22 +257,12 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "The ultimate power-spike cue was removed 2026-08-11 - Riot bans "
         "notifications that alert a player when a power spike hits.",
     ),
-    (
-        "docs/REFUTATION_GATE_BACKTEST_2026-09-12.md",
-        "web/js/panels/spike_cue.js:45",
-        "DELETED",
-        "The SAME citation and the same removal as the BACKLOG.md entry above - "
-        "the guard keys on (doc, raw citation), so an identical citation in a "
-        "second doc is a second entry. The backtest is a LIVING consolidated "
-        "evidence file, not a dated scratch artifact, so it stays in the budget. "
-        "Its :439 paragraph records the ONE true positive that survived that "
-        "run's revert: a row asserting in the present tense that RC has an "
-        "edge-trigger mechanism, whose path was deleted in 1a401b4b2 ('remove "
-        "Riot-banned surfaces', 2026-08-11, 158 lines). The prose was corrected "
-        "and the citation deliberately LEFT IN PLACE - the doc says so in its "
-        "own body - because the broken cite IS the evidence the paragraph "
-        "presents. Re-pointing it would delete the finding.",
-    ),
+    # 2026-10-09 (MAIN 2246 ORDER sec 3, dated reports to docs/_archive/<yyyy-mm>/):
+    # the entries for docs/REFUTATION_GATE_BACKTEST_2026-09-12.md (spike_cue.js:45),
+    # docs/COMPETITOR_LIFT_2026-07-28.md (_state_cooldowns.py:18) and
+    # docs/SKIPIF_AUDIT_2026-07-27.md (test_pengu_plugin_skeleton.py:22) left the
+    # budget with their docs: the archive is HISTORY scope, where a dated record's
+    # citation stays as written. The citations themselves were not re-pointed.
     (
         "docs/ORCHESTRATION_PLAN.md",
         "spike_cue.js:109-112",
@@ -290,12 +280,6 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     ),
     (
         "docs/LIVE_GAME_GATED_SYNC.md",
-        "dashboard/_state_cooldowns.py:18",
-        "DELETED",
-        "Same removal as the ORCHESTRATION_PLAN entry above.",
-    ),
-    (
-        "docs/COMPETITOR_LIFT_2026-07-28.md",
         "dashboard/_state_cooldowns.py:18",
         "DELETED",
         "Same removal as the ORCHESTRATION_PLAN entry above.",
@@ -374,18 +358,6 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "HISTORICAL",
         "Same; WP-E5 now sits at :64/:338 but the row cites :817 vs :823 as a "
         "pair.",
-    ),
-    (
-        "docs/SKIPIF_AUDIT_2026-07-27.md",
-        "tests/test_pengu_plugin_skeleton.py:22",
-        "DELETED",
-        "The module was RETIRED by the RM-119 class-B4 pass on 2026-08-06 "
-        "(merge d19355a4), together with the pengu stub it guarded - the stub "
-        "itself was archived at f08ade78 on 2026-07-07 and the six tests had "
-        "been skipping silently ever since. The audit is a DATED point-in-time "
-        "record and its finding was CORRECT when written, so the citation is "
-        "not rewritten; a re-point would falsify the audit. Caught by this "
-        "guard on its first cross-slice integration, which is what it is for.",
     ),
     (
         "docs/ORCHESTRATION_PLAN.md",

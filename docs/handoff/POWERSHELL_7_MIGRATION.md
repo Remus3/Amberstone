@@ -178,7 +178,7 @@ Measured under 7.6.4: a no-BOM UTF-8 `.ps1` containing an em-dash parses with
        ops/install_startup.bat:24       generates a .vbs that does the same
        ops/launch_new_system.bat:36     powershell.exe ... run_self_healing_watchdog.ps1
        ops/start_ops.bat:15             powershell.exe ... run_self_healing_watchdog.ps1
-       bootstrap_riot_commander_dev.cmd:3   powershell ... bootstrap_riot_commander_dev.ps1
+       scripts/bootstrap_dev.cmd:3      powershell ... bootstrap_dev.ps1
 
    Grep your own project for `powershell.exe` in `*.vbs` / `*.bat` / `*.cmd`
    before assuming otherwise - a shim is easy to forget because it is neither a

@@ -211,6 +211,7 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 - Sibling names/paths are per-host CONFIG only: gitignored `ops/moon_sync_repos.json` (template `ops/moon_sync_repos.example.json`; `RC_MOON_SYNC_REPOS` overrides). Never write a sibling name or path into a tracked file.
 - Spelling traps: a checkout path may hold a REAL SPACE where its GitHub name uses a hyphen (on purpose); always QUOTE such paths (`-File C:\Some Sibling\x.ps1` unquoted fails silently).
 - Channel = gitignored `moon_sync_inbox/` in each repo root: WRITE into the sibling's, READ your own. Do not invent another channel.
+- A tracked copy of an outbound note, and any dated one-off report, goes to `docs/_archive/<yyyy-mm>/`; the `docs/` root holds living docs only, the repo root only entry points and standard files (MAIN 2246 sec 3).
 - `ops/loop/slots.py` + `ops/loop/winmutex.py` are BYTE-IDENTICAL-BY-CONTRACT, pinned by `SHARED_SHA256` in `tests/test_loop_concurrency.py`. Re-pin is a JOINT act: never regenerate digests from local disk; copy the sibling's file BYTE-level, never `write_text`.
 - Pin carriers: RC + Sibling-A + Sibling-B. Sibling-C is archived - never chase its digest. The newest participant vendors last.
 - `docs/CHANNEL.md` is pinned on LF-normalised bytes by `CHANNEL_PIN` in `tests/test_channel_doc_pin.py`; re-pin is a five-way act.
@@ -246,7 +247,7 @@ Machine paths are never written here (MAIN 2246 sec 3): `<repo>` = this checkout
 
 ## Restart workflow
 
-`echo restart > restart_trigger.txt`, then read `ops/runtime/health.json`: new `pid`, `alive=true`, `last_reload_ok=true`. Fallback: `taskkill /F /PID <pid>` then `restart.bat`.
+`echo restart > restart_trigger.txt`, then read `ops/runtime/health.json`: new `pid`, `alive=true`, `last_reload_ok=true`. Fallback: `taskkill /F /PID <pid>` then `scripts\restart.bat`.
 
 ## Third-party lift: license gate
 

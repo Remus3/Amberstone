@@ -11,7 +11,7 @@ Architecture summary:
   - SelfMonitor is subordinate and process-bound.
     It reads supervisor status.json on every tick and will not return "healthy"
     unless the supervisor has confirmed the process is running and ready.
-  - Deprecated scripts (watchdog.ps1, restart.bat, restart_clean.bat) are
+  - Deprecated scripts (watchdog.ps1, scripts\\restart.bat, scripts\\restart_clean.bat) are
     emergency/manual tools only; the supervisor must be running for normal ops.
   - status.json is the single inter-process control channel between supervisor
     and SelfMonitor. Its supervisor_run_id field is the bootstrap identity anchor.
@@ -53,7 +53,7 @@ from typing import Any, Dict, List, Optional
 #   MONITOR  -  SelfMonitor threads (inside this process)
 #
 # Nothing else may start main.py when supervisor is running.
-# watchdog.ps1, restart.bat, restart_clean.bat are deprecated (see .DEPRECATED files).
+# watchdog.ps1, scripts\restart.bat, scripts\restart_clean.bat are deprecated (see .DEPRECATED files).
 #  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
 
 

@@ -30,7 +30,7 @@ Prints:
 - Project root path and Python executable/version
 - Git availability and last commits
 - Whether key scripts/tools exist
-- **[Launch Targets]** -- whether start.bat and restart_clean.bat exist (the real launchers)
+- **[Launch Targets]** -- whether start.bat and scripts/restart_clean.bat exist (the real launchers)
 - Whether key config files exist (feature_flags.json, API-Key-Claude.txt)
 - Whether audit/ is writable
 
@@ -59,9 +59,9 @@ overlay, LCU auto-accept).
 
     python tools/dev_cli.py start-clean
 
-Delegates to **restart_clean.bat** -- the project-established clean-start path.
+Delegates to **scripts/restart_clean.bat** -- the project-established clean-start path.
 
-restart_clean.bat:
+scripts/restart_clean.bat:
   1. Kills existing pythonw.exe processes
   2. Clears `__pycache__/` and `*.pyc` files
   3. Launches: `python-embed\pythonw.exe main.py` (Option B -- embedded runtime)
@@ -223,7 +223,7 @@ Phase 0 frozen files must never be modified:
   `ops/rc_league_watcher.ps1`, `ops/run_self_healing_watchdog.ps1`
 
 `dev_cli` does NOT invoke these files. `start` and `start-clean` delegate
-to `start.bat` / `restart_clean.bat` which launch `main.py` independently
+to `start.bat` / `scripts/restart_clean.bat` which launch `main.py` independently
 of the supervisor watchdog.
 
 ---

@@ -2,7 +2,7 @@
 tests/test_dark_values_ratchet_oq6.py
 
 OQ6 (QA48, operator-queue 2026-07-01) - the LOCK half of the dark-values
-grep-and-lock audit (docs/DARK_VALUES_AUDIT_2026-07-01.md).
+grep-and-lock audit (docs/_archive/2026-07/DARK_VALUES_AUDIT_2026-07-01.md).
 
 Mechanism: a RATCHET. Every web/css file's count of dark/saturated hex
 literals (6- or 3-digit hex starting 0/1/2; rgba(0,0,0,x) shadows are out
@@ -100,7 +100,9 @@ def test_pins_not_stale_high():
 
 
 def test_audit_doc_exists():
-    doc = ROOT / "docs" / "DARK_VALUES_AUDIT_2026-07-01.md"
+    # Dated report; archived 2026-10-09 (MAIN 2246 sec 3: dated reports to
+    # docs/_archive/<yyyy-mm>/).
+    doc = ROOT / "docs" / "_archive" / "2026-07" / "DARK_VALUES_AUDIT_2026-07-01.md"
     assert doc.is_file(), "audit artifact missing"
     text = doc.read_text(encoding="utf-8")
     assert "EXACT-LOCK" in text and "RESKIN-CANDIDATE" in text

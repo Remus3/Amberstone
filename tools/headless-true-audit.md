@@ -295,7 +295,7 @@ Each is a rule because each passes the check you would naturally reach for.
    **`Path.write_text` rewrites LF as CRLF on Windows** and corrupts byte counts (4e); write bytes when a count or digest matters.
 6. **Always `py_compile` before any restart** - syntax errors crash SILENTLY under `pythonw.exe`, which has no console to print the traceback into. **Restart
    via `restart_trigger.txt`** (any content; the supervisor clears it and restarts within about 5s), then VERIFY `ops/runtime/health.json` shows a NEW `pid`
-   with `alive=true` and `last_reload_ok=true`. Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`. Editing `web/{js,css}/panels/*` needs no RC restart
+   with `alive=true` and `last_reload_ok=true`. Hard fallback: `taskkill /F /PID <pid>` then `scripts\restart.bat`. Editing `web/{js,css}/panels/*` needs no RC restart
    at all - `compute_asset_hash` auto-reloads it (ADR-008).
 7. **ASCII ONLY in every authored byte** - no em-dashes, no en-dashes, no smart quotes (U+2013, U+2014, U+2018, U+2019, U+201C, U+201D); ` - ` for a clause
    break. The mechanical reason is real: PowerShell 5.1 `ParseFile` ANSI-decodes a no-BOM `.ps1`, turning a UTF-8 em-dash inside a double-quoted string into a

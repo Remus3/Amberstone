@@ -123,7 +123,7 @@ def check_archive_structure(root: Path, entries: set[str]) -> None:
     # Required launch/setup files
     for f, lbl in [
         ("start.bat",        "launch script: start.bat"),
-        ("restart_clean.bat","launch script: restart_clean.bat"),
+        ("scripts/restart_clean.bat", "launch script: scripts/restart_clean.bat"),
         ("install.bat",      "setup script: install.bat"),
         ("main.py",          "entrypoint: main.py"),
         ("requirements.txt", "requirements.txt"),
@@ -267,7 +267,7 @@ def check_launch_chain(root: Path, tl: str) -> None:
     else:
         _info("start.bat PATH fallback not detected (may be conditional block)")
 
-    rc = root / tl / "restart_clean.bat"
+    rc = root / tl / "scripts" / "restart_clean.bat"
     if rc.exists():
         rc_content = rc.read_text(encoding="utf-8", errors="replace")
         if "python-embed" in rc_content:

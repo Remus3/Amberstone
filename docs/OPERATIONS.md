@@ -206,7 +206,7 @@ taskkill /F /PID <pid>        # never Stop-Process - hangs MCP pipe
 schtasks /Run /TN "RC-Supervisor"
 ```
 
-**Never** `Stop-Process` (hangs the MCP pipe) - use `taskkill /F /PID`. `restart.bat` is the
+**Never** `Stop-Process` (hangs the MCP pipe) - use `taskkill /F /PID`. `scripts\restart.bat` is the
 documented hard fallback AFTER the taskkill (CLAUDE.md "Restart workflow"), not an interactive-shell
 first resort.
 

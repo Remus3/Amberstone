@@ -393,8 +393,8 @@ is a stronger gate than a hook, but the commit itself will not be blocked.
 `docs/ROADMAP_HISTORY.md` 9, `docs/OPERATIONS.md` 6 (`:220`, `:265`, `:287-302`),
 `docs/API.md` 4 (`:135-146`), `ROADMAP.md` 3, `WAKEUP_NOTES.md` 2,
 `docs/CONCURRENT_HEADLESS_CONTRACT.md` 1, `docs/DS_SWEEP_TRACKER.md` 1,
-`docs/REFUTATION_GATE_BACKTEST_2026-09-12.md` 1, `README.md` 1 (`:111`),
-`docs/_scratch_fparm_B.md` 2, `docs/COST_LATENCY_SWEEP_2026-08-02.md` (`:233`),
+`docs/_archive/2026-09/REFUTATION_GATE_BACKTEST_2026-09-12.md` 1, `README.md` 1 (`:111`),
+`docs/_archive/2026-09/_scratch_fparm_B.md` 2, `docs/_archive/2026-08/COST_LATENCY_SWEEP_2026-08-02.md` (`:233`),
 `docs/RESPONDER_RUNNER_SPEC.md` (`:231`), `NEXT_SESSION_PROMPT.md` (`:80`, since
 2026-09-20 at `docs/_archive/2026-09-07-NEXT_SESSION_PROMPT.md`; the count above
 is the census AS MEASURED and is deliberately not restated),
