@@ -20,6 +20,7 @@ OPERATOR ASKS (batched, re-ask in ONE line):
 3. OK to Recycle-Bin `%LOCALAPPDATA%\CrashDumps\electron.exe.{25540,22368,12240}.dmp` (~17 MB,
    written by E1's crashed hidden runs - a halt-boundary breach by Windows WER, recorded).
 4. Plus the physical-setup list below (carried from session 102).
+5. OK to edit the out-of-tree proxy launcher and kill the proxy once for the read-back (RM-686, MAIN 1840 sec 5).
 
 SESSION 104 ADDITIONS (inbox sync + arm, LEDGER 1687; supersede the stale facts in the paragraph below):
 - SUBAGENT-FIRST ARMED: mode is now `deny` (read back `deny\n`; kit mode() = deny). It was armed EARLY on the
@@ -32,6 +33,17 @@ SESSION 104 ADDITIONS (inbox sync + arm, LEDGER 1687; supersede the stale facts 
   BACKLOG "Session 103 filings". Next free RM id RM-686. Next free LEDGER id 1688.
 - CI on wrap HEAD 00618c625 is at the RM-172 baseline (ci 37808387559: 4 failed / 38349 passed);
   test_no_environ is green, so that first action is closed.
+
+SESSION 104 ADDITIONS (kit v11, LEDGER 1689; MAIN 1840 ORDER):
+- DONE: kit v11 vendored b0ed89184 (MANIFEST sha256 c1dcf5a6...), CLAUDE.md f0b6a1578, inbox triage on
+  triage_spawn_kwargs(True), SUBAGENT-FIRST hook re-wired in the gitignored project settings to
+  `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py" || true` (mode still deny). ONE ANSWER
+  2026-10-08-1902 sent to MAIN (copy docs/_outbound_2026-10-08-1902-*). OutboundCap 5/6 on 2026-10-08.
+- OPERATOR ASK (RM-686, HALTED): MAIN 1840 section 5 FIX - the proxy launcher (outside the repo root) must wait
+  on the proxy: `WScript.Quit sh.Run(<same cmdline>, 0, True)`; read-back = task Running while the proxy is up,
+  then ONE proxy kill (taskkill /F /PID) and the task restarts it within ~1 min. Needs the operator's OK for the
+  out-of-tree write and the kill; then answer MAIN with line + state + restart. Body in BACKLOG.
+- Next free RM id RM-687. Next free LEDGER id 1690.
 
 SUBAGENT-FIRST hook: mode `log` (gitignored `ops/loop/control/subagent_first.mode`). Session 103 was
 interactive session 1 of 3 toward `deny`; the deny date ~2026-10-11 was promised to MAIN. Read
