@@ -31,6 +31,26 @@ on:
     - cron: '0 8 * * *'  # Nightly run (paths-ignore does not apply to schedule)
   workflow_dispatch:       # manual trigger to verify the full suite on demand
 
+# EVENT MATRIX - MAIN PERF-AUDIT 2026-10-08, items 1 and 8 (landed 2026-10-09).
+# MEASURED there: push CI ran the full dual suite (~38.5k tests, 22-45 min) on
+# every non-.md push, 119 of 265 push runs (45 pct) were cancelled by a newer
+# push, and a workflow_dispatch ran the full suite TWICE (check + nightly).
+#
+#   push               fast guards + an IMPACT SLICE: the test modules
+#                      tools/ci_impact_selector.py maps to the changed paths.
+#                      The selector ESCALATES to the full dual suite when it
+#                      cannot see the coupling (conftest / pytest.ini /
+#                      dependency pins / this file / the selector / an
+#                      unresolvable push base / a push over 300 paths).
+#   pull_request       fast guards + the full dual suite (`check`).
+#   workflow_dispatch  fast guards + the full dual suite (`check`) - the
+#                      merge/batch cadence; ONE full suite, not two.
+#   schedule           the full dual suite (`nightly-full-suite`) only.
+#
+# A slice is not the suite: coupling the source never spells is invisible to
+# the map, which is what PR / dispatch / nightly are for. Pinned by
+# tests/test_ci_push_impact_slice_shape.py and tests/test_ci_impact_selector.py.
+
 # MINUTE SAVER (2026-06-30): cancel a superseded in-progress run when a newer
 # commit lands on the same ref, so rapid pushes do not each bill to completion.
 # event_name is in the group so a push never cancels the nightly schedule run
@@ -82,7 +102,11 @@ env:
 
 jobs:
   nightly-full-suite:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # SCHEDULE ONLY (PERF-AUDIT 2026-10-08 item 8). It used to admit
+    # workflow_dispatch too, and `check` below runs the same dual suite on a
+    # dispatch, so every dispatch billed two full suites for one verdict. The
+    # queue driver grades `check`, never this job (ops/loop/queue_loop.py).
+    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     # RM-156 (2026-08-04): 60, not 30, and the real ceiling that bites is the
     # step-level one on Full Dual Suite below. This job was NOT the one that
@@ -142,6 +166,16 @@ jobs:
           # this step first if the hashed set ever loses it.
           pip install --require-hashes -r .github/ci/requirements-ci.txt
           python -c "import yaml, pytest, xdist, pytest_timeout, pytest_asyncio"
+      # The same browser cache as the `check` job (PERF-AUDIT 2026-10-08 item
+      # 8: this job had none, so every nightly paid the ~120MB download and
+      # risked the 10m33s cache-miss tail RM-156 measured). Same pinned action,
+      # same key, so either job's save serves the other. See the long note on
+      # the `check` job's copy for why the browser cannot be hash-pinned.
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-v1
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
@@ -245,6 +279,11 @@ jobs:
     # skipped, 0 failed in 2704.11s - and was killed two seconds later by the
     # 45m step ceiling. The guard requires job >= step + 12, so 55 forces 67 as
     # the floor here; 75 keeps the same variance margin the 65 had.
+    #
+    # 2026-10-09 (PERF-AUDIT item 1): on a PUSH this job no longer runs the
+    # full dual suite unless the selector escalates - see the EVENT MATRIX at
+    # the top. The ceilings above are unchanged because PR, dispatch and an
+    # escalated push still run it.
     timeout-minutes: 95
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -596,7 +635,42 @@ jobs:
           python -c "import subprocess,sys; t='oss/win32_atomic_io/tests'; p=subprocess.run([sys.executable,'-m','pytest',t,'--collect-only','-q'],capture_output=True,text=True); n=sum(1 for line in p.stdout.splitlines() if '::' in line); print(p.stdout[-2000:]); print('collected nodeids under '+t+': '+str(n)); sys.exit(0 if p.returncode==0 and n>0 else 1)"
           pytest oss/win32_atomic_io/tests -q --tb=short --timeout=300
 
-      - name: "full dual suite (RM-119 - push CI now gates the whole tree)"
+      # PERF-AUDIT 2026-10-08 item 1: the push IMPACT SLICE. Every step ABOVE
+      # this point is a fast guard and runs on every event of this job; only
+      # this selector, the slice below and the full dual suite are event-gated
+      # (pinned by tests/test_ci_push_impact_slice_shape.py).
+      #
+      # The push base arrives through `env`, never as a `${{ }}` expanded into
+      # the shell text. `github.event.before` is the all-zero sha on a new ref
+      # and an unknown sha after a force push; the selector answers both with
+      # mode=full rather than guessing a range. fetch-depth: 0 above is what
+      # lets it resolve an ordinary multi-commit push.
+      - name: "push impact slice: select"
+        id: impact
+        if: github.event_name == 'push'
+        env:
+          IMPACT_BASE: ${{ github.event.before }}
+        run: |
+          python tools/ci_impact_selector.py --base "$IMPACT_BASE" --head "$GITHUB_SHA" \
+            --out "$RUNNER_TEMP/impact_tests.txt" --github-output "$GITHUB_OUTPUT" --explain
+
+      # One pytest process over the selected modules, read from the selector's
+      # file as an @argfile (pytest >= 8.2; one path per line), so a wide slice
+      # is never split across several xargs invocations. Same flags as the
+      # full suite below. mode=none (no test names a changed path) skips this
+      # step; the fast guards above still ran.
+      - name: "push impact slice: run the selected modules"
+        if: github.event_name == 'push' && steps.impact.outputs.mode == 'slice'
+        # Fires before the job ceiling on purpose: failure, not cancelled.
+        timeout-minutes: 45
+        run: |
+          python -m pytest "@$RUNNER_TEMP/impact_tests.txt" -q --tb=short --timeout=300 \
+            -n auto --dist loadfile
+
+      # The step name keeps "full dual suite": ops/loop/queue_loop.py grades
+      # the `check` job's step whose name CONTAINS that string.
+      - name: "full dual suite (RM-119; PR, dispatch, or an escalated push)"
+        if: github.event_name != 'push' || steps.impact.outputs.mode == 'full'
         # RM-156: this is the ceiling that should fire, not the job's. See the
         # block above `timeout-minutes: 95` for the measurement; the short
         # version is that a step timeout reports `failure` and a job timeout
@@ -615,6 +689,13 @@ jobs:
         # ordinary runner variance into a fake red.
         timeout-minutes: 75
         run: |
+          # 2026-10-09 (PERF-AUDIT 2026-10-08 item 1): this step no longer
+          # gates every push. It runs on pull_request, on workflow_dispatch
+          # (the merge/batch cadence) and on a push the selector escalated; an
+          # ordinary push runs the impact slice above. The history below is
+          # why the whole tree is gated at all, and it still holds for every
+          # event this step runs on.
+          #
           # 2026-07-28 (R217-U1) completes RM-119. Until this step, push CI ran
           # four hand-picked subsets of tests/ - phase2_smoke,
           # snapshot_regressions, phase8_smoke, fu02_team_context,
