@@ -43,11 +43,13 @@ Usage:
 """
 from __future__ import annotations
 
+import importlib.util
 import pathlib
 import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from typing import Callable
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -59,6 +61,12 @@ BUDGET_WARN_PCT = 90.0
 
 # Same-basename .md in both directories must be byte-identical.
 MIRROR_PAIRS = [("tools", ".claude/commands")]
+
+# The public repo map and its generator (MAIN 2246 section 6). The page is
+# generated from the git index, so adding, removing or renaming a module leaves
+# it stale until `python tools/atlas_build.py` re-renders it.
+ATLAS_PAGE = "atlas.html"
+ATLAS_BUILDER = "tools/atlas_build.py"
 
 # Resolved under THIS account's home and THIS checkout's project slug rather
 # than baked in: a guard naming another account's home, or a checkout path the
@@ -455,6 +463,44 @@ def check_orphaned_git_hooks(root: pathlib.Path) -> list[Finding]:
     )]
 
 
+def _load_atlas_checker(root: pathlib.Path) -> Callable[[pathlib.Path], tuple[int, str]]:
+    path = root / ATLAS_BUILDER
+    spec = importlib.util.spec_from_file_location("_drift_guard_atlas_build", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {ATLAS_BUILDER}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.check_page
+
+
+def check_atlas_fresh(
+    root: pathlib.Path,
+    checker: Callable[[pathlib.Path], tuple[int, str]] | None = None,
+) -> list[Finding]:
+    """atlas.html must equal a fresh render of tools/atlas_build.py.
+
+    The same verdict as `python tools/atlas_build.py --check`: the page is
+    re-rendered at its own stamp, so a new commit alone never makes it stale,
+    but a module added, removed or renamed, a changed import or docstring, or
+    an ENGINE_VERSION bump does. Before the generator (2026-10-08) the page was
+    hand-typed and measured 591 of 926 modules missing; a generator nobody
+    re-runs drifts the same way, only slower. A tree without the page or the
+    generator has nothing to check.
+    """
+    if not ((root / ATLAS_PAGE).is_file() and (root / ATLAS_BUILDER).is_file()):
+        return []
+    try:
+        check = checker or _load_atlas_checker(root)
+        code, message = check(root)
+    except Exception as exc:  # noqa: BLE001 - a crashed checker is a breach, never a pass
+        return [Finding("atlas-build", f"{ATLAS_BUILDER} could not check "
+                        f"{ATLAS_PAGE}: {exc.__class__.__name__}: {exc}")]
+    if code == 0:
+        return []
+    kind = "atlas-stale" if code == 1 else "atlas-build"
+    return [Finding(kind, message or f"{ATLAS_BUILDER} --check exited {code}")]
+
+
 def run_all(
     root: pathlib.Path = ROOT, old_version: str | None = None
 ) -> list[Finding]:
@@ -468,6 +514,7 @@ def run_all(
     findings += check_untracked_authored(root, MIRROR_PAIRS)
     findings += check_git_hooks_path(root)
     findings += check_orphaned_git_hooks(root)
+    findings += check_atlas_fresh(root)
     return findings
 
 
