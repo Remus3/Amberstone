@@ -89,6 +89,11 @@ _SUITE_LOG_DIR = Path(tempfile.mkdtemp(prefix="rc-suite-logs-"))
 # passes `path=` or its own env. Guarded by tests/test_hook_log_live_isolation.py.
 os.environ["RC_HOOK_LOG"] = str(_SUITE_LOG_DIR / "hook_invocations.jsonl")
 
+# RM-688: tools/sibling_name_sweep.py appends one run record per sweep run to the
+# live ops/runtime/sibling_sweep_runs.jsonl unless this redirects it. Same reasoning
+# as RC_HOOK_LOG. Guarded by tests/test_sibling_sweep_run_record_rm688.py.
+os.environ["RC_SIBLING_SWEEP_RUN_LOG"] = str(_SUITE_LOG_DIR / "sibling_sweep_runs.jsonl")
+
 # Y-02: core/operator_notify holds every notifier that reaches a person (the
 # desktop toast, a later phone push) while RC_NOTIFY_HOLD=1, so no test - in
 # process or in a child that inherits this env - can pop a toast on the
