@@ -283,11 +283,11 @@ These govern HOW a step runs; the SHAPE of work is set by "Session Default" belo
 - **R2** Runtime state via `curl -k https://127.0.0.1:8888/api/...` or `ops/runtime/health.json`; never screenshot to read a number.
 - **R3** Visual tools only for rendered-pixel / layout checks and live-game capture; the UI-audit ritual + game-monitor are the sanctioned visual uses.
 - **R4** Prefer built-in tools; shell = absolute paths, one compound command.
-- **Tiers:** Tier-0 cosmetic = Edit + `py_compile` (no suite, no restart). Tier-1 one module = `py_compile` + that module's tests. Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION` = full dual suite + DS `:8860` restart + Share mirror.
+- **Tiers:** Tier-0 cosmetic = `py_compile` (no suite, no restart); Tier-1 one module = `py_compile` + touched test files; Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION` = full dual suite ONCE by merger via `fleet_suite_gate` `-n 8 --dist loadfile` + DS `:8860` restart + Share mirror; verifier = cited tests + `--collect-only` (table: `tools/done.md`). A whole suite runs only through the gate: never serial, never by a slice.
 - **R5** Classify every change into a tier; run only that tier. **R6** Run a suite ONCE; re-run only if edited since or the pipe glitched.
 - **R7** Adversarial verification is the DEFAULT: every substantive claim gets an independent verifier / refutation pass before "done" (Tier-0 exempt).
 - **R8** Never re-Read a file just Edited. **R9** Multi-agent is the default shape; substance decides, not file count. **R10** Batch independent reads. **R11** No screenshot ritual for backend / version / doc changes.
-- Hooks: PostToolUse `tools/pytest_guard.py` is py_compile-only (`RC_FULL_SUITE=1` for Tier-2); PreToolUse `tools/text_first_guard.py` denies screen-text readers (escape hatch `ops/runtime/allow_visual.flag`).
+- Hooks: PostToolUse `tools/pytest_guard.py` is py_compile-only and never runs a suite; PreToolUse `tools/text_first_guard.py` denies screen-text readers (escape hatch `ops/runtime/allow_visual.flag`).
 
 ## Session Default
 
@@ -321,17 +321,17 @@ Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carr
 
 ## Testing Discipline
 
-- **TDD first:** failing test, then fix, then `pytest agents/daemon_slayer` + `pytest tests`, both from the repo root - never `pytest .`.
+- **TDD first:** failing test, then fix, then the touched test files; the whole dual suite (`tests` + `agents/daemon_slayer/tests`) is the merger's ONE gated Tier-2 run. Every pytest runs from the repo root - never `pytest .`.
 - Do not restate suite counts anywhere; measure with `--collect-only -q` (doc counts are unguarded and go stale).
 - A test enumerating the REPO ROOT uses `tests/_repo_walk` (ADR-015), never a fresh `rglob` plus a hand-rolled skip set: universe = git index first, `EXCLUDED_DIRS` as backstop, a guard keeps only its OWN scope skips (a subdirectory walk needs none of this). Ask whether an EMPTY enumeration would pass, and anchor it if so.
 - Before a mutation / fault-injection round, digest every durable store it could reach and attribute any change to a named writer before grading; an unattributed change voids the round.
-- Full suite after schema / ENGINE_VERSION / item-effect changes. Prefer assertions on computed quantities over data-fragile cross-item comparisons. Wrap class-accessed stubs with `@staticmethod`.
+- Full suite (that gated Tier-2 run) after schema / ENGINE_VERSION / item-effect changes. Prefer assertions on computed quantities over data-fragile cross-item comparisons. Wrap class-accessed stubs with `@staticmethod`.
 - Before writing a probe or test, grep and cite file:line for every method, field and data shape it uses.
 
 ## Verification
 
 - Verify external state live (API keys, account IDs, PIDs, "X is broken") before asserting it; never trust a stale doc or another agent's output.
-- Tier-2: re-run the relevant suite fresh before "green", `ls` every cited test file, report counts observed THIS run. Never carry a subagent's count, CI claim or file claim forward unprobed (`verifier` subagent). When the pipe wedges, ground truth = `git status` + Edit result + pytest to a file + a DONE sentinel.
+- Tier-2: the merger's gated suite run is fresh, on the final merged tree, before "green" (output to a FILE; assert the summary line AND the exit code); `ls` every cited test file, report counts observed THIS run. Never carry a subagent's count, CI claim or file claim forward unprobed: the `verifier` subagent re-runs only the cited test files + `--collect-only`, never a whole suite. When the pipe wedges, ground truth = `git status` + Edit result + pytest to a file + a DONE sentinel.
 
 ## Other conventions
 
