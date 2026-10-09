@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-08 C3 fed criterion. Model claude-opus-5-5, effort high
 Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
 sessions are typing, not deciding.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-08-c3-fed-criterion.md END TO END.
+1. Read <repo>\docs\specs\leap\LEAP-08-c3-fed-criterion.md END TO END.
    PREMISE (evidence-checked): the C3 fed gate is ALREADY PLUMBED and dead
    (situational.py:134 EnemyProfile.fed, :251, :408-413 - route never populates it).
    situational.py itself needs NO edit - that file is ghosted. The slice FEEDS the gate.

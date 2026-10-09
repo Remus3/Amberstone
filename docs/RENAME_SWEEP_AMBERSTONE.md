@@ -143,9 +143,9 @@ instead.
 
 ## 3. Tier 2 - filesystem and infrastructure (highest mechanical risk, do LAST)
 
-The repo directory itself, `C:\Riot Commander`:
+The repo directory itself, `<repo>`:
 
-- 31 tracked files carry a `C:/Riot Commander` literal.
+- 31 tracked files carry a `<repo>` literal.
 - **The real number is higher** - `.claude/settings.json`, `.mcp.json`, the
   Perseus vault wiring and the hooks are all GITIGNORED and invisible to
   `git grep`. Every one is an absolute path.

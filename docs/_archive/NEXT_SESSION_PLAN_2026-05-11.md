@@ -33,12 +33,12 @@ inside a helper `.cmd`. Both Anthropic Claude Desktop installations are
 already present:
 
 - Legion: Microsoft Store Appx `Claude_pzs8sxrjxfjjc` (`shell:AppsFolder\Claude_pzs8sxrjxfjjc!Claude` to launch)
-- Game-PC: `C:\Users\Administrator\AppData\Local\AnthropicClaude\Claude.exe`
+- Game-PC: `%LOCALAPPDATA%\AnthropicClaude\Claude.exe`
 
 **Test steps**:
 1. From Legion, manually launch Claude Desktop with the RC workspace
-   (`C:\Riot Commander`). Try `Claude.exe "C:\Riot Commander"` first,
-   then `claude://workspace/C:/Riot%20Commander` URI scheme if the
+   (`<repo>`). Try `Claude.exe "<repo>"` first,
+   then `claude://workspace/<repo>` URI scheme if the
    direct arg doesn't take.
 2. Inside the desktop app, verify:
    - Slash commands work (`/help`)
@@ -105,7 +105,7 @@ context).
 | ADR-007 phase 3 (prose-coach deprecation) | Wait for phase-1 detectors to prove out in real games first |
 | Phase 3 UI steps 5-14 | UI work, paused per s166 operator directive |
 | RC-LCU task `Execute: py` fix | Cosmetic; manual relaunch works |
-| Legion migration | Decided (Option B); execute when 27" monitor desk is set up. **All migration prep at `C:\Users\Administrator\Desktop\Legion-Migration-Plan\` (outside repo).** Don't lose track of this - it's the folder with the discussion summary + install checklist + spoof analysis + hwid_audit artifacts. |
+| Legion migration | Decided (Option B); execute when 27" monitor desk is set up. **All migration prep at `%USERPROFILE%\Desktop\Legion-Migration-Plan\` (outside repo).** Don't lose track of this - it's the folder with the discussion summary + install checklist + spoof analysis + hwid_audit artifacts. |
 
 ## Important context for next-session-you (read before acting)
 
@@ -113,8 +113,8 @@ context).
    is one session. WAKEUP_NOTES + CLAUDE.md + MEMORY.md cover the
    carry-over.
 2. **The legion-migration-plan folder is OUTSIDE the repo** - don't try
-   to grep it from `C:\Riot Commander\`. It's at
-   `C:\Users\Administrator\Desktop\Legion-Migration-Plan\`. Mentioned
+   to grep it from `<repo>\`. It's at
+   `%USERPROFILE%\Desktop\Legion-Migration-Plan\`. Mentioned
    here so you know it exists.
 3. **Phase 3 supervisor restart is sticky** - PID 11712 picked up the
    new detectors. Don't restart it unless code in `agents/supervisor.py`

@@ -92,7 +92,7 @@ in whatever page slice touches them.
 ## C. THE ONE THAT UNBLOCKS THE HOME/PGR CONTENT PROBLEM
 
 Every game is archived as a `.rofl` within 15 minutes by `RC-RoflArchive`
-(`C:\Users\Administrator\Documents\RC_ROFL_Archive`, verified working 2026-07-20 - it captured
+(`%USERPROFILE%\Documents\RC_ROFL_Archive`, verified working 2026-07-20 - it captured
 that night's SR, Arena AND the q2400 ARAM Mayhem game). `.rofl` Layer-1 extraction yields
 **365-367 stat fields x 10 players, no client and no patch gate**.
 

@@ -18,7 +18,7 @@ Vision is now in-process on the same host as RC — no Moon-PC, no LAN hop for v
 ## 1. app/ PACKAGE STRUCTURE (ARCH-001 COMPLETE)
 
 ```
-C:\Riot Commander\
+<repo>\
 ├── app.py                       ← shim (Python package takes precedence)
 └── app\
     ├── __init__.py              ← OverlayApp orchestrator (428 lines)
@@ -85,14 +85,14 @@ C:\Riot Commander\
 
 ```powershell
 # Run data pipeline (patch day)
-cd 'C:\Riot Commander\scripts'
+cd '<repo>\scripts'
 python.exe data_pipeline.py aram_builds   # update ARAM tiers
 python.exe data_pipeline.py all           # full refresh
 python.exe data_pipeline.py meta          # check version status
 
 # Health check
-Get-Content 'C:\Riot Commander\ops\runtime\health.json' | ConvertFrom-Json
+Get-Content '<repo>\ops\runtime\health.json' | ConvertFrom-Json
 
 # Restart RC
-Set-Content 'C:\Riot Commander\restart_trigger.txt' -Value 'manual'
+Set-Content '<repo>\restart_trigger.txt' -Value 'manual'
 ```

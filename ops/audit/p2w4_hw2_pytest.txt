@@ -112,27 +112,27 @@
 
 7885 passed, 2 skipped, 109 subtests passed in 252.95s (0:04:12)
 Traceback (most recent call last):
-  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\Lib\logging\__init__.py", line 1155, in emit
+  File "%LOCALAPPDATA%\Programs\Python\Python314\Lib\logging\__init__.py", line 1155, in emit
     self.flush()
     ~~~~~~~~~~^^
-  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\Lib\logging\__init__.py", line 1137, in flush
+  File "%LOCALAPPDATA%\Programs\Python\Python314\Lib\logging\__init__.py", line 1137, in flush
     self.stream.flush()
     ~~~~~~~~~~~~~~~~~^^
 ValueError: I/O operation on closed file.
 Call stack:
-  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\Lib\threading.py", line 1044, in _bootstrap
+  File "%LOCALAPPDATA%\Programs\Python\Python314\Lib\threading.py", line 1044, in _bootstrap
     self._bootstrap_inner()
-  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\Lib\threading.py", line 1082, in _bootstrap_inner
+  File "%LOCALAPPDATA%\Programs\Python\Python314\Lib\threading.py", line 1082, in _bootstrap_inner
     self._context.run(self.run)
-  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\Lib\threading.py", line 1024, in run
+  File "%LOCALAPPDATA%\Programs\Python\Python314\Lib\threading.py", line 1024, in run
     self._target(*self._args, **self._kwargs)
-  File "C:\Riot Commander\tft\tft_state_reader.py", line 78, in _ocr_loop
+  File "<repo>\tft\tft_state_reader.py", line 78, in _ocr_loop
     data = self._ocr.read()
-  File "C:\Riot Commander\tft\tft_ocr_reader.py", line 291, in read
+  File "<repo>\tft\tft_ocr_reader.py", line 291, in read
     full_img = _capture_full_frame()
-  File "C:\Riot Commander\tft\tft_ocr_reader.py", line 74, in _capture_full_frame
+  File "<repo>\tft\tft_ocr_reader.py", line 74, in _capture_full_frame
     full_b64 = _relay_capture()
-  File "C:\Riot Commander\modes\shared_vision.py", line 77, in _capture_screen
+  File "<repo>\modes\shared_vision.py", line 77, in _capture_screen
     logger.warning("latest-frame stale: age=%.1fs (relay stalled?)", age)
 Message: 'latest-frame stale: age=%.1fs (relay stalled?)'
 Arguments: (8.176389932632446,)

@@ -152,7 +152,7 @@ Copied from `ROADMAP.md` as of 2026-05-10. Status notes reflect what s166 left i
 
 - **Auto-ops verb expansion** - `tail .* log`, `restart agent .*`, `verify .*` once auto-action success ≥ 95%. Headless.
 - **Game-PC + Peer auto-action lanes** - currently `--enable-auto-action-lanes` is OFF. Enable once success rate is proven. Headless.
-- **RC-DaemonSlayer task context** - runs as SYSTEM; `_log_startup` writes fail silently. Change to LogonTrigger + Administrator post-boot. Independent infra.
+- **RC-DaemonSlayer task context** - runs as SYSTEM; `_log_startup` writes fail silently. Change to LogonTrigger + operator account post-boot. Independent infra.
 
 ---
 

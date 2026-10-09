@@ -1552,13 +1552,13 @@ Create `tools/install_mission_control_task.ps1`:
 # an RC restart for a game-overlay change must not touch the control plane.
 # RestartCount/RestartInterval are load-bearing - choosing a scheduled task
 # over an rc_supervisor entry gave up auto-restart, and ONLOGON fires once.
-$python  = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
-$script  = 'C:\Riot Commander\mission_control.py'
-$workdir = 'C:\Riot Commander'
+$python  = '%LOCALAPPDATA%\Programs\Python\Python314\pythonw.exe'
+$script  = '<repo>\mission_control.py'
+$workdir = '<repo>'
 
 $action    = New-ScheduledTaskAction -Execute $python -Argument "`"$script`"" -WorkingDirectory $workdir
 $trigger   = New-ScheduledTaskTrigger -AtLogOn
-$principal = New-ScheduledTaskPrincipal -UserId 'Administrator' -RunLevel Highest
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 
 Register-ScheduledTask -TaskName 'RC-MissionControl' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
@@ -1568,7 +1568,7 @@ Write-Host 'RC-MissionControl registered. Start it with: schtasks /Run /TN RC-Mi
 - [ ] **Step 6: Register and start the task**
 
 ```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Riot Commander/tools/install_mission_control_task.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "<repo>/tools/install_mission_control_task.ps1"
 schtasks /Run /TN RC-MissionControl
 ```
 
@@ -1600,7 +1600,7 @@ Now the restart-independence proof (criterion 2). Record the Mission Control pid
 first, then bounce RC:
 
 ```bash
-echo restart > "C:/Riot Commander/restart_trigger.txt"
+echo restart > "<repo>/restart_trigger.txt"
 ```
 
 Wait about 10 seconds, confirm `ops/runtime/health.json` shows a NEW RC pid, and
@@ -1809,7 +1809,7 @@ by the full-suite run above, so a missing `# arch:` header surfaces there.
 - [ ] **Step 10: Restart RC and confirm the routes are gone**
 
 ```bash
-echo restart > "C:/Riot Commander/restart_trigger.txt"
+echo restart > "<repo>/restart_trigger.txt"
 ```
 
 Wait about 10 seconds, then:

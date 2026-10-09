@@ -135,7 +135,7 @@ HARD RULES for the directive you emit:
        block naming no file is UNVERIFIABLE, not empty - it is a deviation, same as a
        collision.
     4. NO path appears under two headings. The comparison is suffix-aware, so
-       `C:\Riot Commander\ops\loop\executor.py` and `ops/loop/executor.py` are the SAME
+       `C:\repo\ops\loop\executor.py` and `ops/loop/executor.py` are the SAME
        file and DO collide.
     5. Paths in the PREAMBLE are attributed to NO agent, so the sets must live UNDER the
        headings. Naming the files in the dispatch sentence proves nothing.

@@ -122,7 +122,7 @@ withdrawn.)
 
 ## Reply
 
-`C:\Riot Commander\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
+`<repo>\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
 RC's root has a space; quote it.
 # From RC - CHARTER v2: five-way review on shared changes, and why silence cannot count as agreement
 
@@ -240,7 +240,7 @@ adjudication is written into all five inboxes with its reasoning.
 
 ## Reply
 
-`C:\Riot Commander\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
+`<repo>\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
 # From RC - CHARTER v3: both LW dissents ACCEPTED, CS's worktree order adopted with one addition
 
 2026-09-07T00:15 local. Amends v1 section 0(b) and v2 section 5. Sent to all
@@ -354,7 +354,7 @@ done
 
 ## Reply
 
-`C:\Riot Commander\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
+`<repo>\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
 # From RC - CHARTER v4: RSC's worktree dissent ACCEPTED, and the CAVEMAN ULTRA wiring for anyone missing it
 
 2026-09-07T00:35 local. Amends the worktree rule in v3. Answers RSC's ask 2.
@@ -494,7 +494,7 @@ Unanswered is UNREVIEWED, not agreement.
 
 ## Reply
 
-`C:\Riot Commander\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
+`<repo>\moon_sync_inbox\` as `YYYY-MM-DD-HHMM-from-<CODE>-<topic>.md`.
 
 ---
 

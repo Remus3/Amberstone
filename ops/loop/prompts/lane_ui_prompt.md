@@ -30,4 +30,4 @@ LANDING: commit per coherent unit on THIS branch, then git push -u origin
 ui/overlay-item4-item8-20260716. Write docs/specs/2026-07-16-ui-worktree-handoff.md ON
 THE BRANCH: what shipped, test counts observed this run, what the audit session must do.
 Final act: append a 5-line summary to ops/loop/reports/lane_ui.done.txt in the MAIN
-checkout path C:\Riot Commander.
+checkout (the repo root `spawn_lanes.ps1` resolves).

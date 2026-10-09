@@ -9,7 +9,7 @@ _Living document. Full ops command set for Legion sessions._
 Canonical interpreter (the ONLY one with RC's dependency tree installed):
 
 ```
-C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe
+%LOCALAPPDATA%\Programs\Python\Python314\python.exe
 ```
 
 Bare `py` is BANNED on every Legion runnable/doc surface: PEP 514 resolves it
@@ -216,34 +216,34 @@ first resort.
 
 | Task | Trigger | Context | Description |
 |---|---|---|---|
-| `RC-Supervisor` | At logon | Administrator / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
-| `RC-MissionControl` | At logon + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_mission_control_task.ps1`) | Administrator / Highest | Runs `pythonw.exe mission_control.py` - the :8895 control plane. Deliberately its OWN scheduled task, not an `rc_supervisor` entry: RestartCount 3 / RestartInterval 1 min gives self-restart on crash, and the repeat trigger makes Task Scheduler itself the watchdog (`MultipleInstances=IgnoreNew` no-ops while alive; process dead -> next tick starts it). An RC restart for a game-overlay change must never touch the control plane (S10, decoupled 2026-07-31) |
-| `RC-MoonSyncPoller` | At logon | Administrator / HIGHEST | ONE machine-wide cross-repo channel poller for all five participants (`pythonw.exe tools/moon_sync_poller.py`). Named-mutex singleton - a second poller anywhere on the box is forbidden by the channel contract. Idle-tiered ladder; writes `%LOCALAPPDATA%\moonsync\status.md`. Read it with `--status` or the `/api/moon-sync-status` route; see the section below |
-| `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
-| `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8861) |
+| `RC-Supervisor` | At logon | operator account / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
+| `RC-MissionControl` | At logon + a `-Once` trigger with a 1-min indefinite repeat (`tools/install_mission_control_task.ps1`) | operator account / Highest | Runs `pythonw.exe mission_control.py` - the :8895 control plane. Deliberately its OWN scheduled task, not an `rc_supervisor` entry: RestartCount 3 / RestartInterval 1 min gives self-restart on crash, and the repeat trigger makes Task Scheduler itself the watchdog (`MultipleInstances=IgnoreNew` no-ops while alive; process dead -> next tick starts it). An RC restart for a game-overlay change must never touch the control plane (S10, decoupled 2026-07-31) |
+| `RC-MoonSyncPoller` | At logon | operator account / HIGHEST | ONE machine-wide cross-repo channel poller for all five participants (`pythonw.exe tools/moon_sync_poller.py`). Named-mutex singleton - a second poller anywhere on the box is forbidden by the channel contract. Idle-tiered ladder; writes `%LOCALAPPDATA%\moonsync\status.md`. Read it with `--status` or the `/api/moon-sync-status` route; see the section below |
+| `RC-DaemonSlayer` | Manual / on demand | operator account | DS engine server |
+| `RC-DS-MatchDB-MCP` | At logon (operator-gated) | operator account | Local DS + match-DB MCP (:8861) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
-| `RC-CIWatchdog` | At startup + periodic (PT2M) | Administrator / armed, but State `Disabled` (measured 2026-09-20; last ran 2026-09-11) | Unattended headless-claude red-main CI auto-fixer; self-gates the merge on the ci-fix PR's OWN green CI (`tools/ci_watchdog.py`, isolated worktree `C:\RC-CIWatchdog`; item 622). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
-| `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
-| `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/lcu_agent.py`) |
-| `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
-| `RC-LiveFlipWatcher` | At logon | Administrator | DS live-flip seam watcher + toast (`tools/live_flip_watcher.py`) |
-| `RC-PostmortemAnalyze` | Weekly | Administrator | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
-| `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector, 5 signals: ddragon / meraki / cdragon / 101.qq duo-synergy shape (RM-131) / cdragon queue catalog (RM-128) (`tools/upstream_drift_check.py`); with `--spec-watch` also the P1-3 spec / patch watch (`tools/spec_watch.py`: new patch / champion / item / field keys posted once to `ops/runtime/spec_watch_events.jsonl`, exit 2 on an unreadable spec) - the installer passes it, the live task needs a re-install to pick it up |
-| `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
-| `RC-RewindCatchup` | Weekly Sunday 04:00 | Administrator | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
-| `RC-RoflArchive` | Every 15 min | Administrator / HIGHEST | The OPERATOR's own replays: `tools/rofl_archiver.py --pull --lcu-path --extract --highlights --quiet` |
-| `RC-RoflDedupe` | Daily 05:30 | Administrator | `tools/rofl_dedupe.py --apply` - de-duplicates the `.rofl` archive downstream of the 15-min `RC-RoflArchive` pull. Daily is correct: the archiver can pull the same game more than once across its 15-min ticks, and de-duping once after the day's pulls is cheaper than per-tick |
-| `RC-ReplayRosterPull` | Hourly | Administrator / HIGHEST | TRACKED PLAYERS' ranked replays into the role-partitioned corpus: `tools/replay_roster_pull.py --quiet --log-file logs/replay_roster.log`. Roster: `data/replay_roster.json`. **Cadence is not cosmetic** - `/replays` holds only the 5 most recent retained games per account and has NO fetch-by-match-id route, so a game nobody pulls during its residency is lost permanently (measured twice on 2026-07-26: two specifically requested matches had already rotated out). Five games is the whole window, so hourly leaves roughly a 2.5x margin over a fast laddering session. Log: `logs/replay_roster.log` (pythonw discards stdout, so `--log-file` is mandatory here) |
-| `RC-ReplayChainWatch` | Every 15 min | Administrator / HIGHEST | Session-independent watchdog for the replay ingest chain (`tools/replay_chain_watch.py`). Re-enables `RC-ReplayRosterPull` and runs the event-pattern miner ONCE the long ingests (`timeline_ingest`, `build_rank_baselines`) have finished. **Exists because those follow-ups used to be held in a chat session:** if the session ended first, the roster task stayed Disabled and games rotated out of the 5-wide `/replays` window permanently, which is unrecoverable (no fetch-by-match-id route). Idempotent - no-ops while any ingest is running, never re-enables an already-enabled task, and mines only when the corpus grew. `--status` reports without changing anything |
-| `RC-WeeklyHygiene` | Weekly Sunday 04:17 | Administrator; State `Disabled` (measured 2026-09-20; last ran 2026-09-06) | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`). **The `Disabled` state is INTENT, not a defect** - see "Why three headless-claude tasks are Disabled" just below this table for the reason and the re-arm precondition |
+| `RC-CIWatchdog` | At startup + periodic (PT2M) | operator account / armed, but State `Disabled` (measured 2026-09-20; last ran 2026-09-11) | Unattended headless-claude red-main CI auto-fixer; self-gates the merge on the ci-fix PR's OWN green CI (`tools/ci_watchdog.py`, isolated worktree `<ci-watchdog-worktree>`; item 622). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
+| `RC-HotkeyListener` | At logon | operator account | Global hotkey listener (`tools/hotkey_listener.py`) |
+| `RC-LCUAgent` | At logon | operator account | LCU relay agent (`tools/lcu_agent.py`) |
+| `RC-LiveClientRelay` | At logon | operator account | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
+| `RC-LiveFlipWatcher` | At logon | operator account | DS live-flip seam watcher + toast (`tools/live_flip_watcher.py`) |
+| `RC-PostmortemAnalyze` | Weekly | operator account | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
+| `RC-UpstreamDriftCheck` | Daily | operator account | Upstream content-drift detector, 5 signals: ddragon / meraki / cdragon / 101.qq duo-synergy shape (RM-131) / cdragon queue catalog (RM-128) (`tools/upstream_drift_check.py`); with `--spec-watch` also the P1-3 spec / patch watch (`tools/spec_watch.py`: new patch / champion / item / field keys posted once to `ops/runtime/spec_watch_events.jsonl`, exit 2 on an unreadable spec) - the installer passes it, the live task needs a re-install to pick it up |
+| `RC-DDragonMirrorRefresh` | Daily 03:30 | operator account | `tools/ddragon_mirror_refresh.py --check-changed` |
+| `RC-RewindCatchup` | Weekly Sunday 04:00 | operator account | `scripts/rewind_catchup.py` (pull new Match-V5 records into rewind_history.db) |
+| `RC-RoflArchive` | Every 15 min | operator account / HIGHEST | The OPERATOR's own replays: `tools/rofl_archiver.py --pull --lcu-path --extract --highlights --quiet` |
+| `RC-RoflDedupe` | Daily 05:30 | operator account | `tools/rofl_dedupe.py --apply` - de-duplicates the `.rofl` archive downstream of the 15-min `RC-RoflArchive` pull. Daily is correct: the archiver can pull the same game more than once across its 15-min ticks, and de-duping once after the day's pulls is cheaper than per-tick |
+| `RC-ReplayRosterPull` | Hourly | operator account / HIGHEST | TRACKED PLAYERS' ranked replays into the role-partitioned corpus: `tools/replay_roster_pull.py --quiet --log-file logs/replay_roster.log`. Roster: `data/replay_roster.json`. **Cadence is not cosmetic** - `/replays` holds only the 5 most recent retained games per account and has NO fetch-by-match-id route, so a game nobody pulls during its residency is lost permanently (measured twice on 2026-07-26: two specifically requested matches had already rotated out). Five games is the whole window, so hourly leaves roughly a 2.5x margin over a fast laddering session. Log: `logs/replay_roster.log` (pythonw discards stdout, so `--log-file` is mandatory here) |
+| `RC-ReplayChainWatch` | Every 15 min | operator account / HIGHEST | Session-independent watchdog for the replay ingest chain (`tools/replay_chain_watch.py`). Re-enables `RC-ReplayRosterPull` and runs the event-pattern miner ONCE the long ingests (`timeline_ingest`, `build_rank_baselines`) have finished. **Exists because those follow-ups used to be held in a chat session:** if the session ended first, the roster task stayed Disabled and games rotated out of the 5-wide `/replays` window permanently, which is unrecoverable (no fetch-by-match-id route). Idempotent - no-ops while any ingest is running, never re-enables an already-enabled task, and mines only when the corpus grew. `--status` reports without changing anything |
+| `RC-WeeklyHygiene` | Weekly Sunday 04:17 | operator account; State `Disabled` (measured 2026-09-20; last ran 2026-09-06) | Unattended `/weekly-hygiene` pass via headless Claude (`tools/weekly_hygiene_run.ps1`; install `ops/install_RC_WeeklyHygiene.ps1`). **The `Disabled` state is INTENT, not a defect** - see "Why three headless-claude tasks are Disabled" just below this table for the reason and the re-arm precondition |
 | `RC-InboxResponder` | Every 5 min (`-Once` + 5-min indefinite repeat), S4U | Installing account / Highest | **Install-on-demand, NOT registered by default, and registered DISARMED.** Runs `pythonw.exe tools/inbox_responder_runner.py --cycle` to answer cross-repo inbox notes (install / probe / remove: `ops/install_RC_InboxResponder.ps1`). Registering it arms NOTHING - the runner answers only while the operator's hand-written `ops\runtime\inbox_responder_agreement.json` is present and valid; with no record every tick terminates `disarmed/no_agreement`, which is exactly how you prove the task fires. Kill switch is the flag `ops\runtime\INBOX_RESPONDER_STOP` (checked at the first gate AND again just before delivery, so a late STOP holds a finished draft), never `Disable-ScheduledTask` - that is maintenance-off only. One-shot dry run: write `ops\runtime\INBOX_RESPONDER_DRY` holding the scratch dir path; the runner consumes the flag before the cycle, so it beats a live agreement for that one tick and cannot repeat |
-| `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
-| `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
-| `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
-| `RC-TeamClaudeProxy` | At logon | Administrator / HIGHEST | Operator utility, NOT RC infra: headless `teamclaude` multi-account Claude-subscription failover proxy on `:3456`, launched hidden via `C:\Users\Administrator\teamclaude_proxy_hidden.vbs` -> `teamclaude_proxy.bat`. Inert until a client sets `ANTHROPIC_BASE_URL=http://localhost:3456` (`teamclaude run --no-mitm`); does not touch RC or the dashboard. Config + live OAuth tokens live in `C:\Users\Administrator\.config\teamclaude.json` (non-repo, do NOT commit). Probes account-wide weekly quota hourly (`quotaProbeSeconds`, reads `/api/oauth/usage`, spends nothing). Activity log: same dir, `teamclaude_activity.log` |
-| `RC-ClaudeQuotaWatch` | Every 2h | Administrator / HIGHEST | Operator utility: `pythonw C:\Riot Commander\tools\claude_quota_watch.py` (MOVED into the repo 2026-08-01 from `C:\Users\Administrator\`, and the task repointed, because out-of-repo means unguardable - it was the measured console flash and no test here could see it) reads acct A's weekly `unified7d` from teamclaude and fires ONE Windows toast (per weekly window) at >=90% telling the operator to switch the Claude GUI login from the primary account to the failover one. Both identities are read from the environment (`RC_CLAUDE_ACCT_A` / `RC_CLAUDE_ACCT_B`); unset, the watcher no-ops. Needed because the MSIX desktop GUI bypasses the proxy, so failover there is a MANUAL account switch. State: `~\.config\claude_quota_watch_state.json` |
+| `RC-PatchRefresh` | Weekly Wednesday | operator account | `data_pipeline.py all` |
+| `RC-Phase3-Supervisor` | At logon | operator account | Phase 3 agent supervisor |
+| `RC-Phase3-PeriodicAudit` | Scheduled | operator account | Phase 3 periodic audit |
+| `RC-TeamClaudeProxy` | At logon | operator account / HIGHEST | Operator utility, NOT RC infra: headless `teamclaude` multi-account Claude-subscription failover proxy on `:3456`, launched hidden via `%USERPROFILE%\teamclaude_proxy_hidden.vbs` -> `teamclaude_proxy.bat`. Inert until a client sets `ANTHROPIC_BASE_URL=http://localhost:3456` (`teamclaude run --no-mitm`); does not touch RC or the dashboard. Config + live OAuth tokens live in `%USERPROFILE%\.config\teamclaude.json` (non-repo, do NOT commit). Probes account-wide weekly quota hourly (`quotaProbeSeconds`, reads `/api/oauth/usage`, spends nothing). Activity log: same dir, `teamclaude_activity.log` |
+| `RC-ClaudeQuotaWatch` | Every 2h | operator account / HIGHEST | Operator utility: `pythonw <repo>\tools\claude_quota_watch.py` (MOVED into the repo 2026-08-01 from `%USERPROFILE%\`, and the task repointed, because out-of-repo means unguardable - it was the measured console flash and no test here could see it) reads acct A's weekly `unified7d` from teamclaude and fires ONE Windows toast (per weekly window) at >=90% telling the operator to switch the Claude GUI login from the primary account to the failover one. Both identities are read from the environment (`RC_CLAUDE_ACCT_A` / `RC_CLAUDE_ACCT_B`); unset, the watcher no-ops. Needed because the MSIX desktop GUI bypasses the proxy, so failover there is a MANUAL account switch. State: `~\.config\claude_quota_watch_state.json` |
 
-| `RiotCommander` | At logon | Administrator / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `C:\Riot Commander`. It carries a logon trigger, and while it was ENABLED that trigger started an unmanaged SECOND RC process on every logon which raced `RC-Supervisor` for `:8888` and lost - which is why it stayed invisible: it failed, RC worked, nothing surfaced. **Live re-probe 2026-09-15: `State=Disabled`, `NextRunTime` empty, `LastRunTime` 2026-09-06 19:50:50, `LastTaskResult=1` - so the trigger no longer fires and it starts nothing today.** (The superseded 2026-08-08 probe read `State=Ready`, LastRun 2026-08-05; the present-tense "starts a second process" wording belonged to that reading and was false by the time this row was next edited.) NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
+| `RiotCommander` | At logon | operator account / HIGHEST | **NOT RC infra - machine-local cruft, documented so the count reconciles.** A bare task at TaskPath `\` (no `RC-` prefix), running `pythonw.exe main.py` in `<repo>`. It carries a logon trigger, and while it was ENABLED that trigger started an unmanaged SECOND RC process on every logon which raced `RC-Supervisor` for `:8888` and lost - which is why it stayed invisible: it failed, RC worked, nothing surfaced. **Live re-probe 2026-09-15: `State=Disabled`, `NextRunTime` empty, `LastRunTime` 2026-09-06 19:50:50, `LastTaskResult=1` - so the trigger no longer fires and it starts nothing today.** (The superseded 2026-08-08 probe read `State=Ready`, LastRun 2026-08-05; the present-tense "starts a second process" wording belonged to that reading and was false by the time this row was next edited.) NO repo artifact creates it (`ops/install_startup.bat` makes a differently-named `RiotCommanderWatcher.lnk` shortcut - different mechanism, not this). Most likely hand-made before `RC-Supervisor` existed. **Deleting it is a system-settings change and is OPERATOR territory - no headless lane may remove it.** Before deleting, confirm it is not load-bearing: stop it, log out and back in, and confirm `ops/runtime/health.json` still reports a live pid |
 
 **Why three headless-claude tasks are Disabled - this is INTENT, not a defect.**
 `RC-CIWatchdog`, `RC-WeeklyHygiene` and `RC-InboxResponder` were all disabled by
@@ -277,7 +277,7 @@ Check state (the `RC-*` glob alone MISSES `RiotCommander`, which is exactly how 
 Get-ScheduledTask | Where-Object { $_.TaskName -like 'RC-*' -or $_.TaskName -eq 'RiotCommander' } | Select-Object TaskName, State
 ```
 
-Subscription failover routing: MEASURED 2026-07-29 - the MSIX Claude desktop GUI does NOT honor `ANTHROPIC_BASE_URL` (it talks to claude.ai's own app backend, not `api.anthropic.com`; the proxy activity log stayed empty after live GUI prompts). So the GUI CANNOT be transparently routed through the teamclaude proxy. The user-wide var was set then REMOVED (it only helped the CLI/headless surfaces the operator does not use, and added proxy-down fragility to the headless RC-* Claude tasks). GUI failover is therefore MANUAL: switch the desktop login from acct A to acct B when acct A's weekly quota is high - `RC-ClaudeQuotaWatch` toasts the reminder at >=90%. The `cf` shim (`C:\Users\Administrator\AppData\Roaming\npm\cf.cmd`) remains for an explicit failover-backed CLI session if ever wanted.
+Subscription failover routing: MEASURED 2026-07-29 - the MSIX Claude desktop GUI does NOT honor `ANTHROPIC_BASE_URL` (it talks to claude.ai's own app backend, not `api.anthropic.com`; the proxy activity log stayed empty after live GUI prompts). So the GUI CANNOT be transparently routed through the teamclaude proxy. The user-wide var was set then REMOVED (it only helped the CLI/headless surfaces the operator does not use, and added proxy-down fragility to the headless RC-* Claude tasks). GUI failover is therefore MANUAL: switch the desktop login from acct A to acct B when acct A's weekly quota is high - `RC-ClaudeQuotaWatch` toasts the reminder at >=90%. The `cf` shim (`%USERPROFILE%\AppData\Roaming\npm\cf.cmd`) remains for an explicit failover-backed CLI session if ever wanted.
 
 RC coaching stays on the direct API regardless: it uses the Console API key (`API-Key-Claude.txt`), not the subscription. Every production `anthropic.Anthropic(...)` pins `base_url="https://api.anthropic.com"` (defense-in-depth in case the user-wide var is ever re-set); `tests/test_anthropic_base_url_pin.py` guards it (fails on any unpinned or new construction site). Keep the pins.
 
@@ -367,7 +367,7 @@ python data_pipeline.py aram_builds
 python data_pipeline.py rank_tiers  # overlay item 8: stamp live patch onto the rank-tier stats-panel artifact
 ```
 
-Run from `C:\Riot Commander\scripts\`. Patch releases typically Wednesdays - `RC-PatchRefresh` fires automatically.
+Run from `<repo>\scripts\`. Patch releases typically Wednesdays - `RC-PatchRefresh` fires automatically.
 
 Overlay item 8 (in-game rank-tier stats panel): the panel benchmarks the operator against a SELECTED rank-tier average (mode-specific SR / ARAM; Arena shows "no benchmark", no seed). Pick the tier in the in-game DS Settings strip (or the Post Game Review / desktop Settings rank row - all three share the `rc-pgr-rank-tier` key). Backend: `GET /api/rank-tier-bench?tier=&mode=&bracket=` reads `core.rank_tier_bench` (committed estimate seed `data/rank_tiers/rank_tier_averages.seed.json`, tagged "estimate-not-measured"; the panel badges provenance). Live overlay is off by default - set `RC_RANK_TIER_LIVE=1` only once a real aggregate endpoint is wired in gitignored `config/rank_tier_source.json`. The deprecated-but-alive `GET /api/role-bracket-bench` (personal-corpus lens) is retained for existing consumers.
 
@@ -454,8 +454,8 @@ local Claude / agent: `ds_health`, `ds_rank_items`, `ds_build_order`,
 DS-down and match-DB-missing both degrade to an error dict, never crash.
 
 ```powershell
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ds_matchdb_mcp_server.py --show-token        # token for client config
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\start_ds_matchdb_mcp.py                       # launch (boot wrapper)
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ds_matchdb_mcp_server.py --show-token        # token for client config
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\start_ds_matchdb_mcp.py                       # launch (boot wrapper)
 curl http://127.0.0.1:8861/health -H "Authorization: Bearer <token>"
 ```
 
@@ -464,7 +464,7 @@ scheduled-tasks table above). Reinstall if ever removed:
 
 ```
 schtasks /Create /TN "RC-DS-MatchDB-MCP" /SC ONLOGON /RL HIGHEST /F ^
-  /TR "pythonw C:\Riot Commander\tools\start_ds_matchdb_mcp.py"
+  /TR "pythonw <repo>\tools\start_ds_matchdb_mcp.py"
 ```
 
 Client wiring (also operator-gated - editing `.mcp.json` changes a live
@@ -490,19 +490,19 @@ so `--check-changed` only re-fetches mid-patch revisions; first cold run on a
 new patch fetches ~6.7k files (~30 MB).
 
 ```powershell
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --check-only       # exit 1 = flip pending
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --dry-run          # plan, no writes
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py                    # default - idempotent fetch
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --check-changed    # mid-patch HEAD probe
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --full             # ignore manifest, refetch all
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --version 16.10.1  # pin a version
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --workers 8        # default 8 parallel fetchers
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --check-only       # exit 1 = flip pending
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --dry-run          # plan, no writes
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py                    # default - idempotent fetch
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --check-changed    # mid-patch HEAD probe
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --full             # ignore manifest, refetch all
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --version 16.10.1  # pin a version
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools\ddragon_mirror_refresh.py --workers 8        # default 8 parallel fetchers
 ```
 
 Install the daily 03:30 task (elevated PowerShell):
 
 ```
-powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_DDragonMirror.ps1"
+powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_DDragonMirror.ps1"
 ```
 
 Augment icons are NOT in DDragon; CommunityDragon serves them via
@@ -522,17 +522,17 @@ for each missing match. Idempotent (INSERT OR IGNORE) and resumable via
 Account-V1 by Riot ID (handles PUUID rotation).
 
 ```powershell
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py                # full catch-up
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --dry-run      # list IDs only, no writes
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --limit 50     # cap detail fetches
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --no-timeline  # skip timeline (faster)
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --puuid X      # override operator PUUID
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py                # full catch-up
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --dry-run      # list IDs only, no writes
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --limit 50     # cap detail fetches
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --no-timeline  # skip timeline (faster)
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" scripts\rewind_catchup.py --puuid X      # override operator PUUID
 ```
 
 Install the weekly Sunday 04:00 task (elevated PowerShell):
 
 ```
-powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_RewindCatchup.ps1"
+powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_RewindCatchup.ps1"
 ```
 
 Operator's play cadence is sparse (`5 games / 5 months 2026-05`), so a
@@ -670,14 +670,14 @@ Arming is a separate, hand-written operator act:
 Install the 5-minute task (elevated PowerShell):
 
 ```
-powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1"
+powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_InboxResponder.ps1"
 ```
 
 Verify, then remove when the trial is over:
 
 ```
-powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1" -Probe
-powershell -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\install_RC_InboxResponder.ps1" -Remove
+powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_InboxResponder.ps1" -Probe
+powershell -ExecutionPolicy Bypass -File "<repo>\ops\install_RC_InboxResponder.ps1" -Remove
 Get-ScheduledTask RC-InboxResponder | Get-ScheduledTaskInfo
 schtasks /Run /TN RC-InboxResponder
 ```

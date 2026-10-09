@@ -2,7 +2,7 @@ EXECUTION SESSION - LEAP-07 coherence calibration r2 (RETIERED). Model claude-op
 effort max. Chat caveman ultra; real output to files. Goal: front-load the thinking into
 specs; execution sessions are typing, not deciding. RUN ONLY AFTER LEAP-04 HAS LANDED.
 
-1. Read C:\Riot Commander\docs\specs\leap\LEAP-07-build-coherence-calibration-r2.md END TO
+1. Read <repo>\docs\specs\leap\LEAP-07-build-coherence-calibration-r2.md END TO
    END. The P3 AMENDMENT block at the top is MANDATORY (2/3 judge refute) and SUPERSEDES
    every Tier-2 instruction in the body: this is a core/-side client coherence slice -
    NO ENGINE_VERSION bump, NO Share mirror, NO DS :8893 restart. ACs asserting a bump are

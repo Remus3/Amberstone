@@ -238,7 +238,7 @@ D4, D11 (ratchets) -> D13, D14 (hardening) -> D5, D1 (frozen / heaviest, own app
 7. **Never surface a raw API error string** in any UI - catch, friendly-degrade, log raw to `logs/`.
 8. **CLAUDE.md is size-budgeted (<60KB)** - ledger entries go to `docs/LEDGER.md`, never CLAUDE.md.
 
-Constants for commands below: `PY="C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"`.
+Constants for commands below: `PY="%LOCALAPPDATA%\Programs\Python\Python314\python.exe"`.
 Verify tiers: **T0** doc/comment/string (py_compile if .py); **T1** one module (py_compile + that
 module's tests); **T2** schema/engine/scorer/ENGINE_VERSION (full dual suite + DS :8893 restart +
 Share re-sync).
