@@ -5,7 +5,18 @@ $ErrorActionPreference = "Stop"
 $root = "C:\Riot Commander"
 $rep = "$root\ops\loop\reports"
 $runner = "$root\ops\loop\run_lane.ps1"
-$wtbase = "C:\rc-worktrees"
+# Worktree base (MAIN 2026-10-08 2246 ORDER section 5): env RC_LANE_WORKTREE_BASE,
+# then `base` in the per-host gitignored ops\lane_worktrees.json, then
+# <repo parent>\rc-worktrees. Same order as ops/loop/lane_launcher.py.
+$wtbase = $env:RC_LANE_WORKTREE_BASE
+if (-not $wtbase -or -not $wtbase.Trim()) {
+  $wtbase = $null
+  $wtcfg = Join-Path $root "ops\lane_worktrees.json"
+  if (Test-Path -LiteralPath $wtcfg) {
+    try { $wtbase = [string](Get-Content -Raw -LiteralPath $wtcfg | ConvertFrom-Json).base } catch { $wtbase = $null }
+  }
+  if (-not $wtbase -or -not $wtbase.Trim()) { $wtbase = Join-Path (Split-Path $root -Parent) "rc-worktrees" }
+}
 $wtR = "$wtbase\research-20260716"
 $wtU = "$wtbase\ui-20260716"
 New-Item -ItemType Directory -Force $rep | Out-Null
