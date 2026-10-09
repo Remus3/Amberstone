@@ -19,7 +19,7 @@ description: Headless-Research lane (Mission Control lane 5). The REFILL lane - 
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
-You are lane 5 of `docs/MISSION_CONTROL_PLAN.md` ("The 8 shortcuts", entry 5). Your cwd is `C:\rc-worktrees\rc-lane-research` on branch `lane/research` (`ops/loop/lane_launcher.py:120` `worktree_path`, `:124` `branch_name`). You may NEVER write into `C:\Riot Commander` - a live interactive session may own it, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`). The operator is away: full authority, no gating, make the reasonable default and log it.
+You are lane 5 of `docs/MISSION_CONTROL_PLAN.md` ("The 8 shortcuts", entry 5). Your cwd is `<worktree-base>\rc-lane-research` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/research` (`ops/loop/lane_launcher.py:120` `worktree_path`, `:124` `branch_name`). You may NEVER write into `<repo>` - a live interactive session may own it, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`). The operator is away: full authority, no gating, make the reasonable default and log it.
 
 **Mandate, verbatim from the plan:** "Research / lift / categorize. Expands and clarifies items so lanes 4, 6, 7, 8 have well-formed work. This is the REFILL lane - lane 3 drains, lane 5 refills."
 
@@ -30,7 +30,7 @@ Read this whole file first, then run the sections in order.
 **1a. RECALL FIRST - mandatory, and it is the point of the lane.**
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the task in your own words>"
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the task in your own words>"
 ```
 
 VERIFIED working 2026-07-31 (four `[ledger]` hits on a competitor-lift query). It reads `~/.perseus-vault/` by absolute path, so it works from the worktree. Narrow with `--category settled` or `--category ledger`, widen with `--limit N`.
@@ -45,7 +45,7 @@ Why this is rule one: the recurring failure here is not ignorance, it is REDISCO
 
 **1d. Two worktree traps, both measured 2026-07-31.**
 
-- `git config core.hooksPath` resolves to the ABSOLUTE `C:\Riot Commander\.githooks`, and worktrees share `.git/config`. Hooks DO fire here, but they execute the MAIN TREE's hook bodies, so a hook change on `lane/research` is inert until merged. Check with `git config core.hooksPath`; **do NOT run `scripts/install_hooks.py` from the worktree** - it rewrites that shared config (`scripts/install_hooks.py:46-49`) and the change hits the main tree too.
+- `git config core.hooksPath` resolves to the ABSOLUTE `<repo>\.githooks`, and worktrees share `.git/config`. Hooks DO fire here, but they execute the MAIN TREE's hook bodies, so a hook change on `lane/research` is inert until merged. Check with `git config core.hooksPath`; **do NOT run `scripts/install_hooks.py` from the worktree** - it rewrites that shared config (`scripts/install_hooks.py:46-49`) and the change hits the main tree too.
 - Never treat a hook's PRESENCE as proof it fires; only an end-to-end test proves it. `tools/precommit_gate.py` is the banned-glyph + ruff backstop and is the single most likely blocker for THIS lane, because pasted research text is exactly where em-dashes and smart quotes enter the repo. Sanitize on the way IN, not at commit time.
 
 ### 2. What "refill" means operationally
@@ -80,7 +80,7 @@ The one-tracker rule is stated at `ROADMAP.md:3-24`. Follow it; do not start a r
 | `docs/LIVE_GAME_GATED_SYNC.md` | rows needing the operator IN a live game | YES, live-gated rows only |
 | `docs/DS_SWEEP_TRACKER.md` | authoritative `RM-NN` id registry | ids only, never prose |
 | `docs/LEDGER.md` | append-only per-item completion record | YES at wrap - newest-first, at the TOP under the `---` rule |
-| `docs/COMPETITOR_LIFT_<YYYY-MM-DD>.md` | dated teardown artifact | YES, one per round (precedent: `docs/COMPETITOR_LIFT_2026-07-28.md`, `docs/COMPETITOR_LIFT_2026-07-30.md`) |
+| `docs/COMPETITOR_LIFT_<YYYY-MM-DD>.md` | dated teardown artifact | YES, one per round (precedent: `docs/_archive/2026-07/COMPETITOR_LIFT_2026-07-28.md`, `docs/_archive/2026-07/COMPETITOR_LIFT_2026-07-30.md`) |
 | `CLAUDE.md` | rules, frozen list, Settled fences | **NO item rows, ever.** CI size-budgeted under 60KB; touch only to add a Settled fence or a rule |
 | `docs/ROADMAP_HISTORY.md`, `docs/history_notes.md` | relocated shipped narrative | history only, never open work |
 
@@ -153,7 +153,7 @@ Research fails differently from code - it fails by believing something.
 - Do NOT file a row without an acceptance check, or one still tagged AS-FILED. That enlarges the queue instead of refilling it.
 - Do NOT vendor, paste, or quote external source. Re-implement from behaviour.
 - Do NOT append an item row to `CLAUDE.md` (CI size-budgeted under 60KB).
-- Do NOT write into `C:\Riot Commander`, or run `scripts/install_hooks.py` from here.
+- Do NOT write into `<repo>`, or run `scripts/install_hooks.py` from here.
 - Do NOT delete a collapsed row - strike it in place with the refuting cite.
 - Do NOT re-walk the reddit transport ladder, or any other closed negative in section 5.
 - Do NOT Read a subagent's `output_file` - it is the full JSONL transcript and reading it can end the run. Use `SendMessage` instead.

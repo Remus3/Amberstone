@@ -34,7 +34,9 @@ Safety:
   - Frozen-file refusal (touches_frozen) AND the headless tool whitelist keep
     fixes off the CLAUDE.md frozen list + off behavior-change surfaces.
   - 2-strike per-run-id escalation; max 3 PR creations / 24h hard cap.
-  - Headless claude runs in C:/RC-CIWatchdog (NOT the live checkout).
+  - Headless claude runs in the dedicated worktree `resolve_worktree()`
+    names (env RC_CI_WATCHDOG_WORKTREE, else RC-CIWatchdog beside the
+    checkout) - NOT the live checkout.
 """
 from __future__ import annotations
 
@@ -84,7 +86,23 @@ ESCALATION = RUNTIME_DIR / "ESCALATION.md"
 ATTEMPTS_DIR = RUNTIME_DIR / "attempts"
 PR_LOG = RUNTIME_DIR / "pr_creations.jsonl"
 
-WORKTREE = Path(r"C:\RC-CIWatchdog")
+WORKTREE_ENV = "RC_CI_WATCHDOG_WORKTREE"
+_WORKTREE_DIRNAME = "RC-CIWatchdog"
+
+
+def resolve_worktree(env=None, repo_root=None) -> Path:
+    """The dedicated watchdog worktree (MAIN 2246 ORDER section 3: no machine
+    path literal in a tracked file). Env RC_CI_WATCHDOG_WORKTREE, when not
+    blank, wins; otherwise the `RC-CIWatchdog` folder beside the checkout."""
+    env = os.environ if env is None else env
+    override = (env.get(WORKTREE_ENV) or "").strip()
+    if override:
+        return Path(override)
+    root = Path(repo_root) if repo_root is not None else _PROJECT_ROOT
+    return root.parent / _WORKTREE_DIRNAME
+
+
+WORKTREE = resolve_worktree()
 REPO = "Remus3/Amberstone"
 POLL_LIMIT = 5
 MAX_ATTEMPTS = 2

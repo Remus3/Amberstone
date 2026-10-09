@@ -70,9 +70,10 @@ def test_atomic_write_json_no_bare_token_on_disk(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_spec_does_not_use_svg_icon():
-    """riot-commander.spec must not feed a .svg path to EXE(icon=...);
+    """tools/amberstone.spec (the PyInstaller spec, moved from the repo root
+    and renamed 2026-10-09) must not feed a .svg path to EXE(icon=...);
     PyInstaller on Windows requires .ico and errors on svg."""
-    spec = (REPO_ROOT / "riot-commander.spec").read_text(encoding="utf-8")
+    spec = (REPO_ROOT / "tools" / "amberstone.spec").read_text(encoding="utf-8")
     # No icon= line may reference an .svg file.
     for line in spec.splitlines():
         stripped = line.strip()

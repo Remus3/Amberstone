@@ -621,7 +621,7 @@ def _route_rank(body: dict) -> dict:
     # Reuses the existing champion_burst_axis gate, no new curated list.
     exclude_off_axis_items = _opt_bool(body, "exclude_off_axis_items", False)
     # RM-86 L1 kit-conversion gate, route-exposed (PART 7 prerequisite slice,
-    # docs/OPEN_ITEMS_REVIEW_2026-07-25.md:451-457). rank.py:1294-1297 consults
+    # docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md:451-457). rank.py:1294-1297 consults
     # the registry ONLY when the strength is > 0.0, so the 0.0 default performs
     # no lookup and no arithmetic and is byte-identical to omitting the key.
     # Until this landed the lever was Python-API-only, and

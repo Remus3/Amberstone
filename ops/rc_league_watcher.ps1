@@ -12,7 +12,7 @@
 # Phase 0: Deprecated paths
 #   watchdog.ps1              - replaced by rc_self_monitor inside rc_supervisor
 #   run_self_healing_watchdog.ps1 - supervisor now owns self-healing directly
-#   restart.bat / restart_clean.bat / start.bat - replaced by this watcher
+#   scripts\restart.bat / scripts\restart_clean.bat / start.bat - replaced by this watcher
 #
 # Install: run ops\install_startup.bat once to add this to Windows startup.
 
@@ -28,8 +28,17 @@ if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
     $ConfigPath = Join-Path $ScriptDir "rc_config.json"
 }
 $config      = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
-$projectRoot = $config.project_root
-$runtimeDir  = if ($config.runtime_dir) { $config.runtime_dir } else { Join-Path $projectRoot "ops\runtime" }
+# Path values are repo-relative (MAIN 2246 sec 3); resolve them against the
+# checkout root derived from this script's location, never the process CWD.
+# An absolute value is a per-host override.
+$repoRoot    = Split-Path -Parent $ScriptDir
+function Resolve-RcPath([string]$Value, [string]$Base, [string]$Default) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return [IO.Path]::GetFullPath($Default) }
+    if ([IO.Path]::IsPathRooted($Value)) { return [IO.Path]::GetFullPath($Value) }
+    return [IO.Path]::GetFullPath((Join-Path $Base $Value))
+}
+$projectRoot = Resolve-RcPath $config.project_root $repoRoot $repoRoot
+$runtimeDir  = Resolve-RcPath $config.runtime_dir $projectRoot (Join-Path $projectRoot "ops\runtime")
 $logDir      = Join-Path $runtimeDir "logs"
 $logFile     = Join-Path $logDir "league_watcher.log"
 $stopFile    = Join-Path $runtimeDir "watchdog.stop"

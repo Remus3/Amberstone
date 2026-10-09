@@ -163,13 +163,17 @@ def test_loop_prompts_carry_the_race_guards_block(rel):
 
 
 def test_done_commits_and_pushes_through_the_git_lock():
+    # MAIN 2246 ORDER section 3: the checkout path is the <repo> placeholder,
+    # never a machine path (done.md's PATHS block defines it).
     done = _text("tools/done.md")
-    gl = 'python "C:/Riot Commander/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- '
-    assert gl + 'git -C "C:/Riot Commander" commit -F <tmpfile>' in done
-    assert gl + 'git -C "C:/Riot Commander" push origin <branch>' in done
-    assert "- Otherwise: `git -C \"C:/Riot Commander\" push origin <branch>`" not in done
-    assert ('python "C:/Riot Commander/ops/fleet_kit/fleet_suite_gate.py" run '
+    gl = 'python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- '
+    assert gl + 'git -C "<repo>" commit -F <tmpfile>' in done
+    assert gl + 'git -C "<repo>" push origin <branch>' in done
+    assert "- Otherwise: `git -C \"<repo>\" push origin <branch>`" not in done
+    assert ('python "<repo>/ops/fleet_kit/fleet_suite_gate.py" run '
             '--owner <id> -- ') in done
+    assert "**PATHS (MAIN 2246 ORDER section 3).**" in done
+    assert "Riot Commander" not in done
 
 
 def test_ci_watchdog_push_runs_inside_the_git_lock(monkeypatch, tmp_path):

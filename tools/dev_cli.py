@@ -11,7 +11,7 @@ Or via wrapper:
 Subcommands:
     status          Print environment diagnostics (read-only)
     start           Launch via start.bat (the supported project entrypoint)
-    start-clean     Launch via restart_clean.bat (clears __pycache__, kills old proc)
+    start-clean     Launch via scripts/restart_clean.bat (clears __pycache__, kills old proc)
     preflight       Run lint + syntax checks
     smoke           Run Phase 2 smoke test harness
     perf            Run Phase 2 performance probe
@@ -27,7 +27,7 @@ Design rules:
   - Allowlisted subcommands only -- no arbitrary shell passthrough.
   - Each subcommand delegates to the established scripts/tools.
   - start delegates to start.bat (API key loading + pythonw main.py).
-  - start-clean delegates to restart_clean.bat (kills pythonw, clears cache, relaunches).
+  - start-clean delegates to scripts/restart_clean.bat (kills pythonw, clears cache, relaunches).
   - Missing required tools produce a clear error, not silent fallback.
   - Destructive commands (rollback-last) require --yes flag or interactive prompt.
   - No live Riot API, no Anthropic API, no Tk, no internet required for
@@ -153,7 +153,8 @@ def cmd_status() -> int:
     print("\n[Launch Targets]")
     launch_targets = [
         ("start",       "start.bat",         "start.bat -> pythonw main.py"),
-        ("start-clean", "restart_clean.bat",  "restart_clean.bat -> kills pythonw, clears cache, relaunches"),
+        ("start-clean", "scripts/restart_clean.bat",
+         "scripts/restart_clean.bat -> kills pythonw, clears cache, relaunches"),
     ]
     for cmd_name, rel_path, description in launch_targets:
         p = _PROJECT_ROOT / rel_path
@@ -163,7 +164,7 @@ def cmd_status() -> int:
             _miss(f"{cmd_name}: {rel_path}  -- MISSING")
 
     # GUI launcher Python (pythonw.exe) - separate from tooling Python
-    # start.bat and restart_clean.bat call pythonw.exe directly.
+    # start.bat and scripts/restart_clean.bat call pythonw.exe directly.
     # This is NOT the same as the tooling Python (_PYTHON above).
     print("\n[Launch Python / GUI Launcher]")
     _info(f"Tooling Python (dev_cli wrappers): {_PYTHON}")
@@ -171,7 +172,7 @@ def cmd_status() -> int:
     if pythonw:
         _ok(f"pythonw.exe (GUI launcher): {pythonw}")
     else:
-        _miss("pythonw.exe NOT found in PATH -- start.bat and restart_clean.bat will fail")
+        _miss("pythonw.exe NOT found in PATH -- start.bat and scripts/restart_clean.bat will fail")
 
     # Key config files
     print("\n[Config Files]")
@@ -230,12 +231,12 @@ def cmd_start() -> int:
 
 
 def cmd_start_clean() -> int:
-    """Launch via restart_clean.bat -- the supported clean-start path.
-    restart_clean.bat kills existing pythonw processes, clears __pycache__,
+    """Launch via scripts/restart_clean.bat -- the supported clean-start path.
+    It kills existing pythonw processes, clears __pycache__,
     then relaunches pythonw.exe main.py. Delegates entirely to the
     established script; dev_cli does not manually wipe any directories.
     """
-    clean_bat = _require_tool("restart_clean.bat")
+    clean_bat = _require_tool("scripts/restart_clean.bat")
     print(f"Running clean start: {clean_bat}")
     r = _run(["cmd", "/c", str(clean_bat)])
     return r.returncode
@@ -326,7 +327,7 @@ Usage: python tools/dev_cli.py <subcommand> [options]
 Subcommands:
   status           Print environment diagnostics (read-only)
   start            Launch via start.bat (API key load + pythonw main.py)
-  start-clean      Launch via restart_clean.bat (kill old, clear cache, relaunch)
+  start-clean      Launch via scripts/restart_clean.bat (kill old, clear cache, relaunch)
   preflight        Run lint + syntax checks (tools/preflight.cmd)
   smoke            Run Phase 2 smoke test harness
   perf [args]      Run Phase 2 performance probe (passes extra args through)

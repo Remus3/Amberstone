@@ -244,7 +244,7 @@ type "%LOG_FILE%"
 echo.
 echo  HOW TO LAUNCH:
 echo    start.bat          Run normally ^(no console^)
-echo    start_debug.bat    Run with console + verbose log
+echo    scripts\start_debug.bat    Run with console + verbose log
 echo.
 echo  WHAT WAS INSTALLED:
 echo    Python %PY_VER%

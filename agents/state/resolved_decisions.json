@@ -54,7 +54,7 @@
       "id": "phase3-d007",
       "title": "Restart workflow - restart_trigger.txt, never Stop-Process",
       "decided_at": "2026-04-22",
-      "summary": "RC restart via 'echo restart > restart_trigger.txt' (supervisor clears + restarts within ~5s). NEVER Stop-Process the supervisor or RC PID - hangs MCP pipe. Hard fallback: taskkill /F /PID <pid> then restart.bat. Verify via ops/runtime/health.json showing new pid, alive=true, last_reload_ok=true. The RC-Supervisor scheduled task can also be triggered via schtasks /Run /TN RC-Supervisor when restart_trigger is unavailable.",
+      "summary": "RC restart via 'echo restart > restart_trigger.txt' (supervisor clears + restarts within ~5s). NEVER Stop-Process the supervisor or RC PID - hangs MCP pipe. Hard fallback: taskkill /F /PID <pid> then scripts/restart.bat. Verify via ops/runtime/health.json showing new pid, alive=true, last_reload_ok=true. The RC-Supervisor scheduled task can also be triggered via schtasks /Run /TN RC-Supervisor when restart_trigger is unavailable.",
       "source": "CLAUDE.md / Restart workflow + Hard rules",
       "authority": "operator"
     },

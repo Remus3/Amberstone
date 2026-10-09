@@ -1,6 +1,6 @@
 """RM-86 L1 prerequisite - expose ``kit_conversion_strength`` on the CARRY route.
 
-PART 7 of docs/OPEN_ITEMS_REVIEW_2026-07-25.md measured the cross-cutting blocker:
+PART 7 of docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md measured the cross-cutting blocker:
 ``agents/daemon_slayer/server.py`` carried ZERO ``kit_conversion`` /
 ``conversion_strength`` references, so the RM-86 L1 lever was Python-API-only.
 ``tools/daemon_slayer_build_orders_generate.py`` drives the shipped build tables

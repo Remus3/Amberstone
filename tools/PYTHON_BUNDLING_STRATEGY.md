@@ -126,7 +126,7 @@ Option B (embeddable Python) provides:
 
   1. Python version pinned: 3.11.9 (CPython embeddable amd64)
   2. python-embed/ added to project root (not source-controlled; built at staging time)
-  3. start.bat and restart_clean.bat updated to use %~dp0python-embed\pythonw.exe
+  3. start.bat and scripts\restart_clean.bat updated to use %~dp0python-embed\pythonw.exe
      with fallback to PATH pythonw.exe (Option A compatibility)
   4. .cmd wrappers retain py/python fallback; dev workflow unchanged
   5. pip bootstrapped via get-pip.py; anthropic + Pillow installed in embed Lib/site-packages/

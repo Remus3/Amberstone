@@ -63,7 +63,7 @@ Session 105 K14 (2026-10-09, executor sub-agent) shipped - do NOT redo (LEDGER 1
   poll-worker error text (root cause of 4 NEW suite failures: live heartbeat WinError 5 put the repo
   path in health.json; tests read the live file - now stubbed). Gated suite run 3: 38832 passed /
   9 failed (baseline) / 100 skipped / 1 deselected. Pushed f19d63c1b..b5dea9265 (read back).
-  ANSWER 2026-10-09-1314 sha256 7a07192f reached 1/1 (copy docs/_outbound_2026-10-09-1314-*).
+  ANSWER 2026-10-09-1314 sha256 7a07192f reached 1/1 (copy docs/_archive/2026-10/_outbound_2026-10-09-1314-*).
 
 New carry items (session 105 K14):
 - Survey (fleet_identity check --history --by-class): main 6006 commits, 0 flagged, exit 0; 74 local
@@ -90,13 +90,13 @@ Session 105 (2026-10-08, attended, executor sub-agent) shipped - do NOT redo (LE
   docs fc3b748e5; claims hooks in the gitignored project settings (deny, kit default; LIVE at once);
   tests/conftest.py installs fleet_test_guard (tests/_fleet_guard_config.py); RACE GUARDS block in all
   23 commands + 4 loop prompts; /done commits/pushes via fleet_gitlock and gates whole suites.
-  ANSWER 2026-10-08-2313 reached 1/1 (copy docs/_outbound_2026-10-08-2313-*); ORDER row closed.
+  ANSWER 2026-10-08-2313 reached 1/1 (copy docs/_archive/2026-10/_outbound_2026-10-08-2313-*); ORDER row closed.
   RC's v9/v10/v11 ANSWERs re-hashed in MAIN's inbox 4/4 - nothing else owed.
 - K13 MAIN 2246 ORDER section 1 kit v13 (arrived 22:51 mid-run): provenance 24/24; fd65b8002; identity
   hooks in .githooks (commit-msg strip, pre-push FIRST); LOCAL git config fleet.operatorIdent set (2
   values; a fresh clone must set it before any push or every push is refused). Pushed
   c042f2106..d54e41968 and d54e41968..fd65b8002 (remote head read back). Section-1 ANSWER
-  2026-10-09-0001 reached 1/1 (copy docs/_outbound_2026-10-09-0001-*; PARTIAL, says 2-8 follow in ONE
+  2026-10-09-0001 reached 1/1 (copy docs/_archive/2026-10/_outbound_2026-10-09-0001-*; PARTIAL, says 2-8 follow in ONE
   later ANSWER).
 - Roster: RC's gitignored ops/moon_sync_repos.json EW root was dead (old system-drive path, no
   junction); repointed to the data-drive root holding moon_sync_inbox, old value under _previous_EW.
@@ -147,7 +147,7 @@ Session 104 (2026-10-08) shipped - do NOT redo (LEDGER 1687-1693):
 - K11 MAIN 1840 ORDER fleet kit v11 adopted: provenance 18/18; b0ed89184 f0b6a1578 3b2f383fe (LEDGER
   1689); hook anchored in the gitignored project .claude/settings.json as
   `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_subagent_first.py" || true`; triage non-bare via
-  triage_spawn_kwargs(True); ANSWER 2026-10-08-1902 reached 1/1 (copy docs/_outbound_2026-10-08-1902-*);
+  triage_spawn_kwargs(True); ANSWER 2026-10-08-1902 reached 1/1 (copy docs/_archive/2026-10/_outbound_2026-10-08-1902-*);
   ORDER row closed, --pending empty (re-read at wrap: empty).
 - RM-688 sibling sweep writes a run record every run to gitignored ops/runtime/sibling_sweep_runs.jsonl
   (3982721c2 436feb160, LEDGER 1690). A pushed range with no record = a skipped gate.
@@ -219,8 +219,8 @@ Carried from session 103 (not acted on yet):
 - c1/* origin branches stay (c1/deps-pip-anthropic1-measure holds 6c4cca1d7 for RM-681).
 
 Carried forward (not acted on yet):
-- RM-new: 159 tracked HARDCODED C: literals (inventory docs/_outbound_2026-10-07-2207-*.md
-  section 2) still say C:\Riot Commander - they work through the junction; convert to derived
+- RM-new: 159 tracked HARDCODED C: literals (inventory docs/_archive/2026-10/_outbound_2026-10-07-2207-*.md
+  section 2) still name the old-drive checkout path - they work through the junction; convert to derived
   (repo-root relative) in a TDD slice, never in frozen files without operator approval. Until
   then the junction must stay. Note /done's own text (tools/done.md) still names C: paths.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
@@ -275,7 +275,7 @@ Carried forward (not acted on yet):
   RM-229), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work;
   hand-off says squashed into 5c2cadb4e - unverified). Second-pass candidates (only commits whose
   subjects are on main): lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08,
-  -y11-y13, drain-wave2-atomic. Stray file C:\rc-worktrees\before_sweep_s2.txt.
+  -y11-y13, drain-wave2-atomic. Stray file <worktree-base>\before_sweep_s2.txt.
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).

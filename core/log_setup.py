@@ -177,7 +177,9 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
         root.addHandler(h)
 
     # -- Suppress noisy third-party loggers -----------------------------------
-    for noisy in ("httpcore", "httpx", "urllib3", "anthropic._base_client"):
+    # anthropic 1.11 renamed its transport loggers to httpx2 / httpcore2.
+    for noisy in ("httpcore", "httpx", "httpcore2", "httpx2", "urllib3",
+                  "anthropic._base_client"):
         logging.getLogger(noisy).setLevel(
             logging.DEBUG if debug else logging.WARNING
         )

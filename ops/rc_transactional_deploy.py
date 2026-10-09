@@ -10,8 +10,8 @@ untrusted input in the tree.
 TRUST BOUNDARY (audited 2026-08-05, lane 8 cycle 7)
 ---------------------------------------------------
 No in-repo module writes `deploy_requests/` today - the directory is only
-created (`bootstrap_riot_commander_dev.ps1:102`,
-`ops/rc_league_watcher.ps1:79`). The producer is therefore out-of-band by
+created (`scripts/bootstrap_dev.ps1:105`,
+`ops/rc_league_watcher.ps1:88`). The producer is therefore out-of-band by
 construction, so every path in the request is treated as hostile here:
 
   * `files[].live`   is contained under `project_root`

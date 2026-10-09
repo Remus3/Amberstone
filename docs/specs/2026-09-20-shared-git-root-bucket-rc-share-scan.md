@@ -103,7 +103,7 @@ is never sufficient.
   `ledger_check.py`, `mut3.py`).
 
 This is not hypothetical. RC's own earlier measurement of this same bucket,
-`docs/_scratch_gitbucket_D.md` (2026-09-12), positively attributed **18 files**
+`docs/_archive/2026-09/_scratch_gitbucket_D.md` (2026-09-12), positively attributed **18 files**
 using Family B. This pass, using Family A, independently attributed **18 files**
 as well. **The two eighteens are DIFFERENT SETS overlapping in only 6 files.**
 Two RC passes, the same number, a union of 29. A count agreeing with a prior
@@ -483,7 +483,7 @@ change to it is a separate, operator-gated item.
 
 Three prior sweeps counted this directory - one at 347 files, one at 527, one
 at 540 - and **none read a file.** RC's own 2026-09-12 pass
-(`docs/_scratch_gitbucket_D.md`) was one of them: it measured size and
+(`docs/_archive/2026-09/_scratch_gitbucket_D.md`) was one of them: it measured size and
 attribution across four parts and a proposed-answers section, and a grep of it
 for `secret|credential|api.?key|PII|password|email` returns **empty**. CS's
 transferable lesson lands on RC too, and is recorded here rather than softened:
@@ -605,7 +605,7 @@ scratch.
 in the style of `tests/test_aram_item_interaction_snapshot_tracked.py:98-118`.
 
 **D8. RC's own prior bucket pass measured without reading. SEVERITY: PROCESS.**
-*Fix:* recorded here; `docs/_scratch_gitbucket_D.md` should carry a pointer to
+*Fix:* recorded here; `docs/_archive/2026-09/_scratch_gitbucket_D.md` should carry a pointer to
 this document so the size-only verdict is not read as a clean bill.
 
 **D9. Attribution by a single marker family is unsafe, MEASURED.** Two RC passes

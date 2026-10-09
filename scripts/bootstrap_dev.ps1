@@ -1,5 +1,8 @@
+# scripts\bootstrap_dev.ps1 - fresh-machine dev bootstrap (renamed from the
+# repo-root bootstrap script 2026-10-09, MAIN 2246 sec 3). Default -Root is the
+# repo root: this file's parent folder.
 param(
-    [string]$Root = $PSScriptRoot
+    [string]$Root = (Split-Path -Parent $PSScriptRoot)
 )
 
 $ErrorActionPreference = "Stop"

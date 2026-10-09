@@ -18,7 +18,8 @@ kit-v14 ORDER section 4 (ruling 2026-10-09), both relayed operator authority:
 Offenders this guard was written against (2026-10-09, all fixed in the same
 slice): tools/ci_watchdog.py (`pr_merge` step), the patch-day-ddragon-sync and
 docs-guards workflows (bot identity + push to main, `contents: write`), and
-bootstrap_riot_commander_dev.ps1 (placeholder global identity).
+the dev bootstrap script, now scripts/bootstrap_dev.ps1 (placeholder global
+identity).
 
 Spelling rule for authors: a prohibition in a CODE comment must not spell the
 literal invocation (write "a GitHub-side PR merge", not the gh command), or this
@@ -133,7 +134,7 @@ def test_the_code_universe_is_not_vacuous():
     for anchor in ("tools/ci_watchdog.py", ".github/workflows/ci.yml",
                    ".github/workflows/patch-day-ddragon-sync.yml",
                    ".github/workflows/docs-guards.yml",
-                   "bootstrap_riot_commander_dev.ps1"):
+                   "scripts/bootstrap_dev.ps1"):
         assert anchor in rels, f"{anchor} missing from the scanned universe"
     for det in _DETECTORS:
         assert (REPO_ROOT / det).is_file(), f"stale detector entry {det}"

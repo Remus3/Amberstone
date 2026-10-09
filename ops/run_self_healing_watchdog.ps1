@@ -25,15 +25,22 @@ if (-not (Test-Path $ConfigPath)) {
 }
 
 $config = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
-$projectRoot = $config.project_root
+
+# Path values are repo-relative (MAIN 2246 sec 3); resolve them against the
+# checkout root derived from this script's location, never the process CWD.
+# An absolute value is a per-host override.
+$repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+function Resolve-RcPath([string]$Value, [string]$Base, [string]$Default) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return [IO.Path]::GetFullPath($Default) }
+    if ([IO.Path]::IsPathRooted($Value)) { return [IO.Path]::GetFullPath($Value) }
+    return [IO.Path]::GetFullPath((Join-Path $Base $Value))
+}
+$projectRoot = Resolve-RcPath $config.project_root $repoRoot $repoRoot
 
 # Always use pythonw.exe for hidden background processes
 $pythonExe = "pythonw.exe"
 
-$runtimeDir = $config.runtime_dir
-if ([string]::IsNullOrWhiteSpace($runtimeDir)) {
-    $runtimeDir = Join-Path $projectRoot "ops\runtime"
-}
+$runtimeDir = Resolve-RcPath $config.runtime_dir $projectRoot (Join-Path $projectRoot "ops\runtime")
 $logDir = Join-Path $runtimeDir "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 

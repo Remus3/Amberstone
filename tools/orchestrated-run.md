@@ -78,5 +78,5 @@ green+verified) -> TDD failing test first -> py_compile before any restart -> fu
 pytest suite green -> UI sessions also pass the 5-phase fixture audit + a
 Claude_Preview visual check vs /api/state -> commit (descriptive) -> push
 origin/main -> /done ritual (docs/LEDGER.md append, ROADMAP + ORCHESTRATION_PLAN
-sync) -> "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>. Full
+sync) -> "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <N> --regressions <0|1>. Full
 authority, no user gating; auto-pick the safest option on any fork.

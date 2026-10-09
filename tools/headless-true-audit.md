@@ -25,8 +25,8 @@ You are lane 8 of RC Mission Control, running detached with no operator present.
 every weakness found, security, machine environment." **And the fence at `:100-101`:** "Lanes 7 and 8 carry the highest blast radius. Both should ship LAST and
 both should run against a worktree first."
 
-cwd is the lane worktree `C:\rc-worktrees\rc-lane-true-audit` on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:136-137` carries
-`LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated", "queue")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = C:\rc-worktrees` (overridable via
+cwd is the lane worktree `<worktree-base>\rc-lane-true-audit` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:136-137` carries
+`LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated", "queue")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = <worktree-base>` (overridable via
 `RC_LANE_WORKTREE_BASE`), `:145` `worktree_path` builds `rc-lane-<lane>`, `:149` `branch_name` builds `lane/<lane>`; `ops/loop/lanes.py:317` `_require_worktree`
 raises on an absent one.
 
@@ -36,12 +36,12 @@ every authored byte: no em-dashes, no en-dashes, no smart quotes; ` - ` for a cl
 
 ### 1. Pre-flight
 
-**1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `C:/rc-worktrees/rc-lane-true-audit` and `git branch
---show-current` must print `lane/true-audit`. If the toplevel is `C:/Riot Commander`, STOP and report; do not edit. A live interactive session may own the main
+**1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `<worktree-base>/rc-lane-true-audit` and `git branch
+--show-current` must print `lane/true-audit`. If the toplevel is `<repo>`, STOP and report; do not edit. A live interactive session may own the main
 tree, and two writers in one working directory is the unrecoverable index-corruption class (`ops/loop/lane_launcher.py:9-17`) - worst of all for a lane that
 rewrites whole files.
 
-**1b. Do NOT run `scripts/install_hooks.py` from here.** `git config core.hooksPath` resolves to the ABSOLUTE `C:\Riot Commander\.githooks` (measured) and
+**1b. Do NOT run `scripts/install_hooks.py` from here.** `git config core.hooksPath` resolves to the ABSOLUTE `<repo>\.githooks` (measured) and
 worktrees share `.git/config`. Hooks DO fire here, but they execute the MAIN TREE's hook bodies, so a hook change on `lane/true-audit` is inert until merged -
 and the installer rewrites that shared config (`scripts/install_hooks.py:47`), reaching the main tree too. The git hooks are the AUTHORITATIVE gate and
 `tools/precommit_gate.py` is the banned-glyph + net-new-ruff backstop; never treat a hook's PRESENCE as proof it fires.
@@ -49,7 +49,7 @@ and the installer rewrites that shared config (`scripts/install_hooks.py:47`), r
 **1c. RECALL FIRST - mandatory before touching any file.**
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the file and the weakness in your own words>"
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the file and the weakness in your own words>"
 ```
 
 If a `settled` or `ledger` hit says the work is CLOSED, REFUTED or already shipped, STOP and report that instead of building - the finding IS the deliverable.
@@ -125,7 +125,7 @@ Measure with `inspect.signature` and real calls; never inherit a docstring.
   resolve the candidate, assert `abs_path.relative_to(web_root)`. Its own comment records that a prefix check plus a `".."` filter was deliberately REPLACED by
   that, because both are bypassable. Copy the pattern; do not invent a new one.
 - **Injection.** Shell strings built by concatenation, SQL built by f-string, HTML written into the DOM from a payload field. Parameterize, quote, escape.
-- **Secret handling - the hard one.** `C:\Riot Commander\API-Key-Claude.txt` is gitignored and its contents must NEVER reach a log line, an exception message,
+- **Secret handling - the hard one.** `<repo>\API-Key-Claude.txt` is gitignored and its contents must NEVER reach a log line, an exception message,
   an error string, a dashboard panel, a test fixture, a commit, or a subagent prompt. Measured readers: `main.py`, `ops/rc_supervisor.py`,
   `ops/rc_transactional_deploy.py`, `coaches/_base_coach.py`, `coaches/tft_coach.py`, `coaches/tft_pbe_coach.py`, `dashboard/routes_coach.py`,
   `app/_game_lifecycle.py`, `agents/agent7_context/warm_session.py`, `performance_tracker.py`, `tft/tft_coach_engine.py`. Trace every path the value can take
@@ -295,7 +295,7 @@ Each is a rule because each passes the check you would naturally reach for.
    **`Path.write_text` rewrites LF as CRLF on Windows** and corrupts byte counts (4e); write bytes when a count or digest matters.
 6. **Always `py_compile` before any restart** - syntax errors crash SILENTLY under `pythonw.exe`, which has no console to print the traceback into. **Restart
    via `restart_trigger.txt`** (any content; the supervisor clears it and restarts within about 5s), then VERIFY `ops/runtime/health.json` shows a NEW `pid`
-   with `alive=true` and `last_reload_ok=true`. Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`. Editing `web/{js,css}/panels/*` needs no RC restart
+   with `alive=true` and `last_reload_ok=true`. Hard fallback: `taskkill /F /PID <pid>` then `scripts\restart.bat`. Editing `web/{js,css}/panels/*` needs no RC restart
    at all - `compute_asset_hash` auto-reloads it (ADR-008).
 7. **ASCII ONLY in every authored byte** - no em-dashes, no en-dashes, no smart quotes (U+2013, U+2014, U+2018, U+2019, U+201C, U+201D); ` - ` for a clause
    break. The mechanical reason is real: PowerShell 5.1 `ParseFile` ANSI-decodes a no-BOM `.ps1`, turning a UTF-8 em-dash inside a double-quoted string into a
@@ -353,7 +353,7 @@ Every audited file gets a durable record, or the next run re-audits it.
 - Do NOT trust `node --check` on `web/js`, a source grep for a CSS token, a `Last Result: 0` from schtasks, or a subagent's test counts.
 - Do NOT `Stop-Process`, do NOT `DETACHED_PROCESS`, do NOT skip `py_compile` before a restart.
 - Do NOT vendor external source; re-implement from behaviour after naming the license.
-- Do NOT run `scripts/install_hooks.py` from the worktree, and do NOT write into `C:\Riot Commander`.
+- Do NOT run `scripts/install_hooks.py` from the worktree, and do NOT write into `<repo>`.
 - Do NOT append to `CLAUDE.md`; the ledger lives in `docs/LEDGER.md`.
 - Do NOT block on `AskUserQuestion` - the operator is away. Pick the reasonable default, log it, proceed.
 
@@ -361,7 +361,7 @@ Every audited file gets a durable record, or the next run re-audits it.
 
 ```
 HEADLESS-TRUE-AUDIT WRAP
-  worktree: C:/rc-worktrees/rc-lane-true-audit (lane/true-audit)
+  worktree: <worktree-base>/rc-lane-true-audit (lane/true-audit)
   HEAD: <short-sha> (<N> commits this run)
   files audited: <N> (<list>)
   dimensions: <N> CLEAN / <N> HARDENED / <N> N-A across <N> files

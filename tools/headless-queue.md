@@ -27,14 +27,14 @@ Full authority, no mid-run gating: make the reasonable default, log it, proceed.
 
 ### 1. Pre-flight
 
-**1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `C:/rc-worktrees/rc-lane-queue` and `git branch --show-current` must print `lane/queue`. **If the toplevel is `C:/Riot Commander`, STOP and report; do not edit.** The convention is code, not lore: `ops/loop/lanes.py:136-137` carries `LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated", "queue")` and `:372` raises `ValueError` on any lane outside it; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = C:\rc-worktrees` (overridable via `RC_LANE_WORKTREE_BASE`), `:145-146` `worktree_path` builds `rc-lane-<lane>`, `:122` `BRANCH_PREFIX = "lane"` and `:149-150` `branch_name` builds `lane/<lane>`. `ops/loop/lanes.py:317` `_require_worktree` refuses a worktree that resolves to the repo root, and `ops/loop/lane_launcher.py:9-17` records why: two writers in one working directory is the concurrent-index corruption class and it is not recoverable by retrying. A live interactive session may own the main tree at any moment.
+**1a. Confirm the worktree, not the main tree.** `git rev-parse --show-toplevel` must print `<worktree-base>/rc-lane-queue` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) and `git branch --show-current` must print `lane/queue`. **If the toplevel is `<repo>`, STOP and report; do not edit.** The convention is code, not lore: `ops/loop/lanes.py:136-137` carries `LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated", "queue")` and `:372` raises `ValueError` on any lane outside it; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = <worktree-base>` (overridable via `RC_LANE_WORKTREE_BASE`), `:145-146` `worktree_path` builds `rc-lane-<lane>`, `:122` `BRANCH_PREFIX = "lane"` and `:149-150` `branch_name` builds `lane/<lane>`. `ops/loop/lanes.py:317` `_require_worktree` refuses a worktree that resolves to the repo root, and `ops/loop/lane_launcher.py:9-17` records why: two writers in one working directory is the concurrent-index corruption class and it is not recoverable by retrying. A live interactive session may own the main tree at any moment.
 
 **1b. Do NOT run `scripts/install_hooks.py` from here.** Worktrees share `.git/config`, and that installer rewrites `core.hooksPath` for every tree at once (`scripts/install_hooks.py:46-49`). Hooks DO fire in a worktree, but they execute the MAIN TREE's hook bodies, so a hook change on `lane/queue` is inert until merged. The git hooks are the AUTHORITATIVE gate and `tools/precommit_gate.py` is the banned-glyph plus net-new-ruff backstop; never treat a hook's PRESENCE as proof it fires.
 
 **1c. RECALL FIRST - mandatory, before touching any file, every cycle.**
 
 ```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the row in your own words>"
+"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/perseus_recall.py "<the row in your own words>"
 ```
 
 If a `settled` or `ledger` hit says the row is CLOSED, REFUTED or already shipped, **the finding IS the deliverable**: do not build. Record it in `docs/LEDGER.md`, strike the row where it is filed, and exit the cycle SUCCESSFULLY - a recall-closed row is a completed cycle, not a skipped one. Always the tool, never the raw `perseus_vault_recall` MCP call (measured 53497 chars against 893 for the projection, same answer). This gate exists because the standing failure is REDISCOVERY, and a drain lane pointed at a filed backlog is the single most likely place to redo closed work.
@@ -107,7 +107,7 @@ This is the INITIAL order. Take the first row that is still open and not gated.
 
 Bodies for rows 1 through 14 are in `docs/_research_refill_2026-09-05.md` (headers at `:213`, `:248`, `:276`, `:306`, `:332`, `:363`, `:396`, `:435`, `:464`, `:494`, `:526`, `:555`, `:590`, `:718`), pointed at by `ROADMAP.md:54`. Bodies for rows 15 through 18 are in `ROADMAP.md` / `BACKLOG.md` at the lines above. RM-361 and RM-362 are deliberately absent - both SHIPPED (LEDGER 1335 and 1336). **RM-366 is absent and stays absent: see 4c.**
 
-**Row 18 (RM-343) is directly relevant to THIS lane, because this lane runs in a worktree.** It is the inherited red behind section 12 trap 6: `tests/test_text_line_endings.py::test_no_normalized_tracked_file_has_crlf_on_disk` fails in `C:/rc-worktrees/rc-lane-queue` on a large set of files that no lane authored (measured at 1884 before the generated DS review mirror was removed from the repo, so re-measure rather than quoting that figure), worst-first the `data/daemon_slayer/{16.13.1,16.14.1,16.15.1,16.10.1}/scenarios.json` set (`data/daemon_slayer/16.15.1/scenarios.json` holds 114231 CRLF pairs in a worktree and 0 in the main tree). Its acceptance is to explain why `git worktree add` produces CRLF where the main-tree checkout does not - comparing the effective `core.autocrlf` / `core.eol` and the `.gitattributes` in force when each tree was materialized, noting `.git/config` is SHARED so a per-worktree override is not available and no fix may mutate the main tree's setting - then prove a FRESH `git worktree add` passes that single test with zero files reported. **Do NOT close it by re-materializing those paths inside a feature branch**, which cycle 48 deliberately declined; that is a lane-7 commit wearing a lane-10 hat and it would bury the row.
+**Row 18 (RM-343) is directly relevant to THIS lane, because this lane runs in a worktree.** It is the inherited red behind section 12 trap 6: `tests/test_text_line_endings.py::test_no_normalized_tracked_file_has_crlf_on_disk` fails in `<worktree-base>/rc-lane-queue` on a large set of files that no lane authored (measured at 1884 before the generated DS review mirror was removed from the repo, so re-measure rather than quoting that figure), worst-first the `data/daemon_slayer/{16.13.1,16.14.1,16.15.1,16.10.1}/scenarios.json` set (`data/daemon_slayer/16.15.1/scenarios.json` holds 114231 CRLF pairs in a worktree and 0 in the main tree). Its acceptance is to explain why `git worktree add` produces CRLF where the main-tree checkout does not - comparing the effective `core.autocrlf` / `core.eol` and the `.gitattributes` in force when each tree was materialized, noting `.git/config` is SHARED so a per-worktree override is not available and no fix may mutate the main tree's setting - then prove a FRESH `git worktree add` passes that single test with zero files reported. **Do NOT close it by re-materializing those paths inside a feature branch**, which cycle 48 deliberately declined; that is a lane-7 commit wearing a lane-10 hat and it would bury the row.
 
 **THE TABLE ABOVE IS THE AUTHORITATIVE QUEUE WHILE IT LASTS. Do not re-derive over it, and never treat an `OPEN` grep as the census of what is left.** Fourteen of these eighteen rows carry NO `OPEN` marker anywhere in the tree: `grep -ohE "RM-[0-9]{2,3} OPEN" ROADMAP.md BACKLOG.md` matches 92 distinct ids and NOT ONE of RM-348..RM-360 or RM-363, whose only ROADMAP presence is the collapsed FILED pointer at `ROADMAP.md:54` and whose bodies live in `docs/_research_refill_2026-09-05.md`. A driver that re-derived at cycle 1 would therefore silently drop rows 1 through 14 and call the queue drained with fourteen rows unshipped. Measured 2026-09-05 by the adversarial gate that reviewed this doc, which is why the rule is written down rather than assumed.
 
@@ -200,7 +200,7 @@ The loop must not accumulate unshipped rows, so a cycle ends on `main` whenever 
 
 **Why straight to `main`:** `.github/workflows/ci.yml:8-9` fires on push to `main` only, plus pull requests to `main` (`:26-27`) and the nightly schedule (`:30-31`). **Lane branches get no CI at all**, so a row parked on `lane/queue` is a row whose acceptance was never independently checked.
 
-**NEVER write into the main working tree `C:\Riot Commander`.** Pushing a ref is not touching that tree - the push goes to the remote, and the main tree updates only when a human or the supervisor pulls. The single exception is the drain sentinel in section 11, which is a gitignored control-plane file.
+**NEVER write into the main working tree `<repo>`.** Pushing a ref is not touching that tree - the push goes to the remote, and the main tree updates only when a human or the supervisor pulls. The single exception is the drain sentinel in section 11, which is a gitignored control-plane file.
 
 ### 9. CI acceptance
 
@@ -247,15 +247,15 @@ gh run view <id> --json jobs
 **The drain sentinel.** If NO open, non-gated row remains after applying the section 3 selection rule, write:
 
 ```
-C:\Riot Commander\ops\loop\control\lanes\QUEUE_DRAINED
+<repo>\ops\loop\control\lanes\QUEUE_DRAINED
 ```
 
 one line, the ISO timestamp and the reason, then exit. **This is the ONLY write into the main tree this lane may ever make.** It is legal because `ops/loop/control/` is gitignored (`.gitignore:284`, confirmed by `git check-ignore`) and is the loop's control plane, not source. It is what stops the driver.
 
 **Stop files, checked at CYCLE START, before picking a row.** If either exists, wrap immediately without starting a row:
 
-- `C:\Riot Commander\ops\loop\control\STOP` - the shared loop stop, already honoured across `ops/loop/loop_controller.py:828`, `:842`, `:1086` and `ops/loop/claude_stub.py:76`.
-- `C:\Riot Commander\ops\loop\control\lanes\QUEUE_STOP` - this lane's own.
+- `<repo>\ops\loop\control\STOP` - the shared loop stop, already honoured across `ops/loop/loop_controller.py:828`, `:842`, `:1086` and `ops/loop/claude_stub.py:76`.
+- `<repo>\ops\loop\control\lanes\QUEUE_STOP` - this lane's own.
 
 An operator message mid-cycle is an interrupt: finish the in-flight row, never abandon a half-applied fix, then wrap.
 
@@ -289,7 +289,7 @@ An operator message mid-cycle is an interrupt: finish the in-flight row, never a
 - Do NOT `Stop-Process` (it hangs the MCP pipe; use `taskkill /F /PID <pid>`), do NOT spawn anything with `DETACHED_PROCESS` (real pid, rc 0, ZERO work; use `CREATE_NO_WINDOW` alone), do NOT skip `py_compile` before a restart.
 - Do NOT `git add -A`, do NOT amend, do NOT `push --force`, do NOT use a double-quoted here-string or a piped string for a commit message.
 - Do NOT add a `Co-Authored-By: Claude` trailer, and do NOT file its absence as a defect.
-- Do NOT write into `C:\Riot Commander` except the `QUEUE_DRAINED` sentinel, and do NOT run `scripts/install_hooks.py` from the worktree.
+- Do NOT write into `<repo>` except the `QUEUE_DRAINED` sentinel, and do NOT run `scripts/install_hooks.py` from the worktree.
 - Do NOT append to `CLAUDE.md`; the ledger lives in `docs/LEDGER.md`.
 - Do NOT surface a raw API error string in any user-facing surface, and do NOT let the contents of `API-Key-Claude.txt` reach a log, an exception, a fixture, a subagent prompt or a commit.
 
@@ -297,7 +297,7 @@ An operator message mid-cycle is an interrupt: finish the in-flight row, never a
 
 ```
 HEADLESS-QUEUE CYCLE WRAP
-  worktree: C:/rc-worktrees/rc-lane-queue (lane/queue)
+  worktree: <worktree-base>/rc-lane-queue (lane/queue)
   row: RM-<id> - <one-line title>
   HEAD: <short-sha> pushed to <main | lane/queue> (<reason if not main>)
   tier: <0 | 1 | 2> (<why>)
