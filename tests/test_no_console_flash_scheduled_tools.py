@@ -139,10 +139,15 @@ SCHEDULED_SPAWNERS = (
 # true, because the guard's failure mode is a NEW spawn in an old file, and
 # nothing else would notice: a hook's console flash is invisible in CI and
 # shows up only as a flicker on a desktop.
+#
+# THREE SINCE 2026-10-09. tools/pytest_guard.py left the list when its only
+# spawn - the RC_FULL_SUITE=1 whole-suite branch - was removed (MAIN kit-v13
+# ORDER section 2, PERF-AUDIT item 10). It now spawns nothing, which
+# tests/test_pytest_guard.py pins structurally, so listing it here would only
+# trip the "has no subprocess spawn" assertion below.
 HOOK_SPAWNERS = (
     "tools/rc_facts.py",
     "tools/precommit_gate.py",
-    "tools/pytest_guard.py",
     "tools/edit_lint_check.py",
 )
 
@@ -295,7 +300,7 @@ def test_hook_spawners_import_subprocess_by_name_only(rel: str) -> None:
     # `from subprocess import run` makes every spawn in the file invisible to
     # the guard - which goes GREEN while the module flashes. There is no way to
     # resolve that from the call site alone, so the import form is pinned
-    # instead: these four files spawn under a hook, and a hook's flash is the
+    # instead: these files spawn under a hook, and a hook's flash is the
     # one this repository has actually paid for.
     tree = ast.parse((ROOT / rel).read_text(encoding="utf-8"))
     forms = _subprocess_import_forms(tree)

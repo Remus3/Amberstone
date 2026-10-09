@@ -70,24 +70,23 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > wall clock in four days for zero added signal**, 22.8% of all runner time in
 > the window. The push IS the full suite. Wait for it; never summon a second one.
 >
-> **Do NOT reintroduce a full local dual suite into Phase 1.** It was measured
+> **Do NOT reintroduce a SERIAL local dual suite into Phase 1.** It was measured
 > and it does not have a slow minority to trim: the slowest 40 tests are only
 > **10.7%** of wall clock and the mean is 71ms across 23,250 tests, so the cost
-> is broad, not concentrated. The targeted slice plus the push CI run is the
-> replacement, not a shortcut.
+> is broad, not concentrated. For Tier-0/1 work the targeted slice plus the push
+> CI run is the replacement, not a shortcut. A Tier-2 session's whole suite is
+> the TIER TABLE's ONE gated parallel run (below), by its merger; /done runs it
+> only when no such run already covers the tree being committed.
 
-> **MEASURED 2026-07-26 - pytest-xdist is an 11.4x win and is NOT yet adopted.**
-> `pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile` runs the full
-> dual suite in **144.65s (2m24s) against the serial 1642s (27m22s)**, with
-> **6 failures out of 23,272**. Those six are shared-state artifacts that serial
-> execution was hiding - four fail-soft "never raises on garbage" tests
-> (`test_aram_fight_risk` x3, `test_aram_action_rule`), one rune-registry
-> fail-soft (`test_rune_offense_jack_of_all_trades_r156`), and one genuine
-> asyncio conflict (`preflip_mode/test_body_data_mode_no_flap` -
-> "Runner.run() cannot be called from a running event loop").
-> **Fix those six, then this replaces the CI dispatch as the primary gate** and
-> the whole wrap collapses to a couple of minutes. Until they are fixed, `-n 8`
-> is not trustworthy as a gate. Do NOT adopt it by suppressing the six.
+> **TIER TABLE (MAIN kit-v13 ORDER section 2, PERF-AUDIT items 3-4, 2026-10-09). The ONE tier table: every command doc points here instead of restating a suite policy.** Every suite runs from the REPO ROOT; never `pytest .`.
+> | Tier | Change | What runs | Who |
+> |---|---|---|---|
+> | Tier-0 | cosmetic, docs, comments, strings | `py_compile` only (the PostToolUse hook `tools/pytest_guard.py`, which never runs a suite); no restart | anyone |
+> | Tier-1 | one module / local logic | `py_compile` + ruff on authored files + the touched modules' test FILES named on the command line (naming files needs no gate) | the slice agent |
+> | Tier-2 | schema / engine / scorer / item-effect / `ENGINE_VERSION`, or a merged multi-slice wave | the full dual suite ONCE, on the final merged tree, through the gate (command below), plus the DS `:8860` restart for engine work | the merger only - a slice never runs a whole suite |
+> | Verifier | any done-claim | re-runs ONLY the test files the claim cites, plus `python -m pytest <cited paths> --collect-only -q` for counts; never a whole suite | the read-only `verifier` |
+>
+> Tier-2 command, one gated run over both trees (`<id>` = your claims owner id, RACE GUARDS block; `python` = the canonical interpreter in CLAUDE.md "Paths", which carries pytest-xdist and pytest-timeout): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`. A DS-only or `tests/snapshot_panels/` pre-merge run uses the same gate and flags with that one path. Write the output to a FILE and assert on the summary line AND the exit code: a crashed xdist run leaves no summary, and a FAILED count over it reads 0. Serial whole suites are RETIRED: 27m22s serial against 2m24s at `-n 8` (MAIN measure 2026-10-08), and a serial run held one of the machine's 2 suite slots for ~45 minutes. xdist is not new: CI's `check` job has run `-n auto --dist loadfile` since 2026-07-27, when the six shared-state failures that once made `-n 8` untrustworthy were fixed rather than suppressed (the comment above that step in `.github/workflows/ci.yml` records it).
 
 ### 0. Local check gate - commit only when green
 
@@ -116,8 +115,8 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
   - `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
   - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
-  - Test slice covering the change: **the targeted module**, plus the DS suite `agents/daemon_slayer/tests/` if the engine was touched (that one is genuinely fast; measure its size with `pytest agents/daemon_slayer --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16). Do NOT run the full `tests/` suite here; section 2c dispatches it to CI instead. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
-- **Any WHOLE suite run locally** (here, by a verifier, anywhere in this ritual) goes through the kit's machine-wide suite gate (FLEET-KIT v12, FLEET-COMMON item 16 c): `python "C:/Riot Commander/ops/fleet_kit/fleet_suite_gate.py" run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate. `<id>` is your claims owner id (RACE GUARDS block above); exit 3 = no slot in time or another live agent's uncommitted edit straddles the run - wait, never bypass.
+  - Test slice covering the change, per the TIER TABLE above: **the targeted modules' test files** (Tier-1). For a Tier-2 session (engine touched, schema, ENGINE_VERSION), the TIER TABLE's ONE gated parallel dual-suite run - skip it when the session's merger already ran it on the tree being committed, and never run a whole suite for Tier-0/1 work: the push CI run covers that (section 2c). Measure suite sizes with `pytest <path> --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
+- **Any WHOLE suite run locally** (here or anywhere in this ritual; a verifier never runs one, per the TIER TABLE) goes through the kit's machine-wide suite gate (FLEET-KIT v12, FLEET-COMMON item 16 c): `python "C:/Riot Commander/ops/fleet_kit/fleet_suite_gate.py" run --owner <id> -- <suite cmd>`, where `<suite cmd>` is the TIER TABLE's parallel `-n 8 --dist loadfile` form, never a serial one. A slice that names its test files needs no gate. `<id>` is your claims owner id (RACE GUARDS block above); exit 3 = no slot in time or another live agent's uncommitted edit straddles the run - wait, never bypass.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
 - GREEN: proceed to section 0b, then commit (section 1).
 - RED: fix and re-run. If the failure is pre-existing and unrelated to this session's work, record it in the hand-off file (section 10) and commit only the green-verified authored files - never commit over a regression you introduced.
