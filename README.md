@@ -8,9 +8,9 @@ narrates what that math already decided.
 
 [![CI](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml) [![License: Apache-2.0](https://img.shields.io/github/license/Remus3/Amberstone)](./LICENSE) [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](./.github/workflows/ci.yml) [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](#limitations) [![Codebase atlas](https://img.shields.io/badge/atlas-interactive%20map-orange)](https://remus3.github.io/Amberstone/atlas.html)
 
-It watches the match you are actually in through the Riot Live Client API, does
-the item and damage math locally in a deterministic engine, and turns that into
-short, situation-specific advice on a dashboard and an in-game overlay.
+It watches the match you are actually in through the Riot Live Client API and
+turns it into short, situation-specific advice on a dashboard and an in-game
+overlay.
 
 It is a single-machine personal build: one Windows PC runs the game, the engine,
 the coach and the overlay together, with no hosted version and no installer.
@@ -43,9 +43,9 @@ from the network.
 Most build advice is a popularity contest: an item is recommended because many
 players bought it in many games. This project takes the other route.
 
-- **The math runs first, locally.** A deterministic build calculator scores
-  champion x item x target combinations from real game numbers - damage per
-  second, effective HP, ability burst, healing throughput - and the LLM coaching
+- **The math runs first, locally.** A build calculator scores champion x item x
+  target combinations from real game numbers - damage per second, effective
+  HP, ability burst, healing throughput - and the LLM coaching
   agent reasons *over that output* rather than guessing. An item suggestion
   reflects your actual matchup, not a tier list.
 - **No win-rate scraping for builds.** Item and build recommendations never
@@ -144,7 +144,7 @@ health swings.
 
 | Port | Service |
 |---|---|
-| :8888 | Web dashboard (HTTPS) |
+| :8888 | Web dashboard (HTTPS once a local certificate exists) |
 | :8889 | Vision server |
 | :8890 | Agents supervisor (proxied by the dashboard) |
 | :8891 | Agents WS relay |
@@ -234,7 +234,8 @@ approved Riot product; see the disclaimer at the end of this page.
 
 ## Status
 
-As of 2026-10-03.
+As of 2026-10-09. This is a summary; [`ROADMAP.md`](./ROADMAP.md) is the live
+list of open work.
 
 **Working now.** The full loop runs end to end: the live reader, the build
 engine, the coach, the dashboard and the overlay. The build engine and
@@ -355,7 +356,7 @@ For maintenance and coding agents:
 - [`BACKLOG.md`](./BACKLOG.md) - filed work items, each with acceptance criteria
 - [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion record, newest first
 - [`docs/history_notes.md`](./docs/history_notes.md) - the deep archive
-- [`WAKEUP_NOTES.md`](./WAKEUP_NOTES.md) and [`RC-NEXT-SESSION.txt`](./RC-NEXT-SESSION.txt) - session-to-session continuity, rewritten most nights. `RC-NEXT-SESSION.txt` is the single hand-off file: one file in the repo root, OVERWRITTEN every `/done`, never appended and never dated-suffixed, with a Desktop shortcut pointing at it. The older `NEXT_SESSION_PROMPT.md` was the same idea in a second place and was retired to `docs/_archive/2026-09-07-NEXT_SESSION_PROMPT.md` on 2026-09-20. Useful for watching how the work proceeds, and not written for a first read
+- [`WAKEUP_NOTES.md`](./WAKEUP_NOTES.md) and [`RC-NEXT-SESSION.txt`](./RC-NEXT-SESSION.txt) - session continuity for the maintaining agents
 
 ---
 
