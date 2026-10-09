@@ -61,6 +61,12 @@ converts pre-RM-685 rows. CLI: --pending, --done NOTE [--outcome TEXT],
 --migrate-legacy (none of them runs a tick). An answering session or lane
 closes a row when it answers or finishes an ORDER / FIX / RULING:
   python ops/loop/inbox_tick.py --done <note> --outcome "<answer note + sha>"
+The kit has no lock, so the tick lock is the only serialisation for
+inbox_work.jsonl (RM-689): --done / close() hold the SAME tick lock around
+the pending_work read and the mark_work_done appends, waiting up to
+CLOSE_WAIT_S (polled every LOCK_POLL_S) for a pass that holds it; still held
+-> LockHeld, nothing written, CLI exit 3 (1 stays "no pending row"). --pending
+is read-only and takes no lock; --migrate-legacy takes it and fails fast.
 
 Stdlib only; importable as `ops.loop.inbox_tick` or by file path.
 """
@@ -132,6 +138,11 @@ MAX_TRIAGE_PER_TICK = 1
 # RC's commit floors live in hooks, so --bare would skip them (kit v11 ruling R1).
 FLOORS_IN_HOOKS = True
 LOCK_STALE_S = 900
+# RM-689: close() / --done wait this long for a pass holding the tick lock
+# (a triage spawn can hold it for minutes), polling every LOCK_POLL_S.
+CLOSE_WAIT_S = 30.0
+LOCK_POLL_S = 0.5
+_BOM = b"\xef\xbb\xbf"
 STEP_ID = "I1"
 STEP_TASK = "Read the RC inbox (scan, classify, triage)"
 PROVENANCE_OP = "rc-provenance"
@@ -281,6 +292,24 @@ def _take_lock(root: Path, clock=time.time) -> bool:
 def _drop_lock(root: Path) -> None:
     with contextlib.suppress(OSError):
         (root / LOCK_REL).unlink()
+
+
+class LockHeld(RuntimeError):
+    """The tick lock stayed held by another fire for the whole bounded wait."""
+
+
+def _wait_lock(root: Path, wait_s: float, sleep) -> bool:
+    """_take_lock, retried every LOCK_POLL_S until it succeeds or the summed
+    poll intervals reach wait_s (deterministic under an injected sleep)."""
+    waited, budget = 0.0, max(0.0, float(wait_s))
+    while True:
+        if _take_lock(root):
+            return True
+        if waited >= budget:
+            return False
+        step = min(LOCK_POLL_S, budget - waited)
+        sleep(step)
+        waited += step
 
 
 # ---- default seams ---------------------------------------------------------
@@ -493,16 +522,27 @@ def pending(root) -> list[dict]:
     return out
 
 
-def close(root, note, outcome="done", clock=time.time) -> list[dict]:
+def close(root, note, outcome="done", clock=time.time, *, wait_s=CLOSE_WAIT_S,
+          sleep=time.sleep) -> list[dict]:
     """Close every pending row of `note` (matched by basename) through kit
     mark_work_done. Returns the done docs; [] and nothing written when no
-    pending row matched."""
+    pending row matched (an empty note name returns [] without the lock).
+    RM-689: the pending_work read and the mark_work_done appends run under
+    the SAME tick lock a pass holds (released in a finally), so --done cannot
+    interleave with a scheduled tick's enqueue_work + rc-provenance lines. A
+    held lock is polled every LOCK_POLL_S for up to wait_s; still held ->
+    LockHeld and nothing written. `clock` stamps the done lines only."""
     root = Path(root)
     name = Path(str(note or "")).name
     if not name:
         return []
-    return [fleet_inbox.mark_work_done(root, row, outcome=outcome, clock=clock)
-            for row in fleet_inbox.pending_work(root) if row.get("note") == name]
+    if not _wait_lock(root, wait_s, sleep):
+        raise LockHeld(f"{LOCK_REL.as_posix()} held by another fire for {wait_s} s")
+    try:
+        return [fleet_inbox.mark_work_done(root, row, outcome=outcome, clock=clock)
+                for row in fleet_inbox.pending_work(root) if row.get("note") == name]
+    finally:
+        _drop_lock(root)
 
 
 def _note_sha(inbox: Path, note):
@@ -515,10 +555,21 @@ def _note_sha(inbox: Path, note):
         return None
 
 
-def _legacy_doc(chunk: bytes):
+def _decode_line(chunk: bytes):
+    """The line as text with ONE leading UTF-8 BOM dropped (PowerShell 5.1
+    writes one; RM-689); None when the bytes are not valid UTF-8."""
+    if chunk.startswith(_BOM):
+        chunk = chunk[len(_BOM):]
     try:
-        doc = json.loads(chunk.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+        return chunk.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _legacy_doc(text: str):
+    try:
+        doc = json.loads(text)
+    except ValueError:
         return None
     if isinstance(doc, dict) and "op" not in doc and "state" in doc:
         return doc
@@ -550,13 +601,18 @@ def migrate_legacy(root, *, inbox=None) -> dict:
     line when it carried provenance); any other state -> a kit done line, the
     outcome kept whole plus " [by <by>]". sha256 = the note's bytes in the
     inbox, None when the note is gone. Every other line stays byte-for-byte.
-    Holds the tick lock (held -> {"locked": True, "legacy": 0}, nothing
-    written); backs the original up beside the file, then rewrites it
-    atomically. Idempotent: a second run finds no legacy row."""
+    RM-689: a line led by a UTF-8 BOM converts exactly like the same line
+    without it (the BOM is not carried into the kit lines); a line that is
+    not valid UTF-8 is kept byte-for-byte and its 1-based number listed in
+    "undecodable" (always present, [] when none). Holds the tick lock (held
+    -> {"locked": True, "legacy": 0, "undecodable": []}, nothing written);
+    with no legacy row nothing is written; otherwise backs the original up
+    beside the file, then rewrites it atomically. Idempotent: a second run
+    finds no legacy row."""
     root = Path(root)
     inbox = root / INBOX_DIR if inbox is None else Path(inbox)
     if not _take_lock(root):
-        return {"locked": True, "legacy": 0}
+        return {"locked": True, "legacy": 0, "undecodable": []}
     try:
         return _migrate(root / WORK_REL, inbox)
     finally:
@@ -564,15 +620,21 @@ def migrate_legacy(root, *, inbox=None) -> dict:
 
 
 def _migrate(path: Path, inbox: Path) -> dict:
-    res = {"locked": False, "legacy": 0, "queued": 0, "done": 0, "backup": None}
+    res = {"locked": False, "legacy": 0, "queued": 0, "done": 0, "backup": None,
+           "undecodable": []}
     try:
         raw = path.read_bytes()
     except OSError:
         return res
     shas: dict = {}
     out = []
-    for chunk in raw.splitlines(keepends=True):
-        doc = _legacy_doc(chunk)
+    for lineno, chunk in enumerate(raw.splitlines(keepends=True), 1):
+        text = _decode_line(chunk)
+        if text is None:
+            res["undecodable"].append(lineno)
+            out.append(chunk)
+            continue
+        doc = _legacy_doc(text)
         if doc is None:
             out.append(chunk)
             continue
@@ -664,7 +726,12 @@ def main(argv=None) -> int:
             print(json.dumps(row, sort_keys=True))
         return 0
     if args.done is not None:
-        done = close(root, args.done, outcome=args.outcome)
+        try:
+            done = close(root, args.done, outcome=args.outcome)
+        except LockHeld:
+            print("inbox_tick: pass held by another fire, --done not applied; retry",
+                  file=sys.stderr)
+            return 3
         if not done:
             print(f"inbox_tick: no pending WORK row for {Path(args.done).name}",
                   file=sys.stderr)
@@ -675,6 +742,10 @@ def main(argv=None) -> int:
     if args.migrate_legacy:
         res = migrate_legacy(root)
         print(json.dumps(res, sort_keys=True))
+        bad = res.get("undecodable") or []
+        if bad:
+            print(f"inbox_tick: {len(bad)} undecodable line(s) kept byte-for-byte: "
+                  f"{', '.join(str(n) for n in bad)}", file=sys.stderr)
         return 1 if res.get("locked") else 0
     s = tick(root, dry=args.dry, emit=print)
     if not args.dry:
