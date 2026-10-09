@@ -1,5 +1,14 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-08c - size-budget relocation (session 105, FLEET-KIT v12 adoption), 1 row
+
+`ROADMAP.md` sat at 89.95 percent of its 81920-byte budget, and the session 105 filing
+(RM-692 / RM-693) would have crossed the 90 percent `tools/drift_guard.py` line. The
+shipped Wave1 pointer stub below moves here VERBATIM as it stood at c042f2106; its
+rows and the RM-480 residual list live in the `## 2026-10-04e` block (LEDGER 1694).
+
+- **[x] RM-480 / RM-481 / RM-484 / RM-487 / RM-510 / RM-511 / RM-479 / RM-512 / RM-514 SHIPPED (2026-10-03 .. 2026-10-04 Wave1)** - rows relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-04e` block), with the RM-480 residual list (Qiyana Q form 1, five LeBlanc R blocks, Kennen R cooldown, stale Naafiri R).
+
 ## 2026-10-08b - size-budget relocation pass (session 104 /done), 5 rows
 
 `ROADMAP.md` reached 92 percent of its 81920-byte budget after the session 104
