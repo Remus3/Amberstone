@@ -664,10 +664,45 @@ def _serve_health_all(h) -> None:
             rollup["status"] = "yellow"
         else:
             rollup["status"] = "green"
+        _scrub_rc_error_text(rollup)
         h._send(200, json.dumps(rollup).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/health/all: %s", exc)
         send_error(h, exc)
+
+
+#: Raw-text fields of the RC heartbeat (ops/runtime/health.json, written by the
+#: frozen ops/rc_dev_runtime.py) that can carry exception text.
+_RC_ERROR_TEXT_KEYS = ("last_reload_error", "game_poll_worker_last_error")
+
+
+def _scrub_fatal_ring(ring) -> None:
+    """Replace each fatal entry's raw `summary` with the generic line in place;
+    `at` and `kind` stay (RM-191 reads `kind`)."""
+    if not isinstance(ring, list):
+        return
+    for i, entry in enumerate(ring):
+        if isinstance(entry, dict) and entry.get("summary"):
+            ring[i] = {**entry, "summary": GENERIC_ERROR}
+
+
+def _scrub_rc_error_text(rollup: dict) -> None:
+    """Wire-boundary scrub for /api/health/all (same leak class as RM-134 and
+    the agent6 scrub above). The `rc` block is health.json served as read and
+    `rc_fatal` is the in-process fatal ring; both carry raw exception text - a
+    heartbeat rename failure names the absolute repo path (measured
+    2026-10-09). Non-empty text becomes GENERIC_ERROR; null stays null; keys,
+    counts, `at` and `kind` are kept so the served shape is unchanged. The raw
+    text is already in logs/ and ops/runtime/last_fatal.txt."""
+    rc = rollup.get("rc")
+    if isinstance(rc, dict):
+        for key in _RC_ERROR_TEXT_KEYS:
+            if rc.get(key):
+                rc[key] = GENERIC_ERROR
+        _scrub_fatal_ring(rc.get("recent_fatals"))
+    fatal = rollup.get("rc_fatal")
+    if isinstance(fatal, dict):
+        _scrub_fatal_ring(fatal.get("recent"))
 
 
 def _serve_ui_version(h) -> None:
