@@ -246,7 +246,7 @@ that site's own preload set and mascot asset.
 **Nothing live read them.** The only referent outside `data/` was a one-shot
 migration script with a hardcoded date that no import, task or workflow calls.
 
-**But they shipped.** `riot-commander.spec:113` gathers `data/meta_build`
+**But they shipped.** `tools/amberstone.spec:115` gathers `data/meta_build`
 recursively into the PyInstaller binary, so every scraped page was inside the
 distributed artifact. That made this the clearest redistribution exposure in the
 repo, and it was not repo-only.

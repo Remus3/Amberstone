@@ -57,7 +57,7 @@ RUNAANS_ARENA = "223085"
 ESSENCE_REAVER = "3508"        # its proc DOES read CallContext.crit_chance
 BERSERKERS = "3006"
 
-# PART 7 gate params (docs/OPEN_ITEMS_REVIEW_2026-07-25.md:473-482). This build
+# PART 7 gate params (docs/_archive/2026-07/OPEN_ITEMS_REVIEW_2026-07-25.md:473-482). This build
 # reproduces the filed gate line byte-for-byte on the shipped engine:
 # Ashe BotRK #1 / Runaan's #2 / IE #8 vs Aphelios Yun Tal #1 / IE #2 / BotRK #13.
 GATE_BUILD = [BERSERKERS]

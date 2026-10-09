@@ -80,7 +80,7 @@ The one-tracker rule is stated at `ROADMAP.md:3-24`. Follow it; do not start a r
 | `docs/LIVE_GAME_GATED_SYNC.md` | rows needing the operator IN a live game | YES, live-gated rows only |
 | `docs/DS_SWEEP_TRACKER.md` | authoritative `RM-NN` id registry | ids only, never prose |
 | `docs/LEDGER.md` | append-only per-item completion record | YES at wrap - newest-first, at the TOP under the `---` rule |
-| `docs/COMPETITOR_LIFT_<YYYY-MM-DD>.md` | dated teardown artifact | YES, one per round (precedent: `docs/COMPETITOR_LIFT_2026-07-28.md`, `docs/COMPETITOR_LIFT_2026-07-30.md`) |
+| `docs/COMPETITOR_LIFT_<YYYY-MM-DD>.md` | dated teardown artifact | YES, one per round (precedent: `docs/_archive/2026-07/COMPETITOR_LIFT_2026-07-28.md`, `docs/_archive/2026-07/COMPETITOR_LIFT_2026-07-30.md`) |
 | `CLAUDE.md` | rules, frozen list, Settled fences | **NO item rows, ever.** CI size-budgeted under 60KB; touch only to add a Settled fence or a rule |
 | `docs/ROADMAP_HISTORY.md`, `docs/history_notes.md` | relocated shipped narrative | history only, never open work |
 

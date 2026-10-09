@@ -12,7 +12,7 @@
 # Phase 0: Deprecated paths
 #   watchdog.ps1              - replaced by rc_self_monitor inside rc_supervisor
 #   run_self_healing_watchdog.ps1 - supervisor now owns self-healing directly
-#   restart.bat / restart_clean.bat / start.bat - replaced by this watcher
+#   scripts\restart.bat / scripts\restart_clean.bat / start.bat - replaced by this watcher
 #
 # Install: run ops\install_startup.bat once to add this to Windows startup.
 

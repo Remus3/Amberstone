@@ -151,7 +151,7 @@ data/champion_loadouts.json.bak-*
 data/meta_build/scraped/
 # The 2026-05-02 build-data refresh: 109 VERBATIM scraped third-party pages,
 # 51 MB. Untracked and purged from history 2026-09-07 ahead of the public flip -
-# it was never ours to redistribute, and riot-commander.spec gathers
+# it was never ours to redistribute, and the PyInstaller spec gathers
 # data/meta_build recursively, so it shipped inside the packaged binary too.
 # Nothing live reads it; the merged outputs in data/meta_build/*_champion_builds
 # .json are what the coaches use. Regenerate locally if you ever need it again.

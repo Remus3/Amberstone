@@ -66,7 +66,7 @@ _REPO_ROOT = _HERE.parent.parent
 # agents/agent3_testing/suite, tools/tests and benchmarks OUTSIDE the guard, so
 # a net-new skip gated on a tracked artifact could be added there and no test
 # in the repo would notice. The audit this module descends from
-# (docs/SKIPIF_AUDIT_2026-07-27.md) already had agent3 in scope; the guard did
+# (docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md) already had agent3 in scope; the guard did
 # not, which is exactly the producing-side gap constraint 1 warns about.
 #
 # NARROWED 2026-09-06: "benchmarks" removed because the tree was deleted with
@@ -2219,7 +2219,7 @@ _ALLOWLIST: dict[str, tuple[frozenset, str]] = {
     # stricter - the entry did not grow, and no new entry was added.
     "tests/test_ds_ability_data_status_rm95.py": (
         frozenset({"data/daemon_slayer/current.txt"}),
-        "FUTURE row in docs/SKIPIF_AUDIT_2026-07-27.md - the skip pins an RM-95 "
+        "FUTURE row in docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md - the skip pins an RM-95 "
         "finding to patch 16.14.1 and is decidable against tracked current.txt "
         "today, but converting it turns CI red on the next patch bump. Needs a "
         "re-pin policy, not a mechanical flip.",
@@ -2512,7 +2512,7 @@ def test_every_skip_gates_on_an_environment_capability():
         "skip constructs that do not gate on an absent environment "
         "capability - a skip here is an always-passing guard, and the thing "
         "under test being absent must FAIL instead (see "
-        "docs/SKIPIF_AUDIT_2026-07-27.md):\n" + "\n".join(bad)
+        "docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md):\n" + "\n".join(bad)
     )
 
 

@@ -25,8 +25,8 @@
             +-> overlay.py -> OverlayApp  (tkinter overlay launch)
             +-> lcu/lcu_client.py         (LCU auto-accept, if present)
 
-  Note: app.py is the overlay class definition file (OverlayApp).
-  It is imported by overlay.py. It is NOT the entrypoint.
+  Note: the app/ package (app/__init__.py) defines the overlay class
+  (OverlayApp). It is imported by overlay.py. It is NOT the entrypoint.
 
 ---
 
@@ -35,7 +35,7 @@
 ### Authoritative (use these)
 
   start.bat                 Primary launch. API key validation + embedded pythonw (Option B) or PATH pythonw (Option A fallback).
-  restart_clean.bat         Clean-start. Kills pythonw + clears __pycache__ + relaunches.
+  scripts\restart_clean.bat Clean-start. Kills pythonw + clears __pycache__ + relaunches.
   tools/dev_cli.py          Operator CLI. Single command surface for all routine ops.
   tools/dev_cli.cmd         Windows wrapper for dev_cli.py (py launcher + fallback).
   tools/bootstrap_env_check.py  Pre-flight environment diagnostic.
@@ -48,9 +48,9 @@
 
 ### Legacy / Fallback (keep but prefer dev_cli)
 
-  restart.bat               Manual kill + relaunch (legacy; prefer restart_clean.bat).
-  kill.bat                  Force-kills pythonw.exe processes.
-  start_debug.bat           Debug-mode launch variant.
+  scripts\restart.bat       Manual kill + relaunch (legacy; prefer scripts\restart_clean.bat).
+  scripts\kill.bat          Force-kills pythonw.exe processes.
+  scripts\start_debug.bat   Debug-mode launch variant.
   install.bat               One-time install/setup only.
 
 ### Emergency Only
@@ -64,7 +64,7 @@
 
   python tools/dev_cli.py status        Environment diagnostics (read-only)
   python tools/dev_cli.py start         Launch app (via start.bat)
-  python tools/dev_cli.py start-clean   Clean start (via restart_clean.bat)
+  python tools/dev_cli.py start-clean   Clean start (via scripts\restart_clean.bat)
   python tools/dev_cli.py preflight     Lint + syntax check
   python tools/dev_cli.py smoke         Phase 2 smoke harness (68 tests)
   python tools/dev_cli.py perf          Phase 2 performance probe

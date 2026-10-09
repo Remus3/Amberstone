@@ -353,6 +353,7 @@ For maintenance and coding agents:
 - [`CLAUDE.md`](./CLAUDE.md) - agent operating context
 - [`docs/MISSION_CONTROL_PLAN.md`](./docs/MISSION_CONTROL_PLAN.md) - the headless-lane control plane and the lane roster
 - [`docs/OPERATIONS.md`](./docs/OPERATIONS.md) - run, restart, and maintenance procedures
+- [`scripts/`](./scripts/) - the secondary launchers (restart, kill, debug start, dev bootstrap) and one-shot data tools; `install.bat` and `start.bat` are the only launchers at the root
 - [`BACKLOG.md`](./BACKLOG.md) - filed work items, each with acceptance criteria
 - [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion record, newest first
 - [`docs/history_notes.md`](./docs/history_notes.md) - the deep archive

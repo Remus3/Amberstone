@@ -159,7 +159,7 @@ class CssTests(unittest.TestCase):
         # New controls must sit on the defined --surface-3 (base.css). The
         # fallback-carrying var(--bg-elevated, #hex) uses on pre-existing
         # rules render via fallback and stay RESKIN-CANDIDATE (operator-gated
-        # FUTURE in docs/DARK_VALUES_AUDIT_2026-07-01.md) - only the bare,
+        # FUTURE in docs/_archive/2026-07/DARK_VALUES_AUDIT_2026-07-01.md) - only the bare,
         # invalid-computing form is banned here.
         self.assertIn("var(--surface-3)", self.text)
         self.assertNotIn("var(--bg-elevated)", self.text)
