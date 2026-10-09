@@ -175,6 +175,30 @@ ROUTES_WITH_NO_CLIENT_FN = {
     "/stats", "/beam", "/v2/fight-report", "/anti-tank", "/ally-protected-ehp",
 }
 
+# Routes whose response carries ONLY damage numbers - no stat-block echo, no
+# EHP / HPS term. Their arithmetic reads the champion's OFFENSIVE stats; the
+# champion's own HP reaches it only through a candidate item that scales with
+# the wielder's health. So a response-changes witness whose ARENA axis is
+# defensive-only (hp / armor) moves one of these routes ONLY while such an item
+# survives the candidate pool and the top-N cut. That is pool-fragile, and it
+# broke for real: RM-513 (bfefceee7, 2026-10-03) correctly removed Void
+# Immolation 223069 (an immolate, own-HP scaling) from the Arena pool; it was
+# the only own-HP item in Akali's top 8, and Akali's ARENA axis is
+# {hp_lvl: 2.0} alone, so /rank and /rank-onhit went byte-identical for her
+# (a correct engine answer, a stale witness). The four reds that followed are
+# what this constant exists to prevent.
+DPS_ONLY_ROUTES = {
+    "_route_beam",
+    "_route_rank",
+    "_route_rank_assassin",
+    "_route_rank_mage",
+    "_route_rank_onhit",
+}
+# ARENA addend axes that move an offensive stat (engine._ADDEND_AXIS_MAP:
+# dam_lvl -> ad, as_lvl -> attack speed). A witness carrying one of these moves
+# every DPS-only route through its own baseline, independent of the pool.
+OFFENSIVE_ARENA_AXES = {"dam_lvl", "as_lvl"}
+
 _SNAP: DataSnapshot | None = None
 
 
@@ -704,9 +728,10 @@ class TestTransportActuallyCarriesTheFlag(unittest.TestCase):
 
     Each case below calls the real route handler twice with the SAME body except
     for the flag, and asserts the serialized response differs. The champion on
-    each row was measured 2026-08-06 to move on that route; the counts in the
-    comments are the full 45-champion population for context, not assertions
-    (they are patch-fragile).
+    each row was measured 2026-08-06 to move on that route (the /rank and
+    /rank-onhit rows re-measured 2026-10-09, see DPS_ONLY_ROUTES); the counts
+    in the comments are the full 45-champion population for context, not
+    assertions (they are patch-fragile).
     """
 
     # route handler -> (champion measured to move, body factory)
@@ -715,7 +740,11 @@ class TestTransportActuallyCarriesTheFlag(unittest.TestCase):
         "_route_dps": ("Akali", 45),              # 45/45
         "_route_ehp": ("Akali", 45),              # 45/45
         "_route_hybrid": ("Akali", 44),           # 44/45
-        "_route_rank": ("Akali", 43),             # 43/45
+        # /rank and /rank-onhit were witnessed by Akali (43/45 and 43/45 at
+        # 16.15.1) until RM-513 took 223069 out of the Arena pool; see
+        # DPS_ONLY_ROUTES. Re-measured 2026-10-09 at 16.19.1 with the corrected
+        # pool: 32/45 and 29/45 move, Akshan in both (dam_lvl -> ad).
+        "_route_rank": ("Akshan", 32),            # 32/45
         "_route_rank_tank": ("Akali", 39),        # 39/45
         "_route_rank_bruiser": ("Akali", 44),     # 44/45
         "_route_beam": ("Akshan", 39),            # 39/45
@@ -727,7 +756,7 @@ class TestTransportActuallyCarriesTheFlag(unittest.TestCase):
         "_route_fight_report": ("Briar", 2),      # 2/45
         "_route_ability_dps": ("Akali", 45),      # 45/45
         "_route_rank_mage": ("Akshan", 28),       # 28/45
-        "_route_rank_onhit": ("Akali", 43),       # 43/45
+        "_route_rank_onhit": ("Akshan", 29),      # 29/45 (2026-10-09)
         "_route_burst": ("Akali", 45),            # 45/45
         "_route_rank_assassin": ("Akshan", 20),   # 20/45
         "_route_hps": ("Briar", 2),               # 2/45 move, 19/45 carry
@@ -798,6 +827,40 @@ class TestTransportActuallyCarriesTheFlag(unittest.TestCase):
         )
         self.assertEqual(set(self.CASES), set(self.EXTRA) | {"_route_matchup"},
                          "CASES and EXTRA disagree on the route list")
+
+    def test_dps_only_route_witnesses_carry_an_offensive_axis(self):
+        """A DPS-only route needs a witness that moves through its OWN stats.
+
+        See ``DPS_ONLY_ROUTES``: a defensive-only witness keeps such a route
+        moving only while an own-HP-scaling item sits in the candidate pool
+        and the top-N cut. RM-513 removing 223069 from the Arena pool turned
+        exactly that into red subtests on /rank and /rank-onhit. Anchored so
+        it cannot pass vacuously: every DPS-only route must be a CASES row,
+        and the offensive axis set is re-derived from the engine's own map.
+        """
+        from agents.daemon_slayer.engine import _ADDEND_AXIS_MAP
+
+        self.assertEqual(
+            {a for a, (stat, _kind) in _ADDEND_AXIS_MAP.items()
+             if stat in ("ad", "as")},
+            OFFENSIVE_ARENA_AXES,
+            "the engine's offensive addend axes changed; re-derive "
+            "OFFENSIVE_ARENA_AXES",
+        )
+        self.assertLessEqual(DPS_ONLY_ROUTES, set(self.CASES),
+                             "a DPS-only route has no response-changes row")
+        snap = _snapshot()
+        for route in sorted(DPS_ONLY_ROUTES):
+            champ, _pop = self.CASES[route]
+            with self.subTest(route=route, champion=champ):
+                axes = set(snap.mode_modifier(champ, "ARENA") or {})
+                self.assertTrue(
+                    axes & OFFENSIVE_ARENA_AXES,
+                    f"{route} is witnessed by {champ}, whose ARENA axis "
+                    f"{sorted(axes)} moves no offensive stat; it can move this "
+                    "route only through an own-HP item in the pool. Pick a "
+                    "witness carrying dam_lvl or as_lvl.",
+                )
 
     def test_every_wired_route_changes_its_response_when_the_flag_is_set(self):
         for route, (champ, _pop) in sorted(self.CASES.items()):
@@ -925,9 +988,20 @@ class TestClientTransportEmitsTheKey(unittest.TestCase):
             dsc._post_json = real
         return captured
 
-    # Briar moves 13 of the 14; rank_assassin_for needs Akshan. Both measured
-    # 2026-08-06 over the arena-axis population.
-    CHAMPION_FOR = {"rank_assassin_for": "Akshan"}
+    # Briar's ARENA axis is defensive-only (arm_lvl / hp_lvl), so she is a
+    # sound witness only where the response carries an EHP / HPS / stat term.
+    # The four client functions feeding a DPS-only route (DPS_ONLY_ROUTES) are
+    # witnessed by Akshan (dam_lvl). Measured 2026-08-06 Briar moved 13 of the
+    # 14; after RM-513 removed 223069 from the Arena pool (2026-10-03),
+    # rank_for and rank_onhit_for went identical for her and rank_mage_for
+    # moved only through Demonic Embrace 444637's own-HP burn - re-measured
+    # 2026-10-09 at 16.19.1, all four move with Akshan.
+    CHAMPION_FOR = {
+        "rank_assassin_for": "Akshan",
+        "rank_for": "Akshan",
+        "rank_mage_for": "Akshan",
+        "rank_onhit_for": "Akshan",
+    }
     DEFAULT_CHAMPION = "Briar"
 
     def _kwargs(self, fn_name: str, on: bool) -> dict:
@@ -949,6 +1023,33 @@ class TestClientTransportEmitsTheKey(unittest.TestCase):
         if on:
             kw["apply_mode_modifiers"] = True
         return kw
+
+    def test_dps_only_client_witnesses_carry_an_offensive_axis(self):
+        """Same rule as the route-side guard, for the client chain.
+
+        The client functions that feed a DPS-only route must be witnessed by
+        a champion whose ARENA axis moves an offensive stat. Anchored on the
+        exact set so a new client function cannot slip past unclassified.
+        """
+        dps_only = sorted(fn for fn, route in self.CLIENT_TO_ROUTE.items()
+                          if route in DPS_ONLY_ROUTES)
+        self.assertEqual(
+            dps_only,
+            ["rank_assassin_for", "rank_for", "rank_mage_for",
+             "rank_onhit_for"],
+            "the set of client functions feeding a DPS-only route changed",
+        )
+        snap = _snapshot()
+        for fn_name in dps_only:
+            champ = self.CHAMPION_FOR.get(fn_name, self.DEFAULT_CHAMPION)
+            with self.subTest(client_fn=fn_name, champion=champ):
+                axes = set(snap.mode_modifier(champ, "ARENA") or {})
+                self.assertTrue(
+                    axes & OFFENSIVE_ARENA_AXES,
+                    f"{fn_name} is witnessed by {champ}, whose ARENA axis "
+                    f"{sorted(axes)} moves no offensive stat - pool-fragile "
+                    "(see DPS_ONLY_ROUTES)",
+                )
 
     def test_key_is_absent_by_default_and_true_when_set(self):
         for fn_name in sorted(self.CLIENT_TO_ROUTE):
