@@ -54,13 +54,15 @@ def test_the_helpers_are_the_vendored_kit():
     # 2026-10-08 2031) superseded v11: fleet_checklist docstring only, and
     # write_progress always lands in the MAIN checkout (returned doc adds "path").
     # Kit v13 (MAIN 2026-10-08 2246) superseded v12: fleet_checklist unchanged,
-    # write_progress atomic per task with a `progress` CLI.
-    assert lp.fleet_headless.KIT_VERSION == 13
+    # write_progress atomic per task with a `progress` CLI. Kit v14 (MAIN
+    # 2026-10-09 0930) superseded v13: fleet_checklist unchanged,
+    # write_progress gains reason= and the "blocked" state.
+    assert lp.fleet_headless.KIT_VERSION == 14
 
 
-def test_the_vendored_kit_is_v13_with_its_twenty_two_file_set():
+def test_the_vendored_kit_is_v14_with_its_twenty_two_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 13
+    assert man["version"] == 14
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json",
         "fleet_checklist.py", "fleet_claims.py", "fleet_done.py",

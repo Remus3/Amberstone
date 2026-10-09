@@ -124,7 +124,8 @@ def test_kit_probe_uses_rc_probe(rec, tmp_path, monkeypatch):
         fleet_route.spawn("T", caller="t", root=tmp_path)
     # gate probe passed, the kit's probe went through the same RC probe and failed
     assert seen == [("127.0.0.1", 65530), ("127.0.0.1", 65530)]
-    assert "proxy unreachable" in str(ei.value)
+    # v14 (MAIN 0930 step 5): match the kit's refusal CODE, not its text.
+    assert ei.value.code == "proxy-unreachable"
     assert rec.calls == []
 
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v12 - RACE GUARDS: the test-isolation guard (FLEET-COMMON 16).
+"""Fleet kit v14 - RACE GUARDS: the test-isolation guard (FLEET-COMMON 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -27,10 +27,20 @@ install() adds two autouse fixtures to the conftest namespace:
     `ignore` globs (default IGNORE: ledgers, progress, claims, locks, lanes and
     the other files live hooks rewrite while a suite runs) are skipped. The
     message carries counts and tree-relative paths only.
+    v14 (SS 2239 a): IGNORE also holds every `*.lock` and the kit's own run
+    budget file (ops/loop/control/headless_budget.json), which a scheduled
+    tick rewrites while a suite runs. A tree whose tick rewrites OTHER watched
+    files (a responder state file, a directive) passes them in
+    `extra_ignore=(...)`, which ADDS to IGNORE instead of restating it.
   * _fleet_runtime_roots (function): for each {ENV_VAR: subpath} in
     env_roots, sets ENV_VAR to tmp_path/subpath, so code that resolves a
     runtime root from the environment writes under tmp. Requests tmp_path
     only when env_roots is non-empty.
+    NOTE (v14, SS 2239 b): with env_roots non-empty this autouse fixture
+    requests tmp_path and monkeypatch for EVERY test, so both are in every
+    test's fixture closure: `"tmp_path" in request.fixturenames` is always
+    True. A test or fixture that branches on request.fixturenames must not
+    use tmp_path / monkeypatch as its signal.
 env FLEET_TEST_GUARD=off disables both (never in a gate run).
 """
 
@@ -45,7 +55,8 @@ INFLOW = ("moon_sync_inbox",)
 IGNORE = ("*.jsonl", "*.tmp", "*.log", "ops/loop/control/progress/*",
           "ops/loop/control/claims/*", "ops/loop/control/locks/*",
           "ops/loop/control/lanes/*", "ops/loop/control/inbox_status.json",
-          "ops/loop/control/session_done*", "ops/loop/control/governor/*")
+          "ops/loop/control/session_done*", "ops/loop/control/governor/*",
+          "*.lock", "ops/loop/control/headless_budget.json")
 SHOW = 5
 
 
@@ -97,9 +108,11 @@ def _off():
     return (os.environ.get("FLEET_TEST_GUARD") or "").strip().lower() == "off"
 
 
-def install(ns, root, watch=WATCH, env_roots=None, ignore=IGNORE, inflow=INFLOW):
+def install(ns, root, watch=WATCH, env_roots=None, ignore=IGNORE, inflow=INFLOW,
+            extra_ignore=()):
     """Add the two autouse fixtures to a conftest's globals()."""
     root = Path(root)
+    ignore = tuple(ignore) + tuple(extra_ignore or ())
     roots = dict(env_roots or {})
 
     @pytest.fixture(scope="session", autouse=True)

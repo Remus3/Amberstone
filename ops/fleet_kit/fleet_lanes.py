@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v6 - multi-lane headless work: per-repo lanes, one worktree each,
+"""Fleet kit v14 - multi-lane headless work: per-repo lanes, one worktree each,
 under the machine-wide governor (design: MAIN docs/fleet-designs/multi-lane.md).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -11,10 +11,20 @@ THREE LAYERS:
    cap 1..3 per repo. One lock per concurrent lane; the lane NAME is a payload
    field, never the file name, so any roster lane can run at any index. A name
    is exclusive by default (two "upgrade" lanes never run at once).
-2. WORKTREE   - lane i always runs in <parent>/<code>-worktrees/lane-<i>, its
-   own git worktree, so two lanes never share a working tree or an index. A
+2. WORKTREE   - lane i always runs in its own git worktree, so two lanes
+   never share a working tree or an index. v14 (SIDECAR-1): when the user
+   variable FLEET_SIDECAR_ROOT is set (process environment first - an empty
+   value disables it, which is how a suite pins it - then HKCU Environment)
+   the path is <root>/<CODE>/Worktree/lane-<i>; unset,
+   it stays <parent>/<code>-worktrees/lane-<i>. STICKY: while the old path
+   still exists and the new one does not, the old path is used, so setting
+   the variable never orphans a lane - move each idle lane with `git worktree
+   move <old> <new>` (loop idle) and the next fire uses the new path. A
    dirty lane worktree is REFUSED (never cleaned); unmerged commits left on a
-   clean one are saved under refs/fleet-lanes/ before it moves.
+   clean one are saved under refs/fleet-lanes/ before it moves. A LANDING
+   (a commit or merge into the main checkout) is the tree's code and goes
+   through fleet_gitlock (`with git_lock(main, owner): ...`, FLEET-COMMON 16a);
+   nothing in this file commits.
 3. GOVERNOR   - one of GOVERNOR_WIDTH (3) machine-wide slots, ON-DISK
    COMPATIBLE with the vendored slots.py (same root, same <i>.lock names, same
    O_CREAT|O_EXCL create, same {pid, repo, run_id, cycle, ts} payload, same
@@ -537,12 +547,51 @@ def lane_cap(cap):
     return min(cap, GOVERNOR_WIDTH)
 
 
-def worktree_path(repo_root, code, index):
-    """Lane i of repo <code> always runs here: <parent>/<code>-worktrees/lane-<i>."""
+SIDECAR_VAR = "FLEET_SIDECAR_ROOT"
+
+
+def _registry_sidecar():
+    """(found, value) of FLEET_SIDECAR_ROOT in HKCU Environment."""
+    try:
+        import winreg
+    except ImportError:
+        return False, None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            try:
+                value, _ = winreg.QueryValueEx(key, SIDECAR_VAR)
+                return True, str(value)
+            except FileNotFoundError:
+                return True, None
+    except OSError:
+        return False, None
+
+
+def sidecar_root(registry=_registry_sidecar, environ=None):
+    """The sidecar root (v14), or None. The PROCESS environment wins when it
+    names the variable at all (an empty value disables it - tests pin it so),
+    else the HKCU Environment value. Must be absolute."""
+    env = os.environ if environ is None else environ
+    value = env.get(SIDECAR_VAR) if SIDECAR_VAR in env else registry()[1]
+    value = (value or "").strip().strip('"')
+    return Path(value) if value and Path(value).is_absolute() else None
+
+
+def worktree_path(repo_root, code, index, root=None):
+    """Lane i of repo <code> runs here: <sidecar root>/<CODE>/Worktree/lane-<i>
+    when FLEET_SIDECAR_ROOT is set (v14), else <parent>/<code>-worktrees/lane-<i>;
+    the old path stays in use while it exists and the new one does not."""
     if not str(code).isalnum():
         raise ValueError(f"repo code {code!r} must be alphanumeric")
     parent = main_tree(repo_root).parent
-    return parent / f"{str(code).lower()}-worktrees" / f"lane-{int(index)}"
+    old = parent / f"{str(code).lower()}-worktrees" / f"lane-{int(index)}"
+    root = sidecar_root() if root is None else (Path(root) if root else None)
+    if root is None:
+        return old
+    new = root / str(code).upper() / "Worktree" / f"lane-{int(index)}"
+    if old.exists() and not new.exists():
+        return old
+    return new
 
 
 def _lane_row(lock, raw, now):

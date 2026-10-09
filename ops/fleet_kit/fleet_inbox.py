@@ -45,6 +45,12 @@ v11: TRIAGE_SPAWN no longer carries "bare" (it contradicted item 10 and was
 refused at the door in every floors-in-hooks tree); use
 triage_spawn_kwargs(floors_in_hooks), which sets bare = not floors_in_hooks.
 
+v14 (RSC 1925): scan keys seen notes by name + content. A file is seen when it
+hashes to ANY sha256 recorded for its name; a legacy v8/v9 line (no sha256)
+covers it only while the file is not newer than that line, so a note re-sent
+under an old name is offered again. Existing ledgers are read unchanged
+(seen_index(); seen_hashes() and seen() keep their v10 meaning).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -311,12 +317,53 @@ def mark_seen(root, note, decision, verdict=None, clock=time.time):
     return doc
 
 
+def seen_index(root):
+    """v14 (RSC 1925): {note name: {"shas": every sha256 recorded for the name,
+    "legacy_ts": epoch of the latest line WITHOUT a sha256, or None}}."""
+    out = {}
+    for d in _lines(Path(root) / SEEN_REL):
+        name = d.get("note")
+        if not name:
+            continue
+        row = out.setdefault(name, {"shas": set(), "legacy_ts": None})
+        if d.get("sha256"):
+            row["shas"].add(d["sha256"])
+        else:
+            ts = _epoch(d.get("ts"))
+            if ts is not None and (row["legacy_ts"] is None or ts > row["legacy_ts"]):
+                row["legacy_ts"] = ts
+            elif ts is None and row["legacy_ts"] is None:
+                row["legacy_ts"] = float("inf")
+    return out
+
+
+def _epoch(iso):
+    try:
+        return _dt.datetime.fromisoformat(str(iso)).timestamp()
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
+
+
 def _is_seen(p, done):
-    """Seen = the name is in the ledger and, when its latest line carries a
-    sha256, the file still hashes to it. A legacy line (no sha256) stays seen."""
+    """Seen = the name is in the ledger AND the file is the one recorded.
+    v14 (RSC 1925): keyed by name + content - the file hashes to ANY sha256
+    recorded for that name; a legacy (v8/v9, no sha256) line covers the file
+    only while the file is not newer than that line (mtime <= the line's ts),
+    so a note rewritten under an old name is offered again. `done` may be the
+    v14 seen_index() or the v10 seen_hashes() mapping."""
     if p.name not in done:
         return False
     want = done[p.name]
+    if isinstance(want, dict):
+        if want["shas"] and _sha256(p) in want["shas"]:
+            return True
+        legacy = want.get("legacy_ts")
+        if legacy is None:
+            return False
+        try:
+            return p.stat().st_mtime <= legacy + 1.0
+        except OSError:
+            return True
     return want is None or _sha256(p) == want
 
 
@@ -324,8 +371,9 @@ def scan(root, inbox_dir, own_code, head_bytes=HEAD_BYTES):
     """Unseen notes in inbox_dir, oldest mtime first (FLEET-COMMON 7), each with
     its classify() Decision. Directories (kit bundles) are skipped. v10: the
     head read is 4096 bytes (HOP lines sit below long titles) and a seen name
-    whose bytes changed since it was marked is offered again."""
-    done = seen_hashes(root)
+    whose bytes changed since it was marked is offered again. v14: keyed by
+    name + content for legacy lines too (seen_index)."""
+    done = seen_index(root)
     rows = []
     with contextlib.suppress(OSError):
         for p in Path(inbox_dir).iterdir():

@@ -109,6 +109,14 @@ os.environ["RC_NOTIFY_JSONL"] = str(_SUITE_LOG_DIR / "operator_notify.jsonl")
 os.environ["RC_MOMENT_MARKS_JSONL"] = str(_SUITE_LOG_DIR / "moment_marks.jsonl")
 os.environ["RC_MOMENT_MARKS_DIR"] = str(_SUITE_LOG_DIR / "moment_marks_by_game")
 
+# FLEET-KIT v14 (MAIN 2026-10-09 0930 step 4): RC tests acquire lanes through
+# the kit (ops/loop/lanes.py -> fleet_lanes.try_acquire_lane -> worktree_path),
+# which reads the user variable FLEET_SIDECAR_ROOT (process env first, then the
+# registry). An EMPTY value turns it off, so the suite never depends on the
+# machine variable. Set at IMPORT so child processes inherit it. Guarded by
+# tests/test_fleet_kit_v14.py.
+os.environ["FLEET_SIDECAR_ROOT"] = ""
+
 # RM-383: `core/vision_token.py` raises at IMPORT when neither `RC_VISION_TOKEN`
 # nor `config/vision_token.txt` exists, and that file is gitignored, so every
 # worktree and hermetic checkout went red at collection. A throwaway default is
@@ -145,7 +153,7 @@ _VISION_TOKEN_DEFAULT_APPLIED = _apply_vision_token_test_default(os.environ, _VI
 # step 6): the kit's test guard. Its SESSION fixture fails a run that changed live
 # tree state (ops/loop/control, moon_sync_inbox, moon_sync_outbox; the kit's
 # ledger / progress / claims / locks / lanes ignores plus the live inbox tick's
-# own files; new inbox files allowed). Its FUNCTION fixture points every env var
+# own files, passed as extra_ignore since kit v14; new inbox files allowed). Its FUNCTION fixture points every env var
 # in tests/_fleet_guard_config.ENV_ROOTS at tmp_path/<sub>. Loaded by file path
 # so ops/fleet_kit never goes on sys.path. Pinned by
 # tests/test_fleet_kit_v12_race_guards.py. Never set FLEET_TEST_GUARD=off in a
@@ -171,7 +179,7 @@ fleet_test_guard = _load_fleet_test_guard()
 fleet_test_guard.install(
     globals(), root=_REPO_ROOT,
     env_roots=_fleet_guard_config.ENV_ROOTS,
-    ignore=fleet_test_guard.IGNORE + _fleet_guard_config.EXTRA_IGNORE)
+    extra_ignore=_fleet_guard_config.EXTRA_IGNORE)
 
 _REAL_LOG_DIR = _REPO_ROOT / "logs"
 

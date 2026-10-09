@@ -8,7 +8,8 @@
  *   { schema: 1, code, updated, state, task, task_started, task_eta_s,
  *     next_tick, runs_in_window, runs_cap, window_s, cap_frees_at }
  *
- *   state in idle | running | limit | backoff | halted | refused
+ *   state in idle | running | limit | backoff | halted | refused | blocked
+ *   (blocked: FLEET-KIT v14, an outside cause such as an unreachable proxy)
  *
  * This widget only READS that file - poll.js hands the raw text in, this module
  * never touches a disk. Pure: the clock arrives as `now` (epoch SECONDS).
@@ -41,6 +42,7 @@ const DEFAULT_TASK = {
   backoff: "Backing Off",
   halted: "Halted",
   refused: "Refused",
+  blocked: "Blocked",
 };
 
 function isObject(v) {

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v13 - the OPERATOR-GATED history rewrite helper (GH-HYGIENE,
+"""Fleet kit v14 - the OPERATOR-GATED history rewrite helper (GH-HYGIENE,
 docs: the GH-HYGIENE ruling and approval of 2026-10-08).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -22,6 +22,14 @@ plan (dry run, changes nothing): counts, over every branch and tag, the
   remove it plus its hits in HEAD. Writes <git common dir>/fleet-rewrite/
   plan.json and prints PLAN_ID (a hash of the ref tips, the replace file and
   the operator identity).
+  v14 (ruling 2026-10-09, two tiers - fleet_identity.TRIGGER / RIDE_ALONG):
+  plan also reports the distinct TRIGGER-tier commits (only these can start
+  a rewrite), the ride-along-only commits (fixed only inside a triggered
+  rewrite), the SHA-change count (every commit at or after a flagged commit
+  in the commit graph - what a triggered rewrite rewrites; replace-file blob
+  edits can add more) and the oldest depth per tier (1 = a tip, topo order).
+  With no trigger-tier commit the plan says "NO REWRITE (ride-along only)";
+  `run` still works only on the operator's approved ORDER.
 bundle: `git bundle create <DIR>/<tree>-pre-rewrite-<stamp>.bundle --all`
   (DIR must be OUTSIDE the worktree), `git bundle verify`, records path,
   SHA-256, time and heads in <git common dir>/fleet-rewrite/backup.json.
@@ -206,9 +214,28 @@ def plan_id(tips, rfile, full):
     return h.hexdigest()[:12]
 
 
+def sha_change(root, flagged, graph=None):
+    """Commits a rewrite of the `flagged` shas changes: each flagged commit and
+    every descendant of one, over every branch and tag."""
+    if not flagged:
+        return 0
+    out = graph if graph is not None else git(
+        root, "rev-list", "--topo-order", "--reverse", "--parents", *REFS, check=False)[1]
+    changed = set()
+    for ln in out.splitlines():
+        parts = ln.split()
+        if not parts:
+            continue
+        if parts[0] in flagged or any(x in changed for x in parts[1:]):
+            changed.add(parts[0])
+    return len(changed)
+
+
 def count(root, rfile, idents):
-    rows = identity.commits(root, list(REFS)) or []
+    rows = identity.commits(root, ["--topo-order", *REFS]) or []
     bad = identity.violations(rows, idents)
+    tiers = identity.tier_summary(rows, idents)
+    flagged = {r["sha"] for r in rows if identity.violations([r], idents)}
     classes = {}
     for _, c in bad:
         classes[c] = classes.get(c, 0) + 1
@@ -227,7 +254,11 @@ def count(root, rfile, idents):
                         "commits": len([x for x in commits.splitlines() if x.strip()]),
                         "head_hits": n})
     return {"commits": len(rows), "commits_to_rewrite": len({s for s, _ in bad}),
-            "classes": classes, "replace": needles}
+            "classes": classes, "replace": needles,
+            "trigger": tiers["distinct_trigger"],
+            "ride_along_only": tiers["distinct_ride_along_only"],
+            "sha_change": sha_change(root, flagged),
+            "oldest_depth": tiers["oldest_depth"]}
 
 
 def plan(root, given=None, clock=_now):
@@ -419,6 +450,15 @@ def run(root, confirm, given=None, clock=_now, runner=None, have_filter_repo=Non
 def _summary(counts):
     parts = [f"{counts['commits']} commits scanned",
              f"{counts['commits_to_rewrite']} to rewrite"]
+    if "trigger" in counts:
+        od = counts.get("oldest_depth") or {}
+        parts += [f"trigger {counts['trigger']}",
+                  f"ride-along only {counts['ride_along_only']}",
+                  f"SHA change {counts['sha_change']}",
+                  "oldest depth trigger {} ride-along {}".format(
+                      od.get("trigger") or "-", od.get("ride-along") or "-")]
+        if not counts["trigger"]:
+            parts.append("NO REWRITE (ride-along only)")
     parts += [f"{k} {v}" for k, v in sorted(counts["classes"].items())]
     for n in counts["replace"]:
         parts.append(f"replace #{n['entry']}: {n['commits']} commits, "

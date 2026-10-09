@@ -123,7 +123,9 @@ def test_env_roots_are_vars_rc_code_actually_reads():
 def test_the_guard_ignores_extend_the_kit_defaults():
     guard = _load("fleet_test_guard")
     src = _text("tests/conftest.py")
-    assert "ignore=fleet_test_guard.IGNORE + _fleet_guard_config.EXTRA_IGNORE" in src
+    # v14 (MAIN 0930 step 3): the tick files ride install(extra_ignore=...),
+    # which ADDS to the kit IGNORE instead of restating it.
+    assert "extra_ignore=_fleet_guard_config.EXTRA_IGNORE" in src
     assert "ops/loop/control/inbox_tick_last.json" in cfg.EXTRA_IGNORE
     assert not set(cfg.EXTRA_IGNORE) & set(guard.IGNORE)
     for glob in cfg.EXTRA_IGNORE:
