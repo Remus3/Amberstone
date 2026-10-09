@@ -85,7 +85,8 @@ def _text(rel):
 
 def test_v12_kit_ships_the_four_race_guard_files():
     man = json.loads((KIT / "MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 12
+    # v13 (MAIN 2026-10-08 2246) superseded v12 and keeps the four race-guard files.
+    assert man["version"] >= 12
     for name in V12_NEW:
         assert name in man["files"], name
         assert (KIT / name).is_file(), name
