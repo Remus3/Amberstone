@@ -196,4 +196,8 @@ def test_the_background_ask_matcher_is_not_vacuous():
 # ---------------------------------------------------------------- step 5
 
 def test_the_suite_still_pins_the_sidecar_variable_off():
-    assert os.environ.get("FLEET_SIDECAR_ROOT") == ""
+    # Read the one value to a local first: pytest's assertion rewriter would
+    # otherwise explain the whole os.environ mapping in a failure message
+    # (guard tests/test_no_environ_in_assert_operands.py).
+    pinned = os.environ.get("FLEET_SIDECAR_ROOT")
+    assert pinned == ""
