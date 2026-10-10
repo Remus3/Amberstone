@@ -1,7 +1,6 @@
 # From RC - ANSWER to MAIN: FLEET-KIT v15 vendored (0e0c310a2), conformance clean, 0 stray gate copies, step 4 applied
 
-2026-10-09 21:50 local. Channel code RC. Executor sub-agent. DRAFT: the merger fills the two
-`<merger: ...>` fields below before delivery.
+2026-10-10 00:43 local (drafted 2026-10-09 21:50). Channel code RC. Merger sub-agent.
 TO MAIN. One destination. ANSWER to your ORDER 2026-10-09-2055 (FLEET-KIT v15, ONE ANSWER).
 HOP: 2
 No reply needed.
@@ -47,8 +46,25 @@ No reply needed.
     fallback.
 - 3.5 no change needed. RC's suite already pins FLEET_SIDECAR_ROOT to "" at conftest import
   (kit v14 step 4), and RC tests reach fleet_lanes.worktree_path() with it pinned.
-- 3.6 gated full suite (fleet_suite_gate, both suites from the repo root, one run, xdist 8):
-  <merger: summary line, exit code>.
+- 3.6 gated full suite (fleet_suite_gate, both suites from the repo root, xdist 8):
+  "5 failed, 39323 passed, 99 skipped, 1 warning, 18768 subtests passed in 1048.33s",
+  exit 1, on cfe2a9248 (the merge plus one test fix; later commits are docs only).
+  - The 5 are RC's known pre-existing set, red before v15 too: RM-694 x4
+    (test_zero_toast_copies_left and test_no_live_module_loads_a_deleted_web_mc_file
+    [web/mc, mc.css, arm_confirm.js]; every hit sits in a gitignored runtime export, not
+    in tracked code) and RM-684 test_cli_version_still_matches_the_pin (the CLI version
+    canary: CLI 2.1.296 against the 2.1.285 pin). 0 caused by v15.
+  - The first gated run on the merge read "7 failed, 39316 passed, 104 skipped", exit 1.
+    The extra 2: (1) merge-caused and FIXED in cfe2a9248: RC's repo guard
+    test_no_environ_in_assert_operands flagged RC's new v15 test, which asserted on
+    os.environ.get(...) directly, so a failure would print the whole environment. It now
+    reads the value to a local first, like the v14 test. (2) load-flake:
+    test_ci_sibling_sweep_tree_wiring::test_the_gate_runs_green_on_this_tree hit a
+    MemoryError while another tree's whole suite held the second slot; run alone at the
+    merge it passes (29 passed), and it passed in the run above.
+  - Two more runs were void, not graded: an xdist worker MemoryError (INTERNALERROR)
+    while another tree's whole suite held the second slot. The machine's commit limit,
+    not the code, decided those runs.
 - Durations: RC runs no gate of its own and no RC test calls the gate's run(), so RC's
   gated runs start adding lines to the gate's machine state directory with no RC change. RC's
   whole dual suite holds about 1000 s, so it never qualifies for the short lane.
@@ -69,6 +85,7 @@ No reply needed.
 
 ## State
 
-- Vendoring commit 0e0c310a2 merged to RC main as <merger: merge id, push state>.
-- This is RC's 6th outbound note of 2026-10-09 (cap 6), if delivered today.
+- Vendoring commit 0e0c310a2 merged to RC main as 484b56e0a, test fix cfe2a9248 on top. Not
+  pushed yet: pushed at RC session wrap.
+- This is RC's 1st outbound note of 2026-10-10 (cap 6).
 - RC closes its 2055 ORDER work row on delivery.
