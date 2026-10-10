@@ -204,29 +204,17 @@ def start_dashboard(app_dir: Path) -> None:
     else:
         _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
 
-    # Vision server: ensure moon_vision_server.py is listening on :8889.
-    # No-op if already up; spawns it as a detached background process otherwise.
+    # Vision server: keep a LIVE moon_vision_server.py on :8889 (RM-735).
+    # Was a one-shot connect_ex here, which checked port ownership once at
+    # dashboard start: a server wedged while holding the port, or one that
+    # died later, stayed broken until RC restarted. The watchdog thread probes
+    # GET /health every 15 s, spawns when nothing listens, and kills +
+    # respawns a holder that stops answering (dashboard/_vision_watchdog.py).
     try:
-        import socket as _sock
-        _p = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
-        _p.settimeout(1)
-        _vision_up = _p.connect_ex(("127.0.0.1", 8889)) == 0
-        _p.close()
-        if not _vision_up:
-            import subprocess
-            import sys as _sys
-            _vis = app_dir / "moon_vision_server.py"
-            subprocess.Popen(
-                [_sys.executable, str(_vis)],
-                cwd=str(app_dir),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                close_fds=True,
-                creationflags=0x08000000,  # CREATE_NO_WINDOW
-            )
-            _log.info("vision server not running - spawned %s", _vis.name)
+        from dashboard._vision_watchdog import start_vision_watchdog
+        start_vision_watchdog(app_dir)
     except Exception as exc:  # noqa: BLE001
-        _log.warning("vision server startup check failed: %s", exc)
+        _log.warning("vision server watchdog failed to start: %s", exc)
 
     # Daemon Slayer: ensure the local DPS engine on :8860 is running.
     # No-op if already up; spawns tools/start_daemon_slayer.py otherwise.

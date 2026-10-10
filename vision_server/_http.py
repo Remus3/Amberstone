@@ -74,9 +74,15 @@ class Handler(BaseHTTPRequestHandler):
         # it carries per-kind counters, model ids and a 30-entry request log,
         # and no in-repo page fetches it, so it gates like every data GET.
         if self.path == "/health":
-            self._j(200, {"alive": True, "model": VISION_MODEL,
-                          "api_key_ok": api_key_present(),
-                          "uptime_s": int(time.time() - _START_TIME)})
+            health = {"alive": True, "model": VISION_MODEL,
+                      "api_key_ok": api_key_present(),
+                      "uptime_s": int(time.time() - _START_TIME)}
+            # RM-735: live worker count of the pooled server, so a pool that
+            # loses workers over hours shows up before it stops answering.
+            workers = getattr(self.server, "workers_alive", None)
+            if workers is not None:
+                health["workers"] = workers
+            self._j(200, health)
         elif self.path in ("/stats", "/stats/"):
             if not self._auth():
                 self._j(401, {"error": "unauthorized"})

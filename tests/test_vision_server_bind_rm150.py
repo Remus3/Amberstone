@@ -154,10 +154,15 @@ class BindHostTests(unittest.TestCase):
     def test_no_wildcard_literal_left_in_the_bind_call(self) -> None:
         """The S7 pin moved here; it must not have moved back."""
         src = (REPO / "vision_server" / "__init__.py").read_text(encoding="utf-8")
+        # RM-735: the bind goes through make_server(host, PORT) into
+        # PooledHTTPServer((host, port), ...), so every spelling is covered.
         self.assertNotRegex(
-            src, re.compile(r"ThreadingHTTPServer\(\(\s*[\"']0\.0\.0\.0[\"']"),
+            src, re.compile(
+                r"(?:(?:Threading|Pooled)HTTPServer\(\(|make_server\()"
+                r"\s*[\"']0\.0\.0\.0[\"']"),
             "wildcard bind reintroduced - :8889 is Legion-local (ADR-011) and "
             "its routes are gated by one X-RC-Token header (LEDGER 1177)")
+        self.assertRegex(src, re.compile(r"make_server\(host, PORT\)"))
 
 
 class AgentUploadTargetTests(unittest.TestCase):

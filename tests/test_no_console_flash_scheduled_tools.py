@@ -126,7 +126,10 @@ SCHEDULED_SPAWNERS = (
     # obs_publisher -> dashboard/_state_builder pulls the dashboard dispatch
     # tree into the closure. Both sites already pass CREATE_NO_WINDOW.
     "coaches/voice_coach.py",
-    "dashboard/server.py",
+    # 2026-10-10 RM-735: dashboard/server.py's one-shot :8889 spawn moved into
+    # the periodic liveness watchdog (spawn, taskkill, py-spy dump); every
+    # child passes _NO_WINDOW. server.py itself no longer spawns.
+    "dashboard/_vision_watchdog.py",
 )
 
 # Modules run by a CLAUDE HOOK, which is the same exposure by a different route:

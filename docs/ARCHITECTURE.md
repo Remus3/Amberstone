@@ -72,6 +72,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `vision_server/_frame.py` | latest-frame cache + upload handler |
 | `vision_server/_http.py` | BaseHTTPRequestHandler routing for :8889 |
 | `vision_server/_inference.py` | Anthropic vision/coach + Tesseract OCR handlers |
+| `vision_server/_pool.py` | pre-started worker-pool HTTP server for :8889 (RM-735) |
 | `vision_server/_reap.py` | reap stale/orphaned :8889 vision-server instances before bind |
 | `vision_server/_relay.py` | LCU + Live Client relays |
 | `vision_server/_stats.py` | vision server stats + log ring |
@@ -110,6 +111,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `dashboard/_matchers.py` | path-matcher factories (stdlib-only, importable without pydantic) |
 | `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
 | `dashboard/_state_builder.py` | builds /api/state payload |
+| `dashboard/_vision_watchdog.py` | periodic liveness self-heal for the :8889 vision server (RM-735) |
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
 | `dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
 | `dashboard/routes_auto_accept.py` | GET/POST /api/lcu/auto-accept (ready-check auto-accept on/off) |
