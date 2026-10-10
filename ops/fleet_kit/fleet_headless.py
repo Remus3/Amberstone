@@ -117,6 +117,20 @@ v14 (KIT-14; every change backward compatible):
   (SS 2239 c: a splice with the bare BEGIN string welds the first heading onto
   the marker line while the block hash still passes).
 
+v15 (KIT-15; every change backward compatible):
+- child_env() sets CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 (BG_OFF_ENV): a
+  `-p` child that dispatched a background sub-agent and ended its turn
+  exited and killed the sub-agent mid-work (LW 1020 item 7, seen twice).
+  With background tasks off in the child, every sub-agent and command it
+  starts runs in the foreground and finishes inside the turn. The rule for
+  a child prompt is the same: foreground only.
+- A non-UTF-8 .git link file no longer crashes main_checkout (and
+  fleet_claims._gitdir_of, fleet_identity._main_checkout,
+  fleet_lanes.main_tree): UnicodeError is caught beside OSError and the
+  existing fallback answers (RC 1925 a).
+- fleet_suite_gate.resolve_exe: a bare suite command whose PATH hit is a
+  .cmd/.bat shim (npm) runs by that full path on Windows (EW 1955).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -133,7 +147,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 14
+KIT_VERSION = 15
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -146,6 +160,7 @@ PLACEHOLDER_KEY = "fleet-proxy-placeholder"
 STRIP_EXACT = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"}
 STRIP_PREFIX = ("CLAUDE_CODE_USE_",)
 KEEP_EXACT = {"CLAUDE_CODE_USE_POWERSHELL_TOOL"}
+BG_OFF_ENV = "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"
 ACK_MARKERS = ("INFORMATION", "ACK", "TERMINAL", "CORRECTION-ACCEPTED",
                "POLL-ANSWER", "RECEIVED", "NO-REPLY", "NOREPLY")
 NEVER_DAMP = ("ORDER", "FIX", "RULING")
@@ -290,6 +305,9 @@ def child_env(url, bare=False, parent=None):
     # v10: SUBAGENT-FIRST guards an operator's interactive main thread; a
     # headless run has no agent_id and no operator, so it is always exempt.
     env["FLEET_SUBAGENT_FIRST"] = "off"
+    # KIT-15 (LW 1020 item 7): a -p child exits when its turn ends, killing any
+    # background sub-agent it left running; the child runs foreground only.
+    env[BG_OFF_ENV] = "1"
     if bare:
         env["ANTHROPIC_API_KEY"] = PLACEHOLDER_KEY
     return env
@@ -723,7 +741,7 @@ def main_checkout(path):
     dotgit = path / ".git"
     try:
         raw = dotgit.read_text(encoding="utf-8").strip() if dotgit.is_file() else ""
-    except OSError:
+    except (OSError, UnicodeError):  # v15 (RC 1925 a): non-UTF-8 link file
         raw = ""
     if raw.startswith("gitdir:"):
         gitdir = Path(raw.split(":", 1)[1].strip())

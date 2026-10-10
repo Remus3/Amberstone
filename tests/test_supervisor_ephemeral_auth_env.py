@@ -159,6 +159,9 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     """Only the auth overrides are dropped; everything else is inherited."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-testkeytestkeytestkey0003")
     monkeypatch.setenv("RC_AUTHENV_PROBE", "kept-value")
+    # KIT-15 adds a key to every child; drop any parent copy so the exact
+    # added-key list below holds whatever the runner's own env carries.
+    monkeypatch.delenv("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS", raising=False)
     rec = _Recorder()
     _run(rec, "t-authenv-passthru")
     env = rec.kwargs["env"]
@@ -179,11 +182,14 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     # The keys the spawn adds: the routed proxy URL (headless-routing contract
     # 2026-10-02) and, since FLEET-KIT v10, the kit's own FLEET_SUBAGENT_FIRST=off
     # (a headless run is exempt from the SUBAGENT-FIRST hook; set by the kit's
-    # child_env, asserted here, never re-implemented). Anything else would be a
-    # leaked override.
-    assert leaked == ["ANTHROPIC_BASE_URL", "FLEET_SUBAGENT_FIRST"], \
+    # child_env, asserted here, never re-implemented) and, since FLEET-KIT v15,
+    # CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 (a -p child runs foreground only,
+    # MAIN 2055 step 4). Anything else would be a leaked override.
+    assert leaked == ["ANTHROPIC_BASE_URL", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
+                      "FLEET_SUBAGENT_FIRST"], \
         f"auth overrides survived into the spawn env: {leaked}"
     assert env["FLEET_SUBAGENT_FIRST"] == "off"
+    assert env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] == "1"
 
 
 def test_spawn_env_has_no_none_values(monkeypatch: pytest.MonkeyPatch) -> None:

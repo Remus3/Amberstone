@@ -253,7 +253,7 @@ def _main_checkout(cwd):
         if dg.is_file():
             try:
                 raw = dg.read_text(encoding="utf-8").strip()
-            except OSError:
+            except (OSError, UnicodeError):  # v15 (RC 1925 a)
                 return top
             gd = Path(raw.split(":", 1)[1].strip()) if raw.startswith("gitdir:") else None
             if gd is not None and not gd.is_absolute():
