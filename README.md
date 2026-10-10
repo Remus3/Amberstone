@@ -340,7 +340,7 @@ For readers:
 - [`docs/adr/`](./docs/adr/) - architectural decision index
 - [`agents/daemon_slayer/`](./agents/daemon_slayer/) - the build engine itself, with its own tests
 - [`ROADMAP.md`](./ROADMAP.md) - open work
-- [`atlas.html`](./atlas.html) - the repository drawn as an interactive map, served at [remus3.github.io/Amberstone/atlas.html](https://remus3.github.io/Amberstone/atlas.html). Generated from the git index by [`tools/atlas_build.py`](./tools/atlas_build.py) (`--check` reports a stale page); it loads its dashboard snapshots from [`atlas/snapshots/`](./atlas/snapshots/) and its colours from `ops/fleet_kit/tokens.css`, so use the served link or open it from a local checkout - GitHub's file view shows only its source
+- [`atlas.html`](./atlas.html) - the repository drawn as an interactive map, served at [remus3.github.io/Amberstone/atlas.html](https://remus3.github.io/Amberstone/atlas.html). One self-contained page; too large for GitHub's file view to render, so use the served link or open the file locally
 
 For anyone reporting or contributing:
 
