@@ -20,7 +20,9 @@ never answers, and requires the watchdog to replace it within its window.
 """
 from __future__ import annotations
 
+import contextlib
 import socket
+import sys
 import threading
 import time
 import unittest
@@ -223,6 +225,11 @@ class _SilentHolder:
 
     def __init__(self, port: int = 0) -> None:
         self.sock = socket.socket()
+        if sys.platform != "win32":
+            # Linux (CI): the replacement binds this port right after close().
+            # Without SO_REUSEADDR here (accepted sockets inherit it) the
+            # just-closed connections still block that bind with EADDRINUSE.
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("127.0.0.1", port))
         self.sock.listen(16)
         self.port = self.sock.getsockname()[1]
@@ -243,7 +250,13 @@ class _SilentHolder:
         self._stop = True
         for c in self.held:
             c.close()
+        # Linux (CI): close() from another thread does not wake a blocked
+        # accept(), so the port stays LISTEN and the replacement's bind fails;
+        # shutdown() wakes it. Windows raises here, and close() alone suffices.
+        with contextlib.suppress(OSError):
+            self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
+        self.thread.join(timeout=1)
 
 
 class _HealthServer:
