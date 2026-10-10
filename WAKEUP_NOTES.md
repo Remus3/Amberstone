@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-10c - session 108: RM-735 shipped (:8889 worker pool + liveness watchdog) after an unclean reboot
+
+- **Context:** the machine hung and rebooted uncleanly at 10:02 local (Kernel-Power 41) after machine-wide starvation from ~07:36 (RC restart storm, WMI / services timeouts). Operator: "had a system hang - continue what you were doing and process /done for clear after". The vision server was a victim (its 07:50 respawn took 51 min to bind), not the cause - RM-737 evidence. A stale 0-byte `.git/index.lock` from before the hang was removed by hand.
+- **Shipped (LEDGER 1714, commit `49ef2cadc`, pushed `c193fd572..49ef2cadc`):** root cause REPRODUCED - `ThreadingMixIn` starts a thread per request and `Thread.start()` waits on `_started` with no timeout (CPython 3.14.4 stdlib threading module, line 1011), so a thread dying in bootstrap (MemoryError) parks the accept loop forever. Fix: `vision_server/_pool.py` (16 workers started before bind, accept only enqueues) + `dashboard/_vision_watchdog.py` (15 s `/health` probe, 3 strikes -> py-spy dump to `logs/vision_wedge_*.txt`, taskkill, windowless respawn). Verifier CONFIRMED; live drills: kill -> respawn 7 s, suspended holder -> replaced in 47 s.
+- **Filed:** RM-738 - the sibling servers with the same latent `Thread.start` wait (dashboard :8888, DS :8860 + its one-shot `ensure_running`, `agents/_supervisor_http.py`, `mc/server.py`, two tools/ servers). Next free id RM-739. RM-701 closed by read-back (the reboot restarted RC-Supervisor after `1e27f14ae`: PID 12888 at 10:03:09).
+- **CI fix-forward:** CI on `49ef2cadc` went red on Linux only (`FakeHolderIsReplacedEndToEnd`: a blocked `accept()` keeps a closed listening socket LISTEN, EADDRINUSE); the test fake now sets SO_REUSEADDR off Windows and shuts down before close - red-then-green under WSL, carried by the wrap push.
+- **Do NOT redo:** the RM-735 root cause, the pool, the watchdog, the live drills.
+- **Next:** confirm CI green on the wrap push; then RM-737 measurement + its note to MAIN (the 07:36-10:02 hang is a datum), then RM-738.
+
+---
+
 # 2026-10-10b - session 107: atlas.html reverted to the hand-built pre-10/7 page (operator order)
 
 - **Shipped (LEDGER 1713):** operator chat order "revert the changes for atlas back to before 10/7". `atlas.html` restored to the 03197a15b hand-built page (anchors ENGINE 1.287.0 / 16.20.1, scrub line kept, font block = HEAD's OFL-compliant one by adjudication); generator dropped (`tools/atlas_build.py`, `atlas/snapshots/`, the ci.yml step, `check_atlas_fresh`, `tests/test_atlas_check_wiring.py`); font audit moved to `tools/atlas_fonts.py` (28 tests). Commit `7f3ed345f`, ff-merged and pushed; verifier PASS 9/9.
@@ -23,13 +34,3 @@
 - **C8 (kit v15 merge finisher) was IN FLIGHT at /done** - see `RC-NEXT-SESSION.txt` for its remaining steps; LEDGER 1710 is C8's, C9 owes LEDGER 1711.
 - **Do NOT redo:** the 16.20.1 extract, the RM-95 re-pin, the kit v15 vendor (MANIFEST v15, 23/23 hashes), the repo_review guard repair, the ROADMAP relocation.
 - **Next:** C8's remainder (if not finished), then push the local range, then RM-735 (it recurs in hours).
-
----
-
-# 2026-10-09 - session 105: kits v12-v14, two history rewrites, MAIN 2246 sections 1-8, anthropic 1.11, RM-172 fixed
-
-- **Shipped (LEDGER 1694-1707):** kit v12 / v13 / v14 vendored (drift "RC OK v14"); electron 44.5.1 (C1); lane worktree base from per-host config (A); TEMP-1 basetemp guard; HEAD scrub + history rewrite B (PLAN c0507357b341) + case-insensitive rw2 (PLAN 3a2de078c11a), protection restored and read back; MAIN 2246 sections 2/3/6/7 in waves M1/M2 (W-A..W-L, W-R = RM-172 fixed, D2 = anthropic 1.11.0); S8 full-repo review (RM-704..RM-731); stop_claim_gate quiet chat (SG); pytest testpaths isolation (RM-732); atlas re-render (CI green at `a7159cdec`). ANSWER 1925 to MAIN reached 1/1 (3 kit defects reported).
-- **Operator chat decisions:** v13 class scope over MAIN's 36; scrub-then-rewrite with a one-time override; hide/restore worktree admin dirs; fix RM-172 now; frozen-file grant (leak/launcher lines + log_setup httpx2/httpcore2); remote refs + Pages + merged worktrees cleanups; second case-insensitive rewrite; then "operator away".
-- **Every commit id changed twice:** old SHAs resolve through `.git/filter-repo/commit-map` (rw2), then `.git/filter-repo-20261009/`, then `.git/filter-repo-20260621/`. Every other clone must re-clone.
-- **Next:** MAIN's reply to 1925 / kit v15 if it arrived; else RM-680 (DS 16.20.1).
-- **Do NOT redo:** both rewrites, kit v12-v14, the 2246 sections 1-4/6-8, RM-172, RM-696 (closed by W-I), D2's install (box matches requirements.txt; only `requirements.lock` is stale).
