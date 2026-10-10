@@ -154,7 +154,8 @@ def test_live_absent_champions_report_absent():
     """Derived from the shipped data, not from a champion literal.
 
     The absent set is (champions.json roster) minus (champion_abilities.json
-    keyspace) - Meraki's bulk map carries 171 of 173 at 16.14.1.
+    keyspace) - Meraki's bulk map carries 171 of 173 (16.14.1, and still at
+    16.20.1).
     """
     roster = _live_roster()
     ability_keys = _live_ability_keys()
@@ -182,11 +183,17 @@ def test_live_absent_champions_report_absent():
         assert M.champion_ability_data_status(cid) != M.ABILITY_DATA_ABSENT
 
 
-_RM95_PINNED_PATCH = "16.14.1"
+# RE-PINNED 2026-10-09 (RM-700, with the RM-680 DS batch 16.19.1 -> 16.20.1).
+# Re-measured on the shipped 16.20.1 snapshot, not copied forward: champions.json
+# carries 173 ids, champion_abilities.json 171 (Meraki bulk, content patch
+# 25.15; the extractor logged Meraki 404 for exactly Locke and Zaahen), so the
+# absent set is still ["Locke", "Zaahen"]. Before this re-pin the value was
+# "16.14.1" and the test had skipped on every run since the 16.15.1 bump.
+_RM95_PINNED_PATCH = "16.20.1"
 
 
-def test_locke_and_zaahen_are_the_absent_set_at_1614():
-    """Pins the RM-95 finding against the shipped 16.14.1 snapshot.
+def test_locke_and_zaahen_are_the_absent_set_at_the_pin():
+    """Pins the RM-95 finding against the shipped snapshot named by the pin.
 
     RM-119 class B4: this skip is HONEST but it used to be silent. The premise
     is a specific patch's roster, and the shipped patch pointer moves without
@@ -196,9 +203,16 @@ def test_locke_and_zaahen_are_the_absent_set_at_1614():
     The skip is deliberately NOT converted (it is the one reviewed exemption in
     tests/test_skip_condition_hygiene.py::_ALLOWLIST): a mechanical flip to a
     hard assert turns CI red on the next patch bump, and a permanently red guard
-    gets deleted rather than fixed. What it needs is a re-pin policy. Until that
-    exists, the reason line below at least states, in the `-rs` summary, that
-    this pin is stale and by how much.
+    gets deleted rather than fixed. The reason line below states, in the `-rs`
+    summary, that the pin is stale and by how much.
+
+    RE-PIN POLICY (RM-700): the DS patch batch that moves
+    data/daemon_slayer/current.txt also moves ``_RM95_PINNED_PATCH`` in the same
+    batch. It re-measures the absent set on the NEW snapshot (champions.json
+    roster minus the champion_abilities.json keyspace) and writes the measured
+    list into the assertion below - never the previous patch's answer copied
+    forward - then updates the reason text of this module's _ALLOWLIST entry.
+    A skip in the batch's own dual-suite run means that step was missed.
     """
     live = _live_patch()
     if live != _RM95_PINNED_PATCH:

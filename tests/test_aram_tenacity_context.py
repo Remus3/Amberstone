@@ -5,8 +5,9 @@ live consumer of ``effective_cc_duration`` from ``ehp.py``).
 Coverage:
 
 * ``LoadTenacityMapTests`` - the snapshot-backed loader returns exactly
-  the 17 ARAM-modified champions at patch 16.10.1; champions with the
-  default 1.0 multiplier are intentionally omitted.
+  the ARAM-modified champions of the live snapshot (17 at patch 16.10.1,
+  16 from 16.20.1); champions with the default 1.0 multiplier are
+  intentionally omitted.
 * ``GetTenacityMultTests`` - mode-agnostic value lookup with None /
   unknown fallbacks.
 * ``AramTenacityLineTests`` - the prompt-friendly renderer's mode gating,
@@ -23,20 +24,32 @@ from unittest import mock
 
 
 class LoadTenacityMapTests(unittest.TestCase):
-    """The module-level _TENACITY_MAP captures the live 16.10.1 set."""
+    """The module-level _TENACITY_MAP captures the live snapshot's set.
 
-    def test_map_size_is_seventeen(self) -> None:
+    RE-MEASURED 2026-10-09 at 16.20.1 (RM-680): 17 -> 16. The 16.20.1
+    aram_modifiers re-extract moved Belveth aramTenacity 1.2 -> 1 (with
+    dealt 1.05 -> 1 and taken 0.95 -> 1), so she left the modified set; the
+    other 16 rows and their values are unchanged from 16.10.1.
+    """
+
+    def test_map_size_is_sixteen(self) -> None:
         from core.aram_tenacity_context import _TENACITY_MAP
-        self.assertEqual(len(_TENACITY_MAP), 17)
+        self.assertEqual(len(_TENACITY_MAP), 16)
 
     def test_all_known_assassins_present(self) -> None:
         from core.aram_tenacity_context import _TENACITY_MAP
         expected = {
-            "Akali", "Belveth", "Ekko", "Elise", "Evelynn", "Fizz",
+            "Akali", "Ekko", "Elise", "Evelynn", "Fizz",
             "Katarina", "Kayn", "Khazix", "Lucian", "Nunu", "Pyke",
             "Qiyana", "Quinn", "Rengar", "Talon", "Zed",
         }
         self.assertEqual(set(_TENACITY_MAP.keys()), expected)
+
+    def test_belveth_left_the_set_at_16_20_1(self) -> None:
+        # Default 1.0 is intentionally omitted, so the 16.20.1 reset reads as
+        # absence - not as a 1.0 row.
+        from core.aram_tenacity_context import _TENACITY_MAP
+        self.assertNotIn("Belveth", _TENACITY_MAP)
 
     def test_default_tenacity_champ_absent(self) -> None:
         # Aatrox is the canonical "no ARAM tenacity modifier" champion.
@@ -46,9 +59,9 @@ class LoadTenacityMapTests(unittest.TestCase):
 
     def test_one_two_zero_mults(self) -> None:
         from core.aram_tenacity_context import _TENACITY_MAP
-        # 15 champs at 1.20.
+        # 14 champs at 1.20 (15 until Belveth's 16.20.1 reset).
         expected_120 = {
-            "Akali", "Belveth", "Ekko", "Evelynn", "Katarina", "Kayn",
+            "Akali", "Ekko", "Evelynn", "Katarina", "Kayn",
             "Khazix", "Lucian", "Nunu", "Pyke", "Qiyana", "Quinn",
             "Rengar", "Talon", "Zed",
         }

@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.287.0 (2026-10-09) - DS patch 16.19.1 -> 16.20.1 (RM-680).
+- data: snapshot ``data/daemon_slayer/16.20.1/`` (19 files, parity with
+  16.19.1). ``aram_modifiers`` re-extracted (external reference L): 4 fields
+  over 2 champions - Belveth dealt 1.05 -> 1, taken 0.95 -> 1, tenacity
+  1.2 -> 1; Locke dealt 1 -> 1.15. DDragon base stats: Cassiopeia hp 630 ->
+  610, mp 480 -> 450; Swain armor 25 -> 23, spellblock 31 -> 34; Vayne
+  hpregen 4 -> 5.5, hpregenperlevel 0.5 -> 0.4. Scenario cooldowns:
+  Mordekaiser R 140/120/100 -> 120/110/100, Swain W 22..18 -> 20..16. Skill
+  orders moved for 12 champions; damage_distribution aggregate drift on all
+  173. Items: 0 numeric changes; description-only changes on 1221 / 1222 /
+  3152 / 223152 (Hextech Rocketbelt prose ability haste 20 -> 10 - DDragon
+  ``stats`` carries no haste and ability haste is measured inert). Abilities:
+  0 changes (Meraki content patch 25.15, not forced). No engine code change;
+  the bump is for the moved engine inputs. Every 16.20.1 build table is
+  regenerated against it in-process (static transport): Lane B 173 / 519
+  cells per mode and the HZ orders + variants, 0 champions' item orders
+  moved in any table.
+
 1.286.0 (2026-10-04) - RM-595 flat-reduction zero-skip.
 - math: ``effects.effective_target_mr`` / ``effective_target_armor`` now
   return as soon as FLAT reduction takes the resist to zero or below,
