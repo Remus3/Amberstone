@@ -203,12 +203,13 @@ def _say(msg: str) -> None:
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-    with tmp.open("w", encoding="utf-8", newline="\n") as fh:
-        fh.write(text)
-    tmp.replace(path)
+    """UTF-8 with LF kept verbatim, through core/polled_json (RM-258): a
+    per-WRITE scratch name, the bounded WinError 5 retry and no stranded
+    scratch on failure. The hand-rolled tmp + Path.replace this replaced had
+    no retry and reused one pid.tid scratch name for every write a thread made
+    (tests/test_atomic_write_guard_rm258_rm261.py; behaviour pinned by
+    tests/test_loop_control_sibling_writers_lane8_cycle48.py)."""
+    _atomic_write_bytes(Path(path), text.encode("utf-8"))
 
 
 _import_lock = threading.Lock()
@@ -231,6 +232,18 @@ def _load_by_path(name: str, path: Path):
             sys.modules.pop(name, None)
             raise
         return mod
+
+
+# core/polled_json.py holds the repo's atomic-write contract (RM-258). Plain
+# import first so a repo-root process (the test suite) shares one module
+# object; run as `python ops/loop/repo_review.py`, sys.path[0] is ops/loop and
+# the repo root is on no path entry, so the fallback binds it by absolute path
+# under the same name the other ops/loop writers use.
+try:
+    from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+except ModuleNotFoundError:
+    _atomic_write_bytes = _load_by_path(
+        "rc_core_polled_json", ROOT / "core" / "polled_json.py").atomic_write_bytes
 
 
 def _fleet_route():

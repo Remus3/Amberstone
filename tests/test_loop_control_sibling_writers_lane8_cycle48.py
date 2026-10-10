@@ -102,7 +102,7 @@ def steer():
 # Each writer, paired with a callable that writes `text` through it. steer's
 # _awrite takes BYTES while the other two take str - the signatures genuinely
 # differ, so the adapter is per-writer rather than one shared call.
-def _writers(controller, intents, steer, adjudicator):
+def _writers(controller, intents, steer, adjudicator, repo_review):
     return {
         "loop_controller.awrite": (
             controller, lambda p, t: controller.awrite(p, t)),
@@ -112,6 +112,8 @@ def _writers(controller, intents, steer, adjudicator):
             steer, lambda p, t: steer._awrite(p, t.encode("utf-8"))),
         "adjudicator._atomic_write": (
             adjudicator, lambda p, t: adjudicator._atomic_write(p, t)),
+        "repo_review._atomic_write": (
+            repo_review, lambda p, t: repo_review._atomic_write(p, t)),
     }
 
 
@@ -120,23 +122,34 @@ def adjudicator():
     return _load_by_path("adjudicator")
 
 
+@pytest.fixture(scope="module")
+def repo_review():
+    return _load_by_path("repo_review")
+
+
 @pytest.fixture
-def writers(controller, intents, steer, adjudicator):
-    return _writers(controller, intents, steer, adjudicator)
+def writers(controller, intents, steer, adjudicator, repo_review):
+    return _writers(controller, intents, steer, adjudicator, repo_review)
 
 
-# The four writers with a directly callable (path, text) shape. The other three
+# The writers with a directly callable (path, text) shape. The other three
 # swept this cycle - ops/loop/lanes.py repoint_lane_pid, ops/loop/done_sentinel
 # and ops/loop/claude_stub - write from inside larger functions and are covered
 # structurally by test_no_ops_loop_module_hand_rolls_an_atomic_write below.
+# repo_review joined 2026-10-09: commit 07dbdc589 shipped it with a hand-rolled
+# tmp + Path.replace (no retry), which this file's os.replace-only structural
+# scan cannot see; tests/test_atomic_write_guard_rm258_rm261.py flagged it.
 _DIRECT_WRITERS = ["loop_controller.awrite", "intents._awrite",
-                   "steer._awrite", "adjudicator._atomic_write"]
+                   "steer._awrite", "adjudicator._atomic_write",
+                   "repo_review._atomic_write"]
 
 # Every ops/loop module swept this cycle. RM-250 named the first three; the
 # other four were found by the cycle's own adversarial refutation pass, which
-# REFUTED the claim that three was the complete sibling set.
+# REFUTED the claim that three was the complete sibling set. repo_review runs
+# as `python ops/loop/repo_review.py` (sys.path[0] is ops/loop), so its bind
+# must survive the same repo-root-off-sys.path context.
 _SWEPT_MODULES = ("loop_controller", "intents", "steer", "adjudicator",
-                  "lanes", "done_sentinel", "claude_stub")
+                  "lanes", "done_sentinel", "claude_stub", "repo_review")
 
 
 def _scratches(dest: Path):
@@ -265,8 +278,9 @@ def test_absolute_path_load_still_resolves_the_atomic_writer(monkeypatch):
     so ops/loop is never on sys.path". The repo root is absent too, so a plain
     `import core.polled_json` raises ModuleNotFoundError there. This test
     removes the repo root from sys.path and evicts every cached `core` module,
-    then loads all SEVEN swept writers by path and asserts each still reached a
-    working atomic writer. Without this guard the bind could regress to a bare
+    then loads every swept writer in `_SWEPT_MODULES` (seven at cycle 48,
+    eight since repo_review joined 2026-10-09) by path and asserts each still
+    reached a working atomic writer. Without this guard the bind could regress to a bare
     import and stay green here while crashing the controller on launch.
 
     Seven, not three: RM-250 named three siblings and cycle 48's adversarial
