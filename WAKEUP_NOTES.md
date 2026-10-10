@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-10 - session 106: DS 16.20.1 / ENGINE 1.287.0, repo_review guard repair, kit v15 vendored, :8889 wedge x2
+
+- **Shipped:** RM-680 + RM-700 (DS 16.19.1 -> 16.20.1, ENGINE 1.287.0, merge `3243a801e`, LEDGER 1708; `:8860` /health read back 1.287.0 / 16.20.1 / 173 / 706); repo_review RM-258 atomic write + console-flash listing (merge `6a2af637b`, LEDGER 1709); FLEET-KIT v15 vendored byte-for-byte after 24/24 provenance (merge `484b56e0a`, verifier MERGE-OK) + `cfe2a9248` environ-in-assert fix; RM-734 / RM-735 filed; /done size pass (ROADMAP 91 -> 87 percent) + RM-736 / RM-737 filed.
+- **Gated dual suite on `e52485eee`:** 5 failed / 39307 passed, all pre-existing (RM-694 x4, RM-684); a first run was void on paging-file exhaustion (RM-737).
+- **:8889 vision wedged TWICE** (RM-735): PID 21744 (44h old) at 22:33, then its replacement PID 8696 within ~1h45m, same py-spy stack (`Thread.start` -> `_started.wait()`, 1 OS thread). Both recovered by taskkill + WMI windowless start (now PID 304). Hypothesis: handler-thread bootstrap dies under commit-charge exhaustion - unmeasured.
+- **C8 (kit v15 merge finisher) was IN FLIGHT at /done** - see `RC-NEXT-SESSION.txt` for its remaining steps; LEDGER 1710 is C8's, C9 owes LEDGER 1711.
+- **Do NOT redo:** the 16.20.1 extract, the RM-95 re-pin, the kit v15 vendor (MANIFEST v15, 23/23 hashes), the repo_review guard repair, the ROADMAP relocation.
+- **Next:** C8's remainder (if not finished), then push the local range, then RM-735 (it recurs in hours).
+
+---
+
 # 2026-10-09 - session 105: kits v12-v14, two history rewrites, MAIN 2246 sections 1-8, anthropic 1.11, RM-172 fixed
 
 - **Shipped (LEDGER 1694-1707):** kit v12 / v13 / v14 vendored (drift "RC OK v14"); electron 44.5.1 (C1); lane worktree base from per-host config (A); TEMP-1 basetemp guard; HEAD scrub + history rewrite B (PLAN c0507357b341) + case-insensitive rw2 (PLAN 3a2de078c11a), protection restored and read back; MAIN 2246 sections 2/3/6/7 in waves M1/M2 (W-A..W-L, W-R = RM-172 fixed, D2 = anthropic 1.11.0); S8 full-repo review (RM-704..RM-731); stop_claim_gate quiet chat (SG); pytest testpaths isolation (RM-732); atlas re-render (CI green at `a7159cdec`). ANSWER 1925 to MAIN reached 1/1 (3 kit defects reported).
@@ -23,15 +34,3 @@
 - **Halted for the operator:** RM-686 out-of-tree proxy launcher edit + one proxy kill (MAIN 1840 sec 5).
 - **Next:** E2 (the operator reported the Electron 44 check OK at this wrap; merge Dependabot npm PR #2, pin exact), then RM-680 (DS 16.20.1).
 - **Do NOT redo:** the deny switch, kit v11, RM-685 / RM-687 / RM-688 / RM-689, the pyc diagnosis (one stale file in 2642; compare code objects, never marshal bytes).
-
----
-
-# 2026-10-08c - session 103: kit v10 + SUBAGENT-FIRST log mode, lanes on the kit, CodeQL advanced, Dependabot triage, pre-move asides recycled
-
-- **Shipped (LEDGER 1680-1685):** `600fa8b84` kit v10 merge (vendor `39d9ba6fb`, `emit()` `8b9b6c356`, DISPATCH block `74385afb3`) + ANSWER to MAIN 0839 (`3ccca5429`); `c4f306027` CodeQL triggers restored after default setup -> not-configured (operator-approved); Dependabot #4 / #5 / #6 / #7 merged (`0adcd5018` last), anthropic 1.x + electron held; `c25553f53` K2 lane workers + loop executor on kit `spawn()` (`headless_route.ps1` deleted, run_lane exit 3 fix); both `*.pre-E-move-20261008` asides in the C: Recycle Bin (operator-approved, 28.2 GB, nothing permanently deleted).
-- **Filed:** RM-680 DS 16.20.1 batch, RM-681 anthropic 1.x (held), RM-682 Dependabot pip regen workflow, RM-683 retire `tools/inbox_responder_spawn.py`, RM-684 CLI pin test. RM-522 / RM-661 marked closed (LEDGER 1652).
-- **SUBAGENT-FIRST hook is in mode `log`;** session 103 is interactive session 1 of 3 toward deny (~2026-10-11 promised to MAIN). Check `ops/loop/control/subagent_first.jsonl` for would-deny rows.
-- **Incident:** K2's first red test exec'd the real `claude.exe` against a dead proxy port; no API reached, orphan killed; tests now pin a fake. Never run `tests/test_subagent_prompt_flag.py` in a fake-only pass (it execs a real claude).
-- **CI:** `c25553f53` ci red = the 4 RM-172 subtests + K2's `in env` assert tripping `test_no_environ_in_assert_operands`; fixed forward `26e83fd7f` (LEDGER 1686). docs-guards + codeql green.
-- **Next:** E2 (merge electron PR #2, `npm ci` + `npx install-electron`, pin exact) if the operator reports the Electron 44 check OK; else RM-680.
-- **Do NOT redo:** kit v10 vendoring + answer, CodeQL switch, the four Dependabot merges, K2, the Recycle Bin move.

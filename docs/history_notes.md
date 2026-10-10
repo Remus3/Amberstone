@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-08c - session 103: kit v10 + SUBAGENT-FIRST log mode, lanes on the kit, CodeQL advanced, Dependabot triage, pre-move asides recycled
+
+- **Shipped (LEDGER 1680-1685):** `600fa8b84` kit v10 merge (vendor `39d9ba6fb`, `emit()` `8b9b6c356`, DISPATCH block `74385afb3`) + ANSWER to MAIN 0839 (`3ccca5429`); `c4f306027` CodeQL triggers restored after default setup -> not-configured (operator-approved); Dependabot #4 / #5 / #6 / #7 merged (`0adcd5018` last), anthropic 1.x + electron held; `c25553f53` K2 lane workers + loop executor on kit `spawn()` (`headless_route.ps1` deleted, run_lane exit 3 fix); both `*.pre-E-move-20261008` asides in the C: Recycle Bin (operator-approved, 28.2 GB, nothing permanently deleted).
+- **Filed:** RM-680 DS 16.20.1 batch, RM-681 anthropic 1.x (held), RM-682 Dependabot pip regen workflow, RM-683 retire `tools/inbox_responder_spawn.py`, RM-684 CLI pin test. RM-522 / RM-661 marked closed (LEDGER 1652).
+- **SUBAGENT-FIRST hook is in mode `log`;** session 103 is interactive session 1 of 3 toward deny (~2026-10-11 promised to MAIN). Check `ops/loop/control/subagent_first.jsonl` for would-deny rows.
+- **Incident:** K2's first red test exec'd the real `claude.exe` against a dead proxy port; no API reached, orphan killed; tests now pin a fake. Never run `tests/test_subagent_prompt_flag.py` in a fake-only pass (it execs a real claude).
+- **CI:** `c25553f53` ci red = the 4 RM-172 subtests + K2's `in env` assert tripping `test_no_environ_in_assert_operands`; fixed forward `26e83fd7f` (LEDGER 1686). docs-guards + codeql green.
+- **Next:** E2 (merge electron PR #2, `npm ci` + `npx install-electron`, pin exact) if the operator reports the Electron 44 check OK; else RM-680.
+- **Do NOT redo:** kit v10 vendoring + answer, CodeQL switch, the four Dependabot merges, K2, the Recycle Bin move.
+
+---
+
 # 2026-10-08b - session 102: E: cutover verified, kit v9 vendored, CI back to baseline, supply-chain 2.7 -> 6.6
 
 - **Shipped (LEDGER 1676-1679):** E: cutover read back (`cut_over`, junctions at the old C: paths, RC healthy from E:); `0d4fcbd3c` kit v9 merge (vendor `4212ac07a`, done-marker `720a5d234`) + Stop hook in gitignored `.claude/settings.json` + ANSWER to MAIN 2354; `235445841` three CI reds; `119d3a85e`/`c206af930` supply chain (dependabot, SHA pins, hashed CI pip, read-only tokens, CodeQL gated to dispatch, Pillow 12.3.0) + ANSWER to MAIN 0300 (Scorecard 2.7 -> 6.6).
