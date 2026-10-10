@@ -41,6 +41,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
+from core.polled_json import atomic_write_bytes
 from core.ports import VISION
 
 _log = logging.getLogger("rc.web_dashboard")
@@ -124,10 +125,9 @@ def capture_stack(pid: int, app_dir: Path) -> Optional[Path]:
                            creationflags=_NO_WINDOW)
         out = Path(app_dir) / "logs" / (
             f"vision_wedge_{time.strftime('%Y%m%d-%H%M%S')}_{int(pid)}.txt")
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out.with_name(out.name + ".tmp")
-        tmp.write_bytes((r.stdout or b"") + (r.stderr or b""))
-        tmp.replace(out)
+        # Shared helper: creates logs/, per-writer scratch name, fsync and the
+        # WinError 5 retry (atomic-write guard RM-258 / RM-261).
+        atomic_write_bytes(out, (r.stdout or b"") + (r.stderr or b""))
         return out
     except Exception as exc:  # noqa: BLE001
         _log.warning("vision watchdog: py-spy dump of %s failed: %s", pid, exc)
