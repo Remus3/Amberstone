@@ -12,7 +12,7 @@ live-gated (a wrong deterministic read is worse than an LLM call; do-not-flip-bl
 - **OBS is ALREADY integrated (text-push only).** `core/obs_publisher.py` is a complete
   OBS-WebSocket v5 client: Hello/Identify/Identified handshake with SHA256 auth, backoff
   reconnect, recv-queue drain (keepalive-flap fix), AppLoop-or-thread run path. Wired at
-  `dashboard/server.py:259-260` (`get_publisher().start_background()`), config-gated by
+  `dashboard/server.py:247-248` (`get_publisher().start_background()`), config-gated by
   `config/coach_settings.json` -> `obs.enabled` (default false, port 4455). `websockets`
   is already in `requirements.txt` - NO new dependency for any OBS work. Its ONLY current
   capability is pushing a one-line RC-state string to a Text (GDI+) source (`_render_state`).

@@ -3,7 +3,7 @@
 Selected on criteria 1 + 2 + 3 + 4: it parses OBS-WebSocket v5 payloads RC
 does not author, it carries an auth password, it runs a daemon thread plus
 an asyncio loop over a process-wide frame slot, and 468 lines of it had no
-dedicated test module. Live-reachable from `dashboard/server.py:259`.
+dedicated test module. Live-reachable from `dashboard/server.py:248`.
 
 Four weaknesses are pinned here.
 

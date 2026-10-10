@@ -8,7 +8,8 @@ other request behind it - /latest-lcu, /latest-liveclient and the LCU
 command queue all stall for the slow handler's full duration.
 
 Guards:
-1. vision_server binds ThreadingHTTPServer (drift guard on the source -
+1. vision_server binds a concurrent server - ThreadingHTTPServer until
+   RM-735, the pre-started worker pool since (drift guard on the source -
    ``main()`` blocks forever so the binding cannot be exercised directly).
 2. Concurrency property: two overlapping requests against a
    ThreadingHTTPServer+Handler instance complete in ~one slow-handler
@@ -29,22 +30,27 @@ VS_INIT = REPO / "vision_server" / "__init__.py"
 
 
 class VisionServerThreadingSourceGuard(unittest.TestCase):
-    def test_binds_threading_http_server(self) -> None:
+    def test_binds_a_concurrent_server(self) -> None:
         src = VS_INIT.read_text(encoding="utf-8")
-        self.assertIn("from http.server import ThreadingHTTPServer", src)
-        # RM-150 moved the address out of the literal: the bind is now
-        # (host, PORT) where host comes from _bind_host() - loopback by
-        # default, RC_VISION_BIND to widen it. What S7 guards is the
-        # ThreadingHTTPServer class, not the address, so the pin follows the
-        # class. The address itself is pinned by
-        # tests/test_vision_server_bind_rm150.py.
+        # RM-735 (2026-10-10) replaced the thread-per-request
+        # ThreadingHTTPServer with a pre-started worker pool
+        # (vision_server/_pool.py) - still concurrent, but its accept loop
+        # cannot park in Thread.start. main() binds through make_server;
+        # RM-150 keeps the address as (host, PORT) from _bind_host(), pinned
+        # by tests/test_vision_server_bind_rm150.py. What S7 guards is a
+        # CONCURRENT server, so the pin follows the class.
+        self.assertIn("from ._pool import PooledHTTPServer", src)
+        self.assertRegex(src, re.compile(r"s = make_server\(host, PORT\)"))
         self.assertRegex(src, re.compile(
-            r"ThreadingHTTPServer\(\(host, PORT\), Handler\)"))
-        self.assertIn("daemon_threads = True", src)
+            r"PooledHTTPServer\(\(host, port\), handler or Handler\)"))
         self.assertNotRegex(
-            src, re.compile(r"(?<!Threading)HTTPServer\(\("),
+            src, re.compile(r"(?<![A-Za-z])HTTPServer\(\("),
             "plain HTTPServer binding reintroduced - serializes the relay "
             "+ LCU command queue behind slow vision handlers (S7)")
+
+    def test_the_pool_is_concurrent(self) -> None:
+        from vision_server import _pool
+        self.assertGreaterEqual(_pool.DEFAULT_WORKERS, 4)
 
 
 class _SlowThenFastHandler:

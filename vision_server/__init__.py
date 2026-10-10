@@ -11,21 +11,24 @@ LOC) was decomposed into:
   - ``_http``      - BaseHTTPRequestHandler routing
 
 The root ``moon_vision_server.py`` is kept as a thin entrypoint shim because
-``dashboard/server.py`` spawns the server by file path (not Python import)
-when :8889 is not listening - the sole launcher since the ``RC-VisionServer``
-scheduled task was removed (2026-06-11, deep-audit P2).
+the dashboard's vision watchdog (``dashboard/_vision_watchdog.py``, RM-735)
+spawns the server by file path (not Python import) when :8889 is not
+listening or stops answering ``/health`` - the sole launcher since the
+``RC-VisionServer`` scheduled task was removed (2026-06-11, deep-audit P2).
+``_pool`` (RM-735) is the pre-started worker-pool server ``make_server``
+binds.
 """
 from __future__ import annotations
 
 import os
 import socket
 import sys
-from http.server import ThreadingHTTPServer
 
 from ._config import PORT, _get_client, api_key_present, log
 from ._frame import get_latest_frame, handle_upload_frame
 from ._http import Handler
 from ._inference import handle_coach, handle_ocr, handle_vision
+from ._pool import PooledHTTPServer
 from ._relay import (get_latest_liveclient, get_latest_lcu,
                      handle_upload_liveclient, handle_upload_lcu,
                      lcu_drain_pending, lcu_queue_command, lcu_record_result)
@@ -48,6 +51,7 @@ __all__ = [
     "lcu_queue_command",
     "lcu_record_result",
     "main",
+    "make_server",
 ]
 
 
@@ -66,6 +70,19 @@ def _bind_host() -> str:
     that exports an empty variable cannot silently re-open the wildcard.
     """
     return (os.environ.get("RC_VISION_BIND") or "").strip() or "127.0.0.1"
+
+
+def make_server(host: str, port: int, handler=None) -> PooledHTTPServer:
+    """Build the :8889 HTTP server (bound, not yet serving).
+
+    RM-735: a pre-started worker pool, not ``ThreadingHTTPServer``. The
+    per-request-thread server parks its accept loop forever in
+    ``Thread.start()`` when a new thread dies before signalling it started
+    (the session 106 wedge, twice); this one never starts a thread on the
+    accept path. Concurrency is kept (S7): 16 workers, so a slow vision /
+    OCR handler still never serializes the relays or the LCU queue.
+    """
+    return PooledHTTPServer((host, port), handler or Handler)
 
 
 def main() -> int:
@@ -96,16 +113,16 @@ def main() -> int:
     _get_client()
     host = _bind_host()
     log.info("Moon Vision Server on %s:%d  python=%s", host, PORT, sys.executable)
-    # ThreadingHTTPServer (S7, 2026-06-10): the plain HTTPServer serialized
+    # Concurrent server (S7, 2026-06-10): the plain HTTPServer serialized
     # EVERY request behind the slowest in-flight handler - an in-process
     # self-grab (GDI BitBlt + JPEG encode, 100-400ms) or a Sonnet/OCR
     # inference call would block /latest-lcu, /latest-liveclient and the
     # LCU command queue for its whole duration, which the operator felt as
     # slow champ-select updates + slow build/rune pushes. All shared state
-    # in _frame/_relay/_stats was already lock-guarded, so per-request
-    # threads are safe.
-    s = ThreadingHTTPServer((host, PORT), Handler)
-    s.daemon_threads = True
+    # in _frame/_relay/_stats was already lock-guarded, so concurrent
+    # handlers are safe. RM-735 (2026-10-10) swapped the thread-per-request
+    # ThreadingHTTPServer for a pre-started worker pool - see make_server.
+    s = make_server(host, PORT)
     try:
         s.serve_forever()
     except KeyboardInterrupt:
