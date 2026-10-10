@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-08b - session 102: E: cutover verified, kit v9 vendored, CI back to baseline, supply-chain 2.7 -> 6.6
+
+- **Shipped (LEDGER 1676-1679):** E: cutover read back (`cut_over`, junctions at the old C: paths, RC healthy from E:); `0d4fcbd3c` kit v9 merge (vendor `4212ac07a`, done-marker `720a5d234`) + Stop hook in gitignored `.claude/settings.json` + ANSWER to MAIN 2354; `235445841` three CI reds; `119d3a85e`/`c206af930` supply chain (dependabot, SHA pins, hashed CI pip, read-only tokens, CodeQL gated to dispatch, Pillow 12.3.0) + ANSWER to MAIN 0300 (Scorecard 2.7 -> 6.6).
+- **CI read-back:** `97ee9aed1` ci = only the 4 operator-left RM-172 subtests; docs-guards green.
+- **Operator asks open:** Recycle Bin for the two `*.pre-E-move-20261008` asides (~31 GB); CodeQL default setup -> not-configured then restore `codeql.yml` triggers.
+- **Finding:** the Dependabot pip PR fails the pin-agreement step (no hashed-file regen) and bundles 3 majors - do not merge as is.
+- **Do NOT redo:** the cutover verify, kit v9 vendoring + answer, the three CI fixes, the supply-chain slice + answer.
+
+---
+
 # 2026-10-08 - session 101: model pin removed, MIG-1 prune, C: -> E: move staged
 
 - **Shipped (LEDGER 1675-1676):** project `"model"` pin removed from `.claude/settings.json` (overrode /model on restart); `ops/migrate/e_move.ps1` move tooling (two independent reviews, all blockers fixed); MIG-1 worktree prune 64 -> 25.
