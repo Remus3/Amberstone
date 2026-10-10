@@ -1,6 +1,6 @@
 NEXT SESSION
 ------------
-SESSION: 106
+SESSION: 107
 HISTORY WAS REWRITTEN TWICE on 2026-10-09 (LEDGER 1699 = B, 1701 = rw2, case-insensitive): every
 commit id changed twice. Old SHAs resolve through .git/filter-repo/commit-map (rw2), then
 .git/filter-repo-20261009/commit-map (B), then .git/filter-repo-20260621/commit-map (June); copies
@@ -8,17 +8,21 @@ sit beside the bundles in RC's sidecar Backup folder. Cite LEDGER entries, not p
 Every other clone must re-clone (OPERATOR ASKS 5); a fresh clone runs scripts/install_hooks.py and
 sets the LOCAL git config fleet.operatorIdent before any push.
 
-Next action: if MAIN replied to RC's 1925 ANSWER (2026-10-09-1925-from-RC-ANSWER-to-MAIN-2246-sec2-8-
-DONE-v14-followups-3-kit-defects.md, sha256 65c1a146, reached 1/1) or shipped kit v15 (fixes for the
-3 reported kit defects), process that first: provenance by SHA-256 against MAIN's outbox, vendor
-byte-for-byte, ONE ANSWER, close the row with inbox_tick.py --done. Otherwise the top open ROADMAP
-item: RM-680, the DS 16.19.1 -> 16.20.1 batch (Tier-2, DS batch lane, recipe = LEDGER 1652;
-acceptance in the ROADMAP NOW row; re-pin RM-700 with or after it).
-FIRST at session start: read CI on the wrap push (docs + hand-off only, pending at wrap). Since W-A
-a push runs the fast guards + an impact slice (the full dual suite runs on PR / dispatch /
-escalated push / nightly). ci was GREEN at a7159cdec (RM-172 fixed), so anything red is the first fix.
+Next action: RM-735 - the :8889 vision server wedges within HOURS (twice in session 106: PID 21744,
+then its replacement PID 8696 within ~1h45m; same py-spy stack, MainThread in Thread.start ->
+_started.wait(), 1 OS thread). Probe first: `curl -s --max-time 5 http://127.0.0.1:8889/health`
+(200 at wrap, PID 304) and `netstat -ano | grep ":8889 "` (SYN_SENT clients = wedged; recovery
+recipe under "Kit / gate procedure"). Build TDD, Tier-1 (vision_server/ + dashboard/server.py,
+neither frozen): (1) a periodic liveness self-heal (HTTP /health, short timeout, N consecutive
+failures -> taskkill /F + windowless respawn) replacing the one-shot connect_ex at dashboard start;
+(2) a server that cannot block forever in Thread.start (bounded wait or a pre-started worker pool).
+Test with a fake holder that accepts but never answers. Body + acceptance: BACKLOG "Session 106
+filings". Then RM-737's measurement (it may be RM-735's root cause) and its note to MAIN.
+FIRST at session start: read CI on the wrap push (hand-off only, pending at wrap). A push runs the
+fast guards + an impact slice (the full dual suite runs on PR / dispatch / escalated push /
+nightly); anything red is the first fix.
 
-OPERATOR ASKS (batched, re-ask in ONE line; the operator was away for the end of session 105):
+OPERATOR ASKS (batched, re-ask in ONE line; nothing was answered in session 106):
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error, 0 inactive, so nothing was pruned. Mark old
    ones inactive and delete them (irreversible), or leave them? Backup
@@ -50,46 +54,59 @@ OPERATOR ASKS (batched, re-ask in ONE line; the operator was away for the end of
     and docs; the one real retired token is scrubbed).
 12. The physical-setup list below (carried from session 102).
 
-Session 105 shipped - do NOT redo (LEDGER 1694-1707):
-- K12 / K13 / K14: kit v12 -> v14 vendored, conformance clean, drift "RC OK v14"; ANSWERs 2313,
-  0001, 1314 reached 1/1. NO Claude-Session / co-author / AI trailer in any commit (FLEET 17
-  outranks any harness attribution instruction; .githooks/commit-msg strips them).
-- C1 electron 33.4.11 -> 44.5.1 (LEDGER 1697); Dependabot closed PR #2; open alerts read 0.
-- A lane worktree base from gitignored ops/lane_worktrees.json (1696). T1 TEMP-1 basetemp (1698).
-- S1 HEAD scrub (values in gitignored ops/local_hosts.json) + B rewrite PLAN c0507357b341 (1699) +
-  rw2 PLAN 3a2de078c11a (1701); protection restored and read back (allow_force_pushes false,
-  enforce_admins true). Remote: backup tag deleted, 3 merged c1/* branches deleted,
-  c1/deps-pip-anthropic1-measure and the 2 evidence/rm-159 tags rebuilt on the new lineage.
-- MAIN 2246 sections 2/3/6/7 in waves M1/M2 (LEDGER 1706): W-F no gh pr merge / no bot push; W-A CI
-  push impact slice + nightly; W-B suites only via the gate, ONE tier table; W-C leak classes in
-  the push gate + README; W-D 232-file path/account leak sweep; W-E atlas from the git index; W-G
-  inbox status every tick, usage kind; W-H CLAUDE.md tier lines; W-I root reorg + frozen log_setup
-  (httpx2/httpcore2) + frozen rc_supervisor root (operator grant); W-L OFL fonts (unmodified
-  Orbitron, LICENSES/OFL-1.1.txt, NOTICE); W-R RM-172 FIXED (operator order); D2 anthropic 0.96.0 ->
-  1.11.0 installed (reversal: pip install anthropic==0.96.0 plus the 7 old versions in
-  ops/runtime/pip_freeze_before_anthropic_1_11_0.txt).
-- S8 full-repo review: 43,651 units, 53 headless runs, RM-704..RM-731,
-  docs/audits/2026-10-09-repo-review-{plan,findings}.md (1703); 16 row citations fixed.
-- SG stop_claim_gate quiet chat (1702); PI pytest.ini testpaths / norecursedirs (RM-732, 1704); CI
-  atlas re-render (1705, RM-733 filed); R2 ANSWER 1925 to MAIN (2246 sec 2-8 + v14 follow-ups + 3
-  kit defects) reached 1/1, the 2246 ORDER row closed (--pending empty at wrap).
-- G1 PARTIAL: 6 merged lane worktrees + branches removed with verified backups; Pages untouched
-  (0 inactive; ask 2).
-- RM-696 CLOSED by W-I 1e27f14ae (every lane prompt names <worktree-base>).
+Session 106 shipped - do NOT redo:
+- C2: CI on b47d2f6f5 GREEN (ci 38010805143, codeql, docs-guards, pages-build all success).
+- C3: RM-680 DS 16.19.1 -> 16.20.1 + RM-700 RM-95 re-pin, ENGINE 1.286.0 -> 1.287.0, merge
+  3243a801e, LEDGER 1708. :8860 /health read back engine 1.287.0, patch 16.20.1, champions 173,
+  items 706. Verifier MERGE-OK (690 cited passed, 39411 collected).
+- C4: ops/loop/repo_review.py guard repair (RM-258 atomic write via core.polled_json; listed in
+  SCHEDULED_SPAWNERS), merge 6a2af637b, LEDGER 1709; RM-734 filed (e52485eee).
+- C5: gated dual suite on e52485eee "5 failed, 39307 passed, 104 skipped", exit 1, all 5
+  pre-existing (RM-694 x4 under gitignored ops/runtime/responder_export/; RM-684 CLI 2.1.296 vs
+  pin 2.1.285, also red on b47d2f6f5). A first run was VOID (paging file: WinError 1455 /
+  MemoryError) while another tree's suite held the other gate slot -> RM-737.
+- C6/C7: FLEET-KIT v15 provenance 24/24 SHA-256 vs MAIN's outbox; vendored byte-for-byte (23/23
+  kit hashes, MANIFEST v15); verifier MERGE-OK (362 cited passed, 39427 collected); merge 484b56e0a;
+  cfe2a9248 fixed the v15 test's environ-in-assert (repo guard). Kit defect (a) FIXED in v15
+  (fleet_claims / fleet_identity / fleet_headless / fleet_lanes); (b)(c) moved to KIT-16 by MAIN.
+- C9: :8889 vision server wedged (PID 21744, 44h old; py-spy: MainThread stuck in Thread.start
+  -> _started.wait(), 1 OS thread) -> taskkill + WMI windowless restart; RM-735 filed (09751de64).
+  IT RECURRED: the replacement PID 8696 wedged within ~1h45m with the identical stack; the /done
+  executor recovered it again at ~00:27 (taskkill + Invoke-CimMethod Win32_Process Create, same
+  command line, cwd = repo root) -> PID 304, /health 200, /api/health/all vision alive. Recurrence
+  and an UNMEASURED hypothesis (handler-thread bootstrap dies under commit-charge exhaustion,
+  RM-737) are in the BACKLOG RM-735 body.
+- C8 (kit v15 merge finisher, DONE 00:48): final gated suite on cfe2a9248 "5 failed, 39323
+  passed, 99 skipped, 1 warning, 18768 subtests passed in 1048.33s", exit 1, all 5 pre-existing
+  (RM-694 x4, RM-684); load-flake test_ci_sibling_sweep_tree_wiring (MemoryError under 2-slot
+  contention; passes alone); two VOID runs (21:59, 23:51). ANSWER to MAIN 2055 delivered
+  (2026-10-10-0043-from-RC-ANSWER-to-MAIN-2055-kit-v15-VENDORED-..., sha256 68162a42, reached 1/1,
+  tracked copy e39a16ffe); 2055 ORDER row closed (inbox_tick --pending empty), inbox marked seen;
+  LEDGER 1710 (ffd6a0c36); worktree agent-ac36dfe14966e50bc + branch removed.
+- /done: ROADMAP size pass (91 -> 87 percent; eleven closed stubs to ROADMAP_HISTORY
+  `## 2026-10-10`, RM-734 / RM-735 bodies to BACKLOG "Session 106 filings"; a verifier refuted
+  id reachability - three id ranges - fixed c5d1c3f68); RM-736 / RM-737 filed; DS_SWEEP_TRACKER
+  next free RM-738; LEDGER 1711 (C9 + the recurrence) and 1712 (/done); WAKEUP_NOTES session 106
+  block (prune moved session 103); perseus_sync embedded 2018/2018.
+- RM-737 disposition (main session asked "file it or report to MAIN, record which"): BOTH - filed
+  as RM-737, and its figures go in RC's NEXT outbound note to MAIN (the kit owns the slot count).
+  NOT yet reported: no note was sent for it this session.
+- RM-736 also carries the count_mismatch false positive: the gate flagged the main session's relay
+  of C8's "5 failed, 39323 passed"; verified TRUE against C8's own run file before filing.
+- Inbox: SS ANSWER to MAIN 2055 (2026-10-09-2155) arrived in RC's inbox - an ANSWER, no reply
+  (never answer an answer).
 
-Operator chat decisions, session 105 (recorded in LEDGER 1696 / 1699 / 1701 / 1706): v13 class
-scope (80 on main, 113 over all refs) over MAIN's 36; scrub-then-rewrite with a one-time override;
-hide/restore the worktree admin dirs during a rewrite; fix RM-172 now; frozen-file edits for the
-leak/launcher lines plus the log_setup httpx2/httpcore2 names; remote refs + Pages + merged
-worktrees cleanups; a second case-insensitive rewrite. Main-session decision: M2's unpushed commits
-were rebuilt rather than bypassing the sibling sweep (alternatives: an operator bypass,
-fleet_rewrite; why: nothing published changed, and the tree was byte-identical, tree b2ce08315).
-Then "Headless - Operator Is Away": no further asks that session, /done ran unprompted.
-
-Open items (session 105):
-- Kit defects (a) a non-UTF-8 .git link crashes 4 kit readers, (b) fleet_suite_gate runs bare on an
-  empty selection, (c) fleet_gitlock wraps only commit/push - reported in 1925; await MAIN's kit
-  v15. Until (b) lands, never build a pytest file list from $(cat <file>) without a non-empty check.
+Open items (sessions 105-106):
+- Kit defects: (a) FIXED in v15; (b) fleet_suite_gate runs bare on an empty selection and (c)
+  fleet_gitlock wraps only commit/push wait on KIT-16 (MAIN). Until (b) lands, never build a pytest
+  file list from $(cat <file>) without a non-empty check.
+- RM-736 stop_claim_gate false positives on relayed sub-agent work: check 10 on merges 3243a801e /
+  6a2af637b (stop_claim_history 2026-10-10T02:31:48Z blocked, + 2 rows) and count_mismatch on C8's
+  verified suite count (ops/runtime/stop_claim_report.json); BACKLOG "Session 106 filings".
+- RM-737 suite memory contention: THREE void runs in session 106 (C5's first; C8's 21:59, 23:51)
+  plus one MemoryError load-flake. Box rule meanwhile: a run whose output carries WinError 1455 or
+  MemoryError is VOID - re-run once, never graded. Report the figures to MAIN in the next note.
+- OutboundCap: 1/6 notes used on 2026-10-10 (C8's ANSWER, 00:43; resets per local day).
 - v13 section 5 sidecars: the rest waits on MAIN's FLEET_SIDECAR_ROOT (RM-707 lists, nothing moved);
   any move is an out-of-tree act (halt). v14: a future lane-worktree move is out-of-tree (operator).
   RC's lanes already run under ops/lane_worktrees.json, so MAIN setting the variable moves nothing.
@@ -98,19 +115,22 @@ Open items (session 105):
   websockets 16.0) while the box matches requirements.txt - refresh it (in-tree, Tier-1).
 - Local branch m2-prebuild-56e5572e4 KEPT (git cherry: 4 equivalent, 2 unique; `git branch -d`
   refuses; it holds pre-rewrite lineage locally).
-- Empty folder .claude/worktrees/agent-a9d1d765294fa48b1 held by a process; remove when free.
+- Empty folder .claude/worktrees/agent-a9d1d765294fa48b1 still present (held by a process at
+  session 105); remove when free.
 - Locked merged worktrees agent-ad1ad6523dbde8de1 (W-R, ancestor of main) and
   agent-a25593521097c359e (the first W-L attempt, superseded by cf72989eb): remove after the
   harness lock is released (back up ignored files first).
 - RM-703: 11 lift1-* / lift2-* worktrees with unmerged commits (map each patch-unique commit first).
-- RM-694 / RM-684 / RM-695: the local full-suite baseline is 5 failures (4 RM-694 + RM-684); the
-  tree-sweep self-test stays deselected in local full runs (RM-695 MemoryError + xdist wedge).
+- RM-694 / RM-684 / RM-695: the local full-suite baseline is 5 failures (4 RM-694 + RM-684, CLI now
+  2.1.296); the tree-sweep self-test stays deselected in local full runs (RM-695 MemoryError +
+  xdist wedge).
 - RM-697 gate range across a rewrite; RM-698 stop_claim_gate blind spots; RM-699 hot_reload watches
-  tests/; RM-700 stale DS pin; RM-701 supervisor restart (ask 8); RM-702 drive paths in 94 old
-  commit messages (MAIN-ordered only); RM-704..RM-731 S8 rows (RM-705 collection half shipped);
-  RM-733 atlas freshness root cause. Next free RM id RM-734 (pin in docs/DS_SWEEP_TRACKER.md).
+  tests/; RM-701 supervisor restart (ask 8); RM-702 drive paths in 94 old commit messages
+  (MAIN-ordered only); RM-704..RM-731 S8 rows (RM-705 collection half shipped); RM-733 atlas
+  freshness root cause; RM-734 push impact slice misses index-walking guards; RM-735 :8889
+  liveness self-heal (RECURS IN HOURS); RM-736; RM-737. Next free RM id RM-738 (pin in
+  docs/DS_SWEEP_TRACKER.md).
 - CS's 3 self-check suggestions: sibling-only, informational; nothing for RC to do.
-- OutboundCap: 5/6 notes used on 2026-10-09 (resets per local day).
 - A drive-root literal in a NEW test halts the pre-push sibling sweep (structural arm); use tmp_path.
 
 Kit / gate procedure (carry):
@@ -119,13 +139,19 @@ Kit / gate procedure (carry):
   --owner <id> -- <cmd>`; <id> = <session_id>.<agent_id>, named by the claims hook's deny reason.
   `pytest --version` / `--collect-only` are denied as whole suites - name a test file or use the
   gate. A pytest command whose file list is a shell variable also reads as a whole suite.
-- Local full dual suite: `-n 8 --dist loadfile` through the gate takes ~6 min, BUT deselect
+- Kit v15: the gate's straddle check ignores docs/ and prose (.md/.txt) edits, so a doc edit by
+  one agent never blocks another's suite; a known short suite gets one extra slot; headless
+  children run foreground only (no headless prompt may ask for background work).
+- Local full dual suite: `-n 8 --dist loadfile` through the gate takes ~6 min alone (~18 min under
+  contention), BUT deselect
   tests/test_ci_sibling_sweep_tree_wiring.py::test_the_gate_runs_green_on_this_tree until RM-695
   lands (MemoryError; its worker death WEDGES the xdist controller at 99%).
 - A stale 0 B `.git/index.lock` with no RC git alive may need removing by hand; kit gitlock will
   not clear it while any git runs machine-wide (reported to MAIN, session 105).
 - H1: after answering an ORDER / FIX / RULING, close its row:
   `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`, confirm with `--pending`.
+  MAIN's inbox path comes from the agreement record (inbox_tick's delivery helper), not from
+  ops/moon_sync_repos.json.
 - W1 WATCH: deny mode may block main-thread work that cannot be dispatched (an AHK-typed loop
   window, a background session without an agent id). If a deny row shows that, write `log` back to
   ops/loop/control/subagent_first.mode and ask MAIN for a ruling.
@@ -134,6 +160,10 @@ Kit / gate procedure (carry):
   dir> before suspecting gitignored state (memory reference_stale_pyc_matching_header, acct2 store).
 - Pre-push dry-run for a whole-history range: scratch scripts only; the sweep over ~6000 commits
   takes ~8.5 min / ~550 MB, the credential scan ~1 min.
+- Vision recovery recipe (until RM-735 lands): taskkill /F /PID <holder of :8889>, then
+  Invoke-CimMethod -ClassName Win32_Process -MethodName Create with CommandLine = pythonw.exe +
+  moon_vision_server.py and CurrentDirectory = the repo root (windowless, survives the session);
+  read back /health 200 and /api/health/all vision alive.
 
 Carried forward (not acted on yet):
 - The old lane folder holds only the stray before_sweep_s2.txt and its system-drive junction is
@@ -146,15 +176,15 @@ Carried forward (not acted on yet):
   reflog are not tied to the claimed sha. Unfiled: stop_claim_gate `_GIT_LEAD` regex backtracks
   exponentially on `git -c -c -c ...` (6.1 s at 20 repeats; unrealistic shape).
 - WATCH: one verifier run (session 104) saw 24 child processes die at startup with 0xC0000142; not
-  reproduced. Desktop heap / process pressure suspected, unmeasured.
-- ROADMAP.md is at ~89.3 percent of its 81920-byte budget (drift_guard warns at 90): the next row
-  added needs a relocation first.
+  reproduced. Desktop heap / process pressure suspected, unmeasured (compare RM-737).
+- ROADMAP.md is at 87.2 percent (71423 / 81920) after the session 106 size pass; drift_guard warns
+  at 90.
 - `executor_cmd` in ops/loop/config.json (+ config.gate.json, config.p5.json) is UNUSED. The kit
   finds claude on the USER PATH only, so a machine-env-only launch is refused (fails closed).
 - Still off-kit: the disarmed pre-v8 tools/inbox_responder_spawn.py (RM-683). headless_env.py stays
   as fleet_route's fail-closed pre-check.
 - INCIDENT (LEDGER 1684): NEVER run tests/test_subagent_prompt_flag.py in a fake-only pass (it
-  execs a real claude; RM-684 local pin failure 2.1.293 vs 2.1.285).
+  execs a real claude; RM-684 local pin failure, now 2.1.296 vs 2.1.285).
 - origin c1/deps-pip-anthropic1-measure sits on the rewritten lineage (24c54ec39, rw2); with
   RM-681 PARTIAL it can go once the live-call read-back is done.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
@@ -163,9 +193,8 @@ Carried forward (not acted on yet):
 - stop_claim_gate accepted gaps: "I'll note CI is green" passes; an unlisted shouted capitalised
   word could read as a channel code; a FUTURE-tense "waits until X is pushed" fires
   push_claim_without_push. A per-sentence finding cannot be withdrawn. Since RM-687 a relayed
-  number / push / commit is backed by the session's own sub-agent run.
-- Progress files in ops/loop/control/progress/ (gitignored): 157; every file listed by sessions
-  102-104 and session 105's 31 read done (h-ci-green dead); RM-728 files a reaper.
+  number / push / commit is backed by the session's own sub-agent run (merges: see RM-736).
+- Progress files in ops/loop/control/progress/ (gitignored): 161; RM-728 files a reaper.
 - Operator setup list (physical / operator acts, batch with the asks above):
   - Recording track: enable OBS websocket; free disk to >= 28 GB; add display/window capture
     source; set the game to borderless; install ffmpeg; set obs.record.enabled; restart
@@ -184,23 +213,24 @@ Carried forward (not acted on yet):
   phase_watcher, cost_health_watchdog, ds_feed_watch, ci_watchdog, spec_watch, progress_watch).
   Broken core/ silently disables the self-monitor (rc_supervisor.py:1466-1468, line numbers before
   W-I's edit). The standalone RC-Agent copy of tools/legion_agent_boot.ps1 at the system-drive root
-  cannot import core.
-- Still open rows: RM-680, RM-681 (PARTIAL), RM-682..RM-684, RM-686 (operator-gated), RM-690,
-  RM-691, RM-692..RM-695 (ROADMAP NOW + BACKLOG "Session 103 filings"), RM-697..RM-733 (above),
-  RM-279, RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248,
-  RM-486, RM-189, RM-167, RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242
+  cannot import core. (ops/loop/repo_review.py now complies - C4.)
+- Still open rows: RM-681 (PARTIAL), RM-682..RM-684, RM-686 (operator-gated), RM-690, RM-691,
+  RM-692..RM-695 (ROADMAP NOW + BACKLOG "Session 103 filings"), RM-697..RM-699, RM-701..RM-737
+  (above), RM-279, RM-280, RM-368, RM-381, RM-292b-d, RM-251(b), RM-370, RM-229, RM-290, RM-27,
+  RM-248, RM-486, RM-189, RM-167, RM-204, RM-12/RM-14 flips, RM-15(b), RM-16, RM-423, RM-239/RM-242
   (operator fence), RM-256 redo = RM-521, RM-297b (needs non-author adjudicator + CI), RM-519
   (responder provenance on kit verify_main).
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW - roster
   change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER SHARED_SHA256 re-pin
   stays joint.
-- Worktrees: `git worktree list` = 21 entries at this wrap (main + 7 agent + 2 drain + 11 lift; G1
-  removed the 6 lane worktrees). REVIEW before -D: lift1 death-reel (RM-639) / review-player
-  (RM-641) / vod-retention (RM-640), lift2 y45 (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432
-  ADR-016, RM-229; 13 ahead), drain-wave2-atomic (5 ahead), agent worktrees a1f2b1c7, a28bb1b0,
-  a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work; said squashed - unverified), plus the two locked
-  ones above. Second-pass candidates: lift1-death-recap, -event-sse, -item-tape, -obs-record,
-  lift2-y07, -y08, -y11-y13. Stray before_sweep_s2.txt in the old lane folder (above).
+- Worktrees: `git worktree list` = 21 entries at this wrap (main + 7 agent + 2 drain + 11 lift;
+  C8 removed its own). REVIEW before -D: lift1 death-reel (RM-639) /
+  review-player (RM-641) / vod-retention (RM-640), lift2 y45 (Y-45 / RM-568),
+  drain-wave2-tail-backlog (RM-432 ADR-016, RM-229; 13 ahead), drain-wave2-atomic (5 ahead), agent
+  worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work; said squashed -
+  unverified), plus the two locked ones above. Second-pass candidates: lift1-death-recap,
+  -event-sse, -item-tape, -obs-record, lift2-y07, -y08, -y11-y13. Stray before_sweep_s2.txt in the
+  old lane folder (above).
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).
@@ -209,48 +239,58 @@ Carried forward (not acted on yet):
 - Lane-widget notes: "(resets 0m)", mtime-only freshness, config cache; RSC inbox_status "limit" at
   0/120. Stale checklist renders "- checklist STALE" (not bare STALE) - reverses if MAIN wants the
   literal. Optional: lane-widget line from fleet_inbox.repo_split().
-- Box load: no local full suite while 2+ others run (OOM / 60m timeouts measured). CI: a push runs
-  fast guards + impact slice; the full dual suite runs on PR / dispatch / escalated push / nightly
-  (W-A); superseded pushes cancel in-flight ci.
-- ROADMAP top open: RM-680 (DS 16.20.1), EXTERNAL-LIFT INTAKE band 1 (BACKLOG.md "External-lift
-  intake"), RM-486, RM-488/489, RM-479, RM-482.
-- Anomaly standing: RC-Phase3-Supervisor last_result=2 (uninvestigated).
+- Box load: no local full suite while 2+ others run (OOM / 60m timeouts measured; RM-737). CI: a
+  push runs fast guards + impact slice; the full dual suite runs on PR / dispatch / escalated push
+  / nightly (W-A); superseded pushes cancel in-flight ci.
+- ROADMAP top open (RM-680 shipped): RM-486, RM-488/489, RM-482, RM-483, RM-485, RM-513, RM-595,
+  then the RM-681.. session rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
+- Anomaly standing: RC-Phase3-Supervisor last_result=2 (uninvestigated). RC health/all shows one
+  recent heartbeat_error fatal at 2026-10-10T04:51:23Z ("internal error - see logs"), uninvestigated.
 - WATCH: a future kit version will likely change the /done closing line to "Done ritual processed,
   safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Retired this wrap (with reason): old ask 1 "pip install -r requirements.txt" (done in D2: the box
-matches requirements.txt and RC restarted 19:11; the requirements.lock refresh is carried above);
-old ask 5's remote-residual decision (rw2 deleted the backup tag and 3 c1 branches and rebuilt the
-4th and the 2 evidence tags; only the refs/pull purge stays, ask 3); the 2246 sections 2-8 next
-action (answered in 1925, row closed); the section 4 remainders (patch-day-ddragon-sync.yml
-report-only via W-F; Pages = ask 2); the E2 residuals (PR #2 closed by Dependabot; alerts read 0);
-RM-696 (closed by W-I); the "4 RM-172 subtests RED - LEAVE" item (the operator ordered the fix;
-W-R); RM-681's frozen log_setup blocker (granted, a123e1264); the 159 C: literals item (swept by
-W-D / W-I; 3 test fixtures left); the history identity count for the rewrite (done twice); the
-2026-10-08 OutboundCap line (old day); the session 103 / 104 shipped blocks (LEDGER 1680-1693 and
-WAKEUP_NOTES / docs/history_notes.md hold them).
+Retired this wrap (with reason): the session 105 next action (MAIN's kit v15 arrived 20:55 and was
+processed as C6-C8: vendored, merged, ANSWERed 68162a42, row closed; RM-680 shipped as C3); the
+FIRST / CI item (C2: CI on b47d2f6f5 green); RM-680 and RM-700 (shipped, LEDGER 1708); kit defect
+(a) (fixed in v15); the "ROADMAP at ~89.3 percent" item (size pass, now 87 percent); the
+2026-10-09 OutboundCap line (old day); the session 105 shipped block and its operator-chat
+decisions (LEDGER 1694-1707 and the WAKEUP_NOTES session 105 block hold them); "repo_review.py
+red on two guards" (C4, LEDGER 1709). Steers / operator chat in session 106: none beyond
+"Continue", "Status" and "/done"; no queued Mission Control intent; steer channel empty.
 
-Context: ops/fleet_kit/MANIFEST.json version 14; ops/fleet_kit/fleet_subagent_first.py (hook) +
+Context: ops/fleet_kit/MANIFEST.json version 15; ops/fleet_kit/fleet_subagent_first.py (hook) +
 ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.py (--pending /
---done / --migrate-legacy); tools/stop_claim_gate.py; ops/loop/fleet_route.py + ops/loop/run_lane.ps1
-(kit spawn path); ops/loop/repo_review.py (S8 driver); tools/ci_impact_selector.py (push slice);
+--done / --migrate-legacy); tools/stop_claim_gate.py (RM-736); vision_server/__init__.py +
+moon_vision_server.py + dashboard/server.py "Vision server: ensure" block (RM-735);
+ops/fleet_kit/fleet_suite_gate.py (RM-737, kit-owned); ops/loop/fleet_route.py +
+ops/loop/run_lane.ps1 (kit spawn path); tools/ci_impact_selector.py (push slice, RM-734);
 tools/atlas_build.py --check; pytest.ini (testpaths, norecursedirs); gitignored per-host
-ops/local_hosts.json and ops/lane_worktrees.json; rc-shell/package.json (electron 44.5.1);
-ops/runtime/inbox_responder_agreement.json (expires 2026-11-01); ops/moon_sync_repos.json
-(gitignored). Next free LEDGER id 1708. Next free RM id RM-734.
+ops/local_hosts.json and ops/lane_worktrees.json; ops/runtime/inbox_responder_agreement.json
+(expires 2026-11-01); ops/moon_sync_repos.json (gitignored). DS :8860 ENGINE 1.287.0, patch
+16.20.1. Next free LEDGER id 1713. Next free RM id RM-738.
 
-Acceptance: MAIN's reply / kit v15 processed and answered once (or none arrived); then RM-680 - DS
-/health reads 16.20.1 with the LEDGER 1652 recipe complete. Operator asks answered or re-batched.
+Acceptance: RM-735 - a fake holder that accepts but never answers is replaced by the self-heal
+within its window (test), the server's request path cannot block forever starting a thread
+(test), and a live :8889 stays answering through a contended gated suite; then RM-737 measured
+and reported to MAIN once. Operator asks answered or re-batched.
 
-Status (2026-10-09 wrap, session 105): every session commit was pushed in-session (tip a7159cdec,
-ls-remote == HEAD at wrap start; local main re-set to track origin/main after the rewrites); the
-wrap commit (LEDGER 1706 / 1707, ROADMAP, BACKLOG, WAKEUP_NOTES + prune, this file) pushed from
-a7159cdec (exact range in git log / reflog). Local gate this wrap: ruff all passed; hygiene 14
-passed; drift_guard 0 breaches; doc guards 133 passed; docs-guards selected set (95 modules)
-2385 passed / 4 skipped / 418 subtests, exit 0 (through the gate). CI on a7159cdec: ci 38009756331 success, docs-guards 38009756417 success, codeql
-38009756356 in progress at the read; the wrap push's own runs were pending at wrap. RC health: pid
-26808 alive, last_reload_ok true, mode_key client (not in game). DS :8860 ENGINE 1.286.0 patch
-16.19.1. Session file 2.4 MB (55 sub-agent transcripts, 76.9 MB, separate). Background work at
-wrap: none running.
+Status (2026-10-10 wrap, session 106): pushes b47d2f6f5..e52485eee (verified C3 / C4 / C5 range,
+pushed at /done Phase 2) and e52485eee..9ef1e7c84 (kit v15 merge 484b56e0a, cfe2a9248, C9's
+09751de64, C8's e39a16ffe / ffd6a0c36, the /done docs b5b91fdb7 / 6a4b73fae / c5d1c3f68 /
+9ef1e7c84) and 9ef1e7c84..fcc0ccbe3 (archive rename); this hand-off is the wrap commit after
+them (range in git log / reflog). CI: e52485eee ci 38027348413 success, docs-guards 38027348414
+success, codeql 38027348410 success, pages success; 9ef1e7c84 ci 38029041172 success, codeql
+38029041183 success, docs-guards 38029041160 FAILURE (tests/test_tracked_path_length_rm422.py:
+C8's ANSWER archive copy name was 145 chars, limit 129) -> fixed forward in fcc0ccbe3 (renamed,
+content sha256 68162a42 unchanged): docs-guards 38029507209 success, codeql 38029507183 success
+(ci skipped, .md-only). Lesson for the outbound helper: a tracked `_outbound_*` copy name must
+keep the whole path <= 129 chars - truncate the slug.
+Local gate this wrap: ruff all passed; py_compile 147 session .py files clean; hygiene 14
+passed; drift_guard (from-version 1.286.0) 0 breaches after the size pass; doc guards 32 files 619 passed + 1 red fixed (registry pointer phrasing), re-run 87 + 39 passed.
+Tier-2 whole suites were the mergers' (C5 on e52485eee, C8 on cfe2a9248; both "5 failed" = the
+known set); /done ran none. RC health: pid 36860 alive, last_reload_ok true (restarted 23:28 since
+C3's pid 30128; one heartbeat_error fatal 04:51Z uninvestigated); mode_key client (not in game);
+vision :8889 PID 304 /health 200; DS :8860 1.287.0 / 16.20.1 / 173 / 706. Session file 2 MB.
+Background work at wrap: none running (C8 finished 00:48; the /done CI watches ended).
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
