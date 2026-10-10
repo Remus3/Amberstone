@@ -563,7 +563,15 @@ _WEB = _REPO_ROOT / "web"
 # ATTRIBUTED BY SUBSTITUTION: swapping exactly those four paths back to their
 # a50a9a616 blobs reproduces the superseded 3ed09b85... value EXACTLY. Those
 # four paths are the whole change. No glyph change.
-_LIVE_HALF_DIGEST = "472be5a8f64f3abc9208fb95175396eaeb9564beffd40742210b28c9df471565"
+# superseded by the RM-680 re-capture below: "472be5a8f64f3abc9208fb95175396eaeb9564beffd40742210b28c9df471565"
+#
+# RE-CAPTURED 2026-10-09 at RM-680 (DS patch 16.19.1 -> 16.20.1), in the same
+# batch as the bump this time. Ordinary case, no tokeniser change. ATTRIBUTED
+# BY SUBSTITUTION: swapping exactly web/js/lib/items_index.js back to its
+# b47d2f6f5 blob (the DDRAGON_FALLBACK_VERSION literal 16.20.1 -> 16.19.1)
+# reproduces the superseded 472be5a8... value EXACTLY. That one path is the
+# whole change. No glyph change.
+_LIVE_HALF_DIGEST = "010f94d1c878f49ea3cf6167d370ccb600a925a9d042e448f52daa53e6e91ad6"
 
 
 def _web_sources() -> list[Path]:
