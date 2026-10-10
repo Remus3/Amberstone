@@ -1,6 +1,6 @@
 NEXT SESSION
 ------------
-SESSION: 109
+SESSION: 110
 HISTORY WAS REWRITTEN TWICE on 2026-10-09 (LEDGER 1699 = B, 1701 = rw2, case-insensitive): every
 commit id changed twice. Old SHAs resolve through .git/filter-repo/commit-map (rw2), then
 .git/filter-repo-20261009/commit-map (B), then .git/filter-repo-20260621/commit-map (June); copies
@@ -8,63 +8,64 @@ sit beside the bundles in RC's sidecar Backup folder. Cite LEDGER entries, not p
 Every other clone must re-clone (OPERATOR ASKS 5); a fresh clone runs scripts/install_hooks.py and
 sets the LOCAL git config fleet.operatorIdent before any push.
 
-Next action: RM-737 measurement + its ONE note to MAIN (the kit owns the slot count). Sample commit
-charge (Get-CimInstance Win32_OperatingSystem TotalVirtualMemorySize / FreeVirtualMemory) through
-one RC `-n 8` dual suite alone and with a second suite in the other gate slot; send MAIN the figures
-+ a proposal (per-machine slot count or memory-aware admission). New datum for that note (session
-108): the machine HUNG 2026-10-10 ~07:36 and rebooted uncleanly at 10:02:19 local (Kernel-Power
-41) - RC restart storm (~20 starts 07:40-09:19, heartbeat PermissionError on health.json.tmp at
-07:45 / 07:59), Windows services / DCOM / BITS / WER timeouts, NetBT "driver device could not be
-created" (07:44, 09:39), WMI WmiPrvSE ThreadCount quota 346>256 (08:14); no Resource-Exhaustion
-2004 event on 10-10 (last 10-09 23:57, three python ~3 GB each). Suite-gate durations.jsonl:
-another tree's whole suite held a slot ~07:35-07:40:16 (exit 0) - matches the onset - but no gated
-suite ran 07:40-10:05 and the box never recovered; cause otherwise UNATTRIBUTED. Then RM-738.
-FIRST at session start: read CI on the wrap push (hand-off only). CI on 49ef2cadc was RED
-(ci 38066270205, check step "push impact slice": 1 failed, 6861 passed, 194 skipped -
-tests/test_vision_watchdog_rm735.py::FakeHolderIsReplacedEndToEnd, EADDRINUSE on Linux); the /done
-executor fixed it forward in the test fake (see Session 108 shipped) and the wrap push carries the
-fix, so confirm that run is GREEN before anything else; if it is still red, resolve CI check first.
-A push runs the fast guards + an impact slice (the full dual suite runs on PR / dispatch /
-escalated push / nightly); anything red is the first fix.
+Next action: RM-738 - the other in-tree HTTP servers keep RM-735's latent per-request
+Thread.start() wedge. Per server, priority dashboard :8888 (_DualStackHTTPServer /
+_DualProtocolHTTPServer; RM-296e pins thread-per-request and it serves SSE, so a fixed pool is
+wrong there), then DS :8860 (_RcThreadingHTTPServer + its one-shot ensure_running at dashboard
+start in core/daemon_slayer_client.py - give it a periodic liveness self-heal), then
+agents/_supervisor_http.py (ThreadingTCPServer), then mc/server.py, tools/ds_matchdb_mcp_server.py,
+tools/replay_session.py. Measure first that each server is still reachable from a running path;
+then a failing MemoryError-bootstrap test (reuse the reproduction in
+tests/test_vision_server_pool_rm735.py: MemoryError armed in Thread._set_native_id), the fix, the
+test green. Body + acceptance in BACKLOG "Session 108 filings".
+FIRST at session start: read CI on the session 109 wrap push (docs-only, so ci is skipped by
+paths-ignore; read docs-guards + codeql) and check the inbox for MAIN's RM-737 ruling
+(python ops/loop/inbox_tick.py --pending). Anything red is the first fix; a MAIN ruling on the
+suite-gate slot count is acted on before RM-738.
 
-Session 108 shipped - do NOT redo:
-- C1 RM-735 (LEDGER 1714, commit 49ef2cadc, pushed c193fd572..49ef2cadc by the /done executor
-  through fleet_gitlock): root cause REPRODUCED - ThreadingMixIn starts a thread per request and
-  CPython 3.14.4 Thread.start() waits on _started with no timeout (stdlib threading module, line
-  1011), so a thread dying in bootstrap (MemoryError armed in Thread._set_native_id reproduces the
-  session 106 py-spy stack) parks the accept loop forever. Fix: vision_server/_pool.py (16 workers
-  started before bind, accept only put_nowait into a queue of 64) + dashboard/_vision_watchdog.py
-  (in RC; 15 s /health probe, 3 s timeout, 3 strikes -> py-spy dump to logs/vision_wedge_*.txt,
-  taskkill of a vision-server holder only, windowless respawn; grace 90 s doubling to 30 min).
-  Read back by an independent read-only verifier: CONFIRMED all claims (no frozen file, no
-  trailer, 15 files ASCII/LF; 34/34 new tests, 109/109 changed test files, 387/387 skip guard;
-  ruff clean; live /health 200 workers 16, PID 4344). Live drills: kill -> respawn 7 s; suspended
-  holder -> replaced in 47 s with stack dump; /health 60/60 ok through a contended gated slice.
-- RM-738 FILED (BACKLOG "Session 108 filings", ROADMAP NOW after RM-737): the sibling servers with
-  the same latent per-request Thread.start wait - dashboard :8888 (_DualStackHTTPServer /
-  _DualProtocolHTTPServer; RM-296e pins thread-per-request and it serves SSE, so a fixed pool is
-  wrong there), DS :8860 _RcThreadingHTTPServer + its one-shot ensure_running at dashboard start
-  (core/daemon_slayer_client.py), agents/_supervisor_http.py (ThreadingTCPServer), mc/server.py,
-  tools/ds_matchdb_mcp_server.py, tools/replay_session.py. Next free RM id RM-739.
-- CI fix-forward (/done executor, commit 554d094a9, wrap push): RM-735's end-to-end test failed on Linux CI only -
-  closing a listening socket from another thread does not wake a blocked accept() there, so the
-  test's _SilentHolder stayed LISTEN and the stand-in replacement's bind hit EADDRINUSE (the
-  production path kills the holder PROCESS, which frees the port - not a product bug). Fix in the
-  test fake only: SO_REUSEADDR off Windows, shutdown(SHUT_RDWR) before close(), join the accept
-  thread. Red on the HEAD test and green after under WSL Ubuntu python 3.14.4 (unittest; WSL lacks
-  psutil and pytest, so one unrelated test errors there env-only); Windows: the two RM-735 files +
-  tests/test_skip_condition_hygiene.py 421 passed, ruff clean. LEDGER 1714 records it.
-- The session 108 verifier's gated re-run COMPLETED (not in flight): all 7 C1 test files in one
-  gated run, 530 passed, 0 failed, exit 0 (relayed by the main session).
-- RM-701 CLOSED by read-back (/done executor): the 10:02 unclean reboot restarted RC-Supervisor -
-  rc_supervisor.py PID 12888 created 2026-10-10 10:03:09 local (boot 10:02:14), after 1e27f14ae
-  (2026-10-09 15:41); health.json alive true, last_reload_ok true. ROADMAP row [x]; operator ask 8
-  retired.
-- A stale 0-byte .git/index.lock (mtime 07:28:51, pre-hang, no git alive) was removed by hand.
-- Datum closed: PID 304's end = the operator-initiated restart at 05:51 (User32 1074 from Explorer,
-  clean shutdown 05:51:46) - explains RC's 05:52 "vision server not running - spawned".
+Session 109 shipped - do NOT redo (LEDGER 1715):
+- RM-737 MEASURED (commits f003f5a79, c643fb581): commit limit 48375 MB (32 GB RAM + fixed 16000
+  MB page file), idle 14.5-17.1 GB; one RC gated -n 8 dual suite peaks 23.6-24.0 GB private
+  commit, system 78-86 percent of the limit; a second overlapping suite hit 88.2 percent in 11 s
+  (two need ~63-65 GB); 9 low-memory 2004 events 10-08/10-09, all at the limit; the 23:51 void
+  run had no other gated suite overlapping. The REVIEW note to MAIN (with the 10-10 hang datum)
+  was a NEW note, so it was staged, then DELIVERED after the operator's chat OK ("ok",
+  2026-10-10): 1/1 reached, sha256 d11693d609fb2d43... src = dest; tracked copy
+  docs/_archive/2026-10/_outbound_2026-10-10-1245-from-RC-REVIEW-to-MAIN-RM-737-*.md. Proposal:
+  (a) memory-aware admission in fleet_suite_gate (preferred), (b) interim FLEET_SUITE_SLOTS=1 on
+  this box. The kit owns the slot count; RC edits no kit file.
+- RM-735 regression FIXED (commit 1ca647b04): dashboard/_vision_watchdog.py capture_stack writes
+  through core.polled_json.atomic_write_bytes (was a hand-rolled <out>.tmp + bare Path.replace
+  that failed 2 tests in tests/test_atomic_write_guard_rm258_rm261.py since 49ef2cadc).
+  Independent verifier CONFIRMED: 154 collected / 154 passed / exit 0 over the guard file + the 6
+  RM-735 test files (the implementer's "123" omitted tests/test_obs_publisher_audit.py, 31 tests,
+  also green). RC restarted: pid 16308 alive, last_reload_ok true, fatal_count 0; :8889 workers 16.
 
-Session 108 new open items:
+Session 109 new open items:
+- RM-737 stays OPEN awaiting MAIN's ruling (a or b above). RC's own side, promised in the note:
+  measure a smaller -n or xdist worker recycling for RC's suite (late-run workers reach ~3 GB each,
+  pointing at growth across a worker's files) under row RM-737 - in RC's tree, no kit change.
+- RM-734 datum: the push impact slice did not select tests/test_atomic_write_guard_rm258_rm261.py
+  for the RM-735 change (no platform skip; ci on 49ef2cadc / e9a3c6f0a never reported its 2
+  failures) - an index-walking guard missed, exactly RM-734's class.
+- ops/moon_sync_repos.json (gitignored, per-host) has no MAIN entry; the session 109 delivery
+  resolved MAIN's inbox from the agreement record. Add a MAIN entry (in-tree config write; never a
+  path in a tracked file) or confirm the agreement-record route is the intended one.
+- CI annotation on 1ca647b04 (sibling-sweep-tree): "real-name needle arm did not run
+  (RC_MOON_SYNC_REPOS secret unset). This green is PARTIAL" - CI's sibling sweep is
+  structural-arm only; record, do not soften the sweep's escape-rate phrasing.
+
+Do NOT redo (session 108, LEDGER 1714):
+- RM-735 shipped (49ef2cadc): vision_server/_pool.py (16 workers started before bind, accept only
+  enqueues) + dashboard/_vision_watchdog.py (15 s /health probe, 3 strikes -> py-spy dump to
+  logs/vision_wedge_*.txt, taskkill of a vision-server holder only, windowless respawn; grace 90 s
+  doubling to 30 min). Root cause reproduced: CPython 3.14.4 Thread.start() waits on _started with
+  no timeout (stdlib threading module, line 1011). Live drills: kill -> respawn 7 s; suspended
+  holder -> replaced in 47 s. CI fix-forward 554d094a9 (Linux test fake: shutdown before close).
+- RM-701 CLOSED by read-back (the 10:02 reboot restarted RC-Supervisor after 1e27f14ae).
+- PID 304's end = the operator-initiated restart at 05:51 (explains RC's 05:52 vision spawn).
+
+Session 108 open items (carry):
 - WATCH logs/vision_wedge_*.txt and the RC log line "vision server hung": any occurrence on the
   POOLED server is new evidence (the stack dump says where it parked).
 - Trade-off (accepted, recorded): on a thrashing box (like 07:36-10:02) 3 x 3 s failed probes can
@@ -75,13 +76,14 @@ Session 108 new open items:
 - Lesson (session 108): a socket test fake that must free its port mid-test needs shutdown() before
   close() on Linux (a blocked accept() keeps it LISTEN) - Windows-green is not CI-green. WSL Ubuntu
   runs stdlib unittest files against /mnt/e (MSYS_NO_PATHCONV=1, PYTHONDONTWRITEBYTECODE=1).
+- The 2026-10-10 07:36-10:02 hang stays UNATTRIBUTED (reported to MAIN in the RM-737 note).
 
 Do NOT re-litigate (session 107):
 - RC atlas.html is the hand-built pre-10/7 page by operator order 2026-10-10 ("revert the changes
   for atlas back to before 10/7"; LEDGER 1713, commit 7f3ed345f). It contradicts MAIN 2246 ORDER
   section 6 (generated atlas from the git index); the operator's order outranks it. Carry this into
-  the next inbox exchange with MAIN (no note was sent from /done: a new outbound note is not a
-  reply). Reverses if: the operator or MAIN re-orders a generated atlas.
+  the next inbox exchange with MAIN (the session 109 RM-737 note did not mention it). Reverses if:
+  the operator or MAIN re-orders a generated atlas.
 - The atlas font block is HEAD's OFL-compliant block, not the 03197a15b subset (adjudicated: the
   subset kept the Orbitron Reserved Font Name). Reverses if: the Orbitron holders permit the subset
   name, upstream drops the RFN, a render difference against the baseline is measured, or the
@@ -89,7 +91,8 @@ Do NOT re-litigate (session 107):
 - Open ambiguity (one line): MAIN's f08bb61 quotes an earlier operator complaint about MAIN's flat
   treemap Atlas pages (MAIN restored them 10/09); if the operator meant those, that is MAIN's tree.
 
-OPERATOR ASKS (batched, re-ask in ONE line; nothing was answered in sessions 106-108):
+OPERATOR ASKS (batched, re-ask in ONE line; nothing was answered in sessions 106-109 - session 109's
+only operator answer was the OK to deliver the RM-737 note):
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error, 0 inactive, so nothing was pruned. Mark old
    ones inactive and delete them (irreversible), or leave them? Backup
@@ -105,7 +108,7 @@ OPERATOR ASKS (batched, re-ask in ONE line; nothing was answered in sessions 106
    JSON; ignored-file backups (worktree-ignored-*); merged-worktree records.
 7. The CI-watchdog checkout (its per-host folder outside the tree) is missing; recreate it only if
    re-arming the watchdog.
-8. (retired session 108: RM-701 closed by read-back - see Session 108 shipped.)
+8. (retired session 108: RM-701 closed by read-back.)
 9. RM-686: OK to edit the out-of-tree proxy launcher and kill the proxy once for the read-back
    (MAIN 1840 sec 5): the launcher line becomes `WScript.Quit sh.Run(<same cmdline>, 0, True)` so
    the scheduled task can restart a crashed proxy; read-back = task Running while the proxy is up,
@@ -119,7 +122,7 @@ OPERATOR ASKS (batched, re-ask in ONE line; nothing was answered in sessions 106
     and docs; the one real retired token is scrubbed).
 12. The physical-setup list below (carried from session 102).
 
-Open items (sessions 105-108):
+Open items (sessions 105-109):
 - Kit defects: (a) FIXED in v15; (b) fleet_suite_gate runs bare on an empty selection and (c)
   fleet_gitlock wraps only commit/push wait on KIT-16 (MAIN). Until (b) lands, never build a pytest
   file list from $(cat <file>) without a non-empty check.
@@ -127,16 +130,12 @@ Open items (sessions 105-108):
   6a2af637b (stop_claim_history 2026-10-10T02:31:48Z blocked, + 2 rows) and count_mismatch on C8's
   verified suite count "5 failed, 39323 passed" (verified TRUE against C8's own run file before
   filing; ops/runtime/stop_claim_report.json); BACKLOG "Session 106 filings".
-- RM-737 suite memory contention: THREE void runs in session 106 (C5's first; C8's 21:59, 23:51)
-  plus one MemoryError load-flake, and the session 108 hang datum (Next action). Box rule
-  meanwhile: a run whose output carries WinError 1455 or MemoryError is VOID - re-run once, never
-  graded. Disposition (session 106): BOTH filed as RM-737 AND its figures go in RC's NEXT outbound
-  note to MAIN (the kit owns the slot count); NOT yet reported - no note was sent in sessions
-  106-108.
-- RM-738 (filed session 108, above): per server, priority :8888, :8860, supervisor, then the rest;
-  measure first that each server is still reachable from a running path.
-- OutboundCap: 1/6 notes used on 2026-10-10 (C8's ANSWER, 00:43; sessions 107-108 sent none; resets
-  per local day).
+- RM-737 suite memory contention: MEASURED and REPORTED (session 109, above); awaiting MAIN's
+  ruling. Box rule meanwhile: a run whose output carries WinError 1455 or MemoryError is VOID -
+  re-run once, never graded; no local full suite while 2+ others run.
+- RM-738 (Next action).
+- OutboundCap: 2/6 notes used on 2026-10-10 (C8's ANSWER 00:43; session 109's RM-737 REVIEW
+  12:45); resets per local day.
 - v13 section 5 sidecars: the rest waits on MAIN's FLEET_SIDECAR_ROOT (RM-707 lists, nothing moved);
   any move is an out-of-tree act (halt). v14: a future lane-worktree move is out-of-tree (operator).
   RC's lanes already run under ops/lane_worktrees.json, so MAIN setting the variable moves nothing.
@@ -155,10 +154,10 @@ Open items (sessions 105-108):
   2.1.296); the tree-sweep self-test stays deselected in local full runs (RM-695 MemoryError +
   xdist wedge).
 - RM-697 gate range across a rewrite; RM-698 stop_claim_gate blind spots; RM-699 hot_reload watches
-  tests/ (seen again session 108); RM-702 drive paths in 94 old
-  commit messages (MAIN-ordered only); RM-704..RM-731 S8 rows (RM-705 collection half shipped);
-  RM-734 push impact slice misses index-walking guards; RM-736; RM-737; RM-738. Next free RM id
-  RM-739 (pin in docs/DS_SWEEP_TRACKER.md).
+  tests/ (seen again session 108); RM-702 drive paths in 94 old commit messages (MAIN-ordered
+  only); RM-704..RM-731 S8 rows (RM-705 collection half shipped); RM-734 push impact slice misses
+  index-walking guards (new datum above); RM-736; RM-737; RM-738. Next free RM id RM-739 (pin in
+  docs/DS_SWEEP_TRACKER.md).
 - CS's 3 self-check suggestions: sibling-only, informational; nothing for RC to do.
 - A drive-root literal in a NEW test halts the pre-push sibling sweep (structural arm); use tmp_path.
 - A doc citation of a stdlib file in `name.py:<line>` form reads as a broken repo citation to
@@ -174,7 +173,7 @@ Kit / gate procedure (carry):
   one agent never blocks another's suite; a known short suite gets one extra slot; headless
   children run foreground only (no headless prompt may ask for background work).
 - Local full dual suite: `-n 8 --dist loadfile` through the gate takes ~6 min alone (~18 min under
-  contention), BUT deselect
+  contention) and peaks ~24 GB commit (RM-737), BUT deselect
   tests/test_ci_sibling_sweep_tree_wiring.py::test_the_gate_runs_green_on_this_tree until RM-695
   lands (MemoryError; its worker death WEDGES the xdist controller at 99%).
 - A stale 0 B `.git/index.lock` with no RC git alive may need removing by hand; kit gitlock will
@@ -183,7 +182,9 @@ Kit / gate procedure (carry):
 - H1: after answering an ORDER / FIX / RULING, close its row:
   `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`, confirm with `--pending`.
   MAIN's inbox path comes from the agreement record (inbox_tick's delivery helper), not from
-  ops/moon_sync_repos.json.
+  ops/moon_sync_repos.json (see the session 109 open item).
+- A NEW outbound note (not a reply) needs the operator's chat OK before delivery in an attended
+  session (session 109 precedent: staged, OK'd, delivered, re-hashed 1/1).
 - W1 WATCH: deny mode may block main-thread work that cannot be dispatched (an AHK-typed loop
   window, a background session without an agent id). If a deny row shows that, write `log` back to
   ops/loop/control/subagent_first.mode and ask MAIN for a ruling.
@@ -199,6 +200,8 @@ Kit / gate procedure (carry):
   /api/health/all vision alive.
 - Lesson for the outbound helper: a tracked `_outbound_*` copy name must keep the whole path <= 129
   chars - truncate the slug (tests/test_tracked_path_length_rm422.py; session 106 fcc0ccbe3).
+- Lesson (session 109): a relayed test count can silently omit a file (the implementer's 123 vs
+  the verifier's 154) - the verifier's collect-only count over the cited files is the figure.
 
 Carried forward (not acted on yet):
 - The old lane folder holds only the stray before_sweep_s2.txt and its system-drive junction is
@@ -212,8 +215,8 @@ Carried forward (not acted on yet):
   exponentially on `git -c -c -c ...` (6.1 s at 20 repeats; unrealistic shape).
 - WATCH: one verifier run (session 104) saw 24 child processes die at startup with 0xC0000142; not
   reproduced. Desktop heap / process pressure suspected, unmeasured (compare RM-737).
-- ROADMAP.md was at 87.2 percent (71423 / 81920) after the session 106 size pass; drift_guard warns
-  at 90 (session 108 wrap: 0 breaches, ROADMAP 88.3 percent, 72337+ bytes, after the RM-735 / RM-738 / RM-701 rows).
+- ROADMAP.md size: 72912 / 81920 bytes = 89.0 percent at the session 109 wrap; drift_guard warns at
+  90 - the next row added should come with a relocation of shipped rows to docs/ROADMAP_HISTORY.md.
 - `executor_cmd` in ops/loop/config.json (+ config.gate.json, config.p5.json) is UNUSED. The kit
   finds claude on the USER PATH only, so a machine-env-only launch is refused (fails closed).
 - Still off-kit: the disarmed pre-v8 tools/inbox_responder_spawn.py (RM-683). headless_env.py stays
@@ -261,13 +264,13 @@ Carried forward (not acted on yet):
   change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER SHARED_SHA256 re-pin
   stays joint.
 - Worktrees: `git worktree list` = 21 entries at the session 106 wrap (main + 7 agent + 2 drain +
-  11 lift; session 107 added and removed its own atlas worktree; session 108 used none). REVIEW
-  before -D: lift1 death-reel (RM-639) / review-player (RM-641) / vod-retention (RM-640), lift2 y45
-  (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432 ADR-016, RM-229; 13 ahead), drain-wave2-atomic
-  (5 ahead), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work; said
-  squashed - unverified), plus the two locked ones above. Second-pass candidates:
-  lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08, -y11-y13. Stray
-  before_sweep_s2.txt in the old lane folder (above).
+  11 lift; session 107 added and removed its own atlas worktree; sessions 108-109 used none).
+  REVIEW before -D: lift1 death-reel (RM-639) / review-player (RM-641) / vod-retention (RM-640),
+  lift2 y45 (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432 ADR-016, RM-229; 13 ahead),
+  drain-wave2-atomic (5 ahead), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986
+  (kit v6-v8 work; said squashed - unverified), plus the two locked ones above. Second-pass
+  candidates: lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08, -y11-y13.
+  Stray before_sweep_s2.txt in the old lane folder (above).
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).
@@ -285,54 +288,51 @@ Carried forward (not acted on yet):
   heartbeat_error fatal at 2026-10-10T04:51:23Z ("internal error - see logs"), uninvestigated. RC
   (main.py) starts on 2026-10-10 local: 05:52 = the operator-initiated restart (explained, session
   108); 06:37 and 06:51 (an agent6 task logged last_error supervisor-restart at 06:12) still
-  unexplained; the 07:40-09:19 storm belongs to the hang (Next action).
+  unexplained; the 07:40-09:19 storm belongs to the hang (unattributed, above).
 - WATCH: a future kit version will likely change the /done closing line to "Done ritual processed,
   safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Retired this wrap (with reason): RM-735 as the Next action and as an open row (SHIPPED, LEDGER
-1714, 49ef2cadc; ROADMAP row [x], BACKLOG row SHIPPED); the session 107 "FIRST: read CI" item (CI
-on the session 107 wrap c193fd572: ci 38051570864 success, docs-guards 38051570799 success, codeql
-38051570792 success, pages success, nightly ci 38058997460 success); the session 107 shipped block
-(LEDGER 1713 and WAKEUP_NOTES hold it; its do-not-re-litigate lines stay above); the "PID 304's
-end is unrecorded" datum (closed above). Steers / operator chat in session 108: "had a system hang
-- continue what you were doing and process /done for clear after" only; no queued Mission Control
-intent; steer channel empty.
+Retired this wrap (with reason): the session 108 Next action (RM-737 measurement + its ONE note to
+MAIN) - DONE in session 109 (LEDGER 1715; note delivered 1/1 with the hang datum); the session 108
+"FIRST: read CI on the wrap push" - read: e9a3c6f0a ci 38067491547 success, docs-guards
+38067491550 success, codeql 38067491563 success; the session 108 shipped block - tightened to the
+do-not-redo lines above (LEDGER 1714 + WAKEUP_NOTES hold the narrative). Steers / operator chat in
+session 109: the operator's "ok" (2026-10-10) to deliver the RM-737 note to MAIN only; no queued
+Mission Control intent; steer channel empty.
 
 Context: ops/fleet_kit/MANIFEST.json version 15; ops/fleet_kit/fleet_subagent_first.py (hook) +
 ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.py (--pending /
 --done / --migrate-legacy); tools/stop_claim_gate.py (RM-736); ops/fleet_kit/fleet_suite_gate.py
 (RM-737, kit-owned; `status` subcommand; durations.jsonl in its machine state dir);
-vision_server/_pool.py + dashboard/_vision_watchdog.py (RM-735 shipped; tests
+vision_server/_pool.py + dashboard/_vision_watchdog.py (RM-735; tests
 tests/test_vision_server_pool_rm735.py + tests/test_vision_watchdog_rm735.py - the MemoryError
-reproduction to reuse for RM-738); ops/loop/fleet_route.py + ops/loop/run_lane.ps1 (kit spawn
-path); tools/ci_impact_selector.py (push slice, RM-734); atlas.html (hand-built, no generator) +
+reproduction to reuse for RM-738); core/polled_json.py atomic_write_bytes (the sanctioned atomic
+writer for bytes); ops/loop/fleet_route.py + ops/loop/run_lane.ps1 (kit spawn path);
+tools/ci_impact_selector.py (push slice, RM-734); atlas.html (hand-built, no generator) +
 tools/atlas_fonts.py (font audit; tests/test_atlas_fonts.py); pytest.ini (testpaths,
 norecursedirs); gitignored per-host ops/local_hosts.json and ops/lane_worktrees.json;
 ops/runtime/inbox_responder_agreement.json (expires 2026-11-01); ops/moon_sync_repos.json
-(gitignored); C1 findings ops/loop/control/progress/rc-c1-rm735.findings.md (gitignored). DS :8860
-ENGINE 1.287.0, patch 16.20.1. Next free LEDGER id 1715. Next free RM id RM-739.
+(gitignored; no MAIN entry). DS :8860 ENGINE 1.287.0, patch 16.20.1. Next free LEDGER id 1716.
+Next free RM id RM-739.
 
-Acceptance: RM-737 measured (commit charge alone vs two slots) and reported to MAIN in ONE note
-(with the session 108 hang datum); then RM-738 per server - a failing MemoryError-bootstrap test
-first, the fix, the test green; :8860 gets a periodic liveness self-heal. Operator asks answered or
+Acceptance: RM-738 per server - a failing MemoryError-bootstrap test first, the fix, the test
+green, the server reachable live afterwards; :8860 gets a periodic liveness self-heal. MAIN's
+RM-737 ruling read and acted on (or still pending, recorded). Operator asks answered or
 re-batched.
 
-Status (2026-10-10 wrap, session 108): push c193fd572..49ef2cadc (RM-735, by the /done executor
-through fleet_gitlock; pre-push sibling sweep clean 15 files, credential scan 0 findings); this
-hand-off rides the wrap push after it (the CI test-fake fix commit + this docs commit; range in
-git log / reflog). CI on 49ef2cadc: ci 38066270205 RED (check job, push impact slice, 1 failed /
-6861 passed / 194 skipped - the Linux-only test-fake failure, fixed forward); docs-guards
-38066270201 success; codeql 38066270241 success; pages success. CI on the wrap push: pending at
-wrap (read it first).
-Local gate this wrap: ruff all passed; hygiene 14 passed; RM-735 slice (pool + watchdog +
-threading_s7 + bind_rm150) 51 passed; drift_guard 0 breaches; doc guards over the 42 test files
-that read the edited docs + the 3 hygiene files: 1493 passed, 285 subtests, exit 0 (a first run
-caught 2 net-new stdlib file-colon-line citations - rephrased); the CI fix: 421 passed (Windows) and
-the end-to-end test red-then-green under WSL. No local whole suite this session (Tier-1; C1 ran the
-impact slice through the gate, the verifier ran the cited files).
-RC health: pid 14792 alive, last_reload_ok true; mode_key client (not in game); vision :8889 PID
-4344 /health 200 workers 16; DS :8860 1.287.0 / 16.20.1 / 173 / 706. Session file 0.6 MB.
-WAKEUP_NOTES pruned to 3 (moved the session 105 block; archive 1063). Background work at wrap:
-none running (the verifier's gated re-run finished 530 passed; the /done CI watch ended).
+Status (2026-10-10 wrap, session 109): pushes this session e9a3c6f0a..f003f5a79, ..1ca647b04,
+..c643fb581 (origin/main read back c643fb581); this hand-off rides the wrap push after it (docs
+commit; range in git log / reflog). CI: 1ca647b04 ci 38073184488 success (watched to the end, exit
+0; codeql cancelled by supersession); f003f5a79 docs-guards 38072986667 success; c643fb581
+docs-guards 38073230702 + codeql 38073230703 in progress at wrap, pages success. CI on the wrap
+push: pending at wrap (read it first).
+Local gate this wrap: ruff all passed; hygiene 14 passed; drift_guard 0 breaches; the doc-guard
+slice (the 34 test files that read the edited docs, run on this exact hand-off) is recorded in the
+wrap commit message. No local whole suite this session (Tier-0/1; the verifier ran the cited
+files).
+RC health: pid 16308 alive, last_reload_ok true, fatal_count 0; mode_key client (not in game);
+vision :8889 /health alive, workers 16; DS :8860 1.287.0 / 16.20.1 / 173 / 706. Session file 0.6
+MB. WAKEUP_NOTES pruned to 3 (moved the session 106 block; archive 1064). Background work at wrap:
+none running (the /done CI watch ended). Inbox: no pending rows; no MAIN reply yet.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

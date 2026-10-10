@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-10-10d - session 109: RM-737 measured + note delivered to MAIN; RM-735 atomic-write regression fixed
+
+- **RM-737 measured (LEDGER 1715, commits `f003f5a79`, `c643fb581`):** one RC gated `-n 8` dual suite peaks at 23.6-24.0 GB private commit (system 78-86 percent of the 48375 MB limit = 32 GB RAM + 16000 MB page file; idle 14.5-17.1 GB); two overlapping suites need ~63-65 GB (a second suite hit 88.2 percent in 11 s). 9 low-memory 2004 events 10-08/10-09, all at the limit.
+- **Note to MAIN DELIVERED** after the operator's chat OK (new note, not a reply): 1/1 reached, sha256 src = dest, OutboundCap 2/6 for 2026-10-10. Proposal: memory-aware admission in the kit suite gate (preferred), or one slot on this box. The kit owns the slot count; RC waits for MAIN's ruling.
+- **RM-735 regression fixed (`1ca647b04`):** `capture_stack` now writes through `core.polled_json.atomic_write_bytes`; the atomic-write guard is green again (verifier: 154/154 over the guard + 6 RM-735 files). The push impact slice never selected that guard (RM-734 datum). RC restarted, pid 16308 healthy.
+- **Do NOT redo:** the RM-737 measurement or the note (delivered); the capture_stack fix.
+- **Next:** RM-738 (per server, :8888 first; failing MemoryError-bootstrap test first); act on MAIN's RM-737 ruling when it lands; add a MAIN entry to the gitignored `ops/moon_sync_repos.json`.
+
+---
+
 # 2026-10-10c - session 108: RM-735 shipped (:8889 worker pool + liveness watchdog) after an unclean reboot
 
 - **Context:** the machine hung and rebooted uncleanly at 10:02 local (Kernel-Power 41) after machine-wide starvation from ~07:36 (RC restart storm, WMI / services timeouts). Operator: "had a system hang - continue what you were doing and process /done for clear after". The vision server was a victim (its 07:50 respawn took 51 min to bind), not the cause - RM-737 evidence. A stale 0-byte `.git/index.lock` from before the hang was removed by hand.
@@ -23,14 +33,3 @@
 - **Conflict:** contradicts MAIN 2246 ORDER section 6 (generated atlas); the operator's order outranks. No note to MAIN from /done. MAIN's own Atlas untouched.
 - **Do NOT redo:** the revert, the font-block adjudication, the `.claude/commands/done.md` mirror re-copy. RM-733's trigger is gone (row kept with a revert note).
 - **Next:** RM-735 (:8889 wedge). RC's 05:52 restart logged "vision server not running - spawned" and :8889 is now PID 3816 (/health 200 at wrap); PID 304's end is unrecorded.
-
----
-
-# 2026-10-10 - session 106: DS 16.20.1 / ENGINE 1.287.0, repo_review guard repair, kit v15 vendored, :8889 wedge x2
-
-- **Shipped:** RM-680 + RM-700 (DS 16.19.1 -> 16.20.1, ENGINE 1.287.0, merge `3243a801e`, LEDGER 1708; `:8860` /health read back 1.287.0 / 16.20.1 / 173 / 706); repo_review RM-258 atomic write + console-flash listing (merge `6a2af637b`, LEDGER 1709); FLEET-KIT v15 vendored byte-for-byte after 24/24 provenance (merge `484b56e0a`, verifier MERGE-OK) + `cfe2a9248` environ-in-assert fix; RM-734 / RM-735 filed; /done size pass (ROADMAP 91 -> 87 percent) + RM-736 / RM-737 filed.
-- **Gated dual suite on `e52485eee`:** 5 failed / 39307 passed, all pre-existing (RM-694 x4, RM-684); a first run was void on paging-file exhaustion (RM-737).
-- **:8889 vision wedged TWICE** (RM-735): PID 21744 (44h old) at 22:33, then its replacement PID 8696 within ~1h45m, same py-spy stack (`Thread.start` -> `_started.wait()`, 1 OS thread). Both recovered by taskkill + WMI windowless start (now PID 304). Hypothesis: handler-thread bootstrap dies under commit-charge exhaustion - unmeasured.
-- **C8 (kit v15 merge finisher) was IN FLIGHT at /done** - see `RC-NEXT-SESSION.txt` for its remaining steps; LEDGER 1710 is C8's, C9 owes LEDGER 1711.
-- **Do NOT redo:** the 16.20.1 extract, the RM-95 re-pin, the kit v15 vendor (MANIFEST v15, 23/23 hashes), the repo_review guard repair, the ROADMAP relocation.
-- **Next:** C8's remainder (if not finished), then push the local range, then RM-735 (it recurs in hours).

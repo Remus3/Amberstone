@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-10 - session 106: DS 16.20.1 / ENGINE 1.287.0, repo_review guard repair, kit v15 vendored, :8889 wedge x2
+
+- **Shipped:** RM-680 + RM-700 (DS 16.19.1 -> 16.20.1, ENGINE 1.287.0, merge `3243a801e`, LEDGER 1708; `:8860` /health read back 1.287.0 / 16.20.1 / 173 / 706); repo_review RM-258 atomic write + console-flash listing (merge `6a2af637b`, LEDGER 1709); FLEET-KIT v15 vendored byte-for-byte after 24/24 provenance (merge `484b56e0a`, verifier MERGE-OK) + `cfe2a9248` environ-in-assert fix; RM-734 / RM-735 filed; /done size pass (ROADMAP 91 -> 87 percent) + RM-736 / RM-737 filed.
+- **Gated dual suite on `e52485eee`:** 5 failed / 39307 passed, all pre-existing (RM-694 x4, RM-684); a first run was void on paging-file exhaustion (RM-737).
+- **:8889 vision wedged TWICE** (RM-735): PID 21744 (44h old) at 22:33, then its replacement PID 8696 within ~1h45m, same py-spy stack (`Thread.start` -> `_started.wait()`, 1 OS thread). Both recovered by taskkill + WMI windowless start (now PID 304). Hypothesis: handler-thread bootstrap dies under commit-charge exhaustion - unmeasured.
+- **C8 (kit v15 merge finisher) was IN FLIGHT at /done** - see `RC-NEXT-SESSION.txt` for its remaining steps; LEDGER 1710 is C8's, C9 owes LEDGER 1711.
+- **Do NOT redo:** the 16.20.1 extract, the RM-95 re-pin, the kit v15 vendor (MANIFEST v15, 23/23 hashes), the repo_review guard repair, the ROADMAP relocation.
+- **Next:** C8's remainder (if not finished), then push the local range, then RM-735 (it recurs in hours).
+
+---
+
 # 2026-10-09 - session 105: kits v12-v14, two history rewrites, MAIN 2246 sections 1-8, anthropic 1.11, RM-172 fixed
 
 - **Shipped (LEDGER 1694-1707):** kit v12 / v13 / v14 vendored (drift "RC OK v14"); electron 44.5.1 (C1); lane worktree base from per-host config (A); TEMP-1 basetemp guard; HEAD scrub + history rewrite B (PLAN c0507357b341) + case-insensitive rw2 (PLAN 3a2de078c11a), protection restored and read back; MAIN 2246 sections 2/3/6/7 in waves M1/M2 (W-A..W-L, W-R = RM-172 fixed, D2 = anthropic 1.11.0); S8 full-repo review (RM-704..RM-731); stop_claim_gate quiet chat (SG); pytest testpaths isolation (RM-732); atlas re-render (CI green at `a7159cdec`). ANSWER 1925 to MAIN reached 1/1 (3 kit defects reported).
