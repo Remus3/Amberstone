@@ -38,13 +38,28 @@ the number graded was the sibling load, not the code.
      (fleet_gitlock.quiet_inherit; LW 0000), its output still inherited; a
      relative command path (env/Scripts/python.exe) is anchored to the cwd
      (resolve_exe; was WinError 2).
+
+v15 (KIT-15; ruling MACH-ENH-2, MAIN docs/suite-gate-waits.md):
+  4. every run appends ONE line to <dir>/durations.jsonl: {ts, tree (the main
+     checkout's folder name), cmd (sha256 of the command words, 16 hex), slot,
+     lane, wait_s, hold_s, exit}; a write failure never fails the suite;
+  5. SHORT-SUITE LANE: one extra slot, index = N (the regular slot count),
+     only while N < MAX_SLOTS (MAX_SLOTS includes the lane). A (tree, cmd)
+     whose median hold over its last LANE_WINDOW runs (at least LANE_MIN_RUNS)
+     is <= LANE_MAX_S may take the lane slot when no regular slot is free to
+     it; unknown or longer commands stay FIFO on the N regular slots, which
+     count only indices < N. A lane holder that runs past LANE_OVERRUN_S
+     finishes normally; its line carries "overrun": true and a stderr line
+     says so, and its own record then moves it to the regular slots.
 Pure stdlib plus the sibling kit files fleet_claims.py and fleet_gitlock.py.
 """
 
 import contextlib
+import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -55,6 +70,12 @@ ENV_SLOTS = "FLEET_SUITE_SLOTS"
 DEFAULT_SLOTS = 2
 MAX_SLOTS = 4
 QUEUE = "queue"
+DURATIONS = "durations.jsonl"
+LANE_MAX_S = 120.0
+LANE_OVERRUN_S = 240.0
+LANE_MIN_RUNS = 3
+LANE_WINDOW = 5
+DURATIONS_TAIL_BYTES = 1 << 20
 WAIT_S = 3600.0
 PROGRESS_EVERY_S = 30.0
 POLL_S = 1.0
@@ -129,10 +150,12 @@ def slot_live(path, alive=None, started=None):
     return not (want is not None and have is not None and abs(float(want) - have) > 1.0)
 
 
-def held(d, alive=None, started=None):
-    """Indices of live slots (stale slot files are removed on the way)."""
+def held(d, alive=None, started=None, upto=None):
+    """Indices of live slots (stale slot files are removed on the way).
+    upto=N limits the look to the N regular slots (KIT-15: the lane slot N
+    does not count against them)."""
     out = []
-    for k in range(MAX_SLOTS):
+    for k in range(MAX_SLOTS if upto is None else min(int(upto), MAX_SLOTS)):
         p = _slot(d, k)
         if not p.exists():
             continue
@@ -150,7 +173,7 @@ def try_slot(d, n, pid=None, alive=None, started=None, clock=time.time):
     d.mkdir(parents=True, exist_ok=True)
     pid = os.getpid() if pid is None else pid
     started = started or gitlock.proc_started
-    if len(held(d, alive, started)) >= n:
+    if len(held(d, alive, started, upto=n)) >= n:
         return None
     for k in range(n):
         p = _slot(d, k)
@@ -164,11 +187,45 @@ def try_slot(d, n, pid=None, alive=None, started=None, clock=time.time):
             os.write(fd, raw)
         finally:
             os.close(fd)
-        if len(held(d, alive, started)) > n:  # a wider runner raced us
+        if len(held(d, alive, started, upto=n)) > n:  # a wider runner raced us
             release(d, k, raw)
             return None
         return k, raw
     return None
+
+
+def lane_index(n):
+    """The short-suite lane slot for N regular slots, or None when N already
+    uses every slot MAX_SLOTS allows (the lane is inside MAX_SLOTS)."""
+    return int(n) if int(n) < MAX_SLOTS else None
+
+
+def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time):
+    """(k, raw) for the lane slot taken now, or None (KIT-15)."""
+    k = lane_index(n)
+    if k is None:
+        return None
+    d = Path(d)
+    d.mkdir(parents=True, exist_ok=True)
+    pid = os.getpid() if pid is None else pid
+    started = started or gitlock.proc_started
+    p = _slot(d, k)
+    if p.exists():
+        if slot_live(p, alive, started):
+            return None
+        with contextlib.suppress(OSError):
+            p.unlink()
+    raw = json.dumps({"pid": pid, "pid_started": started(pid), "start": clock(),
+                      "lane": True}, sort_keys=True).encode("ascii")
+    try:
+        fd = os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except OSError:
+        return None
+    try:
+        os.write(fd, raw)
+    finally:
+        os.close(fd)
+    return k, raw
 
 
 def release(d, k, raw):
@@ -236,15 +293,21 @@ def queue_ahead(d, ticket, alive=None, started=None):
 
 
 def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
-            started=None, pid=None, **kw):
-    """FIFO: wait for a slot only while no older live waiter could take it."""
+            started=None, pid=None, lane=False, **kw):
+    """FIFO: wait for a slot only while no older live waiter could take it.
+    lane=True (KIT-15, a known short suite) may also take the lane slot when
+    no regular slot is free to it; the lane is not FIFO-ordered."""
     begin = said = clock()
     ticket = take_ticket(d, pid, started)
     try:
         while True:
-            free = n - len(held(d, alive, started))
+            free = n - len(held(d, alive, started, upto=n))
             if free > 0 and queue_ahead(d, ticket, alive, started) < free:
                 got = try_slot(d, n, pid=pid, alive=alive, started=started, clock=clock, **kw)
+                if got:
+                    return got
+            if lane:
+                got = try_lane(d, n, pid=pid, alive=alive, started=started, clock=clock)
                 if got:
                     return got
             now = clock()
@@ -340,11 +403,20 @@ def resolve_exe(cmd, cwd):
     """v14 (KIT-13 carry-over): Windows CreateProcess does not find a RELATIVE
     executable path such as env/py312/Scripts/python.exe (WinError 2), so a
     relative path-like command word is anchored to cwd when the file exists
-    there (with .exe tried on Windows). Bare names still resolve on PATH."""
+    there (with .exe tried on Windows). Bare names still resolve on PATH.
+    v15 (EW 1955): on Windows a BARE name whose PATH hit is a .cmd/.bat shim
+    (npm -> npm.cmd) is replaced by that full path, since CreateProcess finds
+    only .exe from a bare name (WinError 2); any other hit is left as given."""
     if not cmd:
         return list(cmd)
     w = cmd[0]
-    if Path(w).is_absolute() or ("/" not in w and "\\" not in w):
+    if "/" not in w and "\\" not in w and not Path(w).is_absolute():
+        if sys.platform == "win32":
+            hit = shutil.which(w)
+            if hit and hit.lower().endswith((".cmd", ".bat")):
+                return [hit, *cmd[1:]]
+        return list(cmd)
+    if Path(w).is_absolute():
         return list(cmd)
     for cand in (Path(cwd) / w, Path(cwd) / (w + ".exe")):
         if cand.is_file():
@@ -352,20 +424,107 @@ def resolve_exe(cmd, cwd):
     return list(cmd)
 
 
+# ---------------------------------------------------------------- durations + lane (KIT-15)
+
+def cmd_hash(cmd):
+    """16 hex of sha256 over the command words as given (before resolve_exe)."""
+    return hashlib.sha256(json.dumps([str(w) for w in cmd]).encode("utf-8")).hexdigest()[:16]
+
+
+def tree_name(cwd):
+    """The main checkout's folder name, so a lane worktree counts as its tree."""
+    t = claims.tree_of(cwd)
+    if t is None:
+        return Path(os.path.abspath(str(cwd))).name
+    return Path(t[2] or t[0]).name
+
+
+def read_durations(d, tail=DURATIONS_TAIL_BYTES):
+    """Parsed lines of <d>/durations.jsonl (its last `tail` bytes); bad lines skipped."""
+    p = Path(d) / DURATIONS
+    try:
+        with open(p, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - tail))
+            data = f.read()
+    except OSError:
+        return []
+    lines = data.split(b"\n")
+    if size > tail:
+        lines = lines[1:]
+    out = []
+    for ln in lines:
+        try:
+            doc = json.loads(ln)
+        except ValueError:
+            continue
+        if isinstance(doc, dict):
+            out.append(doc)
+    return out
+
+
+def median_hold(d, tree, chash, window=LANE_WINDOW, min_runs=LANE_MIN_RUNS):
+    """Median hold_s of the last `window` runs of (tree, cmd); None under min_runs."""
+    holds = [float(r["hold_s"]) for r in read_durations(d)
+             if r.get("tree") == tree and r.get("cmd") == chash
+             and isinstance(r.get("hold_s"), (int, float))][-window:]
+    if len(holds) < min_runs:
+        return None
+    holds.sort()
+    m = len(holds) // 2
+    return holds[m] if len(holds) % 2 else (holds[m - 1] + holds[m]) / 2.0
+
+
+def lane_eligible(d, tree, chash):
+    m = median_hold(d, tree, chash)
+    return m is not None and m <= LANE_MAX_S
+
+
+def record(d, line):
+    """Append one durations line; never raises."""
+    try:
+        Path(d).mkdir(parents=True, exist_ok=True)
+        raw = (json.dumps(line, sort_keys=True) + "\n").encode("ascii")
+        fd = os.open(str(Path(d) / DURATIONS), os.O_CREAT | os.O_APPEND | os.O_WRONLY)
+        try:
+            os.write(fd, raw)
+        finally:
+            os.close(fd)
+    except (OSError, ValueError):
+        pass
+
+
 def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
     cwd = Path(cwd or os.getcwd())
     owner, n, timeout, cmd = parse(argv)
     check_straddle(cwd, owner, dirty)
     d = Path(d) if d else gate_dir()
-    k, raw = acquire(d, n, timeout, **kw)
+    clock = kw.get("clock", time.time)
+    tree, chash = tree_name(cwd), cmd_hash(cmd)
+    lane = lane_index(n) is not None and lane_eligible(d, tree, chash)
+    asked = clock()
+    k, raw = acquire(d, n, timeout, lane=lane, **kw)
+    got = clock()
+    rc = None
     try:
         check_straddle(cwd, owner, dirty)
         env = dict(os.environ, FLEET_SUITE_SLOT=str(k))
         runner = runner or (lambda c, e: subprocess.run(c, cwd=str(cwd), env=e,
                                                         **gitlock.quiet_inherit()).returncode)
-        return runner(resolve_exe(cmd, cwd), env)
+        rc = runner(resolve_exe(cmd, cwd), env)
+        return rc
     finally:
         release(d, k, raw)
+        hold = clock() - got
+        line = {"ts": round(got, 3), "tree": tree, "cmd": chash, "slot": k,
+                "lane": k == lane_index(n), "wait_s": round(got - asked, 3),
+                "hold_s": round(hold, 3), "exit": rc}
+        if line["lane"] and hold > LANE_OVERRUN_S:
+            line["overrun"] = True
+            _say(f"suite gate: lane run held {int(hold)}s (> {int(LANE_OVERRUN_S)}s); "
+                 f"its record moves it to the regular slots")
+        record(d, line)
 
 
 def main(argv=None):
@@ -375,7 +534,11 @@ def main(argv=None):
             return run(argv[1:])
         if argv[:1] == ["status"]:
             d = gate_dir()
-            print(f"{len(held(d))} of {slots()} slot(s) held")
+            n = slots()
+            lane = lane_index(n)
+            lane_txt = "" if lane is None else (
+                ", lane " + ("held" if lane in held(d) else "free"))
+            print(f"{len(held(d, upto=n))} of {n} slot(s) held{lane_txt}")
             return 0
     except GateRefused as exc:
         _say(str(exc))

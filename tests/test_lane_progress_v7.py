@@ -56,13 +56,15 @@ def test_the_helpers_are_the_vendored_kit():
     # Kit v13 (MAIN 2026-10-08 2246) superseded v12: fleet_checklist unchanged,
     # write_progress atomic per task with a `progress` CLI. Kit v14 (MAIN
     # 2026-10-09 0930) superseded v13: fleet_checklist unchanged,
-    # write_progress gains reason= and the "blocked" state.
-    assert lp.fleet_headless.KIT_VERSION == 14
+    # write_progress gains reason= and the "blocked" state. Kit v15 (MAIN
+    # 2026-10-09 2055) superseded v14: fleet_checklist and write_progress
+    # unchanged (suite-gate durations / lane, foreground-only child env).
+    assert lp.fleet_headless.KIT_VERSION == 15
 
 
-def test_the_vendored_kit_is_v14_with_its_twenty_two_file_set():
+def test_the_vendored_kit_is_v15_with_its_twenty_two_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 14
+    assert man["version"] == 15
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json",
         "fleet_checklist.py", "fleet_claims.py", "fleet_done.py",
