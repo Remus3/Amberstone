@@ -527,7 +527,7 @@ def main_tree(path):
     dotgit = path / ".git"
     try:
         raw = dotgit.read_text(encoding="utf-8").strip() if dotgit.is_file() else ""
-    except OSError:
+    except (OSError, UnicodeError):  # v15 (RC 1925 a): non-UTF-8 link file
         raw = ""
     if raw.startswith("gitdir:"):
         gitdir = Path(raw.split(":", 1)[1].strip())
