@@ -48,10 +48,14 @@ def _text(rel):
 
 # ---------------------------------------------------------------- step 1
 
-def test_the_vendored_manifest_is_the_v14_order_bytes():
+def test_the_vendored_manifest_is_v14_or_a_later_order():
+    # v15 (MAIN 2026-10-09 2055) superseded v14; the exact section-1 pin moved
+    # to tests/test_fleet_kit_v15.py. The v14 bytes stay recorded here.
     raw = (KIT / "MANIFEST.json").read_bytes()
-    assert hashlib.sha256(raw).hexdigest() == V14_MANIFEST_SHA256
-    assert json.loads(raw.decode("ascii"))["version"] == 14
+    version = json.loads(raw.decode("ascii"))["version"]
+    assert version >= 14
+    if version == 14:
+        assert hashlib.sha256(raw).hexdigest() == V14_MANIFEST_SHA256
 
 
 def test_conformance_checks_the_marker_lines():

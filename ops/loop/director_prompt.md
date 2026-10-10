@@ -24,9 +24,9 @@ HARD RULES for the directive you emit:
   - FORBID full-file reads of anything over ~800 lines unless the task is editing that file.
     Section reads, greps and roll-up sections only. NEVER have the executor read a subagent
     transcript or a >30KB report into context - point at the roll-up section instead.
-  - A LONG-RUNNING command goes to the background WITH A WALL-CLOCK CAP. An uncapped
-    foreground run can wedge for hours and return nothing (measured 2026-07-28: a full dual
-    suite under `-n 8` hung 2h29m and printed no summary).
+  - A LONG-RUNNING command runs in the foreground WITH A WALL-CLOCK CAP (kit v15: a headless
+    executor has background tasks off). An uncapped run can wedge for hours and return nothing
+    (measured 2026-07-28: a full dual suite under `-n 8` hung 2h29m and printed no summary).
   - PREFER a written artifact over chat. Findings land in a doc or a ledger row; the executor's
     prose is not the deliverable and should stay short.
   - STALE-ROW EXPECTATION: assume roughly a third of any hand-off list is already done. The

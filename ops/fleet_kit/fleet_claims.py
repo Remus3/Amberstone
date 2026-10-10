@@ -123,7 +123,7 @@ def _gitdir_of(top):
         return None
     try:
         raw = dotgit.read_text(encoding="utf-8").strip()
-    except OSError:
+    except (OSError, UnicodeError):  # v15 (RC 1925 a): non-UTF-8 link file
         return None
     if not raw.startswith("gitdir:"):
         return None
