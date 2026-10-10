@@ -103,6 +103,11 @@ SCHEDULED_SPAWNERS = (
     # 2026-10-03 Wave1 merge: headless drain-wave launcher (git via _git,
     # creationflags=_NO_WINDOW); found by the import-closure completeness check.
     "ops/loop/drain_waves_2_3.py",
+    # 2026-10-09: headless full-tree repo review driver (commit 07dbdc589),
+    # found by the completeness check. Both git spawns (_git_bytes and the
+    # check-ignore in build_manifest) already passed creationflags=_NO_WINDOW;
+    # its reviewer runs go through fleet_route.spawn. Listed so it stays so.
+    "ops/loop/repo_review.py",
     "tools/upstream_drift_check.py",
     # 2026-10-03, second pass: found by the IMPORT CLOSURE added to the
     # completeness check (a task target imports them, so they run under the
