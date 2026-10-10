@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-09 - session 105: kits v12-v14, two history rewrites, MAIN 2246 sections 1-8, anthropic 1.11, RM-172 fixed
+
+- **Shipped (LEDGER 1694-1707):** kit v12 / v13 / v14 vendored (drift "RC OK v14"); electron 44.5.1 (C1); lane worktree base from per-host config (A); TEMP-1 basetemp guard; HEAD scrub + history rewrite B (PLAN c0507357b341) + case-insensitive rw2 (PLAN 3a2de078c11a), protection restored and read back; MAIN 2246 sections 2/3/6/7 in waves M1/M2 (W-A..W-L, W-R = RM-172 fixed, D2 = anthropic 1.11.0); S8 full-repo review (RM-704..RM-731); stop_claim_gate quiet chat (SG); pytest testpaths isolation (RM-732); atlas re-render (CI green at `a7159cdec`). ANSWER 1925 to MAIN reached 1/1 (3 kit defects reported).
+- **Operator chat decisions:** v13 class scope over MAIN's 36; scrub-then-rewrite with a one-time override; hide/restore worktree admin dirs; fix RM-172 now; frozen-file grant (leak/launcher lines + log_setup httpx2/httpcore2); remote refs + Pages + merged worktrees cleanups; second case-insensitive rewrite; then "operator away".
+- **Every commit id changed twice:** old SHAs resolve through `.git/filter-repo/commit-map` (rw2), then `.git/filter-repo-20261009/`, then `.git/filter-repo-20260621/`. Every other clone must re-clone.
+- **Next:** MAIN's reply to 1925 / kit v15 if it arrived; else RM-680 (DS 16.20.1).
+- **Do NOT redo:** both rewrites, kit v12-v14, the 2246 sections 1-4/6-8, RM-172, RM-696 (closed by W-I), D2's install (box matches requirements.txt; only `requirements.lock` is stale).
+
+---
+
 # 2026-10-08d - session 104: inbox synced + SUBAGENT-FIRST deny, kit v11, RM-685 / RM-687 / RM-688 / RM-689, stale rc_facts pyc
 
 - **Shipped (LEDGER 1687-1693):** SUBAGENT-FIRST mode `log` -> `deny` EARLY on the operator's attended "arm" (1 of 3 sessions; adjudicated; ANSWER to MAIN 1431 reached 1/1); RM-685 inbox tick queues through kit `enqueue_work` (`2bab685f0`); kit v11 vendored `b0ed89184` + CLAUDE.md `f0b6a1578` + anchored hook (ANSWER to MAIN 1902 reached 1/1); RM-688 sibling-sweep run record (`3982721c2`); RM-689 `--done` holds the tick lock + BOM-tolerant migrate (`169e8c6e5`); RM-687 stop_claim_gate credits this session's sub-agent evidence, credit-only (`f118ada43`).
