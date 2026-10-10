@@ -90,7 +90,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "3128":  10.0,  # Deathfire Grasp
     "3133":  10.0,  # Caulfield's Warhammer
     "3137":  20.0,  # Cryptbloom
-    "3152":  20.0,  # Hextech Rocketbelt
+    "3152":  10.0,  # Hextech Rocketbelt (16.20.1: 20->10)
     "3156":  15.0,  # Maw of Malmortius
     "3158":  10.0,  # Ionian Boots of Lucidity
     "3165":  15.0,  # Morellonomicon
@@ -179,7 +179,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "223119":  15.0,  # Winter's Approach
     "223121":  15.0,  # Fimbulwinter
     "223137":  15.0,  # Cryptbloom
-    "223152":  20.0,  # Hextech Rocketbelt
+    "223152":  10.0,  # Hextech Rocketbelt (16.20.1: Arena mirror 20->10)
     "223156":  15.0,  # Maw of Malmortius
     "223158":  40.0,  # Ionian Boots of Lucidity
     "223165":  15.0,  # Morellonomicon

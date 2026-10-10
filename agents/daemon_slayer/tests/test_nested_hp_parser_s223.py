@@ -324,7 +324,7 @@ class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
         # s231 (Phase 5.9.31) bumped to 1.3.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.286.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.287.0")
 
 
 if __name__ == "__main__":

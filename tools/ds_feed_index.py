@@ -144,12 +144,19 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # still stamp no vintage, so the body cannot prove that by itself; that is
     # the pending remedy. enchanter_items.json is hand-curated and was
     # restamped only: none of its 34 item rows changed in DDragon 16.19.1.
+    #
+    # Re-measured 2026-10-09 for the 16.19.1 -> 16.20.1 pair (RM-680): two
+    # rows dropped because their bodies MOVED this time - wiki_stats.json and
+    # cdragon_spell_stats.json read 'body-moved' (fresh runs: source=both cast
+    # measured 170/171 errors 0; cdragon=16.20, 171 champs, errors 0), so they
+    # need no exemption. scenarios.json stays: a FRESH daemon_slayer_extract
+    # run (scenarios 173 from the re-discovered chunks, lanes 5) returned
+    # identical bytes and its generator still stamps no vintage.
+    # enchanter_items.json stays: copied forward and restamped only - DDragon
+    # 16.20.1 changed the description of four items (1221, 1222, 3152, 223152)
+    # and none of them is one of its 34 rows.
     "enchanter_items.json": ("authored", "none"),
     "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
-    "wiki_stats.json":
-        ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
-    "cdragon_spell_stats.json":
-        ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
 }
 
 
