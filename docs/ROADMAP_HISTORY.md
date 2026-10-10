@@ -1,5 +1,16 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-09c - shipped relocation (session 106 merger), 2 rows
+
+RM-680 (DS patch 16.19.1 -> 16.20.1, ENGINE 1.287.0) and RM-700 (the RM-95 pin
+re-pinned at 16.20.1 with a re-pin policy) shipped together in merge 3243a801e
+(LEDGER 1708). Both rows move here VERBATIM as they stood at b47d2f6f5;
+`ROADMAP.md` keeps one combined one-line stub, which also keeps the RM-734 filing
+(LEDGER 1709) under the 90 percent `tools/drift_guard.py` line.
+
+- **[!] RM-680 (Tier-2, DS batch lane): DS patch 16.19.1 -> 16.20.1.** DDragon 16.20.1 is synced (LEDGER 1671) and cdragon 16.20 drift acked (LEDGER 1685), but DS `/health` still reports 16.19.1. Same recipe as LEDGER 1652: extract for 16.20.1 with manifest counts 173 each and lanes non-zero; diff vs 16.19.1 in the LEDGER entry; ENGINE bump + build tables regenerated; cherry_augments refetch; Share mirror; DS :8860 restart with `/health` read back as 16.20.1; dual suite; RM-662 ARAM parity guard passes or its allowlist delta is recorded.
+- **[ ] RM-700 (Tier-1): the RM-95 pin in `tests/test_ds_ability_data_status_rm95.py` is stale and checks nothing.** `_RM95_PINNED_PATCH = "16.14.1"` (:185) while `data/daemon_slayer/current.txt` reads 16.19.1, so `test_locke_and_zaahen_are_the_absent_set_at_1614` skips on every run (its own skip reason says so; RM-119 B4). Acceptance: re-measure the absent set on the shipped snapshot (never copy the 16.14.1 answer forward) and re-pin, or give it the re-pin policy its docstring asks for; update the `tests/test_skip_condition_hygiene.py` allowlist entry in the same commit. RM-680 moves DS to 16.20.1 - re-pin with or after it.
+
 ## 2026-10-09b - size-budget relocation (atlas CI fix), 10 rows
 
 `ROADMAP.md` sat at 98 percent of its 81920-byte budget (80063 bytes), so
