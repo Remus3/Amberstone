@@ -1,5 +1,28 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-10 - size-budget relocation (session 106 /done), 11 rows
+
+`ROADMAP.md` sat at 91 percent of its 81920-byte budget (74508 bytes at
+cfe2a9248), so `tools/drift_guard.py` reported a `doc-budget` breach before the
+RM-736 / RM-737 filings. The eleven rows below were already SHIPPED / CLOSED
+stubs, each pointing at its own archived body; they move here VERBATIM as they
+stood at cfe2a9248, in their ROADMAP order. `ROADMAP.md` keeps one combined
+one-line stub naming every id. In the same pass the RM-734 and RM-735 bodies
+(OPEN, filed session 106) moved verbatim to `BACKLOG.md` "Session 106 filings",
+with one-line ROADMAP pointers, the RM-733 pattern.
+
+- **[x] RM-680 / RM-700 SHIPPED 2026-10-09 (session 106, LEDGER 1708, merge `3243a801e`)** - DS 16.19.1 -> 16.20.1, ENGINE 1.287.0, `:8860` `/health` read back; the RM-95 absent set re-measured and pinned at 16.20.1 with a re-pin policy. Both rows relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-09c` block).
+- **[x] RM-685 / RM-688 / RM-689 / RM-687 SHIPPED + FLEET-KIT v11 ADOPTED 2026-10-08 (session 104, LEDGER 1688-1692)** - the five rows are relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-08b` block).
+- **[x] RM-696 CLOSED by W-I `1e27f14ae` (LEDGER 1706): every `tools/headless-*.md` prompt names `<worktree-base>` = `lane_launcher.WORKTREE_BASE`, no machine literal.** Filed session 105 C1 (LEDGER 1697).
+- **[x] TEN CLOSED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-09b` block, LEDGER 1705): both SHIPPED / CLOSED pointer clusters, the citation guard, RM-217 / RM-421, RM-420, RM-295a-c, RM-301-303, RM-296a-e, RM-192-202 and the wave 5 census. READ it before re-opening any of them; every fence rides there.**
+- **RM-293 SHIPPED 2026-10-04 (Wave2-tail, LEDGER 1635)** - row relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-10-04 Wave2-tail block).
+- **RM-300 SHIPPED 2026-10-04 (Wave3, LEDGER 1620)** - row relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-10-04 Wave3 block).
+- **RM-317 SHIPPED 2026-10-04 (Wave2-tail, LEDGER 1633)** - row relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-10-04 Wave2-tail block).
+- **RM-254 CLOSED + RM-261 / RM-262 / RM-263 / RM-264 SHIPPED (2026-10-04)** - row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-08` block) - **READ IT before re-opening any of these ids.**
+- **RM-253 CLOSED + RM-266 / RM-267 / RM-268 / RM-269 SHIPPED 2026-10-04 (Wave2-tail, LEDGER 1627-1630)** - row relocated verbatim to `docs/ROADMAP_HISTORY.md` (2026-10-04 Wave2-tail block), which points on to the `## 2026-10-02` block - **READ IT before re-opening any of these ids.**
+- **RM-234 / RM-235 / RM-236 / RM-237 SHIPPED (2026-09-11 .. 2026-10-04; LEDGER 1398, 1631, 1497 / 1498)** - row relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-08` block) - **READ IT before re-opening any of these ids.**
+- **RM-35 .. RM-48 DS sweep GAP specs - ALL FOURTEEN RESOLVED; the row is CLOSED.** Full row + per-id verdicts relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-31). Do NOT re-open the roster.
+
 ## 2026-10-09c - shipped relocation (session 106 merger), 2 rows
 
 RM-680 (DS patch 16.19.1 -> 16.20.1, ENGINE 1.287.0) and RM-700 (the RM-95 pin
