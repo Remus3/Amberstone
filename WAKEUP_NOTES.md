@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-10-10b - session 107: atlas.html reverted to the hand-built pre-10/7 page (operator order)
+
+- **Shipped (LEDGER 1713):** operator chat order "revert the changes for atlas back to before 10/7". `atlas.html` restored to the 03197a15b hand-built page (anchors ENGINE 1.287.0 / 16.20.1, scrub line kept, font block = HEAD's OFL-compliant one by adjudication); generator dropped (`tools/atlas_build.py`, `atlas/snapshots/`, the ci.yml step, `check_atlas_fresh`, `tests/test_atlas_check_wiring.py`); font audit moved to `tools/atlas_fonts.py` (28 tests). Commit `7f3ed345f`, ff-merged and pushed; verifier PASS 9/9.
+- **Conflict:** contradicts MAIN 2246 ORDER section 6 (generated atlas); the operator's order outranks. No note to MAIN from /done. MAIN's own Atlas untouched.
+- **Do NOT redo:** the revert, the font-block adjudication, the `.claude/commands/done.md` mirror re-copy. RM-733's trigger is gone (row kept with a revert note).
+- **Next:** RM-735 (:8889 wedge). RC's 05:52 restart logged "vision server not running - spawned" and :8889 is now PID 3816 (/health 200 at wrap); PID 304's end is unrecorded.
+
+---
+
 # 2026-10-10 - session 106: DS 16.20.1 / ENGINE 1.287.0, repo_review guard repair, kit v15 vendored, :8889 wedge x2
 
 - **Shipped:** RM-680 + RM-700 (DS 16.19.1 -> 16.20.1, ENGINE 1.287.0, merge `3243a801e`, LEDGER 1708; `:8860` /health read back 1.287.0 / 16.20.1 / 173 / 706); repo_review RM-258 atomic write + console-flash listing (merge `6a2af637b`, LEDGER 1709); FLEET-KIT v15 vendored byte-for-byte after 24/24 provenance (merge `484b56e0a`, verifier MERGE-OK) + `cfe2a9248` environ-in-assert fix; RM-734 / RM-735 filed; /done size pass (ROADMAP 91 -> 87 percent) + RM-736 / RM-737 filed.
@@ -24,13 +33,3 @@
 - **Every commit id changed twice:** old SHAs resolve through `.git/filter-repo/commit-map` (rw2), then `.git/filter-repo-20261009/`, then `.git/filter-repo-20260621/`. Every other clone must re-clone.
 - **Next:** MAIN's reply to 1925 / kit v15 if it arrived; else RM-680 (DS 16.20.1).
 - **Do NOT redo:** both rewrites, kit v12-v14, the 2246 sections 1-4/6-8, RM-172, RM-696 (closed by W-I), D2's install (box matches requirements.txt; only `requirements.lock` is stale).
-
----
-
-# 2026-10-08d - session 104: inbox synced + SUBAGENT-FIRST deny, kit v11, RM-685 / RM-687 / RM-688 / RM-689, stale rc_facts pyc
-
-- **Shipped (LEDGER 1687-1693):** SUBAGENT-FIRST mode `log` -> `deny` EARLY on the operator's attended "arm" (1 of 3 sessions; adjudicated; ANSWER to MAIN 1431 reached 1/1); RM-685 inbox tick queues through kit `enqueue_work` (`2bab685f0`); kit v11 vendored `b0ed89184` + CLAUDE.md `f0b6a1578` + anchored hook (ANSWER to MAIN 1902 reached 1/1); RM-688 sibling-sweep run record (`3982721c2`); RM-689 `--done` holds the tick lock + BOM-tolerant migrate (`169e8c6e5`); RM-687 stop_claim_gate credits this session's sub-agent evidence, credit-only (`f118ada43`).
-- **Wrap (LEDGER 1693):** the two main-only `test_session_checklist_item13.py` failures were a STALE `tools/__pycache__/rc_facts.cpython-314.pyc` whose header matched the source (deleted; 24 passed); ROADMAP relocated to 89.95 percent; RM-690 (double-BOM) + RM-691 (stale-lock race) filed; kit-v11 worktree removed.
-- **Halted for the operator:** RM-686 out-of-tree proxy launcher edit + one proxy kill (MAIN 1840 sec 5).
-- **Next:** E2 (the operator reported the Electron 44 check OK at this wrap; merge Dependabot npm PR #2, pin exact), then RM-680 (DS 16.20.1).
-- **Do NOT redo:** the deny switch, kit v11, RM-685 / RM-687 / RM-688 / RM-689, the pyc diagnosis (one stale file in 2642; compare code objects, never marshal bytes).

@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-08d - session 104: inbox synced + SUBAGENT-FIRST deny, kit v11, RM-685 / RM-687 / RM-688 / RM-689, stale rc_facts pyc
+
+- **Shipped (LEDGER 1687-1693):** SUBAGENT-FIRST mode `log` -> `deny` EARLY on the operator's attended "arm" (1 of 3 sessions; adjudicated; ANSWER to MAIN 1431 reached 1/1); RM-685 inbox tick queues through kit `enqueue_work` (`2bab685f0`); kit v11 vendored `b0ed89184` + CLAUDE.md `f0b6a1578` + anchored hook (ANSWER to MAIN 1902 reached 1/1); RM-688 sibling-sweep run record (`3982721c2`); RM-689 `--done` holds the tick lock + BOM-tolerant migrate (`169e8c6e5`); RM-687 stop_claim_gate credits this session's sub-agent evidence, credit-only (`f118ada43`).
+- **Wrap (LEDGER 1693):** the two main-only `test_session_checklist_item13.py` failures were a STALE `tools/__pycache__/rc_facts.cpython-314.pyc` whose header matched the source (deleted; 24 passed); ROADMAP relocated to 89.95 percent; RM-690 (double-BOM) + RM-691 (stale-lock race) filed; kit-v11 worktree removed.
+- **Halted for the operator:** RM-686 out-of-tree proxy launcher edit + one proxy kill (MAIN 1840 sec 5).
+- **Next:** E2 (the operator reported the Electron 44 check OK at this wrap; merge Dependabot npm PR #2, pin exact), then RM-680 (DS 16.20.1).
+- **Do NOT redo:** the deny switch, kit v11, RM-685 / RM-687 / RM-688 / RM-689, the pyc diagnosis (one stale file in 2642; compare code objects, never marshal bytes).
+
+---
+
 # 2026-10-08c - session 103: kit v10 + SUBAGENT-FIRST log mode, lanes on the kit, CodeQL advanced, Dependabot triage, pre-move asides recycled
 
 - **Shipped (LEDGER 1680-1685):** `600fa8b84` kit v10 merge (vendor `39d9ba6fb`, `emit()` `8b9b6c356`, DISPATCH block `74385afb3`) + ANSWER to MAIN 0839 (`3ccca5429`); `c4f306027` CodeQL triggers restored after default setup -> not-configured (operator-approved); Dependabot #4 / #5 / #6 / #7 merged (`0adcd5018` last), anthropic 1.x + electron held; `c25553f53` K2 lane workers + loop executor on kit `spawn()` (`headless_route.ps1` deleted, run_lane exit 3 fix); both `*.pre-E-move-20261008` asides in the C: Recycle Bin (operator-approved, 28.2 GB, nothing permanently deleted).
