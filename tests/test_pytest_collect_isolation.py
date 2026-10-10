@@ -57,7 +57,6 @@ UNTRUSTED_OR_GENERATED = (
     "Share",
     "data",
     "logs",
-    "atlas/snapshots",
 )
 
 SENTINEL = "IMPORTED.flag"
@@ -88,7 +87,6 @@ _PLANTED = (
     "Share/src/agents/daemon_slayer/tests/test_planted.py",
     "data/test_planted.py",
     "logs/test_planted.py",
-    "atlas/snapshots/test_planted.py",
 )
 
 _REAL = (

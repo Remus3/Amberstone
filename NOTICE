@@ -74,9 +74,9 @@ text that site publishes at https://openfontlicense.org/documents/OFL.txt
 (sha256 1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e).
 
 The copyright lines below are read from each embedded font's own name table
-(nameID 0), verbatim, one per line. tools/atlas_build.py writes the same lines
-into a comment beside the @font-face rules, so a copy of the page on its own
-still carries them.
+(nameID 0), verbatim, one per line. The page carries the same lines in a
+comment beside the @font-face rules, so a copy of the page on its own still
+carries them; tools/atlas_fonts.py audits the faces (tests/test_atlas_fonts.py).
 
 * Orbitron - weights 600 to 800 (one embedded file, a variable font).
   Unmodified upstream file, WOFF 1.0 wrapper only (table data, checksums and
@@ -85,7 +85,7 @@ still carries them.
   38576 bytes, from the google/fonts repository at commit
   abf71245949027c279caff7c2cb988c97e7d0b11, sha256
   f42db2dd16e642258e35782916eceb1dcdbea06fb958d77ad71dc5963587e8fd. The
-  build refuses any face that presents a declared Reserved Font Name unless
+  audit refuses any face that presents a declared Reserved Font Name unless
   it rebuilds to that exact file.
   Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron".
 

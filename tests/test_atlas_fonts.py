@@ -6,7 +6,7 @@ the one in the fonts' name tables; and the Orbitron face was a Google Fonts
 SUBSET - a Modified Version - still presenting its Reserved Font Name
 "Orbitron" (OFL condition 3). The adjudicated fix embeds the UNMODIFIED
 upstream Orbitron file (WOFF 1.0 wrapper only, OFL FAQ 2.2.1) and carries
-every face as WOFF 1.0 so the stdlib build and these tests can read each
+every face as WOFF 1.0 so the stdlib audit and these tests can read each
 face's name table. These tests pin:
 
 (i)  every face in the page has a NOTICE entry (family, verbatim nameID 0
@@ -14,8 +14,13 @@ face's name table. These tests pin:
      LICENSES/OFL-1.1.txt exists and is the verbatim OFL-1.1 text;
 (ii) no embedded face presents a Reserved Font Name it declares unless it
      rebuilds byte for byte to a pinned unmodified upstream file - and the
-     build refuses one that does not;
-plus the stdlib font codec the build relies on.
+     audit refuses one that does not;
+plus the stdlib font codec the audit relies on.
+
+2026-10-10: the operator reverted atlas.html to the hand-built pre-10/7 page
+(chat order) and the generator tools/atlas_build.py was removed. The page
+kept the compliant faces above (adjudicated: a revert does not re-ship a
+licence defect), and the codec moved verbatim to tools/atlas_fonts.py.
 """
 
 from __future__ import annotations
@@ -33,7 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ATLAS = REPO_ROOT / "atlas.html"
 NOTICE = REPO_ROOT / "NOTICE"
 OFL_TEXT = REPO_ROOT / "LICENSES" / "OFL-1.1.txt"
-BUILDER_PATH = REPO_ROOT / "tools" / "atlas_build.py"
+BUILDER_PATH = REPO_ROOT / "tools" / "atlas_fonts.py"
 
 # sha256 of https://openfontlicense.org/documents/OFL.txt as fetched 2026-10-09.
 OFL_SHA256 = "1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e"
@@ -42,7 +47,7 @@ ORBITRON_COMMIT = "abf71245949027c279caff7c2cb988c97e7d0b11"
 
 
 def _load_builder():
-    spec = importlib.util.spec_from_file_location("atlas_build_fonts_under_test", BUILDER_PATH)
+    spec = importlib.util.spec_from_file_location("atlas_fonts_under_test", BUILDER_PATH)
     assert spec and spec.loader, f"cannot load {BUILDER_PATH}"
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -100,7 +105,10 @@ def test_every_face_is_woff1_with_the_measured_families(faces) -> None:
 
 
 def test_page_comment_beside_the_faces_carries_copyright_and_licence(ab, faces, page) -> None:
-    region = ab._region(page, "fontnotice", js=True)
+    m = re.search(r"/\* Inlined fonts\..*?\*/", page, re.S)
+    assert m, "atlas.html lost the font notice comment beside its faces"
+    region = m.group(0)
+    assert region.strip() and m.start() < page.index("@font-face"), "notice must precede the faces"
     assert "SIL Open Font License, Version 1.1" in region
     assert "LICENSES/OFL-1.1.txt" in region
     for face in faces:
@@ -239,13 +247,13 @@ def test_a_known_rfn_is_caught_even_when_the_clause_was_edited_out(ab, faces) ->
     assert any(r[3] == 0 and "Reserved Font Name" in r[4] for r in name)
     page = _face(ab, "Orbitron", ab.encode_woff(_without(ab, orbitron, "gasp")))
     with pytest.raises(ab.BuildError, match="Reserved Font Name"):
-        ab.render_fonts(page)
+        ab.audit_page(page)
 
 
 def test_a_single_quoted_rfn_on_a_modified_face_is_refused(ab, faces) -> None:
     # Verifier gap: an RFN in single quotes was kept with its quotes and so
     # matched no family name. Rewrite nameID 0 to the single-quote form on a
-    # modified Orbitron and the build must still refuse it.
+    # modified Orbitron and the audit must still refuse it.
     orbitron = next(f["font"] for f in faces if f["family"] == "Orbitron")
     recs = [(nid, text) for _p, _e, _l, nid, text in ab.name_records(orbitron)]
     recs = [(nid, "Copyright X, with Reserved Font Name 'Orbitron'." if nid == 0 else text)
@@ -257,43 +265,32 @@ def test_a_single_quoted_rfn_on_a_modified_face_is_refused(ab, faces) -> None:
     assert ab.declared_rfns(modified) == ["Orbitron"]
     page = _face(ab, "Orbitron", ab.encode_woff(modified))
     with pytest.raises(ab.BuildError, match="Reserved Font Name 'Orbitron'"):
-        ab.render_fonts(page)
+        ab.audit_page(page)
 
 
-def test_build_refuses_a_modified_face_that_keeps_its_rfn(ab, faces) -> None:
+def test_audit_refuses_a_modified_face_that_keeps_its_rfn(ab, faces) -> None:
     orbitron = next(f["font"] for f in faces if f["family"] == "Orbitron")
     modified = _without(ab, orbitron, "DSIG")
     assert ab.rfn_family_hits(modified), "the modified copy should still carry the RFN"
     page = _face(ab, "Orbitron", ab.encode_woff(modified))
     with pytest.raises(ab.BuildError, match="Reserved Font Name 'Orbitron'"):
-        ab.render_fonts(page)
+        ab.audit_page(page)
 
 
-def test_build_accepts_a_modified_face_without_an_rfn(ab, faces) -> None:
+def test_audit_accepts_a_modified_face_without_an_rfn(ab, faces) -> None:
     rajdhani = next(f["font"] for f in faces if f["family"] == "Rajdhani")
     page = _face(ab, "Rajdhani", ab.encode_woff(_without(ab, rajdhani, "gasp")))
-    assert ab.render_fonts(page) == page
+    audited = ab.audit_page(page)
+    assert [f["family"] for f in audited] == ["Rajdhani"]
 
 
 # --------------------------------------------------------------------------
-# the stdlib codec the build relies on
+# the stdlib codec the audit relies on
 # --------------------------------------------------------------------------
 
-def test_render_fonts_passes_the_real_page_through_unchanged(ab, page) -> None:
-    assert ab.render_fonts(page) == page
-
-
-def test_a_raw_ttf_face_is_wrapped_once_and_then_stable(ab, faces) -> None:
-    orbitron = next(f["font"] for f in faces if f["family"] == "Orbitron")
-    ttf = ab.to_sfnt(orbitron)
-    b64 = base64.b64encode(ttf).decode("ascii")
-    src = ("@font-face {\n  font-family: 'Orbitron';\n  font-weight: 700;\n"
-           "  src: url(data:font/ttf;base64," + b64 + ") format('truetype');\n}\n")
-    once = ab.render_fonts(src)
-    assert "data:font/woff;base64," in once and "format('woff')" in once
-    assert ab.render_fonts(once) == once
-    wrapped = ab.embedded_faces(once)[0]["data"]
-    assert ab.to_sfnt(ab.read_font(wrapped)) == ttf
+def test_audit_accepts_the_real_page(ab, page) -> None:
+    audited = ab.audit_page(page)
+    assert len(audited) == 9, [f["family"] for f in audited]
 
 
 def test_woff2_and_unknown_signatures_are_refused(ab) -> None:

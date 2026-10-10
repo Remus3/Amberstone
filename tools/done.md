@@ -136,7 +136,7 @@ After an ENGINE bump, pass the version you bumped FROM so the anchor sweep runs:
 "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" "<repo>/tools/drift_guard.py" 1.258.0
 ```
 
-Runs in a few seconds and exits 1 on any breach. It checks doc-size budgets, `tools/*.md` vs `.claude/commands/*.md` mirror parity, memory-index integrity, stale version anchors (HTML included), self-inconsistent counted claims, authored files git is not tracking, and `atlas.html` freshness (the `tools/atlas_build.py --check` verdict; fix a stale page with `python tools/atlas_build.py` and commit it).
+Runs in well under a second and exits 1 on any breach. It checks doc-size budgets, `tools/*.md` vs `.claude/commands/*.md` mirror parity, memory-index integrity, stale version anchors (HTML included), self-inconsistent counted claims, and authored files git is not tracking.
 
 **Every check exists because that exact drift ACTUALLY HAPPENED here and later cost a whole dedicated session** - ROADMAP silently breaching its CI budget and sitting over it, two copies of THIS file diverging for a month while preserving a decommissioned instruction, 27 orphaned docs, 11 command docs with zero version control, a fourth ENGINE anchor site found only 25 minutes into a CI run. Detection is seconds; repair is a session. Fix what it reports NOW rather than letting it accrue - that is the entire point of the guard.
 
