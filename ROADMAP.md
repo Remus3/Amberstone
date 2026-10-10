@@ -70,8 +70,8 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 - **[ ] RM-733 (Tier-1, filed by the atlas CI fix, LEDGER 1705): CI's `atlas_build.py --check` goes red on routine commits until someone re-renders `atlas.html`.** Body in `BACKLOG.md` "Atlas CI filing (2026-10-09)".
 - **[ ] RM-734 (Tier-1, filed by the session 106 merger, LEDGER 1709): the push CI impact slice cannot select repo-wide guards that walk the git index.** Body + acceptance in `BACKLOG.md` "Session 106 filings".
 - **[ ] RM-735 (Tier-1, filed by session 106 C9): the :8889 self-heal checks port ownership, not liveness - a hung vision server holding the port is never replaced.** Body + acceptance in `BACKLOG.md` "Session 106 filings".
-- **[ ] RM-736 (Tier-1, filed session 106 /done): `tools/stop_claim_gate.py` flagged `merge_claim_without_merge` on the main session's relay of merges a sub-agent made (`3243a801e` / `6a2af637b`, both reachable from main).** Body + acceptance in `BACKLOG.md` "Session 106 filings".
-- **[ ] RM-737 (Tier-1 measure; the fix is kit-owned, filed session 106 /done): two concurrent gated `-n 8` whole suites exhaust this box's paging file (WinError 1455 / MemoryError), twice in session 106.** Body + acceptance in `BACKLOG.md` "Session 106 filings".
+- **[ ] RM-736 (Tier-1, filed session 106 /done): `tools/stop_claim_gate.py` flagged `merge_claim_without_merge` on the main session's relay of merges a sub-agent made (`3243a801e` / `6a2af637b`, both reachable from main), and `count_mismatch` on a verified-true relayed sub-agent suite count.** Body + acceptance in `BACKLOG.md` "Session 106 filings".
+- **[ ] RM-737 (Tier-1 measure; the fix is kit-owned, filed session 106 /done): two concurrent gated `-n 8` whole suites exhaust this box's paging file (WinError 1455 / MemoryError), three void runs in session 106.** Body + acceptance in `BACKLOG.md` "Session 106 filings".
 
 > **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
 
