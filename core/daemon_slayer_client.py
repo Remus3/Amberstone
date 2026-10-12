@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socket
 import subprocess
 import sys
+import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
@@ -122,31 +125,273 @@ def is_engine_up(timeout: float = 0.25) -> bool:
         return False
 
 
-def ensure_running() -> None:
-    """Start the Daemon Slayer server if it is not already responding.
+# -- RM-738: periodic liveness self-heal for :8860 ------------------------------
+# Was a one-shot: ensure_running() probed /health once at dashboard start and
+# spawned the launcher if nothing answered, so a DS that died or wedged later
+# stayed down until RC restarted (every DS call reading the hole as None).
+# Modelled on the RM-735 vision watchdog (dashboard/_vision_watchdog.py, whose
+# probe / listener lookup / taskkill helpers are reused), with two DS-specific
+# guards against a DUPLICATE engine: HTTPServer binds with SO_REUSEADDR, which
+# on Windows lets a second process bind a held port, and the launcher loads
+# the snapshot BEFORE it binds, so a booting DS holds no port yet.
 
-    Called once at RC dashboard startup. No-op if :8860 is healthy.
-    Spawns tools/start_daemon_slayer.py as a detached background process
-    using the same interpreter as the current process.
+_NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
+_LAUNCHER = Path(__file__).resolve().parent.parent / "tools" / "start_daemon_slayer.py"
+
+OK, DOWN, HUNG = "ok", "down", "hung"
+
+WATCHDOG_INTERVAL_S = 30.0
+WATCHDOG_TIMEOUT_S = 3.0
+WATCHDOG_FAIL_THRESHOLD = 3
+WATCHDOG_GRACE_S = 120.0
+WATCHDOG_MAX_GRACE_S = 1800.0
+WATCHDOG_RELEASE_WAIT_S = 10.0
+
+
+def probe_ds_health(port: int, timeout_s: float) -> str:
+    """``GET /health`` on loopback -> OK / DOWN / HUNG. Never raises."""
+    from dashboard._vision_watchdog import probe_health
+    return probe_health(port, timeout_s)
+
+
+def find_ds_listener(port: int) -> Optional[int]:
+    """PID listening on ``port``, or None (also None without psutil)."""
+    from dashboard._vision_watchdog import find_listener_pid
+    return find_listener_pid(port)
+
+
+def kill_ds_pid(pid: int) -> bool:
+    """``taskkill /F /PID`` (repo rule: never Stop-Process)."""
+    from dashboard._vision_watchdog import kill_pid
+    return kill_pid(pid)
+
+
+def is_ds_cmdline(argv: list, port: int = DEFAULT_PORT) -> bool:
+    """Is this command line a Daemon Slayer engine process for ``port``?
+
+    A Python interpreter running ``tools/start_daemon_slayer.py`` (the
+    scheduled task, legion_on, this module's spawn) or
+    ``-m agents.daemon_slayer[.cli] serve``. Deliberately exact: a pytest run
+    of ``test_start_daemon_slayer_logging.py`` or an editor holding the
+    launcher open is NOT a DS, so it is never killed or mistaken for a boot;
+    neither is a ``serve --port`` on another port (a dev engine).
     """
-    if is_engine_up(timeout=1.0):
-        return
-    launcher = Path(__file__).resolve().parent.parent / "tools" / "start_daemon_slayer.py"
-    if not launcher.exists():
-        logger.warning("daemon_slayer launcher not found at %s", launcher)
-        return
+    if not argv:
+        return False
+    exe = str(argv[0]).replace("\\", "/").rsplit("/", 1)[-1].lower()
+    if not exe.startswith("python"):
+        return False
+    args = [str(a) for a in argv[1:]]
+    for i, arg in enumerate(args):
+        other = (args[i + 1] if arg == "--port" and i + 1 < len(args)
+                 else arg[len("--port="):] if arg.startswith("--port=") else None)
+        if other is not None and other != str(port):
+            return False
+    for i, arg in enumerate(args):
+        if arg.replace("\\", "/").rsplit("/", 1)[-1].lower() == "start_daemon_slayer.py":
+            return True
+        if (arg == "-m" and i + 1 < len(args)
+                and args[i + 1] in ("agents.daemon_slayer", "agents.daemon_slayer.cli")
+                and "serve" in args[i + 2:]):
+            return True
+    return False
+
+
+def is_ds_pid(pid: int) -> bool:
     try:
-        subprocess.Popen(
-            [sys.executable, str(launcher)],
-            cwd=str(launcher.parent.parent),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            close_fds=True,
-            creationflags=0x08000000,  # CREATE_NO_WINDOW
-        )
-        logger.info("daemon_slayer not running - spawned %s", launcher.name)
+        import psutil
+        return is_ds_cmdline(psutil.Process(pid).cmdline() or [])
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def find_ds_process() -> Optional[int]:
+    """PID of a DS process other than this one (e.g. still booting), or None."""
+    try:
+        import psutil
+        me = os.getpid()
+        for proc in psutil.process_iter(["pid", "cmdline"]):
+            info = proc.info
+            if info.get("pid") != me and is_ds_cmdline(info.get("cmdline") or []):
+                return int(info["pid"])
     except Exception as exc:  # noqa: BLE001
-        logger.warning("daemon_slayer auto-start failed: %s", exc)
+        logger.debug("daemon_slayer watchdog: process scan failed: %s", exc)
+    return None
+
+
+def spawn_ds() -> int:
+    """Start ``tools/start_daemon_slayer.py`` windowless, detached from RC stdio.
+
+    The launcher's own bind preflight exits 0 if :8860 is already bound.
+    """
+    if not _LAUNCHER.exists():
+        raise FileNotFoundError(f"daemon_slayer launcher not found at {_LAUNCHER}")
+    proc = subprocess.Popen(
+        [sys.executable, str(_LAUNCHER)],
+        cwd=str(_LAUNCHER.parent.parent),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        creationflags=_NO_WINDOW,
+    )
+    return proc.pid
+
+
+class DsWatchdog:
+    """Rate-limited ``/health`` re-check of :8860 with a back-off relaunch.
+
+    Each ``tick`` is one probe and at most one action:
+
+    * ok       - reset the failure count and the back-off;
+    * grace    - inside the window after a spawn (``grace_s``, doubling to
+      ``max_grace_s`` while nothing comes back ok): no action, no storm;
+    * spawned  - refused and nothing listens and no DS process is booting;
+    * starting - nothing listens yet but a DS process exists (a bounce or a
+      logon start loading its snapshot): a spawn there would be a duplicate;
+    * suspect  - a holder listens but does not answer (timeout, reset, non-200,
+      or refused with a full backlog): counted;
+    * at ``fail_threshold`` consecutive suspects: a holder verified as a DS
+      process is killed and, once the port is free, relaunched (replaced;
+      killed = still held, the next tick spawns); a foreign holder, or one
+      that cannot be seen (no psutil), is left alone - never spawned over.
+    """
+
+    def __init__(self, *, port: int = DEFAULT_PORT,
+                 interval_s: float = WATCHDOG_INTERVAL_S,
+                 timeout_s: float = WATCHDOG_TIMEOUT_S,
+                 fail_threshold: int = WATCHDOG_FAIL_THRESHOLD,
+                 grace_s: float = WATCHDOG_GRACE_S,
+                 max_grace_s: float = WATCHDOG_MAX_GRACE_S,
+                 release_wait_s: float = WATCHDOG_RELEASE_WAIT_S,
+                 probe=probe_ds_health, find_holder=find_ds_listener,
+                 find_ds_process=find_ds_process, is_ds=is_ds_pid,
+                 kill=kill_ds_pid, spawn=spawn_ds,
+                 clock=time.monotonic, sleep=time.sleep) -> None:
+        self.port = port
+        self.interval_s = interval_s
+        self.timeout_s = timeout_s
+        self.fail_threshold = max(1, int(fail_threshold))
+        self.grace_s = grace_s
+        self.max_grace_s = max(grace_s, max_grace_s)
+        self.release_wait_s = release_wait_s
+        self._probe = probe
+        self._find_holder = find_holder
+        self._find_ds_process = find_ds_process
+        self._is_ds = is_ds
+        self._kill = kill
+        self._spawn = spawn
+        self._clock = clock
+        self._sleep = sleep
+        self.failures = 0
+        self.grace_until = 0.0
+        self.current_grace_s = grace_s
+        self._booting_logged = False
+
+    def tick(self) -> str:
+        state = self._probe(self.port, self.timeout_s)
+        now = self._clock()
+        if state == OK:
+            if self.failures:
+                logger.info("daemon_slayer answering again after %d failed "
+                            "probe(s)", self.failures)
+            self.failures = 0
+            self.grace_until = 0.0
+            self.current_grace_s = self.grace_s
+            self._booting_logged = False
+            return "ok"
+        if now < self.grace_until:
+            return "grace"
+        holder = self._find_holder(self.port)
+        if state == DOWN and holder is None:
+            booting = self._find_ds_process()
+            if booting is not None:
+                if not self._booting_logged:
+                    logger.info("daemon_slayer not answering yet, pid %d is "
+                                "starting - no second spawn", booting)
+                    self._booting_logged = True
+                return "starting"
+            self._respawn(now, "not running")
+            return "spawned"
+        self.failures += 1
+        if self.failures < self.fail_threshold:
+            if self.failures == 1:
+                logger.warning("daemon_slayer /health did not answer within "
+                               "%.1fs (1/%d)", self.timeout_s, self.fail_threshold)
+            return "suspect"
+        self.failures = 0
+        if holder is None:
+            logger.warning("daemon_slayer /health failing but no listener is "
+                           "visible - cannot verify the holder, not spawning")
+            self._start_grace(now)
+            return "unverified"
+        if not self._is_ds(holder):
+            logger.warning("daemon_slayer port %d is held by pid %d, which is "
+                           "not a DS process - left alone", self.port, holder)
+            self._start_grace(now)
+            return "foreign"
+        if not self._kill(holder):
+            logger.warning("daemon_slayer hung - could not kill pid %d", holder)
+            self._start_grace(now)
+            return "kill-failed"
+        # taskkill returns before the socket is always released; spawning onto
+        # a held port only makes the launcher's preflight skip (exit 0).
+        for _ in range(max(1, int(self.release_wait_s / 0.5))):
+            if self._find_holder(self.port) is None:
+                break
+            self._sleep(0.5)
+        else:
+            logger.warning("daemon_slayer hung - killed pid %d, port %d still "
+                           "held; relaunch on the next tick", holder, self.port)
+            return "killed"
+        self._respawn(now, f"hung - killed pid {holder}")
+        return "replaced"
+
+    def _respawn(self, now: float, why: str) -> None:
+        self.failures = 0
+        try:
+            pid = self._spawn()
+            logger.warning("daemon_slayer %s - spawned %s (pid %s)",
+                           why, _LAUNCHER.name, pid)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("daemon_slayer %s - relaunch failed: %s", why, exc)
+        finally:
+            self._start_grace(now)
+
+    def _start_grace(self, now: float) -> None:
+        self.grace_until = now + self.current_grace_s
+        self.current_grace_s = min(self.current_grace_s * 2, self.max_grace_s)
+
+    def run(self, stop: threading.Event) -> None:
+        while not stop.is_set():
+            try:
+                self.tick()
+            except Exception as exc:  # noqa: BLE001 - the loop must outlive a tick
+                logger.warning("daemon_slayer watchdog tick failed: %s", exc)
+            stop.wait(self.interval_s)
+
+
+_WATCHDOG: Optional[DsWatchdog] = None
+_WATCHDOG_LOCK = threading.Lock()
+
+
+def ensure_running() -> None:
+    """Keep the Daemon Slayer server on :8860 answering (RM-738).
+
+    Called at RC dashboard startup (``dashboard/server.py``). The first call
+    per process starts ``DsWatchdog`` on a daemon thread - its first tick is
+    immediate, so a DS that is down at startup is spawned as before - and it
+    then re-checks every ``WATCHDOG_INTERVAL_S``. Later calls are no-ops.
+    Never blocks the caller on a probe.
+    """
+    global _WATCHDOG
+    with _WATCHDOG_LOCK:
+        if _WATCHDOG is not None:
+            return
+        wd = DsWatchdog()
+        t = threading.Thread(target=wd.run, args=(threading.Event(),),
+                             daemon=True, name="DsWatchdog")
+        t.start()
+        _WATCHDOG = wd
 
 
 def rank_for(
