@@ -231,6 +231,8 @@ LONG_LIVED_SERVICE_TASKS = frozenset({
     "RC-MoonSyncPoller",
     "RC-Phase3-Supervisor",
     "RC-Supervisor",
+    # MAIN PROXY-1 (2026-10-11): launcher waits on the proxy relaunch loop by design.
+    "RC-TeamClaudeProxy",
 })
 
 # A service whose RUNNING instance started this long ago is wedged, not

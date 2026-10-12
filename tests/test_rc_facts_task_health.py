@@ -203,6 +203,53 @@ def test_service_running_implausibly_long_is_an_anomaly():
     assert "RUNNING" in detail
 
 
+# RC-TeamClaudeProxy: MAIN PROXY-1 (2026-10-11) made its launcher wait on the
+# relaunch loop, so the task stays Running with 267009 ON PURPOSE. Measured
+# session 110: the periodic branch reported it "STUCK - periodic task is still
+# RUNNING" at a 0.4 d old run.
+
+
+def test_team_claude_proxy_running_is_long_lived_not_stuck():
+    assert "RC-TeamClaudeProxy" in rc_facts.LONG_LIVED_SERVICE_TASKS
+    verdict, detail = rc_facts.classify_task_result(
+        "RC-TeamClaudeProxy", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=0.4 * _DAY,
+    )
+    assert verdict == rc_facts.VERDICT_OK
+    assert "long-lived service" in detail
+    assert "never finished" not in detail
+
+
+def test_team_claude_proxy_keeps_the_long_lived_failure_checks():
+    # Implausibly old Running instance is still a wedge.
+    stuck, _d = rc_facts.classify_task_result(
+        "RC-TeamClaudeProxy", "Running", rc_facts.TASK_RESULT_RUNNING,
+        last_run_age_s=rc_facts.SERVICE_RUNNING_IMPLAUSIBLE_S + _DAY,
+    )
+    assert stuck == rc_facts.VERDICT_STUCK
+    # 0x800710E0 is a refused duplicate only while it is Running ...
+    ok, _d2 = rc_facts.classify_task_result(
+        "RC-TeamClaudeProxy", "Running", rc_facts.TASK_RESULT_TIMEOUT_KILL
+    )
+    assert ok == rc_facts.VERDICT_OK
+    # ... and a real kill once it is NOT running.
+    bad, _d3 = rc_facts.classify_task_result(
+        "RC-TeamClaudeProxy", "Ready", rc_facts.TASK_RESULT_TIMEOUT_KILL
+    )
+    assert bad == rc_facts.VERDICT_FAILURE
+
+
+def test_team_claude_proxy_running_raises_no_banner_anomaly(tmp_path):
+    now = time.time()
+    row = _row(
+        "RC-TeamClaudeProxy", state="Running",
+        last_result=rc_facts.TASK_RESULT_RUNNING,
+        last_run=_iso(now, 0.4 * _DAY), triggers="MSFT_TaskLogonTrigger",
+    )
+    _banner, anomalies = rc_facts.task_health_lines([row], root=tmp_path, now=now)
+    assert not any("RC-TeamClaudeProxy" in a for a in anomalies), anomalies
+
+
 # ------------------------------------------------- per-task running grace
 #
 # The flat 2h grace hid a hung RC-ReplayChainWatch (PT15M repetition, PT2H
