@@ -168,6 +168,83 @@ def discover_events_source() -> Optional[EventsSource]:
 
 # -- HTTP -------------------------------------------------------------------
 
+class _CappedStartEvent(threading.Event):
+    """``Thread._started`` with a ceiling on the wait ``Thread.start()`` makes."""
+
+    def __init__(self, cap_s: float) -> None:
+        super().__init__()
+        self._cap_s = cap_s
+
+    def wait(self, timeout: Optional[float] = None) -> bool:
+        if timeout is None or timeout > self._cap_s:
+            timeout = self._cap_s
+        return super().wait(timeout)
+
+
+class _RequestThread(threading.Thread):
+    """RM-738: a per-request thread whose ``start()`` cannot park the accept loop.
+
+    ``Thread.start()`` waits on ``self._started`` with no timeout, and only the
+    NEW thread sets it (``_bootstrap_inner``, after ``_set_native_id``). A
+    thread that dies in bootstrap - MemoryError under commit-charge
+    exhaustion, RM-735 / RM-737 - would park ``serve_forever`` for good. Here
+    that wait is capped; a thread not started by then is abandoned and the
+    server drops the connection. One that starts late sees the abandon in
+    ``run()`` and returns without touching the dropped socket.
+    """
+
+    def __init__(self, server: "_ReplayHTTPServer", request: Any, client_address: Any) -> None:
+        super().__init__(daemon=server.daemon_threads)
+        self._started = _CappedStartEvent(server.thread_start_timeout_s)
+        self._job: Optional[tuple] = (server, request, client_address)
+        self._gate = threading.Lock()
+        self._outcome: Optional[str] = None     # "claimed" | "abandoned"
+
+    def run(self) -> None:
+        with self._gate:
+            if self._outcome is not None:
+                return
+            self._outcome = "claimed"
+            job, self._job = self._job, None
+        server, request, client_address = job
+        server.process_request_thread(request, client_address)
+
+    def abandon_if_unstarted(self) -> bool:
+        if self._started.is_set():
+            return False
+        with self._gate:
+            if self._outcome is not None:
+                return False
+            self._outcome = "abandoned"
+            self._job = None
+            return True
+
+
+class _ReplayHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer whose per-request thread start is capped (RM-738)."""
+
+    # A thread start normally takes well under a millisecond.
+    thread_start_timeout_s = 2.0
+    thread_start_failures = 0
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        # ThreadingMixIn.process_request with a capped start. The stdlib's
+        # _threads bookkeeping is not carried: it never holds daemon threads.
+        t = _RequestThread(self, request, client_address)
+        t.start()
+        if not t.abandon_if_unstarted():
+            return
+        self.shutdown_request(request)
+        self.thread_start_failures += 1
+        try:
+            if self.thread_start_failures == 1 or self.thread_start_failures % 100 == 0:
+                print(f"replay_session: request thread did not start within "
+                      f"{self.thread_start_timeout_s:.1f}s - dropped connection "
+                      f"#{self.thread_start_failures} (RM-738)", file=sys.stderr)
+        except Exception:  # noqa: BLE001 - stderr can be absent or failing too
+            pass
+
+
 def make_server(state: ReplayState, port: int = DEFAULT_PORT, host: str = LOOPBACK,
                 events_source: Optional[EventsSource] = None) -> ThreadingHTTPServer:
     if host != LOOPBACK:
@@ -210,7 +287,7 @@ def make_server(state: ReplayState, port: int = DEFAULT_PORT, host: str = LOOPBA
                 return self._json(200, {"events": state.events_since(since), "replay": True})
             return self._json(404, {"error": "not_found"})
 
-    return ThreadingHTTPServer((LOOPBACK, port), Handler)
+    return _ReplayHTTPServer((LOOPBACK, port), Handler)
 
 
 # -- CLI --------------------------------------------------------------------
