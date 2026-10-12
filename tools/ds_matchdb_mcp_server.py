@@ -717,6 +717,84 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self._send(200, _json_dumps_safe(env, default=str).encode())
 
 
+class _CappedStartEvent(threading.Event):
+    """``Thread._started`` with a ceiling on the wait ``Thread.start()`` makes."""
+
+    def __init__(self, cap_s: float) -> None:
+        super().__init__()
+        self._cap_s = cap_s
+
+    def wait(self, timeout: float | None = None) -> bool:
+        if timeout is None or timeout > self._cap_s:
+            timeout = self._cap_s
+        return super().wait(timeout)
+
+
+class _RequestThread(threading.Thread):
+    """RM-738: a per-request thread whose ``start()`` cannot park the accept loop.
+
+    ``Thread.start()`` waits on ``self._started`` with no timeout, and only the
+    NEW thread sets it (``_bootstrap_inner``, after ``_set_native_id``). A
+    thread that dies in bootstrap - MemoryError under commit-charge
+    exhaustion, RM-735 / RM-737 - would park ``serve_forever`` for good. Here
+    that wait is capped; a thread not started by then is abandoned and the
+    server drops the connection. One that starts late sees the abandon in
+    ``run()`` and returns without touching the dropped socket.
+    """
+
+    def __init__(self, server: "_MatchDBHTTPServer", request, client_address) -> None:
+        super().__init__(daemon=server.daemon_threads)
+        self._started = _CappedStartEvent(server.thread_start_timeout_s)
+        self._job: tuple | None = (server, request, client_address)
+        self._gate = threading.Lock()
+        self._outcome: str | None = None        # "claimed" | "abandoned"
+
+    def run(self) -> None:
+        with self._gate:
+            if self._outcome is not None:
+                return
+            self._outcome = "claimed"
+            job, self._job = self._job, None
+        server, request, client_address = job
+        server.process_request_thread(request, client_address)
+
+    def abandon_if_unstarted(self) -> bool:
+        if self._started.is_set():
+            return False
+        with self._gate:
+            if self._outcome is not None:
+                return False
+            self._outcome = "abandoned"
+            self._job = None
+            return True
+
+
+class _MatchDBHTTPServer(http.server.ThreadingHTTPServer):
+    """ThreadingHTTPServer whose per-request thread start is capped (RM-738)."""
+
+    # A thread start normally takes well under a millisecond.
+    thread_start_timeout_s = 2.0
+    thread_start_failures = 0
+
+    def process_request(self, request, client_address) -> None:
+        # ThreadingMixIn.process_request with a capped start. The stdlib's
+        # _threads bookkeeping is not carried: it never holds daemon threads.
+        t = _RequestThread(self, request, client_address)
+        t.start()
+        if not t.abandon_if_unstarted():
+            return
+        self.shutdown_request(request)
+        self.thread_start_failures += 1
+        try:
+            if self.thread_start_failures == 1 or self.thread_start_failures % 100 == 0:
+                log.warning("request thread did not start within %.1fs - "
+                            "dropped connection #%d from %s (RM-738)",
+                            self.thread_start_timeout_s,
+                            self.thread_start_failures, client_address)
+        except Exception:  # noqa: BLE001 - logging can fail under the same memory pressure
+            pass
+
+
 def serve_forever(host: str = HOST, port: int = PORT) -> int:
     """Bind + serve. Returns an int exit code (mirrors
     agents.daemon_slayer.server.serve_forever so the launcher contract
@@ -741,7 +819,7 @@ def serve_forever(host: str = HOST, port: int = PORT) -> int:
     log.info("ds-matchdb-mcp listening on %s:%d (tools=%d, token=...%s)",
              host, port, len(TOOL_FUNCS), AUTH_TOKEN[-4:])
     try:
-        srv = http.server.ThreadingHTTPServer((host, port), _Handler)
+        srv = _MatchDBHTTPServer((host, port), _Handler)
     except OSError as e:
         log.error("bind %s:%d failed: %s", host, port, e)
         return 1
