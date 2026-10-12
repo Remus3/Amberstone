@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v14 - RACE GUARDS: the per-tree file-claim registry and its hooks
+"""Fleet kit v17 - RACE GUARDS: the per-tree file-claim registry and its hooks
 (FLEET-COMMON item 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -42,15 +42,29 @@ Hook decisions (PreToolUse):
   * Edit / Write / NotebookEdit / MultiEdit on a file inside a git tree: the
     file is auto-claimed for the caller; DENY when a different live owner holds
     it. Files outside every git tree, and EXEMPT paths, are never claimed.
-  * Bash / PowerShell (best-effort): DENY a redirect, tee, Set-Content /
-    Add-Content / Out-File, or `git add` whose target is held by another live
-    owner (a directory target or `git add -A` counts every claim under it);
+  * Bash / PowerShell: DENY a redirect, tee, Set-Content / Add-Content /
+    Out-File, `sed -i` / `perl -i`, or `git add` whose target is held by
+    another live owner (a directory target or `git add -A` counts every claim
+    under it); on ALLOW, CLAIM those targets for the caller (v17, below);
     DENY a bare `git commit` / `git push` not run through fleet_gitlock.py;
     DENY a whole-suite pytest (no test FILE named) not run through
     fleet_suite_gate.py; DENY fleet_gitlock.py / fleet_suite_gate.py `run`
     without `--owner <the caller's own owner id>` (the reason gives it).
     The owner id is ALWAYS `<session_id>.<agent_id>` (`<session_id>.main` in
     the main thread) - the one rule for --owner on both helpers.
+
+v17 FIX (GITLOCK-SWEEP, ruling 2026-10-10-gitlock-sweep): a shell edit used
+to carry no claim, so fleet_gitlock had nothing to refuse and another agent's
+merge commit swept up the edited files. An allowed Bash / PowerShell call now
+claims, exactly as an edit tool does (owner file with the session process):
+every parsed write target (redirect > / >>, tee, Set-Content, Add-Content,
+Out-File, `sed -i`, `perl -i`), every explicit `git add` file, and for
+`git add -A` / `.` / `-u` / a directory or glob, the paths ONE
+`git status --porcelain` call reports under it that no other live owner
+holds (a git error claims nothing; the claim step never denies). STILL NOT
+claimed: writes made inside a script the hook cannot see (python / node
+heredocs, [IO.File]::WriteAllText, a .ps1 file); fleet_gitlock's merge check
+(v17) is the backstop for those during a merge conclusion.
 
 v13 shell parsing (KIT-13): segments split on ; & | && || and newlines only
 OUTSIDE quotes; heredoc bodies (<<WORD ... WORD) and PowerShell here-strings
@@ -76,6 +90,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -605,8 +620,51 @@ def read_only_search(words):
     return bool(g and g[0] == "grep")
 
 
+_INPLACE = re.compile(r"-[A-Za-z]*i")
+_INPLACE_ARG = {"sed": ("-e", "-f", "-l", "--expression", "--file", "--line-length"),
+                "perl": ("-e", "-E", "-M", "-m", "-I")}
+
+
+def inplace_targets(words):
+    """Files a `sed -i` / `perl -i` word list edits in place (v17)."""
+    if not words:
+        return []
+    tool = _base(words[0])
+    if tool not in _INPLACE_ARG:
+        return []
+    takes = _INPLACE_ARG[tool]
+    inplace, script, rest, i = False, False, [], 1
+    while i < len(words):
+        w = words[i]
+        if w == "--":
+            rest += words[i + 1:]
+            break
+        if w.startswith("--"):
+            if w.startswith("--in-place"):
+                inplace = True
+            elif w in takes:
+                script, i = True, i + 1
+            elif w.startswith(("--expression=", "--file=")):
+                script = True
+        elif w.startswith("-") and len(w) > 1:
+            if _INPLACE.match(w):
+                inplace = True
+            if w in takes:
+                script, i = True, i + 1
+            elif tool == "perl" and re.match(r"-[A-Za-z]*[eE]$", w):
+                script, i = True, i + 1
+        else:
+            rest.append(w)
+        i += 1
+    if not inplace:
+        return []
+    files = rest if script else rest[1:]
+    return [f for f in files if f and not f.startswith(("$", "&"))]
+
+
 def write_targets(command):
-    """Best-effort file targets a shell command writes (redirect, tee, PS)."""
+    """Best-effort file targets a shell command writes (redirect, tee, PS,
+    and since v17 `sed -i` / `perl -i`)."""
     out = []
     command = strip_heredocs(command)
     for rx in (_REDIR, _TEE, _PS_WRITE):
@@ -614,6 +672,10 @@ def write_targets(command):
             t = _unquote(m.group(1))
             if t and t.lower() not in _SINKS and not t.startswith(("$", "&")):
                 out.append(t)
+    for seg in _segments(command):
+        words = _words(seg)
+        if not read_only_search(words):
+            out += inplace_targets(words)
     return out
 
 
@@ -766,6 +828,98 @@ def decide_edit(payload, me, now, ttl_s):
     return "allow", ""
 
 
+def _claim_all(payload, me, main, paths, now):
+    """Claim paths (all in the tree whose main checkout is main) for me, with
+    the owner-file meta decide_edit records. Under the registry mutex."""
+    if not paths:
+        return
+    meta = {"agent_type": payload.get("agent_type") or None}
+    if not (claims_dir(main) / f"{me}.json").is_file():
+        sp = session_process()
+        if sp:
+            meta["session_pid"], meta["session_started"] = sp
+    doc = claim(main, me, paths[0], now, meta)
+    if len(paths) > 1:
+        for p in paths[1:]:
+            doc["paths"].setdefault(norm(p), now)
+        _write(claims_dir(main) / f"{me}.json", doc)
+    proj = tree_of(project_root(payload, os.environ))
+    if proj is None or norm(proj[2]) != norm(main):
+        index_add(me, main)
+
+
+_GLOB = re.compile(r"[*?\[]")
+STATUS_TIMEOUT_S = 10.0
+
+
+def porcelain_paths(top, specs, runner=None):
+    """Absolute paths `git status --porcelain` reports under the pathspecs
+    (v17, `git add -A` / `.` / a directory or glob). ONE git call; any git
+    error or timeout returns [] (claim nothing, never deny)."""
+    runner = runner or subprocess.run
+    git = os.environ.get("FLEET_GIT") or "git"
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if WIN else 0
+    try:
+        r = runner([git, "-C", str(top), "status", "--porcelain", "-z",
+                    "--untracked-files=all", "--", *[str(s) for s in specs]],
+                   capture_output=True, timeout=STATUS_TIMEOUT_S, creationflags=flags)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return []
+    if getattr(r, "returncode", 1) != 0:
+        return []
+    raw = r.stdout if isinstance(r.stdout, (bytes, bytearray)) else str(r.stdout or "").encode()
+    out, items, k = [], raw.decode("utf-8", "replace").split("\0"), 0
+    while k < len(items):
+        item = items[k]
+        k += 1
+        if len(item) < 4:
+            continue
+        out.append(Path(top) / item[3:])
+        if item[0] in "RC":  # rename / copy: the next field is the source
+            k += 1
+    return out
+
+
+def shell_targets(command, cwd):
+    """(files, specs): files a shell command writes or `git add`s by name,
+    and the (base, pathspec) pairs a whole-tree / directory / glob add names."""
+    files = [_abs(p, cwd) for p in write_targets(command)]
+    specs = []
+    for cdir, paths in git_add_targets(command):
+        base = _abs(cdir, cwd) if cdir else Path(cwd)
+        for p in paths:
+            ap = base if p == "." else _abs(p, base)
+            if p == "." or _GLOB.search(p) or ap.is_dir():
+                specs.append(ap)
+            else:
+                files.append(ap)
+    return files, specs
+
+
+def claim_shell(payload, me, cwd, files, specs, now, ttl_s, porcelain=None):
+    """Claim a shell command's targets for me (v17). Never raises, never denies."""
+    porcelain = porcelain or porcelain_paths
+    by_main = {}
+    for p in files:
+        t = tree_of(p)
+        if t is None or exempt(rel_in(p, t[0])) or Path(p).is_dir():
+            continue
+        by_main.setdefault(str(t[2]), (t, [], []))[1].append(p)
+    for s in specs:
+        t = tree_of(s if not _GLOB.search(str(s)) else Path(cwd))
+        if t is not None:
+            by_main.setdefault(str(t[2]), (t, [], []))[2].append(s)
+    for main, (t, fs, ss) in by_main.items():
+        if ss:
+            for p in porcelain(t[0], ss):
+                tt = tree_of(p)
+                if tt is not None and not exempt(rel_in(p, tt[0])) and norm(tt[2]) == norm(t[2]):
+                    fs.append(p)
+        with contextlib.suppress(Exception), _mutex(claims_dir(t[2])):
+            keep = [p for p in fs if not holders(t[2], [p], me, now, ttl_s)]
+            _claim_all(payload, me, t[2], keep, now)
+
+
 def decide_shell(payload, me, now, ttl_s):
     ti = payload.get("tool_input") if isinstance(payload.get("tool_input"), dict) else {}
     command = str(ti.get("command") or "")
@@ -784,18 +938,17 @@ def decide_shell(payload, me, now, ttl_s):
         return "deny", ("SUITE-GATE: run whole suites through fleet_suite_gate.py: "
                         "python <kit>/fleet_suite_gate.py run --owner %s -- <suite cmd>"
                         % (me or "<owner>"))
-    targets = [_abs(p, cwd) for p in write_targets(command)]
-    for cdir, paths in git_add_targets(command):
-        base = _abs(cdir, cwd) if cdir else Path(cwd)
-        for p in paths:
-            targets.append(base if p == "." else _abs(p, base))
-    for p in targets:
+    files, specs = shell_targets(command, cwd)
+    for p in files + [s for s in specs if not _GLOB.search(str(s))]:
         tt = tree_of(p)
         if tt is None or exempt(rel_in(p, tt[0])):
             continue
         hit = holders(tt[2], [p], me, now, ttl_s)
         if hit:
             return "deny", _held_reason(hit[0][0], tt[0], hit[0][1])
+    if me:
+        with contextlib.suppress(Exception):
+            claim_shell(payload, me, cwd, files, specs, now, ttl_s)
     return "allow", ""
 
 

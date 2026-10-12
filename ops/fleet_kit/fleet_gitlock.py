@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v14 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
+"""Fleet kit v17 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -24,10 +24,12 @@ callers that run outside a hook (a lane landing, a script).
   1. acquires <main checkout>/ops/loop/control/locks/git.lock (main checkout =
      the git common dir's parent, so every worktree of a tree shares one lock)
      by exclusive create, holder {pid, pid_started, owner, verb, start}. A
-     holder whose pid is dead, provably reused, or older than STALE_MIN
-     minutes is broken ONCE per acquire and the break is logged to
-     ops/loop/control/gitlock.jsonl; otherwise it waits up to --timeout
-     (default 300 s) with a progress line on stderr, then fails (exit 3);
+     holder whose pid is dead or provably reused is broken at once; a holder
+     whose pid is ALIVE and unreused only past the hung-holder ceiling
+     STALE_MIN (120 min, v16). A break happens ONCE per acquire and is logged
+     to ops/loop/control/gitlock.jsonl; otherwise it waits up to --timeout
+     (default 300 s) with a progress line on stderr, then fails (exit 3)
+     naming the holder's pid, owner, verb and age, so the waiter retries;
   2. checks the worktree's index.lock (v14, RC 0001 sec 9c): removed when it
      is older than 60 s and the git probe says no git process is alive, or,
      whatever the probe says, when it is older than INDEX_LOCK_STALE_S (10 min;
@@ -36,7 +38,9 @@ callers that run outside a hook (a lane landing, a script).
      DLL-init exit) means UNKNOWN and counts as "git alive" (v14 KIT-14);
   3. for `commit`: refuses (exit 3) when the staged set - plus the tracked
      modifications for -a/--all and any pathspec - holds a path claimed in
-     fleet_claims by a live owner other than --owner (env FLEET_CLAIM_OWNER);
+     fleet_claims by a live owner other than --owner (env FLEET_CLAIM_OWNER),
+     and during a merge conclusion a path outside the merge diff that
+     --owner has not claimed (v17, below);
   4. v13 (FLEET-COMMON 17): for `commit`, refuses (exit 3) when the resolved
      author or committer ident (`git var GIT_AUTHOR_IDENT` /
      `GIT_COMMITTER_IDENT`, or a --author argument) is a Claude or bot
@@ -44,6 +48,25 @@ callers that run outside a hook (a lane landing, a script).
      `fleet.operatorIdent` set; an ident git cannot resolve is not refused
      here (the pre-push hook is the hard gate);
   5. runs the git command, releases the lock, exits with git's code.
+
+v16 FIX (CS 0718, ruling 2026-10-10-cs-0718-gitlock-stale): the age limit
+was 15 min and applied to a LIVE holder, so a push whose gated pre-push
+suite held 20-25 min had its lock broken under it and a second committer ran
+beside it (4 breaks in one day). A live, unreused holder is now stale only
+past STALE_MIN = 120 min (about 5x the slowest measured gated push), reason
+"holder pid alive but older than 120 min (hung)". The start stamp is not
+refreshed (no heartbeat); release() is unchanged.
+
+v17 FIX (GITLOCK-SWEEP, ruling 2026-10-10-gitlock-sweep): a merge-concluding
+commit recorded files another agent had edited by shell and staged into the
+shared index during the open merge; no claim existed, so step 3 passed.
+fleet_claims now claims shell write targets and `git add` paths (item 1). As
+defence in depth for edits no hook can parse (script rewrites), step 3 also
+refuses, while .git/MERGE_HEAD exists, a commit path that is neither in
+`git diff --name-only HEAD MERGE_HEAD` nor claimed by --owner, with the
+message "... was staged by someone else during your merge" (item 2,
+check_merge_sweep). A merger's own extra file passes once it holds a claim
+(edit it with an edit tool, or `git add` it by name).
 
 v14: the git child and every probe start with CREATE_NO_WINDOW when this
 process has no visible console (quiet_inherit()), passing its own stdio
@@ -67,7 +90,7 @@ from pathlib import Path
 LOCKS_REL = Path("ops/loop/control/locks")
 LOG_REL = Path("ops/loop/control/gitlock.jsonl")
 LOCK_NAME = "git.lock"
-STALE_MIN = 15.0
+STALE_MIN = 120.0
 WAIT_S = 300.0
 INDEX_LOCK_AGE_S = 60.0
 INDEX_LOCK_STALE_S = 600.0
@@ -163,7 +186,7 @@ def holder_gone(rec, now, stale_min=STALE_MIN, alive=pid_alive, started=proc_sta
         return "holder pid reused"
     try:
         if now - float(rec.get("start", now)) > stale_min * 60.0:
-            return f"holder older than {int(stale_min)} min"
+            return f"holder pid alive but older than {int(stale_min)} min (hung)"
     except (TypeError, ValueError):
         return "holder record unreadable"
     return ""
@@ -317,9 +340,16 @@ def acquire(cwd, owner=None, verb="", timeout=WAIT_S, stale_min=STALE_MIN,
                 _say("gitlock: broke a stale lock ({})".format(why))
             continue
         if now - begin >= timeout:
-            hp = doc.get("pid") if isinstance(doc, dict) else "?"
+            d = doc if isinstance(doc, dict) else {}
+            try:
+                age = f"{int((now - float(d['start'])) / 60.0)} min"
+            except (KeyError, TypeError, ValueError):
+                age = "?"
             raise LockRefused(f"GITLOCK: lock still held after {int(timeout)}s "
-                              f"(holder pid {hp}); not running git")
+                              f"(holder pid {d.get('pid', '?')}, owner {d.get('owner') or '?'}, "
+                              f"verb {d.get('verb') or '?'}, age {age}); not running git - "
+                              "retry later, a live holder is not broken before "
+                              f"{int(stale_min)} min")
         if now - said >= PROGRESS_EVERY_S:
             said = now
             _say(f"gitlock: waiting for the tree's git lock "
@@ -396,10 +426,35 @@ def commit_paths(top, commit_args, lister=None):
 
 
 def check_claims(top, commit_args, owner, lister=None, now=None):
-    hits = claims.foreign_claims(commit_paths(top, commit_args, lister), owner, now)
+    paths = commit_paths(top, commit_args, lister)
+    hits = claims.foreign_claims(paths, owner, now)
     if hits:
         raise LockRefused("GITLOCK: {} is claimed by another live agent; unstage it "
                           "(git restore --staged <path>) or wait for that agent".format(claims.rel_in(hits[0][0], top)))
+    check_merge_sweep(top, paths, owner, lister)
+
+
+def check_merge_sweep(top, paths, owner, lister=None):
+    """v17 (GITLOCK-SWEEP fix item 2): during a merge conclusion (.git/MERGE_HEAD
+    exists) refuse a commit path that is neither in the merge diff
+    (`git diff --name-only HEAD MERGE_HEAD`) nor claimed by owner - an edit
+    the claims hook could not see, staged by another agent into the shared
+    index. Separable from check_claims: drop this call to ship without it."""
+    t = claims.tree_of(top)
+    if t is None or not (Path(t[1]) / "MERGE_HEAD").is_file():
+        return
+    lister = lister or (lambda *a: _git_out(top, *a))
+    merged = {claims.norm(Path(top) / r) for r in lister("diff", "--name-only", "HEAD", "MERGE_HEAD")}
+    doc = claims.owners(t[2]).get(owner or "") or {}
+    mine = set(doc.get("paths") or {}) if isinstance(doc.get("paths"), dict) else set()
+    for p in paths:
+        n = claims.norm(p)
+        if n in merged or n in mine or claims.exempt(claims.rel_in(p, top)):
+            continue
+        raise LockRefused("GITLOCK: {} was staged by someone else during your merge (not in "
+                          "the merge diff, not claimed by --owner); unstage it (git restore "
+                          "--staged <path>) or claim it by editing it yourself".format(
+                              claims.rel_in(p, top)))
 
 
 # ---------------------------------------------------------------- identity (v13)

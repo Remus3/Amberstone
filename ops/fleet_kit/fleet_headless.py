@@ -147,7 +147,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 15
+KIT_VERSION = 17
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
