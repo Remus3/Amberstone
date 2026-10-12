@@ -27,9 +27,13 @@ def test_dashboard_servers_are_thread_per_request():
     for cls in (server._DualStackHTTPServer, server._DualProtocolHTTPServer):
         assert issubclass(cls, socketserver.ThreadingMixIn), cls
         # No override of the per-request thread spawn anywhere in our MRO
-        # above ThreadingMixIn - i.e. no bounded pool was bolted on.
+        # above ThreadingMixIn - i.e. no bounded pool was bolted on. The one
+        # sanctioned override is RM-738's guarded start, which still starts
+        # one thread per request, unbounded (pinned behaviourally by
+        # tests/test_dashboard_server_thread_start_rm738.py).
         owner = next(k for k in cls.__mro__ if "process_request" in vars(k))
-        assert owner is socketserver.ThreadingMixIn, (
+        assert owner in (socketserver.ThreadingMixIn,
+                         server._GuardedThreadStartMixin), (
             f"{cls.__name__}.process_request now comes from {owner.__name__}: "
             "a bounded worker pool makes RM-296e's 6 s enqueue a starvation "
             "risk again - re-measure before shipping")
