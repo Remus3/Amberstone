@@ -287,7 +287,7 @@ class EnsureRunningStartsTheWatchdogOnce(unittest.TestCase):
 class DsProcessMarkers(unittest.TestCase):
     def test_the_launcher_and_the_cli_serve_form_are_ds(self) -> None:
         for argv in (
-            [r"C:\Py\pythonw.exe", r"C:\repo\tools\start_daemon_slayer.py"],
+            [r"C:\Program Files\Python314\pythonw.exe", r"C:\repo\tools\start_daemon_slayer.py"],
             ["python3", "tools/start_daemon_slayer.py"],
             ["python.exe", "-m", "agents.daemon_slayer", "serve"],
             ["python", "-m", "agents.daemon_slayer.cli", "serve", "--port", "8860"],
