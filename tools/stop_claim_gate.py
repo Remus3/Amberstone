@@ -1175,7 +1175,9 @@ def read_transcript(path):
 #   commit  (6)       a commit-creating command whose output has git's
 #                     `[<branch> <sha>] ` line (merge --no-ff: "Merge made by");
 #   merge   (10)      a merge with a success line and no conflict / fatal /
-#                     error line, or `pr merge` not is_error;
+#                     error line, or `pr merge` not is_error, or a staged
+#                     `--no-commit` merge a later commit concludes
+#                     (_MERGE_STAGED);
 #   push    (9)       see _pair_credit.
 # Sub-agent commands never enter ev["bash"] (main's command-only rules would
 # credit them); each kind sets its own flag. Prose and Agent/Task prompts never
@@ -1522,9 +1524,53 @@ def _merge_output_ok(stripped, output, errored):
             and not _MERGE_BAD.search(output))
 
 
+# The STAGED merge (s110 C9). Since kit v12 fleet_gitlock wraps only `git
+# commit` / `git push`, so the sanctioned merge is two steps: `git merge --no-ff
+# --no-commit <branch>` (git: "Automatic merge went well; stopped before
+# committing as requested") and then a gitlock-wrapped `git commit`, whose
+# commit is the merge commit. _MERGE_OK never matched the first step and nothing
+# paired it with the second, so every true relayed merge claim flagged
+# (measured twice, session 110). A staged merge alone merges nothing, so it
+# credits only when a LATER result in the SAME sub-agent file is a `git commit`
+# with git's `[<branch> <sha>]` line (within one call, a commit line after the
+# staged line). A conflict / fatal / error line never stages; `merge --abort` /
+# `--quit` or any `git reset` (each drops MERGE_HEAD) un-stages. NOT credited,
+# deliberately strict: a conflicted merge later resolved and committed, and a
+# `merge --continue`. As in checks 6 and 10 the commit's repo is not placed.
+_MERGE_STAGED = re.compile(r"Automatic merge went well; stopped before committing as requested")
+_EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
+
+
+def _merge_unstaged(stripped):
+    """True when STRIPPED runs a `git merge --abort` / `--quit` or a `git reset`."""
+    return bool(_EV_GIT_RESET.search(stripped)) or any(
+        _MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(stripped))
+
+
+def _staged_merge_step(found, stripped, output):
+    """Advance FOUND's staged-merge state by one result; a staged merge that a
+    later `git commit` concludes credits check 10 (see _MERGE_STAGED)."""
+    if _merge_unstaged(stripped):
+        found["staged_merge"] = False
+        return
+    lines = _output_lines(output)
+    staged_at = -1
+    if _did_merge(stripped) and not _MERGE_BAD.search(output):
+        staged_at = next((i for i, line in enumerate(lines)
+                          if line is not None and _MERGE_STAGED.match(line)), -1)
+        if staged_at >= 0:
+            found["staged_merge"] = True
+    if not found["staged_merge"] or not EV_COMMIT.search(stripped):
+        return
+    if any(line is not None and _COMMIT_LINE.match(line) for line in lines[staged_at + 1:]):
+        found["merge"] = True
+        found["staged_merge"] = False
+
+
 def _new_subagent_evidence():
+    # "staged_merge" is per-file pending state for _staged_merge_step only.
     return {"runs": [], "ci_runs": [], "edited": [], "ci": False, "commit": False,
-            "merge": False, "push": None, "bypass": []}
+            "merge": False, "push": None, "bypass": [], "staged_merge": False}
 
 
 def _tool_use_of(block):
@@ -1861,6 +1907,7 @@ def _absorb_result(found, runs, deferred, use, text, errored, session_start):
         found["commit"] = True
     if _did_merge(stripped) and _merge_output_ok(stripped, text, errored):
         found["merge"] = True
+    _staged_merge_step(found, stripped, text)
     if found["push"] is None:
         found["push"] = _pair_credit(command, text, errored, session_start)
 
