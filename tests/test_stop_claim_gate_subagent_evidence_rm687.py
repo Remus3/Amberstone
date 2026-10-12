@@ -1009,6 +1009,127 @@ def test_pr_merge_backs_a_merge_claim_unless_it_errored(tmp_path):
     assert "merge_claim_without_merge" in _checks(bad)
 
 
+# s110 C9: the STAGED merge. Since kit v12 fleet_gitlock wraps only `git commit`
+# / `git push`, so the sanctioned merge is `git merge --no-ff --no-commit` and
+# then a gitlock-wrapped `git commit` whose commit is the merge commit. Measured
+# twice in session 110: a true relayed merge claim flagged.
+STAGE_CMD = 'cd "E:/Example Repo" && git merge --no-ff --no-commit worktree-agent-x'
+STAGE_OUT = ("Auto-merging tools/x.py\n"
+             "Automatic merge went well; stopped before committing as requested")
+LOCKED_COMMIT_CMD = ('cd "E:/Example Repo" && python ops/fleet_kit/fleet_gitlock.py run '
+                     '--owner 4befe5bd-0000-4000-8000-000000000c9.a1b2c3 -- '
+                     'git commit -F "C:/tmp/merge_msg.txt"')
+LOCKED_COMMIT_OUT = ("pre-commit: py_compile OK (1 file(s))\n"
+                     "[main 35e6e2531] merge: worktree-agent-x (s110 c9)")
+STAGE_CONFLICT_OUT = ("Auto-merging tools/x.py\n"
+                      "CONFLICT (content): Merge conflict in tools/x.py\n"
+                      "Automatic merge failed; fix conflicts and then commit the result.")
+UNMERGED_COMMIT_OUT = ("error: Committing is not possible because you have unmerged files.\n"
+                       "hint: Fix them up in the work tree, and then use 'git add/rm <file>'\n"
+                       "fatal: Exiting because of an unresolved conflict.")
+
+
+def test_staged_merge_then_gitlock_commit_backs_a_merge_claim(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01st", *UNRELATED[1:]),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+    assert report["subagent_cleared"] == ["merge_claim_without_merge"]
+
+
+def test_staged_merge_and_commit_in_one_call_back_a_merge_claim(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " && " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+def test_staged_merge_with_no_commit_does_not_back_a_merge_claim(tmp_path):
+    # A staged-but-uncommitted merge is not a merge.
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01st", *UNRELATED[1:]))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("commit_out", [
+    "GITLOCK: the command must be git commit or git push",
+    "precommit_gate: BLOCKED - banned glyph in tools/x.py",
+    "",
+])
+def test_staged_merge_with_a_failed_commit_does_not_back_a_merge_claim(tmp_path, commit_out):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, commit_out,
+                              is_error=True))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", [
+    'cd "E:/Example Repo" && git merge --abort',
+    'cd "E:/Example Repo" && git merge --quit',
+    'cd "E:/Example Repo" && git reset --hard HEAD',
+])
+def test_staged_merge_undone_before_the_commit_does_not_back_a_merge_claim(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_commit_before_the_staged_merge_does_not_back_a_merge_claim(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_one_call_commit_line_before_the_staged_line_does_not_back_a_merge_claim(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", LOCKED_COMMIT_CMD + " && " + STAGE_CMD,
+        LOCKED_COMMIT_OUT + "\n" + STAGE_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_staged_merge_and_commit_in_different_subagents_do_not_pair(tmp_path):
+    transcript = _session(tmp_path, _main_rows("Merged to main."), {
+        "a1b2c3": _agent("a1b2c3", _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT)),
+        "d4e5f6": _agent("d4e5f6", _pair("d4e5f6", "toolu_01cm",
+                                         LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))})
+    report = _run(tmp_path, transcript)[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_conflicted_no_commit_merge_does_not_back_a_merge_claim(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_CONFLICT_OUT,
+                              is_error=True),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNMERGED_COMMIT_OUT,
+                              is_error=True))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_conflicted_no_commit_merge_alone_does_not_back_a_merge_claim(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_CONFLICT_OUT, is_error=True))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("command, output", [
+    ("git merge --ff-only worktree-agent-x",
+     "Updating 00618c625..0b8511641\nFast-forward\n tools/x.py | 2 +-"),
+    ("git merge --no-ff worktree-agent-x -m merge",
+     "Merge made by the 'ort' strategy.\n tools/x.py | 2 +-"),
+    ("git merge worktree-agent-x", "Already up to date."),
+])
+def test_existing_merge_success_forms_still_back_a_merge_claim(tmp_path, command, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01m", command, output))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
 # ------------------------------------------- deferred background test runs
 
 def test_backgrounded_subagent_pytest_read_later_backs_a_tests_claim(tmp_path):
