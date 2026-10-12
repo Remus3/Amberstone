@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-10-12 - session 110: RM-738 shipped on every server; PostmortemAnalyze hidden; MAIN answered; push HALTED by the sibling sweep
+
+- **RM-738 shipped (LEDGER 1716; merges `6ea05d68d` / `5408dcf2b` / `7f2f97519`):** every thread-per-request server bounds its `Thread.start()` wait (2.0 s, DS 5.0 s); :8860 has a periodic `DsWatchdog` self-heal. Live re-probe (`8d5252181`): all ports up on new pids, DS killed on purpose and respawned in 34 s. Residuals RM-739 (mc TLS accept loop) and RM-740 (a)-(f).
+- **Also shipped (LEDGER 1717):** rc_facts treats RC-TeamClaudeProxy as long-lived (`2df156850`); RC-PostmortemAnalyze launches hidden via wscript, re-registered on the operator's chat "yes" and read back (`16326e2f1`); stop gate credits a staged `--no-commit` merge concluded by a commit (`e7693df7c`); agent6 audit report committed (F2-F4 low, carried); MAIN RULING 1324 recorded (slots=1 read back).
+- **Gated Tier-2 suite on `8d5252181`:** 6 failed / 39416 passed = 5 pre-existing (RM-694 x4, RM-684) + 1 own (a drive-rooted fake path in `tests/test_ds_client_liveness_rm738.py:290`), fixed at the tip in `b50d3d44a`. Peak commit 40.26 GB (79.4 percent) at `-n 8`.
+- **MAIN:** ONE ANSWER for 1230 / 1312 / 2226 delivered 1/1 (`6f8bf108c`); inbox pending empty; OutboundCap 1/6 on 2026-10-12.
+- **PUSH HALTED:** the pre-push sweep scans every commit in the range, and `18e1c8892` still carries the literal; nothing after `762fcfdb1` is on origin. Operator choice: `RC_SIBLING_SWEEP_BYPASS=1` for one push (recommended) or a range rewrite (orphans cited merge hashes).
+- **Lesson:** `--scan-file` on the tip does not clear a push; a literal fixed in a later commit still halts it. A sub-agent amended its own unpushed commit once (rail breach, recorded) - forbid `--amend` in every sub-agent prompt.
+- **Do NOT redo:** RM-738, the re-probe, the PostmortemAnalyze re-register, the MAIN answer, C9.
+- **Next:** the operator's push choice; then the local gated suite green (RM-694 to `tests/_repo_walk`, RM-684 canary then PINNED_CLI), then RM-739, then RM-740 (a).
+
+---
+
 # 2026-10-10d - session 109: RM-737 measured + note delivered to MAIN; RM-735 atomic-write regression fixed
 
 - **RM-737 measured (LEDGER 1715, commits `f003f5a79`, `c643fb581`):** one RC gated `-n 8` dual suite peaks at 23.6-24.0 GB private commit (system 78-86 percent of the 48375 MB limit = 32 GB RAM + 16000 MB page file; idle 14.5-17.1 GB); two overlapping suites need ~63-65 GB (a second suite hit 88.2 percent in 11 s). 9 low-memory 2004 events 10-08/10-09, all at the limit.
@@ -24,12 +37,3 @@
 - **CI fix-forward:** CI on `49ef2cadc` went red on Linux only (`FakeHolderIsReplacedEndToEnd`: a blocked `accept()` keeps a closed listening socket LISTEN, EADDRINUSE); the test fake now sets SO_REUSEADDR off Windows and shuts down before close - red-then-green under WSL, carried by the wrap push.
 - **Do NOT redo:** the RM-735 root cause, the pool, the watchdog, the live drills.
 - **Next:** confirm CI green on the wrap push; then RM-737 measurement + its note to MAIN (the 07:36-10:02 hang is a datum), then RM-738.
-
----
-
-# 2026-10-10b - session 107: atlas.html reverted to the hand-built pre-10/7 page (operator order)
-
-- **Shipped (LEDGER 1713):** operator chat order "revert the changes for atlas back to before 10/7". `atlas.html` restored to the 03197a15b hand-built page (anchors ENGINE 1.287.0 / 16.20.1, scrub line kept, font block = HEAD's OFL-compliant one by adjudication); generator dropped (`tools/atlas_build.py`, `atlas/snapshots/`, the ci.yml step, `check_atlas_fresh`, `tests/test_atlas_check_wiring.py`); font audit moved to `tools/atlas_fonts.py` (28 tests). Commit `7f3ed345f`, ff-merged and pushed; verifier PASS 9/9.
-- **Conflict:** contradicts MAIN 2246 ORDER section 6 (generated atlas); the operator's order outranks. No note to MAIN from /done. MAIN's own Atlas untouched.
-- **Do NOT redo:** the revert, the font-block adjudication, the `.claude/commands/done.md` mirror re-copy. RM-733's trigger is gone (row kept with a revert note).
-- **Next:** RM-735 (:8889 wedge). RC's 05:52 restart logged "vision server not running - spawned" and :8889 is now PID 3816 (/health 200 at wrap); PID 304's end is unrecorded.
