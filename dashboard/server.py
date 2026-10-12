@@ -51,11 +51,85 @@ class _DualStackMixin:
         super().server_bind()
 
 
-class _DualStackHTTPServer(_DualStackMixin, ThreadingHTTPServer):
+class _BoundedStartEvent(threading.Event):
+    """A request thread's ``_started`` event whose untimed wait is bounded."""
+
+    def __init__(self, bound_s: float) -> None:
+        super().__init__()
+        self._bound_s = bound_s
+
+    def wait(self, timeout: float | None = None) -> bool:
+        return super().wait(self._bound_s if timeout is None else timeout)
+
+
+class _GuardedThreadStartMixin:
+    """One thread per request, started so it cannot park the accept loop (RM-738).
+
+    ``ThreadingMixIn.process_request`` runs on the ``serve_forever`` thread and
+    ``Thread.start()`` waits on the new thread's ``_started`` with no timeout.
+    A thread that dies before setting it (MemoryError in bootstrap under
+    commit-charge exhaustion, RM-737) parks the accept loop for good: the port
+    stays bound, every client hangs, the request socket is never closed - the
+    RM-735 :8889 wedge. Here that wait is bounded: a start that raises, or a
+    thread not started within ``thread_start_timeout_s``, loses its connection
+    (closed + logged) and the loop accepts the next one. A one-shot claim lock
+    decides who owns the socket, so a thread that boots late finds it taken
+    and returns without serving. (A thread that truly died leaves its small
+    entry in threading's limbo table; the stdlib has no public way to drop it.)
+
+    Why not RM-735's pre-started pool: this server holds long-lived SSE
+    streams (/api/state-stream and /api/events, up to 8 each, 600 s per
+    connection) in their request threads, and RM-296e relies on a slow request
+    blocking only its own thread. A fixed pool is a budget those streams can
+    exhaust; an unbounded thread per request with a bounded start is not.
+    """
+
+    # Bootstrap normally takes milliseconds; the bound only has to beat GIL
+    # and scheduler latency under load. A healthy thread that misses it costs
+    # one dropped connection (EventSource and the pollers retry).
+    thread_start_timeout_s = 2.0
+    start_failures = 0
+
+    def process_request(self, request, client_address) -> None:
+        claim = threading.Lock()
+
+        def process_request_thread() -> None:
+            if claim.acquire(blocking=False):
+                self.process_request_thread(request, client_address)
+
+        started = _BoundedStartEvent(self.thread_start_timeout_s)
+        t = threading.Thread(target=process_request_thread,
+                             daemon=self.daemon_threads)
+        t._started = started  # the seam: Thread.start() ends in _started.wait()
+        try:
+            t.start()
+        except Exception as exc:  # noqa: BLE001 - e.g. "can't start new thread"
+            self._drop_unstarted(request, client_address, repr(exc))
+            return
+        # No server_close() join list to feed: ThreadingHTTPServer sets
+        # daemon_threads, and the stdlib list skips daemon threads anyway.
+        if not started.is_set() and claim.acquire(blocking=False):
+            self._drop_unstarted(
+                request, client_address,
+                f"not started within {self.thread_start_timeout_s:.1f}s")
+
+    def _drop_unstarted(self, request, client_address, why: str) -> None:
+        self.start_failures += 1
+        n = self.start_failures
+        if n == 1 or n % 100 == 0:
+            _log.warning("request thread failed to start (%s) - dropped "
+                         "connection #%d from %s (RM-738)",
+                         why, n, client_address)
+        self.shutdown_request(request)
+
+
+class _DualStackHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
+                           ThreadingHTTPServer):
     """Plain (no-TLS) dual-stack fallback used when the mkcert pair is absent."""
 
 
-class _DualProtocolHTTPServer(_DualStackMixin, ThreadingHTTPServer):
+class _DualProtocolHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
+                              ThreadingHTTPServer):
     """Accept BOTH plain HTTP and TLS on the same port (2026-04-28
     Game-PC fix). Stdlib wrap_socket() over the listen socket forces every
     accept() into a TLS handshake - a plaintext `http://` request from a
