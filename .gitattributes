@@ -78,6 +78,14 @@ data/meta/ddragon_*.json          linguist-generated=true
 # MANIFEST.json) would fail. Every kit file is vendored byte-for-byte as LF.
 ops/fleet_kit/* text eol=lf
 
+# The RC-PostmortemAnalyze hidden launcher (MAIN FIX 2026-10-11 2226) is LF by
+# the fleet ASCII/LF rule. Pinned by PATH, not `*.vbs`: the older
+# ops/rc_watcher_launch.vbs is CRLF on disk in existing checkouts, and a
+# suffix pin would redden tests/test_text_line_endings.py there until each
+# checkout re-materialised it. wscript.exe runs LF-only VBScript (measured
+# 2026-10-12). Guarded by tests/test_postmortem_task_hidden_launch.py.
+ops/run_postmortem_hidden.vbs text eol=lf
+
 # DELIBERATELY NOT PINNED, each for its own reason - do not "finish the job".
 # .bat / .cmd  Windows shell scripts. The 15 tracked .bat are ALREADY LF and
 #              work; the 12 .cmd are CRLF. Pinning either way churns live
