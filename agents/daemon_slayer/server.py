@@ -3304,10 +3304,93 @@ class _RcThreadingHTTPServer(ThreadingHTTPServer):
     ``request_queue_size`` is read by ``server_activate()`` -> ``socket.listen``
     during __init__, so it MUST live on the class; assigning it to the instance
     afterwards reads plausibly and does nothing.
+
+    RM-738: the per-request thread START is bounded. socketserver's
+    ``ThreadingMixIn.process_request`` calls ``Thread.start()`` from the
+    ``serve_forever`` thread, and ``start()`` waits on the new thread's
+    ``_started`` event with NO timeout. ``_started`` is set inside the NEW
+    thread (``Thread._bootstrap_inner``, after ``_set_ident`` /
+    ``_set_native_id``); a thread that dies before that line - MemoryError
+    under commit-charge exhaustion, RM-737 - never sets it, so the accept
+    loop parked forever, the dead request's socket was never closed and
+    every later client hung on a bound port (the RM-735 :8889 wedge, same
+    stdlib path). Here the wait is capped at ``thread_start_timeout_s``; a
+    start that does not come up in time is abandoned through a one-shot
+    claim (so a merely slow thread cannot later serve a closed socket), its
+    connection is closed and the loop accepts the next request.
+    Thread-per-request is kept on purpose: a fixed pool would cap the
+    concurrency the backlog note above was measured under.
+    ``tests/test_ds_server_thread_start_rm738.py`` reproduces the wedge.
     """
 
     request_queue_size = 128
     daemon_threads = True
+    # Far above any real bootstrap (microseconds; ~100 ms on a GIL-saturated
+    # box): a false abandonment drops a live request, which a client reads as
+    # an engine verdict (see above). Read per request, so an instance value
+    # (tests) is honoured.
+    thread_start_timeout_s = 5.0
+    thread_start_failures = 0
+
+    def process_request(self, request, client_address) -> None:
+        claim = threading.Lock()
+        t = threading.Thread(target=self._process_claimed,
+                             args=(claim, request, client_address))
+        t.daemon = self.daemon_threads
+        # ``_started`` is the Event ``Thread.start()`` waits on (CPython 3.12
+        # and 3.14). If a future CPython drops it, the stdlib unbounded wait
+        # applies again and the RM-738 test goes red - never silently.
+        bounded = isinstance(getattr(t, "_started", None), threading.Event)
+        if bounded:
+            t._started = _BoundedStartEvent(self.thread_start_timeout_s)
+        try:
+            t.start()
+        except Exception:  # noqa: BLE001 - "can't start new thread", MemoryError
+            self._drop_unstarted(request, client_address, "start raised",
+                                 exc_info=True)
+            return
+        if not bounded or t._started.is_set():
+            return
+        if not claim.acquire(blocking=False):
+            return  # it came up just after the bound and owns the request
+        # Dead in bootstrap (or still not running after the bound). A thread
+        # that died there leaves its entry in threading._limbo; that is a
+        # stdlib leak of one Thread object per failure, left alone because a
+        # slow-but-alive thread still deletes its own entry later.
+        self._drop_unstarted(request, client_address,
+                             f"did not start within {self.thread_start_timeout_s}s")
+
+    def _process_claimed(self, claim, request, client_address) -> None:
+        if not claim.acquire(blocking=False):
+            return  # the accept loop gave up on this start and closed the socket
+        self.process_request_thread(request, client_address)
+
+    def _drop_unstarted(self, request, client_address, why: str,
+                        exc_info: bool = False) -> None:
+        self.thread_start_failures += 1
+        n = self.thread_start_failures
+        if n == 1 or n % 100 == 0:
+            _log.warning("request thread for %s %s - connection closed, "
+                         "still accepting (failure #%d, RM-738)",
+                         client_address, why, n, exc_info=exc_info)
+        self.shutdown_request(request)
+
+
+class _BoundedStartEvent(threading.Event):
+    """A thread's ``_started`` event whose no-argument ``wait()`` is bounded.
+
+    ``Thread.start()`` calls ``self._started.wait()`` and ignores the result,
+    so a bounded wait lets ``start()`` return when the new thread never
+    signals; ``_RcThreadingHTTPServer.process_request`` then checks
+    ``is_set()``. ``_bootstrap_inner`` still calls ``set()`` as usual.
+    """
+
+    def __init__(self, timeout_s: float) -> None:
+        super().__init__()
+        self._bound_s = float(timeout_s)
+
+    def wait(self, timeout: Optional[float] = None) -> bool:
+        return super().wait(self._bound_s if timeout is None else timeout)
 
 
 def start_server(
