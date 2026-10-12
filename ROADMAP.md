@@ -75,7 +75,7 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
   - MAIN RULING 1324 (2026-10-10): machine `FLEET_SUITE_SLOTS=1` (read back s110: Machine=1, no User value); RC's VOID rule kept; the smaller `-n` / worker-recycling measurement stays RC work; no gate edits.
 - **[x] RM-738 (Tier-1, filed session 108 /done, LEDGER 1714): the other in-tree HTTP servers keep RM-735's latent wedge - a per-request `Thread.start()` that waits forever if the new thread dies in bootstrap.** Body + acceptance in `BACKLOG.md` "Session 108 filings". SHIPPED 2026-10-12 (session 110, LEDGER 1716, merges `6ea05d68d` / `5408dcf2b` / `7f2f97519`).
 - **[ ] RM-739 (Tier-1, session 110): one silent TLS client freezes the :8895 accept loop (`mc/server.py` wraps the listen socket).** Body in `BACKLOG.md` "Session 110 filings".
-- **[ ] RM-740 (Tier-1 each, session 110): four RM-738 residuals (DS boot gap, uncounted start-raise, bootstrap-thread leak, slow-box caps).** Body in `BACKLOG.md` "Session 110 filings".
+- **[ ] RM-740 (Tier-1 each, session 110): six RM-738 residuals (DS boot gap, uncounted start-raise, bootstrap-thread leak, slow-box caps, DS process owner after a watchdog relaunch, stop-gate `checkout -f` over-credit).** Body in `BACKLOG.md` "Session 110 filings".
 
 > **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
 
