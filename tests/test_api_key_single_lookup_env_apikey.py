@@ -519,7 +519,10 @@ def test_every_consumer_finds_the_key_file_in_a_child_with_the_variable_deleted(
 
     env = dict(os.environ)
     env.pop(ENV_VAR, None)          # DELETED, never set to ""
-    assert ENV_VAR not in env
+    # A bool local, never the mapping: a failing assert must not render the
+    # environment (tests/test_no_environ_in_assert_operands.py).
+    still_set = ENV_VAR in env
+    assert not still_set
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
     proc = subprocess.run(
         [sys.executable, str(script), str(REPO), str(root)],
@@ -716,8 +719,9 @@ def _parent_env() -> dict:
 def test_fleet_kit_child_env_still_strips_the_variable():
     from ops.loop import fleet_route
     k = fleet_route.kit()
-    env = k.child_env("http://127.0.0.1:1", bare=False, parent=_parent_env())
-    assert ENV_VAR not in env
+    child = k.child_env("http://127.0.0.1:1", bare=False, parent=_parent_env())
+    still_set = ENV_VAR in child
+    assert not still_set
 
 
 def test_rc_child_env_strippers_still_strip_the_variable():
@@ -741,7 +745,8 @@ def test_shared_lookup_never_writes_the_environment(key_root, monkeypatch):
     monkeypatch.delenv(ENV_VAR, raising=False)
     _write_key(key_root)
     assert anthropic_key.read_anthropic_key() == FILE_KEY
-    assert ENV_VAR not in os.environ
+    reinjected = os.getenv(ENV_VAR)
+    assert reinjected is None
     tree = ast.parse((REPO / SHARED).read_text(encoding="utf-8"))
     for n in ast.walk(tree):
         if isinstance(n, ast.Subscript) and not isinstance(n.ctx, ast.Load):
