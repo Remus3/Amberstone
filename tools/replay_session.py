@@ -231,18 +231,30 @@ class _ReplayHTTPServer(ThreadingHTTPServer):
         # ThreadingMixIn.process_request with a capped start. The stdlib's
         # _threads bookkeeping is not carried: it never holds daemon threads.
         t = _RequestThread(self, request, client_address)
-        t.start()
+        start_error: Optional[Exception] = None
+        try:
+            t.start()
+        except Exception as exc:  # noqa: BLE001 - e.g. "can't start new thread"
+            # RM-740 (b): a start that raises is a failed start too - dropped,
+            # counted and logged here, never left to escape to handle_error.
+            # No traceback kept: it would pin this frame (and the request).
+            # abandon_if_unstarted() still arbitrates: a thread that did
+            # come up before the raise owns its request.
+            start_error = exc.with_traceback(None)
         if not t.abandon_if_unstarted():
             return
-        self.shutdown_request(request)
+        # Count and log BEFORE the close (the dashboard's order), so a client
+        # that has seen its connection dropped can rely on both.
         self.thread_start_failures += 1
         try:
             if self.thread_start_failures == 1 or self.thread_start_failures % 100 == 0:
-                print(f"replay_session: request thread did not start within "
-                      f"{self.thread_start_timeout_s:.1f}s - dropped connection "
+                why = (f"did not start within {self.thread_start_timeout_s:.1f}s"
+                       if start_error is None else f"start raised {start_error!r}")
+                print(f"replay_session: request thread {why} - dropped connection "
                       f"#{self.thread_start_failures} (RM-738)", file=sys.stderr)
         except Exception:  # noqa: BLE001 - stderr can be absent or failing too
             pass
+        self.shutdown_request(request)
 
 
 def make_server(state: ReplayState, port: int = DEFAULT_PORT, host: str = LOOPBACK,

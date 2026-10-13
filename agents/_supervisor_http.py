@@ -1084,19 +1084,31 @@ class _WebServer(socketserver.ThreadingTCPServer):
         # ThreadingMixIn.process_request with a capped start. The stdlib's
         # _threads bookkeeping is not carried: it never holds daemon threads.
         t = _RequestThread(self, request, client_address)
-        t.start()
+        start_error: Exception | None = None
+        try:
+            t.start()
+        except Exception as exc:  # noqa: BLE001 - e.g. "can't start new thread"
+            # RM-740 (b): a start that raises is a failed start too - dropped,
+            # counted and logged here, never left to escape to handle_error.
+            # No traceback kept: it would pin this frame (and the request).
+            # abandon_if_unstarted() still arbitrates: a thread that did
+            # come up before the raise owns its request.
+            start_error = exc.with_traceback(None)
         if not t.abandon_if_unstarted():
             return
-        self.shutdown_request(request)
+        # Count and log BEFORE the close (the dashboard's order), so a client
+        # that has seen its connection dropped can rely on both.
         self.thread_start_failures += 1
         try:
             if self.thread_start_failures == 1 or self.thread_start_failures % 100 == 0:
-                log.warning("web: request thread did not start within %.1fs - "
-                            "dropped connection #%d from %s (RM-738)",
-                            self.thread_start_timeout_s,
+                why = (f"did not start within {self.thread_start_timeout_s:.1f}s"
+                       if start_error is None else f"start raised {start_error!r}")
+                log.warning("web: request thread %s - dropped connection #%d "
+                            "from %s (RM-738)", why,
                             self.thread_start_failures, client_address)
         except Exception:  # noqa: BLE001 - logging can fail under the same memory pressure
             pass
+        self.shutdown_request(request)
 
 
 def start_web_server(port: int = WEB_PORT, supervisor: "Supervisor" | None = None) -> socketserver.TCPServer:
