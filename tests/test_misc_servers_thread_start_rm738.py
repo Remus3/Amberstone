@@ -30,12 +30,23 @@ already given up on.
 Fault seam: ``threading.Thread._set_native_id`` (RM-735's, present on 3.12 CI
 and 3.14 Legion). No skip on purpose: if the seam disappears, patch.object
 raises and these FAIL rather than go quietly vacuous.
+
+RM-740 (b): a ``Thread.start()`` that itself RAISES (``RuntimeError: can't
+start new thread``) is a failed start too. Before the fix the exception left
+``process_request``; socketserver's ``_handle_request_noblock`` closed the
+connection through ``handle_error`` + ``shutdown_request``, so the client saw
+a close, but ``thread_start_failures`` stayed 0 and no RM-738 line was
+logged (measured red on all four servers). The dashboard
+(``dashboard/server.py`` ``_GuardedThreadStartMixin``) and DS servers already
+caught it; these four now do the same.
 """
 from __future__ import annotations
 
 import contextlib
+import io
 import socket
 import socketserver
+import sys
 import threading
 import time
 from unittest import mock
@@ -225,3 +236,66 @@ def test_the_default_start_cap_is_short_and_finite(served):
     srv, _port, _path = served
     cap = type(srv).thread_start_timeout_s
     assert 0 < cap <= 5, cap
+
+
+# Where each server reports a failed start: its module logger's warning(), or
+# stderr for the replay dev CLI, which has no logger.
+_REPORTERS = {
+    "agents._supervisor_http": "log",
+    "mc.server": "log",
+    "tools.ds_matchdb_mcp_server": "log",
+    "tools.replay_session": None,
+}
+
+
+@contextlib.contextmanager
+def _reports(srv):
+    """Collect what the server reports while the window is open."""
+    seen: list[str] = []
+    module_name = type(srv).__module__
+    assert module_name in _REPORTERS, f"unmapped server module {module_name}"
+    attr = _REPORTERS[module_name]
+    if attr is None:
+        class _Lines(io.StringIO):
+            def write(self, s):
+                seen.append(s)
+                return len(s)
+
+        patcher = mock.patch.object(sys, "stderr", _Lines())
+    else:
+        def warning(msg, *args, **_kw):
+            seen.append(msg % args if args else msg)
+
+        logger = getattr(sys.modules[module_name], attr)
+        patcher = mock.patch.object(logger, "warning", warning)
+    with patcher:
+        yield seen
+
+
+def test_a_start_that_raises_is_counted_logged_and_dropped(served):
+    """RM-740 (b): ``Thread.start()`` raising is dropped, counted and logged
+    by the server itself (first and every 100th, like a missed cap), never
+    left to escape into socketserver's ``handle_error`` uncounted."""
+    srv, port, path = served
+    escaped: list = []
+    srv.handle_error = lambda _request, client_address: escaped.append(
+        client_address)
+    assert _request(port, path)[0] == "served", "control request before the fault"
+    with _reports(srv) as reports, mock.patch.object(
+            threading.Thread, "start",
+            side_effect=RuntimeError("can't start new thread")):
+        try:
+            first = _request(port, path, timeout=3)
+            second = _request(port, path, timeout=3)
+        except _Hung as exc:
+            pytest.fail(str(exc))
+    assert first == second == ("closed", None), (
+        "a request whose thread could not start must be dropped")
+    assert escaped == [], (
+        "the start error escaped process_request into handle_error")
+    assert srv.thread_start_failures == 2
+    logged = [r for r in reports if "(RM-738)" in r]
+    assert len(logged) == 1, f"first failure logged, second not: {reports!r}"
+    assert "can't start new thread" in logged[0], logged[0]
+    assert "#1" in logged[0], logged[0]
+    assert _request(port, path)[0] == "served", "the next request must be served"
