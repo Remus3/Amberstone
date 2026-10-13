@@ -801,3 +801,92 @@ def test_install_bat_writes_the_key_file_and_never_echoes_the_key():
                 r"\becho\b", line, re.IGNORECASE):
             assert line.strip().startswith('>"%KEY_TMP%"'), (
                 f"install.bat:{n} echoes the key: {line.strip()!r}")
+
+
+# ---------------------------------------------------------------------------
+# (f) COLLECTION never resolves the real key file. vision_server/_config.py
+# resolves the key at IMPORT time and ~10 test modules import vision_server
+# at module top, so the lookup runs during collection - before any
+# function-scoped fixture. The redirect must already be in place then, for
+# BOTH suite roots.
+# ---------------------------------------------------------------------------
+
+_SPY_PLUGIN = r'''
+import os
+from pathlib import Path
+
+from core import anthropic_key as _ak
+
+_OUT = Path(os.environ["RC_KEYSPY_OUT"])
+_orig = _ak.key_file_path
+
+
+def _record(line):
+    with _OUT.open("a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+
+
+def _spy(root=None):
+    p = _orig(root)
+    _record("PATH " + str(Path(p).resolve()))
+    return p
+
+
+_ak.key_file_path = _spy
+
+
+def pytest_collection_finish(session):
+    _record("ROOT " + str(Path(_ak._KEY_ROOT).resolve()))
+'''
+
+# Module-level: what the shared root is while THIS module is being collected.
+from core import anthropic_key as _ak_at_collection  # noqa: E402
+
+_KEY_ROOT_AT_COLLECTION = Path(_ak_at_collection._KEY_ROOT).resolve()
+
+
+def test_key_root_is_already_redirected_while_this_module_is_collected():
+    assert _KEY_ROOT_AT_COLLECTION != REPO
+    assert REPO not in _KEY_ROOT_AT_COLLECTION.parents
+
+
+def _under_repo(p: Path) -> bool:
+    return p == REPO or REPO in p.parents
+
+
+@pytest.mark.parametrize("target,expect_paths", [
+    ("tests/test_vision_server_bind_rm150.py", True),
+    ("agents/daemon_slayer/tests/test_boot_utility.py", False),
+])
+def test_collection_never_resolves_the_real_key_file(tmp_path, target,
+                                                     expect_paths):
+    assert (REPO / target).is_file(), target
+    (tmp_path / "rc_keyspy.py").write_text(_SPY_PLUGIN, encoding="ascii")
+    out = tmp_path / "resolved.txt"
+    env = dict(os.environ)
+    env.pop(ENV_VAR, None)          # DELETED, never set to ""
+    for k in ("PYTEST_ADDOPTS", "PYTEST_PLUGINS", "PYTEST_CURRENT_TEST",
+              "PYTEST_XDIST_WORKER", "PYTEST_XDIST_WORKER_COUNT",
+              "PYTEST_XDIST_TESTRUNUID"):
+        env.pop(k, None)
+    env["PYTHONPATH"] = os.pathsep.join(
+        p for p in (str(tmp_path), env.get("PYTHONPATH", "")) if p)
+    env["RC_KEYSPY_OUT"] = str(out)
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q",
+         "-p", "no:cacheprovider", "-p", "rc_keyspy", target],
+        cwd=str(REPO), env=env, capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=300, creationflags=flags)
+    assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-2000:]
+    lines = out.read_text(encoding="utf-8").splitlines() if out.exists() else []
+    paths = [Path(ln[5:]) for ln in lines if ln.startswith("PATH ")]
+    roots = [Path(ln[5:]) for ln in lines if ln.startswith("ROOT ")]
+    assert roots, "the spy plugin never ran - this test would pass vacuously"
+    if expect_paths:
+        assert paths, ("collecting a vision_server importer resolved no key "
+                       "path - the probe no longer exercises the import-time read")
+    leaks = sorted({str(p) for p in paths if _under_repo(p)})
+    assert not leaks, f"collection resolved the real key file: {leaks}"
+    assert not any(_under_repo(r) for r in roots), (
+        f"key root still inside the repo after collection: {roots}")
