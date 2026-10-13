@@ -32,7 +32,10 @@ What is pinned here:
       key file (AST guard; frozen files and two tools allow-listed with
       reasons);
   (d) the child-env strippers for spawned `claude` children still strip it,
-      and the shared lookup never re-injects it into os.environ.
+      and the shared lookup never re-injects it into os.environ;
+  (e) no tracked installer or script persists the variable (install.bat ran
+      `setx ANTHROPIC_API_KEY` until s112; it now writes the key file only,
+      never echoing the key).
 
 Never touches the real key location: the shared lookup's root is pointed at
 `tmp_path` (in-process via monkeypatch, in the child by rebinding the
@@ -43,6 +46,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -745,3 +749,55 @@ def test_shared_lookup_never_writes_the_environment(key_root, monkeypatch):
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
             assert n.func.attr not in {"putenv", "setdefault", "update"} or \
                 not _is_environ(n.func.value), "shared lookup writes os.environ"
+
+
+# ---------------------------------------------------------------------------
+# (e) no installer or script persists the variable to the user / machine env.
+# ---------------------------------------------------------------------------
+
+_PERSIST = re.compile(
+    r"setx\s+(?:/m\s+)?ANTHROPIC_API_KEY"
+    r"|SetEnvironmentVariable\(\s*['\"]ANTHROPIC_API_KEY"
+    r"|reg(?:\.exe)?\s+add\s+\S*Environment\S*.*ANTHROPIC_API_KEY",
+    re.IGNORECASE)
+
+
+def test_no_tracked_script_persists_the_key_variable():
+    this_file = Path(__file__).resolve()
+    scanned, offenders = 0, []
+    for path in _repo_walk.repo_files(
+            REPO, ("*.py", "*.ps1", "*.psm1", "*.bat", "*.cmd")):
+        # This guard names its own needles, so it must not scan itself.
+        if path.resolve() == this_file:
+            continue
+        scanned += 1
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if _PERSIST.search(text):
+            offenders.append(_repo_walk.relative_posix(path, REPO))
+    assert scanned > 100, "enumeration collapsed - this guard would pass vacuously"
+    assert any(_repo_walk.relative_posix(p, REPO) == "install.bat"
+               for p in _repo_walk.repo_files(REPO, ("*.bat",))), (
+        "install.bat not reached - the scan proves nothing about it")
+    assert not offenders, f"persists ANTHROPIC_API_KEY: {offenders}"
+
+
+def test_install_bat_writes_the_key_file_and_never_echoes_the_key():
+    text = (REPO / "install.bat").read_text(encoding="ascii")
+    assert not re.search(r"setx\s+ANTHROPIC_API_KEY", text, re.IGNORECASE)
+    # One line, no padding, staged in a private temp file, written IN PLACE
+    # (keeps a restricted ACL on the key file), skipped when unchanged.
+    assert '>"%KEY_TMP%" echo(!API_KEY!' in text
+    assert 'fc /b "%KEY_TMP%" "%API_FILE%"' in text
+    assert 'type "%KEY_TMP%" > "%API_FILE%"' in text
+    assert "set KEY_TMP=%TEMP%\\" in text
+    code = [ln for ln in text.splitlines()
+            if not ln.lstrip().lower().startswith(("::", "rem "))]
+    assert not any(re.search(r"\bmove\b.*%API_FILE%", ln, re.IGNORECASE)
+                   for ln in code), "a move over the key file drops its ACL"
+    assert "(gitignored)" in text.replace("^(", "(").replace("^)", ")")
+    # The only line that expands the key next to an echo writes the temp file.
+    for n, line in enumerate(text.splitlines(), 1):
+        if re.search(r"%API_KEY%|!API_KEY!", line) and re.search(
+                r"\becho\b", line, re.IGNORECASE):
+            assert line.strip().startswith('>"%KEY_TMP%"'), (
+                f"install.bat:{n} echoes the key: {line.strip()!r}")
