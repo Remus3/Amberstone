@@ -15,7 +15,7 @@ from tft.tft_pbe_engine import TftPbeCoachEngine
 
 
 def _engine(tmp: Path) -> TftPbeCoachEngine:
-    with patch.object(TftPbeCoachEngine, "_read_key_file", return_value=""), \
+    with patch("core.anthropic_key.read_anthropic_key", return_value=""), \
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False):
         return TftPbeCoachEngine(tmp / "tft_pbe_coaching_data.json")
 

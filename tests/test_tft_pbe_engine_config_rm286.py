@@ -87,10 +87,11 @@ def _engine(tmp: Path) -> TftPbeCoachEngine:
     """Build an engine without touching the real key file or the real config.
 
     `Path.exists` is forced False so `cfg_path.exists()` in __init__ is False
-    and the engine keeps its code defaults. `_read_key_file` is patched out,
-    so the only other Path.exists caller in the construction path is gone.
+    and the engine keeps its code defaults. The shared key lookup
+    (core.anthropic_key, ENV-APIKEY) is patched out, so no key-file probe
+    is left in the construction path.
     """
-    with patch.object(TftPbeCoachEngine, "_read_key_file", return_value=""), \
+    with patch("core.anthropic_key.read_anthropic_key", return_value=""), \
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False), \
             patch.object(Path, "exists", return_value=False):
         return TftPbeCoachEngine(tmp / "tft_pbe_coaching_data.json")
@@ -102,7 +103,7 @@ def _engine_with_disk_config(tmp: Path, payload) -> TftPbeCoachEngine:
     This drives the REAL construction path at tft/tft_pbe_engine.py:355-362 -
     no test-only entry point - so it exercises the defect as shipped.
     """
-    with patch.object(TftPbeCoachEngine, "_read_key_file", return_value=""), \
+    with patch("core.anthropic_key.read_anthropic_key", return_value=""), \
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False), \
             patch.object(Path, "exists", return_value=True), \
             patch.object(Path, "read_text", return_value=json.dumps(payload)):

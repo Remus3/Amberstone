@@ -634,6 +634,11 @@ _PROD_PATH_GLOBALS = (
     ("tft.placement_aggregator", "_HEATMAP_FILE", "placement_heatmap.json", False),
     ("app._game_lifecycle", "SCRIPT_DIR", "app_root", True),
     ("coaches._base_coach", "_APP_DIR", "base_coach_root", True),
+    # ENV-APIKEY (s112): a READ, not a write leak. The one shared Anthropic
+    # key lookup defaults to <repo>/API-Key-Claude.txt; once that real file
+    # exists, any test resolving by default would pick up the live key.
+    # Pinned by tests/test_api_key_single_lookup_env_apikey.py.
+    ("core.anthropic_key", "_KEY_ROOT", "anthropic_key_root", True),
 )
 
 

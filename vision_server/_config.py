@@ -10,7 +10,6 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import threading
 import time
@@ -47,34 +46,21 @@ _START_TIME  = time.time()
 
 
 # -- API key + Anthropic client ---------------------------------------------
-def _load_key(app_dir: Path | None = None, home: Path | None = None) -> str:
-    """ENVIRONMENT first, then API-Key-Claude.txt in three legacy places.
+from core import anthropic_key  # noqa: E402 - beside its only consumer
 
-    RM-487 (2026-10-03): this read the three files FIRST and the env var
-    LAST - the stale-wins order ba4bb74be flipped in every other consumer,
-    so a forgotten key file holding a revoked key beat a rotated env var.
-    The read_text was also unguarded, and this runs at IMPORT time, so a
-    non-UTF8 key file took the whole :8889 server down. "env first" means
-    first VALID (sk-ant- prefix), matching coaches/_base_coach.read_api_key.
-    Never raises. Pinned by tests/test_api_key_load_order.py.
+
+def _load_key(app_dir: Path | None = None) -> str:
+    """ENVIRONMENT first, then API-Key-Claude.txt at the RC repo root.
+
+    ENV-APIKEY (s112): delegates to the ONE shared lookup
+    (core.anthropic_key). The two legacy locations OUTSIDE the repo - the
+    home folder and the Desktop - are no longer read. Runs at IMPORT time,
+    so it must never raise (RM-487: a non-UTF8 key file used to take the
+    :8889 server down); the shared lookup never does. ``app_dir`` None = the
+    RC repo root. Pinned by tests/test_api_key_load_order.py and
+    tests/test_api_key_single_lookup_env_apikey.py.
     """
-    env = os.environ.get("ANTHROPIC_API_KEY", "")
-    if env.strip().startswith("sk-ant-"):
-        return env.strip()
-    root = app_dir if app_dir is not None else Path(__file__).parent.parent
-    hdir = home if home is not None else Path.home()
-    for p in [root / "API-Key-Claude.txt",
-              hdir / "API-Key-Claude.txt",
-              hdir / "Desktop" / "API-Key-Claude.txt"]:
-        try:
-            if p.exists():
-                k = p.read_text(encoding="utf-8").strip()
-                if k.startswith("sk-ant-"):
-                    log.info("Key from %s", p)
-                    return k
-        except (OSError, UnicodeDecodeError):
-            continue
-    return env
+    return anthropic_key.read_anthropic_key(app_dir)
 
 
 _API_KEY = _load_key()

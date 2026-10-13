@@ -157,20 +157,44 @@ rem or log.  Previously leaked %KEY_TAIL% to logs\_setup_results.txt.
 echo  [OK]   API key valid  ^(sk-ant-***^)
 echo  [OK]   Step 3 - API key loaded ^(sk-ant-***^) >> "%LOG_FILE%"
 
-:: 
-:: STEP 4 -- Environment variable
-:: 
+::
+:: STEP 4 -- Key file only (NO environment variable)
+::
+:: ENV-APIKEY (MAIN order 2026-10-13): the key is never written to the user
+:: or machine environment. An inherited ANTHROPIC_API_KEY can move a claude
+:: session's billing from the subscription to the API, so this step used to
+:: run setx and no longer does. RC reads the key from the gitignored
+:: API-Key-Claude.txt (core\anthropic_key.py); start.bat sets the variable
+:: for its own launched process only.
+:: This step writes the validated key back as ONE ASCII line with no padding,
+:: and skips the write when the file already holds exactly that. The bytes are
+:: staged in a private %TEMP% file and compared first, then written over the
+:: key file IN PLACE: a move /Y would replace the file's restricted ACL with
+:: the folder's inherited one. The key is never echoed to the console or log.
 echo.
-echo [4/6] Saving ANTHROPIC_API_KEY to user environment...
-setx ANTHROPIC_API_KEY "%API_KEY%" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo  [WARN] setx failed - key will load from file at each launch instead.
-    echo         This is non-fatal. start.bat reads API-Key-Claude.txt directly.
-    echo  [WARN] Step 4 - setx failed ^(non-fatal, key loads from file^) >> "%LOG_FILE%"
+echo [4/6] Writing API-Key-Claude.txt ^(no environment variable is set^)...
+set KEY_TMP=%TEMP%\rc-install-key-%RANDOM%%RANDOM%.tmp
+>"%KEY_TMP%" echo(!API_KEY!
+fc /b "%KEY_TMP%" "%API_FILE%" >nul 2>&1
+if !errorlevel! equ 0 (
+    echo  [OK]   API-Key-Claude.txt already holds the key - unchanged
+    echo  [OK]   Step 4 - key file unchanged >> "%LOG_FILE%"
 ) else (
-    echo  [OK]   ANTHROPIC_API_KEY saved to user environment
-    echo  [OK]   Step 4 - ANTHROPIC_API_KEY saved to user environment >> "%LOG_FILE%"
+    type "%KEY_TMP%" > "%API_FILE%"
+    fc /b "%KEY_TMP%" "%API_FILE%" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo  [OK]   API-Key-Claude.txt rewritten as one line
+        echo  [OK]   Step 4 - key file rewritten as one line >> "%LOG_FILE%"
+    ) else (
+        color 0C
+        echo  [FAIL] Could not write API-Key-Claude.txt - check its permissions.
+        echo  [FAIL] Step 4 - key file write failed >> "%LOG_FILE%"
+        set ERRORS=1
+    )
 )
+if exist "%KEY_TMP%" del "%KEY_TMP%" 2>nul
+echo         The key lives in API-Key-Claude.txt ^(gitignored^), not in the user or machine environment.
+if %ERRORS% neq 0 goto :SUMMARY
 
 :: 
 :: STEP 5 -- Directories
@@ -249,7 +273,7 @@ echo.
 echo  WHAT WAS INSTALLED:
 echo    Python %PY_VER%
 echo    anthropic SDK + Pillow image library
-echo    API key stored in environment and API-Key-Claude.txt
+echo    API key stored in API-Key-Claude.txt only ^(gitignored, no environment variable^)
 echo    Folders: data\  logs\  config\
 echo.
 echo  To change your API key later:
