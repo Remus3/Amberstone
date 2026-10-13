@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-12b - session 111: local gated suite GREEN; RM-694, RM-684, RM-739, RM-740 (a) shipped; RM-515 guard on the AST
+
+- **Shipped (LEDGER 1718), each CONFIRMED by an independent verifier:** RM-694 (`e2c1b07d9`, two guards walk `tests/_repo_walk`); RM-684 (`e5284e5b3`, canary on CLI 2.1.296 then `PINNED_CLI` 2.1.296; the responder's 2.1.251 pin is separate and unchanged); RM-739 (`e0a606175`, :8895 handshake on the request thread, 5.0 s; live JSON 404 in 0.041 s beside a silent client); RM-740 (a) (`268df410d`, DsWatchdog boot deadline 600 s, kill + respawn).
+- **Guard interaction:** the merged suite run 1 went red on the RM-515 guard because the new RM-739 test importorskips `cryptography`. A text-regex exemption (`8d2496a58`) was REFUTED by a verifier; the AST rule (`c44ea289f`) was CONFIRMED over 45 adversarial fixtures.
+- **Gate:** ONE gated dual suite on `8d2496a58`: 39434 passed, 104 skipped, 0 failed, EXIT=0, 1104.93 s. C1 (local suite green) is DONE.
+- **/done:** ROADMAP size pass (5 shipped rows to `docs/ROADMAP_HISTORY.md` `## 2026-10-12`, 88 percent); filed RM-741 (RM-515 import detector still a regex) and RM-742 (:8888 TLS handshake on the accept thread). Pushed `8ca950ebb..c44ea289f`.
+- **Do NOT redo:** RM-694, RM-684 (canary + pin), RM-739, RM-740 (a), the RM-515 AST exemption, the session 111 gated suite.
+- **Next:** RM-740 (b) (uncounted `t.start()` raise in the four part-3 servers), then (c); RM-741 / RM-742 are Tier-1 each.
+
+---
+
 # 2026-10-12 - session 110: RM-738 shipped on every server; PostmortemAnalyze hidden; MAIN answered; push HALTED by the sibling sweep
 
 - **RM-738 shipped (LEDGER 1716; merges `6ea05d68d` / `5408dcf2b` / `7f2f97519`):** every thread-per-request server bounds its `Thread.start()` wait (2.0 s, DS 5.0 s); :8860 has a periodic `DsWatchdog` self-heal. Live re-probe (`8d5252181`): all ports up on new pids, DS killed on purpose and respawned in 34 s. Residuals RM-739 (mc TLS accept loop) and RM-740 (a)-(f).
@@ -26,14 +37,3 @@
 - **RM-735 regression fixed (`1ca647b04`):** `capture_stack` now writes through `core.polled_json.atomic_write_bytes`; the atomic-write guard is green again (verifier: 154/154 over the guard + 6 RM-735 files). The push impact slice never selected that guard (RM-734 datum). RC restarted, pid 16308 healthy.
 - **Do NOT redo:** the RM-737 measurement or the note (delivered); the capture_stack fix.
 - **Next:** RM-738 (per server, :8888 first; failing MemoryError-bootstrap test first); act on MAIN's RM-737 ruling when it lands; add a MAIN entry to the gitignored `ops/moon_sync_repos.json`.
-
----
-
-# 2026-10-10c - session 108: RM-735 shipped (:8889 worker pool + liveness watchdog) after an unclean reboot
-
-- **Context:** the machine hung and rebooted uncleanly at 10:02 local (Kernel-Power 41) after machine-wide starvation from ~07:36 (RC restart storm, WMI / services timeouts). Operator: "had a system hang - continue what you were doing and process /done for clear after". The vision server was a victim (its 07:50 respawn took 51 min to bind), not the cause - RM-737 evidence. A stale 0-byte `.git/index.lock` from before the hang was removed by hand.
-- **Shipped (LEDGER 1714, commit `49ef2cadc`, pushed `c193fd572..49ef2cadc`):** root cause REPRODUCED - `ThreadingMixIn` starts a thread per request and `Thread.start()` waits on `_started` with no timeout (CPython 3.14.4 stdlib threading module, line 1011), so a thread dying in bootstrap (MemoryError) parks the accept loop forever. Fix: `vision_server/_pool.py` (16 workers started before bind, accept only enqueues) + `dashboard/_vision_watchdog.py` (15 s `/health` probe, 3 strikes -> py-spy dump to `logs/vision_wedge_*.txt`, taskkill, windowless respawn). Verifier CONFIRMED; live drills: kill -> respawn 7 s, suspended holder -> replaced in 47 s.
-- **Filed:** RM-738 - the sibling servers with the same latent `Thread.start` wait (dashboard :8888, DS :8860 + its one-shot `ensure_running`, `agents/_supervisor_http.py`, `mc/server.py`, two tools/ servers). Next free id RM-739. RM-701 closed by read-back (the reboot restarted RC-Supervisor after `1e27f14ae`: PID 12888 at 10:03:09).
-- **CI fix-forward:** CI on `49ef2cadc` went red on Linux only (`FakeHolderIsReplacedEndToEnd`: a blocked `accept()` keeps a closed listening socket LISTEN, EADDRINUSE); the test fake now sets SO_REUSEADDR off Windows and shuts down before close - red-then-green under WSL, carried by the wrap push.
-- **Do NOT redo:** the RM-735 root cause, the pool, the watchdog, the live drills.
-- **Next:** confirm CI green on the wrap push; then RM-737 measurement + its note to MAIN (the 07:36-10:02 hang is a datum), then RM-738.
