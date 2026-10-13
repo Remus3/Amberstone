@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 from core import operator_notify as on
+from tests import _repo_walk
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -333,15 +334,64 @@ def _toast_defs(paths, root: Path = ROOT) -> list[str]:
     return out
 
 
-def _scan_set() -> list[Path]:
-    return sorted(p for d in ("tools", "core", "ops", "app", "dashboard")
-                  for p in (ROOT / d).rglob("*.py"))
+_SCAN_DIRS = ("tools", "core", "ops", "app", "dashboard")
+
+
+def _scan_set(root: Path = ROOT) -> list[Path]:
+    """Tracked .py under ``_SCAN_DIRS`` - the guard's OWN scope choice.
+
+    RM-694: enumerate through tests/_repo_walk (ADR-015, git index first),
+    never a raw rglob - ops/ holds the gitignored responder_export repo copies.
+    """
+    base = Path(root).resolve()
+    return [p for p in _repo_walk.repo_files(base, ("*.py",))
+            if p.relative_to(base).parts[0] in _SCAN_DIRS]
 
 
 def test_zero_toast_copies_left():
     paths = _scan_set()
     assert len(paths) > 50, "enumeration came back empty - the guard is blind"
+    # Anti-vacuity anchor (ADR-015 watch-for 1): the files this guard exists
+    # for must be IN the scan, or an index read that failed open passes it.
+    rels = {p.relative_to(ROOT).as_posix() for p in paths}
+    missing = [r for r in (*_WATCHERS, "core/operator_notify.py") if r not in rels]
+    assert not missing, f"scan lost anchor files {missing} - the guard is blind"
     assert _toast_defs(paths) == []
+
+
+def _git_tree(base: Path, files: dict[str, str]) -> None:
+    """A throwaway git work tree: ``files`` written, then ``git add -A``.
+
+    ``.gitignore`` is one of ``files``, so what it ignores stays on disk but
+    out of the index - the shape of ops/runtime/ on Legion.
+    """
+    for rel, text in files.items():
+        dest = base / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text, encoding="utf-8")
+    for argv in (["git", "init", "-q"], ["git", "add", "-A"]):
+        subprocess.run(argv, cwd=str(base), check=True, capture_output=True)
+
+
+def test_toast_scan_skips_a_gitignored_runtime_copy(tmp_path):
+    """RM-694: a gitignored copy under ops/runtime/ is not the repo.
+
+    The inbox responder exports whole repo copies to the gitignored
+    ops/runtime/responder_export/<sha>/; a copy older than the Y-02 cleanup
+    still defines ``_toast``, so a raw rglob over ops/ went red on Legion and
+    green in CI. The planted copy dir is deliberately NOT named
+    ``responder_export``, so this proves the git-index half of
+    tests/_repo_walk (ADR-015), not the EXCLUDED_DIRS name backstop. The
+    tracked offender proves the scan still discriminates rather than skips.
+    """
+    base = tmp_path.resolve()
+    _git_tree(base, {
+        ".gitignore": "ops/runtime/\n",
+        "tools/clean.py": "def notify():\n    pass\n",
+        "tools/offender.py": "def _toast(title, body):\n    pass\n",
+        "ops/runtime/copy_0dcd/tools/old.py": "def _toast(title, body):\n    pass\n",
+    })
+    assert _toast_defs(_scan_set(base), root=base) == ["tools/offender.py:1"]
 
 
 def test_toast_copy_guard_positive_control(tmp_path):
