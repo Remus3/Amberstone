@@ -202,11 +202,11 @@ def _load_vision_server(app_dir: Path, monkeypatch) -> str:
     files (repo root, ~/, ~/Desktop) - the stale-wins order ba4bb74be
     flipped everywhere else - and an unguarded read_text, so a non-UTF8
     key file raised at IMPORT time and took the :8889 server down with it.
-    `home` points at an empty dir so the real ~/ and ~/Desktop are never
-    read.
+    ENV-APIKEY (s112): ~/ and ~/Desktop are no longer read at all; the
+    reader delegates to the one shared lookup (core.anthropic_key).
     """
     from vision_server import _config
-    return _config._load_key(app_dir, home=app_dir / "_no_home")
+    return _config._load_key(app_dir)
 
 
 CONSUMERS = [
@@ -278,23 +278,22 @@ def test_unreadable_key_file_degrades_instead_of_raising(load, tmp_path,
     assert load(tmp_path, monkeypatch) == ""
 
 
-def test_vision_server_env_beats_a_stale_key_in_the_home_dir(tmp_path,
-                                                             monkeypatch):
-    """The two legacy HOME locations are the same stale-wins hole.
-
-    The parametrized tests only exercise the repo-root file; ~/ and
-    ~/Desktop were also read before env, so a forgotten copy there would
-    beat a rotated env var just as well.
+def test_vision_server_never_reads_a_key_in_the_home_dir(tmp_path,
+                                                         monkeypatch):
+    """The two legacy HOME locations (~/ and ~/Desktop) were a stale-wins
+    hole and sat OUTSIDE the repo. ENV-APIKEY (s112) removed them: env
+    still wins, and with env deleted a home-dir copy is never read.
     """
     from vision_server import _config
     home = tmp_path / "home"
     (home / "Desktop").mkdir(parents=True)
     (home / "Desktop" / "API-Key-Claude.txt").write_text(FILE_KEY,
                                                          encoding="utf-8")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     monkeypatch.setenv(ENV_VAR, ENV_KEY)
-    assert _config._load_key(tmp_path, home=home) == ENV_KEY
+    assert _config._load_key(tmp_path) == ENV_KEY
     monkeypatch.delenv(ENV_VAR)
-    assert _config._load_key(tmp_path, home=home) == FILE_KEY
+    assert _config._load_key(tmp_path) == ""
 
 
 def test_performance_tracker_reads_the_environment(tmp_path, monkeypatch):

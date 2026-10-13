@@ -16,6 +16,7 @@ from pathlib import Path
 
 import anthropic
 
+from core import anthropic_key
 from core.polled_json import atomic_write_text
 
 logger = logging.getLogger("rc.tft.pbe")
@@ -343,10 +344,9 @@ class TftPbeCoachEngine:
         self._last_round  = (0, 0)
         self._last_fields: dict = {}
 
-        api_key = (
-            __import__("os").environ.get("ANTHROPIC_API_KEY", "") or
-            self._read_key_file()
-        )
+        # ENV-APIKEY (s112): the ONE shared lookup (env first VALID, then the
+        # repo-root key file), replacing a private `env or _read_key_file()`.
+        api_key = anthropic_key.read_anthropic_key()
         self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com") if api_key else None
 
         cfg_path = Path(__file__).parent.parent / "config" / "coach_settings.json"
@@ -414,14 +414,6 @@ class TftPbeCoachEngine:
                                 minimum=1, maximum=600, cast=float)
         self._max_tokens = _num("max_tokens", self._max_tokens,
                                 minimum=1, maximum=8192, cast=int)
-
-    def _read_key_file(self) -> str:
-        for p in [Path(__file__).parent.parent / "API-Key-Claude.txt"]:
-            if p.exists():
-                k = p.read_text(encoding="utf-8").strip()
-                if k.startswith("sk-ant-"):
-                    return k
-        return ""
 
     def submit(self, state: dict) -> None:
         if not self._client:
