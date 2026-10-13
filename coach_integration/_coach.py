@@ -17,7 +17,8 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
-from core import anthropic_key, live_metrics
+from core import anthropic_key
+from core import live_metrics
 from core.polled_json import atomic_write_text
 from ._profiles import CHAMPION_PROFILES, GENERIC_PROFILE, HAS_ROLE_PROFILES, get_role_profile
 from ._sr_prompt import (
