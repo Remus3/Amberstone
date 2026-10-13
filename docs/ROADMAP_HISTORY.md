@@ -1,5 +1,20 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-12 - size-budget relocation (session 111 /done), 5 rows
+
+`ROADMAP.md` sat at 90 percent of its 81920-byte budget (74026 bytes at
+c44ea289f), so `tools/drift_guard.py` reported a `doc-budget` breach before the
+RM-741 / RM-742 filings. The five rows below were already SHIPPED / CLOSED,
+each pointing at its own BACKLOG body or LEDGER entry; they move here VERBATIM
+as they stood at c44ea289f, in their ROADMAP order. `ROADMAP.md` keeps one
+combined one-line stub naming every id literally.
+
+- **[x] RM-701 (Tier-1 ops, restart pending): RC-Supervisor still runs the pre-change frozen `ops/rc_supervisor.py`.** CLOSED 2026-10-10 by read-back (session 108 /done, LEDGER 1714): the unclean reboot at 10:02 restarted it - `rc_supervisor.py` PID 12888 created 2026-10-10 10:03:09 local (boot 10:02:14), after `1e27f14ae` (2026-10-09 15:41); `ops/runtime/health.json` alive true, last_reload_ok true. Original row: `1e27f14ae` (2026-10-09, operator chat grant (a)) added `resolve_config_paths()` and made `ops/rc_config.json` repo-relative; the live supervisor process started 2026-10-08 02:33, before that commit, so the change takes effect only at its next start. Acceptance: measure whether the running process re-reads `ops/rc_config.json` (now repo-relative) before then; restart the supervisor at a quiet moment (not mid-game, never `Stop-Process`); read back a new supervisor pid started after the commit and `ops/runtime/health.json` `alive=true`, `last_reload_ok=true`.
+- **[x] RM-733 (Tier-1, filed by the atlas CI fix, LEDGER 1705): CI's `atlas_build.py --check` goes red on routine commits until someone re-renders `atlas.html`.** Body in `BACKLOG.md` "Atlas CI filing (2026-10-09)". 2026-10-10: generated atlas REVERTED by operator chat order (hand-built pre-10/7 page restored; `atlas_build.py`, its CI step and `check_atlas_fresh` removed), so the trigger is gone. CLOSED 2026-10-10 as moot (LEDGER 1713, commit 7f3ed345f); reverses if a generated atlas is re-ordered.
+- **[x] RM-735 (Tier-1, filed by session 106 C9): the :8889 self-heal checks port ownership, not liveness - a hung vision server holding the port is never replaced.** Body + acceptance in `BACKLOG.md` "Session 106 filings". SHIPPED 2026-10-10 (session 108, LEDGER 1714, commit 49ef2cadc): pre-started worker pool (`vision_server/_pool.py`) + periodic `/health` watchdog (`dashboard/_vision_watchdog.py`); siblings filed as RM-738. Atomic-write guard regression fixed 1ca647b04 (session 109).
+- **[x] RM-738 (Tier-1, filed session 108 /done, LEDGER 1714): the other in-tree HTTP servers keep RM-735's latent wedge - a per-request `Thread.start()` that waits forever if the new thread dies in bootstrap.** Body + acceptance in `BACKLOG.md` "Session 108 filings". SHIPPED 2026-10-12 (session 110, LEDGER 1716, merges `6ea05d68d` / `5408dcf2b` / `7f2f97519`).
+- **[x] RM-739 (Tier-1, session 110): one silent TLS client freezes the :8895 accept loop (`mc/server.py` wraps the listen socket).** Body in `BACKLOG.md` "Session 110 filings". SHIPPED 2026-10-12 (session 111, main `e0a606175`): per-connection handshake on the request thread with a 5.0 s deadline; live, :8895 answered the JSON 404 in 0.04 s while a silent client held a connection, which the server dropped at 5.0 s.
+
 ## 2026-10-10 - size-budget relocation (session 106 /done), 11 rows
 
 `ROADMAP.md` sat at 91 percent of its 81920-byte budget (74508 bytes at
