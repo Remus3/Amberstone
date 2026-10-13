@@ -115,11 +115,42 @@ class _RequestThread(threading.Thread):
 
 
 class _Server(ThreadingHTTPServer):
-    """ThreadingHTTPServer whose per-request thread start is capped (RM-738)."""
+    """ThreadingHTTPServer whose per-request thread start is capped (RM-738)
+    and whose TLS handshake runs per connection, off the accept loop (RM-739).
+
+    The listen socket stays PLAIN. Wrapping it made ``SSLSocket.accept()`` run
+    each handshake inline on the ``serve_forever`` thread with no timeout, so
+    one client that connected and never sent a ClientHello parked that bind
+    address for every other client.
+    """
 
     # A thread start normally takes well under a millisecond.
     thread_start_timeout_s = 2.0
     thread_start_failures = 0
+    # A loopback / tailnet handshake takes milliseconds; past this the
+    # connection is dropped. The same 5 s dashboard/server.py gives its peek.
+    tls_handshake_timeout_s = 5.0
+
+    def __init__(self, server_address, handler_class, *,
+                 ssl_ctx: ssl.SSLContext) -> None:
+        super().__init__(server_address, handler_class)
+        self.ssl_ctx = ssl_ctx
+
+    def process_request_thread(self, request, client_address) -> None:
+        # Runs on the request's own thread (RM-738 _RequestThread.run), so a
+        # silent, slow or hostile handshake holds only this connection.
+        conn = request
+        try:
+            request.settimeout(self.tls_handshake_timeout_s)
+            conn = self.ssl_ctx.wrap_socket(request, server_side=True)
+            conn.settimeout(None)
+        except (OSError, ValueError):
+            # Deadline passed, alert, EOF, reset or a plaintext probe: drop
+            # this connection only. A failed wrap has already closed its own
+            # socket; shutting the detached original down is a no-op.
+            self.shutdown_request(conn)
+            return
+        super().process_request_thread(conn, client_address)
 
     def process_request(self, request, client_address) -> None:
         # ThreadingMixIn.process_request with a capped start. The stdlib's
@@ -141,11 +172,10 @@ class _Server(ThreadingHTTPServer):
 
 
 def _make_server(address: str, ctx: ssl.SSLContext) -> ThreadingHTTPServer:
-    """One bound, TLS-wrapped server. Raises on failure - callers do not
-    swallow it, they exit."""
-    srv = _Server((address, PORT), Handler)
-    srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
-    return srv
+    """One bound server; every connection it accepts is TLS-wrapped on its
+    own request thread (RM-739), never served plain. Raises on failure -
+    callers do not swallow it, they exit."""
+    return _Server((address, PORT), Handler, ssl_ctx=ctx)
 
 
 def main() -> int:
