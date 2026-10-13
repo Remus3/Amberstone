@@ -146,6 +146,16 @@ WATCHDOG_FAIL_THRESHOLD = 3
 WATCHDOG_GRACE_S = 120.0
 WATCHDOG_MAX_GRACE_S = 1800.0
 WATCHDOG_RELEASE_WAIT_S = 10.0
+# RM-740 (a): how long a DS process may exist without binding :8860 before it
+# counts as a stalled boot (killed if still verified DS, then relaunched).
+# Measured from the FIRST sighting of that pid. The one healthy boot datum is
+# 34 s kill-to-answering (LEDGER 1717), but during the RM-737 starvation hang
+# a respawn (the vision server, RM-735) took 51 minutes to bind, so a short
+# deadline would churn slow-but-healthy boots on a loaded box. 600 s is ~17x
+# the measured boot, and the doubling grace in _respawn (to
+# WATCHDOG_MAX_GRACE_S) bounds the churn if every boot stalls. It must stay
+# above 5 x WATCHDOG_INTERVAL_S: tests keep 5 ticks of "starting" legal.
+WATCHDOG_BOOT_DEADLINE_S = 600.0
 
 
 def probe_ds_health(port: int, timeout_s: float) -> str:
@@ -248,6 +258,10 @@ class DsWatchdog:
     * spawned  - refused and nothing listens and no DS process is booting;
     * starting - nothing listens yet but a DS process exists (a bounce or a
       logon start loading its snapshot): a spawn there would be a duplicate;
+    * boot-stalled - that same pid has been "starting" for ``boot_deadline_s``
+      since it was first seen: re-verified as a DS process, killed and
+      relaunched (a failed kill backs off as ``kill-failed``; a pid that no
+      longer verifies as DS is left alone and its clock restarts);
     * suspect  - a holder listens but does not answer (timeout, reset, non-200,
       or refused with a full backlog): counted;
     * at ``fail_threshold`` consecutive suspects: a holder verified as a DS
@@ -263,6 +277,7 @@ class DsWatchdog:
                  grace_s: float = WATCHDOG_GRACE_S,
                  max_grace_s: float = WATCHDOG_MAX_GRACE_S,
                  release_wait_s: float = WATCHDOG_RELEASE_WAIT_S,
+                 boot_deadline_s: float = WATCHDOG_BOOT_DEADLINE_S,
                  probe=probe_ds_health, find_holder=find_ds_listener,
                  find_ds_process=find_ds_process, is_ds=is_ds_pid,
                  kill=kill_ds_pid, spawn=spawn_ds,
@@ -274,6 +289,7 @@ class DsWatchdog:
         self.grace_s = grace_s
         self.max_grace_s = max(grace_s, max_grace_s)
         self.release_wait_s = release_wait_s
+        self.boot_deadline_s = boot_deadline_s
         self._probe = probe
         self._find_holder = find_holder
         self._find_ds_process = find_ds_process
@@ -285,7 +301,10 @@ class DsWatchdog:
         self.failures = 0
         self.grace_until = 0.0
         self.current_grace_s = grace_s
-        self._booting_logged = False
+        # The DS process seen booting (no listener yet) and when it was first
+        # seen; cleared on OK, when no DS process is seen, and after a kill.
+        self._booting_pid: Optional[int] = None
+        self._booting_since = 0.0
 
     def tick(self) -> str:
         state = self._probe(self.port, self.timeout_s)
@@ -297,7 +316,7 @@ class DsWatchdog:
             self.failures = 0
             self.grace_until = 0.0
             self.current_grace_s = self.grace_s
-            self._booting_logged = False
+            self._booting_pid = None
             return "ok"
         if now < self.grace_until:
             return "grace"
@@ -305,11 +324,8 @@ class DsWatchdog:
         if state == DOWN and holder is None:
             booting = self._find_ds_process()
             if booting is not None:
-                if not self._booting_logged:
-                    logger.info("daemon_slayer not answering yet, pid %d is "
-                                "starting - no second spawn", booting)
-                    self._booting_logged = True
-                return "starting"
+                return self._booting(booting, now)
+            self._booting_pid = None
             self._respawn(now, "not running")
             return "spawned"
         self.failures += 1
@@ -345,6 +361,38 @@ class DsWatchdog:
             return "killed"
         self._respawn(now, f"hung - killed pid {holder}")
         return "replaced"
+
+    def _booting(self, pid: int, now: float) -> str:
+        """A DS process exists but nothing listens: wait, up to the deadline.
+
+        The clock starts at the first sighting of ``pid`` (a different pid
+        restarts it). Past ``boot_deadline_s`` the pid is re-verified as DS
+        (it may have exited, or the pid been reused, since the scan), killed
+        and relaunched. The stalled pid holds no port, so the launcher's bind
+        preflight cannot skip the relaunch, and the launcher runs the engine
+        in-process, so the kill leaves no orphan behind.
+        """
+        if pid != self._booting_pid:
+            self._booting_pid, self._booting_since = pid, now
+            logger.info("daemon_slayer not answering yet, pid %d is starting "
+                        "- no second spawn", pid)
+        waited = now - self._booting_since
+        if waited < self.boot_deadline_s:
+            return "starting"
+        if not self._is_ds(pid):
+            logger.warning("daemon_slayer boot pid %d no longer verifies as a "
+                           "DS process - left alone", pid)
+            self._booting_pid = None
+            return "boot-unverified"
+        if not self._kill(pid):
+            logger.warning("daemon_slayer pid %d has not bound port %d after "
+                           "%.0fs - could not kill it", pid, self.port, waited)
+            self._start_grace(now)
+            return "kill-failed"
+        self._booting_pid = None
+        self._respawn(now, f"boot stalled - pid {pid} never bound port "
+                           f"{self.port} in {waited:.0f}s, killed")
+        return "boot-stalled"
 
     def _respawn(self, now: float, why: str) -> None:
         self.failures = 0

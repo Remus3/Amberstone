@@ -241,6 +241,124 @@ class NeverADuplicate(unittest.TestCase):
         self.assertEqual((rig.spawns, rig.kills), (0, []))
 
 
+class BootDeadlineRm740(unittest.TestCase):
+    """RM-740 (a): "starting" was unbounded. A DS process that exists but
+    never binds :8860 (a launcher wedged loading its snapshot) held the
+    watchdog on "starting" forever - never killed, never relaunched."""
+
+    def test_a_ds_that_never_binds_is_replaced_past_the_boot_deadline(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150)
+        wd = rig.watchdog()
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 86400                     # a day later: still no listener
+        result = wd.tick()
+        self.assertEqual(rig.kills, [5150], "a stalled boot was never killed")
+        self.assertEqual(rig.spawns, 1, "a stalled boot was never relaunched")
+        self.assertEqual(result, "boot-stalled")
+
+    def test_inside_the_deadline_a_boot_is_left_alone(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150)
+        wd = rig.watchdog(boot_deadline_s=600.0)
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 599
+        self.assertEqual(wd.tick(), "starting")
+        self.assertEqual((rig.spawns, rig.kills), (0, []))
+        rig.clock.t += 2
+        self.assertEqual(wd.tick(), "boot-stalled")
+        self.assertEqual((rig.spawns, rig.kills), (1, [5150]))
+
+    def test_a_pid_change_restarts_the_clock(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150)
+        wd = rig.watchdog(boot_deadline_s=600.0)
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 500
+        rig.booting = 6160                       # a different DS process now
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 500                       # 1000 s since 5150, 500 since 6160
+        self.assertEqual(wd.tick(), "starting")
+        self.assertEqual(rig.kills, [])
+        rig.clock.t += 101
+        self.assertEqual(wd.tick(), "boot-stalled")
+        self.assertEqual(rig.kills, [6160])
+
+    def test_answering_resets_the_clock(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150)
+        wd = rig.watchdog(boot_deadline_s=600.0)
+        wd.tick()
+        rig.clock.t += 500
+        rig.state = OK
+        self.assertEqual(wd.tick(), "ok")
+        rig.state = DOWN                         # same pid, not answering again
+        rig.clock.t += 500
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 500
+        self.assertEqual(wd.tick(), "starting")
+        self.assertEqual(rig.kills, [])
+        rig.clock.t += 101
+        self.assertEqual(wd.tick(), "boot-stalled")
+
+    def test_no_ds_process_resets_the_clock(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150)
+        wd = rig.watchdog(boot_deadline_s=600.0, grace_s=120.0)
+        wd.tick()
+        rig.clock.t += 500
+        rig.booting = None                       # the boot died on its own
+        self.assertEqual(wd.tick(), "spawned")
+        rig.clock.t += 121                       # past the spawn grace
+        rig.booting = 5150                       # seen again (even the same pid)
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 500
+        self.assertEqual(wd.tick(), "starting")
+        self.assertEqual(rig.kills, [])
+
+    def test_a_pid_that_is_not_a_ds_is_never_killed(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150, is_ds=False)
+        wd = rig.watchdog(boot_deadline_s=600.0)
+        wd.tick()
+        for _ in range(5):
+            rig.clock.t += 86400
+            self.assertNotEqual(wd.tick(), "boot-stalled")
+        self.assertEqual((rig.spawns, rig.kills), (0, []))
+
+    def test_a_failed_kill_backs_off_and_never_spawns(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150, kill_ok=False)
+        wd = rig.watchdog(boot_deadline_s=600.0, grace_s=120.0)
+        wd.tick()
+        rig.clock.t += 601
+        self.assertEqual(wd.tick(), "kill-failed")
+        self.assertEqual((rig.spawns, rig.kills), (0, [5150]))
+        rig.clock.t += 30                        # inside the back-off: no retry
+        self.assertEqual(wd.tick(), "grace")
+        self.assertEqual(rig.kills, [5150])
+        rig.clock.t += 91                        # back-off over: one retry
+        self.assertEqual(wd.tick(), "kill-failed")
+        self.assertEqual((rig.spawns, rig.kills), (0, [5150, 5150]))
+        rig.clock.t += 239                       # the back-off doubled to 240 s
+        self.assertEqual(wd.tick(), "grace")
+        self.assertEqual(rig.kills, [5150, 5150])
+
+    def test_the_relaunched_boot_gets_its_own_deadline(self) -> None:
+        rig = _Rig(state=DOWN, holder=None, booting=5150)
+        wd = rig.watchdog(boot_deadline_s=600.0, grace_s=120.0)
+        wd.tick()
+        rig.clock.t += 601
+        self.assertEqual(wd.tick(), "boot-stalled")
+        rig.booting = 4242                       # the launcher just spawned
+        rig.clock.t += 121                       # past the spawn grace
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 500
+        self.assertEqual(wd.tick(), "starting")
+        self.assertEqual((rig.spawns, rig.kills), (1, [5150]))
+
+    def test_the_default_deadline_outlasts_a_slow_but_healthy_boot(self) -> None:
+        # The measured DS boot is 34 s (kill to answering, LEDGER 1717); the
+        # deadline must leave a slow boot room, and NeverADuplicate keeps
+        # 5 x 30 s of "starting" legal with the default.
+        self.assertGreaterEqual(dsc.WATCHDOG_BOOT_DEADLINE_S, 300.0)
+        self.assertEqual(_Rig().watchdog().boot_deadline_s,
+                         dsc.WATCHDOG_BOOT_DEADLINE_S)
+
+
 class TheLoop(unittest.TestCase):
     def test_run_outlives_a_failing_tick(self) -> None:
         rig = _Rig()
