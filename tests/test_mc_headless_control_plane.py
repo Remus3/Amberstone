@@ -23,6 +23,7 @@ file - tests/test_arm_confirm_server_gate.py. It is not re-asserted here.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +31,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+from tests import _repo_walk  # noqa: E402
 
 
 # ============================================== 1. control actions survive
@@ -207,33 +210,83 @@ def test_no_live_module_loads_a_deleted_web_mc_file(token):
     word appearing. An empty grep is a claim about a pattern, so the shapes
     above are enumerated explicitly rather than left to a single regex.
     """
-    # Scope WIDENED after an adversarial pass pointed out the first version
-    # could not see a reference from web/*.html, app/, tools/, scripts/, or any
-    # .ps1 / .bat / .json - which is most of the tree that could actually load
-    # a web asset. An empty grep is a claim about a pattern, and the pattern
-    # was the weak part, not the tree.
-    roots = [ROOT / "mc", ROOT / "dashboard", ROOT / "web", ROOT / "ops",
-             ROOT / "app", ROOT / "tools", ROOT / "scripts", ROOT / "core"]
-    suffixes = (".py", ".js", ".css", ".html", ".mjs", ".json", ".ps1",
-                ".bat", ".cmd", ".ahk", ".sh")
-    hits = []
-    seen_any = False
-    for root in roots:
-        if not root.exists():
-            continue
-        for path in root.rglob("*"):
-            if not path.is_file() or path.suffix not in suffixes:
-                continue
-            seen_any = True
-            try:
-                text = path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            for i, line in enumerate(text.splitlines(), 1):
-                if token in line and any(s in line for s in _LIVE_REFERENCE_SHAPES):
-                    hits.append(f"{path.relative_to(ROOT).as_posix()}:{i}")
-    assert seen_any, "the scan walked ZERO files - an empty enumeration passes"
+    paths = _scan_paths()
+    assert paths, "the scan walked ZERO files - an empty enumeration passes"
+    # Anti-vacuity anchor (ADR-015 watch-for 1): known live files of each kind
+    # must be IN the scan, or an index read that failed open passes it.
+    rels = {p.relative_to(ROOT).as_posix() for p in paths}
+    missing = [a for a in _SCAN_ANCHORS if a not in rels]
+    assert not missing, f"scan lost anchor files {missing} - the guard is blind"
+    hits = _live_hits(token, paths)
     assert not hits, f"{token} is still LOADED by live code: {hits}"
+
+
+# Scope WIDENED after an adversarial pass pointed out the first version could
+# not see a reference from web/*.html, app/, tools/, scripts/, or any .ps1 /
+# .bat / .json - which is most of the tree that could actually load a web
+# asset. An empty grep is a claim about a pattern, and the pattern was the weak
+# part, not the tree.
+_SCAN_ROOTS = ("mc", "dashboard", "web", "ops", "app", "tools", "scripts", "core")
+_SCAN_SUFFIXES = (".py", ".js", ".css", ".html", ".mjs", ".json", ".ps1",
+                  ".bat", ".cmd", ".ahk", ".sh")
+
+
+_SCAN_ANCHORS = ("mc/handler.py", "mc/server.py", "web/index.html")
+
+
+def _scan_paths(root: Path = ROOT) -> list[Path]:
+    """Tracked files under ``_SCAN_ROOTS`` - the guard's OWN scope choice.
+
+    RM-694: enumerate through tests/_repo_walk (ADR-015, git index first),
+    never a raw rglob - ops/ holds the gitignored responder_export repo copies.
+    """
+    base = Path(root).resolve()
+    patterns = tuple("*" + s for s in _SCAN_SUFFIXES)
+    return [p for p in _repo_walk.repo_files(base, patterns)
+            if p.relative_to(base).parts[0] in _SCAN_ROOTS
+            and p.suffix in _SCAN_SUFFIXES]
+
+
+def _live_hits(token: str, paths, root: Path = ROOT) -> list[str]:
+    hits = []
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for i, line in enumerate(text.splitlines(), 1):
+            if token in line and any(s in line for s in _LIVE_REFERENCE_SHAPES):
+                hits.append(f"{path.relative_to(root).as_posix()}:{i}")
+    return hits
+
+
+def test_deleted_web_mc_scan_skips_a_gitignored_runtime_copy(tmp_path):
+    """RM-694: a gitignored copy under ops/runtime/ is not the repo.
+
+    The inbox responder exports whole repo copies to the gitignored
+    ops/runtime/responder_export/<sha>/, and an old copy still LOADS
+    arm_confirm.js / web/mc, so a raw rglob over ops/ went red on Legion and
+    green in CI. The planted copy dir is deliberately NOT named
+    ``responder_export``, so this proves the git-index half of
+    tests/_repo_walk (ADR-015), not the EXCLUDED_DIRS name backstop. The
+    tracked loader proves the scan still discriminates rather than skips.
+    """
+    base = tmp_path.resolve()
+    loader = 'open("web/mc/mc.js")\n'
+    files = {
+        ".gitignore": "ops/runtime/\n",
+        "tools/clean.py": "x = 1\n",
+        "tools/loader.py": loader,
+        "ops/runtime/copy_0dcd/tools/loader.py": loader,
+    }
+    for rel, text in files.items():
+        dest = base / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text, encoding="utf-8")
+    for argv in (["git", "init", "-q"], ["git", "add", "-A"]):
+        subprocess.run(argv, cwd=str(base), check=True, capture_output=True)
+    hits = _live_hits("web/mc", _scan_paths(base), root=base)
+    assert hits == ["tools/loader.py:1"]
 
 
 # ============================================== 4. loop-monitor is NOT MC's
