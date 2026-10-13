@@ -14,6 +14,11 @@ catch, both SILENT:
 
 This file does NOT re-prove propagation. That needs a live spawn; it is a manual
 canary and the failure message says so.
+
+REAL CLI (RM-684): test_cli_version_still_matches_the_pin execs the installed
+`claude --version` (no session, no API call; it skips when the CLI is absent or
+not runnable). Never include this module in a fake-only pass (LEDGER 1684); it
+stays IN the gated whole suite, where its tripwire is the point.
 """
 import json
 import shutil
@@ -50,7 +55,24 @@ CONFIG = ROOT / "ops" / "loop" / "config.json"
 # against exit 1 for a genuinely unknown option). Re-measure on any change - do
 # NOT bump this constant without re-running all three controls, because a bump
 # alone converts a live wire-check into a constant that proves nothing.
-PINNED_CLI = "2.1.285"
+#
+# RE-MEASURED 2026-10-12 on 2.1.296 (RM-684, session 111). All three controls
+# re-run BEFORE the bump, each a real `claude -p` started through the fleet
+# kit's spawn() (URL from ops/loop/headless_env, stream-json via log_path),
+# sonnet / effort low, one random codeword placed only in the flag value:
+#   0. UNKNOWN-OPTION control: `--definitely-not-a-flag` -> exit 1, "unknown
+#      option"; the canary run with the real flag -> exit 0.
+#   1. CANARY: one top-level `Agent` tool_use, the codeword absent from its
+#      input, the subagent's totalToolUseCount 0, and the codeword came back
+#      first in the subagent's hand-back -> final result CANARY=<codeword>.
+#   2. NEGATIVE CONTROL: byte-identical prompt, no flag, same real spawn shape
+#      -> NO-CANARY, codeword count 0 in the stream.
+#   3. TOP-LEVEL LEAK CONTROL: flag present, no spawn, top level reads its OWN
+#      prompt -> NO-CANARY, codeword count 0.
+# Still UNDOCUMENTED on 2.1.296: a `subagent` grep of `claude --help` returns
+# only `--forward-subagent-text`. Before the bump this test failed on
+# '2.1.296 (Claude Code)' against 2.1.285, so the tripwire still fires.
+PINNED_CLI = "2.1.296"
 FLAG = "--append-subagent-system-prompt"
 
 
