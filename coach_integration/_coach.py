@@ -1,7 +1,6 @@
 # arch: CoachIntegration - SR coaching class (Haiku + cache + DS) | section=coaching | frozen=no
 """CoachIntegration: SR coaching dispatch, budget gating, CacheEngine, atomic writers."""
 
-import os
 import json
 import time
 import logging
@@ -18,7 +17,7 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
-from core import live_metrics
+from core import anthropic_key, live_metrics
 from core.polled_json import atomic_write_text
 from ._profiles import CHAMPION_PROFILES, GENERIC_PROFILE, HAS_ROLE_PROFILES, get_role_profile
 from ._sr_prompt import (
@@ -48,9 +47,13 @@ class CoachIntegration:
             except Exception as _e:  # QUAL-002  # noqa: BLE001
                 logger.debug("coach_settings reload: %s", _e)
 
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        # ENV-APIKEY (s112): this read the environment ONLY, so with the
+        # Machine-scope variable removed SR auto-coaching went off even with
+        # a good API-Key-Claude.txt. The ONE shared lookup: env, then file.
+        api_key = anthropic_key.read_anthropic_key()
         if not api_key:
-            logger.warning("ANTHROPIC_API_KEY not set - auto-coaching disabled")
+            logger.warning("no Anthropic API key (ANTHROPIC_API_KEY or "
+                           "API-Key-Claude.txt) - auto-coaching disabled")
         self._client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com") if (api_key and anthropic) else None
 
         db_path = Path(__file__).parent.parent / "data" / "decisions.db"

@@ -21,7 +21,6 @@ import asyncio
 import json
 import logging
 import math
-import os
 import re
 import ssl
 import threading
@@ -29,6 +28,7 @@ import time
 import urllib.request
 from pathlib import Path
 
+from core import anthropic_key as _anthropic_key
 from core.polled_json import atomic_write_text
 
 _log = logging.getLogger("rc.coaches.base")
@@ -47,35 +47,18 @@ _SLOW_TICK_MS = 150.0
 # SECTION 1 - Utility functions
 # ==============================================================================
 
-def read_api_key(app_dir: Path = _APP_DIR) -> str:
+def read_api_key(app_dir: Path | None = None) -> str:
     """Load the Anthropic API key - ENVIRONMENT first, key FILE as fallback.
 
-    Order flipped 2026-09-29 to match main.py:46. It used to read the file
-    first, which is a stale-wins trap: the env var is what a rotation
-    updates, so a leftover API-Key-Claude.txt holding a revoked key would
-    silently beat the live one and the rotation would LOOK successful while
-    every coach kept presenting the dead credential. Pinned by
-    tests/test_api_key_load_order.py.
-
-    "env first" means first VALID, not first PRESENT - a junk env value
-    still falls through to the file, so a mis-set variable degrades rather
-    than hard-failing. Never raises; "" means degrade to no coaching.
+    A thin re-export of ``core.anthropic_key.read_anthropic_key``, the ONE
+    lookup every RC key reader shares (ENV-APIKEY, s112). Env first means
+    first VALID (a stale key file must never beat a rotated env var, and a
+    junk env value must not shadow a good file); never raises; "" means
+    degrade to no coaching. ``app_dir`` None = the RC repo root. Pinned by
+    tests/test_api_key_load_order.py and
+    tests/test_api_key_single_lookup_env_apikey.py.
     """
-    env = os.environ.get("ANTHROPIC_API_KEY", "")
-    if env.strip().startswith("sk-ant-"):
-        return env.strip()
-    p = app_dir / "API-Key-Claude.txt"
-    if p.exists():
-        try:
-            k = p.read_text(encoding="utf-8").strip()
-            if k.startswith("sk-ant-"):
-                return k
-        # read_text is the only raising statement: OSError (perms / lock) or
-        # UnicodeDecodeError (non-UTF8 key file). str.strip / str.startswith
-        # cannot raise. Falls through to the env-var value either way.
-        except (OSError, UnicodeDecodeError):
-            pass
-    return env
+    return _anthropic_key.read_anthropic_key(app_dir)
 
 
 def load_json(path: Path) -> dict:

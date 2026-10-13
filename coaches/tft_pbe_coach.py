@@ -11,14 +11,13 @@ Architecture:
   TftOverlay          - 3 tkinter windows (reused)
 """
 
-import os
 import sys
 import logging
 import threading
 import time
 from pathlib import Path
 
-from coaches._base_coach import safe_write
+from coaches._base_coach import read_api_key, safe_write
 
 logger = logging.getLogger("rc.coaches.tft_pbe")
 
@@ -36,30 +35,15 @@ except Exception as _e:  # noqa: BLE001
     _HAS_TFT = False
 
 
-def _read_api_key(app_dir: Path) -> str:
-    """ENVIRONMENT first, API-Key-Claude.txt as fallback.
+def _read_api_key(app_dir: Path | None = None) -> str:
+    """ENVIRONMENT first, API-Key-Claude.txt as fallback - never raises.
 
-    Order flipped 2026-09-29 to match main.py:46 and
-    coaches/_base_coach.py read_api_key: a leftover key file holding a
-    revoked key must never beat the env var a rotation updates. Pinned by
-    tests/test_api_key_load_order.py.
-
-    The read is now guarded. It was bare, so a non-UTF8 key file raised
-    UnicodeDecodeError straight out of Coach.__init__ instead of degrading
-    to coach-off like every sibling reader.
+    ENV-APIKEY (s112): no longer a private copy; delegates to the ONE shared
+    lookup (core.anthropic_key via read_api_key). ``app_dir`` None = the RC
+    repo root. Pinned by tests/test_api_key_load_order.py and
+    tests/test_api_key_single_lookup_env_apikey.py.
     """
-    env = os.environ.get("ANTHROPIC_API_KEY", "")
-    if env.strip().startswith("sk-ant-"):
-        return env.strip()
-    p = app_dir / "API-Key-Claude.txt"
-    if p.exists():
-        try:
-            k = p.read_text(encoding="utf-8").strip()
-            if k.startswith("sk-ant-"):
-                return k
-        except (OSError, UnicodeDecodeError):
-            pass
-    return env
+    return read_api_key(app_dir)
 
 
 class Coach:
@@ -86,7 +70,7 @@ class Coach:
             logger.warning("TFT PBE subsystems unavailable - coach will not function")
             return
 
-        api_key = _read_api_key(_APP_DIR)
+        api_key = _read_api_key()
 
         self._reader = TftStateReader()
         self._engine = TftPbeCoachEngine(self._tft_data_file, debug=debug)
