@@ -8,25 +8,29 @@ sit beside the bundles in RC's sidecar Backup folder. Cite LEDGER entries, not p
 Every other clone must re-clone (OPERATOR ASKS 5); a fresh clone runs scripts/install_hooks.py and
 sets the LOCAL git config fleet.operatorIdent before any push.
 
-Next action: THE SESSION 110 PUSH IS HALTED - nothing after 762fcfdb1 is on origin (every session
-110 commit, incl. the RM-738 merges and this hand-off, is LOCAL only). The pre-push sibling sweep
-reports STRUCT_DRIVE_ROOT at tests/test_ds_client_liveness_rm738.py:290: the push range scans every
-commit's blobs, and unpushed commit 18e1c8892 (merged by 5408dcf2b) still carries a drive-rooted
-fake interpreter path; b50d3d44a fixed only the tip (the tip is clean: --scan-file exit 0). The
-halt boundary needs the OPERATOR (OPERATOR ASKS 0). On (a): run the push through the git lock with
-RC_SIBLING_SWEEP_BYPASS=1 set for that one command (the report lands in
-ops/runtime/sibling_sweep_bypass.log), read back origin/main = local HEAD, then watch the push ci
-run to the end. On (b): a range rewrite needs its own adjudicated plan (it orphans the merge hashes
-cited in LEDGER 1716/1717, BACKLOG and ROADMAP).
-Then: make the local gated suite green - RM-694 (switch the two walks in
+Next action: make the local gated suite green - RM-694 (switch the two walks in
 tests/test_operator_notify.py::test_zero_toast_copies_left and
 tests/test_mc_headless_control_plane.py::test_no_live_module_loads_a_deleted_web_mc_file to
 tests/_repo_walk per ADR-015; they walk the gitignored ops/runtime/responder_export copies) +
 RM-684 (negative-control canary first, then raise PINNED_CLI 2.1.285 -> the installed 2.1.296;
 NEVER run tests/test_subagent_prompt_flag.py in a fake-only pass); then RM-739; then RM-740 (a).
-FIRST at session start: git log @{u}.. (still unpushed?) and python ops/loop/inbox_tick.py --pending.
+FIRST at session start: git log @{u}.. (expect empty) and python ops/loop/inbox_tick.py --pending.
 
-Session 110 shipped - do NOT redo (LEDGER 1716 + 1717; all LOCAL until the push lands):
+C1 RESOLVED (the session 110 push, 2026-10-12): operator chat "allow as recommended" = OPERATOR
+ASKS 0 (a), RC_SIBLING_SWEEP_BYPASS=1 for that ONE push only, no history rewrite. Before it, the
+sweep ran over 762fcfdb1..a3d2ec158 (20 commits, 38 files) WITHOUT the bypass: exit 2, exactly ONE
+finding, STRUCT_DRIVE_ROOT at tests/test_ds_client_liveness_rm738.py:290, resolved locally with
+--explain 0 to the fake drive-rooted test interpreter literal added by 18e1c8892 (removed at the
+tip by b50d3d44a); no sibling name, path, host, account id or email. The one push ran through
+the git lock with the variable set for that single command: identity gate passed, sweep BYPASS
+engaged (report appended to ops/runtime/sibling_sweep_bypass.log), credential scan 0 credential +
+0 leak findings over 2718 added lines, 762fcfdb1..a3d2ec158 main -> main. READ BACK after git
+fetch: origin/main = a3d2ec158 = local HEAD. CI on a3d2ec158 read to the end: ci 38325194989
+success (check success, sibling-sweep-tree success, nightly-full-suite skipped), docs-guards
+38325194944 success, codeql 38325194934 success, pages build 38325193906 success. The bypass is
+NOT standing: every later push runs the sweep un-bypassed.
+
+Session 110 shipped - do NOT redo (LEDGER 1716 + 1717; pushed, origin/main a3d2ec158, see C1):
 - RM-738 on every thread-per-request server (merges 6ea05d68d :8888, 5408dcf2b :8860 + DsWatchdog,
   7f2f97519 :8890/:8895/:8861/replay); live re-probe 8d5252181 (all ports on new pids, SSE
   streamed, DS killed on purpose and respawned by DsWatchdog in 34 s, one listener).
@@ -63,18 +67,16 @@ Session 110 new open items:
 - RM-737 datum: system commit peak 40.26 GB of the 50.72 GB (48375 MiB) limit = 79.4 percent at
   11:34:15 at -n 8, ramp 19.7 -> 37.3 GiB in 5 min (inside session 109's 78-86 percent band);
   samples in the session 110 scratchpad s110_commit.csv. Slots=1 cost: gate queue wait 4301 s.
-- STALE progress file ops/loop/control/progress/s110-suite.json stuck at running 99% (last update
-  11:40): its result was collected (above); not live work; leave it for the RM-728 reaper.
+- STALE progress file ops/loop/control/progress/s110-suite.json (stuck at running 99%, last update
+  11:40; its result was collected above) was marked status done / pct 100 by the push executor
+  (read back 19:02); the RM-728 reaper is still needed for the ~170 others.
 - RM-686 / OPERATOR ASK 9 mostly overtaken by C4 (the launcher waits by design); the one-kill
   read-back is still not done.
 - Dependabot PRs open: #11 pip group (ci FAILED on da27e44f2, uninvestigated), #12 electron
   44.5.1 -> 44.7.0 (green), #13 github-actions group (green). PR #9 is no longer open.
 
-OPERATOR ASKS (batched, re-ask in ONE line; session 110's only operator answer was "yes" to the
-PostmortemAnalyze re-register):
-0. NEW, BLOCKING: the push. (a) RECOMMENDED: OK RC_SIBLING_SWEEP_BYPASS=1 for this one push - the
-   finding is a fictional test interpreter path in an intermediate commit, not a sibling name; or
-   (b) rewrite the unpushed range to drop it from 18e1c8892.
+OPERATOR ASKS (batched, re-ask in ONE line; session 110's operator answers: "yes" to the
+PostmortemAnalyze re-register, and "allow as recommended" to ask 0, the push - answered, see C1):
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error, 0 inactive, so nothing was pruned. Mark old
    ones inactive and delete them (irreversible), or leave them? Backup
@@ -303,20 +305,22 @@ ops/install_RC_PostmortemAnalyze.ps1; gitignored per-host ops/local_hosts.json a
 ops/lane_worktrees.json; ops/runtime/inbox_responder_agreement.json (expires 2026-11-01);
 ops/moon_sync_repos.json (no MAIN entry). DS :8860 ENGINE 1.287.0, patch 16.20.1.
 
-Acceptance: origin/main = local HEAD after the operator-chosen push, and the push ci run read to
-the end; the local gated suite at 0 failures after RM-694 + RM-684 (one gated run); RM-739 and
-RM-740 (a) each with a failing test first. Operator asks answered or re-batched.
+Acceptance: (met, C1) origin/main = local HEAD after the operator-chosen push, and the push ci
+run read to the end; the local gated suite at 0 failures after RM-694 + RM-684 (one gated run);
+RM-739 and RM-740 (a) each with a failing test first. Operator asks answered or re-batched.
 
-Status (2026-10-12 wrap, session 110): commits 762fcfdb1..HEAD (2f063c6d6 .. 714cbd62b + this
-wrap's docs commit) are LOCAL - the push was HALTED by the pre-push sibling sweep (above);
-origin/main read back 762fcfdb1. CI: none for session 110's code (not pushed); last pushed
-762fcfdb1 ci/codeql/pages success (C2), ci schedule 38284340577 success. Local gate this wrap:
-ruff all passed; hygiene 3 files + tests/test_ds_client_liveness_rm738.py 33 passed; drift_guard 0
-breaches; sweep --scan-file on the fixed test exit 0. Tier-2: the session's ONE gated suite (C7b,
+Status (2026-10-12 wrap, session 110): commits 762fcfdb1..a3d2ec158 (2f063c6d6 .. the wrap docs
+commit) PUSHED once with the operator-approved one-time sweep bypass (C1); origin/main read back
+a3d2ec158 = HEAD before this hand-off commit, which follows by a normal un-bypassed push. CI on
+a3d2ec158: ci 38325194989 / docs-guards 38325194944 / codeql 38325194934 / pages 38325193906 all
+success; earlier 762fcfdb1 ci/codeql/pages success (C2), ci schedule 38284340577 success.
+Local gate this wrap: ruff all passed; hygiene 3 files + tests/test_ds_client_liveness_rm738.py
+33 passed; drift_guard 0 breaches; sweep --scan-file on the fixed test exit 0. Tier-2: the session's ONE gated suite (C7b,
 above). RC health: pid 28492 alive, last_reload_ok true, fatal_count 0; mode_key client (not in
 game); vision :8889 200; dashboard /api/health/all 200; DS :8860 1.287.0 / 16.20.1 / 173 / 706.
 Session file 1.4 MB. WAKEUP_NOTES pruned to 3 (moved the session 107 block; archive 1065).
 Background work at wrap: none running (the fix-and-deliver agent finished: done 16:40; the stale
-s110-suite.json is not live). Inbox: pending empty.
+s110-suite.json is not live, now marked done; the push executor's CI watch ended). Inbox: pending
+empty.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
