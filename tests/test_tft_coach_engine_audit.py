@@ -34,7 +34,7 @@ from tft.tft_coach_engine import FIELD_MAP, TftCoachEngine, _parse_response
 
 def _engine(tmp: Path) -> TftCoachEngine:
     """Build an engine without touching the real key file or config."""
-    with patch.object(TftCoachEngine, "_read_key_file", return_value=""):
+    with patch("core.anthropic_key.read_anthropic_key", return_value=""):
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False):
             return TftCoachEngine(tmp / "tft_coaching_data.json")
 

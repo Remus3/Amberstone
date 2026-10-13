@@ -160,6 +160,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 ### Core utilities
 | File | Role |
 |---|---|
+| `core/anthropic_key.py` | the ONE Anthropic API key lookup (env, then repo-root key file) |
 | `core/anvil_shadow.py` | arena item-anvil shadow writer |
 | `core/aram_comp_verdict.py` | deterministic ARAM comp-balance verdict |
 | `core/aram_deterministic_coach.py` | deterministic ARAM coach block assembler (Stage 2) |
@@ -351,7 +352,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1514` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
-| 3 step 1.1 | - | `tft/tft_coach_engine.py:879` | write TFT coaching timestamp only after payload write succeeds |
+| 3 step 1.1 | - | `tft/tft_coach_engine.py:871` | write TFT coaching timestamp only after payload write succeeds |
 | 7 P2 | - | `tft/tft_live_analysis.py:394` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->

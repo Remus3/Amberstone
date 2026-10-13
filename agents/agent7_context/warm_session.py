@@ -25,11 +25,12 @@ cleared history.
 from __future__ import annotations
 
 import logging
-import os
 import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
+
+from core import anthropic_key
 
 logger = logging.getLogger("agent7.warm_session")
 
@@ -46,47 +47,23 @@ def _usable_key(k: str) -> bool:
     The SDK encodes headers as ASCII, so an internal newline or a
     non-ASCII character (a mis-saved key file) fails EVERY request. The
     client is cached on first use, so nothing re-reads the file and the
-    session never recovers. Reject it here and fall through to the
-    environment instead of caching a permanently broken client.
+    session never recovers. The rule now lives in the ONE shared lookup
+    (core.anthropic_key.usable_key), applied to BOTH sources there.
     """
-    return (
-        k.startswith("sk-ant-")
-        and k.isascii()
-        and not any(c.isspace() for c in k)
-    )
+    return anthropic_key.usable_key(k)
 
 
 def _load_api_key(app_dir: Path | None = None) -> str:
-    """Mirror coaches/_base_coach.py read_api_key so warm session finds
-    the same key the coaches use: ENVIRONMENT first, key FILE as fallback.
+    """The same key the coaches use: ENVIRONMENT first, key FILE fallback.
 
-    Order flipped 2026-09-29 alongside read_api_key - a leftover
-    API-Key-Claude.txt holding a revoked key must never beat the env var a
-    rotation actually updates. Pinned by tests/test_api_key_load_order.py.
-
-    `_usable_key` is applied to BOTH sources, not just the file. Validating
-    the env value is precisely what keeps the file reachable when the
-    variable is mis-set, and the SDK caches its client on first use, so a
-    header-hostile value taken from either source poisons the whole
-    session. `app_dir` exists so a test can point the file half somewhere
-    other than the real repo root; production callers pass nothing.
+    ENV-APIKEY (s112): no longer a private mirror of read_api_key - it
+    delegates to the ONE shared lookup (core.anthropic_key), which applies
+    the header-safety rule to both sources so a mis-set variable never
+    shadows a good file. `app_dir` None = the RC repo root. Pinned by
+    tests/test_api_key_load_order.py and
+    tests/test_api_key_single_lookup_env_apikey.py.
     """
-    env = os.environ.get("ANTHROPIC_API_KEY", "")
-    if _usable_key(env):
-        return env
-    if app_dir is None:
-        app_dir = Path(__file__).resolve().parent.parent.parent
-    p = app_dir / "API-Key-Claude.txt"
-    if p.exists():
-        try:
-            k = p.read_text(encoding="utf-8").strip()
-            if _usable_key(k):
-                return k
-            logger.warning("API-Key-Claude.txt is present but unusable "
-                           "(non-ASCII, whitespace, or wrong prefix)")
-        except (OSError, UnicodeDecodeError):
-            pass
-    return env
+    return anthropic_key.read_anthropic_key(app_dir)
 
 
 def _load_charter() -> str:
