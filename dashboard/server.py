@@ -74,8 +74,13 @@ class _GuardedThreadStartMixin:
     thread not started within ``thread_start_timeout_s``, loses its connection
     (closed + logged) and the loop accepts the next one. A one-shot claim lock
     decides who owns the socket, so a thread that boots late finds it taken
-    and returns without serving. (A thread that truly died leaves its small
-    entry in threading's limbo table; the stdlib has no public way to drop it.)
+    and returns without serving. The request travels in a job list that only
+    the claim holder empties: a thread that truly died in bootstrap stays in
+    threading's limbo table (the stdlib has no public way to drop it), but no
+    longer pins the dropped request socket (RM-740 (c), the part-3
+    ``abandon_if_unstarted`` shape). A start that RAISES is arbitrated the
+    same way: its ``_started.wait()`` can raise after the thread came up and
+    claimed the request, and that thread then keeps it (RM-740 (g)).
 
     Why not RM-735's pre-started pool: this server holds long-lived SSE
     streams (/api/state-stream and /api/events, up to 8 each, 600 s per
@@ -92,10 +97,17 @@ class _GuardedThreadStartMixin:
 
     def process_request(self, request, client_address) -> None:
         claim = threading.Lock()
+        # RM-740 (c): the thread's target reaches the request ONLY through
+        # this list, emptied by whoever takes the claim. Never name request
+        # or client_address inside the closure: a closure cell would pin the
+        # socket from a bootstrap-dead thread left in threading._limbo.
+        job = [request, client_address]
 
         def process_request_thread() -> None:
             if claim.acquire(blocking=False):
-                self.process_request_thread(request, client_address)
+                req, addr = job
+                job.clear()
+                self.process_request_thread(req, addr)
 
         started = _BoundedStartEvent(self.thread_start_timeout_s)
         t = threading.Thread(target=process_request_thread,
@@ -104,14 +116,31 @@ class _GuardedThreadStartMixin:
         try:
             t.start()
         except Exception as exc:  # noqa: BLE001 - e.g. "can't start new thread"
-            self._drop_unstarted(request, client_address, repr(exc))
+            # RM-740 (g): start() can raise from its final _started.wait()
+            # after the thread came up; that thread owns the request.
+            if self._abandon_unstarted(started, claim, job):
+                self._drop_unstarted(request, client_address, repr(exc))
             return
         # No server_close() join list to feed: ThreadingHTTPServer sets
         # daemon_threads, and the stdlib list skips daemon threads anyway.
-        if not started.is_set() and claim.acquire(blocking=False):
+        if self._abandon_unstarted(started, claim, job):
             self._drop_unstarted(
                 request, client_address,
                 f"not started within {self.thread_start_timeout_s:.1f}s")
+
+    @staticmethod
+    def _abandon_unstarted(started: threading.Event, claim: threading.Lock,
+                           job: list) -> bool:
+        """Take the request from a thread that never came up (RM-740 (c)/(g)).
+
+        False when the thread started (it claims and serves) or already holds
+        the claim. True when the accept loop now owns the request; the job
+        list is emptied so the abandoned Thread no longer references it.
+        """
+        if started.is_set() or not claim.acquire(blocking=False):
+            return False
+        job.clear()
+        return True
 
     def _drop_unstarted(self, request, client_address, why: str) -> None:
         self.start_failures += 1
