@@ -3334,8 +3334,11 @@ class _RcThreadingHTTPServer(ThreadingHTTPServer):
 
     def process_request(self, request, client_address) -> None:
         claim = threading.Lock()
-        t = threading.Thread(target=self._process_claimed,
-                             args=(claim, request, client_address))
+        # RM-740 (c): the thread reaches the request ONLY through this list,
+        # emptied by whoever takes the claim, so a bootstrap-dead thread left
+        # in threading._limbo no longer pins the dropped request socket.
+        job = [request, client_address]
+        t = threading.Thread(target=self._process_claimed, args=(claim, job))
         t.daemon = self.daemon_threads
         # ``_started`` is the Event ``Thread.start()`` waits on (CPython 3.12
         # and 3.14). If a future CPython drops it, the stdlib unbounded wait
@@ -3346,23 +3349,46 @@ class _RcThreadingHTTPServer(ThreadingHTTPServer):
         try:
             t.start()
         except Exception:  # noqa: BLE001 - "can't start new thread", MemoryError
-            self._drop_unstarted(request, client_address, "start raised",
-                                 exc_info=True)
+            # RM-740 (g): start() can raise from its final _started.wait()
+            # after the thread came up; that thread owns the request.
+            if self._abandon_unstarted(t, claim, job):
+                self._drop_unstarted(request, client_address, "start raised",
+                                     exc_info=True)
             return
         if not bounded or t._started.is_set():
             return
-        if not claim.acquire(blocking=False):
+        if not self._abandon_unstarted(t, claim, job):
             return  # it came up just after the bound and owns the request
         # Dead in bootstrap (or still not running after the bound). A thread
-        # that died there leaves its entry in threading._limbo; that is a
-        # stdlib leak of one Thread object per failure, left alone because a
-        # slow-but-alive thread still deletes its own entry later.
+        # that died there keeps its entry in threading._limbo (a stdlib leak
+        # of one Thread object per failure, left alone because a
+        # slow-but-alive thread still deletes its own entry later); with the
+        # job list emptied it no longer holds the request.
         self._drop_unstarted(request, client_address,
                              f"did not start within {self.thread_start_timeout_s}s")
 
-    def _process_claimed(self, claim, request, client_address) -> None:
+    @staticmethod
+    def _abandon_unstarted(t: threading.Thread, claim: threading.Lock,
+                           job: list) -> bool:
+        """Take the request from a thread that never came up (RM-740 (c)/(g)).
+
+        False when the thread started (it claims and serves) or already holds
+        the claim. True when the accept loop now owns the request; the job
+        list is emptied so the abandoned Thread no longer references it.
+        """
+        started = getattr(t, "_started", None)
+        if isinstance(started, threading.Event) and started.is_set():
+            return False
+        if not claim.acquire(blocking=False):
+            return False
+        job.clear()
+        return True
+
+    def _process_claimed(self, claim, job) -> None:
         if not claim.acquire(blocking=False):
             return  # the accept loop gave up on this start and closed the socket
+        request, client_address = job
+        job.clear()
         self.process_request_thread(request, client_address)
 
     def _drop_unstarted(self, request, client_address, why: str,
