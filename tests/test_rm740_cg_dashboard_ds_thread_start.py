@@ -119,6 +119,21 @@ def _get(host: str, port: int, timeout: float = 5.0) -> int:
         return resp.status
 
 
+def _settled_get(host: str, port: int, timeout: float = 5.0) -> int:
+    """``_get``, then wait for the request's handler thread to exit. The
+    client has the whole reply before that thread runs ``shutdown_request``,
+    so a seam armed right after a bare ``_get`` could still record the
+    control socket (seen once on Legion: two drops recorded, not one)."""
+    before = set(threading.enumerate())
+    status = _get(host, port, timeout)
+    deadline = time.monotonic() + timeout
+    while [t for t in threading.enumerate() if t not in before]:
+        assert time.monotonic() < deadline, (
+            "the control request's handler thread never exited")
+        time.sleep(0.01)
+    return status
+
+
 def _raw_request(host: str, port: int, timeout: float) -> bytes:
     """One request on a raw socket; every byte received before the server
     closed it. A reset counts as a close; a hang raises TimeoutError."""
@@ -151,7 +166,7 @@ def test_c_a_thread_dead_in_bootstrap_no_longer_pins_the_dropped_socket(served):
     """RM-740 (c): once the accept loop abandons a start, the thread object
     left in ``threading._limbo`` must not keep the request socket alive."""
     srv, host, port, _module, counter = served
-    assert _get(host, port) == 200, "control request before the fault"
+    assert _settled_get(host, port) == 200, "control request before the fault"
     dropped: list[weakref.ref] = []
     real_shutdown = srv.shutdown_request
 
