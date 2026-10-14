@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-10d - session 109: RM-737 measured + note delivered to MAIN; RM-735 atomic-write regression fixed
+
+- **RM-737 measured (LEDGER 1715, commits `f003f5a79`, `c643fb581`):** one RC gated `-n 8` dual suite peaks at 23.6-24.0 GB private commit (system 78-86 percent of the 48375 MB limit = 32 GB RAM + 16000 MB page file; idle 14.5-17.1 GB); two overlapping suites need ~63-65 GB (a second suite hit 88.2 percent in 11 s). 9 low-memory 2004 events 10-08/10-09, all at the limit.
+- **Note to MAIN DELIVERED** after the operator's chat OK (new note, not a reply): 1/1 reached, sha256 src = dest, OutboundCap 2/6 for 2026-10-10. Proposal: memory-aware admission in the kit suite gate (preferred), or one slot on this box. The kit owns the slot count; RC waits for MAIN's ruling.
+- **RM-735 regression fixed (`1ca647b04`):** `capture_stack` now writes through `core.polled_json.atomic_write_bytes`; the atomic-write guard is green again (verifier: 154/154 over the guard + 6 RM-735 files). The push impact slice never selected that guard (RM-734 datum). RC restarted, pid 16308 healthy.
+- **Do NOT redo:** the RM-737 measurement or the note (delivered); the capture_stack fix.
+- **Next:** RM-738 (per server, :8888 first; failing MemoryError-bootstrap test first); act on MAIN's RM-737 ruling when it lands; add a MAIN entry to the gitignored `ops/moon_sync_repos.json`.
+
+---
+
 # 2026-10-10c - session 108: RM-735 shipped (:8889 worker pool + liveness watchdog) after an unclean reboot
 
 - **Context:** the machine hung and rebooted uncleanly at 10:02 local (Kernel-Power 41) after machine-wide starvation from ~07:36 (RC restart storm, WMI / services timeouts). Operator: "had a system hang - continue what you were doing and process /done for clear after". The vision server was a victim (its 07:50 respawn took 51 min to bind), not the cause - RM-737 evidence. A stale 0-byte `.git/index.lock` from before the hang was removed by hand.
