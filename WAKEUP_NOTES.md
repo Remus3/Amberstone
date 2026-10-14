@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-14 - session 113: RM-740 (c) + (g) shipped in the dashboard and DS guarded thread starts
+
+- **Shipped (LEDGER 1720), CONFIRMED by independent verifiers:** `48db385fe` - `dashboard/server.py` and `agents/daemon_slayer/server.py` pass the request through a one-shot job list emptied by the claim holder, so (c) a bootstrap-dead thread in `threading._limbo` no longer pins the dropped socket, and (g) a raising `Thread.start()` is arbitrated by `_abandon_unstarted` before any close. `tests/test_rm740_cg_dashboard_ds_thread_start.py` 9 cases, red 6/9 on the parent, 9/9 green.
+- **Merge-fix `71319a5be` (test only):** the (c) test flaked 1/6 on main because the warm-up request's server-side close can land after the recorder is armed; `_settled_get` waits for those handler threads first (forced-delay repro 3/3 red before, 3/3 green after). Memory `feedback_socket_test_server_closes_after_reply`.
+- **Live:** RC restarted (pid 9460, later 1984 after a restart storm, see the hand-off); DS :8860 restarted, pid 28196, ENGINE 1.287.0 / 16.20.1. No ENGINE bump.
+- **Process:** a stale 0-byte `.git/index.lock` was cleared with the kit's `clear_index_lock`; the ff merge ran as plain `git merge --ff-only` (gitlock wraps only commit/push - datum for the KIT-16 (c) defect already with MAIN).
+- **/done gate:** `test_long_lived_requests_do_not_starve_a_short_one` (1.0 s bound) failed 2/4 pytest runs at 100 percent CPU; scratch A/B parent vs HEAD passed 5/5 each - timing flake, not this diff. Pushed `bdd36a3dc..71319a5be`.
+- **Do NOT redo:** RM-740 (c), RM-740 (g), the (c) test merge-fix, the DS restart.
+- **Next:** RM-740 (d) (measure thread-start latency during a gated `-n 8` suite before touching the caps), (e), (f); then RM-741, RM-742, RM-743.
+
+---
+
 # 2026-10-13 - session 112: RM-740 (b) shipped; MAIN ORDER ENV-APIKEY shipped (one env-then-key-file Anthropic key lookup); gated suite GREEN
 
 - **Shipped (LEDGER 1719), each CONFIRMED by an independent verifier:** RM-740 (b) (`6ec706291`: a raising `Thread.start()` in the four part-3 servers is arbitrated, counted, logged and dropped; `tests/test_misc_servers_thread_start_rm738.py` 16/16). ENV-APIKEY (merge `148d67c81`, fix `5f96dc50c`): `core/anthropic_key.py` for all 13 readers; `install.bat` writes the key file in place, no `setx`; rootdir `conftest.py` redirects the key root before collection.
@@ -26,16 +38,3 @@
 - **/done:** ROADMAP size pass (5 shipped rows to `docs/ROADMAP_HISTORY.md` `## 2026-10-12`, 88 percent); filed RM-741 (RM-515 import detector still a regex) and RM-742 (:8888 TLS handshake on the accept thread). Pushed `8ca950ebb..c44ea289f`.
 - **Do NOT redo:** RM-694, RM-684 (canary + pin), RM-739, RM-740 (a), the RM-515 AST exemption, the session 111 gated suite.
 - **Next:** RM-740 (b) (uncounted `t.start()` raise in the four part-3 servers), then (c); RM-741 / RM-742 are Tier-1 each.
-
----
-
-# 2026-10-12 - session 110: RM-738 shipped on every server; PostmortemAnalyze hidden; MAIN answered; push HALTED by the sibling sweep
-
-- **RM-738 shipped (LEDGER 1716; merges `6ea05d68d` / `5408dcf2b` / `7f2f97519`):** every thread-per-request server bounds its `Thread.start()` wait (2.0 s, DS 5.0 s); :8860 has a periodic `DsWatchdog` self-heal. Live re-probe (`8d5252181`): all ports up on new pids, DS killed on purpose and respawned in 34 s. Residuals RM-739 (mc TLS accept loop) and RM-740 (a)-(f).
-- **Also shipped (LEDGER 1717):** rc_facts treats RC-TeamClaudeProxy as long-lived (`2df156850`); RC-PostmortemAnalyze launches hidden via wscript, re-registered on the operator's chat "yes" and read back (`16326e2f1`); stop gate credits a staged `--no-commit` merge concluded by a commit (`e7693df7c`); agent6 audit report committed (F2-F4 low, carried); MAIN RULING 1324 recorded (slots=1 read back).
-- **Gated Tier-2 suite on `8d5252181`:** 6 failed / 39416 passed = 5 pre-existing (RM-694 x4, RM-684) + 1 own (a drive-rooted fake path in `tests/test_ds_client_liveness_rm738.py:290`), fixed at the tip in `b50d3d44a`. Peak commit 40.26 GB (79.4 percent) at `-n 8`.
-- **MAIN:** ONE ANSWER for 1230 / 1312 / 2226 delivered 1/1 (`6f8bf108c`); inbox pending empty; OutboundCap 1/6 on 2026-10-12.
-- **PUSH HALTED:** the pre-push sweep scans every commit in the range, and `18e1c8892` still carries the literal; nothing after `762fcfdb1` is on origin. Operator choice: `RC_SIBLING_SWEEP_BYPASS=1` for one push (recommended) or a range rewrite (orphans cited merge hashes).
-- **Lesson:** `--scan-file` on the tip does not clear a push; a literal fixed in a later commit still halts it. A sub-agent amended its own unpushed commit once (rail breach, recorded) - forbid `--amend` in every sub-agent prompt.
-- **Do NOT redo:** RM-738, the re-probe, the PostmortemAnalyze re-register, the MAIN answer, C9.
-- **Next:** the operator's push choice; then the local gated suite green (RM-694 to `tests/_repo_walk`, RM-684 canary then PINNED_CLI), then RM-739, then RM-740 (a).
