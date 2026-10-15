@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-14 - session 113: RM-740 (c) + (g) shipped in the dashboard and DS guarded thread starts
+
+- **Shipped (LEDGER 1720), CONFIRMED by independent verifiers:** `48db385fe` - `dashboard/server.py` and `agents/daemon_slayer/server.py` pass the request through a one-shot job list emptied by the claim holder, so (c) a bootstrap-dead thread in `threading._limbo` no longer pins the dropped socket, and (g) a raising `Thread.start()` is arbitrated by `_abandon_unstarted` before any close. `tests/test_rm740_cg_dashboard_ds_thread_start.py` 9 cases, red 6/9 on the parent, 9/9 green.
+- **Merge-fix `71319a5be` (test only):** the (c) test flaked 1/6 on main because the warm-up request's server-side close can land after the recorder is armed; `_settled_get` waits for those handler threads first (forced-delay repro 3/3 red before, 3/3 green after). Memory `feedback_socket_test_server_closes_after_reply`.
+- **Live:** RC restarted (pid 9460, later 1984 after a restart storm, see the hand-off); DS :8860 restarted, pid 28196, ENGINE 1.287.0 / 16.20.1. No ENGINE bump.
+- **Process:** a stale 0-byte `.git/index.lock` was cleared with the kit's `clear_index_lock`; the ff merge ran as plain `git merge --ff-only` (gitlock wraps only commit/push - datum for the KIT-16 (c) defect already with MAIN).
+- **/done gate:** `test_long_lived_requests_do_not_starve_a_short_one` (1.0 s bound) failed 2/4 pytest runs at 100 percent CPU; scratch A/B parent vs HEAD passed 5/5 each - timing flake, not this diff. Pushed `bdd36a3dc..71319a5be`.
+- **Do NOT redo:** RM-740 (c), RM-740 (g), the (c) test merge-fix, the DS restart.
+- **Next:** RM-740 (d) (measure thread-start latency during a gated `-n 8` suite before touching the caps), (e), (f); then RM-741, RM-742, RM-743.
+
+---
+
 # 2026-10-13 - session 112: RM-740 (b) shipped; MAIN ORDER ENV-APIKEY shipped (one env-then-key-file Anthropic key lookup); gated suite GREEN
 
 - **Shipped (LEDGER 1719), each CONFIRMED by an independent verifier:** RM-740 (b) (`6ec706291`: a raising `Thread.start()` in the four part-3 servers is arbitrated, counted, logged and dropped; `tests/test_misc_servers_thread_start_rm738.py` 16/16). ENV-APIKEY (merge `148d67c81`, fix `5f96dc50c`): `core/anthropic_key.py` for all 13 readers; `install.bat` writes the key file in place, no `setx`; rootdir `conftest.py` redirects the key root before collection.
