@@ -115,7 +115,7 @@ Session 113 open items (carry):
   "Amberstone starting" lines between 07:58 and 08:47 local (session 113 edits under dashboard/ +
   tests/ fall in that window); two heartbeat_error fatals (PermissionError WinError 5 on the
   health.json tmp -> replace, 08:47:33 / 08:47:34). At the session 115 wrap fatal_count is 0 (pid
-  18784).
+  2244).
 - Process datum: the session 113 fast-forward merge ran as a plain `git merge --ff-only` because
   `fleet_gitlock run` accepts only commit/push - datum for kit defect (c) below; already with MAIN
   as KIT-16.
@@ -457,8 +457,10 @@ file, watched for the session 114 stall shape). Operator asks answered or re-bat
 Status (2026-10-14 wrap, session 115): session work 687920398 (lane commit, fast-forwarded from
 lane/queue) pushed cdbecb390..687920398 main -> main through the git lock by the main session
 (pre-push identity, sibling sweep and credential scan passed; read back HEAD = origin/main =
-687920398). This wrap's docs + hand-off commit follows by a normal un-bypassed push from 687920398
-(read back origin/main = HEAD after it).
+687920398). This wrap's commits: 05db524b5 (docs + CI fix-forward + hand-off) pushed
+687920398..05db524b5 through the git lock (sibling sweep clean over 7 files / 1 commit message, 0
+credential + 0 leak findings; read back origin/main = 05db524b5), then a hand-off-only status fix
+(the RC pid moved) by the same un-bypassed push (read back origin/main = HEAD after it).
 CI on the session 114 wrap commit cdbecb390: GREEN - ci 38662273395, codeql 38662273369,
 docs-guards 38662273548, pages build 38662272941: all success.
 CI on 687920398: RED, read to the end - ci 38669090537 failure (push; check: push impact slice 2
@@ -473,7 +475,8 @@ roadmap/backlog disposition, drift_guard tests + hygiene) 114 passed + 227 subte
 drift_guard 0 breaches before and after the doc edits. One .py touched by this wrap (the CI
 fix-forward, tests/test_rm740e_ds_spawn_owner.py): ruff clean, py_compile OK, ASCII / LF, 3 DS
 client test files 44 passed / 1 skipped, exit 0; the main session's focused tests on the merge: 38
-passed, exit 0. No whole suite graded (Tier-1; the push CI covers it). RC health: pid 18784 alive, last_reload_ok true, fatal_count 0;
+passed, exit 0. No whole suite graded (Tier-1; the push CI covers it). RC health: pid 2244 alive, last_reload_ok true, fatal_count 0 (RM-699
+datum: the wrap's edit under tests/ restarted RC via hot_reload, 18784 -> 2244 at 02:12:11Z);
 restart_trigger.txt empty; /api/health/all 200; mode_key client (not in game); DS :8860 ok,
 1.287.0 / 16.20.1 / 173 / 706. Session file 1.0 MB. WAKEUP_NOTES pruned to 3 (moved session 112;
 archive 1070). Perseus sync exit 0, --verify active=2033 embedded=2033. Background work at wrap:
