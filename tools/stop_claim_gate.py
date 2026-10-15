@@ -1533,37 +1533,151 @@ def _merge_output_ok(stripped, output, errored):
 # (measured twice, session 110). A staged merge alone merges nothing, so it
 # credits only when a LATER result in the SAME sub-agent file is a `git commit`
 # with git's `[<branch> <sha>]` line (within one call, a commit line after the
-# staged line). A conflict / fatal / error line never stages; `merge --abort` /
-# `--quit` or any `git reset` (each drops MERGE_HEAD) un-stages. NOT credited,
-# deliberately strict: a conflicted merge later resolved and committed, and a
-# `merge --continue`. As in checks 6 and 10 the commit's repo is not placed.
+# staged line). A conflict / fatal / error line never stages; a command that
+# drops MERGE_HEAD un-stages (_merge_unstaged). NOT credited, deliberately
+# strict: a conflicted merge later resolved and committed, and a `merge
+# --continue`. As in checks 6 and 10 the commit's repo is not placed.
 _MERGE_STAGED = re.compile(r"Automatic merge went well; stopped before committing as requested")
 _EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
+# RM-740 (f): MERGE_HEAD droppers beyond `merge --abort` / `--quit` and `git
+# reset`. Measured 2026-10-15 (git 2.53.0, scratch repo, after a clean `merge
+# --no-ff --no-commit`): every BRANCH-mode `git checkout` drops it (with or
+# without -f / --force, same branch or another, --detach, -b / -B / --orphan),
+# and so does a `git stash` that saves the whole tree (bare, push or save, no
+# pathspec). A PATH-mode checkout, a pathspec stash, `stash list` / `create` /
+# `show` / `pop`, `git switch` (fatal while merging) and `git restore` keep it.
+# The command line cannot always tell the modes apart, so the gate reads one on
+# purpose: a single bare argument (a branch or a path) un-stages - strict, as is
+# any `git reset`; a `--` keeps - strip_command_noise blanks a quoted pathspec
+# after it, so `-- "<path>"` and a bare trailing `--` (branch mode, rare) read
+# the same. Table: tests/test_stop_claim_gate_subagent_evidence_rm687.py.
+# Within one call (see _staged_merge_step) a reset / abort keeps the pre-(f)
+# whole-call rule; a checkout / stash BEFORE the call's staging merge is
+# ignored, and one after it denies credit unless the call's only
+# commit-creating command sits between the merge and that drop.
+_EV_GIT_CHECKOUT = re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.I)
+_EV_GIT_STASH = re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.I)
+_EV_GIT_COMMIT_MAKER = re.compile(_GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.I)
+# A redirection ends the arguments: `>`, `2>`, `2>&1` and PowerShell's `*>`.
+_ARG_REDIRECT = re.compile(r"[\d*]?[<>]")
+_CHECKOUT_PATH_ONLY = frozenset({"--ours", "--theirs", "--patch", "--overlay", "--no-overlay",
+                                 "--pathspec-from-file", "--pathspec-file-nul"})
+_CHECKOUT_BRANCH_ONLY = frozenset({"--orphan", "--detach"})
+_STASH_PARTIAL = frozenset({"-p", "--patch", "--pathspec-from-file", "--pathspec-file-nul"})
 
 
-def _merge_unstaged(stripped):
+def _args(text):
+    """The whitespace tokens of TEXT up to the first redirection."""
+    tokens = []
+    for token in text.split():
+        if _ARG_REDIRECT.match(token):
+            break
+        tokens.append(token)
+    return tokens
+
+
+def _checkout_drops(args):
+    """True when `git checkout` ARGS select branch mode (drops MERGE_HEAD)."""
+    positional = []
+    for token in _args(args):
+        name = token.split("=", 1)[0]
+        if name in _CHECKOUT_BRANCH_ONLY:
+            return True
+        if token == "--" or name in _CHECKOUT_PATH_ONLY:
+            return False
+        if token.startswith("--"):
+            continue
+        if token.startswith("-") and len(token) > 1:
+            if "b" in token or "B" in token:  # -b / -B <new-branch>, bundles too
+                return True
+            if "p" in token:  # -p: patch mode, paths only
+                return False
+            continue
+        positional.append(token)
+    if len(positional) > 1:
+        return False  # <tree-ish> <pathspec>...
+    return not positional or not (positional[0] == "." or any(c in positional[0] for c in "*?["))
+
+
+def _stash_drops(args):
+    """True when `git stash` ARGS save the whole tree (drops MERGE_HEAD)."""
+    sub, value_next = None, False
+    for token in _args(args):
+        if value_next:
+            value_next = False
+            continue
+        if token == "--" or token.split("=", 1)[0] in _STASH_PARTIAL:
+            return False
+        if token.startswith("-"):
+            value_next = token in ("-m", "--message")
+            continue
+        if sub is None:
+            sub = token
+            if sub not in ("push", "save"):
+                return False
+        elif sub == "push":
+            return False  # a pathspec
+    return True
+
+
+def _merge_aborted(stripped):
     """True when STRIPPED runs a `git merge --abort` / `--quit` or a `git reset`."""
     return bool(_EV_GIT_RESET.search(stripped)) or any(
         _MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(stripped))
 
 
+def _merge_switched(stripped):
+    """Offsets in STRIPPED of each branch-mode `git checkout` and whole-tree
+    `git stash` (RM-740 (f)): both drop MERGE_HEAD."""
+    offsets = [m.start() for m in _EV_GIT_CHECKOUT.finditer(stripped)
+               if _checkout_drops(m.group(1))]
+    offsets += [m.start() for m in _EV_GIT_STASH.finditer(stripped) if _stash_drops(m.group(1))]
+    return sorted(offsets)
+
+
+def _merge_unstaged(stripped):
+    """True when STRIPPED runs any command that drops MERGE_HEAD."""
+    return _merge_aborted(stripped) or bool(_merge_switched(stripped))
+
+
 def _staged_merge_step(found, stripped, output):
     """Advance FOUND's staged-merge state by one result; a staged merge that a
-    later `git commit` concludes credits check 10 (see _MERGE_STAGED)."""
-    if _merge_unstaged(stripped):
+    later `git commit` concludes credits check 10 (see _MERGE_STAGED).
+
+    One call (RM-740 (f), round 2 after a verifier refute): a reset / abort
+    anywhere un-stages and denies credit, as before (f). A checkout / stash
+    BEFORE this call's staging merge is ignored (`git checkout main && git
+    merge --no-ff --no-commit x` is the common merger shape). One AFTER it (or
+    anywhere, when no merge stages here) denies credit unless the success line
+    is attributable: the call holds exactly ONE commit-creating command, after
+    the merge and before every such drop, and exactly one commit line follows
+    the staged line. So credit is only ever narrower than before (f)."""
+    if _merge_aborted(stripped):
         found["staged_merge"] = False
         return
     lines = _output_lines(output)
-    staged_at = -1
+    staged_at, merge_at = -1, -1
     if _did_merge(stripped) and not _MERGE_BAD.search(output):
         staged_at = next((i for i, line in enumerate(lines)
                           if line is not None and _MERGE_STAGED.match(line)), -1)
         if staged_at >= 0:
-            found["staged_merge"] = True
-    if not found["staged_merge"] or not EV_COMMIT.search(stripped):
-        return
-    if any(line is not None and _COMMIT_LINE.match(line) for line in lines[staged_at + 1:]):
+            merge_at = max((m.start() for m in _EV_GIT_MERGE.finditer(stripped)
+                            if not _MERGE_NO_OP.search(m.group(1))), default=-1)
+    if merge_at >= 0:
+        found["staged_merge"] = True
+    commit_lines = [line for line in lines[staged_at + 1:]
+                    if line is not None and _COMMIT_LINE.match(line)]
+    late = [at for at in _merge_switched(stripped) if at > merge_at]
+    if late:
+        makers = [m.start() for m in _EV_GIT_COMMIT_MAKER.finditer(stripped)]
+        if not (len(makers) == 1 and merge_at < makers[0] < min(late)
+                and len(commit_lines) == 1):
+            found["staged_merge"] = False
+            return
+    if found["staged_merge"] and EV_COMMIT.search(stripped) and commit_lines:
         found["merge"] = True
+        found["staged_merge"] = False
+    elif late:
         found["staged_merge"] = False
 
 
