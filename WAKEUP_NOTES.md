@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-14b - session 114: RM-740 (d) closed - thread-start caps measured under a gated -n 8 suite, all kept
+
+- **Shipped (LEDGER 1721), verifier CONFIRM 5/5:** `2d49453ba` - measured `Thread.start()` during a gated `-n 8` suite (430 s load, commit peak 75.4 percent): bare max 24.1 ms, guarded dashboard max 24.5 ms, GIL-busy max 156.5 ms, 0 drops. All six `thread_start_timeout_s` caps KEPT (2.0 s x5, DS 5.0 s), reason in a comment beside each; `tests/test_rm740d_thread_start_caps.py` (15).
+- **Operator:** "Continue", then "Headless - Operator Is Away" (acted autonomously, no asks).
+- **Run datum (RM-695 / RM-737):** the gated suite hung with no summary - tree-sweep self-test timed out at 300 s, its worker was killed, an orphaned `sibling_sweep_ci.py` child spun a core ~18 min, the xdist controller stalled at 99 percent; orphan + pytest tree killed by PID, gate slot released. Commit peak stayed below session 110's 79.4 percent, so a true commit-charge stall was not reproduced.
+- **Live:** RC restarted once (comment edit), pid 28300 alive; DS not restarted (comments only). A stale 8 h `.git/index.lock` was cleared via the kit.
+- **Filed:** verifier nit (the first failing assert under a cap mutation says "the seam did not fire") in the BACKLOG (d) row.
+- **Do NOT redo:** RM-740 (d) measurement and verdict.
+- **Next:** RM-740 (e) (DS process owner after a watchdog relaunch), (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743; the xdist-stall-after-timeout-kill open item.
+
+---
+
 # 2026-10-14 - session 113: RM-740 (c) + (g) shipped in the dashboard and DS guarded thread starts
 
 - **Shipped (LEDGER 1720), CONFIRMED by independent verifiers:** `48db385fe` - `dashboard/server.py` and `agents/daemon_slayer/server.py` pass the request through a one-shot job list emptied by the claim holder, so (c) a bootstrap-dead thread in `threading._limbo` no longer pins the dropped socket, and (g) a raising `Thread.start()` is arbitrated by `_abandon_unstarted` before any close. `tests/test_rm740_cg_dashboard_ds_thread_start.py` 9 cases, red 6/9 on the parent, 9/9 green.
@@ -27,14 +39,3 @@
 - **Filed:** RM-740 (g) (dashboard / DS start-raise closes without the claim lock); RM-743 (inbox tick never re-verifies a `main-unverified` MAIN note); ENV-APIKEY residuals (vision :8889 not restarted; MAIN removes the Machine variable).
 - **Do NOT redo:** RM-740 (b), ENV-APIKEY, the key file, the ANSWER note, the session 112 gated suite.
 - **Next:** RM-740 (c) + (g) (clear the thread target/args on abandon, and take the claim before closing, in the dashboard and DS servers); then (d)-(f), RM-741, RM-742, RM-743.
-
----
-
-# 2026-10-12b - session 111: local gated suite GREEN; RM-694, RM-684, RM-739, RM-740 (a) shipped; RM-515 guard on the AST
-
-- **Shipped (LEDGER 1718), each CONFIRMED by an independent verifier:** RM-694 (`e2c1b07d9`, two guards walk `tests/_repo_walk`); RM-684 (`e5284e5b3`, canary on CLI 2.1.296 then `PINNED_CLI` 2.1.296; the responder's 2.1.251 pin is separate and unchanged); RM-739 (`e0a606175`, :8895 handshake on the request thread, 5.0 s; live JSON 404 in 0.041 s beside a silent client); RM-740 (a) (`268df410d`, DsWatchdog boot deadline 600 s, kill + respawn).
-- **Guard interaction:** the merged suite run 1 went red on the RM-515 guard because the new RM-739 test importorskips `cryptography`. A text-regex exemption (`8d2496a58`) was REFUTED by a verifier; the AST rule (`c44ea289f`) was CONFIRMED over 45 adversarial fixtures.
-- **Gate:** ONE gated dual suite on `8d2496a58`: 39434 passed, 104 skipped, 0 failed, EXIT=0, 1104.93 s. C1 (local suite green) is DONE.
-- **/done:** ROADMAP size pass (5 shipped rows to `docs/ROADMAP_HISTORY.md` `## 2026-10-12`, 88 percent); filed RM-741 (RM-515 import detector still a regex) and RM-742 (:8888 TLS handshake on the accept thread). Pushed `8ca950ebb..c44ea289f`.
-- **Do NOT redo:** RM-694, RM-684 (canary + pin), RM-739, RM-740 (a), the RM-515 AST exemption, the session 111 gated suite.
-- **Next:** RM-740 (b) (uncounted `t.start()` raise in the four part-3 servers), then (c); RM-741 / RM-742 are Tier-1 each.
