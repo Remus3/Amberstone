@@ -1162,21 +1162,45 @@ MERGE_HEAD_MEASURED = [
     ("git reset --hard", True), ("git reset", True), ("git reset HEAD", True),
     ("git reset --merge", True), ("git reset -q", True), ("git reset --mixed", True),
     ("git merge --abort", True), ("git merge --quit", True),
+    # RM-740 (f) known gaps, measured 2026-10-15 (s117), same git and method.
+    # Gap 1: a bare TRAILING `--` ends the revisions, so it is branch mode and
+    # drops MERGE_HEAD; only a pathspec AFTER `--` selects path mode.
+    ("git checkout main --", True), ("git checkout -f --", True),
+    ("git checkout HEAD --", True), ("git checkout --", True), ("git checkout feat --", True),
+    ("git checkout main -- 2>&1", True),
+    ('git checkout main -- "a.txt"', False), ("git checkout -- 'b.txt'", False),
+    ("git stash push --", True), ("git stash --", True),
+    ('git stash push -- "b.txt"', False),
+    # Gap 3: `--soft` / `--keep` die while a merge is staged ("Cannot do a soft
+    # reset in the middle of a merge"), and a pathspec reset keeps MERGE_HEAD
+    # (the later commit has two parents) and never moves HEAD. A reset with
+    # `--` and no pathspec, `-N` and an empty --pathspec-from-file are whole
+    # resets and drop it.
+    ("git reset --soft", False), ("git reset --soft HEAD", False), ("git reset --soft @", False),
+    ("git reset --keep", False), ("git reset --keep HEAD", False),
+    ("git reset --soft -q", False), ("git reset -q --keep", False),
+    ("git reset -- b.txt", False), ("git reset HEAD b.txt", False),
+    ("git reset HEAD -- b.txt", False), ("git reset -q -- b.txt", False),
+    ("git reset --mixed -- b.txt", False), ("git reset -- .", False),
+    ('git reset -q -- "b.txt"', False),
+    ("git reset --hard -- b.txt", False), ("git reset --soft -- b.txt", False),
+    ("git reset --keep -- b.txt", False),
+    ("git reset --", True), ("git reset HEAD --", True), ("git reset -N", True),
+    ("git reset --pathspec-from-file=/dev/null", True), ("git reset -- 2>&1", True),
 ]
 
 # Where the command line alone cannot tell git's two modes apart, the gate reads
 # one of them on purpose. STRICT (gate un-stages, git kept MERGE_HEAD): a single
-# bare argument may be a branch or a path, and any `git reset` (pre-existing,
-# unchanged here). LENIENT (gate keeps, git dropped): a bare `--`, because
-# strip_command_noise blanks a quoted pathspec after it, so `-- "<path>"` and a
-# trailing `--` read the same; `--pathspec-from-file` (empty only when it names
-# the null device, as measured).
+# bare argument may be a branch or a path; `git reset --soft` / `--keep` to any
+# commit but HEAD dies while the merge is staged but, run after the concluding
+# commit, moves HEAD off the merge commit (test iii-reset-soft below); `reset
+# -p` without a pathspec. LENIENT (gate keeps, git dropped):
+# `--pathspec-from-file` on checkout (empty only when it names the null
+# device, as measured).
 MERGE_HEAD_READ_ON_PURPOSE = [
-    ("git checkout -f a.txt", True), ("git reset -- a.txt", True),
-    ("git reset HEAD a.txt", True), ("git reset --soft HEAD", True),
-    ("git reset --keep", True),
-    ("git checkout main --", False), ("git checkout -f --", False),
-    ("git stash push --", False), ("git stash --", False),
+    ("git checkout -f a.txt", True), ("git reset b.txt", True),
+    ("git reset --soft HEAD~1", True), ("git reset --keep feat", True),
+    ("git reset -p", True),
     ("git checkout --pathspec-from-file=nul", False),
 ]
 
@@ -1324,6 +1348,149 @@ def test_a_drop_after_a_failed_commit_still_unstages(tmp_path):
                         _pair("a1b2c3", "toolu_01cf", LOCKED_COMMIT_CMD + " ; git checkout -f",
                               "precommit_gate: BLOCKED - banned glyph in tools/x.py",
                               is_error=True),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# RM-740 (f) known gap 1 (s117): a bare trailing `--` is branch mode (measured:
+# drops MERGE_HEAD). The gate read it as path mode because strip_command_noise
+# blanks a quoted pathspec after `--`; the staged-merge step now reads a quoted
+# literal as an argument, so `-- "<path>"` still keeps (path mode).
+@pytest.mark.parametrize("undo, output", [
+    ("git checkout main --", "M\ttools/x.py\nAlready on 'main'"),
+    ("git checkout -f --", ""),
+    ('git checkout "main" --', "M\ttools/x.py\nAlready on 'main'"),
+    ("git stash push --", "Saved working directory and index state WIP on main: 0ecbe46 x"),
+    ("git stash --", "Saved working directory and index state WIP on main: 0ecbe46 x"),
+], ids=["checkout-main", "checkout-f", "checkout-quoted-main", "stash-push", "stash"])
+def test_bare_trailing_double_dash_is_branch_mode_and_unstages(tmp_path, undo, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, output),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("sep", [" ; ", ";", " && ", " || ", " | ", "\n", " & "],
+                         ids=["semi", "semi-tight", "and", "or", "pipe", "newline", "amp"])
+@pytest.mark.parametrize("command, drops", [
+    ("git checkout main --", True), ("git stash push --", True), ("git reset --", True),
+    ("git reset HEAD --", True), ("git checkout main -- a.txt", False),
+    ("git stash push -- a.txt", False), ("git reset -- a.txt", False),
+    ("git reset --soft", False), ("git reset --keep HEAD", False),
+])
+def test_double_dash_and_reset_reading_ends_at_every_separator(command, drops, sep):
+    # Sibling sweep (s117): the argument scan stops at each statement break,
+    # so the next statement can neither supply nor hide a pathspec.
+    assert bool(gate._merge_unstaged(command + sep + "git status -s")) is drops
+
+
+def test_bare_trailing_double_dash_in_the_staging_call_unstages(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " && git checkout main -- && " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\nAlready on 'main'\n" + UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("keep", [
+    'git checkout HEAD -- "tools/x.py"', "git checkout -- 'tools/x.py'",
+    'git stash push -- "tools/x.py"', 'git reset -q -- "tools/x.py"',
+])
+def test_quoted_pathspec_after_double_dash_keeps_the_staged_merge(tmp_path, keep):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+# RM-740 (f) known gap 2 (s117): the drop-before-merge exemption read the LAST
+# merge in the call as the stager. A later merge that staged nothing - skipped
+# by `||` or a failed `&&`, or already up to date (measured: `git checkout main;
+# git merge --no-ff --no-commit <merged>` leaves MERGE_HEAD dropped and the
+# next commit has ONE parent) - made a drop after the real staging merge read
+# as before it.
+LATER_MERGE_STAGED_NOTHING = [
+    (STAGE_CMD + " ; git checkout main || git merge --no-ff --no-commit other ; "
+     + LOCKED_COMMIT_CMD, STAGE_OUT + "\nAlready on 'main'\n" + UNRELATED_COMMIT_OUT),
+    (STAGE_CMD + " ; git stash || git merge --no-ff --no-commit other ; " + LOCKED_COMMIT_CMD,
+     STAGE_OUT + "\nSaved working directory and index state WIP on main: 0ecbe46 x\n"
+     + UNRELATED_COMMIT_OUT),
+    (STAGE_CMD + " ; git checkout main ; false && git merge --no-ff --no-commit other ; "
+     + LOCKED_COMMIT_CMD, STAGE_OUT + "\nAlready on 'main'\n" + UNRELATED_COMMIT_OUT),
+    (STAGE_CMD + " ; git checkout main ; git merge --no-ff --no-commit old ; "
+     + LOCKED_COMMIT_CMD, STAGE_OUT + "\nAlready on 'main'\nAlready up to date.\n"
+     + UNRELATED_COMMIT_OUT),
+]
+LATER_MERGE_IDS = ["or-skipped-checkout", "or-skipped-stash", "and-skipped", "up-to-date"]
+
+
+@pytest.mark.parametrize("command, output", LATER_MERGE_STAGED_NOTHING[:3],
+                         ids=LATER_MERGE_IDS[:3])
+def test_a_drop_before_a_later_merge_that_staged_nothing_still_unstages(
+        tmp_path, command, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mc", REPO_CD + command, output))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# The staged-merge step alone, so the up-to-date shape is pinned too: end to
+# end, check 10 credits an "Already up to date." line on its own, by design
+# (test_existing_merge_success_forms_still_back_a_merge_claim).
+@pytest.mark.parametrize("command, output", LATER_MERGE_STAGED_NOTHING, ids=LATER_MERGE_IDS)
+def test_staged_merge_step_reads_the_first_merge_when_one_staged_nothing(command, output):
+    found = gate._new_subagent_evidence()
+    gate._staged_merge_step(found, gate.strip_command_noise(command, gate._LITERAL_SLOT), output)
+    assert found["merge"] is False and found["staged_merge"] is False
+
+
+def test_a_drop_between_two_merges_that_both_staged_keeps_the_later_stage(tmp_path):
+    # Measured: `git stash; git merge --no-ff --no-commit <branch>` re-stages
+    # (MERGE_HEAD back, the next commit has two parents), so a drop before the
+    # LAST merge is still before the merge when every merge printed its line.
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc",
+        REPO_CD + STAGE_CMD + " ; git stash ; " + STAGE_CMD + " ; " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\nSaved working directory and index state WIP on main: 0ecbe46 x\n"
+        + STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+# RM-740 (f) known gap 3 (s117): every `git reset` form denied credit. The
+# forms measured to keep MERGE_HEAD and never move HEAD now keep the staged
+# merge; every other form still un-stages it anywhere in the call.
+@pytest.mark.parametrize("keep, output, is_error", [
+    ("git reset --soft", "fatal: Cannot do a soft reset in the middle of a merge.", True),
+    ("git reset --keep HEAD", "fatal: Cannot do a keep reset in the middle of a merge.", True),
+    ("git reset -q -- tools/x.py", "", None),
+    ("git reset HEAD tools/x.py", "Unstaged changes after reset:\nM\ttools/x.py", None),
+    ('git reset HEAD -- "tools/x.py"', "Unstaged changes after reset:\nM\ttools/x.py", None),
+], ids=["soft", "keep-head", "q-dashdash-path", "head-path", "head-dashdash-quoted"])
+def test_reset_forms_that_keep_merge_head_keep_the_staged_merge(tmp_path, keep, output, is_error):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, output, is_error=is_error),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+def test_a_pathspec_reset_in_the_staging_call_keeps_the_staged_merge(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc",
+        STAGE_CMD + " && git reset -q -- tools/x.py && " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+@pytest.mark.parametrize("undo", [
+    "git reset --", "git reset HEAD --", "git reset tools/x.py", "git reset -N",
+    "git reset --soft HEAD~1", "git reset --keep origin/main", "git reset --hard",
+    'git reset "HEAD"', "git reset --pathspec-from-file=nul",
+])
+def test_reset_forms_that_drop_merge_head_or_move_head_still_unstage(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
                         _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
     assert "merge_claim_without_merge" in _checks(report)
 
