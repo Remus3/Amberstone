@@ -1,5 +1,21 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-15 - size-budget relocation (session 117 merger), 3 rows
+
+`ROADMAP.md` sat 21 bytes under the 90 percent warning line of its 81920-byte
+budget (73707 bytes at 7e9b82a3a), so the RM-741 / RM-742 / RM-743
+dispositions and the RM-744 / RM-745 filings needed a relocate trim first. The
+three rows below were already SHIPPED in the 2026-10-04 Wave1 drain, each
+closed by its own LEDGER entry (RM-321 = LEDGER 1509, main `b9c046ae2`;
+RM-191 = LEDGER 1550, main `ba52e9ae6`, whose live handle-holder probe stays
+LIVE-GATED; RM-149 = LEDGER 1551, main `e2aa9332c`); they move here VERBATIM
+as they stood at 7e9b82a3a, in their ROADMAP order. `ROADMAP.md` keeps one
+combined one-line stub naming every id literally.
+
+- **RM-321 PARTIAL - 1 of 5 closed, 4 REMAIN OPEN (filed 2026-08-30; LANE 8, Tier-1)** - overriding `log_message` silently drops the stdlib's control-character escaping, and all five remaining overrides in the tree did. **`agents/_supervisor_http.py` was CLOSED 2026-08-30 - its closure narrative, its peer-half finding and the `dashboard/_handler.py` cycle-13 fix are archived VERBATIM in the `## 2026-10-02` block.** **STILL OPEN, and one of them is the other remotely-reachable INFO logger:** `mc/handler.py` (`:8895` on the tailnet address - do NOT make `mc/` import from `dashboard/`; lift the helper instead), plus the three loopback-or-debug-only ones, `agents/daemon_slayer/server.py` (also owes a `Share/` mirror resync, so it lands Tier-2), `tools/ds_matchdb_mcp_server.py` and `vision_server/_http.py`. Log-integrity severity, backfill measured empty. Body in `BACKLOG.md`. Next free id = RM-232. [2026-10-04 Wave1: RM-321 shipped - LEDGER 1480-1559]
+- **RM-191 OPEN (filed 2026-08-12, LEDGER 1242 residual) - `write_fatal` is a WRITE-ONLY channel with ZERO readers, which is why a 3-day outage was found by hand instead of by a monitor. OPERATOR-GATED: the fix touches the FROZEN `ops/rc_dev_runtime.py`.** Full body + the measured grep, the three compounding defects and the 2026-08-09 evidence relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-09-10b block) - READ IT before acting. Fences it carries: the LEDGER 1242 rename retry explicitly does **NOT** close this; **do NOT scope it as "add a log line"** (the useful shape is a counter plus last-N ring reaching BOTH `logs/` and the health payload); and one probe is still owed on WHAT held the handle on `health.json` at the swap, because the retry masks that permanently. [2026-10-04 Wave1: RM-191 shipped - LEDGER 1480-1559]
+- **RM-149 OPEN (filed 2026-08-02, lane 7 / LEDGER 1174) - two operator rulings on out-of-repo cleanup, both blocking any future lane-7 pass over `%USERPROFILE%` paths.** Full body + fences relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (2026-08-06 run-02 block) - READ IT before acting on this row; it carries the measurements and the do-not-do list. [2026-10-04 Wave1: RM-149 shipped - LEDGER 1480-1559]
+
 ## 2026-10-12 - size-budget relocation (session 111 /done), 5 rows
 
 `ROADMAP.md` sat at 90 percent of its 81920-byte budget (74026 bytes at
