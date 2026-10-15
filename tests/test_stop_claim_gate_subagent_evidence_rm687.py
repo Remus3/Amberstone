@@ -28,6 +28,7 @@ must all still flag.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1294,9 +1295,25 @@ MERGE_HEAD_READ_ON_PURPOSE = [
 ]
 
 
+# DECISION (orchestrator, s117, after the round-5 verifier refute of
+# 6ca81b47c): `git reset` is deny-all again, as before (f) - every form
+# un-stages, including the forms git measurably keeps MERGE_HEAD in (`--soft`,
+# `--keep HEAD`, `-- a.txt`, `HEAD a.txt`). The tables above still record what
+# git measurably DOES; the gate reads every reset as a drop on top of that.
+# Alternatives: the exact grammars G1-G3 (five verification rounds, each
+# leaked). Why: shell grammar is open-ended, and a false credit outranks a
+# false flag. Reverses if: the gate gains a real shell parser (e.g. bashlex)
+# with measured coverage, or an operator ruling.
+RESET_CALL = re.compile(r"(?<![\w.-])git(?:\.exe)?\s+reset(?![\w.-])", re.I)
+
+
+def _gate_reads_drop(command, drops):
+    return drops or bool(RESET_CALL.search(command))
+
+
 @pytest.mark.parametrize("command, drops", MERGE_HEAD_MEASURED + MERGE_HEAD_READ_ON_PURPOSE)
 def test_merge_unstaged_matches_the_measured_merge_head_table(command, drops):
-    assert bool(gate._merge_unstaged(command)) is drops, command
+    assert bool(gate._merge_unstaged(command)) is _gate_reads_drop(command, drops), command
 
 
 @pytest.mark.parametrize("command, drops", MERGE_HEAD_MEASURED + MERGE_HEAD_READ_ON_PURPOSE)
@@ -1304,7 +1321,7 @@ def test_the_staged_merge_step_reads_the_table_the_same(command, drops):
     # The step reads the command with each quoted literal as a word
     # (_step_command), not the raw text the table test above passes.
     slotted = gate._step_command(command)
-    assert bool(gate._merge_unstaged(slotted)) is drops, slotted
+    assert bool(gate._merge_unstaged(slotted)) is _gate_reads_drop(command, drops), slotted
 
 
 def test_staged_merge_then_checkout_force_then_an_unrelated_commit_flags(tmp_path):
@@ -1473,12 +1490,13 @@ def test_bare_trailing_double_dash_is_branch_mode_and_unstages(tmp_path, undo, o
 @pytest.mark.parametrize("command, drops", [
     ("git checkout main --", True), ("git stash push --", True), ("git reset --", True),
     ("git reset HEAD --", True), ("git checkout main -- a.txt", False),
-    ("git stash push -- a.txt", False), ("git reset -- a.txt", False),
-    ("git reset --soft", False), ("git reset --keep HEAD", False),
+    ("git stash push -- a.txt", False), ("git reset -- a.txt", True),
+    ("git reset --soft", True), ("git reset --keep HEAD", True),
 ])
 def test_double_dash_and_reset_reading_ends_at_every_separator(command, drops, sep):
     # Sibling sweep (s117): the argument scan stops at each statement break,
-    # so the next statement can neither supply nor hide a pathspec.
+    # so the next statement can neither supply nor hide a pathspec. Every
+    # reset is a drop (deny-all decision above).
     assert bool(gate._merge_unstaged(command + sep + "git status -s")) is drops
 
 
@@ -1491,8 +1509,7 @@ def test_bare_trailing_double_dash_in_the_staging_call_unstages(tmp_path):
 
 @pytest.mark.parametrize("keep", [
     'git checkout HEAD -- "tools/x.py"', "git checkout -- 'tools/x.py'",
-    'git stash push -- "tools/x.py"', 'git reset -q -- "tools/x.py"',
-    'git stash push -m "park" -- "tools/x.py"', "git reset -- 'tools/x.py'",
+    'git stash push -- "tools/x.py"', 'git stash push -m "park" -- "tools/x.py"',
 ])
 def test_quoted_pathspec_after_double_dash_keeps_the_staged_merge(tmp_path, keep):
     report = _gate_rows(tmp_path, _main_rows("Merged to main."),
@@ -1554,30 +1571,62 @@ def test_a_drop_between_two_merges_that_both_staged_keeps_the_later_stage(tmp_pa
     assert "merge_claim_without_merge" not in _checks(report), report["findings"]
 
 
-# RM-740 (f) known gap 3 (s117): every `git reset` form denied credit. The
-# forms measured to keep MERGE_HEAD and never move HEAD now keep the staged
-# merge; every other form still un-stages it anywhere in the call.
+# RM-740 (f) known gap 3 (s117): every `git reset` form denies credit. Five
+# rounds narrowed it to the forms measured to keep MERGE_HEAD; each round
+# leaked, so it is deny-all again (decision record above): even the forms git
+# keeps MERGE_HEAD in still un-stage the merge.
 @pytest.mark.parametrize("keep, output, is_error", [
     ("git reset --soft", "fatal: Cannot do a soft reset in the middle of a merge.", True),
     ("git reset --keep HEAD", "fatal: Cannot do a keep reset in the middle of a merge.", True),
     ("git reset -q -- tools/x.py", "", None),
     ("git reset HEAD tools/x.py", "Unstaged changes after reset:\nM\ttools/x.py", None),
     ('git reset HEAD -- "tools/x.py"', "Unstaged changes after reset:\nM\ttools/x.py", None),
-], ids=["soft", "keep-head", "q-dashdash-path", "head-path", "head-dashdash-quoted"])
-def test_reset_forms_that_keep_merge_head_keep_the_staged_merge(tmp_path, keep, output, is_error):
+    ("git reset --soft @", "", None), ("git reset -q --soft HEAD", "", None),
+    ("git reset --keep --quiet @", "", None), ("git reset tools/x.py tools/y.py", "", None),
+    ("git reset -- 'tools/x.py'", "", None), ("git reset -- tools/x.py & git status -s", "", None),
+], ids=["soft", "keep-head", "q-dashdash-path", "head-path", "head-dashdash-quoted",
+        "soft-at", "q-soft-head", "keep-quiet-at", "two-paths", "dashdash-single-quoted",
+        "dashdash-background"])
+def test_every_reset_form_still_unstages_the_merge(tmp_path, keep, output, is_error):
     report = _gate_rows(tmp_path, _main_rows("Merged to main."),
                         _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
                         _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, output, is_error=is_error),
-                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
-    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
 
 
-def test_a_pathspec_reset_in_the_staging_call_keeps_the_staged_merge(tmp_path):
+def test_a_pathspec_reset_in_the_staging_call_still_unstages(tmp_path):
     report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
         "a1b2c3", "toolu_01mc",
         STAGE_CMD + " && git reset -q -- tools/x.py && " + LOCKED_COMMIT_CMD,
         STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
-    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round 6: credit is never wider than the pre-(f) reading (quoted literals
+# blanked). There `--git-dir="x"` breaks the merge match, so the slotted text
+# alone must not stage a merge the pre-(f) gate never saw.
+def test_a_merge_only_the_slotted_text_sees_does_not_stage(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg",
+                              REPO_CD + 'git --git-dir="x" merge --no-ff --no-commit lane',
+                              STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round-5 refute: a reset the slotted text cannot see must still deny, as in
+# the pre-(f) reading (a quoted literal glued to `git` or to an option).
+@pytest.mark.parametrize("undo", [
+    'git"" reset --hard', "git'' reset --hard", 'git --git-dir"=$D" reset --hard',
+    'git -C"$R" reset --hard', 'git"" merge --abort',
+])
+def test_a_reset_hidden_from_the_slotted_text_still_unstages(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
 
 
 @pytest.mark.parametrize("undo", [
@@ -1678,18 +1727,11 @@ def test_a_word_outside_the_allowlist_never_keeps_the_staged_merge(word):
 
 
 @pytest.mark.parametrize("keep", [
-    "git reset -- tools/x.py", "git reset HEAD tools/x.py", "git checkout main -- tools/x.py",
-    "git stash push -- tools/x.py", "git reset --soft HEAD", "git reset --soft @",
-    "git reset --keep HEAD", 'git reset -- "tools/x.py"', "git checkout main -- 'tools/x.py'",
-    # s117 final shape: the -q variants and quoted paths of G1-G3, and the
-    # exact checkout / stash keep forms.
-    "git reset -q -- tools/x.py", "git reset --quiet HEAD tools/x.py",
-    "git reset -q --soft HEAD", "git reset --keep --quiet @", "git reset --soft -q",
-    "git reset HEAD \"tools/x.py\"", "git reset -q HEAD -- 'tools/x.py'",
-    "git reset tools/x.py tools/y.py", "git checkout -q -- \"tools/x.py\"",
+    "git checkout main -- tools/x.py", "git stash push -- tools/x.py",
+    "git checkout main -- 'tools/x.py'", "git checkout -q -- \"tools/x.py\"",
     "git checkout -f HEAD -- tools/x.py", "git checkout --theirs tools/x.py",
     "git stash push -q -m park -- tools/x.py", "git stash -- tools/x.py",
-    "git stash list", "git reset -- tools/x.py & git status -s",
+    "git stash list", "git checkout main -- tools/x.py & git status -s",
 ])
 def test_the_allowlisted_keep_forms_stay_credited(tmp_path, keep):
     report = _gate_rows(tmp_path, _main_rows("Merged to main."),
@@ -1787,6 +1829,44 @@ def test_git_not_at_command_head_never_keeps_the_staged_merge(tmp_path, undo):
                         _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
                         _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
     assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round-5 refute of 6ca81b47c: a backslash-newline (bash) or backtick-newline
+# (PowerShell) CONTINUES the line, so the `git` after it is an argument of the
+# wrapper before it, not a command head. Measured (bash script files and
+# powershell.exe 5.1): each of these drops MERGE_HEAD.
+LINE_CONTINUATION_DROPS = [
+    'f(){ "$1" "$2" main; }; f \\\ngit checkout -- tools/x.py',
+    'f(){ "$1" "$2"; }; f \\\ngit stash push -- tools/x.py',
+    "echo -b x | xargs \\\ngit checkout main",
+    "function f { & $args[0] $args[1] main }; f `\ngit checkout -- tools/x.py",
+    "function f { & $args[0] $args[1] }; f `\ngit stash push -- tools/x.py",
+    'f(){ "$1" "$2" main; }; f \\\r\ngit checkout -- tools/x.py',
+    "echo --hard | xargs \\\ngit reset --soft",
+    'f(){ "$@" --hard; }; f \\\ngit reset --soft',
+    "function f { & $args[0] $args[1] $args[2] --hard }; f `\ngit reset --soft",
+]
+
+
+@pytest.mark.parametrize("undo", LINE_CONTINUATION_DROPS)
+def test_git_after_a_line_continuation_is_not_a_command_head(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", LINE_CONTINUATION_DROPS)
+def test_a_line_continuation_reads_as_a_drop_in_raw_and_step_text(undo):
+    assert gate._merge_unstaged(undo) and gate._merge_unstaged(gate._step_command(undo))
+
+
+def test_a_plain_newline_still_starts_a_command():
+    # A newline WITHOUT a continuation character is a separator, as before.
+    command = "echo done\ngit checkout main -- tools/x.py"
+    assert not gate._merge_unstaged(command)
+    assert not gate._merge_unstaged(gate._step_command(command))
 
 
 @pytest.mark.parametrize("undo", [

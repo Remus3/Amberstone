@@ -1541,7 +1541,16 @@ def _merge_output_ok(stripped, output, errored):
 # strict: a conflicted merge later resolved and committed, and a `merge
 # --continue`. As in checks 6 and 10 the commit's repo is not placed.
 _MERGE_STAGED = re.compile(r"Automatic merge went well; stopped before committing as requested")
-_EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])([^|;&\n]*)", re.I)
+_EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
+# DECISION (orchestrator, s117, after the verifier refuted the fifth narrowing
+# 6ca81b47c): `git reset` is deny-all, as before (f): ANY reset in a call
+# un-stages a staged merge, including the forms git measurably keeps
+# MERGE_HEAD in (`--soft`, `--keep HEAD`, `-- <path>`, `HEAD <path>`).
+# Alternatives: exact grammars for those forms (five verification rounds,
+# each leaked: abbreviations, xargs, redirects, line continuations, vanishing
+# words). Why: shell grammar is open-ended, and a false credit outranks a
+# false flag. Reverses if: the gate gains a real shell parser (e.g. bashlex)
+# with measured coverage, or an operator ruling.
 # RM-740 (f): MERGE_HEAD droppers beyond `merge --abort` / `--quit` and `git
 # reset`. Measured 2026-10-15 (git 2.53.0, scratch repo, after a clean `merge
 # --no-ff --no-commit`): every BRANCH-mode `git checkout` drops it (with or
@@ -1555,13 +1564,9 @@ _EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])([^|;&\n]*)", re.I)
 # so it is branch mode and un-stages (s117 gap 1, measured: `git checkout main
 # --`, `git stash push --` drop MERGE_HEAD). The step reads the command with
 # each quoted literal as a word (_step_command), so `-- "<path>"` still shows
-# its pathspec. `git reset` (s117 gap 3, measured): `--soft` / `--keep` die
-# while a merge is staged ("Cannot do a soft reset in the middle of a merge"),
-# and a pathspec reset keeps MERGE_HEAD (the next commit has two parents) and
-# never moves HEAD; every other form un-stages (_reset_keeps). Table:
-# tests/test_stop_claim_gate_subagent_evidence_rm687.py.
-# Within one call (see _staged_merge_step) a dropping reset / abort keeps the
-# pre-(f) whole-call rule; a checkout / stash BEFORE the call's staging merge
+# its pathspec. Table: tests/test_stop_claim_gate_subagent_evidence_rm687.py.
+# Within one call (see _staged_merge_step) a reset / abort keeps the pre-(f)
+# whole-call rule; a checkout / stash BEFORE the call's staging merge
 # is ignored, and one after it denies credit unless the call's only
 # commit-creating command sits between the merge and that drop.
 _LITERAL_SLOT = "_quoted_"
@@ -1573,20 +1578,17 @@ _ARG_REDIRECT = re.compile(r"[\d*]?[<>]")
 # Shell word separators: a space or a tab only, so any other whitespace stays
 # inside a token and fails the allowlist.
 _ARG_SPLIT = re.compile(r"[ \t]+")
-_RESET_HEAD = frozenset({"HEAD", "@"})
-# Orchestrator ruling (s117, final shape), after the verifier refuted
-# 4766ed062: git takes any unique prefix of a long option and the LAST mode
-# wins (measured: `git reset --soft --ha` is --hard), so a reset / checkout /
-# stash keeps credit only in an EXACT grammar with EXACT option spellings
-# (_reset_keeps, _checkout_keeps, _stash_keeps) - no abbreviation, no other
-# option - and only as a plain simple command (_keep_shape).
+# Orchestrator ruling (s117), after the verifier refuted 4766ed062: git takes
+# any unique prefix of a long option (measured: `--orph` is --orphan), so a
+# checkout / stash keeps credit only in an EXACT grammar with EXACT option
+# spellings (_checkout_keeps, _stash_keeps) - no abbreviation, no other option
+# - and only as a plain simple command (_keep_shape).
 _QUIET = frozenset({"-q", "--quiet"})
-_RESET_KEEP_MODES = frozenset({"--soft", "--keep"})
 _CHECKOUT_KEEP_OPTIONS = frozenset({"-q", "--quiet", "-f", "--force", "--overlay",
                                     "--no-overlay"})
 _CHECKOUT_PATH_FLAGS = frozenset({"--ours", "--theirs"})
 _STASH_READ_ONLY = frozenset({"list", "show", "create"})
-_KEEP_LEAD = re.compile(r"(?i:git(?:\.exe)?)[ \t]+(reset|checkout|stash)\Z")
+_KEEP_LEAD = re.compile(r"(?i:git(?:\.exe)?)[ \t]+(checkout|stash)\Z")
 # A git that a shell runs from a quoted string or a heredoc is not on the
 # line at all (`bash -c 'git reset --hard'`): with a launcher word in the call
 # and `git` inside a quoted literal or heredoc body, _step_command appends an
@@ -1597,9 +1599,10 @@ _SHELL_LAUNCHER = re.compile(
     re.I)
 _HIDDEN_GIT = re.compile(r"(?<![\w.-])git(?:\.exe)?(?![\w.-])", re.I)
 _HIDDEN_MARK = "\ngit $hidden\n"
+_PRE_F_UNSTAGE_MARK = "\ngit reset\n"
 # A shell function or alias named git (bash `git() {..}`, `function git`,
 # `alias git=`, PowerShell Set-Alias / New-Alias / sal / nal) runs something
-# else for every later `git reset --soft`: the whole call un-stages.
+# else for every later `git checkout -- <path>`: the whole call un-stages.
 _GIT_SHADOW = re.compile(
     r"(?<![\w.-])(?:function[ \t]+git(?:\.exe)?(?![\w.-])|git(?:\.exe)?[ \t]*\([ \t]*\)"
     r"|alias[ \t]+git(?:\.exe)?=|(?:set-alias|new-alias|sal|nal)(?:[ \t]+-\w+)*[ \t]+git"
@@ -1638,11 +1641,20 @@ def _slot_literal(match):
 
 def _step_command(command):
     """COMMAND as the staged-merge step reads it: noise stripped, each quoted
-    literal kept as one word that says whether it is allowlisted, and an
-    unnamed git appended when a shell may run one hidden in a quoted string or
-    heredoc (_hidden_git)."""
+    literal kept as one word that says whether it is allowlisted, an unnamed
+    git appended when a shell may run one hidden in a quoted string or heredoc
+    (_hidden_git), and a reset appended when the pre-(f) reading (quoted
+    literals blanked) finds a reset or a merge --abort / --quit that the
+    slotted text hides (`git"" reset --hard`, `git --git-dir"=$d" reset`), so
+    that deny is never narrower than pre-(f)."""
     stepped = strip_command_noise(command, _slot_literal)
-    return stepped + _HIDDEN_MARK if _hidden_git(command, stepped) else stepped
+    if _hidden_git(command, stepped):
+        stepped += _HIDDEN_MARK
+    blank = strip_command_noise(command)
+    if _EV_GIT_RESET.search(blank) or any(
+            _MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(blank)):
+        stepped += _PRE_F_UNSTAGE_MARK
+    return stepped
 
 
 def _hidden_git(command, stepped):
@@ -1695,10 +1707,22 @@ def _args(text):
 
 def _at_command_head(text, start):
     """True when only a separator or the start of TEXT precedes offset START
-    (blanks aside): the word there heads a simple command."""
+    (blanks aside): the word there heads a simple command. A newline right
+    after a backslash (bash) or a backtick (PowerShell) only CONTINUES the
+    line (round-5 refute: `echo -b x | xargs \\<newline>git checkout main`
+    runs `git checkout main -b x`), so the scan reads on past it."""
     index = start - 1
-    while index >= 0 and text[index] in " \t":
-        index -= 1
+    while True:
+        while index >= 0 and text[index] in " \t":
+            index -= 1
+        if index < 0 or text[index] != "\n":
+            break
+        back = index - 1
+        if back >= 0 and text[back] == "\r":
+            back -= 1
+        if back < 0 or text[back] not in "\\`":
+            break
+        index = back - 1  # a continued line: the word before it is still in this command
     return index < 0 or text[index] in "\n;&|"
 
 
@@ -1708,7 +1732,8 @@ def _keep_shape(stripped, match, verb):
     (not an argument to xargs / env / time / sh -c or any other word), no
     global option, the verb spelled exactly, and no redirect in or right
     after the arguments (measured: `git reset --soft 2>&1 --hard` and `git
-    reset --soft &>/dev/null --hard` are --hard)."""
+    reset --soft &>/dev/null --hard` are --hard; the same holds for any git
+    command)."""
     if not _at_command_head(stripped, match.start()):
         return False
     lead = _KEEP_LEAD.match(stripped, match.start(), match.start(1))
@@ -1727,19 +1752,6 @@ def _paths_keep(rest):
         before, after = rest[:index], rest[index + 1:]
         return len(before) <= 1 and bool(after) and all(_word_ok(t) for t in before + after)
     return len(rest) >= 2 and all(_word_ok(t) for t in rest)
-
-
-def _reset_keeps(tokens):
-    """True only for G1 `git reset [-q|--quiet] (--soft|--keep) [HEAD|@]`
-    (dies while a merge is staged, a no-op otherwise), G2 `git reset
-    [-q|--quiet] [<rev>] -- <path>...` and G3 `git reset [-q|--quiet] <word>
-    <word>...` (path mode), with exact option spellings."""
-    rest = [t for t in tokens if t not in _QUIET]
-    modes = [t for t in rest if t in _RESET_KEEP_MODES]
-    if modes:
-        revs = [t for t in rest if t not in _RESET_KEEP_MODES]
-        return len(modes) == 1 and len(revs) <= 1 and all(t in _RESET_HEAD for t in revs)
-    return _paths_keep(rest)
 
 
 def _checkout_keeps(tokens):
@@ -1800,11 +1812,10 @@ def _git_subcommand_unresolved(stripped):
 
 
 def _merge_aborted(stripped):
-    """True when STRIPPED runs a `git merge --abort` / `--quit`, a `git reset`
-    outside the exact keep grammars (_reset_keeps, _keep_shape), a git
-    subcommand it cannot name, or defines a function / alias named git."""
-    return (any(not _verb_keeps(stripped, m, "reset", _reset_keeps)
-                for m in _EV_GIT_RESET.finditer(stripped))
+    """True when STRIPPED runs a `git merge --abort` / `--quit`, any `git reset`
+    (deny-all, see the decision at _EV_GIT_RESET), a git subcommand it cannot
+    name, or defines a function / alias named git."""
+    return (bool(_EV_GIT_RESET.search(stripped))
             or any(_MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(stripped))
             or _git_subcommand_unresolved(stripped) or bool(_GIT_SHADOW.search(stripped)))
 
@@ -1831,7 +1842,7 @@ def _merge_unstaged(stripped):
     return _merge_aborted(stripped) or bool(_merge_switched(stripped))
 
 
-def _staged_merge_step(found, stripped, output):
+def _staged_merge_step(found, stripped, output, pre_f=None):
     """Advance FOUND's staged-merge state by one result; a staged merge that a
     later `git commit` concludes credits check 10 (see _MERGE_STAGED).
 
@@ -1843,9 +1854,8 @@ def _staged_merge_step(found, stripped, output):
     is attributable: the call holds exactly ONE commit-creating command, after
     the merge and before every such drop, and exactly one commit line follows
     the staged line. So a checkout / stash only ever narrows credit against
-    the pre-(f) gate, and a reset widens it only for the forms _reset_drops
-    reads as keeping MERGE_HEAD and HEAD (s117 gap 3; a 200k-sequence
-    differential against the pre-(f) gate found no other widening).
+    the pre-(f) gate, and every reset / abort still denies it (deny-all, and
+    _step_command carries over any reset the pre-(f) reading finds).
 
     Which merge staged (s117 gap 2): each merge that stages prints one staged
     line, so the LAST merge is the stager only when every merge in the call
@@ -1854,13 +1864,17 @@ def _staged_merge_step(found, stripped, output):
     so the FIRST merge is read as the stager and a drop after it is late.
 
     STRIPPED is the command with each quoted literal kept as a word
-    (_step_command), so a quoted pathspec after `--` still reads as one."""
+    (_step_command), so a quoted pathspec after `--` still reads as one.
+    PRE_F, when given, is the same command as the pre-(f) gate read it
+    (quoted literals blanked): the staging merge and the concluding commit
+    must show in it too, so credit is never wider than pre-(f) (round 6)."""
     if _merge_aborted(stripped):
         found["staged_merge"] = False
         return
     lines = _output_lines(output)
     staged_at, merge_at = -1, -1
-    if _did_merge(stripped) and not _MERGE_BAD.search(output):
+    seen = stripped if pre_f is None else pre_f
+    if _did_merge(stripped) and _did_merge(seen) and not _MERGE_BAD.search(output):
         staged = [i for i, line in enumerate(lines)
                   if line is not None and _MERGE_STAGED.match(line)]
         merges = [m.start() for m in _EV_GIT_MERGE.finditer(stripped)
@@ -1880,7 +1894,8 @@ def _staged_merge_step(found, stripped, output):
                 and len(commit_lines) == 1):
             found["staged_merge"] = False
             return
-    if found["staged_merge"] and EV_COMMIT.search(stripped) and commit_lines:
+    if (found["staged_merge"] and EV_COMMIT.search(stripped) and EV_COMMIT.search(seen)
+            and commit_lines):
         found["merge"] = True
         found["staged_merge"] = False
     elif late:
@@ -2227,7 +2242,7 @@ def _absorb_result(found, runs, deferred, use, text, errored, session_start):
         found["commit"] = True
     if _did_merge(stripped) and _merge_output_ok(stripped, text, errored):
         found["merge"] = True
-    _staged_merge_step(found, _step_command(command), text)
+    _staged_merge_step(found, _step_command(command), text, stripped)
     if found["push"] is None:
         found["push"] = _pair_credit(command, text, errored, session_start)
 
