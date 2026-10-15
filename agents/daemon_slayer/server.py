@@ -3328,7 +3328,11 @@ class _RcThreadingHTTPServer(ThreadingHTTPServer):
     # Far above any real bootstrap (microseconds; ~100 ms on a GIL-saturated
     # box): a false abandonment drops a live request, which a client reads as
     # an engine verdict (see above). Read per request, so an instance value
-    # (tests) is honoured.
+    # (tests) is honoured. RM-740 (d), measured 2026-10-14 under a gated -n 8
+    # suite (commit 75 percent): start max 25 ms, 157 ms with a GIL-busy
+    # thread in the process. 5.0 s (~32x) is KEPT, wider than the 2.0 s
+    # servers because a drop here reads as an engine verdict.
+    # tests/test_rm740d_thread_start_caps.py pins both.
     thread_start_timeout_s = 5.0
     thread_start_failures = 0
 

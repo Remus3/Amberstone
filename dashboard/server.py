@@ -92,6 +92,11 @@ class _GuardedThreadStartMixin:
     # Bootstrap normally takes milliseconds; the bound only has to beat GIL
     # and scheduler latency under load. A healthy thread that misses it costs
     # one dropped connection (EventSource and the pollers retry).
+    # RM-740 (d), measured 2026-10-14 under a gated -n 8 suite (commit 75
+    # percent): start p99 1.3 ms, max 25 ms; with a GIL-busy thread in the
+    # process, max 157 ms. 2.0 s (~13x that worst case) is KEPT: a larger cap
+    # buys nothing measured and parks the accept loop longer behind a start
+    # that truly died. tests/test_rm740d_thread_start_caps.py pins both.
     thread_start_timeout_s = 2.0
     start_failures = 0
 

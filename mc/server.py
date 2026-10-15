@@ -124,7 +124,11 @@ class _Server(ThreadingHTTPServer):
     address for every other client.
     """
 
-    # A thread start normally takes well under a millisecond.
+    # A thread start normally takes well under a millisecond. RM-740 (d),
+    # measured 2026-10-14 under a gated -n 8 suite: max 25 ms, 157 ms with a
+    # GIL-busy thread in the process; 2.0 s (~13x) is KEPT - a larger cap
+    # only parks the accept loop longer behind a start that truly died.
+    # tests/test_rm740d_thread_start_caps.py pins both.
     thread_start_timeout_s = 2.0
     thread_start_failures = 0
     # A loopback / tailnet handshake takes milliseconds; past this the
