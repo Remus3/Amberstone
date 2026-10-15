@@ -1117,6 +1117,217 @@ def test_conflicted_no_commit_merge_alone_does_not_back_a_merge_claim(tmp_path):
     assert "merge_claim_without_merge" in _checks(report)
 
 
+# RM-740 (f): more than `merge --abort` / `--quit` and `git reset` drop
+# MERGE_HEAD. Measured 2026-10-15 on git 2.53.0.windows.3 in a scratch repo,
+# after a clean `git merge --no-ff --no-commit` (the "stopped before committing"
+# state), reading .git/MERGE_HEAD after each command: every BRANCH-mode `git
+# checkout` drops it (with or without -f / --force, to the same branch, another
+# branch, --detach, -b / -B / --orphan), and so does a `git stash` that saves the
+# whole tree (bare, push or save, with no pathspec). A PATH-mode checkout, a
+# pathspec stash, `stash list` / `create` / `show` / `pop`, `git switch` (fatal
+# while merging) and `git restore` keep it.
+UNRELATED_COMMIT_OUT = "[main 4c1d2e3f0] docs: unrelated fix"
+REPO_CD = 'cd "E:/Example Repo" && '
+
+# (command, git dropped MERGE_HEAD) - the measured table, gate reads it the same.
+MERGE_HEAD_MEASURED = [
+    ("git checkout -f", True), ("git checkout --force", True),
+    ("git checkout -f HEAD", True), ("git checkout -f main", True),
+    ("git checkout -qf", True), ("git checkout -fq", True),
+    ("git checkout --force main", True), ("git checkout -f other", True),
+    ("git checkout main", True), ("git checkout HEAD", True), ("git checkout other", True),
+    ("git checkout --detach", True), ("git checkout -B newb", True),
+    ("git checkout -b newb2", True), ("git checkout -m other", True),
+    ("git checkout --orphan o", True), ("git checkout -q", True),
+    ("git checkout --quiet", True),
+    ("git -C repo checkout -f", True), ("git checkout -f 2>&1", True),
+    ("git checkout -f main *>&1", True), ("git checkout -f *>&1", True),
+    ("git stash *>&1", True), ("git stash *> out.txt", True),
+    ("git checkout -f main 2>$null", True),
+    ("git checkout -f -- a.txt", False), ("git checkout -f .", False),
+    ("git checkout -- a.txt", False), ("git checkout .", False),
+    ("git checkout --ours b.txt", False), ("git checkout --theirs b.txt", False),
+    ("git checkout HEAD -- a.txt", False), ("git checkout feat -- b.txt", False),
+    ("git checkout -f HEAD -- a.txt", False), ("git checkout --no-overlay -- a.txt", False),
+    ("git stash", True), ("git stash push -m x", True), ("git stash save x", True),
+    ("git stash -u", True), ("git stash -m y", True), ("git stash --staged", True),
+    ("git stash -S", True), ("git stash -k", True), ("git stash --keep-index", True),
+    ("git stash -q", True), ("git stash push", True),
+    ("git stash push -m x -- a.txt", False), ("git stash push b.txt", False),
+    ("git stash b.txt", False), ("git stash create", False), ("git stash list", False),
+    ("git stash show", False), ("git stash pop", False),
+    ("git switch -f other", False), ("git switch --discard-changes other", False),
+    ("git switch other", False), ("git restore --staged .", False),
+    ("git restore --staged --worktree .", False), ("git rm -q --cached b.txt", False),
+    ("git reset --hard", True), ("git reset", True), ("git reset HEAD", True),
+    ("git reset --merge", True), ("git reset -q", True), ("git reset --mixed", True),
+    ("git merge --abort", True), ("git merge --quit", True),
+]
+
+# Where the command line alone cannot tell git's two modes apart, the gate reads
+# one of them on purpose. STRICT (gate un-stages, git kept MERGE_HEAD): a single
+# bare argument may be a branch or a path, and any `git reset` (pre-existing,
+# unchanged here). LENIENT (gate keeps, git dropped): a bare `--`, because
+# strip_command_noise blanks a quoted pathspec after it, so `-- "<path>"` and a
+# trailing `--` read the same; `--pathspec-from-file` (empty only when it names
+# the null device, as measured).
+MERGE_HEAD_READ_ON_PURPOSE = [
+    ("git checkout -f a.txt", True), ("git reset -- a.txt", True),
+    ("git reset HEAD a.txt", True), ("git reset --soft HEAD", True),
+    ("git reset --keep", True),
+    ("git checkout main --", False), ("git checkout -f --", False),
+    ("git stash push --", False), ("git stash --", False),
+    ("git checkout --pathspec-from-file=nul", False),
+]
+
+
+@pytest.mark.parametrize("command, drops", MERGE_HEAD_MEASURED + MERGE_HEAD_READ_ON_PURPOSE)
+def test_merge_unstaged_matches_the_measured_merge_head_table(command, drops):
+    assert bool(gate._merge_unstaged(command)) is drops, command
+
+
+def test_staged_merge_then_checkout_force_then_an_unrelated_commit_flags(tmp_path):
+    # The RM-740 (f) acceptance sequence: `git checkout -f` dropped MERGE_HEAD,
+    # so the later commit is an ordinary one and backs no merge claim.
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01co", REPO_CD + "git checkout -f", ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo, output", [
+    ("git checkout --force main", "Already on 'main'"),
+    ("git checkout main", "M\ttools/x.py\nAlready on 'main'"),
+    ("git checkout lane/other", "M\ttools/x.py\nSwitched to branch 'lane/other'"),
+    ("git stash", "Saved working directory and index state WIP on main: 0ecbe46 main"),
+    ("git stash push -m park", "Saved working directory and index state On main: park"),
+])
+def test_branch_checkout_or_whole_tree_stash_unstages_the_merge(tmp_path, undo, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, output),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("keep, output, is_error", [
+    ("git checkout HEAD -- tools/x.py", "", None),
+    ('git checkout worktree-agent-x -- "tools/x.py"', "", None),
+    ("git checkout .", "Updated 0 paths from the index", None),
+    ("git checkout --theirs tools/x.py", "Updated 0 paths from the index", None),
+    ("git switch -f other", 'fatal: cannot switch branch while merging\n'
+                            'Consider "git merge --quit" or "git worktree add".', True),
+    ("git stash list", "", None),
+    ("git stash push -- tools/x.py", "No local changes to save", None),
+    ("git restore --staged tools/x.py", "", None),
+])
+def test_path_checkout_or_pathspec_stash_keeps_the_staged_merge(tmp_path, keep, output, is_error):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, output, is_error=is_error),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+@pytest.mark.parametrize("before", [
+    "git checkout main", "git checkout -f main", "git stash",
+])
+def test_a_checkout_before_the_staged_merge_in_one_call_keeps_it(tmp_path, before):
+    # The common merger shape `git checkout main && git merge --no-ff --no-commit`:
+    # a checkout / stash BEFORE the merge in the same call clears nothing that
+    # merge stages (and the pre-(f) gate credited it too).
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", REPO_CD + before + " && " + STAGE_CMD,
+                              "Already on 'main'\n" + STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+def test_a_reset_anywhere_in_the_staging_call_still_unstages_it(tmp_path):
+    # `git reset` / `merge --abort` keep the pre-(f) whole-call rule unchanged.
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg",
+                              REPO_CD + "git reset --hard HEAD && " + STAGE_CMD,
+                              "HEAD is now at 1a09d82 x\n" + STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# RM-740 (f) round 2 (verifier REFUTE, 2026-10-15): in ONE call, a success line
+# that cannot be tied to a commit made before the drop must not credit the
+# staged merge. The pre-(f) gate refused (i)-(iii) (a reset / abort anywhere in
+# the call); the first (f) cut credited all three.
+@pytest.mark.parametrize("command, output", [
+    ("git commit -F m.txt; git merge --abort; git commit --allow-empty -m z",
+     "precommit_gate: BLOCKED\n[main 4c1d2e3f0] z"),
+    ("git commit -F m.txt || git reset --hard && git commit --allow-empty -m z",
+     "precommit_gate: BLOCKED\nHEAD is now at 1a09d82 x\n[main 4c1d2e3f0] z"),
+    ("git commit -m m; git reset --soft HEAD~1; git commit -m z",
+     "[main 1111111] m\n[main 2222222] z"),
+], ids=["i-abort", "ii-reset-hard", "iii-reset-soft"])
+def test_one_call_reset_or_abort_between_commits_does_not_back_a_merge_claim(
+        tmp_path, command, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cx", REPO_CD + command, output))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# Same shape with a checkout between the commits, and with the success line
+# from another commit-creating command: the line cannot be attributed to a
+# commit made before the drop, so no credit (the pre-(f) gate credited both).
+@pytest.mark.parametrize("command, output", [
+    ("git commit -F m.txt; git checkout -f; git commit --allow-empty -m z",
+     "precommit_gate: BLOCKED\n[main 4c1d2e3f0] z"),
+    ("git commit -F m.txt; git checkout -f; git cherry-pick 4c1d2e3f0",
+     "precommit_gate: BLOCKED\n[main 5d2e3f4a1] z"),
+], ids=["iv-checkout-commit", "checkout-cherry-pick"])
+def test_one_call_checkout_between_commits_does_not_back_a_merge_claim(
+        tmp_path, command, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cx", REPO_CD + command, output))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", [
+    "git checkout -f main *>&1", "git checkout -f *>&1", "git stash *>&1",
+])
+def test_powershell_all_streams_redirect_does_not_hide_the_drop(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_checkout_between_staged_merge_and_commit_in_one_call_flags(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " && git checkout -f && " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_checkout_after_the_concluding_commit_in_one_call_keeps_the_credit(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cm",
+                              LOCKED_COMMIT_CMD + " && git checkout lane/next",
+                              LOCKED_COMMIT_OUT + "\nSwitched to branch 'lane/next'"))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+def test_a_drop_after_a_failed_commit_still_unstages(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cf", LOCKED_COMMIT_CMD + " ; git checkout -f",
+                              "precommit_gate: BLOCKED - banned glyph in tools/x.py",
+                              is_error=True),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
 @pytest.mark.parametrize("command, output", [
     ("git merge --ff-only worktree-agent-x",
      "Updating 00618c625..0b8511641\nFast-forward\n tools/x.py | 2 +-"),
