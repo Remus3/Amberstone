@@ -1154,8 +1154,7 @@ MERGE_HEAD_MEASURED = [
     ("git stash -S", True), ("git stash -k", True), ("git stash --keep-index", True),
     ("git stash -q", True), ("git stash push", True),
     ("git stash push -m x -- a.txt", False), ("git stash push b.txt", False),
-    ("git stash b.txt", False), ("git stash create", False), ("git stash list", False),
-    ("git stash show", False), ("git stash pop", False),
+    ("git stash create", False), ("git stash list", False), ("git stash show", False),
     ("git switch -f other", False), ("git switch --discard-changes other", False),
     ("git switch other", False), ("git restore --staged .", False),
     ("git restore --staged --worktree .", False), ("git rm -q --cached b.txt", False),
@@ -1181,10 +1180,7 @@ MERGE_HEAD_MEASURED = [
     ("git reset --soft -q", False), ("git reset -q --keep", False),
     ("git reset -- b.txt", False), ("git reset HEAD b.txt", False),
     ("git reset HEAD -- b.txt", False), ("git reset -q -- b.txt", False),
-    ("git reset --mixed -- b.txt", False), ("git reset -- .", False),
-    ('git reset -q -- "b.txt"', False),
-    ("git reset --hard -- b.txt", False), ("git reset --soft -- b.txt", False),
-    ("git reset --keep -- b.txt", False),
+    ("git reset -- .", False), ('git reset -q -- "b.txt"', False),
     ("git reset --", True), ("git reset HEAD --", True), ("git reset -N", True),
     ("git reset --pathspec-from-file=/dev/null", True), ("git reset -- 2>&1", True),
     # s117 verifier REFUTE of 463d166c8 (measured, same git and method): a
@@ -1240,6 +1236,18 @@ MERGE_HEAD_MEASURED = [
     ("git reset -- #a.txt", True), ("git reset -- a.txt #b.txt", False),
     # A wholly quoted allowlisted word is that word (measured KEPT, s117).
     ('git checkout "main" -- a.txt', False), ('git stash push -m msg "b.txt"', False),
+    # s117 verifier REFUTE of 4766ed062 (measured): git takes a unique prefix
+    # of a long option and the LAST mode wins, so `--soft --ha` is --hard;
+    # `xargs git reset --soft` runs with --hard appended; a redirect does not
+    # end git's arguments (`git reset --soft 2>&1 --hard` is --hard); `--orph`
+    # is --orphan; `git stash branch` checks a branch out.
+    ("git reset --soft --ha", True), ("git reset --soft --mix", True),
+    ("git reset --soft HEAD --ha", True), ("git reset --keep HEAD --h", True),
+    ("git reset --soft @ --mi", True), ("git reset --keep --mixe", True),
+    ("echo --hard | xargs git reset --soft", True),
+    ("git checkout --orph newb main", True),
+    ("git reset --soft 2>&1 --hard", True), ("git reset --soft 2>/dev/null --hard", True),
+    ("git reset --soft &>/dev/null --hard", True), ("git stash branch sb", True),
 ]
 
 # Where the command line alone cannot tell git's two modes apart, the gate reads
@@ -1274,6 +1282,15 @@ MERGE_HEAD_READ_ON_PURPOSE = [
     # ALLOWLISTED word ([A-Za-z0-9_./][A-Za-z0-9_./-]*, bare or quoted whole)
     # counts as a path or a rev; git keeps MERGE_HEAD in these, the gate drops.
     ('git reset -- "*.zz"', True), ("git reset HEAD~1 -- b.txt", True),
+    # Orchestrator ruling (s117, final shape): a reset / checkout / stash keeps
+    # credit only in an EXACT grammar with exact option spellings (see
+    # _reset_keeps / _checkout_keeps / _stash_keeps). Git keeps MERGE_HEAD in
+    # these (measured: fatal, path mode, or read-only), the gate drops.
+    ("git reset --mixed -- b.txt", True), ("git reset --hard -- b.txt", True),
+    ("git reset --soft -- b.txt", True), ("git reset --keep -- b.txt", True),
+    ("git reset --keep --merg", True), ("git reset --soft --me", True),
+    ("git reset --ha --soft", True), ("git stash pop", True), ("git stash b.txt", True),
+    ('git checkout -- "$P" b.txt', True), ("git reset -- a.txt 2>&1", True),
 ]
 
 
@@ -1476,7 +1493,6 @@ def test_bare_trailing_double_dash_in_the_staging_call_unstages(tmp_path):
     'git checkout HEAD -- "tools/x.py"', "git checkout -- 'tools/x.py'",
     'git stash push -- "tools/x.py"', 'git reset -q -- "tools/x.py"',
     'git stash push -m "park" -- "tools/x.py"', "git reset -- 'tools/x.py'",
-    'git checkout -- "$P" tools/y.py',
 ])
 def test_quoted_pathspec_after_double_dash_keeps_the_staged_merge(tmp_path, keep):
     report = _gate_rows(tmp_path, _main_rows("Merged to main."),
@@ -1665,6 +1681,15 @@ def test_a_word_outside_the_allowlist_never_keeps_the_staged_merge(word):
     "git reset -- tools/x.py", "git reset HEAD tools/x.py", "git checkout main -- tools/x.py",
     "git stash push -- tools/x.py", "git reset --soft HEAD", "git reset --soft @",
     "git reset --keep HEAD", 'git reset -- "tools/x.py"', "git checkout main -- 'tools/x.py'",
+    # s117 final shape: the -q variants and quoted paths of G1-G3, and the
+    # exact checkout / stash keep forms.
+    "git reset -q -- tools/x.py", "git reset --quiet HEAD tools/x.py",
+    "git reset -q --soft HEAD", "git reset --keep --quiet @", "git reset --soft -q",
+    "git reset HEAD \"tools/x.py\"", "git reset -q HEAD -- 'tools/x.py'",
+    "git reset tools/x.py tools/y.py", "git checkout -q -- \"tools/x.py\"",
+    "git checkout -f HEAD -- tools/x.py", "git checkout --theirs tools/x.py",
+    "git stash push -q -m park -- tools/x.py", "git stash -- tools/x.py",
+    "git stash list", "git reset -- tools/x.py & git status -s",
 ])
 def test_the_allowlisted_keep_forms_stay_credited(tmp_path, keep):
     report = _gate_rows(tmp_path, _main_rows("Merged to main."),
@@ -1672,6 +1697,109 @@ def test_the_allowlisted_keep_forms_stay_credited(tmp_path, keep):
                         _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, ""),
                         _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
     assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+# Orchestrator ruling (s117, final shape): a `git reset` keeps credit ONLY in
+# G1 `git reset [-q|--quiet] (--soft|--keep) [HEAD|@]`, G2 `git reset
+# [-q|--quiet] [HEAD|<allowlisted rev>] -- <allowlisted path>...` or G3 `git
+# reset [-q|--quiet] <allowlisted> <allowlisted>...`, with EXACT option
+# spellings. Measured: git takes any unique prefix of a long option and the
+# last mode wins (`--soft --ha` is --hard; --h/--ha/--har, --mi/--mix/--mixe
+# and --me/--mer/--merg are unique, --m is ambiguous).
+RESET_OTHER_SPELLINGS = [
+    "--h", "--ha", "--har", "--hard", "--mi", "--mix", "--mixe", "--mixed", "--me", "--mer",
+    "--merg", "--merge", "--so", "--sof", "--ke", "--kee", "--qu", "--quie", "-qq", "-N",
+    "--no-refresh", "--refresh", "-p", "--patch", "--recurse-submodules", "-U3",
+    "--pathspec-from-file=nul", "--intent-to-add",
+]
+RESET_KEEP_FORMS = [
+    "--soft", "--keep", "--soft HEAD", "--keep HEAD", "--soft @", "--keep @", "-q --soft",
+    "--quiet --keep HEAD", "-- a.txt", "-q -- a.txt", "HEAD -- a.txt", "HEAD a.txt",
+    "a.txt b.txt",
+]
+
+
+@pytest.mark.parametrize("spelling", RESET_OTHER_SPELLINGS)
+def test_any_other_reset_option_spelling_denies_every_keep_form(spelling):
+    kept = []
+    for keep in RESET_KEEP_FORMS:
+        for command in (f"git reset {keep} {spelling}", f"git reset {spelling} {keep}"):
+            for text in (command, gate._step_command(command)):
+                if not gate._merge_unstaged(text):
+                    kept.append(text)
+    assert not kept, kept
+
+
+# The same exact-option rule for the checkout and stash keep forms.
+CHECKOUT_OTHER_SPELLINGS = [
+    "--orph", "--orp", "--orphan", "--det", "--detach", "-b", "-B", "-m", "--merge", "-t",
+    "--track", "--guess", "--conflict=merge", "-l", "--ignore-other-worktrees", "-U3",
+    "--recurse-submodules", "--our", "--their", "--pat", "-qf", "--progress",
+]
+CHECKOUT_KEEP_FORMS = ["main -- a.txt", "-- a.txt", "main a.txt", ".", "--theirs a.txt"]
+STASH_OTHER_SPELLINGS = [
+    "-k", "--keep-index", "-u", "--include-untracked", "-a", "--all", "-S", "--staged",
+    "-p", "--patch", "--me", "--mess", "--message=x", "-mx", "-qm", "--pathspec-from-file=f",
+    "--quie",
+]
+STASH_KEEP_FORMS = ["push -- a.txt", "push a.txt", "push -m x -- a.txt", "-- a.txt"]
+
+
+@pytest.mark.parametrize("spelling", CHECKOUT_OTHER_SPELLINGS + STASH_OTHER_SPELLINGS)
+def test_any_other_checkout_or_stash_option_spelling_denies_the_keep_forms(spelling):
+    commands = []
+    if spelling in CHECKOUT_OTHER_SPELLINGS:
+        commands += [f"git checkout {spelling} {keep}" for keep in CHECKOUT_KEEP_FORMS]
+    if spelling in STASH_OTHER_SPELLINGS:
+        commands += ["git stash " + keep.replace("push", "push " + spelling, 1)
+                     if keep.startswith("push") else f"git stash {spelling} {keep}"
+                     for keep in STASH_KEEP_FORMS]
+    kept = [text for command in commands
+            for text in (command, gate._step_command(command)) if not gate._merge_unstaged(text)]
+    assert not kept, kept
+
+
+# The `git` word must head a simple command (only a separator or the start of
+# the line before it, no global option): as an argument to xargs / env / time
+# / nohup / command / sh -c, or inside a quoted string or heredoc that a shell
+# runs, git's real argv is not the one on the line.
+NOT_AT_COMMAND_HEAD = [
+    "echo --hard | xargs git reset --soft", "env git reset --soft", "nohup git reset --soft HEAD",
+    "time git reset --keep", "command git reset --soft", "sh -c git reset --soft",
+    "timeout 60 git reset -- tools/x.py", "X=1 git reset --soft", "(git reset --soft)",
+    "{ git reset --soft; }", "! git reset --soft", "git -C . reset --soft",
+    "git -c x.y=z reset --soft", "git --no-pager reset -- tools/x.py",
+    "bash -c 'git reset --hard'", 'sh -c "git checkout main"',
+    "bash <<'EOF'\ngit reset --hard\nEOF", "xargs git checkout -- tools/x.py",
+    "env git stash push -- tools/x.py",
+    # A shell function or alias named git makes the line's argv a lie, too.
+    "g=git; git() { $g reset --hard; }; git reset --soft",
+    "function git { & $g reset --hard }; git reset --soft",
+    "shopt -s expand_aliases; alias git='git reset --hard; git'; git reset --soft",
+    "Set-Alias git Reset-Thing; git reset --soft", "New-Alias -Name git x; git reset --soft",
+]
+
+
+@pytest.mark.parametrize("undo", NOT_AT_COMMAND_HEAD)
+def test_git_not_at_command_head_never_keeps_the_staged_merge(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", [
+    "git reset --soft --ha", "git reset --keep HEAD --h", "git reset --soft @ --mi",
+    "git reset --soft 2>&1 --hard", "git reset --soft &>/dev/null --hard",
+    "git checkout --orph newb main", "git stash branch sb",
+])
+def test_abbreviated_or_redirected_reset_forms_unstage(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
 
 
 @pytest.mark.parametrize("undo", VANISHING_PATHSPEC_DROPS)

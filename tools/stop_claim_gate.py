@@ -1558,7 +1558,7 @@ _EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])([^|;&\n]*)", re.I)
 # its pathspec. `git reset` (s117 gap 3, measured): `--soft` / `--keep` die
 # while a merge is staged ("Cannot do a soft reset in the middle of a merge"),
 # and a pathspec reset keeps MERGE_HEAD (the next commit has two parents) and
-# never moves HEAD; every other form un-stages (_reset_drops). Table:
+# never moves HEAD; every other form un-stages (_reset_keeps). Table:
 # tests/test_stop_claim_gate_subagent_evidence_rm687.py.
 # Within one call (see _staged_merge_step) a dropping reset / abort keeps the
 # pre-(f) whole-call rule; a checkout / stash BEFORE the call's staging merge
@@ -1568,21 +1568,49 @@ _LITERAL_SLOT = "_quoted_"
 _EV_GIT_CHECKOUT = re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.I)
 _EV_GIT_STASH = re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.I)
 _EV_GIT_COMMIT_MAKER = re.compile(_GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.I)
-# A redirection ends the arguments: `>`, `2>`, `2>&1` and PowerShell's `*>`.
+# A redirection: `>`, `2>`, `2>&1` and PowerShell's `*>` (see _keep_shape).
 _ARG_REDIRECT = re.compile(r"[\d*]?[<>]")
-_CHECKOUT_PATH_ONLY = frozenset({"--ours", "--theirs", "--patch", "--overlay", "--no-overlay"})
-_CHECKOUT_BRANCH_ONLY = frozenset({"--orphan", "--detach"})
-_STASH_PARTIAL = frozenset({"--patch"})
-_RESET_MODES = frozenset({"--soft", "--mixed", "--hard", "--merge", "--keep"})
+# Shell word separators: a space or a tab only, so any other whitespace stays
+# inside a token and fails the allowlist.
+_ARG_SPLIT = re.compile(r"[ \t]+")
 _RESET_HEAD = frozenset({"HEAD", "@"})
+# Orchestrator ruling (s117, final shape), after the verifier refuted
+# 4766ed062: git takes any unique prefix of a long option and the LAST mode
+# wins (measured: `git reset --soft --ha` is --hard), so a reset / checkout /
+# stash keeps credit only in an EXACT grammar with EXACT option spellings
+# (_reset_keeps, _checkout_keeps, _stash_keeps) - no abbreviation, no other
+# option - and only as a plain simple command (_keep_shape).
+_QUIET = frozenset({"-q", "--quiet"})
+_RESET_KEEP_MODES = frozenset({"--soft", "--keep"})
+_CHECKOUT_KEEP_OPTIONS = frozenset({"-q", "--quiet", "-f", "--force", "--overlay",
+                                    "--no-overlay"})
+_CHECKOUT_PATH_FLAGS = frozenset({"--ours", "--theirs"})
+_STASH_READ_ONLY = frozenset({"list", "show", "create"})
+_KEEP_LEAD = re.compile(r"(?i:git(?:\.exe)?)[ \t]+(reset|checkout|stash)\Z")
+# A git that a shell runs from a quoted string or a heredoc is not on the
+# line at all (`bash -c 'git reset --hard'`): with a launcher word in the call
+# and `git` inside a quoted literal or heredoc body, _step_command appends an
+# unnamed git subcommand, which un-stages (_git_subcommand_unresolved).
+_SHELL_LAUNCHER = re.compile(
+    r"(?<![\w.-])(?:bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|eval|source|xargs|env|nohup"
+    r"|time|command|exec|sudo|timeout|iex|invoke-expression|start-process)(?:\.exe)?(?![\w.-])",
+    re.I)
+_HIDDEN_GIT = re.compile(r"(?<![\w.-])git(?:\.exe)?(?![\w.-])", re.I)
+_HIDDEN_MARK = "\ngit $hidden\n"
+# A shell function or alias named git (bash `git() {..}`, `function git`,
+# `alias git=`, PowerShell Set-Alias / New-Alias / sal / nal) runs something
+# else for every later `git reset --soft`: the whole call un-stages.
+_GIT_SHADOW = re.compile(
+    r"(?<![\w.-])(?:function[ \t]+git(?:\.exe)?(?![\w.-])|git(?:\.exe)?[ \t]*\([ \t]*\)"
+    r"|alias[ \t]+git(?:\.exe)?=|(?:set-alias|new-alias|sal|nal)(?:[ \t]+-\w+)*[ \t]+git"
+    r"(?:\.exe)?(?![\w.-]))", re.I)
 # s117 verifier REFUTE of 463d166c8 (all measured, git 2.53.0): reading a
 # quoted literal as a word let a quoted OPTION or SUBCOMMAND count as a path or
 # a second argument (`git checkout "-b" newb`, `git reset "--hard" HEAD`, `git
 # stash "push"` all drop MERGE_HEAD), and an option's VALUE counted the same
 # way (`git checkout --conflict merge main`, `git stash push -qm msg`, `git
-# reset --pathspec-from-file <empty file> HEAD` drop it). So an option's value
-# is skipped, never a path, and a pathspec FILE may be empty, so it un-stages;
-# which words count as plainly themselves is the allowlist below.
+# reset --pathspec-from-file <empty file> HEAD` drop it); the exact grammars
+# below admit neither.
 #
 # Orchestrator ruling (s117), after the verifier refuted 6089352a3 and
 # 37aea4ab5: three denylists of "words that may vanish" each leaked (`{,}`,
@@ -1598,11 +1626,6 @@ _RESET_HEAD = frozenset({"HEAD", "@"})
 # tests/test_stop_claim_gate_subagent_evidence_rm687.py.
 _WORD_ALLOW = re.compile(r"[A-Za-z0-9_./][A-Za-z0-9_./-]*\Z")
 _VALUE_ALLOW = re.compile(r"[A-Za-z0-9_./-]+\Z")
-_OPTION_ALLOW = re.compile(r"--?[A-Za-z0-9][A-Za-z0-9-]*(?:=[A-Za-z0-9_./][A-Za-z0-9_./-]*)?\Z")
-_PATHSPEC_FILE = frozenset({"--pathspec-from-file", "--pathspec-file-nul", "--stdin"})
-_CHECKOUT_VALUE = frozenset({"--conflict", "--unified", "--inter-hunk-context"})
-_STASH_VALUE = frozenset({"--message", "--unified", "--inter-hunk-context"})
-_RESET_VALUE = frozenset({"--unified", "--inter-hunk-context"})
 _GIT_WORD = re.compile(r"(?<![\w.-])git(?:\.exe)?(?=\s)", re.I)
 
 
@@ -1614,9 +1637,23 @@ def _slot_literal(match):
 
 
 def _step_command(command):
-    """COMMAND as the staged-merge step reads it: noise stripped, and each
-    quoted literal kept as one word that says whether it is allowlisted."""
-    return strip_command_noise(command, _slot_literal)
+    """COMMAND as the staged-merge step reads it: noise stripped, each quoted
+    literal kept as one word that says whether it is allowlisted, and an
+    unnamed git appended when a shell may run one hidden in a quoted string or
+    heredoc (_hidden_git)."""
+    stepped = strip_command_noise(command, _slot_literal)
+    return stepped + _HIDDEN_MARK if _hidden_git(command, stepped) else stepped
+
+
+def _hidden_git(command, stepped):
+    """True when STEPPED names a shell launcher and COMMAND has `git` inside a
+    quoted literal or a heredoc body (a quoted git.exe path is visible)."""
+    if not _SHELL_LAUNCHER.search(stepped):
+        return False
+    text = _QUOTED_EXE.sub(" ", command)
+    bodies = [m.group(0) for m in _HEREDOC.finditer(text)]
+    bodies += [m.group(0) for m in _QUOTED.finditer(_HEREDOC.sub(" ", text))]
+    return any(_HIDDEN_GIT.search(body) for body in bodies)
 
 
 def _as_word(token):
@@ -1642,166 +1679,106 @@ def _value_ok(token):
     return bool(_VALUE_ALLOW.match(_as_word(token)))
 
 
-def _option_ok(token):
-    """True when TOKEN (it starts with `-`) is a plain option git receives as is."""
-    return bool(_OPTION_ALLOW.match(_as_word(token)))
-
-
-def _short_value(token, letters):
-    """For a short-option bundle TOKEN: does its first value-taking letter (one
-    of LETTERS) take the NEXT token as its value? (False when it has none, or
-    when the rest of the bundle is the value.)"""
-    for index, flag in enumerate(token[1:]):
-        if flag in letters:
-            return index == len(token) - 2
-    return False
-
-
 def _args(text):
-    """The whitespace tokens of TEXT up to the first redirection or comment
-    (a token starting with `#`: measured, `git reset -- #a.txt` is `--`)."""
+    """The space / tab separated tokens of TEXT up to the first redirection or
+    comment (a token starting with `#`: measured, `git reset -- #a.txt` is
+    `--`). A keep verdict also needs _keep_shape: no redirect at all."""
     tokens = []
-    for token in text.split():
+    for token in _ARG_SPLIT.split(text.strip(" \t")):
+        if not token:
+            continue
         if _ARG_REDIRECT.match(token) or token.startswith("#"):
             break
         tokens.append(token)
     return tokens
 
 
-def _checkout_drops(args):
-    """True when `git checkout` ARGS select branch mode (drops MERGE_HEAD).
-    Strict on doubt (the allowlist): a word that is not plainly itself (it
-    may be `-b` / `-f`, a branch, or nothing) or a pathspec file (it may be
-    empty) un-stages."""
-    positional, value_next = [], False
-    tokens = _args(args)
-    for index, token in enumerate(tokens):
+def _at_command_head(text, start):
+    """True when only a separator or the start of TEXT precedes offset START
+    (blanks aside): the word there heads a simple command."""
+    index = start - 1
+    while index >= 0 and text[index] in " \t":
+        index -= 1
+    return index < 0 or text[index] in "\n;&|"
+
+
+def _keep_shape(stripped, match, verb):
+    """True when MATCH (a `git <VERB>` evidence match in STRIPPED) is a plain
+    simple command whose argv the gate reads exactly: `git` heads the command
+    (not an argument to xargs / env / time / sh -c or any other word), no
+    global option, the verb spelled exactly, and no redirect in or right
+    after the arguments (measured: `git reset --soft 2>&1 --hard` and `git
+    reset --soft &>/dev/null --hard` are --hard)."""
+    if not _at_command_head(stripped, match.start()):
+        return False
+    lead = _KEEP_LEAD.match(stripped, match.start(), match.start(1))
+    if not lead or lead.group(1) != verb:
+        return False
+    args, end = match.group(1), match.end(1)
+    return "<" not in args and ">" not in args and stripped[end:end + 2] != "&>"
+
+
+def _paths_keep(rest):
+    """`[<rev>] -- <path>...` (one or more paths) or two or more plain words:
+    git's path mode, which never moves HEAD or drops MERGE_HEAD (or a fatal
+    error). Every word must pass the allowlist."""
+    if "--" in rest:
+        index = rest.index("--")
+        before, after = rest[:index], rest[index + 1:]
+        return len(before) <= 1 and bool(after) and all(_word_ok(t) for t in before + after)
+    return len(rest) >= 2 and all(_word_ok(t) for t in rest)
+
+
+def _reset_keeps(tokens):
+    """True only for G1 `git reset [-q|--quiet] (--soft|--keep) [HEAD|@]`
+    (dies while a merge is staged, a no-op otherwise), G2 `git reset
+    [-q|--quiet] [<rev>] -- <path>...` and G3 `git reset [-q|--quiet] <word>
+    <word>...` (path mode), with exact option spellings."""
+    rest = [t for t in tokens if t not in _QUIET]
+    modes = [t for t in rest if t in _RESET_KEEP_MODES]
+    if modes:
+        revs = [t for t in rest if t not in _RESET_KEEP_MODES]
+        return len(modes) == 1 and len(revs) <= 1 and all(t in _RESET_HEAD for t in revs)
+    return _paths_keep(rest)
+
+
+def _checkout_keeps(tokens):
+    """True only for a path-mode `git checkout` with exact options (-q / -f /
+    --[no-]overlay): `[<tree-ish>] -- <path>...`, two or more words, `.`, or
+    --ours / --theirs with plain words (path mode or fatal, measured)."""
+    path_flag = any(t in _CHECKOUT_PATH_FLAGS for t in tokens)
+    rest = [t for t in tokens if t not in _CHECKOUT_KEEP_OPTIONS and t not in _CHECKOUT_PATH_FLAGS]
+    if "--" in rest or (not path_flag and len(rest) >= 2):
+        return _paths_keep(rest)
+    return all(_word_ok(t) for t in rest) and (path_flag or rest == ["."])
+
+
+def _stash_keeps(tokens):
+    """True only for a read-only `git stash list|show|create`, or a pathspec
+    stash `git stash [push] [-q|--quiet] [-m|--message <value>] [--] <path>...`
+    with exact options (without `push`, the paths must follow `--`)."""
+    if not tokens:
+        return False
+    if tokens[0] in _STASH_READ_ONLY:
+        return True
+    push = tokens[0] == "push"
+    words, dashdash, value_next = [], False, False
+    for token in tokens[1:] if push else tokens:
         if value_next:
             if not _value_ok(token):
-                return True  # a value that may vanish shifts the next word into its slot
-            value_next = False
-            continue
-        if token == "--":
-            if any(_word_ok(word) for word in tokens[index + 1:]):
-                return False  # `[<tree-ish>] -- <pathspec>...`: path mode (or fatal)
-            break  # `--` with no pathspec only ends the revisions: branch mode
-        if token.startswith("-"):
-            if not _option_ok(token):
-                return True
-            name = token.split("=", 1)[0]
-            if name in _CHECKOUT_BRANCH_ONLY or name in _PATHSPEC_FILE:
-                return True
-            if name in _CHECKOUT_PATH_ONLY:
-                return False
-            if token.startswith("--"):
-                value_next = name in _CHECKOUT_VALUE and "=" not in token
-                continue
-            if "b" in token or "B" in token:  # -b / -B <new-branch>, bundles too
-                return True
-            if "p" in token:  # -p: patch mode, paths only
-                return False
-            value_next = _short_value(token, "U")
-            continue
-        if not _word_ok(token):
-            return True
-        positional.append(token)
-    if len(positional) > 1:
-        return False  # <tree-ish> <pathspec>...
-    return not positional or positional[0] != "."
-
-
-def _stash_drops(args):
-    """True when `git stash` ARGS save the whole tree (drops MERGE_HEAD).
-    Strict on doubt (the allowlist): a word that is not plainly itself (it
-    may be `push` / `save` / `-m`, or nothing) or a pathspec file (it may be
-    empty) un-stages."""
-    sub, value_next = None, False
-    tokens = _args(args)
-    for index, token in enumerate(tokens):
-        if value_next:
-            if not _value_ok(token):
-                return True  # measured: `-m $M b.txt` with M empty makes b.txt the message
-            value_next = False  # an option's value (`-m --` is a message)
-            continue
-        if token == "--":
-            if sub == "save":
-                return True  # measured: `stash save -- <x>` saves all, <x> is the message
-            if any(_word_ok(word) for word in tokens[index + 1:]):
-                return False  # `-- <pathspec>...`
-            break  # `--` with no pathspec: the whole tree
-        if token.startswith("-"):
-            if not _option_ok(token):
-                return True
-            name = token.split("=", 1)[0]
-            if name in _PATHSPEC_FILE:
-                return True
-            if name in _STASH_PARTIAL:
-                return False
-            if token.startswith("--"):
-                value_next = name in _STASH_VALUE and "=" not in token
-                continue
-            for flag in token[1:]:
-                if flag == "p":
-                    return False  # -p: patch mode, partial
-                if flag in "mU":
-                    break  # the rest of the bundle, or the next token, is its value
-            value_next = _short_value(token, "mU")
-            continue
-        if sub is None:
-            if not _bare_ok(token):
-                return True  # a quoted / unresolved subcommand may be push or save
-            sub = token
-            if sub not in ("push", "save"):
-                return False
-        elif sub == "push":
-            return not _word_ok(token)  # an allowlisted pathspec keeps
-    return True
-
-
-def _reset_drops(args):
-    """True unless `git reset` ARGS provably keep MERGE_HEAD and HEAD (s117 gap 3).
-
-    Kept: a pathspec reset (`[<tree-ish>] -- <path>...`, or two or more bare
-    arguments), and a `--soft` / `--keep` reset to HEAD (it dies while a merge
-    is staged; otherwise it moves HEAD nowhere). Strict everywhere else: one
-    bare argument may be a commit, `--soft` / `--keep` to another commit can
-    move HEAD off a concluded merge commit, `-p` / --pathspec-from-file may
-    name no path (measured: an empty pathspec file is a whole reset), and a
-    word that is not plainly itself (the allowlist) may be `--hard`, a rev or
-    nothing (`git reset "--hard" HEAD`, `git reset :/base\\ two`). A bare `@`
-    is HEAD, as the first argument only."""
-    mode, positional, value_next = None, [], False
-    tokens = _args(args)
-    for index, token in enumerate(tokens):
-        if value_next:
-            if not _value_ok(token):
-                return True  # a value that may vanish shifts the next word into its slot
-            value_next = False
-            continue
-        if token == "--":
-            if any(_word_ok(word) for word in tokens[index + 1:]):
-                return False  # `[<tree-ish>] -- <pathspec>...`: path mode (or fatal)
-            break  # `--` with no pathspec: a whole reset
-        if token.startswith("-"):
-            if not _option_ok(token):
-                return True
-            name = token.split("=", 1)[0]
-            if name in _PATHSPEC_FILE:
-                return True
-            if token.startswith("--"):
-                if token in _RESET_MODES:
-                    mode = token  # git: the last mode option wins
-                value_next = name in _RESET_VALUE and "=" not in token
-                continue
-            value_next = _short_value(token, "U")
-            continue
-        if not (_word_ok(token) or (token == "@" and not positional)):
-            return True
-        positional.append(token)
-    if len(positional) > 1:
-        return False  # `<tree-ish> <pathspec>...`
-    return not (mode in ("--soft", "--keep")
-                and (not positional or positional[0] in _RESET_HEAD))
+                return False  # measured: `-m $M b.txt` with M empty makes b.txt the message
+            value_next = False  # `-m --` is a message
+        elif dashdash:
+            words.append(token)
+        elif token == "--":
+            dashdash = True
+        elif token in ("-m", "--message"):
+            value_next = True
+        elif token not in _QUIET:
+            if not push:
+                return False  # a bare word here is a subcommand (save, branch, pop...)
+            words.append(token)
+    return not value_next and bool(words) and all(_word_ok(t) for t in words)
 
 
 def _git_subcommand_unresolved(stripped):
@@ -1824,19 +1801,28 @@ def _git_subcommand_unresolved(stripped):
 
 def _merge_aborted(stripped):
     """True when STRIPPED runs a `git merge --abort` / `--quit`, a `git reset`
-    that can drop MERGE_HEAD or move HEAD (_reset_drops), or a git subcommand
-    it cannot name."""
-    return (any(_reset_drops(m.group(1)) for m in _EV_GIT_RESET.finditer(stripped))
+    outside the exact keep grammars (_reset_keeps, _keep_shape), a git
+    subcommand it cannot name, or defines a function / alias named git."""
+    return (any(not _verb_keeps(stripped, m, "reset", _reset_keeps)
+                for m in _EV_GIT_RESET.finditer(stripped))
             or any(_MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(stripped))
-            or _git_subcommand_unresolved(stripped))
+            or _git_subcommand_unresolved(stripped) or bool(_GIT_SHADOW.search(stripped)))
+
+
+def _verb_keeps(stripped, match, verb, keeps):
+    """True when MATCH is a plain simple command (_keep_shape) whose
+    arguments KEEPS reads as a keep form."""
+    return _keep_shape(stripped, match, verb) and keeps(_args(match.group(1)))
 
 
 def _merge_switched(stripped):
-    """Offsets in STRIPPED of each branch-mode `git checkout` and whole-tree
-    `git stash` (RM-740 (f)): both drop MERGE_HEAD."""
+    """Offsets in STRIPPED of each `git checkout` and `git stash` outside the
+    exact keep grammars (RM-740 (f): branch mode and a whole-tree stash drop
+    MERGE_HEAD; anything the gate cannot read exactly counts as one)."""
     offsets = [m.start() for m in _EV_GIT_CHECKOUT.finditer(stripped)
-               if _checkout_drops(m.group(1))]
-    offsets += [m.start() for m in _EV_GIT_STASH.finditer(stripped) if _stash_drops(m.group(1))]
+               if not _verb_keeps(stripped, m, "checkout", _checkout_keeps)]
+    offsets += [m.start() for m in _EV_GIT_STASH.finditer(stripped)
+                if not _verb_keeps(stripped, m, "stash", _stash_keeps)]
     return sorted(offsets)
 
 
