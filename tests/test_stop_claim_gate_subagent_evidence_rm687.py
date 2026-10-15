@@ -1555,7 +1555,7 @@ def test_a_drop_before_a_later_merge_that_staged_nothing_still_unstages(
 @pytest.mark.parametrize("command, output", LATER_MERGE_STAGED_NOTHING, ids=LATER_MERGE_IDS)
 def test_staged_merge_step_reads_the_first_merge_when_one_staged_nothing(command, output):
     found = gate._new_subagent_evidence()
-    gate._staged_merge_step(found, gate._step_command(command), output)
+    gate._staged_merge_step(found, command, output)
     assert found["merge"] is False and found["staged_merge"] is False
 
 
@@ -1601,6 +1601,107 @@ def test_a_pathspec_reset_in_the_staging_call_still_unstages(tmp_path):
         STAGE_CMD + " && git reset -q -- tools/x.py && " + LOCKED_COMMIT_CMD,
         STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
     assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round 7 (verifier refute of 0b89d2148): a `git""` merge hides from the
+# slotted text, so this call's staged line was not seen there and a merge
+# staged in an EARLIER call paired with a commit line printed BEFORE this
+# call's staged line - a one-parent commit (real git) credited as the merge.
+# The pre-(f) gate counts only commit lines after the staged line: deny.
+@pytest.mark.parametrize("second, output", [
+    ('git"" checkout main && git commit --allow-empty -m single && '
+     'git"" merge --no-ff --no-commit feat',
+     "Already on 'main'\n[main 1a2b3c4] single\nAuto-merging a.txt\n" + STAGE_OUT),
+    ('git commit -m m && git"" merge --no-ff --no-commit feat2',
+     "[main 1a2b3c4] m\nAuto-merging a.txt\n" + STAGE_OUT),
+], ids=["checkout-single-commit", "commit-then-hidden-merge"])
+def test_a_commit_before_a_hidden_staging_merge_never_credits(tmp_path, second, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", "git merge --no-ff --no-commit feat",
+                              STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cx", REPO_CD + second, output))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# The conjunction, pinned (round 7, orchestrator ruling): the staged-merge
+# credit is given only when the pre-(f) reading of the same evidence also
+# credits it in the same call, so it can never exceed pre-(f) by construction.
+def test_the_staged_merge_credit_needs_the_pre_f_reading(monkeypatch):
+    def credit(pre_f_says):
+        if pre_f_says is not None:
+            monkeypatch.setattr(gate, "_pre_f_staged_step", lambda *args: pre_f_says)
+        found = gate._new_subagent_evidence()
+        gate._staged_merge_step(found, STAGE_CMD, STAGE_OUT)
+        gate._staged_merge_step(found, LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT)
+        return found["merge"]
+    assert credit(None) is True
+    assert credit(False) is False
+
+
+# An independent oracle: the pre-(f) staged-merge step as it stood at
+# 1a1fa703d (copied, not imported), over seeded cross-call sequences with the
+# quoted-git shapes. The gate may credit LESS, never more.
+def _pre_f_oracle(calls):
+    reset = re.compile(gate._GIT_LEAD + r"reset(?![\w.-])", re.I)
+    found = {"merge": False, "staged": False}
+    for command, output in calls:
+        blank = gate.strip_command_noise(command)
+        if reset.search(blank) or any(gate._MERGE_NO_OP.search(m.group(1))
+                                      for m in gate._EV_GIT_MERGE.finditer(blank)):
+            found["staged"] = False
+            continue
+        lines = gate._output_lines(output)
+        staged_at = -1
+        if gate._did_merge(blank) and not gate._MERGE_BAD.search(output):
+            staged_at = next((i for i, line in enumerate(lines)
+                              if line is not None and gate._MERGE_STAGED.match(line)), -1)
+            if staged_at >= 0:
+                found["staged"] = True
+        if not found["staged"] or not gate.EV_COMMIT.search(blank):
+            continue
+        if any(line is not None and gate._COMMIT_LINE.match(line) for line in lines[staged_at + 1:]):
+            found["merge"] = True
+            found["staged"] = False
+    return found["merge"]
+
+
+def test_the_staged_merge_credit_never_exceeds_the_pre_f_oracle():
+    import random
+    rng = random.Random(117)
+    gits = ["git", 'git""', '"git"', "g''it", 'git -C "x"', 'git -C"$R"', 'git --git-dir="x"',
+            "git --git-dir=x", "git ''", "env git", "git.exe"]
+    def one():
+        g, k = rng.choice(gits), rng.random()
+        if k < 0.3:
+            return g + " merge --no-ff --no-commit " + rng.choice(["feat", '"feat"']), STAGE_OUT
+        if k < 0.55:
+            return g + " commit " + rng.choice(["-m m", '-m "x y"', "--allow-empty -m s"]), (
+                "[main 1a2b3c4] m")
+        if k < 0.65:
+            return g + " checkout " + rng.choice(["main", "-- a.txt", '"main"']), "Already on 'main'"
+        if k < 0.72:
+            return g + " stash " + rng.choice(["", "push -- a.txt", "list"]), "Saved"
+        if k < 0.80:
+            return g + " reset " + rng.choice(["--soft HEAD", "--hard", '"--hard"']), ""
+        if k < 0.85:
+            return g + " merge " + rng.choice(["--abort", '"--abort"']), ""
+        return "echo " + rng.choice(['"' + STAGE_OUT.splitlines()[-1] + '"', "x"]), ""
+    seps = [" && ", " || ", "; ", "\n", " \\\n", " | "]
+    wider = []
+    for _ in range(3000):
+        calls = []
+        for _c in range(rng.randint(1, 4)):
+            parts = [one() for _p in range(rng.randint(1, 3))]
+            text = parts[0][0]
+            for part in parts[1:]:
+                text += rng.choice(seps) + part[0]
+            calls.append((text, "\n".join(p[1] for p in parts if p[1])))
+        found = gate._new_subagent_evidence()
+        for command, output in calls:
+            gate._staged_merge_step(found, command, output)
+        if found["merge"] and not _pre_f_oracle(calls):
+            wider.append(calls)
+    assert not wider, wider[:3]
 
 
 # Round 6: credit is never wider than the pre-(f) reading (quoted literals

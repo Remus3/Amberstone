@@ -1599,7 +1599,6 @@ _SHELL_LAUNCHER = re.compile(
     re.I)
 _HIDDEN_GIT = re.compile(r"(?<![\w.-])git(?:\.exe)?(?![\w.-])", re.I)
 _HIDDEN_MARK = "\ngit $hidden\n"
-_PRE_F_UNSTAGE_MARK = "\ngit reset\n"
 # A shell function or alias named git (bash `git() {..}`, `function git`,
 # `alias git=`, PowerShell Set-Alias / New-Alias / sal / nal) runs something
 # else for every later `git checkout -- <path>`: the whole call un-stages.
@@ -1641,20 +1640,11 @@ def _slot_literal(match):
 
 def _step_command(command):
     """COMMAND as the staged-merge step reads it: noise stripped, each quoted
-    literal kept as one word that says whether it is allowlisted, an unnamed
-    git appended when a shell may run one hidden in a quoted string or heredoc
-    (_hidden_git), and a reset appended when the pre-(f) reading (quoted
-    literals blanked) finds a reset or a merge --abort / --quit that the
-    slotted text hides (`git"" reset --hard`, `git --git-dir"=$d" reset`), so
-    that deny is never narrower than pre-(f)."""
+    literal kept as one word that says whether it is allowlisted, and an
+    unnamed git appended when a shell may run one hidden in a quoted string or
+    heredoc (_hidden_git)."""
     stepped = strip_command_noise(command, _slot_literal)
-    if _hidden_git(command, stepped):
-        stepped += _HIDDEN_MARK
-    blank = strip_command_noise(command)
-    if _EV_GIT_RESET.search(blank) or any(
-            _MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(blank)):
-        stepped += _PRE_F_UNSTAGE_MARK
-    return stepped
+    return stepped + _HIDDEN_MARK if _hidden_git(command, stepped) else stepped
 
 
 def _hidden_git(command, stepped):
@@ -1842,9 +1832,39 @@ def _merge_unstaged(stripped):
     return _merge_aborted(stripped) or bool(_merge_switched(stripped))
 
 
-def _staged_merge_step(found, stripped, output, pre_f=None):
-    """Advance FOUND's staged-merge state by one result; a staged merge that a
-    later `git commit` concludes credits check 10 (see _MERGE_STAGED).
+def _pre_f_staged_step(found, blank, output):
+    """The staged-merge step of the pre-(f) gate (1a1fa703d), unchanged, on
+    BLANK (the command with quoted literals blanked, as that gate read it) and
+    its own pending state found["pre_f_staged"]. True when it credits the
+    merge in this call. _staged_merge_step credits only when this does too."""
+    if _EV_GIT_RESET.search(blank) or any(_MERGE_NO_OP.search(m.group(1))
+                                          for m in _EV_GIT_MERGE.finditer(blank)):
+        found["pre_f_staged"] = False
+        return False
+    lines = _output_lines(output)
+    staged_at = -1
+    if _did_merge(blank) and not _MERGE_BAD.search(output):
+        staged_at = next((i for i, line in enumerate(lines)
+                          if line is not None and _MERGE_STAGED.match(line)), -1)
+        if staged_at >= 0:
+            found["pre_f_staged"] = True
+    if not found["pre_f_staged"] or not EV_COMMIT.search(blank):
+        return False
+    if any(line is not None and _COMMIT_LINE.match(line) for line in lines[staged_at + 1:]):
+        found["pre_f_staged"] = False
+        return True
+    return False
+
+
+def _staged_merge_step(found, command, output):
+    """Advance FOUND's staged-merge state by one result (COMMAND, raw); a
+    staged merge that a later `git commit` concludes credits check 10 (see
+    _MERGE_STAGED).
+
+    Never wider than pre-(f), BY CONSTRUCTION (round 7, orchestrator ruling,
+    after the verifier refuted 0b89d2148): the pre-(f) step runs on the same
+    evidence with its own state (_pre_f_staged_step), and the credit below is
+    a conjunction with it. Everything else here only narrows.
 
     One call (RM-740 (f), round 2 after a verifier refute): a reset / abort
     anywhere un-stages and denies credit, as before (f). A checkout / stash
@@ -1853,9 +1873,8 @@ def _staged_merge_step(found, stripped, output, pre_f=None):
     anywhere, when no merge stages here) denies credit unless the success line
     is attributable: the call holds exactly ONE commit-creating command, after
     the merge and before every such drop, and exactly one commit line follows
-    the staged line. So a checkout / stash only ever narrows credit against
-    the pre-(f) gate, and every reset / abort still denies it (deny-all, and
-    _step_command carries over any reset the pre-(f) reading finds).
+    the staged line. A checkout / stash only ever narrows the credit, and
+    every reset / abort denies it (deny-all).
 
     Which merge staged (s117 gap 2): each merge that stages prints one staged
     line, so the LAST merge is the stager only when every merge in the call
@@ -1863,18 +1882,16 @@ def _staged_merge_step(found, stripped, output, pre_f=None):
     a failed `&&`, or already up to date - and the output cannot say which,
     so the FIRST merge is read as the stager and a drop after it is late.
 
-    STRIPPED is the command with each quoted literal kept as a word
-    (_step_command), so a quoted pathspec after `--` still reads as one.
-    PRE_F, when given, is the same command as the pre-(f) gate read it
-    (quoted literals blanked): the staging merge and the concluding commit
-    must show in it too, so credit is never wider than pre-(f) (round 6)."""
+    The step reads COMMAND with each quoted literal kept as a word
+    (_step_command), so a quoted pathspec after `--` still reads as one."""
+    pre_f_credit = _pre_f_staged_step(found, strip_command_noise(command), output)
+    stripped = _step_command(command)
     if _merge_aborted(stripped):
         found["staged_merge"] = False
         return
     lines = _output_lines(output)
     staged_at, merge_at = -1, -1
-    seen = stripped if pre_f is None else pre_f
-    if _did_merge(stripped) and _did_merge(seen) and not _MERGE_BAD.search(output):
+    if _did_merge(stripped) and not _MERGE_BAD.search(output):
         staged = [i for i, line in enumerate(lines)
                   if line is not None and _MERGE_STAGED.match(line)]
         merges = [m.start() for m in _EV_GIT_MERGE.finditer(stripped)
@@ -1894,18 +1911,20 @@ def _staged_merge_step(found, stripped, output, pre_f=None):
                 and len(commit_lines) == 1):
             found["staged_merge"] = False
             return
-    if (found["staged_merge"] and EV_COMMIT.search(stripped) and EV_COMMIT.search(seen)
-            and commit_lines):
-        found["merge"] = True
+    if found["staged_merge"] and EV_COMMIT.search(stripped) and commit_lines:
         found["staged_merge"] = False
+        if pre_f_credit:  # the conjunction: pre-(f) credits this same evidence
+            found["merge"] = True
     elif late:
         found["staged_merge"] = False
 
 
 def _new_subagent_evidence():
-    # "staged_merge" is per-file pending state for _staged_merge_step only.
+    # "staged_merge" / "pre_f_staged" are per-file pending state for
+    # _staged_merge_step / _pre_f_staged_step only.
     return {"runs": [], "ci_runs": [], "edited": [], "ci": False, "commit": False,
-            "merge": False, "push": None, "bypass": [], "staged_merge": False}
+            "merge": False, "push": None, "bypass": [], "staged_merge": False,
+            "pre_f_staged": False}
 
 
 def _tool_use_of(block):
@@ -2242,7 +2261,7 @@ def _absorb_result(found, runs, deferred, use, text, errored, session_start):
         found["commit"] = True
     if _did_merge(stripped) and _merge_output_ok(stripped, text, errored):
         found["merge"] = True
-    _staged_merge_step(found, _step_command(command), text, stripped)
+    _staged_merge_step(found, command, text)
     if found["push"] is None:
         found["push"] = _pair_credit(command, text, errored, session_start)
 
