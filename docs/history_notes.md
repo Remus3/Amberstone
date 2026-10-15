@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-13 - session 112: RM-740 (b) shipped; MAIN ORDER ENV-APIKEY shipped (one env-then-key-file Anthropic key lookup); gated suite GREEN
+
+- **Shipped (LEDGER 1719), each CONFIRMED by an independent verifier:** RM-740 (b) (`6ec706291`: a raising `Thread.start()` in the four part-3 servers is arbitrated, counted, logged and dropped; `tests/test_misc_servers_thread_start_rm738.py` 16/16). ENV-APIKEY (merge `148d67c81`, fix `5f96dc50c`): `core/anthropic_key.py` for all 13 readers; `install.bat` writes the key file in place, no `setx`; rootdir `conftest.py` redirects the key root before collection.
+- **Merger:** the 3 ENV-APIKEY slice commits were rebuilt with `# rc-credential-scan: allow-fixture` on 4 fake-key lines after the pre-push credential scan blocked them (never `--no-verify`); originals never left the repo.
+- **Gate:** ONE gated dual suite on `5f96dc50c`: 39533 passed, 99 skipped, EXIT=0 (the run on `148d67c81` failed 2 guards, fixed in `5f96dc50c`).
+- **Live:** key file created (gitignored, one-ACE ACL); 12/12 consumers find the key with the variable unset; RC restarted (pid 11116). ANSWER to MAIN delivered 1/1 (`10c24a023` tracked copy). Pushed `cfe57a013..10c24a023`.
+- **Filed:** RM-740 (g) (dashboard / DS start-raise closes without the claim lock); RM-743 (inbox tick never re-verifies a `main-unverified` MAIN note); ENV-APIKEY residuals (vision :8889 not restarted; MAIN removes the Machine variable).
+- **Do NOT redo:** RM-740 (b), ENV-APIKEY, the key file, the ANSWER note, the session 112 gated suite.
+- **Next:** RM-740 (c) + (g) (clear the thread target/args on abandon, and take the claim before closing, in the dashboard and DS servers); then (d)-(f), RM-741, RM-742, RM-743.
+
+---
+
 # 2026-10-12b - session 111: local gated suite GREEN; RM-694, RM-684, RM-739, RM-740 (a) shipped; RM-515 guard on the AST
 
 - **Shipped (LEDGER 1718), each CONFIRMED by an independent verifier:** RM-694 (`e2c1b07d9`, two guards walk `tests/_repo_walk`); RM-684 (`e5284e5b3`, canary on CLI 2.1.296 then `PINNED_CLI` 2.1.296; the responder's 2.1.251 pin is separate and unchanged); RM-739 (`e0a606175`, :8895 handshake on the request thread, 5.0 s; live JSON 404 in 0.041 s beside a silent client); RM-740 (a) (`268df410d`, DsWatchdog boot deadline 600 s, kill + respawn).
