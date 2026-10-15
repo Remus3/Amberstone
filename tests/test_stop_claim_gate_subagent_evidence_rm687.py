@@ -1206,7 +1206,6 @@ MERGE_HEAD_MEASURED = [
     ("git stash save -- b.txt", True), ("git stash push -m -- b.txt", False),
     ("git stash push -m --", True), ("git stash -- b.txt", False),
     ("git checkout main -- $F", True),
-    ("git reset HEAD~1 -- b.txt", False),
     # An option VALUE that may expand to nothing shifts the next word into the
     # value slot (measured, M empty: `-m $M b.txt` makes b.txt the message).
     ("git stash push -m $M b.txt", True),
@@ -1226,7 +1225,21 @@ MERGE_HEAD_MEASURED = [
     ("git stash push -- @()", True),
     ("git reset HEAD zz*", True), ("git reset HEAD {,}", True), ("git reset @() HEAD", True),
     ("git checkout main zz*", True), ("git checkout zz*", True), ("git stash push zz*", True),
-    ('git reset -- "*.zz"', False), ("git reset -- 'b.txt'", False),
+    ("git reset -- 'b.txt'", False),
+    # s117 verifier REFUTE of 37aea4ab5 (measured): a shell joins `\ ` into one
+    # word (`git reset :/ma\in2` is one commit-search revision: a whole reset,
+    # and with --hard HEAD moves), extglob `+(zz)` vanishes under nullglob, and
+    # PowerShell 5.1 passes nothing for `(@())`. A token starting with `#` is a
+    # comment, so `-- #a.txt` leaves a bare `--`.
+    ("git reset :/ma\\in2", True), ("git reset --hard :/in\\it", True),
+    ("git checkout :/fe\\at", True), ("git stash push -m my\\ msg", True),
+    ("git reset -- +(zz)", True), ("git reset HEAD +(zz)", True),
+    ("git checkout main -- +(zz)", True), ("git stash push -- +(zz)", True),
+    ("git reset -- (@())", True), ("git checkout main -- (@())", True),
+    ("git stash push -- (@())", True),
+    ("git reset -- #a.txt", True), ("git reset -- a.txt #b.txt", False),
+    # A wholly quoted allowlisted word is that word (measured KEPT, s117).
+    ('git checkout "main" -- a.txt', False), ('git stash push -m msg "b.txt"', False),
 ]
 
 # Where the command line alone cannot tell git's two modes apart, the gate reads
@@ -1243,8 +1256,7 @@ MERGE_HEAD_READ_ON_PURPOSE = [
     ("git checkout -f a.txt", True), ("git reset b.txt", True),
     ("git reset --soft HEAD~1", True), ("git reset --keep feat", True),
     ("git reset -p", True),
-    ('git checkout "main" -- a.txt', True), ("git checkout -b -- a.txt", True),
-    ('git reset "--hard" -- b.txt', True), ('git stash push -m msg "b.txt"', True),
+    ("git checkout -b -- a.txt", True), ('git reset "--hard" -- b.txt', True),
     ("git checkout --conflict $S main", True), ("git stash push -m $M -- b.txt", True),
     # "$@" / "${ARR[@]}" with nothing to expand: zero words in POSIX bash (a
     # whole reset, per the s117 verifier); the MSYS bash here passed one empty
@@ -1258,6 +1270,10 @@ MERGE_HEAD_READ_ON_PURPOSE = [
     # in PowerShell 5.1 when F is empty. Strict.
     ('git checkout main -- ""', True), ('git reset -- ""', True),
     ('git stash push -- ""', True), ('git reset -- "$F"', True),
+    # Orchestrator ruling (s117, after three leaking denylist rounds): only an
+    # ALLOWLISTED word ([A-Za-z0-9_./][A-Za-z0-9_./-]*, bare or quoted whole)
+    # counts as a path or a rev; git keeps MERGE_HEAD in these, the gate drops.
+    ('git reset -- "*.zz"', True), ("git reset HEAD~1 -- b.txt", True),
 ]
 
 
@@ -1598,7 +1614,64 @@ VANISHING_PATHSPEC_DROPS = [
     "shopt -s nullglob; git reset HEAD zz*", "git reset HEAD {,}", "git reset @() HEAD",
     "shopt -s nullglob; git checkout main zz*", "shopt -s nullglob; git checkout zz*",
     "shopt -s nullglob; git stash push zz*",
+    # s117 verifier REFUTE of 37aea4ab5 (each denied by the pre-(f) gate):
+    "git reset :/base\\ two", "git reset --hard :/base\\ two",
+    "shopt -s extglob nullglob\ngit reset -- +(zz)",
+    "shopt -s extglob nullglob\ngit reset HEAD +(zz)", "git reset -- (@())",
+    "git checkout :/base\\ two", "git stash push -m my\\ msg",
+    "shopt -s extglob nullglob\ngit checkout main -- +(zz)",
+    "shopt -s extglob nullglob\ngit stash push -- +(zz)",
+    "git checkout main -- (@())", "git stash push -- (@())", "git reset -- #a.txt",
 ]
+
+
+# Orchestrator ruling (s117): an ALLOWLIST, not a denylist. A word counts as a
+# path, or as a rev in reset path mode, only when it is bare and matches
+# [A-Za-z0-9_./][A-Za-z0-9_./-]* or is wholly single- / double-quoted with such
+# an inside. Property: put any word outside it in any keep form's word slot and
+# the gate must read a drop (raw text and the step's _step_command text). A
+# `#x` token is a comment, not a word (it ends the arguments: `git reset --soft
+# #x` IS `git reset --soft`), so it is pinned by the table rows instead.
+NON_ALLOWLISTED_WORDS = [
+    ":/base\\", "+(zz)", "(@())", "~", "~/x", "a@b", "HEAD~1", "x^", "!x", "$X", "%X%",
+    "`x`", "*.py", "{a,b}", "{,}", "a?b", "[ab]", '""', "''", '"a b"', "'x y'", "'$x'",
+    '"-b"', "-", "a\\", "@()", '"${A[@]}"', "'a'\"b\"$c", "a=b", "a,b", "a>b",
+    '"*.zz"', "a:b", "a+b", "(x)", "!", "a%b",
+]
+KEEP_FORM_TEMPLATES = [
+    "git reset -- {w}", "git reset -q -- {w}", "git reset HEAD {w}", "git reset HEAD -- {w}",
+    "git reset {w} -- a.txt", "git reset {w} a.txt", "git reset --soft {w}",
+    "git reset --keep {w}", "git checkout main -- {w}", "git checkout HEAD -- {w}",
+    "git checkout {w} -- a.txt", "git checkout main {w}", "git checkout {w}",
+    "git stash push -- {w}", "git stash push {w}", "git stash {w} -- a.txt",
+    "git stash push -m {w} -- a.txt",
+]
+
+
+@pytest.mark.parametrize("word", NON_ALLOWLISTED_WORDS)
+def test_a_word_outside_the_allowlist_never_keeps_the_staged_merge(word):
+    kept = []
+    for template in KEEP_FORM_TEMPLATES:
+        if word == "-" and "-m {w}" in template:
+            continue  # `-m -` is a one-word message: a true keep
+        command = template.format(w=word)
+        for text in (command, gate._step_command(command)):
+            if not gate._merge_unstaged(text):
+                kept.append(text)
+    assert not kept, kept
+
+
+@pytest.mark.parametrize("keep", [
+    "git reset -- tools/x.py", "git reset HEAD tools/x.py", "git checkout main -- tools/x.py",
+    "git stash push -- tools/x.py", "git reset --soft HEAD", "git reset --soft @",
+    "git reset --keep HEAD", 'git reset -- "tools/x.py"', "git checkout main -- 'tools/x.py'",
+])
+def test_the_allowlisted_keep_forms_stay_credited(tmp_path, keep):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
 
 
 @pytest.mark.parametrize("undo", VANISHING_PATHSPEC_DROPS)
