@@ -229,7 +229,50 @@ def find_ds_process() -> Optional[int]:
     return None
 
 
-def spawn_ds() -> int:
+# RM-740 (e): the scheduled task that owns DS (boot trigger, SYSTEM,
+# restart-on-failure, MultipleInstancesPolicy IgnoreNew). A relaunch goes
+# through it so DS never becomes a child of RC: such a child sat in the
+# RC-Supervisor task's job object with the DS task left Ready, and could boot
+# beside the task's own restart-on-failure relaunch, which IgnoreNew cannot
+# de-duplicate because the child is not an instance of the task.
+DS_TASK_NAME = "RC-DaemonSlayer"
+_USE_TASK = os.name == "nt"
+_SCHTASKS_TIMEOUT_S = 15.0
+
+
+def _schtasks(*args: str) -> int:
+    return subprocess.run(
+        ["schtasks", *args], capture_output=True,
+        timeout=_SCHTASKS_TIMEOUT_S, creationflags=_NO_WINDOW,
+    ).returncode
+
+
+def spawn_ds() -> str:
+    """Relaunch DS through its scheduled task; a child only if there is none.
+
+    ``schtasks /Run /TN RC-DaemonSlayer`` keeps the task the single owner
+    (the route ``ops/rc_supervisor.py`` ``_default_restarter`` takes for its
+    own Phase 3 task). Where the task is not registered (a dev box, a fresh
+    clone, a non-Windows host) the launcher is started as a windowless child,
+    as before. A registered task that refuses ``/Run`` (an instance still
+    exiting after a kill, a disabled task) or a schtasks timeout RAISES:
+    ``DsWatchdog._respawn`` logs it and retries after the grace, and no second
+    engine is started beside the task. Returns the route taken, for the log.
+    """
+    if _USE_TASK:
+        try:
+            rc = _schtasks("/Run", "/TN", DS_TASK_NAME)
+        except OSError:
+            rc = None  # no schtasks at all, so no task can own DS
+        if rc == 0:
+            return f"scheduled task {DS_TASK_NAME}"
+        if rc is not None and _schtasks("/Query", "/TN", DS_TASK_NAME) == 0:
+            raise RuntimeError(f"schtasks /Run {DS_TASK_NAME} refused (exit "
+                               f"{rc}); the task stays the owner")
+    return f"child pid {_spawn_child()}"
+
+
+def _spawn_child() -> int:
     """Start ``tools/start_daemon_slayer.py`` windowless, detached from RC stdio.
 
     The launcher's own bind preflight exits 0 if :8860 is already bound.
@@ -397,9 +440,9 @@ class DsWatchdog:
     def _respawn(self, now: float, why: str) -> None:
         self.failures = 0
         try:
-            pid = self._spawn()
-            logger.warning("daemon_slayer %s - spawned %s (pid %s)",
-                           why, _LAUNCHER.name, pid)
+            route = self._spawn()
+            logger.warning("daemon_slayer %s - relaunched %s via %s",
+                           why, _LAUNCHER.name, route)
         except Exception as exc:  # noqa: BLE001
             logger.warning("daemon_slayer %s - relaunch failed: %s", why, exc)
         finally:
