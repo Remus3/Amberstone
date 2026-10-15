@@ -22,6 +22,7 @@ starts a process for real.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import unittest
@@ -31,6 +32,24 @@ from unittest import mock
 import core.daemon_slayer_client as dsc
 
 CREATE_NO_WINDOW = 0x08000000
+
+
+class NoWindowFlag(unittest.TestCase):
+    """The flag value itself: CREATE_NO_WINDOW on Windows, 0 elsewhere.
+
+    The route tests below assert that spawn_ds passes exactly ``dsc._NO_WINDOW``
+    (so a stray DETACHED_PROCESS bit reds them on every OS); this class pins
+    what that constant is, per OS. CI's ubuntu runner has no CREATE_NO_WINDOW,
+    and the module deliberately uses 0 there (session 115 CI red on 687920398).
+    """
+
+    @unittest.skipUnless(os.name == "nt", "CREATE_NO_WINDOW is Windows-only")
+    def test_windows_flag_is_create_no_window_alone(self):
+        self.assertEqual(dsc._NO_WINDOW, CREATE_NO_WINDOW)
+
+    @unittest.skipIf(os.name == "nt", "non-Windows hosts pass no creation flags")
+    def test_non_windows_flag_is_zero(self):
+        self.assertEqual(dsc._NO_WINDOW, 0)
 
 
 class _Schtasks:
@@ -86,7 +105,7 @@ class SpawnDsRoute(unittest.TestCase):
         self.assertEqual(len(sched.calls), 1)
         argv, kw = sched.calls[0]
         self.assertEqual(argv, ["schtasks", "/Run", "/TN", "RC-DaemonSlayer"])
-        self.assertEqual(kw.get("creationflags"), CREATE_NO_WINDOW)
+        self.assertEqual(kw.get("creationflags"), dsc._NO_WINDOW)
         self.assertIsNotNone(kw.get("timeout"), "schtasks must be bounded")
         self.assertIn("RC-DaemonSlayer", str(result))
 
@@ -102,8 +121,9 @@ class SpawnDsRoute(unittest.TestCase):
         argv, kw = popen.calls[0]
         self.assertEqual(argv, [sys.executable, str(dsc._LAUNCHER)])
         # CREATE_NO_WINDOW alone: DETACHED_PROCESS (0x8) is the silent no-op
-        # worker class, so the flags are pinned exactly.
-        self.assertEqual(kw.get("creationflags"), CREATE_NO_WINDOW)
+        # worker class, so the flags are pinned exactly (the per-OS value of
+        # dsc._NO_WINDOW is pinned by NoWindowFlag above).
+        self.assertEqual(kw.get("creationflags"), dsc._NO_WINDOW)
         self.assertEqual(kw.get("cwd"), str(dsc._LAUNCHER.parent.parent))
         self.assertIs(kw.get("stdout"), subprocess.DEVNULL)
         self.assertIs(kw.get("stderr"), subprocess.DEVNULL)
