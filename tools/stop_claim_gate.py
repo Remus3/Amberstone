@@ -676,15 +676,17 @@ _QUOTED_PROSE = re.compile(
 _QUOTED_EXE = re.compile(r"""["']([^"']*?[\\/])?([\w.-]+\.exe)["']""", re.I)
 
 
-def strip_command_noise(command):
+def strip_command_noise(command, literal=" "):
     """A command's heredoc body and quoted literals are DATA, not the command.
 
     A quoted EXECUTABLE PATH is the exception: it collapses to its basename
     rather than vanishing, so the invoked binary survives for the evidence
-    patterns while the surrounding prose-stripping is unchanged.
+    patterns while the surrounding prose-stripping is unchanged. LITERAL
+    replaces each other quoted literal: a blank by default, or a word (see
+    _LITERAL_SLOT) where a caller must still see that an argument was there.
     """
     command = _QUOTED_EXE.sub(lambda m: " " + m.group(2) + " ", command)
-    return _QUOTED.sub(" ", _HEREDOC.sub(" ", command))
+    return _QUOTED.sub(literal, _HEREDOC.sub(" ", command))
 
 
 def strip_prose_noise(text):
@@ -1538,7 +1540,7 @@ def _merge_output_ok(stripped, output, errored):
 # strict: a conflicted merge later resolved and committed, and a `merge
 # --continue`. As in checks 6 and 10 the commit's repo is not placed.
 _MERGE_STAGED = re.compile(r"Automatic merge went well; stopped before committing as requested")
-_EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
+_EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])([^|;&\n]*)", re.I)
 # RM-740 (f): MERGE_HEAD droppers beyond `merge --abort` / `--quit` and `git
 # reset`. Measured 2026-10-15 (git 2.53.0, scratch repo, after a clean `merge
 # --no-ff --no-commit`): every BRANCH-mode `git checkout` drops it (with or
@@ -1547,14 +1549,21 @@ _EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])", re.I)
 # pathspec). A PATH-mode checkout, a pathspec stash, `stash list` / `create` /
 # `show` / `pop`, `git switch` (fatal while merging) and `git restore` keep it.
 # The command line cannot always tell the modes apart, so the gate reads one on
-# purpose: a single bare argument (a branch or a path) un-stages - strict, as is
-# any `git reset`; a `--` keeps - strip_command_noise blanks a quoted pathspec
-# after it, so `-- "<path>"` and a bare trailing `--` (branch mode, rare) read
-# the same. Table: tests/test_stop_claim_gate_subagent_evidence_rm687.py.
-# Within one call (see _staged_merge_step) a reset / abort keeps the pre-(f)
-# whole-call rule; a checkout / stash BEFORE the call's staging merge is
-# ignored, and one after it denies credit unless the call's only
+# purpose: a single bare argument (a branch or a path) un-stages - strict. A
+# `--` followed by a pathspec keeps; a bare TRAILING `--` ends the revisions,
+# so it is branch mode and un-stages (s117 gap 1, measured: `git checkout main
+# --`, `git stash push --` drop MERGE_HEAD). The step reads the command with
+# each quoted literal as a word (_LITERAL_SLOT), so `-- "<path>"` still shows
+# its pathspec. `git reset` (s117 gap 3, measured): `--soft` / `--keep` die
+# while a merge is staged ("Cannot do a soft reset in the middle of a merge"),
+# and a pathspec reset keeps MERGE_HEAD (the next commit has two parents) and
+# never moves HEAD; every other form un-stages (_reset_drops). Table:
+# tests/test_stop_claim_gate_subagent_evidence_rm687.py.
+# Within one call (see _staged_merge_step) a dropping reset / abort keeps the
+# pre-(f) whole-call rule; a checkout / stash BEFORE the call's staging merge
+# is ignored, and one after it denies credit unless the call's only
 # commit-creating command sits between the merge and that drop.
+_LITERAL_SLOT = "_quoted_"
 _EV_GIT_CHECKOUT = re.compile(_GIT_LEAD + r"checkout(?![\w.-])([^|;&\n]*)", re.I)
 _EV_GIT_STASH = re.compile(_GIT_LEAD + r"stash(?![\w.-])([^|;&\n]*)", re.I)
 _EV_GIT_COMMIT_MAKER = re.compile(_GIT_LEAD + r"(?:commit|cherry-pick|revert)(?![\w.-])", re.I)
@@ -1564,6 +1573,8 @@ _CHECKOUT_PATH_ONLY = frozenset({"--ours", "--theirs", "--patch", "--overlay", "
                                  "--pathspec-from-file", "--pathspec-file-nul"})
 _CHECKOUT_BRANCH_ONLY = frozenset({"--orphan", "--detach"})
 _STASH_PARTIAL = frozenset({"-p", "--patch", "--pathspec-from-file", "--pathspec-file-nul"})
+_RESET_MODES = frozenset({"--soft", "--mixed", "--hard", "--merge", "--keep"})
+_RESET_HEAD = frozenset({"HEAD", "@"})
 
 
 def _args(text):
@@ -1579,11 +1590,16 @@ def _args(text):
 def _checkout_drops(args):
     """True when `git checkout` ARGS select branch mode (drops MERGE_HEAD)."""
     positional = []
-    for token in _args(args):
+    tokens = _args(args)
+    for index, token in enumerate(tokens):
         name = token.split("=", 1)[0]
         if name in _CHECKOUT_BRANCH_ONLY:
             return True
-        if token == "--" or name in _CHECKOUT_PATH_ONLY:
+        if token == "--":
+            if index + 1 < len(tokens):
+                return False  # `[<tree-ish>] -- <pathspec>...`: path mode
+            break  # a bare trailing `--` only ends the revisions: branch mode
+        if name in _CHECKOUT_PATH_ONLY:
             return False
         if token.startswith("--"):
             continue
@@ -1602,11 +1618,16 @@ def _checkout_drops(args):
 def _stash_drops(args):
     """True when `git stash` ARGS save the whole tree (drops MERGE_HEAD)."""
     sub, value_next = None, False
-    for token in _args(args):
+    tokens = _args(args)
+    for index, token in enumerate(tokens):
         if value_next:
             value_next = False
             continue
-        if token == "--" or token.split("=", 1)[0] in _STASH_PARTIAL:
+        if token == "--":
+            if index + 1 < len(tokens):
+                return False  # `-- <pathspec>...`
+            break  # a bare trailing `--` names no path: the whole tree
+        if token.split("=", 1)[0] in _STASH_PARTIAL:
             return False
         if token.startswith("-"):
             value_next = token in ("-m", "--message")
@@ -1620,9 +1641,37 @@ def _stash_drops(args):
     return True
 
 
+def _reset_drops(args):
+    """True unless `git reset` ARGS provably keep MERGE_HEAD and HEAD (s117 gap 3).
+
+    Kept: a pathspec reset (`[<tree-ish>] -- <path>...`, or two or more bare
+    arguments), and a `--soft` / `--keep` reset to HEAD (it dies while a merge
+    is staged; otherwise it moves HEAD nowhere). Strict everywhere else: one
+    bare argument may be a commit, `--soft` / `--keep` to another commit can
+    move HEAD off a concluded merge commit, and `-p` / --pathspec-from-file
+    may name no path (measured: an empty pathspec file is a whole reset)."""
+    mode, positional = None, []
+    tokens = _args(args)
+    for index, token in enumerate(tokens):
+        if token == "--":
+            if index + 1 < len(tokens):
+                return False  # `[<tree-ish>] -- <pathspec>...`: path mode
+            break  # a bare trailing `--` names no path: a whole reset
+        if token.startswith("-"):
+            if token in _RESET_MODES:
+                mode = token  # git: the last mode option wins
+            continue
+        positional.append(token)
+    if len(positional) > 1:
+        return False  # `<tree-ish> <pathspec>...`
+    return not (mode in ("--soft", "--keep")
+                and (not positional or positional[0] in _RESET_HEAD))
+
+
 def _merge_aborted(stripped):
-    """True when STRIPPED runs a `git merge --abort` / `--quit` or a `git reset`."""
-    return bool(_EV_GIT_RESET.search(stripped)) or any(
+    """True when STRIPPED runs a `git merge --abort` / `--quit` or a `git reset`
+    that can drop MERGE_HEAD or move HEAD (_reset_drops)."""
+    return any(_reset_drops(m.group(1)) for m in _EV_GIT_RESET.finditer(stripped)) or any(
         _MERGE_NO_OP.search(m.group(1)) for m in _EV_GIT_MERGE.finditer(stripped))
 
 
@@ -1651,18 +1700,33 @@ def _staged_merge_step(found, stripped, output):
     anywhere, when no merge stages here) denies credit unless the success line
     is attributable: the call holds exactly ONE commit-creating command, after
     the merge and before every such drop, and exactly one commit line follows
-    the staged line. So credit is only ever narrower than before (f)."""
+    the staged line. So a checkout / stash only ever narrows credit against
+    the pre-(f) gate, and a reset widens it only for the forms _reset_drops
+    reads as keeping MERGE_HEAD and HEAD (s117 gap 3; a 200k-sequence
+    differential against the pre-(f) gate found no other widening).
+
+    Which merge staged (s117 gap 2): each merge that stages prints one staged
+    line, so the LAST merge is the stager only when every merge in the call
+    printed one. With fewer lines a merge staged nothing - skipped by `||` or
+    a failed `&&`, or already up to date - and the output cannot say which,
+    so the FIRST merge is read as the stager and a drop after it is late.
+
+    STRIPPED is the command with each quoted literal kept as a word
+    (_LITERAL_SLOT), so a quoted pathspec after `--` still reads as one."""
     if _merge_aborted(stripped):
         found["staged_merge"] = False
         return
     lines = _output_lines(output)
     staged_at, merge_at = -1, -1
     if _did_merge(stripped) and not _MERGE_BAD.search(output):
-        staged_at = next((i for i, line in enumerate(lines)
-                          if line is not None and _MERGE_STAGED.match(line)), -1)
-        if staged_at >= 0:
-            merge_at = max((m.start() for m in _EV_GIT_MERGE.finditer(stripped)
-                            if not _MERGE_NO_OP.search(m.group(1))), default=-1)
+        staged = [i for i, line in enumerate(lines)
+                  if line is not None and _MERGE_STAGED.match(line)]
+        merges = [m.start() for m in _EV_GIT_MERGE.finditer(stripped)
+                  if not _MERGE_NO_OP.search(m.group(1))]
+        if staged:
+            staged_at = staged[0]
+        if staged and merges:
+            merge_at = merges[-1] if len(staged) >= len(merges) else merges[0]
     if merge_at >= 0:
         found["staged_merge"] = True
     commit_lines = [line for line in lines[staged_at + 1:]
@@ -2021,7 +2085,7 @@ def _absorb_result(found, runs, deferred, use, text, errored, session_start):
         found["commit"] = True
     if _did_merge(stripped) and _merge_output_ok(stripped, text, errored):
         found["merge"] = True
-    _staged_merge_step(found, stripped, text)
+    _staged_merge_step(found, strip_command_noise(command, _LITERAL_SLOT), text)
     if found["push"] is None:
         found["push"] = _pair_credit(command, text, errored, session_start)
 
