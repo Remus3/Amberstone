@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-15 - session 116: RM-740 (e) live read-back PASS, RM-740 (f) shipped in stop_claim_gate
+
+- **Read back (LEDGER 1724):** RM-740 (e) follow-up 1 PASS - `taskkill /F /PID 28196` (DS) at 16:49:56Z; RC relaunched DS via the RC-DaemonSlayer scheduled task (`logs/2026-10-15.log` line 1467); new DS pid 22768, parent svchost (not RC), `/health` 200 about 33 s after the kill. The RC token CAN `schtasks /Run` the SYSTEM task, so (e)'s first Reverses-if is measured false.
+- **Shipped:** `eb309e854` - `tools/stop_claim_gate.py` `_merge_unstaged` (`:1638`): branch-mode `git checkout` (with or without `-f`) and whole-tree `git stash` after a staged `--no-commit` merge now drop the merge credit, as `merge --abort` / `reset` already did (measured on git 2.53.0; path-mode checkout, `switch`, `restore` keep MERGE_HEAD). First version REFUTED by the verifier (credited 3 one-call sequences HEAD refused); reworked TDD, re-verified GO: 245 passed in the touched file, 665 across the ten gate test files, a 600k-sequence differential fuzz found 0 new-credits-where-HEAD-refuses.
+- **Docs:** `41a529472` (LEDGER 1724, BACKLOG (e)/(f) rows, ROADMAP RM-740 line). Both commits pushed `1a09d8235..41a529472` at /done.
+- **Live:** RC restarted 8 times today 11:57-12:10 local from the session's `tools/` + `tests/` edits (RM-699 class); final pid 15372 alive, kept DS 22768.
+- **Do NOT redo:** the (e) follow-up 1 read-back, RM-740 (f).
+- **Next:** RM-741 / RM-742 / RM-743 (Tier-1 each); RM-740 (e) follow-up 2 (machine log setting - operator, halt boundary) and 3 (child fallback only). ROADMAP is 21 bytes under the drift_guard 90 percent warning - trim to ROADMAP_HISTORY before the next ROADMAP edit.
+
+---
+
 # 2026-10-14c - session 115: RM-740 (e) shipped - DS relaunch goes through the RC-DaemonSlayer scheduled task
 
 - **Shipped (LEDGER 1722), two independent verifiers CONFIRMED:** `687920398` - `core/daemon_slayer_client.py` `spawn_ds` (the `DsWatchdog._respawn` path) runs `schtasks /Run /TN RC-DaemonSlayer`; a direct windowless child only when the task is unregistered, schtasks is missing, or the host is not Windows; a task that refuses `/Run` raises (logged, retried after the grace). `tests/test_rm740e_ds_spawn_owner.py` (10), red 7/10 on the parent. OPERATIONS RC-DaemonSlayer row corrected (At boot, SYSTEM, IgnoreNew, restart-on-failure).
@@ -27,15 +38,3 @@
 - **Filed:** verifier nit (the first failing assert under a cap mutation says "the seam did not fire") in the BACKLOG (d) row.
 - **Do NOT redo:** RM-740 (d) measurement and verdict.
 - **Next:** RM-740 (e) (DS process owner after a watchdog relaunch), (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743; the xdist-stall-after-timeout-kill open item.
-
----
-
-# 2026-10-14 - session 113: RM-740 (c) + (g) shipped in the dashboard and DS guarded thread starts
-
-- **Shipped (LEDGER 1720), CONFIRMED by independent verifiers:** `48db385fe` - `dashboard/server.py` and `agents/daemon_slayer/server.py` pass the request through a one-shot job list emptied by the claim holder, so (c) a bootstrap-dead thread in `threading._limbo` no longer pins the dropped socket, and (g) a raising `Thread.start()` is arbitrated by `_abandon_unstarted` before any close. `tests/test_rm740_cg_dashboard_ds_thread_start.py` 9 cases, red 6/9 on the parent, 9/9 green.
-- **Merge-fix `71319a5be` (test only):** the (c) test flaked 1/6 on main because the warm-up request's server-side close can land after the recorder is armed; `_settled_get` waits for those handler threads first (forced-delay repro 3/3 red before, 3/3 green after). Memory `feedback_socket_test_server_closes_after_reply`.
-- **Live:** RC restarted (pid 9460, later 1984 after a restart storm, see the hand-off); DS :8860 restarted, pid 28196, ENGINE 1.287.0 / 16.20.1. No ENGINE bump.
-- **Process:** a stale 0-byte `.git/index.lock` was cleared with the kit's `clear_index_lock`; the ff merge ran as plain `git merge --ff-only` (gitlock wraps only commit/push - datum for the KIT-16 (c) defect already with MAIN).
-- **/done gate:** `test_long_lived_requests_do_not_starve_a_short_one` (1.0 s bound) failed 2/4 pytest runs at 100 percent CPU; scratch A/B parent vs HEAD passed 5/5 each - timing flake, not this diff. Pushed `bdd36a3dc..71319a5be`.
-- **Do NOT redo:** RM-740 (c), RM-740 (g), the (c) test merge-fix, the DS restart.
-- **Next:** RM-740 (d) (measure thread-start latency during a gated `-n 8` suite before touching the caps), (e), (f); then RM-741, RM-742, RM-743.
