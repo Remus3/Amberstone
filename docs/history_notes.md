@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-12b - session 111: local gated suite GREEN; RM-694, RM-684, RM-739, RM-740 (a) shipped; RM-515 guard on the AST
+
+- **Shipped (LEDGER 1718), each CONFIRMED by an independent verifier:** RM-694 (`e2c1b07d9`, two guards walk `tests/_repo_walk`); RM-684 (`e5284e5b3`, canary on CLI 2.1.296 then `PINNED_CLI` 2.1.296; the responder's 2.1.251 pin is separate and unchanged); RM-739 (`e0a606175`, :8895 handshake on the request thread, 5.0 s; live JSON 404 in 0.041 s beside a silent client); RM-740 (a) (`268df410d`, DsWatchdog boot deadline 600 s, kill + respawn).
+- **Guard interaction:** the merged suite run 1 went red on the RM-515 guard because the new RM-739 test importorskips `cryptography`. A text-regex exemption (`8d2496a58`) was REFUTED by a verifier; the AST rule (`c44ea289f`) was CONFIRMED over 45 adversarial fixtures.
+- **Gate:** ONE gated dual suite on `8d2496a58`: 39434 passed, 104 skipped, 0 failed, EXIT=0, 1104.93 s. C1 (local suite green) is DONE.
+- **/done:** ROADMAP size pass (5 shipped rows to `docs/ROADMAP_HISTORY.md` `## 2026-10-12`, 88 percent); filed RM-741 (RM-515 import detector still a regex) and RM-742 (:8888 TLS handshake on the accept thread). Pushed `8ca950ebb..c44ea289f`.
+- **Do NOT redo:** RM-694, RM-684 (canary + pin), RM-739, RM-740 (a), the RM-515 AST exemption, the session 111 gated suite.
+- **Next:** RM-740 (b) (uncounted `t.start()` raise in the four part-3 servers), then (c); RM-741 / RM-742 are Tier-1 each.
+
+---
+
 # 2026-10-12 - session 110: RM-738 shipped on every server; PostmortemAnalyze hidden; MAIN answered; push HALTED by the sibling sweep
 
 - **RM-738 shipped (LEDGER 1716; merges `6ea05d68d` / `5408dcf2b` / `7f2f97519`):** every thread-per-request server bounds its `Thread.start()` wait (2.0 s, DS 5.0 s); :8860 has a periodic `DsWatchdog` self-heal. Live re-probe (`8d5252181`): all ports up on new pids, DS killed on purpose and respawned in 34 s. Residuals RM-739 (mc TLS accept loop) and RM-740 (a)-(f).

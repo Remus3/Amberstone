@@ -1,6 +1,6 @@
 NEXT SESSION
 ------------
-SESSION: 114
+SESSION: 115
 HISTORY WAS REWRITTEN TWICE on 2026-10-09 (LEDGER 1699 = B, 1701 = rw2, case-insensitive): every
 commit id changed twice. Old SHAs resolve through .git/filter-repo/commit-map (rw2), then
 .git/filter-repo-20261009/commit-map (B), then .git/filter-repo-20260621/commit-map (June); copies
@@ -8,61 +8,75 @@ sit beside the bundles in RC's sidecar Backup folder. Cite LEDGER entries, not p
 Every other clone must re-clone (OPERATOR ASKS 5); a fresh clone runs scripts/install_hooks.py and
 sets the LOCAL git config fleet.operatorIdent before any push.
 
-Next action: RM-740 (d) slow-box caps (BACKLOG.md "Session 110 filings"): MEASURE first -
-thread-start latency on this box during a gated `-n 8` suite (the RM-737 condition), record p50 /
-p99 / max; then set each `thread_start_timeout_s` (dashboard/server.py 2.0 s, DS
-agents/daemon_slayer/server.py 5.0 s, supervisor / Mission Control / MatchDB / replay 2.0 s) above
-the measured max with the reasoning in a code comment, or keep it and record why; plus a test that
-a start completing just under the cap is served. Then RM-740 (e) (DS process owner after a
-watchdog relaunch - decide + record with alternatives, test the spawn path) and (f)
-(tools/stop_claim_gate.py `_merge_unstaged`: `git checkout -f` also un-stages a merge; failing test
-first); then RM-741 / RM-742 ("Session 111 filings") and RM-743 ("Session 112 filings"), Tier-1
-each.
+Next action: RM-740 (e) DS process owner (BACKLOG.md "Session 110 filings", RM-740 (e)): after a
+DsWatchdog relaunch DS runs as a child of the RC process, not under the RC-DaemonSlayer scheduled
+task, so the task's restart-on-failure no longer owns DS. Decide the owner semantics (watchdog child
+vs relaunch through the task) and the RC-restart interaction (does a DS child outlive or die with an
+RC restart; does the next RC's watchdog adopt it); record the decision with alternatives (distinct
+adjudicator if blocked); a test pinning the chosen spawn path (core/daemon_slayer_client.py
+DsWatchdog `_respawn`). Then RM-740 (f) (tools/stop_claim_gate.py `_merge_unstaged`: `git checkout
+-f` also un-stages a merge; failing test first); then RM-741 / RM-742 ("Session 111 filings") and
+RM-743 ("Session 112 filings"), Tier-1 each.
 FIRST at session start: git log @{u}.. (expect empty), gh run list --branch main --limit 4 (CI on
-the session 113 wrap commit), and python ops/loop/inbox_tick.py --pending.
+the session 114 wrap commit), and python ops/loop/inbox_tick.py --pending.
+Session 114 ran HEADLESS: the operator said "Continue", then "Headless - Operator Is Away" - acted
+autonomously, no asks; none of the OPERATOR ASKS below were answered.
 
-Session 113 shipped - do NOT redo (LEDGER 1720; pushed, see Status):
-- RM-740 (c) + (g) (48db385fe): dashboard/server.py `_GuardedThreadStartMixin.process_request` and
-  agents/daemon_slayer/server.py `_RcThreadingHTTPServer.process_request` pass the request through
-  a one-shot job list emptied by the claim holder, so a bootstrap-dead thread left in
-  threading._limbo no longer pins the dropped socket (c); a raising Thread.start() goes through the
-  new `_abandon_unstarted(started, claim, job)` before any close, so a thread that came up or holds
-  the claim keeps its request (g). `_process_claimed` now takes (claim, job). New
-  tests/test_rm740_cg_dashboard_ds_thread_start.py, 9 cases (3 tests x 2 dashboard classes + DS):
-  red 6 failed / 3 passed on bdd36a3dc, 9 passed on HEAD; with 5 related files 42 passed; ruff
-  clean; verifier CONFIRMED (MERGE).
-- 71319a5be (test only): the (c) test waits for the warm-up request's handler threads to exit
-  before arming (`_settled_get`); forced-delay repro 3/3 red before, 3/3 green after, 8 extra green
-  runs; a second verifier confirmed it is test-only and still catches the reverted bug. The test
-  reaches into private threading._limbo on purpose and fails loudly if that hook disappears.
-- Live at the merge: RC restarted (pid 9460, alive, last_reload_ok true, /api/health/all 200); DS
-  :8860 restarted (taskkill + schtasks /Run RC-DaemonSlayer), pid 28196, /health ok, ENGINE
-  1.287.0, patch 16.20.1. No ENGINE_VERSION bump (request handling only).
-- Session 112 (LEDGER 1719; do not redo): RM-740 (b) (6ec706291), MAIN ORDER ENV-APIKEY (merge
-  148d67c81, fix 5f96dc50c; ANSWER delivered, row closed), the session 112 gated suite.
+Session 114 shipped - do NOT redo (LEDGER 1721; pushed, see Status):
+- RM-740 (d) CLOSED (2d49453ba, comments + test only): thread-start latency measured while a gated
+  -n 8 --dist loadfile dual suite ran (430 s load, commit peak 75.4 percent of 47.2 GiB, CPU max
+  83.8 percent): bare Thread.start p50 0.15 / p99 1.17 / max 24.1 ms (n=20560); guarded dashboard
+  server p50 0.18 / p99 1.26 / max 24.5 ms (n=8096); one GIL-busy thread p50 32.3 / p99 86.4 / max
+  156.5 ms (n=1547); worst 157 ms, 0 drops. All six thread_start_timeout_s caps KEPT (2.0 s x5, DS
+  5.0 s), reason in a comment beside each (dashboard/server.py, agents/daemon_slayer/server.py,
+  agents/_supervisor_http.py, mc/server.py, tools/ds_matchdb_mcp_server.py,
+  tools/replay_session.py). New tests/test_rm740d_thread_start_caps.py (15). BACKLOG (d) row CLOSED
+  with numbers + Reverses-if; ROADMAP row updated. Verifier CONFIRM 5/5 (fresh 15 passed EXIT=0,
+  collect 15; a 0.1 s-cap mutation reds 7 served tests).
+- Live: RC restarted once for the dashboard comment edit (pid 28300, alive); DS :8860 NOT
+  restarted (comments only).
+- Session 113 (LEDGER 1720; do not redo): RM-740 (c) + (g) (48db385fe + test merge-fix 71319a5be).
+  Session 112 (LEDGER 1719): RM-740 (b), MAIN ORDER ENV-APIKEY.
 
-Session 113 new open items:
+Session 114 new open items:
+- OPEN (RM-695 / RM-737 class): xdist STALL after a timeout-killed worker leaves an orphan child.
+  In the session 114 gated suite the RM-695 tree-sweep self-test hit --timeout=300, pytest-timeout
+  killed worker gw2, its tools/sibling_sweep_ci.py child was orphaned (one core at 100 percent ~18
+  min), and the xdist controller hung at 99 percent with every worker idle (py-spy: controller in
+  dsession.loop_once, replacement worker waiting for work); no summary line. Recovered by taskkill
+  /F of the orphan + the pytest tree; the gate slot released. Datum recorded in the BACKLOG RM-740
+  (d) row. Next: decide whether the self-test should kill its child on timeout (process group /
+  job object) and whether RC's gated runs keep deselecting it; measure, do not guess.
+- RM-740 (d) caveat: commit peak 75.4 percent stayed below session 110's 79.4, so a true
+  commit-charge stall (the dead-start case the caps exist for) was NOT reproduced.
+- RM-740 (d) verifier nit, low (in the BACKLOG (d) row): under the 0.1 s-cap mutation the served
+  tests fail at the `elapsed >= delay` assert (tests/test_rm740d_thread_start_caps.py:196) whose
+  message says "the seam did not fire", misdiagnosing a drop; the "was dropped" assert (:199) is
+  unreachable then - check the drop first or reword.
+- Process datum: a stale 8 h 0-byte .git/index.lock (no holder) was cleared with the kit's
+  fleet_gitlock.clear_index_lock (second session running; see Kit / gate procedure).
+
+Session 113 open items (carry):
 - RM-740 (c) verifier nits, low (in BACKLOG under (c)): the DS start-raise path logs with
   exc_info=True, so the log record briefly holds the request through the traceback (pre-existing);
   no log line when start raises but the thread already owns the request (matches the part-3
   servers).
-- WATCH (timing flake, not this diff): tests/test_dashboard_server_thread_start_rm738.py
+- WATCH (timing flake, not RM-740): tests/test_dashboard_server_thread_start_rm738.py
   ::StillOneThreadPerRequest::test_long_lived_requests_do_not_starve_a_short_one (1.0 s bound) took
-  1.38 s and failed 2 of 4 pytest runs in the main checkout at 100 percent CPU during this /done;
-  a scratch A/B (stdlib unittest, dashboard/server.py from bdd36a3dc vs HEAD) passed 5/5 each. If
-  CI or a gated suite reds on it, widen the bound or measure on a quiet box - do not blame RM-740.
+  1.38 s and failed 2 of 4 runs at 100 percent CPU in session 113 (scratch A/B passed 5/5 each);
+  passed in the session 114 /done slice. If CI or a gated suite reds on it, widen the bound or
+  measure on a quiet box - do not blame RM-740.
 - ANOMALY (RM-699 class suspected, unattributed per start): RC restart storm on 2026-10-14, 27
-  "Amberstone starting" lines between 07:58 and 08:47 local (the session 113 edits under
-  dashboard/ + tests/ and this /done's test runs fall in that window); stable at pid 1984 since
-  08:47:08; two heartbeat_error fatals (PermissionError WinError 5 on the health.json tmp ->
-  replace, 08:47:33 / 08:47:34), fatal_count 2.
-- Process datum: a stale 0-byte .git/index.lock (14 min, no holder) blocked git; cleared with the
-  kit's fleet_gitlock.clear_index_lock. The fast-forward merge ran as a plain `git merge --ff-only`
-  because `fleet_gitlock run` accepts only commit/push - one more datum for kit defect (c) below;
-  no new note sent (already with MAIN as KIT-16).
-- Lesson (memory feedback_socket_test_server_closes_after_reply): a socketserver handler closes the
-  connection AFTER the client holds the reply; a socket-close / leak test waits for the warm-up
-  request's handler threads before arming, and a race fix is proven with a forced-delay repro.
+  "Amberstone starting" lines between 07:58 and 08:47 local (session 113 edits under dashboard/ +
+  tests/ fall in that window); two heartbeat_error fatals (PermissionError WinError 5 on the
+  health.json tmp -> replace, 08:47:33 / 08:47:34). At the session 114 wrap fatal_count is 0 (pid
+  28300).
+- Process datum: the session 113 fast-forward merge ran as a plain `git merge --ff-only` because
+  `fleet_gitlock run` accepts only commit/push - datum for kit defect (c) below; already with MAIN
+  as KIT-16.
+- Lesson (memory feedback_socket_test_server_closes_after_reply): a socket-close / leak test waits
+  for the warm-up request's handler threads before arming; prove a race fix with a forced-delay
+  repro.
 
 Session 112 open items (carry):
 - RM-740 (b) verifier nits, low (in BACKLOG under (b)): with_traceback(None) clears only the top
@@ -75,56 +89,58 @@ Session 112 open items (carry):
   verify_main returned True). Measure first whether any consumer strands a main-unverified ORDER.
 - ENV-APIKEY residuals (BACKLOG "Session 112 filings"): removing the Machine-scope
   ANTHROPIC_API_KEY is MAIN's out-of-tree act (stated in the ANSWER; RC never touches it); the
-  vision process on :8889 (up ~43 h at the merge) was NOT restarted and still runs pre-merge code
-  with the Machine key in memory - it moves to the new lookup on its next restart (read back
-  /health then); frozen main.py:54 copies the file key into RC's own process env (spawn paths still
-  strip it from children; a change needs operator approval). Nits, low: tools/bootstrap_env_check.py
-  :247 reads the key file with utf-8, not utf-8-sig (diagnostic, allow-listed); a whitespace / junk
-  env value with no key file returns the raw truthy value (pre-existing); install.bat step 3 fails
-  on a key file with a BOM (pre-existing).
+  vision process on :8889 was NOT restarted and still runs pre-merge code with the Machine key in
+  memory - it moves to the new lookup on its next restart (read back /health then); frozen
+  main.py:54 copies the file key into RC's own process env (spawn paths still strip it from
+  children; a change needs operator approval). Nits, low: tools/bootstrap_env_check.py:247 reads the
+  key file with utf-8, not utf-8-sig (diagnostic, allow-listed); a whitespace / junk env value with
+  no key file returns the raw truthy value (pre-existing); install.bat step 3 fails on a key file
+  with a BOM (pre-existing).
 - Lesson (memory feedback_credential_scan_fixture_pragma): a credential-shaped test literal (fake
   sk-ant- key) halts the pre-push credential scan, which reads every blob in the push range; put
   `# rc-credential-scan: allow-fixture` on that same line in the FIRST commit. Dry-run:
   printf 'refs/heads/main <local> refs/heads/main <origin sha>\n' | python
   tools/credential_history_scan.py --pre-push origin.
 
-Session 111 new open items (carry):
+Session 111 open items (carry):
 - RM-741 (filed): the RM-515 import DETECTOR (tests/test_requirements_currency_rm515.py:94 `_IMPORT`)
   is still a regex - misses `import os, cryptography`, `import os; import cryptography` (ruff E702
   ignored) and importlib.import_module / __import__, production code too; pre-existing. The
   docstring line "the guard's whole job is to see every tracked import" (:27) overstates it until
   then. Not must-fix: deliberately disguised code (shadowed pytest, rebound importorskip) is exempt.
-- RM-742 (filed): dashboard/server.py:149-170 still peeks + TLS-handshakes on the accept thread
-  with a 5 s timeout (a silent client stalls :8888 accepts up to 5 s each); read from source by the
-  RM-739 scout, NOT live-measured - measure first. (Line numbers predate 48db385fe, which added
-  ~25 lines above them - re-locate `get_request` first.)
+- RM-742 (filed): dashboard/server.py still peeks + TLS-handshakes on the accept thread
+  (`get_request`) with a 5 s timeout (a silent client stalls :8888 accepts up to 5 s each); read
+  from source by the RM-739 scout, NOT live-measured - measure first. Re-locate `get_request` first
+  (48db385fe and 2d49453ba added lines above it).
 - Lesson (memory feedback_importorskip_vs_rm515_guard): a test that importorskips an unpinned
   package reds the whole-suite RM-515 guard; slices never see it. Run that guard with such a slice.
 - An earlier RM-684 suite run was killed by Claude Code for low system memory at 93 percent (0
   failures, superseded) - another RM-737 datum.
-- Session 111 shipped (LEDGER 1718; do not redo): RM-694 (e2c1b07d9), RM-684 (e5284e5b3, PINNED_CLI
-  2.1.296; tools/inbox_responder_runner.py PINNED_CLI_VERSION 2.1.251 is a SEPARATE pin, unchanged
-  on purpose), RM-739 (e0a606175), RM-740 (a) (268df410d), the RM-515 AST exemption (c44ea289f; the
-  text-regex 8d2496a58 was REFUTED - never go back to text).
+- Session 111 shipped (LEDGER 1718; do not redo): RM-694, RM-684 (PINNED_CLI 2.1.296;
+  tools/inbox_responder_runner.py PINNED_CLI_VERSION 2.1.251 is a SEPARATE pin, unchanged on
+  purpose), RM-739, RM-740 (a), the RM-515 AST exemption (c44ea289f; the text-regex 8d2496a58 was
+  REFUTED - never go back to text).
 
 Session 110 open items (carry):
 - Lesson: `--scan-file` over the tip never clears a push - the pre-push range scans each commit's
   blobs, so a literal fixed in a later commit still halts it. Check a new test literal BEFORE its
-  first commit (session 112 hit the credential-scan twin of this; see the lesson above).
+  first commit.
 - RAIL BREACH (recorded, session 110): a sub-agent ran `git commit --amend` once on its own UNPUSHED
   commit (721668ab4 -> b50d3d44a); every sub-agent prompt forbids --amend explicitly.
 - Audit findings (C6, low, unfiled): F2 tools/truth_gate.py:74 runs the claims command with
   shell=True; F3 resolved_decisions.json topology lists the retired Game-PC; F4 dead
   agents/agent2_backend/smb_push.py. File or fix (Tier-1 each).
-- RM-737 datum: system commit peak 40.26 GB of the 50.72 GB (48375 MiB) limit = 79.4 percent at
+- RM-737 data: system commit peak 40.26 GB of the 50.72 GB (48375 MiB) limit = 79.4 percent at
   -n 8, ramp 19.7 -> 37.3 GiB in 5 min; slots=1 cost: gate queue wait 4301 s (session 110).
-- RM-728 reaper still needed: ops/loop/control/progress/ held 130 files at session 113 (123 at 111).
+  Session 114: one -n 8 run peaked 75.4 percent.
+- RM-728 reaper still needed: ops/loop/control/progress/ held 131 files at session 114 (130 at 113,
+  123 at 111).
 - RM-686 / OPERATOR ASK 9 mostly overtaken by C4 (the launcher waits by design); the one-kill
   read-back is still not done.
 - Dependabot PRs open: #11 pip group (ci FAILED on da27e44f2, uninvestigated), #12 electron
   44.5.1 -> 44.7.0 (green), #13 github-actions group (green). Re-check state before acting.
 
-OPERATOR ASKS (batched, re-ask in ONE line; none answered in sessions 111-113):
+OPERATOR ASKS (batched, re-ask in ONE line; none answered in sessions 111-114):
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error, 0 inactive, so nothing was pruned. Mark old
    ones inactive and delete them (irreversible), or leave them? Backup
@@ -141,7 +157,8 @@ OPERATOR ASKS (batched, re-ask in ONE line; none answered in sessions 111-113):
    re-arming the watchdog.
 9. RM-686: OK to kill the proxy once for the read-back (task restarts it within ~1 min; then answer
    MAIN with line + state + restart). C4 (session 110) settled the launcher-waits half. Body in
-   BACKLOG "Session 103 filings". "Continue headlessly - operator is away" was NOT an OK for this.
+   BACKLOG "Session 103 filings". "Continue headlessly - operator is away" was NOT an OK for this
+   (nor was session 114's "Headless - Operator Is Away").
 10. OK to Recycle-Bin %LOCALAPPDATA%\CrashDumps\electron.exe.{25540,22368,12240}.dmp (~17 MB,
     written by E1's crashed hidden runs - a halt-boundary breach by Windows WER, recorded).
 11. Review the credential-shaped historical findings (90 after rw2; classes anthropic / openai /
@@ -167,7 +184,7 @@ Session 108 open items (carry):
   POOLED server is new evidence (the stack dump says where it parked).
 - Trade-off (accepted): on a thrashing box 3 x 3 s failed probes can replace a slow-but-alive
   vision server; the respawn back-off (90 s doubling to 30 min) bounds the churn. The same holds
-  for DsWatchdog (RM-740 (d)); RM-740 (a)'s 600 s boot deadline adds a kill of a never-binding DS.
+  for DsWatchdog; RM-740 (a)'s 600 s boot deadline adds a kill of a never-binding DS.
 - RM-699 observed again: edits under tests/ and dashboard/ restart RC (session 108 storm of 8;
   session 113 storm of 27, see the anomaly above).
 - Lesson: a socket test fake that must free its port mid-test needs shutdown() before close() on
@@ -186,7 +203,7 @@ Do NOT re-litigate (session 107):
 - Open ambiguity: MAIN's f08bb61 quotes an earlier operator complaint about MAIN's flat treemap
   Atlas pages (MAIN restored them 10/09); if the operator meant those, that is MAIN's tree.
 
-Open items (sessions 105-113):
+Open items (sessions 105-114):
 - Kit defects: (b) fleet_suite_gate runs bare on an empty selection and (c) fleet_gitlock wraps
   only commit/push wait on KIT-16 (MAIN); kit now v17 (762fcfdb1) - re-check (b)/(c) against v17.
   (c) datum session 113: the RM-740 fast-forward had to run as a plain `git merge --ff-only`.
@@ -196,10 +213,10 @@ Open items (sessions 105-113):
   summary line). C9 covered one merge shape only.
 - RM-737: box rule - a run whose output carries WinError 1455 or MemoryError is VOID, re-run once,
   never graded; no local full suite while 2+ others run.
-- RM-740 (d)-(f) (Next action), RM-741, RM-742, RM-743 - BACKLOG "Session 110 / 111 / 112
+- RM-740 (e)-(f) (Next action), RM-741, RM-742, RM-743 - BACKLOG "Session 110 / 111 / 112
   filings".
-- OutboundCap: session 113 sent no outbound note; session 112 delivered ONE ANSWER on 2026-10-13;
-  resets per local day.
+- OutboundCap: sessions 113 and 114 sent no outbound note; session 112 delivered ONE ANSWER on
+  2026-10-13; resets per local day.
 - v13 section 5 sidecars: the rest waits on MAIN's FLEET_SIDECAR_ROOT (RM-707 lists, nothing moved);
   any move is an out-of-tree act (halt). RC's lanes already run under ops/lane_worktrees.json.
 - RM-681 PARTIAL: owed one attended live call per path + a truststore read-back on Legion.
@@ -212,12 +229,13 @@ Open items (sessions 105-113):
   harness lock is released (back up ignored files first).
 - RM-703: 11 lift1-* / lift2-* worktrees with unmerged commits (map each patch-unique commit first).
 - RM-695: the tree-sweep self-test ran INSIDE the session 110 suite at slots=1 without OOM (one
-  datum, not a fix) - keep deselecting it when 2+ suites could overlap. The local full-suite
-  baseline is 0 failures (sessions 111 and 112).
+  datum), but in session 114 it TIMED OUT and stalled the whole gated run (see the session 114
+  open item) - keep deselecting it when 2+ suites could overlap. The local full-suite baseline is 0
+  failures (sessions 111 and 112).
 - RM-697 gate range across a rewrite; RM-698 stop_claim_gate blind spots; RM-699 hot_reload watches
   tests/; RM-702 drive paths in 94 old commit messages (MAIN-ordered only); RM-704..RM-731 S8 rows
   (RM-705 collection half shipped); RM-734; RM-736; RM-737; RM-740; RM-741; RM-742; RM-743. Next
-  free RM id RM-744 (pin in docs/DS_SWEEP_TRACKER.md). Next free LEDGER id 1721.
+  free RM id RM-744 (pin in docs/DS_SWEEP_TRACKER.md). Next free LEDGER id 1722.
 - CS's 3 self-check suggestions: sibling-only, informational; nothing for RC to do.
 - A drive-root literal in a NEW test halts the pre-push sibling sweep (structural arm), even after
   a later commit removes it; use tmp_path or an allowlisted form from the first commit.
@@ -236,9 +254,10 @@ Kit / gate procedure (carry):
   gets one extra slot; headless children run foreground only.
 - Local full dual suite at machine slots=1: ~18 min in the slot (session 111: 1104.93 s; session
   110: 1075 s) plus queue wait (session 110: 4301 s); peak system commit ~40 GB (79 percent).
+  Write gated-suite output to a FILE and watch it: a stall leaves no summary line (session 114).
 - A stale 0 B `.git/index.lock` with no RC git alive may need removing by hand; kit gitlock will
-  not clear it while any git runs machine-wide (reported to MAIN, session 105). Session 113 cleared
-  one (14 min, no holder) with fleet_gitlock.clear_index_lock.
+  not clear it while any git runs machine-wide (reported to MAIN, session 105). Sessions 113 (14
+  min) and 114 (8 h) each cleared one with fleet_gitlock.clear_index_lock.
 - H1: after answering an ORDER / FIX / RULING, close its row:
   `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`, confirm with `--pending`.
   MAIN's inbox path comes from the agreement record (inbox_tick's delivery helper).
@@ -250,10 +269,10 @@ Kit / gate procedure (carry):
 - Stale pyc class: if a test fails only in the main checkout, rerun with PYTHONPYCACHEPREFIX=<empty
   dir> before suspecting gitignored state (memory reference_stale_pyc_matching_header).
 - Pre-push dry-runs: `printf 'refs/heads/main <local> refs/heads/main <origin sha>\n' | python
-  tools/sibling_name_sweep.py --pre-push origin` scans exactly the push range (session 113: 2
-  commits, 4 files, clean, seconds); the same stdin into `python tools/credential_history_scan.py
-  --pre-push origin` runs the credential + leak arms. A whole-history range: scratch scripts only;
-  the sweep over ~6000 commits takes ~8.5 min / ~550 MB, the credential scan ~1 min.
+  tools/sibling_name_sweep.py --pre-push origin` scans exactly the push range; the same stdin into
+  `python tools/credential_history_scan.py --pre-push origin` runs the credential + leak arms. A
+  whole-history range: scratch scripts only; the sweep over ~6000 commits takes ~8.5 min / ~550 MB,
+  the credential scan ~1 min.
 - Vision MANUAL recovery (fallback only - VisionWatchdog does this itself): taskkill /F /PID
   <holder of :8889>, then Invoke-CimMethod Win32_Process Create with pythonw.exe +
   moon_vision_server.py, CurrentDirectory = the repo root; read back /health 200 ("workers": 16).
@@ -272,7 +291,7 @@ Carried forward (not acted on yet):
   exponentially on `git -c -c -c ...` (6.1 s at 20 repeats; unrealistic shape).
 - WATCH: one verifier run (session 104) saw 24 child processes die at startup with 0xC0000142; not
   reproduced. Desktop heap / process pressure suspected, unmeasured (compare RM-737).
-- ROADMAP.md is 73046 / 81920 = 89 percent after the session 113 edit (drift_guard warns at 90;
+- ROADMAP.md is 73192 / 81920 = 89 percent after the session 114 edit (drift_guard warns at 90;
   0 breaches at this wrap). Before the next few rows, relocate more shipped / closed rows to
   docs/ROADMAP_HISTORY.md (name every id literally in the stub; check
   tests/test_roadmap_backlog_disposition_drift.py).
@@ -310,7 +329,7 @@ Carried forward (not acted on yet):
   import core.
 - Still open rows: RM-681 (PARTIAL), RM-682, RM-683, RM-686 (operator-gated), RM-690, RM-691,
   RM-692, RM-693, RM-695, RM-697..RM-699, RM-702..RM-737 except RM-733 (closed) and RM-735
-  (shipped), RM-740 (d)-(f), RM-741, RM-742, RM-743, RM-279, RM-280, RM-368, RM-381, RM-292b-d,
+  (shipped), RM-740 (e)-(f), RM-741, RM-742, RM-743, RM-279, RM-280, RM-368, RM-381, RM-292b-d,
   RM-251(b), RM-370, RM-229, RM-290, RM-27, RM-248, RM-486, RM-189, RM-167, RM-204, RM-12/RM-14
   flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-256 redo = RM-521, RM-297b
   (needs non-author adjudicator + CI), RM-519 (responder provenance on kit verify_main; compare
@@ -318,7 +337,7 @@ Carried forward (not acted on yet):
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW - roster
   change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER SHARED_SHA256 re-pin
   stays joint.
-- Worktrees: `git worktree list` = 21 entries (read back at the session 113 /done): main + 7 agent
+- Worktrees: `git worktree list` = 21 entries (read back at the session 114 /done): main + 7 agent
   incl. the 2 locked + 2 drain + 11 sidecar lift, all dated 2026-10-05..09 (stale-cleanup
   candidates). REVIEW for unmerged commits before -D: lift1 death-reel (RM-639) / review-player
   (RM-641) / vod-retention (RM-640), lift2 y45 (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432
@@ -347,57 +366,58 @@ Carried forward (not acted on yet):
 - WATCH: a future kit version will likely change the /done closing line to "Done ritual processed,
   safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Retired this wrap (with reason): the session 112 Next action RM-740 (c) + (g) - SHIPPED 48db385fe +
-71319a5be (LEDGER 1720, verifier CONFIRM x2); the session 112 "RM-740 (g) (filed, low)" open item -
-shipped in the same commit; the session 112 "shipped - do NOT redo" block - tightened to one line
-under "Session 113 shipped" (LEDGER 1719 holds it); the session 112 Status block - replaced below.
-Steers / operator chat in session 113: none beyond the session's own task; no queued Mission
-Control intent (peek: pending null); steer channel empty.
+Retired this wrap (with reason): the session 113 Next action RM-740 (d) - CLOSED 2d49453ba (LEDGER
+1721, verifier CONFIRM 5/5; measured, all caps kept); the session 113 "shipped - do NOT redo" block
+- tightened to one line under "Session 114 shipped" (LEDGER 1720 holds it); the session 113 Status
+block - replaced below; the session 113 "Process datum" index.lock half - folded into Kit / gate
+procedure.
+Steers / operator chat in session 114: "Continue", then "Headless - Operator Is Away" (acted
+autonomously, no asks); no queued Mission Control intent (peek: pending null); steer channel empty.
 
 Context: ops/fleet_kit/MANIFEST.json version 17; ops/fleet_kit/fleet_subagent_first.py (hook) +
 ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.py (--pending /
 --done; RM-743 `_process`); ops/fleet_kit/fleet_headless.py verify_main; tools/sibling_name_sweep.py
 (--pre-push / --scan-file / --explain; BYPASS env RC_SIBLING_SWEEP_BYPASS, log
-ops/runtime/sibling_sweep_bypass.log); tools/credential_history_scan.py + tools/credential_patterns.py
-(PRAGMA); tools/stop_claim_gate.py (RM-736, C9, RM-740 (f) `_merge_unstaged`);
-core/daemon_slayer_client.py DsWatchdog (RM-738/RM-740 (a), (e)); core/anthropic_key.py
-(ENV-APIKEY); dashboard/server.py `_GuardedThreadStartMixin` + `thread_start_timeout_s` and
-agents/daemon_slayer/server.py `_RcThreadingHTTPServer` (RM-740 (c)/(g) shipped, (d) caps);
-mc/server.py and agents/_supervisor_http.py (the part-3 `abandon_if_unstarted` shape);
-dashboard/server.py `get_request` (RM-742); tests/test_requirements_currency_rm515.py (RM-741);
-tests/_repo_walk; gitignored per-host ops/local_hosts.json and ops/lane_worktrees.json;
+ops/runtime/sibling_sweep_bypass.log); tools/sibling_sweep_ci.py (the RM-695 self-test child that
+orphaned in session 114); tools/credential_history_scan.py + tools/credential_patterns.py (PRAGMA);
+tools/stop_claim_gate.py (RM-736, C9, RM-740 (f) `_merge_unstaged`); core/daemon_slayer_client.py
+DsWatchdog (RM-738/RM-740 (a), (e)); core/anthropic_key.py (ENV-APIKEY); dashboard/server.py
+`_GuardedThreadStartMixin` + `thread_start_timeout_s` and agents/daemon_slayer/server.py
+`_RcThreadingHTTPServer` (RM-740 (c)/(g) shipped, (d) caps kept with comments); mc/server.py and
+agents/_supervisor_http.py (the part-3 `abandon_if_unstarted` shape); dashboard/server.py
+`get_request` (RM-742); tests/test_requirements_currency_rm515.py (RM-741); tests/_repo_walk;
+gitignored per-host ops/local_hosts.json and ops/lane_worktrees.json;
 ops/runtime/inbox_responder_agreement.json (expires 2026-11-01); ops/moon_sync_repos.json (no MAIN
 entry). DS :8860 ENGINE 1.287.0, patch 16.20.1.
 
-Acceptance: RM-740 (d) - p50 / p99 / max thread-start latency measured under a gated -n 8 suite and
-recorded; each cap set above the measured max (or kept, with the reason) in a code comment; a test
-that a start just under the cap is served, red first if behaviour changes. (e) - owner decision
-recorded with alternatives, a test pinning the spawn path. (f) - failing test for stage
---no-commit merge + `git checkout -f` + unrelated commit, then the fix, green. Touched test files
-green; a Tier-2 merged wave runs ONE gated suite. Operator asks answered or re-batched.
+Acceptance: RM-740 (e) - owner decision recorded with alternatives (and the RC-restart
+interaction), a test pinning the chosen spawn path, red first if behaviour changes. (f) - failing
+test for stage --no-commit merge + `git checkout -f` + unrelated commit, then the fix, green.
+Touched test files green; a Tier-2 merged wave runs ONE gated suite (output to a file, watched for
+the session 114 stall shape). Operator asks answered or re-batched.
 
-Status (2026-10-14 wrap, session 113): session work pushed bdd36a3dc..71319a5be main -> main through
-the git lock (pre-push sibling sweep clean over 4 files / 2 commit messages, 0 credential + 0 leak
-findings; identity gate passed; read back origin/main = 71319a5be). This wrap's docs + hand-off
-commit follows by a normal un-bypassed push from 71319a5be (read back origin/main = HEAD after it).
-CI on 71319a5be: GREEN, read to the end - ci 38575023644 success (push; check: push impact slice
-6437 passed, 187 skipped, 2043 subtests in 429.76 s, full dual suite skipped - not an escalated
-push, mypy success; sibling-sweep-tree success; nightly-full-suite skipped); codeql 38575023619
-success; pages build success. The impact slice selected
-tests/test_dashboard_server_thread_start_rm738.py and tests/test_rm740_cg_dashboard_ds_thread_start.py
-(0 failed), so the starvation timing test passed on CI. CI on the wrap docs + hand-off
-commit: pending (not watched; the .txt hand-off triggers ci - the next session reads it first with
-gh run list --branch main --limit 4).
-Local gate this wrap: ruff all passed; py_compile of the 3 touched .py files OK; hygiene 3 files 14
-passed; slice (6 thread-start files) 41 passed / 1 failed - the starvation timing flake above
-(re-runs 2 of 3 passed; scratch A/B 5/5 parent and HEAD); doc guards (citation drift,
-roadmap/backlog disposition, roadmap ids, drift_guard tests + hygiene) 118 passed + 227 subtests;
-drift_guard 0 breaches before and after the doc edits. No whole suite (Tier-1; the push CI covers
-it). RC health: pid 1984 alive, last_reload_ok true, fatal_count 2 (the two heartbeat_error
-WinError 5 above); restart_trigger.txt empty; /api/health/all 200; mode_key client (not in game);
-DS :8860 ok, 1.287.0 / 16.20.1 / 173 / 706. Session file 0.5 MB. WAKEUP_NOTES pruned to 3 (moved
-session 110; archive 1068). Perseus sync exit 0, --verify active=2030 embedded=2030. Background
-work at wrap: none running (none from the main session; this executor's CI watch ended). Inbox:
-pending empty.
+Status (2026-10-14 wrap, session 114): session work 2d49453ba pushed 1ea096a1e..2d49453ba main ->
+main through the git lock (pre-push sibling sweep clean over 9 files / 1 commit message, 0
+credential + 0 leak findings; identity gate passed; read back origin/main = 2d49453ba). This wrap's
+docs + hand-off commit follows by a normal un-bypassed push from 2d49453ba (read back origin/main =
+HEAD after it).
+CI on the session 113 wrap commit 1ea096a1e: GREEN - ci 38576904928, codeql 38576904763,
+docs-guards 38576904800, pages build: all success.
+CI on 2d49453ba: GREEN, read to the end - ci 38661351078 success (push; check: push impact slice
+6570 passed, 187 skipped, 2123 subtests in 320.28 s, full dual suite skipped - not an escalated
+push; sibling-sweep-tree success; nightly-full-suite skipped); codeql 38661351059 success;
+docs-guards 38661351060 success; pages build success.
+CI on this wrap's docs + hand-off commit: pending (not watched; the .txt hand-off triggers ci - the
+next session reads it first with gh run list --branch main --limit 4).
+Local gate this wrap: ruff all passed; py_compile of the 7 touched .py files OK; hygiene 3 files 14
+passed; slice (7 thread-start files incl. the new caps test) 85 passed, exit 0; doc guards
+(citation drift, roadmap/backlog disposition, drift_guard tests + hygiene) 114 passed + 227
+subtests; drift_guard 0 breaches before and after the doc edits. No whole suite graded (Tier-1; the
+push CI covers it; the session's gated measurement run hung - see the open item). RC health: pid
+28300 alive, last_reload_ok true, fatal_count 0; restart_trigger.txt empty; /api/health/all 200;
+mode_key client (not in game); DS :8860 ok, 1.287.0 / 16.20.1 / 173 / 706. Session file 0.8 MB.
+WAKEUP_NOTES pruned to 3 (moved session 111; archive 1069). Perseus sync exit 0, --verify
+active=2031 embedded=2031. Background work at wrap: none running (none from the main session; this
+executor's CI watch ended). Inbox: pending empty. Memory: no new memory this session.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
