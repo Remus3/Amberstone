@@ -1580,26 +1580,25 @@ _RESET_HEAD = frozenset({"HEAD", "@"})
 # a second argument (`git checkout "-b" newb`, `git reset "--hard" HEAD`, `git
 # stash "push"` all drop MERGE_HEAD), and an option's VALUE counted the same
 # way (`git checkout --conflict merge main`, `git stash push -qm msg`, `git
-# reset --pathspec-from-file <empty file> HEAD` drop it). So before `--` a
-# quoted or unexpanded word (_unresolved) un-stages; an option's value is
-# skipped, never a path; a pathspec FILE may be empty, so it un-stages; and
-# after `--` a word is a path only when it cannot expand to nothing
-# (_path_word: `F=; git checkout main -- $F` drops it, `-- ""` is fatal).
+# reset --pathspec-from-file <empty file> HEAD` drop it). So an option's value
+# is skipped, never a path, and a pathspec FILE may be empty, so it un-stages;
+# which words count as plainly themselves is the allowlist below.
 #
-# s117 verifier REFUTE of 6089352a3 (measured, bash and powershell.exe 5.1): a
-# pathspec word that expands to ZERO words leaves git a bare `--` or one
-# argument - a whole reset / checkout / stash. `{,}`, an unquoted glob under
-# nullglob, `${X:+"a.txt"}` with X unset, `"$@"` with no arguments, and in
-# PowerShell 5.1 an empty `''` or `@()` (5.1 drops empty arguments). So a word
-# is a path only when it cannot vanish (_may_vanish): no expansion anywhere,
-# quoted or not (`$`, backtick, %VAR%, a leading `@` with more after it), not
-# empty after quote removal, and no glob / brace character outside quotes.
-# _step_command keeps each quoted literal as _LITERAL_SLOT only when it is such
-# a literal; any other literal becomes _LITERAL_SLOT + "$", which may vanish.
-_ARG_QUOTED = re.compile("[\"']|" + _LITERAL_SLOT)
-_ARG_EXPANSION = re.compile(r"[$`]|%\w+%|^@.")
-_ARG_GLOB = re.compile(r"[*?\[{]")
-_LITERAL_EXPANSION = re.compile(r"[$`]|%\w+%|^@")
+# Orchestrator ruling (s117), after the verifier refuted 6089352a3 and
+# 37aea4ab5: three denylists of "words that may vanish" each leaked (`{,}`,
+# nullglob and extglob globs, `${X:+..}`, `"$@"`, PowerShell 5.1 `''`, `@()`
+# and `(@())`, an escaped space - `git reset :/base\ two` is ONE commit-search
+# revision - and a `#` comment), so it is an ALLOWLIST now. A word counts as a
+# path, a rev or an option value only when it surely reaches git as itself:
+# bare and matching _WORD_ALLOW, or a wholly quoted literal whose inside does
+# (_step_command writes that as _LITERAL_SLOT, any other quoted literal as
+# _LITERAL_SLOT + "$", which no allowlist matches). Everything else is
+# unresolved: a DROP. Over-strict on purpose (`~`, `a@b`, `HEAD~1 a.txt`,
+# `"*.zz"` deny); a false credit is not acceptable. Measured shapes:
+# tests/test_stop_claim_gate_subagent_evidence_rm687.py.
+_WORD_ALLOW = re.compile(r"[A-Za-z0-9_./][A-Za-z0-9_./-]*\Z")
+_VALUE_ALLOW = re.compile(r"[A-Za-z0-9_./-]+\Z")
+_OPTION_ALLOW = re.compile(r"--?[A-Za-z0-9][A-Za-z0-9-]*(?:=[A-Za-z0-9_./][A-Za-z0-9_./-]*)?\Z")
 _PATHSPEC_FILE = frozenset({"--pathspec-from-file", "--pathspec-file-nul", "--stdin"})
 _CHECKOUT_VALUE = frozenset({"--conflict", "--unified", "--inter-hunk-context"})
 _STASH_VALUE = frozenset({"--message", "--unified", "--inter-hunk-context"})
@@ -1609,39 +1608,43 @@ _GIT_WORD = re.compile(r"(?<![\w.-])git(?:\.exe)?(?=\s)", re.I)
 
 def _slot_literal(match):
     """re.sub replacement for one quoted literal (see _step_command)."""
-    body = match.group(0)[1:-1]
-    if body and not _LITERAL_EXPANSION.search(body):
+    if _WORD_ALLOW.match(match.group(0)[1:-1]):
         return _LITERAL_SLOT
     return _LITERAL_SLOT + "$"
 
 
 def _step_command(command):
     """COMMAND as the staged-merge step reads it: noise stripped, and each
-    quoted literal kept as one word that says whether it can vanish."""
+    quoted literal kept as one word that says whether it is allowlisted."""
     return strip_command_noise(command, _slot_literal)
 
 
-def _may_vanish(token):
-    """True when TOKEN may reach git as ZERO words (or as anything else): an
-    expansion anywhere, nothing left after quote removal, or a glob / brace
-    character outside quotes. Works on raw text and on _step_command text."""
-    if _ARG_EXPANSION.search(token) or _ARG_GLOB.search(_QUOTED.sub("", token)):
-        return True
-    if any(not m.group(0)[1:-1] or _LITERAL_EXPANSION.search(m.group(0)[1:-1])
-           for m in _QUOTED.finditer(token)):
-        return True  # raw text: the same test _slot_literal applies
-    return not token.replace('"', "").replace("'", "")
+def _as_word(token):
+    """TOKEN with each quoted literal written as _step_command writes it, so
+    raw text and step text read the same."""
+    return _QUOTED.sub(_slot_literal, token)
 
 
-def _unresolved(token):
-    """True when TOKEN is (part) quoted or may vanish: the command line cannot
-    say what git receives - an option, a subcommand, a path or nothing."""
-    return bool(_ARG_QUOTED.search(token)) or _may_vanish(token)
+def _word_ok(token):
+    """True when TOKEN surely reaches git as this one plain word: a path, a
+    rev (the allowlist; everything else is a DROP)."""
+    return bool(_WORD_ALLOW.match(_as_word(token)))
 
 
-def _path_word(token):
-    """True when TOKEN after `--` surely reaches git as one pathspec word."""
-    return not _may_vanish(token)
+def _bare_ok(token):
+    """True for an allowlisted word that is not quoted at all - a subcommand
+    position, which the evidence patterns match only as a bare word."""
+    return _word_ok(token) and token == _as_word(token) and _LITERAL_SLOT not in token
+
+
+def _value_ok(token):
+    """True when an option's VALUE TOKEN surely reaches git as one word."""
+    return bool(_VALUE_ALLOW.match(_as_word(token)))
+
+
+def _option_ok(token):
+    """True when TOKEN (it starts with `-`) is a plain option git receives as is."""
+    return bool(_OPTION_ALLOW.match(_as_word(token)))
 
 
 def _short_value(token, letters):
@@ -1655,10 +1658,11 @@ def _short_value(token, letters):
 
 
 def _args(text):
-    """The whitespace tokens of TEXT up to the first redirection."""
+    """The whitespace tokens of TEXT up to the first redirection or comment
+    (a token starting with `#`: measured, `git reset -- #a.txt` is `--`)."""
     tokens = []
     for token in text.split():
-        if _ARG_REDIRECT.match(token):
+        if _ARG_REDIRECT.match(token) or token.startswith("#"):
             break
         tokens.append(token)
     return tokens
@@ -1666,74 +1670,76 @@ def _args(text):
 
 def _checkout_drops(args):
     """True when `git checkout` ARGS select branch mode (drops MERGE_HEAD).
-    Strict on doubt: an unresolved word before `--` (it may be `-b` / `-f` /
-    a branch) or a pathspec file (it may be empty) un-stages."""
+    Strict on doubt (the allowlist): a word that is not plainly itself (it
+    may be `-b` / `-f`, a branch, or nothing) or a pathspec file (it may be
+    empty) un-stages."""
     positional, value_next = [], False
     tokens = _args(args)
     for index, token in enumerate(tokens):
         if value_next:
-            if not _path_word(token):
+            if not _value_ok(token):
                 return True  # a value that may vanish shifts the next word into its slot
             value_next = False
             continue
         if token == "--":
-            if any(_path_word(word) for word in tokens[index + 1:]):
+            if any(_word_ok(word) for word in tokens[index + 1:]):
                 return False  # `[<tree-ish>] -- <pathspec>...`: path mode (or fatal)
             break  # `--` with no pathspec only ends the revisions: branch mode
-        if _unresolved(token):
-            return True
-        name = token.split("=", 1)[0]
-        if name in _CHECKOUT_BRANCH_ONLY or name in _PATHSPEC_FILE:
-            return True
-        if name in _CHECKOUT_PATH_ONLY:
-            return False
-        if token.startswith("--"):
-            value_next = name in _CHECKOUT_VALUE and "=" not in token
-            continue
-        if token.startswith("-") and len(token) > 1:
+        if token.startswith("-"):
+            if not _option_ok(token):
+                return True
+            name = token.split("=", 1)[0]
+            if name in _CHECKOUT_BRANCH_ONLY or name in _PATHSPEC_FILE:
+                return True
+            if name in _CHECKOUT_PATH_ONLY:
+                return False
+            if token.startswith("--"):
+                value_next = name in _CHECKOUT_VALUE and "=" not in token
+                continue
             if "b" in token or "B" in token:  # -b / -B <new-branch>, bundles too
                 return True
             if "p" in token:  # -p: patch mode, paths only
                 return False
             value_next = _short_value(token, "U")
             continue
+        if not _word_ok(token):
+            return True
         positional.append(token)
     if len(positional) > 1:
         return False  # <tree-ish> <pathspec>...
-    # A glob would read as a pathspec, but it may vanish (nullglob), so
-    # _unresolved already returned True for it above.
     return not positional or positional[0] != "."
 
 
 def _stash_drops(args):
     """True when `git stash` ARGS save the whole tree (drops MERGE_HEAD).
-    Strict on doubt: an unresolved word (it may be `push` / `save` / `-m`) or
-    a pathspec file (it may be empty) un-stages."""
+    Strict on doubt (the allowlist): a word that is not plainly itself (it
+    may be `push` / `save` / `-m`, or nothing) or a pathspec file (it may be
+    empty) un-stages."""
     sub, value_next = None, False
     tokens = _args(args)
     for index, token in enumerate(tokens):
         if value_next:
-            if not _path_word(token):
+            if not _value_ok(token):
                 return True  # measured: `-m $M b.txt` with M empty makes b.txt the message
             value_next = False  # an option's value (`-m --` is a message)
             continue
         if token == "--":
             if sub == "save":
                 return True  # measured: `stash save -- <x>` saves all, <x> is the message
-            if any(_path_word(word) for word in tokens[index + 1:]):
+            if any(_word_ok(word) for word in tokens[index + 1:]):
                 return False  # `-- <pathspec>...`
             break  # `--` with no pathspec: the whole tree
-        if _unresolved(token):
-            return True
-        name = token.split("=", 1)[0]
-        if name in _PATHSPEC_FILE:
-            return True
-        if name in _STASH_PARTIAL:
-            return False
-        if token.startswith("--"):
-            value_next = name in _STASH_VALUE and "=" not in token
-            continue
-        if token.startswith("-") and len(token) > 1:
+        if token.startswith("-"):
+            if not _option_ok(token):
+                return True
+            name = token.split("=", 1)[0]
+            if name in _PATHSPEC_FILE:
+                return True
+            if name in _STASH_PARTIAL:
+                return False
+            if token.startswith("--"):
+                value_next = name in _STASH_VALUE and "=" not in token
+                continue
             for flag in token[1:]:
                 if flag == "p":
                     return False  # -p: patch mode, partial
@@ -1741,14 +1747,14 @@ def _stash_drops(args):
                     break  # the rest of the bundle, or the next token, is its value
             value_next = _short_value(token, "mU")
             continue
-        if token.startswith("-"):
-            continue
         if sub is None:
+            if not _bare_ok(token):
+                return True  # a quoted / unresolved subcommand may be push or save
             sub = token
             if sub not in ("push", "save"):
                 return False
         elif sub == "push":
-            return False  # a pathspec
+            return not _word_ok(token)  # an allowlisted pathspec keeps
     return True
 
 
@@ -1760,33 +1766,37 @@ def _reset_drops(args):
     is staged; otherwise it moves HEAD nowhere). Strict everywhere else: one
     bare argument may be a commit, `--soft` / `--keep` to another commit can
     move HEAD off a concluded merge commit, `-p` / --pathspec-from-file may
-    name no path (measured: an empty pathspec file is a whole reset), and an
-    unresolved word before `--` may be `--hard` (git reset "--hard" HEAD)."""
+    name no path (measured: an empty pathspec file is a whole reset), and a
+    word that is not plainly itself (the allowlist) may be `--hard`, a rev or
+    nothing (`git reset "--hard" HEAD`, `git reset :/base\\ two`). A bare `@`
+    is HEAD, as the first argument only."""
     mode, positional, value_next = None, [], False
     tokens = _args(args)
     for index, token in enumerate(tokens):
         if value_next:
-            if not _path_word(token):
+            if not _value_ok(token):
                 return True  # a value that may vanish shifts the next word into its slot
             value_next = False
             continue
         if token == "--":
-            if any(_path_word(word) for word in tokens[index + 1:]):
+            if any(_word_ok(word) for word in tokens[index + 1:]):
                 return False  # `[<tree-ish>] -- <pathspec>...`: path mode (or fatal)
             break  # `--` with no pathspec: a whole reset
-        if _unresolved(token):
-            return True
-        name = token.split("=", 1)[0]
-        if name in _PATHSPEC_FILE:
-            return True
-        if token.startswith("--"):
-            if token in _RESET_MODES:
-                mode = token  # git: the last mode option wins
-            value_next = name in _RESET_VALUE and "=" not in token
-            continue
         if token.startswith("-"):
+            if not _option_ok(token):
+                return True
+            name = token.split("=", 1)[0]
+            if name in _PATHSPEC_FILE:
+                return True
+            if token.startswith("--"):
+                if token in _RESET_MODES:
+                    mode = token  # git: the last mode option wins
+                value_next = name in _RESET_VALUE and "=" not in token
+                continue
             value_next = _short_value(token, "U")
             continue
+        if not (_word_ok(token) or (token == "@" and not positional)):
+            return True
         positional.append(token)
     if len(positional) > 1:
         return False  # `<tree-ish> <pathspec>...`
@@ -1806,7 +1816,7 @@ def _git_subcommand_unresolved(stripped):
             if token.startswith("-"):
                 value_next = token in _GIT_PATH_OPTS or token in _GIT_VALUE_OPTS
                 continue
-            if _unresolved(token):
+            if not _bare_ok(token):
                 return True
             break
     return False
