@@ -1206,11 +1206,27 @@ MERGE_HEAD_MEASURED = [
     ("git stash save -- b.txt", True), ("git stash push -m -- b.txt", False),
     ("git stash push -m --", True), ("git stash -- b.txt", False),
     ("git checkout main -- $F", True),
-    ('git checkout main -- ""', False), ('git reset -- ""', False),
-    ('git stash push -- ""', False), ("git reset HEAD~1 -- b.txt", False),
+    ("git reset HEAD~1 -- b.txt", False),
     # An option VALUE that may expand to nothing shifts the next word into the
     # value slot (measured, M empty: `-m $M b.txt` makes b.txt the message).
     ("git stash push -m $M b.txt", True),
+    # s117 verifier REFUTE of 6089352a3 (measured, bash and powershell.exe
+    # 5.1): a pathspec word that expands to ZERO words leaves git a bare `--`
+    # (or one argument), a whole reset / checkout / stash. Brace `{,}`, an
+    # unquoted glob under nullglob, `${X:+...}` with X unset, and in PowerShell
+    # 5.1 an empty `''` or `@()` (5.1 drops empty arguments) all drop it; so
+    # does the same word BEFORE `--`, where it was a second argument.
+    ('git reset -- ${X:+"a.txt"}', True), ("git reset -- {,}", True),
+    ("git reset -- zz*", True), ("git reset -- ''", True), ("git reset -- @()", True),
+    ('git checkout main -- ${X:+"a.txt"}', True), ("git checkout main -- {,}", True),
+    ("git checkout main -- zz*", True), ("git checkout main -- ''", True),
+    ("git checkout main -- @()", True),
+    ('git stash push -- ${X:+"a.txt"}', True), ("git stash push -- {,}", True),
+    ("git stash push -- zz*", True), ("git stash push -- ''", True),
+    ("git stash push -- @()", True),
+    ("git reset HEAD zz*", True), ("git reset HEAD {,}", True), ("git reset @() HEAD", True),
+    ("git checkout main zz*", True), ("git checkout zz*", True), ("git stash push zz*", True),
+    ('git reset -- "*.zz"', False), ("git reset -- 'b.txt'", False),
 ]
 
 # Where the command line alone cannot tell git's two modes apart, the gate reads
@@ -1230,6 +1246,18 @@ MERGE_HEAD_READ_ON_PURPOSE = [
     ('git checkout "main" -- a.txt', True), ("git checkout -b -- a.txt", True),
     ('git reset "--hard" -- b.txt', True), ('git stash push -m msg "b.txt"', True),
     ("git checkout --conflict $S main", True), ("git stash push -m $M -- b.txt", True),
+    # "$@" / "${ARR[@]}" with nothing to expand: zero words in POSIX bash (a
+    # whole reset, per the s117 verifier); the MSYS bash here passed one empty
+    # word instead (git: "empty string is not a valid pathspec", kept). Strict.
+    ('git reset -- "$@"', True), ('git reset -- "${ARR[@]}"', True),
+    ('git checkout main -- "$@"', True), ('git checkout main -- "${ARR[@]}"', True),
+    ('git stash push -- "$@"', True), ('git stash push -- "${ARR[@]}"', True),
+    # An EMPTY quoted word: bash passes it (git: "empty string is not a valid
+    # pathspec", kept, measured), PowerShell 5.1 drops it (measured with `''`:
+    # a whole reset / checkout / stash). And `"$F"`: one word in bash, nothing
+    # in PowerShell 5.1 when F is empty. Strict.
+    ('git checkout main -- ""', True), ('git reset -- ""', True),
+    ('git stash push -- ""', True), ('git reset -- "$F"', True),
 ]
 
 
@@ -1241,8 +1269,8 @@ def test_merge_unstaged_matches_the_measured_merge_head_table(command, drops):
 @pytest.mark.parametrize("command, drops", MERGE_HEAD_MEASURED + MERGE_HEAD_READ_ON_PURPOSE)
 def test_the_staged_merge_step_reads_the_table_the_same(command, drops):
     # The step reads the command with each quoted literal as a word
-    # (_LITERAL_SLOT), not the raw text the table test above passes.
-    slotted = gate.strip_command_noise(command, gate._LITERAL_SLOT)
+    # (_step_command), not the raw text the table test above passes.
+    slotted = gate._step_command(command)
     assert bool(gate._merge_unstaged(slotted)) is drops, slotted
 
 
@@ -1431,7 +1459,7 @@ def test_bare_trailing_double_dash_in_the_staging_call_unstages(tmp_path):
 @pytest.mark.parametrize("keep", [
     'git checkout HEAD -- "tools/x.py"', "git checkout -- 'tools/x.py'",
     'git stash push -- "tools/x.py"', 'git reset -q -- "tools/x.py"',
-    'git stash push -m "park" -- "tools/x.py"', 'git reset -- "$F"',
+    'git stash push -m "park" -- "tools/x.py"', "git reset -- 'tools/x.py'",
     'git checkout -- "$P" tools/y.py',
 ])
 def test_quoted_pathspec_after_double_dash_keeps_the_staged_merge(tmp_path, keep):
@@ -1478,7 +1506,7 @@ def test_a_drop_before_a_later_merge_that_staged_nothing_still_unstages(
 @pytest.mark.parametrize("command, output", LATER_MERGE_STAGED_NOTHING, ids=LATER_MERGE_IDS)
 def test_staged_merge_step_reads_the_first_merge_when_one_staged_nothing(command, output):
     found = gate._new_subagent_evidence()
-    gate._staged_merge_step(found, gate.strip_command_noise(command, gate._LITERAL_SLOT), output)
+    gate._staged_merge_step(found, gate._step_command(command), output)
     assert found["merge"] is False and found["staged_merge"] is False
 
 
@@ -1550,6 +1578,44 @@ QUOTED_TOKEN_DROPS = [
     "git stash save -- tools/x.py", "git checkout --pathspec-from-file /dev/null",
     "M=; git stash push -m $M tools/x.py",
 ]
+
+# s117 verifier REFUTE of 6089352a3: a pathspec that expands to zero words.
+# The reset forms are new false credits of 6089352a3 (the pre-(f) gate denied
+# every reset); the checkout / stash twins and the before-`--` forms were
+# credited by the parent too. Each must deny the merge credit.
+VANISHING_PATHSPEC_DROPS = [
+    'set --; git reset -- "$@"', 'git reset -- "${ARR[@]}"', 'git reset -- ${X:+"a.txt"}',
+    "git reset -- {,}", "shopt -s nullglob; git reset -- zz*", "git reset -- ''",
+    "git reset -- @()",
+    'set --; git checkout main -- "$@"', 'git checkout main -- "${ARR[@]}"',
+    'git checkout main -- ${X:+"a.txt"}', "git checkout main -- {,}",
+    "shopt -s nullglob; git checkout main -- zz*", "git checkout main -- ''",
+    "git checkout main -- @()",
+    'set --; git stash push -- "$@"', 'git stash push -- "${ARR[@]}"',
+    'git stash push -- ${X:+"a.txt"}', "git stash push -- {,}",
+    "shopt -s nullglob; git stash push -- zz*", "git stash push -- ''",
+    "git stash push -- @()",
+    "shopt -s nullglob; git reset HEAD zz*", "git reset HEAD {,}", "git reset @() HEAD",
+    "shopt -s nullglob; git checkout main zz*", "shopt -s nullglob; git checkout zz*",
+    "shopt -s nullglob; git stash push zz*",
+]
+
+
+@pytest.mark.parametrize("undo", VANISHING_PATHSPEC_DROPS)
+def test_a_pathspec_that_may_expand_to_nothing_never_keeps_the_merge(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", VANISHING_PATHSPEC_DROPS)
+def test_a_pathspec_that_may_expand_to_nothing_in_the_staging_call_unstages(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " ; " + undo + " ; " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
 
 
 @pytest.mark.parametrize("undo", QUOTED_TOKEN_DROPS)

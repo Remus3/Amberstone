@@ -682,8 +682,9 @@ def strip_command_noise(command, literal=" "):
     A quoted EXECUTABLE PATH is the exception: it collapses to its basename
     rather than vanishing, so the invoked binary survives for the evidence
     patterns while the surrounding prose-stripping is unchanged. LITERAL
-    replaces each other quoted literal: a blank by default, or a word (see
-    _LITERAL_SLOT) where a caller must still see that an argument was there.
+    replaces each other quoted literal: a blank by default, or (re.sub
+    replacement, a string or a function of the match) a word where a caller
+    must still see that an argument was there (see _step_command).
     """
     command = _QUOTED_EXE.sub(lambda m: " " + m.group(2) + " ", command)
     return _QUOTED.sub(literal, _HEREDOC.sub(" ", command))
@@ -1553,7 +1554,7 @@ _EV_GIT_RESET = re.compile(_GIT_LEAD + r"reset(?![\w.-])([^|;&\n]*)", re.I)
 # `--` followed by a pathspec keeps; a bare TRAILING `--` ends the revisions,
 # so it is branch mode and un-stages (s117 gap 1, measured: `git checkout main
 # --`, `git stash push --` drop MERGE_HEAD). The step reads the command with
-# each quoted literal as a word (_LITERAL_SLOT), so `-- "<path>"` still shows
+# each quoted literal as a word (_step_command), so `-- "<path>"` still shows
 # its pathspec. `git reset` (s117 gap 3, measured): `--soft` / `--keep` die
 # while a merge is staged ("Cannot do a soft reset in the middle of a merge"),
 # and a pathspec reset keeps MERGE_HEAD (the next commit has two parents) and
@@ -1584,8 +1585,21 @@ _RESET_HEAD = frozenset({"HEAD", "@"})
 # skipped, never a path; a pathspec FILE may be empty, so it un-stages; and
 # after `--` a word is a path only when it cannot expand to nothing
 # (_path_word: `F=; git checkout main -- $F` drops it, `-- ""` is fatal).
+#
+# s117 verifier REFUTE of 6089352a3 (measured, bash and powershell.exe 5.1): a
+# pathspec word that expands to ZERO words leaves git a bare `--` or one
+# argument - a whole reset / checkout / stash. `{,}`, an unquoted glob under
+# nullglob, `${X:+"a.txt"}` with X unset, `"$@"` with no arguments, and in
+# PowerShell 5.1 an empty `''` or `@()` (5.1 drops empty arguments). So a word
+# is a path only when it cannot vanish (_may_vanish): no expansion anywhere,
+# quoted or not (`$`, backtick, %VAR%, a leading `@` with more after it), not
+# empty after quote removal, and no glob / brace character outside quotes.
+# _step_command keeps each quoted literal as _LITERAL_SLOT only when it is such
+# a literal; any other literal becomes _LITERAL_SLOT + "$", which may vanish.
 _ARG_QUOTED = re.compile("[\"']|" + _LITERAL_SLOT)
-_ARG_EXPANSION = re.compile(r"[$`]|%\w+%|^@\w")
+_ARG_EXPANSION = re.compile(r"[$`]|%\w+%|^@.")
+_ARG_GLOB = re.compile(r"[*?\[{]")
+_LITERAL_EXPANSION = re.compile(r"[$`]|%\w+%|^@")
 _PATHSPEC_FILE = frozenset({"--pathspec-from-file", "--pathspec-file-nul", "--stdin"})
 _CHECKOUT_VALUE = frozenset({"--conflict", "--unified", "--inter-hunk-context"})
 _STASH_VALUE = frozenset({"--message", "--unified", "--inter-hunk-context"})
@@ -1593,16 +1607,41 @@ _RESET_VALUE = frozenset({"--unified", "--inter-hunk-context"})
 _GIT_WORD = re.compile(r"(?<![\w.-])git(?:\.exe)?(?=\s)", re.I)
 
 
+def _slot_literal(match):
+    """re.sub replacement for one quoted literal (see _step_command)."""
+    body = match.group(0)[1:-1]
+    if body and not _LITERAL_EXPANSION.search(body):
+        return _LITERAL_SLOT
+    return _LITERAL_SLOT + "$"
+
+
+def _step_command(command):
+    """COMMAND as the staged-merge step reads it: noise stripped, and each
+    quoted literal kept as one word that says whether it can vanish."""
+    return strip_command_noise(command, _slot_literal)
+
+
+def _may_vanish(token):
+    """True when TOKEN may reach git as ZERO words (or as anything else): an
+    expansion anywhere, nothing left after quote removal, or a glob / brace
+    character outside quotes. Works on raw text and on _step_command text."""
+    if _ARG_EXPANSION.search(token) or _ARG_GLOB.search(_QUOTED.sub("", token)):
+        return True
+    if any(not m.group(0)[1:-1] or _LITERAL_EXPANSION.search(m.group(0)[1:-1])
+           for m in _QUOTED.finditer(token)):
+        return True  # raw text: the same test _slot_literal applies
+    return not token.replace('"', "").replace("'", "")
+
+
 def _unresolved(token):
-    """True when TOKEN is (part) quoted or unexpanded: the command line cannot
+    """True when TOKEN is (part) quoted or may vanish: the command line cannot
     say what git receives - an option, a subcommand, a path or nothing."""
-    return bool(_ARG_QUOTED.search(token) or _ARG_EXPANSION.search(token))
+    return bool(_ARG_QUOTED.search(token)) or _may_vanish(token)
 
 
 def _path_word(token):
-    """True when TOKEN after `--` reaches git as a pathspec: a quoted part
-    survives expansion (empty is fatal), an unquoted `$F` may vanish."""
-    return bool(_ARG_QUOTED.search(token)) or not _ARG_EXPANSION.search(token)
+    """True when TOKEN after `--` surely reaches git as one pathspec word."""
+    return not _may_vanish(token)
 
 
 def _short_value(token, letters):
@@ -1661,7 +1700,9 @@ def _checkout_drops(args):
         positional.append(token)
     if len(positional) > 1:
         return False  # <tree-ish> <pathspec>...
-    return not positional or not (positional[0] == "." or any(c in positional[0] for c in "*?["))
+    # A glob would read as a pathspec, but it may vanish (nullglob), so
+    # _unresolved already returned True for it above.
+    return not positional or positional[0] != "."
 
 
 def _stash_drops(args):
@@ -1817,7 +1858,7 @@ def _staged_merge_step(found, stripped, output):
     so the FIRST merge is read as the stager and a drop after it is late.
 
     STRIPPED is the command with each quoted literal kept as a word
-    (_LITERAL_SLOT), so a quoted pathspec after `--` still reads as one."""
+    (_step_command), so a quoted pathspec after `--` still reads as one."""
     if _merge_aborted(stripped):
         found["staged_merge"] = False
         return
@@ -2190,7 +2231,7 @@ def _absorb_result(found, runs, deferred, use, text, errored, session_start):
         found["commit"] = True
     if _did_merge(stripped) and _merge_output_ok(stripped, text, errored):
         found["merge"] = True
-    _staged_merge_step(found, strip_command_noise(command, _LITERAL_SLOT), text)
+    _staged_merge_step(found, _step_command(command), text)
     if found["push"] is None:
         found["push"] = _pair_credit(command, text, errored, session_start)
 
