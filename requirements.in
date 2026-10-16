@@ -1,0 +1,31 @@
+# Runtime dependencies of Riot Commander - the HUMAN-EDITED source of
+# requirements.txt. Exact `==` pins of what RC's own tracked source imports,
+# no hashes (tests/test_requirements_currency_rm515.py reads this file).
+#
+# requirements.txt is GENERATED from this file: every package, transitive ones
+# included, pinned to an exact version AND to the sha256 of every file PyPI
+# serves for it, so `pip install -r requirements.txt` (install.bat) runs in
+# hash-checking mode and refuses anything else. Never hand-edit
+# requirements.txt: change a pin here, then regenerate from the repo root with:
+#
+#   uv pip compile requirements.in --universal --python-version 3.11 --generate-hashes --output-file requirements.txt
+#
+# --universal + --python-version 3.11 resolve ONE file for every platform and
+# every Python from 3.11 up: the embedded runtime (python-embed, 3.11), CI and
+# the README floor (3.12), 3.13, and the operator's runtime (3.14). Without
+# --upgrade, uv keeps every version already pinned in requirements.txt, so a
+# regeneration after one edit here moves only what that edit forces.
+#
+# The hashed CI install sets in .github/ci/ include this file too (see the .in
+# beside each); after a pin change here regenerate them with the commands in
+# their headers, or ci.yml's "hashed CI install sets agree" step goes red.
+
+anthropic==1.11.0
+certifi==2026.7.22
+json5==0.15.0
+opencv-python==5.0.0.93
+Pillow==12.3.0
+portalocker==4.4.0
+psutil==7.2.2
+pydantic==2.13.5
+websockets==17.2

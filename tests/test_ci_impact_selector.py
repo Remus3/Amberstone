@@ -102,6 +102,7 @@ def test_is_test_module(path, expected):
     "tests/snapshot_panels/conftest.py",
     "agents/daemon_slayer/tests/conftest.py",
     "pytest.ini",
+    "requirements.in",
     "requirements.txt",
     "requirements.lock",
     ".github/ci/requirements-ci.txt",

@@ -25,7 +25,7 @@ No files are written outside the project root during normal operation.
   +-- scripts/restart_clean.bat LAUNCHER clean-start (kill + cache clear + relaunch)
   +-- install.bat               SETUP    one-time setup (packages, dirs, API key)
   +-- API-Key-Claude.txt        SECRET   Anthropic API key (not source-controlled)
-  +-- requirements.txt          SOURCE   pip dependency list
+  +-- requirements.txt          SOURCE   hashed pip lock, generated from the repo's requirements.in
   |
   +-- config/                   CONFIG   all configuration files
   |   +-- feature_flags.json    RUNTIME  feature policy matrix (hot-reload)
