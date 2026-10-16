@@ -1,0 +1,13 @@
+# CodeQL configuration, read by .github/workflows/codeql.yml (init step,
+# `config-file:`). Applies to every analysed language.
+#
+# paths-ignore - docs/_archive/** holds dated, archived artifacts that are
+# never served or imported: the dashboard serves static files from web/ only
+# (dashboard/routes_static.py _serve_web_asset), and nothing imports from
+# docs/. Measured 2026-10-15 at 9240474bc: the only CodeQL-analysable sources
+# under it are two dead JavaScript files (the pre-2026-05-18 dashboard copy
+# and a 2026-07-07 stub); it holds no Python. The rest is Markdown / text.
+#
+# tests/** stays analysed (session 118 adjudicator ruling): do not add it.
+paths-ignore:
+  - docs/_archive/**
