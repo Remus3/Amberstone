@@ -370,6 +370,12 @@ def format_findings(label: str, findings: list[Finding]) -> list[str]:
 # push diff runs `--no-renames`, so a halting class would block the very
 # commits that remove them. Promote one to GATE once its HEAD count is 0.
 #
+# checkout_path PROMOTED (PUBREPO 1f, MAIN ORDER 2026-10-15): `--leak-sweep
+# HEAD` counted 0 lines outside test/fixture paths. Its regex drops the drive
+# letter, so BOTH spellings of a junctioned checkout root halt (pinned by
+# tests/test_junction_drive_spellings_pubrepo_f.py). user_profile_path stays
+# advisory: HEAD still carries it and MAIN ruled those lines placeholders.
+#
 # Shapes are written so the pattern SOURCE never matches itself, and no
 # drive-rooted literal appears in this file (the sibling-name sweep's
 # structural arm reads one as an undeclared project).
@@ -444,8 +450,9 @@ LEAK_PATTERN_CLASSES = (
     "tailnet_dns_name",
     "windows_host_name",
     "local_host_value",
+    "checkout_path",
 )
-ADVISORY_LEAK_CLASSES = ("user_profile_path", "checkout_path")
+ADVISORY_LEAK_CLASSES = ("user_profile_path",)
 
 _LEAK_COMPILED = tuple((name, re.compile(pattern)) for name, pattern in _LEAK_FAMILIES)
 
@@ -590,7 +597,8 @@ def scan_leaks(
     ``values`` are this host's literal identity values (gitignored config plus
     the live computer name), reported as ``local_host_value``.
     ``checkout_paths`` are the absolute checkout path spellings, reported as
-    the advisory ``checkout_path``. Arms: ``leak`` (shape), ``value`` (literal).
+    the GATE class ``checkout_path`` under any drive letter. Arms: ``leak``
+    (shape), ``value`` (literal).
     The line PRAGMA exempts a line, as for credentials. Path exemption is the
     CALLER's job (``is_leak_exempt``): this function sees text, not paths.
     """

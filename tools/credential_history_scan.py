@@ -33,7 +33,9 @@ LEAK CLASSES (MAIN 2246 ORDER sections 3-4; `credential_patterns.scan_leaks`).
 address or DNS name, a Windows-generated host name, or a literal value from
 this host's identity: the gitignored `ops/local_hosts.json` (read from the
 main checkout when the push runs in a linked worktree) plus the live computer
-name. User-profile and checkout paths are ADVISORY: reported, never a halt.
+name, or this checkout's absolute path under ANY drive letter (both spellings
+of a junctioned root; PUBREPO 1f). User-profile paths are ADVISORY: reported,
+never a halt.
 Test code and fixtures are exempt by path (`credential_patterns.is_leak_exempt`).
 No new hook wiring: `.githooks/pre-push` already runs `--pre-push`.
 
@@ -405,18 +407,19 @@ def run_push(rev_args_list: Sequence[Sequence[str]], root: Path = ROOT,
           f"{time.monotonic() - t0:.1f}s", file=sys.stderr)
     if advisory:
         print("[leak-classes] advisory, not a halt: added lines carry a "
-              "user-profile or checkout path. Prefer %USERPROFILE%, <repo> or "
-              "<checkout> placeholders.", file=sys.stderr)
+              "user-profile path. Prefer the %USERPROFILE% placeholder.",
+              file=sys.stderr)
     if hits:
         print("[credential-history] HALT - the push ADDS credential-shaped "
               "content. Remove it, or mark a genuine fixture line with "
               f"`{cp.PRAGMA}`.", file=sys.stderr)
     if leak_hits:
         print("[leak-classes] HALT - the push ADDS network or machine identity "
-              "(private LAN, tailnet, host name). Code reads host values from "
-              "the gitignored ops/local_hosts.json; docs use an RFC 5737 "
-              "address or a named placeholder. Test and fixture paths are "
-              "exempt.", file=sys.stderr)
+              "(private LAN, tailnet, host name, checkout path). Code reads host "
+              "values from the gitignored ops/local_hosts.json and derives the "
+              "checkout root at run time; docs use an RFC 5737 address, <repo> "
+              "or a named placeholder. Test and fixture paths are exempt.",
+              file=sys.stderr)
     if hits or leak_hits:
         return EXIT_HALT
     return EXIT_CLEAN
