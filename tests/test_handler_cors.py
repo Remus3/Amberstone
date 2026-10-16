@@ -83,6 +83,39 @@ def test_send_omits_acao_when_no_origin_header():
     assert "Access-Control-Allow-Origin" not in keys
 
 
+# CodeQL py/http-response-splitting (alert 53, 2026-10-15). An obs-folded
+# request header keeps its line break: http.client.parse_headers on
+# b"Origin: http://127.0.0.1:\r\n Set-Cookie: x=1\r\n" returns the value
+# "http://127.0.0.1:\r\n Set-Cookie: x=1" (measured), and urlparse drops
+# CR / LF / TAB before reading the host, so the loopback gate passed and the
+# raw value - line break included - was echoed into the response header.
+# A serialized origin is scheme://host[:port] in printable ASCII with no
+# whitespace, so anything else is refused outright.
+@pytest.mark.parametrize("origin", [
+    "http://127.0.0.1:\r\n Set-Cookie: x=1",
+    "http://127.0.0.1:\n\tX-Injected: 1",
+    "http://127.0.0.1:\r X: 1",
+    "https://127.0.0.1:5123\r\n",
+    "https://127.0.0.1:5123 ",
+    "https://127.0.0.1:5123\x00",
+    "https://127.0.0.1:5123\x7f",
+])
+def test_cors_helper_refuses_whitespace_and_control_chars(origin):
+    assert _cors_allowed_origin(origin) is None
+
+
+def test_cors_env_allowlist_cannot_admit_a_line_break(monkeypatch):
+    monkeypatch.setenv("RC_CORS_ALLOW_ORIGINS", "https://riot.example")
+    assert _cors_allowed_origin("https://riot.example\r\n x") is None
+
+
+def test_send_never_echoes_a_folded_origin():
+    h = _make_handler("http://127.0.0.1:\r\n Set-Cookie: x=1")
+    h._send(200, b"{}", "application/json")
+    assert all("\r" not in str(v) and "\n" not in str(v) for _k, v in h._sent)
+    assert "Access-Control-Allow-Origin" not in [k for k, _ in h._sent]
+
+
 def test_send_still_writes_body_and_core_headers():
     h = _make_handler("https://127.0.0.1:5123")
     h._send(200, b'{"ok":1}', "application/json")

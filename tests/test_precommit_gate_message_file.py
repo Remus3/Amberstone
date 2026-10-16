@@ -25,6 +25,7 @@ no check.
 """
 from __future__ import annotations
 
+import os
 import pathlib
 import subprocess
 import sys
@@ -43,9 +44,14 @@ SMART_QUOTE = chr(0x201C)
 
 
 def _run_message_file(text: str) -> subprocess.CompletedProcess:
-    tmp = pathlib.Path(tempfile.mktemp(suffix=".msg"))
-    tmp.write_text(text, encoding="utf-8")
+    # mkstemp, not the deprecated mktemp (CodeQL py/insecure-temporary-file,
+    # alert 37): the file is created atomically, so no other process can take
+    # the name between choosing it and writing it.
+    fd, name = tempfile.mkstemp(suffix=".msg")
+    os.close(fd)
+    tmp = pathlib.Path(name)
     try:
+        tmp.write_text(text, encoding="utf-8")
         return subprocess.run(
             [sys.executable, str(GATE), "--message-file", str(tmp)],
             capture_output=True, text=True, cwd=str(REPO), timeout=120,
