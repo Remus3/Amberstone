@@ -26,6 +26,8 @@
 // mode text on error (never a raw error string). The Y-axis is a fixed 0-100
 // (the score is already normalized) - no dynamic yMax like perf_curve.
 
+import { escHtml } from '../lib/helpers.js';
+
 const _MOUNT = 'bi-opscore-mount';
 const _MODES = ['aram', 'sr', 'arena'];
 const _CACHE = Object.create(null);     // key -> response JSON
@@ -51,9 +53,11 @@ function _isMock() {
   catch (_e) { return false; }
 }
 
+// Escape via the shared 5-char helper: the output lands in double-quoted
+// title= attributes as well as text, so quotes must be escaped too (CodeQL
+// js/incomplete-html-attribute-sanitization).
 function _esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escHtml(s);
 }
 
 function _key() { return _mode; }
@@ -232,4 +236,4 @@ export function renderOpScore() {
 }
 
 // --- test hooks -----------------------------------------------------
-export const __test = { _svg, _html, _poly, _fmtMmSs, _arcHtml, _arcChip, VB_W, VB_H, Y_MAX };
+export const __test = { _svg, _html, _poly, _fmtMmSs, _arcHtml, _arcChip, _esc, VB_W, VB_H, Y_MAX };

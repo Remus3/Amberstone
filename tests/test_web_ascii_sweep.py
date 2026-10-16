@@ -571,7 +571,17 @@ _WEB = _REPO_ROOT / "web"
 # b47d2f6f5 blob (the DDRAGON_FALLBACK_VERSION literal 16.20.1 -> 16.19.1)
 # reproduces the superseded 472be5a8... value EXACTLY. That one path is the
 # whole change. No glyph change.
-_LIVE_HALF_DIGEST = "010f94d1c878f49ea3cf6167d370ccb600a925a9d042e448f52daa53e6e91ad6"
+# superseded by the PUBREPO 1g re-capture below: "010f94d1c878f49ea3cf6167d370ccb600a925a9d042e448f52daa53e6e91ad6"
+#
+# RE-CAPTURED 2026-10-15 at PUBREPO 1g (CodeQL JavaScript alerts, session 118
+# C1 slice cq-js), base 9240474bc. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly these paths back to their
+# 9240474bc blobs (and dropping the new test file) reproduces the superseded
+# 010f94d1... value EXACTLY: web/js/panels/{champ_benchmarks,duration_winrate,
+# op_score,patch_impact,perf_curve,playstyle_labels,session_hygiene}.js and
+# web/js/panels/codeql_js_hardening.test.mjs (new). Those paths are the whole
+# change. No glyph change.
+_LIVE_HALF_DIGEST = "eaaec13b12598e164a5fd2089e49d142e64969bc14614e1a8fe8d2553a1af7c5"
 
 
 def _web_sources() -> list[Path]:
