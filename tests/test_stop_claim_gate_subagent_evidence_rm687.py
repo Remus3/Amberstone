@@ -28,8 +28,10 @@ must all still flag.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -1154,36 +1156,173 @@ MERGE_HEAD_MEASURED = [
     ("git stash -S", True), ("git stash -k", True), ("git stash --keep-index", True),
     ("git stash -q", True), ("git stash push", True),
     ("git stash push -m x -- a.txt", False), ("git stash push b.txt", False),
-    ("git stash b.txt", False), ("git stash create", False), ("git stash list", False),
-    ("git stash show", False), ("git stash pop", False),
+    ("git stash create", False), ("git stash list", False), ("git stash show", False),
     ("git switch -f other", False), ("git switch --discard-changes other", False),
     ("git switch other", False), ("git restore --staged .", False),
     ("git restore --staged --worktree .", False), ("git rm -q --cached b.txt", False),
     ("git reset --hard", True), ("git reset", True), ("git reset HEAD", True),
     ("git reset --merge", True), ("git reset -q", True), ("git reset --mixed", True),
     ("git merge --abort", True), ("git merge --quit", True),
+    # RM-740 (f) known gaps, measured 2026-10-15 (s117), same git and method.
+    # Gap 1: a bare TRAILING `--` ends the revisions, so it is branch mode and
+    # drops MERGE_HEAD; only a pathspec AFTER `--` selects path mode.
+    ("git checkout main --", True), ("git checkout -f --", True),
+    ("git checkout HEAD --", True), ("git checkout --", True), ("git checkout feat --", True),
+    ("git checkout main -- 2>&1", True),
+    ('git checkout main -- "a.txt"', False), ("git checkout -- 'b.txt'", False),
+    ("git stash push --", True), ("git stash --", True),
+    ('git stash push -- "b.txt"', False),
+    # Gap 3: `--soft` / `--keep` die while a merge is staged ("Cannot do a soft
+    # reset in the middle of a merge"), and a pathspec reset keeps MERGE_HEAD
+    # (the later commit has two parents) and never moves HEAD. A reset with
+    # `--` and no pathspec, `-N` and an empty --pathspec-from-file are whole
+    # resets and drop it.
+    ("git reset --soft", False), ("git reset --soft HEAD", False), ("git reset --soft @", False),
+    ("git reset --keep", False), ("git reset --keep HEAD", False),
+    ("git reset --soft -q", False), ("git reset -q --keep", False),
+    ("git reset -- b.txt", False), ("git reset HEAD b.txt", False),
+    ("git reset HEAD -- b.txt", False), ("git reset -q -- b.txt", False),
+    ("git reset -- .", False), ('git reset -q -- "b.txt"', False),
+    ("git reset --", True), ("git reset HEAD --", True), ("git reset -N", True),
+    ("git reset --pathspec-from-file=/dev/null", True), ("git reset -- 2>&1", True),
+    # s117 verifier REFUTE of 463d166c8 (measured, same git and method): a
+    # quoted or unexpanded word may be an option or a subcommand, so it must
+    # never read as a path or a second argument; an option's VALUE is not a
+    # path either; an unquoted `$F` after `--` can expand to nothing.
+    ('git checkout "-b" newb', True), ('git checkout "-f" main', True),
+    ('git checkout "--detach" HEAD', True), ('git checkout "main" "-f"', True),
+    ('git stash "push"', True), ('git stash "save"', True),
+    ('git reset "--hard" HEAD', True), ('git reset -q "--hard" HEAD', True),
+    ('git reset "--merge" HEAD', True), ("git reset 'HEAD' \"--hard\"", True),
+    ('git reset "--hard" HEAD~1', True), ("git reset $M HEAD", True),
+    ("git reset --pathspec-from-file e.lst HEAD", True),
+    ('git "reset" --hard', True), ('git stash push "-m" msg', True),
+    ("git checkout --pathspec-from-file=/dev/null", True),
+    ("git checkout --pathspec-from-file /dev/null", True),
+    ("git checkout --conflict merge main", True), ("git checkout --conflict=merge main", True),
+    ("git stash push -qm msg", True), ("git stash push -m msg b.txt", False),
+    ("git stash save -- b.txt", True), ("git stash push -m -- b.txt", False),
+    ("git stash push -m --", True), ("git stash -- b.txt", False),
+    ("git checkout main -- $F", True),
+    # An option VALUE that may expand to nothing shifts the next word into the
+    # value slot (measured, M empty: `-m $M b.txt` makes b.txt the message).
+    ("git stash push -m $M b.txt", True),
+    # s117 verifier REFUTE of 6089352a3 (measured, bash and powershell.exe
+    # 5.1): a pathspec word that expands to ZERO words leaves git a bare `--`
+    # (or one argument), a whole reset / checkout / stash. Brace `{,}`, an
+    # unquoted glob under nullglob, `${X:+...}` with X unset, and in PowerShell
+    # 5.1 an empty `''` or `@()` (5.1 drops empty arguments) all drop it; so
+    # does the same word BEFORE `--`, where it was a second argument.
+    ('git reset -- ${X:+"a.txt"}', True), ("git reset -- {,}", True),
+    ("git reset -- zz*", True), ("git reset -- ''", True), ("git reset -- @()", True),
+    ('git checkout main -- ${X:+"a.txt"}', True), ("git checkout main -- {,}", True),
+    ("git checkout main -- zz*", True), ("git checkout main -- ''", True),
+    ("git checkout main -- @()", True),
+    ('git stash push -- ${X:+"a.txt"}', True), ("git stash push -- {,}", True),
+    ("git stash push -- zz*", True), ("git stash push -- ''", True),
+    ("git stash push -- @()", True),
+    ("git reset HEAD zz*", True), ("git reset HEAD {,}", True), ("git reset @() HEAD", True),
+    ("git checkout main zz*", True), ("git checkout zz*", True), ("git stash push zz*", True),
+    ("git reset -- 'b.txt'", False),
+    # s117 verifier REFUTE of 37aea4ab5 (measured): a shell joins `\ ` into one
+    # word (`git reset :/ma\in2` is one commit-search revision: a whole reset,
+    # and with --hard HEAD moves), extglob `+(zz)` vanishes under nullglob, and
+    # PowerShell 5.1 passes nothing for `(@())`. A token starting with `#` is a
+    # comment, so `-- #a.txt` leaves a bare `--`.
+    ("git reset :/ma\\in2", True), ("git reset --hard :/in\\it", True),
+    ("git checkout :/fe\\at", True), ("git stash push -m my\\ msg", True),
+    ("git reset -- +(zz)", True), ("git reset HEAD +(zz)", True),
+    ("git checkout main -- +(zz)", True), ("git stash push -- +(zz)", True),
+    ("git reset -- (@())", True), ("git checkout main -- (@())", True),
+    ("git stash push -- (@())", True),
+    ("git reset -- #a.txt", True), ("git reset -- a.txt #b.txt", False),
+    # A wholly quoted allowlisted word is that word (measured KEPT, s117).
+    ('git checkout "main" -- a.txt', False), ('git stash push -m msg "b.txt"', False),
+    # s117 verifier REFUTE of 4766ed062 (measured): git takes a unique prefix
+    # of a long option and the LAST mode wins, so `--soft --ha` is --hard;
+    # `xargs git reset --soft` runs with --hard appended; a redirect does not
+    # end git's arguments (`git reset --soft 2>&1 --hard` is --hard); `--orph`
+    # is --orphan; `git stash branch` checks a branch out.
+    ("git reset --soft --ha", True), ("git reset --soft --mix", True),
+    ("git reset --soft HEAD --ha", True), ("git reset --keep HEAD --h", True),
+    ("git reset --soft @ --mi", True), ("git reset --keep --mixe", True),
+    ("echo --hard | xargs git reset --soft", True),
+    ("git checkout --orph newb main", True),
+    ("git reset --soft 2>&1 --hard", True), ("git reset --soft 2>/dev/null --hard", True),
+    ("git reset --soft &>/dev/null --hard", True), ("git stash branch sb", True),
 ]
 
 # Where the command line alone cannot tell git's two modes apart, the gate reads
-# one of them on purpose. STRICT (gate un-stages, git kept MERGE_HEAD): a single
-# bare argument may be a branch or a path, and any `git reset` (pre-existing,
-# unchanged here). LENIENT (gate keeps, git dropped): a bare `--`, because
-# strip_command_noise blanks a quoted pathspec after it, so `-- "<path>"` and a
-# trailing `--` read the same; `--pathspec-from-file` (empty only when it names
-# the null device, as measured).
+# one of them on purpose, always STRICT (gate un-stages, git kept MERGE_HEAD):
+# a single bare argument may be a branch or a path; `git reset --soft` /
+# `--keep` to any commit but HEAD dies while the merge is staged but, run after
+# the concluding commit, moves HEAD off the merge commit (test iii-reset-soft
+# below); `reset -p` without a pathspec; a quoted or unexpanded word before
+# `--` (it may be an option); a branch-only option before `--`; an option
+# value that may expand to nothing (`-m $M`, `--conflict $S`). LENIENT (gate
+# keeps, git dropped): none since s117 (`--pathspec-from-file` on checkout
+# was, and is now measured above).
 MERGE_HEAD_READ_ON_PURPOSE = [
-    ("git checkout -f a.txt", True), ("git reset -- a.txt", True),
-    ("git reset HEAD a.txt", True), ("git reset --soft HEAD", True),
-    ("git reset --keep", True),
-    ("git checkout main --", False), ("git checkout -f --", False),
-    ("git stash push --", False), ("git stash --", False),
-    ("git checkout --pathspec-from-file=nul", False),
+    ("git checkout -f a.txt", True), ("git reset b.txt", True),
+    ("git reset --soft HEAD~1", True), ("git reset --keep feat", True),
+    ("git reset -p", True),
+    ("git checkout -b -- a.txt", True), ('git reset "--hard" -- b.txt', True),
+    ("git checkout --conflict $S main", True), ("git stash push -m $M -- b.txt", True),
+    # "$@" / "${ARR[@]}" with nothing to expand: zero words in POSIX bash (a
+    # whole reset, per the s117 verifier); the MSYS bash here passed one empty
+    # word instead (git: "empty string is not a valid pathspec", kept). Strict.
+    ('git reset -- "$@"', True), ('git reset -- "${ARR[@]}"', True),
+    ('git checkout main -- "$@"', True), ('git checkout main -- "${ARR[@]}"', True),
+    ('git stash push -- "$@"', True), ('git stash push -- "${ARR[@]}"', True),
+    # An EMPTY quoted word: bash passes it (git: "empty string is not a valid
+    # pathspec", kept, measured), PowerShell 5.1 drops it (measured with `''`:
+    # a whole reset / checkout / stash). And `"$F"`: one word in bash, nothing
+    # in PowerShell 5.1 when F is empty. Strict.
+    ('git checkout main -- ""', True), ('git reset -- ""', True),
+    ('git stash push -- ""', True), ('git reset -- "$F"', True),
+    # Orchestrator ruling (s117, after three leaking denylist rounds): only an
+    # ALLOWLISTED word ([A-Za-z0-9_./][A-Za-z0-9_./-]*, bare or quoted whole)
+    # counts as a path or a rev; git keeps MERGE_HEAD in these, the gate drops.
+    ('git reset -- "*.zz"', True), ("git reset HEAD~1 -- b.txt", True),
+    # Orchestrator ruling (s117, final shape): a reset / checkout / stash keeps
+    # credit only in an EXACT grammar with exact option spellings (see
+    # _reset_keeps / _checkout_keeps / _stash_keeps). Git keeps MERGE_HEAD in
+    # these (measured: fatal, path mode, or read-only), the gate drops.
+    ("git reset --mixed -- b.txt", True), ("git reset --hard -- b.txt", True),
+    ("git reset --soft -- b.txt", True), ("git reset --keep -- b.txt", True),
+    ("git reset --keep --merg", True), ("git reset --soft --me", True),
+    ("git reset --ha --soft", True), ("git stash pop", True), ("git stash b.txt", True),
+    ('git checkout -- "$P" b.txt', True), ("git reset -- a.txt 2>&1", True),
 ]
+
+
+# DECISION (orchestrator, s117, after the round-5 verifier refute of
+# 6ca81b47c): `git reset` is deny-all again, as before (f) - every form
+# un-stages, including the forms git measurably keeps MERGE_HEAD in (`--soft`,
+# `--keep HEAD`, `-- a.txt`, `HEAD a.txt`). The tables above still record what
+# git measurably DOES; the gate reads every reset as a drop on top of that.
+# Alternatives: the exact grammars G1-G3 (five verification rounds, each
+# leaked). Why: shell grammar is open-ended, and a false credit outranks a
+# false flag. Reverses if: the gate gains a real shell parser (e.g. bashlex)
+# with measured coverage, or an operator ruling.
+RESET_CALL = re.compile(r"(?<![\w.-])git(?:\.exe)?\s+reset(?![\w.-])", re.I)
+
+
+def _gate_reads_drop(command, drops):
+    return drops or bool(RESET_CALL.search(command))
 
 
 @pytest.mark.parametrize("command, drops", MERGE_HEAD_MEASURED + MERGE_HEAD_READ_ON_PURPOSE)
 def test_merge_unstaged_matches_the_measured_merge_head_table(command, drops):
-    assert bool(gate._merge_unstaged(command)) is drops, command
+    assert bool(gate._merge_unstaged(command)) is _gate_reads_drop(command, drops), command
+
+
+@pytest.mark.parametrize("command, drops", MERGE_HEAD_MEASURED + MERGE_HEAD_READ_ON_PURPOSE)
+def test_the_staged_merge_step_reads_the_table_the_same(command, drops):
+    # The step reads the command with each quoted literal as a word
+    # (_step_command), not the raw text the table test above passes.
+    slotted = gate._step_command(command)
+    assert bool(gate._merge_unstaged(slotted)) is _gate_reads_drop(command, drops), slotted
 
 
 def test_staged_merge_then_checkout_force_then_an_unrelated_commit_flags(tmp_path):
@@ -1325,6 +1464,557 @@ def test_a_drop_after_a_failed_commit_still_unstages(tmp_path):
                               "precommit_gate: BLOCKED - banned glyph in tools/x.py",
                               is_error=True),
                         _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# RM-740 (f) known gap 1 (s117): a bare trailing `--` is branch mode (measured:
+# drops MERGE_HEAD). The gate read it as path mode because strip_command_noise
+# blanks a quoted pathspec after `--`; the staged-merge step now reads a quoted
+# literal as an argument, so `-- "<path>"` still keeps (path mode).
+@pytest.mark.parametrize("undo, output", [
+    ("git checkout main --", "M\ttools/x.py\nAlready on 'main'"),
+    ("git checkout -f --", ""),
+    ('git checkout "main" --', "M\ttools/x.py\nAlready on 'main'"),
+    ("git stash push --", "Saved working directory and index state WIP on main: 0ecbe46 x"),
+    ("git stash --", "Saved working directory and index state WIP on main: 0ecbe46 x"),
+], ids=["checkout-main", "checkout-f", "checkout-quoted-main", "stash-push", "stash"])
+def test_bare_trailing_double_dash_is_branch_mode_and_unstages(tmp_path, undo, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, output),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("sep", [" ; ", ";", " && ", " || ", " | ", "\n", " & "],
+                         ids=["semi", "semi-tight", "and", "or", "pipe", "newline", "amp"])
+@pytest.mark.parametrize("command, drops", [
+    ("git checkout main --", True), ("git stash push --", True), ("git reset --", True),
+    ("git reset HEAD --", True), ("git checkout main -- a.txt", False),
+    ("git stash push -- a.txt", False), ("git reset -- a.txt", True),
+    ("git reset --soft", True), ("git reset --keep HEAD", True),
+])
+def test_double_dash_and_reset_reading_ends_at_every_separator(command, drops, sep):
+    # Sibling sweep (s117): the argument scan stops at each statement break,
+    # so the next statement can neither supply nor hide a pathspec. Every
+    # reset is a drop (deny-all decision above).
+    assert bool(gate._merge_unstaged(command + sep + "git status -s")) is drops
+
+
+def test_bare_trailing_double_dash_in_the_staging_call_unstages(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " && git checkout main -- && " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\nAlready on 'main'\n" + UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("keep", [
+    'git checkout HEAD -- "tools/x.py"', "git checkout -- 'tools/x.py'",
+    'git stash push -- "tools/x.py"', 'git stash push -m "park" -- "tools/x.py"',
+])
+def test_quoted_pathspec_after_double_dash_keeps_the_staged_merge(tmp_path, keep):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+# RM-740 (f) known gap 2 (s117): the drop-before-merge exemption read the LAST
+# merge in the call as the stager. A later merge that staged nothing - skipped
+# by `||` or a failed `&&`, or already up to date (measured: `git checkout main;
+# git merge --no-ff --no-commit <merged>` leaves MERGE_HEAD dropped and the
+# next commit has ONE parent) - made a drop after the real staging merge read
+# as before it.
+LATER_MERGE_STAGED_NOTHING = [
+    (STAGE_CMD + " ; git checkout main || git merge --no-ff --no-commit other ; "
+     + LOCKED_COMMIT_CMD, STAGE_OUT + "\nAlready on 'main'\n" + UNRELATED_COMMIT_OUT),
+    (STAGE_CMD + " ; git stash || git merge --no-ff --no-commit other ; " + LOCKED_COMMIT_CMD,
+     STAGE_OUT + "\nSaved working directory and index state WIP on main: 0ecbe46 x\n"
+     + UNRELATED_COMMIT_OUT),
+    (STAGE_CMD + " ; git checkout main ; false && git merge --no-ff --no-commit other ; "
+     + LOCKED_COMMIT_CMD, STAGE_OUT + "\nAlready on 'main'\n" + UNRELATED_COMMIT_OUT),
+    (STAGE_CMD + " ; git checkout main ; git merge --no-ff --no-commit old ; "
+     + LOCKED_COMMIT_CMD, STAGE_OUT + "\nAlready on 'main'\nAlready up to date.\n"
+     + UNRELATED_COMMIT_OUT),
+]
+LATER_MERGE_IDS = ["or-skipped-checkout", "or-skipped-stash", "and-skipped", "up-to-date"]
+
+
+@pytest.mark.parametrize("command, output", LATER_MERGE_STAGED_NOTHING[:3],
+                         ids=LATER_MERGE_IDS[:3])
+def test_a_drop_before_a_later_merge_that_staged_nothing_still_unstages(
+        tmp_path, command, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mc", REPO_CD + command, output))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# The staged-merge step alone, so the up-to-date shape is pinned too: end to
+# end, check 10 credits an "Already up to date." line on its own, by design
+# (test_existing_merge_success_forms_still_back_a_merge_claim).
+@pytest.mark.parametrize("command, output", LATER_MERGE_STAGED_NOTHING, ids=LATER_MERGE_IDS)
+def test_staged_merge_step_reads_the_first_merge_when_one_staged_nothing(command, output):
+    found = gate._new_subagent_evidence()
+    gate._staged_merge_step(found, command, output)
+    assert found["merge"] is False and found["staged_merge"] is False
+
+
+def test_a_drop_between_two_merges_that_both_staged_keeps_the_later_stage(tmp_path):
+    # Measured: `git stash; git merge --no-ff --no-commit <branch>` re-stages
+    # (MERGE_HEAD back, the next commit has two parents), so a drop before the
+    # LAST merge is still before the merge when every merge printed its line.
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc",
+        REPO_CD + STAGE_CMD + " ; git stash ; " + STAGE_CMD + " ; " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\nSaved working directory and index state WIP on main: 0ecbe46 x\n"
+        + STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+# RM-740 (f) known gap 3 (s117): every `git reset` form denies credit. Five
+# rounds narrowed it to the forms measured to keep MERGE_HEAD; each round
+# leaked, so it is deny-all again (decision record above): even the forms git
+# keeps MERGE_HEAD in still un-stage the merge.
+@pytest.mark.parametrize("keep, output, is_error", [
+    ("git reset --soft", "fatal: Cannot do a soft reset in the middle of a merge.", True),
+    ("git reset --keep HEAD", "fatal: Cannot do a keep reset in the middle of a merge.", True),
+    ("git reset -q -- tools/x.py", "", None),
+    ("git reset HEAD tools/x.py", "Unstaged changes after reset:\nM\ttools/x.py", None),
+    ('git reset HEAD -- "tools/x.py"', "Unstaged changes after reset:\nM\ttools/x.py", None),
+    ("git reset --soft @", "", None), ("git reset -q --soft HEAD", "", None),
+    ("git reset --keep --quiet @", "", None), ("git reset tools/x.py tools/y.py", "", None),
+    ("git reset -- 'tools/x.py'", "", None), ("git reset -- tools/x.py & git status -s", "", None),
+], ids=["soft", "keep-head", "q-dashdash-path", "head-path", "head-dashdash-quoted",
+        "soft-at", "q-soft-head", "keep-quiet-at", "two-paths", "dashdash-single-quoted",
+        "dashdash-background"])
+def test_every_reset_form_still_unstages_the_merge(tmp_path, keep, output, is_error):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, output, is_error=is_error),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_a_pathspec_reset_in_the_staging_call_still_unstages(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc",
+        STAGE_CMD + " && git reset -q -- tools/x.py && " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round 7 (verifier refute of 0b89d2148): a `git""` merge hides from the
+# slotted text, so this call's staged line was not seen there and a merge
+# staged in an EARLIER call paired with a commit line printed BEFORE this
+# call's staged line - a one-parent commit (real git) credited as the merge.
+# The pre-(f) gate counts only commit lines after the staged line: deny.
+@pytest.mark.parametrize("second, output", [
+    ('git"" checkout main && git commit --allow-empty -m single && '
+     'git"" merge --no-ff --no-commit feat',
+     "Already on 'main'\n[main 1a2b3c4] single\nAuto-merging a.txt\n" + STAGE_OUT),
+    ('git commit -m m && git"" merge --no-ff --no-commit feat2',
+     "[main 1a2b3c4] m\nAuto-merging a.txt\n" + STAGE_OUT),
+], ids=["checkout-single-commit", "commit-then-hidden-merge"])
+def test_a_commit_before_a_hidden_staging_merge_never_credits(tmp_path, second, output):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", "git merge --no-ff --no-commit feat",
+                              STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cx", REPO_CD + second, output))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# The conjunction, pinned (round 7, orchestrator ruling): the staged-merge
+# credit is given only when the pre-(f) reading of the same evidence also
+# credits it in the same call, so it can never exceed pre-(f) by construction.
+def test_the_staged_merge_credit_needs_the_pre_f_reading(monkeypatch):
+    def credit(pre_f_says):
+        if pre_f_says is not None:
+            monkeypatch.setattr(gate, "_pre_f_staged_step", lambda *args: pre_f_says)
+        found = gate._new_subagent_evidence()
+        gate._staged_merge_step(found, STAGE_CMD, STAGE_OUT)
+        gate._staged_merge_step(found, LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT)
+        return found["merge"]
+    assert credit(None) is True
+    assert credit(False) is False
+
+
+# An independent oracle: the pre-(f) staged-merge step as it stood at
+# 1a1fa703d (copied, not imported), over seeded cross-call sequences with the
+# quoted-git shapes. The gate may credit LESS, never more.
+def _pre_f_oracle(calls):
+    reset = re.compile(gate._GIT_LEAD + r"reset(?![\w.-])", re.I)
+    found = {"merge": False, "staged": False}
+    for command, output in calls:
+        blank = gate.strip_command_noise(command)
+        if reset.search(blank) or any(gate._MERGE_NO_OP.search(m.group(1))
+                                      for m in gate._EV_GIT_MERGE.finditer(blank)):
+            found["staged"] = False
+            continue
+        lines = gate._output_lines(output)
+        staged_at = -1
+        if gate._did_merge(blank) and not gate._MERGE_BAD.search(output):
+            staged_at = next((i for i, line in enumerate(lines)
+                              if line is not None and gate._MERGE_STAGED.match(line)), -1)
+            if staged_at >= 0:
+                found["staged"] = True
+        if not found["staged"] or not gate.EV_COMMIT.search(blank):
+            continue
+        if any(line is not None and gate._COMMIT_LINE.match(line) for line in lines[staged_at + 1:]):
+            found["merge"] = True
+            found["staged"] = False
+    return found["merge"]
+
+
+def test_the_staged_merge_credit_never_exceeds_the_pre_f_oracle():
+    import random
+    rng = random.Random(117)
+    gits = ["git", 'git""', '"git"', "g''it", 'git -C "x"', 'git -C"$R"', 'git --git-dir="x"',
+            "git --git-dir=x", "git ''", "env git", "git.exe"]
+    def one():
+        g, k = rng.choice(gits), rng.random()
+        if k < 0.3:
+            return g + " merge --no-ff --no-commit " + rng.choice(["feat", '"feat"']), STAGE_OUT
+        if k < 0.55:
+            return g + " commit " + rng.choice(["-m m", '-m "x y"', "--allow-empty -m s"]), (
+                "[main 1a2b3c4] m")
+        if k < 0.65:
+            return g + " checkout " + rng.choice(["main", "-- a.txt", '"main"']), "Already on 'main'"
+        if k < 0.72:
+            return g + " stash " + rng.choice(["", "push -- a.txt", "list"]), "Saved"
+        if k < 0.80:
+            return g + " reset " + rng.choice(["--soft HEAD", "--hard", '"--hard"']), ""
+        if k < 0.85:
+            return g + " merge " + rng.choice(["--abort", '"--abort"']), ""
+        return "echo " + rng.choice(['"' + STAGE_OUT.splitlines()[-1] + '"', "x"]), ""
+    seps = [" && ", " || ", "; ", "\n", " \\\n", " | "]
+    wider = []
+    for _ in range(3000):
+        calls = []
+        for _c in range(rng.randint(1, 4)):
+            parts = [one() for _p in range(rng.randint(1, 3))]
+            text = parts[0][0]
+            for part in parts[1:]:
+                text += rng.choice(seps) + part[0]
+            calls.append((text, "\n".join(p[1] for p in parts if p[1])))
+        found = gate._new_subagent_evidence()
+        for command, output in calls:
+            gate._staged_merge_step(found, command, output)
+        if found["merge"] and not _pre_f_oracle(calls):
+            wider.append(calls)
+    assert not wider, wider[:3]
+
+
+# Round 6: credit is never wider than the pre-(f) reading (quoted literals
+# blanked). There `--git-dir="x"` breaks the merge match, so the slotted text
+# alone must not stage a merge the pre-(f) gate never saw.
+def test_a_merge_only_the_slotted_text_sees_does_not_stage(tmp_path):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg",
+                              REPO_CD + 'git --git-dir="x" merge --no-ff --no-commit lane',
+                              STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round-5 refute: a reset the slotted text cannot see must still deny, as in
+# the pre-(f) reading (a quoted literal glued to `git` or to an option).
+@pytest.mark.parametrize("undo", [
+    'git"" reset --hard', "git'' reset --hard", 'git --git-dir"=$D" reset --hard',
+    'git -C"$R" reset --hard', 'git"" merge --abort',
+])
+def test_a_reset_hidden_from_the_slotted_text_still_unstages(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", [
+    "git reset --", "git reset HEAD --", "git reset tools/x.py", "git reset -N",
+    "git reset --soft HEAD~1", "git reset --keep origin/main", "git reset --hard",
+    'git reset "HEAD"', "git reset --pathspec-from-file=nul",
+])
+def test_reset_forms_that_drop_merge_head_or_move_head_still_unstage(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# s117 verifier REFUTE of 463d166c8: reading a quoted literal as a word made a
+# quoted option or subcommand count as a path / second argument, so each of
+# these (git drops MERGE_HEAD in every one, measured) credited a merge the
+# parent gate refused. The last five are the same class, pre-existing on the
+# parent too: an unresolved subcommand, a quoted `-m`, an option's value read
+# as a path, and an unquoted variable after `--` that expands to nothing.
+QUOTED_TOKEN_DROPS = [
+    'git checkout "-b" newb', 'git checkout "-f" main', 'git checkout "--detach" HEAD',
+    'git checkout "main" "-f"', 'git stash "push"', 'git stash "save"',
+    'git reset "--hard" HEAD', 'git reset -q "--hard" HEAD', 'git reset "--merge" HEAD',
+    "git reset 'HEAD' \"--hard\"", 'git reset "--hard" HEAD~1',
+    ": > e.lst; git reset --pathspec-from-file e.lst HEAD", "M=--hard; git reset $M HEAD",
+    'git "reset" --hard', 'git stash push "-m" msg', "git checkout --conflict merge main",
+    "git stash push -qm msg", "F=; git checkout main -- $F",
+    "git stash save -- tools/x.py", "git checkout --pathspec-from-file /dev/null",
+    "M=; git stash push -m $M tools/x.py",
+]
+
+# s117 verifier REFUTE of 6089352a3: a pathspec that expands to zero words.
+# The reset forms are new false credits of 6089352a3 (the pre-(f) gate denied
+# every reset); the checkout / stash twins and the before-`--` forms were
+# credited by the parent too. Each must deny the merge credit.
+VANISHING_PATHSPEC_DROPS = [
+    'set --; git reset -- "$@"', 'git reset -- "${ARR[@]}"', 'git reset -- ${X:+"a.txt"}',
+    "git reset -- {,}", "shopt -s nullglob; git reset -- zz*", "git reset -- ''",
+    "git reset -- @()",
+    'set --; git checkout main -- "$@"', 'git checkout main -- "${ARR[@]}"',
+    'git checkout main -- ${X:+"a.txt"}', "git checkout main -- {,}",
+    "shopt -s nullglob; git checkout main -- zz*", "git checkout main -- ''",
+    "git checkout main -- @()",
+    'set --; git stash push -- "$@"', 'git stash push -- "${ARR[@]}"',
+    'git stash push -- ${X:+"a.txt"}', "git stash push -- {,}",
+    "shopt -s nullglob; git stash push -- zz*", "git stash push -- ''",
+    "git stash push -- @()",
+    "shopt -s nullglob; git reset HEAD zz*", "git reset HEAD {,}", "git reset @() HEAD",
+    "shopt -s nullglob; git checkout main zz*", "shopt -s nullglob; git checkout zz*",
+    "shopt -s nullglob; git stash push zz*",
+    # s117 verifier REFUTE of 37aea4ab5 (each denied by the pre-(f) gate):
+    "git reset :/base\\ two", "git reset --hard :/base\\ two",
+    "shopt -s extglob nullglob\ngit reset -- +(zz)",
+    "shopt -s extglob nullglob\ngit reset HEAD +(zz)", "git reset -- (@())",
+    "git checkout :/base\\ two", "git stash push -m my\\ msg",
+    "shopt -s extglob nullglob\ngit checkout main -- +(zz)",
+    "shopt -s extglob nullglob\ngit stash push -- +(zz)",
+    "git checkout main -- (@())", "git stash push -- (@())", "git reset -- #a.txt",
+]
+
+
+# Orchestrator ruling (s117): an ALLOWLIST, not a denylist. A word counts as a
+# path, or as a rev in reset path mode, only when it is bare and matches
+# [A-Za-z0-9_./][A-Za-z0-9_./-]* or is wholly single- / double-quoted with such
+# an inside. Property: put any word outside it in any keep form's word slot and
+# the gate must read a drop (raw text and the step's _step_command text). A
+# `#x` token is a comment, not a word (it ends the arguments: `git reset --soft
+# #x` IS `git reset --soft`), so it is pinned by the table rows instead.
+NON_ALLOWLISTED_WORDS = [
+    ":/base\\", "+(zz)", "(@())", "~", "~/x", "a@b", "HEAD~1", "x^", "!x", "$X", "%X%",
+    "`x`", "*.py", "{a,b}", "{,}", "a?b", "[ab]", '""', "''", '"a b"', "'x y'", "'$x'",
+    '"-b"', "-", "a\\", "@()", '"${A[@]}"', "'a'\"b\"$c", "a=b", "a,b", "a>b",
+    '"*.zz"', "a:b", "a+b", "(x)", "!", "a%b",
+]
+KEEP_FORM_TEMPLATES = [
+    "git reset -- {w}", "git reset -q -- {w}", "git reset HEAD {w}", "git reset HEAD -- {w}",
+    "git reset {w} -- a.txt", "git reset {w} a.txt", "git reset --soft {w}",
+    "git reset --keep {w}", "git checkout main -- {w}", "git checkout HEAD -- {w}",
+    "git checkout {w} -- a.txt", "git checkout main {w}", "git checkout {w}",
+    "git stash push -- {w}", "git stash push {w}", "git stash {w} -- a.txt",
+    "git stash push -m {w} -- a.txt",
+]
+
+
+@pytest.mark.parametrize("word", NON_ALLOWLISTED_WORDS)
+def test_a_word_outside_the_allowlist_never_keeps_the_staged_merge(word):
+    kept = []
+    for template in KEEP_FORM_TEMPLATES:
+        if word == "-" and "-m {w}" in template:
+            continue  # `-m -` is a one-word message: a true keep
+        command = template.format(w=word)
+        for text in (command, gate._step_command(command)):
+            if not gate._merge_unstaged(text):
+                kept.append(text)
+    assert not kept, kept
+
+
+@pytest.mark.parametrize("keep", [
+    "git checkout main -- tools/x.py", "git stash push -- tools/x.py",
+    "git checkout main -- 'tools/x.py'", "git checkout -q -- \"tools/x.py\"",
+    "git checkout -f HEAD -- tools/x.py", "git checkout --theirs tools/x.py",
+    "git stash push -q -m park -- tools/x.py", "git stash -- tools/x.py",
+    "git stash list", "git checkout main -- tools/x.py & git status -s",
+])
+def test_the_allowlisted_keep_forms_stay_credited(tmp_path, keep):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01kp", REPO_CD + keep, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" not in _checks(report), report["findings"]
+
+
+# Orchestrator ruling (s117, final shape): a `git reset` keeps credit ONLY in
+# G1 `git reset [-q|--quiet] (--soft|--keep) [HEAD|@]`, G2 `git reset
+# [-q|--quiet] [HEAD|<allowlisted rev>] -- <allowlisted path>...` or G3 `git
+# reset [-q|--quiet] <allowlisted> <allowlisted>...`, with EXACT option
+# spellings. Measured: git takes any unique prefix of a long option and the
+# last mode wins (`--soft --ha` is --hard; --h/--ha/--har, --mi/--mix/--mixe
+# and --me/--mer/--merg are unique, --m is ambiguous).
+RESET_OTHER_SPELLINGS = [
+    "--h", "--ha", "--har", "--hard", "--mi", "--mix", "--mixe", "--mixed", "--me", "--mer",
+    "--merg", "--merge", "--so", "--sof", "--ke", "--kee", "--qu", "--quie", "-qq", "-N",
+    "--no-refresh", "--refresh", "-p", "--patch", "--recurse-submodules", "-U3",
+    "--pathspec-from-file=nul", "--intent-to-add",
+]
+RESET_KEEP_FORMS = [
+    "--soft", "--keep", "--soft HEAD", "--keep HEAD", "--soft @", "--keep @", "-q --soft",
+    "--quiet --keep HEAD", "-- a.txt", "-q -- a.txt", "HEAD -- a.txt", "HEAD a.txt",
+    "a.txt b.txt",
+]
+
+
+@pytest.mark.parametrize("spelling", RESET_OTHER_SPELLINGS)
+def test_any_other_reset_option_spelling_denies_every_keep_form(spelling):
+    kept = []
+    for keep in RESET_KEEP_FORMS:
+        for command in (f"git reset {keep} {spelling}", f"git reset {spelling} {keep}"):
+            for text in (command, gate._step_command(command)):
+                if not gate._merge_unstaged(text):
+                    kept.append(text)
+    assert not kept, kept
+
+
+# The same exact-option rule for the checkout and stash keep forms.
+CHECKOUT_OTHER_SPELLINGS = [
+    "--orph", "--orp", "--orphan", "--det", "--detach", "-b", "-B", "-m", "--merge", "-t",
+    "--track", "--guess", "--conflict=merge", "-l", "--ignore-other-worktrees", "-U3",
+    "--recurse-submodules", "--our", "--their", "--pat", "-qf", "--progress",
+]
+CHECKOUT_KEEP_FORMS = ["main -- a.txt", "-- a.txt", "main a.txt", ".", "--theirs a.txt"]
+STASH_OTHER_SPELLINGS = [
+    "-k", "--keep-index", "-u", "--include-untracked", "-a", "--all", "-S", "--staged",
+    "-p", "--patch", "--me", "--mess", "--message=x", "-mx", "-qm", "--pathspec-from-file=f",
+    "--quie",
+]
+STASH_KEEP_FORMS = ["push -- a.txt", "push a.txt", "push -m x -- a.txt", "-- a.txt"]
+
+
+@pytest.mark.parametrize("spelling", CHECKOUT_OTHER_SPELLINGS + STASH_OTHER_SPELLINGS)
+def test_any_other_checkout_or_stash_option_spelling_denies_the_keep_forms(spelling):
+    commands = []
+    if spelling in CHECKOUT_OTHER_SPELLINGS:
+        commands += [f"git checkout {spelling} {keep}" for keep in CHECKOUT_KEEP_FORMS]
+    if spelling in STASH_OTHER_SPELLINGS:
+        commands += ["git stash " + keep.replace("push", "push " + spelling, 1)
+                     if keep.startswith("push") else f"git stash {spelling} {keep}"
+                     for keep in STASH_KEEP_FORMS]
+    kept = [text for command in commands
+            for text in (command, gate._step_command(command)) if not gate._merge_unstaged(text)]
+    assert not kept, kept
+
+
+# The `git` word must head a simple command (only a separator or the start of
+# the line before it, no global option): as an argument to xargs / env / time
+# / nohup / command / sh -c, or inside a quoted string or heredoc that a shell
+# runs, git's real argv is not the one on the line.
+NOT_AT_COMMAND_HEAD = [
+    "echo --hard | xargs git reset --soft", "env git reset --soft", "nohup git reset --soft HEAD",
+    "time git reset --keep", "command git reset --soft", "sh -c git reset --soft",
+    "timeout 60 git reset -- tools/x.py", "X=1 git reset --soft", "(git reset --soft)",
+    "{ git reset --soft; }", "! git reset --soft", "git -C . reset --soft",
+    "git -c x.y=z reset --soft", "git --no-pager reset -- tools/x.py",
+    "bash -c 'git reset --hard'", 'sh -c "git checkout main"',
+    "bash <<'EOF'\ngit reset --hard\nEOF", "xargs git checkout -- tools/x.py",
+    "env git stash push -- tools/x.py",
+    # A shell function or alias named git makes the line's argv a lie, too.
+    "g=git; git() { $g reset --hard; }; git reset --soft",
+    "function git { & $g reset --hard }; git reset --soft",
+    "shopt -s expand_aliases; alias git='git reset --hard; git'; git reset --soft",
+    "Set-Alias git Reset-Thing; git reset --soft", "New-Alias -Name git x; git reset --soft",
+]
+
+
+@pytest.mark.parametrize("undo", NOT_AT_COMMAND_HEAD)
+def test_git_not_at_command_head_never_keeps_the_staged_merge(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+# Round-5 refute of 6ca81b47c: a backslash-newline (bash) or backtick-newline
+# (PowerShell) CONTINUES the line, so the `git` after it is an argument of the
+# wrapper before it, not a command head. Measured (bash script files and
+# powershell.exe 5.1): each of these drops MERGE_HEAD.
+LINE_CONTINUATION_DROPS = [
+    'f(){ "$1" "$2" main; }; f \\\ngit checkout -- tools/x.py',
+    'f(){ "$1" "$2"; }; f \\\ngit stash push -- tools/x.py',
+    "echo -b x | xargs \\\ngit checkout main",
+    "function f { & $args[0] $args[1] main }; f `\ngit checkout -- tools/x.py",
+    "function f { & $args[0] $args[1] }; f `\ngit stash push -- tools/x.py",
+    'f(){ "$1" "$2" main; }; f \\\r\ngit checkout -- tools/x.py',
+    "echo --hard | xargs \\\ngit reset --soft",
+    'f(){ "$@" --hard; }; f \\\ngit reset --soft',
+    "function f { & $args[0] $args[1] $args[2] --hard }; f `\ngit reset --soft",
+]
+
+
+@pytest.mark.parametrize("undo", LINE_CONTINUATION_DROPS)
+def test_git_after_a_line_continuation_is_not_a_command_head(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", LINE_CONTINUATION_DROPS)
+def test_a_line_continuation_reads_as_a_drop_in_raw_and_step_text(undo):
+    assert gate._merge_unstaged(undo) and gate._merge_unstaged(gate._step_command(undo))
+
+
+def test_a_plain_newline_still_starts_a_command():
+    # A newline WITHOUT a continuation character is a separator, as before.
+    command = "echo done\ngit checkout main -- tools/x.py"
+    assert not gate._merge_unstaged(command)
+    assert not gate._merge_unstaged(gate._step_command(command))
+
+
+@pytest.mark.parametrize("undo", [
+    "git reset --soft --ha", "git reset --keep HEAD --h", "git reset --soft @ --mi",
+    "git reset --soft 2>&1 --hard", "git reset --soft &>/dev/null --hard",
+    "git checkout --orph newb main", "git stash branch sb",
+])
+def test_abbreviated_or_redirected_reset_forms_unstage(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", VANISHING_PATHSPEC_DROPS)
+def test_a_pathspec_that_may_expand_to_nothing_never_keeps_the_merge(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", VANISHING_PATHSPEC_DROPS)
+def test_a_pathspec_that_may_expand_to_nothing_in_the_staging_call_unstages(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " ; " + undo + " ; " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", QUOTED_TOKEN_DROPS)
+def test_a_quoted_or_unresolved_token_never_reads_as_a_path(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01mg", STAGE_CMD, STAGE_OUT),
+                        _pair("a1b2c3", "toolu_01un", REPO_CD + undo, ""),
+                        _pair("a1b2c3", "toolu_01cm", LOCKED_COMMIT_CMD, UNRELATED_COMMIT_OUT))[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+@pytest.mark.parametrize("undo", QUOTED_TOKEN_DROPS)
+def test_a_quoted_or_unresolved_token_in_the_staging_call_unstages(tmp_path, undo):
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), _pair(
+        "a1b2c3", "toolu_01mc", STAGE_CMD + " ; " + undo + " ; " + LOCKED_COMMIT_CMD,
+        STAGE_OUT + "\n" + UNRELATED_COMMIT_OUT))[1]
     assert "merge_claim_without_merge" in _checks(report)
 
 
@@ -1494,6 +2184,64 @@ def test_overlong_command_is_not_parsed_for_ancestry():
     padded = ANC + " && echo yes" + " " * 20001
     assert gate._pair_credit(padded, "yes", False, None) is None
     assert gate._pair_credit(ANC + " && echo yes", "yes", False, None) == "ancestry"
+
+
+# Round 8 (verifier timing refute of a3f6b43f9): the staged step parsed any
+# length and the subcommand scan re-split the rest of the command for every
+# `git` word, so `"git " * 15000` ran past the 30 s Stop timeout (31.8 s; the
+# pre-(f) gate 8.7 s) and the gate flagged nothing. Fail closed past
+# COMMAND_PARSE_MAX, and scan linearly.
+PADDING = " ; echo x" * ((gate.COMMAND_PARSE_MAX // 9) + 10)
+
+
+@pytest.mark.parametrize("calls", [
+    [(STAGE_CMD + PADDING, STAGE_OUT), (LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT)],
+    [(STAGE_CMD + PADDING + " && " + LOCKED_COMMIT_CMD, STAGE_OUT + "\n" + LOCKED_COMMIT_OUT)],
+    [(STAGE_CMD, STAGE_OUT), (LOCKED_COMMIT_CMD + PADDING, LOCKED_COMMIT_OUT)],
+], ids=["overlong-stage", "overlong-one-call", "overlong-commit"])
+def test_an_overlong_command_never_backs_a_staged_merge(tmp_path, calls):
+    assert len(PADDING) > gate.COMMAND_PARSE_MAX
+    rows = [_pair("a1b2c3", f"toolu_01s{i}", command, output)
+            for i, (command, output) in enumerate(calls)]
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), *rows)[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_the_subcommand_scan_is_linear():
+    # 6000 `git` words: the quadratic scan took about 11 s here, linear well
+    # under a second.
+    began = time.perf_counter()
+    assert gate._git_subcommand_unresolved("git " * 6000) is False
+    assert gate._git_subcommand_unresolved("git -C x " * 3000 + "git $X") is True
+    assert time.perf_counter() - began < 2.0
+
+
+def test_the_staged_step_on_long_git_repeats_is_fast():
+    # The step's own cost: past the cap only the pre-(f) step runs; just under
+    # it the full slotted parse runs. Both were about 70 s at 60k before.
+    for command in ("git " * 15000, "git " * (gate.COMMAND_PARSE_MAX // 4 - 10)):
+        found = gate._new_subagent_evidence()
+        began = time.perf_counter()
+        gate._staged_merge_step(found, command, "ok")
+        assert time.perf_counter() - began < 1.0, len(command)
+
+
+def test_a_60k_git_repeat_finishes_well_inside_the_stop_timeout(tmp_path):
+    # The verifier's repro: `"git " * 15000` under a merge claim. Measured on
+    # this box (s117, gate subprocess): this gate 8.54 s, the pre-(f) gate
+    # 8.54 s (its shared check-10 / push regexes are most of it); a3f6b43f9
+    # took 31.8 s (verifier) and 42.8 s here under load. The bound is 20 s,
+    # not the 10 s first asked for: the pre-(f) baseline is itself 8.5 s here
+    # and this test measured 10.7 s inside a full-file run, so 10 s would
+    # flake; 20 s still fails the 31.8 s regression and stays inside the 30 s
+    # Stop timeout. The step's own cost is pinned at < 1 s just above.
+    big = REPO_CD + "git " * 15000
+    began = time.perf_counter()
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01bg", big, "ok"))[1]
+    elapsed = time.perf_counter() - began
+    assert "merge_claim_without_merge" in _checks(report)
+    assert elapsed < 20.0, elapsed
 
 
 # ---------------------------- round 4: re-verifier refutation of 5d76475b3
