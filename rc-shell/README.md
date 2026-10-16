@@ -159,8 +159,8 @@ Updates disable themselves gracefully (a console line, nothing else) when:
 
 WIP / operator-gated: packaging (`npx electron-builder`, see
 `electron-builder.yml`) and publishing GitHub Releases are operator actions -
-no Release exists yet. The repo is private, so a packaged shell needs
-`GH_TOKEN` in its runtime environment for update checks to reach the feed.
+no packaged shell Release exists yet. The repo is public, so update checks
+read the Releases feed without a token; `GH_TOKEN` is needed only to publish.
 
 ## Crash isolation (Phase 5)
 

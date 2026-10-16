@@ -112,7 +112,7 @@ def player_slug(name: str, tag: str) -> str:
     short digest of its true Riot ID appended.
 
     The digest is deliberately scoped to non-ASCII ids only. An ASCII id whose
-    spaces become underscores ("never type" -> "never_type") keeps its plain
+    spaces become underscores ("sample name" -> "sample_name") keeps its plain
     slug, because widening the guard to every sanitised character would RENAME
     existing corpus directories and orphan the replays already inside them.
     The residual risk is an ASCII pair like "a b" vs "a_b" colliding, which is

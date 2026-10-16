@@ -81,10 +81,10 @@ def test_two_different_unicode_names_do_not_collide(tmp_path):
 
 def test_an_ascii_riot_id_keeps_its_plain_slug():
     # The guard must NOT rename directories that already hold pulled replays.
-    # never_type-1998 exists on disk with 5 files in it; adding a digest here
-    # would orphan them.
+    # An ASCII id with a space already has a plain-slug directory holding
+    # pulled replays on disk; adding a digest here would orphan them.
     assert rr.player_slug("OtherPlayer", "NA1") == "OtherPlayer-NA1"
-    assert rr.player_slug("never type", "1998") == "never_type-1998"
+    assert rr.player_slug("sample name", "0000") == "sample_name-0000"
     assert rr.player_slug("Big Daddy", "NA 1") == "Big_Daddy-NA_1"
 
 
