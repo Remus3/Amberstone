@@ -55,13 +55,34 @@ class ParseResult:
 # a list of kwargs dicts for Scheduler.file_task(). The parser actually
 # files them after dry-run, so rules stay side-effect-free.
 
+# _RE_AGENT_DIRECT and _RE_NOTE were `KEYWORD\s*SEP?\s*(?P<x>.+)$`. CodeQL
+# py/polynomial-redos (alerts 38 / 39, 2026-10-15): all three quantifiers can
+# take the same run of spaces and `$` fails on an interior newline, so
+# "agent0" + 1600 spaces + "x\ny" took 5.8 s (cubic; /api/input takes 256 KiB).
+# The old engine tried the start of the captured text at every position from
+# the greedy end of the separator run DOWN to the keyword, so its answer is the
+# largest start that works: the greedy end itself, or - only when the
+# separators run to the very end - the last char before the end (and before
+# a final newline). Each form below tries exactly those two: the greedy run is
+# taken atomically (lookahead capture + backreference), the fallback asserts
+# the separators reach the end and lands on that last char. Same matches and
+# groups as before, pinned by tests/test_input_parser_redos_codeql.py.
 _RE_AGENT_DIRECT = re.compile(
-    r"^\s*agent\s*(?P<n>[0-7])\s*(?:,|:|-)?\s*(?P<rest>.+)$",
+    r"^\s*agent\s*(?P<n>[0-7])"
+    r"(?:(?=(\s*(?:(?:,|:|-)\s*)?))\2"
+    r"|(?=\s*(?:(?:,|:|-)\s*)?\Z)[\s\S]*(?=[^\n]\n?\Z))"
+    r"(?P<rest>.+)$",
     re.IGNORECASE,
 )
 _RE_AUDIT = re.compile(r"\baudit\b.*\b(now|full|pass)\b|\bfull\s+audit\b", re.IGNORECASE)
 _RE_STATUS = re.compile(r"\b(status|queue|what'?s\s+(in\s+)?(the\s+)?queue|what\s+is\s+pending)\b", re.IGNORECASE)
-_RE_NOTE = re.compile(r"^\s*(?:note|remember|remind\s+me)\s*[:,]?\s*(?P<body>.+)$", re.IGNORECASE)
+_RE_NOTE = re.compile(
+    r"^\s*(?:note|remember|remind\s+me)"
+    r"(?:(?=(\s*(?:[:,]\s*)?))\1"
+    r"|(?=\s*(?:[:,]\s*)?\Z)[\s\S]*(?=[^\n]\n?\Z))"
+    r"(?P<body>.+)$",
+    re.IGNORECASE,
+)
 _RE_RESTART_RC = re.compile(r"^\s*(?:please\s+)?restart\s+(?:rc|the\s+app|riot\s*commander)\s*$", re.IGNORECASE)
 _RE_DESTRUCTIVE = re.compile(r"\b(?:rm\s+-rf|drop\s+table|delete\s+all|wipe\b|truncate\b|nuke\b)", re.IGNORECASE)
 

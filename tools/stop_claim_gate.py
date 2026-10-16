@@ -414,8 +414,25 @@ EV_COMMIT = re.compile(r"\bgit\b[^|;&]*(?<!-)\bcommit\b", re.I)
 # fast-forwards whenever it can and the command line cannot say which happened -
 # so only `merge --no-ff` counts. Sequencer controls (--abort/--quit/--skip) and
 # --no-commit / -n / --squash / --ff-only create nothing.
+#
+# _GIT_OPTIONS skips git's leading option words. CodeQL py/redos (alerts 54 /
+# 55, 2026-10-15): the old loop `(?:\s+-[Cc](?:\s+\S+)?|\s+--?[\w-]+(?:=\S+)?)*`
+# read `-c` both as "-c ARG" and as a bare option word, and split every `--x`
+# word two ways, so a command that did not end in the subcommand backtracked
+# exponentially (measured: 40 x ` -c` = 56 s, 21 x ` --no-pager` = 1.3 s per
+# pattern). This form is the SAME language with the SAME first match - only
+# REDUNDANT paths are gone: `-[\w-]+` is the language of `--?[\w-]+`, and a
+# `-c` read as a bare flag continues only into the loop exit (the trailing
+# `(?:\s+-[Cc])?`) or into `-c PLAIN` (a word no option reading can take);
+# every other continuation re-reaches a position the "-c ARG" reading already
+# tried first. So each position is reached once, in the old order. Pinned
+# against the old loops by tests/test_stop_claim_gate_git_options_redos.py.
+_GIT_OPTIONS = (r"(?:\s+-[Cc]\s+\S+"
+                r"|\s+-(?![Cc](?!\S))[\w-]+(?:=\S+)?"
+                r"|\s+-[Cc]\s+-[Cc]\s+(?!-[\w-]+(?:=\S+)?(?!\S))\S+"
+                r")*(?:\s+-[Cc])?")
 EV_COMMIT_CREATING = re.compile(
-    r"\bgit\b(?:\s+-[Cc]\s+\S+|\s+--?[\w-]+(?:=\S+)?)*\s+"
+    r"\bgit\b" + _GIT_OPTIONS + r"\s+"
     r"(cherry-pick|revert|merge)\b([^|;&\n]*)", re.I)
 _NO_COMMIT_FLAG = re.compile(
     r"(?:^|\s)(?:--abort|--quit|--skip|--no-commit|--squash|--ff-only)(?=\s|$)")
@@ -446,10 +463,9 @@ def _creates_commit(command):
 # the subcommand refuses a following [\w.-] so `-c push.default=x` and
 # `merge-base` cannot match. A dry run (--dry-run / -n) uploads nothing, and a
 # merge --abort / --quit merges nothing.
-# KNOWN, NOT FIXED (round-4 verifier, 2026-10-08; filed as a follow-up):
-# `git -c -c -c ...` repeated ~20 times backtracks exponentially here (6.1 s
-# on the main path) - an unrealistic shape, pre-existing, left as is.
-_GIT_LEAD = r"\bgit(?:\.exe)?(?:\s+-[Cc](?:\s+\S+)?|\s+--?[\w-]+(?:=\S+)?)*\s+"
+# The `git -c -c -c ...` exponential backtracking the round-4 verifier measured
+# here (2026-10-08, 6.1 s at ~20 repeats) is closed by _GIT_OPTIONS (above).
+_GIT_LEAD = r"\bgit(?:\.exe)?" + _GIT_OPTIONS + r"\s+"
 _EV_PUSH = re.compile(_GIT_LEAD + r"push(?![\w.-])([^|;&\n]*)", re.I)
 # The dry-run test is spelling-aware (RM-687 verifier, 2026-10-08: `-nv` and
 # `--dry` were credited as real pushes). git accepts a short-option BUNDLE

@@ -23,10 +23,12 @@ def test_sanitise_label_preserves_safe() -> None:
 
 
 def test_port_available_returns_true_for_random_high_port() -> None:
-    # 0.0.0.0:59999 (ephemeral unused) - should be available on a freshly
+    # 127.0.0.1:59999 (ephemeral unused) - should be available on a freshly
     # booted machine. Might occasionally clash; accept either True or
-    # a graceful False (not a raise).
-    ok = _port_available("0.0.0.0", 59999)
+    # a graceful False (not a raise). Loopback, the supervisor's own default
+    # (RM-231 BIND_HOST): a test has no reason to bind every interface
+    # (CodeQL py/bind-socket-all-network-interfaces, alert 48).
+    ok = _port_available("127.0.0.1", 59999)
     assert isinstance(ok, bool)
 
 
