@@ -25,6 +25,8 @@
 // renderPatchImpact(), degraded text on error. Detail rides in title= tooltips
 // so a long change list can never overflow the row.
 
+import { escHtml } from '../lib/helpers.js';
+
 const _MOUNT = 'patch-impact-card';
 const _TTL_MS = 5 * 60 * 1000;
 const _MAX_ROWS = 10;
@@ -34,9 +36,11 @@ let _ts = 0;
 let _inflight = false;
 let _sig = '';
 
+// Escape via the shared 5-char helper: the output lands in double-quoted
+// title= attributes as well as text, so quotes must be escaped too (CodeQL
+// js/incomplete-html-attribute-sanitization).
 function _esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escHtml(s);
 }
 
 // A change value may be a number, a string, a list (build order), or null.
@@ -192,5 +196,5 @@ export function _resetPatchImpact() {
 
 export const __test = {
   _fmtVal, _wrClass, _tip, _chips, _champRow, _head, patchImpactHtml,
-  _signature, _MAX_ROWS, _MAX_TIP,
+  _signature, _MAX_ROWS, _MAX_TIP, _esc,
 };
