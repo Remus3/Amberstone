@@ -133,6 +133,22 @@ async function _loadRunes() {
   return _RUNES_CACHE.loading;
 }
 
+// Title-row HTML for a DDragon name. Names are LoL HTML too: the Gangplank
+// upgrade items (3901-3903) carry
+// "<rarityLegendary>Fire at Will</rarityLegendary><br><subtitleLeft>
+// <silver>500 Silver Serpents</silver></subtitleLeft>". The old innerHTML
+// tooltip kept those unknown wrappers, so the flex .lol-tt-title (base.css)
+// had three flex items - name, br, subtitle - and rendered ONE row with the
+// subtitle at the right. Cleaning drops the wrappers, which would merge the
+// text and the br into one anonymous flex item and stack it on two lines, so
+// each <br>-separated part is wrapped in its own <span> to keep the old flex
+// items. A name without <br> (every other item / rune) is returned as cleaned.
+function _titleHtml(raw) {
+  const clean = _cleanLolHtml(raw);
+  if (!clean.includes("<br>")) return clean;
+  return clean.split("<br>").map((part) => (part ? `<span>${part}</span>` : "")).join("<br>");
+}
+
 // Public - synchronous lookups. Kick off the lazy load on first call
 // so subsequent renders see the cache. Returns "" until data lands;
 // the caller's `data-tt-html` attr will be missing on the first paint
@@ -141,13 +157,12 @@ export function itemTooltipHtml(itemId) {
   if (!_ITEMS_CACHE.ready && !_ITEMS_CACHE.loading) { _loadItems(); }
   const item = _ITEMS_CACHE.byId[String(itemId)];
   if (!item) return "";
-  // name / plaintext are LoL HTML too (e.g. the Gangplank upgrade items carry
-  // "<rarityLegendary>Fire at Will</rarityLegendary><br>..."), so they go
-  // through the same cleaner as the description: text and <br> are kept,
-  // every other tag is dropped or escaped.
+  // name / plaintext are LoL HTML too, so they go through the same cleaner as
+  // the description: text and <br> are kept, every other tag is dropped or
+  // escaped (the name via _titleHtml, which keeps the title row's flex items).
   const goldLine = item.gold ? `<div class="lol-tt-gold">${escHtml(item.gold)}g</div>` : "";
   const body = item.description || (item.plaintext ? `<i>${_cleanLolHtml(item.plaintext)}</i>` : "");
-  return `<div class="lol-tt-title">${_cleanLolHtml(item.name)}${goldLine}</div>${body}`;
+  return `<div class="lol-tt-title">${_titleHtml(item.name)}${goldLine}</div>${body}`;
 }
 
 export function keystoneTooltipHtml(keystoneName) {
@@ -156,7 +171,7 @@ export function keystoneTooltipHtml(keystoneName) {
   if (!rune) return "";
   const tree = rune.tree ? `<div class="lol-tt-tree">${_cleanLolHtml(rune.tree)}</div>` : "";
   const body = rune.shortDesc || rune.longDesc || "";
-  return `<div class="lol-tt-title">${_cleanLolHtml(rune.name)}${tree}</div>${body}`;
+  return `<div class="lol-tt-title">${_titleHtml(rune.name)}${tree}</div>${body}`;
 }
 
 // Bulk loaders - call once on view mount to warm the caches so the
@@ -167,4 +182,4 @@ export function preloadLolDescriptions() {
 }
 
 // Test seam (web/js/panels/codeql_js_hardening.test.mjs).
-export const __test = { _cleanLolHtml };
+export const __test = { _cleanLolHtml, _titleHtml };

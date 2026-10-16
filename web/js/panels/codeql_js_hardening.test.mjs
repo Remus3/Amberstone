@@ -199,11 +199,14 @@ test("lol_descriptions tooltips clean the DDragon name / plaintext / tree fields
     assert.ok(ks.includes('<div class="lol-tt-title">Evil<div class="lol-tt-tree">'), ks);
     assert.doesNotMatch(ks, /<img|<script|onerror/);
     assert.ok(ks.includes("<b>ok</b>"), "cleaned rune HTML keeps its allowed tags");
+    // A <br>-split name keeps one flex item per part (the flex .lol-tt-title
+    // renders it as ONE row, name left / subtitle right, as before).
     assert.strictEqual(lol.itemTooltipHtml("9002"),
-      '<div class="lol-tt-title">Fire at Will<br>500 Silver Serpents</div><i>Cannon Barrage fires faster.</i>');
+      '<div class="lol-tt-title"><span>Fire at Will</span><br><span>500 Silver Serpents</span></div>' +
+      "<i>Cannon Barrage fires faster.</i>");
     // Only the bare allowed tags + the tooltip's own div wrappers survive.
     for (const html of [item, ks]) {
-      assert.doesNotMatch(html, /<(?!\/?(?:b|i|br)>|div class="lol-tt-[a-z]+">|\/div>)/, html);
+      assert.doesNotMatch(html, /<(?!\/?(?:b|i|br|span)>|div class="lol-tt-[a-z]+">|\/div>)/, html);
     }
   } finally {
     globalThis.fetch = realFetch;
@@ -277,6 +280,31 @@ test("renderTooltipHtml rebuilds the real producers' markup exactly", () => {
 
 test("renderTooltipHtml clears the previous tooltip content", () => {
   assert.strictEqual(tipHtml(""), "");
+});
+
+// Verifier finding on slice F: DDragon items 3901-3903 carry LoL markup in the
+// NAME ("<rarityLegendary>X</rarityLegendary><br><subtitleLeft><silver>Y
+// </silver></subtitleLeft>"). The old innerHTML tooltip kept those unknown
+// wrappers, so the flex .lol-tt-title had three flex items (X, br, Y) and
+// rendered ONE row. The cleaned title must keep that child structure.
+test("a markup-carrying item name keeps the old title child structure", () => {
+  assert.ok(lol.__test && typeof lol.__test._titleHtml === "function",
+    "lol_descriptions.js must expose _titleHtml on __test");
+  const raw = "<rarityLegendary>Fire at Will</rarityLegendary><br><subtitleLeft><silver>500 Silver Serpents</silver></subtitleLeft>";
+  const title = lol.__test._titleHtml(raw);
+  assert.strictEqual(title, "<span>Fire at Will</span><br><span>500 Silver Serpents</span>");
+  // Rebuilt through the tooltip sink: element, br, element - each part its
+  // own child, same text as the old <rarityLegendary> / <subtitleLeft> pair.
+  const tip = new FakeNode("div", null);
+  tip.ownerDocument = fakeDoc;
+  helpers.renderTooltipHtml(tip, `<div class="lol-tt-title">${title}</div>`);
+  const kids = tip.childNodes[0].childNodes;
+  assert.deepStrictEqual(kids.map((n) => n.localName), ["span", "br", "span"]);
+  assert.deepStrictEqual(kids.map((n) => n.childNodes.map((t) => t.text).join("")),
+    ["Fire at Will", "", "500 Silver Serpents"]);
+  // A plain name (no <br>) is unchanged: one text run, no wrapper.
+  assert.strictEqual(lol.__test._titleHtml("Doran's Blade"), "Doran's Blade");
+  assert.strictEqual(lol.__test._titleHtml(""), "");
 });
 
 test("main.js show() renders data-tt-html through renderTooltipHtml, not innerHTML", async () => {
