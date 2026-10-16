@@ -1356,16 +1356,20 @@ function _csvBenchHtml(cs) {
   const verdict = _CSV_COMPVERDICT.data;
   const swapTarget = (verdict && verdict.ok && verdict.recommendation === "swap")
     ? _csvNormChampName(verdict.swap_to) : "";
-  const ver = CHAMPS.version || "latest";
+  const ver = escHtml(CHAMPS.version || "latest");
+  // Bench ids + names come off the LCU payload (WebSocket): escape every
+  // interpolation (CodeQL js/xss). Dataset reads decode the entities back, so
+  // the click handler still sees the raw id / name.
   const cells = bench.map((cid) => {
     const nm = _csChampName(cid) || ("cid:" + cid);
+    const nmEsc = escHtml(nm);
     const img = (cid && CHAMPS.byId[String(cid)])
-      ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(cid)]}.png" alt="${nm}" onerror="this.style.display='none'">`
+      ? `<img src="/data/ddragon/${ver}/img/champion/${escHtml(CHAMPS.byId[String(cid)])}.png" alt="${nmEsc}" onerror="this.style.display='none'">`
       : "?";
     const isSwap = swapTarget && _csvNormChampName(nm) === swapTarget;
     const swapCls = isSwap ? " is-verdict-swap" : "";
     return `
-      <div class="csv-bench-cell is-clickable${swapCls}" data-bench-id="${cid}" data-bench-name="${nm}" title="Swap to ${nm}">
+      <div class="csv-bench-cell is-clickable${swapCls}" data-bench-id="${escHtml(cid)}" data-bench-name="${nmEsc}" title="Swap to ${nmEsc}">
         <div class="csv-bench-cell-icon">${img}</div>
       </div>`;
   }).join("");
@@ -3518,7 +3522,8 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
   // teammates (was a single "partner" when Arena was 8x2).
   const partners = cells.filter((c) => c && c !== me).slice(0, 2);
   while (partners.length < 2) partners.push(null);
-  const ver = CHAMPS.version || "latest";
+  const ver = escHtml(CHAMPS.version || "latest");
+  // Every interpolated LCU / augment field is escaped (CodeQL js/xss).
   const cellHtml = (c, isMe) => {
     if (!c || !c.championId) {
       return `<div class="csv-duo-cell is-empty">
@@ -3527,9 +3532,9 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
         <div class="csv-duo-cell-name">waiting...</div>
       </div>`;
     }
-    const nm = _csChampName(c.championId) || ("cid:" + c.championId);
+    const nm = escHtml(_csChampName(c.championId) || ("cid:" + c.championId));
     const img = CHAMPS.byId[String(c.championId)]
-      ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(c.championId)]}.png" alt="${nm}" onerror="this.style.display='none'">`
+      ? `<img src="/data/ddragon/${ver}/img/champion/${escHtml(CHAMPS.byId[String(c.championId)])}.png" alt="${nm}" onerror="this.style.display='none'">`
       : "?";
     const lockCls = c.completed ? "locked" : "hovering";
     return `<div class="csv-duo-cell ${lockCls}${isMe ? " is-me" : ""}">
@@ -3549,16 +3554,16 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
     const isActive = tier === curTier;
     return `<div class="csv-augment-slot ${tier}${filled ? " filled" : ""}${isActive ? " is-active" : ""}">
       <div class="csv-augment-slot-grade">${tier.toUpperCase()}</div>
-      <div class="csv-augment-slot-name">${filled ? s.name : (isActive ? "PICKING..." : "-")}</div>
+      <div class="csv-augment-slot-name">${filled ? escHtml(s.name) : (isActive ? "PICKING..." : "-")}</div>
     </div>`;
   }).join("");
 
   const options = Array.isArray(aug.options) ? aug.options : [];
   const optionsHtml = options.length
     ? options.map((o) => `
-        <div class="csv-augment-option is-clickable ${o.tier || ""}" data-augment-id="${o.id}" data-augment-name="${o.name}">
-          <div class="csv-augment-option-name">${o.name}</div>
-          <div class="csv-augment-option-blurb">${o.blurb || ""}</div>
+        <div class="csv-augment-option is-clickable ${escHtml(o.tier || "")}" data-augment-id="${escHtml(o.id)}" data-augment-name="${escHtml(o.name)}">
+          <div class="csv-augment-option-name">${escHtml(o.name)}</div>
+          <div class="csv-augment-option-blurb">${escHtml(o.blurb || "")}</div>
         </div>`).join("")
     : '<div class="csv-empty">no augment options yet</div>';
 
@@ -3572,7 +3577,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
       <div class="csv-augment-slots">${slotHtml}</div>
     </div>
     <div class="csv-augment-options">
-      <div class="csv-augments-title">${curTier.toUpperCase()} round . pick one</div>
+      <div class="csv-augments-title">${escHtml(curTier.toUpperCase())} round . pick one</div>
       ${optionsHtml}
     </div>`;
 }
@@ -3601,11 +3606,13 @@ function _csvRenderEnemiesArena(cs, timerEndMs) {
   const teams = (cs && Array.isArray(cs.arena_teams)) ? cs.arena_teams : [];
   const others = teams.filter((t) => t && !t.is_me).slice(0, 5);
   while (others.length < 5) others.push(null);
-  const ver = CHAMPS.version || "latest";
+  const ver = escHtml(CHAMPS.version || "latest");
+  // Team labels + champion names come off the LCU payload: escape them
+  // (CodeQL js/xss).
   others.forEach((t, idx) => {
     const li = document.createElement("li");
     li.className = "csv-arena-team";
-    const label = (t && t.label) || `TEAM ${idx + 2}`;
+    const label = escHtml((t && t.label) || `TEAM ${idx + 2}`);
     const cells = (t && Array.isArray(t.cells)) ? t.cells.slice(0, 3) : [];
     while (cells.length < 3) cells.push(null);
     const cellsHtml = cells.map((c) => {
@@ -3615,9 +3622,9 @@ function _csvRenderEnemiesArena(cs, timerEndMs) {
           <div class="csv-arena-cell-name">-</div>
         </div>`;
       }
-      const nm = _csChampName(c.championId) || ("cid:" + c.championId);
+      const nm = escHtml(_csChampName(c.championId) || ("cid:" + c.championId));
       const img = CHAMPS.byId[String(c.championId)]
-        ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(c.championId)]}.png" alt="${nm}" onerror="this.style.display='none'">`
+        ? `<img src="/data/ddragon/${ver}/img/champion/${escHtml(CHAMPS.byId[String(c.championId)])}.png" alt="${nm}" onerror="this.style.display='none'">`
         : "?";
       // s214: per-cell timer removed for Arena teams too - same
       // rationale as SR/ARAM. Lock glyph kept for arena since the

@@ -3,6 +3,8 @@
 // Callers that need to re-render after load should listen to the custom
 // events: "rc:items-ready", "rc:champs-ready", "rc:spells-ready".
 
+import { stripTags } from "./helpers.js";
+
 // Pre-hydration DDragon patch fallback - unreachable in practice (the
 // loaders below overwrite .version before consumers render, and a stale
 // guess only 404s into the onerror CDN chain). Single source of truth:
@@ -211,9 +213,10 @@ export function parseItemTooltip(detail) {
   const d = detail || {};
   const name = d.name || "";
   const desc = String(d.description || "");
-  const strip = (s) => s
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
+  // Tags go via the shared fixpoint stripTags (CodeQL
+  // js/incomplete-multi-character-sanitization); &amp; is decoded last. The
+  // result is text - the overlay tip assigns it via textContent.
+  const strip = (s) => stripTags(s.replace(/<br\s*\/?>/gi, "\n"))
     .replace(/&nbsp;/gi, " ")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")

@@ -19,6 +19,8 @@
 // TTL, inflight guard, sig-dedup, no DOM writes outside renderPerfCurve(),
 // degraded-mode text on error (never a raw error string).
 
+import { escHtml } from '../lib/helpers.js';
+
 const _MOUNT = 'bi-flow-mount';
 const _MODES = ['aram', 'sr', 'arena'];
 const _METRICS = [['gold', 'Gold'], ['cs', 'CS']];
@@ -45,9 +47,11 @@ function _isMock() {
   catch (_e) { return false; }
 }
 
+// Escape via the shared 5-char helper: the output lands in double-quoted
+// aria-label= attributes as well as text, so quotes must be escaped too
+// (CodeQL js/incomplete-html-attribute-sanitization).
 function _esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escHtml(s);
 }
 
 function _key() { return _mode + '|' + _metric; }
@@ -222,4 +226,4 @@ export function renderPerfCurve() {
 }
 
 // --- test hooks -----------------------------------------------------
-export const __test = { _svg, _html, _poly, _fmtVal, _fmtMmSs, VB_W, VB_H };
+export const __test = { _svg, _html, _poly, _fmtVal, _fmtMmSs, _esc, VB_W, VB_H };

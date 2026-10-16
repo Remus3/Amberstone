@@ -44,7 +44,11 @@ function _bandDots(band) {
   for (let i = 0; i < total; i++) {
     html += `<span class="rc-band-dot${i < filled ? " filled" : ""}"></span>`;
   }
-  return `<span class="rc-band rc-band-${band}" title="confidence: ${band}">${html}</span>`;
+  // The band is the LLM-derived confidence string (untrusted, CodeQL js/xss):
+  // escape it for the class and title attributes. low / mid / high render
+  // unchanged.
+  const b = _esc(band);
+  return `<span class="rc-band rc-band-${b}" title="confidence: ${b}">${html}</span>`;
 }
 
 // Map chip key A/B/C to the corresponding ALT+digit hotkey 1/2/3.

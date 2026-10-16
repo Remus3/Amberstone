@@ -26,11 +26,14 @@ async function _load() {
       for (const [name, entry] of Object.entries(data || {})) {
         if (!entry || typeof entry !== "object") continue;
         // Store under display-name + slug variants so callers can pass
-        // whatever spelling they have.
+        // whatever spelling they have. Drop EVERY apostrophe / space (global
+        // regex), matching the server's Python str.replace variants in
+        // dashboard/routes_dictionary.py - a string pattern would drop only
+        // the first (CodeQL js/incomplete-sanitization).
         _CACHE.byName[name] = entry;
-        _CACHE.byName[name.replace("'", "")] = entry;
-        _CACHE.byName[name.replace(" ", "")] = entry;
-        _CACHE.byName[name.replace("'", "").replace(" ", "")] = entry;
+        _CACHE.byName[name.replace(/'/g, "")] = entry;
+        _CACHE.byName[name.replace(/ /g, "")] = entry;
+        _CACHE.byName[name.replace(/'/g, "").replace(/ /g, "")] = entry;
       }
       _CACHE.ready = true;
       document.dispatchEvent(new CustomEvent("rc:champion-tags-ready"));

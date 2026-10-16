@@ -2946,9 +2946,21 @@ document.getElementById('btn-flush').addEventListener('click', flushOpen);
 // most recent coach entry so we don't re-log an unchanged coach immediate
 // after reload.
 chatReplay();
+// Dedupe key only (compared, never rendered). Strip tags to a fixpoint so no
+// tag can be spliced back together (CodeQL js/incomplete-multi-character-
+// sanitization); for this pattern one pass already is the fixpoint.
+function _legacyStripTags(s) {
+  let out = s;
+  let prev;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]+>/g, '');
+  } while (out !== prev);
+  return out;
+}
 for (let i = _chatMsgs.length - 1; i >= 0; i--) {
   if (_chatMsgs[i].kind === 'coach') {
-    _lastCoachImmediate = _chatMsgs[i].text.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/<[^>]+>/g,'');
+    _lastCoachImmediate = _legacyStripTags(_chatMsgs[i].text.replace(/&lt;/g,'<').replace(/&gt;/g,'>'));
     break;
   }
 }
