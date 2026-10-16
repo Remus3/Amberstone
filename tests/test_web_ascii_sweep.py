@@ -589,7 +589,14 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/build_insights.js, web/js/main.js and
 # web/js/panels/codeql_js_hardening.test.mjs back reproduces eaaec13b...
 # EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "e917b4bceb4b0c14faf05114b485792c2c34e5ce39829d6c95f430d4fd208553"
+# superseded by the PUBREPO 1g xss-sink re-capture below: "e917b4bceb4b0c14faf05114b485792c2c34e5ce39829d6c95f430d4fd208553"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g third commit (js/xss sinks).
+# ATTRIBUTED BY SUBSTITUTION against the previous commit: swapping exactly
+# web/js/panels/{augment_reco,coach_choices,champ_select}.js back and dropping
+# the new web/js/panels/codeql_xss_sinks.test.mjs reproduces e917b4bc...
+# EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "53495e17ffef036574acb9538f45df11b4b34a7b611a9dcc1ceff0c573983c33"
 
 
 def _web_sources() -> list[Path]:
