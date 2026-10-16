@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-15b - session 117: RM-741 / RM-742 shipped, RM-743 closed, stop-claim gate gaps closed
+
+- **Shipped (LEDGER 1725):** RM-741 merge `72b978a43` - the RM-515 import detector in `tests/test_requirements_currency_rm515.py` is an AST walk (comma / semicolon / importlib shapes; 65 passed). RM-742 merge `50156109d` - the :8888 TLS peek / 301 / handshake run off the accept thread under one 5.0 s deadline (`tests/test_dashboard_tls_accept_rm742.py` 10); live `/api/state` 4.80 s / 14.8 s behind 1 / 3 silent clients before, <= 0.020 s after; 301 intact.
+- **Closed:** RM-743 by measurement (the `rc-provenance` label is informational; only the attended `--pending` print reads it; Reverses-if recorded).
+- **Shipped (LEDGER 1726):** the stop-claim gate gaps (session 116 line), merge `bd8139e68`: a bare trailing `--` and a later no-op merge no longer hide a checkout / stash; staged credit is a conjunction with the unchanged pre-(f) step (`_pre_f_staged_step`), monotone by construction (verifier differentials 0 at seeds 7 / 13 / 23 x 60k); the ten gate test files 1394 passed on merged main.
+- **Decided:** every `git reset` form stays DENY-ALL after 5 leaking verify rounds (Reverses if: a real shell parser with measured coverage, or an operator ruling). Accepted deviation: a heredoc-heavy command just under COMMAND_PARSE_MAX runs ~1.56x pre-(f), bounded by the cap; perf test bound 20 s.
+- **Filed:** RM-744 (an idle post-handshake :8888 client holds its thread with no limit), RM-745 (301 `Location` CR / LF, self-only, low); at /done RM-746 (the nine pre-existing gate blind spots, LEDGER 1727).
+- **Docs / push:** ROADMAP trimmed first (RM-321 / RM-191 / RM-149 to `docs/ROADMAP_HISTORY.md`); pushed `7e9b82a3a..421cfed08` and `421cfed08..22184bfbe`. RC hot_reload restarted onto each merge (final pid 18272, alive, last_reload_ok true).
+- **Process:** the commit-msg hook rejects a `merge:` type; merge commits use `Merge branch '<b>' - <summary> (sNNN)`. Lesson in memory `feedback_widen_credit_gate_monotone_not_enumeration`.
+- **Do NOT redo:** RM-741, RM-742, RM-743, the gate gaps, the reset deny-all decision.
+- **Next:** RM-744 then RM-745 (Tier-1 each), then RM-746 (low) and the carried items in `RC-NEXT-SESSION.txt`.
+
+---
+
 # 2026-10-15 - session 116: RM-740 (e) live read-back PASS, RM-740 (f) shipped in stop_claim_gate
 
 - **Read back (LEDGER 1724):** RM-740 (e) follow-up 1 PASS - `taskkill /F /PID 28196` (DS) at 16:49:56Z; RC relaunched DS via the RC-DaemonSlayer scheduled task (`logs/2026-10-15.log` line 1467); new DS pid 22768, parent svchost (not RC), `/health` 200 about 33 s after the kill. The RC token CAN `schtasks /Run` the SYSTEM task, so (e)'s first Reverses-if is measured false.
@@ -26,15 +40,3 @@
 - **Lesson:** `core/hot_reload.py` had already restarted RC 1.4 s after the fast-forward, so the manual `restart_trigger.txt` restart was a redundant second one - read health.json for a new pid after a merge first. And a Windows-only verifier gate cannot see a Linux-CI red: run new Windows-flag tests under WSL before merging.
 - **Do NOT redo:** the RM-740 (e) owner decision and its test, the CI fix-forward.
 - **Next:** the live RM-740 (e) follow-ups (kill DS once, read back a task-owned relaunch); RM-740 (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743.
-
----
-
-# 2026-10-14b - session 114: RM-740 (d) closed - thread-start caps measured under a gated -n 8 suite, all kept
-
-- **Shipped (LEDGER 1721), verifier CONFIRM 5/5:** `2d49453ba` - measured `Thread.start()` during a gated `-n 8` suite (430 s load, commit peak 75.4 percent): bare max 24.1 ms, guarded dashboard max 24.5 ms, GIL-busy max 156.5 ms, 0 drops. All six `thread_start_timeout_s` caps KEPT (2.0 s x5, DS 5.0 s), reason in a comment beside each; `tests/test_rm740d_thread_start_caps.py` (15).
-- **Operator:** "Continue", then "Headless - Operator Is Away" (acted autonomously, no asks).
-- **Run datum (RM-695 / RM-737):** the gated suite hung with no summary - tree-sweep self-test timed out at 300 s, its worker was killed, an orphaned `sibling_sweep_ci.py` child spun a core ~18 min, the xdist controller stalled at 99 percent; orphan + pytest tree killed by PID, gate slot released. Commit peak stayed below session 110's 79.4 percent, so a true commit-charge stall was not reproduced.
-- **Live:** RC restarted once (comment edit), pid 28300 alive; DS not restarted (comments only). A stale 8 h `.git/index.lock` was cleared via the kit.
-- **Filed:** verifier nit (the first failing assert under a cap mutation says "the seam did not fire") in the BACKLOG (d) row.
-- **Do NOT redo:** RM-740 (d) measurement and verdict.
-- **Next:** RM-740 (e) (DS process owner after a watchdog relaunch), (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743; the xdist-stall-after-timeout-kill open item.
