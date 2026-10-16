@@ -78,6 +78,39 @@ export function escHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
+// Remove every <...> tag. The removal repeats until nothing changes, so a tag
+// can never be spliced back together by removing another one (CodeQL
+// js/incomplete-multi-character-sanitization). For this pattern one pass
+// already reaches the fixpoint - [^>]* consumes any inner "<" - so the loop
+// costs one extra scan and changes no output. The result is TEXT, not safe
+// HTML: an unterminated "<x" survives, so escape it (escHtml) or assign it
+// via textContent / a DOM property before it reaches the page.
+export function stripTags(s) {
+  let out = String(s == null ? "" : s);
+  let prev;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]*>/g, "");
+  } while (out !== prev);
+  return out;
+}
+
+// LoL / DDragon HTML (rune shortDesc etc.) -> plain text for a title= hover:
+// strip every tag, decode the handful of entities DDragon emits, collapse
+// whitespace. &amp; is decoded LAST so "&amp;lt;" decodes once to the literal
+// text "&lt;" instead of twice to "<" (CodeQL js/double-escaping). Null-safe.
+// Callers escape the result (escHtml) or assign it as text.
+export function htmlToText(s) {
+  return stripTags(s || "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Shrink font-size until content fits the element. <=0.5ms per call.
 // Idempotent: skips if text + params haven't changed since last call.
 export function fitText(elm, text, { max = 48, min = 16, step = 2, lines = null } = {}) {

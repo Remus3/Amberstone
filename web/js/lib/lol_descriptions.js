@@ -15,6 +15,13 @@
 //   - Strip <stats>...</stats> wrapper but keep its content (one stat
 //     per line).
 //   - <attention>X</attention> -> bold "X" so numbers pop.
+//   - Output safety (CodeQL js/incomplete-multi-character-sanitization):
+//     unknown tags are stripped to a fixpoint, the surviving b / i / br tags
+//     keep NO attributes, and any other "<" is escaped as text. The DDragon
+//     name / plaintext / tree fields go through the same cleaner (they can
+//     carry LoL markup too). The result feeds the app tooltip's data-tt-html.
+
+import { escHtml } from "./helpers.js";
 
 const _ITEMS_CACHE = { ready: false, loading: null, byId: {} };
 const _RUNES_CACHE = { ready: false, loading: null, byKey: {}, byId: {} };
@@ -50,8 +57,18 @@ function _cleanLolHtml(raw) {
   s = s.replace(/<rules>(.*?)<\/rules>/gi, "<i>$1</i>");
   // Collapse multiple <br> into one + normalize.
   s = s.replace(/<br\s*\/?>(\s*<br\s*\/?>)+/gi, "<br><br>");
-  // Strip any remaining unknown tags (defensive).
-  s = s.replace(/<(?!\/?(b|i|br)\b)[^>]+>/gi, "");
+  // Strip any remaining unknown tags (defensive). Repeat to a fixpoint:
+  // removing one tag can splice another together ("<i<x> on...>" -> "<i on...>").
+  let prev;
+  do {
+    prev = s;
+    s = s.replace(/<(?!\/?(b|i|br)\b)[^>]+>/gi, "");
+  } while (s !== prev);
+  // The surviving b / i / br tags keep NO attributes (an event handler could
+  // ride on an allowed tag), and every "<" that does not open one of those
+  // bare tags is text, so it is escaped.
+  s = s.replace(/<(\/?)(br|b|i)\b[^>]*>/gi, (_m, slash, tag) => `<${slash}${tag.toLowerCase()}>`);
+  s = s.replace(/<(?!\/?(?:br|b|i)>)/g, "&lt;");
   return s.trim();
 }
 
@@ -124,18 +141,22 @@ export function itemTooltipHtml(itemId) {
   if (!_ITEMS_CACHE.ready && !_ITEMS_CACHE.loading) { _loadItems(); }
   const item = _ITEMS_CACHE.byId[String(itemId)];
   if (!item) return "";
-  const goldLine = item.gold ? `<div class="lol-tt-gold">${item.gold}g</div>` : "";
-  const body = item.description || (item.plaintext ? `<i>${item.plaintext}</i>` : "");
-  return `<div class="lol-tt-title">${item.name || ""}${goldLine}</div>${body}`;
+  // name / plaintext are LoL HTML too (e.g. the Gangplank upgrade items carry
+  // "<rarityLegendary>Fire at Will</rarityLegendary><br>..."), so they go
+  // through the same cleaner as the description: text and <br> are kept,
+  // every other tag is dropped or escaped.
+  const goldLine = item.gold ? `<div class="lol-tt-gold">${escHtml(item.gold)}g</div>` : "";
+  const body = item.description || (item.plaintext ? `<i>${_cleanLolHtml(item.plaintext)}</i>` : "");
+  return `<div class="lol-tt-title">${_cleanLolHtml(item.name)}${goldLine}</div>${body}`;
 }
 
 export function keystoneTooltipHtml(keystoneName) {
   if (!_RUNES_CACHE.ready && !_RUNES_CACHE.loading) { _loadRunes(); }
   const rune = _RUNES_CACHE.byKey[_normKey(keystoneName)];
   if (!rune) return "";
-  const tree = rune.tree ? `<div class="lol-tt-tree">${rune.tree}</div>` : "";
+  const tree = rune.tree ? `<div class="lol-tt-tree">${_cleanLolHtml(rune.tree)}</div>` : "";
   const body = rune.shortDesc || rune.longDesc || "";
-  return `<div class="lol-tt-title">${rune.name}${tree}</div>${body}`;
+  return `<div class="lol-tt-title">${_cleanLolHtml(rune.name)}${tree}</div>${body}`;
 }
 
 // Bulk loaders - call once on view mount to warm the caches so the
@@ -144,3 +165,6 @@ export function preloadLolDescriptions() {
   _loadItems();
   _loadRunes();
 }
+
+// Test seam (web/js/panels/codeql_js_hardening.test.mjs).
+export const __test = { _cleanLolHtml };
