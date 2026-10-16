@@ -159,7 +159,7 @@ capacity is a MACHINE question and not a per-repo one:
 | Repo | Concurrent lanes | Notes |
 |---|---|---|
 | Riot Commander | **2** | next up: true-audit loop + research loop |
-| Resin (`C:\Sibling-B`) | 1 | reserved, its own control plane |
+| Sibling-B (`C:\Sibling-B`) | 1 | reserved, its own control plane |
 | Sibling-E (`C:\Sibling-E`) | 1 | reserved, lane port in progress |
 
 **Two concurrent RC lanes are NOT possible as the code stands, and this is the
@@ -178,7 +178,7 @@ what `auto` will use). The RC dual suite is 31854 items: **250s at `-n auto`,
 5070s serial** - a 20.5x speedup, superlinear, because the suite is wait-bound
 rather than CPU-bound. Two RC workers each running that suite at `-n auto`
 puts 16 pytest processes on 8 physical cores plus two agent processes plus
-whatever Resin and Sibling-E are doing. So a second RC slot should come with a
+whatever Sibling-B and Sibling-E are doing. So a second RC slot should come with a
 worker-side cap (`-n 4` while two RC lanes are live) or staggered suite runs -
 `reference_parallel_slices_full_suite_oom` is what over-subscription looks like
 when it goes wrong, and it presents as an API error rather than as memory

@@ -33,7 +33,7 @@ was not previously on record.
   **6/6 served 5 slots, 30/30 distinct ids, 6/6 pre-signed URLs answered HTTP
   206.**
 - Independently confirmed on two operator-named accounts before any ladder work:
-  `SamplePlayer2#NA1` 5 listed / 5 alive / 3 ranked, `blaberfish2#NA1` 5 listed /
+  `SamplePlayer2#NA1` 5 listed / 5 alive / 3 ranked, `OtherPlayer#NA1` 5 listed /
   5 alive / 5 ranked.
 
 **THE SINGLE MEASURED NUMBER: 1131 distinct `.rofl` files, 14.46 GB,
@@ -73,7 +73,7 @@ Two independent kills, either one sufficient:
 default 5 ids. `core/riot_api.get_replay_urls` (`riot_api.py:394`) takes only
 puuid + region; no matchId helper exists because no such route exists.
 
-Demonstrated live, not theorised: of three requested `blaberfish2#NA1` matches,
+Demonstrated live, not theorised: of three requested `OtherPlayer#NA1` matches,
 Vi and Lee Sin were still in the window and **Sylas (`NA1_5606819138`) had
 already rotated out and is permanently unobtainable.**
 
