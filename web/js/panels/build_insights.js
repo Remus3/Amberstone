@@ -30,6 +30,7 @@
  * rewind DB (mirrors the last_match.js _lmMockLoad pattern).
  */
 import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
+import { htmlToText } from '../lib/helpers.js';
 import { renderDurationWinrate } from './duration_winrate.js';
 import { renderChampBenchmarks } from './champ_benchmarks.js';
 import { renderPerfCurve } from './perf_curve.js';
@@ -64,17 +65,12 @@ function _esc(s) {
 // title= tooltip we strip ALL tags + decode the handful of entities DDragon
 // emits, then collapse whitespace. Null-safe. (This differs from
 // lib/lol_descriptions._cleanLolHtml, which KEEPS <b>/<i>/<br> for an
-// innerHTML tooltip surface - here we want attribute-safe plain text.)
+// innerHTML tooltip surface - here we want plain text, which the caller
+// _esc()s.) The shared lib/helpers.htmlToText does the work: it strips to a
+// fixpoint and decodes &amp; last (CodeQL js/double-escaping,
+// js/incomplete-multi-character-sanitization).
 function _stripHtml(s) {
-  return String(s || "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return htmlToText(s);
 }
 
 // Compose a rune hover-title: "Name - stripped effect" (name-only when the

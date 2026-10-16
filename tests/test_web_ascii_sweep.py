@@ -581,7 +581,15 @@ _WEB = _REPO_ROOT / "web"
 # op_score,patch_impact,perf_curve,playstyle_labels,session_hygiene}.js and
 # web/js/panels/codeql_js_hardening.test.mjs (new). Those paths are the whole
 # change. No glyph change.
-_LIVE_HALF_DIGEST = "eaaec13b12598e164a5fd2089e49d142e64969bc14614e1a8fe8d2553a1af7c5"
+# superseded by the PUBREPO 1g stripper re-capture below: "eaaec13b12598e164a5fd2089e49d142e64969bc14614e1a8fe8d2553a1af7c5"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g second commit (tag strippers + LoL
+# tooltip cleaner). ATTRIBUTED BY SUBSTITUTION against the previous commit:
+# swapping exactly web/js/lib/{helpers,lol_descriptions,items_index}.js,
+# web/js/panels/build_insights.js, web/js/main.js and
+# web/js/panels/codeql_js_hardening.test.mjs back reproduces eaaec13b...
+# EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "e917b4bceb4b0c14faf05114b485792c2c34e5ce39829d6c95f430d4fd208553"
 
 
 def _web_sources() -> list[Path]:
