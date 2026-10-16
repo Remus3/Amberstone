@@ -19,5 +19,5 @@
     "electron-builder": "^26.0.12"
   },
   "author": "Amberstone",
-  "license": "UNLICENSED"
+  "license": "Apache-2.0"
 }

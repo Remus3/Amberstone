@@ -48,6 +48,13 @@ Source by source:
 * lolmath - the data chunk from which ARAM balance modifiers are extracted.
   Governed by the upstream project's terms.
 
+  The same terms govern the build-order snapshots scraped from lolmath.net
+  under `ops/audit/lolmath_ds_sweep/`: `lolmath_sweep.json`,
+  `ultimate_sweep.json` and the scrape run logs `sweep.log`, `rescrape.log` and
+  `ultimate.log`. The rest of that directory - the scrapers, the probes,
+  `package.json` and `g7_comp_parity.json` (an RC parity measurement holding
+  overlap counts only) - is this project's own work under the Apache License.
+
 * 101.qq.com - duo-synergy win-rate rows read from an unauthenticated public
   endpoint. Governed by that operator's terms.
 
