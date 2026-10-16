@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-14b - session 114: RM-740 (d) closed - thread-start caps measured under a gated -n 8 suite, all kept
+
+- **Shipped (LEDGER 1721), verifier CONFIRM 5/5:** `2d49453ba` - measured `Thread.start()` during a gated `-n 8` suite (430 s load, commit peak 75.4 percent): bare max 24.1 ms, guarded dashboard max 24.5 ms, GIL-busy max 156.5 ms, 0 drops. All six `thread_start_timeout_s` caps KEPT (2.0 s x5, DS 5.0 s), reason in a comment beside each; `tests/test_rm740d_thread_start_caps.py` (15).
+- **Operator:** "Continue", then "Headless - Operator Is Away" (acted autonomously, no asks).
+- **Run datum (RM-695 / RM-737):** the gated suite hung with no summary - tree-sweep self-test timed out at 300 s, its worker was killed, an orphaned `sibling_sweep_ci.py` child spun a core ~18 min, the xdist controller stalled at 99 percent; orphan + pytest tree killed by PID, gate slot released. Commit peak stayed below session 110's 79.4 percent, so a true commit-charge stall was not reproduced.
+- **Live:** RC restarted once (comment edit), pid 28300 alive; DS not restarted (comments only). A stale 8 h `.git/index.lock` was cleared via the kit.
+- **Filed:** verifier nit (the first failing assert under a cap mutation says "the seam did not fire") in the BACKLOG (d) row.
+- **Do NOT redo:** RM-740 (d) measurement and verdict.
+- **Next:** RM-740 (e) (DS process owner after a watchdog relaunch), (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743; the xdist-stall-after-timeout-kill open item.
+
+---
+
 # 2026-10-14 - session 113: RM-740 (c) + (g) shipped in the dashboard and DS guarded thread starts
 
 - **Shipped (LEDGER 1720), CONFIRMED by independent verifiers:** `48db385fe` - `dashboard/server.py` and `agents/daemon_slayer/server.py` pass the request through a one-shot job list emptied by the claim holder, so (c) a bootstrap-dead thread in `threading._limbo` no longer pins the dropped socket, and (g) a raising `Thread.start()` is arbitrated by `_abandon_unstarted` before any close. `tests/test_rm740_cg_dashboard_ds_thread_start.py` 9 cases, red 6/9 on the parent, 9/9 green.
