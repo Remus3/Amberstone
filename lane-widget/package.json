@@ -2,6 +2,7 @@
   "name": "lane-widget",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Read-only desktop widget showing lane / worker locks across every participating repo.",
   "main": "src/main.js",
   "engines": {

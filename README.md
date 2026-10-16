@@ -359,18 +359,15 @@ file for the maintaining agents, published so the process is visible, not
 documentation for users.
 
 **Licence.** The repository is licensed under the Apache License 2.0
-([`LICENSE`](./LICENSE)), and that grant covers the source code and the
-authored documentation only. It does not cover the data files under `data/`,
-which stay under each upstream source's own terms as [`NOTICE`](./NOTICE)
-records them, and the repository grants no right to redistribute them; the small
-captures in `tests/fixtures/game_data_replay/` likewise stay under their
-sources' terms. The fonts embedded in `atlas.html` are under the SIL Open Font
-License 1.1 ([`LICENSES/OFL-1.1.txt`](./LICENSES/OFL-1.1.txt)), not Apache.
-`ops/fleet_kit/` and `oss/win32_atomic_io/` each carry their own Apache-2.0
-licence file. Two package manifests disagree with the root licence:
-`rc-shell/package.json` declares `UNLICENSED` and
-`ops/audit/lolmath_ds_sweep/package.json` declares `ISC`. Until the owner
-reconciles them, do not assume either directory is offered under Apache-2.0.
+([`LICENSE`](./LICENSE)). The grant covers all source code and authored
+documentation, including `rc-shell/` and the tooling under `ops/`. It does not
+cover third-party data: the files under `data/`, the captures in
+`tests/fixtures/game_data_replay/` and the scraped lolmath snapshots in
+`ops/audit/lolmath_ds_sweep/` stay under their sources' own terms, as
+[`NOTICE`](./NOTICE) records, and no right to redistribute them is granted. The
+fonts embedded in `atlas.html` are under the SIL Open Font License 1.1
+([`LICENSES/OFL-1.1.txt`](./LICENSES/OFL-1.1.txt)). `ops/fleet_kit/` and
+`oss/win32_atomic_io/` each carry their own Apache-2.0 licence file.
 
 ---
 
