@@ -229,6 +229,9 @@ class _DualProtocolHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
                 # pins that).
                 sock.settimeout(_time_left(deadline))
                 conn = self._ssl_ctx.wrap_socket(sock, server_side=True)
+                # No timeout from here: the Handler bounds the request head
+                # itself (RM-744, core/http_head_deadline.py) and then leaves
+                # the socket untimed for the body read, long responses and SSE.
                 conn.settimeout(None)
                 return conn
             # Plain HTTP - answer with a 301 inline + close.
