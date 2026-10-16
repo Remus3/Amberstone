@@ -82,7 +82,11 @@ from pathlib import Path, PurePosixPath
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-REQ = ROOT / "requirements.txt"
+# PUBREPO e (session 118): the top-level pins live in requirements.in; the
+# hashed requirements.txt generated from it also pins every transitive, so
+# reading it here would let a transitive pin (e.g. a future cryptography via
+# some dependency) silently clear the UNPINNED_BY_DECISION guard below.
+REQ = ROOT / "requirements.in"
 
 UNPINNED_BY_DECISION = ("requests", "urllib3", "cryptography")
 
@@ -94,7 +98,7 @@ def _pins() -> dict[str, str]:
         if not line:
             continue
         name, sep, ver = line.partition("==")
-        assert sep, f"requirements.txt line is not an exact pin: {line!r}"
+        assert sep, f"requirements.in line is not an exact pin: {line!r}"
         pins[name.strip().lower()] = ver.strip()
     return pins
 
@@ -237,7 +241,7 @@ def _optional_test_import(rel: str, text: str, pkg: str) -> bool:
 def _unpinned_hits(files, pins) -> list[str]:
     """['<rel>: <pkg>'], once per file and package, for every import of an
     UNPINNED_BY_DECISION package in files ((rel, text) pairs) that
-    requirements.txt does not pin and that is not an optional test-only
+    requirements.in does not pin and that is not an optional test-only
     import. A dynamic import is never optional; an unparseable file is a hit
     for every unpinned package (the RM-741 detector rule above)."""
     hits = []
@@ -264,7 +268,7 @@ def test_unpinned_transitives_are_not_imported_by_rc_source():
             continue
         files.append((path.relative_to(ROOT).as_posix(), text))
     unpinned = _unpinned_hits(files, _pins())
-    assert not unpinned, ("RC now imports a dependency requirements.txt does not "
+    assert not unpinned, ("RC now imports a dependency requirements.in does not "
                           f"pin - pin it in the same change: {unpinned}")
 
 

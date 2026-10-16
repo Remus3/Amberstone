@@ -4,7 +4,7 @@
 # CI installs the generated .txt with `pip install --require-hashes`, so every
 # package, transitive ones included, is pinned to an exact version AND to the
 # sha256 of the files PyPI serves for it. Never hand-edit the .txt: change this
-# file (or the root requirements.txt it includes) and regenerate, from the repo
+# file (or the root requirements.in it includes) and regenerate, from the repo
 # root, with:
 #
 #   uv pip compile .github/ci/requirements-ci.in --generate-hashes --python-version 3.12 --python-platform x86_64-manylinux_2_28 --output-file .github/ci/requirements-ci.txt
@@ -14,12 +14,15 @@
 # same on Windows, WSL or Linux. Dependabot's `pip` entry for /.github/ci keeps
 # the pins and hashes current.
 #
-# The runtime pins live ONCE, in the root requirements.txt (exact `==` pins,
-# no hashes, so it stays installable on the operator's Python 3.14 box). The
-# names below are test-only tools; they are left unversioned here on purpose,
-# so a regeneration takes the current release and the .txt carries the pin.
+# The runtime pins live ONCE, in the root requirements.in (exact `==` pins, no
+# hashes). It is included here, NOT the root requirements.txt: that file is
+# the hashed lock generated from requirements.in for every supported Python
+# and platform (PUBREPO e), and CI resolves its own hashed set for its runner.
+# The names below are test-only tools; they are left unversioned here on
+# purpose, so a regeneration takes the current release and the .txt carries
+# the pin.
 
--r ../../requirements.txt
+-r ../../requirements.in
 
 pytest
 pytest-asyncio

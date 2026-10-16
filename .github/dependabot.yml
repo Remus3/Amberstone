@@ -28,13 +28,18 @@ updates:
       github-actions:
         patterns: ["*"]
 
-  # "/"                   requirements.txt - the runtime pins (exact `==`,
-  #                       no hashes, installable on the operator's box).
+  # "/"                   requirements.in - the runtime pins (exact `==`, no
+  #                       hashes) - and requirements.txt, the HASHED lock
+  #                       generated from it (regeneration command in both
+  #                       headers; PUBREPO e).
   # "/.github/ci"         the HASHED CI install sets (requirements-*.txt,
   #                       generated from the .in beside each; the regeneration
   #                       command is in each .in header). ci.yml checks that
-  #                       every runtime pin agrees with the hashed set, so a
-  #                       bump that updates one and not the other goes red.
+  #                       every runtime pin in requirements.in agrees with the
+  #                       hashed set, so a bump that updates one and not the
+  #                       other goes red (PR #11, 2026-10-12, failed exactly
+  #                       so: it bumped "/" only). Apply such a bump locally
+  #                       to requirements.in and regenerate all three files.
   # "/oss/win32_atomic_io" the extracted package's pyproject (stdlib-only
   #                       today; listed so a dependency added later is seen).
   - package-ecosystem: pip
