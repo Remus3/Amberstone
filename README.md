@@ -33,6 +33,7 @@ from the network.
 | [Limitations](#limitations) | what it cannot do, and why |
 | [Status](#status) | what is done, what is in flight, what is blocked on a live game, and what is deliberately not being built |
 | [How the work gets done](#how-the-work-gets-done) | multi-agent Claude Code, the headless background lanes, and the cross-repo note channel |
+| [How this repo is built](#how-this-repo-is-built) | the agent rules file, local config, operations, git hooks and hand-off file, and what the licence covers |
 | [Data sources and credits](#data-sources-and-credits) | the public projects the game data comes from |
 | [Documentation map](#documentation-map) | every other document, and who each is written for |
 
@@ -304,6 +305,72 @@ outgoing diffs for them.
 
 The control plane and the lane roster are described in
 [`docs/MISSION_CONTROL_PLAN.md`](./docs/MISSION_CONTROL_PLAN.md).
+
+---
+
+## How this repo is built
+
+Several files at the top of the tree exist for the agents that maintain the
+project rather than for the program itself. This is what each one is, and what
+is deliberately kept out of version control.
+
+**`CLAUDE.md` is the agent rules file.** Claude Code reads it at the start of
+every session. It holds rules only: how a session is run, the hard rules every
+change obeys (ASCII-only text, atomic writes, a list of frozen files), and the
+decisions that are settled, each with the observation that would reopen it. Its
+first block is shared word for word with the other repositories on the same
+machine and comes from the vendored fleet kit, so a test fails if it is edited
+here. The reasoning and history behind the rules are kept apart in
+[`docs/claude-md-history.md`](./docs/claude-md-history.md).
+
+**`.claude/` is Claude Code's project configuration, and none of it is
+tracked.** The whole directory is gitignored, because local settings can carry
+server addresses and tokens. That includes its session hooks, so a fresh clone
+runs without them. The slash-command and lane prompts it uses are tracked
+instead as Markdown files in [`tools/`](./tools/) and copied into the local
+`.claude/commands/`, and a drift check compares the two.
+
+**`ops/` is operations.** Tracked: the headless loop and lane runner
+(`ops/loop/`), the vendored fleet kit (`ops/fleet_kit/`, pinned file by file in
+its `MANIFEST.json` and never edited locally), audit harnesses and their
+recorded output (`ops/audit/`), the supervisor, the scheduled-task definitions
+and their installers, and `*.example.json` templates for per-machine settings.
+Gitignored: live runtime state (`ops/runtime/`, including the health file), the
+loop's control files, progress files and locks (`ops/loop/control/`), and the
+real per-machine settings made from those templates.
+
+**`.githooks/` holds the authoritative commit and push gates.** `pre-commit`
+blocks non-ASCII glyphs and new lint findings, byte-compiles the Python and
+refuses stale generated files. `commit-msg` strips AI and bot attribution
+trailers and checks the subject against Conventional Commits. `pre-push` checks
+commit identity, sweeps the outgoing diff for the other repositories' names,
+scans for credentials and then hands over to Git LFS; the remaining hooks are
+Git LFS's own. Git does not run tracked hooks until it is told where they are,
+so a fresh clone has none until `python scripts/install_hooks.py` points
+`core.hooksPath` at this directory. Claude Code's own hooks are only a second
+line behind these.
+
+**`RC-NEXT-SESSION.txt` is the hand-off.** A new agent session does not
+inherit the previous session's conversation, so the plan of record passes from
+one session to the next in this one tracked text file at the root. The end-of-session ritual rewrites it whole: the session counter, the
+next action, and every item the session did not act on, carried forward rather
+than dropped. The next session reads it before anything else. It is a working
+file for the maintaining agents, published so the process is visible, not
+documentation for users.
+
+**Licence.** The repository is licensed under the Apache License 2.0
+([`LICENSE`](./LICENSE)), and that grant covers the source code and the
+authored documentation only. It does not cover the data files under `data/`,
+which stay under each upstream source's own terms as [`NOTICE`](./NOTICE)
+records them, and the repository grants no right to redistribute them; the small
+captures in `tests/fixtures/game_data_replay/` likewise stay under their
+sources' terms. The fonts embedded in `atlas.html` are under the SIL Open Font
+License 1.1 ([`LICENSES/OFL-1.1.txt`](./LICENSES/OFL-1.1.txt)), not Apache.
+`ops/fleet_kit/` and `oss/win32_atomic_io/` each carry their own Apache-2.0
+licence file. Two package manifests disagree with the root licence:
+`rc-shell/package.json` declares `UNLICENSED` and
+`ops/audit/lolmath_ds_sweep/package.json` declares `ISC`. Until the owner
+reconciles them, do not assume either directory is offered under Apache-2.0.
 
 ---
 
