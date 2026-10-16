@@ -86,7 +86,9 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
   parallel per task, each ONE slice on a DISJOINT file set. Dispatch concurrent agents in a
   SINGLE message with multiple Agent blocks (true concurrency).
 - Merge order: engine / ENGINE_VERSION-bump slice FIRST, then dependents, living-docs sync LAST.
-  Merge via `git -C "<repo>" merge --no-ff origin/<branch>` (CWD hazard item 156).
+  Merge via `git -C "<repo>" merge --no-ff --no-commit origin/<branch>` (CWD hazard item 156),
+  then commit through the git lock with `-F <message file>`: subject per the merge template in
+  `.github/CONTRIBUTING.md` (`merge: <topic>`, no agent worktree name; detail in the body).
 - VERIFIER GATE before any merge (ground truth, not the slice agent's word): dispatch the
   read-only `verifier` subagent with the claim + cited test cmd + cited files. Merge only on
   CONFIRM; on REFUTE mark `failed` + re-dispatch - never merge a refuted slice.

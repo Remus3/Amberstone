@@ -71,6 +71,39 @@ enforce most of them:
 5. **Do not add a `Co-Authored-By: Claude` trailer.** The commit-msg hook
    strips it by policy, so its absence is deliberate rather than an oversight.
 
+6. **Commit messages.** The subject is a Conventional Commit,
+   `<type>(<scope>)?: <description>`, checked by the commit-msg hook
+   (`scripts/precommit_msg_check.py`). Types: `feat`, `fix`, `docs`, `style`,
+   `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`, `merge`. An
+   item id may sit in the scope (`fix(RM-123): close the parse cap gap`);
+   session detail goes in the body, not the subject.
+
+   **Merge template.** A merge commit's subject reads `merge: <topic>` (or
+   `merge(RM-123): <topic>`) and never names an agent worktree branch: the hook
+   refuses a merge subject - the `merge:` form or git's own `Merge branch '...'`
+   text - that carries `worktree-agent-<id>` or `agent-<8+ hex>`. Branch, slice
+   and session detail go in the body:
+
+   ```
+   merge(RM-123): stop-claim gate gaps
+
+   Branch: <slice branch>, merged --no-ff.
+   Slices: <what each merged commit did, one line each>.
+   Session: <session number>; verifier verdict and test evidence.
+   ```
+
+   Recipe: stage the merge without committing, then commit from a message file
+   (in RC the commit goes through the git lock):
+
+   ```
+   git merge --no-ff --no-commit <branch>
+   python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git commit -F <message file>
+   ```
+
+   A plain `git merge` of a non-agent branch (for example
+   `Merge remote-tracking branch 'origin/main'`) is still accepted as git
+   writes it.
+
 `CLAUDE.md` at the repository root is the full operating context, including the
 frozen-file list. It is written for coding agents, but it is the most complete
 statement of how this codebase expects to be changed, so it is worth reading
