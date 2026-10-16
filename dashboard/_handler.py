@@ -135,8 +135,16 @@ def _cors_allowed_origin(origin: str) -> str | None:
     None so the browser blocks the cross-origin read. RC is LAN-only and this
     only governs READING GET responses (cross-origin POSTs are still rejected
     by ``_csrf_ok``), so echoing a same-machine loopback origin is safe.
+
+    The echoed value is the REQUEST's own text, so it must never carry a line
+    break into the response (CodeQL py/http-response-splitting, alert 53): an
+    obs-folded request header keeps its CR / LF, and urlparse drops CR / LF /
+    TAB before reading the host, so the loopback test alone let one through.
+    A serialized origin is printable ASCII with no whitespace; refuse the rest.
     """
     if not origin or origin == "null":
+        return None
+    if any(not ("!" <= ch <= "~") for ch in origin):
         return None
     from urllib.parse import urlparse
     try:
