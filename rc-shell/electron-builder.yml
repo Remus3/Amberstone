@@ -8,8 +8,8 @@
 # step, which is the only safe order - electron-updater reads its feed from
 # `publish.repo`, so a drift between the two silently breaks auto-update for
 # every packaged install. See docs/RENAME_SWEEP_AMBERSTONE.md. The repo is
-# PRIVATE, so a packaged shell needs GH_TOKEN in its environment at runtime
-# for electron-updater to reach the release feed (operator-side concern).
+# public, so a packaged shell reads the release feed without a token; GH_TOKEN
+# is needed only on the publishing side (operator-side concern).
 # Publishing a Release at all is operator-gated - none exists yet; this file
 # only makes the build reproducible when that gate opens.
 #

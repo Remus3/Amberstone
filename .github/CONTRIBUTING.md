@@ -15,13 +15,14 @@ So set expectations accordingly:
   measurements and a ledger entry, and a drive-by patch usually cannot. If you
   want to send one anyway, please open an issue first so the design question
   gets settled before you spend the time.
-- **Forks need no permission.** The source is Apache-2.0 (see
-  [`LICENSE`](../LICENSE)), and the part most worth lifting - the build engine
-  under [`agents/daemon_slayer/`](../agents/daemon_slayer/) - is self-contained
-  and carries its own test suite. Note that the Apache licence covers the
-  source and authored docs, NOT the third-party game data under `data/`, which
-  stays governed by its own upstream terms; [`NOTICE`](../NOTICE) records them
-  source by source.
+- **Forks need no permission.** All source code, including `rc-shell/`, is
+  Apache-2.0 (see [`LICENSE`](../LICENSE)), and the part most worth lifting -
+  the build engine under [`agents/daemon_slayer/`](../agents/daemon_slayer/) -
+  is self-contained and carries its own test suite. Note that the Apache
+  licence covers the source and authored docs, NOT the third-party game data
+  under `data/` or the scraped lolmath snapshots in
+  `ops/audit/lolmath_ds_sweep/`, which stay governed by their own upstream
+  terms; [`NOTICE`](../NOTICE) records them source by source.
 
 ## Before you file an issue
 
