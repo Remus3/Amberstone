@@ -220,6 +220,76 @@ test("items_index.parseItemTooltip strips via the shared fixpoint stripTags", as
   assert.doesNotMatch(m[1], /replace\(\/<\[\^>\]\*>\/g, ""\)/, "no single-pass tag strip left");
 });
 
+// ---------------------------------------------------------------------------
+// js/xss-through-dom (alert 11): main.js show() handed the data-tt-html
+// attribute straight to tip.innerHTML. The tooltip DOM is now rebuilt from
+// an allowlist by helpers.renderTooltipHtml (no innerHTML at all).
+// ---------------------------------------------------------------------------
+class FakeNode {
+  constructor(name, text) {
+    this.localName = name; this.text = text; this.attrs = {}; this.childNodes = [];
+  }
+  get firstChild() { return this.childNodes[0] || null; }
+  appendChild(n) { this.childNodes.push(n); return n; }
+  removeChild(n) { this.childNodes.splice(this.childNodes.indexOf(n), 1); return n; }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+}
+const fakeDoc = {
+  createElement: (t) => new FakeNode(t, null),
+  createTextNode: (t) => new FakeNode("#text", t),
+};
+const ser = (n) => (n.localName === "#text" ? n.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  : `<${n.localName}${Object.entries(n.attrs).map(([k, v]) => ` ${k}="${v}"`).join("")}>` +
+    (n.localName === "br" ? "" : n.childNodes.map(ser).join("") + `</${n.localName}>`));
+const tipHtml = (html) => {
+  const tip = new FakeNode("div", null);
+  tip.ownerDocument = fakeDoc;
+  tip.appendChild(new FakeNode("#text", "stale"));
+  helpers.renderTooltipHtml(tip, html);
+  return tip.childNodes.map(ser).join("");
+};
+
+test("renderTooltipHtml drops scripts, handlers and every non-allowlisted tag", () => {
+  assert.strictEqual(typeof helpers.renderTooltipHtml, "function");
+  const out = tipHtml('<img src=x onerror=alert(1)><script>alert(2)</script>' +
+    '<div class="a" onclick="x()">t<iframe src="javascript:alert(3)"></iframe></div>' +
+    '<style>b{}</style><svg onload=alert(4)>u</svg>');
+  assert.strictEqual(out, '<div class="a">t</div>u');
+});
+
+test("renderTooltipHtml rebuilds the real producers' markup exactly", () => {
+  // lib/lol_descriptions item tooltip shape.
+  assert.strictEqual(
+    tipHtml('<div class="lol-tt-title">Doran\'s Blade<div class="lol-tt-gold">450g</div></div>' +
+      '<b>8</b> Attack Damage<br><b>80</b> Health<br><br><i>Lifesteal</i>'),
+    '<div class="lol-tt-title">Doran\'s Blade<div class="lol-tt-gold">450g</div></div>' +
+      "<b>8</b> Attack Damage<br><b>80</b> Health<br><br><i>Lifesteal</i>");
+  // main.js games-by-mode tip shape.
+  assert.strictEqual(
+    tipHtml('<div class="lv-mc-games-tip"><div class="lv-mc-games-tip-row lv-mc-games-tip-head">' +
+      "<span>RIFT</span><span>ARAM</span></div></div>"),
+    '<div class="lv-mc-games-tip"><div class="lv-mc-games-tip-row lv-mc-games-tip-head">' +
+      "<span>RIFT</span><span>ARAM</span></div></div>");
+  // last_match Quick Review `why`: escaped text.
+  assert.strictEqual(tipHtml("x &lt;b&gt; &amp; &#39;y&#39; &quot;z&quot; &#x41;&#66;"),
+    "x &lt;b&gt; &amp; 'y' \"z\" AB");
+});
+
+test("renderTooltipHtml clears the previous tooltip content", () => {
+  assert.strictEqual(tipHtml(""), "");
+});
+
+test("main.js show() renders data-tt-html through renderTooltipHtml, not innerHTML", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../main.js", import.meta.url), "utf8");
+  const m = src.match(/function show\(el\) \{([\s\S]*?)\n    \}/);
+  assert.ok(m, "main.js tooltip show() not found");
+  const code = m[1].replace(/\/\/.*$/gm, "");   // ignore comments
+  assert.match(code, /renderTooltipHtml\(tip, html\)/);
+  assert.doesNotMatch(code, /innerHTML/);
+  assert.match(src, /import \{[^}]*\brenderTooltipHtml\b[^}]*\} from '\.\/lib\/helpers\.js';/);
+});
+
 test("items_index.parseItemTooltip output is unchanged for a real DDragon item", async () => {
   const { parseItemTooltip } = await import("../lib/items_index.js");
   const t = parseItemTooltip({ name: "Sheen",
