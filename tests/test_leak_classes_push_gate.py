@@ -7,8 +7,10 @@ tests pin the PREVENTION half - a push that ADDS one of them halts, a test or
 fixture path does not, and no value is ever printed.
 
 Gate (HALT) classes: private_lan_ipv4, tailnet_ipv4, tailnet_dns_name,
-windows_host_name, local_host_value. Advisory (reported, never a halt):
-user_profile_path, checkout_path.
+windows_host_name, local_host_value, checkout_path (promoted at HEAD count 0,
+PUBREPO 1f; both drive-letter spellings pinned in
+tests/test_junction_drive_spellings_pubrepo_f.py). Advisory (reported, never a
+halt): user_profile_path.
 
 Every leak-shaped literal below is ASSEMBLED AT RUNTIME, so this file holds
 none and the sweep's exempt-path count does not grow because of it.
@@ -60,8 +62,8 @@ def _classes(findings) -> set[str]:
 
 
 def test_gate_and_advisory_class_sets_are_disjoint_and_named():
-    assert set(cp.LEAK_PATTERN_CLASSES) >= set(PLANTED) | {"local_host_value"}
-    assert set(cp.ADVISORY_LEAK_CLASSES) == {"user_profile_path", "checkout_path"}
+    assert set(cp.LEAK_PATTERN_CLASSES) >= set(PLANTED) | {"local_host_value", "checkout_path"}
+    assert set(cp.ADVISORY_LEAK_CLASSES) == {"user_profile_path"}
     assert not set(cp.LEAK_PATTERN_CLASSES) & set(cp.ADVISORY_LEAK_CLASSES)
     assert not set(cp.LEAK_PATTERN_CLASSES) & set(cp.PATTERN_CLASSES)
 
@@ -175,7 +177,7 @@ def test_profile_placeholders_are_not_flagged(text):
     assert cp.scan_leaks(text + "\n") == []
 
 
-def test_checkout_path_value_is_advisory_in_every_spelling():
+def test_checkout_path_value_halts_in_every_spelling():
     # Assembled so no drive-rooted literal sits in this source: the
     # sibling-name sweep's structural arm reads one as an undeclared project.
     checkout = "Q" + ":" + "\\" + "Work Tree" + "\\" + "Proj"
@@ -186,7 +188,7 @@ def test_checkout_path_value_is_advisory_in_every_spelling():
     for spelled in variants:
         findings = cp.scan_leaks(f"cd {spelled}\\tools\n", checkout_paths=variants)
         assert _classes(findings) == {"checkout_path"}, spelled
-        assert all(cp.is_advisory(f) for f in findings)
+        assert not any(cp.is_advisory(f) for f in findings)
     # The drive is not the identity: a checkout that moved drives is still
     # cited under the old one.
     old_drive = "Z" + ":" + "\\" + "Work Tree" + "\\" + "Proj" + "\\x"
