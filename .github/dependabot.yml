@@ -55,6 +55,20 @@ updates:
     groups:
       pip:
         patterns: ["*"]
+    # Declined bumps (closing a group PR does not ignore its versions). Each
+    # range runs from just above the current pin up to the declined target:
+    # Dependabot offers the newest version not ignored, so ignoring only the
+    # target would reopen the PR one release lower. A release above a range
+    # still opens a PR. Drop an entry when its hold lifts.
+    ignore:
+      # PR #11: held until RM-681 (live call per path + truststore) closes.
+      - dependency-name: "anthropic"
+        versions: [">1.11.0,<=1.13.0"]
+      # PR #11: wait for a change that also upgrades the RC runtime.
+      - dependency-name: "json5"
+        versions: [">0.15.0,<=0.17.3"]
+      - dependency-name: "pydantic"
+        versions: [">2.13.5,<=2.14.1"]
 
   # npm: every tracked package.json that declares dependencies. NONE carries a
   # tracked lockfile - package-lock.json is gitignored repo-wide - so
@@ -72,3 +86,9 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+    # Declined bump, same range rule as the pip entry above.
+    ignore:
+      # PR #12: rc-shell stays on electron 44.5.1 (the attended E1 shell
+      # check, LEDGER 1697) until the next attended E1 check on a newer one.
+      - dependency-name: "electron"
+        versions: [">44.5.1 <=44.7.0"]
