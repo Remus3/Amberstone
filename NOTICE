@@ -9,7 +9,9 @@ THIRD-PARTY DATA - NOT COVERED BY THE APACHE LICENSE
 ===============================================================================
 
 The Apache License 2.0 covers this project's source code and authored
-documentation. It does NOT cover the data files under `data/`. Those are
+documentation. It does NOT cover the data files under `data/`, the
+captures in `tests/fixtures/game_data_replay/` or the scraped lolmath
+snapshots under `ops/audit/lolmath_ds_sweep/` named below. Those are
 derived from, or supplied by, the third parties listed below and remain
 governed by each party's own terms. No right to redistribute any of it is
 granted, claimed, or implied by this repository.

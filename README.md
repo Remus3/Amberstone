@@ -432,6 +432,8 @@ registered trademarks of Riot Games, Inc.
 
 Source code and authored documentation are licensed under the Apache
 License 2.0 - see [`LICENSE`](./LICENSE). That licence does NOT extend to
-the third-party-sourced data files under `data/`, which stay governed by
-their own upstream terms; [`NOTICE`](./NOTICE) records them source by
-source. Nothing here grants a right to redistribute that data.
+the third-party-sourced data files under `data/`, the captures in
+`tests/fixtures/game_data_replay/` or the scraped lolmath snapshots in
+`ops/audit/lolmath_ds_sweep/`, which stay governed by their own upstream
+terms; [`NOTICE`](./NOTICE) records them source by source. Nothing here
+grants a right to redistribute that data.
