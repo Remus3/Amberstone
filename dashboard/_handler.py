@@ -17,6 +17,9 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
                 Then 1-MiB body cap, read deadline, JSON decode,
                 dict-or-400, then delegates to
                 `dashboard._dispatch.dispatch_post`, else 404
+  * request head - one total deadline for the request line + headers
+                (RM-744, `core.http_head_deadline.HeadDeadlineMixin`),
+                removed once the head is parsed
   * `log_message` / `_peer` - restore the two properties the stdlib
                 gives every handler and an override silently drops:
                 control characters escaped (`_scrub_log`) so a request
@@ -49,6 +52,7 @@ import os
 import time
 from http.server import BaseHTTPRequestHandler
 
+from core.http_head_deadline import HeadDeadlineMixin
 from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
 
@@ -234,7 +238,13 @@ _SUPPRESS_LOG_PATHS = (
 )
 
 
-class Handler(BaseHTTPRequestHandler):
+class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
+    # RM-744: the request line + headers share one total deadline
+    # (``head_read_timeout_s``, core/http_head_deadline.py), removed once the
+    # head is parsed. Before it, a client that connected or handshook and
+    # then sent nothing held its thread and socket with no limit. NOT a
+    # class-level ``timeout`` - see _read_body_deadlined for why.
+
     def _peer(self) -> str:
         """Client address for a log line, never raising.
 
