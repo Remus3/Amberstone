@@ -127,8 +127,11 @@ export function renderAugmentReco(p) {
         `<span class="ar-name" title="${name}">` +
           (rar ? `<i class="ar-rar ${rar}"></i>` : "") + name +
         `</span>` +
-        `<span class="ar-score" title="Blended marginal + synergy score">${(r.score != null ? r.score : 0)}</span>` +
-        `<span class="ar-wr" title="Your win-rate (n=${r.n_own || 0}) / external Mayhem prior">` +
+        // score / n_own are numbers on the wire, but they arrive from the
+        // WebSocket payload like every other field, so escape them too
+        // (CodeQL js/xss); a number renders unchanged.
+        `<span class="ar-score" title="Blended marginal + synergy score">${_esc(r.score != null ? r.score : 0)}</span>` +
+        `<span class="ar-wr" title="Your win-rate (n=${_esc(r.n_own || 0)}) / external Mayhem prior">` +
           `${own}<span class="ar-sep">/</span>${exv}</span>` +
         synCell +
       `</div>`
