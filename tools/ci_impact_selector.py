@@ -93,7 +93,10 @@ _FULL_EXACT = {
     "pyproject.toml": "may carry pytest configuration",
     "setup.cfg": "may carry pytest configuration",
     "tox.ini": "may carry pytest configuration",
-    "requirements.txt": "runtime dependency pins reach every module",
+    "requirements.in": "runtime dependency pins reach every module",
+    "requirements.txt": "the hashed runtime dependency lock reaches every module",
+    # requirements.lock is retired (PUBREPO e); a push that deletes it, or
+    # brings it back, still re-runs everything.
     "requirements.lock": "runtime dependency lock reaches every module",
     ".github/workflows/ci.yml": "the CI mechanism itself - an edit to it re-runs the whole mechanism",
     "tools/ci_impact_selector.py": "this map - an edit to it re-runs everything it maps",
