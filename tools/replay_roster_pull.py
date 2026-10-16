@@ -2,7 +2,7 @@
 
     python tools/replay_roster_pull.py --dry-run
     python tools/replay_roster_pull.py --role JUNGLE
-    python tools/replay_roster_pull.py --account blaberfish2#NA1
+    python tools/replay_roster_pull.py --account OtherPlayer#NA1
 
 Each account's 5-wide `/replays` window is listed, filtered to ranked queues via
 Match-V5 `info.queueId`, then downloaded into
@@ -10,7 +10,7 @@ Match-V5 `info.queueId`, then downloaded into
 
 WHY THIS MUST RUN ON A CADENCE: the window holds only the 5 most recent
 RETAINED files per account and rotates as that player keeps playing. Measured
-2026-07-26 - of three requested `blaberfish2#NA1` matches, two were still in the
+2026-07-26 - of three requested `OtherPlayer#NA1` matches, two were still in the
 window and the third had already rotated out, permanently. There is no
 fetch-by-match-id route, so a game not pulled during its residency is lost.
 """
