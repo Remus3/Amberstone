@@ -12,6 +12,14 @@ reason posted with the dismissal. Line numbers are as of the analysis on
 | high | 20 | 1 | 22 | 43 |
 | medium | 11 | 0 | 0 | 11 |
 
+Re-analysis of the pushed fixes (2026-10-15, main 3888c9671): 24 high and 1
+medium stayed open, not the expected 22 and 0. Alerts 38 and 39 (the
+rewritten input-parser rules) and 53 (the CORS echo) are still flagged
+although each fix is measured: CodeQL does not model the custom Origin check,
+and the rewritten rules match 32,000 repeated characters with any tail in
+under 50 ms. All three join the written dismissals as "false positive", so
+25 dismissals in all; after they are posted, 0 alerts stay open.
+
 | # | Severity | Rule | Location | Verdict | Reason | Note |
 |---|---|---|---|---|---|---|
 | 5 | high | `js/xss` | `docs/_archive/2026-05-18-dead-dashboard-js/web-js-dashboard.js:1716` | PATHS-IGNORE 4c3d4da04 | - | archived dead dashboard copy, never served; docs/_archive/** paths-ignore via .github/codeql/codeql-config.yml (only 2 js files there, no py) |
