@@ -603,7 +603,14 @@ _WEB = _REPO_ROOT / "web"
 # web/js/lib/helpers.js, web/js/main.js and
 # web/js/panels/codeql_js_hardening.test.mjs back reproduces 53495e17...
 # EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "29563cd6b10281f450243c6055cc59c85f8c93a74023c3001e441f9a90cb2690"
+# superseded by the PUBREPO 1g champion_tags / legacy re-capture below: "29563cd6b10281f450243c6055cc59c85f8c93a74023c3001e441f9a90cb2690"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g fifth commit (champion_tags variant
+# keys + legacy_index.html dedupe-key strip). ATTRIBUTED BY SUBSTITUTION
+# against the previous commit: swapping exactly web/js/lib/champion_tags.js,
+# web/legacy_index.html and web/js/panels/codeql_js_hardening.test.mjs back
+# reproduces 29563cd6... EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "8c19101b6a11f9f8707433eeb37282ed238a702a606a956dc7ed6265519b94cb"
 
 
 def _web_sources() -> list[Path]:

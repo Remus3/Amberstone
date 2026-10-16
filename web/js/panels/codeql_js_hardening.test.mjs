@@ -290,6 +290,51 @@ test("main.js show() renders data-tt-html through renderTooltipHtml, not innerHT
   assert.match(src, /import \{[^}]*\brenderTooltipHtml\b[^}]*\} from '\.\/lib\/helpers\.js';/);
 });
 
+// ---------------------------------------------------------------------------
+// js/incomplete-sanitization (alerts 28, 29): champion_tags.js built its
+// spelling-variant keys with replace("'", "") / replace(" ", ""), which drop
+// only the FIRST apostrophe / space. The server (dashboard/routes_dictionary
+// .py) builds the same variants with Python's str.replace, which drops ALL.
+// ---------------------------------------------------------------------------
+test("champion_tags spelling variants drop every apostrophe and space", async () => {
+  const realFetch = globalThis.fetch;
+  const E1 = { tags: ["AP", "MAGE"] };
+  const E2 = { tags: ["AD", "TANK"] };
+  globalThis.fetch = async (url) => (String(url).includes("/api/dictionary/champion-tags")
+    ? { ok: true, json: async () => ({ "A'b'c": E1, "Nunu & Willump": E2 }) }
+    : { ok: false });
+  try {
+    const ct = await import("../lib/champion_tags.js");
+    ct.preloadChampionTags();
+    await new Promise((r) => setTimeout(r, 20));
+    assert.strictEqual(ct.championTags("A'b'c"), E1);
+    assert.strictEqual(ct.championTags("Abc"), E1);
+    assert.strictEqual(ct.championTags("Nunu&Willump"), E2);
+    assert.strictEqual(ct.championTags("Nunu & Willump"), E2);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// js/incomplete-multi-character-sanitization (alert 16): web/legacy_index.html
+// (still served at /?ui=legacy and as the index fallback) rebuilt its
+// coach-dedupe key with a one-pass tag strip. The key is only compared, never
+// rendered; it now strips to a fixpoint like lib/helpers.stripTags.
+// ---------------------------------------------------------------------------
+test("legacy_index.html dedupe key strips tags to a fixpoint", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../../legacy_index.html", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /_lastCoachImmediate = _chatMsgs\[i\]\.text\.replace/,
+    "single-pass strip still assigned straight to the dedupe key");
+  const m = src.match(/function _legacyStripTags\(s\) \{([\s\S]*?)\n\}/);
+  assert.ok(m, "_legacyStripTags helper not found");
+  assert.match(m[1], /do \{[\s\S]*\} while \(out !== prev\);/);
+  const strip = new Function(m[0] + "; return _legacyStripTags;")();
+  assert.strictEqual(strip("<b>Push</b> top &lt;now&gt;"), "Push top &lt;now&gt;");
+  assert.strictEqual(strip("a<x>b<<y>>c"), "ab>c");
+});
+
 test("items_index.parseItemTooltip output is unchanged for a real DDragon item", async () => {
   const { parseItemTooltip } = await import("../lib/items_index.js");
   const t = parseItemTooltip({ name: "Sheen",
