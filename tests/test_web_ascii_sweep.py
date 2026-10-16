@@ -610,7 +610,14 @@ _WEB = _REPO_ROOT / "web"
 # against the previous commit: swapping exactly web/js/lib/champion_tags.js,
 # web/legacy_index.html and web/js/panels/codeql_js_hardening.test.mjs back
 # reproduces 29563cd6... EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "8c19101b6a11f9f8707433eeb37282ed238a702a606a956dc7ed6265519b94cb"
+# superseded by the PUBREPO 1g title-row fix-up re-capture below: "8c19101b6a11f9f8707433eeb37282ed238a702a606a956dc7ed6265519b94cb"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g seventh commit (verifier fix-up: the
+# item title row of DDragon items 3901-3903). ATTRIBUTED BY SUBSTITUTION
+# against the previous commit: swapping exactly web/js/lib/lol_descriptions.js
+# and web/js/panels/codeql_js_hardening.test.mjs back reproduces 8c19101b...
+# EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "c0fb54b2ac48df4d851f16015c6415fc444bfa6a7e9cd1638403d2197960cf05"
 
 
 def _web_sources() -> list[Path]:
