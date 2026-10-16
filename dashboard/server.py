@@ -17,7 +17,10 @@ the dashboard package consumes it anymore.
 """
 from __future__ import annotations
 
+import html
+import ipaddress
 import logging
+import re
 import socket
 import threading
 import time
@@ -275,36 +278,33 @@ class _DualProtocolHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
             if not chunk:
                 break
             buf += chunk
+        # Both parts come from the client's own bytes and land in a header
+        # and an HTML body, so neither may carry a line break or markup
+        # (RM-745: a bare LF in the Host value or the path used to inject a
+        # header line into the client's own 301).
         path = "/"
         host = "127.0.0.1"
-        try:
-            head, _, _ = buf.partition(b"\r\n\r\n")
-            lines = head.split(b"\r\n")
-            if lines:
-                req = lines[0].decode("ascii", errors="replace").split(" ")
-                if len(req) >= 2 and req[1].startswith("/"):
-                    # cap path length to keep the Location header sane
-                    path = req[1][:512]
-            for h in lines[1:]:
-                lo = h.lower()
-                if lo.startswith(b"host:"):
-                    raw = h.split(b":", 1)[1].decode("ascii", errors="replace").strip()
-                    # Strip the existing port; we always redirect to PORT.
-                    host = raw.split(":", 1)[0] or host
-                    break
-        except (UnicodeDecodeError, ValueError):
-            pass
+        head, _, _ = buf.partition(b"\r\n\r\n")
+        lines = head.split(b"\r\n")
+        req = lines[0].split(b" ")
+        if len(req) >= 2 and req[1].startswith(b"/"):
+            # cap path length to keep the Location header sane
+            path = _redirect_path(req[1][:512])
+        for h in lines[1:]:
+            if h.lower().startswith(b"host:"):
+                host = _redirect_host(h.split(b":", 1)[1]) or host
+                break
         location = f"https://{host}:{PORT}{path}"
+        link = html.escape(location, quote=True).encode("ascii")
         body = (
             b"<!doctype html><meta charset=utf-8>"
             b"<title>RC dashboard \xe2\x86\x92 HTTPS</title>"
             b"<p>RC dashboard requires HTTPS. Open "
-            b"<a href=\"" + location.encode("utf-8") + b"\">"
-            + location.encode("utf-8") + b"</a>.</p>"
+            b"<a href=\"" + link + b"\">" + link + b"</a>.</p>"
         )
         resp = (
             b"HTTP/1.1 301 Moved Permanently\r\n"
-            b"Location: " + location.encode("utf-8") + b"\r\n"
+            b"Location: " + location.encode("ascii") + b"\r\n"
             b"Content-Type: text/html; charset=utf-8\r\n"
             b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n"
             b"Connection: close\r\n\r\n"
@@ -322,6 +322,48 @@ class _DualProtocolHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
 
 # The 301's own write budget once the setup deadline is spent (RM-742).
 _REDIRECT_SEND_FLOOR_S = 0.25
+
+# RM-745: what a 301 may echo back of the client's Host. A DNS name or an
+# IPv4 literal (letters, digits, dot, hyphen, underscore), or the inside of
+# a bracketed IPv6 literal (hex, colons, dots, a %-zone of the same set).
+_REDIRECT_NAME = re.compile(r"[A-Za-z0-9._-]{1,253}")
+_REDIRECT_V6 = re.compile(r"[0-9A-Za-z:.%_-]{2,64}")
+_REDIRECT_PORT = re.compile(r"(?::[0-9]{0,5})?")
+
+
+def _redirect_host(value: bytes) -> str | None:
+    """The host part of a Host header value, or None when it is not a plain
+    host (RM-745). Any other byte - a line break, a control, whitespace
+    inside, ``/``, ``@``, non-ASCII - refuses the whole value; the port is
+    checked and dropped (the 301 always names PORT)."""
+    try:
+        text = value.strip(b" \t").decode("ascii")
+    except UnicodeDecodeError:
+        return None
+    if text.startswith("["):
+        inner, sep, port = text[1:].partition("]")
+        if not sep or not _REDIRECT_V6.fullmatch(inner):
+            return None
+        try:
+            ipaddress.IPv6Address(inner)
+        except ValueError:
+            return None
+        host = f"[{inner}]"
+    else:
+        host, sep, port = text.partition(":")
+        port = sep + port
+        if not _REDIRECT_NAME.fullmatch(host):
+            return None
+    if not _REDIRECT_PORT.fullmatch(port):
+        return None
+    return host
+
+
+def _redirect_path(target: bytes) -> str:
+    """The request target with every byte outside printable ASCII (CR, LF,
+    other controls, DEL, non-ASCII) percent-encoded, so it can sit in a
+    header line as-is (RM-745)."""
+    return "".join(chr(b) if 0x21 <= b <= 0x7E else f"%{b:02X}" for b in target)
 
 
 def _time_left(deadline: float) -> float:
