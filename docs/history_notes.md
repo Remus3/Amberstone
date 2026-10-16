@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-15 - session 116: RM-740 (e) live read-back PASS, RM-740 (f) shipped in stop_claim_gate
+
+- **Read back (LEDGER 1724):** RM-740 (e) follow-up 1 PASS - `taskkill /F /PID 28196` (DS) at 16:49:56Z; RC relaunched DS via the RC-DaemonSlayer scheduled task (`logs/2026-10-15.log` line 1467); new DS pid 22768, parent svchost (not RC), `/health` 200 about 33 s after the kill. The RC token CAN `schtasks /Run` the SYSTEM task, so (e)'s first Reverses-if is measured false.
+- **Shipped:** `eb309e854` - `tools/stop_claim_gate.py` `_merge_unstaged` (`:1638`): branch-mode `git checkout` (with or without `-f`) and whole-tree `git stash` after a staged `--no-commit` merge now drop the merge credit, as `merge --abort` / `reset` already did (measured on git 2.53.0; path-mode checkout, `switch`, `restore` keep MERGE_HEAD). First version REFUTED by the verifier (credited 3 one-call sequences HEAD refused); reworked TDD, re-verified GO: 245 passed in the touched file, 665 across the ten gate test files, a 600k-sequence differential fuzz found 0 new-credits-where-HEAD-refuses.
+- **Docs:** `41a529472` (LEDGER 1724, BACKLOG (e)/(f) rows, ROADMAP RM-740 line). Both commits pushed `1a09d8235..41a529472` at /done.
+- **Live:** RC restarted 8 times today 11:57-12:10 local from the session's `tools/` + `tests/` edits (RM-699 class); final pid 15372 alive, kept DS 22768.
+- **Do NOT redo:** the (e) follow-up 1 read-back, RM-740 (f).
+- **Next:** RM-741 / RM-742 / RM-743 (Tier-1 each); RM-740 (e) follow-up 2 (machine log setting - operator, halt boundary) and 3 (child fallback only). ROADMAP is 21 bytes under the drift_guard 90 percent warning - trim to ROADMAP_HISTORY before the next ROADMAP edit.
+
+---
+
 # 2026-10-14c - session 115: RM-740 (e) shipped - DS relaunch goes through the RC-DaemonSlayer scheduled task
 
 - **Shipped (LEDGER 1722), two independent verifiers CONFIRMED:** `687920398` - `core/daemon_slayer_client.py` `spawn_ds` (the `DsWatchdog._respawn` path) runs `schtasks /Run /TN RC-DaemonSlayer`; a direct windowless child only when the task is unregistered, schtasks is missing, or the host is not Windows; a task that refuses `/Run` raises (logged, retried after the grace). `tests/test_rm740e_ds_spawn_owner.py` (10), red 7/10 on the parent. OPERATIONS RC-DaemonSlayer row corrected (At boot, SYSTEM, IgnoreNew, restart-on-failure).

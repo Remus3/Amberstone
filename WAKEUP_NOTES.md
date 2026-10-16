@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-16b - session 119: C1-op PUBREPO batch run (v0.1.0 released), RM-744 / RM-745 shipped, RM-746 refuted twice
+
+- **C1-op (LEDGER 1729, `531ce96f9`):** the operator confirmed ASK 14 in chat ("Run it now"); the batch ran attended, exit 0, 5/5 steps. Read back: remote tags = v0.1.0 only; `gh release view v0.1.0` published; CodeQL open alerts 0 (15 false positive, 7 used in tests, 3 won't fix); open PRs none (Dependabot closed #13 itself); sidecar tag bundle sha256 match + `git bundle verify` ok. ANSWER to MAIN delivered sha256 ce2ac188, reached 1/1 (tracked copy `428b3c388`).
+- **C1-op follow-up:** local evidence tags re-fetched by a `git fetch` were preserved at `refs/rw2-backup/c1-remote-tags/evidence/rm-159-attempt-1` / `-2` and deleted as tags; `git tag -l` = v0.1.0. Dependabot ignores for the declined bumps in `6b7778adc`.
+- **Shipped:** RM-744 `a1325dc4f` (one 30 s request-head deadline on :8888, `core/http_head_deadline.py`), RM-745 `98c94e7dc` (301 Host / path neutralised); live read-back: idle TLS client closed at 30.0 s, bare-LF Host injects nothing, 301 intact; RC pid 15236 alive. Records `17d3138b6` (LEDGER 1730-1733).
+- **Closed:** RM-740 (e) follow-up 2 (operator approved ASK 13): Task Scheduler RestartOnFailure is inert for a crash exit; the RC watchdog relaunched DS at +12.2 s. Operational log left ENABLED on purpose.
+- **Refuted, not shipped:** RM-746 rounds 1 (`65948d418`) and 2 (`e8974f331`) on branch `worktree-agent-a14e007f9937d670d` (worktree kept). Round 2: 15 of 88 legitimate merge flows lost credit. Decision: at most ONE more round, acceptance = the verifier's probe (zero old=True / new=False on legit shapes), else won't-fix. Probes preserved in gitignored `ops/runtime/rm746/`.
+- **Filed:** RM-747 / RM-748 / RM-749 (:8895 / :8860 / :8890 lack the RM-744 deadline), RM-750 (no DS restarter while RC is down), RM-751 (dead bridge secret; blank it locally).
+- **/done:** ROADMAP at 91 percent of budget, so RM-741..RM-745 rows relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-16` (`5907f236b`); pushed `1f2b9418d..5907f236b`.
+- **Do NOT redo:** the C1-op batch, RM-744, RM-745, RM-740 (e) follow-up 2.
+- **Next:** RM-746 final round or close; then decide the 2 unmerged PUBREPO worktrees and the backup refs; then RM-747..RM-750.
+
+---
+
 # 2026-10-16 - session 118: MAIN ORDER PUBREPO in-tree parts shipped; operator batch waits
 
 - **Shipped (LEDGER 1728), pushed `9240474bc..239d56449` (31 commits), CI ci (escalated full dual suite) / codeql / docs-guards green:** merges `f4e97dabf` (b, `merge:` subjects accepted, agent worktree names refused), `553761a81` + `1c46365f1` (d, README "How this repo is built", Apache-2.0 in both package.json, outsider-read scrub), `47a60f465` (e, hashed `requirements.txt` from `requirements.in`; `requirements.lock` RETIRED), `18a99c3a7` (f, checkout root halts a push in 24/24 drive spellings), `d317d88e3` (Dependabot #13 applied), `0e8a26b20` + `a5cf80472` (g, CodeQL triage), `44a4a3708` (tooltip render fix after a REFUTED render-neutral claim); docs `3888c9671` (v0.1.0 notes; local annotated tag v0.1.0 on it), `a4c65a2b6`, `239d56449`.
@@ -28,14 +42,3 @@
 - **Process:** the commit-msg hook rejects a `merge:` type; merge commits use `Merge branch '<b>' - <summary> (sNNN)`. Lesson in memory `feedback_widen_credit_gate_monotone_not_enumeration`.
 - **Do NOT redo:** RM-741, RM-742, RM-743, the gate gaps, the reset deny-all decision.
 - **Next:** RM-744 then RM-745 (Tier-1 each), then RM-746 (low) and the carried items in `RC-NEXT-SESSION.txt`.
-
----
-
-# 2026-10-15 - session 116: RM-740 (e) live read-back PASS, RM-740 (f) shipped in stop_claim_gate
-
-- **Read back (LEDGER 1724):** RM-740 (e) follow-up 1 PASS - `taskkill /F /PID 28196` (DS) at 16:49:56Z; RC relaunched DS via the RC-DaemonSlayer scheduled task (`logs/2026-10-15.log` line 1467); new DS pid 22768, parent svchost (not RC), `/health` 200 about 33 s after the kill. The RC token CAN `schtasks /Run` the SYSTEM task, so (e)'s first Reverses-if is measured false.
-- **Shipped:** `eb309e854` - `tools/stop_claim_gate.py` `_merge_unstaged` (`:1638`): branch-mode `git checkout` (with or without `-f`) and whole-tree `git stash` after a staged `--no-commit` merge now drop the merge credit, as `merge --abort` / `reset` already did (measured on git 2.53.0; path-mode checkout, `switch`, `restore` keep MERGE_HEAD). First version REFUTED by the verifier (credited 3 one-call sequences HEAD refused); reworked TDD, re-verified GO: 245 passed in the touched file, 665 across the ten gate test files, a 600k-sequence differential fuzz found 0 new-credits-where-HEAD-refuses.
-- **Docs:** `41a529472` (LEDGER 1724, BACKLOG (e)/(f) rows, ROADMAP RM-740 line). Both commits pushed `1a09d8235..41a529472` at /done.
-- **Live:** RC restarted 8 times today 11:57-12:10 local from the session's `tools/` + `tests/` edits (RM-699 class); final pid 15372 alive, kept DS 22768.
-- **Do NOT redo:** the (e) follow-up 1 read-back, RM-740 (f).
-- **Next:** RM-741 / RM-742 / RM-743 (Tier-1 each); RM-740 (e) follow-up 2 (machine log setting - operator, halt boundary) and 3 (child fallback only). ROADMAP is 21 bytes under the drift_guard 90 percent warning - trim to ROADMAP_HISTORY before the next ROADMAP edit.
