@@ -13,7 +13,7 @@
 //   Next             ~8s refresh                  -> ~16s / ~48s.
 //   Item Build:      event-driven                 -> 90s / 5min.
 
-import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge, htmlToText } from './lib/helpers.js';
+import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge, htmlToText, renderTooltipHtml } from './lib/helpers.js';
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
 import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
@@ -7535,16 +7535,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       tip.style.top  = top  + "px";
     }
     function show(el) {
-      // s162 v9: rich tooltips. If `data-tt-html` is set, render the
-      // attribute value as innerHTML (the page is the only source of
-      // these strings - operator-authored, not user input). Falls
+      // s162 v9: rich tooltips. If `data-tt-html` is set, render it as
+      // rich markup - rebuilt from an allowlist (div / span / b / i / br
+      // + class) by lib/helpers.renderTooltipHtml, never via innerHTML, so
+      // attribute text cannot execute (CodeQL js/xss-through-dom). Falls
       // back to plain `data-tt`/`title` text-only path otherwise.
       const html = el.getAttribute("data-tt-html");
       const text = capture(el);
       if (!html && !text) return;
       activeEl = el;
       if (html) {
-        tip.innerHTML = html;
+        renderTooltipHtml(tip, html);
       } else {
         tip.textContent = wrapSixWords(text);
       }

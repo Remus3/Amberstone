@@ -596,7 +596,14 @@ _WEB = _REPO_ROOT / "web"
 # web/js/panels/{augment_reco,coach_choices,champ_select}.js back and dropping
 # the new web/js/panels/codeql_xss_sinks.test.mjs reproduces e917b4bc...
 # EXACTLY. No glyph change.
-_LIVE_HALF_DIGEST = "53495e17ffef036574acb9538f45df11b4b34a7b611a9dcc1ceff0c573983c33"
+# superseded by the PUBREPO 1g tooltip-sink re-capture below: "53495e17ffef036574acb9538f45df11b4b34a7b611a9dcc1ceff0c573983c33"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g fourth commit (tooltip sink).
+# ATTRIBUTED BY SUBSTITUTION against the previous commit: swapping exactly
+# web/js/lib/helpers.js, web/js/main.js and
+# web/js/panels/codeql_js_hardening.test.mjs back reproduces 53495e17...
+# EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "29563cd6b10281f450243c6055cc59c85f8c93a74023c3001e441f9a90cb2690"
 
 
 def _web_sources() -> list[Path]:
