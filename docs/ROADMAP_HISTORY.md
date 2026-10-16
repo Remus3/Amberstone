@@ -1,5 +1,22 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-16 - size-budget relocation (session 119 /done), 5 rows
+
+`ROADMAP.md` sat at 91 percent of its 81920-byte budget (74316 bytes at
+17d3138b6), so `tools/drift_guard.py` reported a `doc-budget` breach at the
+session 119 /done. The five rows below were already SHIPPED / CLOSED, each
+pointing at its own BACKLOG body and LEDGER entry (RM-743 = LEDGER 1725,
+closed by measurement; RM-741 / RM-742 = LEDGER 1725, merges `72b978a43` /
+`50156109d`; RM-744 / RM-745 = LEDGER 1730, main `a1325dc4f` / `98c94e7dc`);
+they move here VERBATIM as they stood at 17d3138b6, in their ROADMAP order.
+`ROADMAP.md` keeps one combined one-line stub naming every id literally.
+
+- **[x] RM-743 CLOSED 2026-10-15 (session 117, measured, LEDGER 1725; filed session 112 /done, LEDGER 1719): the inbox tick decides a MAIN note's provenance ONCE, at enqueue, and never re-verifies it.** The `rc-provenance` label is informational: its only reader is the attended `inbox_tick.py --pending` print, and nothing strands. Body + Reverses-if in `BACKLOG.md` "Session 112 filings".
+- **[x] RM-741 SHIPPED 2026-10-15 (session 117, merge `72b978a43`, LEDGER 1725; filed session 111 /done, LEDGER 1718): the RM-515 guard's import DETECTOR was a regex, so `import os, cryptography`, `import os; import cryptography` and `importlib.import_module` / `__import__` went unseen; it now walks the AST (65 tests).** Body in `BACKLOG.md` "Session 111 filings".
+- **[x] RM-742 SHIPPED 2026-10-15 (session 117, merge `50156109d`, LEDGER 1725; filed session 111 /done, LEDGER 1718): the :8888 dashboard peeked and TLS-handshook on the accept thread (`dashboard/server.py` `get_request`, 5 s timeout), RM-739's parity gap; setup now runs on the request thread under one 5.0 s deadline.** Live `/api/state`: 4.8 / 14.8 s behind 1 / 3 silent clients before, 0.006-0.020 s after. Body in `BACKLOG.md` "Session 111 filings"; residuals RM-744 / RM-745.
+- **[x] RM-744 SHIPPED 2026-10-16 (session 119, main `a1325dc4f`, LEDGER 1730; filed session 117 merger, LEDGER 1725): a :8888 client that completes the TLS handshake and then sends nothing held its request thread with no time limit; one total 30 s request-head deadline (`core/http_head_deadline.py`).** Live: an idle TLS client closed at 30.0 s. Body in `BACKLOG.md` "Session 117 filings"; siblings RM-747 / RM-748 / RM-749.
+- **[x] RM-745 SHIPPED 2026-10-16 (session 119, main `98c94e7dc`, LEDGER 1730; filed session 117 merger, LEDGER 1725): the :8888 plain-HTTP 301 built `Location` from the client's Host header and path without stripping CR / LF; Host and path are now neutralised.** Live: a bare-LF Host injects nothing; a normal 301 is unchanged. Body in `BACKLOG.md` "Session 117 filings".
+
 ## 2026-10-15 - size-budget relocation (session 117 merger), 3 rows
 
 `ROADMAP.md` sat 21 bytes under the 90 percent warning line of its 81920-byte
