@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-14c - session 115: RM-740 (e) shipped - DS relaunch goes through the RC-DaemonSlayer scheduled task
+
+- **Shipped (LEDGER 1722), two independent verifiers CONFIRMED:** `687920398` - `core/daemon_slayer_client.py` `spawn_ds` (the `DsWatchdog._respawn` path) runs `schtasks /Run /TN RC-DaemonSlayer`; a direct windowless child only when the task is unregistered, schtasks is missing, or the host is not Windows; a task that refuses `/Run` raises (logged, retried after the grace). `tests/test_rm740e_ds_spawn_owner.py` (10), red 7/10 on the parent. OPERATIONS RC-DaemonSlayer row corrected (At boot, SYSTEM, IgnoreNew, restart-on-failure).
+- **Operator:** "continue in a headless driver lane" - C1 ran in the detached headless-queue lane (index 0; driver pythonw -> run_lane -> fleet_route -> claude worker, exit 0), not inline; the main session merged.
+- **Merge:** fast-forward `lane/queue` -> main, pushed `cdbecb390..687920398` through the git lock. RC restarted (pid 18784, alive); DS :8860 1.287.0 / 16.20.1.
+- **CI RED on 687920398, fixed forward at /done (LEDGER 1723):** the push impact slice (ubuntu) failed 2 tests in `tests/test_rm740e_ds_spawn_owner.py` (`0 != 134217728`): the test pinned the Windows `CREATE_NO_WINDOW` literal while `_NO_WINDOW` is 0 off Windows. Asserts now use `dsc._NO_WINDOW`, plus a per-OS `NoWindowFlag` pin; WSL Linux repro red 2/10 before, 12 OK after.
+- **Lesson:** `core/hot_reload.py` had already restarted RC 1.4 s after the fast-forward, so the manual `restart_trigger.txt` restart was a redundant second one - read health.json for a new pid after a merge first. And a Windows-only verifier gate cannot see a Linux-CI red: run new Windows-flag tests under WSL before merging.
+- **Do NOT redo:** the RM-740 (e) owner decision and its test, the CI fix-forward.
+- **Next:** the live RM-740 (e) follow-ups (kill DS once, read back a task-owned relaunch); RM-740 (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743.
+
+---
+
 # 2026-10-14b - session 114: RM-740 (d) closed - thread-start caps measured under a gated -n 8 suite, all kept
 
 - **Shipped (LEDGER 1721), verifier CONFIRM 5/5:** `2d49453ba` - measured `Thread.start()` during a gated `-n 8` suite (430 s load, commit peak 75.4 percent): bare max 24.1 ms, guarded dashboard max 24.5 ms, GIL-busy max 156.5 ms, 0 drops. All six `thread_start_timeout_s` caps KEPT (2.0 s x5, DS 5.0 s), reason in a comment beside each; `tests/test_rm740d_thread_start_caps.py` (15).

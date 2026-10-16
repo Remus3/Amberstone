@@ -1,6 +1,6 @@
 NEXT SESSION
 ------------
-SESSION: 118
+SESSION: 119
 HISTORY WAS REWRITTEN TWICE on 2026-10-09 (LEDGER 1699 = B, 1701 = rw2, case-insensitive): every
 commit id changed twice. Old SHAs resolve through .git/filter-repo/commit-map (rw2), then
 .git/filter-repo-20261009/commit-map (B), then .git/filter-repo-20260621/commit-map (June); copies
@@ -8,66 +8,92 @@ sit beside the bundles in RC's sidecar Backup folder. Cite LEDGER entries, not p
 Every other clone must re-clone (OPERATOR ASKS 5); a fresh clone runs scripts/install_hooks.py and
 sets the LOCAL git config fleet.operatorIdent before any push.
 
-Next action: the MAIN ORDER "PUBREPO" (public-repo posture), queued in the inbox at 2026-10-15
-19:27:43 local, after session 117's work had shipped (body: moon_sync_inbox/
-2026-10-15-1925-from-MAIN-ORDER-to-RC-PUBREPO-posture-releases-commits-readme-lockfile-spike-ready-
-ONE-ANSWER.md, sha256 f546d747...1f2d, HOP 1). The tick recorded `main-unverified` at enqueue (the
-RM-743 shape: MAIN committed after the tick); the /done executor re-ran the kit's verify_main
-read-only and it returned True, so it carries MAIN's (= the operator's) authority. Re-check that
-before acting. Then RM-744 then RM-745 (Tier-1 each, filed session 117; bodies in BACKLOG "Session
-117 filings"; RM-744 says measure first), then RM-746 (low). RM-740 (e) follow-up 2 waits on the
-operator (OPERATOR ASK 13); follow-up 3 is child-fallback only.
+Next action: C1-op - the PUBREPO operator batch (MAIN ORDER PUBREPO, LEDGER 1728). It waits on the
+operator: bytes leave the tree and one act is irreversible (halt boundary + "attended session
+confirms an irreversible or out-of-tree act requested only by a note"). Session 118's operator
+reply "Continue" was NOT a confirmation; the batch was deliberately NOT run. Ask for ONE chat
+confirm (OPERATOR ASK 14), then run it attended from the repo root in Git Bash:
+  sh ops/runtime/pubrepo/operator_batch.sh <sidecar-backup-dir> <owner-id>
+(gitignored; <owner-id> = the claims owner id a deny reason names). Its steps in script order:
+  1. post the 25 prepared CodeQL dismissals, each with its written reason;
+  2. close bot PRs #11 (pip, DECLINED), #12 (electron, DECLINED) and #13 (applied as 04084164f,
+     merged by d317d88e3) with the prepared comments;
+  3. copy the tag bundle ops/runtime/backup/rc-tags-not-on-main-20261015.bundle (996,783,797 B,
+     sha256 b57ae029...36c2f) to RC's sidecar Backup folder and read it back;
+  4. delete the 2 remote tags evidence/rm-159-attempt-1 / -2 (IRREVERSIBLE; lease on the published
+     ids 5bb8653a / d0eba62a), read back ls-remote;
+  5. push the single ref refs/tags/v0.1.0 (local annotated tag on 3888c9671) and run gh release
+     create with --notes-file docs/releases/v0.1.0.md (generated notes OFF).
+  Read back after: git ls-remote --tags origin shows v0.1.0 only; gh release view v0.1.0; CodeQL
+  open alerts 0 (today 24 high + 1 medium open - 3 more than the ONE ANSWER's "22 high / 0
+  medium" line, since CodeQL still flags 38 / 39 / 53; the answer's "0 after the dismissals"
+  holds); gh pr list shows no bot PR open. Then record the read-backs in LEDGER and tell MAIN only
+  if a new note is warranted (OutboundCap).
+Then RM-744 then RM-745 (Tier-1 each; bodies in BACKLOG "Session 117 filings"; RM-744 says
+measure first), then RM-746 (low). RM-740 (e) follow-up 2 waits on the operator (OPERATOR ASK
+13); follow-up 3 is child-fallback only.
 FIRST at session start: git log @{u}.. (expect empty), gh run list --branch main --limit 4 (CI on
-the session 117 /done commit - see Status; if `check` is red, that is the first action), and
-python ops/loop/inbox_tick.py --pending (expect the PUBREPO ORDER row).
-Session 117: C1 (RM-741 / RM-742 / RM-743) and C2 (the stop-claim gate gaps) ran through session
-sub-agents (slices, independent read-only verifiers, the merger); the merger pushed both; /done
-filed RM-746 and pushed. None of the OPERATOR ASKS were answered. The PUBREPO ORDER arrived during
-/done and was NOT acted on (only read and provenance-checked).
+the session 118 /done commit - see Status; if `ci` is red, that is the first action), and python
+ops/loop/inbox_tick.py --pending (expect empty).
+Session 118: C1 (the PUBREPO ORDER) ran through session sub-agents (8 worktree slices + 1
+follow-up slice, each gated by an independent read-only verifier; 4 adjudications by distinct
+agents); the C1 executor pushed and delivered the ONE ANSWER. C1-op (the out-of-tree batch) was
+NOT run. None of OPERATOR ASKS 1-13 were answered.
 
-PUBREPO ORDER - what it asks (section 1 a-g; done criteria in its section 2; ONE ANSWER note):
-- a. RELEASES: hand-cut annotated semver 0.x tags on an ancestor of published main; push the
-  single tag ref only (never --tags / --mirror); hand-written notes from the LEDGER,
-  --generate-notes OFF; first list every existing tag and resolve any not reachable from main.
-- b. COMMIT STYLE: add a merge template - merge subjects read `merge: <topic>` and carry no agent
-  worktree names; an item id may sit in the scope (`fix(RM-123): ...`). CONFLICT, measured session
-  117: RC's commit-msg hook (scripts/precommit_msg_check.py) REJECTS a `merge:` type, which is why
-  every session 117 merge used `Merge branch 'worktree-agent-...' - ...` (those subjects DO carry
-  agent worktree names). The hook needs the `merge` type added (failing test first) before any
-  merge uses the template. No rewrite of the already-public merges (item c).
-- c. HISTORY: no further rewrite of public history.
-- d. README section "How this repo is built" (CLAUDE.md, .claude/, ops/, .githooks, the hand-off as
-  documented process); state the licence plainly (RC is Apache-2.0 per CLAUDE.md - re-read
-  LICENSE before writing it).
-- e. HASHED LOCKFILE: unhashed requirements.in; requirements.txt generated with --generate-hashes
-  covering every transitive for every supported Python minor AND the embedded runtime; prove
-  install.bat in a fresh venv per interpreter before commit. Overlaps the carried "requirements.lock
-  is stale" item. A fresh venv goes under the scratchpad or a gitignored in-tree dir, never another
-  machine path (halt boundary).
-- f. PATHS: confirm the path guard covers drive-root project paths in BOTH drive-letter spellings
-  of the project roots (junctions); the 108 home-shape lines are placeholders, no change.
-- g. SPIKE-READY: CodeQL - triage all 54 open alerts, HIGH first (fix, or dismiss with a written
-  reason); Dependabot alerts ON, security-update PRs OFF; the 3 open bot PRs (#11 / #12 / #13, see
-  Session 110 items) applied locally (cherry-pick --reset-author) or declined, then closed with a
-  comment; evidence/rm-159-attempt-1 and -2 tags (not ancestors of main): inspect, bundle to this
-  tree's backup location, `git bundle verify`, delete locally AND on the remote, read back
-  ls-remote; an outsider read of tracked agent / hand-off text (no name, email, account id,
-  secret, host name or third-party quote; fix at HEAD only); one grep sweep of the last 30 days of
-  failed-run Actions logs for token shapes / echoed env (counts only); remove the personal-email
-  value from LOCAL git config fleet.operatorIdent (config only, no commit), read back.
-- RC gates that still bind (CLAUDE.md halt boundary + "attended session confirms ... an
-  irreversible or out-of-tree act requested only by a note"): the remote tag deletes, closing bot
-  PRs, CodeQL dismissals and the Dependabot setting are out-of-tree; the bundle write lands outside
-  the repo root (sidecar Backup); every tag push is a push. Batch them into ONE operator confirm
-  line in an attended session. RISK on fleet.operatorIdent: BEFORE removing the personal value,
-  compare it with the author / committer email on unpushed commits and on the local user.email -
-  if they match, every later push is refused by the pre-push identity check until git config
-  user.email is moved to a noreply value too; read both back.
-- After the ONE ANSWER is delivered (reply delivery is pre-authorised; re-hash the destination,
-  publish N/M): `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`, then
-  --pending.
+Session 118 shipped - do NOT redo (LEDGER 1728; read back with git at this wrap):
+- Pushed 9240474bc..239d56449 (31 commits) through the git lock, pre-push gates clean; origin/main
+  = 239d56449. Merges on main: f4e97dabf (b, commit-msg accepts `merge: <topic>` /
+  `merge(RM-123): ...` and refuses merge subjects naming an agent worktree; template in
+  .github/CONTRIBUTING.md item 6), 553761a81 + 1c46365f1 (d, README "How this repo is built",
+  Apache-2.0 for all source incl. both package.json, NOTICE / README / CONTRIBUTING name the
+  data and fixtures outside the grant, outsider-read scrub), 47a60f465 (e, hashed requirements.txt
+  from requirements.in; install.bat proven in fresh venvs on 3.11 / 3.12 / 3.13 / 3.14 and the
+  embedded 3.11; requirements.lock RETIRED), 18a99c3a7 (f, RC's checkout root halts a push in
+  24/24 drive-letter spellings), d317d88e3 (Dependabot #13 applied), 0e8a26b20 + a5cf80472 (g,
+  CodeQL triage: 31 fixed, 1 paths-ignore, the rest written dismissals - record
+  docs/_archive/2026-10/codeql-triage-2026-10-15.md), 44a4a3708 (tooltip render fix after the JS
+  slice's render-neutral claim was REFUTED); docs 3888c9671 (docs/releases/v0.1.0.md, LEDGER
+  1728), a4c65a2b6 (tracked copy of the ONE ANSWER), 239d56449 (3 fixed alerts still flagged).
+- (a) local tag list read back: v0.1.0 only (annotated, on 3888c9671, an ancestor of published
+  main). The 3 tags not on main (evidence/rm-159-attempt-1, -2, backup-pre-scrub-20260621) were
+  MOVED (not deleted) to refs/rw2-backup/local-old/tags/* and bundled (see C1-op step 3).
+- (c) no history rewrite. Dependabot alerts ON, automated security fixes OFF, 0 open alerts.
+  Actions-log sweep (108 failed runs, 30 days): 0 likely-real secrets.
+- fleet.operatorIdent: personal value removed from LOCAL config; one noreply value left (re-read
+  at this wrap: noreply only).
+- ONE ANSWER note 2026-10-15-2208-from-RC-ANSWER-to-MAIN-PUBREPO-in-tree-DONE-3888c9671.md
+  delivered, sha256 prefix 0b639345, reached 1/1; inbox row closed (--pending empty at this wrap).
+  It also carried the RC atlas.html position (session 107 do-not-re-litigate line).
+- The `merge:` commit-subject conflict and the requirements.lock refresh are CLOSED by b and e.
 
-Session 117 shipped - do NOT redo (LEDGER 1725-1727; see Status for push ranges):
+Session 118 new open items:
+- C1-op (Next action above).
+- Keep until C1-op step 3 copies the bundle off-box: refs/rw2-backup/local-old/tags/* (3 refs) and
+  ops/runtime/backup/rc-tags-not-on-main-20261015.bundle. Restore: git fetch <bundle>
+  'refs/*:refs/restored/*'.
+- Local ref refs/c1-backup/main-pre-recut (b036711d1) = the old tip before the scrub re-cut; its
+  first-cut scrub commit bb557cee6 re-added a history_notes line holding a truncated OAuth-token
+  prefix (the pre-push credential scan halted on it). NEVER push it; delete it (and the worktree
+  branch below that carries bb557cee6) once nothing needs it.
+- Two PUBREPO slice worktrees KEPT by /done because they are not merged (git branch -d refuses):
+  .claude/worktrees/agent-a2f37aa35243c4ae4 (branch at 03b131332, the electron 44.5.1 -> 44.7.0
+  bump that PR #12's decline left unmerged; patch-unique) and
+  .claude/worktrees/agent-ab5640432ca19a0e0 (branch at 3c45d93ed: that commit is on main as
+  e6a31eb1e; its parent bb557cee6 is the pre-recut first cut above, one history_notes line away
+  from main's 1b69193ad). Both clean; removing either needs `git branch -D` - decide after C1-op.
+- tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin is red LOCALLY only:
+  installed claude CLI 2.1.301 vs PINNED_CLI 2.1.296 (pre-existing, not caused by PUBREPO). Run
+  the canary before re-pinning; never run that file in a fake-only pass (memory
+  feedback_tests_that_exec_real_claude).
+- Path push-guard gap: the WSL /mnt/<x> spelling of the checkout root is still not matched by the
+  18a99c3a7 guard.
+- LEDGER 1728 unfiled findings (file or fix, Tier-1 each): tools/md_guard_selector.py `_hits`
+  lstrip("./") drops the dot of .github/ paths; python-embed ships anthropic 0.94.1 and
+  install.bat's embedded branch skips pip once anthropic + PIL import; stop_claim_gate quadratic
+  residue (a 20k-char `git -c git -c` chain ~2 s per pattern, pre-existing, capped);
+  ops/moon_sync_repos.json (per-host, gitignored) lists one sibling on the wrong drive letter.
+
+Session 117 shipped - do NOT redo (LEDGER 1725-1727):
 - RM-741 SHIPPED merge 72b978a43: tests/test_requirements_currency_rm515.py detects imports with an
   AST walk (comma / semicolon / importlib / __import__ shapes); 65 passed. The text-regex route
   stays dead (session 111 REFUTED it too).
@@ -78,8 +104,7 @@ Session 117 shipped - do NOT redo (LEDGER 1725-1727; see Status for push ranges)
   <= 0.014 s and <= 0.020 s after; plain-HTTP 301 intact.
 - RM-743 CLOSED by measurement (no code change): the rc-provenance label is informational - only
   the attended `--pending` CLI print reads it. Reverses if: any lane, loop, responder, prompt or kit
-  reader starts reading the label or acting on inbox_work.jsonl rows. (The PUBREPO ORDER is a fresh
-  instance of the label going stale: main-unverified at enqueue, verify_main True at /done.)
+  reader starts reading the label or acting on inbox_work.jsonl rows.
 - Stop-claim gate gaps (the session 116 line) CLOSED, merge bd8139e68 (stack 463d166c8..de4e75974):
   a bare trailing `--` and a later no-op merge no longer hide a checkout / stash; over
   COMMAND_PARSE_MAX (20k chars) staged credit is refused (fail closed). The ten gate test files
@@ -94,37 +119,31 @@ Session 117 shipped - do NOT redo (LEDGER 1725-1727; see Status for push ranges)
   (2.9 s vs 1.9 s), bounded by the cap. Reverses if: a measured under-cap input crosses the 30 s
   Stop timeout while pre-(f) does not. The perf test bound is 20 s, not 10 s (pre-(f) itself takes
   8.5 s on that input; 10 s flaked).
-- Filed: RM-744, RM-745 (merger, LEDGER 1725); RM-746 (this /done, LEDGER 1727). ROADMAP was
-  trimmed first (RM-321 / RM-191 / RM-149 relocated to docs/ROADMAP_HISTORY.md `## 2026-10-15`).
-- Earlier, do not redo: session 116 (LEDGER 1724) RM-740 (e) follow-up 1 live read-back PASS (DS
-  relaunched by the RC-DaemonSlayer task, parent svchost) and RM-740 (f) eb309e854. Session 115
-  (LEDGER 1722-1723) RM-740 (e) 687920398 + its CI fix-forward. Session 114 (LEDGER 1721) RM-740
-  (d) CLOSED. Session 113 (LEDGER 1720) RM-740 (c) + (g). Session 112 (LEDGER 1719) RM-740 (b),
-  ENV-APIKEY.
+- Earlier, do not redo: session 116 (LEDGER 1724) RM-740 (e) follow-up 1 live read-back PASS and
+  RM-740 (f) eb309e854. Session 115 (LEDGER 1722-1723) RM-740 (e) 687920398 + its CI fix-forward.
+  Session 114 (LEDGER 1721) RM-740 (d) CLOSED. Session 113 (LEDGER 1720) RM-740 (c) + (g). Session
+  112 (LEDGER 1719) RM-740 (b), ENV-APIKEY.
 
-Session 117 new open items:
+Session 117 open items (carry):
 - RM-744 (Tier-1): a :8888 client that completes the TLS handshake then sends nothing holds its
   request thread with no time limit (`conn.settimeout(None)` before `finish_request`; only the
   body read is deadlined; a class-level `timeout` was REJECTED by the RM-152 measurement). Measure
   first.
 - RM-745 (Tier-1, low): the :8888 plain-HTTP 301 builds `Location` from the client's Host header
   and path without stripping CR / LF (self-only header injection).
-- RM-746 (Tier-1, low, filed at /done): the nine pre-existing stop-claim gate blind spots (git
-  aliases, `--work-tree`, quote smuggling, `rm -f .git/MERGE_HEAD`, `git update-ref -d
-  MERGE_HEAD`, fake git on PATH, unknown launchers such as `python -c`, `bash <<EOF`, `sh -c
-  '...'`), out of scope for C2 by orchestrator ruling. Fix fail closed and conjoined with the
-  prior step, never by another shell-shape enumeration.
-- Process: the commit-msg hook (scripts/precommit_msg_check.py) rejects a `merge:` type; merge
-  commits use the `Merge branch '<b>' - <summary> (sNNN)` form - until PUBREPO item b changes it.
+- RM-746 (Tier-1, low): the nine pre-existing stop-claim gate blind spots (git aliases,
+  `--work-tree`, quote smuggling, `rm -f .git/MERGE_HEAD`, `git update-ref -d MERGE_HEAD`, fake git
+  on PATH, unknown launchers such as `python -c`, `bash <<EOF`, `sh -c '...'`). Fix fail closed and
+  conjoined with the prior step, never by another shell-shape enumeration.
 - A harness note flagged one session 117 verifier report as "instruction-shaped (settings-json)":
   it only cited the .claude/settings.json Stop timeout (30 s); nothing was acted on from it.
 - WATCH (CI annotation on 22184bfbe): GitHub's ubuntu-latest label migrates to Ubuntu 26 from
   2026-10-19. A first red after that date on an unchanged test may be the runner image - compare
   the image version before blaming code.
-- ROADMAP.md is 73039 bytes after the RM-746 stub (drift_guard's 90 percent warning line is 73728
-  of 81920: 689 bytes left; 0 breaches at this wrap). Trim before any ROADMAP edit bigger than a
-  stub: shipped / closed rows to docs/ROADMAP_HISTORY.md, open bodies to BACKLOG (name every id
-  literally in the stub; check tests/test_roadmap_backlog_disposition_drift.py).
+- ROADMAP.md is 73045 bytes (drift_guard's 90 percent warning line is 73728 of 81920: 683 bytes
+  left; 0 breaches at this wrap). Trim before any ROADMAP edit bigger than a stub: shipped /
+  closed rows to docs/ROADMAP_HISTORY.md, open bodies to BACKLOG (name every id literally in the
+  stub; check tests/test_roadmap_backlog_disposition_drift.py).
 - Lesson (memory feedback_widen_credit_gate_monotone_not_enumeration): widening a credit gate by
   enumerating shell shapes leaked 5 rounds; conjoin with the prior gate and differential-fuzz
   against the REAL prior file (git show <sha>:<path>); fix the verify-round cap and a deny-all
@@ -136,11 +155,10 @@ Session 116 open items (carry):
   is behind the halt boundary and needs the operator (OPERATOR ASK 13).
 - RM-740 (e) follow-up 3 (child-fallback path only, i.e. when RC-DaemonSlayer is unregistered):
   does `schtasks /End RC-Supervisor` kill a DS child through the job.
-- RM-699 datum: RC logged 8 "Amberstone starting" lines on 2026-10-15 between 16:57 and 17:10Z (4
-  at 16:57-16:58Z per LEDGER 1724, 4 more at 17:09-17:10Z) from the session's tools/ + tests/
-  edits; pid 12424 -> final 15372, alive, fatal_count 0; it kept DS 22768 (no second DS). Session
-  117: hot_reload restarted RC after each merge (21:25:22Z and 21:25:33Z for RM-741 / RM-742, the
-  first a tests-only restart; 2026-10-16 00:19:02Z for C2), final pid 18272.
+- RM-699 datum: RC logged 8 "Amberstone starting" lines on 2026-10-15 between 16:57 and 17:10Z
+  from the session's tools/ + tests/ edits; it kept DS 22768 (no second DS). Session 117:
+  hot_reload restarted RC after each merge (final pid 18272). Session 118: RC pid 14820 at the
+  wrap (started 2026-10-16 03:43Z), fatal_count 0.
 
 Session 115 open items (carry):
 - RM-740 (e) known cost, accepted: while the task is DISABLED, or the RC token can query but not run
@@ -157,11 +175,10 @@ Session 115 open items (carry):
   stay disarmed.
 - SessionStart anomaly "slot bucket 0.lock DEAD_PID (pid 6668)": in the machine-wide slot bucket
   outside the repo root, so not touched. Expected to self-clear on the slot code's next acquire;
-  not re-checked in sessions 116-117 - re-check.
+  not re-checked in sessions 116-118 - re-check.
 - Datum (resolved, no action): the lane driver, log, prompt, template, state and progress helper
   under ops/loop/control/lane_prompts/ (s115_* and queue-rm740e-s115.*) are untracked AND gitignored
-  (.gitignore line 338 `ops/loop/control/`); never commit them. The session 115 lane progress step
-  label order was cosmetic (red-before-green was genuine).
+  (.gitignore line 338 `ops/loop/control/`); never commit them.
 - Lesson (memory feedback_merge_hot_reload_already_restarts_rc): after a .py merge, read
   health.json for a new pid before writing restart_trigger.txt; hot_reload usually restarted RC.
 
@@ -196,8 +213,7 @@ Session 113 open items (carry):
 - ANOMALY (RM-699 class suspected, unattributed per start): RC restart storm on 2026-10-14, 27
   "Amberstone starting" lines between 07:58 and 08:47 local (session 113 edits under dashboard/ +
   tests/ fall in that window); two heartbeat_error fatals (PermissionError WinError 5 on the
-  health.json tmp -> replace, 08:47:33 / 08:47:34). At the session 117 wrap fatal_count is 0 (pid
-  18272).
+  health.json tmp -> replace, 08:47:33 / 08:47:34). fatal_count 0 at the session 118 wrap.
 - Process datum: the session 113 fast-forward merge ran as a plain `git merge --ff-only` because
   `fleet_gitlock run` accepts only commit/push - datum for kit defect (c) below; already with MAIN
   as KIT-16.
@@ -237,7 +253,7 @@ Session 111 open items (carry):
 Session 110 open items (carry):
 - Lesson: `--scan-file` over the tip never clears a push - the pre-push range scans each commit's
   blobs, so a literal fixed in a later commit still halts it. Check a new test literal BEFORE its
-  first commit.
+  first commit. (Session 118 hit it again: the first-cut scrub commit; re-cut, see above.)
 - RAIL BREACH (recorded, session 110): a sub-agent ran `git commit --amend` once on its own UNPUSHED
   commit (721668ab4 -> b50d3d44a); every sub-agent prompt forbids --amend explicitly.
 - Audit findings (C6, low, unfiled): F2 tools/truth_gate.py:74 runs the claims command with
@@ -246,15 +262,15 @@ Session 110 open items (carry):
 - RM-737 data: system commit peak 40.26 GB of the 50.72 GB (48375 MiB) limit = 79.4 percent at
   -n 8, ramp 19.7 -> 37.3 GiB in 5 min; slots=1 cost: gate queue wait 4301 s (session 110).
   Session 114: one -n 8 run peaked 75.4 percent.
-- RM-728 reaper still needed: ops/loop/control/progress/ held 139 files at session 117 (134 at
-  116, 133 at 115, 131 at 114, 130 at 113, 123 at 111).
+- RM-728 reaper still needed: ops/loop/control/progress/ held 149 files at session 118 (139 at
+  117, 134 at 116, 133 at 115, 131 at 114, 130 at 113, 123 at 111).
 - RM-686 / OPERATOR ASK 9 mostly overtaken by C4 (the launcher waits by design); the one-kill
   read-back is still not done.
-- Dependabot PRs open: #11 pip group (ci FAILED on da27e44f2, uninvestigated), #12 electron
-  44.5.1 -> 44.7.0 (green), #13 github-actions group (green). Re-check state before acting. Now
-  ORDERED by PUBREPO g: apply locally (cherry-pick --reset-author) or decline, then close each.
+- Dependabot PRs: #13 applied (d317d88e3); #12 (electron) and #11 (pip; anthropic held by RM-681,
+  RM-682) DECLINED by adjudication (LEDGER 1728). Closing all three with the prepared comments is
+  C1-op step 2.
 
-OPERATOR ASKS (batched, re-ask in ONE line; none answered in sessions 111-117):
+OPERATOR ASKS (batched, re-ask in ONE line; none answered in sessions 111-118):
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error, 0 inactive, so nothing was pruned. Mark old
    ones inactive and delete them (irreversible), or leave them? Backup
@@ -266,27 +282,28 @@ OPERATOR ASKS (batched, re-ask in ONE line; none answered in sessions 111-117):
 5. Re-clone (or hard-reset) every other clone after the two rewrites.
 6. Retention for RC's sidecar Backup folder: pre-rewrite bundles 080439 (1.5 GB), 093601 (1.5 GB),
    rw2 165148 (4.3 GB) and the rw2 remote-old-refs bundle (1.5 GB); commit-/ref-maps; protection
-   JSON; ignored-file backups (worktree-ignored-*); merged-worktree records.
+   JSON; ignored-file backups (worktree-ignored-*); merged-worktree records. (Session 118's
+   worktree ignored-file copy sits IN-tree, gitignored: ops/runtime/backup/worktree-ignored-s118/.)
 7. The CI-watchdog checkout (its per-host folder outside the tree) is missing; recreate it only if
    re-arming the watchdog.
 9. RM-686: OK to kill the proxy once for the read-back (task restarts it within ~1 min; then answer
    MAIN with line + state + restart). C4 (session 110) settled the launcher-waits half. Body in
    BACKLOG "Session 103 filings". "Continue headlessly - operator is away" was NOT an OK for this
    (nor was session 114's "Headless - Operator Is Away", nor session 115's "continue in a headless
-   driver lane", nor session 116's "Continue").
+   driver lane", nor session 116's or session 118's "Continue").
 10. OK to Recycle-Bin %LOCALAPPDATA%\CrashDumps\electron.exe.{25540,22368,12240}.dmp (~17 MB,
     written by E1's crashed hidden runs - a halt-boundary breach by Windows WER, recorded).
 11. Review the credential-shaped historical findings (90 after rw2; classes anthropic / openai /
     riot_api_key / bearer_token / connection_string_password; values never printed; most in tests
     and docs; the one real retired token is scrubbed).
 12. The physical-setup list below (carried from session 102).
-13. RM-740 (e) follow-up 2 (new, session 116): OK to enable the TaskScheduler Operational log (a
+13. RM-740 (e) follow-up 2 (session 116): OK to enable the TaskScheduler Operational log (a
     machine log setting, outside the tree) and kill DS once to record whether RestartOnFailure
     relaunches after a non-zero exit?
-14. (new, session 117 /done) PUBREPO out-of-tree acts, ordered by MAIN: OK to push release tag
-    refs, delete the two evidence/rm-159-* tags on the remote after a verified bundle (bundle
-    written to RC's sidecar Backup folder), close the 3 bot PRs with comments, dismiss CodeQL alerts
-    with written reasons, and turn Dependabot alerts ON?
+14. C1-op (session 118, ordered by MAIN PUBREPO): OK to run ops/runtime/pubrepo/operator_batch.sh
+    attended - 25 CodeQL dismissals with written reasons, close bot PRs #11 / #12 / #13 with
+    comments, copy the tag bundle to RC's sidecar Backup folder, delete the two remote
+    evidence/rm-159-* tags (irreversible), push refs/tags/v0.1.0 and create the v0.1.0 release?
 
 Carried from session 109 (not acted on):
 - RM-737 RC side: measure a smaller -n or xdist worker recycling for RC's suite (late-run workers
@@ -297,7 +314,8 @@ Carried from session 109 (not acted on):
   only a whole suite selects.)
 - ops/moon_sync_repos.json (gitignored, per-host) has no MAIN entry; deliveries resolve MAIN's
   inbox from the agreement record. Add a MAIN entry (in-tree config write; never a path in a
-  tracked file) or confirm the agreement-record route is the intended one.
+  tracked file) or confirm the agreement-record route is the intended one. (Session 118: the same
+  file lists one sibling on the wrong drive letter - fix both in one pass.)
 - CI's sibling-sweep-tree arm is structural-only on CI (RC_MOON_SYNC_REPOS secret unset; "This
   green is PARTIAL") - record, do not soften the sweep's escape-rate phrasing.
 
@@ -317,16 +335,15 @@ Session 108 open items (carry):
 Do NOT re-litigate (session 107):
 - RC atlas.html is the hand-built pre-10/7 page by operator order 2026-10-10 (LEDGER 1713, commit
   7f3ed345f). It contradicts MAIN 2246 ORDER section 6 (generated atlas); the operator's order
-  outranks it. Carry this into the next inbox exchange with MAIN (the session 110 ANSWER covered
-  1230/1312/2226 only; the session 112 ANSWER covered ENV-APIKEY only) - the PUBREPO ONE ANSWER is
-  the next exchange. Reverses if: the operator or MAIN re-orders a generated atlas.
+  outranks it. Carried to MAIN in the session 118 PUBREPO ONE ANSWER. Reverses if: the operator or
+  MAIN re-orders a generated atlas.
 - The atlas font block is HEAD's OFL-compliant block, not the 03197a15b subset. Reverses if: the
   Orbitron holders permit the subset name, upstream drops the RFN, a render difference against the
   baseline is measured, or the operator or MAIN orders the byte-exact page in writing.
 - Open ambiguity: MAIN's f08bb61 quotes an earlier operator complaint about MAIN's flat treemap
   Atlas pages (MAIN restored them 10/09); if the operator meant those, that is MAIN's tree.
 
-Open items (sessions 105-117):
+Open items (sessions 105-118):
 - Kit defects: (b) fleet_suite_gate runs bare on an empty selection and (c) fleet_gitlock wraps
   only commit/push wait on KIT-16 (MAIN); kit now v17 (762fcfdb1) - re-check (b)/(c) against v17.
   (c) datum session 113: the RM-740 fast-forward had to run as a plain `git merge --ff-only`.
@@ -339,15 +356,12 @@ Open items (sessions 105-117):
   never graded; no local full suite while 2+ others run.
 - RM-740 (e) follow-ups 2-3 (BACKLOG "Session 110 filings"); RM-744, RM-745, RM-746 (BACKLOG
   "Session 117 filings").
-- OutboundCap: sessions 113-117 sent no outbound note; session 112 delivered ONE ANSWER on
-  2026-10-13; resets per local day. Inbox at the session 117 wrap: ONE pending row, the PUBREPO
-  ORDER (2026-10-15 19:25 local); the previous newest note was 2026-10-13.
+- OutboundCap: session 118 delivered ONE ANSWER (PUBREPO) on 2026-10-15 local; sessions 113-117
+  sent none; resets per local day. Inbox at the session 118 wrap: 0 pending rows (the 2026-10-15
+  1941 SS ANSWER-to-MAIN copy was triaged ANSWER / terminal, skip).
 - v13 section 5 sidecars: the rest waits on MAIN's FLEET_SIDECAR_ROOT (RM-707 lists, nothing moved);
   any move is an out-of-tree act (halt). RC's lanes already run under ops/lane_worktrees.json.
 - RM-681 PARTIAL: owed one attended live call per path + a truststore read-back on Legion.
-- requirements.lock is stale (anthropic 0.96.0, json5 0.14.0, pydantic 2.13.2, portalocker 3.2.0,
-  websockets 16.0) while the box matches requirements.txt - refresh it (in-tree, Tier-1). PUBREPO e
-  now orders a hashed requirements.txt from an unhashed requirements.in; do both in one pass.
 - Local branch m2-prebuild-56e5572e4 KEPT (git cherry: 4 equivalent, 2 unique; holds pre-rewrite
   lineage locally).
 - Locked merged worktrees agent-ad1ad6523dbde8de1 (W-R, ancestor of main) and
@@ -362,7 +376,7 @@ Open items (sessions 105-117):
   hot_reload watches tests/; RM-702 drive paths in 94 old commit messages (MAIN-ordered only);
   RM-704..RM-731 S8 rows (RM-705 collection half shipped); RM-734; RM-736; RM-737; RM-740; RM-744;
   RM-745; RM-746. Next free RM id RM-747 (pin in docs/DS_SWEEP_TRACKER.md). Next free LEDGER id
-  1728.
+  1729.
 - CS's 3 self-check suggestions: sibling-only, informational; nothing for RC to do.
 - A drive-root literal in a NEW test halts the pre-push sibling sweep (structural arm), even after
   a later commit removes it; use tmp_path or an allowlisted form from the first commit.
@@ -413,10 +427,15 @@ Kit / gate procedure (carry):
   writing restart_trigger.txt.
 - Owner id probe (session 116 /done): a harmless `git commit --dry-run` is denied by the claims
   hook, and the deny reason names the caller's <session_id>.<agent_id>.
-- Merge shape (session 117): `git merge --no-ff --no-commit <branch>` then commit through
-  fleet_gitlock with a `Merge branch '<b>' - <summary> (sNNN)` subject (the hook rejects
-  `merge:` until PUBREPO b lands). A --no-commit merge that writes a .py triggers the hot_reload
-  restart before the commit.
+- Merge shape (since session 118, PUBREPO b f4e97dabf): `git merge --no-ff --no-commit <branch>`
+  then commit through fleet_gitlock with a `merge: <topic>` (or `merge(RM-123): <topic>`) subject
+  that never names an agent worktree branch (.github/CONTRIBUTING.md item 6; the commit-msg hook
+  refuses one). A --no-commit merge that writes a .py triggers the hot_reload restart before the
+  commit.
+- /done worktree cleanup (session 118 shape): verify each branch with git merge-base
+  --is-ancestor, a clean `git status --porcelain`, no live claim under ops/loop/control/claims/;
+  copy the ignored non-cache files to gitignored ops/runtime/backup/worktree-ignored-s<n>/ first;
+  then `git worktree remove` (no --force) + `git branch -d` (not -D).
 
 Carried forward (not acted on yet):
 - The old lane folder holds only the stray before_sweep_s2.txt and its system-drive junction is
@@ -424,10 +443,13 @@ Carried forward (not acted on yet):
   until it restarts; a lane fired from it fails loudly.
 - The old-drive checkout junction: git grep finds the old checkout literal in 3 test fixtures only;
   whether the junction can go is an out-of-tree check (operator) - measure its consumers first.
-  (PUBREPO f asks for the path guard to cover both drive-letter spellings of the junctioned roots.)
+  (PUBREPO f shipped 18a99c3a7: the checkout root halts in 24/24 drive-letter spellings; the WSL
+  /mnt/<x> spelling is the open gap, see Session 118 new open items.)
 - RM-687 accepted limits: a hand-echoed fake push / `rc=0` line is still credited; ancestry and
   reflog are not tied to the claimed sha. Unfiled: stop_claim_gate `_GIT_LEAD` regex backtracks
-  exponentially on `git -c -c -c ...` (6.1 s at 20 repeats; unrealistic shape).
+  exponentially on `git -c -c -c ...` (6.1 s at 20 repeats; unrealistic shape). (Session 118's
+  CodeQL triage rewrote the gate's option loop - 40 x ` -c` had taken over 400 s; fuzzed 43.8M
+  comparisons, 0 differences; re-measure this line against HEAD before filing it.)
 - WATCH: one verifier run (session 104) saw 24 child processes die at startup with 0xC0000142; not
   reproduced. Desktop heap / process pressure suspected, unmeasured (compare RM-737).
 - `executor_cmd` in ops/loop/config.json (+ config.gate.json, config.p5.json) is UNUSED. The kit
@@ -435,7 +457,8 @@ Carried forward (not acted on yet):
 - Still off-kit: the disarmed pre-v8 tools/inbox_responder_spawn.py (RM-683). headless_env.py stays
   as fleet_route's fail-closed pre-check.
 - INCIDENT (LEDGER 1684): NEVER run tests/test_subagent_prompt_flag.py in a fake-only pass (it
-  execs a real claude). Its pin is now 2.1.296 (RM-684); a CLI upgrade re-reds it - canary first.
+  execs a real claude). Its pin is 2.1.296 (RM-684); the installed CLI is now 2.1.301 and the pin
+  test is red locally (Session 118 new open items) - canary first.
 - origin c1/deps-pip-anthropic1-measure sits on the rewritten lineage (24c54ec39, rw2); with
   RM-681 PARTIAL it can go once the live-call read-back is done.
 - B3 read-back of MAIN 2237: next pane shows the acct2 status line and no [Legion] line.
@@ -472,15 +495,19 @@ Carried forward (not acted on yet):
 - Joint acts, never solo: CHANNEL_PIN re-pin (docs/CHANNEL.md still lists LL / lacks EW - roster
   change there is a five-way re-pin), RM-502, RM-429, RM-430; any FURTHER SHARED_SHA256 re-pin
   stays joint.
-- Worktrees: `git worktree list` = 22 entries (read back at the session 117 /done; the session 117
-  agent worktrees are gone): main + 7 agent incl. the 2 locked + 2 drain + rc-lane-queue (session
-  115, at 687920398) + 11 sidecar lift, the rest dated 2026-10-05..09 (stale-cleanup candidates).
-  REVIEW for unmerged commits before -D: lift1 death-reel (RM-639) / review-player (RM-641) /
-  vod-retention (RM-640), lift2 y45 (Y-45 / RM-568), drain-wave2-tail-backlog (RM-432 ADR-016,
-  RM-229; 13 ahead), drain-wave2-atomic (5 ahead), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4,
-  abd89ea3, af827986 (kit v6-v8 work; said squashed - unverified), plus the two locked ones above.
-  Second-pass candidates: lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08,
-  -y11-y13. The 11 lift worktrees sit outside the repo root: removing them is a halt-boundary act.
+- Worktrees: `git worktree list` = 24 entries (read back at the session 118 /done, after it removed
+  the 6 merged PUBREPO slice worktrees): main + 9 agent (the 2 locked above, the 2 unmerged
+  PUBREPO ones in Session 118 new open items, and a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3,
+  af827986) + 2 drain + rc-lane-queue (session 115, at 687920398) + 11 sidecar lift, the older ones
+  dated 2026-10-05..09 (stale-cleanup candidates). REVIEW for unmerged commits before -D: lift1
+  death-reel (RM-639) / review-player (RM-641) / vod-retention (RM-640), lift2 y45 (Y-45 /
+  RM-568), drain-wave2-tail-backlog (RM-432 ADR-016, RM-229; 13 ahead), drain-wave2-atomic (5
+  ahead), agent worktrees a1f2b1c7, a28bb1b0, a5ae4bf4, abd89ea3, af827986 (kit v6-v8 work; said
+  squashed - unverified), plus the two locked ones above. Second-pass candidates:
+  lift1-death-recap, -event-sse, -item-tape, -obs-record, lift2-y07, -y08, -y11-y13. The 11 lift
+  worktrees sit outside the repo root: removing them is a halt-boundary act. Many
+  worktree-agent-* branches with no worktree also remain (pre-existing; review with git cherry
+  before any -D).
 - Desktop directives EXTERNAL-LIFT-DIRECTIVE.md and -2.md exist; -2 already ingested
   (RM-526..RM-594, Y-05 shipped). Operator APPROVED Y-44 (frozen lcu_client.py) and Y-45.
 - ops/fleet_kit/*.py is ruff-exempt (MAIN owns kit style; fleet_inbox.py uses %-format).
@@ -501,25 +528,28 @@ Carried forward (not acted on yet):
 - WATCH: a future kit version will likely change the /done closing line to "Done ritual processed,
   safe to clear and continue". Do NOT pre-edit the byte-pinned block.
 
-Retired this wrap (with reason): the session 116 Next action (RM-741 / RM-742 / RM-743, then the
-stop-claim gate gaps line) - all DONE (LEDGER 1725-1726; read back above; pushed). The Session 116
-open item "Stop-claim gate gaps, low" - CLOSED by C2 (LEDGER 1726); its out-of-scope residue is
-RM-746. The Session 112 item RM-743 - CLOSED (LEDGER 1725). The Session 111 items RM-741 and
-RM-742 - SHIPPED (LEDGER 1725). The session 116 "shipped - do NOT redo" block - tightened to one
-line under "Session 117 shipped". The old ROADMAP-size line (73707 bytes after session 116) -
-superseded by the 73039-byte line in Session 117 open items. The session 116 Status block -
-replaced below.
-Steers / operator chat in session 117 (as relayed to the /done executor): the checklist and the
-decisions recorded above; no queued Mission Control intent (peek: pending null); steer channel
-empty (no steers pending).
+Retired this wrap (with reason): the session 117 Next action (the PUBREPO ORDER) and its "what it
+asks" block (a-g) - in-tree parts DONE and pushed (LEDGER 1728, read back above); the out-of-tree
+remainder is C1-op. The requirements.lock-is-stale item - CLOSED by PUBREPO e (47a60f465,
+requirements.lock retired). The `merge:` commit-subject conflict (Session 117 "Process" line and
+the old Merge-shape line) - CLOSED by PUBREPO b (f4e97dabf); the Merge-shape line now states the
+new form. The fleet.operatorIdent RISK note - acted on (noreply only, read back). The atlas
+"carry into the next MAIN exchange" instruction - carried in the ONE ANSWER; the fence stays. The
+session 117 Status block and its pending CI lines - replaced below (ci 38830275106 on the session
+117 wrap commit: success).
+Steers / operator chat in session 118 (as relayed to the /done executor): the checklist above; the
+operator replied only "Continue", which is NOT the C1-op confirmation; no queued Mission Control
+intent (peek: pending null); steer channel empty (no steers pending).
 
-Context: ops/fleet_kit/MANIFEST.json version 17; ops/fleet_kit/fleet_subagent_first.py (hook) +
+Context: ops/runtime/pubrepo/operator_batch.sh (gitignored; C1-op); ops/runtime/backup/
+rc-tags-not-on-main-20261015.bundle; docs/releases/v0.1.0.md; docs/_archive/2026-10/
+codeql-triage-2026-10-15.md; docs/_archive/2026-10/_outbound_2026-10-15-2208-from-RC-ANSWER-to-
+MAIN-PUBREPO-in-tree-DONE-3888c9671.md; requirements.in + hashed requirements.txt + install.bat;
+.github/CONTRIBUTING.md item 6 + scripts/precommit_msg_check.py (merge template);
+ops/fleet_kit/MANIFEST.json version 17; ops/fleet_kit/fleet_subagent_first.py (hook) +
 ops/loop/control/subagent_first.{mode,jsonl} (mode `deny`); ops/loop/inbox_tick.py (--pending /
---done; `_process` provenance at enqueue); ops/fleet_kit/fleet_headless.py verify_main (re-run it on
-the PUBREPO note before acting); ops/runtime/inbox_responder_agreement.json (expires 2026-11-01;
-MAIN's outbox + inbox); scripts/precommit_msg_check.py + .githooks/commit-msg (PUBREPO b, the
-`merge:` type); .githooks/pre-push + ops/fleet_kit/fleet_identity.py (fleet.operatorIdent, PUBREPO
-g); requirements.txt / requirements.lock / install.bat (PUBREPO e); README.md (PUBREPO d);
+--done); ops/runtime/inbox_responder_agreement.json (expires 2026-11-01; MAIN's outbox + inbox);
+.githooks/pre-push + ops/fleet_kit/fleet_identity.py (fleet.operatorIdent);
 tools/sibling_name_sweep.py (--pre-push / --scan-file / --explain; BYPASS env
 RC_SIBLING_SWEEP_BYPASS, log ops/runtime/sibling_sweep_bypass.log); tools/sibling_sweep_ci.py (the
 RM-695 self-test child that orphaned in session 114); tools/credential_history_scan.py +
@@ -532,50 +562,40 @@ rationale); core/daemon_slayer_client.py spawn_ds / DsWatchdog `_respawn` (RM-74
 scheduled task RC-DaemonSlayer (docs/OPERATIONS.md row); core/hot_reload.py; core/anthropic_key.py
 (ENV-APIKEY); mc/server.py and agents/_supervisor_http.py; tests/_repo_walk; ops/loop/run_lane.ps1 +
 ops/loop/fleet_route.py; gitignored ops/loop/control/lane_prompts/; gitignored per-host
-ops/local_hosts.json and ops/lane_worktrees.json; ops/moon_sync_repos.json (no MAIN entry). DS
-:8860 pid 22768 (task-owned since session 116), ENGINE 1.287.0, patch 16.20.1.
+ops/local_hosts.json and ops/lane_worktrees.json; ops/moon_sync_repos.json (no MAIN entry; one
+sibling on the wrong drive letter). DS :8860 ENGINE 1.287.0, patch 16.20.1, 173 champions, 706
+items.
 
-Acceptance: PUBREPO - its section 2 done criteria (tag list read back with no tag unreachable from
-main; CodeQL open-HIGH 0 or each dismissed with a reason; open bot PRs 0; fleet.operatorIdent
-noreply-only, read back; README heading present; installer proven in a fresh venv per interpreter;
-committed and pushed), the out-of-tree acts confirmed by the operator in ONE chat line first, then
-ONE ANSWER note delivered (N/M reached) and the inbox row closed with --done. RM-744 - the idle
-post-handshake hold measured, then a bounded request-line / header deadline that keeps the RM-152
-slow-speaker and split-header cases and never reaches long-poll / streamed responses, failing test
-first. RM-745 - a failing test for a bare LF in Host and in the path, then CR / LF stripped or
-rejected. RM-746 - per shape, HEAD measured crediting, failing test first, denied fail closed and
-conjoined (oracle differential stays 0), or a recorded accept decision. Touched test files green;
-a Tier-2 merged wave runs ONE gated suite (output to a file, watched for the session 114 stall
-shape). Operator asks answered or re-batched.
+Acceptance: C1-op - the operator's ONE chat confirm first, then the batch run attended and every
+step read back (remote tags = v0.1.0 only; release v0.1.0 present with the hand-written notes;
+CodeQL open alerts 0; bot PRs open 0; bundle present and hash-equal in the sidecar Backup), the
+read-backs recorded in LEDGER. RM-744 - the idle post-handshake hold measured, then a bounded
+request-line / header deadline that keeps the RM-152 slow-speaker and split-header cases and never
+reaches long-poll / streamed responses, failing test first. RM-745 - a failing test for a bare LF
+in Host and in the path, then CR / LF stripped or rejected. RM-746 - per shape, HEAD measured
+crediting, failing test first, denied fail closed and conjoined (oracle differential stays 0), or
+a recorded accept decision. Touched test files green; a Tier-2 merged wave runs ONE gated suite
+(output to a file, watched for the session 114 stall shape). Operator asks answered or re-batched.
 
-Status (2026-10-15 wrap, session 117): session commits 96a168d3f (RM-741), 251d26a4a (RM-742),
-merges 72b978a43 + 50156109d, docs 421cfed08 (LEDGER 1725) pushed 7e9b82a3a..421cfed08 by the
-merger; C2 stack 463d166c8..de4e75974 (8 commits), merge bd8139e68, docs 22184bfbe (LEDGER 1726)
-pushed 421cfed08..22184bfbe by the merger, both through the git lock. This wrap's commit (LEDGER
-1727, RM-746 filing, WAKEUP_NOTES + prune, this hand-off) is pushed on top of 22184bfbe by the same
-un-bypassed route.
-CI on the session 116 commits: 41a529472 ci / docs-guards / codeql 38776888824 / pages all success
-(codeql re-checked here); 7e9b82a3a ci 38777547743 / docs-guards / codeql / pages success.
-CI on 421cfed08: ci 38811623029 success, codeql 38811623177 success, docs-guards 38811623032
-success, pages success.
-CI on 22184bfbe: GREEN - ci 38829305008 success (watched to the end, exit 0: check job push impact
-slice green; full dual suite step skipped on push, nightly skipped; sibling-sweep-tree green with
-the PARTIAL annotation), docs-guards 38829304994 success, pages 38829304160 success; codeql
-38829305049 still in progress at the write (re-check next session).
-CI on this wrap's commit: pending (not watched; the next session reads it first with gh run list
---branch main --limit 4).
-Local gate this wrap: ruff all passed; hygiene 3 files 14 passed; doc-guard slice (hygiene 3 +
-test_rm_id_registry_drift, test_roadmap_rm_ids_unique, test_roadmap_backlog_disposition_drift,
-test_doc_size_budget, test_citation_drift_guard_rm171, test_drift_guard,
-test_ci_docs_guard_coverage, test_ports) 176 passed + 243 subtests, exit 0; drift_guard 0
-breaches. No whole suite graded (Tier-0 docs at /done; the session's code was Tier-1 per slice, the
-push CI covers it). RC health: pid 18272 alive, last_reload_ok true, fatal_count 0;
-restart_trigger.txt empty; /api/health/all 200; mode_key client (not in game); DS :8860 ok, pid
-22768, 1.287.0 / 16.20.1 / 173 / 706. Session file 2.0 MB. WAKEUP_NOTES pruned to 3 (moved
-session 114; archive 1072). Perseus sync settled=22 memory=536 ledger=1406; --verify active=2039
-embedded=2039. Background work at wrap: none (the main session had none and armed no monitors;
-this executor's CI watch ended before the write). Inbox: ONE pending row (PUBREPO ORDER). Memory:
-one new file, feedback_widen_credit_gate_monotone_not_enumeration (indexed in MEMORY.md). Progress
-dir: 139 files. Worktrees: 22.
+Status (2026-10-16 wrap, session 118): C1 pushed 9240474bc..239d56449 (31 commits) through the git
+lock, pre-push gates clean; read back at this wrap: origin/main = 239d56449, git log @{u}.. empty
+before the wrap commit. CI on 3888c9671: ci 38843915634 success (27m25s, the escalated full dual
+suite), codeql and docs-guards success. CI on a4c65a2b6: codeql 38844007146 success, docs-guards
+38844007160 success. CI on 239d56449: codeql 38845817323 success, docs-guards 38845817266 success,
+pages success (ci skipped by paths-ignore: docs only). CI on the session 117 wrap commit: ci
+38830275106 success. This wrap's commit (WAKEUP_NOTES + prune + this hand-off) is pushed on top of
+239d56449 by the same un-bypassed route; CI on it: pending at the write - the next session reads it
+first (gh run list --branch main --limit 4).
+Local gate this wrap: ruff all passed; hygiene 3 files 14 passed; drift_guard 0 breaches. No whole
+suite graded (Tier-0 docs at /done; C1's code went through per-slice verifiers and the escalated
+CI full suite). RC health: pid 14820 alive, last_reload_ok true, fatal_count 0; restart_trigger.txt
+empty; /api/state mode_key client (not in game); DS :8860 ok, 1.287.0 / 16.20.1 / 173 / 706.
+Session file 1.0 MB. WAKEUP_NOTES pruned to 3 (moved session 115; archive 1073). Perseus sync
+settled=22 memory=536 ledger=1407 sections=52; --verify active=2040 embedded=2040. Background work
+at wrap: none (the main session had none in flight and armed no monitors; this executor armed
+none). Inbox: 0 pending rows. Memory: no new file this session. Progress dir: 149 files.
+Worktrees: 24 (6 merged PUBREPO slice worktrees removed with git worktree remove + git branch -d;
+their ignored files, 100, copied first to ops/runtime/backup/worktree-ignored-s118/). Tags: local
+v0.1.0 only; remote evidence/rm-159-attempt-1 / -2 only (C1-op step 4 deletes them).
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
