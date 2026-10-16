@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-16 - session 118: MAIN ORDER PUBREPO in-tree parts shipped; operator batch waits
+
+- **Shipped (LEDGER 1728), pushed `9240474bc..239d56449` (31 commits), CI ci (escalated full dual suite) / codeql / docs-guards green:** merges `f4e97dabf` (b, `merge:` subjects accepted, agent worktree names refused), `553761a81` + `1c46365f1` (d, README "How this repo is built", Apache-2.0 in both package.json, outsider-read scrub), `47a60f465` (e, hashed `requirements.txt` from `requirements.in`; `requirements.lock` RETIRED), `18a99c3a7` (f, checkout root halts a push in 24/24 drive spellings), `d317d88e3` (Dependabot #13 applied), `0e8a26b20` + `a5cf80472` (g, CodeQL triage), `44a4a3708` (tooltip render fix after a REFUTED render-neutral claim); docs `3888c9671` (v0.1.0 notes; local annotated tag v0.1.0 on it), `a4c65a2b6`, `239d56449`.
+- **Answer:** ONE ANSWER note to MAIN delivered, sha256 prefix 0b639345, reached 1/1; inbox 0 pending.
+- **NOT done - operator batch (halt boundary, one act irreversible):** `sh ops/runtime/pubrepo/operator_batch.sh <sidecar-backup-dir> <owner-id>` - bundle copy off-box, delete the 2 remote evidence/rm-159 tags, push refs/tags/v0.1.0 + `gh release create`, 25 CodeQL dismissals, close bot PRs #11 / #12 / #13. The operator's "Continue" was NOT a confirm.
+- **/done cleanup:** 6 merged PUBREPO slice worktrees removed (`git worktree remove`, `git branch -d`; ignored files copied first to gitignored `ops/runtime/backup/worktree-ignored-s118/`, 100 files). Kept, unmerged: agent-a2f37aa35 (declined electron 44.7.0 bump, PR #12) and agent-ab5640432 (a one-line variant of `1b69193ad`).
+- **Do NOT redo:** PUBREPO a-g in-tree parts; the `merge:` hook conflict and the requirements.lock refresh are closed by b and e.
+- **Next:** operator confirms, then the attended batch; then RM-744, RM-745, RM-746 and the carried items in `RC-NEXT-SESSION.txt`.
+
+---
+
 # 2026-10-15b - session 117: RM-741 / RM-742 shipped, RM-743 closed, stop-claim gate gaps closed
 
 - **Shipped (LEDGER 1725):** RM-741 merge `72b978a43` - the RM-515 import detector in `tests/test_requirements_currency_rm515.py` is an AST walk (comma / semicolon / importlib shapes; 65 passed). RM-742 merge `50156109d` - the :8888 TLS peek / 301 / handshake run off the accept thread under one 5.0 s deadline (`tests/test_dashboard_tls_accept_rm742.py` 10); live `/api/state` 4.80 s / 14.8 s behind 1 / 3 silent clients before, <= 0.020 s after; 301 intact.
@@ -28,15 +39,3 @@
 - **Live:** RC restarted 8 times today 11:57-12:10 local from the session's `tools/` + `tests/` edits (RM-699 class); final pid 15372 alive, kept DS 22768.
 - **Do NOT redo:** the (e) follow-up 1 read-back, RM-740 (f).
 - **Next:** RM-741 / RM-742 / RM-743 (Tier-1 each); RM-740 (e) follow-up 2 (machine log setting - operator, halt boundary) and 3 (child fallback only). ROADMAP is 21 bytes under the drift_guard 90 percent warning - trim to ROADMAP_HISTORY before the next ROADMAP edit.
-
----
-
-# 2026-10-14c - session 115: RM-740 (e) shipped - DS relaunch goes through the RC-DaemonSlayer scheduled task
-
-- **Shipped (LEDGER 1722), two independent verifiers CONFIRMED:** `687920398` - `core/daemon_slayer_client.py` `spawn_ds` (the `DsWatchdog._respawn` path) runs `schtasks /Run /TN RC-DaemonSlayer`; a direct windowless child only when the task is unregistered, schtasks is missing, or the host is not Windows; a task that refuses `/Run` raises (logged, retried after the grace). `tests/test_rm740e_ds_spawn_owner.py` (10), red 7/10 on the parent. OPERATIONS RC-DaemonSlayer row corrected (At boot, SYSTEM, IgnoreNew, restart-on-failure).
-- **Operator:** "continue in a headless driver lane" - C1 ran in the detached headless-queue lane (index 0; driver pythonw -> run_lane -> fleet_route -> claude worker, exit 0), not inline; the main session merged.
-- **Merge:** fast-forward `lane/queue` -> main, pushed `cdbecb390..687920398` through the git lock. RC restarted (pid 18784, alive); DS :8860 1.287.0 / 16.20.1.
-- **CI RED on 687920398, fixed forward at /done (LEDGER 1723):** the push impact slice (ubuntu) failed 2 tests in `tests/test_rm740e_ds_spawn_owner.py` (`0 != 134217728`): the test pinned the Windows `CREATE_NO_WINDOW` literal while `_NO_WINDOW` is 0 off Windows. Asserts now use `dsc._NO_WINDOW`, plus a per-OS `NoWindowFlag` pin; WSL Linux repro red 2/10 before, 12 OK after.
-- **Lesson:** `core/hot_reload.py` had already restarted RC 1.4 s after the fast-forward, so the manual `restart_trigger.txt` restart was a redundant second one - read health.json for a new pid after a merge first. And a Windows-only verifier gate cannot see a Linux-CI red: run new Windows-flag tests under WSL before merging.
-- **Do NOT redo:** the RM-740 (e) owner decision and its test, the CI fix-forward.
-- **Next:** the live RM-740 (e) follow-ups (kill DS once, read back a task-owned relaunch); RM-740 (f) (stop_claim_gate `checkout -f`); then RM-741, RM-742, RM-743.
