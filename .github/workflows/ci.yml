@@ -148,7 +148,7 @@ jobs:
           #
           # HASH-PINNED (supply-chain order, 2026-10-05). .github/ci/requirements-ci.txt
           # is generated from .github/ci/requirements-ci.in, which includes the
-          # root requirements.txt and adds the test-only tools; every package,
+          # root requirements.in and adds the test-only tools; every package,
           # transitives included, carries an exact pin and its sha256, and pip
           # refuses anything else. The regeneration command is in the .in
           # header. The old `pip install --upgrade pip` line is gone: it was an
@@ -351,7 +351,7 @@ jobs:
           #
           # HASH-PINNED (supply-chain order, 2026-10-05): the same hashed set as
           # nightly-full-suite above - .github/ci/requirements-ci.txt, generated
-          # from .github/ci/requirements-ci.in (root requirements.txt + the
+          # from .github/ci/requirements-ci.in (root requirements.in + the
           # test-only tools), installed with --require-hashes. The regeneration
           # command is in the .in header. `pip install --upgrade pip` is gone
           # for the same reason as above.
@@ -365,12 +365,14 @@ jobs:
           pip install --require-hashes -r .github/ci/requirements-ci.txt
           python -c "import yaml, pytest, xdist, pytest_timeout, pytest_asyncio, mypy"
 
-      # The runtime pins live in requirements.txt; CI installs the HASHED copy
+      # The runtime pins live in requirements.in (PUBREPO e: requirements.txt
+      # is the hashed lock generated from it); CI installs its own HASHED set
       # in .github/ci/. A bump that edits one and not the other (a partial
       # Dependabot PR, a hand edit without the regeneration command) would let
       # CI test a different version than the box runs. Fail that here, in the
-      # first minute, naming the package.
-      - name: hashed CI install sets agree with requirements.txt
+      # first minute, naming the package. (requirements.in vs requirements.txt
+      # is guarded by tests/test_requirements_hashed_lock_pubrepo_e.py.)
+      - name: hashed CI install sets agree with requirements.in
         run: |
           python - <<'PY'
           import pathlib, re, sys
@@ -381,17 +383,17 @@ jobs:
                   if m:
                       out[re.sub(r"[-_.]+", "-", m.group(1)).lower()] = m.group(2)
               return out
-          root = pins("requirements.txt")
-          assert root, "requirements.txt yielded no pins - the parser is wrong, not the file"
+          root = pins("requirements.in")
+          assert root, "requirements.in yielded no pins - the parser is wrong, not the file"
           bad = []
           for hashed in sorted(pathlib.Path(".github/ci").glob("requirements-*.txt")):
               got = pins(hashed)
               for name, ver in sorted(root.items()):
                   if name in got and got[name] != ver:
-                      bad.append(f"{hashed}: {name}=={got[name]} but requirements.txt pins {ver}")
+                      bad.append(f"{hashed}: {name}=={got[name]} but requirements.in pins {ver}")
               if hashed.name == "requirements-ci.txt":
-                  bad += [f"{hashed}: missing {n} (it installs requirements.txt)" for n in sorted(root) if n not in got]
-          print("\n".join(bad) or "hashed CI install sets agree with requirements.txt")
+                  bad += [f"{hashed}: missing {n} (it installs requirements.in)" for n in sorted(root) if n not in got]
+          print("\n".join(bad) or "hashed CI install sets agree with requirements.in")
           sys.exit(1 if bad else 0)
           PY
 

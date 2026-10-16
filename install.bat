@@ -45,7 +45,7 @@ if %errorlevel% neq 0 (
     echo  [FAIL] Python not found. No embedded runtime and no system Python on PATH.
     echo.
     echo  Option B ^(recommended^): ensure python-embed\ is present in this folder.
-    echo  Option A ^(fallback^): install Python 3.10+ from https://python.org/downloads
+    echo  Option A ^(fallback^): install Python 3.12+ from https://python.org/downloads
     echo.
     echo  [FAIL] Step 1 - Python not found >> "%LOG_FILE%"
     set ERRORS=1
@@ -65,6 +65,11 @@ echo [2/6] Checking required packages ^(anthropic, Pillow^)...
 echo       This may take a moment on first install...
 
 set PIP_LOG=%~dp0logs\_pip_install.tmp
+
+:: requirements.txt is a HASHED lock generated from requirements.in (header of
+:: either file has the command), resolved for Python 3.11 (python-embed) up
+:: to 3.14. Every line carries --hash, so pip runs in hash-checking mode and
+:: refuses any package file whose sha256 is not listed.
 
 if "%OPTION_B%"=="1" (
     :: Option B: packages are pre-installed in embedded runtime

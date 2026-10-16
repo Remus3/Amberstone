@@ -132,7 +132,7 @@ jobs:
           # .github/ci/requirements-docs-guards.txt is generated from the .in
           # beside it (regeneration command in its header) and installed with
           # --require-hashes. pydantic now follows the runtime pin in
-          # requirements.txt instead of floating at ">=2.0". The old
+          # requirements.in instead of floating at ">=2.0". The old
           # `pip install --upgrade pip` line is gone: an unpinned download of
           # the installer itself, and the runner's pip already supports
           # --require-hashes.
