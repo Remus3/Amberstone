@@ -174,6 +174,46 @@ def _drive_letter(path_text: str):
     return None
 
 
+class _HostPin:
+    """The per-host fixture value, with a repr that withholds every field.
+
+    pytest renders a fixture value on a local failure (``--showlocals``, and
+    the sub-expressions of a failed assert). The fields here are the sibling
+    names, the sibling roots and config source inside ``cfg``, this host's
+    drive letters and RC's own checkout name, so the repr carries counts only.
+    The asserts below also bind counts to locals before asserting, so a
+    failure never renders ``cfg`` (a plain dataclass) either.
+    """
+
+    __slots__ = ("cfg", "letters", "rc_name")
+
+    def __init__(self, cfg, letters, rc_name: str) -> None:
+        self.cfg = cfg
+        self.letters = frozenset(letters)
+        self.rc_name = rc_name
+
+    def __repr__(self) -> str:
+        return (f"<_HostPin: {len(self.cfg.names)} sibling name(s), "
+                f"{len(self.letters)} drive letter(s); values withheld>")
+
+    __str__ = __repr__
+
+
+def test_host_pin_repr_withholds_every_per_host_value():
+    """Config-free proof: no field value reaches repr() or str()."""
+    root = _SYNTH_LETTERS[1] + _COLON + "/" + "Pin Secret Root"
+    secrets = ("PinSecretSibling", root, "PinSecretCode", "PinSecretRc")
+    cfg = sweep.SweepConfig(mode=sweep.MODE_ARMED, names=(secrets[0],),
+                            codes=(secrets[2],), participants={"S": root},
+                            source=root + "/cfg.json", detail="read " + root)
+    pin = _HostPin(cfg, _SYNTH_LETTERS, secrets[3])
+    shown = repr(pin) + "|" + str(pin) + "|" + f"{pin!r}"
+    leaked = [index for index, value in enumerate(secrets) if value in shown]
+    assert leaked == []
+    assert (_COLON + "/") not in shown
+    assert "1 sibling name(s), 2 drive letter(s)" in shown
+
+
 @pytest.fixture(scope="module")
 def host():
     """Roots and drive letters from the gitignored per-host config.
@@ -188,7 +228,9 @@ def host():
     if not config_path.exists():
         pytest.skip("no per-host ops/moon_sync_repos.json on this machine (fresh clone / CI)")
     cfg = sweep.load_config(root=ROOT, env={})
-    assert cfg.mode == sweep.MODE_ARMED, cfg.detail
+    mode = cfg.mode
+    # The detail can name the config path, so the message carries the mode only.
+    assert mode == sweep.MODE_ARMED, "per-host sibling config present but not armed"
     blob = json.loads(config_path.read_text(encoding="utf-8"))
     paths = [str(p) for p in (blob.get("repos") or [])]
     paths += [str(p) for p in (blob.get("participants") or {}).values()]
@@ -206,42 +248,46 @@ def host():
     rc_letter = _drive_letter(str(rc_resolved))
     if rc_letter:
         letters.add(rc_letter)
-    return {"cfg": cfg, "letters": letters, "rc_name": rc_resolved.name}
+    return _HostPin(cfg, letters, rc_resolved.name)
 
 
 def test_host_pin_is_not_vacuous(host):
     """Config present means the pin must have something to pin."""
-    assert len(host["letters"]) >= 2, (
+    n_letters = len(host.letters)
+    assert n_letters >= 2, (
         "the per-host config is present but yields fewer than two drive "
         "letters, so no second spelling was exercised"
     )
-    assert len(host["cfg"].names) >= 1
-    assert host["rc_name"]
+    n_names = len(host.cfg.names)
+    assert n_names >= 1
+    has_rc_name = bool(host.rc_name)
+    assert has_rc_name
 
 
 def test_every_sibling_root_halts_the_needle_drive_arm_in_both_spellings(host):
-    cfg = host["cfg"]
+    cfg = host.cfg
     needles = sweep.build_needles(cfg)
     sweep.assert_non_vacuous(needles)
     checked = 0
     missed = []
     for slot, name in enumerate(cfg.names):
-        for label, text in _spellings(host["letters"], name):
+        for label, text in _spellings(host.letters, name):
             found = sweep.scan_text(needles, cfg.codes, "see " + text + " here\n",
                                     path="probe.txt", source="TEST", status="A")
             mine = [f for f in found if f.slot == slot]
             if not any(f.shape.startswith(sweep.SHAPE_DRIVE) for f in mine):
                 missed.append(f"slot {slot} {label}")
             checked += 1
-    assert checked == len(cfg.names) * 12 * len(host["letters"])
+    want = len(cfg.names) * 12 * len(host.letters)
+    assert checked == want
     assert missed == [], missed
 
 
 def test_every_sibling_root_with_a_subpath_halts_the_structural_arm(host):
     """The config-free arm also sees both spellings of a sibling root."""
     missed = []
-    for slot, name in enumerate(host["cfg"].names):
-        for label, text in _spellings(host["letters"], name):
+    for slot, name in enumerate(host.cfg.names):
+        for label, text in _spellings(host.letters, name):
             if not label.endswith("/sub"):
                 continue
             found = sweep.structural_findings("see " + text + " here\n",
@@ -253,9 +299,12 @@ def test_every_sibling_root_with_a_subpath_halts_the_structural_arm(host):
 
 def test_rc_root_halts_the_leak_gate_in_both_spellings(host):
     checkout_paths = chs.checkout_leak_paths(ROOT)
-    assert checkout_paths, "no checkout spelling resolved for this tree"
-    forms = _spellings(host["letters"], host["rc_name"])
-    assert len(forms) == 12 * len(host["letters"])
+    n_paths = len(checkout_paths)
+    assert n_paths, "no checkout spelling resolved for this tree"
+    forms = _spellings(host.letters, host.rc_name)
+    n_forms = len(forms)
+    want = 12 * len(host.letters)
+    assert n_forms == want
     missed = [
         label
         for label, text in forms
@@ -267,9 +316,9 @@ def test_rc_root_halts_the_leak_gate_in_both_spellings(host):
 
 def test_a_push_adding_the_rc_root_under_any_host_drive_letter_halts(host, repo, capsys):
     checkout_paths = chs.checkout_leak_paths(ROOT)
-    for index, letter in enumerate(sorted(host["letters"])):
+    for index, letter in enumerate(sorted(host.letters)):
         base = _git(repo, "rev-parse", "HEAD")
-        spelled = letter + _COLON + _BS + host["rc_name"] + _BS + "ops"
+        spelled = letter + _COLON + _BS + host.rc_name + _BS + "ops"
         _commit(repo, f"docs/N{index}.md", "cd " + spelled + "\n")
         # Bound to a local first: asserting on the call directly makes pytest
         # render its arguments, which are this host's real checkout spellings.
@@ -277,4 +326,5 @@ def test_a_push_adding_the_rc_root_under_any_host_drive_letter_halts(host, repo,
         assert rc == chs.EXIT_HALT, f"drive{index}"
         err = capsys.readouterr().err
         assert "class=checkout_path" in err
-        assert host["rc_name"] not in err
+        leaked = host.rc_name in err
+        assert not leaked, f"drive{index}: the checkout name reached the report"

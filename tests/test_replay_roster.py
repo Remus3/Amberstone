@@ -83,7 +83,7 @@ def test_an_ascii_riot_id_keeps_its_plain_slug():
     # The guard must NOT rename directories that already hold pulled replays.
     # never_type-1998 exists on disk with 5 files in it; adding a digest here
     # would orphan them.
-    assert rr.player_slug("blaberfish2", "NA1") == "blaberfish2-NA1"
+    assert rr.player_slug("OtherPlayer", "NA1") == "OtherPlayer-NA1"
     assert rr.player_slug("never type", "1998") == "never_type-1998"
     assert rr.player_slug("Big Daddy", "NA 1") == "Big_Daddy-NA_1"
 
