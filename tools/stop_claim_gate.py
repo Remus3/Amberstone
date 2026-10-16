@@ -43,6 +43,7 @@ that was measured; it is now exit 0 plus one stdout JSON line, which is also
 unmeasured under pythonw, so the reasoning stands.)
 """
 import argparse
+import bisect
 import hashlib
 import itertools
 import json
@@ -1578,6 +1579,8 @@ _ARG_REDIRECT = re.compile(r"[\d*]?[<>]")
 # Shell word separators: a space or a tab only, so any other whitespace stays
 # inside a token and fails the allowlist.
 _ARG_SPLIT = re.compile(r"[ \t]+")
+_WORD_RUN = re.compile(r"[^ \t]+")  # one word, as _ARG_SPLIT separates them
+_STATEMENT_SEP = re.compile(r"[|;&\n]")  # what ends a git statement's arguments
 # Orchestrator ruling (s117), after the verifier refuted 4766ed062: git takes
 # any unique prefix of a long option (measured: `--orph` is --orphan), so a
 # checkout / stash keeps credit only in an EXACT grammar with EXACT option
@@ -1785,10 +1788,21 @@ def _stash_keeps(tokens):
 
 def _git_subcommand_unresolved(stripped):
     """True when a `git` in STRIPPED runs a subcommand the command line cannot
-    name (`git "reset" --hard`, `git $SUB`): it may be any dropper."""
+    name (`git "reset" --hard`, `git $SUB`): it may be any dropper.
+
+    Linear (round 8): the statement breaks are found once, and each `git`
+    reads its words lazily up to its subcommand, which stops at the next
+    non-option word (at the latest the next `git`), so no word is read twice
+    by two `git`s. (It used to re-split the rest of the command for every
+    `git`: `"git " * 15000` took about 70 s.)"""
+    breaks = [m.start() for m in _STATEMENT_SEP.finditer(stripped)] + [len(stripped)]
     for match in _GIT_WORD.finditer(stripped):
+        end = breaks[bisect.bisect_left(breaks, match.end())]
         value_next = False
-        for token in _args(re.split(r"[|;&\n]", stripped[match.end():], maxsplit=1)[0]):
+        for word in _WORD_RUN.finditer(stripped, match.end(), end):
+            token = word.group(0)
+            if _ARG_REDIRECT.match(token) or token.startswith("#"):
+                break  # as _args: a redirection or a comment ends the words
             if value_next:
                 value_next = False
                 continue
@@ -1885,6 +1899,12 @@ def _staged_merge_step(found, command, output):
     The step reads COMMAND with each quoted literal kept as a word
     (_step_command), so a quoted pathspec after `--` still reads as one."""
     pre_f_credit = _pre_f_staged_step(found, strip_command_noise(command), output)
+    if len(command) > COMMAND_PARSE_MAX:
+        # Fail closed (round 8): a command this long is not parsed, so it
+        # backs no staged merge and clears one staged earlier (it may hold a
+        # reset). The pre-(f) step above still ran, keeping its state exact.
+        found["staged_merge"] = False
+        return
     stripped = _step_command(command)
     if _merge_aborted(stripped):
         found["staged_merge"] = False

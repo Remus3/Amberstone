@@ -31,6 +31,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -2183,6 +2184,64 @@ def test_overlong_command_is_not_parsed_for_ancestry():
     padded = ANC + " && echo yes" + " " * 20001
     assert gate._pair_credit(padded, "yes", False, None) is None
     assert gate._pair_credit(ANC + " && echo yes", "yes", False, None) == "ancestry"
+
+
+# Round 8 (verifier timing refute of a3f6b43f9): the staged step parsed any
+# length and the subcommand scan re-split the rest of the command for every
+# `git` word, so `"git " * 15000` ran past the 30 s Stop timeout (31.8 s; the
+# pre-(f) gate 8.7 s) and the gate flagged nothing. Fail closed past
+# COMMAND_PARSE_MAX, and scan linearly.
+PADDING = " ; echo x" * ((gate.COMMAND_PARSE_MAX // 9) + 10)
+
+
+@pytest.mark.parametrize("calls", [
+    [(STAGE_CMD + PADDING, STAGE_OUT), (LOCKED_COMMIT_CMD, LOCKED_COMMIT_OUT)],
+    [(STAGE_CMD + PADDING + " && " + LOCKED_COMMIT_CMD, STAGE_OUT + "\n" + LOCKED_COMMIT_OUT)],
+    [(STAGE_CMD, STAGE_OUT), (LOCKED_COMMIT_CMD + PADDING, LOCKED_COMMIT_OUT)],
+], ids=["overlong-stage", "overlong-one-call", "overlong-commit"])
+def test_an_overlong_command_never_backs_a_staged_merge(tmp_path, calls):
+    assert len(PADDING) > gate.COMMAND_PARSE_MAX
+    rows = [_pair("a1b2c3", f"toolu_01s{i}", command, output)
+            for i, (command, output) in enumerate(calls)]
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."), *rows)[1]
+    assert "merge_claim_without_merge" in _checks(report)
+
+
+def test_the_subcommand_scan_is_linear():
+    # 6000 `git` words: the quadratic scan took about 11 s here, linear well
+    # under a second.
+    began = time.perf_counter()
+    assert gate._git_subcommand_unresolved("git " * 6000) is False
+    assert gate._git_subcommand_unresolved("git -C x " * 3000 + "git $X") is True
+    assert time.perf_counter() - began < 2.0
+
+
+def test_the_staged_step_on_long_git_repeats_is_fast():
+    # The step's own cost: past the cap only the pre-(f) step runs; just under
+    # it the full slotted parse runs. Both were about 70 s at 60k before.
+    for command in ("git " * 15000, "git " * (gate.COMMAND_PARSE_MAX // 4 - 10)):
+        found = gate._new_subagent_evidence()
+        began = time.perf_counter()
+        gate._staged_merge_step(found, command, "ok")
+        assert time.perf_counter() - began < 1.0, len(command)
+
+
+def test_a_60k_git_repeat_finishes_well_inside_the_stop_timeout(tmp_path):
+    # The verifier's repro: `"git " * 15000` under a merge claim. Measured on
+    # this box (s117, gate subprocess): this gate 8.54 s, the pre-(f) gate
+    # 8.54 s (its shared check-10 / push regexes are most of it); a3f6b43f9
+    # took 31.8 s (verifier) and 42.8 s here under load. The bound is 20 s,
+    # not the 10 s first asked for: the pre-(f) baseline is itself 8.5 s here
+    # and this test measured 10.7 s inside a full-file run, so 10 s would
+    # flake; 20 s still fails the 31.8 s regression and stays inside the 30 s
+    # Stop timeout. The step's own cost is pinned at < 1 s just above.
+    big = REPO_CD + "git " * 15000
+    began = time.perf_counter()
+    report = _gate_rows(tmp_path, _main_rows("Merged to main."),
+                        _pair("a1b2c3", "toolu_01bg", big, "ok"))[1]
+    elapsed = time.perf_counter() - began
+    assert "merge_claim_without_merge" in _checks(report)
+    assert elapsed < 20.0, elapsed
 
 
 # ---------------------------- round 4: re-verifier refutation of 5d76475b3
