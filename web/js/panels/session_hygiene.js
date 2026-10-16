@@ -23,6 +23,8 @@
 // outside renderSessionHygiene(), degraded text on error (never a raw error
 // string - repo Error-Handling rule).
 
+import { escHtml } from '../lib/helpers.js';
+
 const _MOUNT = 'session-hygiene-card';
 const _TTL_MS = 5 * 60 * 1000;
 let _cache = null;
@@ -39,9 +41,11 @@ const _FACTOR_LABEL = {
   requeue: 'Same-champ requeue',
 };
 
+// Escape via the shared 5-char helper: the output lands in double-quoted
+// title= attributes as well as text, so quotes must be escaped too (CodeQL
+// js/incomplete-html-attribute-sanitization).
 function _esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escHtml(s);
 }
 
 // Readiness is 0-100 (higher = a better time to queue). >=55 favorable,
@@ -246,5 +250,5 @@ export function _resetSessionHygiene() {
 
 export const __test = {
   _readinessClass, _confClass, _deltaClass, _fmtDelta, _factorRow, _tiltStrip,
-  sessionHygieneHtml, _signature, _FACTOR_LABEL, _state, _flagRow,
+  sessionHygieneHtml, _signature, _FACTOR_LABEL, _state, _flagRow, _esc,
 };

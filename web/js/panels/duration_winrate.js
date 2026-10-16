@@ -31,6 +31,7 @@
 // mode text on error (never a raw error string - repo Error-Handling rule).
 
 import { CHAMPS } from '../lib/items_index.js';
+import { escHtml } from '../lib/helpers.js';
 
 const _MOUNT = 'bi-duration-mount';
 const _MODES = ['aram', 'sr', 'arena'];
@@ -52,9 +53,11 @@ function _isMock() {
   catch (_e) { return false; }
 }
 
+// Escape via the shared 5-char helper: the output lands in double-quoted
+// value= attributes (champion picker) as well as text, so quotes must be
+// escaped too (CodeQL js/incomplete-html-attribute-sanitization).
 function _esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escHtml(s);
 }
 
 function _key(mode, champ) {
@@ -279,3 +282,6 @@ export function renderDurationWinrate() {
     .catch(() => { _degraded(); })
     .finally(() => { _INFLIGHT[key] = false; });
 }
+
+// Test seam (web/js/panels/codeql_js_hardening.test.mjs).
+export const __test = { _esc, _champPicker };

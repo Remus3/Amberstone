@@ -571,7 +571,53 @@ _WEB = _REPO_ROOT / "web"
 # b47d2f6f5 blob (the DDRAGON_FALLBACK_VERSION literal 16.20.1 -> 16.19.1)
 # reproduces the superseded 472be5a8... value EXACTLY. That one path is the
 # whole change. No glyph change.
-_LIVE_HALF_DIGEST = "010f94d1c878f49ea3cf6167d370ccb600a925a9d042e448f52daa53e6e91ad6"
+# superseded by the PUBREPO 1g re-capture below: "010f94d1c878f49ea3cf6167d370ccb600a925a9d042e448f52daa53e6e91ad6"
+#
+# RE-CAPTURED 2026-10-15 at PUBREPO 1g (CodeQL JavaScript alerts, session 118
+# C1 slice cq-js), base 9240474bc. Ordinary case, no tokeniser change.
+# ATTRIBUTED BY SUBSTITUTION: swapping exactly these paths back to their
+# 9240474bc blobs (and dropping the new test file) reproduces the superseded
+# 010f94d1... value EXACTLY: web/js/panels/{champ_benchmarks,duration_winrate,
+# op_score,patch_impact,perf_curve,playstyle_labels,session_hygiene}.js and
+# web/js/panels/codeql_js_hardening.test.mjs (new). Those paths are the whole
+# change. No glyph change.
+# superseded by the PUBREPO 1g stripper re-capture below: "eaaec13b12598e164a5fd2089e49d142e64969bc14614e1a8fe8d2553a1af7c5"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g second commit (tag strippers + LoL
+# tooltip cleaner). ATTRIBUTED BY SUBSTITUTION against the previous commit:
+# swapping exactly web/js/lib/{helpers,lol_descriptions,items_index}.js,
+# web/js/panels/build_insights.js, web/js/main.js and
+# web/js/panels/codeql_js_hardening.test.mjs back reproduces eaaec13b...
+# EXACTLY. No glyph change.
+# superseded by the PUBREPO 1g xss-sink re-capture below: "e917b4bceb4b0c14faf05114b485792c2c34e5ce39829d6c95f430d4fd208553"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g third commit (js/xss sinks).
+# ATTRIBUTED BY SUBSTITUTION against the previous commit: swapping exactly
+# web/js/panels/{augment_reco,coach_choices,champ_select}.js back and dropping
+# the new web/js/panels/codeql_xss_sinks.test.mjs reproduces e917b4bc...
+# EXACTLY. No glyph change.
+# superseded by the PUBREPO 1g tooltip-sink re-capture below: "53495e17ffef036574acb9538f45df11b4b34a7b611a9dcc1ceff0c573983c33"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g fourth commit (tooltip sink).
+# ATTRIBUTED BY SUBSTITUTION against the previous commit: swapping exactly
+# web/js/lib/helpers.js, web/js/main.js and
+# web/js/panels/codeql_js_hardening.test.mjs back reproduces 53495e17...
+# EXACTLY. No glyph change.
+# superseded by the PUBREPO 1g champion_tags / legacy re-capture below: "29563cd6b10281f450243c6055cc59c85f8c93a74023c3001e441f9a90cb2690"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g fifth commit (champion_tags variant
+# keys + legacy_index.html dedupe-key strip). ATTRIBUTED BY SUBSTITUTION
+# against the previous commit: swapping exactly web/js/lib/champion_tags.js,
+# web/legacy_index.html and web/js/panels/codeql_js_hardening.test.mjs back
+# reproduces 29563cd6... EXACTLY. No glyph change.
+# superseded by the PUBREPO 1g title-row fix-up re-capture below: "8c19101b6a11f9f8707433eeb37282ed238a702a606a956dc7ed6265519b94cb"
+#
+# RE-CAPTURED 2026-10-15, PUBREPO 1g seventh commit (verifier fix-up: the
+# item title row of DDragon items 3901-3903). ATTRIBUTED BY SUBSTITUTION
+# against the previous commit: swapping exactly web/js/lib/lol_descriptions.js
+# and web/js/panels/codeql_js_hardening.test.mjs back reproduces 8c19101b...
+# EXACTLY. No glyph change.
+_LIVE_HALF_DIGEST = "c0fb54b2ac48df4d851f16015c6415fc444bfa6a7e9cd1638403d2197960cf05"
 
 
 def _web_sources() -> list[Path]:

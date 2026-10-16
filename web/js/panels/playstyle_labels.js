@@ -21,6 +21,8 @@
 // only, single cache + TTL, inflight guard, sig-dedup, no DOM writes outside
 // renderPlaystyleLabels(), degraded text on error.
 
+import { escHtml } from '../lib/helpers.js';
+
 const _MOUNT = 'playstyle-labels-card';
 const _TTL_MS = 5 * 60 * 1000;
 const _MAX_ROWS = 12;   // keep the card glanceable; note when truncated
@@ -43,9 +45,11 @@ const _TAG_TONE = {
   'high-variance': 'pl-bad',
 };
 
+// Escape via the shared 5-char helper: the output lands in double-quoted
+// title= attributes as well as text, so quotes must be escaped too (CodeQL
+// js/incomplete-html-attribute-sanitization).
 function _esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escHtml(s);
 }
 
 function _tagTone(tag) {
@@ -163,5 +167,5 @@ export function _resetPlaystyleLabels() {
 
 export const __test = {
   _tagTone, _wrClass, _labelChip, _champRow, playstyleLabelsHtml, _signature,
-  _MAX_ROWS, _TAG_TONE,
+  _MAX_ROWS, _TAG_TONE, _esc,
 };
