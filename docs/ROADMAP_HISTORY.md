@@ -1,5 +1,16 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-17 - size-budget relocation (session 120 /done), 1 row
+
+`ROADMAP.md` sat at 73341 bytes at 7aaf8541e, 387 bytes under
+`tools/drift_guard.py`'s 90 percent line (73728 of 81920), and session 120
+had to file RM-752. The row below was already CLOSED (won't-fix, LEDGER
+1735, `7aaf8541e`), pointing at its own BACKLOG body; it moves here VERBATIM
+as it stood at 7aaf8541e. `ROADMAP.md` keeps a one-line stub naming the id
+literally.
+
+- **[x] RM-746 CLOSED WON'T-FIX s120 (Tier-1, low, filed session 117 /done, LEDGER 1727): `tools/stop_claim_gate.py` staged-merge credit has nine known pre-existing blind spots (git aliases, `--work-tree`, quote smuggling, `rm -f .git/MERGE_HEAD`, `update-ref -d MERGE_HEAD`, fake git on PATH, `python -c`, `bash <<EOF`, `sh -c`), out of scope for session 117 C2.** Body in `BACKLOG.md` "Session 117 filings". Session 119: rounds 1 (`65948d418`) and 2 (`e8974f331`) on branch `worktree-agent-a14e007f9937d670d` REFUTED, not shipped (LEDGER 1732). Decision s120: closed won't-fix; main's gate stays. Alternatives: one final round 3 of shell-shape regex widening. Why: the round-2 probe measured 15 of 88 legitimate commands losing credit and 12 bypass gaps still credited; a third regex round repeats the five-round leak pattern (cap the rounds, fall back to deny-all). Reverses if: the gate gains a real shell parser with measured coverage, or a false staged-merge credit is observed in a real session. The branch and worktree are removed (ignored files to the Recycle Bin); the six commits stay reachable at the LOCAL tag `archive/rm746-r2` (`3ffdd6baf`, never pushed); the probes stay in gitignored `ops/runtime/rm746/`.
+
 ## 2026-10-16 - size-budget relocation (session 119 /done), 5 rows
 
 `ROADMAP.md` sat at 91 percent of its 81920-byte budget (74316 bytes at
