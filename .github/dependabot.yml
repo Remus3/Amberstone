@@ -61,9 +61,10 @@ updates:
     # target would reopen the PR one release lower. A release above a range
     # still opens a PR. Drop an entry when its hold lifts.
     ignore:
-      # PR #11: held until RM-681 (live call per path + truststore) closes.
+      # PR #11 (1.13.0) and PR #17 (1.14.0, declined 2026-10-17): held until
+      # RM-681 (live call per path + truststore) closes.
       - dependency-name: "anthropic"
-        versions: [">1.11.0,<=1.13.0"]
+        versions: [">1.11.0,<=1.14.0"]
       # PR #11: wait for a change that also upgrades the RC runtime.
       - dependency-name: "json5"
         versions: [">0.15.0,<=0.17.3"]
@@ -86,10 +87,14 @@ updates:
     groups:
       npm:
         patterns: ["*"]
-    # Declined bump, same range rule as the pip entry above.
+    # Held bump. Not the pip range rule: the hold covers EVERY electron above
+    # 44.5.1, so a range would reopen a PR for each weekly 44.x patch.
     ignore:
-      # PR #12 (44.7.0) and PR #14 (44.7.1, declined 2026-10-17): rc-shell
-      # stays on electron 44.5.1 (the attended E1 shell check, LEDGER 1697)
-      # until the next attended E1 check on a newer one.
+      # PR #12 (44.7.0), PR #14 (44.7.1) and PR #16 (44.7.2), all declined:
+      # rc-shell stays on electron 44.5.1 (the attended E1 shell check,
+      # LEDGER 1697) until the next attended E1 check on a newer one. Minor
+      # and patch updates are ignored; a new major still opens a PR. Security
+      # alerts are not governed by this file. Drop the entry when the hold
+      # lifts.
       - dependency-name: "electron"
-        versions: [">44.5.1 <=44.7.1"]
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
