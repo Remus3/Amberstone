@@ -4,9 +4,9 @@ annotated-types==0.8.0 \
     --hash=sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7 \
     --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
     # via pydantic
-anthropic==1.11.0 \
-    --hash=sha256:3906fabac7ad7b5b46c6186040398fc7826885c77ce34e4dd7849de16fc8d0f8 \
-    --hash=sha256:52f97b2c485cca7ac66058374f5073a3febb7e6849b16989c145d602a3efee21
+anthropic==1.14.0 \
+    --hash=sha256:abd787048378abfabeebbad917ae0f9eae1eb4dfaa0a754096b5eea02dcf8c12 \
+    --hash=sha256:d9284895864a8457ed87f0accc51fd488ad9743952e597c814e7dc9d78ac8e38
     # via -r ../../requirements.in
 anyio==4.15.1 \
     --hash=sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101 \
@@ -589,6 +589,10 @@ opencv-python==5.0.0.93 \
     --hash=sha256:f8b6d0a212253dd26ad338c812f1f23ca118fdf05a9c8c6b9444f161aa8c5881 \
     --hash=sha256:f90ba04b8f73bc5c3814037699739f0156f597338a98f05956c684e7c3ca10d2
     # via -r ../../requirements.in
+opentelemetry-api==1.45.1 \
+    --hash=sha256:aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75 \
+    --hash=sha256:b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb
+    # via anthropic
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
@@ -686,15 +690,15 @@ pillow==12.3.0 \
     --hash=sha256:fe3cca2e4e8a592be0f269a1ca4835c25199d9f3ce815c8491048f785b0a0198 \
     --hash=sha256:ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7
     # via -r ../../requirements.in
-playwright==1.63.0 \
-    --hash=sha256:1e4a3a838ce22fb68ad17193fcd142a19610d9d70fb9966d2239f5dddc0cc05b \
-    --hash=sha256:2f9a707a6c6c91157ed77bff2b8caeb04b3c8d46e70d585fc134298cbe4b5cc6 \
-    --hash=sha256:354e15b29503565fc598b89f16fbe070459343bef9d7498a93e304864000c6a7 \
-    --hash=sha256:660c00c62639e31b16700ba5456b351ddba55bb766b7ce8261223aa34928e482 \
-    --hash=sha256:84c540759e8e7f01e690e197e04060f48899d37cea322299f255843273d3385d \
-    --hash=sha256:ad21bc07516b187965a7521c5cf0df0bd657b17482eaad74335272d35a2b07de \
-    --hash=sha256:c89fc4736502a1f0fac2c8ca5d10c0cbc1c669f1f4774a2d8507a43140e4d53f \
-    --hash=sha256:fd1aa00631d44d55e56e0975bf3f3f285fac4a9fd2813183f0c12a488f1a1b24
+playwright==1.64.0 \
+    --hash=sha256:2c14d105548876b15bea5e7eca77bf0d8ff4ba0c607c1ae931067f3d1b010369 \
+    --hash=sha256:5a59af1b230b234008524a5d42b613b233d4256f73bc1dd25bf3f11db0c81b75 \
+    --hash=sha256:61e4e0801bfd76b30e04635aaec45647df707881ccf14382471fcb0eaeb1d16f \
+    --hash=sha256:727d20be6a0884e946b2471774dd960ec95519ba533e61329038526d9aea9a23 \
+    --hash=sha256:8b9f18dc1c23143ac0a5b3c59015db30e9413cc52e1ddddfc2836a7fbad7165a \
+    --hash=sha256:8de42430e9a7c8b04ec963856d484d36ffd452882318ebad2df3e6fb49a8197a \
+    --hash=sha256:97a5c247f1130f3343f097caf3bb1e79358d6b6cfa3550d97ecd721d1905911a \
+    --hash=sha256:d76a501c9930b5a097b00e2448cda2200122a1e8e4be762ff535c1b076277737
     # via -r requirements-ci.in
 pluggy==1.6.0 \
     --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
@@ -995,6 +999,7 @@ typing-extensions==4.16.0 \
     #   anthropic
     #   anyio
     #   mypy
+    #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   pyee
