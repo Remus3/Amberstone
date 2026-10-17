@@ -212,8 +212,10 @@ def _self_signed(tmp_path):
 def _tls_server(tmp_path):
     cert_path, key_path = _self_signed(tmp_path)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)      # start_dashboard's shape
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
     cctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    cctx.minimum_version = ssl.TLSVersion.TLSv1_2
     cctx.load_verify_locations(cafile=str(cert_path))
     srv = server._DualProtocolHTTPServer((_HOST, 0), Handler, ssl_ctx=ctx)
     return srv, cctx
