@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-16 - session 118: MAIN ORDER PUBREPO in-tree parts shipped; operator batch waits
+
+- **Shipped (LEDGER 1728), pushed `9240474bc..239d56449` (31 commits), CI ci (escalated full dual suite) / codeql / docs-guards green:** merges `f4e97dabf` (b, `merge:` subjects accepted, agent worktree names refused), `553761a81` + `1c46365f1` (d, README "How this repo is built", Apache-2.0 in both package.json, outsider-read scrub), `47a60f465` (e, hashed `requirements.txt` from `requirements.in`; `requirements.lock` RETIRED), `18a99c3a7` (f, checkout root halts a push in 24/24 drive spellings), `d317d88e3` (Dependabot #13 applied), `0e8a26b20` + `a5cf80472` (g, CodeQL triage), `44a4a3708` (tooltip render fix after a REFUTED render-neutral claim); docs `3888c9671` (v0.1.0 notes; local annotated tag v0.1.0 on it), `a4c65a2b6`, `239d56449`.
+- **Answer:** ONE ANSWER note to MAIN delivered, sha256 prefix 0b639345, reached 1/1; inbox 0 pending.
+- **NOT done - operator batch (halt boundary, one act irreversible):** `sh ops/runtime/pubrepo/operator_batch.sh <sidecar-backup-dir> <owner-id>` - bundle copy off-box, delete the 2 remote evidence/rm-159 tags, push refs/tags/v0.1.0 + `gh release create`, 25 CodeQL dismissals, close bot PRs #11 / #12 / #13. The operator's "Continue" was NOT a confirm.
+- **/done cleanup:** 6 merged PUBREPO slice worktrees removed (`git worktree remove`, `git branch -d`; ignored files copied first to gitignored `ops/runtime/backup/worktree-ignored-s118/`, 100 files). Kept, unmerged: agent-a2f37aa35 (declined electron 44.7.0 bump, PR #12) and agent-ab5640432 (a one-line variant of `1b69193ad`).
+- **Do NOT redo:** PUBREPO a-g in-tree parts; the `merge:` hook conflict and the requirements.lock refresh are closed by b and e.
+- **Next:** operator confirms, then the attended batch; then RM-744, RM-745, RM-746 and the carried items in `RC-NEXT-SESSION.txt`.
+
+---
+
 # 2026-10-15b - session 117: RM-741 / RM-742 shipped, RM-743 closed, stop-claim gate gaps closed
 
 - **Shipped (LEDGER 1725):** RM-741 merge `72b978a43` - the RM-515 import detector in `tests/test_requirements_currency_rm515.py` is an AST walk (comma / semicolon / importlib shapes; 65 passed). RM-742 merge `50156109d` - the :8888 TLS peek / 301 / handshake run off the accept thread under one 5.0 s deadline (`tests/test_dashboard_tls_accept_rm742.py` 10); live `/api/state` 4.80 s / 14.8 s behind 1 / 3 silent clients before, <= 0.020 s after; 301 intact.

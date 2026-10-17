@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-17b - session 121: F1 closed - CodeQL #63 / #64 fixed, 0 open bot PRs, ONE ANSWER to MAIN
+
+- **F1 (MAIN FIX eb3c0d686aea) DONE (LEDGER 1736):** merge `7a81e608e` = `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = Dependabot #15); verifier 8/8, the 3 test files 24 passed. CodeQL #63 / #64 fixed at 20:29:19Z; 0 open alerts.
+- **Dependabot:** #14 declined (operator) with the electron ignore widened in `b7f0409e7`. #16 (electron 44.7.2) and #17 (anthropic 1.14.0) declined by a distinct adjudicator in `615d63c10` (electron ignore now update-types minor + patch; anthropic range to <=1.14.0 under the RM-681 hold). #18 (playwright 1.64.0, its CI green incl. the full dual suite) applied as operator commit `a0123c8a7` (+ browser cache key v2). Dependabot closed all five itself; 0 open PRs.
+- **ANSWER to MAIN:** sha256 9db6a2b2..., reached 1/1 (1 of 6 outbound today); inbox row `--done`, `--pending` empty; tracked copy `975a18fd1`.
+- **Cleanup:** F1 worktree + branch removed (24 worktrees). RC hot-reloaded after the merge (pid 23232, fatal_count 0).
+- **Do NOT redo:** F1 (all four steps); the #14 / #16 / #17 / #18 decisions (reverses-if clauses in the commit bodies).
+- **Open, operator-gated:** local ruff 0.15.12 vs CI 0.17.0; upgrading writes outside the repo (halt boundary) - needs the operator's OK.
+- **Next:** decide the 2 unmerged PUBREPO worktrees + backup refs; then RM-747..RM-750.
+
+---
+
 # 2026-10-17 - session 120: RM-746 closed won't-fix, F1 (CodeQL #63 / #64 + ruff 0.17) verified on a branch, early CPU wrap
 
 - **Closed:** RM-746 won't-fix (`7aaf8541e`, LEDGER 1735): round 3 not attempted; round 2 lost credit on 15 of 88 legit commands and still credited 12 bypass gaps. Commits kept at LOCAL tag `archive/rm746-r2` (`3ffdd6baf`, never pushed); worktree + branch removed; probes in gitignored `ops/runtime/rm746/`.
@@ -28,14 +40,3 @@
 - **/done:** ROADMAP at 91 percent of budget, so RM-741..RM-745 rows relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-16` (`5907f236b`); pushed `1f2b9418d..5907f236b`.
 - **Do NOT redo:** the C1-op batch, RM-744, RM-745, RM-740 (e) follow-up 2.
 - **Next:** RM-746 final round or close; then decide the 2 unmerged PUBREPO worktrees and the backup refs; then RM-747..RM-750.
-
----
-
-# 2026-10-16 - session 118: MAIN ORDER PUBREPO in-tree parts shipped; operator batch waits
-
-- **Shipped (LEDGER 1728), pushed `9240474bc..239d56449` (31 commits), CI ci (escalated full dual suite) / codeql / docs-guards green:** merges `f4e97dabf` (b, `merge:` subjects accepted, agent worktree names refused), `553761a81` + `1c46365f1` (d, README "How this repo is built", Apache-2.0 in both package.json, outsider-read scrub), `47a60f465` (e, hashed `requirements.txt` from `requirements.in`; `requirements.lock` RETIRED), `18a99c3a7` (f, checkout root halts a push in 24/24 drive spellings), `d317d88e3` (Dependabot #13 applied), `0e8a26b20` + `a5cf80472` (g, CodeQL triage), `44a4a3708` (tooltip render fix after a REFUTED render-neutral claim); docs `3888c9671` (v0.1.0 notes; local annotated tag v0.1.0 on it), `a4c65a2b6`, `239d56449`.
-- **Answer:** ONE ANSWER note to MAIN delivered, sha256 prefix 0b639345, reached 1/1; inbox 0 pending.
-- **NOT done - operator batch (halt boundary, one act irreversible):** `sh ops/runtime/pubrepo/operator_batch.sh <sidecar-backup-dir> <owner-id>` - bundle copy off-box, delete the 2 remote evidence/rm-159 tags, push refs/tags/v0.1.0 + `gh release create`, 25 CodeQL dismissals, close bot PRs #11 / #12 / #13. The operator's "Continue" was NOT a confirm.
-- **/done cleanup:** 6 merged PUBREPO slice worktrees removed (`git worktree remove`, `git branch -d`; ignored files copied first to gitignored `ops/runtime/backup/worktree-ignored-s118/`, 100 files). Kept, unmerged: agent-a2f37aa35 (declined electron 44.7.0 bump, PR #12) and agent-ab5640432 (a one-line variant of `1b69193ad`).
-- **Do NOT redo:** PUBREPO a-g in-tree parts; the `merge:` hook conflict and the requirements.lock refresh are closed by b and e.
-- **Next:** operator confirms, then the attended batch; then RM-744, RM-745, RM-746 and the carried items in `RC-NEXT-SESSION.txt`.
