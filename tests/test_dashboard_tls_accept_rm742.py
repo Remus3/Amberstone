@@ -136,6 +136,7 @@ def _no_cert_ctx() -> ssl.SSLContext:
 
 def _insecure_client_ctx() -> ssl.SSLContext:
     cctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    cctx.minimum_version = ssl.TLSVersion.TLSv1_2
     cctx.check_hostname = False
     cctx.verify_mode = ssl.CERT_NONE
     return cctx
@@ -361,9 +362,11 @@ def _self_signed(tmp_path):
 def test_a_verified_client_gets_200_while_a_silent_client_holds_on(tmp_path):
     cert_path, key_path = _self_signed(tmp_path)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)      # start_dashboard's shape
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
 
     cctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    cctx.minimum_version = ssl.TLSVersion.TLSv1_2
     cctx.load_verify_locations(cafile=str(cert_path))   # verified, never -k
 
     with _served(ctx) as (_srv, port, parked):

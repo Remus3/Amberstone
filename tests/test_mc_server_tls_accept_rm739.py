@@ -84,6 +84,7 @@ def _served_with_silent_client(monkeypatch, ctx, handshake_s=None):
 
 def _insecure_client_ctx() -> ssl.SSLContext:
     cctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    cctx.minimum_version = ssl.TLSVersion.TLSv1_2
     cctx.check_hostname = False
     cctx.verify_mode = ssl.CERT_NONE
     return cctx
@@ -210,6 +211,7 @@ def test_a_verified_client_gets_json_404_while_a_silent_client_holds_on(
     ctx = mod._ssl_context()
 
     cctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    cctx.minimum_version = ssl.TLSVersion.TLSv1_2
     cctx.load_verify_locations(cafile=str(cert_path))   # verified, never -k
 
     with _served_with_silent_client(monkeypatch, ctx) as (_srv, port, _s):
