@@ -170,12 +170,13 @@ jobs:
       # 8: this job had none, so every nightly paid the ~120MB download and
       # risked the 10m33s cache-miss tail RM-156 measured). Same pinned action,
       # same key, so either job's save serves the other. See the long note on
-      # the `check` job's copy for why the browser cannot be hash-pinned.
+      # the `check` job's copy for why the browser cannot be hash-pinned and
+      # why the key suffix moves with every playwright pin change.
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-v1
+          key: ${{ runner.os }}-ms-playwright-v2
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
@@ -400,8 +401,11 @@ jobs:
       # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
       # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
       # skipped. `playwright install` stays idempotent - it detects the cached
-      # browser and re-downloads only on a Playwright upgrade (refreshing the
-      # cache post-job).
+      # browser and re-downloads only on a Playwright upgrade. An exact-key
+      # hit never re-saves the cache post-job, so after a playwright pin change
+      # the old key would restore the old browser and every run would pay the
+      # download again: bump the key suffix (v1 -> v2 with playwright 1.64.0,
+      # 2026-10-17) in BOTH copies whenever the pin moves.
       #
       # NOT hash-pinned, and cannot be: `playwright install` fetches the browser
       # build from Playwright's own CDN, not from PyPI, so there is no
@@ -412,7 +416,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-ms-playwright-v1
+          key: ${{ runner.os }}-ms-playwright-v2
 
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
