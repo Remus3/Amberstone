@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-10-17 - session 120: RM-746 closed won't-fix, F1 (CodeQL #63 / #64 + ruff 0.17) verified on a branch, early CPU wrap
+
+- **Closed:** RM-746 won't-fix (`7aaf8541e`, LEDGER 1735): round 3 not attempted; round 2 lost credit on 15 of 88 legit commands and still credited 12 bypass gaps. Commits kept at LOCAL tag `archive/rm746-r2` (`3ffdd6baf`, never pushed); worktree + branch removed; probes in gitignored `ops/runtime/rm746/`.
+- **F1 (MAIN FIX eb3c0d686aea, provenance verified):** branch `worktree-agent-af23fa7139e4496cc` holds `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts, CodeQL #63 / #64) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = PR #15). Independent verifier CONFIRMED 5/5 (24 passed). NOT merged - CPU at 100 percent forced an early wrap.
+- **Operator decided:** Dependabot #14 (electron 44.7.1) = DECLINE: close with a reason + widen the electron ignore to `<=44.7.1` (held for the E1 shell check). Do not re-ask.
+- **Filed:** RM-752 (production SSLContexts with no `minimum_version`; liveclient_relay pins TLSv1 on purpose - review). ROADMAP RM-746 row relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-17`.
+- **Do NOT redo:** RM-746 (closed), the F1 verification (re-verify only if the branch changes), the #14 decision.
+- **Next:** check what loads the CPU first; then F1: merge the branch to main + push via fleet_gitlock, close #14 + widen the ignore, confirm 0 open HIGH alerts + 0 open bot PRs, ONE ANSWER to MAIN; then the carried PUBREPO worktree / backup-ref decisions and RM-747..RM-750.
+
+---
+
 # 2026-10-16b - session 119: C1-op PUBREPO batch run (v0.1.0 released), RM-744 / RM-745 shipped, RM-746 refuted twice
 
 - **C1-op (LEDGER 1729, `531ce96f9`):** the operator confirmed ASK 14 in chat ("Run it now"); the batch ran attended, exit 0, 5/5 steps. Read back: remote tags = v0.1.0 only; `gh release view v0.1.0` published; CodeQL open alerts 0 (15 false positive, 7 used in tests, 3 won't fix); open PRs none (Dependabot closed #13 itself); sidecar tag bundle sha256 match + `git bundle verify` ok. ANSWER to MAIN delivered sha256 ce2ac188, reached 1/1 (tracked copy `428b3c388`).
@@ -28,17 +39,3 @@
 - **/done cleanup:** 6 merged PUBREPO slice worktrees removed (`git worktree remove`, `git branch -d`; ignored files copied first to gitignored `ops/runtime/backup/worktree-ignored-s118/`, 100 files). Kept, unmerged: agent-a2f37aa35 (declined electron 44.7.0 bump, PR #12) and agent-ab5640432 (a one-line variant of `1b69193ad`).
 - **Do NOT redo:** PUBREPO a-g in-tree parts; the `merge:` hook conflict and the requirements.lock refresh are closed by b and e.
 - **Next:** operator confirms, then the attended batch; then RM-744, RM-745, RM-746 and the carried items in `RC-NEXT-SESSION.txt`.
-
----
-
-# 2026-10-15b - session 117: RM-741 / RM-742 shipped, RM-743 closed, stop-claim gate gaps closed
-
-- **Shipped (LEDGER 1725):** RM-741 merge `72b978a43` - the RM-515 import detector in `tests/test_requirements_currency_rm515.py` is an AST walk (comma / semicolon / importlib shapes; 65 passed). RM-742 merge `50156109d` - the :8888 TLS peek / 301 / handshake run off the accept thread under one 5.0 s deadline (`tests/test_dashboard_tls_accept_rm742.py` 10); live `/api/state` 4.80 s / 14.8 s behind 1 / 3 silent clients before, <= 0.020 s after; 301 intact.
-- **Closed:** RM-743 by measurement (the `rc-provenance` label is informational; only the attended `--pending` print reads it; Reverses-if recorded).
-- **Shipped (LEDGER 1726):** the stop-claim gate gaps (session 116 line), merge `bd8139e68`: a bare trailing `--` and a later no-op merge no longer hide a checkout / stash; staged credit is a conjunction with the unchanged pre-(f) step (`_pre_f_staged_step`), monotone by construction (verifier differentials 0 at seeds 7 / 13 / 23 x 60k); the ten gate test files 1394 passed on merged main.
-- **Decided:** every `git reset` form stays DENY-ALL after 5 leaking verify rounds (Reverses if: a real shell parser with measured coverage, or an operator ruling). Accepted deviation: a heredoc-heavy command just under COMMAND_PARSE_MAX runs ~1.56x pre-(f), bounded by the cap; perf test bound 20 s.
-- **Filed:** RM-744 (an idle post-handshake :8888 client holds its thread with no limit), RM-745 (301 `Location` CR / LF, self-only, low); at /done RM-746 (the nine pre-existing gate blind spots, LEDGER 1727).
-- **Docs / push:** ROADMAP trimmed first (RM-321 / RM-191 / RM-149 to `docs/ROADMAP_HISTORY.md`); pushed `7e9b82a3a..421cfed08` and `421cfed08..22184bfbe`. RC hot_reload restarted onto each merge (final pid 18272, alive, last_reload_ok true).
-- **Process:** the commit-msg hook rejects a `merge:` type; merge commits use `Merge branch '<b>' - <summary> (sNNN)`. Lesson in memory `feedback_widen_credit_gate_monotone_not_enumeration`.
-- **Do NOT redo:** RM-741, RM-742, RM-743, the gate gaps, the reset deny-all decision.
-- **Next:** RM-744 then RM-745 (Tier-1 each), then RM-746 (low) and the carried items in `RC-NEXT-SESSION.txt`.
