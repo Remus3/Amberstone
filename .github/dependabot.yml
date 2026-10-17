@@ -88,7 +88,8 @@ updates:
         patterns: ["*"]
     # Declined bump, same range rule as the pip entry above.
     ignore:
-      # PR #12: rc-shell stays on electron 44.5.1 (the attended E1 shell
-      # check, LEDGER 1697) until the next attended E1 check on a newer one.
+      # PR #12 (44.7.0) and PR #14 (44.7.1, declined 2026-10-17): rc-shell
+      # stays on electron 44.5.1 (the attended E1 shell check, LEDGER 1697)
+      # until the next attended E1 check on a newer one.
       - dependency-name: "electron"
-        versions: [">44.5.1 <=44.7.0"]
+        versions: [">44.5.1 <=44.7.1"]
