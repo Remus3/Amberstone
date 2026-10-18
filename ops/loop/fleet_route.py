@@ -179,8 +179,8 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
     """Start ONE headless run through the kit. Returns `(usage_line, proc)`.
 
     `kind` (kit v8, FLEET-COMMON 14 e) labels the usage line build / inbox /
-    triage; omitted, the kit infers it from the note (drain-* -> build) and the
-    pre-v8 call shape is kept byte-for-byte (no `kind=` reaches the kit). An
+    triage; omitted, it is named "build" here, because the v18 kit refuses a
+    missing kind (code "no-kind") and no longer infers one from the note. An
     empty `note` is replaced by `caller`, so the row is never unlabelled
     (module docstring item 7); `root` omitted is `_kit_root` (the MAIN
     checkout), with the child's cwd kept in this tree.
