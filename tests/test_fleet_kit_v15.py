@@ -33,7 +33,7 @@ KIT = ROOT / "ops" / "fleet_kit"
 
 # The ORDER's section-1 hashes (verified against MAIN's committed outbox copy
 # at adoption, LEDGER).
-V15_MANIFEST_SHA256 = "6a02c0582f2326036b1a95e19202003be399d79b73fc407791e17cdc145a42fe"
+V15_MANIFEST_SHA256 = "9a02b1438bd9b12bb027fcaacade042b38f0cb497b5288c774646b30532cdfa0"
 COMMON_BLOCK_SHA256 = "fb6c129a73d1e1d8bee60367b4f4f74d39bb4051bdef0f56afd24d88e9a6f02b"
 BG_OFF = "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"
 FAKE_URL = "http://127.0.0.1:9"
@@ -72,8 +72,8 @@ def test_the_vendored_manifest_is_the_v15_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V15_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 17
-    assert _load("fleet_headless").KIT_VERSION == 17
+    assert man["version"] == 18
+    assert _load("fleet_headless").KIT_VERSION == 18
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 
@@ -81,7 +81,7 @@ def test_the_vendored_manifest_is_the_v15_order_bytes():
 def test_the_suite_gate_records_durations_and_offers_the_short_lane(tmp_path):
     gate = _load("fleet_suite_gate")
     assert gate.DURATIONS == "durations.jsonl"
-    assert (gate.LANE_MAX_S, gate.LANE_OVERRUN_S) == (120.0, 240.0)
+    assert (gate.LANE_MAX_S, gate.LANE_OVERRUN_S) == (130.0, 200.0)
     assert (gate.LANE_MIN_RUNS, gate.LANE_WINDOW) == (3, 5)
     # The lane is inside MAX_SLOTS: RC's default 2 regular slots leave room.
     assert gate.lane_index(gate.DEFAULT_SLOTS) == gate.DEFAULT_SLOTS

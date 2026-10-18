@@ -131,6 +131,52 @@ v15 (KIT-15; every change backward compatible):
 - fleet_suite_gate.resolve_exe: a bare suite command whose PATH hit is a
   .cmd/.bat shim (npm) runs by that full path on Windows (EW 1955).
 
+v18 = the KIT-16 batch (built as "v16"; the FIX versions v16 and v17 took
+those numbers, so every "v16 (KIT-16)" note in the kit ships in v18)
+(Fleet Insights 2026-10-09 R1, KIT-15 adjudication c9836ae):
+- kind "order" (KINDS): a run doing the work of a MAIN ORDER / FIX / RULING
+  note. run_kind() maps such a note to "order" when no kind is given AND
+  when the caller passes kind="inbox" (the v8-v15 lanes logged ORDER work as
+  inbox, so the inbox share counted build work as chatter); "build" and
+  "triage" given explicitly stay as given. The class is read with
+  note_class() (name, else the `# From XX - CLASS` title in head=);
+- spawn() refuses an EMPTY or blank note label before anything starts
+  (Refused code "empty-note"; status file "refused" with the reason): a
+  usage row with no label cannot be attributed (179.65 USD unattributed in
+  the 2026-10-09 report). usage_line() still writes "kind" on every row;
+- every usage row carries "slot": the caller's lane / slot id
+  (spawn(slot_id=...), CLI --slot), else the governor slot's name, else
+  null. "governor_slot" is kept unchanged beside it;
+- sibling kit changes: fleet_done.py (hand-off size warning, `archive`),
+  fleet_test_guard.budget(), fleet_suite_gate (PATH-only resolve_exe, a
+  path-free pytest refused when no testpaths config), fleet_gitlock
+  (merge / reset / revert lock-only), tokens.json chart = the validated
+  tree palette.
+- stale progress rows (ruling docs/rulings/2026-10-10-stale-progress-rows.md):
+  write_progress() records the row's OWNER {"pid", "start"} - an explicit
+  owner=, else env FLEET_PROGRESS_OWNER (a pid; "none" = no owner), else the
+  nearest ancestor process named claude / claude.exe (the agent session whose
+  tool call wrote the row), else no owner field. owner_alive() answers
+  True / False / None (pid gone, or reused: start time differs -> False);
+  progress_abandoned(doc) is True for a running/blocked row whose owner is
+  dead, or that has been silent over ABANDON_S (2 h). close_progress() turns a
+  still-running row into "failed" (pct, step, checklist kept, a "reason"
+  added); close_owned_progress() does it for every row a given pid owns.
+  spawn() closes, in a finally, every row the child process owned and the
+  optional progress_task= row (CLI --progress-task); fleet_lanes.run_lane
+  closes progress/lane-<i>.json when the block ends. `progress --owner PID`
+  on the command line (0 = no owner).
+- also in v18: fleet_suite_gate commit-aware admission + peak_commit_mb
+  (RM737-GATE), lane thresholds 130 / 200 s (KIT-15-REPICK), bare words
+  resolved on the CHILD's PATH (CS 1840); fleet_inbox ledger lock (RSC 1852
+  a); fleet_claims quoted-redirect parser (V18-PARSER) and the bare commit /
+  push denial scoped to guarded repos (CLAIMS-SCOPE).
+- strict attribution (Fleet Insights 2026-10-16 item 2): spawn() refuses a
+  missing / None kind (Refused code "no-kind") as it refuses an empty note
+  label, before anything starts; CLI `spawn --kind` is required. run_kind()
+  no longer guesses a spawn's kind - it still classifies legacy usage rows
+  (kind absent) and re-attributes inbox -> order for ORDER / FIX / RULING.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -147,7 +193,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 17
+KIT_VERSION = 18
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -182,8 +228,12 @@ _TOKEN_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _TASK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _CHECK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$")
 CHECKLIST_MAX = 20
+ABANDON_S = 7200  # v16: a running row silent this long is abandoned
+OWNER_ENV = "FLEET_PROGRESS_OWNER"
+OWNER_NAMES = ("claude.exe", "claude")
+_START_SLACK_S = 2.0
 ATOMIC_TRIES = 8
-KINDS = ("build", "inbox", "triage")
+KINDS = ("build", "inbox", "triage", "order")
 # MAIN 0915 section 1: the BASIC status task names, the operator's words.
 TASKS = ("Idle", "Checking Inbox", "Waiting for Slot", "Running Session",
          "Delivering Notes", "Committing", "Backing Off", "Halted", "Turn Limit Reached")
@@ -752,12 +802,14 @@ def main_checkout(path):
 
 
 def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checklist=None,
-                   reason=None):
+                   reason=None, owner=None):
     """FLEET-COMMON item 12: ops/loop/control/progress/<task>.json with
     {task, pct, step, eta_s, status: running|done|failed, updated}, plus
     "checklist" (item 13 d, remaining tasks) when one is passed. v12: in the
     MAIN checkout of root even when root is a linked worktree; the returned
-    doc adds "path", the file written (the file itself does not carry it)."""
+    doc adds "path", the file written (the file itself does not carry it).
+    v16: "owner" {"pid", "start"} - owner= a pid (0 = none), else
+    default_owner(); omitted when there is none."""
     if not isinstance(task, str) or not _TASK.match(task):
         raise ValueError(f"task name {task!r} must be a plain file stem")
     if status not in PROGRESS_STATES:
@@ -769,17 +821,243 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checkl
         doc["checklist"] = _checklist_rows(checklist)
     if reason:
         doc["reason"] = " ".join(str(reason).split())[:120]
+    who = default_owner() if owner is None else (_owner_doc(owner) if int(owner) > 0 else None)
+    if who:
+        doc["owner"] = who
     path = main_checkout(root) / PROGRESS_REL / (task + ".json")
     _atomic_write(path, json.dumps(doc), verify=True)
     return dict(doc, path=str(path))
 
 
-def run_kind(note, kind=None):
-    """build | inbox | triage as given; else inbox for a channel-note name,
-    unattributed for an empty note, build for any other label (v8)."""
+# ---------------------------------------------------------------- owners (v16)
+
+def _win_procs():
+    """{pid: (ppid, exe name lower)} from a toolhelp snapshot; {} on failure."""
+    import ctypes
+    from ctypes import wintypes
+
+    class PE(ctypes.Structure):
+        _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+                    ("th32ProcessID", wintypes.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_size_t),
+                    ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
+                    ("th32ParentProcessID", wintypes.DWORD),
+                    ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD),
+                    ("szExeFile", ctypes.c_wchar * 260)]
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)  # TH32CS_SNAPPROCESS
+    if not snap or snap == wintypes.HANDLE(-1).value:
+        return {}
+    out = {}
+    try:
+        pe = PE()
+        pe.dwSize = ctypes.sizeof(PE)
+        ok = k32.Process32FirstW(snap, ctypes.byref(pe))
+        while ok:
+            out[pe.th32ProcessID] = (pe.th32ParentProcessID, pe.szExeFile.lower())
+            ok = k32.Process32NextW(snap, ctypes.byref(pe))
+    finally:
+        k32.CloseHandle(snap)
+    return out
+
+
+def _posix_parent(pid):
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text()
+        name = raw[raw.index("(") + 1:raw.rindex(")")]
+        return int(raw[raw.rindex(")") + 2:].split()[1]), name.lower()
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def proc_start(pid):
+    """Creation time of pid (epoch seconds), or None when unknown."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if pid <= 0:
+        return None
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.OpenProcess.restype = wintypes.HANDLE
+        h = k32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+        if not h:
+            return None
+        try:
+            ft = [wintypes.FILETIME() for _ in range(4)]
+            if not k32.GetProcessTimes(h, *[ctypes.byref(f) for f in ft]):
+                return None
+            ticks = (ft[0].dwHighDateTime << 32) | ft[0].dwLowDateTime
+            return round(ticks / 1e7 - 11644473600.0, 3)
+        finally:
+            k32.CloseHandle(h)
+    try:
+        boot = None
+        for line in Path("/proc/stat").read_text().splitlines():
+            if line.startswith("btime "):
+                boot = int(line.split()[1])
+        raw = Path(f"/proc/{pid}/stat").read_text()
+        ticks = int(raw[raw.rindex(")") + 2:].split()[19])
+        return None if boot is None else round(boot + ticks / os.sysconf("SC_CLK_TCK"), 3)
+    except (OSError, ValueError, IndexError, AttributeError):
+        return None
+
+
+def owner_alive(owner):
+    """True / False / None (unknown) for a progress row's owner
+    {"pid", "start"}. A pid whose creation time differs from "start" by more
+    than _START_SLACK_S was reused: False."""
+    if not isinstance(owner, dict):
+        return None
+    pid = owner.get("pid")
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return None
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.OpenProcess.restype = wintypes.HANDLE
+        h = k32.OpenProcess(0x1000, False, pid)
+        if not h:
+            err = ctypes.get_last_error()
+            return False if err == 87 else None  # ERROR_INVALID_PARAMETER: no such pid
+        try:
+            code = wintypes.DWORD()
+            if k32.GetExitCodeProcess(h, ctypes.byref(code)) and code.value != 259:
+                return False  # exited (STILL_ACTIVE is 259)
+        finally:
+            k32.CloseHandle(h)
+    else:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except OSError:
+            pass
+    want, have = owner.get("start"), proc_start(pid)
+    if isinstance(want, (int, float)) and not isinstance(want, bool) and have is not None:
+        return abs(have - want) <= _START_SLACK_S
+    return True
+
+
+def _owner_doc(pid):
+    return {"pid": int(pid), "start": proc_start(pid)}
+
+
+def default_owner(env=None, procs=None, me=None):
+    """The owner write_progress records when none is passed: env
+    FLEET_PROGRESS_OWNER (a pid, or "none"), else the nearest ancestor named
+    in OWNER_NAMES, else None."""
+    env = os.environ if env is None else env
+    raw = (env.get(OWNER_ENV) or "").strip()
+    if raw.lower() in ("none", "0", "off"):
+        return None
+    if raw.isdigit():
+        return _owner_doc(int(raw))
+    me = os.getpid() if me is None else me
+    if procs is None:
+        procs = _win_procs() if sys.platform == "win32" else None
+    seen, pid = set(), me
+    for _ in range(32):
+        if procs is not None:
+            if pid not in procs:
+                return None
+            ppid, _name = procs[pid]
+        else:
+            got = _posix_parent(pid)
+            if not got:
+                return None
+            ppid = got[0]
+        if not ppid or ppid in seen or ppid == pid:
+            return None
+        seen.add(pid)
+        name = procs[ppid][1] if procs is not None and ppid in procs else \
+            ((_posix_parent(ppid) or (0, ""))[1] if procs is None else "")
+        if name in OWNER_NAMES:
+            return _owner_doc(ppid)
+        pid = ppid
+    return None
+
+
+def _age_s(doc, now):
+    when = doc.get("updated") if isinstance(doc, dict) else None
+    try:
+        then = _dt.datetime.fromisoformat(when).timestamp()
+    except (TypeError, ValueError):
+        return None
+    return now - then
+
+
+def progress_abandoned(doc, now=None, alive=owner_alive):
+    """v16: a running/blocked row whose owner is dead, or that has been
+    silent over ABANDON_S, belongs to no live run."""
+    if not isinstance(doc, dict) or doc.get("status") not in ("running", "blocked"):
+        return False
+    if alive(doc.get("owner")) is False:
+        return True
+    age = _age_s(doc, time.time() if now is None else now)
+    return age is not None and age > ABANDON_S
+
+
+def _read_progress(path):
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def close_progress(root, task, reason="run ended without a final status", clock=time.time):
+    """v16: when progress/<task>.json still says running (or blocked), write
+    it as failed, keeping pct, step, eta and checklist and adding reason.
+    Returns the doc written, or None (no file, or already final)."""
+    if not isinstance(task, str) or not _TASK.match(task):
+        return None
+    path = main_checkout(root) / PROGRESS_REL / (task + ".json")
+    doc = _read_progress(path)
+    if not doc or doc.get("status") not in ("running", "blocked"):
+        return None
+    doc.update(status="failed", updated=_iso(clock()),
+               reason=" ".join(str(reason).split())[:120])
+    _atomic_write(path, json.dumps(doc), verify=True)
+    return doc
+
+
+def close_owned_progress(root, pid, reason="owner process ended without a final status",
+                         clock=time.time):
+    """v16: close_progress() for every row in root's progress folder whose
+    owner pid is pid. Returns the task names closed."""
+    if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+        return []
+    folder = main_checkout(root) / PROGRESS_REL
+    try:
+        names = sorted(f for f in folder.iterdir() if f.suffix == ".json")
+    except OSError:
+        return []
+    closed = []
+    for f in names:
+        doc = _read_progress(f)
+        owner = doc.get("owner") if doc else None
+        if isinstance(owner, dict) and owner.get("pid") == pid and \
+                close_progress(root, f.stem, reason, clock):
+            closed.append(f.stem)
+    return closed
+
+
+def run_kind(note, kind=None, head=""):
+    """build | inbox | triage | order as given; else inbox for a channel-note
+    name, unattributed for an empty note, build for any other label (v8).
+    v16: a note whose class (note_class: name, else the title in head) is
+    ORDER / FIX / RULING is "order" when kind is None or "inbox"."""
+    if kind is not None and kind not in KINDS:
+        raise Refused(f"kind {kind!r} not in {KINDS}")
+    if kind in (None, "inbox") and note_class(note, head) in NEVER_DAMP:
+        return "order"
     if kind is not None:
-        if kind not in KINDS:
-            raise Refused(f"kind {kind!r} not in {KINDS}")
         return kind
     base = _base(note)
     if not base:
@@ -788,7 +1066,7 @@ def run_kind(note, kind=None):
 
 
 def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None,
-               kind=None):
+               kind=None, slot=None):
     r = result if isinstance(result, dict) else {}
     u = r.get("usage") if isinstance(r.get("usage"), dict) else {}
     return {
@@ -805,6 +1083,7 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
         "subtype": r.get("subtype") if isinstance(r.get("subtype"), str) else None,
         "error": error,
         "kind": run_kind(note, kind),
+        "slot": str(slot) if slot not in (None, "") else None,
     }
 
 
@@ -1038,7 +1317,8 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           persist=False, session_id=None, resume=None, model=None, effort=None,
           setting_sources=DEFAULT_SOURCES, floors_in_hooks=False, pin=None,
           log_path=None, halt_file=None, governor=None, governor_timeout=None,
-          governor_root=None, governor_since=None, kind=None, stdin_data=None):
+          governor_root=None, governor_since=None, kind=None, stdin_data=None,
+          slot_id=None, progress_task=None):
     """Start ONE headless run and wait for it. Returns the usage line (dict)
     plus "result" (and "stderr" when return_stderr). Raises Refused, before
     anything starts, when the fleet rules forbid it; the status file then reads
@@ -1052,7 +1332,13 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
     kind (v8) labels the run build / inbox / triage in the usage line.
     stdin_data (v10) keeps the prompt in argv and feeds this text on stdin
     (it cannot be combined with stdin=True). An OSError before the run starts
-    (unreadable registry, unwritable status dir, ...) is raised as Refused."""
+    (unreadable registry, unwritable status dir, ...) is raised as Refused.
+    v16: an empty or blank note label refuses (code "empty-note") before
+    anything starts (v18: so does a missing kind, code "no-kind"); slot_id
+    (a lane / slot id) is the usage row's "slot",
+    else the governor slot's name, else null. When the run ends, however it
+    ends, every progress row the child process owned and the progress_task
+    row (when given) that still say running are written as failed."""
     root = Path(root)
     budget = RunBudget(root / BUDGET_REL)
     run = _run if run is None else run
@@ -1060,6 +1346,12 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         _status_quietly(root, code, "halted", "Halted", budget)
         raise Refused("halt file present")
     try:
+        if not str(note or "").strip():
+            raise Refused("empty note label - every run names its note or task",
+                          code="empty-note")
+        if kind is None:
+            raise Refused(f"no kind - every run names its kind, one of {KINDS}",
+                          code="no-kind")
         check_door(bare, extra, floors_in_hooks)
         run_kind(note, kind)  # an unknown kind refuses before anything starts
         model, effort = pick_model(writes_code, model), pick_effort(note, effort)
@@ -1090,12 +1382,13 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
             raise Refused(f"no governor slot within {_secs(governor_timeout)}") from None
         return _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv,
                               model, effort, cwd, stdin, timeout, log_path,
-                              return_stderr, slot, kind, stdin_data)
+                              return_stderr, slot, kind, stdin_data, slot_id,
+                              progress_task)
 
 
 def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model,
                    effort, cwd, stdin, timeout, log_path, return_stderr, slot,
-                   kind=None, stdin_data=None):
+                   kind=None, stdin_data=None, slot_id=None, progress_task=None):
     """The v5 run body, entered only once a governor slot (if any) is held."""
     try:
         counted = budget.start()
@@ -1119,14 +1412,47 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
         kw["input"] = prompt
     elif stdin_data is not None:
         kw["input"] = stdin_data
+    slot_name = slot_id if slot_id not in (None, "") else (Path(slot).name if slot else None)
     marked = {"ok": None}
-    if slot and (run is _run or _accepts_on_start(run)):
-        marked["ok"] = False
+    child = {"pid": None}
+    if run is _run or _accepts_on_start(run):
+        if slot:
+            marked["ok"] = False
 
         def _mark(pid):
-            _lanes().mark_child(slot, pid)
-            marked["ok"] = True
+            child["pid"] = pid
+            if slot:
+                _lanes().mark_child(slot, pid)
+                marked["ok"] = True
         kw["on_start"] = _mark
+    try:
+        return _spawn_body(root, code, note, bare, budget, run, argv, model, effort,
+                           log_path, return_stderr, slot, kind, slot_name, kw, marked,
+                           started)
+    finally:
+        _close_child_rows(root, cwd, child["pid"], progress_task)
+
+
+def _close_child_rows(root, cwd, pid, progress_task):
+    """v16: never leave a finished run's progress rows saying running."""
+    tops = []
+    for top in (root, cwd):
+        if top:
+            with contextlib.suppress(OSError):
+                m = main_checkout(top)
+                if m not in tops:
+                    tops.append(m)
+    for top in tops:
+        with contextlib.suppress(OSError, ValueError):
+            if pid:
+                close_owned_progress(top, pid)
+    if progress_task and tops:
+        with contextlib.suppress(OSError, ValueError):
+            close_progress(tops[-1] if cwd else tops[0], progress_task)
+
+
+def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_path,
+                return_stderr, slot, kind, slot_name, kw, marked, started):
     proc, error = None, None
     try:
         with contextlib.ExitStack() as stack:
@@ -1143,7 +1469,7 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
     except BaseException as exc:
         _finish(root, code, budget, usage_line(None, code, note, model, effort, bare, None,
                                                time.time() - started, type(exc).__name__,
-                                               kind))
+                                               kind, slot_name))
         raise
     if log_path:
         result = _result_from_log(log_path)
@@ -1151,7 +1477,7 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
         result = _json_or_none(getattr(proc, "stdout", None))
     rc = getattr(proc, "returncode", None) if proc is not None else None
     line = usage_line(result, code, note, model, effort, bare, rc,
-                      time.time() - started, error, kind)
+                      time.time() - started, error, kind, slot_name)
     line["governor_slot"] = Path(slot).name if slot else None
     line["child_marked"] = marked["ok"]
     _finish(root, code, budget, line)
@@ -1182,7 +1508,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     sp.add_argument("--root", required=True)
     sp.add_argument("--code", required=True)
     sp.add_argument("--note", required=True)
-    sp.add_argument("--kind", choices=KINDS)
+    sp.add_argument("--kind", choices=KINDS, required=True)
     sp.add_argument("--effort", choices=EFFORTS)
     sp.add_argument("--model")
     sp.add_argument("--writes-code", action="store_true")
@@ -1191,6 +1517,8 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     sp.add_argument("--floors-in-hooks", action="store_true")
     sp.add_argument("--prompt-file")
     sp.add_argument("--permission-mode", choices=PERMISSION_MODES)
+    sp.add_argument("--slot")
+    sp.add_argument("--progress-task")
     pp = sub.add_parser("progress")
     pp.add_argument("--root", required=True)
     pp.add_argument("--task", required=True)
@@ -1199,6 +1527,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     pp.add_argument("--eta-s", type=int)
     pp.add_argument("--status", choices=PROGRESS_STATES, required=True)
     pp.add_argument("--reason")
+    pp.add_argument("--owner", type=int)
     try:
         args = ap.parse_args(argv)
     except SystemExit:
@@ -1207,7 +1536,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     if args.cmd == "progress":
         try:
             doc = write_progress(args.root, args.task, args.pct, args.step, args.eta_s,
-                                 args.status, reason=args.reason)
+                                 args.status, reason=args.reason, owner=args.owner)
         except (ValueError, OSError) as exc:
             print(json.dumps({"error": exc.__class__.__name__}), file=out)
             return CLI_USAGE
@@ -1232,7 +1561,8 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
             args.root, args.code, prompt, note=args.note, writes_code=args.writes_code,
             timeout=args.timeout, cwd=args.cwd, stdin=len(prompt) > ARGV_PROMPT_MAX,
             model=args.model, effort=args.effort, floors_in_hooks=args.floors_in_hooks,
-            kind=args.kind,
+            kind=args.kind, **({"slot_id": args.slot} if args.slot else {}),
+            **({"progress_task": args.progress_task} if args.progress_task else {}),
             extra=("--permission-mode", args.permission_mode) if args.permission_mode else ())
     except Refused as exc:
         print(json.dumps({"refused": str(exc), "code": getattr(exc, "code", "refused")}),
