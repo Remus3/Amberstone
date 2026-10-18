@@ -15,15 +15,19 @@ git setting cannot reach.
 """
 from __future__ import annotations
 
+import ast
 import subprocess
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "tools"))
 
-MAX_PATH = 260
-# Longest tracked path allowed. Root budget = MAX_PATH - this - 1 = 130 chars,
+# ONE source of truth: tools/precommit_gate.py refuses a NEW path over the cap
+# at commit time, and this guard re-checks the whole index. Both read the same
+# constant, so they cannot drift. Root budget = MAX_PATH - cap - 1 = 130 chars,
 # which covers user-profile, temp and CI-workspace roots seen on this machine.
-MAX_TRACKED_PATH_CHARS = 129
+from precommit_gate import MAX_PATH, MAX_TRACKED_PATH_CHARS  # noqa: E402
 
 
 def _tracked() -> list[str]:
@@ -54,11 +58,25 @@ def test_operations_doc_names_the_clone_flag():
     assert "core.longpaths=true" in ops
 
 
+def test_cap_is_not_restated_locally():
+    # A local `MAX_TRACKED_PATH_CHARS = ...` below the import would shadow the
+    # gate's value and let the commit-time refusal and this guard disagree.
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    assigned = {
+        t.id
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Assign, ast.AnnAssign))
+        for t in (node.targets if isinstance(node, ast.Assign) else [node.target])
+        if isinstance(t, ast.Name)
+    }
+    assert not assigned & {"MAX_PATH", "MAX_TRACKED_PATH_CHARS"}, assigned
+
+
 def test_outbound_copy_naming_rule_states_this_cap():
-    # Tracked `_outbound_*` copies are named by hand (no code writes them), so
-    # the authoring rule in OPERATIONS.md is the only pre-commit defence; it
-    # must quote the same cap this guard enforces (the 2026-10-18 v18 copy
-    # landed at 131 chars).
+    # Tracked `_outbound_*` copies are named by hand (no code writes them). The
+    # commit-time gate now refuses an over-long one, and the authoring rule in
+    # OPERATIONS.md must quote the same cap (the 2026-10-18 v18 copy landed at
+    # 131 chars, before the gate had a path arm).
     ops = (REPO / "docs" / "OPERATIONS.md").read_text(encoding="utf-8")
     rule = [ln for ln in ops.splitlines() if "`_outbound_*`" in ln]
     assert rule, "OPERATIONS.md lost the _outbound_* copy naming rule"

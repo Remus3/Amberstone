@@ -411,9 +411,11 @@ half-populated tree that later enumerations report as clean. Two halves:
   `git clone -c core.longpaths=true <url> <dir>` (the `-c` lands in the new
   repo's own config before checkout; no machine-scope write needed).
 - **Path length:** the longest tracked path is capped at 129 chars by
-  `tests/test_tracked_path_length_rm422.py`, so any root up to 130 chars
-  checks out even without the setting, and tools that use non-longpath-aware
-  APIs still work. Shorten a new long path rather than raising the cap.
+  `tests/test_tracked_path_length_rm422.py` (whole index) and by
+  `tools/precommit_gate.py` (a new staged path over the cap is refused at
+  commit time; one constant, `MAX_TRACKED_PATH_CHARS`, lives in the gate),
+  so any root up to 130 chars checks out even without the setting, and
+  tools that use non-longpath-aware APIs still work. Shorten a new long path rather than raising the cap.
 
 ---
 

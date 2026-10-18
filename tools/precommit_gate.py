@@ -8,6 +8,8 @@ Self-gates: if the command is not a `git commit`, exits 0 before touching git
 (so it is a no-op on every other Bash call - zero overhead off the commit path).
 
 On a commit it inspects ONLY staged content of staged files (diff-filter ACM):
+  0. RM-422 path length: a NEW tracked path (added / copied / rename target)
+     longer than MAX_TRACKED_PATH_CHARS is refused; deletes always pass.
   1. ruff check (no --fix) on staged .py, keeping findings whose row lands in an
      ADDED line range of that file (net-new only - pre-existing repo debt in an
      untouched region never blocks, so an unattended headless run cannot wedge
@@ -45,6 +47,14 @@ _BANNED = {
 }
 _FROZEN_SKIP = ("logs/", "docs/_archive/", ".pyc", ".git/", "__pycache__/")
 _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+# RM-422 (LEDGER 1604): longest tracked path a fresh Windows clone can write
+# without core.longpaths. Clone root budget = MAX_PATH - cap - 1 = 130 chars.
+# ONE source of truth: tests/test_tracked_path_length_rm422.py (whole-index
+# guard) and tests/test_git_hook_gate_e2e.py import these, never restate them.
+MAX_PATH = 260
+MAX_TRACKED_PATH_CHARS = 129
+_NAME_STATUS = re.compile(r"^[ACDMRTUXB]\d*$")
 
 
 def _is_commit(command: str) -> bool:
@@ -119,6 +129,46 @@ def _staged_added(root: str) -> dict[str, dict]:
             files[cur]["lines"].append((lineno, ln[1:]))
             lineno += 1
     return files
+
+
+def _staged_new_paths(root: str) -> list[str]:
+    """Paths this commit ADDS to the index: added, copied, and rename targets.
+
+    Parsed from `git diff --cached --name-status -z`: `X\\0path\\0` per record,
+    `R<n>\\0old\\0new\\0` / `C<n>\\0src\\0dst\\0` for renames and copies. NO
+    _skippable filter - docs/_archive/ is exactly where the 131-char copy
+    landed (9e5386aa1). Deletes and in-place edits are never new paths, so
+    removing an over-long path is never blocked. Stops at the first record that
+    is not name-status shaped (fail open).
+    """
+    out = _git(["diff", "--cached", "--name-status", "-z", "--diff-filter=ACR"], root)
+    toks = out.split("\0")
+    paths: list[str] = []
+    i = 0
+    while i < len(toks) and _NAME_STATUS.match(toks[i]):
+        status = toks[i]
+        width = 2 if status[0] in "RC" else 1
+        if i + width >= len(toks):
+            break
+        if status[0] in "ACR" and toks[i + width]:
+            paths.append(toks[i + width])
+        i += width + 1
+    return paths
+
+
+def _path_length_hits(paths: list[str]) -> list[str]:
+    """RM-422 commit-time half: one violation line per new path over the cap.
+
+    The whole-index guard (tests/test_tracked_path_length_rm422.py) only runs
+    in a full suite, so a 131-char path rode in on 9e5386aa1 unrefused.
+    """
+    budget = MAX_PATH - MAX_TRACKED_PATH_CHARS - 1
+    return [
+        f"  {p}  path is {len(p)} chars, over the RM-422 cap of "
+        f"{MAX_TRACKED_PATH_CHARS} (clone root budget {budget}) - shorten it"
+        for p in paths
+        if len(p) > MAX_TRACKED_PATH_CHARS
+    ]
 
 
 # Surfaces CLAUDE.md's retroactive purge deliberately did NOT sweep (immutable
@@ -487,7 +537,8 @@ def main() -> int:
         or os.getcwd()
     )
     staged = _staged_added(root)
-    violations: list[str] = []
+    # 0. RM-422: new tracked paths over the Windows clone cap.
+    violations: list[str] = _path_length_hits(_staged_new_paths(root))
 
     # 1. banned glyphs on added lines
     for path, info in staged.items():
@@ -573,7 +624,8 @@ def main() -> int:
         sys.stderr.write(
             "precommit_gate BLOCKED commit - net-new violations in staged files:\n"
             + "\n".join(violations)
-            + "\n\nFix the staged lines (ruff check --fix / strip the glyph) and re-commit.\n"
+            + "\n\nFix the staged lines (ruff check --fix / strip the glyph / "
+            "shorten the path) and re-commit.\n"
         )
         return 2
     return 0
