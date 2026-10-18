@@ -52,3 +52,14 @@ def test_budget_covers_the_root_that_failed():
 def test_operations_doc_names_the_clone_flag():
     ops = (REPO / "docs" / "OPERATIONS.md").read_text(encoding="utf-8")
     assert "core.longpaths=true" in ops
+
+
+def test_outbound_copy_naming_rule_states_this_cap():
+    # Tracked `_outbound_*` copies are named by hand (no code writes them), so
+    # the authoring rule in OPERATIONS.md is the only pre-commit defence; it
+    # must quote the same cap this guard enforces (the 2026-10-18 v18 copy
+    # landed at 131 chars).
+    ops = (REPO / "docs" / "OPERATIONS.md").read_text(encoding="utf-8")
+    rule = [ln for ln in ops.splitlines() if "`_outbound_*`" in ln]
+    assert rule, "OPERATIONS.md lost the _outbound_* copy naming rule"
+    assert any(f"<= {MAX_TRACKED_PATH_CHARS} chars" in ln for ln in rule), rule
