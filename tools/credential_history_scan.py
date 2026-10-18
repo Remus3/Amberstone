@@ -67,7 +67,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools import credential_patterns as cp  # noqa: E402
-from tools.sibling_name_sweep import main_working_tree, resolve_push_range  # noqa: E402
+from tools.sibling_name_sweep import (  # noqa: E402
+    GitFault as _RangeFault,
+    main_working_tree,
+    resolve_push_ranges,
+    stdin_revs,
+)
 
 BASELINE = ROOT / "tools" / "credential_history_baseline.json"
 LOCAL_HOSTS_RELATIVE = Path("ops") / "local_hosts.json"
@@ -269,9 +274,13 @@ def added_lines(rev_args: Sequence[str], root: Path = ROOT) -> dict[tuple[str, s
     changed, and a gate that halts on old content gets bypassed. A secret
     introduced by the push is, by definition, on an added line.
     """
+    # A new ref's range is `<sha> ^a ^b ...` (one word per advertised sha), so
+    # a plain-rev list goes on stdin rather than argv (Windows command-line cap).
+    feed = stdin_revs(rev_args)
     out = _git(["log", "--no-merges", "--format=%x01%H", "-p", "--unified=0",
-                "--no-color", "--no-ext-diff", "--no-renames", *rev_args],
-               root=root)
+                "--no-color", "--no-ext-diff", "--no-renames",
+                *(["--stdin"] if feed is not None else rev_args)],
+               stdin=feed.encode() if feed is not None else None, root=root)
     found: dict[tuple[str, str], list[str]] = {}
     commit, path = "", ""
     for raw in out.decode("utf-8", "replace").split("\n"):
@@ -532,14 +541,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     if ns.leak_sweep is not None:
         return run_leak_sweep(ns.leak_sweep)
     remote = (ns.pre_push or ["origin"])[0]
-    ranges = []
-    for line in sys.stdin.read().splitlines():
-        spec = resolve_push_range(line, remote, have=_have) if line.strip() else None
-        if spec is not None:
-            ranges.append(spec.args)
+    root = ROOT  # read at call time, not bound as a default at import
+    lines = [ln for ln in sys.stdin.read().splitlines() if ln.strip()]
+    # The sweep's shared resolver (S1, kit v19 parity): a new ref, or a remote
+    # sha this clone lacks, is scanned against what `git ls-remote` advertises,
+    # never against the local remote-tracking refs; ls-remote failing is FAULT.
+    try:
+        specs = resolve_push_ranges(root, lines, remote,
+                                    have=lambda sha: _have(sha, root=root))
+    except _RangeFault as exc:
+        print(f"[credential-history] FAULT - push scan did not run: {exc}. "
+              "This is not a clean verdict.", file=sys.stderr)
+        return EXIT_FAULT
+    ranges = [spec.args for spec in specs]
     if not ranges:
         return EXIT_CLEAN
-    return run_push(ranges)
+    return run_push(ranges, root=root)
 
 
 if __name__ == "__main__":
