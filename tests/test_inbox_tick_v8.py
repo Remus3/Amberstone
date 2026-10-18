@@ -425,8 +425,15 @@ def test_fleet_route_passes_kind_through_to_the_kit(monkeypatch, tmp_path):
     fr.spawn("p", caller="t", note="drain-x", kind="build", root=tmp_path)
     assert seen["kind"] == "build"
     seen.clear()
-    fr.spawn("p", caller="t", note="drain-x", root=tmp_path)
-    assert "kind" not in seen, "an omitted kind keeps the pre-v8 call shape"
+    fr.spawn("p", caller="t", note="lane-x", root=tmp_path)
+    assert seen["kind"] == "build", (
+        "kit v18 no longer infers a kind, so an omitted kind is named build here")
+    k = fr.kit()
+    with pytest.raises(k.Refused) as ei:
+        k.spawn(tmp_path, "RC", "p", note="lane-x",
+                run=lambda *a, **kw: pytest.fail("a refused spawn started a run"))
+    assert getattr(ei.value, "code", None) == "no-kind", \
+        "the default is load-bearing: the v18 kit refuses a missing kind"
 
 
 def test_drain_runs_are_labelled_build():
