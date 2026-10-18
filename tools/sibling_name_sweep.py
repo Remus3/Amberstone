@@ -1225,6 +1225,7 @@ def structural_findings(
 # Push range resolution
 # ---------------------------------------------------------------------------
 _ZERO = re.compile(r"^0+$")
+_SHA = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
 
 
 @dataclass
@@ -1233,8 +1234,19 @@ class RangeSpec:
     args: list
 
 
+def _needs_whole_remote(line: str, have: Optional[Callable[[str], bool]]) -> bool:
+    """True for a line resolve_push_range scans against the WHOLE remote."""
+    parts = (line or "").split()
+    if len(parts) < 4 or _ZERO.match(parts[1]):
+        return False
+    return bool(_ZERO.match(parts[3])) or (have is not None and not have(parts[3]))
+
+
 def resolve_push_range(
-    line: str, remote_name: str, have: Optional[Callable[[str], bool]] = None
+    line: str,
+    remote_name: str,
+    have: Optional[Callable[[str], bool]] = None,
+    advertised: Optional[Sequence[str]] = None,
 ) -> Optional[RangeSpec]:
     """One pre-push stdin line -> the rev-list arguments for what it publishes.
 
@@ -1249,6 +1261,16 @@ def resolve_push_range(
     - remote_sha not in the local object store -> treat as the zeros case. Scan
       MORE, never less; a sha we cannot resolve must not silently narrow the
       range to nothing.
+
+    "Already on the remote" is what the remote ADVERTISES (S1, kit v19 parity):
+    with ``advertised`` (the ls-remote shas present locally, see
+    ``remote_advertised``) the two whole-remote cases exclude only those
+    (``<sha> ^a ^b ...``). The local remote-tracking refs are a cache: after a
+    branch is deleted on the remote, or the remote is recreated or rewritten,
+    an unpruned clone still names commits the remote does not have, and
+    ``--not --remotes`` let a new branch built on one publish it unscanned.
+    ``advertised=None`` keeps that legacy form for callers that cannot reach
+    the remote; every push gate passes it via ``resolve_push_ranges``.
     """
     parts = (line or "").split()
     if len(parts) < 4:
@@ -1256,9 +1278,82 @@ def resolve_push_range(
     local_ref, local_sha, _remote_ref, remote_sha = parts[:4]
     if _ZERO.match(local_sha):
         return None
-    if _ZERO.match(remote_sha) or (have is not None and not have(remote_sha)):
+    if _needs_whole_remote(line, have):
+        if advertised is not None:
+            return RangeSpec(local_ref, [local_sha, *("^" + s for s in advertised)])
         return RangeSpec(local_ref, [local_sha, "--not", f"--remotes={remote_name}"])
     return RangeSpec(local_ref, [local_sha, "--not", remote_sha])
+
+
+def remote_advertised(root: Path, remote_name: str) -> list:
+    """The shas ``git ls-remote <remote>`` advertises that exist locally.
+
+    Sorted and unique; commits and tags only (an absent sha cannot be excluded:
+    ``^<absent>`` makes rev-list fail). An ls-remote that fails raises
+    GitFault, so a new ref is never silently scanned against the local
+    remote-tracking refs instead (fail closed, as the kit's identity gate).
+    """
+    try:
+        out = _git(
+            root, ["ls-remote", "--", remote_name],
+            env={"GIT_TERMINAL_PROMPT": "0"}, timeout=120,
+        )
+    except GitFault as exc:
+        raise GitFault(
+            "could not read the remote's advertised refs (git ls-remote); a new "
+            f"ref is never scanned against local remote-tracking refs: {exc}"
+        )
+    shas = sorted({
+        ln.split()[0] for ln in out.splitlines() if ln.split() and _SHA.match(ln.split()[0])
+    })
+    if not shas:
+        return []
+    check = _git(
+        root, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], "\n".join(shas) + "\n"
+    )
+    return sorted({
+        bits[0] for bits in (ln.split() for ln in check.splitlines())
+        if len(bits) == 2 and bits[1] in ("commit", "tag")
+    })
+
+
+def resolve_push_ranges(
+    root: Path,
+    ref_lines: Sequence[str],
+    remote_name: str,
+    have: Optional[Callable[[str], bool]] = None,
+) -> list:
+    """Every pre-push stdin line -> its RangeSpec (deletions dropped).
+
+    The ONE range resolver for every push gate (this sweep and
+    ``tools/credential_history_scan.py``). ls-remote is read once, and only
+    when some line needs the whole-remote exclusion; GitFault propagates.
+    """
+    if have is None:
+        def have(sha: str) -> bool:
+            return _has_object(root, sha)
+    advertised = None
+    if any(_needs_whole_remote(ln, have) for ln in ref_lines):
+        advertised = remote_advertised(root, remote_name)
+    specs = []
+    for line in ref_lines:
+        spec = resolve_push_range(line, remote_name, have=have, advertised=advertised)
+        if spec is not None:
+            specs.append(spec)
+    return specs
+
+
+def stdin_revs(args: Sequence[str]) -> Optional[str]:
+    """``git <cmd> --stdin`` input for a plain-rev list, else None.
+
+    One argv word per advertised sha would overrun the Windows command-line cap
+    on a remote with many refs, so a list of plain revs (``sha`` / ``^sha``) is
+    fed on stdin. A list carrying an option (``--not``) stays on argv: git
+    before 2.42 rejects options in --stdin mode.
+    """
+    if not args or any(a.startswith("-") for a in args):
+        return None
+    return "\n".join(args) + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -1274,14 +1369,24 @@ class GitFault(RuntimeError):
     pass
 
 
-def _git(root: Path, args: Sequence[str], stdin_text: str = "") -> str:
+def _git(
+    root: Path,
+    args: Sequence[str],
+    stdin_text: str = "",
+    env: Optional[dict] = None,
+    timeout: Optional[float] = None,
+) -> str:
     try:
         proc = subprocess.run(
             ["git", "-C", str(root), *args],
             input=stdin_text.encode("utf-8") if stdin_text else None,
             capture_output=True,
             creationflags=_NO_WINDOW,
+            env=dict(os.environ, **env) if env else None,
+            timeout=timeout,
         )
+    except subprocess.TimeoutExpired:
+        raise GitFault("git " + " ".join(args[:2]) + f" timed out after {timeout}s")
     except OSError as exc:
         raise GitFault(f"git could not be invoked: {exc}")
     if proc.returncode != 0:
@@ -1316,11 +1421,12 @@ class Blob:
 def collect_push_blobs(root: Path, ref_lines: Sequence[str], remote_name: str, stats: ScanStats):
     """Three sources, because a content diff alone misses two of them."""
     shas: list = []
-    for line in ref_lines:
-        spec = resolve_push_range(line, remote_name, have=lambda s: _has_object(root, s))
-        if spec is None:
-            continue
-        out = _git(root, ["rev-list", *spec.args])
+    for spec in resolve_push_ranges(root, ref_lines, remote_name):
+        feed = stdin_revs(spec.args)
+        if feed is not None:
+            out = _git(root, ["rev-list", "--stdin"], feed)
+        else:
+            out = _git(root, ["rev-list", *spec.args])
         for sha in out.split():
             if sha not in shas:
                 shas.append(sha)
