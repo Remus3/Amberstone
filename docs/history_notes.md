@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-16b - session 119: C1-op PUBREPO batch run (v0.1.0 released), RM-744 / RM-745 shipped, RM-746 refuted twice
+
+- **C1-op (LEDGER 1729, `531ce96f9`):** the operator confirmed ASK 14 in chat ("Run it now"); the batch ran attended, exit 0, 5/5 steps. Read back: remote tags = v0.1.0 only; `gh release view v0.1.0` published; CodeQL open alerts 0 (15 false positive, 7 used in tests, 3 won't fix); open PRs none (Dependabot closed #13 itself); sidecar tag bundle sha256 match + `git bundle verify` ok. ANSWER to MAIN delivered sha256 ce2ac188, reached 1/1 (tracked copy `428b3c388`).
+- **C1-op follow-up:** local evidence tags re-fetched by a `git fetch` were preserved at `refs/rw2-backup/c1-remote-tags/evidence/rm-159-attempt-1` / `-2` and deleted as tags; `git tag -l` = v0.1.0. Dependabot ignores for the declined bumps in `6b7778adc`.
+- **Shipped:** RM-744 `a1325dc4f` (one 30 s request-head deadline on :8888, `core/http_head_deadline.py`), RM-745 `98c94e7dc` (301 Host / path neutralised); live read-back: idle TLS client closed at 30.0 s, bare-LF Host injects nothing, 301 intact; RC pid 15236 alive. Records `17d3138b6` (LEDGER 1730-1733).
+- **Closed:** RM-740 (e) follow-up 2 (operator approved ASK 13): Task Scheduler RestartOnFailure is inert for a crash exit; the RC watchdog relaunched DS at +12.2 s. Operational log left ENABLED on purpose.
+- **Refuted, not shipped:** RM-746 rounds 1 (`65948d418`) and 2 (`e8974f331`) on branch `worktree-agent-a14e007f9937d670d` (worktree kept). Round 2: 15 of 88 legitimate merge flows lost credit. Decision: at most ONE more round, acceptance = the verifier's probe (zero old=True / new=False on legit shapes), else won't-fix. Probes preserved in gitignored `ops/runtime/rm746/`.
+- **Filed:** RM-747 / RM-748 / RM-749 (:8895 / :8860 / :8890 lack the RM-744 deadline), RM-750 (no DS restarter while RC is down), RM-751 (dead bridge secret; blank it locally).
+- **/done:** ROADMAP at 91 percent of budget, so RM-741..RM-745 rows relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-16` (`5907f236b`); pushed `1f2b9418d..5907f236b`.
+- **Do NOT redo:** the C1-op batch, RM-744, RM-745, RM-740 (e) follow-up 2.
+- **Next:** RM-746 final round or close; then decide the 2 unmerged PUBREPO worktrees and the backup refs; then RM-747..RM-750.
+
+---
+
 # 2026-10-16 - session 118: MAIN ORDER PUBREPO in-tree parts shipped; operator batch waits
 
 - **Shipped (LEDGER 1728), pushed `9240474bc..239d56449` (31 commits), CI ci (escalated full dual suite) / codeql / docs-guards green:** merges `f4e97dabf` (b, `merge:` subjects accepted, agent worktree names refused), `553761a81` + `1c46365f1` (d, README "How this repo is built", Apache-2.0 in both package.json, outsider-read scrub), `47a60f465` (e, hashed `requirements.txt` from `requirements.in`; `requirements.lock` RETIRED), `18a99c3a7` (f, checkout root halts a push in 24/24 drive spellings), `d317d88e3` (Dependabot #13 applied), `0e8a26b20` + `a5cf80472` (g, CodeQL triage), `44a4a3708` (tooltip render fix after a REFUTED render-neutral claim); docs `3888c9671` (v0.1.0 notes; local annotated tag v0.1.0 on it), `a4c65a2b6`, `239d56449`.
