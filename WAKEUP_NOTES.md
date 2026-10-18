@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-18 - session 122: C1 decided, hand-off under 30 KB, CI-red fixes pushed, gated suite NOT done
+
+- **C1 (LEDGER 1737, `50744bdee`):** 2 PUBREPO worktrees + branches and 8 backup refs removed (worktrees 24 -> 22, refs 99 -> 89); the in-tree tag bundle KEPT (proved by a full restore, not `git bundle verify`). The sidecar bundle copy is on the SAME physical disk (off-tree, not off-box).
+- **Rest (LEDGER 1738):** H1/H2 hand-off trim + /done size pre-flight `5142a52bc`; P1 `2497e857b` + P2 `0d11d82cf` (129-char path cap, now refused at pre-commit); F1 `181789cf9`; G2 `65ac9fbe6`; S1 sweep ls-remote fix merged `d2aabcc91`. Kit v19 (`2c10e5284`) and the GH-HYGIENE ANSWER came from MAIN's own headless runs.
+- **Push:** `2c10e5284..d2aabcc91`; CI on d2aabcc91 recorded in the hand-off.
+- **NOT DONE - first next action:** T2, the gated Tier-2 dual suite (run 1 hung after gw7 crashed; run 2 stopped by the harness at 99 percent for low memory). Re-run with `-v` / `--report-log`, memory headroom.
+- **Found at the wrap:** MAIN FIX 2026-10-17-1709 (ROFL archive 340 GB on C:, move to E:) was never picked up; carried. The kit v18 / v19 ORDER rows closed with `inbox_tick.py --done`.
+- **Do NOT redo:** C1, H1, P1, P2, F1, G2, S1.
+- **Next:** T2; then the ROFL FIX; then RM-747..RM-750.
+
+---
+
 # 2026-10-17b - session 121: F1 closed - CodeQL #63 / #64 fixed, 0 open bot PRs, ONE ANSWER to MAIN
 
 - **F1 (MAIN FIX eb3c0d686aea) DONE (LEDGER 1736):** merge `7a81e608e` = `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = Dependabot #15); verifier 8/8, the 3 test files 24 passed. CodeQL #63 / #64 fixed at 20:29:19Z; 0 open alerts.
@@ -26,17 +38,3 @@
 - **Filed:** RM-752 (production SSLContexts with no `minimum_version`; liveclient_relay pins TLSv1 on purpose - review). ROADMAP RM-746 row relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-17`.
 - **Do NOT redo:** RM-746 (closed), the F1 verification (re-verify only if the branch changes), the #14 decision.
 - **Next:** check what loads the CPU first; then F1: merge the branch to main + push via fleet_gitlock, close #14 + widen the ignore, confirm 0 open HIGH alerts + 0 open bot PRs, ONE ANSWER to MAIN; then the carried PUBREPO worktree / backup-ref decisions and RM-747..RM-750.
-
----
-
-# 2026-10-16b - session 119: C1-op PUBREPO batch run (v0.1.0 released), RM-744 / RM-745 shipped, RM-746 refuted twice
-
-- **C1-op (LEDGER 1729, `531ce96f9`):** the operator confirmed ASK 14 in chat ("Run it now"); the batch ran attended, exit 0, 5/5 steps. Read back: remote tags = v0.1.0 only; `gh release view v0.1.0` published; CodeQL open alerts 0 (15 false positive, 7 used in tests, 3 won't fix); open PRs none (Dependabot closed #13 itself); sidecar tag bundle sha256 match + `git bundle verify` ok. ANSWER to MAIN delivered sha256 ce2ac188, reached 1/1 (tracked copy `428b3c388`).
-- **C1-op follow-up:** local evidence tags re-fetched by a `git fetch` were preserved at `refs/rw2-backup/c1-remote-tags/evidence/rm-159-attempt-1` / `-2` and deleted as tags; `git tag -l` = v0.1.0. Dependabot ignores for the declined bumps in `6b7778adc`.
-- **Shipped:** RM-744 `a1325dc4f` (one 30 s request-head deadline on :8888, `core/http_head_deadline.py`), RM-745 `98c94e7dc` (301 Host / path neutralised); live read-back: idle TLS client closed at 30.0 s, bare-LF Host injects nothing, 301 intact; RC pid 15236 alive. Records `17d3138b6` (LEDGER 1730-1733).
-- **Closed:** RM-740 (e) follow-up 2 (operator approved ASK 13): Task Scheduler RestartOnFailure is inert for a crash exit; the RC watchdog relaunched DS at +12.2 s. Operational log left ENABLED on purpose.
-- **Refuted, not shipped:** RM-746 rounds 1 (`65948d418`) and 2 (`e8974f331`) on branch `worktree-agent-a14e007f9937d670d` (worktree kept). Round 2: 15 of 88 legitimate merge flows lost credit. Decision: at most ONE more round, acceptance = the verifier's probe (zero old=True / new=False on legit shapes), else won't-fix. Probes preserved in gitignored `ops/runtime/rm746/`.
-- **Filed:** RM-747 / RM-748 / RM-749 (:8895 / :8860 / :8890 lack the RM-744 deadline), RM-750 (no DS restarter while RC is down), RM-751 (dead bridge secret; blank it locally).
-- **/done:** ROADMAP at 91 percent of budget, so RM-741..RM-745 rows relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-16` (`5907f236b`); pushed `1f2b9418d..5907f236b`.
-- **Do NOT redo:** the C1-op batch, RM-744, RM-745, RM-740 (e) follow-up 2.
-- **Next:** RM-746 final round or close; then decide the 2 unmerged PUBREPO worktrees and the backup refs; then RM-747..RM-750.
