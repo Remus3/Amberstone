@@ -165,6 +165,13 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     strips, pre-push refuses; operator identity only from local git config
     `fleet.operatorIdent`), fleet_gitlock and the account attribution keys.
     A history rewrite runs only on MAIN's ORDER, via `fleet_rewrite.py`.
+18. STATUS BOARD (kit v19; operator order 2026-10-18). Each tree's claude.ai
+    board URL lives in `ops/status_board.json` {"url"}. An interactive
+    session pushes its board ONLY at session start, after every item-13 b
+    reprint and at /done (`--final`): `fleet_board.py calls --session <n>`
+    (checklist on stdin) renders status.json and prints the exact two tool
+    calls - one Artifact asset upload of that file, one ArtifactData update
+    of datasets/board pinned with if_version. Headless runs never push.
 <!-- FLEET-COMMON END -->
 
 # RC rules (tree-specific)
@@ -182,6 +189,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 **KIT v14 (MAIN 2026-10-09 0930; no new rule, hook or settings).** The tick files reach the test guard as `install(..., extra_ignore=...)`, never a restated `IGNORE`; `tests/conftest.py` pins `FLEET_SIDECAR_ROOT=""` at import because RC tests acquire lanes through the kit (`fleet_lanes.worktree_path`), so the suite never depends on the machine variable; a kit refusal is matched on its code (`Refused.code`, carried as `ops/loop/fleet_route.RouteRefused.code`), never on message text; the lane widget renders the kit state `blocked`. When MAIN sets `FLEET_SIDECAR_ROOT`, moving the lane worktrees is an out-of-tree act (halt boundary). Guard `tests/test_fleet_kit_v14.py`.
 
 **KIT v15 (MAIN 2026-10-09 2055; no new file, hook or settings).** The suite gate appends one `durations.jsonl` line per run in its own machine state dir and gives a known short suite (median hold <= 120 s over its last runs) one extra lane slot; the kit's `child_env` sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, so a headless child runs foreground only and NO headless child prompt (`tools/headless-*.md`, `ops/loop/*prompt*.md`, `ops/loop/prompts/`, the responder prompt) may ask for background work; no file named `fleet_suite_gate.py` may exist in the tree outside `ops/fleet_kit/` (MAIN drift g). Guard `tests/test_fleet_kit_v15.py`.
+
+**KIT v19 (MAIN 2026-10-18 1235, FLEET-COMMON item 18; no new hook or settings).** The board config is tracked `ops/status_board.json` {"code", "dataset_version", "url"}; render state `ops/loop/control/board/` is gitignored. An interactive session pushes the board only at session start, after each item-13 b reprint (the `tools/session_checklist.py` DIRECTIVE says so) and at /done (`tools/done.md` section 9, `fleet_board.py calls --final`, after the hand-off read-back and before the done marker); a failed push is a hand-off line, never a ritual failure; headless runs never push. Stop sentinels: RC declares NONE (no `ops/stop_sentinels.json`): `ops/loop/control/STOP` and `ops/runtime/INBOX_RESPONDER_STOP` stay caller-scoped (`ops/loop/fleet_route.py` docstring), and declaring them would refuse every kit spawn. The kit pre-push scans a NEW ref against `git ls-remote`; `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad (one per run reached 8.5k entries; explicit basetemps are never reaped and Temp file count is boot time). Use the default tmp_path (`pytest.ini`: retention `failed`, count `1`). If a run truly needs one, use the ONE fixed `<scratchpad>/pytest-basetemp` (pytest clears it each run). Every session, lane and loop prompt follows this; the rootdir `conftest.py` re-exports `tests/_basetemp_guard.py` `pytest_configure`, which refuses any other scratchpad basetemp with a usage error. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 
