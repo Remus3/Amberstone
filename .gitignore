@@ -363,6 +363,10 @@ ops/loop/control/locks/
 ops/loop/control/claims.jsonl
 ops/loop/control/claims.mode
 ops/loop/control/gitlock.jsonl
+# FLEET-KIT v19 (MAIN 2026-10-18 1235 ORDER step 3, FLEET-COMMON item 18): the
+# status board's render state (fleet_board.py STATE_REL: state.json,
+# status.json), named per the kit order.
+ops/loop/control/board/
 # FLEET-KIT v13 (MAIN 2026-10-08 2246 ORDER section 1 step 5): the identity
 # hook's strip log (fleet_identity.py LOG_REL).
 ops/loop/control/identity.jsonl

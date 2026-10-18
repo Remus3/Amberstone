@@ -177,6 +177,20 @@ those numbers, so every "v16 (KIT-16)" note in the kit ships in v18)
   no longer guesses a spawn's kind - it still classifies legacy usage rows
   (kind absent) and re-attributes inbox -> order for ORDER / FIX / RULING.
 
+v19 = STATUS BOARD (FLEET-COMMON 18, operator order 2026-10-18, one-off
+train + nightly waiver docs/rulings/2026-10-18-kit-v19-waiver.md):
+- fleet_board.py joins the kit: renders the per-tree claude.ai board feed
+  (status.json) from the item-13 checklist; `calls` prints the two tool
+  calls an interactive session makes to push it; headless never pushes.
+- STOP SENTINELS (CS FIX 2026-10-18-1213 item 1): spawn() refuses, code
+  "halted", before anything starts, while a path the TARGET tree declares in
+  ops/stop_sentinels.json {"paths": [...]} exists; an unreadable file or a
+  path outside the tree refuses too (fail closed). No file = no sentinels,
+  no default names. The inbox status file's own "halted" is not a trigger
+  (spawn writes it itself; it would never clear).
+- fleet_identity pre-push: a NEW ref is scanned against the remote's real
+  ls-remote advertisement, not local tracking refs (CS 1213 item 2).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -193,7 +207,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 18
+KIT_VERSION = 19
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -1310,6 +1324,34 @@ def _secs(value):
     return f"{value:g}s"
 
 
+SENTINELS_REL = Path("ops") / "stop_sentinels.json"
+
+
+def stop_sentinel_hit(root):
+    """v19 (CS FIX 2026-10-18-1213 item 1): the first stop sentinel the tree
+    declares in ops/stop_sentinels.json {"paths": [rel, ...]} that exists
+    (any entry, dangling links too), else None. No file = no sentinels. An
+    unreadable file or a path outside the tree raises Refused (fail closed)."""
+    path = Path(root) / SENTINELS_REL
+    if not os.path.lexists(path):
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        rels = doc["paths"]
+        if not isinstance(rels, list) or not all(isinstance(r, str) and r for r in rels):
+            raise ValueError("paths")
+    except (OSError, ValueError, KeyError, TypeError, UnicodeError):
+        raise Refused(f"{SENTINELS_REL.as_posix()} unreadable - fail closed",
+                      code="halted") from None
+    for rel in rels:
+        rp = Path(rel)
+        if rp.is_absolute() or rp.drive or ".." in rp.parts:
+            raise Refused(f"stop sentinel path outside the tree: {rel}", code="halted")
+        if os.path.lexists(Path(root) / rp):
+            return rel
+    return None
+
+
 def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           rules_file=None, timeout=3600, extra=(), run=None,
           url_source=base_url, connect=socket.create_connection,
@@ -1345,6 +1387,14 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
     if halt_file and os.path.lexists(halt_file):  # any entry halts, dangling links too
         _status_quietly(root, code, "halted", "Halted", budget)
         raise Refused("halt file present")
+    try:
+        hit = stop_sentinel_hit(root)
+    except Refused:
+        _status_quietly(root, code, "halted", "Halted", budget)
+        raise
+    if hit:
+        _status_quietly(root, code, "halted", "Halted", budget)
+        raise Refused(f"stop sentinel present: {hit}", code="halted")
     try:
         if not str(note or "").strip():
             raise Refused("empty note label - every run names its note or task",

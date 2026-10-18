@@ -298,6 +298,14 @@ The whole chat output of /done is exactly one line, printed LAST, after section 
 Done ritual complete, safe to clear
 ```
 
+**Status board - once, after the hand-off read-back and before the done marker (FLEET-KIT v19 item 18; MAIN 2026-10-18 1235 ORDER step 4).** Write this session's last printed `Session <n> checklist` to a temp file and run from the repo root:
+
+```
+python ops/fleet_kit/fleet_board.py calls --final --session <n> --checklist <tmp>
+```
+
+Make the two tool calls it prints, exactly as printed (Artifact publish of the rendered status.json, then ArtifactData update of datasets/board with `__URL__` replaced by the blob url the first call returns). On a version mismatch run `python ops/fleet_kit/fleet_board.py pushed --version <current>` and redo the second call. `no push: headless` means nothing to do. A failed push is a hand-off line (`Board push failed: <reason>`, committed with the hand-off and read back), never a ritual failure.
+
 **Done marker - the LAST act, immediately before that line (FLEET-KIT v9 item 15; MAIN 2026-10-07 2354 ORDER).** After section 10's hand-off is committed and READ BACK (the last commit and any last push are done), run from the repo root:
 
 ```

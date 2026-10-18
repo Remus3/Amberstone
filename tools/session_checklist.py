@@ -51,7 +51,10 @@ DIRECTIVE = (
     "FLEET item 13: print this block as your FIRST chat output, completed from the "
     "hand-off (one line per task, execution order, /done last); after 4+ completions "
     "reprint ONLY the remaining tasks (new ones marked +); when none remain run /done "
-    "unprompted."
+    "unprompted. FLEET item 18 (kit v19): after this first print and after each "
+    "reprint, pipe the printed block into `python ops/fleet_kit/fleet_board.py calls "
+    "--session <n>` and make the two tool calls it prints; a failed board push is "
+    "noted for the hand-off, never a blocker."
 )
 
 

@@ -6,6 +6,10 @@
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
 
+v19 (CS FIX 2026-10-18-1213 item 2): pre-push scans a NEW remote ref against
+what `git ls-remote <remote>` really advertises (shas present locally), not
+the local remote-tracking refs; ls-remote failing refuses the push.
+
 Why: GitHub lists a contributor for every identity in default-branch history,
 including co-author trailers. Claude and bot identities entered through
 harness trailers, Claude-authored commits, Dependabot merges and workflow
@@ -186,11 +190,32 @@ def is_operator(name, addr, idents):
 _SEP, _END = "\x00", "\x1e"
 
 
+def _git_in(cwd, args, text, timeout=60, env=None):
+    """_git with stdin text and an optional env overlay (v19)."""
+    git = os.environ.get("FLEET_GIT") or "git"
+    full = dict(os.environ, **env) if env else None
+    try:
+        r = subprocess.run([git, "-C", str(cwd), *args], input=text.encode("utf-8"),
+                           capture_output=True, timeout=timeout, env=full,
+                           creationflags=_NO_WINDOW)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else None
+
+
+STDIN_REVS = 32  # v19: a longer rev list goes to `git log --stdin` (argv cap)
+
+
 def commits(cwd, rev_args, runner=None):
     """[{sha, an, ae, cn, ce, msg}] for `git log <rev_args>`."""
     fmt = "%H%x00%an%x00%ae%x00%cn%x00%ce%x00%B%x1e"
-    out = runner(rev_args) if runner else _git(cwd, "log", "--format=" + fmt, *rev_args,
-                                               timeout=300)
+    if runner:
+        out = runner(rev_args)
+    elif len(rev_args) > STDIN_REVS and not any(a.startswith("--") for a in rev_args):
+        out = _git_in(cwd, ["log", "--format=" + fmt, "--stdin"],
+                      "\n".join(rev_args) + "\n", timeout=300)
+    else:
+        out = _git(cwd, "log", "--format=" + fmt, *rev_args, timeout=300)
     if out is None:
         return None
     rows = []
@@ -225,8 +250,12 @@ def violations(rows, idents):
     return out
 
 
-def push_ranges(stdin_text, remote):
-    """git rev-list argument lists for each pushed ref (deletes skipped)."""
+def push_ranges(stdin_text, remote, advertised=None):
+    """git rev-list argument lists for each pushed ref (deletes skipped).
+    v19 (CS FIX 2026-10-18-1213 item 2): with advertised (the shas the remote
+    really advertises, present locally) a NEW ref excludes only those
+    (`<sha> ^a ^b ...`), never the local remote-tracking refs, which can
+    still name pre-rewrite commits after a remote is deleted and recreated."""
     ranges = []
     for ln in (stdin_text or "").splitlines():
         parts = ln.split()
@@ -236,7 +265,10 @@ def push_ranges(stdin_text, remote):
         if ZERO.match(lsha):
             continue
         if ZERO.match(rsha):
-            ranges.append([lsha, "--not", "--remotes=" + remote] if remote else [lsha])
+            if advertised is not None:
+                ranges.append([lsha] + ["^" + s for s in advertised])
+            else:
+                ranges.append([lsha, "--not", "--remotes=" + remote] if remote else [lsha])
         else:
             ranges.append([rsha + ".." + lsha])
     return ranges
@@ -321,14 +353,52 @@ def _no_operator(cwd, what):
                "event": "{}-no-operator-ident".format(what)})
 
 
-def pre_push(remote, stdin_text, cwd=None, idents=None, runner=None):
+_SHA = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
+
+
+def remote_advertised(cwd, remote, reader=None):
+    """v19: the shas `git ls-remote <remote>` advertises that exist locally
+    (sorted, unique), or None when ls-remote fails (fail closed)."""
+    out = reader(remote) if reader else _git_in(
+        cwd, ["ls-remote", "--", remote], "", timeout=120,
+        env={"GIT_TERMINAL_PROMPT": "0"})
+    if out is None:
+        return None
+    shas = sorted({ln.split()[0] for ln in out.splitlines()
+                   if ln.split() and _SHA.match(ln.split()[0])})
+    if not shas or reader:
+        return shas
+    have = _git_in(cwd, ["cat-file", "--batch-check=%(objectname) %(objecttype)"],
+                   "\n".join(shas) + "\n")
+    if have is None:
+        return None
+    return sorted({ln.split()[0] for ln in have.splitlines()
+                   if len(ln.split()) == 2 and ln.split()[1] in ("commit", "tag")})
+
+
+def _has_new_ref(stdin_text):
+    for ln in (stdin_text or "").splitlines():
+        parts = ln.split()
+        if len(parts) == 4 and not ZERO.match(parts[1]) and ZERO.match(parts[3]):
+            return True
+    return False
+
+
+def pre_push(remote, stdin_text, cwd=None, idents=None, runner=None, advertised_reader=None):
     cwd = cwd or os.getcwd()
     idents = operator_idents(cwd) if idents is None else idents
     if not idents:
         _no_operator(cwd, "pre-push")
         return 1
+    advertised = None
+    if remote and _has_new_ref(stdin_text):
+        advertised = remote_advertised(cwd, remote, advertised_reader)
+        if advertised is None:
+            _say("IDENTITY: push refused - could not read the remote's advertised refs "
+                 "(git ls-remote); a new ref is never scanned against local tracking refs")
+            return 1
     found = []
-    for rng in push_ranges(stdin_text, remote):
+    for rng in push_ranges(stdin_text, remote, advertised):
         rows = commits(cwd, rng, runner)
         if rows is None:
             _say("IDENTITY: push refused - could not list the pushed commits")
