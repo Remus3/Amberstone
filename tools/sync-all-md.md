@@ -1,5 +1,5 @@
 ---
-description: Reconcile every Markdown doc in the repo against a single source of canonical facts, fix cross-doc drift, refresh the README in its locked s207 style, flag broken cross-references and orphaned/stale/deprecated .md files. Use when docs have drifted (test counts, ENGINE_VERSION, patch, coverage) or after a run of sessions, before a doc audit, or when the operator asks to "sync all md".
+description: Reconcile every Markdown doc in the repo against a single source of canonical facts, fix cross-doc drift, refresh the README under its locked style contract (s207, revised by the GH-HYGIENE ORDER 2026-10-18), flag broken cross-references and orphaned/stale/deprecated .md files. Use when docs have drifted (test counts, ENGINE_VERSION, patch, coverage) or after a run of sessions, before a doc audit, or when the operator asks to "sync all md".
 ---
 
 > **SUBAGENT-FIRST (standing protocol, operator 2026-06-20, restated 2026-07-30).** Orchestrated + multi-agent + self-adjudicating + self-adversarial is the DEFAULT shape, not an escalation.
@@ -65,27 +65,53 @@ Produce a **Canonical Facts table** in your working notes. This is the contract 
 
 For every fact in the section 1 table, grep all LIVING docs for stale instances and replace with the canonical value. The usual offenders:
 
-- **Test counts** - README ("N tests"), `docs/DAEMON_SLAYER.md` (status line **and** the `tests/` module-map row - they drift independently), CLAUDE.md DS reference line.
+- **Test counts** - `docs/DAEMON_SLAYER.md` (status line **and** the `tests/` module-map row - they drift independently), CLAUDE.md DS reference line. The README carries no test count; do not add one (section 4).
 - **`ENGINE_VERSION`** - DAEMON_SLAYER.md status line, CLAUDE.md DS reference line. (WAKEUP carries it too but is append-only - leave it.)
 - **Patch** - DAEMON_SLAYER.md, README ("current League patch" stays prose; don't hard-pin a number in the README unless it already names one).
-- **Champion coverage** - DAEMON_SLAYER.md ("N entries / N champions" + the prose %), README ("about two-thirds of the roster" - keep it as a rounded prose phrase, only correct it if the fraction crossed a boundary).
+- **Champion coverage** - DAEMON_SLAYER.md ("N entries / N champions" + the prose %), README ("covers most of the roster" - keep it as a rounded prose phrase, only correct it if the fraction crossed a boundary).
 - **Item count / match-history count** - wherever cited.
 
 Rule: pick the phrasing already in the doc and swap only the number/version. Do not restructure sentences. If a doc rounds ("~3,000 matches", "about two-thirds") keep the rounding unless it's now wrong.
 
-### 4. README pass - locked s207 style
+### 4. README pass - locked style contract (s207, revised by GH-HYGIENE 2026-10-18)
 
-The README was deliberately rewritten in s207 to a plain-English summary. **Style contract - enforce, do not "improve":**
+The README was deliberately rewritten in s207 to a plain-English summary. MAIN's GH-HYGIENE ORDER of 2026-10-18 12:15 (an operator order relayed under FLEET-COMMON 6) then made it the public front page and validated it against HEAD: the "How this repo is built" heading stays (posture ruling 2026-10-15 1d), the licence is stated plainly and matches `LICENSE`, and every install step, command, flag, path, badge, screenshot and link is checked against the current code. The old s207 skeleton (8 sections, exactly one 6-row table, no install steps) would strip the Quickstart and "How this repo is built", so it is RETIRED; the contract below is the README as that ORDER left it. Every s207 constraint that does not conflict is kept.
 
-- Audience: a smart reader who is NOT this codebase's engineer. Prose paragraphs, not bullet dumps.
-- Keep the 8-section skeleton: title+tagline > What it does > How it works > Daemon Slayer build engine > Where it runs > Project status > More > License. Don't add sections.
-- **No session changelog, no `sNNN` ids, no commit SHAs, no enumerated "then we added X" history.** README describes the *current* system, not how it got here.
-- Exactly **one** table allowed (the 6-row DS scoring-mode table). Don't add tables.
-- No deep cross-machine/topology specifics, no install steps, no RC-Tutor strategy - those live in CLAUDE.md / docs.
-- Only the hard numbers update (items / tests / patch / coverage), pulled from section 1. Prose stays prose.
-- "More" links must all resolve (section 6 verifies).
+README skeleton - its `#` / `##` headings, in order. README.md must match this list line for line; `tests/test_sync_all_md_readme_contract.py` parses this block and fails on any difference:
 
-If the README's structural claims (modes covered, what the engine does, two-machine split) still match reality, only the numbers change. If something structural genuinely changed (a mode retired, a new top-level capability), update the one relevant sentence - minimally.
+```text
+# Amberstone
+## Contents
+## What makes it different
+## What it does
+## Quickstart
+## How it works
+## Daemon Slayer build engine
+## Riot policy stance
+## Limitations
+## Status
+## How the work gets done
+## How this repo is built
+## Data sources and credits
+## Documentation map
+```
+
+**Style contract - enforce, do not "improve":**
+
+- Audience: a smart reader who is NOT this codebase's engineer. Prose first; short bulleted lists only where the skeleton already uses them (features, policy removals, limitations, sources, the documentation map), never a dump of internals.
+- **Keep the skeleton above: same headings, same order.** Do not add, drop, rename or reorder a section on a sync pass. A section change needs a MAIN or operator ORDER, and then this block and README.md change in the same commit.
+- Top matter, before `## Contents` and with no heading of its own: the hero image (`docs/assets/social-preview.png`), the tagline, ONE badge row, the single-machine / no-installer statement and the atlas link. Every badge URL resolves and every workflow a badge names exists under `.github/workflows/`.
+- `## Contents` is a navigation table: one row per `##` section after it, in the same order, each anchor resolving to its heading (guarded by the same test).
+- Exactly **3** tables: the Contents table, the port map in `## How it works` (every port in `core.ports.ALL`; guarded by `tests/test_readme_port_map.py`) and the scoring-mode table in `## Daemon Slayer build engine` (one row per scoring mode the engine picks from a role). Don't add tables. The one fenced ASCII diagram in `## How it works` stays consistent with the port map.
+- **Install steps live ONLY in `## Quickstart`** (GH-HYGIENE section 1). Every step, command and flag there must match HEAD (`install.bat`, `start.bat`, `requirements.txt`, the Python version in `.github/workflows/ci.yml`, `scripts/install_hooks.py`); fix a stale step, never add a second install path. Run and maintenance procedures stay in `docs/OPERATIONS.md`, linked, not restated.
+- **`## How this repo is built` stays** (GH-HYGIENE; posture ruling 2026-10-15 1d). It explains the agent-facing root files (`CLAUDE.md`, `.claude/`, `ops/`, `.githooks/`, `RC-NEXT-SESSION.txt`) for an outside reader and ends with the **Licence** paragraph. The licence is stated plainly and matches `LICENSE` and `NOTICE`; the closing disclaimer after the last `---` (Riot trademark notice, then the licence scope, no heading) says the same thing.
+- **No session changelog, no `sNNN` ids, no commit SHAs, no enumerated "then we added X" history.** README describes the *current* system, not how it got here. The one date allowed is the `As of YYYY-MM-DD.` line that opens `## Status`; move it only when the Status prose is re-verified in that pass.
+- Public-facing (GH-HYGIENE section 3, FLEET-COMMON 17): no secrets, machine paths, host names or addresses, emails, account ids, sibling repo names or paths, and no AI or bot attribution. An internal fleet term appears only where the README explains it.
+- No deep cross-machine/topology specifics and no RC-Tutor strategy - those live in CLAUDE.md / docs.
+- Only the hard facts update (ports, scoring modes, the Status date, any number the README already carries), pulled from section 1 and HEAD. Do not pin a test count, item count or patch number the README does not already name. Prose stays prose.
+- Every relative link and image resolves and external links answer (section 6 verifies), including every `## Documentation map` entry.
+
+If the README's structural claims (modes covered, what the engine does, the single-machine build) still match reality, only the facts change. If something structural genuinely changed (a mode retired, a new top-level capability), update the one relevant sentence - minimally. A new section is an ORDER, not a sync edit.
 
 ### 5. Per-doc congruence pass (LIVING only)
 
@@ -172,7 +198,7 @@ List anything needing a human call (broken-ref resolution, deprecation moves, hi
 - Documentation only. NO code edits, NO `data/` writes, NO RC restart, NO DS restart.
 - Never rewrite history (WAKEUP / history_notes / _archive / ADRs / dated artifacts) - section 8 is non-negotiable.
 - Never touch a CLAUDE.md frozen file. Never edit a memory body (only flag stale; defer to `/consolidate-memory`).
-- README: enforce the s207 style contract; resist the urge to "polish" beyond fact reconciliation.
+- README: enforce the section 4 contract (s207 style, revised by GH-HYGIENE 2026-10-18); resist the urge to "polish" beyond fact reconciliation.
 - `commit` arg: stage only the explicit doc files you edited (list them by path), never `git add -A`/`.`. Conventional Commit subject (`docs: sync living docs - <topic>`). **No `Co-Authored-By: Claude` trailer** - operator policy 2026-06-03, this repo never emits one and `.githooks/commit-msg` strips it. Never `--amend`, never force-push, never `--no-verify`.
 - Broken-ref and deprecation decisions are surfaced, not silently applied, unless the operator has a standing preference recorded in memory/CLAUDE.md.
 - Preserve file encodings and line endings. Surgical edits - minimal diff.
