@@ -203,6 +203,11 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
 
     k = kit()
     note = note or caller
+    if kind is None:
+        # Kit v18: a missing kind is refused ("no-kind"), the kit no longer
+        # infers one. RC's route callers are build workers; inbox / triage
+        # callers pass their kind explicitly.
+        kind = "build"
     if root is not None:
         root = Path(root)
     else:

@@ -51,6 +51,19 @@ covers it only while the file is not newer than that line, so a note re-sent
 under an old name is offered again. Existing ledgers are read unchanged
 (seen_index(); seen_hashes() and seen() keep their v10 meaning).
 
+v16 (KIT-16, Fleet Insights 2026-10-09 R1): kind "order" (KINDS) is a run
+doing the work of an ORDER / FIX / RULING note. run_kind() reads an explicit
+"order", and also re-attributes a row whose kind is "inbox" or absent when
+its note's class (note_class) is ORDER / FIX / RULING, so v8-v15 rows that
+logged ORDER work as inbox split correctly. cost_split() gains "order";
+inbox_share still counts inbox + triage only, so ORDER work is no longer
+counted as chatter.
+
+v18 (RSC INFORMATION 2026-10-13-1852 a): every ledger append and
+OutboundCap.record's check-then-append run under an OS byte-range lock on
+<ledger>.lock (ledger_lock; never unlinked, freed by the OS when a holder
+dies), so two senders at cap-1 cannot both pass and lines cannot interleave.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -59,10 +72,11 @@ import datetime as _dt
 import json
 import os
 import re
+import sys
 import time
 from pathlib import Path
 
-INBOX_VERSION = 3
+INBOX_VERSION = 4
 OUTBOUND_CAP = 6
 MAX_HOPS = 2
 EXEMPT = ("ORDER", "FIX", "RULING")
@@ -73,7 +87,7 @@ ANSWER_CLASSES = ("ANSWER", "ACK", "RECEIVED", "POLL-ANSWER", "INFORMATION",
 TRIAGE_SPAWN = {"model": "sonnet", "effort": "low", "timeout": 300}
 SKIP, ACK, WORK, TRIAGE = "skip", "ack", "work", "triage"
 VERDICTS = ("NOREPLY", "ACK", "ANSWER")
-KINDS = ("build", "inbox", "triage", "unattributed")
+KINDS = ("build", "inbox", "triage", "order", "unattributed")
 SEEN_REL = Path("ops/loop/control/inbox_seen.jsonl")
 OUTBOUND_REL = Path("ops/loop/control/outbound_notes.jsonl")
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
@@ -263,10 +277,73 @@ def _iso(epoch):
         return (_EPOCH + _dt.timedelta(seconds=epoch)).isoformat(timespec="seconds")
 
 
-def _append(path, doc):
+LOCK_WAIT_S = 10.0
+
+
+class LedgerLockBusy(OSError):
+    """v18: a ledger's lock stayed held past LOCK_WAIT_S; nothing was written."""
+
+
+def _try_lock(fd):
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return False
+    return True
+
+
+def _unlock(fd):
+    with contextlib.suppress(OSError):
+        if sys.platform == "win32":
+            import msvcrt
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def ledger_lock(path, wait=None):
+    """v18 (RSC 1852 a): an OS byte-range lock on <ledger>.lock, a file that
+    is never unlinked, so a dead holder frees it at once (the RunBudget
+    pattern). Held across a check-then-append so two writers cannot both pass
+    a cap check or interleave a line. LedgerLockBusy after `wait` seconds."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock = path.with_name(path.name + ".lock")
+    deadline = time.monotonic() + (LOCK_WAIT_S if wait is None else wait)
+    fd = os.open(str(lock), os.O_CREAT | os.O_RDWR)
+    try:
+        while not _try_lock(fd):
+            if time.monotonic() >= deadline:
+                raise LedgerLockBusy(f"ledger lock busy: {lock.name}")
+            time.sleep(0.05)
+        try:
+            yield
+        finally:
+            _unlock(fd)
+    finally:
+        os.close(fd)
+
+
+def _append_unlocked(path, doc):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="ascii", newline="\n") as fh:
         fh.write(json.dumps(doc) + "\n")
+
+
+def _append(path, doc):
+    """One JSON line, under the ledger's lock (v18, RSC 1852 a)."""
+    path = Path(path)
+    with ledger_lock(path):
+        _append_unlocked(path, doc)
 
 
 def _lines(path):
@@ -450,12 +527,15 @@ class OutboundCap:
         return cls in EXEMPT or self.used() < self.cap
 
     def record(self, name, cls, to, parts=1):
-        if not self.allow(cls):
-            return None
-        now = self.clock()
-        doc = {"ts": _iso(now), "day": _local_day(now), "note": _base(name),
-               "cls": cls, "to": to, "parts": parts}
-        _append(self.path, doc)
+        """v18 (RSC 1852 a): allow() and the append run under ONE ledger lock,
+        so two senders at cap-1 cannot both pass."""
+        with ledger_lock(self.path):
+            if not self.allow(cls):
+                return None
+            now = self.clock()
+            doc = {"ts": _iso(now), "day": _local_day(now), "note": _base(name),
+                   "cls": cls, "to": to, "parts": parts}
+            _append_unlocked(self.path, doc)
         return doc
 
 
@@ -479,13 +559,17 @@ def batch_note(code, to, answers, hop_n=2, stamp=None):
 # ---------------------------------------------------------------- cost split
 
 def run_kind(line):
-    """build | inbox | triage | unattributed. An explicit "kind" (kit v8) wins;
-    else a channel-note name (`-from-XX-`) is inbox, an empty note unattributed,
-    and any other label (lane-*, drain-*, plan ids) build."""
+    """build | inbox | triage | order | unattributed. An explicit "kind" (kit
+    v8) wins, except that "inbox" (or no kind) on an ORDER / FIX / RULING
+    note is "order" (v16); else a channel-note name (`-from-XX-`) is inbox,
+    an empty note unattributed, and any other label (lane-*, drain-*, plan
+    ids) build."""
     k = line.get("kind")
+    note = _base(line.get("note") or "")
+    if k in (None, "", "inbox") and note and note_class(note) in EXEMPT:
+        return "order"
     if k in KINDS:
         return k
-    note = _base(line.get("note") or "")
     if not note:
         return "unattributed"
     return "inbox" if _SENDER.search(note) else "build"
@@ -499,7 +583,8 @@ def _ts(line):
 
 
 def cost_split(lines, since=None, until=None):
-    """{"build": {"usd", "runs"}, "inbox": ..., "triage": ..., "unattributed": ...,
+    """{"build": {"usd", "runs"}, "inbox": ..., "triage": ..., "order": ...,
+    "unattributed": ...,
     "total_usd", "inbox_share"} over usage lines with since <= ts < until (epoch).
     inbox_share counts inbox + triage against attributed spend."""
     out = {k: {"usd": 0.0, "runs": 0} for k in KINDS}

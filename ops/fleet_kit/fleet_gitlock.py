@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v17 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
+"""Fleet kit v18 - RACE GUARDS: the per-tree commit/push lock (FLEET-COMMON 16, 17).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -72,6 +72,16 @@ v14: the git child and every probe start with CREATE_NO_WINDOW when this
 process has no visible console (quiet_inherit()), passing its own stdio
 explicitly so output still arrives; in a visible terminal nothing changes.
 
+v16 (KIT-16, RC 1925 c): `run` also accepts `git merge`, `git reset` and
+`git revert` - LOCK ONLY: steps 1, 2 and 5 (the tree's git lock and the
+index.lock check), no claim check and no identity check (a merge or revert
+commit is still screened by the commit-msg / pre-push identity hooks). The
+claims hook still denies only a bare commit / push (its bare_git_write is
+unchanged, so v15 hooks stay compatible); routing a merge / reset / revert
+through `run` is the recommended form. rebase and cherry-pick stay out.
+Reverses to lock-only as v15.x if an unlocked merge/reset corrupts an index
+or ref.
+
 Python callers (e.g. a lane landing) use `with git_lock(dir, owner): ...`.
 Messages name a path relative to its tree, never an account or email.
 Pure stdlib plus the sibling kit files fleet_claims.py and fleet_identity.py.
@@ -99,6 +109,7 @@ HALF_WRITTEN_GRACE_S = 30.0
 PROGRESS_EVERY_S = 15.0
 POLL_S = 0.25
 VERBS = ("commit", "push")
+LOCK_ONLY_VERBS = ("merge", "reset", "revert")
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 
 
@@ -502,7 +513,8 @@ def check_identity(top, commit_args, var=None, idents=None):
 
 def parse(argv):
     if "--" not in argv:
-        raise LockRefused("GITLOCK: usage: run [--owner O] [--timeout S] -- git commit|push ...")
+        raise LockRefused("GITLOCK: usage: run [--owner O] [--timeout S] -- "
+                          "git commit|push|merge|reset|revert ...")
     k = argv.index("--")
     opts, cmd = argv[:k], argv[k + 1:]
     owner, timeout = os.environ.get(claims.ENV_OWNER) or None, WAIT_S
@@ -517,8 +529,9 @@ def parse(argv):
         else:
             raise LockRefused("GITLOCK: unknown option {}".format(opts[i]))
     g = claims._git_verb(cmd)
-    if g is None or g[0] not in VERBS:
-        raise LockRefused("GITLOCK: the command must be git commit or git push")
+    if g is None or g[0] not in VERBS + LOCK_ONLY_VERBS:
+        raise LockRefused("GITLOCK: the command must be git commit or git push "
+                          "(or merge / reset / revert, lock only)")
     return owner, timeout, cmd, g
 
 

@@ -801,7 +801,10 @@ def run_lane(repo_root, code, lane_name, run_id, cap=LANE_CAP_MAX, base="HEAD",
     """Repo lane + clean worktree for the block. Yields the claim ("worktree",
     "index", "saved_ref"). Takes NO governor slot: hold one around the executor
     call (spawn(governor=...) or slots.hold), never around git. Raises
-    LaneRefused before anything runs; releases the lane however the block ends."""
+    LaneRefused before anything runs; releases the lane however the block ends.
+    v16: when the block ends, progress/lane-<i>.json (FLEET-COMMON 13 d) that
+    still says running is written as failed, so a killed lane leaves no live
+    row behind."""
     claim = try_acquire_lane(repo_root, code, lane_name, run_id, cap, exclusive)
     if not claim["ok"]:
         raise LaneRefused(f"{claim['refused']}: {claim['holders']}")
@@ -811,4 +814,27 @@ def run_lane(repo_root, code, lane_name, run_id, cap=LANE_CAP_MAX, base="HEAD",
                                              run=run)["saved_ref"]
         yield claim
     finally:
-        release_lane(claim)
+        try:
+            _close_lane_row(repo_root, claim.get("index"))
+        finally:
+            release_lane(claim)
+
+
+def _close_lane_row(repo_root, index):
+    """v16: the lane's progress row, if still running, becomes failed."""
+    if isinstance(index, bool) or not isinstance(index, int):
+        return None
+    try:
+        import importlib.util
+        name = "fleet_kit_headless_for_lanes"
+        mod = sys.modules.get(name)
+        if mod is None:
+            spec = importlib.util.spec_from_file_location(
+                name, Path(__file__).with_name("fleet_headless.py"))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            sys.modules[name] = mod
+        return mod.close_progress(main_tree(repo_root), f"lane-{index}",
+                                  "lane block ended without a final status")
+    except (OSError, ValueError, ImportError):
+        return None

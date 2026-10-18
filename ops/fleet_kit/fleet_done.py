@@ -36,6 +36,42 @@ Validation (every client; all must hold, else show nothing):
   3. repo HEAD equals `commit` and the sha256 of the hand-off on disk equals
      `handoff_sha256` (any later commit or hand-off edit = work after /done).
 
+v16 (KIT-16):
+    mark WARNS (never fails) when the hand-off is over HANDOFF_WARN_BYTES
+        (30 KB): a second stdout line `warn: hand-off <N> KB > 30 KB; run
+        fleet_done.py archive`. The marker's keys, the exit code and
+        validation are unchanged.
+    v18 (Fleet Insights 2026-10-16 item 5): the warning became a FAIL MODE.
+        `mark --status done` on a hand-off over 30 KB writes the marker as
+        status failed with the reason `hand-off <N> KB > 30 KB; archive closed
+        blocks (fleet_done.py archive --apply)` - it can never validate - and
+        exits 1; the second stdout line reads `fail: ...` with the same text.
+        A `--status failed` mark is unchanged (exit 0, the size line printed).
+    python fleet_done.py archive [--apply] [--keep N] [--root R]
+        Moves CLOSED blocks out of the hand-off into
+        docs/handoff-archive/<CODE>-<YYYY-MM-DD>.txt (appended when it
+        exists). DRY-RUN by default: prints what it would move and changes
+        nothing; --apply writes. A CLOSED BLOCK (conservative on purpose):
+          - a FRAMED HEADING: a rule line (20 or more "=" and nothing else),
+            then one heading line that is either followed by a second rule
+            or is a starred banner `*** ... ***`; the block runs from the
+            first rule to the line before the next framed heading's first
+            rule (or the end of the file);
+          - its heading, stripped of '*' and spaces and upper-cased, STARTS
+            WITH "CLOSED" or contains " - CLOSED" (e.g. `CLOSED THIS SESSION`,
+            `*** SESSION 4 (...) - CLOSED, WITH WHAT WAS READ BACK ***`);
+          - its body has no line that says work is still open: NOT CLOSED,
+            STILL OPEN, OPEN ITEM(S), CARRIED, CARRY FORWARD, TODO, NEXT
+            ACTION, WAITING, BLOCKED, PENDING (whole words, any case). Such a
+            block is listed as kept with the word that kept it;
+          - the newest --keep closed blocks (default 1, the first ones in the
+            file) stay, so the last session's read-back record is never moved.
+        Each moved block leaves one line in its place:
+        `(closed block "<heading>" archived to docs/handoff-archive/<file>)`.
+        The archive is written and READ BACK before the hand-off is rewritten
+        (atomic replace); nothing is deleted. A hand-off with no framed
+        headings has nothing to archive.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -49,7 +85,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DONE_VERSION = 1
+DONE_VERSION = 2
 SCHEMA = 1
 STATUSES = ("done", "failed")
 MARKER_REL = Path("ops/loop/control/session_done.json")
@@ -57,6 +93,11 @@ SEEN_REL = Path("ops/loop/control/session_done.seen")
 HANDOFF_SUFFIX = "-NEXT-SESSION.txt"
 CHAT_LINE = "Done ritual complete, safe to clear"
 REASON_MAX = 200
+HANDOFF_WARN_BYTES = 30 * 1024
+ARCHIVE_REL = Path("docs/handoff-archive")
+_RULE = re.compile(r"^={20,}\s*$")
+_OPEN_WORDS = re.compile(r"\b(NOT CLOSED|STILL OPEN|OPEN ITEMS?|CARRIED|CARRY FORWARD|TODO|"
+                         r"NEXT ACTION|WAITING|BLOCKED|PENDING)\b", re.I)
 # v11: three git calls at most per stop-hook run, so 3 x 10 s stays under the
 # 45 s Stop hook timeout (v9-v10 used 15 s each = exactly 45 s).
 GIT_TIMEOUT = 10
@@ -180,10 +221,13 @@ def mark(root, session, status, reason=None, bg=0, env=None, clock=None):
     commit = head(root)
     digest = sha256_file(root / handoff) if handoff else None
     reason = _one_line(reason)
+    too_big = size_reason(handoff_bytes(root / handoff)) if handoff else None
     if status == "done" and not handoff:
         status, reason = "failed", "hand-off file not found at the tree root"
     elif status == "done" and not commit:
         status, reason = "failed", "HEAD could not be read"
+    elif status == "done" and too_big:
+        status, reason = "failed", too_big
     if status == "failed" and not reason:
         reason = "unspecified step failed"
     if status == "done":
@@ -198,6 +242,134 @@ def mark(root, session, status, reason=None, bg=0, env=None, clock=None):
            "handoff_sha256": digest, "background_tasks": bg,
            "at": _utc(now), "next_session": session + 1}
     _atomic_write(root / MARKER_REL, json.dumps(doc, indent=1) + "\n")
+    return doc
+
+
+def handoff_bytes(path):
+    try:
+        return Path(path).stat().st_size
+    except OSError:
+        return None
+
+
+def size_reason(size, limit=HANDOFF_WARN_BYTES):
+    """Why an oversized hand-off fails mark (v18), else None."""
+    if size is None or size <= limit:
+        return None
+    return ("hand-off {} KB > {} KB; archive closed blocks "
+            "(fleet_done.py archive --apply)").format((size + 1023) // 1024, limit // 1024)
+
+
+def size_warning(size, limit=HANDOFF_WARN_BYTES):
+    """The one-line stdout line for an oversized hand-off, else None (v16;
+    v18: `fail:` - mark fails on it)."""
+    why = size_reason(size, limit)
+    return "fail: " + why if why else None
+
+
+# ---------------------------------------------------------------- archive (v16)
+
+def _heading_key(line):
+    return " ".join(line.strip().strip("*").strip().upper().split())
+
+
+def is_closed_heading(line):
+    key = _heading_key(line)
+    return key.startswith("CLOSED") or " - CLOSED" in key
+
+
+def framed_blocks(lines):
+    """[(start, end, heading)] for every framed heading: lines[start] is the
+    first rule, lines[start + 1] the heading, lines[start + 2] the second
+    rule; the block ends before the next framed heading (end exclusive)."""
+    starts = [i for i in range(len(lines) - 1)
+              if _RULE.match(lines[i]) and _is_heading(lines, i + 1)]
+    out = []
+    for k, i in enumerate(starts):
+        end = starts[k + 1] if k + 1 < len(starts) else len(lines)
+        out.append((i, end, lines[i + 1].strip()))
+    return out
+
+
+def _is_heading(lines, j):
+    """lines[j] heads a block: framed by a second rule on j + 1, or a starred
+    banner `*** ... ***` on its own line straight after the first rule."""
+    line = lines[j].strip()
+    if not line or _RULE.match(line):
+        return False
+    if j + 1 < len(lines) and _RULE.match(lines[j + 1]):
+        return True
+    return len(line) > 6 and line.startswith("***") and line.endswith("***")
+
+
+def plan_archive(text, keep=1):
+    """(moves, kept): moves = [(start, end, heading)] to archive; kept =
+    [(heading, why)] for closed blocks that stay. Pure; the closed-block rule
+    is in the module doc."""
+    lines = text.split("\n")
+    moves, kept, newest = [], [], 0
+    for start, end, heading in framed_blocks(lines):
+        if not is_closed_heading(heading):
+            continue
+        hit = next((m for m in (_OPEN_WORDS.search(b) for b in lines[start + 3:end]) if m),
+                   None)
+        if hit:
+            kept.append((heading, "body says " + hit.group(1).upper()))
+            continue
+        if newest < keep:
+            newest += 1
+            kept.append((heading, "newest closed block"))
+            continue
+        moves.append((start, end, heading))
+    return moves, kept
+
+
+def archive(root, apply=False, keep=1, today=None, clock=None):
+    """Plan, and with apply=True do, the move of closed blocks. Returns
+    {handoff, archive, moved: [heading], kept: [(heading, why)], bytes_before,
+    bytes_after, applied}. Raises ValueError (no hand-off) or OSError (a
+    read-back that does not match; the hand-off is then left unchanged)."""
+    import time
+    root = Path(root)
+    name = find_handoff(root)
+    if not name:
+        raise ValueError("hand-off file not found at the tree root")
+    path = root / name
+    raw = path.read_bytes()
+    text = raw.decode("ascii")
+    moves, kept = plan_archive(text, keep)
+    day = today or _dt.date.today().isoformat()
+    rel = ARCHIVE_REL / "{}-{}.txt".format(tree_code(name), day)
+    lines = text.split("\n")
+    out, chunks, i = [], [], 0
+    for start, end, heading in moves:
+        out.extend(lines[i:start])
+        chunks.append("\n".join(lines[start:end]).rstrip("\n") + "\n")
+        out.append('(closed block "{}" archived to {})'.format(
+            _heading_key(heading)[:80], rel.as_posix()))
+        out.append("")
+        i = end
+    out.extend(lines[i:])
+    new = "\n".join(out)
+    doc = {"handoff": name, "archive": rel.as_posix(), "moved": [m[2] for m in moves],
+           "kept": kept, "bytes_before": len(raw), "bytes_after": len(new.encode("ascii")),
+           "applied": False}
+    if not apply or not moves:
+        return doc
+    dest = root / rel
+    prior = dest.read_bytes() if dest.is_file() else b""
+    stamp = "# archived from {} at {}\n".format(name, _utc((clock or time.time)()))
+    add = (stamp + "".join(chunks)).encode("ascii")
+    sep = b"" if not prior or prior.endswith(b"\n") else b"\n"
+    _atomic_write(dest, (prior + sep + add).decode("ascii"))
+    if not dest.read_bytes().endswith(add):
+        raise OSError("archive read-back failed; hand-off left unchanged")
+    if path.read_bytes() != raw:
+        raise OSError("hand-off changed during the archive; hand-off left unchanged")
+    _atomic_write(path, new)
+    if path.read_bytes() != new.encode("ascii"):
+        raise OSError("hand-off read-back failed after the archive")
+    doc["applied"] = True
     return doc
 
 
@@ -299,6 +471,10 @@ def main(argv=None, stdin=None, stdout=None):
     v.add_argument("--pane")
     v.add_argument("--root")
     sub.add_parser("stop-hook")
+    a = sub.add_parser("archive")
+    a.add_argument("--apply", action="store_true")
+    a.add_argument("--keep", type=int, default=1)
+    a.add_argument("--root")
     args = ap.parse_args(argv)
     if args.cmd == "stop-hook":
         try:
@@ -314,7 +490,26 @@ def main(argv=None, stdin=None, stdout=None):
         doc = mark(root, args.session, args.status, args.reason, args.bg)
         stdout.write("session_done S{} {} safe_to_clear={}\n".format(
             doc["session"], doc["status"], str(doc["safe_to_clear"]).lower()))
+        warn = size_warning(handoff_bytes(root / doc["handoff"]) if doc.get("handoff")
+                            else None)
+        if warn:
+            stdout.write(warn + "\n")
         return 0 if doc["status"] == args.status else 1
+    if args.cmd == "archive":
+        try:
+            doc = archive(root, apply=args.apply, keep=max(0, args.keep))
+        except (OSError, ValueError) as exc:
+            stdout.write("archive: refused - {}\n".format(_one_line(exc) or "error"))
+            return 1
+        verb = "moved" if doc["applied"] else "would move"
+        stdout.write("archive {}: {} {} block(s) to {} ({} -> {} bytes)\n".format(
+            "applied" if doc["applied"] else "dry-run", verb, len(doc["moved"]),
+            doc["archive"], doc["bytes_before"], doc["bytes_after"]))
+        for heading in doc["moved"]:
+            stdout.write("  {}: {}\n".format(verb, _heading_key(heading)[:80]))
+        for heading, why in doc["kept"]:
+            stdout.write("  kept: {} ({})\n".format(_heading_key(heading)[:80], why))
+        return 0
     verdict, why = validate(root, session_id=args.session_id
                             or os.environ.get("CLAUDE_CODE_SESSION_ID"), pane=args.pane)
     stdout.write("{}: {}\n".format(verdict or "none", why))
