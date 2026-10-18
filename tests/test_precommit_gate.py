@@ -6,6 +6,7 @@ these lock the parse/detection logic that would otherwise silently drift.
 Source stays ASCII: the em-dash is built with chr(0x2014), never a literal.
 """
 
+import io
 import sys
 from pathlib import Path
 
@@ -161,3 +162,77 @@ class TestStagedParse:
         )
         self._patch(monkeypatch, diff)
         assert G._staged_added("/repo") == {}
+
+
+def _path_of(n: int) -> str:
+    """A repo-relative path of exactly n chars, under docs/_archive/ on purpose:
+    that is where the 131-char copy landed (9e5386aa1), and it is a surface the
+    content arms skip - the path arm must not."""
+    prefix, suffix = "docs/_archive/2026-10/", ".md"
+    path = prefix + "x" * (n - len(prefix) - len(suffix)) + suffix
+    assert len(path) == n
+    return path
+
+
+class TestStagedPathLength:
+    """RM-422 at commit time: a NEW tracked path over the cap is refused.
+
+    tests/test_tracked_path_length_rm422.py only runs in a whole suite, so a
+    131-char path rode in on 9e5386aa1 and sat there until 2497e857b.
+    """
+
+    CAP = G.MAX_TRACKED_PATH_CHARS
+
+    def _drive(self, monkeypatch, tmp_path, name_status: str) -> int:
+        monkeypatch.chdir(tmp_path)
+        seen: list[list[str]] = []
+
+        def fake_git(args, root):
+            seen.append(list(args))
+            return name_status if "--name-status" in args else ""
+
+        monkeypatch.setattr(G, "_git", fake_git)
+        monkeypatch.setattr("sys.stdin", io.StringIO("git commit"))
+        rc = G.main()
+        assert any("--name-status" in a and "-z" in a and "--cached" in a for a in seen), seen
+        return rc
+
+    def test_new_path_over_cap_is_refused_naming_path_and_length(self, monkeypatch, tmp_path, capsys):
+        long = _path_of(self.CAP + 1)
+        assert self._drive(monkeypatch, tmp_path, f"A\0{long}\0") == 2
+        err = capsys.readouterr().err
+        assert long in err
+        assert f"{self.CAP + 1} chars" in err
+        assert str(self.CAP) in err
+
+    def test_path_at_exactly_the_cap_passes(self, monkeypatch, tmp_path, capsys):
+        assert self._drive(monkeypatch, tmp_path, f"A\0{_path_of(self.CAP)}\0") == 0
+        assert capsys.readouterr().err == ""
+
+    def test_rename_onto_an_over_long_path_is_refused(self, monkeypatch, tmp_path, capsys):
+        long = _path_of(self.CAP + 2)
+        assert self._drive(monkeypatch, tmp_path, f"R100\0docs/short.md\0{long}\0") == 2
+        err = capsys.readouterr().err
+        assert long in err and "docs/short.md" not in err
+
+    def test_copy_onto_an_over_long_path_is_refused(self, monkeypatch, tmp_path, capsys):
+        long = _path_of(self.CAP + 1)
+        assert self._drive(monkeypatch, tmp_path, f"C075\0docs/short.md\0{long}\0") == 2
+        assert long in capsys.readouterr().err
+
+    def test_deleting_an_over_long_path_is_allowed(self, monkeypatch, tmp_path):
+        # The cure for an over-long path is to remove or rename it; the gate
+        # must never block that.
+        assert self._drive(monkeypatch, tmp_path, f"D\0{_path_of(self.CAP + 5)}\0") == 0
+
+    def test_parser_keeps_only_added_copied_and_rename_targets(self, monkeypatch):
+        out = "M\0a.py\0R087\0old.md\0new.md\0A\0b.txt\0D\0gone.txt\0C100\0src.md\0dup.md\0"
+        monkeypatch.setattr(G, "_git", lambda args, root: out)
+        assert G._staged_new_paths("/repo") == ["new.md", "b.txt", "dup.md"]
+
+    def test_parser_ignores_non_name_status_output(self, monkeypatch):
+        # Other harnesses fake _git with one unified diff for every call; that
+        # must parse to nothing rather than raise.
+        diff = "diff --git a/x b/x\n--- /dev/null\n+++ b/x\n@@ -0,0 +1 @@\n+y\n"
+        monkeypatch.setattr(G, "_git", lambda args, root: diff)
+        assert G._staged_new_paths("/repo") == []

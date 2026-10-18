@@ -63,6 +63,9 @@ import unittest
 REPO = pathlib.Path(__file__).resolve().parent.parent
 HOOKS = REPO / ".githooks"
 
+sys.path.insert(0, str(REPO / "tools"))
+from precommit_gate import MAX_TRACKED_PATH_CHARS  # noqa: E402
+
 # Written as an escape, never a literal: this file is itself scanned by the
 # repo's ASCII hygiene guards.
 EM_DASH = "\u2014"
@@ -286,6 +289,52 @@ class HookGateEndToEndTests(unittest.TestCase):
             f"an em-dash in the commit MESSAGE committed:\n{proc.stdout}\n{proc.stderr}",
         )
         self.assertEqual(self._head(), before, "HEAD advanced on a refused commit")
+
+    # ---- RM-422 path length (commit-time half) -------------------------
+
+    def _stage_path(self, length: int) -> str:
+        """Stage a path of exactly `length` chars straight into the INDEX.
+
+        No working-tree file is written, so the fixture's own temp root can
+        never hit MAX_PATH while setting up - which is the very failure the
+        cap exists to prevent. docs/_archive/ on purpose: the content arms
+        skip it, and that is where the 131-char copy landed (9e5386aa1).
+        """
+        prefix, suffix = "docs/_archive/2026-10/", ".md"
+        rel = prefix + "x" * (length - len(prefix) - len(suffix)) + suffix
+        self.assertEqual(len(rel), length)
+        payload = self.root / ".payload"
+        payload.write_text("long path fixture\n", encoding="utf-8", newline="\n")
+        blob = self._git("hash-object", "-w", str(payload)).stdout.strip()
+        self._git("update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}")
+        return rel
+
+    def test_path_over_the_rm422_cap_is_refused(self) -> None:
+        rel = self._stage_path(MAX_TRACKED_PATH_CHARS + 1)
+        before = self._head()
+
+        proc = self._commit("test: stage a path one char over the cap")
+
+        out = proc.stdout + proc.stderr
+        self.assertNotEqual(
+            proc.returncode, 0, f"an over-long path COMMITTED:\n{out}",
+        )
+        self.assertEqual(self._head(), before, "HEAD advanced on a refused commit")
+        self.assertIn(rel, out)
+        self.assertIn(f"{MAX_TRACKED_PATH_CHARS + 1} chars", out)
+
+    def test_path_at_exactly_the_rm422_cap_commits(self) -> None:
+        """POSITIVE CONTROL for the refusal above: same shape, one char shorter."""
+        self._stage_path(MAX_TRACKED_PATH_CHARS)
+        before = self._head()
+
+        proc = self._commit("test: stage a path exactly at the cap")
+
+        self.assertEqual(
+            proc.returncode, 0,
+            f"a path at the cap was refused:\n{proc.stdout}\n{proc.stderr}",
+        )
+        self.assertNotEqual(self._head(), before, "HEAD did not advance")
 
 
 if __name__ == "__main__":
