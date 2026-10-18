@@ -791,6 +791,35 @@ claude -p "Reply with exactly: The full suite passes, 9999 passed." --permission
 python -c "import json;print(json.load(open('ops/runtime/stop_claim_report.json'))['findings'])"
 ```
 
+## Session procedure (moved from the hand-off, s122)
+
+Moved from `RC-NEXT-SESSION.txt` "Kit / gate procedure (carry)" on 2026-10-18 (session 122 trim under the kit v18 30 KB hand-off cap; the pre-trim file is `git show e4e3ef1bc:RC-NEXT-SESSION.txt`). The hand-off keeps one-liners and points here. Each line is the record of a measurement or a rule at the date it names; re-measure a datum before relying on it. The authoritative rule text stays in `CLAUDE.md` (RACE GUARDS, FLEET-COMMON) and `tools/done.md`.
+
+- Every commit / push: `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...` with a UNIQUELY named -F message file; every whole suite: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>`, named by the claims hook's deny reason. `pytest --version` / `--collect-only` are denied as whole suites - name a test file or use the gate. A pytest command whose file list is a shell variable or `$(cat ...)` also reads as a whole suite.
+- NEVER `git commit --amend`, even on an unpushed commit (session 110 breach); name it in every sub-agent prompt.
+- Kit v15: the gate's straddle check ignores docs/ and prose (.md/.txt) edits; a known short suite gets one extra slot; headless children run foreground only.
+- Local full dual suite at machine slots=1: ~18 min in the slot (session 111: 1104.93 s; session 110: 1075 s) plus queue wait (session 110: 4301 s); peak system commit ~40 GB (79 percent). Write gated-suite output to a FILE and watch it: a stall leaves no summary line (session 114).
+- A stale 0 B `.git/index.lock` with no RC git alive may need removing by hand; kit gitlock will not clear it while any git runs machine-wide (reported to MAIN, session 105). Sessions 113 (14 min), 114 (8 h) and 120 (16 min, before a bare `git add`) each cleared one with `fleet_gitlock.clear_index_lock`.
+- H1: after answering an ORDER / FIX / RULING, close its row: `python ops/loop/inbox_tick.py --done <note> --outcome "<answer + sha>"`, confirm with `--pending`. MAIN's inbox path comes from the agreement record (inbox_tick's delivery helper).
+- A NEW outbound note (not a reply) needs the operator's chat OK before delivery in an attended session (session 109 precedent).
+- W1 WATCH: deny mode may block main-thread work that cannot be dispatched. If a deny row shows that, write `log` back to `ops/loop/control/subagent_first.mode` and ask MAIN for a ruling.
+- 6-agent clobber lesson: every sub-agent prompt names a UNIQUE helper filename (prefix per task).
+- Stale pyc class: if a test fails only in the main checkout, rerun with `PYTHONPYCACHEPREFIX=<empty dir>` before suspecting gitignored state (memory `reference_stale_pyc_matching_header`).
+- Pre-push dry-runs: `printf 'refs/heads/main <local> refs/heads/main <origin sha>\n' | python tools/sibling_name_sweep.py --pre-push origin` scans exactly the push range; the same stdin into `python tools/credential_history_scan.py --pre-push origin` runs the credential + leak arms. A whole-history range: scratch scripts only; the sweep over ~6000 commits takes ~8.5 min / ~550 MB, the credential scan ~1 min.
+- Vision MANUAL recovery (fallback only - VisionWatchdog does this itself): `taskkill /F /PID <holder of :8889>`, then `Invoke-CimMethod` Win32_Process Create with pythonw.exe + moon_vision_server.py, CurrentDirectory = the repo root; read back `/health` 200 ("workers": 16).
+- A tracked `_outbound_*` copy name must keep the whole path <= 129 chars - truncate the slug.
+- A relayed test count can silently omit a file - the verifier's collect-only count over the cited files is the figure.
+- Headless driver lane (session 115 shape): driver pythonw -> `ops/loop/run_lane.ps1` -> fleet_route -> claude worker in the in-repo worktree; progress at `ops/loop/control/progress/lane-<i>.json`; the lane commits on `lane/<name>`, never pushes; the main session verifies (independent verifier), fast-forwards and pushes. After a .py merge, read health.json for the hot_reload restart before writing restart_trigger.txt.
+- Owner id probe: a harmless `git commit --dry-run` is denied by the claims hook, and the deny reason names the caller's `<session_id>.<agent_id>` (used again at the s121 /done).
+- Merge shape (since session 118, PUBREPO b `f4e97dabf`; used for F1 `7a81e608e`): `git merge --no-ff --no-commit <branch>` then commit through fleet_gitlock with a `merge: <topic>` (or `merge(RM-123): <topic>`) subject that never names an agent worktree branch (the commit-msg hook refuses one). A --no-commit merge that writes a .py triggers the hot_reload restart before the commit. Alternative: `cherry-pick --no-commit` of each branch commit, committed through the git lock with the branch commit's own message (LEDGER 1730).
+- Dependabot shape (s121): never merge a bot PR on GitHub (FLEET item 17); apply an accepted bump as an operator commit (the PR closes itself once the change is on main); decline by widening the `.github/dependabot.yml` ignore (closing a PR does not ignore its version). A push to main can trigger fresh Dependabot PRs within minutes - re-read open PRs after the last push.
+- /done worktree cleanup (session 118 shape): verify each branch with `git merge-base --is-ancestor`, a clean `git status --porcelain`, no live claim under `ops/loop/control/claims/`; copy the ignored non-cache files to gitignored `ops/runtime/backup/worktree-ignored-s<n>/` first; then `git worktree remove` (no --force) + `git branch -d` (not -D).
+- Tags: a plain `git fetch origin` auto-follows remote tags (session 119 cause of the re-created evidence tags); after any remote tag change, re-read `git tag -l` against `git ls-remote --tags origin`. Local-only tag `archive/rm746-r2` exists since s120: never `git push --tags`. (s121 wrap: local v0.1.0 + archive/rm746-r2; remote v0.1.0 only.)
+- Push-scan lesson (session 110): `--scan-file` over the tip never clears a push - the pre-push range scans each commit's blobs, so a literal fixed in a later commit still halts it. Check a new test literal BEFORE its first commit. A drive-root literal in a NEW test halts the pre-push sibling sweep (structural arm) the same way, even after a later commit removes it; use tmp_path or an allowlisted form from the first commit.
+- Socket lesson (session 108): a socket test fake that must free its port mid-test needs shutdown() before close() on Linux - Windows-green is not CI-green. WSL Ubuntu runs stdlib unittest files against /mnt/e.
+- Citation lesson: a doc citation of a stdlib file in `name.py:<line>` form reads as a broken repo citation to `tests/test_citation_drift_guard_rm171.py`; write "stdlib <module> module, line N".
+- CI shape: a push runs fast guards + impact slice; the full dual suite runs on PR / dispatch / escalated push / nightly (W-A); superseded pushes cancel in-flight ci.
+
 ## Useful file locations
 
 | Path | What it is |
