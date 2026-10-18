@@ -94,6 +94,11 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 
 **Pre-flight (FLEET-KIT v7 item 13): every checklist task done or carried into the hand-off.** Walk this session's `Session <n> checklist`: each task is either done (read back) or copied into the section-10 hand-off as an open item. None is dropped.
 
+**Pre-flight: hand-off size - BEFORE any commit or push (FLEET-KIT v18 fail mode).** Since kit v18, section 9's `fleet_done.py mark --status done` FAILS on a hand-off over 30720 bytes (`HANDOFF_WARN_BYTES` = 30 KB in `ops/fleet_kit/fleet_done.py`; the raw on-disk size of `RC-NEXT-SESSION.txt`). The mark is the LAST act, so without this step the cap is met only after every commit and push. So, here:
+1. Draft the section-10 hand-off now (carry-forward rule included) into its temp file and measure it: `wc -c <tmp>`.
+2. Run the kit's archive dry run from the repo root: `python ops/fleet_kit/fleet_done.py archive` (writes nothing; prints `archive dry-run: would move N block(s) to docs/handoff-archive/RC-<YYYY-MM-DD>.txt (<before> -> <after> bytes)`). It moves only framed CLOSED blocks: a rule line of 20+ `=`, a heading starting `CLOSED` (or containing ` - CLOSED`), a second rule; no open word (NOT CLOSED, STILL OPEN, OPEN ITEM(S), CARRIED, CARRY FORWARD, TODO, NEXT ACTION, WAITING, BLOCKED, PENDING) in the body; the first closed block in the file is kept (`--keep 1`). When it would move blocks the hand-off needs, `python ops/fleet_kit/fleet_done.py archive --apply` moves them (archive written and read back first).
+3. If the hand-off as about to be written is still over 30720 bytes, run `python ops/fleet_kit/fleet_done.py mark --session <n> --status failed --reason "hand-off over 30 KB"` and stop with `/done stopped: hand-off over 30 KB` - no commit, no push. Trim it first (history VERBATIM to `docs/handoff-archive/RC-<YYYY-MM-DD>.txt` in the kit's format, duplicates to pointers, every unacted item still carried), then re-run /done.
+
 **First, peek for a queued Mission Control intent** (shortcuts 1 + 2, S3). The done ritual IS the safe boundary a queued intent waits for:
 
 ```
@@ -315,7 +320,7 @@ python ops/fleet_kit/fleet_done.py mark --session <n> --status done
 - `<n>` is THIS session's number (the `Session <n> checklist` counter); the hand-off now carries `SESSION: <n+1>`. Add `--bg <N>` when section 3 recorded N background tasks still running (the marker is then not safe to clear).
 - The kit reads HEAD and hashes `RC-NEXT-SESSION.txt` ITSELF and writes `ops/loop/control/session_done.json` (gitignored) in the MAIN checkout. The project Stop hook (`ops/fleet_kit/fleet_done.py stop-hook`) turns a valid marker into the tab title `RC DONE S<n> - safe to clear`.
 - Nothing is committed or edited after the mark: a later commit or hand-off edit invalidates it (that is the point - it detects work after /done).
-- A step that stopped the ritual still calls it, with `--status failed --reason "<the step>"`, and then prints `/done stopped: <reason>`. If `mark --status done` exits 1 (the kit downgraded it to failed: hand-off or HEAD unreadable), print `/done stopped: done marker failed` instead of the completion line.
+- A step that stopped the ritual still calls it, with `--status failed --reason "<the step>"`, and then prints `/done stopped: <reason>`. If `mark --status done` exits 1 (the kit downgraded it to failed: hand-off or HEAD unreadable, or - kit v18 - the hand-off is over 30 KB, second stdout line `fail: hand-off <N> KB > 30 KB; ...`), print `/done stopped: done marker failed` instead of the completion line. The section-0 size pre-flight exists so that the size case never reaches this point.
 - Its one `session_done S<n> ...` line is tool output, not chat output.
 
 If something stopped the ritual (commit blocked, push failed, frozen-file or secret refusal, mid-game), print instead the one line `/done stopped: <reason>` and nothing else. Every status figure the old banner carried (commits, push range, gate, CI, RC health, WAKEUP_NOTES, living docs, session size) goes into `RC-NEXT-SESSION.txt`, never into chat.
@@ -363,7 +368,7 @@ Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + gi
 
 This is mandatory on every /done - even when the only next task is "pick the next ROADMAP item".
 
-**WRITE it to `RC-NEXT-SESSION.txt` in the REPO ROOT, every time, OVERWRITING the whole file.** The file is TRACKED (moved off the Desktop 2026-09-06), so each session's hand-off is versioned and diffable, and `Desktop\RC-NEXT-SESSION.lnk` is a shortcut to it. **Commit it with the session's other work.** Write the block to a temp file and run:
+**WRITE it to `RC-NEXT-SESSION.txt` in the REPO ROOT, every time, OVERWRITING the whole file.** The file is TRACKED (moved off the Desktop 2026-09-06), so each session's hand-off is versioned and diffable, and `Desktop\RC-NEXT-SESSION.lnk` is a shortcut to it. **Commit it with the session's other work.** Write the block to a temp file, re-check its size against the section-0 pre-flight (`wc -c <tmp>` <= 30720; over it, stop with `/done stopped: hand-off over 30 KB` before this write and its commit), and run:
 
 ```
 python tools/session_intent.py --write-prompt --prompt-file <tmp>

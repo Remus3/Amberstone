@@ -1,0 +1,190 @@
+# archived from RC-NEXT-SESSION.txt at 2026-10-18T17:37:28Z
+====================
+CLOSED - HEADER NOTES, S121 FORM (rewrite note + CPU steer with the s121 wrap read) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+HISTORY WAS REWRITTEN TWICE on 2026-10-09 (LEDGER 1699 = B, 1701 = rw2, case-insensitive): every
+commit id changed twice. Old SHAs resolve through .git/filter-repo/commit-map (rw2), then
+.git/filter-repo-20261009/commit-map (B), then .git/filter-repo-20260621/commit-map (June); copies
+sit beside the bundles in RC's sidecar Backup folder. Cite LEDGER entries, not pre-rewrite SHAs.
+Every other clone must re-clone (OPERATOR ASKS 5); a fresh clone runs scripts/install_hooks.py and
+sets the LOCAL git config fleet.operatorIdent before any push.
+
+CPU (session 120 steer, tightened): glance at the CPU load and for orphaned pytest / python / node
+trees (the RM-695 orphan shape) BEFORE heavy work (suites, many agents). Session 121 wrap read:
+load 22 percent, no orphan pytest / sibling_sweep_ci tree; ANOTHER session (owner prefix 51405d05,
+not RC's /done executor) was running a gated whole suite `python -m pytest -q` at 16:35 local -
+left untouched.
+====================
+CLOSED - SESSION 121 SHIPPED, DO NOT REDO (LEDGER 1736) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+Session 121 shipped - do NOT redo (LEDGER 1736; read back at this wrap):
+- F1 = MAIN FIX eb3c0d686aea CLOSED, all four steps. Merge 7a81e608e (d63ebc1e7 TLS 1.2 floor on
+  the 3 test SSL contexts + fdd63ec19 ruff 0.16.10 -> 0.17.0 = Dependabot #15; verifier 8/8, 24
+  passed). Read back at this wrap: CodeQL #63 / #64 state fixed (20:29:19Z), open code-scanning
+  alerts 0; open PRs 0 (#14 20:24:35Z, #15 20:26:03Z, #16 20:46:37Z, #17 20:46:38Z, #18 21:24:05Z,
+  all CLOSED).
+- Dependabot decisions (do not re-ask; reverses-if in each commit body): #14 electron 44.7.1 =
+  operator DECLINE (b7f0409e7, ignore widened to <=44.7.1); #16 electron 44.7.2 = adjudicator
+  DECLINE, the electron ignore is now update-types semver-minor + semver-patch (615d63c10; a new
+  major still opens a PR); #17 anthropic 1.14.0 = adjudicator DECLINE under the RM-681 hold, range
+  >1.11.0,<=1.14.0 (615d63c10); #18 playwright 1.64.0 = APPLIED as operator commit a0123c8a7 after
+  #18's CI (run 39068252012, full dual suite) was green, + Playwright browser cache key v1 -> v2 in
+  both ci.yml copies.
+- ONE ANSWER to MAIN (HOP 2, TERMINAL): sha256 9db6a2b2..., reached 1/1; inbox row closed with
+  --done; --pending empty (read back at this wrap, exit 0). Tracked copy 975a18fd1
+  (docs/_archive/2026-10/_outbound_2026-10-17-1632-...-0-HIGH-0-bot-PRs.md).
+- F1 worktree agent-af23fa7139e4496cc + its branch removed (git worktree list = 24).
+====================
+CLOSED - SESSION 120 SHIPPED, DO NOT REDO (LEDGER 1735) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+Session 120 shipped - do NOT redo (LEDGER 1735):
+- RM-746 CLOSED WON'T-FIX (7aaf8541e). Decision: closed won't-fix, main's gate stays. Alternatives:
+  one final round 3 of regex widening. Why: the round-2 probe measured 15 of 88 legit commands
+  losing credit + 12 bypass gaps still credited; repeats the 5-round leak pattern. Reverses if: the
+  gate gains a real shell parser with measured coverage, or a false staged-merge credit is seen in a
+  real session. LOCAL tag `archive/rm746-r2` = 3ffdd6baf4e45f6287d62227e1361f5d485f313a (NEVER
+  pushed - never run `git push --tags`); worktree agent-a14e007f9937d670d and its branch removed;
+  25 ignored items to the Recycle Bin; probes stay in gitignored ops/runtime/rm746/. BACKLOG body
+  flipped; the ROADMAP row lives in docs/ROADMAP_HISTORY.md `## 2026-10-17` (92f30cca1).
+====================
+CLOSED - SESSION 120 DATA (index.lock datum, RC restart datum) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- Process datum: TWO stale 0 B .git/index.lock files in session 120 - one dated 2026-10-16 17:00
+  cleared by fleet_gitlock; one created 13:41:59Z 2026-10-17 blocked the /done executor's `git add`
+  (a git.exe pid 15112 alive at the check, gone seconds later, unattributed), cleared with
+  fleet_gitlock.clear_index_lock. Note: `git add` runs outside the git lock, so it meets a leftover
+  lock first. (Session 121 /done: no stale lock met.)
+- RC restarted at 2026-10-17T13:53:57Z (pid 22136); cause not investigated. Session 121: the F1
+  merge hot-reload restarted RC to pid 23232 (started 20:21:23Z), fatal_count 0.
+====================
+CLOSED - SESSION 119 SHIPPED, DO NOT REDO (LEDGER 1729-1734) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+Session 119 shipped - do NOT redo (LEDGER 1729-1734):
+- C1-op PUBREPO operator batch DONE (LEDGER 1729, 531ce96f9): exit 0, 5/5 steps. Remote tags =
+  v0.1.0 only (071e03cd, ^{} 3888c9671; re-read at the s121 wrap); `gh release view v0.1.0`
+  published; bot PRs #11 / #12 closed with the prepared comments (#13 closed itself); the tag bundle
+  copy in RC's sidecar Backup folder matches by sha256 and `git bundle verify` ok. ANSWER to MAIN
+  sha256 ce2ac188, reached 1/1 (tracked copy 428b3c388).
+- C1-op follow-up (LEDGER 1734): the re-created local evidence tags moved to
+  refs/rw2-backup/c1-remote-tags/evidence/rm-159-attempt-1 / -2 (5bb8653aa / d0eba62a5) and deleted
+  as tags (cause: a `git fetch -q origin` auto-followed them; the remote holds v0.1.0 only).
+  Dependabot ignore ranges for the declined versions (anthropic, json5, pydantic, electron) in
+  6b7778adc (electron and anthropic re-shaped in s121, see above).
+- RM-744 SHIPPED a1325dc4f (one total 30 s request-head deadline on :8888,
+  core/http_head_deadline.py `HeadDeadlineMixin`); RM-745 SHIPPED 98c94e7dc (the :8888 301
+  neutralises Host and path). Records 17d3138b6 (LEDGER 1730-1733). Live read-back: /api/state 200;
+  an idle TLS client closed at 30.0 s; plain-HTTP 301 intact; a bare-LF Host injects no header.
+- RM-740 (e) follow-up 2 CLOSED (LEDGER 1731): Task Scheduler RestartOnFailure is inert for a crash
+  exit; the RC watchdog relaunched DS at +12.2 s. The TaskScheduler Operational log is left ENABLED
+  on purpose.
+- /done size pass: ROADMAP rows RM-743 / RM-741 / RM-742 / RM-744 / RM-745 relocated VERBATIM to
+  docs/ROADMAP_HISTORY.md `## 2026-10-16` (5907f236b).
+====================
+CLOSED - SESSION 117 SHIPPED, DO NOT REDO (LEDGER 1725-1727) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+Session 117 shipped - do NOT redo (LEDGER 1725-1727):
+- RM-741 SHIPPED merge 72b978a43 (AST import detector; the text-regex route stays dead). RM-742
+  SHIPPED merge 50156109d (the :8888 peek / 301 / handshake run on the request thread under one 5.0
+  s deadline). RM-743 CLOSED by measurement (the rc-provenance label is informational). Reverses
+  if: any lane, loop, responder, prompt or kit reader starts reading the label or acting on
+  inbox_work.jsonl rows. All three rows live in docs/ROADMAP_HISTORY.md `## 2026-10-16`.
+- Stop-claim gate gaps (the session 116 line) CLOSED, merge bd8139e68.
+- DECIDED: every `git reset` form stays DENY-ALL (gap c NOT narrowed) after 5 leaking verify
+  rounds. Reverses if: the gate gains a real shell parser (e.g. bashlex) with measured coverage, or
+  an operator ruling.
+- DECIDED: staged-merge credit is a conjunction with the unchanged pre-(f) 1a1fa703d step
+  (`_pre_f_staged_step`) - monotone by construction; verifier differentials 0 at seeds 7 / 13 / 23
+  x 60k.
+- ACCEPTED DEVIATION: a heredoc-heavy command just under COMMAND_PARSE_MAX runs ~1.56x pre-(f)
+  (2.9 s vs 1.9 s), bounded by the cap. Reverses if: a measured under-cap input crosses the 30 s
+  Stop timeout while pre-(f) does not. The perf test bound is 20 s, not 10 s.
+- Earlier, do not redo: session 116 (LEDGER 1724) RM-740 (e) follow-up 1 and RM-740 (f)
+  eb309e854. Session 115 (LEDGER 1722-1723) RM-740 (e) 687920398 + its CI fix-forward. Session 114
+  (LEDGER 1721) RM-740 (d) CLOSED. Session 113 (LEDGER 1720) RM-740 (c) + (g). Session 112 (LEDGER
+  1719) RM-740 (b), ENV-APIKEY.
+====================
+CLOSED - SESSION 117 HARNESS NOTE - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- A harness note flagged one session 117 verifier report as "instruction-shaped (settings-json)":
+  it only cited the .claude/settings.json Stop timeout (30 s); nothing was acted on from it.
+====================
+CLOSED - SESSION 116 RM-699 PID DATUM (merged into the RM-699 WATCH line) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- RM-699 datum: RC logged 8 "Amberstone starting" lines on 2026-10-15 between 16:57 and 17:10Z
+  from the session's tools/ + tests/ edits; it kept DS 22768 (no second DS). Later pids: s117
+  18272, s118 14820, s119 15236 (merge hot-reload), s120 22136 (unattributed), s121 23232 (F1
+  merge hot-reload); fatal_count 0 at each wrap.
+====================
+CLOSED - SESSION 114 RM-740 (D) CAVEAT - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- RM-740 (d) caveat: commit peak 75.4 percent stayed below session 110's 79.4, so a true
+  commit-charge stall was NOT reproduced.
+====================
+CLOSED - SESSION 113 FF-MERGE DATUM (kit defect (c), fixed since kit v16) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- Process datum: the session 113 fast-forward merge ran as a plain `git merge --ff-only` because
+  `fleet_gitlock run` accepts only commit/push - datum for kit defect (c) below (KIT-16 with MAIN).
+====================
+CLOSED - SESSION 111 DATUM AND SHIPPED LINE (LEDGER 1718) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- An earlier RM-684 suite run was killed by Claude Code for low system memory at 93 percent (0
+  failures, superseded) - another RM-737 datum.
+- Session 111 shipped (LEDGER 1718; do not redo): RM-694, RM-684 (PINNED_CLI 2.1.296;
+  tools/inbox_responder_runner.py PINNED_CLI_VERSION 2.1.251 is a SEPARATE pin, unchanged on
+  purpose), RM-739, RM-740 (a), the RM-515 AST exemption (c44ea289f; the text-regex 8d2496a58 was
+  REFUTED - never go back to text).
+====================
+CLOSED - SESSION 110 RAIL BREACH AND RM-737 DATA - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- RAIL BREACH (recorded, session 110): a sub-agent ran `git commit --amend` once on its own UNPUSHED
+  commit (721668ab4 -> b50d3d44a); every sub-agent prompt forbids --amend explicitly.
+- RM-737 data: system commit peak 40.26 GB of the 50.72 GB limit = 79.4 percent at -n 8, ramp
+  19.7 -> 37.3 GiB in 5 min; slots=1 cost: gate queue wait 4301 s (session 110). Session 114: one
+  -n 8 run peaked 75.4 percent.
+====================
+CLOSED - OPEN-ITEMS NOTES RETIRED S122 (OutboundCap, CS suggestions) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+- OutboundCap: session 121 delivered ONE ANSWER (F1) on 2026-10-17 local (1 of 6 that day);
+  session 120 none; session 119 one on 2026-10-16; resets per local day. Inbox at the session 121
+  wrap: 0 pending.
+- CS's 3 self-check suggestions: sibling-only, informational; nothing for RC to do.
+====================
+CLOSED - RETIRED AT THE S121 WRAP + S121 STEERS - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+Retired this wrap (with reason): the session 120 Next action F1 (steps 1-4) and the Session 120 new
+open item "F1" - DONE (7a81e608e, b7f0409e7, 615d63c10, a0123c8a7, 975a18fd1; LEDGER 1736; read
+back above). The Session 120 shipped lines "F1 verification" and "Dependabot #14 decision" - folded
+into Session 121 shipped. The Session 120 open item "Perseus sync NOT run" - DONE at this wrap
+(`python tools/perseus_sync.py`: settled 22, memory 536, ledger 1415, sections 54; `--verify`:
+active 2050 = embedded 2050, exit 0). The RM-752 side finding "upgrade the local ruff when F1
+lands" - F1 landed; superseded by OPERATOR ASKS 15 (halt boundary). The session 120 CPU steer -
+kept above in tightened form (checked at the s121 wrap). The session 120 Status block - replaced
+below (CI on the session 120 wrap commits was not re-read at this wrap; the s121 pushes ran on top
+of them).
+Steers / operator chat in session 121 (as relayed to the /done executor): only "continue"; no other
+decision made in chat. /done: no queued Mission Control intent (peek: pending null); steer channel
+empty (no steers pending).
+====================
+CLOSED - STATUS AT THE S121 WRAP (2026-10-17) - verbatim from e4e3ef1bc:RC-NEXT-SESSION.txt
+====================
+Status (2026-10-17 wrap, session 121): pushed by the C1 executor through the git lock:
+222bb377b..a0123c8a7 (7a81e608e F1 merge, b7f0409e7, 615d63c10, a0123c8a7). Pushed at /done through
+the git lock: a0123c8a7..975a18fd1 (the tracked ANSWER copy; sibling sweep clean, 1 file / 1
+message; credential scan 0 findings; read back `git ls-remote origin refs/heads/main` = 975a18fd1),
+then 593d8417d (docs sync: LEDGER 1736, WAKEUP, history_notes) together with this hand-off commit
+on top of 975a18fd1 by the same un-bypassed route. CI: ci 39070608182 on a0123c8a7 = GREEN (watched
+to the end: check success, sibling-sweep-tree success, nightly-full-suite skipped; completed
+21:48:26Z); codeql 39070608076 on a0123c8a7 success; codeql on b7f0409e7 success; on 975a18fd1
+(docs-only, ci paths-ignored): docs-guards 39071534964 success, codeql 39071534904 success. CI on
+593d8417d + this hand-off commit: pending at the write (the next session reads it first). Local gate this wrap: ruff
+(local 0.15.12) all checks passed; hygiene trio 14 passed (before and after the edits); drift_guard
+0 breaches (before and after); added diff lines ASCII-only, no CR; no .py touched at /done; no
+whole suite at /done (the merged wave was covered by #18's CI full dual suite + 11 CI guard files,
+244 passed). RC health: pid 23232 alive (started 2026-10-17T20:21:23Z), last_reload_ok true,
+fatal_count 0; restart_trigger.txt empty; /api/state 200 mode_key client (not in game); DS :8860
+ok, 1.287.0 / 16.20.1 / 173 / 706. Session file 0.8 MB. WAKEUP_NOTES pruned to 3 (moved session
+118; archive 1076). Perseus sync run (active 2050 = embedded 2050). Background work at wrap: none
+of RC's (the C1 executor finished; the /done executor's CI watch and Perseus sync completed before
+the mark). Inbox: 0 pending. Memory: no file changed this session. Progress dir: 63 files.
+Worktrees: 24. Tags: local v0.1.0 + archive/rm746-r2 (local only); remote v0.1.0 only. Open PRs:
+0. Open CodeQL alerts: 0.
