@@ -129,7 +129,7 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        effort low only for what it cannot classify. ACK / INFORMATION /
        TERMINAL / ANSWER notes get a mechanical ack (a ledger line, no note) or
        no reply. Only ORDER / FIX / RULING escalate to a real work lane.
-    c. At most 6 outbound notes per tree per local day (ORDER / FIX / RULING
+    c. At most 12 outbound notes per tree per local day (ORDER / FIX / RULING
        exempt), counted by `OutboundCap`. Several answers go in ONE note.
     d. Never answer an answer. No note chain past 2 hops (`HOP: <n>`) without
        new work.

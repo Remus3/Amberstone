@@ -29,7 +29,7 @@ Rules enforced here:
   name/title cannot classify; ACK / INFORMATION / TERMINAL classes get a
   mechanical ack (a ledger line, never a note) or no reply; only ORDER / FIX /
   RULING escalate to a work lane;
-- at most OUTBOUND_CAP (6) outbound notes per tree per local day; ORDER, FIX
+- at most OUTBOUND_CAP (12) outbound notes per tree per local day; ORDER, FIX
   and RULING are exempt; several answers to one destination go in ONE note;
 - never answer an answer; a note chain stops at MAX_HOPS (2) unless the reply
   carries new work (the `HOP: <n>` header line, absent = 1);
@@ -77,7 +77,7 @@ import time
 from pathlib import Path
 
 INBOX_VERSION = 4
-OUTBOUND_CAP = 6
+OUTBOUND_CAP = 12  # v20.1: was 6 (operator order 2026-10-18)
 MAX_HOPS = 2
 EXEMPT = ("ORDER", "FIX", "RULING")
 ACK_CLASSES = ("ACK", "INFORMATION", "TERMINAL", "CORRECTION-ACCEPTED",

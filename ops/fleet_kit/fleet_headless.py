@@ -229,6 +229,11 @@ KIT_PATCH = 0, no "v19 patch 1" manifest is ever queued):
   "fallback"). The rollout writes no fallback block.
 - CHECKLIST-ETA-CLOCK: write_progress(..., started=) (see fleet_checklist.py).
 
+v20.1 (operator order 2026-10-18, ruling
+docs/rulings/2026-10-18-kit-v20-1-outbound-cap.md): fleet_inbox.OUTBOUND_CAP
+6 -> 12 per tree per local day (FLEET-COMMON 14c); ORDER / FIX / RULING stay
+exempt. KIT_PATCH = 1: the manifest version stays 20; the release reads v20.1.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -246,7 +251,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 KIT_VERSION = 20
-KIT_PATCH = 0  # v20 (v19.1 folded in: kit-v20-waiver ruling point 2)
+KIT_PATCH = 1  # v20.1: outbound note cap 12 (ruling 2026-10-18-kit-v20-1-outbound-cap)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400

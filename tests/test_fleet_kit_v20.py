@@ -22,7 +22,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
-V20_MANIFEST_SHA256 = "9e4f9980c7530f263a470ab863d4fcf05b4df70d05c53bb1f59f1c091c09b000"
+# v20 patch 1 (MAIN 2026-10-19 0001 ORDER) supersedes the 1812 v20 bytes
+# (manifest 9e4f9980...b09b000): outbound cap 6 -> 12, FLEET-COMMON 14 c.
+V20_MANIFEST_SHA256 = "8017eae27ba218ea51ab77885ab0a46cc3eceb39b9e9d5f4ee277f88e77d4602"
 
 
 def _load(name):
@@ -43,6 +45,16 @@ def test_the_vendored_kit_is_the_v20_order_bytes():
     assert man["version"] == 20
     assert len(man["files"]) == 23
     assert _load("fleet_headless").KIT_VERSION == 20
+    assert _load("fleet_headless").KIT_PATCH == 1
+
+
+def test_v20_1_outbound_cap_is_12_per_day_with_the_same_exempt_classes():
+    fi = _load("fleet_inbox")
+    assert fi.OUTBOUND_CAP == 12
+    assert set(fi.EXEMPT) == {"ORDER", "FIX", "RULING"}
+    text = _text("CLAUDE.md")
+    assert "At most 12 outbound notes per tree per local day" in text
+    assert "At most 6 outbound" not in text
 
 
 def test_the_common_block_carries_the_v20_route_and_eta_clock_text():
