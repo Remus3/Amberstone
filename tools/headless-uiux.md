@@ -93,7 +93,7 @@ mechanism the repo ALREADY has. Do not invent a second one.
   state-coverage shaped (their own `note` fields say "state-coverage check 5/7 per
   docs/UI_SCALE_SPEC_V2.md"), which is honest but is not the same as real. When you ADD or REFRESH a
   fixture, source its numbers from `data/rewind_history.db` (the real match store) or from the `.rofl`
-  archive at `%USERPROFILE%\Documents\RC_ROFL_Archive` (Layer-1 extraction yields 365-367 stat
+  archive at `%RC_ROFL_ARCHIVE_DIR%` (E:\RC_ROFL_Archive) (Layer-1 extraction yields 365-367 stat
   fields x 10 players, no client and no patch gate). Never hand-invent a stat line: impossible numbers
   manufacture UI bugs that do not exist and hide the ones that do.
 - **Known fixture trap:** the `active_match_*.json` `liveclient` block is the RAW Live-Client envelope
