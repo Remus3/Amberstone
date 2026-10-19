@@ -38,7 +38,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-DEFAULT_ROOT = Path.home() / "Documents" / "RC_ROFL_Archive"
+from core.rofl_archive import default_archive_dir  # noqa: E402  (after sys.path insert)
+
+# One resolver (RC_ROFL_ARCHIVE_DIR, else the core default): never a second
+# hard-coded archive path here (MAIN FIX 2026-10-17-1709).
+DEFAULT_ROOT = default_archive_dir()
 _CHUNK = 1 << 20
 
 

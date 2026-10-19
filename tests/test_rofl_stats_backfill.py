@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from core.rofl_archive import default_archive_dir
 from core.rofl_stats_backfill import (
     COLUMN_ALIASES,
     TEXT_COLUMNS,
@@ -26,7 +27,7 @@ from core.rofl_stats_backfill import (
     read_rofl_game_version,
 )
 
-SIDECAR_DIR = Path.home() / "Documents" / "RC_ROFL_Archive" / "stats"
+SIDECAR_DIR = default_archive_dir() / "stats"
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
 
 # Match ids present in BOTH the sidecar archive and the Match-V5-derived DB.
