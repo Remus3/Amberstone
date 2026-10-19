@@ -148,13 +148,18 @@ def _gate():
     return mod
 
 
+# = fleet_headless.TEST_ROUTE_ENV (not imported: the guard never loads the kit).
+ROUTE_ENV = "FLEET_TEST_HEADLESS_ROUTE"
+
+
 def _off():
     return (os.environ.get("FLEET_TEST_GUARD") or "").strip().lower() == "off"
 
 
 def install(ns, root, watch=WATCH, env_roots=None, ignore=IGNORE, inflow=INFLOW,
             extra_ignore=()):
-    """Add the two autouse fixtures to a conftest's globals()."""
+    """Add the autouse fixtures (live-state guard, runtime roots, v19.1 headless
+    route) to a conftest's globals()."""
     root = Path(root)
     # v16: progress rows written by a suite carry no owner pid (the session's
     # own claude process would otherwise be recorded); a test that needs one
@@ -175,6 +180,21 @@ def install(ns, root, watch=WATCH, env_roots=None, ignore=IGNORE, inflow=INFLOW,
             pytest.fail(msg, pytrace=False)
 
     @pytest.fixture(autouse=True)
+    def _fleet_headless_route(request):
+        """v19.1: fleet_headless reads ~/.fleet/headless_route.json; a test never
+        reads or writes the real one. A valid split route in tmp per test, named
+        by the env redirect fleet_headless honours only inside a pytest test, so
+        the kit is covered under ANY module name (fleet_headless_flash,
+        ops.fleet_kit.fleet_headless, ...), loaded before or during the test.
+        A test of the route itself monkeypatches route_path or the env again."""
+        tmp = request.getfixturevalue("tmp_path_factory").mktemp("fleet-route")
+        p = tmp / "headless_route.json"
+        p.write_text('{"mode": "split", "version": 1}\n', encoding="ascii", newline="\n")
+        mp = request.getfixturevalue("monkeypatch")
+        mp.setenv(ROUTE_ENV, str(p))
+        yield
+
+    @pytest.fixture(autouse=True)
     def _fleet_runtime_roots(request):
         if not roots or _off():
             yield
@@ -187,4 +207,5 @@ def install(ns, root, watch=WATCH, env_roots=None, ignore=IGNORE, inflow=INFLOW,
 
     ns["_fleet_live_state_guard"] = _fleet_live_state_guard
     ns["_fleet_runtime_roots"] = _fleet_runtime_roots
+    ns["_fleet_headless_route"] = _fleet_headless_route
     return ns

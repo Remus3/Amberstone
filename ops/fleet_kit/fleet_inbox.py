@@ -586,8 +586,11 @@ def cost_split(lines, since=None, until=None):
     """{"build": {"usd", "runs"}, "inbox": ..., "triage": ..., "order": ...,
     "unattributed": ...,
     "total_usd", "inbox_share"} over usage lines with since <= ts < until (epoch).
-    inbox_share counts inbox + triage against attributed spend."""
+    inbox_share counts inbox + triage against attributed spend. v20: "fallback"
+    counts the ACCT-FALLBACK runs (usage "fallback": true) per route they ran on
+    - single = the operator's main account."""
     out = {k: {"usd": 0.0, "runs": 0} for k in KINDS}
+    fallback = {"split": 0, "single": 0}
     for line in lines:
         t = _ts(line)
         if t is None or (since is not None and t < since) or (until is not None and t >= until):
@@ -595,6 +598,9 @@ def cost_split(lines, since=None, until=None):
         k = run_kind(line)
         out[k]["runs"] += 1
         out[k]["usd"] += float(line.get("cost_usd") or 0)
+        if line.get("fallback") is True:
+            r = line.get("route") if line.get("route") in fallback else "single"
+            fallback[r] += 1  # an unknown route counts against the main account
     for k in KINDS:
         out[k]["usd"] = round(out[k]["usd"], 2)
     total = sum(out[k]["usd"] for k in KINDS)
@@ -602,6 +608,7 @@ def cost_split(lines, since=None, until=None):
     chatter = out["inbox"]["usd"] + out["triage"]["usd"]
     out["total_usd"] = round(total, 2)
     out["inbox_share"] = round(chatter / attributed, 3) if attributed > 0 else None
+    out["fallback"] = fallback
     return out
 
 

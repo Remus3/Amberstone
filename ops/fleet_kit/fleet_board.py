@@ -58,6 +58,8 @@ TEXT_MAX = 160
 _LINE = re.compile(r"^(?:\u2610|\[ \])\s+\+?([A-Za-z0-9][A-Za-z0-9._-]{0,15}):\s+(.+?)\s*$")
 _TAIL = re.compile(r"^(.*?)\s+\(([^()]*)\)$")
 _HEAD = re.compile(r"^Session\s+(\d+)\s+checklist")
+# v20 (CHECKLIST-ETA-CLOCK): `38% ~20m of 32m [2:27PM]` is the ETA part too.
+_CLOCK = re.compile(r"^\d{1,3}% ~")
 _OPERATOR = re.compile(r"\b(operator|you|waiting)\b", re.I)
 _BLOCKED = re.compile(r"\bblocked\b", re.I)
 
@@ -121,7 +123,7 @@ def parse_checklist(text):
         if t:
             rest, inner = t.group(1), t.group(2)
             parts = [p.strip() for p in inner.split(",")]
-            if len(parts) > 1 and parts[-1].startswith("~"):
+            if len(parts) > 1 and (parts[-1].startswith("~") or _CLOCK.match(parts[-1])):
                 eta = parts[-1]
                 parts = parts[:-1]
             state = ", ".join(parts) or None

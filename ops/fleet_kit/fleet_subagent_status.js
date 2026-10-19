@@ -10,6 +10,7 @@
 // stdout: one JSON line {"id", "content"} per task whose item-12 progress file
 // matches the task label - same row grammar as the status line:
 //   [>] task-name     [####------]  45% ~3m   step text
+// v20: a file with "started" reads `45% ~3m of 6.5m [2:25PM]` (statusline etaClock).
 // A task with no matching file gets no line (the default row stays). Match:
 // the progress stem equals the task name, or is one word of its label or
 // description (stems shorter than 4 characters never match a word). Plain
@@ -59,7 +60,7 @@ function render(d, nowMs) {
     if (!stem) continue;
     const row = rows.find((r) => r.name.slice(0, -5).toLowerCase() === stem);
     if (!row) continue;
-    out.push(JSON.stringify({ id: String(t.id), content: sl.rowLine(row, columns, true) }));
+    out.push(JSON.stringify({ id: String(t.id), content: sl.rowLine(row, columns, true, nowMs) }));
   }
   return out.join('\n');
 }
