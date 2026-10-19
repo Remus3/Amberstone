@@ -69,9 +69,16 @@ edit. Tree-specific rules go BELOW this block, never inside it.
 9. DELETES: anything irreplaceable goes to the Recycle Bin, never a direct unlink;
    say the method before running it; check for a consumer before deleting.
 10. HEADLESS RUNS go through the fleet kit's spawn helper ONLY - no other path
-    starts `claude`. The kit enforces: the second-account proxy from the user
-    variable CLAUDE_HEADLESS_BASE_URL (registry first), fail closed (no fallback,
-    ever), no visible console, at most 120 runs per rolling 24 h, never spawn on
+    starts `claude`. The kit enforces: an explicit route from
+    ~/.fleet/headless_route.json - split = the second-account proxy from the user
+    variable CLAUDE_HEADLESS_BASE_URL (registry first), single = the named
+    main-account config dir, no proxy - with that variable required in both modes
+    as the one kill switch; fail closed (a missing or invalid route or variable
+    refuses; no fallback and no automatic mode change, ever, except one: when the
+    route file arms a fallback, a 7-day usage-limit refusal moves the next spawns
+    to the other route until that limit resets - never on a proxy, auth or network
+    failure, a 5-hour limit or a usage percentage, one hop only, logged and
+    shown), no visible console, at most 120 runs per rolling 24 h, never spawn on
     this tree's own notes or on TERMINAL/no-reply notes, lean flags (strict MCP,
     project settings only, or bare where no floor lives in hooks), sonnet unless
     the note orders code changes, effort low for acknowledgements, a usage line
@@ -100,8 +107,14 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        `Session <n> checklist` (n = this tree's session counter, kept in its
        hand-off file; a headless fire uses its run count), then one line per
        task in execution order: `<box> <ID>: <imperative task, one line>`, plus
-       `(<state>, ~ETA)` only while it is running (e.g. `builder running,
-       ~4m`). <box> is U+2610. The last line is `<box> /done`. At most ONE
+       `(<state>, <pct>% ~<rem>m of <total>m [<h:mmAM/PM>])` only while it is
+       running (e.g. `builder running, 25% ~22.5m of 30m [2:25PM]`). Why: the
+       operator forgets when an estimate was given. rem and total round UP
+       to 0.5 min; total is re-estimated as elapsed / pct on each update; the
+       bracket is the local finish time, recomputed on every start or update.
+       The start time is the item-12 "started" field (optional: a file
+       without it keeps `~ETA`). The status line and the agent panel show the
+       same. <box> is U+2610. The last line is `<box> /done`. At most ONE
        trailing sentence, and only for an ordering constraint ("X waits until
        Y lands because ..."). NO summary, review, what-went-wrong or history.
     b. After every 4 or more completed tasks, print the REMAINING tasks only,
@@ -191,6 +204,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`.
 **KIT v15 (MAIN 2026-10-09 2055; no new file, hook or settings).** The suite gate appends one `durations.jsonl` line per run in its own machine state dir and gives a known short suite (median hold <= 120 s over its last runs) one extra lane slot; the kit's `child_env` sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, so a headless child runs foreground only and NO headless child prompt (`tools/headless-*.md`, `ops/loop/*prompt*.md`, `ops/loop/prompts/`, the responder prompt) may ask for background work; no file named `fleet_suite_gate.py` may exist in the tree outside `ops/fleet_kit/` (MAIN drift g). Guard `tests/test_fleet_kit_v15.py`.
 
 **KIT v19 (MAIN 2026-10-18 1235, FLEET-COMMON item 18; no new hook or settings).** The board config is tracked `ops/status_board.json` {"code", "dataset_version", "url"}; render state `ops/loop/control/board/` is gitignored. An interactive session pushes the board only at session start, after each item-13 b reprint (the `tools/session_checklist.py` DIRECTIVE says so) and at /done (`tools/done.md` section 9, `fleet_board.py calls --final`, after the hand-off read-back and before the done marker); a failed push is a hand-off line, never a ritual failure; headless runs never push. Stop sentinels: RC declares NONE (no `ops/stop_sentinels.json`): `ops/loop/control/STOP` and `ops/runtime/INBOX_RESPONDER_STOP` stay caller-scoped (`ops/loop/fleet_route.py` docstring), and declaring them would refuse every kit spawn. The kit pre-push scans a NEW ref against `git ls-remote`; `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
+
+**KIT v20 (MAIN 2026-10-18 1812, FLEET-COMMON items 10 and 13 a; no new hook or settings).** Every kit `spawn()` refuses without a valid machine route `~/.fleet/headless_route.json` (MAIN's rollout writes it; read back `split` via `fleet_headless.py route show` at adoption); RC never writes or edits that file, and arms no account fallback. v20 `write_progress` always adds a top-level ISO "started"; a test on a progress document asserts a key SUBSET, never an exact set. Checklist rows may carry `pct` / epoch `started` for the ETA clock; RC printers pass neither yet, so they keep `~ETA` (allowed). Guard `tests/test_fleet_kit_v20.py`.
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad (one per run reached 8.5k entries; explicit basetemps are never reaped and Temp file count is boot time). Use the default tmp_path (`pytest.ini`: retention `failed`, count `1`). If a run truly needs one, use the ONE fixed `<scratchpad>/pytest-basetemp` (pytest clears it each run). Every session, lane and loop prompt follows this; the rootdir `conftest.py` re-exports `tests/_basetemp_guard.py` `pytest_configure`, which refuses any other scratchpad basetemp with a usage error. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 

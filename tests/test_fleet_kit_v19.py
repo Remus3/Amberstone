@@ -43,9 +43,10 @@ def _text(rel):
 
 def test_the_vendored_kit_is_v19_with_the_board_helper():
     man = json.loads(_text("ops/fleet_kit/MANIFEST.json"))
-    assert man["version"] == 19
+    # Kit v20 (MAIN 2026-10-18 1812) superseded v19; the board helper stays.
+    assert man["version"] >= 19
     assert "fleet_board.py" in man["files"]
-    assert _load("fleet_headless").KIT_VERSION == 19
+    assert _load("fleet_headless").KIT_VERSION == man["version"]
 
 
 def test_the_common_block_carries_item_18_and_conforms():

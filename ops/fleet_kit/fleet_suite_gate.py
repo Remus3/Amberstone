@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v18 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
+"""Fleet kit v20 - RACE GUARDS: the machine-wide whole-suite gate (FLEET-COMMON 16).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
 edit a vendored copy: report the defect to MAIN.
@@ -90,11 +90,26 @@ v18 RM737-GATE (ruling MAIN docs/rulings/2026-10-10-rc-rm737-memory-gate.md):
      required + margin; required = median peak_commit_mb of the (tree,
      cmd)'s last COMMIT_WINDOW runs (at least COMMIT_MIN_RUNS) else
      COMMIT_DEFAULT_MB (8 GiB); margin COMMIT_MARGIN_MB (4 GiB) or env
-     FLEET_SUITE_COMMIT_MARGIN_MB. FIFO is unchanged - a waiter short of
-     commit keeps its ticket, so no later waiter passes it on a regular
-     slot - and its 30 s wait line names "commit" and the shortfall. The
+     FLEET_SUITE_COMMIT_MARGIN_MB. A waiter short of commit keeps its
+     ticket (passable since KIT-GATE-HOL, below), and its 30 s wait line
+     names "commit" and the shortfall. The
      WAIT_S fail-closed timeout still applies. Where commit cannot be read
      (POSIX, an API error) admission is a no-op.
+KIT-GATE-HOL (FIX, train-exempt; MAIN ROADMAP S49): head-of-line. A waiter
+short of commit used to block the whole FIFO even with a slot free (2026-10-18:
+lane-eligible LW and MAIN runs waited 827-1477 s behind an RC -n 8 suite at
+23.7 GB peak commit).
+ 10. a waiter that finds itself short of commit marks its ticket
+     {"short": true} (atomic replace) and clears the mark once it fits; a
+     marked ticket is not counted ahead, so a later waiter that fits runs
+     past it. FIFO still holds among the waiters that fit, and an unmarked
+     live ticket is never passed. BYPASS AGE CAP: a short ticket older than
+     BYPASS_MAX_S (900 s; env FLEET_SUITE_BYPASS_MAX_S), aged from its name
+     stamp, counts as ahead again, so the queue drains commit for it instead
+     of starving it to the WAIT_S fail-close. The queue sweep also removes
+     stray t-*.json.tmp files older than TMP_STALE_S (1 h);
+ 11. the durations line gains commit_wait_s (seconds spent short of commit)
+     when it is above 0, so slot waits and commit waits can be told apart.
 Pure stdlib plus the sibling kit files fleet_claims.py and fleet_gitlock.py.
 """
 
@@ -128,6 +143,9 @@ LANE_MIN_RUNS = 3
 LANE_WINDOW = 5
 DURATIONS_TAIL_BYTES = 1 << 20
 WAIT_S = 3600.0
+ENV_BYPASS_MAX = "FLEET_SUITE_BYPASS_MAX_S"
+BYPASS_MAX_S = 900.0  # KIT-GATE-HOL: a short ticket is passable this long
+TMP_STALE_S = 3600.0
 PROGRESS_EVERY_S = 30.0
 POLL_S = 1.0
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
@@ -228,8 +246,8 @@ def try_slot(d, n, pid=None, alive=None, started=None, clock=time.time):
         return None
     for k in range(n):
         p = _slot(d, k)
-        raw = json.dumps({"pid": pid, "pid_started": started(pid), "start": clock()},
-                         sort_keys=True).encode("ascii")
+        raw = json.dumps({"pid": pid, "pid_started": started(pid), "start": clock(),
+                          "n": int(n)}, sort_keys=True).encode("ascii")
         try:
             fd = os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except OSError:
@@ -251,10 +269,14 @@ def lane_index(n):
     return int(n) if int(n) < MAX_SLOTS else None
 
 
-def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time):
-    """(k, raw) for the lane slot taken now, or None (KIT-15)."""
+def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time, ticket=None):
+    """(k, raw) for the lane slot taken now, or None (KIT-15). v20 (LW 1120):
+    refused while slot k is a REGULAR slot for any other live ticket (its N
+    is above k), so a narrower runner's lane never takes a wider waiter's slot."""
     k = lane_index(n)
     if k is None:
+        return None
+    if any(tn > k for tn in live_ticket_ns(d, alive, started, exclude=ticket)):
         return None
     d = Path(d)
     d.mkdir(parents=True, exist_ok=True)
@@ -267,7 +289,7 @@ def try_lane(d, n, pid=None, alive=None, started=None, clock=time.time):
         with contextlib.suppress(OSError):
             p.unlink()
     raw = json.dumps({"pid": pid, "pid_started": started(pid), "start": clock(),
-                      "lane": True}, sort_keys=True).encode("ascii")
+                      "lane": True, "n": int(n)}, sort_keys=True).encode("ascii")
     try:
         fd = os.open(str(p), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except OSError:
@@ -296,13 +318,15 @@ def _say(msg):
 
 # ---------------------------------------------------------------- FIFO queue (v13)
 
-def take_ticket(d, pid=None, started=None, ns=None):
-    """Create this waiter's queue ticket; returns its path."""
+def take_ticket(d, pid=None, started=None, ns=None, n=None):
+    """Create this waiter's queue ticket; returns its path. v20 (LW 1120): the
+    ticket carries the waiter's slot count "n" (default DEFAULT_SLOTS)."""
     q = Path(d) / QUEUE
     q.mkdir(parents=True, exist_ok=True)
     pid = os.getpid() if pid is None else pid
     started = started or gitlock.proc_started
-    raw = json.dumps({"pid": pid, "pid_started": started(pid)}, sort_keys=True)
+    raw = json.dumps({"pid": pid, "pid_started": started(pid),
+                      "n": int(n) if n is not None else DEFAULT_SLOTS}, sort_keys=True)
     while True:
         stamp = time.time_ns() if ns is None else ns
         p = q / f"t-{stamp:020d}-{pid}.json"
@@ -324,48 +348,156 @@ def drop_ticket(ticket):
         Path(ticket).unlink()
 
 
-def queue_ahead(d, ticket, alive=None, started=None):
-    """Live tickets older than `ticket` (dead / reused ones are removed)."""
+def ticket_n(ticket):
+    """The slot count a ticket was filed with; a ticket from an older kit (no
+    "n") or with a bad value counts as DEFAULT_SLOTS."""
+    doc = _rec(Path(ticket))
+    v = doc.get("n") if doc else None
+    if isinstance(v, bool) or not isinstance(v, int) or not 1 <= v <= MAX_SLOTS:
+        return DEFAULT_SLOTS
+    return v
+
+
+def live_ticket_ns(d, alive=None, started=None, exclude=None):
+    """The "n" of every live ticket in the queue except `exclude`."""
     q = Path(d) / QUEUE
     try:
         names = sorted(x.name for x in q.glob("t-*.json"))
     except OSError:
-        return 0
-    ahead = 0
+        return []
+    skip = Path(exclude).name if exclude is not None else None
+    return [ticket_n(q / name) for name in names
+            if name != skip and slot_live(q / name, alive, started)]
+
+
+def ticket_short(ticket):
+    """True when the ticket carries the KIT-GATE-HOL short-of-commit mark."""
+    doc = _rec(Path(ticket))
+    return bool(doc and doc.get("short") is True)
+
+
+def mark_ticket(ticket, short):
+    """Set or clear the ticket's short-of-commit mark by atomic replace; a
+    failed write (a reader holds the file on Windows) is retried next poll."""
+    ticket = Path(ticket)
+    doc = _rec(ticket)
+    if doc is None or bool(doc.get("short")) == bool(short):
+        return
+    if short:
+        doc["short"] = True
+    else:
+        doc.pop("short", None)
+    tmp = ticket.with_name(ticket.name + ".tmp")
+    try:
+        tmp.write_bytes(json.dumps(doc, sort_keys=True).encode("ascii"))
+        os.replace(str(tmp), str(ticket))
+    except OSError:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+
+
+def bypass_max_s(env=None):
+    env = os.environ if env is None else env
+    try:
+        return max(0.0, float(str(env.get(ENV_BYPASS_MAX, "")).strip()))
+    except ValueError:
+        return BYPASS_MAX_S
+
+
+def ticket_age_s(name, now):
+    """Seconds since the ticket's name stamp (t-<ns>-<pid>.json), or None."""
+    try:
+        return now - int(str(name).split("-")[1]) / 1e9
+    except (IndexError, ValueError):
+        return None
+
+
+def sweep_tmp(q, now=None):
+    """Remove stray t-*.json.tmp files (a mark_ticket cut short) older than
+    TMP_STALE_S by mtime; never raises."""
+    now = time.time() if now is None else now
+    try:
+        stray = list(Path(q).glob("t-*.json.tmp"))
+    except OSError:
+        return
+    for p in stray:
+        with contextlib.suppress(OSError):
+            if now - p.stat().st_mtime > TMP_STALE_S:
+                p.unlink()
+
+
+def tickets_ahead(d, ticket, alive=None, started=None, clock=time.time):
+    """Paths of the live tickets older than `ticket` that count against it
+    (dead / reused ones are removed). KIT-GATE-HOL: a live ticket marked short
+    of commit is not counted while younger than bypass_max_s(); stale .tmp
+    files are swept on the way."""
+    q = Path(d) / QUEUE
+    sweep_tmp(q)
+    try:
+        names = sorted(x.name for x in q.glob("t-*.json"))
+    except OSError:
+        return []
+    now, cap = clock(), bypass_max_s()
+    ahead = []
     for name in names:
         if name >= Path(ticket).name:
             break
         if slot_live(q / name, alive, started):
-            ahead += 1
+            if not ticket_short(q / name):
+                ahead.append(q / name)
+            else:
+                age = ticket_age_s(name, now)
+                if age is None or age > cap:
+                    ahead.append(q / name)
         else:
             with contextlib.suppress(OSError):
                 (q / name).unlink()
     return ahead
 
 
+def queue_ahead(d, ticket, alive=None, started=None, clock=time.time):
+    """How many live tickets older than `ticket` count against it."""
+    return len(tickets_ahead(d, ticket, alive, started, clock))
+
+
 def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
-            started=None, pid=None, lane=False, commit=None, **kw):
+            started=None, pid=None, lane=False, commit=None, stats=None, **kw):
     """FIFO: wait for a slot only while no older live waiter could take it.
     lane=True (KIT-15, a known short suite) may also take the lane slot when
     no regular slot is free to it; the lane is not FIFO-ordered.
     v18 (RM737-GATE): commit() -> shortfall in MB (<= 0 or None = enough
     free commit); while short, NO slot is taken (regular or lane) and the
-    ticket is kept, so FIFO order holds."""
+    ticket is kept. KIT-GATE-HOL: while short the ticket is marked, so a later
+    waiter that fits may pass it; stats (a dict) gets commit_wait_s."""
     begin = said = clock()
-    ticket = take_ticket(d, pid, started)
+    ticket = take_ticket(d, pid, started, n=n)
     short = 0
+    was_short, last, cwait = False, begin, 0.0
     try:
         while True:
             short = (commit() or 0) if commit else 0
+            t = clock()
+            if was_short:
+                cwait += t - last
+            last, was_short = t, short > 0
+            if stats is not None:
+                stats["commit_wait_s"] = cwait
+            mark_ticket(ticket, short > 0)
             if short <= 0:
-                free = n - len(held(d, alive, started, upto=n))
-                if free > 0 and queue_ahead(d, ticket, alive, started) < free:
-                    got = try_slot(d, n, pid=pid, alive=alive, started=started, clock=clock,
+                # v20 (LW 1120): with mixed slot counts the waiter plays by the
+                # SMALLEST N among itself and the older waiters it must not
+                # pass, so a wider newcomer never takes a narrower waiter's slot.
+                ahead = tickets_ahead(d, ticket, alive, started, clock)
+                m = min([n] + [ticket_n(t) for t in ahead])
+                free = m - len(held(d, alive, started, upto=m))
+                if free > 0 and len(ahead) < free:
+                    got = try_slot(d, m, pid=pid, alive=alive, started=started, clock=clock,
                                    **kw)
                     if got:
                         return got
                 if lane:
-                    got = try_lane(d, n, pid=pid, alive=alive, started=started, clock=clock)
+                    got = try_lane(d, n, pid=pid, alive=alive, started=started, clock=clock,
+                                   ticket=ticket)
                     if got:
                         return got
             now = clock()
@@ -380,11 +512,13 @@ def acquire(d, n, timeout=WAIT_S, clock=time.time, sleep=time.sleep, alive=None,
                 what = (f"free commit ({int(short)} MB short)" if short > 0
                         else "a suite slot")
                 _say(f"suite gate: waiting for {what} ({n} slot(s), "
-                     f"{queue_ahead(d, ticket, alive, started)} waiter(s) ahead, "
+                     f"{queue_ahead(d, ticket, alive, started, clock)} waiter(s) ahead, "
                      f"{int(now - begin)}s of {int(timeout)}s)")
             sleep(POLL_S)
     finally:
         drop_ticket(ticket)
+        with contextlib.suppress(OSError):
+            Path(str(ticket) + ".tmp").unlink()
 
 
 # ---------------------------------------------------------------- commit (v18 RM737-GATE)
@@ -882,7 +1016,8 @@ def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
     need = required_commit_mb(d, tree, chash) + commit_margin_mb()
     kw.setdefault("commit", commit_check(need, kw.pop("free_commit", free_commit_mb)))
     asked = clock()
-    k, raw = acquire(d, n, timeout, lane=lane, **kw)
+    stats = {}
+    k, raw = acquire(d, n, timeout, lane=lane, stats=stats, **kw)
     got = clock()
     rc = None
     peak = {"mb": None}
@@ -911,6 +1046,8 @@ def run(argv, cwd=None, runner=None, dirty=dirty_paths, d=None, **kw):
         line = {"ts": round(got, 3), "tree": tree, "cmd": chash, "slot": k,
                 "lane": k == lane_index(n), "wait_s": round(got - asked, 3),
                 "hold_s": round(hold, 3), "exit": rc}
+        if stats.get("commit_wait_s", 0) > 0:
+            line["commit_wait_s"] = round(stats["commit_wait_s"], 3)
         if peak["mb"] is not None:
             line["peak_commit_mb"] = round(peak["mb"], 1)
         if line["lane"] and hold > LANE_OVERRUN_S:

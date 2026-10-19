@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
-"""Fleet kit v14 - multi-lane headless work: per-repo lanes, one worktree each,
+"""Fleet kit v20 - multi-lane headless work: per-repo lanes, one worktree each,
 under the machine-wide governor (design: MAIN docs/fleet-designs/multi-lane.md).
 
 Vendored byte-for-byte at ops/fleet_kit/ and pinned by MANIFEST.json. Do NOT
@@ -54,6 +54,11 @@ fourth executor start. A ticket is dead when its pid is dead or a stranger,
 or its heartbeat is older than TICKET_HEARTBEAT_S. Every delete re-reads the
 bytes it judged and deletes only if they are unchanged. *_state() functions
 are poll paths and never write.
+
+LANE-95 (v20): at >= UNIT_PCT (95) percent usage a lane works in small
+resumable units (usage_pct, unit_mode, plan_units, unit_brief, checkpoint,
+resume_point, pending_units; CLI `unit` / `resume`); run_lane's claim carries
+usage_pct, unit_mode and resume. Unit size only - never routing.
 
 Pure stdlib (psutil used only if present). No machine path, account id or repo
 name appears in this file; the governor root derives from %ProgramData%.
@@ -795,16 +800,179 @@ def ensure_worktree(repo_root, path, base="HEAD", run=_git, clock=time.time):
     return {"created": False, "saved_ref": saved}
 
 
+# ---------------------------------------------------------------- LANE-95 (v20)
+# At >= UNIT_PCT percent usage a lane works in small resumable units: one item
+# per unit, a commit (through fleet_gitlock) and a checkpoint after each, and a
+# resume by unit id, so hitting 100 percent loses at most one unit. The
+# percentage changes the UNIT SIZE only - never the account, the route or a
+# throttle (MAIN ruling 2026-10-18-acct-fallback condition 3). Unknown usage =
+# normal units (today's behaviour).
+
+UNIT_PCT = 95
+UNIT_MODES = ("normal", "small")
+UNITS_REL = LANES_REL / "units"
+QUOTA_FILE = Path(".config") / "teamclaude.state.json"
+_ID_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+UNIT_BRIEF = (
+    "USAGE IS AT OR ABOVE {pct} PERCENT (LANE-95). Work in small resumable units: "
+    "do exactly ONE unit (one item) this run, commit it through fleet_gitlock, then "
+    "write its checkpoint with `python ops/fleet_kit/fleet_lanes.py unit --root . "
+    "--lane <lane> --unit <id> --step <what> --done --commit <sha>` and stop. "
+    "Before starting, read `fleet_lanes.py resume --root . --lane <lane>` and finish "
+    "that unit first if one is open.")
+
+
+def _check_id(value, what):
+    if not isinstance(value, str) or not 0 < len(value) <= 64 or \
+            not set(value) <= _ID_CHARS or value.strip(".") == "":
+        raise ValueError(f"{what} must be 1-64 of [A-Za-z0-9._-]")
+    return value
+
+
+def usage_pct(path=None, now=None):
+    """The highest live usage window (5-hour or 7-day) across the accounts in
+    the proxy's quota file, in percent; None when unknown. A window whose reset
+    time has passed is stale and ignored."""
+    p = Path(path) if path is not None else Path.home() / QUOTA_FILE
+    now = time.time() if now is None else now
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        rows = doc["quota"]
+        if not isinstance(rows, list):
+            return None
+    except (OSError, ValueError, KeyError, TypeError, UnicodeError):
+        return None
+    best = None
+    for row in rows:
+        q = row.get("quota") if isinstance(row, dict) else None
+        if not isinstance(q, dict):
+            continue
+        for key in ("unified5h", "unified7d"):
+            v, reset = q.get(key), q.get(key + "Reset")
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                continue
+            if isinstance(reset, (int, float)) and not isinstance(reset, bool) \
+                    and 0 < reset <= now:
+                continue
+            best = max(best if best is not None else 0.0, float(v) * 100.0)
+    return best
+
+
+def unit_mode(pct, threshold=UNIT_PCT):
+    """"small" at or above the threshold, else "normal" (unknown included)."""
+    if isinstance(pct, bool) or not isinstance(pct, (int, float)):
+        return "normal"
+    return "small" if pct >= threshold else "normal"
+
+
+def plan_units(items, mode, normal_size=None):
+    """Batches of work items: one per unit in small mode, else normal_size
+    (default: all in one unit)."""
+    if mode not in UNIT_MODES:
+        raise ValueError(f"mode must be one of {UNIT_MODES}")
+    items = list(items)
+    if not items:
+        return []
+    size = 1 if mode == "small" else (normal_size or len(items))
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+def unit_brief(mode, pct=UNIT_PCT):
+    """The prompt paragraph a lane adds to its child's prompt in small mode."""
+    return UNIT_BRIEF.format(pct=int(pct if isinstance(pct, (int, float)) else UNIT_PCT)) \
+        if mode == "small" else ""
+
+
+def units_path(repo_root, lane):
+    """<main checkout>/ops/loop/control/lanes/units/<lane>.json."""
+    return main_tree(repo_root) / UNITS_REL / (_check_id(lane, "lane") + ".json")
+
+
+def _units(repo_root, lane):
+    p = units_path(repo_root, lane)
+    if not p.exists():
+        return {"lane": lane, "unit": None, "step": None, "status": None, "commit": None,
+                "done": [], "last_commit": None, "updated": None}
+    try:
+        doc = json.loads(p.read_text(encoding="ascii"))
+        if not isinstance(doc, dict) or not isinstance(doc.get("done"), list):
+            raise ValueError("shape")
+        return doc
+    except (OSError, ValueError, UnicodeError) as exc:
+        # never cleared or rewritten: an unreadable record resumes nothing
+        raise ValueError(f"units record unreadable ({exc.__class__.__name__})") from None
+
+
+def checkpoint(repo_root, lane, unit, step, status="running", commit=None, clock=time.time):
+    """Record the lane's current unit (status running) or close it (done: the id
+    joins "done", "commit" becomes "last_commit"). Atomic; always in the main
+    checkout, even from a lane worktree."""
+    _check_id(lane, "lane")
+    _check_id(unit, "unit")
+    if status not in ("running", "done"):
+        raise ValueError("status must be running or done")
+    doc = _units(repo_root, lane)
+    doc.update({"lane": lane, "updated": round(float(clock()), 3)})
+    if status == "done":
+        if unit not in doc["done"]:
+            doc["done"].append(unit)
+        doc.update({"unit": None, "step": None, "status": None, "commit": None})
+        if commit:
+            doc["last_commit"] = str(commit)[:64]
+    else:
+        doc.update({"unit": unit, "step": " ".join(str(step).split())[:120],
+                    "status": "running", "commit": str(commit)[:64] if commit else None})
+    p = units_path(repo_root, lane)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(p, doc)
+    return doc
+
+
+def resume_point(repo_root, lane):
+    """{"unit", "step", "commit"} of the lane's open unit, else None."""
+    doc = _units(repo_root, lane)
+    if doc.get("status") == "running" and doc.get("unit"):
+        return {"unit": doc["unit"], "step": doc.get("step"), "commit": doc.get("commit")}
+    return None
+
+
+def done_units(repo_root, lane):
+    return list(_units(repo_root, lane)["done"])
+
+
+def pending_units(repo_root, lane, ids):
+    """ids not yet done, in order - a resumed lane never repeats a done unit."""
+    done = set(done_units(repo_root, lane))
+    return [i for i in ids if i not in done]
+
+
+def clear_units(repo_root, lane):
+    """The lane's whole job is done: drop its units record."""
+    with contextlib.suppress(FileNotFoundError):
+        units_path(repo_root, lane).unlink()
+
+
+def _usage_of(usage):
+    if usage is None:
+        return usage_pct()
+    if callable(usage):
+        return usage()
+    return usage
+
+
 @contextlib.contextmanager
 def run_lane(repo_root, code, lane_name, run_id, cap=LANE_CAP_MAX, base="HEAD",
-             exclusive=True, run=_git):
+             exclusive=True, run=_git, usage=None):
     """Repo lane + clean worktree for the block. Yields the claim ("worktree",
     "index", "saved_ref"). Takes NO governor slot: hold one around the executor
     call (spawn(governor=...) or slots.hold), never around git. Raises
     LaneRefused before anything runs; releases the lane however the block ends.
     v16: when the block ends, progress/lane-<i>.json (FLEET-COMMON 13 d) that
     still says running is written as failed, so a killed lane leaves no live
-    row behind."""
+    row behind.
+    v20 (LANE-95): the claim also carries "usage_pct" (usage: a number, a
+    callable, or None = usage_pct()), "unit_mode" (small at >= UNIT_PCT) and
+    "resume" (the lane's open unit, or None; an unreadable record = None)."""
     claim = try_acquire_lane(repo_root, code, lane_name, run_id, cap, exclusive)
     if not claim["ok"]:
         raise LaneRefused(f"{claim['refused']}: {claim['holders']}")
@@ -812,6 +980,17 @@ def run_lane(repo_root, code, lane_name, run_id, cap=LANE_CAP_MAX, base="HEAD",
     try:
         claim["saved_ref"] = ensure_worktree(repo_root, claim["worktree"], base,
                                              run=run)["saved_ref"]
+        try:
+            pct = _usage_of(usage)
+        except Exception:  # a broken usage source never blocks the lane
+            pct = None
+        claim["usage_pct"] = pct if isinstance(pct, (int, float)) and \
+            not isinstance(pct, bool) else None
+        claim["unit_mode"] = unit_mode(claim["usage_pct"])
+        try:
+            claim["resume"] = resume_point(repo_root, lane_name)
+        except ValueError:
+            claim["resume"] = None
         yield claim
     finally:
         try:
@@ -838,3 +1017,44 @@ def _close_lane_row(repo_root, index):
                                   "lane block ended without a final status")
     except (OSError, ValueError, ImportError):
         return None
+
+
+# ---------------------------------------------------------------- CLI (v20)
+
+def main(argv=None, stdout=None):
+    """`python fleet_lanes.py unit --root R --lane L --unit U --step S [--done]
+    [--commit SHA]` writes a LANE-95 checkpoint; `resume --root R --lane L`
+    prints the open unit (JSON, null when none). Exit 0 ok, 2 bad input."""
+    import argparse
+    ap = argparse.ArgumentParser(prog="fleet_lanes.py")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    up = sub.add_parser("unit")
+    up.add_argument("--root", required=True)
+    up.add_argument("--lane", required=True)
+    up.add_argument("--unit", required=True)
+    up.add_argument("--step", required=True)
+    up.add_argument("--done", action="store_true")
+    up.add_argument("--commit")
+    rp = sub.add_parser("resume")
+    rp.add_argument("--root", required=True)
+    rp.add_argument("--lane", required=True)
+    out = stdout or sys.stdout
+    try:
+        args = ap.parse_args(argv)
+    except SystemExit:
+        return 2
+    try:
+        if args.cmd == "unit":
+            doc = checkpoint(args.root, args.lane, args.unit, args.step,
+                             status="done" if args.done else "running", commit=args.commit)
+        else:
+            doc = resume_point(args.root, args.lane)
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"error": str(exc)[:200]}), file=out)
+        return 2
+    print(json.dumps(doc), file=out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

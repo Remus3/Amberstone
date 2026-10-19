@@ -62,9 +62,16 @@ edit. Tree-specific rules go BELOW this block, never inside it.
 9. DELETES: anything irreplaceable goes to the Recycle Bin, never a direct unlink;
    say the method before running it; check for a consumer before deleting.
 10. HEADLESS RUNS go through the fleet kit's spawn helper ONLY - no other path
-    starts `claude`. The kit enforces: the second-account proxy from the user
-    variable CLAUDE_HEADLESS_BASE_URL (registry first), fail closed (no fallback,
-    ever), no visible console, at most 120 runs per rolling 24 h, never spawn on
+    starts `claude`. The kit enforces: an explicit route from
+    ~/.fleet/headless_route.json - split = the second-account proxy from the user
+    variable CLAUDE_HEADLESS_BASE_URL (registry first), single = the named
+    main-account config dir, no proxy - with that variable required in both modes
+    as the one kill switch; fail closed (a missing or invalid route or variable
+    refuses; no fallback and no automatic mode change, ever, except one: when the
+    route file arms a fallback, a 7-day usage-limit refusal moves the next spawns
+    to the other route until that limit resets - never on a proxy, auth or network
+    failure, a 5-hour limit or a usage percentage, one hop only, logged and
+    shown), no visible console, at most 120 runs per rolling 24 h, never spawn on
     this tree's own notes or on TERMINAL/no-reply notes, lean flags (strict MCP,
     project settings only, or bare where no floor lives in hooks), sonnet unless
     the note orders code changes, effort low for acknowledgements, a usage line
@@ -93,8 +100,14 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        `Session <n> checklist` (n = this tree's session counter, kept in its
        hand-off file; a headless fire uses its run count), then one line per
        task in execution order: `<box> <ID>: <imperative task, one line>`, plus
-       `(<state>, ~ETA)` only while it is running (e.g. `builder running,
-       ~4m`). <box> is U+2610. The last line is `<box> /done`. At most ONE
+       `(<state>, <pct>% ~<rem>m of <total>m [<h:mmAM/PM>])` only while it is
+       running (e.g. `builder running, 25% ~22.5m of 30m [2:25PM]`). Why: the
+       operator forgets when an estimate was given. rem and total round UP
+       to 0.5 min; total is re-estimated as elapsed / pct on each update; the
+       bracket is the local finish time, recomputed on every start or update.
+       The start time is the item-12 "started" field (optional: a file
+       without it keeps `~ETA`). The status line and the agent panel show the
+       same. <box> is U+2610. The last line is `<box> /done`. At most ONE
        trailing sentence, and only for an ordering constraint ("X waits until
        Y lands because ..."). NO summary, review, what-went-wrong or history.
     b. After every 4 or more completed tasks, print the REMAINING tasks only,

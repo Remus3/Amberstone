@@ -787,6 +787,40 @@ def bare_git_write(command, cwd=None, project=None):
     counts; the repo is the `-C` dir, else the dir a preceding plain `cd`
     segment moved to, else cwd. Any --git-dir / --work-tree / GIT_DIR /
     GIT_WORK_TREE in the command keeps the old always-deny rule."""
+    return _bare_git(command, cwd, project, ("commit", "push"))
+
+
+LOCK_ONLY_VERBS = ("merge", "reset", "revert")
+
+
+def bare_git_lockonly(command, cwd=None, project=None):
+    """v20 (gitlock merge-routing nudge): 'merge' / 'reset' / 'revert' when the
+    command runs one NOT through fleet_gitlock in a guarded repo. Never a
+    deny: the hook answers with a one-line nudge (fleet_gitlock runs these
+    lock-only since v16)."""
+    return _bare_git(command, cwd, project, LOCK_ONLY_VERBS)
+
+
+def add_then_gitlock(command):
+    """v20: True when a `git add` segment runs before a fleet_gitlock segment in
+    one command (`git add f && python fleet_gitlock.py run ...`): when the
+    gitlock call fails, the staged paths stay in the shared index."""
+    seen_add = False
+    for seg in _segments(command):
+        if _GITLOCK in seg:
+            if seen_add:
+                return True
+            continue
+        words = _words(seg)
+        while words and _ENVSET.match(words[0]):
+            words = words[1:]
+        g = _git_verb(words)
+        if g and g[0] == "add":
+            seen_add = True
+    return False
+
+
+def _bare_git(command, cwd, project, verbs):
     here = Path(cwd) if cwd is not None else None
     if _GITDIR.search(command or ""):
         here = None  # --git-dir / --work-tree / GIT_DIR can aim anywhere: guarded
@@ -804,7 +838,7 @@ def bare_git_write(command, cwd=None, project=None):
         while words and _ENVSET.match(words[0]):
             words = words[1:]  # VAR=value prefix
         g = _git_verb(words)
-        if g and g[0] in ("commit", "push"):
+        if g and g[0] in verbs:
             if here is None:
                 return g[0]
             target = _abs(_msys(g[2]), here) if g[2] else here
@@ -1049,7 +1083,23 @@ def decide_shell(payload, me, now, ttl_s):
     if me:
         with contextlib.suppress(Exception):
             claim_shell(payload, me, cwd, files, specs, now, ttl_s)
+    # v20 nudges (allowed, one line of context, never a deny)
+    lockonly = bare_git_lockonly(command, cwd, project_root(payload, os.environ))
+    if lockonly:
+        return "nudge", ("GITLOCK: route `git {0}` through the git lock: python <kit>/"
+                         "fleet_gitlock.py run --owner {1} -- git {0} ... (lock only)"
+                         .format(lockonly, me or "<owner>"))
+    if add_then_gitlock(command):
+        return "nudge", ("GITLOCK: if this fleet_gitlock.py run fails, the paths you just "
+                         "staged stay in the shared index - unstage them with "
+                         "git restore --staged <path>")
     return "allow", ""
+
+
+def nudge_output(text):
+    """v20: an allowed call with one line of context (UI/UX standard s5)."""
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                   "additionalContext": " ".join(str(text).split())}}
 
 
 def decide(payload, env=None, now=None):
@@ -1094,6 +1144,8 @@ def run_hook(stdin_text, env=None, now=None):
     decision, reason = decide(payload, env, now)
     if decision == "allow":
         return ""
+    if decision == "nudge":
+        return json.dumps(nudge_output(reason))
     log(root, {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "tool": payload.get("tool_name"),
                "thread": "sub" if payload.get("agent_id") else "main",
                "decision": decision if m == "deny" else "would-deny", "mode": m,

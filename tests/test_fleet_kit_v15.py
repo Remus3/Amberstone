@@ -33,8 +33,8 @@ KIT = ROOT / "ops" / "fleet_kit"
 
 # The ORDER's section-1 hashes (verified against MAIN's committed outbox copy
 # at adoption, LEDGER).
-V15_MANIFEST_SHA256 = "98271d87bf45f49b84f0c82a3a075a83c0d6309c2897adf40a3b6750e84b751c"
-COMMON_BLOCK_SHA256 = "39f1704a0b8c9a53450c1626c3f5e8e4a2a3ded9c8c2802bc8cd2a40a8cd710d"
+V15_MANIFEST_SHA256 = "9e4f9980c7530f263a470ab863d4fcf05b4df70d05c53bb1f59f1c091c09b000"
+COMMON_BLOCK_SHA256 = "c5fcda56d2ecdfb9029cd775897d934e5241f801050e6027dd93bdf82e81b2d2"
 BG_OFF = "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"
 FAKE_URL = "http://127.0.0.1:9"
 
@@ -72,8 +72,8 @@ def test_the_vendored_manifest_is_the_v15_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V15_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 19
-    assert _load("fleet_headless").KIT_VERSION == 19
+    assert man["version"] == 20
+    assert _load("fleet_headless").KIT_VERSION == 20
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 

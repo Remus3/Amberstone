@@ -191,6 +191,44 @@ train + nightly waiver docs/rulings/2026-10-18-kit-v19-waiver.md):
 - fleet_identity pre-push: a NEW ref is scanned against the remote's real
   ls-remote advertisement, not local tracking refs (CS 1213 item 2).
 
+v19.1 = EXPLICIT HEADLESS ROUTE (operator order 2026-10-18 "v19.1" B; ruling
+MAIN docs/rulings/2026-10-18-headless-route.md; same one-off waiver as v19):
+- spawn() reads ~/.fleet/headless_route.json FRESH on every spawn, first in its
+  checks: {"version": 1, "mode": "split"} = exactly the v19 proxy path;
+  {"version": 1, "mode": "single", "config_dir": <abs dir holding the account
+  credentials file>} = the child runs on that account directly (CLAUDE_CONFIG_DIR
+  set, no base URL, no probe; --bare refuses, code "route-bare"). Missing =
+  Refused "route-missing", anything else wrong = "route-invalid". No default, no
+  fallback, no automatic mode change.
+- CLAUDE_HEADLESS_BASE_URL stays REQUIRED (check_url) in BOTH modes: deleting it
+  is still the one machine-wide kill switch.
+- the usage line gains "route" and "kit_patch"; the status file "route".
+- CLI: `route show` (mode only, never the path; exit 1 when not valid) and
+  `route set split` / `route set single --config-dir DIR` (validated first,
+  atomic ASCII + LF write; invalid input leaves the file untouched).
+- KIT_PATCH = 1: the manifest version stays 19 (the waiver and rollout key on
+  it); the release reads v19.1.
+
+v20 (v19.1 folded in; train waiver docs/rulings/2026-10-18-kit-v20-waiver.md;
+KIT_PATCH = 0, no "v19 patch 1" manifest is ever queued):
+- ACCT-FALLBACK (ruling docs/rulings/2026-10-18-acct-fallback.md, FLEET-COMMON
+  10 new text): the route file may carry {"fallback": {"armed": true, "mode":
+  <the other mode>[, "config_dir": ...]}}; it is validated like a primary and an
+  invalid block refuses the whole route. Missing or disarmed = no fallback.
+  Written only by `route set ... --fallback split|single` / `--no-fallback`.
+  ONE trigger: a failed run's own message that classify_limit() reads as the
+  7-day window with a parsed reset inside 7 days. The run ends "limit" (no
+  in-run retry); ~/.fleet/headless_fallback.json {"since","until","from","to"}
+  moves the NEXT spawns to the fallback until "until". A limit on the fallback
+  halts (Refused "fallback-halted", status "limit") until the earlier reset;
+  never a third route. Proxy / auth / network failures, a 5-hour limit, an
+  unknown window and any percentage never trigger. No quota percentage is read.
+  Any `route set` or deleting the state ends it. Start / halt / end write one
+  line to ~/.fleet/headless_fallback.jsonl; usage lines carry "fallback" and
+  "limit", the status file "fallback": true (statusline FALLBK, tokens state
+  "fallback"). The rollout writes no fallback block.
+- CHECKLIST-ETA-CLOCK: write_progress(..., started=) (see fleet_checklist.py).
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -207,7 +245,8 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-KIT_VERSION = 19
+KIT_VERSION = 20
+KIT_PATCH = 0  # v20 (v19.1 folded in: kit-v20-waiver ruling point 2)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
 RUNS_CAP = 120
 WINDOW_S = 86400
@@ -353,7 +392,7 @@ def probe(host, port, timeout=2.0, connect=socket.create_connection):
                       code="proxy-unreachable") from None
 
 
-def child_env(url, bare=False, parent=None):
+def child_env(url, bare=False, parent=None, route=None):
     """The child's environment: provider switches and credentials removed, the
     proxy URL set. CLAUDE_CODE_USE_POWERSHELL_TOOL is a tool switch, not a
     provider switch, and is kept. --bare reads no OAuth, so it gets a
@@ -365,7 +404,12 @@ def child_env(url, bare=False, parent=None):
         if k in STRIP_EXACT or k.startswith(STRIP_PREFIX) or (
                 k.startswith("ANTHROPIC_") and k.endswith("BASE_URL")):
             del env[k]
-    env["ANTHROPIC_BASE_URL"] = url
+    if route and route.get("mode") == "single":
+        # v19.1 single route: the named main-account config dir, no proxy (every
+        # base URL was stripped above).
+        env["CLAUDE_CONFIG_DIR"] = route["config_dir"]
+    else:
+        env["ANTHROPIC_BASE_URL"] = url
     # v10: SUBAGENT-FIRST guards an operator's interactive main thread; a
     # headless run has no agent_id and no operator, so it is always exempt.
     env["FLEET_SUBAGENT_FIRST"] = "off"
@@ -375,6 +419,407 @@ def child_env(url, bare=False, parent=None):
     if bare:
         env["ANTHROPIC_API_KEY"] = PLACEHOLDER_KEY
     return env
+
+
+# ---------------------------------------------------------------- route (v19.1)
+# Ruling docs/rulings/2026-10-18-headless-route.md (MAIN). An EXPLICIT route file,
+# read fresh on every spawn; missing or invalid refuses before anything starts. No
+# default, no fallback, no automatic mode change. The kit is its only writer.
+
+ROUTE_VERSION = 1
+ROUTE_MODES = ("split", "single")
+ROUTE_CREDENTIALS = ".credentials.json"
+_ROUTE_KEYS = {"split": {"version", "mode"}, "single": {"version", "mode", "config_dir"}}
+
+
+# V191-ALIAS: the ONE test-only redirect. fleet_test_guard sets it per test so
+# every load of this file, under any module name, reads a tmp route. Honoured
+# only while pytest runs a test (PYTEST_CURRENT_TEST); production ignores it.
+TEST_ROUTE_ENV = "FLEET_TEST_HEADLESS_ROUTE"
+
+
+def route_path():
+    """~/.fleet/headless_route.json - fixed; nothing (CLI, env, config) moves it
+    outside a pytest test (see TEST_ROUTE_ENV)."""
+    t = os.environ.get(TEST_ROUTE_ENV)
+    if t and os.environ.get("PYTEST_CURRENT_TEST"):
+        return Path(t)
+    return Path.home() / ".fleet" / "headless_route.json"
+
+
+def _route_invalid(why):
+    return Refused("headless route invalid: " + why, code="route-invalid")
+
+
+def check_route(doc):
+    """A parsed route document -> {"mode", ["config_dir"]}, else Refused
+    route-invalid. The config dir is checked statically (absolute, ASCII, an
+    existing directory holding the account credentials file); no secret is read
+    and no message names the path."""
+    if not isinstance(doc, dict):
+        raise _route_invalid("not an object")
+    v = doc.get("version")
+    if type(v) is not int or v != ROUTE_VERSION:
+        raise _route_invalid(f"version must be {ROUTE_VERSION}")
+    mode = doc.get("mode")
+    if mode not in ROUTE_MODES:
+        raise _route_invalid("mode must be split or single")
+    if set(doc) - {"fallback"} != _ROUTE_KEYS[mode]:
+        raise _route_invalid("keys must be exactly " + ", ".join(sorted(_ROUTE_KEYS[mode]))
+                             + " (+ optional fallback)")
+    fb = _check_fallback(doc["fallback"], mode) if "fallback" in doc else None
+    out = _check_primary(doc, mode)
+    if fb is not None:
+        out["fallback"] = fb
+    return out
+
+
+def _check_fallback(fb, primary_mode):
+    """v20 ACCT-FALLBACK condition 1: the block is validated in full whether
+    armed or not; an invalid block refuses the whole route, never ignored.
+    Armed -> {"mode", ["config_dir"]}, validated exactly like a primary of that
+    mode; disarmed -> None."""
+    if not isinstance(fb, dict):
+        raise _route_invalid("fallback must be an object")
+    if type(fb.get("armed")) is not bool:
+        raise _route_invalid("fallback.armed must be true or false")
+    m = fb.get("mode")
+    if m not in ROUTE_MODES:
+        raise _route_invalid("fallback.mode must be split or single")
+    if m == primary_mode:
+        raise _route_invalid("fallback.mode must be the other route")
+    want = {"armed"} | (_ROUTE_KEYS[m] - {"version"})
+    if set(fb) != want:
+        raise _route_invalid("fallback keys must be exactly " + ", ".join(sorted(want)))
+    target = dict(fb, version=ROUTE_VERSION)
+    del target["armed"]
+    try:
+        checked = _check_primary(target, m)
+    except Refused as exc:
+        raise _route_invalid("fallback " + str(exc).split(": ", 1)[-1]) from None
+    return checked if fb["armed"] else None
+
+
+def _check_primary(doc, mode):
+    if mode == "split":
+        return {"mode": "split"}
+    cd = doc.get("config_dir")
+    if not isinstance(cd, str) or not cd or any(ord(c) > 127 or ord(c) < 32 for c in cd):
+        raise _route_invalid("config_dir must be a non-empty ASCII path")
+    if not Path(cd).is_absolute():
+        raise _route_invalid("config_dir must be absolute")
+    if not Path(cd).is_dir():
+        raise _route_invalid("config_dir is not an existing directory")
+    if not (Path(cd) / ROUTE_CREDENTIALS).is_file():
+        raise _route_invalid("config_dir holds no account credentials file")
+    return {"mode": "single", "config_dir": cd}
+
+
+def read_route(path=None):
+    """The route, read fresh. Missing -> Refused route-missing; anything else
+    wrong -> Refused route-invalid."""
+    p = route_path() if path is None else Path(path)
+    try:
+        raw = p.read_bytes()
+    except FileNotFoundError:
+        raise Refused("headless route file missing - run `fleet_headless.py route set`",
+                      code="route-missing") from None
+    except OSError as exc:
+        raise _route_invalid(f"unreadable ({exc.__class__.__name__})") from None
+    if any(b > 127 for b in raw) or b"\r" in raw:
+        raise _route_invalid("not ASCII + LF")
+    try:
+        doc = json.loads(raw.decode("ascii"))
+    except ValueError:
+        raise _route_invalid("not JSON") from None
+    return check_route(doc)
+
+
+def write_route(mode, config_dir=None, path=None, fallback=None, fallback_config_dir=None):
+    """`route set`: validate FIRST, then an atomic ASCII + LF write. An invalid
+    request raises Refused and leaves the existing file untouched. v20:
+    fallback= arms a fallback to the other route (fallback_config_dir names
+    its account dir when it is single); none = no block (--no-fallback). Any
+    route set ends an active fallback at once (ruling condition 5)."""
+    doc = {"version": ROUTE_VERSION, "mode": mode}
+    if mode == "single":
+        doc["config_dir"] = config_dir
+    elif config_dir is not None:
+        raise _route_invalid("split takes no config_dir")
+    if fallback is not None:
+        doc["fallback"] = {"armed": True, "mode": fallback}
+        if fallback == "single":
+            doc["fallback"]["config_dir"] = fallback_config_dir
+        elif fallback_config_dir is not None:
+            raise _route_invalid("a split fallback takes no config_dir")
+    elif fallback_config_dir is not None:
+        raise _route_invalid("fallback config_dir without a fallback")
+    check_route(doc)
+    p = route_path() if path is None else Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(p, json.dumps(doc, sort_keys=True) + "\n", verify=True)
+    if os.path.lexists(fallback_state_path(p)):
+        _end_fallback("route set", p)
+    return read_route(p)
+
+
+def route_show(path=None):
+    """{"mode", "valid", "reason"} - the mode only, never the path. v20: an
+    armed route adds "fallback" (its mode), "fallback_active" and
+    "fallback_until"; a route without an armed block reads exactly as v19.1."""
+    try:
+        r = read_route(path)
+    except Refused as exc:
+        return {"mode": None, "valid": False, "reason": str(exc)[:200], "code": exc.code}
+    doc = {"mode": r["mode"], "valid": True, "reason": None}
+    if r.get("fallback"):
+        doc["fallback"] = r["fallback"]["mode"]
+        doc["fallback_active"], doc["fallback_until"] = False, None
+        try:
+            st = _read_fallback_state(fallback_state_path(path))
+        except Refused:
+            st = None
+        if st and (st["from"], st["to"]) == (r["mode"], r["fallback"]["mode"]) \
+                and _now() < st["until"]:
+            doc["fallback_active"], doc["fallback_until"] = True, _iso(st["until"])
+    return doc
+
+
+# ---------------------------------------------------------------- fallback (v20)
+# Ruling MAIN docs/rulings/2026-10-18-acct-fallback.md. ARMED only by the route
+# file's block; the ONE trigger is a confirmed 7-day usage-limit refusal of the
+# primary route with a parsed reset; the run that hit it ends ("limit", no in-run
+# retry) and the NEXT spawns use the other route until that reset; a limit on the
+# fallback halts until the earlier reset; never a third route. No usage
+# percentage is read anywhere. Every start, halt and end writes one ledger line.
+
+FALLBACK_STATE = "headless_fallback.json"
+FALLBACK_LEDGER = "headless_fallback.jsonl"
+_STATE_KEYS = {"since", "until", "from", "to"}
+LIMIT_LINE_MAX = 240
+WEEK_S = 7 * 86400
+_now = time.time  # the one clock of the fallback code; tests patch it
+_LIMIT_HIT = re.compile(
+    r"\blimit\s+(?:(?:has|have)\s+been\s+|was\s+|is\s+)?(?:reached|hit|exceeded)\b"
+    r"|\b(?:reached|hit|exceeded)\s+(?:your|the)\s+(?:[\w-]+\s+){0,2}limit\b", re.I)
+_WIN_7D = re.compile(r"\b(?:weekly|7-day|seven-day|7 day)\b", re.I)
+_WIN_5H = re.compile(r"\b(?:5-hour|five-hour|5 hour|session)\b", re.I)
+_WIN_MODEL = re.compile(r"\b(?:opus|sonnet|haiku)\b", re.I)
+_NOT_LIMIT = re.compile(r"proxy|invalid_grant|unauthori[sz]ed|authenticat|\b40[134]\b"
+                        r"|unknown pin|econn|network|timed? ?out", re.I)
+_EPOCH_RESET = re.compile(r"\|\s*(\d{10})\b")
+_ISO_RESET = re.compile(r"\b(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?"
+                        r"(?:Z|[+-]\d{2}:?\d{2})?)")
+_HUMAN_RESET = re.compile(
+    r"\bresets?\s+(?:on\s+)?(?:(?P<mon>[A-Za-z]{3,9})\.?\s+(?P<day>\d{1,2})"
+    r"(?:st|nd|rd|th)?,?\s+(?:at\s+)?)?(?P<h>\d{1,2})(?::(?P<m>\d{2}))?\s*(?P<ap>[ap]m)\b"
+    r"(?:\s*\((?P<tz>[^)]{1,40})\))?", re.I)
+_MONTHS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+
+
+def fallback_state_path(route_file=None):
+    """The kit-owned state file beside the route file (no path or account id
+    inside it)."""
+    return Path(route_path() if route_file is None else route_file).with_name(FALLBACK_STATE)
+
+
+def fallback_ledger_path(route_file=None):
+    """One JSON line per fallback start / halt / end, beside the route file."""
+    return Path(route_path() if route_file is None else route_file).with_name(FALLBACK_LEDGER)
+
+
+def _ledger(event, route_file=None, **fields):
+    line = dict({"ts": _iso(_now()), "event": event}, **fields)
+    p = fallback_ledger_path(route_file)
+    with contextlib.suppress(OSError):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a", encoding="ascii", newline="\n") as fh:
+            fh.write(json.dumps(line, sort_keys=True) + "\n")
+
+
+def _epoch_of(value):
+    d = _dt.datetime.fromisoformat(value)
+    if d.tzinfo is None:
+        d = d.astimezone()
+    return d.timestamp()
+
+
+def _read_fallback_state(path=None):
+    """The state with epoch times, None when absent; an unreadable or malformed
+    file refuses (route-invalid, fail closed)."""
+    p = fallback_state_path() if path is None else Path(path)
+    if not os.path.lexists(p):
+        return None
+    try:
+        doc = json.loads(p.read_text(encoding="ascii"))
+        if not isinstance(doc, dict) or not (
+                _STATE_KEYS <= set(doc) <= _STATE_KEYS | {"halt_until"}):
+            raise ValueError("keys")
+        if doc["from"] not in ROUTE_MODES or doc["to"] not in ROUTE_MODES:
+            raise ValueError("modes")
+        out = {"from": doc["from"], "to": doc["to"], "since": _epoch_of(doc["since"]),
+               "until": _epoch_of(doc["until"])}
+        if "halt_until" in doc:
+            out["halt_until"] = _epoch_of(doc["halt_until"])
+        return out
+    except (OSError, ValueError, TypeError, KeyError, UnicodeError):
+        raise _route_invalid("fallback state unreadable - `route set` or delete it") from None
+
+
+def _write_fallback_state(st, route_file=None):
+    doc = {"since": _iso(st["since"]), "until": _iso(st["until"]),
+           "from": st["from"], "to": st["to"]}
+    if st.get("halt_until"):
+        doc["halt_until"] = _iso(st["halt_until"])
+    _atomic_write(fallback_state_path(route_file), json.dumps(doc, sort_keys=True) + "\n",
+                  verify=True)
+
+
+def _end_fallback(reason, route_file=None):
+    p = fallback_state_path(route_file)
+    with contextlib.suppress(OSError, Refused):
+        st = _read_fallback_state(p)
+        if st:
+            _ledger("end", route_file, reason=reason, **{"from": st["from"], "to": st["to"]})
+    with contextlib.suppress(FileNotFoundError):
+        p.unlink()
+
+
+def start_fallback(route, until, route_file=None):
+    """Move the NEXT spawns to the armed fallback until `until` (epoch)."""
+    fb = route.get("fallback")
+    if not fb:
+        raise Refused("no armed fallback in the route", code="route-invalid")
+    st = {"since": _now(), "until": float(until), "from": route["mode"], "to": fb["mode"]}
+    _write_fallback_state(st, route_file)
+    _ledger("start", route_file, until=_iso(until), **{"from": st["from"], "to": st["to"]})
+    return st
+
+
+def effective_route(route, route_file=None):
+    """(route to run on, falling_back), the state read fresh. Ends a fallback
+    whose reset passed or that no longer matches the route; refuses
+    "fallback-halted" while a limit on the fallback route holds."""
+    p = fallback_state_path(route_file)
+    if not os.path.lexists(p):
+        return route, False
+    fb = route.get("fallback")
+    if fb is None:
+        _end_fallback("disarmed", route_file)
+        return route, False
+    st = _read_fallback_state(p)
+    if (st["from"], st["to"]) != (route["mode"], fb["mode"]):
+        _end_fallback("route changed", route_file)
+        return route, False
+    now = _now()
+    if now >= st["until"]:
+        _end_fallback("reset", route_file)
+        return route, False
+    if st.get("halt_until") and now < st["halt_until"]:
+        raise Refused("usage limit on the fallback route too - halted until "
+                      + str(_iso(st["halt_until"])), code="fallback-halted")
+    return dict(fb), True
+
+
+def _zone(name):
+    """None = local time; False = a zone the kit cannot resolve (no reset)."""
+    if name is None:
+        return None
+    n = name.strip()
+    if n.upper() in ("UTC", "GMT", "Z"):
+        return _dt.UTC
+    try:
+        import zoneinfo
+        return zoneinfo.ZoneInfo(n)
+    except Exception:  # unknown zone or no tz database: cannot tell
+        return False
+
+
+def _parse_reset(line, now):
+    m = _EPOCH_RESET.search(line)
+    if m:
+        return float(m.group(1))
+    m = _ISO_RESET.search(line)
+    if m:
+        try:
+            return _epoch_of(m.group(1))
+        except ValueError:
+            return None
+    m = _HUMAN_RESET.search(line)
+    if not m:
+        return None
+    tz = _zone(m.group("tz"))
+    if tz is False:
+        return None
+    h, mi = int(m.group("h")), int(m.group("m") or 0)
+    if not 1 <= h <= 12 or mi > 59:
+        return None
+    h = h % 12 + (12 if m.group("ap").lower() == "pm" else 0)
+    base = (_dt.datetime.fromtimestamp(now, tz) if tz
+            else _dt.datetime.fromtimestamp(now).astimezone())
+    if m.group("mon"):
+        mon = m.group("mon")[:3].lower()
+        if mon not in _MONTHS:
+            return None
+        for year in (base.year, base.year + 1):
+            try:
+                cand = base.replace(year=year, month=_MONTHS.index(mon) + 1,
+                                    day=int(m.group("day")), hour=h, minute=mi, second=0,
+                                    microsecond=0)
+            except ValueError:
+                return None
+            if cand.timestamp() > now - 86400:
+                return cand.timestamp()
+        return None
+    cand = base.replace(hour=h, minute=mi, second=0, microsecond=0)
+    if cand.timestamp() <= now:
+        cand = cand + _dt.timedelta(days=1)
+    return cand.timestamp()
+
+
+def classify_limit(text, now=None):
+    """A failed run's own message -> None (no usage-limit refusal seen) or
+    {"window": "7d" | "5h" | None, "until": epoch | None}. window None = a
+    limit whose window the kit cannot tell (never a trigger). Only a short line
+    saying a limit was REACHED counts - a percentage or a warning never does; a
+    line naming a proxy / auth / network cause, or a model-scoped weekly limit
+    (Opus ...), is window None; "until" is kept only inside (now, now + 7 d]."""
+    now = _now() if now is None else now
+    found = None
+    for raw in str(text or "").splitlines():
+        line = raw.strip()
+        if not line or len(line) > LIMIT_LINE_MAX or not _LIMIT_HIT.search(line):
+            continue
+        w7, w5 = bool(_WIN_7D.search(line)), bool(_WIN_5H.search(line))
+        window = "7d" if w7 and not w5 else "5h" if w5 and not w7 else None
+        if _NOT_LIMIT.search(line) or (window == "7d" and _WIN_MODEL.search(line)):
+            window = None
+        until = _parse_reset(line, now)
+        if until is not None and not now < until <= now + WEEK_S + 3600:
+            until = None
+        c = {"window": window, "until": until}
+        if found is None or (c["window"] == "7d" and found["window"] != "7d"):
+            found = c
+    return found
+
+
+def _limit_after_run(route, falling_back, cls, route_file=None):
+    """After a run whose own message classify_limit() read as a limit: on the
+    fallback route, halt until the earlier reset; on the primary, start the
+    fallback only for an armed route, a 7-day window and a parsed reset."""
+    if falling_back:
+        st = _read_fallback_state(fallback_state_path(route_file))
+        if not st:
+            return
+        halt = st["until"]
+        if cls.get("until") and cls["until"] < halt:
+            halt = cls["until"]
+        st["halt_until"] = halt
+        _write_fallback_state(st, route_file)
+        _ledger("halt", route_file, until=_iso(halt), window=cls["window"] or "unknown",
+                **{"from": st["from"], "to": st["to"]})
+    elif route and route.get("fallback") and cls["window"] == "7d" and cls.get("until"):
+        start_fallback(route, cls["until"], route_file)
 
 
 # ---------------------------------------------------------------- note rules
@@ -749,7 +1194,7 @@ def _iso(epoch):
 
 
 def write_status(root, code, state, task, task_started, budget, task_eta_s=None,
-                 next_tick=None, clock=time.time, reason=None):
+                 next_tick=None, clock=time.time, reason=None, route=None, fallback=False):
     """Schema 1 of ops/loop/control/inbox_status.json (MAIN 0915 section 1).
     state is one of STATES. v14: an optional "reason" (one line, at most 80
     chars) says why a run is blocked or refused; absent otherwise."""
@@ -763,18 +1208,27 @@ def write_status(root, code, state, task, task_started, budget, task_eta_s=None,
     }
     if reason:
         doc["reason"] = " ".join(str(reason).split())[:80]
+    if route in ROUTE_MODES:
+        doc["route"] = route
+    if fallback:  # v20: the ACCT-FALLBACK marker, only while falling back
+        doc["fallback"] = True
     _atomic_write(Path(root) / STATUS_REL, json.dumps(doc, indent=1))
     return doc
 
 
-def _status_quietly(root, code, state, task, budget, started=None, reason=None):
+def _status_quietly(root, code, state, task, budget, started=None, reason=None, route=None,
+                    fallback=False):
     with contextlib.suppress(OSError):
-        write_status(root, code, state, task, started, budget, reason=reason)
+        write_status(root, code, state, task, started, budget, reason=reason, route=route,
+                     fallback=fallback)
 
 
 def _refused_status(root, code, budget, exc):
     """v14: "blocked" for an outside cause (Blocked), else "refused"."""
     state = "blocked" if isinstance(exc, Blocked) else "refused"
+    if getattr(exc, "code", None) == "fallback-halted":  # v20: a limit, both routes
+        _status_quietly(root, code, "limit", "Turn Limit Reached", budget, reason=str(exc))
+        return
     _status_quietly(root, code, state, REFUSED_TASK, budget, reason=str(exc))
 
 
@@ -791,10 +1245,29 @@ def _checklist_rows(checklist):
         state, eta = r.get("state"), r.get("eta_s")
         if state is not None and not isinstance(state, str):
             raise ValueError(f"bad checklist state {state!r}")
-        rows.append({"id": r["id"], "task": " ".join(r["task"].split())[:120],
-                     "state": None if state is None else " ".join(state.split())[:40],
-                     "eta_s": None if eta is None else max(0, int(eta))})
+        row = {"id": r["id"], "task": " ".join(r["task"].split())[:120],
+               "state": None if state is None else " ".join(state.split())[:40],
+               "eta_s": None if eta is None else max(0, int(eta))}
+        # v20 (CHECKLIST-ETA-CLOCK): optional pct and started (epoch seconds).
+        if isinstance(r.get("pct"), (int, float)) and not isinstance(r["pct"], bool):
+            row["pct"] = max(0, min(100, int(r["pct"])))
+        if isinstance(r.get("started"), (int, float)) and not isinstance(r["started"], bool) \
+                and r["started"] > 0:
+            row["started"] = float(r["started"])
+        rows.append(row)
     return rows
+
+
+def _started_iso(value):
+    """v20: a "started" value (epoch seconds or ISO text) as _iso text, or None."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return _iso(value)
+    try:
+        return _iso(_dt.datetime.fromisoformat(str(value).strip()).timestamp())
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
 
 
 def main_checkout(path):
@@ -816,14 +1289,18 @@ def main_checkout(path):
 
 
 def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checklist=None,
-                   reason=None, owner=None):
+                   reason=None, owner=None, started=None):
     """FLEET-COMMON item 12: ops/loop/control/progress/<task>.json with
     {task, pct, step, eta_s, status: running|done|failed, updated}, plus
     "checklist" (item 13 d, remaining tasks) when one is passed. v12: in the
     MAIN checkout of root even when root is a linked worktree; the returned
     doc adds "path", the file written (the file itself does not carry it).
     v16: "owner" {"pid", "start"} - owner= a pid (0 = none), else
-    default_owner(); omitted when there is none."""
+    default_owner(); omitted when there is none.
+    v20 (CHECKLIST-ETA-CLOCK): "started" (ISO, like "updated") - started=
+    epoch or ISO; else carried from the file's last write unless that run
+    ended (done/failed) and this one is running again; else now. Readers
+    treat it as optional: older files lack it."""
     if not isinstance(task, str) or not _TASK.match(task):
         raise ValueError(f"task name {task!r} must be a plain file stem")
     if status not in PROGRESS_STATES:
@@ -839,6 +1316,16 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checkl
     if who:
         doc["owner"] = who
     path = main_checkout(root) / PROGRESS_REL / (task + ".json")
+    begun = _started_iso(started)
+    if begun is None:
+        try:
+            prev = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, UnicodeError):
+            prev = None
+        if isinstance(prev, dict) and not (status == "running"
+                                           and prev.get("status") in ("done", "failed")):
+            begun = _started_iso(prev.get("started"))
+    doc["started"] = begun or doc["updated"]
     _atomic_write(path, json.dumps(doc), verify=True)
     return dict(doc, path=str(path))
 
@@ -1080,7 +1567,7 @@ def run_kind(note, kind=None, head=""):
 
 
 def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None,
-               kind=None, slot=None):
+               kind=None, slot=None, route=None, fallback=False, unit=None):
     r = result if isinstance(result, dict) else {}
     u = r.get("usage") if isinstance(r.get("usage"), dict) else {}
     return {
@@ -1098,6 +1585,11 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
         "error": error,
         "kind": run_kind(note, kind),
         "slot": str(slot) if slot not in (None, "") else None,
+        "route": route if route in ROUTE_MODES else None,
+        "kit_patch": KIT_PATCH,
+        "fallback": bool(fallback),
+        "limit": None,
+        "unit": str(unit)[:64] if unit not in (None, "") else None,
     }
 
 
@@ -1307,13 +1799,20 @@ def _governor(root, code, governor, governor_timeout, governor_root, budget, not
         on_wait=lambda: _status_quietly(root, code, "backoff", "Waiting for Slot", budget))
 
 
-def _finish(root, code, budget, line):
+def _finish(root, code, budget, line, limit=False):
     log = Path(root) / USAGE_REL
     with contextlib.suppress(OSError):
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open("a", encoding="ascii", newline="\n") as fh:
             fh.write(json.dumps(line) + "\n")
-    _status_quietly(root, code, "idle", "Idle", budget, time.time())
+    fb = bool(line.get("fallback"))
+    if limit:  # v20: the run that hit a usage limit ends "limit" (no in-run retry)
+        _status_quietly(root, code, "limit", "Turn Limit Reached", budget, time.time(),
+                        reason="usage limit (%s)" % (line.get("limit") or "unknown"),
+                        route=line.get("route"), fallback=fb)
+    else:
+        _status_quietly(root, code, "idle", "Idle", budget, time.time(),
+                        route=line.get("route") if fb else None, fallback=fb)
 
 
 def _secs(value):
@@ -1360,7 +1859,7 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           setting_sources=DEFAULT_SOURCES, floors_in_hooks=False, pin=None,
           log_path=None, halt_file=None, governor=None, governor_timeout=None,
           governor_root=None, governor_since=None, kind=None, stdin_data=None,
-          slot_id=None, progress_task=None):
+          slot_id=None, progress_task=None, route_source=None, unit_id=None):
     """Start ONE headless run and wait for it. Returns the usage line (dict)
     plus "result" (and "stderr" when return_stderr). Raises Refused, before
     anything starts, when the fleet rules forbid it; the status file then reads
@@ -1380,8 +1879,12 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
     (a lane / slot id) is the usage row's "slot",
     else the governor slot's name, else null. When the run ends, however it
     ends, every progress row the child process owned and the progress_task
-    row (when given) that still say running are written as failed."""
+    row (when given) that still say running are written as failed.
+    v19.1: the route file is read first, fresh, on every call (route_source is
+    a tests-only hook; the CLI never passes it). v20 (LANE-95): unit_id names
+    the resumable unit the run works on; the usage line records it as "unit"."""
     root = Path(root)
+    route_source = read_route if route_source is None else route_source
     budget = RunBudget(root / BUDGET_REL)
     run = _run if run is None else run
     if halt_file and os.path.lexists(halt_file):  # any entry halts, dangling links too
@@ -1396,6 +1899,10 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         _status_quietly(root, code, "halted", "Halted", budget)
         raise Refused(f"stop sentinel present: {hit}", code="halted")
     try:
+        primary = route_source()
+        # v20 ACCT-FALLBACK: the state is read fresh too; an armed fallback whose
+        # 7-day trigger fired moves this spawn to the other route until the reset.
+        route, falling_back = effective_route(primary)
         if not str(note or "").strip():
             raise Refused("empty note label - every run names its note or task",
                           code="empty-note")
@@ -1410,8 +1917,13 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         if not stdin and len(prompt) > ARGV_PROMPT_MAX:
             raise Refused(f"prompt over {ARGV_PROMPT_MAX} chars in argv - pass stdin=True")
         url = url_source()
-        host, port = check_url(url, pin)
-        probe(host, port, connect=connect)
+        host, port = check_url(url, pin)  # both routes: the variable is the kill switch
+        if route["mode"] == "single":
+            if bare:
+                raise Refused("--bare refused on the single route (it reads no OAuth)",
+                              code="route-bare")
+        else:
+            probe(host, port, connect=connect)
         argv = build_argv(exe_source(), prompt, model, effort, bare, rules_file, extra,
                           stdin=stdin, persist=persist, setting_sources=setting_sources,
                           output_format="stream-json" if log_path else "json",
@@ -1433,12 +1945,13 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
         return _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv,
                               model, effort, cwd, stdin, timeout, log_path,
                               return_stderr, slot, kind, stdin_data, slot_id,
-                              progress_task)
+                              progress_task, route, (primary, falling_back), unit_id)
 
 
 def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model,
                    effort, cwd, stdin, timeout, log_path, return_stderr, slot,
-                   kind=None, stdin_data=None, slot_id=None, progress_task=None):
+                   kind=None, stdin_data=None, slot_id=None, progress_task=None,
+                   route=None, fb=(None, False), unit_id=None):
     """The v5 run body, entered only once a governor slot (if any) is held."""
     try:
         counted = budget.start()
@@ -1454,8 +1967,10 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
         raise Refused(f"run budget exhausted ({budget.used()}/{budget.cap})",
                       code="budget-spent")
     started = time.time()
-    _status_quietly(root, code, "running", "Running Session", budget, started)
-    kw = {"cwd": str(Path(cwd) if cwd else root), "env": child_env(url, bare),
+    mode = route["mode"] if route else None
+    _status_quietly(root, code, "running", "Running Session", budget, started, route=mode,
+                    fallback=fb[1])
+    kw = {"cwd": str(Path(cwd) if cwd else root), "env": child_env(url, bare, route=route),
           "text": True, "encoding": "utf-8", "errors": "replace", "timeout": timeout,
           "creationflags": _NO_WINDOW}
     if stdin:
@@ -1478,7 +1993,7 @@ def _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv, model
     try:
         return _spawn_body(root, code, note, bare, budget, run, argv, model, effort,
                            log_path, return_stderr, slot, kind, slot_name, kw, marked,
-                           started)
+                           started, mode, fb, unit_id)
     finally:
         _close_child_rows(root, cwd, child["pid"], progress_task)
 
@@ -1502,7 +2017,8 @@ def _close_child_rows(root, cwd, pid, progress_task):
 
 
 def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_path,
-                return_stderr, slot, kind, slot_name, kw, marked, started):
+                return_stderr, slot, kind, slot_name, kw, marked, started, route=None,
+                fb=(None, False), unit_id=None):
     proc, error = None, None
     try:
         with contextlib.ExitStack() as stack:
@@ -1519,7 +2035,7 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
     except BaseException as exc:
         _finish(root, code, budget, usage_line(None, code, note, model, effort, bare, None,
                                                time.time() - started, type(exc).__name__,
-                                               kind, slot_name))
+                                               kind, slot_name, route, fb[1], unit_id))
         raise
     if log_path:
         result = _result_from_log(log_path)
@@ -1527,10 +2043,21 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
         result = _json_or_none(getattr(proc, "stdout", None))
     rc = getattr(proc, "returncode", None) if proc is not None else None
     line = usage_line(result, code, note, model, effort, bare, rc,
-                      time.time() - started, error, kind, slot_name)
+                      time.time() - started, error, kind, slot_name, route, fb[1], unit_id)
     line["governor_slot"] = Path(slot).name if slot else None
     line["child_marked"] = marked["ok"]
-    _finish(root, code, budget, line)
+    cls = None
+    if error is None and proc is not None and (rc not in (0, None) or line["is_error"]):
+        # v20: the child's OWN limit message (result text, then stderr) - only of
+        # a failed run; a timeout or a successful run's text is never read.
+        res = result.get("result") if isinstance(result, dict) else None
+        err = getattr(proc, "stderr", None)
+        cls = classify_limit("\n".join(x for x in (res, err) if isinstance(x, str)))
+    if cls:
+        line["limit"] = cls["window"] or "unknown"
+        with contextlib.suppress(OSError, Refused):
+            _limit_after_run(fb[0], fb[1], cls)
+    _finish(root, code, budget, line, limit=bool(cls))
     line["result"] = result.get("result") if isinstance(result, dict) else None
     line["receipt"] = result if isinstance(result, dict) else None
     if return_stderr:
@@ -1569,6 +2096,15 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     sp.add_argument("--permission-mode", choices=PERMISSION_MODES)
     sp.add_argument("--slot")
     sp.add_argument("--progress-task")
+    sp.add_argument("--unit")
+    rp = sub.add_parser("route")
+    rsub = rp.add_subparsers(dest="rcmd", required=True)
+    rsub.add_parser("show")
+    rs = rsub.add_parser("set")
+    rs.add_argument("mode", choices=ROUTE_MODES)
+    rs.add_argument("--config-dir")
+    rs.add_argument("--fallback", choices=ROUTE_MODES)
+    rs.add_argument("--no-fallback", action="store_true")
     pp = sub.add_parser("progress")
     pp.add_argument("--root", required=True)
     pp.add_argument("--task", required=True)
@@ -1583,6 +2119,28 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     except SystemExit:
         return CLI_USAGE
     out = stdout or sys.stdout
+    if args.cmd == "route":
+        # v19.1: the only writer of the route file. Never prints the path.
+        if args.rcmd == "set":
+            try:
+                if args.fallback and args.no_fallback:
+                    raise _route_invalid("--fallback and --no-fallback together")
+                # v20: --config-dir names the account dir of whichever route is
+                # single (the primary, else an armed single fallback).
+                single_fb = args.fallback == "single" and args.mode == "split"
+                write_route(args.mode, None if single_fb else args.config_dir,
+                            fallback=args.fallback,
+                            fallback_config_dir=args.config_dir if single_fb else None)
+            except Refused as exc:
+                print(json.dumps({"error": str(exc)[:200], "code": exc.code}), file=out)
+                return CLI_USAGE
+            except OSError as exc:
+                print(json.dumps({"error": "route write failed: " + exc.__class__.__name__}),
+                      file=out)
+                return CLI_USAGE
+        doc = route_show()
+        print(json.dumps(doc), file=out)
+        return CLI_OK if doc["valid"] else 1
     if args.cmd == "progress":
         try:
             doc = write_progress(args.root, args.task, args.pct, args.step, args.eta_s,
@@ -1613,6 +2171,7 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
             model=args.model, effort=args.effort, floors_in_hooks=args.floors_in_hooks,
             kind=args.kind, **({"slot_id": args.slot} if args.slot else {}),
             **({"progress_task": args.progress_task} if args.progress_task else {}),
+            **({"unit_id": args.unit} if args.unit else {}),
             extra=("--permission-mode", args.permission_mode) if args.permission_mode else ())
     except Refused as exc:
         print(json.dumps({"refused": str(exc), "code": getattr(exc, "code", "refused")}),
