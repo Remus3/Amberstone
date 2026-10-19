@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-17 - session 120: RM-746 closed won't-fix, F1 (CodeQL #63 / #64 + ruff 0.17) verified on a branch, early CPU wrap
+
+- **Closed:** RM-746 won't-fix (`7aaf8541e`, LEDGER 1735): round 3 not attempted; round 2 lost credit on 15 of 88 legit commands and still credited 12 bypass gaps. Commits kept at LOCAL tag `archive/rm746-r2` (`3ffdd6baf`, never pushed); worktree + branch removed; probes in gitignored `ops/runtime/rm746/`.
+- **F1 (MAIN FIX eb3c0d686aea, provenance verified):** branch `worktree-agent-af23fa7139e4496cc` holds `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts, CodeQL #63 / #64) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = PR #15). Independent verifier CONFIRMED 5/5 (24 passed). NOT merged - CPU at 100 percent forced an early wrap.
+- **Operator decided:** Dependabot #14 (electron 44.7.1) = DECLINE: close with a reason + widen the electron ignore to `<=44.7.1` (held for the E1 shell check). Do not re-ask.
+- **Filed:** RM-752 (production SSLContexts with no `minimum_version`; liveclient_relay pins TLSv1 on purpose - review). ROADMAP RM-746 row relocated to `docs/ROADMAP_HISTORY.md` `## 2026-10-17`.
+- **Do NOT redo:** RM-746 (closed), the F1 verification (re-verify only if the branch changes), the #14 decision.
+- **Next:** check what loads the CPU first; then F1: merge the branch to main + push via fleet_gitlock, close #14 + widen the ignore, confirm 0 open HIGH alerts + 0 open bot PRs, ONE ANSWER to MAIN; then the carried PUBREPO worktree / backup-ref decisions and RM-747..RM-750.
+
+---
+
 # 2026-10-16b - session 119: C1-op PUBREPO batch run (v0.1.0 released), RM-744 / RM-745 shipped, RM-746 refuted twice
 
 - **C1-op (LEDGER 1729, `531ce96f9`):** the operator confirmed ASK 14 in chat ("Run it now"); the batch ran attended, exit 0, 5/5 steps. Read back: remote tags = v0.1.0 only; `gh release view v0.1.0` published; CodeQL open alerts 0 (15 false positive, 7 used in tests, 3 won't fix); open PRs none (Dependabot closed #13 itself); sidecar tag bundle sha256 match + `git bundle verify` ok. ANSWER to MAIN delivered sha256 ce2ac188, reached 1/1 (tracked copy `428b3c388`).

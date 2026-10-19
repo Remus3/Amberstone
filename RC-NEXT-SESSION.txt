@@ -1,6 +1,7 @@
 NEXT SESSION
 ------------
-SESSION: 123
+SESSION: 124
+Operator: session 124 = ALL OTHER OPEN ITEMS (s123 was an inbox-only session, LEDGER 1739).
 HISTORY WAS REWRITTEN TWICE on 2026-10-09 (LEDGER 1699 = B, 1701 = rw2): old SHAs resolve via
 .git/filter-repo/commit-map (rw2), then .git/filter-repo-20261009/commit-map (B), then
 .git/filter-repo-20260621/commit-map (June); copies beside the sidecar Backup bundles. Cite LEDGER
@@ -12,16 +13,26 @@ docs/handoff-archive/RC-2026-10-18.txt; pre-trim file = git show e4e3ef1bc:RC-NE
 CPU (session 120 steer): glance at the CPU load, FREE MEMORY and for orphaned pytest / python /
 node trees (the RM-695 orphan shape) BEFORE heavy work (suites, many agents).
 
-Next action: T2 - the ONE gated Tier-2 dual suite on the final tree (detail below). Not run to the
-end in s122.
+Next action: C1 = T2 - the ONE gated Tier-2 dual suite on the final tree (= HEAD after the s123
+/done; detail below). Not run to the end in s122; not run in s123.
 Then, in order:
   2. MAIN FIX 2026-10-17-1709 ROFL archive off C: (detail below; C: full ~4 weeks from 10-17).
   3. RM-747, RM-748, RM-749, RM-750 (Tier-1 each; BACKLOG "Session 119 filings").
   4. RM-751 (low). RM-752 (low; BACKLOG "Session 120 filings").
   5. The carried items below.
 FIRST at session start: the CPU / memory glance above; git log @{u}.. (expect empty); gh run list
---branch main --limit 6 (CI on d2aabcc91 and the s122 wrap commits - see Status); python
-ops/loop/inbox_tick.py --pending (expect ONE row: the ROFL FIX).
+--branch main --limit 6 (CI on the s123 commits - see Status); python ops/loop/inbox_tick.py
+--pending (expect ONE row: the ROFL FIX).
+
+s123 new (LEDGER 1739):
+- DEFERRED (operator physical act, browser): MAIN ORDER 2312 items 1-2 - untick Releases,
+  Deployments, Packages under GitHub About > "Include in the home page"; no API exists. Do not
+  touch the v0.1.0 release, its tag, or Pages.
+- OPTIONAL: RC checklist printers (tools/session_checklist.py, ops/loop/lane_progress.py) do not
+  pass pct / started for the kit v20 item-13a running format; plain ~ETA is allowed.
+- NOTE: fleet_rewrite.py plan did not finish in 4 min on this clone (matters only if a rewrite is
+  ever ordered).
+- Board push (FLEET item 18) was NOT done in s123 (neither start nor /done).
 
 ====================
 OPEN - NEXT ACTION DETAIL (Session 122)
@@ -192,7 +203,7 @@ Rows and decisions:
   flips, RM-15(b), RM-16, RM-423, RM-239/RM-242 (operator fence), RM-256 redo = RM-521, RM-297b
   (needs non-author adjudicator + CI), RM-519 (responder provenance on kit verify_main; compare
   RM-743, CLOSED as informational in session 117). Next free RM id RM-753 (pin in
-  docs/DS_SWEEP_TRACKER.md). Next free LEDGER id 1739.
+  docs/DS_SWEEP_TRACKER.md). Next free LEDGER id 1740.
 - ROADMAP top open (RM-680 shipped): RM-486, RM-488/489, RM-482, RM-483, RM-485, RM-513, RM-595,
   then the RM-681.. session rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - ROADMAP.md 72628 B (re-read s122 wrap; drift_guard 90 percent line 73728 of 81920): trim before
@@ -204,7 +215,7 @@ Rows and decisions:
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line)
 ====================
-1-12 unanswered in sessions 111-122; 13 and 14 answered in session 119 (RESOLVED); 15 new in s121;
+1-12 unanswered in sessions 111-123; 13 and 14 answered in session 119 (RESOLVED); 15 new in s121;
 16-18 new in s122.
 1. GitHub repo topics (README item 8, RM-731): pick them (20 today).
 2. Pages deployment records: 240 = 231 active, 9 error, 0 inactive (nothing pruned): mark old ones
@@ -362,18 +373,14 @@ PROCEDURE (full list: docs/OPERATIONS.md "Session procedure (moved from the hand
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s122 wrap): pushed 2c10e5284..d2aabcc91 (kit v19 rollout had already pushed 9e5386aa1 v18 +
-2c10e5284 v19); then docs cd60f4fc1 + this hand-off (range below). CI on d2aabcc91: ci success
-(check job: push impact slice 2768 passed / 17 skipped; full dual suite skipped on push;
-sibling-sweep-tree success; nightly-full-suite skipped), docs-guards success, codeql success. Last
-ci nightly: e4e3ef1bc success. Local gate at the wrap: ruff all passed, hygiene trio 14
-passed, drift_guard 0 breaches, 10 touched test files 141 passed. Gated Tier-2 suite: NOT
-completed (T2). RC pid 10108, alive, last_reload_ok true, fatal_count 0; /api/state mode_key client
-(no game); DS :8860 1.287.0 / 16.20.1 / 173 / 706; open PRs 0; CodeQL alerts 0; worktrees 22, refs
-89; session file 2.1 MB. Board: the final fleet_board push runs after this write (a failure is
-recorded on this line). Wrap push (after this write): d2aabcc91..<hand-off commit>, i.e.
-cd60f4fc1 + the hand-off commit; its CI was pending at the write. A first wrap push halted on a
-machine path in LEDGER 1738; recommitted per an adjudicator ruling (LEDGER 1738 records it).
+Status (s123 wrap): session commits 6a9711824 (kit v20), cd636d817 (kit v20.1), 4f131197f (ANSWER
+copy), already pushed (remote main 4f131197f); then the wrap docs + this hand-off commit, pushed
+after this write (range 4f131197f..<hand-off commit>). CI at the write: ci on cd636d817
+in_progress, docs-guards / codeql on 4f131197f pending - read it first. Local gate at the wrap:
+ruff all passed; hygiene trio + test_fleet_kit_v20 + conformance 20 passed; drift_guard 0
+breaches. Gated Tier-2 suite: NOT run (C1/T2). RC pid 14304, alive, last_reload_ok true,
+fatal_count 0; /api/state mode_key client (no game); session file 0.9 MB. Board: NOT pushed in
+s123 (start or /done). Next free LEDGER id 1740.
 
 Context: dashboard/server.py `_DualProtocolHTTPServer` + dashboard/_handler.py
 `_read_body_deadlined` (RM-152 rationale); core/daemon_slayer_client.py spawn_ds / DsWatchdog
