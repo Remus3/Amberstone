@@ -147,6 +147,8 @@ class _Server(ThreadingHTTPServer):
         try:
             request.settimeout(self.tls_handshake_timeout_s)
             conn = self.ssl_ctx.wrap_socket(request, server_side=True)
+            # The handler bounds the request head itself (RM-747,
+            # core/http_head_deadline.py) and then leaves the socket as here.
             conn.settimeout(None)
         except (OSError, ValueError):
             # Deadline passed, alert, EOF, reset or a plaintext probe: drop
