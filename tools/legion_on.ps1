@@ -4,13 +4,6 @@
 $ErrorActionPreference = 'SilentlyContinue'
 Write-Host "=== Legion ON ==="
 
-# 0. Release the DS keepalive hold legion_off.ps1 set (RC-DSKeepalive, RM-750).
-$dsStop = Join-Path (Split-Path -Parent $PSScriptRoot) 'ops\runtime\DS_KEEPALIVE_STOP'
-if (Test-Path -LiteralPath $dsStop) {
-  Remove-Item -LiteralPath $dsStop -Force
-  Write-Host "[on] DS keepalive hold released"
-}
-
 # 1. Start AtStartup tasks first (SYSTEM context - infra), then AtLogon tasks (app-level)
 $tasks = @(
   'RC-Supervisor',
@@ -71,6 +64,17 @@ if ($dsListening) {
   } else {
     Write-Host "[on] WARN: DS launcher or python not found"
   }
+}
+
+# 2b. Release the DS keepalive hold legion_off.ps1 set (RC-DSKeepalive, RM-750).
+# Only AFTER step 2: released earlier, a keepalive step could relaunch DS via
+# the task while that DS loads its snapshot (no port yet), step 2's LISTEN check
+# would miss it, and a second engine would start. From here the keepalive sees
+# step 2's booting DS as "starting" and waits.
+$dsStop = Join-Path (Split-Path -Parent $PSScriptRoot) 'ops\runtime\DS_KEEPALIVE_STOP'
+if (Test-Path -LiteralPath $dsStop) {
+  Remove-Item -LiteralPath $dsStop -Force
+  Write-Host "[on] DS keepalive hold released"
 }
 
 # 3. Launch Claude Desktop (Squirrel singleton - 2nd launch focuses existing window)
