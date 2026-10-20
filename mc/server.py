@@ -30,6 +30,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from core import local_hosts
+from core.tls_policy import server_context
 from mc.handler import Handler
 
 log = logging.getLogger("rc.mc.server")
@@ -57,7 +58,7 @@ KEY_PATH = ROOT / "ops" / "tls" / "rc-key.pem"
 
 
 def _ssl_context() -> ssl.SSLContext:
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx = server_context()   # RM-752: the shared TLS floor
     ctx.load_cert_chain(certfile=str(CERT_PATH), keyfile=str(KEY_PATH))
     return ctx
 

@@ -64,6 +64,7 @@ from lcu.snapshot_shape import (  # noqa: E402,F401
 )
 from lcu.lcu_rune_writer import is_rc_owned_page  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
+from core.tls_policy import client_context_noverify  # noqa: E402
 
 # RM-154. The RC-LCUAgent task runs this under pythonw.exe, which has NO
 # console: print() is discarded and stderr is None, so every line this module
@@ -163,9 +164,7 @@ CONFIG = {
     "summoner_f":      32,   # default Snowball (ARAM)
 }
 
-_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-_ssl_ctx.check_hostname = False
-_ssl_ctx.verify_mode = ssl.CERT_NONE
+_ssl_ctx = client_context_noverify()   # RM-752: the shared TLS floor
 try: _ssl_ctx.set_ciphers("ALL:@SECLEVEL=0")
 except ssl.SSLError: pass
 
@@ -1173,9 +1172,7 @@ def get(path: str) -> dict:
 
 # SSL ctx for Legion's HTTPS dashboard (mkcert self-signed). Bearer auth
 # is the actual identity gate; TLS here is just transport confidentiality.
-_dash_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-_dash_ssl_ctx.check_hostname = False
-_dash_ssl_ctx.verify_mode = ssl.CERT_NONE
+_dash_ssl_ctx = client_context_noverify()   # RM-752: the shared TLS floor
 
 # Lazy cache of championId -> display name, sourced from LCU's
 # /lol-game-data/assets/v1/champion-summary.json. Populated once per

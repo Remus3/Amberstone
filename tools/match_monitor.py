@@ -10,13 +10,12 @@ Not a persistent agent; intended to be run in the foreground from the
 monitoring Claude's Bash tool for the duration of a test match.
 """
 import json
-import ssl
 import time
 import urllib.request
 
-_NOVERIFY = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-_NOVERIFY.check_hostname = False
-_NOVERIFY.verify_mode = ssl.CERT_NONE
+from core.tls_policy import client_context_noverify
+
+_NOVERIFY = client_context_noverify()   # RM-752: the shared TLS floor
 
 # Lane 8 cycle 14: this header carried an UNCONDITIONAL copy of the constant
 # retired by the 2026-04-28 audit, so every :8889 read here returned 401.
