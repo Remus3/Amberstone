@@ -20,7 +20,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
@@ -272,6 +272,86 @@ def spawn_ds() -> str:
     return f"child pid {_spawn_child()}"
 
 
+def spawn_ds_task_only() -> str:
+    """Relaunch DS ONLY through its scheduled task; never a child (RM-750).
+
+    The spawner of the RC-independent keepalive (``tools/ds_keepalive.py``).
+    ``spawn_ds`` falls back to a direct child where no task is registered;
+    the keepalive must not, because it can briefly overlap RC's own watchdog
+    (RC coming back up), and two children both pass the launcher's
+    pre-snapshot bind preflight and then both bind under SO_REUSEADDR. Every
+    keepalive relaunch is therefore an instance of the task, which
+    MultipleInstancesPolicy IgnoreNew de-duplicates. A refused ``/Run`` (an
+    instance still running or exiting, a disabled or unregistered task)
+    raises, as does a missing schtasks or a timeout: ``DsWatchdog._respawn``
+    logs it and backs off. Returns the route taken, for the log.
+    """
+    rc = _schtasks("/Run", "/TN", DS_TASK_NAME)
+    if rc != 0:
+        raise RuntimeError(f"schtasks /Run {DS_TASK_NAME} refused (exit {rc}); "
+                           "the keepalive never starts DS itself")
+    return f"scheduled task {DS_TASK_NAME}"
+
+
+# RM-750: RC's DsWatchdog loop leaves this heartbeat on every pass, so the
+# RC-independent keepalive can tell whether RC is watching DS and stand down
+# while it is (two watchdogs would each count their own suspects against one
+# holder). Gitignored runtime dir, next to RC's health.json.
+RC_WATCHDOG_HEARTBEAT = (Path(__file__).resolve().parent.parent
+                         / "ops" / "runtime" / "ds_watchdog_rc.json")
+# Older than this = RC is not watching. It must outlast one RC loop: the
+# interval plus the slowest tick (probe timeout, a 15 s taskkill, the
+# port-release wait, schtasks /Run + /Query), about 88 s.
+RC_HEARTBEAT_MAX_AGE_S = 4 * WATCHDOG_INTERVAL_S
+
+
+def write_rc_watchdog_heartbeat(path: Path = RC_WATCHDOG_HEARTBEAT, *,
+                                now: Callable[[], float] = time.time) -> None:
+    """Record that this process's DsWatchdog loop is ticking. Never raises."""
+    try:
+        from core.polled_json import atomic_write_bytes
+        doc = {"owner": "rc", "pid": os.getpid(), "updated": now()}
+        atomic_write_bytes(Path(path), json.dumps(doc).encode("ascii"))
+    except Exception as exc:  # noqa: BLE001 - a heartbeat must not break the loop
+        logger.debug("daemon_slayer watchdog heartbeat write failed: %s", exc)
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        import psutil
+    except Exception:  # noqa: BLE001 - no psutil: trust the heartbeat age alone
+        return True
+    try:
+        return bool(psutil.pid_exists(pid))
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def rc_watchdog_live(path: Path = RC_WATCHDOG_HEARTBEAT, *,
+                     max_age_s: float = RC_HEARTBEAT_MAX_AGE_S,
+                     now: Callable[[], float] = time.time,
+                     pid_alive: Callable[[int], bool] = _pid_alive) -> bool:
+    """Is RC's DsWatchdog ticking? A fresh heartbeat from a live pid.
+
+    Missing, malformed, stale (or implausibly far in the future) heartbeat,
+    or a writer pid that is gone (RC crashed - no need to wait out the age):
+    not live. Never raises.
+    """
+    try:
+        doc = json.loads(Path(path).read_bytes().decode("ascii"))
+        pid = doc["pid"]
+        updated = doc["updated"]
+        if isinstance(pid, bool) or not isinstance(pid, int):
+            return False
+        if isinstance(updated, bool) or not isinstance(updated, (int, float)):
+            return False
+    except Exception:  # noqa: BLE001 - unreadable reads as "not watching"
+        return False
+    if abs(now() - float(updated)) > max_age_s:
+        return False
+    return pid_alive(pid)
+
+
 def _spawn_child() -> int:
     """Start ``tools/start_daemon_slayer.py`` windowless, detached from RC stdio.
 
@@ -324,7 +404,8 @@ class DsWatchdog:
                  probe=probe_ds_health, find_holder=find_ds_listener,
                  find_ds_process=find_ds_process, is_ds=is_ds_pid,
                  kill=kill_ds_pid, spawn=spawn_ds,
-                 clock=time.monotonic, sleep=time.sleep) -> None:
+                 clock=time.monotonic, sleep=time.sleep,
+                 heartbeat: Optional[Callable[[], None]] = None) -> None:
         self.port = port
         self.interval_s = interval_s
         self.timeout_s = timeout_s
@@ -341,6 +422,9 @@ class DsWatchdog:
         self._spawn = spawn
         self._clock = clock
         self._sleep = sleep
+        # RM-750: called before every tick of ``run`` (RC passes
+        # write_rc_watchdog_heartbeat); None for the keepalive's own loop.
+        self._heartbeat = heartbeat
         self.failures = 0
         self.grace_until = 0.0
         self.current_grace_s = grace_s
@@ -454,6 +538,11 @@ class DsWatchdog:
 
     def run(self, stop: threading.Event) -> None:
         while not stop.is_set():
+            if self._heartbeat is not None:
+                try:
+                    self._heartbeat()
+                except Exception as exc:  # noqa: BLE001 - never stop the loop
+                    logger.debug("daemon_slayer watchdog heartbeat failed: %s", exc)
             try:
                 self.tick()
             except Exception as exc:  # noqa: BLE001 - the loop must outlive a tick
@@ -472,13 +561,14 @@ def ensure_running() -> None:
     per process starts ``DsWatchdog`` on a daemon thread - its first tick is
     immediate, so a DS that is down at startup is spawned as before - and it
     then re-checks every ``WATCHDOG_INTERVAL_S``. Later calls are no-ops.
-    Never blocks the caller on a probe.
+    Never blocks the caller on a probe. Each pass leaves the RC heartbeat
+    (RM-750), so the RC-independent keepalive stands down while RC watches.
     """
     global _WATCHDOG
     with _WATCHDOG_LOCK:
         if _WATCHDOG is not None:
             return
-        wd = DsWatchdog()
+        wd = DsWatchdog(heartbeat=write_rc_watchdog_heartbeat)
         t = threading.Thread(target=wd.run, args=(threading.Event(),),
                              daemon=True, name="DsWatchdog")
         t.start()

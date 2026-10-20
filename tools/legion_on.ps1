@@ -4,6 +4,13 @@
 $ErrorActionPreference = 'SilentlyContinue'
 Write-Host "=== Legion ON ==="
 
+# 0. Release the DS keepalive hold legion_off.ps1 set (RC-DSKeepalive, RM-750).
+$dsStop = Join-Path (Split-Path -Parent $PSScriptRoot) 'ops\runtime\DS_KEEPALIVE_STOP'
+if (Test-Path -LiteralPath $dsStop) {
+  Remove-Item -LiteralPath $dsStop -Force
+  Write-Host "[on] DS keepalive hold released"
+}
+
 # 1. Start AtStartup tasks first (SYSTEM context - infra), then AtLogon tasks (app-level)
 $tasks = @(
   'RC-Supervisor',

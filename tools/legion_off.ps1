@@ -6,6 +6,14 @@
 $ErrorActionPreference = 'SilentlyContinue'
 Write-Host "=== Legion OFF ==="
 
+# 0. Hold the DS keepalive (RC-DSKeepalive, RM-750) BEFORE the sweep below kills
+# DS: with RC down it would relaunch DS through RC-DaemonSlayer within a minute.
+# legion_on.ps1 removes the flag.
+$dsStop = Join-Path (Split-Path -Parent $PSScriptRoot) 'ops\runtime\DS_KEEPALIVE_STOP'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dsStop) | Out-Null
+Set-Content -LiteralPath $dsStop -Value 'legion_off' -Encoding Ascii
+Write-Host "[off] DS keepalive held (ops\runtime\DS_KEEPALIVE_STOP)"
+
 # 1. Stop AtLogon + AtStartup RC-* scheduled tasks (dep order: app-level first, infra last)
 $tasks = @(
   'RC-Supervisor',
