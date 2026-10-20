@@ -708,6 +708,73 @@ Dashboard cert: `tools/regen_rc_cert.ps1` (run elevated, restarts dashboard).
 
 Riot CA (browser-side only): `install-cert.cmd` (admin-elevated) on the game host. RC itself uses `verify=False`; only browsers need it for port 2999.
 
+### TLS protocol floor (RM-752, decided 2026-10-20, session 125)
+
+Every `ssl.SSLContext` RC constructs itself comes from `core/tls_policy.py`
+(`server_context()`, `client_context_noverify()`), whose one constant
+`TLS_MIN_VERSION` is `TLSv1_2`. `tests/test_tls_floor_rm752.py` moves that
+constant to TLSv1_3 and asserts every routed site follows it, and AST-walks
+every tracked production `.py` so a new `SSLContext(...)` outside the helper
+fails unless it carries a recorded exemption.
+
+Measured first: on Python 3.14.4 / OpenSSL 3.0.19 a bare
+`SSLContext(PROTOCOL_TLS_SERVER | PROTOCOL_TLS_CLIENT)` already reports
+`minimum_version == TLSv1_2` (CPython 3.10+ sets it in the constructor). So
+the change is no handshake change; it makes the floor explicit and
+interpreter-independent (CodeQL py/insecure-protocol reads an unset floor as
+"any version"). A test of the form "floor >= TLSv1_2" passes on the unfixed
+tree, which is why the test patches the constant instead.
+
+| site | role, peer | before | after |
+|---|---|---|---|
+| `mc/server.py` `_ssl_context` | server :8895; Chrome / Electron, curl | default 1.2 | `server_context()` |
+| `dashboard/server.py` `_tls_context` (was inline in `start_dashboard`) | server :8888; rc-shell Electron, Chrome, tailnet phone, curl, local agents | default 1.2 | `server_context()` |
+| `tools/calibrate_vision.py` `main` | client to :8888 | default 1.2 | `client_context_noverify()` |
+| `tools/match_monitor.py` `_NOVERIFY` | client to :8888 | default 1.2 | `client_context_noverify()` |
+| `tools/lcu_agent.py` `_ssl_ctx` | client to the LCU (keeps `SECLEVEL=0` ciphers) | default 1.2 | `client_context_noverify()` |
+| `tools/lcu_agent.py` `_dash_ssl_ctx` | client to :8888 | default 1.2 | `client_context_noverify()` |
+| `tools/phase_watcher.py` `_ssl_ctx_lcu` | client to the LCU | default 1.2 | inline `TLSv1_2` (served to `C:\RC-Agent\` with no repo above it, so it cannot import `core/`; the test pins the match) |
+| `tools/liveclient_relay.py` `_ssl_ctx` | client to the :2999 Live Client | explicit TLSv1 + `SECLEVEL=0` | KEEP (below) |
+
+**Decision: floor = TLSv1_2 everywhere, not TLSv1_3-only.** Alternatives:
+(a) TLSv1_3-only servers - REJECTED: measured against a 1.3-only loopback
+server, System32 `curl.exe` 8.13 and Git `curl.exe` 8.18 (both Schannel)
+fail with rc=35 and PowerShell 5.1 `Invoke-WebRequest` cannot create the
+channel; Windows 10 Schannel has no TLS 1.3 client, so a 1.3-only :8888
+breaks the R2 runtime probe (`curl -k https://127.0.0.1:8888/api/...`).
+Live :8888 and :8895 negotiate 1.3 with Python and 1.2 when capped, so 1.2
+stays the right floor. (b) TLSv1_3-only clients - REJECTED: the :8888 peer
+would accept it, but the LCU is Riot's; RC's default-context LCU readers
+(`lcu/lcu_client.py`, `core/lcu_pool.py`; live-validated over an SR game,
+LEDGER 709) prove it speaks 1.2, nothing proves 1.3, and the client was not
+running to measure. (c) Leave
+the defaults implicit - REJECTED: the floor then moves with the interpreter
+and stays invisible to CodeQL. Why (chosen): zero behaviour change today,
+one constant to raise later.
+
+**`tools/liveclient_relay.py` KEEPS `minimum_version = TLSv1` and
+`SECLEVEL=0`.** Why: its comment records a past measurement that Python
+3.10+ defaults fail against :2999 (`UNEXPECTED_EOF_WHILE_READING`); the
+in-process default-context :2999 readers (`vision_server/_relay.py`
+`_fetch_liveclient_direct`, `game_reader/poller.py` `_get`) swallow every
+exception, so their existence does not prove :2999 accepts a 1.2 floor; no
+game was running, so :2999 could not be probed (connection refused); and the
+peer is hard-coded loopback, so a downgrade needs a man in the middle on
+127.0.0.1, which already owns the session. The `try/except
+(AttributeError, ValueError)` around the pin means that if Python ever drops
+`TLSVersion.TLSv1` (3.14 already warns it is deprecated), the relay silently
+falls back to the interpreter's 1.2 floor. Alternatives: raise to 1.2 now
+(unmeasured, could silence the relay under `pythonw`), or retire the loosened
+context (larger change). **Reverses if:** an in-game probe of
+`https://127.0.0.1:2999/liveclientdata/allgamedata` handshakes with a
+TLSv1_2-floor, default-cipher context - then raise the relay to the floor
+inline (it is served standalone too).
+
+Out of scope, measured by `git grep` at this change: 29
+`create_default_context()` / `_create_unverified_context()` calls in 27
+production files (one in frozen `lcu/lcu_client.py`) also carry the
+interpreter's 1.2 floor and are not routed through the helper.
+
 ---
 
 ## Pre-flight before any restart

@@ -163,6 +163,10 @@ logging.basicConfig(
 log = logging.getLogger("phase_watcher")
 
 _ssl_ctx_lcu = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+# RM-752: the RC TLS floor, inline. Same value as core.tls_policy
+# .TLS_MIN_VERSION, but this file is served to C:\RC-Agent\ with no repo above
+# it, so it cannot import core/ (tests/test_tls_floor_rm752.py pins the match).
+_ssl_ctx_lcu.minimum_version = ssl.TLSVersion.TLSv1_2
 _ssl_ctx_lcu.check_hostname = False
 _ssl_ctx_lcu.verify_mode = ssl.CERT_NONE
 
