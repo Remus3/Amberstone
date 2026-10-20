@@ -32,6 +32,7 @@ import json
 import logging
 from http.server import BaseHTTPRequestHandler
 
+from core.http_head_deadline import HeadDeadlineMixin
 from core.log_scrub import scrub_log
 from mc import auth, routes
 
@@ -42,8 +43,15 @@ log = logging.getLogger("rc.mc.handler")
 _MAX_POST_BYTES = 1 * 1024 * 1024
 
 
-class Handler(BaseHTTPRequestHandler):
+class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
     server_version = "RCMissionControl/1.0"
+    # RM-747: one TOTAL deadline for the request line + headers
+    # (``head_read_timeout_s``, core/http_head_deadline.py, shared with the
+    # :8888 dashboard, RM-744), removed once the head is parsed. mc/server.py
+    # puts the socket back to no timeout after its TLS handshake (RM-739),
+    # so without it an idle handshaken client held its thread indefinitely.
+    # Never a class-level ``timeout``: it is per receive and lasts the whole
+    # connection (RM-152).
 
     # -- response helper the route modules call ----------------------
 
