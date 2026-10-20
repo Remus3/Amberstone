@@ -59,7 +59,7 @@ Per-event payloads, verified:
 - `ELITE_MONSTER_KILL`: `killerId killerTeamId monsterType monsterSubType
   position bounty assistingParticipantIds`
   Two traps in this payload, both measured 2026-07-28 over all 3005 timelines
-  in `$RC_ROFL_ARCHIVE_DIR/timelines` (E:\RC_ROFL_Archive since 2026-10-19) (25450 elite-monster kills), not
+  in `%RC_ROFL_ARCHIVE_DIR%\timelines` (root moved 2026-10-19) (25450 elite-monster kills), not
   taken from documentation:
   - **`assistingParticipantIds` carries ENEMY participants.** 3167 of 25450
     kills (12.44 pct) list at least one assistant whose participant id sits on
