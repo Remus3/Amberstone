@@ -449,9 +449,16 @@ def test_legion_on_releases_the_keepalive_hold_only_after_its_own_ds_launch() ->
     code = _code_lines(LEGION_ON)
     release_at = next(i for i, ln in enumerate(code)
                       if "Remove-Item" in ln and "$dsStop" in ln)
-    launch_at = next(i for i, ln in enumerate(code)
-                     if "Start-Process" in ln and "$ds" in ln and "$dsStop" not in ln)
-    assert launch_at < release_at, "the hold must outlast legion_on's DS launch"
+    launches = _legion_on_ds_launch_lines(code)
+    assert launches, "legion_on no longer launches DS - re-read this test"
+    assert max(launches) < release_at, "the hold must outlast legion_on's DS launch"
+
+
+def _legion_on_ds_launch_lines(code: list[str]) -> list[int]:
+    """Indexes of legion_on's DS launch lines (task route and direct child)."""
+    return [i for i, ln in enumerate(code)
+            if ("Start-Process" in ln and "$ds" in ln and "$dsStop" not in ln)
+            or ("Start-ScheduledTask" in ln and "RC-DaemonSlayer" in ln)]
 
 
 @pytest.mark.parametrize("path", [INSTALLER, LEGION_OFF, LEGION_ON],
@@ -468,3 +475,120 @@ def test_touched_ps1_parses_under_windows_powershell_51(path: Path) -> None:
                           capture_output=True, text=True, timeout=90,
                           creationflags=0x08000000 if os.name == "nt" else 0)
     assert "ERRORS=0" in proc.stdout, f"{proc.stdout}\n{proc.stderr}"
+
+
+# -- "is DS already up" is process-aware, not only a LISTEN ---------------------
+# A DS loads its snapshot for ~34 s BEFORE it binds :8860, so a port-LISTEN
+# check misses a DS that is starting. A second launch then boots beside it and
+# both bind under SO_REUSEADDR. Every launch decision must also see a DS
+# process (by command line) or the owner task Running.
+
+
+class _Rescan(_Rig):
+    """A rig whose DS-process scan changes once the holder is killed."""
+
+    def __init__(self, *, after_kill, **kw) -> None:
+        super().__init__(**kw)
+        self.after_kill = after_kill
+
+    def kill(self, pid: int) -> bool:
+        ok = super().kill(pid)
+        self.booting = self.after_kill
+        return ok
+
+
+class WatchdogLaunchIsProcessAware(unittest.TestCase):
+    def test_a_killed_hung_holder_is_not_relaunched_beside_a_booting_ds(self) -> None:
+        rig = _Rescan(state=HUNG, holder=4321, after_kill=999)
+        wd = rig.watchdog()
+        got = [wd.tick() for _ in range(3)]
+        self.assertEqual(rig.kills, [4321])
+        self.assertEqual(rig.spawns, 0, "launched a second DS beside pid 999")
+        self.assertEqual(got[-1], "starting")
+
+    def test_the_killed_pid_itself_does_not_block_the_relaunch(self) -> None:
+        # The scan can still list the pid just killed while it exits.
+        rig = _Rescan(state=HUNG, holder=4321, after_kill=4321)
+        wd = rig.watchdog()
+        got = [wd.tick() for _ in range(3)]
+        self.assertEqual((got[-1], rig.spawns), ("replaced", 1))
+
+    def test_a_stalled_boot_is_not_relaunched_beside_a_second_ds(self) -> None:
+        rig = _Rescan(state=DOWN, booting=555, after_kill=777)
+        wd = rig.watchdog(boot_deadline_s=600.0)
+        self.assertEqual(wd.tick(), "starting")
+        rig.clock.t += 601.0
+        self.assertNotEqual(wd.tick(), "boot-stalled")
+        self.assertEqual((rig.kills, rig.spawns), ([555], 0))
+
+    def test_the_keepalive_launch_goes_through_the_same_check(self) -> None:
+        rig = _Rescan(state=HUNG, holder=4321, after_kill=999)
+        ka = _ka().DsKeepalive(rc_live=lambda: False, stopped=lambda: False,
+                               make_watchdog=rig.watchdog)
+        for _ in range(3):
+            ka.step()
+        self.assertEqual((rig.kills, rig.spawns), ([4321], 0))
+
+
+def test_legion_on_sees_a_starting_ds_not_only_a_listener() -> None:
+    code = _code_lines(LEGION_ON)
+    task_check = [i for i, ln in enumerate(code)
+                  if "RC-DaemonSlayer" in ln and "Get-ScheduledTask" in ln]
+    running = [i for i, ln in enumerate(code) if "-eq 'Running'" in ln]
+    cmdline = [i for i, ln in enumerate(code)
+               if "CommandLine -match" in ln and "start_daemon_slayer" in ln
+               and "agents" in ln]
+    assert task_check and running, "no RC-DaemonSlayer Running check"
+    assert cmdline, "no DS command-line check (launcher and -m serve forms)"
+    launches = _legion_on_ds_launch_lines(code)
+    assert launches
+    assert max(task_check + running + cmdline) < min(launches), \
+        "a launch runs before the process-aware checks"
+
+
+def test_legion_on_launches_through_the_owner_task_first() -> None:
+    # RM-740 (e) single owner: through the task, IgnoreNew de-duplicates a
+    # keepalive or RC relaunch that lands between the check and the launch.
+    code = _code_lines(LEGION_ON)
+    task_launch = [i for i, ln in enumerate(code)
+                   if "Start-ScheduledTask" in ln and "RC-DaemonSlayer" in ln]
+    child_launch = [i for i, ln in enumerate(code)
+                    if "Start-Process" in ln and "$ds" in ln and "$dsStop" not in ln]
+    assert task_launch, "legion_on never launches DS through RC-DaemonSlayer"
+    assert not child_launch or min(task_launch) < min(child_launch)
+
+
+# -- rc_facts surfaces a forgotten keepalive hold -------------------------------
+
+
+def test_rc_facts_flags_a_held_keepalive(tmp_path) -> None:
+    import tools.rc_facts as rc_facts
+    assert rc_facts.ds_keepalive_hold_anomalies(tmp_path) == []
+    flag = tmp_path / "ops" / "runtime" / "DS_KEEPALIVE_STOP"
+    flag.parent.mkdir(parents=True)
+    flag.write_bytes(b"legion_off")
+    got = rc_facts.ds_keepalive_hold_anomalies(tmp_path)
+    assert len(got) == 1
+    assert "DS_KEEPALIVE_STOP" in got[0] and got[0].startswith("Legion:")
+
+
+def test_rc_facts_main_reports_the_hold(monkeypatch, tmp_path) -> None:
+    import tools.rc_facts as rc_facts
+    health = tmp_path / "health.json"
+    health.write_text('{"pid": 1, "alive": true, "last_reload_ok": true}',
+                      encoding="utf-8")
+    flag = tmp_path / "ops" / "runtime" / "DS_KEEPALIVE_STOP"
+    flag.parent.mkdir(parents=True)
+    flag.write_bytes(b"legion_off")
+    monkeypatch.setattr(rc_facts, "_HEALTH", health)
+    monkeypatch.setattr(rc_facts, "_APP", tmp_path)
+    monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
+    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
+    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [])
+    monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
+    monkeypatch.setattr(rc_facts, "_inbox_section", lambda *a, **k: ([], [], set()))
+    buf = io.StringIO()
+    monkeypatch.setattr(rc_facts.sys, "stdout", buf)
+    assert rc_facts.main(session=None) == 0
+    assert "DS_KEEPALIVE_STOP" in buf.getvalue()

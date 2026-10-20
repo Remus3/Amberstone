@@ -391,6 +391,9 @@ class DsWatchdog:
       process is killed and, once the port is free, relaunched (replaced;
       killed = still held, the next tick spawns); a foreign holder, or one
       that cannot be seen (no psutil), is left alone - never spawned over.
+
+    After either kill the DS processes are scanned again: a second DS that is
+    already starting is waited for (``starting``), never launched beside.
     """
 
     def __init__(self, *, port: int = DEFAULT_PORT,
@@ -486,8 +489,8 @@ class DsWatchdog:
             logger.warning("daemon_slayer hung - killed pid %d, port %d still "
                            "held; relaunch on the next tick", holder, self.port)
             return "killed"
-        self._respawn(now, f"hung - killed pid {holder}")
-        return "replaced"
+        return self._respawn_after_kill(now, holder, "replaced",
+                                        f"hung - killed pid {holder}")
 
     def _booting(self, pid: int, now: float) -> str:
         """A DS process exists but nothing listens: wait, up to the deadline.
@@ -517,9 +520,31 @@ class DsWatchdog:
             self._start_grace(now)
             return "kill-failed"
         self._booting_pid = None
-        self._respawn(now, f"boot stalled - pid {pid} never bound port "
-                           f"{self.port} in {waited:.0f}s, killed")
-        return "boot-stalled"
+        return self._respawn_after_kill(
+            now, pid, "boot-stalled",
+            f"boot stalled - pid {pid} never bound port {self.port} in "
+            f"{waited:.0f}s, killed")
+
+    def _respawn_after_kill(self, now: float, killed: int, done: str,
+                            why: str) -> str:
+        """Relaunch after killing ``killed`` - unless another DS is starting.
+
+        The hung and boot-stalled paths decide to relaunch without the DOWN
+        path's process scan, and a DS still loading its snapshot holds no
+        port yet. So re-scan first (RM-750 follow-up), ignoring the pid just
+        killed (it can still be listed while it exits): another DS process
+        means a launch now would boot a second engine beside it (both bind
+        under SO_REUSEADDR). It is left to the next tick, which tracks it as
+        "starting" under its own boot deadline.
+        """
+        other = self._find_ds_process()
+        if other is not None and other != killed:
+            self.failures = 0
+            logger.warning("daemon_slayer %s - DS pid %d is already starting, "
+                           "no second launch", why, other)
+            return "starting"
+        self._respawn(now, why)
+        return done
 
     def _respawn(self, now: float, why: str) -> None:
         self.failures = 0
