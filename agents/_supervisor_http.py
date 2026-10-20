@@ -24,6 +24,12 @@ from typing import TYPE_CHECKING, Any
 # file_ingest.py) and dashboard/_handler.py imports nothing from agents, so
 # this adds no cycle. The mc/ package is deliberately NOT given this import.
 from dashboard._handler import _scrub_log
+# RM-753: the :8888 dashboard's same-origin rule for state-changing POSTs,
+# the one function both servers call (same import direction as above).
+from dashboard._handler import _same_origin_ok
+
+# RM-749: the shared RM-744 request-head deadline (stdlib-only, no cycle).
+from core.http_head_deadline import HeadDeadlineMixin
 
 from agents.agent7_context.warm_session import WarmSessionError, warm_spawn_factory
 
@@ -34,7 +40,51 @@ if TYPE_CHECKING:  # runtime-free fwd-ref: Supervisor lives in the facade
     from agents.supervisor import Supervisor
 
 
-class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+class _BadJsonBody(ValueError):
+    """A request body the routes cannot use; ``public_msg`` is wire-safe."""
+
+    def __init__(self, public_msg: str) -> None:
+        super().__init__(public_msg)
+        self.public_msg = public_msg
+
+
+def _json_object_body(raw: bytes) -> dict:
+    """The request body as a JSON object, ``{}`` when empty (RM-753).
+
+    ``json.loads`` on bytes raises more than ``JSONDecodeError``: a body that
+    is not valid UTF-8 raises ``UnicodeDecodeError`` (a ``ValueError``, not a
+    ``JSONDecodeError``) and a deeply nested one ``RecursionError``. Each
+    used to escape the handler and drop the connection with no reply, and a
+    valid non-object body (``[]``, ``42``) reached ``.get`` and raised
+    ``AttributeError``. All of them are a ``_BadJsonBody`` now (a 400).
+    """
+    if not raw:
+        return {}
+    try:
+        body = json.loads(raw)
+    except (ValueError, RecursionError) as exc:
+        raise _BadJsonBody("malformed JSON body") from exc
+    if not isinstance(body, dict):
+        raise _BadJsonBody("JSON body must be an object")
+    return body
+
+
+def _str_field(body: dict, key: str) -> str:
+    """``(body.get(key) or "").strip()`` for a field that must be text.
+
+    Same root cause as ``_json_object_body`` one level down (RM-753 sibling
+    sweep): a truthy non-string (``{"text": 5}``) reached ``.strip()`` and
+    raised ``AttributeError``. Falsy values keep reading as "".
+    """
+    value = body.get(key)
+    if not value:
+        return ""
+    if not isinstance(value, str):
+        raise _BadJsonBody(f"'{key}' must be a string")
+    return value.strip()
+
+
+class _QuietHandler(HeadDeadlineMixin, http.server.SimpleHTTPRequestHandler):
     """Web handler for the Phase 3 UI.
 
     Audit L4: deny dotfiles and common secret filenames so a misplaced
@@ -43,6 +93,13 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     Added 2026-04-22: ``POST /api/input`` -> Agent 7 NL parser. The parser
     files any resulting task via Agent 1's scheduler and returns the
     parse result as JSON.
+
+    RM-749: one TOTAL deadline for the request line + headers
+    (``head_read_timeout_s``, core/http_head_deadline.py, RM-744), removed
+    once the head is parsed, so body reads, file responses and the :8888
+    ``_proxy_to_supervisor`` calls see the socket as before. Without it an
+    idle client held its request thread indefinitely. Never a class-level
+    ``timeout``: it is per receive and lasts the whole connection (RM-152).
     """
     _DENYLIST_NAMES = {".env", ".git", ".htpasswd", "secrets.json",
                        "api-key-claude.txt", "credentials.json"}
@@ -156,6 +213,25 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         return "chunked" in ",".join(values).lower()
 
     def do_POST(self) -> None:
+        # RM-753: every POST here changes state (task dispatch, LLM spawn,
+        # analysis, task completion), and a cross-site simple POST
+        # (text/plain, no preflight) from any page open in a browser on this
+        # machine used to reach the dispatcher. Same rule as the :8888
+        # dashboard: a foreign Origin / Referer is refused before any route
+        # runs; script callers (no Origin) and same-host / loopback pages pass.
+        if not _same_origin_ok(self.headers):
+            log.warning("web POST cross-origin reject peer=%s path=%s "
+                        "origin=%s referer=%s host=%s",
+                        self.address_string(), _scrub_log(self.path),
+                        _scrub_log(str(self.headers.get("Origin"))),
+                        _scrub_log(str(self.headers.get("Referer"))),
+                        _scrub_log(str(self.headers.get("Host"))))
+            # Drain the (capped) body first and discard it: closing with it
+            # unread makes Windows send an RST, and the client then reads a
+            # reset instead of this 403 (the DS _drain_request_body note).
+            self._read_body()
+            self._send_json(403, {"error": "cross_origin"})
+            return
         if self._rejects_chunked():
             self._send_error(411, "chunked request bodies are not supported")
             return
@@ -218,11 +294,12 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         t0 = time.monotonic()
         raw = self._read_body()
         try:
-            payload = json.loads(raw) if raw else {}
-        except json.JSONDecodeError as e:
-            self._send_error(400, "malformed JSON body", e)
+            payload = _json_object_body(raw)
+            text = _str_field(payload, "text")
+            sim_fixture = _str_field(payload, "sim_fixture") or None
+        except _BadJsonBody as e:
+            self._send_error(400, e.public_msg, e.__cause__ or e)
             return
-        text = (payload.get("text") or "").strip()
         if not text:
             self._send_json(400, {"error": "missing 'text' field"})
             return
@@ -235,7 +312,6 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         history = payload.get("history") or []
         if not isinstance(history, list):
             history = []
-        sim_fixture = (payload.get("sim_fixture") or "").strip() or None
 
         sup = self.server.supervisor
         warm = sup.warm_agent7
@@ -923,12 +999,12 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         """
         raw = self._read_body()
         try:
-            body = json.loads(raw) if raw else {}
-        except json.JSONDecodeError as e:
-            self._send_error(400, "malformed JSON body", e)
+            body = _json_object_body(raw)
+            op = _str_field(body, "op")
+        except _BadJsonBody as e:
+            self._send_error(400, e.public_msg, e.__cause__ or e)
             return
 
-        op = (body.get("op") or "").strip()
         owner = str(body.get("owner_agent") or "").strip()
         if not op or not owner:
             self._send_json(400, {"error": "op and owner_agent are required"})
@@ -983,12 +1059,14 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         Intended for on-demand refresh from the iPad after a match ends.
         """
         raw = self._read_body()
+        # RM-753: an undecodable body is a 400 here too. It used to read as
+        # "no body" and run EVERY mode; only an empty body means "all".
         try:
-            body = json.loads(raw) if raw else {}
-        except json.JSONDecodeError:
-            body = {}
-
-        mode = (body.get("mode") or "").strip() or None
+            body = _json_object_body(raw)
+            mode = _str_field(body, "mode") or None
+        except _BadJsonBody as e:
+            self._send_error(400, e.public_msg, e.__cause__ or e)
+            return
         try:
             from agents.agent4_coach_mentor import analyze_mode, analyze_all
             result = analyze_mode(mode) if mode else analyze_all()

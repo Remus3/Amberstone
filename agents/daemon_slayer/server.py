@@ -48,6 +48,15 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
+# RM-748: the HTTP shell's one module-scope ``core`` import. It is the
+# shared RM-744 request-head deadline, reused rather than forked; the module
+# is stdlib-only (io, time) and ``core/__init__.py`` is empty, so it cannot
+# close a cycle with the core modules that import DS (``ult_rates`` keeps its
+# own core import lazy for exactly that reason). The engine modules stay
+# core-free; the Share mirror that once required the shell to be too was
+# removed 2026-09-07.
+from core.http_head_deadline import HeadDeadlineMixin
+
 from . import ENGINE_VERSION
 from .abilities import AbilitiesSnapshot
 from .ability_dps import (
@@ -3022,14 +3031,21 @@ _POST_ROUTES = {
 _GET_DISPATCH_ROUTES = set(_POST_ROUTES.keys())
 
 
-class Handler(BaseHTTPRequestHandler):
+class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
     server_version = f"DaemonSlayer/{ENGINE_VERSION}"
+    # RM-748: one TOTAL deadline for the request line + headers
+    # (``head_read_timeout_s``, core/http_head_deadline.py, RM-744), removed
+    # once the head is parsed, so ``_read_body_deadlined`` (RM-152) and every
+    # route see the socket as before. Without it an idle client held its
+    # request thread indefinitely. Never a class-level ``timeout``: it is per
+    # receive and lasts the whole connection (RM-152).
 
     # Quiet the default access-log spam - we surface our own.
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         # RM-321: an override loses the stdlib's control-character escaping
         # (`message.translate(self._control_char_table)` lives inside the
-        # base method). The DS engine stays core-free, so use the handler's
+        # base method). The DS engine stays core-free (the shell's only core
+        # import is the stdlib-only RM-748 head deadline), so use the handler's
         # own stdlib table, with an equivalent escape if it is ever dropped.
         msg = format % args
         table = getattr(self, "_control_char_table", None)
