@@ -25,6 +25,9 @@ from typing import TYPE_CHECKING, Any
 # this adds no cycle. The mc/ package is deliberately NOT given this import.
 from dashboard._handler import _scrub_log
 
+# RM-749: the shared RM-744 request-head deadline (stdlib-only, no cycle).
+from core.http_head_deadline import HeadDeadlineMixin
+
 from agents.agent7_context.warm_session import WarmSessionError, warm_spawn_factory
 
 from agents._supervisor_common import BIND_HOST, WEB_PORT, WEB_ROOT, _iso_now, log
@@ -34,7 +37,7 @@ if TYPE_CHECKING:  # runtime-free fwd-ref: Supervisor lives in the facade
     from agents.supervisor import Supervisor
 
 
-class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+class _QuietHandler(HeadDeadlineMixin, http.server.SimpleHTTPRequestHandler):
     """Web handler for the Phase 3 UI.
 
     Audit L4: deny dotfiles and common secret filenames so a misplaced
@@ -43,6 +46,13 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
     Added 2026-04-22: ``POST /api/input`` -> Agent 7 NL parser. The parser
     files any resulting task via Agent 1's scheduler and returns the
     parse result as JSON.
+
+    RM-749: one TOTAL deadline for the request line + headers
+    (``head_read_timeout_s``, core/http_head_deadline.py, RM-744), removed
+    once the head is parsed, so body reads, file responses and the :8888
+    ``_proxy_to_supervisor`` calls see the socket as before. Without it an
+    idle client held its request thread indefinitely. Never a class-level
+    ``timeout``: it is per receive and lasts the whole connection (RM-152).
     """
     _DENYLIST_NAMES = {".env", ".git", ".htpasswd", "secrets.json",
                        "api-key-claude.txt", "credentials.json"}
