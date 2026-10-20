@@ -1019,6 +1019,23 @@ def _lcu_phase_label(lcu: dict) -> str:
     return "-(phase-read-failed)" if lcu.get("lcu_port") else "-(client-closed)"
 
 
+def ds_keepalive_hold_anomalies(root: Path) -> list[str]:
+    """One anomaly while ops/runtime/DS_KEEPALIVE_STOP holds RC-DSKeepalive.
+
+    legion_off.ps1 writes the flag and legion_on.ps1 removes it; it has no
+    expiry, so after an off without an on the keepalive idles for good and a
+    crashed or wedged DS stays down whenever RC is down (RM-750).
+    """
+    try:
+        held = (Path(root) / "ops" / "runtime" / "DS_KEEPALIVE_STOP").exists()
+    except OSError:
+        return []
+    if not held:
+        return []
+    return ["Legion: DS keepalive HELD by ops/runtime/DS_KEEPALIVE_STOP - no DS "
+            "restarter while RC is down (run tools/legion_on.ps1 or delete the flag)"]
+
+
 def main(session: str | None = None) -> int:
     out = []
     out.append("# RC live state (rc_facts.py)\n")
@@ -1085,6 +1102,10 @@ def main(session: str | None = None) -> int:
         out.append(f"- DS server :8860: {ds_status} patch={ds_patch} alive={ds_alive}")
         if not ds_alive or ds_status != "ok":
             anomalies.append(f"Legion: DS server not healthy (status={ds_status})")
+
+    # RM-750: a forgotten DS keepalive hold (no expiry) silently leaves DS
+    # without a restarter whenever RC is down.
+    anomalies.extend(ds_keepalive_hold_anomalies(_APP))
 
     # -- Legion-local agents (relocated 2026-05-29, ADR-011) -------------
     out.append("\n## Legion-local agents (LCU + Live Client relay)\n")
