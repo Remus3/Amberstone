@@ -374,6 +374,16 @@ def _time_left(deadline: float) -> float:
     return left
 
 
+def _tls_context(cert_path: Path, key_path: Path):
+    """The :8888 server context: the shared RC TLS floor (RM-752,
+    core/tls_policy.py) plus the mkcert chain. Split out of start_dashboard
+    so a test can build it without starting the server's side effects."""
+    from core.tls_policy import server_context
+    ctx = server_context()
+    ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
+    return ctx
+
+
 def start_dashboard(app_dir: Path) -> None:
     """Launch the dashboard HTTP(S) server in a daemon thread. Idempotent-ish.
     If ops/tls/rc.pem + rc-key.pem exist (mkcert-issued), serves TLS via
@@ -395,9 +405,7 @@ def start_dashboard(app_dir: Path) -> None:
     srv = None
     if cert_path.exists() and key_path.exists():
         try:
-            import ssl
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
+            ctx = _tls_context(cert_path, key_path)
             srv = _DualProtocolHTTPServer((HOST, PORT), handler_class, ssl_ctx=ctx)
             scheme = "https"
         except Exception as exc:  # noqa: BLE001
