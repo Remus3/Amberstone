@@ -46,10 +46,33 @@ foreach ($a in $agents) {
   }
 }
 
-# 2. DS server :8860 - not supervisor-watched per memory; launch manually if absent
+# 2. DS server :8860. "Already up" is process-aware (RM-750): a DS loads its
+# snapshot for ~34 s BEFORE it binds :8860, so a LISTEN check alone misses one
+# that RC-DSKeepalive or RC's watchdog just started, and a second launch would
+# boot beside it (both bind under SO_REUSEADDR). Up = a listener, OR the owner
+# task RC-DaemonSlayer Running, OR a python process whose command line is the
+# DS launcher or `-m agents.daemon_slayer[.cli] serve`. The launch goes through
+# the owner task (RM-740 (e) single owner; IgnoreNew de-duplicates a relaunch
+# landing between this check and the launch); a direct windowless child only
+# where that task is not registered.
 $dsListening = Get-NetTCPConnection -LocalPort 8860 -State Listen -ErrorAction SilentlyContinue
+$dsTask = Get-ScheduledTask -TaskName 'RC-DaemonSlayer' -ErrorAction SilentlyContinue
+$dsTaskRunning = ($null -ne $dsTask) -and ($dsTask.State -eq 'Running')
+$dsProc = @(Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' OR Name='python.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -and $_.CommandLine -match 'start_daemon_slayer\.py|-m\s+agents\.daemon_slayer(\.cli)?\s.*\bserve\b' })
 if ($dsListening) {
   Write-Host "[on] DS server :8860 already listening (pid $($dsListening[0].OwningProcess))"
+} elseif ($dsTaskRunning) {
+  Write-Host "[on] DS owner task RC-DaemonSlayer is Running (DS starting) - no second launch"
+} elseif ($dsProc.Count -gt 0) {
+  Write-Host "[on] DS pid $($dsProc[0].ProcessId) is starting - no second launch"
+} elseif ($dsTask) {
+  try {
+    Start-ScheduledTask -TaskName 'RC-DaemonSlayer' -ErrorAction Stop
+    Write-Host "[on] DS server launching through RC-DaemonSlayer (snapshot load ~35 s)"
+  } catch {
+    Write-Host "[on] WARN: could not run RC-DaemonSlayer ($($_.Exception.Message)); RC's watchdog or RC-DSKeepalive relaunches it"
+  }
 } else {
   $py = "$env:LOCALAPPDATA\Programs\Python\Python314\pythonw.exe"
   $repo = Split-Path -Parent $PSScriptRoot
@@ -64,6 +87,17 @@ if ($dsListening) {
   } else {
     Write-Host "[on] WARN: DS launcher or python not found"
   }
+}
+
+# 2b. Release the DS keepalive hold legion_off.ps1 set (RC-DSKeepalive, RM-750).
+# Only AFTER step 2: released earlier, a keepalive step could relaunch DS via
+# the task while that DS loads its snapshot (no port yet), step 2's LISTEN check
+# would miss it, and a second engine would start. From here the keepalive sees
+# step 2's booting DS as "starting" and waits.
+$dsStop = Join-Path (Split-Path -Parent $PSScriptRoot) 'ops\runtime\DS_KEEPALIVE_STOP'
+if (Test-Path -LiteralPath $dsStop) {
+  Remove-Item -LiteralPath $dsStop -Force
+  Write-Host "[on] DS keepalive hold released"
 }
 
 # 3. Launch Claude Desktop (Squirrel singleton - 2nd launch focuses existing window)
