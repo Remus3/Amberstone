@@ -222,6 +222,8 @@ VERDICT_UNKNOWN = "UNKNOWN"
 # starts, finishes and reports a real result.
 LONG_LIVED_SERVICE_TASKS = frozenset({
     "RC-DaemonSlayer",
+    # RM-750: long-lived DS restarter loop; a 1-minute repeat + IgnoreNew.
+    "RC-DSKeepalive",
     "RC-DS-MatchDB-MCP",
     "RC-HotkeyListener",
     "RC-LCUAgent",
