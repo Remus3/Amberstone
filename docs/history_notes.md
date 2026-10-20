@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-17b - session 121: F1 closed - CodeQL #63 / #64 fixed, 0 open bot PRs, ONE ANSWER to MAIN
+
+- **F1 (MAIN FIX eb3c0d686aea) DONE (LEDGER 1736):** merge `7a81e608e` = `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = Dependabot #15); verifier 8/8, the 3 test files 24 passed. CodeQL #63 / #64 fixed at 20:29:19Z; 0 open alerts.
+- **Dependabot:** #14 declined (operator) with the electron ignore widened in `b7f0409e7`. #16 (electron 44.7.2) and #17 (anthropic 1.14.0) declined by a distinct adjudicator in `615d63c10` (electron ignore now update-types minor + patch; anthropic range to <=1.14.0 under the RM-681 hold). #18 (playwright 1.64.0, its CI green incl. the full dual suite) applied as operator commit `a0123c8a7` (+ browser cache key v2). Dependabot closed all five itself; 0 open PRs.
+- **ANSWER to MAIN:** sha256 9db6a2b2..., reached 1/1 (1 of 6 outbound today); inbox row `--done`, `--pending` empty; tracked copy `975a18fd1`.
+- **Cleanup:** F1 worktree + branch removed (24 worktrees). RC hot-reloaded after the merge (pid 23232, fatal_count 0).
+- **Do NOT redo:** F1 (all four steps); the #14 / #16 / #17 / #18 decisions (reverses-if clauses in the commit bodies).
+- **Open, operator-gated:** local ruff 0.15.12 vs CI 0.17.0; upgrading writes outside the repo (halt boundary) - needs the operator's OK.
+- **Next:** decide the 2 unmerged PUBREPO worktrees + backup refs; then RM-747..RM-750.
+
+---
+
 # 2026-10-17 - session 120: RM-746 closed won't-fix, F1 (CodeQL #63 / #64 + ruff 0.17) verified on a branch, early CPU wrap
 
 - **Closed:** RM-746 won't-fix (`7aaf8541e`, LEDGER 1735): round 3 not attempted; round 2 lost credit on 15 of 88 legit commands and still credited 12 bypass gaps. Commits kept at LOCAL tag `archive/rm746-r2` (`3ffdd6baf`, never pushed); worktree + branch removed; probes in gitignored `ops/runtime/rm746/`.

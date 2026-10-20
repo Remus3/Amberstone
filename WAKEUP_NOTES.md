@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-10-19b - session 124: C1 gated dual suite GREEN, CLI pin 2.1.304, RM-695 closed, ROFL moved, lane 8 ws_server audit on a branch
+
+- **C1 / T2 DONE (LEDGER 1742):** gated `-n 8` dual suite on a2c3c0934: 40592 passed, 0 failed, exit 0, 478 s (attempt 1 on 01e951302: 2 deterministic reds + a ~20 min xdist loadfile deadlock after the timeout kills; attempt 2 killed by the harness at 96 percent memory). Low point 3.49 GB free.
+- **F1 `26963f363`:** `PINNED_CLI` 2.1.296 -> 2.1.304 after the 4-control canary through the kit spawn. **F2 `a2c3c0934` (LEDGER 1741):** sibling-sweep per-window prefilter, tree gate 922 s -> 41 s; RM-695 CLOSED by C1. **F3:** responder `PINNED_CLI_VERSION` 2.1.251 kept on purpose. **F4:** headless-uiux command mirror re-synced (gitignored).
+- **ROFL (MAIN ORDER 1121):** `01e951302` moved the archive to E: (54735 files, hash-verified, C: 14.66 -> 37.5 pct free); ANSWER 1215 reached MAIN 1/1; FIX 1709 + ORDER 1121 rows closed.
+- **TA1 lane 8:** `ws_server.py` (:8891) 8 weaknesses, 7 fixed, 60 tests; branch `lane/true-audit` e80d70fbe pushed, verifier CONFIRM, UNMERGED (merger's job; carry in the hand-off). RM-753 = same flaws in `agents/_supervisor_http.py`.
+- **Push:** `151a6e70d..a2c3c0934`, then the wrap commit.
+- **Do NOT redo:** C1, F1, F2, F3, F4, the ROFL move, the TA1 audit (merge it, do not re-audit).
+- **Next:** MAIN ORDER 2026-10-19-0034 DEPENDABOT-MERGE-RULE (ONE ANSWER), then merge `lane/true-audit`, then RM-747..RM-750.
+
+---
+
 # 2026-10-19 - session 123: inbox drained - kit v20 + v20.1 adopted, GH security 0 alerts, ONE ANSWER to MAIN
 
 - **Kit v20 (LEDGER 1739):** adopted `6a9711824`, guard `tests/test_fleet_kit_v20.py`, provenance verified 24/24. **Kit v20.1 / patch 1:** adopted `cd636d817` (outbound note cap 12/day, KIT_PATCH 1).
@@ -26,15 +38,3 @@
 - **Found at the wrap:** MAIN FIX 2026-10-17-1709 (ROFL archive 340 GB on C:, move to E:) was never picked up; carried. The kit v18 / v19 ORDER rows closed with `inbox_tick.py --done`.
 - **Do NOT redo:** C1, H1, P1, P2, F1, G2, S1.
 - **Next:** T2; then the ROFL FIX; then RM-747..RM-750.
-
----
-
-# 2026-10-17b - session 121: F1 closed - CodeQL #63 / #64 fixed, 0 open bot PRs, ONE ANSWER to MAIN
-
-- **F1 (MAIN FIX eb3c0d686aea) DONE (LEDGER 1736):** merge `7a81e608e` = `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = Dependabot #15); verifier 8/8, the 3 test files 24 passed. CodeQL #63 / #64 fixed at 20:29:19Z; 0 open alerts.
-- **Dependabot:** #14 declined (operator) with the electron ignore widened in `b7f0409e7`. #16 (electron 44.7.2) and #17 (anthropic 1.14.0) declined by a distinct adjudicator in `615d63c10` (electron ignore now update-types minor + patch; anthropic range to <=1.14.0 under the RM-681 hold). #18 (playwright 1.64.0, its CI green incl. the full dual suite) applied as operator commit `a0123c8a7` (+ browser cache key v2). Dependabot closed all five itself; 0 open PRs.
-- **ANSWER to MAIN:** sha256 9db6a2b2..., reached 1/1 (1 of 6 outbound today); inbox row `--done`, `--pending` empty; tracked copy `975a18fd1`.
-- **Cleanup:** F1 worktree + branch removed (24 worktrees). RC hot-reloaded after the merge (pid 23232, fatal_count 0).
-- **Do NOT redo:** F1 (all four steps); the #14 / #16 / #17 / #18 decisions (reverses-if clauses in the commit bodies).
-- **Open, operator-gated:** local ruff 0.15.12 vs CI 0.17.0; upgrading writes outside the repo (halt boundary) - needs the operator's OK.
-- **Next:** decide the 2 unmerged PUBREPO worktrees + backup refs; then RM-747..RM-750.
