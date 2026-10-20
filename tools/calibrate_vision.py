@@ -76,10 +76,8 @@ def main() -> int:
 
     # Run OCR via the dashboard endpoint (uses the same code path as live)
     try:
-        import ssl as _ssl
-        _ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
-        _ctx.check_hostname = False
-        _ctx.verify_mode = _ssl.CERT_NONE
+        from core.tls_policy import client_context_noverify
+        _ctx = client_context_noverify()   # RM-752: the shared TLS floor
         r = urllib.request.urlopen("https://127.0.0.1:8888/api/ocr", timeout=10, context=_ctx)
         print("OCR result:", r.read().decode())
     except Exception as e:  # noqa: BLE001

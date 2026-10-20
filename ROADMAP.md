@@ -76,7 +76,7 @@ _NOW / NEXT / LATER buckets with stable `RM-NN` item ids (assigned 2026-07-17, m
 - **[ ] RM-747 / RM-748 / RM-749 (Tier-1 each, filed session 119 merger, LEDGER 1733): the :8895 Mission Control, :8860 Daemon Slayer and :8890 supervisor servers carry the RM-744 gap - no request-head read deadline, so an idle client holds a thread for as long as it stays connected.** Body in `BACKLOG.md` "Session 119 filings".
 - **[ ] RM-750 (Tier-1, filed session 119 merger, LEDGER 1733): Daemon Slayer has no restarter while RC is down - Task Scheduler RestartOnFailure is inert for a crash exit (measured, LEDGER 1731).** Body in `BACKLOG.md` "Session 119 filings".
 - **[ ] RM-751 (low, filed session 119 merger, LEDGER 1733): the dead `bridge_shared_secret` value still sits in three gitignored local files; blank it locally.** Body in `BACKLOG.md` "Session 119 filings".
-- **[ ] RM-752 (Tier-1 each site, low, filed session 120 /done, LEDGER 1735): production `ssl.SSLContext` objects (2 server, 6 client) set no `minimum_version`; `tools/liveclient_relay.py` pins TLSv1 on purpose - review.** Body in `BACKLOG.md` "Session 120 filings".
+- **[x] RM-752 SHIPPED s125 (branch, pending merge; Tier-1, filed session 120 /done, LEDGER 1735): production `ssl.SSLContext` objects (2 server, 6 client) set no `minimum_version`; `tools/liveclient_relay.py` pins TLSv1 on purpose - review.** 7 sites on one TLSv1_2 floor (`core/tls_policy.py`), relay KEPT; decision in `docs/OPERATIONS.md` "TLS protocol floor (RM-752)". Body in `BACKLOG.md` "Session 120 filings".
 
 > **NEXT-5 TRIAGE (2026-08-02) archived VERBATIM in `docs/ROADMAP_HISTORY.md`** (2026-09-07e and `## 2026-10-01` blocks); its two durable conclusions survive as the RM-122 and RM-118 rows.
 
