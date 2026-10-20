@@ -105,6 +105,12 @@ enforce most of them:
    `Merge remote-tracking branch 'origin/main'`) is still accepted as git
    writes it.
 
+**How an accepted pull request lands.** It is never merged on GitHub, in any
+mode (merge, squash or rebase; the same holds for Dependabot's PRs). The change
+is re-applied locally as a maintainer commit and the PR closes, so `main`
+carries one author and committer identity and no `Co-authored-by:` line;
+`tools/bot_merge_check.py` checks every new `main` commit for exactly that.
+
 `CLAUDE.md` at the repository root is the full operating context, including the
 frozen-file list. It is written for coding agents, but it is the most complete
 statement of how this codebase expects to be changed, so it is worth reading

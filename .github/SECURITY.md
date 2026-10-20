@@ -55,13 +55,17 @@ The parts worth pointing a reviewer at:
 
 - Dependabot (`.github/dependabot.yml`) opens weekly version-update PRs for
   GitHub Actions, pip and npm, one grouped PR per ecosystem. Nothing
-  auto-merges; a PR is merged once CI is green on it.
+  auto-merges, and no bot PR is ever merged on GitHub: once CI is green on it,
+  its bump is re-applied locally as an operator commit (or declined in
+  `dependabot.yml`), so only the operator appears as a contributor.
+  `tools/bot_merge_check.py` scans each new `main` commit for any other
+  identity or a `Co-authored-by:` line.
 - Every action in `.github/workflows/` is pinned to a full commit SHA, and CI
   installs Python packages from hash-pinned files (`.github/ci/`) with
   `pip install --require-hashes`.
-- Every workflow token is read-only by default. The two jobs that commit to
-  `main` (the docs-guards auto-repair and the patch-day data sync) are the only
-  ones granted `contents: write`, at job level.
+- Every workflow token is read-only, and no workflow commits or pushes to
+  `main`: the docs-guards check and the patch-day data sync are report-only
+  (since 2026-10-09), and no job is granted `contents: write`.
 - CodeQL scans every push to `main`, every pull request to `main` and once a
   week (python, javascript-typescript, actions), from the checked-in advanced
   workflow `.github/workflows/codeql.yml`. GitHub's default setup is switched

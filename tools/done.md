@@ -175,6 +175,7 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
 - If empty: skip.
 - Otherwise: `python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "<repo>" push origin <branch>` (the git lock, FLEET-KIT v12 item 16 a; a bare `git push` is denied). No confirmation prompt - pushing is part of the exit ritual.
 - Record the push range (e.g. `23854e1..b56f247 main -> main`) in the hand-off file, not in chat.
+- Then `python "<repo>/tools/bot_merge_check.py"` (MAIN ORDER 2026-10-19-0034; a merge done on GitHub bypasses every local hook): exit 1 = a non-operator / bot identity or a `Co-authored-by:` line reached the default branch. Record it as the hand-off's FIRST next action (fix only with `fleet_rewrite.py` under MAIN 2312's scope, at the halt boundary); it never fails the ritual.
 - If the push fails (auth, conflict, hook): stop with `/done stopped: push failed - <cause>`.
 
 ### 2b. GitHub CI verification
