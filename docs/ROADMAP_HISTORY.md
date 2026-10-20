@@ -1,5 +1,29 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-10-20 - size-budget relocation (session 125 merger), 8 rows
+
+`ROADMAP.md` sat at 73839 bytes after the RM-752 merge `fbf4d42da` and the
+LEDGER 1744 commit `23a725619`, past `tools/drift_guard.py`'s 90 percent line
+(73728 of 81920), with session 125 still to file its new rows. The eight rows
+below were already SHIPPED / CLOSED (RM-751 and RM-752 = LEDGER 1744; RM-256
+= LEDGER 1743, with RM-255 REFUTED AT HEAD) or were stubs pointing at earlier
+blocks (`## 2026-10-10`, `## 2026-10-12`, `## 2026-10-15`, `## 2026-10-16`,
+`## 2026-10-17`); they move here VERBATIM as they stood at `23a725619`, in
+their ROADMAP order. `ROADMAP.md` keeps one combined one-line stub naming every
+id literally. In the same pass the RM-595, RM-600, RM-596, RM-597, RM-697,
+RM-698, RM-702 and RM-703 bodies (all still open, their only body was the
+ROADMAP row) moved verbatim to `BACKLOG.md` "ROADMAP size pass (2026-10-20)",
+with one-line ROADMAP pointers, the RM-733 / RM-734 pattern.
+
+- **[x] RM-751 CLOSED s125 (2026-10-20; low, filed session 119 merger, LEDGER 1733): the dead `bridge_shared_secret` value is blanked locally in the three gitignored files that held it (`ops/local_paths.json` + 2 under `docs/_archive/2026-07-07-atx-bridge-decommissioned/`), originals to the Recycle Bin.** Read-back: JSON parses with the key empty; a tree walk (tracked + gitignored, outside `.git`) and `git log --all -S` find no copy; no code reads the key (`tests/test_bridge_decommissioned_oq2.py` green); not rotated (no consumer). Body in `BACKLOG.md` "Session 119 filings".
+- **[x] RM-752 SHIPPED s125 (merge `fbf4d42da`, LEDGER 1744; Tier-1, filed session 120 /done, LEDGER 1735): production `ssl.SSLContext` objects (2 server, 6 client) set no `minimum_version`; `tools/liveclient_relay.py` pins TLSv1 on purpose - review.** 7 sites on one TLSv1_2 floor (`core/tls_policy.py`), relay KEPT; decision in `docs/OPERATIONS.md` "TLS protocol floor (RM-752)". Body in `BACKLOG.md` "Session 120 filings".
+- **[x] ELEVEN SHIPPED / CLOSED STUBS relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-10` block, session 106 /done size pass): RM-680 / RM-700, RM-685 / RM-687 / RM-688 / RM-689 (FLEET-KIT v11), RM-696, the TEN CLOSED ROWS stub (`## 2026-10-09b`: RM-217 / RM-421, RM-420, RM-295a-c, RM-301-303, RM-296a-e, RM-192-202), RM-293, RM-300, RM-317, RM-254 + RM-261 / RM-262 / RM-263 / RM-264, RM-253 + RM-266 / RM-267 / RM-268 / RM-269, RM-234 / RM-235 / RM-236 / RM-237, RM-35 .. RM-48. Each still points at its own archived body; READ it before re-opening any of these ids.**
+- **[x] FIVE SHIPPED / CLOSED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-12` block, session 111 /done size pass): RM-701 (CLOSED, LEDGER 1714), RM-733 (CLOSED moot, LEDGER 1713), RM-735 (SHIPPED, LEDGER 1714), RM-738 (SHIPPED, LEDGER 1716), RM-739 (SHIPPED, LEDGER 1718). Each still points at its own BACKLOG body or LEDGER entry; READ it before re-opening any of these ids.**
+- **[x] THREE SHIPPED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-15` block, session 117 merger size pass): RM-321 (SHIPPED Wave1, LEDGER 1509), RM-191 (SHIPPED Wave1, LEDGER 1550; its live handle-holder probe stays LIVE-GATED), RM-149 (SHIPPED Wave1, LEDGER 1551). Each still points at its own LEDGER entry; READ it before re-opening any of these ids.**
+- **[x] FIVE SHIPPED / CLOSED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-16` block, session 119 /done size pass): RM-743 (CLOSED, LEDGER 1725), RM-741 (SHIPPED, LEDGER 1725), RM-742 (SHIPPED, LEDGER 1725), RM-744 (SHIPPED, LEDGER 1730), RM-745 (SHIPPED, LEDGER 1730). Each still points at its own BACKLOG body or LEDGER entry; READ it before re-opening any of these ids.**
+- **[x] ONE CLOSED ROW relocated VERBATIM to `docs/ROADMAP_HISTORY.md` (`## 2026-10-17` block, session 120 /done size pass): RM-746 (CLOSED WON'T-FIX, LEDGER 1735). It still points at its own BACKLOG body; READ it before re-opening this id.**
+- **RM-256 CLOSED 2026-10-20 (merge `9faf39988`, LEDGER 1743); RM-255 REFUTED AT HEAD per `BACKLOG.md` RM-419 - the resolution narrative, its closure provenance and the stale (255) filing are archived VERBATIM in the `## 2026-10-02` block** (filed 2026-08-30, lane 8 cycle 22; RM-256 LANE 7-or-8, Tier-1). RM-255 was closed same-day and RE-VERIFIED LIVE AT HEAD 2026-09-17 - **do NOT re-open it.** **STRUCTURAL fence, and the reason that three-way OPEN / REFUTED / CLOSED disagreement survived 28 days: this line's bold lead starts with RM-256, so no anchored row-header census over `ROADMAP.md` can ever SEE the RM-255 status embedded in it** - it is findable only by a free-text scan for the id. **(256 - CLOSED; filing text)** `agents/agent2_backend/ws_server.py:46` binds `0.0.0.0` with no auth on `/ingest` or `/push`, zero tests - PROBE REACHABILITY BEFORE FIXING. Body in `BACKLOG.md`. **2026-10-19: loopback (RM-231) + Origin gate + first test module + measured reachability shipped on branch `lane/true-audit` (LEDGER 1740); RM-256 and RM-521 CLOSED at merge `9faf39988` (verifier CONFIRM, live read-back).** RM-253 (cycle 25) and RM-254 (cycle 24) are CLOSED.
+
 ## 2026-10-17 - size-budget relocation (session 120 /done), 1 row
 
 `ROADMAP.md` sat at 73341 bytes at 7aaf8541e, 387 bytes under
