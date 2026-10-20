@@ -439,10 +439,19 @@ def test_legion_off_holds_the_keepalive_before_the_kill_sweep() -> None:
     assert any("Set-Content" in ln and "$dsStop" in ln for ln in code)
 
 
-def test_legion_on_releases_the_keepalive_hold() -> None:
+def test_legion_on_releases_the_keepalive_hold_only_after_its_own_ds_launch() -> None:
+    # legion_on starts DS itself (a direct Start-Process, guarded only by a
+    # port-LISTEN check). Released BEFORE that, a keepalive step in the gap
+    # relaunches DS through the task; that DS loads its snapshot before it
+    # binds, so the LISTEN check misses it and legion_on starts a second,
+    # non-task engine (both bind under SO_REUSEADDR). Released AFTER, the
+    # keepalive's watchdog sees legion_on's booting DS and waits ("starting").
     code = _code_lines(LEGION_ON)
-    assert any("DS_KEEPALIVE_STOP" in ln for ln in code)
-    assert any("Remove-Item" in ln and "$dsStop" in ln for ln in code)
+    release_at = next(i for i, ln in enumerate(code)
+                      if "Remove-Item" in ln and "$dsStop" in ln)
+    launch_at = next(i for i, ln in enumerate(code)
+                     if "Start-Process" in ln and "$ds" in ln and "$dsStop" not in ln)
+    assert launch_at < release_at, "the hold must outlast legion_on's DS launch"
 
 
 @pytest.mark.parametrize("path", [INSTALLER, LEGION_OFF, LEGION_ON],
