@@ -707,6 +707,9 @@ class Needle:
     # Appended at the END with a default (repo dataclass rule). True only when
     # the per-host config DECLARED this slot; never inferred from the name.
     narrowed: bool = False
+    # F2 (session 124). A NECESSARY-condition regex from `build_prefilter`;
+    # None means "no proof available, scan every window" (fail-safe).
+    prefilter: Optional[Any] = None
 
 
 def _variant_fragments(name: str) -> dict:
@@ -807,6 +810,7 @@ def build_needles(cfg: SweepConfig) -> list:
                 variants=variants,
                 patterns=tuple(shapes),
                 narrowed=narrowed,
+                prefilter=build_prefilter(name, variants),
             )
         )
     return needles
@@ -864,6 +868,57 @@ def assert_non_vacuous(needles: Sequence) -> None:
 # Haystack normalisation (S6)
 # ---------------------------------------------------------------------------
 _CONT_PREFIX = "#/*>-"
+
+# ---------------------------------------------------------------------------
+# F2 (session 124, RM-695 runtime half): a SOUND per-window prefilter.
+#
+# MEASURED at 01e951302: ARMED, `scan_text` cost ~1.3 s per MB because every
+# window paid `build_views` plus all 113 compiled shapes, needle or not. The
+# seven smudged 66 MB laning_scenarios LFS payloads took 84-85 s EACH, the tree
+# ~750 s, and the CI gate's self-test blew the suite's 300 s timeout every run.
+# Exclusion stays ruled out (RM-477); this skips WORK, never bytes.
+#
+# Why a window that fails the check cannot hold a match, in either view: both
+# views are the window minus a subset of whitespace (`str.isspace`) and
+# continuation-prefix characters, plus inserted single spaces. Deleting that
+# whole class from the window AND from a match therefore leaves the match a
+# substring. Every shape is `prefix + one family fragment [+ edge]`, and a
+# fragment match, so reduced, is the name joined by that family's fixed
+# separator, so reduced. re.I is applied by the SAME engine on both sides, and
+# no character case-folds onto a deleted one. Each premise is pinned in
+# tests/test_sibling_sweep_prefilter_f2.py, including filtered == unfiltered
+# findings over every family, split forms, seams and re.I traps.
+# ---------------------------------------------------------------------------
+_PREFILTER_DROP = re.compile(r"[\s" + re.escape(_CONT_PREFIX) + r"]+")
+
+# The literal separator each VARIANT_FAMILIES fragment joins tokens with.
+_FAMILY_SEPARATORS = {
+    "SPACED": " ",
+    "HYPHEN": "-",
+    "UNDER": "_",
+    "CONCAT": "",
+    "PCT20": "%20",
+}
+
+
+def build_prefilter(name: str, variants: Mapping[str, str]):
+    """One case-insensitive regex that must hit a reduced window before any
+    shape of this needle can. None (always scan) when a family is unknown or a
+    reduced spelling is empty - no proof, no filter."""
+    tokens = [t for t in re.split(r"\s+", name.strip()) if t]
+    literals = set()
+    for family in variants:
+        sep = _FAMILY_SEPARATORS.get(family)
+        if sep is None:
+            return None
+        literal = _PREFILTER_DROP.sub("", sep.join(tokens))
+        if not literal:
+            return None
+        literals.add(literal)
+    if not literals:
+        return None
+    ordered = sorted(literals, key=lambda s: (-len(s), s))
+    return re.compile("|".join(re.escape(s) for s in ordered), re.I)
 
 
 def _strip_continuations(text: str, at_blob_start: bool = True):
@@ -1087,6 +1142,23 @@ def scan_text(
         else:
             nl_before = text.count("\n", 0, chunk_start)
         prev_start = chunk_start
+        # F2: only needles whose prefilter hits this window (or that carry no
+        # prefilter) are scanned; a window with none skips `build_views`. The
+        # previous window's views are released first (see the note below).
+        views = view_text = view_idx = None
+        reduced = None
+        active = []
+        for needle in needles:
+            pre = getattr(needle, "prefilter", None)
+            if pre is not None:
+                if reduced is None:
+                    reduced = _PREFILTER_DROP.sub("", chunk_text)
+                if not pre.search(reduced):
+                    continue
+            active.append(needle)
+        reduced = None
+        if not active:
+            continue
         # Drop the PREVIOUS window before building the next one, and drop the
         # UNPACKED views with it. Plain rebinding holds both generations alive
         # across the `build_views` call and doubles the peak - measured twice:
@@ -1096,7 +1168,7 @@ def scan_text(
         # half of it and looks like a fix.
         views = view_text = view_idx = None
         views = build_views(chunk_text, at_blob_start=at_start)
-        for needle in needles:
+        for needle in active:
             for ordinal, shape in enumerate(needle.patterns):
                 view_text, view_idx = views[shape.view]
                 for m in shape.regex.finditer(view_text):
