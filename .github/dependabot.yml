@@ -4,10 +4,17 @@
 # ONE group per ecosystem so a week is at most one PR per ecosystem, not a
 # burst. Nothing here auto-merges, and a Dependabot PR is NEVER merged on
 # GitHub in any mode (MAIN kit-v13/v14 ORDER section 4: a squash keeps the bot
-# as author, a web merge writes a non-operator committer). Once its gating CI
-# (ci.yml) is green, the bump is applied LOCALLY as an operator commit
-# (cherry-pick --reset-author; the commit-msg hook strips trailers) through
-# ops/fleet_kit/fleet_gitlock.py and pushed; the PR closes when it lands.
+# as author, a web merge writes a non-operator committer; MAIN ORDER
+# 2026-10-19-0034 DEPENDABOT-MERGE-RULE: RC takes its path B only). Once its
+# gating CI (ci.yml) is green, the bump is applied LOCALLY as an operator
+# commit: `git cherry-pick --no-commit <sha>` of the PR head (a plain
+# cherry-pick keeps the bot author and never runs the commit-msg hook; git has
+# no `cherry-pick --reset-author`), any hashed lock regenerated locally (a
+# Dependabot regen drops the multi-Python markers), then committed through
+# ops/fleet_kit/fleet_gitlock.py with an operator-written message and pushed;
+# the PR closes when it lands. After any bot-PR landing, and at /done after
+# the push, `python tools/bot_merge_check.py` scans the new default-branch
+# commits for a non-operator identity or any Co-authored-by line.
 #
 # Security alerts are a separate GitHub feature and are NOT configured here;
 # this file only schedules version-update PRs.
@@ -61,10 +68,11 @@ updates:
     # target would reopen the PR one release lower. A release above a range
     # still opens a PR. Drop an entry when its hold lifts.
     ignore:
-      # PR #11 (1.13.0) and PR #17 (1.14.0, declined 2026-10-17): held until
-      # RM-681 (live call per path + truststore) closes.
+      # PR #11 (1.13.0), PR #17 (1.14.0, declined 2026-10-17) and PR #19
+      # (1.15.0, declined 2026-10-20 under the same hold): held until RM-681
+      # (live call per path + truststore) closes.
       - dependency-name: "anthropic"
-        versions: [">1.11.0,<=1.14.0"]
+        versions: [">1.11.0,<=1.15.0"]
       # PR #11: wait for a change that also upgrades the RC runtime.
       - dependency-name: "json5"
         versions: [">0.15.0,<=0.17.3"]
