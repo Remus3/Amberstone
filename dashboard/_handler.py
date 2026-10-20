@@ -166,6 +166,55 @@ def _cors_allowed_origin(origin: str) -> str | None:
     return None
 
 
+def _same_origin_ok(headers) -> bool:
+    """The same-origin rule for state-changing POSTs (``Handler._csrf_ok``).
+
+    Module level so the :8890 supervisor server (``agents/_supervisor_http.py``,
+    RM-753) applies this exact rule rather than a copy. ``headers`` is the
+    request's ``http.client.HTTPMessage``. See ``Handler._csrf_ok`` for the
+    rule and its rationale; behaviour is unchanged by the move.
+    """
+    try:
+        origin  = headers.get("Origin", "") or ""
+        referer = headers.get("Referer", "") or ""
+        if not origin and not referer:
+            return True
+        host = (headers.get("Host", "") or "").strip().lower()
+        if not host:
+            return False
+        host_h, _, _ = host.partition(":")
+        from urllib.parse import urlparse
+        local_aliases = {"127.0.0.1", "localhost", "::1"}
+        for src in (origin, referer):
+            if not src:
+                continue
+            # "null" Origin is what some sandboxed iframes / file://
+            # contexts send. Treat as cross-origin.
+            if src == "null":
+                return False
+            p = urlparse(src)
+            src_hp = (p.hostname or "").lower()
+            if not src_hp:
+                return False
+            # Same hostname is fine (port may differ - e.g. dashboard
+            # opened via localhost vs LAN IP from same machine).
+            if src_hp == host_h:
+                continue
+            # Origin from local loopback when request host is the LAN
+            # bind is also fine - script callers, dev probes.
+            if src_hp in local_aliases and host_h not in local_aliases:
+                continue
+            if host_h in local_aliases and src_hp in local_aliases:
+                continue
+            # Anything else: reject.
+            return False
+        return True
+    except Exception:  # noqa: BLE001
+        # Don't block POSTs on parse errors - fail open with a log.
+        log.debug("csrf_ok parse failed; allowing")
+        return True
+
+
 def proxy_error_status(path: str, upstream_code: int | None) -> int:
     """Status the :8888 proxy returns when a supervisor fetch fails.
 
@@ -440,46 +489,11 @@ class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
         the request's Host header - OR the origin must itself be a local
         loopback address (127.0.0.1 / localhost) coming from a script on
         the same machine. Absent both headers -> allow (script caller).
+
+        The rule lives in module-level ``_same_origin_ok`` so the :8890
+        supervisor server applies the SAME one (RM-753), not a copy.
         """
-        try:
-            origin  = self.headers.get("Origin", "") or ""
-            referer = self.headers.get("Referer", "") or ""
-            if not origin and not referer:
-                return True
-            host = (self.headers.get("Host", "") or "").strip().lower()
-            if not host:
-                return False
-            host_h, _, _ = host.partition(":")
-            from urllib.parse import urlparse
-            local_aliases = {"127.0.0.1", "localhost", "::1"}
-            for src in (origin, referer):
-                if not src:
-                    continue
-                # "null" Origin is what some sandboxed iframes / file://
-                # contexts send. Treat as cross-origin.
-                if src == "null":
-                    return False
-                p = urlparse(src)
-                src_hp = (p.hostname or "").lower()
-                if not src_hp:
-                    return False
-                # Same hostname is fine (port may differ - e.g. dashboard
-                # opened via localhost vs LAN IP from same machine).
-                if src_hp == host_h:
-                    continue
-                # Origin from local loopback when request host is the LAN
-                # bind is also fine - script callers, dev probes.
-                if src_hp in local_aliases and host_h not in local_aliases:
-                    continue
-                if host_h in local_aliases and src_hp in local_aliases:
-                    continue
-                # Anything else: reject.
-                return False
-            return True
-        except Exception:  # noqa: BLE001
-            # Don't block POSTs on parse errors - fail open with a log.
-            log.debug("csrf_ok parse failed; allowing")
-            return True
+        return _same_origin_ok(self.headers)
 
     def do_POST(self) -> None:
         # 2026-04-27 audit: cap POST body at 1 MiB. RC is LAN-only and the
