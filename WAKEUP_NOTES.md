@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-10-20 - session 125: DEPENDABOT rule (path B), TA1 merged, RM-747..RM-753 shipped, gated suite, CLI pin 2.1.305
+
+- **C1 MAIN ORDER 0034 DEPENDABOT-MERGE-RULE (`bdaff4426`, `ec06bbb21`):** RC adopts path B only (close the bot PR, re-apply as an operator commit); rule in CLAUDE.md, OPERATIONS, SECURITY, CONTRIBUTING, dependabot.yml, done.md section 2; new `tools/bot_merge_check.py` (9 tests). ANSWER delivered 1/1, re-hashed equal, row --done. Read-backs: contributors 1 (operator), 6225 default-branch commits 0 bot / web-merge / co-author; auto-merge off, no rulesets. Kit defect sent to MAIN: fleet_identity passes a HUMAN non-operator Co-authored-by.
+- **C2 TA1 merged `9faf39988`;** RM-256 + RM-521 closed `196f0c35d` (LEDGER 1743); RC-Phase3-Supervisor restarted, :8890 / :8891 loopback-only, /push Origin read back. Fixed the red nightly (test_rm_id_registry_drift). C3: worktree + local and remote `lane/true-audit` gone (remote deleted at /done).
+- **Servers:** RM-747/748/749 + RM-753 merged `74472daec` (idle close 30.0 s on :8860 / :8890 / :8895); RM-750 DS keepalive `4e38b8e4a` (DS back 28 s after a kill, 1 process); RM-752 TLS floor `fbf4d42da`; RM-751 dead secret blanked `515fc332f`.
+- **Docs:** ROADMAP size pass `b6ba5a028`; RM-754..RM-759 filed `e4447e14c`; ROFL root as %RC_ROFL_ARCHIVE_DIR% `525b0765e`.
+- **C14 gated dual suite (LEDGER 1748):** 1 failed (CLI auto-update vs pin), 40790 passed; **C15** re-pin `5d24766cb` after the canary (LEDGER 1749).
+- **Push:** `d8d45b798..5d24766cb`, then the wrap commit. GitHub reports 7 Dependabot vulnerabilities on main.
+- **OPERATOR STEP:** elevated `tools/install_ds_keepalive_task.ps1` (SYSTEM task RC-DSKeepalive), then the RM-750 live check with RC stopped.
+- **Do NOT redo:** C1 (ANSWER is TERMINAL), TA1, RM-747..RM-753, RM-750 code, the CLI re-pin.
+- **Next:** the carried OPEN - WORK ITEMS in hand-off order (C11 not reached); RM-759 is unblocked.
+
+---
+
 # 2026-10-19b - session 124: C1 gated dual suite GREEN, CLI pin 2.1.304, RM-695 closed, ROFL moved, lane 8 ws_server audit on a branch
 
 - **C1 / T2 DONE (LEDGER 1742):** gated `-n 8` dual suite on a2c3c0934: 40592 passed, 0 failed, exit 0, 478 s (attempt 1 on 01e951302: 2 deterministic reds + a ~20 min xdist loadfile deadlock after the timeout kills; attempt 2 killed by the harness at 96 percent memory). Low point 3.49 GB free.
@@ -26,15 +40,3 @@
 - **NOT DONE:** T2 gated Tier-2 suite (still first next action); board push (FLEET item 18) not made this session.
 - **Do NOT redo:** kit v20 / v20.1 adoption, the GH security sweep, ORDER 2312 item 3.
 - **Next:** session 124 = ALL OTHER OPEN ITEMS: T2 first, then the ROFL FIX, then RM-747..RM-750.
-
----
-
-# 2026-10-18 - session 122: C1 decided, hand-off under 30 KB, CI-red fixes pushed, gated suite NOT done
-
-- **C1 (LEDGER 1737, `50744bdee`):** 2 PUBREPO worktrees + branches and 8 backup refs removed (worktrees 24 -> 22, refs 99 -> 89); the in-tree tag bundle KEPT (proved by a full restore, not `git bundle verify`). The sidecar bundle copy is on the SAME physical disk (off-tree, not off-box).
-- **Rest (LEDGER 1738):** H1/H2 hand-off trim + /done size pre-flight `5142a52bc`; P1 `2497e857b` + P2 `0d11d82cf` (129-char path cap, now refused at pre-commit); F1 `181789cf9`; G2 `65ac9fbe6`; S1 sweep ls-remote fix merged `d2aabcc91`. Kit v19 (`2c10e5284`) and the GH-HYGIENE ANSWER came from MAIN's own headless runs.
-- **Push:** `2c10e5284..d2aabcc91`; CI on d2aabcc91 recorded in the hand-off.
-- **NOT DONE - first next action:** T2, the gated Tier-2 dual suite (run 1 hung after gw7 crashed; run 2 stopped by the harness at 99 percent for low memory). Re-run with `-v` / `--report-log`, memory headroom.
-- **Found at the wrap:** MAIN FIX 2026-10-17-1709 (ROFL archive 340 GB on C:, move to E:) was never picked up; carried. The kit v18 / v19 ORDER rows closed with `inbox_tick.py --done`.
-- **Do NOT redo:** C1, H1, P1, P2, F1, G2, S1.
-- **Next:** T2; then the ROFL FIX; then RM-747..RM-750.
