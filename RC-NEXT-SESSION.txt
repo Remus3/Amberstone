@@ -28,8 +28,8 @@ s125 new (LEDGER 1743-1749):
   RC-DaemonSlayer is unregistered; the PS regex has delay-only false positives.
 - RM-752 follow-up (live-gated): probe the :2999 tools/liveclient_relay.py at a TLSv1_2 floor in a
   live game; it keeps TLSv1 deliberately until measured.
-- 7 Dependabot alerts on main per the s125 push banner (2 critical, 4 high, 1 moderate; s123 read
-  0): list them (gh api .../dependabot/alerts) and triage each (operator commit, path B, or
+- Dependabot alerts on main: 30 per the s125 wrap push banner (6 critical, 18 high, 6 moderate; 7
+  at the first s125 push; s123 read 0): list them (gh api .../dependabot/alerts) and triage each (operator commit, path B, or
   decline with a reason; RM-681 holds anthropic). PR #19 CLOSED (anthropic 1.15.0 declined under
   RM-681). PR #21 OPEN (2026-10-21 00:11Z, pip group): pillow 12.3.0 -> 13.0.0 (major), portalocker
   4.4.0 -> 4.4.1, ruff in .github/ci - apply as an operator commit or decline via the ignore list.
@@ -231,7 +231,7 @@ ORDER 2026-10-19-1121, done s124); 17-18 new in s122; 19-22 new in s125. The Git
     the artifact is private): keep, or ask MAIN for a gitignored location? (s124 + s125: that URL
     returns not_found for this account.)
 19. Turn ON Dependabot security updates (repo setting; MAIN's DEPENDABOT rule wants alerts and
-    updates on; found OFF in s125). 7 alerts are open (s125 push banner).
+    updates on; found OFF in s125). 30 alerts are open (s125 wrap push banner).
 20. Run elevated: `powershell -ExecutionPolicy Bypass -File tools\install_ds_keepalive_task.ps1`
     (registers SYSTEM task RC-DSKeepalive, RM-750).
 21. Optional: add your primary address to LOCAL git config fleet.operatorIdent (17 old
@@ -380,7 +380,7 @@ tools/install_ds_keepalive_task.ps1 (RM-750); ops/runtime/inbox_responder_agreem
 (expires 2026-11-01).
 
 Acceptance: each s125 filing per its BACKLOG acceptance (failing test first, verifier CONFIRM,
-live read-back on a touched port); the RM-750 RC-stopped check after ASKS 20; the 7 alerts
-triaged; operator asks answered or re-batched.
+live read-back on a touched port); the RM-750 RC-stopped check after ASKS 20; the Dependabot
+alerts triaged; operator asks answered or re-batched.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
