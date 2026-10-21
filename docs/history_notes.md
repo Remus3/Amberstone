@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-18 - session 122: C1 decided, hand-off under 30 KB, CI-red fixes pushed, gated suite NOT done
+
+- **C1 (LEDGER 1737, `50744bdee`):** 2 PUBREPO worktrees + branches and 8 backup refs removed (worktrees 24 -> 22, refs 99 -> 89); the in-tree tag bundle KEPT (proved by a full restore, not `git bundle verify`). The sidecar bundle copy is on the SAME physical disk (off-tree, not off-box).
+- **Rest (LEDGER 1738):** H1/H2 hand-off trim + /done size pre-flight `5142a52bc`; P1 `2497e857b` + P2 `0d11d82cf` (129-char path cap, now refused at pre-commit); F1 `181789cf9`; G2 `65ac9fbe6`; S1 sweep ls-remote fix merged `d2aabcc91`. Kit v19 (`2c10e5284`) and the GH-HYGIENE ANSWER came from MAIN's own headless runs.
+- **Push:** `2c10e5284..d2aabcc91`; CI on d2aabcc91 recorded in the hand-off.
+- **NOT DONE - first next action:** T2, the gated Tier-2 dual suite (run 1 hung after gw7 crashed; run 2 stopped by the harness at 99 percent for low memory). Re-run with `-v` / `--report-log`, memory headroom.
+- **Found at the wrap:** MAIN FIX 2026-10-17-1709 (ROFL archive 340 GB on C:, move to E:) was never picked up; carried. The kit v18 / v19 ORDER rows closed with `inbox_tick.py --done`.
+- **Do NOT redo:** C1, H1, P1, P2, F1, G2, S1.
+- **Next:** T2; then the ROFL FIX; then RM-747..RM-750.
+
+---
+
 # 2026-10-17b - session 121: F1 closed - CodeQL #63 / #64 fixed, 0 open bot PRs, ONE ANSWER to MAIN
 
 - **F1 (MAIN FIX eb3c0d686aea) DONE (LEDGER 1736):** merge `7a81e608e` = `d63ebc1e7` (TLS 1.2 floor on 3 test SSL contexts) + `fdd63ec19` (ruff 0.16.10 -> 0.17.0, = Dependabot #15); verifier 8/8, the 3 test files 24 passed. CodeQL #63 / #64 fixed at 20:29:19Z; 0 open alerts.
