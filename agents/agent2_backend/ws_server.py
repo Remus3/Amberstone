@@ -50,6 +50,7 @@ import ipaddress
 import json
 import logging
 import logging.handlers
+import sys
 import time
 from collections.abc import Iterable, Sequence
 from http import HTTPStatus
@@ -63,6 +64,8 @@ from websockets.http11 import Request, Response
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOG_ROOT = _PROJECT_ROOT / "logs" / "ws"
+
+log = logging.getLogger(__name__)
 
 DEFAULT_HOST = "127.0.0.1"  # RM-231: loopback; widen only deliberately
 DEFAULT_PORT = 8891
@@ -394,11 +397,21 @@ class WSServer:
 
     # ----- lifecycle ---------------------------------------------------
     async def start(self) -> None:
-        self._server = await serve(
-            self._router, self.host, self.port,
-            max_size=WS_MAX_FRAME_BYTES,
-            process_request=self._process_request,
-        )
+        """Bind and start serving. A bind failure (RM-756: a held port used
+        to surface as asyncio's raw OSError, e.g. WinError 10048) raises a
+        RuntimeError naming host:port with the supervisor preflight's
+        netstat hint; no heartbeat task is started in that case."""
+        try:
+            self._server = await serve(
+                self._router, self.host, self.port,
+                max_size=WS_MAX_FRAME_BYTES,
+                process_request=self._process_request,
+            )
+        except OSError as e:
+            raise RuntimeError(
+                f"ws_server cannot bind {self.host}:{self.port} - port already in use? "
+                f"run: `netstat -ano | findstr :{self.port}` to identify the holder ({e})"
+            ) from e
         self._hb_task = asyncio.create_task(self._heartbeat_loop())
         self._ingest_log.info("SEND ws-start host=%s port=%d", self.host, self.port)
         self._push_log.info("SEND ws-start host=%s port=%d", self.host, self.port)
@@ -452,7 +465,11 @@ class WSServer:
 async def _main(host: str, port: int) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     srv = WSServer(host=host, port=port)
-    await srv.start()
+    try:
+        await srv.start()
+    except RuntimeError as e:
+        log.error("%s", e)
+        return 1
     try:
         await asyncio.Future()
     finally:
@@ -465,4 +482,4 @@ if __name__ == "__main__":
     p.add_argument("--host", default=DEFAULT_HOST)
     p.add_argument("--port", type=int, default=DEFAULT_PORT)
     args = p.parse_args()
-    asyncio.run(_main(args.host, args.port))
+    sys.exit(asyncio.run(_main(args.host, args.port)))
