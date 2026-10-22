@@ -387,6 +387,81 @@ def _parse_scalar(s: str) -> Optional[float]:
     return v if math.isfinite(v) else None
 
 
+def _long_bracket_level(text: str, i: int) -> int:
+    """Level of a Lua long bracket opening at ``text[i]`` (``[`` ``=``* ``[``), else -1."""
+    n = len(text)
+    if i >= n or text[i] != "[":
+        return -1
+    j = i + 1
+    while j < n and text[j] == "=":
+        j += 1
+    return j - i - 1 if (j < n and text[j] == "[") else -1
+
+
+def _strip_lua_comments(text: str) -> str:
+    """Remove every Lua comment from ``text``; string literals stay verbatim.
+
+    RM-600: the module carries Lua-commented code (Kled's second record has a
+    whole ``--["aram"] = { ... --},`` block commented out) and the brace-scan /
+    scalar regexes cannot tell a comment from live data, so comments go first.
+    Handled: ``--`` line comments (to end of line; the newline is kept), and
+    ``--[[ ... ]]`` / ``--[==[ ... ]==]`` block comments (replaced by one space,
+    so the tokens either side never glue). ``-- [[`` (a space before the
+    brackets) is a LINE comment, as in Lua. A ``--`` inside a ``"..."`` /
+    ``'...'`` string (backslash escapes honoured) or a ``[[ ... ]]`` long string
+    is data, not a comment. Fail-soft on malformed input: an unterminated block
+    comment drops the rest of the text, an unterminated short string ends at the
+    newline.
+    """
+    out: list[str] = []
+    n = len(text)
+    i = 0
+    seg = 0  # start of the verbatim segment not yet copied to ``out``
+    while i < n:
+        c = text[i]
+        if c == "-" and text.startswith("--", i):
+            out.append(text[seg:i])
+            lvl = _long_bracket_level(text, i + 2)
+            if lvl >= 0:
+                close = "]" + "=" * lvl + "]"
+                end = text.find(close, i + lvl + 4)
+                i = n if end < 0 else end + len(close)
+                out.append(" ")
+            else:
+                nl = text.find("\n", i)
+                i = n if nl < 0 else nl
+            seg = i
+            continue
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c and text[j] != "\n":
+                j += 2 if text[j] == "\\" else 1
+            i = j + 1 if (j < n and text[j] == c) else min(j, n)
+            continue
+        if c == "[":
+            lvl = _long_bracket_level(text, i)
+            if lvl >= 0:
+                close = "]" + "=" * lvl + "]"
+                end = text.find(close, i + lvl + 2)
+                i = n if end < 0 else end + len(close)
+                continue
+        i += 1
+    out.append(text[seg:])
+    return "".join(out)
+
+
+def _is_primary_record(blk: str) -> bool:
+    """True when a champion block's ``["id"]`` is an integer (the live record).
+
+    RM-600: the module can carry a second block with the SAME ``apiname`` and a
+    fractional id (Kled 240 vs "Kled & Skaarl" 240.1); the integer-id block is
+    the primary record. A missing or non-numeric id is not primary.
+    """
+    m = re.search(r'\["id"\]\s*=\s*(-?[0-9.]+)', blk)
+    val = _parse_scalar(m.group(1)) if m else None
+    return val is not None and val == int(val)
+
+
 _BLOCK_OPEN_RE = re.compile(r'\["([^"]+)"\]\s*=\s*\{')
 
 
@@ -505,8 +580,16 @@ def _parse_lua_table(raw: str) -> dict[str, dict[str, Any]]:
     ``apiname`` key in the block head, which excludes nested subtables like
     ``stats``/``aram``) and pulls the scalar stat fields. Keyed by ``apiname``
     (== the Riot/DDragon champion id).
+
+    RM-600: Lua comments are stripped first (``_strip_lua_comments``), so a
+    commented-out scalar or mode block is never read as live. When two blocks
+    share an ``apiname`` (Kled 240 + "Kled & Skaarl" 240.1), the primary
+    integer-id record wins in either order; between two records of the same
+    kind the FIRST is kept. A lone non-integer-id record is still used.
     """
+    raw = _strip_lua_comments(raw)
     out: dict[str, dict[str, Any]] = {}
+    primary: set[str] = set()
     for m in _BLOCK_OPEN_RE.finditer(raw):
         open_idx = raw.find("{", m.start())
         if open_idx < 0:
@@ -519,6 +602,11 @@ def _parse_lua_table(raw: str) -> dict[str, dict[str, Any]]:
         am = re.search(r'\["apiname"\]\s*=\s*"([^"]+)"', blk)
         if not am:
             continue
+        is_primary = _is_primary_record(blk)
+        if am.group(1) in out and (am.group(1) in primary or not is_primary):
+            continue  # RM-600: a later duplicate never displaces the record kept
+        if is_primary:
+            primary.add(am.group(1))
         # Mode-modifier sub-blocks live nested inside ["stats"]; scope the scan to
         # that subtable so a (hypothetical) top-level mode key cannot leak in.
         stats_blk = _stats_block_of(blk)

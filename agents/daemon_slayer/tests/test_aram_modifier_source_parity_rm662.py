@@ -68,15 +68,10 @@ ALLOWLIST = {
         "external reference L moved Kled 1.05 -> 1 at 16.19.1. Neither side "
         "is confirmed by patch notes, so neither is overwritten."
     ),
-    ("Kled", "dmg_taken"): (
-        "Sidecar parse artifact, not a source disagreement: the wiki module "
-        "carries a second Kled record (id 240.1, 'Kled and Skaarl') whose aram "
-        "block is Lua-COMMENTED OUT (--[\"dmg_taken\"] = 0.9). "
-        "tools/daemon_slayer_wiki_stats_extract.py does not skip Lua comments "
-        "and the second record overwrites the first, so the sidecar reads 0.9 "
-        "where the live record 240 reads 1, which matches aram_modifiers."
-    ),
 }
+# ("Kled", "dmg_taken") left this list with RM-600: the extractor now strips Lua
+# comments and keeps the primary integer-id record per apiname, so the sidecar
+# reads record 240's dmg_taken 1, which matches aram_modifiers.
 
 # The overlap measured 2026-10-04 is 363 fields; a floor well below it keeps
 # the guard from passing vacuously if a re-key or schema change empties it.
