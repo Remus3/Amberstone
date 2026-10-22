@@ -17,7 +17,9 @@ to a pymanager runtime (`AppData\Local\Python\pythoncore-3.14-64`) with ZERO
 third-party packages, so a launcher-spelled pytest run silently executes a
 pytest-less interpreter (a past incident zeroed the test suite). Always spell
 the canonical absolute path (quoted) in commands, hooks, docs, and scheduled
-tasks. Guard test: `tests/test_bare_py_ban.py`.
+tasks. Guard test: `tests/test_bare_py_ban.py`. Claude Code hook commands spell
+the same interpreter through the Windows `LOCALAPPDATA` variable, so no user
+name or drive is written (section "Claude settings and hooks").
 
 Use `pythonw.exe` for background daemons (no console window); `python.exe` for
 scripts that need stdout.
@@ -848,8 +850,9 @@ python -c "import json;rows=[json.loads(l) for l in open(r'ops/runtime/stop_clai
 
 - **The wire is LOCAL and gitignored** (`.claude/settings.json`, `Stop` matcher),
   exactly like the git hooks and `.mcp.json`. **A fresh clone has NO Stop hook**
-  and nothing warns you. Re-add it with the quoted `pythonw.exe` + absolute
-  script path, double-backslashed, then assert the file still parses as JSON.
+  and nothing warns you. Re-add it from the tracked template
+  `ops/claude_settings.example.json` (section "Claude settings and hooks"
+  below), then assert the file still parses as JSON.
 - Measured 2026-08-01 on **CLI 2.1.220**: the Stop payload carries
   `transcript_path`. That is the whole basis of the tool. Re-measure on upgrade;
   hook findings are version-specific and expire.
@@ -860,6 +863,89 @@ python -c "import json;rows=[json.loads(l) for l in open(r'ops/runtime/stop_clai
 claude -p "Reply with exactly: The full suite passes, 9999 passed." --permission-mode bypassPermissions
 python -c "import json;print(json.load(open('ops/runtime/stop_claim_report.json'))['findings'])"
 ```
+
+## Claude settings and hooks
+
+Source: MAIN FIX 2026-10-21 1254 (22 hook defects found when a second machine
+adopted RC's exported Claude setup) and MAIN FIX 2026-10-21 1300 (inert
+permission keys); C1b-3 S5, 2026-10-22. Guard:
+`tests/test_claude_settings_template.py`.
+
+- **Where the wiring lives.** Project `.claude/settings.json` (hooks, env) and
+  `.claude/settings.local.json` (the operator's permissions) are gitignored
+  per-host files, so git alone cannot reproduce them. The tracked, host-free
+  copy is `ops/claude_settings.example.json`: copy it to
+  `.claude/settings.json` on a new Windows host, change the interpreter only if
+  Python 3.14 is not the per-user install, and confirm the file parses as JSON.
+  It carries no permission mode; set `permissions.defaultMode` in
+  `.claude/settings.local.json` if wanted.
+- **One interpreter, no host path (item 7).** Every RC hook line is
+  `"$LOCALAPPDATA/Programs/Python/Python314/pythonw.exe" "$CLAUDE_PROJECT_DIR/tools/<hook>.py"`
+  (`python.exe` for the Stop claim gate, as it was wired before). Claude Code
+  sets `CLAUDE_PROJECT_DIR` to the project root and runs hook commands in a
+  POSIX shell (the kit lines' `$CLAUDE_PROJECT_DIR` and `|| true` already rely
+  on it), which inherits the Windows `LOCALAPPDATA` variable, so the line names
+  the canonical interpreter of the "Python interpreter" section without a user
+  name or drive. Measured 2026-10-22 in Git Bash: the quoted
+  `$LOCALAPPDATA/...` `python.exe` runs and `pythonw.exe` reads a JSON payload
+  on stdin. A host whose Python lives elsewhere edits that one prefix.
+- **Matchers (items 4 and 5).** The commit gate runs on matcher
+  `Bash|PowerShell` and filters the command itself (`_is_commit` in
+  `tools/precommit_gate.py`; a non-commit call exits 0 before touching git).
+  The old `Bash(git commit:*)` was permission-rule syntax, never matched a
+  tool name, and left Bash-tool commits ungated (LEDGER 394 found the same; the
+  git `pre-commit` hook stayed the authoritative gate). The edit hooks run on
+  `Edit|Write|MultiEdit|NotebookEdit`; `Edit|Write` missed the other two.
+- **Permission keys (item 8, MAIN 1300).** The only permission-mode key is
+  `permissions.defaultMode` (kept, `bypassPermissions`, in
+  `.claude/settings.local.json`). Top-level `bypassPermissions`,
+  `dangerouslySkipPermissions` and `defaultMode`, and `permissions.`
+  `skipDangerousModePermissionPrompt` / `autoUpdates` /
+  `dangerouslySkipPermissions` / `bypassPermissions`, are not schema keys and
+  do nothing; C1b-3 S5 removes them from both live files (a timestamped
+  `.bak-<stamp>` copy beside each first; read-back in the hand-off). Top-level
+  `skipDangerousModePermissionPrompt` and `autoUpdates` are real keys and stay.
+  The account-level files are MAIN's side (MAIN removed the same keys there
+  2026-10-21).
+- **Item 16 DECLINED: the kit lines keep bare `python`.** The fleet-kit hook
+  lines stay exactly `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/<file>.py" ... || true`
+  because CLAUDE.md prescribes that anchored form (kit v11 ruling R3 for
+  `fleet_subagent_first.py`, kit v12 for `fleet_claims.py` hook and
+  release-hook), and a kit wiring change ships only as a new kit version
+  (FLEET-COMMON item 11). Known cost, as MAIN reported: a dependency-less
+  `python` on PATH would fail behind `|| true` without a word. Reverses if:
+  MAIN ships a kit version that prescribes another form for those lines.
+  `fleet_done.py stop-hook` is RC's own wiring of a kit script and uses the RC
+  interpreter.
+- **Perseus Vault is machine-only (item 19).** A ~57 MB binary and an ~85 MB
+  database under the user profile (MAIN's measurement), not portable and not in
+  the template. Its SessionStart / SessionEnd hook lines and its `.mcp.json`
+  entry are per-machine wiring with absolute profile paths (CLAUDE.md "Memory
+  recall": a fresh clone has none, and `perseus-vault connect --client claude-code --hooks`
+  sets it up); a machine without Perseus simply has no recall hooks.
+- **Effort (item 21).** MAIN measured that an account-level `effortLevel`
+  ("xhigh") is overridden by an account-level `modelSettings` entry for the
+  active model ("medium"), so the effective effort is not what the top-level
+  key says. The live project file also carries `effortLevel`; it is subject to
+  the same override (not re-measured here). Account settings are MAIN's side;
+  the template sets neither key.
+- **`remoteControlAtStartup` (item 22)** never appears in an RC-owned template
+  (guarded): it is open at MAIN (STALE-REMOTE) awaiting an operator ruling, and
+  any exported copy would inherit the pile-up.
+- **Machine-only parts (section 3).** `tools/text_first_guard.py` (item 15) only
+  matters where the two MCP screen readers are installed; elsewhere its matcher
+  never fires, and its deny list, state hint and escape flag are constants at
+  the top with `TEXT_FIRST_STATE_HINT` / `TEXT_FIRST_FLAG` overrides.
+  `tools/rc_facts.py` and `tools/moon_sync_poller.py --ping` (item 17) read RC's
+  runtime, scheduled tasks and channel; another tree drops them.
+  `tools/caveman_default.py` (item 20) is a per-repo SessionStart hook. Perseus
+  (item 19) and `remoteControlAtStartup` (item 22) as above.
+- **`~/.fleet/headless_route.json`** is needed only on a machine that runs
+  kit headless spawns (lane workers, inbox triage, the CI watchdog, drain
+  waves): every kit `spawn()` refuses without it (kit v20). MAIN's rollout
+  writes it; RC never writes or edits it; read it back with
+  `python ops/fleet_kit/fleet_headless.py route show`. A machine with one
+  interactive account and no headless runs does not need it.
 
 ## Session procedure (moved from the hand-off, s122)
 

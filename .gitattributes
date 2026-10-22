@@ -78,6 +78,16 @@ data/meta/ddragon_*.json          linguist-generated=true
 # MANIFEST.json) would fail. Every kit file is vendored byte-for-byte as LF.
 ops/fleet_kit/* text eol=lf
 
+# The tracked git hooks (core.hooksPath = .githooks) have no extension, so no
+# rule above covered them: the blobs were LF but core.autocrlf=true wrote every
+# fresh checkout CRLF (measured 2026-10-22: all six in a new worktree, three of
+# six in the long-lived checkout). FLEET-COMMON item 8 is ASCII + LF, and an
+# exported CRLF `#!/bin/sh` script breaks on a shell that keeps the CR (MAIN FIX
+# 2026-10-21 1254 item 18). A checkout made before this pin re-materialises the
+# files once: delete them, then `git checkout -- .githooks/`. Guarded by
+# tests/test_githooks_eol_lf.py.
+.githooks/* text eol=lf
+
 # The RC-PostmortemAnalyze hidden launcher (MAIN FIX 2026-10-11 2226) is LF by
 # the fleet ASCII/LF rule. Pinned by PATH, not `*.vbs`: the older
 # ops/rc_watcher_launch.vbs is CRLF on disk in existing checkouts, and a
