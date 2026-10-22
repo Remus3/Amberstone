@@ -3195,10 +3195,16 @@ class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
         raw = self._read_body_deadlined(length)
         if not raw.strip():
             return {}
+        # RM-758: one fixed message on the wire. ValueError covers the decoder
+        # (JSONDecodeError), the codec (UnicodeDecodeError) and the
+        # int-digit-limit error a 5000-digit literal raises; RecursionError is
+        # a deeply nested array, which used to reach the 500 catch-all. The
+        # raw error goes to the log only - it used to be echoed to the client.
         try:
             data = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as e:
-            raise _ApiError(400, f"invalid JSON body: {e}")
+        except (ValueError, RecursionError) as e:
+            _log.warning("invalid JSON body: %s: %s", type(e).__name__, e)
+            raise _ApiError(400, "invalid JSON body") from None
         if not isinstance(data, dict):
             raise _ApiError(400, "JSON body must be an object")
         return data
