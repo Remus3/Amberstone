@@ -104,8 +104,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tools.rc_facts import _entry_name, _inbox_entries, _probe_inbox_listable  # noqa: E402
-from tools.sibling_name_sweep import resolve_config_path  # noqa: E402
+# MAIN FIX 2026-10-21 1254 item #17: these two imports were unguarded, so a copy
+# of the --ping hook without RC's helper modules died with ImportError (exit 1
+# on every UserPromptSubmit) although the ping needs neither. The ping now runs
+# without them; every scan mode refuses loudly in main() (see
+# _HELPER_IMPORT_ERROR), because a blind scan must not read as a clean one.
+try:
+    from tools.rc_facts import _entry_name, _inbox_entries, _probe_inbox_listable  # noqa: E402
+    from tools.sibling_name_sweep import resolve_config_path  # noqa: E402
+    _HELPER_IMPORT_ERROR: Exception | None = None
+except Exception as _exc:  # noqa: BLE001 - any failure to load a helper module
+    _HELPER_IMPORT_ERROR = _exc
+    resolve_config_path = None
+
+    def _helpers_missing(*_a, **_k):
+        raise ImportError(f"moon_sync_poller helper modules unavailable: {_HELPER_IMPORT_ERROR!r}")
+
+    _entry_name = _inbox_entries = _probe_inbox_listable = _helpers_missing
 
 BASE_SECONDS = 5 * 60
 
@@ -133,7 +148,11 @@ _SELF_REPO = str(Path(__file__).parent.parent)
 def _repo_config() -> Path:
     """The per-host config for `_SELF_REPO`, resolved through the ONE shared
     resolver (RM-433): a linked worktree carries no copy of the gitignored
-    file, so it reads the main working tree's instead of polling only itself."""
+    file, so it reads the main working tree's instead of polling only itself.
+    Without the resolver (a helper import failed) it is this checkout's own
+    path, which the callers already treat as possibly absent."""
+    if resolve_config_path is None:
+        return Path(_SELF_REPO) / "ops" / "moon_sync_repos.json"
     return resolve_config_path(Path(_SELF_REPO))
 
 # Rendering bounds. rc_facts carries no display constant this module may reuse
@@ -513,6 +532,11 @@ def ping(repo: str) -> int:
     rather than creating an arbitrary directory, and any OSError is swallowed,
     because this runs as a UserPromptSubmit hook and a non-zero exit there is
     a broken turn in exchange for a stamp nobody is waiting on.
+
+    MAIN 1254 #17: written through _atomic_write, so LF only (the bare
+    write_text it used put CRLF on Windows). Only OSError is swallowed HERE,
+    so a test that plants a tripwire (an AssertionError) still sees it; the
+    hook entry in main() swallows everything else.
     """
     try:
         root = Path(repo)
@@ -521,9 +545,7 @@ def ping(repo: str) -> int:
         target = _ping_path(repo)
         target.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps({"stamp": time.time(), "updated": _utcnow()}, indent=2)
-        tmp = target.with_name(f"{target.name}.tmp.{os.getpid()}")
-        tmp.write_text(payload, encoding="utf-8")
-        _replace_with_retry(tmp, target)
+        _atomic_write(target, payload)
     except OSError:
         return 0
     return 0
@@ -1338,7 +1360,14 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.ping:
-        return ping(args.ping)
+        try:
+            return ping(args.ping)
+        except Exception:  # noqa: BLE001 - MAIN 1254 #17: the hook entry fails open
+            return 0
+    if _HELPER_IMPORT_ERROR is not None:
+        print(f"moon_sync_poller: cannot scan, helper import failed: {_HELPER_IMPORT_ERROR!r}",
+              file=sys.stderr)
+        return 1
     repos = tuple(args.repo) if args.repo else DEFAULT_REPOS
     if args.status:
         for line in status_report(repos=repos):
