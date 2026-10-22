@@ -1041,7 +1041,7 @@ probabilistic). Both mutation-proven.
 **Sibling population NOT fixed here** (lane 8 audits one file): the same
 deterministic-scratch shape is live at `agents/agent1_lead/scheduler.py:186`,
 `agents/agent2_backend/pipeline/orchestrator.py:82`,
-`agents/agent2_backend/smb_push.py:169`,
+`agents/agent2_backend/smb_push.py` (deleted in 8ed75ccac),
 `agents/agent4_coach_mentor/{cold_streak_detector.py:65,insight_detector.py:62,ui_applier.py:92}`,
 `agents/_supervisor_ephemeral.py:106`, `coaches/experimental_builder.py:121,353`,
 `coaches/_base_coach.py:94` (FROZEN) and `coach_integration/_coach.py:118,713`.
