@@ -134,7 +134,7 @@ def test_a_request_line_with_no_headers_is_closed_at_the_head_deadline(
         short_head_deadline):
     with _plain() as (port, parked):
         s = _connect(port, parked)
-        s.sendall(b"GET /api/ui-version HTTP/1.1\r\nHost: x\r\n")
+        s.sendall(b"GET /api/ui-version HTTP/1.1\r\nHost: 127.0.0.1\r\n")
         elapsed = _time_to_close(s, wait_s=6.0)
     assert elapsed < short_head_deadline + 3.0, elapsed
 
@@ -255,7 +255,7 @@ def test_a_slow_speaker_inside_the_deadline_is_served(monkeypatch):
         time.sleep(0.6)
         s.sendall(b"GET /api/ui-version HTTP/1.1\r\n")
         time.sleep(0.6)
-        s.sendall(b"Host: x\r\n\r\n")
+        s.sendall(b"Host: 127.0.0.1\r\n\r\n")
         reply = _read_all(s)
     assert reply.split(b"\r\n", 1)[0].split(b" ")[1] == b"200", reply[:120]
 
@@ -267,7 +267,7 @@ def test_a_post_body_slower_than_the_head_deadline_is_still_read(
     body = b'{"command":"bogus"}'
     with _plain() as (port, parked):
         s = _connect(port, parked)
-        s.sendall(b"POST /api/command HTTP/1.1\r\nHost: x\r\n"
+        s.sendall(b"POST /api/command HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                   b"Content-Type: application/json\r\n"
                   b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n")
         time.sleep(short_head_deadline * 2)

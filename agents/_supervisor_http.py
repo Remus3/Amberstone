@@ -27,6 +27,9 @@ from dashboard._handler import _scrub_log
 # RM-753: the :8888 dashboard's same-origin rule for state-changing POSTs,
 # the one function both servers call (same import direction as above).
 from dashboard._handler import _same_origin_ok
+# RM-759: the :8888 dashboard's Host allowlist (DNS rebinding), the one
+# gate both servers run (same import direction as above).
+from dashboard._handler import HostAllowlistMixin
 
 # RM-749: the shared RM-744 request-head deadline (stdlib-only, no cycle).
 from core.http_head_deadline import HeadDeadlineMixin
@@ -84,8 +87,14 @@ def _str_field(body: dict, key: str) -> str:
     return value.strip()
 
 
-class _QuietHandler(HeadDeadlineMixin, http.server.SimpleHTTPRequestHandler):
+class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
+                    http.server.SimpleHTTPRequestHandler):
     """Web handler for the Phase 3 UI.
+
+    RM-759: a request whose Host this machine does not answer to (DNS
+    rebinding: measured 200 on GET /api/queue for a rebound name before the
+    fix) gets 421 before any route or file response, by the :8888
+    dashboard's own gate (``HostAllowlistMixin``).
 
     Audit L4: deny dotfiles and common secret filenames so a misplaced
     ``.env`` in ``web/`` never reaches the wire, even inside the LAN.
@@ -103,6 +112,7 @@ class _QuietHandler(HeadDeadlineMixin, http.server.SimpleHTTPRequestHandler):
     """
     _DENYLIST_NAMES = {".env", ".git", ".htpasswd", "secrets.json",
                        "api-key-claude.txt", "credentials.json"}
+    host_refusal_log = log
 
     def _is_forbidden(self, path: str) -> bool:
         # Lane 8 cycle 15: this used to test the RAW request target, but

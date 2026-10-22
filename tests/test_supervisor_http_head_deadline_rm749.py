@@ -126,7 +126,7 @@ def test_a_request_line_with_no_headers_is_closed_at_the_head_deadline(
         webroot, short_head_deadline):
     with _served(webroot) as (port, parked):
         s = _connect(port, parked)
-        s.sendall(b"GET /ok.txt HTTP/1.1\r\nHost: x\r\n")
+        s.sendall(b"GET /ok.txt HTTP/1.1\r\nHost: 127.0.0.1\r\n")
         elapsed = _time_to_close(s, wait_s=6.0)
     assert elapsed < short_head_deadline + 3.0, elapsed
 
@@ -164,7 +164,7 @@ def test_a_slow_speaker_inside_the_deadline_is_served(webroot, monkeypatch):
         time.sleep(0.6)
         s.sendall(b"GET /ok.txt HTTP/1.1\r\n")
         time.sleep(0.6)
-        s.sendall(b"Host: x\r\nConnection: close\r\n\r\n")
+        s.sendall(b"Host: 127.0.0.1\r\nConnection: close\r\n\r\n")
         reply = _read_all(s)
     assert _status(reply) == b"200", reply[:160]
     assert reply.endswith(b"public\n"), reply[-40:]
@@ -179,7 +179,7 @@ def test_a_post_body_slower_than_the_head_deadline_is_still_read(
     body = b"{bad"
     with _served(webroot) as (port, parked):
         s = _connect(port, parked)
-        s.sendall(b"POST /api/input HTTP/1.1\r\nHost: x\r\n"
+        s.sendall(b"POST /api/input HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                   b"Content-Type: application/json\r\nConnection: close\r\n"
                   b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n")
         time.sleep(short_head_deadline * 2)

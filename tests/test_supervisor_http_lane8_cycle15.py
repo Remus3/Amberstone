@@ -285,7 +285,7 @@ def test_do_post_actually_invokes_the_chunked_guard(server):
                                     timeout=6)
     try:
         sock.sendall(
-            b"POST /api/no-such-route HTTP/1.1\r\nHost: x\r\n"
+            b"POST /api/no-such-route HTTP/1.1\r\nHost: 127.0.0.1\r\n"
             b"Transfer-Encoding: chunked\r\n\r\n2\r\n{}\r\n0\r\n\r\n"
         )
         status_line = sock.recv(200).split(b"\r\n")[0]
@@ -347,7 +347,7 @@ def test_log_message_escapes_control_characters(server, caplog_supervisor):
     """
     _raw_request(
         server,
-        b"GET /\x1b[31mFAKE-ADMIN-OK\x1b[0m\x08\x08\x7f HTTP/1.1\r\nHost: x\r\n\r\n",
+        b"GET /\x1b[31mFAKE-ADMIN-OK\x1b[0m\x08\x08\x7f HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
     )
     hits = [m for m in caplog_supervisor.messages if "FAKE-ADMIN-OK" in m]
     assert hits, "the request was not logged at all - the probe proves nothing"
