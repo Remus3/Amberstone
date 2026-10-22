@@ -360,7 +360,7 @@ def _filename_write_sites(feed: str) -> list[str]:
     A docstring or an argparse ``help=`` string mentioning the filename is a
     longer string and so never compares equal - MEASURED,
     tools/daemon_slayer_cdragon_spell_extract.py:685 and
-    tools/daemon_slayer_wiki_stats_extract.py:868 both name their output file
+    tools/daemon_slayer_wiki_stats_extract.py:957 both name their output file
     inside a help= string and neither is returned here. Nor is a dict KEY, which
     is what keeps tools/ds_feed_index.py - the registry under audit, where every
     exempted filename appears verbatim - from matching all seven of its own

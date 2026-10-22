@@ -295,6 +295,179 @@ class TestParseModeModifiers:
         assert t["X"]["mode_modifiers"] == {}
 
 
+# --------------------------------------------------------------------------- RM-600 Lua comments + duplicate apiname
+class TestRm600LuaCommentsAndDuplicateApiname:
+    # RM-600: the module carries a second Kled record (id 240.1, block key
+    # "Kled & Skaarl", SAME apiname "Kled") after the live record 240, and that
+    # second record's aram block is Lua-COMMENTED OUT. The parser read the
+    # commented scalars as live and kept the LAST record per apiname, so the
+    # sidecar showed aram dmg_taken 0.9 (commented) and lost record 240's urf
+    # block. Shapes below are copied from the live module (fetched 2026-10-22).
+    KLED_PRIMARY = (
+        '  ["Kled"] = {\n'
+        '    ["id"]         = 240,\n'
+        '    ["apiname"]    = "Kled",\n'
+        '    ["stats"] = {\n'
+        '      ["attack_cast_time"] = 0.280000001192092,\n'
+        '      ["range"]    = 250,\n'
+        '      ["aram"] = {\n'
+        '        ["dmg_dealt"] = 1.05,\n'
+        '        ["dmg_taken"] = 1,\n'
+        "      },\n"
+        '      ["urf"] = {\n'
+        '        ["dmg_taken"] = 0.9,\n'
+        "      },\n"
+        "    },\n"
+        "  },\n"
+    )
+    KLED_SECONDARY = (
+        '  ["Kled & Skaarl"] = {\n'
+        '    ["id"]         = 240.1,\n'
+        '    ["apiname"]    = "Kled",\n'
+        '    ["stats"] = {\n'
+        '      ["attack_cast_time"] = 0.5,\n'
+        '      ["range"]    = 125,\n'
+        '      --["aram"] = { this is pointless\n'
+        '        --["dmg_dealt"] = 1.05,\n'
+        '        --["dmg_taken"] = 0.9\n'
+        "      --},\n"
+        "    },\n"
+        "  },\n"
+    )
+
+    @staticmethod
+    def _wrap(*blocks: str) -> str:
+        return "-- <pre>\nreturn {\n" + "".join(blocks) + "}\n-- </pre>\n-- [[Category:Lua]]\n"
+
+    def test_line_commented_mode_block_yields_no_scalar(self):
+        # the secondary record alone: its whole aram block is commented out
+        t = W._parse_lua_table(self._wrap(self.KLED_SECONDARY))
+        assert t["Kled"]["mode_modifiers"] == {}
+
+    def test_line_comment_inside_live_mode_block_is_skipped(self):
+        sample = self._wrap(
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    ["stats"] = {\n'
+            '      ["aram"] = {\n'
+            '        ["dmg_dealt"] = 1.05,\n'
+            '        --["dmg_taken"] = 0.9,\n'
+            '        ["ability_haste"] = 10, -- ["ms_mod"] = 5\n'
+            "      },\n"
+            "    },\n"
+            "  },\n"
+        )
+        aram = W._parse_lua_table(sample)["X"]["mode_modifiers"]["aram"]
+        assert aram == {"dmg_dealt": pytest.approx(1.05),
+                        "ability_haste": pytest.approx(10.0)}
+
+    def test_block_comment_inside_mode_block_is_skipped(self):
+        sample = self._wrap(
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    ["stats"] = {\n'
+            '      ["aram"] = {\n'
+            '        ["dmg_dealt"] = 1.05,\n'
+            '        --[[ ["dmg_taken"] = 0.9,\n'
+            '        ["ability_haste"] = 20, ]]\n'
+            '        --[==[ ["ms_mod"] = 5 ]] still comment ]==]\n'
+            '        ["tenacity"] = 1.1,\n'
+            "      },\n"
+            '      --[[ ["urf"] = { ["dmg_dealt"] = 1.2 }, ]]\n'
+            "    },\n"
+            "  },\n"
+        )
+        mm = W._parse_lua_table(sample)["X"]["mode_modifiers"]
+        assert mm == {"aram": {"dmg_dealt": pytest.approx(1.05),
+                               "tenacity": pytest.approx(1.1)}}
+
+    def test_commented_scalar_field_is_not_read(self):
+        sample = self._wrap(
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    ["stats"] = {\n'
+            '      --["attack_cast_time"] = 0.9,\n'
+            '      ["range"] = 175,--see his passive for the real range\n'
+            "    },\n"
+            "  },\n"
+        )
+        assert W._parse_lua_table(sample)["X"]["attack_cast_time"] is None
+
+    def test_duplicate_apiname_keeps_primary_integer_id_record(self):
+        t = W._parse_lua_table(self._wrap(self.KLED_PRIMARY, self.KLED_SECONDARY))
+        rec = t["Kled"]
+        assert rec["wiki_name"] == "Kled"
+        assert rec["attack_cast_time"] == pytest.approx(0.28)
+        assert rec["mode_modifiers"] == {
+            "aram": {"dmg_dealt": pytest.approx(1.05), "dmg_taken": pytest.approx(1.0)},
+            "urf": {"dmg_taken": pytest.approx(0.9)},
+        }
+
+    def test_duplicate_apiname_primary_wins_in_either_order(self):
+        t = W._parse_lua_table(self._wrap(self.KLED_SECONDARY, self.KLED_PRIMARY))
+        assert t["Kled"]["wiki_name"] == "Kled"
+        assert t["Kled"]["mode_modifiers"]["aram"]["dmg_taken"] == pytest.approx(1.0)
+
+    def test_lone_non_integer_id_record_is_still_kept(self):
+        # no primary exists -> the only record for the apiname is still used
+        t = W._parse_lua_table(self._wrap(self.KLED_SECONDARY))
+        assert t["Kled"]["wiki_name"] == "Kled & Skaarl"
+        assert t["Kled"]["attack_cast_time"] == pytest.approx(0.5)
+
+    def test_string_containing_double_dash_is_not_truncated(self):
+        # a "--" inside a string literal is NOT a comment: the key, the value and
+        # the scalar after it on the SAME line all survive.
+        sample = self._wrap(
+            '  ["Odd--Name"] = {\n'
+            '    ["id"]      = 7,\n'
+            '    ["apiname"] = "OddName",\n'
+            '    ["stats"] = {\n'
+            '      ["note"] = "half -- half", ["attack_cast_time"] = 0.4,\n'
+            "      [\"quip\"] = 'it\\'s -- fine', [\"missile_speed\"] = 1500,\n"
+            '      ["esc"] = "a \\" -- b", ["attack_total_time"] = 1.25,\n'
+            "    },\n"
+            "  },\n"
+        )
+        rec = W._parse_lua_table(sample)["OddName"]
+        assert rec["wiki_name"] == "Odd--Name"
+        assert rec["attack_cast_time"] == pytest.approx(0.4)
+        assert rec["missile_speed"] == pytest.approx(1500.0)
+        assert rec["attack_total_time"] == pytest.approx(1.25)
+
+    def test_spaced_double_bracket_is_a_line_comment_not_a_block(self):
+        # "-- [[x" (space before [[) is a LINE comment in Lua; the next line is live
+        sample = (
+            "return {\n"
+            "-- [[ not a block comment\n"
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    ["stats"] = {\n'
+            '      ["attack_cast_time"] = 0.3,\n'
+            "    },\n"
+            "  },\n"
+            "-- ]]\n"
+            "}\n"
+        )
+        assert W._parse_lua_table(sample)["X"]["attack_cast_time"] == pytest.approx(0.3)
+
+    def test_unterminated_block_comment_drops_the_rest_without_error(self):
+        sample = self._wrap(
+            '  ["X"] = {\n'
+            '    ["id"]      = 1,\n'
+            '    ["apiname"] = "X",\n'
+            '    ["stats"] = {\n'
+            '      ["attack_cast_time"] = 0.3,\n'
+            "    },\n"
+            "  },\n"
+        ) + '--[[ ["Y"] = { ["id"] = 2, ["apiname"] = "Y" },\n'
+        t = W._parse_lua_table(sample)
+        assert set(t) == {"X"}
+
+
 # --------------------------------------------------------------------------- extract carries mode_modifiers
 class TestExtractModeModifiers:
     @pytest.fixture(autouse=True)

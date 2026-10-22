@@ -1494,6 +1494,9 @@
    "mode_modifiers": {
     "aram": {
      "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "urf": {
      "dmg_taken": 0.9
     }
    },
