@@ -251,6 +251,22 @@ def test_run_rejects_schema_too_new(tmp_path):
     assert rs.run(rs.parse_args([str(p), "--port", "0"]), serve=False) == 2
 
 
+def test_run_bind_failure_returns_2_with_message_rm761c(tmp_path, monkeypatch, capsys):
+    # RM-761c: a held port must give a one-line stderr message and exit 2,
+    # not a raw OSError traceback out of make_server.
+    p = _write_session(tmp_path)
+
+    def held(*a, **k):
+        raise OSError(10048, "address already in use")
+
+    monkeypatch.setattr(rs, "make_server", held)
+    rc = rs.run(rs.parse_args([str(p), "--port", "8899"]))
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "replay_session:" in err
+    assert "8899" in err
+
+
 # -- /api/events pluggable --------------------------------------------------
 
 def test_events_route_absent_without_source():

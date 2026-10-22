@@ -380,6 +380,69 @@ def test_http_method_not_found(server):
     assert env["error"]["code"] == -32601
 
 
+# RM-760a: a bad body gets a FIXED JSON-RPC error string - the parser's own
+# text (positions, codec detail, exception repr) is logged, never returned -
+# and a body that parses to a non-object gets -32600 instead of crashing the
+# handler on `"id" in req` / `req.get` and dropping the connection.
+def _post_raw(base, token, raw: bytes):
+    req = Request(f"{base}/mcp", data=raw,
+                  headers={"Content-Type": "application/json",
+                           "Authorization": f"Bearer {token}"},
+                  method="POST")
+    with urlopen(req, timeout=5) as resp:
+        return resp.status, json.loads(resp.read().decode())
+
+
+@pytest.mark.parametrize("raw", [
+    b"{x",
+    b"[" * 100000,
+    b"\xff\xfe{}",
+    b"1" * 5000,
+], ids=["malformed", "deep-nesting", "bad-utf8", "long-int"])
+def test_http_parse_error_message_is_fixed_rm760a(server, raw):
+    base, tok = server
+    st, env = _post_raw(base, tok, raw)
+    assert st == 200
+    assert env["error"]["code"] == -32700
+    assert env["error"]["message"] == "Parse error"
+    assert env["id"] is None
+
+
+@pytest.mark.parametrize("raw", [b"[1]", b"5", b'"s"', b"null"],
+                         ids=["list", "int", "str", "null"])
+def test_http_non_object_body_is_invalid_request_rm760a(server, raw):
+    base, tok = server
+    st, env = _post_raw(base, tok, raw)
+    assert st == 200
+    assert env["error"]["code"] == -32600
+    assert env["error"]["message"] == "Invalid Request"
+
+
+def test_http_handler_exception_text_not_returned_rm760a(server, monkeypatch):
+    base, tok = server
+
+    def boom(params):
+        raise RuntimeError("secret detail C:/some/path")
+
+    monkeypatch.setitem(mod.METHOD_HANDLERS, "initialize", boom)
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "id": 4,
+                                "method": "initialize"})
+    assert st == 200
+    assert env["error"]["code"] == -32603
+    assert env["error"]["message"] == "Internal error"
+    assert "secret" not in json.dumps(env)
+    assert env["id"] == 4
+
+
+def test_http_server_still_serves_after_bad_body_rm760a(server):
+    base, tok = server
+    _post_raw(base, tok, b"[" * 100000)
+    st, env = _post(base, tok, {"jsonrpc": "2.0", "id": 5,
+                                "method": "initialize"})
+    assert st == 200
+    assert env["result"]["serverInfo"]["name"] == "ds-matchdb-mcp"
+
+
 def test_http_health_endpoint(server):
     base, tok = server
     req = Request(f"{base}/health",

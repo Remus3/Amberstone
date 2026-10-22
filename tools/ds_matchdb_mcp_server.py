@@ -682,10 +682,17 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self._send_jsonrpc(None, error=(-32600, "Invalid Content-Length"))
             return
         raw = self.rfile.read(n) if n else b""
+        # RM-760a: the parser's own text (positions, codec detail) is logged,
+        # never returned; ValueError covers JSONDecodeError, UnicodeDecodeError
+        # and the 4300-digit int limit, RecursionError covers deep nesting.
         try:
             req = json.loads(raw.decode("utf-8")) if raw else {}
-        except Exception as e:  # noqa: BLE001
-            self._send_jsonrpc(None, error=(-32700, f"Parse error: {e}"))
+        except (ValueError, RecursionError) as e:
+            log.warning("parse error: %s: %s", type(e).__name__, e)
+            self._send_jsonrpc(None, error=(-32700, "Parse error"))
+            return
+        if not isinstance(req, dict):
+            self._send_jsonrpc(None, error=(-32600, "Invalid Request"))
             return
         is_notification = "id" not in req
         method = req.get("method", "")
@@ -702,8 +709,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         try:
             result = handler(params)
         except Exception as e:  # noqa: BLE001
-            log.warning("handler %s raised: %s", method, e)
-            self._send_jsonrpc(rid, error=(-32603, f"{type(e).__name__}: {e}"))
+            # RM-760a: the exception text stays in the log, not the reply.
+            log.warning("handler %s raised: %s: %s", method, type(e).__name__, e)
+            self._send_jsonrpc(rid, error=(-32603, "Internal error"))
             return
         self._send_jsonrpc(rid, result=result)
 
