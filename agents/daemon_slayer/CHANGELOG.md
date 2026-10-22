@@ -1331,6 +1331,18 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.288.0 (2026-10-22) - RM-600 Kled wiki sidecar, RM-660 Arena BotRK
+current-HP lever.
+- data (RM-600): the Kled ARAM block was read from a commented-out record
+  (wiki record 240.1); the extractor now strips Lua comments and keeps the
+  primary integer-id record; only Kled changes in
+  ``data/daemon_slayer/16.20.1/wiki_stats.json`` (aram dmg_taken 0.9 -> 1.0,
+  urf dmg_taken 0.9 added), visible only with apply_mode_modifiers on, in
+  URF; ARAM keeps the lolmath path.
+- engine (RM-660): Arena BotRK 223153 Mist's Edge scales by
+  target_current_hp_pct like SR 3153; note says current HP; seam default 1.0
+  keeps default output byte-identical.
+
 1.287.0 (2026-10-09) - DS patch 16.19.1 -> 16.20.1 (RM-680).
 - data: snapshot ``data/daemon_slayer/16.20.1/`` (19 files, parity with
   16.19.1). ``aram_modifiers`` re-extracted (external reference L): 4 fields
