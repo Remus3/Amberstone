@@ -2,9 +2,15 @@
 
 Pins the gate semantics (tiered-verification default since item 408, 2026-06-13):
 - docs-only edit (*.md / *.txt / docs/* paths) -> skip everything, exit 0
-- *.py edit -> py_compile only, NO pytest, exit 0
+- *.py edit -> syntax compile only, NO pytest, exit 0
 - non-python code edit (*.js / *.css / etc) -> skip, exit 0
 - empty / unknown payload -> skip, exit 0 (cannot identify code)
+- OUTPUT (MAIN FIX 1254 #2, fleet UI/UX standard section 5): silent unless
+  there is something to say; then ONE stdout line of
+  hookSpecificOutput.additionalContext. Plain stdout on exit 0 never reached
+  the model, so a syntax error after an edit used to be invisible.
+- NO BYTECODE (MAIN FIX 1254 #12): compile(source, path, "exec"), never
+  py_compile, which wrote a .pyc into __pycache__/ beside every edited file.
 - the hook NEVER runs a test suite. The RC_FULL_SUITE=1 whole-suite branch was
   removed 2026-10-09 (MAIN kit-v13 ORDER section 2, PERF-AUDIT item 10): it ran
   a serial whole-repo suite per edit, outside the machine-wide suite gate, with
@@ -60,6 +66,15 @@ def captured_run(monkeypatch):
 def _invoke(payload: dict, monkeypatch) -> int:
     monkeypatch.setattr("sys.stdin", _StubStdin(json.dumps(payload)))
     return pytest_guard.main()
+
+
+def _context(out: str) -> str:
+    """The one additionalContext line the hook printed (MAIN FIX 1254 #2)."""
+    lines = out.splitlines()
+    assert len(lines) == 1, f"expected ONE stdout line, got {out!r}"
+    hso = json.loads(lines[0])["hookSpecificOutput"]
+    assert hso["hookEventName"] == "PostToolUse"
+    return hso["additionalContext"]
 
 
 class _StubStdin:
@@ -149,7 +164,7 @@ def test_main_docs_only_md_skips_pytest(captured_run, monkeypatch, capsys):
     rc = _invoke({"tool_input": {"file_path": "docs/ARCHITECTURE.md"}}, monkeypatch)
     assert rc == 0
     assert captured_run == [], "pytest should NOT run for docs-only edit"
-    assert "skipped" in capsys.readouterr().out
+    assert capsys.readouterr().out == "", "nothing to report -> silent"
 
 
 def test_main_docs_only_txt_skips_pytest(captured_run, monkeypatch, capsys):
@@ -157,7 +172,7 @@ def test_main_docs_only_txt_skips_pytest(captured_run, monkeypatch, capsys):
     rc = _invoke({"tool_input": {"file_path": "WAKEUP_NOTES.txt"}}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    assert "skipped" in capsys.readouterr().out
+    assert capsys.readouterr().out == ""
 
 
 def test_main_code_py_default_compiles_only(captured_run, monkeypatch, capsys):
@@ -166,7 +181,7 @@ def test_main_code_py_default_compiles_only(captured_run, monkeypatch, capsys):
     rc = _invoke({"tool_input": {"file_path": "core/engine.py"}}, monkeypatch)
     assert rc == 0
     assert captured_run == [], "default tiered behavior: no pytest subprocess"
-    assert "py_compile OK" in capsys.readouterr().out
+    assert capsys.readouterr().out == "", "a clean compile is silent"
 
 
 def test_rc_full_suite_env_no_longer_runs_a_suite(captured_run, monkeypatch, capsys):
@@ -176,10 +191,8 @@ def test_rc_full_suite_env_no_longer_runs_a_suite(captured_run, monkeypatch, cap
     rc = _invoke({"tool_input": {"file_path": "core/engine.py"}}, monkeypatch)
     assert rc == 0
     assert captured_run == [], "RC_FULL_SUITE=1 must not spawn pytest any more"
-    out = capsys.readouterr().out
-    assert "py_compile OK" in out
     # The one-line pointer tells whoever still sets the variable where suites went.
-    assert "fleet_suite_gate" in out
+    assert "fleet_suite_gate" in _context(capsys.readouterr().out)
 
 
 def test_guard_source_spawns_no_process_and_reads_no_suite_switch():
@@ -209,7 +222,57 @@ def test_compile_failure_reports_and_still_exits_zero(captured_run, monkeypatch,
     rc = _invoke({"tool_input": {"file_path": str(bad)}}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    assert "py_compile FAILED" in capsys.readouterr().out
+    ctx = _context(capsys.readouterr().out)
+    assert "broken.py:1" in ctx and "syntax" in ctx.lower()
+
+
+def test_compile_leaves_no_pycache(captured_run, monkeypatch, capsys, tmp_path):
+    # MAIN FIX 1254 #12: py_compile wrote a .pyc beside every edited file.
+    monkeypatch.setattr(sys, "pycache_prefix", None)
+    good = tmp_path / "clean_mod.py"
+    good.write_text("x = 1\n", encoding="utf-8")
+    bad = tmp_path / "bad_mod.py"
+    bad.write_text("def f(:\n", encoding="utf-8")
+    for target in (good, bad):
+        assert _invoke({"tool_input": {"file_path": str(target)}}, monkeypatch) == 0
+    capsys.readouterr()
+    assert not (tmp_path / "__pycache__").exists(), "the hook wrote bytecode"
+    assert not list(tmp_path.rglob("*.pyc"))
+
+
+_DEEP = {  # short ids: a 200k-char param id overflows PYTEST_CURRENT_TEST
+    "MemoryError": "x = " + "-" * 200000 + "1\n",
+    "RecursionError": "x = " + "1+" * 200000 + "1\n",
+}
+
+
+@pytest.mark.parametrize("kind", sorted(_DEEP))
+def test_too_deep_to_compile_is_reported_not_swallowed(kind, captured_run,
+                                                        monkeypatch, capsys, tmp_path):
+    # compile() raises MemoryError / RecursionError on a source nested too
+    # deep; py_compile used to report it, so the hook must too (not go silent).
+    source = _DEEP[kind]
+    deep = tmp_path / "deep.py"
+    deep.write_text(source, encoding="utf-8")
+    assert _invoke({"tool_input": {"file_path": str(deep)}}, monkeypatch) == 0
+    ctx = _context(capsys.readouterr().out)
+    assert "deep.py" in ctx and kind in ctx
+
+
+def test_guard_source_never_uses_py_compile():
+    tree = ast.parse(GUARD_SRC.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            assert all(a.name != "py_compile" for a in node.names), "imports py_compile"
+        elif isinstance(node, ast.ImportFrom):
+            assert node.module != "py_compile", "imports from py_compile"
+
+
+def test_compile_accepts_a_bom_prefixed_file(captured_run, monkeypatch, capsys, tmp_path):
+    bom = tmp_path / "bom_mod.py"
+    bom.write_bytes(b"\xef\xbb\xbfx = 1\n")
+    assert _invoke({"tool_input": {"file_path": str(bom)}}, monkeypatch) == 0
+    assert capsys.readouterr().out == ""
 
 
 def test_main_code_js_default_skips(captured_run, monkeypatch, capsys):
@@ -217,7 +280,7 @@ def test_main_code_js_default_skips(captured_run, monkeypatch, capsys):
     rc = _invoke({"tool_input": {"file_path": "web/js/main.js"}}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    assert "non-python code edit" in capsys.readouterr().out
+    assert capsys.readouterr().out == ""
 
 
 def test_main_code_css_default_skips(captured_run, monkeypatch, capsys):
@@ -225,7 +288,7 @@ def test_main_code_css_default_skips(captured_run, monkeypatch, capsys):
     rc = _invoke({"tool_input": {"file_path": "web/css/panels/grid.css"}}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    assert "non-python code edit" in capsys.readouterr().out
+    assert capsys.readouterr().out == ""
 
 
 def test_main_mixed_paths_default_compiles_py(captured_run, monkeypatch, capsys):
@@ -240,15 +303,14 @@ def test_main_mixed_paths_default_compiles_py(captured_run, monkeypatch, capsys)
     rc = _invoke(payload, monkeypatch)
     assert rc == 0
     assert captured_run == [], "default tiered behavior: no pytest subprocess"
-    assert "py_compile OK" in capsys.readouterr().out
+    assert capsys.readouterr().out == ""
 
 
 def test_main_empty_payload_skips_pytest(captured_run, monkeypatch, capsys):
     rc = _invoke({}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    out = capsys.readouterr().out
-    assert "skipped" in out
+    assert capsys.readouterr().out == ""
 
 
 def test_main_unknown_shape_skips_pytest(captured_run, monkeypatch, capsys):
@@ -256,7 +318,7 @@ def test_main_unknown_shape_skips_pytest(captured_run, monkeypatch, capsys):
     rc = _invoke({"tool_input": {"command": "ls -la"}}, monkeypatch)
     assert rc == 0
     assert captured_run == []
-    assert "skipped" in capsys.readouterr().out
+    assert capsys.readouterr().out == ""
 
 
 def test_main_invalid_json_stdin_skips(captured_run, monkeypatch, capsys):
@@ -264,7 +326,7 @@ def test_main_invalid_json_stdin_skips(captured_run, monkeypatch, capsys):
     rc = pytest_guard.main()
     assert rc == 0
     assert captured_run == [], "invalid JSON should treat payload as empty -> skip"
-    assert "skipped" in capsys.readouterr().out
+    assert capsys.readouterr().out == ""
 
 
 # ---------- live subprocess (real Python, no monkeypatch) ------------------
@@ -281,4 +343,4 @@ def test_cli_docs_only_real_subprocess(tmp_path):
         timeout=10,
     )
     assert proc.returncode == 0
-    assert "skipped" in proc.stdout
+    assert proc.stdout == "", "docs-only edit -> silent"

@@ -1,10 +1,12 @@
 """Tests for the CREDENTIAL arm of the PostToolUse Edit|Write hook.
 
 Closes defect D2 of `docs/specs/2026-09-20-shared-git-root-bucket-rc-share-scan.md`:
-`tools/edit_lint_check.py` is registered at `.claude/settings.json:32` as a
-PostToolUse `Edit|Write` hook and is **the only RC control whose population
+`tools/edit_lint_check.py` is registered in `.claude/settings.json` as a
+PostToolUse edit hook and is **the only RC control whose population
 already includes UNTRACKED files** - it reads the exact file just written
-(`$CLAUDE_FILE_PATHS`) and already scans its CONTENT for banned glyphs. Until
+(stdin `tool_input.file_path` since MAIN FIX 1254 #1; `$CLAUDE_FILE_PATHS`, the
+channel these tests drive, survives as the fallback) and already scans its
+CONTENT for banned glyphs. Until
 this arm landed it evaluated ZERO credential patterns, which is the binding
 constraint recorded in that report's Q2 and Q3.
 
@@ -22,6 +24,7 @@ than by assertion, and it is the test to keep green if this file is edited.
 """
 from __future__ import annotations
 
+import json
 import sys
 import time
 from pathlib import Path
@@ -32,6 +35,19 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from tools import credential_patterns, edit_lint_check  # noqa: E402
+
+
+def _said(capsys) -> str:
+    """What the hook told the model: the additionalContext of its ONE stdout
+    JSON line (MAIN FIX 1254 #2), plus any stderr so a regression back to the
+    old channel still shows up in the assertion text. Empty when silent."""
+    cap = capsys.readouterr()
+    ctx = ""
+    if cap.out.strip():
+        lines = cap.out.splitlines()
+        assert len(lines) == 1, f"hook output must be ONE line: {cap.out!r}"
+        ctx = json.loads(lines[0])["hookSpecificOutput"]["additionalContext"]
+    return ctx + cap.err
 
 
 def _fake(prefix: str, body: str) -> str:
@@ -197,7 +213,7 @@ def test_hook_output_never_contains_the_matched_value(tmp_path, monkeypatch, cap
     )
     monkeypatch.setenv("CLAUDE_FILE_PATHS", str(target))
     edit_lint_check.main()
-    err = capsys.readouterr().err
+    err = _said(capsys)
 
     # It fired, and it said WHERE.
     assert "CREDENTIAL" in err.upper()
@@ -218,7 +234,7 @@ def test_hook_reports_the_line_number(tmp_path, monkeypatch, capsys):
     )
     monkeypatch.setenv("CLAUDE_FILE_PATHS", str(target))
     edit_lint_check.main()
-    err = capsys.readouterr().err
+    err = _said(capsys)
     assert ":3" in err
     assert "riot_api_key" in err
     assert "RGAPI-" not in err
@@ -291,7 +307,7 @@ def test_hook_survives_a_scanner_exception(tmp_path, monkeypatch, capsys):
     rc = edit_lint_check.main()
 
     assert rc == 0
-    err = capsys.readouterr().err
+    err = _said(capsys)
     assert "credential" in err.lower()
     assert "synthetic scanner fault" not in err  # no raw trace spew
 
@@ -307,7 +323,7 @@ def test_glyph_arm_still_runs_when_the_credential_arm_faults(tmp_path, monkeypat
 
     edit_lint_check.main()
 
-    assert "BANNED-GLYPH FOUND" in capsys.readouterr().err
+    assert "BANNED-GLYPH FOUND" in _said(capsys)
 
 
 def test_genuine_finding_is_not_swallowed(tmp_path, monkeypatch, capsys):
@@ -318,8 +334,13 @@ def test_genuine_finding_is_not_swallowed(tmp_path, monkeypatch, capsys):
 
     rc = edit_lint_check.main()
 
-    assert rc == 2, "a credential hit must exit loudly, not silently"
-    assert "aws_access_key_id" in capsys.readouterr().err
+    # MAIN FIX 1254 #2: the finding leads the ONE additionalContext line, on
+    # exit 0 (exit 2 would make the harness drop the JSON channel the other
+    # arms speak through). Loud means "reaches the model", not "non-zero".
+    assert rc == 0
+    said = _said(capsys)
+    assert said.startswith("CREDENTIAL SHAPE FOUND"), said
+    assert "aws_access_key_id" in said
 
 
 def test_clean_edit_still_exits_zero(tmp_path, monkeypatch):
@@ -367,7 +388,7 @@ def test_skippable_paths_are_not_scanned(tmp_path, monkeypatch, capsys):
     target.write_text(_FAKE_BY_CLASS["anthropic"] + "\n", encoding="utf-8")
     monkeypatch.setenv("CLAUDE_FILE_PATHS", str(target))
     assert edit_lint_check.main() == 0
-    assert "CREDENTIAL" not in capsys.readouterr().err.upper()
+    assert "CREDENTIAL" not in _said(capsys).upper()
 
 
 def test_pragma_constant_is_ascii():
