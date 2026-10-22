@@ -1204,9 +1204,20 @@ class _WebServer(socketserver.ThreadingTCPServer):
 
 
 def start_web_server(port: int = WEB_PORT, supervisor: "Supervisor" | None = None) -> socketserver.TCPServer:
+    """Bind and serve the :8890 web app. A bind failure (RM-761a: a held port
+    used to surface as socketserver's raw OSError, e.g. WinError 10048 - the
+    _port_available preflight misses an SO_REUSEADDR holder on Windows) raises
+    a RuntimeError naming host:port with the preflight's netstat hint; no
+    "web-http" thread is started in that case."""
     WEB_ROOT.mkdir(parents=True, exist_ok=True)
     handler = lambda *a, **kw: _QuietHandler(*a, directory=str(WEB_ROOT), **kw)  # noqa: E731
-    srv = _WebServer((BIND_HOST, port), handler)
+    try:
+        srv = _WebServer((BIND_HOST, port), handler)
+    except OSError as e:
+        raise RuntimeError(
+            f"web server cannot bind {BIND_HOST}:{port} - port already in use? "
+            f"run: `netstat -ano | findstr :{port}` to identify the holder ({e})"
+        ) from e
     srv.supervisor = supervisor  # type: ignore[assignment]
     t = threading.Thread(target=srv.serve_forever, name="web-http", daemon=True)
     t.start()
