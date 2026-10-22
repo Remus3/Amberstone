@@ -1,25 +1,11 @@
-"""Quality-pass tests (audit L1-L4)."""
+"""Quality-pass tests (audit L1-L4).
+
+The three backup-label helper tests left with the retired Game-PC SMB push
+module (deleted 2026-10-22, C6 F4, phase3-d026); the port-preflight tests stay.
+"""
 from __future__ import annotations
 
-from agents.agent2_backend.smb_push import _sanitise_label
 from agents.supervisor import _port_available
-
-
-def test_sanitise_label_strips_unsafe_chars() -> None:
-    # colons (from ISO times), slashes, asterisks, all illegal on Windows.
-    assert _sanitise_label("restart:2026-04-22T10:00") == "restart-2026-04-22T10-00"
-    assert _sanitise_label("bad/slash\\mix") == "bad-slash-mix"
-    assert _sanitise_label("a**b") == "a-b"
-
-
-def test_sanitise_label_never_empty() -> None:
-    assert _sanitise_label("") == "unlabeled"
-    assert _sanitise_label("***") == "unlabeled"
-
-
-def test_sanitise_label_preserves_safe() -> None:
-    assert _sanitise_label("restart-manual") == "restart-manual"
-    assert _sanitise_label("build_v1.2.3") == "build_v1.2.3"
 
 
 def test_port_available_returns_true_for_random_high_port() -> None:

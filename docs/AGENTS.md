@@ -17,7 +17,7 @@ Both coexist on Legion. Neither kills the other.
 |---|---|---|---|
 | **0** | Gatekeeper | `agent0_gatekeeper/evaluator.py` | Task policy gate, 6 criteria (built for the cross-machine era; still the queue gate on 1-PC, ADR-011). Rejection: reasons 1,2,3,6 -> dead_letter; 4,5 -> auto_retry_once. Not a user security boundary. |
 | **1** | Lead Scheduler | `agent1_lead/scheduler.py` | Single writer of `agents/state/task_queue.jsonl`. Priority queue with JSONL persistence. Gate policy: hard gates (kinds 1,7,8) -> `needs_explicit_approval`; Agent 0 review for kind 5; ungated (2,3,4,6) -> `ready`. |
-| **2** | Backend Ingest | `agent2_backend/game_ingest.py` | `game-summary` tasks -> mode DB rows. WebSocket server. Win/loss detection. (SMB push retired, ADR-011/012 - `smb_push.py` is a guarded stub.) |
+| **2** | Backend Ingest | `agent2_backend/game_ingest.py` | `game-summary` tasks -> mode DB rows. WebSocket server. Win/loss detection. (SMB push retired, ADR-011/012; its module was deleted 2026-10-22, C6 F4 / phase3-d026.) |
 | **3** | Testing | `agent3_testing/suite/` | Pytest suite covering all agents + core modules. |
 | **4** | Coach Mentor | `agent4_coach_mentor/analyzer.py` | Replays matches -> per-champion `adaptation_buckets` + `matchup_modifiers`. Activates modifiers at `MATCHUP_ACTIVATE_THRESHOLD` samples. |
 | **5** | UI Agent | `agent5_ui/champion_fallback.py` | Champion fallback when Live Client API is down. Three-signal: (1) LCU champ-select, (2) last match_history.db row, (3) last user-input task. Served at `/api/locked-champion`. |

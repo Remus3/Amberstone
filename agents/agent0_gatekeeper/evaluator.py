@@ -1,12 +1,12 @@
 """Agent 0 - Gatekeeper. Evaluates cross-machine tasks against the six
 criteria from S7 and returns an accept/reject Decision.
 
-LEGACY (1-PC, ADR-011): the six criteria below gate the 2-PC Legion ->
-Game-PC SMB-push path (``agents/agent2_backend/smb_push.py``). Since the
-2026-05-29 single-PC consolidation Game-PC is out of the pipeline and that
-push path is dead, so this evaluator no longer gates any live cross-machine
-write. Kept as dead code pending a separate cleanup pass; logic + the S7
-contract are preserved for historical reference.
+LEGACY (1-PC, ADR-011): the six criteria below gated the 2-PC Legion ->
+Game-PC SMB push path. Since the 2026-05-29 single-PC consolidation Game-PC
+is out of the pipeline, and the push module itself was deleted 2026-10-22
+(C6 F4, phase3-d026), so this evaluator gates no live cross-machine write.
+The evaluator and its traversal guard are KEPT as the standing safety net
+(phase3-d026); logic + the S7 contract are preserved.
 
 Agent 0 is **not** a security boundary against the user. Direct user orders
 bypass this evaluator (Agent 1 applies that override before invoking us).
@@ -134,7 +134,8 @@ class Evaluator:
     def _has_traversal(remote_path: str) -> bool:
         """Reject any path containing ``..`` or URL-encoded ``%2e%2e`` as a
         distinct segment. Handles both / and \\ separators mixed. See audit
-        P-audit-h1 - defends the share even when callers bypass ``smb_push``.
+        P-audit-h1 - this guard is the only path check left now that the
+        retired SMB push module (and its own relative_to check) is deleted.
         """
         norm = remote_path.replace("/", "\\").lower()
         parts = [p for p in norm.split("\\") if p]

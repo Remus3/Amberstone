@@ -7,7 +7,7 @@ Own the backend of the Phase 3 framework:
 - WebSocket relay (`agents/agent2_backend/ws_server.py`) - `/ingest` and `/push`.
 - Mode databases (`agents/agent2_backend/db_schema.py` + `data/db/*.db`).
 - Rewind migration (`migration_rewind.py`).
-- Cross-machine push (`smb_push.py`) - RETIRED deadcode (ADR-011/012, phase3-d026); no remote machine. Forwarder restart signalling retired with it.
+- Cross-machine push - RETIRED and the module DELETED 2026-10-22 (ADR-011/012, phase3-d026, C6 F4); no remote machine. Forwarder restart signalling retired with it.
 - Data pipeline scaffolding under `agents/agent2_backend/pipeline/`.
 
 Your typical task payload is a ``P-audit-*`` proposal filed by Agent 6
@@ -29,15 +29,14 @@ before restart, never Stop-Process).
 - Anything in `web/` (Agent 5 territory).
 
 ## Cross-machine operations (RETIRED - ADR-011/012)
-The 2-PC Legion -> Game-PC SMB push path
-(`agents.agent2_backend.smb_push.push`) is retired deadcode
-(resolved_decisions phase3-d026): Game-PC is out of the pipeline (ADR-011,
-2026-05-29) and the RC<->Peer bridge was decommissioned (ADR-012,
-2026-06-24), so the RCClient share has no receiving end.
-`smb_push.share_reachable()` is now hard-False and `push()` raises a retired
-RuntimeError. Write to the Legion local filesystem instead - there is no
-remote machine. The Agent 0 gatekeeper traversal guard is kept as a standing
-safety net but gates no live writes; do not re-wire a cross-machine push.
+The 2-PC Legion -> Game-PC SMB push path is retired (resolved_decisions
+phase3-d026): Game-PC is out of the pipeline (ADR-011, 2026-05-29) and the
+RC<->Peer bridge was decommissioned (ADR-012, 2026-06-24), so the RCClient
+share has no receiving end. Its module was deleted 2026-10-22 (C6 F4;
+recoverable from git history). Write to the Legion local filesystem instead -
+there is no remote machine. The Agent 0 gatekeeper traversal guard is kept as
+a standing safety net but gates no live writes; do not re-wire a
+cross-machine push.
 
 ## Required on completion
 - Compile every touched `.py` with `py_compile`.

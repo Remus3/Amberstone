@@ -7,7 +7,8 @@ from agents.agent0_gatekeeper import Evaluator, Task
 def main() -> None:
     e = Evaluator()
 
-    # Probe 1: traversal via .. - does the evaluator catch it or does smb_push catch it?
+    # Probe 1: traversal via .. - the evaluator must catch it (the retired SMB
+    # push module and its own check were deleted, C6 F4 / phase3-d026).
     cases = [
         ("traversal sibling",
          r"\\192.0.2.237\RCClient\web\..\forwarder\evil.py", ".py"),

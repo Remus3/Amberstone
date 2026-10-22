@@ -33,9 +33,9 @@ Thresholds are ~2x refresh (stale) and ~6x refresh (severe).
 ## Propose-and-queue (never direct)
 - Changes to supervisor HTTP server behaviour - file a task to Agent 2.
 - Cross-machine pushes of `web/` to Game-PC Chrome are RETIRED
-  (ADR-011/012, phase3-d026) - `smb_push.push` raises and there is no remote
-  machine. Serve `web/` from the Legion :8888 dashboard / local filesystem
-  instead.
+  (ADR-011/012, phase3-d026) - the push module was deleted 2026-10-22 (C6 F4)
+  and there is no remote machine. Serve `web/` from the Legion :8888
+  dashboard / local filesystem instead.
 
 ## Hotkey policy (hard rule)
 **Never bind these keys anywhere:** F1, F2, F3, F4, F8, minus key.
