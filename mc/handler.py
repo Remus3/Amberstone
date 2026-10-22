@@ -127,7 +127,16 @@ class Handler(HeadDeadlineMixin, BaseHTTPRequestHandler):
                 self._send_json(413, {"ok": False, "error": "payload too large"})
                 return
             raw = self.rfile.read(n) if n else b""
-            payload = json.loads(raw.decode("utf-8", errors="replace")) if raw else {}
+            # RM-760b: deep nesting raises RecursionError and an over-long
+            # integer raises ValueError (int max-str-digits), neither a
+            # JSONDecodeError, so both used to fall through to the 500 below.
+            # Only the parse is wrapped: a route raising either stays a 500.
+            try:
+                payload = (json.loads(raw.decode("utf-8", errors="replace"))
+                           if raw else {})
+            except (ValueError, RecursionError):
+                self._send_json(400, {"ok": False, "error": "invalid json"})
+                return
             for matcher, handler in routes.POST_ROUTES:
                 if matcher(self.path):
                     handler(self, payload)
