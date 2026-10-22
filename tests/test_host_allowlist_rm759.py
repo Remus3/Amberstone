@@ -304,6 +304,65 @@ def test_dashboard_allowed_post_still_dispatches(dashboard):
     assert calls == [("POST", "/api/command", {"command": "noop"})]
 
 
+def _record_handle_error(srv) -> list:
+    """Replace the server's handle_error (socketserver prints a traceback
+    there for any exception a handler raises) with a recorder."""
+    errors: list = []
+    srv.handle_error = lambda request, client_address: errors.append(
+        client_address)
+    return errors
+
+
+def _http09(port: int, path: str) -> bytes:
+    """A raw HTTP/0.9 request: a two-word request line, no headers at all."""
+    return _raw(port, f"GET {path}\r\n".encode())
+
+
+@pytest.fixture
+def dashboard_srv(monkeypatch):
+    """The :8888 Handler, with the server object exposed (handle_error)."""
+    calls: list[tuple] = []
+
+    def _get(h):
+        calls.append(("GET", h.path))
+        h._send(200, b"ok", "text/plain")
+        return True
+
+    monkeypatch.setattr(_dispatch, "dispatch_get", _get)
+    srv = ThreadingHTTPServer((_HOST, 0), Handler)
+    srv.daemon_threads = True
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        yield srv, calls
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_dashboard_refuses_http09_cleanly(dashboard_srv):
+    """Python 3.14 sets ``headers = {}`` for HTTP/0.9, which has no Host at
+    all: letting it through would be a headerless bypass of the gate, and
+    calling ``get_all`` on the dict crashed the handler (empty reply plus a
+    traceback via handle_error). Now: connection closed, nothing served."""
+    srv, calls = dashboard_srv
+    errors = _record_handle_error(srv)
+    reply = _http09(srv.server_address[1], "/api/state")
+    assert reply == b"", reply[:200]
+    assert calls == [], "the route ran for an HTTP/0.9 request"
+    assert errors == [], "the handler raised (traceback via handle_error)"
+
+
+def test_supervisor_refuses_http09_cleanly(supervisor_http):
+    errors = _record_handle_error(supervisor_http)
+    port = supervisor_http.server_address[1]
+    for path in ("/api/queue", "/ok.txt"):
+        reply = _http09(port, path)
+        assert reply == b"", (path, reply[:200])
+    assert supervisor_http.supervisor.scheduler.calls == []
+    assert errors == [], "the handler raised (traceback via handle_error)"
+
+
 def test_refusal_log_names_the_peer_and_is_scrubbed(dashboard):
     port, _calls = dashboard
     records: list[logging.LogRecord] = []
