@@ -328,20 +328,37 @@ class HostAllowlistMixin:
     def parse_request(self) -> bool:
         if not super().parse_request():
             return False
+        # HTTP/0.9 carries no headers at all (Python 3.14 sets headers =
+        # {}), so no Host: letting it through would be a headerless bypass
+        # of this gate, and calling get_all on that dict crashed the handler
+        # (empty reply plus a traceback via socketserver's handle_error).
+        # No browser or in-tree client speaks 0.9, and it has no status
+        # line to refuse with, so the connection is simply closed.
+        if getattr(self, "request_version", None) == "HTTP/0.9":
+            self.close_connection = True
+            self._note_host_refusal("HTTP/0.9 request refused, closed")
+            return False
         if self._host_header_allowed():
             return True
         self._refuse_misdirected_host()
         return False
 
+    def _host_lines(self) -> list | None:
+        """Every Host line, or None when the headers are not a Message."""
+        get_all = getattr(getattr(self, "headers", None), "get_all", None)
+        if not callable(get_all):
+            return None
+        return get_all("Host") or []
+
     def _host_header_allowed(self) -> bool:
-        headers = getattr(self, "headers", None)
-        if headers is None:
-            return True
+        lines = self._host_lines()
+        if lines is None:
+            return False        # no parsed head to check: fail closed
         # EVERY Host line must pass, never just the first: `Message.get`
         # returns only the first of a repeated name (the RM-152 / chunked
         # lesson). Two allowed lines pass - http.client's putrequest adds a
         # Host itself, so a caller that also puts one sends two.
-        for value in headers.get_all("Host") or []:
+        for value in lines:
             hostname = host_header_hostname(value)
             if hostname == "":
                 continue
@@ -349,7 +366,7 @@ class HostAllowlistMixin:
                 return False
         return True
 
-    def _refuse_misdirected_host(self) -> None:
+    def _note_host_refusal(self, what: str) -> None:
         server = getattr(self, "server", None)
         count = getattr(server, "host_refusals", 0) + 1
         try:
@@ -364,10 +381,12 @@ class HostAllowlistMixin:
             except (AttributeError, IndexError, TypeError):
                 peer = "?"
             self.host_refusal_log.warning(
-                "RM-759 misdirected Host refused (421) peer=%s host=%s "
-                "path=%s count=%d", peer,
-                _scrub_log(repr(self.headers.get_all("Host"))),
-                _scrub_log(repr(self.path)), count)
+                "RM-759 %s peer=%s host=%s path=%s count=%d", what, peer,
+                _scrub_log(repr(self._host_lines())),
+                _scrub_log(repr(getattr(self, "path", ""))), count)
+
+    def _refuse_misdirected_host(self) -> None:
+        self._note_host_refusal("misdirected Host refused (421)")
         self._drain_small_body()
         body = b'{"error":"misdirected_host"}'
         self.close_connection = True
@@ -386,7 +405,7 @@ class HostAllowlistMixin:
     def _drain_small_body(self) -> None:
         try:
             n = int(self.headers.get("Content-Length", "0") or 0)
-        except (TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError):
             return
         if n <= 0 or n > _HOST_REFUSAL_DRAIN_CAP:
             return

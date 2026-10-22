@@ -235,7 +235,7 @@ def test_request_log_line_names_the_peer(server, caplog_rc):
     assert "127.0.0.1" in joined, f"no peer address in {joined!r}"
 
 
-def test_csrf_reject_warning_names_the_peer(server, caplog_rc):
+def test_csrf_reject_warning_names_the_peer(server, caplog_rc, monkeypatch):
     """NOTE, so this is not re-broken: the Host header must NOT be
     127.0.0.1 here. The CSRF warning already interpolates ``host=%r``, so
     with ``Host: 127.0.0.1`` this assertion passes on the pre-fix code for
@@ -246,7 +246,11 @@ def test_csrf_reject_warning_names_the_peer(server, caplog_rc):
     RM-759: that Host must also pass the Host allowlist, or the request is a
     421 before the CSRF check runs. An IP literal always does (no rebinding
     can produce one), so a documentation address (RFC 5737) other than the
-    peer keeps both properties without depending on per-host config."""
+    peer keeps both properties without depending on per-host config. The
+    Origin check consults the allowlist too, so it is injected (loopback
+    only) rather than built from the live per-host file."""
+    monkeypatch.setattr(_handler, "_allowed_names_cache",
+                        _handler.build_allowed_host_names(cfg={}, env=""))
     _raw(server,
          b"POST /api/command HTTP/1.0\r\nHost: 192.0.2.10\r\n"
          b"Origin: https://evil.example\r\nContent-Length: 2\r\n\r\n{}")
