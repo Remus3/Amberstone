@@ -20,7 +20,11 @@ Claims JSON shape:
 suite_cmd runs WITHOUT a shell (RM-757): a list is the argv as given; a string
 is split into words (shlex; on Windows one quote layer is stripped per word)
 and each word has %VAR% / $VAR expanded, so `&`, `|` and `;` are plain
-arguments. A command the kit classifies as a whole suite
+arguments to an executable. EXCEPT a batch file: on Windows CreateProcess runs
+a .bat / .cmd through cmd.exe even without a shell, and cmd.exe re-parses
+the arguments, so a command whose head (after expansion, quotes stripped,
+case-insensitive, also behind a gate wrapper) is a .bat / .cmd is REFUSED
+unrun ("batch-file refused"). A command the kit classifies as a whole suite
 (fleet_claims.bare_whole_suite) runs through fleet_suite_gate.py run (FLEET
 item 16 c); a targeted run is not gated. A gate refusal (exit 3) is reported
 as "suite-gate refused", never as pytest counts.
@@ -45,6 +49,8 @@ GATE_SCRIPT = KIT_DIR / "fleet_suite_gate.py"
 GATE_REFUSED_EXIT = 3
 CANNOT_RUN_EXIT = 127
 OWNER_ENV = "FLEET_CLAIM_OWNER"
+IS_WINDOWS = os.name == "nt"
+BATCH_SUFFIXES = (".bat", ".cmd")
 
 # The bare "py" launcher can resolve to a pytest-less interpreter (e.g. the
 # python-manager pythoncore-3.14-64 install), which zeroes the suite and turns
@@ -105,11 +111,28 @@ def split_cmd(cmd):
     """argv for a suite_cmd: a list as given, a string split without a shell."""
     if isinstance(cmd, (list, tuple)):
         return [str(w) for w in cmd]
-    posix = os.name != "nt"
+    posix = not IS_WINDOWS
     words = shlex.split(cmd, posix=posix)
     if not posix:
         words = [_strip_quotes(w) for w in words]
     return [os.path.expandvars(w) for w in words]
+
+
+def _names_gate(word):
+    return word.replace("\\", "/").endswith("/" + GATE_SCRIPT.name) or word == GATE_SCRIPT.name
+
+
+def batch_head(argv):
+    """The .bat / .cmd word that would run as the command, else None: argv[0],
+    and the word after `--` when argv is a suite-gate wrapper."""
+    heads = list(argv[:1])
+    if any(_names_gate(w) for w in argv) and "--" in argv:
+        heads.extend(argv[argv.index("--") + 1:argv.index("--") + 2])
+    for head in heads:
+        # Windows drops trailing dots / spaces from a file name: "x.bat." is x.bat.
+        if _strip_quotes(head).rstrip(" .").lower().endswith(BATCH_SUFFIXES):
+            return head
+    return None
 
 
 def resolve_owner(owner):
@@ -130,6 +153,16 @@ def run_suite_fresh(cmd, out_path, owner=None):
     """Run the suite, tee output to a file, read the FILE back (stale-pipe guard)."""
     out_path = Path(out_path)
     argv = split_cmd(cmd)
+    batch = batch_head(argv) if IS_WINDOWS else None
+    if batch is not None:
+        reason = (f"truth_gate: refused {batch!r}: a .bat/.cmd runs under cmd.exe, "
+                  "which re-parses its arguments")
+        out_path.write_text(reason + "\n", encoding="utf-8")
+        obs = parse_pytest_summary("")
+        obs.update({"exit_code": None, "cmd": cmd, "argv": argv, "gated": False,
+                    "gate_refused": False, "batch_refused": True,
+                    "refuse_reason": reason, "output_file": str(out_path)})
+        return obs
     run_argv = gate_argv(argv, owner)
     gated = run_argv != argv
     with open(out_path, "w", encoding="utf-8", errors="replace") as fh:
@@ -148,6 +181,7 @@ def run_suite_fresh(cmd, out_path, owner=None):
     obs["argv"] = run_argv
     obs["gated"] = gated
     obs["gate_refused"] = gated and rc == GATE_REFUSED_EXIT
+    obs["batch_refused"] = False
     if obs["gate_refused"]:
         lines = [ln for ln in text.splitlines() if "SUITE-GATE" in ln]
         obs["gate_reason"] = lines[-1].strip()[:200] if lines else ""
@@ -213,7 +247,8 @@ def reconcile(claims, suite_obs, file_obs_by_slice, git_obs, ci_obs):
     quarantines its slice; suite red or CI failure refuses globally."""
     slices_out = []
     quarantined = []
-    refused = bool(suite_obs.get("gate_refused"))
+    refused = ("batch-file refused" if suite_obs.get("batch_refused") else
+               "suite-gate refused" if suite_obs.get("gate_refused") else None)
     for sl in claims.get("slices", []):
         disc = []
         for rec in file_obs_by_slice.get(sl["id"], []):
@@ -226,7 +261,7 @@ def reconcile(claims, suite_obs, file_obs_by_slice, git_obs, ci_obs):
             if claimed is None:
                 continue
             if refused:
-                disc.append(f"{key}={claimed} unverified: suite-gate refused")
+                disc.append(f"{key}={claimed} unverified: {refused}")
             elif suite_obs[seen] != claimed:
                 disc.append(f"{key}={claimed} but observed {suite_obs[seen]}")
         verdict = "CONFIRM" if not disc else "QUARANTINE"
@@ -235,7 +270,9 @@ def reconcile(claims, suite_obs, file_obs_by_slice, git_obs, ci_obs):
         slices_out.append({"id": sl["id"], "claim": sl.get("claim", ""),
                            "verdict": verdict, "discrepancies": disc})
     global_disc = []
-    if refused:
+    if suite_obs.get("batch_refused"):
+        global_disc.append(f"batch-file refused: {suite_obs.get('refuse_reason', '')}")
+    elif refused:
         global_disc.append("suite-gate refused (exit {}): {}".format(
             suite_obs.get("exit_code"), suite_obs.get("gate_reason") or "no reason line"))
     else:
