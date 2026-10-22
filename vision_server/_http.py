@@ -34,17 +34,30 @@ MAX_BODY_BYTES = 10 * 1024 * 1024
 # RM-268: fixed client-facing token for a POST body that is valid JSON but
 # not an object. Never echoes the body.
 _BAD_BODY = "body must be a JSON object"
+# RM-760c: fixed client-facing token for a body that is not valid JSON at all.
+# Never echoes the parser's message; the detail goes to the log.
+_BAD_JSON = "invalid JSON body"
 
 
 class _BadBody(ValueError):
-    """A POST body the dispatch refuses with a 400 before anything is queued."""
+    """A POST body the dispatch refuses with a 400 before anything is queued.
+    The message is always one of the fixed tokens above."""
 
 
 def _json_object(body: bytes) -> dict:
     """Parse ONCE and require a dict. `lcu_queue_command` annotates
     `cmd: dict` and the RC-LCUAgent calls `.get` on what it drains, so a
-    list / string / number must stop here (RM-268)."""
-    obj = json.loads(body or b"{}")
+    list / string / number must stop here (RM-268).
+
+    RM-760c: malformed text, invalid UTF-8 and a 5000-digit integer raise
+    ValueError (JSONDecodeError / UnicodeDecodeError / int-max-str-digits) and
+    100k-deep nesting raises RecursionError; all of them are bad input, so
+    they are a 400, not the generic 500 in do_POST."""
+    try:
+        obj = json.loads(body or b"{}")
+    except (ValueError, RecursionError) as e:
+        log.warning("bad JSON body: %s: %s", type(e).__name__, e)
+        raise _BadBody(_BAD_JSON) from None
     if not isinstance(obj, dict):
         raise _BadBody(_BAD_BODY)
     return obj
@@ -259,8 +272,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._j(200, h(body))
             else:
                 self._j(404, {"error": "unknown"})
-        except _BadBody:
-            self._j(400, {"error": _BAD_BODY})
+        except _BadBody as e:
+            self._j(400, {"error": str(e)})
         except Exception as e:  # noqa: BLE001
             self._err500(self.path, e)
 

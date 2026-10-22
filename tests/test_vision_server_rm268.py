@@ -82,3 +82,45 @@ def test_lcu_cmd_done_records_result(server):
     status, _ = _req(server, "/lcu-cmd-done", b'{"id": 7, "result": {"ok": 1}}')
     assert status == 200
     assert _relay._lcu_cmd_results[7]["result"] == {"ok": 1}
+
+
+# -- RM-760c -----------------------------------------------------------------
+# A body that is not valid JSON at all used to fall through to the generic
+# `except Exception` in do_POST: HTTP 500 "internal error". Malformed text,
+# invalid UTF-8, a 5000-digit integer (int-max-str-digits ValueError) and
+# 100k-deep nesting (RecursionError) are all bad INPUT, so they get a fixed
+# 400 token that never echoes parser text, and nothing is queued.
+
+_BAD_JSON_BODIES = {
+    "malformed": b"{x",
+    "invalid_utf8": b'{"a": "\xff"}',
+    "long_int": b"1" * 5000,
+    "deep_nesting": b"[" * 100000,
+}
+
+
+@pytest.mark.parametrize("path", ["/lcu-cmd", "/lcu-cmd-done"])
+@pytest.mark.parametrize("name", sorted(_BAD_JSON_BODIES))
+def test_bad_json_lcu_body_is_400_and_queues_nothing(server, path, name):
+    status, payload = _req(server, path, _BAD_JSON_BODIES[name])
+    assert status == 400
+    assert payload == {"error": "invalid JSON body"}
+    assert len(_relay._lcu_cmd_queue) == 0
+    assert _relay._lcu_cmd_results == {}
+
+
+def test_server_still_serves_after_deep_nesting(server):
+    _req(server, "/lcu-cmd", _BAD_JSON_BODIES["deep_nesting"])
+    status, payload = _req(server, "/lcu-cmd", b'{"action": "accept"}')
+    assert status == 200
+    assert isinstance(payload["id"], int)
+
+
+@pytest.mark.parametrize("path", ["/vision", "/coach", "/ocr"])
+@pytest.mark.parametrize("name", sorted(_BAD_JSON_BODIES))
+def test_bad_json_inference_body_is_bad_json_not_500(server, path, name):
+    # The inference handlers already answer 200 {"error": "bad_json"} for a
+    # ValueError; deep nesting raised RecursionError past that catch.
+    status, payload = _req(server, path, _BAD_JSON_BODIES[name])
+    assert status == 200
+    assert payload == {"error": "bad_json"}
