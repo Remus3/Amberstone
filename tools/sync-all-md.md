@@ -116,7 +116,7 @@ If the README's structural claims (modes covered, what the engine does, the sing
 ### 5. Per-doc congruence pass (LIVING only)
 
 - **CLAUDE.md** - touch ONLY: (a) the one DS reference line if `ENGINE_VERSION`/items/patch moved; (b) the `### Settled` summary if a decision changed. The "Active priorities" block is now a STATIC POINTER - per-item completion entries go to `docs/LEDGER.md` (newest-first), NEVER into CLAUDE.md (CI size-budgeted < 60KB). Leave Topology / Paths / Hard rules / everything else alone.
-- **ROADMAP.md** - Now+Next ledger. Mark shipped items `✅` + SHA; ensure the top reflects the latest session from section 1. Do not delete completed items (history lives elsewhere); do not rewrite older entries.
+- **ROADMAP.md** - Now+Next ledger. Mark shipped items `[x]` + SHA; ensure the top reflects the latest session from section 1. Do not delete completed items (history lives elsewhere); do not rewrite older entries.
 - **BACKLOG.md** - strike (`~~...~~`) anything that shipped this period with the SHA; don't reorder.
 - **docs/ARCHITECTURE.md / OPERATIONS.md / API.md / AGENTS.md** - **structural sync only.** Verify module map / endpoints / ports / task names against the actual code & CLAUDE.md. Update a line only if code changed it. These are not changelogs - don't add session notes.
 - **docs/DAEMON_SLAYER.md** - the highest-drift doc. Reconcile the status line (`ENGINE_VERSION - N tests - items - patch`), the `tests/` module-map row, the "Phase 3 ... implemented today" sentence (all 6 scorers are wired now - verify against CLAUDE.md/code, fix if it still says "three"), and the coverage numbers.
@@ -173,9 +173,9 @@ Diff them. If they differ, promote the newer side after ASCII-cleaning it. Histo
 Print exactly this shape:
 
 ```
-══════════════════════════════════════════════════════════════════
+==================================================================
   /sync-all-md - md congruence pass
-══════════════════════════════════════════════════════════════════
+==================================================================
   canonical facts   : patch=<p> engine=<v> ds_tests=<n> rc_tests=<n>
                       items=<n> champ_cov=<entries>/<champs> matches=<n>
   living docs edited : <list of files + one-line what-changed each>
@@ -186,9 +186,9 @@ Print exactly this shape:
   history protected  : <N stale-in-ledger noted, not edited>
   self-congruence    : <identical | re-mirrored tools/ copy>
   commit             : <none | docs: sync living docs - <topic> (SHA)>
-══════════════════════════════════════════════════════════════════
+==================================================================
   Decisions needing operator: <broken-ref resolutions, deprecation moves, ...>
-══════════════════════════════════════════════════════════════════
+==================================================================
 ```
 
 List anything needing a human call (broken-ref resolution, deprecation moves, history discrepancies) under the bottom rule. If `--dry-run`, every "edited"/"commit" line says `(preview)` and nothing was written.
