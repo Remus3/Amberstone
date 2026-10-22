@@ -84,10 +84,10 @@
     },
     {
       "id": "phase3-d011",
-      "title": "Tailnet topology - 3 machines, prefer tailnet hostnames",
+      "title": "Topology - Legion is the only runtime host (1-PC, ADR-011), prefer tailnet hostnames",
       "decided_at": "2026-04-22",
-      "summary": "Legion (rc-host / 100.64.0.1 / LAN 192.0.2.230) runs RC + supervisor + vision server + web dashboard. Game-PC (peer-host / 100.64.0.2 / LAN 192.0.2.237) runs League + Chrome on secondary monitor (panel 1920x1280 native at 100% scale). Peer (peer-host / <peer-tailnet-ip>) is cross-Claude peer for RC<->Peer bridge. All three in tailnet example-tailnet.ts.net. Prefer tailnet hostnames over LAN IPs (MagicDNS old hostname de-registers instantly on rename). Vision runs in-process at 127.0.0.1:8889.",
-      "source": "CLAUDE.md / Topology",
+      "summary": "Revised 2026-10-22 (C6 F3) from the 2026-04-22 3-machine entry. Legion (tailnet node rc-host / 100.64.0.x in tailnet example-tailnet, LAN 192.0.2.x) is the only runtime host (ADR-011, phase3-d021): League + Vanguard + RC + supervisor + vision server + web dashboard + OBS all run there. Game-PC was retired from the pipeline 2026-05-29 (ADR-011, phase3-d021) and the Peer bridge was decommissioned 2026-06-24 (ADR-012, phase3-d024); neither has a live role. Real node names and addresses are per-host config in gitignored ops/local_hosts.json, never a tracked file. Prefer tailnet hostnames over LAN IPs (MagicDNS old hostname de-registers instantly on rename); code defaults to loopback. Vision runs in-process at 127.0.0.1:8889; the game host is config (core/game_host.py RC_GAME_HOST, default 127.0.0.1).",
+      "source": "CLAUDE.md / Topology + ADR-011 (phase3-d021) + ADR-012 (phase3-d024); revised by C6 F3",
       "authority": "operator"
     },
     {
@@ -204,10 +204,10 @@
     },
     {
       "id": "phase3-d026",
-      "title": "Game-PC SMB push deadcode pending cleanup pass (ADR-011/012)",
+      "title": "Game-PC SMB push module deleted (ADR-011/012); gatekeeper traversal guard KEPT",
       "decided_at": "2026-06-28",
-      "summary": "agents/agent2_backend/smb_push.py implemented the 2-PC Legion -> Game-PC file-write path over \\\\192.0.2.237\\RCClient. Game-PC retired from the pipeline 2026-05-29 (ADR-011) and the RC<->Peer bridge was decommissioned 2026-06-24 (ADR-012), so the share has no receiving end. Path A (defer-delete, operator-decided 2026-06-28, mirror of d019 Brawl retirement): share_reachable() is hard-False and push()/trigger_forwarder_restart() raise a retired RuntimeError; the gatekeeper P-audit-h1 traversal guard in agents/agent0_gatekeeper/evaluator.py is KEPT as the standing safety net (it gates Task dataclasses, independent of smb_push). Agent 2/3/5/6 charters point at the Legion-local filesystem. A future quiescent-point cleanup pass may delete smb_push.py + the guard + charter lines in one swing. Do NOT re-wire a cross-machine push - there is no remote machine. Filed by audit-11 M-05.",
-      "source": "CLAUDE.md / Settled / ADR-011 + ADR-012 + audit-11 M-05",
+      "summary": "The Game-PC SMB push module under agents/agent2_backend/ implemented the 2-PC Legion -> Game-PC file-write path over \\\\192.0.2.237\\RCClient. Game-PC retired from the pipeline 2026-05-29 (ADR-011) and the RC<->Peer bridge was decommissioned 2026-06-24 (ADR-012), so the share has no receiving end. Path A (defer-delete, operator-decided 2026-06-28, mirror of d019 Brawl retirement) first neutered it: the share probe was hard-False and push / forwarder-restart raised a retired RuntimeError. Cleanup executed 2026-10-22 (C6 F4, plan C1b-3 slice S2): after a no-consumer proof (no importer, caller, scheduled task or script outside its own tests) the module and its agent3 retirement test were deleted with git rm (recoverable from history at parent 3d3f267e0), and the three label-helper tests in agents/agent3_testing/suite/test_quality_pass.py went with it while that file's port-preflight tests stay. The gatekeeper P-audit-h1 traversal guard in agents/agent0_gatekeeper/evaluator.py is KEPT as the standing safety net (it gates Task dataclasses and never depended on the module). Agent 2/3/5/6 charters point at the Legion-local filesystem. Do NOT re-wire a cross-machine push - there is no remote machine. Filed by audit-11 M-05; guard tests/test_c6_game_pc_push_retired.py.",
+      "source": "CLAUDE.md / Settled / ADR-011 + ADR-012 + audit-11 M-05 + C6 F4",
       "authority": "operator"
     }
   ],
