@@ -1105,7 +1105,14 @@ async def _run() -> int:
             loop.add_signal_handler(sig, _handle_signal)
 
     try:
-        await sup.start()
+        try:
+            await sup.start()
+        except RuntimeError as e:
+            # RM-761a: a held port (the preflight, ws_server's RM-756 guard or
+            # start_web_server) raises RuntimeError with a netstat hint. Log it
+            # as one line - under pythonw.exe an escaping traceback is lost.
+            log.error("supervisor failed to start: %s", e)
+            return 1
         await stop_evt.wait()
     finally:
         await sup.stop()
