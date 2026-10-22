@@ -1,5 +1,5 @@
 {
-  "version": "16.20.1",
+  "version": "16.21.1",
   "byName": {
     "boots": "1001",
     "faeriecharm": "1004",
@@ -470,12 +470,6 @@
     "twilightsedge": "447121",
     "blackholegauntlet": "447122",
     "puppeteer": "447123",
-    "healthbarsplashblue": "550001",
-    "healthbarsplashorange": "550002",
-    "healthbarsplashgreen": "550003",
-    "healthbarsplashpink": "550004",
-    "healthbarcleanupresetcolor": "550005",
-    "healthbarsplashrainbow": "550006",
     "veigarstalismanofascension": "663064",
     "goldenspatula": "994403"
   },
@@ -1160,13 +1154,6 @@
     "447121": "Twilight's Edge",
     "447122": "Black Hole Gauntlet",
     "447123": "Puppeteer",
-    "550001": "Healthbar Splash: Blue",
-    "550002": "Healthbar Splash: Orange",
-    "550003": "Healthbar Splash: Green",
-    "550004": "Healthbar Splash: Pink",
-    "550005": "Healthbar Cleanup: Reset Color",
-    "550006": "Healthbar Splash: Rainbow",
-    "550007": "Party Favor",
     "663039": "Atma's Reckoning",
     "663056": "Demon King's Crown",
     "663058": "Shield of Molten Stone",
