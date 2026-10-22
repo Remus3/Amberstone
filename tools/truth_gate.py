@@ -23,11 +23,15 @@ and each word has %VAR% / $VAR expanded, so `&`, `|` and `;` are plain
 arguments to an executable. On Windows that holds only for a real .exe:
 CreateProcess runs a .bat / .cmd through cmd.exe even without a shell, and
 cmd.exe re-parses the arguments. So on Windows truth_gate launches ONLY a
-head that resolves to a .exe (argv[0] and the first word after every `--`;
-a path is normalised, a bare name is resolved on PATH with PATHEXT);
-anything else - .bat, .cmd, .com, .ps1, extensionless, unresolvable - is
-refused unrun ("non-exe head refused"). Deny-all, because suffix blocklists
-leaked. POSIX is unchanged. A command the kit classifies as a whole suite
+head that is a .exe (argv[0] and the first word after every `--`): a literal
+suffix other than .exe is refused before any lookup; a path is normalised and
+made absolute; a bare name is resolved ONCE with the kit gate's PATH-only
+lookup; and the head is REWRITTEN to that absolute .exe path, so the launcher
+does no search of its own. Anything else - .bat, .cmd, .com, .ps1,
+extensionless, unresolvable - is refused unrun ("non-exe head refused").
+Deny-all, because suffix blocklists leaked. Out of scope: an attacker who can
+write into a PATH directory or the repo already has code execution. POSIX is
+unchanged. A command the kit classifies as a whole suite
 (fleet_claims.bare_whole_suite) runs through fleet_suite_gate.py run (FLEET
 item 16 c); a targeted run is not gated. A gate refusal (exit 3) is reported
 as "suite-gate refused", never as pytest counts.
@@ -42,7 +46,6 @@ import ntpath
 import os
 import re
 import shlex
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -133,34 +136,55 @@ def _names_gate(word):
     return _file_key(word) == _file_key(GATE_SCRIPT.name)
 
 
-def _launch_target(word):
-    """The file Windows would launch for a command word, else None: a word
-    with a directory part is that path normalised ("x.bat\\." is x.bat); a
-    bare name is looked up on PATH with PATHEXT, as the suite gate and npm-style
-    wrappers resolve it (so "npm" is npm.CMD)."""
-    target = ntpath.normpath(_strip_quotes(word))
-    if ntpath.dirname(target):
-        return target
-    return shutil.which(target)
+def _path_which(name):
+    """The kit suite gate's own PATH lookup (PATH only: the cwd, relative and
+    empty entries skipped, quotes stripped, PATHEXT on Windows) - one resolver
+    for direct and gate-wrapped launches, never reimplemented here."""
+    return _kit_module("fleet_suite_gate").path_which(name, cwd=str(ROOT))
+
+
+def _resolve_head(word):
+    """The absolute .exe path to launch for a command word on Windows, else None."""
+    word = ntpath.normpath(_strip_quotes(word))
+    suffix = ntpath.splitext(word)[1]
+    if suffix and suffix.casefold() != ".exe":
+        return None  # the literal word is what CreateProcess would run
+    if ntpath.dirname(word):
+        target = ntpath.abspath(ntpath.join(str(ROOT), word))
+    else:
+        target = _path_which(word)
+    if not target or ntpath.splitext(target)[1].casefold() != ".exe":
+        return None
+    return target
+
+
+def launch_argv(argv):
+    """(argv to launch, refused word or None). On Windows each head - argv[0]
+    and the first word after EVERY `--`, whatever the wrapper - is resolved
+    ONCE and rewritten to the absolute .exe path that was validated, so
+    CreateProcess and the suite gate receive that path and do no search of
+    their own (no check-vs-launch mismatch). A head whose literal suffix is not
+    .exe, or that does not resolve to a .exe, is refused unrun. Why .exe only:
+    CreateProcess runs a .bat / .cmd through cmd.exe even without a shell and
+    cmd.exe re-parses the arguments; suffix blocklists kept leaking. Threat
+    model: an attacker who can already write into a PATH directory or the repo
+    has code execution and is out of scope. POSIX: argv unchanged."""
+    if not IS_WINDOWS:
+        return list(argv), None
+    out = list(argv)
+    heads = [0] if argv else []
+    heads += [i + 1 for i, w in enumerate(argv[:-1]) if _strip_quotes(w) == "--"]
+    for i in heads:
+        target = _resolve_head(argv[i])
+        if target is None:
+            return list(argv), argv[i]
+        out[i] = target
+    return out, None
 
 
 def refused_head(argv):
-    """On Windows, the first command word that would NOT launch as a .exe, else
-    None (always None on POSIX). Checked: argv[0] and the first word after
-    EVERY `--`, whatever the wrapper. Deny-all, not a blocklist: CreateProcess
-    runs a .bat / .cmd through cmd.exe even without a shell and cmd.exe
-    re-parses the arguments, and suffix rules kept leaking (`x.bat\\.`, a
-    PATH-resolved .cmd shim), so only a resolved .exe is allowed - .bat, .cmd,
-    .com, .ps1, extensionless and unresolvable heads are all refused."""
-    if not IS_WINDOWS:
-        return None
-    heads = list(argv[:1])
-    heads += [argv[i + 1] for i, w in enumerate(argv[:-1]) if _strip_quotes(w) == "--"]
-    for head in heads:
-        target = _launch_target(head)
-        if target is None or ntpath.splitext(target)[1].casefold() != ".exe":
-            return head
-    return None
+    """The head launch_argv refuses, else None (always None on POSIX)."""
+    return launch_argv(argv)[1]
 
 
 def resolve_owner(owner):
@@ -182,8 +206,7 @@ def gate_argv(argv, owner):
 def run_suite_fresh(cmd, out_path, owner=None):
     """Run the suite, tee output to a file, read the FILE back (stale-pipe guard)."""
     out_path = Path(out_path)
-    argv = split_cmd(cmd)
-    head = refused_head(argv)
+    argv, head = launch_argv(split_cmd(cmd))
     if head is not None:
         reason = (f"truth_gate: refused {head!r}: on Windows only a resolved .exe "
                   "head is launched (a .bat/.cmd runs under cmd.exe, which re-parses "

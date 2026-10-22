@@ -376,7 +376,7 @@ def _refused(monkeypatch, argv, which=None):
     from tools import truth_gate
     monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
     if which is not None:
-        monkeypatch.setattr(truth_gate.shutil, "which", which)
+        monkeypatch.setattr(truth_gate, "_path_which", which)
     return truth_gate.refused_head(argv)
 
 
@@ -530,7 +530,7 @@ def _win(monkeypatch, which=None):
     from tools import truth_gate
     monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
     if which is not None:
-        monkeypatch.setattr(truth_gate.shutil, "which", which)
+        monkeypatch.setattr(truth_gate, "_path_which", which)
     fake = _FakeRun(0)
     monkeypatch.setattr(truth_gate.subprocess, "run", fake)
     return truth_gate, fake
@@ -620,6 +620,85 @@ def test_real_path_cmd_shim_is_refused_and_python_is_allowed(monkeypatch, tmp_pa
                        "p2w5_truth_gate_claims.json").read_text(encoding="utf-8"))["suite_cmd"]
     assert truth_gate.run_suite_fresh(p2w5, tmp_path / "o.txt", owner="o.1")["head_refused"] is False
     assert len(fake.calls) == 3
+
+
+# --- RM-757 round 5: launch exactly the absolute .exe that was validated ---
+
+def _real_win(monkeypatch, tmp_path, path_dirs):
+    from tools import truth_gate
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    monkeypatch.setenv("PATH", os.pathsep.join(str(d) for d in path_dirs))
+    monkeypatch.setenv("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+    return truth_gate, fake
+
+
+def _plant(folder, name, data=b"MZ"):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_bytes(data)
+    return folder / name
+
+
+@pytest.mark.skipif(not _is_windows(), reason="PATH / PATHEXT resolution is Windows-only")
+def test_r1_suffixed_cmd_word_is_refused_before_any_lookup(monkeypatch, tmp_path):
+    _plant(tmp_path / "b1", "zzr.cmd.EXE")
+    _plant(tmp_path / "b2", "zzr.cmd", b"@echo off\r\n")
+    tg, fake = _real_win(monkeypatch, tmp_path, [tmp_path / "b1", tmp_path / "b2"])
+    obs = tg.run_suite_fresh("zzr.cmd a & echo INJ", tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+@pytest.mark.skipif(not _is_windows(), reason="PATH / PATHEXT resolution is Windows-only")
+def test_r2_cwd_planted_exe_does_not_launder_a_path_cmd_through_the_wrap(monkeypatch, tmp_path):
+    work = tmp_path / "cwd"
+    _plant(work, "zzs.cmd.exe")
+    _plant(tmp_path / "b", "zzs.cmd", b"@echo off\r\n")
+    monkeypatch.chdir(work)
+    tg, fake = _real_win(monkeypatch, tmp_path, [tmp_path / "b"])
+    obs = tg.run_suite_fresh("zzs.cmd exec pytest -q a & echo INJ", tmp_path / "o.txt",
+                             owner="o.1")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+@pytest.mark.skipif(not _is_windows(), reason="PATH / PATHEXT resolution is Windows-only")
+def test_m3a_bare_word_resolves_on_path_not_cwd(monkeypatch, tmp_path):
+    work = tmp_path / "cwd"
+    _plant(work, "zzq3.exe")
+    _plant(tmp_path / "b", "zzq3.cmd", b"@echo off\r\n")
+    monkeypatch.chdir(work)
+    tg, fake = _real_win(monkeypatch, tmp_path, [tmp_path / "b"])
+    obs = tg.run_suite_fresh("zzq3 a & echo INJ", tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+@pytest.mark.skipif(not _is_windows(), reason="PATH / PATHEXT resolution is Windows-only")
+def test_launched_heads_are_the_absolute_validated_exe(monkeypatch, tmp_path):
+    exe = _plant(tmp_path / "b", "zzok.exe")
+    py_dir = Path(sys.executable).parent
+    tg, fake = _real_win(monkeypatch, tmp_path, [tmp_path / "b", py_dir])
+    want = str(exe).casefold()
+    assert tg.run_suite_fresh("zzok a", tmp_path / "o.txt")["head_refused"] is False
+    assert fake.calls[-1][0][0].casefold() == want
+    tg.run_suite_fresh("zzok -m pytest -q", tmp_path / "o.txt", owner="o.1")
+    gated = fake.calls[-1][0]
+    assert gated[:2] == [sys.executable, str(tg.GATE_SCRIPT)]
+    assert gated[gated.index("--") + 1].casefold() == want
+    tg.run_suite_fresh([sys.executable, "w.py", "--", "zzok", "a"], tmp_path / "o.txt")
+    assert fake.calls[-1][0][3].casefold() == want
+    tg.run_suite_fresh("python x.py", tmp_path / "o.txt")
+    assert fake.calls[-1][0][0].casefold() == sys.executable.casefold()
+    tg.run_suite_fresh(f'"{sys.executable}" x.py', tmp_path / "o.txt")
+    assert fake.calls[-1][0][0].casefold() == sys.executable.casefold()
+    p2w5 = json.loads((Path(__file__).parent.parent / "ops" / "audit" /
+                       "p2w5_truth_gate_claims.json").read_text(encoding="utf-8"))["suite_cmd"]
+    obs = tg.run_suite_fresh(p2w5, tmp_path / "o.txt", owner="o.1")
+    assert obs["head_refused"] is False
+    head = fake.calls[-1][0][fake.calls[-1][0].index("--") + 1]
+    assert Path(head).is_absolute() and head.casefold().endswith("python.exe")
+    assert len(fake.calls) == 6
 
 
 def test_truth_gate_never_passes_shell_true():
