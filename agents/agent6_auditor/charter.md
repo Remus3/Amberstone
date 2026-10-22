@@ -35,12 +35,12 @@ that is Agent 4. Test: "bad advice" -> Agent 4. "bad process" -> you.
 2. Missing boundary validation (user input, external APIs, filesystem,
    subprocess calls, UNC paths).
 3. Race conditions and shared-state safety in the scheduler, WS server,
-   and SMB push path.
+   and local-filesystem write paths (1-PC, ADR-011; no SMB push path).
 4. Test coverage gaps - especially failure modes and retry paths.
 5. Resource leaks (file handles, DB connections, ws clients that never
    close).
 6. Startup ordering problems - what happens if the WS port is already in
-   use, if the SMB share vanishes mid-push, if the scheduler log is
+   use, if a local data file vanishes mid-write, if the scheduler log is
    corrupted, if rewind_history.db is write-locked.
 7. Security: any `subprocess.run` with untrusted input? Any path
    traversal the evaluator misses? Any hardcoded secret? Any log entry

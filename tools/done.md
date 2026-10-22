@@ -48,37 +48,27 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > line in `RC-NEXT-SESSION.txt` (owner: `tools/session_checklist.py`); section 10
 > writes `SESSION: <n+1>`.
 
-> **SHAPE (measured 2026-07-26, LEDGER 1065; section 2c retired 2026-08-04, RM-157).**
+> **SHAPE (measured 2026-07-26, LEDGER 1065; push CI reshaped 2026-10-09 by W-A, LEDGER 1706; section 2c re-ruled 2026-10-22, session 126).**
 > This ritual is FOUR PHASES, and the ordering is load-bearing rather than cosmetic:
 > **Phase 1** the fast local gate (section 0-0b, target 60-90s) -
-> **Phase 2** commit + push, which FIRES the full suite at CI by itself (sections 1-2) -
+> **Phase 2** commit + push, which fires CI's fast guards plus an IMPACT SLICE (sections 1-2), then at most ONE full-suite dispatch when nothing else covers the pushed tree (section 2c) -
 > **Phase 3** all the paperwork WHILE CI runs (sections 3-7) -
 > **Phase 4** collect CI, write the hand-off file, print the one completion line (sections 8-10).
 >
-> **Why:** the old shape ran a ~27-minute local dual suite and THEN blocked on a
-> CI watch, with ~15 minutes of doc writing after that. Measured: the local dual
-> suite is **1642s / 23,250 tests**, while the SAME suite on CI's ubuntu runner
-> is **16m47s / 22,749 tests (97.8% of local)** - CI is FASTER than this machine
-> and it is off the box. Pushing at Phase 2 makes the ~15 minutes of paperwork
-> overlap the ~20-minute CI run, so the wrap costs the LONGER of the two instead
-> of their sum.
+> **What the push path really runs (read from `.githooks/pre-push` and `.github/workflows/ci.yml`; re-read both before editing this block).** The local pre-push hook runs NO tests: the identity gate, the sibling-name sweep, the credential scan, then the LFS upload. On GitHub, a push to main that changes any non-`.md` path runs the `check` job's fast guards plus the test modules `tools/ci_impact_selector.py` maps to the changed paths (the impact slice); the selector ESCALATES the push to the full dual suite only when it cannot see the coupling (conftest / pytest.ini / dependency pins / the workflow / the selector itself / an unresolvable push base / more than 300 changed paths). A `.md`-only push runs no `ci` at all (`paths-ignore`); `docs-guards.yml` is its complement. The full dual suite runs on pull_request, on workflow_dispatch, on an escalated push and in the nightly schedule. A slice is NOT the suite: coupling the source never spells is invisible to the selector map (RM-734 datum: the slice missed `tests/test_atomic_write_guard_rm258_rm261.py`).
 >
-> **That overlap no longer needs a manual dispatch, and must not get one back.**
-> Until 2026-08-04, section 2c fired `gh workflow run ci.yml` here. RM-119's
-> second half (2026-07-28) put the identical `pytest tests/
-> agents/daemon_slayer/tests/ ...` onto the `check` job of every push, so from
-> that day the dispatch only re-ran what the push run was already running.
-> MEASURED over 2026-08-01..04: 18 such dispatches, **485.8 minutes of runner
-> wall clock in four days for zero added signal**, 22.8% of all runner time in
-> the window. The push IS the full suite. Wait for it; never summon a second one.
+> **Why the overlap:** the old shape ran a ~27-minute local dual suite and THEN blocked on a CI watch, with ~15 minutes of doc writing after that. Pushing at Phase 2 makes the paperwork overlap the push run (13-28 minutes on 2026-10-22's slice pushes), so the wrap costs the LONGER of the two instead of their sum.
+>
+> **RM-157 still forbids DUPLICATES.** Until 2026-08-04 section 2c fired `gh workflow run ci.yml` on every /done while every push already ran the full suite. MEASURED over 2026-08-01..04: 18 such dispatches, **485.8 minutes of runner wall clock in four days for zero added signal**. The waste was the duplicate, not the dispatch: section 2c now fires one only when no full run covers the pushed tree, and never a second one.
 >
 > **Do NOT reintroduce a SERIAL local dual suite into Phase 1.** It was measured
 > and it does not have a slow minority to trim: the slowest 40 tests are only
 > **10.7%** of wall clock and the mean is 71ms across 23,250 tests, so the cost
 > is broad, not concentrated. For Tier-0/1 work the targeted slice plus the push
-> CI run is the replacement, not a shortcut. A Tier-2 session's whole suite is
-> the TIER TABLE's ONE gated parallel run (below), by its merger; /done runs it
-> only when no such run already covers the tree being committed.
+> CI run (and section 2c's one dispatch, when it fires) is the replacement, not a
+> shortcut. A Tier-2 session's whole suite is the TIER TABLE's ONE gated parallel
+> run (below), by its merger; /done runs it only when no such run already covers
+> the tree being committed.
 
 > **TIER TABLE (MAIN kit-v13 ORDER section 2, PERF-AUDIT items 3-4, 2026-10-09). The ONE tier table: every command doc points here instead of restating a suite policy.** Every suite runs from the REPO ROOT; never `pytest .`.
 > | Tier | Change | What runs | Who |
@@ -88,7 +78,7 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > | Tier-2 | schema / engine / scorer / item-effect / `ENGINE_VERSION`, or a merged multi-slice wave | the full dual suite ONCE, on the final merged tree, through the gate (command below), plus the DS `:8860` restart for engine work | the merger only - a slice never runs a whole suite |
 > | Verifier | any done-claim | re-runs ONLY the test files the claim cites, plus `python -m pytest <cited paths> --collect-only -q` for counts; never a whole suite | the read-only `verifier` |
 >
-> Tier-2 command, one gated run over both trees (`<id>` = your claims owner id, RACE GUARDS block; `python` = the canonical interpreter in CLAUDE.md "Paths", which carries pytest-xdist and pytest-timeout): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`. A DS-only or `tests/snapshot_panels/` pre-merge run uses the same gate and flags with that one path. Write the output to a FILE and assert on the summary line AND the exit code: a crashed xdist run leaves no summary, and a FAILED count over it reads 0. Serial whole suites are RETIRED: 27m22s serial against 2m24s at `-n 8` (MAIN measure 2026-10-08), and a serial run held one of the machine's 2 suite slots for ~45 minutes. xdist is not new: CI's `check` job has run `-n auto --dist loadfile` since 2026-07-27, when the six shared-state failures that once made `-n 8` untrustworthy were fixed rather than suppressed (the comment above that step in `.github/workflows/ci.yml` records it).
+> Tier-2 command, one gated run over both trees (`<id>` = your claims owner id, RACE GUARDS block; `python` = the canonical interpreter in CLAUDE.md "Paths", which carries pytest-xdist and pytest-timeout): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --timeout=300`. A DS-only or `tests/snapshot_panels/` pre-merge run uses the same gate and flags with that one path. Run that command directly, never through a helper that polls its output: write the output to a FILE and print the summary line AND the exit code in the SAME launch call (shape: `<that command> > <file> 2>&1; echo "EXIT=$?"; tail -n 3 <file>`; RM-736 ruling, session 126: a graded count must appear in the output of the call that ran it), then assert on both: a crashed xdist run leaves no summary, and a FAILED count over it reads 0. Serial whole suites are RETIRED: 27m22s serial against 2m24s at `-n 8` (MAIN measure 2026-10-08), and a serial run held one of the machine's 2 suite slots for ~45 minutes. xdist is not new: CI's `check` job has run `-n auto --dist loadfile` since 2026-07-27, when the six shared-state failures that once made `-n 8` untrustworthy were fixed rather than suppressed (the comment above that step in `.github/workflows/ci.yml` records it).
 
 ### 0. Local check gate - commit only when green
 
@@ -122,7 +112,7 @@ Versioning is cheap; lost work is not. The operator never passes up a commit + p
   - `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m ruff check .` (must report ALL CHECKS PASSED)
   - `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m py_compile <each touched .py>` (syntax - silent-crash guard per CLAUDE.md hard rule)
   - **Authored-source hygiene (ALWAYS run, every /done - this is the same step CI runs):** `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m pytest tests/test_smart_quote_hygiene.py tests/test_mojibake_hygiene.py tests/test_u2500_hygiene.py -q`. Must be green. No smart quotes / em-en dashes / NBSP / ellipsis / mojibake / U+2500 in authored source. If this fails, it is NEVER "pre-existing / unrelated / not in CI" - it is in CI now; fix it (`"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" tools/strip_smart_quotes.py --apply` for smart-quote/dash drift) before the gate is green.
-  - Test slice covering the change, per the TIER TABLE above: **the targeted modules' test files** (Tier-1). For a Tier-2 session (engine touched, schema, ENGINE_VERSION), the TIER TABLE's ONE gated parallel dual-suite run - skip it when the session's merger already ran it on the tree being committed, and never run a whole suite for Tier-0/1 work: the push CI run covers that (section 2c). Measure suite sizes with `pytest <path> --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
+  - Test slice covering the change, per the TIER TABLE above: **the targeted modules' test files** (Tier-1). For a Tier-2 session (engine touched, schema, ENGINE_VERSION), the TIER TABLE's ONE gated parallel dual-suite run - skip it when the session's merger already ran it on the tree being committed, and never run a LOCAL whole suite for Tier-0/1 work: the push CI impact slice plus section 2c's one dispatch (fired only when no full run covers the pushed tree) stand in for it. Measure suite sizes with `pytest <path> --collect-only -q`, never from a recited figure, since suite counts are unguarded and this line said "9932 tests in ~115s" until 2026-08-16. **Run any suite from the REPO ROOT** - running the DS suite with cwd `agents/daemon_slayer/` yields 13 FALSE failures whose names read like registry regressions (CWD-relative registry opens plus two ASCII-hygiene tests). See memory `reference_ds_suite_run_from_repo_root`.
 - **Any WHOLE suite run locally** (here or anywhere in this ritual; a verifier never runs one, per the TIER TABLE) goes through the kit's machine-wide suite gate (FLEET-KIT v12, FLEET-COMMON item 16 c): `python "<repo>/ops/fleet_kit/fleet_suite_gate.py" run --owner <id> -- <suite cmd>`, where `<suite cmd>` is the TIER TABLE's parallel `-n 8 --dist loadfile` form, never a serial one. A slice that names its test files needs no gate. `<id>` is your claims owner id (RACE GUARDS block above); exit 3 = no slot in time or another live agent's uncommitted edit straddles the run - wait, never bypass.
 - Ground truth, not memory (per CLAUDE.md Verification Discipline): run the gate FRESH this turn, read the pass/fail counts you observe now, and `ls` any test file you cite as added - never carry forward a prior or subagent-reported green. If the work came from parallel slices, the `verifier` subagent's CONFIRM is the gate, not the slice agent's claim.
 - GREEN: proceed to section 0b, then commit (section 1).
@@ -188,22 +178,29 @@ Do NOT silence a breach by loosening the check. If a finding is genuinely a fals
 - If CI goes RED on a real test/lint failure: record the failing job in the hand-off file as the FIRST next action ("resolve CI <job>"). The local gate (section 0) should have caught it, so a red here usually means an env-only delta - investigate before declaring the session cleanly wrapped.
 - Do NOT block /clear on flaky-infra red, but do NOT silently ignore a genuine failure either.
 
-### 2c. The full suite is ALREADY running - do NOT dispatch a second one
+### 2c. At most ONE full CI run, only when nothing covers the pushed tree (ruled 2026-10-22, session 126)
 
-RETIRED 2026-08-04 (RM-157). This section used to run `gh workflow run ci.yml --ref main`. Do not restore it. Since RM-119's second half (2026-07-28), the `check` job on every push runs the identical command that dispatch triggers:
+The section-2 push ran the fast guards plus the impact slice, not the full dual suite (SHAPE above), and the nightly that does run it blocks nothing and can land a day later. So, straight after sections 2 and 2b and before section 3, check whether a full dual suite already covers HEAD, and dispatch ONE when none does. Every input is read, never assumed.
+
+1. **Candidates.** (a) The head commits of the latest full CI runs on main - any status except cancelled; a red one still covers, and its failure is what the hand-off records:
 
 ```
-pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 -n auto --dist loadfile
+for ev in schedule workflow_dispatch; do gh run list --workflow ci.yml --branch main --event "$ev" --limit 5 --json headSha,conclusion --jq '.[] | select(.conclusion != "cancelled") | .headSha'; done
 ```
 
-So the push in section 2a has already fired the full dual suite. Note its run id in 2b, go straight to section 3, and collect it in 8c.
+   (b) the section-2 push's own head, when `python tools/ci_impact_selector.py --base <old> --head <new>` over that push range prints `mode=full` (the push escalated); (c) the commit of any graded local TIER TABLE run this session - not VOID (no WinError 1455 / MemoryError), its summary line and exit code printed in its own launch call; the dispatch prompt names it.
+2. **Covered** when, for at least one candidate `<c>`, `git -C "<repo>" diff --quiet <c> HEAD -- . ':(exclude)*.md' ':(exclude)RC-NEXT-SESSION.txt'` exits 0 (the trees differ at most in docs and the hand-off, which `ci` ignores or `docs-guards` covers). Then do NOT dispatch; write `full suite: covered by <c> (<run id> | local <file>)` into the hand-off.
+3. **Not covered:** run `gh workflow run ci.yml --ref main` ONCE, then `gh run list --workflow ci.yml --event workflow_dispatch --limit 1 --json databaseId,headSha,status` and confirm its `headSha` is HEAD (a dispatch builds the branch tip at trigger time). Write `full suite: dispatched run <id>` into the hand-off. A dispatch runs the `check` job's fast guards plus the full dual suite once (`ci.yml` EVENT MATRIX), in its own concurrency group (RM-370), so a later push neither cancels it nor is cancelled by it.
 
-- **MEASURED 2026-08-01..04, four days:** 256 runs / 2126.6 minutes of runner wall clock. `ci` on `workflow_dispatch` was **18 runs / 485.8 min (avg 27.0)** - every one of them this section, every one a duplicate of the `check` run over the same tree. 22.8% of all runner time in the window, for zero added signal.
+- **Never a second dispatch in one /done.** The two no-`ci` cases below are never a reason to dispatch either.
+- **This is not RM-157 coming back.** RM-157 retired an UNCONDITIONAL dispatch that duplicated a push run already running the full suite (18 runs, 485.8 runner minutes in four days, zero added signal). Since W-A (LEDGER 1706, 2026-10-09) a push runs a slice, and step 2 fires the dispatch only when no full run covers the tree. `ci.yml` names workflow_dispatch "the merge/batch cadence"; this is that cadence at the session boundary.
+- **It never blocks the wrap.** A full run takes 20-55 minutes on the runner (nightly 2026-10-17..22: 20m57s .. 55m39s); the paperwork takes ~15. Section 8c collects it only if it has finished; otherwise the hand-off records `pending <run id>` and the next session's first act is `gh run view <run id>`.
+- **It is off the box, so the local suite rules do not apply to it.** "Never a LOCAL whole suite for Tier-0/1 work" is about this machine (memory: RM-737 / RM-755; xdist stall: RM-754). A dispatch is not a local suite and is not a licence for one.
 - **`docs-guards` was measured in the same pass and the answer is LEAVE IT ALONE.** It has the largest run COUNT (109 push runs) but is the smallest job: **178.8 min, avg 1.6** - 8.4% of the total, and it is the only thing watching a docs-only push. That is not where the minutes go; do not "optimise" it on run count.
 - **`CodSpeed` was measured too (62 runs / 77.7 min, avg 1.3 - 3.7%) and the verdict "leave it alone" was SUPERSEDED on 2026-09-06: the workflow and the `benchmarks/` tree are DELETED.** Minutes were never the reason - it was dropped because it benchmarked `item_advisor.py` and `composition_advisor.py`, which took 3 and 1 commits in 90 days, while `agents/daemon_slayer/` took 310 and had no perf coverage at all. A perf gate on static code is green by construction. Full reasoning in docs/OPERATIONS.md "Why CodSpeed was dropped". **Do not re-add it** as a minute-saver reversal; the minute argument was the one thing that never applied.
 - **Two cases genuinely run no `ci` at all, and neither is a reason to dispatch.** A docs-only push is skipped by `ci.yml`'s `paths-ignore: '**/*.md'`, and `docs-guards.yml` is its purpose-built complement (selector-derived, pinned by `tests/test_ci_docs_guard_coverage.py`) - a full suite adds nothing that a .md-only commit could have broken. A push to a NON-main branch with no PR matches neither `ci.yml` trigger, and a `--ref main` dispatch there would test main rather than your branch, so it is worse than useless. Open the PR instead.
 - The ~142 tests that SKIP on Linux (Windows paths, PowerShell, scheduled tasks) are the residue CI cannot cover. If this session's work was in that surface, run those locally rather than trusting the CI green.
-- **The billing trap still applies to the run you DO get.** The repo is PRIVATE, so Actions minutes are metered and it has already tripped its spending limit once. A billing block looks exactly like a red CI - a 2-3 second "failure" carrying a "job was not started" annotation. See memory `reference_ci_billing_fastfail`.
+- **Billing.** The repo is PUBLIC (read back 2026-10-22: `gh repo view --json visibility`), so standard-runner minutes are not metered. It was private when this section was first written and once tripped its spending limit; if it goes private again, a 2-3 second "failure" carrying a "job was not started" annotation is the spending limit, not the code (memory `reference_ci_billing_fastfail`).
 
 ### 3. Background tasks started this session
 
@@ -227,9 +224,9 @@ So the push in section 2a has already fired the full dual suite. Note its run id
 Update the three living docs based on what shipped this session. These are surgical edits - never full rewrites.
 
 **ROADMAP.md**
-- Find any item that shipped this session: flip its marker from `[!]` to `✅` and append the commit short-SHA in parentheses.
+- Find any item that shipped this session: flip its marker from `[!]` to `[x]` and append the commit short-SHA in parentheses.
 - Add new `[!]` entries for anything that's now next or in-flight.
-- Do NOT touch items that are already ✅ or haven't been worked on.
+- Do NOT touch items that are already `[x]` or haven't been worked on.
 
 **Per-item completion ledger -> `docs/LEDGER.md` (NOT CLAUDE.md)**
 - Append the new item entry at the TOP of the `docs/LEDGER.md` body (newest-first), in the existing entry format.
@@ -283,15 +280,16 @@ Manual follow-ups (only if needed):
 
 ### 8c. Collect the CI run (Phase 4)
 
-By now the paperwork has overlapped most of the ~20-minute push run. There is exactly ONE run to collect - summoning a second is the RM-157 regression (section 2c):
+By now the paperwork has overlapped most of the push run (fast guards + impact slice). Collect it, and the section-2c dispatch only if that one has finished - never summon another (RM-157, section 2c):
 
 ```
 gh run watch <check-run-id> --exit-status
 ```
 
 - Run the watch as a background command; record the result in the hand-off file as `green | red | pending`.
-- A RED full run means fixing FORWARD on main - that is the accepted trade for not paying 27 minutes locally before every commit. Record the failing job as the FIRST next action in the hand-off file.
-- Distinguish a real failure from a BILLING block: a 2-3 second "failure" with a "job was not started" annotation is the spending limit, not your code (memory `reference_ci_billing_fastfail`).
+- The section-2c dispatch, when one fired: `gh run view <dispatch-run-id> --json status,conclusion`. Finished: record `green | red`. Still running: record `pending <run id>` and move on - never `gh run watch` it here.
+- A RED run (push slice or dispatch) means fixing FORWARD on main - that is the accepted trade for not paying 27 minutes locally before every commit. Record the failing job as the FIRST next action in the hand-off file.
+- Distinguish a real failure from a runner block: a 2-3 second "failure" with a "job was not started" annotation is a billing or runner block, not your code (memory `reference_ci_billing_fastfail`; the repo is PUBLIC, section 2c "Billing").
 - Do NOT block /clear on flaky-infra red, but never silently ignore a genuine failure.
 
 ### 9. Final output - ONE line, nothing else
@@ -340,7 +338,7 @@ Then add this session's own items, sourced from ground truth this turn, not memo
 
 - The "what's next" line you just wrote into `WAKEUP_NOTES.md` (section 6).
 - The top open item in `ROADMAP.md` (the next `[!]` / NEXT).
-- Any blocker or do-NOT-redo flagged this session, any open steer (section 0), in-flight background work (section 3), and the status figures from sections 0-8c (commits + push range, gate, CI result, RC health, session size).
+- Any blocker or do-NOT-redo flagged this session, any open steer (section 0), in-flight background work (section 3), and the status figures from sections 0-8c (commits + push range, gate, CI result, full-suite coverage from section 2c, RC health, session size).
 
 Keep it self-contained - the next session boots with zero context: name the next action first, then the key file paths / endpoints / live-state, the acceptance check, and any "already shipped - don't re-investigate" note:
 
@@ -363,7 +361,7 @@ Carried forward (not acted on yet): <every unacted item from the previous file>
 Context: <key files / endpoints / live-state to probe first>
 Acceptance: <how the next session knows it is done>
 Do NOT redo: <anything shipped this session that still looks open>
-Status: <commits / push range / gate / CI / RC health / session size>
+Status: <commits / push range / gate / CI / full suite (2c) / RC health / session size>
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
 ```
 
