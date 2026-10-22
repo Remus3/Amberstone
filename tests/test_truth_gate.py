@@ -362,7 +362,8 @@ def test_ungated_exit_3_is_not_a_gate_refusal(monkeypatch, tmp_path):
 
 def test_missing_executable_is_a_refusal_not_a_crash(tmp_path):
     from tools import truth_gate
-    obs = truth_gate.run_suite_fresh([str(tmp_path / "no_such_exe"), "x"], tmp_path / "o.txt")
+    # A .exe name, so Windows launches it (and fails) instead of refusing it unrun.
+    obs = truth_gate.run_suite_fresh([str(tmp_path / "no_such.exe"), "x"], tmp_path / "o.txt")
     assert obs["exit_code"] == truth_gate.CANNOT_RUN_EXIT
     rep = reconcile(_claims(), obs, {"S1": _ok_files()},
                     git_obs={"clean": True, "head": "abc"}, ci_obs={"status": "success"})
@@ -371,42 +372,47 @@ def test_missing_executable_is_a_refusal_not_a_crash(tmp_path):
 
 # --- RM-757 follow-up: a .bat / .cmd head runs under cmd.exe, which re-parses argv ---
 
-def test_batch_head_literal_path():
-    from tools.truth_gate import batch_head
-    assert batch_head([r"C:\x\run.bat", "a"]) == r"C:\x\run.bat"
-    assert batch_head(["tool.cmd"]) == "tool.cmd"
+def _refused(monkeypatch, argv, which=None):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
+    if which is not None:
+        monkeypatch.setattr(truth_gate.shutil, "which", which)
+    return truth_gate.refused_head(argv)
 
 
-def test_batch_head_quoted_path_with_a_space():
-    from tools.truth_gate import batch_head
-    assert batch_head(['"C:\\some dir\\run.cmd"', "a"])
+def test_refused_head_literal_path(monkeypatch):
+    assert _refused(monkeypatch, [r"C:\x\run.bat", "a"]) == r"C:\x\run.bat"
+    assert _refused(monkeypatch, ["tool.cmd"],
+                    which=lambda name, *a, **k: r"C:\t\tool.cmd") == "tool.cmd"
 
 
-def test_batch_head_mixed_case_and_trailing_dot():
-    from tools.truth_gate import batch_head
-    assert batch_head(["tool.BaT"])
-    assert batch_head(["tool.CmD"])
-    assert batch_head(["tool.bat.", "a"])
+def test_refused_head_quoted_path_with_a_space(monkeypatch):
+    assert _refused(monkeypatch, ['"C:\\some dir\\run.cmd"', "a"])
 
 
-def test_batch_head_ignores_non_batch_commands():
-    from tools.truth_gate import batch_head
-    assert batch_head([sys.executable, "-m", "pytest", "-q"]) is None
-    assert batch_head(["x.bat.py", "a.bat"]) is None
-    assert batch_head([]) is None
+def test_refused_head_mixed_case_and_trailing_dot(monkeypatch):
+    assert _refused(monkeypatch, [r"C:\t\tool.BaT"])
+    assert _refused(monkeypatch, [r"C:\t\tool.CmD"])
+    assert _refused(monkeypatch, [r"C:\t\tool.bat.", "a"])
 
 
-def test_batch_head_sees_the_command_behind_a_gate_wrapper():
-    from tools.truth_gate import GATE_SCRIPT, batch_head
-    assert batch_head([sys.executable, str(GATE_SCRIPT), "run", "--owner", "o",
-                       "--", "x.cmd", "a"]) == "x.cmd"
+def test_refused_head_allows_exe_heads(monkeypatch):
+    assert _refused(monkeypatch, [r"C:\p\python.exe", "-m", "pytest", "-q"]) is None
+    assert _refused(monkeypatch, [r"C:\p\PyThOn.ExE", "x.bat"]) is None
+    assert _refused(monkeypatch, []) is None
+
+
+def test_refused_head_sees_the_command_behind_a_gate_wrapper(monkeypatch):
+    from tools.truth_gate import GATE_SCRIPT
+    assert _refused(monkeypatch, [r"C:\p\python.exe", str(GATE_SCRIPT), "run", "--owner", "o",
+                                  "--", r"C:\d\x.cmd", "a"]) == r"C:\d\x.cmd"
 
 
 @pytest.mark.skipif(os.name != "nt", reason="%VAR% expansion is Windows-only")
-def test_batch_head_after_percent_var_expansion(monkeypatch):
-    from tools.truth_gate import batch_head, split_cmd
+def test_refused_head_after_percent_var_expansion(monkeypatch):
+    from tools.truth_gate import refused_head, split_cmd
     monkeypatch.setenv("RC_TG_RM757_BAT", r"C:\s\probe.bat")
-    assert batch_head(split_cmd("%RC_TG_RM757_BAT% a"))
+    assert refused_head(split_cmd("%RC_TG_RM757_BAT% a"))
 
 
 def test_batch_claim_is_refused_without_running(monkeypatch, tmp_path):
@@ -416,13 +422,13 @@ def test_batch_claim_is_refused_without_running(monkeypatch, tmp_path):
     monkeypatch.setattr(truth_gate.subprocess, "run", fake)
     obs = truth_gate.run_suite_fresh([r"C:\x\run.bat", "a", "&", "b"], tmp_path / "o.txt")
     assert fake.calls == []
-    assert obs["batch_refused"] is True
+    assert obs["head_refused"] is True
     rep = reconcile(_claims(), obs, {"S1": _ok_files()},
                     git_obs={"clean": True, "head": "abc"}, ci_obs={"status": "success"})
     assert rep["verdict"] == "REFUSE"
-    assert any(d.startswith("batch-file refused") for d in rep["global_discrepancies"])
+    assert any(d.startswith("non-exe head refused") for d in rep["global_discrepancies"])
     slice_disc = rep["slices"][0]["discrepancies"]
-    assert slice_disc and all("batch-file refused" in d for d in slice_disc)
+    assert slice_disc and all("non-exe head refused" in d for d in slice_disc)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="%VAR% expansion is Windows-only")
@@ -433,7 +439,7 @@ def test_percent_var_expanding_to_a_batch_file_is_refused(monkeypatch, tmp_path)
     monkeypatch.setenv("RC_TG_RM757_BAT", str(tmp_path / "probe.bat"))
     obs = truth_gate.run_suite_fresh("%RC_TG_RM757_BAT% a", tmp_path / "o.txt")
     assert fake.calls == []
-    assert obs["batch_refused"] is True
+    assert obs["head_refused"] is True
 
 
 def test_posix_batch_named_head_is_not_refused(monkeypatch, tmp_path):
@@ -443,7 +449,7 @@ def test_posix_batch_named_head_is_not_refused(monkeypatch, tmp_path):
     monkeypatch.setattr(truth_gate.subprocess, "run", fake)
     obs = truth_gate.run_suite_fresh(["./run.bat", "a"], tmp_path / "o.txt")
     assert len(fake.calls) == 1
-    assert obs["batch_refused"] is False
+    assert obs["head_refused"] is False
 
 
 def _is_windows():
@@ -461,36 +467,33 @@ def test_batch_claim_command_never_runs_end_to_end(tmp_path):
     bat.write_text(f'@echo off\r\necho ran> "{marker}"\r\n', encoding="ascii")
     out = tmp_path / "o.txt"
     obs = truth_gate.run_suite_fresh(f'"{bat}" a & echo INJECTED_LINE', out)
-    assert obs["batch_refused"] is True
+    assert obs["head_refused"] is True
     assert not marker.exists()
     assert "INJECTED_LINE" not in out.read_text(encoding="utf-8")
 
 
 # --- RM-757 round 3: every post-separator command; case-folded gate name ---
 
-def test_batch_head_behind_a_case_variant_gate_name():
-    from tools.truth_gate import batch_head
-    argv = [sys.executable, r"ops\fleet_kit\FLEET_SUITE_GATE.PY", "run", "--owner", "x",
+def test_refused_head_behind_a_case_variant_gate_name(monkeypatch):
+    argv = [r"C:\p\python.exe", r"ops\fleet_kit\FLEET_SUITE_GATE.PY", "run", "--owner", "x",
             "--", r"C:\d\x.bat", "a"]
-    assert batch_head(argv) == r"C:\d\x.bat"
+    assert _refused(monkeypatch, argv) == r"C:\d\x.bat"
 
 
-def test_batch_head_behind_a_trailing_dot_gate_name():
-    from tools.truth_gate import batch_head
-    argv = [sys.executable, "ops/fleet_kit/fleet_suite_gate.py.", "run", "--",
+def test_refused_head_behind_a_trailing_dot_gate_name(monkeypatch):
+    argv = [r"C:\p\python.exe", "ops/fleet_kit/fleet_suite_gate.py.", "run", "--",
             r"C:\d\x.cmd", "a"]
-    assert batch_head(argv) == r"C:\d\x.cmd"
+    assert _refused(monkeypatch, argv) == r"C:\d\x.cmd"
 
 
-def test_batch_head_behind_an_unknown_wrapper():
-    from tools.truth_gate import batch_head
-    assert batch_head([sys.executable, "other.py", "--", "x.bat", "a"]) == "x.bat"
+def test_refused_head_behind_an_unknown_wrapper(monkeypatch):
+    assert _refused(monkeypatch, [r"C:\p\python.exe", "other.py", "--", r"C:\d\x.bat",
+                                  "a"]) == r"C:\d\x.bat"
 
 
-def test_batch_head_after_every_separator():
-    from tools.truth_gate import batch_head
-    argv = [sys.executable, "w.py", "--", "a.exe", "b", "--", "y.CMD", "c"]
-    assert batch_head(argv) == "y.CMD"
+def test_refused_head_after_every_separator(monkeypatch):
+    argv = [r"C:\p\python.exe", "w.py", "--", r"C:\p\a.exe", "b", "--", r"C:\d\y.CMD", "c"]
+    assert _refused(monkeypatch, argv) == r"C:\d\y.CMD"
 
 
 def test_case_variant_gate_names_are_not_double_wrapped(monkeypatch):
@@ -514,8 +517,109 @@ def test_batch_behind_an_unknown_wrapper_never_runs_end_to_end(tmp_path):
     inj = tmp_path / "inj.txt"
     cmd = f'"{sys.executable}" "{wrapper}" -- "{bat}" a & echo INJECTED_LINE> "{inj}"'
     obs = truth_gate.run_suite_fresh(cmd, tmp_path / "o.txt")
-    assert obs["batch_refused"] is True
+    assert obs["head_refused"] is True
     assert not inj.exists()
+
+
+# --- RM-757 round 4: deny-all - on Windows only a resolved .exe head is launched ---
+
+_WIN_PY = r"C:\p\python.exe"
+
+
+def _win(monkeypatch, which=None):
+    from tools import truth_gate
+    monkeypatch.setattr(truth_gate, "IS_WINDOWS", True)
+    if which is not None:
+        monkeypatch.setattr(truth_gate.shutil, "which", which)
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    return truth_gate, fake
+
+
+@pytest.mark.parametrize("head", [r"C:\d\x.bat\.", "C:/d/x.bat/.", r"C:\d\tool",
+                                  r"C:\d\t.com", r"C:\d\t.ps1", r"C:\d\x.cmd"])
+def test_non_exe_path_head_is_refused_unrun(monkeypatch, tmp_path, head):
+    tg, fake = _win(monkeypatch)
+    obs = tg.run_suite_fresh([head, "a", "&", "b"], tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_dot_segment_bat_head_in_string_form_is_refused(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch)
+    obs = tg.run_suite_fresh(r'"C:\d\x.bat\." a & echo INJECTED_LINE', tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_bare_head_resolving_to_a_cmd_is_refused(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch, which=lambda name, *a, **k: r"C:\b\zzprobe.CMD")
+    obs = tg.run_suite_fresh(["zzprobe", "a", "&", "echo", "INJ"], tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_whole_suite_wrap_never_reaches_a_cmd_head(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch, which=lambda name, *a, **k: r"C:\b\zzprobe.CMD")
+    obs = tg.run_suite_fresh(["zzprobe", "exec", "pytest", "-q", "a", "&", "echo", "INJ"],
+                             tmp_path / "o.txt", owner="o.1")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_npm_style_cmd_shim_is_refused(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch, which=lambda name, *a, **k: r"C:\n\npm.CMD")
+    obs = tg.run_suite_fresh(["npm", "exec", "pytest", "-q"], tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_unresolvable_bare_head_is_refused(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch, which=lambda name, *a, **k: None)
+    obs = tg.run_suite_fresh(["zzghost", "a"], tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_cmd_head_after_a_separator_is_refused(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch, which=lambda name, *a, **k: r"C:\b\zzprobe.cmd")
+    obs = tg.run_suite_fresh([_WIN_PY, "w.py", "--", "zzprobe", "a"], tmp_path / "o.txt")
+    assert fake.calls == []
+    assert obs["head_refused"] is True
+
+
+def test_exe_path_heads_are_launched(monkeypatch, tmp_path):
+    tg, fake = _win(monkeypatch, which=lambda name, *a, **k: r"C:\p\PYTHON.EXE")
+    for argv in ([_WIN_PY, "x.py"], [r"C:\p\PYTHON.EXE", "x.py"], ["python", "x.py"],
+                 [_WIN_PY, "w.py", "--", "python", "a"]):
+        obs = tg.run_suite_fresh(argv, tmp_path / "o.txt")
+        assert obs["head_refused"] is False
+    assert len(fake.calls) == 4
+
+
+@pytest.mark.skipif(not _is_windows(), reason="PATH / PATHEXT resolution is Windows-only")
+def test_real_path_cmd_shim_is_refused_and_python_is_allowed(monkeypatch, tmp_path):
+    from tools import truth_gate
+    fake = _FakeRun(0)
+    monkeypatch.setattr(truth_gate.subprocess, "run", fake)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "zzprobe.cmd").write_text("@echo off\r\n", encoding="ascii")
+    (bin_dir / "npm.CMD").write_text("@echo off\r\n", encoding="ascii")
+    py_dir = str(Path(sys.executable).parent)
+    monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + py_dir)
+    monkeypatch.setenv("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+    for cmd in ("zzprobe a & echo INJ", "zzprobe exec pytest -q a & echo INJ",
+                "npm exec pytest -q"):
+        obs = truth_gate.run_suite_fresh(cmd, tmp_path / "o.txt", owner="o.1")
+        assert obs["head_refused"] is True, cmd
+    assert fake.calls == []
+    for cmd in ("python x.py", f'"{sys.executable}" x.py'):
+        assert truth_gate.run_suite_fresh(cmd, tmp_path / "o.txt")["head_refused"] is False
+    p2w5 = json.loads((Path(__file__).parent.parent / "ops" / "audit" /
+                       "p2w5_truth_gate_claims.json").read_text(encoding="utf-8"))["suite_cmd"]
+    assert truth_gate.run_suite_fresh(p2w5, tmp_path / "o.txt", owner="o.1")["head_refused"] is False
+    assert len(fake.calls) == 3
 
 
 def test_truth_gate_never_passes_shell_true():
